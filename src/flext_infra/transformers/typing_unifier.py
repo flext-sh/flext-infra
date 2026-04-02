@@ -1,20 +1,16 @@
-"""Unify inline typing unions and TypeAlias declarations to canonical forms."""
+"""Unify inline typing unions and TypeAlias declarations to canonical forms via rope."""
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSequence, Sequence
+import re
+from collections.abc import Mapping, MutableSequence
 from pathlib import Path
-from typing import override
 
-import libcst as cst
-
-from flext_infra import FlextInfraUtilitiesParsing, c, t
-
-_PAIR_LENGTH = 2
+from flext_infra import FlextInfraUtilitiesRope, c, t
 
 
-class FlextInfraRefactorTypingUnifier(cst.CSTTransformer):
-    """Unify inline type unions into canonical t.* alias references via CST rewrite."""
+class FlextInfraRefactorTypingUnifier:
+    """Unify inline type unions into canonical t.* alias references via rope regex."""
 
     def __init__(
         self,
@@ -22,264 +18,68 @@ class FlextInfraRefactorTypingUnifier(cst.CSTTransformer):
         canonical_map: Mapping[frozenset[str], str],
         file_path: Path | None = None,
     ) -> None:
-        """Initialize unifier context and accumulated import/type state."""
-        self._scope_depth = 0
-        self._typing_import_names: t.Infra.StrSet = set()
-        self._typing_import_aliases: MutableSequence[cst.ImportAlias] = []
-        self._all_name_usages: t.Infra.StrSet = set()
-        self._has_t_import = False
-        self._needs_t_import = False
-        self._typealias_unconverted = 0
-        self._is_definition_file = self._is_typing_definition_file(file_path)
+        """Initialize with canonical union map and optional file path for skip logic."""
         self._canonical_map = canonical_map
+        self._is_definition_file = self._is_typing_definition_file(file_path)
         self.changes: MutableSequence[str] = []
 
-    @override
-    def visit_ImportFrom(self, node: cst.ImportFrom) -> bool:
-        module_name = FlextInfraUtilitiesParsing.cst_module_name(node.module)
-        if module_name == "typing":
-            return self._collect_typing_imports(node.names)
-        self._detect_t_import(node.names)
-        return True
-
-    def _collect_typing_imports(
+    def transform(
         self,
-        names: Sequence[cst.ImportAlias] | cst.ImportStar,
-    ) -> bool:
-        """Record imported typing names for later unused-import filtering."""
-        if isinstance(names, cst.ImportStar):
-            return False
-        for alias in tuple(names):
-            if not isinstance(alias.name, cst.Name):
-                continue
-            self._typing_import_names.add(self._bound_name(alias))
-            self._typing_import_aliases.append(alias)
-        return False
-
-    def _detect_t_import(
-        self,
-        names: Sequence[cst.ImportAlias] | cst.ImportStar,
-    ) -> None:
-        """Check whether 't' is already imported from the module."""
-        if isinstance(names, cst.ImportStar):
-            return
-        for alias in tuple(names):
-            if isinstance(alias.name, cst.Name) and self._bound_name(alias) == "t":
-                self._has_t_import = True
-
-    @override
-    def visit_Name(self, node: cst.Name) -> None:
-        self._all_name_usages.add(node.value)
-
-    @override
-    def visit_ClassDef(self, node: cst.ClassDef) -> None:
-        del node
-        self._scope_depth += 1
-
-    @override
-    def leave_ClassDef(
-        self,
-        original_node: cst.ClassDef,
-        updated_node: cst.ClassDef,
-    ) -> cst.ClassDef:
-        del original_node
-        self._scope_depth -= 1
-        return updated_node
-
-    @override
-    def visit_FunctionDef(self, node: cst.FunctionDef) -> None:
-        del node
-        self._scope_depth += 1
-
-    @override
-    def leave_FunctionDef(
-        self,
-        original_node: cst.FunctionDef,
-        updated_node: cst.FunctionDef,
-    ) -> cst.FunctionDef:
-        del original_node
-        self._scope_depth -= 1
-        return updated_node
-
-    @override
-    def leave_ImportFrom(
-        self,
-        original_node: cst.ImportFrom,
-        updated_node: cst.ImportFrom,
-    ) -> cst.BaseSmallStatement | cst.RemovalSentinel:
-        """Pass through typing imports unchanged — filtering deferred to leave_Module.
-
-        DFS ordering means leave_ImportFrom fires before visit_Name has
-        collected usages from the rest of the file. The actual unused-import
-        filtering runs in leave_Module where _all_name_usages is complete.
-        """
-        return updated_node
-
-    @override
-    def leave_AnnAssign(
-        self,
-        original_node: cst.AnnAssign,
-        updated_node: cst.AnnAssign,
-    ) -> cst.BaseSmallStatement:
-        if not self._is_legacy_typealias(original_node):
-            return updated_node
-        if self._scope_depth > 0:
-            self._typealias_unconverted += 1
-            return updated_node
-        alias_value = updated_node.value
-        if alias_value is None:
-            return updated_node
-        target = original_node.target
-        alias_name = target.value if isinstance(target, cst.Name) else ""
-        self.changes.append(f"Converted legacy TypeAlias assignment: {alias_name}")
-        return cst.TypeAlias(name=cst.Name(alias_name), value=alias_value)
-
-    def _is_legacy_typealias(self, node: cst.AnnAssign) -> bool:
-        """Return True when node is a ``X: TypeAlias = ...`` declaration."""
-        if not isinstance(node.target, cst.Name) or node.value is None:
-            return False
-        annotation_name = self._annotation_name(node.annotation.annotation)
-        return annotation_name in {"TypeAlias", "typing.TypeAlias"}
-
-    @override
-    def leave_Annotation(
-        self,
-        original_node: cst.Annotation,
-        updated_node: cst.Annotation,
-    ) -> cst.Annotation:
-        del original_node
-        replacement = self._resolve_canonical_replacement(updated_node.annotation)
-        if replacement is None:
-            return updated_node
-        self._needs_t_import = True
-        return updated_node.with_changes(annotation=replacement)
-
-    def _resolve_canonical_replacement(
-        self,
-        annotation: cst.BaseExpression,
-    ) -> cst.BaseExpression | None:
-        """Map an inline union annotation to its canonical t.* replacement, if any."""
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+    ) -> tuple[str, MutableSequence[str]]:
+        """Apply union canonicalization and TypeAlias modernization."""
         if self._is_definition_file:
-            return None
-        union_leaf_names = self._extract_union_leaf_names(annotation)
-        if union_leaf_names is None or "None" in union_leaf_names:
-            return None
-        canonical_target = self._canonical_map.get(frozenset(union_leaf_names))
-        if canonical_target is None:
-            return None
-        replacement = self._build_t_attribute(canonical_target)
-        if replacement is not None:
-            self.changes.append(
-                f"Canonicalized inline union -> {canonical_target}",
-            )
-        return replacement
+            return resource.read(), self.changes
 
-    @override
-    def leave_Module(
-        self,
-        original_node: cst.Module,
-        updated_node: cst.Module,
-    ) -> cst.Module:
-        del original_node
-        result = self._filter_typing_imports(updated_node)
-        if self._needs_t_import and not self._has_t_import:
-            result = self._inject_t_import(result)
+        source = resource.read()
+        replacements = self._build_replacements(source)
+        if replacements:
+            source, _count = FlextInfraUtilitiesRope.batch_replace_annotations(
+                rope_project,
+                resource,
+                replacements,
+                apply=True,
+            )
+            for old, new in replacements.items():
+                self.changes.append(f"Canonicalized inline union {old} -> {new}")
+
+        source = self._modernize_typealias(rope_project, resource)
+        return source, self.changes
+
+    def _build_replacements(self, source: str) -> Mapping[str, str]:
+        """Scan source for union patterns matching canonical map entries."""
+        result: dict[str, str] = {}
+        for member_set, canonical in self._canonical_map.items():
+            pattern = self._union_pattern(member_set)
+            if pattern is not None and pattern.search(source):
+                result[" | ".join(sorted(member_set))] = canonical
         return result
 
-    def _filter_typing_imports(self, module: cst.Module) -> cst.Module:
-        new_body: MutableSequence[cst.BaseStatement] = []
-        for stmt in module.body:
-            replacement = self._maybe_filter_typing_import_stmt(stmt)
-            if replacement is not None:
-                new_body.append(replacement)
-        return module.with_changes(body=new_body)
+    @staticmethod
+    def _union_pattern(members: frozenset[str]) -> re.Pattern[str] | None:
+        """Build regex matching any permutation of a ``A | B | C`` union."""
+        if len(members) < c.Infra.Thresholds.MIN_UNION_MEMBERS:
+            return None
+        escaped = [re.escape(m) for m in sorted(members)]
+        part = rf"(?:{'|'.join(escaped)})"
+        return re.compile(rf"\b{part}(?:\s*\|\s*{part}){{{len(members) - 1}}}\b")
 
     @staticmethod
-    def _extract_typing_import(
-        stmt: cst.BaseStatement,
-    ) -> cst.ImportFrom | None:
-        """Return the ImportFrom node if stmt is a single 'from typing import ...'."""
-        if not isinstance(stmt, cst.SimpleStatementLine) or len(stmt.body) != 1:
-            return None
-        only = stmt.body[0]
-        if not isinstance(only, cst.ImportFrom):
-            return None
-        module_name = FlextInfraUtilitiesParsing.cst_module_name(only.module)
-        if module_name != "typing" or isinstance(only.names, cst.ImportStar):
-            return None
-        return only
-
-    def _should_retain_typing_alias(self, alias: cst.ImportAlias) -> bool:
-        """Decide if a typing import alias should be kept; logs removal changes."""
-        if not isinstance(alias.name, cst.Name):
-            return True
-        imported_name = alias.name.value
-        bound_name = self._bound_name(alias)
-        if imported_name == "TypeAlias":
-            if self._typealias_unconverted > 0:
-                return True
-            self.changes.append("Removed typing import: TypeAlias")
-            return False
-        if bound_name in self._all_name_usages:
-            return True
-        self.changes.append(f"Removed unused typing import: {imported_name}")
-        return False
-
-    def _maybe_filter_typing_import_stmt(
-        self,
-        stmt: cst.BaseStatement,
-    ) -> cst.BaseStatement | None:
-        typing_import = self._extract_typing_import(stmt)
-        if typing_import is None:
-            return stmt
-        names = typing_import.names
-        if isinstance(names, cst.ImportStar):
-            return stmt
-        retained = [
-            alias for alias in tuple(names) if self._should_retain_typing_alias(alias)
-        ]
-        if not retained:
-            self.changes.append("Removed empty typing import")
-            return None
-        updated_import = typing_import.with_changes(names=tuple(retained))
-        return stmt.with_changes(body=[updated_import])
-
-    def _inject_t_import(self, module: cst.Module) -> cst.Module:
-        import_stmt = cst.SimpleStatementLine(
-            body=[
-                cst.ImportFrom(
-                    module=cst.Name("flext_core"),
-                    names=[cst.ImportAlias(name=cst.Name("t"))],
-                ),
-            ],
+    def _modernize_typealias(
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+    ) -> str:
+        """Convert ``X: TypeAlias = expr`` to ``type X = expr`` (PEP 695)."""
+        pattern = re.compile(r"^(\w+)\s*:\s*TypeAlias\s*=\s*(.+)$", re.MULTILINE)
+        new_source, _count = FlextInfraUtilitiesRope.replace_in_source(
+            rope_project,
+            resource,
+            pattern,
+            r"type \1 = \2",
+            apply=True,
         )
-        body = list(module.body)
-        insert_idx = (
-            FlextInfraUtilitiesParsing.index_after_docstring_and_future_imports(
-                body,
-            )
-        )
-        self.changes.append("Added import: from flext_core import t")
-        new_body = body[:insert_idx] + [import_stmt] + body[insert_idx:]
-        return module.with_changes(body=new_body)
-
-    @staticmethod
-    def _bound_name(alias: cst.ImportAlias) -> str:
-        if alias.asname is not None and isinstance(alias.asname.name, cst.Name):
-            return alias.asname.name.value
-        if isinstance(alias.name, cst.Name):
-            return alias.name.value
-        return alias.name.attr.value
-
-    @staticmethod
-    def _annotation_name(annotation: cst.BaseExpression) -> str:
-        if isinstance(annotation, cst.Name):
-            return annotation.value
-        if isinstance(annotation, cst.Attribute):
-            if isinstance(annotation.value, cst.Name):
-                return f"{annotation.value.value}.{annotation.attr.value}"
-            return annotation.attr.value
-        return ""
+        return new_source
 
     @staticmethod
     def _is_typing_definition_file(file_path: Path | None) -> bool:
@@ -288,54 +88,6 @@ class FlextInfraRefactorTypingUnifier(cst.CSTTransformer):
         if file_path.name in c.Infra.TYPING_DEFINITION_FILES:
             return True
         return any(part in c.Infra.TYPING_DEFINITION_FILES for part in file_path.parts)
-
-    @staticmethod
-    def _union_leaves(expr: cst.BaseExpression) -> Sequence[cst.BaseExpression] | None:
-        if not isinstance(expr, cst.BinaryOperation):
-            return None
-        if not isinstance(expr.operator, cst.BitOr):
-            return None
-        left = FlextInfraRefactorTypingUnifier._union_leaves(expr.left)
-        right = FlextInfraRefactorTypingUnifier._union_leaves(expr.right)
-        left_items = left if left is not None else [expr.left]
-        right_items = right if right is not None else [expr.right]
-        return [*left_items, *right_items]
-
-    @staticmethod
-    def _leaf_name(expr: cst.BaseExpression) -> str | None:
-        if isinstance(expr, cst.Name):
-            return expr.value
-        if isinstance(expr, cst.Attribute):
-            return expr.attr.value
-        return None
-
-    def _extract_union_leaf_names(
-        self,
-        expr: cst.BaseExpression,
-    ) -> frozenset[str] | None:
-        leaves = self._union_leaves(expr)
-        if leaves is None:
-            return None
-        normalized: t.Infra.StrSet = set()
-        for leaf in leaves:
-            leaf_name = self._leaf_name(leaf)
-            if leaf_name is None:
-                return None
-            if leaf_name == "NoneType":
-                normalized.add("None")
-                continue
-            normalized.add(leaf_name)
-        return frozenset(normalized)
-
-    @staticmethod
-    def _build_t_attribute(target: str) -> cst.BaseExpression | None:
-        parts = target.split(".")
-        if len(parts) != _PAIR_LENGTH:
-            return None
-        base_name, contract_name = parts
-        if base_name != "t":
-            return None
-        return cst.Attribute(value=cst.Name(base_name), attr=cst.Name(contract_name))
 
 
 __all__ = ["FlextInfraRefactorTypingUnifier"]

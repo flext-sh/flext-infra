@@ -1,57 +1,48 @@
-"""Import bypass remover transformer for legacy import fallbacks."""
+"""Import bypass remover transformer — rope-based implementation.
+
+Replaces try/except ImportError fallback blocks with the primary import.
+"""
 
 from __future__ import annotations
 
-from typing import override
+import re
+from collections.abc import Sequence
 
-import libcst as cst
+from flext_infra import FlextInfraUtilitiesRope, t
+from flext_infra.transformers._base import FlextInfraRopeTransformer
 
-from flext_infra import FlextInfraChangeTrackingTransformer, t
 
-
-class FlextInfraRefactorImportBypassRemover(FlextInfraChangeTrackingTransformer):
+class FlextInfraRefactorImportBypassRemover(FlextInfraRopeTransformer):
     """Replace import bypass try/except blocks with the primary import."""
 
-    def __init__(self, on_change: t.Infra.ChangeCallback = None) -> None:
-        """Initialize optional callback for emitted change messages."""
-        super().__init__(on_change=on_change)
+    _BYPASS_RE = re.compile(
+        r"^try:\n"
+        r"(    from .+\n)"
+        r"except ImportError:\n"
+        r"    from .+\n",
+        re.MULTILINE,
+    )
 
-    @override
-    def leave_Try(
+    def transform(
         self,
-        original_node: cst.Try,
-        updated_node: cst.Try,
-    ) -> cst.BaseStatement:
-        del original_node
-        if len(updated_node.body.body) != 1:
-            return updated_node
-        if len(updated_node.handlers) != 1:
-            return updated_node
-        body_stmt = updated_node.body.body[0]
-        handler = updated_node.handlers[0]
-        if not isinstance(handler.body, cst.IndentedBlock):
-            return updated_node
-        if len(handler.body.body) != 1:
-            return updated_node
-        fallback_stmt = handler.body.body[0]
-        if not (
-            isinstance(body_stmt, cst.SimpleStatementLine)
-            and isinstance(fallback_stmt, cst.SimpleStatementLine)
-        ):
-            return updated_node
-        if len(body_stmt.body) != 1 or len(fallback_stmt.body) != 1:
-            return updated_node
-        primary_import = body_stmt.body[0]
-        fallback_import = fallback_stmt.body[0]
-        if not (
-            isinstance(primary_import, cst.ImportFrom)
-            and isinstance(fallback_import, cst.ImportFrom)
-        ):
-            return updated_node
-        handler_type = handler.type
-        if not isinstance(handler_type, cst.Name):
-            return updated_node
-        if handler_type.value != "ImportError":
-            return updated_node
-        self._record_change("Removed import bypass fallback")
-        return body_stmt
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+    ) -> tuple[str, Sequence[str]]:
+        """Remove try/except ImportError fallback blocks, keep the primary import."""
+        source = FlextInfraUtilitiesRope.read_source(resource)
+        new_source, count = self._BYPASS_RE.subn(r"\1", source)
+        if count == 0:
+            return source, []
+        changes = [f"Removed {count} import bypass fallback(s)"]
+        for msg in changes:
+            self._record_change(msg)
+        FlextInfraUtilitiesRope.write_source(
+            rope_project,
+            resource,
+            new_source,
+            description="remove import bypass",
+        )
+        return new_source, list(self.changes)
+
+
+__all__ = ["FlextInfraRefactorImportBypassRemover"]

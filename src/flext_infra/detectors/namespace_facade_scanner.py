@@ -87,10 +87,10 @@ class FlextInfraNamespaceFacadeScanner:
         normalized = FlextUtilities.norm_str(project_name, case="lower").replace(
             "_", "-"
         )
-        if normalized == "flext-core":
+        if normalized == c.Infra.Packages.CORE:
             return "Flext"
-        if normalized.startswith("flext-"):
-            tail = normalized.removeprefix("flext-")
+        if normalized.startswith(c.Infra.Packages.PREFIX_HYPHEN):
+            tail = normalized.removeprefix(c.Infra.Packages.PREFIX_HYPHEN)
             parts = [p for p in tail.split("-") if p]
             return "Flext" + "".join(p.capitalize() for p in parts)
         parts = [p for p in normalized.split("-") if p]

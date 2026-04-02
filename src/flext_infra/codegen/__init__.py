@@ -19,6 +19,24 @@ from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
+    from flext_infra._utilities.codegen_constant_analysis import (
+        FlextInfraUtilitiesCodegenConstantAnalysis,
+    )
+    from flext_infra._utilities.codegen_constant_detection import (
+        FlextInfraUtilitiesCodegenConstantDetection,
+    )
+    from flext_infra._utilities.codegen_constant_transformation import (
+        FlextInfraUtilitiesCodegenConstantTransformation,
+    )
+    from flext_infra._utilities.codegen_governance import (
+        FlextInfraUtilitiesCodegenGovernance,
+    )
+    from flext_infra._utilities.codegen_import_cycles import (
+        FlextInfraUtilitiesCodegenImportCycles,
+    )
+    from flext_infra._utilities.codegen_transforms import (
+        FlextInfraUtilitiesCodegenTransforms,
+    )
     from flext_infra.codegen import (
         _codegen_coercion,
         _codegen_execution_tools,
@@ -29,12 +47,6 @@ if _TYPE_CHECKING:
         _constants,
         _models,
         _utilities,
-        _utilities_codegen_ast_parsing,
-        _utilities_codegen_constant_transformer,
-        _utilities_codegen_constant_visitor,
-        _utilities_codegen_execution,
-        _utilities_codegen_governance,
-        _utilities_transforms,
         census,
         cli,
         constants_quality_gate,
@@ -56,24 +68,6 @@ if _TYPE_CHECKING:
     from flext_infra.codegen._constants import FlextInfraCodegenConstants
     from flext_infra.codegen._models import FlextInfraCodegenModels
     from flext_infra.codegen._utilities import FlextInfraUtilitiesCodegen
-    from flext_infra.codegen._utilities_codegen_ast_parsing import (
-        FlextInfraUtilitiesCodegenAstParsing,
-    )
-    from flext_infra.codegen._utilities_codegen_constant_transformer import (
-        FlextInfraUtilitiesCodegenConstantTransformation,
-    )
-    from flext_infra.codegen._utilities_codegen_constant_visitor import (
-        FlextInfraUtilitiesCodegenConstantDetection,
-    )
-    from flext_infra.codegen._utilities_codegen_execution import (
-        FlextInfraUtilitiesCodegenExecution,
-    )
-    from flext_infra.codegen._utilities_codegen_governance import (
-        FlextInfraUtilitiesCodegenGovernance,
-    )
-    from flext_infra.codegen._utilities_transforms import (
-        FlextInfraUtilitiesCodegenTransforms,
-    )
     from flext_infra.codegen.census import FlextInfraCodegenCensus
     from flext_infra.codegen.cli import FlextInfraCliCodegen
     from flext_infra.codegen.constants_quality_gate import (
@@ -101,12 +95,12 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "FlextInfraCodegenScaffolder": "flext_infra.codegen.scaffolder",
     "FlextInfraCodegenSnapshot": "flext_infra.codegen._codegen_snapshot",
     "FlextInfraUtilitiesCodegen": "flext_infra.codegen._utilities",
-    "FlextInfraUtilitiesCodegenAstParsing": "flext_infra.codegen._utilities_codegen_ast_parsing",
-    "FlextInfraUtilitiesCodegenConstantDetection": "flext_infra.codegen._utilities_codegen_constant_visitor",
-    "FlextInfraUtilitiesCodegenConstantTransformation": "flext_infra.codegen._utilities_codegen_constant_transformer",
-    "FlextInfraUtilitiesCodegenExecution": "flext_infra.codegen._utilities_codegen_execution",
-    "FlextInfraUtilitiesCodegenGovernance": "flext_infra.codegen._utilities_codegen_governance",
-    "FlextInfraUtilitiesCodegenTransforms": "flext_infra.codegen._utilities_transforms",
+    "FlextInfraUtilitiesCodegenConstantAnalysis": "flext_infra._utilities.codegen_constant_analysis",
+    "FlextInfraUtilitiesCodegenConstantDetection": "flext_infra._utilities.codegen_constant_detection",
+    "FlextInfraUtilitiesCodegenConstantTransformation": "flext_infra._utilities.codegen_constant_transformation",
+    "FlextInfraUtilitiesCodegenGovernance": "flext_infra._utilities.codegen_governance",
+    "FlextInfraUtilitiesCodegenImportCycles": "flext_infra._utilities.codegen_import_cycles",
+    "FlextInfraUtilitiesCodegenTransforms": "flext_infra._utilities.codegen_transforms",
     "_codegen_coercion": "flext_infra.codegen._codegen_coercion",
     "_codegen_execution_tools": "flext_infra.codegen._codegen_execution_tools",
     "_codegen_generation": "flext_infra.codegen._codegen_generation",
@@ -116,12 +110,11 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "_constants": "flext_infra.codegen._constants",
     "_models": "flext_infra.codegen._models",
     "_utilities": "flext_infra.codegen._utilities",
-    "_utilities_codegen_ast_parsing": "flext_infra.codegen._utilities_codegen_ast_parsing",
+    "_utilities_codegen_constant_analysis": "flext_infra.codegen._utilities_codegen_constant_analysis",
     "_utilities_codegen_constant_transformer": "flext_infra.codegen._utilities_codegen_constant_transformer",
     "_utilities_codegen_constant_visitor": "flext_infra.codegen._utilities_codegen_constant_visitor",
-    "_utilities_codegen_execution": "flext_infra.codegen._utilities_codegen_execution",
     "_utilities_codegen_governance": "flext_infra.codegen._utilities_codegen_governance",
-    "_utilities_transforms": "flext_infra.codegen._utilities_transforms",
+    "_utilities_codegen_import_cycles": "flext_infra.codegen._utilities_codegen_import_cycles",
     "census": "flext_infra.codegen.census",
     "cli": "flext_infra.codegen.cli",
     "constants_quality_gate": "flext_infra.codegen.constants_quality_gate",

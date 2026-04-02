@@ -1,275 +1,135 @@
-"""Collect code-pattern violations used by infra census reports."""
+"""Collect code-pattern violations via regex source analysis.
+
+Replaces CST visitor with regex-based detection for governance violations
+(Any usage, bare object, type:ignore, cast, Literal, StrEnum, etc.).
+"""
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence
+import re
 from pathlib import Path
-from typing import override
 
-import libcst as cst
-
-from flext_infra import t
-
-_DICT_KEY_VALUE_ARITY = 2
+from flext_infra import c, t
 
 
-class FlextInfraViolationCensusVisitor(cst.CSTVisitor):
-    """Detect governance violations (Any usage, bare object, type:ignore) via CST walk."""
+class FlextInfraViolationCensusVisitor:
+    """Detect governance violations via regex source analysis.
 
-    RUNTIME_ALIASES: frozenset[str] = frozenset({
-        "c",
-        "m",
-        "r",
-        "t",
-        "u",
-        "p",
-        "d",
-        "e",
-        "h",
-        "s",
-        "x",
-    })
+    All regex patterns centralized in ``c.Infra.CensusPatterns``.
+    """
 
     def __init__(self, *, file_path: Path) -> None:
         """Initialize visitor state for one file violation census."""
         self._file_path = file_path
-        self._renderer = cst.Module(body=[])
         self.records: t.Infra.MutableCensusRecordList = []
 
-    @override
-    def visit_Subscript(self, node: cst.Subscript) -> None:
-        if self._is_container_invariance(node):
+    def scan_source(self, source: str) -> None:
+        """Scan source text for governance violations."""
+        self._check_container_invariance(source)
+        self._check_literal_usage(source)
+        self._check_cast_calls(source)
+        self._check_imports(source)
+        self._check_strenum_usage(source)
+        self._check_assignments(source)
+        self._check_type_aliases(source)
+
+    def _check_container_invariance(self, source: str) -> None:
+        for _ in c.Infra.CensusPatterns.DICT_INVARIANCE_RE.finditer(source):
             self._add_record(
                 kind="container_invariance",
                 detail="Found Mapping[str, t.Container|t.NormalizedValue] style annotation.",
             )
-        if self._is_literal_usage(node):
+
+    def _check_literal_usage(self, source: str) -> None:
+        for _ in c.Infra.CensusPatterns.LITERAL_RE.finditer(source):
             self._add_record(
                 kind="literal_usage",
                 detail="Found Literal[...] usage.",
             )
 
-    @override
-    def visit_Call(self, node: cst.Call) -> None:
-        if self._is_cast_call(node.func):
+    def _check_cast_calls(self, source: str) -> None:
+        for _ in c.Infra.CensusPatterns.CAST_RE.finditer(source):
             self._add_record(
                 kind="redundant_cast",
                 detail="Found cast(...) call.",
             )
 
-    @override
-    def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
-        module_name = self._get_module_name(node)
-        imported_names = self._imported_names(node)
-
-        if module_name.startswith("flext_core."):
+    def _check_imports(self, source: str) -> None:
+        for hit in c.Infra.CensusPatterns.DIRECT_SUBMODULE_RE.finditer(source):
+            module_match = re.search(
+                r"^from\s+(flext_core\.\S+)\s+import",
+                hit.group(0),
+            )
+            module_name = module_match.group(1) if module_match else "flext_core.*"
             self._add_record(
                 kind="direct_submodule_import",
                 detail=f"Found direct submodule import: from {module_name} import ...",
             )
-
-        if module_name == "typing" and "Mapping" in imported_names:
+        for _ in c.Infra.CensusPatterns.LEGACY_MAPPING_RE.finditer(source):
             self._add_record(
                 kind="legacy_typing_mapping",
                 detail="Found from typing import ... Mapping ...",
             )
+        for match in c.Infra.CensusPatterns.FLEXT_CORE_IMPORT_RE.finditer(source):
+            imported_names = [n.strip() for n in match.group(1).split(",")]
+            if not any(
+                name in c.Infra.Detection.CANONICAL_ALIASES for name in imported_names
+            ):
+                self._add_record(
+                    kind="runtime_alias_violation",
+                    detail="Found from flext_core import ... without runtime aliases.",
+                )
 
-        if module_name == "flext_core" and not any(
-            alias_name in self.RUNTIME_ALIASES for alias_name in imported_names
-        ):
-            self._add_record(
-                kind="runtime_alias_violation",
-                detail="Found from flext_core import ... without runtime aliases.",
-            )
-
-    @override
-    def visit_ClassDef(self, node: cst.ClassDef) -> None:
-        if any(self._is_strenum_base(base_arg.value) for base_arg in node.bases):
+    def _check_strenum_usage(self, source: str) -> None:
+        for match in c.Infra.CensusPatterns.STRENUM_RE.finditer(source):
+            class_name = match.group(1)
             self._add_record(
                 kind="strenum_usage",
-                detail=f"Class {node.name.value} inherits from StrEnum.",
+                detail=f"Class {class_name} inherits from StrEnum.",
             )
 
-    @override
-    def visit_Assign(self, node: cst.Assign) -> None:
-        if self._is_manual_mapping_constant(node):
+    def _check_assignments(self, source: str) -> None:
+        for _ in c.Infra.CensusPatterns.CONSTANT_DICT_RE.finditer(source):
             self._add_record(
                 kind="manual_mapping_constant",
                 detail="Found constant assigned to dict literal.",
             )
+        for match in c.Infra.CensusPatterns.COMPAT_ALIAS_RE.finditer(source):
+            target, value = match.group(1), match.group(2)
+            if self._is_pascal_case(target) and self._is_pascal_case(value):
+                self._add_record(
+                    kind="compatibility_alias",
+                    detail="Found compatibility alias assignment Name = Name.",
+                )
 
-        if self._is_compatibility_alias(node):
-            self._add_record(
-                kind="compatibility_alias",
-                detail="Found compatibility alias assignment Name = Name.",
-            )
-
-    @override
-    def visit_AnnAssign(self, node: cst.AnnAssign) -> None:
-        if node.value is None:
-            return
-        if self._is_type_alias_annotation(node.annotation.annotation):
+    def _check_type_aliases(self, source: str) -> None:
+        for _ in c.Infra.CensusPatterns.TYPE_ALIAS_OLD_RE.finditer(source):
             self._add_record(
                 kind="manual_typing_alias",
                 detail="Found TypeAlias-based manual type alias.",
             )
-
-    @override
-    def visit_TypeAlias(self, node: cst.TypeAlias) -> None:
-        alias_name = self._renderer.code_for_node(node.name)
-        self._add_record(
-            kind="manual_typing_alias",
-            detail=f"Found PEP 695 type alias: {alias_name}.",
-        )
+        for match in c.Infra.CensusPatterns.TYPE_ALIAS_PEP695_RE.finditer(source):
+            alias_name = match.group(1)
+            self._add_record(
+                kind="manual_typing_alias",
+                detail=f"Found PEP 695 type alias: {alias_name}.",
+            )
 
     def _add_record(self, *, kind: str, detail: str) -> None:
-        self.records.append(
-            {
-                "file": str(self._file_path),
-                "line": 0,
-                "kind": kind,
-                "detail": detail,
-            },
-        )
+        self.records.append({
+            "file": str(self._file_path),
+            "line": 0,
+            "kind": kind,
+            "detail": detail,
+        })
 
-    def _get_module_name(self, node: cst.ImportFrom) -> str:
-        if node.module is None:
-            return ""
-        if isinstance(node.module, cst.Name):
-            return node.module.value
-        return self._dotted_name(node.module)
-
-    def _imported_names(self, node: cst.ImportFrom) -> t.StrSequence:
-        if isinstance(node.names, cst.ImportStar):
-            return []
-        names: MutableSequence[str] = []
-        for alias in node.names:
-            if isinstance(alias.name, cst.Name):
-                names.append(alias.name.value)
-                continue
-            names.append(self._renderer.code_for_node(alias.name).strip())
-        return names
-
-    def _is_constant_name(self, name: str) -> bool:
-        if not name:
-            return False
-        if not name[0].isupper():
-            return False
-        return all(
-            character.isupper() or character.isdigit() or character == "_"
-            for character in name
-        )
-
-    def _is_container_invariance(self, node: cst.Subscript) -> bool:
-        if not (isinstance(node.value, cst.Name) and node.value.value == "dict"):
-            return False
-        if len(node.slice) != _DICT_KEY_VALUE_ARITY:
-            return False
-
-        key_expr = self._subscript_value(node.slice[0])
-        value_expr = self._subscript_value(node.slice[1])
-        if key_expr is None or value_expr is None:
-            return False
-        if not (isinstance(key_expr, cst.Name) and key_expr.value == "str"):
-            return False
-        return self._is_container_or_object(value_expr)
-
-    def _is_literal_usage(self, node: cst.Subscript) -> bool:
-        if isinstance(node.value, cst.Name):
-            return node.value.value == "Literal"
-        if isinstance(node.value, cst.Attribute):
-            return node.value.attr.value == "Literal"
-        return False
-
-    def _is_cast_call(self, func: cst.BaseExpression) -> bool:
-        if isinstance(func, cst.Name):
-            return func.value == "cast"
-        if isinstance(func, cst.Attribute):
-            return func.attr.value == "cast"
-        return False
-
-    def _is_strenum_base(self, expr: cst.BaseExpression) -> bool:
-        if isinstance(expr, cst.Name):
-            return expr.value == "StrEnum"
-        if isinstance(expr, cst.Attribute):
-            return expr.attr.value == "StrEnum"
-        return False
-
-    def _is_manual_mapping_constant(self, node: cst.Assign) -> bool:
-        if len(node.targets) != 1:
-            return False
-        target = node.targets[0].target
-        return (
-            isinstance(target, cst.Name)
-            and self._is_constant_name(target.value)
-            and isinstance(node.value, cst.Dict)
-        )
-
-    def _is_compatibility_alias(self, node: cst.Assign) -> bool:
-        if len(node.targets) != 1:
-            return False
-        target = node.targets[0].target
-        value = node.value
-        if not (isinstance(target, cst.Name) and isinstance(value, cst.Name)):
-            return False
-        return self._is_pascal_case(target.value) and self._is_pascal_case(value.value)
-
-    def _is_pascal_case(self, name: str) -> bool:
+    @staticmethod
+    def _is_pascal_case(name: str) -> bool:
         if not name or "_" in name:
             return False
         if not name[0].isupper():
             return False
         return any(character.islower() for character in name[1:])
-
-    def _is_type_alias_annotation(self, annotation: cst.BaseExpression) -> bool:
-        if isinstance(annotation, cst.Name):
-            return annotation.value == "TypeAlias"
-        if isinstance(annotation, cst.Attribute):
-            return annotation.attr.value == "TypeAlias"
-        return False
-
-    def _subscript_value(
-        self,
-        element: cst.SubscriptElement,
-    ) -> cst.BaseExpression | None:
-        if isinstance(element.slice, cst.Index):
-            return element.slice.value
-        return None
-
-    def _is_container_or_object(self, expr: cst.BaseExpression) -> bool:
-        if self._is_container_path(expr):
-            return True
-        if self._is_object_name(expr):
-            return True
-        if isinstance(expr, cst.BinaryOperation) and isinstance(
-            expr.operator,
-            cst.BitOr,
-        ):
-            return self._is_container_or_object(
-                expr.left,
-            ) and self._is_container_or_object(expr.right)
-        return False
-
-    def _is_container_path(self, expr: cst.BaseExpression) -> bool:
-        if isinstance(expr, cst.Attribute) and isinstance(expr.value, cst.Name):
-            return expr.value.value == "t" and expr.attr.value in {
-                "Container",
-                "t.NormalizedValue",
-            }
-        return False
-
-    def _is_object_name(self, expr: cst.BaseExpression) -> bool:
-        return isinstance(expr, cst.Name) and expr.value == "t.NormalizedValue"
-
-    def _dotted_name(self, expr: cst.BaseExpression) -> str:
-        if isinstance(expr, cst.Name):
-            return expr.value
-        if isinstance(expr, cst.Attribute):
-            left = self._dotted_name(expr.value)
-            if left:
-                return f"{left}.{expr.attr.value}"
-            return expr.attr.value
-        return ""
 
 
 __all__ = ["FlextInfraViolationCensusVisitor"]

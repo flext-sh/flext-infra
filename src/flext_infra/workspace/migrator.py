@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import override
@@ -104,9 +103,7 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
             return False
         return c.Infra.Packages.CORE in poetry_deps
 
-    @staticmethod
-    def _sha256_text(value: str) -> str:
-        return hashlib.sha256(value.encode(c.Infra.Encoding.DEFAULT)).hexdigest()
+    _sha256_text = staticmethod(u.Infra.sha256_content)
 
     @staticmethod
     def _workspace_root_project(

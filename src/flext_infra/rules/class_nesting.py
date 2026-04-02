@@ -5,20 +5,29 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
-import libcst as cst
 from pydantic import ValidationError
 
 from flext_infra import (
     INFRA_SEQ_ADAPTER,
-    FlextInfraHelperConsolidationTransformer,
     FlextInfraPostCheckGate,
-    FlextInfraPreCheckGate,
-    FlextInfraRefactorClassNestingReconstructor,
-    FlextInfraRefactorClassNestingTransformer,
+    FlextInfraUtilitiesRope,
     c,
     m,
     t,
     u,
+)
+
+_COERCE_KEYS: tuple[str, ...] = (
+    c.Infra.ReportKeys.LOOSE_NAME,
+    "helper_name",
+    c.Infra.ReportKeys.TARGET_NAMESPACE,
+    "target_name",
+    c.Infra.ReportKeys.REWRITE_SCOPE,
+    c.Infra.ReportKeys.CONFIDENCE,
+)
+_SECTION_KEYS: tuple[str, ...] = (
+    c.Infra.ReportKeys.CLASS_NESTING,
+    c.Infra.ReportKeys.HELPER_CONSOLIDATION,
 )
 
 
@@ -31,171 +40,182 @@ class FlextInfraClassNestingRefactorRule:
             "class-nesting-mappings.yml",
         )
         self._policy_path = Path(__file__).with_name("class-policy-v2.yml")
-        self._pre_check_gate = FlextInfraPreCheckGate()
         self._post_check_gate = FlextInfraPostCheckGate()
         self._cached_config: t.Infra.ContainerDict | None = None
-        self._cached_policy_context: t.Infra.PolicyContext | None = None
 
     def apply(
         self,
-        file_path: Path,
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
         *,
         dry_run: bool = False,
     ) -> m.Infra.Result:
-        """Transform *file_path* according to loaded mappings and policy."""
+        """Transform resource according to loaded mappings and policy."""
+        fp = Path(rope_project.root.real_path) / resource.path
         try:
-            if file_path.suffix != c.Infra.Extensions.PYTHON:
+            source = FlextInfraUtilitiesRope.read_source(resource)
+            cfg = self._load_config()
+            thr = self._confidence_threshold(cfg)
+            cm = self._symbol_mappings(
+                cfg,
+                fp,
+                thr,
+                c.Infra.ReportKeys.CLASS_NESTING,
+                c.Infra.ReportKeys.LOOSE_NAME,
+            )
+            hm = self._symbol_mappings(
+                cfg, fp, thr, c.Infra.ReportKeys.HELPER_CONSOLIDATION, "helper_name"
+            )
+            violations = self._run_precheck(cfg, fp, thr)
+            if violations:
                 return m.Infra.Result(
-                    file_path=file_path,
-                    success=True,
-                    modified=False,
-                    changes=["Skipped non-Python file"],
-                    refactored_code=None,
-                )
-            source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
-            tree = u.Infra.parse_cst_from_source(source)
-            if tree is None:
-                return m.Infra.Result(
-                    file_path=file_path,
-                    success=True,
-                    modified=False,
-                    changes=[],
-                    refactored_code=source,
-                )
-            mappings = self._load_config()
-            confidence_threshold = self._confidence_threshold(mappings)
-            class_mappings = self._class_nesting_mappings(
-                mappings,
-                file_path,
-                confidence_threshold,
-            )
-            helper_mappings = self._helper_consolidation_mappings(
-                mappings,
-                file_path,
-                confidence_threshold,
-            )
-            scope_entries = self._entries_for_scope(
-                u.Infra.entry_list(
-                    mappings.get(c.Infra.ReportKeys.CLASS_NESTING),
-                ),
-                file_path,
-                confidence_threshold,
-            )
-            class_renames = (
-                FlextInfraRefactorClassNestingReconstructor.class_rename_mappings(
-                    scope_entries,
-                )
-            )
-            policy_context = self._policy_context_from_document()
-            class_families = self._families_for_scope(
-                entries=self._entries_for_source_file(
-                    u.Infra.entry_list(
-                        mappings.get(c.Infra.ReportKeys.CLASS_NESTING),
-                    ),
-                    file_path,
-                    confidence_threshold,
-                ),
-                symbol_key=c.Infra.ReportKeys.LOOSE_NAME,
-            )
-            helper_families = self._families_for_scope(
-                entries=self._entries_for_source_file(
-                    u.Infra.entry_list(
-                        mappings.get(c.Infra.ReportKeys.HELPER_CONSOLIDATION),
-                    ),
-                    file_path,
-                    confidence_threshold,
-                ),
-                symbol_key="helper_name",
-            )
-            precheck_violations = self._run_precheck(
-                mappings,
-                file_path,
-                confidence_threshold,
-            )
-            if precheck_violations:
-                return m.Infra.Result(
-                    file_path=file_path,
+                    file_path=fp,
                     success=False,
                     modified=False,
                     error="precheck_failed",
-                    changes=precheck_violations,
+                    changes=violations,
                     refactored_code=None,
                 )
             changes: MutableSequence[str] = []
-            tree = self._apply_transformer(
-                tree=tree,
-                transformer=FlextInfraRefactorClassNestingTransformer(
-                    mappings=class_mappings,
-                    policy_context=policy_context,
-                    class_families=class_families,
-                ),
-                changes=changes,
-                label="FlextInfraRefactorClassNestingTransformer",
-                mapping_count=len(class_mappings),
+            ns = self._apply_rope_transforms(
+                rope_project, resource, source, cm, hm, changes
             )
-            tree = self._apply_transformer(
-                tree=tree,
-                transformer=FlextInfraHelperConsolidationTransformer(
-                    helper_mappings=helper_mappings,
-                    policy_context=policy_context,
-                    helper_families=helper_families,
-                ),
-                changes=changes,
-                label="FlextInfraHelperConsolidationTransformer",
-                mapping_count=len(helper_mappings),
-            )
-            tree = FlextInfraRefactorClassNestingReconstructor.apply_nested_class_propagation(
-                tree,
-                class_renames,
-                changes,
-                policy_context,
-                class_families,
-            )
-            result_code = tree.code
-            modified = result_code != source
-            if modified and (not dry_run):
-                post_payload = self._build_postcheck_payload(
-                    mappings,
-                    file_path,
-                    confidence_threshold,
-                )
-                post_ok, post_errors = self._post_check_gate.validate(
+            modified = ns != source
+            if modified and not dry_run:
+                pp = self._build_postcheck_payload(cfg, fp, thr)
+                ok, errs = self._post_check_gate.validate(
                     m.Infra.Result(
-                        file_path=file_path,
+                        file_path=fp,
                         success=True,
                         modified=True,
                         changes=changes,
-                        refactored_code=result_code,
+                        refactored_code=ns,
                     ),
-                    post_payload,
+                    pp,
                 )
-                if not post_ok:
+                if not ok:
                     return m.Infra.Result(
-                        file_path=file_path,
+                        file_path=fp,
                         success=False,
                         modified=False,
                         error="postcheck_failed",
-                        changes=post_errors,
+                        changes=errs,
                         refactored_code=None,
                     )
-            if modified and (not dry_run):
-                u.write_file(file_path, result_code, encoding=c.Infra.Encoding.DEFAULT)
+                FlextInfraUtilitiesRope.write_source(
+                    rope_project, resource, ns, description="class nesting refactor"
+                )
             return m.Infra.Result(
-                file_path=file_path,
+                file_path=fp,
                 success=True,
                 modified=modified,
                 changes=changes,
-                refactored_code=result_code,
+                refactored_code=ns,
             )
         except Exception as exc:
             return m.Infra.Result(
-                file_path=file_path,
+                file_path=fp,
                 success=False,
                 modified=False,
                 error=str(exc),
                 changes=[],
                 refactored_code=None,
             )
+
+    def _apply_rope_transforms(
+        self,
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+        source: str,
+        class_map: t.MutableStrMapping,
+        helper_map: t.MutableStrMapping,
+        changes: MutableSequence[str],
+    ) -> str:
+        ns = source
+        for label, mapping in (
+            ("class nesting", class_map),
+            ("helper consolidation", helper_map),
+        ):
+            if not mapping:
+                continue
+            for name, target_ns in mapping.items():
+                ns, _ = FlextInfraUtilitiesRope.replace_in_source(
+                    rope_project,
+                    resource,
+                    rf"\b{name}\b",
+                    f"{target_ns}.{name}",
+                    apply=False,
+                )
+            if ns != source:
+                changes.append(f"Applied {label} ({len(mapping)} mappings)")
+        return ns
+
+    def _symbol_mappings(
+        self,
+        cfg: t.Infra.ContainerDict,
+        fp: Path,
+        thr: str,
+        section: str,
+        name_key: str,
+    ) -> t.MutableStrMapping:
+        result: t.MutableStrMapping = {}
+        for entry in self._filter_entries(
+            u.Infra.entry_list(cfg.get(section)), fp, thr
+        ):
+            name = entry.get(name_key)
+            target = entry.get(c.Infra.ReportKeys.TARGET_NAMESPACE)
+            if isinstance(name, str) and isinstance(target, str):
+                result[name] = target
+        return result
+
+    def _run_precheck(
+        self, cfg: t.Infra.ContainerDict, fp: Path, thr: str
+    ) -> MutableSequence[str]:
+        violations: MutableSequence[str] = []
+        policy_by_family = u.Infra.class_nesting_policy_by_family(self._policy_path)
+        entries: MutableSequence[t.StrMapping] = []
+        for key in _SECTION_KEYS:
+            entries.extend(
+                self._filter_entries(u.Infra.entry_list(cfg.get(key)), fp, thr)
+            )
+        for entry in entries:
+            ok, v = u.Infra.validate_class_nesting_entry(
+                entry,
+                policy_by_family=policy_by_family,
+            )
+            if not ok and v is not None:
+                violations.append(
+                    "|".join([
+                        v[c.Infra.ReportKeys.RULE_ID],
+                        v[c.Infra.ReportKeys.SOURCE_SYMBOL],
+                        v[c.Infra.ReportKeys.VIOLATION_TYPE],
+                        v[c.Infra.ReportKeys.SUGGESTED_FIX],
+                    ])
+                )
+        return violations
+
+    def _filter_entries(
+        self,
+        raw: Sequence[t.StrMapping],
+        fp: Path,
+        thr: str,
+    ) -> Sequence[t.StrMapping]:
+        if not raw:
+            return []
+        mod = u.Infra.normalize_module_path(fp)
+        accepted: MutableSequence[t.StrMapping] = []
+        for entry in raw:
+            cf = entry.get(c.Infra.ReportKeys.CURRENT_FILE)
+            if cf is None:
+                continue
+            cm = u.Infra.normalize_module_path(Path(cf))
+            if cm != mod and not mod.endswith(f"/{cm}"):
+                continue
+            conf = entry.get(c.Infra.ReportKeys.CONFIDENCE, c.Infra.Severity.LOW)
+            if not self._confidence_ok(conf, thr):
+                continue
+            accepted.append(entry)
+        return accepted
 
     def _load_config(self) -> t.Infra.ContainerDict:
         if self._cached_config is not None:
@@ -206,43 +226,40 @@ class FlextInfraClassNestingRefactorRule:
             msg = "invalid class nesting mapping config"
             raise ValueError(msg) from exc
         config: MutableMapping[str, t.Infra.InfraValue] = {}
-        confidence_threshold = loaded.get("confidence_threshold")
-        if isinstance(confidence_threshold, str):
-            config["confidence_threshold"] = confidence_threshold
-        class_nesting_raw = loaded.get(c.Infra.ReportKeys.CLASS_NESTING)
-        if isinstance(class_nesting_raw, list):
-            try:
-                typed_class_nesting: Sequence[t.Infra.InfraValue] = (
-                    INFRA_SEQ_ADAPTER.validate_python(class_nesting_raw)
-                )
-                coerced_nesting: Sequence[t.Infra.InfraValue] = [
-                    dict(e)
-                    for e in self._coerce_entries(
-                        u.Infra.mapping_list(typed_class_nesting),
+        ct = loaded.get("confidence_threshold")
+        if isinstance(ct, str):
+            config["confidence_threshold"] = ct
+        for key in _SECTION_KEYS:
+            raw = loaded.get(key)
+            if isinstance(raw, list):
+                try:
+                    typed: Sequence[t.Infra.InfraValue] = (
+                        INFRA_SEQ_ADAPTER.validate_python(raw)
                     )
-                ]
-                config[c.Infra.ReportKeys.CLASS_NESTING] = coerced_nesting
-            except ValidationError:
-                config[c.Infra.ReportKeys.CLASS_NESTING] = list[t.Infra.InfraValue]()
-        helper_raw = loaded.get(c.Infra.ReportKeys.HELPER_CONSOLIDATION)
-        if isinstance(helper_raw, list):
-            try:
-                typed_helper_entries: Sequence[t.Infra.InfraValue] = (
-                    INFRA_SEQ_ADAPTER.validate_python(helper_raw)
-                )
-                coerced_helpers: Sequence[t.Infra.InfraValue] = [
-                    dict(e)
-                    for e in self._coerce_entries(
-                        u.Infra.mapping_list(typed_helper_entries),
-                    )
-                ]
-                config[c.Infra.ReportKeys.HELPER_CONSOLIDATION] = coerced_helpers
-            except ValidationError:
-                config[c.Infra.ReportKeys.HELPER_CONSOLIDATION] = list[
-                    t.Infra.InfraValue
-                ]()
+                    config[key] = [
+                        dict(e) for e in self._coerce(u.Infra.mapping_list(typed))
+                    ]
+                except ValidationError:
+                    config[key] = list[t.Infra.InfraValue]()
         self._cached_config = config
         return config
+
+    @staticmethod
+    def _coerce(
+        entries: Sequence[Mapping[str, t.Infra.InfraValue]],
+    ) -> Sequence[t.StrMapping]:
+        result: MutableSequence[t.StrMapping] = []
+        for typed in entries:
+            cf = typed.get(c.Infra.ReportKeys.CURRENT_FILE)
+            if not isinstance(cf, str):
+                continue
+            entry: t.MutableStrMapping = {c.Infra.ReportKeys.CURRENT_FILE: cf}
+            for k in _COERCE_KEYS:
+                v = typed.get(k)
+                if isinstance(v, str):
+                    entry[k] = v
+            result.append(entry)
+        return result
 
     def _confidence_threshold(self, config: t.Infra.ContainerDict) -> str:
         raw = config.get("confidence_threshold", c.Infra.Severity.LOW)
@@ -255,177 +272,14 @@ class FlextInfraClassNestingRefactorRule:
         msg = f"unsupported confidence_threshold: {raw}"
         raise ValueError(msg)
 
-    def _confidence_allowed(self, confidence: str, threshold: str) -> bool:
-        confidence_rank = c.Infra.CONFIDENCE_RANKS.get(
-            u.norm_str(confidence, case="lower"),
-            0,
-        )
-        threshold_rank = c.Infra.CONFIDENCE_RANKS.get(threshold, 0)
-        return confidence_rank >= threshold_rank
-
-    def _class_nesting_mappings(
-        self,
-        config: t.Infra.ContainerDict,
-        file_path: Path,
-        confidence_threshold: str,
-    ) -> t.MutableStrMapping:
-        mappings: t.MutableStrMapping = {}
-        for entry in self._entries_for_source_file(
-            u.Infra.entry_list(config.get(c.Infra.ReportKeys.CLASS_NESTING)),
-            file_path,
-            confidence_threshold,
-        ):
-            loose_name = entry.get(c.Infra.ReportKeys.LOOSE_NAME)
-            target_namespace = entry.get(c.Infra.ReportKeys.TARGET_NAMESPACE)
-            if isinstance(loose_name, str) and isinstance(target_namespace, str):
-                mappings[loose_name] = target_namespace
-        return mappings
-
-    def _run_precheck(
-        self,
-        config: t.Infra.ContainerDict,
-        file_path: Path,
-        confidence_threshold: str,
-    ) -> MutableSequence[str]:
-        violations: MutableSequence[str] = []
-        entries: MutableSequence[t.StrMapping] = list(
-            self._entries_for_source_file(
-                u.Infra.entry_list(config.get(c.Infra.ReportKeys.CLASS_NESTING)),
-                file_path,
-                confidence_threshold,
-            ),
-        )
-        helper_entries = self._entries_for_source_file(
-            u.Infra.entry_list(
-                config.get(c.Infra.ReportKeys.HELPER_CONSOLIDATION),
-            ),
-            file_path,
-            confidence_threshold,
-        )
-        entries.extend(helper_entries)
-        for entry in entries:
-            ok, violation = self._pre_check_gate.validate_entry(entry)
-            if not ok and violation is not None:
-                violations.append(
-                    "|".join([
-                        violation[c.Infra.ReportKeys.RULE_ID],
-                        violation[c.Infra.ReportKeys.SOURCE_SYMBOL],
-                        violation[c.Infra.ReportKeys.VIOLATION_TYPE],
-                        violation[c.Infra.ReportKeys.SUGGESTED_FIX],
-                    ]),
-                )
-        return violations
-
-    def _helper_consolidation_mappings(
-        self,
-        config: t.Infra.ContainerDict,
-        file_path: Path,
-        confidence_threshold: str,
-    ) -> t.MutableStrMapping:
-        mappings: t.MutableStrMapping = {}
-        for entry in self._entries_for_source_file(
-            u.Infra.entry_list(
-                config.get(c.Infra.ReportKeys.HELPER_CONSOLIDATION),
-            ),
-            file_path,
-            confidence_threshold,
-        ):
-            helper_name = entry.get("helper_name")
-            target_namespace = entry.get(c.Infra.ReportKeys.TARGET_NAMESPACE)
-            if isinstance(helper_name, str) and isinstance(target_namespace, str):
-                mappings[helper_name] = target_namespace
-        return mappings
-
-    def _entries_for_source_file(
-        self,
-        raw_entries: Sequence[t.StrMapping],
-        file_path: Path,
-        confidence_threshold: str,
-    ) -> Sequence[t.StrMapping]:
-        entries = raw_entries
-        if not entries:
-            return []
-        module_path = u.Infra.normalize_module_path(file_path)
-        accepted: MutableSequence[t.StrMapping] = []
-        for entry in entries:
-            current_file = entry.get(c.Infra.ReportKeys.CURRENT_FILE)
-            if current_file is None:
-                continue
-            current_module = u.Infra.normalize_module_path(Path(current_file))
-            if current_module != module_path and (
-                not module_path.endswith(f"/{current_module}")
-            ):
-                continue
-            confidence = entry.get(c.Infra.ReportKeys.CONFIDENCE, c.Infra.Severity.LOW)
-            if not self._confidence_allowed(confidence, confidence_threshold):
-                continue
-            accepted.append(entry)
-        return accepted
-
-    def _entries_for_scope(
-        self,
-        raw_entries: Sequence[t.StrMapping],
-        file_path: Path,
-        confidence_threshold: str,
-    ) -> Sequence[t.StrMapping]:
-        entries = raw_entries
-        if not entries:
-            return []
-        accepted: MutableSequence[t.StrMapping] = []
-        for entry in entries:
-            confidence = entry.get(c.Infra.ReportKeys.CONFIDENCE, c.Infra.Severity.LOW)
-            if not self._confidence_allowed(confidence, confidence_threshold):
-                continue
-            current_file = entry.get(c.Infra.ReportKeys.CURRENT_FILE, "")
-            if not current_file:
-                continue
-            if not u.Infra.scope_applies_to_file(
-                entry,
-                Path(current_file),
-                file_path,
-            ):
-                continue
-            accepted.append(entry)
-        return accepted
-
-    def _coerce_entries(
-        self,
-        entries: Sequence[Mapping[str, t.Infra.InfraValue]],
-    ) -> Sequence[t.StrMapping]:
-        coerced: MutableSequence[t.StrMapping] = []
-        for typed in entries:
-            current_file = typed.get(c.Infra.ReportKeys.CURRENT_FILE)
-            if not isinstance(current_file, str):
-                continue
-            entry: t.MutableStrMapping = {
-                c.Infra.ReportKeys.CURRENT_FILE: current_file,
-            }
-            loose_name = typed.get(c.Infra.ReportKeys.LOOSE_NAME)
-            if isinstance(loose_name, str):
-                entry[c.Infra.ReportKeys.LOOSE_NAME] = loose_name
-            helper_name = typed.get("helper_name")
-            if isinstance(helper_name, str):
-                entry["helper_name"] = helper_name
-            target_namespace = typed.get(c.Infra.ReportKeys.TARGET_NAMESPACE)
-            if isinstance(target_namespace, str):
-                entry[c.Infra.ReportKeys.TARGET_NAMESPACE] = target_namespace
-            target_name = typed.get("target_name")
-            if isinstance(target_name, str):
-                entry["target_name"] = target_name
-            rewrite_scope = typed.get(c.Infra.ReportKeys.REWRITE_SCOPE)
-            if isinstance(rewrite_scope, str):
-                entry[c.Infra.ReportKeys.REWRITE_SCOPE] = rewrite_scope
-            confidence = typed.get(c.Infra.ReportKeys.CONFIDENCE)
-            if isinstance(confidence, str):
-                entry[c.Infra.ReportKeys.CONFIDENCE] = confidence
-            coerced.append(entry)
-        return coerced
+    @staticmethod
+    def _confidence_ok(confidence: str, threshold: str) -> bool:
+        return c.Infra.CONFIDENCE_RANKS.get(
+            u.norm_str(confidence, case="lower"), 0
+        ) >= c.Infra.CONFIDENCE_RANKS.get(threshold, 0)
 
     def _build_postcheck_payload(
-        self,
-        config: t.Infra.ContainerDict,
-        file_path: Path,
-        confidence_threshold: str,
+        self, cfg: t.Infra.ContainerDict, fp: Path, thr: str
     ) -> t.Infra.ContainerDict:
         payload: MutableMapping[str, t.Infra.InfraValue] = {
             c.Infra.ReportKeys.SOURCE_SYMBOL: "",
@@ -433,88 +287,23 @@ class FlextInfraClassNestingRefactorRule:
             c.Infra.ReportKeys.POST_CHECKS: ["imports_resolve", "mro_valid"],
             "quality_gates": ["lsp_diagnostics_clean"],
         }
-        class_entries = self._entries_for_source_file(
-            u.Infra.entry_list(config.get(c.Infra.ReportKeys.CLASS_NESTING)),
-            file_path,
-            confidence_threshold,
+        entries = self._filter_entries(
+            u.Infra.entry_list(cfg.get(c.Infra.ReportKeys.CLASS_NESTING)), fp, thr
         )
-        if not class_entries:
+        if not entries:
             return payload
-        source_symbol = class_entries[0].get(c.Infra.ReportKeys.LOOSE_NAME, "")
-        if not source_symbol:
+        sym = entries[0].get(c.Infra.ReportKeys.LOOSE_NAME, "")
+        if not sym:
             return payload
-        payload[c.Infra.ReportKeys.SOURCE_SYMBOL] = source_symbol
-        policy_doc = u.Infra.load_validated_policy_document(self._policy_path)
-        rules = u.Infra.mapping_list(policy_doc.get(c.Infra.ReportKeys.RULES))
-        for rule in rules:
-            if rule.get(c.Infra.ReportKeys.SOURCE_SYMBOL, "") != source_symbol:
-                continue
-            base_chain: Sequence[t.Infra.InfraValue] = list(
-                u.Infra.string_list(
-                    rule.get("expected_base_chain"),
-                ),
-            )
-            payload["expected_base_chain"] = base_chain
-            post_checks_raw = rule.get(c.Infra.ReportKeys.POST_CHECKS, [])
-            post_checks: MutableSequence[t.Infra.InfraValue] = []
-            if not isinstance(post_checks_raw, list):
-                continue
-            typed_post_checks: Sequence[t.Infra.InfraValue] = (
-                INFRA_SEQ_ADAPTER.validate_python(post_checks_raw)
-            )
-            checks = u.Infra.mapping_list(typed_post_checks)
-            for check in checks:
-                check_type = check.get("type")
-                if isinstance(check_type, str):
-                    post_checks.append(check_type)
-            if post_checks:
-                payload[c.Infra.ReportKeys.POST_CHECKS] = post_checks
-            break
+        payload[c.Infra.ReportKeys.SOURCE_SYMBOL] = sym
+        doc = u.Infra.load_validated_policy_document(self._policy_path)
+        for rule in u.Infra.mapping_list(doc.get(c.Infra.ReportKeys.RULES)):
+            if rule.get(c.Infra.ReportKeys.SOURCE_SYMBOL, "") == sym:
+                payload["expected_base_chain"] = list(
+                    u.Infra.string_list(rule.get("expected_base_chain"))
+                )
+                break
         return payload
-
-    @staticmethod
-    def _apply_transformer(
-        *,
-        tree: cst.Module,
-        transformer: cst.CSTTransformer,
-        changes: MutableSequence[str],
-        label: str,
-        mapping_count: int,
-    ) -> cst.Module:
-        updated_tree = tree.visit(transformer)
-        if updated_tree.code != tree.code:
-            changes.append(f"Applied {label} ({mapping_count} mappings)")
-        return updated_tree
-
-    def _policy_context_from_document(self) -> t.Infra.PolicyContext:
-        """Load and cache per-family policy from YAML."""
-        if self._cached_policy_context is not None:
-            return self._cached_policy_context
-        policy_doc = u.Infra.load_validated_policy_document(self._policy_path)
-        policy_entries = u.Infra.mapping_list(policy_doc.get("policy_matrix"))
-        policy_context: MutableMapping[str, t.Infra.ContainerDict] = {}
-        for entry in policy_entries:
-            family_name = entry.get("family_name")
-            if not isinstance(family_name, str):
-                continue
-            policy_context[family_name] = entry
-        self._cached_policy_context = policy_context
-        return policy_context
-
-    def _families_for_scope(
-        self,
-        *,
-        entries: Sequence[t.StrMapping],
-        symbol_key: str,
-    ) -> t.MutableStrMapping:
-        families: t.MutableStrMapping = {}
-        for entry in entries:
-            symbol = entry.get(symbol_key)
-            current_file = entry.get(c.Infra.ReportKeys.CURRENT_FILE)
-            if not isinstance(symbol, str) or not isinstance(current_file, str):
-                continue
-            families[symbol] = u.Infra.module_family_from_path(current_file)
-        return families
 
 
 __all__ = ["FlextInfraClassNestingRefactorRule"]

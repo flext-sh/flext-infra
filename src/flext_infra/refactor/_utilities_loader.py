@@ -15,7 +15,7 @@ from typing import TypeVar
 
 from pydantic import JsonValue
 
-from flext_infra import FlextInfraUtilitiesParsing, c, m, p
+from flext_infra import FlextInfraUtilitiesRope, c, m, p
 
 _V = TypeVar("_V", bound=p.Infra.ViolationWithLine)
 
@@ -128,8 +128,21 @@ class FlextInfraUtilitiesRefactorLoader:
                     ),
                 )
             return None
-        tree = FlextInfraUtilitiesParsing.parse_ast_from_source(source)
-        if tree is None:
+
+        try:
+            rope_proj = FlextInfraUtilitiesRope.init_rope_project(file_path.parent)
+            try:
+                resource = FlextInfraUtilitiesRope.get_resource_from_path(
+                    rope_proj, file_path
+                )
+                if resource is not None:
+                    pycore = FlextInfraUtilitiesRope.get_pycore(rope_proj)
+                    tree = pycore.resource_to_pyobject(resource)
+                else:
+                    tree = None
+            finally:
+                rope_proj.close()
+        except Exception:
             if parse_failures is not None:
                 parse_failures.append(
                     m.Infra.ParseFailureViolation(
@@ -140,6 +153,7 @@ class FlextInfraUtilitiesRefactorLoader:
                     ),
                 )
             return None
+
         return m.Infra.ParsedPythonModule(source=source, tree=tree)
 
 

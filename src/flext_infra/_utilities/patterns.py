@@ -66,6 +66,47 @@ class FlextInfraUtilitiesPatterns:
     INLINE_CODE_RE: ClassVar[re.Pattern[str]] = re.compile(r"`[^`]*`")
     """Match inline code spans for stripping before analysis."""
 
+    # ── Source code patterns (shared across rules/transformers/codegen) ──
+
+    CLASS_DEF_RE: ClassVar[re.Pattern[str]] = re.compile(
+        r"^class\s+(\w+)",
+        re.MULTILINE,
+    )
+    """Match class definitions, capturing the class name."""
+
+    FUNCTION_DEF_RE: ClassVar[re.Pattern[str]] = re.compile(
+        r"^(?:async\s+)?def\s+(\w+)",
+        re.MULTILINE,
+    )
+    """Match function/async function definitions, capturing the name."""
+
+    FROM_IMPORT_RE: ClassVar[re.Pattern[str]] = re.compile(
+        r"^from\s+([\w.]+)\s+import\s+(.+)$",
+        re.MULTILINE,
+    )
+    """Match 'from X import Y' statements, capturing module and names."""
+
+    IMPORT_RE: ClassVar[re.Pattern[str]] = re.compile(
+        r"^import\s+([\w.]+)",
+        re.MULTILINE,
+    )
+    """Match 'import X' statements, capturing module name."""
+
+    ASSIGN_RE: ClassVar[re.Pattern[str]] = re.compile(
+        r"^(\w+)\s*(?::\s*\S+\s*)?=",
+        re.MULTILINE,
+    )
+    """Match module-level assignments, capturing the target name."""
+
+    FINAL_ASSIGN_RE: ClassVar[re.Pattern[str]] = re.compile(
+        r"^\s+(\w+)\s*:\s*(?:Final|ClassVar\[Final)\b.*?=\s*(.+)$",
+        re.MULTILINE,
+    )
+    """Match Final/ClassVar[Final] assignments, capturing name and value."""
+
+    CONSTANT_NAME_RE: ClassVar[re.Pattern[str]] = re.compile(r"^[A-Z][A-Z0-9_]+$")
+    """Match UPPER_CASE constant naming convention."""
+
     @staticmethod
     def _is_str_pattern(value: re.Pattern[str] | None) -> TypeIs[re.Pattern[str]]:
         """Check if value is a compiled regex pattern.

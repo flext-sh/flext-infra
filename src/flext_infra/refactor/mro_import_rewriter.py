@@ -8,7 +8,6 @@ from pathlib import Path
 from flext_infra import (
     FlextInfraRefactorMROSymbolPropagator,
     FlextInfraUtilitiesIteration,
-    FlextInfraUtilitiesParsing,
     FlextInfraUtilitiesRefactorMroTransform,
     FlextInfraUtilitiesRope,
     c,
@@ -73,7 +72,7 @@ class FlextInfraRefactorMROImportRewriter:
         pending_sources: Mapping[Path, str],
         apply: bool,
     ) -> Sequence[m.Infra.MRORewriteResult]:
-        """Rewrite consumer imports/usages using rope occurrence discovery + CST edits."""
+        """Rewrite consumer imports/usages using rope occurrence discovery + source transforms."""
         if not module_moves:
             if apply:
                 cls._write_pending_sources(pending_sources)
@@ -225,23 +224,18 @@ class FlextInfraRefactorMROImportRewriter:
                     source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
                 except OSError:
                     continue
-            tree = FlextInfraUtilitiesParsing.parse_cst_from_source(source)
-            if tree is None:
-                continue
             transformer = FlextInfraRefactorMROSymbolPropagator(
                 module_moves=file_moves[file_path],
             )
-            updated_tree = tree.visit(transformer)
-            if updated_tree.code == source:
+            updated_source, changes = transformer.rewrite_source(source)
+            if updated_source == source:
                 continue
             if apply:
-                file_path.write_text(
-                    updated_tree.code, encoding=c.Infra.Encoding.DEFAULT
-                )
+                file_path.write_text(updated_source, encoding=c.Infra.Encoding.DEFAULT)
             rewrites.append(
                 m.Infra.MRORewriteResult(
                     file=str(file_path),
-                    replacements=len(transformer.changes),
+                    replacements=len(changes),
                 ),
             )
         return rewrites

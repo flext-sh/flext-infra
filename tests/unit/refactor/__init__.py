@@ -111,6 +111,9 @@ if _TYPE_CHECKING:
         test_namespace_rewriter_only_rewrites_runtime_alias_imports,
         test_namespace_rewriter_skips_facade_and_subclass_files,
         test_namespace_rewriter_skips_nested_private_as_rename_and_duplicates,
+        test_runtime_alias_migrator_merges_local_imports_in_src,
+        test_runtime_alias_migrator_merges_local_imports_in_tests,
+        test_runtime_alias_migrator_skips_unsafe_local_cycle,
     )
     from tests.unit.refactor.test_infra_refactor_namespace_source import (
         FAMILY_FILE_MAP,
@@ -181,6 +184,7 @@ if _TYPE_CHECKING:
         refactor_main,
         test_refactor_census_rejects_apply_before_subcommand,
         test_refactor_centralize_accepts_apply_before_subcommand,
+        test_refactor_runtime_alias_imports_accepts_aliases_and_project,
     )
 
 _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
@@ -280,6 +284,7 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "test_refactor_files_skips_non_python_inputs": "tests.unit.refactor.test_infra_refactor_engine",
     "test_refactor_project_integrates_safety_manager": "tests.unit.refactor.test_infra_refactor_safety",
     "test_refactor_project_scans_tests_and_scripts_dirs": "tests.unit.refactor.test_infra_refactor_engine",
+    "test_refactor_runtime_alias_imports_accepts_aliases_and_project": "tests.unit.refactor.test_main_cli",
     "test_removes_all_imports_when_none_used_import_first": "tests.unit.refactor.test_infra_refactor_typing_unifier",
     "test_removes_all_unused_typing_imports": "tests.unit.refactor.test_infra_refactor_typing_unifier",
     "test_removes_dead_typealias_import": "tests.unit.refactor.test_infra_refactor_typing_unifier",
@@ -297,6 +302,9 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "test_rule_dispatch_fails_on_unknown_rule_mapping": "tests.unit.refactor.test_infra_refactor_engine",
     "test_rule_dispatch_keeps_legacy_id_fallback_mapping": "tests.unit.refactor.test_infra_refactor_engine",
     "test_rule_dispatch_prefers_fix_action_metadata": "tests.unit.refactor.test_infra_refactor_engine",
+    "test_runtime_alias_migrator_merges_local_imports_in_src": "tests.unit.refactor.test_infra_refactor_namespace_aliases",
+    "test_runtime_alias_migrator_merges_local_imports_in_tests": "tests.unit.refactor.test_infra_refactor_namespace_aliases",
+    "test_runtime_alias_migrator_skips_unsafe_local_cycle": "tests.unit.refactor.test_infra_refactor_namespace_aliases",
     "test_signature_propagation_removes_and_adds_keywords": "tests.unit.refactor.test_infra_refactor_class_and_propagation",
     "test_signature_propagation_renames_call_keyword": "tests.unit.refactor.test_infra_refactor_class_and_propagation",
     "test_skips_definition_files": "tests.unit.refactor.test_infra_refactor_typing_unifier",

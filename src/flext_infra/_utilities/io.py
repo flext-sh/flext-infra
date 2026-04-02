@@ -16,8 +16,8 @@ from pathlib import Path
 
 from pydantic import BaseModel, JsonValue, ValidationError
 
-from flext_core import FlextUtilities, r
-from flext_infra import c, t
+from flext_core import u
+from flext_infra import c, r, t
 
 
 class FlextInfraUtilitiesIo:
@@ -53,7 +53,7 @@ class FlextInfraUtilitiesIo:
             )
         except (ValidationError, OSError) as exc:
             return r[Mapping[str, JsonValue]].fail(f"JSON read error: {exc}")
-        if not FlextUtilities.is_mapping(loaded_obj):
+        if not u.is_mapping(loaded_obj):
             return r[Mapping[str, JsonValue]].fail(
                 "JSON root must be t.NormalizedValue",
             )
@@ -98,7 +98,7 @@ class FlextInfraUtilitiesIo:
             materialized: JsonValue | Mapping[str, t.Infra.InfraValue]
             if isinstance(payload, BaseModel):
                 materialized = payload.model_dump()
-            elif FlextUtilities.is_mapping(payload):
+            elif u.is_mapping(payload):
                 materialized = dict(payload)
             elif isinstance(payload, Sequence) and not isinstance(payload, str):
                 materialized = list(payload)
@@ -127,7 +127,7 @@ class FlextInfraUtilitiesIo:
 
     @staticmethod
     def _sort_json_keys(data: JsonValue) -> JsonValue:
-        if FlextUtilities.is_mapping(data):
+        if u.is_mapping(data):
             mapped_data = t.Infra.JSON_DICT_ADAPTER.validate_python(data)
             sorted_items: Sequence[t.Infra.Pair[str, JsonValue]] = sorted(
                 mapped_data.items(),
@@ -232,6 +232,24 @@ class FlextInfraUtilitiesIo:
             return r[str].ok(serialized)
         except (TypeError, ValueError, ValidationError) as exc:
             return r[str].fail(f"JSON serialize error: {exc}")
+
+    @staticmethod
+    def sha256_content(content: str) -> str:
+        """Compute SHA256 hex digest of string content."""
+        import hashlib
+
+        return hashlib.sha256(content.encode(c.Infra.Encoding.DEFAULT)).hexdigest()
+
+    @staticmethod
+    def sha256_file(path: Path) -> str:
+        """Compute SHA256 hex digest of a file on disk."""
+        import hashlib
+
+        hasher = hashlib.sha256()
+        with path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                hasher.update(chunk)
+        return hasher.hexdigest()
 
 
 __all__ = ["FlextInfraUtilitiesIo"]

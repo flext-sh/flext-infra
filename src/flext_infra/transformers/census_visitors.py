@@ -1,22 +1,20 @@
-"""CST visitors for census usage detection.
+"""Census usage detection via rope import analysis and regex patterns.
 
-Contains import discovery and usage collection visitors used by
-the census module to detect method access patterns across the codebase.
+Replaces CST visitors with rope's get_module_imports for import discovery
+and regex-based attribute access detection for usage collection.
 """
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping, MutableSequence
 from pathlib import Path
-from typing import override
 
-import libcst as cst
-
-from flext_infra import c, m, t, u
+from flext_infra import c, m, t
 
 
-class FlextInfraCensusImportDiscoveryVisitor(cst.CSTVisitor):
-    """Discover family alias and direct class imports via LibCST.
+class FlextInfraCensusImportDiscoveryVisitor:
+    """Discover family alias and direct class imports via rope/regex.
 
     Parametrized by ``family_alias`` (e.g. ``"u"``) and
     ``facade_class_prefix`` (e.g. ``"FlextUtilities"``).
@@ -29,45 +27,39 @@ class FlextInfraCensusImportDiscoveryVisitor(cst.CSTVisitor):
         facade_class_prefix: str,
     ) -> None:
         """Initialize with family alias and facade class prefix."""
-        super().__init__()
         self.family_alias = family_alias
         self.facade_class_prefix = facade_class_prefix
         self.alias_locals: t.Infra.StrSet = set()
         self.direct_imports: t.MutableStrMapping = {}
 
-    @override
-    def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
-        if node.module is None:
-            return
-        module_str = u.Infra.cst_module_name(node.module)
-        if not module_str:
-            return
-        if isinstance(node.names, cst.ImportStar):
-            return
-        for alias in node.names:
-            imported_name = alias.name.value if isinstance(alias.name, cst.Name) else ""
-            local_name = (
-                u.Infra.cst_asname_to_local(alias.asname)
-                if alias.asname
-                else imported_name
-            )
-            if not local_name:
-                local_name = imported_name
-
-            if imported_name in {self.family_alias, self.facade_class_prefix} and (
-                "flext_core" in module_str or "flext_" in module_str
-            ):
-                self.alias_locals.add(local_name)
-
-            if (
-                imported_name.startswith(self.facade_class_prefix)
-                and "flext_core" in module_str
-            ):
-                self.direct_imports[local_name] = imported_name
+    def scan_source(self, source: str) -> None:
+        """Scan source text to discover imports matching family/facade patterns."""
+        import_re = re.compile(
+            r"^from\s+([\w.]+)\s+import\s+(.+?)$",
+            re.MULTILINE,
+        )
+        for match in import_re.finditer(source):
+            module_str = match.group(1)
+            if "flext_core" not in module_str and "flext_" not in module_str:
+                continue
+            names_part = match.group(2).strip().rstrip("\\")
+            for name_entry in names_part.split(","):
+                name_entry = name_entry.strip()
+                if not name_entry:
+                    continue
+                parts = re.split(r"\s+as\s+", name_entry, maxsplit=1)
+                imported_name = parts[0].strip()
+                local_name = parts[1].strip() if len(parts) > 1 else imported_name
+                if imported_name in {self.family_alias, self.facade_class_prefix}:
+                    self.alias_locals.add(local_name)
+                if imported_name.startswith(self.facade_class_prefix) and (
+                    "flext_core" in module_str
+                ):
+                    self.direct_imports[local_name] = imported_name
 
 
-class FlextInfraCensusUsageCollector(cst.CSTVisitor):
-    """Detect method accesses via LibCST attribute resolution.
+class FlextInfraCensusUsageCollector:
+    """Detect method accesses via regex attribute resolution.
 
     Detects three access modes:
     1. ``alias.method_name(...)`` — flat alias via facade
@@ -87,7 +79,6 @@ class FlextInfraCensusUsageCollector(cst.CSTVisitor):
         project_name: str,
     ) -> None:
         """Initialize with method index and import context."""
-        super().__init__()
         self.method_index = method_index
         self.flat_aliases = flat_aliases
         self.inner_class_map = inner_class_map
@@ -97,39 +88,46 @@ class FlextInfraCensusUsageCollector(cst.CSTVisitor):
         self.project_name = project_name
         self.records: MutableSequence[m.Infra.CensusUsageRecord] = []
 
-    @override
-    def visit_Attribute(self, node: cst.Attribute) -> None:
-        method_name = node.attr.value
-        value = node.value
+    def scan_source(self, source: str) -> None:
+        """Scan source text for attribute access patterns."""
+        for alias in self.alias_locals:
+            self._scan_flat_aliases(source, alias)
+            self._scan_namespaced_aliases(source, alias)
+        self._scan_direct_references(source)
 
-        if (
-            isinstance(value, cst.Name)
-            and value.value in self.alias_locals
-            and method_name in self.flat_aliases
-        ):
-            cls, orig = self.flat_aliases[method_name]
-            self._record(cls, orig, c.Infra.Census.MODE_ALIAS_FLAT)
+    def _scan_flat_aliases(self, source: str, alias: str) -> None:
+        """Detect alias.method_name patterns."""
+        pattern = re.compile(rf"\b{re.escape(alias)}\.(\w+)")
+        for match in pattern.finditer(source):
+            method_name = match.group(1)
+            if method_name in self.flat_aliases:
+                cls, orig = self.flat_aliases[method_name]
+                self._record(cls, orig, c.Infra.Census.MODE_ALIAS_FLAT)
 
-        if (
-            isinstance(value, cst.Attribute)
-            and u.Infra.cst_root_name(value) in self.alias_locals
-        ):
-            inner_name = value.attr.value
+    def _scan_namespaced_aliases(self, source: str, alias: str) -> None:
+        """Detect alias.ClassName.method_name patterns."""
+        pattern = re.compile(rf"\b{re.escape(alias)}\.(\w+)\.(\w+)")
+        for match in pattern.finditer(source):
+            inner_name = match.group(1)
+            method_name = match.group(2)
             base_class = self.inner_class_map.get(inner_name, "")
             if (
                 base_class in self.method_index
                 and method_name in self.method_index[base_class]
             ):
-                self._record(
-                    base_class,
-                    method_name,
-                    c.Infra.Census.MODE_ALIAS_NS,
-                )
+                self._record(base_class, method_name, c.Infra.Census.MODE_ALIAS_NS)
 
-        if isinstance(value, cst.Name):
-            actual = self.direct_imports.get(value.value, value.value)
-            if actual in self.method_index and method_name in self.method_index[actual]:
-                self._record(actual, method_name, c.Infra.Census.MODE_DIRECT)
+    def _scan_direct_references(self, source: str) -> None:
+        """Detect DirectClass.method_name patterns."""
+        for local_name, actual in self.direct_imports.items():
+            pattern = re.compile(rf"\b{re.escape(local_name)}\.(\w+)")
+            for match in pattern.finditer(source):
+                method_name = match.group(1)
+                if (
+                    actual in self.method_index
+                    and method_name in self.method_index[actual]
+                ):
+                    self._record(actual, method_name, c.Infra.Census.MODE_DIRECT)
 
     def _record(self, class_name: str, method_name: str, mode: str) -> None:
         self.records.append(

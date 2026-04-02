@@ -55,11 +55,16 @@ if _TYPE_CHECKING:
     from flext_infra.refactor._constants import FlextInfraRefactorConstants
     from flext_infra.refactor._models import FlextInfraRefactorModels
     from flext_infra.refactor._models_ast_grep import FlextInfraRefactorAstGrepModels
+    from flext_infra.refactor._models_census import FlextInfraRefactorModelsCensus
     from flext_infra.refactor._models_namespace_enforcer import (
         FlextInfraNamespaceEnforcerModels,
     )
+    from flext_infra.refactor._models_violations import (
+        FlextInfraRefactorModelsViolations,
+    )
     from flext_infra.refactor._post_check_gate import FlextInfraPostCheckGate
     from flext_infra.refactor._utilities import FlextInfraUtilitiesRefactor
+    from flext_infra.refactor._utilities_census import FlextInfraUtilitiesRefactorCensus
     from flext_infra.refactor._utilities_cli import FlextInfraUtilitiesRefactorCli
     from flext_infra.refactor._utilities_loader import FlextInfraUtilitiesRefactorLoader
     from flext_infra.refactor._utilities_mro_scan import (
@@ -136,6 +141,8 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "FlextInfraRefactorMROResolver": "flext_infra.refactor.mro_resolver",
     "FlextInfraRefactorMigrateToClassMRO": "flext_infra.refactor.migrate_to_class_mro",
     "FlextInfraRefactorModels": "flext_infra.refactor._models",
+    "FlextInfraRefactorModelsCensus": "flext_infra.refactor._models_census",
+    "FlextInfraRefactorModelsViolations": "flext_infra.refactor._models_violations",
     "FlextInfraRefactorRule": "flext_infra.refactor._base_rule",
     "FlextInfraRefactorRuleDefinitionValidator": "flext_infra.refactor.rule_definition_validator",
     "FlextInfraRefactorRuleLoader": "flext_infra.refactor.rule",
@@ -147,6 +154,7 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "FlextInfraRefactorTypingUnificationRule": "flext_infra.refactor.engine",
     "FlextInfraRefactorViolationAnalyzer": "flext_infra.refactor.violation_analyzer",
     "FlextInfraUtilitiesRefactor": "flext_infra.refactor._utilities",
+    "FlextInfraUtilitiesRefactorCensus": "flext_infra.refactor._utilities_census",
     "FlextInfraUtilitiesRefactorCli": "flext_infra.refactor._utilities_cli",
     "FlextInfraUtilitiesRefactorLoader": "flext_infra.refactor._utilities_loader",
     "FlextInfraUtilitiesRefactorMroScan": "flext_infra.refactor._utilities_mro_scan",
@@ -160,10 +168,13 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "_base_rule": "flext_infra.refactor._base_rule",
     "_constants": "flext_infra.refactor._constants",
     "_models": "flext_infra.refactor._models",
+    "_models_census": "flext_infra.refactor._models_census",
+    "_models_violations": "flext_infra.refactor._models_violations",
     "_models_ast_grep": "flext_infra.refactor._models_ast_grep",
     "_models_namespace_enforcer": "flext_infra.refactor._models_namespace_enforcer",
     "_post_check_gate": "flext_infra.refactor._post_check_gate",
     "_utilities": "flext_infra.refactor._utilities",
+    "_utilities_census": "flext_infra.refactor._utilities_census",
     "_utilities_cli": "flext_infra.refactor._utilities_cli",
     "_utilities_loader": "flext_infra.refactor._utilities_loader",
     "_utilities_mro_scan": "flext_infra.refactor._utilities_mro_scan",

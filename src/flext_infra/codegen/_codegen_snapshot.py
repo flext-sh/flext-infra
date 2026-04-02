@@ -1,16 +1,11 @@
 from __future__ import annotations
 
-import ast
-import operator
-from collections.abc import MutableSequence, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import (
     FlextInfraCodegenCoercion,
-    FlextInfraUtilitiesCodegenTransforms,
-    FlextInfraUtilitiesFormatting,
     FlextInfraUtilitiesIteration,
-    FlextInfraUtilitiesParsing,
     c,
     t,
 )
@@ -77,72 +72,6 @@ class FlextInfraCodegenSnapshot(FlextInfraCodegenCoercion):
             if previous != current:
                 changed.add(path_key)
         return changed
-
-    @staticmethod
-    def write_changes(
-        *,
-        source_path: Path,
-        target_path: Path,
-        nodes_moved: Sequence[ast.stmt],
-        moved_names: t.StrSequence,
-        source_tree: ast.Module,
-        pkg_name: str,
-        target_module: str,
-        dry_run: bool,
-    ) -> None:
-        if dry_run:
-            return
-        encoding = c.Infra.Encoding.DEFAULT
-        source_text = source_path.read_text(encoding=encoding)
-        source_lines = source_text.splitlines()
-        target_text = target_path.read_text(encoding=encoding)
-
-        extracted: MutableSequence[str] = []
-        ranges: MutableSequence[t.Infra.IntPair] = []
-        for node in nodes_moved:
-            start = node.lineno
-            end = node.end_lineno or node.lineno
-            block = "\n".join(source_lines[start - 1 : end])
-            extracted.append(block)
-            ranges.append((start, end))
-
-        import_texts = (
-            FlextInfraUtilitiesCodegenTransforms.collect_import_texts_for_nodes(
-                nodes_moved,
-                source_lines,
-                source_tree,
-                target_text,
-            )
-        )
-
-        for start, end in sorted(ranges, key=operator.itemgetter(0), reverse=True):
-            del source_lines[start - 1 : end]
-
-        source_result = "\n".join(source_lines)
-        re_export = f"from {pkg_name}.{target_module} import " + ", ".join(
-            sorted(moved_names),
-        )
-        source_result = FlextInfraUtilitiesParsing.insert_import_statement(
-            source_result,
-            re_export,
-        )
-        if source_text.endswith("\n") and not source_result.endswith("\n"):
-            source_result += "\n"
-
-        target_result = target_text
-        for imp in import_texts:
-            target_result = FlextInfraUtilitiesParsing.insert_import_statement(
-                target_result,
-                imp,
-            )
-        for block in extracted:
-            target_result = target_result.rstrip() + "\n\n\n" + block + "\n"
-
-        source_path.write_text(source_result, encoding=encoding)
-        target_path.write_text(target_result, encoding=encoding)
-
-        FlextInfraUtilitiesFormatting.run_ruff_fix(source_path)
-        FlextInfraUtilitiesFormatting.run_ruff_fix(target_path)
 
 
 __all__ = ["FlextInfraCodegenSnapshot"]

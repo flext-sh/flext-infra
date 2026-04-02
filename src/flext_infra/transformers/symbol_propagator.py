@@ -1,21 +1,22 @@
-"""Workspace-wide symbol propagation transformer for refactor API renames."""
+"""Workspace-wide symbol propagation transformer — rope-based implementation."""
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence
-from typing import override
+import re
+from collections.abc import Sequence
 
-import libcst as cst
-
-from flext_infra import (
-    FlextInfraChangeTrackingTransformer,
-    FlextInfraUtilitiesParsing,
-    t,
-)
+from flext_infra import FlextInfraUtilitiesRope, t
+from flext_infra.transformers._base import FlextInfraRopeTransformer
 
 
-class FlextInfraRefactorSymbolPropagator(FlextInfraChangeTrackingTransformer):
-    """Propagate import/symbol renames safely using CST import tracking."""
+class FlextInfraRefactorSymbolPropagator(FlextInfraRopeTransformer):
+    """Propagate import/symbol renames safely using rope import manipulation.
+
+    Handles three kinds of rename:
+    1. Module renames (``from old_module`` -> ``from new_module``)
+    2. Import symbol renames (``import OldName`` -> ``import NewName``)
+    3. Local reference propagation (bare ``OldName`` -> ``NewName`` in body)
+    """
 
     def __init__(
         self,
@@ -25,69 +26,117 @@ class FlextInfraRefactorSymbolPropagator(FlextInfraChangeTrackingTransformer):
         import_symbol_renames: t.StrMapping,
         on_change: t.Infra.ChangeCallback = None,
     ) -> None:
-        """Initialize symbol propagation configuration and change collector."""
+        """Initialize symbol propagation configuration."""
         super().__init__(on_change=on_change)
         self._target_modules = target_modules
         self._module_renames = module_renames
         self._import_symbol_renames = import_symbol_renames
-        self._local_name_renames: t.MutableStrMapping = {}
 
-    @override
-    def leave_ImportFrom(
+    def transform(
         self,
-        original_node: cst.ImportFrom,
-        updated_node: cst.ImportFrom,
-    ) -> cst.ImportFrom:
-        module_name = FlextInfraUtilitiesParsing.cst_module_name(original_node.module)
-        next_node = updated_node
-        if module_name in self._module_renames:
-            next_module = FlextInfraUtilitiesParsing.module_expr_from_dotted(
-                self._module_renames[module_name],
-            )
-            next_node = next_node.with_changes(module=next_module)
-            self._record_change(
-                f"Renamed import module: {module_name} -> {self._module_renames[module_name]}"
-            )
-            module_name = self._module_renames[module_name]
-        if module_name not in self._target_modules or isinstance(
-            next_node.names, cst.ImportStar
-        ):
-            return next_node
-        next_aliases: MutableSequence[cst.ImportAlias] = []
-        changed = False
-        for alias in list(next_node.names):
-            if not isinstance(alias.name, cst.Name):
-                next_aliases.append(alias)
-                continue
-            imported_name = alias.name.value
-            renamed_symbol = self._import_symbol_renames.get(imported_name)
-            if renamed_symbol is None:
-                next_aliases.append(alias)
-                continue
-            changed = True
-            next_aliases.append(alias.with_changes(name=cst.Name(renamed_symbol)))
-            if alias.asname is None:
-                self._local_name_renames[imported_name] = renamed_symbol
-            self._record_change(
-                f"Renamed imported symbol: {imported_name} -> {renamed_symbol}"
-            )
-        return (
-            next_node.with_changes(names=tuple(next_aliases)) if changed else next_node
-        )
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+    ) -> tuple[str, Sequence[str]]:
+        """Apply module/symbol renames. Returns (new_source, changes)."""
+        source = FlextInfraUtilitiesRope.read_source(resource)
 
-    @override
-    def leave_Name(
+        # Phase 1: Rename module paths in from-imports
+        for old_module, new_module in self._module_renames.items():
+            source = self._rename_module_in_imports(
+                source,
+                old_module=old_module,
+                new_module=new_module,
+            )
+
+        # Phase 2: Rename imported symbols in target modules
+        local_renames: t.MutableStrMapping = {}
+        for old_name, new_name in self._import_symbol_renames.items():
+            source, renamed = self._rename_import_symbol(
+                source,
+                old_name=old_name,
+                new_name=new_name,
+            )
+            if renamed:
+                local_renames[old_name] = new_name
+
+        # Phase 3: Propagate local reference renames
+        for old_name, new_name in local_renames.items():
+            source = self._propagate_local_rename(
+                source,
+                old_name=old_name,
+                new_name=new_name,
+            )
+
+        if source != FlextInfraUtilitiesRope.read_source(resource) and self.changes:
+            FlextInfraUtilitiesRope.write_source(
+                rope_project,
+                resource,
+                source,
+                description="symbol propagator",
+            )
+        return source, list(self.changes)
+
+    def _rename_module_in_imports(
         self,
-        original_node: cst.Name,
-        updated_node: cst.Name,
-    ) -> cst.BaseExpression:
-        rename_to = self._local_name_renames.get(original_node.value)
-        if rename_to is None or updated_node.value == rename_to:
-            return updated_node
-        self._record_change(
-            f"Propagated local symbol rename: {updated_node.value} -> {rename_to}"
+        source: str,
+        *,
+        old_module: str,
+        new_module: str,
+    ) -> str:
+        """Replace ``from old_module import ...`` with ``from new_module import ...``."""
+        pattern = re.compile(
+            rf"(from\s+){re.escape(old_module)}(\s+import\s)",
         )
-        return cst.Name(rename_to)
+        new_source, count = pattern.subn(rf"\g<1>{new_module}\2", source)
+        if count > 0 and new_source != source:
+            self._record_change(
+                f"Renamed import module: {old_module} -> {new_module}",
+            )
+            return new_source
+        return source
+
+    def _rename_import_symbol(
+        self,
+        source: str,
+        *,
+        old_name: str,
+        new_name: str,
+    ) -> tuple[str, bool]:
+        """Rename symbol in import statement within target modules."""
+        # Match the symbol in from-import lines for any target module
+        for target_module in self._target_modules:
+            pattern = re.compile(
+                rf"(from\s+{re.escape(target_module)}\s+import\s+.*?)"
+                rf"\b{re.escape(old_name)}\b",
+            )
+            new_source = pattern.sub(rf"\g<1>{new_name}", source)
+            if new_source != source:
+                self._record_change(
+                    f"Renamed imported symbol: {old_name} -> {new_name}",
+                )
+                return new_source, True
+        return source, False
+
+    def _propagate_local_rename(
+        self,
+        source: str,
+        *,
+        old_name: str,
+        new_name: str,
+    ) -> str:
+        """Replace bare references to old_name with new_name in non-import lines."""
+        pattern = re.compile(
+            rf"(?<!import\s)(?<!\.)(?<!class\s)(?<!def\s)"
+            rf"\b{re.escape(old_name)}\b"
+            rf"(?!\s*=)",
+        )
+        new_source, count = pattern.subn(new_name, source)
+        if count > 0 and new_source != source:
+            self._record_change(
+                f"Propagated local symbol rename: {old_name} -> {new_name}",
+            )
+            return new_source
+        return source
 
 
 __all__ = ["FlextInfraRefactorSymbolPropagator"]

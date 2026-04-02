@@ -1,6 +1,6 @@
 """Usage census orchestrator logic.
 
-Delegates core file crawling and parsing to `u.Infra` and LibCST visitors.
+Delegates core file crawling and parsing to `u.Infra` and regex-based visitors.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -96,10 +96,16 @@ class FlextInfraRefactorCensus:
                 u.Infra.info(f"  [{i}/{len(files)}] scanned...")
 
             project = u.Infra.identify_project_by_roots(fp, roots)
+            try:
+                source = fp.read_text(encoding=c.Infra.Encoding.DEFAULT)
+            except (OSError, UnicodeDecodeError):
+                errs += 1
+                continue
             imp = FlextInfraCensusImportDiscoveryVisitor(
                 family_alias=target.family,
                 facade_class_prefix=target.facade_class_prefix,
             )
+            imp.scan_source(source)
             col = FlextInfraCensusUsageCollector(
                 method_index=index,
                 flat_aliases=flat,
@@ -109,10 +115,7 @@ class FlextInfraRefactorCensus:
                 file_path=fp,
                 project_name=project,
             )
-            tree = u.Infra.scan_cst_with_visitors(fp, imp, col)
-            if not tree:
-                errs += 1
-                continue
+            col.scan_source(source)
             if col.records:
                 usage += 1
                 recs.extend(col.records)

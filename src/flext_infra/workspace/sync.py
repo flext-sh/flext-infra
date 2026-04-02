@@ -10,7 +10,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import fcntl
-import hashlib
 from pathlib import Path
 from typing import override
 
@@ -36,25 +35,6 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
         super().__init__()
         self._generator = generator or FlextInfraBaseMkGenerator()
         self._canonical_root = canonical_root
-
-    @staticmethod
-    def _atomic_write(target: Path, content: str) -> r[bool]:
-        """Write content to target via atomic temp-file rename."""
-        return u.Infra.atomic_write_file(target, content)
-
-    @staticmethod
-    def _sha256_content(content: str) -> str:
-        """Compute SHA256 of string content."""
-        return hashlib.sha256(content.encode(c.Infra.Encoding.DEFAULT)).hexdigest()
-
-    @staticmethod
-    def _sha256_file(path: Path) -> str:
-        """Compute SHA256 of file on disk."""
-        hasher = hashlib.sha256()
-        with path.open("rb") as handle:
-            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-                hasher.update(chunk)
-        return hasher.hexdigest()
 
     @override
     def execute(self) -> r[m.Infra.SyncResult]:
@@ -270,12 +250,12 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
             return r[bool].fail(gen_result.error or "base.mk generation failed")
         content: str = gen_result.value
         target_path = workspace_root / c.Infra.Files.BASE_MK
-        content_hash = self._sha256_content(content)
+        content_hash = u.Infra.sha256_content(content)
         if target_path.exists():
-            existing_hash = self._sha256_file(target_path)
+            existing_hash = u.Infra.sha256_file(target_path)
             if content_hash == existing_hash:
                 return r[bool].ok(False)
-        return self._atomic_write(target_path, content)
+        return u.Infra.atomic_write_file(target_path, content)
 
     @staticmethod
     def main() -> int:

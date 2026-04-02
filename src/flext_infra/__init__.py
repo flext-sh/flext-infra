@@ -74,10 +74,8 @@ if _TYPE_CHECKING:
     from flext_infra._typings import (
         FlextInfraTypesAdapters,
         FlextInfraTypesBase,
-        FlextInfraTypesCst,
         FlextInfraTypesRope,
         adapters,
-        cst,
     )
     from flext_infra._utilities import (
         FlextInfraUtilitiesBase,
@@ -97,6 +95,7 @@ if _TYPE_CHECKING:
         FlextInfraUtilitiesRelease,
         FlextInfraUtilitiesReporting,
         FlextInfraUtilitiesRope,
+        FlextInfraUtilitiesRuleHelpers,
         FlextInfraUtilitiesSafety,
         FlextInfraUtilitiesSelection,
         FlextInfraUtilitiesSubprocess,
@@ -168,10 +167,8 @@ if _TYPE_CHECKING:
         FlextInfraCodegenScaffolder,
         FlextInfraCodegenSnapshot,
         FlextInfraUtilitiesCodegen,
-        FlextInfraUtilitiesCodegenAstParsing,
         FlextInfraUtilitiesCodegenConstantDetection,
         FlextInfraUtilitiesCodegenConstantTransformation,
-        FlextInfraUtilitiesCodegenExecution,
         FlextInfraUtilitiesCodegenGovernance,
         FlextInfraUtilitiesCodegenTransforms,
         constants_quality_gate,
@@ -364,15 +361,12 @@ if _TYPE_CHECKING:
     )
     from flext_infra.rules import (
         FlextInfraClassNestingRefactorRule,
-        FlextInfraPreCheckGate,
-        FlextInfraRefactorClassNestingReconstructor,
         FlextInfraRefactorEnsureFutureAnnotationsRule,
         FlextInfraRefactorImportModernizerRule,
         FlextInfraRefactorLegacyRemovalRule,
         FlextInfraRefactorMROClassMigrationRule,
         FlextInfraRefactorPatternCorrectionsRule,
         class_nesting,
-        class_reconstructor,
         ensure_future_annotations,
         import_modernizer,
         legacy_removal,

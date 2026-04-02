@@ -85,7 +85,7 @@ class FlextInfraProjectMakefileUpdater:
             if existing_hash == new_hash:
                 return r[bool].ok(False)
 
-        return self._atomic_write(makefile_path, new_content)
+        return u.Infra.atomic_write_file(makefile_path, new_content)
 
     @staticmethod
     def _read_pyproject(pyproject: Path) -> r[_ProjectMeta]:
@@ -143,11 +143,6 @@ class FlextInfraProjectMakefileUpdater:
             "-include custom.mk",
         ]
         return "\n".join(lines) + "\n"
-
-    @staticmethod
-    def _atomic_write(target: Path, content: str) -> r[bool]:
-        """Write content to target via atomic temp-file rename."""
-        return u.Infra.atomic_write_file(target, content)
 
 
 __all__ = ["FlextInfraProjectMakefileUpdater"]

@@ -6,22 +6,23 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 from collections.abc import Callable, Mapping
 from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraCodegenLazyInit
-from tests import t, u
+from flext_infra import t
+from flext_infra._utilities.codegen_lazy_scanning import (
+    FlextInfraUtilitiesCodegenLazyScanning,
+)
 
-_scan_ast_public_defs: Callable[
-    [ast.Module, str, Mapping[str, tuple[str, str]]],
+_scan_public_defs: Callable[
+    [str, str, Mapping[str, tuple[str, str]]],
     None,
-] = getattr(FlextInfraCodegenLazyInit, "_scan_ast_public_defs")
+] = getattr(FlextInfraUtilitiesCodegenLazyScanning, "_scan_public_defs")
 _should_bubble_up: Callable[[str], bool] = getattr(
-    FlextInfraCodegenLazyInit,
-    "_should_bubble_up",
+    FlextInfraUtilitiesCodegenLazyScanning,
+    "should_bubble_up",
 )
 _merge_child_exports: Callable[
     [
@@ -31,63 +32,43 @@ _merge_child_exports: Callable[
         Mapping[str, Mapping[str, tuple[str, str]]],
     ],
     None,
-] = getattr(FlextInfraCodegenLazyInit, "_merge_child_exports")
+] = getattr(FlextInfraUtilitiesCodegenLazyScanning, "merge_child_exports")
 _extract_version_exports: Callable[
     [Path, str],
     tuple[t.StrMapping, Mapping[str, tuple[str, str]]],
-] = getattr(FlextInfraCodegenLazyInit, "_extract_version_exports")
+] = getattr(FlextInfraUtilitiesCodegenLazyScanning, "extract_version_exports")
 
 
-class TestScanAstPublicDefs:
-    """Test _scan_ast_public_defs function."""
+class TestScanPublicDefs:
+    """Test _scan_public_defs function."""
 
     def test_finds_classes(self) -> None:
         """Test scanning finds public classes."""
-        tree = ast.parse("class PublicClass:\n    pass\n")
+        source = "class PublicClass:\n    pass\n"
         index: Mapping[str, tuple[str, str]] = {}
-        _scan_ast_public_defs(tree, "mod", index)
+        _scan_public_defs(source, "mod", index)
         tm.that(index, contains="PublicClass")
 
     def test_skips_private(self) -> None:
         """Test scanning skips private names."""
-        tree = ast.parse("class _PrivateClass:\n    pass\n")
+        source = "class _PrivateClass:\n    pass\n"
         index: Mapping[str, tuple[str, str]] = {}
-        _scan_ast_public_defs(tree, "mod", index)
+        _scan_public_defs(source, "mod", index)
         tm.that(index, excludes="_PrivateClass")
 
     def test_finds_functions(self) -> None:
         """Test scanning finds public functions."""
-        tree = ast.parse("def public_func():\n    pass\n")
+        source = "def public_func():\n    pass\n"
         index: Mapping[str, tuple[str, str]] = {}
-        _scan_ast_public_defs(tree, "mod", index)
+        _scan_public_defs(source, "mod", index)
         tm.that(index, contains="public_func")
 
     def test_finds_assignments(self) -> None:
         """Test scanning finds public assignments."""
-        tree = ast.parse("MY_CONST = 42\n")
+        source = "MY_CONST = 42\n"
         index: Mapping[str, tuple[str, str]] = {}
-        _scan_ast_public_defs(tree, "mod", index)
+        _scan_public_defs(source, "mod", index)
         tm.that(index, contains="MY_CONST")
-
-
-class TestExtractInlineConstants:
-    """Test extract_inline_constants function."""
-
-    def test_multiple_constants(self) -> None:
-        """Test extracting multiple string constants."""
-        code = '__version__ = "1.0.0"\n__author__ = "Test"\n__license__ = "MIT"'
-        tree = ast.parse(code)
-        constants = u.Infra.extract_inline_constants(tree)
-        tm.that(len(constants), eq=3)
-        tm.that(constants["__version__"], eq="1.0.0")
-
-    def test_ignores_non_string_values(self) -> None:
-        """Test ignores non-string constant values."""
-        code = '__version__ = "1.0.0"\n__count__ = 42\n__enabled__ = True'
-        tree = ast.parse(code)
-        constants = u.Infra.extract_inline_constants(tree)
-        tm.that(constants, contains="__version__")
-        tm.that(constants, excludes="__count__")
 
 
 class TestShouldBubbleUp:

@@ -31,7 +31,7 @@ class FlextInfraManualTypingAliasDetector(FlextInfraScanFileMixin, p.Infra.Scann
         file_path = ctx.file_path
         rope_project = ctx.rope_project
         if (
-            file_path.suffix != ".py"
+            file_path.suffix != c.Infra.Extensions.PYTHON
             or file_path.name in c.Infra.MRO_TYPINGS_FILE_NAMES
             or c.Infra.MRO_TYPINGS_DIRECTORY in file_path.parts
         ):

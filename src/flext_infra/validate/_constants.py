@@ -70,6 +70,12 @@ class FlextInfraSharedInfraConstants:
         GITMODULES: Final[str] = ".gitmodules"
         GITIGNORE: Final[str] = ".gitignore"
         INIT_PY: Final[str] = "__init__.py"
+        CONSTANTS_PY: Final[str] = "constants.py"
+        MODELS_PY: Final[str] = "models.py"
+        UTILITIES_PY: Final[str] = "utilities.py"
+        TYPINGS_PY: Final[str] = "typings.py"
+        PROTOCOLS_PY: Final[str] = "protocols.py"
+        CONFTEST_PY: Final[str] = "conftest.py"
 
     class Git:
         DIR: Final[str] = ".git"
@@ -81,10 +87,26 @@ class FlextInfraSharedInfraConstants:
         CORE: Final[str] = "flext-core"
         CORE_UNDERSCORE: Final[str] = "flext_core"
         ROOT: Final[str] = "flext"
+        PREFIX_HYPHEN: Final[str] = "flext-"
+        PREFIX_UNDERSCORE: Final[str] = "flext_"
+
+    class Dunders:
+        ALL: Final[str] = "__all__"
+        VERSION: Final[str] = "__version__"
+        INIT: Final[str] = "__init__"
+        FUTURE: Final[str] = "__future__"
+        NAME: Final[str] = "__name__"
+        FILE: Final[str] = "__file__"
+        PYCACHE: Final[str] = "__pycache__"
 
     class Extensions:
         PYTHON: Final[str] = ".py"
         PYTHON_GLOB: Final[str] = "*.py"
+        STUB: Final[str] = ".pyi"
+        STUB_GLOB: Final[str] = "*.pyi"
+        TOML: Final[str] = ".toml"
+        YAML: Final[str] = ".yml"
+        MARKDOWN: Final[str] = ".md"
 
     class Directories:
         TESTS: Final[str] = "tests"

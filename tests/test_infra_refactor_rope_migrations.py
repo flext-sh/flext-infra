@@ -4,9 +4,6 @@ from __future__ import annotations
 
 import pathlib
 
-import libcst as cst
-import libcst.metadata as meta
-
 from flext_infra import (
     FlextInfraNestedClassPropagationTransformer,
     FlextInfraRefactorSymbolPropagator,

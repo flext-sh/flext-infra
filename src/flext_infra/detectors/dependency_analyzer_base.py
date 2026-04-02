@@ -80,7 +80,7 @@ class FlextInfraDependencyAnalyzer:
             elif (
                 pkg_dir.is_file()
                 and pkg_dir.suffix == c.Infra.Extensions.PYTHON
-                and (pkg_dir.stem != "__init__")
+                and (pkg_dir.stem != c.Infra.Dunders.INIT)
             ):
                 roots.add(pkg_dir.stem)
         return roots
@@ -127,7 +127,7 @@ class FlextInfraDependencyAnalyzer:
             include_tests=False,
             include_examples=False,
             include_scripts=False,
-            src_dirs=frozenset({"src"}),
+            src_dirs=frozenset({c.Infra.Paths.DEFAULT_SRC_DIR}),
         )
         return files_result.fold(
             on_failure=lambda _: [],

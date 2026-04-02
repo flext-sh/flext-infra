@@ -68,6 +68,49 @@ class FlextInfraCodegenConstants:
     )
     "Glob patterns for all directories the lazy-init generator scans."
 
+    class Detection:
+        """Constants for constant detection and analysis."""
+
+        MIN_QUOTED_LITERAL_LEN: Final[int] = 2
+        "Minimum length for a quoted string to be considered a literal."
+        MIN_ATTRIBUTE_CHAIN: Final[int] = 2
+        "Minimum dotted-chain length for direct constant references."
+        MIN_DIRECT_REFERENCE_CHAIN: Final[int] = 2
+        "Minimum chain length for FlextXxxConstants.ATTR references."
+        FINAL_DECL_RE: Final[re.Pattern[str]] = re.compile(
+            r"^(?P<indent>\s*)(?P<name>[A-Z_][A-Z0-9_]*)"
+            r"\s*:\s*(?P<ann>Final\[.*?\])\s*=\s*(?P<value>.+?)\s*(?:#.*)?$",
+            re.MULTILINE,
+        )
+        "Regex: NAME: Final[TYPE] = VALUE (with optional inline comment)."
+        C_ALIAS_RE: Final[re.Pattern[str]] = re.compile(r"\bc\.([A-Za-z_]\w*)")
+        "Regex: c.ATTR (captures ATTR after literal ``c.``)."
+        DIRECT_REF_RE: Final[re.Pattern[str]] = re.compile(
+            r"\b(Flext\w*Constants(?:\.[A-Za-z_]\w*)+)",
+        )
+        "Regex: FlextXxxConstants.ATTR.SUBATTR... (captures full dotted chain)."
+        IMPORT_CONSTANTS_RE: Final[re.Pattern[str]] = re.compile(
+            r"^\s*from\s+([\w.]+)\s+import\s+.*?\b(Flext\w*Constants)\b",
+            re.MULTILINE,
+        )
+        "Regex: ``from <pkg> import FlextXxxConstants`` in import lines."
+        CANONICAL_ALIASES: Final[frozenset[str]] = frozenset({
+            "c",
+            "m",
+            "p",
+            "t",
+            "u",
+            "r",
+            "e",
+            "s",
+            "d",
+            "h",
+            "x",
+        })
+        "Canonical single-letter runtime aliases."
+        # CLASS_DEF_RE → use c.Infra.SourceCode.CLASS_NAME_RE
+        # FINAL_ASSIGN_RE → use c.Infra.SourceCode.FINAL_ASSIGN_RE or Detection.FINAL_DECL_RE
+
     class Templates:
         """Jinja2 template file names for the lazy-init file generator.
 

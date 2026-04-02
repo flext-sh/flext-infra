@@ -10,9 +10,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import sys
 from argparse import SUPPRESS, ArgumentParser, Namespace
-from collections.abc import Callable, Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import Callable, Mapping, MutableSequence, Sequence
 from pathlib import Path
 
 from pydantic import model_validator
@@ -133,51 +132,31 @@ class FlextInfraUtilitiesCli:
         base_options: t.BoolMapping,
         overrides: t.BoolMapping | None,
     ) -> t.MutableBoolMapping:
-        """Merge per-subcommand shared-flag overrides onto base options."""
-        merged: t.MutableBoolMapping = dict(base_options)
-        if overrides is None:
-            return merged
-        unknown_keys = set(overrides) - set(base_options)
-        if unknown_keys:
-            msg = ", ".join(sorted(unknown_keys))
-            error_msg = f"Unknown shared flag override(s): {msg}"
-            raise ValueError(error_msg)
-        for key, value in overrides.items():
-            merged[key] = value
-        return merged
+        from flext_infra._utilities.cli_subcommand import (
+            FlextInfraUtilitiesCliSubcommand,
+        )
+
+        return FlextInfraUtilitiesCliSubcommand._merge_shared_flag_options(
+            base_options, overrides
+        )
 
     @staticmethod
     def _union_shared_flag_options(
         options: Sequence[t.BoolMapping],
     ) -> t.MutableBoolMapping:
-        """Compute the union of enabled shared flags across subcommands."""
-        union = _SharedFlags(
-            include_apply=False,
-            include_diff=False,
-            include_format=False,
-            include_check=False,
-            include_project=False,
-        ).to_dict()
-        for option_set in options:
-            for key, value in option_set.items():
-                union[key] = union[key] or value
-        return union
+        from flext_infra._utilities.cli_subcommand import (
+            FlextInfraUtilitiesCliSubcommand,
+        )
+
+        return FlextInfraUtilitiesCliSubcommand._union_shared_flag_options(options)
 
     @staticmethod
     def _shared_option_tokens(options: t.BoolMapping) -> t.StrSequence:
-        """Return CLI option tokens enabled by the given shared-flag config."""
-        tokens: MutableSequence[str] = []
-        if options.get("include_apply", False):
-            tokens.extend(["--dry-run", "--apply"])
-        if options.get("include_diff", False):
-            tokens.append("--diff")
-        if options.get("include_format", False):
-            tokens.append("--format")
-        if options.get("include_check", False):
-            tokens.append("--check")
-        if options.get("include_project", False):
-            tokens.extend(["--project", "--projects"])
-        return tokens
+        from flext_infra._utilities.cli_subcommand import (
+            FlextInfraUtilitiesCliSubcommand,
+        )
+
+        return FlextInfraUtilitiesCliSubcommand._shared_option_tokens(options)
 
     @staticmethod
     def _add_shared_flags(
@@ -290,61 +269,18 @@ class FlextInfraUtilitiesCli:
         flags: _SharedFlags | None = None,
         subcommand_flags: Mapping[str, t.BoolMapping] | None = None,
     ) -> t.Infra.Pair[ArgumentParser, Mapping[str, ArgumentParser]]:
-        """Create main parser with subcommands and shared flags.
-
-        Args:
-            prog: Program name for parser (e.g., "flext-infra").
-            description: Help text for main parser.
-            subcommands: Dict mapping subcommand names to help strings.
-            flags: Bundled flag configuration. Defaults to _SharedFlags() if None.
-            subcommand_flags: Per-subcommand flag overrides.
-
-        Returns:
-            Tuple of (main_parser, subcommand_parsers_dict).
-
-        """
-        resolved_flags = flags or _SharedFlags()
-        base_options = resolved_flags.to_dict()
-        command_options: MutableMapping[str, t.MutableBoolMapping] = {}
-        for command in subcommands:
-            overrides = subcommand_flags.get(command) if subcommand_flags else None
-            command_options[command] = (
-                FlextInfraUtilitiesCli._merge_shared_flag_options(
-                    base_options,
-                    overrides,
-                )
-            )
-        root_options = FlextInfraUtilitiesCli._union_shared_flag_options(
-            [base_options, *command_options.values()],
+        """Create main parser with subcommands and shared flags."""
+        from flext_infra._utilities.cli_subcommand import (
+            FlextInfraUtilitiesCliSubcommand,
         )
-        root_shared_tokens = tuple(
-            FlextInfraUtilitiesCli._shared_option_tokens(root_options),
+
+        return FlextInfraUtilitiesCliSubcommand.create_subcommand_parser(
+            prog,
+            description,
+            subcommands=subcommands,
+            flags=flags,
+            subcommand_flags=subcommand_flags,
         )
-        shared = FlextInfraUtilitiesCli._shared_flags_parser(
-            _SharedFlags.from_dict(root_options),
-        )
-        parser = ArgumentParser(prog=prog, description=description, parents=[shared])
-        subparsers = parser.add_subparsers(dest="command")
-        command_parsers: MutableMapping[str, ArgumentParser] = {}
-        for command, command_help in subcommands.items():
-            command_shared = FlextInfraUtilitiesCli._shared_flags_parser(
-                _SharedFlags.from_dict(command_options[command]),
-                suppress_defaults=True,
-            )
-            command_parsers[command] = subparsers.add_parser(
-                command,
-                help=command_help,
-                parents=[command_shared],
-            )
-            command_parsers[command].set_defaults(
-                _allowed_shared_option_tokens=tuple(
-                    FlextInfraUtilitiesCli._shared_option_tokens(
-                        command_options[command],
-                    ),
-                ),
-                _root_shared_option_tokens=root_shared_tokens,
-            )
-        return parser, command_parsers
 
     @staticmethod
     def create_parser(
@@ -370,30 +306,6 @@ class FlextInfraUtilitiesCli:
         return parser
 
     @staticmethod
-    def _extract_used_shared_options(
-        argv: t.StrSequence,
-        candidate_tokens: t.StrSequence,
-    ) -> t.StrSequence:
-        """Extract shared-option tokens explicitly provided on the CLI."""
-        used: MutableSequence[str] = []
-        known_tokens = set(candidate_tokens)
-        for token in argv:
-            normalized = token.split("=", 1)[0]
-            if normalized not in known_tokens or normalized in used:
-                continue
-            used.append(normalized)
-        return used
-
-    @staticmethod
-    def _coerce_option_tokens(
-        value: tuple[str, ...] | list[str] | None,
-    ) -> t.StrSequence:
-        """Normalize argparse metadata into a concrete list of option tokens."""
-        if value is None:
-            return []
-        return list(value)
-
-    @staticmethod
     def project_names_from_values(
         *values: str | t.StrSequence | None,
     ) -> t.StrSequence | None:
@@ -417,38 +329,15 @@ class FlextInfraUtilitiesCli:
         passthrough_subcommands: t.StrSequence | None = None,
     ) -> Namespace:
         """Parse and validate subcommand args against per-command shared flags."""
-        args, unknown_args = parser.parse_known_args(argv)
-        raw_argv = list(argv) if argv is not None else sys.argv[1:]
-        allowed_tokens = FlextInfraUtilitiesCli._coerce_option_tokens(
-            getattr(args, "_allowed_shared_option_tokens", None),
+        from flext_infra._utilities.cli_subcommand import (
+            FlextInfraUtilitiesCliSubcommand,
         )
-        root_tokens = FlextInfraUtilitiesCli._coerce_option_tokens(
-            getattr(args, "_root_shared_option_tokens", None),
+
+        return FlextInfraUtilitiesCliSubcommand.parse_subcommand_args(
+            parser,
+            argv,
+            passthrough_subcommands=passthrough_subcommands,
         )
-        if not root_tokens:
-            return args
-        used_tokens = FlextInfraUtilitiesCli._extract_used_shared_options(
-            raw_argv,
-            root_tokens,
-        )
-        allowed_token_set = set(allowed_tokens)
-        disallowed = [token for token in used_tokens if token not in allowed_token_set]
-        if not disallowed:
-            passthrough = set(passthrough_subcommands or ())
-            command = getattr(args, "command", None)
-            command_label = FlextUtilities.ensure_str(command)
-            if unknown_args:
-                if command_label in passthrough:
-                    setattr(args, "_unknown_args", tuple(unknown_args))
-                    return args
-                parser.error(f"unrecognized arguments: {' '.join(unknown_args)}")
-            return args
-        command = getattr(args, "command", None)
-        command_label = FlextUtilities.ensure_str(command, default="subcommand")
-        parser.error(
-            f"unrecognized arguments for '{command_label}': {' '.join(disallowed)}",
-        )
-        return args
 
     @staticmethod
     def resolve(args: Namespace) -> FlextInfraUtilitiesCli.CliArgs:

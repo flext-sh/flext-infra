@@ -12,8 +12,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from flext_core import r
-from flext_infra import c
+from flext_infra import c, r
 
 
 class FlextInfraUtilitiesPaths:

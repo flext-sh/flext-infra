@@ -24,9 +24,9 @@ if _TYPE_CHECKING:
         services_resource,
     )
     from tests.refactor.test_rope_stubs import (
-        test_rope_find_occurrences_import,
-        test_rope_import,
-        test_rope_rename_import,
+        test_rope_find_occurrences_wrapper,
+        test_rope_module_syntax_error_wrapper,
+        test_rope_project_wrapper,
     )
 
 _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
@@ -38,9 +38,9 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "models_resource": "tests.refactor.test_rope_semantic",
     "rope_workspace": "tests.refactor.test_rope_semantic",
     "services_resource": "tests.refactor.test_rope_semantic",
-    "test_rope_find_occurrences_import": "tests.refactor.test_rope_stubs",
-    "test_rope_import": "tests.refactor.test_rope_stubs",
-    "test_rope_rename_import": "tests.refactor.test_rope_stubs",
+    "test_rope_find_occurrences_wrapper": "tests.refactor.test_rope_stubs",
+    "test_rope_module_syntax_error_wrapper": "tests.refactor.test_rope_stubs",
+    "test_rope_project_wrapper": "tests.refactor.test_rope_stubs",
     "test_rope_semantic": "tests.refactor.test_rope_semantic",
     "test_rope_stubs": "tests.refactor.test_rope_stubs",
 }

@@ -1,25 +1,26 @@
-"""Import modernizer transformer for runtime alias migration."""
+"""Import modernizer transformer -- rope-based implementation.
+
+Removes forbidden imports, replaces symbol usages with runtime alias paths,
+and adds missing runtime alias imports to the module header.
+"""
 
 from __future__ import annotations
 
+import re
 from collections.abc import MutableSequence, Sequence
 from typing import override
 
-import libcst as cst
-from libcst.metadata import QualifiedNameProvider, QualifiedNameSource
-
 from flext_infra import (
-    FlextInfraChangeTrackingTransformer,
-    FlextInfraUtilitiesParsing,
+    FlextInfraUtilitiesRope,
     c,
     t,
+    u,
 )
+from flext_infra.transformers._base import FlextInfraRopeTransformer
 
 
-class FlextInfraRefactorImportModernizer(FlextInfraChangeTrackingTransformer):
+class FlextInfraRefactorImportModernizer(FlextInfraRopeTransformer):
     """Rewrite forbidden imports and replace symbols with runtime alias paths."""
-
-    METADATA_DEPENDENCIES = (QualifiedNameProvider,)
 
     def __init__(
         self,
@@ -29,10 +30,10 @@ class FlextInfraRefactorImportModernizer(FlextInfraChangeTrackingTransformer):
         blocked_aliases: t.Infra.StrSet,
         on_change: t.Infra.ChangeCallback = None,
     ) -> None:
-        """Initialize import rewrite configuration and result tracking."""
+        """Initialize import rewrite configuration."""
         super().__init__(on_change=on_change)
-        self._imports_to_remove = imports_to_remove
-        self._symbols_to_replace = symbols_to_replace
+        self._imports_to_remove = frozenset(imports_to_remove)
+        self._symbols_to_replace = dict(symbols_to_replace)
         self._runtime_aliases = runtime_aliases
         self._blocked_aliases = blocked_aliases
         self.modified_imports = False
@@ -41,136 +42,144 @@ class FlextInfraRefactorImportModernizer(FlextInfraChangeTrackingTransformer):
         self.active_symbol_replacements: t.MutableStrMapping = {}
 
     @override
-    def leave_ImportFrom(
+    def transform(
         self,
-        original_node: cst.ImportFrom,
-        updated_node: cst.ImportFrom,
-    ) -> cst.BaseSmallStatement | cst.RemovalSentinel:
-        """Replace forbidden imports and capture symbol replacement map."""
-        module_name = FlextInfraUtilitiesParsing.cst_module_name(original_node.module)
-        if module_name == c.Infra.Packages.CORE_UNDERSCORE:
-            imported_aliases = self._extract_import_aliases(original_node.names)
-            for imported_alias in imported_aliases:
-                if not isinstance(imported_alias.name, cst.Name):
-                    continue
-                imported_name = imported_alias.name.value
-                bound_name = imported_name
-                if imported_alias.asname is not None and isinstance(
-                    imported_alias.asname.name,
-                    cst.Name,
-                ):
-                    bound_name = imported_alias.asname.name.value
-                if bound_name in self._runtime_aliases:
-                    self.aliases_present.add(bound_name)
-        for mod in self._imports_to_remove:
-            if module_name != mod:
-                continue
-            imported_aliases = self._extract_import_aliases(original_node.names)
-            if not imported_aliases:
-                return updated_node
-            mapped_aliases: MutableSequence[cst.ImportAlias] = []
-            unmapped_aliases: MutableSequence[cst.ImportAlias] = []
-            for imported_alias in imported_aliases:
-                if not isinstance(imported_alias.name, cst.Name):
-                    unmapped_aliases.append(imported_alias)
-                    continue
-                imported_symbol = imported_alias.name.value
-                if imported_symbol not in self._symbols_to_replace:
-                    unmapped_aliases.append(imported_alias)
-                    continue
-                mapped_aliases.append(imported_alias)
-                local_symbol = imported_symbol
-                if imported_alias.asname is not None and isinstance(
-                    imported_alias.asname.name,
-                    cst.Name,
-                ):
-                    local_symbol = imported_alias.asname.name.value
-                alias_path = self._symbols_to_replace[imported_symbol]
-                alias_root = alias_path.split(".")[0]
-                if alias_root in self._blocked_aliases:
-                    unmapped_aliases.append(imported_alias)
-                    continue
-                self.active_symbol_replacements[local_symbol] = alias_path
-                self.aliases_needed.add(alias_root)
-            if not mapped_aliases:
-                return updated_node
-            self.modified_imports = True
-            self._record_change(f"Removed import: from {module_name}")
-            if unmapped_aliases:
-                return updated_node.with_changes(names=tuple(unmapped_aliases))
-            return cst.RemovalSentinel.REMOVE
-        return updated_node
-
-    @override
-    def leave_Module(
-        self,
-        original_node: cst.Module,
-        updated_node: cst.Module,
-    ) -> cst.Module:
-        """Inject missing runtime aliases import at module header."""
-        del original_node
-        missing_aliases = sorted(self.aliases_needed - self.aliases_present)
-        if not (self.modified_imports and missing_aliases):
-            return updated_node
-        alias_imports = [
-            cst.ImportAlias(name=cst.Name(alias_name)) for alias_name in missing_aliases
-        ]
-        new_import = cst.SimpleStatementLine(
-            body=[
-                cst.ImportFrom(
-                    module=cst.Name(c.Infra.Packages.CORE_UNDERSCORE),
-                    names=alias_imports,
-                ),
-            ],
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+    ) -> tuple[str, Sequence[str]]:
+        """Apply import modernization via rope utilities."""
+        source = FlextInfraUtilitiesRope.read_source(resource)
+        self._scan_core_aliases(source)
+        source = self._rewrite_forbidden_imports(source)
+        source = self._replace_symbol_usages(source)
+        source = self._inject_missing_aliases(source)
+        FlextInfraUtilitiesRope.write_source(
+            rope_project,
+            resource,
+            source,
+            description="modernize imports",
         )
-        insert_idx = (
-            FlextInfraUtilitiesParsing.index_after_docstring_and_future_imports(
-                updated_node.body,
+        return source, list(self.changes)
+
+    def apply_to_source(self, source: str) -> str:
+        """Apply import modernization to source text, returning transformed source."""
+        self._scan_core_aliases(source)
+        source = self._rewrite_forbidden_imports(source)
+        source = self._replace_symbol_usages(source)
+        return self._inject_missing_aliases(source)
+
+    def _scan_core_aliases(self, source: str) -> None:
+        """Scan source for existing core alias imports."""
+        core_pkg = c.Infra.Packages.CORE_UNDERSCORE
+        self.aliases_present.update(
+            u.Infra.collect_from_import_bound_names(
+                source,
+                module_name=core_pkg,
+            ).intersection(self._runtime_aliases),
+        )
+
+    def _rewrite_forbidden_imports(self, source: str) -> str:
+        """Remove or trim forbidden import lines via regex."""
+        lines = source.splitlines(keepends=True)
+        result: MutableSequence[str] = []
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+            stripped = line.lstrip()
+            # Check for from X import (multiline)
+            from_match = re.match(
+                r"from\s+([\w.]+)\s+import\s*\(",
+                stripped,
             )
-        )
-        body = list(updated_node.body)
-        self._record_change(
-            f"Added: from flext_core import {', '.join(missing_aliases)}",
-        )
-        new_body = body[:insert_idx] + [new_import] + body[insert_idx:]
-        return updated_node.with_changes(body=new_body)
+            if from_match:
+                module = from_match.group(1)
+                if module in self._imports_to_remove:
+                    # Collect full multiline import
+                    import_lines = [line]
+                    while i + 1 < len(lines) and ")" not in lines[i]:
+                        i += 1
+                        import_lines.append(lines[i])
+                    full_text = "".join(import_lines)
+                    rewritten = self._filter_import_names(module, full_text)
+                    if rewritten is not None:
+                        result.append(rewritten)
+                    i += 1
+                    continue
+            # Check for single-line from X import Y
+            from_single = re.match(
+                r"from\s+([\w.]+)\s+import\s+(.+?)(?:\s*#.*)?$",
+                stripped,
+            )
+            if from_single:
+                module = from_single.group(1)
+                if module in self._imports_to_remove:
+                    rewritten = self._filter_import_names(module, line)
+                    if rewritten is not None:
+                        result.append(rewritten)
+                    else:
+                        pass  # Line removed entirely
+                    i += 1
+                    continue
+            result.append(line)
+            i += 1
+        return "".join(result)
 
-    @override
-    def leave_Name(
+    def _filter_import_names(
         self,
-        original_node: cst.Name,
-        updated_node: cst.Name,
-    ) -> cst.BaseExpression:
-        """Replace imported symbol usages with configured runtime alias paths."""
-        if original_node.value not in self.active_symbol_replacements:
-            return updated_node
-        qualified_names = self.get_metadata(
-            QualifiedNameProvider,
-            original_node,
-            default=set(),
+        module: str,
+        import_text: str,
+    ) -> str | None:
+        """Filter names from an import statement. Returns None to remove entirely."""
+        # Extract all names from the import text
+        names_part = (
+            import_text.split("import", 1)[1] if "import" in import_text else ""
         )
-        if not qualified_names:
-            return updated_node
-        if any(
-            qualified_name.source != QualifiedNameSource.IMPORT
-            for qualified_name in qualified_names
-        ):
-            return updated_node
-        alias_path = self.active_symbol_replacements[original_node.value]
-        parts = alias_path.split(".")
-        result: cst.BaseExpression = cst.Name(parts[0])
-        for part in parts[1:]:
-            result = cst.Attribute(value=result, attr=cst.Name(part))
-        self._record_change(f"Replaced: {original_node.value} -> {alias_path}")
-        return result
+        names_part = names_part.strip().strip("()")
+        mapped: MutableSequence[str] = []
+        unmapped: MutableSequence[str] = []
+        for bare_name, bound in u.Infra.parse_import_names(names_part):
+            if bare_name not in self._symbols_to_replace:
+                unmapped.append(
+                    bare_name if bare_name == bound else f"{bare_name} as {bound}"
+                )
+                continue
+            alias_path = self._symbols_to_replace[bare_name]
+            alias_root = alias_path.split(".")[0]
+            if alias_root in self._blocked_aliases:
+                unmapped.append(
+                    bare_name if bare_name == bound else f"{bare_name} as {bound}"
+                )
+                continue
+            self.active_symbol_replacements[bound] = alias_path
+            self.aliases_needed.add(alias_root)
+            mapped.append(bare_name)
+        if not mapped:
+            return import_text
+        self.modified_imports = True
+        self._record_change(f"Removed import: from {module}")
+        if unmapped:
+            return f"from {module} import {', '.join(unmapped)}\n"
+        return None
 
-    def _extract_import_aliases(
-        self,
-        names: Sequence[cst.ImportAlias] | cst.ImportStar,
-    ) -> Sequence[cst.ImportAlias]:
-        if isinstance(names, cst.ImportStar):
-            return []
-        return list(names)
+    def _replace_symbol_usages(self, source: str) -> str:
+        for local_name, alias_path in self.active_symbol_replacements.items():
+            new_source = re.sub(rf"\b{re.escape(local_name)}\b", alias_path, source)
+            if new_source != source:
+                self._record_change(f"Replaced: {local_name} -> {alias_path}")
+                source = new_source
+        return source
+
+    def _inject_missing_aliases(self, source: str) -> str:
+        missing = sorted(self.aliases_needed - self.aliases_present)
+        if not (self.modified_imports and missing):
+            return source
+        pkg = c.Infra.Packages.CORE_UNDERSCORE
+        import_line = f"from {pkg} import {', '.join(missing)}\n"
+        self._record_change(f"Added: from flext_core import {', '.join(missing)}")
+        lines = source.splitlines(keepends=True)
+        idx = u.Infra.find_import_insert_position(lines, past_existing=False)
+        lines.insert(idx, import_line)
+        return "".join(lines)
 
 
 __all__ = ["FlextInfraRefactorImportModernizer"]

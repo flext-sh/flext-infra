@@ -3,7 +3,6 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
-from typing import ClassVar
 
 from flext_infra import (
     FlextInfraCodegenMetrics,
@@ -16,8 +15,6 @@ from flext_infra import (
 
 class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
     """Quality gate checks and verdict computation."""
-
-    _MIN_DUPLICATE_PROJECT_COUNT: ClassVar[int] = 2
 
     @staticmethod
     def build_checks(
@@ -185,10 +182,7 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
         groups: MutableSequence[m.Infra.DuplicateConstantGroup] = []
         for name, definitions in sorted(name_to_defs.items()):
             projects = {item.project for item in definitions}
-            if (
-                len(projects)
-                < FlextInfraCodegenMetricsChecks._MIN_DUPLICATE_PROJECT_COUNT
-            ):
+            if len(projects) < c.Infra.Thresholds.MIN_DUPLICATE_PROJECT_COUNT:
                 continue
             values = {item.value_repr for item in definitions}
             groups.append(

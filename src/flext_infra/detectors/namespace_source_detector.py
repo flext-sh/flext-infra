@@ -1,7 +1,5 @@
 """Detect alias imports from wrong source packages.
 
-Delegates to ImportNormalizerTransformer for CST-based detection.
-
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
 """
@@ -12,7 +10,16 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import DetectorContext, FlextInfraScanFileMixin, c, m, p, t
+from flext_infra import (
+    DetectorContext,
+    FlextInfraScanFileMixin,
+    FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesRope,
+    c,
+    m,
+    p,
+    t,
+)
 
 
 class FlextInfraNamespaceSourceDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
@@ -56,60 +63,126 @@ class FlextInfraNamespaceSourceDetector(FlextInfraScanFileMixin, p.Infra.Scanner
         cls,
         ctx: DetectorContext,
     ) -> Sequence[m.Infra.NamespaceSourceViolation]:
-        """Detect wrong-source alias imports."""
+        """Detect runtime aliases imported from a different flext package root."""
         file_path = ctx.file_path
         project_root = ctx.project_root
-        if project_root is None:
+        if project_root is None or file_path.name == c.Infra.Files.INIT_PY:
             return []
         package_name = cls.discover_project_package_name(project_root=project_root)
         if not package_name:
             return []
-        transformer = cls._get_transformer()
-        if transformer is None:
-            return []
-        violations_raw = transformer.detect_file(
-            file_path=file_path,
-            project_package=package_name,
-            alias_map=None,
+        local_aliases = cls._discover_local_runtime_aliases(
+            project_root=project_root,
+            package_name=package_name,
         )
-        return [
-            m.Infra.NamespaceSourceViolation(
-                file=getattr(raw, "file", ""),
-                line=getattr(raw, "line", 0),
-                alias=getattr(raw, "current_import", "").rsplit(" ", maxsplit=1)[-1]
-                if " " in getattr(raw, "current_import", "")
-                else "",
-                current_source=getattr(raw, "current_import", "").split(" ")[1]
-                if " " in getattr(raw, "current_import", "")
-                else "",
-                correct_source=package_name,
-                current_import=getattr(raw, "current_import", ""),
-                suggested_import=getattr(raw, "suggested_import", ""),
+        if not local_aliases:
+            return []
+        resource = FlextInfraUtilitiesRope.get_resource_from_path(
+            ctx.rope_project,
+            file_path,
+        )
+        if resource is None:
+            return []
+        source = resource.read()
+        if cls._looks_like_facade_file(file_path=file_path, source=source):
+            return []
+        source_lines = source.splitlines()
+        violations: list[m.Infra.NamespaceSourceViolation] = []
+        for from_import in FlextInfraUtilitiesRope.get_absolute_from_imports(
+            ctx.rope_project,
+            resource,
+        ):
+            current_source = from_import.module_name
+            if not cls._is_candidate_wrong_source(
+                current_source=current_source,
+                package_name=package_name,
+            ):
+                continue
+            wrong_aliases = sorted(
+                name
+                for name, alias in from_import.names_and_aliases
+                if (
+                    alias is None
+                    and name in local_aliases
+                    and name not in c.Infra.NAMESPACE_SOURCE_UNIVERSAL_ALIASES
+                )
             )
-            for raw in violations_raw
-            if getattr(raw, "violation_type", "") == "wrong_source"
-        ]
+            if not wrong_aliases:
+                continue
+            current_import = f"from {current_source} import {', '.join(wrong_aliases)}"
+            line_number = cls._find_import_line(
+                lines=source_lines,
+                module_name=current_source,
+            )
+            violations.extend(
+                m.Infra.NamespaceSourceViolation(
+                    file=str(file_path),
+                    line=line_number,
+                    alias=alias_name,
+                    current_source=current_source,
+                    correct_source=package_name,
+                    current_import=current_import,
+                    suggested_import=f"from {package_name} import {alias_name}",
+                )
+                for alias_name in wrong_aliases
+            )
+        return violations
 
     @staticmethod
     def discover_project_package_name(*, project_root: Path) -> str:
         """Discover the package name for a project root."""
-        src_dir = project_root / c.Infra.Paths.DEFAULT_SRC_DIR
-        if not src_dir.is_dir():
-            return ""
-        package_dirs = [
-            entry
-            for entry in sorted(src_dir.iterdir(), key=lambda item: item.name)
-            if entry.is_dir() and (entry / c.Infra.Files.INIT_PY).is_file()
-        ]
-        return package_dirs[0].name if package_dirs else ""
+        return FlextInfraUtilitiesDiscovery.discover_project_package_name(
+            project_root=project_root,
+        )
 
     @staticmethod
-    def _get_transformer() -> p.Infra.ImportNormalizerTransformerLike | None:
-        mod = __import__(
-            "flext_infra.transformers", fromlist=["ImportNormalizerTransformer"]
+    def _discover_local_runtime_aliases(
+        *,
+        project_root: Path,
+        package_name: str,
+    ) -> set[str]:
+        init_path = (
+            project_root
+            / c.Infra.Paths.DEFAULT_SRC_DIR
+            / package_name
+            / c.Infra.Files.INIT_PY
         )
-        obj = getattr(mod, "ImportNormalizerTransformer", None)
-        return obj if isinstance(obj, p.Infra.ImportNormalizerTransformerLike) else None
+        return {
+            alias_name
+            for alias_name in FlextInfraUtilitiesDiscovery.extract_lazy_import_targets(
+                init_path
+            )
+            if alias_name in c.Infra.RUNTIME_ALIAS_NAMES
+        }
+
+    @staticmethod
+    def _is_candidate_wrong_source(
+        *,
+        current_source: str,
+        package_name: str,
+    ) -> bool:
+        if current_source == package_name or current_source.startswith(
+            f"{package_name}."
+        ):
+            return False
+        return current_source.startswith("flext_") and "." not in current_source
+
+    @staticmethod
+    def _looks_like_facade_file(*, file_path: Path, source: str) -> bool:
+        family = c.Infra.NAMESPACE_FILE_TO_FAMILY.get(file_path.name)
+        if family is None:
+            return False
+        return any(
+            line.strip().startswith(f"{family} = ") for line in source.splitlines()
+        )
+
+    @staticmethod
+    def _find_import_line(*, lines: Sequence[str], module_name: str) -> int:
+        prefix = f"from {module_name} import "
+        for index, line in enumerate(lines, start=1):
+            if line.strip().startswith(prefix):
+                return index
+        return 1
 
 
 __all__ = ["FlextInfraNamespaceSourceDetector"]

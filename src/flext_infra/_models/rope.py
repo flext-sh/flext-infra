@@ -25,5 +25,27 @@ class FlextInfraModelsRope:
             tuple[str, ...], Field(default=(), description="Base class names")
         ]
 
+    class ConstantInfo(FlextModels.FrozenStrictModel):
+        """Final-annotated constant definition from rope semantic analysis."""
+
+        name: Annotated[str, Field(description="Constant name")]
+        annotation: Annotated[
+            str, Field(default="", description="Type annotation text")
+        ]
+        line: Annotated[int, Field(default=0, description="Definition line number")]
+        value: Annotated[str, Field(default="", description="Value representation")]
+        class_path: Annotated[
+            str, Field(default="", description="Enclosing class dotted path")
+        ]
+
+    class SymbolInfo(FlextModels.FrozenStrictModel):
+        """Top-level symbol metadata from rope semantic analysis."""
+
+        name: Annotated[str, Field(description="Symbol name")]
+        kind: Annotated[
+            str, Field(description="Symbol kind: class, function, assignment")
+        ]
+        line: Annotated[int, Field(default=0, description="Definition line number")]
+
 
 __all__ = ["FlextInfraModelsRope"]

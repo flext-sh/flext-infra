@@ -12,11 +12,9 @@ from __future__ import annotations
 import re
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
-from typing import ClassVar, Final
+from typing import ClassVar
 
 from flext_infra import c, t
-
-_TAIL_LINES: Final[int] = 50
 
 
 class FlextInfraUtilitiesLogParser:
@@ -64,7 +62,7 @@ class FlextInfraUtilitiesLogParser:
             )
         except OSError:
             return (0, [])
-        tail = text.splitlines()[-_TAIL_LINES:]
+        tail = text.splitlines()[-c.Infra.LogParser.TAIL_LINES :]
         error_lines: MutableSequence[str] = []
         for line in tail:
             stripped = line.strip()

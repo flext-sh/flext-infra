@@ -24,7 +24,7 @@ from flext_infra import (
 
 _CONSTANT_RE = c.Infra.NAMESPACE_CONSTANT_PATTERN
 _ALLOWED_TOP_LEVEL: frozenset[str] = frozenset({
-    "__all__",
+    c.Infra.Dunders.ALL,
     "__version__",
     "__version_info__",
 })

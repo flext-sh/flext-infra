@@ -58,6 +58,16 @@ class FlextInfraCliRefactor:
         cli.register_result_route(
             app,
             route=m.Cli.ResultCommandRouteModel(
+                name="migrate-runtime-alias-imports",
+                help_text="Move runtime aliases like r/s from flext_core to local MRO imports",
+                model_cls=m.Infra.RefactorMigrateRuntimeAliasImportsInput,
+                handler=self._handle_migrate_runtime_alias_imports,
+                failure_message="Runtime alias import migration failed",
+            ),
+        )
+        cli.register_result_route(
+            app,
+            route=m.Cli.ResultCommandRouteModel(
                 name="ultrawork-models",
                 help_text="Run full centralization + MRO + namespace workflow",
                 model_cls=m.Infra.RefactorUltraworkModelsInput,
@@ -131,6 +141,67 @@ class FlextInfraCliRefactor:
                 "Namespace violations found",
             )
         return r[m.Infra.WorkspaceEnforcementReport].ok(report)
+
+    @staticmethod
+    def _handle_migrate_runtime_alias_imports(
+        params: m.Infra.RefactorMigrateRuntimeAliasImportsInput,
+    ) -> r[t.IntMapping]:
+        """Move selected runtime aliases from `flext_core` to the local MRO root."""
+        project_names: t.StrSequence | None = None
+        if params.project:
+            project_names = u.Infra.project_names_from_values(params.project)
+        aliases = [item.strip() for item in params.aliases.split(",") if item.strip()]
+        results = u.Infra.migrate_runtime_alias_imports(
+            workspace_root=Path(params.workspace),
+            aliases=aliases,
+            apply=params.apply,
+            project_names=project_names,
+        )
+        summary: t.MutableIntMapping = {
+            "files_changed": 0,
+            "files_failed": 0,
+            "files_planned": 0,
+            "aliases_migrated": 0,
+            "aliases_skipped_unsafe": 0,
+            "aliases_skipped_missing_export": 0,
+        }
+        for result in results:
+            if not result.success:
+                summary["files_failed"] += 1
+                continue
+            if result.modified:
+                summary["files_changed"] += 1
+            elif any(
+                change.startswith("planned runtime alias import")
+                for change in result.changes
+            ):
+                summary["files_planned"] += 1
+            for change in result.changes:
+                if "runtime alias import" not in change:
+                    continue
+                if change.startswith("migrated"):
+                    summary["aliases_migrated"] += 1
+                elif "unsafe" in change:
+                    summary["aliases_skipped_unsafe"] += 1
+                elif "missing export" in change:
+                    summary["aliases_skipped_missing_export"] += 1
+        cli.display_text(
+            "\n".join([
+                f"Files changed: {summary['files_changed']}",
+                f"Files planned: {summary['files_planned']}",
+                f"Files failed: {summary['files_failed']}",
+                f"Aliases migrated: {summary['aliases_migrated']}",
+                f"Unsafe aliases skipped: {summary['aliases_skipped_unsafe']}",
+                (
+                    "Missing local exports skipped: "
+                    f"{summary['aliases_skipped_missing_export']}"
+                ),
+            ])
+            + "\n",
+        )
+        if summary["files_failed"] > 0:
+            return r[t.IntMapping].fail("Runtime alias import migration had errors")
+        return r[t.IntMapping].ok(summary)
 
     @staticmethod
     def _handle_ultrawork_models(

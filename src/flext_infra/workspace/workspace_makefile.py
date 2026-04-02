@@ -88,7 +88,7 @@ class FlextInfraWorkspaceMakefileGenerator:
             ):
                 return r[bool].ok(False)
 
-        return self._atomic_write(makefile, content)
+        return u.Infra.atomic_write_file(makefile, content)
 
     @staticmethod
     def _build_template_lines(content: str) -> str:
@@ -138,7 +138,9 @@ class FlextInfraWorkspaceMakefileGenerator:
 
         try:
             _TEMPLATES_DIR.mkdir(parents=True, exist_ok=True)
-            template_write = self._atomic_write(self.template_path, template_content)
+            template_write = u.Infra.atomic_write_file(
+                self.template_path, template_content
+            )
             if template_write.is_failure:
                 return template_write
         except OSError as exc:
@@ -150,7 +152,7 @@ class FlextInfraWorkspaceMakefileGenerator:
         )
         if render_result.is_failure:
             return r[bool].fail(render_result.error or "template render failed")
-        return self._atomic_write(makefile, render_result.value)
+        return u.Infra.atomic_write_file(makefile, render_result.value)
 
     def _render_template(
         self,
@@ -203,11 +205,6 @@ class FlextInfraWorkspaceMakefileGenerator:
             except (OSError, tomllib.TOMLDecodeError, KeyError):
                 pass
         return "main"
-
-    @staticmethod
-    def _atomic_write(target: Path, content: str) -> r[bool]:
-        """Write content to target via atomic temp-file rename."""
-        return u.Infra.atomic_write_file(target, content)
 
 
 __all__ = ["FlextInfraWorkspaceMakefileGenerator"]

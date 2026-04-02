@@ -9,8 +9,7 @@ from __future__ import annotations
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
-from flext_core import r
-from flext_infra import c, t
+from flext_infra import c, r, t
 
 
 class FlextInfraUtilitiesIteration:
@@ -22,17 +21,12 @@ class FlextInfraUtilitiesIteration:
     Used by: build orchestration, validation, and code generation tools.
     """
 
-    _IGNORED_PATH_PARTS = frozenset({
-        ".git",
-        ".venv",
-        "__pycache__",
-        "build",
-        "dist",
-        "dist-packages",
-        "node_modules",
-        "site-packages",
-        "vendor",
-        "venv",
+    _ITERATION_EXCLUDED_PARTS = c.Infra.Excluded.ITERATION_EXCLUDED_PARTS
+    _ITERATION_KNOWN_DIRS = frozenset({
+        c.Infra.Paths.DEFAULT_SRC_DIR,
+        c.Infra.Directories.TESTS,
+        c.Infra.Directories.EXAMPLES,
+        c.Infra.Directories.SCRIPTS,
     })
 
     @staticmethod
@@ -123,9 +117,10 @@ class FlextInfraUtilitiesIteration:
         effective_pattern = pattern or c.Infra.Extensions.PYTHON_GLOB
         files = sorted(directory.rglob(effective_pattern))
         ignored_parts = (
-            FlextInfraUtilitiesIteration._IGNORED_PATH_PARTS
+            FlextInfraUtilitiesIteration._ITERATION_EXCLUDED_PARTS
             if skip_pycache
-            else FlextInfraUtilitiesIteration._IGNORED_PATH_PARTS - {"__pycache__"}
+            else FlextInfraUtilitiesIteration._ITERATION_EXCLUDED_PARTS
+            - {"__pycache__"}
         )
         return [
             file_path
@@ -144,29 +139,13 @@ class FlextInfraUtilitiesIteration:
     ) -> bool:
         """Return whether a Python path lives under an ignored directory tree."""
         effective_ignored_parts = (
-            ignored_parts or FlextInfraUtilitiesIteration._IGNORED_PATH_PARTS
+            ignored_parts or FlextInfraUtilitiesIteration._ITERATION_EXCLUDED_PARTS
         )
         return any(
             part in effective_ignored_parts
             or (part.startswith(".") and part not in {".", ".."})
             for part in path.parts
         )
-
-    _KNOWN_DIRS: frozenset[str] = frozenset({
-        "src",
-        "tests",
-        "examples",
-        "scripts",
-        ".",
-        "..",
-        "__pycache__",
-        ".git",
-        ".venv",
-        "node_modules",
-        "vendor",
-        "build",
-        "dist",
-    })
 
     @staticmethod
     def iter_python_files(
@@ -264,7 +243,7 @@ class FlextInfraUtilitiesIteration:
             if not subdir.is_dir():
                 continue
             dir_name = subdir.name
-            if dir_name in FlextInfraUtilitiesIteration._KNOWN_DIRS:
+            if dir_name in FlextInfraUtilitiesIteration._ITERATION_KNOWN_DIRS:
                 continue
             if dir_name.startswith("."):
                 continue

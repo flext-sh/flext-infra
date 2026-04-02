@@ -1,22 +1,21 @@
-"""CST transformer for nesting top-level classes into namespace classes."""
+"""Class nesting transformer — rope-based implementation."""
 
 from __future__ import annotations
 
+import textwrap
 from collections import defaultdict
-from collections.abc import Mapping, MutableSequence, Sequence
-from typing import override
-
-import libcst as cst
+from collections.abc import Sequence
 
 from flext_infra import (
-    FlextInfraChangeTrackingTransformer,
     FlextInfraRefactorTransformerPolicyUtilities,
+    FlextInfraUtilitiesRope,
     m,
     t,
 )
+from flext_infra.transformers._base import FlextInfraRopeTransformer
 
 
-class FlextInfraRefactorClassNestingTransformer(cst.CSTTransformer):
+class FlextInfraRefactorClassNestingTransformer(FlextInfraRopeTransformer):
     """Transform top-level classes into nested classes under namespace parents."""
 
     def __init__(
@@ -24,192 +23,125 @@ class FlextInfraRefactorClassNestingTransformer(cst.CSTTransformer):
         mappings: t.StrMapping,
         policy_context: t.Infra.PolicyContext,
         class_families: t.StrMapping,
+        on_change: t.Infra.ChangeCallback = None,
     ) -> None:
-        """Store mappings and policy context used during class nesting."""
+        """Initialize with class-to-namespace mappings and policy context."""
+        super().__init__(on_change=on_change)
         self._mappings = mappings
         self._policy_context = policy_context
         self._class_families = class_families
-        self._class_depth = 0
-        self._existing_namespaces: t.Infra.StrSet = set()
-        self._collected_nested: Mapping[str, MutableSequence[cst.ClassDef]] = (
-            defaultdict(list)
+
+    def transform(
+        self,
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+    ) -> tuple[str, Sequence[str]]:
+        """Apply class nesting. Returns (new_source, changes)."""
+        source = FlextInfraUtilitiesRope.read_source(resource)
+        class_infos = FlextInfraUtilitiesRope.get_class_info(rope_project, resource)
+        existing_names = {info.name for info in class_infos}
+
+        collected: dict[str, list[str]] = defaultdict(list)
+        for class_name, target_namespace in self._mappings.items():
+            if class_name not in existing_names:
+                continue
+            if not self._is_nesting_allowed(class_name, target_namespace):
+                continue
+            collected[target_namespace].append(class_name)
+
+        if not collected:
+            return source, []
+
+        for namespace, class_names in collected.items():
+            if not self._ns_op_allowed(class_names, namespace, "creation"):
+                continue
+            ns_exists = namespace in existing_names
+            if ns_exists and not self._ns_op_allowed(class_names, namespace, "merge"):
+                continue
+            source = self._nest_classes(
+                source,
+                namespace=namespace,
+                class_names=class_names,
+                ns_exists=ns_exists,
+            )
+            existing_names.add(namespace)
+
+        if source != FlextInfraUtilitiesRope.read_source(resource) and self.changes:
+            FlextInfraUtilitiesRope.write_source(
+                rope_project,
+                resource,
+                source,
+                description="class nesting",
+            )
+        return source, list(self.changes)
+
+    def _nest_classes(
+        self,
+        source: str,
+        *,
+        namespace: str,
+        class_names: Sequence[str],
+        ns_exists: bool,
+    ) -> str:
+        extracted: list[str] = []
+        for class_name in class_names:
+            block = FlextInfraUtilitiesRope.extract_definition(
+                source, class_name, kind="class"
+            )
+            if block is None:
+                continue
+            extracted.append(textwrap.indent(block, "    "))
+            source = FlextInfraUtilitiesRope.remove_definition(
+                source, class_name, kind="class"
+            )
+            self._record_change(f"Nested {class_name} into {namespace}")
+        if not extracted:
+            return source
+        nested_block = "\n".join(extracted)
+        if ns_exists:
+            return FlextInfraUtilitiesRope.append_to_class_body(
+                source, namespace, nested_block
+            )
+        return source.rstrip("\n") + f"\n\nclass {namespace}:\n{nested_block}\n"
+
+    def _is_nesting_allowed(self, class_name: str, target_namespace: str) -> bool:
+        policy = self._policy_for(class_name)
+        if policy is None:
+            return True
+        if not policy.enable_class_nesting:
+            return False
+        return FlextInfraRefactorTransformerPolicyUtilities.target_allowed(
+            policy=policy,
+            target_namespace=target_namespace,
         )
 
-    @override
-    def visit_Module(self, node: cst.Module) -> bool:
-        self._existing_namespaces = {
-            statement.name.value
-            for statement in node.body
-            if isinstance(statement, cst.ClassDef)
-        }
-        return True
-
-    @override
-    def visit_ClassDef(self, node: cst.ClassDef) -> bool:
-        _ = node
-        self._class_depth += 1
-        return True
-
-    @override
-    def leave_ClassDef(
+    def _ns_op_allowed(
         self,
-        original_node: cst.ClassDef,
-        updated_node: cst.ClassDef,
-    ) -> cst.ClassDef | cst.RemovalSentinel:
-        is_top_level_class = self._class_depth == 1
-        self._class_depth -= 1
-        if not is_top_level_class:
-            return updated_node
-        class_name = original_node.name.value
-        target_namespace = self._mappings.get(class_name)
-        if target_namespace is None:
-            return updated_node
-        policy = self._policy_for_symbol(class_name)
-        if policy is not None:
-            if not policy.enable_class_nesting:
-                return updated_node
+        class_names: Sequence[str],
+        target_namespace: str,
+        operation: str,
+    ) -> bool:
+        for class_name in class_names:
+            policy = self._policy_for(class_name)
+            if policy is None:
+                continue
+            if operation == "creation" and not policy.allow_namespace_creation:
+                return False
+            if operation == "merge" and not policy.allow_existing_namespace_merge:
+                return False
             if not FlextInfraRefactorTransformerPolicyUtilities.target_allowed(
                 policy=policy,
                 target_namespace=target_namespace,
             ):
-                return updated_node
-        self._collected_nested[target_namespace].append(updated_node)
-        return cst.RemoveFromParent()
+                return False
+        return True
 
-    @override
-    def leave_Module(
-        self,
-        original_node: cst.Module,
-        updated_node: cst.Module,
-    ) -> cst.Module:
-        _ = original_node
-        if not self._collected_nested:
-            return updated_node
-        module_body = list(updated_node.body)
-        for namespace, nested_classes in self._collected_nested.items():
-            if not self._namespace_operation_allowed(
-                nested_classes=nested_classes,
-                target_namespace=namespace,
-                operation="creation",
-            ):
-                continue
-            namespace_index = self._namespace_index(module_body, namespace)
-            if namespace_index is not None and (
-                not self._namespace_operation_allowed(
-                    nested_classes=nested_classes,
-                    target_namespace=namespace,
-                    operation="merge",
-                )
-            ):
-                continue
-            if namespace_index is None:
-                module_body.append(
-                    cst.ClassDef(
-                        name=cst.Name(namespace),
-                        body=cst.IndentedBlock(body=tuple(nested_classes)),
-                    ),
-                )
-                self._existing_namespaces.add(namespace)
-                continue
-            namespace_class = module_body[namespace_index]
-            if not isinstance(namespace_class, cst.ClassDef):
-                continue
-            classes_to_insert = self._deduplicated_nested(
-                namespace_class=namespace_class,
-                nested_classes=nested_classes,
-            )
-            if not classes_to_insert:
-                continue
-            module_body[namespace_index] = namespace_class.with_changes(
-                body=namespace_class.body.with_changes(
-                    body=tuple(
-                        self._merged_namespace_body(namespace_class, classes_to_insert),
-                    ),
-                ),
-            )
-        return updated_node.with_changes(body=tuple(module_body))
-
-    def _policy_for_symbol(
-        self,
-        symbol_name: str,
-    ) -> m.Infra.ClassNestingPolicy | None:
+    def _policy_for(self, symbol_name: str) -> m.Infra.ClassNestingPolicy | None:
         return FlextInfraRefactorTransformerPolicyUtilities.policy_for_symbol(
             policy_context=self._policy_context,
             symbol_families=self._class_families,
             symbol_name=symbol_name,
         )
-
-    def _namespace_operation_allowed(
-        self,
-        *,
-        nested_classes: Sequence[cst.ClassDef],
-        target_namespace: str,
-        operation: str,
-    ) -> bool:
-        for class_def in nested_classes:
-            policy = self._policy_for_symbol(class_def.name.value)
-            if policy is None:
-                continue
-            if operation == "creation" and (not policy.allow_namespace_creation):
-                return False
-            if operation == "merge" and (not policy.allow_existing_namespace_merge):
-                return False
-            if not FlextInfraRefactorTransformerPolicyUtilities.target_allowed(
-                policy=policy,
-                target_namespace=target_namespace,
-            ):
-                return False
-        return True
-
-    def _namespace_index(
-        self,
-        module_body: Sequence[cst.CSTNode],
-        namespace: str,
-    ) -> int | None:
-        if namespace not in self._existing_namespaces:
-            return None
-        return next(
-            (
-                index
-                for index, statement in enumerate(module_body)
-                if isinstance(statement, cst.ClassDef)
-                and statement.name.value == namespace
-            ),
-            None,
-        )
-
-    def _deduplicated_nested(
-        self,
-        *,
-        namespace_class: cst.ClassDef,
-        nested_classes: Sequence[cst.ClassDef],
-    ) -> Sequence[cst.ClassDef]:
-        existing_nested_names = {
-            statement.name.value
-            for statement in namespace_class.body.body
-            if isinstance(statement, cst.ClassDef)
-        }
-        return [
-            class_def
-            for class_def in nested_classes
-            if class_def.name.value not in existing_nested_names
-        ]
-
-    def _merged_namespace_body(
-        self,
-        namespace_class: cst.ClassDef,
-        classes_to_insert: Sequence[cst.ClassDef],
-    ) -> Sequence[cst.BaseStatement]:
-        namespace_body: MutableSequence[cst.BaseStatement] = []
-        for statement in namespace_class.body.body:
-            if isinstance(statement, cst.BaseSmallStatement):
-                continue
-            typed_statement: cst.BaseStatement = statement
-            if FlextInfraChangeTrackingTransformer.is_pass_statement(typed_statement):
-                continue
-            namespace_body.append(typed_statement)
-        namespace_body.extend(classes_to_insert)
-        return namespace_body
 
 
 __all__ = ["FlextInfraRefactorClassNestingTransformer"]

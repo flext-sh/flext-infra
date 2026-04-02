@@ -1,7 +1,7 @@
 """Namespace validation service.
 
 AST-based validator enforcing namespace rules 0-2 for flext projects.
-Detection-only — does not auto-fix any files.
+Detection-only -- does not auto-fix any files.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -14,12 +14,13 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 from flext_core import r
-from flext_infra import c, m, t, u
+from flext_infra import c, m, u
+from flext_infra.validate.namespace_rules import FlextInfraNamespaceRules
 
 __all__ = ["FlextInfraNamespaceValidator"]
 
 
-class FlextInfraNamespaceValidator:
+class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
     """AST-based namespace validator for flext projects (Rules 0-2).
 
     Validates that each module follows the one-namespace-class-per-file
@@ -28,35 +29,8 @@ class FlextInfraNamespaceValidator:
     """
 
     @staticmethod
-    def _annotation_contains(annotation: ast.expr | None, name: str) -> bool:
-        """Check whether an annotation AST node references a given name."""
-        if annotation is None:
-            return False
-        if isinstance(annotation, ast.Name) and annotation.id == name:
-            return True
-        if isinstance(annotation, ast.Attribute) and annotation.attr == name:
-            return True
-        if isinstance(annotation, ast.Subscript):
-            return FlextInfraNamespaceValidator._annotation_contains(
-                annotation.value,
-                name,
-            )
-        return False
-
-    @staticmethod
-    def _base_contains(base: ast.expr, name: str) -> bool:
-        """Check whether a class base AST node references a given name."""
-        if isinstance(base, ast.Name) and base.id == name:
-            return True
-        return isinstance(base, ast.Attribute) and base.attr == name
-
-    @staticmethod
     def _derive_prefix(project_root: Path) -> str:
-        """Derive the expected class name prefix from the package directory.
-
-        Finds the first package under ``src/`` and converts its name to
-        PascalCase: ``flext_infra`` → ``FlextInfra``.
-        """
+        """Derive the expected class name prefix from the package directory."""
         src_dir = project_root / c.Infra.Paths.DEFAULT_SRC_DIR
         if not src_dir.is_dir():
             return ""
@@ -66,39 +40,8 @@ class FlextInfraNamespaceValidator:
         return ""
 
     @staticmethod
-    def _get_assign_target_name(node: ast.Assign) -> str:
-        """Extract the first target name from an Assign node."""
-        if node.targets and isinstance(node.targets[0], ast.Name):
-            return node.targets[0].id
-        return ""
-
-    @staticmethod
-    def _get_call_name(func: ast.expr) -> str:
-        """Extract the function name from a Call node's func attribute."""
-        if isinstance(func, ast.Name):
-            return func.id
-        if isinstance(func, ast.Attribute):
-            return func.attr
-        return ""
-
-    @staticmethod
-    def _get_target_name(target: ast.expr) -> str:
-        """Extract the name from an assignment target."""
-        if isinstance(target, ast.Name):
-            return target.id
-        return ""
-
-    @staticmethod
     def derive_prefix(project_root: Path) -> str:
-        """Public wrapper for deriving the class name prefix from a project.
-
-        Args:
-            project_root: Root directory of the project.
-
-        Returns:
-            The PascalCase prefix derived from the package name.
-
-        """
+        """Public wrapper for deriving the class name prefix from a project."""
         return FlextInfraNamespaceValidator._derive_prefix(project_root)
 
     def validate(
@@ -107,16 +50,7 @@ class FlextInfraNamespaceValidator:
         *,
         scan_tests: bool = False,
     ) -> r[m.Infra.ValidationReport]:
-        """Validate namespace rules 0-2 for all discovered Python files.
-
-        Args:
-            project_root: Root directory of the project to validate.
-            scan_tests: Whether to also scan the ``tests/`` directory.
-
-        Returns:
-            r with ValidationReport indicating namespace compliance.
-
-        """
+        """Validate namespace rules 0-2 for all discovered Python files."""
         try:
             files = self._discover_files(project_root, scan_tests=scan_tests)
             prefix = self._derive_prefix(project_root)
@@ -126,9 +60,9 @@ class FlextInfraNamespaceValidator:
                 if tree is None:
                     continue
                 rel = filepath.relative_to(project_root)
-                violations.extend(self._check_rule_0(tree, rel, prefix))
-                violations.extend(self._check_rule_1(tree, rel))
-                violations.extend(self._check_rule_2(tree, rel))
+                violations.extend(self.check_rule_0(tree, rel, prefix))
+                violations.extend(self.check_rule_1(tree, rel))
+                violations.extend(self.check_rule_2(tree, rel))
             passed = not violations
             summary = (
                 f"namespace validation passed ({len(files)} files checked)"
@@ -147,292 +81,6 @@ class FlextInfraNamespaceValidator:
                 f"Namespace validation failed: {exc}",
             )
 
-    def _check_rule_0(
-        self,
-        tree: ast.Module,
-        filepath: Path,
-        prefix: str,
-    ) -> t.StrSequence:
-        """Rule 0 — One namespace class per module.
-
-        Checks that each module has exactly one top-level class whose name
-        starts with the project prefix, and that all other top-level
-        statements are on the allowlist.
-        """
-        violations: MutableSequence[str] = []
-        seq = 0
-        outer_classes = [n for n in tree.body if isinstance(n, ast.ClassDef)]
-        class_count = len(outer_classes)
-        if class_count != 1:
-            seq += 1
-            violations.append(
-                f"[NS-000-{seq:03d}] {filepath}:{(outer_classes[0].lineno if outer_classes else 1)} — Multiple outer classes found (expected 1, got {class_count})"
-                if class_count > 1
-                else f"[NS-000-{seq:03d}] {filepath}:1 — No outer class found (expected 1, got 0)",
-            )
-        for cls in outer_classes:
-            if prefix and (not cls.name.startswith(prefix)):
-                seq += 1
-                violations.append(
-                    f"[NS-000-{seq:03d}] {filepath}:{cls.lineno} — Class '{cls.name}' does not start with prefix '{prefix}'",
-                )
-        for node in tree.body:
-            if isinstance(node, ast.ClassDef):
-                continue
-            if not self._is_allowed_module_level(node, filepath):
-                seq += 1
-                lineno = getattr(node, "lineno", 0)
-                violations.append(
-                    f"[NS-000-{seq:03d}] {filepath}:{lineno} — Disallowed top-level statement: {type(node).__name__}",
-                )
-        return violations
-
-    def _check_rule_1(self, tree: ast.Module, filepath: Path) -> t.StrSequence:
-        """Rule 1 — Constants centralization.
-
-        In ``constants.py``: outer class must inherit from a Constants base,
-        and inner classes must not contain methods.
-
-        In other modules: no loose ``Final`` constants, no loose Enum classes,
-        no loose collection constant assignments.
-        """
-        if filepath.name == "constants.py":
-            return self._check_rule_1_canonical(tree, filepath)
-        return self._check_rule_1_non_canonical(tree, filepath)
-
-    def _check_rule_1_canonical(
-        self,
-        tree: ast.Module,
-        filepath: Path,
-    ) -> t.StrSequence:
-        """Rule 1 checks for constants.py: base class and no methods."""
-        violations: MutableSequence[str] = []
-        seq = 0
-        outer_classes = [n for n in tree.body if isinstance(n, ast.ClassDef)]
-        for cls in outer_classes:
-            if not any(self._base_contains(b, "Constants") for b in cls.bases):
-                seq += 1
-                violations.append(
-                    f"[NS-001-{seq:03d}] {filepath}:{cls.lineno} — Constants class '{cls.name}' must inherit from a Constants base",
-                )
-            for inner_node in ast.walk(cls):
-                if isinstance(inner_node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                    seq += 1
-                    violations.append(
-                        f"[NS-001-{seq:03d}] {filepath}:{inner_node.lineno} — Method '{inner_node.name}' found in Constants class",
-                    )
-        return violations
-
-    def _check_rule_1_non_canonical(
-        self,
-        tree: ast.Module,
-        filepath: Path,
-    ) -> t.StrSequence:
-        """Rule 1 checks for non-constants modules: no loose Finals, collections, or Enums."""
-        violations: MutableSequence[str] = []
-        seq = 0
-        for node in tree.body:
-            seq, violations = self._check_loose_final(node, filepath, seq, violations)
-            seq, violations = self._check_loose_collection(
-                node, filepath, seq, violations
-            )
-        outer_classes = [n for n in tree.body if isinstance(n, ast.ClassDef)]
-        for cls in outer_classes:
-            seq, violations = self._check_loose_enums(cls, filepath, seq, violations)
-        return violations
-
-    def _check_loose_final(
-        self,
-        node: ast.stmt,
-        filepath: Path,
-        seq: int,
-        violations: MutableSequence[str],
-    ) -> tuple[int, MutableSequence[str]]:
-        """Detect loose Final constant assignments outside constants.py."""
-        if not (
-            isinstance(node, ast.AnnAssign)
-            and self._annotation_contains(node.annotation, "Final")
-        ):
-            return seq, violations
-        target_name = self._get_target_name(node.target)
-        if target_name and not target_name.startswith("_"):
-            seq += 1
-            violations.append(
-                f"[NS-001-{seq:03d}] {filepath}:{node.lineno} — Loose Final constant '{target_name}' belongs in constants.py",
-            )
-        return seq, violations
-
-    def _check_loose_collection(
-        self,
-        node: ast.stmt,
-        filepath: Path,
-        seq: int,
-        violations: MutableSequence[str],
-    ) -> tuple[int, MutableSequence[str]]:
-        """Detect loose collection constant assignments outside constants.py."""
-        if not (isinstance(node, ast.Assign) and isinstance(node.value, ast.Call)):
-            return seq, violations
-        func_name = self._get_call_name(node.value.func)
-        if func_name not in c.Infra.COLLECTION_CALLS:
-            return seq, violations
-        target_name = self._get_assign_target_name(node)
-        if (
-            target_name
-            and target_name not in c.Infra.DUNDER_ALLOWED
-            and target_name not in c.Infra.ALIAS_NAMES
-        ):
-            seq += 1
-            violations.append(
-                f"[NS-001-{seq:03d}] {filepath}:{node.lineno} — Loose collection constant '{target_name}' belongs in constants.py",
-            )
-        return seq, violations
-
-    def _check_loose_enums(
-        self,
-        cls: ast.ClassDef,
-        filepath: Path,
-        seq: int,
-        violations: MutableSequence[str],
-    ) -> tuple[int, MutableSequence[str]]:
-        """Detect loose Enum inner classes outside constants.py."""
-        for inner in cls.body:
-            if isinstance(inner, ast.ClassDef) and any(
-                self._base_contains(b, base)
-                for b in inner.bases
-                for base in c.Infra.ENUM_BASES
-            ):
-                seq += 1
-                violations.append(
-                    f"[NS-001-{seq:03d}] {filepath}:{inner.lineno} — Loose Enum '{inner.name}' belongs in constants.py",
-                )
-        return seq, violations
-
-    def _check_rule_2(self, tree: ast.Module, filepath: Path) -> t.StrSequence:
-        """Rule 2 — Types centralization.
-
-        In ``typings.py``: outer class must inherit from a Types base,
-        and inner classes must not inherit from BaseModel or Protocol.
-
-        In other modules: no TypeVar/ParamSpec/TypeVarTuple calls,
-        no TypeAlias annotations, no PEP 695 TypeAlias statements.
-        """
-        if filepath.name == "typings.py":
-            return self._check_rule_2_canonical(tree, filepath)
-        return self._check_rule_2_non_canonical(tree, filepath)
-
-    def _check_rule_2_canonical(
-        self,
-        tree: ast.Module,
-        filepath: Path,
-    ) -> t.StrSequence:
-        """Rule 2 checks for typings.py: base class and no BaseModel/Protocol inners."""
-        violations: MutableSequence[str] = []
-        seq = 0
-        outer_classes = [n for n in tree.body if isinstance(n, ast.ClassDef)]
-        for cls in outer_classes:
-            if not any(self._base_contains(b, "Types") for b in cls.bases):
-                seq += 1
-                violations.append(
-                    f"[NS-002-{seq:03d}] {filepath}:{cls.lineno} — Types class '{cls.name}' must inherit from a Types base",
-                )
-            for inner in cls.body:
-                if isinstance(
-                    inner, ast.ClassDef
-                ) and self._inner_inherits_forbidden_base(inner):
-                    seq += 1
-                    violations.append(
-                        f"[NS-002-{seq:03d}] {filepath}:{inner.lineno} — Inner class '{inner.name}' in Types must not inherit from BaseModel/Protocol",
-                    )
-        return violations
-
-    def _inner_inherits_forbidden_base(self, inner: ast.ClassDef) -> bool:
-        """Check if an inner class inherits from BaseModel or Protocol."""
-        return any(
-            self._base_contains(base, "BaseModel")
-            or self._base_contains(base, "Protocol")
-            for base in inner.bases
-        )
-
-    def _check_rule_2_non_canonical(
-        self,
-        tree: ast.Module,
-        filepath: Path,
-    ) -> t.StrSequence:
-        """Rule 2 checks for non-typings modules: no loose TypeVars, TypeAliases, or PEP 695."""
-        violations: MutableSequence[str] = []
-        seq = 0
-        for node in tree.body:
-            seq, violations = self._check_loose_typevar(node, filepath, seq, violations)
-            seq, violations = self._check_loose_typealias_annotation(
-                node, filepath, seq, violations
-            )
-            seq, violations = self._check_loose_pep695_typealias(
-                node, filepath, seq, violations
-            )
-        return violations
-
-    def _check_loose_typevar(
-        self,
-        node: ast.stmt,
-        filepath: Path,
-        seq: int,
-        violations: MutableSequence[str],
-    ) -> tuple[int, MutableSequence[str]]:
-        """Detect loose TypeVar/ParamSpec/TypeVarTuple calls outside typings.py."""
-        if not (isinstance(node, ast.Assign) and isinstance(node.value, ast.Call)):
-            return seq, violations
-        func_name = self._get_call_name(node.value.func)
-        if func_name not in c.Infra.TYPEVAR_CALLABLES:
-            return seq, violations
-        target_name = self._get_assign_target_name(node)
-        seq += 1
-        violations.append(
-            f"[NS-002-{seq:03d}] {filepath}:{node.lineno} — TypeVar '{target_name}' belongs in typings.py",
-        )
-        return seq, violations
-
-    def _check_loose_typealias_annotation(
-        self,
-        node: ast.stmt,
-        filepath: Path,
-        seq: int,
-        violations: MutableSequence[str],
-    ) -> tuple[int, MutableSequence[str]]:
-        """Detect loose TypeAlias annotated assignments outside typings.py."""
-        if not (
-            isinstance(node, ast.AnnAssign)
-            and self._annotation_contains(node.annotation, "TypeAlias")
-        ):
-            return seq, violations
-        target_name = self._get_target_name(node.target)
-        seq += 1
-        violations.append(
-            f"[NS-002-{seq:03d}] {filepath}:{node.lineno} — TypeAlias '{target_name}' belongs in typings.py",
-        )
-        return seq, violations
-
-    def _check_loose_pep695_typealias(
-        self,
-        node: ast.stmt,
-        filepath: Path,
-        seq: int,
-        violations: MutableSequence[str],
-    ) -> tuple[int, MutableSequence[str]]:
-        """Detect PEP 695 type alias statements outside typings.py."""
-        if not isinstance(node, ast.TypeAlias):
-            return seq, violations
-        name = getattr(node, c.Infra.NAME, None)
-        name_str = (
-            getattr(name, c.Infra.ReportKeys.ID, str(name))
-            if name
-            else c.Infra.Defaults.UNKNOWN
-        )
-        seq += 1
-        violations.append(
-            f"[NS-002-{seq:03d}] {filepath}:{node.lineno} — PEP 695 TypeAlias '{name_str}' belongs in typings.py",
-        )
-        return seq, violations
-
     def _discover_files(
         self,
         workspace_root: Path,
@@ -449,70 +97,10 @@ class FlextInfraNamespaceValidator:
                 continue
             result.extend(
                 py_file
-                for py_file in u.Infra.iter_directory_python_files(
-                    base_dir,
-                )
+                for py_file in u.Infra.iter_directory_python_files(base_dir)
                 if not self._is_exempt_file(py_file)
             )
         return sorted(result)
-
-    def _is_allowed_module_level(self, node: ast.stmt, filepath: Path) -> bool:
-        """Check whether a non-class top-level statement is allowed."""
-        if isinstance(node, (ast.Import, ast.ImportFrom)):
-            return True
-        if self._is_module_docstring(node):
-            return True
-        if isinstance(node, (ast.Assign, ast.TypeAlias, ast.AnnAssign)):
-            return self._is_allowed_assignment(node, filepath)
-        return False
-
-    def _is_allowed_assignment(
-        self,
-        node: ast.Assign | ast.TypeAlias | ast.AnnAssign,
-        filepath: Path,
-    ) -> bool:
-        """Check whether an assignment-like statement is allowed at module level."""
-        if isinstance(node, ast.Assign):
-            return self._is_allowed_assign(node, filepath)
-        if isinstance(node, ast.TypeAlias):
-            return filepath.name == "typings.py"
-        return self._is_allowed_ann_assign(node, filepath)
-
-    @staticmethod
-    def _is_module_docstring(node: ast.stmt) -> bool:
-        """Check whether a statement is a module-level docstring."""
-        return (
-            isinstance(node, ast.Expr)
-            and isinstance(node.value, ast.Constant)
-            and isinstance(node.value.value, str)
-        )
-
-    def _is_allowed_assign(self, node: ast.Assign, filepath: Path) -> bool:
-        """Check whether a plain assignment is allowed at module level."""
-        for target in node.targets:
-            if isinstance(target, ast.Name) and target.id in c.Infra.DUNDER_ALLOWED:
-                return True
-        if len(node.targets) == 1:
-            target = node.targets[0]
-            if isinstance(target, ast.Name) and target.id in c.Infra.ALIAS_NAMES:
-                return True
-        if isinstance(node.value, ast.Call):
-            func_name = self._get_call_name(node.value.func)
-            if func_name in c.Infra.TYPEVAR_CALLABLES:
-                return filepath.name == "typings.py"
-        return False
-
-    def _is_allowed_ann_assign(self, node: ast.AnnAssign, filepath: Path) -> bool:
-        """Check whether an annotated assignment is allowed at module level."""
-        if self._annotation_contains(node.annotation, "TypeAlias"):
-            return filepath.name == "typings.py"
-        if (
-            isinstance(node.target, ast.Name)
-            and node.target.id.startswith("_")
-            and self._annotation_contains(node.annotation, "Final")
-        ):
-            return filepath.name == "constants.py"
-        return False
 
     def _is_exempt_file(self, filepath: Path) -> bool:
         """Check whether a file should be skipped from validation."""

@@ -29,7 +29,7 @@ class FlextInfraCompatibilityAliasDetector(FlextInfraScanFileMixin, p.Infra.Scan
         """Detect compatibility aliases in a single file."""
         file_path = ctx.file_path
         rope_project = ctx.rope_project
-        if file_path.suffix != ".py":
+        if file_path.suffix != c.Infra.Extensions.PYTHON:
             return []
         source = cls._get_source_or_empty(rope_project, file_path)
         if source is None:

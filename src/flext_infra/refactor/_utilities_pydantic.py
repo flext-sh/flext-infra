@@ -35,18 +35,16 @@ class FlextInfraUtilitiesRefactorPydantic:
         )
     """
 
-    _PYDANTIC_SCOPE_DIRS: t.StrSequence = ("src", "tests", "scripts", "examples")
-    _PYDANTIC_SKIP_DIRS: t.StrSequence = (
-        ".git",
-        ".venv",
-        "__pycache__",
-        ".mypy_cache",
-        ".ruff_cache",
-        ".pytest_cache",
+    _PYDANTIC_SCOPE_DIRS: t.StrSequence = (
+        c.Infra.Paths.DEFAULT_SRC_DIR,
+        c.Infra.Directories.TESTS,
+        c.Infra.Directories.SCRIPTS,
+        c.Infra.Directories.EXAMPLES,
     )
+    _PYDANTIC_SKIP_DIRS: frozenset[str] = c.Infra.Excluded.COMMON_EXCLUDED_DIRS
     _PYDANTIC_PROTECTED_FILENAMES: t.StrSequence = (
         "settings.py",
-        "__init__.py",
+        c.Infra.Files.INIT_PY,
     )
     _PYDANTIC_AUTO_APPLY_CLASS_KINDS: t.StrSequence = (
         "typed_dict",

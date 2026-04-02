@@ -37,6 +37,7 @@ if _TYPE_CHECKING:
         release,
         reporting,
         rope,
+        rule_helpers,
         safety,
         selection,
         subprocess,
@@ -64,6 +65,7 @@ if _TYPE_CHECKING:
     from flext_infra._utilities.release import FlextInfraUtilitiesRelease
     from flext_infra._utilities.reporting import FlextInfraUtilitiesReporting
     from flext_infra._utilities.rope import FlextInfraUtilitiesRope
+    from flext_infra._utilities.rule_helpers import FlextInfraUtilitiesRuleHelpers
     from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
     from flext_infra._utilities.selection import FlextInfraUtilitiesSelection
     from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
@@ -92,6 +94,7 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "FlextInfraUtilitiesRelease": "flext_infra._utilities.release",
     "FlextInfraUtilitiesReporting": "flext_infra._utilities.reporting",
     "FlextInfraUtilitiesRope": "flext_infra._utilities.rope",
+    "FlextInfraUtilitiesRuleHelpers": "flext_infra._utilities.rule_helpers",
     "FlextInfraUtilitiesSafety": "flext_infra._utilities.safety",
     "FlextInfraUtilitiesSelection": "flext_infra._utilities.selection",
     "FlextInfraUtilitiesSubprocess": "flext_infra._utilities.subprocess",
@@ -118,6 +121,7 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "release": "flext_infra._utilities.release",
     "reporting": "flext_infra._utilities.reporting",
     "rope": "flext_infra._utilities.rope",
+    "rule_helpers": "flext_infra._utilities.rule_helpers",
     "safety": "flext_infra._utilities.safety",
     "selection": "flext_infra._utilities.selection",
     "subprocess": "flext_infra._utilities.subprocess",

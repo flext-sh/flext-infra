@@ -5,9 +5,14 @@ from __future__ import annotations
 from collections.abc import MutableSequence, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_core import FlextLogger, r, u
-from flext_infra import c, m
+from flext_infra import c
+
+if TYPE_CHECKING:
+    from flext_infra import m
+
 
 logger = FlextLogger.create_module_logger(__name__)
 

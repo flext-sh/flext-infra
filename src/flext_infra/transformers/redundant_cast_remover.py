@@ -1,103 +1,69 @@
-"""Redundant cast() call remover transformer."""
+"""Redundant cast() call remover via rope regex replacement."""
 
 from __future__ import annotations
 
 from collections.abc import MutableSequence
-from typing import override
 
-import libcst as cst
-
-from flext_infra import c, t
+from flext_infra import FlextInfraUtilitiesRope, t
 
 
-class FlextInfraRedundantCastRemover(cst.CSTTransformer):
-    """Remove redundant cast() calls for specified types."""
+class FlextInfraRedundantCastRemover:
+    """Remove redundant cast() calls, replacing ``cast(Type, value)`` with ``value``.
 
-    def __init__(self, removable_types: t.Infra.StrSet) -> None:
-        """Initialize with the set of type names whose casts are removable."""
-        self.removable_types = removable_types
+    Uses rope's regex-based cast removal instead of CST visitors.
+    """
+
+    def __init__(self, removable_types: t.Infra.StrSet | None = None) -> None:
+        """Initialize with optional set of type names whose casts are removable.
+
+        When None, all cast() calls are removed regardless of target type.
+        """
+        self._removable_types = removable_types
         self.changes: MutableSequence[str] = []
 
-    @override
-    def leave_Call(
+    def transform(
         self,
-        original_node: cst.Call,
-        updated_node: cst.Call,
-    ) -> cst.BaseExpression:
-        del original_node
-        target_and_args = self._extract_removable_cast(updated_node)
-        if target_and_args is None:
-            return updated_node
-        target, value_arg = target_and_args
-        if target == "type":
-            unwrapped = self._unwrap_nested_object_cast(value_arg.value)
-            if unwrapped is None:
-                return updated_node
-            self.changes.append(
-                "Removed redundant cast chain for type/t.NormalizedValue",
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+    ) -> tuple[str, MutableSequence[str]]:
+        """Remove cast() calls from source via rope.
+
+        Returns (new_source, list_of_change_descriptions).
+        """
+        if self._removable_types is not None:
+            return self._remove_typed_casts(rope_project, resource)
+        source, count = FlextInfraUtilitiesRope.remove_redundant_cast(
+            rope_project,
+            resource,
+            apply=True,
+        )
+        if count > 0:
+            self.changes.append(f"Removed {count} redundant cast() calls")
+        return source, self.changes
+
+    def _remove_typed_casts(
+        self,
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+    ) -> tuple[str, MutableSequence[str]]:
+        """Remove only cast() calls targeting specific types."""
+        source = resource.read()
+        total = 0
+        for type_name in self._removable_types or ():
+            replaced, count = FlextInfraUtilitiesRope.replace_in_source(
+                rope_project,
+                resource,
+                rf"\bcast\s*\(\s*{type_name}\s*,\s*([^)]+)\s*\)",
+                r"\1",
+                apply=True,
             )
-            return unwrapped
-        self.changes.append(f"Removed redundant cast for {target}")
-        return value_arg.value
-
-    def _extract_removable_cast(
-        self,
-        node: cst.Call,
-    ) -> tuple[str, cst.Arg] | None:
-        """Extract (target_type, value_arg) if this is a removable cast() call."""
-        func = node.func
-        if not isinstance(func, cst.Name) or func.value != "cast":
-            return None
-        if len(node.args) != c.Infra.CAST_ARITY:
-            return None
-        type_arg, value_arg = node.args
-        if type_arg.keyword is not None or value_arg.keyword is not None:
-            return None
-        target = self._extract_target_string(type_arg)
-        if target is None or target not in self.removable_types:
-            return None
-        return (target, value_arg)
-
-    def _extract_target_string(self, node: cst.Arg) -> str | None:
-        value = node.value
-        if not isinstance(value, cst.SimpleString):
-            return None
-        evaluated = value.evaluated_value
-        if not isinstance(evaluated, str):
-            return None
-        return evaluated
-
-    def _unwrap_nested_object_cast(
-        self,
-        node: cst.BaseExpression,
-    ) -> cst.BaseExpression | None:
-        if not isinstance(node, cst.Call):
-            return None
-        target_and_args = self._extract_cast_args(node)
-        if target_and_args is None or target_and_args[0] != "t.NormalizedValue":
-            return None
-        return target_and_args[1].value
-
-    @staticmethod
-    def _extract_cast_args(node: cst.Call) -> tuple[str, cst.Arg] | None:
-        """Extract (target_string, value_arg) from a cast() call, or None."""
-        func = node.func
-        if not isinstance(func, cst.Name) or func.value != "cast":
-            return None
-        if len(node.args) != c.Infra.CAST_ARITY:
-            return None
-        type_arg, value_arg = node.args
-        if type_arg.keyword is not None or value_arg.keyword is not None:
-            return None
-        value = type_arg.value
-        if not isinstance(value, cst.SimpleString):
-            return None
-        evaluated = value.evaluated_value
-        if not isinstance(evaluated, str):
-            return None
-        return (evaluated, value_arg)
+            if count > 0:
+                total += count
+                self.changes.append(
+                    f"Removed {count} redundant cast() for {type_name}",
+                )
+                source = replaced
+        return source, self.changes
 
 
-__all__ = [
-    "FlextInfraRedundantCastRemover",
-]
+__all__ = ["FlextInfraRedundantCastRemover"]

@@ -1,22 +1,36 @@
 from __future__ import annotations
 
-from flext_infra import (
-    FlextInfraUtilitiesCodegenAstParsing,
+from flext_infra._utilities.codegen_constant_analysis import (
+    FlextInfraUtilitiesCodegenConstantAnalysis,
+)
+from flext_infra._utilities.codegen_constant_detection import (
     FlextInfraUtilitiesCodegenConstantDetection,
+)
+from flext_infra._utilities.codegen_constant_transformation import (
     FlextInfraUtilitiesCodegenConstantTransformation,
-    FlextInfraUtilitiesCodegenExecution,
+)
+from flext_infra._utilities.codegen_governance import (
     FlextInfraUtilitiesCodegenGovernance,
-    FlextInfraUtilitiesCodegenTransforms,
+)
+from flext_infra._utilities.codegen_import_cycles import (
+    FlextInfraUtilitiesCodegenImportCycles,
+)
+from flext_infra._utilities.codegen_lazy_aliases import (
+    FlextInfraUtilitiesCodegenLazyAliases,
+)
+from flext_infra._utilities.codegen_lazy_scanning import (
+    FlextInfraUtilitiesCodegenLazyScanning,
 )
 
 
 class FlextInfraUtilitiesCodegen(
-    FlextInfraUtilitiesCodegenExecution,
-    FlextInfraUtilitiesCodegenAstParsing,
+    FlextInfraUtilitiesCodegenConstantAnalysis,
     FlextInfraUtilitiesCodegenConstantDetection,
     FlextInfraUtilitiesCodegenConstantTransformation,
     FlextInfraUtilitiesCodegenGovernance,
-    FlextInfraUtilitiesCodegenTransforms,
+    FlextInfraUtilitiesCodegenImportCycles,
+    FlextInfraUtilitiesCodegenLazyAliases,
+    FlextInfraUtilitiesCodegenLazyScanning,
 ): ...
 
 

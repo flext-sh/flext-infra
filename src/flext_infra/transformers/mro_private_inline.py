@@ -1,87 +1,103 @@
-"""CST transformer for private-symbol inlining in MRO migration."""
+"""Private-symbol inlining and qualified reference transformers — rope-based."""
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from typing import override
+import re
+from collections.abc import Mapping, Sequence
 
-import libcst as cst
-
-from flext_infra import t
-
-
-class FlextInfraRefactorMROPrivateInlineTransformer(cst.CSTTransformer):
-    """Inline configured private-name values after migration."""
-
-    def __init__(self, *, replacement_values: Mapping[str, cst.BaseExpression]) -> None:
-        """Initialize with symbol-to-value mapping for private constant inlining."""
-        self.replacement_values = replacement_values
-
-    @override
-    def leave_Name(
-        self,
-        original_node: cst.Name,
-        updated_node: cst.Name,
-    ) -> cst.BaseExpression:
-        if original_node.value in self.replacement_values:
-            return self.replacement_values[original_node.value]
-        return updated_node
+from flext_infra import FlextInfraUtilitiesRope, t
+from flext_infra.transformers._base import FlextInfraRopeTransformer
 
 
-class FlextInfraRefactorMROQualifiedReferenceTransformer(cst.CSTTransformer):
-    """Replace bare name references with qualified facade paths after migration.
+class FlextInfraRefactorMROPrivateInlineTransformer(FlextInfraRopeTransformer):
+    """Inline configured private-name values after MRO migration.
 
-    Skips definition positions (TypeAlias.name, AnnAssign.target, Assign.target)
-    so only reference occurrences are renamed.
+    Replaces bare references to private constants with their literal values
+    using rope regex replacement with word boundaries.
     """
 
-    def __init__(self, *, renames: Mapping[str, cst.BaseExpression]) -> None:
+    def __init__(
+        self,
+        *,
+        replacement_values: Mapping[str, str],
+        on_change: t.Infra.ChangeCallback = None,
+    ) -> None:
+        """Initialize with symbol-to-value mapping for private constant inlining."""
+        super().__init__(on_change=on_change)
+        self._replacement_values = replacement_values
+
+    def transform(
+        self,
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+    ) -> tuple[str, Sequence[str]]:
+        """Apply private constant inlining. Returns (new_source, changes)."""
+        source = FlextInfraUtilitiesRope.read_source(resource)
+
+        for name, value in self._replacement_values.items():
+            pattern = re.compile(rf"\b{re.escape(name)}\b")
+            new_source, count = pattern.subn(value, source)
+            if count > 0 and new_source != source:
+                self._record_change(f"Inlined private constant: {name} -> {value}")
+                source = new_source
+
+        if source != FlextInfraUtilitiesRope.read_source(resource):
+            FlextInfraUtilitiesRope.write_source(
+                rope_project,
+                resource,
+                source,
+                description="mro private inline",
+            )
+        return source, list(self.changes)
+
+
+class FlextInfraRefactorMROQualifiedReferenceTransformer(FlextInfraRopeTransformer):
+    """Replace bare name references with qualified facade paths after migration.
+
+    Skips definition positions (type alias names, annotation targets, assignment
+    targets) so only reference occurrences are renamed.
+    """
+
+    def __init__(
+        self,
+        *,
+        renames: Mapping[str, str],
+        on_change: t.Infra.ChangeCallback = None,
+    ) -> None:
         """Initialize with symbol-to-qualified-expression rename mapping."""
+        super().__init__(on_change=on_change)
         self._renames = renames
-        self._defining: t.Infra.StrSet = set()
 
-    @override
-    def visit_TypeAlias(self, node: cst.TypeAlias) -> bool:
-        self._defining.add(node.name.value)
-        return True
-
-    @override
-    def leave_TypeAlias(
+    def transform(
         self,
-        original_node: cst.TypeAlias,
-        updated_node: cst.TypeAlias,
-    ) -> cst.TypeAlias:
-        self._defining.discard(original_node.name.value)
-        return updated_node
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+    ) -> tuple[str, Sequence[str]]:
+        """Apply qualified reference rewrites. Returns (new_source, changes)."""
+        source = FlextInfraUtilitiesRope.read_source(resource)
 
-    @override
-    def visit_AnnAssign(self, node: cst.AnnAssign) -> bool:
-        if isinstance(node.target, cst.Name):
-            self._defining.add(node.target.value)
-        return True
+        for old_name, qualified_path in self._renames.items():
+            # Skip definition sites: `type X = ...`, `X: ... = ...`, `X = ...`
+            pattern = re.compile(
+                rf"(?<!class\s)(?<!def\s)(?<!\.)(?<!import\s)"
+                rf"\b{re.escape(old_name)}\b"
+                rf"(?!\s*[=:](?!=))",
+            )
+            new_source, count = pattern.subn(qualified_path, source)
+            if count > 0 and new_source != source:
+                self._record_change(
+                    f"Qualified reference: {old_name} -> {qualified_path}",
+                )
+                source = new_source
 
-    @override
-    def leave_AnnAssign(
-        self,
-        original_node: cst.AnnAssign,
-        updated_node: cst.AnnAssign,
-    ) -> cst.AnnAssign:
-        if isinstance(original_node.target, cst.Name):
-            self._defining.discard(original_node.target.value)
-        return updated_node
-
-    @override
-    def leave_Name(
-        self,
-        original_node: cst.Name,
-        updated_node: cst.Name,
-    ) -> cst.BaseExpression:
-        if original_node.value in self._defining:
-            return updated_node
-        replacement = self._renames.get(original_node.value)
-        if replacement is not None:
-            return replacement
-        return updated_node
+        if source != FlextInfraUtilitiesRope.read_source(resource):
+            FlextInfraUtilitiesRope.write_source(
+                rope_project,
+                resource,
+                source,
+                description="mro qualified reference",
+            )
+        return source, list(self.changes)
 
 
 __all__ = [

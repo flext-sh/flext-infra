@@ -1,22 +1,23 @@
-"""CST transformer for consolidating helper functions into namespace classes."""
+"""Helper consolidation transformer — rope-based implementation."""
 
 from __future__ import annotations
 
+import re
 from collections import defaultdict
-from collections.abc import Mapping, MutableSequence
+from collections.abc import Sequence
 from typing import override
 
-import libcst as cst
-
 from flext_infra import (
-    FlextInfraChangeTrackingTransformer,
     FlextInfraRefactorTransformerPolicyUtilities,
+    FlextInfraUtilitiesRope,
     m,
     t,
+    u,
 )
+from flext_infra.transformers._base import FlextInfraRopeTransformer
 
 
-class FlextInfraHelperConsolidationTransformer(cst.CSTTransformer):
+class FlextInfraHelperConsolidationTransformer(FlextInfraRopeTransformer):
     """Move top-level helper functions into target namespace classes."""
 
     def __init__(
@@ -24,228 +25,104 @@ class FlextInfraHelperConsolidationTransformer(cst.CSTTransformer):
         helper_mappings: t.StrMapping,
         policy_context: t.Infra.PolicyContext | None = None,
         helper_families: t.StrMapping | None = None,
+        on_change: t.Infra.ChangeCallback = None,
     ) -> None:
-        """Initialize with helper-to-namespace mappings and optional policy context."""
-        self._helper_mappings = helper_mappings
+        """Initialize with helper-to-namespace mappings and optional policy."""
+        super().__init__(on_change=on_change)
+        self._mappings = helper_mappings
         self._policy_context = policy_context
-        self._helper_families = helper_families or {}
-        self._scope_depth = 0
-        self._existing_namespaces: t.Infra.StrSet = set()
-        self._collected_helpers: Mapping[str, MutableSequence[cst.FunctionDef]] = (
-            defaultdict(list)
-        )
+        self._families = helper_families or {}
 
     @override
-    def visit_Module(self, node: cst.Module) -> bool:
-        self._existing_namespaces = {
-            statement.name.value
-            for statement in node.body
-            if isinstance(statement, cst.ClassDef)
-        }
-        return True
-
-    @override
-    def visit_ClassDef(self, node: cst.ClassDef) -> bool:
-        _ = node
-        self._scope_depth += 1
-        return True
-
-    @override
-    def visit_FunctionDef(self, node: cst.FunctionDef) -> bool:
-        _ = node
-        self._scope_depth += 1
-        return True
-
-    @override
-    def leave_Call(self, original_node: cst.Call, updated_node: cst.Call) -> cst.Call:
-        _ = original_node
-        if not isinstance(updated_node.func, cst.Name):
-            return updated_node
-        helper_name = updated_node.func.value
-        target_namespace = self._helper_mappings.get(helper_name)
-        if target_namespace is None:
-            return updated_node
-        if not self._is_call_rewrite_allowed(helper_name, target_namespace):
-            return updated_node
-        return updated_node.with_changes(
-            func=cst.Attribute(
-                value=cst.Name(target_namespace),
-                attr=cst.Name(helper_name),
-            ),
-        )
-
-    @override
-    def leave_ClassDef(
+    def transform(
         self,
-        original_node: cst.ClassDef,
-        updated_node: cst.ClassDef,
-    ) -> cst.ClassDef:
-        _ = original_node
-        self._scope_depth -= 1
-        return updated_node
-
-    @override
-    def leave_FunctionDef(
-        self,
-        original_node: cst.FunctionDef,
-        updated_node: cst.FunctionDef,
-    ) -> cst.FunctionDef | cst.RemovalSentinel:
-        is_top_level_function = self._scope_depth == 1
-        self._scope_depth -= 1
-        if not is_top_level_function:
-            return updated_node
-        target_namespace = self._helper_mappings.get(original_node.name.value)
-        if target_namespace is None:
-            return updated_node
-        if not self._is_helper_move_allowed(original_node.name.value, target_namespace):
-            return updated_node
-        if not self._signature_allowed(original_node):
-            return updated_node
-        helper_method = self._ensure_staticmethod(updated_node)
-        self._collected_helpers[target_namespace].append(helper_method)
-        return cst.RemoveFromParent()
-
-    @override
-    def leave_Module(
-        self,
-        original_node: cst.Module,
-        updated_node: cst.Module,
-    ) -> cst.Module:
-        _ = original_node
-        if not self._collected_helpers:
-            return updated_node
-        module_body = list(updated_node.body)
-        for namespace, helper_methods in self._collected_helpers.items():
-            namespace_index = None
-            if namespace in self._existing_namespaces:
-                namespace_index = next(
-                    (
-                        index
-                        for index, statement in enumerate(module_body)
-                        if isinstance(statement, cst.ClassDef)
-                        and statement.name.value == namespace
-                    ),
-                    None,
-                )
-            if namespace_index is None:
-                module_body.append(
-                    cst.ClassDef(
-                        name=cst.Name(namespace),
-                        body=cst.IndentedBlock(body=tuple(helper_methods)),
-                    ),
-                )
-                self._existing_namespaces.add(namespace)
-                continue
-            namespace_class = module_body[namespace_index]
-            if not isinstance(namespace_class, cst.ClassDef):
-                continue
-            existing_method_names = {
-                statement.name.value
-                for statement in namespace_class.body.body
-                if isinstance(statement, cst.FunctionDef)
-            }
-            methods_to_insert = [
-                method
-                for method in helper_methods
-                if method.name.value not in existing_method_names
-            ]
-            if not methods_to_insert:
-                continue
-            namespace_body = [
-                statement
-                for statement in namespace_class.body.body
-                if not FlextInfraChangeTrackingTransformer.is_pass_statement(statement)
-            ]
-            namespace_body.extend(methods_to_insert)
-            module_body[namespace_index] = namespace_class.with_changes(
-                body=namespace_class.body.with_changes(body=tuple(namespace_body)),
-            )
-        return updated_node.with_changes(body=tuple(module_body))
-
-    def _ensure_staticmethod(self, function_node: cst.FunctionDef) -> cst.FunctionDef:
-        if self._has_staticmethod(function_node):
-            return function_node
-        decorators = [cst.Decorator(decorator=cst.Name("staticmethod"))]
-        decorators.extend(function_node.decorators)
-        return function_node.with_changes(decorators=tuple(decorators))
-
-    def _has_staticmethod(self, function_node: cst.FunctionDef) -> bool:
-        for decorator in function_node.decorators:
-            decorated = decorator.decorator
-            if isinstance(decorated, cst.Name) and decorated.value == "staticmethod":
-                return True
-            if (
-                isinstance(decorated, cst.Attribute)
-                and decorated.attr.value == "staticmethod"
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+    ) -> tuple[str, Sequence[str]]:
+        """Apply helper consolidation. Returns (new_source, changes)."""
+        source = FlextInfraUtilitiesRope.read_source(resource)
+        collected: dict[str, list[str]] = defaultdict(list)
+        for name, ns in self._mappings.items():
+            if not FlextInfraUtilitiesRope.has_toplevel_definition(
+                source, name, kind="function"
             ):
-                return True
-        return False
+                continue
+            if not self._policy_ok(name, ns, "enable_helper_consolidation"):
+                continue
+            if not self._sig_allowed(source, name):
+                continue
+            collected[ns].append(name)
+        for namespace, helpers in collected.items():
+            for name in helpers:
+                func_src = FlextInfraUtilitiesRope.extract_definition(
+                    source, name, kind="function"
+                )
+                if func_src is None:
+                    continue
+                source = FlextInfraUtilitiesRope.remove_definition(
+                    source, name, kind="function"
+                )
+                func_src = FlextInfraUtilitiesRope.ensure_decorator(func_src)
+                indented = FlextInfraUtilitiesRope.indent_block(func_src)
+                source = FlextInfraUtilitiesRope.append_to_class_body(
+                    source, namespace, indented
+                )
+                self._record_change(f"Moved {name} into {namespace}")
+        source = self._rewrite_calls(source)
+        if source != FlextInfraUtilitiesRope.read_source(resource) and self.changes:
+            FlextInfraUtilitiesRope.write_source(
+                rope_project,
+                resource,
+                source,
+                description="helper consolidation",
+            )
+        return source, list(self.changes)
 
-    def _is_call_rewrite_allowed(self, helper_name: str, target_namespace: str) -> bool:
-        policy = self._policy_for_helper(helper_name)
+    def _rewrite_calls(self, source: str) -> str:
+        for name, ns in self._mappings.items():
+            if not self._policy_ok(name, ns, "allow_helper_call_rewrite"):
+                continue
+            pat = re.compile(rf"(?<!\.)(?<!class\s)(?<!def\s)\b{re.escape(name)}\s*\(")
+            new = pat.sub(f"{ns}.{name}(", source)
+            if new != source:
+                self._record_change(f"Rewritten call: {name}() -> {ns}.{name}()")
+                source = new
+        return source
+
+    def _policy_ok(self, name: str, target_ns: str, attr: str) -> bool:
+        policy = self._policy_for(name)
         if policy is None:
             return True
-        if not policy.allow_helper_call_rewrite:
+        if not getattr(policy, attr, True):
             return False
         return FlextInfraRefactorTransformerPolicyUtilities.target_allowed(
             policy=policy,
-            target_namespace=target_namespace,
+            target_namespace=target_ns,
         )
 
-    def _is_helper_move_allowed(self, helper_name: str, target_namespace: str) -> bool:
-        policy = self._policy_for_helper(helper_name)
-        if policy is None:
+    def _sig_allowed(self, source: str, name: str) -> bool:
+        policy = self._policy_for(name)
+        if policy is None or not policy.require_signature_validation:
             return True
-        if not policy.enable_helper_consolidation:
+        sig_pat = re.compile(rf"def\s+{re.escape(name)}\s*\(([^)]*)\)", re.DOTALL)
+        match = sig_pat.search(source)
+        if match is None:
+            return True
+        params_str = match.group(1)
+        param_names = u.Infra.parse_param_names(params_str)
+        if any(r not in param_names for r in policy.required_parameters):
             return False
-        return FlextInfraRefactorTransformerPolicyUtilities.target_allowed(
-            policy=policy,
-            target_namespace=target_namespace,
-        )
+        if any(f in param_names for f in policy.forbidden_parameters):
+            return False
+        if not policy.allow_vararg and "*args" in params_str:
+            return False
+        return not (not policy.allow_kwarg and "**" in params_str)
 
-    def _signature_allowed(self, function_node: cst.FunctionDef) -> bool:
-        policy = self._policy_for_helper(function_node.name.value)
-        if policy is None:
-            return True
-        if not policy.require_signature_validation:
-            return True
-        required = tuple(policy.required_parameters)
-        forbidden = tuple(policy.forbidden_parameters)
-        allow_vararg = policy.allow_vararg
-        allow_kwarg = policy.allow_kwarg
-        allow_positional_only = policy.allow_positional_only_params
-        allow_keyword_only = policy.allow_keyword_only_params
-        seen_parameters: t.Infra.StrSet = set()
-        parameters = function_node.params
-        if isinstance(parameters.star_arg, cst.Param | cst.ParamStar) and (
-            not allow_vararg
-        ):
-            return False
-        if parameters.star_kwarg is not None and (not allow_kwarg):
-            return False
-        if parameters.posonly_params and (not allow_positional_only):
-            return False
-        if parameters.kwonly_params and (not allow_keyword_only):
-            return False
-        seen_parameters.update(param.name.value for param in parameters.posonly_params)
-        seen_parameters.update(param.name.value for param in parameters.params)
-        seen_parameters.update(param.name.value for param in parameters.kwonly_params)
-        for required_parameter in required:
-            if required_parameter not in seen_parameters:
-                return False
-        for forbidden_parameter in forbidden:
-            if forbidden_parameter in seen_parameters:
-                return False
-        return True
-
-    def _policy_for_helper(
-        self,
-        helper_name: str,
-    ) -> m.Infra.ClassNestingPolicy | None:
+    def _policy_for(self, name: str) -> m.Infra.ClassNestingPolicy | None:
         return FlextInfraRefactorTransformerPolicyUtilities.policy_for_symbol(
             policy_context=self._policy_context,
-            symbol_families=self._helper_families,
-            symbol_name=helper_name,
+            symbol_families=self._families,
+            symbol_name=name,
         )
 
 

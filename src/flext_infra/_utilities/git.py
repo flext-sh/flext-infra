@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_core import r
-from flext_infra import FlextInfraUtilitiesSubprocess, c, t
+from flext_infra import FlextInfraUtilitiesSubprocess, c, r, t
 
 
 class FlextInfraUtilitiesGit:

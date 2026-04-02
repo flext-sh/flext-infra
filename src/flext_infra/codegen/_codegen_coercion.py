@@ -3,10 +3,10 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 
 from flext_core import FlextUtilities
-from flext_infra import FlextInfraUtilitiesCodegenTransforms, c, t
+from flext_infra import c, t
 
 
-class FlextInfraCodegenCoercion(FlextInfraUtilitiesCodegenTransforms):
+class FlextInfraCodegenCoercion:
     @staticmethod
     def as_int(value: t.Infra.InfraValue) -> int:
         if isinstance(value, bool):

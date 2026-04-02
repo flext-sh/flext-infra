@@ -1,7 +1,7 @@
 """Base rule class for flext_infra.refactor.
 
-Extracted to break circular import chain:
-rule.py -> class_nesting.py -> class_reconstructor.py -> rule.py
+Provides the foundational rule interface for the refactoring engine.
+Rules operate on source text and file paths, using rope for analysis.
 
 This module has no dependencies on any rules/ submodule.
 """
@@ -10,9 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, MutableSequence
 from pathlib import Path
-from typing import Protocol, override, runtime_checkable
-
-import libcst as cst
+from typing import Protocol, runtime_checkable
 
 from flext_infra import c, t
 
@@ -31,7 +29,11 @@ class FlextInfraChangeTracker(Protocol):
 
 
 class FlextInfraRefactorRule:
-    """Base class for flext_infra refactor rules."""
+    """Base class for flext_infra refactor rules.
+
+    Rules receive source text and return (transformed_source, changes).
+    The engine handles file I/O and rope project lifecycle.
+    """
 
     def __init__(self, config: Mapping[str, t.Infra.InfraValue]) -> None:
         """Initialize rule metadata from rule config."""
@@ -49,46 +51,43 @@ class FlextInfraRefactorRule:
 
     def apply(
         self,
-        tree: cst.Module,
+        source: str,
         _file_path: Path | None = None,
-    ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
-        """Apply the rule to a CST module and return transformed tree plus changes."""
-        return (tree, [])
+    ) -> t.Infra.Pair[str, t.StrSequence]:
+        """Apply the rule to source text and return (transformed_source, changes)."""
+        return (source, [])
 
-    def _apply_transformer(
+    def _apply_text_transformer(
         self,
-        transformer: cst.CSTTransformer,
-        tree: cst.Module,
-    ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
-        """Apply a single transformer and return (tree, changes)."""
-        new_tree = tree.visit(transformer)
-        changes: t.StrSequence = (
-            transformer.changes
-            if isinstance(transformer, FlextInfraChangeTracker)
-            else []
-        )
-        return (new_tree, changes)
+        transformer: FlextInfraChangeTracker,
+        source: str,
+    ) -> t.Infra.Pair[str, t.StrSequence]:
+        """Apply a text transformer with apply_to_source and return (source, changes)."""
+        apply_fn = getattr(transformer, "apply_to_source", None)
+        if apply_fn is not None:
+            new_source: str = apply_fn(source)
+            return (new_source, list(transformer.changes))
+        return (source, [])
 
 
 class FlextInfraGenericTransformerRule(FlextInfraRefactorRule):
-    """Base for rules that simply delegate to a single transformer class.
+    """Base for rules that delegate to a single transformer class.
 
-    Subclasses set ``TRANSFORMER_CLASS`` and optionally ``CONFIG_KEY``.
-    The ``apply()`` method instantiates the transformer (no args) and
-    delegates to ``_apply_transformer``.
+    Subclasses set ``TRANSFORMER_CLASS``. The ``apply()`` method
+    instantiates the transformer and delegates to ``_apply_text_transformer``.
     """
 
-    TRANSFORMER_CLASS: type[cst.CSTTransformer]
+    TRANSFORMER_CLASS: type[FlextInfraChangeTracker]
     """The transformer class to instantiate and apply."""
 
-    @override
     def apply(
         self,
-        tree: cst.Module,
+        source: str,
         _file_path: Path | None = None,
-    ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
+    ) -> t.Infra.Pair[str, t.StrSequence]:
         """Instantiate TRANSFORMER_CLASS and apply it."""
-        return self._apply_transformer(self.TRANSFORMER_CLASS(), tree)
+        transformer = self.TRANSFORMER_CLASS()
+        return self._apply_text_transformer(transformer, source)
 
 
 __all__ = [

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import ast
 import re
 import tomllib
 from collections.abc import Mapping, MutableMapping, MutableSequence
@@ -203,30 +202,36 @@ class FlextInfraProjectClassifier:
                 local_facade_classes.update(class_names)
         return (family_bases, local_facade_classes)
 
+    _CLASS_DEF_RE: re.Pattern[str] = re.compile(
+        r"^class\s+(\w+)\s*\(([^)]*)\)\s*:",
+        re.MULTILINE,
+    )
+
     def _parse_family_file(
         self,
         file_path: Path,
         suffix: str,
     ) -> t.Infra.Pair[t.Infra.StrSet, t.Infra.StrSet]:
-        tree = u.Infra.parse_module_ast(file_path)
-        if tree is None:
+        try:
+            source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+        except (OSError, UnicodeDecodeError):
             return (set(), set())
         base_names: t.Infra.StrSet = set()
         class_names: t.Infra.StrSet = set()
-        for node in ast.walk(tree):
-            if not isinstance(node, ast.ClassDef):
+        for match in self._CLASS_DEF_RE.finditer(source):
+            name = match.group(1)
+            if not name.endswith(suffix):
                 continue
-            if not node.name.endswith(suffix):
-                continue
-            class_names.add(node.name)
-            for base in node.bases:
-                base_name = self._extract_base_name(base)
+            class_names.add(name)
+            bases_str = match.group(2)
+            for base_part in bases_str.split(","):
+                base_part = base_part.strip()
+                if not base_part:
+                    continue
+                base_name = base_part.split("[")[0].rsplit(".", maxsplit=1)[-1].strip()
                 if base_name:
                     base_names.add(base_name)
         return (base_names, class_names)
-
-    def _extract_base_name(self, base: ast.expr) -> str:
-        return u.Infra.ast_extract_base_name(base)
 
     def _build_confirmed_family_chains(
         self,

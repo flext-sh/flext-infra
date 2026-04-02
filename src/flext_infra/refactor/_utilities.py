@@ -1,7 +1,7 @@
-"""Refactor/CST helper utilities for infrastructure code analysis.
+"""Refactor helper utilities for infrastructure code analysis.
 
-Centralizes CST (Concrete Syntax Tree) helpers previously defined as
-module-level functions in ``flext_infra.refactor.analysis``.
+Centralizes rope-based helpers previously defined as module-level
+functions in ``flext_infra.refactor.analysis``.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -10,17 +10,22 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from collections import Counter, defaultdict
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+import fnmatch
+import re
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-import libcst as cst
-from pydantic import BaseModel, JsonValue, ValidationError
+if TYPE_CHECKING:
+    from flext_infra import FlextInfraRefactorRuleLoader
+
+from pydantic import JsonValue, ValidationError
 
 from flext_core import FlextUtilities
 from flext_infra import (
+    FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesIo,
-    FlextInfraUtilitiesParsing,
+    FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesRefactorCli,
     FlextInfraUtilitiesRefactorLoader,
     FlextInfraUtilitiesRefactorMroScan,
@@ -28,11 +33,13 @@ from flext_infra import (
     FlextInfraUtilitiesRefactorNamespace,
     FlextInfraUtilitiesRefactorPydantic,
     FlextInfraUtilitiesRefactorPydanticAnalysis,
+    FlextInfraUtilitiesRope,
     FlextInfraUtilitiesYaml,
     c,
     m,
     t,
 )
+from flext_infra.refactor._utilities_census import FlextInfraUtilitiesRefactorCensus
 
 
 class FlextInfraUtilitiesRefactor(
@@ -41,16 +48,19 @@ class FlextInfraUtilitiesRefactor(
     FlextInfraUtilitiesRefactorMroTransform,
     FlextInfraUtilitiesRefactorPydantic,
     FlextInfraUtilitiesRefactorPydanticAnalysis,
+    FlextInfraUtilitiesIteration,
+    FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesRefactorLoader,
     FlextInfraUtilitiesRefactorCli,
+    FlextInfraUtilitiesRefactorCensus,
 ):
-    """CST/refactor helpers for code analysis.
+    """Rope-based refactor helpers for code analysis.
 
     Usage via namespace::
 
         from flext_infra import u
 
-        name = FlextInfraUtilitiesParsing.cst_module_name(cst_expr)
+        methods = u.Infra.extract_public_methods_from_dir(package_dir)
     """
 
     @staticmethod
@@ -121,6 +131,17 @@ class FlextInfraUtilitiesRefactor(
                 msg = "expected list value"
                 raise TypeError(msg)
         return [v for v in validated if isinstance(v, str)]
+
+    @staticmethod
+    def is_final_annotation(annotation: object) -> bool:
+        """Return whether one AST annotation represents ``Final``."""
+        if isinstance(annotation, ast.Name):
+            return annotation.id == "Final"
+        if isinstance(annotation, ast.Attribute):
+            return annotation.attr == "Final"
+        if isinstance(annotation, ast.Subscript):
+            return FlextInfraUtilitiesRefactor.is_final_annotation(annotation.value)
+        return False
 
     @staticmethod
     def mapping_list(
@@ -290,328 +311,278 @@ class FlextInfraUtilitiesRefactor(
             raise ValueError(msg)
         return loaded_dict
 
-    # ── Generic AST introspection ─────────────────────────────────────
+    @staticmethod
+    def default_class_policy_path() -> Path:
+        """Return the canonical class-nesting policy document path."""
+        return Path(__file__).resolve().parent.parent / "rules" / "class-policy-v2.yml"
 
     @staticmethod
-    def extract_public_methods_from_dir(
-        package_dir: Path,
-    ) -> Mapping[str, Sequence[t.Infra.Triple[str, str, str]]]:
-        """Extract public methods from all .py files in a package directory.
-
-        Returns:
-            ``{class_name: [(method_name, method_type, source_file), ...]}``.
-
-        """
-        result: MutableMapping[str, Sequence[t.Infra.Triple[str, str, str]]] = {}
-        for py_file in sorted(package_dir.glob(c.Infra.Extensions.PYTHON_GLOB)):
-            if py_file.name == c.Infra.Files.INIT_PY:
-                continue
-            result.update(
-                FlextInfraUtilitiesRefactor._extract_classes_ast(py_file),
+    def class_nesting_policy_by_family(
+        policy_path: Path | None = None,
+    ) -> Mapping[str, m.Infra.ClassNestingPolicy]:
+        """Load the class-nesting policy matrix keyed by module family."""
+        resolved_path = (
+            policy_path
+            if policy_path is not None
+            else FlextInfraUtilitiesRefactor.default_class_policy_path()
+        )
+        try:
+            loaded = FlextInfraUtilitiesRefactor.load_validated_policy_document(
+                resolved_path
             )
-        return result
-
-    @staticmethod
-    def extract_public_methods_from_file(
-        file_path: Path,
-    ) -> Mapping[str, Sequence[t.Infra.Triple[str, str, str]]]:
-        """Extract public methods from a single .py file.
-
-        Returns:
-            ``{class_name: [(method_name, method_type, source_file), ...]}``.
-
-        """
-        if not file_path.exists():
+        except ValueError:
             return {}
-        return FlextInfraUtilitiesRefactor._extract_classes_ast(file_path)
-
-    @staticmethod
-    def _decorator_method_type(func: ast.FunctionDef) -> str:
-        """Resolve method type from decorator list."""
-        for dec in func.decorator_list:
-            if isinstance(dec, ast.Name):
-                name = dec.id
-            elif isinstance(dec, ast.Attribute):
-                name = dec.attr
-            else:
-                continue
-            if name == "staticmethod":
-                return "static"
-            if name == "classmethod":
-                return "class"
-        return "instance"
-
-    @staticmethod
-    def _extract_classes_ast(
-        py_file: Path,
-    ) -> Mapping[str, Sequence[t.Infra.Triple[str, str, str]]]:
-        """Extract all public methods from classes using stdlib ast."""
-        tree = FlextInfraUtilitiesParsing.parse_module_ast(py_file)
-        if tree is None:
-            return {}
-        result: MutableMapping[
-            str,
-            MutableSequence[t.Infra.Triple[str, str, str]],
-        ] = {}
-        filename = py_file.name
-        for node in ast.iter_child_nodes(tree):
-            if not isinstance(node, ast.ClassDef):
-                continue
-            methods: MutableSequence[t.Infra.Triple[str, str, str]] = []
-            seen: set[str] = set()
-            for item in ast.iter_child_nodes(node):
-                if isinstance(item, ast.FunctionDef) and not item.name.startswith("_"):
-                    if item.name not in seen:
-                        seen.add(item.name)
-                        mtype = FlextInfraUtilitiesRefactor._decorator_method_type(item)
-                        methods.append((item.name, mtype, filename))
-                elif isinstance(item, ast.ClassDef) and not item.name.startswith("_"):
-                    for inner in ast.iter_child_nodes(item):
-                        if isinstance(
-                            inner, ast.FunctionDef
-                        ) and not inner.name.startswith("_"):
-                            qualified = f"{item.name}.{inner.name}"
-                            if qualified not in seen:
-                                seen.add(qualified)
-                                methods.append((qualified, "static", filename))
-            if methods:
-                result[node.name] = methods
-        return result
-
-    @staticmethod
-    def _extract_alias_from_assign(
-        item: ast.Assign,
-        alias_map: MutableMapping[str, t.Infra.StrPair],
-    ) -> None:
-        """Extract alias mapping from a staticmethod assignment node."""
-        if not isinstance(item.value, ast.Call):
-            return
-        call = item.value
-        if not (
-            isinstance(call.func, ast.Name)
-            and call.func.id == "staticmethod"
-            and call.args
+        by_family: dict[str, m.Infra.ClassNestingPolicy] = {}
+        for raw in FlextInfraUtilitiesRefactor.mapping_list(
+            loaded.get("policy_matrix"),
         ):
-            return
-        arg = call.args[0]
-        resolved: t.Infra.StrPair | None = None
-        if isinstance(arg, ast.Attribute):
-            if isinstance(arg.value, ast.Name):
-                resolved = (arg.value.id, arg.attr)
-            elif isinstance(arg.value, ast.Attribute) and isinstance(
-                arg.value.value,
-                ast.Name,
-            ):
-                resolved = (arg.value.value.id, f"{arg.value.attr}.{arg.attr}")
-        if resolved is None:
-            return
-        for target in item.targets:
-            if isinstance(target, ast.Name):
-                alias_map[target.id] = resolved
-
-    @staticmethod
-    def build_facade_alias_map(
-        facade_path: Path,
-        facade_class_name: str,
-    ) -> Mapping[str, t.Infra.StrPair]:
-        """Parse a facade class to build flat alias -> (class, method) map.
-
-        Inspects ``staticmethod(...)`` assignments in the facade class.
-        """
-        tree = FlextInfraUtilitiesParsing.parse_module_ast(facade_path)
-        if tree is None:
-            return {}
-
-        alias_map: MutableMapping[str, t.Infra.StrPair] = {}
-        for node in ast.iter_child_nodes(tree):
-            if not (isinstance(node, ast.ClassDef) and node.name == facade_class_name):
+            try:
+                policy = m.Infra.ClassNestingPolicy.model_validate(raw)
+            except ValidationError:
                 continue
-            for item in ast.iter_child_nodes(node):
-                if isinstance(item, ast.Assign):
-                    FlextInfraUtilitiesRefactor._extract_alias_from_assign(
-                        item,
-                        alias_map,
-                    )
-        return alias_map
+            by_family[policy.family_name] = policy
+        return by_family
 
     @staticmethod
-    def build_facade_inner_class_map(
-        facade_path: Path,
-        facade_class_name: str,
-    ) -> t.StrMapping:
-        """Map inner class names -> base class names in a facade.
-
-        E.g. ``{"Conversion": "FlextUtilitiesConversion", ...}``.
-        """
-        tree = FlextInfraUtilitiesParsing.parse_module_ast(facade_path)
-        if tree is None:
-            return {}
-        for node in ast.iter_child_nodes(tree):
-            if not (isinstance(node, ast.ClassDef) and node.name == facade_class_name):
-                continue
-            name_map: t.MutableStrMapping = {}
-            for item in ast.iter_child_nodes(node):
-                if not isinstance(item, ast.ClassDef):
-                    continue
-                for base in item.bases:
-                    if isinstance(base, ast.Name):
-                        name_map[item.name] = base.id
-                        break
-            return name_map
-        return {}
+    def _class_nesting_target_matches(target_namespace: str, pattern: str) -> bool:
+        """Check whether a target namespace matches a forbidden-target pattern."""
+        if pattern.endswith(".*"):
+            return target_namespace.lower().startswith(pattern[:-2].lower())
+        return target_namespace == pattern
 
     @staticmethod
-    def identify_project_by_roots(
-        file_path: Path,
-        project_roots: Sequence[Path],
-    ) -> str:
-        """Identify project name for a file path (most-specific root wins)."""
-        matching_roots = [
-            root for root in project_roots if file_path.is_relative_to(root)
-        ]
-        if not matching_roots:
-            return c.Infra.Defaults.UNKNOWN
-        best = max(matching_roots, key=lambda root: len(root.parts))
-        return best.name
-
-    @staticmethod
-    def build_mro_target(
+    def _class_nesting_violation(
+        *,
+        symbol: str,
         family: str,
-        core_project: str = c.Infra.Census.CORE_PROJECT,
-    ) -> m.Infra.MROFamilyTarget:
-        """Create a generic target config t.NormalizedValue from a family code."""
-        if family not in c.Infra.MRO_FAMILIES:
-            msg = f"Invalid MRO family {family}"
-            raise ValueError(msg)
-        sf = c.Infra.FAMILY_SUFFIXES[family]
-        return m.Infra.MROFamilyTarget(
+        target_namespace: str,
+        is_helper: bool,
+        policy_by_family: Mapping[str, m.Infra.ClassNestingPolicy],
+    ) -> t.StrMapping | None:
+        """Build a policy violation payload when class nesting is forbidden."""
+        policy = policy_by_family.get(family)
+        if policy is None:
+            return {
+                c.Infra.ReportKeys.RULE_ID: f"precheck:{symbol}",
+                c.Infra.ReportKeys.SOURCE_SYMBOL: symbol,
+                c.Infra.ReportKeys.VIOLATION_TYPE: "unknown_module_family",
+                c.Infra.ReportKeys.SUGGESTED_FIX: (
+                    f"declare explicit policy for {family}"
+                ),
+            }
+        operation = (
+            c.Infra.ReportKeys.HELPER_CONSOLIDATION
+            if is_helper
+            else c.Infra.ReportKeys.CLASS_NESTING
+        )
+        if operation not in policy.allowed_operations:
+            return {
+                c.Infra.ReportKeys.RULE_ID: f"precheck:{symbol}",
+                c.Infra.ReportKeys.SOURCE_SYMBOL: symbol,
+                c.Infra.ReportKeys.VIOLATION_TYPE: "operation_not_allowed",
+                c.Infra.ReportKeys.SUGGESTED_FIX: (
+                    f"allow {operation} in policy for {family}"
+                ),
+            }
+        if operation in policy.forbidden_operations:
+            return {
+                c.Infra.ReportKeys.RULE_ID: f"precheck:{symbol}",
+                c.Infra.ReportKeys.SOURCE_SYMBOL: symbol,
+                c.Infra.ReportKeys.VIOLATION_TYPE: "operation_forbidden",
+                c.Infra.ReportKeys.SUGGESTED_FIX: (
+                    f"remove {operation} from forbidden_operations for {family}"
+                ),
+            }
+        if any(
+            FlextInfraUtilitiesRefactor._class_nesting_target_matches(
+                target_namespace,
+                pattern,
+            )
+            for pattern in policy.forbidden_targets
+        ):
+            return {
+                c.Infra.ReportKeys.RULE_ID: f"precheck:{symbol}",
+                c.Infra.ReportKeys.SOURCE_SYMBOL: symbol,
+                c.Infra.ReportKeys.VIOLATION_TYPE: "forbidden_target",
+                c.Infra.ReportKeys.SUGGESTED_FIX: (
+                    f"choose allowed target for family {family}"
+                ),
+            }
+        return None
+
+    @staticmethod
+    def validate_class_nesting_entry(
+        entry: t.StrMapping,
+        *,
+        policy_by_family: Mapping[str, m.Infra.ClassNestingPolicy] | None = None,
+        policy_path: Path | None = None,
+    ) -> t.Infra.Pair[bool, t.StrMapping | None]:
+        """Validate one class/helper nesting entry against the family policy."""
+        symbol = entry.get(c.Infra.ReportKeys.LOOSE_NAME, "") or entry.get(
+            "helper_name",
+            "",
+        )
+        target_namespace = entry.get(c.Infra.ReportKeys.TARGET_NAMESPACE, "")
+        current_file = entry.get(c.Infra.ReportKeys.CURRENT_FILE, "")
+        if not symbol or not target_namespace or not current_file:
+            return (True, None)
+        family = FlextInfraUtilitiesRefactor.module_family_from_path(current_file)
+        if family == "other_private":
+            return (True, None)
+        policies = (
+            policy_by_family
+            if policy_by_family is not None
+            else FlextInfraUtilitiesRefactor.class_nesting_policy_by_family(policy_path)
+        )
+        violation = FlextInfraUtilitiesRefactor._class_nesting_violation(
+            symbol=symbol,
             family=family,
-            class_suffix=sf,
-            package_dir=c.Infra.MRO_FAMILY_PACKAGE_DIRS[family],
-            facade_module=c.Infra.MRO_FAMILY_FACADE_MODULES[family],
-            facade_class_prefix=f"Flext{sf}",
-            core_project=core_project,
+            target_namespace=target_namespace,
+            is_helper=bool(entry.get("helper_name", "")),
+            policy_by_family=policies,
         )
+        return (False, violation) if violation is not None else (True, None)
 
     @staticmethod
-    def aggregate_usage_metrics(
-        methods: Mapping[str, Sequence[m.Infra.CensusMethodInfo]],
-        records: Sequence[m.Infra.CensusUsageRecord],
-        files_scanned: int,
-        parse_errors: int,
-    ) -> m.Infra.UtilitiesCensusReport:
-        """Pivot raw AST method visit occurrences into a structured usage report."""
-        cnt: Counter[t.Infra.Triple[str, str, str]] = Counter()
-        pcnt: Counter[t.Infra.Quad[str, str, str, str]] = Counter()
+    def apply_nested_class_propagation(
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+        mappings: t.StrMapping,
+        changes: MutableSequence[str],
+    ) -> str:
+        """Apply nested class propagation and persist only when content changes."""
+        source = FlextInfraUtilitiesRope.read_source(resource)
+        updated = source
+        for old_name, new_name in mappings.items():
+            updated, _ = FlextInfraUtilitiesRope.replace_in_source(
+                rope_project,
+                resource,
+                rf"\b{re.escape(old_name)}\b",
+                new_name,
+                apply=False,
+            )
+        if updated != source:
+            changes.append(
+                f"Applied nested class propagation ({len(mappings)} renames)"
+            )
+            FlextInfraUtilitiesRope.write_source(
+                rope_project,
+                resource,
+                updated,
+                description="nested class propagation",
+            )
+        return updated
 
-        for rec in records:
-            cnt[rec.class_name, rec.method_name, rec.access_mode] += 1
-            pcnt[rec.project, rec.class_name, rec.method_name, rec.access_mode] += 1
+    # ── Engine file collection ─────────────────────────────────────────
 
-        cls_sums: MutableSequence[m.Infra.CensusClassSummary] = []
-        unused = 0
-        for cls, items in sorted(methods.items()):
-            m_list: MutableSequence[m.Infra.CensusMethodSummary] = []
-            for m_info in items:
-                af = cnt.get(
-                    (cls, m_info.name, c.Infra.Census.MODE_ALIAS_FLAT),
-                    0,
-                )
-                an = cnt.get(
-                    (cls, m_info.name, c.Infra.Census.MODE_ALIAS_NS),
-                    0,
-                )
-                dr = cnt.get((cls, m_info.name, c.Infra.Census.MODE_DIRECT), 0)
-                tot = af + an + dr
-                if tot == 0:
-                    unused += 1
-                m_list.append(
-                    m.Infra.CensusMethodSummary(
-                        name=m_info.name,
-                        method_type=m_info.method_type,
-                        alias_flat=af,
-                        alias_namespaced=an,
-                        direct=dr,
-                        total=tot,
-                    ),
-                )
-            cls_sums.append(
-                m.Infra.CensusClassSummary(
-                    class_name=cls,
-                    source_file=items[0].source_file if items else "",
-                    methods=m_list,
-                ),
+    @staticmethod
+    def filter_engine_files(
+        candidates: Sequence[Path],
+        *,
+        base_path: Path,
+        pattern: str,
+        ignore_patterns: set[str],
+        allowed_extensions: set[str],
+    ) -> Sequence[Path]:
+        """Filter candidate files by pattern, extensions, and ignore rules."""
+
+        def _accept(f: Path) -> bool:
+            rel = str(f.relative_to(base_path))
+            if not (fnmatch.fnmatch(rel, pattern) or fnmatch.fnmatch(f.name, pattern)):
+                return False
+            if allowed_extensions and f.suffix not in allowed_extensions:
+                return False
+            if f.name in ignore_patterns:
+                return False
+            rp = f.relative_to(base_path)
+            return not any(part in ignore_patterns for part in rp.parts) and not any(
+                fnmatch.fnmatch(str(rp), ip) for ip in ignore_patterns
             )
 
-        pj_sums: MutableMapping[
-            str,
-            MutableSequence[m.Infra.CensusProjectMethodUsage],
-        ] = defaultdict(list)
-        for (pj, cls, mx, mo), co in sorted(pcnt.items()):
-            pj_sums[pj].append(
-                m.Infra.CensusProjectMethodUsage(
-                    class_name=cls,
-                    method_name=mx,
-                    access_mode=mo,
-                    count=co,
-                ),
+        return [f for f in candidates if _accept(f)]
+
+    @staticmethod
+    def collect_engine_project_files(
+        rule_loader: FlextInfraRefactorRuleLoader,
+        config: t.Infra.InfraValue,
+        project: Path,
+        *,
+        pattern: str = c.Infra.Extensions.PYTHON_GLOB,
+    ) -> MutableSequence[Path] | None:
+        """Iterate and filter Python files under a project.
+
+        Returns None on error.
+        """
+        loader = rule_loader
+        scan_dirs = frozenset(loader.extract_project_scan_dirs(config))
+        ir = FlextInfraUtilitiesRefactor.iter_python_files(
+            workspace_root=project,
+            project_roots=[project],
+            include_tests=c.Infra.Directories.TESTS in scan_dirs,
+            include_examples=c.Infra.Directories.EXAMPLES in scan_dirs,
+            include_scripts=c.Infra.Directories.SCRIPTS in scan_dirs,
+            src_dirs=scan_dirs or None,
+        )
+        if ir.is_failure:
+            FlextInfraUtilitiesRefactorCli.refactor_error(
+                ir.error or f"File iteration failed for {project}",
             )
-
-        return m.Infra.UtilitiesCensusReport(
-            classes=cls_sums,
-            projects=[
-                m.Infra.CensusProjectSummary(
-                    project_name=p,
-                    usages=us,
-                    total=sum(u.count for u in us),
-                )
-                for p, us in sorted(pj_sums.items())
-            ],
-            total_classes=len(methods),
-            total_methods=sum(len(v) for v in methods.values()),
-            total_usages=len(records),
-            total_unused=unused,
-            files_scanned=files_scanned,
-            parse_errors=parse_errors,
-        )
-
-    @staticmethod
-    def export_pydantic_json(model_payload: BaseModel, export_path: Path) -> None:
-        """Serialize any Pydantic model payload to a JSON file."""
-        export_path.write_text(
-            model_payload.model_dump_json(indent=2),
-            encoding=c.Infra.Encoding.DEFAULT,
-        )
-
-    @staticmethod
-    def scan_cst_with_visitors(
-        file_path: Path,
-        *visitors: cst.CSTVisitor,
-    ) -> cst.Module | None:
-        """Parse CST and sequentially apply an arbitrary number of visitors."""
-        tree = FlextInfraUtilitiesParsing.parse_module_cst(file_path)
-        if not tree:
             return None
-        for visitor in visitors:
-            tree.visit(visitor)
-        return tree
+        ign, ext = loader.extract_engine_file_filters(config)
+        return list(
+            FlextInfraUtilitiesRefactor.filter_engine_files(
+                ir.value,
+                base_path=project,
+                pattern=pattern,
+                ignore_patterns={str(i) for i in ign},
+                allowed_extensions={str(i) for i in ext},
+            )
+        )
 
     @staticmethod
-    def _is_final_name(node: ast.expr) -> bool:
-        """Check if a bare Name or Attribute resolves to ``Final``."""
-        final = c.Infra.FINAL_ANNOTATION_NAME
-        if isinstance(node, ast.Name):
-            return node.id == final
-        if isinstance(node, ast.Attribute):
-            return node.attr == final
-        return False
-
-    @staticmethod
-    def is_final_annotation(*, annotation: ast.expr) -> bool:
-        """Check if an annotation is ``Final`` or ``Final[T]``."""
-        if isinstance(annotation, ast.Subscript):
-            return FlextInfraUtilitiesRefactor._is_final_name(annotation.value)
-        return FlextInfraUtilitiesRefactor._is_final_name(annotation)
+    def collect_engine_workspace_files(
+        rule_loader: FlextInfraRefactorRuleLoader,
+        config: t.Infra.InfraValue,
+        workspace_root: Path,
+        *,
+        pattern: str = c.Infra.Extensions.PYTHON_GLOB,
+    ) -> Sequence[Path]:
+        """Collect all candidate files under workspace projects."""
+        loader = rule_loader
+        root = workspace_root.resolve()
+        scan_dirs = frozenset(loader.extract_project_scan_dirs(config))
+        projects = FlextInfraUtilitiesRefactor.discover_project_roots(
+            workspace_root=root,
+            scan_dirs=scan_dirs or None,
+        )
+        ign, ext = loader.extract_engine_file_filters(config)
+        ignore_patterns = {str(i) for i in ign}
+        allowed_extensions = {str(i) for i in ext}
+        all_files: MutableSequence[Path] = []
+        for proj in projects:
+            ir = FlextInfraUtilitiesRefactor.iter_python_files(
+                workspace_root=root,
+                project_roots=[proj],
+                include_tests=c.Infra.Directories.TESTS in scan_dirs,
+                include_examples=c.Infra.Directories.EXAMPLES in scan_dirs,
+                include_scripts=c.Infra.Directories.SCRIPTS in scan_dirs,
+                src_dirs=scan_dirs or None,
+            )
+            if ir.is_failure:
+                FlextInfraUtilitiesRefactorCli.refactor_error(
+                    ir.error or f"File iteration failed for {proj}",
+                )
+                continue
+            all_files.extend(
+                FlextInfraUtilitiesRefactor.filter_engine_files(
+                    ir.value,
+                    base_path=proj,
+                    pattern=pattern,
+                    ignore_patterns=ignore_patterns,
+                    allowed_extensions=allowed_extensions,
+                )
+            )
+        return all_files
 
 
 __all__ = ["FlextInfraUtilitiesRefactor"]

@@ -24,14 +24,14 @@ class FlextInfraCyclicImportDetector:
             if (sd / c.Infra.Files.INIT_PY).is_file():
                 package_roots.add(sd.name)
             for entry in sd.iterdir():
-                if entry.name.startswith(".") or entry.name == "__pycache__":
+                if entry.name.startswith(".") or entry.name == c.Infra.Dunders.PYCACHE:
                     continue
                 if entry.is_dir() and (entry / c.Infra.Files.INIT_PY).is_file():
                     package_roots.add(entry.name)
                 elif (
                     entry.is_file()
                     and entry.suffix == c.Infra.Extensions.PYTHON
-                    and entry.stem != "__init__"
+                    and entry.stem != c.Infra.Dunders.INIT
                 ):
                     package_roots.add(entry.stem)
         return package_roots

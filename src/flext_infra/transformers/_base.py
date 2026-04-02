@@ -1,20 +1,22 @@
-"""Base mixin for CST transformers with change-tracking boilerplate."""
+"""Base class for rope-based transformers with change-tracking."""
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence
-
-import libcst as cst
+from abc import abstractmethod
+from collections.abc import MutableSequence, Sequence
 
 from flext_infra import t
 
 
-class FlextInfraChangeTrackingTransformer(cst.CSTTransformer):
-    """Mixin providing ``changes`` list and ``_record_change`` with optional callback."""
+class FlextInfraChangeTrackingTransformer:
+    """Mixin providing change-tracking with optional callback.
+
+    Provides ``changes`` list and ``_record_change`` method.
+    Subclasses that need a rope ``transform()`` contract should
+    inherit :class:`FlextInfraRopeTransformer` instead.
+    """
 
     def __init__(self, *, on_change: t.Infra.ChangeCallback = None) -> None:
-        """Initialize change-tracking state."""
-        super().__init__()
         self._on_change = on_change
         self.changes: MutableSequence[str] = []
 
@@ -23,14 +25,18 @@ class FlextInfraChangeTrackingTransformer(cst.CSTTransformer):
         if self._on_change is not None:
             self._on_change(message)
 
-    @staticmethod
-    def is_pass_statement(
-        statement: cst.BaseStatement | cst.BaseSmallStatement,
-    ) -> bool:
-        """Check whether a statement is a lone ``pass``."""
-        if not isinstance(statement, cst.SimpleStatementLine):
-            return False
-        return len(statement.body) == 1 and isinstance(statement.body[0], cst.Pass)
+
+class FlextInfraRopeTransformer(FlextInfraChangeTrackingTransformer):
+    """Base for all rope transformers — tracks changes and invokes callback."""
+
+    @abstractmethod
+    def transform(
+        self,
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+    ) -> tuple[str, Sequence[str]]:
+        """Apply transformation, return (new_source, list_of_change_descriptions)."""
+        ...
 
 
-__all__ = ["FlextInfraChangeTrackingTransformer"]
+__all__ = ["FlextInfraChangeTrackingTransformer", "FlextInfraRopeTransformer"]

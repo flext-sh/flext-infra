@@ -9,11 +9,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import hashlib
 from collections.abc import MutableSequence
 from pathlib import Path
 
-from flext_infra import FlextInfraBaseMkGenerator, c, m, r
+from flext_infra import FlextInfraBaseMkGenerator, c, m, r, u
 
 
 class FlextInfraBaseMkValidator:
@@ -26,15 +25,8 @@ class FlextInfraBaseMkValidator:
         """Initialize with optional generator for freshness comparison."""
         self._generator = generator or FlextInfraBaseMkGenerator()
 
-    @staticmethod
-    def _sha256(content: str) -> str:
-        """Compute SHA-256 hash of string content."""
-        return hashlib.sha256(content.encode(c.Infra.Encoding.DEFAULT)).hexdigest()
-
-    @staticmethod
-    def _sha256_file(path: Path) -> str:
-        """Compute SHA-256 hash of file on disk."""
-        return hashlib.sha256(path.read_bytes()).hexdigest()
+    _sha256 = staticmethod(u.Infra.sha256_content)
+    _sha256_file = staticmethod(u.Infra.sha256_file)
 
     def validate(self, workspace_root: Path) -> r[m.Infra.ValidationReport]:
         """Validate root base.mk exists and matches generated template output.

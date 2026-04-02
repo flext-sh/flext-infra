@@ -1,54 +1,100 @@
-"""MRO redeclaration remover transformer for nested classes."""
+"""MRO redeclaration remover transformer — rope-based implementation."""
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence
-from typing import override
+import re
+from collections.abc import Sequence
 
-import libcst as cst
+from flext_infra import FlextInfraUtilitiesRope, t
+from flext_infra.transformers._base import FlextInfraRopeTransformer
 
-from flext_infra import FlextInfraChangeTrackingTransformer, t
 
+class FlextInfraRefactorMRORemover(FlextInfraRopeTransformer):
+    """Remove nested class bases that redundantly reference the parent class.
 
-class FlextInfraRefactorMRORemover(FlextInfraChangeTrackingTransformer):
-    """Remove nested class bases that redundantly reference the parent class."""
+    For each top-level class, scans nested classes whose base list
+    references the parent and strips that base via rope regex replacement.
+    """
 
-    def __init__(self, on_change: t.Infra.ChangeCallback = None) -> None:
-        """Initialize optional callback for emitted change messages."""
-        super().__init__(on_change=on_change)
-
-    @override
-    def leave_ClassDef(
+    def transform(
         self,
-        original_node: cst.ClassDef,
-        updated_node: cst.ClassDef,
-    ) -> cst.ClassDef:
-        del original_node
-        if not isinstance(updated_node.body, cst.IndentedBlock):
-            return updated_node
-        new_body: MutableSequence[cst.BaseStatement] = []
-        for stmt in updated_node.body.body:
-            if isinstance(stmt, cst.ClassDef) and stmt.bases:
-                for base in stmt.bases:
-                    if not isinstance(base.value, cst.Attribute):
-                        continue
-                    root_name = self._attribute_root_name(base.value)
-                    if root_name != updated_node.name.value:
-                        continue
-                    self._record_change(
-                        f"Fixed MRO redeclaration: {stmt.name.value}",
-                    )
-                    stmt = stmt.with_changes(bases=(), lpar=(), rpar=())
-                    break
-            new_body.append(stmt)
-        return updated_node.with_changes(
-            body=updated_node.body.with_changes(body=new_body),
-        )
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+    ) -> tuple[str, Sequence[str]]:
+        """Apply MRO redeclaration removal. Returns (new_source, changes)."""
+        source = FlextInfraUtilitiesRope.read_source(resource)
+        class_infos = FlextInfraUtilitiesRope.get_class_info(rope_project, resource)
+        if not class_infos:
+            return source, []
 
-    def _attribute_root_name(self, expr: cst.BaseExpression) -> str:
-        current = expr
-        while isinstance(current, cst.Attribute):
-            current = current.value
-        if isinstance(current, cst.Name):
-            return current.value
-        return ""
+        for parent_info in class_infos:
+            parent_name = parent_info.name
+            nested_names = FlextInfraUtilitiesRope.get_class_nested_classes(
+                rope_project,
+                resource,
+                parent_name,
+            )
+            for nested_name in nested_names:
+                source = self._strip_parent_base(
+                    rope_project,
+                    resource,
+                    source,
+                    parent_name=parent_name,
+                    nested_class=nested_name,
+                )
+
+        if source != FlextInfraUtilitiesRope.read_source(resource) and self.changes:
+            FlextInfraUtilitiesRope.write_source(
+                rope_project,
+                resource,
+                source,
+                description="mro remover",
+            )
+        return source, list(self.changes)
+
+    def _strip_parent_base(
+        self,
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+        source: str,
+        *,
+        parent_name: str,
+        nested_class: str,
+    ) -> str:
+        """Remove base referencing parent_name from nested_class definition."""
+        nested_bases = FlextInfraUtilitiesRope.get_class_bases(
+            rope_project,
+            resource,
+            nested_class,
+        )
+        has_parent_base = any(
+            base == parent_name or base.startswith(f"{parent_name}.")
+            for base in nested_bases
+        )
+        if not has_parent_base:
+            return source
+
+        # Remove the base class referencing parent, or strip all bases if only one
+        remaining = [
+            b
+            for b in nested_bases
+            if b != parent_name and not b.startswith(f"{parent_name}.")
+        ]
+        pattern = re.compile(
+            rf"^(\s*class\s+{re.escape(nested_class)})\s*\([^)]*\)\s*:",
+            re.MULTILINE,
+        )
+        if remaining:
+            bases_str = ", ".join(remaining)
+            replacement = rf"\1({bases_str}):"
+        else:
+            replacement = r"\1:"
+
+        new_source, count = pattern.subn(replacement, source, count=1)
+        if count > 0 and new_source != source:
+            self._record_change(f"Fixed MRO redeclaration: {nested_class}")
+            return new_source
+        return source
+
+
+__all__ = ["FlextInfraRefactorMRORemover"]

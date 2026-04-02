@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ast
 import sys
 from collections.abc import MutableSequence
 from pathlib import Path
@@ -45,16 +44,14 @@ class FlextInfraPostCheckGate:
         return check_name in checks
 
     def _validate_imports(self, file_path: Path) -> t.StrSequence:
-        tree = u.Infra.parse_module_ast(file_path)
-        if tree is None:
+        try:
+            source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+        except (OSError, UnicodeDecodeError):
             return [f"parse_error:{file_path}:parse_failed"]
-        unresolved: t.StrSequence = [
-            f"line_{node.lineno}:invalid_import_from"
-            for node in ast.walk(tree)
-            if isinstance(node, ast.ImportFrom)
-            and node.module is None
-            and (node.level == 0)
-        ]
+        unresolved: MutableSequence[str] = []
+        for lineno, line in enumerate(source.splitlines(), start=1):
+            if c.Infra.SourceCode.BARE_IMPORT_FROM_RE.match(line):
+                unresolved.append(f"line_{lineno}:invalid_import_from")
         return unresolved
 
     def _validate_mro(
@@ -63,19 +60,26 @@ class FlextInfraPostCheckGate:
         class_name: str,
         expected_bases: t.StrSequence,
     ) -> t.StrSequence:
-        tree = u.Infra.parse_module_ast(file_path)
-        if tree is None:
+        try:
+            source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+        except (OSError, UnicodeDecodeError):
             return [f"mro_parse_error:{file_path}:parse_failed"]
-        for node in ast.walk(tree):
-            if isinstance(node, ast.ClassDef) and node.name == class_name:
-                actual = [self._base_name(base) for base in node.bases]
-                actual_clean = [name for name in actual if name]
-                expected_prefix = list(expected_bases)[: len(actual_clean)]
-                if actual_clean != expected_prefix:
-                    return [
-                        f"mro_mismatch:{class_name}:expected={expected_prefix}:actual={actual_clean}",
-                    ]
-                return []
+        for match in c.Infra.SourceCode.CLASS_WITH_BASES_RE.finditer(source):
+            if match.group(1) != class_name:
+                continue
+            bases_str = match.group(2)
+            actual = [
+                b.strip().split("[")[0].rsplit(".", maxsplit=1)[-1]
+                for b in bases_str.split(",")
+                if b.strip()
+            ]
+            actual_clean = [name for name in actual if name]
+            expected_prefix = list(expected_bases)[: len(actual_clean)]
+            if actual_clean != expected_prefix:
+                return [
+                    f"mro_mismatch:{class_name}:expected={expected_prefix}:actual={actual_clean}",
+                ]
+            return []
         return [f"class_not_found:{class_name}"]
 
     def _validate_types(self, file_path: Path) -> t.StrSequence:
@@ -85,9 +89,6 @@ class FlextInfraPostCheckGate:
             on_failure=lambda e: [f"lsp_diagnostics_clean_failed:{e or ''}"],
             on_success=lambda _: [],
         )
-
-    def _base_name(self, base: ast.expr) -> str:
-        return u.Infra.ast_extract_base_name(base)
 
 
 __all__ = ["FlextInfraPostCheckGate"]

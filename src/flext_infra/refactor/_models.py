@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import ast
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-import libcst as cst
 from pydantic import ConfigDict, Field
 
 from flext_core import m
@@ -17,11 +15,15 @@ from flext_infra import (
     FlextInfraRefactorAstGrepModels,
     t,
 )
+from flext_infra.refactor._models_census import FlextInfraRefactorModelsCensus
+from flext_infra.refactor._models_violations import FlextInfraRefactorModelsViolations
 
 
 class FlextInfraRefactorModels(
     FlextInfraRefactorAstGrepModels,
     FlextInfraNamespaceEnforcerModels,
+    FlextInfraRefactorModelsCensus,
+    FlextInfraRefactorModelsViolations,
 ):
     """Models for the refactor engine and related tools.
 
@@ -71,15 +73,11 @@ class FlextInfraRefactorModels(
     class FileImportData(m.ArbitraryTypesModel):
         imported_modules: Annotated[
             t.Infra.StrSet,
-            Field(
-                description="Imported module roots",
-            ),
+            Field(description="Imported module roots"),
         ] = Field(default_factory=set)
         imported_symbols: Annotated[
             t.Infra.StrSet,
-            Field(
-                description="Imported symbol names",
-            ),
+            Field(description="Imported symbol names"),
         ] = Field(default_factory=set)
 
     class MethodInfo(m.ArbitraryTypesModel):
@@ -88,17 +86,15 @@ class FlextInfraRefactorModels(
         name: Annotated[t.NonEmptyStr, Field(description="Method name")]
         category: Annotated[str, Field(description="Method category classification")]
         node: Annotated[
-            cst.FunctionDef,
+            object,
             Field(
-                description="LibCST FunctionDef node",
+                description="Node representation from Rope or PyObject",
                 exclude=True,
             ),
         ]
         decorators: Annotated[
             t.StrSequence,
-            Field(
-                description="Decorator names applied to this method",
-            ),
+            Field(description="Decorator names applied to this method"),
         ] = Field(default_factory=list)
 
     class Checkpoint(m.ArbitraryTypesModel):
@@ -118,15 +114,11 @@ class FlextInfraRefactorModels(
         ] = ""
         processed_targets: Annotated[
             t.StrSequence,
-            Field(
-                description="Already-processed file targets",
-            ),
+            Field(description="Already-processed file targets"),
         ] = Field(default_factory=list)
         updated_at: Annotated[
             str,
-            Field(
-                description="ISO 8601 timestamp of last update",
-            ),
+            Field(description="ISO 8601 timestamp of last update"),
         ] = Field(default_factory=lambda: datetime.now(UTC).isoformat())
 
     class ClassOccurrence(m.ArbitraryTypesModel):
@@ -136,8 +128,7 @@ class FlextInfraRefactorModels(
 
         name: Annotated[t.NonEmptyStr, Field(description="Class name")]
         line: Annotated[
-            t.NonNegativeInt,
-            Field(description="Line number (0 = unknown)"),
+            t.NonNegativeInt, Field(description="Line number (0 = unknown)")
         ]
         is_top_level: Annotated[
             bool,
@@ -169,9 +160,7 @@ class FlextInfraRefactorModels(
         family: Annotated[t.NonEmptyStr, Field(description="Facade family letter")]
         expected_bases: Annotated[
             t.Infra.VariadicTuple[str],
-            Field(
-                description="Expected base class names in order",
-            ),
+            Field(description="Expected base class names in order"),
         ]
         resolved_mro: Annotated[
             t.Infra.VariadicTuple[str],
@@ -179,9 +168,7 @@ class FlextInfraRefactorModels(
         ]
         accessible_namespaces: Annotated[
             t.Infra.VariadicTuple[str],
-            Field(
-                description="Namespaces accessible through the MRO",
-            ),
+            Field(description="Namespaces accessible through the MRO"),
         ]
 
     class ProjectClassification(m.ArbitraryTypesModel):
@@ -192,365 +179,12 @@ class FlextInfraRefactorModels(
         project_kind: Annotated[
             t.NonEmptyStr,
             Field(
-                description="Project kind (core, domain, platform, integration, app)",
+                description="Project kind (core, domain, platform, integration, app)"
             ),
         ]
         family_chains: Annotated[
             Mapping[str, t.StrSequence],
-            Field(
-                description="Family letter to MRO chain mapping",
-            ),
-        ]
-
-    class ClassNestingMapping(m.ArbitraryTypesModel):
-        """Unified mapping contract for class-nesting rewrite planning."""
-
-        model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore", frozen=True)
-
-        loose_name: Annotated[
-            str,
-            Field(default="", description="Original loose class name"),
-        ] = ""
-        current_file: Annotated[
-            str,
-            Field(default="", description="File containing class"),
-        ] = ""
-        target_namespace: Annotated[
-            t.NonEmptyStr,
-            Field(description="Target namespace class name"),
-        ]
-        target_name: Annotated[
-            str,
-            Field(default="", description="Target class name"),
-        ] = ""
-        confidence: Annotated[t.NonEmptyStr, Field(description="Confidence level")]
-        reason: Annotated[
-            str,
-            Field(default="", description="Optional mapping rationale"),
-        ] = ""
-        rewrite_scope: Annotated[
-            str | None,
-            Field(
-                default=None,
-                description="Rewrite scope (file/project/workspace)",
-            ),
-        ] = None
-
-    class ClassNestingViolation(m.ArbitraryTypesModel):
-        """Normalized class-nesting violation with rewrite metadata."""
-
-        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
-
-        file: Annotated[t.NonEmptyStr, Field(description="Source module path")]
-        line: Annotated[t.PositiveInt, Field(description="Line number")]
-        class_name: Annotated[t.NonEmptyStr, Field(description="Class name")]
-        target_namespace: Annotated[
-            str,
-            Field(
-                default="",
-                description="Expected namespace class",
-            ),
-        ] = ""
-        confidence: Annotated[
-            str,
-            Field(default="low", description="Confidence level"),
-        ] = "low"
-        rewrite_scope: Annotated[
-            str,
-            Field(
-                default="file",
-                description="Rewrite scope",
-            ),
-        ] = "file"
-
-    class ClassNestingPolicy(m.FrozenStrictModel):
-        """Validated policy contract used by class-nesting transformers."""
-
-        model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore", frozen=True)
-
-        family_name: Annotated[
-            t.NonEmptyStr,
-            Field(description="Module family name"),
-        ]
-        allowed_operations: Annotated[
-            t.StrSequence,
-            Field(
-                description="Enabled operation identifiers for this family",
-            ),
-        ] = Field(default_factory=list)
-        forbidden_operations: Annotated[
-            t.StrSequence,
-            Field(
-                description="Disabled operation identifiers for this family",
-            ),
-        ] = Field(default_factory=list)
-        forbidden_targets: Annotated[
-            t.StrSequence,
-            Field(
-                description="Target namespaces forbidden for this family",
-            ),
-        ] = Field(default_factory=list)
-        enable_class_nesting: Annotated[
-            bool,
-            Field(
-                default=True,
-                description="Allow moving top-level classes under a namespace",
-            ),
-        ]
-        allow_namespace_creation: Annotated[
-            bool,
-            Field(
-                default=True,
-                description="Allow creating a target namespace when absent",
-            ),
-        ]
-        allow_existing_namespace_merge: Annotated[
-            bool,
-            Field(
-                default=True,
-                description="Allow merging nested classes into existing namespace",
-            ),
-        ]
-        enable_helper_consolidation: Annotated[
-            bool,
-            Field(
-                default=True,
-                description="Allow consolidating helper functions into namespaces",
-            ),
-        ]
-        allow_helper_call_rewrite: Annotated[
-            bool,
-            Field(
-                default=True,
-                description="Allow rewriting helper call sites to namespaced calls",
-            ),
-        ]
-        require_signature_validation: Annotated[
-            bool,
-            Field(
-                default=False,
-                description="Require signature checks before helper migration",
-            ),
-        ]
-        required_parameters: Annotated[
-            t.StrSequence,
-            Field(
-                description="Function parameters that must exist in helper signatures",
-            ),
-        ] = Field(default_factory=list)
-        forbidden_parameters: Annotated[
-            t.StrSequence,
-            Field(
-                description="Function parameters that must not exist in helper signatures",
-            ),
-        ] = Field(default_factory=list)
-        allow_vararg: Annotated[
-            bool,
-            Field(
-                default=True,
-                description="Allow variadic positional parameter usage",
-            ),
-        ]
-        allow_kwarg: Annotated[
-            bool,
-            Field(
-                default=True,
-                description="Allow variadic keyword parameter usage",
-            ),
-        ]
-        allow_positional_only_params: Annotated[
-            bool,
-            Field(
-                default=True,
-                description="Allow positional-only parameters",
-            ),
-        ]
-        allow_keyword_only_params: Annotated[
-            bool,
-            Field(
-                default=True,
-                description="Allow keyword-only parameters",
-            ),
-        ]
-        propagate_imports: Annotated[
-            bool,
-            Field(
-                default=True,
-                description="Allow propagating import rewrite rules",
-            ),
-        ]
-        propagate_name_references: Annotated[
-            bool,
-            Field(
-                default=True,
-                description="Allow propagating direct name reference rewrites",
-            ),
-        ]
-        propagate_attribute_references: Annotated[
-            bool,
-            Field(
-                default=True,
-                description="Allow propagating attribute reference rewrites",
-            ),
-        ]
-        blocked_reference_prefixes: Annotated[
-            t.StrSequence,
-            Field(
-                description="Name prefixes blocked from rewrite propagation",
-            ),
-        ] = Field(default_factory=list)
-        allowed_targets: Annotated[
-            t.StrSequence,
-            Field(
-                description="Explicitly allowed target namespaces",
-            ),
-        ] = Field(default_factory=list)
-
-    class ClassNestingReport(m.ArbitraryTypesModel):
-        """Aggregated class-nesting analysis report."""
-
-        violations_count: Annotated[
-            t.NonNegativeInt,
-            Field(description="Total violations"),
-        ]
-        confidence_counts: Annotated[
-            t.IntMapping,
-            Field(
-                description="Confidence histogram",
-            ),
-        ] = Field(default_factory=dict)
-        violations: Annotated[
-            Sequence[FlextInfraRefactorModels.ClassNestingViolation],
-            Field(
-                description="Violation details",
-            ),
-        ] = Field(default_factory=lambda: ())
-        per_file_counts: Annotated[
-            t.IntMapping,
-            Field(
-                description="Violation counts per file",
-            ),
-        ] = Field(default_factory=dict)
-
-    class HelperClassification(m.ArbitraryTypesModel):
-        """Classification result for a helper function."""
-
-        file: Annotated[t.NonEmptyStr, Field(description="Source file")]
-        function: Annotated[t.NonEmptyStr, Field(description="Function name")]
-        category: Annotated[t.NonEmptyStr, Field(description="Assigned category")]
-        target_namespace: Annotated[
-            t.NonEmptyStr,
-            Field(description="Target namespace path"),
-        ]
-        dependencies: Annotated[
-            t.StrSequence,
-            Field(
-                description="Imported dependencies used by function",
-            ),
-        ] = Field(default_factory=list)
-        manual_review: Annotated[
-            bool,
-            Field(
-                default=False,
-                description="Whether manual review is required",
-            ),
-        ]
-        review_reason: Annotated[
-            str,
-            Field(
-                default="",
-                description="Manual review rationale",
-            ),
-        ]
-
-    class HelperClassificationReport(m.ArbitraryTypesModel):
-        """Aggregated helper-function classification payload."""
-
-        totals: Annotated[
-            t.IntMapping,
-            Field(
-                description="Category totals",
-            ),
-        ] = Field(default_factory=dict)
-        suggestions: Annotated[
-            Sequence[FlextInfraRefactorModels.HelperClassification],
-            Field(
-                description="Classification suggestions",
-            ),
-        ] = Field(default_factory=lambda: ())
-        manual_review: Annotated[
-            Sequence[FlextInfraRefactorModels.HelperClassification],
-            Field(
-                description="Manual-review candidates",
-            ),
-        ] = Field(default_factory=lambda: ())
-
-    class HelperFileAnalysis(m.ArbitraryTypesModel):
-        suggestions: Annotated[
-            Sequence[FlextInfraRefactorModels.HelperClassification],
-            Field(
-                description="Helper classifications from one file",
-            ),
-        ] = Field(default_factory=lambda: ())
-        totals: Annotated[
-            t.IntMapping,
-            Field(
-                description="Category totals for file helpers",
-            ),
-        ] = Field(default_factory=dict)
-        manual_review: Annotated[
-            Sequence[FlextInfraRefactorModels.HelperClassification],
-            Field(
-                description="Helpers requiring manual review",
-            ),
-        ] = Field(default_factory=lambda: ())
-
-    class ViolationTopFileSection(m.ArbitraryTypesModel):
-        """One ranked hotspot entry in violation analysis output."""
-
-        file: Annotated[t.NonEmptyStr, Field(description="File path")]
-        total: Annotated[
-            t.NonNegativeInt,
-            Field(description="Total violations in file"),
-        ]
-        counts: Annotated[
-            t.IntMapping,
-            Field(
-                description="Per-pattern counts",
-            ),
-        ] = Field(default_factory=dict)
-
-    class ViolationAnalysisReport(m.ArbitraryTypesModel):
-        """Full violation analysis report for refactor diagnostics."""
-
-        totals: Annotated[
-            t.IntMapping,
-            Field(
-                description="Aggregate counts by pattern",
-            ),
-        ] = Field(default_factory=dict)
-        files: Annotated[
-            Mapping[str, t.IntMapping],
-            Field(
-                description="Per-file per-pattern counts",
-            ),
-        ] = Field(default_factory=dict)
-        top_files: Annotated[
-            Sequence[FlextInfraRefactorModels.ViolationTopFileSection],
-            Field(
-                description="Top hotspot files",
-            ),
-        ] = Field(default_factory=lambda: ())
-        files_scanned: Annotated[t.NonNegativeInt, Field(description="Files scanned")]
-        helper_classification: Annotated[
-            FlextInfraRefactorModels.HelperClassificationReport,
-            Field(description="Helper classification summary"),
-        ]
-        class_nesting: Annotated[
-            FlextInfraRefactorModels.ClassNestingReport,
-            Field(
-                description="Class nesting analysis summary",
-            ),
+            Field(description="Family letter to MRO chain mapping"),
         ]
 
     # -- MRO Target Specification -----------------------------------------------
@@ -558,10 +192,7 @@ class FlextInfraRefactorModels(
     class MROTargetSpec(m.FrozenStrictModel):
         """Specification for an MRO target family."""
 
-        family_alias: Annotated[
-            t.NonEmptyStr,
-            Field(description="Family alias letter"),
-        ]
+        family_alias: Annotated[t.NonEmptyStr, Field(description="Family alias letter")]
         file_names: Annotated[frozenset[str], Field(description="File name patterns")]
         package_directory: Annotated[
             t.NonEmptyStr,
@@ -578,10 +209,7 @@ class FlextInfraRefactorModels(
         start: Annotated[t.NonNegativeInt, Field(description="Start line number")]
         end: Annotated[t.NonNegativeInt, Field(description="End line number")]
         source: Annotated[str, Field(description="Source code text")]
-        kind: Annotated[
-            t.NonEmptyStr,
-            Field(description="Model kind classification"),
-        ]
+        kind: Annotated[t.NonEmptyStr, Field(description="Model kind classification")]
 
     class AliasMove(m.FrozenStrictModel):
         """Tracks a type alias being moved during centralization."""
@@ -642,184 +270,8 @@ class FlextInfraRefactorModels(
         model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
         source: Annotated[str, Field(description="Raw source text")]
-        tree: Annotated[ast.Module, Field(description="Parsed AST module node")]
-
-    # -- MRO Generic Models ----------------------------------------------------
-
-    class MROFamilyTarget(m.ArbitraryTypesModel):
-        """Parametrized target for an MRO family scan or operations.
-
-        Defines which MRO family to scan (e.g. utilities, constants, models).
-        """
-
-        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
-
-        family: Annotated[
-            t.NonEmptyStr,
-            Field(description="Family alias letter (c/t/p/m/u)"),
-        ]
-        class_suffix: Annotated[
-            str,
-            Field(description="Class name suffix (e.g. 'Utilities')"),
-        ]
-        package_dir: Annotated[
-            str,
-            Field(
-                description="Relative path to _xxx package dir (e.g. 'flext_core/_utilities')",
-            ),
-        ]
-        facade_module: Annotated[
-            str,
-            Field(
-                description="Relative path to facade (e.g. 'flext_core/utilities.py')",
-            ),
-        ]
-        facade_class_prefix: Annotated[
-            str,
-            Field(
-                default="Flext",
-                description="Class name prefix for facade (e.g. 'Flext')",
-            ),
-        ] = "Flext"
-        core_project: Annotated[
-            str,
-            Field(
-                default="flext-core",
-                description="Core project directory name",
-            ),
-        ] = "flext-core"
-
-    # -- Census Models ---------------------------------------------------------
-
-    class CensusMethodInfo(m.ArbitraryTypesModel):
-        """A public method extracted from a _utilities class."""
-
-        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
-
-        name: Annotated[t.NonEmptyStr, Field(description="Method name")]
-        method_type: Annotated[
-            str,
-            Field(description="Method kind: static, class, instance"),
-        ]
-        source_file: Annotated[str, Field(description="Source filename")]
-
-    class CensusUsageRecord(m.ArbitraryTypesModel):
-        """A single method usage found via CST analysis."""
-
-        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
-
-        class_name: Annotated[
-            t.NonEmptyStr,
-            Field(description="Utilities class name"),
-        ]
-        method_name: Annotated[t.NonEmptyStr, Field(description="Method name")]
-        access_mode: Annotated[
-            str,
-            Field(description="Access mode: alias_flat, alias_namespaced, direct"),
-        ]
-        file_path: Annotated[str, Field(description="Source file path")]
-        project: Annotated[str, Field(description="Project name")]
-
-    class CensusMethodSummary(m.ArbitraryTypesModel):
-        """Aggregated usage counts for a single method."""
-
-        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
-
-        name: Annotated[t.NonEmptyStr, Field(description="Method name")]
-        method_type: Annotated[str, Field(description="Method kind")]
-        alias_flat: Annotated[t.NonNegativeInt, Field(description="u.method count")]
-        alias_namespaced: Annotated[
-            t.NonNegativeInt,
-            Field(description="u.Class.method count"),
-        ]
-        direct: Annotated[
-            t.NonNegativeInt,
-            Field(description="Direct class.method count"),
-        ]
-        total: Annotated[t.NonNegativeInt, Field(description="Total usages")]
-
-    class CensusClassSummary(m.ArbitraryTypesModel):
-        """Aggregated census for one _utilities class."""
-
-        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
-
-        class_name: Annotated[
-            t.NonEmptyStr,
-            Field(description="Utilities class name"),
-        ]
-        source_file: Annotated[str, Field(description="Source filename")]
-        methods: Annotated[
-            Sequence[FlextInfraRefactorModels.CensusMethodSummary],
-            Field(
-                description="Method summaries",
-            ),
-        ] = Field(default_factory=lambda: ())
-
-    class CensusProjectMethodUsage(m.ArbitraryTypesModel):
-        """Usage of a method within a specific project."""
-
-        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
-
-        class_name: Annotated[
-            t.NonEmptyStr,
-            Field(description="Utilities class name"),
-        ]
-        method_name: Annotated[t.NonEmptyStr, Field(description="Method name")]
-        access_mode: Annotated[str, Field(description="Access mode")]
-        count: Annotated[t.NonNegativeInt, Field(description="Usage count")]
-
-    class CensusProjectSummary(m.ArbitraryTypesModel):
-        """Usage breakdown for one project."""
-
-        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
-
-        project_name: Annotated[
-            t.NonEmptyStr,
-            Field(description="Project directory name"),
-        ]
-        usages: Annotated[
-            Sequence[FlextInfraRefactorModels.CensusProjectMethodUsage],
-            Field(
-                description="Per-method usages",
-            ),
-        ] = Field(default_factory=lambda: ())
-        total: Annotated[t.NonNegativeInt, Field(description="Total usages in project")]
-
-    class UtilitiesCensusReport(m.ArbitraryTypesModel):
-        """Full census report for _utilities method usage."""
-
-        classes: Annotated[
-            Sequence[FlextInfraRefactorModels.CensusClassSummary],
-            Field(
-                description="Per-class summaries",
-            ),
-        ] = Field(default_factory=lambda: ())
-        projects: Annotated[
-            Sequence[FlextInfraRefactorModels.CensusProjectSummary],
-            Field(
-                description="Per-project breakdowns",
-            ),
-        ] = Field(default_factory=lambda: ())
-        total_classes: Annotated[
-            t.NonNegativeInt,
-            Field(description="Number of utility classes"),
-        ]
-        total_methods: Annotated[
-            t.NonNegativeInt,
-            Field(description="Number of public methods"),
-        ]
-        total_usages: Annotated[
-            t.NonNegativeInt,
-            Field(description="Total usage records"),
-        ]
-        total_unused: Annotated[
-            t.NonNegativeInt,
-            Field(description="Methods with zero usages"),
-        ]
-        files_scanned: Annotated[t.NonNegativeInt, Field(description="Files scanned")]
-        parse_errors: Annotated[
-            t.NonNegativeInt,
-            Field(description="Files that failed to parse"),
+        tree: Annotated[
+            object, Field(description="Parsed PyObject module representation")
         ]
 
 

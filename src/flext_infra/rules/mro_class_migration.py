@@ -2,16 +2,10 @@
 
 from __future__ import annotations
 
-import ast
-from collections.abc import Sequence
 from pathlib import Path
-from typing import override
-
-import libcst as cst
 
 from flext_infra import (
-    FlextInfraRefactorMROResolver,
-    FlextInfraRefactorRule,
+    FlextInfraUtilitiesRope,
     c,
     m,
     t,
@@ -19,40 +13,27 @@ from flext_infra import (
 )
 
 
-class FlextInfraRefactorMROClassMigrationRule(FlextInfraRefactorRule):
+class FlextInfraRefactorMROClassMigrationRule:
     """Apply MRO constants-class migration to a single module."""
 
-    @override
     def apply(
         self,
-        tree: cst.Module,
-        _file_path: Path | None = None,
-    ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
-        if _file_path is None:
-            return (tree, [])
-        if _file_path.name != c.Infra.CONSTANTS_FILE_GLOB:
-            return (tree, [])
-        source = tree.code
-        # given source is in-memory CST output, parse from string is required
-        module_ast = u.Infra.parse_ast_from_source(source)
-        if module_ast is None:
-            return (tree, [])
-        candidates: Sequence[m.Infra.MROSymbolCandidate] = [
-            m.Infra.MROSymbolCandidate(
-                symbol=stmt.target.id,
-                line=stmt.lineno,
-            )
-            for stmt in module_ast.body
-            if isinstance(stmt, ast.AnnAssign)
-            and isinstance(stmt.target, ast.Name)
-            and self._is_constant_candidate(stmt.target.id)
-            and self._is_final_annotation(stmt.annotation)
-        ]
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+        *,
+        dry_run: bool = False,
+    ) -> tuple[str, t.StrSequence]:
+        """Migrate module-level Final constants into the facade class."""
+        file_path = Path(rope_project.root.real_path) / resource.path
+        if file_path.name != c.Infra.CONSTANTS_FILE_GLOB:
+            return (FlextInfraUtilitiesRope.read_source(resource), [])
+        source = FlextInfraUtilitiesRope.read_source(resource)
+        candidates = u.Infra.find_final_candidates(source)
         if not candidates:
-            return (tree, [])
-        constants_class = self._first_constants_class_name(module_ast)
+            return (source, [])
+        constants_class = u.Infra.first_constants_class_name(source)
         scan_result = m.Infra.MROScanReport(
-            file=str(_file_path),
+            file=str(file_path),
             module="",
             constants_class=constants_class,
             candidates=tuple(candidates),
@@ -61,40 +42,16 @@ class FlextInfraRefactorMROClassMigrationRule(FlextInfraRefactorRule):
             scan_result=scan_result,
         )
         if not migration.moved_symbols or updated_source == source:
-            return (tree, [])
-        updated_module = u.Infra.parse_cst_from_source(updated_source)
-        if updated_module is None:
-            return (tree, [])
+            return (source, [])
+        if not dry_run:
+            FlextInfraUtilitiesRope.write_source(
+                rope_project,
+                resource,
+                updated_source,
+                description="MRO constants migration",
+            )
         syms = ", ".join(migration.moved_symbols)
-        return (updated_module, [f"migrated constants into facade class: {syms}"])
-
-    @staticmethod
-    def _first_constants_class_name(tree: ast.Module) -> str:
-        for stmt in tree.body:
-            if isinstance(stmt, ast.ClassDef) and stmt.name.endswith(
-                c.Infra.CONSTANTS_CLASS_SUFFIX,
-            ):
-                return stmt.name
-        return ""
-
-    @staticmethod
-    def _is_constant_candidate(symbol: str) -> bool:
-        return FlextInfraRefactorMROResolver.CONSTANT_PATTERN.match(symbol) is not None
-
-    @staticmethod
-    def _is_final_annotation(annotation: ast.expr) -> bool:
-        final_name = c.Infra.FINAL_ANNOTATION_NAME
-        if isinstance(annotation, ast.Name):
-            return annotation.id == final_name
-        if isinstance(annotation, ast.Attribute):
-            return annotation.attr == final_name
-        if isinstance(annotation, ast.Subscript):
-            base = annotation.value
-            if isinstance(base, ast.Name):
-                return base.id == final_name
-            if isinstance(base, ast.Attribute):
-                return base.attr == final_name
-        return False
+        return (updated_source, [f"migrated constants into facade class: {syms}"])
 
 
 __all__ = ["FlextInfraRefactorMROClassMigrationRule"]

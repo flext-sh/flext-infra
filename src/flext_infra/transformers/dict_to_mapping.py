@@ -1,259 +1,65 @@
-"""Dict-to-Mapping annotation transformer."""
+"""Dict-to-Mapping annotation transformer via rope regex replacement."""
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
-from typing import override
+from collections.abc import MutableSequence
 
-import libcst as cst
-
-from flext_infra import t
-
-_MUTATING_METHODS = frozenset({
-    "clear",
-    "copy",
-    "pop",
-    "popitem",
-    "setdefault",
-    "update",
-})
+from flext_infra import FlextInfraUtilitiesRope, t
 
 
-class _MutableParamVisitor(cst.CSTVisitor):
-    """Detect dict parameters that are mutated in function bodies."""
+class FlextInfraDictToMappingTransformer:
+    """Transform ``dict[K, V]`` annotations to ``Mapping[K, V]`` via rope.
 
-    def __init__(self, param_names: t.Infra.StrSet) -> None:
-        self._param_names = param_names
-        self.mutated: t.Infra.StrSet = set()
+    Uses regex word-boundary replacement. Does not rewrite mutated parameters
+    (mutation detection requires static analysis beyond this transformer's scope).
+    """
 
-    def _check_subscript_target(self, target: cst.BaseAssignTargetExpression) -> None:
-        """Mark param as mutated if assigned via subscript (e.g. d[key] = ...)."""
-        if (
-            isinstance(target, cst.Subscript)
-            and isinstance(target.value, cst.Name)
-            and target.value.value in self._param_names
-        ):
-            self.mutated.add(target.value.value)
-
-    @override
-    def visit_AssignTarget(self, node: cst.AssignTarget) -> None:
-        self._check_subscript_target(node.target)
-
-    @override
-    def visit_AugAssign(self, node: cst.AugAssign) -> None:
-        self._check_subscript_target(node.target)
-
-    @override
-    def visit_Call(self, node: cst.Call) -> None:
-        func = node.func
-        if not isinstance(func, cst.Attribute) or not isinstance(func.value, cst.Name):
-            return
-        if (
-            func.value.value in self._param_names
-            and func.attr.value in _MUTATING_METHODS
-        ):
-            self.mutated.add(func.value.value)
-
-
-class FlextInfraDictToMappingTransformer(cst.CSTTransformer):
-    """Transform dict annotations to Mapping for immutable parameters."""
-
-    def __init__(self, *, include_return_annotations: bool) -> None:
+    def __init__(self, *, include_return_annotations: bool = False) -> None:
         """Initialize with return-annotation rewriting toggle."""
-        self.changes: MutableSequence[str] = []
-        self._has_mapping_import = False
         self._include_return_annotations = include_return_annotations
+        self.changes: MutableSequence[str] = []
 
-    @staticmethod
-    def _extract_param_names(parameters: cst.Parameters) -> t.Infra.StrSet:
-        """Extract all parameter names from a function signature."""
-        names: t.Infra.StrSet = set()
-        names.update(param.name.value for param in parameters.posonly_params)
-        names.update(param.name.value for param in parameters.params)
-        names.update(param.name.value for param in parameters.kwonly_params)
-        if isinstance(parameters.star_arg, cst.Param):
-            names.add(parameters.star_arg.name.value)
-        if parameters.star_kwarg is not None:
-            names.add(parameters.star_kwarg.name.value)
-        return names
-
-    @staticmethod
-    def _collect_mutated_params(function_node: cst.FunctionDef) -> t.Infra.StrSet:
-        param_names = FlextInfraDictToMappingTransformer._extract_param_names(
-            function_node.params,
-        )
-        visitor = _MutableParamVisitor(param_names)
-        function_node.visit(visitor)
-        return visitor.mutated
-
-    @staticmethod
-    def _is_overload_function(function_node: cst.FunctionDef) -> bool:
-        for decorator in function_node.decorators:
-            expr = decorator.decorator
-            if isinstance(expr, cst.Name) and expr.value == "overload":
-                return True
-            if isinstance(expr, cst.Attribute) and expr.attr.value == "overload":
-                return True
-        return False
-
-    def _rewrite_all_params(
+    def transform(
         self,
-        parameters: cst.Parameters,
-        mutated_names: t.Infra.StrSet,
-    ) -> cst.Parameters:
-        """Rewrite all parameter annotations from dict to Mapping where safe."""
-        star_arg = parameters.star_arg
-        if isinstance(star_arg, cst.Param):
-            star_arg = self._rewrite_param_if_safe(star_arg, mutated_names)
-        star_kwarg = parameters.star_kwarg
-        if star_kwarg is not None:
-            star_kwarg = self._rewrite_param_if_safe(star_kwarg, mutated_names)
-        return parameters.with_changes(
-            posonly_params=[
-                self._rewrite_param_if_safe(p, mutated_names)
-                for p in parameters.posonly_params
-            ],
-            params=[
-                self._rewrite_param_if_safe(p, mutated_names) for p in parameters.params
-            ],
-            kwonly_params=[
-                self._rewrite_param_if_safe(p, mutated_names)
-                for p in parameters.kwonly_params
-            ],
-            star_arg=star_arg,
-            star_kwarg=star_kwarg,
-        )
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+    ) -> tuple[str, MutableSequence[str]]:
+        """Replace dict annotations with Mapping via rope.
 
-    def _maybe_rewrite_return(self, node: cst.FunctionDef) -> cst.FunctionDef:
-        """Rewrite return annotation from dict to Mapping if enabled."""
-        if not self._include_return_annotations:
-            return node
-        returns = node.returns
-        if returns is None:
-            return node
-        rewritten = self._rewrite_annotation_expr(returns.annotation)
-        if rewritten is returns.annotation:
-            return node
-        return node.with_changes(
-            returns=returns.with_changes(annotation=rewritten),
+        Returns (new_source, list_of_change_descriptions).
+        """
+        pattern = r"\bdict\["
+        source, count = FlextInfraUtilitiesRope.replace_in_source(
+            rope_project,
+            resource,
+            pattern,
+            "Mapping[",
+            apply=True,
         )
-
-    @override
-    def leave_FunctionDef(
-        self,
-        original_node: cst.FunctionDef,
-        updated_node: cst.FunctionDef,
-    ) -> cst.BaseStatement:
-        if self._is_overload_function(original_node):
-            return updated_node
-        mutated_names = self._collect_mutated_params(original_node)
-        rewritten_params = self._rewrite_all_params(updated_node.params, mutated_names)
-        working_node = updated_node.with_changes(params=rewritten_params)
-        return self._maybe_rewrite_return(working_node)
+        if count > 0:
+            self.changes.append(
+                f"Converted {count} dict[...] annotations to Mapping[...]",
+            )
+            self._ensure_mapping_import(rope_project, resource)
+        return source, self.changes
 
     @staticmethod
-    def _find_import_insert_position(body: Sequence[cst.BaseStatement]) -> int:
-        """Find the insertion index for a new import after docstrings and __future__."""
-        insert_at = 0
-        if (
-            body
-            and isinstance(body[0], cst.SimpleStatementLine)
-            and body[0].body
-            and isinstance(body[0].body[0], cst.Expr)
-        ):
-            expr = body[0].body[0].value
-            if isinstance(expr, cst.SimpleString):
-                insert_at = 1
-                if len(body) > 1 and isinstance(body[1], cst.EmptyLine):
-                    insert_at = 2
-        while insert_at < len(body):
-            stmt = body[insert_at]
-            if not isinstance(stmt, cst.SimpleStatementLine):
-                break
-            if not stmt.body or not isinstance(stmt.body[0], cst.ImportFrom):
-                break
-            future_import = stmt.body[0]
-            module = future_import.module
-            if not isinstance(module, cst.Name) or module.value != "__future__":
-                break
-            insert_at += 1
-        return insert_at
-
-    @override
-    def leave_Module(
-        self,
-        original_node: cst.Module,
-        updated_node: cst.Module,
-    ) -> cst.Module:
-        del original_node
-        if not self.changes or self._has_mapping_import:
-            return updated_node
-        import_line: cst.SimpleStatementLine = cst.SimpleStatementLine(
-            body=[
-                cst.ImportFrom(
-                    module=cst.Attribute(
-                        value=cst.Name("collections"),
-                        attr=cst.Name("abc"),
-                    ),
-                    names=[cst.ImportAlias(name=cst.Name("Mapping"))],
-                ),
-            ],
-        )
-        body = list(updated_node.body)
-        insert_at = self._find_import_insert_position(body)
-        body.insert(insert_at, import_line)
-        return updated_node.with_changes(body=body)
-
-    @override
-    def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
-        module = node.module
-        if not isinstance(module, cst.Attribute) and (not isinstance(module, cst.Name)):
+    def _ensure_mapping_import(
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+    ) -> None:
+        """Add ``from collections.abc import Mapping`` if not already present."""
+        source = resource.read()
+        if "from collections.abc import" in source and "Mapping" in source:
             return
-        module_name = cst.Module(body=[]).code_for_node(module)
-        if module_name != "collections.abc":
-            return
-        names = node.names
-        if isinstance(names, cst.ImportStar):
-            self._has_mapping_import = True
-            return
-        for alias in names:
-            if isinstance(alias.name, cst.Name) and alias.name.value == "Mapping":
-                self._has_mapping_import = True
-
-    def _rewrite_annotation_expr(
-        self,
-        annotation: cst.BaseExpression,
-    ) -> cst.BaseExpression:
-        if not isinstance(annotation, cst.Subscript):
-            return annotation
-        if not isinstance(annotation.value, cst.Name):
-            return annotation
-        if annotation.value.value != "dict":
-            return annotation
-        replacement: cst.BaseExpression = annotation.with_changes(
-            value=cst.Name("Mapping"),
-        )
-        self.changes.append("Converted annotation Mapping[...] to Mapping[...]")
-        return replacement
-
-    def _rewrite_param_if_safe(
-        self,
-        param: cst.Param,
-        mutated_names: t.Infra.StrSet,
-    ) -> cst.Param:
-        if param.name.value in mutated_names:
-            return param
-        annotation = param.annotation
-        if annotation is None:
-            return param
-        rewritten = self._rewrite_annotation_expr(annotation.annotation)
-        if rewritten is annotation.annotation:
-            return param
-        return param.with_changes(
-            annotation=annotation.with_changes(annotation=rewritten),
-        )
+        if "from collections.abc import" not in source:
+            FlextInfraUtilitiesRope.replace_in_source(
+                rope_project,
+                resource,
+                r"^(from __future__ import annotations\n)",
+                r"\1\nfrom collections.abc import Mapping\n",
+                apply=True,
+            )
 
 
-__all__ = [
-    "FlextInfraDictToMappingTransformer",
-]
+__all__ = ["FlextInfraDictToMappingTransformer"]

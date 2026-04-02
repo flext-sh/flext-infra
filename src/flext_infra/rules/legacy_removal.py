@@ -2,144 +2,78 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping, MutableSequence, Sequence
-from pathlib import Path
-from typing import NamedTuple, override
 
-import libcst as cst
 from pydantic import ValidationError
 
 from flext_infra import (
     INFRA_MAPPING_ADAPTER,
     INFRA_SEQ_ADAPTER,
-    FlextInfraRefactorAliasRemover,
-    FlextInfraRefactorDeprecatedRemover,
-    FlextInfraRefactorImportBypassRemover,
-    FlextInfraRefactorRule,
+    FlextInfraUtilitiesRope,
     c,
     t,
     u,
 )
 
 
-class _ForwardingExpected(NamedTuple):
-    positional: t.StrSequence
-    kwonly: t.StrSequence
-    star_arg: str | None
-    star_kwarg: str | None
-
-
-class _ForwardingActual(NamedTuple):
-    positional: t.StrSequence
-    keyword: t.StrMapping
-    star: str | None
-    star_kw: str | None
-
-
-class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
+class FlextInfraRefactorLegacyRemovalRule:
     """Remove aliases, deprecated classes, wrappers and import bypass blocks."""
+
+    def __init__(self, config: Mapping[str, t.Infra.InfraValue]) -> None:
+        """Initialize rule metadata from rule config."""
+        self.config = dict(config)
+        rule_id = self.config.get(c.Infra.ReportKeys.ID, c.Infra.Defaults.UNKNOWN)
+        self.rule_id = str(rule_id)
+
+    def apply(
+        self,
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+        *,
+        dry_run: bool = False,
+    ) -> tuple[str, t.StrSequence]:
+        """Apply configured legacy-removal transforms to resource."""
+        source = FlextInfraUtilitiesRope.read_source(resource)
+        changes: MutableSequence[str] = []
+        fix_action = u.Infra.get_str_key(
+            self.config,
+            c.Infra.ReportKeys.FIX_ACTION,
+            lower=True,
+        )
+        new_source = source
+        if "alias" in self.rule_id or fix_action == "remove":
+            new_source, alias_changes = self._remove_aliases(
+                rope_project,
+                resource,
+                new_source,
+            )
+            changes.extend(alias_changes)
+        if "deprecated" in self.rule_id or fix_action == "remove_and_update_refs":
+            new_source, deprecated_changes = self._remove_deprecated(
+                new_source,
+            )
+            changes.extend(deprecated_changes)
+        if "wrapper" in self.rule_id or fix_action == "inline_and_remove":
+            new_source, wrapper_changes = self._remove_wrappers(new_source)
+            changes.extend(wrapper_changes)
+        if "bypass" in self.rule_id or fix_action == "keep_try_only":
+            new_source, bypass_changes = self._remove_import_bypasses(
+                new_source,
+            )
+            changes.extend(bypass_changes)
+        if new_source != source and not dry_run:
+            FlextInfraUtilitiesRope.write_source(
+                rope_project,
+                resource,
+                new_source,
+                description="legacy removal",
+            )
+        return (new_source, changes)
 
     def _typed_config(self) -> Mapping[str, t.Infra.InfraValue]:
         """Get self.config validated as Mapping[str, InfraValue]."""
         return INFRA_MAPPING_ADAPTER.validate_python(self.config)
-
-    @staticmethod
-    def _positionals_match(
-        *,
-        positional_expected: t.StrSequence,
-        positional_forwarded: t.StrSequence,
-        keyword_forwarded: t.StrMapping,
-    ) -> bool:
-        """Check positional args forwarded correctly by position or by name."""
-        positional_by_name = not positional_forwarded and set(
-            keyword_forwarded.keys(),
-        ) >= set(positional_expected)
-        positional_by_position = positional_forwarded == positional_expected
-        if not (positional_by_position or positional_by_name):
-            return False
-        return all(
-            keyword_forwarded[name] == name
-            for name in positional_expected
-            if name in keyword_forwarded
-        )
-
-    @staticmethod
-    def _kwonly_match(
-        *,
-        kwonly_expected: t.StrSequence,
-        keyword_forwarded: t.StrMapping,
-    ) -> bool:
-        """Check keyword-only args forwarded correctly."""
-        if kwonly_expected and not set(keyword_forwarded.keys()) >= set(
-            kwonly_expected
-        ):
-            return False
-        return all(keyword_forwarded.get(name) == name for name in kwonly_expected)
-
-    @staticmethod
-    def _variadic_matches(
-        expected: str | None,
-        forwarded: str | None,
-    ) -> bool:
-        """Check *args or **kwargs forwarding matches expectation."""
-        if expected is not None:
-            return forwarded == expected
-        return forwarded is None
-
-    @staticmethod
-    def _is_forwarding_compatible(
-        expected: _ForwardingExpected,
-        actual: _ForwardingActual,
-    ) -> bool:
-        cls = FlextInfraRefactorLegacyRemovalRule
-        extra_keywords = (
-            set(actual.keyword.keys()) - set(expected.positional) - set(expected.kwonly)
-        )
-        return (
-            cls._positionals_match(
-                positional_expected=expected.positional,
-                positional_forwarded=actual.positional,
-                keyword_forwarded=actual.keyword,
-            )
-            and cls._kwonly_match(
-                kwonly_expected=expected.kwonly,
-                keyword_forwarded=actual.keyword,
-            )
-            and not extra_keywords
-            and cls._variadic_matches(expected.star_arg, actual.star)
-            and cls._variadic_matches(expected.star_kwarg, actual.star_kw)
-        )
-
-    @staticmethod
-    def _name_value(expr: cst.BaseExpression) -> str | None:
-        if isinstance(expr, (cst.Name, cst.SimpleString, cst.Integer, cst.Float)):
-            return expr.value
-        return None
-
-    @override
-    def apply(
-        self,
-        tree: cst.Module,
-        _file_path: Path | None = None,
-    ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
-        """Apply configured legacy-removal transforms to module tree."""
-        changes: MutableSequence[str] = []
-        fix_action = u.Infra.get_str_key(
-            self.config, c.Infra.ReportKeys.FIX_ACTION, lower=True
-        )
-        if "alias" in self.rule_id or fix_action == "remove":
-            tree, alias_changes = self._remove_aliases(tree)
-            changes.extend(alias_changes)
-        if "deprecated" in self.rule_id or fix_action == "remove_and_update_refs":
-            tree, deprecated_changes = self._remove_deprecated(tree)
-            changes.extend(deprecated_changes)
-        if "wrapper" in self.rule_id or fix_action == "inline_and_remove":
-            tree, wrapper_changes = self._remove_wrappers(tree)
-            changes.extend(wrapper_changes)
-        if "bypass" in self.rule_id or fix_action == "keep_try_only":
-            tree, bypass_changes = self._remove_import_bypasses(tree)
-            changes.extend(bypass_changes)
-        return (tree, changes)
 
     @staticmethod
     def _normalize_string_items(value: t.Infra.InfraValue) -> t.StrSequence:
@@ -151,174 +85,87 @@ class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
             )
         except ValidationError:
             return []
-        output: t.StrSequence = [item for item in items if isinstance(item, str)]
-        return output
-
-    def _expected_forwarding_params(
-        self,
-        func: cst.FunctionDef,
-    ) -> _ForwardingExpected:
-        posonly_names = [param.name.value for param in func.params.posonly_params]
-        positional_names = [param.name.value for param in func.params.params]
-        positional_expected = posonly_names + positional_names
-        kwonly_expected = [param.name.value for param in func.params.kwonly_params]
-        expected_star_arg: str | None = None
-        if isinstance(func.params.star_arg, cst.Param):
-            expected_star_arg = func.params.star_arg.name.value
-        expected_star_kwarg: str | None = None
-        if isinstance(func.params.star_kwarg, cst.Param):
-            expected_star_kwarg = func.params.star_kwarg.name.value
-        return _ForwardingExpected(
-            positional=positional_expected,
-            kwonly=kwonly_expected,
-            star_arg=expected_star_arg,
-            star_kwarg=expected_star_kwarg,
-        )
-
-    @staticmethod
-    def _single_return_call(func: cst.FunctionDef) -> cst.Call | None:
-        """Extract the Call node from a single-statement 'return call()' body."""
-        if not isinstance(func.body, cst.IndentedBlock):
-            return None
-        if len(func.body.body) != 1:
-            return None
-        stmt = func.body.body[0]
-        if not isinstance(stmt, cst.SimpleStatementLine) or len(stmt.body) != 1:
-            return None
-        small_stmt = stmt.body[0]
-        if not isinstance(small_stmt, cst.Return) or not isinstance(
-            small_stmt.value, cst.Call
-        ):
-            return None
-        return small_stmt.value
-
-    def _extract_passthrough_call(
-        self,
-        func: cst.FunctionDef,
-    ) -> t.Infra.Pair[str, Sequence[cst.Arg]] | None:
-        call = self._single_return_call(func)
-        if call is None or not isinstance(call.func, cst.Name):
-            return None
-        return (call.func.value, list(call.args))
-
-    def _get_passthrough_target(self, func: cst.FunctionDef) -> str | None:
-        passthrough = self._extract_passthrough_call(func)
-        if passthrough is None:
-            return None
-        target_name, call_args = passthrough
-        expected = self._expected_forwarding_params(func)
-        actual = self._parse_forwarded_arguments(call_args)
-        if actual is None:
-            return None
-        if not self._is_forwarding_compatible(expected, actual):
-            return None
-        return target_name
-
-    def _require_name_value(self, arg: cst.Arg) -> str | None:
-        """Extract a required name/literal value from an argument, or None."""
-        return self._name_value(arg.value)
-
-    def _classify_arg(
-        self,
-        arg: cst.Arg,
-        *,
-        positional: MutableSequence[str],
-        keyword: t.MutableStrMapping,
-        stars: t.MutableStrMapping,
-    ) -> bool:
-        """Classify a single call argument. Returns False if unparseable."""
-        name_value = self._require_name_value(arg)
-        if arg.keyword is not None:
-            if name_value is None:
-                return False
-            keyword[arg.keyword.value] = name_value
-        elif arg.star in {"*", "**"}:
-            if name_value is None:
-                return False
-            stars[arg.star] = name_value
-        elif arg.star not in {"", None}:
-            return False
-        else:
-            if name_value is None:
-                return False
-            positional.append(name_value)
-        return True
-
-    def _parse_forwarded_arguments(
-        self,
-        call_args: Sequence[cst.Arg],
-    ) -> _ForwardingActual | None:
-        positional: MutableSequence[str] = []
-        keyword: t.MutableStrMapping = {}
-        stars: t.MutableStrMapping = {}
-        for arg in call_args:
-            if not self._classify_arg(
-                arg, positional=positional, keyword=keyword, stars=stars
-            ):
-                return None
-        return _ForwardingActual(
-            positional=positional,
-            keyword=keyword,
-            star=stars.get("*"),
-            star_kw=stars.get("**"),
-        )
+        return [item for item in items if isinstance(item, str)]
 
     def _remove_aliases(
         self,
-        tree: cst.Module,
-    ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+        source: str,
+    ) -> tuple[str, t.StrSequence]:
+        """Remove module-level identity aliases via rope."""
         typed_config = self._typed_config()
         allow_aliases = set(
-            self._normalize_string_items(typed_config.get("allow_aliases", [])),
+            self._normalize_string_items(
+                typed_config.get("allow_aliases", []),
+            ),
         )
         allow_target_suffixes = tuple(
-            self._normalize_string_items(typed_config.get("allow_target_suffixes", [])),
-        )
-        return self._apply_transformer(
-            FlextInfraRefactorAliasRemover(
-                allow_aliases=allow_aliases,
-                allow_target_suffixes=allow_target_suffixes,
+            self._normalize_string_items(
+                typed_config.get("allow_target_suffixes", []),
             ),
-            tree,
         )
-
-    def _remove_deprecated(
-        self,
-        tree: cst.Module,
-    ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
-        return self._apply_transformer(FlextInfraRefactorDeprecatedRemover(), tree)
-
-    def _remove_import_bypasses(
-        self,
-        tree: cst.Module,
-    ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
-        return self._apply_transformer(FlextInfraRefactorImportBypassRemover(), tree)
-
-    def _remove_wrappers(
-        self,
-        tree: cst.Module,
-    ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
+        new_source, removed = FlextInfraUtilitiesRope.remove_module_level_aliases(
+            rope_project,
+            resource,
+            allow=allow_aliases,
+            apply=False,
+        )
         changes: MutableSequence[str] = []
-        new_body: MutableSequence[cst.BaseStatement] = []
-        for stmt in tree.body:
-            if not isinstance(stmt, cst.FunctionDef):
-                new_body.append(stmt)
+        for alias_desc in removed:
+            target = alias_desc.split(" = ")[0] if " = " in alias_desc else ""
+            if allow_target_suffixes and target.endswith(allow_target_suffixes):
                 continue
-            target_name = self._get_passthrough_target(stmt)
-            if target_name is None:
-                new_body.append(stmt)
-                continue
-            alias_assign = cst.SimpleStatementLine(
-                body=[
-                    cst.Assign(
-                        targets=[cst.AssignTarget(target=cst.Name(stmt.name.value))],
-                        value=cst.Name(target_name),
-                    ),
-                ],
+            changes.append(f"Removed alias: {alias_desc}")
+        return (new_source if changes else source, changes)
+
+    @staticmethod
+    def _remove_deprecated(source: str) -> tuple[str, t.StrSequence]:
+        """Remove classes/functions decorated with @deprecated."""
+        deprecated_re = re.compile(
+            r"^@deprecated.*\n(?:class|def)\s+(\w+).*?(?=\n(?:class |def |@|\Z))",
+            re.MULTILINE | re.DOTALL,
+        )
+        changes: MutableSequence[str] = []
+        new_source = source
+        for match in deprecated_re.finditer(source):
+            changes.append(f"Removed deprecated: {match.group(1)}")
+        new_source = deprecated_re.sub("", source)
+        return (new_source, changes)
+
+    @staticmethod
+    def _remove_wrappers(source: str) -> tuple[str, t.StrSequence]:
+        """Inline single-return passthrough wrappers as aliases."""
+        wrapper_re = re.compile(
+            r"^def\s+(\w+)\s*\([^)]*\)[^:]*:\s*\n"
+            r"\s+return\s+(\w+)\s*\([^)]*\)\s*$",
+            re.MULTILINE,
+        )
+        changes: MutableSequence[str] = []
+        new_source = source
+        for match in wrapper_re.finditer(source):
+            wrapper_name = match.group(1)
+            target_name = match.group(2)
+            new_source = new_source.replace(
+                match.group(0),
+                f"{wrapper_name} = {target_name}",
             )
-            new_body.append(alias_assign)
-            changes.append(f"Inlined wrapper: {stmt.name.value} -> {target_name}")
-        return (tree.with_changes(body=new_body), changes)
+            changes.append(f"Inlined wrapper: {wrapper_name} -> {target_name}")
+        return (new_source, changes)
+
+    @staticmethod
+    def _remove_import_bypasses(source: str) -> tuple[str, t.StrSequence]:
+        """Remove try/except ImportError blocks that bypass imports."""
+        bypass_re = re.compile(
+            r"^try:\s*\n\s+from\s+\S+\s+import\s+\S+.*?\n"
+            r"except\s+ImportError.*?(?=\n(?:class |def |@|try:|\Z))",
+            re.MULTILINE | re.DOTALL,
+        )
+        changes: MutableSequence[str] = []
+        for _match in bypass_re.finditer(source):
+            changes.append("Removed import bypass block")
+        new_source = bypass_re.sub("", source)
+        return (new_source, changes)
 
 
 __all__ = ["FlextInfraRefactorLegacyRemovalRule"]

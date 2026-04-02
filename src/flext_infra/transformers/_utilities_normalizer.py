@@ -9,8 +9,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 import importlib.util
+import re
 from collections import deque
 from collections.abc import Mapping, MutableMapping
 from functools import lru_cache
@@ -19,13 +19,10 @@ from pathlib import Path
 from flext_core import FlextUtilities, m
 from flext_infra import (
     FlextInfraUtilitiesDiscovery,
-    FlextInfraUtilitiesParsing,
     FlextInfraUtilitiesYaml,
+    c,
     t,
 )
-
-_UNKNOWN_TIER = 99
-_DEFAULT_SUBDIR_TIER = 4
 
 
 class FlextInfraNormalizerContext(m.ArbitraryTypesModel):
@@ -180,22 +177,34 @@ class FlextInfraUtilitiesImportNormalizer:
             raise ValueError(msg)
         return ".".join(module_parts)
 
+    _FROM_IMPORT_RE: re.Pattern[str] = re.compile(
+        r"^from\s+([\w.]+)\s+import\s",
+        re.MULTILINE,
+    )
+    _PLAIN_IMPORT_RE: re.Pattern[str] = re.compile(
+        r"^import\s+([\w., ]+)",
+        re.MULTILINE,
+    )
+
     @staticmethod
     def _collect_intra_package_imports(
-        tree: ast.Module,
+        source: str,
         package_name: str,
     ) -> t.Infra.StrSet:
-        """Extract intra-package import names from an AST."""
+        """Extract intra-package import names from source text."""
         imports: t.Infra.StrSet = set()
         prefix = f"{package_name}."
-        for node in ast.walk(tree):
-            if isinstance(node, ast.ImportFrom) and node.module:
-                if node.module.startswith(prefix) or node.module == package_name:
-                    imports.add(node.module)
-            elif isinstance(node, ast.Import):
-                for alias in node.names:
-                    if alias.name.startswith(prefix) or alias.name == package_name:
-                        imports.add(alias.name)
+        cls = FlextInfraUtilitiesImportNormalizer
+        for match in cls._FROM_IMPORT_RE.finditer(source):
+            module = match.group(1)
+            if module.startswith(prefix) or module == package_name:
+                imports.add(module)
+        for match in cls._PLAIN_IMPORT_RE.finditer(source):
+            names_str = match.group(1)
+            for name_part in names_str.split(","):
+                name = name_part.strip().split(" as ")[0].strip()
+                if name.startswith(prefix) or name == package_name:
+                    imports.add(name)
         return imports
 
     @staticmethod
@@ -207,8 +216,9 @@ class FlextInfraUtilitiesImportNormalizer:
         """Build direct intra-package import graph from source files."""
         graph: MutableMapping[str, t.Infra.StrSet] = {}
         for py_file in package_dir.rglob("*.py"):
-            tree = FlextInfraUtilitiesParsing.parse_module_ast(py_file)
-            if tree is None:
+            try:
+                source = py_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
+            except (OSError, UnicodeDecodeError):
                 continue
             try:
                 module_name = FlextInfraUtilitiesImportNormalizer.file_to_module(
@@ -220,7 +230,7 @@ class FlextInfraUtilitiesImportNormalizer:
                 continue
             graph[module_name] = (
                 FlextInfraUtilitiesImportNormalizer._collect_intra_package_imports(
-                    tree,
+                    source,
                     package_name,
                 )
             )
@@ -234,7 +244,7 @@ class FlextInfraUtilitiesImportNormalizer:
     ) -> int:
         """Resolve tier from the first subdirectory name under the package."""
         if not first_dir.startswith("_"):
-            return _DEFAULT_SUBDIR_TIER
+            return c.Infra.Tier.DEFAULT_SUBDIR
         normalized = first_dir.lstrip("_")
         if normalized == "services":
             normalized = "service"
@@ -243,7 +253,7 @@ class FlextInfraUtilitiesImportNormalizer:
             return alias_tiers[alias]
         if normalized == "result" and "r" in alias_tiers:
             return alias_tiers["r"]
-        return _DEFAULT_SUBDIR_TIER
+        return c.Infra.Tier.DEFAULT_SUBDIR
 
     @staticmethod
     def file_tier(
@@ -258,15 +268,15 @@ class FlextInfraUtilitiesImportNormalizer:
         if declared_alias in alias_tiers:
             return alias_tiers[declared_alias]
         if not project_package:
-            return _UNKNOWN_TIER
+            return c.Infra.Tier.UNKNOWN
         marker = f"/src/{project_package}/"
         file_str = str(file_path.resolve())
         if marker not in file_str:
-            return _UNKNOWN_TIER
+            return c.Infra.Tier.UNKNOWN
         relative = file_str.split(marker, maxsplit=1)[1]
         parts = Path(relative).parts[:-1]
         if not parts:
-            return _UNKNOWN_TIER
+            return c.Infra.Tier.UNKNOWN
         return FlextInfraUtilitiesImportNormalizer._tier_from_directory(
             parts[0],
             facade_to_alias,

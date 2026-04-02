@@ -1,16 +1,16 @@
-"""Violation analysis and helper classification for refactor reports."""
+"""Violation analysis and helper classification for refactor reports.
+
+Uses rope-based analysis and regex source scanning instead of CST visitors.
+"""
 
 from __future__ import annotations
 
+import re
 import sys
 from collections import Counter
 from collections.abc import MutableMapping, MutableSequence, Sequence
 from operator import itemgetter
 from pathlib import Path
-from typing import override
-
-import libcst as cst
-from libcst.metadata import MetadataWrapper
 
 from flext_infra import (
     FlextInfraRefactorClassNestingAnalyzer,
@@ -18,23 +18,20 @@ from flext_infra import (
     c,
     m,
     t,
-    u,
 )
-
-
-class _NameCollector(cst.CSTVisitor):
-    """Collect all Name tokens from a CST subtree."""
-
-    def __init__(self) -> None:
-        self.names: t.Infra.StrSet = set()
-
-    @override
-    def visit_Name(self, node: cst.Name) -> None:
-        self.names.add(node.value)
 
 
 class FlextInfraRefactorViolationAnalyzer:
     """Analyzer for refactor violation metrics across source files."""
+
+    _IMPORT_RE = re.compile(
+        r"^(?:from\s+([\w.]+)\s+import\s+(.+)|import\s+(.+))$",
+        re.MULTILINE,
+    )
+    _FUNCTION_DEF_RE = re.compile(
+        r"^def\s+(\w+)\s*\(",
+        re.MULTILINE,
+    )
 
     @classmethod
     def analyze_files(
@@ -54,16 +51,14 @@ class FlextInfraRefactorViolationAnalyzer:
                 continue
             helper_analysis = cls._analyze_file_helpers(
                 file_path=file_path,
+                content=content,
             )
             helper_suggestions.extend(helper_analysis.suggestions)
             helper_totals.update(helper_analysis.totals)
             helper_manual_review.extend(helper_analysis.manual_review)
             file_counts: t.MutableIntMapping = {}
-            tree = u.Infra.parse_cst_from_source(content)
-            if tree is None:
-                continue
             violation_visitor = FlextInfraViolationCensusVisitor(file_path=file_path)
-            MetadataWrapper(tree).visit(violation_visitor)
+            violation_visitor.scan_source(content)
             for record in violation_visitor.records:
                 kind = str(record.get("kind", ""))
                 if kind:
@@ -110,24 +105,19 @@ class FlextInfraRefactorViolationAnalyzer:
         cls,
         *,
         file_path: Path,
+        content: str,
     ) -> m.Infra.HelperFileAnalysis:
         suggestions: MutableSequence[m.Infra.HelperClassification] = []
         totals: Counter[str] = Counter()
         manual_review: MutableSequence[m.Infra.HelperClassification] = []
-        module = u.Infra.parse_module_cst(file_path)
-        if module is None:
-            return m.Infra.HelperFileAnalysis(
-                suggestions=suggestions,
-                totals=dict(totals),
-                manual_review=manual_review,
-            )
-        local_to_import = cls._extract_local_to_import(module)
-        for stmt in module.body:
-            if not isinstance(stmt, cst.FunctionDef):
-                continue
+        local_to_import = cls._extract_local_to_import(content)
+        for match in cls._FUNCTION_DEF_RE.finditer(content):
+            func_name = match.group(1)
+            func_body = cls._extract_function_body(content, match.start())
             classification = cls._classify_helper_function(
                 file_path=file_path,
-                function=stmt,
+                func_name=func_name,
+                func_body=func_body,
                 local_to_import=local_to_import,
             )
             suggestions.append(classification)
@@ -146,27 +136,20 @@ class FlextInfraRefactorViolationAnalyzer:
         cls,
         *,
         file_path: Path,
-        function: cst.FunctionDef,
+        func_name: str,
+        func_body: str,
         local_to_import: t.StrMapping,
     ) -> m.Infra.HelperClassification:
-        used_names = cls._collect_names(function)
+        used_names = set(re.findall(r"\b([A-Za-z_]\w*)\b", func_body))
         dependencies: t.Infra.StrSet = set()
         for name in used_names:
             imported = local_to_import.get(name)
             if imported is not None:
                 dependencies.add(imported)
-        decorator_dependencies: t.Infra.StrSet = set()
-        for decorator in function.decorators:
-            decorator_root = u.Infra.cst_root_name(decorator.decorator)
-            if not decorator_root:
-                continue
-            imported = local_to_import.get(decorator_root)
-            if imported is not None:
-                decorator_dependencies.add(imported)
-        dependencies.update(decorator_dependencies)
+        has_decorators = bool(re.search(r"@\w+", func_body))
         matched_categories = cls._match_categories(
             dependencies=dependencies,
-            has_decorators=bool(function.decorators),
+            has_decorators=has_decorators,
         )
         category, manual, reason = cls._resolve_category(
             dependencies=dependencies,
@@ -175,9 +158,9 @@ class FlextInfraRefactorViolationAnalyzer:
         namespace_root = c.Infra.NAMESPACE_PREFIXES[category]
         return m.Infra.HelperClassification(
             file=str(file_path),
-            function=function.name.value,
+            function=func_name,
             category=category,
-            target_namespace=f"{namespace_root}.{function.name.value}",
+            target_namespace=f"{namespace_root}.{func_name}",
             dependencies=sorted(dependencies),
             manual_review=manual,
             review_reason=reason,
@@ -245,44 +228,49 @@ class FlextInfraRefactorViolationAnalyzer:
         return True
 
     @staticmethod
-    def _extract_local_to_import(module: cst.Module) -> t.StrMapping:
-        """Extract local-name → fully-qualified-name mapping from imports."""
+    def _extract_local_to_import(content: str) -> t.StrMapping:
+        """Extract local-name -> fully-qualified-name mapping from imports."""
         result: t.MutableStrMapping = {}
-        for stmt in module.body:
-            if not isinstance(stmt, cst.SimpleStatementLine):
-                continue
-            for s in stmt.body:
-                if isinstance(s, cst.Import):
-                    for raw in s.names:
-                        imported = u.Infra.cst_module_name(raw.name)
-                        if not imported:
-                            continue
-                        local = u.Infra.cst_asname_to_local(raw.asname)
-                        if local is None:
-                            local = imported.split(".", maxsplit=1)[0]
-                        result[local] = imported
-                if (
-                    isinstance(s, cst.ImportFrom)
-                    and s.module is not None
-                    and not isinstance(s.names, cst.ImportStar)
-                ):
-                    module_name = u.Infra.cst_module_name(s.module)
-                    if not module_name:
+        import_re = re.compile(
+            r"^(?:from\s+([\w.]+)\s+import\s+(.+)|import\s+([\w.]+)(?:\s+as\s+(\w+))?)$",
+            re.MULTILINE,
+        )
+        for match in import_re.finditer(content):
+            if match.group(1) is not None:
+                module_name = match.group(1)
+                names_part = match.group(2).strip().rstrip("\\")
+                for name_entry in names_part.split(","):
+                    name_entry = name_entry.strip()
+                    if not name_entry or name_entry == "(":
                         continue
-                    for raw in s.names:
-                        if not isinstance(raw.name, cst.Name):
-                            continue
-                        imported_name = raw.name.value
-                        local = u.Infra.cst_asname_to_local(raw.asname) or imported_name
+                    parts = re.split(r"\s+as\s+", name_entry, maxsplit=1)
+                    imported_name = parts[0].strip().rstrip(")")
+                    local = parts[1].strip() if len(parts) > 1 else imported_name
+                    if local and imported_name:
                         result[local] = f"{module_name}.{imported_name}"
+            elif match.group(3) is not None:
+                imported = match.group(3)
+                local = match.group(4) or imported.split(".", maxsplit=1)[0]
+                result[local] = imported
         return result
 
     @staticmethod
-    def _collect_names(node: cst.CSTNode) -> t.Infra.StrSet:
-        """Collect all Name tokens from a CST node."""
-        col = _NameCollector()
-        node.visit(col)
-        return col.names
+    def _extract_function_body(content: str, start: int) -> str:
+        """Extract function body text from content starting at def position."""
+        lines = content[start:].splitlines()
+        if not lines:
+            return ""
+        body_lines: MutableSequence[str] = [lines[0]]
+        for line in lines[1:]:
+            if not line.strip():
+                body_lines.append(line)
+                continue
+            indent = len(line) - len(line.lstrip())
+            if indent > 0:
+                body_lines.append(line)
+            else:
+                break
+        return "\n".join(body_lines)
 
 
 __all__ = ["FlextInfraRefactorViolationAnalyzer"]

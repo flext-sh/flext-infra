@@ -5,17 +5,18 @@ from __future__ import annotations
 from collections.abc import MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
-from rope.base.exceptions import ModuleSyntaxError
-
 from flext_core import FlextUtilities
 from flext_infra import (
     FlextInfraRefactorMROImportRewriter,
     FlextInfraRefactorMROMigrationValidator,
     FlextInfraUtilitiesRefactorMroScan,
+    FlextInfraUtilitiesRope,
     c,
     m,
     t,
 )
+
+_ROPE_MODULE_SYNTAX_ERROR = FlextInfraUtilitiesRope.module_syntax_error_type()
 
 
 class FlextInfraRefactorMigrateToClassMRO:
@@ -103,7 +104,7 @@ class FlextInfraRefactorMigrateToClassMRO:
             report = cls(workspace_root=path).run(target="all", apply=not dry_run)
         except (
             SyntaxError,
-            ModuleSyntaxError,
+            _ROPE_MODULE_SYNTAX_ERROR,
             OSError,
             ValueError,
             KeyError,

@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
+import re
 import shutil
 import sys
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
@@ -17,7 +17,6 @@ from pathlib import Path
 
 from flext_infra import (
     FlextInfraCodegenMetricsChecks,
-    FlextInfraUtilitiesParsing,
     FlextInfraUtilitiesSubprocess,
     c,
     t,
@@ -120,6 +119,11 @@ class FlextInfraCodegenExecutionTools(FlextInfraCodegenMetricsChecks):
             "exit_code": command_output.exit_code,
         }
 
+    _BARE_IMPORT_FROM_RE: re.Pattern[str] = re.compile(
+        r"^from\s+import\s",
+        re.MULTILINE,
+    )
+
     @staticmethod
     def scan_import_nodes(
         workspace_root: Path,
@@ -128,21 +132,19 @@ class FlextInfraCodegenExecutionTools(FlextInfraCodegenMetricsChecks):
         """Scan import nodes in modified files for invalid patterns."""
         invalid_import_from: MutableSequence[str] = []
         parse_errors: MutableSequence[str] = []
+        bare_re = FlextInfraCodegenExecutionTools._BARE_IMPORT_FROM_RE
         for rel_path in modified_files:
             file_path = (workspace_root / rel_path).resolve()
             if not file_path.is_file():
                 continue
-            tree = FlextInfraUtilitiesParsing.parse_module_ast(file_path)
-            if tree is None:
+            try:
+                source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+            except (OSError, UnicodeDecodeError):
                 parse_errors.append(f"{rel_path}:parse failed")
                 continue
-            invalid_import_from.extend(
-                f"{rel_path}:{node.lineno}"
-                for node in ast.walk(tree)
-                if isinstance(node, ast.ImportFrom)
-                and node.module is None
-                and (node.level == 0)
-            )
+            for lineno, line in enumerate(source.splitlines(), start=1):
+                if bare_re.match(line.lstrip()):
+                    invalid_import_from.append(f"{rel_path}:{lineno}")
         invalid_import_from_value: Sequence[t.Infra.InfraValue] = list(
             invalid_import_from,
         )
