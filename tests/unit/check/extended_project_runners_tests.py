@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
 from pathlib import Path
 
 import pytest
@@ -28,7 +27,7 @@ class TestCheckProjectRunners:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         (tmp_path / "src").mkdir()
         (tmp_path / "src" / "test.py").touch()
-        called: MutableMapping[str, bool] = {
+        called: t.MutableBoolMapping = {
             "lint": False,
             "format": False,
             "pyrefly": False,

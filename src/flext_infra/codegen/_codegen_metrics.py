@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from pydantic import ValidationError
@@ -85,7 +85,7 @@ class FlextInfraCodegenMetrics(FlextInfraCodegenCoercion, FlextInfraCodegenGener
         import_scan: Mapping[str, t.Infra.InfraValue],
         modified_files: t.StrSequence,
     ) -> Mapping[str, t.Infra.InfraValue]:
-        by_rule: MutableMapping[str, int] = dict.fromkeys(
+        by_rule: t.MutableIntMapping = dict.fromkeys(
             c.Infra.QualityGate.RULE_KEYS,
             0,
         )

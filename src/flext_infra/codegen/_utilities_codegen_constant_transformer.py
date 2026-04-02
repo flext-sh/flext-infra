@@ -363,7 +363,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
         if not init_file.is_file():
             return {}
         source = init_file.read_text(c.Infra.Encoding.DEFAULT)
-        mapping: MutableMapping[str, str] = {}
+        mapping: t.MutableStrMapping = {}
         for match in re.finditer(
             r'"(\w+)":\s*\("([\w.]+)",\s*"(\w+)"\)',
             source,
@@ -488,7 +488,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
     def resolve_target_aliases(
         lazy_map: t.StrMapping,
         target_mod: str,
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         """Return canonical aliases that resolve to *target_mod* in the lazy map."""
         return [
             alias
@@ -502,7 +502,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
     def _split_cycle_imports(
         imp: cst.ImportFrom,
         target_set: frozenset[str],
-    ) -> t.Infra.Pair[Sequence[str], Sequence[str]]:
+    ) -> t.Infra.Pair[t.StrSequence, t.StrSequence]:
         """Split imported names into cycle aliases and keepers."""
         names = imp.names
         if isinstance(names, cst.ImportStar):
@@ -519,7 +519,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
         tree: cst.Module,
         package_name: str,
         parent_pkg: str,
-        target_aliases: Sequence[str],
+        target_aliases: t.StrSequence,
     ) -> t.Infra.Pair[
         MutableSequence[cst.BaseCompoundStatement | cst.SimpleStatementLine],
         MutableSequence[str],

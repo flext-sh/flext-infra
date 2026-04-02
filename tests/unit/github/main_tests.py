@@ -10,7 +10,7 @@ from flext_tests import tm
 
 from flext_core import r
 from flext_infra import FlextInfraCliGithub
-from tests import m, u
+from tests import m, t, u
 
 
 class TestRunWorkflows:
@@ -175,7 +175,7 @@ class TestRunLint:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        captured: MutableMapping[str, bool] = {}
+        captured: t.MutableBoolMapping = {}
         ok = self._ok_lint()
 
         def _fake_lint(**kw: bool) -> r[m.Infra.WorkflowLintResult]:

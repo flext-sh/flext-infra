@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING
+
+from flext_core import FlextTypes
 
 if TYPE_CHECKING:
     import libcst as cst
@@ -42,13 +43,13 @@ class FlextInfraTypesCst:
         type Transformer = cst.CSTTransformer
         """libcst transformer base."""
 
-        type BaseNames = Sequence[str]
+        type BaseNames = FlextTypes.StrSequence
         """Sequence of base class name strings extracted from a ClassDef."""
 
-        type DecoratorNames = Sequence[str]
+        type DecoratorNames = FlextTypes.StrSequence
         """Sequence of decorator name strings extracted from a definition."""
 
-        type ImportMap = Mapping[str, str]
+        type ImportMap = FlextTypes.StrMapping
         """Mapping of local name → fully-qualified imported name."""
 
 

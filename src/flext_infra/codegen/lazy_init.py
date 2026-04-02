@@ -279,8 +279,8 @@ class FlextInfraCodegenLazyInit(s[int]):
         current_pkg: str,
         eager_typevar_names: frozenset[str] = frozenset(),
         eager_imports: t.Infra.LazyImportMap | None = None,
-        child_packages_for_lazy: Sequence[str] | None = None,
-        child_packages_for_tc: Sequence[str] | None = None,
+        child_packages_for_lazy: t.StrSequence | None = None,
+        child_packages_for_tc: t.StrSequence | None = None,
     ) -> t.Infra.LazyInitWriteResult:
         """Write the generated ``__init__.py`` and run ruff fix."""
         try:
@@ -527,7 +527,7 @@ class FlextInfraCodegenLazyInit(s[int]):
         pkg_dir: Path,
         current_pkg: str,
         dir_exports: Mapping[str, t.Infra.LazyImportMap],
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         """Return dotted package names of immediate children with exports."""
         children: MutableSequence[str] = []
         for subdir in sorted(pkg_dir.iterdir()):
@@ -544,7 +544,7 @@ class FlextInfraCodegenLazyInit(s[int]):
         pkg_dir: Path,
         current_pkg: str,
         dir_exports: Mapping[str, t.Infra.LazyImportMap],
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         """Return all descendant package names with generated exports."""
         descendants: MutableSequence[str] = []
         for subdir_key in sorted(dir_exports):

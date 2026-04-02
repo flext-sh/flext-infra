@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import MutableSequence, Sequence
 
 import tomlkit
 from tomlkit.container import Container
@@ -83,7 +83,7 @@ class FlextInfraEnsureMypyConfigPhase:
         configured = self._tool_config.tools.mypy.overrides
         if not configured:
             return
-        expected: Sequence[Mapping[str, Sequence[str]]] = [
+        expected: Sequence[t.StrSequenceMapping] = [
             {
                 "module": list(entry.modules),
                 "disable_error_code": list(entry.disable_error_codes),
@@ -96,9 +96,9 @@ class FlextInfraEnsureMypyConfigPhase:
             if isinstance(mypy_table, Table)
             else None
         )
-        current: Sequence[Mapping[str, Sequence[str]]] = []
+        current: Sequence[t.StrSequenceMapping] = []
         if isinstance(raw, (list, AoT)):
-            normalized_current: MutableSequence[Mapping[str, Sequence[str]]] = []
+            normalized_current: MutableSequence[t.StrSequenceMapping] = []
             for item in raw:
                 normalized_item = u.Infra.as_toml_mapping(u.Infra.unwrap_item(item))
                 if normalized_item is None:

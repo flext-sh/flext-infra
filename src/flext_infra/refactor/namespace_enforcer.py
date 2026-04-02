@@ -43,7 +43,7 @@ class FlextInfraNamespaceEnforcer:
         self,
         *,
         apply: bool = False,
-        project_names: Sequence[str] | None = None,
+        project_names: t.StrSequence | None = None,
     ) -> m.Infra.WorkspaceEnforcementReport:
         """Run namespace enforcement across projects in the workspace.
 
@@ -69,7 +69,7 @@ class FlextInfraNamespaceEnforcer:
     def _resolve_project_roots(
         self,
         *,
-        project_names: Sequence[str] | None = None,
+        project_names: t.StrSequence | None = None,
     ) -> Sequence[Path]:
         """Discover and optionally filter project roots."""
         project_roots = u.Infra.discover_project_roots(
@@ -352,7 +352,7 @@ class FlextInfraNamespaceEnforcer:
     def diff(
         self,
         *,
-        project_names: Sequence[str] | None = None,
+        project_names: t.StrSequence | None = None,
     ) -> str:
         """Run enforce with apply in diff mode: apply, capture diff, restore originals.
 

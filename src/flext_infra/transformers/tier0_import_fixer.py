@@ -28,7 +28,7 @@ class FlextInfraTransformerTier0ImportFixer:
 
         package_name: str
         file_path: Path
-        alias_to_module: MutableMapping[str, str] = field(
+        alias_to_module: t.MutableStrMapping = field(
             default_factory=lambda: dict[str, str](),
         )
         category_a: t.Infra.StrSet = field(default_factory=lambda: set[str]())
@@ -73,7 +73,7 @@ class FlextInfraTransformerTier0ImportFixer:
                     file_path=self._file_path,
                 )
 
-            alias_map: MutableMapping[str, str] = dict(
+            alias_map: t.MutableStrMapping = dict(
                 FlextInfraUtilitiesDiscovery.discover_project_aliases(
                     pkg_dir.parent if pkg_dir.name == "src" else pkg_dir,
                 ),

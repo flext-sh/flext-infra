@@ -117,7 +117,7 @@ class FlextInfraDependencyDetectionService:
             "dep004": [],
         })
         for item in issues:
-            normalized_item: MutableMapping[str, str] = {}
+            normalized_item: t.MutableStrMapping = {}
             for key, raw_value in item.items():
                 if raw_value is None:
                     normalized_item[str(key)] = ""
@@ -255,8 +255,8 @@ class FlextInfraDependencyDetectionService:
             excluded = typing_libraries.get(c.Infra.EXCLUDE)
             if isinstance(excluded, list):
                 exclude_set = {str(e) for e in excluded}
-        hinted: Sequence[str] = []
-        missing_modules: Sequence[str] = []
+        hinted: t.StrSequence = []
+        missing_modules: t.StrSequence = []
         if include_mypy:
             hints_result = self.run_mypy_stub_hints(project_path, venv_bin)
             if hints_result.is_failure:

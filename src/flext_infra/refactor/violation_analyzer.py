@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 from collections import Counter
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import MutableMapping, MutableSequence, Sequence
 from operator import itemgetter
 from pathlib import Path
 from typing import override
@@ -43,7 +43,7 @@ class FlextInfraRefactorViolationAnalyzer:
     ) -> m.Infra.ViolationAnalysisReport:
         """Analyze files and return aggregated violation and helper metrics."""
         totals: Counter[str] = Counter()
-        per_file: MutableMapping[str, MutableMapping[str, int]] = {}
+        per_file: MutableMapping[str, t.MutableIntMapping] = {}
         helper_suggestions: MutableSequence[m.Infra.HelperClassification] = []
         helper_totals: Counter[str] = Counter()
         helper_manual_review: MutableSequence[m.Infra.HelperClassification] = []
@@ -58,7 +58,7 @@ class FlextInfraRefactorViolationAnalyzer:
             helper_suggestions.extend(helper_analysis.suggestions)
             helper_totals.update(helper_analysis.totals)
             helper_manual_review.extend(helper_analysis.manual_review)
-            file_counts: MutableMapping[str, int] = {}
+            file_counts: t.MutableIntMapping = {}
             tree = u.Infra.parse_cst_from_source(content)
             if tree is None:
                 continue
@@ -78,7 +78,7 @@ class FlextInfraRefactorViolationAnalyzer:
         for raw_file, raw_count in class_nesting.per_file_counts.items():
             counts = per_file.setdefault(raw_file, {})
             counts[c.Infra.ReportKeys.CLASS_NESTING] = raw_count
-        ranked_files: Sequence[t.Infra.Triple[str, int, Mapping[str, int]]] = [
+        ranked_files: Sequence[t.Infra.Triple[str, int, t.IntMapping]] = [
             (file_name, sum(counts.values()), counts)
             for file_name, counts in per_file.items()
         ]
@@ -245,9 +245,9 @@ class FlextInfraRefactorViolationAnalyzer:
         return True
 
     @staticmethod
-    def _extract_local_to_import(module: cst.Module) -> Mapping[str, str]:
+    def _extract_local_to_import(module: cst.Module) -> t.StrMapping:
         """Extract local-name → fully-qualified-name mapping from imports."""
-        result: MutableMapping[str, str] = {}
+        result: t.MutableStrMapping = {}
         for stmt in module.body:
             if not isinstance(stmt, cst.SimpleStatementLine):
                 continue

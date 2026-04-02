@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import ast
 import re
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 from flext_infra import (
@@ -188,7 +188,7 @@ class FlextInfraUtilitiesRefactorMroScan:
     ) -> t.Infra.VariadicTuple[m.Infra.MROTargetSpec]:
         all_specs = FlextInfraUtilitiesRefactorMroScan._build_all_target_specs()
         spec_by_name = {spec.family_alias: spec for spec in all_specs}
-        target_name_to_alias: Mapping[str, str] = {
+        target_name_to_alias: t.StrMapping = {
             "constants": "c",
             "typings": "t",
             "protocols": "p",

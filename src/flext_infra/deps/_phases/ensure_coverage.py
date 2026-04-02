@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSequence
+from collections.abc import MutableSequence
 
 import tomlkit
 from tomlkit.items import Item, Table
@@ -37,7 +37,7 @@ class FlextInfraEnsureCoverageConfigPhase:
         report_tbl = u.Infra.ensure_table(coverage_tbl, "report")
 
         cov_config = self._tool_config.tools.coverage
-        fail_under_map: Mapping[str, int] = {
+        fail_under_map: t.IntMapping = {
             "core": cov_config.fail_under.core,
             "domain": cov_config.fail_under.domain,
             "platform": cov_config.fail_under.platform,

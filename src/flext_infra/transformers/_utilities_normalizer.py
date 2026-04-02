@@ -37,9 +37,9 @@ class FlextInfraNormalizerContext(m.ArbitraryTypesModel):
     project_aliases: frozenset[str]
     declared_alias: str
     alias_to_defining_module: t.StrMapping
-    alias_tiers: Mapping[str, int]
+    alias_tiers: t.IntMapping
     file_tier: int
-    package_reachability: Mapping[str, frozenset[str]]
+    package_reachability: t.FrozensetMapping
     wrong_source_enabled: bool
     universal_aliases: frozenset[str]
     workspace_packages: frozenset[str]
@@ -74,14 +74,14 @@ class FlextInfraUtilitiesImportNormalizer:
 
     @staticmethod
     @lru_cache(maxsize=1)
-    def alias_tiers() -> Mapping[str, int]:
+    def alias_tiers() -> t.IntMapping:
         """Return configured alias-to-tier mapping."""
         config = FlextInfraUtilitiesImportNormalizer.load_config().get(
             "alias_tiers",
         )
         if not FlextUtilities.is_mapping(config):
             return {}
-        tiers: MutableMapping[str, int] = {}
+        tiers: t.MutableIntMapping = {}
         for alias_name, tier_value in config.items():
             if len(alias_name) != 1 or not alias_name.islower():
                 continue
@@ -144,13 +144,13 @@ class FlextInfraUtilitiesImportNormalizer:
     def build_reachability(
         package_dir: Path,
         package_name: str,
-    ) -> Mapping[str, frozenset[str]]:
+    ) -> t.FrozensetMapping:
         """Build module reachability map from import graph traversal."""
         graph = FlextInfraUtilitiesImportNormalizer.build_import_graph(
             package_dir=package_dir,
             package_name=package_name,
         )
-        reachability: MutableMapping[str, frozenset[str]] = {}
+        reachability: t.MutableFrozensetMapping = {}
         for module_name in graph:
             visited: t.Infra.StrSet = set()
             queue: deque[str] = deque(graph.get(module_name, frozenset()))
@@ -203,7 +203,7 @@ class FlextInfraUtilitiesImportNormalizer:
         *,
         package_dir: Path,
         package_name: str,
-    ) -> Mapping[str, frozenset[str]]:
+    ) -> t.FrozensetMapping:
         """Build direct intra-package import graph from source files."""
         graph: MutableMapping[str, t.Infra.StrSet] = {}
         for py_file in package_dir.rglob("*.py"):
@@ -230,7 +230,7 @@ class FlextInfraUtilitiesImportNormalizer:
     def _tier_from_directory(
         first_dir: str,
         facade_to_alias: t.StrMapping,
-        alias_tiers: Mapping[str, int],
+        alias_tiers: t.IntMapping,
     ) -> int:
         """Resolve tier from the first subdirectory name under the package."""
         if not first_dir.startswith("_"):
@@ -251,7 +251,7 @@ class FlextInfraUtilitiesImportNormalizer:
         file_path: Path,
         project_package: str,
         facade_to_alias: t.StrMapping,
-        alias_tiers: Mapping[str, int],
+        alias_tiers: t.IntMapping,
     ) -> int:
         """Infer architectural tier for a file based on facade/paths."""
         declared_alias = facade_to_alias.get(file_path.name, "")

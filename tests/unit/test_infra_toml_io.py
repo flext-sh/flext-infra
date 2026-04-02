@@ -125,7 +125,7 @@ class TestFlextInfraTomlDocument:
             cmd: list[str],
             cwd: Path | None = None,
             timeout: int | None = None,
-            env: Mapping[str, str] | None = None,
+            env: t.StrMapping | None = None,
         ) -> r[bool]:
             _ = (timeout, env)
             commands.append((cmd, cwd))
@@ -157,7 +157,7 @@ class TestFlextInfraTomlDocument:
             cmd: list[str],
             cwd: Path | None = None,
             timeout: int | None = None,
-            env: Mapping[str, str] | None = None,
+            env: t.StrMapping | None = None,
         ) -> r[bool]:
             _ = (cmd, cwd, timeout, env)
             return r[bool].fail("taplo failed")

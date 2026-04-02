@@ -6,7 +6,7 @@ the census module to detect method access patterns across the codebase.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, MutableSequence
+from collections.abc import Mapping, MutableSequence
 from pathlib import Path
 from typing import override
 
@@ -33,7 +33,7 @@ class FlextInfraCensusImportDiscoveryVisitor(cst.CSTVisitor):
         self.family_alias = family_alias
         self.facade_class_prefix = facade_class_prefix
         self.alias_locals: t.Infra.StrSet = set()
-        self.direct_imports: MutableMapping[str, str] = {}
+        self.direct_imports: t.MutableStrMapping = {}
 
     @override
     def visit_ImportFrom(self, node: cst.ImportFrom) -> None:

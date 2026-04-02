@@ -172,7 +172,7 @@ class FlextInfraDepsModels:
             ),
         ]
         boolean_settings: Annotated[
-            Mapping[str, bool],
+            t.BoolMapping,
             Field(
                 alias="boolean-settings",
                 description="Mypy boolean settings keyed by option name.",

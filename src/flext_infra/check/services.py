@@ -6,15 +6,15 @@ for backwards-compatible imports.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING
 
 from flext_core.lazy import lazy_getattr
+from flext_infra import t
 
 if TYPE_CHECKING:
     from flext_infra import FlextInfraConfigFixer, FlextInfraWorkspaceChecker
 
-_LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
+_LAZY_IMPORTS: t.StrSequenceMapping = {
     "FlextInfraWorkspaceChecker": (
         "flext_infra.check.workspace_check",
         "FlextInfraWorkspaceChecker",

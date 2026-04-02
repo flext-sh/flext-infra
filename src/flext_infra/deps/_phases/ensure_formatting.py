@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
+from collections.abc import MutableSequence
 
 import tomlkit
 from pydantic import TypeAdapter, ValidationError
@@ -36,8 +36,8 @@ class FlextInfraEnsureFormattingToolingPhase:
             current = u.Infra.unwrap_item(u.Infra.get(tomlsort, key))
             if isinstance(value, list) and isinstance(current, list):
                 try:
-                    current_values: Sequence[str] = TypeAdapter(
-                        Sequence[str],
+                    current_values: t.StrSequence = TypeAdapter(
+                        t.StrSequence,
                     ).validate_python([str(x) for x in current])
                 except ValidationError:
                     current_values = []

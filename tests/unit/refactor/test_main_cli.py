@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
@@ -8,7 +7,7 @@ from flext_tests import tm
 
 from flext_core import r
 from flext_infra import FlextInfraCliRefactor, main as infra_main
-from tests import m
+from tests import m, t
 
 
 def refactor_main(argv: list[str] | None = None) -> int:
@@ -32,12 +31,12 @@ def test_refactor_centralize_accepts_apply_before_subcommand(
 
     def _mock_handler(
         params: m.Infra.RefactorCentralizeInput,
-    ) -> r[Mapping[str, int]]:
+    ) -> r[t.IntMapping]:
         nonlocal captured_apply, captured_workspace, captured_normalize_remaining
         captured_apply = params.apply
         captured_workspace = Path(params.workspace).resolve()
         captured_normalize_remaining = params.normalize_remaining
-        return r[Mapping[str, int]].ok({"files": 0})
+        return r[t.IntMapping].ok({"files": 0})
 
     monkeypatch.setattr(
         FlextInfraCliRefactor,

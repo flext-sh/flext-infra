@@ -268,8 +268,8 @@ class FlextInfraClassNestingRefactorRule:
         config: t.Infra.ContainerDict,
         file_path: Path,
         confidence_threshold: str,
-    ) -> MutableMapping[str, str]:
-        mappings: MutableMapping[str, str] = {}
+    ) -> t.MutableStrMapping:
+        mappings: t.MutableStrMapping = {}
         for entry in self._entries_for_source_file(
             u.Infra.entry_list(config.get(c.Infra.ReportKeys.CLASS_NESTING)),
             file_path,
@@ -288,7 +288,7 @@ class FlextInfraClassNestingRefactorRule:
         confidence_threshold: str,
     ) -> MutableSequence[str]:
         violations: MutableSequence[str] = []
-        entries: MutableSequence[Mapping[str, str]] = list(
+        entries: MutableSequence[t.StrMapping] = list(
             self._entries_for_source_file(
                 u.Infra.entry_list(config.get(c.Infra.ReportKeys.CLASS_NESTING)),
                 file_path,
@@ -321,8 +321,8 @@ class FlextInfraClassNestingRefactorRule:
         config: t.Infra.ContainerDict,
         file_path: Path,
         confidence_threshold: str,
-    ) -> MutableMapping[str, str]:
-        mappings: MutableMapping[str, str] = {}
+    ) -> t.MutableStrMapping:
+        mappings: t.MutableStrMapping = {}
         for entry in self._entries_for_source_file(
             u.Infra.entry_list(
                 config.get(c.Infra.ReportKeys.HELPER_CONSOLIDATION),
@@ -338,15 +338,15 @@ class FlextInfraClassNestingRefactorRule:
 
     def _entries_for_source_file(
         self,
-        raw_entries: Sequence[Mapping[str, str]],
+        raw_entries: Sequence[t.StrMapping],
         file_path: Path,
         confidence_threshold: str,
-    ) -> Sequence[Mapping[str, str]]:
+    ) -> Sequence[t.StrMapping]:
         entries = raw_entries
         if not entries:
             return []
         module_path = u.Infra.normalize_module_path(file_path)
-        accepted: MutableSequence[Mapping[str, str]] = []
+        accepted: MutableSequence[t.StrMapping] = []
         for entry in entries:
             current_file = entry.get(c.Infra.ReportKeys.CURRENT_FILE)
             if current_file is None:
@@ -364,14 +364,14 @@ class FlextInfraClassNestingRefactorRule:
 
     def _entries_for_scope(
         self,
-        raw_entries: Sequence[Mapping[str, str]],
+        raw_entries: Sequence[t.StrMapping],
         file_path: Path,
         confidence_threshold: str,
-    ) -> Sequence[Mapping[str, str]]:
+    ) -> Sequence[t.StrMapping]:
         entries = raw_entries
         if not entries:
             return []
-        accepted: MutableSequence[Mapping[str, str]] = []
+        accepted: MutableSequence[t.StrMapping] = []
         for entry in entries:
             confidence = entry.get(c.Infra.ReportKeys.CONFIDENCE, c.Infra.Severity.LOW)
             if not self._confidence_allowed(confidence, confidence_threshold):
@@ -391,13 +391,13 @@ class FlextInfraClassNestingRefactorRule:
     def _coerce_entries(
         self,
         entries: Sequence[Mapping[str, t.Infra.InfraValue]],
-    ) -> Sequence[Mapping[str, str]]:
-        coerced: MutableSequence[Mapping[str, str]] = []
+    ) -> Sequence[t.StrMapping]:
+        coerced: MutableSequence[t.StrMapping] = []
         for typed in entries:
             current_file = typed.get(c.Infra.ReportKeys.CURRENT_FILE)
             if not isinstance(current_file, str):
                 continue
-            entry: MutableMapping[str, str] = {
+            entry: t.MutableStrMapping = {
                 c.Infra.ReportKeys.CURRENT_FILE: current_file,
             }
             loose_name = typed.get(c.Infra.ReportKeys.LOOSE_NAME)
@@ -504,10 +504,10 @@ class FlextInfraClassNestingRefactorRule:
     def _families_for_scope(
         self,
         *,
-        entries: Sequence[Mapping[str, str]],
+        entries: Sequence[t.StrMapping],
         symbol_key: str,
-    ) -> MutableMapping[str, str]:
-        families: MutableMapping[str, str] = {}
+    ) -> t.MutableStrMapping:
+        families: t.MutableStrMapping = {}
         for entry in entries:
             symbol = entry.get(symbol_key)
             current_file = entry.get(c.Infra.ReportKeys.CURRENT_FILE)

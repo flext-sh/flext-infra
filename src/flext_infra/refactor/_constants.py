@@ -223,7 +223,7 @@ class FlextInfraRefactorConstants:
         "low": 0.55,
     }
     "Confidence level → numeric score mapping for violations."
-    CONFIDENCE_RANKS: ClassVar[Mapping[str, int]] = {"low": 0, "medium": 1, "high": 2}
+    CONFIDENCE_RANKS: ClassVar[t.IntMapping] = {"low": 0, "medium": 1, "high": 2}
     "Confidence level → priority rank mapping."
     REQUIRED_CLASS_TARGETS: ClassVar[t.StrSequence] = (
         "TimeoutEnforcer",

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from collections.abc import MutableMapping, MutableSequence, Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 import libcst as cst
@@ -187,7 +187,7 @@ class FlextInfraUtilitiesDiscovery:
         if src_package is None:
             return {}
         _package_name, package_dir = src_package
-        alias_to_facade: MutableMapping[str, str] = {}
+        alias_to_facade: t.MutableStrMapping = {}
         facades = [
             "models.py",
             "utilities.py",
@@ -253,7 +253,7 @@ class FlextInfraUtilitiesDiscovery:
 
     @staticmethod
     def _extract_lazy_aliases(value: cst.Dict) -> t.StrMapping:
-        result: MutableMapping[str, str] = {}
+        result: t.MutableStrMapping = {}
         for element in value.elements:
             if not isinstance(element, cst.DictElement):
                 continue
@@ -277,7 +277,7 @@ class FlextInfraUtilitiesDiscovery:
         project_dir: Path,
         *,
         skip_dirs: frozenset[str] | None = None,
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         """Discover all directories containing Python files in a project.
 
         SSOT discovery function used by all tool config phases

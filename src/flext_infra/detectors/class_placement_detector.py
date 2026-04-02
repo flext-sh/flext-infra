@@ -11,7 +11,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import DetectorContext, FlextInfraScanFileMixin, c, m, p, u
+from flext_infra import DetectorContext, FlextInfraScanFileMixin, c, m, p, t, u
 
 PYDANTIC_BASE_NAMES: frozenset[str] = frozenset({
     "BaseModel",
@@ -38,7 +38,7 @@ class FlextInfraClassPlacementDetector(FlextInfraScanFileMixin, p.Infra.Scanner)
         return base_name.rsplit(".", maxsplit=1)[-1]
 
     @classmethod
-    def _matching_base_class(cls, base_names: Sequence[str]) -> str | None:
+    def _matching_base_class(cls, base_names: t.StrSequence) -> str | None:
         """Return the first supported Pydantic base class found in base_names."""
         for base_name in base_names:
             normalized = cls._normalize_base_name(base_name)

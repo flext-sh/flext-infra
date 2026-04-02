@@ -735,8 +735,8 @@ class FlextInfraUtilitiesCodegenConstantDetection:
     ) -> Mapping[
         str,
         int
-        | Mapping[str, int | Mapping[str, int]]
-        | Mapping[str, Mapping[str, int]]
+        | Mapping[str, int | t.IntMapping]
+        | Mapping[str, t.IntMapping]
         | Mapping[str, Sequence[t.Infra.StrIntPair]],
     ]:
         """Comprehensive census of all objects in a class."""
@@ -751,7 +751,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         if not attrs:
             return {}
 
-        by_type: MutableMapping[str, MutableMapping[str, int]] = {}
+        by_type: MutableMapping[str, t.MutableIntMapping] = {}
         for attr_name, attr_def in attrs.items():
             attr_type = attr_def.type_annotation
             if attr_type not in by_type:

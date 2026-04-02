@@ -204,7 +204,7 @@ class FlextInfraRefactorClassNestingReconstructor:
         entries: Sequence[t.StrMapping],
     ) -> t.StrMapping:
         """Build a mapping of loose class names to their nested target names."""
-        mappings: MutableMapping[str, str] = {}
+        mappings: t.MutableStrMapping = {}
         for entry in entries:
             loose_name = entry.get(c.Infra.ReportKeys.LOOSE_NAME)
             target_namespace = entry.get(c.Infra.ReportKeys.TARGET_NAMESPACE)

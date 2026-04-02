@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping, MutableSequence, Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
@@ -26,7 +26,7 @@ _RULE_CONFIG_SEQ_ADAPTER: TypeAdapter[Sequence[m.Infra.ImportModernizerRuleConfi
 )
 
 
-def _all_param_names(params: cst.Parameters) -> Sequence[str]:
+def _all_param_names(params: cst.Parameters) -> t.StrSequence:
     """Extract all parameter names from a function's Parameters node."""
     names: MutableSequence[str] = [
         param.name.value
@@ -112,7 +112,7 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
             return (tree, [])
         imports_to_remove: MutableSequence[str] = []
         seen_modules: t.Infra.StrSet = set()
-        symbols_to_replace: MutableMapping[str, str] = {}
+        symbols_to_replace: t.MutableStrMapping = {}
         for rule_config in self._parse_forbidden_rules(forbidden):
             module_candidates = [rule_config.module]
             if "." in rule_config.module:

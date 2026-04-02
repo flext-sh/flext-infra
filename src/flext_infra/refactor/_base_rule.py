@@ -8,7 +8,7 @@ This module has no dependencies on any rules/ submodule.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import Mapping, MutableSequence
 from pathlib import Path
 from typing import Protocol, override, runtime_checkable
 
@@ -62,7 +62,7 @@ class FlextInfraRefactorRule:
     ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
         """Apply a single transformer and return (tree, changes)."""
         new_tree = tree.visit(transformer)
-        changes: Sequence[str] = (
+        changes: t.StrSequence = (
             transformer.changes
             if isinstance(transformer, FlextInfraChangeTracker)
             else []

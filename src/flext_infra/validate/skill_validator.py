@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
 from pydantic import JsonValue, ValidationError
@@ -55,7 +55,7 @@ class FlextInfraSkillValidator:
         mode: str,
         include_globs: t.StrSequence,
         exclude_globs: t.StrSequence,
-        counts: MutableMapping[str, int],
+        counts: t.MutableIntMapping,
         violations: MutableSequence[str],
     ) -> None:
         """Evaluate one rule entry and accumulate counts/violations."""
@@ -86,7 +86,7 @@ class FlextInfraSkillValidator:
         rules: Mapping[str, t.Infra.InfraValue],
         root: Path,
         skill_name: str,
-        counts: Mapping[str, int],
+        counts: t.IntMapping,
         total: int,
     ) -> bool:
         """Compare counts against the baseline file and return pass/fail."""
@@ -110,7 +110,7 @@ class FlextInfraSkillValidator:
         bl_counts_raw_map = self._normalize_str_object_mapping(
             bl_data.get("counts", {}),
         )
-        bl_counts: MutableMapping[str, int] = {}
+        bl_counts: t.MutableIntMapping = {}
         for key_obj, val_obj in bl_counts_raw_map.items():
             if isinstance(val_obj, int):
                 bl_counts[str(key_obj)] = int(val_obj)
@@ -171,7 +171,7 @@ class FlextInfraSkillValidator:
             rules_list: Sequence[JsonValue] = t.Infra.JSON_SEQ_ADAPTER.validate_python(
                 rules_list_obj,
             )
-            counts: MutableMapping[str, int] = {}
+            counts: t.MutableIntMapping = {}
             violations: MutableSequence[str] = []
             skill_dir = skills_dir / skill_name
             for rule_obj_raw in rules_list:

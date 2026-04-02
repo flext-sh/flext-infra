@@ -114,9 +114,9 @@ class FlextInfraPyprojectModernizer:
 
     @staticmethod
     def _ordered_keys(
-        keys: Sequence[str],
+        keys: t.StrSequence,
         *,
-        preferred_first: Sequence[str] | None = None,
+        preferred_first: t.StrSequence | None = None,
     ) -> t.StrSequence:
         """Return keys with optional preferred-first order then alphabetical."""
         preferred = list(preferred_first or [])
@@ -131,7 +131,7 @@ class FlextInfraPyprojectModernizer:
         cls,
         table: Table,
         *,
-        preferred_first: Sequence[str] | None = None,
+        preferred_first: t.StrSequence | None = None,
     ) -> None:
         """Reorder table keys in-place recursively (tables/AoT items)."""
         original_keys = [str(key) for key in table]

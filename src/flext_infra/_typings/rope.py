@@ -9,10 +9,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import MutableSequence
 
 from rope.base.project import Project as _RopeProject
 from rope.base.resources import File as _RopeFile
+
+from flext_core import FlextTypes
 
 
 class FlextInfraTypesRope:
@@ -23,23 +25,19 @@ class FlextInfraTypesRope:
     type RopeResource = _RopeFile
     "Opaque handle to rope File resource — orchestrators use this, never import rope directly."
 
-    type ClassLineMap = Mapping[str, int]
-    "Mapping of class name → definition line number."
-    type MutableClassLineMap = MutableMapping[str, int]
-    "Mutable mapping of class name → definition line number."
-    type ImportMap = Mapping[str, str]
+    type ImportMap = FlextTypes.StrMapping
     "Mapping of local name → fully qualified import path."
-    type MutableImportMap = MutableMapping[str, str]
+    type MutableImportMap = FlextTypes.MutableStrMapping
     "Mutable mapping of local name → fully qualified import path."
-    type MethodKindMap = Mapping[str, str]
+    type MethodKindMap = FlextTypes.StrMapping
     "Mapping of method name → kind (staticmethod/classmethod/method)."
-    type MutableMethodKindMap = MutableMapping[str, str]
+    type MutableMethodKindMap = FlextTypes.MutableStrMapping
     "Mutable mapping of method name → kind."
-    type ChangedPaths = Sequence[str]
+    type ChangedPaths = FlextTypes.StrSequence
     "Read-only sequence of changed file paths from rope operations."
     type MutableChangedPaths = MutableSequence[str]
     "Mutable sequence of changed file paths."
-    type ClassNames = Sequence[str]
+    type ClassNames = FlextTypes.StrSequence
     "Read-only sequence of class names."
     type MutableClassNames = MutableSequence[str]
     "Mutable sequence of class names."

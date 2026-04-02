@@ -414,7 +414,7 @@ class FlextInfraRefactorModels(
             Field(description="Total violations"),
         ]
         confidence_counts: Annotated[
-            Mapping[str, int],
+            t.IntMapping,
             Field(
                 description="Confidence histogram",
             ),
@@ -426,7 +426,7 @@ class FlextInfraRefactorModels(
             ),
         ] = Field(default_factory=lambda: ())
         per_file_counts: Annotated[
-            Mapping[str, int],
+            t.IntMapping,
             Field(
                 description="Violation counts per file",
             ),
@@ -467,7 +467,7 @@ class FlextInfraRefactorModels(
         """Aggregated helper-function classification payload."""
 
         totals: Annotated[
-            Mapping[str, int],
+            t.IntMapping,
             Field(
                 description="Category totals",
             ),
@@ -493,7 +493,7 @@ class FlextInfraRefactorModels(
             ),
         ] = Field(default_factory=lambda: ())
         totals: Annotated[
-            Mapping[str, int],
+            t.IntMapping,
             Field(
                 description="Category totals for file helpers",
             ),
@@ -514,7 +514,7 @@ class FlextInfraRefactorModels(
             Field(description="Total violations in file"),
         ]
         counts: Annotated[
-            Mapping[str, int],
+            t.IntMapping,
             Field(
                 description="Per-pattern counts",
             ),
@@ -524,13 +524,13 @@ class FlextInfraRefactorModels(
         """Full violation analysis report for refactor diagnostics."""
 
         totals: Annotated[
-            Mapping[str, int],
+            t.IntMapping,
             Field(
                 description="Aggregate counts by pattern",
             ),
         ] = Field(default_factory=dict)
         files: Annotated[
-            Mapping[str, Mapping[str, int]],
+            Mapping[str, t.IntMapping],
             Field(
                 description="Per-file per-pattern counts",
             ),

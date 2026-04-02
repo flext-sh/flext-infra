@@ -230,7 +230,7 @@ class TestRunRuffFix:
             cmd: t.StrSequence,
             cwd: Path | None = None,
             timeout: int | None = None,
-            env: Mapping[str, str] | None = None,
+            env: t.StrMapping | None = None,
         ) -> r[bool]:
             _ = (cwd, timeout, env)
             commands.append(list(cmd))
@@ -256,7 +256,7 @@ class TestRunRuffFix:
             cmd: t.StrSequence,
             cwd: Path | None = None,
             timeout: int | None = None,
-            env: Mapping[str, str] | None = None,
+            env: t.StrMapping | None = None,
         ) -> r[bool]:
             nonlocal call_count
             _ = (cmd, cwd, timeout, env)

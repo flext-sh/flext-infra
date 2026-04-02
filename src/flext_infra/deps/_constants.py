@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
 from typing import Final
 
 from flext_infra import t
@@ -76,7 +75,7 @@ class FlextInfraDepsConstants:
         ("[tool.pyrefly]", "# [MANAGED] pyrefly"),
         ("[tool.pyright]", "# [MANAGED] pyright"),
     )
-    DEFAULT_MODULE_TO_TYPES_PACKAGE: Final[Mapping[str, str]] = {
+    DEFAULT_MODULE_TO_TYPES_PACKAGE: Final[t.StrMapping] = {
         "yaml": "types-pyyaml",
         "ldap3": "types-ldap3",
         "redis": "types-redis",

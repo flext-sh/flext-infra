@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -9,7 +8,7 @@ from flext_tests import tm
 
 from flext_core import r
 from flext_infra import FlextInfraInternalDependencySyncService, internal_sync
-from tests import u
+from tests import t, u
 
 
 class TestMain:
@@ -22,7 +21,7 @@ class TestMain:
 
         def _parse_args(
             _self: argparse.ArgumentParser,
-            _args: Sequence[str] | None = None,
+            _args: t.StrSequence | None = None,
             _ns: argparse.Namespace | None = None,
         ) -> argparse.Namespace:
             return argparse.Namespace(workspace=tmp_path)
@@ -54,7 +53,7 @@ class TestMain:
 
         def _parse_args(
             _self: argparse.ArgumentParser,
-            _args: Sequence[str] | None = None,
+            _args: t.StrSequence | None = None,
             _ns: argparse.Namespace | None = None,
         ) -> argparse.Namespace:
             return argparse.Namespace(workspace=tmp_path)

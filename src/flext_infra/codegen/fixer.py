@@ -260,7 +260,7 @@ class FlextInfraCodegenFixer(s[bool]):
         ctx.files_modified.update(rewrite.file for rewrite in report.rewrites)
         return report
 
-    _REFACTOR_RULES: Sequence[str] = (
+    _REFACTOR_RULES: t.StrSequence = (
         "modernize-constants-import",
         "modernize-models-import",
         "modernize-result-import",
@@ -544,7 +544,7 @@ class FlextInfraCodegenFixer(s[bool]):
         target: _MoveTarget,
         module_str: str,
         ctx: FlextInfraCodegenFixer._FixContext,
-    ) -> tuple[Sequence[ast.stmt], Sequence[str]]:
+    ) -> tuple[Sequence[ast.stmt], t.StrSequence]:
         """Attempt to move each node; return (moved_nodes, moved_names)."""
         moved: MutableSequence[ast.stmt] = []
         names: MutableSequence[str] = []

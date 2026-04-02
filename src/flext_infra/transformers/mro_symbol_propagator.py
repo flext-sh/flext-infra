@@ -26,7 +26,7 @@ class FlextInfraRefactorMROSymbolPropagator(FlextInfraChangeTrackingTransformer)
         """Initialize rewrite state for one file."""
         super().__init__(on_change=on_change)
         self._module_moves = module_moves
-        self._local_name_rewrites: MutableMapping[str, str] = {}
+        self._local_name_rewrites: t.MutableStrMapping = {}
         self._module_alias_moves: MutableMapping[
             str, t.Infra.Pair[str, t.StrMapping]
         ] = {}

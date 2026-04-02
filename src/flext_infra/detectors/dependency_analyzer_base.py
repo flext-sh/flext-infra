@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from collections.abc import MutableMapping, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 
 from pydantic import TypeAdapter, ValidationError
@@ -98,7 +98,7 @@ class FlextInfraDependencyAnalyzer:
             Dict mapping package name to project name.
 
         """
-        idx: MutableMapping[str, str] = {}
+        idx: t.MutableStrMapping = {}
         for proj in projects:
             for pkg in proj.package_roots:
                 _ = idx.setdefault(pkg, proj.name)

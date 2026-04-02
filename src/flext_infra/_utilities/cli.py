@@ -39,18 +39,18 @@ class _SharedFlags(m.FrozenStrictModel):
     @classmethod
     def _resolve_include_diff(
         cls,
-        data: Mapping[str, bool | None] | _SharedFlags,
-    ) -> Mapping[str, bool | None] | _SharedFlags:
+        data: t.OptionalBoolMapping | _SharedFlags,
+    ) -> t.OptionalBoolMapping | _SharedFlags:
         """Default include_diff to include_apply when not explicitly provided or None."""
         if FlextUtilities.is_mapping(data) and (
             "include_diff" not in data or data.get("include_diff") is None
         ):
-            resolved: MutableMapping[str, bool | None] = dict(data)
+            resolved: t.MutableOptionalBoolMapping = dict(data)
             resolved["include_diff"] = data.get("include_apply", True)
             return resolved
         return data
 
-    def to_dict(self) -> MutableMapping[str, bool]:
+    def to_dict(self) -> t.MutableBoolMapping:
         """Return flag values as a mutable mapping."""
         return {
             "include_apply": self.include_apply,
@@ -61,7 +61,7 @@ class _SharedFlags(m.FrozenStrictModel):
         }
 
     @staticmethod
-    def from_dict(data: Mapping[str, bool]) -> _SharedFlags:
+    def from_dict(data: t.BoolMapping) -> _SharedFlags:
         """Construct from a mapping with already-resolved values."""
         return _SharedFlags.model_validate(data)
 
@@ -130,11 +130,11 @@ class FlextInfraUtilitiesCli:
 
     @staticmethod
     def _merge_shared_flag_options(
-        base_options: Mapping[str, bool],
-        overrides: Mapping[str, bool] | None,
-    ) -> MutableMapping[str, bool]:
+        base_options: t.BoolMapping,
+        overrides: t.BoolMapping | None,
+    ) -> t.MutableBoolMapping:
         """Merge per-subcommand shared-flag overrides onto base options."""
-        merged: MutableMapping[str, bool] = dict(base_options)
+        merged: t.MutableBoolMapping = dict(base_options)
         if overrides is None:
             return merged
         unknown_keys = set(overrides) - set(base_options)
@@ -148,8 +148,8 @@ class FlextInfraUtilitiesCli:
 
     @staticmethod
     def _union_shared_flag_options(
-        options: Sequence[Mapping[str, bool]],
-    ) -> MutableMapping[str, bool]:
+        options: Sequence[t.BoolMapping],
+    ) -> t.MutableBoolMapping:
         """Compute the union of enabled shared flags across subcommands."""
         union = _SharedFlags(
             include_apply=False,
@@ -164,7 +164,7 @@ class FlextInfraUtilitiesCli:
         return union
 
     @staticmethod
-    def _shared_option_tokens(options: Mapping[str, bool]) -> Sequence[str]:
+    def _shared_option_tokens(options: t.BoolMapping) -> t.StrSequence:
         """Return CLI option tokens enabled by the given shared-flag config."""
         tokens: MutableSequence[str] = []
         if options.get("include_apply", False):
@@ -288,7 +288,7 @@ class FlextInfraUtilitiesCli:
         *,
         subcommands: t.StrMapping,
         flags: _SharedFlags | None = None,
-        subcommand_flags: Mapping[str, Mapping[str, bool]] | None = None,
+        subcommand_flags: Mapping[str, t.BoolMapping] | None = None,
     ) -> t.Infra.Pair[ArgumentParser, Mapping[str, ArgumentParser]]:
         """Create main parser with subcommands and shared flags.
 
@@ -305,7 +305,7 @@ class FlextInfraUtilitiesCli:
         """
         resolved_flags = flags or _SharedFlags()
         base_options = resolved_flags.to_dict()
-        command_options: MutableMapping[str, MutableMapping[str, bool]] = {}
+        command_options: MutableMapping[str, t.MutableBoolMapping] = {}
         for command in subcommands:
             overrides = subcommand_flags.get(command) if subcommand_flags else None
             command_options[command] = (
@@ -372,8 +372,8 @@ class FlextInfraUtilitiesCli:
     @staticmethod
     def _extract_used_shared_options(
         argv: t.StrSequence,
-        candidate_tokens: Sequence[str],
-    ) -> Sequence[str]:
+        candidate_tokens: t.StrSequence,
+    ) -> t.StrSequence:
         """Extract shared-option tokens explicitly provided on the CLI."""
         used: MutableSequence[str] = []
         known_tokens = set(candidate_tokens)
@@ -414,7 +414,7 @@ class FlextInfraUtilitiesCli:
         parser: ArgumentParser,
         argv: t.StrSequence | None = None,
         *,
-        passthrough_subcommands: Sequence[str] | None = None,
+        passthrough_subcommands: t.StrSequence | None = None,
     ) -> Namespace:
         """Parse and validate subcommand args against per-command shared flags."""
         args, unknown_args = parser.parse_known_args(argv)

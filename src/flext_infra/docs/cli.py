@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -16,6 +15,7 @@ from flext_infra import (
     FlextInfraDocValidator,
     c,
     m,
+    t,
     u,
 )
 
@@ -105,7 +105,7 @@ class FlextInfraDocsCli:
         )
         self._register_commands()
 
-    def run(self, args: Sequence[str] | None = None) -> r[bool]:
+    def run(self, args: t.StrSequence | None = None) -> r[bool]:
         """Execute the CLI application."""
         return cli.execute_app(self._app, prog_name="docs", args=args)
 

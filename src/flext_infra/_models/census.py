@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
@@ -183,7 +183,7 @@ class FlextInfraModelsCensus:
                 Field(default=0, description="Total objects discovered"),
             ] = 0
             objects_by_kind: Annotated[
-                Mapping[str, int],
+                t.IntMapping,
                 Field(
                     description="Object count per kind",
                 ),

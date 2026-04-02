@@ -71,7 +71,7 @@ class FlextInfraUtilitiesRefactor(
         parts = [part for part in rel.with_suffix("").parts if part != "src"]
         return ".".join(parts)
 
-    _MODULE_FAMILY_KEYS: Sequence[str] = (
+    _MODULE_FAMILY_KEYS: t.StrSequence = (
         "_models",
         "_utilities",
         "_dispatcher",
@@ -449,7 +449,7 @@ class FlextInfraUtilitiesRefactor(
         for node in ast.iter_child_nodes(tree):
             if not (isinstance(node, ast.ClassDef) and node.name == facade_class_name):
                 continue
-            name_map: MutableMapping[str, str] = {}
+            name_map: t.MutableStrMapping = {}
             for item in ast.iter_child_nodes(node):
                 if not isinstance(item, ast.ClassDef):
                     continue

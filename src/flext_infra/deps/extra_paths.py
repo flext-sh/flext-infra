@@ -280,7 +280,7 @@ class FlextInfraExtraPathsManager:
         project_dir: Path,
         configured_paths: t.StrSequence,
     ) -> t.StrSequence:
-        existing: Sequence[str] = [
+        existing: t.StrSequence = [
             relative_path
             for relative_path in configured_paths
             if (project_dir / relative_path).is_dir()

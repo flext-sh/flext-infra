@@ -18,7 +18,7 @@ class _ReportStub:
     def __init__(self, raw_count: int) -> None:
         self._raw_count = raw_count
 
-    def model_dump(self) -> Mapping[str, Mapping[str, int]]:
+    def model_dump(self) -> Mapping[str, t.IntMapping]:
         return {"deptry": {"raw_count": self._raw_count}}
 
 

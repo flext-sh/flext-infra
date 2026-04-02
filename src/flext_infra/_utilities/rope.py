@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar, cast
 
@@ -144,13 +144,13 @@ class FlextInfraUtilitiesRope:
     def get_module_imports(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-    ) -> Mapping[str, str]:
+    ) -> t.StrMapping:
         """Return {local_name: fully_qualified_name} for all imports in a module.
 
         Replaces manual LibCST/AST import visitors with rope's semantic
         resolution. Handles re-exports, aliased imports, and star imports.
         """
-        result: MutableMapping[str, str] = {}
+        result: t.MutableStrMapping = {}
         try:
             pycore = FlextInfraUtilitiesRope._get_pycore(rope_project)
             pymodule = pycore.resource_to_pyobject(resource)
@@ -171,7 +171,7 @@ class FlextInfraUtilitiesRope:
     def get_module_classes(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         """Return names of all classes defined (not imported/aliased) in a module."""
         classes: MutableSequence[str] = []
         try:
@@ -266,7 +266,7 @@ class FlextInfraUtilitiesRope:
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
         class_name: str,
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         """Return base class names for a given class in a module."""
         infos = FlextInfraUtilitiesRope.get_class_info(rope_project, resource)
         for info in infos:
@@ -281,13 +281,13 @@ class FlextInfraUtilitiesRope:
         class_name: str,
         *,
         include_private: bool = False,
-    ) -> Mapping[str, str]:
+    ) -> t.StrMapping:
         """Return {method_name: kind} for methods of a class.
 
         kind is one of 'staticmethod', 'classmethod', or 'method'.
         By default excludes private methods (starting with _).
         """
-        result: MutableMapping[str, str] = {}
+        result: t.MutableStrMapping = {}
         try:
             pycore = FlextInfraUtilitiesRope._get_pycore(rope_project)
             pymodule = pycore.resource_to_pyobject(resource)
@@ -323,12 +323,12 @@ class FlextInfraUtilitiesRope:
         new_name: str,
         *,
         apply: bool,
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         """Rename symbol at offset across the whole project.
 
         Returns list of file paths changed. Orchestrator decides whether to apply.
         """
-        changed_files: t.Infra.MutableStrIndex = {}
+        changed_files: t.MutableIntMapping = {}
         try:
             changes = Rename(rope_project, resource, offset).get_changes(new_name)
         except RefactoringError:

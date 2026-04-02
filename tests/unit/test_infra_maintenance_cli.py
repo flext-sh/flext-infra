@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-
 from flext_infra import main as infra_main
-from tests import u
+from tests import t, u
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(argv: t.StrSequence | None = None) -> int:
     args = ["maintenance"]
     if argv is not None:
         args.extend(argv)

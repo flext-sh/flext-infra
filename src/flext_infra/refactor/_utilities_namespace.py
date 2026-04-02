@@ -36,13 +36,13 @@ from flext_infra import (
 class FlextInfraUtilitiesRefactorNamespace:
     """Namespace enforcement rewriting utilities as static methods for MRO chain."""
 
-    _base_chains_cache: ClassVar[MutableMapping[Path, Mapping[str, Sequence[str]]]] = {}
+    _base_chains_cache: ClassVar[MutableMapping[Path, t.StrSequenceMapping]] = {}
 
     @staticmethod
     def build_expected_base_chains(
         *,
         project_root: Path,
-    ) -> Mapping[str, Sequence[str]]:
+    ) -> t.StrSequenceMapping:
         """Build expected MRO base chains from the project's path dependencies.
 
         Connects the dep graph SSOT (ExtraPathsManager) with the class name SSOT
@@ -69,7 +69,7 @@ class FlextInfraUtilitiesRefactorNamespace:
     def _compute_base_chains(
         *,
         project_root: Path,
-    ) -> Mapping[str, Sequence[str]]:
+    ) -> t.StrSequenceMapping:
         """Compute expected MRO base chains (uncached)."""
         pyproject_path = project_root / c.Infra.Files.PYPROJECT_FILENAME
         if not pyproject_path.exists():
@@ -87,7 +87,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         )
         if not direct_dep_names:
             return {}
-        chains: MutableMapping[str, MutableSequence[str]] = defaultdict(list)
+        chains: t.MutableStrSequenceMapping = defaultdict(list)
         for dep_name in direct_dep_names:
             if not dep_name:
                 continue
@@ -106,7 +106,7 @@ class FlextInfraUtilitiesRefactorNamespace:
     def _extract_dep_names_from_doc(
         *,
         doc: tomlkit.TOMLDocument,
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         """Extract direct dependency project names from a pyproject.toml document.
 
         Reads both PEP 621 (``project.dependencies``) and Poetry
@@ -178,7 +178,7 @@ class FlextInfraUtilitiesRefactorNamespace:
     def _base_import_for_family(
         *,
         family: str,
-        base_chains: Mapping[str, Sequence[str]] | None = None,
+        base_chains: t.StrSequenceMapping | None = None,
     ) -> str:
         """Generate import statements for the base classes of a family.
 
@@ -202,7 +202,7 @@ class FlextInfraUtilitiesRefactorNamespace:
     def _base_class_for_family(
         *,
         family: str,
-        base_chains: Mapping[str, Sequence[str]] | None = None,
+        base_chains: t.StrSequenceMapping | None = None,
     ) -> str:
         """Return comma-separated base class names for a family."""
         if base_chains:
@@ -217,7 +217,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         file_path: Path,
         family: str,
         class_name: str,
-        base_chains: Mapping[str, Sequence[str]] | None = None,
+        base_chains: t.StrSequenceMapping | None = None,
     ) -> None:
         alias = family
         import_stmt = FlextInfraUtilitiesRefactorNamespace._base_import_for_family(
@@ -615,7 +615,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         stem = FlextInfraNamespaceFacadeScanner.project_class_stem(
             project_name=project_name,
         )
-        base_chains: Mapping[str, Sequence[str]] | None = None
+        base_chains: t.StrSequenceMapping | None = None
         if workspace_root is not None:
             chains = FlextInfraUtilitiesRefactorNamespace.build_expected_base_chains(
                 project_root=project_root,
@@ -653,7 +653,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         target_path: Path,
         family: str,
         class_name: str,
-        base_chains: Mapping[str, Sequence[str]] | None = None,
+        base_chains: t.StrSequenceMapping | None = None,
     ) -> None:
         """Append missing class def and alias to an existing facade file."""
         content = target_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
@@ -827,7 +827,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         file_path: Path,
         new_bases: t.Infra.StrSet,
         parse_failures: MutableSequence[m.Infra.ParseFailureViolation],
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         """Build import lines for bases not already imported in the file."""
         parsed = FlextInfraUtilitiesRefactorLoader.load_python_module(
             file_path,
@@ -916,7 +916,7 @@ class FlextInfraUtilitiesRefactorNamespace:
             )
 
     @staticmethod
-    def _find_future_insert_index(*, lines: Sequence[str]) -> int:
+    def _find_future_insert_index(*, lines: t.StrSequence) -> int:
         """Find the line index after shebang, encoding, and module docstring."""
         insert_idx = 0
         if lines[0].startswith("#!"):
@@ -996,7 +996,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         parse_failures: MutableSequence[m.Infra.ParseFailureViolation],
     ) -> None:
         """Rewrite compatibility alias violations in source files."""
-        grouped: Mapping[Path, MutableMapping[str, str]] = defaultdict(dict)
+        grouped: Mapping[Path, t.MutableStrMapping] = defaultdict(dict)
         for violation in violations:
             grouped[Path(violation.file)][violation.alias_name] = violation.target_name
         for file_path, alias_map in grouped.items():
@@ -1010,7 +1010,7 @@ class FlextInfraUtilitiesRefactorNamespace:
     def _rewrite_compat_aliases_in_file(
         *,
         file_path: Path,
-        alias_map: Mapping[str, str],
+        alias_map: t.StrMapping,
         parse_failures: MutableSequence[m.Infra.ParseFailureViolation],
     ) -> None:
         """Remove alias assignments and replace alias usages in a single file."""
@@ -1046,7 +1046,7 @@ class FlextInfraUtilitiesRefactorNamespace:
     def _find_alias_assignment_lines(
         *,
         tree: ast.Module,
-        alias_map: Mapping[str, str],
+        alias_map: t.StrMapping,
     ) -> t.Infra.IntSet:
         """Find line numbers of ``AliasName = TargetName`` assignments to remove."""
         assignment_lines: t.Infra.IntSet = set()
@@ -1068,7 +1068,7 @@ class FlextInfraUtilitiesRefactorNamespace:
     def _apply_token_replacements(
         *,
         source: str,
-        alias_map: Mapping[str, str],
+        alias_map: t.StrMapping,
     ) -> str:
         """Replace alias name tokens in source with their target names."""
         line_buffer = source.splitlines(keepends=True)

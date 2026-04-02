@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import (
@@ -244,7 +244,7 @@ class FlextInfraUtilitiesRefactorPydantic:
         *,
         apply: bool,
         normalize_remaining: bool,
-    ) -> Mapping[str, int]:
+    ) -> t.IntMapping:
         """Centralize model contracts and normalize namespace scaffolds."""
         cls = FlextInfraUtilitiesRefactorPydantic
         moved_classes = 0

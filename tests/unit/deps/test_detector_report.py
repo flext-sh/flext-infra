@@ -16,7 +16,7 @@ class _ReportStub:
     def __init__(self, raw_count: int) -> None:
         self._raw_count = raw_count
 
-    def model_dump(self) -> Mapping[str, Mapping[str, int]]:
+    def model_dump(self) -> Mapping[str, t.IntMapping]:
         return {"deptry": {"raw_count": self._raw_count}}
 
 
@@ -93,7 +93,7 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunReport:
 
         def _write_json(
             path: Path,
-            payload: Mapping[str, Mapping[str, Mapping[str, int]]],
+            payload: Mapping[str, Mapping[str, t.IntMapping]],
         ) -> r[bool]:
             _ = payload
             call_paths.append(str(path))
@@ -170,7 +170,7 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunReport:
     ) -> None:
         def _write_json_fail(
             path: Path,
-            payload: Mapping[str, Mapping[str, Mapping[str, int]]],
+            payload: Mapping[str, Mapping[str, t.IntMapping]],
         ) -> r[bool]:
             del path
             del payload

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, MutableMapping, Sequence
+from collections.abc import Callable, Sequence
 from typing import TypeAlias
 
 import pytest
@@ -78,7 +78,7 @@ class TestRunGenerate:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        captured_kwargs: MutableMapping[str, t.Scalar] = {}
+        captured_kwargs: t.MutableScalarMapping = {}
 
         def mock_gen(*_a: t.Scalar, **kw: t.Scalar) -> r[Sequence[_R]]:
             captured_kwargs.update(kw)
@@ -125,7 +125,7 @@ class TestRunValidate:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        captured_kwargs: MutableMapping[str, t.Scalar] = {}
+        captured_kwargs: t.MutableScalarMapping = {}
 
         def mock_val(*_a: t.Scalar, **kw: t.Scalar) -> r[Sequence[_R]]:
             captured_kwargs.update(kw)

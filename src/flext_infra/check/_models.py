@@ -8,7 +8,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field, JsonValue, computed_field, model_serializer
 
 from flext_core import FlextModels
-from flext_infra import c
+from flext_infra import c, t
 
 
 class FlextInfraCheckModels:
@@ -46,7 +46,7 @@ class FlextInfraCheckModels:
         project: Annotated[str, Field(description="Project name")]
         passed: Annotated[bool, Field(description="Gate execution status")]
         errors: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(
                 description="Gate error messages",
             ),

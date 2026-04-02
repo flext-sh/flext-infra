@@ -38,8 +38,8 @@ def _is_local_module(mod: str, root_name: str) -> bool:
 def _format_import(
     indent: str,
     mod: str,
-    parts: Sequence[str],
-) -> Sequence[str]:
+    parts: t.StrSequence,
+) -> t.StrSequence:
     """Format an import statement, wrapping to multi-line if too long."""
     joined = ", ".join(parts)
     line = f"{indent}from {mod} import {joined}"
@@ -104,7 +104,7 @@ class FlextInfraCodegenGeneration:
                 lines.append(_format_module_alias_import(indent, mod, export_name))
             if not sorted_items:
                 return
-            parts: Sequence[str] = [
+            parts: t.StrSequence = [
                 export_name
                 if export_name == attr_name
                 else f"{attr_name} as {export_name}"
@@ -127,7 +127,7 @@ class FlextInfraCodegenGeneration:
         groups: Mapping[str, t.Infra.StrPairSequence],
         *,
         include_flext_types: bool = True,
-        child_packages: Sequence[str] | None = None,
+        child_packages: t.StrSequence | None = None,
         local_package_root: str | None = None,
     ) -> t.StrSequence:
         """Generate TYPE_CHECKING import block with wildcard imports.
@@ -158,7 +158,7 @@ class FlextInfraCodegenGeneration:
         if include_flext_types and not _has_flext_types(collapsed):
             lines.append("    from flext_core import FlextTypes")
 
-        external_imports: MutableMapping[str, MutableSequence[str]] = defaultdict(list)
+        external_imports: t.MutableStrSequenceMapping = defaultdict(list)
 
         sorted_mods = sorted(collapsed, key=str.lower)
         prev_top: str | None = None
@@ -202,8 +202,8 @@ class FlextInfraCodegenGeneration:
         current_pkg: str,
         eager_typevar_names: frozenset[str] = frozenset(),
         eager_imports: t.Infra.LazyImportMap | None = None,
-        child_packages_for_lazy: Sequence[str] | None = None,
-        child_packages_for_tc: Sequence[str] | None = None,
+        child_packages_for_lazy: t.StrSequence | None = None,
+        child_packages_for_tc: t.StrSequence | None = None,
     ) -> str:
         """Generate complete module file with lazy imports and type hints.
 
@@ -291,7 +291,7 @@ class FlextInfraCodegenGeneration:
 
 def _collapse_to_children(
     groups: Mapping[str, t.Infra.StrPairSequence],
-    child_packages: Sequence[str] | None,
+    child_packages: t.StrSequence | None,
 ) -> MutableMapping[str, MutableSequence[t.Infra.StrPair]]:
     """Collapse sub-module imports into parent package when parent is a child package."""
     sorted_children = sorted(set(child_packages or []), key=len, reverse=True)
@@ -323,7 +323,7 @@ def _emit_type_checking_module(
     children: set[str],
     root_name: str,
     lines: MutableSequence[str],
-    external_imports: MutableMapping[str, MutableSequence[str]],
+    external_imports: t.MutableStrSequenceMapping,
 ) -> None:
     """Emit TYPE_CHECKING lines for a single module using explicit imports only."""
     alias_exports: MutableSequence[str] = []

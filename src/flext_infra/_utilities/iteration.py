@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 from flext_core import r
@@ -238,7 +238,7 @@ class FlextInfraUtilitiesIteration:
     @staticmethod
     def _iter_known_dirs(
         project_root: Path,
-        include_flags: Mapping[str, bool],
+        include_flags: t.BoolMapping,
         selected_dirs: frozenset[str],
         files: MutableSequence[Path],
     ) -> None:

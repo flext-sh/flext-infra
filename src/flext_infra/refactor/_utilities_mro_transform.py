@@ -123,12 +123,12 @@ class FlextInfraUtilitiesRefactorMroTransform:
         class_name: str,
     ) -> t.Infra.Triple[
         Sequence[cst.CSTNode],
-        MutableMapping[str, str],
+        t.MutableStrMapping,
         tuple[str, ...],
     ]:
         """Merge moved symbols into the facade class within the retained body."""
         transformed_body: MutableSequence[cst.CSTNode] = []
-        symbol_map: MutableMapping[str, str] = {}
+        symbol_map: t.MutableStrMapping = {}
         class_found = False
         for retained_stmt in retained_body:
             if (
@@ -167,7 +167,7 @@ class FlextInfraUtilitiesRefactorMroTransform:
         module: cst.Module,
         moved_by_symbol: Mapping[str, cst.CSTNode],
         ordered_symbols: t.StrSequence,
-        symbol_map: Mapping[str, str],
+        symbol_map: t.StrMapping,
         facade_alias: str,
     ) -> cst.Module:
         """Apply private-inline and qualified-reference transformers."""
@@ -215,7 +215,7 @@ class FlextInfraUtilitiesRefactorMroTransform:
     @staticmethod
     def _build_qualified_renames(
         *,
-        symbol_map: Mapping[str, str],
+        symbol_map: t.StrMapping,
         facade_alias: str,
     ) -> MutableMapping[str, cst.BaseExpression]:
         """Build qualified attribute expressions for public dotted symbol paths."""
@@ -346,12 +346,12 @@ class FlextInfraUtilitiesRefactorMroTransform:
         moved_by_symbol: Mapping[str, cst.CSTNode],
     ) -> t.Infra.Triple[
         Sequence[cst.CSTNode],
-        MutableMapping[str, str],
+        t.MutableStrMapping,
         MutableMapping[str, cst.BaseExpression],
     ]:
         """Split class body into retained statements, alias mappings, and replacement values."""
         retained: MutableSequence[cst.CSTNode] = []
-        alias_by_symbol: MutableMapping[str, str] = {}
+        alias_by_symbol: t.MutableStrMapping = {}
         alias_replacement_values: MutableMapping[str, cst.BaseExpression] = {}
         for statement in class_body:
             alias = FlextInfraUtilitiesRefactorMroTransform._extract_alias_assignment(
@@ -375,16 +375,16 @@ class FlextInfraUtilitiesRefactorMroTransform:
         *,
         ordered_symbols: t.StrSequence,
         moved_by_symbol: Mapping[str, cst.CSTNode],
-        alias_by_symbol: Mapping[str, str],
+        alias_by_symbol: t.StrMapping,
         alias_replacement_values: Mapping[str, cst.BaseExpression],
         is_types_facade: bool,
     ) -> t.Infra.Triple[
-        MutableMapping[str, str],
+        t.MutableStrMapping,
         Sequence[cst.CSTNode],
         Sequence[cst.CSTNode],
     ]:
         """Build symbol map and retargeted nodes, split into regular vs core lines."""
-        symbol_map: MutableMapping[str, str] = {}
+        symbol_map: t.MutableStrMapping = {}
         added_targets: t.Infra.StrSet = set()
         moved_lines: MutableSequence[cst.CSTNode] = []
         moved_core_lines: MutableSequence[cst.CSTNode] = []
@@ -498,7 +498,7 @@ class FlextInfraUtilitiesRefactorMroTransform:
         )
         class_body: MutableSequence[cst.BaseStatement] = []
         core_body: MutableSequence[cst.BaseStatement] = []
-        symbol_map: MutableMapping[str, str] = {}
+        symbol_map: t.MutableStrMapping = {}
         is_types_facade = class_name.endswith("Types")
         for symbol in ordered_symbols:
             target = FlextInfraUtilitiesRefactorMroTransform._default_target(

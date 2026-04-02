@@ -6,14 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
 from flext_tests import tm
 
 from flext_infra import FlextInfraDocBuilder
-from tests import m
+from tests import m, t
 
 
 @pytest.fixture
@@ -73,7 +72,7 @@ class TestBuilderCore:
         self,
         builder: FlextInfraDocBuilder,
         tmp_path: Path,
-        kwargs: Mapping[str, str],
+        kwargs: t.StrMapping,
     ) -> None:
         params = dict(kwargs)
         if "output_dir" in params:

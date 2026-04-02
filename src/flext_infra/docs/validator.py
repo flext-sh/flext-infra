@@ -121,7 +121,7 @@ class FlextInfraDocValidator:
         if configured is None:
             return []
         try:
-            required_items: Sequence[str] = t.Infra.STR_SEQ_ADAPTER.validate_python(
+            required_items: t.StrSequence = t.Infra.STR_SEQ_ADAPTER.validate_python(
                 configured,
                 strict=True,
             )

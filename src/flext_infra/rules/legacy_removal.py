@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import NamedTuple, override
 
@@ -223,8 +223,8 @@ class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
         arg: cst.Arg,
         *,
         positional: MutableSequence[str],
-        keyword: MutableMapping[str, str],
-        stars: MutableMapping[str, str],
+        keyword: t.MutableStrMapping,
+        stars: t.MutableStrMapping,
     ) -> bool:
         """Classify a single call argument. Returns False if unparseable."""
         name_value = self._require_name_value(arg)
@@ -249,8 +249,8 @@ class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
         call_args: Sequence[cst.Arg],
     ) -> _ForwardingActual | None:
         positional: MutableSequence[str] = []
-        keyword: MutableMapping[str, str] = {}
-        stars: MutableMapping[str, str] = {}
+        keyword: t.MutableStrMapping = {}
+        stars: t.MutableStrMapping = {}
         for arg in call_args:
             if not self._classify_arg(
                 arg, positional=positional, keyword=keyword, stars=stars

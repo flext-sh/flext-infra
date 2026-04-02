@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -80,14 +79,14 @@ class FlextInfraCliRefactor:
     @staticmethod
     def _handle_centralize_pydantic(
         params: m.Infra.RefactorCentralizeInput,
-    ) -> r[Mapping[str, int]]:
+    ) -> r[t.IntMapping]:
         """Run pydantic centralization workflow for the workspace."""
         summary = u.Infra.centralize_workspace(
             Path(params.workspace),
             apply=params.apply,
             normalize_remaining=params.normalize_remaining,
         )
-        return r[Mapping[str, int]].ok(summary)
+        return r[t.IntMapping].ok(summary)
 
     @staticmethod
     def _handle_migrate_mro(
@@ -136,7 +135,7 @@ class FlextInfraCliRefactor:
     @staticmethod
     def _handle_ultrawork_models(
         params: m.Infra.RefactorUltraworkModelsInput,
-    ) -> r[Mapping[str, int]]:
+    ) -> r[t.IntMapping]:
         """Run centralization, MRO migration, and namespace enforcement together."""
         workspace = Path(params.workspace)
         centralize_summary = u.Infra.centralize_workspace(
@@ -151,7 +150,7 @@ class FlextInfraCliRefactor:
             workspace_root=workspace,
         ).enforce(apply=params.apply)
 
-        combined: Mapping[str, int] = {
+        combined: t.IntMapping = {
             **centralize_summary,
             "mro_remaining_violations": mro_report.remaining_violations,
             "mro_files_scanned": mro_report.files_scanned,
@@ -170,8 +169,8 @@ class FlextInfraCliRefactor:
         if mro_report.errors:
             for error in mro_report.errors:
                 cli.display_message(error, message_type="error")
-            return r[Mapping[str, int]].fail("MRO migration had errors")
-        return r[Mapping[str, int]].ok(combined)
+            return r[t.IntMapping].fail("MRO migration had errors")
+        return r[t.IntMapping].ok(combined)
 
     @staticmethod
     def _handle_refactor_census(

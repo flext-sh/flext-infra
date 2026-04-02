@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from typing import ClassVar, Final
 
 from flext_infra import t
@@ -61,7 +60,7 @@ class FlextInfraConstantsCensus:
             REMOVE_FLAT_ALIAS,
         })
 
-    CENSUS_TIER_MAP: ClassVar[Mapping[str, str]] = {
+    CENSUS_TIER_MAP: ClassVar[t.StrMapping] = {
         "constants.py": "constant",
         "_constants.py": "constant",
         "_constants": "constant",
@@ -98,7 +97,7 @@ class FlextInfraConstantsCensus:
     }
     """Object kind → canonical subpackage directory."""
 
-    CENSUS_OBJECT_MARKERS: ClassVar[Mapping[str, str]] = {
+    CENSUS_OBJECT_MARKERS: ClassVar[t.StrMapping] = {
         "Final": "constant",
         "ClassVar": "constant",
         "Protocol": "protocol",

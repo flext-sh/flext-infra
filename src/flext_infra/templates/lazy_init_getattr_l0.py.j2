@@ -23,7 +23,7 @@ def __getattr__(name: str) -> type:
     raise AttributeError(msg)
 
 
-def __dir__() -> Sequence[str]:
+def __dir__() -> t.StrSequence:
     return sorted(__all__)
 
 

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -96,7 +95,7 @@ class FlextInfraCliGithub:
     def _handle_pr(params: m.Infra.GithubPrInput) -> r[m.Infra.PrExecutionResultModel]:
         """Manage pull requests for a single project."""
         repo_root = Path(params.repo_root)
-        pr_args: Mapping[str, str] = {
+        pr_args: t.StrMapping = {
             "action": params.action,
             "base": params.base,
             "head": params.head or "",

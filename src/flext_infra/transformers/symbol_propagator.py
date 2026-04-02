@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping, MutableSequence
+from collections.abc import MutableSequence
 from typing import override
 
 import libcst as cst
@@ -30,7 +30,7 @@ class FlextInfraRefactorSymbolPropagator(FlextInfraChangeTrackingTransformer):
         self._target_modules = target_modules
         self._module_renames = module_renames
         self._import_symbol_renames = import_symbol_renames
-        self._local_name_renames: MutableMapping[str, str] = {}
+        self._local_name_renames: t.MutableStrMapping = {}
 
     @override
     def leave_ImportFrom(

@@ -14,7 +14,7 @@ from tests import t
 
 
 class _ReportStub:
-    def model_dump(self) -> Mapping[str, Mapping[str, int]]:
+    def model_dump(self) -> Mapping[str, t.IntMapping]:
         return {"deptry": {"raw_count": 0}}
 
 

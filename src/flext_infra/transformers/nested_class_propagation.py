@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping, MutableSequence
+from collections.abc import MutableSequence
 from typing import override
 
 import libcst as cst
@@ -25,7 +25,7 @@ class FlextInfraNestedClassPropagationTransformer(cst.CSTTransformer):
     ) -> None:
         """Initialize with class rename mappings and optional policy context."""
         self._class_renames = class_renames
-        self._name_renames: MutableMapping[str, str] = dict(class_renames)
+        self._name_renames: t.MutableStrMapping = dict(class_renames)
         self._policy_context = policy_context
         self._class_families = class_families or {}
         self._skip_names: set[int] = set()

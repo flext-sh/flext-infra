@@ -30,7 +30,7 @@ class FlextInfraRefactorLooseClassScanner:
             return out
         discovered_files: Sequence[Path] = files_result.value
         grep_result = self._scan_with_ast_grep(project_root)
-        grep_index: Mapping[Path, Mapping[str, int]] = (
+        grep_index: Mapping[Path, t.IntMapping] = (
             grep_result.value if grep_result.is_success else {}
         )
         violations: MutableSequence[m.Infra.LooseClassViolation] = []
@@ -75,7 +75,7 @@ class FlextInfraRefactorLooseClassScanner:
         self,
         rel_path: Path,
         occ: m.Infra.ClassOccurrence,
-        grep_hits: Mapping[str, int],
+        grep_hits: t.IntMapping,
     ) -> m.Infra.LooseClassViolation | None:
         if not occ.is_top_level:
             return None
@@ -170,7 +170,7 @@ class FlextInfraRefactorLooseClassScanner:
     def _scan_with_ast_grep(
         self,
         project_root: Path,
-    ) -> r[Mapping[Path, Mapping[str, int]]]:
+    ) -> r[Mapping[Path, t.IntMapping]]:
         cmd = [
             "sg",
             "--pattern",
@@ -182,16 +182,12 @@ class FlextInfraRefactorLooseClassScanner:
         ]
         capture = u.Infra.capture(cmd)
         if capture.is_failure:
-            out: r[Mapping[Path, Mapping[str, int]]] = r[
-                Mapping[Path, Mapping[str, int]]
-            ].fail(
+            out: r[Mapping[Path, t.IntMapping]] = r[Mapping[Path, t.IntMapping]].fail(
                 capture.error or "ast-grep failed",
             )
             return out
         if not capture.value:
-            out2: r[Mapping[Path, Mapping[str, int]]] = r[
-                Mapping[Path, Mapping[str, int]]
-            ].ok({})
+            out2: r[Mapping[Path, t.IntMapping]] = r[Mapping[Path, t.IntMapping]].ok({})
             return out2
         try:
             json_raw: str | bytes | bytearray = capture.value
@@ -199,11 +195,11 @@ class FlextInfraRefactorLooseClassScanner:
                 _AST_GREP_MATCH_SEQ_ADAPTER.validate_json(json_raw)
             )
         except ValidationError as exc:
-            out3: r[Mapping[Path, Mapping[str, int]]] = r[
-                Mapping[Path, Mapping[str, int]]
-            ].fail(str(exc))
+            out3: r[Mapping[Path, t.IntMapping]] = r[Mapping[Path, t.IntMapping]].fail(
+                str(exc)
+            )
             return out3
-        idx: MutableMapping[Path, MutableMapping[str, int]] = {}
+        idx: MutableMapping[Path, t.MutableIntMapping] = {}
         for entry in entries:
             name = entry.symbol_name
             if name is None:
@@ -215,9 +211,7 @@ class FlextInfraRefactorLooseClassScanner:
             if not fp.is_absolute():
                 fp = (project_root / fp).resolve()
             idx.setdefault(fp, {}).setdefault(name, line)
-        out4: r[Mapping[Path, Mapping[str, int]]] = r[
-            Mapping[Path, Mapping[str, int]]
-        ].ok(idx)
+        out4: r[Mapping[Path, t.IntMapping]] = r[Mapping[Path, t.IntMapping]].ok(idx)
         return out4
 
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
 import tomlkit
@@ -22,8 +22,8 @@ class FlextInfraEnsurePyrightConfigPhase:
         *,
         root: str,
         report_private_usage: str,
-        extra_paths: Sequence[str],
-        suppressions: Mapping[str, str] | None = None,
+        extra_paths: t.StrSequence,
+        suppressions: t.StrMapping | None = None,
     ) -> t.Infra.ContainerDict:
         entry: t.Infra.MutableInfraMapping = {
             "root": root,
@@ -38,10 +38,10 @@ class FlextInfraEnsurePyrightConfigPhase:
     def _path_rules(self) -> m.Infra.PyrightConfig.PathRulesConfig:
         return self._tool_config.tools.pyright.path_rules
 
-    def _suppressions_for_env(self, env_dir: str) -> Mapping[str, str]:
+    def _suppressions_for_env(self, env_dir: str) -> t.StrMapping:
         """Return merged pyright suppressions for the given env directory."""
         pyright_cfg = self._tool_config.tools.pyright
-        merged: MutableMapping[str, str] = {**pyright_cfg.lazy_import_suppressions}
+        merged: t.MutableStrMapping = {**pyright_cfg.lazy_import_suppressions}
         rules = self._path_rules()
         if env_dir == rules.source_dir:
             merged.update(pyright_cfg.source_env_suppressions)
@@ -282,7 +282,7 @@ class FlextInfraEnsurePyrightConfigPhase:
     ) -> t.StrSequence:
         if base_dir is None:
             return []
-        existing: Sequence[str] = [
+        existing: t.StrSequence = [
             relative_path
             for relative_path in configured_paths
             if (base_dir / relative_path).is_dir()
@@ -419,7 +419,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                 changes.append(f"tool.pyright.{key} set to {value}")
         # Merge extended_settings with project_kind overrides BEFORE applying
         # to avoid double-change noise (set to X then immediately override to Y)
-        merged_settings: MutableMapping[str, str] = {
+        merged_settings: t.MutableStrMapping = {
             **self._tool_config.tools.pyright.extended_settings,
         }
         override = self._override_for_kind(project_kind)

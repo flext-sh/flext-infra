@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping, MutableSequence, Sequence
+from collections.abc import MutableSequence, Sequence
 from typing import override
 
 import libcst as cst
@@ -23,7 +23,7 @@ class FlextInfraRefactorImportModernizer(FlextInfraChangeTrackingTransformer):
 
     def __init__(
         self,
-        imports_to_remove: Sequence[str],
+        imports_to_remove: t.StrSequence,
         symbols_to_replace: t.StrMapping,
         runtime_aliases: t.Infra.StrSet,
         blocked_aliases: t.Infra.StrSet,
@@ -38,7 +38,7 @@ class FlextInfraRefactorImportModernizer(FlextInfraChangeTrackingTransformer):
         self.modified_imports = False
         self.aliases_needed: t.Infra.StrSet = set()
         self.aliases_present: t.Infra.StrSet = set()
-        self.active_symbol_replacements: MutableMapping[str, str] = {}
+        self.active_symbol_replacements: t.MutableStrMapping = {}
 
     @override
     def leave_ImportFrom(

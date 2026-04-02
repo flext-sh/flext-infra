@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable, MutableMapping, Sequence
+from collections.abc import Callable, Sequence
 
 import pytest
 from flext_tests import tm
@@ -74,7 +74,7 @@ def _fail_list(err: str) -> Callable[..., r[Sequence[m.Infra.DocsPhaseReport]]]:
 
 
 def _capturing(
-    captured: MutableMapping[str, t.Scalar],
+    captured: t.MutableScalarMapping,
 ) -> Callable[..., r[Sequence[m.Infra.DocsPhaseReport]]]:
     def _fn(
         _self: t.Scalar,
@@ -135,7 +135,7 @@ class TestRunAudit:
         field: str,
         expected: t.Scalar,
     ) -> None:
-        captured_kwargs: MutableMapping[str, t.Scalar] = {}
+        captured_kwargs: t.MutableScalarMapping = {}
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", _capturing(captured_kwargs))
         FlextInfraDocsCli._handle_audit(
             m.Infra.DocsAuditInput(check=check, strict=strict),
@@ -162,7 +162,7 @@ class TestRunFix:
         apply: bool,
         expected: bool,
     ) -> None:
-        captured_kwargs: MutableMapping[str, t.Scalar] = {}
+        captured_kwargs: t.MutableScalarMapping = {}
 
         def mock_fix(
             _self: t.Scalar,

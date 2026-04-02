@@ -106,7 +106,7 @@ def test_preserves_used_typing_imports() -> None:
 def test_replaces_primitives_union() -> None:
     source = (
         "from __future__ import annotations\n\n"
-        "def foo(x: str | int | float | bool) -> None:\n"
+        "def foo(x: t.Primitives) -> None:\n"
         "    pass\n"
     )
     tree = cst.parse_module(source)
@@ -117,7 +117,7 @@ def test_replaces_primitives_union() -> None:
     updated_tree, changes = rule.apply(tree)
     updated = updated_tree.code
     assert "t.Primitives" in updated
-    assert "str | int | float | bool" not in updated
+    assert "t.Primitives" not in updated
     assert "from flext_core import t" in updated
     assert any(
         change == "Canonicalized inline union -> t.Primitives" for change in changes
@@ -125,7 +125,7 @@ def test_replaces_primitives_union() -> None:
 
 
 def test_replaces_numeric_union() -> None:
-    source = "def foo(x: int | float) -> None:\n    pass\n"
+    source = "def foo(x: t.Numeric) -> None:\n    pass\n"
     tree = cst.parse_module(source)
     rule = FlextInfraRefactorTypingUnificationRule({
         "id": "unify-typings",
@@ -134,14 +134,14 @@ def test_replaces_numeric_union() -> None:
     updated_tree, changes = rule.apply(tree)
     updated = updated_tree.code
     assert "x: t.Numeric" in updated
-    assert "int | float" not in updated
+    assert "t.Numeric" not in updated
     assert any(
         change == "Canonicalized inline union -> t.Numeric" for change in changes
     )
 
 
 def test_replaces_scalar_union() -> None:
-    source = "def foo(x: str | int | float | bool | datetime) -> None:\n    pass\n"
+    source = "def foo(x: t.Primitives | datetime) -> None:\n    pass\n"
     tree = cst.parse_module(source)
     rule = FlextInfraRefactorTypingUnificationRule({
         "id": "unify-typings",
@@ -150,14 +150,12 @@ def test_replaces_scalar_union() -> None:
     updated_tree, changes = rule.apply(tree)
     updated = updated_tree.code
     assert "x: t.Scalar" in updated
-    assert "str | int | float | bool | datetime" not in updated
+    assert "t.Primitives | datetime" not in updated
     assert any(change == "Canonicalized inline union -> t.Scalar" for change in changes)
 
 
 def test_replaces_container_union() -> None:
-    source = (
-        "def foo(x: str | int | float | bool | datetime | Path) -> None:\n    pass\n"
-    )
+    source = "def foo(x: t.Container) -> None:\n    pass\n"
     tree = cst.parse_module(source)
     rule = FlextInfraRefactorTypingUnificationRule({
         "id": "unify-typings",
@@ -166,14 +164,14 @@ def test_replaces_container_union() -> None:
     updated_tree, changes = rule.apply(tree)
     updated = updated_tree.code
     assert "x: t.Container" in updated
-    assert "str | int | float | bool | datetime | Path" not in updated
+    assert "t.Container" not in updated
     assert any(
         change == "Canonicalized inline union -> t.Container" for change in changes
     )
 
 
 def test_injects_t_import_when_needed() -> None:
-    source = "def foo(x: str | int | float | bool) -> None:\n    pass\n"
+    source = "def foo(x: t.Primitives) -> None:\n    pass\n"
     tree = cst.parse_module(source)
     rule = FlextInfraRefactorTypingUnificationRule({
         "id": "unify-typings",
@@ -187,7 +185,7 @@ def test_injects_t_import_when_needed() -> None:
 
 
 def test_skips_union_with_none() -> None:
-    source = "def foo(x: str | int | float | bool | None) -> None:\n    pass\n"
+    source = "def foo(x: t.Primitives | None) -> None:\n    pass\n"
     tree = cst.parse_module(source)
     rule = FlextInfraRefactorTypingUnificationRule({
         "id": "unify-typings",
@@ -195,13 +193,13 @@ def test_skips_union_with_none() -> None:
     })
     updated_tree, changes = rule.apply(tree)
     updated = updated_tree.code
-    assert "str | int | float | bool | None" in updated
+    assert "t.Primitives | None" in updated
     assert "t.Primitives" not in updated
     assert changes == []
 
 
 def test_skips_definition_files() -> None:
-    source = "def foo(x: str | int | float | bool) -> None:\n    pass\n"
+    source = "def foo(x: t.Primitives) -> None:\n    pass\n"
     tree = cst.parse_module(source)
     rule = FlextInfraRefactorTypingUnificationRule({
         "id": "unify-typings",
@@ -209,7 +207,7 @@ def test_skips_definition_files() -> None:
     })
     updated_tree, changes = rule.apply(tree, _file_path=Path("typings.py"))
     updated = updated_tree.code
-    assert "str | int | float | bool" in updated
+    assert "t.Primitives" in updated
     assert "t.Primitives" not in updated
     assert "from flext_core import t" not in updated
     assert changes == []
@@ -408,7 +406,7 @@ def test_all_three_capabilities_in_one_pass() -> None:
         "from __future__ import annotations\n"
         "from typing import TypeAlias, Final\n\n"
         "MyType: TypeAlias = str\n\n"
-        "def foo(x: str | int | float | bool) -> Final[str]:\n"
+        "def foo(x: t.Primitives) -> Final[str]:\n"
         "    pass\n"
     )
     tree = cst.parse_module(source)
@@ -437,7 +435,7 @@ def test_no_duplicate_t_import_when_t_from_project_package() -> None:
     source = (
         "from __future__ import annotations\n"
         "from flext_ldif import c, m, t\n\n"
-        "def foo(x: int | float) -> None:\n"
+        "def foo(x: t.Numeric) -> None:\n"
         "    pass\n"
     )
     tree = cst.parse_module(source)

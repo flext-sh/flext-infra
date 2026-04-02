@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar
 
@@ -93,7 +93,7 @@ class FlextInfraDocsModels:
         ]
         strict: Annotated[bool, Field(default=True, description="Strict mode")]
         budgets: Annotated[
-            t.Infra.Pair[int | None, Mapping[str, int]] | None,
+            t.Infra.Pair[int | None, t.IntMapping] | None,
             Field(default=None, description="Budget tuple (default, by_scope)"),
         ] = None
 

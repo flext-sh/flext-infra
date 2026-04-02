@@ -103,7 +103,7 @@ class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
         self,
         tree: cst.Module,
         _file_path: Path | None = None,
-    ) -> t.Infra.Pair[cst.Module, Sequence[str]]:
+    ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
         if _file_path is None:
             return (tree, [])
         analyzer = FlextInfraTransformerTier0ImportFixer.Analyzer(
@@ -174,13 +174,13 @@ class FlextInfraRefactorSymbolPropagationRule(FlextInfraRefactorRule):
         symbol_renames_raw = typed_cfg.get("import_symbol_renames", {})
         target_modules = set(u.Infra.string_list(target_modules_raw))
         try:
-            module_renames: Mapping[str, str] = STR_MAPPING_ADAPTER.validate_python(
+            module_renames: t.StrMapping = STR_MAPPING_ADAPTER.validate_python(
                 module_renames_raw,
             )
         except ValidationError:
             module_renames = {}
         try:
-            symbol_renames: Mapping[str, str] = STR_MAPPING_ADAPTER.validate_python(
+            symbol_renames: t.StrMapping = STR_MAPPING_ADAPTER.validate_python(
                 symbol_renames_raw,
             )
         except ValidationError:

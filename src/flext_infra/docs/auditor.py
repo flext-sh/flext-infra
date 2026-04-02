@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
 from pydantic import JsonValue, ValidationError
@@ -19,7 +19,7 @@ from flext_infra import c, m, r, t, u
 
 logger = FlextLogger.create_module_logger(__name__)
 
-_NO_BUDGETS: t.Infra.Pair[int | None, Mapping[str, int]] = (None, {})
+_NO_BUDGETS: t.Infra.Pair[int | None, t.IntMapping] = (None, {})
 
 
 class FlextInfraDocAuditor:
@@ -38,7 +38,7 @@ class FlextInfraDocAuditor:
     @staticmethod
     def load_audit_budgets(
         workspace_root: Path,
-    ) -> t.Infra.Pair[int | None, Mapping[str, int]]:
+    ) -> t.Infra.Pair[int | None, t.IntMapping]:
         """Load audit issue budgets from architecture config."""
         config_path = _find_architecture_config(workspace_root)
         if config_path is None:
@@ -338,7 +338,7 @@ def _find_architecture_config(workspace_root: Path) -> Path | None:
 
 def _parse_audit_gate(
     audit_gate: Mapping[str, t.Infra.InfraValue],
-) -> t.Infra.Pair[int | None, Mapping[str, int]]:
+) -> t.Infra.Pair[int | None, t.IntMapping]:
     """Extract default budget and per-scope budgets from an audit_gate mapping."""
     default_budget = audit_gate.get("max_issues_default")
     by_scope_raw_value = audit_gate.get("max_issues_by_scope")
@@ -351,7 +351,7 @@ def _parse_audit_gate(
             )
         except ValidationError:
             by_scope_raw = {}
-    by_scope: MutableMapping[str, int] = {}
+    by_scope: t.MutableIntMapping = {}
     for name, value in by_scope_raw.items():
         if isinstance(value, (int, float)):
             by_scope[name] = int(value)

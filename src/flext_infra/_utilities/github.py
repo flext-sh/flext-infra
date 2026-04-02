@@ -9,7 +9,7 @@ from __future__ import annotations
 import contextlib
 import shutil
 import time
-from collections.abc import MutableMapping, MutableSequence, Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 from pydantic import JsonValue
@@ -251,7 +251,7 @@ class FlextInfraUtilitiesGithub(
         apply: bool,
         operations: Sequence[m.Infra.SyncOperation],
     ) -> None:
-        by_action: MutableMapping[str, int] = {}
+        by_action: t.MutableIntMapping = {}
         for op in operations:
             by_action[op.action] = by_action.get(op.action, 0) + 1
         summary_dict: dict[str, JsonValue] = dict(by_action)

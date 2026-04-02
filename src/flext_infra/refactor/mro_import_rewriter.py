@@ -31,7 +31,7 @@ class FlextInfraRefactorMROImportRewriter:
     ) -> t.Infra.Triple[
         Sequence[m.Infra.MROFileMigration],
         Sequence[m.Infra.MRORewriteResult],
-        Sequence[str],
+        t.StrSequence,
     ]:
         """Transform migrated files and propagate consumer rewrites across the workspace."""
         errors: list[str] = []
@@ -155,7 +155,7 @@ class FlextInfraRefactorMROImportRewriter:
                 file_path = Path(resource_like.real_path).resolve()
                 per_file = module_file_moves.setdefault(file_path, {})
                 existing_move = per_file.get(module_name)
-                existing_paths: MutableMapping[str, str] = (
+                existing_paths: t.MutableStrMapping = (
                     dict(existing_move[1]) if existing_move is not None else {}
                 )
                 existing_paths[symbol_name] = target_path

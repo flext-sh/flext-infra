@@ -1,7 +1,7 @@
 """Centralized TypeAdapter instances for flext-infra.
 
 Provides SSOT TypeAdapter singletons for common validation patterns.
-All modules should import these via ``t.Infra.<ADAPTER_NAME>`` instead
+All modules should import these via ``FlextTypes.Infra.<ADAPTER_NAME>`` instead
 of creating local TypeAdapter instances.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
@@ -26,7 +26,7 @@ class FlextInfraTypesAdapters:
 
         from flext_infra import t
 
-        validated = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(raw)
+        validated = FlextTypes.Infra.INFRA_MAPPING_ADAPTER.validate_python(raw)
     """
 
     # ── Mapping adapters ─────────────────────────────────────────────
@@ -40,10 +40,10 @@ class FlextInfraTypesAdapters:
     ] = TypeAdapter(MutableMapping[str, FlextInfraTypesBase.InfraValue])
     "Validates MutableMapping[str, InfraValue] for in-place mutation."
 
-    STR_MAPPING_ADAPTER: ClassVar[TypeAdapter[Mapping[str, str]]] = TypeAdapter(
-        Mapping[str, str],
+    STR_MAPPING_ADAPTER: ClassVar[TypeAdapter[FlextTypes.StrMapping]] = TypeAdapter(
+        FlextTypes.StrMapping,
     )
-    "Validates Mapping[str, str]."
+    "Validates FlextTypes.StrMapping."
 
     JSON_DICT_ADAPTER: ClassVar[TypeAdapter[Mapping[str, JsonValue]]] = TypeAdapter(
         Mapping[str, JsonValue],
@@ -53,7 +53,7 @@ class FlextInfraTypesAdapters:
     CONTAINER_MAPPING_ADAPTER: ClassVar[TypeAdapter[FlextTypes.ContainerMapping]] = (
         TypeAdapter(FlextTypes.ContainerMapping)
     )
-    "Validates ContainerMapping (t.ContainerMapping)."
+    "Validates ContainerMapping (FlextTypes.ContainerMapping)."
 
     # ── Sequence adapters ────────────────────────────────────────────
     INFRA_SEQ_ADAPTER: ClassVar[
@@ -71,10 +71,10 @@ class FlextInfraTypesAdapters:
     )
     "Validates Sequence[JsonValue]."
 
-    STR_SEQ_ADAPTER: ClassVar[TypeAdapter[Sequence[str]]] = TypeAdapter(
-        Sequence[str],
+    STR_SEQ_ADAPTER: ClassVar[TypeAdapter[FlextTypes.StrSequence]] = TypeAdapter(
+        FlextTypes.StrSequence,
     )
-    "Validates Sequence[str]."
+    "Validates FlextTypes.StrSequence."
 
     STR_MAPPING_SEQ_ADAPTER: ClassVar[TypeAdapter[Sequence[FlextTypes.StrMapping]]] = (
         TypeAdapter(Sequence[FlextTypes.StrMapping])
@@ -84,7 +84,7 @@ class FlextInfraTypesAdapters:
     STR_SEQ_SIMPLE_ADAPTER: ClassVar[TypeAdapter[FlextTypes.StrSequence]] = TypeAdapter(
         FlextTypes.StrSequence
     )
-    "Validates StrSequence (t.StrSequence)."
+    "Validates StrSequence (FlextTypes.StrSequence)."
 
     # ── Scalar adapters ──────────────────────────────────────────────
     JSON_VALUE_ADAPTER: ClassVar[TypeAdapter[JsonValue]] = TypeAdapter(JsonValue)

@@ -151,7 +151,7 @@ class FlextInfraUtilitiesReporting:
     def _markdown_summary_table(
         results: Sequence[m.Infra.ProjectResult],
         gates: t.StrSequence,
-    ) -> t.Infra.Pair[Sequence[str], int]:
+    ) -> t.Infra.Pair[t.StrSequence, int]:
         """Build markdown summary table rows. Returns (lines, failed_count)."""
         header = "| Project |"
         sep = "|---------|"
@@ -182,7 +182,7 @@ class FlextInfraUtilitiesReporting:
     def _markdown_project_details(
         results: Sequence[m.Infra.ProjectResult],
         gates: t.StrSequence,
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         """Build per-project error detail sections."""
         lines: MutableSequence[str] = []
         for project in sorted(results, key=lambda p: p.total_errors, reverse=True):

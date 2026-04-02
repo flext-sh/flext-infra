@@ -63,10 +63,6 @@ class FlextInfraTypesBase:
     "A single metric record: a Pydantic model or a string-keyed mapping of metric values."
     type ChangeCallback = Callable[[str], None] | None
     "Optional callback invoked on transformer changes."
-    type StrIndex = Mapping[str, int]
-    "String-keyed integer index (counters, metrics)."
-    type MutableStrIndex = MutableMapping[str, int]
-    "Mutable string-keyed integer index."
     type StrPair = tuple[str, str]
     "Ordered pair of strings."
     type StrIntPair = tuple[str, int]

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import contextlib
 import tomllib
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
 import tomlkit
@@ -45,7 +45,7 @@ class FlextInfraUtilitiesTomlParse:
     @staticmethod
     def dedupe_specs(specs: t.StrSequence) -> t.StrSequence:
         """Deduplicate dependency specifications by normalized name, sorted by full spec string."""
-        seen: MutableMapping[str, str] = {}
+        seen: t.MutableStrMapping = {}
         for spec in specs:
             key = FlextInfraUtilitiesTomlParse.dep_name(spec)
             if key and key not in seen:
@@ -78,7 +78,7 @@ class FlextInfraUtilitiesTomlParse:
         src_dir = project_dir / c.Infra.Paths.DEFAULT_SRC_DIR
         if not src_dir.is_dir():
             return []
-        namespaces: Sequence[str] = [
+        namespaces: t.StrSequence = [
             entry.name
             for entry in sorted(src_dir.iterdir())
             if entry.is_dir()

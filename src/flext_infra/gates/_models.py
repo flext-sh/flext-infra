@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
 from flext_core import FlextModels
+from flext_infra import t
 
 
 class FlextInfraGatesModels:
@@ -38,11 +38,11 @@ class FlextInfraGatesModels:
             ),
         ] = False
         ruff_args: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(description="Extra arguments for Ruff"),
         ] = ()
         pyright_args: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(description="Extra arguments for Pyright"),
         ] = ()
 
