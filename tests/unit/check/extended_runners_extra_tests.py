@@ -13,16 +13,16 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
+import flext_infra.check.workspace_check as ws_mod
 from flext_infra import (
     FlextInfraBanditGate,
     FlextInfraGate,
     FlextInfraMarkdownGate,
     FlextInfraPyrightGate,
     FlextInfraWorkspaceChecker,
-    t,
 )
+from tests import m, t
 
-from ...models import m
 from ._shared_fixtures import patch_python_dir_detection
 
 GateClass = (
@@ -60,7 +60,7 @@ def _create_checker_project(
     *,
     project_name: str = "p1",
     with_src: bool = False,
-) -> tuple[FlextInfraWorkspaceChecker, Path]:
+) -> tuple[ws_mod.FlextInfraWorkspaceChecker, Path]:
     """Create checker and minimal project structure for gate tests."""
     checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
     project_dir = tmp_path / project_name

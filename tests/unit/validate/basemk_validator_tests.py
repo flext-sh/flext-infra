@@ -13,8 +13,8 @@ from pathlib import Path
 import pytest
 from flext_tests import tf, tm
 
-from flext_infra import FlextInfraBaseMkGenerator, FlextInfraBaseMkValidator, t
-from tests import m
+from flext_infra import FlextInfraBaseMkGenerator, FlextInfraBaseMkValidator
+from tests import m, t
 
 _ROOT = "# root content"
 

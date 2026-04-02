@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import FlextInfraNamespaceSourceDetector, _DetectorContext, t, u
+from flext_infra import FlextInfraNamespaceSourceDetector, _DetectorContext
+from tests import t, u
 
 FAMILY_FILE_MAP = {
     "c": "constants.py",

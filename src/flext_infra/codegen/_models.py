@@ -125,10 +125,19 @@ class FlextInfraCodegenModels:
             Field(description="Cross-project reference violation count"),
         ]
 
-    class ConstantDefinition(FlextModels.ArbitraryTypesModel):
+    class BulkFixItem(FlextModels.ArbitraryTypesModel):
+        """Shared line-addressable item used by bulk codegen fixes."""
+
+        name: Annotated[t.NonEmptyStr, Field(description="Item identifier")]
+        file_path: Annotated[
+            t.NonEmptyStr,
+            Field(description="Absolute file path"),
+        ]
+        line: Annotated[t.PositiveInt, Field(description="Line number")]
+
+    class ConstantDefinition(BulkFixItem):
         """A single constant extracted from a constants.py file."""
 
-        name: Annotated[t.NonEmptyStr, Field(description="Constant identifier")]
         value_repr: Annotated[
             str,
             Field(description="Source repr (e.g., '30', '\"localhost\"')"),
@@ -136,10 +145,6 @@ class FlextInfraCodegenModels:
         type_annotation: Annotated[
             str,
             Field(default="", description="Type annotation string"),
-        ]
-        file_path: Annotated[
-            t.NonEmptyStr,
-            Field(description="Absolute file path"),
         ]
         class_path: Annotated[
             str,
@@ -149,7 +154,6 @@ class FlextInfraCodegenModels:
             ),
         ]
         project: Annotated[t.NonEmptyStr, Field(description="Project name")]
-        line: Annotated[t.PositiveInt, Field(description="Line number")]
 
     class DuplicateConstantGroup(FlextModels.ArbitraryTypesModel):
         """Cross-project duplicate group with consolidation metadata."""
@@ -171,17 +175,11 @@ class FlextInfraCodegenModels:
             Field(default="", description="Canonical parent reference"),
         ]
 
-    class UnusedConstant(FlextModels.ArbitraryTypesModel):
+    class UnusedConstant(BulkFixItem):
         """Constant declared but never referenced in workspace."""
 
-        name: Annotated[t.NonEmptyStr, Field(description="Constant identifier")]
-        file_path: Annotated[
-            t.NonEmptyStr,
-            Field(description="Declaration file path"),
-        ]
         class_path: Annotated[str, Field(default="", description="Nested class path")]
         project: Annotated[t.NonEmptyStr, Field(description="Project name")]
-        line: Annotated[t.PositiveInt, Field(description="Line number")]
 
     class DirectConstantRef(FlextModels.ArbitraryTypesModel):
         """Direct FlextXConstants.Y.Z reference that should use c.* alias."""

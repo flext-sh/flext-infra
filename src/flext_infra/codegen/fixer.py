@@ -679,7 +679,7 @@ class FlextInfraCodegenFixer(s[bool]):
         *,
         modified: bool,
         file_path: Path,
-        items: Sequence[m.Infra.ConstantDefinition],
+        items: Sequence[m.Infra.BulkFixItem],
         rule: str,
         fix_message: str,
         skip_message: str,

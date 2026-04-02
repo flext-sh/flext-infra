@@ -10,7 +10,8 @@ import pytest
 from flext_tests import tm
 
 import flext_infra.codegen as codegen_module
-from flext_infra import FlextInfraCodegenLazyInit, t
+from flext_infra import FlextInfraCodegenLazyInit
+from tests import t
 
 
 def test_codegen_getattr_raises_attribute_error() -> None:

@@ -7,12 +7,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 import tomlkit
 from flext_core import FlextLogger
-from pydantic import JsonValue
 from tomlkit.items import Item, Table
 from tomlkit.toml_document import TOMLDocument
 
@@ -71,7 +70,7 @@ class FlextInfraDependencyPathSync:
 
     @staticmethod
     def _mapping_str_value(
-        mapping: Table | Mapping[str, JsonValue],
+        mapping: Table | t.Infra.ContainerDict,
         key: str,
     ) -> str | None:
         if key not in mapping:
@@ -328,8 +327,11 @@ class FlextInfraDependencyPathSync:
             if root_data_result.is_success:
                 root_data: TOMLDocument = root_data_result.value
                 root_project = self._table_get(root_data, c.Infra.PROJECT)
-                if u.is_mapping(root_project):
-                    root_name = self._mapping_str_value(root_project, c.Infra.NAME)
+                root_mapping = u.Infra.as_toml_mapping(
+                    u.Infra.unwrap_item(root_project),
+                )
+                if root_mapping is not None:
+                    root_name = self._mapping_str_value(root_mapping, c.Infra.NAME)
                     if root_name is not None:
                         internal_names.add(root_name)
 
@@ -362,9 +364,12 @@ class FlextInfraDependencyPathSync:
                 continue
             project_data: TOMLDocument = data_result.value
             project_obj = self._table_get(project_data, c.Infra.PROJECT)
-            if not u.is_mapping(project_obj):
+            project_mapping = u.Infra.as_toml_mapping(
+                u.Infra.unwrap_item(project_obj),
+            )
+            if project_mapping is None:
                 continue
-            project_name = self._mapping_str_value(project_obj, c.Infra.NAME)
+            project_name = self._mapping_str_value(project_mapping, c.Infra.NAME)
             if project_name is not None:
                 internal_names.add(project_name)
 

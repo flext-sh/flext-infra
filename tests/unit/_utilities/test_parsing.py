@@ -6,7 +6,7 @@ from pathlib import Path
 import libcst as cst
 import pytest
 
-from flext_infra import c, u
+from tests import c, u
 
 
 class TestParsingModuleAst:

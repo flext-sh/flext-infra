@@ -4,7 +4,8 @@ import pytest
 from flext_core import r
 from flext_tests import tm
 
-from flext_infra import FlextInfraModels as m, FlextInfraOrchestratorService, c, t
+from flext_infra import FlextInfraOrchestratorService
+from tests import c, m, t
 
 
 def _cmd_out(exit_code: int = 0) -> m.Infra.CommandOutput:

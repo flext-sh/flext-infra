@@ -7,7 +7,8 @@ import pytest
 from flext_core import r
 from flext_tests import tm
 
-from flext_infra import FlextInfraCliRefactor, m, main as infra_main
+from flext_infra import FlextInfraCliRefactor, main as infra_main
+from tests import m
 
 
 def refactor_main(argv: list[str] | None = None) -> int:

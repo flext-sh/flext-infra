@@ -9,7 +9,8 @@ import pytest
 from flext_core import r
 from flext_tests import tm
 
-from flext_infra import FlextInfraCliGithub, m, u
+from flext_infra import FlextInfraCliGithub
+from tests import m, u
 
 
 class TestRunWorkflows:

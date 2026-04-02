@@ -15,11 +15,10 @@ from flext_infra import (
     FlextInfraGate,
     FlextInfraMypyGate,
     FlextInfraWorkspaceChecker,
-    t,
 )
+from tests import m, t
 
 from ...helpers import h
-from ...models import m
 from ._shared_fixtures import (
     create_check_project_iter_stub,
     create_check_project_stub,

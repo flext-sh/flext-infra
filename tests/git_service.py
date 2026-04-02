@@ -14,7 +14,7 @@ from typing import override
 from flext_core import r
 from flext_tests import s
 
-from flext_infra import u
+from tests import u
 
 
 class RealGitService(s[bool]):

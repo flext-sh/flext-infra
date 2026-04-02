@@ -6,8 +6,9 @@ import pytest
 from rope.base.project import Project as RopeProject
 
 try:
-    from flext_infra import FlextInfraImportAliasDetector, u
+    from flext_infra import FlextInfraImportAliasDetector
     from flext_infra.detectors._base_detector import _DetectorContext
+    from tests import u
 except ImportError as exc:
     pytest.skip(f"refactor package unavailable: {exc}", allow_module_level=True)
 

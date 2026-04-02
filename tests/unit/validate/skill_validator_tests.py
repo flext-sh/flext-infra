@@ -11,7 +11,8 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraSkillValidator, t, u
+from flext_infra import FlextInfraSkillValidator
+from tests import t, u
 
 _safe_load_yaml = u.Infra.safe_load_yaml
 _string_list = u.Infra.string_list

@@ -6,7 +6,8 @@ import pytest
 from flext_core import r
 from flext_tests import tm
 
-from flext_infra import FlextInfraCliValidate, m, main as infra_main
+from flext_infra import FlextInfraCliValidate, main as infra_main
+from tests import m
 
 
 def test_stub_validate_uses_all_flag(

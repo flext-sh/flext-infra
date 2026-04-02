@@ -10,7 +10,8 @@ import pytest
 import tomlkit
 from flext_tests import tm
 
-from flext_infra import FlextInfraPyprojectModernizer, u
+from flext_infra import FlextInfraPyprojectModernizer
+from tests import u
 
 
 class TestFlextInfraPyprojectModernizer:

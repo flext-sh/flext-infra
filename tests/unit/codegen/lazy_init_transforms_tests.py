@@ -12,7 +12,8 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraCodegenLazyInit, t, u
+from flext_infra import FlextInfraCodegenLazyInit
+from tests import t, u
 
 _scan_ast_public_defs: Callable[
     [ast.Module, str, Mapping[str, tuple[str, str]]],

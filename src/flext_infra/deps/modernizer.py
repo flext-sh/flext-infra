@@ -77,7 +77,7 @@ class FlextInfraPyprojectModernizer:
             changes.append("created [build-system]")
         expected_backend = "hatchling.build"
         backend_item = self._item_get(build_system, "build-backend")
-        current_backend = u.norm_str(backend_item)
+        current_backend = u.norm_str(u.Infra.unwrap_item(backend_item))
         if current_backend != expected_backend:
             build_system["build-backend"] = expected_backend
             changes.append("build-system.build-backend set to hatchling.build")
@@ -368,7 +368,7 @@ class FlextInfraPyprojectModernizer:
                 has_warning = True
                 continue
             backend_item = self._item_get(build_sys, "build-backend")
-            backend = u.norm_str(backend_item)
+            backend = u.norm_str(u.Infra.unwrap_item(backend_item))
             if backend != "hatchling.build":
                 u.Infra.info(f"{path}: expected hatchling.build, got {backend}")
                 has_warning = True

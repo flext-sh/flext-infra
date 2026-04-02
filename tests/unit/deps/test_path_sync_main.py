@@ -8,8 +8,8 @@ import pytest
 from flext_core import r
 from flext_tests import tm
 
-from flext_infra import FlextInfraDependencyPathSync, path_sync as path_sync_module, t
-from tests import m
+from flext_infra import FlextInfraDependencyPathSync, path_sync as path_sync_module
+from tests import m, t
 
 
 def _project(path: Path, name: str = "flext-core") -> m.Infra.ProjectInfo:

@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import FlextInfraMROCompletenessDetector, _DetectorContext, t, u
+from flext_infra import FlextInfraMROCompletenessDetector, _DetectorContext
+from tests import t, u
 
 
 def _make_rope(workspace: Path) -> t.Infra.RopeProject:

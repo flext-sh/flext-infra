@@ -10,7 +10,8 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraStubSupplyChain, t
+from flext_infra import FlextInfraStubSupplyChain
+from tests import t
 
 
 class TestStubChainCore:

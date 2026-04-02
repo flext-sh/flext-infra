@@ -13,7 +13,7 @@ from pathlib import Path
 from _pytest.monkeypatch import MonkeyPatch
 from flext_tests import tm
 
-from flext_infra import t, u
+from tests import t, u
 
 
 def _parse_args(argv: t.StrSequence | None = None) -> Namespace:

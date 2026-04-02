@@ -16,9 +16,10 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraCodegenFixer, t
+from flext_infra import FlextInfraCodegenFixer
 from tests import (
     FlextInfraCodegenTestProjectFactory,
+    t,
 )
 
 

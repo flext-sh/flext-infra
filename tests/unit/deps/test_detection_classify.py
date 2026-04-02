@@ -4,7 +4,8 @@ from collections.abc import Mapping, Sequence
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraDependencyDetectionService, t
+from flext_infra import FlextInfraDependencyDetectionService
+from tests import t
 
 
 class TestClassifyIssues:

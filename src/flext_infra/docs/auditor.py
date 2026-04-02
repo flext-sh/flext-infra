@@ -46,11 +46,13 @@ class FlextInfraDocAuditor:
         payload_result = u.Infra.read_json(config_path)
         if payload_result.is_failure:
             return _NO_BUDGETS
-        docs_validation = payload_result.value.get("docs_validation")
-        if not u.is_mapping(docs_validation):
+        docs_validation = u.Infra.as_toml_mapping(
+            payload_result.value.get("docs_validation"),
+        )
+        if docs_validation is None:
             return _NO_BUDGETS
-        audit_gate = docs_validation.get("audit_gate")
-        if not u.is_mapping(audit_gate):
+        audit_gate = u.Infra.as_toml_mapping(docs_validation.get("audit_gate"))
+        if audit_gate is None:
             return _NO_BUDGETS
         return _parse_audit_gate(audit_gate)
 

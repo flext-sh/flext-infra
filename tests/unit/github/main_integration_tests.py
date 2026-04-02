@@ -8,8 +8,8 @@ from pathlib import Path
 import pytest
 from flext_core import r
 
-from flext_infra import FlextInfraCliGithub, main, u
-from tests import m
+from flext_infra import FlextInfraCliGithub, main
+from tests import m, u
 
 
 def _orch(*, fail: int = 0, total: int = 1) -> m.Infra.PrOrchestrationResult:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from flext_infra import u
+from tests import u
 
 
 class TestFlextInfraPatternsTooling:

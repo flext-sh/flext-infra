@@ -6,9 +6,10 @@ from pathlib import Path
 
 import pytest
 from flext_core import r
-from flext_tests import t, tm
+from flext_tests import tm
 
 import flext_infra.deps as detector_module
+from tests import t
 
 
 class _ReportStub:

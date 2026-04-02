@@ -9,8 +9,8 @@ from flext_core import r
 from flext_tests import tm
 from tomlkit.toml_document import TOMLDocument
 
-from flext_infra import FlextInfraExtraPathsManager, u
-from tests import t
+from flext_infra import FlextInfraExtraPathsManager
+from tests import t, u
 
 
 def _manager() -> FlextInfraExtraPathsManager:

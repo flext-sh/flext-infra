@@ -17,7 +17,8 @@ from flext_core import r
 from flext_tests import tm
 from tomlkit.items import Table
 
-from flext_infra import FlextInfraTypes, FlextInfraUtilitiesToml
+from flext_infra import FlextInfraUtilitiesToml
+from tests import t
 
 
 class TestFlextInfraTomlRead:
@@ -226,7 +227,7 @@ class TestFlextInfraTomlHelpers:
         tm.that(cast("str", table["key"]), eq="value")
 
     def test_as_toml_mapping_and_get_helpers(self) -> None:
-        mapping: Mapping[str, FlextInfraTypes.Infra.InfraValue] = {"key": "value"}
+        mapping: Mapping[str, t.Infra.InfraValue] = {"key": "value"}
         tm.that(FlextInfraUtilitiesToml.as_toml_mapping(mapping), eq=mapping)
         tm.that(FlextInfraUtilitiesToml.as_toml_mapping("bad"), none=True)
         doc = tomlkit.document()

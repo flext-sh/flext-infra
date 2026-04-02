@@ -14,7 +14,8 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraCodegenCensus, FlextInfraModels, t
+from flext_infra import FlextInfraCodegenCensus
+from tests import m, t
 
 
 @pytest.fixture
@@ -73,7 +74,7 @@ class TestParseViolationValid:
     ) -> None:
         result = FlextInfraCodegenCensus._parse_violation(violation_str)
         tm.that(result, none=False)
-        tm.that(result, is_=FlextInfraModels.Infra.CensusViolation)
+        tm.that(result, is_=m.Infra.CensusViolation)
         assert result is not None
         tm.that(result.rule, eq=expected_rule)
         tm.that(result.module, eq=expected_module)

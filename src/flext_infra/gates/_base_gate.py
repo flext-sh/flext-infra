@@ -170,15 +170,12 @@ class FlextInfraGate(ABC):
         *keys: str,
         default: int = 0,
     ) -> int:
-        current: t.Infra.InfraValue = data
+        current: t.Infra.ContainerDict = {str(key): data[key] for key in data}
         for key in keys[:-1]:
-            if not u.is_mapping(current):
+            nested = u.Infra.as_toml_mapping(current.get(key))
+            if nested is None:
                 return default
-            current = current.get(key)
-            if current is None:
-                return default
-        if not u.is_mapping(current):
-            return default
+            current = nested
         raw: t.Infra.InfraValue = current.get(keys[-1])
         if raw is None:
             return default

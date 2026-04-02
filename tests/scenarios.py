@@ -12,7 +12,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import ClassVar
 
-from flext_tests import m, t
+from tests import m, t
 
 
 class SubprocessScenario(m.Value):

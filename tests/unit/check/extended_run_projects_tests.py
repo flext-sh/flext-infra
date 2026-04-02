@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraWorkspaceChecker, m as im
+from flext_infra import FlextInfraWorkspaceChecker
 from tests import m, t
 
 CheckProjectStub = Callable[..., m.Infra.ProjectResult]
@@ -321,7 +321,7 @@ class TestRunProjectFixMode:
         result = checker._check_project(
             tmp_path / "p1",
             ["lint"],
-            im.Infra.GateContext(
+            m.Infra.GateContext(
                 workspace_root=tmp_path,
                 reports_dir=tmp_path / "reports",
                 apply_fixes=True,
@@ -352,7 +352,7 @@ class TestRunProjectFixMode:
         result = checker._check_project(
             tmp_path / "p1",
             ["lint"],
-            im.Infra.GateContext(
+            m.Infra.GateContext(
                 workspace_root=tmp_path,
                 reports_dir=tmp_path / "reports",
                 apply_fixes=True,

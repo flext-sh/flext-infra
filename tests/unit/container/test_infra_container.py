@@ -12,7 +12,8 @@ from __future__ import annotations
 import pytest
 from flext_core import FlextContainer
 
-from flext_infra import output, u
+from flext_infra import output
+from tests import u
 
 
 class TestInfraContainerFunctions:

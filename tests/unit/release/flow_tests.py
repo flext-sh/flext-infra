@@ -14,8 +14,9 @@ from _pytest.monkeypatch import MonkeyPatch
 from flext_core import r
 from flext_tests import tm
 
-from flext_infra import m, main as infra_main, u
+from flext_infra import main as infra_main
 from flext_infra.release import cli as release_cli
+from tests import m, u
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -8,8 +8,8 @@ import pytest
 from flext_core import r
 from flext_tests import tm
 
-from flext_infra import FlextInfraModels, FlextInfraReleaseOrchestrator, u
-from tests import t
+from flext_infra import FlextInfraReleaseOrchestrator
+from tests import m, t, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -17,7 +17,6 @@ if TYPE_CHECKING:
     from _pytest.monkeypatch import MonkeyPatch
 
 _CLS = FlextInfraReleaseOrchestrator
-_m = FlextInfraModels
 
 
 def _publish_ctx(
@@ -25,9 +24,9 @@ def _publish_ctx(
     *,
     dry_run: bool = False,
     push: bool = False,
-) -> _m.Infra.ReleasePhaseDispatchConfig:
+) -> m.Infra.ReleasePhaseDispatchConfig:
     """Build a ReleasePhaseDispatchConfig for publish phase tests."""
-    return _m.Infra.ReleasePhaseDispatchConfig(
+    return m.Infra.ReleasePhaseDispatchConfig(
         phase="publish",
         workspace_root=workspace_root,
         version="1.0.0",

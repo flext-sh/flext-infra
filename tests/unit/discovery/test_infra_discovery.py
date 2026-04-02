@@ -12,7 +12,8 @@ import pytest
 from flext_core import r
 from flext_tests import tm
 
-from flext_infra import FlextInfraUtilitiesDiscovery, m, t
+from flext_infra import FlextInfraUtilitiesDiscovery
+from tests import m, t
 
 
 class TestFlextInfraDiscoveryService:

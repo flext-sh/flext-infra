@@ -11,8 +11,8 @@ from pathlib import Path
 import pytest
 from flext_tests import tf, tm
 
-from flext_infra import FlextInfraDocFixer, u
-from tests import m
+from flext_infra import FlextInfraDocFixer
+from tests import m, u
 
 
 @pytest.fixture

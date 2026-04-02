@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraUtilitiesIteration, c, m, u
-from tests import t
+from flext_infra import FlextInfraUtilitiesIteration
+from tests import c, m, t, u
 
 
 class TestDiscoveryProjectRoots:

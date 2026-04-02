@@ -6,8 +6,8 @@ import pytest
 from flext_core import r
 from flext_tests import tm
 
-from flext_infra import FlextInfraDependencyDetectionService, t
-from tests import m
+from flext_infra import FlextInfraDependencyDetectionService
+from tests import m, t
 
 
 class _StubRunner:

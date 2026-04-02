@@ -14,7 +14,8 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraCliValidate, m, t
+from flext_infra import FlextInfraCliValidate
+from tests import m, t
 
 _CWD = "/home/marlonsc/flext/flext-core"
 

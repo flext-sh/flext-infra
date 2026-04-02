@@ -16,9 +16,7 @@ from types import SimpleNamespace
 import pytest
 from flext_core import r
 
-from flext_infra import FlextInfraModels, m as _infra_m, t
-
-_m = FlextInfraModels
+from tests import m, t
 
 
 @pytest.fixture
@@ -123,18 +121,18 @@ class FakeSubprocess:
     """Fake for FlextInfraUtilitiesSubprocess."""
 
     _run_checked_result: r[bool] = r[bool].ok(True)
-    _run_raw_result: r[_m.Infra.CommandOutput] | None = None
+    _run_raw_result: r[m.Infra.CommandOutput] | None = None
     _run_checked_called: bool = False
 
     def run_checked(self, *args: str, **kwargs: str) -> r[bool]:
         self._run_checked_called = True
         return self._run_checked_result
 
-    def run_raw(self, *args: str, **kwargs: str) -> r[_m.Infra.CommandOutput]:
+    def run_raw(self, *args: str, **kwargs: str) -> r[m.Infra.CommandOutput]:
         if self._run_raw_result is not None:
             return self._run_raw_result
-        output = _m.Infra.CommandOutput(exit_code=0, stdout="ok", stderr="")
-        return r[_m.Infra.CommandOutput].ok(output)
+        output = m.Infra.CommandOutput(exit_code=0, stdout="ok", stderr="")
+        return r[m.Infra.CommandOutput].ok(output)
 
 
 class FakeReporting:
@@ -152,15 +150,15 @@ class FakeReporting:
 class FakeSelection:
     """Fake for FlextInfraUtilitiesSelection."""
 
-    _resolve_result: r[Sequence[_infra_m.Infra.ProjectInfo]] = r[
-        Sequence[_infra_m.Infra.ProjectInfo]
+    _resolve_result: r[Sequence[m.Infra.ProjectInfo]] = r[
+        Sequence[m.Infra.ProjectInfo]
     ].ok([])
 
     def resolve_projects(
         self,
         workspace_root: Path,
         names: t.StrSequence,
-    ) -> r[Sequence[_infra_m.Infra.ProjectInfo]]:
+    ) -> r[Sequence[m.Infra.ProjectInfo]]:
         return self._resolve_result
 
 

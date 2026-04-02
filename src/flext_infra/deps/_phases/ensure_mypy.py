@@ -98,7 +98,20 @@ class FlextInfraEnsureMypyConfigPhase:
         )
         current: Sequence[Mapping[str, Sequence[str]]] = []
         if isinstance(raw, (list, AoT)):
-            current = [dict(item) for item in raw]
+            normalized_current: MutableSequence[Mapping[str, Sequence[str]]] = []
+            for item in raw:
+                normalized_item = u.Infra.as_toml_mapping(u.Infra.unwrap_item(item))
+                if normalized_item is None:
+                    continue
+                module_value = u.Infra.as_string_list(normalized_item.get("module"))
+                disable_value = u.Infra.as_string_list(
+                    normalized_item.get("disable_error_code"),
+                )
+                normalized_current.append({
+                    "module": module_value,
+                    "disable_error_code": disable_value,
+                })
+            current = normalized_current
         if list(current) == list(expected):
             return
         aot = tomlkit.aot()
@@ -107,7 +120,8 @@ class FlextInfraEnsureMypyConfigPhase:
             tbl["module"] = list(entry["module"])
             tbl["disable_error_code"] = list(entry["disable_error_code"])
             aot.append(tbl)
-        tool["mypy"]["overrides"] = aot
+        mypy_section = u.Infra.ensure_table(tool, c.Infra.MYPY)
+        mypy_section["overrides"] = aot
         changes.append(
             "tool.mypy.overrides synchronized for auto-generated files and PEP 695 generics",
         )

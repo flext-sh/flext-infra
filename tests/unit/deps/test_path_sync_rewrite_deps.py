@@ -7,7 +7,8 @@ from flext_core import r
 from flext_tests import tm
 from tomlkit.toml_document import TOMLDocument
 
-from flext_infra import FlextInfraDependencyPathSync, t
+from flext_infra import FlextInfraDependencyPathSync
+from tests import t
 
 
 def rewrite_dep_paths(

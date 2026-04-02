@@ -3,7 +3,7 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-from flext_infra import c, u
+from tests import c, u
 
 
 def _run_git(repo: Path, *args: str) -> None:

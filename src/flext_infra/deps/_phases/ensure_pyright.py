@@ -25,7 +25,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         extra_paths: Sequence[str],
         suppressions: Mapping[str, str] | None = None,
     ) -> t.Infra.ContainerDict:
-        entry: t.Infra.ContainerDict = {
+        entry: t.Infra.MutableInfraMapping = {
             "root": root,
             "reportPrivateUsage": report_private_usage,
             "extraPaths": [*extra_paths],

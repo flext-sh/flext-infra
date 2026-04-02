@@ -16,9 +16,9 @@ import pytest
 from flext_core import r
 from flext_tests import tm
 
-from flext_infra import FlextInfraReleaseOrchestrator, m
+from flext_infra import FlextInfraReleaseOrchestrator
 from flext_infra.release import orchestrator as release_orchestrator_module
-from tests import c, t, u
+from tests import c, m, t, u
 
 if TYPE_CHECKING:
     from pathlib import Path

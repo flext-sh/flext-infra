@@ -4,7 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraClassPlacementDetector, _DetectorContext, c, t, u
+from flext_infra import FlextInfraClassPlacementDetector, _DetectorContext
+from tests import c, t, u
 
 
 @pytest.fixture

@@ -13,9 +13,7 @@ import pytest
 from flext_core import r
 from flext_tests import tm
 
-from flext_infra import c, u
-
-from ...models import m
+from tests import c, m, u
 
 _OUT = c.Infra.DEFAULT_DOCS_OUTPUT_DIR
 

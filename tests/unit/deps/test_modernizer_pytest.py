@@ -7,7 +7,8 @@ from collections.abc import MutableMapping
 import tomlkit
 from flext_tests import tm
 
-from flext_infra import FlextInfraEnsurePytestConfigPhase, m, u
+from flext_infra import FlextInfraEnsurePytestConfigPhase
+from tests import m, u
 
 
 def _test_tool_config() -> m.Infra.ToolConfigDocument:

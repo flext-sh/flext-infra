@@ -313,8 +313,9 @@ class FlextInfraDependencyDetectionService:
         typing_libraries = limits.get(c.Infra.TYPING_LIBRARIES)
         if u.is_mapping(typing_libraries):
             module_to_package = typing_libraries.get(c.Infra.MODULE_TO_PACKAGE)
-            if u.is_mapping(module_to_package) and root in module_to_package:
-                value = module_to_package.get(root)
+            mapped_packages = u.Infra.as_toml_mapping(module_to_package)
+            if mapped_packages is not None and root in mapped_packages:
+                value = mapped_packages.get(root)
                 return str(value) if value is not None else None
         return self.DEFAULT_MODULE_TO_TYPES_PACKAGE.get(root.lower())
 
@@ -366,8 +367,12 @@ class FlextInfraDependencyDetectionService:
                 for item in loaded_result.value:
                     if not u.is_mapping(item):
                         continue
-                    converted_issue = self._to_toml_config(item)
-                    if len(converted_issue) == len(item):
+                    try:
+                        typed_item = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(item)
+                    except ValidationError:
+                        continue
+                    converted_issue = self._to_toml_config(typed_item)
+                    if len(converted_issue) == len(typed_item):
                         normalized_issues.append(converted_issue)
                 issues = normalized_issues
             if json_output_path is None:

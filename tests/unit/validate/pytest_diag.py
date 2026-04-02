@@ -10,8 +10,8 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraPytestDiagExtractor, pytest_diag, t
-from tests import m
+from flext_infra import FlextInfraPytestDiagExtractor, pytest_diag
+from tests import m, t
 
 
 class TestPytestDiagExtractorCore:

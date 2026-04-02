@@ -12,10 +12,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_tests import m
 from pydantic import Field
 
-from flext_infra import FlextInfraConstants, t
+from tests import c, m, t
 
 
 class WorkspaceFactory(m.Config):
@@ -118,12 +117,8 @@ class WorkspaceFactory(m.Config):
         dependency_lines.extend(f'{dep} = "*"' for dep in deps)
         dependencies = "\n".join(dependency_lines)
         # Use c.Infra constants at runtime
-        tool_poetry = f"[tool.{FlextInfraConstants.Infra.POETRY}]\n"
-        poetry_deps = (
-            "[tool."
-            f"{FlextInfraConstants.Infra.POETRY}."
-            f"{FlextInfraConstants.Infra.DEPENDENCIES}]\n"
-        )
+        tool_poetry = f"[tool.{c.Infra.POETRY}]\n"
+        poetry_deps = f"[tool.{c.Infra.POETRY}.{c.Infra.DEPENDENCIES}]\n"
         return (
             tool_poetry
             + f'name = "{name}"\n'

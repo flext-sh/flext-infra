@@ -19,8 +19,8 @@ from flext_core import r
 from flext_tests import tm
 
 import flext_infra.release.orchestrator as _orch_mod
-from flext_infra import FlextInfraReleaseOrchestrator, t
-from tests import FakeUtilsNamespace
+from flext_infra import FlextInfraReleaseOrchestrator
+from tests import FakeUtilsNamespace, t
 
 if TYPE_CHECKING:
     from _pytest.monkeypatch import MonkeyPatch

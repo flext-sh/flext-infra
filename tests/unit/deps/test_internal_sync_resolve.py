@@ -6,7 +6,8 @@ import pytest
 from flext_core import r
 from flext_tests import tm
 
-from flext_infra import FlextInfraInternalDependencySyncService, internal_sync, t
+from flext_infra import FlextInfraInternalDependencySyncService, internal_sync
+from tests import t
 
 
 class TestResolveRef:

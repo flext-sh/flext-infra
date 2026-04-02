@@ -15,7 +15,8 @@ import pytest
 from flext_core import r
 from flext_tests import tm
 
-from flext_infra import FlextInfraWorkspaceDetector, FlextInfraWorkspaceMode, t
+from flext_infra import FlextInfraWorkspaceDetector, FlextInfraWorkspaceMode
+from tests import t
 
 
 @pytest.fixture

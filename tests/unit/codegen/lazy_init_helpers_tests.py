@@ -12,7 +12,8 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraCodegenLazyInit, u
+from flext_infra import FlextInfraCodegenLazyInit
+from tests import u
 
 _read_existing_docstring: Callable[[Path], str] = getattr(
     FlextInfraCodegenLazyInit,

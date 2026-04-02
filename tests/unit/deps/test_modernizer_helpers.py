@@ -8,7 +8,7 @@ import tomlkit.items
 from flext_tests import tm
 from tomlkit.toml_document import TOMLDocument
 
-from flext_infra import t, u
+from tests import t, u
 
 
 @pytest.fixture

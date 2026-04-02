@@ -8,7 +8,8 @@ from __future__ import annotations
 
 from flext_core import FlextUtilities
 
-from flext_infra import FlextInfraUtilities, u
+from flext_infra import FlextInfraUtilities
+from tests import u
 
 
 class TestFlextInfraUtilitiesImport:

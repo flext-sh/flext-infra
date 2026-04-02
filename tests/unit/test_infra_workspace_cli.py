@@ -13,7 +13,8 @@ from _pytest.monkeypatch import MonkeyPatch
 from flext_core import r
 from flext_tests import tm
 
-from flext_infra import FlextInfraProjectMigrator, m, main as infra_main
+from flext_infra import FlextInfraProjectMigrator, main as infra_main
+from tests import m
 
 
 def test_workspace_cli_migrate_command(monkeypatch: MonkeyPatch) -> None:

@@ -7,7 +7,8 @@ from typing import override
 from flext_core import r
 from flext_tests import s
 
-from flext_infra import FlextInfraUtilitiesSubprocess, t
+from flext_infra import FlextInfraUtilitiesSubprocess
+from tests import t
 
 
 class RealSubprocessRunner(s[str]):

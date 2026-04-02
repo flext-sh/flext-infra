@@ -12,8 +12,6 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import lazy_getattr
 
 if TYPE_CHECKING:
-    from flext_core import FlextTypes
-
     from flext_infra import FlextInfraConfigFixer, FlextInfraWorkspaceChecker
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
@@ -33,6 +31,10 @@ __all__ = [
 ]
 
 
-def __getattr__(name: str) -> FlextTypes.ModuleExport:
+def __getattr__(name: str) -> type:
     """Lazy-load module attributes on first access (PEP 562)."""
-    return lazy_getattr(name, _LAZY_IMPORTS, globals(), __name__)
+    value = lazy_getattr(name, _LAZY_IMPORTS, globals(), __name__)
+    if isinstance(value, type):
+        return value
+    msg = f"{__name__} export {name!r} did not resolve to a class"
+    raise AttributeError(msg)

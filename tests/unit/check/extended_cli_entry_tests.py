@@ -23,9 +23,7 @@ from flext_infra import (
     FlextInfraWorkspaceChecker,
     main as infra_main,
 )
-from tests import t
-
-from ...models import m
+from tests import m, t
 
 
 def _fake_checker_cls(
@@ -198,13 +196,13 @@ class TestRunCLIExtended:
         ok_result = r[list[m.Infra.ProjectResult]].ok([project])
 
         def _fake_init(
-            _self: FlextInfraWorkspaceChecker,
+            _self: ws_mod.FlextInfraWorkspaceChecker,
             **_kw: t.Scalar,
         ) -> None:
             pass
 
         def _fake_run_projects(
-            _self: FlextInfraWorkspaceChecker,
+            _self: ws_mod.FlextInfraWorkspaceChecker,
             projects: t.StrSequence | None = None,
             gates: t.StrSequence | None = None,
             **kw: t.Scalar,

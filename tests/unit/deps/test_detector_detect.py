@@ -11,7 +11,7 @@ from flext_tests import tm
 
 import flext_infra.deps as detector_module
 import flext_infra.deps.detector as _det_mod
-from flext_infra import p, t
+from tests import p, t
 
 
 class _ReportStub:
