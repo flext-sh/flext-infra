@@ -20,7 +20,7 @@ from flext_infra import (
     t,
     u,
 )
-from flext_infra.detectors._base_detector import _DetectorContext
+from flext_infra.detectors._base_detector import DetectorContext
 
 _CONSTANT_RE = c.Infra.NAMESPACE_CONSTANT_PATTERN
 _ALLOWED_TOP_LEVEL: frozenset[str] = frozenset({
@@ -56,7 +56,7 @@ class FlextInfraLooseObjectDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
         self, file_path: Path
     ) -> Sequence[m.Infra.LooseObjectViolation]:
         return self.detect_file(
-            _DetectorContext(
+            DetectorContext(
                 file_path=file_path,
                 project_name=self._project_name,
                 rope_project=self._rope,
@@ -68,7 +68,7 @@ class FlextInfraLooseObjectDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
     @override
     def detect_file(
         cls,
-        ctx: _DetectorContext,
+        ctx: DetectorContext,
     ) -> Sequence[m.Infra.LooseObjectViolation]:
         """Detect loose top-level objects in a single file."""
         file_path = ctx.file_path

@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from typing import ClassVar, override
 
 from flext_infra import FlextInfraScanFileMixin, c, m, p
-from flext_infra.detectors._base_detector import _DetectorContext
+from flext_infra.detectors._base_detector import DetectorContext
 
 
 class FlextInfraCompatibilityAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
@@ -25,7 +25,7 @@ class FlextInfraCompatibilityAliasDetector(FlextInfraScanFileMixin, p.Infra.Scan
     @override
     def detect_file(
         cls,
-        ctx: _DetectorContext,
+        ctx: DetectorContext,
     ) -> Sequence[m.Infra.CompatibilityAliasViolation]:
         """Detect compatibility aliases in a single file."""
         file_path = ctx.file_path

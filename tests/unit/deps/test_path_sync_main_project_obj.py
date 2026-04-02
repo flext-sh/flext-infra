@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import importlib
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -12,7 +11,7 @@ from flext_tests import tm
 from tomlkit.toml_document import TOMLDocument
 
 from flext_infra import FlextInfraDependencyPathSync, path_sync as path_sync_module
-from tests import m
+from tests import h, m
 
 
 def _project(path: Path) -> m.Infra.ProjectInfo:
@@ -92,6 +91,4 @@ def test_main_project_obj_not_dict_second_loop(
 
 
 def test_helpers_alias_is_reachable_project_obj() -> None:
-    infra_helpers_module = importlib.import_module("tests.helpers")
-    helper_alias = getattr(infra_helpers_module, "h", None)
-    tm.that(hasattr(helper_alias, "assert_ok"), eq=True)
+    tm.that(hasattr(h, "assert_ok"), eq=True)

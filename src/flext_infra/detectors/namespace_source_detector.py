@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import ClassVar, override
 
 from flext_infra import FlextInfraScanFileMixin, c, m, p, t
-from flext_infra.detectors._base_detector import _DetectorContext
+from flext_infra.detectors._base_detector import DetectorContext
 
 
 class FlextInfraNamespaceSourceDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
@@ -42,7 +42,7 @@ class FlextInfraNamespaceSourceDetector(FlextInfraScanFileMixin, p.Infra.Scanner
         self, file_path: Path
     ) -> Sequence[m.Infra.NamespaceSourceViolation]:
         return self.detect_file(
-            _DetectorContext(
+            DetectorContext(
                 file_path=file_path,
                 project_name=self._project_name,
                 project_root=self._project_root,
@@ -55,7 +55,7 @@ class FlextInfraNamespaceSourceDetector(FlextInfraScanFileMixin, p.Infra.Scanner
     @override
     def detect_file(
         cls,
-        ctx: _DetectorContext,
+        ctx: DetectorContext,
     ) -> Sequence[m.Infra.NamespaceSourceViolation]:
         """Detect wrong-source alias imports."""
         file_path = ctx.file_path

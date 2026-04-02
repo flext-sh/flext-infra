@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import ClassVar, override
 
 from flext_infra import FlextInfraScanFileMixin, c, m, p, u
-from flext_infra.detectors._base_detector import _DetectorContext
+from flext_infra.detectors._base_detector import DetectorContext
 
 PYDANTIC_BASE_NAMES: frozenset[str] = frozenset({
     "BaseModel",
@@ -66,6 +66,8 @@ class FlextInfraClassPlacementDetector(FlextInfraScanFileMixin, p.Infra.Scanner)
                         bases.append(name)
                     case ast.Attribute(attr=attr):
                         bases.append(attr)
+                    case _:
+                        pass
             class_info[node.name] = m.Infra.ClassInfo(
                 name=node.name,
                 line=node.lineno,
@@ -77,7 +79,7 @@ class FlextInfraClassPlacementDetector(FlextInfraScanFileMixin, p.Infra.Scanner)
     @override
     def detect_file(
         cls,
-        ctx: _DetectorContext,
+        ctx: DetectorContext,
     ) -> Sequence[m.Infra.ClassPlacementViolation]:
         """Detect misplaced Pydantic model classes."""
         file_path = ctx.file_path

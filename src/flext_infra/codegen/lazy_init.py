@@ -396,6 +396,9 @@ class FlextInfraCodegenLazyInit(s[int]):
         """Index exports from a single ``.py`` file into the lazy map."""
         if py_file.name in {c.Infra.Files.INIT_PY, "__main__.py", "__version__.py"}:
             return
+        sibling_package_init = py_file.parent / py_file.stem / c.Infra.Files.INIT_PY
+        if sibling_package_init.exists():
+            return
         # Only filter root underscore files for top-level packages.
         # Public descendant packages must aggregate their internal _*.py files
         # so parent packages can delegate to them without re-declaring exports.

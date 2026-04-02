@@ -18,7 +18,7 @@ from pydantic import BaseModel
 from flext_infra import m, t, u
 
 
-class _DetectorContext(m.ArbitraryTypesModel):
+class DetectorContext(m.ArbitraryTypesModel):
     """Bundles the common parameters passed to every ``detect_file`` classmethod."""
 
     file_path: Path
@@ -63,7 +63,7 @@ class FlextInfraScanFileMixin:
     @classmethod
     def detect_file(
         cls,
-        ctx: _DetectorContext,
+        ctx: DetectorContext,
     ) -> Sequence[BaseModel]:
         """Detect violations in a single file.
 
@@ -111,7 +111,7 @@ class FlextInfraScanFileMixin:
         Override when ``detect_file`` requires extra params.
         """
         return self.detect_file(
-            _DetectorContext(
+            DetectorContext(
                 file_path=file_path,
                 rope_project=self._rope,
                 parse_failures=self._pf,
@@ -130,4 +130,4 @@ class FlextInfraScanFileMixin:
         )
 
 
-__all__ = ["FlextInfraScanFileMixin", "_DetectorContext"]
+__all__ = ["DetectorContext", "FlextInfraScanFileMixin"]

@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import ClassVar, override
 
 from flext_infra import FlextInfraScanFileMixin, c, m, p, t
-from flext_infra.detectors._base_detector import _DetectorContext
+from flext_infra.detectors._base_detector import DetectorContext
 
 
 class FlextInfraRuntimeAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
@@ -36,7 +36,7 @@ class FlextInfraRuntimeAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
         self, file_path: Path
     ) -> Sequence[m.Infra.RuntimeAliasViolation]:
         return self.detect_file(
-            _DetectorContext(
+            DetectorContext(
                 file_path=file_path,
                 project_name=self._project_name,
                 rope_project=self._rope,
@@ -48,7 +48,7 @@ class FlextInfraRuntimeAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
     @override
     def detect_file(
         cls,
-        ctx: _DetectorContext,
+        ctx: DetectorContext,
     ) -> Sequence[m.Infra.RuntimeAliasViolation]:
         """Detect missing/duplicate runtime alias assignments in a facade file."""
         file_path = ctx.file_path

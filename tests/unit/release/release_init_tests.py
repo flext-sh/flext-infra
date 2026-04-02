@@ -6,11 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import importlib
-
 import pytest
 from flext_tests import tm
 
+import flext_infra.release as release_module
 from flext_infra import FlextInfraReleaseOrchestrator
 
 
@@ -18,16 +17,13 @@ class TestReleaseInit:
     """Test release module __init__.py lazy imports."""
 
     def test_lazy_import_orchestrator(self) -> None:
-        release_module = importlib.import_module("flext_infra.release")
         orchestrator = release_module.FlextInfraReleaseOrchestrator()
         tm.that(orchestrator, is_=FlextInfraReleaseOrchestrator)
 
     def test_getattr_invalid_attribute(self) -> None:
-        release_module = importlib.import_module("flext_infra.release")
         with pytest.raises(AttributeError, match=r"module.*has no attribute"):
-            _ = release_module.NonexistentAttribute
+            _ = getattr(release_module, "NonexistentAttribute")
 
     def test_dir_returns_all_exports(self) -> None:
-        release_module = importlib.import_module("flext_infra.release")
         exports = dir(release_module)
         tm.that(exports, has="FlextInfraReleaseOrchestrator")

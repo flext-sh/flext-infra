@@ -9,16 +9,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import importlib
 import sys
-from collections.abc import Callable
-from types import ModuleType, SimpleNamespace
+from types import ModuleType
 
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraCliDeps
-from flext_infra.deps import cli as deps_main
+from flext_infra import FlextInfraCliDeps, deps
 from tests import t
 
 _SUBCOMMAND_MODULES = FlextInfraCliDeps._SUBCOMMAND_MODULES
@@ -33,26 +30,15 @@ def _fake_module(return_value: t.Infra.InfraValue = 0) -> ModuleType:
     return mod
 
 
-def _stub_import(mod: ModuleType) -> Callable[[str], ModuleType]:
-    def _import(name: str) -> ModuleType:
-        _ = name
-        return mod
-
-    return _import
-
-
 def _patch_dispatch(
     mp: pytest.MonkeyPatch,
     argv: t.StrSequence,
     ret: t.Infra.InfraValue = 0,
 ) -> None:
-    """Patch sys.argv and importlib for dispatch tests."""
+    """Patch sys.argv and lazy-exported deps modules for dispatch tests."""
     mp.setattr(sys, "argv", argv)
-    mp.setattr(
-        deps_main,
-        "importlib",
-        SimpleNamespace(import_module=_stub_import(_fake_module(ret))),
-    )
+    export_name = _SUBCOMMAND_MODULES["detect"].rsplit(".", maxsplit=1)[-1]
+    mp.setattr(deps, export_name, _fake_module(ret))
 
 
 class TestSubcommandMapping:
@@ -83,7 +69,7 @@ class TestSubcommandMapping:
     @pytest.mark.parametrize("name", list(EXPECTED_SUBCOMMAND_MODULES.keys()))
     def test_subcommand_module_importable(self, name: str) -> None:
         """Test each subcommand module can be imported."""
-        module = importlib.import_module(_SUBCOMMAND_MODULES[name])
+        module = getattr(deps, _SUBCOMMAND_MODULES[name].rsplit(".", maxsplit=1)[-1])
         tm.that(hasattr(module, "main"), eq=True, msg=f"{name} module has no main()")
 
 

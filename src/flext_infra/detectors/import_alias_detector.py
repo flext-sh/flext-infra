@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import ClassVar, override
 
 from flext_infra import FlextInfraScanFileMixin, c, m, p
-from flext_infra.detectors._base_detector import _DetectorContext
+from flext_infra.detectors._base_detector import DetectorContext
 
 
 class FlextInfraImportAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
@@ -28,7 +28,7 @@ class FlextInfraImportAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
     @override
     def detect_file(
         cls,
-        ctx: _DetectorContext,
+        ctx: DetectorContext,
     ) -> Sequence[m.Infra.ImportAliasViolation]:
         """Detect deep imports via ImportNormalizerTransformer."""
         file_path = ctx.file_path

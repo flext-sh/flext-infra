@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import importlib
 import sys
 from types import MappingProxyType
 from typing import ClassVar
 
+import flext_infra.deps as deps_package
 from flext_infra import t, u
 
 
@@ -98,7 +98,11 @@ class FlextInfraCliDeps:
         ]
         sys.argv = [f"flext-infra deps {subcommand}", *forwarded_args]
         try:
-            module = importlib.import_module(cls._SUBCOMMAND_MODULES[subcommand])
+            export_name = cls._SUBCOMMAND_MODULES[subcommand].rsplit(
+                ".",
+                maxsplit=1,
+            )[-1]
+            module = getattr(deps_package, export_name)
             exit_code = module.main()
         except SystemExit as exc:
             return cls._normalize_exit_code(exc.code)

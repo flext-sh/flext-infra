@@ -31,8 +31,8 @@ if _TYPE_CHECKING:
         runtime_alias_detector,
     )
     from flext_infra.detectors._base_detector import (
+        DetectorContext,
         FlextInfraScanFileMixin,
-        _DetectorContext,
     )
     from flext_infra.detectors.class_placement_detector import (
         FlextInfraClassPlacementDetector,
@@ -78,6 +78,7 @@ if _TYPE_CHECKING:
     )
 
 _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
+    "DetectorContext": "flext_infra.detectors._base_detector",
     "FlextInfraClassPlacementDetector": "flext_infra.detectors.class_placement_detector",
     "FlextInfraCompatibilityAliasDetector": "flext_infra.detectors.compatibility_alias_detector",
     "FlextInfraCyclicImportDetector": "flext_infra.detectors.cyclic_import_detector",
@@ -93,7 +94,6 @@ _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "FlextInfraNamespaceSourceDetector": "flext_infra.detectors.namespace_source_detector",
     "FlextInfraRuntimeAliasDetector": "flext_infra.detectors.runtime_alias_detector",
     "FlextInfraScanFileMixin": "flext_infra.detectors._base_detector",
-    "_DetectorContext": "flext_infra.detectors._base_detector",
     "_base_detector": "flext_infra.detectors._base_detector",
     "class_placement_detector": "flext_infra.detectors.class_placement_detector",
     "compatibility_alias_detector": "flext_infra.detectors.compatibility_alias_detector",

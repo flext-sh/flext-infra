@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from typing import ClassVar, override
 
 from flext_infra import FlextInfraScanFileMixin, c, m, p, u
-from flext_infra.detectors._base_detector import _DetectorContext
+from flext_infra.detectors._base_detector import DetectorContext
 
 
 class FlextInfraManualProtocolDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
@@ -25,7 +25,7 @@ class FlextInfraManualProtocolDetector(FlextInfraScanFileMixin, p.Infra.Scanner)
     @override
     def detect_file(
         cls,
-        ctx: _DetectorContext,
+        ctx: DetectorContext,
     ) -> Sequence[m.Infra.ManualProtocolViolation]:
         """Detect Protocol classes outside canonical locations."""
         file_path = ctx.file_path

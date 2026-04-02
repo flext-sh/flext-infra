@@ -224,6 +224,7 @@ if _TYPE_CHECKING:
         inject_comments,
     )
     from flext_infra.detectors import (
+        DetectorContext,
         FlextInfraClassPlacementDetector,
         FlextInfraCompatibilityAliasDetector,
         FlextInfraCyclicImportDetector,
@@ -239,7 +240,6 @@ if _TYPE_CHECKING:
         FlextInfraNamespaceSourceDetector,
         FlextInfraRuntimeAliasDetector,
         FlextInfraScanFileMixin,
-        _DetectorContext,
         class_placement_detector,
         compatibility_alias_detector,
         cyclic_import_detector,

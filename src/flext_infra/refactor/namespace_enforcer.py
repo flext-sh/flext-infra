@@ -25,7 +25,7 @@ from flext_infra import (
     t,
     u,
 )
-from flext_infra.detectors._base_detector import _DetectorContext
+from flext_infra.detectors._base_detector import DetectorContext
 
 
 class FlextInfraNamespaceEnforcer:
@@ -126,7 +126,7 @@ class FlextInfraNamespaceEnforcer:
         loose_objects = self._detect_and_apply(
             py_files=py_files,
             detect_fn=lambda f: FlextInfraLooseObjectDetector.detect_file(
-                _DetectorContext(
+                DetectorContext(
                     file_path=f,
                     project_name=project_name,
                     rope_project=self._rope_project,
@@ -139,7 +139,7 @@ class FlextInfraNamespaceEnforcer:
         import_violations = self._detect_and_apply(
             py_files=py_files,
             detect_fn=lambda f: FlextInfraImportAliasDetector.detect_file(
-                _DetectorContext(
+                DetectorContext(
                     file_path=f,
                     rope_project=self._rope_project,
                     parse_failures=parse_failures,
@@ -154,7 +154,7 @@ class FlextInfraNamespaceEnforcer:
         namespace_source_violations = self._detect_and_apply(
             py_files=py_files,
             detect_fn=lambda f: FlextInfraNamespaceSourceDetector.detect_file(
-                _DetectorContext(
+                DetectorContext(
                     file_path=f,
                     project_name=project_name,
                     project_root=project_root,
@@ -173,7 +173,7 @@ class FlextInfraNamespaceEnforcer:
         internal_import_violations = self._detect_and_apply(
             py_files=py_files,
             detect_fn=lambda f: FlextInfraInternalImportDetector.detect_file(
-                _DetectorContext(
+                DetectorContext(
                     file_path=f,
                     rope_project=self._rope_project,
                     parse_failures=parse_failures,
@@ -185,7 +185,7 @@ class FlextInfraNamespaceEnforcer:
         runtime_alias_violations = self._detect_and_apply(
             py_files=py_files,
             detect_fn=lambda f: FlextInfraRuntimeAliasDetector.detect_file(
-                _DetectorContext(
+                DetectorContext(
                     file_path=f,
                     project_name=project_name,
                     rope_project=self._rope_project,
@@ -200,7 +200,7 @@ class FlextInfraNamespaceEnforcer:
         future_violations = self._detect_and_apply(
             py_files=py_files,
             detect_fn=lambda f: FlextInfraFutureAnnotationsDetector.detect_file(
-                _DetectorContext(
+                DetectorContext(
                     file_path=f,
                     rope_project=self._rope_project,
                     parse_failures=parse_failures,
@@ -214,7 +214,7 @@ class FlextInfraNamespaceEnforcer:
         manual_protocol_violations = self._detect_and_apply(
             py_files=py_files,
             detect_fn=lambda f: FlextInfraManualProtocolDetector.detect_file(
-                _DetectorContext(
+                DetectorContext(
                     file_path=f,
                     rope_project=self._rope_project,
                     parse_failures=parse_failures,
@@ -230,7 +230,7 @@ class FlextInfraNamespaceEnforcer:
         manual_typing_violations = self._detect_and_apply(
             py_files=py_files,
             detect_fn=lambda f: FlextInfraManualTypingAliasDetector.detect_file(
-                _DetectorContext(
+                DetectorContext(
                     file_path=f,
                     rope_project=self._rope_project,
                     parse_failures=parse_failures,
@@ -246,7 +246,7 @@ class FlextInfraNamespaceEnforcer:
         compatibility_alias_violations = self._detect_and_apply(
             py_files=py_files,
             detect_fn=lambda f: FlextInfraCompatibilityAliasDetector.detect_file(
-                _DetectorContext(
+                DetectorContext(
                     file_path=f,
                     rope_project=self._rope_project,
                     parse_failures=parse_failures,
@@ -261,7 +261,7 @@ class FlextInfraNamespaceEnforcer:
         class_placement_violations = self._detect_and_apply(
             py_files=py_files,
             detect_fn=lambda f: FlextInfraClassPlacementDetector.detect_file(
-                _DetectorContext(
+                DetectorContext(
                     file_path=f,
                     rope_project=self._rope_project,
                     parse_failures=parse_failures,
@@ -273,7 +273,7 @@ class FlextInfraNamespaceEnforcer:
         mro_completeness_violations = self._detect_and_apply(
             py_files=py_files,
             detect_fn=lambda f: FlextInfraMROCompletenessDetector.detect_file(
-                _DetectorContext(
+                DetectorContext(
                     file_path=f,
                     parse_failures=parse_failures,
                     rope_project=self._rope_project,

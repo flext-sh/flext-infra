@@ -10,7 +10,7 @@ from collections.abc import MutableSequence, Sequence
 from typing import ClassVar, override
 
 from flext_infra import FlextInfraScanFileMixin, c, m, p
-from flext_infra.detectors._base_detector import _DetectorContext
+from flext_infra.detectors._base_detector import DetectorContext
 
 _PEP695_RE = c.Infra.PEP695_RE
 _TYPEALIAS_ANNOT_RE = c.Infra.TYPEALIAS_ANNOT_RE
@@ -26,7 +26,7 @@ class FlextInfraManualTypingAliasDetector(FlextInfraScanFileMixin, p.Infra.Scann
     @override
     def detect_file(
         cls,
-        ctx: _DetectorContext,
+        ctx: DetectorContext,
     ) -> Sequence[m.Infra.ManualTypingAliasViolation]:
         """Detect type alias placement violations in a single file."""
         file_path = ctx.file_path

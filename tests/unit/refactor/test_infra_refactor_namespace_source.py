@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import FlextInfraNamespaceSourceDetector, _DetectorContext
+from flext_infra import DetectorContext, FlextInfraNamespaceSourceDetector
 from tests import t, u
 
 FAMILY_FILE_MAP = {
@@ -61,7 +61,7 @@ def test_detects_wrong_source_m_import(tmp_path: Path) -> None:
     )
 
     violations = FlextInfraNamespaceSourceDetector.detect_file(
-        _DetectorContext(
+        DetectorContext(
             file_path=target,
             project_name=project_name,
             project_root=project_root,
@@ -85,7 +85,7 @@ def test_detects_wrong_source_u_import(tmp_path: Path) -> None:
     )
 
     violations = FlextInfraNamespaceSourceDetector.detect_file(
-        _DetectorContext(
+        DetectorContext(
             file_path=target,
             project_name=project_name,
             project_root=project_root,
@@ -109,7 +109,7 @@ def test_skips_r_alias_universal_exception(tmp_path: Path) -> None:
     )
 
     violations = FlextInfraNamespaceSourceDetector.detect_file(
-        _DetectorContext(
+        DetectorContext(
             file_path=target,
             project_name=project_name,
             project_root=project_root,
@@ -137,7 +137,7 @@ def test_skips_facade_declaration_files(tmp_path: Path) -> None:
     )
 
     violations = FlextInfraNamespaceSourceDetector.detect_file(
-        _DetectorContext(
+        DetectorContext(
             file_path=target,
             project_name=project_name,
             project_root=project_root,
@@ -159,7 +159,7 @@ def test_skips_init_file(tmp_path: Path) -> None:
     target.write_text("from flext_core import m\n")
 
     violations = FlextInfraNamespaceSourceDetector.detect_file(
-        _DetectorContext(
+        DetectorContext(
             file_path=target,
             project_name=project_name,
             project_root=project_root,
@@ -183,7 +183,7 @@ def test_skips_import_as_rename(tmp_path: Path) -> None:
     )
 
     violations = FlextInfraNamespaceSourceDetector.detect_file(
-        _DetectorContext(
+        DetectorContext(
             file_path=target,
             project_name=project_name,
             project_root=project_root,
@@ -207,7 +207,7 @@ def test_skips_non_alias_symbols(tmp_path: Path) -> None:
     )
 
     violations = FlextInfraNamespaceSourceDetector.detect_file(
-        _DetectorContext(
+        DetectorContext(
             file_path=target,
             project_name=project_name,
             project_root=project_root,
@@ -231,7 +231,7 @@ def test_detects_only_wrong_alias_in_mixed_import(tmp_path: Path) -> None:
     )
 
     violations = FlextInfraNamespaceSourceDetector.detect_file(
-        _DetectorContext(
+        DetectorContext(
             file_path=target,
             project_name=project_name,
             project_root=project_root,
@@ -255,7 +255,7 @@ def test_project_without_alias_facade_has_no_violation(tmp_path: Path) -> None:
     )
 
     violations = FlextInfraNamespaceSourceDetector.detect_file(
-        _DetectorContext(
+        DetectorContext(
             file_path=target,
             project_name=project_name,
             project_root=project_root,
@@ -358,7 +358,7 @@ def test_detects_same_project_submodule_alias_import(tmp_path: Path) -> None:
     )
 
     violations = FlextInfraNamespaceSourceDetector.detect_file(
-        _DetectorContext(
+        DetectorContext(
             file_path=target,
             project_name=project_name,
             project_root=project_root,
@@ -383,7 +383,7 @@ def test_skips_same_project_submodule_class_import(tmp_path: Path) -> None:
     )
 
     violations = FlextInfraNamespaceSourceDetector.detect_file(
-        _DetectorContext(
+        DetectorContext(
             file_path=target,
             project_name=project_name,
             project_root=project_root,
@@ -408,7 +408,7 @@ def test_skips_same_project_private_submodule(tmp_path: Path) -> None:
     )
 
     violations = FlextInfraNamespaceSourceDetector.detect_file(
-        _DetectorContext(
+        DetectorContext(
             file_path=target,
             project_name=project_name,
             project_root=project_root,

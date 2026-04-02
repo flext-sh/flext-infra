@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from typing import ClassVar, override
 
 from flext_infra import FlextInfraScanFileMixin, c, m, p
-from flext_infra.detectors._base_detector import _DetectorContext
+from flext_infra.detectors._base_detector import DetectorContext
 
 _FUTURE_ANNOTATIONS_RE = c.Infra.FUTURE_ANNOTATIONS_RE
 _ONLY_DOCSTRING_RE = c.Infra.ONLY_DOCSTRING_RE
@@ -26,7 +26,7 @@ class FlextInfraFutureAnnotationsDetector(FlextInfraScanFileMixin, p.Infra.Scann
     @override
     def detect_file(
         cls,
-        ctx: _DetectorContext,
+        ctx: DetectorContext,
     ) -> Sequence[m.Infra.FutureAnnotationsViolation]:
         """Detect missing future annotations in a single file."""
         file_path = ctx.file_path
