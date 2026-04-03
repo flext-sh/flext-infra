@@ -6,10 +6,10 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 import pytest
-from tests import m, u
+from tests import m
 
 from flext_core import r
-from flext_infra import FlextInfraCliGithub, main
+from flext_infra import FlextInfraCliGithub, main, u as infra_u
 
 
 def _orch(*, fail: int = 0, total: int = 1) -> m.Infra.PrOrchestrationResult:
@@ -40,7 +40,7 @@ class TestMain:
             return r[Sequence[m.Infra.SyncOperation]].ok([])
 
         monkeypatch.setattr(
-            u.Infra,
+            infra_u.Infra,
             "github_sync_workspace_workflows",
             staticmethod(_sync),
         )
@@ -56,7 +56,11 @@ class TestMain:
                 m.Infra.WorkflowLintResult(status="ok"),
             )
 
-        monkeypatch.setattr(u.Infra, "github_lint_workflows", staticmethod(_lint))
+        monkeypatch.setattr(
+            infra_u.Infra,
+            "github_lint_workflows",
+            staticmethod(_lint),
+        )
         assert main(["github", "lint", "--workspace", str(tmp_path)]) == 0
 
     def test_pr_subcommand(
@@ -94,7 +98,7 @@ class TestMain:
             return r[m.Infra.PrOrchestrationResult].ok(_orch(fail=0))
 
         monkeypatch.setattr(
-            u.Infra,
+            infra_u.Infra,
             "github_pr_orchestrate",
             staticmethod(_orchestrate),
         )
@@ -115,7 +119,11 @@ class TestMain:
                 m.Infra.WorkflowLintResult(status="ok"),
             )
 
-        monkeypatch.setattr(u.Infra, "github_lint_workflows", staticmethod(_lint))
+        monkeypatch.setattr(
+            infra_u.Infra,
+            "github_lint_workflows",
+            staticmethod(_lint),
+        )
         result = main(["github", "lint", "--workspace", str(tmp_path)])
         called.append(result == 0)
         assert called
@@ -147,7 +155,7 @@ class TestMain:
             return r[Sequence[m.Infra.SyncOperation]].ok(ops)
 
         monkeypatch.setattr(
-            u.Infra,
+            infra_u.Infra,
             "github_sync_workspace_workflows",
             staticmethod(_sync),
         )

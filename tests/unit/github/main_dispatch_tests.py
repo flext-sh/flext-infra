@@ -6,10 +6,10 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import m, u
+from tests import m
 
 from flext_core import r
-from flext_infra import FlextInfraCliGithub
+from flext_infra import FlextInfraCliGithub, u as infra_u
 
 
 def _orch(*, fail: int = 0, total: int = 1) -> m.Infra.PrOrchestrationResult:
@@ -29,7 +29,11 @@ class TestRunPrWorkspace:
         ) -> r[m.Infra.PrOrchestrationResult]:
             return r[m.Infra.PrOrchestrationResult].ok(_orch(fail=0))
 
-        monkeypatch.setattr(u.Infra, "github_pr_orchestrate", staticmethod(_ok))
+        monkeypatch.setattr(
+            infra_u.Infra,
+            "github_pr_orchestrate",
+            staticmethod(_ok),
+        )
         result = FlextInfraCliGithub._handle_pr_workspace(
             m.Infra.GithubPrWorkspaceInput(workspace=str(tmp_path)),
         )
@@ -42,7 +46,11 @@ class TestRunPrWorkspace:
         ) -> r[m.Infra.PrOrchestrationResult]:
             return r[m.Infra.PrOrchestrationResult].fail("orchestration failed")
 
-        monkeypatch.setattr(u.Infra, "github_pr_orchestrate", staticmethod(_fail))
+        monkeypatch.setattr(
+            infra_u.Infra,
+            "github_pr_orchestrate",
+            staticmethod(_fail),
+        )
         result = FlextInfraCliGithub._handle_pr_workspace(
             m.Infra.GithubPrWorkspaceInput(workspace=str(tmp_path)),
         )
@@ -63,7 +71,7 @@ class TestRunPrWorkspace:
             return r[m.Infra.PrOrchestrationResult].ok(_orch(fail=0))
 
         monkeypatch.setattr(
-            u.Infra,
+            infra_u.Infra,
             "github_pr_orchestrate",
             staticmethod(_fake_orchestrate),
         )
@@ -96,7 +104,7 @@ class TestRunPrWorkspace:
             return r[m.Infra.PrOrchestrationResult].ok(_orch(fail=0))
 
         monkeypatch.setattr(
-            u.Infra,
+            infra_u.Infra,
             "github_pr_orchestrate",
             staticmethod(_fake_orchestrate),
         )
@@ -123,7 +131,7 @@ class TestRunPrWorkspace:
             return r[m.Infra.PrOrchestrationResult].ok(_orch(fail=0))
 
         monkeypatch.setattr(
-            u.Infra,
+            infra_u.Infra,
             "github_pr_orchestrate",
             staticmethod(_fake_orchestrate),
         )
@@ -147,7 +155,7 @@ class TestRunPrWorkspace:
             return r[m.Infra.PrOrchestrationResult].ok(_orch(fail=0))
 
         monkeypatch.setattr(
-            u.Infra,
+            infra_u.Infra,
             "github_pr_orchestrate",
             staticmethod(_fake_orchestrate),
         )
@@ -171,7 +179,7 @@ class TestRunPrWorkspace:
             return r[m.Infra.PrOrchestrationResult].ok(_orch(fail=0))
 
         monkeypatch.setattr(
-            u.Infra,
+            infra_u.Infra,
             "github_pr_orchestrate",
             staticmethod(_fake_orchestrate),
         )

@@ -102,7 +102,7 @@ class FlextInfraRefactorSafetyManager:
             processed_targets=processed_targets,
         )
         payload = checkpoint.model_dump()
-        payload["updated_at"] = u.generate_iso_timestamp()
+        payload["updated_at"] = u.Infra.generate_iso_timestamp()
         return u.Infra.write_json(
             self._checkpoint_path,
             payload,

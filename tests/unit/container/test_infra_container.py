@@ -99,7 +99,7 @@ class TestInfraMroPattern:
 
     def test_patterns_available(self) -> None:
         """Verify pattern constants are accessible via u.Infra MRO."""
-        assert callable(u.matches)
+        assert callable(u.Infra.matches)
 
 
 class TestInfraServiceRetrieval:

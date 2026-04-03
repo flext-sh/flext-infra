@@ -45,6 +45,15 @@ class FlextInfraUtilitiesCodegenConstantDetection:
             return "unknown"
 
     @staticmethod
+    def semantic_name_matches(symbol_name: str, canonical_name: str) -> bool:
+        """Return True when symbol_name semantically matches canonical_name."""
+        if not canonical_name:
+            return False
+        canonical_lower = canonical_name.lower().replace("_", "")
+        symbol_lower = symbol_name.lower().replace("_", "")
+        return canonical_lower == symbol_lower or symbol_lower in canonical_lower
+
+    @staticmethod
     def canonical_reference_for(name: str, value_repr: str) -> str:
         """Return canonical constant reference for a name/value pair."""
         gov = FlextInfraUtilitiesCodegenGovernance

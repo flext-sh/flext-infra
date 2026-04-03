@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -15,6 +16,8 @@ from flext_infra import (
     FlextInfraCodegenLazyInit,
     FlextInfraCodegenPyTyped,
     FlextInfraCodegenScaffolder,
+    FlextInfraUtilitiesCodegenConstantDetection,
+    FlextInfraUtilitiesRope,
     c,
     m,
     t,
@@ -401,14 +404,6 @@ class FlextInfraCliCodegen:
         hardcoded namespace assumptions.  Validates each file after
         replacement and reverts on lint failure.
         """
-        import subprocess
-
-        from flext_infra import (
-            FlextInfraUtilitiesCodegenConstantAnalysis,
-            FlextInfraUtilitiesCodegenConstantDetection,
-            FlextInfraUtilitiesRope,
-        )
-
         workspace = Path(params.workspace).resolve()
         dry_run = not params.apply
         lines: list[str] = []
@@ -442,25 +437,63 @@ class FlextInfraCliCodegen:
             aliases = u.Infra.discover_project_aliases(project_root)
             if "c" not in aliases:
                 continue
-            constants_class = u.Infra.resolve_parent_constants(pkg_dir)
-            if not constants_class:
-                continue
-            class_path = f"{pkg_name}.{constants_class}"
 
-            # ── Build canonical value map from MRO (rope-resolved) ─
-            canonical_attrs = FlextInfraUtilitiesCodegenConstantAnalysis.extract_class_attributes_with_mro(
-                class_path
-            )
-            if not canonical_attrs:
+            # Find the project's constants facade via runtime import
+            # (rope can't parse constants.py due to lazy import chains)
+            constants_file = pkg_dir / c.Infra.Files.CONSTANTS_PY
+            if not constants_file.is_file():
                 continue
-            # Invert: value_repr -> (attr_name, class_path)
+            try:
+                pkg_module = importlib.import_module(pkg_name)
+            except (ImportError, ModuleNotFoundError):
+                continue
+            # Find the Constants facade class in the module
+            # The facade's __module__ is <pkg>.constants, not <pkg>
+            facade_cls: type | None = None
+            expected_module = f"{pkg_name}.constants"
+            for attr in vars(pkg_module).values():
+                if (
+                    isinstance(attr, type)
+                    and getattr(attr, "__module__", "") == expected_module
+                    and "Constants" in attr.__name__
+                    and len(attr.__name__) > 1
+                ):
+                    facade_cls = attr
+                    break
+            if facade_cls is None:
+                continue
+
+            # ── Build canonical value map from runtime MRO ─────
             value_to_ref: dict[str, tuple[str, str]] = {}
-            for attr_name, defn in canonical_attrs.items():
-                if defn.value_repr:
-                    value_to_ref[defn.value_repr] = (
-                        attr_name,
-                        defn.class_path,
-                    )
+            # Walk the facade and its inner classes
+            cls_targets: list[tuple[type, str]] = [(facade_cls, "")]
+            cls_targets.extend(
+                (attr, attr.__name__)
+                for attr in dict(vars(facade_cls)).values()
+                if isinstance(attr, type) and attr is not type
+            )
+
+            for target_cls, prefix in cls_targets:
+                for klass in reversed(target_cls.__mro__):
+                    if klass is object:
+                        continue
+                    klass_vars = dict(vars(klass))
+                    for attr_name, attr_value in klass_vars.items():
+                        if attr_name.startswith("_"):
+                            continue
+                        if isinstance(attr_value, type):
+                            continue
+                        raw = repr(attr_value)[:200]
+                        if not raw:
+                            continue
+                        canon_path = f"{prefix}.{attr_name}" if prefix else attr_name
+                        entry = (canon_path, "")
+                        value_to_ref[raw] = entry
+                        # Normalize string quotes
+                        if len(raw) >= 2 and raw[0] == raw[-1] and raw[0] in {"'", '"'}:  # noqa: PLR2004
+                            inner = raw[1:-1]
+                            value_to_ref[f"'{inner}'"] = entry
+                            value_to_ref[f'"{inner}"'] = entry
 
             # ── Init rope project for this project ────────────────
             rope_project = FlextInfraUtilitiesRope.init_rope_project(
@@ -477,16 +510,16 @@ class FlextInfraCliCodegen:
 
                 # ── Detect assignments via rope semantic analysis ──
                 resource = FlextInfraUtilitiesRope.get_resource_from_path(
-                    rope_project, py_file,
+                    rope_project,
+                    py_file,
                 )
                 if resource is None:
                     continue
                 symbols = FlextInfraUtilitiesRope.get_module_symbols(
-                    rope_project, resource,
+                    rope_project,
+                    resource,
                 )
-                assignments = [
-                    sym for sym in symbols if sym.kind == "assignment"
-                ]
+                assignments = [sym for sym in symbols if sym.kind == "assignment"]
                 if not assignments:
                     continue
 
@@ -494,6 +527,20 @@ class FlextInfraCliCodegen:
                 source_lines = source.splitlines()
 
                 # ── Match assignment values against canonical map ──
+                # Skip trivial values that cause false positives
+                trivial_values: frozenset[str] = frozenset({
+                    "True",
+                    "False",
+                    "None",
+                    "0",
+                    "1",
+                    "-1",
+                    '""',
+                    "''",
+                    "[]",
+                    "{}",
+                    "()",
+                })
                 matches: list[
                     tuple[m.Infra.SymbolInfo, str, str]
                 ] = []  # (symbol, canonical_ref, value_repr)
@@ -505,22 +552,28 @@ class FlextInfraCliCodegen:
                     if eq_idx < 0:
                         continue
                     raw_value = line_text[eq_idx + 1 :].strip()
-                    # Try matching the raw value repr
+                    if raw_value in trivial_values:
+                        continue
                     hit = value_to_ref.get(raw_value)
-                    if hit is None:
-                        # Try repr-wrapped form for strings
-                        hit = value_to_ref.get(repr(raw_value))
                     if hit is None:
                         continue
                     canon_name, canon_class = hit
                     if canon_name == sym.name:
                         continue  # Already canonical
-                    ref = (
-                        f"c.{canon_class}.{canon_name}"
-                        if canon_class
-                        else f"c.{canon_name}"
-                    )
-                    matches.append((sym, ref, raw_value))
+                    # Require semantic name similarity to avoid
+                    # false positives on coincidental numeric values
+                    if (
+                        FlextInfraUtilitiesCodegenConstantDetection.semantic_name_matches(
+                            sym.name, canon_name
+                        )
+                        or sym.name.isupper()
+                    ):
+                        ref = (
+                            f"c.{canon_class}.{canon_name}"
+                            if canon_class
+                            else f"c.{canon_name}"
+                        )
+                        matches.append((sym, ref, raw_value))
 
                 if not matches:
                     continue
@@ -531,8 +584,7 @@ class FlextInfraCliCodegen:
                 if dry_run:
                     for sym, ref, val in matches:
                         lines.append(
-                            f"  {rel}:{sym.line}"
-                            f"  {sym.name} = {val} -> {ref}",
+                            f"  {rel}:{sym.line}  {sym.name} = {val} -> {ref}",
                         )
                     continue
 
@@ -550,8 +602,7 @@ class FlextInfraCliCodegen:
                     if eq_idx < 0:
                         continue
                     line_offset = sum(
-                        len(source_with_newlines[i])
-                        for i in range(sym.line - 1)
+                        len(source_with_newlines[i]) for i in range(sym.line - 1)
                     )
                     value_start = line_offset + eq_idx + 1
                     value_end = value_start + len(
@@ -571,6 +622,14 @@ class FlextInfraCliCodegen:
                     offset_edits,
                     apply=True,
                 )
+                # Ensure the 'c' alias import exists
+                FlextInfraUtilitiesRope.add_import(
+                    rope_project,
+                    resource,
+                    pkg_name,
+                    ["c"],
+                    apply=True,
+                )
 
                 # ── Validate with linters ─────────────────────────
                 ok = True
@@ -585,22 +644,18 @@ class FlextInfraCliCodegen:
                     ],
                     ["pyright", str(py_file)],
                 ):
-                    try:
-                        proc = subprocess.run(
-                            tool_cmd,
-                            capture_output=True,
-                            text=True,
-                            timeout=c.Infra.Timeouts.SHORT,
-                            cwd=str(workspace),
-                        )
-                    except (
-                        subprocess.TimeoutExpired,
-                        FileNotFoundError,
-                    ):
+                    check_result = u.Infra.run_raw(
+                        tool_cmd,
+                        cwd=workspace,
+                        timeout=c.Infra.Timeouts.SHORT,
+                    )
+                    if check_result.is_failure:
                         continue
-                    if proc.returncode != 0:
+                    if check_result.value.exit_code != 0:
                         ok = False
-                        out = (proc.stdout + proc.stderr)[:200]
+                        out = (check_result.value.stdout + check_result.value.stderr)[
+                            :200
+                        ]
                         lines.append(
                             f"  FAILED {rel} [{tool_cmd[0]}]: {out}",
                         )

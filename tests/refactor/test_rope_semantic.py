@@ -204,7 +204,7 @@ class TestFindDefinitionOffset:
         models_resource: t.Infra.RopeResource,
     ) -> None:
         proj, _ = rope_workspace
-        offset = u.find_definition_offset(proj, models_resource, "Dog")
+        offset = u.Infra.find_definition_offset(proj, models_resource, "Dog")
         source = models_resource.read()
         assert offset is not None
         assert source[offset : offset + 3] == "Dog"

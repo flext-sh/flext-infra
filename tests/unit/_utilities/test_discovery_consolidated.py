@@ -81,7 +81,7 @@ class TestDiscoveryIterPythonFiles:
             staticmethod(_raise_oserror),
         )
 
-        result = u.find_all_pyproject_files(workspace_root=tmp_path)
+        result = u.Infra.find_all_pyproject_files(workspace_root=tmp_path)
 
         assert result.is_failure
         error_text = result.error or ""

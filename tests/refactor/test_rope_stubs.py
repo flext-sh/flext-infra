@@ -18,7 +18,7 @@ def test_rope_project_wrapper(tmp_path: Path) -> None:
 
 def test_rope_module_syntax_error_wrapper() -> None:
     """Confirm the Rope exception wrapper resolves a concrete exception type."""
-    assert u.module_syntax_error_type() is not None
+    assert u.Infra.module_syntax_error_type() is not None
 
 
 def test_rope_find_occurrences_wrapper(tmp_path: Path) -> None:
@@ -35,9 +35,9 @@ def test_rope_find_occurrences_wrapper(tmp_path: Path) -> None:
     try:
         resource = u.Infra.get_resource_from_path(project, target)
         assert resource is not None
-        offset = u.find_definition_offset(project, resource, "Demo")
+        offset = u.Infra.find_definition_offset(project, resource, "Demo")
         assert offset is not None
-        hits = u.find_occurrences(project, resource, offset)
+        hits = u.Infra.find_occurrences(project, resource, offset)
         assert hits
     finally:
         project.close()

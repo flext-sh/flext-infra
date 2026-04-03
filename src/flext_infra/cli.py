@@ -65,7 +65,7 @@ class FlextInfraCli(
 
     def main(self, args: t.StrSequence | None = None) -> int:
         """Run the centralized dispatcher."""
-        u.ensure_structlog_configured()
+        u.Infra.ensure_structlog_configured()
         cli_args = list(args) if args is not None else sys.argv[1:]
         if not cli_args:
             self.print_help()

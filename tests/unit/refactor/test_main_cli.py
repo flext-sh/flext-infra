@@ -40,7 +40,7 @@ def test_refactor_centralize_accepts_apply_before_subcommand(
     monkeypatch.setattr(
         FlextInfraCliRefactor,
         "_handle_centralize_pydantic",
-        _mock_handler,
+        staticmethod(_mock_handler),
     )
     result = refactor_main(
         [
@@ -78,7 +78,7 @@ def test_refactor_runtime_alias_imports_accepts_aliases_and_project(
     monkeypatch.setattr(
         FlextInfraCliRefactor,
         "_handle_migrate_runtime_alias_imports",
-        _mock_handler,
+        staticmethod(_mock_handler),
     )
     result = refactor_main(
         [

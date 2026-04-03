@@ -32,7 +32,7 @@ class TestFormattingRunRuffFix:
             _fake_run_checked,
         )
 
-        u.run_ruff_fix(target)
+        u.Infra.run_ruff_fix(target)
 
         assert calls[0] == [
             c.Infra.RUFF,
@@ -68,7 +68,7 @@ class TestFormattingRunRuffFix:
             _raise_missing,
         )
 
-        u.run_ruff_fix(target, include_format=False, quiet=True)
+        u.Infra.run_ruff_fix(target, include_format=False, quiet=True)
 
         assert calls == [
             [
