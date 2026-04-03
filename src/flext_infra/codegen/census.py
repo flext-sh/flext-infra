@@ -102,7 +102,12 @@ class FlextInfraCodegenCensus(s[bool]):
         census_data = u.Infra.analyze_class_object_census(
             class_name,
             workspace,
-            frozenset({".mypy_cache", "__pycache__", ".git", ".reports"}),
+            frozenset({
+                ".mypy_cache",
+                c.Infra.Dunders.PYCACHE,
+                c.Infra.Git.DIR,
+                ".reports",
+            }),
             max_files=1000,
         )
         if not census_data:
@@ -200,7 +205,7 @@ class FlextInfraCodegenCensus(s[bool]):
         violations: MutableSequence[m.Infra.CensusViolation],
     ) -> None:
         """Analyze constant definitions, duplicates, and usage for a project."""
-        skip_dirs = frozenset({".mypy_cache", "__pycache__"})
+        skip_dirs = frozenset({".mypy_cache", c.Infra.Dunders.PYCACHE})
         all_defs = u.Infra.extract_all_constant_definitions(
             src_dir.parent,
             skip_dirs,

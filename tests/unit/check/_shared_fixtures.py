@@ -14,6 +14,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from tests import h, m, t
 
 from flext_core import r
 from flext_infra import (
@@ -23,7 +24,6 @@ from flext_infra import (
     FlextInfraRuffLintGate,
     FlextInfraWorkspaceChecker,
 )
-from tests import h, m, t
 
 type GateClass = type[
     FlextInfraRuffLintGate

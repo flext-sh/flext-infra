@@ -53,7 +53,7 @@ class FlextInfraUtilitiesRefactorPydantic:
 
     @staticmethod
     def _is_target_python(file_path: Path) -> bool:
-        if file_path.suffix != ".py":
+        if file_path.suffix != c.Infra.Extensions.PYTHON:
             return False
         if any(
             part in FlextInfraUtilitiesRefactorPydantic._PYDANTIC_SKIP_DIRS
@@ -208,7 +208,7 @@ class FlextInfraUtilitiesRefactorPydantic:
             apply_alias_moves,
             import_statement=(
                 f"from ._models import {', '.join(sorted(set(moved_names)))}"
-                if (file_path.parent / "__init__.py").exists()
+                if (file_path.parent / c.Infra.Files.INIT_PY).exists()
                 else f"from _models import {', '.join(sorted(set(moved_names)))}"
             ),
         )
@@ -306,7 +306,7 @@ class FlextInfraUtilitiesRefactorPydantic:
             moved_aliases += len(result.apply_alias_moves)
             touched_files += 1
             if apply:
-                if not (file_path.parent / "__init__.py").exists():
+                if not (file_path.parent / c.Infra.Files.INIT_PY).exists():
                     skipped_nonpackage_apply += 1
                     continue
                 _ = dest_path.write_text(

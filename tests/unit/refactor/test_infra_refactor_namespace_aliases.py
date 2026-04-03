@@ -4,9 +4,9 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
+from tests import t, u
 
 from flext_infra import DetectorContext, FlextInfraImportAliasDetector
-from tests import t, u
 
 
 @pytest.fixture
@@ -276,7 +276,7 @@ def test_runtime_alias_migrator_skips_unsafe_local_cycle(tmp_path: Path) -> None
         project_root / "src" / "flext_demo" / "utilities.py",
         (
             "from __future__ import annotations\n\n"
-            "from flext_demo._utilities.local import helper\n\n"
+            "from flext_demo import helper\n\n"
             "class FlextDemoUtilities:\n"
             "    pass\n\n"
             "u = FlextDemoUtilities\n"

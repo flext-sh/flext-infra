@@ -8,10 +8,10 @@ from typing import override
 
 from flext_infra import (
     FlextInfraRefactorTransformerPolicyUtilities,
+    FlextInfraRopeTransformer,
     t,
     u,
 )
-from flext_infra.transformers._base import FlextInfraRopeTransformer
 
 
 class FlextInfraNestedClassPropagationTransformer(FlextInfraRopeTransformer):

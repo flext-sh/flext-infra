@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
+from tests import m, t
 
 import flext_infra.check.workspace_check as ws_mod
 from flext_infra import (
@@ -21,7 +22,6 @@ from flext_infra import (
     FlextInfraPyrightGate,
     FlextInfraWorkspaceChecker,
 )
-from tests import m, t
 
 from ._shared_fixtures import patch_python_dir_detection
 

@@ -11,6 +11,7 @@ from collections.abc import Callable, Sequence
 
 import pytest
 from flext_tests import tm
+from tests import m, t
 
 from flext_core import r
 from flext_infra import (
@@ -21,7 +22,6 @@ from flext_infra import (
     FlextInfraDocValidator,
     main,
 )
-from tests import m, t
 
 
 def _ok_empty(*a: t.Scalar, **kw: t.Scalar) -> r[Sequence[m.Infra.DocsPhaseReport]]:

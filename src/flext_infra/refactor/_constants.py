@@ -73,6 +73,46 @@ class FlextInfraRefactorConstants:
     FUTURE_FIX_ACTIONS: ClassVar[frozenset[str]] = frozenset({
         "ensure_future_annotations",
     })
+    FUTURE_FALLBACK_KEYWORDS: ClassVar[frozenset[str]] = frozenset({
+        "ensure-future",
+        "future-annotations",
+    })
+    LEGACY_FALLBACK_KEYWORDS: ClassVar[frozenset[str]] = frozenset({
+        "legacy",
+        "alias",
+        "deprecated",
+        "wrapper",
+        "bypass",
+    })
+    IMPORT_FALLBACK_KEYWORDS: ClassVar[frozenset[str]] = frozenset({
+        "import",
+        "modernize",
+    })
+    CLASS_FALLBACK_KEYWORDS: ClassVar[frozenset[str]] = frozenset({
+        "class",
+        "reorder",
+        "method",
+    })
+    PATTERN_FALLBACK_KEYWORDS: ClassVar[frozenset[str]] = frozenset({
+        "redundant-cast",
+        "dict-to-mapping",
+        "container-invariance",
+    })
+    MRO_MIGRATION_FALLBACK_KEYWORDS: ClassVar[frozenset[str]] = frozenset({
+        "migrate-to-class-mro",
+    })
+    MRO_FALLBACK_KEYWORDS: ClassVar[frozenset[str]] = frozenset({"mro"})
+    PROPAGATION_FALLBACK_KEYWORDS: ClassVar[frozenset[str]] = frozenset({
+        "propagate",
+        "symbol-rename",
+        "rename",
+    })
+    MRO_MIGRATION_ACTIONS: ClassVar[frozenset[str]] = frozenset({
+        "migrate_to_class_mro",
+    })
+    SIGNATURE_PROPAGATION_ACTIONS: ClassVar[frozenset[str]] = frozenset({
+        "propagate_signature_migrations",
+    })
     TYPING_DEFINITION_FILES: ClassVar[frozenset[str]] = frozenset({
         "typings.py",
         "_typings",

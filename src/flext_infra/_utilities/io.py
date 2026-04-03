@@ -99,7 +99,7 @@ class FlextInfraUtilitiesIo:
             materialized: JsonValue | Mapping[str, t.Infra.InfraValue]
             if isinstance(payload, BaseModel):
                 materialized = payload.model_dump()
-            elif u.is_mapping(payload):
+            elif isinstance(payload, Mapping):
                 materialized = dict(payload)
             elif isinstance(payload, Sequence) and not isinstance(payload, str):
                 materialized = list(payload)

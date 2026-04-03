@@ -82,7 +82,10 @@ class FlextInfraImportAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
 
     @staticmethod
     def _is_deep_flext_module(module_name: str) -> bool:
-        if not module_name.startswith("flext_") or "." not in module_name:
+        if (
+            not module_name.startswith(c.Infra.Packages.PREFIX_UNDERSCORE)
+            or "." not in module_name
+        ):
             return False
         return all(not part.startswith("_") for part in module_name.split(".")[1:])
 

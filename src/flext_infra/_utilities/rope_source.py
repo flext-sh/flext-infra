@@ -4,13 +4,11 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from operator import itemgetter
 from pathlib import Path
 
-from flext_infra import t
-from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra import FlextInfraUtilitiesDiscovery, FlextInfraUtilitiesRopeCore, c, t
 
 
 class FlextInfraUtilitiesRopeSource(FlextInfraUtilitiesRopeCore):
@@ -162,7 +160,7 @@ class FlextInfraUtilitiesRopeSource(FlextInfraUtilitiesRopeCore):
             if (
                 target != value
                 or target in allow_set
-                or target in {"__version__", "__all__"}
+                or target in {c.Infra.Dunders.VERSION, c.Infra.Dunders.ALL}
             ):
                 kept.append(line)
             else:
@@ -231,7 +229,7 @@ class FlextInfraUtilitiesRopeSource(FlextInfraUtilitiesRopeCore):
     def batch_replace_annotations(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-        replacements: Mapping[str, str],
+        replacements: t.StrMapping,
         *,
         apply: bool = True,
     ) -> tuple[str, int]:

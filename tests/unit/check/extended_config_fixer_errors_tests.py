@@ -11,10 +11,10 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
+from tests import t
 
 from flext_core import r
 from flext_infra import FlextInfraConfigFixer
-from tests import t
 
 
 def _fake_process(

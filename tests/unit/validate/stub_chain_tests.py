@@ -9,9 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_tests import tm
+from tests import t
 
 from flext_infra import FlextInfraStubSupplyChain
-from tests import t
 
 
 class TestStubChainCore:

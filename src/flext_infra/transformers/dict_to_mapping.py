@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import MutableSequence
 
-from flext_infra import t, u
+from flext_infra import c, t, u
 
 
 class FlextInfraDictToMappingTransformer:
@@ -56,7 +57,7 @@ class FlextInfraDictToMappingTransformer:
             u.Infra.replace_in_source(
                 rope_project,
                 resource,
-                r"^(from __future__ import annotations\n)",
+                rf"^({re.escape(c.Infra.SourceCode.FUTURE_ANNOTATIONS)}\n)",
                 r"\1\nfrom collections.abc import Mapping\n",
                 apply=True,
             )

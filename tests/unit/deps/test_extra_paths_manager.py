@@ -6,11 +6,11 @@ from pathlib import Path
 import pytest
 import tomlkit
 from flext_tests import tm
+from tests import t, u
 from tomlkit.toml_document import TOMLDocument
 
 from flext_core import r
 from flext_infra import FlextInfraExtraPathsManager
-from tests import t, u
 
 
 def _manager() -> FlextInfraExtraPathsManager:

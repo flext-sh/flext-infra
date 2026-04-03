@@ -9,13 +9,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
-
-from pydantic import JsonValue, ValidationError
 
 from flext_core import FlextLogger
 from flext_infra import c, m, r, t, u
+from flext_infra.docs._auditor_helpers import (
+    find_architecture_config,
+    parse_audit_gate,
+    resolve_checks,
+    write_audit_reports,
+)
 
 logger = FlextLogger.create_module_logger(__name__)
 
@@ -40,7 +44,7 @@ class FlextInfraDocAuditor:
         workspace_root: Path,
     ) -> t.Infra.Pair[int | None, t.IntMapping]:
         """Load audit issue budgets from architecture config."""
-        config_path = _find_architecture_config(workspace_root)
+        config_path = find_architecture_config(workspace_root)
         if config_path is None:
             return _NO_BUDGETS
         payload_result = u.Infra.read_json(config_path)
@@ -54,7 +58,7 @@ class FlextInfraDocAuditor:
         audit_gate = u.Infra.as_toml_mapping(docs_validation.get("audit_gate"))
         if audit_gate is None:
             return _NO_BUDGETS
-        return _parse_audit_gate(audit_gate)
+        return parse_audit_gate(audit_gate)
 
     @staticmethod
     def normalize_link(target: str) -> str:
@@ -149,7 +153,7 @@ class FlextInfraDocAuditor:
     ) -> m.Infra.DocsPhaseReport:
         """Run configured audit checks on a single scope."""
         resolved = params or m.Infra.AuditScopeParams()
-        checks = _resolve_checks(resolved.check)
+        checks = resolve_checks(resolved.check)
 
         issues: MutableSequence[m.Infra.AuditIssue] = []
         if "links" in checks:
@@ -157,7 +161,13 @@ class FlextInfraDocAuditor:
         if "forbidden-terms" in checks:
             issues.extend(self.forbidden_term_issues(scope))
 
-        _write_audit_reports(scope, issues, checks, strict=resolved.strict)
+        write_audit_reports(
+            scope,
+            issues,
+            checks,
+            strict=resolved.strict,
+            to_markdown_fn=FlextInfraDocAuditor.to_markdown,
+        )
 
         budgets = resolved.budgets or _NO_BUDGETS
         if not resolved.strict:
@@ -271,7 +281,7 @@ class FlextInfraDocAuditor:
             if scope.name == c.Infra.ReportKeys.ROOT:
                 if not rel_lower.startswith("docs/"):
                     continue
-            elif not scope.name.startswith("flext-"):
+            elif not scope.name.startswith(c.Infra.Packages.PREFIX_HYPHEN):
                 continue
             content = md_file.read_text(
                 encoding=c.Infra.Encoding.DEFAULT,
@@ -325,87 +335,6 @@ class FlextInfraDocAuditor:
             return 1
         failures = u.count(result.value, lambda report: not report.passed)
         return 1 if failures else 0
-
-
-def _find_architecture_config(workspace_root: Path) -> Path | None:
-    """Walk up from workspace_root looking for the architecture config."""
-    for candidate in [workspace_root, *workspace_root.parents]:
-        path = candidate / "docs/architecture/architecture_config.json"
-        if path.exists():
-            return path
-    return None
-
-
-def _parse_audit_gate(
-    audit_gate: Mapping[str, t.Infra.InfraValue],
-) -> t.Infra.Pair[int | None, t.IntMapping]:
-    """Extract default budget and per-scope budgets from an audit_gate mapping."""
-    default_budget = audit_gate.get("max_issues_default")
-    by_scope_raw_value = audit_gate.get("max_issues_by_scope")
-    by_scope_raw: Mapping[str, t.Infra.InfraValue] = {}
-    if u.is_mapping(by_scope_raw_value):
-        try:
-            by_scope_raw = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
-                by_scope_raw_value,
-                strict=True,
-            )
-        except ValidationError:
-            by_scope_raw = {}
-    by_scope: t.MutableIntMapping = {}
-    for name, value in by_scope_raw.items():
-        if isinstance(value, (int, float)):
-            by_scope[name] = int(value)
-    resolved_default = (
-        int(default_budget) if isinstance(default_budget, (int, float)) else None
-    )
-    return (resolved_default, by_scope)
-
-
-def _resolve_checks(check: str) -> set[str]:
-    """Parse check string into a resolved set of check names."""
-    checks = {part.strip() for part in check.split(",") if part.strip()}
-    if not checks or "all" in checks:
-        return {"links", "forbidden-terms"}
-    return checks
-
-
-def _write_audit_reports(
-    scope: m.Infra.DocScope,
-    issues: Sequence[m.Infra.AuditIssue],
-    checks: set[str],
-    *,
-    strict: bool,
-) -> None:
-    """Persist JSON summary and markdown report to the scope report directory."""
-    sorted_checks: list[JsonValue] = [str(ck) for ck in sorted(checks)]
-    summary: dict[str, JsonValue] = {
-        c.Infra.ReportKeys.SCOPE: scope.name,
-        "issues": len(issues),
-        c.Infra.Verbs.CHECKS: sorted_checks,
-        c.Infra.Modes.STRICT: strict,
-        "report_dir": scope.report_dir.as_posix(),
-    }
-    issues_payload: JsonValue = [
-        {
-            c.Infra.ReportKeys.FILE: issue.file,
-            "issue_type": issue.issue_type,
-            "severity": issue.severity,
-            c.Infra.ReportKeys.MESSAGE: issue.message,
-        }
-        for issue in issues
-    ]
-    summary_payload: dict[str, JsonValue] = {
-        c.Infra.ReportKeys.SUMMARY: summary,
-        "issues": issues_payload,
-    }
-    _ = u.Infra.write_json(
-        scope.report_dir / "audit-summary.json",
-        summary_payload,
-    )
-    _ = u.Infra.write_markdown(
-        scope.report_dir / "audit-report.md",
-        FlextInfraDocAuditor.to_markdown(scope, issues),
-    )
 
 
 main = FlextInfraDocAuditor.main

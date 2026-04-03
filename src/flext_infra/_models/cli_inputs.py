@@ -9,8 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra._models.cli_inputs_codegen import FlextInfraModelsCliInputsCodegen
-from flext_infra._models.cli_inputs_ops import FlextInfraModelsCliInputsOps
+from flext_infra import FlextInfraModelsCliInputsCodegen, FlextInfraModelsCliInputsOps
 
 
 class FlextInfraModelsCliInputs(

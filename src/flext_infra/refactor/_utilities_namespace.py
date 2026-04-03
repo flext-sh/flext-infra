@@ -2,16 +2,10 @@
 
 from __future__ import annotations
 
-from flext_infra.refactor._utilities_namespace_facades import (
+from flext_infra import (
     FlextInfraUtilitiesRefactorNamespaceFacades,
-)
-from flext_infra.refactor._utilities_namespace_moves import (
     FlextInfraUtilitiesRefactorNamespaceMoves,
-)
-from flext_infra.refactor._utilities_namespace_mro import (
     FlextInfraUtilitiesRefactorNamespaceMro,
-)
-from flext_infra.refactor._utilities_namespace_runtime import (
     FlextInfraUtilitiesRefactorNamespaceRuntime,
 )
 

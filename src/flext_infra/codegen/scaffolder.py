@@ -31,16 +31,6 @@ class FlextInfraCodegenScaffolder(s[bool]):
         super().__init__()
         self._workspace_root = workspace_root
 
-    @staticmethod
-    def _find_package_dir(project_root: Path) -> Path | None:
-        src_dir = project_root / c.Infra.Paths.DEFAULT_SRC_DIR
-        if not src_dir.is_dir():
-            return None
-        for child in sorted(src_dir.iterdir()):
-            if child.is_dir() and (child / c.Infra.Files.INIT_PY).exists():
-                return child
-        return None
-
     @override
     def execute(self) -> r[bool]:
         return r[bool].fail("Use run() directly")
@@ -86,7 +76,7 @@ class FlextInfraCodegenScaffolder(s[bool]):
             )
         files_created: MutableSequence[str] = []
         files_skipped: MutableSequence[str] = []
-        pkg_dir = self._find_package_dir(project_path)
+        pkg_dir = u.Infra.find_package_dir(project_path)
         if pkg_dir is not None:
             self._scaffold_dir(
                 target_dir=pkg_dir,

@@ -3,10 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_tests import tm
+from tests import t
 
 from flext_core import r
 from flext_infra import FlextInfraDependencyPathSync
-from tests import t
 
 
 def rewrite_dep_paths(

@@ -50,14 +50,16 @@ class FlextInfraPyrightGate(FlextInfraGate):
         )
         issues: MutableSequence[m.Infra.Issue] = []
         parsed = u.Infra.parse(result.stdout or "{}")
-        data = self._to_mapping(parsed.value if parsed.is_success else {})
+        data = u.Infra.normalize_str_mapping(parsed.value if parsed.is_success else {})
         try:
-            diagnostics = self._to_mapping_list(data.get("generalDiagnostics", []))
+            diagnostics = u.Infra.normalize_mapping_list(
+                data.get("generalDiagnostics", [])
+            )
             issues.extend(
                 m.Infra.Issue(
                     file=str(diag.get("file", "?")),
-                    line=self._nested_int(diag, "range", "start", "line") + 1,
-                    column=self._nested_int(diag, "range", "start", "character") + 1,
+                    line=u.Infra.nested_int(diag, "range", "start", "line") + 1,
+                    column=u.Infra.nested_int(diag, "range", "start", "character") + 1,
                     code=str(diag.get("rule", "")),
                     message=str(diag.get("message", "")),
                     severity=str(diag.get("severity", c.Infra.ERROR)),

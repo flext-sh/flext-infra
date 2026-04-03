@@ -4,10 +4,10 @@ from collections.abc import MutableSequence
 from pathlib import Path
 
 import pytest
+from tests import c, t, u
 
 from flext_core import r
 from flext_infra import FlextInfraUtilitiesSubprocess
-from tests import c, t, u
 
 
 class TestFormattingRunRuffFix:

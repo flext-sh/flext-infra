@@ -5,30 +5,190 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING as _TYPE_CHECKING
+import typing as _t
 
+from tests.unit.codegen._project_factory import FlextInfraCodegenTestProjectFactory
+from tests.unit.codegen.autofix_workspace_tests import (
+    test_files_modified_tracks_affected_files,
+    test_flexcore_excluded_from_run,
+    test_project_without_src_returns_empty,
+)
+from tests.unit.codegen.census_models_tests import (
+    TestCensusReportModel,
+    TestCensusViolationModel,
+    TestExcludedProjects,
+    TestViolationPattern,
+)
+from tests.unit.codegen.census_tests import (
+    TestFixabilityClassification,
+    TestParseViolationInvalid,
+    TestParseViolationValid,
+    census,
+)
+from tests.unit.codegen.constants_quality_gate_tests import (
+    TestConstantsQualityGateCLIDispatch,
+    TestConstantsQualityGateVerdict,
+)
+from tests.unit.codegen.init_tests import (
+    test_codegen_dir_returns_all_exports,
+    test_codegen_getattr_raises_attribute_error,
+    test_codegen_lazy_imports_work,
+)
+from tests.unit.codegen.lazy_init_generation_tests import (
+    TestGenerateFile,
+    TestGenerateTypeChecking,
+    TestResolveAliases,
+    TestRunRuffFix,
+    test_codegen_init_getattr_raises_attribute_error,
+)
+from tests.unit.codegen.lazy_init_helpers_tests import (
+    TestBuildSiblingExportIndex,
+    TestExtractExports,
+    TestInferPackage,
+    TestReadExistingDocstring,
+)
+from tests.unit.codegen.lazy_init_process_tests import TestProcessDirectory
+from tests.unit.codegen.lazy_init_service_tests import TestFlextInfraCodegenLazyInit
+from tests.unit.codegen.lazy_init_tests import (
+    TestAllDirectoriesScanned,
+    TestCheckOnlyMode,
+    TestEdgeCases,
+    TestExcludedDirectories,
+)
+from tests.unit.codegen.lazy_init_transforms_tests import (
+    TestExtractVersionExports,
+    TestMergeChildExports,
+    TestScanPublicDefs,
+    TestShouldBubbleUp,
+)
+from tests.unit.codegen.main_tests import (
+    TestHandleLazyInit,
+    TestMainCommandDispatch,
+    TestMainEntryPoint,
+)
+from tests.unit.codegen.pipeline_tests import test_codegen_pipeline_end_to_end
+from tests.unit.codegen.scaffolder_naming_tests import (
+    TestGeneratedClassNamingConvention,
+    TestGeneratedFilesAreValidPython,
+)
+from tests.unit.codegen.scaffolder_tests import (
+    TestScaffoldProjectCreatesSrcModules,
+    TestScaffoldProjectCreatesTestsModules,
+    TestScaffoldProjectIdempotency,
+    TestScaffoldProjectNoop,
+)
+
+from flext_core.constants import FlextConstants as c
+from flext_core.decorators import FlextDecorators as d
+from flext_core.exceptions import FlextExceptions as e
+from flext_core.handlers import FlextHandlers as h
 from flext_core.lazy import install_lazy_exports
+from flext_core.mixins import FlextMixins as x
+from flext_core.models import FlextModels as m
+from flext_core.protocols import FlextProtocols as p
+from flext_core.result import FlextResult as r
+from flext_core.service import FlextService as s
+from flext_core.typings import FlextTypes as t
+from flext_core.utilities import FlextUtilities as u
 
-if _TYPE_CHECKING:
-    from flext_core import FlextTypes
-    from flext_core.constants import FlextConstants as c
-    from flext_core.decorators import FlextDecorators as d
-    from flext_core.exceptions import FlextExceptions as e
-    from flext_core.handlers import FlextHandlers as h
-    from flext_core.mixins import FlextMixins as x
-    from flext_core.models import FlextModels as m
-    from flext_core.protocols import FlextProtocols as p
-    from flext_core.result import FlextResult as r
-    from flext_core.service import FlextService as s
-    from flext_core.typings import FlextTypes as t
-    from flext_core.utilities import FlextUtilities as u
-    from tests.unit.codegen import (
+if _t.TYPE_CHECKING:
+    import tests.unit.codegen._project_factory as _tests_unit_codegen__project_factory
+
+    _project_factory = _tests_unit_codegen__project_factory
+    import tests.unit.codegen.autofix_workspace_tests as _tests_unit_codegen_autofix_workspace_tests
+
+    autofix_workspace_tests = _tests_unit_codegen_autofix_workspace_tests
+    import tests.unit.codegen.census_models_tests as _tests_unit_codegen_census_models_tests
+
+    census_models_tests = _tests_unit_codegen_census_models_tests
+    import tests.unit.codegen.census_tests as _tests_unit_codegen_census_tests
+
+    census_tests = _tests_unit_codegen_census_tests
+    import tests.unit.codegen.constants_quality_gate_tests as _tests_unit_codegen_constants_quality_gate_tests
+
+    constants_quality_gate_tests = _tests_unit_codegen_constants_quality_gate_tests
+    import tests.unit.codegen.init_tests as _tests_unit_codegen_init_tests
+
+    init_tests = _tests_unit_codegen_init_tests
+    import tests.unit.codegen.lazy_init_generation_tests as _tests_unit_codegen_lazy_init_generation_tests
+
+    lazy_init_generation_tests = _tests_unit_codegen_lazy_init_generation_tests
+    import tests.unit.codegen.lazy_init_helpers_tests as _tests_unit_codegen_lazy_init_helpers_tests
+
+    lazy_init_helpers_tests = _tests_unit_codegen_lazy_init_helpers_tests
+    import tests.unit.codegen.lazy_init_process_tests as _tests_unit_codegen_lazy_init_process_tests
+
+    lazy_init_process_tests = _tests_unit_codegen_lazy_init_process_tests
+    import tests.unit.codegen.lazy_init_service_tests as _tests_unit_codegen_lazy_init_service_tests
+
+    lazy_init_service_tests = _tests_unit_codegen_lazy_init_service_tests
+    import tests.unit.codegen.lazy_init_tests as _tests_unit_codegen_lazy_init_tests
+
+    lazy_init_tests = _tests_unit_codegen_lazy_init_tests
+    import tests.unit.codegen.lazy_init_transforms_tests as _tests_unit_codegen_lazy_init_transforms_tests
+
+    lazy_init_transforms_tests = _tests_unit_codegen_lazy_init_transforms_tests
+    import tests.unit.codegen.main_tests as _tests_unit_codegen_main_tests
+
+    main_tests = _tests_unit_codegen_main_tests
+    import tests.unit.codegen.pipeline_tests as _tests_unit_codegen_pipeline_tests
+
+    pipeline_tests = _tests_unit_codegen_pipeline_tests
+    import tests.unit.codegen.scaffolder_naming_tests as _tests_unit_codegen_scaffolder_naming_tests
+
+    scaffolder_naming_tests = _tests_unit_codegen_scaffolder_naming_tests
+    import tests.unit.codegen.scaffolder_tests as _tests_unit_codegen_scaffolder_tests
+
+    scaffolder_tests = _tests_unit_codegen_scaffolder_tests
+
+    _ = (
+        FlextInfraCodegenTestProjectFactory,
+        TestAllDirectoriesScanned,
+        TestBuildSiblingExportIndex,
+        TestCensusReportModel,
+        TestCensusViolationModel,
+        TestCheckOnlyMode,
+        TestConstantsQualityGateCLIDispatch,
+        TestConstantsQualityGateVerdict,
+        TestEdgeCases,
+        TestExcludedDirectories,
+        TestExcludedProjects,
+        TestExtractExports,
+        TestExtractVersionExports,
+        TestFixabilityClassification,
+        TestFlextInfraCodegenLazyInit,
+        TestGenerateFile,
+        TestGenerateTypeChecking,
+        TestGeneratedClassNamingConvention,
+        TestGeneratedFilesAreValidPython,
+        TestHandleLazyInit,
+        TestInferPackage,
+        TestMainCommandDispatch,
+        TestMainEntryPoint,
+        TestMergeChildExports,
+        TestParseViolationInvalid,
+        TestParseViolationValid,
+        TestProcessDirectory,
+        TestReadExistingDocstring,
+        TestResolveAliases,
+        TestRunRuffFix,
+        TestScaffoldProjectCreatesSrcModules,
+        TestScaffoldProjectCreatesTestsModules,
+        TestScaffoldProjectIdempotency,
+        TestScaffoldProjectNoop,
+        TestScanPublicDefs,
+        TestShouldBubbleUp,
+        TestViolationPattern,
         _project_factory,
         autofix_workspace_tests,
+        c,
+        census,
         census_models_tests,
         census_tests,
         constants_quality_gate_tests,
+        d,
+        e,
+        h,
         init_tests,
         lazy_init_generation_tests,
         lazy_init_helpers_tests,
@@ -36,83 +196,27 @@ if _TYPE_CHECKING:
         lazy_init_service_tests,
         lazy_init_tests,
         lazy_init_transforms_tests,
+        m,
         main_tests,
+        p,
         pipeline_tests,
+        r,
+        s,
         scaffolder_naming_tests,
         scaffolder_tests,
-    )
-    from tests.unit.codegen._project_factory import FlextInfraCodegenTestProjectFactory
-    from tests.unit.codegen.autofix_workspace_tests import (
+        t,
+        test_codegen_dir_returns_all_exports,
+        test_codegen_getattr_raises_attribute_error,
+        test_codegen_init_getattr_raises_attribute_error,
+        test_codegen_lazy_imports_work,
+        test_codegen_pipeline_end_to_end,
         test_files_modified_tracks_affected_files,
         test_flexcore_excluded_from_run,
         test_project_without_src_returns_empty,
+        u,
+        x,
     )
-    from tests.unit.codegen.census_models_tests import (
-        TestCensusReportModel,
-        TestCensusViolationModel,
-        TestExcludedProjects,
-        TestViolationPattern,
-    )
-    from tests.unit.codegen.census_tests import (
-        TestFixabilityClassification,
-        TestParseViolationInvalid,
-        TestParseViolationValid,
-        census,
-    )
-    from tests.unit.codegen.constants_quality_gate_tests import (
-        TestConstantsQualityGateCLIDispatch,
-        TestConstantsQualityGateVerdict,
-    )
-    from tests.unit.codegen.init_tests import (
-        test_codegen_dir_returns_all_exports,
-        test_codegen_getattr_raises_attribute_error,
-        test_codegen_lazy_imports_work,
-    )
-    from tests.unit.codegen.lazy_init_generation_tests import (
-        TestGenerateFile,
-        TestGenerateTypeChecking,
-        TestResolveAliases,
-        TestRunRuffFix,
-        test_codegen_init_getattr_raises_attribute_error,
-    )
-    from tests.unit.codegen.lazy_init_helpers_tests import (
-        TestBuildSiblingExportIndex,
-        TestExtractExports,
-        TestInferPackage,
-        TestReadExistingDocstring,
-    )
-    from tests.unit.codegen.lazy_init_process_tests import TestProcessDirectory
-    from tests.unit.codegen.lazy_init_service_tests import TestFlextInfraCodegenLazyInit
-    from tests.unit.codegen.lazy_init_tests import (
-        TestAllDirectoriesScanned,
-        TestCheckOnlyMode,
-        TestEdgeCases,
-        TestExcludedDirectories,
-    )
-    from tests.unit.codegen.lazy_init_transforms_tests import (
-        TestExtractVersionExports,
-        TestMergeChildExports,
-        TestScanPublicDefs,
-        TestShouldBubbleUp,
-    )
-    from tests.unit.codegen.main_tests import (
-        TestHandleLazyInit,
-        TestMainCommandDispatch,
-        TestMainEntryPoint,
-    )
-    from tests.unit.codegen.pipeline_tests import test_codegen_pipeline_end_to_end
-    from tests.unit.codegen.scaffolder_naming_tests import (
-        TestGeneratedClassNamingConvention,
-        TestGeneratedFilesAreValidPython,
-    )
-    from tests.unit.codegen.scaffolder_tests import (
-        TestScaffoldProjectCreatesSrcModules,
-        TestScaffoldProjectCreatesTestsModules,
-        TestScaffoldProjectIdempotency,
-        TestScaffoldProjectNoop,
-    )
-
-_LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
+_LAZY_IMPORTS = {
     "FlextInfraCodegenTestProjectFactory": "tests.unit.codegen._project_factory",
     "TestAllDirectoriesScanned": "tests.unit.codegen.lazy_init_tests",
     "TestBuildSiblingExportIndex": "tests.unit.codegen.lazy_init_helpers_tests",
@@ -187,6 +291,82 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "u": ("flext_core.utilities", "FlextUtilities"),
     "x": ("flext_core.mixins", "FlextMixins"),
 }
+
+__all__ = [
+    "FlextInfraCodegenTestProjectFactory",
+    "TestAllDirectoriesScanned",
+    "TestBuildSiblingExportIndex",
+    "TestCensusReportModel",
+    "TestCensusViolationModel",
+    "TestCheckOnlyMode",
+    "TestConstantsQualityGateCLIDispatch",
+    "TestConstantsQualityGateVerdict",
+    "TestEdgeCases",
+    "TestExcludedDirectories",
+    "TestExcludedProjects",
+    "TestExtractExports",
+    "TestExtractVersionExports",
+    "TestFixabilityClassification",
+    "TestFlextInfraCodegenLazyInit",
+    "TestGenerateFile",
+    "TestGenerateTypeChecking",
+    "TestGeneratedClassNamingConvention",
+    "TestGeneratedFilesAreValidPython",
+    "TestHandleLazyInit",
+    "TestInferPackage",
+    "TestMainCommandDispatch",
+    "TestMainEntryPoint",
+    "TestMergeChildExports",
+    "TestParseViolationInvalid",
+    "TestParseViolationValid",
+    "TestProcessDirectory",
+    "TestReadExistingDocstring",
+    "TestResolveAliases",
+    "TestRunRuffFix",
+    "TestScaffoldProjectCreatesSrcModules",
+    "TestScaffoldProjectCreatesTestsModules",
+    "TestScaffoldProjectIdempotency",
+    "TestScaffoldProjectNoop",
+    "TestScanPublicDefs",
+    "TestShouldBubbleUp",
+    "TestViolationPattern",
+    "_project_factory",
+    "autofix_workspace_tests",
+    "c",
+    "census",
+    "census_models_tests",
+    "census_tests",
+    "constants_quality_gate_tests",
+    "d",
+    "e",
+    "h",
+    "init_tests",
+    "lazy_init_generation_tests",
+    "lazy_init_helpers_tests",
+    "lazy_init_process_tests",
+    "lazy_init_service_tests",
+    "lazy_init_tests",
+    "lazy_init_transforms_tests",
+    "m",
+    "main_tests",
+    "p",
+    "pipeline_tests",
+    "r",
+    "s",
+    "scaffolder_naming_tests",
+    "scaffolder_tests",
+    "t",
+    "test_codegen_dir_returns_all_exports",
+    "test_codegen_getattr_raises_attribute_error",
+    "test_codegen_init_getattr_raises_attribute_error",
+    "test_codegen_lazy_imports_work",
+    "test_codegen_pipeline_end_to_end",
+    "test_files_modified_tracks_affected_files",
+    "test_flexcore_excluded_from_run",
+    "test_project_without_src_returns_empty",
+    "u",
+    "x",
+]
 
 
 install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)

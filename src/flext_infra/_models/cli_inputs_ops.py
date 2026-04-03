@@ -10,8 +10,7 @@ from typing import Annotated
 
 from pydantic import Field
 
-from flext_infra import c
-from flext_infra._models.cli_inputs_codegen import FlextInfraModelsCliInputsCodegen
+from flext_infra import FlextInfraModelsCliInputsCodegen, c
 
 
 class FlextInfraModelsCliInputsOps:

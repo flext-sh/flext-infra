@@ -10,8 +10,6 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-
-from flext_infra import FlextInfraProjectMigrator
 from tests import (
     FlextInfraTestHelpers as h,
     m as im,
@@ -23,6 +21,8 @@ from tests.unit.test_infra_workspace_migrator import (
     _StubDiscovery,
     _StubGenerator,
 )
+
+from flext_infra import FlextInfraProjectMigrator
 
 
 def _setup_basic(tmp_path: Path) -> tuple[Path, im.Infra.ProjectInfo]:

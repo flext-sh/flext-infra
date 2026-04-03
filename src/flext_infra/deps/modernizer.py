@@ -45,23 +45,6 @@ class FlextInfraPyprojectModernizer:
             raise ValueError(msg)
         self._tool_config = tool_config_result.value
 
-    @staticmethod
-    def _item_get(parent: tomlkit.TOMLDocument | Table, key: str) -> Item | None:
-        """Safely get an Item from a tomlkit container."""
-        if key not in parent:
-            return None
-        raw = parent[key]
-        return raw if isinstance(raw, Item) else None
-
-    @staticmethod
-    def _table_child(parent: tomlkit.TOMLDocument | Table, key: str) -> Table | None:
-        if key not in parent:
-            return None
-        child_value = parent[key]
-        if isinstance(child_value, Table):
-            return child_value
-        return None
-
     def _classify_project(self, project_dir: Path) -> r[str]:
         """Classify project kind for pyright/coverage config selection."""
         kind = FlextInfraProjectClassifier(project_dir).classify().project_kind
@@ -70,19 +53,19 @@ class FlextInfraPyprojectModernizer:
     def _ensure_build_system(self, doc: tomlkit.TOMLDocument) -> t.StrSequence:
         """Ensure canonical build-system backend/requirements."""
         changes: MutableSequence[str] = []
-        build_system = self._table_child(doc, "build-system")
+        build_system = u.Infra.get_table(doc, "build-system")
         if build_system is None:
             build_system = tomlkit.table()
             doc["build-system"] = build_system
             changes.append("created [build-system]")
         expected_backend = "hatchling.build"
-        backend_item = self._item_get(build_system, "build-backend")
+        backend_item = u.Infra.get_item(build_system, "build-backend")
         current_backend = u.norm_str(u.Infra.unwrap_item(backend_item))
         if current_backend != expected_backend:
             build_system["build-backend"] = expected_backend
             changes.append("build-system.build-backend set to hatchling.build")
         expected_requires = ["hatchling"]
-        requires_item = self._item_get(build_system, "requires")
+        requires_item = u.Infra.get_item(build_system, "requires")
         current_requires = sorted(
             u.Infra.as_string_list(requires_item),
         )
@@ -93,7 +76,7 @@ class FlextInfraPyprojectModernizer:
         tool_table = u.Infra.ensure_table(doc, c.Infra.TOOL)
         hatch_table = u.Infra.ensure_table(tool_table, "hatch")
         metadata_table = u.Infra.ensure_table(hatch_table, "metadata")
-        allow_item = self._item_get(metadata_table, "allow-direct-references")
+        allow_item = u.Infra.get_item(metadata_table, "allow-direct-references")
         if allow_item is None or u.norm_str(str(allow_item), case="lower") != "true":
             metadata_table["allow-direct-references"] = True
             changes.append("tool.hatch.metadata.allow-direct-references set to true")
@@ -102,10 +85,10 @@ class FlextInfraPyprojectModernizer:
     @staticmethod
     def _project_has_direct_references(doc: tomlkit.TOMLDocument) -> bool:
         """Return whether project.dependencies contains direct references."""
-        project_table = FlextInfraPyprojectModernizer._table_child(doc, c.Infra.PROJECT)
+        project_table = u.Infra.get_table(doc, c.Infra.PROJECT)
         if project_table is None:
             return False
-        deps_item = FlextInfraPyprojectModernizer._item_get(
+        deps_item = u.Infra.get_item(
             project_table,
             c.Infra.DEPENDENCIES,
         )
@@ -176,7 +159,7 @@ class FlextInfraPyprojectModernizer:
                 del doc[key]
             for key in ordered_root:
                 doc[key] = root_items[key]
-        tool_child = cls._table_child(doc, "tool")
+        tool_child = u.Infra.get_table(doc, "tool")
         if tool_child is not None:
             cls._reorder_table_inplace(tool_child)
         for key in ordered_root:
@@ -225,20 +208,20 @@ class FlextInfraPyprojectModernizer:
                 project_kind = kind_result.value
         changes: MutableSequence[str] = []
         changes.extend(self._ensure_build_system(doc))
-        tool_item = self._table_child(doc, c.Infra.TOOL)
+        tool_item = u.Infra.get_table(doc, c.Infra.TOOL)
         if tool_item is None:
             tool_item = tomlkit.table()
             doc[c.Infra.TOOL] = tool_item
-        poetry_item = self._table_child(tool_item, c.Infra.POETRY)
+        poetry_item = u.Infra.get_table(tool_item, c.Infra.POETRY)
         if poetry_item is not None:
-            group_item = self._table_child(poetry_item, c.Infra.GROUP)
+            group_item = u.Infra.get_table(poetry_item, c.Infra.GROUP)
             if group_item is not None:
                 empty_groups: MutableSequence[str] = []
                 for name in u.Infra.table_string_keys(group_item):
-                    group_dep_item = self._table_child(group_item, name)
+                    group_dep_item = u.Infra.get_table(group_item, name)
                     if group_dep_item is None:
                         continue
-                    deps_item = self._table_child(
+                    deps_item = u.Infra.get_table(
                         group_dep_item,
                         c.Infra.DEPENDENCIES,
                     )
@@ -362,12 +345,12 @@ class FlextInfraPyprojectModernizer:
             if doc is None:
                 has_warning = True
                 continue
-            build_sys = self._table_child(doc, "build-system")
+            build_sys = u.Infra.get_table(doc, "build-system")
             if build_sys is None:
                 u.Infra.info(f"{path}: missing [build-system]")
                 has_warning = True
                 continue
-            backend_item = self._item_get(build_sys, "build-backend")
+            backend_item = u.Infra.get_item(build_sys, "build-backend")
             backend = u.norm_str(u.Infra.unwrap_item(backend_item))
             if backend != "hatchling.build":
                 u.Infra.info(f"{path}: expected hatchling.build, got {backend}")

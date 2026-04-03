@@ -14,9 +14,9 @@ from types import ModuleType
 
 import pytest
 from flext_tests import tm
+from tests import t
 
 from flext_infra import FlextInfraCliDeps, deps
-from tests import t
 
 _SUBCOMMAND_MODULES = FlextInfraCliDeps._SUBCOMMAND_MODULES
 _main_impl = FlextInfraCliDeps.run

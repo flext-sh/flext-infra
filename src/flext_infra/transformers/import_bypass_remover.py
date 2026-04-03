@@ -9,8 +9,7 @@ import re
 from collections.abc import Sequence
 from typing import override
 
-from flext_infra import t, u
-from flext_infra.transformers._base import FlextInfraRopeTransformer
+from flext_infra import FlextInfraRopeTransformer, t, u
 
 
 class FlextInfraRefactorImportBypassRemover(FlextInfraRopeTransformer):

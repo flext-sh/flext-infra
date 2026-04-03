@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSequence
+from collections.abc import MutableSequence
+from typing import ClassVar
 
 from flext_infra import t, u
 
@@ -14,14 +15,14 @@ class FlextInfraTypingAnnotationReplacer:
     Default replacements target ``t.NormalizedValue`` -> ``t.ContainerValue``.
     """
 
-    DEFAULT_REPLACEMENTS: Mapping[str, str] = {
+    DEFAULT_REPLACEMENTS: ClassVar[t.StrMapping] = {
         "t.NormalizedValue": "t.ContainerValue",
     }
 
     def __init__(
         self,
         *,
-        replacements: Mapping[str, str] | None = None,
+        replacements: t.StrMapping | None = None,
         on_change: t.Infra.ChangeCallback = None,
     ) -> None:
         """Initialize with annotation replacement map and optional callback."""

@@ -10,6 +10,7 @@ from flext_cli import cli
 from flext_infra import (
     FlextInfraCliBasemk,
     FlextInfraCliCheck,
+    FlextInfraCliCodegen,
     FlextInfraCliDeps,
     FlextInfraCliDocs,
     FlextInfraCliGithub,
@@ -22,7 +23,6 @@ from flext_infra import (
     FlextInfraTypes as t,
     FlextInfraUtilities as u,
 )
-from flext_infra.codegen.cli import FlextInfraCliCodegen
 
 
 class FlextInfraCli(

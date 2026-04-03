@@ -50,21 +50,23 @@ class FlextInfraBanditGate(FlextInfraGate):
         try:
             parsed = u.Infra.parse(result.stdout or "{}")
             bandit_data: Mapping[str, t.Infra.InfraValue] = (
-                self._to_mapping(parsed.value) if parsed.is_success else {}
+                u.Infra.normalize_str_mapping(parsed.value) if parsed.is_success else {}
             )
             issues.extend(
                 m.Infra.Issue(
-                    file=self._as_str(raw_item.get("filename", "?"), "?"),
-                    line=self._as_int(raw_item.get("line_number", 0)),
+                    file=u.Infra.as_str(raw_item.get("filename", "?"), "?"),
+                    line=u.to_int(raw_item.get("line_number", 0)),
                     column=0,
-                    code=self._as_str(raw_item.get("test_id", "")),
-                    message=self._as_str(raw_item.get("issue_text", "")),
-                    severity=self._as_str(
+                    code=u.Infra.as_str(raw_item.get("test_id", "")),
+                    message=u.Infra.as_str(raw_item.get("issue_text", "")),
+                    severity=u.Infra.as_str(
                         raw_item.get("issue_severity", "MEDIUM"),
                         "MEDIUM",
                     ).lower(),
                 )
-                for raw_item in self._to_mapping_list(bandit_data.get("results", []))
+                for raw_item in u.Infra.normalize_mapping_list(
+                    bandit_data.get("results", [])
+                )
             )
         except (TypeError, ValidationError):
             pass

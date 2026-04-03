@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
+from tests import t
 
 from flext_core import r
 from flext_infra import (
@@ -17,7 +18,6 @@ from flext_infra import (
     FlextInfraWorkspaceMode,
     main as infra_main,
 )
-from tests import t
 
 _handle_detect = FlextInfraCliWorkspace.handle_detect
 _handle_sync = FlextInfraCliWorkspace.handle_sync

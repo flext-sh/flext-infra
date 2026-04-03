@@ -12,7 +12,6 @@ from __future__ import annotations
 import io
 
 from flext_tests import tm
-
 from tests import m, u
 
 

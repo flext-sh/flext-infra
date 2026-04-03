@@ -75,7 +75,7 @@ class FlextInfraUtilitiesYaml:
                 )
             )
             parsed_raw: t.Infra.InfraValue | None = safe_load(raw_text)
-            if not u.is_mapping(parsed_raw):
+            if not isinstance(parsed_raw, Mapping):
                 result = r[m.Infra.ToolConfigDocument].fail(
                     "tool_config.yml must contain a top-level mapping",
                 )

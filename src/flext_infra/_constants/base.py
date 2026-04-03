@@ -9,8 +9,7 @@ from __future__ import annotations
 from enum import StrEnum, unique
 from typing import Final
 
-from flext_infra._constants.make import FlextInfraConstantsMake
-from flext_infra._constants.source_code import FlextInfraConstantsSourceCode
+from flext_infra import FlextInfraConstantsMake, FlextInfraConstantsSourceCode
 
 
 class FlextInfraConstantsBase(

@@ -4,11 +4,11 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
+from tests import t
 
 import flext_infra.deps.internal_sync as _internal_sync_mod
 from flext_core import r
 from flext_infra import FlextInfraInternalDependencySyncService
-from tests import t
 
 
 class TestWorkspaceRootFromEnv:

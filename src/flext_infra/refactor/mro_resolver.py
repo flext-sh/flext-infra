@@ -17,7 +17,7 @@ from flext_infra import (
 class FlextInfraRefactorMROResolver:
     """Resolve MRO inheritance chains and detect loose classes needing absorption."""
 
-    CONSTANT_PATTERN: re.Pattern[str] = re.compile(r"^_?[A-Z][A-Z0-9_]*$")
+    CONSTANT_PATTERN: re.Pattern[str] = c.Infra.SourceCode.CONSTANT_NAME_RE
 
     @classmethod
     def resolve(

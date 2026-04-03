@@ -27,13 +27,7 @@ class FlextInfraUtilitiesCodegenImportCycles:
     # CANONICAL_ALIASES centralized in c.Infra.Detection.CANONICAL_ALIASES
 
     @staticmethod
-    def parse_lazy_imports(init_file: Path) -> t.StrMapping:
-        """Parse ``__init__.py`` lazy-loading map: alias -> module stem."""
-        targets = FlextInfraUtilitiesDiscovery.extract_lazy_import_targets(init_file)
-        return {alias: mod.rsplit(".", 1)[-1] for alias, mod in targets.items()}
-
-    @staticmethod
-    def build_self_import_graph(
+    def _build_self_import_graph(
         pkg_dir: Path,
         package_name: str,
         lazy_map: t.StrMapping,
@@ -44,7 +38,7 @@ class FlextInfraUtilitiesCodegenImportCycles:
         rope_project = FlextInfraUtilitiesRope.init_rope_project(pkg_dir)
         get_imports = FlextInfraUtilitiesRope.get_rope_get_module_imports_fn()
 
-        for py_file in pkg_dir.glob("*.py"):
+        for py_file in pkg_dir.glob(c.Infra.Extensions.PYTHON_GLOB):
             if py_file.name == c.Infra.Files.INIT_PY:
                 continue
             stem = py_file.stem
@@ -81,7 +75,7 @@ class FlextInfraUtilitiesCodegenImportCycles:
         return graph
 
     @staticmethod
-    def find_import_cycles(
+    def _find_import_cycles(
         graph: Mapping[str, t.Infra.StrSet],
     ) -> Sequence[t.StrSequence]:
         """Detect all cycles in the import graph via DFS."""
@@ -110,7 +104,7 @@ class FlextInfraUtilitiesCodegenImportCycles:
         return cycles
 
     @staticmethod
-    def collect_cycle_edges(
+    def _collect_cycle_edges(
         cycles: Sequence[t.StrSequence],
     ) -> t.Infra.StrPairSet:
         """Extract directed edges from detected cycles."""
@@ -121,7 +115,7 @@ class FlextInfraUtilitiesCodegenImportCycles:
         return cycle_edges
 
     @staticmethod
-    def resolve_target_aliases(
+    def _resolve_target_aliases(
         lazy_map: t.StrMapping,
         target_mod: str,
     ) -> t.StrSequence:
@@ -133,14 +127,13 @@ class FlextInfraUtilitiesCodegenImportCycles:
         ]
 
     @staticmethod
-    def rewrite_module_imports(
+    def _rewrite_module_imports(
         source_file: Path,
         package_name: str,
         parent_pkg: str,
         target_aliases: t.StrSequence,
     ) -> MutableSequence[str]:
         """Rewrite imports in a module, redirecting cycle aliases to parent using regex."""
-        # Rope's refactor imports could be used, but regex is simpler for this specific transformation.
         source = source_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
         lines = source.splitlines()
         changes: MutableSequence[str] = []
@@ -154,9 +147,7 @@ class FlextInfraUtilitiesCodegenImportCycles:
                 continue
 
             imports_str = line[len(f"from {package_name} import ") :].strip()
-            # Simple parsing: assume it's one line without parentheses
             if "(" in imports_str:
-                # We skip complex multiline imports for now
                 new_lines.append(line)
                 continue
 
@@ -177,7 +168,7 @@ class FlextInfraUtilitiesCodegenImportCycles:
 
             changes.append(
                 f"from {package_name} import {', '.join(cycle_aliases)}"
-                f" → from {parent_pkg} import {', '.join(cycle_aliases)}",
+                f" \u2192 from {parent_pkg} import {', '.join(cycle_aliases)}",
             )
 
         if changes:
@@ -191,13 +182,18 @@ class FlextInfraUtilitiesCodegenImportCycles:
     def break_import_cycles(pkg_dir: Path) -> t.Infra.Pair[bool, t.StrSequence]:
         """Detect and break intra-package import cycles by redirecting to parent."""
         cls = FlextInfraUtilitiesCodegenImportCycles
-        lazy_map = cls.parse_lazy_imports(pkg_dir / c.Infra.Files.INIT_PY)
+        targets = FlextInfraUtilitiesDiscovery.extract_lazy_import_targets(
+            pkg_dir / c.Infra.Files.INIT_PY,
+        )
+        lazy_map: t.StrMapping = {
+            alias: mod.rsplit(".", 1)[-1] for alias, mod in targets.items()
+        }
         if not lazy_map:
             return False, []
 
         package_name = pkg_dir.name
-        graph = cls.build_self_import_graph(pkg_dir, package_name, lazy_map)
-        cycles = cls.find_import_cycles(graph)
+        graph = cls._build_self_import_graph(pkg_dir, package_name, lazy_map)
+        cycles = cls._find_import_cycles(graph)
         if not cycles:
             return False, []
 
@@ -207,7 +203,7 @@ class FlextInfraUtilitiesCodegenImportCycles:
         if parent_pkg.startswith(f"{package_name}.") or parent_pkg == package_name:
             return False, []
 
-        cycle_edges = cls.collect_cycle_edges(cycles)
+        cycle_edges = cls._collect_cycle_edges(cycles)
         all_changes: MutableSequence[str] = []
         any_modified = False
 
@@ -215,10 +211,10 @@ class FlextInfraUtilitiesCodegenImportCycles:
             source_file = pkg_dir / f"{source_mod}.py"
             if not source_file.is_file():
                 continue
-            target_aliases = cls.resolve_target_aliases(lazy_map, target_mod)
+            target_aliases = cls._resolve_target_aliases(lazy_map, target_mod)
             if not target_aliases:
                 continue
-            changes = cls.rewrite_module_imports(
+            changes = cls._rewrite_module_imports(
                 source_file,
                 package_name,
                 parent_pkg,

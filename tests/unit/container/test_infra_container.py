@@ -10,10 +10,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import pytest
+from tests import u
 
 from flext_core import FlextContainer
 from flext_infra import output
-from tests import u
 
 
 class TestInfraContainerFunctions:

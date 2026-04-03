@@ -155,7 +155,10 @@ class FlextInfraNamespaceSourceDetector(FlextInfraScanFileMixin, p.Infra.Scanner
             f"{package_name}."
         ):
             return False
-        return current_source.startswith("flext_") and "." not in current_source
+        return (
+            current_source.startswith(c.Infra.Packages.PREFIX_UNDERSCORE)
+            and "." not in current_source
+        )
 
 
 __all__ = ["FlextInfraNamespaceSourceDetector"]

@@ -7,18 +7,18 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from collections.abc import MutableSequence, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 
-import tomlkit
-from tomlkit.items import Item, Table
 from tomlkit.toml_document import TOMLDocument
 
 from flext_core import FlextLogger
-from flext_infra import c, m, r, t, u
+from flext_infra import c, m, t, u
+
+from .path_sync_rewrite import FlextInfraDependencyPathSyncRewrite
 
 
-class FlextInfraDependencyPathSync:
+class FlextInfraDependencyPathSync(FlextInfraDependencyPathSyncRewrite):
     """Rewrite internal FLEXT dependency paths for workspace or standalone mode."""
 
     ROOT = u.Infra.resolve_workspace_root(__file__)
@@ -31,15 +31,6 @@ class FlextInfraDependencyPathSync:
     def set_workspace_root(self, workspace_root: Path) -> None:
         """Configure workspace root for path resolution."""
         self._root = workspace_root
-
-    def _discover_projects(self) -> r[Sequence[m.Infra.ProjectInfo]]:
-        return u.Infra.discover_projects(self._root)
-
-    def _read_document(self, path: Path) -> r[TOMLDocument]:
-        return u.Infra.read_document(path)
-
-    def _write_document(self, path: Path, doc: TOMLDocument) -> r[bool]:
-        return u.Infra.write_document(path, doc)
 
     def _info(self, message: str) -> None:
         """Emit informational progress through the module logger."""
@@ -68,247 +59,6 @@ class FlextInfraDependencyPathSync:
             return dep_name if is_root else f"../{dep_name}"
         return f"{c.Infra.FLEXT_DEPS_DIR}/{dep_name}"
 
-    @staticmethod
-    def _mapping_str_value(
-        mapping: Table | t.Infra.ContainerDict,
-        key: str,
-    ) -> str | None:
-        if key not in mapping:
-            return None
-        value = mapping[key]
-        if isinstance(value, str) and value:
-            return value
-        return None
-
-    @staticmethod
-    def _extract_requirement_name(entry: str) -> str | None:
-        """Extract requirement name from PEP 621 dependency entry."""
-        if " @ " in entry:
-            match = c.Infra.PEP621_PATH_DEP_RE.match(entry)
-            if match:
-                return match.group("name")
-        match = c.Infra.PEP621_NAME_RE.match(entry)
-        if not match:
-            return None
-        return match.group("name")
-
-    @staticmethod
-    def _table_get(
-        container: TOMLDocument | Table,
-        key: str,
-    ) -> Item | None:
-        if key not in container:
-            return None
-        item = container[key]
-        return item if isinstance(item, Item) else None
-
-    def _rewrite_pep621(
-        self,
-        doc: TOMLDocument,
-        *,
-        internal_names: t.Infra.StrSet,
-    ) -> t.Infra.Pair[t.StrSequence, t.Infra.StrSet]:
-        project_raw = self._table_get(doc, c.Infra.PROJECT)
-        if not isinstance(project_raw, Table):
-            return ([], set())
-        project_section: Table = project_raw
-        deps: t.StrSequence = u.Infra.as_string_list(
-            self._table_get(project_section, c.Infra.DEPENDENCIES),
-        )
-        if not deps:
-            return ([], set())
-        changes: MutableSequence[str] = []
-        updated_deps: MutableSequence[str] = []
-        internal_deps: t.Infra.StrSet = set()
-        for item_raw in deps:
-            item = item_raw
-            marker = ""
-            requirement_part = item
-            if ";" in item:
-                requirement_part, marker_part = item.split(";", 1)
-                marker = f" ;{marker_part}"
-            dep_name = self._extract_requirement_name(requirement_part)
-            if not dep_name or dep_name not in internal_names:
-                updated_deps.append(item)
-                continue
-            internal_deps.add(dep_name)
-            new_entry = f"{dep_name}{marker}" if " @ " in requirement_part else item
-            if item != new_entry:
-                changes.append(f"  PEP621: {item} -> {new_entry}")
-                updated_deps.append(new_entry)
-            else:
-                updated_deps.append(item)
-        if changes:
-            project_section[c.Infra.DEPENDENCIES] = updated_deps
-        return (changes, internal_deps)
-
-    @staticmethod
-    def _ensure_table(parent: TOMLDocument | Table, key: str) -> Table:
-        existing = FlextInfraDependencyPathSync._table_get(parent, key)
-        if isinstance(existing, Table):
-            return existing
-        created = tomlkit.table()
-        parent[key] = created
-        return created
-
-    def _rewrite_uv_sources(
-        self,
-        doc: TOMLDocument,
-        *,
-        is_root: bool,
-        mode: str,
-        internal_names: t.Infra.StrSet,
-        internal_deps: t.Infra.StrSet,
-    ) -> t.StrSequence:
-        if not internal_deps:
-            return []
-        changes: MutableSequence[str] = []
-        tool_section = self._ensure_table(doc, c.Infra.TOOL)
-        uv_section = self._ensure_table(tool_section, "uv")
-        sources = self._ensure_table(uv_section, "sources")
-        for source_key in [str(k) for k in sources]:
-            if source_key in internal_names and source_key not in internal_deps:
-                del sources[source_key]
-                changes.append(f"  uv.sources: removed stale source {source_key}")
-        for dep_name in sorted(internal_deps):
-            expected: t.Infra.ContainerDict
-            if mode == c.Infra.ReportKeys.WORKSPACE:
-                expected = {"workspace": True}
-            else:
-                path_value = self._target_path(dep_name, is_root=is_root, mode=mode)
-                expected = {"path": path_value, "editable": True}
-            current_item = self._table_get(sources, dep_name)
-            empty: t.Infra.ContainerDict = {}
-            current_map: t.Infra.ContainerDict = (
-                dict(current_item.unwrap())
-                if isinstance(current_item, Table)
-                else empty
-            )
-            if current_map == expected:
-                continue
-            source_table = tomlkit.table()
-            for key in sorted(expected):
-                source_table[key] = expected[key]
-            sources[dep_name] = source_table
-            changes.append(f"  uv.sources: synced source for {dep_name}")
-        return changes
-
-    def _rewrite_uv_workspace(
-        self,
-        doc: TOMLDocument,
-        *,
-        is_root: bool,
-        members: t.StrSequence,
-    ) -> t.StrSequence:
-        if not is_root:
-            return []
-        changes: MutableSequence[str] = []
-        tool_section = self._ensure_table(doc, c.Infra.TOOL)
-        uv_section = self._ensure_table(tool_section, "uv")
-        workspace_section = self._ensure_table(uv_section, "workspace")
-        expected_members = sorted(set(members))
-        members_item = self._table_get(workspace_section, "members")
-        current_members = u.Infra.as_string_list(members_item)
-        if current_members != expected_members:
-            workspace_section["members"] = u.Infra.array(expected_members)
-            changes.append("  uv.workspace: members synchronized")
-        return changes
-
-    @staticmethod
-    def _rewrite_poetry(
-        doc: TOMLDocument,
-        *,
-        is_root: bool,
-        mode: str,
-    ) -> t.StrSequence:
-        tool_raw = FlextInfraDependencyPathSync._table_get(doc, c.Infra.TOOL)
-        if not isinstance(tool_raw, Table):
-            return []
-        tool_section: Table = tool_raw
-        poetry_raw = FlextInfraDependencyPathSync._table_get(
-            tool_section,
-            c.Infra.POETRY,
-        )
-        if not isinstance(poetry_raw, Table):
-            return []
-        poetry_section: Table = poetry_raw
-        deps_raw = FlextInfraDependencyPathSync._table_get(
-            poetry_section,
-            c.Infra.DEPENDENCIES,
-        )
-        if not isinstance(deps_raw, Table):
-            return []
-        deps: Table = deps_raw
-        changes: MutableSequence[str] = []
-        for dep_key_raw in deps:
-            dep_key = dep_key_raw
-            value = deps[dep_key_raw]
-            if not isinstance(value, Table) or c.Infra.PATH not in value:
-                continue
-            value_map: Table = value
-            raw_path = value_map[c.Infra.PATH]
-            if not isinstance(raw_path, str) or not raw_path.strip():
-                continue
-            dep_name = FlextInfraDependencyPathSync.extract_dep_name(raw_path)
-            new_path = FlextInfraDependencyPathSync._target_path(
-                dep_name,
-                is_root=is_root,
-                mode=mode,
-            )
-            if raw_path != new_path:
-                changes.append(
-                    f"  Poetry: {dep_key}.path = {raw_path!r} -> {new_path!r}",
-                )
-                value_map[c.Infra.PATH] = new_path
-        return changes
-
-    def rewrite_dep_paths(
-        self,
-        pyproject_path: Path,
-        *,
-        mode: str,
-        internal_names: t.Infra.StrSet,
-        workspace_members: t.StrSequence,
-        is_root: bool = False,
-        dry_run: bool = False,
-    ) -> r[t.StrSequence]:
-        """Rewrite PEP 621 and Poetry dependency paths."""
-        doc_result = self._read_document(pyproject_path)
-        if doc_result.is_failure:
-            return r[t.StrSequence].fail(
-                doc_result.error or "failed to read TOML document",
-            )
-        doc: TOMLDocument = doc_result.value
-        pep_changes, internal_deps = self._rewrite_pep621(
-            doc,
-            internal_names=internal_names,
-        )
-        changes: MutableSequence[str] = list(pep_changes)
-        changes += list(
-            self._rewrite_uv_sources(
-                doc,
-                is_root=is_root,
-                mode=mode,
-                internal_names=internal_names,
-                internal_deps=internal_deps,
-            ),
-        )
-        changes += list(
-            self._rewrite_uv_workspace(
-                doc,
-                is_root=is_root,
-                members=workspace_members,
-            ),
-        )
-        changes += list(self._rewrite_poetry(doc, is_root=is_root, mode=mode))
-        if changes and (not dry_run):
-            write_result = self._write_document(pyproject_path, doc)
-            if write_result.is_failure:
-                return r[t.StrSequence].fail(
-                    write_result.error or "failed to write TOML",
-                )
-        return r[t.StrSequence].ok(changes)
-
     def run(self, *, cli: u.Infra.CliArgs, mode: str) -> int:
         """Execute path synchronization for the given CLI arguments."""
         self.set_workspace_root(cli.workspace)
@@ -323,10 +73,10 @@ class FlextInfraDependencyPathSync:
         root_pyproject = self._root / c.Infra.Files.PYPROJECT_FILENAME
 
         if root_pyproject.exists():
-            root_data_result = self._read_document(root_pyproject)
+            root_data_result = u.Infra.read_document(root_pyproject)
             if root_data_result.is_success:
                 root_data: TOMLDocument = root_data_result.value
-                root_project = self._table_get(root_data, c.Infra.PROJECT)
+                root_project = u.Infra.get_item(root_data, c.Infra.PROJECT)
                 root_mapping = u.Infra.as_toml_mapping(
                     u.Infra.unwrap_item(root_project),
                 )
@@ -335,7 +85,7 @@ class FlextInfraDependencyPathSync:
                     if root_name is not None:
                         internal_names.add(root_name)
 
-        discover_result = self._discover_projects()
+        discover_result = u.Infra.discover_projects(self._root)
         if discover_result.is_failure:
             discovery_error = discover_result.error or "sync_dep_paths_discovery_failed"
             self._log.error(
@@ -359,11 +109,11 @@ class FlextInfraDependencyPathSync:
             pyproject = project_dir / c.Infra.Files.PYPROJECT_FILENAME
             if not pyproject.exists():
                 continue
-            data_result = self._read_document(pyproject)
+            data_result = u.Infra.read_document(pyproject)
             if data_result.is_failure:
                 continue
             project_data: TOMLDocument = data_result.value
-            project_obj = self._table_get(project_data, c.Infra.PROJECT)
+            project_obj = u.Infra.get_item(project_data, c.Infra.PROJECT)
             project_mapping = u.Infra.as_toml_mapping(
                 u.Infra.unwrap_item(project_obj),
             )

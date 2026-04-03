@@ -14,6 +14,8 @@ from typing import override
 from pydantic import TypeAdapter, ValidationError
 
 from flext_infra import (
+    FlextInfraChangeTracker,
+    FlextInfraGenericTransformerRule,
     FlextInfraRefactorClassReconstructor,
     FlextInfraRefactorLegacyRemovalRule,
     FlextInfraRefactorMROClassMigrationRule,
@@ -29,10 +31,6 @@ from flext_infra import (
     m,
     t,
     u,
-)
-from flext_infra.refactor._base_rule import (
-    FlextInfraChangeTracker,
-    FlextInfraGenericTransformerRule,
 )
 
 _SIG_MIGRATION_SEQ_ADAPTER: TypeAdapter[Sequence[m.Infra.SignatureMigration]] = (
@@ -192,7 +190,11 @@ class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
     def _tier0_modules(self) -> tuple[str, ...]:
         value = self.config.get("tier0_modules", [])
         if not isinstance(value, list):
-            return ("constants.py", "typings.py", "protocols.py")
+            return (
+                c.Infra.Files.CONSTANTS_PY,
+                c.Infra.Files.TYPINGS_PY,
+                c.Infra.Files.PROTOCOLS_PY,
+            )
         return tuple(str(item) for item in value)
 
     def _core_aliases(self) -> tuple[str, ...]:
@@ -202,7 +204,7 @@ class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
         return tuple(str(item) for item in value)
 
     def _core_package(self) -> str:
-        return str(self.config.get("core_package", "flext_core"))
+        return str(self.config.get("core_package", c.Infra.Packages.CORE_UNDERSCORE))
 
     def _alias_to_submodule(self) -> t.StrMapping:
         value = self.config.get("alias_to_submodule", {})

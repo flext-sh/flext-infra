@@ -4,7 +4,6 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-
 from tests.unit.deps.test_detector_detect import _DepsStub, _setup_detector
 
 

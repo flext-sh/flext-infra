@@ -12,10 +12,10 @@ from flext_infra import (
     c,
     m,
     r,
+    services as check_services,
     t,
     u,
 )
-from flext_infra.check import services as check_services
 
 
 class FlextInfraWorkspaceCheckerCli:

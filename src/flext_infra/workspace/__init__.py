@@ -5,58 +5,114 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING as _TYPE_CHECKING
+import typing as _t
 
+from flext_core.constants import FlextConstants as c
+from flext_core.decorators import FlextDecorators as d
+from flext_core.exceptions import FlextExceptions as e
+from flext_core.handlers import FlextHandlers as h
 from flext_core.lazy import install_lazy_exports, merge_lazy_imports
+from flext_core.mixins import FlextMixins as x
+from flext_core.models import FlextModels as m
+from flext_core.protocols import FlextProtocols as p
+from flext_core.result import FlextResult as r
+from flext_core.service import FlextService as s
+from flext_core.typings import FlextTypes as t
+from flext_core.utilities import FlextUtilities as u
+from flext_infra.workspace._constants import FlextInfraWorkspaceConstants
+from flext_infra.workspace._models import FlextInfraWorkspaceModels
+from flext_infra.workspace.cli import FlextInfraCliWorkspace
+from flext_infra.workspace.detector import (
+    FlextInfraWorkspaceDetector,
+    FlextInfraWorkspaceMode,
+)
+from flext_infra.workspace.maintenance.cli import FlextInfraCliMaintenance
+from flext_infra.workspace.maintenance.python_version import (
+    FlextInfraPythonVersionEnforcer,
+    logger,
+)
+from flext_infra.workspace.migrator import FlextInfraProjectMigrator
+from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
+from flext_infra.workspace.project_makefile import FlextInfraProjectMakefileUpdater
+from flext_infra.workspace.sync import FlextInfraSyncService, main
+from flext_infra.workspace.workspace_makefile import (
+    FlextInfraWorkspaceMakefileGenerator,
+)
 
-if _TYPE_CHECKING:
-    from flext_core import FlextTypes
-    from flext_core.constants import FlextConstants as c
-    from flext_core.decorators import FlextDecorators as d
-    from flext_core.exceptions import FlextExceptions as e
-    from flext_core.handlers import FlextHandlers as h
-    from flext_core.mixins import FlextMixins as x
-    from flext_core.models import FlextModels as m
-    from flext_core.protocols import FlextProtocols as p
-    from flext_core.result import FlextResult as r
-    from flext_core.service import FlextService as s
-    from flext_core.typings import FlextTypes as t
-    from flext_core.utilities import FlextUtilities as u
-    from flext_infra.workspace import (
+if _t.TYPE_CHECKING:
+    import flext_infra.workspace._constants as _flext_infra_workspace__constants
+
+    _constants = _flext_infra_workspace__constants
+    import flext_infra.workspace._models as _flext_infra_workspace__models
+
+    _models = _flext_infra_workspace__models
+    import flext_infra.workspace.cli as _flext_infra_workspace_cli
+
+    cli = _flext_infra_workspace_cli
+    import flext_infra.workspace.detector as _flext_infra_workspace_detector
+
+    detector = _flext_infra_workspace_detector
+    import flext_infra.workspace.maintenance as _flext_infra_workspace_maintenance
+
+    maintenance = _flext_infra_workspace_maintenance
+    import flext_infra.workspace.maintenance.python_version as _flext_infra_workspace_maintenance_python_version
+
+    python_version = _flext_infra_workspace_maintenance_python_version
+    import flext_infra.workspace.migrator as _flext_infra_workspace_migrator
+
+    migrator = _flext_infra_workspace_migrator
+    import flext_infra.workspace.orchestrator as _flext_infra_workspace_orchestrator
+
+    orchestrator = _flext_infra_workspace_orchestrator
+    import flext_infra.workspace.project_makefile as _flext_infra_workspace_project_makefile
+
+    project_makefile = _flext_infra_workspace_project_makefile
+    import flext_infra.workspace.sync as _flext_infra_workspace_sync
+
+    sync = _flext_infra_workspace_sync
+    import flext_infra.workspace.workspace_makefile as _flext_infra_workspace_workspace_makefile
+
+    workspace_makefile = _flext_infra_workspace_workspace_makefile
+
+    _ = (
+        FlextInfraCliMaintenance,
+        FlextInfraCliWorkspace,
+        FlextInfraOrchestratorService,
+        FlextInfraProjectMakefileUpdater,
+        FlextInfraProjectMigrator,
+        FlextInfraPythonVersionEnforcer,
+        FlextInfraSyncService,
+        FlextInfraWorkspaceConstants,
+        FlextInfraWorkspaceDetector,
+        FlextInfraWorkspaceMakefileGenerator,
+        FlextInfraWorkspaceMode,
+        FlextInfraWorkspaceModels,
         _constants,
         _models,
+        c,
         cli,
+        d,
         detector,
+        e,
+        h,
+        logger,
+        m,
+        main,
         maintenance,
         migrator,
         orchestrator,
+        p,
         project_makefile,
-        sync,
-        workspace_makefile,
-    )
-    from flext_infra.workspace._constants import FlextInfraWorkspaceConstants
-    from flext_infra.workspace._models import FlextInfraWorkspaceModels
-    from flext_infra.workspace.cli import FlextInfraCliWorkspace
-    from flext_infra.workspace.detector import (
-        FlextInfraWorkspaceDetector,
-        FlextInfraWorkspaceMode,
-    )
-    from flext_infra.workspace.maintenance import (
-        FlextInfraCliMaintenance,
-        FlextInfraPythonVersionEnforcer,
-        logger,
         python_version,
+        r,
+        s,
+        sync,
+        t,
+        u,
+        workspace_makefile,
+        x,
     )
-    from flext_infra.workspace.migrator import FlextInfraProjectMigrator
-    from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
-    from flext_infra.workspace.project_makefile import FlextInfraProjectMakefileUpdater
-    from flext_infra.workspace.sync import FlextInfraSyncService, main
-    from flext_infra.workspace.workspace_makefile import (
-        FlextInfraWorkspaceMakefileGenerator,
-    )
-
-_LAZY_IMPORTS: FlextTypes.LazyImportIndex = merge_lazy_imports(
+_LAZY_IMPORTS = merge_lazy_imports(
     ("flext_infra.workspace.maintenance",),
     {
         "FlextInfraCliWorkspace": "flext_infra.workspace.cli",
@@ -93,6 +149,45 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = merge_lazy_imports(
         "x": ("flext_core.mixins", "FlextMixins"),
     },
 )
+
+__all__ = [
+    "FlextInfraCliMaintenance",
+    "FlextInfraCliWorkspace",
+    "FlextInfraOrchestratorService",
+    "FlextInfraProjectMakefileUpdater",
+    "FlextInfraProjectMigrator",
+    "FlextInfraPythonVersionEnforcer",
+    "FlextInfraSyncService",
+    "FlextInfraWorkspaceConstants",
+    "FlextInfraWorkspaceDetector",
+    "FlextInfraWorkspaceMakefileGenerator",
+    "FlextInfraWorkspaceMode",
+    "FlextInfraWorkspaceModels",
+    "_constants",
+    "_models",
+    "c",
+    "cli",
+    "d",
+    "detector",
+    "e",
+    "h",
+    "logger",
+    "m",
+    "main",
+    "maintenance",
+    "migrator",
+    "orchestrator",
+    "p",
+    "project_makefile",
+    "python_version",
+    "r",
+    "s",
+    "sync",
+    "t",
+    "u",
+    "workspace_makefile",
+    "x",
+]
 
 
 install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)

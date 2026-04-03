@@ -11,7 +11,7 @@ from typing import override
 
 from pydantic import ValidationError
 
-from flext_infra import FlextInfraGate, c, m, t
+from flext_infra import FlextInfraGate, c, m, t, u
 
 
 class FlextInfraMypyGate(FlextInfraGate):
@@ -71,23 +71,23 @@ class FlextInfraMypyGate(FlextInfraGate):
                 continue
             try:
                 line_data: Mapping[str, t.Infra.InfraValue] = (
-                    self._MAPPING_ADAPTER.validate_json(stripped)
+                    t.Infra.INFRA_MAPPING_ADAPTER.validate_json(stripped)
                 )
             except ValidationError:
                 continue
             try:
-                severity = self._as_str(
+                severity = u.Infra.as_str(
                     line_data.get("severity", c.Infra.ERROR),
                     c.Infra.ERROR,
                 )
                 if severity in {"error", "warning", "note"}:
                     issues.append(
                         m.Infra.Issue(
-                            file=self._as_str(line_data.get("file", "?"), "?"),
-                            line=self._as_int(line_data.get("line", 0)),
-                            column=self._as_int(line_data.get("column", 0)),
-                            code=self._as_str(line_data.get("code", "")),
-                            message=self._as_str(line_data.get("message", "")),
+                            file=u.Infra.as_str(line_data.get("file", "?"), "?"),
+                            line=u.to_int(line_data.get("line", 0)),
+                            column=u.to_int(line_data.get("column", 0)),
+                            code=u.Infra.as_str(line_data.get("code", "")),
+                            message=u.Infra.as_str(line_data.get("message", "")),
                             severity=severity,
                         ),
                     )

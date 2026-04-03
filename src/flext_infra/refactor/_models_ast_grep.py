@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import AliasPath, ConfigDict, Field
 
 from flext_core import FlextModels
-from flext_infra import FlextInfraTypes as t
+from flext_infra import FlextInfraConstants as c, FlextInfraTypes as t
 
 
 class FlextInfraRefactorAstGrepModels:
@@ -198,7 +198,14 @@ class FlextInfraRefactorAstGrepModels:
             Field(
                 description="Relative directories scanned for candidate files",
             ),
-        ] = Field(default_factory=lambda: ["src", "tests", "scripts", "examples"])
+        ] = Field(
+            default_factory=lambda: [
+                c.Infra.Paths.DEFAULT_SRC_DIR,
+                c.Infra.Directories.TESTS,
+                c.Infra.Directories.SCRIPTS,
+                c.Infra.Directories.EXAMPLES,
+            ]
+        )
         ignore_patterns: Annotated[
             t.StrSequence,
             Field(

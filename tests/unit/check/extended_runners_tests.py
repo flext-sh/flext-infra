@@ -12,6 +12,8 @@ from types import SimpleNamespace
 
 import pytest
 from flext_tests import tm
+from tests import patch_python_dir_detection
+from tests.helpers import FlextInfraTestHelpers as h
 
 from flext_infra import (
     FlextInfraGate,
@@ -21,8 +23,6 @@ from flext_infra import (
     FlextInfraWorkspaceChecker,
     t,
 )
-from tests import patch_python_dir_detection
-from tests.helpers import FlextInfraTestHelpers as h
 
 # Local alias for backward compatibility
 _patch_python_dir_detection = patch_python_dir_detection

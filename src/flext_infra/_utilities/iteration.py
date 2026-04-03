@@ -120,7 +120,7 @@ class FlextInfraUtilitiesIteration:
             FlextInfraUtilitiesIteration._ITERATION_EXCLUDED_PARTS
             if skip_pycache
             else FlextInfraUtilitiesIteration._ITERATION_EXCLUDED_PARTS
-            - {"__pycache__"}
+            - {c.Infra.Dunders.PYCACHE}
         )
         return [
             file_path

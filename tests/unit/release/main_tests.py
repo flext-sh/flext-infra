@@ -12,7 +12,6 @@ from pathlib import Path
 
 from _pytest.monkeypatch import MonkeyPatch
 from flext_tests import tm
-
 from tests import t, u
 
 

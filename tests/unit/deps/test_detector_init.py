@@ -3,9 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_tests import tm
+from tests import u
 
 from flext_infra import FlextInfraRuntimeDevDependencyDetector
-from tests import u
 
 
 class TestFlextInfraRuntimeDevDependencyDetectorInit:

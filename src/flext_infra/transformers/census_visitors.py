@@ -40,7 +40,10 @@ class FlextInfraCensusImportDiscoveryVisitor:
         )
         for match in import_re.finditer(source):
             module_str = match.group(1)
-            if "flext_core" not in module_str and "flext_" not in module_str:
+            if (
+                c.Infra.Packages.CORE_UNDERSCORE not in module_str
+                and c.Infra.Packages.PREFIX_UNDERSCORE not in module_str
+            ):
                 continue
             names_part = match.group(2).strip().rstrip("\\")
             for name_entry in names_part.split(","):
@@ -53,7 +56,7 @@ class FlextInfraCensusImportDiscoveryVisitor:
                 if imported_name in {self.family_alias, self.facade_class_prefix}:
                     self.alias_locals.add(local_name)
                 if imported_name.startswith(self.facade_class_prefix) and (
-                    "flext_core" in module_str
+                    c.Infra.Packages.CORE_UNDERSCORE in module_str
                 ):
                     self.direct_imports[local_name] = imported_name
 

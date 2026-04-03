@@ -3,9 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from tests import c, t, u
 
 from flext_infra import DetectorContext, FlextInfraClassPlacementDetector
-from tests import c, t, u
 
 
 @pytest.fixture

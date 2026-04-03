@@ -13,10 +13,10 @@ from flext_core import m
 from flext_infra import (
     FlextInfraNamespaceEnforcerModels,
     FlextInfraRefactorAstGrepModels,
+    FlextInfraRefactorModelsCensus,
+    FlextInfraRefactorModelsViolations,
     t,
 )
-from flext_infra.refactor._models_census import FlextInfraRefactorModelsCensus
-from flext_infra.refactor._models_violations import FlextInfraRefactorModelsViolations
 
 
 class FlextInfraRefactorModels(

@@ -6,10 +6,10 @@ from typing import TYPE_CHECKING
 
 import pytest
 from flext_tests import tm
+from tests import m, t, u
 
 from flext_core import r
 from flext_infra import FlextInfraReleaseOrchestrator
-from tests import m, t, u
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -12,6 +12,7 @@ import pytest
 from _pytest.capture import CaptureFixture
 from flext_tests import tm
 from jinja2 import TemplateError
+from tests import m as im, t
 
 from flext_core import r
 from flext_infra import (
@@ -19,7 +20,6 @@ from flext_infra import (
     FlextInfraBaseMkTemplateEngine,
     main as infra_main,
 )
-from tests import m as im, t
 
 
 def basemk_main(argv: list[str] | None = None) -> int:

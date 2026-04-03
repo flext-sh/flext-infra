@@ -2,20 +2,18 @@
 
 from __future__ import annotations
 
-import configparser
 import os
 import re
 import shutil
-from collections.abc import Mapping, MutableMapping, Sequence
+from collections.abc import Mapping, MutableMapping
 from pathlib import Path
-
-from pydantic import JsonValue, ValidationError
 
 from flext_core import FlextLogger
 from flext_infra import c, m, p, r, t, u
+from flext_infra.deps._internal_sync_repo import FlextInfraInternalSyncRepoMixin
 
 
-class FlextInfraInternalDependencySyncService:
+class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
     """Synchronize internal FLEXT dependencies via git clone or workspace symlinks."""
 
     log = FlextLogger.create_module_logger(__name__)
@@ -29,11 +27,6 @@ class FlextInfraInternalDependencySyncService:
     def __init__(self) -> None:
         """Initialize the internal dependency sync service."""
         self.toml: p.Infra.TomlReader | None = None
-
-    def _read_plain(self, path: Path) -> r[t.Infra.ContainerDict]:
-        if self.toml is not None:
-            return self.toml.read_plain(path)
-        return u.Infra.read_plain(path)
 
     @staticmethod
     def ensure_symlink(target: Path, source: Path) -> r[bool]:
@@ -66,22 +59,6 @@ class FlextInfraInternalDependencySyncService:
             return normalized
         return None
 
-    @classmethod
-    def owner_from_remote_url(cls, remote_url: str) -> str | None:
-        """Extract GitHub owner from supported remote URL formats."""
-        for pattern in cls._OWNER_PATTERNS:
-            match = pattern.match(remote_url)
-            if match:
-                return match.group("owner")
-        return None
-
-    @staticmethod
-    def ssh_to_https(url: str) -> str:
-        """Convert GitHub SSH URL to HTTPS URL when needed."""
-        if url.startswith("git@github.com:"):
-            return f"https://github.com/{url.removeprefix('git@github.com:')}"
-        return url
-
     @staticmethod
     def validate_git_ref(ref_name: str) -> r[str]:
         """Validate git reference name using project-safe regex."""
@@ -95,14 +72,6 @@ class FlextInfraInternalDependencySyncService:
         if not c.Infra.GITHUB_REPO_URL_RE.fullmatch(repo_url):
             return r[str].fail(f"invalid repository URL: {repo_url!r}")
         return r[str].ok(repo_url)
-
-    @staticmethod
-    def workspace_root_from_parents(project_root: Path) -> Path | None:
-        """Locate workspace root by scanning parent directories for .gitmodules."""
-        for candidate in (project_root, *project_root.parents):
-            if (candidate / c.Infra.Files.GITMODULES).exists():
-                return candidate
-        return None
 
     def sync(self, project_root: Path) -> r[int]:
         """Synchronize internal dependencies via git clone or workspace symlinks."""
@@ -183,12 +152,12 @@ class FlextInfraInternalDependencySyncService:
                 data_result.error or f"failed to read {pyproject}",
             )
         data = data_result.value
-        tool = self._normalize_str_object_mapping(data.get(c.Infra.TOOL))
-        poetry = self._normalize_str_object_mapping(tool.get(c.Infra.POETRY))
-        deps = self._normalize_str_object_mapping(poetry.get(c.Infra.DEPENDENCIES))
+        tool = u.Infra.normalize_str_mapping(data.get(c.Infra.TOOL))
+        poetry = u.Infra.normalize_str_mapping(tool.get(c.Infra.POETRY))
+        deps = u.Infra.normalize_str_mapping(poetry.get(c.Infra.DEPENDENCIES))
         result: MutableMapping[str, Path] = {}
         for dep_name, dep_value in deps.items():
-            dep_value_map = self._normalize_str_object_mapping(dep_value)
+            dep_value_map = u.Infra.normalize_str_mapping(dep_value)
             if not dep_value_map:
                 continue
             dep_path = dep_value_map.get(c.Infra.PATH)
@@ -198,15 +167,15 @@ class FlextInfraInternalDependencySyncService:
             if repo_name is None:
                 continue
             result[dep_name] = project_root / ".flext-deps" / repo_name
-        project_obj = self._normalize_str_object_mapping(data.get(c.Infra.PROJECT))
+        project_obj = u.Infra.normalize_str_mapping(data.get(c.Infra.PROJECT))
         project_deps_raw = project_obj.get(c.Infra.DEPENDENCIES)
-        project_deps = self._normalize_string_list(project_deps_raw)
+        project_deps = u.Infra.normalize_string_list(project_deps_raw)
         internal_dep_names: t.Infra.StrSet = set()
         for dep in project_deps:
             dep_name_match = c.Infra.DEP_NAME_RE.match(dep)
             if dep_name_match is not None:
                 dep_name = dep_name_match.group(1)
-                if dep_name.startswith("flext-") or dep_name in {
+                if dep_name.startswith(c.Infra.Packages.PREFIX_HYPHEN) or dep_name in {
                     "flext",
                     "flexcore",
                 }:
@@ -220,11 +189,11 @@ class FlextInfraInternalDependencySyncService:
             if repo_name is None:
                 continue
             _ = result.setdefault(repo_name, project_root / ".flext-deps" / repo_name)
-        tool_obj = self._normalize_str_object_mapping(data.get(c.Infra.TOOL))
-        uv_obj = self._normalize_str_object_mapping(tool_obj.get("uv"))
-        sources_obj = self._normalize_str_object_mapping(uv_obj.get("sources"))
+        tool_obj = u.Infra.normalize_str_mapping(data.get(c.Infra.TOOL))
+        uv_obj = u.Infra.normalize_str_mapping(tool_obj.get("uv"))
+        sources_obj = u.Infra.normalize_str_mapping(uv_obj.get("sources"))
         for dep_name in internal_dep_names:
-            source_value = self._normalize_str_object_mapping(sources_obj.get(dep_name))
+            source_value = u.Infra.normalize_str_mapping(sources_obj.get(dep_name))
             if not source_value:
                 continue
             if source_value.get("workspace") is True:
@@ -282,149 +251,6 @@ class FlextInfraInternalDependencySyncService:
             )
         _ = u.Infra.git_pull(dep_path, remote=c.Infra.Git.ORIGIN, branch=safe_ref_name)
         return r[bool].ok(True)
-
-    def infer_owner_from_origin(self, project_root: Path) -> str | None:
-        """Infer GitHub owner from remote origin URL."""
-        remote = u.Infra.git_run(
-            ["config", "--get", "remote.origin.url"],
-            cwd=project_root,
-        )
-        if remote.is_failure:
-            return None
-        remote_val = remote.value
-        return self.owner_from_remote_url(remote_val.strip())
-
-    def is_workspace_mode(self, project_root: Path) -> t.Infra.Pair[bool, Path | None]:
-        """Determine workspace mode and return resolved workspace root."""
-        if os.getenv("FLEXT_STANDALONE") == "1":
-            u.Infra.info("Standalone mode: skipping workspace dependency sync")
-            return (False, None)
-        env_workspace_root = self.workspace_root_from_env(project_root)
-        if env_workspace_root is not None:
-            return (True, env_workspace_root)
-        superproject = u.Infra.git_run(
-            ["rev-parse", "--show-superproject-working-tree"],
-            cwd=project_root,
-        )
-        if superproject.is_success:
-            sp_val = superproject.value
-            value = sp_val.strip()
-            if value:
-                return (True, Path(value))
-        heuristic_workspace_root = self.workspace_root_from_parents(project_root)
-        if heuristic_workspace_root is not None:
-            return (True, heuristic_workspace_root)
-        return (False, None)
-
-    def parse_gitmodules(self, path: Path) -> Mapping[str, m.Infra.RepoUrls]:
-        """Parse .gitmodules file into repo URL mapping."""
-        parser = configparser.RawConfigParser()
-        _ = parser.read(path)
-        mapping: MutableMapping[str, m.Infra.RepoUrls] = {}
-        for section in parser.sections():
-            if not section.startswith("submodule "):
-                continue
-            repo_name = section.split('"')[1]
-            repo_url = parser.get(section, c.Infra.ReportKeys.URL, fallback="").strip()
-            if not repo_url:
-                continue
-            mapping[repo_name] = m.Infra.RepoUrls(
-                ssh_url=repo_url,
-                https_url=self.ssh_to_https(repo_url),
-            )
-        return mapping
-
-    def parse_repo_map(self, path: Path) -> r[Mapping[str, m.Infra.RepoUrls]]:
-        """Parse flext-repo-map TOML into repository URL entries."""
-        data_result = self._read_plain(path)
-        if data_result.is_failure:
-            return r[Mapping[str, m.Infra.RepoUrls]].fail(
-                data_result.error or "failed to read repository map",
-            )
-        data = data_result.value
-        repos_obj = self._normalize_str_object_mapping(data.get("repo", {}))
-        if not repos_obj:
-            return r[Mapping[str, m.Infra.RepoUrls]].ok({})
-        result: MutableMapping[str, m.Infra.RepoUrls] = {}
-        for repo_name, values in repos_obj.items():
-            values_map = self._normalize_str_object_mapping(values)
-            if not values_map:
-                continue
-            ssh_url = str(values_map.get("ssh_url", ""))
-            https_url = str(values_map.get("https_url", self.ssh_to_https(ssh_url)))
-            if ssh_url:
-                result[repo_name] = m.Infra.RepoUrls(
-                    ssh_url=ssh_url,
-                    https_url=https_url,
-                )
-        return r[Mapping[str, m.Infra.RepoUrls]].ok(result)
-
-    @staticmethod
-    def _normalize_str_object_mapping(
-        value: t.Infra.InfraValue,
-    ) -> Mapping[str, t.Infra.InfraValue]:
-        try:
-            return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)
-        except ValidationError:
-            return {}
-
-    @staticmethod
-    def _normalize_string_list(value: t.Infra.InfraValue) -> t.StrSequence:
-        try:
-            return t.Infra.STR_SEQ_SIMPLE_ADAPTER.validate_python(value)
-        except ValidationError:
-            if not isinstance(value, list):
-                return []
-            raw_items: Sequence[JsonValue] = t.Infra.JSON_SEQ_ADAPTER.validate_python(
-                value,
-            )
-            return [str(item) for item in raw_items]
-
-    def resolve_ref(self, project_root: Path) -> str:
-        """Resolve dependency sync git reference for current environment."""
-        if os.getenv("GITHUB_ACTIONS") == "true":
-            for key in ("GITHUB_HEAD_REF", "GITHUB_REF_NAME"):
-                value = os.getenv(key)
-                if value:
-                    return value
-        branch = u.Infra.git_current_branch(project_root)
-        if branch.is_success:
-            branch_val = branch.value
-            current = branch_val.strip()
-            if current and current != c.Infra.Git.HEAD:
-                return current
-        tag = u.Infra.git_run(["describe", "--tags", "--exact-match"], cwd=project_root)
-        if tag.is_success:
-            tag_val = tag.value
-            return tag_val.strip()
-        return c.Infra.Git.MAIN
-
-    def synthesized_repo_map(
-        self,
-        owner: str,
-        repo_names: t.Infra.StrSet,
-    ) -> Mapping[str, m.Infra.RepoUrls]:
-        """Build default repository URL mapping from owner and repo set."""
-        result: MutableMapping[str, m.Infra.RepoUrls] = {}
-        for repo_name in sorted(repo_names):
-            ssh_url = f"git@github.com:{owner}/{repo_name}.git"
-            result[repo_name] = m.Infra.RepoUrls(
-                ssh_url=ssh_url,
-                https_url=self.ssh_to_https(ssh_url),
-            )
-        return result
-
-    def workspace_root_from_env(self, project_root: Path) -> Path | None:
-        """Resolve workspace root from environment when valid for project root."""
-        env_root = os.getenv("FLEXT_WORKSPACE_ROOT")
-        if not env_root:
-            return None
-        candidate = Path(env_root).expanduser().resolve()
-        if not candidate.exists() or not candidate.is_dir():
-            return None
-        if project_root.is_relative_to(candidate):
-            return candidate
-        return None
 
     @staticmethod
     def main() -> int:

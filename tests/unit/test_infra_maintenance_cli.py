@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from flext_infra import main as infra_main
 from tests import t, u
+
+from flext_infra import main as infra_main
 
 
 def main(argv: t.StrSequence | None = None) -> int:

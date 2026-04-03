@@ -4,9 +4,9 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
+from tests import m, r, t
 
 from flext_infra import FlextInfraCliRefactor, main as infra_main
-from tests import m, r, t
 
 
 def refactor_main(argv: list[str] | None = None) -> int:

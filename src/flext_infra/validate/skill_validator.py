@@ -13,7 +13,7 @@ import sys
 from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
-from pydantic import JsonValue, ValidationError
+from pydantic import JsonValue
 
 from flext_infra import c, m, p, r, t, u
 
@@ -36,16 +36,6 @@ class FlextInfraSkillValidator:
         if candidate.is_absolute():
             return candidate
         return (workspace_root / candidate).resolve()
-
-    @staticmethod
-    def _normalize_str_object_mapping(
-        value: t.Infra.InfraValue | Mapping[str, t.Infra.InfraValue],
-    ) -> Mapping[str, t.Infra.InfraValue]:
-        try:
-            adapter = t.Infra.INFRA_MAPPING_ADAPTER
-            return adapter.validate_python(value)
-        except ValidationError:
-            return {}
 
     def _evaluate_single_rule(
         self,
@@ -90,7 +80,7 @@ class FlextInfraSkillValidator:
         total: int,
     ) -> bool:
         """Compare counts against the baseline file and return pass/fail."""
-        baseline_obj = self._normalize_str_object_mapping(
+        baseline_obj = u.Infra.normalize_str_mapping(
             rules.get(c.Infra.Modes.BASELINE, {}),
         )
         if not baseline_obj:
@@ -106,8 +96,8 @@ class FlextInfraSkillValidator:
         bl_data_result = u.Infra.read_json(baseline_path)
         if bl_data_result.is_failure:
             return True
-        bl_data = self._normalize_str_object_mapping(bl_data_result.value)
-        bl_counts_raw_map = self._normalize_str_object_mapping(
+        bl_data = u.Infra.normalize_str_mapping(bl_data_result.value)
+        bl_counts_raw_map = u.Infra.normalize_str_mapping(
             bl_data.get("counts", {}),
         )
         bl_counts: t.MutableIntMapping = {}
@@ -154,7 +144,7 @@ class FlextInfraSkillValidator:
                 )
             rules = u.Infra.safe_load_yaml(rules_path)
             scan_targets_raw = rules.get("scan_targets", {})
-            scan_targets = self._normalize_str_object_mapping(scan_targets_raw)
+            scan_targets = u.Infra.normalize_str_mapping(scan_targets_raw)
             if not scan_targets and scan_targets_raw not in ({}, None):
                 return r[m.Infra.ValidationReport].fail(
                     f"scan_targets must be a mapping: {rules_path}",
@@ -175,7 +165,7 @@ class FlextInfraSkillValidator:
             violations: MutableSequence[str] = []
             skill_dir = skills_dir / skill_name
             for rule_obj_raw in rules_list:
-                rule_obj = self._normalize_str_object_mapping(rule_obj_raw)
+                rule_obj = u.Infra.normalize_str_mapping(rule_obj_raw)
                 if not rule_obj:
                     continue
                 self._evaluate_single_rule(

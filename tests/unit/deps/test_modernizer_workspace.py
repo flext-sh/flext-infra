@@ -8,9 +8,9 @@ from unittest.mock import patch
 
 import tomlkit
 from flext_tests import tm
+from tests import u
 
 from flext_infra import FlextInfraPyprojectModernizer
-from tests import u
 
 
 class TestReadDoc:

@@ -9,8 +9,7 @@ from typing import ClassVar
 
 from rope.refactor.importutils import get_module_imports as rope_get_module_imports
 
-from flext_infra import c, m, p
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra import FlextInfraUtilitiesRopeCore, c, m, p
 
 
 class FlextInfraUtilitiesRopeHelpers:

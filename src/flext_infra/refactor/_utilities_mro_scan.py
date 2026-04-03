@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 class FlextInfraUtilitiesRefactorMroScan:
-    _MRO_SCAN_CONSTANT_PATTERN: re.Pattern[str] = re.compile(r"^_?[A-Z][A-Z0-9_]*$")
+    _MRO_SCAN_CONSTANT_PATTERN: re.Pattern[str] = c.Infra.SourceCode.CONSTANT_NAME_RE
     _MRO_SCAN_TYPE_PATTERN: re.Pattern[str] = re.compile(r"^_?[A-Za-z][A-Za-z0-9_]*$")
 
     @staticmethod
@@ -81,7 +81,9 @@ class FlextInfraUtilitiesRefactorMroScan:
             return None
 
         rel = Path(resource.path)
-        module = ".".join([p for p in rel.with_suffix("").parts if p != "src"])
+        module = ".".join([
+            p for p in rel.with_suffix("").parts if p != c.Infra.Paths.DEFAULT_SRC_DIR
+        ])
 
         candidates: list[m.Infra.MROSymbolCandidate] = []
         rope_proj = FlextInfraUtilitiesRope.init_rope_project(project_root)
@@ -152,7 +154,13 @@ class FlextInfraUtilitiesRefactorMroScan:
         elif alias == "p":
             if isinstance(obj, AbstractClass):
                 try:
-                    bases = getattr(obj, "get_bases", list)()
+                    get_bases = getattr(obj, "get_bases", None)
+                    raw_bases = get_bases() if callable(get_bases) else list[object]()
+                    bases: Sequence[AbstractClass] = (
+                        [b for b in raw_bases if isinstance(b, AbstractClass)]
+                        if isinstance(raw_bases, Sequence)
+                        else []
+                    )
                     if any("Protocol" in str(b.get_name()) for b in bases):
                         kind = "protocol"
                 except Exception as exc:

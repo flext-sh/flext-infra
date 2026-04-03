@@ -12,13 +12,13 @@ from types import SimpleNamespace
 
 import pytest
 from flext_tests import tm
+from tests import create_checker_project, m, patch_gate_run, t
 
 from flext_infra import (
     FlextInfraBanditGate,
     FlextInfraMarkdownGate,
     FlextInfraWorkspaceChecker,
 )
-from tests import create_checker_project, m, patch_gate_run, t
 
 GateClass = type[FlextInfraBanditGate] | type[FlextInfraMarkdownGate]
 

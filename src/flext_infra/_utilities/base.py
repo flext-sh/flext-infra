@@ -10,8 +10,9 @@ from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import TypeVar
 
-from pydantic import JsonValue
+from pydantic import JsonValue, ValidationError
 
+from flext_core import u
 from flext_infra import m, p, t
 
 _V = TypeVar("_V", bound=p.Infra.ViolationWithLine)
@@ -88,3 +89,69 @@ class FlextInfraUtilitiesBase:
             ],
             detector_name=detector_name,
         )
+
+    @staticmethod
+    def normalize_str_mapping(
+        value: t.Infra.InfraValue | Mapping[str, t.Infra.InfraValue] | None,
+    ) -> Mapping[str, t.Infra.InfraValue]:
+        """Normalize a value to a string-keyed mapping, or empty dict on failure."""
+        try:
+            return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)
+        except ValidationError:
+            return {}
+
+    @staticmethod
+    def normalize_mapping_list(
+        value: t.Infra.InfraValue | None,
+    ) -> Sequence[Mapping[str, t.Infra.InfraValue]]:
+        """Normalize a value to a list of string-keyed mappings."""
+        if value is None or not isinstance(value, list):
+            return []
+        typed_items: Sequence[t.Infra.InfraValue] = (
+            t.Infra.INFRA_SEQ_ADAPTER.validate_python(value)
+        )
+        normalized: list[Mapping[str, t.Infra.InfraValue]] = []
+        for raw_item in typed_items:
+            try:
+                normalized.append(
+                    t.Infra.INFRA_MAPPING_ADAPTER.validate_python(raw_item),
+                )
+            except ValidationError:
+                continue
+        return normalized
+
+    @staticmethod
+    def normalize_string_list(value: t.Infra.InfraValue) -> t.StrSequence:
+        """Normalize a value to a list of strings."""
+        try:
+            return t.Infra.STR_SEQ_SIMPLE_ADAPTER.validate_python(value)
+        except ValidationError:
+            if not isinstance(value, list):
+                return []
+            raw_items: Sequence[JsonValue] = t.Infra.JSON_SEQ_ADAPTER.validate_python(
+                value,
+            )
+            return [str(item) for item in raw_items]
+
+    @staticmethod
+    def as_str(value: t.Infra.InfraValue, default: str = "") -> str:
+        """Coerce a value to str with fallback."""
+        return value if isinstance(value, str) else default
+
+    @staticmethod
+    def nested_int(
+        data: Mapping[str, t.Infra.InfraValue],
+        *keys: str,
+        default: int = 0,
+    ) -> int:
+        """Extract a nested int from a mapping by key path."""
+        current: t.Infra.ContainerDict = {str(k): data[k] for k in data}
+        for key in keys[:-1]:
+            nested = u.Infra.as_toml_mapping(current.get(key))
+            if nested is None:
+                return default
+            current = nested
+        raw: t.Infra.InfraValue = current.get(keys[-1])
+        if raw is None:
+            return default
+        return u.to_int(raw, default=default)

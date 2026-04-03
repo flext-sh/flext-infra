@@ -135,7 +135,7 @@ class FlextInfraDocValidator:
     ) -> list[JsonValue] | None:
         """Extract the required_skills list from config payload. None if absent/invalid."""
         docs_validation = payload.get("docs_validation")
-        if not u.is_mapping(docs_validation):
+        if not isinstance(docs_validation, Mapping):
             return None
         configured = docs_validation.get("required_skills")
         if not isinstance(configured, list):

@@ -55,18 +55,20 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                 parsed = u.Infra.parse(raw_text)
                 error_items: Sequence[Mapping[str, t.Infra.InfraValue]] = []
                 if parsed.is_success and u.is_mapping(parsed.value):
-                    parsed_map = self._to_mapping(parsed.value)
-                    error_items = self._to_mapping_list(parsed_map.get("errors", []))
+                    parsed_map = u.Infra.normalize_str_mapping(parsed.value)
+                    error_items = u.Infra.normalize_mapping_list(
+                        parsed_map.get("errors", [])
+                    )
                 elif parsed.is_success and isinstance(parsed.value, list):
-                    error_items = self._to_mapping_list(parsed.value)
+                    error_items = u.Infra.normalize_mapping_list(parsed.value)
                 issues.extend(
                     m.Infra.Issue(
-                        file=self._as_str(err.get("path"), "?"),
-                        line=self._as_int(err.get("line"), 0),
-                        column=self._as_int(err.get("column"), 0),
-                        code=self._as_str(err.get("name"), ""),
-                        message=self._as_str(err.get("description"), ""),
-                        severity=self._as_str(err.get("severity"), c.Infra.ERROR),
+                        file=u.Infra.as_str(err.get("path"), "?"),
+                        line=u.to_int(err.get("line")),
+                        column=u.to_int(err.get("column")),
+                        code=u.Infra.as_str(err.get("name"), ""),
+                        message=u.Infra.as_str(err.get("description"), ""),
+                        severity=u.Infra.as_str(err.get("severity"), c.Infra.ERROR),
                     )
                     for err in error_items
                 )

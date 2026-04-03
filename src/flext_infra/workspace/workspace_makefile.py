@@ -66,7 +66,7 @@ class FlextInfraWorkspaceMakefileGenerator:
             failure on I/O error.
 
         """
-        makefile = workspace_root / "Makefile"
+        makefile = workspace_root / c.Infra.Files.MAKEFILE_FILENAME
 
         if not self.template_path.exists():
             return self._bootstrap_template(makefile)
@@ -191,20 +191,20 @@ class FlextInfraWorkspaceMakefileGenerator:
         )
         if capture_result.is_success:
             branch = capture_result.value
-            if branch and branch != "HEAD":
+            if branch and branch != c.Infra.Git.HEAD:
                 return branch
 
         # Fallback: read version from pyproject.toml
-        pyproject = workspace_root / "pyproject.toml"
+        pyproject = workspace_root / c.Infra.Files.PYPROJECT_FILENAME
         if pyproject.exists():
             try:
                 with pyproject.open("rb") as fh:
                     data = tomllib.load(fh)
-                version: str = data.get("project", {}).get("version", "main")
+                version: str = data.get("project", {}).get("version", c.Infra.Git.MAIN)
                 return version
             except (OSError, tomllib.TOMLDecodeError, KeyError):
                 pass
-        return "main"
+        return c.Infra.Git.MAIN
 
 
 __all__ = ["FlextInfraWorkspaceMakefileGenerator"]

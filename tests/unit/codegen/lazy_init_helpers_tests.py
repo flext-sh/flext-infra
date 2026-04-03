@@ -12,11 +12,11 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import u
-from flext_infra._utilities.codegen_lazy_scanning import (
+from flext_infra import (
     FlextInfraUtilitiesCodegenLazyScanning,
+    FlextInfraUtilitiesRopeHelpers,
+    u,
 )
-from flext_infra._utilities.rope_helpers import FlextInfraUtilitiesRopeHelpers
 
 _read_existing_docstring: Callable[[Path], str] = getattr(
     FlextInfraUtilitiesCodegenLazyScanning,

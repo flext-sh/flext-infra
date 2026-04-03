@@ -11,12 +11,12 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_tests import tm
-
-from flext_infra import FlextInfraCodegenFixer
 from tests import (
     FlextInfraCodegenTestProjectFactory,
     t,
 )
+
+from flext_infra import FlextInfraCodegenFixer
 
 
 def test_flexcore_excluded_from_run(tmp_path: Path) -> None:

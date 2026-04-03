@@ -70,7 +70,11 @@ class FlextInfraDependencyDetectorRuntime:
         if do_typings:
             if not isinstance(deps_service, p.Infra.TypingsDepsService):
                 return r[int].fail("typing dependency detection service unavailable")
-            typing_deps = deps_service
+            typing_deps = deps_service  # narrowed by isinstance above
+            if (
+                typing_deps is None
+            ):  # pragma: no cover — unreachable after isinstance guard
+                return r[int].fail("typing dependency detection service unavailable")
             limits_data = typing_deps.load_dependency_limits(limits_path)
             if limits_data:
                 python_cfg = limits_data.get(c.Infra.PYTHON)

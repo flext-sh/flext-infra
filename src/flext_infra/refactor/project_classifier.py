@@ -165,7 +165,8 @@ class FlextInfraProjectClassifier:
         return [
             dependency
             for dependency in dependencies
-            if dependency.startswith("flext-") and dependency != project_name
+            if dependency.startswith(c.Infra.Packages.PREFIX_HYPHEN)
+            and dependency != project_name
         ]
 
     def _extract_dependency_name(self, raw_dependency: str) -> str:
@@ -202,10 +203,7 @@ class FlextInfraProjectClassifier:
                 local_facade_classes.update(class_names)
         return (family_bases, local_facade_classes)
 
-    _CLASS_DEF_RE: re.Pattern[str] = re.compile(
-        r"^class\s+(\w+)\s*\(([^)]*)\)\s*:",
-        re.MULTILINE,
-    )
+    _CLASS_DEF_RE: re.Pattern[str] = c.Infra.SourceCode.CLASS_WITH_BASES_RE
 
     def _parse_family_file(
         self,
@@ -275,8 +273,8 @@ class FlextInfraProjectClassifier:
         normalized = self._normalize_dependency_name(dependency)
         if normalized == c.Infra.Packages.CORE:
             return "Flext"
-        if normalized.startswith("flext-"):
-            tail = normalized.removeprefix("flext-")
+        if normalized.startswith(c.Infra.Packages.PREFIX_HYPHEN):
+            tail = normalized.removeprefix(c.Infra.Packages.PREFIX_HYPHEN)
             parts = [part for part in tail.split("-") if part]
             if not parts:
                 return ""

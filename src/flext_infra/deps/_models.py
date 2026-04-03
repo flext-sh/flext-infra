@@ -8,8 +8,7 @@ from typing import Annotated
 from pydantic import Field
 
 from flext_core import m
-from flext_infra import t
-from flext_infra.deps._models_tool_config import FlextInfraDepsModelsToolConfig
+from flext_infra import FlextInfraDepsModelsToolConfig, t
 
 
 class FlextInfraDepsModels(FlextInfraDepsModelsToolConfig):

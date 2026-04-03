@@ -5,10 +5,10 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
+from tests import t, u
 
 from flext_core import r
 from flext_infra import FlextInfraInternalDependencySyncService, internal_sync
-from tests import t, u
 
 
 class TestMain:

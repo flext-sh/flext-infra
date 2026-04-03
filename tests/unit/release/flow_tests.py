@@ -12,10 +12,10 @@ from types import SimpleNamespace
 
 from _pytest.monkeypatch import MonkeyPatch
 from flext_tests import tm
+from tests import m, u
 
 from flext_core import r
 from flext_infra import cli as release_cli, main as infra_main
-from tests import m, u
 
 
 def main(argv: list[str] | None = None) -> int:

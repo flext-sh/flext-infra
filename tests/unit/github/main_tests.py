@@ -7,10 +7,10 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
+from tests import m, t, u
 
 from flext_core import r
 from flext_infra import FlextInfraCliGithub
-from tests import m, t, u
 
 
 class TestRunWorkflows:

@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
+from tests import m, patch_python_dir_detection
 
 from flext_infra import (
     FlextInfraGate,
@@ -18,7 +19,6 @@ from flext_infra import (
     FlextInfraWorkspaceChecker,
     t,
 )
-from tests import m, patch_python_dir_detection
 
 type GateClass = type[FlextInfraMypyGate | FlextInfraPyrightGate]
 

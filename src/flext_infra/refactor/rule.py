@@ -35,7 +35,7 @@ class FlextInfraRefactorRuleLoader:
                 t.Infra.INFRA_MAPPING_ADAPTER.validate_python(dict(loaded)),
             )
             scope_raw = normalized.get("refactor_engine")
-            scope_map = self._normalize_str_object_mapping(scope_raw)
+            scope_map = u.Infra.normalize_str_mapping(scope_raw)
             scope = m.Infra.EngineConfig.model_validate(scope_map)
             normalized["refactor_engine"] = scope.model_dump(mode="python")
             return r[Mapping[str, t.Infra.InfraValue]].ok(normalized)
@@ -158,9 +158,9 @@ class FlextInfraRefactorRuleLoader:
         self,
         config: t.Infra.InfraValue,
     ) -> m.Infra.EngineConfig:
-        config_map = self._normalize_str_object_mapping(config)
+        config_map = u.Infra.normalize_str_mapping(config)
         scope_raw = config_map.get("refactor_engine")
-        scope_map = self._normalize_str_object_mapping(scope_raw)
+        scope_map = u.Infra.normalize_str_mapping(scope_raw)
         return m.Infra.EngineConfig.model_validate(scope_map)
 
     @staticmethod
@@ -175,22 +175,13 @@ class FlextInfraRefactorRuleLoader:
             return []
         definitions: MutableSequence[Mapping[str, t.Infra.InfraValue]] = []
         for item in entries:
-            normalized = FlextInfraRefactorRuleLoader._normalize_str_object_mapping(
+            normalized = u.Infra.normalize_str_mapping(
                 item,
             )
             if not normalized:
                 continue
             definitions.append(normalized)
         return definitions
-
-    @staticmethod
-    def _normalize_str_object_mapping(
-        value: t.Infra.InfraValue | None,
-    ) -> Mapping[str, t.Infra.InfraValue]:
-        try:
-            return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)
-        except ValidationError:
-            return {}
 
 
 __all__ = ["FlextInfraRefactorRule", "FlextInfraRefactorRuleLoader"]

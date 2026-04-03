@@ -9,11 +9,11 @@ from typing import override
 
 from flext_infra import (
     FlextInfraRefactorTransformerPolicyUtilities,
+    FlextInfraRopeTransformer,
     m,
     t,
     u,
 )
-from flext_infra.transformers._base import FlextInfraRopeTransformer
 
 
 class FlextInfraRefactorClassNestingTransformer(FlextInfraRopeTransformer):

@@ -14,6 +14,11 @@ from types import SimpleNamespace
 
 import pytest
 from flext_tests import tm
+from tests import FlextInfraTestHelpers
+from tests.models import m
+from tests.typings import t
+from tests.unit.check._shared_fixtures import create_checker_project, patch_gate_run
+from tests.unit.check.extended_gate_go_cmd_tests import run_command_failure_check
 
 from flext_core import r
 from flext_infra import (
@@ -24,11 +29,6 @@ from flext_infra import (
     FlextInfraUtilitiesSubprocess,
     FlextInfraWorkspaceChecker,
 )
-from tests import FlextInfraTestHelpers
-from tests.models import m
-from tests.typings import t
-from tests.unit.check._shared_fixtures import create_checker_project, patch_gate_run
-from tests.unit.check.extended_gate_go_cmd_tests import run_command_failure_check
 
 
 def _create_run_raw_result(

@@ -14,9 +14,9 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
+from tests import m as im, t
 
 from flext_infra import FlextInfraBaseMkGenerator
-from tests import m as im, t
 
 
 def test_generator_write_handles_file_permission_error(tmp_path: Path) -> None:

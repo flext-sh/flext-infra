@@ -4,11 +4,11 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
+from tests import t
 from tomlkit.toml_document import TOMLDocument
 
 from flext_core import r
 from flext_infra import FlextInfraDependencyPathSync
-from tests import t
 
 
 def rewrite_dep_paths(

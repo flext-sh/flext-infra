@@ -15,9 +15,9 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
+from tests import t
 
 from flext_infra import cli as codegen_cli, main as infra_main
-from tests import t
 
 
 class TestHandleLazyInit:

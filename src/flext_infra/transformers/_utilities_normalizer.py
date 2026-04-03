@@ -76,7 +76,7 @@ class FlextInfraUtilitiesImportNormalizer:
         config = FlextInfraUtilitiesImportNormalizer.load_config().get(
             "alias_tiers",
         )
-        if not FlextUtilities.is_mapping(config):
+        if not isinstance(config, Mapping):
             return {}
         tiers: t.MutableIntMapping = {}
         for alias_name, tier_value in config.items():
@@ -93,7 +93,7 @@ class FlextInfraUtilitiesImportNormalizer:
         config = FlextInfraUtilitiesImportNormalizer.load_config().get(
             "wrong_source",
         )
-        if not FlextUtilities.is_mapping(config):
+        if not isinstance(config, Mapping):
             return False, frozenset()
         enabled_raw = config.get("enabled")
         enabled = isinstance(enabled_raw, bool) and enabled_raw
@@ -114,7 +114,7 @@ class FlextInfraUtilitiesImportNormalizer:
         alias_map: Mapping[str, t.Infra.VariadicTuple[str]] | None,
     ) -> t.StrMapping:
         """Build alias-to-module map from project facades and lazy exports."""
-        init_path = package_dir / "__init__.py"
+        init_path = package_dir / c.Infra.Files.INIT_PY
         alias_to_module = dict(
             FlextInfraUtilitiesDiscovery.extract_lazy_import_map(init_path),
         )
@@ -170,7 +170,7 @@ class FlextInfraUtilitiesImportNormalizer:
         """Convert a file path to its absolute Python module path."""
         relative = file_path.resolve().relative_to(package_dir.parent.resolve())
         module_parts = list(relative.with_suffix("").parts)
-        if module_parts[-1] == "__init__":
+        if module_parts[-1] == c.Infra.Dunders.INIT:
             module_parts = module_parts[:-1]
         if not module_parts or module_parts[0] != package_name:
             msg = f"{file_path} is outside package {package_name}"
@@ -215,7 +215,7 @@ class FlextInfraUtilitiesImportNormalizer:
     ) -> t.FrozensetMapping:
         """Build direct intra-package import graph from source files."""
         graph: MutableMapping[str, t.Infra.StrSet] = {}
-        for py_file in package_dir.rglob("*.py"):
+        for py_file in package_dir.rglob(c.Infra.Extensions.PYTHON_GLOB):
             try:
                 source = py_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
             except (OSError, UnicodeDecodeError):
@@ -290,8 +290,8 @@ class FlextInfraUtilitiesImportNormalizer:
     ) -> Path | None:
         """Locate the on-disk package directory for a given package name."""
         if project_root is not None:
-            candidate = project_root / "src" / package_name
-            if candidate.is_dir() and (candidate / "__init__.py").is_file():
+            candidate = project_root / c.Infra.Paths.DEFAULT_SRC_DIR / package_name
+            if candidate.is_dir() and (candidate / c.Infra.Files.INIT_PY).is_file():
                 return candidate
         if package_name:
             spec = importlib.util.find_spec(package_name)
@@ -299,7 +299,7 @@ class FlextInfraUtilitiesImportNormalizer:
                 locs = list(spec.submodule_search_locations)
                 if locs:
                     cand = Path(locs[0])
-                    if cand.is_dir() and (cand / "__init__.py").is_file():
+                    if cand.is_dir() and (cand / c.Infra.Files.INIT_PY).is_file():
                         return cand
         return None
 

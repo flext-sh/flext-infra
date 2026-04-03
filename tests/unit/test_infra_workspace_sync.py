@@ -9,6 +9,7 @@ from typing import override
 
 import pytest
 from flext_tests import tf, tm
+from tests import m, t
 
 from flext_core import r
 from flext_infra import (
@@ -17,7 +18,6 @@ from flext_infra import (
     FlextInfraWorkspaceMakefileGenerator,
     u,
 )
-from tests import m, t
 
 _S = FlextInfraSyncService
 SetupFn = Callable[[_S, pytest.MonkeyPatch], None]

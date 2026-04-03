@@ -10,13 +10,13 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-
-from flext_infra import FlextInfraProjectMigrator
 from tests import t
 from tests.unit.test_infra_workspace_migrator import (
     _build_migrator,
     _project,
 )
+
+from flext_infra import FlextInfraProjectMigrator
 
 
 class TestMigratorInternalMakefile:

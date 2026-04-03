@@ -14,8 +14,7 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 from flext_core import r
-from flext_infra import c, m, u
-from flext_infra.validate.namespace_rules import FlextInfraNamespaceRules
+from flext_infra import FlextInfraNamespaceRules, c, m, u
 
 __all__ = ["FlextInfraNamespaceValidator"]
 

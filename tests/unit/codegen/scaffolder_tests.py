@@ -12,12 +12,12 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_tests import tm
-
-from flext_infra import FlextInfraCodegenScaffolder
 from tests import (
     FlextInfraCodegenTestProjectFactory,
     t,
 )
+
+from flext_infra import FlextInfraCodegenScaffolder
 
 _SRC_MODULE_FILES = FlextInfraCodegenTestProjectFactory.SRC_MODULE_FILES
 

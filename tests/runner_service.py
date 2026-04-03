@@ -5,10 +5,10 @@ from __future__ import annotations
 from typing import override
 
 from flext_tests import s
+from tests import t
 
 from flext_core import r
 from flext_infra import FlextInfraUtilitiesSubprocess
-from tests import t
 
 
 class RealSubprocessRunner(s[str]):

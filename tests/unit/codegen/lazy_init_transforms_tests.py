@@ -11,9 +11,9 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import t
-from flext_infra._utilities.codegen_lazy_scanning import (
+from flext_infra import (
     FlextInfraUtilitiesCodegenLazyScanning,
+    t,
 )
 
 _scan_public_defs: Callable[

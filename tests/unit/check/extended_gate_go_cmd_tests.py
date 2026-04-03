@@ -12,6 +12,7 @@ from types import SimpleNamespace
 
 import pytest
 from flext_tests import tm
+from tests import t
 
 from flext_core import r
 from flext_infra import (
@@ -23,7 +24,6 @@ from flext_infra import (
     FlextInfraWorkspaceChecker,
     m,
 )
-from tests import t
 
 from ...helpers import h
 

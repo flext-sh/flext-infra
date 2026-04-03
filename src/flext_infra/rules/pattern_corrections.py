@@ -36,7 +36,7 @@ class FlextInfraRefactorPatternCorrectionsRule:
             include_returns = bool(
                 self.config.get("include_return_annotations", False),
             )
-            replacements: Mapping[str, str] = {
+            replacements: t.StrMapping = {
                 "dict[": "Mapping[",
                 "Dict[": "Mapping[",
             }

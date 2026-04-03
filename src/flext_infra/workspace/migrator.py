@@ -8,9 +8,6 @@ from typing import override
 
 import tomlkit
 from pydantic import JsonValue
-from tomlkit.container import Container
-from tomlkit.items import Item, Table
-from tomlkit.toml_document import TOMLDocument
 
 from flext_infra import FlextInfraBaseMkGenerator, c, m, p, r, s, t, u
 
@@ -54,56 +51,27 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
             changes.append(val)
 
     @staticmethod
-    def _ensure_table(document: tomlkit.TOMLDocument, key: str) -> Table:
-        current = FlextInfraProjectMigrator._toml_get(document, key)
-        if isinstance(current, Table):
-            return current
-        created = tomlkit.table()
-        document[key] = created
-        return created
-
-    @staticmethod
-    def _toml_get(
-        container: TOMLDocument | Table,
-        key: str,
-    ) -> Item | Container | None:
-        if key not in container:
-            return None
-        return container[key]
-
-    @staticmethod
     def _has_flext_core_dependency(document: tomlkit.TOMLDocument) -> bool:
-        project = FlextInfraProjectMigrator._toml_get(document, c.Infra.PROJECT)
-        if isinstance(project, Table):
-            deps = FlextInfraProjectMigrator._toml_get(
-                project,
-                c.Infra.DEPENDENCIES,
-            )
+        project = u.Infra.get_table(document, c.Infra.PROJECT)
+        if project is not None:
+            deps = u.Infra.get_item(project, c.Infra.DEPENDENCIES)
             if isinstance(deps, list):
                 deps_list: Sequence[JsonValue] = (
-                    t.Infra.JSON_SEQ_ADAPTER.validate_python([
-                        *deps,
-                    ])
+                    t.Infra.JSON_SEQ_ADAPTER.validate_python([*deps])
                 )
                 for dep_raw in deps_list:
-                    dep: str = str(dep_raw)
-                    if str(dep).strip().startswith(c.Infra.Packages.CORE):
+                    if str(dep_raw).strip().startswith(c.Infra.Packages.CORE):
                         return True
-        tool = FlextInfraProjectMigrator._toml_get(document, c.Infra.TOOL)
-        if not isinstance(tool, Table):
+        tool = u.Infra.get_table(document, c.Infra.TOOL)
+        if tool is None:
             return False
-        poetry = FlextInfraProjectMigrator._toml_get(tool, c.Infra.POETRY)
-        if not isinstance(poetry, Table):
+        poetry = u.Infra.get_table(tool, c.Infra.POETRY)
+        if poetry is None:
             return False
-        poetry_deps = FlextInfraProjectMigrator._toml_get(
-            poetry,
-            c.Infra.DEPENDENCIES,
-        )
-        if not isinstance(poetry_deps, Table):
+        poetry_deps = u.Infra.get_table(poetry, c.Infra.DEPENDENCIES)
+        if poetry_deps is None:
             return False
         return c.Infra.Packages.CORE in poetry_deps
-
-    _sha256_text = staticmethod(u.Infra.sha256_content)
 
     @staticmethod
     def _workspace_root_project(
@@ -184,7 +152,7 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
             if target.exists()
             else ""
         )
-        if self._sha256_text(current) == self._sha256_text(generated_text):
+        if u.Infra.sha256_content(current) == u.Infra.sha256_content(generated_text):
             if dry_run:
                 return r[str].ok(
                     self._action_text("base.mk already up-to-date", dry_run=True),
@@ -371,15 +339,15 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
         dry_run: bool,
     ) -> r[str]:
         """Add flext-core dependency to the pyproject document and write if not dry-run."""
-        project_table = self._ensure_table(document, c.Infra.PROJECT)
-        dependencies_raw = self._toml_get(project_table, c.Infra.DEPENDENCIES)
+        project_table = u.Infra.ensure_table(document, c.Infra.PROJECT)
+        dependencies_raw = u.Infra.get_item(project_table, c.Infra.DEPENDENCIES)
         dependencies: MutableSequence[str] = []
         if isinstance(dependencies_raw, list):
             dependency_items: Sequence[JsonValue] = (
                 t.Infra.JSON_SEQ_ADAPTER.validate_python([*dependencies_raw])
             )
             dependencies = [str(dep_raw) for dep_raw in dependency_items]
-        dependency_spec = "flext-core"
+        dependency_spec = c.Infra.Packages.CORE
         if dependency_spec not in dependencies:
             dependencies.append(dependency_spec)
         project_table[c.Infra.DEPENDENCIES] = dependencies

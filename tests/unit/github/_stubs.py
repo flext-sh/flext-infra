@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Annotated, ClassVar, override
 
 from pydantic import BaseModel, Field, JsonValue
+from tests import t
 
 from flext_core import FlextModels, r
 from flext_infra import (
@@ -24,7 +25,6 @@ from flext_infra import (
     FlextInfraUtilitiesVersioning,
     m,
 )
-from tests import t
 
 from ._stubs_extra import (
     StubLinter,

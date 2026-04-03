@@ -13,7 +13,6 @@ import io
 import re
 
 from flext_tests import tm
-
 from tests import m, u
 
 ANSI_RE = re.compile(r"\033\[\d+m")

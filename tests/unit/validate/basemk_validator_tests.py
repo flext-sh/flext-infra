@@ -12,9 +12,9 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tf, tm
+from tests import m, t
 
 from flext_infra import FlextInfraBaseMkGenerator, FlextInfraBaseMkValidator
-from tests import m, t
 
 _ROOT = "# root content"
 
@@ -132,7 +132,7 @@ class TestBaseMkValidatorSha256:
 
     @staticmethod
     def _sha(path: Path) -> str:
-        return FlextInfraBaseMkValidator._sha256_file(path)
+        return FlextInfraBaseMkValidator.compute_sha256(path)
 
     def test_hash_is_64char_hex(self, tmp_path: Path) -> None:
         f = tf.create_in("content", "test.txt", tmp_path)

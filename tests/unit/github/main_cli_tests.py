@@ -6,10 +6,10 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
+from tests import m
 
 from flext_core import r
 from flext_infra import FlextInfraCliGithub, main as infra_main
-from tests import m
 
 
 def test_main_returns_zero_on_help() -> None:

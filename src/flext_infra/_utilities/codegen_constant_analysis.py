@@ -26,136 +26,6 @@ class FlextInfraUtilitiesCodegenConstantAnalysis:
     """Census, deduplication, and MRO attribute analysis for constants."""
 
     @staticmethod
-    def extract_class_attributes_with_mro(
-        class_path: str,
-    ) -> Mapping[str, m.Infra.ConstantDefinition]:
-        """Extract all attributes from a class including MRO inheritance."""
-        module_part_count = 2
-        try:
-            parts = class_path.rsplit(".", 1)
-            if len(parts) != module_part_count:
-                return {}
-            module_name, class_name = parts
-            module = __import__(module_name, fromlist=[class_name])
-            cls = getattr(module, class_name)
-        except (ImportError, AttributeError, ValueError):
-            return {}
-
-        result: MutableMapping[str, m.Infra.ConstantDefinition] = {}
-        seen_names: t.Infra.StrSet = set()
-
-        for base_cls in cls.__mro__[:-1]:
-            for attr_name in dir(base_cls):
-                if attr_name.startswith("_") or attr_name in seen_names:
-                    continue
-                defn = (
-                    FlextInfraUtilitiesCodegenConstantAnalysis._classify_mro_attribute(
-                        cls,
-                        class_name,
-                        attr_name,
-                    )
-                )
-                if defn is not None:
-                    result[attr_name] = defn
-                seen_names.add(attr_name)
-        return result
-
-    @staticmethod
-    def _classify_mro_attribute(
-        target_cls: type[object],
-        class_name: str,
-        attr_name: str,
-    ) -> m.Infra.ConstantDefinition | None:
-        """Classify a single attribute from the MRO walk."""
-        try:
-            attr_value = getattr(target_cls, attr_name)
-            if (
-                callable(attr_value)
-                and not isinstance(attr_value, type)
-                and hasattr(attr_value, "__self__")
-            ):
-                return None
-            attr_type = type(attr_value).__name__
-            return m.Infra.ConstantDefinition(
-                name=attr_name,
-                value_repr=repr(attr_value)[:100],
-                type_annotation=attr_type,
-                file_path="<dynamic>",
-                class_path=class_name,
-                project="flext-core",
-                line=1,
-            )
-        except (AttributeError, ValueError, TypeError, RecursionError):
-            return None
-
-    @staticmethod
-    def scan_class_attribute_usages(
-        root_path: Path,
-        class_name: str,
-        exclude_patterns: frozenset[str] = frozenset({
-            ".mypy_cache",
-            "__pycache__",
-        }),
-        max_files: int = c.Infra.MAX_SCAN_FILES,
-    ) -> t.Infra.Pair[t.Infra.StrSet, Mapping[str, Sequence[t.Infra.StrIntPair]]]:
-        """Scan workspace for usages of a specific class's attributes."""
-        used_names: t.Infra.StrSet = set()
-        usage_map: MutableMapping[str, MutableSequence[t.Infra.StrIntPair]] = {}
-        search_prefix = f"{class_name}."
-        files_scanned = 0
-
-        for py_file in root_path.rglob("*.py"):
-            if files_scanned >= max_files:
-                break
-            if any(excl in py_file.parts for excl in exclude_patterns):
-                continue
-            try:
-                source = py_file.read_text(c.Infra.Encoding.DEFAULT)
-            except (UnicodeDecodeError, OSError):
-                continue
-            if search_prefix not in source:
-                continue
-            files_scanned += 1
-            FlextInfraUtilitiesCodegenConstantAnalysis._collect_attribute_refs(
-                source,
-                search_prefix,
-                str(py_file),
-                used_names,
-                usage_map,
-            )
-        return used_names, usage_map
-
-    @staticmethod
-    def _collect_attribute_refs(
-        source: str,
-        search_prefix: str,
-        file_path: str,
-        used_names: t.Infra.StrSet,
-        usage_map: MutableMapping[str, MutableSequence[t.Infra.StrIntPair]],
-    ) -> None:
-        """Collect attribute references from a single file's source text."""
-        lines = source.split("\n")
-        for line_num, line in enumerate(lines, 1):
-            idx = 0
-            while True:
-                pos = line.find(search_prefix, idx)
-                if pos == -1:
-                    break
-                after_dot = pos + len(search_prefix)
-                end_pos = after_dot
-                while end_pos < len(line) and (
-                    line[end_pos].isalnum() or line[end_pos] == "_"
-                ):
-                    end_pos += 1
-                if end_pos > after_dot:
-                    attr_name = line[after_dot:end_pos]
-                    used_names.add(attr_name)
-                    if attr_name not in usage_map:
-                        usage_map[attr_name] = list[tuple[str, int]]()
-                    usage_map[attr_name].append((file_path, line_num))
-                idx = pos + 1
-
-    @staticmethod
     def _analyze_class_internal(
         class_path: str,
         root_path: Path,
@@ -186,7 +56,7 @@ class FlextInfraUtilitiesCodegenConstantAnalysis:
         root_path: Path,
         exclude_patterns: frozenset[str] = frozenset({
             ".mypy_cache",
-            "__pycache__",
+            c.Infra.Dunders.PYCACHE,
         }),
         max_files: int = 5000,
     ) -> Mapping[
@@ -232,7 +102,7 @@ class FlextInfraUtilitiesCodegenConstantAnalysis:
         root_path: Path,
         exclude_patterns: frozenset[str] = frozenset({
             ".mypy_cache",
-            "__pycache__",
+            c.Infra.Dunders.PYCACHE,
         }),
         max_files: int = 2000,
     ) -> Sequence[t.Infra.DeduplicationFix]:

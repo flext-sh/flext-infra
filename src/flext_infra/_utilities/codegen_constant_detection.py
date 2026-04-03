@@ -13,11 +13,13 @@ import re
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
-from flext_infra import c, m, t
-from flext_infra._utilities.codegen_governance import (
+from flext_infra import (
     FlextInfraUtilitiesCodegenGovernance,
+    FlextInfraUtilitiesDiscovery,
+    c,
+    m,
+    t,
 )
-from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 
 
 class FlextInfraUtilitiesCodegenConstantDetection:
@@ -42,56 +44,31 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         except ValueError:
             return "unknown"
 
-    # ------------------------------------------------------------------
-    # Literal helpers
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def int_literal(value_repr: str) -> int | None:
-        if re.fullmatch(r"-?\d+", value_repr) is None:
-            return None
-        return int(value_repr)
-
-    @staticmethod
-    def str_literal(value_repr: str) -> str | None:
-        if (
-            len(value_repr)
-            < FlextInfraUtilitiesCodegenConstantDetection._MIN_QUOTED_LITERAL_LEN
-        ):
-            return None
-        if value_repr[0] != value_repr[-1]:
-            return None
-        if value_repr[0] not in {'"', "'"}:
-            return None
-        return value_repr[1:-1]
-
-    @staticmethod
-    def semantic_name_matches(name: str, canonical_ref: str) -> bool:
-        if not canonical_ref:
-            return False
-        return name in FlextInfraUtilitiesCodegenGovernance.get_semantic_names(
-            canonical_ref,
-        )
-
     @staticmethod
     def canonical_reference_for(name: str, value_repr: str) -> str:
-        det = FlextInfraUtilitiesCodegenConstantDetection
-        int_value = det.int_literal(value_repr)
-        if int_value is not None:
-            candidate = (
-                FlextInfraUtilitiesCodegenGovernance.get_canonical_int_values().get(
-                    int_value, ""
-                )
-            )
-            return candidate if det.semantic_name_matches(name, candidate) else ""
-        str_value = det.str_literal(value_repr)
-        if str_value is not None:
-            candidate = (
-                FlextInfraUtilitiesCodegenGovernance.get_canonical_str_values().get(
-                    str_value, ""
-                )
-            )
-            return candidate if det.semantic_name_matches(name, candidate) else ""
+        """Return canonical constant reference for a name/value pair."""
+        gov = FlextInfraUtilitiesCodegenGovernance
+        min_quoted = FlextInfraUtilitiesCodegenConstantDetection._MIN_QUOTED_LITERAL_LEN
+
+        def _name_matches(canonical_ref: str) -> bool:
+            if not canonical_ref:
+                return False
+            return name in gov.get_semantic_names(canonical_ref)
+
+        # Try integer literal
+        if re.fullmatch(r"-?\d+", value_repr) is not None:
+            candidate = gov.get_canonical_int_values().get(int(value_repr), "")
+            return candidate if _name_matches(candidate) else ""
+
+        # Try string literal
+        if (
+            len(value_repr) >= min_quoted
+            and value_repr[0] == value_repr[-1]
+            and value_repr[0] in {'"', "'"}
+        ):
+            candidate = gov.get_canonical_str_values().get(value_repr[1:-1], "")
+            return candidate if _name_matches(candidate) else ""
+
         return ""
 
     # ------------------------------------------------------------------
@@ -173,7 +150,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         if exclude_packages is None:
             exclude_packages = frozenset()
         all_defs: MutableMapping[str, MutableSequence[m.Infra.ConstantDefinition]] = {}
-        for py_file in root_path.rglob("*.py"):
+        for py_file in root_path.rglob(c.Infra.Extensions.PYTHON_GLOB):
             if any(excl in py_file.parts for excl in exclude_packages):
                 continue
             project_name = (
@@ -197,68 +174,6 @@ class FlextInfraUtilitiesCodegenConstantDetection:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def scan_constant_usages(
-        file_path: Path,
-        project: str,
-        *,
-        target_class: str = "",
-        collect_all_refs: bool = False,
-    ) -> t.Infra.Triple[
-        t.Infra.StrSet,
-        Sequence[m.Infra.DirectConstantRef],
-        Sequence[t.Infra.StrIntPair],
-    ]:
-        """Scan constant usages in a file via regex."""
-        try:
-            source = file_path.read_text(c.Infra.Encoding.DEFAULT)
-        except (OSError, UnicodeDecodeError):
-            return set(), [], []
-
-        if not target_class and not collect_all_refs:
-            pkg_name = file_path.parent.name
-            while pkg_name.startswith("_") and file_path.parent.parent.name != "src":
-                pkg_name = file_path.parent.parent.name
-            target_class = (
-                "".join(part.capitalize() for part in pkg_name.split("_")) + "Constants"
-            )
-
-        constants_class_pattern = (
-            FlextInfraUtilitiesCodegenGovernance.get_constants_class_pattern()
-        )
-        used_constants: t.Infra.StrSet = set()
-        direct_refs: MutableSequence[m.Infra.DirectConstantRef] = []
-        all_constant_refs: MutableSequence[t.Infra.StrIntPair] = []
-
-        for line_num, line in enumerate(source.splitlines(), 1):
-            # Track c.ATTR usage
-            for hit in re.finditer(r"\bc\.([A-Za-z_]\w*)", line):
-                attr_name = hit.group(1)
-                used_constants.add(attr_name)
-                if collect_all_refs:
-                    all_constant_refs.append((attr_name, line_num))
-
-            # Track FlextXxxConstants.ATTR direct refs
-            for hit in re.finditer(r"\b(Flext\w*Constants(?:\.[A-Za-z_]\w*)+)", line):
-                chain = hit.group(1).split(".")
-                if not re.fullmatch(constants_class_pattern, chain[0]):
-                    continue
-                if target_class and chain[0] != target_class and not collect_all_refs:
-                    continue
-                direct_refs.append(
-                    m.Infra.DirectConstantRef(
-                        full_ref=".".join(chain),
-                        alias_ref=".".join(["c", *chain[1:]]),
-                        file_path=str(file_path),
-                        project=project,
-                        line=line_num,
-                    ),
-                )
-                if collect_all_refs:
-                    all_constant_refs.append((chain[-1], line_num))
-
-        return used_constants, direct_refs, all_constant_refs
-
-    @staticmethod
     def scan_all_constant_usages(
         root_path: Path,
         exclude_packages: frozenset[str] | None = None,
@@ -267,7 +182,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         if exclude_packages is None:
             exclude_packages = frozenset()
         usage_map: MutableMapping[str, MutableSequence[t.Infra.StrIntPair]] = {}
-        for py_file in root_path.rglob("*.py"):
+        for py_file in root_path.rglob(c.Infra.Extensions.PYTHON_GLOB):
             if any(excl in py_file.parts for excl in exclude_packages):
                 continue
             project_name = (
@@ -292,19 +207,6 @@ class FlextInfraUtilitiesCodegenConstantDetection:
     # ------------------------------------------------------------------
     # Analysis helpers
     # ------------------------------------------------------------------
-
-    @staticmethod
-    def detect_hardcoded_canonicals(
-        definitions: Sequence[m.Infra.ConstantDefinition],
-    ) -> Sequence[m.Infra.ConstantDefinition]:
-        return [
-            definition
-            for definition in definitions
-            if FlextInfraUtilitiesCodegenConstantDetection.canonical_reference_for(
-                definition.name,
-                definition.value_repr,
-            )
-        ]
 
     @staticmethod
     def detect_unused_constants(

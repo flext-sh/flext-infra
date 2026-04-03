@@ -5,79 +5,149 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING as _TYPE_CHECKING
+import typing as _t
 
+from tests.unit.release._stubs import (
+    FakeReporting,
+    FakeSelection,
+    FakeSubprocess,
+    FakeUtilsNamespace,
+    FakeVersioning,
+)
+from tests.unit.release.flow_tests import TestReleaseMainFlow, main
+from tests.unit.release.main_tests import TestReleaseMainParsing
+from tests.unit.release.orchestrator_git_tests import (
+    TestCollectChanges,
+    TestCreateBranches,
+    TestCreateTag,
+    TestPreviousTag,
+    TestPushRelease,
+)
+from tests.unit.release.orchestrator_helpers_tests import (
+    TestBuildTargets,
+    TestBumpNextDev,
+    TestDispatchPhase,
+    TestGenerateNotes,
+    TestRunMake,
+    TestUpdateChangelog,
+    TestVersionFiles,
+)
+from tests.unit.release.orchestrator_phases_tests import (
+    TestPhaseBuild,
+    TestPhaseValidate,
+    TestPhaseVersion,
+)
+from tests.unit.release.orchestrator_publish_tests import TestPhasePublish
+from tests.unit.release.orchestrator_tests import (
+    TestReleaseOrchestratorExecute,
+    workspace_root,
+)
+from tests.unit.release.release_init_tests import TestReleaseInit
+from tests.unit.release.version_resolution_tests import (
+    TestReleaseMainTagResolution,
+    TestReleaseMainVersionResolution,
+    TestResolveVersionInteractive,
+)
+
+from flext_core.constants import FlextConstants as c
+from flext_core.decorators import FlextDecorators as d
+from flext_core.exceptions import FlextExceptions as e
+from flext_core.handlers import FlextHandlers as h
 from flext_core.lazy import install_lazy_exports
+from flext_core.mixins import FlextMixins as x
+from flext_core.models import FlextModels as m
+from flext_core.protocols import FlextProtocols as p
+from flext_core.result import FlextResult as r
+from flext_core.service import FlextService as s
+from flext_core.typings import FlextTypes as t
+from flext_core.utilities import FlextUtilities as u
 
-if _TYPE_CHECKING:
-    from flext_core import FlextTypes
-    from flext_core.constants import FlextConstants as c
-    from flext_core.decorators import FlextDecorators as d
-    from flext_core.exceptions import FlextExceptions as e
-    from flext_core.handlers import FlextHandlers as h
-    from flext_core.mixins import FlextMixins as x
-    from flext_core.models import FlextModels as m
-    from flext_core.protocols import FlextProtocols as p
-    from flext_core.result import FlextResult as r
-    from flext_core.service import FlextService as s
-    from flext_core.typings import FlextTypes as t
-    from flext_core.utilities import FlextUtilities as u
-    from tests.unit.release import (
+if _t.TYPE_CHECKING:
+    import tests.unit.release._stubs as _tests_unit_release__stubs
+
+    _stubs = _tests_unit_release__stubs
+    import tests.unit.release.flow_tests as _tests_unit_release_flow_tests
+
+    flow_tests = _tests_unit_release_flow_tests
+    import tests.unit.release.main_tests as _tests_unit_release_main_tests
+
+    main_tests = _tests_unit_release_main_tests
+    import tests.unit.release.orchestrator_git_tests as _tests_unit_release_orchestrator_git_tests
+
+    orchestrator_git_tests = _tests_unit_release_orchestrator_git_tests
+    import tests.unit.release.orchestrator_helpers_tests as _tests_unit_release_orchestrator_helpers_tests
+
+    orchestrator_helpers_tests = _tests_unit_release_orchestrator_helpers_tests
+    import tests.unit.release.orchestrator_phases_tests as _tests_unit_release_orchestrator_phases_tests
+
+    orchestrator_phases_tests = _tests_unit_release_orchestrator_phases_tests
+    import tests.unit.release.orchestrator_publish_tests as _tests_unit_release_orchestrator_publish_tests
+
+    orchestrator_publish_tests = _tests_unit_release_orchestrator_publish_tests
+    import tests.unit.release.orchestrator_tests as _tests_unit_release_orchestrator_tests
+
+    orchestrator_tests = _tests_unit_release_orchestrator_tests
+    import tests.unit.release.release_init_tests as _tests_unit_release_release_init_tests
+
+    release_init_tests = _tests_unit_release_release_init_tests
+    import tests.unit.release.version_resolution_tests as _tests_unit_release_version_resolution_tests
+
+    version_resolution_tests = _tests_unit_release_version_resolution_tests
+
+    _ = (
+        FakeReporting,
+        FakeSelection,
+        FakeSubprocess,
+        FakeUtilsNamespace,
+        FakeVersioning,
+        TestBuildTargets,
+        TestBumpNextDev,
+        TestCollectChanges,
+        TestCreateBranches,
+        TestCreateTag,
+        TestDispatchPhase,
+        TestGenerateNotes,
+        TestPhaseBuild,
+        TestPhasePublish,
+        TestPhaseValidate,
+        TestPhaseVersion,
+        TestPreviousTag,
+        TestPushRelease,
+        TestReleaseInit,
+        TestReleaseMainFlow,
+        TestReleaseMainParsing,
+        TestReleaseMainTagResolution,
+        TestReleaseMainVersionResolution,
+        TestReleaseOrchestratorExecute,
+        TestResolveVersionInteractive,
+        TestRunMake,
+        TestUpdateChangelog,
+        TestVersionFiles,
         _stubs,
+        c,
+        d,
+        e,
         flow_tests,
+        h,
+        m,
+        main,
         main_tests,
         orchestrator_git_tests,
         orchestrator_helpers_tests,
         orchestrator_phases_tests,
         orchestrator_publish_tests,
         orchestrator_tests,
+        p,
+        r,
         release_init_tests,
+        s,
+        t,
+        u,
         version_resolution_tests,
-    )
-    from tests.unit.release._stubs import (
-        FakeReporting,
-        FakeSelection,
-        FakeSubprocess,
-        FakeUtilsNamespace,
-        FakeVersioning,
-    )
-    from tests.unit.release.flow_tests import TestReleaseMainFlow, main
-    from tests.unit.release.main_tests import TestReleaseMainParsing
-    from tests.unit.release.orchestrator_git_tests import (
-        TestCollectChanges,
-        TestCreateBranches,
-        TestCreateTag,
-        TestPreviousTag,
-        TestPushRelease,
-    )
-    from tests.unit.release.orchestrator_helpers_tests import (
-        TestBuildTargets,
-        TestBumpNextDev,
-        TestDispatchPhase,
-        TestGenerateNotes,
-        TestRunMake,
-        TestUpdateChangelog,
-        TestVersionFiles,
-    )
-    from tests.unit.release.orchestrator_phases_tests import (
-        TestPhaseBuild,
-        TestPhaseValidate,
-        TestPhaseVersion,
-    )
-    from tests.unit.release.orchestrator_publish_tests import TestPhasePublish
-    from tests.unit.release.orchestrator_tests import (
-        TestReleaseOrchestratorExecute,
         workspace_root,
+        x,
     )
-    from tests.unit.release.release_init_tests import TestReleaseInit
-    from tests.unit.release.version_resolution_tests import (
-        TestReleaseMainTagResolution,
-        TestReleaseMainVersionResolution,
-        TestResolveVersionInteractive,
-    )
-
-_LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
+_LAZY_IMPORTS = {
     "FakeReporting": "tests.unit.release._stubs",
     "FakeSelection": "tests.unit.release._stubs",
     "FakeSubprocess": "tests.unit.release._stubs",
@@ -130,6 +200,60 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "workspace_root": "tests.unit.release.orchestrator_tests",
     "x": ("flext_core.mixins", "FlextMixins"),
 }
+
+__all__ = [
+    "FakeReporting",
+    "FakeSelection",
+    "FakeSubprocess",
+    "FakeUtilsNamespace",
+    "FakeVersioning",
+    "TestBuildTargets",
+    "TestBumpNextDev",
+    "TestCollectChanges",
+    "TestCreateBranches",
+    "TestCreateTag",
+    "TestDispatchPhase",
+    "TestGenerateNotes",
+    "TestPhaseBuild",
+    "TestPhasePublish",
+    "TestPhaseValidate",
+    "TestPhaseVersion",
+    "TestPreviousTag",
+    "TestPushRelease",
+    "TestReleaseInit",
+    "TestReleaseMainFlow",
+    "TestReleaseMainParsing",
+    "TestReleaseMainTagResolution",
+    "TestReleaseMainVersionResolution",
+    "TestReleaseOrchestratorExecute",
+    "TestResolveVersionInteractive",
+    "TestRunMake",
+    "TestUpdateChangelog",
+    "TestVersionFiles",
+    "_stubs",
+    "c",
+    "d",
+    "e",
+    "flow_tests",
+    "h",
+    "m",
+    "main",
+    "main_tests",
+    "orchestrator_git_tests",
+    "orchestrator_helpers_tests",
+    "orchestrator_phases_tests",
+    "orchestrator_publish_tests",
+    "orchestrator_tests",
+    "p",
+    "r",
+    "release_init_tests",
+    "s",
+    "t",
+    "u",
+    "version_resolution_tests",
+    "workspace_root",
+    "x",
+]
 
 
 install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)

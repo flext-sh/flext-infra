@@ -9,7 +9,6 @@ from flext_infra import (
     FlextInfraRefactorMROSymbolPropagator,
     c,
     m,
-    p,
     t,
     u,
 )
@@ -145,9 +144,12 @@ class FlextInfraRefactorMROImportRewriter:
                 offset,
             ):
                 resource_like = getattr(occurrence, "resource", None)
-                if not isinstance(resource_like, p.Infra.RopeResourceLike):
+                if resource_like is None:
                     continue
-                file_path = Path(resource_like.real_path).resolve()
+                real_path = getattr(resource_like, "real_path", None)
+                if real_path is None:
+                    continue
+                file_path = Path(str(real_path)).resolve()
                 per_file = module_file_moves.setdefault(file_path, {})
                 existing_move = per_file.get(module_name)
                 existing_paths: t.MutableStrMapping = (

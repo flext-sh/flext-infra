@@ -11,8 +11,8 @@ from argparse import ArgumentParser, Namespace
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 
 from flext_core import u
-from flext_infra import t
-from flext_infra._utilities.cli import FlextInfraUtilitiesCli
+from flext_infra._utilities.cli_shared import FlextInfraUtilitiesCliShared
+from flext_infra.typings import FlextInfraTypes as t
 
 
 class FlextInfraUtilitiesCliSubcommand:
@@ -41,7 +41,7 @@ class FlextInfraUtilitiesCliSubcommand:
         options: Sequence[t.BoolMapping],
     ) -> t.MutableBoolMapping:
         """Compute the union of enabled shared flags across subcommands."""
-        union = FlextInfraUtilitiesCli.SharedFlags(
+        union = FlextInfraUtilitiesCliShared.SharedFlags(
             include_apply=False,
             include_diff=False,
             include_format=False,
@@ -80,9 +80,9 @@ class FlextInfraUtilitiesCliSubcommand:
     ) -> t.Infra.Pair[ArgumentParser, Mapping[str, ArgumentParser]]:
         """Create main parser with subcommands and shared flags."""
         resolved_flags = (
-            FlextInfraUtilitiesCli.SharedFlags.from_dict(flags)
+            FlextInfraUtilitiesCliShared.SharedFlags.from_dict(flags)
             if flags is not None
-            else FlextInfraUtilitiesCli.SharedFlags()
+            else FlextInfraUtilitiesCliShared.SharedFlags()
         )
         base_options = resolved_flags.to_dict()
         command_options: MutableMapping[str, t.MutableBoolMapping] = {}
@@ -100,15 +100,17 @@ class FlextInfraUtilitiesCliSubcommand:
         root_shared_tokens = tuple(
             FlextInfraUtilitiesCliSubcommand._shared_option_tokens(root_options),
         )
-        shared = FlextInfraUtilitiesCli.shared_flags_parser(
-            FlextInfraUtilitiesCli.SharedFlags.from_dict(root_options),
+        shared = FlextInfraUtilitiesCliShared.shared_flags_parser(
+            FlextInfraUtilitiesCliShared.SharedFlags.from_dict(root_options),
         )
         parser = ArgumentParser(prog=prog, description=description, parents=[shared])
         subparsers = parser.add_subparsers(dest="command")
         command_parsers: MutableMapping[str, ArgumentParser] = {}
         for command, command_help in subcommands.items():
-            command_shared = FlextInfraUtilitiesCli.shared_flags_parser(
-                FlextInfraUtilitiesCli.SharedFlags.from_dict(command_options[command]),
+            command_shared = FlextInfraUtilitiesCliShared.shared_flags_parser(
+                FlextInfraUtilitiesCliShared.SharedFlags.from_dict(
+                    command_options[command]
+                ),
                 suppress_defaults=True,
             )
             command_parsers[command] = subparsers.add_parser(

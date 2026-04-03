@@ -14,11 +14,11 @@ from typing import cast
 import pytest
 import tomlkit
 from flext_tests import tm
+from tests import t
 from tomlkit.items import Table
 
 from flext_core import r
 from flext_infra import FlextInfraUtilitiesToml
-from tests import t
 
 
 class TestFlextInfraTomlRead:

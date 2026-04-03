@@ -65,7 +65,9 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
         )
         chains: t.MutableStrSequenceMapping = defaultdict(list)
         for dep_name in dep_names:
-            if dep_name == "flext-core" or not dep_name.startswith("flext-"):
+            if dep_name == c.Infra.Packages.CORE or not dep_name.startswith(
+                c.Infra.Packages.PREFIX_HYPHEN
+            ):
                 continue
             stem = FlextInfraNamespaceFacadeScanner.project_class_stem(
                 project_name=dep_name,
@@ -218,9 +220,9 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
                 continue
             suffix = c.Infra.FAMILY_SUFFIXES[status.family]
             class_name = f"{stem}{suffix}"
-            file_name = c.Infra.FAMILY_FILES.get(status.family, "utilities.py").lstrip(
-                "*"
-            )
+            file_name = c.Infra.FAMILY_FILES.get(
+                status.family, c.Infra.Files.UTILITIES_PY
+            ).lstrip("*")
             target_path = package_dir / file_name
             if target_path.exists():
                 FlextInfraUtilitiesRefactorNamespaceFacades._patch_existing_facade_file(

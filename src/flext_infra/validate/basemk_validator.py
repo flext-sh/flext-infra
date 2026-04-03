@@ -25,9 +25,6 @@ class FlextInfraBaseMkValidator:
         """Initialize with optional generator for freshness comparison."""
         self._generator = generator or FlextInfraBaseMkGenerator()
 
-    _sha256 = staticmethod(u.Infra.sha256_content)
-    _sha256_file = staticmethod(u.Infra.sha256_file)
-
     def validate(self, workspace_root: Path) -> r[m.Infra.ValidationReport]:
         """Validate root base.mk exists and matches generated template output.
 
@@ -59,8 +56,8 @@ class FlextInfraBaseMkValidator:
                         summary="base.mk template generation failed",
                     ),
                 )
-            generated_hash = self._sha256(gen_result.value)
-            existing_hash = self._sha256_file(source)
+            generated_hash = u.Infra.sha256_content(gen_result.value)
+            existing_hash = u.Infra.sha256_file(source)
             violations: MutableSequence[str] = []
             if generated_hash != existing_hash:
                 violations.append(

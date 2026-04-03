@@ -2,18 +2,13 @@ from __future__ import annotations
 
 import time
 from abc import ABC, abstractmethod
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
-
-from pydantic import ValidationError
 
 from flext_infra import c, m, t, u
 
 
 class FlextInfraGate(ABC):
-    _MAPPING_ADAPTER = t.Infra.INFRA_MAPPING_ADAPTER
-    _SEQUENCE_ADAPTER = t.Infra.INFRA_SEQ_ADAPTER
-
     gate_id: str = ""
     gate_name: str = ""
     can_fix: bool = False
@@ -83,7 +78,7 @@ class FlextInfraGate(ABC):
         )
 
     def _existing_check_dirs(self, project_dir: Path) -> t.StrSequence:
-        has_root_python = any(project_dir.glob("*.py")) or any(
+        has_root_python = any(project_dir.glob(c.Infra.Extensions.PYTHON_GLOB)) or any(
             project_dir.glob("*.pyi"),
         )
         discovered_dirs = u.Infra.discover_python_dirs(project_dir)
@@ -105,52 +100,6 @@ class FlextInfraGate(ABC):
                 out.append(directory)
         return out
 
-    @staticmethod
-    def _to_mapping(
-        value: t.Infra.InfraValue,
-    ) -> Mapping[str, t.Infra.InfraValue]:
-        if not u.is_mapping(value):
-            return {}
-        return FlextInfraGate._MAPPING_ADAPTER.validate_python(value)
-
-    @classmethod
-    def _to_mapping_list(
-        cls,
-        value: t.Infra.InfraValue,
-    ) -> Sequence[Mapping[str, t.Infra.InfraValue]]:
-        if not isinstance(value, list):
-            return []
-        typed_items: Sequence[t.Infra.InfraValue] = (
-            cls._SEQUENCE_ADAPTER.validate_python(value)
-        )
-        normalized: MutableSequence[Mapping[str, t.Infra.InfraValue]] = []
-        for raw_item in typed_items:
-            try:
-                typed_item: Mapping[str, t.Infra.InfraValue] = (
-                    cls._MAPPING_ADAPTER.validate_python(raw_item)
-                )
-            except ValidationError:
-                continue
-            normalized.append(typed_item)
-        return normalized
-
-    @staticmethod
-    def _as_int(value: t.Infra.InfraValue, default: int = 0) -> int:
-        if isinstance(value, int):
-            return value
-        if isinstance(value, float):
-            return int(value)
-        if isinstance(value, str):
-            try:
-                return int(value)
-            except ValueError:
-                return default
-        return default
-
-    @staticmethod
-    def _as_str(value: t.Infra.InfraValue, default: str = "") -> str:
-        return value if isinstance(value, str) else default
-
     def _skip_result(
         self,
         project_dir: Path,
@@ -163,23 +112,6 @@ class FlextInfraGate(ABC):
             duration=time.monotonic() - started,
             raw_output="",
         )
-
-    @staticmethod
-    def _nested_int(
-        data: Mapping[str, t.Infra.InfraValue],
-        *keys: str,
-        default: int = 0,
-    ) -> int:
-        current: t.Infra.ContainerDict = {str(key): data[key] for key in data}
-        for key in keys[:-1]:
-            nested = u.Infra.as_toml_mapping(current.get(key))
-            if nested is None:
-                return default
-            current = nested
-        raw: t.Infra.InfraValue = current.get(keys[-1])
-        if raw is None:
-            return default
-        return FlextInfraGate._as_int(raw, default)
 
 
 __all__ = ["FlextInfraGate"]

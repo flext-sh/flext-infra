@@ -7,9 +7,9 @@ from typing import cast
 
 import tomlkit
 from flext_tests import tm
+from tests import m, u
 
 from flext_infra import FlextInfraEnsurePyreflyConfigPhase
-from tests import m, u
 
 
 def _test_tool_config() -> m.Infra.ToolConfigDocument:

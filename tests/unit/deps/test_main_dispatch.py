@@ -12,9 +12,9 @@ from types import ModuleType, SimpleNamespace
 
 import pytest
 from flext_tests import tm
+from tests import t
 
 from flext_infra import FlextInfraCliDeps, cli as main_mod
-from tests import t
 
 _SUBCOMMAND_MODULES = FlextInfraCliDeps._SUBCOMMAND_MODULES
 _main_impl = FlextInfraCliDeps.run

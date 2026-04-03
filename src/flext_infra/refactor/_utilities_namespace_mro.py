@@ -6,9 +6,12 @@ from collections import defaultdict
 from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
-from flext_infra import FlextInfraUtilitiesFormatting, c, m, t
-from flext_infra.refactor._utilities_namespace_common import (
+from flext_infra import (
+    FlextInfraUtilitiesFormatting,
     FlextInfraUtilitiesRefactorNamespaceCommon,
+    c,
+    m,
+    t,
 )
 
 

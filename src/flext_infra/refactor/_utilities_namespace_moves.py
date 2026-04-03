@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import ast
 from collections import defaultdict
 from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
-from flext_infra import c, m, t
-from flext_infra.refactor._utilities_namespace_common import (
+from flext_infra import (
     FlextInfraUtilitiesRefactorNamespaceCommon,
+    c,
+    m,
+    t,
 )
 
 
@@ -34,7 +37,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
             move = FlextInfraUtilitiesRefactorNamespaceMoves._move_named_blocks(
                 project_root=project_root,
                 source_file=source_file,
-                target_filename="protocols.py",
+                target_filename=c.Infra.Files.PROTOCOLS_PY,
                 names=protocol_names,
                 header_prefix="class ",
             )
@@ -136,12 +139,23 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
             source_file=source_file,
             filename=target_filename,
         )
+        required_imports = (
+            FlextInfraUtilitiesRefactorNamespaceMoves._collect_required_import_lines(
+                source=source,
+                blocks=blocks,
+            )
+        )
         target_source = (
             target_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
             if target_file.exists()
-            else "from __future__ import annotations\n"
+            else f"{c.Infra.SourceCode.FUTURE_ANNOTATIONS}\n"
         )
-        updated_target = target_source.rstrip()
+        target_lines = target_source.splitlines()
+        target_lines = FlextInfraUtilitiesRefactorNamespaceMoves._insert_import_lines(
+            lines=target_lines,
+            imports=required_imports,
+        )
+        updated_target = "\n".join(target_lines).rstrip()
         for block in blocks:
             if block.splitlines()[0] not in updated_target:
                 updated_target += f"\n\n{block}"
@@ -157,6 +171,44 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
             encoding=c.Infra.Encoding.DEFAULT,
         )
         return (source_file, target_file, tuple(moved))
+
+    @staticmethod
+    def _collect_required_import_lines(
+        *,
+        source: str,
+        blocks: Sequence[str],
+    ) -> t.StrSequence:
+        source_ast = ast.parse(source)
+        source_lines = source.splitlines()
+        import_map: dict[str, str] = {}
+        for node in source_ast.body:
+            if isinstance(node, ast.Import):
+                import_line = "\n".join(
+                    source_lines[node.lineno - 1 : node.end_lineno],
+                ).strip()
+                for alias in node.names:
+                    bound_name = alias.asname or alias.name.split(".", 1)[0]
+                    import_map[bound_name] = import_line
+            if isinstance(node, ast.ImportFrom):
+                import_line = "\n".join(
+                    source_lines[node.lineno - 1 : node.end_lineno],
+                ).strip()
+                for alias in node.names:
+                    bound_name = alias.asname or alias.name
+                    import_map[bound_name] = import_line
+        required_imports: MutableSequence[str] = []
+        seen_imports: t.Infra.StrSet = set()
+        for block in blocks:
+            block_ast = ast.parse(block)
+            for node in ast.walk(block_ast):
+                if not isinstance(node, ast.Name):
+                    continue
+                import_line = import_map.get(node.id)
+                if import_line is None or import_line in seen_imports:
+                    continue
+                required_imports.append(import_line)
+                seen_imports.add(import_line)
+        return required_imports
 
     @staticmethod
     def _move_typing_alias_lines(
@@ -183,12 +235,12 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
         target_file = FlextInfraUtilitiesRefactorNamespaceMoves._canonical_target_file(
             project_root=project_root,
             source_file=source_file,
-            filename="typings.py",
+            filename=c.Infra.Files.TYPINGS_PY,
         )
         target_source = (
             target_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
             if target_file.exists()
-            else "from __future__ import annotations\n"
+            else f"{c.Infra.SourceCode.FUTURE_ANNOTATIONS}\n"
         )
         updated_target = target_source.rstrip() + "\n\n" + "\n".join(moved_lines) + "\n"
         _ = target_file.write_text(updated_target, encoding=c.Infra.Encoding.DEFAULT)
@@ -212,7 +264,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
             except ValueError:
                 return ""
             parts = list(relative.with_suffix("").parts)
-            if parts and parts[-1] == "__init__":
+            if parts and parts[-1] == c.Infra.Dunders.INIT:
                 parts = parts[:-1]
             return ".".join(parts)
 

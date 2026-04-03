@@ -116,6 +116,22 @@ class FlextInfraUtilitiesToml:
         return arr.multiline(True)
 
     @staticmethod
+    def get_table(container: TOMLDocument | Table, key: str) -> Table | None:
+        """Get a sub-table from a TOML container, or None if missing/not a Table."""
+        if key not in container:
+            return None
+        value = container[key]
+        return value if isinstance(value, Table) else None
+
+    @staticmethod
+    def get_item(container: TOMLDocument | Table, key: str) -> Item | None:
+        """Get a raw TOML Item from a container, or None if missing."""
+        if key not in container:
+            return None
+        value = container[key]
+        return value if isinstance(value, Item) else None
+
+    @staticmethod
     def ensure_table(parent: Table | TOMLDocument, key: str) -> Table:
         """Get or create a TOML table in parent.
 

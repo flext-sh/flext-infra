@@ -9,9 +9,9 @@ from pathlib import Path
 import pytest
 import tomlkit
 from flext_tests import tm
+from tests import u
 
 from flext_infra import FlextInfraPyprojectModernizer
-from tests import u
 
 
 class TestFlextInfraPyprojectModernizer:

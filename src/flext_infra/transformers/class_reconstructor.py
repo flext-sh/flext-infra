@@ -7,8 +7,7 @@ from typing import override
 
 from pydantic import TypeAdapter, ValidationError
 
-from flext_infra import m, t, u
-from flext_infra.transformers._base import FlextInfraRopeTransformer
+from flext_infra import FlextInfraRopeTransformer, m, t, u
 
 
 class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):

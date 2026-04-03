@@ -21,9 +21,9 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from flext_tests import tm
+from tests import t
 
 from flext_core import r
-from tests import t
 
 
 class FlextInfraTestHelpers:

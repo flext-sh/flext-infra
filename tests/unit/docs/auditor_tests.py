@@ -11,9 +11,9 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
+from tests import m
 
 from flext_infra import FlextInfraDocAuditor
-from tests import m
 
 
 @pytest.fixture

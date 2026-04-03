@@ -14,13 +14,13 @@ from typing import TYPE_CHECKING
 
 import pytest
 from flext_tests import tm
+from tests import c, m, t, u
 
 from flext_core import r
 from flext_infra import (
     FlextInfraReleaseOrchestrator,
     orchestrator as release_orchestrator_module,
 )
-from tests import c, m, t, u
 
 if TYPE_CHECKING:
     from pathlib import Path

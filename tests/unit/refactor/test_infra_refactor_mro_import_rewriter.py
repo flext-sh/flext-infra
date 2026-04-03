@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import FlextInfraRefactorMROImportRewriter
 from tests import m
+
+from flext_infra import FlextInfraRefactorMROImportRewriter
 
 
 def _build_workspace(tmp_path: Path) -> tuple[Path, Path, Path]:

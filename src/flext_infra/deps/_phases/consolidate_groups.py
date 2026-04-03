@@ -89,6 +89,8 @@ class FlextInfraConsolidateGroupsPhase:
                         u.Infra.ensure_table(poetry_group, c.Infra.DEV),
                         c.Infra.DEPENDENCIES,
                     )
+                if poetry_dev_table is None:  # pragma: no cover
+                    continue
                 for dep_name_raw in old_deps:
                     dep_name = dep_name_raw
                     dep_value = old_deps[dep_name_raw]

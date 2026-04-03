@@ -10,13 +10,11 @@ from flext_infra import (
     FlextInfraUtilitiesFormatting,
     FlextInfraUtilitiesImportNormalizer,
     FlextInfraUtilitiesIteration,
+    FlextInfraUtilitiesRefactorNamespaceCommon,
     FlextInfraUtilitiesRope,
     c,
     m,
     t,
-)
-from flext_infra.refactor._utilities_namespace_common import (
-    FlextInfraUtilitiesRefactorNamespaceCommon,
 )
 
 

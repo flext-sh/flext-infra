@@ -12,11 +12,21 @@ from __future__ import annotations
 from collections.abc import MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
-from flext_infra import c, t
-from flext_infra._utilities.codegen_lazy_scanning import (
+from flext_infra import (
     FlextInfraUtilitiesCodegenLazyScanning as _scan,
+    FlextInfraUtilitiesDiscovery,
+    c,
+    t,
 )
-from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
+
+_CORE_RUNTIME_ALIAS_TARGETS: dict[str, t.Infra.StrPair] = {
+    "d": ("flext_core.decorators", "FlextDecorators"),
+    "e": ("flext_core.exceptions", "FlextExceptions"),
+    "h": ("flext_core.handlers", "FlextHandlers"),
+    "r": ("flext_core.result", "FlextResult"),
+    "s": ("flext_core.service", "FlextService"),
+    "x": ("flext_core.mixins", "FlextMixins"),
+}
 
 
 class FlextInfraUtilitiesCodegenLazyAliases:
@@ -46,15 +56,32 @@ class FlextInfraUtilitiesCodegenLazyAliases:
         pkg_dir: Path,
     ) -> None:
         """Resolve single-letter aliases from ALIAS_TO_SUFFIX mapping."""
+        current_pkg = FlextInfraUtilitiesDiscovery.discover_package_from_file(
+            pkg_dir / c.Infra.Files.INIT_PY
+        )
         for alias, suffix in c.Infra.ALIAS_TO_SUFFIX.items():
             expected_module = "typings" if suffix == "Types" else suffix.lower()
             if self._existing_alias_is_canonical(
                 lazy_map, alias, suffix, expected_module
             ):
                 continue
+            if (
+                current_pkg == c.Infra.Packages.CORE_UNDERSCORE
+                and alias in _CORE_RUNTIME_ALIAS_TARGETS
+            ):
+                lazy_map[alias] = _CORE_RUNTIME_ALIAS_TARGETS[alias]
+                continue
+            if alias == "s":
+                service_target = self._find_service_target(lazy_map)
+                if service_target is not None:
+                    lazy_map[alias] = service_target
+                    continue
             facade_target = self._find_facade_target(lazy_map, suffix, expected_module)
             if facade_target is not None:
                 lazy_map[alias] = facade_target
+                continue
+            if alias in _CORE_RUNTIME_ALIAS_TARGETS:
+                lazy_map[alias] = _CORE_RUNTIME_ALIAS_TARGETS[alias]
                 continue
             if alias in lazy_map:
                 continue
@@ -91,6 +118,7 @@ class FlextInfraUtilitiesCodegenLazyAliases:
         suffix: str,
         expected_module: str,
     ) -> t.Infra.StrPair | None:
+        candidates: MutableSequence[tuple[int, int, str, str]] = []
         for name, (mod, _attr) in list(lazy_map.items()):
             basename = mod.rsplit(".", 1)[-1]
             if (
@@ -98,7 +126,27 @@ class FlextInfraUtilitiesCodegenLazyAliases:
                 and mod.count(".") >= 1
                 and basename == expected_module
             ):
-                return (mod, name)
+                candidates.append((mod.count("."), mod.count("._"), mod, name))
+        if not candidates:
+            return None
+        _depth, _private_count, module_path, export_name = min(candidates)
+        return (module_path, export_name)
+
+    @staticmethod
+    def _find_service_target(
+        lazy_map: t.Infra.MutableLazyImportMap,
+    ) -> t.Infra.StrPair | None:
+        """Resolve the canonical `s` alias from local public service/base modules."""
+        for module_name, suffixes in (
+            ("base", ("ServiceBase",)),
+            ("service", ("Service",)),
+            ("api", ("Service",)),
+        ):
+            for name, (mod, _attr) in list(lazy_map.items()):
+                if mod.rsplit(".", 1)[-1] != module_name:
+                    continue
+                if any(name.endswith(suffix) for suffix in suffixes):
+                    return (mod, name)
         return None
 
     @staticmethod
@@ -108,7 +156,7 @@ class FlextInfraUtilitiesCodegenLazyAliases:
             pkg_dir,
             return_module=True,
         )
-        if not result or result == "flext_core":
+        if not result or result == c.Infra.Packages.CORE_UNDERSCORE:
             return result or None
         return result.split(".")[0]
 
@@ -184,7 +232,7 @@ class FlextInfraUtilitiesCodegenLazyAliases:
     @staticmethod
     def _discover_project_root(pkg_dir: Path) -> Path | None:
         for candidate in (pkg_dir, *pkg_dir.parents):
-            if (candidate / "pyproject.toml").is_file():
+            if (candidate / c.Infra.Files.PYPROJECT_FILENAME).is_file():
                 return candidate
         return None
 
@@ -193,14 +241,22 @@ class FlextInfraUtilitiesCodegenLazyAliases:
         package_path = Path(*package_name.split("."))
         root_segment = package_path.parts[0] if package_path.parts else ""
         candidates: MutableSequence[Path] = []
-        if root_segment in {"tests", "examples", "scripts"}:
+        if root_segment in {
+            c.Infra.Directories.TESTS,
+            c.Infra.Directories.EXAMPLES,
+            c.Infra.Directories.SCRIPTS,
+        }:
             candidates.append(base_dir / package_path)
-        candidates.append(base_dir / "src" / package_path)
-        if root_segment not in {"tests", "examples", "scripts"}:
+        candidates.append(base_dir / c.Infra.Paths.DEFAULT_SRC_DIR / package_path)
+        if root_segment not in {
+            c.Infra.Directories.TESTS,
+            c.Infra.Directories.EXAMPLES,
+            c.Infra.Directories.SCRIPTS,
+        }:
             candidates.extend([
-                base_dir / "tests" / package_path,
-                base_dir / "examples" / package_path,
-                base_dir / "scripts" / package_path,
+                base_dir / c.Infra.Directories.TESTS / package_path,
+                base_dir / c.Infra.Directories.EXAMPLES / package_path,
+                base_dir / c.Infra.Directories.SCRIPTS / package_path,
             ])
         return tuple(candidates)
 
@@ -208,15 +264,25 @@ class FlextInfraUtilitiesCodegenLazyAliases:
         package_path = Path(*package_name.split("."))
         root_segment = package_path.parts[0] if package_path.parts else ""
         patterns: MutableSequence[str] = []
-        if root_segment in {"tests", "examples", "scripts"}:
+        if root_segment in {
+            c.Infra.Directories.TESTS,
+            c.Infra.Directories.EXAMPLES,
+            c.Infra.Directories.SCRIPTS,
+        }:
             patterns.append(str(Path("*") / package_path))
         else:
-            patterns.append(str(Path("*") / "src" / package_path))
-        if root_segment not in {"tests", "examples", "scripts"}:
+            patterns.append(
+                str(Path("*") / c.Infra.Paths.DEFAULT_SRC_DIR / package_path)
+            )
+        if root_segment not in {
+            c.Infra.Directories.TESTS,
+            c.Infra.Directories.EXAMPLES,
+            c.Infra.Directories.SCRIPTS,
+        }:
             patterns.extend([
-                str(Path("*") / "tests" / package_path),
-                str(Path("*") / "examples" / package_path),
-                str(Path("*") / "scripts" / package_path),
+                str(Path("*") / c.Infra.Directories.TESTS / package_path),
+                str(Path("*") / c.Infra.Directories.EXAMPLES / package_path),
+                str(Path("*") / c.Infra.Directories.SCRIPTS / package_path),
             ])
         candidates: MutableSequence[Path] = []
         for pattern in patterns:

@@ -8,11 +8,11 @@ from collections.abc import Sequence
 from typing import override
 
 from flext_infra import (
+    FlextInfraRopeTransformer,
     m,
     t,
     u,
 )
-from flext_infra.transformers._base import FlextInfraRopeTransformer
 
 
 class FlextInfraHelperConsolidationTransformer(FlextInfraRopeTransformer):

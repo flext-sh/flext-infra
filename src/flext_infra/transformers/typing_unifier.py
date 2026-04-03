@@ -47,7 +47,7 @@ class FlextInfraRefactorTypingUnifier:
         source = self._modernize_typealias(rope_project, resource)
         return source, self.changes
 
-    def _build_replacements(self, source: str) -> Mapping[str, str]:
+    def _build_replacements(self, source: str) -> t.StrMapping:
         """Scan source for union patterns matching canonical map entries."""
         result: dict[str, str] = {}
         for member_set, canonical in self._canonical_map.items():

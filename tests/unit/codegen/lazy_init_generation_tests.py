@@ -15,12 +15,13 @@ from flext_tests import tm
 
 import flext_infra.codegen as mod
 from flext_core import r
-from flext_infra import FlextInfraCodegenGeneration, t
-from flext_infra._utilities.codegen_lazy_aliases import (
+from flext_infra import (
+    FlextInfraCodegenGeneration,
     FlextInfraUtilitiesCodegenLazyAliases,
+    FlextInfraUtilitiesFormatting,
+    FlextInfraUtilitiesSubprocess,
+    t,
 )
-from flext_infra._utilities.formatting import FlextInfraUtilitiesFormatting
-from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
 
 
 def _resolve_aliases(lazy_map: MutableMapping[str, tuple[str, str]]) -> None:

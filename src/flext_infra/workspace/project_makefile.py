@@ -51,7 +51,7 @@ class FlextInfraProjectMakefileUpdater:
 
         """
         _ = canonical_root  # reserved for future cross-project dependency resolution
-        pyproject = project_root / "pyproject.toml"
+        pyproject = project_root / c.Infra.Files.PYPROJECT_FILENAME
         if not pyproject.exists():
             return r[bool].ok(False)
 
@@ -68,7 +68,7 @@ class FlextInfraProjectMakefileUpdater:
         bootstrap = bootstrap_result.value
 
         new_content = self._build_makefile(meta, bootstrap)
-        makefile_path = project_root / "Makefile"
+        makefile_path = project_root / c.Infra.Files.MAKEFILE_FILENAME
 
         if makefile_path.exists():
             try:
@@ -135,8 +135,8 @@ class FlextInfraProjectMakefileUpdater:
             "",
             f"PROJECT_NAME := {meta.name}",
             f"PYTHON_VERSION ?= {meta.python_version}",
-            "SRC_DIR ?= src",
-            "TESTS_DIR ?= tests",
+            f"SRC_DIR ?= {c.Infra.Paths.DEFAULT_SRC_DIR}",
+            f"TESTS_DIR ?= {c.Infra.Directories.TESTS}",
             bootstrap,
             "",
             "# Project-specific targets (optional, never overwritten by sync)",

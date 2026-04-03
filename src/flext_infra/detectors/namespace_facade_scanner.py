@@ -10,8 +10,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from flext_core import FlextUtilities
-from flext_infra import c, m, t
-from flext_infra._utilities import FlextInfraUtilitiesRope
+from flext_infra import FlextInfraUtilitiesRope, c, m, t
 
 
 class FlextInfraNamespaceFacadeScanner:

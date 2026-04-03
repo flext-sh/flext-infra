@@ -6,9 +6,8 @@ import pytest
 import tomlkit
 import tomlkit.items
 from flext_tests import tm
-from tomlkit.toml_document import TOMLDocument
-
 from tests import t, u
+from tomlkit.toml_document import TOMLDocument
 
 
 @pytest.fixture

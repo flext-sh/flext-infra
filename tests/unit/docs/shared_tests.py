@@ -11,9 +11,9 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
+from tests import c, m, u
 
 from flext_core import r
-from tests import c, m, u
 
 _OUT = c.Infra.DEFAULT_DOCS_OUTPUT_DIR
 

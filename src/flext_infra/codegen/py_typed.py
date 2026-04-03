@@ -59,7 +59,7 @@ class FlextInfraCodegenPyTyped(s[int]):
                 ):
                     continue
                 marker = dirpath / self._PY_TYPED_FILENAME
-                has_py = self._dir_has_py_files(dirpath)
+                has_py = u.Infra.dir_has_py_files(dirpath)
                 if has_py and not marker.exists():
                     if not check_only:
                         marker.touch()
@@ -73,14 +73,6 @@ class FlextInfraCodegenPyTyped(s[int]):
             f"py.typed {mode}: {created} created, {removed} removed",
         )
         return created + removed
-
-    @staticmethod
-    def _dir_has_py_files(dirpath: Path) -> bool:
-        return any(
-            f.suffix == c.Infra.Extensions.PYTHON and f.name != c.Infra.Files.INIT_PY
-            for f in dirpath.iterdir()
-            if f.is_file()
-        )
 
 
 __all__ = ["FlextInfraCodegenPyTyped"]

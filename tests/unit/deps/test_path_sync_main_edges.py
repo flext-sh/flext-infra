@@ -6,10 +6,10 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
+from tests import m, t
 
 from flext_core import r
 from flext_infra import FlextInfraDependencyPathSync, path_sync as path_sync_module
-from tests import m, t
 
 
 def _project(path: Path, name: str = "flext-core") -> m.Infra.ProjectInfo:

@@ -10,9 +10,9 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tf, tm
+from tests import m, u
 
 from flext_infra import FlextInfraDocFixer
-from tests import m, u
 
 
 @pytest.fixture

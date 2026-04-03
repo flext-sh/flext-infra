@@ -47,6 +47,8 @@ class FlextInfraUtilitiesFormatting:
             c.Infra.CHECK,
             "--fix",
         ]
+        if path.name == c.Infra.Files.INIT_PY:
+            check_cmd.extend(["--ignore", "TCH001,TCH002,TCH003"])
         if use_quiet:
             check_cmd.append("--quiet")
         check_cmd.append(str(path))
@@ -91,7 +93,7 @@ class FlextInfraUtilitiesFormatting:
         else:
             stem = class_name
         if stem == "Flext":
-            return "flext_core"
+            return c.Infra.Packages.CORE_UNDERSCORE
         chars: MutableSequence[str] = []
         for i, ch in enumerate(stem):
             if ch.isupper() and i > 0:

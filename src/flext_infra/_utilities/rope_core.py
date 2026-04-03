@@ -55,7 +55,7 @@ class FlextInfraUtilitiesRopeCore:
         module_name: str,
     ) -> t.Infra.RopeResource | None:
         """Return rope File for a dotted module name, or None if not found."""
-        relative_path = module_name.replace(".", "/") + ".py"
+        relative_path = module_name.replace(".", "/") + c.Infra.Extensions.PYTHON
         for prefix in ("", "src/"):
             try:
                 resource = rope_project.get_resource(prefix + relative_path)

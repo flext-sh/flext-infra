@@ -5,25 +5,291 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING as _TYPE_CHECKING
+import typing as _t
 
+from tests.unit.refactor.test_infra_refactor_analysis import (
+    test_build_impact_map_extracts_rename_entries,
+    test_build_impact_map_extracts_signature_entries,
+    test_main_analyze_violations_is_read_only,
+    test_main_analyze_violations_writes_json_report,
+    test_violation_analysis_counts_massive_patterns,
+    test_violation_analyzer_skips_non_utf8_files,
+)
+from tests.unit.refactor.test_infra_refactor_class_and_propagation import (
+    test_class_reconstructor_reorders_each_contiguous_method_block,
+    test_class_reconstructor_reorders_methods_by_config,
+    test_class_reconstructor_skips_interleaved_non_method_members,
+    test_signature_propagation_removes_and_adds_keywords,
+    test_signature_propagation_renames_call_keyword,
+    test_symbol_propagation_keeps_alias_reference_when_asname_used,
+    test_symbol_propagation_renames_import_and_local_references,
+    test_symbol_propagation_updates_mro_base_references,
+)
+from tests.unit.refactor.test_infra_refactor_class_placement import (
+    test_detects_attribute_base_class,
+    test_detects_basemodel_in_non_model_file,
+    test_detects_multiple_models,
+    test_non_pydantic_class_not_flagged,
+    test_skips_models_directory,
+    test_skips_models_file,
+    test_skips_private_class,
+    test_skips_protected_files,
+    test_skips_settings_file,
+)
+from tests.unit.refactor.test_infra_refactor_engine import (
+    test_engine_always_enables_class_nesting_file_rule,
+    test_refactor_files_skips_non_python_inputs,
+    test_refactor_project_scans_tests_and_scripts_dirs,
+    test_rule_dispatch_fails_on_invalid_pattern_rule_config,
+    test_rule_dispatch_fails_on_unknown_rule_mapping,
+    test_rule_dispatch_keeps_legacy_id_fallback_mapping,
+    test_rule_dispatch_prefers_fix_action_metadata,
+)
+from tests.unit.refactor.test_infra_refactor_import_modernizer import (
+    test_import_modernizer_adds_c_when_existing_c_is_aliased,
+    test_import_modernizer_does_not_rewrite_function_parameter_shadow,
+    test_import_modernizer_does_not_rewrite_rebound_local_name_usage,
+    test_import_modernizer_partial_import_keeps_unmapped_symbols,
+    test_import_modernizer_partial_import_with_asname_keeps_unmapped_alias,
+    test_import_modernizer_skips_rewrite_when_runtime_alias_shadowed_in_function,
+    test_import_modernizer_skips_when_runtime_alias_name_is_blocked,
+    test_import_modernizer_updates_aliased_symbol_usage,
+    test_lazy_import_rule_hoists_import_to_module_level,
+    test_lazy_import_rule_uses_fix_action_for_hoist,
+)
+from tests.unit.refactor.test_infra_refactor_legacy_and_annotations import (
+    test_ensure_future_annotations_after_docstring,
+    test_ensure_future_annotations_moves_existing_import_to_top,
+    test_legacy_import_bypass_collapses_to_primary_import,
+    test_legacy_rule_uses_fix_action_remove_for_aliases,
+    test_legacy_wrapper_forwarding_keywords_is_inlined_as_alias,
+    test_legacy_wrapper_forwarding_varargs_is_inlined_as_alias,
+    test_legacy_wrapper_function_is_inlined_as_alias,
+    test_legacy_wrapper_non_passthrough_is_not_inlined,
+)
+from tests.unit.refactor.test_infra_refactor_mro_completeness import (
+    test_detects_missing_local_composition_base,
+    test_rewriter_adds_missing_base_and_formats,
+    test_skips_non_facade_files,
+    test_skips_private_candidate_classes,
+    test_skips_when_candidate_is_already_in_facade_bases,
+)
+from tests.unit.refactor.test_infra_refactor_mro_import_rewriter import (
+    test_migrate_workspace_applies_consumer_rewrites,
+    test_migrate_workspace_dry_run_preserves_files,
+)
+from tests.unit.refactor.test_infra_refactor_namespace_aliases import (
+    rope_project,
+    test_import_alias_detector_skips_facade_and_subclass_files,
+    test_import_alias_detector_skips_nested_private_and_as_renames,
+    test_import_alias_detector_skips_private_and_class_imports,
+    test_namespace_rewriter_keeps_contextual_alias_subset,
+    test_namespace_rewriter_only_rewrites_runtime_alias_imports,
+    test_namespace_rewriter_skips_facade_and_subclass_files,
+    test_namespace_rewriter_skips_nested_private_as_rename_and_duplicates,
+    test_runtime_alias_migrator_merges_local_imports_in_src,
+    test_runtime_alias_migrator_merges_local_imports_in_tests,
+    test_runtime_alias_migrator_skips_unsafe_local_cycle,
+)
+from tests.unit.refactor.test_infra_refactor_namespace_source import (
+    FAMILY_FILE_MAP,
+    FAMILY_SUFFIX_MAP,
+    test_detects_only_wrong_alias_in_mixed_import,
+    test_detects_same_project_submodule_alias_import,
+    test_detects_wrong_source_m_import,
+    test_detects_wrong_source_u_import,
+    test_project_without_alias_facade_has_no_violation,
+    test_rewriter_namespace_source_is_idempotent_with_ruff,
+    test_rewriter_preserves_non_alias_symbols,
+    test_rewriter_splits_mixed_imports_correctly,
+    test_skips_facade_declaration_files,
+    test_skips_import_as_rename,
+    test_skips_init_file,
+    test_skips_non_alias_symbols,
+    test_skips_r_alias_universal_exception,
+    test_skips_same_project_private_submodule,
+    test_skips_same_project_submodule_class_import,
+)
+from tests.unit.refactor.test_infra_refactor_pattern_corrections import (
+    test_pattern_rule_converts_dict_annotations_to_mapping,
+    test_pattern_rule_keeps_dict_param_when_copy_used,
+    test_pattern_rule_keeps_dict_param_when_subscript_mutated,
+    test_pattern_rule_keeps_type_cast_when_not_nested_object_cast,
+    test_pattern_rule_optionally_converts_return_annotations_to_mapping,
+    test_pattern_rule_removes_configured_redundant_casts,
+    test_pattern_rule_removes_nested_type_object_cast_chain,
+    test_pattern_rule_skips_overload_signatures,
+)
+from tests.unit.refactor.test_infra_refactor_project_classifier import (
+    test_read_project_metadata_preserves_pep621_dependency_order,
+    test_read_project_metadata_preserves_poetry_dependency_order,
+)
+from tests.unit.refactor.test_infra_refactor_safety import (
+    EngineSafetyStub,
+    test_refactor_project_integrates_safety_manager,
+)
+from tests.unit.refactor.test_infra_refactor_typing_unifier import (
+    test_all_three_capabilities_in_one_pass,
+    test_converts_multiple_aliases,
+    test_converts_typealias_to_pep695,
+    test_injects_t_import_when_needed,
+    test_no_duplicate_t_import_when_t_from_project_package,
+    test_noop_clean_module,
+    test_preserves_annotated_in_function_params,
+    test_preserves_non_matching_unions,
+    test_preserves_override_in_method,
+    test_preserves_protocol_and_runtime_checkable,
+    test_preserves_type_checking_import,
+    test_preserves_typealias_import_when_class_level_usage_exists,
+    test_preserves_used_imports_when_import_precedes_usage,
+    test_preserves_used_typing_imports,
+    test_removes_all_imports_when_none_used_import_first,
+    test_removes_all_unused_typing_imports,
+    test_removes_dead_typealias_import,
+    test_removes_typealias_import_only_when_all_usages_converted,
+    test_removes_unused_preserves_used_when_import_precedes_usage,
+    test_replaces_container_union,
+    test_replaces_numeric_union,
+    test_replaces_primitives_union,
+    test_replaces_scalar_union,
+    test_skips_definition_files,
+    test_skips_union_with_none,
+    test_typealias_conversion_preserves_used_typing_siblings,
+)
+from tests.unit.refactor.test_main_cli import (
+    refactor_main,
+    test_refactor_census_rejects_apply_before_subcommand,
+    test_refactor_centralize_accepts_apply_before_subcommand,
+    test_refactor_runtime_alias_imports_accepts_aliases_and_project,
+)
+
+from flext_core.constants import FlextConstants as c
+from flext_core.decorators import FlextDecorators as d
+from flext_core.exceptions import FlextExceptions as e
+from flext_core.handlers import FlextHandlers as h
 from flext_core.lazy import install_lazy_exports
+from flext_core.mixins import FlextMixins as x
+from flext_core.models import FlextModels as m
+from flext_core.protocols import FlextProtocols as p
+from flext_core.result import FlextResult as r
+from flext_core.service import FlextService as s
+from flext_core.typings import FlextTypes as t
+from flext_core.utilities import FlextUtilities as u
 
-if _TYPE_CHECKING:
-    from flext_core import FlextTypes
-    from flext_core.constants import FlextConstants as c
-    from flext_core.decorators import FlextDecorators as d
-    from flext_core.exceptions import FlextExceptions as e
-    from flext_core.handlers import FlextHandlers as h
-    from flext_core.mixins import FlextMixins as x
-    from flext_core.models import FlextModels as m
-    from flext_core.protocols import FlextProtocols as p
-    from flext_core.result import FlextResult as r
-    from flext_core.service import FlextService as s
-    from flext_core.typings import FlextTypes as t
-    from flext_core.utilities import FlextUtilities as u
-    from tests.unit.refactor import (
+if _t.TYPE_CHECKING:
+    import tests.unit.refactor.test_infra_refactor_analysis as _tests_unit_refactor_test_infra_refactor_analysis
+
+    test_infra_refactor_analysis = _tests_unit_refactor_test_infra_refactor_analysis
+    import tests.unit.refactor.test_infra_refactor_class_and_propagation as _tests_unit_refactor_test_infra_refactor_class_and_propagation
+
+    test_infra_refactor_class_and_propagation = (
+        _tests_unit_refactor_test_infra_refactor_class_and_propagation
+    )
+    import tests.unit.refactor.test_infra_refactor_class_placement as _tests_unit_refactor_test_infra_refactor_class_placement
+
+    test_infra_refactor_class_placement = (
+        _tests_unit_refactor_test_infra_refactor_class_placement
+    )
+    import tests.unit.refactor.test_infra_refactor_engine as _tests_unit_refactor_test_infra_refactor_engine
+
+    test_infra_refactor_engine = _tests_unit_refactor_test_infra_refactor_engine
+    import tests.unit.refactor.test_infra_refactor_import_modernizer as _tests_unit_refactor_test_infra_refactor_import_modernizer
+
+    test_infra_refactor_import_modernizer = (
+        _tests_unit_refactor_test_infra_refactor_import_modernizer
+    )
+    import tests.unit.refactor.test_infra_refactor_legacy_and_annotations as _tests_unit_refactor_test_infra_refactor_legacy_and_annotations
+
+    test_infra_refactor_legacy_and_annotations = (
+        _tests_unit_refactor_test_infra_refactor_legacy_and_annotations
+    )
+    import tests.unit.refactor.test_infra_refactor_mro_completeness as _tests_unit_refactor_test_infra_refactor_mro_completeness
+
+    test_infra_refactor_mro_completeness = (
+        _tests_unit_refactor_test_infra_refactor_mro_completeness
+    )
+    import tests.unit.refactor.test_infra_refactor_mro_import_rewriter as _tests_unit_refactor_test_infra_refactor_mro_import_rewriter
+
+    test_infra_refactor_mro_import_rewriter = (
+        _tests_unit_refactor_test_infra_refactor_mro_import_rewriter
+    )
+    import tests.unit.refactor.test_infra_refactor_namespace_aliases as _tests_unit_refactor_test_infra_refactor_namespace_aliases
+
+    test_infra_refactor_namespace_aliases = (
+        _tests_unit_refactor_test_infra_refactor_namespace_aliases
+    )
+    import tests.unit.refactor.test_infra_refactor_namespace_source as _tests_unit_refactor_test_infra_refactor_namespace_source
+
+    test_infra_refactor_namespace_source = (
+        _tests_unit_refactor_test_infra_refactor_namespace_source
+    )
+    import tests.unit.refactor.test_infra_refactor_pattern_corrections as _tests_unit_refactor_test_infra_refactor_pattern_corrections
+
+    test_infra_refactor_pattern_corrections = (
+        _tests_unit_refactor_test_infra_refactor_pattern_corrections
+    )
+    import tests.unit.refactor.test_infra_refactor_project_classifier as _tests_unit_refactor_test_infra_refactor_project_classifier
+
+    test_infra_refactor_project_classifier = (
+        _tests_unit_refactor_test_infra_refactor_project_classifier
+    )
+    import tests.unit.refactor.test_infra_refactor_safety as _tests_unit_refactor_test_infra_refactor_safety
+
+    test_infra_refactor_safety = _tests_unit_refactor_test_infra_refactor_safety
+    import tests.unit.refactor.test_infra_refactor_typing_unifier as _tests_unit_refactor_test_infra_refactor_typing_unifier
+
+    test_infra_refactor_typing_unifier = (
+        _tests_unit_refactor_test_infra_refactor_typing_unifier
+    )
+    import tests.unit.refactor.test_main_cli as _tests_unit_refactor_test_main_cli
+
+    test_main_cli = _tests_unit_refactor_test_main_cli
+
+    _ = (
+        EngineSafetyStub,
+        FAMILY_FILE_MAP,
+        FAMILY_SUFFIX_MAP,
+        c,
+        d,
+        e,
+        h,
+        m,
+        p,
+        r,
+        refactor_main,
+        rope_project,
+        s,
+        t,
+        test_all_three_capabilities_in_one_pass,
+        test_build_impact_map_extracts_rename_entries,
+        test_build_impact_map_extracts_signature_entries,
+        test_class_reconstructor_reorders_each_contiguous_method_block,
+        test_class_reconstructor_reorders_methods_by_config,
+        test_class_reconstructor_skips_interleaved_non_method_members,
+        test_converts_multiple_aliases,
+        test_converts_typealias_to_pep695,
+        test_detects_attribute_base_class,
+        test_detects_basemodel_in_non_model_file,
+        test_detects_missing_local_composition_base,
+        test_detects_multiple_models,
+        test_detects_only_wrong_alias_in_mixed_import,
+        test_detects_same_project_submodule_alias_import,
+        test_detects_wrong_source_m_import,
+        test_detects_wrong_source_u_import,
+        test_engine_always_enables_class_nesting_file_rule,
+        test_ensure_future_annotations_after_docstring,
+        test_ensure_future_annotations_moves_existing_import_to_top,
+        test_import_alias_detector_skips_facade_and_subclass_files,
+        test_import_alias_detector_skips_nested_private_and_as_renames,
+        test_import_alias_detector_skips_private_and_class_imports,
+        test_import_modernizer_adds_c_when_existing_c_is_aliased,
+        test_import_modernizer_does_not_rewrite_function_parameter_shadow,
+        test_import_modernizer_does_not_rewrite_rebound_local_name_usage,
+        test_import_modernizer_partial_import_keeps_unmapped_symbols,
+        test_import_modernizer_partial_import_with_asname_keeps_unmapped_alias,
+        test_import_modernizer_skips_rewrite_when_runtime_alias_shadowed_in_function,
+        test_import_modernizer_skips_when_runtime_alias_name_is_blocked,
+        test_import_modernizer_updates_aliased_symbol_usage,
         test_infra_refactor_analysis,
         test_infra_refactor_class_and_propagation,
         test_infra_refactor_class_placement,
@@ -38,112 +304,27 @@ if _TYPE_CHECKING:
         test_infra_refactor_project_classifier,
         test_infra_refactor_safety,
         test_infra_refactor_typing_unifier,
-        test_main_cli,
-    )
-    from tests.unit.refactor.test_infra_refactor_analysis import (
-        test_build_impact_map_extracts_rename_entries,
-        test_build_impact_map_extracts_signature_entries,
-        test_main_analyze_violations_is_read_only,
-        test_main_analyze_violations_writes_json_report,
-        test_violation_analysis_counts_massive_patterns,
-        test_violation_analyzer_skips_non_utf8_files,
-    )
-    from tests.unit.refactor.test_infra_refactor_class_and_propagation import (
-        test_class_reconstructor_reorders_each_contiguous_method_block,
-        test_class_reconstructor_reorders_methods_by_config,
-        test_class_reconstructor_skips_interleaved_non_method_members,
-        test_signature_propagation_removes_and_adds_keywords,
-        test_signature_propagation_renames_call_keyword,
-        test_symbol_propagation_keeps_alias_reference_when_asname_used,
-        test_symbol_propagation_renames_import_and_local_references,
-        test_symbol_propagation_updates_mro_base_references,
-    )
-    from tests.unit.refactor.test_infra_refactor_class_placement import (
-        test_detects_attribute_base_class,
-        test_detects_basemodel_in_non_model_file,
-        test_detects_multiple_models,
-        test_non_pydantic_class_not_flagged,
-        test_skips_models_directory,
-        test_skips_models_file,
-        test_skips_private_class,
-        test_skips_protected_files,
-        test_skips_settings_file,
-    )
-    from tests.unit.refactor.test_infra_refactor_engine import (
-        test_engine_always_enables_class_nesting_file_rule,
-        test_refactor_files_skips_non_python_inputs,
-        test_refactor_project_scans_tests_and_scripts_dirs,
-        test_rule_dispatch_fails_on_invalid_pattern_rule_config,
-        test_rule_dispatch_fails_on_unknown_rule_mapping,
-        test_rule_dispatch_keeps_legacy_id_fallback_mapping,
-        test_rule_dispatch_prefers_fix_action_metadata,
-    )
-    from tests.unit.refactor.test_infra_refactor_import_modernizer import (
-        test_import_modernizer_adds_c_when_existing_c_is_aliased,
-        test_import_modernizer_does_not_rewrite_function_parameter_shadow,
-        test_import_modernizer_does_not_rewrite_rebound_local_name_usage,
-        test_import_modernizer_partial_import_keeps_unmapped_symbols,
-        test_import_modernizer_partial_import_with_asname_keeps_unmapped_alias,
-        test_import_modernizer_skips_rewrite_when_runtime_alias_shadowed_in_function,
-        test_import_modernizer_skips_when_runtime_alias_name_is_blocked,
-        test_import_modernizer_updates_aliased_symbol_usage,
+        test_injects_t_import_when_needed,
         test_lazy_import_rule_hoists_import_to_module_level,
         test_lazy_import_rule_uses_fix_action_for_hoist,
-    )
-    from tests.unit.refactor.test_infra_refactor_legacy_and_annotations import (
-        test_ensure_future_annotations_after_docstring,
-        test_ensure_future_annotations_moves_existing_import_to_top,
         test_legacy_import_bypass_collapses_to_primary_import,
         test_legacy_rule_uses_fix_action_remove_for_aliases,
         test_legacy_wrapper_forwarding_keywords_is_inlined_as_alias,
         test_legacy_wrapper_forwarding_varargs_is_inlined_as_alias,
         test_legacy_wrapper_function_is_inlined_as_alias,
         test_legacy_wrapper_non_passthrough_is_not_inlined,
-    )
-    from tests.unit.refactor.test_infra_refactor_mro_completeness import (
-        test_detects_missing_local_composition_base,
-        test_rewriter_adds_missing_base_and_formats,
-        test_skips_non_facade_files,
-        test_skips_private_candidate_classes,
-        test_skips_when_candidate_is_already_in_facade_bases,
-    )
-    from tests.unit.refactor.test_infra_refactor_mro_import_rewriter import (
+        test_main_analyze_violations_is_read_only,
+        test_main_analyze_violations_writes_json_report,
+        test_main_cli,
         test_migrate_workspace_applies_consumer_rewrites,
         test_migrate_workspace_dry_run_preserves_files,
-    )
-    from tests.unit.refactor.test_infra_refactor_namespace_aliases import (
-        rope_project,
-        test_import_alias_detector_skips_facade_and_subclass_files,
-        test_import_alias_detector_skips_nested_private_and_as_renames,
-        test_import_alias_detector_skips_private_and_class_imports,
         test_namespace_rewriter_keeps_contextual_alias_subset,
         test_namespace_rewriter_only_rewrites_runtime_alias_imports,
         test_namespace_rewriter_skips_facade_and_subclass_files,
         test_namespace_rewriter_skips_nested_private_as_rename_and_duplicates,
-        test_runtime_alias_migrator_merges_local_imports_in_src,
-        test_runtime_alias_migrator_merges_local_imports_in_tests,
-        test_runtime_alias_migrator_skips_unsafe_local_cycle,
-    )
-    from tests.unit.refactor.test_infra_refactor_namespace_source import (
-        FAMILY_FILE_MAP,
-        FAMILY_SUFFIX_MAP,
-        test_detects_only_wrong_alias_in_mixed_import,
-        test_detects_same_project_submodule_alias_import,
-        test_detects_wrong_source_m_import,
-        test_detects_wrong_source_u_import,
-        test_project_without_alias_facade_has_no_violation,
-        test_rewriter_namespace_source_is_idempotent_with_ruff,
-        test_rewriter_preserves_non_alias_symbols,
-        test_rewriter_splits_mixed_imports_correctly,
-        test_skips_facade_declaration_files,
-        test_skips_import_as_rename,
-        test_skips_init_file,
-        test_skips_non_alias_symbols,
-        test_skips_r_alias_universal_exception,
-        test_skips_same_project_private_submodule,
-        test_skips_same_project_submodule_class_import,
-    )
-    from tests.unit.refactor.test_infra_refactor_pattern_corrections import (
+        test_no_duplicate_t_import_when_t_from_project_package,
+        test_non_pydantic_class_not_flagged,
+        test_noop_clean_module,
         test_pattern_rule_converts_dict_annotations_to_mapping,
         test_pattern_rule_keeps_dict_param_when_copy_used,
         test_pattern_rule_keeps_dict_param_when_subscript_mutated,
@@ -152,22 +333,6 @@ if _TYPE_CHECKING:
         test_pattern_rule_removes_configured_redundant_casts,
         test_pattern_rule_removes_nested_type_object_cast_chain,
         test_pattern_rule_skips_overload_signatures,
-    )
-    from tests.unit.refactor.test_infra_refactor_project_classifier import (
-        test_read_project_metadata_preserves_pep621_dependency_order,
-        test_read_project_metadata_preserves_poetry_dependency_order,
-    )
-    from tests.unit.refactor.test_infra_refactor_safety import (
-        EngineSafetyStub,
-        test_refactor_project_integrates_safety_manager,
-    )
-    from tests.unit.refactor.test_infra_refactor_typing_unifier import (
-        test_all_three_capabilities_in_one_pass,
-        test_converts_multiple_aliases,
-        test_converts_typealias_to_pep695,
-        test_injects_t_import_when_needed,
-        test_no_duplicate_t_import_when_t_from_project_package,
-        test_noop_clean_module,
         test_preserves_annotated_in_function_params,
         test_preserves_non_matching_unions,
         test_preserves_override_in_method,
@@ -176,6 +341,15 @@ if _TYPE_CHECKING:
         test_preserves_typealias_import_when_class_level_usage_exists,
         test_preserves_used_imports_when_import_precedes_usage,
         test_preserves_used_typing_imports,
+        test_project_without_alias_facade_has_no_violation,
+        test_read_project_metadata_preserves_pep621_dependency_order,
+        test_read_project_metadata_preserves_poetry_dependency_order,
+        test_refactor_census_rejects_apply_before_subcommand,
+        test_refactor_centralize_accepts_apply_before_subcommand,
+        test_refactor_files_skips_non_python_inputs,
+        test_refactor_project_integrates_safety_manager,
+        test_refactor_project_scans_tests_and_scripts_dirs,
+        test_refactor_runtime_alias_imports_accepts_aliases_and_project,
         test_removes_all_imports_when_none_used_import_first,
         test_removes_all_unused_typing_imports,
         test_removes_dead_typealias_import,
@@ -185,18 +359,46 @@ if _TYPE_CHECKING:
         test_replaces_numeric_union,
         test_replaces_primitives_union,
         test_replaces_scalar_union,
+        test_rewriter_adds_missing_base_and_formats,
+        test_rewriter_namespace_source_is_idempotent_with_ruff,
+        test_rewriter_preserves_non_alias_symbols,
+        test_rewriter_splits_mixed_imports_correctly,
+        test_rule_dispatch_fails_on_invalid_pattern_rule_config,
+        test_rule_dispatch_fails_on_unknown_rule_mapping,
+        test_rule_dispatch_keeps_legacy_id_fallback_mapping,
+        test_rule_dispatch_prefers_fix_action_metadata,
+        test_runtime_alias_migrator_merges_local_imports_in_src,
+        test_runtime_alias_migrator_merges_local_imports_in_tests,
+        test_runtime_alias_migrator_skips_unsafe_local_cycle,
+        test_signature_propagation_removes_and_adds_keywords,
+        test_signature_propagation_renames_call_keyword,
         test_skips_definition_files,
+        test_skips_facade_declaration_files,
+        test_skips_import_as_rename,
+        test_skips_init_file,
+        test_skips_models_directory,
+        test_skips_models_file,
+        test_skips_non_alias_symbols,
+        test_skips_non_facade_files,
+        test_skips_private_candidate_classes,
+        test_skips_private_class,
+        test_skips_protected_files,
+        test_skips_r_alias_universal_exception,
+        test_skips_same_project_private_submodule,
+        test_skips_same_project_submodule_class_import,
+        test_skips_settings_file,
         test_skips_union_with_none,
+        test_skips_when_candidate_is_already_in_facade_bases,
+        test_symbol_propagation_keeps_alias_reference_when_asname_used,
+        test_symbol_propagation_renames_import_and_local_references,
+        test_symbol_propagation_updates_mro_base_references,
         test_typealias_conversion_preserves_used_typing_siblings,
+        test_violation_analysis_counts_massive_patterns,
+        test_violation_analyzer_skips_non_utf8_files,
+        u,
+        x,
     )
-    from tests.unit.refactor.test_main_cli import (
-        refactor_main,
-        test_refactor_census_rejects_apply_before_subcommand,
-        test_refactor_centralize_accepts_apply_before_subcommand,
-        test_refactor_runtime_alias_imports_accepts_aliases_and_project,
-    )
-
-_LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
+_LAZY_IMPORTS = {
     "EngineSafetyStub": "tests.unit.refactor.test_infra_refactor_safety",
     "FAMILY_FILE_MAP": "tests.unit.refactor.test_infra_refactor_namespace_source",
     "FAMILY_SUFFIX_MAP": "tests.unit.refactor.test_infra_refactor_namespace_source",
@@ -349,6 +551,160 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "u": ("flext_core.utilities", "FlextUtilities"),
     "x": ("flext_core.mixins", "FlextMixins"),
 }
+
+__all__ = [
+    "FAMILY_FILE_MAP",
+    "FAMILY_SUFFIX_MAP",
+    "EngineSafetyStub",
+    "c",
+    "d",
+    "e",
+    "h",
+    "m",
+    "p",
+    "r",
+    "refactor_main",
+    "rope_project",
+    "s",
+    "t",
+    "test_all_three_capabilities_in_one_pass",
+    "test_build_impact_map_extracts_rename_entries",
+    "test_build_impact_map_extracts_signature_entries",
+    "test_class_reconstructor_reorders_each_contiguous_method_block",
+    "test_class_reconstructor_reorders_methods_by_config",
+    "test_class_reconstructor_skips_interleaved_non_method_members",
+    "test_converts_multiple_aliases",
+    "test_converts_typealias_to_pep695",
+    "test_detects_attribute_base_class",
+    "test_detects_basemodel_in_non_model_file",
+    "test_detects_missing_local_composition_base",
+    "test_detects_multiple_models",
+    "test_detects_only_wrong_alias_in_mixed_import",
+    "test_detects_same_project_submodule_alias_import",
+    "test_detects_wrong_source_m_import",
+    "test_detects_wrong_source_u_import",
+    "test_engine_always_enables_class_nesting_file_rule",
+    "test_ensure_future_annotations_after_docstring",
+    "test_ensure_future_annotations_moves_existing_import_to_top",
+    "test_import_alias_detector_skips_facade_and_subclass_files",
+    "test_import_alias_detector_skips_nested_private_and_as_renames",
+    "test_import_alias_detector_skips_private_and_class_imports",
+    "test_import_modernizer_adds_c_when_existing_c_is_aliased",
+    "test_import_modernizer_does_not_rewrite_function_parameter_shadow",
+    "test_import_modernizer_does_not_rewrite_rebound_local_name_usage",
+    "test_import_modernizer_partial_import_keeps_unmapped_symbols",
+    "test_import_modernizer_partial_import_with_asname_keeps_unmapped_alias",
+    "test_import_modernizer_skips_rewrite_when_runtime_alias_shadowed_in_function",
+    "test_import_modernizer_skips_when_runtime_alias_name_is_blocked",
+    "test_import_modernizer_updates_aliased_symbol_usage",
+    "test_infra_refactor_analysis",
+    "test_infra_refactor_class_and_propagation",
+    "test_infra_refactor_class_placement",
+    "test_infra_refactor_engine",
+    "test_infra_refactor_import_modernizer",
+    "test_infra_refactor_legacy_and_annotations",
+    "test_infra_refactor_mro_completeness",
+    "test_infra_refactor_mro_import_rewriter",
+    "test_infra_refactor_namespace_aliases",
+    "test_infra_refactor_namespace_source",
+    "test_infra_refactor_pattern_corrections",
+    "test_infra_refactor_project_classifier",
+    "test_infra_refactor_safety",
+    "test_infra_refactor_typing_unifier",
+    "test_injects_t_import_when_needed",
+    "test_lazy_import_rule_hoists_import_to_module_level",
+    "test_lazy_import_rule_uses_fix_action_for_hoist",
+    "test_legacy_import_bypass_collapses_to_primary_import",
+    "test_legacy_rule_uses_fix_action_remove_for_aliases",
+    "test_legacy_wrapper_forwarding_keywords_is_inlined_as_alias",
+    "test_legacy_wrapper_forwarding_varargs_is_inlined_as_alias",
+    "test_legacy_wrapper_function_is_inlined_as_alias",
+    "test_legacy_wrapper_non_passthrough_is_not_inlined",
+    "test_main_analyze_violations_is_read_only",
+    "test_main_analyze_violations_writes_json_report",
+    "test_main_cli",
+    "test_migrate_workspace_applies_consumer_rewrites",
+    "test_migrate_workspace_dry_run_preserves_files",
+    "test_namespace_rewriter_keeps_contextual_alias_subset",
+    "test_namespace_rewriter_only_rewrites_runtime_alias_imports",
+    "test_namespace_rewriter_skips_facade_and_subclass_files",
+    "test_namespace_rewriter_skips_nested_private_as_rename_and_duplicates",
+    "test_no_duplicate_t_import_when_t_from_project_package",
+    "test_non_pydantic_class_not_flagged",
+    "test_noop_clean_module",
+    "test_pattern_rule_converts_dict_annotations_to_mapping",
+    "test_pattern_rule_keeps_dict_param_when_copy_used",
+    "test_pattern_rule_keeps_dict_param_when_subscript_mutated",
+    "test_pattern_rule_keeps_type_cast_when_not_nested_object_cast",
+    "test_pattern_rule_optionally_converts_return_annotations_to_mapping",
+    "test_pattern_rule_removes_configured_redundant_casts",
+    "test_pattern_rule_removes_nested_type_object_cast_chain",
+    "test_pattern_rule_skips_overload_signatures",
+    "test_preserves_annotated_in_function_params",
+    "test_preserves_non_matching_unions",
+    "test_preserves_override_in_method",
+    "test_preserves_protocol_and_runtime_checkable",
+    "test_preserves_type_checking_import",
+    "test_preserves_typealias_import_when_class_level_usage_exists",
+    "test_preserves_used_imports_when_import_precedes_usage",
+    "test_preserves_used_typing_imports",
+    "test_project_without_alias_facade_has_no_violation",
+    "test_read_project_metadata_preserves_pep621_dependency_order",
+    "test_read_project_metadata_preserves_poetry_dependency_order",
+    "test_refactor_census_rejects_apply_before_subcommand",
+    "test_refactor_centralize_accepts_apply_before_subcommand",
+    "test_refactor_files_skips_non_python_inputs",
+    "test_refactor_project_integrates_safety_manager",
+    "test_refactor_project_scans_tests_and_scripts_dirs",
+    "test_refactor_runtime_alias_imports_accepts_aliases_and_project",
+    "test_removes_all_imports_when_none_used_import_first",
+    "test_removes_all_unused_typing_imports",
+    "test_removes_dead_typealias_import",
+    "test_removes_typealias_import_only_when_all_usages_converted",
+    "test_removes_unused_preserves_used_when_import_precedes_usage",
+    "test_replaces_container_union",
+    "test_replaces_numeric_union",
+    "test_replaces_primitives_union",
+    "test_replaces_scalar_union",
+    "test_rewriter_adds_missing_base_and_formats",
+    "test_rewriter_namespace_source_is_idempotent_with_ruff",
+    "test_rewriter_preserves_non_alias_symbols",
+    "test_rewriter_splits_mixed_imports_correctly",
+    "test_rule_dispatch_fails_on_invalid_pattern_rule_config",
+    "test_rule_dispatch_fails_on_unknown_rule_mapping",
+    "test_rule_dispatch_keeps_legacy_id_fallback_mapping",
+    "test_rule_dispatch_prefers_fix_action_metadata",
+    "test_runtime_alias_migrator_merges_local_imports_in_src",
+    "test_runtime_alias_migrator_merges_local_imports_in_tests",
+    "test_runtime_alias_migrator_skips_unsafe_local_cycle",
+    "test_signature_propagation_removes_and_adds_keywords",
+    "test_signature_propagation_renames_call_keyword",
+    "test_skips_definition_files",
+    "test_skips_facade_declaration_files",
+    "test_skips_import_as_rename",
+    "test_skips_init_file",
+    "test_skips_models_directory",
+    "test_skips_models_file",
+    "test_skips_non_alias_symbols",
+    "test_skips_non_facade_files",
+    "test_skips_private_candidate_classes",
+    "test_skips_private_class",
+    "test_skips_protected_files",
+    "test_skips_r_alias_universal_exception",
+    "test_skips_same_project_private_submodule",
+    "test_skips_same_project_submodule_class_import",
+    "test_skips_settings_file",
+    "test_skips_union_with_none",
+    "test_skips_when_candidate_is_already_in_facade_bases",
+    "test_symbol_propagation_keeps_alias_reference_when_asname_used",
+    "test_symbol_propagation_renames_import_and_local_references",
+    "test_symbol_propagation_updates_mro_base_references",
+    "test_typealias_conversion_preserves_used_typing_siblings",
+    "test_violation_analysis_counts_massive_patterns",
+    "test_violation_analyzer_skips_non_utf8_files",
+    "u",
+    "x",
+]
 
 
 install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)

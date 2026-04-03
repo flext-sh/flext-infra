@@ -12,6 +12,7 @@ from pathlib import Path
 
 from _pytest.monkeypatch import MonkeyPatch
 from flext_tests import tm
+from tests import t
 
 from flext_core import r
 from flext_infra import (
@@ -20,7 +21,6 @@ from flext_infra import (
     m,
     main as infra_main,
 )
-from tests import t
 
 
 def main(argv: list[str] | None = None) -> int:

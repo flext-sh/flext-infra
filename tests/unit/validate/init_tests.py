@@ -8,10 +8,10 @@ from __future__ import annotations
 
 import pytest
 from flext_tests import tm
+from tests import t
 
 import flext_infra.validate as core_module
 from flext_infra import FlextInfraBaseMkValidator
-from tests import t
 
 
 class TestCoreModuleInit:

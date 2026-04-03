@@ -5,10 +5,10 @@ from pathlib import Path
 from typing import override
 
 from flext_tests import tm
+from tests import FlextInfraTestHelpers as h, m as im, t
 
 from flext_core import r
 from flext_infra import FlextInfraBaseMkGenerator, FlextInfraProjectMigrator
-from tests import FlextInfraTestHelpers as h, m as im, t
 
 
 class _StubDiscovery:

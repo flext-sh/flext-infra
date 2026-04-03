@@ -12,8 +12,7 @@ from typing import ClassVar
 
 from pydantic import TypeAdapter, ValidationError
 
-from flext_infra import CONTAINER_DICT_SEQ_ADAPTER, c, m, t
-from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
+from flext_infra import CONTAINER_DICT_SEQ_ADAPTER, FlextInfraUtilitiesParsing, c, m, t
 
 
 class FlextInfraUtilitiesRuleHelpers:
@@ -181,58 +180,6 @@ class FlextInfraUtilitiesRuleHelpers:
             if name.endswith(c.Infra.CONSTANTS_CLASS_SUFFIX):
                 return name
         return ""
-
-    @staticmethod
-    def is_constant_candidate(symbol: str) -> bool:
-        """Check if symbol matches UPPER_CASE constant naming convention."""
-        return c.Infra.SourceCode.CONSTANT_NAME_RE.match(symbol) is not None
-
-    # ── Legacy removal helpers ──────────────────────────────────────
-
-    @staticmethod
-    def _regex_remove(
-        source: str,
-        pattern: re.Pattern[str],
-        label: str,
-        *,
-        group: int = 1,
-    ) -> tuple[str, t.StrSequence]:
-        """Generic regex-based removal: scan matches, record changes, sub out."""
-        changes: MutableSequence[str] = []
-        for match in pattern.finditer(source):
-            name = (
-                match.group(group)
-                if match.lastindex and match.lastindex >= group
-                else ""
-            )
-            changes.append(f"{label}: {name}" if name else label)
-        return (pattern.sub("", source), changes)
-
-    @classmethod
-    def remove_deprecated_symbols(cls, source: str) -> tuple[str, t.StrSequence]:
-        """Remove classes/functions decorated with @deprecated."""
-        return cls._regex_remove(
-            source, c.Infra.SourceCode.DEPRECATED_RE, "Removed deprecated"
-        )
-
-    @classmethod
-    def remove_import_bypass_blocks(cls, source: str) -> tuple[str, t.StrSequence]:
-        """Remove try/except ImportError blocks that bypass imports."""
-        return cls._regex_remove(
-            source, c.Infra.SourceCode.BYPASS_RE, "Removed import bypass block", group=0
-        )
-
-    @classmethod
-    def remove_wrapper_functions(cls, source: str) -> tuple[str, t.StrSequence]:
-        """Inline single-return passthrough wrappers as aliases."""
-        changes: MutableSequence[str] = []
-        new_source = source
-        for match in c.Infra.SourceCode.WRAPPER_RE.finditer(source):
-            new_source = new_source.replace(
-                match.group(0), f"{match.group(1)} = {match.group(2)}"
-            )
-            changes.append(f"Inlined wrapper: {match.group(1)} -> {match.group(2)}")
-        return (new_source, changes)
 
     # ── Future annotations helper ───────────────────────────────────
 

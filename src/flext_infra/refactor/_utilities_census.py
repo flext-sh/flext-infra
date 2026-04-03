@@ -9,8 +9,6 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from flext_infra import (
-    FlextInfraUtilitiesDiscovery,
-    FlextInfraUtilitiesRope,
     c,
     m,
     t,
@@ -19,81 +17,6 @@ from flext_infra import (
 
 class FlextInfraUtilitiesRefactorCensus:
     """Census and source introspection helpers for refactor tools."""
-
-    @staticmethod
-    def extract_public_methods_from_dir(
-        package_dir: Path,
-    ) -> Mapping[str, Sequence[t.Infra.Triple[str, str, str]]]:
-        """Extract public methods from all .py files in a package directory."""
-        result: MutableMapping[str, MutableSequence[t.Infra.Triple[str, str, str]]] = {}
-        project_root = FlextInfraUtilitiesDiscovery.discover_project_root_from_file(
-            package_dir / "foo.py",
-        )
-        if project_root is None:
-            return result
-        rope_proj = FlextInfraUtilitiesRope.init_rope_project(project_root.parent)
-        try:
-            for py_file in sorted(package_dir.glob(c.Infra.Extensions.PYTHON_GLOB)):
-                if py_file.name == c.Infra.Files.INIT_PY:
-                    continue
-                res = FlextInfraUtilitiesRope.get_resource_from_path(rope_proj, py_file)
-                if not res:
-                    continue
-                filename = py_file.name
-                classes = FlextInfraUtilitiesRope.get_module_classes(rope_proj, res)
-                for class_name in classes:
-                    class_methods = FlextInfraUtilitiesRope.get_class_methods(
-                        rope_proj, res, class_name, include_private=False
-                    )
-                    for mname, mkind in class_methods.items():
-                        kind = (
-                            "static"
-                            if mkind == "staticmethod"
-                            else ("class" if mkind == "classmethod" else "instance")
-                        )
-                        if class_name not in result:
-                            result[class_name] = []
-                        result[class_name].append((mname, kind, filename))
-        finally:
-            rope_proj.close()
-        return result
-
-    @staticmethod
-    def extract_public_methods_from_file(
-        file_path: Path,
-    ) -> Mapping[str, Sequence[t.Infra.Triple[str, str, str]]]:
-        """Extract public methods from a single .py file."""
-        if not file_path.exists():
-            return {}
-        result: MutableMapping[str, MutableSequence[t.Infra.Triple[str, str, str]]] = {}
-        project_root = FlextInfraUtilitiesDiscovery.discover_project_root_from_file(
-            file_path,
-        )
-        if project_root is None:
-            return result
-        rope_proj = FlextInfraUtilitiesRope.init_rope_project(project_root.parent)
-        try:
-            res = FlextInfraUtilitiesRope.get_resource_from_path(rope_proj, file_path)
-            if not res:
-                return {}
-            filename = file_path.name
-            classes = FlextInfraUtilitiesRope.get_module_classes(rope_proj, res)
-            for class_name in classes:
-                class_methods = FlextInfraUtilitiesRope.get_class_methods(
-                    rope_proj, res, class_name, include_private=False
-                )
-                for mname, mkind in class_methods.items():
-                    kind = (
-                        "static"
-                        if mkind == "staticmethod"
-                        else ("class" if mkind == "classmethod" else "instance")
-                    )
-                    if class_name not in result:
-                        result[class_name] = []
-                    result[class_name].append((mname, kind, filename))
-        finally:
-            rope_proj.close()
-        return result
 
     @staticmethod
     def build_facade_alias_map(
@@ -130,7 +53,7 @@ class FlextInfraUtilitiesRefactorCensus:
         """Map inner class names -> base class names in a facade."""
         if not facade_path.exists():
             return {}
-        name_map: MutableMapping[str, str] = {}
+        name_map: t.MutableStrMapping = {}
         lines = facade_path.read_text(encoding=c.Infra.Encoding.DEFAULT).splitlines()
         in_target = False
         for line in lines:

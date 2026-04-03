@@ -82,7 +82,7 @@ class FlextInfraUtilitiesTomlParse:
             entry.name
             for entry in sorted(src_dir.iterdir())
             if entry.is_dir()
-            and entry.name != "__pycache__"
+            and entry.name != c.Infra.Dunders.PYCACHE
             and entry.name.isidentifier()
             and "-" not in entry.name
         ]
@@ -98,7 +98,9 @@ class FlextInfraUtilitiesTomlParse:
         """
         all_deps = FlextInfraUtilitiesTomlParse.declared_dependency_names(doc)
         return sorted(
-            dep.replace("-", "_") for dep in all_deps if dep.startswith("flext-")
+            dep.replace("-", "_")
+            for dep in all_deps
+            if dep.startswith(c.Infra.Packages.PREFIX_HYPHEN)
         )
 
     @staticmethod

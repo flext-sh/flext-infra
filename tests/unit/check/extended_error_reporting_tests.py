@@ -10,13 +10,13 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
+from tests import m, t
 
 from flext_infra import (
     FlextInfraGate,
     FlextInfraMypyGate,
     FlextInfraWorkspaceChecker,
 )
-from tests import m, t
 
 from ...helpers import h
 from ._shared_fixtures import (

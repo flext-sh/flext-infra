@@ -14,6 +14,7 @@ from types import SimpleNamespace
 
 import pytest
 from flext_tests import tm
+from tests import m, t
 
 import flext_infra.check.workspace_check as ws_mod
 import flext_infra.deps.fix_pyrefly_config as fix_pyrefly_mod
@@ -23,7 +24,6 @@ from flext_infra import (
     FlextInfraWorkspaceChecker,
     main as infra_main,
 )
-from tests import m, t
 
 
 def _fake_checker_cls(

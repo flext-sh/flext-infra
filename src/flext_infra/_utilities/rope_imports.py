@@ -12,8 +12,7 @@ from rope.refactor.importutils import ImportOrganizer
 from rope.refactor.importutils.importinfo import FromImport
 from rope.refactor.rename import Rename
 
-from flext_infra import c, p, t
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra import FlextInfraUtilitiesRopeCore, c, p, t
 
 
 class FlextInfraUtilitiesRopeImports(FlextInfraUtilitiesRopeCore):
@@ -77,9 +76,12 @@ class FlextInfraUtilitiesRopeImports(FlextInfraUtilitiesRopeCore):
             return False
         if not isinstance(changes, p.Infra.RopeChangesLike):
             return False
+        change_list = getattr(changes, "changes", None)
+        if not change_list:
+            return False
         changed = any(
             change.new_contents is not None and change.new_contents != original_source
-            for change in changes.changes
+            for change in change_list
         )
         if changed and apply:
             rope_project.do(changes)

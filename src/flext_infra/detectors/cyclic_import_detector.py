@@ -46,7 +46,7 @@ class FlextInfraCyclicImportDetector:
         except ValueError:
             return None
         parts = list(rel.with_suffix("").parts)
-        if parts and parts[-1] == "__init__":
+        if parts and parts[-1] == c.Infra.Dunders.INIT:
             parts = parts[:-1]
         if not parts:
             return None

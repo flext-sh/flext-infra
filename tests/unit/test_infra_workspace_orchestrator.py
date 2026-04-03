@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import pytest
 from flext_tests import tm
+from tests import c, m, t
 
 from flext_core import r
 from flext_infra import FlextInfraOrchestratorService
-from tests import c, m, t
 
 
 def _cmd_out(exit_code: int = 0) -> m.Infra.CommandOutput:

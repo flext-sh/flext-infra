@@ -5,46 +5,199 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING as _TYPE_CHECKING
+import typing as _t
 
+from flext_core.constants import FlextConstants as c
+from flext_core.decorators import FlextDecorators as d
+from flext_core.exceptions import FlextExceptions as e
+from flext_core.handlers import FlextHandlers as h
 from flext_core.lazy import install_lazy_exports, merge_lazy_imports
+from flext_core.mixins import FlextMixins as x
+from flext_core.models import FlextModels as m
+from flext_core.protocols import FlextProtocols as p
+from flext_core.result import FlextResult as r
+from flext_core.service import FlextService as s
+from flext_core.typings import FlextTypes as t
+from flext_core.utilities import FlextUtilities as u
+from flext_infra.deps._constants import FlextInfraDepsConstants
+from flext_infra.deps._detector_runtime import FlextInfraDependencyDetectorRuntime
+from flext_infra.deps._extra_paths_resolution import (
+    FlextInfraExtraPathsResolutionMixin,
+)
+from flext_infra.deps._internal_sync_repo import FlextInfraInternalSyncRepoMixin
+from flext_infra.deps._models import FlextInfraDepsModels
+from flext_infra.deps._models_tool_config import FlextInfraDepsModelsToolConfig
+from flext_infra.deps._models_tool_config_linters import (
+    MypyConfig,
+    MypyOverrideConfig,
+    PydanticMypyConfig,
+    RuffConfig,
+    RuffFormatConfig,
+    RuffIsortConfig,
+    RuffLintConfig,
+)
+from flext_infra.deps._models_tool_config_type_checkers import (
+    PyreflyConfig,
+    PyrightConfig,
+)
+from flext_infra.deps._phases.consolidate_groups import (
+    FlextInfraConsolidateGroupsPhase,
+)
+from flext_infra.deps._phases.ensure_coverage import (
+    FlextInfraEnsureCoverageConfigPhase,
+)
+from flext_infra.deps._phases.ensure_extra_paths import (
+    FlextInfraEnsureExtraPathsPhase,
+)
+from flext_infra.deps._phases.ensure_formatting import (
+    FlextInfraEnsureFormattingToolingPhase,
+)
+from flext_infra.deps._phases.ensure_mypy import FlextInfraEnsureMypyConfigPhase
+from flext_infra.deps._phases.ensure_namespace import (
+    FlextInfraEnsureNamespaceToolingPhase,
+)
+from flext_infra.deps._phases.ensure_pydantic_mypy import (
+    FlextInfraEnsurePydanticMypyConfigPhase,
+)
+from flext_infra.deps._phases.ensure_pyrefly import (
+    FlextInfraEnsurePyreflyConfigPhase,
+)
+from flext_infra.deps._phases.ensure_pyright import (
+    FlextInfraEnsurePyrightConfigPhase,
+)
+from flext_infra.deps._phases.ensure_pyright_envs import FlextInfraEnsurePyrightEnvs
+from flext_infra.deps._phases.ensure_pytest import FlextInfraEnsurePytestConfigPhase
+from flext_infra.deps._phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
+from flext_infra.deps._phases.inject_comments import FlextInfraInjectCommentsPhase
+from flext_infra.deps.cli import FlextInfraCliDeps
+from flext_infra.deps.detection import FlextInfraDependencyDetectionService
+from flext_infra.deps.detection_analysis import (
+    FlextInfraDependencyDetectionAnalysis,
+)
+from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector, main
+from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
+from flext_infra.deps.extra_paths_pyrefly import FlextInfraExtraPathsPyrefly
+from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
+from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
+from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
+from flext_infra.deps.path_sync import FlextInfraDependencyPathSync
+from flext_infra.deps.path_sync_rewrite import FlextInfraDependencyPathSyncRewrite
 
-if _TYPE_CHECKING:
-    from flext_core import FlextTypes
-    from flext_core.constants import FlextConstants as c
-    from flext_core.decorators import FlextDecorators as d
-    from flext_core.exceptions import FlextExceptions as e
-    from flext_core.handlers import FlextHandlers as h
-    from flext_core.mixins import FlextMixins as x
-    from flext_core.models import FlextModels as m
-    from flext_core.protocols import FlextProtocols as p
-    from flext_core.result import FlextResult as r
-    from flext_core.service import FlextService as s
-    from flext_core.typings import FlextTypes as t
-    from flext_core.utilities import FlextUtilities as u
-    from flext_infra.deps import (
-        _constants,
-        _detector_runtime,
-        _models,
-        _models_tool_config,
-        _phases,
-        cli,
-        detection,
-        detector,
-        extra_paths,
-        extra_paths_pyrefly,
-        fix_pyrefly_config,
-        internal_sync,
-        modernizer,
-        path_sync,
+if _t.TYPE_CHECKING:
+    import flext_infra.deps._constants as _flext_infra_deps__constants
+
+    _constants = _flext_infra_deps__constants
+    import flext_infra.deps._detector_runtime as _flext_infra_deps__detector_runtime
+
+    _detector_runtime = _flext_infra_deps__detector_runtime
+    import flext_infra.deps._extra_paths_resolution as _flext_infra_deps__extra_paths_resolution
+
+    _extra_paths_resolution = _flext_infra_deps__extra_paths_resolution
+    import flext_infra.deps._internal_sync_repo as _flext_infra_deps__internal_sync_repo
+
+    _internal_sync_repo = _flext_infra_deps__internal_sync_repo
+    import flext_infra.deps._models as _flext_infra_deps__models
+
+    _models = _flext_infra_deps__models
+    import flext_infra.deps._models_tool_config as _flext_infra_deps__models_tool_config
+
+    _models_tool_config = _flext_infra_deps__models_tool_config
+    import flext_infra.deps._models_tool_config_linters as _flext_infra_deps__models_tool_config_linters
+
+    _models_tool_config_linters = _flext_infra_deps__models_tool_config_linters
+    import flext_infra.deps._models_tool_config_type_checkers as _flext_infra_deps__models_tool_config_type_checkers
+
+    _models_tool_config_type_checkers = (
+        _flext_infra_deps__models_tool_config_type_checkers
     )
-    from flext_infra.deps._constants import FlextInfraDepsConstants
-    from flext_infra.deps._detector_runtime import FlextInfraDependencyDetectorRuntime
-    from flext_infra.deps._models import FlextInfraDepsModels
-    from flext_infra.deps._models_tool_config import FlextInfraDepsModelsToolConfig
-    from flext_infra.deps._phases import (
+    import flext_infra.deps._phases as _flext_infra_deps__phases
+
+    _phases = _flext_infra_deps__phases
+    import flext_infra.deps._phases.consolidate_groups as _flext_infra_deps__phases_consolidate_groups
+
+    consolidate_groups = _flext_infra_deps__phases_consolidate_groups
+    import flext_infra.deps._phases.ensure_coverage as _flext_infra_deps__phases_ensure_coverage
+
+    ensure_coverage = _flext_infra_deps__phases_ensure_coverage
+    import flext_infra.deps._phases.ensure_extra_paths as _flext_infra_deps__phases_ensure_extra_paths
+
+    ensure_extra_paths = _flext_infra_deps__phases_ensure_extra_paths
+    import flext_infra.deps._phases.ensure_formatting as _flext_infra_deps__phases_ensure_formatting
+
+    ensure_formatting = _flext_infra_deps__phases_ensure_formatting
+    import flext_infra.deps._phases.ensure_mypy as _flext_infra_deps__phases_ensure_mypy
+
+    ensure_mypy = _flext_infra_deps__phases_ensure_mypy
+    import flext_infra.deps._phases.ensure_namespace as _flext_infra_deps__phases_ensure_namespace
+
+    ensure_namespace = _flext_infra_deps__phases_ensure_namespace
+    import flext_infra.deps._phases.ensure_pydantic_mypy as _flext_infra_deps__phases_ensure_pydantic_mypy
+
+    ensure_pydantic_mypy = _flext_infra_deps__phases_ensure_pydantic_mypy
+    import flext_infra.deps._phases.ensure_pyrefly as _flext_infra_deps__phases_ensure_pyrefly
+
+    ensure_pyrefly = _flext_infra_deps__phases_ensure_pyrefly
+    import flext_infra.deps._phases.ensure_pyright as _flext_infra_deps__phases_ensure_pyright
+
+    ensure_pyright = _flext_infra_deps__phases_ensure_pyright
+    import flext_infra.deps._phases.ensure_pyright_envs as _flext_infra_deps__phases_ensure_pyright_envs
+
+    ensure_pyright_envs = _flext_infra_deps__phases_ensure_pyright_envs
+    import flext_infra.deps._phases.ensure_pytest as _flext_infra_deps__phases_ensure_pytest
+
+    ensure_pytest = _flext_infra_deps__phases_ensure_pytest
+    import flext_infra.deps._phases.ensure_ruff as _flext_infra_deps__phases_ensure_ruff
+
+    ensure_ruff = _flext_infra_deps__phases_ensure_ruff
+    import flext_infra.deps._phases.inject_comments as _flext_infra_deps__phases_inject_comments
+
+    inject_comments = _flext_infra_deps__phases_inject_comments
+    import flext_infra.deps.cli as _flext_infra_deps_cli
+
+    cli = _flext_infra_deps_cli
+    import flext_infra.deps.detection as _flext_infra_deps_detection
+
+    detection = _flext_infra_deps_detection
+    import flext_infra.deps.detection_analysis as _flext_infra_deps_detection_analysis
+
+    detection_analysis = _flext_infra_deps_detection_analysis
+    import flext_infra.deps.detector as _flext_infra_deps_detector
+
+    detector = _flext_infra_deps_detector
+    import flext_infra.deps.extra_paths as _flext_infra_deps_extra_paths
+
+    extra_paths = _flext_infra_deps_extra_paths
+    import flext_infra.deps.extra_paths_pyrefly as _flext_infra_deps_extra_paths_pyrefly
+
+    extra_paths_pyrefly = _flext_infra_deps_extra_paths_pyrefly
+    import flext_infra.deps.fix_pyrefly_config as _flext_infra_deps_fix_pyrefly_config
+
+    fix_pyrefly_config = _flext_infra_deps_fix_pyrefly_config
+    import flext_infra.deps.internal_sync as _flext_infra_deps_internal_sync
+
+    internal_sync = _flext_infra_deps_internal_sync
+    import flext_infra.deps.modernizer as _flext_infra_deps_modernizer
+
+    modernizer = _flext_infra_deps_modernizer
+    import flext_infra.deps.path_sync as _flext_infra_deps_path_sync
+
+    path_sync = _flext_infra_deps_path_sync
+    import flext_infra.deps.path_sync_rewrite as _flext_infra_deps_path_sync_rewrite
+
+    path_sync_rewrite = _flext_infra_deps_path_sync_rewrite
+
+    _ = (
+        FlextInfraCliDeps,
+        FlextInfraConfigFixer,
         FlextInfraConsolidateGroupsPhase,
+        FlextInfraDependencyDetectionAnalysis,
+        FlextInfraDependencyDetectionService,
+        FlextInfraDependencyDetectorRuntime,
+        FlextInfraDependencyPathSync,
+        FlextInfraDependencyPathSyncRewrite,
+        FlextInfraDepsConstants,
+        FlextInfraDepsModels,
+        FlextInfraDepsModelsToolConfig,
         FlextInfraEnsureCoverageConfigPhase,
         FlextInfraEnsureExtraPathsPhase,
         FlextInfraEnsureFormattingToolingPhase,
@@ -53,10 +206,43 @@ if _TYPE_CHECKING:
         FlextInfraEnsurePydanticMypyConfigPhase,
         FlextInfraEnsurePyreflyConfigPhase,
         FlextInfraEnsurePyrightConfigPhase,
+        FlextInfraEnsurePyrightEnvs,
         FlextInfraEnsurePytestConfigPhase,
         FlextInfraEnsureRuffConfigPhase,
+        FlextInfraExtraPathsManager,
+        FlextInfraExtraPathsPyrefly,
+        FlextInfraExtraPathsResolutionMixin,
         FlextInfraInjectCommentsPhase,
+        FlextInfraInternalDependencySyncService,
+        FlextInfraInternalSyncRepoMixin,
+        FlextInfraPyprojectModernizer,
+        FlextInfraRuntimeDevDependencyDetector,
+        MypyConfig,
+        MypyOverrideConfig,
+        PydanticMypyConfig,
+        PyreflyConfig,
+        PyrightConfig,
+        RuffConfig,
+        RuffFormatConfig,
+        RuffIsortConfig,
+        RuffLintConfig,
+        _constants,
+        _detector_runtime,
+        _extra_paths_resolution,
+        _internal_sync_repo,
+        _models,
+        _models_tool_config,
+        _models_tool_config_linters,
+        _models_tool_config_type_checkers,
+        _phases,
+        c,
+        cli,
         consolidate_groups,
+        d,
+        detection,
+        detection_analysis,
+        detector,
+        e,
         ensure_coverage,
         ensure_extra_paths,
         ensure_formatting,
@@ -65,45 +251,70 @@ if _TYPE_CHECKING:
         ensure_pydantic_mypy,
         ensure_pyrefly,
         ensure_pyright,
+        ensure_pyright_envs,
         ensure_pytest,
         ensure_ruff,
+        extra_paths,
+        extra_paths_pyrefly,
+        fix_pyrefly_config,
+        h,
         inject_comments,
+        internal_sync,
+        m,
+        main,
+        modernizer,
+        p,
+        path_sync,
+        path_sync_rewrite,
+        r,
+        s,
+        t,
+        u,
+        x,
     )
-    from flext_infra.deps.cli import FlextInfraCliDeps
-    from flext_infra.deps.detection import FlextInfraDependencyDetectionService
-    from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector, main
-    from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
-    from flext_infra.deps.extra_paths_pyrefly import FlextInfraExtraPathsPyrefly
-    from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
-    from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
-    from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
-    from flext_infra.deps.path_sync import FlextInfraDependencyPathSync
-
-_LAZY_IMPORTS: FlextTypes.LazyImportIndex = merge_lazy_imports(
+_LAZY_IMPORTS = merge_lazy_imports(
     ("flext_infra.deps._phases",),
     {
         "FlextInfraCliDeps": "flext_infra.deps.cli",
         "FlextInfraConfigFixer": "flext_infra.deps.fix_pyrefly_config",
+        "FlextInfraDependencyDetectionAnalysis": "flext_infra.deps.detection_analysis",
         "FlextInfraDependencyDetectionService": "flext_infra.deps.detection",
         "FlextInfraDependencyDetectorRuntime": "flext_infra.deps._detector_runtime",
         "FlextInfraDependencyPathSync": "flext_infra.deps.path_sync",
+        "FlextInfraDependencyPathSyncRewrite": "flext_infra.deps.path_sync_rewrite",
         "FlextInfraDepsConstants": "flext_infra.deps._constants",
         "FlextInfraDepsModels": "flext_infra.deps._models",
         "FlextInfraDepsModelsToolConfig": "flext_infra.deps._models_tool_config",
         "FlextInfraExtraPathsManager": "flext_infra.deps.extra_paths",
         "FlextInfraExtraPathsPyrefly": "flext_infra.deps.extra_paths_pyrefly",
+        "FlextInfraExtraPathsResolutionMixin": "flext_infra.deps._extra_paths_resolution",
         "FlextInfraInternalDependencySyncService": "flext_infra.deps.internal_sync",
+        "FlextInfraInternalSyncRepoMixin": "flext_infra.deps._internal_sync_repo",
         "FlextInfraPyprojectModernizer": "flext_infra.deps.modernizer",
         "FlextInfraRuntimeDevDependencyDetector": "flext_infra.deps.detector",
+        "MypyConfig": "flext_infra.deps._models_tool_config_linters",
+        "MypyOverrideConfig": "flext_infra.deps._models_tool_config_linters",
+        "PydanticMypyConfig": "flext_infra.deps._models_tool_config_linters",
+        "PyreflyConfig": "flext_infra.deps._models_tool_config_type_checkers",
+        "PyrightConfig": "flext_infra.deps._models_tool_config_type_checkers",
+        "RuffConfig": "flext_infra.deps._models_tool_config_linters",
+        "RuffFormatConfig": "flext_infra.deps._models_tool_config_linters",
+        "RuffIsortConfig": "flext_infra.deps._models_tool_config_linters",
+        "RuffLintConfig": "flext_infra.deps._models_tool_config_linters",
         "_constants": "flext_infra.deps._constants",
         "_detector_runtime": "flext_infra.deps._detector_runtime",
+        "_extra_paths_resolution": "flext_infra.deps._extra_paths_resolution",
+        "_internal_sync_repo": "flext_infra.deps._internal_sync_repo",
         "_models": "flext_infra.deps._models",
         "_models_tool_config": "flext_infra.deps._models_tool_config",
+        "_models_tool_config_linters": "flext_infra.deps._models_tool_config_linters",
+        "_models_tool_config_type_checkers": "flext_infra.deps._models_tool_config_type_checkers",
         "_phases": "flext_infra.deps._phases",
         "c": ("flext_core.constants", "FlextConstants"),
         "cli": "flext_infra.deps.cli",
         "d": ("flext_core.decorators", "FlextDecorators"),
         "detection": "flext_infra.deps.detection",
+        "detection_analysis": "flext_infra.deps.detection_analysis",
         "detector": "flext_infra.deps.detector",
         "e": ("flext_core.exceptions", "FlextExceptions"),
         "extra_paths": "flext_infra.deps.extra_paths",
@@ -116,6 +327,7 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = merge_lazy_imports(
         "modernizer": "flext_infra.deps.modernizer",
         "p": ("flext_core.protocols", "FlextProtocols"),
         "path_sync": "flext_infra.deps.path_sync",
+        "path_sync_rewrite": "flext_infra.deps.path_sync_rewrite",
         "r": ("flext_core.result", "FlextResult"),
         "s": ("flext_core.service", "FlextService"),
         "t": ("flext_core.typings", "FlextTypes"),
@@ -123,6 +335,93 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = merge_lazy_imports(
         "x": ("flext_core.mixins", "FlextMixins"),
     },
 )
+
+__all__ = [
+    "FlextInfraCliDeps",
+    "FlextInfraConfigFixer",
+    "FlextInfraConsolidateGroupsPhase",
+    "FlextInfraDependencyDetectionAnalysis",
+    "FlextInfraDependencyDetectionService",
+    "FlextInfraDependencyDetectorRuntime",
+    "FlextInfraDependencyPathSync",
+    "FlextInfraDependencyPathSyncRewrite",
+    "FlextInfraDepsConstants",
+    "FlextInfraDepsModels",
+    "FlextInfraDepsModelsToolConfig",
+    "FlextInfraEnsureCoverageConfigPhase",
+    "FlextInfraEnsureExtraPathsPhase",
+    "FlextInfraEnsureFormattingToolingPhase",
+    "FlextInfraEnsureMypyConfigPhase",
+    "FlextInfraEnsureNamespaceToolingPhase",
+    "FlextInfraEnsurePydanticMypyConfigPhase",
+    "FlextInfraEnsurePyreflyConfigPhase",
+    "FlextInfraEnsurePyrightConfigPhase",
+    "FlextInfraEnsurePyrightEnvs",
+    "FlextInfraEnsurePytestConfigPhase",
+    "FlextInfraEnsureRuffConfigPhase",
+    "FlextInfraExtraPathsManager",
+    "FlextInfraExtraPathsPyrefly",
+    "FlextInfraExtraPathsResolutionMixin",
+    "FlextInfraInjectCommentsPhase",
+    "FlextInfraInternalDependencySyncService",
+    "FlextInfraInternalSyncRepoMixin",
+    "FlextInfraPyprojectModernizer",
+    "FlextInfraRuntimeDevDependencyDetector",
+    "MypyConfig",
+    "MypyOverrideConfig",
+    "PydanticMypyConfig",
+    "PyreflyConfig",
+    "PyrightConfig",
+    "RuffConfig",
+    "RuffFormatConfig",
+    "RuffIsortConfig",
+    "RuffLintConfig",
+    "_constants",
+    "_detector_runtime",
+    "_extra_paths_resolution",
+    "_internal_sync_repo",
+    "_models",
+    "_models_tool_config",
+    "_models_tool_config_linters",
+    "_models_tool_config_type_checkers",
+    "_phases",
+    "c",
+    "cli",
+    "consolidate_groups",
+    "d",
+    "detection",
+    "detection_analysis",
+    "detector",
+    "e",
+    "ensure_coverage",
+    "ensure_extra_paths",
+    "ensure_formatting",
+    "ensure_mypy",
+    "ensure_namespace",
+    "ensure_pydantic_mypy",
+    "ensure_pyrefly",
+    "ensure_pyright",
+    "ensure_pyright_envs",
+    "ensure_pytest",
+    "ensure_ruff",
+    "extra_paths",
+    "extra_paths_pyrefly",
+    "fix_pyrefly_config",
+    "h",
+    "inject_comments",
+    "internal_sync",
+    "m",
+    "main",
+    "modernizer",
+    "p",
+    "path_sync",
+    "path_sync_rewrite",
+    "r",
+    "s",
+    "t",
+    "u",
+    "x",
+]
 
 
 install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)

@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from typing import override
 
-from flext_infra import t, u
-from flext_infra.transformers._base import FlextInfraRopeTransformer
+from flext_infra import FlextInfraRopeTransformer, t, u
 
 
 class FlextInfraRefactorMROPrivateInlineTransformer(FlextInfraRopeTransformer):
@@ -20,7 +19,7 @@ class FlextInfraRefactorMROPrivateInlineTransformer(FlextInfraRopeTransformer):
     def __init__(
         self,
         *,
-        replacement_values: Mapping[str, str],
+        replacement_values: t.StrMapping,
         on_change: t.Infra.ChangeCallback = None,
     ) -> None:
         """Initialize with symbol-to-value mapping for private constant inlining."""
@@ -63,7 +62,7 @@ class FlextInfraRefactorMROQualifiedReferenceTransformer(FlextInfraRopeTransform
     def __init__(
         self,
         *,
-        renames: Mapping[str, str],
+        renames: t.StrMapping,
         on_change: t.Infra.ChangeCallback = None,
     ) -> None:
         """Initialize with symbol-to-qualified-expression rename mapping."""

@@ -48,7 +48,9 @@ class FlextInfraTransformerTier0ImportFixer:
         ) -> None:
             """Initialize analyzer state for Tier 0 import scanning."""
             self._file_path = file_path
-            self._tier0_modules = {n.removesuffix(".py") for n in tier0_modules}
+            self._tier0_modules = {
+                n.removesuffix(c.Infra.Extensions.PYTHON) for n in tier0_modules
+            }
             self._core_aliases = set(core_aliases)
             self._self_import_aliases: t.Infra.StrSet = set()
             self._runtime_aliases: t.Infra.StrSet = set()
@@ -68,12 +70,14 @@ class FlextInfraTransformerTier0ImportFixer:
             self._scan_runtime_usage(source)
             alias_map: t.MutableStrMapping = dict(
                 u.Infra.discover_project_aliases(
-                    pkg_dir.parent if pkg_dir.name == "src" else pkg_dir,
+                    pkg_dir.parent
+                    if pkg_dir.name == c.Infra.Paths.DEFAULT_SRC_DIR
+                    else pkg_dir,
                 ),
             )
             alias_map.update(
                 u.Infra.extract_lazy_import_map(
-                    pkg_dir / "__init__.py",
+                    pkg_dir / c.Infra.Files.INIT_PY,
                 ),
             )
             analysis = FlextInfraTransformerTier0ImportFixer.Analysis(

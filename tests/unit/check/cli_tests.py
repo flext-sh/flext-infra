@@ -11,10 +11,10 @@ from pathlib import Path
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from flext_tests import tm
+from tests import m, t
 
 from flext_core import r
 from flext_infra import FlextInfraWorkspaceChecker
-from tests import m, t
 
 from ._shared_fixtures import create_fake_run_projects
 

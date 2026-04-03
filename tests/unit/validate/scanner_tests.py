@@ -10,9 +10,9 @@ import re
 from pathlib import Path
 
 from flext_tests import tm
+from tests import t
 
 from flext_infra import FlextInfraTextPatternScanner
-from tests import t
 
 
 class TestScannerCore:

@@ -93,7 +93,7 @@ class FlextInfraNamespaceRules:
 
     def check_rule_1(self, tree: ast.Module, filepath: Path) -> t.StrSequence:
         """Rule 1 -- Constants centralization."""
-        if filepath.name == "constants.py":
+        if filepath.name == c.Infra.Files.CONSTANTS_PY:
             return self._check_rule_1_canonical(tree, filepath)
         return self._check_rule_1_non_canonical(tree, filepath)
 
@@ -197,7 +197,7 @@ class FlextInfraNamespaceRules:
 
     def check_rule_2(self, tree: ast.Module, filepath: Path) -> t.StrSequence:
         """Rule 2 -- Types centralization."""
-        if filepath.name == "typings.py":
+        if filepath.name == c.Infra.Files.TYPINGS_PY:
             return self._check_rule_2_canonical(tree, filepath)
         return self._check_rule_2_non_canonical(tree, filepath)
 
@@ -323,7 +323,7 @@ class FlextInfraNamespaceRules:
         if isinstance(node, ast.Assign):
             return self._is_allowed_assign(node, filepath)
         if isinstance(node, ast.TypeAlias):
-            return filepath.name == "typings.py"
+            return filepath.name == c.Infra.Files.TYPINGS_PY
         return self._is_allowed_ann_assign(node, filepath)
 
     @staticmethod
@@ -345,18 +345,18 @@ class FlextInfraNamespaceRules:
         if isinstance(node.value, ast.Call):
             func_name = self._get_call_name(node.value.func)
             if func_name in c.Infra.TYPEVAR_CALLABLES:
-                return filepath.name == "typings.py"
+                return filepath.name == c.Infra.Files.TYPINGS_PY
         return False
 
     def _is_allowed_ann_assign(self, node: ast.AnnAssign, filepath: Path) -> bool:
         if self._annotation_contains(node.annotation, "TypeAlias"):
-            return filepath.name == "typings.py"
+            return filepath.name == c.Infra.Files.TYPINGS_PY
         if (
             isinstance(node.target, ast.Name)
             and node.target.id.startswith("_")
             and self._annotation_contains(node.annotation, "Final")
         ):
-            return filepath.name == "constants.py"
+            return filepath.name == c.Infra.Files.CONSTANTS_PY
         return False
 
 

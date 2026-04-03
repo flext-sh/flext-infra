@@ -11,11 +11,11 @@ from collections.abc import MutableSequence, Sequence
 from typing import override
 
 from flext_infra import (
+    FlextInfraRopeTransformer,
     c,
     t,
     u,
 )
-from flext_infra.transformers._base import FlextInfraRopeTransformer
 
 
 class FlextInfraRefactorImportModernizer(FlextInfraRopeTransformer):

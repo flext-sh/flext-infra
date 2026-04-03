@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 import time
-from collections.abc import MutableSequence
+from collections.abc import Mapping, MutableSequence
 from pathlib import Path
 from typing import override
 
@@ -53,21 +53,21 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         )
         try:
             if isinstance(ruff_data, list):
-                issues.extend(
-                    m.Infra.Issue(
-                        file=str(entry.get("filename", "?")),
-                        line=self._nested_int(dict(entry), "location", "row"),
-                        column=self._nested_int(
-                            dict(entry),
-                            "location",
-                            "column",
-                        ),
-                        code=str(entry.get("code", "")),
-                        message=str(entry.get("message", "")),
-                    )
-                    for entry in ruff_data
-                    if u.is_mapping(entry)
-                )
+                for entry in ruff_data:
+                    if isinstance(entry, Mapping):
+                        issues.append(
+                            m.Infra.Issue(
+                                file=str(entry.get("filename", "?")),
+                                line=u.Infra.nested_int(entry, "location", "row"),
+                                column=u.Infra.nested_int(
+                                    entry,
+                                    "location",
+                                    "column",
+                                ),
+                                code=str(entry.get("code", "")),
+                                message=str(entry.get("message", "")),
+                            )
+                        )
         except (TypeError, ValidationError):
             pass
         return self._build_gate_result(
