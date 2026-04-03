@@ -21,7 +21,6 @@ from pydantic import Field
 from flext_core import r, s
 from flext_infra import (
     FlextInfraCodegenLazyInit,
-    FlextInfraCodegenSnapshot,
     FlextInfraNamespaceEnforcer,
     FlextInfraNamespaceValidator,
     FlextInfraRefactorEngine,
@@ -126,7 +125,13 @@ class FlextInfraCodegenFixer(s[bool]):
         prefix = FlextInfraNamespaceValidator.derive_prefix(project_path)
         if not prefix:
             return self._empty_result(project_path.name)
-        pkg_dir = FlextInfraCodegenSnapshot.find_package_dir(project_path)
+        src_dir_for_pkg = project_path / c.Infra.Paths.DEFAULT_SRC_DIR
+        pkg_dir: Path | None = None
+        if src_dir_for_pkg.is_dir():
+            for child in sorted(src_dir_for_pkg.iterdir()):
+                if child.is_dir() and (child / c.Infra.Files.INIT_PY).exists():
+                    pkg_dir = child
+                    break
         if pkg_dir is None:
             return self._empty_result(project_path.name)
         ctx = self._FixContext()
@@ -137,7 +142,7 @@ class FlextInfraCodegenFixer(s[bool]):
             self._workspace_root,
             label=f"codegen-fix:{project_path.name}",
         )
-        stash_ref = checkpoint_result.value if checkpoint_result.is_success else ""
+        stash_ref = checkpoint_result.unwrap_or("")
         self._apply_ns_rules(project_path=project_path, ctx=ctx)
         if self._dry_run or self._rules_only:
             return self._build_result(project_path.name, ctx)

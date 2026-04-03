@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import importlib.util
 import re
 from collections import deque
 from collections.abc import Mapping, MutableMapping
@@ -18,7 +17,6 @@ from pathlib import Path
 
 from flext_core import FlextUtilities, m
 from flext_infra import (
-    FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesYaml,
     c,
     t,
@@ -29,17 +27,10 @@ class FlextInfraNormalizerContext(m.ArbitraryTypesModel):
     """Analysis context for import normalization."""
 
     file_path: Path
-    file_module: str
     project_package: str
-    project_aliases: frozenset[str]
     declared_alias: str
-    alias_to_defining_module: t.StrMapping
     alias_tiers: t.IntMapping
-    file_tier: int
-    package_reachability: t.FrozensetMapping
-    wrong_source_enabled: bool
     universal_aliases: frozenset[str]
-    workspace_packages: frozenset[str]
 
 
 class FlextInfraUtilitiesImportNormalizer:
@@ -85,56 +76,6 @@ class FlextInfraUtilitiesImportNormalizer:
             if isinstance(tier_value, int):
                 tiers[alias_name] = tier_value
         return tiers
-
-    @staticmethod
-    @lru_cache(maxsize=1)
-    def wrong_source_config() -> t.Infra.Pair[bool, frozenset[str]]:
-        """Return wrong-source detection flag and universal aliases."""
-        config = FlextInfraUtilitiesImportNormalizer.load_config().get(
-            "wrong_source",
-        )
-        if not isinstance(config, Mapping):
-            return False, frozenset()
-        enabled_raw = config.get("enabled")
-        enabled = isinstance(enabled_raw, bool) and enabled_raw
-        universal_raw = config.get("universal_aliases")
-        universal_aliases: t.Infra.StrSet = set()
-        if isinstance(universal_raw, list):
-            for item in universal_raw:
-                if isinstance(item, str) and len(item) == 1 and item.islower():
-                    universal_aliases.add(item)
-        return enabled, frozenset(universal_aliases)
-
-    @staticmethod
-    def build_alias_to_defining_module(
-        *,
-        package_name: str,
-        package_dir: Path,
-        project_root: Path | None,
-        alias_map: Mapping[str, t.Infra.VariadicTuple[str]] | None,
-    ) -> t.StrMapping:
-        """Build alias-to-module map from project facades and lazy exports."""
-        init_path = package_dir / c.Infra.Files.INIT_PY
-        alias_to_module = dict(
-            FlextInfraUtilitiesDiscovery.extract_lazy_import_map(init_path),
-        )
-        if project_root is not None:
-            alias_to_facade = FlextInfraUtilitiesDiscovery.discover_project_aliases(
-                project_root,
-            )
-            for alias_name, facade_file in alias_to_facade.items():
-                if alias_name in alias_to_module:
-                    continue
-                facade_module = f"{package_name}.{Path(facade_file).stem}"
-                alias_to_module[alias_name] = facade_module
-        if alias_map is not None:
-            legacy_aliases = alias_map.get(package_name, ())
-            for alias_name in legacy_aliases:
-                if alias_name in alias_to_module:
-                    continue
-                guessed_module = f"{package_name}.{alias_name}"
-                alias_to_module[alias_name] = guessed_module
-        return alias_to_module
 
     @staticmethod
     @lru_cache(maxsize=128)
@@ -235,91 +176,6 @@ class FlextInfraUtilitiesImportNormalizer:
                 )
             )
         return {name: frozenset(imports) for name, imports in graph.items()}
-
-    @staticmethod
-    def _tier_from_directory(
-        first_dir: str,
-        facade_to_alias: t.StrMapping,
-        alias_tiers: t.IntMapping,
-    ) -> int:
-        """Resolve tier from the first subdirectory name under the package."""
-        if not first_dir.startswith("_"):
-            return c.Infra.Tier.DEFAULT_SUBDIR
-        normalized = first_dir.lstrip("_")
-        if normalized == "services":
-            normalized = "service"
-        alias = facade_to_alias.get(f"{normalized}.py", "")
-        if alias in alias_tiers:
-            return alias_tiers[alias]
-        if normalized == "result" and "r" in alias_tiers:
-            return alias_tiers["r"]
-        return c.Infra.Tier.DEFAULT_SUBDIR
-
-    @staticmethod
-    def file_tier(
-        *,
-        file_path: Path,
-        project_package: str,
-        facade_to_alias: t.StrMapping,
-        alias_tiers: t.IntMapping,
-    ) -> int:
-        """Infer architectural tier for a file based on facade/paths."""
-        declared_alias = facade_to_alias.get(file_path.name, "")
-        if declared_alias in alias_tiers:
-            return alias_tiers[declared_alias]
-        if not project_package:
-            return c.Infra.Tier.UNKNOWN
-        marker = f"/src/{project_package}/"
-        file_str = str(file_path.resolve())
-        if marker not in file_str:
-            return c.Infra.Tier.UNKNOWN
-        relative = file_str.split(marker, maxsplit=1)[1]
-        parts = Path(relative).parts[:-1]
-        if not parts:
-            return c.Infra.Tier.UNKNOWN
-        return FlextInfraUtilitiesImportNormalizer._tier_from_directory(
-            parts[0],
-            facade_to_alias,
-            alias_tiers,
-        )
-
-    @staticmethod
-    def _resolve_package_dir(
-        package_name: str,
-        project_root: Path | None,
-    ) -> Path | None:
-        """Locate the on-disk package directory for a given package name."""
-        if project_root is not None:
-            candidate = project_root / c.Infra.Paths.DEFAULT_SRC_DIR / package_name
-            if candidate.is_dir() and (candidate / c.Infra.Files.INIT_PY).is_file():
-                return candidate
-        if package_name:
-            spec = importlib.util.find_spec(package_name)
-            if spec and spec.submodule_search_locations:
-                locs = list(spec.submodule_search_locations)
-                if locs:
-                    cand = Path(locs[0])
-                    if cand.is_dir() and (cand / c.Infra.Files.INIT_PY).is_file():
-                        return cand
-        return None
-
-    @staticmethod
-    def _resolve_file_module(
-        file_path: Path,
-        package_dir: Path | None,
-        package_name: str,
-    ) -> str:
-        """Resolve the dotted module path for *file_path*, or empty string."""
-        if package_dir is None or not package_name:
-            return ""
-        try:
-            return FlextInfraUtilitiesImportNormalizer.file_to_module(
-                file_path=file_path,
-                package_dir=package_dir,
-                package_name=package_name,
-            )
-        except ValueError:
-            return ""
 
 
 __all__ = ["FlextInfraNormalizerContext", "FlextInfraUtilitiesImportNormalizer"]

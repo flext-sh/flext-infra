@@ -10,18 +10,11 @@ import typing as _t
 from flext_core.lazy import install_lazy_exports
 
 if _t.TYPE_CHECKING:
-    import tests.unit.refactor.test_infra_refactor_analysis as _tests_unit_refactor_test_infra_refactor_analysis
+    import tests.unit.refactor.conftest as _tests_unit_refactor_conftest
 
-    test_infra_refactor_analysis = _tests_unit_refactor_test_infra_refactor_analysis
+    conftest = _tests_unit_refactor_conftest
     import tests.unit.refactor.test_infra_refactor_class_and_propagation as _tests_unit_refactor_test_infra_refactor_class_and_propagation
-    from tests.unit.refactor.test_infra_refactor_analysis import (
-        test_build_impact_map_extracts_rename_entries,
-        test_build_impact_map_extracts_signature_entries,
-        test_main_analyze_violations_is_read_only,
-        test_main_analyze_violations_writes_json_report,
-        test_violation_analysis_counts_massive_patterns,
-        test_violation_analyzer_skips_non_utf8_files,
-    )
+    from tests.unit.refactor.conftest import rope_project
 
     test_infra_refactor_class_and_propagation = (
         _tests_unit_refactor_test_infra_refactor_class_and_propagation
@@ -124,7 +117,6 @@ if _t.TYPE_CHECKING:
     )
     import tests.unit.refactor.test_infra_refactor_namespace_source as _tests_unit_refactor_test_infra_refactor_namespace_source
     from tests.unit.refactor.test_infra_refactor_namespace_aliases import (
-        rope_project,
         test_import_alias_detector_skips_facade_and_subclass_files,
         test_import_alias_detector_skips_nested_private_and_as_renames,
         test_import_alias_detector_skips_private_and_class_imports,
@@ -249,6 +241,7 @@ _LAZY_IMPORTS = {
     "FAMILY_FILE_MAP": "tests.unit.refactor.test_infra_refactor_namespace_source",
     "FAMILY_SUFFIX_MAP": "tests.unit.refactor.test_infra_refactor_namespace_source",
     "c": ("flext_core.constants", "FlextConstants"),
+    "conftest": "tests.unit.refactor.conftest",
     "d": ("flext_core.decorators", "FlextDecorators"),
     "e": ("flext_core.exceptions", "FlextExceptions"),
     "h": ("flext_core.handlers", "FlextHandlers"),
@@ -256,12 +249,10 @@ _LAZY_IMPORTS = {
     "p": ("flext_core.protocols", "FlextProtocols"),
     "r": ("flext_core.result", "FlextResult"),
     "refactor_main": "tests.unit.refactor.test_main_cli",
-    "rope_project": "tests.unit.refactor.test_infra_refactor_namespace_aliases",
+    "rope_project": "tests.unit.refactor.conftest",
     "s": ("flext_core.service", "FlextService"),
     "t": ("flext_core.typings", "FlextTypes"),
     "test_all_three_capabilities_in_one_pass": "tests.unit.refactor.test_infra_refactor_typing_unifier",
-    "test_build_impact_map_extracts_rename_entries": "tests.unit.refactor.test_infra_refactor_analysis",
-    "test_build_impact_map_extracts_signature_entries": "tests.unit.refactor.test_infra_refactor_analysis",
     "test_class_reconstructor_reorders_each_contiguous_method_block": "tests.unit.refactor.test_infra_refactor_class_and_propagation",
     "test_class_reconstructor_reorders_methods_by_config": "tests.unit.refactor.test_infra_refactor_class_and_propagation",
     "test_class_reconstructor_skips_interleaved_non_method_members": "tests.unit.refactor.test_infra_refactor_class_and_propagation",
@@ -289,7 +280,6 @@ _LAZY_IMPORTS = {
     "test_import_modernizer_skips_rewrite_when_runtime_alias_shadowed_in_function": "tests.unit.refactor.test_infra_refactor_import_modernizer",
     "test_import_modernizer_skips_when_runtime_alias_name_is_blocked": "tests.unit.refactor.test_infra_refactor_import_modernizer",
     "test_import_modernizer_updates_aliased_symbol_usage": "tests.unit.refactor.test_infra_refactor_import_modernizer",
-    "test_infra_refactor_analysis": "tests.unit.refactor.test_infra_refactor_analysis",
     "test_infra_refactor_class_and_propagation": "tests.unit.refactor.test_infra_refactor_class_and_propagation",
     "test_infra_refactor_class_placement": "tests.unit.refactor.test_infra_refactor_class_placement",
     "test_infra_refactor_engine": "tests.unit.refactor.test_infra_refactor_engine",
@@ -312,8 +302,6 @@ _LAZY_IMPORTS = {
     "test_legacy_wrapper_forwarding_varargs_is_inlined_as_alias": "tests.unit.refactor.test_infra_refactor_legacy_and_annotations",
     "test_legacy_wrapper_function_is_inlined_as_alias": "tests.unit.refactor.test_infra_refactor_legacy_and_annotations",
     "test_legacy_wrapper_non_passthrough_is_not_inlined": "tests.unit.refactor.test_infra_refactor_legacy_and_annotations",
-    "test_main_analyze_violations_is_read_only": "tests.unit.refactor.test_infra_refactor_analysis",
-    "test_main_analyze_violations_writes_json_report": "tests.unit.refactor.test_infra_refactor_analysis",
     "test_main_cli": "tests.unit.refactor.test_main_cli",
     "test_migrate_workspace_applies_consumer_rewrites": "tests.unit.refactor.test_infra_refactor_mro_import_rewriter",
     "test_migrate_workspace_dry_run_preserves_files": "tests.unit.refactor.test_infra_refactor_mro_import_rewriter",
@@ -392,8 +380,6 @@ _LAZY_IMPORTS = {
     "test_symbol_propagation_renames_import_and_local_references": "tests.unit.refactor.test_infra_refactor_class_and_propagation",
     "test_symbol_propagation_updates_mro_base_references": "tests.unit.refactor.test_infra_refactor_class_and_propagation",
     "test_typealias_conversion_preserves_used_typing_siblings": "tests.unit.refactor.test_infra_refactor_typing_unifier",
-    "test_violation_analysis_counts_massive_patterns": "tests.unit.refactor.test_infra_refactor_analysis",
-    "test_violation_analyzer_skips_non_utf8_files": "tests.unit.refactor.test_infra_refactor_analysis",
     "u": ("flext_core.utilities", "FlextUtilities"),
     "x": ("flext_core.mixins", "FlextMixins"),
 }
@@ -403,6 +389,7 @@ __all__ = [
     "FAMILY_SUFFIX_MAP",
     "EngineSafetyStub",
     "c",
+    "conftest",
     "d",
     "e",
     "h",
@@ -414,8 +401,6 @@ __all__ = [
     "s",
     "t",
     "test_all_three_capabilities_in_one_pass",
-    "test_build_impact_map_extracts_rename_entries",
-    "test_build_impact_map_extracts_signature_entries",
     "test_class_reconstructor_reorders_each_contiguous_method_block",
     "test_class_reconstructor_reorders_methods_by_config",
     "test_class_reconstructor_skips_interleaved_non_method_members",
@@ -443,7 +428,6 @@ __all__ = [
     "test_import_modernizer_skips_rewrite_when_runtime_alias_shadowed_in_function",
     "test_import_modernizer_skips_when_runtime_alias_name_is_blocked",
     "test_import_modernizer_updates_aliased_symbol_usage",
-    "test_infra_refactor_analysis",
     "test_infra_refactor_class_and_propagation",
     "test_infra_refactor_class_placement",
     "test_infra_refactor_engine",
@@ -466,8 +450,6 @@ __all__ = [
     "test_legacy_wrapper_forwarding_varargs_is_inlined_as_alias",
     "test_legacy_wrapper_function_is_inlined_as_alias",
     "test_legacy_wrapper_non_passthrough_is_not_inlined",
-    "test_main_analyze_violations_is_read_only",
-    "test_main_analyze_violations_writes_json_report",
     "test_main_cli",
     "test_migrate_workspace_applies_consumer_rewrites",
     "test_migrate_workspace_dry_run_preserves_files",
@@ -546,8 +528,6 @@ __all__ = [
     "test_symbol_propagation_renames_import_and_local_references",
     "test_symbol_propagation_updates_mro_base_references",
     "test_typealias_conversion_preserves_used_typing_siblings",
-    "test_violation_analysis_counts_massive_patterns",
-    "test_violation_analyzer_skips_non_utf8_files",
     "u",
     "x",
 ]

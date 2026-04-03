@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
 from typing import override
 
 from flext_infra import FlextInfraRopeTransformer, t, u
@@ -21,7 +20,7 @@ class FlextInfraRefactorMRORemover(FlextInfraRopeTransformer):
         self,
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-    ) -> tuple[str, Sequence[str]]:
+    ) -> t.Infra.TransformResult:
         """Apply MRO redeclaration removal. Returns (new_source, changes)."""
         source = u.Infra.read_source(resource)
         class_infos = u.Infra.get_class_info(rope_project, resource)

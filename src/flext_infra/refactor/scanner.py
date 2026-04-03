@@ -10,9 +10,9 @@ from pydantic import TypeAdapter, ValidationError
 
 from flext_infra import c, m, r, t, u
 
-_AST_GREP_MATCH_SEQ_ADAPTER: TypeAdapter[Sequence[m.Infra.AstGrepMatchEnvelope]] = (
+_AST_GREP_MATCH_SEQ_ADAPTER: TypeAdapter[Sequence[m.Infra.GrepMatchEnvelope]] = (
     TypeAdapter(
-        Sequence[m.Infra.AstGrepMatchEnvelope],
+        Sequence[m.Infra.GrepMatchEnvelope],
     )
 )
 
@@ -30,9 +30,7 @@ class FlextInfraRefactorLooseClassScanner:
             return out
         discovered_files: Sequence[Path] = files_result.value
         grep_result = self._scan_with_ast_grep(project_root)
-        grep_index: Mapping[Path, t.IntMapping] = (
-            grep_result.value if grep_result.is_success else {}
-        )
+        grep_index: Mapping[Path, t.IntMapping] = grep_result.unwrap_or({})
         violations: MutableSequence[m.Infra.LooseClassViolation] = []
         targets_found = dict.fromkeys(c.Infra.REQUIRED_CLASS_TARGETS, False)
         classes_scanned = 0
@@ -191,7 +189,7 @@ class FlextInfraRefactorLooseClassScanner:
             return out2
         try:
             json_raw: str | bytes | bytearray = capture.value
-            entries: Sequence[m.Infra.AstGrepMatchEnvelope] = (
+            entries: Sequence[m.Infra.GrepMatchEnvelope] = (
                 _AST_GREP_MATCH_SEQ_ADAPTER.validate_json(json_raw)
             )
         except ValidationError as exc:

@@ -3,8 +3,7 @@
 Auto-discovers exports from sibling ``.py`` files and generates clean
 lazy-loading ``__init__.py`` files using ``flext_core.lazy``.
 
-Scanning logic lives in ``_utilities_codegen_lazy_scanning``.
-Alias resolution lives in ``_utilities_codegen_lazy_aliases``.
+Scanning, merge, and alias logic live in ``flext_infra._utilities.codegen_lazy``.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT

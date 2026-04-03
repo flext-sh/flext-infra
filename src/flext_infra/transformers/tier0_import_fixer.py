@@ -6,7 +6,7 @@ aliases to their correct sources (core, submodule, or TYPE_CHECKING block).
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping, MutableSequence, Sequence
+from collections.abc import MutableMapping, MutableSequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import ClassVar
@@ -180,7 +180,7 @@ class FlextInfraTransformerTier0ImportFixer:
             self,
             rope_project: t.Infra.RopeProject,
             resource: t.Infra.RopeResource,
-        ) -> tuple[str, Sequence[str]]:
+        ) -> t.Infra.TransformResult:
             """Apply tier 0 import fixes via rope."""
             source = u.Infra.read_source(resource)
             self._detect_missing_classes(source)

@@ -6,12 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re as _re
 from collections.abc import Callable, Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path as _Path
 
 from pydantic import BaseModel
 
 from flext_core import FlextTypes
+
+_re_Pattern_str = _re.Pattern[str]
 
 
 class FlextInfraTypesBase:
@@ -98,13 +101,6 @@ class FlextInfraTypesBase:
     "Single census record: string keys with str|int values (name, type, usages)."
     type MutableCensusRecordList = MutableSequence[CensusRecord]
     "Mutable list of census records."
-    type DeduplicationFix = Mapping[str, str | int | Sequence[CensusRecord]]
-    "Deduplication fix proposal: scalar fields + nested duplicate records."
-    type DeduplicationResult = Mapping[
-        str,
-        str | int | FlextTypes.StrSequence | Sequence[CensusRecord],
-    ]
-    "Result of applying a deduplication fix: includes replaced names list."
 
     type InfraMapping = Mapping[str, InfraValue]
     "Read-only string-keyed infra value mapping."
@@ -114,3 +110,14 @@ class FlextInfraTypesBase:
     "Read-only infra value sequence."
     type MutableInfraSequence = MutableSequence[InfraValue]
     "Mutable infra value sequence."
+
+    # ── Transformer / edit result types ──────────────────────────────
+
+    type TransformResult = tuple[str, Sequence[str]]
+    "Canonical (new_source, change_descriptions) from any source transformer."
+    type EditResult = tuple[bool, Sequence[str]]
+    "Validated edit outcome: (success, report_lines)."
+    type EditResultWithDescs = tuple[bool, Sequence[str], Sequence[str]]
+    "(success, descriptions, report_lines) — includes what was attempted."
+    type LintSnapshot = Mapping[str, Sequence[str]]
+    "Lint errors per tool: {tool_name: [error_lines]}."

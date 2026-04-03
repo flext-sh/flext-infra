@@ -101,7 +101,7 @@ class TestCheckProjectRunners:
             return _FakeGate(gate_name)
 
         monkeypatch.setattr(checker._registry, "create", _fake_create)
-        result = checker._check_project(
+        result = checker._check_project_with_ctx(
             tmp_path,
             ["lint", "format", "pyrefly"],
             m.Infra.GateContext(workspace_root=tmp_path, reports_dir=tmp_path),

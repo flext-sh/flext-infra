@@ -5,12 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_cli import cli
 from flext_core import r
 from flext_infra import c, m, t, u
 
 if TYPE_CHECKING:
     import typer
+
+_R = u.Infra.route  # shorthand
 
 
 class FlextInfraCliGithub:
@@ -18,68 +19,58 @@ class FlextInfraCliGithub:
 
     def register_github(self, app: typer.Typer) -> None:
         """Register github commands on the given Typer app."""
-        cli.register_result_route(
+        u.Infra.register_routes(
             app,
-            route=m.Cli.ResultCommandRouteModel(
-                name="workflows",
-                help_text="Sync GitHub workflow files across workspace",
-                model_cls=m.Infra.GithubWorkflowsInput,
-                handler=self._handle_workflows,
-                failure_message="Workflow sync failed",
-            ),
-        )
-        cli.register_result_route(
-            app,
-            route=m.Cli.ResultCommandRouteModel(
-                name=c.Infra.LINT_SECTION,
-                help_text="Lint GitHub workflow files",
-                model_cls=m.Infra.GithubLintInput,
-                handler=self._handle_lint,
-                failure_message="Workflow lint failed",
-            ),
-        )
-        cli.register_result_route(
-            app,
-            route=m.Cli.ResultCommandRouteModel(
-                name=c.Infra.PR,
-                help_text="Manage pull requests for a single project",
-                model_cls=m.Infra.GithubPrInput,
-                handler=self._handle_pr,
-                failure_message="PR operation failed",
-            ),
-        )
-        cli.register_result_route(
-            app,
-            route=m.Cli.ResultCommandRouteModel(
-                name="pr-workspace",
-                help_text="Manage pull requests across workspace projects",
-                model_cls=m.Infra.GithubPrWorkspaceInput,
-                handler=self._handle_pr_workspace,
-                failure_message="PR workspace orchestration failed",
-            ),
+            [
+                _R(
+                    "workflows",
+                    "Sync GitHub workflow files across workspace",
+                    m.Infra.GithubWorkflowsInput,
+                    self._handle_workflows,
+                    fail_msg="Workflow sync failed",
+                ),
+                _R(
+                    c.Infra.LINT_SECTION,
+                    "Lint GitHub workflow files",
+                    m.Infra.GithubLintInput,
+                    self._handle_lint,
+                    fail_msg="Workflow lint failed",
+                ),
+                _R(
+                    c.Infra.PR,
+                    "Manage pull requests for a single project",
+                    m.Infra.GithubPrInput,
+                    self._handle_pr,
+                    fail_msg="PR operation failed",
+                ),
+                _R(
+                    "pr-workspace",
+                    "Manage pull requests across workspace projects",
+                    m.Infra.GithubPrWorkspaceInput,
+                    self._handle_pr_workspace,
+                    fail_msg="PR workspace orchestration failed",
+                ),
+            ],
         )
 
     @staticmethod
     def _handle_workflows(params: m.Infra.GithubWorkflowsInput) -> r[bool]:
         """Sync GitHub workflow files."""
-        result = u.Infra.github_sync_workspace_workflows(
-            workspace_root=Path(params.workspace),
+        return u.Infra.github_sync_workspace_workflows(
+            workspace_root=u.Infra.resolve_workspace(params),
             params=m.Infra.WorkflowSyncParams(
                 report_path=Path(params.report) if params.report else None,
                 apply=params.apply,
                 prune=params.prune,
             ),
-        )
-        if result.is_failure:
-            return r[bool].fail(result.error or "workflow sync failed")
-        return r[bool].ok(True)
+        ).map(lambda _: True)
 
     @staticmethod
     def _handle_lint(params: m.Infra.GithubLintInput) -> r[m.Infra.WorkflowLintResult]:
         """Lint GitHub workflow files across workspace."""
         report_path = Path(params.report) if params.report else None
         result: r[m.Infra.WorkflowLintResult] = u.Infra.github_lint_workflows(
-            workspace_root=Path(params.workspace),
+            workspace_root=u.Infra.resolve_workspace(params),
             report_path=report_path,
             strict=params.strict,
         )
@@ -99,7 +90,7 @@ class FlextInfraCliGithub:
             "action": params.action,
             "base": params.base,
             "head": params.head or "",
-            "number": u.ensure_str(params.number),
+            "number": u.to_str(params.number),
             "title": params.title or "",
             "body": params.body or "",
             "draft": "1" if params.draft else "0",
@@ -138,7 +129,7 @@ class FlextInfraCliGithub:
             pr_action=params.pr_action,
             pr_base=params.pr_base,
             pr_head=params.pr_head,
-            pr_number=u.ensure_str(params.pr_number),
+            pr_number=u.to_str(params.pr_number),
             pr_title=params.pr_title,
             pr_body=params.pr_body,
             pr_draft=params.pr_draft,
@@ -149,7 +140,7 @@ class FlextInfraCliGithub:
             pr_release_on_merge=params.pr_release_on_merge,
         )
         return u.Infra.github_pr_orchestrate(
-            workspace_root=Path(params.workspace),
+            workspace_root=u.Infra.resolve_workspace(params),
             params=m.Infra.PrOrchestrateParams(
                 projects=project_names,
                 include_root=pr_model.include_root,

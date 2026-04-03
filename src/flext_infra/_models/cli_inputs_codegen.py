@@ -8,15 +8,16 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
+from flext_core import FlextModels
 from flext_infra import c
 
 
 class FlextInfraModelsCliInputsCodegen:
     """Namespaced CLI input models for codegen and docs commands."""
 
-    class CliInputBase(BaseModel):
+    class CliInputBase(FlextModels.FrozenStrictModel):
         """Base for all CLI input models."""
 
         model_config = ConfigDict(populate_by_name=True)
@@ -26,7 +27,7 @@ class FlextInfraModelsCliInputsCodegen:
             Field(default=".", description="Workspace root"),
         ] = "."
 
-    class ApplyMixin(BaseModel):
+    class ApplyMixin(FlextModels.FrozenStrictModel):
         """Shared apply flag for mutating commands."""
 
         apply: Annotated[
@@ -34,7 +35,7 @@ class FlextInfraModelsCliInputsCodegen:
             Field(default=False, description="Apply changes"),
         ] = False
 
-    class OutputDirMixin(BaseModel):
+    class OutputDirMixin(FlextModels.FrozenStrictModel):
         """Shared output directory option for report-producing commands."""
 
         output_dir: Annotated[

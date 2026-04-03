@@ -107,14 +107,14 @@ class FlextInfraDependencyPathSyncRewrite:
             if source_key in internal_names and source_key not in internal_deps:
                 del sources[source_key]
                 changes.append(f"  uv.sources: removed stale source {source_key}")
-        from .path_sync import FlextInfraDependencyPathSync  # noqa: PLC0415
+        from .path_sync import FlextInfraDependencyPathSync
 
         for dep_name in sorted(internal_deps):
             expected: t.Infra.ContainerDict
             if mode == c.Infra.ReportKeys.WORKSPACE:
                 expected = {"workspace": True}
             else:
-                path_value = FlextInfraDependencyPathSync._target_path(  # noqa: SLF001
+                path_value = FlextInfraDependencyPathSync._target_path(
                     dep_name,
                     is_root=is_root,
                     mode=mode,
@@ -163,7 +163,7 @@ class FlextInfraDependencyPathSyncRewrite:
         is_root: bool,
         mode: str,
     ) -> t.StrSequence:
-        from .path_sync import FlextInfraDependencyPathSync  # noqa: PLC0415
+        from .path_sync import FlextInfraDependencyPathSync
 
         tool_section = u.Infra.get_table(doc, c.Infra.TOOL)
         if tool_section is None:
@@ -185,7 +185,7 @@ class FlextInfraDependencyPathSyncRewrite:
             if not isinstance(raw_path, str) or not raw_path.strip():
                 continue
             dep_name = FlextInfraDependencyPathSync.extract_dep_name(raw_path)
-            new_path = FlextInfraDependencyPathSync._target_path(  # noqa: SLF001
+            new_path = FlextInfraDependencyPathSync._target_path(
                 dep_name,
                 is_root=is_root,
                 mode=mode,

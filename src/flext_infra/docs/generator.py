@@ -92,17 +92,13 @@ class FlextInfraDocGenerator:
 
     def execute_command(self, params: m.Infra.DocsGenerateInput) -> r[bool]:
         """CLI handler — accepts input model, delegates to generate."""
-        resolved_workspace = Path(params.workspace) if params.workspace else Path.cwd()
-        result = self.generate(
-            workspace_root=resolved_workspace,
+        return self.generate(
+            workspace_root=u.Infra.resolve_workspace(params),
             project=params.project,
             projects=params.projects,
             output_dir=params.output_dir,
             apply=params.apply,
-        )
-        if result.is_failure:
-            return r[bool].fail(result.error or "generate failed")
-        return r[bool].ok(True)
+        ).map(lambda _: True)
 
     def _generate_project_guides(
         self,

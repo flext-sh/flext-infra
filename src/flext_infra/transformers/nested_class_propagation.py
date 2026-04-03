@@ -10,7 +10,6 @@ from flext_infra import (
     FlextInfraRefactorTransformerPolicyUtilities,
     FlextInfraRopeTransformer,
     t,
-    u,
 )
 
 
@@ -35,53 +34,56 @@ class FlextInfraNestedClassPropagationTransformer(FlextInfraRopeTransformer):
         self._policy_context = policy_context
         self._class_families = class_families or {}
 
-    @override
-    def transform(
-        self,
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
-    ) -> tuple[str, Sequence[str]]:
-        """Apply reference propagation. Returns (new_source, changes)."""
-        source = u.Infra.read_source(resource)
+    _description = "nested class propagation"
 
+    @override
+    def apply_to_source(self, source: str) -> t.Infra.TransformResult:
+        """Apply reference propagation to in-memory source without persisting."""
+        self.changes.clear()
+        updated = source
         for old_name, rename_to in self._class_renames.items():
             if not self._should_propagate(old_name, "propagate_imports"):
                 continue
             if self._blocked_by_prefix(old_name):
                 continue
-
             rename_parts = rename_to.split(".")
             namespace = rename_parts[0]
-
-            # Phase 1: Rewrite imports
-            source = self._rewrite_import(
-                source, old_name=old_name, namespace=namespace
+            aliases = self._find_import_aliases(updated, old_name=old_name)
+            updated = self._rewrite_import(
+                updated, old_name=old_name, namespace=namespace
             )
-
-            # Phase 2: Qualify bare name references
             if self._should_propagate(old_name, "propagate_name_references"):
-                source = self._qualify_name_references(
-                    source,
+                updated = self._qualify_name_references(
+                    updated,
                     old_name=old_name,
                     qualified=rename_to,
                 )
-
-            # Phase 3: Qualify attribute references
+                updated = self._qualify_return_annotations(
+                    updated,
+                    old_name=old_name,
+                    qualified=rename_to,
+                )
+                nested_name = rename_parts[-1]
+                for alias_name in aliases:
+                    qualified_alias = f"{alias_name}.{nested_name}"
+                    updated = self._qualify_alias_references(
+                        updated,
+                        alias_name=alias_name,
+                        qualified=qualified_alias,
+                    )
+                    updated = self._qualify_return_annotations(
+                        updated,
+                        old_name=alias_name,
+                        qualified=qualified_alias,
+                    )
             if self._should_propagate(old_name, "propagate_attribute_references"):
-                source = self._qualify_attribute_references(
-                    source,
+                updated = self._qualify_attribute_references(
+                    updated,
                     old_name=old_name,
                     rename_parts=rename_parts,
+                    aliases=aliases,
                 )
-
-        if source != u.Infra.read_source(resource) and self.changes:
-            u.Infra.write_source(
-                rope_project,
-                resource,
-                source,
-                description="nested class propagation",
-            )
-        return source, list(self.changes)
+        return updated, list(self.changes)
 
     def _rewrite_import(self, source: str, *, old_name: str, namespace: str) -> str:
         """Rewrite ``from mod import OldName`` to ``from mod import Namespace``."""
@@ -113,21 +115,84 @@ class FlextInfraNestedClassPropagationTransformer(FlextInfraRopeTransformer):
             self._record_change(f"Qualified reference: {old_name} -> {qualified}")
         return new_source
 
+    def _find_import_aliases(self, source: str, *, old_name: str) -> Sequence[str]:
+        """Collect local aliases bound from ``from x import OldName as Alias``."""
+        pattern = re.compile(
+            rf"from\s+\S+\s+import\s+[^\n]*\b{re.escape(old_name)}\b\s+as\s+"
+            rf"([A-Za-z_]\w*)",
+        )
+        return [match.group(1) for match in pattern.finditer(source)]
+
+    def _qualify_alias_references(
+        self,
+        source: str,
+        *,
+        alias_name: str,
+        qualified: str,
+    ) -> str:
+        """Replace bare alias usage with ``Alias.Nested`` outside import lines."""
+        pattern = re.compile(
+            rf"(?<!class\s)(?<!def\s)(?<!\.)(?<!import\s)(?<!as\s)"
+            rf"\b{re.escape(alias_name)}\b"
+            rf"(?!\s*[=:](?!=))",
+        )
+        lines = source.splitlines(keepends=True)
+        changed = False
+        rewritten: list[str] = []
+        for line in lines:
+            if line.lstrip().startswith("from ") and " import " in line:
+                rewritten.append(line)
+                continue
+            new_line, count = pattern.subn(qualified, line)
+            changed = changed or count > 0
+            rewritten.append(new_line)
+        new_source = "".join(rewritten)
+        if changed and new_source != source:
+            self._record_change(
+                f"Qualified alias reference: {alias_name} -> {qualified}",
+            )
+        return new_source
+
+    def _qualify_return_annotations(
+        self,
+        source: str,
+        *,
+        old_name: str,
+        qualified: str,
+    ) -> str:
+        """Replace ``-> OldName`` with ``-> Namespace.OldName`` in signatures."""
+        pattern = re.compile(rf"(->\s*)\b{re.escape(old_name)}\b")
+        new_source, count = pattern.subn(rf"\1{qualified}", source)
+        if count > 0 and new_source != source:
+            self._record_change(
+                f"Qualified return annotation: {old_name} -> {qualified}",
+            )
+        return new_source
+
     def _qualify_attribute_references(
         self,
         source: str,
         *,
         old_name: str,
         rename_parts: Sequence[str],
+        aliases: Sequence[str],
     ) -> str:
         """Qualify attribute-style references like ``module.OldName``."""
         # Match: something.OldName (attribute access)
         attr_pattern = re.compile(
             rf"(\w+)\.\b{re.escape(old_name)}\b",
         )
-        suffix_parts = rename_parts[1:] if len(rename_parts) > 1 else rename_parts
-        suffix = ".".join(suffix_parts)
-        new_source = attr_pattern.sub(rf"\1.{suffix}", source)
+        namespace = rename_parts[0]
+        alias_names = set(aliases)
+        suffix = ".".join(rename_parts)
+        new_source = attr_pattern.sub(
+            lambda match: (
+                match.group(0)
+                if match.group(1) == namespace or match.group(1) in alias_names
+                else f"{match.group(1)}.{suffix}"
+            ),
+            source,
+        )
         if new_source != source:
             self._record_change(
                 f"Qualified attribute reference: .{old_name} -> .{suffix}",

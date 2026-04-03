@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_cli import cli
 from flext_core import r
 from flext_infra import (
     FlextInfraBaseMkValidator,
@@ -16,20 +15,13 @@ from flext_infra import (
     FlextInfraTextPatternScanner,
     c,
     m,
-    t,
     u,
 )
 
 if TYPE_CHECKING:
     import typer
 
-
-def _list_str(
-    payload: m.Infra.InventoryReport | m.Infra.PytestDiagnostics,
-    key: str,
-) -> t.StrSequence:
-    """Extract string list from payload attribute."""
-    return [item for item in getattr(payload, key, []) if isinstance(item, str)]
+_R = u.Infra.route  # shorthand
 
 
 class FlextInfraCliValidate:
@@ -37,185 +29,128 @@ class FlextInfraCliValidate:
 
     def register_validate(self, app: typer.Typer) -> None:
         """Register validate commands on the given Typer app."""
-        cli.register_result_route(
+        u.Infra.register_routes(
             app,
-            route=m.Cli.ResultCommandRouteModel(
-                name="basemk-validate",
-                help_text="Validate base.mk sync",
-                model_cls=m.Infra.ValidateBaseMkInput,
-                handler=self._handle_basemk_validate,
-                success_message="base.mk validation passed",
-                failure_message="base.mk validation failed",
-            ),
-        )
-        cli.register_result_route(
-            app,
-            route=m.Cli.ResultCommandRouteModel(
-                name="inventory",
-                help_text="Generate scripts inventory",
-                model_cls=m.Infra.ValidateInventoryInput,
-                handler=self._handle_inventory,
-                success_message="Inventory generated successfully",
-                failure_message="Inventory generation failed",
-            ),
-        )
-        cli.register_result_route(
-            app,
-            route=m.Cli.ResultCommandRouteModel(
-                name="pytest-diag",
-                help_text="Extract pytest diagnostics from JUnit and log files",
-                model_cls=m.Infra.ValidatePytestDiagInput,
-                handler=self._handle_pytest_diag,
-                success_message="Pytest diagnostics extracted",
-                failure_message="Pytest diagnostics extraction failed",
-            ),
-        )
-        cli.register_result_route(
-            app,
-            route=m.Cli.ResultCommandRouteModel(
-                name="scan",
-                help_text="Scan text files for patterns",
-                model_cls=m.Infra.ValidateScanInput,
-                handler=self._handle_scan,
-                success_message="Scan completed with no violations",
-                failure_message="Scan failed",
-            ),
-        )
-        cli.register_result_route(
-            app,
-            route=m.Cli.ResultCommandRouteModel(
-                name="skill-validate",
-                help_text="Validate a skill",
-                model_cls=m.Infra.ValidateSkillValidateInput,
-                handler=self._handle_skill_validate,
-                success_message="Skill validation passed",
-                failure_message="Skill validation failed",
-            ),
-        )
-        cli.register_result_route(
-            app,
-            route=m.Cli.ResultCommandRouteModel(
-                name="stub-validate",
-                help_text="Validate stub supply chain",
-                model_cls=m.Infra.ValidateStubValidateInput,
-                handler=self._handle_stub_validate,
-                success_message="Stub validation passed",
-                failure_message="Stub validation failed",
-            ),
+            [
+                _R(
+                    "basemk-validate",
+                    "Validate base.mk sync",
+                    m.Infra.ValidateBaseMkInput,
+                    self._handle_basemk_validate,
+                ),
+                _R(
+                    "inventory",
+                    "Generate scripts inventory",
+                    m.Infra.ValidateInventoryInput,
+                    self._handle_inventory,
+                ),
+                _R(
+                    "pytest-diag",
+                    "Extract pytest diagnostics",
+                    m.Infra.ValidatePytestDiagInput,
+                    self._handle_pytest_diag,
+                ),
+                _R(
+                    "scan",
+                    "Scan text files for patterns",
+                    m.Infra.ValidateScanInput,
+                    self._handle_scan,
+                ),
+                _R(
+                    "skill-validate",
+                    "Validate a skill",
+                    m.Infra.ValidateSkillValidateInput,
+                    self._handle_skill_validate,
+                ),
+                _R(
+                    "stub-validate",
+                    "Validate stub supply chain",
+                    m.Infra.ValidateStubValidateInput,
+                    self._handle_stub_validate,
+                ),
+            ],
         )
 
     @staticmethod
     def _handle_basemk_validate(params: m.Infra.ValidateBaseMkInput) -> r[bool]:
-        resolved_workspace = Path(params.workspace) if params.workspace else Path.cwd()
-        validator = FlextInfraBaseMkValidator()
-        result = validator.validate(resolved_workspace)
-        if result.is_failure:
-            return r[bool].fail(result.error or "unknown error")
-        report: m.Infra.ValidationReport = result.value
-        if not report.passed:
-            return r[bool].fail(report.summary)
-        return r[bool].ok(True)
+        return (
+            FlextInfraBaseMkValidator()
+            .validate(u.Infra.resolve_workspace(params))
+            .flat_map(u.Infra.check_report)
+        )
 
     @staticmethod
     def _handle_inventory(params: m.Infra.ValidateInventoryInput) -> r[bool]:
-        resolved_workspace = Path(params.workspace) if params.workspace else Path.cwd()
-        service = FlextInfraInventoryService()
-        output_dir_path = (
-            Path(params.output_dir).resolve() if params.output_dir else None
+        ws = u.Infra.resolve_workspace(params)
+        output_dir = Path(params.output_dir).resolve() if params.output_dir else None
+        return (
+            FlextInfraInventoryService()
+            .generate(ws, output_dir=output_dir)
+            .map(lambda _: True)
         )
-        result = service.generate(resolved_workspace, output_dir=output_dir_path)
-        if result.is_failure:
-            return r[bool].fail(result.error or "unknown error")
-        return r[bool].ok(True)
 
     @staticmethod
     def _handle_pytest_diag(params: m.Infra.ValidatePytestDiagInput) -> r[bool]:
-        extractor = FlextInfraPytestDiagExtractor()
-        result = extractor.extract(Path(params.junit), Path(params.log))
+        result = FlextInfraPytestDiagExtractor().extract(
+            Path(params.junit), Path(params.log)
+        )
         if result.is_failure:
-            return r[bool].fail(result.error or "unknown error")
-        data: m.Infra.PytestDiagnostics = result.value
-        if params.failed:
-            u.write_file(
-                Path(params.failed),
-                "\n\n".join(_list_str(data, "failed_cases")) + "\n",
-                encoding=c.Infra.Encoding.DEFAULT,
-            )
-        if params.errors:
-            u.write_file(
-                Path(params.errors),
-                "\n\n".join(_list_str(data, "error_traces")) + "\n",
-                encoding=c.Infra.Encoding.DEFAULT,
-            )
-        if params.warnings:
-            u.write_file(
-                Path(params.warnings),
-                "\n".join(_list_str(data, "warning_lines")) + "\n",
-                encoding=c.Infra.Encoding.DEFAULT,
-            )
-        if params.slowest:
-            u.write_file(
-                Path(params.slowest),
-                "\n".join(_list_str(data, "slow_entries")) + "\n",
-                encoding=c.Infra.Encoding.DEFAULT,
-            )
-        if params.skips:
-            u.write_file(
-                Path(params.skips),
-                "\n".join(_list_str(data, "skip_cases")) + "\n",
-                encoding=c.Infra.Encoding.DEFAULT,
-            )
+            return r[bool].fail(result.error or "extraction failed")
+        _write_diag_files(params, result.value)
         return r[bool].ok(True)
 
     @staticmethod
     def _handle_scan(params: m.Infra.ValidateScanInput) -> r[bool]:
-        resolved_workspace = Path(params.workspace) if params.workspace else Path.cwd()
-        scanner = FlextInfraTextPatternScanner()
-        result = scanner.scan(
-            resolved_workspace,
+        result = FlextInfraTextPatternScanner().scan(
+            u.Infra.resolve_workspace(params),
             params.pattern,
             includes=params.include or [],
             excludes=params.exclude or [],
             match_mode=params.match,
         )
         if result.is_failure:
-            return r[bool].fail(result.error or "unknown error")
-        data: t.ConfigurationMapping = result.value
-        violation_count = data.get("violation_count", 0)
-        if isinstance(violation_count, int) and violation_count > 0:
-            return r[bool].fail(f"Scan found {violation_count} violation(s)")
+            return r[bool].fail(result.error or "scan failed")
+        count = result.value.get("violation_count", 0)
+        if isinstance(count, int) and count > 0:
+            return r[bool].fail(f"Scan found {count} violation(s)")
         return r[bool].ok(True)
 
     @staticmethod
-    def _handle_skill_validate(
-        params: m.Infra.ValidateSkillValidateInput,
-    ) -> r[bool]:
-        resolved_workspace = Path(params.workspace) if params.workspace else Path.cwd()
-        validator = FlextInfraSkillValidator()
-        result = validator.validate(resolved_workspace, params.skill, mode=params.mode)
-        if result.is_failure:
-            return r[bool].fail(result.error or "unknown error")
-        report: m.Infra.ValidationReport = result.value
-        if not report.passed:
-            return r[bool].fail(report.summary)
-        return r[bool].ok(True)
-
-    @staticmethod
-    def _handle_stub_validate(
-        params: m.Infra.ValidateStubValidateInput,
-    ) -> r[bool]:
-        resolved_workspace = Path(params.workspace) if params.workspace else Path.cwd()
-        chain = FlextInfraStubSupplyChain()
-        effective_projects = None if params.all_projects else params.project
-        project_dirs = (
-            [resolved_workspace / project_name for project_name in effective_projects]
-            if effective_projects
-            else None
+    def _handle_skill_validate(params: m.Infra.ValidateSkillValidateInput) -> r[bool]:
+        return (
+            FlextInfraSkillValidator()
+            .validate(u.Infra.resolve_workspace(params), params.skill, mode=params.mode)
+            .flat_map(u.Infra.check_report)
         )
-        result = chain.validate(resolved_workspace, project_dirs=project_dirs)
-        if result.is_failure:
-            return r[bool].fail(result.error or "unknown error")
-        report: m.Infra.ValidationReport = result.value
-        if not report.passed:
-            return r[bool].fail(report.summary)
-        return r[bool].ok(True)
+
+    @staticmethod
+    def _handle_stub_validate(params: m.Infra.ValidateStubValidateInput) -> r[bool]:
+        ws = u.Infra.resolve_workspace(params)
+        projects = None if params.all_projects else params.project
+        dirs = [ws / name for name in projects] if projects else None
+        return (
+            FlextInfraStubSupplyChain()
+            .validate(ws, project_dirs=dirs)
+            .flat_map(u.Infra.check_report)
+        )
+
+
+def _write_diag_files(
+    params: m.Infra.ValidatePytestDiagInput, data: m.Infra.PytestDiagnostics
+) -> None:
+    """Write diagnostic output files when paths are specified."""
+    for param_name, attr_name, sep in [
+        ("failed", "failed_cases", "\n\n"),
+        ("errors", "error_traces", "\n\n"),
+        ("warnings", "warning_lines", "\n"),
+        ("slowest", "slow_entries", "\n"),
+        ("skips", "skip_cases", "\n"),
+    ]:
+        path_str = getattr(params, param_name, None)
+        if path_str:
+            items = [s for s in getattr(data, attr_name, []) if isinstance(s, str)]
+            u.write_file(
+                Path(path_str),
+                sep.join(items) + "\n",
+                encoding=c.Infra.Encoding.DEFAULT,
+            )

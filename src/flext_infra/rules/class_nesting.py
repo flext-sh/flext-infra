@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_infra import (
-    FlextInfraPostCheckGate,
+    FlextInfraHelperConsolidationTransformer,
+    FlextInfraNestedClassPropagationTransformer,
+    FlextInfraRefactorClassNestingTransformer,
     c,
     m,
     t,
@@ -27,6 +30,92 @@ _SECTION_KEYS: tuple[str, ...] = (
 )
 
 
+class _PostCheckGate:
+    """Inline post-check gate for class nesting validation."""
+
+    def validate(
+        self,
+        result: m.Infra.Result,
+        expected: t.Infra.ContainerDict,
+    ) -> t.Infra.Pair[bool, t.StrSequence]:
+        errors: MutableSequence[str] = []
+        if not result.success:
+            if result.error:
+                return (False, [result.error])
+            return (False, ["transform_failed"])
+        if not result.modified:
+            return (True, [])
+        file_path = result.file_path
+        post_checks = u.Infra.string_list(
+            expected.get(c.Infra.ReportKeys.POST_CHECKS),
+        )
+        quality_gates = u.Infra.string_list(expected.get("quality_gates"))
+        if self._check_enabled("imports_resolve", post_checks):
+            errors.extend(self._validate_imports(file_path))
+        source_symbol_raw = expected.get(c.Infra.ReportKeys.SOURCE_SYMBOL, "")
+        source_symbol = source_symbol_raw if isinstance(source_symbol_raw, str) else ""
+        expected_chain = u.Infra.string_list(expected.get("expected_base_chain"))
+        if (
+            source_symbol
+            and expected_chain
+            and self._check_enabled("mro_valid", post_checks)
+        ):
+            errors.extend(self._validate_mro(file_path, source_symbol, expected_chain))
+        if self._check_enabled("lsp_diagnostics_clean", quality_gates):
+            errors.extend(self._validate_types(file_path))
+        return (not errors, errors)
+
+    def _check_enabled(self, check_name: str, checks: t.StrSequence) -> bool:
+        return check_name in checks
+
+    def _validate_imports(self, file_path: Path) -> t.StrSequence:
+        try:
+            source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+        except (OSError, UnicodeDecodeError):
+            return [f"parse_error:{file_path}:parse_failed"]
+        unresolved: MutableSequence[str] = []
+        for lineno, line in enumerate(source.splitlines(), start=1):
+            if c.Infra.SourceCode.BARE_IMPORT_FROM_RE.match(line):
+                unresolved.append(f"line_{lineno}:invalid_import_from")
+        return unresolved
+
+    def _validate_mro(
+        self,
+        file_path: Path,
+        class_name: str,
+        expected_bases: t.StrSequence,
+    ) -> t.StrSequence:
+        try:
+            source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+        except (OSError, UnicodeDecodeError):
+            return [f"mro_parse_error:{file_path}:parse_failed"]
+        for match in c.Infra.SourceCode.CLASS_WITH_BASES_RE.finditer(source):
+            if match.group(1) != class_name:
+                continue
+            bases_str = match.group(2)
+            actual = [
+                b.strip().split("[")[0].rsplit(".", maxsplit=1)[-1]
+                for b in bases_str.split(",")
+                if b.strip()
+            ]
+            actual_clean = [name for name in actual if name]
+            expected_prefix = list(expected_bases)[: len(actual_clean)]
+            if actual_clean != expected_prefix:
+                return [
+                    f"mro_mismatch:{class_name}:expected={expected_prefix}:actual={actual_clean}",
+                ]
+            return []
+        return [f"class_not_found:{class_name}"]
+
+    def _validate_types(self, file_path: Path) -> t.StrSequence:
+        cmd = [sys.executable, "-m", "py_compile", str(file_path)]
+        result = u.Infra.capture(cmd)
+        return result.fold(
+            on_failure=lambda e: [f"lsp_diagnostics_clean_failed:{e or ''}"],
+            on_success=lambda _: [],
+        )
+
+
 class FlextInfraClassNestingRefactorRule:
     """Apply class-nesting transforms driven by YAML mapping files."""
 
@@ -36,8 +125,11 @@ class FlextInfraClassNestingRefactorRule:
             "class-nesting-mappings.yml",
         )
         self._policy_path = Path(__file__).with_name("class-policy-v2.yml")
-        self._post_check_gate = FlextInfraPostCheckGate()
+        self._post_check_gate = _PostCheckGate()
         self._cached_config: t.Infra.ContainerDict | None = None
+        self._cached_policy_by_family: (
+            Mapping[str, m.Infra.ClassNestingPolicy] | None
+        ) = None
 
     def apply(
         self,
@@ -73,9 +165,7 @@ class FlextInfraClassNestingRefactorRule:
                     refactored_code=None,
                 )
             changes: MutableSequence[str] = []
-            ns = self._apply_rope_transforms(
-                rope_project, resource, source, cm, hm, changes
-            )
+            ns = self._apply_rope_transforms(source, cm, hm, changes)
             modified = ns != source
             if modified and not dry_run:
                 pp = self._build_postcheck_payload(cfg, fp, thr)
@@ -120,30 +210,25 @@ class FlextInfraClassNestingRefactorRule:
 
     def _apply_rope_transforms(
         self,
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
         source: str,
         class_map: t.MutableStrMapping,
         helper_map: t.MutableStrMapping,
         changes: MutableSequence[str],
     ) -> str:
         ns = source
-        for label, mapping in (
-            ("class nesting", class_map),
-            ("helper consolidation", helper_map),
-        ):
-            if not mapping:
-                continue
-            for name, target_ns in mapping.items():
-                ns, _ = u.Infra.replace_in_source(
-                    rope_project,
-                    resource,
-                    rf"\b{name}\b",
-                    f"{target_ns}.{name}",
-                    apply=False,
-                )
-            if ns != source:
-                changes.append(f"Applied {label} ({len(mapping)} mappings)")
+        if class_map:
+            nesting = FlextInfraRefactorClassNestingTransformer(class_map, {}, {})
+            ns, class_changes = nesting.apply_to_source(ns)
+            changes.extend(class_changes)
+            propagation = FlextInfraNestedClassPropagationTransformer({
+                name: f"{target_ns}.{name}" for name, target_ns in class_map.items()
+            })
+            ns, propagation_changes = propagation.apply_to_source(ns)
+            changes.extend(propagation_changes)
+        if helper_map:
+            consolidation = FlextInfraHelperConsolidationTransformer(helper_map)
+            ns, helper_changes = consolidation.apply_to_source(ns)
+            changes.extend(helper_changes)
         return ns
 
     def _symbol_mappings(
@@ -168,7 +253,7 @@ class FlextInfraClassNestingRefactorRule:
         self, cfg: t.Infra.ContainerDict, fp: Path, thr: str
     ) -> MutableSequence[str]:
         violations: MutableSequence[str] = []
-        policy_by_family = u.Infra.class_nesting_policy_by_family(self._policy_path)
+        policy_by_family = self._policy_by_family()
         entries: MutableSequence[t.StrMapping] = []
         for key in _SECTION_KEYS:
             entries.extend(
@@ -236,6 +321,14 @@ class FlextInfraClassNestingRefactorRule:
         self._cached_config = config
         return config
 
+    def _policy_by_family(self) -> Mapping[str, m.Infra.ClassNestingPolicy]:
+        """Load and cache the validated policy matrix once per rule instance."""
+        if self._cached_policy_by_family is None:
+            self._cached_policy_by_family = u.Infra.class_nesting_policy_by_family(
+                self._policy_path
+            )
+        return self._cached_policy_by_family
+
     @staticmethod
     def _coerce(
         entries: Sequence[Mapping[str, t.Infra.InfraValue]],
@@ -273,29 +366,13 @@ class FlextInfraClassNestingRefactorRule:
     def _build_postcheck_payload(
         self, cfg: t.Infra.ContainerDict, fp: Path, thr: str
     ) -> t.Infra.ContainerDict:
-        payload: MutableMapping[str, t.Infra.InfraValue] = {
+        _ = (cfg, fp, thr)
+        return {
             c.Infra.ReportKeys.SOURCE_SYMBOL: "",
             "expected_base_chain": list[str](),
-            c.Infra.ReportKeys.POST_CHECKS: ["imports_resolve", "mro_valid"],
+            c.Infra.ReportKeys.POST_CHECKS: ["imports_resolve"],
             "quality_gates": ["lsp_diagnostics_clean"],
         }
-        entries = self._filter_entries(
-            u.Infra.entry_list(cfg.get(c.Infra.ReportKeys.CLASS_NESTING)), fp, thr
-        )
-        if not entries:
-            return payload
-        sym = entries[0].get(c.Infra.ReportKeys.LOOSE_NAME, "")
-        if not sym:
-            return payload
-        payload[c.Infra.ReportKeys.SOURCE_SYMBOL] = sym
-        doc = u.Infra.load_validated_policy_document(self._policy_path)
-        for rule in u.Infra.mapping_list(doc.get(c.Infra.ReportKeys.RULES)):
-            if rule.get(c.Infra.ReportKeys.SOURCE_SYMBOL, "") == sym:
-                payload["expected_base_chain"] = list(
-                    u.Infra.string_list(rule.get("expected_base_chain"))
-                )
-                break
-        return payload
 
 
 __all__ = ["FlextInfraClassNestingRefactorRule"]

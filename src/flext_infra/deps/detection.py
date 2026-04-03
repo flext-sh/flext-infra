@@ -6,8 +6,6 @@ from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
-from pydantic import ValidationError
-
 from flext_core import FlextLogger
 from flext_infra import c, m, p, r, t, u
 from flext_infra.deps.detection_analysis import FlextInfraDependencyDetectionAnalysis
@@ -78,9 +76,12 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
             error_obj = item.get(c.Infra.ERROR)
             if not u.is_mapping(error_obj):
                 continue
-            try:
-                error_data = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(error_obj)
-            except ValidationError:
+            error_data = u.Infra.validate(
+                t.Infra.INFRA_MAPPING_ADAPTER,
+                error_obj,
+                default={},
+            )
+            if not error_data:
                 continue
             code = error_data.get(c.Infra.CODE)
             bucket = {
@@ -88,7 +89,7 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
                 "DEP002": groups.dep002,
                 "DEP003": groups.dep003,
                 "DEP004": groups.dep004,
-            }.get(u.ensure_str(code))
+            }.get(str(code) if code is not None else "")
             if bucket is not None:
                 bucket.append(normalized_item)
         return groups

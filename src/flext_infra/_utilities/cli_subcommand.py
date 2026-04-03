@@ -179,7 +179,7 @@ class FlextInfraUtilitiesCliSubcommand:
         if not disallowed:
             passthrough = set(passthrough_subcommands or ())
             command = getattr(args, "command", None)
-            command_label = u.ensure_str(command)
+            command_label = u.to_str(command)
             if unknown_args:
                 if command_label in passthrough:
                     setattr(args, "_unknown_args", tuple(unknown_args))
@@ -187,7 +187,7 @@ class FlextInfraUtilitiesCliSubcommand:
                 parser.error(f"unrecognized arguments: {' '.join(unknown_args)}")
             return args
         command = getattr(args, "command", None)
-        command_label = u.ensure_str(command, default="subcommand")
+        command_label = u.to_str(command, default="subcommand")
         parser.error(
             f"unrecognized arguments for '{command_label}': {' '.join(disallowed)}",
         )

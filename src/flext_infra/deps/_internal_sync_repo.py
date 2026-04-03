@@ -100,7 +100,7 @@ class FlextInfraInternalSyncRepoMixin:
                 data_result.error or "failed to read repository map",
             )
         data = data_result.value
-        repos_obj = u.Infra.normalize_str_mapping(data.get("repo", {}))
+        repos_obj = u.Infra.deep_mapping(data, "repo")
         if not repos_obj:
             return r[Mapping[str, m.Infra.RepoUrls]].ok({})
         result: MutableMapping[str, m.Infra.RepoUrls] = {}

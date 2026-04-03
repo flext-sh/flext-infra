@@ -106,13 +106,11 @@ class FlextInfraCodegenConstantsQualityGate:
     @classmethod
     def render_text(cls, report: Mapping[str, t.Infra.InfraValue]) -> str:
         """Render compact human-readable summary."""
-        checks = u.Infra.normalize_mapping_list(report.get("checks"))
-        before = u.Infra.normalize_str_mapping(report.get("before"))
-        after = u.Infra.normalize_str_mapping(report.get("after"))
-        improvement = u.Infra.normalize_str_mapping(report.get("improvement"))
-        duplicate_groups = u.Infra.normalize_mapping_list(
-            report.get("duplicate_constant_groups"),
-        )
+        checks = u.Infra.deep_list(report, "checks")
+        before = u.Infra.deep_mapping(report, "before")
+        after = u.Infra.deep_mapping(report, "after")
+        improvement = u.Infra.deep_mapping(report, "improvement")
+        duplicate_groups = u.Infra.deep_list(report, "duplicate_constant_groups")
         lines: MutableSequence[str] = [
             f"Workspace: {report.get('workspace', '')}",
             f"Verdict: {report.get('verdict', 'FAIL')}",
@@ -120,9 +118,9 @@ class FlextInfraCodegenConstantsQualityGate:
             "Checks:",
         ]
         for check in checks:
-            status = "PASS" if bool(check.get("passed", False)) else "FAIL"
-            lines.append(f"- [{status}] {check.get('name', 'unknown')}")
-            detail = u.Infra.get_str_key(check, "detail")
+            status = "PASS" if u.Infra.pick(check, "passed", False) else "FAIL"
+            lines.append(f"- [{status}] {u.Infra.pick(check, 'name', 'unknown')}")
+            detail = u.Infra.pick(check, "detail", "")
             if detail:
                 lines.append(f"  {detail}")
         lines.extend([

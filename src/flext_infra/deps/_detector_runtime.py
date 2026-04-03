@@ -6,8 +6,6 @@ import os
 from collections.abc import Callable, MutableMapping, Sequence
 from pathlib import Path
 
-from pydantic import ValidationError
-
 from flext_core import r
 from flext_infra import c, m, p, t, u
 
@@ -197,11 +195,12 @@ class FlextInfraDependencyDetectorRuntime:
         for payload in projects_report.values():
             deptry_obj = payload.get(c.Infra.DEPTRY)
             if u.is_mapping(deptry_obj):
-                try:
-                    deptry_payload = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
-                        deptry_obj
-                    )
-                except ValidationError:
+                deptry_payload = u.Infra.validate(
+                    t.Infra.INFRA_MAPPING_ADAPTER,
+                    deptry_obj,
+                    default={},
+                )
+                if not deptry_payload:
                     continue
                 raw_count_obj: t.Infra.InfraValue = deptry_payload.get("raw_count", 0)
                 if isinstance(raw_count_obj, int):

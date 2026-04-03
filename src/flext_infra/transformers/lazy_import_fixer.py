@@ -7,7 +7,6 @@ existing imports.
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
 from typing import override
 
 from flext_infra import FlextInfraRopeTransformer, t, u
@@ -23,7 +22,7 @@ class FlextInfraRefactorLazyImportFixer(FlextInfraRopeTransformer):
         self,
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-    ) -> tuple[str, Sequence[str]]:
+    ) -> t.Infra.TransformResult:
         """Hoist function-local imports to module level."""
         source = u.Infra.read_source(resource)
         lines = source.splitlines(keepends=True)

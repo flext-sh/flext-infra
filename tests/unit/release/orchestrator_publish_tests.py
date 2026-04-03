@@ -6,10 +6,12 @@ from typing import TYPE_CHECKING
 
 import pytest
 from flext_tests import tm
-from tests import m, t, u
+from tests import m, t
 
 from flext_core import r
 from flext_infra import FlextInfraReleaseOrchestrator
+from flext_infra._utilities.release import FlextInfraUtilitiesRelease
+from flext_infra._utilities.reporting import FlextInfraUtilitiesReporting
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -55,10 +57,19 @@ def _stub_publish(mp: MonkeyPatch, root: Path) -> None:
         _ = ws, scope, verb
         return root_ / "reports"
 
-    mp.setattr(u.Infra, "get_report_dir", staticmethod(_get_report_dir))
+    mp.setattr(
+        FlextInfraUtilitiesReporting,
+        "get_report_dir",
+        staticmethod(_get_report_dir),
+    )
 
-    def _generate_notes(*a: t.Scalar, **kw: t.Scalar) -> r[bool]:
-        del a, kw
+    def _generate_notes(
+        _self: object,
+        _ctx: object,
+        output_path: Path,
+    ) -> r[bool]:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text("# Release v1.0.0\n", encoding="utf-8")
         return r[bool].ok(True)
 
     mp.setattr(_CLS, "_generate_notes", _generate_notes)
@@ -72,7 +83,11 @@ def _stub_full_publish(mp: MonkeyPatch, root: Path) -> None:
         _ = a, kw
         return r[bool].ok(True)
 
-    mp.setattr(u.Infra, "update_changelog", staticmethod(_update_changelog))
+    mp.setattr(
+        FlextInfraUtilitiesRelease,
+        "update_changelog",
+        staticmethod(_update_changelog),
+    )
 
     def _create_tag(*a: t.Scalar, **kw: t.Scalar) -> r[bool]:
         del a, kw
@@ -104,7 +119,7 @@ class TestPhasePublish:
 
         _stub_publish(monkeypatch, workspace_root)
         monkeypatch.setattr(
-            u.Infra,
+            FlextInfraUtilitiesRelease,
             "update_changelog",
             staticmethod(fake_changelog),
         )
@@ -147,7 +162,11 @@ class TestPhasePublish:
             _ = ws, scope, verb
             return ws_root / "reports"
 
-        monkeypatch.setattr(u.Infra, "get_report_dir", staticmethod(_get_report_dir_2))
+        monkeypatch.setattr(
+            FlextInfraUtilitiesReporting,
+            "get_report_dir",
+            staticmethod(_get_report_dir_2),
+        )
 
         def _generate_notes(*a: t.Scalar, **kw: t.Scalar) -> r[bool]:
             del a, kw
@@ -170,7 +189,7 @@ class TestPhasePublish:
         _stub_publish(monkeypatch, workspace_root)
 
         monkeypatch.setattr(
-            u.Infra,
+            FlextInfraUtilitiesRelease,
             "update_changelog",
             staticmethod(lambda *a, **kw: r[bool].fail("changelog failed")),
         )
@@ -186,7 +205,7 @@ class TestPhasePublish:
         _stub_publish(monkeypatch, workspace_root)
 
         monkeypatch.setattr(
-            u.Infra,
+            FlextInfraUtilitiesRelease,
             "update_changelog",
             staticmethod(lambda *a, **kw: r[bool].ok(True)),
         )

@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from pathlib import Path
 
 import tomlkit
@@ -50,14 +50,17 @@ class FlextInfraUtilitiesToml:
         return result
 
     @staticmethod
-    def normalize_container_value(
+    def unwrap_item(
         value: t.Infra.InfraValue
         | Item
         | TOMLDocument
         | Mapping[str, t.Infra.InfraValue]
         | None,
     ) -> t.Infra.InfraValue | None:
-        """Normalize TOML items/documents to a concrete container value."""
+        """Unwrap TOML items/documents to a concrete Python value.
+
+        SSOT for TOML value normalization — replaces ``normalize_container_value``.
+        """
         normalized: (
             t.Infra.InfraValue | Item | Mapping[str, t.Infra.InfraValue] | None
         ) = value
@@ -68,44 +71,16 @@ class FlextInfraUtilitiesToml:
         return normalized
 
     @staticmethod
-    def as_container_list(
-        value: t.Infra.InfraValue | Item | None,
-    ) -> Sequence[t.Infra.InfraValue]:
-        """Validate and normalize list-like values to typed container list."""
-        normalized = FlextInfraUtilitiesToml.normalize_container_value(value)
-        if normalized is None:
-            return []
-        try:
-            return t.Infra.JSON_SEQ_ADAPTER.validate_python(
-                normalized,
-            )
-        except ValidationError:
-            return []
-
-    @staticmethod
-    def unwrap_item(
-        value: t.Infra.InfraValue | Item | None,
-    ) -> t.Infra.InfraValue | None:
-        """Unwrap a tomlkit Item to get the underlying value."""
-        return FlextInfraUtilitiesToml.normalize_container_value(value)
-
-    @staticmethod
     def as_string_list(value: t.Infra.InfraValue | Item | None) -> t.StrSequence:
         """Convert TOML value to list of strings."""
-        normalized = FlextInfraUtilitiesToml.normalize_container_value(value)
+        normalized = FlextInfraUtilitiesToml.unwrap_item(value)
         if normalized is None or isinstance(normalized, str):
             return []
-        if isinstance(normalized, list):
-            try:
-                typed_items = t.Infra.JSON_SEQ_ADAPTER.validate_python(
-                    normalized,
-                )
-            except ValidationError:
-                return []
-            return [str(raw) for raw in typed_items]
-        return [
-            str(raw) for raw in FlextInfraUtilitiesToml.as_container_list(normalized)
-        ]
+        try:
+            typed_items = t.Infra.JSON_SEQ_ADAPTER.validate_python(normalized)
+        except ValidationError:
+            return []
+        return [str(raw) for raw in typed_items]
 
     @staticmethod
     def array(items: t.StrSequence) -> Array:
@@ -165,7 +140,7 @@ class FlextInfraUtilitiesToml:
             return None
         raw_value: t.Infra.InfraValue | None = None
         if key in container:
-            raw_value = FlextInfraUtilitiesToml.normalize_container_value(
+            raw_value = FlextInfraUtilitiesToml.unwrap_item(
                 container[key],
             )
         if raw_value is None:

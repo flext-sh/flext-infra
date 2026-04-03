@@ -21,9 +21,11 @@ if _t.TYPE_CHECKING:
         create_checker_project,
         create_fake_run_projects,
         create_fake_run_raw,
+        create_gate_context,
         create_gate_execution,
         patch_gate_run,
         patch_python_dir_detection,
+        run_gate_check,
     )
 
     _stubs = _tests_unit_check__stubs
@@ -310,6 +312,7 @@ _LAZY_IMPORTS = {
     "create_checker_project": "tests.unit.check._shared_fixtures",
     "create_fake_run_projects": "tests.unit.check._shared_fixtures",
     "create_fake_run_raw": "tests.unit.check._shared_fixtures",
+    "create_gate_context": "tests.unit.check._shared_fixtures",
     "create_gate_execution": "tests.unit.check._shared_fixtures",
     "d": ("flext_core.decorators", "FlextDecorators"),
     "e": ("flext_core.exceptions", "FlextExceptions"),
@@ -345,6 +348,7 @@ _LAZY_IMPORTS = {
     "pyrefly_tests": "tests.unit.check.pyrefly_tests",
     "r": ("flext_core.result", "FlextResult"),
     "run_command_failure_check": "tests.unit.check.extended_gate_go_cmd_tests",
+    "run_gate_check": "tests.unit.check._shared_fixtures",
     "s": ("flext_core.service", "FlextService"),
     "t": ("flext_core.typings", "FlextTypes"),
     "test_check_main_executes_real_cli": "tests.unit.check.main_tests",
@@ -441,6 +445,7 @@ __all__ = [
     "create_checker_project",
     "create_fake_run_projects",
     "create_fake_run_raw",
+    "create_gate_context",
     "create_gate_execution",
     "d",
     "e",
@@ -476,6 +481,7 @@ __all__ = [
     "pyrefly_tests",
     "r",
     "run_command_failure_check",
+    "run_gate_check",
     "s",
     "t",
     "test_check_main_executes_real_cli",

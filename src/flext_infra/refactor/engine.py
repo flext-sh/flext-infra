@@ -37,15 +37,13 @@ from flext_infra import (
     u,
 )
 
-from ._engine_orchestration import FlextInfraRefactorEngineOrchestrationMixin
-from ._engine_pipeline import FlextInfraRefactorEnginePipelineMixin
+from ._engine_helpers import FlextInfraRefactorEngineHelpersMixin
 
 type _RuleEntry = tuple[frozenset[str], type[FlextInfraRefactorRule]]
 
 
 class FlextInfraRefactorEngine(
-    FlextInfraRefactorEngineOrchestrationMixin,
-    FlextInfraRefactorEnginePipelineMixin,
+    FlextInfraRefactorEngineHelpersMixin,
 ):
     """Rope-based refactor engine orchestrating declarative rules."""
 

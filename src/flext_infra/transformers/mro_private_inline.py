@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
 from typing import override
 
 from flext_infra import FlextInfraRopeTransformer, t, u
@@ -31,7 +30,7 @@ class FlextInfraRefactorMROPrivateInlineTransformer(FlextInfraRopeTransformer):
         self,
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-    ) -> tuple[str, Sequence[str]]:
+    ) -> t.Infra.TransformResult:
         """Apply private constant inlining. Returns (new_source, changes)."""
         source = u.Infra.read_source(resource)
 
@@ -74,7 +73,7 @@ class FlextInfraRefactorMROQualifiedReferenceTransformer(FlextInfraRopeTransform
         self,
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-    ) -> tuple[str, Sequence[str]]:
+    ) -> t.Infra.TransformResult:
         """Apply qualified reference rewrites. Returns (new_source, changes)."""
         source = u.Infra.read_source(resource)
 

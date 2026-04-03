@@ -68,30 +68,6 @@ class FlextInfraProtocolsBase:
             ...
 
     @runtime_checkable
-    class Checker(Protocol):
-        """Contract for infrastructure checker services."""
-
-        def run(self, argv: t.StrSequence | None = None) -> r[int]:
-            """Execute check and return result."""
-            ...
-
-    @runtime_checkable
-    class Syncer(Protocol):
-        """Contract for synchronization services."""
-
-        def sync(self, argv: t.StrSequence | None = None) -> r[int]:
-            """Execute sync and return result."""
-            ...
-
-    @runtime_checkable
-    class Generator(Protocol):
-        """Contract for code generation services."""
-
-        def generate(self, argv: t.StrSequence | None = None) -> r[int]:
-            """Execute generation and return result."""
-            ...
-
-    @runtime_checkable
     class Validator(Protocol):
         """Contract for validation services."""
 
@@ -100,11 +76,47 @@ class FlextInfraProtocolsBase:
             ...
 
     @runtime_checkable
-    class Orchestrator(Protocol):
-        """Contract for orchestration services."""
+    class Checker(Protocol):
+        """Contract for project and workspace quality checking services."""
 
-        def orchestrate(self, argv: t.StrSequence | None = None) -> r[int]:
-            """Execute orchestration and return result."""
+        def run(
+            self,
+            project: str,
+            gates: t.StrSequence,
+        ) -> r[Sequence[m.Infra.ProjectResult]]:
+            """Run quality gates for one project."""
+            ...
+
+    @runtime_checkable
+    class Syncer(Protocol):
+        """Contract for synchronization services."""
+
+        def sync(
+            self,
+            _source: str | None = None,
+            _target: str | None = None,
+            *,
+            workspace_root: Path | None = None,
+            config: m.Infra.BaseMkConfig | None = None,
+            canonical_root: Path | None = None,
+        ) -> r[m.Infra.SyncResult]:
+            """Synchronize generated workspace or project artifacts."""
+            ...
+
+    @runtime_checkable
+    class Generator(Protocol):
+        """Contract for artifact and documentation generation services."""
+
+        def generate(
+            self,
+            workspace_root: Path,
+            *,
+            project: str | None = None,
+            projects: str | None = None,
+            output_dir: str = "",
+            apply: bool = False,
+        ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
+            """Generate project-scoped artifacts for the workspace."""
             ...
 
     @runtime_checkable
@@ -360,41 +372,24 @@ class FlextInfraProtocolsBase:
             ...
 
     @runtime_checkable
-    class RunnableDetector(Protocol):
-        """Contract for detectors that can be invoked via CLI."""
-
-        def run(self, argv: t.StrSequence | None = None) -> r[int]:
-            """Execute the detector and return an exit code."""
-            ...
-
-    @runtime_checkable
-    class ImportNormalizerTransformerLike(Protocol):
-        """Protocol for import normalizer transformer compatibility checking."""
-
-        @staticmethod
-        def detect_file(
-            *,
-            file_path: Path,
-            project_package: str,
-            alias_map: Mapping[str, t.Infra.VariadicTuple[str]] | None = None,
-        ) -> Sequence[FlextInfraProtocolsBase.ViolationWithLine]:
-            """Detect import violations in a file.
-
-            Args:
-                file_path: Path to the Python file to analyze.
-                project_package: The project package name.
-                alias_map: Optional mapping of packages to their public aliases.
-
-            Returns:
-                List of violation objects found.
-
-            """
-            ...
-
-    @runtime_checkable
     class ViolationWithLine(Protocol):
         """Protocol for violations that have a line number."""
 
         def model_dump(self) -> Mapping[str, JsonValue]:
             """Dump violation data to a dictionary."""
+            ...
+
+    @runtime_checkable
+    class Orchestrator(Protocol):
+        """Contract for multi-project orchestration services."""
+
+        def orchestrate(
+            self,
+            projects: t.StrSequence,
+            verb: str,
+            *,
+            fail_fast: bool = False,
+            make_args: t.StrSequence = (),
+        ) -> r[Sequence[m.Infra.CommandOutput]]:
+            """Execute one make verb across multiple projects."""
             ...

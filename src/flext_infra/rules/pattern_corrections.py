@@ -24,7 +24,7 @@ class FlextInfraRefactorPatternCorrectionsRule:
         resource: t.Infra.RopeResource,
         *,
         dry_run: bool = False,
-    ) -> tuple[str, t.StrSequence]:
+    ) -> t.Infra.TransformResult:
         """Apply configured pattern corrections to resource."""
         source = u.Infra.read_source(resource)
         fix_action = u.Infra.get_str_key(

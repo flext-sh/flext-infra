@@ -32,7 +32,7 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
         self,
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-    ) -> tuple[str, Sequence[str]]:
+    ) -> t.Infra.TransformResult:
         """Apply method reordering to all classes. Returns (new_source, changes)."""
         source = u.Infra.read_source(resource)
         class_infos = u.Infra.get_class_info(rope_project, resource)
@@ -43,7 +43,7 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
                 class_info.name,
                 include_private=True,
             )
-            if len(methods) < 2:  # noqa: PLR2004
+            if len(methods) < 2:
                 continue
             body_lines = u.Infra.get_class_body_lines(
                 resource,

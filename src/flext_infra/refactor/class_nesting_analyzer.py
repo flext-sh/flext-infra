@@ -46,7 +46,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
         scanner = FlextInfraRefactorLooseClassScanner()
         mapping_result = cls._load_mapping_index()
         mapping_index: Mapping[t.Infra.StrPair, m.Infra.ClassNestingMapping] = (
-            mapping_result.value if mapping_result.is_success else {}
+            mapping_result.unwrap_or({})
         )
         confidence_counts: Counter[str] = Counter()
         per_file_counts: Counter[str] = Counter()

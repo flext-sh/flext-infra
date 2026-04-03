@@ -19,71 +19,60 @@ from flext_infra import (
 if TYPE_CHECKING:
     import typer
 
+_R = u.Infra.route  # shorthand
+
 
 class FlextInfraCliRefactor:
     """Refactor CLI group — composed into FlextInfraCli via MRO."""
 
     def register_refactor(self, app: typer.Typer) -> None:
         """Register refactor commands on the given Typer app."""
-        cli.register_result_route(
+        u.Infra.register_routes(
             app,
-            route=m.Cli.ResultCommandRouteModel(
-                name="centralize-pydantic",
-                help_text="Centralize BaseModel/TypedDict/dict-like aliases into _models.py",
-                model_cls=m.Infra.RefactorCentralizeInput,
-                handler=self._handle_centralize_pydantic,
-                failure_message="Pydantic centralization failed",
-            ),
-        )
-        cli.register_result_route(
-            app,
-            route=m.Cli.ResultCommandRouteModel(
-                name="migrate-mro",
-                help_text="Migrate loose declarations into MRO facade classes",
-                model_cls=m.Infra.RefactorMigrateMroInput,
-                handler=self._handle_migrate_mro,
-                failure_message="MRO migration failed",
-            ),
-        )
-        cli.register_result_route(
-            app,
-            route=m.Cli.ResultCommandRouteModel(
-                name="namespace-enforce",
-                help_text="Scan workspace for namespace governance violations",
-                model_cls=m.Infra.RefactorNamespaceEnforceInput,
-                handler=self._handle_namespace_enforce,
-                failure_message="Namespace enforcement failed",
-            ),
-        )
-        cli.register_result_route(
-            app,
-            route=m.Cli.ResultCommandRouteModel(
-                name="migrate-runtime-alias-imports",
-                help_text="Move runtime aliases like r/s from flext_core to local MRO imports",
-                model_cls=m.Infra.RefactorMigrateRuntimeAliasImportsInput,
-                handler=self._handle_migrate_runtime_alias_imports,
-                failure_message="Runtime alias import migration failed",
-            ),
-        )
-        cli.register_result_route(
-            app,
-            route=m.Cli.ResultCommandRouteModel(
-                name="ultrawork-models",
-                help_text="Run full centralization + MRO + namespace workflow",
-                model_cls=m.Infra.RefactorUltraworkModelsInput,
-                handler=self._handle_ultrawork_models,
-                failure_message="Ultrawork models failed",
-            ),
-        )
-        cli.register_result_route(
-            app,
-            route=m.Cli.ResultCommandRouteModel(
-                name="census",
-                help_text="Run AST/CST census of MRO family method usage",
-                model_cls=m.Infra.RefactorCensusInput,
-                handler=self._handle_refactor_census,
-                failure_message="Census failed",
-            ),
+            [
+                _R(
+                    "centralize-pydantic",
+                    "Centralize BaseModel/TypedDict/dict-like aliases into _models.py",
+                    m.Infra.RefactorCentralizeInput,
+                    self._handle_centralize_pydantic,
+                    fail_msg="Pydantic centralization failed",
+                ),
+                _R(
+                    "migrate-mro",
+                    "Migrate loose declarations into MRO facade classes",
+                    m.Infra.RefactorMigrateMroInput,
+                    self._handle_migrate_mro,
+                    fail_msg="MRO migration failed",
+                ),
+                _R(
+                    "namespace-enforce",
+                    "Scan workspace for namespace governance violations",
+                    m.Infra.RefactorNamespaceEnforceInput,
+                    self._handle_namespace_enforce,
+                    fail_msg="Namespace enforcement failed",
+                ),
+                _R(
+                    "migrate-runtime-alias-imports",
+                    "Move runtime aliases like r/s from flext_core to local MRO imports",
+                    m.Infra.RefactorMigrateRuntimeAliasImportsInput,
+                    self._handle_migrate_runtime_alias_imports,
+                    fail_msg="Runtime alias import migration failed",
+                ),
+                _R(
+                    "ultrawork-models",
+                    "Run full centralization + MRO + namespace workflow",
+                    m.Infra.RefactorUltraworkModelsInput,
+                    self._handle_ultrawork_models,
+                    fail_msg="Ultrawork models failed",
+                ),
+                _R(
+                    "census",
+                    "Run AST/CST census of MRO family method usage",
+                    m.Infra.RefactorCensusInput,
+                    self._handle_refactor_census,
+                    fail_msg="Census failed",
+                ),
+            ],
         )
 
     @staticmethod
@@ -92,7 +81,7 @@ class FlextInfraCliRefactor:
     ) -> r[t.IntMapping]:
         """Run pydantic centralization workflow for the workspace."""
         summary = u.Infra.centralize_workspace(
-            Path(params.workspace),
+            u.Infra.resolve_workspace(params),
             apply=params.apply,
             normalize_remaining=params.normalize_remaining,
         )
@@ -104,7 +93,7 @@ class FlextInfraCliRefactor:
     ) -> r[m.Infra.MROMigrationReport]:
         """Run MRO migration workflow for the selected target scope."""
         service = FlextInfraRefactorMigrateToClassMRO(
-            workspace_root=Path(params.workspace),
+            workspace_root=u.Infra.resolve_workspace(params),
         )
         report = service.run(target=params.target, apply=params.apply)
         cli.display_text(FlextInfraRefactorMigrateToClassMRO.render_text(report))
@@ -123,7 +112,7 @@ class FlextInfraCliRefactor:
         if params.project:
             project_names = u.Cli.project_names_from_values(params.project)
         enforcer = FlextInfraNamespaceEnforcer(
-            workspace_root=Path(params.workspace),
+            workspace_root=u.Infra.resolve_workspace(params),
         )
         if params.diff:
             diff_output = enforcer.diff(project_names=project_names)
@@ -152,7 +141,7 @@ class FlextInfraCliRefactor:
             project_names = u.Cli.project_names_from_values(params.project)
         aliases = [item.strip() for item in params.aliases.split(",") if item.strip()]
         results = u.Infra.migrate_runtime_alias_imports(
-            workspace_root=Path(params.workspace),
+            workspace_root=u.Infra.resolve_workspace(params),
             aliases=aliases,
             apply=params.apply,
             project_names=project_names,
@@ -208,7 +197,7 @@ class FlextInfraCliRefactor:
         params: m.Infra.RefactorUltraworkModelsInput,
     ) -> r[t.IntMapping]:
         """Run centralization, MRO migration, and namespace enforcement together."""
-        workspace = Path(params.workspace)
+        workspace = u.Infra.resolve_workspace(params)
         centralize_summary = u.Infra.centralize_workspace(
             workspace,
             apply=params.apply,
@@ -250,7 +239,9 @@ class FlextInfraCliRefactor:
         """Run method-usage census and optionally export JSON report."""
         census = FlextInfraRefactorCensus()
         target = u.Infra.build_mro_target(params.family)
-        result = census.run(workspace_root=Path(params.workspace), target=target)
+        result = census.run(
+            workspace_root=u.Infra.resolve_workspace(params), target=target
+        )
         if result.is_failure:
             return result
         report = result.value

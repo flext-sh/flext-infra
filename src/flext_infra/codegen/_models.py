@@ -9,9 +9,12 @@ from pydantic import Field
 
 from flext_core import FlextModels
 from flext_infra import t
+from flext_infra.codegen._models_deduplication import (
+    FlextInfraCodegenDeduplicationModels,
+)
 
 
-class FlextInfraCodegenModels:
+class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
     """Models for codegen census, scaffold, and auto-fix pipelines."""
 
     class CensusViolation(FlextModels.ArbitraryTypesModel):

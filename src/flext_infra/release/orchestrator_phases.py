@@ -121,6 +121,10 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
         notes_result = self._generate_notes(ctx, notes_path)
         if notes_result.is_failure:
             return notes_result
+        if not notes_path.exists():
+            return r[bool].fail(
+                f"release notes generation did not create {notes_path}",
+            )
         if not ctx.dry_run:
             apply_result = self._publish_apply(
                 workspace_root=workspace_root,

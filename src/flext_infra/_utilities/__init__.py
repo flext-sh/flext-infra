@@ -25,83 +25,35 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.cli_shared import FlextInfraUtilitiesCliShared
 
     cli_subcommand = _flext_infra__utilities_cli_subcommand
-    import flext_infra._utilities.codegen_constant_analysis as _flext_infra__utilities_codegen_constant_analysis
+    import flext_infra._utilities.codegen_constants as _flext_infra__utilities_codegen_constants
     from flext_infra._utilities.cli_subcommand import FlextInfraUtilitiesCliSubcommand
 
-    codegen_constant_analysis = _flext_infra__utilities_codegen_constant_analysis
-    import flext_infra._utilities.codegen_constant_detection as _flext_infra__utilities_codegen_constant_detection
-    from flext_infra._utilities.codegen_constant_analysis import (
-        FlextInfraUtilitiesCodegenConstantAnalysis,
-    )
-
-    codegen_constant_detection = _flext_infra__utilities_codegen_constant_detection
-    import flext_infra._utilities.codegen_constant_transformation as _flext_infra__utilities_codegen_constant_transformation
-    from flext_infra._utilities.codegen_constant_detection import (
-        FlextInfraUtilitiesCodegenConstantDetection,
-    )
-
-    codegen_constant_transformation = (
-        _flext_infra__utilities_codegen_constant_transformation
-    )
+    codegen_constants = _flext_infra__utilities_codegen_constants
     import flext_infra._utilities.codegen_execution as _flext_infra__utilities_codegen_execution
-    from flext_infra._utilities.codegen_constant_transformation import (
+    from flext_infra._utilities.codegen_constants import (
+        FlextInfraUtilitiesCodegenConstantAnalysis,
+        FlextInfraUtilitiesCodegenConstantDetection,
         FlextInfraUtilitiesCodegenConstantTransformation,
+        FlextInfraUtilitiesCodegenGovernance,
     )
 
     codegen_execution = _flext_infra__utilities_codegen_execution
-    import flext_infra._utilities.codegen_execution_checks as _flext_infra__utilities_codegen_execution_checks
+    import flext_infra._utilities.codegen_import_cycles as _flext_infra__utilities_codegen_import_cycles
     from flext_infra._utilities.codegen_execution import (
         FlextInfraUtilitiesCodegenExecution,
     )
 
-    codegen_execution_checks = _flext_infra__utilities_codegen_execution_checks
-    import flext_infra._utilities.codegen_execution_metrics as _flext_infra__utilities_codegen_execution_metrics
-    from flext_infra._utilities.codegen_execution_checks import (
-        FlextInfraUtilitiesCodegenExecutionChecks,
-    )
-
-    codegen_execution_metrics = _flext_infra__utilities_codegen_execution_metrics
-    import flext_infra._utilities.codegen_execution_runner as _flext_infra__utilities_codegen_execution_runner
-    from flext_infra._utilities.codegen_execution_metrics import (
-        FlextInfraUtilitiesCodegenExecutionMetrics,
-    )
-
-    codegen_execution_runner = _flext_infra__utilities_codegen_execution_runner
-    import flext_infra._utilities.codegen_execution_subprocess as _flext_infra__utilities_codegen_execution_subprocess
-    from flext_infra._utilities.codegen_execution_runner import (
-        FlextInfraUtilitiesCodegenExecutionRunner,
-    )
-
-    codegen_execution_subprocess = _flext_infra__utilities_codegen_execution_subprocess
-    import flext_infra._utilities.codegen_governance as _flext_infra__utilities_codegen_governance
-
-    codegen_governance = _flext_infra__utilities_codegen_governance
-    import flext_infra._utilities.codegen_import_cycles as _flext_infra__utilities_codegen_import_cycles
-    from flext_infra._utilities.codegen_governance import (
-        FlextInfraUtilitiesCodegenGovernance,
-    )
-
     codegen_import_cycles = _flext_infra__utilities_codegen_import_cycles
-    import flext_infra._utilities.codegen_lazy_aliases as _flext_infra__utilities_codegen_lazy_aliases
+    import flext_infra._utilities.codegen_lazy as _flext_infra__utilities_codegen_lazy
     from flext_infra._utilities.codegen_import_cycles import (
         FlextInfraUtilitiesCodegenImportCycles,
     )
 
-    codegen_lazy_aliases = _flext_infra__utilities_codegen_lazy_aliases
-    import flext_infra._utilities.codegen_lazy_merging as _flext_infra__utilities_codegen_lazy_merging
-    from flext_infra._utilities.codegen_lazy_aliases import (
-        FlextInfraUtilitiesCodegenLazyAliases,
-    )
-
-    codegen_lazy_merging = _flext_infra__utilities_codegen_lazy_merging
-    import flext_infra._utilities.codegen_lazy_scanning as _flext_infra__utilities_codegen_lazy_scanning
-    from flext_infra._utilities.codegen_lazy_merging import (
-        FlextInfraUtilitiesCodegenLazyMerging,
-    )
-
-    codegen_lazy_scanning = _flext_infra__utilities_codegen_lazy_scanning
+    codegen_lazy = _flext_infra__utilities_codegen_lazy
     import flext_infra._utilities.discovery as _flext_infra__utilities_discovery
-    from flext_infra._utilities.codegen_lazy_scanning import (
+    from flext_infra._utilities.codegen_lazy import (
+        FlextInfraUtilitiesCodegenLazyAliases,
+        FlextInfraUtilitiesCodegenLazyMerging,
         FlextInfraUtilitiesCodegenLazyScanning,
     )
 
@@ -204,12 +156,8 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
 
     rope_source = _flext_infra__utilities_rope_source
-    import flext_infra._utilities.rule_helpers as _flext_infra__utilities_rule_helpers
-    from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
-
-    rule_helpers = _flext_infra__utilities_rule_helpers
     import flext_infra._utilities.safety as _flext_infra__utilities_safety
-    from flext_infra._utilities.rule_helpers import FlextInfraUtilitiesRuleHelpers
+    from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
 
     safety = _flext_infra__utilities_safety
     import flext_infra._utilities.selection as _flext_infra__utilities_selection
@@ -250,18 +198,15 @@ _LAZY_IMPORTS = {
     "FlextInfraUtilitiesCli": "flext_infra._utilities.cli",
     "FlextInfraUtilitiesCliShared": "flext_infra._utilities.cli_shared",
     "FlextInfraUtilitiesCliSubcommand": "flext_infra._utilities.cli_subcommand",
-    "FlextInfraUtilitiesCodegenConstantAnalysis": "flext_infra._utilities.codegen_constant_analysis",
-    "FlextInfraUtilitiesCodegenConstantDetection": "flext_infra._utilities.codegen_constant_detection",
-    "FlextInfraUtilitiesCodegenConstantTransformation": "flext_infra._utilities.codegen_constant_transformation",
+    "FlextInfraUtilitiesCodegenConstantAnalysis": "flext_infra._utilities.codegen_constants",
+    "FlextInfraUtilitiesCodegenConstantDetection": "flext_infra._utilities.codegen_constants",
+    "FlextInfraUtilitiesCodegenConstantTransformation": "flext_infra._utilities.codegen_constants",
     "FlextInfraUtilitiesCodegenExecution": "flext_infra._utilities.codegen_execution",
-    "FlextInfraUtilitiesCodegenExecutionChecks": "flext_infra._utilities.codegen_execution_checks",
-    "FlextInfraUtilitiesCodegenExecutionMetrics": "flext_infra._utilities.codegen_execution_metrics",
-    "FlextInfraUtilitiesCodegenExecutionRunner": "flext_infra._utilities.codegen_execution_runner",
-    "FlextInfraUtilitiesCodegenGovernance": "flext_infra._utilities.codegen_governance",
+    "FlextInfraUtilitiesCodegenGovernance": "flext_infra._utilities.codegen_constants",
     "FlextInfraUtilitiesCodegenImportCycles": "flext_infra._utilities.codegen_import_cycles",
-    "FlextInfraUtilitiesCodegenLazyAliases": "flext_infra._utilities.codegen_lazy_aliases",
-    "FlextInfraUtilitiesCodegenLazyMerging": "flext_infra._utilities.codegen_lazy_merging",
-    "FlextInfraUtilitiesCodegenLazyScanning": "flext_infra._utilities.codegen_lazy_scanning",
+    "FlextInfraUtilitiesCodegenLazyAliases": "flext_infra._utilities.codegen_lazy",
+    "FlextInfraUtilitiesCodegenLazyMerging": "flext_infra._utilities.codegen_lazy",
+    "FlextInfraUtilitiesCodegenLazyScanning": "flext_infra._utilities.codegen_lazy",
     "FlextInfraUtilitiesDiscovery": "flext_infra._utilities.discovery",
     "FlextInfraUtilitiesDiscoveryScanning": "flext_infra._utilities.discovery_scanning",
     "FlextInfraUtilitiesDocs": "flext_infra._utilities.docs",
@@ -286,7 +231,6 @@ _LAZY_IMPORTS = {
     "FlextInfraUtilitiesRopeHelpers": "flext_infra._utilities.rope_helpers",
     "FlextInfraUtilitiesRopeImports": "flext_infra._utilities.rope_imports",
     "FlextInfraUtilitiesRopeSource": "flext_infra._utilities.rope_source",
-    "FlextInfraUtilitiesRuleHelpers": "flext_infra._utilities.rule_helpers",
     "FlextInfraUtilitiesSafety": "flext_infra._utilities.safety",
     "FlextInfraUtilitiesSelection": "flext_infra._utilities.selection",
     "FlextInfraUtilitiesSubprocess": "flext_infra._utilities.subprocess",
@@ -300,19 +244,10 @@ _LAZY_IMPORTS = {
     "cli": "flext_infra._utilities.cli",
     "cli_shared": "flext_infra._utilities.cli_shared",
     "cli_subcommand": "flext_infra._utilities.cli_subcommand",
-    "codegen_constant_analysis": "flext_infra._utilities.codegen_constant_analysis",
-    "codegen_constant_detection": "flext_infra._utilities.codegen_constant_detection",
-    "codegen_constant_transformation": "flext_infra._utilities.codegen_constant_transformation",
+    "codegen_constants": "flext_infra._utilities.codegen_constants",
     "codegen_execution": "flext_infra._utilities.codegen_execution",
-    "codegen_execution_checks": "flext_infra._utilities.codegen_execution_checks",
-    "codegen_execution_metrics": "flext_infra._utilities.codegen_execution_metrics",
-    "codegen_execution_runner": "flext_infra._utilities.codegen_execution_runner",
-    "codegen_execution_subprocess": "flext_infra._utilities.codegen_execution_subprocess",
-    "codegen_governance": "flext_infra._utilities.codegen_governance",
     "codegen_import_cycles": "flext_infra._utilities.codegen_import_cycles",
-    "codegen_lazy_aliases": "flext_infra._utilities.codegen_lazy_aliases",
-    "codegen_lazy_merging": "flext_infra._utilities.codegen_lazy_merging",
-    "codegen_lazy_scanning": "flext_infra._utilities.codegen_lazy_scanning",
+    "codegen_lazy": "flext_infra._utilities.codegen_lazy",
     "discovery": "flext_infra._utilities.discovery",
     "discovery_scanning": "flext_infra._utilities.discovery_scanning",
     "docs": "flext_infra._utilities.docs",
@@ -337,7 +272,6 @@ _LAZY_IMPORTS = {
     "rope_helpers": "flext_infra._utilities.rope_helpers",
     "rope_imports": "flext_infra._utilities.rope_imports",
     "rope_source": "flext_infra._utilities.rope_source",
-    "rule_helpers": "flext_infra._utilities.rule_helpers",
     "safety": "flext_infra._utilities.safety",
     "selection": "flext_infra._utilities.selection",
     "subprocess": "flext_infra._utilities.subprocess",
@@ -358,9 +292,6 @@ __all__ = [
     "FlextInfraUtilitiesCodegenConstantDetection",
     "FlextInfraUtilitiesCodegenConstantTransformation",
     "FlextInfraUtilitiesCodegenExecution",
-    "FlextInfraUtilitiesCodegenExecutionChecks",
-    "FlextInfraUtilitiesCodegenExecutionMetrics",
-    "FlextInfraUtilitiesCodegenExecutionRunner",
     "FlextInfraUtilitiesCodegenGovernance",
     "FlextInfraUtilitiesCodegenImportCycles",
     "FlextInfraUtilitiesCodegenLazyAliases",
@@ -390,7 +321,6 @@ __all__ = [
     "FlextInfraUtilitiesRopeHelpers",
     "FlextInfraUtilitiesRopeImports",
     "FlextInfraUtilitiesRopeSource",
-    "FlextInfraUtilitiesRuleHelpers",
     "FlextInfraUtilitiesSafety",
     "FlextInfraUtilitiesSelection",
     "FlextInfraUtilitiesSubprocess",
@@ -404,19 +334,10 @@ __all__ = [
     "cli",
     "cli_shared",
     "cli_subcommand",
-    "codegen_constant_analysis",
-    "codegen_constant_detection",
-    "codegen_constant_transformation",
+    "codegen_constants",
     "codegen_execution",
-    "codegen_execution_checks",
-    "codegen_execution_metrics",
-    "codegen_execution_runner",
-    "codegen_execution_subprocess",
-    "codegen_governance",
     "codegen_import_cycles",
-    "codegen_lazy_aliases",
-    "codegen_lazy_merging",
-    "codegen_lazy_scanning",
+    "codegen_lazy",
     "discovery",
     "discovery_scanning",
     "docs",
@@ -441,7 +362,6 @@ __all__ = [
     "rope_helpers",
     "rope_imports",
     "rope_source",
-    "rule_helpers",
     "safety",
     "selection",
     "subprocess",

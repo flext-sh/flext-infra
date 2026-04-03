@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import re
 from collections.abc import Mapping, MutableSequence
 
@@ -27,7 +28,7 @@ class FlextInfraRefactorLegacyRemovalRule:
         resource: t.Infra.RopeResource,
         *,
         dry_run: bool = False,
-    ) -> tuple[str, t.StrSequence]:
+    ) -> t.Infra.TransformResult:
         """Apply configured legacy-removal transforms to resource."""
         source = u.Infra.read_source(resource)
         changes: MutableSequence[str] = []
@@ -68,11 +69,11 @@ class FlextInfraRefactorLegacyRemovalRule:
 
     def _remove_aliases(
         self,
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
+        _rope_project: t.Infra.RopeProject,
+        _resource: t.Infra.RopeResource,
         source: str,
-    ) -> tuple[str, t.StrSequence]:
-        """Remove module-level identity aliases via rope."""
+    ) -> t.Infra.TransformResult:
+        """Remove module-level alias assignments."""
         allow_aliases = set(
             u.Infra.string_list(
                 self.config.get("allow_aliases", []),
@@ -83,22 +84,32 @@ class FlextInfraRefactorLegacyRemovalRule:
                 self.config.get("allow_target_suffixes", []),
             ),
         )
-        new_source, removed = u.Infra.remove_module_level_aliases(
-            rope_project,
-            resource,
-            allow=allow_aliases,
-            apply=False,
-        )
+        alias_pattern = re.compile(r"^([A-Za-z_]\w*)\s*=\s*([A-Za-z_]\w*)\s*$")
         changes: MutableSequence[str] = []
-        for alias_desc in removed:
-            target = alias_desc.split(" = ")[0] if " = " in alias_desc else ""
-            if allow_target_suffixes and target.endswith(allow_target_suffixes):
+        kept: MutableSequence[str] = []
+        for line in source.splitlines(keepends=True):
+            if line != line.lstrip():
+                kept.append(line)
                 continue
-            changes.append(f"Removed alias: {alias_desc}")
-        return (new_source if changes else source, changes)
+            match = alias_pattern.match(line.strip())
+            if match is None:
+                kept.append(line)
+                continue
+            target, value = match.groups()
+            if (
+                target in allow_aliases
+                or target in {c.Infra.Dunders.VERSION, c.Infra.Dunders.ALL}
+                or (allow_target_suffixes and target.endswith(allow_target_suffixes))
+            ):
+                kept.append(line)
+                continue
+            changes.append(f"Removed alias: {target} = {value}")
+        if not changes:
+            return (source, [])
+        return ("".join(kept), changes)
 
     @staticmethod
-    def _remove_deprecated(source: str) -> tuple[str, t.StrSequence]:
+    def _remove_deprecated(source: str) -> t.Infra.TransformResult:
         """Remove classes/functions decorated with @deprecated."""
         deprecated_re = re.compile(
             r"^@deprecated.*\n(?:class|def)\s+(\w+).*?(?=\n(?:class |def |@|\Z))",
@@ -112,37 +123,102 @@ class FlextInfraRefactorLegacyRemovalRule:
         return (new_source, changes)
 
     @staticmethod
-    def _remove_wrappers(source: str) -> tuple[str, t.StrSequence]:
+    def _remove_wrappers(source: str) -> t.Infra.TransformResult:
         """Inline single-return passthrough wrappers as aliases."""
-        wrapper_re = re.compile(
-            r"^def\s+(\w+)\s*\([^)]*\)[^:]*:\s*\n"
-            r"\s+return\s+(\w+)\s*\([^)]*\)\s*$",
-            re.MULTILINE,
-        )
         changes: MutableSequence[str] = []
-        new_source = source
-        for match in wrapper_re.finditer(source):
-            wrapper_name = match.group(1)
-            target_name = match.group(2)
-            new_source = new_source.replace(
-                match.group(0),
-                f"{wrapper_name} = {target_name}",
-            )
-            changes.append(f"Inlined wrapper: {wrapper_name} -> {target_name}")
-        return (new_source, changes)
+        try:
+            module = ast.parse(source)
+        except SyntaxError:
+            return (source, changes)
+        lines = source.splitlines(keepends=True)
+        replacements: MutableSequence[tuple[int, int, str]] = []
+        for node in module.body:
+            if not isinstance(node, ast.FunctionDef):
+                continue
+            if len(node.body) != 1 or not isinstance(node.body[0], ast.Return):
+                continue
+            returned = node.body[0].value
+            if not isinstance(returned, ast.Call) or not isinstance(
+                returned.func, ast.Name
+            ):
+                continue
+            if not FlextInfraRefactorLegacyRemovalRule._is_passthrough_wrapper(
+                node,
+                returned,
+            ):
+                continue
+            replacements.append((
+                node.lineno - 1,
+                node.end_lineno or node.lineno,
+                f"{node.name} = {returned.func.id}\n",
+            ))
+            changes.append(f"Inlined wrapper: {node.name} -> {returned.func.id}")
+        for start, end, replacement in reversed(replacements):
+            lines[start:end] = [replacement]
+        return (
+            ("".join(lines).rstrip("\n") + "\n", changes) if changes else (source, [])
+        )
 
     @staticmethod
-    def _remove_import_bypasses(source: str) -> tuple[str, t.StrSequence]:
-        """Remove try/except ImportError blocks that bypass imports."""
+    def _is_passthrough_wrapper(
+        func: ast.FunctionDef,
+        call: ast.Call,
+    ) -> bool:
+        """Return True when call forwards parameters without changing values."""
+        param_names = [arg.arg for arg in (*func.args.posonlyargs, *func.args.args)]
+        keyword_names = [arg.arg for arg in func.args.kwonlyargs]
+        named_keywords = {
+            kw.arg: kw.value for kw in call.keywords if kw.arg is not None
+        }
+        keyword_unpack = [kw.value for kw in call.keywords if kw.arg is None]
+        pos_index = 0
+
+        def _is_name(node: ast.expr, name: str) -> bool:
+            return isinstance(node, ast.Name) and node.id == name
+
+        for name in param_names:
+            if pos_index < len(call.args) and _is_name(call.args[pos_index], name):
+                pos_index += 1
+                continue
+            if name in named_keywords and _is_name(named_keywords[name], name):
+                continue
+            return False
+        remaining_args = call.args[pos_index:]
+        if func.args.vararg is None:
+            if remaining_args:
+                return False
+        elif (
+            len(remaining_args) != 1
+            or not isinstance(remaining_args[0], ast.Starred)
+            or not _is_name(remaining_args[0].value, func.args.vararg.arg)
+        ):
+            return False
+        for name in keyword_names:
+            if name not in named_keywords or not _is_name(named_keywords[name], name):
+                return False
+        if func.args.kwarg is None:
+            return not keyword_unpack
+        return len(keyword_unpack) == 1 and _is_name(
+            keyword_unpack[0], func.args.kwarg.arg
+        )
+
+    @staticmethod
+    def _remove_import_bypasses(source: str) -> t.Infra.TransformResult:
+        """Collapse try/except ImportError import bypasses to the primary import."""
         bypass_re = re.compile(
-            r"^try:\s*\n\s+from\s+\S+\s+import\s+\S+.*?\n"
-            r"except\s+ImportError.*?(?=\n(?:class |def |@|try:|\Z))",
-            re.MULTILINE | re.DOTALL,
+            r"^try:\s*\n"
+            r"(?P<primary>\s+from\s+\S+\s+import\s+\S+[^\n]*)\n"
+            r"except\s+ImportError:\s*\n"
+            r"\s+from\s+\S+\s+import\s+\S+[^\n]*\n?",
+            re.MULTILINE,
         )
         changes: MutableSequence[str] = []
         for _match in bypass_re.finditer(source):
             changes.append("Removed import bypass block")
-        new_source = bypass_re.sub("", source)
+        new_source = bypass_re.sub(
+            lambda match: match.group("primary").lstrip() + "\n",
+            source,
+        )
         return (new_source, changes)
 
 

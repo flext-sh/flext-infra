@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import re
 from collections import defaultdict
-from collections.abc import Sequence
 from typing import override
 
 from flext_infra import (
@@ -31,42 +30,33 @@ class FlextInfraHelperConsolidationTransformer(FlextInfraRopeTransformer):
         self._policy_context = policy_context
         self._families = helper_families or {}
 
+    _description = "helper consolidation"
+
     @override
-    def transform(
-        self,
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
-    ) -> tuple[str, Sequence[str]]:
-        """Apply helper consolidation. Returns (new_source, changes)."""
-        source = u.Infra.read_source(resource)
+    def apply_to_source(self, source: str) -> t.Infra.TransformResult:
+        """Apply helper consolidation to in-memory source without persisting."""
+        updated = source
         collected: dict[str, list[str]] = defaultdict(list)
         for name, ns in self._mappings.items():
-            if not u.Infra.has_toplevel_definition(source, name, kind="function"):
+            if not u.Infra.has_toplevel_definition(updated, name, kind="function"):
                 continue
             if not self._policy_ok(name, ns, "enable_helper_consolidation"):
                 continue
-            if not self._sig_allowed(source, name):
+            if not self._sig_allowed(updated, name):
                 continue
             collected[ns].append(name)
         for namespace, helpers in collected.items():
             for name in helpers:
-                func_src = u.Infra.extract_definition(source, name, kind="function")
+                func_src = u.Infra.extract_definition(updated, name, kind="function")
                 if func_src is None:
                     continue
-                source = u.Infra.remove_definition(source, name, kind="function")
+                updated = u.Infra.remove_definition(updated, name, kind="function")
                 func_src = u.Infra.ensure_decorator(func_src)
                 indented = u.Infra.indent_block(func_src)
-                source = u.Infra.append_to_class_body(source, namespace, indented)
+                updated = u.Infra.append_to_class_body(updated, namespace, indented)
                 self._record_change(f"Moved {name} into {namespace}")
-        source = self._rewrite_calls(source)
-        if source != u.Infra.read_source(resource) and self.changes:
-            u.Infra.write_source(
-                rope_project,
-                resource,
-                source,
-                description="helper consolidation",
-            )
-        return source, list(self.changes)
+        updated = self._rewrite_calls(updated)
+        return updated, list(self.changes)
 
     def _rewrite_calls(self, source: str) -> str:
         for name, ns in self._mappings.items():

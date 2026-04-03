@@ -1,20 +1,10 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
 from pathlib import Path
 
-import pytest
 from tests import t, u
 
 from flext_infra import DetectorContext, FlextInfraImportAliasDetector
-
-
-@pytest.fixture
-def rope_project(tmp_path: Path) -> Iterator[t.Infra.RopeProject]:
-    """Minimal rope project rooted at tmp_path."""
-    project = u.Infra.init_rope_project(tmp_path, project_prefix="__never__")
-    yield project
-    project.close()
 
 
 def _write_file(path: Path, content: str) -> None:
@@ -175,7 +165,7 @@ def test_namespace_rewriter_only_rewrites_runtime_alias_imports(tmp_path: Path) 
 
 def test_namespace_rewriter_keeps_contextual_alias_subset(tmp_path: Path) -> None:
     sample_file = tmp_path / "sample.py"
-    source = "from __future__ import annotations\nfrom flext_core import u\n"
+    source = "from __future__ import annotations\nfrom flext_core.utilities import u\n"
     sample_file.write_text(source, encoding="utf-8")
 
     u.Infra.rewrite_import_violations(

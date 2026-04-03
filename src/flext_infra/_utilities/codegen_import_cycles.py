@@ -50,7 +50,7 @@ class FlextInfraUtilitiesCodegenImportCycles:
             try:
                 pymodule = rope_project.get_pymodule(res)
                 mod_imports = get_imports(rope_project, pymodule)
-            except Exception:  # noqa: S112
+            except Exception:
                 continue
 
             deps: t.Infra.StrSet = set()

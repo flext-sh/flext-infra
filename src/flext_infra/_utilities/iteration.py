@@ -125,11 +125,21 @@ class FlextInfraUtilitiesIteration:
         return [
             file_path
             for file_path in files
+            if FlextInfraUtilitiesIteration.is_canonical_python_file(file_path)
             if not FlextInfraUtilitiesIteration._is_ignored_python_path(
                 file_path,
                 ignored_parts=ignored_parts,
             )
         ]
+
+    @staticmethod
+    def is_canonical_python_file(path: Path) -> bool:
+        """Return True only for real ``.py`` source files."""
+        return (
+            path.is_file()
+            and path.suffix == c.Infra.Extensions.PYTHON
+            and path.suffixes == [c.Infra.Extensions.PYTHON]
+        )
 
     @staticmethod
     def _is_ignored_python_path(

@@ -25,19 +25,13 @@ if _t.TYPE_CHECKING:
     )
 
     _constants = _flext_infra_refactor__constants
-    import flext_infra.refactor._engine_orchestration as _flext_infra_refactor__engine_orchestration
+    import flext_infra.refactor._engine_helpers as _flext_infra_refactor__engine_helpers
     from flext_infra.refactor._constants import FlextInfraRefactorConstants
 
-    _engine_orchestration = _flext_infra_refactor__engine_orchestration
-    import flext_infra.refactor._engine_pipeline as _flext_infra_refactor__engine_pipeline
-    from flext_infra.refactor._engine_orchestration import (
-        FlextInfraRefactorEngineOrchestrationMixin,
-    )
-
-    _engine_pipeline = _flext_infra_refactor__engine_pipeline
+    _engine_helpers = _flext_infra_refactor__engine_helpers
     import flext_infra.refactor._engine_rules as _flext_infra_refactor__engine_rules
-    from flext_infra.refactor._engine_pipeline import (
-        FlextInfraRefactorEnginePipelineMixin,
+    from flext_infra.refactor._engine_helpers import (
+        FlextInfraRefactorEngineHelpersMixin,
     )
 
     _engine_rules = _flext_infra_refactor__engine_rules
@@ -80,14 +74,10 @@ if _t.TYPE_CHECKING:
     )
 
     _namespace_enforcer_phases = _flext_infra_refactor__namespace_enforcer_phases
-    import flext_infra.refactor._post_check_gate as _flext_infra_refactor__post_check_gate
+    import flext_infra.refactor._utilities as _flext_infra_refactor__utilities
     from flext_infra.refactor._namespace_enforcer_phases import (
         FlextInfraNamespaceEnforcerPhasesMixin,
     )
-
-    _post_check_gate = _flext_infra_refactor__post_check_gate
-    import flext_infra.refactor._utilities as _flext_infra_refactor__utilities
-    from flext_infra.refactor._post_check_gate import FlextInfraPostCheckGate
 
     _utilities = _flext_infra_refactor__utilities
     import flext_infra.refactor._utilities_census as _flext_infra_refactor__utilities_census
@@ -102,12 +92,8 @@ if _t.TYPE_CHECKING:
     from flext_infra.refactor._utilities_cli import FlextInfraUtilitiesRefactorCli
 
     _utilities_engine = _flext_infra_refactor__utilities_engine
-    import flext_infra.refactor._utilities_loader as _flext_infra_refactor__utilities_loader
-    from flext_infra.refactor._utilities_engine import FlextInfraUtilitiesRefactorEngine
-
-    _utilities_loader = _flext_infra_refactor__utilities_loader
     import flext_infra.refactor._utilities_mro_scan as _flext_infra_refactor__utilities_mro_scan
-    from flext_infra.refactor._utilities_loader import FlextInfraUtilitiesRefactorLoader
+    from flext_infra.refactor._utilities_engine import FlextInfraUtilitiesRefactorEngine
 
     _utilities_mro_scan = _flext_infra_refactor__utilities_mro_scan
     import flext_infra.refactor._utilities_mro_transform as _flext_infra_refactor__utilities_mro_transform
@@ -122,15 +108,16 @@ if _t.TYPE_CHECKING:
     )
 
     _utilities_namespace = _flext_infra_refactor__utilities_namespace
-    import flext_infra.refactor._utilities_namespace_common as _flext_infra_refactor__utilities_namespace_common
+    import flext_infra.refactor._utilities_namespace_analysis as _flext_infra_refactor__utilities_namespace_analysis
     from flext_infra.refactor._utilities_namespace import (
         FlextInfraUtilitiesRefactorNamespace,
     )
 
-    _utilities_namespace_common = _flext_infra_refactor__utilities_namespace_common
+    _utilities_namespace_analysis = _flext_infra_refactor__utilities_namespace_analysis
     import flext_infra.refactor._utilities_namespace_facades as _flext_infra_refactor__utilities_namespace_facades
-    from flext_infra.refactor._utilities_namespace_common import (
+    from flext_infra.refactor._utilities_namespace_analysis import (
         FlextInfraUtilitiesRefactorNamespaceCommon,
+        FlextInfraUtilitiesRefactorNamespaceMro,
     )
 
     _utilities_namespace_facades = _flext_infra_refactor__utilities_namespace_facades
@@ -140,15 +127,9 @@ if _t.TYPE_CHECKING:
     )
 
     _utilities_namespace_moves = _flext_infra_refactor__utilities_namespace_moves
-    import flext_infra.refactor._utilities_namespace_mro as _flext_infra_refactor__utilities_namespace_mro
+    import flext_infra.refactor._utilities_namespace_runtime as _flext_infra_refactor__utilities_namespace_runtime
     from flext_infra.refactor._utilities_namespace_moves import (
         FlextInfraUtilitiesRefactorNamespaceMoves,
-    )
-
-    _utilities_namespace_mro = _flext_infra_refactor__utilities_namespace_mro
-    import flext_infra.refactor._utilities_namespace_runtime as _flext_infra_refactor__utilities_namespace_runtime
-    from flext_infra.refactor._utilities_namespace_mro import (
-        FlextInfraUtilitiesRefactorNamespaceMro,
     )
 
     _utilities_namespace_runtime = _flext_infra_refactor__utilities_namespace_runtime
@@ -262,7 +243,6 @@ _LAZY_IMPORTS = {
     "FlextInfraNamespaceEnforcer": "flext_infra.refactor.namespace_enforcer",
     "FlextInfraNamespaceEnforcerModels": "flext_infra.refactor._models_namespace_enforcer",
     "FlextInfraNamespaceEnforcerPhasesMixin": "flext_infra.refactor._namespace_enforcer_phases",
-    "FlextInfraPostCheckGate": "flext_infra.refactor._post_check_gate",
     "FlextInfraProjectClassifier": "flext_infra.refactor.project_classifier",
     "FlextInfraRefactorAstGrepModels": "flext_infra.refactor._models_ast_grep",
     "FlextInfraRefactorCensus": "flext_infra.refactor.census",
@@ -270,8 +250,7 @@ _LAZY_IMPORTS = {
     "FlextInfraRefactorClassReconstructorRule": "flext_infra.refactor._engine_rules",
     "FlextInfraRefactorConstants": "flext_infra.refactor._constants",
     "FlextInfraRefactorEngine": "flext_infra.refactor.engine",
-    "FlextInfraRefactorEngineOrchestrationMixin": "flext_infra.refactor._engine_orchestration",
-    "FlextInfraRefactorEnginePipelineMixin": "flext_infra.refactor._engine_pipeline",
+    "FlextInfraRefactorEngineHelpersMixin": "flext_infra.refactor._engine_helpers",
     "FlextInfraRefactorLegacyRemovalTextRule": "flext_infra.refactor._engine_rules",
     "FlextInfraRefactorLooseClassScanner": "flext_infra.refactor.scanner",
     "FlextInfraRefactorMROClassMigrationTextRule": "flext_infra.refactor._engine_rules",
@@ -298,14 +277,13 @@ _LAZY_IMPORTS = {
     "FlextInfraUtilitiesRefactorCensus": "flext_infra.refactor._utilities_census",
     "FlextInfraUtilitiesRefactorCli": "flext_infra.refactor._utilities_cli",
     "FlextInfraUtilitiesRefactorEngine": "flext_infra.refactor._utilities_engine",
-    "FlextInfraUtilitiesRefactorLoader": "flext_infra.refactor._utilities_loader",
     "FlextInfraUtilitiesRefactorMroScan": "flext_infra.refactor._utilities_mro_scan",
     "FlextInfraUtilitiesRefactorMroTransform": "flext_infra.refactor._utilities_mro_transform",
     "FlextInfraUtilitiesRefactorNamespace": "flext_infra.refactor._utilities_namespace",
-    "FlextInfraUtilitiesRefactorNamespaceCommon": "flext_infra.refactor._utilities_namespace_common",
+    "FlextInfraUtilitiesRefactorNamespaceCommon": "flext_infra.refactor._utilities_namespace_analysis",
     "FlextInfraUtilitiesRefactorNamespaceFacades": "flext_infra.refactor._utilities_namespace_facades",
     "FlextInfraUtilitiesRefactorNamespaceMoves": "flext_infra.refactor._utilities_namespace_moves",
-    "FlextInfraUtilitiesRefactorNamespaceMro": "flext_infra.refactor._utilities_namespace_mro",
+    "FlextInfraUtilitiesRefactorNamespaceMro": "flext_infra.refactor._utilities_namespace_analysis",
     "FlextInfraUtilitiesRefactorNamespaceRuntime": "flext_infra.refactor._utilities_namespace_runtime",
     "FlextInfraUtilitiesRefactorPolicy": "flext_infra.refactor._utilities_policy",
     "FlextInfraUtilitiesRefactorPydantic": "flext_infra.refactor._utilities_pydantic",
@@ -315,8 +293,7 @@ _LAZY_IMPORTS = {
     "STR_MAPPING_ADAPTER": "flext_infra.refactor._base_rule",
     "_base_rule": "flext_infra.refactor._base_rule",
     "_constants": "flext_infra.refactor._constants",
-    "_engine_orchestration": "flext_infra.refactor._engine_orchestration",
-    "_engine_pipeline": "flext_infra.refactor._engine_pipeline",
+    "_engine_helpers": "flext_infra.refactor._engine_helpers",
     "_engine_rules": "flext_infra.refactor._engine_rules",
     "_models": "flext_infra.refactor._models",
     "_models_ast_grep": "flext_infra.refactor._models_ast_grep",
@@ -324,19 +301,16 @@ _LAZY_IMPORTS = {
     "_models_namespace_enforcer": "flext_infra.refactor._models_namespace_enforcer",
     "_models_violations": "flext_infra.refactor._models_violations",
     "_namespace_enforcer_phases": "flext_infra.refactor._namespace_enforcer_phases",
-    "_post_check_gate": "flext_infra.refactor._post_check_gate",
     "_utilities": "flext_infra.refactor._utilities",
     "_utilities_census": "flext_infra.refactor._utilities_census",
     "_utilities_cli": "flext_infra.refactor._utilities_cli",
     "_utilities_engine": "flext_infra.refactor._utilities_engine",
-    "_utilities_loader": "flext_infra.refactor._utilities_loader",
     "_utilities_mro_scan": "flext_infra.refactor._utilities_mro_scan",
     "_utilities_mro_transform": "flext_infra.refactor._utilities_mro_transform",
     "_utilities_namespace": "flext_infra.refactor._utilities_namespace",
-    "_utilities_namespace_common": "flext_infra.refactor._utilities_namespace_common",
+    "_utilities_namespace_analysis": "flext_infra.refactor._utilities_namespace_analysis",
     "_utilities_namespace_facades": "flext_infra.refactor._utilities_namespace_facades",
     "_utilities_namespace_moves": "flext_infra.refactor._utilities_namespace_moves",
-    "_utilities_namespace_mro": "flext_infra.refactor._utilities_namespace_mro",
     "_utilities_namespace_runtime": "flext_infra.refactor._utilities_namespace_runtime",
     "_utilities_policy": "flext_infra.refactor._utilities_policy",
     "_utilities_pydantic": "flext_infra.refactor._utilities_pydantic",
@@ -380,7 +354,6 @@ __all__ = [
     "FlextInfraNamespaceEnforcer",
     "FlextInfraNamespaceEnforcerModels",
     "FlextInfraNamespaceEnforcerPhasesMixin",
-    "FlextInfraPostCheckGate",
     "FlextInfraProjectClassifier",
     "FlextInfraRefactorAstGrepModels",
     "FlextInfraRefactorCensus",
@@ -388,8 +361,7 @@ __all__ = [
     "FlextInfraRefactorClassReconstructorRule",
     "FlextInfraRefactorConstants",
     "FlextInfraRefactorEngine",
-    "FlextInfraRefactorEngineOrchestrationMixin",
-    "FlextInfraRefactorEnginePipelineMixin",
+    "FlextInfraRefactorEngineHelpersMixin",
     "FlextInfraRefactorLegacyRemovalTextRule",
     "FlextInfraRefactorLooseClassScanner",
     "FlextInfraRefactorMROClassMigrationTextRule",
@@ -416,7 +388,6 @@ __all__ = [
     "FlextInfraUtilitiesRefactorCensus",
     "FlextInfraUtilitiesRefactorCli",
     "FlextInfraUtilitiesRefactorEngine",
-    "FlextInfraUtilitiesRefactorLoader",
     "FlextInfraUtilitiesRefactorMroScan",
     "FlextInfraUtilitiesRefactorMroTransform",
     "FlextInfraUtilitiesRefactorNamespace",
@@ -430,8 +401,7 @@ __all__ = [
     "FlextInfraUtilitiesRefactorPydanticAnalysis",
     "_base_rule",
     "_constants",
-    "_engine_orchestration",
-    "_engine_pipeline",
+    "_engine_helpers",
     "_engine_rules",
     "_models",
     "_models_ast_grep",
@@ -439,19 +409,16 @@ __all__ = [
     "_models_namespace_enforcer",
     "_models_violations",
     "_namespace_enforcer_phases",
-    "_post_check_gate",
     "_utilities",
     "_utilities_census",
     "_utilities_cli",
     "_utilities_engine",
-    "_utilities_loader",
     "_utilities_mro_scan",
     "_utilities_mro_transform",
     "_utilities_namespace",
-    "_utilities_namespace_common",
+    "_utilities_namespace_analysis",
     "_utilities_namespace_facades",
     "_utilities_namespace_moves",
-    "_utilities_namespace_mro",
     "_utilities_namespace_runtime",
     "_utilities_policy",
     "_utilities_pydantic",

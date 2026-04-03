@@ -14,7 +14,9 @@ from tests import m, t
 
 from flext_infra import (
     FlextInfraGate,
+    FlextInfraGoGate,
     FlextInfraMypyGate,
+    FlextInfraRuffFormatGate,
     FlextInfraWorkspaceChecker,
 )
 
@@ -22,6 +24,7 @@ from ...helpers import h
 from ._shared_fixtures import (
     create_check_project_iter_stub,
     create_check_project_stub,
+    run_gate_check,
 )
 from ._stubs import make_gate_exec, make_issue
 
@@ -120,7 +123,6 @@ class TestMypyEmptyLinesInOutput:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         proj_dir = h.mk_project(tmp_path, "p1")
         (proj_dir / "src").mkdir()
         (proj_dir / "src" / "main.py").write_text("# code")
@@ -166,7 +168,7 @@ class TestMypyEmptyLinesInOutput:
             "_dirs_with_py",
             staticmethod(_fake_dirs_with_py),
         )
-        result = checker._run_mypy(proj_dir)
+        result = run_gate_check(FlextInfraMypyGate, tmp_path, proj_dir)
         tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=2)
 
@@ -179,7 +181,6 @@ class TestGoFmtEmptyLinesInOutput:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         proj_dir = h.mk_project(tmp_path, "p1")
         (proj_dir / "go.mod").write_text("module test\n")
         (proj_dir / "main.go").write_text("package main\n")
@@ -206,7 +207,7 @@ class TestGoFmtEmptyLinesInOutput:
             return results[index]
 
         monkeypatch.setattr(FlextInfraGate, "_run", _fake_run)
-        result = checker._run_go(proj_dir)
+        result = run_gate_check(FlextInfraGoGate, tmp_path, proj_dir)
         tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=2)
 
@@ -219,7 +220,6 @@ class TestRuffFormatDuplicateFiles:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         proj_dir = h.mk_project(tmp_path, "p1")
         (proj_dir / "src").mkdir()
         (proj_dir / "src" / "main.py").write_text("# code")
@@ -239,6 +239,6 @@ class TestRuffFormatDuplicateFiles:
             )
 
         monkeypatch.setattr(FlextInfraGate, "_run", _fake_run)
-        result = checker._run_ruff_format(proj_dir)
+        result = run_gate_check(FlextInfraRuffFormatGate, tmp_path, proj_dir)
         tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=2)

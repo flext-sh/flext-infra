@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import sys
 import time
-from collections.abc import Mapping, MutableSequence
+from collections.abc import MutableSequence
 from pathlib import Path
 from typing import override
 
 from pydantic import ValidationError
 
-from flext_infra import FlextInfraGate, c, m, t, u
+from flext_infra import FlextInfraGate, c, m, u
 
 
 class FlextInfraBanditGate(FlextInfraGate):
@@ -48,21 +48,22 @@ class FlextInfraBanditGate(FlextInfraGate):
         )
         issues: MutableSequence[m.Infra.Issue] = []
         try:
-            parsed = u.Infra.parse(result.stdout or "{}")
-            bandit_data: Mapping[str, t.Infra.InfraValue] = (
-                u.Infra.normalize_str_mapping(parsed.value) if parsed.is_success else {}
+            bandit_data = (
+                u.Infra
+                .parse(result.stdout or "{}")
+                .map(
+                    u.Infra.normalize_str_mapping,
+                )
+                .unwrap_or({})
             )
             issues.extend(
                 m.Infra.Issue(
-                    file=u.ensure_str(raw_item.get("filename", "?"), "?"),
-                    line=u.to_int(raw_item.get("line_number", 0)),
+                    file=u.Infra.pick(raw_item, "filename", "?"),
+                    line=u.Infra.pick(raw_item, "line_number", 0),
                     column=0,
-                    code=u.ensure_str(raw_item.get("test_id", "")),
-                    message=u.ensure_str(raw_item.get("issue_text", "")),
-                    severity=u.ensure_str(
-                        raw_item.get("issue_severity", "MEDIUM"),
-                        "MEDIUM",
-                    ).lower(),
+                    code=u.Infra.pick(raw_item, "test_id", ""),
+                    message=u.Infra.pick(raw_item, "issue_text", ""),
+                    severity=u.Infra.pick(raw_item, "issue_severity", "MEDIUM").lower(),
                 )
                 for raw_item in u.Infra.normalize_mapping_list(
                     bandit_data.get("results", [])

@@ -318,7 +318,7 @@ class TestRunProjectFixMode:
         monkeypatch.setattr(checker._registry, "create", _fake_create)
         _setup_project(tmp_path, "p1")
 
-        result = checker._check_project(
+        result = checker._check_project_with_ctx(
             tmp_path / "p1",
             ["lint"],
             m.Infra.GateContext(
@@ -349,7 +349,7 @@ class TestRunProjectFixMode:
         monkeypatch.setattr(checker._registry, "create", _fake_create)
         _setup_project(tmp_path, "p1")
 
-        result = checker._check_project(
+        result = checker._check_project_with_ctx(
             tmp_path / "p1",
             ["lint"],
             m.Infra.GateContext(

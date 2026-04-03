@@ -88,7 +88,7 @@ class FlextInfraDocValidator:
 
     def execute_command(self, params: m.Infra.DocsValidateInput) -> r[bool]:
         """CLI handler — accepts input model, delegates to validate."""
-        resolved_workspace = Path(params.workspace) if params.workspace else Path.cwd()
+        resolved_workspace = u.Infra.resolve_workspace(params)
         result = self.validate(
             workspace_root=resolved_workspace,
             project=params.project,

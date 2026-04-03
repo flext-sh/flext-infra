@@ -7,9 +7,11 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 from flext_core import r
-from flext_infra import c, m, t
-from flext_infra._utilities.discovery_scanning import (
+from flext_infra import (
     FlextInfraUtilitiesDiscoveryScanning,
+    c,
+    m,
+    t,
 )
 
 
@@ -148,6 +150,7 @@ class FlextInfraUtilitiesDiscovery(FlextInfraUtilitiesDiscoveryScanning):
     def discover_module_path(path: Path) -> str:
         """Discover the fully qualified module path for a Python file."""
         root_markers = {
+            c.Infra.Directories.DOCS,
             c.Infra.Directories.EXAMPLES,
             c.Infra.Directories.SCRIPTS,
             c.Infra.Paths.DEFAULT_SRC_DIR,
@@ -168,22 +171,6 @@ class FlextInfraUtilitiesDiscovery(FlextInfraUtilitiesDiscoveryScanning):
         """Discover the workspace root."""
         root = FlextInfraUtilitiesDiscovery.discover_project_root_from_file(file_path)
         return root.parent if root else file_path.resolve().parent
-
-    @staticmethod
-    def discover_workspace_packages(workspace_root: Path) -> frozenset[str]:
-        """Discover all project package names in the workspace."""
-        packages: t.Infra.StrSet = set()
-        if not workspace_root.is_dir():
-            return frozenset()
-        for entry in workspace_root.iterdir():
-            if not entry.is_dir() or entry.name.startswith("."):
-                continue
-            name = FlextInfraUtilitiesDiscovery.discover_package_from_file(
-                entry / c.Infra.Paths.DEFAULT_SRC_DIR,
-            )
-            if name:
-                packages.add(name)
-        return frozenset(packages)
 
     @staticmethod
     def package_context(file_path: Path) -> t.Infra.Pair[Path, str]:

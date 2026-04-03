@@ -1,4 +1,4 @@
-"""Execution utility namespace mapping for codegen operations.
+"""Execution utilities for codegen quality gate: metrics, checks, subprocess.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -25,80 +25,84 @@ from flext_infra import (
 )
 from flext_infra._utilities.base import FlextInfraUtilitiesBase
 
+_BARE_IMPORT_FROM_RE = re.compile(r"^from\s+import\s", re.MULTILINE)
+_NO_MODIFIED = {
+    "passed": True,
+    "detail": "no modified python files detected",
+    "exit_code": 0,
+}
+
+
+def _int(payload: Mapping[str, t.Infra.InfraValue], key: str) -> int:
+    """Shorthand for ``u.to_int(payload.get(key))``."""
+    return u.Infra.nested_int(payload, key)
+
+
+def _totals(
+    payload: Mapping[str, t.Infra.InfraValue],
+) -> Mapping[str, t.Infra.InfraValue]:
+    return FlextInfraUtilitiesBase.normalize_str_mapping(payload.get("totals"))
+
 
 class FlextInfraUtilitiesCodegenExecution:
-    """Consolidated execution and metrics methods for codegen and quality gate."""
+    """Codegen quality gate: extraction, metrics, checks, subprocess."""
 
-    # -------------------------------------------------------------------------
-    # EXTRACTION HELPERS
-    # -------------------------------------------------------------------------
+    # ── Extraction ───────────────────────────────────────────────────
+
     @staticmethod
     def extract_total_violations(payload: Mapping[str, t.Infra.InfraValue]) -> int:
         if "total_violations" in payload:
-            return u.to_int(payload.get("total_violations"))
-        totals = FlextInfraUtilitiesBase.normalize_str_mapping(payload.get("totals"))
+            return _int(payload, "total_violations")
+        totals = _totals(payload)
         if totals:
-            return (
-                u.to_int(totals.get("ns001_violations"))
-                + u.to_int(totals.get("layer_violations"))
-                + u.to_int(
-                    totals.get("cross_project_reference_violations"),
+            return sum(
+                u.Infra.nested_int(totals, k)
+                for k in (
+                    "ns001_violations",
+                    "layer_violations",
+                    "cross_project_reference_violations",
                 )
             )
         projects = FlextInfraUtilitiesBase.normalize_mapping_list(
             payload.get("projects")
         )
         if projects and all("total" in item for item in projects):
-            return sum(u.to_int(item.get("total")) for item in projects)
+            return sum(u.Infra.nested_int(item, "total") for item in projects)
         return -1
 
     @staticmethod
     def extract_duplicate_groups(payload: Mapping[str, t.Infra.InfraValue]) -> int:
         if "duplicate_groups" in payload:
-            return u.to_int(payload.get("duplicate_groups"))
-        duplicates = payload.get("duplicates")
-        if isinstance(duplicates, list):
-            return sum(1 for _ in duplicates)
-        return -1
+            return _int(payload, "duplicate_groups")
+        dups = payload.get("duplicates")
+        return sum(1 for _ in dups) if isinstance(dups, list) else -1
 
     @staticmethod
     def extract_projects_total(payload: Mapping[str, t.Infra.InfraValue]) -> int:
-        totals = FlextInfraUtilitiesBase.normalize_str_mapping(payload.get("totals"))
-        value = totals.get(c.Infra.ReportKeys.PROJECTS)
+        value = _totals(payload).get(c.Infra.ReportKeys.PROJECTS)
         if value is not None:
             return u.to_int(value)
         projects = payload.get("projects")
-        if isinstance(projects, list):
-            return sum(1 for _ in projects)
-        return 0
+        return sum(1 for _ in projects) if isinstance(projects, list) else 0
 
     @staticmethod
-    def extract_projects_passed(payload: Mapping[str, t.Infra.InfraValue]) -> int:
-        totals = FlextInfraUtilitiesBase.normalize_str_mapping(payload.get("totals"))
-        return u.to_int(totals.get("passed"))
+    def _extract_totals_field(
+        payload: Mapping[str, t.Infra.InfraValue], key: str
+    ) -> int:
+        return u.Infra.nested_int(_totals(payload), key)
 
-    @staticmethod
-    def extract_projects_failed(payload: Mapping[str, t.Infra.InfraValue]) -> int:
-        totals = FlextInfraUtilitiesBase.normalize_str_mapping(payload.get("totals"))
-        return u.to_int(totals.get("failed"))
+    # ── Metrics ──────────────────────────────────────────────────────
 
-    # -------------------------------------------------------------------------
-    # METRICS
-    # -------------------------------------------------------------------------
     @staticmethod
     def load_before_payload(
         workspace_root: Path,
         before_report: Path | None,
         baseline_file: Path | None,
     ) -> t.Infra.Triple[Mapping[str, t.Infra.InfraValue] | None, str, str]:
-        baseline_path = before_report or baseline_file
-        if baseline_path is None:
+        path = before_report or baseline_file
+        if path is None:
             return (None, "", "")
-        resolved = (
-            baseline_path
-            if baseline_path.is_absolute()
-            else workspace_root / baseline_path
-        ).resolve()
+        resolved = (path if path.is_absolute() else workspace_root / path).resolve()
         if not resolved.is_file():
             return (None, str(resolved), f"baseline file not found: {resolved}")
         try:
@@ -120,6 +124,7 @@ class FlextInfraUtilitiesCodegenExecution:
     def before_metrics(
         before_payload: Mapping[str, t.Infra.InfraValue] | None,
     ) -> Mapping[str, t.Infra.InfraValue]:
+        cls = FlextInfraUtilitiesCodegenExecution
         if before_payload is None:
             return {
                 "total_violations": -1,
@@ -129,21 +134,11 @@ class FlextInfraUtilitiesCodegenExecution:
                 "projects_failed": 0,
             }
         return {
-            "total_violations": FlextInfraUtilitiesCodegenExecution.extract_total_violations(
-                before_payload,
-            ),
-            "duplicate_groups": FlextInfraUtilitiesCodegenExecution.extract_duplicate_groups(
-                before_payload,
-            ),
-            "projects_total": FlextInfraUtilitiesCodegenExecution.extract_projects_total(
-                before_payload,
-            ),
-            "projects_passed": FlextInfraUtilitiesCodegenExecution.extract_projects_passed(
-                before_payload,
-            ),
-            "projects_failed": FlextInfraUtilitiesCodegenExecution.extract_projects_failed(
-                before_payload,
-            ),
+            "total_violations": cls.extract_total_violations(before_payload),
+            "duplicate_groups": cls.extract_duplicate_groups(before_payload),
+            "projects_total": cls.extract_projects_total(before_payload),
+            "projects_passed": cls._extract_totals_field(before_payload, "passed"),
+            "projects_failed": cls._extract_totals_field(before_payload, "failed"),
         }
 
     @staticmethod
@@ -154,40 +149,31 @@ class FlextInfraUtilitiesCodegenExecution:
         import_scan: Mapping[str, t.Infra.InfraValue],
         modified_files: t.StrSequence,
     ) -> Mapping[str, t.Infra.InfraValue]:
-        by_rule: t.MutableIntMapping = dict.fromkeys(
-            c.Infra.QualityGate.RULE_KEYS,
-            0,
-        )
+        by_rule: t.MutableIntMapping = dict.fromkeys(c.Infra.QualityGate.RULE_KEYS, 0)
         total_violations = 0
         for report in census_reports:
             violations = tuple(report.violations)
             total_violations += len(violations)
-            for raw_violation in violations:
-                parsed = m.Infra.CensusViolation.model_validate(raw_violation)
+            for raw in violations:
+                parsed = m.Infra.CensusViolation.model_validate(raw)
                 if parsed.rule in by_rule:
                     by_rule[parsed.rule] += 1
-        projects_total = len(census_reports)
-        projects_passed = u.count(census_reports, lambda item: int(item.total) == 0)
-        projects_failed = projects_total - projects_passed
-        violations_by_rule: Mapping[str, t.Infra.InfraValue] = dict(by_rule)
-        modified_python_files_value: Sequence[t.Infra.InfraValue] = list(modified_files)
+        total = len(census_reports)
+        passed = u.count(census_reports, lambda r: int(r.total) == 0)
+        modified_value: Sequence[t.Infra.InfraValue] = list(modified_files)
         return {
             "total_violations": total_violations,
-            "violations_by_rule": violations_by_rule,
+            "violations_by_rule": dict(by_rule),
             "duplicate_groups": duplicate_groups,
-            "projects_total": projects_total,
-            "projects_passed": projects_passed,
-            "projects_failed": projects_failed,
+            "projects_total": total,
+            "projects_passed": passed,
+            "projects_failed": total - passed,
             "mro_failures": 0,
             "layer_violations": 0,
             "cross_project_reference_violations": 0,
-            "import_parse_violations": u.to_int(
-                import_scan.get("invalid_import_from_count"),
-            ),
-            "import_parse_errors": u.to_int(
-                import_scan.get("parse_error_count"),
-            ),
-            "modified_python_files": modified_python_files_value,
+            "import_parse_violations": _int(import_scan, "invalid_import_from_count"),
+            "import_parse_errors": _int(import_scan, "parse_error_count"),
+            "modified_python_files": modified_value,
         }
 
     @staticmethod
@@ -195,49 +181,32 @@ class FlextInfraUtilitiesCodegenExecution:
         before_metrics: Mapping[str, t.Infra.InfraValue],
         after_metrics: Mapping[str, t.Infra.InfraValue],
     ) -> Mapping[str, t.Infra.InfraValue]:
-        before_violations = u.to_int(
-            before_metrics.get("total_violations"),
-        )
-        before_duplicates = u.to_int(
-            before_metrics.get("duplicate_groups"),
-        )
-        after_violations = u.to_int(
-            after_metrics.get("total_violations"),
-        )
-        after_duplicates = u.to_int(
-            after_metrics.get("duplicate_groups"),
-        )
-        violations_delta = (
-            0 if before_violations < 0 else after_violations - before_violations
-        )
-        duplicates_delta = (
-            0 if before_duplicates < 0 else after_duplicates - before_duplicates
-        )
+        bv = u.Infra.nested_int(before_metrics, "total_violations")
+        bd = u.Infra.nested_int(before_metrics, "duplicate_groups")
+        av = u.Infra.nested_int(after_metrics, "total_violations")
+        ad = u.Infra.nested_int(after_metrics, "duplicate_groups")
+        vd = 0 if bv < 0 else av - bv
+        dd = 0 if bd < 0 else ad - bd
         return {
-            "violations_delta": violations_delta,
-            "duplicates_delta": duplicates_delta,
-            "violations_reduced": max(0, -violations_delta),
-            "duplicates_eliminated": max(0, -duplicates_delta),
-            "violations_increased": max(0, violations_delta),
-            "duplicates_increased": max(0, duplicates_delta),
+            "violations_delta": vd,
+            "duplicates_delta": dd,
+            "violations_reduced": max(0, -vd),
+            "duplicates_eliminated": max(0, -dd),
+            "violations_increased": max(0, vd),
+            "duplicates_increased": max(0, dd),
         }
 
-    # -------------------------------------------------------------------------
-    # SUBPROCESS & EXECUTION
-    # -------------------------------------------------------------------------
+    # ── Subprocess ───────────────────────────────────────────────────
+
     @staticmethod
     def modified_python_files(workspace_root: Path) -> t.StrSequence:
-        """Get list of modified python files via git status."""
-        lines = FlextInfraUtilitiesCodegenExecution.git_lines(
-            workspace_root,
-            ["status", "--porcelain"],
-        )
         modified: MutableSequence[str] = []
-        for line in lines:
+        for line in FlextInfraUtilitiesCodegenExecution.git_lines(
+            workspace_root, ["status", "--porcelain"]
+        ):
             if not line:
                 continue
-            status = line[:2]
-            if any(s in status for s in ("M", "A", "R", "C", "U")):
+            if any(s in line[:2] for s in ("M", "A", "R", "C", "U")):
                 path = line[3:].strip()
                 if " -> " in path:
                     path = path.split(" -> ")[-1]
@@ -249,74 +218,16 @@ class FlextInfraUtilitiesCodegenExecution:
     def git_lines(workspace_root: Path, args: t.StrSequence) -> t.StrSequence:
         git_bin = shutil.which(c.Infra.GIT)
         if not git_bin:
-            return list[str]()
-        result = FlextInfraUtilitiesSubprocess().run_raw(
-            [git_bin, "-C", str(workspace_root), *args],
-        )
-        if result.is_failure:
-            return list[str]()
-        output = result.value
-        if output.exit_code != 0:
-            return list[str]()
-        return [line.strip() for line in output.stdout.splitlines() if line.strip()]
-
-    @staticmethod
-    def run_pyrefly_check(
-        workspace_root: Path,
-        modified_files: t.StrSequence,
-    ) -> Mapping[str, t.Infra.InfraValue]:
-        if not modified_files:
-            return {
-                "passed": True,
-                "detail": "no modified python files detected",
-                "exit_code": 0,
-            }
-        cmd = [
-            sys.executable,
-            "-m",
-            c.Infra.PYREFLY,
-            c.Infra.CHECK,
-            *modified_files,
-            "--config",
-            c.Infra.Files.PYPROJECT_FILENAME,
-            "--summary=none",
-        ]
-        result = FlextInfraUtilitiesCodegenExecution.run_external_check(
-            workspace_root,
-            cmd,
-        )
-        detail = str(result.get("detail", "")).strip()
-        if not bool(result.get("passed", False)) and detail.startswith(
-            "WARN PYTHONPATH",
-        ):
-            result["passed"] = True
-        return result
-
-    @staticmethod
-    def run_ruff_check(
-        workspace_root: Path,
-        modified_files: t.StrSequence,
-    ) -> Mapping[str, t.Infra.InfraValue]:
-        if not modified_files:
-            return {
-                "passed": True,
-                "detail": "no modified python files detected",
-                "exit_code": 0,
-            }
-        cmd = [
-            sys.executable,
-            "-m",
-            c.Infra.RUFF,
-            c.Infra.Verbs.CHECK,
-            *modified_files,
-            "--output-format",
-            c.Infra.OUTPUT_JSON,
-            "--quiet",
-        ]
-        return FlextInfraUtilitiesCodegenExecution.run_external_check(
-            workspace_root,
-            cmd,
-        )
+            return []
+        result = FlextInfraUtilitiesSubprocess().run_raw([
+            git_bin,
+            "-C",
+            str(workspace_root),
+            *args,
+        ])
+        if result.is_failure or result.value.exit_code != 0:
+            return []
+        return [ln.strip() for ln in result.value.stdout.splitlines() if ln.strip()]
 
     @staticmethod
     def run_external_check(
@@ -330,55 +241,104 @@ class FlextInfraUtilitiesCodegenExecution:
                 "detail": result.error or "execution error",
                 "exit_code": 127,
             }
-        command_output = result.value
-        output = (command_output.stderr or command_output.stdout or "").strip()
-        lines = [line for line in output.splitlines() if line.strip()]
-        excerpt = " | ".join(lines[:5]) if lines else "ok"
+        out = result.value
+        output = (out.stderr or out.stdout or "").strip()
+        lines = [ln for ln in output.splitlines() if ln.strip()]
         return {
-            "passed": command_output.exit_code == 0,
-            "detail": excerpt,
-            "exit_code": command_output.exit_code,
+            "passed": out.exit_code == 0,
+            "detail": " | ".join(lines[:5]) if lines else "ok",
+            "exit_code": out.exit_code,
         }
 
-    _BARE_IMPORT_FROM_RE: re.Pattern[str] = re.compile(
-        r"^from\s+import\s",
-        re.MULTILINE,
-    )
+    @staticmethod
+    def _run_tool_check(
+        workspace_root: Path,
+        modified_files: t.StrSequence,
+        cmd: t.StrSequence,
+    ) -> Mapping[str, t.Infra.InfraValue]:
+        """Shared runner for ruff/pyrefly: skip if no files, else run_external_check."""
+        if not modified_files:
+            return dict(_NO_MODIFIED)
+        return FlextInfraUtilitiesCodegenExecution.run_external_check(
+            workspace_root, cmd
+        )
+
+    @staticmethod
+    def run_pyrefly_check(
+        workspace_root: Path,
+        modified_files: t.StrSequence,
+    ) -> Mapping[str, t.Infra.InfraValue]:
+        result = FlextInfraUtilitiesCodegenExecution._run_tool_check(
+            workspace_root,
+            modified_files,
+            [
+                sys.executable,
+                "-m",
+                c.Infra.PYREFLY,
+                c.Infra.CHECK,
+                *modified_files,
+                "--config",
+                c.Infra.Files.PYPROJECT_FILENAME,
+                "--summary=none",
+            ],
+        )
+        detail = str(result.get("detail", "")).strip()
+        if not bool(result.get("passed", False)) and detail.startswith(
+            "WARN PYTHONPATH"
+        ):
+            result = {**result, "passed": True}
+        return result
+
+    @staticmethod
+    def run_ruff_check(
+        workspace_root: Path,
+        modified_files: t.StrSequence,
+    ) -> Mapping[str, t.Infra.InfraValue]:
+        return FlextInfraUtilitiesCodegenExecution._run_tool_check(
+            workspace_root,
+            modified_files,
+            [
+                sys.executable,
+                "-m",
+                c.Infra.RUFF,
+                c.Infra.Verbs.CHECK,
+                *modified_files,
+                "--output-format",
+                c.Infra.OUTPUT_JSON,
+                "--quiet",
+            ],
+        )
 
     @staticmethod
     def scan_import_nodes(
         workspace_root: Path,
         modified_files: t.StrSequence,
     ) -> Mapping[str, t.Infra.InfraValue]:
-        invalid_import_from: MutableSequence[str] = []
-        parse_errors: MutableSequence[str] = []
-        bare_re = FlextInfraUtilitiesCodegenExecution._BARE_IMPORT_FROM_RE
-        for rel_path in modified_files:
-            file_path = (workspace_root / rel_path).resolve()
-            if not file_path.is_file():
+        invalid: MutableSequence[str] = []
+        errors: MutableSequence[str] = []
+        for rel in modified_files:
+            fp = (workspace_root / rel).resolve()
+            if not fp.is_file():
                 continue
             try:
-                source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+                source = fp.read_text(encoding=c.Infra.Encoding.DEFAULT)
             except (OSError, UnicodeDecodeError):
-                parse_errors.append(f"{rel_path}:parse failed")
+                errors.append(f"{rel}:parse failed")
                 continue
-            for lineno, line in enumerate(source.splitlines(), start=1):
-                if bare_re.match(line.lstrip()):
-                    invalid_import_from.append(f"{rel_path}:{lineno}")
-        invalid_import_from_value: Sequence[t.Infra.InfraValue] = list(
-            invalid_import_from,
-        )
-        parse_errors_value: Sequence[t.Infra.InfraValue] = list(parse_errors)
+            for lineno, line in enumerate(source.splitlines(), 1):
+                if _BARE_IMPORT_FROM_RE.match(line.lstrip()):
+                    invalid.append(f"{rel}:{lineno}")
+        inv_v: Sequence[t.Infra.InfraValue] = list(invalid)
+        err_v: Sequence[t.Infra.InfraValue] = list(errors)
         return {
-            "invalid_import_from_count": len(invalid_import_from),
-            "parse_error_count": len(parse_errors),
-            "invalid_import_from": invalid_import_from_value,
-            "parse_errors": parse_errors_value,
+            "invalid_import_from_count": len(invalid),
+            "parse_error_count": len(errors),
+            "invalid_import_from": inv_v,
+            "parse_errors": err_v,
         }
 
-    # -------------------------------------------------------------------------
-    # CHECKS & VERDICTS
-    # -------------------------------------------------------------------------
+    # ── Checks & Verdicts ────────────────────────────────────────────
+
     @staticmethod
     def build_checks(
         *,
@@ -389,82 +349,55 @@ class FlextInfraUtilitiesCodegenExecution:
         before_available: bool,
         before_load_error: str,
     ) -> Sequence[Mapping[str, t.Infra.InfraValue]]:
-        checks: MutableSequence[m.Infra.QualityGateCheck] = []
-        violations_total = u.to_int(
-            after_metrics.get("total_violations"),
-        )
-        violations_delta = u.to_int(
-            improvement.get("violations_delta"),
-        )
-        checks.append(
+        am = after_metrics
+        im = improvement
+        vt = _int(am, "total_violations")
+        vd = _int(im, "violations_delta")
+        mro = _int(am, "mro_failures")
+        xref = _int(am, "cross_project_reference_violations")
+        ip = _int(am, "import_parse_violations")
+        ipe = _int(am, "import_parse_errors")
+        lv = _int(am, "layer_violations")
+        dg = _int(am, "duplicate_groups")
+        dd = _int(im, "duplicates_delta")
+        ba = before_available
+
+        def _delta_pass(total: int, delta: int) -> bool:
+            return (total == 0 or (ba and delta < 0)) and (not ba or delta <= 0)
+
+        checks: MutableSequence[m.Infra.QualityGateCheck] = [
             m.Infra.QualityGateCheck(
                 name=c.Infra.QualityGate.CHECK_NAMESPACE_COMPLIANCE,
-                passed=(
-                    violations_total == 0 or (before_available and violations_delta < 0)
-                )
-                and (not before_available or violations_delta <= 0),
-                detail=(
-                    f"total={violations_total}, delta={violations_delta}"
-                    if before_available
-                    else f"total={violations_total} (no baseline provided)"
-                ),
+                passed=_delta_pass(vt, vd),
+                detail=f"total={vt}, delta={vd}"
+                if ba
+                else f"total={vt} (no baseline provided)",
                 critical=False,
             ),
-        )
-        mro_failures = u.to_int(after_metrics.get("mro_failures"))
-        cross_ref = u.to_int(
-            after_metrics.get("cross_project_reference_violations"),
-        )
-        import_parse = u.to_int(
-            after_metrics.get("import_parse_violations"),
-        )
-        import_parse_errors = u.to_int(
-            after_metrics.get("import_parse_errors"),
-        )
-        layer_violations = u.to_int(
-            after_metrics.get("layer_violations"),
-        )
-        duplicate_groups = u.to_int(
-            after_metrics.get("duplicate_groups"),
-        )
-        duplicates_delta = u.to_int(
-            improvement.get("duplicates_delta"),
-        )
-        checks.extend([
             m.Infra.QualityGateCheck(
                 name=c.Infra.QualityGate.CHECK_MRO_VALIDITY,
-                passed=mro_failures == 0,
-                detail=f"mro_failures={mro_failures}",
+                passed=mro == 0,
+                detail=f"mro_failures={mro}",
                 critical=True,
             ),
             m.Infra.QualityGateCheck(
                 name=c.Infra.QualityGate.CHECK_IMPORT_RESOLUTION,
-                passed=cross_ref == 0
-                and import_parse == 0
-                and (import_parse_errors == 0),
-                detail=(
-                    f"cross_project_reference_violations={cross_ref}, "
-                    f"invalid_import_from={import_parse}, parse_errors={import_parse_errors}"
-                ),
+                passed=xref == 0 and ip == 0 and ipe == 0,
+                detail=f"cross_project_reference_violations={xref}, invalid_import_from={ip}, parse_errors={ipe}",
                 critical=True,
             ),
             m.Infra.QualityGateCheck(
                 name=c.Infra.QualityGate.CHECK_LAYER_COMPLIANCE,
-                passed=layer_violations == 0,
-                detail=f"layer_violations={layer_violations}",
+                passed=lv == 0,
+                detail=f"layer_violations={lv}",
                 critical=True,
             ),
             m.Infra.QualityGateCheck(
                 name=c.Infra.QualityGate.CHECK_DUPLICATION_REDUCTION,
-                passed=(
-                    duplicate_groups == 0 or (before_available and duplicates_delta < 0)
-                )
-                and (not before_available or duplicates_delta <= 0),
-                detail=(
-                    f"duplicate_groups={duplicate_groups}, delta={duplicates_delta}"
-                    if before_available
-                    else f"duplicate_groups={duplicate_groups} (no baseline provided)"
-                ),
+                passed=_delta_pass(dg, dd),
+                detail=f"duplicate_groups={dg}, delta={dd}"
+                if ba
+                else f"duplicate_groups={dg} (no baseline provided)",
                 critical=False,
             ),
             m.Infra.QualityGateCheck(
@@ -479,7 +412,7 @@ class FlextInfraUtilitiesCodegenExecution:
                 detail=str(ruff_check.get("detail", "")),
                 critical=True,
             ),
-        ])
+        ]
         if before_load_error:
             checks.append(
                 m.Infra.QualityGateCheck(
@@ -487,7 +420,7 @@ class FlextInfraUtilitiesCodegenExecution:
                     passed=False,
                     detail=before_load_error,
                     critical=False,
-                ),
+                )
             )
         return [item.model_dump() for item in checks]
 
@@ -496,16 +429,15 @@ class FlextInfraUtilitiesCodegenExecution:
         checks: Sequence[Mapping[str, t.Infra.InfraValue]],
         improvement: Mapping[str, t.Infra.InfraValue],
     ) -> str:
-        if all(bool(item.get("passed", False)) for item in checks):
+        if all(bool(ck.get("passed", False)) for ck in checks):
             return "PASS"
         if any(
-            bool(not item.get("passed", False) and item.get("critical", False))
-            for item in checks
+            not ck.get("passed", False) and ck.get("critical", False) for ck in checks
         ):
             return "FAIL"
         if (
-            u.to_int(improvement.get("violations_increased")) > 0
-            or u.to_int(improvement.get("duplicates_increased")) > 0
+            _int(improvement, "violations_increased") > 0
+            or _int(improvement, "duplicates_increased") > 0
         ):
             return "FAIL"
         return "CONDITIONAL_PASS"
@@ -515,63 +447,59 @@ class FlextInfraUtilitiesCodegenExecution:
         workspace_root: Path,
         census_reports: Sequence[m.Infra.CensusReport],
     ) -> Sequence[m.Infra.DuplicateConstantGroup]:
-        all_definitions: MutableSequence[m.Infra.ConstantDefinition] = []
+        all_defs: MutableSequence[m.Infra.ConstantDefinition] = []
         for report in census_reports:
-            project_root = workspace_root / report.project
-            constants_file = (
-                project_root
+            cf = (
+                workspace_root
+                / report.project
                 / c.Infra.Paths.DEFAULT_SRC_DIR
                 / report.project.replace("-", "_")
                 / c.Infra.Files.CONSTANTS_PY
             )
-            if not constants_file.is_file():
-                continue
-            definitions = FlextInfraUtilitiesCodegenConstantDetection.extract_constant_definitions(
-                constants_file,
-                report.project,
+            if cf.is_file():
+                all_defs.extend(
+                    FlextInfraUtilitiesCodegenConstantDetection.extract_constant_definitions(
+                        cf, report.project
+                    ),
+                )
+        by_name: defaultdict[str, MutableSequence[m.Infra.ConstantDefinition]] = (
+            defaultdict(list)
+        )
+        for d in all_defs:
+            by_name[d.name].append(d)
+        return [
+            m.Infra.DuplicateConstantGroup(
+                constant_name=name,
+                definitions=defs,
+                is_value_identical=len({d.value_repr for d in defs}) == 1,
+                canonical_ref="",
             )
-            all_definitions.extend(definitions)
-        name_to_defs: defaultdict[
-            str,
-            MutableSequence[m.Infra.ConstantDefinition],
-        ] = defaultdict(list)
-        for definition in all_definitions:
-            name_to_defs[definition.name].append(definition)
-        groups: MutableSequence[m.Infra.DuplicateConstantGroup] = []
-        for name, definitions in sorted(name_to_defs.items()):
-            projects = {item.project for item in definitions}
-            if len(projects) < c.Infra.Thresholds.MIN_DUPLICATE_PROJECT_COUNT:
-                continue
-            values = {item.value_repr for item in definitions}
-            groups.append(
-                m.Infra.DuplicateConstantGroup(
-                    constant_name=name,
-                    definitions=definitions,
-                    is_value_identical=len(values) == 1,
-                    canonical_ref="",
-                ),
-            )
-        return groups
+            for name, defs in sorted(by_name.items())
+            if len({d.project for d in defs})
+            >= c.Infra.Thresholds.MIN_DUPLICATE_PROJECT_COUNT
+        ]
 
     @staticmethod
     def project_findings(
         census_reports: Sequence[m.Infra.CensusReport],
     ) -> Sequence[Mapping[str, t.Infra.InfraValue]]:
-        findings: MutableSequence[m.Infra.QualityGateProjectFinding] = [
-            m.Infra.QualityGateProjectFinding(
-                project=entry.project,
-                violations_total=len(tuple(entry.violations)),
-                fixable_violations=int(entry.fixable),
-                validator_passed=int(entry.total) == 0,
-                mro_failures=0,
-                layer_violations=0,
-                cross_project_reference_violations=0,
-            )
-            for entry in census_reports
-        ]
         return [
             item.model_dump()
-            for item in sorted(findings, key=lambda item: item.project)
+            for item in sorted(
+                (
+                    m.Infra.QualityGateProjectFinding(
+                        project=e.project,
+                        violations_total=len(tuple(e.violations)),
+                        fixable_violations=int(e.fixable),
+                        validator_passed=int(e.total) == 0,
+                        mro_failures=0,
+                        layer_violations=0,
+                        cross_project_reference_violations=0,
+                    )
+                    for e in census_reports
+                ),
+                key=lambda item: item.project,
+            )
         ]
 
     @staticmethod
@@ -580,21 +508,17 @@ class FlextInfraUtilitiesCodegenExecution:
         report: Mapping[str, t.Infra.InfraValue],
         render_text: str,
     ) -> Mapping[str, t.Infra.InfraValue]:
-        directory = workspace_root / c.Infra.QualityGate.REPORT_DIR
-        directory.mkdir(parents=True, exist_ok=True)
-        report_json = directory / "latest.json"
-        report_text = directory / "latest.txt"
-        report_json.write_text(
+        d = workspace_root / c.Infra.QualityGate.REPORT_DIR
+        d.mkdir(parents=True, exist_ok=True)
+        rj, rt = d / "latest.json", d / "latest.txt"
+        rj.write_text(
             t.Infra.INFRA_MAPPING_ADAPTER.dump_json(report, by_alias=True).decode(
-                c.Infra.Encoding.DEFAULT,
+                c.Infra.Encoding.DEFAULT
             ),
             encoding=c.Infra.Encoding.DEFAULT,
         )
-        report_text.write_text(render_text, encoding=c.Infra.Encoding.DEFAULT)
-        return {
-            "report_json": str(report_json),
-            "report_text": str(report_text),
-        }
+        rt.write_text(render_text, encoding=c.Infra.Encoding.DEFAULT)
+        return {"report_json": str(rj), "report_text": str(rt)}
 
 
 __all__ = ["FlextInfraUtilitiesCodegenExecution"]

@@ -14,16 +14,14 @@ import pytest
 from flext_tests import tm
 from tests import m, t
 
-import flext_infra.check.workspace_check as ws_mod
 from flext_infra import (
     FlextInfraBanditGate,
     FlextInfraGate,
     FlextInfraMarkdownGate,
     FlextInfraPyrightGate,
-    FlextInfraWorkspaceChecker,
 )
 
-from ._shared_fixtures import patch_python_dir_detection
+from ._shared_fixtures import patch_python_dir_detection, run_gate_check
 
 GateClass = (
     type[FlextInfraPyrightGate]
@@ -60,15 +58,14 @@ def _create_checker_project(
     *,
     project_name: str = "p1",
     with_src: bool = False,
-) -> tuple[ws_mod.FlextInfraWorkspaceChecker, Path]:
-    """Create checker and minimal project structure for gate tests."""
-    checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
+) -> tuple[Path, Path]:
+    """Create workspace root and minimal project structure for gate tests."""
     project_dir = tmp_path / project_name
     project_dir.mkdir(parents=True, exist_ok=True)
     (project_dir / "pyproject.toml").write_text("[tool.poetry]\n")
     if with_src:
         (project_dir / "src").mkdir(exist_ok=True)
-    return checker, project_dir
+    return tmp_path, project_dir
 
 
 class TestRunPyright:
@@ -79,13 +76,13 @@ class TestRunPyright:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker, proj_dir = _create_checker_project(tmp_path)
+        workspace_root, proj_dir = _create_checker_project(tmp_path)
         patch_python_dir_detection(
             monkeypatch,
             FlextInfraPyrightGate,
             has_python_dirs=False,
         )
-        result = checker._run_pyright(proj_dir)
+        result = run_gate_check(FlextInfraPyrightGate, workspace_root, proj_dir)
         tm.that(result.result.passed, eq=True)
         tm.that(len(result.issues), eq=0)
 
@@ -94,7 +91,7 @@ class TestRunPyright:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker, proj_dir = _create_checker_project(tmp_path, with_src=True)
+        workspace_root, proj_dir = _create_checker_project(tmp_path, with_src=True)
         (proj_dir / "src" / "main.py").write_text("# code")
         json_output = '{"generalDiagnostics": [{"file": "a.py", "range": {"start": {"line": 0, "character": 0}}, "rule": "E001", "message": "Error", "severity": "error"}]}'
         _patch_gate_run(
@@ -108,7 +105,7 @@ class TestRunPyright:
             FlextInfraPyrightGate,
             has_python_dirs=True,
         )
-        result = checker._run_pyright(proj_dir)
+        result = run_gate_check(FlextInfraPyrightGate, workspace_root, proj_dir)
         tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
 
@@ -117,7 +114,7 @@ class TestRunPyright:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker, proj_dir = _create_checker_project(tmp_path, with_src=True)
+        workspace_root, proj_dir = _create_checker_project(tmp_path, with_src=True)
         (proj_dir / "src" / "main.py").write_text("# code")
         _patch_gate_run(
             monkeypatch,
@@ -130,7 +127,7 @@ class TestRunPyright:
             FlextInfraPyrightGate,
             has_python_dirs=True,
         )
-        result = checker._run_pyright(proj_dir)
+        result = run_gate_check(FlextInfraPyrightGate, workspace_root, proj_dir)
         tm.that(not result.result.passed, eq=True)
 
 
@@ -138,8 +135,8 @@ class TestRunBandit:
     """Test FlextInfraWorkspaceChecker._run_bandit method."""
 
     def test_run_bandit_no_src_dir(self, tmp_path: Path) -> None:
-        checker, proj_dir = _create_checker_project(tmp_path)
-        result = checker._run_bandit(proj_dir)
+        workspace_root, proj_dir = _create_checker_project(tmp_path)
+        result = run_gate_check(FlextInfraBanditGate, workspace_root, proj_dir)
         tm.that(result.result.passed, eq=True)
         tm.that(len(result.issues), eq=0)
 
@@ -148,7 +145,7 @@ class TestRunBandit:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker, proj_dir = _create_checker_project(tmp_path, with_src=True)
+        workspace_root, proj_dir = _create_checker_project(tmp_path, with_src=True)
         json_output = '{"results": [{"filename": "a.py", "line_number": 1, "test_id": "B101", "issue_text": "Assert used", "issue_severity": "MEDIUM"}]}'
         _patch_gate_run(
             monkeypatch,
@@ -156,7 +153,7 @@ class TestRunBandit:
             stdout=json_output,
             returncode=1,
         )
-        result = checker._run_bandit(proj_dir)
+        result = run_gate_check(FlextInfraBanditGate, workspace_root, proj_dir)
         tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
 
@@ -165,14 +162,14 @@ class TestRunBandit:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker, proj_dir = _create_checker_project(tmp_path, with_src=True)
+        workspace_root, proj_dir = _create_checker_project(tmp_path, with_src=True)
         _patch_gate_run(
             monkeypatch,
             FlextInfraBanditGate,
             stdout="invalid json",
             returncode=1,
         )
-        result = checker._run_bandit(proj_dir)
+        result = run_gate_check(FlextInfraBanditGate, workspace_root, proj_dir)
         tm.that(not result.result.passed, eq=True)
 
 
@@ -180,8 +177,8 @@ class TestRunMarkdown:
     """Test FlextInfraWorkspaceChecker._run_markdown method."""
 
     def test_run_markdown_no_files(self, tmp_path: Path) -> None:
-        checker, proj_dir = _create_checker_project(tmp_path)
-        result = checker._run_markdown(proj_dir)
+        workspace_root, proj_dir = _create_checker_project(tmp_path)
+        result = run_gate_check(FlextInfraMarkdownGate, workspace_root, proj_dir)
         tm.that(result.result.passed, eq=True)
         tm.that(len(result.issues), eq=0)
 
@@ -190,7 +187,7 @@ class TestRunMarkdown:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker, proj_dir = _create_checker_project(tmp_path)
+        workspace_root, proj_dir = _create_checker_project(tmp_path)
         (proj_dir / "README.md").write_text("# Test")
         _patch_gate_run(
             monkeypatch,
@@ -198,7 +195,7 @@ class TestRunMarkdown:
             stdout="README.md:1:1 error MD001 Heading level",
             returncode=1,
         )
-        result = checker._run_markdown(proj_dir)
+        result = run_gate_check(FlextInfraMarkdownGate, workspace_root, proj_dir)
         tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
 
@@ -207,7 +204,7 @@ class TestRunMarkdown:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker, proj_dir = _create_checker_project(tmp_path)
+        workspace_root, proj_dir = _create_checker_project(tmp_path)
         (proj_dir / "README.md").write_text("# Test")
         _patch_gate_run(
             monkeypatch,
@@ -215,6 +212,6 @@ class TestRunMarkdown:
             stderr="markdownlint failed",
             returncode=1,
         )
-        result = checker._run_markdown(proj_dir)
+        result = run_gate_check(FlextInfraMarkdownGate, workspace_root, proj_dir)
         tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)

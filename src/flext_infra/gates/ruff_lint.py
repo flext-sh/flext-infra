@@ -10,7 +10,7 @@ from typing import override
 
 from pydantic import ValidationError
 
-from flext_infra import FlextInfraGate, c, m, t, u
+from flext_infra import FlextInfraGate, c, m, u
 
 
 class FlextInfraRuffLintGate(FlextInfraGate):
@@ -47,25 +47,18 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             project_dir,
         )
         issues: MutableSequence[m.Infra.Issue] = []
-        ruff_parse_result = u.Infra.parse(result.stdout or "[]")
-        ruff_data: t.Infra.InfraValue = (
-            ruff_parse_result.value if ruff_parse_result.is_success else []
-        )
+        ruff_data = u.Infra.parse(result.stdout or "[]").unwrap_or([])
         try:
             if isinstance(ruff_data, list):
                 for entry in ruff_data:
                     if isinstance(entry, Mapping):
                         issues.append(
                             m.Infra.Issue(
-                                file=str(entry.get("filename", "?")),
+                                file=u.Infra.pick(entry, "filename", "?"),
                                 line=u.Infra.nested_int(entry, "location", "row"),
-                                column=u.Infra.nested_int(
-                                    entry,
-                                    "location",
-                                    "column",
-                                ),
-                                code=str(entry.get("code", "")),
-                                message=str(entry.get("message", "")),
+                                column=u.Infra.nested_int(entry, "location", "column"),
+                                code=u.Infra.pick(entry, "code", ""),
+                                message=u.Infra.pick(entry, "message", ""),
                             )
                         )
         except (TypeError, ValidationError):

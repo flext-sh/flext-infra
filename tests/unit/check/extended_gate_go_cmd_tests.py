@@ -13,6 +13,7 @@ from types import SimpleNamespace
 import pytest
 from flext_tests import tm
 from tests import t
+from tests.unit.check._shared_fixtures import run_gate_check
 
 from flext_core import r
 from flext_infra import (
@@ -21,7 +22,6 @@ from flext_infra import (
     FlextInfraMarkdownGate,
     FlextInfraRuffLintGate,
     FlextInfraUtilitiesSubprocess,
-    FlextInfraWorkspaceChecker,
     m,
 )
 
@@ -47,14 +47,13 @@ def _create_checker_project(
     *,
     with_go_mod: bool = False,
     with_main_go: bool = False,
-) -> tuple[FlextInfraWorkspaceChecker, Path]:
-    checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
+) -> tuple[Path, Path]:
     project_dir = h.mk_project(tmp_path, "p1")
     if with_go_mod:
         (project_dir / "go.mod").write_text("module test")
     if with_main_go:
         (project_dir / "main.go").write_text("package main")
-    return checker, project_dir
+    return tmp_path, project_dir
 
 
 def _patch_go_gate_run_sequence(
@@ -102,8 +101,8 @@ class TestWorkspaceCheckerRunGo:
     """Test FlextInfraWorkspaceChecker._run_go method."""
 
     def test_run_go_no_go_mod(self, tmp_path: Path) -> None:
-        checker, proj_dir = _create_checker_project(tmp_path)
-        result = checker._run_go(proj_dir)
+        workspace_root, proj_dir = _create_checker_project(tmp_path)
+        result = run_gate_check(FlextInfraGoGate, workspace_root, proj_dir)
         tm.that(result.result.passed, eq=True)
         tm.that(len(result.issues), eq=0)
 
@@ -112,7 +111,7 @@ class TestWorkspaceCheckerRunGo:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker, proj_dir = _create_checker_project(tmp_path, with_go_mod=True)
+        workspace_root, proj_dir = _create_checker_project(tmp_path, with_go_mod=True)
         _patch_go_gate_run_sequence(
             monkeypatch,
             outputs=[
@@ -124,7 +123,7 @@ class TestWorkspaceCheckerRunGo:
                 SimpleNamespace(stdout="", stderr="", exit_code=0),
             ],
         )
-        result = checker._run_go(proj_dir)
+        result = run_gate_check(FlextInfraGoGate, workspace_root, proj_dir)
         tm.that(not result.result.passed, eq=True)
 
     def test_run_go_with_format_errors(
@@ -132,7 +131,7 @@ class TestWorkspaceCheckerRunGo:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker, proj_dir = _create_checker_project(
+        workspace_root, proj_dir = _create_checker_project(
             tmp_path,
             with_go_mod=True,
             with_main_go=True,
@@ -144,7 +143,7 @@ class TestWorkspaceCheckerRunGo:
                 SimpleNamespace(stdout="main.go", stderr="", exit_code=1),
             ],
         )
-        result = checker._run_go(proj_dir)
+        result = run_gate_check(FlextInfraGoGate, workspace_root, proj_dir)
         tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
 
@@ -153,7 +152,10 @@ class TestWorkspaceCheckerRunGo:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker, proj_dir = _create_checker_project(tmp_path, with_go_mod=True)
+        workspace_root, proj_dir = _create_checker_project(
+            tmp_path,
+            with_go_mod=True,
+        )
         _patch_go_gate_run_sequence(
             monkeypatch,
             outputs=[
@@ -165,7 +167,7 @@ class TestWorkspaceCheckerRunGo:
                 SimpleNamespace(stdout="", stderr="", exit_code=0),
             ],
         )
-        result = checker._run_go(proj_dir)
+        result = run_gate_check(FlextInfraGoGate, workspace_root, proj_dir)
         tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
 

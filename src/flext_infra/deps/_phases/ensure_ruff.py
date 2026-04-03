@@ -35,6 +35,9 @@ class FlextInfraEnsureRuffConfigPhase:
         if c.Infra.EXTEND in ruff:
             del ruff[c.Infra.EXTEND]
             changes.append("tool.ruff.extend removed")
+        if "namespace-packages" in ruff:
+            del ruff["namespace-packages"]
+            changes.append("tool.ruff.namespace-packages removed")
 
         ruff_cfg = self._tool_config.tools.ruff
         if sorted(

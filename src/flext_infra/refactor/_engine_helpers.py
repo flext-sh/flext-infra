@@ -1,7 +1,7 @@
-"""Orchestration mixin — project/workspace refactoring and safety.
+"""Engine helper mixins — pipeline execution and orchestration.
 
-Provides ``refactor_project``, ``refactor_workspace``, file collection,
-violation analysis, and safety stash/rollback coordination.
+Provides file-level refactoring pipeline (``refactor_file``, ``refactor_files``)
+and project/workspace orchestration with safety stash/rollback coordination.
 """
 
 from __future__ import annotations
@@ -11,6 +11,8 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 from flext_infra import (
+    FlextInfraClassNestingRefactorRule,
+    FlextInfraRefactorRule,
     FlextInfraRefactorRuleLoader,
     FlextInfraRefactorSafetyManager,
     FlextInfraRefactorViolationAnalyzer,
@@ -21,27 +23,120 @@ from flext_infra import (
 )
 
 
-class FlextInfraRefactorEngineOrchestrationMixin:
-    """Mixin providing project/workspace orchestration and safety."""
+class FlextInfraRefactorEngineHelpersMixin:
+    """Mixin providing file-level pipeline and project/workspace orchestration."""
 
     config: t.Infra.InfraValue
+    rules: MutableSequence[FlextInfraRefactorRule]
+    file_rules: MutableSequence[FlextInfraClassNestingRefactorRule]
     rule_loader: FlextInfraRefactorRuleLoader
     safety_manager: FlextInfraRefactorSafetyManager
 
-    # -- Provided by FlextInfraRefactorEnginePipelineMixin --
+    # ── Result helpers ─────────────────────────────────────────────
 
     @staticmethod
-    def _error_result(fp: Path, error: str) -> m.Infra.Result: ...
+    def _error_result(fp: Path, error: str) -> m.Infra.Result:
+        """Build a failure result."""
+        return m.Infra.Result(
+            file_path=fp,
+            success=False,
+            modified=False,
+            error=error,
+            changes=[],
+            refactored_code=None,
+        )
+
+    @staticmethod
+    def _skip_result(fp: Path) -> m.Infra.Result:
+        """Build a skip result for non-Python files."""
+        return m.Infra.Result(
+            file_path=fp,
+            success=True,
+            modified=False,
+            changes=["Skipped non-Python file"],
+            refactored_code=None,
+        )
+
+    # ── Single-file pipeline ──────────────────────────────────────
 
     def refactor_file(
         self, file_path: Path, *, dry_run: bool = False
-    ) -> m.Infra.Result: ...
+    ) -> m.Infra.Result:
+        """Refactor one file with currently loaded rules."""
+        try:
+            if file_path.suffix != c.Infra.Extensions.PYTHON:
+                return self._skip_result(file_path)
+            original = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+            current, all_changes = original, list[str]()
+            if self.file_rules:
+                workspace_root = (
+                    u.Infra.discover_project_root_from_file(file_path)
+                    or file_path.parent
+                )
+                rope_project = u.Infra.init_rope_project(workspace_root)
+                try:
+                    resource = u.Infra.get_resource_from_path(rope_project, file_path)
+                    if resource is None:
+                        return self._error_result(
+                            file_path,
+                            f"Could not resolve rope resource for {file_path}",
+                        )
+                    for fr in self.file_rules:
+                        res = fr.apply(rope_project, resource, dry_run=True)
+                        if not res.success:
+                            return m.Infra.Result(
+                                file_path=file_path,
+                                success=False,
+                                modified=False,
+                                error=res.error,
+                                changes=res.changes,
+                                refactored_code=None,
+                            )
+                        if res.modified and res.refactored_code:
+                            current = res.refactored_code
+                        all_changes.extend(res.changes)
+                finally:
+                    rope_project.close()
+            for rule in self.rules:
+                if rule.enabled:
+                    current, changes = rule.apply(current, file_path)
+                    all_changes.extend(changes)
+            modified = current != original
+            if not dry_run and modified:
+                u.write_file(file_path, current, encoding=c.Infra.Encoding.DEFAULT)
+            return m.Infra.Result(
+                file_path=file_path,
+                success=True,
+                modified=modified,
+                changes=all_changes,
+                refactored_code=current,
+            )
+        except Exception as exc:
+            return self._error_result(file_path, str(exc))
+
+    # ── Multi-file pipeline ───────────────────────────────────────
 
     def refactor_files(
         self, file_paths: Sequence[Path], *, dry_run: bool = False
-    ) -> Sequence[m.Infra.Result]: ...
+    ) -> Sequence[m.Infra.Result]:
+        """Refactor many files and collect individual results."""
+        results: MutableSequence[m.Infra.Result] = []
+        for fp in file_paths:
+            result = self.refactor_file(fp, dry_run=dry_run)
+            results.append(result)
+            if result.success and result.modified:
+                u.Infra.refactor_info(
+                    f"{'[DRY-RUN] ' if dry_run else ''}Modified: {fp.name}"
+                )
+                for ch in result.changes:
+                    u.Infra.refactor_info(f"  - {ch}")
+            elif result.success:
+                u.Infra.refactor_debug(f"Unchanged: {fp.name}")
+            else:
+                u.Infra.refactor_error(f"Failed: {fp.name} - {result.error}")
+        return results
 
-    # ── Violation analysis ────────────────────────────────────────
+    # ── Violation analysis ─────────────────────────────────────────
 
     def _run_analyze_violations(self, args: argparse.Namespace) -> int:
         files = self._collect_files(args)
@@ -58,7 +153,7 @@ class FlextInfraRefactorEngineOrchestrationMixin:
             u.Infra.refactor_info(f"Analysis report written: {args.analysis_output}")
         return 0
 
-    # ── File collection ──────────────────────────────────────────
+    # ── File collection ────────────────────────────────────────────
 
     def _collect_files(self, args: argparse.Namespace) -> MutableSequence[Path] | None:
         if args.project:
@@ -83,7 +178,7 @@ class FlextInfraRefactorEngineOrchestrationMixin:
             return [p for p in args.files if p.exists()]
         return []
 
-    # ── Refactoring dispatch ─────────────────────────────────────
+    # ── Refactoring dispatch ───────────────────────────────────────
 
     def _run_refactor(self, args: argparse.Namespace) -> int:
         if args.project:
@@ -122,7 +217,7 @@ class FlextInfraRefactorEngineOrchestrationMixin:
             _ = u.Infra.write_impact_map(results, args.impact_map_output)
         return 0 if u.count(results, lambda item: not item.success) == 0 else 1
 
-    # ── Safety ───────────────────────────────────────────────────
+    # ── Safety ─────────────────────────────────────────────────────
 
     def _try_safety_stash(
         self, target: Path, *, apply_safety: bool, dry_run: bool
@@ -157,7 +252,7 @@ class FlextInfraRefactorEngineOrchestrationMixin:
         if cl.is_failure:
             u.Infra.refactor_error(cl.error or "checkpoint clear failed")
 
-    # ── Project refactoring ──────────────────────────────────────
+    # ── Project refactoring ────────────────────────────────────────
 
     def refactor_project(
         self,
@@ -203,7 +298,7 @@ class FlextInfraRefactorEngineOrchestrationMixin:
             )
         return results
 
-    # ── Workspace refactoring ────────────────────────────────────
+    # ── Workspace refactoring ──────────────────────────────────────
 
     def refactor_workspace(
         self,
@@ -263,5 +358,5 @@ class FlextInfraRefactorEngineOrchestrationMixin:
 
 
 __all__ = [
-    "FlextInfraRefactorEngineOrchestrationMixin",
+    "FlextInfraRefactorEngineHelpersMixin",
 ]

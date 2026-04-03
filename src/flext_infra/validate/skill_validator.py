@@ -80,9 +80,7 @@ class FlextInfraSkillValidator:
         total: int,
     ) -> bool:
         """Compare counts against the baseline file and return pass/fail."""
-        baseline_obj = u.Infra.normalize_str_mapping(
-            rules.get(c.Infra.Modes.BASELINE, {})
-        )
+        baseline_obj = u.Infra.deep_mapping(rules, c.Infra.Modes.BASELINE)
         if not baseline_obj:
             return True
         strategy = str(baseline_obj.get("strategy", c.Infra.ReportKeys.TOTAL))
@@ -97,7 +95,7 @@ class FlextInfraSkillValidator:
         if bl_data_result.is_failure:
             return True
         bl_data = u.Infra.normalize_str_mapping(bl_data_result.value)
-        bl_counts_raw_map = u.Infra.normalize_str_mapping(bl_data.get("counts", {}))
+        bl_counts_raw_map = u.Infra.deep_mapping(bl_data, "counts")
         bl_counts: t.MutableIntMapping = {}
         for key_obj, val_obj in bl_counts_raw_map.items():
             if isinstance(val_obj, int):

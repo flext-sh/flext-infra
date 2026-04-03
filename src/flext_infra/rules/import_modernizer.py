@@ -24,7 +24,7 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
         self,
         source: str,
         _file_path: Path | None = None,
-    ) -> t.Infra.Pair[str, t.StrSequence]:
+    ) -> t.Infra.TransformResult:
         """Apply import modernizer or lazy-import hoisting based on fix action."""
         fix_action = u.Infra.get_str_key(
             self.config,
@@ -61,8 +61,8 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
             runtime_aliases=runtime_aliases,
             blocked_aliases=blocked,
         )
-        new_source = modernizer.apply_to_source(source)
-        return (new_source, list(modernizer.changes))
+        new_source, changes = modernizer.apply_to_source(source)
+        return (new_source, changes)
 
 
 __all__ = ["FlextInfraRefactorImportModernizerRule"]

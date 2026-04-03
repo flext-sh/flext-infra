@@ -149,7 +149,7 @@ class FlextInfraDependencyAnalyzer:
             result = self._run_ast_grep(src_path, pattern)
             if result.is_failure:
                 return r[t.Infra.PathSet].fail(result.error or "ast-grep failed")
-            entries: Sequence[m.Infra.AstGrepMatchEnvelope] = result.value
+            entries: Sequence[m.Infra.GrepMatchEnvelope] = result.value
             for entry in entries:
                 fp = Path(entry.file)
                 if not fp.is_absolute():
@@ -162,7 +162,7 @@ class FlextInfraDependencyAnalyzer:
         self,
         src_path: Path,
         pattern: str,
-    ) -> r[Sequence[m.Infra.AstGrepMatchEnvelope]]:
+    ) -> r[Sequence[m.Infra.GrepMatchEnvelope]]:
         """Run ast-grep with the given pattern on source directory.
 
         Args:
@@ -184,21 +184,21 @@ class FlextInfraDependencyAnalyzer:
         ]
         capture = u.Infra.capture(cmd)
         if capture.is_failure:
-            return r[Sequence[m.Infra.AstGrepMatchEnvelope]].fail(
+            return r[Sequence[m.Infra.GrepMatchEnvelope]].fail(
                 capture.error or "capture failed",
             )
         if not capture.value:
-            return r[Sequence[m.Infra.AstGrepMatchEnvelope]].ok([])
+            return r[Sequence[m.Infra.GrepMatchEnvelope]].ok([])
         try:
             json_raw: str | bytes | bytearray = capture.value
-            envelopes: Sequence[m.Infra.AstGrepMatchEnvelope] = TypeAdapter(
-                Sequence[m.Infra.AstGrepMatchEnvelope],
+            envelopes: Sequence[m.Infra.GrepMatchEnvelope] = TypeAdapter(
+                Sequence[m.Infra.GrepMatchEnvelope],
             ).validate_json(
                 json_raw,
             )
-            return r[Sequence[m.Infra.AstGrepMatchEnvelope]].ok(envelopes)
+            return r[Sequence[m.Infra.GrepMatchEnvelope]].ok(envelopes)
         except ValidationError as exc:
-            return r[Sequence[m.Infra.AstGrepMatchEnvelope]].fail(str(exc))
+            return r[Sequence[m.Infra.GrepMatchEnvelope]].fail(str(exc))
 
     def _parse_imports(self, file_path: Path) -> r[m.Infra.FileImportData]:
         """Parse a Python file and extract its import information via rope."""

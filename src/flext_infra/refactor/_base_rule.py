@@ -53,7 +53,7 @@ class FlextInfraRefactorRule:
         self,
         source: str,
         _file_path: Path | None = None,
-    ) -> t.Infra.Pair[str, t.StrSequence]:
+    ) -> t.Infra.TransformResult:
         """Apply the rule to source text and return (transformed_source, changes)."""
         return (source, list[str]())
 
@@ -61,7 +61,7 @@ class FlextInfraRefactorRule:
         self,
         transformer: FlextInfraChangeTracker,
         source: str,
-    ) -> t.Infra.Pair[str, t.StrSequence]:
+    ) -> t.Infra.TransformResult:
         """Apply a text transformer with apply_to_source and return (source, changes)."""
         apply_fn = getattr(transformer, "apply_to_source", None)
         if apply_fn is not None:
@@ -85,7 +85,7 @@ class FlextInfraGenericTransformerRule(FlextInfraRefactorRule):
         self,
         source: str,
         _file_path: Path | None = None,
-    ) -> t.Infra.Pair[str, t.StrSequence]:
+    ) -> t.Infra.TransformResult:
         """Instantiate TRANSFORMER_CLASS and apply it."""
         transformer = self.TRANSFORMER_CLASS()
         return self._apply_text_transformer(transformer, source)

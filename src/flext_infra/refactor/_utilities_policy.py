@@ -12,14 +12,13 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 
-from pydantic import JsonValue, ValidationError
+from pydantic import ValidationError
+from yaml import safe_load
 
-from flext_core import FlextUtilities
 from flext_infra import (
-    FlextInfraUtilitiesIo,
-    FlextInfraUtilitiesYaml,
     c,
     m,
+    r,
     t,
 )
 
@@ -28,84 +27,26 @@ class FlextInfraUtilitiesRefactorPolicy:
     """Policy document loading and class-nesting policy enforcement."""
 
     @staticmethod
-    def policy_document_schema_valid(
-        loaded: Mapping[str, t.Infra.InfraValue],
-        schema_path: Path,
-    ) -> bool:
-        schema_result = FlextInfraUtilitiesIo.read_json(schema_path)
-        if schema_result.is_failure:
-            return False
-        raw_schema: Mapping[str, JsonValue] = schema_result.value
-        schema: Mapping[str, t.Infra.InfraValue] = dict(raw_schema)
-        from flext_infra import FlextInfraUtilitiesRefactor  # noqa: PLC0415
-
-        top_required = FlextInfraUtilitiesRefactor.string_list(
-            schema.get("required", []),
-        )
-        if not FlextInfraUtilitiesRefactor.has_required_fields(loaded, top_required):
-            return False
-        definitions_raw = schema.get("definitions", {})
-        if not FlextUtilities.is_mapping(definitions_raw):
-            return False
-        try:
-            definitions = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(definitions_raw)
-        except ValidationError:
-            return False
-
-        def _definition_required(key: str) -> t.StrSequence | None:
-            raw = definitions.get(key, {})
-            if not FlextUtilities.is_mapping(raw):
-                return None
-            validated: Mapping[str, t.Infra.InfraValue] = (
-                t.Infra.INFRA_MAPPING_ADAPTER.validate_python(raw)
-            )
-            return FlextInfraUtilitiesRefactor.string_list(
-                validated.get("required", []),
-            )
-
-        def _all_have_required(field: str, required: t.StrSequence) -> bool:
-            return all(
-                FlextInfraUtilitiesRefactor.has_required_fields(entry, required)
-                for entry in FlextInfraUtilitiesRefactor.mapping_list(
-                    loaded.get(field),
-                )
-            )
-
-        policy_req = _definition_required("policyEntry")
-        rule_req = _definition_required("classRule")
-        if policy_req is None or rule_req is None:
-            return False
-        return _all_have_required(
-            "policy_matrix",
-            policy_req,
-        ) and _all_have_required(c.Infra.ReportKeys.RULES, rule_req)
-
-    @staticmethod
-    def load_validated_policy_document(policy_path: Path) -> t.Infra.ContainerDict:
-        try:
-            loaded = FlextInfraUtilitiesYaml.safe_load_yaml(policy_path)
-        except (OSError, TypeError) as exc:
-            msg = f"failed to read policy document: {policy_path}"
-            raise ValueError(msg) from exc
-        raw_dict: Mapping[str, t.Infra.InfraValue] = dict(loaded)
-        loaded_dict: t.Infra.ContainerDict = (
-            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
-                raw_dict,
-            )
-        )
-        schema_path = policy_path.with_name("class-policy-v2.schema.json")
-        if not FlextInfraUtilitiesRefactorPolicy.policy_document_schema_valid(
-            loaded_dict,
-            schema_path,
-        ):
-            msg = "policy document failed schema validation"
-            raise ValueError(msg)
-        return loaded_dict
-
-    @staticmethod
     def default_class_policy_path() -> Path:
-        """Return the canonical class-nesting policy document path."""
+        """Return the default class-nesting policy YAML path."""
         return Path(__file__).resolve().parent.parent / "rules" / "class-policy-v2.yml"
+
+    @staticmethod
+    def load_validated_policy_document(
+        policy_path: Path,
+    ) -> r[Mapping[str, t.Infra.InfraValue]]:
+        """Load and validate a YAML policy document."""
+        try:
+            raw = safe_load(policy_path.read_text(encoding=c.Infra.Encoding.DEFAULT))
+        except (OSError, UnicodeDecodeError) as exc:
+            return r[Mapping[str, t.Infra.InfraValue]].fail(
+                f"Failed to load policy {policy_path}: {exc}",
+            )
+        if not isinstance(raw, dict):
+            return r[Mapping[str, t.Infra.InfraValue]].fail(
+                f"Policy document must be a mapping, got {type(raw).__name__}",
+            )
+        return r[Mapping[str, t.Infra.InfraValue]].ok(raw)
 
     @staticmethod
     def class_nesting_policy_by_family(
@@ -117,15 +58,14 @@ class FlextInfraUtilitiesRefactorPolicy:
             if policy_path is not None
             else FlextInfraUtilitiesRefactorPolicy.default_class_policy_path()
         )
-        try:
-            loaded = FlextInfraUtilitiesRefactorPolicy.load_validated_policy_document(
-                resolved_path
-            )
-        except ValueError:
+        loaded = FlextInfraUtilitiesRefactorPolicy.load_validated_policy_document(
+            resolved_path,
+        )
+        if loaded.is_failure:
             return {}
         by_family: dict[str, m.Infra.ClassNestingPolicy] = {}
         for raw in FlextInfraUtilitiesRefactorPolicy._mapping_list_for_policy(
-            loaded.get("policy_matrix"),
+            loaded.value.get("policy_matrix"),
         ):
             try:
                 policy = m.Infra.ClassNestingPolicy.model_validate(raw)
@@ -139,7 +79,7 @@ class FlextInfraUtilitiesRefactorPolicy:
         value: t.Infra.InfraValue | None,
     ) -> list[Mapping[str, t.Infra.InfraValue]]:
         """Thin wrapper to call mapping_list from the main facade."""
-        from flext_infra import FlextInfraUtilitiesRefactor  # noqa: PLC0415
+        from flext_infra import FlextInfraUtilitiesRefactor
 
         return list(FlextInfraUtilitiesRefactor.mapping_list(value))
 
@@ -218,7 +158,7 @@ class FlextInfraUtilitiesRefactorPolicy:
         policy_path: Path | None = None,
     ) -> t.Infra.Pair[bool, t.StrMapping | None]:
         """Validate one class/helper nesting entry against the family policy."""
-        from flext_infra import FlextInfraUtilitiesRefactor  # noqa: PLC0415
+        from flext_infra import FlextInfraUtilitiesRefactor
 
         symbol = entry.get(c.Infra.ReportKeys.LOOSE_NAME, "") or entry.get(
             "helper_name",

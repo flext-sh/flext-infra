@@ -13,7 +13,7 @@ from flext_infra import FlextInfraConstants as c, FlextInfraTypes as t
 class FlextInfraRefactorAstGrepModels:
     """Mixin containing ast-grep and migration model contracts."""
 
-    class AstGrepMatchEnvelope(FlextModels.ArbitraryTypesModel):
+    class GrepMatchEnvelope(FlextModels.ArbitraryTypesModel):
         """Compact ast-grep envelope carrying file, symbol and location."""
 
         model_config: ClassVar[ConfigDict] = ConfigDict(
@@ -46,6 +46,13 @@ class FlextInfraRefactorAstGrepModels:
 
         symbol: Annotated[t.NonEmptyStr, Field(description="Symbol name")]
         line: Annotated[t.PositiveInt, Field(description="Source line number")]
+        end_line: Annotated[
+            int | None,
+            Field(
+                default=None,
+                description="Inclusive end line for multi-line declarations",
+            ),
+        ] = None
         kind: Annotated[
             str,
             Field(default="constant", description="constant|typevar|typealias"),

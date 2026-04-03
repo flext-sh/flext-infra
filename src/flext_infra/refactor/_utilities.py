@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
@@ -129,17 +128,6 @@ class FlextInfraUtilitiesRefactor(
         return [v for v in validated if isinstance(v, str)]
 
     @staticmethod
-    def is_final_annotation(annotation: object) -> bool:
-        """Return whether one AST annotation represents ``Final``."""
-        if isinstance(annotation, ast.Name):
-            return annotation.id == "Final"
-        if isinstance(annotation, ast.Attribute):
-            return annotation.attr == "Final"
-        if isinstance(annotation, ast.Subscript):
-            return FlextInfraUtilitiesRefactor.is_final_annotation(annotation.value)
-        return False
-
-    @staticmethod
     def mapping_list(
         value: t.Infra.InfraValue | None,
     ) -> Sequence[Mapping[str, t.Infra.InfraValue]]:
@@ -185,20 +173,6 @@ class FlextInfraUtilitiesRefactor(
         return path_value.as_posix().lstrip("./")
 
     @staticmethod
-    def project_scope_tokens(path_value: Path) -> t.Infra.StrSet:
-        parts = path_value.parts
-        if not parts:
-            return set()
-        tokens: t.Infra.StrSet = set()
-        if c.Infra.Paths.DEFAULT_SRC_DIR in parts:
-            src_index = parts.index(c.Infra.Paths.DEFAULT_SRC_DIR)
-            if src_index > 0:
-                tokens.add(parts[src_index - 1])
-            if src_index + 1 < len(parts):
-                tokens.add(parts[src_index + 1])
-        return tokens
-
-    @staticmethod
     def rewrite_scope(entry: t.StrMapping) -> str:
         raw_scope = entry.get(c.Infra.ReportKeys.REWRITE_SCOPE, c.Infra.ReportKeys.FILE)
         scope = FlextUtilities.norm_str(raw_scope, case="lower")
@@ -210,29 +184,6 @@ class FlextInfraUtilitiesRefactor(
             return scope
         msg = f"unsupported rewrite_scope: {raw_scope}"
         raise ValueError(msg)
-
-    @staticmethod
-    def scope_applies_to_file(
-        entry: t.StrMapping,
-        current_file: Path,
-        candidate_file: Path,
-    ) -> bool:
-        rewrite_scope = FlextInfraUtilitiesRefactor.rewrite_scope(entry)
-        if rewrite_scope == c.Infra.ReportKeys.WORKSPACE:
-            return True
-        current_module = FlextInfraUtilitiesRefactor.normalize_module_path(current_file)
-        candidate_module = FlextInfraUtilitiesRefactor.normalize_module_path(
-            candidate_file,
-        )
-        if rewrite_scope == c.Infra.ReportKeys.FILE:
-            return current_module == candidate_module
-        current_tokens = FlextInfraUtilitiesRefactor.project_scope_tokens(current_file)
-        candidate_tokens = FlextInfraUtilitiesRefactor.project_scope_tokens(
-            candidate_file,
-        )
-        if current_tokens and candidate_tokens:
-            return bool(current_tokens & candidate_tokens)
-        return current_module == candidate_module
 
 
 __all__ = ["FlextInfraUtilitiesRefactor"]

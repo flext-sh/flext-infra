@@ -44,73 +44,49 @@ class FlextInfraRefactorMRORedundancyChecker(FlextInfraGenericTransformerRule):
     TRANSFORMER_CLASS: type[FlextInfraChangeTracker] = FlextInfraRefactorMRORemover
 
 
-class FlextInfraRefactorLegacyRemovalTextRule(FlextInfraRefactorRule):
-    """Run the rope-based legacy-removal rule through the text-rule engine."""
+class _RopeTextRuleBridge(FlextInfraRefactorRule):
+    """Bridge: delegates to a rope-based rule via ``apply_transformer_to_source``."""
+
+    _ROPE_RULE_CLS: type | None = None
+    _NEEDS_CONFIG: bool = True
 
     @override
     def apply(
         self,
         source: str,
         _file_path: Path | None = None,
-    ) -> t.Infra.Pair[str, t.StrSequence]:
-        if _file_path is None:
+    ) -> t.Infra.TransformResult:
+        if _file_path is None or self._ROPE_RULE_CLS is None:
             return (source, list[str]())
-        rule = FlextInfraRefactorLegacyRemovalRule(self.config)
+        rule = (
+            self._ROPE_RULE_CLS(self.config)
+            if self._NEEDS_CONFIG
+            else self._ROPE_RULE_CLS()
+        )
         return u.Infra.apply_transformer_to_source(
             source,
             _file_path,
-            lambda rope_project, resource: rule.apply(
-                rope_project,
-                resource,
-                dry_run=True,
-            ),
+            lambda rp, res: rule.apply(rp, res, dry_run=True),
         )
 
 
-class FlextInfraRefactorPatternCorrectionsTextRule(FlextInfraRefactorRule):
-    """Run the rope-based pattern-corrections rule through the text engine."""
+class FlextInfraRefactorLegacyRemovalTextRule(_RopeTextRuleBridge):
+    """Rope-based legacy-removal rule via text engine."""
 
-    @override
-    def apply(
-        self,
-        source: str,
-        _file_path: Path | None = None,
-    ) -> t.Infra.Pair[str, t.StrSequence]:
-        if _file_path is None:
-            return (source, list[str]())
-        rule = FlextInfraRefactorPatternCorrectionsRule(self.config)
-        return u.Infra.apply_transformer_to_source(
-            source,
-            _file_path,
-            lambda rope_project, resource: rule.apply(
-                rope_project,
-                resource,
-                dry_run=True,
-            ),
-        )
+    _ROPE_RULE_CLS = FlextInfraRefactorLegacyRemovalRule
 
 
-class FlextInfraRefactorMROClassMigrationTextRule(FlextInfraRefactorRule):
-    """Run the rope-based MRO class-migration rule through the text engine."""
+class FlextInfraRefactorPatternCorrectionsTextRule(_RopeTextRuleBridge):
+    """Rope-based pattern-corrections rule via text engine."""
 
-    @override
-    def apply(
-        self,
-        source: str,
-        _file_path: Path | None = None,
-    ) -> t.Infra.Pair[str, t.StrSequence]:
-        if _file_path is None:
-            return (source, list[str]())
-        rule = FlextInfraRefactorMROClassMigrationRule()
-        return u.Infra.apply_transformer_to_source(
-            source,
-            _file_path,
-            lambda rope_project, resource: rule.apply(
-                rope_project,
-                resource,
-                dry_run=True,
-            ),
-        )
+    _ROPE_RULE_CLS = FlextInfraRefactorPatternCorrectionsRule
+
+
+class FlextInfraRefactorMROClassMigrationTextRule(_RopeTextRuleBridge):
+    """Rope-based MRO class-migration rule via text engine."""
+
+    _ROPE_RULE_CLS = FlextInfraRefactorMROClassMigrationRule
+    _NEEDS_CONFIG = False
 
 
 class FlextInfraRefactorTypingUnificationRule(FlextInfraRefactorRule):
@@ -121,7 +97,7 @@ class FlextInfraRefactorTypingUnificationRule(FlextInfraRefactorRule):
         self,
         source: str,
         _file_path: Path | None = None,
-    ) -> t.Infra.Pair[str, t.StrSequence]:
+    ) -> t.Infra.TransformResult:
         transformer = FlextInfraRefactorTypingUnifier(
             canonical_map=c.Infra.TYPING_INLINE_UNION_CANONICAL_MAP,
             file_path=_file_path,
@@ -137,7 +113,7 @@ class FlextInfraRefactorTypingAnnotationFixRule(FlextInfraRefactorRule):
         self,
         source: str,
         _file_path: Path | None = None,
-    ) -> t.Infra.Pair[str, t.StrSequence]:
+    ) -> t.Infra.TransformResult:
         fix_action = u.Infra.get_str_key(
             self.config,
             c.Infra.ReportKeys.FIX_ACTION,
@@ -159,7 +135,7 @@ class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
         self,
         source: str,
         _file_path: Path | None = None,
-    ) -> t.Infra.Pair[str, t.StrSequence]:
+    ) -> t.Infra.TransformResult:
         if _file_path is None:
             return (source, list[str]())
         analyzer = FlextInfraTransformerTier0ImportFixer.Analyzer(
@@ -221,7 +197,7 @@ class FlextInfraRefactorSymbolPropagationRule(FlextInfraRefactorRule):
         self,
         source: str,
         _file_path: Path | None = None,
-    ) -> t.Infra.Pair[str, t.StrSequence]:
+    ) -> t.Infra.TransformResult:
         typed_cfg: Mapping[str, t.Infra.InfraValue] = (
             t.Infra.INFRA_MAPPING_ADAPTER.validate_python(self.config)
         )
@@ -256,7 +232,7 @@ class FlextInfraRefactorSignaturePropagationRule(FlextInfraRefactorRule):
         self,
         source: str,
         _file_path: Path | None = None,
-    ) -> t.Infra.Pair[str, t.StrSequence]:
+    ) -> t.Infra.TransformResult:
         migrations_raw = self.config.get("signature_migrations", [])
         try:
             parsed: Sequence[m.Infra.SignatureMigration] = (
@@ -280,7 +256,7 @@ class FlextInfraRefactorClassReconstructorRule(FlextInfraRefactorRule):
         self,
         source: str,
         _file_path: Path | None = None,
-    ) -> t.Infra.Pair[str, t.StrSequence]:
+    ) -> t.Infra.TransformResult:
         """Apply method reordering transformer when order config is available."""
         order_config_raw = self.config.get("method_order") or self.config.get(
             "order",

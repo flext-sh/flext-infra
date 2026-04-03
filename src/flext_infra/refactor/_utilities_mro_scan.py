@@ -27,6 +27,9 @@ logger = logging.getLogger(__name__)
 class FlextInfraUtilitiesRefactorMroScan:
     _MRO_SCAN_CONSTANT_PATTERN: re.Pattern[str] = c.Infra.SourceCode.CONSTANT_NAME_RE
     _MRO_SCAN_TYPE_PATTERN: re.Pattern[str] = re.compile(r"^_?[A-Za-z][A-Za-z0-9_]*$")
+    _MRO_SCAN_PROTOCOL_BASE_PATTERN: re.Pattern[str] = re.compile(
+        r"(^|[\s,(])(?:[A-Za-z_]\w*\.)?Protocol(?:\[[^\]]+\])?(?=$|[\s,)])",
+    )
 
     @staticmethod
     def scan_workspace(
@@ -107,11 +110,25 @@ class FlextInfraUtilitiesRefactorMroScan:
 
                 obj = pyname.get_object()
                 src_line = lines[line - 1].strip()
+                class_header = FlextInfraUtilitiesRefactorMroScan._class_header(
+                    lines=lines,
+                    start_line=line,
+                )
+                block_start, block_end = (
+                    FlextInfraUtilitiesRefactorMroScan._top_level_block_bounds(
+                        lines=lines,
+                        start_line=line,
+                    )
+                    if src_line.startswith("class ")
+                    else (line, line)
+                )
 
                 cand = FlextInfraUtilitiesRefactorMroScan._create_candidate(
                     name=name,
-                    line=line,
+                    line=block_start,
+                    end_line=block_end,
                     src_line=src_line,
+                    class_header=class_header,
                     target_spec=target_spec,
                     obj=obj,
                 )
@@ -135,7 +152,9 @@ class FlextInfraUtilitiesRefactorMroScan:
         *,
         name: str,
         line: int,
+        end_line: int,
         src_line: str,
+        class_header: str,
         target_spec: m.Infra.MROTargetSpec,
         obj: object,
     ) -> m.Infra.MROSymbolCandidate | None:
@@ -152,19 +171,12 @@ class FlextInfraUtilitiesRefactorMroScan:
             elif any(x in src_line for x in ("TypeVar", "ParamSpec", "NewType")):
                 kind = "typevar"
         elif alias == "p":
-            if isinstance(obj, AbstractClass):
-                try:
-                    get_bases = getattr(obj, "get_bases", None)
-                    raw_bases = get_bases() if callable(get_bases) else list[object]()
-                    bases: Sequence[AbstractClass] = (
-                        [b for b in raw_bases if isinstance(b, AbstractClass)]
-                        if isinstance(raw_bases, Sequence)
-                        else []
-                    )
-                    if any("Protocol" in str(b.get_name()) for b in bases):
-                        kind = "protocol"
-                except Exception as exc:
-                    logger.info("Protocol base scan skipped for %s: %s", name, exc)
+            if FlextInfraUtilitiesRefactorMroScan._is_protocol_class(
+                name=name,
+                obj=obj,
+                class_header=class_header,
+            ):
+                kind = "protocol"
         elif FlextInfraUtilitiesRefactorMroScan._MRO_SCAN_CONSTANT_PATTERN.match(name):
             if re.match(rf"^{name}\s*(:|==?)\s*", src_line) and not name.islower():
                 kind = "constant"
@@ -173,7 +185,12 @@ class FlextInfraUtilitiesRefactorMroScan:
             return None
 
         return m.Infra.MROSymbolCandidate(
-            symbol=name, line=line, kind=kind, class_name="", facade_name=""
+            symbol=name,
+            line=line,
+            end_line=(end_line if end_line > line else None),
+            kind=kind,
+            class_name="",
+            facade_name="",
         )
 
     @staticmethod
@@ -233,6 +250,87 @@ class FlextInfraUtilitiesRefactorMroScan:
         }
         al = mapping.get(target)
         return tuple(s for s in all_specs if s.family_alias == al) if al else all_specs
+
+    @staticmethod
+    def _class_header(*, lines: Sequence[str], start_line: int) -> str:
+        header_parts: list[str] = []
+        for current_line in lines[start_line - 1 :]:
+            stripped = current_line.strip()
+            if not stripped:
+                if header_parts:
+                    break
+                continue
+            header_parts.append(stripped)
+            if ":" in stripped:
+                break
+        return " ".join(header_parts)
+
+    @staticmethod
+    def _top_level_block_bounds(
+        *,
+        lines: Sequence[str],
+        start_line: int,
+    ) -> tuple[int, int]:
+        class_line_index = start_line - 1
+        start_index = class_line_index
+        while start_index > 0:
+            previous_line = lines[start_index - 1]
+            if previous_line.startswith("@"):
+                start_index -= 1
+                continue
+            break
+
+        base_indent = len(lines[class_line_index]) - len(
+            lines[class_line_index].lstrip()
+        )
+        end_index = class_line_index
+        for current_index in range(class_line_index + 1, len(lines)):
+            current_line = lines[current_index]
+            stripped = current_line.strip()
+            if not stripped:
+                end_index = current_index
+                continue
+            current_indent = len(current_line) - len(current_line.lstrip())
+            if current_indent <= base_indent:
+                break
+            end_index = current_index
+        return (start_index + 1, end_index + 1)
+
+    @classmethod
+    def _is_protocol_class(
+        cls,
+        *,
+        name: str,
+        obj: object,
+        class_header: str,
+    ) -> bool:
+        if isinstance(obj, AbstractClass):
+            try:
+                get_bases = getattr(obj, "get_bases", None)
+                raw_bases = get_bases() if callable(get_bases) else list[object]()
+                bases: Sequence[AbstractClass] = (
+                    [b for b in raw_bases if isinstance(b, AbstractClass)]
+                    if isinstance(raw_bases, Sequence)
+                    else []
+                )
+                if any("Protocol" in str(b.get_name()) for b in bases):
+                    return True
+            except Exception as exc:
+                logger.info("Protocol base scan skipped for %s: %s", name, exc)
+        return cls._class_header_declares_protocol(
+            name=name,
+            class_header=class_header,
+        )
+
+    @classmethod
+    def _class_header_declares_protocol(cls, *, name: str, class_header: str) -> bool:
+        match = re.match(
+            rf"^class\s+{re.escape(name)}(?:\[[^\]]+\])?\s*\((?P<bases>.*)\)\s*:",
+            class_header,
+        )
+        if match is None:
+            return False
+        return bool(cls._MRO_SCAN_PROTOCOL_BASE_PATTERN.search(match.group("bases")))
 
     @staticmethod
     def _iter_target_files(

@@ -93,83 +93,35 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.cli_shared import FlextInfraUtilitiesCliShared
 
     cli_subcommand = _flext_infra__utilities_cli_subcommand
-    import flext_infra._utilities.codegen_constant_analysis as _flext_infra__utilities_codegen_constant_analysis
+    import flext_infra._utilities.codegen_constants as _flext_infra__utilities_codegen_constants
     from flext_infra._utilities.cli_subcommand import FlextInfraUtilitiesCliSubcommand
 
-    codegen_constant_analysis = _flext_infra__utilities_codegen_constant_analysis
-    import flext_infra._utilities.codegen_constant_detection as _flext_infra__utilities_codegen_constant_detection
-    from flext_infra._utilities.codegen_constant_analysis import (
-        FlextInfraUtilitiesCodegenConstantAnalysis,
-    )
-
-    codegen_constant_detection = _flext_infra__utilities_codegen_constant_detection
-    import flext_infra._utilities.codegen_constant_transformation as _flext_infra__utilities_codegen_constant_transformation
-    from flext_infra._utilities.codegen_constant_detection import (
-        FlextInfraUtilitiesCodegenConstantDetection,
-    )
-
-    codegen_constant_transformation = (
-        _flext_infra__utilities_codegen_constant_transformation
-    )
+    codegen_constants = _flext_infra__utilities_codegen_constants
     import flext_infra._utilities.codegen_execution as _flext_infra__utilities_codegen_execution
-    from flext_infra._utilities.codegen_constant_transformation import (
+    from flext_infra._utilities.codegen_constants import (
+        FlextInfraUtilitiesCodegenConstantAnalysis,
+        FlextInfraUtilitiesCodegenConstantDetection,
         FlextInfraUtilitiesCodegenConstantTransformation,
+        FlextInfraUtilitiesCodegenGovernance,
     )
 
     codegen_execution = _flext_infra__utilities_codegen_execution
-    import flext_infra._utilities.codegen_execution_checks as _flext_infra__utilities_codegen_execution_checks
+    import flext_infra._utilities.codegen_import_cycles as _flext_infra__utilities_codegen_import_cycles
     from flext_infra._utilities.codegen_execution import (
         FlextInfraUtilitiesCodegenExecution,
     )
 
-    codegen_execution_checks = _flext_infra__utilities_codegen_execution_checks
-    import flext_infra._utilities.codegen_execution_metrics as _flext_infra__utilities_codegen_execution_metrics
-    from flext_infra._utilities.codegen_execution_checks import (
-        FlextInfraUtilitiesCodegenExecutionChecks,
-    )
-
-    codegen_execution_metrics = _flext_infra__utilities_codegen_execution_metrics
-    import flext_infra._utilities.codegen_execution_runner as _flext_infra__utilities_codegen_execution_runner
-    from flext_infra._utilities.codegen_execution_metrics import (
-        FlextInfraUtilitiesCodegenExecutionMetrics,
-    )
-
-    codegen_execution_runner = _flext_infra__utilities_codegen_execution_runner
-    import flext_infra._utilities.codegen_execution_subprocess as _flext_infra__utilities_codegen_execution_subprocess
-    from flext_infra._utilities.codegen_execution_runner import (
-        FlextInfraUtilitiesCodegenExecutionRunner,
-    )
-
-    codegen_execution_subprocess = _flext_infra__utilities_codegen_execution_subprocess
-    import flext_infra._utilities.codegen_governance as _flext_infra__utilities_codegen_governance
-
-    codegen_governance = _flext_infra__utilities_codegen_governance
-    import flext_infra._utilities.codegen_import_cycles as _flext_infra__utilities_codegen_import_cycles
-    from flext_infra._utilities.codegen_governance import (
-        FlextInfraUtilitiesCodegenGovernance,
-    )
-
     codegen_import_cycles = _flext_infra__utilities_codegen_import_cycles
-    import flext_infra._utilities.codegen_lazy_aliases as _flext_infra__utilities_codegen_lazy_aliases
+    import flext_infra._utilities.codegen_lazy as _flext_infra__utilities_codegen_lazy
     from flext_infra._utilities.codegen_import_cycles import (
         FlextInfraUtilitiesCodegenImportCycles,
     )
 
-    codegen_lazy_aliases = _flext_infra__utilities_codegen_lazy_aliases
-    import flext_infra._utilities.codegen_lazy_merging as _flext_infra__utilities_codegen_lazy_merging
-    from flext_infra._utilities.codegen_lazy_aliases import (
-        FlextInfraUtilitiesCodegenLazyAliases,
-    )
-
-    codegen_lazy_merging = _flext_infra__utilities_codegen_lazy_merging
-    import flext_infra._utilities.codegen_lazy_scanning as _flext_infra__utilities_codegen_lazy_scanning
-    from flext_infra._utilities.codegen_lazy_merging import (
-        FlextInfraUtilitiesCodegenLazyMerging,
-    )
-
-    codegen_lazy_scanning = _flext_infra__utilities_codegen_lazy_scanning
+    codegen_lazy = _flext_infra__utilities_codegen_lazy
     import flext_infra._utilities.discovery as _flext_infra__utilities_discovery
-    from flext_infra._utilities.codegen_lazy_scanning import (
+    from flext_infra._utilities.codegen_lazy import (
+        FlextInfraUtilitiesCodegenLazyAliases,
+        FlextInfraUtilitiesCodegenLazyMerging,
         FlextInfraUtilitiesCodegenLazyScanning,
     )
 
@@ -266,12 +218,8 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
 
     rope_source = _flext_infra__utilities_rope_source
-    import flext_infra._utilities.rule_helpers as _flext_infra__utilities_rule_helpers
-    from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
-
-    rule_helpers = _flext_infra__utilities_rule_helpers
     import flext_infra._utilities.safety as _flext_infra__utilities_safety
-    from flext_infra._utilities.rule_helpers import FlextInfraUtilitiesRuleHelpers
+    from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
 
     safety = _flext_infra__utilities_safety
     import flext_infra._utilities.selection as _flext_infra__utilities_selection
@@ -328,6 +276,7 @@ if _t.TYPE_CHECKING:
     from flext_infra.check._constants import FlextInfraCheckConstants
     from flext_infra.check._models import FlextInfraCheckModels
     from flext_infra.check._workspace_check_gates import (
+        FlextInfraGateRegistry,
         FlextInfraWorkspaceCheckGatesMixin,
     )
     from flext_infra.check.cli import FlextInfraCliCheck
@@ -369,9 +318,11 @@ if _t.TYPE_CHECKING:
         _has_flext_types,
         _is_local_module,
     )
-    from flext_infra.codegen._codegen_snapshot import FlextInfraCodegenSnapshot
     from flext_infra.codegen._constants import FlextInfraCodegenConstants
     from flext_infra.codegen._models import FlextInfraCodegenModels
+    from flext_infra.codegen._models_deduplication import (
+        FlextInfraCodegenDeduplicationModels,
+    )
     from flext_infra.codegen._utilities import FlextInfraUtilitiesCodegen
     from flext_infra.codegen.census import FlextInfraCodegenCensus
     from flext_infra.codegen.cli import FlextInfraCliCodegen
@@ -626,12 +577,7 @@ if _t.TYPE_CHECKING:
     from flext_infra.detectors.runtime_alias_detector import (
         FlextInfraRuntimeAliasDetector,
     )
-    from flext_infra.docs._auditor_helpers import (
-        find_architecture_config,
-        parse_audit_gate,
-        resolve_checks,
-        write_audit_reports,
-    )
+    from flext_infra.docs._auditor_mixin import FlextInfraDocAuditorMixin
     from flext_infra.docs._constants import FlextInfraDocsConstants
     from flext_infra.docs._models import FlextInfraDocsModels
 
@@ -653,7 +599,6 @@ if _t.TYPE_CHECKING:
     gates = _flext_infra_gates
     import flext_infra.gates.bandit as _flext_infra_gates_bandit
     from flext_infra.gates._base_gate import FlextInfraGate
-    from flext_infra.gates._gate_registry import FlextInfraGateRegistry
     from flext_infra.gates._models import FlextInfraGatesModels
 
     bandit = _flext_infra_gates_bandit
@@ -711,11 +656,8 @@ if _t.TYPE_CHECKING:
         FlextInfraRefactorRule,
     )
     from flext_infra.refactor._constants import FlextInfraRefactorConstants
-    from flext_infra.refactor._engine_orchestration import (
-        FlextInfraRefactorEngineOrchestrationMixin,
-    )
-    from flext_infra.refactor._engine_pipeline import (
-        FlextInfraRefactorEnginePipelineMixin,
+    from flext_infra.refactor._engine_helpers import (
+        FlextInfraRefactorEngineHelpersMixin,
     )
     from flext_infra.refactor._engine_rules import (
         FlextInfraRefactorClassReconstructorRule,
@@ -741,12 +683,10 @@ if _t.TYPE_CHECKING:
     from flext_infra.refactor._namespace_enforcer_phases import (
         FlextInfraNamespaceEnforcerPhasesMixin,
     )
-    from flext_infra.refactor._post_check_gate import FlextInfraPostCheckGate
     from flext_infra.refactor._utilities import FlextInfraUtilitiesRefactor
     from flext_infra.refactor._utilities_census import FlextInfraUtilitiesRefactorCensus
     from flext_infra.refactor._utilities_cli import FlextInfraUtilitiesRefactorCli
     from flext_infra.refactor._utilities_engine import FlextInfraUtilitiesRefactorEngine
-    from flext_infra.refactor._utilities_loader import FlextInfraUtilitiesRefactorLoader
     from flext_infra.refactor._utilities_mro_scan import (
         FlextInfraUtilitiesRefactorMroScan,
     )
@@ -756,17 +696,15 @@ if _t.TYPE_CHECKING:
     from flext_infra.refactor._utilities_namespace import (
         FlextInfraUtilitiesRefactorNamespace,
     )
-    from flext_infra.refactor._utilities_namespace_common import (
+    from flext_infra.refactor._utilities_namespace_analysis import (
         FlextInfraUtilitiesRefactorNamespaceCommon,
+        FlextInfraUtilitiesRefactorNamespaceMro,
     )
     from flext_infra.refactor._utilities_namespace_facades import (
         FlextInfraUtilitiesRefactorNamespaceFacades,
     )
     from flext_infra.refactor._utilities_namespace_moves import (
         FlextInfraUtilitiesRefactorNamespaceMoves,
-    )
-    from flext_infra.refactor._utilities_namespace_mro import (
-        FlextInfraUtilitiesRefactorNamespaceMro,
     )
     from flext_infra.refactor._utilities_namespace_runtime import (
         FlextInfraUtilitiesRefactorNamespaceRuntime,
@@ -1222,13 +1160,13 @@ __all__ = [
     "FlextInfraCodegenCensus",
     "FlextInfraCodegenConstants",
     "FlextInfraCodegenConstantsQualityGate",
+    "FlextInfraCodegenDeduplicationModels",
     "FlextInfraCodegenFixer",
     "FlextInfraCodegenGeneration",
     "FlextInfraCodegenLazyInit",
     "FlextInfraCodegenModels",
     "FlextInfraCodegenPyTyped",
     "FlextInfraCodegenScaffolder",
-    "FlextInfraCodegenSnapshot",
     "FlextInfraCompatibilityAliasDetector",
     "FlextInfraConfigFixer",
     "FlextInfraConsolidateGroupsPhase",
@@ -1252,6 +1190,7 @@ __all__ = [
     "FlextInfraDepsModelsToolConfig",
     "FlextInfraDictToMappingTransformer",
     "FlextInfraDocAuditor",
+    "FlextInfraDocAuditorMixin",
     "FlextInfraDocBuilder",
     "FlextInfraDocFixer",
     "FlextInfraDocGenerator",
@@ -1312,7 +1251,6 @@ __all__ = [
     "FlextInfraNestedClassPropagationTransformer",
     "FlextInfraNormalizerContext",
     "FlextInfraOrchestratorService",
-    "FlextInfraPostCheckGate",
     "FlextInfraProjectClassifier",
     "FlextInfraProjectMakefileUpdater",
     "FlextInfraProjectMigrator",
@@ -1335,8 +1273,7 @@ __all__ = [
     "FlextInfraRefactorConstants",
     "FlextInfraRefactorDeprecatedRemover",
     "FlextInfraRefactorEngine",
-    "FlextInfraRefactorEngineOrchestrationMixin",
-    "FlextInfraRefactorEnginePipelineMixin",
+    "FlextInfraRefactorEngineHelpersMixin",
     "FlextInfraRefactorEnsureFutureAnnotationsRule",
     "FlextInfraRefactorImportBypassRemover",
     "FlextInfraRefactorImportModernizer",
@@ -1406,9 +1343,6 @@ __all__ = [
     "FlextInfraUtilitiesCodegenConstantDetection",
     "FlextInfraUtilitiesCodegenConstantTransformation",
     "FlextInfraUtilitiesCodegenExecution",
-    "FlextInfraUtilitiesCodegenExecutionChecks",
-    "FlextInfraUtilitiesCodegenExecutionMetrics",
-    "FlextInfraUtilitiesCodegenExecutionRunner",
     "FlextInfraUtilitiesCodegenGovernance",
     "FlextInfraUtilitiesCodegenImportCycles",
     "FlextInfraUtilitiesCodegenLazyAliases",
@@ -1434,7 +1368,6 @@ __all__ = [
     "FlextInfraUtilitiesRefactorCensus",
     "FlextInfraUtilitiesRefactorCli",
     "FlextInfraUtilitiesRefactorEngine",
-    "FlextInfraUtilitiesRefactorLoader",
     "FlextInfraUtilitiesRefactorMroScan",
     "FlextInfraUtilitiesRefactorMroTransform",
     "FlextInfraUtilitiesRefactorNamespace",
@@ -1455,7 +1388,6 @@ __all__ = [
     "FlextInfraUtilitiesRopeHelpers",
     "FlextInfraUtilitiesRopeImports",
     "FlextInfraUtilitiesRopeSource",
-    "FlextInfraUtilitiesRuleHelpers",
     "FlextInfraUtilitiesSafety",
     "FlextInfraUtilitiesSelection",
     "FlextInfraUtilitiesSubprocess",
@@ -1530,19 +1462,10 @@ __all__ = [
     "cli_shared",
     "cli_subcommand",
     "codegen",
-    "codegen_constant_analysis",
-    "codegen_constant_detection",
-    "codegen_constant_transformation",
+    "codegen_constants",
     "codegen_execution",
-    "codegen_execution_checks",
-    "codegen_execution_metrics",
-    "codegen_execution_runner",
-    "codegen_execution_subprocess",
-    "codegen_governance",
     "codegen_import_cycles",
-    "codegen_lazy_aliases",
-    "codegen_lazy_merging",
-    "codegen_lazy_scanning",
+    "codegen_lazy",
     "compatibility_alias_detector",
     "consolidate_groups",
     "constants",
@@ -1576,7 +1499,6 @@ __all__ = [
     "ensure_ruff",
     "extra_paths",
     "extra_paths_pyrefly",
-    "find_architecture_config",
     "fix_pyrefly_config",
     "fixer",
     "formatting",
@@ -1635,7 +1557,6 @@ __all__ = [
     "output",
     "output_reporting",
     "p",
-    "parse_audit_gate",
     "parsing",
     "path_sync",
     "path_sync_rewrite",
@@ -1656,7 +1577,6 @@ __all__ = [
     "refactor",
     "release",
     "reporting",
-    "resolve_checks",
     "rope",
     "rope_analysis",
     "rope_analysis_introspection",
@@ -1668,7 +1588,6 @@ __all__ = [
     "ruff_lint",
     "rule",
     "rule_definition_validator",
-    "rule_helpers",
     "rules",
     "run_cli",
     "runtime_alias_detector",
@@ -1707,7 +1626,6 @@ __all__ = [
     "workspace_check",
     "workspace_check_cli",
     "workspace_makefile",
-    "write_audit_reports",
     "x",
     "yaml",
 ]

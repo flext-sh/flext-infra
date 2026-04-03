@@ -62,6 +62,14 @@ class TestInferPackage:
             eq="examples.tests",
         )
 
+    def test_docs_tools_path(self) -> None:
+        """Test inference preserves docs namespace packages."""
+        path = Path("/workspace/docs/architecture/tools/__init__.py")
+        tm.that(
+            u.Infra.discover_package_from_file(path),
+            eq="docs.architecture.tools",
+        )
+
     def test_without_src_directory(self) -> None:
         """Test when path doesn't contain /src/."""
         path = Path("/workspace/lib/test/__init__.py")
@@ -166,6 +174,19 @@ class TestBuildSiblingExportIndex:
         )
         index = _build_sibling_export_index(tmp_path, "test_pkg")
         tm.that(index, contains="Good")
+
+    def test_preserves_docs_module_path(self, tmp_path: Path) -> None:
+        """Test docs package exports keep their namespace-qualified module path."""
+        tools_dir = tmp_path / "docs" / "architecture" / "tools"
+        tools_dir.mkdir(parents=True)
+        (tools_dir / "validate_docs.py").write_text(
+            '__all__ = ["ArchitectureValidator"]\nclass ArchitectureValidator: pass\n',
+        )
+        index = _build_sibling_export_index(tools_dir, "docs.architecture.tools")
+        tm.that(
+            index["ArchitectureValidator"],
+            eq=("docs.architecture.tools.validate_docs", "ArchitectureValidator"),
+        )
 
 
 class TestExtractExports:

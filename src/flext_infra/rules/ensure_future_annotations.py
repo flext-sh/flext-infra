@@ -22,12 +22,10 @@ class FlextInfraRefactorEnsureFutureAnnotationsRule(FlextInfraRefactorRule):
         self,
         source: str,
         _file_path: Path | None = None,
-    ) -> t.Infra.Pair[str, t.StrSequence]:
-        """Add future annotations if missing. Returns (source, changes)."""
-        if c.Infra.SourceCode.FUTURE_ANNOTATIONS in source:
-            return source, []
-
-        lines = source.splitlines()
+    ) -> t.Infra.TransformResult:
+        """Ensure future annotations exists once and is placed in the header."""
+        future_import = c.Infra.SourceCode.FUTURE_ANNOTATIONS
+        lines = [line for line in source.splitlines() if line.strip() != future_import]
         insert_idx = 0
         in_docstring = False
         docstring_char = ""
@@ -70,15 +68,16 @@ class FlextInfraRefactorEnsureFutureAnnotationsRule(FlextInfraRefactorRule):
             new_lines.insert(insert_idx, "")
             insert_idx += 1
 
-        new_lines.insert(insert_idx, c.Infra.SourceCode.FUTURE_ANNOTATIONS)
+        new_lines.insert(insert_idx, future_import)
 
         # Add blank line if needed after
         if insert_idx + 1 < len(new_lines) and new_lines[insert_idx + 1].strip():
             new_lines.insert(insert_idx + 1, "")
 
-        return "\\n".join(new_lines) + "\\n", [
-            "Ensured: from __future__ import annotations"
-        ]
+        updated = "\n".join(new_lines) + "\n"
+        if updated == source:
+            return source, []
+        return updated, ["Ensured: from __future__ import annotations"]
 
 
 __all__ = ["FlextInfraRefactorEnsureFutureAnnotationsRule"]

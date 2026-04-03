@@ -10,9 +10,8 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import difflib
-import re
 import sys
-from collections.abc import MutableSequence, Sequence
+from collections.abc import Sequence
 from operator import itemgetter
 from pathlib import Path
 
@@ -54,79 +53,17 @@ class FlextInfraUtilitiesRefactorCli:
         _ = sys.stdout.write(f"DEBUG: {message}\n")
 
     @staticmethod
-    def project_name_from_path(file_path: Path) -> str:
-        """Infer project directory name from a file path."""
-        for parent in file_path.parents:
-            if (parent / c.Infra.Files.PYPROJECT_FILENAME).exists() and (
-                parent / c.Infra.Files.MAKEFILE_FILENAME
-            ).exists():
-                return parent.name
-        return c.Infra.Defaults.UNKNOWN
-
-    @staticmethod
     def build_impact_map(
         results: Sequence[m.Infra.Result],
-    ) -> Sequence[t.StrMapping]:
-        """Build normalized impact-map rows from refactor results."""
-        impact_map: MutableSequence[t.StrMapping] = []
-        symbol_pattern = re.compile(r"^(.*):\s+(.+)\s+->\s+(.+?)(?:\s+\(|$)")
-        added_pattern = re.compile(r"^\[(.+)\]\s+Added keyword:\s+(.+)$")
-        removed_pattern = re.compile(r"^\[(.+)\]\s+Removed keyword:\s+(.+)$")
-        for result in results:
-            if not result.success:
-                impact_map.append({
-                    c.Infra.PROJECT: FlextInfraUtilitiesRefactorCli.project_name_from_path(
-                        result.file_path,
-                    ),
-                    c.Infra.ReportKeys.FILE: str(result.file_path),
-                    "kind": "failure",
-                    "old": "",
-                    "new": "",
-                    c.Infra.ReportKeys.STATUS: result.error or "failed",
-                })
-                continue
-            if not result.changes:
-                continue
-            project_name = FlextInfraUtilitiesRefactorCli.project_name_from_path(
-                result.file_path,
-            )
-            for change in result.changes:
-                symbol_match = symbol_pattern.match(change)
-                if symbol_match is not None:
-                    _, old_symbol, new_symbol = symbol_match.groups()
-                    impact_map.append({
-                        c.Infra.PROJECT: project_name,
-                        c.Infra.ReportKeys.FILE: str(result.file_path),
-                        "kind": "rename",
-                        "old": old_symbol.strip(),
-                        "new": new_symbol.strip(),
-                        c.Infra.ReportKeys.STATUS: "changed",
-                    })
-                    continue
-                add_match = added_pattern.match(change)
-                if add_match is not None:
-                    migration_id, payload = add_match.groups()
-                    impact_map.append({
-                        c.Infra.PROJECT: project_name,
-                        c.Infra.ReportKeys.FILE: str(result.file_path),
-                        "kind": "signature_add",
-                        "old": "",
-                        "new": payload.strip(),
-                        c.Infra.ReportKeys.STATUS: migration_id,
-                    })
-                    continue
-                remove_match = removed_pattern.match(change)
-                if remove_match is not None:
-                    migration_id, payload = remove_match.groups()
-                    impact_map.append({
-                        c.Infra.PROJECT: project_name,
-                        c.Infra.ReportKeys.FILE: str(result.file_path),
-                        "kind": "signature_remove",
-                        "old": payload.strip(),
-                        "new": "",
-                        c.Infra.ReportKeys.STATUS: migration_id,
-                    })
-        return impact_map
+    ) -> Sequence[t.ContainerMapping]:
+        """Build a serializable list of impact records from refactor results."""
+        return [
+            result.model_dump()
+            if hasattr(result, "model_dump")
+            else {"value": str(result)}
+            for result in results
+            if result is not None
+        ]
 
     @staticmethod
     def write_impact_map(

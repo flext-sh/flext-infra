@@ -7,7 +7,7 @@ and adds missing runtime alias imports to the module header.
 from __future__ import annotations
 
 import re
-from collections.abc import MutableSequence, Sequence
+from collections.abc import MutableSequence
 from typing import override
 
 from flext_infra import (
@@ -45,27 +45,32 @@ class FlextInfraRefactorImportModernizer(FlextInfraRopeTransformer):
         self,
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-    ) -> tuple[str, Sequence[str]]:
+    ) -> t.Infra.TransformResult:
         """Apply import modernization via rope utilities."""
         source = u.Infra.read_source(resource)
-        self._scan_core_aliases(source)
-        source = self._rewrite_forbidden_imports(source)
-        source = self._replace_symbol_usages(source)
-        source = self._inject_missing_aliases(source)
+        updated, changes = self.apply_to_source(source)
         u.Infra.write_source(
             rope_project,
             resource,
-            source,
+            updated,
             description="modernize imports",
         )
-        return source, list(self.changes)
+        return updated, changes
 
-    def apply_to_source(self, source: str) -> str:
-        """Apply import modernization to source text, returning transformed source."""
-        self._scan_core_aliases(source)
-        source = self._rewrite_forbidden_imports(source)
-        source = self._replace_symbol_usages(source)
-        return self._inject_missing_aliases(source)
+    @override
+    def apply_to_source(self, source: str) -> t.Infra.TransformResult:
+        """Apply import modernization to source text."""
+        self.modified_imports = False
+        self.aliases_needed.clear()
+        self.aliases_present.clear()
+        self.active_symbol_replacements.clear()
+        self.changes.clear()
+        updated = source
+        self._scan_core_aliases(updated)
+        updated = self._rewrite_forbidden_imports(updated)
+        updated = self._replace_symbol_usages(updated)
+        updated = self._inject_missing_aliases(updated)
+        return updated, list(self.changes)
 
     def _scan_core_aliases(self, source: str) -> None:
         """Scan source for existing core alias imports."""

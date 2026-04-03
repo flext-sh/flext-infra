@@ -5,12 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_cli import cli
 from flext_core import r
 from flext_infra import FlextInfraReleaseOrchestrator, c, m, u
 
 if TYPE_CHECKING:
     import typer
+
+_R = u.Infra.route  # shorthand
 
 
 class FlextInfraCliRelease:
@@ -18,16 +19,18 @@ class FlextInfraCliRelease:
 
     def register_release(self, app: typer.Typer) -> None:
         """Register release commands on the given application."""
-        cli.register_result_route(
+        u.Infra.register_routes(
             app,
-            route=m.Cli.ResultCommandRouteModel(
-                name="run",
-                help_text="Run release orchestration CLI flow",
-                model_cls=m.Infra.ReleaseRunInput,
-                handler=self._handle_run,
-                success_message="Release completed successfully",
-                failure_message="Release failed",
-            ),
+            [
+                _R(
+                    "run",
+                    "Run release orchestration CLI flow",
+                    m.Infra.ReleaseRunInput,
+                    self._handle_run,
+                    fail_msg="Release failed",
+                    success_msg="Release completed successfully",
+                ),
+            ],
         )
 
     @staticmethod
@@ -76,8 +79,7 @@ class FlextInfraCliRelease:
     @classmethod
     def _handle_run(cls, params: m.Infra.ReleaseRunInput) -> r[bool]:
         """Execute release orchestration with resolved version and phases."""
-        resolved_workspace = Path(params.workspace) if params.workspace else Path.cwd()
-        root_result = u.Infra.workspace_root(resolved_workspace)
+        root_result = u.Infra.workspace_root(u.Infra.resolve_workspace(params))
         if root_result.is_failure:
             return r[bool].fail(root_result.error or "workspace root not found")
         root = Path(str(root_result.value))

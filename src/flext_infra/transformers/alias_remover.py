@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-
 from flext_infra import t, u
 
 
@@ -31,7 +29,7 @@ class FlextInfraRefactorAliasRemover:
         resource: t.Infra.RopeResource,
         *,
         apply: bool = True,
-    ) -> tuple[str, Sequence[str]]:
+    ) -> t.Infra.TransformResult:
         """Apply alias removal. Returns (new_source, list of change descriptions)."""
         new_source, removed = u.Infra.remove_module_level_aliases(
             rope_project,

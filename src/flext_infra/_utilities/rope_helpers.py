@@ -105,7 +105,8 @@ class FlextInfraUtilitiesRopeHelpers:
             )
         elif kind == "class":
             pattern = re.compile(
-                rf"^(class\s+{re.escape(name)}\b[^\n]*\n"
+                rf"^((?:@\w[\w.]*(?:\([^)]*\))?\n)*"
+                rf"class\s+{re.escape(name)}\b[^\n]*\n"
                 rf"(?:(?:[ \t]+[^\n]*|[ \t]*)\n)*)",
                 re.MULTILINE,
             )
@@ -131,7 +132,8 @@ class FlextInfraUtilitiesRopeHelpers:
             )
         elif kind == "class":
             pattern = re.compile(
-                rf"^class\s+{re.escape(name)}\b[^\n]*\n"
+                rf"^(?:@\w[\w.]*(?:\([^)]*\))?\n)*"
+                rf"class\s+{re.escape(name)}\b[^\n]*\n"
                 rf"(?:(?:[ \t]+[^\n]*|[ \t]*)\n)*",
                 re.MULTILINE,
             )
@@ -156,6 +158,8 @@ class FlextInfraUtilitiesRopeHelpers:
         in_class = False
         insert_idx = len(lines)
         class_indent = 0
+        pass_idx: int | None = None
+        only_placeholder_pass = True
         for index, line in enumerate(lines):
             stripped = line.lstrip()
             if not in_class:
@@ -165,9 +169,22 @@ class FlextInfraUtilitiesRopeHelpers:
                 continue
             if not line.strip():
                 continue
-            if len(line) - len(line.lstrip()) < class_indent and line.strip():
+            line_indent = len(line) - len(line.lstrip())
+            if line_indent < class_indent and line.strip():
                 insert_idx = index
                 break
+            if (
+                line_indent == class_indent
+                and stripped.strip() == "pass"
+                and pass_idx is None
+            ):
+                pass_idx = index
+                continue
+            only_placeholder_pass = False
+        if pass_idx is not None and only_placeholder_pass:
+            del lines[pass_idx]
+            if pass_idx < insert_idx:
+                insert_idx -= 1
         lines.insert(insert_idx, block.rstrip("\n") + "\n\n")
         return "".join(lines)
 

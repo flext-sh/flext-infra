@@ -129,6 +129,28 @@ class FlextInfraUtilitiesRopeAnalysis(
         return None
 
     @staticmethod
+    def _source_class_info(source: str) -> dict[str, m.Infra.ClassInfo]:
+        """Parse class declarations directly from source as a fallback to rope."""
+        class_info: dict[str, m.Infra.ClassInfo] = {}
+        for lineno, line in enumerate(source.splitlines(), start=1):
+            match = c.Infra.SourceCode.CLASS_WITH_BASES_RE.match(line)
+            if not match:
+                continue
+            name = match.group(1)
+            bases: list[str] = []
+            for base_part in match.group(2).split(","):
+                base_clean = base_part.split("[")[0].strip()
+                terminal = base_clean.rsplit(".", maxsplit=1)[-1]
+                if terminal:
+                    bases.append(terminal)
+            class_info[name] = m.Infra.ClassInfo(
+                name=name,
+                line=lineno,
+                bases=tuple(bases),
+            )
+        return class_info
+
+    @staticmethod
     def get_class_info(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
@@ -136,6 +158,9 @@ class FlextInfraUtilitiesRopeAnalysis(
         """Return ClassInfo (name, line, bases) for all classes in a module."""
         result: MutableSequence[m.Infra.ClassInfo] = []
         try:
+            source_info = FlextInfraUtilitiesRopeAnalysis._source_class_info(
+                resource.read(),
+            )
             pycore = FlextInfraUtilitiesRopeAnalysis.get_pycore(rope_project)
             pymodule = pycore.resource_to_pyobject(resource)
             resource_path = resource.path
@@ -148,6 +173,9 @@ class FlextInfraUtilitiesRopeAnalysis(
                 if origin is None or origin.path != resource_path:
                     continue
                 _, line_candidate = pyname.get_definition_location()
+                source_class = source_info.get(name)
+                if line_candidate is None and source_class is not None:
+                    line_candidate = source_class.line
                 if line_candidate is None:
                     continue
                 bases = [
@@ -155,6 +183,8 @@ class FlextInfraUtilitiesRopeAnalysis(
                     for base in obj.get_superclasses()
                     if (base_name := base.get_name()) is not None
                 ]
+                if source_class is not None and source_class.bases:
+                    bases = list(dict.fromkeys([*bases, *source_class.bases]))
                 result.append(
                     m.Infra.ClassInfo(
                         name=name,

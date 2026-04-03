@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping
 from typing import override
 
 from flext_infra import FlextInfraRopeTransformer, t, u
@@ -27,7 +27,7 @@ class FlextInfraRefactorMROSymbolPropagator(FlextInfraRopeTransformer):
         super().__init__(on_change=on_change)
         self._module_moves = module_moves
 
-    def rewrite_source(self, source: str) -> tuple[str, Sequence[str]]:
+    def rewrite_source(self, source: str) -> t.Infra.TransformResult:
         """Rewrite one source string using the configured MRO move map."""
         self.changes.clear()
         rewritten_source = source
@@ -43,6 +43,16 @@ class FlextInfraRefactorMROSymbolPropagator(FlextInfraRopeTransformer):
                 facade_alias=facade_alias,
                 symbol_paths=symbol_paths,
             )
+            rewritten_source = self._qualify_type_annotations(
+                rewritten_source,
+                facade_alias=facade_alias,
+                symbol_paths=symbol_paths,
+            )
+            rewritten_source = self._qualify_return_annotations(
+                rewritten_source,
+                facade_alias=facade_alias,
+                symbol_paths=symbol_paths,
+            )
         return (rewritten_source, list(self.changes))
 
     @override
@@ -50,7 +60,7 @@ class FlextInfraRefactorMROSymbolPropagator(FlextInfraRopeTransformer):
         self,
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-    ) -> tuple[str, Sequence[str]]:
+    ) -> t.Infra.TransformResult:
         """Apply import and reference rewrites. Returns (new_source, changes)."""
         source = u.Infra.read_source(resource)
         rewritten_source, changes = self.rewrite_source(source)
@@ -63,6 +73,24 @@ class FlextInfraRefactorMROSymbolPropagator(FlextInfraRopeTransformer):
             )
         return (rewritten_source, changes)
 
+    def _apply_symbol_rewrites(
+        self,
+        source: str,
+        symbol_paths: t.StrMapping,
+        pattern_fn: Callable[[str, str], re.Pattern[str]],
+        replacement_fn: Callable[[str, str], str],
+        message_fn: Callable[[str, str], str],
+    ) -> str:
+        """Apply regex rewrites for each symbol in *symbol_paths*."""
+        for old_symbol, target_path in symbol_paths.items():
+            pattern = pattern_fn(old_symbol, target_path)
+            repl = replacement_fn(old_symbol, target_path)
+            new_source = pattern.sub(repl, source)
+            if new_source != source:
+                self._record_change(message_fn(old_symbol, target_path))
+                source = new_source
+        return source
+
     def _rewrite_from_imports(
         self,
         source: str,
@@ -72,19 +100,17 @@ class FlextInfraRefactorMROSymbolPropagator(FlextInfraRopeTransformer):
         symbol_paths: t.StrMapping,
     ) -> str:
         """Rewrite ``from module import OldSymbol`` to ``from module import Facade``."""
-        for old_symbol, target_path in symbol_paths.items():
-            # Match: from module_name import old_symbol (possibly with alias)
-            pattern = re.compile(
-                rf"(from\s+{re.escape(module_name)}\s+import\s+)"
-                rf"(\b{re.escape(old_symbol)}\b)",
-            )
-            new_source = pattern.sub(rf"\1{facade_alias}", source)
-            if new_source != source:
-                self._record_change(
-                    f"Rewired import: {module_name}.{old_symbol} -> {facade_alias}.{target_path}",
-                )
-                source = new_source
-        return source
+        return self._apply_symbol_rewrites(
+            source,
+            symbol_paths,
+            pattern_fn=lambda old, _: re.compile(
+                rf"(from\s+{re.escape(module_name)}\s+import\s+)(\b{re.escape(old)}\b)",
+            ),
+            replacement_fn=lambda _, __: rf"\1{facade_alias}",
+            message_fn=lambda old, tp: (
+                f"Rewired import: {module_name}.{old} -> {facade_alias}.{tp}"
+            ),
+        )
 
     def _qualify_bare_references(
         self,
@@ -94,22 +120,53 @@ class FlextInfraRefactorMROSymbolPropagator(FlextInfraRopeTransformer):
         symbol_paths: t.StrMapping,
     ) -> str:
         """Replace bare symbol references with qualified facade paths."""
-        for old_symbol, target_path in symbol_paths.items():
-            # Skip definition sites (class X, def X, X =, X:)
-            ref_pattern = re.compile(
-                rf"(?<!class\s)(?<!def\s)(?<!\.)(?<!import\s)"
-                rf"\b{re.escape(old_symbol)}\b"
-                rf"(?!\s*[=:](?!=))"
-                rf"(?!\s*\()",
-            )
-            qualified = f"{facade_alias}.{target_path}"
-            new_source = ref_pattern.sub(qualified, source)
-            if new_source != source:
-                self._record_change(
-                    f"Qualified reference: {old_symbol} -> {qualified}",
-                )
-                source = new_source
-        return source
+        return self._apply_symbol_rewrites(
+            source,
+            symbol_paths,
+            pattern_fn=lambda old, _: re.compile(
+                rf"(?<!class\s)(?<!def\s)(?<!\.)(?<!import\s)\b{re.escape(old)}\b(?!\s*[=:](?!=))(?!\s*\()",
+            ),
+            replacement_fn=lambda _, tp: f"{facade_alias}.{tp}",
+            message_fn=lambda old, tp: (
+                f"Qualified reference: {old} -> {facade_alias}.{tp}"
+            ),
+        )
+
+    def _qualify_type_annotations(
+        self,
+        source: str,
+        *,
+        facade_alias: str,
+        symbol_paths: t.StrMapping,
+    ) -> str:
+        """Replace ``: Symbol`` with ``: Facade.Symbol``."""
+        return self._apply_symbol_rewrites(
+            source,
+            symbol_paths,
+            pattern_fn=lambda old, _: re.compile(rf"(:[ \t]*)\b{re.escape(old)}\b"),
+            replacement_fn=lambda _, tp: rf"\1{facade_alias}.{tp}",
+            message_fn=lambda old, tp: (
+                f"Qualified annotation: {old} -> {facade_alias}.{tp}"
+            ),
+        )
+
+    def _qualify_return_annotations(
+        self,
+        source: str,
+        *,
+        facade_alias: str,
+        symbol_paths: t.StrMapping,
+    ) -> str:
+        """Replace ``-> Symbol`` with ``-> Facade.Symbol``."""
+        return self._apply_symbol_rewrites(
+            source,
+            symbol_paths,
+            pattern_fn=lambda old, _: re.compile(rf"(->[ \t]*)\b{re.escape(old)}\b"),
+            replacement_fn=lambda _, tp: rf"\1{facade_alias}.{tp}",
+            message_fn=lambda old, tp: (
+                f"Qualified return: {old} -> {facade_alias}.{tp}"
+            ),
+        )
 
 
 __all__ = ["FlextInfraRefactorMROSymbolPropagator"]

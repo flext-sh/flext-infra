@@ -14,23 +14,15 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from tests import h, m, t
+from tests import FlextInfraTestHelpers as h, m, t
 
 from flext_core import r
 from flext_infra import (
-    FlextInfraBanditGate,
-    FlextInfraMarkdownGate,
-    FlextInfraRuffFormatGate,
-    FlextInfraRuffLintGate,
+    FlextInfraGate,
     FlextInfraWorkspaceChecker,
 )
 
-type GateClass = type[
-    FlextInfraRuffLintGate
-    | FlextInfraRuffFormatGate
-    | FlextInfraBanditGate
-    | FlextInfraMarkdownGate
-]
+type GateClass = type[FlextInfraGate]
 
 
 def create_gate_execution(
@@ -126,6 +118,34 @@ def patch_gate_run(
         gate_class,
         "_run",
         _stub_run(h.stub_run(stdout=stdout, stderr=stderr, returncode=returncode)),
+    )
+
+
+def create_gate_context(
+    workspace_root: Path,
+    *,
+    reports_dir: Path | None = None,
+) -> m.Infra.GateContext:
+    """Build a minimal gate context for direct gate execution in tests."""
+    return m.Infra.GateContext(
+        workspace_root=workspace_root,
+        reports_dir=reports_dir or workspace_root,
+    )
+
+
+def run_gate_check(
+    gate_class: GateClass,
+    workspace_root: Path,
+    project_dir: Path,
+    *,
+    ctx: m.Infra.GateContext | None = None,
+    reports_dir: Path | None = None,
+) -> m.Infra.GateExecution:
+    """Run a gate directly from its real owner instead of the checker facade."""
+    gate = gate_class(workspace_root)
+    return gate.check(
+        project_dir,
+        ctx or create_gate_context(workspace_root, reports_dir=reports_dir),
     )
 
 
@@ -293,7 +313,9 @@ __all__ = [
     "create_checker_project",
     "create_fake_run_projects",
     "create_fake_run_raw",
+    "create_gate_context",
     "create_gate_execution",
     "patch_gate_run",
     "patch_python_dir_detection",
+    "run_gate_check",
 ]

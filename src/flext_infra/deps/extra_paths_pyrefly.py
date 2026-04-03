@@ -11,7 +11,7 @@ class FlextInfraExtraPathsPyrefly:
     """Pyrefly search-path and project-includes computation."""
 
     def _pyrefly_path_rules(self) -> m.Infra.PyreflyConfig.PathRulesConfig:
-        return self._tool_config.tools.pyrefly.path_rules  # type: ignore[attr-defined]
+        return self._tool_config.tools.pyrefly.path_rules
 
     @staticmethod
     def _existing_relative_paths(
@@ -77,7 +77,7 @@ class FlextInfraExtraPathsPyrefly:
             project_pyproject = project_dir / c.Infra.Files.PYPROJECT_FILENAME
             doc_result = u.Infra.read_document(project_pyproject)
             if doc_result.is_success:
-                dep_paths = self.get_dep_paths(doc_result.value, is_root=False)  # type: ignore[attr-defined]
+                dep_paths = self.get_dep_paths(doc_result.value, is_root=False)
                 paths.update(dep_paths)
         shared_paths = self._existing_relative_paths(
             project_dir,

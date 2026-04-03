@@ -17,6 +17,7 @@ from flext_tests import tm
 from tests import m, t
 
 import flext_infra.check.workspace_check as ws_mod
+import flext_infra.check.workspace_check_cli as ws_cli_mod
 import flext_infra.deps.fix_pyrefly_config as fix_pyrefly_mod
 from flext_core import r
 from flext_infra import (
@@ -162,7 +163,7 @@ class TestCheckMainEntryPoint:
 class TestRunCLIExtended:
     def test_fix_pyrefly_config_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
-            ws_mod,
+            ws_cli_mod,
             "FlextInfraConfigFixer",
             _fake_fixer_cls(r[t.StrSequence].ok([])),
         )
@@ -170,7 +171,7 @@ class TestRunCLIExtended:
 
     def test_fix_pyrefly_config_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
-            ws_mod,
+            ws_cli_mod,
             "FlextInfraConfigFixer",
             _fake_fixer_cls(r[t.StrSequence].fail("error")),
         )

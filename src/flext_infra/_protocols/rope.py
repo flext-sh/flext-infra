@@ -217,10 +217,6 @@ class FlextInfraProtocolsRope:
         names_and_aliases: Sequence[tuple[str, str | None]]
         """Imported names and optional aliases."""
 
-        def is_empty(self) -> bool:
-            """Return whether this import statement is empty."""
-            ...
-
     @runtime_checkable
     class RopeFromImportLike(RopeImportInfoLike, Protocol):
         """Structural contract for ``from x import y`` descriptors."""
@@ -281,62 +277,6 @@ class FlextInfraProtocolsRope:
             """Return one change set that rewrites imports."""
             ...
 
-    class RopeProjectFactory(Protocol):
-        """Callable signature for ``rope.base.project.Project``."""
-
-        def __call__(
-            self,
-            projectroot: str,
-            fscommands: object | None = None,
-            ropefolder: str | None = ".ropeproject",
-            **prefs: object,
-        ) -> FlextInfraProtocolsRope.RopeProjectLike:
-            """Create one rope project."""
-            ...
-
-    class RopeChangeSetFactory(Protocol):
-        """Callable signature for ``rope.base.change.ChangeSet``."""
-
-        def __call__(
-            self,
-            description: str,
-        ) -> FlextInfraProtocolsRope.RopeMutableChangesLike:
-            """Create one mutable change set."""
-            ...
-
-    class RopeChangeContentsFactory(Protocol):
-        """Callable signature for ``rope.base.change.ChangeContents``."""
-
-        def __call__(
-            self,
-            resource: FlextInfraProtocolsRope.RopeResourceLike,
-            new_contents: str,
-        ) -> FlextInfraProtocolsRope.RopeChangeLike:
-            """Create one content-replacement change."""
-            ...
-
-    class RopeRenameFactory(Protocol):
-        """Callable signature for ``rope.refactor.rename.Rename``."""
-
-        def __call__(
-            self,
-            project: FlextInfraProtocolsRope.RopeProjectLike,
-            resource: FlextInfraProtocolsRope.RopeResourceLike,
-            offset: int | None = None,
-        ) -> FlextInfraProtocolsRope.RopeRenameLike:
-            """Create one rename refactoring object."""
-            ...
-
-    class RopeImportOrganizerFactory(Protocol):
-        """Callable signature for ``rope.refactor.importutils.ImportOrganizer``."""
-
-        def __call__(
-            self,
-            project: FlextInfraProtocolsRope.RopeProjectLike,
-        ) -> FlextInfraProtocolsRope.RopeImportOrganizerLike:
-            """Create one import organizer."""
-            ...
-
     class RopeGetModuleImportsFn(Protocol):
         """Callable signature for ``rope.refactor.importutils.get_module_imports``."""
 
@@ -346,32 +286,6 @@ class FlextInfraProtocolsRope:
             pymodule: FlextInfraProtocolsRope.RopePyModuleLike,
         ) -> FlextInfraProtocolsRope.RopeModuleImportsLike:
             """Build one module-import helper for the given module."""
-            ...
-
-    class RopeFromImportFactory(Protocol):
-        """Callable signature for ``rope.refactor.importutils.importinfo.FromImport``."""
-
-        def __call__(
-            self,
-            module_name: str,
-            level: int,
-            names_and_aliases: list[tuple[str, str | None]],
-        ) -> FlextInfraProtocolsRope.RopeFromImportLike:
-            """Create one from-import descriptor."""
-            ...
-
-    class RopeFindOccurrencesFn(Protocol):
-        """Callable signature for ``rope.contrib.findit.find_occurrences``."""
-
-        def __call__(
-            self,
-            project: FlextInfraProtocolsRope.RopeProjectLike,
-            resource: FlextInfraProtocolsRope.RopeResourceLike,
-            offset: int,
-            *,
-            in_hierarchy: bool = False,
-        ) -> Sequence[FlextInfraProtocolsRope.RopeLocationLike]:
-            """Find one symbol's occurrences."""
             ...
 
     @runtime_checkable

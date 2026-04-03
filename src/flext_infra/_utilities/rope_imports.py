@@ -3,8 +3,8 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Sequence
-from pathlib import Path
 
 from rope.base.exceptions import RefactoringError, ResourceNotFoundError
 from rope.contrib.findit import find_occurrences
@@ -151,6 +151,7 @@ class FlextInfraUtilitiesRopeImports(FlextInfraUtilitiesRopeCore):
         aliases_to_move = frozenset(aliases)
         if not aliases_to_move:
             return None
+        original_source = resource.read()
         module_imports = FlextInfraUtilitiesRopeImports._get_module_imports(
             rope_project,
             resource,
@@ -158,7 +159,15 @@ class FlextInfraUtilitiesRopeImports(FlextInfraUtilitiesRopeCore):
         if module_imports is None:
             return None
         moved_aliases: t.Infra.StrSet = set()
+        target_import_stmt: p.Infra.RopeImportStatementLike | None = None
+        merged_target_pairs: Sequence[tuple[str, str | None]] = ()
         for import_stmt in module_imports.imports:
+            target_from_import = FlextInfraUtilitiesRopeImports._absolute_from_import(
+                import_stmt.import_info,
+                module_name=target_module,
+            )
+            if target_from_import is not None:
+                target_import_stmt = import_stmt
             from_import = FlextInfraUtilitiesRopeImports._absolute_from_import(
                 import_stmt.import_info,
                 module_name=source_module,
@@ -176,17 +185,53 @@ class FlextInfraUtilitiesRopeImports(FlextInfraUtilitiesRopeCore):
             import_stmt.import_info = FromImport(source_module, 0, kept_pairs)
         if not moved_aliases:
             return None
-        module_imports.add_import(
-            FromImport(
-                target_module,
-                0,
-                [(name, None) for name in sorted(moved_aliases)],
+        if target_import_stmt is not None:
+            target_from_import = FlextInfraUtilitiesRopeImports._absolute_from_import(
+                target_import_stmt.import_info,
+                module_name=target_module,
             )
-        )
-        module_imports.remove_duplicates()
-        module_imports.sort_imports()
+            if target_from_import is not None:
+                merged_pairs = list(target_from_import.names_and_aliases)
+                existing_plain_names = {
+                    name for name, alias in merged_pairs if alias is None
+                }
+                merged_pairs.extend(
+                    (name, None)
+                    for name in sorted(moved_aliases)
+                    if name not in existing_plain_names
+                )
+                merged_target_pairs = tuple(merged_pairs)
+                target_import_stmt.import_info = FromImport(
+                    target_module,
+                    0,
+                    list(merged_target_pairs),
+                )
+        else:
+            module_imports.add_import(
+                FromImport(
+                    target_module,
+                    0,
+                    [(name, None) for name in sorted(moved_aliases)],
+                )
+            )
+            module_imports.sort_imports()
+            merged_target_pairs = tuple((name, None) for name in sorted(moved_aliases))
         updated_source = module_imports.get_changed_source()
-        if updated_source == resource.read():
+        if (
+            merged_target_pairs
+            and FlextInfraUtilitiesRopeImports._uses_parenthesized_from_import(
+                source=original_source,
+                module_name=target_module,
+            )
+        ):
+            updated_source = (
+                FlextInfraUtilitiesRopeImports._format_parenthesized_from_import(
+                    source=updated_source,
+                    module_name=target_module,
+                    names_and_aliases=merged_target_pairs,
+                )
+            )
+        if updated_source == original_source:
             return None
         if apply:
             FlextInfraUtilitiesRopeImports.apply_source_change(
@@ -196,6 +241,33 @@ class FlextInfraUtilitiesRopeImports(FlextInfraUtilitiesRopeCore):
                 description=f"relocate import aliases in <{resource.path}>",
             )
         return updated_source
+
+    @staticmethod
+    def _uses_parenthesized_from_import(*, source: str, module_name: str) -> bool:
+        pattern = re.compile(rf"^from\s+{re.escape(module_name)}\s+import\s+\(")
+        return any(pattern.match(line) for line in source.splitlines())
+
+    @staticmethod
+    def _format_parenthesized_from_import(
+        *,
+        source: str,
+        module_name: str,
+        names_and_aliases: Sequence[tuple[str, str | None]],
+    ) -> str:
+        entries = [
+            (f"{name} as {alias}" if alias else name)
+            for name, alias in names_and_aliases
+        ]
+        replacement = "\n".join([
+            f"from {module_name} import (",
+            *[f"    {entry}," for entry in entries],
+            ")",
+        ])
+        pattern = re.compile(
+            rf"^from\s+{re.escape(module_name)}\s+import\s+.+$",
+            re.MULTILINE,
+        )
+        return pattern.sub(replacement, source, count=1)
 
     @classmethod
     def collapse_submodule_alias_imports(
@@ -259,24 +331,6 @@ class FlextInfraUtilitiesRopeImports(FlextInfraUtilitiesRopeCore):
                 description=f"collapse import aliases in <{resource.path}>",
             )
         return updated_source
-
-    @classmethod
-    def organize_imports_for_path(
-        cls,
-        workspace_root: Path,
-        file_path: Path,
-        *,
-        apply: bool,
-    ) -> bool:
-        """Organize imports for one file path using a temporary rope project."""
-        rope_project = cls.init_rope_project(workspace_root.resolve())
-        try:
-            resource = cls.get_resource_from_path(rope_project, file_path.resolve())
-            if resource is None:
-                return False
-            return cls.organize_imports(rope_project, resource, apply=apply)
-        finally:
-            rope_project.close()
 
     @staticmethod
     def add_import(

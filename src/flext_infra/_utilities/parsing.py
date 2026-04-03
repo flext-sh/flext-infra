@@ -1,31 +1,37 @@
 """Parsing utilities for infrastructure code analysis.
 
 All AST access is deferred to function bodies via ``import ast`` to keep the
-module-level namespace free of ast/cst imports.
+module-level namespace free of ast/cst imports. Import parsing, alias scanning,
+and rule normalization live in this namespace as part of the same parsing
+domain.
 """
 
 from __future__ import annotations
 
 import ast
-from collections.abc import Sequence
+import re
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
+from typing import ClassVar
 
-from flext_infra import c
+from pydantic import TypeAdapter, ValidationError
+
+from flext_infra import CONTAINER_DICT_SEQ_ADAPTER, c, m, t
 
 
 class FlextInfraUtilitiesParsing:
-    """Static parsing utilities for Python source analysis."""
+    """Static parsing utilities for Python source and import analysis."""
 
     _DOCSTRING_QUOTES = ('"""', "'''")
     _SINGLE_LINE_DOCSTRING_QUOTE_COUNT = 2
-
-    @staticmethod
-    def parse_ast_from_source(source: str) -> ast.Module | None:
-        """Parse source text into an AST module."""
-        try:
-            return ast.parse(source)
-        except SyntaxError:
-            return None
+    DEF_CLASS_RE: ClassVar[re.Pattern[str]] = c.Infra.SourceCode.DEF_CLASS_RE
+    IMPORT_FROM_RE: ClassVar[re.Pattern[str]] = c.Infra.SourceCode.FROM_IMPORT_RE
+    IMPORT_RE: ClassVar[re.Pattern[str]] = c.Infra.SourceCode.IMPORT_RE
+    ASSIGN_RE: ClassVar[re.Pattern[str]] = c.Infra.SourceCode.ASSIGN_RE
+    FINAL_ASSIGN_RE: ClassVar[re.Pattern[str]] = c.Infra.SourceCode.FINAL_ASSIGN_RE
+    _RULE_CONFIG_SEQ_ADAPTER: TypeAdapter[
+        Sequence[m.Infra.ImportModernizerRuleConfig]
+    ] = TypeAdapter(Sequence[m.Infra.ImportModernizerRuleConfig])
 
     @staticmethod
     def parse_module_ast(file_path: Path) -> ast.Module | None:
@@ -38,23 +44,6 @@ class FlextInfraUtilitiesParsing:
             return None
 
     @staticmethod
-    def ast_extract_base_name(base_expr: ast.expr) -> str:
-        """Extract the base class name from an AST base expression.
-
-        Recursively unwraps ``Subscript`` (e.g. ``Generic[T]``), handles
-        ``Name`` and ``Attribute`` nodes.
-        """
-        if isinstance(base_expr, ast.Name):
-            return base_expr.id
-        if isinstance(base_expr, ast.Attribute):
-            return base_expr.attr
-        if isinstance(base_expr, ast.Subscript):
-            return FlextInfraUtilitiesParsing.ast_extract_base_name(
-                base_expr.value,
-            )
-        return ""
-
-    @staticmethod
     def is_module_toplevel(file_path: Path) -> bool:
         """Determine if a file is at the package root level (Facade level)."""
         parts = file_path.resolve().parts
@@ -65,23 +54,6 @@ class FlextInfraUtilitiesParsing:
             return (file_path.parent / c.Infra.Files.INIT_PY).is_file() and not (
                 file_path.parent.parent / c.Infra.Files.INIT_PY
             ).is_file()
-
-    @staticmethod
-    def insert_import_statement(source: str, import_stmt: str) -> str:
-        """Insert an import statement into source at the correct position.
-
-        Uses regex-based line scanning instead of CST parsing.
-        """
-        normalized_import = import_stmt.strip()
-        if not normalized_import:
-            return source
-        for line in source.splitlines():
-            if line.strip() == normalized_import:
-                return source
-        lines = source.splitlines(keepends=True)
-        insert_idx = FlextInfraUtilitiesParsing._find_import_insert_position(lines)
-        lines.insert(insert_idx, normalized_import + "\n")
-        return "".join(lines)
 
     @staticmethod
     def find_import_insert_position(
@@ -185,36 +157,6 @@ class FlextInfraUtilitiesParsing:
         )
 
     @staticmethod
-    def ast_assign_target_name(node: ast.stmt) -> str:
-        """Extract the target name from Assign or AnnAssign."""
-        if isinstance(node, ast.Assign) and node.targets:
-            first = node.targets[0]
-            return first.id if isinstance(first, ast.Name) else ""
-        if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
-            return node.target.id
-        return ""
-
-    @staticmethod
-    def derive_class_prefix(project_root: Path) -> str:
-        """Derive PascalCase class prefix from first package under src/."""
-        src_dir = project_root / c.Infra.Paths.DEFAULT_SRC_DIR
-        if not src_dir.is_dir():
-            return ""
-        for child in sorted(src_dir.iterdir()):
-            if child.is_dir() and (child / c.Infra.Files.INIT_PY).exists():
-                return "".join(part.title() for part in child.name.split("_"))
-        return ""
-
-    @staticmethod
-    def is_ast_docstring(node: ast.stmt) -> bool:
-        """Check if a statement is a module-level docstring."""
-        return (
-            isinstance(node, ast.Expr)
-            and isinstance(node.value, ast.Constant)
-            and isinstance(node.value.value, str)
-        )
-
-    @staticmethod
     def looks_like_facade_file(*, file_path: Path, source: str) -> bool:
         """Check if a file looks like a namespace facade (e.g. models.py with ``m = FlextXxxModels``)."""
         family = c.Infra.NAMESPACE_FILE_TO_FAMILY.get(file_path.name)
@@ -232,6 +174,157 @@ class FlextInfraUtilitiesParsing:
             if line.strip().startswith(prefix):
                 return index
         return 1
+
+    @staticmethod
+    def parse_import_names(names_str: str) -> Sequence[tuple[str, str]]:
+        """Parse 'A, B as C, D' into [(name, bound), ...]."""
+        result: MutableSequence[tuple[str, str]] = []
+        for part in names_str.split(","):
+            part = part.strip().rstrip("\\").strip()
+            if not part or part.startswith(("(", ")")):
+                continue
+            if " as " in part:
+                name, alias = part.split(" as ", 1)
+                result.append((name.strip(), alias.strip()))
+            else:
+                result.append((part, part))
+        return result
+
+    @staticmethod
+    def parse_param_names(params_str: str) -> t.Infra.StrSet:
+        """Parse parameter names from a function signature string."""
+        names: t.Infra.StrSet = set()
+        for part in params_str.split(","):
+            item = part.strip()
+            if not item or item == "/":
+                continue
+            name = item.split(":")[0].split("=")[0].strip().lstrip("*")
+            if name:
+                names.add(name)
+        return names
+
+    @staticmethod
+    def collect_from_import_bound_names(
+        source: str,
+        *,
+        module_name: str,
+    ) -> t.Infra.StrSet:
+        """Collect bound names imported from a target module."""
+        rh = FlextInfraUtilitiesParsing
+        bound_names: t.Infra.StrSet = set()
+        for match in c.Infra.SourceCode.FROM_IMPORT_RE.finditer(source):
+            if match.group(1) != module_name:
+                continue
+            bound_names.update(
+                bound for _name, bound in rh.parse_import_names(match.group(2))
+            )
+        for match in c.Infra.SourceCode.FROM_IMPORT_BLOCK_RE.finditer(source):
+            if match.group(1) != module_name:
+                continue
+            bound_names.update(
+                bound for _name, bound in rh.parse_import_names(match.group(2))
+            )
+        return bound_names
+
+    @staticmethod
+    def parse_forbidden_rules(
+        value: t.Infra.InfraValue,
+    ) -> Sequence[m.Infra.ImportModernizerRuleConfig]:
+        """Parse and validate forbidden import rule configs."""
+        try:
+            raw_items: Sequence[t.Infra.ContainerDict] = (
+                CONTAINER_DICT_SEQ_ADAPTER.validate_python(value)
+            )
+        except ValidationError:
+            return []
+        normalized: Sequence[t.Infra.ContainerDict] = [
+            {
+                "module": item.get("module", ""),
+                "symbol_mapping": item.get("symbol_mapping", {}),
+            }
+            for item in raw_items
+        ]
+        try:
+            return FlextInfraUtilitiesParsing._RULE_CONFIG_SEQ_ADAPTER.validate_python(
+                normalized,
+            )
+        except ValidationError:
+            return []
+
+    @staticmethod
+    def collect_blocked_aliases(
+        source: str,
+        runtime_aliases: t.Infra.StrSet,
+    ) -> t.Infra.StrSet:
+        """Collect aliases blocked by definitions, non-core imports, and assignments."""
+        rh = FlextInfraUtilitiesParsing
+        blocked: t.Infra.StrSet = set()
+        for match in rh.DEF_CLASS_RE.finditer(source):
+            name = match.group(1)
+            if name in runtime_aliases:
+                blocked.add(name)
+        for match in rh.IMPORT_FROM_RE.finditer(source):
+            module = match.group(1)
+            if module == c.Infra.Packages.CORE_UNDERSCORE:
+                continue
+            for _name, bound in rh.parse_import_names(match.group(2)):
+                if bound in runtime_aliases:
+                    blocked.add(bound)
+        for match in rh.IMPORT_RE.finditer(source):
+            for _name, bound in rh.parse_import_names(match.group(1)):
+                if bound in runtime_aliases:
+                    blocked.add(bound)
+        for match in rh.ASSIGN_RE.finditer(source):
+            name = match.group(1)
+            if name in runtime_aliases:
+                blocked.add(name)
+        return blocked
+
+    @staticmethod
+    def collect_shadowed_aliases(
+        source: str,
+        runtime_aliases: t.Infra.StrSet,
+    ) -> t.Infra.StrSet:
+        """Collect runtime-alias names shadowed inside function bodies."""
+        shadowed: t.Infra.StrSet = set()
+        for match in c.Infra.SourceCode.FUNC_PARAM_RE.finditer(source):
+            params = match.group(1)
+            for param in params.split(","):
+                param_name = param.strip().split(":")[0].split("=")[0].strip()
+                if param_name.startswith("*"):
+                    param_name = param_name.lstrip("*")
+                if param_name in runtime_aliases:
+                    shadowed.add(param_name)
+        return shadowed
+
+    @staticmethod
+    def find_final_candidates(source: str) -> Sequence[m.Infra.MROSymbolCandidate]:
+        """Find module-level Final-annotated constants via regex."""
+        rh = FlextInfraUtilitiesParsing
+        candidates: MutableSequence[m.Infra.MROSymbolCandidate] = []
+        for i, line in enumerate(source.splitlines(), start=1):
+            stripped = line.lstrip()
+            if line != stripped and stripped:
+                continue
+            match = rh.FINAL_ASSIGN_RE.match(stripped)
+            if (
+                match
+                and c.Infra.SourceCode.CONSTANT_NAME_RE.match(match.group(1))
+                is not None
+            ):
+                candidates.append(
+                    m.Infra.MROSymbolCandidate(symbol=match.group(1), line=i),
+                )
+        return candidates
+
+    @staticmethod
+    def first_constants_class_name(source: str) -> str:
+        """Find the first class ending with Constants suffix."""
+        for match in c.Infra.SourceCode.CLASS_NAME_RE.finditer(source):
+            name = match.group(1)
+            if name.endswith(c.Infra.CONSTANTS_CLASS_SUFFIX):
+                return name
+        return ""
 
 
 __all__ = ["FlextInfraUtilitiesParsing"]

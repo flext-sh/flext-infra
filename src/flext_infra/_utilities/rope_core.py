@@ -17,6 +17,7 @@ from rope.base.project import Project
 from rope.base.resources import File
 from rope.refactor.importutils import get_module_imports
 
+import flext_infra
 from flext_infra import c, m, p, t
 
 
@@ -105,6 +106,7 @@ class FlextInfraUtilitiesRopeCore:
         dry_run: bool,
     ) -> Sequence[m.Infra.Result]:
         """Run workspace-scale semantic passes after local refactors."""
+        cls._ensure_default_post_hooks()
         results: MutableSequence[m.Infra.Result] = []
         for hook in cls._post_hooks:
             results.extend(hook(path, dry_run=dry_run))
@@ -118,6 +120,14 @@ class FlextInfraUtilitiesRopeCore:
         """Register a post-processing hook for rope refactoring pipelines."""
         if hook not in cls._post_hooks:
             cls._post_hooks.append(hook)
+
+    @classmethod
+    def _ensure_default_post_hooks(cls) -> None:
+        if cls._post_hooks:
+            return
+        cls.register_rope_post_hook(
+            flext_infra.FlextInfraRefactorMigrateToClassMRO.run_as_hook,
+        )
 
     @staticmethod
     def get_pycore(rope_project: t.Infra.RopeProject) -> p.Infra.RopePyCoreLike:

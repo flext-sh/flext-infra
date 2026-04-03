@@ -81,7 +81,7 @@ class FlextInfraDocBuilder:
 
     def execute_command(self, params: m.Infra.DocsBuildInput) -> r[bool]:
         """CLI handler — accepts input model, delegates to build."""
-        resolved_workspace = Path(params.workspace) if params.workspace else Path.cwd()
+        resolved_workspace = u.Infra.resolve_workspace(params)
         result = self.build(
             workspace_root=resolved_workspace,
             project=params.project,

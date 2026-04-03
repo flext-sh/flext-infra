@@ -27,7 +27,7 @@ if _t.TYPE_CHECKING:
     from flext_infra.codegen._codegen_generation import FlextInfraCodegenGeneration
 
     _codegen_generation_helpers = _flext_infra_codegen__codegen_generation_helpers
-    import flext_infra.codegen._codegen_snapshot as _flext_infra_codegen__codegen_snapshot
+    import flext_infra.codegen._constants as _flext_infra_codegen__constants
     from flext_infra.codegen._codegen_generation_helpers import (
         _build_lazy_entries,
         _collapse_to_children,
@@ -40,17 +40,19 @@ if _t.TYPE_CHECKING:
         _is_local_module,
     )
 
-    _codegen_snapshot = _flext_infra_codegen__codegen_snapshot
-    import flext_infra.codegen._constants as _flext_infra_codegen__constants
-    from flext_infra.codegen._codegen_snapshot import FlextInfraCodegenSnapshot
-
     _constants = _flext_infra_codegen__constants
     import flext_infra.codegen._models as _flext_infra_codegen__models
     from flext_infra.codegen._constants import FlextInfraCodegenConstants
 
     _models = _flext_infra_codegen__models
-    import flext_infra.codegen._utilities as _flext_infra_codegen__utilities
+    import flext_infra.codegen._models_deduplication as _flext_infra_codegen__models_deduplication
     from flext_infra.codegen._models import FlextInfraCodegenModels
+
+    _models_deduplication = _flext_infra_codegen__models_deduplication
+    import flext_infra.codegen._utilities as _flext_infra_codegen__utilities
+    from flext_infra.codegen._models_deduplication import (
+        FlextInfraCodegenDeduplicationModels,
+    )
 
     _utilities = _flext_infra_codegen__utilities
     import flext_infra.codegen.census as _flext_infra_codegen_census
@@ -102,20 +104,19 @@ _LAZY_IMPORTS = {
     "FlextInfraCodegenCensus": "flext_infra.codegen.census",
     "FlextInfraCodegenConstants": "flext_infra.codegen._constants",
     "FlextInfraCodegenConstantsQualityGate": "flext_infra.codegen.constants_quality_gate",
+    "FlextInfraCodegenDeduplicationModels": "flext_infra.codegen._models_deduplication",
     "FlextInfraCodegenFixer": "flext_infra.codegen.fixer",
     "FlextInfraCodegenGeneration": "flext_infra.codegen._codegen_generation",
     "FlextInfraCodegenLazyInit": "flext_infra.codegen.lazy_init",
     "FlextInfraCodegenModels": "flext_infra.codegen._models",
     "FlextInfraCodegenPyTyped": "flext_infra.codegen.py_typed",
     "FlextInfraCodegenScaffolder": "flext_infra.codegen.scaffolder",
-    "FlextInfraCodegenSnapshot": "flext_infra.codegen._codegen_snapshot",
     "FlextInfraUtilitiesCodegen": "flext_infra.codegen._utilities",
     "_build_lazy_entries": "flext_infra.codegen._codegen_generation_helpers",
     "_cli_codegen_consolidate": "flext_infra.codegen._cli_codegen_consolidate",
     "_cli_codegen_handlers": "flext_infra.codegen._cli_codegen_handlers",
     "_codegen_generation": "flext_infra.codegen._codegen_generation",
     "_codegen_generation_helpers": "flext_infra.codegen._codegen_generation_helpers",
-    "_codegen_snapshot": "flext_infra.codegen._codegen_snapshot",
     "_collapse_to_children": "flext_infra.codegen._codegen_generation_helpers",
     "_constants": "flext_infra.codegen._constants",
     "_emit_type_checking_module": "flext_infra.codegen._codegen_generation_helpers",
@@ -126,6 +127,7 @@ _LAZY_IMPORTS = {
     "_has_flext_types": "flext_infra.codegen._codegen_generation_helpers",
     "_is_local_module": "flext_infra.codegen._codegen_generation_helpers",
     "_models": "flext_infra.codegen._models",
+    "_models_deduplication": "flext_infra.codegen._models_deduplication",
     "_utilities": "flext_infra.codegen._utilities",
     "c": ("flext_core.constants", "FlextConstants"),
     "census": "flext_infra.codegen.census",
@@ -154,20 +156,19 @@ __all__ = [
     "FlextInfraCodegenCensus",
     "FlextInfraCodegenConstants",
     "FlextInfraCodegenConstantsQualityGate",
+    "FlextInfraCodegenDeduplicationModels",
     "FlextInfraCodegenFixer",
     "FlextInfraCodegenGeneration",
     "FlextInfraCodegenLazyInit",
     "FlextInfraCodegenModels",
     "FlextInfraCodegenPyTyped",
     "FlextInfraCodegenScaffolder",
-    "FlextInfraCodegenSnapshot",
     "FlextInfraUtilitiesCodegen",
     "_build_lazy_entries",
     "_cli_codegen_consolidate",
     "_cli_codegen_handlers",
     "_codegen_generation",
     "_codegen_generation_helpers",
-    "_codegen_snapshot",
     "_collapse_to_children",
     "_constants",
     "_emit_type_checking_module",
@@ -178,6 +179,7 @@ __all__ = [
     "_has_flext_types",
     "_is_local_module",
     "_models",
+    "_models_deduplication",
     "_utilities",
     "c",
     "census",

@@ -83,7 +83,7 @@ class FlextInfraUtilitiesPaths:
         if workspace_root is not None:
             return workspace_root.resolve()
         result = FlextInfraUtilitiesPaths.workspace_root()
-        return result.value if result.is_success else Path.cwd().resolve()
+        return result.unwrap_or(Path.cwd().resolve())
 
 
 __all__ = ["FlextInfraUtilitiesPaths"]

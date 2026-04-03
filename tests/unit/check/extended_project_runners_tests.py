@@ -50,7 +50,7 @@ class TestCheckProjectRunners:
             return _FakeGate(gate_name)
 
         monkeypatch.setattr(checker._registry, "create", _fake_create)
-        result = checker._check_project(
+        result = checker._check_project_with_ctx(
             tmp_path,
             ["lint", "format", "pyrefly"],
             m.Infra.GateContext(workspace_root=tmp_path, reports_dir=tmp_path),
@@ -80,11 +80,20 @@ class TestJsonWriteFailure:
 
         monkeypatch.setattr(FlextInfraUtilities.Infra, "write_json", _fake_write_json)
 
-        def _fake_lint(_project_dir: Path) -> m.Infra.GateExecution:
-            del _project_dir
-            return create_gate_execution("lint", "p", passed=True)
+        class _FakeLintGate:
+            def check(
+                self,
+                _project_dir: Path,
+                _ctx: m.Infra.GateContext,
+            ) -> m.Infra.GateExecution:
+                del _project_dir, _ctx
+                return create_gate_execution("lint", "p", passed=True)
 
-        monkeypatch.setattr(checker, "_run_ruff_lint", _fake_lint)
+        def _fake_create(_gate_name: str, _workspace_root: Path) -> _FakeLintGate:
+            del _gate_name, _workspace_root
+            return _FakeLintGate()
+
+        monkeypatch.setattr(checker._registry, "create", _fake_create)
         result = checker.run_projects(["test-project"], ["lint"])
         tm.fail(result, has="write error")
 

@@ -12,7 +12,7 @@ from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
 from flext_infra._utilities.rope import FlextInfraUtilitiesRope
 from flext_infra.constants import FlextInfraConstants as c
 from flext_infra.models import FlextInfraModels as m
-from flext_infra.refactor._utilities_namespace_common import (
+from flext_infra.refactor._utilities_namespace_analysis import (
     FlextInfraUtilitiesRefactorNamespaceCommon,
 )
 from flext_infra.transformers._utilities_normalizer import (
@@ -250,15 +250,6 @@ class FlextInfraUtilitiesRefactorNamespaceRuntime(
             )
             if refactored_code is None:
                 return None
-            if apply:
-                organized = FlextInfraUtilitiesRope.organize_imports(
-                    rope_project,
-                    resource,
-                    apply=True,
-                )
-                if organized:
-                    changes.append("organized imports with rope")
-                FlextInfraUtilitiesFormatting.run_ruff_fix(file_path)
             return m.Infra.Result(
                 file_path=file_path,
                 success=True,
@@ -300,6 +291,12 @@ class FlextInfraUtilitiesRefactorNamespaceRuntime(
         if not target_module.startswith(f"{package_name}."):
             return True
         if target_module in {current_module, package_name}:
+            return False
+        target_leaf = target_module.rsplit(".", maxsplit=1)[-1]
+        private_family_prefix = f"{package_name}._{target_leaf}"
+        if current_module == private_family_prefix or current_module.startswith(
+            f"{private_family_prefix}."
+        ):
             return False
         return current_module not in reachability.get(target_module, frozenset())
 

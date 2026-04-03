@@ -61,50 +61,6 @@ class FlextInfraUtilitiesRopeSource(FlextInfraUtilitiesRopeCore):
         return new_source, count
 
     @staticmethod
-    def remove_lines_matching(
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
-        pattern: str | re.Pattern[str],
-        *,
-        apply: bool = True,
-    ) -> tuple[str, int]:
-        """Remove all lines matching pattern. Returns (new_source, removed_count)."""
-        source = resource.read()
-        compiled = re.compile(pattern) if isinstance(pattern, str) else pattern
-        kept: list[str] = []
-        removed = 0
-        for line in source.splitlines(keepends=True):
-            if compiled.search(line):
-                removed += 1
-            else:
-                kept.append(line)
-        if removed == 0:
-            return source, 0
-        new_source = "".join(kept)
-        if apply:
-            FlextInfraUtilitiesRopeSource.apply_source_change(
-                rope_project,
-                resource,
-                new_source,
-                description=f"remove {removed} lines in <{resource.path}>",
-            )
-        return new_source, removed
-
-    @staticmethod
-    def get_class_source(
-        resource: t.Infra.RopeResource,
-        class_name: str,
-    ) -> str | None:
-        """Extract the full source of a class definition from a resource."""
-        source = resource.read()
-        pattern = re.compile(
-            rf"^(class\s+{re.escape(class_name)}\b.*?)\n(?=\nclass\s|\n[a-zA-Z_]|\Z)",
-            re.MULTILINE | re.DOTALL,
-        )
-        match = pattern.search(source)
-        return match.group(1) if match else None
-
-    @staticmethod
     def get_class_body_lines(
         resource: t.Infra.RopeResource,
         class_name: str,
@@ -176,54 +132,6 @@ class FlextInfraUtilitiesRopeSource(FlextInfraUtilitiesRopeCore):
                 description=f"remove {len(removed)} aliases in <{resource.path}>",
             )
         return new_source, removed
-
-    @staticmethod
-    def replace_class_bases(
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
-        class_name: str,
-        new_bases: t.StrSequence,
-        *,
-        apply: bool = True,
-    ) -> str | None:
-        """Replace the base classes of a class definition."""
-        source = resource.read()
-        pattern = re.compile(
-            rf"^(class\s+{re.escape(class_name)})\s*\([^)]*\)\s*:",
-            re.MULTILINE,
-        )
-        bases_str = ", ".join(new_bases) if new_bases else ""
-        new_definition = rf"\1({bases_str}):" if bases_str else r"\1:"
-        new_source, count = pattern.subn(new_definition, source, count=1)
-        if count == 0 or new_source == source:
-            return None
-        if apply:
-            FlextInfraUtilitiesRopeSource.apply_source_change(
-                rope_project,
-                resource,
-                new_source,
-                description=f"replace bases of {class_name} in <{resource.path}>",
-            )
-        return new_source
-
-    @staticmethod
-    def replace_annotation(
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
-        old_annotation: str,
-        new_annotation: str,
-        *,
-        apply: bool = True,
-    ) -> tuple[str, int]:
-        """Replace type annotation patterns in source."""
-        pattern = re.compile(rf"\b{re.escape(old_annotation)}\b")
-        return FlextInfraUtilitiesRopeSource.replace_in_source(
-            rope_project,
-            resource,
-            pattern,
-            new_annotation,
-            apply=apply,
-        )
 
     @staticmethod
     def batch_replace_annotations(

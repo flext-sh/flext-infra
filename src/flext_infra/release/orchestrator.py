@@ -206,9 +206,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
         changes_result = self._collect_changes(workspace_root, previous, tag)
         changes: str = str(changes_result.value) if changes_result.is_success else ""
         projects_result = u.Infra.resolve_projects(workspace_root, ctx.project_names)
-        project_list: Sequence[m.Infra.ProjectInfo] = (
-            projects_result.value if projects_result.is_success else []
-        )
+        project_list: Sequence[m.Infra.ProjectInfo] = projects_result.unwrap_or([])
         return u.Infra.generate_notes(
             ctx.version,
             tag,

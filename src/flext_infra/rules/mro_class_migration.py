@@ -21,7 +21,7 @@ class FlextInfraRefactorMROClassMigrationRule:
         resource: t.Infra.RopeResource,
         *,
         dry_run: bool = False,
-    ) -> tuple[str, t.StrSequence]:
+    ) -> t.Infra.TransformResult:
         """Migrate module-level Final constants into the facade class."""
         file_path = Path(rope_project.root.real_path) / resource.path
         if file_path.name != c.Infra.CONSTANTS_FILE_GLOB:

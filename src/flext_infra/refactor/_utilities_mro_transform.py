@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import c, m, t
@@ -55,26 +56,41 @@ class FlextInfraUtilitiesRefactorMroTransform:
         moved_code: list[str] = []
 
         for cand in candidates:
-            idx = cand.line - 1
-            if idx < 0 or idx >= len(lines):
+            start_idx = cand.line - 1
+            end_idx = (cand.end_line or cand.line) - 1
+            if (
+                start_idx < 0
+                or start_idx >= len(lines)
+                or end_idx < start_idx
+                or end_idx >= len(lines)
+            ):
                 continue
 
-            line_str = lines[idx]
+            block_lines = list(lines[start_idx : end_idx + 1])
             moved_symbols.insert(0, cand.symbol)
             target = cand.symbol.lstrip("_") or cand.symbol
-            symbol_map[cand.symbol] = f"{facade_alias}.{target}"
+            symbol_map[cand.symbol] = target
 
             # Replace target name if symbol was private
             if cand.symbol != target:
-                line_str = re.sub(rf"\b{cand.symbol}\b", target, line_str, count=1)
+                block_lines = (
+                    FlextInfraUtilitiesRefactorMroTransform._rename_symbol_in_block(
+                        block_lines=block_lines,
+                        symbol=cand.symbol,
+                        target=target,
+                    )
+                )
 
-            moved_code.insert(0, f"    {line_str}")
-            del lines[idx]
+            moved_code = (
+                FlextInfraUtilitiesRefactorMroTransform._indent_block(block_lines)
+                + moved_code
+            )
+            del lines[start_idx : end_idx + 1]
 
             # Remove trailing blank lines above
-            while idx - 1 >= 0 and not lines[idx - 1].strip():
-                del lines[idx - 1]
-                idx -= 1
+            while start_idx - 1 >= 0 and not lines[start_idx - 1].strip():
+                del lines[start_idx - 1]
+                start_idx -= 1
 
         # Find or create class
         class_found = False
@@ -101,11 +117,11 @@ class FlextInfraUtilitiesRefactorMroTransform:
             created_classes = (class_name,)
 
         new_source = "\n".join(lines) + "\n"
-
-        # Replace occurrences of bare symbols with facade_alias.symbol
-        for symbol, target_path in symbol_map.items():
-            pattern = re.compile(rf"\b{symbol}\b")
-            new_source = pattern.sub(target_path, new_source)
+        new_source = FlextInfraUtilitiesRefactorMroTransform._qualify_local_references(
+            source=new_source,
+            facade_alias=facade_alias,
+            symbol_map=symbol_map,
+        )
 
         migration = m.Infra.MROFileMigration(
             file=scan_result.file,
@@ -114,6 +130,62 @@ class FlextInfraUtilitiesRefactorMroTransform:
             created_classes=created_classes,
         )
         return (new_source, migration, symbol_map)
+
+    @staticmethod
+    def _rename_symbol_in_block(
+        *,
+        block_lines: Sequence[str],
+        symbol: str,
+        target: str,
+    ) -> list[str]:
+        renamed_lines = list(block_lines)
+        for index, line in enumerate(renamed_lines):
+            if f"class {symbol}" not in line and not re.match(
+                rf"^\s*{re.escape(symbol)}\b",
+                line,
+            ):
+                continue
+            renamed_lines[index] = re.sub(
+                rf"\b{re.escape(symbol)}\b",
+                target,
+                line,
+                count=1,
+            )
+            break
+        return renamed_lines
+
+    @staticmethod
+    def _indent_block(block_lines: Sequence[str]) -> list[str]:
+        return [("    " + line) if line else "" for line in block_lines]
+
+    @staticmethod
+    def _qualify_local_references(
+        *,
+        source: str,
+        facade_alias: str,
+        symbol_map: t.StrMapping,
+    ) -> str:
+        updated_source = source
+        for symbol, target_path in symbol_map.items():
+            qualified = f"{facade_alias}.{target_path}"
+            bare_pattern = re.compile(
+                rf"(?<!class\s)(?<!def\s)(?<!\.)(?<!import\s)"
+                rf"\b{re.escape(symbol)}\b"
+                rf"(?!\s*[=:](?!=))"
+                rf"(?!\s*\()",
+            )
+            annotation_pattern = re.compile(rf"(:[ \t]*)\b{re.escape(symbol)}\b")
+            return_pattern = re.compile(rf"(->[ \t]*)\b{re.escape(symbol)}\b")
+            updated_source = bare_pattern.sub(qualified, updated_source)
+            updated_source = annotation_pattern.sub(
+                rf"\1{qualified}",
+                updated_source,
+            )
+            updated_source = return_pattern.sub(
+                rf"\1{qualified}",
+                updated_source,
+            )
+        return updated_source
 
 
 __all__ = ["FlextInfraUtilitiesRefactorMroTransform"]

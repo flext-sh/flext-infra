@@ -134,7 +134,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
             if not FlextUtilities.is_mapping(dep_entry):
                 continue
             dep_path_val: t.Infra.InfraValue = dep_entry.get("path")
-            dep_path = FlextUtilities.ensure_str(dep_path_val).strip()
+            dep_path = dep_path_val.strip() if isinstance(dep_path_val, str) else ""
             if dep_path:
                 dep_names.add(Path(dep_path.removeprefix("./")).name)
 

@@ -1,4 +1,4 @@
-"""Tests for workspace checker gate runners — bandit and markdown.
+"""Tests for gate runners — bandit and markdown.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -6,18 +6,18 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable, MutableSequence
+from collections.abc import MutableSequence
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 from flext_tests import tm
 from tests import create_checker_project, m, patch_gate_run, t
+from tests.unit.check._shared_fixtures import run_gate_check
 
 from flext_infra import (
     FlextInfraBanditGate,
     FlextInfraMarkdownGate,
-    FlextInfraWorkspaceChecker,
 )
 
 GateClass = type[FlextInfraBanditGate] | type[FlextInfraMarkdownGate]
@@ -41,12 +41,11 @@ def _run_stub(
 
 
 def _run_failed_gate_check(
-    checker: FlextInfraWorkspaceChecker,
+    workspace_root: Path,
     project_dir: Path,
     monkeypatch: pytest.MonkeyPatch,
     *,
     gate_class: GateClass,
-    gate_runner: Callable[[FlextInfraWorkspaceChecker, Path], m.Infra.GateExecution],
     stdout: str = "",
     stderr: str = "",
 ) -> m.Infra.GateExecution:
@@ -58,7 +57,7 @@ def _run_failed_gate_check(
         stderr=stderr,
         returncode=1,
     )
-    return gate_runner(checker, project_dir)
+    return run_gate_check(gate_class, workspace_root, project_dir)
 
 
 def _assert_failed_single_issue(result: m.Infra.GateExecution) -> None:
@@ -68,8 +67,8 @@ def _assert_failed_single_issue(result: m.Infra.GateExecution) -> None:
 
 class TestWorkspaceCheckerRunBandit:
     def test_run_bandit_no_src_dir(self, tmp_path: Path) -> None:
-        checker, proj_dir = _create_checker_project(tmp_path)
-        result = checker._run_bandit(proj_dir)
+        _, proj_dir = _create_checker_project(tmp_path)
+        result = run_gate_check(FlextInfraBanditGate, tmp_path, proj_dir)
         tm.that(result.result.passed, eq=True)
         tm.that(len(result.issues), eq=0)
 
@@ -78,7 +77,7 @@ class TestWorkspaceCheckerRunBandit:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker, proj_dir = _create_checker_project(tmp_path, with_src=True)
+        _, proj_dir = _create_checker_project(tmp_path, with_src=True)
         json_output = (
             '{"results": [{"filename": "a.py", "line_number": 1,'
             ' "test_id": "B101", "issue_text": "Assert used",'
@@ -90,7 +89,7 @@ class TestWorkspaceCheckerRunBandit:
             stdout=json_output,
             returncode=1,
         )
-        result = checker._run_bandit(proj_dir)
+        result = run_gate_check(FlextInfraBanditGate, tmp_path, proj_dir)
         tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
 
@@ -99,13 +98,12 @@ class TestWorkspaceCheckerRunBandit:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker, proj_dir = _create_checker_project(tmp_path, with_src=True)
+        _, proj_dir = _create_checker_project(tmp_path, with_src=True)
         result = _run_failed_gate_check(
-            checker,
+            tmp_path,
             proj_dir,
             monkeypatch,
             gate_class=FlextInfraBanditGate,
-            gate_runner=FlextInfraWorkspaceChecker._run_bandit,
             stdout="invalid json",
         )
         tm.that(not result.result.passed, eq=True)
@@ -113,8 +111,8 @@ class TestWorkspaceCheckerRunBandit:
 
 class TestWorkspaceCheckerRunMarkdown:
     def test_run_markdown_no_files(self, tmp_path: Path) -> None:
-        checker, proj_dir = _create_checker_project(tmp_path)
-        result = checker._run_markdown(proj_dir)
+        _, proj_dir = _create_checker_project(tmp_path)
+        result = run_gate_check(FlextInfraMarkdownGate, tmp_path, proj_dir)
         tm.that(result.result.passed, eq=True)
         tm.that(len(result.issues), eq=0)
 
@@ -123,14 +121,13 @@ class TestWorkspaceCheckerRunMarkdown:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker, proj_dir = _create_checker_project(tmp_path)
+        _, proj_dir = _create_checker_project(tmp_path)
         (proj_dir / "README.md").write_text("# Test")
         result = _run_failed_gate_check(
-            checker,
+            tmp_path,
             proj_dir,
             monkeypatch,
             gate_class=FlextInfraMarkdownGate,
-            gate_runner=FlextInfraWorkspaceChecker._run_markdown,
             stdout="README.md:1:1 error MD001 Heading level",
         )
         _assert_failed_single_issue(result)
@@ -140,7 +137,7 @@ class TestWorkspaceCheckerRunMarkdown:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker, proj_dir = _create_checker_project(tmp_path)
+        _, proj_dir = _create_checker_project(tmp_path)
         (proj_dir / "README.md").write_text("# Test")
         (proj_dir / ".markdownlint.json").write_text("{}")
         captured_args: MutableSequence[t.StrSequence] = []
@@ -157,7 +154,7 @@ class TestWorkspaceCheckerRunMarkdown:
             return _run_stub()
 
         monkeypatch.setattr(FlextInfraMarkdownGate, "_run", _fake_run)
-        checker._run_markdown(proj_dir)
+        _ = run_gate_check(FlextInfraMarkdownGate, tmp_path, proj_dir)
         tm.that(captured_args[0], has="--config")
 
     def test_run_markdown_fallback_error_message(
@@ -165,14 +162,13 @@ class TestWorkspaceCheckerRunMarkdown:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker, proj_dir = _create_checker_project(tmp_path)
+        _, proj_dir = _create_checker_project(tmp_path)
         (proj_dir / "README.md").write_text("# Test")
         result = _run_failed_gate_check(
-            checker,
+            tmp_path,
             proj_dir,
             monkeypatch,
             gate_class=FlextInfraMarkdownGate,
-            gate_runner=FlextInfraWorkspaceChecker._run_markdown,
             stderr="markdownlint failed",
         )
         _assert_failed_single_issue(result)

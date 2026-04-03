@@ -40,7 +40,7 @@ class FlextInfraProjectClassifier:
             family_chains={**family_chains},
         )
 
-    def _read_project_metadata(self) -> t.Infra.Pair[str, t.StrSequence]:
+    def _read_project_metadata(self) -> t.Infra.TransformResult:
         if not self._pyproject_path.is_file():
             return ("", [])
         parsed: t.Infra.ContainerDict = tomllib.loads(

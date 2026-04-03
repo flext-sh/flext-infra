@@ -7,12 +7,12 @@ import os
 from collections.abc import Sequence
 from pathlib import Path
 
+import flext_infra.check.workspace_check as workspace_check_module
 from flext_infra import (
     FlextInfraConfigFixer,
     c,
     m,
     r,
-    services as check_services,
     t,
     u,
 )
@@ -72,15 +72,21 @@ class FlextInfraWorkspaceCheckerCli:
             checker_workspace = (
                 Path(env_workspace).resolve() if env_workspace else cli.workspace
             )
-            checker = check_services.FlextInfraWorkspaceChecker(
+            checker = workspace_check_module.FlextInfraWorkspaceChecker(
                 workspace_root=checker_workspace
             )
-            gates = check_services.FlextInfraWorkspaceChecker.parse_gate_csv(args.gates)
-            ruff_args = check_services.FlextInfraWorkspaceChecker.parse_tool_args(
-                args.ruff_args
+            gates = workspace_check_module.FlextInfraWorkspaceChecker.parse_gate_csv(
+                args.gates
             )
-            pyright_args = check_services.FlextInfraWorkspaceChecker.parse_tool_args(
-                args.pyright_args,
+            ruff_args = (
+                workspace_check_module.FlextInfraWorkspaceChecker.parse_tool_args(
+                    args.ruff_args
+                )
+            )
+            pyright_args = (
+                workspace_check_module.FlextInfraWorkspaceChecker.parse_tool_args(
+                    args.pyright_args,
+                )
             )
             reports_dir = Path(args.reports_dir).expanduser()
             if not reports_dir.is_absolute():
@@ -139,8 +145,10 @@ class FlextInfraWorkspaceCheckerCli:
         if not args.projects:
             u.Infra.error("no projects specified")
             return 1
-        checker = check_services.FlextInfraWorkspaceChecker()
-        gates = check_services.FlextInfraWorkspaceChecker.parse_gate_csv(args.gates)
+        checker = workspace_check_module.FlextInfraWorkspaceChecker()
+        gates = workspace_check_module.FlextInfraWorkspaceChecker.parse_gate_csv(
+            args.gates
+        )
         reports_dir = Path(args.reports_dir).expanduser()
         if not reports_dir.is_absolute():
             reports_dir = (Path.cwd() / reports_dir).resolve()

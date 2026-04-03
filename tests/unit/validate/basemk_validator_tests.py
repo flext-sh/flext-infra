@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tf, tm
-from tests import m, t
+from tests import m, t, u
 
 from flext_infra import FlextInfraBaseMkGenerator, FlextInfraBaseMkValidator
 
@@ -132,7 +132,7 @@ class TestBaseMkValidatorSha256:
 
     @staticmethod
     def _sha(path: Path) -> str:
-        return FlextInfraBaseMkValidator.compute_sha256(path)
+        return u.Infra.sha256_file(path)
 
     def test_hash_is_64char_hex(self, tmp_path: Path) -> None:
         f = tf.create_in("content", "test.txt", tmp_path)

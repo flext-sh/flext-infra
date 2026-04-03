@@ -10,16 +10,11 @@ import typing as _t
 from flext_core.lazy import install_lazy_exports
 
 if _t.TYPE_CHECKING:
-    import flext_infra.docs._auditor_helpers as _flext_infra_docs__auditor_helpers
+    import flext_infra.docs._auditor_mixin as _flext_infra_docs__auditor_mixin
 
-    _auditor_helpers = _flext_infra_docs__auditor_helpers
+    _auditor_mixin = _flext_infra_docs__auditor_mixin
     import flext_infra.docs._constants as _flext_infra_docs__constants
-    from flext_infra.docs._auditor_helpers import (
-        find_architecture_config,
-        parse_audit_gate,
-        resolve_checks,
-        write_audit_reports,
-    )
+    from flext_infra.docs._auditor_mixin import FlextInfraDocAuditorMixin
 
     _constants = _flext_infra_docs__constants
     import flext_infra.docs._models as _flext_infra_docs__models
@@ -65,6 +60,7 @@ if _t.TYPE_CHECKING:
 _LAZY_IMPORTS = {
     "FlextInfraCliDocs": "flext_infra.docs.cli",
     "FlextInfraDocAuditor": "flext_infra.docs.auditor",
+    "FlextInfraDocAuditorMixin": "flext_infra.docs._auditor_mixin",
     "FlextInfraDocBuilder": "flext_infra.docs.builder",
     "FlextInfraDocFixer": "flext_infra.docs.fixer",
     "FlextInfraDocGenerator": "flext_infra.docs.generator",
@@ -72,7 +68,7 @@ _LAZY_IMPORTS = {
     "FlextInfraDocsCli": "flext_infra.docs.cli",
     "FlextInfraDocsConstants": "flext_infra.docs._constants",
     "FlextInfraDocsModels": "flext_infra.docs._models",
-    "_auditor_helpers": "flext_infra.docs._auditor_helpers",
+    "_auditor_mixin": "flext_infra.docs._auditor_mixin",
     "_constants": "flext_infra.docs._constants",
     "_models": "flext_infra.docs._models",
     "auditor": "flext_infra.docs.auditor",
@@ -81,27 +77,24 @@ _LAZY_IMPORTS = {
     "cli": "flext_infra.docs.cli",
     "d": ("flext_core.decorators", "FlextDecorators"),
     "e": ("flext_core.exceptions", "FlextExceptions"),
-    "find_architecture_config": "flext_infra.docs._auditor_helpers",
     "fixer": "flext_infra.docs.fixer",
     "generator": "flext_infra.docs.generator",
     "h": ("flext_core.handlers", "FlextHandlers"),
     "m": ("flext_core.models", "FlextModels"),
     "main": "flext_infra.docs.auditor",
     "p": ("flext_core.protocols", "FlextProtocols"),
-    "parse_audit_gate": "flext_infra.docs._auditor_helpers",
     "r": ("flext_core.result", "FlextResult"),
-    "resolve_checks": "flext_infra.docs._auditor_helpers",
     "s": ("flext_core.service", "FlextService"),
     "t": ("flext_core.typings", "FlextTypes"),
     "u": ("flext_core.utilities", "FlextUtilities"),
     "validator": "flext_infra.docs.validator",
-    "write_audit_reports": "flext_infra.docs._auditor_helpers",
     "x": ("flext_core.mixins", "FlextMixins"),
 }
 
 __all__ = [
     "FlextInfraCliDocs",
     "FlextInfraDocAuditor",
+    "FlextInfraDocAuditorMixin",
     "FlextInfraDocBuilder",
     "FlextInfraDocFixer",
     "FlextInfraDocGenerator",
@@ -109,7 +102,7 @@ __all__ = [
     "FlextInfraDocsCli",
     "FlextInfraDocsConstants",
     "FlextInfraDocsModels",
-    "_auditor_helpers",
+    "_auditor_mixin",
     "_constants",
     "_models",
     "auditor",
@@ -118,21 +111,17 @@ __all__ = [
     "cli",
     "d",
     "e",
-    "find_architecture_config",
     "fixer",
     "generator",
     "h",
     "m",
     "main",
     "p",
-    "parse_audit_gate",
     "r",
-    "resolve_checks",
     "s",
     "t",
     "u",
     "validator",
-    "write_audit_reports",
     "x",
 ]
 

@@ -11,7 +11,6 @@ from typing import override
 
 from flext_core import r, s
 from flext_infra import (
-    FlextInfraGateRegistry,
     c,
     m,
     t,
@@ -19,6 +18,7 @@ from flext_infra import (
     workspace_check_cli as workspace_check_cli_module,
 )
 from flext_infra.check._workspace_check_gates import (
+    FlextInfraGateRegistry,
     FlextInfraWorkspaceCheckGatesMixin,
     _LoopOutcome,
 )

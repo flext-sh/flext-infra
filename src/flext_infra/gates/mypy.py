@@ -76,18 +76,15 @@ class FlextInfraMypyGate(FlextInfraGate):
             except ValidationError:
                 continue
             try:
-                severity = u.ensure_str(
-                    line_data.get("severity", c.Infra.ERROR),
-                    c.Infra.ERROR,
-                )
+                severity = u.Infra.pick(line_data, "severity", c.Infra.ERROR)
                 if severity in {"error", "warning", "note"}:
                     issues.append(
                         m.Infra.Issue(
-                            file=u.ensure_str(line_data.get("file", "?"), "?"),
-                            line=u.to_int(line_data.get("line", 0)),
-                            column=u.to_int(line_data.get("column", 0)),
-                            code=u.ensure_str(line_data.get("code", "")),
-                            message=u.ensure_str(line_data.get("message", "")),
+                            file=u.Infra.pick(line_data, "file", "?"),
+                            line=u.Infra.pick(line_data, "line", 0),
+                            column=u.Infra.pick(line_data, "column", 0),
+                            code=u.Infra.pick(line_data, "code", ""),
+                            message=u.Infra.pick(line_data, "message", ""),
                             severity=severity,
                         ),
                     )

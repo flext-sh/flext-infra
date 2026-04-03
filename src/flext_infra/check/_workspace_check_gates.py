@@ -3,16 +3,53 @@
 from __future__ import annotations
 
 import time
-from collections.abc import MutableSequence, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_infra import (
-    FlextInfraGateRegistry,
+    FlextInfraBanditGate,
+    FlextInfraGate,
+    FlextInfraGoGate,
+    FlextInfraMarkdownGate,
+    FlextInfraMypyGate,
+    FlextInfraPyreflyGate,
+    FlextInfraPyrightGate,
+    FlextInfraRuffFormatGate,
+    FlextInfraRuffLintGate,
     c,
     m,
     t,
     u,
 )
+
+_GATES: t.Infra.VariadicTuple[type[FlextInfraGate]] = (
+    FlextInfraRuffLintGate,
+    FlextInfraRuffFormatGate,
+    FlextInfraPyreflyGate,
+    FlextInfraMypyGate,
+    FlextInfraPyrightGate,
+    FlextInfraBanditGate,
+    FlextInfraMarkdownGate,
+    FlextInfraGoGate,
+)
+
+
+class FlextInfraGateRegistry:
+    """Explicit gate registry mapping gate IDs to gate classes."""
+
+    def __init__(self) -> None:
+        self._gates: Mapping[str, type[FlextInfraGate]] = {g.gate_id: g for g in _GATES}
+
+    def get(self, gate_id: str) -> type[FlextInfraGate] | None:
+        return self._gates.get(gate_id)
+
+    def create(self, gate_id: str, workspace_root: Path) -> FlextInfraGate | None:
+        gate_cls = self._gates.get(gate_id)
+        return gate_cls(workspace_root) if gate_cls else None
+
+    @classmethod
+    def default(cls) -> FlextInfraGateRegistry:
+        return cls()
 
 
 class _LoopOutcome(m.ArbitraryTypesModel):
@@ -107,46 +144,6 @@ class FlextInfraWorkspaceCheckGatesMixin:
             reports_dir=reports_dir or self._default_reports_dir,
         )
 
-    def _run_pyrefly(
-        self, project_dir: Path, reports_dir: Path | None = None
-    ) -> m.Infra.GateExecution:
-        return self._run_gate(c.Infra.PYREFLY, project_dir, reports_dir)
-
-    def _run_mypy(
-        self, project_dir: Path, reports_dir: Path | None = None
-    ) -> m.Infra.GateExecution:
-        return self._run_gate(c.Infra.MYPY, project_dir, reports_dir)
-
-    def _run_pyright(
-        self, project_dir: Path, reports_dir: Path | None = None
-    ) -> m.Infra.GateExecution:
-        return self._run_gate(c.Infra.PYRIGHT, project_dir, reports_dir)
-
-    def _run_bandit(
-        self, project_dir: Path, reports_dir: Path | None = None
-    ) -> m.Infra.GateExecution:
-        return self._run_gate(c.Infra.SECURITY, project_dir, reports_dir)
-
-    def _run_markdown(
-        self, project_dir: Path, reports_dir: Path | None = None
-    ) -> m.Infra.GateExecution:
-        return self._run_gate(c.Infra.MARKDOWN, project_dir, reports_dir)
-
-    def _run_go(
-        self, project_dir: Path, reports_dir: Path | None = None
-    ) -> m.Infra.GateExecution:
-        return self._run_gate(c.Infra.GO, project_dir, reports_dir)
-
-    def _run_ruff_format(
-        self, project_dir: Path, reports_dir: Path | None = None
-    ) -> m.Infra.GateExecution:
-        return self._run_gate(c.Infra.FORMAT, project_dir, reports_dir)
-
-    def _run_ruff_lint(
-        self, project_dir: Path, reports_dir: Path | None = None
-    ) -> m.Infra.GateExecution:
-        return self._run_gate(c.Infra.LINT, project_dir, reports_dir)
-
     def _run_gate(
         self,
         gate_id: str,
@@ -203,13 +200,5 @@ class FlextInfraWorkspaceCheckGatesMixin:
             )
         return result
 
-    def _check_project(
-        self,
-        project_dir: Path,
-        gates: t.StrSequence,
-        ctx: m.Infra.GateContext,
-    ) -> m.Infra.ProjectResult:
-        return self._check_project_with_ctx(project_dir, gates, ctx)
 
-
-__all__ = ["FlextInfraWorkspaceCheckGatesMixin"]
+__all__ = ["FlextInfraGateRegistry", "FlextInfraWorkspaceCheckGatesMixin"]

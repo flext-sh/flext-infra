@@ -152,9 +152,9 @@ class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
                 data_result.error or f"failed to read {pyproject}",
             )
         data = data_result.value
-        tool = u.Infra.normalize_str_mapping(data.get(c.Infra.TOOL))
-        poetry = u.Infra.normalize_str_mapping(tool.get(c.Infra.POETRY))
-        deps = u.Infra.normalize_str_mapping(poetry.get(c.Infra.DEPENDENCIES))
+        deps = u.Infra.deep_mapping(
+            data, c.Infra.TOOL, c.Infra.POETRY, c.Infra.DEPENDENCIES
+        )
         result: MutableMapping[str, Path] = {}
         for dep_name, dep_value in deps.items():
             dep_value_map = u.Infra.normalize_str_mapping(dep_value)
@@ -167,9 +167,9 @@ class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
             if repo_name is None:
                 continue
             result[dep_name] = project_root / ".flext-deps" / repo_name
-        project_obj = u.Infra.normalize_str_mapping(data.get(c.Infra.PROJECT))
+        project_obj = u.Infra.deep_mapping(data, c.Infra.PROJECT)
         project_deps_raw = project_obj.get(c.Infra.DEPENDENCIES)
-        project_deps = u.Infra.normalize_string_list(project_deps_raw)
+        project_deps = u.Infra.as_string_list(project_deps_raw)
         internal_dep_names: t.Infra.StrSet = set()
         for dep in project_deps:
             dep_name_match = c.Infra.DEP_NAME_RE.match(dep)
@@ -189,11 +189,11 @@ class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
             if repo_name is None:
                 continue
             _ = result.setdefault(repo_name, project_root / ".flext-deps" / repo_name)
-        tool_obj = u.Infra.normalize_str_mapping(data.get(c.Infra.TOOL))
-        uv_obj = u.Infra.normalize_str_mapping(tool_obj.get("uv"))
-        sources_obj = u.Infra.normalize_str_mapping(uv_obj.get("sources"))
+        tool_obj = u.Infra.deep_mapping(data, c.Infra.TOOL)
+        uv_obj = u.Infra.deep_mapping(tool_obj, "uv")
+        sources_obj = u.Infra.deep_mapping(uv_obj, "sources")
         for dep_name in internal_dep_names:
-            source_value = u.Infra.normalize_str_mapping(sources_obj.get(dep_name))
+            source_value = u.Infra.deep_mapping(sources_obj, dep_name)
             if not source_value:
                 continue
             if source_value.get("workspace") is True:

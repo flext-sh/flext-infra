@@ -234,9 +234,11 @@ if _t.TYPE_CHECKING:
         create_checker_project,
         create_fake_run_projects,
         create_fake_run_raw,
+        create_gate_context,
         create_gate_execution,
         patch_gate_run,
         patch_python_dir_detection,
+        run_gate_check,
     )
     from tests.unit.check._stubs import (
         Spy,
@@ -1122,22 +1124,15 @@ if _t.TYPE_CHECKING:
     )
 
     test_infra_terminal_detection = _tests_unit_io_test_infra_terminal_detection
-    import tests.unit.refactor.test_infra_refactor_analysis as _tests_unit_refactor_test_infra_refactor_analysis
+    import tests.unit.refactor.conftest as _tests_unit_refactor_conftest
     from tests.unit.io.test_infra_terminal_detection import (
         TestShouldUseColor,
         TestShouldUseUnicode,
     )
 
-    test_infra_refactor_analysis = _tests_unit_refactor_test_infra_refactor_analysis
+    conftest = _tests_unit_refactor_conftest
     import tests.unit.refactor.test_infra_refactor_class_and_propagation as _tests_unit_refactor_test_infra_refactor_class_and_propagation
-    from tests.unit.refactor.test_infra_refactor_analysis import (
-        test_build_impact_map_extracts_rename_entries,
-        test_build_impact_map_extracts_signature_entries,
-        test_main_analyze_violations_is_read_only,
-        test_main_analyze_violations_writes_json_report,
-        test_violation_analysis_counts_massive_patterns,
-        test_violation_analyzer_skips_non_utf8_files,
-    )
+    from tests.unit.refactor.conftest import rope_project
 
     test_infra_refactor_class_and_propagation = (
         _tests_unit_refactor_test_infra_refactor_class_and_propagation
@@ -1240,7 +1235,6 @@ if _t.TYPE_CHECKING:
     )
     import tests.unit.refactor.test_infra_refactor_namespace_source as _tests_unit_refactor_test_infra_refactor_namespace_source
     from tests.unit.refactor.test_infra_refactor_namespace_aliases import (
-        rope_project,
         test_import_alias_detector_skips_facade_and_subclass_files,
         test_import_alias_detector_skips_nested_private_and_as_renames,
         test_import_alias_detector_skips_private_and_class_imports,
@@ -2314,6 +2308,7 @@ __all__ = [
     "check",
     "cli_tests",
     "codegen",
+    "conftest",
     "constants",
     "constants_quality_gate_tests",
     "container",
@@ -2322,6 +2317,7 @@ __all__ = [
     "create_checker_project",
     "create_fake_run_projects",
     "create_fake_run_raw",
+    "create_gate_context",
     "create_gate_execution",
     "d",
     "deps",
@@ -2417,6 +2413,7 @@ __all__ = [
     "rope_project",
     "rope_workspace",
     "run_command_failure_check",
+    "run_gate_check",
     "runner",
     "runner_service",
     "s",
@@ -2460,8 +2457,6 @@ __all__ = [
     "test_basemk_main_with_output_file",
     "test_basemk_main_with_project_name",
     "test_basemk_main_with_write_failure",
-    "test_build_impact_map_extracts_rename_entries",
-    "test_build_impact_map_extracts_signature_entries",
     "test_bump_version_invalid",
     "test_bump_version_result_type",
     "test_bump_version_valid",
@@ -2595,7 +2590,6 @@ __all__ = [
     "test_infra_patterns_core",
     "test_infra_patterns_extra",
     "test_infra_protocols",
-    "test_infra_refactor_analysis",
     "test_infra_refactor_class_and_propagation",
     "test_infra_refactor_class_placement",
     "test_infra_refactor_engine",
@@ -2666,8 +2660,6 @@ __all__ = [
     "test_legacy_wrapper_non_passthrough_is_not_inlined",
     "test_main",
     "test_main_all_groups_defined",
-    "test_main_analyze_violations_is_read_only",
-    "test_main_analyze_violations_writes_json_report",
     "test_main_cli",
     "test_main_discovery_failure",
     "test_main_dispatch",
@@ -2875,8 +2867,6 @@ __all__ = [
     "test_typealias_conversion_preserves_used_typing_siblings",
     "test_unwrap_item",
     "test_unwrap_item_toml_item",
-    "test_violation_analysis_counts_massive_patterns",
-    "test_violation_analyzer_skips_non_utf8_files",
     "test_workspace_check_main_returns_error_without_projects",
     "test_workspace_cli_migrate_command",
     "test_workspace_cli_migrate_output_contains_summary",

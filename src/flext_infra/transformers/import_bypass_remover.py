@@ -6,7 +6,6 @@ Replaces try/except ImportError fallback blocks with the primary import.
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
 from typing import override
 
 from flext_infra import FlextInfraRopeTransformer, t, u
@@ -28,7 +27,7 @@ class FlextInfraRefactorImportBypassRemover(FlextInfraRopeTransformer):
         self,
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-    ) -> tuple[str, Sequence[str]]:
+    ) -> t.Infra.TransformResult:
         """Remove try/except ImportError fallback blocks, keep the primary import."""
         source = u.Infra.read_source(resource)
         new_source, count = self._BYPASS_RE.subn(r"\1", source)

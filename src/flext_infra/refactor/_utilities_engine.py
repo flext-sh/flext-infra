@@ -10,15 +10,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import fnmatch
-import re
-from collections.abc import MutableSequence, Sequence
+from collections.abc import Iterator, MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import (
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesRefactorCli,
-    FlextInfraUtilitiesRope,
     c,
     t,
 )
@@ -31,56 +29,29 @@ class FlextInfraUtilitiesRefactorEngine:
     """Engine file collection and nested-class propagation helpers."""
 
     @staticmethod
-    def apply_nested_class_propagation(
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
-        mappings: t.StrMapping,
-        changes: MutableSequence[str],
-    ) -> str:
-        """Apply nested class propagation and persist only when content changes."""
-        source = FlextInfraUtilitiesRope.read_source(resource)
-        updated = source
-        for old_name, new_name in mappings.items():
-            updated = re.sub(rf"\b{re.escape(old_name)}\b", new_name, updated)
-        if updated != source:
-            changes.append(
-                f"Applied nested class propagation ({len(mappings)} renames)"
-            )
-            FlextInfraUtilitiesRope.write_source(
-                rope_project,
-                resource,
-                updated,
-                description="nested class propagation",
-            )
-        return updated
-
-    # ── Engine file collection ─────────────────────────────────────────
-
-    @staticmethod
     def filter_engine_files(
-        candidates: Sequence[Path],
+        files: Sequence[Path],
         *,
         base_path: Path,
-        pattern: str,
-        ignore_patterns: set[str],
-        allowed_extensions: set[str],
-    ) -> Sequence[Path]:
-        """Filter candidate files by pattern, extensions, and ignore rules."""
-
-        def _accept(f: Path) -> bool:
-            rel = str(f.relative_to(base_path))
-            if not (fnmatch.fnmatch(rel, pattern) or fnmatch.fnmatch(f.name, pattern)):
-                return False
-            if allowed_extensions and f.suffix not in allowed_extensions:
-                return False
-            if f.name in ignore_patterns:
-                return False
-            rp = f.relative_to(base_path)
-            return not any(part in ignore_patterns for part in rp.parts) and not any(
-                fnmatch.fnmatch(str(rp), ip) for ip in ignore_patterns
-            )
-
-        return [f for f in candidates if _accept(f)]
+        pattern: str = c.Infra.Extensions.PYTHON_GLOB,
+        ignore_patterns: set[str] | None = None,
+        allowed_extensions: set[str] | None = None,
+    ) -> Iterator[Path]:
+        """Filter candidate files by glob pattern, ignore list, and extension."""
+        ign = ignore_patterns or set()
+        ext = allowed_extensions or {c.Infra.Extensions.PYTHON}
+        for f in files:
+            if not fnmatch.fnmatch(f.name, pattern):
+                continue
+            if f.suffix not in ext:
+                continue
+            try:
+                rel = str(f.relative_to(base_path))
+            except ValueError:
+                rel = str(f)
+            if any(fnmatch.fnmatch(rel, ip) for ip in ign):
+                continue
+            yield f
 
     @staticmethod
     def collect_engine_project_files(

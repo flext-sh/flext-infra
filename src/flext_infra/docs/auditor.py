@@ -14,19 +14,14 @@ from pathlib import Path
 
 from flext_core import FlextLogger
 from flext_infra import c, m, r, t, u
-from flext_infra.docs._auditor_helpers import (
-    find_architecture_config,
-    parse_audit_gate,
-    resolve_checks,
-    write_audit_reports,
-)
+from flext_infra.docs._auditor_mixin import FlextInfraDocAuditorMixin
 
 logger = FlextLogger.create_module_logger(__name__)
 
 _NO_BUDGETS: t.Infra.Pair[int | None, t.IntMapping] = (None, {})
 
 
-class FlextInfraDocAuditor:
+class FlextInfraDocAuditor(FlextInfraDocAuditorMixin):
     """Infrastructure service for documentation auditing.
 
     Scans markdown documentation for broken internal links and
@@ -44,7 +39,7 @@ class FlextInfraDocAuditor:
         workspace_root: Path,
     ) -> t.Infra.Pair[int | None, t.IntMapping]:
         """Load audit issue budgets from architecture config."""
-        config_path = find_architecture_config(workspace_root)
+        config_path = FlextInfraDocAuditor.find_architecture_config(workspace_root)
         if config_path is None:
             return _NO_BUDGETS
         payload_result = u.Infra.read_json(config_path)
@@ -58,7 +53,7 @@ class FlextInfraDocAuditor:
         audit_gate = u.Infra.as_toml_mapping(docs_validation.get("audit_gate"))
         if audit_gate is None:
             return _NO_BUDGETS
-        return parse_audit_gate(audit_gate)
+        return FlextInfraDocAuditor.parse_audit_gate(audit_gate)
 
     @staticmethod
     def normalize_link(target: str) -> str:
@@ -125,8 +120,8 @@ class FlextInfraDocAuditor:
         )
 
     def execute_command(self, params: m.Infra.DocsAuditInput) -> r[bool]:
-        """CLI handler — accepts input model, delegates to audit."""
-        resolved_workspace = Path(params.workspace) if params.workspace else Path.cwd()
+        """CLI handler -- accepts input model, delegates to audit."""
+        resolved_workspace = u.Infra.resolve_workspace(params)
         scope_params = m.Infra.AuditScopeParams(
             check="all" if params.check else "",
             strict=params.strict,
@@ -153,7 +148,7 @@ class FlextInfraDocAuditor:
     ) -> m.Infra.DocsPhaseReport:
         """Run configured audit checks on a single scope."""
         resolved = params or m.Infra.AuditScopeParams()
-        checks = resolve_checks(resolved.check)
+        checks = self.resolve_checks(resolved.check)
 
         issues: MutableSequence[m.Infra.AuditIssue] = []
         if "links" in checks:
@@ -161,7 +156,7 @@ class FlextInfraDocAuditor:
         if "forbidden-terms" in checks:
             issues.extend(self.forbidden_term_issues(scope))
 
-        write_audit_reports(
+        self.write_audit_reports(
             scope,
             issues,
             checks,
@@ -342,4 +337,8 @@ main = FlextInfraDocAuditor.main
 
 if __name__ == "__main__":
     raise SystemExit(FlextInfraDocAuditor.main())
-__all__ = ["FlextInfraDocAuditor", "main"]
+__all__ = [
+    "FlextInfraDocAuditor",
+    "FlextInfraDocAuditorMixin",
+    "main",
+]

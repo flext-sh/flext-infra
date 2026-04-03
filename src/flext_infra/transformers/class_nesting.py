@@ -10,6 +10,7 @@ from typing import override
 from flext_infra import (
     FlextInfraRefactorTransformerPolicyUtilities,
     FlextInfraRopeTransformer,
+    c,
     m,
     t,
     u,
@@ -37,12 +38,33 @@ class FlextInfraRefactorClassNestingTransformer(FlextInfraRopeTransformer):
         self,
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-    ) -> tuple[str, Sequence[str]]:
+    ) -> t.Infra.TransformResult:
         """Apply class nesting. Returns (new_source, changes)."""
         source = u.Infra.read_source(resource)
         class_infos = u.Infra.get_class_info(rope_project, resource)
-        existing_names = {info.name for info in class_infos}
+        updated, changes = self.apply_to_source(
+            source,
+            existing_names={info.name for info in class_infos},
+        )
+        if updated != source and changes:
+            u.Infra.write_source(
+                rope_project,
+                resource,
+                updated,
+                description="class nesting",
+            )
+        return updated, changes
 
+    @override
+    def apply_to_source(
+        self,
+        source: str,
+        *,
+        existing_names: set[str] | None = None,
+    ) -> t.Infra.TransformResult:
+        """Apply class nesting to in-memory source without persisting."""
+        if existing_names is None:
+            existing_names = set(c.Infra.SourceCode.CLASS_NAME_RE.findall(source))
         collected: dict[str, list[str]] = defaultdict(list)
         for class_name, target_namespace in self._mappings.items():
             if class_name not in existing_names:
@@ -50,32 +72,23 @@ class FlextInfraRefactorClassNestingTransformer(FlextInfraRopeTransformer):
             if not self._is_nesting_allowed(class_name, target_namespace):
                 continue
             collected[target_namespace].append(class_name)
-
         if not collected:
             return source, []
-
+        updated = source
         for namespace, class_names in collected.items():
             if not self._ns_op_allowed(class_names, namespace, "creation"):
                 continue
             ns_exists = namespace in existing_names
             if ns_exists and not self._ns_op_allowed(class_names, namespace, "merge"):
                 continue
-            source = self._nest_classes(
-                source,
+            updated = self._nest_classes(
+                updated,
                 namespace=namespace,
                 class_names=class_names,
                 ns_exists=ns_exists,
             )
             existing_names.add(namespace)
-
-        if source != u.Infra.read_source(resource) and self.changes:
-            u.Infra.write_source(
-                rope_project,
-                resource,
-                source,
-                description="class nesting",
-            )
-        return source, list(self.changes)
+        return updated, list(self.changes)
 
     def _nest_classes(
         self,

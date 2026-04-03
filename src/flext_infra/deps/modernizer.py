@@ -83,16 +83,6 @@ class FlextInfraPyprojectModernizer:
         return changes
 
     @staticmethod
-    def _project_has_direct_references(doc: tomlkit.TOMLDocument) -> bool:
-        """Return whether project.dependencies contains direct references."""
-        project_table = u.Infra.get_table(doc, c.Infra.PROJECT)
-        if project_table is None:
-            return False
-        deps_item = u.Infra.get_item(project_table, c.Infra.DEPENDENCIES)
-        dependencies = u.Infra.as_string_list(deps_item)
-        return any(" @ " in dep for dep in dependencies)
-
-    @staticmethod
     def _ordered_keys(
         keys: t.StrSequence,
         *,
