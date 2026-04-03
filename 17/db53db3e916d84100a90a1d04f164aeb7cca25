@@ -1,0 +1,52 @@
+src/flext_infra/_utilities/codegen_execution_runner.py
+  e1d2767e43e21b6f 1-176
+src/flext_infra/_utilities/cli.py
+  cdbb584679205432 18,201
+src/flext_infra/_utilities/codegen_execution_checks.py
+  e1d2767e43e21b6f 1-241
+src/flext_infra/_utilities/codegen_execution_metrics.py
+  e1d2767e43e21b6f 1-112,114-122,128-207
+src/flext_infra/refactor/_constants.py
+  e1d2767e43e21b6f 137
+src/flext_infra/cli.py
+  cdbb584679205432 68
+src/flext_infra/codegen/_cli_codegen_consolidate.py
+  e1d2767e43e21b6f 1-331
+src/flext_infra/codegen/_cli_codegen_handlers.py
+  e1d2767e43e21b6f 1-282
+src/flext_infra/refactor/safety.py
+  cdbb584679205432 105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "17db53db3e916d84100a90a1d04f164aeb7cca25",
+  "prompts": {
+    "cdbb584679205432": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "deb21ed0-98e4-498f-8592-3944a588496c",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 4,
+      "total_deletions": 14,
+      "accepted_lines": 4,
+      "overriden_lines": 0
+    },
+    "e1d2767e43e21b6f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b88f5b43-f2ee-4bd5-8e49-f0bc2c3099ed",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 1238,
+      "total_deletions": 79,
+      "accepted_lines": 1232,
+      "overriden_lines": 6
+    }
+  }
+}
