@@ -1,14 +1,7 @@
 # AUTO-GENERATED FILE — DO NOT EDIT MANUALLY.
 # Regenerate with: make gen
 #
-"""Workspace management services.
-
-Provides services for workspace detection, synchronization, and orchestration
-across the FLEXT ecosystem.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Workspace package."""
 
 from __future__ import annotations
 
@@ -19,6 +12,17 @@ from flext_core.lazy import install_lazy_exports, merge_lazy_imports
 
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
+    from flext_core.constants import FlextConstants as c
+    from flext_core.decorators import FlextDecorators as d
+    from flext_core.exceptions import FlextExceptions as e
+    from flext_core.handlers import FlextHandlers as h
+    from flext_core.mixins import FlextMixins as x
+    from flext_core.models import FlextModels as m
+    from flext_core.protocols import FlextProtocols as p
+    from flext_core.result import FlextResult as r
+    from flext_core.service import FlextService as s
+    from flext_core.typings import FlextTypes as t
+    from flext_core.utilities import FlextUtilities as u
     from flext_infra.workspace import (
         _constants,
         _models,
@@ -67,15 +71,26 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = merge_lazy_imports(
         "FlextInfraWorkspaceModels": "flext_infra.workspace._models",
         "_constants": "flext_infra.workspace._constants",
         "_models": "flext_infra.workspace._models",
+        "c": ("flext_core.constants", "FlextConstants"),
         "cli": "flext_infra.workspace.cli",
+        "d": ("flext_core.decorators", "FlextDecorators"),
         "detector": "flext_infra.workspace.detector",
+        "e": ("flext_core.exceptions", "FlextExceptions"),
+        "h": ("flext_core.handlers", "FlextHandlers"),
+        "m": ("flext_core.models", "FlextModels"),
         "main": "flext_infra.workspace.sync",
         "maintenance": "flext_infra.workspace.maintenance",
         "migrator": "flext_infra.workspace.migrator",
         "orchestrator": "flext_infra.workspace.orchestrator",
+        "p": ("flext_core.protocols", "FlextProtocols"),
         "project_makefile": "flext_infra.workspace.project_makefile",
+        "r": ("flext_core.result", "FlextResult"),
+        "s": ("flext_core.service", "FlextService"),
         "sync": "flext_infra.workspace.sync",
+        "t": ("flext_core.typings", "FlextTypes"),
+        "u": ("flext_core.utilities", "FlextUtilities"),
         "workspace_makefile": "flext_infra.workspace.workspace_makefile",
+        "x": ("flext_core.mixins", "FlextMixins"),
     },
 )
 

@@ -1,14 +1,7 @@
 # AUTO-GENERATED FILE — DO NOT EDIT MANUALLY.
 # Regenerate with: make gen
 #
-"""Code generation services.
-
-Provides code generation tools for workspace standardization,
-including lazy-import init file generation (PEP 562).
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Codegen package."""
 
 from __future__ import annotations
 
@@ -19,21 +12,17 @@ from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
-    from flext_infra._utilities.codegen_constant_analysis import (
-        FlextInfraUtilitiesCodegenConstantAnalysis,
-    )
-    from flext_infra._utilities.codegen_constant_detection import (
-        FlextInfraUtilitiesCodegenConstantDetection,
-    )
-    from flext_infra._utilities.codegen_constant_transformation import (
-        FlextInfraUtilitiesCodegenConstantTransformation,
-    )
-    from flext_infra._utilities.codegen_governance import (
-        FlextInfraUtilitiesCodegenGovernance,
-    )
-    from flext_infra._utilities.codegen_import_cycles import (
-        FlextInfraUtilitiesCodegenImportCycles,
-    )
+    from flext_core.constants import FlextConstants as c
+    from flext_core.decorators import FlextDecorators as d
+    from flext_core.exceptions import FlextExceptions as e
+    from flext_core.handlers import FlextHandlers as h
+    from flext_core.mixins import FlextMixins as x
+    from flext_core.models import FlextModels as m
+    from flext_core.protocols import FlextProtocols as p
+    from flext_core.result import FlextResult as r
+    from flext_core.service import FlextService as s
+    from flext_core.typings import FlextTypes as t
+    from flext_core.utilities import FlextUtilities as u
     from flext_infra.codegen import (
         _codegen_generation,
         _codegen_snapshot,
@@ -76,23 +65,29 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "FlextInfraCodegenScaffolder": "flext_infra.codegen.scaffolder",
     "FlextInfraCodegenSnapshot": "flext_infra.codegen._codegen_snapshot",
     "FlextInfraUtilitiesCodegen": "flext_infra.codegen._utilities",
-    "FlextInfraUtilitiesCodegenConstantAnalysis": "flext_infra._utilities.codegen_constant_analysis",
-    "FlextInfraUtilitiesCodegenConstantDetection": "flext_infra._utilities.codegen_constant_detection",
-    "FlextInfraUtilitiesCodegenConstantTransformation": "flext_infra._utilities.codegen_constant_transformation",
-    "FlextInfraUtilitiesCodegenGovernance": "flext_infra._utilities.codegen_governance",
-    "FlextInfraUtilitiesCodegenImportCycles": "flext_infra._utilities.codegen_import_cycles",
     "_codegen_generation": "flext_infra.codegen._codegen_generation",
     "_codegen_snapshot": "flext_infra.codegen._codegen_snapshot",
     "_constants": "flext_infra.codegen._constants",
     "_models": "flext_infra.codegen._models",
     "_utilities": "flext_infra.codegen._utilities",
+    "c": ("flext_core.constants", "FlextConstants"),
     "census": "flext_infra.codegen.census",
     "cli": "flext_infra.codegen.cli",
     "constants_quality_gate": "flext_infra.codegen.constants_quality_gate",
+    "d": ("flext_core.decorators", "FlextDecorators"),
+    "e": ("flext_core.exceptions", "FlextExceptions"),
     "fixer": "flext_infra.codegen.fixer",
+    "h": ("flext_core.handlers", "FlextHandlers"),
     "lazy_init": "flext_infra.codegen.lazy_init",
+    "m": ("flext_core.models", "FlextModels"),
+    "p": ("flext_core.protocols", "FlextProtocols"),
     "py_typed": "flext_infra.codegen.py_typed",
+    "r": ("flext_core.result", "FlextResult"),
+    "s": ("flext_core.service", "FlextService"),
     "scaffolder": "flext_infra.codegen.scaffolder",
+    "t": ("flext_core.typings", "FlextTypes"),
+    "u": ("flext_core.utilities", "FlextUtilities"),
+    "x": ("flext_core.mixins", "FlextMixins"),
 }
 
 

@@ -12,6 +12,17 @@ from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
+    from flext_core.constants import FlextConstants as c
+    from flext_core.decorators import FlextDecorators as d
+    from flext_core.exceptions import FlextExceptions as e
+    from flext_core.handlers import FlextHandlers as h
+    from flext_core.mixins import FlextMixins as x
+    from flext_core.models import FlextModels as m
+    from flext_core.protocols import FlextProtocols as p
+    from flext_core.result import FlextResult as r
+    from flext_core.service import FlextService as s
+    from flext_core.typings import FlextTypes as t
+    from flext_core.utilities import FlextUtilities as u
     from tests.unit.basemk import (
         test_engine,
         test_generator,
@@ -93,7 +104,16 @@ if _TYPE_CHECKING:
 _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "TestFlextInfraBaseMk": "tests.unit.basemk.test_init",
     "basemk_main": "tests.unit.basemk.test_engine",
+    "c": ("flext_core.constants", "FlextConstants"),
+    "d": ("flext_core.decorators", "FlextDecorators"),
+    "e": ("flext_core.exceptions", "FlextExceptions"),
+    "h": ("flext_core.handlers", "FlextHandlers"),
+    "m": ("flext_core.models", "FlextModels"),
     "main": "tests.unit.basemk.test_main",
+    "p": ("flext_core.protocols", "FlextProtocols"),
+    "r": ("flext_core.result", "FlextResult"),
+    "s": ("flext_core.service", "FlextService"),
+    "t": ("flext_core.typings", "FlextTypes"),
     "test_basemk_build_config_with_none": "tests.unit.basemk.test_main",
     "test_basemk_build_config_with_project_name": "tests.unit.basemk.test_main",
     "test_basemk_cli_generate_to_file": "tests.unit.basemk.test_engine",
@@ -156,6 +176,8 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "test_render_all_has_no_scripts_path_references": "tests.unit.basemk.test_engine",
     "test_rendered_base_mk_declares_cli_group_roots": "tests.unit.basemk.test_make_contract",
     "test_rendered_base_mk_forwards_canonical_root_in_workspace_preflight": "tests.unit.basemk.test_make_contract",
+    "u": ("flext_core.utilities", "FlextUtilities"),
+    "x": ("flext_core.mixins", "FlextMixins"),
 }
 
 

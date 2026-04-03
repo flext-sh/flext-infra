@@ -1,7 +1,7 @@
 # AUTO-GENERATED FILE — DO NOT EDIT MANUALLY.
 # Regenerate with: make gen
 #
-"""Core package."""
+"""Validate package."""
 
 from __future__ import annotations
 
@@ -12,6 +12,17 @@ from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
+    from flext_core.constants import FlextConstants as c
+    from flext_core.decorators import FlextDecorators as d
+    from flext_core.exceptions import FlextExceptions as e
+    from flext_core.handlers import FlextHandlers as h
+    from flext_core.mixins import FlextMixins as x
+    from flext_core.models import FlextModels as m
+    from flext_core.protocols import FlextProtocols as p
+    from flext_core.result import FlextResult as r
+    from flext_core.service import FlextService as s
+    from flext_core.typings import FlextTypes as t
+    from flext_core.utilities import FlextUtilities as u
     from tests.unit.validate import (
         basemk_validator_tests,
         init_tests,
@@ -101,17 +112,28 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "TestStubChainStubExists": "tests.unit.validate.stub_chain_tests",
     "TestStubChainValidate": "tests.unit.validate.stub_chain_tests",
     "basemk_validator_tests": "tests.unit.validate.basemk_validator_tests",
+    "c": ("flext_core.constants", "FlextConstants"),
+    "d": ("flext_core.decorators", "FlextDecorators"),
+    "e": ("flext_core.exceptions", "FlextExceptions"),
+    "h": ("flext_core.handlers", "FlextHandlers"),
     "init_tests": "tests.unit.validate.init_tests",
     "inventory_tests": "tests.unit.validate.inventory_tests",
+    "m": ("flext_core.models", "FlextModels"),
     "main_cli_tests": "tests.unit.validate.main_cli_tests",
     "main_tests": "tests.unit.validate.main_tests",
+    "p": ("flext_core.protocols", "FlextProtocols"),
     "pytest_diag": "tests.unit.validate.pytest_diag",
+    "r": ("flext_core.result", "FlextResult"),
+    "s": ("flext_core.service", "FlextService"),
     "scanner_tests": "tests.unit.validate.scanner_tests",
     "skill_validator_tests": "tests.unit.validate.skill_validator_tests",
     "stub_chain_tests": "tests.unit.validate.stub_chain_tests",
+    "t": ("flext_core.typings", "FlextTypes"),
     "test_stub_validate_help_returns_zero": "tests.unit.validate.main_cli_tests",
     "test_stub_validate_uses_all_flag": "tests.unit.validate.main_cli_tests",
+    "u": ("flext_core.utilities", "FlextUtilities"),
     "v": "tests.unit.validate.basemk_validator_tests",
+    "x": ("flext_core.mixins", "FlextMixins"),
 }
 
 

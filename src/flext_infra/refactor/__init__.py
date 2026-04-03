@@ -1,7 +1,7 @@
 # AUTO-GENERATED FILE — DO NOT EDIT MANUALLY.
 # Regenerate with: make gen
 #
-"""Public API for flext_infra.refactor with lazy loading."""
+"""Refactor package."""
 
 from __future__ import annotations
 
@@ -12,14 +12,29 @@ from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
+    from flext_core.constants import FlextConstants as c
+    from flext_core.decorators import FlextDecorators as d
+    from flext_core.exceptions import FlextExceptions as e
+    from flext_core.handlers import FlextHandlers as h
+    from flext_core.mixins import FlextMixins as x
+    from flext_core.models import FlextModels as m
+    from flext_core.protocols import FlextProtocols as p
+    from flext_core.result import FlextResult as r
+    from flext_core.service import FlextService as s
+    from flext_core.typings import FlextTypes as t
+    from flext_core.utilities import FlextUtilities as u
     from flext_infra.refactor import (
         _base_rule,
         _constants,
+        _engine_rules,
         _models,
         _models_ast_grep,
+        _models_census,
         _models_namespace_enforcer,
+        _models_violations,
         _post_check_gate,
         _utilities,
+        _utilities_census,
         _utilities_cli,
         _utilities_loader,
         _utilities_mro_scan,
@@ -58,6 +73,18 @@ if _TYPE_CHECKING:
         FlextInfraRefactorRule,
     )
     from flext_infra.refactor._constants import FlextInfraRefactorConstants
+    from flext_infra.refactor._engine_rules import (
+        FlextInfraRefactorClassReconstructorRule,
+        FlextInfraRefactorLegacyRemovalTextRule,
+        FlextInfraRefactorMROClassMigrationTextRule,
+        FlextInfraRefactorMRORedundancyChecker,
+        FlextInfraRefactorPatternCorrectionsTextRule,
+        FlextInfraRefactorSignaturePropagationRule,
+        FlextInfraRefactorSymbolPropagationRule,
+        FlextInfraRefactorTier0ImportFixRule,
+        FlextInfraRefactorTypingAnnotationFixRule,
+        FlextInfraRefactorTypingUnificationRule,
+    )
     from flext_infra.refactor._models import FlextInfraRefactorModels
     from flext_infra.refactor._models_ast_grep import FlextInfraRefactorAstGrepModels
     from flext_infra.refactor._models_census import FlextInfraRefactorModelsCensus
@@ -107,16 +134,7 @@ if _TYPE_CHECKING:
         FlextInfraRefactorClassNestingAnalyzer,
     )
     from flext_infra.refactor.cli import FlextInfraCliRefactor
-    from flext_infra.refactor.engine import (
-        FlextInfraRefactorClassReconstructorRule,
-        FlextInfraRefactorEngine,
-        FlextInfraRefactorMRORedundancyChecker,
-        FlextInfraRefactorSignaturePropagationRule,
-        FlextInfraRefactorSymbolPropagationRule,
-        FlextInfraRefactorTier0ImportFixRule,
-        FlextInfraRefactorTypingAnnotationFixRule,
-        FlextInfraRefactorTypingUnificationRule,
-    )
+    from flext_infra.refactor.engine import FlextInfraRefactorEngine
     from flext_infra.refactor.migrate_to_class_mro import (
         FlextInfraRefactorMigrateToClassMRO,
     )
@@ -151,27 +169,30 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "FlextInfraRefactorAstGrepModels": "flext_infra.refactor._models_ast_grep",
     "FlextInfraRefactorCensus": "flext_infra.refactor.census",
     "FlextInfraRefactorClassNestingAnalyzer": "flext_infra.refactor.class_nesting_analyzer",
-    "FlextInfraRefactorClassReconstructorRule": "flext_infra.refactor.engine",
+    "FlextInfraRefactorClassReconstructorRule": "flext_infra.refactor._engine_rules",
     "FlextInfraRefactorConstants": "flext_infra.refactor._constants",
     "FlextInfraRefactorEngine": "flext_infra.refactor.engine",
+    "FlextInfraRefactorLegacyRemovalTextRule": "flext_infra.refactor._engine_rules",
     "FlextInfraRefactorLooseClassScanner": "flext_infra.refactor.scanner",
+    "FlextInfraRefactorMROClassMigrationTextRule": "flext_infra.refactor._engine_rules",
     "FlextInfraRefactorMROImportRewriter": "flext_infra.refactor.mro_import_rewriter",
     "FlextInfraRefactorMROMigrationValidator": "flext_infra.refactor.mro_migration_validator",
-    "FlextInfraRefactorMRORedundancyChecker": "flext_infra.refactor.engine",
+    "FlextInfraRefactorMRORedundancyChecker": "flext_infra.refactor._engine_rules",
     "FlextInfraRefactorMROResolver": "flext_infra.refactor.mro_resolver",
     "FlextInfraRefactorMigrateToClassMRO": "flext_infra.refactor.migrate_to_class_mro",
     "FlextInfraRefactorModels": "flext_infra.refactor._models",
     "FlextInfraRefactorModelsCensus": "flext_infra.refactor._models_census",
     "FlextInfraRefactorModelsViolations": "flext_infra.refactor._models_violations",
+    "FlextInfraRefactorPatternCorrectionsTextRule": "flext_infra.refactor._engine_rules",
     "FlextInfraRefactorRule": "flext_infra.refactor._base_rule",
     "FlextInfraRefactorRuleDefinitionValidator": "flext_infra.refactor.rule_definition_validator",
     "FlextInfraRefactorRuleLoader": "flext_infra.refactor.rule",
     "FlextInfraRefactorSafetyManager": "flext_infra.refactor.safety",
-    "FlextInfraRefactorSignaturePropagationRule": "flext_infra.refactor.engine",
-    "FlextInfraRefactorSymbolPropagationRule": "flext_infra.refactor.engine",
-    "FlextInfraRefactorTier0ImportFixRule": "flext_infra.refactor.engine",
-    "FlextInfraRefactorTypingAnnotationFixRule": "flext_infra.refactor.engine",
-    "FlextInfraRefactorTypingUnificationRule": "flext_infra.refactor.engine",
+    "FlextInfraRefactorSignaturePropagationRule": "flext_infra.refactor._engine_rules",
+    "FlextInfraRefactorSymbolPropagationRule": "flext_infra.refactor._engine_rules",
+    "FlextInfraRefactorTier0ImportFixRule": "flext_infra.refactor._engine_rules",
+    "FlextInfraRefactorTypingAnnotationFixRule": "flext_infra.refactor._engine_rules",
+    "FlextInfraRefactorTypingUnificationRule": "flext_infra.refactor._engine_rules",
     "FlextInfraRefactorViolationAnalyzer": "flext_infra.refactor.violation_analyzer",
     "FlextInfraUtilitiesRefactor": "flext_infra.refactor._utilities",
     "FlextInfraUtilitiesRefactorCensus": "flext_infra.refactor._utilities_census",
@@ -192,11 +213,12 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "STR_MAPPING_ADAPTER": "flext_infra.refactor._base_rule",
     "_base_rule": "flext_infra.refactor._base_rule",
     "_constants": "flext_infra.refactor._constants",
+    "_engine_rules": "flext_infra.refactor._engine_rules",
     "_models": "flext_infra.refactor._models",
-    "_models_census": "flext_infra.refactor._models_census",
-    "_models_violations": "flext_infra.refactor._models_violations",
     "_models_ast_grep": "flext_infra.refactor._models_ast_grep",
+    "_models_census": "flext_infra.refactor._models_census",
     "_models_namespace_enforcer": "flext_infra.refactor._models_namespace_enforcer",
+    "_models_violations": "flext_infra.refactor._models_violations",
     "_post_check_gate": "flext_infra.refactor._post_check_gate",
     "_utilities": "flext_infra.refactor._utilities",
     "_utilities_census": "flext_infra.refactor._utilities_census",
@@ -212,21 +234,32 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "_utilities_namespace_runtime": "flext_infra.refactor._utilities_namespace_runtime",
     "_utilities_pydantic": "flext_infra.refactor._utilities_pydantic",
     "_utilities_pydantic_analysis": "flext_infra.refactor._utilities_pydantic_analysis",
+    "c": ("flext_core.constants", "FlextConstants"),
     "census": "flext_infra.refactor.census",
     "class_nesting_analyzer": "flext_infra.refactor.class_nesting_analyzer",
     "cli": "flext_infra.refactor.cli",
+    "d": ("flext_core.decorators", "FlextDecorators"),
+    "e": ("flext_core.exceptions", "FlextExceptions"),
     "engine": "flext_infra.refactor.engine",
+    "h": ("flext_core.handlers", "FlextHandlers"),
+    "m": ("flext_core.models", "FlextModels"),
     "migrate_to_class_mro": "flext_infra.refactor.migrate_to_class_mro",
     "mro_import_rewriter": "flext_infra.refactor.mro_import_rewriter",
     "mro_migration_validator": "flext_infra.refactor.mro_migration_validator",
     "mro_resolver": "flext_infra.refactor.mro_resolver",
     "namespace_enforcer": "flext_infra.refactor.namespace_enforcer",
+    "p": ("flext_core.protocols", "FlextProtocols"),
     "project_classifier": "flext_infra.refactor.project_classifier",
+    "r": ("flext_core.result", "FlextResult"),
     "rule": "flext_infra.refactor.rule",
     "rule_definition_validator": "flext_infra.refactor.rule_definition_validator",
+    "s": ("flext_core.service", "FlextService"),
     "safety": "flext_infra.refactor.safety",
     "scanner": "flext_infra.refactor.scanner",
+    "t": ("flext_core.typings", "FlextTypes"),
+    "u": ("flext_core.utilities", "FlextUtilities"),
     "violation_analyzer": "flext_infra.refactor.violation_analyzer",
+    "x": ("flext_core.mixins", "FlextMixins"),
 }
 
 

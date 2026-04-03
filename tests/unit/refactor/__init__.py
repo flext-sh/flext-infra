@@ -12,6 +12,17 @@ from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
+    from flext_core.constants import FlextConstants as c
+    from flext_core.decorators import FlextDecorators as d
+    from flext_core.exceptions import FlextExceptions as e
+    from flext_core.handlers import FlextHandlers as h
+    from flext_core.mixins import FlextMixins as x
+    from flext_core.models import FlextModels as m
+    from flext_core.protocols import FlextProtocols as p
+    from flext_core.result import FlextResult as r
+    from flext_core.service import FlextService as s
+    from flext_core.typings import FlextTypes as t
+    from flext_core.utilities import FlextUtilities as u
     from tests.unit.refactor import (
         test_infra_refactor_analysis,
         test_infra_refactor_class_and_propagation,
@@ -189,8 +200,17 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "EngineSafetyStub": "tests.unit.refactor.test_infra_refactor_safety",
     "FAMILY_FILE_MAP": "tests.unit.refactor.test_infra_refactor_namespace_source",
     "FAMILY_SUFFIX_MAP": "tests.unit.refactor.test_infra_refactor_namespace_source",
+    "c": ("flext_core.constants", "FlextConstants"),
+    "d": ("flext_core.decorators", "FlextDecorators"),
+    "e": ("flext_core.exceptions", "FlextExceptions"),
+    "h": ("flext_core.handlers", "FlextHandlers"),
+    "m": ("flext_core.models", "FlextModels"),
+    "p": ("flext_core.protocols", "FlextProtocols"),
+    "r": ("flext_core.result", "FlextResult"),
     "refactor_main": "tests.unit.refactor.test_main_cli",
     "rope_project": "tests.unit.refactor.test_infra_refactor_namespace_aliases",
+    "s": ("flext_core.service", "FlextService"),
+    "t": ("flext_core.typings", "FlextTypes"),
     "test_all_three_capabilities_in_one_pass": "tests.unit.refactor.test_infra_refactor_typing_unifier",
     "test_build_impact_map_extracts_rename_entries": "tests.unit.refactor.test_infra_refactor_analysis",
     "test_build_impact_map_extracts_signature_entries": "tests.unit.refactor.test_infra_refactor_analysis",
@@ -326,6 +346,8 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "test_typealias_conversion_preserves_used_typing_siblings": "tests.unit.refactor.test_infra_refactor_typing_unifier",
     "test_violation_analysis_counts_massive_patterns": "tests.unit.refactor.test_infra_refactor_analysis",
     "test_violation_analyzer_skips_non_utf8_files": "tests.unit.refactor.test_infra_refactor_analysis",
+    "u": ("flext_core.utilities", "FlextUtilities"),
+    "x": ("flext_core.mixins", "FlextMixins"),
 }
 
 

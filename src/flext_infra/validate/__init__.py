@@ -1,15 +1,7 @@
 # AUTO-GENERATED FILE — DO NOT EDIT MANUALLY.
 # Regenerate with: make gen
 #
-"""Core infrastructure services.
-
-Provides foundational services for inventory management, validation rules,
-base.mk sync checking, pytest diagnostics, pattern scanning, skill validation,
-and stub supply chain management.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Validate package."""
 
 from __future__ import annotations
 
@@ -20,6 +12,17 @@ from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
+    from flext_core.constants import FlextConstants as c
+    from flext_core.decorators import FlextDecorators as d
+    from flext_core.exceptions import FlextExceptions as e
+    from flext_core.handlers import FlextHandlers as h
+    from flext_core.mixins import FlextMixins as x
+    from flext_core.models import FlextModels as m
+    from flext_core.protocols import FlextProtocols as p
+    from flext_core.result import FlextResult as r
+    from flext_core.service import FlextService as s
+    from flext_core.typings import FlextTypes as t
+    from flext_core.utilities import FlextUtilities as u
     from flext_infra.validate import (
         _constants,
         _models,
@@ -64,14 +67,25 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "_constants": "flext_infra.validate._constants",
     "_models": "flext_infra.validate._models",
     "basemk_validator": "flext_infra.validate.basemk_validator",
+    "c": ("flext_core.constants", "FlextConstants"),
     "cli": "flext_infra.validate.cli",
+    "d": ("flext_core.decorators", "FlextDecorators"),
+    "e": ("flext_core.exceptions", "FlextExceptions"),
+    "h": ("flext_core.handlers", "FlextHandlers"),
     "inventory": "flext_infra.validate.inventory",
+    "m": ("flext_core.models", "FlextModels"),
     "namespace_rules": "flext_infra.validate.namespace_rules",
     "namespace_validator": "flext_infra.validate.namespace_validator",
+    "p": ("flext_core.protocols", "FlextProtocols"),
     "pytest_diag": "flext_infra.validate.pytest_diag",
+    "r": ("flext_core.result", "FlextResult"),
+    "s": ("flext_core.service", "FlextService"),
     "scanner": "flext_infra.validate.scanner",
     "skill_validator": "flext_infra.validate.skill_validator",
     "stub_chain": "flext_infra.validate.stub_chain",
+    "t": ("flext_core.typings", "FlextTypes"),
+    "u": ("flext_core.utilities", "FlextUtilities"),
+    "x": ("flext_core.mixins", "FlextMixins"),
 }
 
 

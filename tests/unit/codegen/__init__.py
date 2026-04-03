@@ -12,6 +12,17 @@ from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
+    from flext_core.constants import FlextConstants as c
+    from flext_core.decorators import FlextDecorators as d
+    from flext_core.exceptions import FlextExceptions as e
+    from flext_core.handlers import FlextHandlers as h
+    from flext_core.mixins import FlextMixins as x
+    from flext_core.models import FlextModels as m
+    from flext_core.protocols import FlextProtocols as p
+    from flext_core.result import FlextResult as r
+    from flext_core.service import FlextService as s
+    from flext_core.typings import FlextTypes as t
+    from flext_core.utilities import FlextUtilities as u
     from tests.unit.codegen import (
         _project_factory,
         autofix_workspace_tests,
@@ -141,10 +152,14 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "TestViolationPattern": "tests.unit.codegen.census_models_tests",
     "_project_factory": "tests.unit.codegen._project_factory",
     "autofix_workspace_tests": "tests.unit.codegen.autofix_workspace_tests",
+    "c": ("flext_core.constants", "FlextConstants"),
     "census": "tests.unit.codegen.census_tests",
     "census_models_tests": "tests.unit.codegen.census_models_tests",
     "census_tests": "tests.unit.codegen.census_tests",
     "constants_quality_gate_tests": "tests.unit.codegen.constants_quality_gate_tests",
+    "d": ("flext_core.decorators", "FlextDecorators"),
+    "e": ("flext_core.exceptions", "FlextExceptions"),
+    "h": ("flext_core.handlers", "FlextHandlers"),
     "init_tests": "tests.unit.codegen.init_tests",
     "lazy_init_generation_tests": "tests.unit.codegen.lazy_init_generation_tests",
     "lazy_init_helpers_tests": "tests.unit.codegen.lazy_init_helpers_tests",
@@ -152,10 +167,15 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "lazy_init_service_tests": "tests.unit.codegen.lazy_init_service_tests",
     "lazy_init_tests": "tests.unit.codegen.lazy_init_tests",
     "lazy_init_transforms_tests": "tests.unit.codegen.lazy_init_transforms_tests",
+    "m": ("flext_core.models", "FlextModels"),
     "main_tests": "tests.unit.codegen.main_tests",
+    "p": ("flext_core.protocols", "FlextProtocols"),
     "pipeline_tests": "tests.unit.codegen.pipeline_tests",
+    "r": ("flext_core.result", "FlextResult"),
+    "s": ("flext_core.service", "FlextService"),
     "scaffolder_naming_tests": "tests.unit.codegen.scaffolder_naming_tests",
     "scaffolder_tests": "tests.unit.codegen.scaffolder_tests",
+    "t": ("flext_core.typings", "FlextTypes"),
     "test_codegen_dir_returns_all_exports": "tests.unit.codegen.init_tests",
     "test_codegen_getattr_raises_attribute_error": "tests.unit.codegen.init_tests",
     "test_codegen_init_getattr_raises_attribute_error": "tests.unit.codegen.lazy_init_generation_tests",
@@ -164,6 +184,8 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "test_files_modified_tracks_affected_files": "tests.unit.codegen.autofix_workspace_tests",
     "test_flexcore_excluded_from_run": "tests.unit.codegen.autofix_workspace_tests",
     "test_project_without_src_returns_empty": "tests.unit.codegen.autofix_workspace_tests",
+    "u": ("flext_core.utilities", "FlextUtilities"),
+    "x": ("flext_core.mixins", "FlextMixins"),
 }
 
 

@@ -12,6 +12,17 @@ from flext_core.lazy import install_lazy_exports, merge_lazy_imports
 
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
+    from flext_core.constants import FlextConstants as c
+    from flext_core.decorators import FlextDecorators as d
+    from flext_core.exceptions import FlextExceptions as e
+    from flext_core.handlers import FlextHandlers as h
+    from flext_core.mixins import FlextMixins as x
+    from flext_core.models import FlextModels as m
+    from flext_core.protocols import FlextProtocols as p
+    from flext_core.result import FlextResult as r
+    from flext_core.service import FlextService as s
+    from flext_core.typings import FlextTypes as t
+    from flext_core.utilities import FlextUtilities as u
     from tests.unit import (
         _utilities,
         basemk,
@@ -1143,23 +1154,32 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = merge_lazy_imports(
         "TestWorkspaceRoot": "tests.unit.test_infra_maintenance_python_version",
         "_utilities": "tests.unit._utilities",
         "basemk": "tests.unit.basemk",
+        "c": ("flext_core.constants", "FlextConstants"),
         "check": "tests.unit.check",
         "codegen": "tests.unit.codegen",
         "container": "tests.unit.container",
+        "d": ("flext_core.decorators", "FlextDecorators"),
         "deps": "tests.unit.deps",
         "detector": "tests.unit.test_infra_workspace_detector",
         "discovery": "tests.unit.discovery",
         "docs": "tests.unit.docs",
+        "e": ("flext_core.exceptions", "FlextExceptions"),
         "git_repo": "tests.unit.test_infra_git",
         "github": "tests.unit.github",
+        "h": ("flext_core.handlers", "FlextHandlers"),
         "io": "tests.unit.io",
+        "m": ("flext_core.models", "FlextModels"),
         "main": "tests.unit.test_infra_maintenance_main",
         "orchestrator": "tests.unit.test_infra_workspace_orchestrator",
+        "p": ("flext_core.protocols", "FlextProtocols"),
+        "r": ("flext_core.result", "FlextResult"),
         "refactor": "tests.unit.refactor",
         "release": "tests.unit.release",
         "runner": "tests.unit.test_infra_subprocess_core",
+        "s": ("flext_core.service", "FlextService"),
         "service": "tests.unit.test_infra_versioning",
         "svc": "tests.unit.test_infra_workspace_sync",
+        "t": ("flext_core.typings", "FlextTypes"),
         "test_atomic_write_fail": "tests.unit.test_infra_workspace_sync",
         "test_atomic_write_ok": "tests.unit.test_infra_workspace_sync",
         "test_bump_version_invalid": "tests.unit.test_infra_versioning",
@@ -1258,8 +1278,10 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = merge_lazy_imports(
         "test_workspace_migrator_makefile_not_found_dry_run": "tests.unit.test_infra_workspace_migrator_deps",
         "test_workspace_migrator_makefile_read_error": "tests.unit.test_infra_workspace_migrator_deps",
         "test_workspace_migrator_pyproject_write_error": "tests.unit.test_infra_workspace_migrator_deps",
+        "u": ("flext_core.utilities", "FlextUtilities"),
         "validate": "tests.unit.validate",
         "workspace_main": "tests.unit.test_infra_workspace_main",
+        "x": ("flext_core.mixins", "FlextMixins"),
     },
 )
 

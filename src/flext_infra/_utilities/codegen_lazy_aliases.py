@@ -81,7 +81,7 @@ class FlextInfraUtilitiesCodegenLazyAliases:
         existing_basename = existing[0].rsplit(".", 1)[-1]
         return (
             existing[1].endswith(suffix)
-            and existing[0].count(".") == 1
+            and existing[0].count(".") >= 1
             and existing_basename == expected_module
         )
 
@@ -95,7 +95,7 @@ class FlextInfraUtilitiesCodegenLazyAliases:
             basename = mod.rsplit(".", 1)[-1]
             if (
                 name.endswith(suffix)
-                and mod.count(".") == 1
+                and mod.count(".") >= 1
                 and basename == expected_module
             ):
                 return (mod, name)

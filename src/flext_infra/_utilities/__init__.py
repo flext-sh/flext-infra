@@ -1,14 +1,7 @@
 # AUTO-GENERATED FILE — DO NOT EDIT MANUALLY.
 # Regenerate with: make gen
 #
-"""Infrastructure utility modules for flext-infra.
-
-Organizes helper functions into domain-specific namespaces, following the
-same pattern as flext_core._utilities.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Utilities package."""
 
 from __future__ import annotations
 
@@ -22,6 +15,15 @@ if _TYPE_CHECKING:
     from flext_infra._utilities import (
         base,
         cli,
+        cli_subcommand,
+        codegen_constant_analysis,
+        codegen_constant_detection,
+        codegen_constant_transformation,
+        codegen_execution,
+        codegen_governance,
+        codegen_import_cycles,
+        codegen_lazy_aliases,
+        codegen_lazy_scanning,
         discovery,
         docs,
         formatting,
@@ -37,6 +39,11 @@ if _TYPE_CHECKING:
         release,
         reporting,
         rope,
+        rope_analysis,
+        rope_core,
+        rope_helpers,
+        rope_imports,
+        rope_source,
         rule_helpers,
         safety,
         selection,
@@ -50,6 +57,31 @@ if _TYPE_CHECKING:
     )
     from flext_infra._utilities.base import FlextInfraUtilitiesBase
     from flext_infra._utilities.cli import FlextInfraUtilitiesCli
+    from flext_infra._utilities.cli_subcommand import FlextInfraUtilitiesCliSubcommand
+    from flext_infra._utilities.codegen_constant_analysis import (
+        FlextInfraUtilitiesCodegenConstantAnalysis,
+    )
+    from flext_infra._utilities.codegen_constant_detection import (
+        FlextInfraUtilitiesCodegenConstantDetection,
+    )
+    from flext_infra._utilities.codegen_constant_transformation import (
+        FlextInfraUtilitiesCodegenConstantTransformation,
+    )
+    from flext_infra._utilities.codegen_execution import (
+        FlextInfraUtilitiesCodegenExecution,
+    )
+    from flext_infra._utilities.codegen_governance import (
+        FlextInfraUtilitiesCodegenGovernance,
+    )
+    from flext_infra._utilities.codegen_import_cycles import (
+        FlextInfraUtilitiesCodegenImportCycles,
+    )
+    from flext_infra._utilities.codegen_lazy_aliases import (
+        FlextInfraUtilitiesCodegenLazyAliases,
+    )
+    from flext_infra._utilities.codegen_lazy_scanning import (
+        FlextInfraUtilitiesCodegenLazyScanning,
+    )
     from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
     from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
     from flext_infra._utilities.formatting import FlextInfraUtilitiesFormatting
@@ -65,6 +97,11 @@ if _TYPE_CHECKING:
     from flext_infra._utilities.release import FlextInfraUtilitiesRelease
     from flext_infra._utilities.reporting import FlextInfraUtilitiesReporting
     from flext_infra._utilities.rope import FlextInfraUtilitiesRope
+    from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
+    from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
+    from flext_infra._utilities.rope_helpers import FlextInfraUtilitiesRopeHelpers
+    from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
+    from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
     from flext_infra._utilities.rule_helpers import FlextInfraUtilitiesRuleHelpers
     from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
     from flext_infra._utilities.selection import FlextInfraUtilitiesSelection
@@ -79,6 +116,15 @@ if _TYPE_CHECKING:
 _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "FlextInfraUtilitiesBase": "flext_infra._utilities.base",
     "FlextInfraUtilitiesCli": "flext_infra._utilities.cli",
+    "FlextInfraUtilitiesCliSubcommand": "flext_infra._utilities.cli_subcommand",
+    "FlextInfraUtilitiesCodegenConstantAnalysis": "flext_infra._utilities.codegen_constant_analysis",
+    "FlextInfraUtilitiesCodegenConstantDetection": "flext_infra._utilities.codegen_constant_detection",
+    "FlextInfraUtilitiesCodegenConstantTransformation": "flext_infra._utilities.codegen_constant_transformation",
+    "FlextInfraUtilitiesCodegenExecution": "flext_infra._utilities.codegen_execution",
+    "FlextInfraUtilitiesCodegenGovernance": "flext_infra._utilities.codegen_governance",
+    "FlextInfraUtilitiesCodegenImportCycles": "flext_infra._utilities.codegen_import_cycles",
+    "FlextInfraUtilitiesCodegenLazyAliases": "flext_infra._utilities.codegen_lazy_aliases",
+    "FlextInfraUtilitiesCodegenLazyScanning": "flext_infra._utilities.codegen_lazy_scanning",
     "FlextInfraUtilitiesDiscovery": "flext_infra._utilities.discovery",
     "FlextInfraUtilitiesDocs": "flext_infra._utilities.docs",
     "FlextInfraUtilitiesFormatting": "flext_infra._utilities.formatting",
@@ -94,6 +140,11 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "FlextInfraUtilitiesRelease": "flext_infra._utilities.release",
     "FlextInfraUtilitiesReporting": "flext_infra._utilities.reporting",
     "FlextInfraUtilitiesRope": "flext_infra._utilities.rope",
+    "FlextInfraUtilitiesRopeAnalysis": "flext_infra._utilities.rope_analysis",
+    "FlextInfraUtilitiesRopeCore": "flext_infra._utilities.rope_core",
+    "FlextInfraUtilitiesRopeHelpers": "flext_infra._utilities.rope_helpers",
+    "FlextInfraUtilitiesRopeImports": "flext_infra._utilities.rope_imports",
+    "FlextInfraUtilitiesRopeSource": "flext_infra._utilities.rope_source",
     "FlextInfraUtilitiesRuleHelpers": "flext_infra._utilities.rule_helpers",
     "FlextInfraUtilitiesSafety": "flext_infra._utilities.safety",
     "FlextInfraUtilitiesSelection": "flext_infra._utilities.selection",
@@ -106,6 +157,15 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "FlextInfraUtilitiesYaml": "flext_infra._utilities.yaml",
     "base": "flext_infra._utilities.base",
     "cli": "flext_infra._utilities.cli",
+    "cli_subcommand": "flext_infra._utilities.cli_subcommand",
+    "codegen_constant_analysis": "flext_infra._utilities.codegen_constant_analysis",
+    "codegen_constant_detection": "flext_infra._utilities.codegen_constant_detection",
+    "codegen_constant_transformation": "flext_infra._utilities.codegen_constant_transformation",
+    "codegen_execution": "flext_infra._utilities.codegen_execution",
+    "codegen_governance": "flext_infra._utilities.codegen_governance",
+    "codegen_import_cycles": "flext_infra._utilities.codegen_import_cycles",
+    "codegen_lazy_aliases": "flext_infra._utilities.codegen_lazy_aliases",
+    "codegen_lazy_scanning": "flext_infra._utilities.codegen_lazy_scanning",
     "discovery": "flext_infra._utilities.discovery",
     "docs": "flext_infra._utilities.docs",
     "formatting": "flext_infra._utilities.formatting",
@@ -121,6 +181,11 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "release": "flext_infra._utilities.release",
     "reporting": "flext_infra._utilities.reporting",
     "rope": "flext_infra._utilities.rope",
+    "rope_analysis": "flext_infra._utilities.rope_analysis",
+    "rope_core": "flext_infra._utilities.rope_core",
+    "rope_helpers": "flext_infra._utilities.rope_helpers",
+    "rope_imports": "flext_infra._utilities.rope_imports",
+    "rope_source": "flext_infra._utilities.rope_source",
     "rule_helpers": "flext_infra._utilities.rule_helpers",
     "safety": "flext_infra._utilities.safety",
     "selection": "flext_infra._utilities.selection",

@@ -1,7 +1,7 @@
 # AUTO-GENERATED FILE — DO NOT EDIT MANUALLY.
 # Regenerate with: make gen
 #
-"""Phase modules for pyproject dependency detector standardization."""
+"""Phases package."""
 
 from __future__ import annotations
 

@@ -12,6 +12,17 @@ from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
+    from flext_core.constants import FlextConstants as c
+    from flext_core.decorators import FlextDecorators as d
+    from flext_core.exceptions import FlextExceptions as e
+    from flext_core.handlers import FlextHandlers as h
+    from flext_core.mixins import FlextMixins as x
+    from flext_core.models import FlextModels as m
+    from flext_core.protocols import FlextProtocols as p
+    from flext_core.result import FlextResult as r
+    from flext_core.service import FlextService as s
+    from flext_core.typings import FlextTypes as t
+    from flext_core.utilities import FlextUtilities as u
     from tests.unit.docs import (
         auditor_budgets_tests,
         auditor_cli_tests,
@@ -141,25 +152,36 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "builder": "tests.unit.docs.builder_tests",
     "builder_scope_tests": "tests.unit.docs.builder_scope_tests",
     "builder_tests": "tests.unit.docs.builder_tests",
+    "c": ("flext_core.constants", "FlextConstants"),
+    "d": ("flext_core.decorators", "FlextDecorators"),
+    "e": ("flext_core.exceptions", "FlextExceptions"),
     "fixer": "tests.unit.docs.fixer_internals_tests",
     "fixer_internals_tests": "tests.unit.docs.fixer_internals_tests",
     "fixer_tests": "tests.unit.docs.fixer_tests",
     "gen": "tests.unit.docs.generator_internals_tests",
     "generator_internals_tests": "tests.unit.docs.generator_internals_tests",
     "generator_tests": "tests.unit.docs.generator_tests",
+    "h": ("flext_core.handlers", "FlextHandlers"),
     "init_tests": "tests.unit.docs.init_tests",
     "is_external": "tests.unit.docs.auditor_tests",
+    "m": ("flext_core.models", "FlextModels"),
     "main_commands_tests": "tests.unit.docs.main_commands_tests",
     "main_entry_tests": "tests.unit.docs.main_entry_tests",
     "main_tests": "tests.unit.docs.main_tests",
     "normalize_link": "tests.unit.docs.auditor_tests",
+    "p": ("flext_core.protocols", "FlextProtocols"),
+    "r": ("flext_core.result", "FlextResult"),
+    "s": ("flext_core.service", "FlextService"),
     "shared_iter_tests": "tests.unit.docs.shared_iter_tests",
     "shared_tests": "tests.unit.docs.shared_tests",
     "shared_write_tests": "tests.unit.docs.shared_write_tests",
     "should_skip_target": "tests.unit.docs.auditor_tests",
+    "t": ("flext_core.typings", "FlextTypes"),
+    "u": ("flext_core.utilities", "FlextUtilities"),
     "validator": "tests.unit.docs.validator_internals_tests",
     "validator_internals_tests": "tests.unit.docs.validator_internals_tests",
     "validator_tests": "tests.unit.docs.validator_tests",
+    "x": ("flext_core.mixins", "FlextMixins"),
 }
 
 
