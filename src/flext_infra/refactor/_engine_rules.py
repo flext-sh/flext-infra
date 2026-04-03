@@ -14,13 +14,11 @@ from typing import override
 from pydantic import TypeAdapter, ValidationError
 
 from flext_infra import (
-    CONTAINER_DICT_SEQ_ADAPTER,
-    INFRA_MAPPING_ADAPTER,
-    STR_MAPPING_ADAPTER,
-    FlextInfraChangeTracker,
-    FlextInfraGenericTransformerRule,
     FlextInfraRefactorClassReconstructor,
+    FlextInfraRefactorLegacyRemovalRule,
+    FlextInfraRefactorMROClassMigrationRule,
     FlextInfraRefactorMRORemover,
+    FlextInfraRefactorPatternCorrectionsRule,
     FlextInfraRefactorRule,
     FlextInfraRefactorSignaturePropagator,
     FlextInfraRefactorSymbolPropagator,
@@ -32,6 +30,10 @@ from flext_infra import (
     t,
     u,
 )
+from flext_infra.refactor._base_rule import (
+    FlextInfraChangeTracker,
+    FlextInfraGenericTransformerRule,
+)
 
 _SIG_MIGRATION_SEQ_ADAPTER: TypeAdapter[Sequence[m.Infra.SignatureMigration]] = (
     TypeAdapter(Sequence[m.Infra.SignatureMigration])
@@ -42,6 +44,75 @@ class FlextInfraRefactorMRORedundancyChecker(FlextInfraGenericTransformerRule):
     """Detect and fix nested classes inheriting from their parent namespace."""
 
     TRANSFORMER_CLASS: type[FlextInfraChangeTracker] = FlextInfraRefactorMRORemover
+
+
+class FlextInfraRefactorLegacyRemovalTextRule(FlextInfraRefactorRule):
+    """Run the rope-based legacy-removal rule through the text-rule engine."""
+
+    @override
+    def apply(
+        self,
+        source: str,
+        _file_path: Path | None = None,
+    ) -> t.Infra.Pair[str, t.StrSequence]:
+        if _file_path is None:
+            return (source, list[str]())
+        rule = FlextInfraRefactorLegacyRemovalRule(self.config)
+        return u.Infra.apply_transformer_to_source(
+            source,
+            _file_path,
+            lambda rope_project, resource: rule.apply(
+                rope_project,
+                resource,
+                dry_run=True,
+            ),
+        )
+
+
+class FlextInfraRefactorPatternCorrectionsTextRule(FlextInfraRefactorRule):
+    """Run the rope-based pattern-corrections rule through the text engine."""
+
+    @override
+    def apply(
+        self,
+        source: str,
+        _file_path: Path | None = None,
+    ) -> t.Infra.Pair[str, t.StrSequence]:
+        if _file_path is None:
+            return (source, list[str]())
+        rule = FlextInfraRefactorPatternCorrectionsRule(self.config)
+        return u.Infra.apply_transformer_to_source(
+            source,
+            _file_path,
+            lambda rope_project, resource: rule.apply(
+                rope_project,
+                resource,
+                dry_run=True,
+            ),
+        )
+
+
+class FlextInfraRefactorMROClassMigrationTextRule(FlextInfraRefactorRule):
+    """Run the rope-based MRO class-migration rule through the text engine."""
+
+    @override
+    def apply(
+        self,
+        source: str,
+        _file_path: Path | None = None,
+    ) -> t.Infra.Pair[str, t.StrSequence]:
+        if _file_path is None:
+            return (source, list[str]())
+        rule = FlextInfraRefactorMROClassMigrationRule()
+        return u.Infra.apply_transformer_to_source(
+            source,
+            _file_path,
+            lambda rope_project, resource: rule.apply(
+                rope_project,
+                resource,
+                dry_run=True,
+            ),
+        )
 
 
 class FlextInfraRefactorTypingUnificationRule(FlextInfraRefactorRule):
@@ -79,7 +150,7 @@ class FlextInfraRefactorTypingAnnotationFixRule(FlextInfraRefactorRule):
                 FlextInfraTypingAnnotationReplacer(),
                 source,
             )
-        return (source, [])
+        return (source, list[str]())
 
 
 class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
@@ -92,7 +163,7 @@ class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
         _file_path: Path | None = None,
     ) -> t.Infra.Pair[str, t.StrSequence]:
         if _file_path is None:
-            return (source, [])
+            return (source, list[str]())
         analyzer = FlextInfraTransformerTier0ImportFixer.Analyzer(
             file_path=_file_path,
             tier0_modules=self._tier0_modules(),
@@ -100,7 +171,7 @@ class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
         )
         analysis = analyzer.build_analysis()
         if not analysis.has_violations:
-            return (source, [])
+            return (source, list[str]())
         project_root = u.Infra.discover_project_root_from_file(_file_path)
         core_package = (
             u.Infra.discover_core_package(project_root)
@@ -136,7 +207,7 @@ class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
     def _alias_to_submodule(self) -> t.StrMapping:
         value = self.config.get("alias_to_submodule", {})
         if not u.is_mapping(value):
-            return {}
+            return dict[str, str]()
         return {str(key): str(item) for key, item in value.items()}
 
 
@@ -150,23 +221,23 @@ class FlextInfraRefactorSymbolPropagationRule(FlextInfraRefactorRule):
         _file_path: Path | None = None,
     ) -> t.Infra.Pair[str, t.StrSequence]:
         typed_cfg: Mapping[str, t.Infra.InfraValue] = (
-            INFRA_MAPPING_ADAPTER.validate_python(self.config)
+            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(self.config)
         )
         target_modules = set(u.Infra.string_list(typed_cfg.get("target_modules", [])))
         try:
-            module_renames: t.StrMapping = STR_MAPPING_ADAPTER.validate_python(
+            module_renames: t.StrMapping = t.Infra.STR_MAPPING_ADAPTER.validate_python(
                 typed_cfg.get("module_renames", {}),
             )
         except ValidationError:
-            module_renames = {}
+            module_renames = dict[str, str]()
         try:
-            symbol_renames: t.StrMapping = STR_MAPPING_ADAPTER.validate_python(
+            symbol_renames: t.StrMapping = t.Infra.STR_MAPPING_ADAPTER.validate_python(
                 typed_cfg.get("import_symbol_renames", {}),
             )
         except ValidationError:
-            symbol_renames = {}
+            symbol_renames = dict[str, str]()
         if not target_modules and not module_renames and not symbol_renames:
-            return (source, [])
+            return (source, list[str]())
         transformer = FlextInfraRefactorSymbolPropagator(
             target_modules=target_modules,
             module_renames=module_renames,
@@ -190,10 +261,10 @@ class FlextInfraRefactorSignaturePropagationRule(FlextInfraRefactorRule):
                 _SIG_MIGRATION_SEQ_ADAPTER.validate_python(migrations_raw)
             )
         except ValidationError:
-            return (source, [])
+            return (source, list[str]())
         migrations = [item for item in parsed if item.enabled]
         if not migrations:
-            return (source, [])
+            return (source, list[str]())
         transformer = FlextInfraRefactorSignaturePropagator(migrations=migrations)
         new_source = transformer.apply_to_source(source)
         return (new_source, list(transformer.changes))
@@ -215,19 +286,22 @@ class FlextInfraRefactorClassReconstructorRule(FlextInfraRefactorRule):
         )
         try:
             order_config: Sequence[t.Infra.ContainerDict] = (
-                CONTAINER_DICT_SEQ_ADAPTER.validate_python(order_config_raw)
+                t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(order_config_raw)
             )
         except ValidationError:
-            return (source, [])
+            return (source, list[str]())
         if not order_config:
-            return (source, [])
+            return (source, list[str]())
         transformer = FlextInfraRefactorClassReconstructor(order_config=order_config)
         return self._apply_text_transformer(transformer, source)
 
 
 __all__ = [
     "FlextInfraRefactorClassReconstructorRule",
+    "FlextInfraRefactorLegacyRemovalTextRule",
+    "FlextInfraRefactorMROClassMigrationTextRule",
     "FlextInfraRefactorMRORedundancyChecker",
+    "FlextInfraRefactorPatternCorrectionsTextRule",
     "FlextInfraRefactorSignaturePropagationRule",
     "FlextInfraRefactorSymbolPropagationRule",
     "FlextInfraRefactorTier0ImportFixRule",

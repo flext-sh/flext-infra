@@ -9,8 +9,8 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from flext_core import FlextLogger, FlextUtilities, r
-from flext_infra import c, m, p, t, u
+from flext_core import FlextLogger
+from flext_infra import c, m, p, r, t, u
 
 
 class FlextInfraDependencyDetectionService:
@@ -137,7 +137,7 @@ class FlextInfraDependencyDetectionService:
                 "DEP002": groups.dep002,
                 "DEP003": groups.dep003,
                 "DEP004": groups.dep004,
-            }.get(FlextUtilities.ensure_str(code))
+            }.get(u.ensure_str(code))
             if bucket is not None:
                 bucket.append(normalized_item)
         return groups

@@ -10,7 +10,7 @@ import sys
 from argparse import ArgumentParser, Namespace
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 
-from flext_core import FlextUtilities
+from flext_core import u
 from flext_infra import t
 from flext_infra._utilities.cli import FlextInfraUtilitiesCli
 
@@ -77,11 +77,13 @@ class FlextInfraUtilitiesCliSubcommand:
         description: str,
         *,
         subcommands: t.StrMapping,
-        flags: _SharedFlags | None = None,
+        flags: t.BoolMapping | None = None,
         subcommand_flags: Mapping[str, t.BoolMapping] | None = None,
     ) -> t.Infra.Pair[ArgumentParser, Mapping[str, ArgumentParser]]:
         """Create main parser with subcommands and shared flags."""
-        resolved_flags = flags or _SharedFlags()
+        resolved_flags = (
+            _SharedFlags.from_dict(flags) if flags is not None else _SharedFlags()
+        )
         base_options = resolved_flags.to_dict()
         command_options: MutableMapping[str, t.MutableBoolMapping] = {}
         for command in subcommands:
@@ -145,7 +147,7 @@ class FlextInfraUtilitiesCliSubcommand:
     ) -> t.StrSequence:
         """Normalize argparse metadata into a concrete list of option tokens."""
         if value is None:
-            return []
+            return list[str]()
         return list(value)
 
     @staticmethod
@@ -175,7 +177,7 @@ class FlextInfraUtilitiesCliSubcommand:
         if not disallowed:
             passthrough = set(passthrough_subcommands or ())
             command = getattr(args, "command", None)
-            command_label = FlextUtilities.ensure_str(command)
+            command_label = u.ensure_str(command)
             if unknown_args:
                 if command_label in passthrough:
                     setattr(args, "_unknown_args", tuple(unknown_args))
@@ -183,7 +185,7 @@ class FlextInfraUtilitiesCliSubcommand:
                 parser.error(f"unrecognized arguments: {' '.join(unknown_args)}")
             return args
         command = getattr(args, "command", None)
-        command_label = FlextUtilities.ensure_str(command, default="subcommand")
+        command_label = u.ensure_str(command, default="subcommand")
         parser.error(
             f"unrecognized arguments for '{command_label}': {' '.join(disallowed)}",
         )

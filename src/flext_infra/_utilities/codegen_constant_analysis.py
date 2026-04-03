@@ -13,7 +13,7 @@ import operator
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
-from flext_core import FlextUtilities
+from flext_core import u
 from flext_infra import (
     FlextInfraUtilitiesRope,
     c,
@@ -317,7 +317,7 @@ class FlextInfraUtilitiesCodegenConstantAnalysis:
         duplicates = duplicates_val if isinstance(duplicates_val, list) else []
 
         for dup in duplicates:
-            if not FlextUtilities.is_mapping(dup):
+            if not u.is_mapping(dup):
                 continue
             dup_name = str(dup.get("name", ""))
             offset = FlextInfraUtilitiesRope.find_definition_offset(

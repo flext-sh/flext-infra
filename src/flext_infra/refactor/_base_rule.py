@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, MutableSequence
 from pathlib import Path
-from typing import Protocol, runtime_checkable
+from typing import Protocol, override, runtime_checkable
 
 from flext_infra import c, t
 
@@ -55,7 +55,7 @@ class FlextInfraRefactorRule:
         _file_path: Path | None = None,
     ) -> t.Infra.Pair[str, t.StrSequence]:
         """Apply the rule to source text and return (transformed_source, changes)."""
-        return (source, [])
+        return (source, list[str]())
 
     def _apply_text_transformer(
         self,
@@ -67,7 +67,7 @@ class FlextInfraRefactorRule:
         if apply_fn is not None:
             new_source: str = apply_fn(source)
             return (new_source, list(transformer.changes))
-        return (source, [])
+        return (source, list[str]())
 
 
 class FlextInfraGenericTransformerRule(FlextInfraRefactorRule):
@@ -80,6 +80,7 @@ class FlextInfraGenericTransformerRule(FlextInfraRefactorRule):
     TRANSFORMER_CLASS: type[FlextInfraChangeTracker]
     """The transformer class to instantiate and apply."""
 
+    @override
     def apply(
         self,
         source: str,

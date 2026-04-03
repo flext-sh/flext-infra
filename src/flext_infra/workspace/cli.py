@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_cli import FlextCliOutput, cli
+from flext_cli import cli
 from flext_core import r
 from flext_infra import (
     FlextInfraOrchestratorService,
@@ -131,23 +131,21 @@ class FlextInfraCliWorkspace:
         migrations: Sequence[m.Infra.MigrationResult] = result.value
         failed_projects = 0
         for migration in migrations:
-            FlextCliOutput.display_message(
-                f"{migration.project}:", c.Cli.MessageTypes.INFO
-            )
+            cli.display_message(f"{migration.project}:", c.Cli.MessageTypes.INFO)
             for change in migration.changes:
-                FlextCliOutput.display_message(f"  + {change}", c.Cli.MessageTypes.INFO)
+                cli.display_message(f"  + {change}", c.Cli.MessageTypes.INFO)
             for err in migration.errors:
-                FlextCliOutput.display_message(f"  ! {err}", c.Cli.MessageTypes.WARNING)
+                cli.display_message(f"  ! {err}", c.Cli.MessageTypes.WARNING)
             if migration.errors:
                 failed_projects += 1
         total_changes = sum(len(migration.changes) for migration in migrations)
         total_errors = sum(len(migration.errors) for migration in migrations)
-        FlextCliOutput.display_message(
+        cli.display_message(
             f"Total: {total_changes} change(s), {total_errors} error(s) across {len(migrations)} project(s)",
             c.Cli.MessageTypes.INFO,
         )
         if dry_run:
-            FlextCliOutput.display_message(
+            cli.display_message(
                 "(dry-run — no files modified)", c.Cli.MessageTypes.INFO
             )
         if failed_projects:

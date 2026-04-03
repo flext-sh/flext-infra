@@ -17,9 +17,6 @@ from flext_infra import (
     FlextInfraClassNestingRefactorRule,
     FlextInfraRefactorEnsureFutureAnnotationsRule,
     FlextInfraRefactorImportModernizerRule,
-    FlextInfraRefactorLegacyRemovalRule,
-    FlextInfraRefactorMROClassMigrationRule,
-    FlextInfraRefactorPatternCorrectionsRule,
     FlextInfraRefactorRule,
     FlextInfraRefactorRuleDefinitionValidator,
     FlextInfraRefactorRuleLoader,
@@ -33,7 +30,10 @@ from flext_infra import (
 )
 from flext_infra.refactor._engine_rules import (
     FlextInfraRefactorClassReconstructorRule,
+    FlextInfraRefactorLegacyRemovalTextRule,
+    FlextInfraRefactorMROClassMigrationTextRule,
     FlextInfraRefactorMRORedundancyChecker,
+    FlextInfraRefactorPatternCorrectionsTextRule,
     FlextInfraRefactorSignaturePropagationRule,
     FlextInfraRefactorSymbolPropagationRule,
     FlextInfraRefactorTier0ImportFixRule,
@@ -52,14 +52,17 @@ class FlextInfraRefactorEngine:
             c.Infra.FUTURE_FIX_ACTIONS | c.Infra.FUTURE_CHECKS,
             FlextInfraRefactorEnsureFutureAnnotationsRule,
         ),
-        (c.Infra.LEGACY_FIX_ACTIONS, FlextInfraRefactorLegacyRemovalRule),
+        (c.Infra.LEGACY_FIX_ACTIONS, FlextInfraRefactorLegacyRemovalTextRule),
         (c.Infra.IMPORT_FIX_ACTIONS, FlextInfraRefactorImportModernizerRule),
         (c.Infra.CLASS_FIX_ACTIONS, FlextInfraRefactorClassReconstructorRule),
-        (c.Infra.PATTERN_FIX_ACTIONS, FlextInfraRefactorPatternCorrectionsRule),
+        (c.Infra.PATTERN_FIX_ACTIONS, FlextInfraRefactorPatternCorrectionsTextRule),
         (c.Infra.TYPE_ALIAS_FIX_ACTIONS, FlextInfraRefactorTypingUnificationRule),
         (c.Infra.TYPING_FIX_ACTIONS, FlextInfraRefactorTypingAnnotationFixRule),
         (c.Infra.TIER0_FIX_ACTIONS, FlextInfraRefactorTier0ImportFixRule),
-        (frozenset({"migrate_to_class_mro"}), FlextInfraRefactorMROClassMigrationRule),
+        (
+            frozenset({"migrate_to_class_mro"}),
+            FlextInfraRefactorMROClassMigrationTextRule,
+        ),
         (
             frozenset({"propagate_signature_migrations"}),
             FlextInfraRefactorSignaturePropagationRule,
@@ -74,7 +77,7 @@ class FlextInfraRefactorEngine:
         ),
         (
             frozenset({"legacy", "alias", "deprecated", "wrapper", "bypass"}),
-            FlextInfraRefactorLegacyRemovalRule,
+            FlextInfraRefactorLegacyRemovalTextRule,
         ),
         (frozenset({"import", "modernize"}), FlextInfraRefactorImportModernizerRule),
         (
@@ -83,9 +86,12 @@ class FlextInfraRefactorEngine:
         ),
         (
             frozenset({"redundant-cast", "dict-to-mapping", "container-invariance"}),
-            FlextInfraRefactorPatternCorrectionsRule,
+            FlextInfraRefactorPatternCorrectionsTextRule,
         ),
-        (frozenset({"migrate-to-class-mro"}), FlextInfraRefactorMROClassMigrationRule),
+        (
+            frozenset({"migrate-to-class-mro"}),
+            FlextInfraRefactorMROClassMigrationTextRule,
+        ),
         (frozenset({"mro"}), FlextInfraRefactorMRORedundancyChecker),
         (
             frozenset({"propagate", "symbol-rename", "rename"}),
@@ -309,20 +315,35 @@ class FlextInfraRefactorEngine:
                 return self._skip_result(file_path)
             original = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
             current, all_changes = original, list[str]()
-            for fr in self.file_rules:
-                res = fr.apply(file_path, dry_run=True)
-                if not res.success:
-                    return m.Infra.Result(
-                        file_path=file_path,
-                        success=False,
-                        modified=False,
-                        error=res.error,
-                        changes=res.changes,
-                        refactored_code=None,
-                    )
-                if res.modified and res.refactored_code:
-                    current = res.refactored_code
-                all_changes.extend(res.changes)
+            if self.file_rules:
+                workspace_root = (
+                    u.Infra.discover_project_root_from_file(file_path)
+                    or file_path.parent
+                )
+                rope_project = u.Infra.init_rope_project(workspace_root)
+                try:
+                    resource = u.Infra.get_resource_from_path(rope_project, file_path)
+                    if resource is None:
+                        return self._error_result(
+                            file_path,
+                            f"Could not resolve rope resource for {file_path}",
+                        )
+                    for fr in self.file_rules:
+                        res = fr.apply(rope_project, resource, dry_run=True)
+                        if not res.success:
+                            return m.Infra.Result(
+                                file_path=file_path,
+                                success=False,
+                                modified=False,
+                                error=res.error,
+                                changes=res.changes,
+                                refactored_code=None,
+                            )
+                        if res.modified and res.refactored_code:
+                            current = res.refactored_code
+                        all_changes.extend(res.changes)
+                finally:
+                    rope_project.close()
             for rule in self.rules:
                 if rule.enabled:
                     current, changes = rule.apply(current, file_path)

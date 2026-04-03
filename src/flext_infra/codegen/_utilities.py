@@ -9,6 +9,9 @@ from flext_infra._utilities.codegen_constant_detection import (
 from flext_infra._utilities.codegen_constant_transformation import (
     FlextInfraUtilitiesCodegenConstantTransformation,
 )
+from flext_infra._utilities.codegen_execution import (
+    FlextInfraUtilitiesCodegenExecution,
+)
 from flext_infra._utilities.codegen_governance import (
     FlextInfraUtilitiesCodegenGovernance,
 )
@@ -31,7 +34,9 @@ class FlextInfraUtilitiesCodegen(
     FlextInfraUtilitiesCodegenImportCycles,
     FlextInfraUtilitiesCodegenLazyAliases,
     FlextInfraUtilitiesCodegenLazyScanning,
-): ...
+    FlextInfraUtilitiesCodegenExecution,
+):
+    """Facade for codegen utilities."""
 
 
 __all__ = ["FlextInfraUtilitiesCodegen"]

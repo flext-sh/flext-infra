@@ -16,7 +16,7 @@ from pydantic import BaseModel, ValidationError
 from tomlkit.items import Array, Item, Table
 from tomlkit.toml_document import TOMLDocument
 
-from flext_core import FlextLogger, FlextUtilities, r
+from flext_core import FlextLogger, r, u
 from flext_infra import FlextInfraUtilitiesSubprocess, c, t
 
 
@@ -36,7 +36,7 @@ class FlextInfraUtilitiesToml:
     @staticmethod
     def as_toml_mapping(value: t.Infra.InfraValue) -> t.Infra.ContainerDict | None:
         """Check if value is a MutableMapping and return it typed, otherwise None."""
-        if not FlextUtilities.is_mapping(value):
+        if not u.is_mapping(value):
             return None
         try:
             normalized_value = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
@@ -159,7 +159,7 @@ class FlextInfraUtilitiesToml:
             (str, int, float, bool, type(None), BaseModel, Path),
         ):
             return raw_value
-        if FlextUtilities.is_mapping(raw_value):
+        if u.is_mapping(raw_value):
             try:
                 return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
                     raw_value,

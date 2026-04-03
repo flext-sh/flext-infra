@@ -5,12 +5,8 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
-from pydantic import ValidationError
-
 from flext_infra import (
-    INFRA_SEQ_ADAPTER,
     FlextInfraPostCheckGate,
-    FlextInfraUtilitiesRope,
     c,
     m,
     t,
@@ -53,7 +49,7 @@ class FlextInfraClassNestingRefactorRule:
         """Transform resource according to loaded mappings and policy."""
         fp = Path(rope_project.root.real_path) / resource.path
         try:
-            source = FlextInfraUtilitiesRope.read_source(resource)
+            source = u.Infra.read_source(resource)
             cfg = self._load_config()
             thr = self._confidence_threshold(cfg)
             cm = self._symbol_mappings(
@@ -102,7 +98,7 @@ class FlextInfraClassNestingRefactorRule:
                         changes=errs,
                         refactored_code=None,
                     )
-                FlextInfraUtilitiesRope.write_source(
+                u.Infra.write_source(
                     rope_project, resource, ns, description="class nesting refactor"
                 )
             return m.Infra.Result(
@@ -139,7 +135,7 @@ class FlextInfraClassNestingRefactorRule:
             if not mapping:
                 continue
             for name, target_ns in mapping.items():
-                ns, _ = FlextInfraUtilitiesRope.replace_in_source(
+                ns, _ = u.Infra.replace_in_source(
                     rope_project,
                     resource,
                     rf"\b{name}\b",
@@ -233,13 +229,9 @@ class FlextInfraClassNestingRefactorRule:
             raw = loaded.get(key)
             if isinstance(raw, list):
                 try:
-                    typed: Sequence[t.Infra.InfraValue] = (
-                        INFRA_SEQ_ADAPTER.validate_python(raw)
-                    )
-                    config[key] = [
-                        dict(e) for e in self._coerce(u.Infra.mapping_list(typed))
-                    ]
-                except ValidationError:
+                    mappings = u.Infra.mapping_list(raw)
+                    config[key] = [dict(e) for e in self._coerce(mappings)]
+                except ValueError:
                     config[key] = list[t.Infra.InfraValue]()
         self._cached_config = config
         return config

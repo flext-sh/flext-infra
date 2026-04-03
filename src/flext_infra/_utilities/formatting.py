@@ -82,5 +82,27 @@ class FlextInfraUtilitiesFormatting:
             chars.append(ch.lower())
         return "".join(chars)
 
+    @staticmethod
+    def generate_module_skeleton(
+        class_name: str, base_class: str, docstring: str
+    ) -> str:
+        """Generate a basic python module containing a single class structure."""
+        all_var = "__all__"
+        return f'''"""{docstring}
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
+from __future__ import annotations
+
+
+class {class_name}({base_class}):
+    pass
+
+
+{all_var} = ["{class_name}"]
+'''
+
 
 __all__ = ["FlextInfraUtilitiesFormatting"]

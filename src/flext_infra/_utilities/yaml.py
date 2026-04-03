@@ -16,7 +16,7 @@ from pathlib import Path
 from pydantic import ValidationError
 from yaml import YAMLError, safe_load
 
-from flext_core import FlextUtilities, r
+from flext_core import r, u
 from flext_infra import c, m, t
 
 
@@ -48,7 +48,7 @@ class FlextInfraUtilitiesYaml:
         parsed: t.Infra.InfraValue | None = safe_load(raw)
         if parsed is None:
             return {}
-        if not FlextUtilities.is_mapping(parsed):
+        if not u.is_mapping(parsed):
             msg = f"rules.yml must be a mapping: {path}"
             raise TypeError(msg)
         try:
@@ -75,7 +75,7 @@ class FlextInfraUtilitiesYaml:
                 )
             )
             parsed_raw: t.Infra.InfraValue | None = safe_load(raw_text)
-            if not FlextUtilities.is_mapping(parsed_raw):
+            if not u.is_mapping(parsed_raw):
                 result = r[m.Infra.ToolConfigDocument].fail(
                     "tool_config.yml must contain a top-level mapping",
                 )

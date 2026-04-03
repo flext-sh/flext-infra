@@ -27,12 +27,6 @@ from flext_infra import (
     t,
     u,
 )
-from flext_infra._utilities.codegen_fixer_passes import (
-    FlextInfraUtilitiesCodegenFixerPasses as _passes,
-)
-from flext_infra._utilities.codegen_fixer_rules import (
-    FlextInfraUtilitiesCodegenFixerRules as _rules,
-)
 
 
 def _violation(
@@ -143,16 +137,16 @@ class FlextInfraCodegenFixer(s[bool]):
         self._apply_ns_rules(src_dir=src_dir, pkg_dir=pkg_dir, ctx=ctx)
         if self._dry_run or self._rules_only:
             return self._build_result(project_path.name, ctx)
-        report = _passes.apply_project_mro_migrations(
+        report = u.Infra.apply_project_mro_migrations(
             project_path=project_path, ctx=ctx
         )
-        _passes.record_mro_migration_result(report=report, ctx=ctx)
-        _passes.apply_refactor_engine_pass(project_path=project_path, ctx=ctx)
-        _passes.apply_namespace_enforcement_pass(project_path=project_path, ctx=ctx)
-        _passes.run_lazy_propagation(project_path=project_path, ctx=ctx)
+        u.Infra.record_mro_migration_result(report=report, ctx=ctx)
+        u.Infra.apply_refactor_engine_pass(project_path=project_path, ctx=ctx)
+        u.Infra.apply_namespace_enforcement_pass(project_path=project_path, ctx=ctx)
+        u.Infra.run_lazy_propagation(project_path=project_path, ctx=ctx)
         try:
-            _passes.cleanup_stale_all_entries(ctx)
-            _passes.normalize_rewritten_python_files(ctx)
+            u.Infra.cleanup_stale_all_entries(ctx)
+            u.Infra.normalize_rewritten_python_files(ctx)
         except (OSError, UnicodeDecodeError):
             _ = u.Infra.rollback_to_checkpoint(self._workspace_root, stash_ref)
             raise
@@ -170,26 +164,26 @@ class FlextInfraCodegenFixer(s[bool]):
         for py_file in sorted(src_dir.rglob("*.py")):
             if py_file.name in excluded or py_file.name.startswith("_"):
                 continue
-            _rules.fix_rule1(
+            u.Infra.fix_rule1(
                 source_file=py_file,
                 pkg_dir=pkg_dir,
                 ctx=ctx,
                 dry_run=self._dry_run,
             )
-            _rules.fix_rule2(
+            u.Infra.fix_rule2(
                 source_file=py_file,
                 pkg_dir=pkg_dir,
                 ctx=ctx,
                 dry_run=self._dry_run,
             )
-        _rules.fix_rule3(pkg_dir=pkg_dir, ctx=ctx)
-        _rules.fix_rule4(
+        u.Infra.fix_rule3(pkg_dir=pkg_dir, ctx=ctx)
+        u.Infra.fix_rule4(
             src_dir=src_dir,
             pkg_dir=pkg_dir,
             ctx=ctx,
             workspace_root=self._workspace_root,
         )
-        _rules.fix_rule5(src_dir=src_dir, pkg_dir=pkg_dir, ctx=ctx)
+        u.Infra.fix_rule5(src_dir=src_dir, pkg_dir=pkg_dir, ctx=ctx)
 
     def run(self) -> Sequence[m.Infra.AutoFixResult]:
         """Run auto-fix on all projects in workspace."""

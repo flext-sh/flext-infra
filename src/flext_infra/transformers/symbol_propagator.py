@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import re
 from collections.abc import Sequence
+from typing import override
 
-from flext_infra import FlextInfraUtilitiesRope, t
+from flext_infra import t, u
 from flext_infra.transformers._base import FlextInfraRopeTransformer
 
 
@@ -32,13 +33,14 @@ class FlextInfraRefactorSymbolPropagator(FlextInfraRopeTransformer):
         self._module_renames = module_renames
         self._import_symbol_renames = import_symbol_renames
 
+    @override
     def transform(
         self,
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
     ) -> tuple[str, Sequence[str]]:
         """Apply module/symbol renames. Returns (new_source, changes)."""
-        source = FlextInfraUtilitiesRope.read_source(resource)
+        source = u.Infra.read_source(resource)
 
         # Phase 1: Rename module paths in from-imports
         for old_module, new_module in self._module_renames.items():
@@ -67,8 +69,8 @@ class FlextInfraRefactorSymbolPropagator(FlextInfraRopeTransformer):
                 new_name=new_name,
             )
 
-        if source != FlextInfraUtilitiesRope.read_source(resource) and self.changes:
-            FlextInfraUtilitiesRope.write_source(
+        if source != u.Infra.read_source(resource) and self.changes:
+            u.Infra.write_source(
                 rope_project,
                 resource,
                 source,

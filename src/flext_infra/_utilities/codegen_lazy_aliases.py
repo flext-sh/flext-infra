@@ -22,8 +22,14 @@ from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 class FlextInfraUtilitiesCodegenLazyAliases:
     """Resolves single-letter aliases from ALIAS_TO_SUFFIX mapping."""
 
-    def __init__(self, workspace_root: Path) -> None:
-        self._root = workspace_root
+    def __init__(self, workspace_root: Path | None = None) -> None:
+        self._root = (
+            workspace_root
+            if workspace_root is not None
+            else FlextInfraUtilitiesDiscovery.discover_workspace_root_from_file(
+                Path(__file__)
+            )
+        )
         self._alias_target_cache: MutableMapping[
             tuple[str, str],
             t.Infra.StrPair | None,

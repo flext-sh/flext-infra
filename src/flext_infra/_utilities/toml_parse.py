@@ -19,7 +19,7 @@ from pydantic import TypeAdapter, ValidationError
 from tomlkit.container import Container
 from tomlkit.items import Item, Table
 
-from flext_core import FlextUtilities, r
+from flext_core import r, u
 from flext_infra import FlextInfraUtilitiesToml, c, t
 
 
@@ -147,28 +147,28 @@ class FlextInfraUtilitiesTomlParse:
                     names.add(dep_name)
 
         project_val: t.Infra.InfraValue = raw.get(c.Infra.PROJECT)
-        if FlextUtilities.is_mapping(project_val):
+        if u.is_mapping(project_val):
             _collect(project_val.get(c.Infra.DEPENDENCIES))
             optional_val: t.Infra.InfraValue = project_val.get(
                 c.Infra.OPTIONAL_DEPENDENCIES,
             )
-            if FlextUtilities.is_mapping(optional_val):
+            if u.is_mapping(optional_val):
                 for specs in optional_val.values():
                     _collect(specs)
 
         groups_val: t.Infra.InfraValue = raw.get("dependency-groups")
-        if FlextUtilities.is_mapping(groups_val):
+        if u.is_mapping(groups_val):
             for specs in groups_val.values():
                 _collect(specs)
 
         tool_val: t.Infra.InfraValue = raw.get(c.Infra.TOOL)
-        if not FlextUtilities.is_mapping(tool_val):
+        if not u.is_mapping(tool_val):
             return sorted(names)
         poetry_val: t.Infra.InfraValue = tool_val.get(c.Infra.POETRY)
-        if not FlextUtilities.is_mapping(poetry_val):
+        if not u.is_mapping(poetry_val):
             return sorted(names)
         deps_val: t.Infra.InfraValue = poetry_val.get(c.Infra.DEPENDENCIES)
-        if not FlextUtilities.is_mapping(deps_val):
+        if not u.is_mapping(deps_val):
             return sorted(names)
         for dep_key in deps_val:
             dep_name = FlextInfraUtilitiesTomlParse.dep_name(str(dep_key))

@@ -8,7 +8,7 @@ from typing import Annotated
 
 from pydantic import Field
 
-from flext_core import FlextModels
+from flext_core import m
 from flext_infra import t
 
 
@@ -20,7 +20,7 @@ class FlextInfraWorkspaceModels:
     - ``FrozenStrictModel`` reserved for immutable workspace config contracts.
     """
 
-    class ProjectInfo(FlextModels.ArbitraryTypesModel):
+    class ProjectInfo(m.ArbitraryTypesModel):
         """Discovered project metadata for workspace operations."""
 
         name: Annotated[t.NonEmptyStr, Field(description="Project name")]
@@ -38,7 +38,7 @@ class FlextInfraWorkspaceModels:
             Field(default=True, description="Project has source directory"),
         ] = True
 
-    class SyncResult(FlextModels.ArbitraryTypesModel):
+    class SyncResult(m.ArbitraryTypesModel):
         """Result payload for sync operations."""
 
         files_changed: Annotated[
@@ -54,7 +54,7 @@ class FlextInfraWorkspaceModels:
             ),
         ] = Field(default_factory=lambda: datetime.now(UTC))
 
-    class MigrationResult(FlextModels.ArbitraryTypesModel):
+    class MigrationResult(m.ArbitraryTypesModel):
         """Migration operation outcome with applied changes and errors."""
 
         project: Annotated[t.NonEmptyStr, Field(description="Project identifier")]

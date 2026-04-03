@@ -16,17 +16,12 @@ from pathlib import Path
 
 from pydantic import model_validator
 
-from flext_core import FlextRuntime, FlextUtilities
+from flext_core import FlextRuntime, u
 from flext_infra import FlextInfraUtilitiesOutput, m, t
 
 
 class _SharedFlags(m.FrozenStrictModel):
-    """Bundled CLI flag configuration for shared parser options.
-
-    Groups the boolean flags that control which CLI arguments are added to
-    argument parsers. Used across parser creation, flag attachment, and
-    option resolution functions to avoid parameter proliferation.
-    """
+    """Bundled CLI flag configuration for shared parser options."""
 
     include_apply: bool = True
     include_diff: bool = True
@@ -40,8 +35,7 @@ class _SharedFlags(m.FrozenStrictModel):
         cls,
         data: t.OptionalBoolMapping | _SharedFlags,
     ) -> t.OptionalBoolMapping | _SharedFlags:
-        """Default include_diff to include_apply when not explicitly provided or None."""
-        if FlextUtilities.is_mapping(data) and (
+        if u.is_mapping(data) and (
             "include_diff" not in data or data.get("include_diff") is None
         ):
             resolved: t.MutableOptionalBoolMapping = dict(data)
@@ -50,7 +44,6 @@ class _SharedFlags(m.FrozenStrictModel):
         return data
 
     def to_dict(self) -> t.MutableBoolMapping:
-        """Return flag values as a mutable mapping."""
         return {
             "include_apply": self.include_apply,
             "include_diff": self.include_diff,
@@ -61,7 +54,6 @@ class _SharedFlags(m.FrozenStrictModel):
 
     @staticmethod
     def from_dict(data: t.BoolMapping) -> _SharedFlags:
-        """Construct from a mapping with already-resolved values."""
         return _SharedFlags.model_validate(data)
 
 
@@ -128,44 +120,12 @@ class FlextInfraUtilitiesCli:
             return [self.workspace / name for name in names]
 
     @staticmethod
-    def _merge_shared_flag_options(
-        base_options: t.BoolMapping,
-        overrides: t.BoolMapping | None,
-    ) -> t.MutableBoolMapping:
-        from flext_infra._utilities.cli_subcommand import (
-            FlextInfraUtilitiesCliSubcommand,
-        )
-
-        return FlextInfraUtilitiesCliSubcommand._merge_shared_flag_options(
-            base_options, overrides
-        )
-
-    @staticmethod
-    def _union_shared_flag_options(
-        options: Sequence[t.BoolMapping],
-    ) -> t.MutableBoolMapping:
-        from flext_infra._utilities.cli_subcommand import (
-            FlextInfraUtilitiesCliSubcommand,
-        )
-
-        return FlextInfraUtilitiesCliSubcommand._union_shared_flag_options(options)
-
-    @staticmethod
-    def _shared_option_tokens(options: t.BoolMapping) -> t.StrSequence:
-        from flext_infra._utilities.cli_subcommand import (
-            FlextInfraUtilitiesCliSubcommand,
-        )
-
-        return FlextInfraUtilitiesCliSubcommand._shared_option_tokens(options)
-
-    @staticmethod
     def _add_shared_flags(
         parser: ArgumentParser,
         flags: _SharedFlags,
         *,
         suppress_defaults: bool = False,
     ) -> None:
-        """Attach standard shared CLI flags to an existing parser."""
         resolved_include_apply = flags.include_apply
         resolved_include_diff = flags.include_diff
         default_path = SUPPRESS if suppress_defaults else Path.cwd()
@@ -235,23 +195,6 @@ class FlextInfraUtilitiesCli:
         *,
         suppress_defaults: bool = False,
     ) -> ArgumentParser:
-        """Create base argument parser with optional standard flags.
-
-        Builds a reusable ArgumentParser with common CLI flags that can be
-        selectively enabled via booleans. Always includes --workspace flag.
-
-        This is used as parent parser for primary commands and subcommands,
-        allowing consistent flag handling across all flext_infra CLI tools.
-
-        Args:
-            flags: Bundled flag configuration controlling which arguments to add.
-            suppress_defaults: If True, use SUPPRESS defaults (for subcommand parsers).
-
-        Returns:
-            ArgumentParser configured with selected flags, add_help=False so parent
-            parser can build top-level help without duplication.
-
-        """
         base = ArgumentParser(add_help=False)
         FlextInfraUtilitiesCli._add_shared_flags(
             base,
@@ -278,7 +221,7 @@ class FlextInfraUtilitiesCli:
             prog,
             description,
             subcommands=subcommands,
-            flags=flags,
+            flags=flags.to_dict() if flags is not None else None,
             subcommand_flags=subcommand_flags,
         )
 

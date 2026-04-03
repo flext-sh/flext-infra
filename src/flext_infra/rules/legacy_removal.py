@@ -3,14 +3,9 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping, MutableSequence, Sequence
-
-from pydantic import ValidationError
+from collections.abc import Mapping, MutableSequence
 
 from flext_infra import (
-    INFRA_MAPPING_ADAPTER,
-    INFRA_SEQ_ADAPTER,
-    FlextInfraUtilitiesRope,
     c,
     t,
     u,
@@ -34,7 +29,7 @@ class FlextInfraRefactorLegacyRemovalRule:
         dry_run: bool = False,
     ) -> tuple[str, t.StrSequence]:
         """Apply configured legacy-removal transforms to resource."""
-        source = FlextInfraUtilitiesRope.read_source(resource)
+        source = u.Infra.read_source(resource)
         changes: MutableSequence[str] = []
         fix_action = u.Infra.get_str_key(
             self.config,
@@ -63,29 +58,13 @@ class FlextInfraRefactorLegacyRemovalRule:
             )
             changes.extend(bypass_changes)
         if new_source != source and not dry_run:
-            FlextInfraUtilitiesRope.write_source(
+            u.Infra.write_source(
                 rope_project,
                 resource,
                 new_source,
                 description="legacy removal",
             )
         return (new_source, changes)
-
-    def _typed_config(self) -> Mapping[str, t.Infra.InfraValue]:
-        """Get self.config validated as Mapping[str, InfraValue]."""
-        return INFRA_MAPPING_ADAPTER.validate_python(self.config)
-
-    @staticmethod
-    def _normalize_string_items(value: t.Infra.InfraValue) -> t.StrSequence:
-        if not isinstance(value, (list, tuple, set)):
-            return []
-        try:
-            items: Sequence[t.Infra.InfraValue] = INFRA_SEQ_ADAPTER.validate_python(
-                value
-            )
-        except ValidationError:
-            return []
-        return [item for item in items if isinstance(item, str)]
 
     def _remove_aliases(
         self,
@@ -94,18 +73,17 @@ class FlextInfraRefactorLegacyRemovalRule:
         source: str,
     ) -> tuple[str, t.StrSequence]:
         """Remove module-level identity aliases via rope."""
-        typed_config = self._typed_config()
         allow_aliases = set(
-            self._normalize_string_items(
-                typed_config.get("allow_aliases", []),
+            u.Infra.string_list(
+                self.config.get("allow_aliases", []),
             ),
         )
         allow_target_suffixes = tuple(
-            self._normalize_string_items(
-                typed_config.get("allow_target_suffixes", []),
+            u.Infra.string_list(
+                self.config.get("allow_target_suffixes", []),
             ),
         )
-        new_source, removed = FlextInfraUtilitiesRope.remove_module_level_aliases(
+        new_source, removed = u.Infra.remove_module_level_aliases(
             rope_project,
             resource,
             allow=allow_aliases,

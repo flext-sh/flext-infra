@@ -5,8 +5,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 from flext_infra import (
-    INFRA_MAPPING_ADAPTER,
-    FlextInfraUtilitiesRope,
     c,
     t,
     u,
@@ -28,7 +26,7 @@ class FlextInfraRefactorPatternCorrectionsRule:
         dry_run: bool = False,
     ) -> tuple[str, t.StrSequence]:
         """Apply configured pattern corrections to resource."""
-        source = FlextInfraUtilitiesRope.read_source(resource)
+        source = u.Infra.read_source(resource)
         fix_action = u.Infra.get_str_key(
             self.config,
             c.Infra.ReportKeys.FIX_ACTION,
@@ -44,7 +42,7 @@ class FlextInfraRefactorPatternCorrectionsRule:
             }
             if include_returns:
                 replacements = dict(replacements)
-            new_source, count = FlextInfraUtilitiesRope.batch_replace_annotations(
+            new_source, count = u.Infra.batch_replace_annotations(
                 rope_project,
                 resource,
                 replacements,
@@ -57,12 +55,9 @@ class FlextInfraRefactorPatternCorrectionsRule:
                 )
             return (source, [])
         if fix_action == "remove_redundant_casts":
-            typed_cfg: Mapping[str, t.Infra.InfraValue] = (
-                INFRA_MAPPING_ADAPTER.validate_python(self.config)
-            )
-            raw_types = typed_cfg.get("redundant_type_targets", [])
+            raw_types = self.config.get("redundant_type_targets", [])
             removable_types = set(u.Infra.string_list(raw_types))
-            new_source, count = FlextInfraUtilitiesRope.remove_redundant_cast(
+            new_source, count = u.Infra.remove_redundant_cast(
                 rope_project,
                 resource,
                 apply=not dry_run,

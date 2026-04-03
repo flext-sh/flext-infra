@@ -28,6 +28,7 @@ if _TYPE_CHECKING:
         detection,
         detector,
         extra_paths,
+        extra_paths_pyrefly,
         fix_pyrefly_config,
         internal_sync,
         modernizer,
@@ -66,6 +67,7 @@ if _TYPE_CHECKING:
     from flext_infra.deps.detection import FlextInfraDependencyDetectionService
     from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector, main
     from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
+    from flext_infra.deps.extra_paths_pyrefly import FlextInfraExtraPathsPyrefly
     from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
     from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
     from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
@@ -82,6 +84,7 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = merge_lazy_imports(
         "FlextInfraDepsConstants": "flext_infra.deps._constants",
         "FlextInfraDepsModels": "flext_infra.deps._models",
         "FlextInfraExtraPathsManager": "flext_infra.deps.extra_paths",
+        "FlextInfraExtraPathsPyrefly": "flext_infra.deps.extra_paths_pyrefly",
         "FlextInfraInternalDependencySyncService": "flext_infra.deps.internal_sync",
         "FlextInfraPyprojectModernizer": "flext_infra.deps.modernizer",
         "FlextInfraRuntimeDevDependencyDetector": "flext_infra.deps.detector",
@@ -93,6 +96,7 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = merge_lazy_imports(
         "detection": "flext_infra.deps.detection",
         "detector": "flext_infra.deps.detector",
         "extra_paths": "flext_infra.deps.extra_paths",
+        "extra_paths_pyrefly": "flext_infra.deps.extra_paths_pyrefly",
         "fix_pyrefly_config": "flext_infra.deps.fix_pyrefly_config",
         "internal_sync": "flext_infra.deps.internal_sync",
         "main": "flext_infra.deps.detector",

@@ -5,12 +5,13 @@ from __future__ import annotations
 import textwrap
 from collections import defaultdict
 from collections.abc import Sequence
+from typing import override
 
 from flext_infra import (
     FlextInfraRefactorTransformerPolicyUtilities,
-    FlextInfraUtilitiesRope,
     m,
     t,
+    u,
 )
 from flext_infra.transformers._base import FlextInfraRopeTransformer
 
@@ -31,14 +32,15 @@ class FlextInfraRefactorClassNestingTransformer(FlextInfraRopeTransformer):
         self._policy_context = policy_context
         self._class_families = class_families
 
+    @override
     def transform(
         self,
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
     ) -> tuple[str, Sequence[str]]:
         """Apply class nesting. Returns (new_source, changes)."""
-        source = FlextInfraUtilitiesRope.read_source(resource)
-        class_infos = FlextInfraUtilitiesRope.get_class_info(rope_project, resource)
+        source = u.Infra.read_source(resource)
+        class_infos = u.Infra.get_class_info(rope_project, resource)
         existing_names = {info.name for info in class_infos}
 
         collected: dict[str, list[str]] = defaultdict(list)
@@ -66,8 +68,8 @@ class FlextInfraRefactorClassNestingTransformer(FlextInfraRopeTransformer):
             )
             existing_names.add(namespace)
 
-        if source != FlextInfraUtilitiesRope.read_source(resource) and self.changes:
-            FlextInfraUtilitiesRope.write_source(
+        if source != u.Infra.read_source(resource) and self.changes:
+            u.Infra.write_source(
                 rope_project,
                 resource,
                 source,
@@ -85,23 +87,17 @@ class FlextInfraRefactorClassNestingTransformer(FlextInfraRopeTransformer):
     ) -> str:
         extracted: list[str] = []
         for class_name in class_names:
-            block = FlextInfraUtilitiesRope.extract_definition(
-                source, class_name, kind="class"
-            )
+            block = u.Infra.extract_definition(source, class_name, kind="class")
             if block is None:
                 continue
             extracted.append(textwrap.indent(block, "    "))
-            source = FlextInfraUtilitiesRope.remove_definition(
-                source, class_name, kind="class"
-            )
+            source = u.Infra.remove_definition(source, class_name, kind="class")
             self._record_change(f"Nested {class_name} into {namespace}")
         if not extracted:
             return source
         nested_block = "\n".join(extracted)
         if ns_exists:
-            return FlextInfraUtilitiesRope.append_to_class_body(
-                source, namespace, nested_block
-            )
+            return u.Infra.append_to_class_body(source, namespace, nested_block)
         return source.rstrip("\n") + f"\n\nclass {namespace}:\n{nested_block}\n"
 
     def _is_nesting_allowed(self, class_name: str, target_namespace: str) -> bool:

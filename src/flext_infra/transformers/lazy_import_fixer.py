@@ -8,8 +8,9 @@ from __future__ import annotations
 
 import re
 from collections.abc import Sequence
+from typing import override
 
-from flext_infra import FlextInfraUtilitiesRope, t, u
+from flext_infra import t, u
 from flext_infra.transformers._base import FlextInfraRopeTransformer
 
 
@@ -18,13 +19,14 @@ class FlextInfraRefactorLazyImportFixer(FlextInfraRopeTransformer):
 
     _DEF_RE = re.compile(r"^(?:def |async def |class )", re.MULTILINE)
 
+    @override
     def transform(
         self,
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
     ) -> tuple[str, Sequence[str]]:
         """Hoist function-local imports to module level."""
-        source = FlextInfraUtilitiesRope.read_source(resource)
+        source = u.Infra.read_source(resource)
         lines = source.splitlines(keepends=True)
         existing_imports: set[str] = set()
         hoisted: list[str] = []
@@ -59,7 +61,7 @@ class FlextInfraRefactorLazyImportFixer(FlextInfraRopeTransformer):
         insert_idx = u.Infra.find_import_insert_position(kept_lines)
         new_lines = kept_lines[:insert_idx] + hoisted + kept_lines[insert_idx:]
         new_source = "".join(new_lines)
-        FlextInfraUtilitiesRope.write_source(
+        u.Infra.write_source(
             rope_project,
             resource,
             new_source,

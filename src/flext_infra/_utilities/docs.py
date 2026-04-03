@@ -6,7 +6,7 @@ import re
 from collections.abc import Callable, MutableSequence, Sequence
 from pathlib import Path
 
-from flext_core import FlextUtilities, r
+from flext_core import r, u
 from flext_infra import (
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesPatterns,
@@ -115,7 +115,7 @@ class FlextInfraUtilitiesDocs:
     @staticmethod
     def anchorize(text: str) -> str:
         """Convert a heading title to a GitHub-compatible anchor slug."""
-        value = FlextUtilities.norm_str(text, case="lower")
+        value = u.norm_str(text, case="lower")
         value = re.sub(r"[^a-z0-9\s-]", "", value)
         value = re.sub(r"\s+", "-", value)
         return re.sub(r"-+", "-", value).strip("-")

@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping, Sequence
+from typing import override
 
-from flext_infra import FlextInfraUtilitiesRope, t
+from flext_infra import t, u
 from flext_infra.transformers._base import FlextInfraRopeTransformer
 
 
@@ -26,13 +27,14 @@ class FlextInfraRefactorMROPrivateInlineTransformer(FlextInfraRopeTransformer):
         super().__init__(on_change=on_change)
         self._replacement_values = replacement_values
 
+    @override
     def transform(
         self,
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
     ) -> tuple[str, Sequence[str]]:
         """Apply private constant inlining. Returns (new_source, changes)."""
-        source = FlextInfraUtilitiesRope.read_source(resource)
+        source = u.Infra.read_source(resource)
 
         for name, value in self._replacement_values.items():
             pattern = re.compile(rf"\b{re.escape(name)}\b")
@@ -41,8 +43,8 @@ class FlextInfraRefactorMROPrivateInlineTransformer(FlextInfraRopeTransformer):
                 self._record_change(f"Inlined private constant: {name} -> {value}")
                 source = new_source
 
-        if source != FlextInfraUtilitiesRope.read_source(resource):
-            FlextInfraUtilitiesRope.write_source(
+        if source != u.Infra.read_source(resource):
+            u.Infra.write_source(
                 rope_project,
                 resource,
                 source,
@@ -68,13 +70,14 @@ class FlextInfraRefactorMROQualifiedReferenceTransformer(FlextInfraRopeTransform
         super().__init__(on_change=on_change)
         self._renames = renames
 
+    @override
     def transform(
         self,
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
     ) -> tuple[str, Sequence[str]]:
         """Apply qualified reference rewrites. Returns (new_source, changes)."""
-        source = FlextInfraUtilitiesRope.read_source(resource)
+        source = u.Infra.read_source(resource)
 
         for old_name, qualified_path in self._renames.items():
             # Skip definition sites: `type X = ...`, `X: ... = ...`, `X = ...`
@@ -90,8 +93,8 @@ class FlextInfraRefactorMROQualifiedReferenceTransformer(FlextInfraRopeTransform
                 )
                 source = new_source
 
-        if source != FlextInfraUtilitiesRope.read_source(resource):
-            FlextInfraUtilitiesRope.write_source(
+        if source != u.Infra.read_source(resource):
+            u.Infra.write_source(
                 rope_project,
                 resource,
                 source,

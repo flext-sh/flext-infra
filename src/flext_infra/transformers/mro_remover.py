@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import re
 from collections.abc import Sequence
+from typing import override
 
-from flext_infra import FlextInfraUtilitiesRope, t
+from flext_infra import t, u
 from flext_infra.transformers._base import FlextInfraRopeTransformer
 
 
@@ -16,20 +17,21 @@ class FlextInfraRefactorMRORemover(FlextInfraRopeTransformer):
     references the parent and strips that base via rope regex replacement.
     """
 
+    @override
     def transform(
         self,
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
     ) -> tuple[str, Sequence[str]]:
         """Apply MRO redeclaration removal. Returns (new_source, changes)."""
-        source = FlextInfraUtilitiesRope.read_source(resource)
-        class_infos = FlextInfraUtilitiesRope.get_class_info(rope_project, resource)
+        source = u.Infra.read_source(resource)
+        class_infos = u.Infra.get_class_info(rope_project, resource)
         if not class_infos:
             return source, []
 
         for parent_info in class_infos:
             parent_name = parent_info.name
-            nested_names = FlextInfraUtilitiesRope.get_class_nested_classes(
+            nested_names = u.Infra.get_class_nested_classes(
                 rope_project,
                 resource,
                 parent_name,
@@ -43,8 +45,8 @@ class FlextInfraRefactorMRORemover(FlextInfraRopeTransformer):
                     nested_class=nested_name,
                 )
 
-        if source != FlextInfraUtilitiesRope.read_source(resource) and self.changes:
-            FlextInfraUtilitiesRope.write_source(
+        if source != u.Infra.read_source(resource) and self.changes:
+            u.Infra.write_source(
                 rope_project,
                 resource,
                 source,
@@ -62,7 +64,7 @@ class FlextInfraRefactorMRORemover(FlextInfraRopeTransformer):
         nested_class: str,
     ) -> str:
         """Remove base referencing parent_name from nested_class definition."""
-        nested_bases = FlextInfraUtilitiesRope.get_class_bases(
+        nested_bases = u.Infra.get_class_bases(
             rope_project,
             resource,
             nested_class,

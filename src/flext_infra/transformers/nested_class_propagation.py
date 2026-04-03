@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import re
 from collections.abc import Sequence
+from typing import override
 
 from flext_infra import (
     FlextInfraRefactorTransformerPolicyUtilities,
-    FlextInfraUtilitiesRope,
     t,
+    u,
 )
 from flext_infra.transformers._base import FlextInfraRopeTransformer
 
@@ -34,13 +35,14 @@ class FlextInfraNestedClassPropagationTransformer(FlextInfraRopeTransformer):
         self._policy_context = policy_context
         self._class_families = class_families or {}
 
+    @override
     def transform(
         self,
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
     ) -> tuple[str, Sequence[str]]:
         """Apply reference propagation. Returns (new_source, changes)."""
-        source = FlextInfraUtilitiesRope.read_source(resource)
+        source = u.Infra.read_source(resource)
 
         for old_name, rename_to in self._class_renames.items():
             if not self._should_propagate(old_name, "propagate_imports"):
@@ -72,8 +74,8 @@ class FlextInfraNestedClassPropagationTransformer(FlextInfraRopeTransformer):
                     rename_parts=rename_parts,
                 )
 
-        if source != FlextInfraUtilitiesRope.read_source(resource) and self.changes:
-            FlextInfraUtilitiesRope.write_source(
+        if source != u.Infra.read_source(resource) and self.changes:
+            u.Infra.write_source(
                 rope_project,
                 resource,
                 source,

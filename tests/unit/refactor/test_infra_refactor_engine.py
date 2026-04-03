@@ -13,7 +13,6 @@ from flext_infra import (
     FlextInfraRefactorImportModernizerRule,
     FlextInfraRefactorLegacyRemovalRule,
     FlextInfraRefactorMROClassMigrationRule,
-    FlextInfraRefactorMRORedundancyChecker,
     FlextInfraRefactorPatternCorrectionsRule,
     FlextInfraRefactorSignaturePropagationRule,
     FlextInfraRefactorSymbolPropagationRule,
@@ -26,23 +25,22 @@ def test_rule_dispatch_prefers_fix_action_metadata(tmp_path: Path) -> None:
     config_path = tmp_path / "config.yml"
     config_path.write_text("engine: test\n", encoding="utf-8")
     (rules_dir / "rules.yml").write_text(
-        "\nrules:\n  - id: custom-rule-a\n    enabled: true\n    fix_action: remove\n  - id: custom-rule-b\n    enabled: true\n    fix_action: replace_with_alias\n  - id: custom-rule-c\n    enabled: true\n    fix_action: reorder_methods\n  - id: custom-rule-d\n    enabled: true\n    fix_action: remove_inheritance_keep_class\n  - id: custom-rule-d2\n    enabled: true\n    fix_action: migrate_to_class_mro\n  - id: custom-rule-e\n    enabled: true\n    fix_action: ensure_future_annotations\n  - id: custom-rule-f\n    enabled: true\n    fix_action: propagate_symbol_renames\n    import_symbol_renames:\n      Old: New\n  - id: custom-rule-g\n    enabled: true\n    fix_action: propagate_signature_migrations\n    signature_migrations:\n      - id: migrate-keyword\n        enabled: true\n        target_simple_names:\n          - run\n        keyword_renames:\n          old: new\n  - id: custom-rule-h\n    enabled: true\n    fix_action: convert_dict_to_mapping_annotations\n".strip()
+        "\nrules:\n  - id: custom-rule-a\n    enabled: true\n    fix_action: remove\n  - id: custom-rule-b\n    enabled: true\n    fix_action: replace_with_alias\n  - id: custom-rule-c\n    enabled: true\n    fix_action: reorder_methods\n  - id: custom-rule-d2\n    enabled: true\n    fix_action: migrate_to_class_mro\n  - id: custom-rule-e\n    enabled: true\n    fix_action: ensure_future_annotations\n  - id: custom-rule-f\n    enabled: true\n    fix_action: propagate_symbol_renames\n    import_symbol_renames:\n      Old: New\n  - id: custom-rule-g\n    enabled: true\n    fix_action: propagate_signature_migrations\n    signature_migrations:\n      - id: migrate-keyword\n        enabled: true\n        target_simple_names:\n          - run\n        keyword_renames:\n          old: new\n  - id: custom-rule-h\n    enabled: true\n    fix_action: convert_dict_to_mapping_annotations\n".strip()
         + "\n",
         encoding="utf-8",
     )
     engine = FlextInfraRefactorEngine(config_path=config_path)
     result = engine.load_rules()
     assert result.is_success
-    assert len(engine.rules) == 9
+    assert len(engine.rules) == 8
     assert isinstance(engine.rules[0], FlextInfraRefactorLegacyRemovalRule)
     assert isinstance(engine.rules[1], FlextInfraRefactorImportModernizerRule)
     assert isinstance(engine.rules[2], FlextInfraRefactorClassReconstructorRule)
-    assert isinstance(engine.rules[3], FlextInfraRefactorMRORedundancyChecker)
-    assert isinstance(engine.rules[4], FlextInfraRefactorMROClassMigrationRule)
-    assert isinstance(engine.rules[5], FlextInfraRefactorEnsureFutureAnnotationsRule)
-    assert isinstance(engine.rules[6], FlextInfraRefactorSymbolPropagationRule)
-    assert isinstance(engine.rules[7], FlextInfraRefactorSignaturePropagationRule)
-    assert isinstance(engine.rules[8], FlextInfraRefactorPatternCorrectionsRule)
+    assert isinstance(engine.rules[3], FlextInfraRefactorMROClassMigrationRule)
+    assert isinstance(engine.rules[4], FlextInfraRefactorEnsureFutureAnnotationsRule)
+    assert isinstance(engine.rules[5], FlextInfraRefactorSymbolPropagationRule)
+    assert isinstance(engine.rules[6], FlextInfraRefactorSignaturePropagationRule)
+    assert isinstance(engine.rules[7], FlextInfraRefactorPatternCorrectionsRule)
 
 
 def test_rule_dispatch_fails_on_invalid_pattern_rule_config(tmp_path: Path) -> None:

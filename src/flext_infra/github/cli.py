@@ -67,7 +67,6 @@ class FlextInfraCliGithub:
             params=m.Infra.WorkflowSyncParams(
                 apply=params.apply,
                 prune=params.prune,
-                report_path=Path(params.report) if params.report else None,
             ),
         )
         if result.is_failure:

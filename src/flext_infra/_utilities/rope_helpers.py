@@ -36,22 +36,57 @@ class FlextInfraUtilitiesRopeHelpers:
     ) -> Sequence[tuple[str, str]]:
         """Return (name, value_str) for module-level simple assignments."""
         assignment_pattern = re.compile(
-            r"^([A-Za-z_]\w*)\s*(?::\s*\S+\s*)?=\s*(.+)$",
-            re.MULTILINE,
+            r"^([A-Za-z_]\w*)\s*(?::\s*[^=]+)?=\s*(.+)$",
         )
         results: list[tuple[str, str]] = []
         scope_depth = 0
+        in_multiline_assignment = False
+        current_name = ""
+        current_value: list[str] = []
+        open_brackets = 0
+
         for line in source.splitlines():
             stripped = line.strip()
-            if stripped.startswith(("class ", "def ")):
-                scope_depth += 1
-            elif scope_depth > 0 and stripped and not line[0].isspace():
-                scope_depth = 0
+
+            if not in_multiline_assignment:
+                if stripped.startswith(("class ", "def ", "@")):
+                    scope_depth += 1
+                elif scope_depth > 0 and line and not line[0].isspace():
+                    scope_depth = 0
+
             if scope_depth > 0:
                 continue
-            match = assignment_pattern.match(stripped)
-            if match:
-                results.append((match.group(1), match.group(2).strip()))
+
+            if in_multiline_assignment:
+                current_value.append(stripped)
+                open_brackets += (
+                    stripped.count("(") + stripped.count("[") + stripped.count("{")
+                )
+                open_brackets -= (
+                    stripped.count(")") + stripped.count("]") + stripped.count("}")
+                )
+                if open_brackets <= 0:
+                    in_multiline_assignment = False
+                    results.append((current_name, " ".join(current_value)))
+                continue
+
+            match = assignment_pattern.match(line)
+            if match and not line[0].isspace():
+                current_name = match.group(1)
+                val_start = match.group(2).strip()
+                open_brackets = (
+                    val_start.count("(") + val_start.count("[") + val_start.count("{")
+                )
+                open_brackets -= (
+                    val_start.count(")") + val_start.count("]") + val_start.count("}")
+                )
+
+                if open_brackets > 0:
+                    in_multiline_assignment = True
+                    current_value = [val_start]
+                else:
+                    results.append((current_name, val_start))
+
         return results
 
     @staticmethod

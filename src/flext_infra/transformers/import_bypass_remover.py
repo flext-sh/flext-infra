@@ -7,8 +7,9 @@ from __future__ import annotations
 
 import re
 from collections.abc import Sequence
+from typing import override
 
-from flext_infra import FlextInfraUtilitiesRope, t
+from flext_infra import t, u
 from flext_infra.transformers._base import FlextInfraRopeTransformer
 
 
@@ -23,20 +24,21 @@ class FlextInfraRefactorImportBypassRemover(FlextInfraRopeTransformer):
         re.MULTILINE,
     )
 
+    @override
     def transform(
         self,
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
     ) -> tuple[str, Sequence[str]]:
         """Remove try/except ImportError fallback blocks, keep the primary import."""
-        source = FlextInfraUtilitiesRope.read_source(resource)
+        source = u.Infra.read_source(resource)
         new_source, count = self._BYPASS_RE.subn(r"\1", source)
         if count == 0:
             return source, []
         changes = [f"Removed {count} import bypass fallback(s)"]
         for msg in changes:
             self._record_change(msg)
-        FlextInfraUtilitiesRope.write_source(
+        u.Infra.write_source(
             rope_project,
             resource,
             new_source,

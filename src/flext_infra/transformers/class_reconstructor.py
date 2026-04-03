@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from collections.abc import MutableSequence, Sequence
+from typing import override
 
 from pydantic import TypeAdapter, ValidationError
 
-from flext_infra import FlextInfraUtilitiesRope, m, t
+from flext_infra import m, t, u
 from flext_infra.transformers._base import FlextInfraRopeTransformer
 
 
@@ -27,16 +28,17 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
         except ValidationError:
             self._order_config = list[m.Infra.MethodOrderRule]()
 
+    @override
     def transform(
         self,
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
     ) -> tuple[str, Sequence[str]]:
         """Apply method reordering to all classes. Returns (new_source, changes)."""
-        source = FlextInfraUtilitiesRope.read_source(resource)
-        class_infos = FlextInfraUtilitiesRope.get_class_info(rope_project, resource)
+        source = u.Infra.read_source(resource)
+        class_infos = u.Infra.get_class_info(rope_project, resource)
         for class_info in class_infos:
-            methods = FlextInfraUtilitiesRope.get_class_methods(
+            methods = u.Infra.get_class_methods(
                 rope_project,
                 resource,
                 class_info.name,
@@ -44,7 +46,7 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
             )
             if len(methods) < 2:  # noqa: PLR2004
                 continue
-            body_lines = FlextInfraUtilitiesRope.get_class_body_lines(
+            body_lines = u.Infra.get_class_body_lines(
                 resource,
                 class_info.name,
             )
@@ -57,8 +59,8 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
                 method_kinds=methods,
                 body_lines=body_lines,
             )
-        if source != FlextInfraUtilitiesRope.read_source(resource) and self.changes:
-            FlextInfraUtilitiesRope.write_source(
+        if source != u.Infra.read_source(resource) and self.changes:
+            u.Infra.write_source(
                 rope_project,
                 resource,
                 source,
@@ -87,16 +89,14 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
             infos.append(
                 m.Infra.MethodInfo(
                     name=name,
-                    category=FlextInfraUtilitiesRope.categorize_method(name, decs),
+                    category=u.Infra.categorize_method(name, decs),
                     node=None,
                     decorators=decs,
                 )
             )
         sorted_infos = sorted(
             infos,
-            key=lambda m_: FlextInfraUtilitiesRope.build_method_sort_key(
-                m_, self._order_config
-            ),
+            key=lambda m_: u.Infra.build_method_sort_key(m_, self._order_config),
         )
         if [i.name for i in infos] == [i.name for i in sorted_infos]:
             return source

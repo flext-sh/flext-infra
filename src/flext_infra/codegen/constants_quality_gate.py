@@ -28,9 +28,9 @@ class FlextInfraCodegenConstantsQualityGate:
     def run(self) -> Mapping[str, t.Infra.InfraValue]:
         """Execute quality gate and return structured report payload."""
         before_payload, before_source, before_load_error = u.Infra.load_before_payload(
-            workspace_root=self._workspace_root,
-            before_report=self._before_report,
-            baseline_file=self._baseline_file,
+            self._workspace_root,
+            self._before_report,
+            self._baseline_file,
         )
         census_reports = FlextInfraCodegenCensus(
             workspace_root=self._workspace_root,
@@ -100,9 +100,6 @@ class FlextInfraCodegenConstantsQualityGate:
             workspace_root=self._workspace_root,
             report=report,
             render_text=self.render_text(report),
-            census_reports=census_reports,
-            duplicate_groups=duplicate_groups,
-            before_payload=before_payload,
         )
         return report
 

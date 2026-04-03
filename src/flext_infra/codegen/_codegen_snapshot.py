@@ -4,14 +4,13 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import (
-    FlextInfraCodegenCoercion,
-    FlextInfraUtilitiesIteration,
     c,
     t,
+    u,
 )
 
 
-class FlextInfraCodegenSnapshot(FlextInfraCodegenCoercion):
+class FlextInfraCodegenSnapshot:
     """Snapshot and change detection for code generation operations."""
 
     @staticmethod
@@ -31,7 +30,7 @@ class FlextInfraCodegenSnapshot(FlextInfraCodegenCoercion):
             root = project_path / root_name
             if not root.is_dir():
                 continue
-            for init_file in FlextInfraUtilitiesIteration.iter_directory_python_files(
+            for init_file in u.Infra.iter_directory_python_files(
                 root,
                 pattern=c.Infra.Files.INIT_PY,
             ):
