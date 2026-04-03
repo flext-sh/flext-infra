@@ -26,6 +26,7 @@ if _TYPE_CHECKING:
         basemk_validator,
         cli,
         inventory,
+        namespace_rules,
         namespace_validator,
         pytest_diag,
         scanner,
@@ -40,6 +41,7 @@ if _TYPE_CHECKING:
     from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
     from flext_infra.validate.cli import FlextInfraCliValidate
     from flext_infra.validate.inventory import FlextInfraInventoryService
+    from flext_infra.validate.namespace_rules import FlextInfraNamespaceRules
     from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
     from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
     from flext_infra.validate.scanner import FlextInfraTextPatternScanner
@@ -52,6 +54,7 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "FlextInfraCoreConstants": "flext_infra.validate._constants",
     "FlextInfraCoreModels": "flext_infra.validate._models",
     "FlextInfraInventoryService": "flext_infra.validate.inventory",
+    "FlextInfraNamespaceRules": "flext_infra.validate.namespace_rules",
     "FlextInfraNamespaceValidator": "flext_infra.validate.namespace_validator",
     "FlextInfraPytestDiagExtractor": "flext_infra.validate.pytest_diag",
     "FlextInfraSharedInfraConstants": "flext_infra.validate._constants",
@@ -63,6 +66,7 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "basemk_validator": "flext_infra.validate.basemk_validator",
     "cli": "flext_infra.validate.cli",
     "inventory": "flext_infra.validate.inventory",
+    "namespace_rules": "flext_infra.validate.namespace_rules",
     "namespace_validator": "flext_infra.validate.namespace_validator",
     "pytest_diag": "flext_infra.validate.pytest_diag",
     "scanner": "flext_infra.validate.scanner",

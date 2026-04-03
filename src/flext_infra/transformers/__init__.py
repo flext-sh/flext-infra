@@ -38,7 +38,10 @@ if _TYPE_CHECKING:
         typing_unifier,
         violation_census_visitor,
     )
-    from flext_infra.transformers._base import FlextInfraChangeTrackingTransformer
+    from flext_infra.transformers._base import (
+        FlextInfraChangeTrackingTransformer,
+        FlextInfraRopeTransformer,
+    )
     from flext_infra.transformers._utilities_normalizer import (
         FlextInfraNormalizerContext,
         FlextInfraUtilitiesImportNormalizer,
@@ -162,3 +165,4 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
 
 
 install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)
+    "FlextInfraRopeTransformer": "flext_infra.transformers._base",

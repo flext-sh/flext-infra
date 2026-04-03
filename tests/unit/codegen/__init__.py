@@ -14,7 +14,6 @@ if _TYPE_CHECKING:
     from flext_core import FlextTypes
     from tests.unit.codegen import (
         _project_factory,
-        autofix_tests,
         autofix_workspace_tests,
         census_models_tests,
         census_tests,
@@ -32,14 +31,6 @@ if _TYPE_CHECKING:
         scaffolder_tests,
     )
     from tests.unit.codegen._project_factory import FlextInfraCodegenTestProjectFactory
-    from tests.unit.codegen.autofix_tests import (
-        fixer,
-        test_in_context_typevar_not_flagged,
-        test_standalone_final_detected_as_fixable,
-        test_standalone_typealias_detected_as_fixable,
-        test_standalone_typevar_detected_as_fixable,
-        test_syntax_error_files_skipped,
-    )
     from tests.unit.codegen.autofix_workspace_tests import (
         test_files_modified_tracks_affected_files,
         test_flexcore_excluded_from_run,
@@ -151,13 +142,11 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "TestShouldBubbleUp": "tests.unit.codegen.lazy_init_transforms_tests",
     "TestViolationPattern": "tests.unit.codegen.census_models_tests",
     "_project_factory": "tests.unit.codegen._project_factory",
-    "autofix_tests": "tests.unit.codegen.autofix_tests",
     "autofix_workspace_tests": "tests.unit.codegen.autofix_workspace_tests",
     "census": "tests.unit.codegen.census_tests",
     "census_models_tests": "tests.unit.codegen.census_models_tests",
     "census_tests": "tests.unit.codegen.census_tests",
     "constants_quality_gate_tests": "tests.unit.codegen.constants_quality_gate_tests",
-    "fixer": "tests.unit.codegen.autofix_tests",
     "init_tests": "tests.unit.codegen.init_tests",
     "lazy_init_generation_tests": "tests.unit.codegen.lazy_init_generation_tests",
     "lazy_init_helpers_tests": "tests.unit.codegen.lazy_init_helpers_tests",
@@ -176,12 +165,7 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "test_codegen_pipeline_end_to_end": "tests.unit.codegen.pipeline_tests",
     "test_files_modified_tracks_affected_files": "tests.unit.codegen.autofix_workspace_tests",
     "test_flexcore_excluded_from_run": "tests.unit.codegen.autofix_workspace_tests",
-    "test_in_context_typevar_not_flagged": "tests.unit.codegen.autofix_tests",
     "test_project_without_src_returns_empty": "tests.unit.codegen.autofix_workspace_tests",
-    "test_standalone_final_detected_as_fixable": "tests.unit.codegen.autofix_tests",
-    "test_standalone_typealias_detected_as_fixable": "tests.unit.codegen.autofix_tests",
-    "test_standalone_typevar_detected_as_fixable": "tests.unit.codegen.autofix_tests",
-    "test_syntax_error_files_skipped": "tests.unit.codegen.autofix_tests",
 }
 
 

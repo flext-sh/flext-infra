@@ -25,6 +25,11 @@ if _TYPE_CHECKING:
         _utilities_mro_scan,
         _utilities_mro_transform,
         _utilities_namespace,
+        _utilities_namespace_common,
+        _utilities_namespace_facades,
+        _utilities_namespace_moves,
+        _utilities_namespace_mro,
+        _utilities_namespace_runtime,
         _utilities_pydantic,
         _utilities_pydantic_analysis,
         census,
@@ -75,6 +80,21 @@ if _TYPE_CHECKING:
     )
     from flext_infra.refactor._utilities_namespace import (
         FlextInfraUtilitiesRefactorNamespace,
+    )
+    from flext_infra.refactor._utilities_namespace_common import (
+        FlextInfraUtilitiesRefactorNamespaceCommon,
+    )
+    from flext_infra.refactor._utilities_namespace_facades import (
+        FlextInfraUtilitiesRefactorNamespaceFacades,
+    )
+    from flext_infra.refactor._utilities_namespace_moves import (
+        FlextInfraUtilitiesRefactorNamespaceMoves,
+    )
+    from flext_infra.refactor._utilities_namespace_mro import (
+        FlextInfraUtilitiesRefactorNamespaceMro,
+    )
+    from flext_infra.refactor._utilities_namespace_runtime import (
+        FlextInfraUtilitiesRefactorNamespaceRuntime,
     )
     from flext_infra.refactor._utilities_pydantic import (
         FlextInfraUtilitiesRefactorPydantic,
@@ -160,6 +180,11 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "FlextInfraUtilitiesRefactorMroScan": "flext_infra.refactor._utilities_mro_scan",
     "FlextInfraUtilitiesRefactorMroTransform": "flext_infra.refactor._utilities_mro_transform",
     "FlextInfraUtilitiesRefactorNamespace": "flext_infra.refactor._utilities_namespace",
+    "FlextInfraUtilitiesRefactorNamespaceCommon": "flext_infra.refactor._utilities_namespace_common",
+    "FlextInfraUtilitiesRefactorNamespaceFacades": "flext_infra.refactor._utilities_namespace_facades",
+    "FlextInfraUtilitiesRefactorNamespaceMoves": "flext_infra.refactor._utilities_namespace_moves",
+    "FlextInfraUtilitiesRefactorNamespaceMro": "flext_infra.refactor._utilities_namespace_mro",
+    "FlextInfraUtilitiesRefactorNamespaceRuntime": "flext_infra.refactor._utilities_namespace_runtime",
     "FlextInfraUtilitiesRefactorPydantic": "flext_infra.refactor._utilities_pydantic",
     "FlextInfraUtilitiesRefactorPydanticAnalysis": "flext_infra.refactor._utilities_pydantic_analysis",
     "INFRA_MAPPING_ADAPTER": "flext_infra.refactor._base_rule",
@@ -180,6 +205,11 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "_utilities_mro_scan": "flext_infra.refactor._utilities_mro_scan",
     "_utilities_mro_transform": "flext_infra.refactor._utilities_mro_transform",
     "_utilities_namespace": "flext_infra.refactor._utilities_namespace",
+    "_utilities_namespace_common": "flext_infra.refactor._utilities_namespace_common",
+    "_utilities_namespace_facades": "flext_infra.refactor._utilities_namespace_facades",
+    "_utilities_namespace_moves": "flext_infra.refactor._utilities_namespace_moves",
+    "_utilities_namespace_mro": "flext_infra.refactor._utilities_namespace_mro",
+    "_utilities_namespace_runtime": "flext_infra.refactor._utilities_namespace_runtime",
     "_utilities_pydantic": "flext_infra.refactor._utilities_pydantic",
     "_utilities_pydantic_analysis": "flext_infra.refactor._utilities_pydantic_analysis",
     "census": "flext_infra.refactor.census",
