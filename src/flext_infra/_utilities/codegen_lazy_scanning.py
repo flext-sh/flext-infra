@@ -326,7 +326,7 @@ class FlextInfraUtilitiesCodegenLazyScanning:
                 if name not in inline:
                     eager[name] = (ver_mod, name)
             return (inline, eager)
-        for name, value_str in assignments:
+        for name, _value_str in assignments:
             if name.startswith("__") and name.endswith("__") and name not in inline:
                 eager[name] = (ver_mod, name)
         return (inline, eager)

@@ -198,7 +198,7 @@ runtime_whitelist:
   - transform_id: runtime_lazy_metadata_normalization
     source_module_pattern: runtime.py
     source_symbol: _LazyMetadata
-    target_namespace: FlextRuntime
+    target_namespace: u
     target_name: _LazyMetadata
     rewrite_scope: project
 defaults:
@@ -747,8 +747,8 @@ rules:
     facade_family: u
     module_family: other_private
     source_symbol: _LazyMetadata
-    target_facade_class: FlextRuntime
-    target_namespace_path: FlextRuntime._LazyMetadata
+    target_facade_class: u
+    target_namespace_path: u._LazyMetadata
     expected_base_chain: *id006
     forbidden_targets: []
     confidence: 0.5
@@ -758,7 +758,7 @@ rules:
           symbol: _LazyMetadata
       - type: target_facade_exists
         params:
-          facade: FlextRuntime
+          facade: u
     post_checks:
       - type: imports_resolve
         params:

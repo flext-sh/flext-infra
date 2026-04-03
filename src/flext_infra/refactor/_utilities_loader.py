@@ -133,7 +133,8 @@ class FlextInfraUtilitiesRefactorLoader:
             rope_proj = FlextInfraUtilitiesRope.init_rope_project(file_path.parent)
             try:
                 resource = FlextInfraUtilitiesRope.get_resource_from_path(
-                    rope_proj, file_path
+                    rope_proj,
+                    file_path,
                 )
                 if resource is not None:
                     pycore = FlextInfraUtilitiesRope.get_pycore(rope_proj)

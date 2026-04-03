@@ -15,6 +15,7 @@ from flext_infra import (
     t,
     u,
 )
+from flext_infra.check import services as check_services
 
 
 class FlextInfraWorkspaceCheckerCli:
@@ -63,8 +64,6 @@ class FlextInfraWorkspaceCheckerCli:
     @staticmethod
     def run_cli(argv: t.StrSequence | None = None) -> int:
         """Run the subcommand-based workspace check CLI."""
-        from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-
         parser = FlextInfraWorkspaceCheckerCli.build_parser()
         args = u.Infra.parse_subcommand_args(parser, argv)
         cli = u.Infra.resolve(args)
@@ -73,10 +72,14 @@ class FlextInfraWorkspaceCheckerCli:
             checker_workspace = (
                 Path(env_workspace).resolve() if env_workspace else cli.workspace
             )
-            checker = FlextInfraWorkspaceChecker(workspace_root=checker_workspace)
-            gates = FlextInfraWorkspaceChecker.parse_gate_csv(args.gates)
-            ruff_args = FlextInfraWorkspaceChecker.parse_tool_args(args.ruff_args)
-            pyright_args = FlextInfraWorkspaceChecker.parse_tool_args(
+            checker = check_services.FlextInfraWorkspaceChecker(
+                workspace_root=checker_workspace
+            )
+            gates = check_services.FlextInfraWorkspaceChecker.parse_gate_csv(args.gates)
+            ruff_args = check_services.FlextInfraWorkspaceChecker.parse_tool_args(
+                args.ruff_args
+            )
+            pyright_args = check_services.FlextInfraWorkspaceChecker.parse_tool_args(
                 args.pyright_args,
             )
             reports_dir = Path(args.reports_dir).expanduser()
@@ -120,8 +123,6 @@ class FlextInfraWorkspaceCheckerCli:
     @staticmethod
     def main(argv: t.StrSequence | None = None) -> int:
         """Run the legacy workspace check CLI entrypoint."""
-        from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-
         parser = u.Infra.create_parser(
             "flext-infra check-workspace",
             "FLEXT Workspace Check",
@@ -138,8 +139,8 @@ class FlextInfraWorkspaceCheckerCli:
         if not args.projects:
             u.Infra.error("no projects specified")
             return 1
-        checker = FlextInfraWorkspaceChecker()
-        gates = FlextInfraWorkspaceChecker.parse_gate_csv(args.gates)
+        checker = check_services.FlextInfraWorkspaceChecker()
+        gates = check_services.FlextInfraWorkspaceChecker.parse_gate_csv(args.gates)
         reports_dir = Path(args.reports_dir).expanduser()
         if not reports_dir.is_absolute():
             reports_dir = (Path.cwd() / reports_dir).resolve()

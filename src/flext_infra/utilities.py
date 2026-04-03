@@ -11,7 +11,6 @@ from __future__ import annotations
 
 from flext_cli import FlextCliUtilities
 from flext_infra import (
-    FlextInfraRefactorMigrateToClassMRO,
     FlextInfraRefactorTransformerPolicyUtilities,
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesCli,
@@ -90,10 +89,6 @@ class FlextInfraUtilities(FlextCliUtilities):
     ):
         """Infrastructure-domain utilities - all methods exposed directly."""
 
-
-FlextInfraUtilities.Infra.register_rope_post_hook(
-    FlextInfraRefactorMigrateToClassMRO.run_as_hook,
-)
 
 u = FlextInfraUtilities
 __all__ = ["FlextInfraUtilities", "u"]

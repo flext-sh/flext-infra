@@ -27,7 +27,6 @@ from flext_infra import (
     FlextInfraUtilitiesIo,
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesRefactorCli,
-    FlextInfraUtilitiesRefactorLoader,
     FlextInfraUtilitiesRefactorMroScan,
     FlextInfraUtilitiesRefactorMroTransform,
     FlextInfraUtilitiesRefactorNamespace,
@@ -50,7 +49,6 @@ class FlextInfraUtilitiesRefactor(
     FlextInfraUtilitiesRefactorPydanticAnalysis,
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesDiscovery,
-    FlextInfraUtilitiesRefactorLoader,
     FlextInfraUtilitiesRefactorCli,
     FlextInfraUtilitiesRefactorCensus,
 ):

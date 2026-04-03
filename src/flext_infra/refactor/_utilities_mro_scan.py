@@ -6,9 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import logging
 import re
 from collections.abc import Sequence
 from pathlib import Path
+
+from rope.base.pyobjects import AbstractClass
 
 from flext_infra import (
     FlextInfraUtilitiesIteration,
@@ -17,6 +20,8 @@ from flext_infra import (
     m,
     t,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class FlextInfraUtilitiesRefactorMroScan:
@@ -110,8 +115,8 @@ class FlextInfraUtilitiesRefactorMroScan:
                 )
                 if cand:
                     candidates.append(cand)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.info("MRO scan skipped for %s: %s", resource.real_path, exc)
         finally:
             rope_proj.close()
 
@@ -145,15 +150,13 @@ class FlextInfraUtilitiesRefactorMroScan:
             elif any(x in src_line for x in ("TypeVar", "ParamSpec", "NewType")):
                 kind = "typevar"
         elif alias == "p":
-            from rope.base.pyobjects import AbstractClass
-
             if isinstance(obj, AbstractClass):
                 try:
                     bases = getattr(obj, "get_bases", list)()
                     if any("Protocol" in str(b.get_name()) for b in bases):
                         kind = "protocol"
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.info("Protocol base scan skipped for %s: %s", name, exc)
         elif FlextInfraUtilitiesRefactorMroScan._MRO_SCAN_CONSTANT_PATTERN.match(name):
             if re.match(rf"^{name}\s*(:|==?)\s*", src_line) and not name.islower():
                 kind = "constant"

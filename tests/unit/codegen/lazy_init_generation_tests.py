@@ -16,14 +16,14 @@ from flext_tests import tm
 import flext_infra.codegen as mod
 from flext_core import r
 from flext_infra import FlextInfraCodegenGeneration, t
-from tests import t
+from flext_infra._utilities.codegen_lazy_aliases import (
+    FlextInfraUtilitiesCodegenLazyAliases,
+)
+from flext_infra._utilities.formatting import FlextInfraUtilitiesFormatting
+from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
 
 
 def _resolve_aliases(lazy_map: MutableMapping[str, tuple[str, str]]) -> None:
-    from flext_infra._utilities.codegen_lazy_aliases import (
-        FlextInfraUtilitiesCodegenLazyAliases,
-    )
-
     FlextInfraUtilitiesCodegenLazyAliases(Path("/workspace/")).resolve_aliases(
         lazy_map, pkg_dir=Path("/workspace/pkg")
     )
@@ -33,8 +33,6 @@ _generate_file = FlextInfraCodegenGeneration.generate_file
 
 
 def _run_ruff_fix(path: Path) -> None:
-    from flext_infra._utilities.formatting import FlextInfraUtilitiesFormatting
-
     FlextInfraUtilitiesFormatting.run_ruff_fix(path)
 
 
@@ -245,8 +243,6 @@ class TestRunRuffFix:
             commands.append(list(cmd))
             return r[bool].ok(True)
 
-        from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
-
         monkeypatch.setattr(FlextInfraUtilitiesSubprocess, "run_checked", _run_checked)
         _run_ruff_fix(generated)
         tm.that(len(commands), eq=2)
@@ -275,8 +271,6 @@ class TestRunRuffFix:
             if call_count == 1:
                 return r[bool].ok(True)
             return r[bool].fail("ruff format failed")
-
-        from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
 
         monkeypatch.setattr(FlextInfraUtilitiesSubprocess, "run_checked", _run_checked)
         with pytest.raises(ValueError, match="ruff format failed"):

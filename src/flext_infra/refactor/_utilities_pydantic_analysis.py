@@ -75,7 +75,12 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
 
     @staticmethod
     def _is_dict_like_alias_regex(
-        name: str, source: str, start: int, end: int, is_typings_scope: bool
+        name: str,
+        source: str,
+        start: int,
+        end: int,
+        *,
+        is_typings_scope: bool,
     ) -> m.Infra.AliasMove | None:
         if not is_typings_scope and not any(
             k in name.lower()
@@ -171,7 +176,11 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
 
             if target_name:
                 alias_move = FlextInfraUtilitiesRefactorPydanticAnalysis._is_dict_like_alias_regex(
-                    target_name, source, start, end, is_typings_scope
+                    target_name,
+                    source,
+                    start,
+                    end,
+                    is_typings_scope=is_typings_scope,
                 )
                 if alias_move is not None:
                     alias_moves.append(alias_move)

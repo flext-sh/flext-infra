@@ -127,7 +127,7 @@ class_nesting:
     reason: top_level_class_without_namespace_prefix
   - loose_name: _LazyMetadata
     current_file: flext-core/src/flext_core/runtime.py
-    target_namespace: FlextRuntime
+    target_namespace: u
     target_name: _LazyMetadata
     confidence: low
     reason: top_level_class_without_namespace_prefix

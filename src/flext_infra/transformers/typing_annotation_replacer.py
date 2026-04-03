@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, MutableSequence
 
-from flext_infra import FlextInfraUtilitiesRope, t
+from flext_infra import t, u
 
 
 class FlextInfraTypingAnnotationReplacer:
@@ -39,7 +39,7 @@ class FlextInfraTypingAnnotationReplacer:
 
         Returns (new_source, list_of_change_descriptions).
         """
-        source, total = FlextInfraUtilitiesRope.batch_replace_annotations(
+        source, total = u.Infra.batch_replace_annotations(
             rope_project,
             resource,
             self._replacements,

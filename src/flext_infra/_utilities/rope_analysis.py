@@ -4,15 +4,20 @@
 from __future__ import annotations
 
 import re
-from collections.abc import MutableSequence, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from pathlib import Path
 
 from rope.base.exceptions import RefactoringError, ResourceNotFoundError
 
 from flext_infra import c, m, p, t
+from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 
 
-class FlextInfraUtilitiesRopeAnalysis(FlextInfraUtilitiesRopeCore):
+class FlextInfraUtilitiesRopeAnalysis(
+    FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesRopeCore,
+):
     """Rope-backed semantic analysis helpers."""
 
     @staticmethod
@@ -220,6 +225,88 @@ class FlextInfraUtilitiesRopeAnalysis(FlextInfraUtilitiesRopeCore):
         except (RefactoringError, ResourceNotFoundError, AttributeError):
             return result
         return result
+
+    @classmethod
+    def extract_public_methods_from_dir(
+        cls,
+        package_dir: Path,
+    ) -> Mapping[str, Sequence[t.Infra.Triple[str, str, str]]]:
+        """Extract public methods from all Python files in a package directory."""
+        result: MutableMapping[str, MutableSequence[t.Infra.Triple[str, str, str]]] = {}
+        project_root = cls.discover_project_root_from_file(package_dir / "foo.py")
+        if project_root is None:
+            return result
+        rope_proj = cls.init_rope_project(project_root.parent)
+        try:
+            for py_file in sorted(package_dir.glob(c.Infra.Extensions.PYTHON_GLOB)):
+                if py_file.name == c.Infra.Files.INIT_PY:
+                    continue
+                resource = cls.get_resource_from_path(rope_proj, py_file)
+                if resource is None:
+                    continue
+                classes = cls.get_module_classes(rope_proj, resource)
+                for class_name in classes:
+                    class_methods = cls.get_class_methods(
+                        rope_proj,
+                        resource,
+                        class_name,
+                        include_private=False,
+                    )
+                    methods = result.setdefault(class_name, [])
+                    for method_name, method_kind in class_methods.items():
+                        methods.append((
+                            method_name,
+                            cls._method_kind_label(method_kind),
+                            py_file.name,
+                        ))
+        finally:
+            rope_proj.close()
+        return result
+
+    @classmethod
+    def extract_public_methods_from_file(
+        cls,
+        file_path: Path,
+    ) -> Mapping[str, Sequence[t.Infra.Triple[str, str, str]]]:
+        """Extract public methods from a single Python file."""
+        if not file_path.exists():
+            return {}
+        result: MutableMapping[str, MutableSequence[t.Infra.Triple[str, str, str]]] = {}
+        project_root = cls.discover_project_root_from_file(file_path)
+        if project_root is None:
+            return result
+        rope_proj = cls.init_rope_project(project_root.parent)
+        try:
+            resource = cls.get_resource_from_path(rope_proj, file_path)
+            if resource is None:
+                return {}
+            classes = cls.get_module_classes(rope_proj, resource)
+            for class_name in classes:
+                class_methods = cls.get_class_methods(
+                    rope_proj,
+                    resource,
+                    class_name,
+                    include_private=False,
+                )
+                methods = result.setdefault(class_name, [])
+                for method_name, method_kind in class_methods.items():
+                    methods.append((
+                        method_name,
+                        cls._method_kind_label(method_kind),
+                        file_path.name,
+                    ))
+        finally:
+            rope_proj.close()
+        return result
+
+    @staticmethod
+    def _method_kind_label(method_kind: str) -> str:
+        """Normalize Rope method kinds to census labels."""
+        if method_kind == "staticmethod":
+            return "static"
+        if method_kind == "classmethod":
+            return "class"
+        return "instance"
 
     @staticmethod
     def get_all_class_names(

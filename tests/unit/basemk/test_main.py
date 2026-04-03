@@ -95,7 +95,7 @@ def test_basemk_main_ensures_structlog_configured(
         call_count += 1
 
     monkeypatch.setattr(
-        "flext_core.FlextRuntime.ensure_structlog_configured",
+        "flext_core.u.ensure_structlog_configured",
         _fake_ensure,
     )
     monkeypatch.setattr(sys, "stdout", StringIO())

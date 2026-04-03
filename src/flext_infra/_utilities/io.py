@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import hashlib
 import operator
 import tempfile
 from collections.abc import Mapping, Sequence
@@ -236,15 +237,11 @@ class FlextInfraUtilitiesIo:
     @staticmethod
     def sha256_content(content: str) -> str:
         """Compute SHA256 hex digest of string content."""
-        import hashlib
-
         return hashlib.sha256(content.encode(c.Infra.Encoding.DEFAULT)).hexdigest()
 
     @staticmethod
     def sha256_file(path: Path) -> str:
         """Compute SHA256 hex digest of a file on disk."""
-        import hashlib
-
         hasher = hashlib.sha256()
         with path.open("rb") as handle:
             for chunk in iter(lambda: handle.read(1024 * 1024), b""):

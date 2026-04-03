@@ -11,7 +11,6 @@ from collections.abc import MutableSequence, Sequence
 from typing import override
 
 from flext_infra import (
-    FlextInfraUtilitiesRope,
     c,
     t,
     u,
@@ -48,12 +47,12 @@ class FlextInfraRefactorImportModernizer(FlextInfraRopeTransformer):
         resource: t.Infra.RopeResource,
     ) -> tuple[str, Sequence[str]]:
         """Apply import modernization via rope utilities."""
-        source = FlextInfraUtilitiesRope.read_source(resource)
+        source = u.Infra.read_source(resource)
         self._scan_core_aliases(source)
         source = self._rewrite_forbidden_imports(source)
         source = self._replace_symbol_usages(source)
         source = self._inject_missing_aliases(source)
-        FlextInfraUtilitiesRope.write_source(
+        u.Infra.write_source(
             rope_project,
             resource,
             source,
@@ -162,6 +161,7 @@ class FlextInfraRefactorImportModernizer(FlextInfraRopeTransformer):
         return None
 
     def _replace_symbol_usages(self, source: str) -> str:
+        """Replace migrated symbol references with runtime-alias paths."""
         for local_name, alias_path in self.active_symbol_replacements.items():
             new_source = re.sub(rf"\b{re.escape(local_name)}\b", alias_path, source)
             if new_source != source:
@@ -170,6 +170,7 @@ class FlextInfraRefactorImportModernizer(FlextInfraRopeTransformer):
         return source
 
     def _inject_missing_aliases(self, source: str) -> str:
+        """Insert any newly required runtime alias imports."""
         missing = sorted(self.aliases_needed - self.aliases_present)
         if not (self.modified_imports and missing):
             return source

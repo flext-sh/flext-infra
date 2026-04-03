@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from flext_infra import FlextInfraUtilitiesRope, t
+from flext_infra import t, u
 
 
 class FlextInfraRefactorAliasRemover:
     """Remove module-level ``Name = Name`` identity aliases via rope.
 
-    Wraps :pymethod:`FlextInfraUtilitiesRope.remove_module_level_aliases`
+    Wraps :pymethod:`u.Infra.remove_module_level_aliases`
     with configurable allow-lists.
     """
 
@@ -33,7 +33,7 @@ class FlextInfraRefactorAliasRemover:
         apply: bool = True,
     ) -> tuple[str, Sequence[str]]:
         """Apply alias removal. Returns (new_source, list of change descriptions)."""
-        new_source, removed = FlextInfraUtilitiesRope.remove_module_level_aliases(
+        new_source, removed = u.Infra.remove_module_level_aliases(
             rope_project,
             resource,
             allow=self._allow_aliases,

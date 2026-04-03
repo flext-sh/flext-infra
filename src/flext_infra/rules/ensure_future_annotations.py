@@ -15,6 +15,8 @@ from flext_infra import FlextInfraRefactorRule, c, t
 class FlextInfraRefactorEnsureFutureAnnotationsRule(FlextInfraRefactorRule):
     """Ensure ``from __future__ import annotations`` exists and is properly placed."""
 
+    _SINGLE_LINE_DOCSTRING_MIN_LENGTH = 3
+
     @override
     def apply(
         self,
@@ -42,7 +44,10 @@ class FlextInfraRefactorEnsureFutureAnnotationsRule(FlextInfraRefactorRule):
             if stripped.startswith(('"""', "'''")):
                 doc_char = '"""' if stripped.startswith('"""') else "'''"
                 # Check if it's a single-line docstring
-                if stripped.endswith(doc_char) and len(stripped) > 3:
+                if (
+                    stripped.endswith(doc_char)
+                    and len(stripped) > self._SINGLE_LINE_DOCSTRING_MIN_LENGTH
+                ):
                     insert_idx = i + 1
                     continue
                 in_docstring = True
@@ -61,14 +66,14 @@ class FlextInfraRefactorEnsureFutureAnnotationsRule(FlextInfraRefactorRule):
         new_lines = list(lines)
 
         # Add blank line if needed before
-        if insert_idx > 0 and new_lines[insert_idx - 1].strip() != "":
+        if insert_idx > 0 and new_lines[insert_idx - 1].strip():
             new_lines.insert(insert_idx, "")
             insert_idx += 1
 
         new_lines.insert(insert_idx, c.Infra.SourceCode.FUTURE_ANNOTATIONS)
 
         # Add blank line if needed after
-        if insert_idx + 1 < len(new_lines) and new_lines[insert_idx + 1].strip() != "":
+        if insert_idx + 1 < len(new_lines) and new_lines[insert_idx + 1].strip():
             new_lines.insert(insert_idx + 1, "")
 
         return "\\n".join(new_lines) + "\\n", [

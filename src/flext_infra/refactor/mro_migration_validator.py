@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import FlextInfraUtilitiesRefactorMroScan, t
+from flext_infra import t, u
 
 
 class FlextInfraRefactorMROMigrationValidator:
@@ -13,7 +13,7 @@ class FlextInfraRefactorMROMigrationValidator:
     @classmethod
     def validate(cls, *, workspace_root: Path, target: str) -> t.Infra.IntPair:
         """Return count of remaining symbols and unsupported entries."""
-        file_results, _ = FlextInfraUtilitiesRefactorMroScan.scan_workspace(
+        file_results, _ = u.Infra.scan_workspace(
             workspace_root=workspace_root,
             target=target,
         )

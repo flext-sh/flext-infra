@@ -8,8 +8,6 @@ from collections.abc import Sequence
 from typing import override
 
 from flext_infra import (
-    FlextInfraRefactorTransformerPolicyUtilities,
-    FlextInfraUtilitiesRope,
     m,
     t,
     u,
@@ -40,12 +38,10 @@ class FlextInfraHelperConsolidationTransformer(FlextInfraRopeTransformer):
         resource: t.Infra.RopeResource,
     ) -> tuple[str, Sequence[str]]:
         """Apply helper consolidation. Returns (new_source, changes)."""
-        source = FlextInfraUtilitiesRope.read_source(resource)
+        source = u.Infra.read_source(resource)
         collected: dict[str, list[str]] = defaultdict(list)
         for name, ns in self._mappings.items():
-            if not FlextInfraUtilitiesRope.has_toplevel_definition(
-                source, name, kind="function"
-            ):
+            if not u.Infra.has_toplevel_definition(source, name, kind="function"):
                 continue
             if not self._policy_ok(name, ns, "enable_helper_consolidation"):
                 continue
@@ -54,23 +50,17 @@ class FlextInfraHelperConsolidationTransformer(FlextInfraRopeTransformer):
             collected[ns].append(name)
         for namespace, helpers in collected.items():
             for name in helpers:
-                func_src = FlextInfraUtilitiesRope.extract_definition(
-                    source, name, kind="function"
-                )
+                func_src = u.Infra.extract_definition(source, name, kind="function")
                 if func_src is None:
                     continue
-                source = FlextInfraUtilitiesRope.remove_definition(
-                    source, name, kind="function"
-                )
-                func_src = FlextInfraUtilitiesRope.ensure_decorator(func_src)
-                indented = FlextInfraUtilitiesRope.indent_block(func_src)
-                source = FlextInfraUtilitiesRope.append_to_class_body(
-                    source, namespace, indented
-                )
+                source = u.Infra.remove_definition(source, name, kind="function")
+                func_src = u.Infra.ensure_decorator(func_src)
+                indented = u.Infra.indent_block(func_src)
+                source = u.Infra.append_to_class_body(source, namespace, indented)
                 self._record_change(f"Moved {name} into {namespace}")
         source = self._rewrite_calls(source)
-        if source != FlextInfraUtilitiesRope.read_source(resource) and self.changes:
-            FlextInfraUtilitiesRope.write_source(
+        if source != u.Infra.read_source(resource) and self.changes:
+            u.Infra.write_source(
                 rope_project,
                 resource,
                 source,
@@ -95,7 +85,7 @@ class FlextInfraHelperConsolidationTransformer(FlextInfraRopeTransformer):
             return True
         if not getattr(policy, attr, True):
             return False
-        return FlextInfraRefactorTransformerPolicyUtilities.target_allowed(
+        return u.Infra.target_allowed(
             policy=policy,
             target_namespace=target_ns,
         )
@@ -119,7 +109,7 @@ class FlextInfraHelperConsolidationTransformer(FlextInfraRopeTransformer):
         return not (not policy.allow_kwarg and "**" in params_str)
 
     def _policy_for(self, name: str) -> m.Infra.ClassNestingPolicy | None:
-        return FlextInfraRefactorTransformerPolicyUtilities.policy_for_symbol(
+        return u.Infra.policy_for_symbol(
             policy_context=self._policy_context,
             symbol_families=self._families,
             symbol_name=name,

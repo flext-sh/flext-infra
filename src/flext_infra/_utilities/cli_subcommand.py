@@ -100,14 +100,14 @@ class FlextInfraUtilitiesCliSubcommand:
         root_shared_tokens = tuple(
             FlextInfraUtilitiesCliSubcommand._shared_option_tokens(root_options),
         )
-        shared = FlextInfraUtilitiesCli._shared_flags_parser(
+        shared = FlextInfraUtilitiesCli.shared_flags_parser(
             _SharedFlags.from_dict(root_options),
         )
         parser = ArgumentParser(prog=prog, description=description, parents=[shared])
         subparsers = parser.add_subparsers(dest="command")
         command_parsers: MutableMapping[str, ArgumentParser] = {}
         for command, command_help in subcommands.items():
-            command_shared = FlextInfraUtilitiesCli._shared_flags_parser(
+            command_shared = FlextInfraUtilitiesCli.shared_flags_parser(
                 _SharedFlags.from_dict(command_options[command]),
                 suppress_defaults=True,
             )

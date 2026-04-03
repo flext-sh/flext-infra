@@ -77,6 +77,10 @@ class FlextInfraUtilitiesDiscovery:
     def discover_package_from_file(file_path: Path) -> str:
         """Discover the package name for a Python file."""
         resolved = file_path.resolve()
+        probe_path = FlextInfraUtilitiesDiscovery._package_probe_path(resolved)
+        module_path = FlextInfraUtilitiesDiscovery.discover_module_path(probe_path)
+        if module_path:
+            return module_path
         via_src = FlextInfraUtilitiesDiscovery._discover_package_via_src_lineage(
             resolved,
         )
@@ -87,19 +91,36 @@ class FlextInfraUtilitiesDiscovery:
         )
 
     @staticmethod
+    def _package_probe_path(path: Path) -> Path:
+        """Return a synthetic __init__.py path for package-path discovery."""
+        if path.suffix == c.Infra.Extensions.PYTHON:
+            if path.name == c.Infra.Files.INIT_PY:
+                return path
+            return path.parent / c.Infra.Files.INIT_PY
+        return path / c.Infra.Files.INIT_PY
+
+    @staticmethod
     def _discover_package_via_src_lineage(resolved: Path) -> str:
         """Walk parent directories looking for a src/ boundary with a package."""
-        candidate = resolved.parent if resolved.is_file() else resolved
+        candidate = (
+            resolved.parent
+            if resolved.suffix == c.Infra.Extensions.PYTHON
+            else resolved
+        )
         lineage = (candidate, *candidate.parents)
         for current in lineage:
             if current.name != c.Infra.Paths.DEFAULT_SRC_DIR:
                 continue
             try:
                 relative = resolved.relative_to(current)
-                if relative.parts:
-                    package_name = relative.parts[0]
-                    if (current / package_name / c.Infra.Files.INIT_PY).is_file():
-                        return package_name
+                relative_parts = relative.parts
+                if relative_parts and relative_parts[-1] == c.Infra.Files.INIT_PY:
+                    relative_parts = relative_parts[:-1]
+                if not relative_parts:
+                    continue
+                package_name = ".".join(relative_parts)
+                if package_name:
+                    return package_name
             except ValueError:
                 continue
         return ""

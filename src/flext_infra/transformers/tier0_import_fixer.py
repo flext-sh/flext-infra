@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import ClassVar
 
-from flext_infra import FlextInfraUtilitiesDiscovery, FlextInfraUtilitiesRope, c, t, u
+from flext_infra import c, t, u
 
 
 class FlextInfraTransformerTier0ImportFixer:
@@ -55,7 +55,7 @@ class FlextInfraTransformerTier0ImportFixer:
 
         def build_analysis(self) -> FlextInfraTransformerTier0ImportFixer.Analysis:
             """Parse file and build violation analysis."""
-            pkg_dir, pkg_name = FlextInfraUtilitiesDiscovery.package_context(
+            pkg_dir, pkg_name = u.Infra.package_context(
                 self._file_path,
             )
             if not pkg_name:
@@ -67,12 +67,12 @@ class FlextInfraTransformerTier0ImportFixer:
             self._scan_self_imports(source, pkg_name)
             self._scan_runtime_usage(source)
             alias_map: t.MutableStrMapping = dict(
-                FlextInfraUtilitiesDiscovery.discover_project_aliases(
+                u.Infra.discover_project_aliases(
                     pkg_dir.parent if pkg_dir.name == "src" else pkg_dir,
                 ),
             )
             alias_map.update(
-                FlextInfraUtilitiesDiscovery.extract_lazy_import_map(
+                u.Infra.extract_lazy_import_map(
                     pkg_dir / "__init__.py",
                 ),
             )
@@ -125,7 +125,7 @@ class FlextInfraTransformerTier0ImportFixer:
         """Rewrite Tier 0 imports via rope to remove circularity."""
 
         _CLASS_IMPORTS_MAP: ClassVar[t.StrMapping] = {
-            "FlextRuntime": "flext_core.runtime",
+            "u": "flext_core.runtime",
             "FlextUtilitiesGuardsTypeCore": "flext_core._utilities.guards_type_core",
             "FlextUtilitiesGuards": "flext_core._utilities.guards",
             "FlextUtilitiesGuardsType": "flext_core._utilities.guards_type",
@@ -178,10 +178,10 @@ class FlextInfraTransformerTier0ImportFixer:
             resource: t.Infra.RopeResource,
         ) -> tuple[str, Sequence[str]]:
             """Apply tier 0 import fixes via rope."""
-            source = FlextInfraUtilitiesRope.read_source(resource)
+            source = u.Infra.read_source(resource)
             self._detect_missing_classes(source)
             if self._root_remove:
-                FlextInfraUtilitiesRope.remove_import_names(
+                u.Infra.remove_import_names(
                     rope_project,
                     resource,
                     self._package_name,
@@ -189,7 +189,7 @@ class FlextInfraTransformerTier0ImportFixer:
                     apply=True,
                 )
             if self._core_pending:
-                FlextInfraUtilitiesRope.add_import(
+                u.Infra.add_import(
                     rope_project,
                     resource,
                     self._core_package,
@@ -199,7 +199,7 @@ class FlextInfraTransformerTier0ImportFixer:
                 self._core_pending.clear()
             for sub, aliases in sorted(self._direct_pending.items()):
                 if aliases:
-                    FlextInfraUtilitiesRope.add_import(
+                    u.Infra.add_import(
                         rope_project,
                         resource,
                         f"{self._package_name}.{sub}",
@@ -208,7 +208,7 @@ class FlextInfraTransformerTier0ImportFixer:
                     )
             for name in sorted(self._missing_classes):
                 mod = self._CLASS_IMPORTS_MAP[name]
-                FlextInfraUtilitiesRope.add_import(
+                u.Infra.add_import(
                     rope_project,
                     resource,
                     mod,
@@ -217,7 +217,7 @@ class FlextInfraTransformerTier0ImportFixer:
                 )
             if self._type_checking_pending:
                 self._add_type_checking_block(rope_project, resource)
-            final = FlextInfraUtilitiesRope.read_source(resource)
+            final = u.Infra.read_source(resource)
             return final, list(self._changes)
 
         def _detect_missing_classes(self, source: str) -> None:
@@ -233,11 +233,11 @@ class FlextInfraTransformerTier0ImportFixer:
             resource: t.Infra.RopeResource,
         ) -> None:
             """Add TYPE_CHECKING block with pending type-only imports."""
-            source = FlextInfraUtilitiesRope.read_source(resource)
+            source = u.Infra.read_source(resource)
             names = ", ".join(sorted(self._type_checking_pending))
             tc_import = f"from {self._package_name} import {names}"
             if "from typing import TYPE_CHECKING" not in source:
-                FlextInfraUtilitiesRope.add_import(
+                u.Infra.add_import(
                     rope_project,
                     resource,
                     "typing",
@@ -245,14 +245,14 @@ class FlextInfraTransformerTier0ImportFixer:
                     apply=True,
                 )
                 self._changes.append("Added 'from typing import TYPE_CHECKING'")
-                source = FlextInfraUtilitiesRope.read_source(resource)
+                source = u.Infra.read_source(resource)
             if "if TYPE_CHECKING:" not in source:
                 block = f"\nif TYPE_CHECKING:\n    {tc_import}\n"
                 lines = source.splitlines(keepends=True)
                 idx = u.Infra.find_import_insert_position(lines)
                 lines.insert(idx, block)
                 new_source = "".join(lines)
-                FlextInfraUtilitiesRope.write_source(
+                u.Infra.write_source(
                     rope_project,
                     resource,
                     new_source,

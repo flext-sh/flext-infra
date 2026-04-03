@@ -20,6 +20,7 @@ from flext_infra import (
     t,
     u,
 )
+from flext_infra.check import workspace_check_cli as workspace_check_cli_module
 
 
 class _LoopOutcome(m.ArbitraryTypesModel):
@@ -117,23 +118,17 @@ class FlextInfraWorkspaceChecker(s[bool]):
     @staticmethod
     def build_parser() -> argparse.ArgumentParser:
         """Build the workspace check CLI parser."""
-        from flext_infra.check.workspace_check_cli import FlextInfraWorkspaceCheckerCli
-
-        return FlextInfraWorkspaceCheckerCli.build_parser()
+        return workspace_check_cli_module.FlextInfraWorkspaceCheckerCli.build_parser()
 
     @staticmethod
     def run_cli(argv: t.StrSequence | None = None) -> int:
         """Run the subcommand-based workspace check CLI."""
-        from flext_infra.check.workspace_check_cli import FlextInfraWorkspaceCheckerCli
-
-        return FlextInfraWorkspaceCheckerCli.run_cli(argv)
+        return workspace_check_cli_module.FlextInfraWorkspaceCheckerCli.run_cli(argv)
 
     @staticmethod
     def main(argv: t.StrSequence | None = None) -> int:
         """Run the legacy workspace check CLI entrypoint."""
-        from flext_infra.check.workspace_check_cli import FlextInfraWorkspaceCheckerCli
-
-        return FlextInfraWorkspaceCheckerCli.main(argv)
+        return workspace_check_cli_module.FlextInfraWorkspaceCheckerCli.main(argv)
 
     def run(
         self,
@@ -424,6 +419,5 @@ class FlextInfraWorkspaceChecker(s[bool]):
 build_parser = FlextInfraWorkspaceChecker.build_parser
 run_cli = FlextInfraWorkspaceChecker.run_cli
 main = FlextInfraWorkspaceChecker.main
-
 
 __all__ = ["FlextInfraWorkspaceChecker", "build_parser", "main", "run_cli"]

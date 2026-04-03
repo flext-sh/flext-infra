@@ -6,14 +6,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable, Mapping
 from pathlib import Path
 
 from flext_tests import tm
 
+from flext_infra import u
 from flext_infra._utilities.codegen_lazy_scanning import (
     FlextInfraUtilitiesCodegenLazyScanning,
 )
+from flext_infra._utilities.rope_helpers import FlextInfraUtilitiesRopeHelpers
 
 _read_existing_docstring: Callable[[Path], str] = getattr(
     FlextInfraUtilitiesCodegenLazyScanning,
@@ -24,58 +27,45 @@ _build_sibling_export_index: Callable[[Path, str], Mapping[str, tuple[str, str]]
 )
 
 
+def _extract_exports(source: str) -> tuple[bool, list[str]]:
+    for name, value_str in FlextInfraUtilitiesRopeHelpers.get_module_level_assignments(
+        source
+    ):
+        if name == "__all__":
+            return True, re.findall(r'["\']([^"\']+)["\']', value_str)
+    return False, []
+
+
 class TestInferPackage:
     """Test infer_package function."""
 
     def test_src_path(self) -> None:
         """Test inference from src/ path."""
         path = Path("/workspace/src/test_pkg/__init__.py")
-        from flext_infra._utilities.codegen_ast_parsing import (
-            FlextInfraUtilitiesCodegenAstParsing,
-        )
-
-        tm.that(FlextInfraUtilitiesCodegenAstParsing.infer_package(path), eq="test_pkg")
+        tm.that(u.Infra.discover_package_from_file(path), eq="test_pkg")
 
     def test_deeply_nested_src_path(self) -> None:
         """Test inference from deeply nested src/ path."""
         path = Path("/workspace/src/a/b/c/d/__init__.py")
-        from flext_infra._utilities.codegen_ast_parsing import (
-            FlextInfraUtilitiesCodegenAstParsing,
-        )
-
-        tm.that(FlextInfraUtilitiesCodegenAstParsing.infer_package(path), eq="a.b.c.d")
+        tm.that(u.Infra.discover_package_from_file(path), eq="a.b.c.d")
 
     def test_tests_path(self) -> None:
         """Test inference from tests/ path."""
         path = Path("/workspace/tests/unit/__init__.py")
-        from flext_infra._utilities.codegen_ast_parsing import (
-            FlextInfraUtilitiesCodegenAstParsing,
-        )
-
-        tm.that(
-            FlextInfraUtilitiesCodegenAstParsing.infer_package(path), eq="tests.unit"
-        )
+        tm.that(u.Infra.discover_package_from_file(path), eq="tests.unit")
 
     def test_examples_nested_tests_path(self) -> None:
         """Test inference preserves examples package before nested tests."""
         path = Path("/workspace/examples/tests/__init__.py")
-        from flext_infra._utilities.codegen_ast_parsing import (
-            FlextInfraUtilitiesCodegenAstParsing,
-        )
-
         tm.that(
-            FlextInfraUtilitiesCodegenAstParsing.infer_package(path),
+            u.Infra.discover_package_from_file(path),
             eq="examples.tests",
         )
 
     def test_without_src_directory(self) -> None:
         """Test when path doesn't contain /src/."""
         path = Path("/workspace/lib/test/__init__.py")
-        from flext_infra._utilities.codegen_ast_parsing import (
-            FlextInfraUtilitiesCodegenAstParsing,
-        )
-
-        tm.that(FlextInfraUtilitiesCodegenAstParsing.infer_package(path), eq="")
+        tm.that(u.Infra.discover_package_from_file(path), eq="")
 
 
 class TestReadExistingDocstring:
@@ -183,56 +173,28 @@ class TestExtractExports:
 
     def test_with_list_all(self) -> None:
         """Test __all__ as list."""
-        import ast
-
         code = '__all__ = ["Foo", "Bar"]'
-        tree = ast.parse(code)
-        from flext_infra._utilities.codegen_ast_parsing import (
-            FlextInfraUtilitiesCodegenAstParsing,
-        )
-
-        has_all, exports = FlextInfraUtilitiesCodegenAstParsing.extract_exports(tree)
+        has_all, exports = _extract_exports(code)
         tm.that(has_all, eq=True)
         tm.that(exports, eq=["Foo", "Bar"])
 
     def test_with_tuple_all(self) -> None:
         """Test __all__ as tuple."""
-        import ast
-
         code = '__all__ = ("Foo", "Bar")'
-        tree = ast.parse(code)
-        from flext_infra._utilities.codegen_ast_parsing import (
-            FlextInfraUtilitiesCodegenAstParsing,
-        )
-
-        has_all, exports = FlextInfraUtilitiesCodegenAstParsing.extract_exports(tree)
+        has_all, exports = _extract_exports(code)
         tm.that(has_all, eq=True)
         tm.that(exports, eq=["Foo", "Bar"])
 
     def test_with_non_string_elements(self) -> None:
         """Test ignores non-string elements."""
-        import ast
-
         code = '__all__ = ["Foo", 123, "Bar"]'
-        tree = ast.parse(code)
-        from flext_infra._utilities.codegen_ast_parsing import (
-            FlextInfraUtilitiesCodegenAstParsing,
-        )
-
-        has_all, exports = FlextInfraUtilitiesCodegenAstParsing.extract_exports(tree)
+        has_all, exports = _extract_exports(code)
         tm.that(has_all, eq=True)
         tm.that(exports, eq=["Foo", "Bar"])
 
     def test_without_all(self) -> None:
         """Test when __all__ is missing."""
-        import ast
-
         code = "x = 1"
-        tree = ast.parse(code)
-        from flext_infra._utilities.codegen_ast_parsing import (
-            FlextInfraUtilitiesCodegenAstParsing,
-        )
-
-        has_all, exports = FlextInfraUtilitiesCodegenAstParsing.extract_exports(tree)
+        has_all, exports = _extract_exports(code)
         tm.that(not has_all, eq=True)
         tm.that(exports, eq=[])

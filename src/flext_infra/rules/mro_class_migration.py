@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import (
-    FlextInfraUtilitiesRope,
     c,
     m,
     t,
@@ -26,8 +25,8 @@ class FlextInfraRefactorMROClassMigrationRule:
         """Migrate module-level Final constants into the facade class."""
         file_path = Path(rope_project.root.real_path) / resource.path
         if file_path.name != c.Infra.CONSTANTS_FILE_GLOB:
-            return (FlextInfraUtilitiesRope.read_source(resource), [])
-        source = FlextInfraUtilitiesRope.read_source(resource)
+            return (u.Infra.read_source(resource), [])
+        source = u.Infra.read_source(resource)
         candidates = u.Infra.find_final_candidates(source)
         if not candidates:
             return (source, [])
@@ -44,7 +43,7 @@ class FlextInfraRefactorMROClassMigrationRule:
         if not migration.moved_symbols or updated_source == source:
             return (source, [])
         if not dry_run:
-            FlextInfraUtilitiesRope.write_source(
+            u.Infra.write_source(
                 rope_project,
                 resource,
                 updated_source,

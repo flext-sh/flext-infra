@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import MutableSequence
 
-from flext_infra import FlextInfraUtilitiesRope, t
+from flext_infra import t, u
 
 
 class FlextInfraRedundantCastRemover:
@@ -32,7 +32,7 @@ class FlextInfraRedundantCastRemover:
         """
         if self._removable_types is not None:
             return self._remove_typed_casts(rope_project, resource)
-        source, count = FlextInfraUtilitiesRope.remove_redundant_cast(
+        source, count = u.Infra.remove_redundant_cast(
             rope_project,
             resource,
             apply=True,
@@ -50,7 +50,7 @@ class FlextInfraRedundantCastRemover:
         source = resource.read()
         total = 0
         for type_name in self._removable_types or ():
-            replaced, count = FlextInfraUtilitiesRope.replace_in_source(
+            replaced, count = u.Infra.replace_in_source(
                 rope_project,
                 resource,
                 rf"\bcast\s*\(\s*{type_name}\s*,\s*([^)]+)\s*\)",

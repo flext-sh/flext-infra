@@ -16,7 +16,7 @@ from pathlib import Path
 
 from pydantic import model_validator
 
-from flext_core import FlextRuntime, u
+from flext_core import u
 from flext_infra import FlextInfraUtilitiesOutput, m, t
 
 
@@ -204,6 +204,18 @@ class FlextInfraUtilitiesCli:
         return base
 
     @staticmethod
+    def shared_flags_parser(
+        flags: _SharedFlags,
+        *,
+        suppress_defaults: bool = False,
+    ) -> ArgumentParser:
+        """Build the shared-flags parser exposed to sibling CLI helpers."""
+        return FlextInfraUtilitiesCli._shared_flags_parser(
+            flags,
+            suppress_defaults=suppress_defaults,
+        )
+
+    @staticmethod
     def create_subcommand_parser(
         prog: str,
         description: str,
@@ -213,10 +225,6 @@ class FlextInfraUtilitiesCli:
         subcommand_flags: Mapping[str, t.BoolMapping] | None = None,
     ) -> t.Infra.Pair[ArgumentParser, Mapping[str, ArgumentParser]]:
         """Create main parser with subcommands and shared flags."""
-        from flext_infra._utilities.cli_subcommand import (
-            FlextInfraUtilitiesCliSubcommand,
-        )
-
         return FlextInfraUtilitiesCliSubcommand.create_subcommand_parser(
             prog,
             description,
@@ -272,10 +280,6 @@ class FlextInfraUtilitiesCli:
         passthrough_subcommands: t.StrSequence | None = None,
     ) -> Namespace:
         """Parse and validate subcommand args against per-command shared flags."""
-        from flext_infra._utilities.cli_subcommand import (
-            FlextInfraUtilitiesCliSubcommand,
-        )
-
         return FlextInfraUtilitiesCliSubcommand.parse_subcommand_args(
             parser,
             argv,
@@ -342,7 +346,7 @@ class FlextInfraUtilitiesCli:
         argv: t.StrSequence | None = None,
     ) -> int:
         try:
-            FlextRuntime.ensure_structlog_configured()
+            u.ensure_structlog_configured()
             return main_fn(argv)
         except SystemExit as exc:
             exit_value = exc.code
@@ -356,5 +360,7 @@ class FlextInfraUtilitiesCli:
             FlextInfraUtilitiesOutput.error(str(exc))
             return 1
 
+
+from flext_infra._utilities.cli_subcommand import FlextInfraUtilitiesCliSubcommand
 
 __all__ = ["FlextInfraUtilitiesCli"]

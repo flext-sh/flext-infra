@@ -25,8 +25,9 @@ class FlextInfraUtilitiesRefactorNamespaceRuntime(
 ):
     """Rope-backed runtime import rewrite helpers."""
 
-    @staticmethod
+    @classmethod
     def rewrite_import_violations(
+        cls,
         *,
         py_files: Sequence[Path],
         project_package: str,
@@ -34,9 +35,7 @@ class FlextInfraUtilitiesRefactorNamespaceRuntime(
         if not py_files:
             return
         rope_project = FlextInfraUtilitiesRope.init_rope_project(
-            FlextInfraUtilitiesRefactorNamespaceRuntime._shared_workspace_root(
-                py_files=py_files,
-            )
+            cls._shared_workspace_root(py_files=py_files),
         )
         try:
             for file_path in py_files:
@@ -46,10 +45,7 @@ class FlextInfraUtilitiesRefactorNamespaceRuntime(
                     source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
                 except OSError:
                     continue
-                if FlextInfraUtilitiesRefactorNamespaceRuntime._looks_like_facade_file(
-                    file_path=file_path,
-                    source=source,
-                ):
+                if cls._looks_like_facade_file(file_path=file_path, source=source):
                     continue
                 resource = FlextInfraUtilitiesRope.get_resource_from_path(
                     rope_project,
@@ -75,19 +71,16 @@ class FlextInfraUtilitiesRefactorNamespaceRuntime(
         finally:
             rope_project.close()
 
-    @staticmethod
+    @classmethod
     def migrate_runtime_alias_imports(
+        cls,
         *,
         workspace_root: Path,
         aliases: t.StrSequence,
         apply: bool,
         project_names: t.StrSequence | None = None,
     ) -> Sequence[m.Infra.Result]:
-        normalized_aliases = (
-            FlextInfraUtilitiesRefactorNamespaceRuntime._normalize_runtime_aliases(
-                aliases,
-            )
-        )
+        normalized_aliases = cls._normalize_runtime_aliases(aliases)
         if not normalized_aliases:
             return []
         resolved_root = workspace_root.resolve()
@@ -120,7 +113,7 @@ class FlextInfraUtilitiesRefactorNamespaceRuntime(
                 )
                 continue
             for file_path in files_result.value:
-                result = FlextInfraUtilitiesRefactorNamespaceRuntime._migrate_runtime_alias_imports_in_file(
+                result = cls._migrate_runtime_alias_imports_in_file(
                     file_path=file_path,
                     workspace_root=resolved_root,
                     aliases=normalized_aliases,
@@ -138,8 +131,9 @@ class FlextInfraUtilitiesRefactorNamespaceRuntime(
             if len(alias.strip()) == 1 and alias.strip().islower()
         }
 
-    @staticmethod
+    @classmethod
     def _migrate_runtime_alias_imports_in_file(
+        cls,
         *,
         file_path: Path,
         workspace_root: Path,
@@ -166,12 +160,10 @@ class FlextInfraUtilitiesRefactorNamespaceRuntime(
         )
         if not package_name or package_name == c.Infra.Packages.CORE_UNDERSCORE:
             return None
-        current_module = (
-            FlextInfraUtilitiesRefactorNamespaceRuntime._module_name_for_file(
-                file_path=file_path,
-                package_dir=package_dir,
-                package_name=package_name,
-            )
+        current_module = cls._module_name_for_file(
+            file_path=file_path,
+            package_dir=package_dir,
+            package_name=package_name,
         )
         if not current_module:
             return None
@@ -219,7 +211,7 @@ class FlextInfraUtilitiesRefactorNamespaceRuntime(
                         f"skipped missing export runtime alias import: {alias_name}",
                     )
                     continue
-                if not FlextInfraUtilitiesRefactorNamespaceRuntime._safe_runtime_alias_target(
+                if not cls._safe_runtime_alias_target(
                     alias_name=alias_name,
                     package_name=package_name,
                     current_module=current_module,
@@ -275,8 +267,9 @@ class FlextInfraUtilitiesRefactorNamespaceRuntime(
         finally:
             rope_project.close()
 
-    @staticmethod
+    @classmethod
     def _module_name_for_file(
+        cls,
         *,
         file_path: Path,
         package_dir: Path,

@@ -15,6 +15,7 @@ try:
         FlextInfraRefactorEngine,
         FlextInfraRefactorViolationAnalyzer,
         FlextInfraUtilitiesRefactorCli,
+        u,
     )
 except ImportError as exc:
     pytest.skip(f"refactor package unavailable: {exc}", allow_module_level=True)
@@ -77,7 +78,12 @@ def test_violation_analysis_counts_massive_patterns(tmp_path: Path) -> None:
     )
     engine = FlextInfraRefactorEngine(config_path=config_path)
     _ = engine.load_config()
-    files = engine.collect_workspace_files(project_root)
+    files = u.Infra.collect_engine_project_files(
+        engine.rule_loader,
+        engine.config,
+        project_root,
+    )
+    assert files is not None
     result = FlextInfraRefactorViolationAnalyzer.analyze_files(files)
     totals = result.totals
     assert "container_invariance" in totals
