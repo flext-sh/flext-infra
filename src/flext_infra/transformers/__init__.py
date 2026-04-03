@@ -129,6 +129,7 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "FlextInfraRefactorMROQualifiedReferenceTransformer": "flext_infra.transformers.mro_private_inline",
     "FlextInfraRefactorMRORemover": "flext_infra.transformers.mro_remover",
     "FlextInfraRefactorMROSymbolPropagator": "flext_infra.transformers.mro_symbol_propagator",
+    "FlextInfraRopeTransformer": "flext_infra.transformers._base",
     "FlextInfraRefactorSignaturePropagator": "flext_infra.transformers.signature_propagator",
     "FlextInfraRefactorSymbolPropagator": "flext_infra.transformers.symbol_propagator",
     "FlextInfraRefactorTransformerPolicyUtilities": "flext_infra.transformers.policy",
@@ -165,4 +166,3 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
 
 
 install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)
-    "FlextInfraRopeTransformer": "flext_infra.transformers._base",

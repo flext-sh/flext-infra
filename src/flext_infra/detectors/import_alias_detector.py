@@ -7,16 +7,15 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Sequence
-from pathlib import Path
 from typing import ClassVar, override
 
 from flext_infra import (
     DetectorContext,
     FlextInfraScanFileMixin,
-    FlextInfraUtilitiesRope,
     c,
     m,
     p,
+    u,
 )
 
 
@@ -38,18 +37,18 @@ class FlextInfraImportAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
         file_path = ctx.file_path
         if file_path.name == c.Infra.Files.INIT_PY:
             return []
-        resource = FlextInfraUtilitiesRope.get_resource_from_path(
+        resource = u.Infra.get_resource_from_path(
             ctx.rope_project,
             file_path,
         )
         if resource is None:
             return []
         source = resource.read()
-        if cls._looks_like_facade_file(file_path=file_path, source=source):
+        if u.Infra.looks_like_facade_file(file_path=file_path, source=source):
             return []
         source_lines = source.splitlines()
         violations: list[m.Infra.ImportAliasViolation] = []
-        for from_import in FlextInfraUtilitiesRope.get_absolute_from_imports(
+        for from_import in u.Infra.get_absolute_from_imports(
             ctx.rope_project,
             resource,
         ):
@@ -69,7 +68,7 @@ class FlextInfraImportAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
             violations.append(
                 m.Infra.ImportAliasViolation(
                     file=str(file_path),
-                    line=cls._find_import_line(
+                    line=u.Infra.find_import_line(
                         lines=source_lines,
                         module_name=from_import.module_name,
                     ),
@@ -86,22 +85,6 @@ class FlextInfraImportAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
         if not module_name.startswith("flext_") or "." not in module_name:
             return False
         return all(not part.startswith("_") for part in module_name.split(".")[1:])
-
-    @staticmethod
-    def _looks_like_facade_file(*, file_path: Path, source: str) -> bool:
-        from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
-
-        return FlextInfraUtilitiesParsing.looks_like_facade_file(
-            file_path=file_path, source=source
-        )
-
-    @staticmethod
-    def _find_import_line(*, lines: Sequence[str], module_name: str) -> int:
-        from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
-
-        return FlextInfraUtilitiesParsing.find_import_line(
-            lines=lines, module_name=module_name
-        )
 
 
 __all__ = ["FlextInfraImportAliasDetector"]

@@ -578,7 +578,7 @@ class FlextInfraUtilitiesCodegenExecution:
     def detect_duplicate_constant_groups(
         workspace_root: Path,
         census_reports: Sequence[m.Infra.CensusReport],
-    ) -> Sequence[t.Infra.InfraValue]:
+    ) -> Sequence[m.Infra.DuplicateConstantGroup]:
         all_definitions: MutableSequence[m.Infra.ConstantDefinition] = []
         for report in census_reports:
             project_root = workspace_root / report.project
@@ -598,7 +598,7 @@ class FlextInfraUtilitiesCodegenExecution:
         ] = defaultdict(list)
         for definition in all_definitions:
             name_to_defs[definition.name].append(definition)
-        groups: MutableSequence[t.Infra.InfraValue] = []
+        groups: MutableSequence[m.Infra.DuplicateConstantGroup] = []
         for name, definitions in sorted(name_to_defs.items()):
             projects = {item.project for item in definitions}
             if len(projects) < c.Infra.Thresholds.MIN_DUPLICATE_PROJECT_COUNT:
@@ -610,7 +610,7 @@ class FlextInfraUtilitiesCodegenExecution:
                     definitions=definitions,
                     is_value_identical=len(values) == 1,
                     canonical_ref="",
-                ).model_dump(),
+                ),
             )
         return groups
 

@@ -20,8 +20,12 @@ from pydantic import Field
 
 from flext_core import r, s
 from flext_infra import (
+    FlextInfraCodegenLazyInit,
     FlextInfraCodegenSnapshot,
+    FlextInfraNamespaceEnforcer,
     FlextInfraNamespaceValidator,
+    FlextInfraRefactorEngine,
+    FlextInfraRefactorMigrateToClassMRO,
     c,
     m,
     t,
@@ -134,19 +138,100 @@ class FlextInfraCodegenFixer(s[bool]):
             label=f"codegen-fix:{project_path.name}",
         )
         stash_ref = checkpoint_result.value if checkpoint_result.is_success else ""
-        self._apply_ns_rules(src_dir=src_dir, pkg_dir=pkg_dir, ctx=ctx)
+        self._apply_ns_rules(project_path=project_path, ctx=ctx)
         if self._dry_run or self._rules_only:
             return self._build_result(project_path.name, ctx)
-        report = u.Infra.apply_project_mro_migrations(
-            project_path=project_path, ctx=ctx
-        )
-        u.Infra.record_mro_migration_result(report=report, ctx=ctx)
-        u.Infra.apply_refactor_engine_pass(project_path=project_path, ctx=ctx)
-        u.Infra.apply_namespace_enforcement_pass(project_path=project_path, ctx=ctx)
-        u.Infra.run_lazy_propagation(project_path=project_path, ctx=ctx)
+        report = FlextInfraRefactorMigrateToClassMRO(
+            workspace_root=project_path,
+        ).run(target="all", apply=True)
+        for migration in report.migrations:
+            ctx.files_modified.add(migration.file)
+            symbols = ", ".join(migration.moved_symbols) or "symbols"
+            ctx.fix(
+                module=migration.module,
+                rule="MRO",
+                line=1,
+                message=f"migrated {symbols} into facade MRO",
+            )
+        for rewrite in report.rewrites:
+            ctx.files_modified.add(rewrite.file)
+            ctx.fix(
+                module=rewrite.file,
+                rule="MRO-REWRITE",
+                line=1,
+                message=f"rewrote {rewrite.replacements} consumer references",
+            )
+        for error in report.errors:
+            ctx.skip(
+                module=project_path.name,
+                rule="MRO",
+                line=0,
+                message=error,
+            )
+        engine = FlextInfraRefactorEngine()
+        config_result = engine.load_config()
+        rules_result = engine.load_rules() if config_result.is_success else None
+        if config_result.is_failure:
+            ctx.skip(
+                module=project_path.name,
+                rule="REFACTOR",
+                line=0,
+                message=config_result.error or "refactor config load failed",
+            )
+        elif rules_result is not None and rules_result.is_failure:
+            ctx.skip(
+                module=project_path.name,
+                rule="REFACTOR",
+                line=0,
+                message=rules_result.error or "refactor rule load failed",
+            )
+        else:
+            for result in engine.refactor_project(
+                project_path,
+                dry_run=False,
+                apply_safety=False,
+            ):
+                if result.modified:
+                    ctx.files_modified.add(str(result.file_path))
+                    changes = tuple(result.changes) or ("refactor applied",)
+                    for change in changes:
+                        ctx.fix(
+                            module=str(result.file_path),
+                            rule="REFACTOR",
+                            line=1,
+                            message=change,
+                        )
+                elif not result.success:
+                    ctx.skip(
+                        module=str(result.file_path),
+                        rule="REFACTOR",
+                        line=1,
+                        message=result.error or "refactor failed",
+                    )
+        enforcement = FlextInfraNamespaceEnforcer(
+            workspace_root=project_path,
+        ).enforce(apply=True)
+        for project_report in enforcement.projects:
+            if project_report.has_violations:
+                ctx.skip(
+                    module=project_report.project,
+                    rule="NAMESPACE",
+                    line=0,
+                    message="violations remain after namespace enforcement",
+                )
+        lazy_errors = FlextInfraCodegenLazyInit(project_path).run(check_only=False)
+        if lazy_errors > 0:
+            ctx.skip(
+                module=project_path.name,
+                rule="LAZY-INIT",
+                line=0,
+                message=f"lazy propagation finished with {lazy_errors} errors",
+            )
         try:
-            u.Infra.cleanup_stale_all_entries(ctx)
-            u.Infra.normalize_rewritten_python_files(ctx)
+            for modified_file in sorted(ctx.files_modified):
+                path = Path(modified_file)
+                if path.is_file():
+                    u.Infra.run_ruff_fix(path, quiet=True)
         except (OSError, UnicodeDecodeError):
             _ = u.Infra.rollback_to_checkpoint(self._workspace_root, stash_ref)
             raise
@@ -155,35 +240,35 @@ class FlextInfraCodegenFixer(s[bool]):
     def _apply_ns_rules(
         self,
         *,
-        src_dir: Path,
-        pkg_dir: Path,
+        project_path: Path,
         ctx: FlextInfraCodegenFixer._FixContext,
     ) -> None:
-        """Apply NS-001 through NS-005 rules."""
-        excluded = {"constants.py", "typings.py", c.Infra.Files.INIT_PY}
-        for py_file in sorted(src_dir.rglob("*.py")):
-            if py_file.name in excluded or py_file.name.startswith("_"):
+        """Collect current namespace-rule violations for reporting/dry-run output."""
+        validation = FlextInfraNamespaceValidator().validate(project_path)
+        if validation.is_failure:
+            ctx.skip(
+                module=project_path.name,
+                rule="NAMESPACE",
+                line=0,
+                message=validation.error or "namespace validation failed",
+            )
+            return
+        for violation_str in validation.value.violations:
+            match = c.Infra.VIOLATION_PATTERN.match(violation_str)
+            if match is None:
+                ctx.skip(
+                    module=project_path.name,
+                    rule="NAMESPACE",
+                    line=0,
+                    message=violation_str,
+                )
                 continue
-            u.Infra.fix_rule1(
-                source_file=py_file,
-                pkg_dir=pkg_dir,
-                ctx=ctx,
-                dry_run=self._dry_run,
+            ctx.skip(
+                module=match.group("module"),
+                rule=match.group("rule"),
+                line=int(match.group("line")),
+                message=match.group("message"),
             )
-            u.Infra.fix_rule2(
-                source_file=py_file,
-                pkg_dir=pkg_dir,
-                ctx=ctx,
-                dry_run=self._dry_run,
-            )
-        u.Infra.fix_rule3(pkg_dir=pkg_dir, ctx=ctx)
-        u.Infra.fix_rule4(
-            src_dir=src_dir,
-            pkg_dir=pkg_dir,
-            ctx=ctx,
-            workspace_root=self._workspace_root,
-        )
-        u.Infra.fix_rule5(src_dir=src_dir, pkg_dir=pkg_dir, ctx=ctx)
 
     def run(self) -> Sequence[m.Infra.AutoFixResult]:
         """Run auto-fix on all projects in workspace."""
