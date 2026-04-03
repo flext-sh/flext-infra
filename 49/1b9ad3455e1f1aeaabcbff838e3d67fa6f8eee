@@ -1,0 +1,111 @@
+src/flext_infra/docs/builder.py
+  cdbb584679205432 38
+src/flext_infra/transformers/mro_private_inline.py
+  cdbb584679205432 36,45-46,79,95-96
+src/flext_infra/deps/modernizer.py
+  cdbb584679205432 37,73,197,217,294,300,320,322-323,327,338,344,350,357,360,370
+src/flext_infra/codegen/scaffolder.py
+  cdbb584679205432 79,123,129
+src/flext_infra/detectors/namespace_source_detector.py
+  cdbb584679205432 70,86
+src/flext_infra/deps/extra_paths.py
+  cdbb584679205432 28,127,176,185,191,194,197,205
+src/flext_infra/deps/_phases/ensure_ruff.py
+  cdbb584679205432 43,56,59,77,82,96,104,120
+src/flext_infra/rules/legacy_removal.py
+  cdbb584679205432 32,61,77,82
+src/flext_infra/deps/_phases/consolidate_groups.py
+  cdbb584679205432 89
+src/flext_infra/validate/inventory.py
+  cdbb584679205432 80,86,92
+src/flext_infra/detectors/import_alias_detector.py
+  cdbb584679205432 47
+src/flext_infra/docs/auditor.py
+  cdbb584679205432 50,305,308,320,334
+src/flext_infra/transformers/class_nesting.py
+  cdbb584679205432 42,71-72
+src/flext_infra/rules/pattern_corrections.py
+  cdbb584679205432 29,59
+src/flext_infra/codegen/lazy_init.py
+  cdbb584679205432 63,104,107,111,121,232,234,241
+src/flext_infra/transformers/class_reconstructor.py
+  cdbb584679205432 37,61-62
+src/flext_infra/check/workspace_check.py
+  cdbb584679205432 151,168-169,171,184,227
+src/flext_infra/transformers/import_modernizer.py
+  cdbb584679205432 50,55
+src/flext_infra/workspace/migrator.py
+  cdbb584679205432 355
+src/flext_infra/detectors/_base_detector.py
+  cdbb584679205432 124
+src/flext_infra/transformers/symbol_propagator.py
+  cdbb584679205432 42,71-72
+src/flext_infra/_utilities/codegen_constant_analysis.py
+  cdbb584679205432 12,14
+src/flext_infra/transformers/tier0_import_fixer.py
+  cdbb584679205432 185,224,240,252,259
+src/flext_infra/_utilities/codegen_constant_detection.py
+  cdbb584679205432 177-206
+src/flext_infra/refactor/_engine_orchestration.py
+  cdbb584679205432 53,58,79,103,116,135,150,153,158,186,200,219,226,228,258
+src/flext_infra/gates/ruff_lint.py
+  cdbb584679205432 61-62
+src/flext_infra/transformers/mro_remover.py
+  cdbb584679205432 26,47-48
+src/flext_infra/release/orchestrator_phases.py
+  cdbb584679205432 88
+src/flext_infra/docs/validator.py
+  cdbb584679205432 115,203
+src/flext_infra/rules/class_nesting.py
+  cdbb584679205432 52,101,295
+src/flext_infra/transformers/nested_class_propagation.py
+  cdbb584679205432 45,77-78
+src/flext_infra/transformers/lazy_import_fixer.py
+  cdbb584679205432 28,63
+src/flext_infra/deps/fix_pyrefly_config.py
+  cdbb584679205432 108,239,256
+src/flext_infra/docs/generator.py
+  cdbb584679205432 231
+src/flext_infra/transformers/import_bypass_remover.py
+  cdbb584679205432 33,40
+src/flext_infra/deps/path_sync_rewrite.py
+  cdbb584679205432 155,240
+src/flext_infra/docs/fixer.py
+  cdbb584679205432 124
+src/flext_infra/validate/skill_validator.py
+  cdbb584679205432 96,150,153,248,261
+src/flext_infra/codegen/cli.py
+  cdbb584679205432 419,442,445
+src/flext_infra/refactor/safety.py
+  cdbb584679205432 36,106
+src/flext_infra/transformers/mro_symbol_propagator.py
+  cdbb584679205432 55,58
+src/flext_infra/transformers/helper_consolidation.py
+  cdbb584679205432 41,62-63
+src/flext_infra/docs/_auditor_helpers.py
+  cdbb584679205432 91
+src/flext_infra/rules/mro_class_migration.py
+  cdbb584679205432 28-29,46
+src/flext_infra/codegen/py_typed.py
+  cdbb584679205432 62,72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "491b9ad3455e1f1aeaabcbff838e3d67fa6f8eee",
+  "prompts": {
+    "cdbb584679205432": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "deb21ed0-98e4-498f-8592-3944a588496c",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 195,
+      "total_deletions": 160,
+      "accepted_lines": 188,
+      "overriden_lines": 0
+    }
+  }
+}
