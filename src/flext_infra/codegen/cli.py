@@ -475,29 +475,52 @@ class FlextInfraCliCodegen:
                 if "_constants" in py_file.parts:
                     continue  # SSOT files — never rewrite
 
-                # ── Detect Final[...] = value in this file ────────
-                file_defs = FlextInfraUtilitiesCodegenConstantDetection.extract_constant_definitions(
-                    py_file, project.name
+                # ── Detect assignments via rope semantic analysis ──
+                resource = FlextInfraUtilitiesRope.get_resource_from_path(
+                    rope_project, py_file,
                 )
-                if not file_defs:
+                if resource is None:
+                    continue
+                symbols = FlextInfraUtilitiesRope.get_module_symbols(
+                    rope_project, resource,
+                )
+                assignments = [
+                    sym for sym in symbols if sym.kind == "assignment"
+                ]
+                if not assignments:
                     continue
 
-                # ── Match against canonical map ───────────────────
-                matches: list[tuple[m.Infra.ConstantDefinition, str]] = []
-                for defn in file_defs:
-                    hit = value_to_ref.get(defn.value_repr)
+                source = FlextInfraUtilitiesRope.read_source(resource)
+                source_lines = source.splitlines()
+
+                # ── Match assignment values against canonical map ──
+                matches: list[
+                    tuple[m.Infra.SymbolInfo, str, str]
+                ] = []  # (symbol, canonical_ref, value_repr)
+                for sym in assignments:
+                    if sym.line < 1 or sym.line > len(source_lines):
+                        continue
+                    line_text = source_lines[sym.line - 1]
+                    eq_idx = line_text.find("=")
+                    if eq_idx < 0:
+                        continue
+                    raw_value = line_text[eq_idx + 1 :].strip()
+                    # Try matching the raw value repr
+                    hit = value_to_ref.get(raw_value)
+                    if hit is None:
+                        # Try repr-wrapped form for strings
+                        hit = value_to_ref.get(repr(raw_value))
                     if hit is None:
                         continue
                     canon_name, canon_class = hit
-                    # Skip self-references
-                    if canon_name == defn.name and canon_class == defn.class_path:
-                        continue
+                    if canon_name == sym.name:
+                        continue  # Already canonical
                     ref = (
                         f"c.{canon_class}.{canon_name}"
                         if canon_class
                         else f"c.{canon_name}"
                     )
-                    matches.append((defn, ref))
+                    matches.append((sym, ref, raw_value))
 
                 if not matches:
                     continue
@@ -506,35 +529,29 @@ class FlextInfraCliCodegen:
 
                 # ── Phase 1: dry-run report ───────────────────────
                 if dry_run:
-                    for defn, ref in matches:
+                    for sym, ref, val in matches:
                         lines.append(
-                            f"  {rel}:{defn.line}"
-                            f"  {defn.name} = {defn.value_repr}"
-                            f" -> {ref}",
+                            f"  {rel}:{sym.line}"
+                            f"  {sym.name} = {val} -> {ref}",
                         )
                     continue
 
                 # ── Phase 2: apply via rope + validate + rollback ─
-                resource = FlextInfraUtilitiesRope.get_resource_from_path(
-                    rope_project,
-                    py_file,
-                )
-                if resource is None:
-                    continue
-                backup = FlextInfraUtilitiesRope.read_source(resource)
-                source_lines = backup.splitlines(keepends=True)
+                backup = source
+                source_with_newlines = backup.splitlines(keepends=True)
 
                 offset_edits: list[tuple[int, int, str]] = []
                 descriptions: list[str] = []
-                for defn, ref in matches:
-                    if defn.line < 1 or defn.line > len(source_lines):
+                for sym, ref, val in matches:
+                    if sym.line < 1 or sym.line > len(source_with_newlines):
                         continue
-                    line_text = source_lines[defn.line - 1]
+                    line_text = source_with_newlines[sym.line - 1]
                     eq_idx = line_text.find("=")
                     if eq_idx < 0:
                         continue
                     line_offset = sum(
-                        len(source_lines[i]) for i in range(defn.line - 1)
+                        len(source_with_newlines[i])
+                        for i in range(sym.line - 1)
                     )
                     value_start = line_offset + eq_idx + 1
                     value_end = value_start + len(
@@ -542,7 +559,7 @@ class FlextInfraCliCodegen:
                     )
                     offset_edits.append((value_start, value_end, f" {ref}"))
                     descriptions.append(
-                        f"{defn.name} = {defn.value_repr} -> {ref}",
+                        f"{sym.name} = {val} -> {ref}",
                     )
 
                 if not offset_edits:
