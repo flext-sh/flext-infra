@@ -33,7 +33,7 @@ class FlextInfraRefactorAliasRemover:
         apply: bool = True,
     ) -> tuple[str, Sequence[str]]:
         """Apply alias removal. Returns (new_source, list of change descriptions)."""
-        new_source, removed = u.remove_module_level_aliases(
+        new_source, removed = u.Infra.remove_module_level_aliases(
             rope_project,
             resource,
             allow=self._allow_aliases,

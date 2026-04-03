@@ -54,7 +54,7 @@ class TestFlextInfraRuntimeDevDependencyDetectorInit:
 
     def test_project_filter_with_single_project(self, tmp_path: Path) -> None:
         parser = FlextInfraRuntimeDevDependencyDetector.parser(tmp_path / "limits.toml")
-        args = u.resolve(parser.parse_args(["--project", "test-proj"]))
+        args = u.Infra.resolve(parser.parse_args(["--project", "test-proj"]))
         tm.that(
             FlextInfraRuntimeDevDependencyDetector.project_filter(args),
             eq=["test-proj"],
@@ -62,7 +62,7 @@ class TestFlextInfraRuntimeDevDependencyDetectorInit:
 
     def test_project_filter_with_multiple_projects(self, tmp_path: Path) -> None:
         parser = FlextInfraRuntimeDevDependencyDetector.parser(tmp_path / "limits.toml")
-        args = u.resolve(
+        args = u.Infra.resolve(
             parser.parse_args(["--projects", "proj-a,proj-b,proj-c"]),
         )
         tm.that(
@@ -72,5 +72,5 @@ class TestFlextInfraRuntimeDevDependencyDetectorInit:
 
     def test_project_filter_with_no_filter(self, tmp_path: Path) -> None:
         parser = FlextInfraRuntimeDevDependencyDetector.parser(tmp_path / "limits.toml")
-        args = u.resolve(parser.parse_args([]))
+        args = u.Infra.resolve(parser.parse_args([]))
         tm.that(FlextInfraRuntimeDevDependencyDetector.project_filter(args), eq=None)

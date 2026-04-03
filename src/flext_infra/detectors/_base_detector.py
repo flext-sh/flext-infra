@@ -84,7 +84,7 @@ class FlextInfraScanFileMixin:
         rope_project: t.Infra.RopeProject, file_path: Path
     ) -> str | None:
         """Read source text via rope, returning *None* when the resource is missing."""
-        res = u.get_resource_from_path(rope_project, file_path)
+        res = u.Infra.get_resource_from_path(rope_project, file_path)
         if res is None:
             return None
         source: str = res.read()
@@ -121,7 +121,7 @@ class FlextInfraScanFileMixin:
     def scan_file(self, *, file_path: Path) -> m.Infra.ScanResult:
         """Scan a file and return a standardized ScanResult."""
         violations = self._collect_violations(file_path)
-        return u.build_scan_result(
+        return u.Infra.build_scan_result(
             file_path=file_path,
             detector_name=self.__class__.__name__,
             rule_id=self._rule_id,

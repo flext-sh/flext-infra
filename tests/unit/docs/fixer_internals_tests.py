@@ -134,24 +134,24 @@ class TestFixerToc:
         expected: str,
     ) -> None:
         _ = fixer
-        tm.that(u.anchorize(title), eq=expected)
+        tm.that(u.Infra.anchorize(title), eq=expected)
 
     def test_build_toc_variants(self, fixer: FlextInfraDocFixer) -> None:
         _ = fixer
-        toc = u.build_toc(
+        toc = u.Infra.build_toc(
             "# Main\n\n## Section 1\n\n### Subsection\n\n## Section 2\n",
         )
         tm.that(toc, has="<!-- TOC START -->")
         tm.that(toc, has="<!-- TOC END -->")
         tm.that(toc, has="Section 1")
         tm.that(
-            u.build_toc("# Main\n\nNo sections here.\n"),
+            u.Infra.build_toc("# Main\n\nNo sections here.\n"),
             has="No sections found",
         )
 
     def test_build_toc_skips_empty_anchors(self, fixer: FlextInfraDocFixer) -> None:
         _ = fixer
-        toc = u.build_toc("## !!!\n\n## Valid Section\n")
+        toc = u.Infra.build_toc("## !!!\n\n## Valid Section\n")
         tm.that(toc, has="Valid Section")
         tm.that("!!!" not in toc, eq=True)
 

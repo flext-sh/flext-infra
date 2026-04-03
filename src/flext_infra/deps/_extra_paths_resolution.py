@@ -44,11 +44,11 @@ class FlextInfraExtraPathsResolutionMixin:
 
     def path_dep_paths_pep621(self, doc: TOMLDocument) -> t.StrSequence:
         """Extract path dependency paths from PEP 621 project.dependencies."""
-        project_table = u.get_table(doc, c.Infra.PROJECT)
+        project_table = u.Infra.get_table(doc, c.Infra.PROJECT)
         if project_table is None:
             return list[str]()
-        deps_items = u.as_string_list(
-            u.get_item(project_table, c.Infra.DEPENDENCIES),
+        deps_items = u.Infra.as_string_list(
+            u.Infra.get_item(project_table, c.Infra.DEPENDENCIES)
         )
         paths: MutableSequence[str] = []
         for item in deps_items:
@@ -62,21 +62,21 @@ class FlextInfraExtraPathsResolutionMixin:
 
     def path_dep_paths_poetry(self, doc: TOMLDocument) -> t.StrSequence:
         """Extract path dependency paths from Poetry tool.poetry.dependencies."""
-        tool_table = u.get_table(doc, c.Infra.TOOL)
+        tool_table = u.Infra.get_table(doc, c.Infra.TOOL)
         if tool_table is None:
             return list[str]()
-        poetry_table = u.get_table(tool_table, c.Infra.POETRY)
+        poetry_table = u.Infra.get_table(tool_table, c.Infra.POETRY)
         if poetry_table is None:
             return list[str]()
-        deps_table = u.get_table(poetry_table, c.Infra.DEPENDENCIES)
+        deps_table = u.Infra.get_table(poetry_table, c.Infra.DEPENDENCIES)
         if deps_table is None:
             return list[str]()
         paths: MutableSequence[str] = []
         for dep_key in deps_table:
-            dep_table = u.get_table(deps_table, dep_key)
+            dep_table = u.Infra.get_table(deps_table, dep_key)
             if dep_table is None:
                 continue
-            dep_path = u.get_item(dep_table, c.Infra.PATH)
+            dep_path = u.Infra.get_item(dep_table, c.Infra.PATH)
             if isinstance(dep_path, str) and dep_path:
                 dep_path = dep_path.strip()
                 if dep_path.startswith("./"):
@@ -87,19 +87,19 @@ class FlextInfraExtraPathsResolutionMixin:
 
     def path_dep_paths_uv_sources(self, doc: TOMLDocument) -> t.StrSequence:
         """Extract internal dependency paths from tool.uv.sources."""
-        tool_table = u.get_table(doc, c.Infra.TOOL)
+        tool_table = u.Infra.get_table(doc, c.Infra.TOOL)
         if tool_table is None:
             return list[str]()
-        uv_table = u.get_table(tool_table, "uv")
+        uv_table = u.Infra.get_table(tool_table, "uv")
         if uv_table is None:
             return list[str]()
-        sources_table = u.get_table(uv_table, "sources")
+        sources_table = u.Infra.get_table(uv_table, "sources")
         if sources_table is None:
             return list[str]()
-        project_table = u.get_table(doc, c.Infra.PROJECT)
+        project_table = u.Infra.get_table(doc, c.Infra.PROJECT)
         project_deps: t.StrSequence = (
-            u.as_string_list(
-                u.get_item(project_table, c.Infra.DEPENDENCIES),
+            u.Infra.as_string_list(
+                u.Infra.get_item(project_table, c.Infra.DEPENDENCIES)
             )
             if project_table is not None
             else []
@@ -116,17 +116,17 @@ class FlextInfraExtraPathsResolutionMixin:
             dep_name = str(source_key)
             if project_dep_names and dep_name not in project_dep_names:
                 continue
-            source_table = u.get_table(sources_table, dep_name)
+            source_table = u.Infra.get_table(sources_table, dep_name)
             if source_table is None:
                 continue
-            workspace_item = u.get_item(source_table, "workspace")
+            workspace_item = u.Infra.get_item(source_table, "workspace")
             workspace_val = (
                 workspace_item.unwrap() if isinstance(workspace_item, Item) else None
             )
             if workspace_val is True:
                 paths.append(dep_name)
                 continue
-            source_path = u.get_item(source_table, c.Infra.PATH)
+            source_path = u.Infra.get_item(source_table, c.Infra.PATH)
             if isinstance(source_path, str):
                 normalized_path = source_path.strip().removeprefix("./")
                 if normalized_path:
@@ -144,13 +144,13 @@ class FlextInfraExtraPathsResolutionMixin:
         )
 
     def _discover_workspace_project_names(self) -> t.Infra.StrSet:
-        projects_result = u.discover_projects(self.root)
+        projects_result = u.Infra.discover_projects(self.root)
         if projects_result.is_failure:
             return set()
         return {project.name for project in projects_result.value}
 
     def _workspace_dependency_entries(self, doc: TOMLDocument) -> t.StrSequence:
-        declared_names = u.declared_dependency_names(doc)
+        declared_names = u.Infra.declared_dependency_names(doc)
         return sorted(
             name for name in declared_names if name in self._workspace_project_names
         )
@@ -184,7 +184,7 @@ class FlextInfraExtraPathsResolutionMixin:
             dep_pyproject = self.root / name / c.Infra.Files.PYPROJECT_FILENAME
             if not dep_pyproject.exists():
                 continue
-            dep_doc_result = u.read_document(dep_pyproject)
+            dep_doc_result = u.Infra.read_document(dep_pyproject)
             if dep_doc_result.is_failure:
                 continue
             dep_doc: TOMLDocument = dep_doc_result.value
@@ -213,9 +213,9 @@ class FlextInfraExtraPathsResolutionMixin:
         dep_skip = c.Infra.Excluded.COMMON_EXCLUDED_DIRS | frozenset({
             c.Infra.Directories.TESTS
         })
-        project_table = u.get_table(doc, c.Infra.PROJECT)
+        project_table = u.Infra.get_table(doc, c.Infra.PROJECT)
         current_project_name = (
-            u.unwrap_item(u.get_item(project_table, c.Infra.NAME))
+            u.Infra.unwrap_item(u.Infra.get_item(project_table, c.Infra.NAME))
             if project_table is not None
             else None
         )
@@ -230,7 +230,7 @@ class FlextInfraExtraPathsResolutionMixin:
             prefix = f"{name}" if is_root else f"../{name}"
             dep_dir = self.root / name
             if dep_dir.is_dir():
-                py_dirs = u.discover_python_dirs(dep_dir, skip_dirs=dep_skip)
+                py_dirs = u.Infra.discover_python_dirs(dep_dir, skip_dirs=dep_skip)
                 for dir_name in py_dirs:
                     resolved.append(f"{prefix}/{dir_name}")
             else:

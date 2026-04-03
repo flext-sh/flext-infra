@@ -52,9 +52,9 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
 
     @staticmethod
     def _has_flext_core_dependency(document: tomlkit.TOMLDocument) -> bool:
-        project = u.get_table(document, c.Infra.PROJECT)
+        project = u.Infra.get_table(document, c.Infra.PROJECT)
         if project is not None:
-            deps = u.get_item(project, c.Infra.DEPENDENCIES)
+            deps = u.Infra.get_item(project, c.Infra.DEPENDENCIES)
             if isinstance(deps, list):
                 deps_list: Sequence[JsonValue] = (
                     t.Infra.JSON_SEQ_ADAPTER.validate_python([*deps])
@@ -62,13 +62,13 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
                 for dep_raw in deps_list:
                     if str(dep_raw).strip().startswith(c.Infra.Packages.CORE):
                         return True
-        tool = u.get_table(document, c.Infra.TOOL)
+        tool = u.Infra.get_table(document, c.Infra.TOOL)
         if tool is None:
             return False
-        poetry = u.get_table(tool, c.Infra.POETRY)
+        poetry = u.Infra.get_table(tool, c.Infra.POETRY)
         if poetry is None:
             return False
-        poetry_deps = u.get_table(poetry, c.Infra.DEPENDENCIES)
+        poetry_deps = u.Infra.get_table(poetry, c.Infra.DEPENDENCIES)
         if poetry_deps is None:
             return False
         return c.Infra.Packages.CORE in poetry_deps
@@ -112,7 +112,7 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
         if self._discovery is not None:
             discovered = self._discovery.discover_projects(root)
         else:
-            discovered = u.discover_projects(root)
+            discovered = u.Infra.discover_projects(root)
         if discovered.is_failure:
             return r[Sequence[m.Infra.MigrationResult]].fail(
                 discovered.error or "project discovery failed",
@@ -152,7 +152,7 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
             if target.exists()
             else ""
         )
-        if u.sha256_content(current) == u.sha256_content(generated_text):
+        if u.Infra.sha256_content(current) == u.Infra.sha256_content(generated_text):
             if dry_run:
                 return r[str].ok(
                     self._action_text("base.mk already up-to-date", dry_run=True),
@@ -316,7 +316,7 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
                 "pyproject.toml dependency unchanged for flext-core",
                 dry_run=dry_run,
             )
-        document_result = u.read_document(pyproject_path)
+        document_result = u.Infra.read_document(pyproject_path)
         if document_result.is_failure:
             return r[str].fail(
                 document_result.error or "pyproject parse failed",
@@ -339,8 +339,8 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
         dry_run: bool,
     ) -> r[str]:
         """Add flext-core dependency to the pyproject document and write if not dry-run."""
-        project_table = u.ensure_table(document, c.Infra.PROJECT)
-        dependencies_raw = u.get_item(project_table, c.Infra.DEPENDENCIES)
+        project_table = u.Infra.ensure_table(document, c.Infra.PROJECT)
+        dependencies_raw = u.Infra.get_item(project_table, c.Infra.DEPENDENCIES)
         dependencies: MutableSequence[str] = []
         if isinstance(dependencies_raw, list):
             dependency_items: Sequence[JsonValue] = (
@@ -352,7 +352,7 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
             dependencies.append(dependency_spec)
         project_table[c.Infra.DEPENDENCIES] = dependencies
         if not dry_run:
-            write_result = u.write_document(pyproject_path, document)
+            write_result = u.Infra.write_document(pyproject_path, document)
             if write_result.is_failure:
                 return r[str].fail(
                     write_result.error or "pyproject update failed",

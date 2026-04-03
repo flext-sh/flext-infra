@@ -49,7 +49,7 @@ class FlextInfraClassNestingRefactorRule:
         """Transform resource according to loaded mappings and policy."""
         fp = Path(rope_project.root.real_path) / resource.path
         try:
-            source = u.read_source(resource)
+            source = u.Infra.read_source(resource)
             cfg = self._load_config()
             thr = self._confidence_threshold(cfg)
             cm = self._symbol_mappings(
@@ -98,7 +98,7 @@ class FlextInfraClassNestingRefactorRule:
                         changes=errs,
                         refactored_code=None,
                     )
-                u.write_source(
+                u.Infra.write_source(
                     rope_project, resource, ns, description="class nesting refactor"
                 )
             return m.Infra.Result(
@@ -135,7 +135,7 @@ class FlextInfraClassNestingRefactorRule:
             if not mapping:
                 continue
             for name, target_ns in mapping.items():
-                ns, _ = u.replace_in_source(
+                ns, _ = u.Infra.replace_in_source(
                     rope_project,
                     resource,
                     rf"\b{name}\b",
@@ -155,7 +155,9 @@ class FlextInfraClassNestingRefactorRule:
         name_key: str,
     ) -> t.MutableStrMapping:
         result: t.MutableStrMapping = {}
-        for entry in self._filter_entries(u.entry_list(cfg.get(section)), fp, thr):
+        for entry in self._filter_entries(
+            u.Infra.entry_list(cfg.get(section)), fp, thr
+        ):
             name = entry.get(name_key)
             target = entry.get(c.Infra.ReportKeys.TARGET_NAMESPACE)
             if isinstance(name, str) and isinstance(target, str):
@@ -166,12 +168,14 @@ class FlextInfraClassNestingRefactorRule:
         self, cfg: t.Infra.ContainerDict, fp: Path, thr: str
     ) -> MutableSequence[str]:
         violations: MutableSequence[str] = []
-        policy_by_family = u.class_nesting_policy_by_family(self._policy_path)
+        policy_by_family = u.Infra.class_nesting_policy_by_family(self._policy_path)
         entries: MutableSequence[t.StrMapping] = []
         for key in _SECTION_KEYS:
-            entries.extend(self._filter_entries(u.entry_list(cfg.get(key)), fp, thr))
+            entries.extend(
+                self._filter_entries(u.Infra.entry_list(cfg.get(key)), fp, thr)
+            )
         for entry in entries:
-            ok, v = u.validate_class_nesting_entry(
+            ok, v = u.Infra.validate_class_nesting_entry(
                 entry,
                 policy_by_family=policy_by_family,
             )
@@ -194,13 +198,13 @@ class FlextInfraClassNestingRefactorRule:
     ) -> Sequence[t.StrMapping]:
         if not raw:
             return []
-        mod = u.normalize_module_path(fp)
+        mod = u.Infra.normalize_module_path(fp)
         accepted: MutableSequence[t.StrMapping] = []
         for entry in raw:
             cf = entry.get(c.Infra.ReportKeys.CURRENT_FILE)
             if cf is None:
                 continue
-            cm = u.normalize_module_path(Path(cf))
+            cm = u.Infra.normalize_module_path(Path(cf))
             if cm != mod and not mod.endswith(f"/{cm}"):
                 continue
             conf = entry.get(c.Infra.ReportKeys.CONFIDENCE, c.Infra.Severity.LOW)
@@ -213,7 +217,7 @@ class FlextInfraClassNestingRefactorRule:
         if self._cached_config is not None:
             return self._cached_config
         try:
-            loaded = u.safe_load_yaml(self._config_path)
+            loaded = u.Infra.safe_load_yaml(self._config_path)
         except (OSError, TypeError) as exc:
             msg = "invalid class nesting mapping config"
             raise ValueError(msg) from exc
@@ -225,7 +229,7 @@ class FlextInfraClassNestingRefactorRule:
             raw = loaded.get(key)
             if isinstance(raw, list):
                 try:
-                    mappings = u.mapping_list(raw)
+                    mappings = u.Infra.mapping_list(raw)
                     config[key] = [dict(e) for e in self._coerce(mappings)]
                 except ValueError:
                     config[key] = list[t.Infra.InfraValue]()
@@ -276,7 +280,7 @@ class FlextInfraClassNestingRefactorRule:
             "quality_gates": ["lsp_diagnostics_clean"],
         }
         entries = self._filter_entries(
-            u.entry_list(cfg.get(c.Infra.ReportKeys.CLASS_NESTING)), fp, thr
+            u.Infra.entry_list(cfg.get(c.Infra.ReportKeys.CLASS_NESTING)), fp, thr
         )
         if not entries:
             return payload
@@ -284,11 +288,11 @@ class FlextInfraClassNestingRefactorRule:
         if not sym:
             return payload
         payload[c.Infra.ReportKeys.SOURCE_SYMBOL] = sym
-        doc = u.load_validated_policy_document(self._policy_path)
-        for rule in u.mapping_list(doc.get(c.Infra.ReportKeys.RULES)):
+        doc = u.Infra.load_validated_policy_document(self._policy_path)
+        for rule in u.Infra.mapping_list(doc.get(c.Infra.ReportKeys.RULES)):
             if rule.get(c.Infra.ReportKeys.SOURCE_SYMBOL, "") == sym:
                 payload["expected_base_chain"] = list(
-                    u.string_list(rule.get("expected_base_chain"))
+                    u.Infra.string_list(rule.get("expected_base_chain"))
                 )
                 break
         return payload

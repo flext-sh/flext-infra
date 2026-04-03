@@ -15,4 +15,4 @@ def main(argv: t.StrSequence | None = None) -> int:
 
 
 def test_maintenance_rejects_apply_flag() -> None:
-    assert u.run_cli(main, ["--apply"]) == 2
+    assert u.Infra.run_cli(main, ["--apply"]) == 2

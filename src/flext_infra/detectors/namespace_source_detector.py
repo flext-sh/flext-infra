@@ -67,7 +67,7 @@ class FlextInfraNamespaceSourceDetector(FlextInfraScanFileMixin, p.Infra.Scanner
         project_root = ctx.project_root
         if project_root is None or file_path.name == c.Infra.Files.INIT_PY:
             return []
-        package_name = u.discover_project_package_name(project_root=project_root)
+        package_name = u.Infra.discover_project_package_name(project_root=project_root)
         if not package_name:
             return []
         local_aliases = cls._discover_local_runtime_aliases(
@@ -76,18 +76,18 @@ class FlextInfraNamespaceSourceDetector(FlextInfraScanFileMixin, p.Infra.Scanner
         )
         if not local_aliases:
             return []
-        resource = u.get_resource_from_path(
+        resource = u.Infra.get_resource_from_path(
             ctx.rope_project,
             file_path,
         )
         if resource is None:
             return []
         source = resource.read()
-        if u.looks_like_facade_file(file_path=file_path, source=source):
+        if u.Infra.looks_like_facade_file(file_path=file_path, source=source):
             return []
         source_lines = source.splitlines()
         violations: list[m.Infra.NamespaceSourceViolation] = []
-        for from_import in u.get_absolute_from_imports(
+        for from_import in u.Infra.get_absolute_from_imports(
             ctx.rope_project,
             resource,
         ):
@@ -109,7 +109,7 @@ class FlextInfraNamespaceSourceDetector(FlextInfraScanFileMixin, p.Infra.Scanner
             if not wrong_aliases:
                 continue
             current_import = f"from {current_source} import {', '.join(wrong_aliases)}"
-            line_number = u.find_import_line(
+            line_number = u.Infra.find_import_line(
                 lines=source_lines,
                 module_name=current_source,
             )
@@ -141,7 +141,7 @@ class FlextInfraNamespaceSourceDetector(FlextInfraScanFileMixin, p.Infra.Scanner
         )
         return {
             alias_name
-            for alias_name in u.extract_lazy_import_targets(init_path)
+            for alias_name in u.Infra.extract_lazy_import_targets(init_path)
             if alias_name in c.Infra.RUNTIME_ALIAS_NAMES
         }
 

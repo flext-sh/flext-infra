@@ -23,7 +23,7 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerPhasesMixin):
         """Initialize with the workspace root path."""
         super().__init__()
         self._workspace_root = workspace_root.resolve()
-        self._rope_project: t.Infra.RopeProject = u.init_rope_project(
+        self._rope_project: t.Infra.RopeProject = u.Infra.init_rope_project(
             self._workspace_root,
         )
 
@@ -62,7 +62,7 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerPhasesMixin):
         project_names: t.StrSequence | None = None,
     ) -> Sequence[Path]:
         """Discover and optionally filter project roots."""
-        project_roots = u.discover_project_roots(
+        project_roots = u.Infra.discover_project_roots(
             workspace_root=self._workspace_root,
         )
         if project_names:
@@ -99,7 +99,7 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerPhasesMixin):
         report: m.Infra.WorkspaceEnforcementReport,
     ) -> str:
         """Render a workspace enforcement report as plain text."""
-        return u.render_namespace_enforcement_report(
+        return u.Infra.render_namespace_enforcement_report(
             report,
         )
 

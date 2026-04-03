@@ -23,7 +23,7 @@ class FlextInfraInternalSyncRepoMixin:
     def _read_plain(self, path: Path) -> r[t.Infra.ContainerDict]:
         if self.toml is not None:
             return self.toml.read_plain(path)
-        return u.read_plain(path)
+        return u.Infra.read_plain(path)
 
     @classmethod
     def owner_from_remote_url(cls, remote_url: str) -> str | None:
@@ -43,7 +43,7 @@ class FlextInfraInternalSyncRepoMixin:
 
     def infer_owner_from_origin(self, project_root: Path) -> str | None:
         """Infer GitHub owner from remote origin URL."""
-        remote = u.git_run(
+        remote = u.Infra.git_run(
             ["config", "--get", "remote.origin.url"],
             cwd=project_root,
         )
@@ -55,12 +55,12 @@ class FlextInfraInternalSyncRepoMixin:
     def is_workspace_mode(self, project_root: Path) -> t.Infra.Pair[bool, Path | None]:
         """Determine workspace mode and return resolved workspace root."""
         if os.getenv("FLEXT_STANDALONE") == "1":
-            u.info("Standalone mode: skipping workspace dependency sync")
+            u.Infra.info("Standalone mode: skipping workspace dependency sync")
             return (False, None)
         env_workspace_root = self.workspace_root_from_env(project_root)
         if env_workspace_root is not None:
             return (True, env_workspace_root)
-        superproject = u.git_run(
+        superproject = u.Infra.git_run(
             ["rev-parse", "--show-superproject-working-tree"],
             cwd=project_root,
         )
@@ -100,12 +100,12 @@ class FlextInfraInternalSyncRepoMixin:
                 data_result.error or "failed to read repository map",
             )
         data = data_result.value
-        repos_obj = u.normalize_str_mapping(data.get("repo", {}))
+        repos_obj = u.Infra.normalize_str_mapping(data.get("repo", {}))
         if not repos_obj:
             return r[Mapping[str, m.Infra.RepoUrls]].ok({})
         result: MutableMapping[str, m.Infra.RepoUrls] = {}
         for repo_name, values in repos_obj.items():
-            values_map = u.normalize_str_mapping(values)
+            values_map = u.Infra.normalize_str_mapping(values)
             if not values_map:
                 continue
             ssh_url = str(values_map.get("ssh_url", ""))
@@ -124,13 +124,13 @@ class FlextInfraInternalSyncRepoMixin:
                 value = os.getenv(key)
                 if value:
                     return value
-        branch = u.git_current_branch(project_root)
+        branch = u.Infra.git_current_branch(project_root)
         if branch.is_success:
             branch_val = branch.value
             current = branch_val.strip()
             if current and current != c.Infra.Git.HEAD:
                 return current
-        tag = u.git_run(["describe", "--tags", "--exact-match"], cwd=project_root)
+        tag = u.Infra.git_run(["describe", "--tags", "--exact-match"], cwd=project_root)
         if tag.is_success:
             tag_val = tag.value
             return tag_val.strip()

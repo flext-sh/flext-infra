@@ -139,15 +139,13 @@ class FlextInfraEnsurePyrightConfigPhase(FlextInfraEnsurePyrightEnvs):
         if not isinstance(tool, Table):
             tool = tomlkit.table()
             doc[c.Infra.TOOL] = tool
-        pyright = u.ensure_table(tool, c.Infra.PYRIGHT)
+        pyright = u.Infra.ensure_table(tool, c.Infra.PYRIGHT)
         project_root = workspace_root if is_root else project_dir
         expected_excludes = self._expected_excludes(project_root)
-        current_excludes = u.as_string_list(
-            u.get(pyright, c.Infra.EXCLUDE),
-        )
+        current_excludes = u.Infra.as_string_list(u.Infra.get(pyright, c.Infra.EXCLUDE))
         if expected_excludes:
             if current_excludes != expected_excludes:
-                pyright[c.Infra.EXCLUDE] = u.array(expected_excludes)
+                pyright[c.Infra.EXCLUDE] = u.Infra.array(expected_excludes)
                 changes.append("tool.pyright.exclude synchronized from discovered dirs")
         elif c.Infra.EXCLUDE in pyright:
             del pyright[c.Infra.EXCLUDE]
@@ -157,12 +155,10 @@ class FlextInfraEnsurePyrightConfigPhase(FlextInfraEnsurePyrightEnvs):
             workspace_root=workspace_root,
             project_dir=project_dir,
         )
-        current_ignores = u.as_string_list(
-            u.get(pyright, c.Infra.IGNORE),
-        )
+        current_ignores = u.Infra.as_string_list(u.Infra.get(pyright, c.Infra.IGNORE))
         if expected_ignores:
             if current_ignores != expected_ignores:
-                pyright[c.Infra.IGNORE] = u.array(expected_ignores)
+                pyright[c.Infra.IGNORE] = u.Infra.array(expected_ignores)
                 changes.append(
                     "tool.pyright.ignore synchronized for typings diagnostics",
                 )
@@ -182,7 +178,7 @@ class FlextInfraEnsurePyrightConfigPhase(FlextInfraEnsurePyrightEnvs):
         if expected_stub_path is not None:
             existing = project_root / expected_stub_path if project_root else None
             if existing is not None and existing.is_dir():
-                current_stub = u.unwrap_item(u.get(pyright, "stubPath"))
+                current_stub = u.Infra.unwrap_item(u.Infra.get(pyright, "stubPath"))
                 if current_stub != expected_stub_path:
                     pyright["stubPath"] = expected_stub_path
                     changes.append(
@@ -199,9 +195,9 @@ class FlextInfraEnsurePyrightConfigPhase(FlextInfraEnsurePyrightEnvs):
                 project_dir=project_root,
                 is_root=is_root,
             )
-            current_extra = u.as_string_list(u.get(pyright, "extraPaths"))
+            current_extra = u.Infra.as_string_list(u.Infra.get(pyright, "extraPaths"))
             if current_extra != expected_extra:
-                pyright["extraPaths"] = u.array(expected_extra)
+                pyright["extraPaths"] = u.Infra.array(expected_extra)
                 changes.append("tool.pyright.extraPaths synchronized")
         expected_envs = self._expected_envs(
             is_root=is_root,
@@ -209,22 +205,22 @@ class FlextInfraEnsurePyrightConfigPhase(FlextInfraEnsurePyrightEnvs):
             project_dir=project_dir,
         )
         for key, value in self._venv_settings(is_root=is_root).items():
-            if u.unwrap_item(u.get(pyright, key)) != value:
+            if u.Infra.unwrap_item(u.Infra.get(pyright, key)) != value:
                 pyright[key] = value
                 changes.append(f"tool.pyright.{key} set to {value}")
         if is_root:
             for key, value in self._tool_config.tools.pyright.strict_settings.items():
-                if u.unwrap_item(u.get(pyright, key)) != value:
+                if u.Infra.unwrap_item(u.Infra.get(pyright, key)) != value:
                     pyright[key] = value
                     changes.append(f"tool.pyright.{key} set to {value}")
             for key, value in self._tool_config.tools.pyright.extended_settings.items():
-                if u.unwrap_item(u.get(pyright, key)) != value:
+                if u.Infra.unwrap_item(u.Infra.get(pyright, key)) != value:
                     pyright[key] = value
                     changes.append(f"tool.pyright.{key} set to {value}")
-            u.ensure_pyright_execution_envs(pyright, expected_envs, changes)
+            u.Infra.ensure_pyright_execution_envs(pyright, expected_envs, changes)
             return changes
         for key, value in self._tool_config.tools.pyright.strict_settings.items():
-            if u.unwrap_item(u.get(pyright, key)) != value:
+            if u.Infra.unwrap_item(u.Infra.get(pyright, key)) != value:
                 pyright[key] = value
                 changes.append(f"tool.pyright.{key} set to {value}")
         merged_settings: t.MutableStrMapping = {
@@ -234,10 +230,10 @@ class FlextInfraEnsurePyrightConfigPhase(FlextInfraEnsurePyrightEnvs):
         if override is not None:
             merged_settings.update(override.pyright)
         for key, value in merged_settings.items():
-            if u.unwrap_item(u.get(pyright, key)) != value:
+            if u.Infra.unwrap_item(u.Infra.get(pyright, key)) != value:
                 pyright[key] = value
                 changes.append(f"tool.pyright.{key} set to {value}")
-        u.ensure_pyright_execution_envs(pyright, expected_envs, changes)
+        u.Infra.ensure_pyright_execution_envs(pyright, expected_envs, changes)
         return changes
 
 

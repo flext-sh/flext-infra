@@ -144,7 +144,7 @@ class TestModernizerRunAndMain:
 
         monkeypatch.setattr(modernizer, "find_pyproject_files", _find_files)
         monkeypatch.setattr(u.Infra, "read", _read_doc)
-        assert modernizer.run(args, u.CliArgs(workspace=tmp_path)) in {0, 1}
+        assert modernizer.run(args, u.Infra.CliArgs(workspace=tmp_path)) in {0, 1}
 
     def test_run_rejects_unknown_selected_project(self, tmp_path: Path) -> None:
         (tmp_path / "pyproject.toml").write_text('[project]\nname = "root"\n')
@@ -158,7 +158,7 @@ class TestModernizerRunAndMain:
         tm.that(
             modernizer.run(
                 args,
-                u.CliArgs(workspace=tmp_path, project="missing-project"),
+                u.Infra.CliArgs(workspace=tmp_path, project="missing-project"),
             ),
             eq=2,
         )
@@ -198,7 +198,7 @@ class TestModernizerRunAndMain:
         tm.that(
             modernizer.run(
                 args,
-                u.CliArgs(workspace=tmp_path, apply=True),
+                u.Infra.CliArgs(workspace=tmp_path, apply=True),
             ),
             eq=0,
         )
@@ -240,14 +240,14 @@ class TestModernizerRunAndMain:
         def _run_zero(
             _self: FlextInfraPyprojectModernizer,
             _args: argparse.Namespace,
-            _cli: u.CliArgs,
+            _cli: u.Infra.CliArgs,
         ) -> int:
             return 0
 
         def _run_forty_two(
             _self: FlextInfraPyprojectModernizer,
             _args: argparse.Namespace,
-            _cli: u.CliArgs,
+            _cli: u.Infra.CliArgs,
         ) -> int:
             return 42
 

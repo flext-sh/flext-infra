@@ -30,26 +30,28 @@ from flext_infra import (
 )
 
 
-class FlextInfraModels(
-    FlextInfraModelsCliInputs,
-    FlextInfraModelsCensus,
-    FlextInfraBasemkModels,
-    FlextInfraCheckModels,
-    FlextInfraCodegenModels,
-    FlextInfraDepsModels,
-    FlextInfraDocsModels,
-    FlextInfraGatesModels,
-    FlextInfraGithubModels,
-    FlextInfraRefactorModels,
-    FlextInfraReleaseModels,
-    FlextInfraCoreModels,
-    FlextInfraWorkspaceModels,
-    FlextInfraModelsRope,
-    FlextInfraModelsScan,
-    FlextInfraModelsBase,
-    FlextCliModels,
-):
+class FlextInfraModels(FlextCliModels):
     """Merged model namespace for flext-infra domain objects."""
+
+    class Infra(
+        FlextInfraModelsCliInputs,
+        FlextInfraModelsCensus,
+        FlextInfraBasemkModels,
+        FlextInfraCheckModels,
+        FlextInfraCodegenModels,
+        FlextInfraDepsModels,
+        FlextInfraDocsModels,
+        FlextInfraGatesModels,
+        FlextInfraGithubModels,
+        FlextInfraRefactorModels,
+        FlextInfraReleaseModels,
+        FlextInfraCoreModels,
+        FlextInfraWorkspaceModels,
+        FlextInfraModelsRope,
+        FlextInfraModelsScan,
+        FlextInfraModelsBase,
+    ):
+        """Infrastructure-domain models - all classes exposed directly."""
 
 
 m = FlextInfraModels

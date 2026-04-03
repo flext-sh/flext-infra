@@ -27,10 +27,12 @@ def _make_backend(
     use_color: bool = False,
     use_unicode: bool = False,
     stream: io.StringIO | None = None,
-) -> u.OutputBackend:
+) -> u.Infra.OutputBackend:
     """Create a backend with test-friendly settings."""
     buf = stream or io.StringIO()
-    return u.OutputBackend(use_color=use_color, use_unicode=use_unicode, stream=buf)
+    return u.Infra.OutputBackend(
+        use_color=use_color, use_unicode=use_unicode, stream=buf
+    )
 
 
 class TestInfraOutputStatus:

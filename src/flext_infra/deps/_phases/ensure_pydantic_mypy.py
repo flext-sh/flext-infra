@@ -25,13 +25,13 @@ class FlextInfraEnsurePydanticMypyConfigPhase:
         if not isinstance(tool, Table):
             tool = tomlkit.table()
             doc[c.Infra.TOOL] = tool
-        pydantic_mypy = u.ensure_table(tool, "pydantic-mypy")
+        pydantic_mypy = u.Infra.ensure_table(tool, "pydantic-mypy")
         for key, value in {
             "init_forbid_extra": self._tool_config.tools.pydantic_mypy.init_forbid_extra,
             "init_typed": self._tool_config.tools.pydantic_mypy.init_typed,
             "warn_required_dynamic_aliases": self._tool_config.tools.pydantic_mypy.warn_required_dynamic_aliases,
         }.items():
-            if u.unwrap_item(u.get(pydantic_mypy, key)) is not value:
+            if u.Infra.unwrap_item(u.Infra.get(pydantic_mypy, key)) is not value:
                 pydantic_mypy[key] = value
                 changes.append(f"tool.pydantic-mypy.{key} set to {value}")
         return changes

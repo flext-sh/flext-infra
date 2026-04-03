@@ -32,7 +32,7 @@ class TestSafetyCheckpoint:
     ) -> None:
         _init_git_repo(tmp_path)
 
-        result = u.create_checkpoint(tmp_path)
+        result = u.Infra.create_checkpoint(tmp_path)
 
         assert result.is_success
         assert result.value == ""
@@ -44,7 +44,7 @@ class TestSafetyCheckpoint:
         _init_git_repo(tmp_path)
         (tmp_path / "notes.txt").write_text("dirty\n", encoding="utf-8")
 
-        result = u.create_checkpoint(tmp_path, label="test-checkpoint")
+        result = u.Infra.create_checkpoint(tmp_path, label="test-checkpoint")
 
         assert result.is_success
         assert "stash@{0}" in result.value
@@ -54,7 +54,7 @@ class TestSafetyCheckpoint:
         self,
         tmp_path: Path,
     ) -> None:
-        result = u.create_checkpoint(tmp_path)
+        result = u.Infra.create_checkpoint(tmp_path)
 
         assert result.is_success
         assert result.value == ""
@@ -67,12 +67,12 @@ class TestSafetyRollback:
     ) -> None:
         _init_git_repo(tmp_path)
 
-        result = u.rollback_to_checkpoint(tmp_path, "stash@{999}")
+        result = u.Infra.rollback_to_checkpoint(tmp_path, "stash@{999}")
 
         assert result.is_failure
 
     def test_rollback_to_checkpoint_succeeds_for_non_repo(self, tmp_path: Path) -> None:
-        result = u.rollback_to_checkpoint(tmp_path)
+        result = u.Infra.rollback_to_checkpoint(tmp_path)
 
         assert result.is_success
         assert result.value is True

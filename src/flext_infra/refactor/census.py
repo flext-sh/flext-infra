@@ -28,7 +28,7 @@ class FlextInfraRefactorCensus:
     @staticmethod
     def render_text(report: m.Infra.UtilitiesCensusReport) -> str:
         """Render the census report cleanly."""
-        return u.render_census_report(report)
+        return u.Infra.render_census_report(report)
 
     def run(
         self,
@@ -37,13 +37,13 @@ class FlextInfraRefactorCensus:
         target: m.Infra.MROFamilyTarget | None = None,
     ) -> r[m.Infra.UtilitiesCensusReport]:
         """Execute the workspace census."""
-        target = target or u.build_mro_target(
+        target = target or u.Infra.build_mro_target(
             c.Infra.Census.DEFAULT_FAMILY,
         )
         if target is None:
             return r[m.Infra.UtilitiesCensusReport].fail("no MRO target configured")
         t0 = time.monotonic()
-        u.header(f"Usage Census — family={target.family} ({target.class_suffix})")
+        u.Infra.header(f"Usage Census — family={target.family} ({target.class_suffix})")
 
         pkg = (
             workspace_root
@@ -59,11 +59,11 @@ class FlextInfraRefactorCensus:
         )
 
         # 1-3. Metadata & Discovery
-        u.progress(1, 5, "Metadata gathering", "metadata")
+        u.Infra.progress(1, 5, "Metadata gathering", "metadata")
         parsed = (
-            u.extract_public_methods_from_dir(pkg)
+            u.Infra.extract_public_methods_from_dir(pkg)
             if pkg.is_dir()
-            else u.extract_public_methods_from_file(pkg)
+            else u.Infra.extract_public_methods_from_file(pkg)
         )
         methods = {
             cls: [
@@ -74,12 +74,12 @@ class FlextInfraRefactorCensus:
         }
         index = {cls: {mi.name for mi in ms} for cls, ms in methods.items()}
 
-        flat = u.build_facade_alias_map(facade, target.facade_class_prefix)
-        inner = u.build_facade_inner_class_map(facade, target.facade_class_prefix)
+        flat = u.Infra.build_facade_alias_map(facade, target.facade_class_prefix)
+        inner = u.Infra.build_facade_inner_class_map(facade, target.facade_class_prefix)
 
         # 4. Scanning & Visitors
-        u.progress(4, 5, "scan-files", "libcst")
-        files_result = u.iter_workspace_python_modules(
+        u.Infra.progress(4, 5, "scan-files", "libcst")
+        files_result = u.Infra.iter_workspace_python_modules(
             workspace_root,
             exclude_packages=frozenset({target.core_project}),
         )
@@ -95,9 +95,9 @@ class FlextInfraRefactorCensus:
         errs = usage = 0
         for i, fp in enumerate(files, 1):
             if i % 500 == 0:
-                u.info(f"  [{i}/{len(files)}] scanned...")
+                u.Infra.info(f"  [{i}/{len(files)}] scanned...")
 
-            project = u.identify_project_by_roots(fp, roots)
+            project = u.Infra.identify_project_by_roots(fp, roots)
             try:
                 source = fp.read_text(encoding=c.Infra.Encoding.DEFAULT)
             except (OSError, UnicodeDecodeError):
@@ -122,12 +122,12 @@ class FlextInfraRefactorCensus:
                 usage += 1
                 recs.extend(col.records)
 
-        u.info(f"Files with usage: {usage}, parse errors: {errs}")
+        u.Infra.info(f"Files with usage: {usage}, parse errors: {errs}")
 
         # 5. Rollup and format
-        u.progress(5, 5, "aggregate", "report")
-        rep = u.aggregate_usage_metrics(methods, recs, len(files), errs)
-        u.summary(
+        u.Infra.progress(5, 5, "aggregate", "report")
+        rep = u.Infra.aggregate_usage_metrics(methods, recs, len(files), errs)
+        u.Infra.summary(
             m.Infra.SummaryStats(
                 verb="census",
                 total=rep.total_methods,

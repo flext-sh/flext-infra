@@ -35,14 +35,14 @@ class FlextInfraManualProtocolDetector(FlextInfraScanFileMixin, p.Infra.Scanner)
             or file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES
         ):
             return []
-        res = u.get_resource_from_path(rope_project, file_path)
+        res = u.Infra.get_resource_from_path(rope_project, file_path)
         if res is None:
             return []
         return [
             m.Infra.ManualProtocolViolation(
                 file=str(file_path), line=ci.line, name=ci.name
             )
-            for ci in u.get_class_info(rope_project, res)
+            for ci in u.Infra.get_class_info(rope_project, res)
             if "Protocol" in ci.bases
         ]
 

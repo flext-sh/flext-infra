@@ -174,6 +174,37 @@ class FlextInfraUtilitiesCodegenConstantDetection:
     # ------------------------------------------------------------------
 
     @staticmethod
+    def scan_constant_usages(
+        py_file: Path,
+        _project_name: str,
+        *,
+        collect_all_refs: bool = False,
+    ) -> t.Infra.Triple[
+        Sequence[t.Infra.StrIntPair],
+        Sequence[t.Infra.StrIntPair],
+        Sequence[t.Infra.StrIntPair],
+    ]:
+        """Scan a single file for constant usage patterns.
+
+        Returns (direct_refs, alias_refs, all_refs) where each ref is (name, line).
+        """
+        try:
+            source = py_file.read_text(c.Infra.Encoding.DEFAULT)
+        except (OSError, UnicodeDecodeError):
+            return ([], [], [])
+        direct_refs: MutableSequence[t.Infra.StrIntPair] = []
+        alias_refs: MutableSequence[t.Infra.StrIntPair] = []
+        direct_re = re.compile(r"\bFlext\w*Constants\.([A-Z_][A-Z0-9_]*)")
+        alias_re = re.compile(r"\bc\.\w*\.([A-Z_][A-Z0-9_]*)")
+        for line_num, line in enumerate(source.splitlines(), 1):
+            for match in direct_re.finditer(line):
+                direct_refs.append((match.group(1), line_num))
+            for match in alias_re.finditer(line):
+                alias_refs.append((match.group(1), line_num))
+        all_refs = [*direct_refs, *alias_refs] if collect_all_refs else []
+        return (direct_refs, alias_refs, all_refs)
+
+    @staticmethod
     def scan_all_constant_usages(
         root_path: Path,
         exclude_packages: frozenset[str] | None = None,

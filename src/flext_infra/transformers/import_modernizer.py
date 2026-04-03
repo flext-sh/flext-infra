@@ -47,12 +47,12 @@ class FlextInfraRefactorImportModernizer(FlextInfraRopeTransformer):
         resource: t.Infra.RopeResource,
     ) -> tuple[str, Sequence[str]]:
         """Apply import modernization via rope utilities."""
-        source = u.read_source(resource)
+        source = u.Infra.read_source(resource)
         self._scan_core_aliases(source)
         source = self._rewrite_forbidden_imports(source)
         source = self._replace_symbol_usages(source)
         source = self._inject_missing_aliases(source)
-        u.write_source(
+        u.Infra.write_source(
             rope_project,
             resource,
             source,
@@ -71,7 +71,7 @@ class FlextInfraRefactorImportModernizer(FlextInfraRopeTransformer):
         """Scan source for existing core alias imports."""
         core_pkg = c.Infra.Packages.CORE_UNDERSCORE
         self.aliases_present.update(
-            u.collect_from_import_bound_names(
+            u.Infra.collect_from_import_bound_names(
                 source,
                 module_name=core_pkg,
             ).intersection(self._runtime_aliases),
@@ -136,7 +136,7 @@ class FlextInfraRefactorImportModernizer(FlextInfraRopeTransformer):
         names_part = names_part.strip().strip("()")
         mapped: MutableSequence[str] = []
         unmapped: MutableSequence[str] = []
-        for bare_name, bound in u.parse_import_names(names_part):
+        for bare_name, bound in u.Infra.parse_import_names(names_part):
             if bare_name not in self._symbols_to_replace:
                 unmapped.append(
                     bare_name if bare_name == bound else f"{bare_name} as {bound}"
@@ -178,7 +178,7 @@ class FlextInfraRefactorImportModernizer(FlextInfraRopeTransformer):
         import_line = f"from {pkg} import {', '.join(missing)}\n"
         self._record_change(f"Added: from flext_core import {', '.join(missing)}")
         lines = source.splitlines(keepends=True)
-        idx = u.find_import_insert_position(lines, past_existing=False)
+        idx = u.Infra.find_import_insert_position(lines, past_existing=False)
         lines.insert(idx, import_line)
         return "".join(lines)
 

@@ -114,7 +114,7 @@ class FlextInfraRefactorLooseClassScanner:
             return out
         file_list: Sequence[Path] = [
             fp
-            for fp in u.iter_directory_python_files(src)
+            for fp in u.Infra.iter_directory_python_files(src)
             if not (fp.name.startswith("__") and fp.name != c.Infra.Files.INIT_PY)
         ]
         out2: r[Sequence[Path]] = r[Sequence[Path]].ok(file_list)
@@ -150,8 +150,8 @@ class FlextInfraRefactorLooseClassScanner:
         self,
         file_path: Path,
     ) -> r[Sequence[m.Infra.ClassOccurrence]]:
-        rope_project = u.init_rope_project(file_path.parent)
-        res = u.get_resource_from_path(rope_project, file_path)
+        rope_project = u.Infra.init_rope_project(file_path.parent)
+        res = u.Infra.get_resource_from_path(rope_project, file_path)
         if res is None:
             out: r[Sequence[m.Infra.ClassOccurrence]] = r[
                 Sequence[m.Infra.ClassOccurrence]
@@ -163,7 +163,7 @@ class FlextInfraRefactorLooseClassScanner:
                 line=ci.line,
                 is_top_level=True,
             )
-            for ci in u.get_class_info(rope_project, res)
+            for ci in u.Infra.get_class_info(rope_project, res)
         ]
         return r[Sequence[m.Infra.ClassOccurrence]].ok(classes)
 
@@ -180,7 +180,7 @@ class FlextInfraRefactorLooseClassScanner:
             "--json",
             str(project_root / c.Infra.Paths.DEFAULT_SRC_DIR),
         ]
-        capture = u.capture(cmd)
+        capture = u.Infra.capture(cmd)
         if capture.is_failure:
             out: r[Mapping[Path, t.IntMapping]] = r[Mapping[Path, t.IntMapping]].fail(
                 capture.error or "ast-grep failed",

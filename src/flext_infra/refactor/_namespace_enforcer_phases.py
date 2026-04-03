@@ -73,7 +73,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
             workspace_root=self._workspace_root,
         )
         py_files = self._collect_py_files(project_root=project_root)
-        package_name = u.discover_project_package_name(project_root=project_root)
+        package_name = u.Infra.discover_project_package_name(project_root=project_root)
         loose_objects = self._detect_and_apply(
             py_files=py_files,
             detect_fn=lambda f: FlextInfraLooseObjectDetector.detect_file(
@@ -96,7 +96,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
                     parse_failures=parse_failures,
                 ),
             ),
-            rewrite_fn=lambda _vs: u.rewrite_import_violations(
+            rewrite_fn=lambda _vs: u.Infra.rewrite_import_violations(
                 py_files=py_files,
                 project_package=package_name,
             ),
@@ -143,7 +143,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
                     parse_failures=parse_failures,
                 ),
             ),
-            rewrite_fn=lambda _vs: u.rewrite_runtime_alias_violations(
+            rewrite_fn=lambda _vs: u.Infra.rewrite_runtime_alias_violations(
                 py_files=py_files,
             ),
             apply=apply,
@@ -157,7 +157,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
                     parse_failures=parse_failures,
                 ),
             ),
-            rewrite_fn=lambda _vs: u.rewrite_missing_future_annotations(
+            rewrite_fn=lambda _vs: u.Infra.rewrite_missing_future_annotations(
                 py_files=py_files,
             ),
             apply=apply,
@@ -171,7 +171,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
                     parse_failures=parse_failures,
                 ),
             ),
-            rewrite_fn=lambda vs: u.rewrite_manual_protocol_violations(
+            rewrite_fn=lambda vs: u.Infra.rewrite_manual_protocol_violations(
                 project_root=project_root,
                 py_files=py_files,
                 violations=vs,
@@ -187,7 +187,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
                     parse_failures=parse_failures,
                 ),
             ),
-            rewrite_fn=lambda vs: u.rewrite_manual_typing_alias_violations(
+            rewrite_fn=lambda vs: u.Infra.rewrite_manual_typing_alias_violations(
                 project_root=project_root,
                 violations=vs,
                 parse_failures=parse_failures,
@@ -203,7 +203,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
                     parse_failures=parse_failures,
                 ),
             ),
-            rewrite_fn=lambda vs: u.rewrite_compatibility_alias_violations(
+            rewrite_fn=lambda vs: u.Infra.rewrite_compatibility_alias_violations(
                 violations=vs,
                 parse_failures=parse_failures,
             ),
@@ -230,7 +230,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
                     rope_project=self._rope_project,
                 ),
             ),
-            rewrite_fn=lambda vs: u.rewrite_mro_completeness_violations(
+            rewrite_fn=lambda vs: u.Infra.rewrite_mro_completeness_violations(
                 violations=vs,
                 parse_failures=parse_failures,
             ),
@@ -275,7 +275,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
         )
         if not apply:
             return facade_statuses
-        u.ensure_missing_facades(
+        u.Infra.ensure_missing_facades(
             project_root=project_root,
             project_name=project_name,
             facade_statuses=facade_statuses,
@@ -291,7 +291,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
     @staticmethod
     def _collect_py_files(*, project_root: Path) -> Sequence[Path]:
         """Collect Python files for scanning."""
-        py_files_result = u.iter_python_files(
+        py_files_result = u.Infra.iter_python_files(
             workspace_root=project_root,
             project_roots=[project_root],
             src_dirs=frozenset(c.Infra.MRO_SCAN_DIRECTORIES),

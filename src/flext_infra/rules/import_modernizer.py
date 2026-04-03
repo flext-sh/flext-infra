@@ -26,7 +26,7 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
         _file_path: Path | None = None,
     ) -> t.Infra.Pair[str, t.StrSequence]:
         """Apply import modernizer or lazy-import hoisting based on fix action."""
-        fix_action = u.get_str_key(
+        fix_action = u.Infra.get_str_key(
             self.config,
             c.Infra.ReportKeys.FIX_ACTION,
             lower=True,
@@ -35,8 +35,8 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
             fixer = FlextInfraRefactorLazyImportFixer()
             return self._apply_text_transformer(fixer, source)
         runtime_aliases = set(c.Infra.RUNTIME_ALIAS_NAMES)
-        blocked = set(u.collect_blocked_aliases(source, runtime_aliases))
-        blocked.update(u.collect_shadowed_aliases(source, runtime_aliases))
+        blocked = set(u.Infra.collect_blocked_aliases(source, runtime_aliases))
+        blocked.update(u.Infra.collect_shadowed_aliases(source, runtime_aliases))
         forbidden = self.config.get("forbidden_imports")
         if forbidden is None:
             forbidden = [self.config]
@@ -45,7 +45,7 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
         imports_to_remove: MutableSequence[str] = []
         seen_modules: t.Infra.StrSet = set()
         symbols_to_replace: t.MutableStrMapping = {}
-        for rule_config in u.parse_forbidden_rules(forbidden):
+        for rule_config in u.Infra.parse_forbidden_rules(forbidden):
             candidates = [rule_config.module]
             if "." in rule_config.module:
                 candidates.append(rule_config.module.split(".", 1)[0])

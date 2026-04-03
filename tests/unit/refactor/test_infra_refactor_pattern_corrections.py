@@ -20,7 +20,7 @@ def _apply_rule(
     file_path.parent.mkdir(parents=True, exist_ok=True)
     file_path.write_text(source, encoding="utf-8")
     rule = FlextInfraRefactorPatternCorrectionsRule(config)
-    updated, changes = u.apply_transformer_to_source(
+    updated, changes = u.Infra.apply_transformer_to_source(
         source,
         file_path,
         lambda rope_project, resource: rule.apply(

@@ -18,7 +18,7 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
     @staticmethod
     def _run_make(project_path: Path, verb: str) -> r[t.Infra.Pair[int, str]]:
         """Execute a make command for a project and return (exit_code, output)."""
-        result = u.run_raw([
+        result = u.Infra.run_raw([
             c.Infra.MAKE,
             "-C",
             str(project_path),
@@ -41,7 +41,7 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
         version = ctx.version
         project_names = ctx.project_names
         output_dir = (
-            u.get_report_dir(
+            u.Infra.get_report_dir(
                 workspace_root,
                 c.Infra.PROJECT,
                 c.Infra.ReportKeys.RELEASE,
@@ -85,7 +85,7 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
             failures=failures,
             records=records,
         )
-        u.write_json(
+        u.Infra.write_json(
             output_dir / "build-report.json",
             report.model_dump(mode="json"),
             sort_keys=True,
@@ -106,7 +106,7 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
         workspace_root = ctx.workspace_root
         tag = ctx.tag
         notes_dir = (
-            u.get_report_dir(
+            u.Infra.get_report_dir(
                 workspace_root,
                 c.Infra.PROJECT,
                 c.Infra.ReportKeys.RELEASE,
@@ -144,7 +144,7 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
         push: bool,
     ) -> r[bool]:
         """Apply changelog, tag, and optional push for publish phase."""
-        changelog_result = u.update_changelog(
+        changelog_result = u.Infra.update_changelog(
             workspace_root,
             version,
             tag,
@@ -167,7 +167,7 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
     ) -> r[bool]:
         """Execute versioning phase across workspace and selected projects."""
         target = f"{ctx.version}-dev" if ctx.dev_suffix else ctx.version
-        parse_result = u.parse_semver(ctx.version)
+        parse_result = u.Infra.parse_semver(ctx.version)
         if parse_result.is_failure:
             return r[bool].fail(parse_result.error or "invalid version")
         files = self._version_files(ctx.workspace_root, ctx.project_names)
@@ -195,7 +195,7 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
                 continue
             changed += 1
             if not dry_run:
-                u.replace_project_version(path.parent, target)
+                u.Infra.replace_project_version(path.parent, target)
             self.logger.info(
                 "release_version_file_updated",
                 path=str(path),

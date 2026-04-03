@@ -30,12 +30,12 @@ class FlextInfraRefactorRuleLoader:
     def load_config(self) -> r[Mapping[str, t.Infra.InfraValue]]:
         """Load and validate the refactor engine configuration."""
         try:
-            loaded = u.safe_load_yaml(self.config_path)
+            loaded = u.Infra.safe_load_yaml(self.config_path)
             normalized: MutableMapping[str, t.Infra.InfraValue] = dict(
                 t.Infra.INFRA_MAPPING_ADAPTER.validate_python(dict(loaded)),
             )
             scope_raw = normalized.get("refactor_engine")
-            scope_map = u.normalize_str_mapping(scope_raw)
+            scope_map = u.Infra.normalize_str_mapping(scope_raw)
             scope = m.Infra.EngineConfig.model_validate(scope_map)
             normalized["refactor_engine"] = scope.model_dump(mode="python")
             return r[Mapping[str, t.Infra.InfraValue]].ok(normalized)
@@ -82,7 +82,7 @@ class FlextInfraRefactorRuleLoader:
                 try:
                     rule_config: Mapping[str, t.Infra.InfraValue] = (
                         t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
-                            dict(u.safe_load_yaml(rule_file))
+                            dict(u.Infra.safe_load_yaml(rule_file))
                         )
                     )
                 except (OSError, TypeError):
@@ -158,9 +158,9 @@ class FlextInfraRefactorRuleLoader:
         self,
         config: t.Infra.InfraValue,
     ) -> m.Infra.EngineConfig:
-        config_map = u.normalize_str_mapping(config)
+        config_map = u.Infra.normalize_str_mapping(config)
         scope_raw = config_map.get("refactor_engine")
-        scope_map = u.normalize_str_mapping(scope_raw)
+        scope_map = u.Infra.normalize_str_mapping(scope_raw)
         return m.Infra.EngineConfig.model_validate(scope_map)
 
     @staticmethod
@@ -175,9 +175,7 @@ class FlextInfraRefactorRuleLoader:
             return []
         definitions: MutableSequence[Mapping[str, t.Infra.InfraValue]] = []
         for item in entries:
-            normalized = u.normalize_str_mapping(
-                item,
-            )
+            normalized = u.Infra.normalize_str_mapping(item)
             if not normalized:
                 continue
             definitions.append(normalized)

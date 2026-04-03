@@ -49,9 +49,9 @@ class FlextInfraSkillValidator:
         violations: MutableSequence[str],
     ) -> None:
         """Evaluate one rule entry and accumulate counts/violations."""
-        rule_id = u.get_str_key(rule_obj, c.Infra.ReportKeys.ID)
-        rule_type = u.get_str_key(rule_obj, "type")
-        group = u.get_str_key(rule_obj, c.Infra.GROUP, default=rule_id) or rule_id
+        rule_id = u.Infra.get_str_key(rule_obj, c.Infra.ReportKeys.ID)
+        rule_type = u.Infra.get_str_key(rule_obj, "type")
+        group = u.Infra.get_str_key(rule_obj, c.Infra.GROUP, default=rule_id) or rule_id
         if rule_type == "ast-grep":
             count = self._run_ast_grep_count(
                 rule_obj,
@@ -80,8 +80,8 @@ class FlextInfraSkillValidator:
         total: int,
     ) -> bool:
         """Compare counts against the baseline file and return pass/fail."""
-        baseline_obj = u.normalize_str_mapping(
-            rules.get(c.Infra.Modes.BASELINE, {}),
+        baseline_obj = u.Infra.normalize_str_mapping(
+            rules.get(c.Infra.Modes.BASELINE, {})
         )
         if not baseline_obj:
             return True
@@ -93,13 +93,11 @@ class FlextInfraSkillValidator:
         )
         if not baseline_path.exists():
             return True
-        bl_data_result = u.read_json(baseline_path)
+        bl_data_result = u.Infra.read_json(baseline_path)
         if bl_data_result.is_failure:
             return True
-        bl_data = u.normalize_str_mapping(bl_data_result.value)
-        bl_counts_raw_map = u.normalize_str_mapping(
-            bl_data.get("counts", {}),
-        )
+        bl_data = u.Infra.normalize_str_mapping(bl_data_result.value)
+        bl_counts_raw_map = u.Infra.normalize_str_mapping(bl_data.get("counts", {}))
         bl_counts: t.MutableIntMapping = {}
         for key_obj, val_obj in bl_counts_raw_map.items():
             if isinstance(val_obj, int):
@@ -142,17 +140,17 @@ class FlextInfraSkillValidator:
                         summary=f"no rules.yml for {skill_name}",
                     ),
                 )
-            rules = u.safe_load_yaml(rules_path)
+            rules = u.Infra.safe_load_yaml(rules_path)
             scan_targets_raw = rules.get("scan_targets", {})
-            scan_targets = u.normalize_str_mapping(scan_targets_raw)
+            scan_targets = u.Infra.normalize_str_mapping(scan_targets_raw)
             if not scan_targets and scan_targets_raw not in ({}, None):
                 return r[m.Infra.ValidationReport].fail(
                     f"scan_targets must be a mapping: {rules_path}",
                 )
-            include_globs = u.string_list(
+            include_globs = u.Infra.string_list(
                 scan_targets.get("include", ["**/*.py"]),
             ) or ["**/*"]
-            exclude_globs = u.string_list(
+            exclude_globs = u.Infra.string_list(
                 scan_targets.get(c.Infra.EXCLUDE, []),
             )
             rules_list_obj = rules.get(c.Infra.ReportKeys.RULES, [])
@@ -165,7 +163,7 @@ class FlextInfraSkillValidator:
             violations: MutableSequence[str] = []
             skill_dir = skills_dir / skill_name
             for rule_obj_raw in rules_list:
-                rule_obj = u.normalize_str_mapping(rule_obj_raw)
+                rule_obj = u.Infra.normalize_str_mapping(rule_obj_raw)
                 if not rule_obj:
                     continue
                 self._evaluate_single_rule(
@@ -212,7 +210,7 @@ class FlextInfraSkillValidator:
         exclude_globs: t.StrSequence,
     ) -> int:
         """Run an ast-grep rule and return match count."""
-        rule_file_raw = u.get_str_key(rule, c.Infra.ReportKeys.FILE)
+        rule_file_raw = u.Infra.get_str_key(rule, c.Infra.ReportKeys.FILE)
         if not rule_file_raw:
             return 0
         rule_file = Path(rule_file_raw)
@@ -232,7 +230,7 @@ class FlextInfraSkillValidator:
         for pat in exclude_globs:
             cmd.extend(["--globs", f"!{pat}"])
         cmd.append(str(project_path))
-        result_wrapper = u.run_raw(
+        result_wrapper = u.Infra.run_raw(
             cmd,
             cwd=project_path,
             timeout=c.Infra.Timeouts.DEFAULT,
@@ -247,7 +245,7 @@ class FlextInfraSkillValidator:
             line = raw_line.strip()
             if not line:
                 continue
-            parsed_line_result = u.parse(line)
+            parsed_line_result = u.Infra.parse(line)
             if parsed_line_result.is_success:
                 count += 1
         return count
@@ -260,7 +258,7 @@ class FlextInfraSkillValidator:
             line = raw_line.strip()
             if not line:
                 continue
-            payload_result = u.parse(line)
+            payload_result = u.Infra.parse(line)
             if payload_result.is_success and u.is_mapping(payload_result.value):
                 payload = payload_result.value
                 maybe = payload.get("violation_count", payload.get("count", 0))
@@ -276,7 +274,7 @@ class FlextInfraSkillValidator:
         mode: str,
     ) -> int:
         """Run a custom rule script and return violation count."""
-        script_raw = u.get_str_key(rule, "script")
+        script_raw = u.Infra.get_str_key(rule, "script")
         if not script_raw:
             return 0
         script = Path(script_raw)
@@ -292,7 +290,7 @@ class FlextInfraSkillValidator:
         cmd.extend(["--workspace", str(project_path)])
         if bool(rule.get("pass_mode")):
             cmd.extend(["--mode", mode])
-        result_wrapper = u.run_raw(
+        result_wrapper = u.Infra.run_raw(
             cmd,
             cwd=project_path,
             timeout=c.Infra.Timeouts.DEFAULT,

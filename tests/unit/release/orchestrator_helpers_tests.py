@@ -170,7 +170,7 @@ class TestUpdateChangelog:
     def test_creates_files(self, workspace_root: Path) -> None:
         notes = workspace_root / "notes.md"
         notes.write_text("# Release v1.0.0\n")
-        result = u.update_changelog(
+        result = u.Infra.update_changelog(
             workspace_root,
             "1.0.0",
             "v1.0.0",
@@ -186,7 +186,7 @@ class TestUpdateChangelog:
         notes = workspace_root / "notes.md"
         notes.write_text("# Release v1.0.0\n")
         tm.ok(
-            u.update_changelog(
+            u.Infra.update_changelog(
                 workspace_root,
                 "1.0.0",
                 "v1.0.0",

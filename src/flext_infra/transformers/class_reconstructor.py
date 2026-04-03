@@ -34,10 +34,10 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
         resource: t.Infra.RopeResource,
     ) -> tuple[str, Sequence[str]]:
         """Apply method reordering to all classes. Returns (new_source, changes)."""
-        source = u.read_source(resource)
-        class_infos = u.get_class_info(rope_project, resource)
+        source = u.Infra.read_source(resource)
+        class_infos = u.Infra.get_class_info(rope_project, resource)
         for class_info in class_infos:
-            methods = u.get_class_methods(
+            methods = u.Infra.get_class_methods(
                 rope_project,
                 resource,
                 class_info.name,
@@ -45,7 +45,7 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
             )
             if len(methods) < 2:  # noqa: PLR2004
                 continue
-            body_lines = u.get_class_body_lines(
+            body_lines = u.Infra.get_class_body_lines(
                 resource,
                 class_info.name,
             )
@@ -58,8 +58,8 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
                 method_kinds=methods,
                 body_lines=body_lines,
             )
-        if source != u.read_source(resource) and self.changes:
-            u.write_source(
+        if source != u.Infra.read_source(resource) and self.changes:
+            u.Infra.write_source(
                 rope_project,
                 resource,
                 source,
@@ -88,14 +88,14 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
             infos.append(
                 m.Infra.MethodInfo(
                     name=name,
-                    category=u.categorize_method(name, decs),
+                    category=u.Infra.categorize_method(name, decs),
                     node=None,
                     decorators=decs,
                 )
             )
         sorted_infos = sorted(
             infos,
-            key=lambda m_: u.build_method_sort_key(m_, self._order_config),
+            key=lambda m_: u.Infra.build_method_sort_key(m_, self._order_config),
         )
         if [i.name for i in infos] == [i.name for i in sorted_infos]:
             return source

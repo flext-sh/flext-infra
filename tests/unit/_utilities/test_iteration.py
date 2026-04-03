@@ -28,7 +28,7 @@ class TestIterWorkspacePythonModules:
         alpha_root = self._create_project(tmp_path, "alpha")
         beta_root = self._create_project(tmp_path, "beta")
 
-        result = u.iter_workspace_python_modules(workspace_root=tmp_path)
+        result = u.Infra.iter_workspace_python_modules(workspace_root=tmp_path)
 
         assert result.is_success
         expected = {
@@ -51,7 +51,7 @@ class TestIterWorkspacePythonModules:
             encoding="utf-8",
         )
 
-        result = u.iter_workspace_python_modules(workspace_root=tmp_path)
+        result = u.Infra.iter_workspace_python_modules(workspace_root=tmp_path)
 
         assert result.is_success
         assert (project_root, project_root / ".venv" / "lib" / "ignored.py") not in set(
@@ -62,7 +62,7 @@ class TestIterWorkspacePythonModules:
         alpha_root = self._create_project(tmp_path, "alpha")
         self._create_project(tmp_path, "beta")
 
-        result = u.iter_workspace_python_modules(
+        result = u.Infra.iter_workspace_python_modules(
             workspace_root=tmp_path,
             exclude_packages=frozenset({"beta"}),
         )
@@ -74,7 +74,7 @@ class TestIterWorkspacePythonModules:
     def test_include_tests_parameter(self, tmp_path: Path) -> None:
         project_root = self._create_project(tmp_path, "delta")
 
-        result = u.iter_workspace_python_modules(
+        result = u.Infra.iter_workspace_python_modules(
             workspace_root=tmp_path,
             include_tests=False,
         )
@@ -86,7 +86,7 @@ class TestIterWorkspacePythonModules:
     def test_empty_workspace_returns_empty_list(self, tmp_path: Path) -> None:
         (tmp_path / "pyproject.toml").touch()
 
-        result = u.iter_workspace_python_modules(workspace_root=tmp_path)
+        result = u.Infra.iter_workspace_python_modules(workspace_root=tmp_path)
 
         assert result.is_success
         assert result.value == []
@@ -95,7 +95,7 @@ class TestIterWorkspacePythonModules:
         missing_root = Path("/tmp/flext-missing-workspace-root")
 
         try:
-            result = u.iter_workspace_python_modules(workspace_root=missing_root)
+            result = u.Infra.iter_workspace_python_modules(workspace_root=missing_root)
             assert result.is_failure
             assert result.error is not None
             assert "failed" in result.error

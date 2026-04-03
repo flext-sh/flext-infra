@@ -42,7 +42,7 @@ class FlextInfraCodegenScaffolder(s[bool]):
             List of ScaffoldResult models, one per project.
 
         """
-        projects_result = u.discover_projects(self._workspace_root)
+        projects_result = u.Infra.discover_projects(self._workspace_root)
         if not projects_result.is_success:
             return []
         results: MutableSequence[m.Infra.ScaffoldResult] = []
@@ -76,7 +76,7 @@ class FlextInfraCodegenScaffolder(s[bool]):
             )
         files_created: MutableSequence[str] = []
         files_skipped: MutableSequence[str] = []
-        pkg_dir = u.find_package_dir(project_path)
+        pkg_dir = u.Infra.find_package_dir(project_path)
         if pkg_dir is not None:
             self._scaffold_dir(
                 target_dir=pkg_dir,
@@ -120,13 +120,13 @@ class FlextInfraCodegenScaffolder(s[bool]):
                 continue
             class_name = f"{test_prefix}{prefix}{suffix}"
             docstring = f"{doc_suffix} for {prefix.lower()}."
-            content = u.generate_module_skeleton(
+            content = u.Infra.generate_module_skeleton(
                 class_name=class_name,
                 base_class=base_class,
                 docstring=docstring,
             )
             u.write_file(filepath, content, encoding=c.Infra.Encoding.DEFAULT)
-            u.run_ruff_fix(filepath)
+            u.Infra.run_ruff_fix(filepath)
             files_created.append(str(filepath))
 
 

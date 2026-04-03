@@ -62,9 +62,10 @@ class FlextInfraCliGithub:
     @staticmethod
     def _handle_workflows(params: m.Infra.GithubWorkflowsInput) -> r[bool]:
         """Sync GitHub workflow files."""
-        result = u.github_sync_workspace_workflows(
+        result = u.Infra.github_sync_workspace_workflows(
             workspace_root=Path(params.workspace),
             params=m.Infra.WorkflowSyncParams(
+                report_path=Path(params.report) if params.report else None,
                 apply=params.apply,
                 prune=params.prune,
             ),
@@ -77,7 +78,7 @@ class FlextInfraCliGithub:
     def _handle_lint(params: m.Infra.GithubLintInput) -> r[m.Infra.WorkflowLintResult]:
         """Lint GitHub workflow files across workspace."""
         report_path = Path(params.report) if params.report else None
-        result: r[m.Infra.WorkflowLintResult] = u.github_lint_workflows(
+        result: r[m.Infra.WorkflowLintResult] = u.Infra.github_lint_workflows(
             workspace_root=Path(params.workspace),
             report_path=report_path,
             strict=params.strict,
@@ -108,7 +109,7 @@ class FlextInfraCliGithub:
             "checks_strict": "1" if params.checks_strict else "0",
             "release_on_merge": "1" if params.release_on_merge else "0",
         }
-        result = u.github_pr_run_single(
+        result = u.Infra.github_pr_run_single(
             repo_root=repo_root,
             workspace_root=repo_root,
             pr_args=pr_args,
@@ -128,7 +129,7 @@ class FlextInfraCliGithub:
         """Manage PRs across workspace."""
         project_names: t.StrSequence | None = None
         if params.project:
-            project_names = u.project_names_from_values(params.project)
+            project_names = u.Cli.project_names_from_values(params.project)
         pr_model = m.Infra.PrWorkspaceArgs(
             include_root=params.include_root,
             branch=params.branch,
@@ -147,7 +148,7 @@ class FlextInfraCliGithub:
             pr_checks_strict=params.pr_checks_strict,
             pr_release_on_merge=params.pr_release_on_merge,
         )
-        return u.github_pr_orchestrate(
+        return u.Infra.github_pr_orchestrate(
             workspace_root=Path(params.workspace),
             params=m.Infra.PrOrchestrateParams(
                 projects=project_names,

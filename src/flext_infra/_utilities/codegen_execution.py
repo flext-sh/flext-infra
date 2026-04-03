@@ -23,43 +23,11 @@ from flext_infra import (
     m,
     t,
 )
+from flext_infra._utilities.base import FlextInfraUtilitiesBase
 
 
 class FlextInfraUtilitiesCodegenExecution:
     """Consolidated execution and metrics methods for codegen and quality gate."""
-
-    # -------------------------------------------------------------------------
-    # JSON COERCION HELPERS
-    # -------------------------------------------------------------------------
-    @staticmethod
-    def dict_list(
-        value: t.Infra.InfraValue | None,
-    ) -> Sequence[Mapping[str, t.Infra.InfraValue]]:
-        """Coerce a JSON value to a list of dicts. Returns [] if None/invalid."""
-        if value is None or not isinstance(value, list):
-            return []
-        result: MutableSequence[Mapping[str, t.Infra.InfraValue]] = []
-        for item in value:
-            if isinstance(item, Mapping):
-                try:
-                    result.append(
-                        t.Infra.INFRA_MAPPING_ADAPTER.validate_python(item),
-                    )
-                except ValidationError:
-                    continue
-        return result
-
-    @staticmethod
-    def dict_or_empty(
-        value: t.Infra.InfraValue | None,
-    ) -> Mapping[str, t.Infra.InfraValue]:
-        """Coerce a JSON value to a dict. Returns {} if None/invalid."""
-        if value is None:
-            return {}
-        try:
-            return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)
-        except ValidationError:
-            return {}
 
     # -------------------------------------------------------------------------
     # EXTRACTION HELPERS
@@ -68,7 +36,7 @@ class FlextInfraUtilitiesCodegenExecution:
     def extract_total_violations(payload: Mapping[str, t.Infra.InfraValue]) -> int:
         if "total_violations" in payload:
             return u.to_int(payload.get("total_violations"))
-        totals = u.Infra.normalize_str_mapping(payload.get("totals"))
+        totals = FlextInfraUtilitiesBase.normalize_str_mapping(payload.get("totals"))
         if totals:
             return (
                 u.to_int(totals.get("ns001_violations"))
@@ -77,7 +45,9 @@ class FlextInfraUtilitiesCodegenExecution:
                     totals.get("cross_project_reference_violations"),
                 )
             )
-        projects = u.Infra.normalize_mapping_list(payload.get("projects"))
+        projects = FlextInfraUtilitiesBase.normalize_mapping_list(
+            payload.get("projects")
+        )
         if projects and all("total" in item for item in projects):
             return sum(u.to_int(item.get("total")) for item in projects)
         return -1
@@ -93,7 +63,7 @@ class FlextInfraUtilitiesCodegenExecution:
 
     @staticmethod
     def extract_projects_total(payload: Mapping[str, t.Infra.InfraValue]) -> int:
-        totals = u.Infra.normalize_str_mapping(payload.get("totals"))
+        totals = FlextInfraUtilitiesBase.normalize_str_mapping(payload.get("totals"))
         value = totals.get(c.Infra.ReportKeys.PROJECTS)
         if value is not None:
             return u.to_int(value)
@@ -104,12 +74,12 @@ class FlextInfraUtilitiesCodegenExecution:
 
     @staticmethod
     def extract_projects_passed(payload: Mapping[str, t.Infra.InfraValue]) -> int:
-        totals = u.Infra.normalize_str_mapping(payload.get("totals"))
+        totals = FlextInfraUtilitiesBase.normalize_str_mapping(payload.get("totals"))
         return u.to_int(totals.get("passed"))
 
     @staticmethod
     def extract_projects_failed(payload: Mapping[str, t.Infra.InfraValue]) -> int:
-        totals = u.Infra.normalize_str_mapping(payload.get("totals"))
+        totals = FlextInfraUtilitiesBase.normalize_str_mapping(payload.get("totals"))
         return u.to_int(totals.get("failed"))
 
     # -------------------------------------------------------------------------

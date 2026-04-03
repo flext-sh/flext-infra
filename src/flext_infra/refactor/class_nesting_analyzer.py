@@ -109,7 +109,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
     ) -> Mapping[Path, t.Infra.StrSet]:
         grouped: MutableMapping[Path, t.Infra.StrSet] = {}
         for file_path in files:
-            project_root = u.resolve_project_root(file_path)
+            project_root = u.Infra.resolve_project_root(file_path)
             if project_root is None:
                 continue
             module_path = cls._module_path_for_file(file_path, project_root)
@@ -134,7 +134,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
     ) -> r[Mapping[t.Infra.StrPair, m.Infra.ClassNestingMapping]]:
         mapping_path = Path(__file__).resolve().parent / c.Infra.MAPPINGS_RELATIVE_PATH
         try:
-            typed_doc = u.safe_load_yaml(mapping_path)
+            typed_doc = u.Infra.safe_load_yaml(mapping_path)
         except (OSError, TypeError) as exc:
             return r[Mapping[t.Infra.Pair[str, str], m.Infra.ClassNestingMapping]].fail(
                 str(exc),

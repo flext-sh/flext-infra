@@ -28,7 +28,7 @@ def doc() -> TOMLDocument:
     ],
 )
 def test_dep_name(raw: str, expected: str) -> None:
-    tm.that(u.dep_name(raw), eq=expected)
+    tm.that(u.Infra.dep_name(raw), eq=expected)
 
 
 @pytest.mark.parametrize(
@@ -47,13 +47,13 @@ def test_dedupe_specs(
     expected_names: t.StrSequence,
     check_sorted: bool,
 ) -> None:
-    deduped = u.dedupe_specs(specs)
+    deduped = u.Infra.dedupe_specs(specs)
     tm.that(deduped, length=expected_length)
-    names = [u.dep_name(spec) for spec in deduped]
+    names = [u.Infra.dep_name(spec) for spec in deduped]
     for expected_name in expected_names:
         tm.that(names, has=expected_name)
     if check_sorted and len(deduped) > 1:
-        assert u.dep_name(deduped[0]) < u.dep_name(deduped[1])
+        assert u.Infra.dep_name(deduped[0]) < u.Infra.dep_name(deduped[1])
 
 
 @pytest.mark.parametrize(
@@ -65,12 +65,12 @@ def test_dedupe_specs(
     ],
 )
 def test_unwrap_item(value: t.Infra.InfraValue, expected: t.Infra.InfraValue) -> None:
-    tm.that(u.unwrap_item(value), eq=expected)
+    tm.that(u.Infra.unwrap_item(value), eq=expected)
 
 
 def test_unwrap_item_toml_item(doc: TOMLDocument) -> None:
     doc["key"] = "value"
-    tm.that(u.unwrap_item(doc["key"]), eq="value")
+    tm.that(u.Infra.unwrap_item(doc["key"]), eq="value")
 
 
 def _toml_item(value: str | int | t.StrSequence) -> tomlkit.items.Item:
@@ -108,16 +108,16 @@ def test_as_string_list(
     value: tomlkit.items.Item | None,
     expected: t.StrSequence,
 ) -> None:
-    tm.that(u.as_string_list(value), eq=expected)
+    tm.that(u.Infra.as_string_list(value), eq=expected)
 
 
 def test_as_string_list_toml_item(doc: TOMLDocument) -> None:
     doc["items"] = ["a", "b"]
     items_array: tomlkit.items.Item = _toml_item(["a", "b"])
-    tm.that(u.as_string_list(items_array), eq=["a", "b"])
+    tm.that(u.Infra.as_string_list(items_array), eq=["a", "b"])
     doc["value"] = 42
     int_val: tomlkit.items.Item = _toml_item(42)
-    tm.that(u.as_string_list(int_val), eq=[])
+    tm.that(u.Infra.as_string_list(int_val), eq=[])
 
 
 @pytest.mark.parametrize(
@@ -125,7 +125,7 @@ def test_as_string_list_toml_item(doc: TOMLDocument) -> None:
     [(["a", "b", "c"], 3), ([], 0), (["single"], 1)],
 )
 def test_array(items: t.StrSequence, expected: int) -> None:
-    tm.that(len(u.array(items)), eq=expected)
+    tm.that(len(u.Infra.array(items)), eq=expected)
 
 
 @pytest.mark.parametrize(
@@ -137,15 +137,15 @@ def test_ensure_table(mode: str) -> None:
     if mode == "existing":
         existing = tomlkit.table()
         parent["key"] = existing
-        ensured = u.ensure_table(parent, "key")
+        ensured = u.Infra.ensure_table(parent, "key")
         assert ensured is existing
         return
     if mode == "replace-non-table":
         parent["key"] = "string_value"
-        _ = u.ensure_table(parent, "key")
+        _ = u.Infra.ensure_table(parent, "key")
         tm.that(parent, has="key")
         return
-    _ = u.ensure_table(parent, "key")
+    _ = u.Infra.ensure_table(parent, "key")
     tm.that(parent, has="key")
 
 
@@ -178,15 +178,15 @@ def test_project_dev_groups(
     expected_dev: t.StrSequence,
     expected_docs: t.StrSequence,
 ) -> None:
-    groups = u.project_dev_groups(_doc_with_optional_deps(optional_deps))
+    groups = u.Infra.project_dev_groups(_doc_with_optional_deps(optional_deps))
     tm.that(groups.get("dev", []), eq=expected_dev)
     tm.that(groups.get("docs", []), eq=expected_docs)
 
 
 def test_project_dev_groups_missing_sections(doc: TOMLDocument) -> None:
-    tm.that(u.project_dev_groups(doc), eq={})
+    tm.that(u.Infra.project_dev_groups(doc), eq={})
     doc["project"] = {"name": "test"}
-    tm.that(u.project_dev_groups(doc), eq={})
+    tm.that(u.Infra.project_dev_groups(doc), eq={})
 
 
 @pytest.mark.parametrize(
@@ -212,7 +212,7 @@ def test_canonical_dev_dependencies(
     expected_length: int,
     expect_pytest: bool,
 ) -> None:
-    result = u.canonical_dev_dependencies(_doc_with_optional_deps(optional_deps))
+    result = u.Infra.canonical_dev_dependencies(_doc_with_optional_deps(optional_deps))
     tm.that(result, length=expected_length)
     if expect_pytest:
         assert any("pytest" in item for item in result)
@@ -239,7 +239,7 @@ def test_declared_dependency_names_collects_all_supported_groups() -> None:
         },
     }
 
-    result = u.declared_dependency_names(doc)
+    result = u.Infra.declared_dependency_names(doc)
 
     tm.that(result, has="requests")
     tm.that(result, has="flext-infra")

@@ -38,10 +38,10 @@ class FlextInfraRuntimeDevDependencyDetector:
     @staticmethod
     def parser(default_limits_path: Path) -> argparse.ArgumentParser:
         """Create argument parser for CLI with deptry, pip-check, and typing options."""
-        parser = u.create_parser(
+        parser = u.Infra.create_parser(
             prog="flext-infra deps detect",
             description="Detect runtime vs dev dependencies (deptry + pip check).",
-            flags=u.SharedFlags(
+            flags=u.Infra.SharedFlags(
                 include_apply=True,
                 include_project=True,
                 include_format=True,
@@ -88,7 +88,7 @@ class FlextInfraRuntimeDevDependencyDetector:
         return parser
 
     @staticmethod
-    def project_filter(cli: u.CliArgs) -> t.StrSequence | None:
+    def project_filter(cli: u.Infra.CliArgs) -> t.StrSequence | None:
         """Extract project filter list from parsed CLI arguments."""
         return cli.project_names()
 

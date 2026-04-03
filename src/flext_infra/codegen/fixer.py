@@ -133,7 +133,7 @@ class FlextInfraCodegenFixer(s[bool]):
         src_dir = project_path / c.Infra.Paths.DEFAULT_SRC_DIR
         if not src_dir.is_dir():
             return self._empty_result(project_path.name)
-        checkpoint_result = u.create_checkpoint(
+        checkpoint_result = u.Infra.create_checkpoint(
             self._workspace_root,
             label=f"codegen-fix:{project_path.name}",
         )
@@ -234,9 +234,9 @@ class FlextInfraCodegenFixer(s[bool]):
             for modified_file in sorted(ctx.files_modified):
                 path = Path(modified_file)
                 if path.is_file():
-                    u.run_ruff_fix(path, quiet=True)
+                    u.Infra.run_ruff_fix(path, quiet=True)
         except (OSError, UnicodeDecodeError):
-            _ = u.rollback_to_checkpoint(self._workspace_root, stash_ref)
+            _ = u.Infra.rollback_to_checkpoint(self._workspace_root, stash_ref)
             raise
         return self._build_result(project_path.name, ctx)
 
@@ -275,7 +275,7 @@ class FlextInfraCodegenFixer(s[bool]):
 
     def run(self) -> Sequence[m.Infra.AutoFixResult]:
         """Run auto-fix on all projects in workspace."""
-        projects_result = u.discover_projects(self._workspace_root)
+        projects_result = u.Infra.discover_projects(self._workspace_root)
         if not projects_result.is_success:
             return []
         results: MutableSequence[m.Infra.AutoFixResult] = []

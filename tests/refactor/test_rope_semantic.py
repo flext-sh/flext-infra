@@ -53,7 +53,7 @@ active_dog = Dog()
 """,
     )
 
-    project = u.init_rope_project(tmp_path, project_prefix="__never__")
+    project = u.Infra.init_rope_project(tmp_path, project_prefix="__never__")
     yield project, tmp_path
     project.close()
 
@@ -63,7 +63,7 @@ def models_resource(
     rope_workspace: tuple[t.Infra.RopeProject, Path],
 ) -> t.Infra.RopeResource:
     proj, workspace = rope_workspace
-    res = u.get_resource_from_path(proj, workspace / "example" / "models.py")
+    res = u.Infra.get_resource_from_path(proj, workspace / "example" / "models.py")
     assert res is not None
     return res
 
@@ -73,7 +73,7 @@ def services_resource(
     rope_workspace: tuple[t.Infra.RopeProject, Path],
 ) -> t.Infra.RopeResource:
     proj, workspace = rope_workspace
-    res = u.get_resource_from_path(proj, workspace / "example" / "services.py")
+    res = u.Infra.get_resource_from_path(proj, workspace / "example" / "services.py")
     assert res is not None
     return res
 
@@ -85,7 +85,7 @@ class TestGetModuleImports:
         services_resource: t.Infra.RopeResource,
     ) -> None:
         proj, _ = rope_workspace
-        imports = u.get_module_imports(proj, services_resource)
+        imports = u.Infra.get_module_imports(proj, services_resource)
         assert "Dog" in imports
 
     def test_no_imports_returns_empty(
@@ -94,7 +94,7 @@ class TestGetModuleImports:
         models_resource: t.Infra.RopeResource,
     ) -> None:
         proj, _ = rope_workspace
-        imports = u.get_module_imports(proj, models_resource)
+        imports = u.Infra.get_module_imports(proj, models_resource)
         # Path is imported
         assert "Path" in imports
         # Animal is defined, not imported
@@ -108,7 +108,7 @@ class TestGetModuleClasses:
         models_resource: t.Infra.RopeResource,
     ) -> None:
         proj, _ = rope_workspace
-        classes = u.get_module_classes(proj, models_resource)
+        classes = u.Infra.get_module_classes(proj, models_resource)
         assert "Animal" in classes
         assert "Dog" in classes
 
@@ -118,7 +118,7 @@ class TestGetModuleClasses:
         services_resource: t.Infra.RopeResource,
     ) -> None:
         proj, _ = rope_workspace
-        classes = u.get_module_classes(proj, services_resource)
+        classes = u.Infra.get_module_classes(proj, services_resource)
         # Dog is imported, not defined here
         assert "Dog" not in classes
 
@@ -130,7 +130,7 @@ class TestGetClassBases:
         models_resource: t.Infra.RopeResource,
     ) -> None:
         proj, _ = rope_workspace
-        bases = u.get_class_bases(proj, models_resource, "Dog")
+        bases = u.Infra.get_class_bases(proj, models_resource, "Dog")
         assert "Animal" in bases
 
     def test_no_bases_for_root_class(
@@ -139,7 +139,7 @@ class TestGetClassBases:
         models_resource: t.Infra.RopeResource,
     ) -> None:
         proj, _ = rope_workspace
-        bases = u.get_class_bases(proj, models_resource, "Animal")
+        bases = u.Infra.get_class_bases(proj, models_resource, "Animal")
         # object is implicit base, rope may or may not return it
         assert "Dog" not in bases
 
@@ -149,7 +149,7 @@ class TestGetClassBases:
         models_resource: t.Infra.RopeResource,
     ) -> None:
         proj, _ = rope_workspace
-        bases = u.get_class_bases(proj, models_resource, "DoesNotExist")
+        bases = u.Infra.get_class_bases(proj, models_resource, "DoesNotExist")
         assert bases == []
 
 
@@ -160,7 +160,7 @@ class TestGetClassMethods:
         models_resource: t.Infra.RopeResource,
     ) -> None:
         proj, _ = rope_workspace
-        methods = u.get_class_methods(proj, models_resource, "Dog")
+        methods = u.Infra.get_class_methods(proj, models_resource, "Dog")
         assert "fetch" in methods
         assert methods["fetch"] == "staticmethod"
         assert "breed" in methods
@@ -172,7 +172,7 @@ class TestGetClassMethods:
         models_resource: t.Infra.RopeResource,
     ) -> None:
         proj, _ = rope_workspace
-        methods = u.get_class_methods(proj, models_resource, "Dog")
+        methods = u.Infra.get_class_methods(proj, models_resource, "Dog")
         assert "_wag" not in methods
 
     def test_includes_private_when_requested(
@@ -181,7 +181,7 @@ class TestGetClassMethods:
         models_resource: t.Infra.RopeResource,
     ) -> None:
         proj, _ = rope_workspace
-        methods = u.get_class_methods(
+        methods = u.Infra.get_class_methods(
             proj, models_resource, "Dog", include_private=True
         )
         assert "_wag" in methods
@@ -193,7 +193,7 @@ class TestGetClassMethods:
         models_resource: t.Infra.RopeResource,
     ) -> None:
         proj, _ = rope_workspace
-        methods = u.get_class_methods(proj, models_resource, "DoesNotExist")
+        methods = u.Infra.get_class_methods(proj, models_resource, "DoesNotExist")
         assert methods == {}
 
 

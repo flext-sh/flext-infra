@@ -11,9 +11,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from argparse import ArgumentParser, Namespace
-from collections.abc import Callable, Mapping, MutableSequence, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
+from flext_cli import FlextCliUtilities
 from flext_core import u
 from flext_infra._utilities.cli_shared import FlextInfraUtilitiesCliShared
 from flext_infra._utilities.cli_subcommand import FlextInfraUtilitiesCliSubcommand
@@ -61,7 +62,7 @@ class FlextInfraUtilitiesCli(FlextInfraUtilitiesCliShared):
                 List of project names if any specified, None if both arguments empty.
 
             """
-            return FlextInfraUtilitiesCli.project_names_from_values(
+            return FlextCliUtilities.Cli.project_names_from_values(
                 self.project,
                 self.projects,
             )
@@ -122,22 +123,6 @@ class FlextInfraUtilitiesCli(FlextInfraUtilitiesCliShared):
         parser = ArgumentParser(prog=prog, description=description)
         FlextInfraUtilitiesCli._add_shared_flags(parser, resolved_flags)
         return parser
-
-    @staticmethod
-    def project_names_from_values(
-        *values: str | t.StrSequence | None,
-    ) -> t.StrSequence | None:
-        """Normalize project selectors from repeated or comma-separated CLI values."""
-        names: MutableSequence[str] = []
-        for value in values:
-            if value is None:
-                continue
-            raw_values = [value] if isinstance(value, str) else list(value)
-            for raw_value in raw_values:
-                names.extend(
-                    item.strip() for item in raw_value.split(",") if item.strip()
-                )
-        return names or None
 
     @staticmethod
     def parse_subcommand_args(

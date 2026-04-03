@@ -29,9 +29,9 @@ class FlextInfraRefactorLegacyRemovalRule:
         dry_run: bool = False,
     ) -> tuple[str, t.StrSequence]:
         """Apply configured legacy-removal transforms to resource."""
-        source = u.read_source(resource)
+        source = u.Infra.read_source(resource)
         changes: MutableSequence[str] = []
-        fix_action = u.get_str_key(
+        fix_action = u.Infra.get_str_key(
             self.config,
             c.Infra.ReportKeys.FIX_ACTION,
             lower=True,
@@ -58,7 +58,7 @@ class FlextInfraRefactorLegacyRemovalRule:
             )
             changes.extend(bypass_changes)
         if new_source != source and not dry_run:
-            u.write_source(
+            u.Infra.write_source(
                 rope_project,
                 resource,
                 new_source,
@@ -74,16 +74,16 @@ class FlextInfraRefactorLegacyRemovalRule:
     ) -> tuple[str, t.StrSequence]:
         """Remove module-level identity aliases via rope."""
         allow_aliases = set(
-            u.string_list(
+            u.Infra.string_list(
                 self.config.get("allow_aliases", []),
             ),
         )
         allow_target_suffixes = tuple(
-            u.string_list(
+            u.Infra.string_list(
                 self.config.get("allow_target_suffixes", []),
             ),
         )
-        new_source, removed = u.remove_module_level_aliases(
+        new_source, removed = u.Infra.remove_module_level_aliases(
             rope_project,
             resource,
             allow=allow_aliases,

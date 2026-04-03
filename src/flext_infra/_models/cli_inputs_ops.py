@@ -24,7 +24,7 @@ class FlextInfraModelsCliInputsOps:
 
     class GithubWorkflowsInput(
         FlextInfraModelsCliInputsCodegen.ApplyMixin,
-        FlextInfraModelsCliInputsCodegen.CliInputBase,
+        GithubReportMixin,
     ):
         prune: Annotated[
             bool,

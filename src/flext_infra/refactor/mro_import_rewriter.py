@@ -36,7 +36,7 @@ class FlextInfraRefactorMROImportRewriter:
         pending_sources: MutableMapping[Path, str] = {}
         for scan_result in scan_results:
             try:
-                updated_source, migration, symbol_map = u.migrate_file(
+                updated_source, migration, symbol_map = u.Infra.migrate_file(
                     scan_result=scan_result,
                 )
             except Exception as exc:
@@ -91,7 +91,7 @@ class FlextInfraRefactorMROImportRewriter:
         workspace_root: Path,
         module_moves: Mapping[str, t.Infra.Pair[str, t.StrMapping]],
     ) -> Mapping[Path, Mapping[str, t.Infra.Pair[str, t.StrMapping]]]:
-        rope_project = u.init_rope_project(workspace_root)
+        rope_project = u.Infra.init_rope_project(workspace_root)
         module_file_moves: MutableMapping[
             Path,
             MutableMapping[str, t.Infra.Pair[str, t.StrMapping]],
@@ -123,7 +123,7 @@ class FlextInfraRefactorMROImportRewriter:
         ],
     ) -> None:
         """Find rope occurrences for one module's symbols and merge into file_moves."""
-        resource = u.get_file_resource(
+        resource = u.Infra.get_file_resource(
             rope_project,
             module_name,
         )
@@ -131,14 +131,14 @@ class FlextInfraRefactorMROImportRewriter:
             return
         facade_alias, symbol_paths = module_move
         for symbol_name, target_path in symbol_paths.items():
-            offset = u.find_definition_offset(
+            offset = u.Infra.find_definition_offset(
                 rope_project,
                 resource,
                 symbol_name,
             )
             if offset is None:
                 continue
-            for occurrence in u.find_occurrences(
+            for occurrence in u.Infra.find_occurrences(
                 rope_project,
                 resource,
                 offset,
@@ -193,8 +193,10 @@ class FlextInfraRefactorMROImportRewriter:
     @staticmethod
     def _iter_workspace_python_files(*, workspace_root: Path) -> Sequence[Path]:
         paths: list[Path] = []
-        for project_root in u.discover_project_roots(workspace_root=workspace_root):
-            iter_result = u.iter_python_files(
+        for project_root in u.Infra.discover_project_roots(
+            workspace_root=workspace_root
+        ):
+            iter_result = u.Infra.iter_python_files(
                 workspace_root=workspace_root,
                 project_roots=[project_root],
                 src_dirs=frozenset(c.Infra.MRO_SCAN_DIRECTORIES),

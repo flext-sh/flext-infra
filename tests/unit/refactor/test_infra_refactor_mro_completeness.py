@@ -9,7 +9,7 @@ from flext_infra import DetectorContext, FlextInfraMROCompletenessDetector
 
 def _make_rope(workspace: Path) -> t.Infra.RopeProject:
     """Create a rope project rooted at *workspace*."""
-    return u.init_rope_project(workspace)
+    return u.Infra.init_rope_project(workspace)
 
 
 def _write_models_project(
@@ -138,7 +138,7 @@ def test_rewriter_adds_missing_base_and_formats(tmp_path: Path) -> None:
             rope_project=rope_project,
         ),
     )
-    u.rewrite_mro_completeness_violations(
+    u.Infra.rewrite_mro_completeness_violations(
         violations=violations,
         parse_failures=[],
     )

@@ -46,7 +46,7 @@ class FlextInfraGate(ABC):
         timeout: int = c.Infra.Timeouts.DEFAULT,
         env: t.StrMapping | None = None,
     ) -> m.Infra.CommandOutput:
-        result = u.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
+        result = u.Infra.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
         if result.is_failure:
             return m.Infra.CommandOutput(
                 stdout="",
@@ -81,7 +81,7 @@ class FlextInfraGate(ABC):
         has_root_python = any(project_dir.glob(c.Infra.Extensions.PYTHON_GLOB)) or any(
             project_dir.glob("*.pyi"),
         )
-        discovered_dirs = u.discover_python_dirs(project_dir)
+        discovered_dirs = u.Infra.discover_python_dirs(project_dir)
         if has_root_python or discovered_dirs:
             return ["."]
         return []

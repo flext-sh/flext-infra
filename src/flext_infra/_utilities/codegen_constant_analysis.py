@@ -9,7 +9,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import importlib
 import operator
+import re
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
@@ -85,10 +87,10 @@ class FlextInfraUtilitiesCodegenConstantAnalysis:
                 continue
             klass_name = klass.__qualname__
             klass_module = getattr(klass, "__module__", module_path)
-            for attr_name in vars(klass):
+            klass_vars = dict(vars(klass))
+            for attr_name, attr_value in klass_vars.items():
                 if attr_name.startswith("_"):
                     continue
-                attr_value = vars(klass)[attr_name]
                 # Determine type annotation string
                 annotations = getattr(klass, "__annotations__", {})
                 ann = str(annotations.get(attr_name, ""))

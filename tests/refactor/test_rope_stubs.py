@@ -9,7 +9,7 @@ from flext_infra import u
 
 def test_rope_project_wrapper(tmp_path: Path) -> None:
     """Confirm the Rope project wrapper creates a live project."""
-    project = u.init_rope_project(tmp_path, project_prefix="__never__")
+    project = u.Infra.init_rope_project(tmp_path, project_prefix="__never__")
     try:
         assert project is not None
     finally:
@@ -31,9 +31,9 @@ def test_rope_find_occurrences_wrapper(tmp_path: Path) -> None:
         "class Demo:\n    pass\n\nvalue = Demo()\n",
         encoding="utf-8",
     )
-    project = u.init_rope_project(tmp_path, project_prefix="__never__")
+    project = u.Infra.init_rope_project(tmp_path, project_prefix="__never__")
     try:
-        resource = u.get_resource_from_path(project, target)
+        resource = u.Infra.get_resource_from_path(project, target)
         assert resource is not None
         offset = u.find_definition_offset(project, resource, "Demo")
         assert offset is not None

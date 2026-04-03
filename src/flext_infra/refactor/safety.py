@@ -33,7 +33,7 @@ class FlextInfraRefactorSafetyManager:
     def _run_checked(self, cmd: t.StrSequence, cwd: Path) -> r[bool]:
         if self._runner is not None:
             return self._runner.run_checked(cmd, cwd=cwd)
-        return u.run_checked(cmd, cwd=cwd)
+        return u.Infra.run_checked(cmd, cwd=cwd)
 
     def request_emergency_stop(self, reason: str) -> None:
         """Record an emergency stop reason for later inspection."""
@@ -51,7 +51,7 @@ class FlextInfraRefactorSafetyManager:
     ) -> r[str]:
         """Stash uncommitted changes and return the stash reference."""
         self._last_workspace_root = workspace_root
-        return u.create_checkpoint(workspace_root, label=label)
+        return u.Infra.create_checkpoint(workspace_root, label=label)
 
     def rollback(self, workspace_root: Path, stash_ref: str = "") -> r[bool]:
         """Restore previously stashed state."""
@@ -65,7 +65,7 @@ class FlextInfraRefactorSafetyManager:
             return r[bool].fail(
                 f"Emergency stop: {self._emergency_stop_reason}",
             )
-        if not u.git_is_repo(workspace_root):
+        if not u.Infra.git_is_repo(workspace_root):
             out2: r[bool] = r[bool].ok(True)
             return out2
         import_cmd = [
@@ -103,7 +103,7 @@ class FlextInfraRefactorSafetyManager:
         )
         payload = checkpoint.model_dump()
         payload["updated_at"] = u.generate_iso_timestamp()
-        return u.write_json(
+        return u.Infra.write_json(
             self._checkpoint_path,
             payload,
             ensure_ascii=True,
@@ -123,7 +123,7 @@ class FlextInfraRefactorSafetyManager:
             return out3
 
     def _rollback_to_stash(self, workspace_root: Path, stash_ref: str) -> r[bool]:
-        return u.rollback_to_checkpoint(
+        return u.Infra.rollback_to_checkpoint(
             workspace_root,
             stash_ref,
         )

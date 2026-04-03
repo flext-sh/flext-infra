@@ -75,10 +75,10 @@ class FlextInfraProjectMakefileUpdater:
             except OSError as exc:
                 return r[bool].fail(f"Makefile read failed: {exc}")
 
-            if u.sha256_content(existing) == u.sha256_content(new_content):
+            if u.Infra.sha256_content(existing) == u.Infra.sha256_content(new_content):
                 return r[bool].ok(False)
 
-        return u.atomic_write_file(makefile_path, new_content)
+        return u.Infra.atomic_write_file(makefile_path, new_content)
 
     @staticmethod
     def _read_pyproject(pyproject: Path) -> r[_ProjectMeta]:

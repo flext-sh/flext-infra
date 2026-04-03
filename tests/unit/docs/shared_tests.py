@@ -70,7 +70,7 @@ class TestBuildScopes:
         projects: str | None = None,
         output_dir: str = _OUT,
     ) -> r[Sequence[m.Infra.DocScope]]:
-        return u.build_scopes(
+        return u.Infra.build_scopes(
             workspace_root=root,
             project=project,
             projects=projects,

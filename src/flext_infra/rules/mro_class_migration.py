@@ -25,25 +25,25 @@ class FlextInfraRefactorMROClassMigrationRule:
         """Migrate module-level Final constants into the facade class."""
         file_path = Path(rope_project.root.real_path) / resource.path
         if file_path.name != c.Infra.CONSTANTS_FILE_GLOB:
-            return (u.read_source(resource), [])
-        source = u.read_source(resource)
-        candidates = u.find_final_candidates(source)
+            return (u.Infra.read_source(resource), [])
+        source = u.Infra.read_source(resource)
+        candidates = u.Infra.find_final_candidates(source)
         if not candidates:
             return (source, [])
-        constants_class = u.first_constants_class_name(source)
+        constants_class = u.Infra.first_constants_class_name(source)
         scan_result = m.Infra.MROScanReport(
             file=str(file_path),
             module="",
             constants_class=constants_class,
             candidates=tuple(candidates),
         )
-        updated_source, migration, _ = u.migrate_file(
+        updated_source, migration, _ = u.Infra.migrate_file(
             scan_result=scan_result,
         )
         if not migration.moved_symbols or updated_source == source:
             return (source, [])
         if not dry_run:
-            u.write_source(
+            u.Infra.write_source(
                 rope_project,
                 resource,
                 updated_source,

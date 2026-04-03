@@ -37,7 +37,7 @@ class FlextInfraDocGenerator:
                 return match.group(0)
             return label
 
-        return u.MARKDOWN_LINK_RE.sub(replace, content)
+        return u.Infra.MARKDOWN_LINK_RE.sub(replace, content)
 
     @staticmethod
     def _write_if_needed(
@@ -78,7 +78,7 @@ class FlextInfraDocGenerator:
             r with list of GenerateReport objects.
 
         """
-        return u.run_scoped(
+        return u.Infra.run_scoped(
             workspace_root,
             project=project,
             projects=projects,
@@ -228,7 +228,7 @@ class FlextInfraDocGenerator:
             files.extend(self._generate_project_mkdocs(scope=scope, apply=apply))
             source = "workspace-docs-guides"
         generated = u.count(files, lambda item: item.written)
-        _ = u.write_json(
+        _ = u.Infra.write_json(
             scope.report_dir / "generate-summary.json",
             {
                 c.Infra.ReportKeys.SUMMARY: {
@@ -240,7 +240,7 @@ class FlextInfraDocGenerator:
                 "files": [{c.Infra.PATH: f.path, "written": f.written} for f in files],
             },
         )
-        _ = u.write_markdown(
+        _ = u.Infra.write_markdown(
             scope.report_dir / "generate-report.md",
             [
                 "# Docs Generate Report",
@@ -311,7 +311,7 @@ class FlextInfraDocGenerator:
     @staticmethod
     def _update_toc(content: str) -> str:
         """Insert or replace TOC markers in markdown content."""
-        updated, _ = u.update_toc(content)
+        updated, _ = u.Infra.update_toc(content)
         return updated
 
 

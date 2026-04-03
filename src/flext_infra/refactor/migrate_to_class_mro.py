@@ -15,7 +15,7 @@ from flext_infra import (
     u,
 )
 
-_ROPE_MODULE_SYNTAX_ERROR = u.module_syntax_error_type()
+_ROPE_MODULE_SYNTAX_ERROR = u.Infra.module_syntax_error_type()
 
 
 class FlextInfraRefactorMigrateToClassMRO:
@@ -33,7 +33,7 @@ class FlextInfraRefactorMigrateToClassMRO:
     ) -> m.Infra.MROMigrationReport:
         """Run scan, transform, rewrite, and validation phases."""
         normalized_target = self._normalize_target(target=target)
-        scan_results, files_scanned = u.scan_workspace(
+        scan_results, files_scanned = u.Infra.scan_workspace(
             workspace_root=self._workspace_root,
             target=normalized_target,
         )

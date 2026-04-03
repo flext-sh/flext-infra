@@ -34,12 +34,12 @@ from flext_infra import (
 class FlextInfraPyprojectModernizer:
     """Modernize all workspace pyproject.toml files."""
 
-    ROOT = u.resolve_workspace_root(__file__)
+    ROOT = u.Infra.resolve_workspace_root(__file__)
 
     def __init__(self, workspace_root: Path | None = None) -> None:
         """Initialize pyproject modernizer."""
         self.root = workspace_root or self.ROOT
-        tool_config_result = u.load_tool_config()
+        tool_config_result = u.Infra.load_tool_config()
         if tool_config_result.is_failure:
             msg = tool_config_result.error or "failed to load deps tool config"
             raise ValueError(msg)
@@ -53,30 +53,30 @@ class FlextInfraPyprojectModernizer:
     def _ensure_build_system(self, doc: tomlkit.TOMLDocument) -> t.StrSequence:
         """Ensure canonical build-system backend/requirements."""
         changes: MutableSequence[str] = []
-        build_system = u.get_table(doc, "build-system")
+        build_system = u.Infra.get_table(doc, "build-system")
         if build_system is None:
             build_system = tomlkit.table()
             doc["build-system"] = build_system
             changes.append("created [build-system]")
         expected_backend = "hatchling.build"
-        backend_item = u.get_item(build_system, "build-backend")
-        current_backend = u.norm_str(u.unwrap_item(backend_item))
+        backend_item = u.Infra.get_item(build_system, "build-backend")
+        current_backend = u.norm_str(u.Infra.unwrap_item(backend_item))
         if current_backend != expected_backend:
             build_system["build-backend"] = expected_backend
             changes.append("build-system.build-backend set to hatchling.build")
         expected_requires = ["hatchling"]
-        requires_item = u.get_item(build_system, "requires")
+        requires_item = u.Infra.get_item(build_system, "requires")
         current_requires = sorted(
-            u.as_string_list(requires_item),
+            u.Infra.as_string_list(requires_item),
         )
         if current_requires != expected_requires:
-            build_system["requires"] = u.array(expected_requires)
+            build_system["requires"] = u.Infra.array(expected_requires)
             changes.append("build-system.requires set to ['hatchling']")
         # Backend is now guaranteed to be hatchling.build (set above or already correct)
-        tool_table = u.ensure_table(doc, c.Infra.TOOL)
-        hatch_table = u.ensure_table(tool_table, "hatch")
-        metadata_table = u.ensure_table(hatch_table, "metadata")
-        allow_item = u.get_item(metadata_table, "allow-direct-references")
+        tool_table = u.Infra.ensure_table(doc, c.Infra.TOOL)
+        hatch_table = u.Infra.ensure_table(tool_table, "hatch")
+        metadata_table = u.Infra.ensure_table(hatch_table, "metadata")
+        allow_item = u.Infra.get_item(metadata_table, "allow-direct-references")
         if allow_item is None or u.norm_str(str(allow_item), case="lower") != "true":
             metadata_table["allow-direct-references"] = True
             changes.append("tool.hatch.metadata.allow-direct-references set to true")
@@ -85,14 +85,11 @@ class FlextInfraPyprojectModernizer:
     @staticmethod
     def _project_has_direct_references(doc: tomlkit.TOMLDocument) -> bool:
         """Return whether project.dependencies contains direct references."""
-        project_table = u.get_table(doc, c.Infra.PROJECT)
+        project_table = u.Infra.get_table(doc, c.Infra.PROJECT)
         if project_table is None:
             return False
-        deps_item = u.get_item(
-            project_table,
-            c.Infra.DEPENDENCIES,
-        )
-        dependencies = u.as_string_list(deps_item)
+        deps_item = u.Infra.get_item(project_table, c.Infra.DEPENDENCIES)
+        dependencies = u.Infra.as_string_list(deps_item)
         return any(" @ " in dep for dep in dependencies)
 
     @staticmethod
@@ -159,7 +156,7 @@ class FlextInfraPyprojectModernizer:
                 del doc[key]
             for key in ordered_root:
                 doc[key] = root_items[key]
-        tool_child = u.get_table(doc, "tool")
+        tool_child = u.Infra.get_table(doc, "tool")
         if tool_child is not None:
             cls._reorder_table_inplace(tool_child)
         for key in ordered_root:
@@ -178,7 +175,7 @@ class FlextInfraPyprojectModernizer:
         project_paths: Sequence[Path] | None = None,
     ) -> Sequence[Path]:
         """Find all workspace pyproject.toml files."""
-        result = u.find_all_pyproject_files(
+        result = u.Infra.find_all_pyproject_files(
             self.root,
             skip_dirs=c.Infra.SKIP_DIRS,
             project_paths=project_paths,
@@ -197,7 +194,7 @@ class FlextInfraPyprojectModernizer:
         skip_comments: bool,
     ) -> t.StrSequence:
         """Process one pyproject.toml file and collect changes."""
-        doc = u.read(path)
+        doc = u.Infra.read(path)
         if doc is None:
             return ["invalid TOML"]
         is_root = path.parent.resolve() == self.root.resolve()
@@ -208,23 +205,20 @@ class FlextInfraPyprojectModernizer:
                 project_kind = kind_result.value
         changes: MutableSequence[str] = []
         changes.extend(self._ensure_build_system(doc))
-        tool_item = u.get_table(doc, c.Infra.TOOL)
+        tool_item = u.Infra.get_table(doc, c.Infra.TOOL)
         if tool_item is None:
             tool_item = tomlkit.table()
             doc[c.Infra.TOOL] = tool_item
-        poetry_item = u.get_table(tool_item, c.Infra.POETRY)
+        poetry_item = u.Infra.get_table(tool_item, c.Infra.POETRY)
         if poetry_item is not None:
-            group_item = u.get_table(poetry_item, c.Infra.GROUP)
+            group_item = u.Infra.get_table(poetry_item, c.Infra.GROUP)
             if group_item is not None:
                 empty_groups: MutableSequence[str] = []
-                for name in u.table_string_keys(group_item):
-                    group_dep_item = u.get_table(group_item, name)
+                for name in u.Infra.table_string_keys(group_item):
+                    group_dep_item = u.Infra.get_table(group_item, name)
                     if group_dep_item is None:
                         continue
-                    deps_item = u.get_table(
-                        group_dep_item,
-                        c.Infra.DEPENDENCIES,
-                    )
+                    deps_item = u.Infra.get_table(group_dep_item, c.Infra.DEPENDENCIES)
                     if deps_item is not None and not deps_item:
                         empty_groups.append(name)
                 for name in empty_groups:
@@ -288,25 +282,25 @@ class FlextInfraPyprojectModernizer:
             u.write_file(path, rendered, encoding=c.Infra.Encoding.DEFAULT)
         return changes
 
-    def run(self, args: Namespace, cli: u.CliArgs) -> int:
+    def run(self, args: Namespace, cli: u.Infra.CliArgs) -> int:
         """Run pyproject modernization for the workspace."""
         check_mode = bool(args.audit or cli.check)
         dry_run = bool(cli.dry_run or check_mode)
         project_names = cli.project_names() or []
         project_paths: Sequence[Path] | None = None
         if project_names:
-            selected_projects = u.resolve_projects(self.root, project_names)
+            selected_projects = u.Infra.resolve_projects(self.root, project_names)
             if selected_projects.is_failure:
-                u.error(
+                u.Infra.error(
                     selected_projects.error or "failed to resolve selected projects",
                 )
                 return 2
             project_paths = [project.path for project in selected_projects.value]
         files = self.find_pyproject_files(project_paths=project_paths)
-        root_doc = u.read(self.root / c.Infra.Files.PYPROJECT_FILENAME)
+        root_doc = u.Infra.read(self.root / c.Infra.Files.PYPROJECT_FILENAME)
         if root_doc is None:
             return 2
-        canonical_dev = u.canonical_dev_dependencies(root_doc)
+        canonical_dev = u.Infra.canonical_dev_dependencies(root_doc)
         violations: MutableMapping[str, t.StrSequence] = {}
         total = 0
         for file_path in files:
@@ -323,14 +317,14 @@ class FlextInfraPyprojectModernizer:
             total += len(changes)
         if violations:
             for rel_path, changes in violations.items():
-                u.info(f"{rel_path}:")
+                u.Infra.info(f"{rel_path}:")
                 for change in changes:
-                    u.info(f"  - {change}")
-            u.info(
+                    u.Infra.info(f"  - {change}")
+            u.Infra.info(
                 f"Total: {total} change(s) across {len(violations)} file(s)",
             )
             if dry_run:
-                u.info("(dry-run — no files modified)")
+                u.Infra.info("(dry-run — no files modified)")
         if check_mode and total > 0:
             return 1
         if not dry_run and (not args.skip_check):
@@ -341,29 +335,29 @@ class FlextInfraPyprojectModernizer:
         """Validate pyproject.toml files have hatchling build backend."""
         has_warning = False
         for path in files:
-            doc = u.read(path)
+            doc = u.Infra.read(path)
             if doc is None:
                 has_warning = True
                 continue
-            build_sys = u.get_table(doc, "build-system")
+            build_sys = u.Infra.get_table(doc, "build-system")
             if build_sys is None:
-                u.info(f"{path}: missing [build-system]")
+                u.Infra.info(f"{path}: missing [build-system]")
                 has_warning = True
                 continue
-            backend_item = u.get_item(build_sys, "build-backend")
-            backend = u.norm_str(u.unwrap_item(backend_item))
+            backend_item = u.Infra.get_item(build_sys, "build-backend")
+            backend = u.norm_str(u.Infra.unwrap_item(backend_item))
             if backend != "hatchling.build":
-                u.info(f"{path}: expected hatchling.build, got {backend}")
+                u.Infra.info(f"{path}: expected hatchling.build, got {backend}")
                 has_warning = True
         return 1 if has_warning else 0
 
     @staticmethod
     def main(argv: t.StrSequence | None = None) -> int:
         """Run the pyproject modernizer CLI."""
-        parser = u.create_parser(
+        parser = u.Infra.create_parser(
             "flext-infra deps modernize",
             "Modernize workspace pyproject files",
-            flags=u.SharedFlags(
+            flags=u.Infra.SharedFlags(
                 include_apply=True,
                 include_check=True,
                 include_project=True,
@@ -373,7 +367,7 @@ class FlextInfraPyprojectModernizer:
         _ = parser.add_argument("--skip-comments", action="store_true")
         _ = parser.add_argument("--skip-check", action="store_true")
         args = parser.parse_args(argv)
-        cli = u.resolve(args)
+        cli = u.Infra.resolve(args)
         return FlextInfraPyprojectModernizer(workspace_root=cli.workspace).run(
             args,
             cli,

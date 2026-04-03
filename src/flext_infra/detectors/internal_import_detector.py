@@ -29,10 +29,10 @@ class FlextInfraInternalImportDetector(FlextInfraScanFileMixin, p.Infra.Scanner)
         rope_project = ctx.rope_project
         if file_path.name == c.Infra.Files.INIT_PY:
             return []
-        res = u.get_resource_from_path(rope_project, file_path)
+        res = u.Infra.get_resource_from_path(rope_project, file_path)
         if res is None:
             return []
-        imports = u.get_module_imports(rope_project, res)
+        imports = u.Infra.get_module_imports(rope_project, res)
         return [
             m.Infra.InternalImportViolation(
                 file=str(file_path),

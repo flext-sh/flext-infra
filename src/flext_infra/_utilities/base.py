@@ -14,6 +14,7 @@ from pydantic import JsonValue, ValidationError
 
 from flext_core import u
 from flext_infra import m, p, t
+from flext_infra._utilities.toml import FlextInfraUtilitiesToml
 
 _V = TypeVar("_V", bound=p.Infra.ViolationWithLine)
 
@@ -46,7 +47,7 @@ class FlextInfraUtilitiesBase:
             Stripped (and optionally lowercased) string value.
 
         """
-        raw = str(mapping.get(key, default)).strip()
+        raw = u.ensure_str(mapping.get(key, default), default=default).strip()
         return raw.lower() if lower else raw
 
     @classmethod
@@ -115,7 +116,7 @@ class FlextInfraUtilitiesBase:
             raw_items: Sequence[JsonValue] = t.Infra.JSON_SEQ_ADAPTER.validate_python(
                 value,
             )
-            return [str(item) for item in raw_items]
+            return [u.ensure_str(item) for item in raw_items if item is not None]
 
     @staticmethod
     def nested_int(
@@ -126,7 +127,7 @@ class FlextInfraUtilitiesBase:
         """Extract a nested int from a mapping by key path."""
         current: t.Infra.ContainerDict = {str(k): data[k] for k in data}
         for key in keys[:-1]:
-            nested = u.as_toml_mapping(current.get(key))
+            nested = FlextInfraUtilitiesToml.as_toml_mapping(current.get(key))
             if nested is None:
                 return default
             current = nested

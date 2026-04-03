@@ -81,10 +81,10 @@ class FlextInfraWorkspaceMakefileGenerator:
                 existing = makefile.read_text(encoding=c.Infra.Encoding.DEFAULT)
             except OSError as exc:
                 return r[bool].fail(f"Makefile read failed: {exc}")
-            if u.sha256_content(existing) == u.sha256_content(content):
+            if u.Infra.sha256_content(existing) == u.Infra.sha256_content(content):
                 return r[bool].ok(False)
 
-        return u.atomic_write_file(makefile, content)
+        return u.Infra.atomic_write_file(makefile, content)
 
     @staticmethod
     def _build_template_lines(content: str) -> str:
@@ -134,7 +134,9 @@ class FlextInfraWorkspaceMakefileGenerator:
 
         try:
             _TEMPLATES_DIR.mkdir(parents=True, exist_ok=True)
-            template_write = u.atomic_write_file(self.template_path, template_content)
+            template_write = u.Infra.atomic_write_file(
+                self.template_path, template_content
+            )
             if template_write.is_failure:
                 return template_write
         except OSError as exc:
@@ -146,7 +148,7 @@ class FlextInfraWorkspaceMakefileGenerator:
         )
         if render_result.is_failure:
             return r[bool].fail(render_result.error or "template render failed")
-        return u.atomic_write_file(makefile, render_result.value)
+        return u.Infra.atomic_write_file(makefile, render_result.value)
 
     def _render_template(
         self,
@@ -179,7 +181,7 @@ class FlextInfraWorkspaceMakefileGenerator:
     @staticmethod
     def _current_branch(workspace_root: Path) -> str:
         """Return current git branch or version from pyproject.toml."""
-        capture_result = u.capture(
+        capture_result = u.Infra.capture(
             ["git", "-C", str(workspace_root), "rev-parse", "--abbrev-ref", "HEAD"],
             timeout=5,
         )

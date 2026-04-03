@@ -35,7 +35,7 @@ class FlextInfraRefactorTypingUnifier:
         source = resource.read()
         replacements = self._build_replacements(source)
         if replacements:
-            source, _count = u.batch_replace_annotations(
+            source, _count = u.Infra.batch_replace_annotations(
                 rope_project,
                 resource,
                 replacements,
@@ -72,7 +72,7 @@ class FlextInfraRefactorTypingUnifier:
     ) -> str:
         """Convert ``X: TypeAlias = expr`` to ``type X = expr`` (PEP 695)."""
         pattern = re.compile(r"^(\w+)\s*:\s*TypeAlias\s*=\s*(.+)$", re.MULTILINE)
-        new_source, _count = u.replace_in_source(
+        new_source, _count = u.Infra.replace_in_source(
             rope_project,
             resource,
             pattern,

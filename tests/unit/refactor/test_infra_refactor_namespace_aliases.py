@@ -12,7 +12,7 @@ from flext_infra import DetectorContext, FlextInfraImportAliasDetector
 @pytest.fixture
 def rope_project(tmp_path: Path) -> Iterator[t.Infra.RopeProject]:
     """Minimal rope project rooted at tmp_path."""
-    project = u.init_rope_project(tmp_path, project_prefix="__never__")
+    project = u.Infra.init_rope_project(tmp_path, project_prefix="__never__")
     yield project
     project.close()
 
@@ -162,7 +162,7 @@ def test_namespace_rewriter_only_rewrites_runtime_alias_imports(tmp_path: Path) 
     )
     sample_file.write_text(source, encoding="utf-8")
 
-    u.rewrite_import_violations(
+    u.Infra.rewrite_import_violations(
         py_files=[sample_file],
         project_package="flext_core",
     )
@@ -178,7 +178,7 @@ def test_namespace_rewriter_keeps_contextual_alias_subset(tmp_path: Path) -> Non
     source = "from __future__ import annotations\nfrom flext_core import u\n"
     sample_file.write_text(source, encoding="utf-8")
 
-    u.rewrite_import_violations(
+    u.Infra.rewrite_import_violations(
         py_files=[sample_file],
         project_package="flext_core",
     )
@@ -199,7 +199,7 @@ def test_namespace_rewriter_skips_facade_and_subclass_files(tmp_path: Path) -> N
     )
     sample_file.write_text(source, encoding="utf-8")
 
-    u.rewrite_import_violations(
+    u.Infra.rewrite_import_violations(
         py_files=[sample_file],
         project_package="flext_core",
     )
@@ -224,7 +224,7 @@ def test_namespace_rewriter_skips_nested_private_as_rename_and_duplicates(
     )
     sample_file.write_text(source, encoding="utf-8")
 
-    u.rewrite_import_violations(
+    u.Infra.rewrite_import_violations(
         py_files=[sample_file],
         project_package="flext_core",
     )
@@ -252,7 +252,7 @@ def test_runtime_alias_migrator_merges_local_imports_in_src(tmp_path: Path) -> N
         ),
     )
 
-    results = u.migrate_runtime_alias_imports(
+    results = u.Infra.migrate_runtime_alias_imports(
         workspace_root=tmp_path,
         aliases=["r", "s"],
         apply=True,
@@ -291,7 +291,7 @@ def test_runtime_alias_migrator_skips_unsafe_local_cycle(tmp_path: Path) -> None
     )
     _write_file(target, source)
 
-    results = u.migrate_runtime_alias_imports(
+    results = u.Infra.migrate_runtime_alias_imports(
         workspace_root=tmp_path,
         aliases=["u"],
         apply=False,
@@ -346,7 +346,7 @@ def test_runtime_alias_migrator_merges_local_imports_in_tests(tmp_path: Path) ->
         ),
     )
 
-    results = u.migrate_runtime_alias_imports(
+    results = u.Infra.migrate_runtime_alias_imports(
         workspace_root=tmp_path,
         aliases=["r"],
         apply=True,

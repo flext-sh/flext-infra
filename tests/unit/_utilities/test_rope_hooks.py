@@ -42,7 +42,7 @@ def test_run_rope_post_hooks_applies_mro_migration(tmp_path: Path) -> None:
     workspace_root, constants_path, consumer_path = _build_workspace(tmp_path)
 
     results: list[m.Infra.Result] = list(
-        u.run_rope_post_hooks(workspace_root, dry_run=False)
+        u.Infra.run_rope_post_hooks(workspace_root, dry_run=False)
     )
 
     assert any(
@@ -62,7 +62,7 @@ def test_run_rope_post_hooks_dry_run_is_non_mutating(tmp_path: Path) -> None:
     original_consumer = consumer_path.read_text(encoding="utf-8")
 
     results: list[m.Infra.Result] = list(
-        u.run_rope_post_hooks(workspace_root, dry_run=True)
+        u.Infra.run_rope_post_hooks(workspace_root, dry_run=True)
     )
 
     assert any(result.file_path == consumer_path for result in results)

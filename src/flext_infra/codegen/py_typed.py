@@ -59,7 +59,7 @@ class FlextInfraCodegenPyTyped(s[int]):
                 ):
                     continue
                 marker = dirpath / self._PY_TYPED_FILENAME
-                has_py = u.dir_has_py_files(dirpath)
+                has_py = u.Infra.dir_has_py_files(dirpath)
                 if has_py and not marker.exists():
                     if not check_only:
                         marker.touch()
@@ -69,7 +69,7 @@ class FlextInfraCodegenPyTyped(s[int]):
                         marker.unlink()
                     removed += 1
         mode = "check" if check_only else "apply"
-        u.info(
+        u.Infra.info(
             f"py.typed {mode}: {created} created, {removed} removed",
         )
         return created + removed

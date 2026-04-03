@@ -43,9 +43,9 @@ class FlextInfraWorkspaceCheckGatesMixin:
         project_dir = self._workspace_root / project_name
         pyproject_path = project_dir / c.Infra.Files.PYPROJECT_FILENAME
         if not project_dir.is_dir() or not pyproject_path.exists():
-            u.progress(index, total, project_name, c.Infra.Severity.SKIP)
+            u.Infra.progress(index, total, project_name, c.Infra.Severity.SKIP)
             return None
-        u.progress(index, total, project_name, c.Infra.Verbs.CHECK)
+        u.Infra.progress(index, total, project_name, c.Infra.Verbs.CHECK)
         start = time.monotonic()
         project_result = self._check_project_with_ctx(
             project_dir,
@@ -53,7 +53,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
             ctx,
         )
         elapsed = time.monotonic() - start
-        u.status(
+        u.Infra.status(
             c.Infra.Verbs.CHECK,
             project_name,
             project_result.passed,
@@ -186,7 +186,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
                 fix_execution = gate_instance.fix(project_dir, ctx)
                 if not fix_execution.result.passed:
                     result.gates[gate] = fix_execution
-                    u.gate_result(
+                    u.Infra.gate_result(
                         gate,
                         len(fix_execution.issues),
                         fix_execution.result.passed,
@@ -195,7 +195,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
                     continue
             execution = gate_instance.check(project_dir, ctx)
             result.gates[gate] = execution
-            u.gate_result(
+            u.Infra.gate_result(
                 gate,
                 len(execution.issues),
                 execution.result.passed,

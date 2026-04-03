@@ -13,7 +13,7 @@ from flext_infra import FlextInfraEnsurePyrightConfigPhase
 
 
 def _test_tool_config() -> m.Infra.ToolConfigDocument:
-    result = u.load_tool_config()
+    result = u.Infra.load_tool_config()
     tm.that(not result.is_failure, eq=True)
     if result.is_failure:
         msg = "failed to load tool config"
@@ -42,17 +42,17 @@ class TestEnsurePyrightConfigPhase:
             is_root=True,
             workspace_root=tmp_path,
         )
-        tool = u.unwrap_item(doc["tool"])
+        tool = u.Infra.unwrap_item(doc["tool"])
         tm.that(tool, is_=MutableMapping)
         if not isinstance(tool, MutableMapping):
             return
-        pyright = u.unwrap_item(tool["pyright"])
+        pyright = u.Infra.unwrap_item(tool["pyright"])
         tm.that(pyright, is_=MutableMapping)
         if not isinstance(pyright, MutableMapping):
             return
-        tm.that(u.unwrap_item(pyright["venv"]), eq=".venv")
-        tm.that(u.unwrap_item(pyright["venvPath"]), eq=".")
-        exclude = u.unwrap_item(pyright["exclude"])
+        tm.that(u.Infra.unwrap_item(pyright["venv"]), eq=".venv")
+        tm.that(u.Infra.unwrap_item(pyright["venvPath"]), eq=".")
+        exclude = u.Infra.unwrap_item(pyright["exclude"])
         rules = _test_tool_config().tools.pyright.path_rules
         expected_exclude = sorted(
             set(rules.default_excludes)
@@ -63,9 +63,9 @@ class TestEnsurePyrightConfigPhase:
             },
         )
         tm.that(exclude, eq=expected_exclude)
-        ignore = u.unwrap_item(pyright["ignore"])
+        ignore = u.Infra.unwrap_item(pyright["ignore"])
         tm.that(ignore, eq=["typings", "typings/generated", "**/*.pyi"])
-        envs = u.unwrap_item(pyright["executionEnvironments"])
+        envs = u.Infra.unwrap_item(pyright["executionEnvironments"])
         tm.that(envs, is_=list)
         tm.that(
             envs,
@@ -106,17 +106,17 @@ class TestEnsurePyrightConfigPhase:
             doc,
             is_root=False,
         )
-        tool = u.unwrap_item(doc["tool"])
+        tool = u.Infra.unwrap_item(doc["tool"])
         tm.that(tool, is_=MutableMapping)
         if not isinstance(tool, MutableMapping):
             return
-        pyright = u.unwrap_item(tool["pyright"])
+        pyright = u.Infra.unwrap_item(tool["pyright"])
         tm.that(pyright, is_=MutableMapping)
         if not isinstance(pyright, MutableMapping):
             return
-        tm.that(u.unwrap_item(pyright["venv"]), eq=".venv")
-        tm.that(u.unwrap_item(pyright["venvPath"]), eq="..")
-        envs = u.unwrap_item(pyright["executionEnvironments"])
+        tm.that(u.Infra.unwrap_item(pyright["venv"]), eq=".venv")
+        tm.that(u.Infra.unwrap_item(pyright["venvPath"]), eq="..")
+        envs = u.Infra.unwrap_item(pyright["executionEnvironments"])
         tm.that(envs, is_=list)
         tm.that(
             envs,
@@ -148,15 +148,15 @@ class TestEnsurePyrightConfigPhase:
             is_root=False,
             project_dir=project_dir,
         )
-        tool = u.unwrap_item(doc["tool"])
+        tool = u.Infra.unwrap_item(doc["tool"])
         tm.that(tool, is_=MutableMapping)
         if not isinstance(tool, MutableMapping):
             return
-        pyright = u.unwrap_item(tool["pyright"])
+        pyright = u.Infra.unwrap_item(tool["pyright"])
         tm.that(pyright, is_=MutableMapping)
         if not isinstance(pyright, MutableMapping):
             return
-        ignore = u.unwrap_item(pyright["ignore"])
+        ignore = u.Infra.unwrap_item(pyright["ignore"])
         tm.that(ignore, eq=["../typings", "**/*.pyi"])
         tm.that(
             changes,

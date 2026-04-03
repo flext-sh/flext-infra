@@ -88,11 +88,11 @@ def write_audit_reports(
         c.Infra.ReportKeys.SUMMARY: summary,
         "issues": issues_payload,
     }
-    _ = u.write_json(
+    _ = u.Infra.write_json(
         scope.report_dir / "audit-summary.json",
         summary_payload,
     )
-    _ = u.write_markdown(
+    _ = u.Infra.write_markdown(
         scope.report_dir / "audit-report.md",
         to_markdown_fn(scope, issues),
     )

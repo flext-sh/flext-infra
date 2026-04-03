@@ -92,7 +92,7 @@ class FlextInfraDependencyDetectionAnalysis:
     ) -> t.Infra.ContainerDict:
         if value is None:
             return {}
-        mapped_value = u.as_toml_mapping(value)
+        mapped_value = u.Infra.as_toml_mapping(value)
         if mapped_value is None:
             return {}
         return FlextInfraDependencyDetectionAnalysis._to_toml_config(mapped_value)
@@ -201,12 +201,12 @@ class FlextInfraDependencyDetectionAnalysis:
     ) -> str | None:
         """Map a module name to its corresponding types-* package."""
         root = module_name.split(".", 1)[0]
-        if root.startswith(u.INTERNAL_PREFIXES):
+        if root.startswith(u.Infra.INTERNAL_PREFIXES):
             return None
         typing_libraries = limits.get(c.Infra.TYPING_LIBRARIES)
         if isinstance(typing_libraries, Mapping):
             module_to_package = typing_libraries.get(c.Infra.MODULE_TO_PACKAGE)
-            mapped_packages = u.as_toml_mapping(module_to_package)
+            mapped_packages = u.Infra.as_toml_mapping(module_to_package)
             if mapped_packages is not None and root in mapped_packages:
                 value = mapped_packages.get(root)
                 return str(value) if value is not None else None
@@ -250,7 +250,7 @@ class FlextInfraDependencyDetectionAnalysis:
         issues: Sequence[t.Infra.ContainerDict] = []
         if out_file.exists():
             raw = out_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
-            loaded_result = u.parse(raw) if raw.strip() else None
+            loaded_result = u.Infra.parse(raw) if raw.strip() else None
             if (
                 loaded_result is not None
                 and loaded_result.is_success
@@ -309,12 +309,12 @@ class FlextInfraDependencyDetectionAnalysis:
         output = f"{cmd_result.stdout}\n{cmd_result.stderr}"
         hinted = {
             match.group(1).strip()
-            for match in u.MYPY_HINT_RE.finditer(output)
+            for match in u.Infra.MYPY_HINT_RE.finditer(output)
             if match.group(1).strip()
         }
         missing = {
             match.group(1).strip()
-            for match in u.MYPY_STUB_RE.finditer(output)
+            for match in u.Infra.MYPY_STUB_RE.finditer(output)
             if match.group(1).strip()
         }
         return r[t.Infra.Pair[t.StrSequence, t.StrSequence]].ok((

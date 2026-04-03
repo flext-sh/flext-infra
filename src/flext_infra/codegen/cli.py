@@ -184,7 +184,7 @@ class FlextInfraCliCodegen:
         """Handle constant deduplication with user selection."""
         workspace = Path(params.workspace).resolve()
         dry_run = not params.apply
-        fixes = u.propose_deduplication_fixes(
+        fixes = u.Infra.propose_deduplication_fixes(
             params.class_to_analyze,
             workspace,
         )
@@ -219,7 +219,7 @@ class FlextInfraCliCodegen:
         lines.append(f"\nApplying {len(fixes)} deduplication fixes...")
         total_files_modified = 0
         for fix in fixes:
-            result = u.apply_deduplication_fix(
+            result = u.Infra.apply_deduplication_fix(
                 fix,
                 workspace,
                 params.class_to_analyze,
@@ -395,19 +395,30 @@ class FlextInfraCliCodegen:
 
     @staticmethod
     def _handle_consolidate(params: m.Infra.CodegenConsolidateInput) -> r[str]:
-        """Handle constant consolidation with per-file validation."""
+        """Consolidate inline constants into ``c.*`` references.
+
+        Dynamically resolves each project's namespace via rope MRO — no
+        hardcoded namespace assumptions.  Validates each file after
+        replacement and reverts on lint failure.
+        """
+        import subprocess
+
+        from flext_infra import (
+            FlextInfraUtilitiesCodegenConstantAnalysis,
+            FlextInfraUtilitiesCodegenConstantDetection,
+            FlextInfraUtilitiesRope,
+        )
+
         workspace = Path(params.workspace).resolve()
         dry_run = not params.apply
         lines: list[str] = []
-
         if dry_run:
             lines.append("[DRY-RUN] Scanning for inline canonicals...\n")
 
-        # Phase 1: Scan — reuse existing detection
-        projects_result = u.discover_projects(workspace)
+        # Discover projects via existing SSOT API
+        projects_result = u.Infra.discover_projects(workspace)
         if projects_result.is_failure:
             return r[str].fail("Failed to discover projects")
-
         projects: Sequence[m.Infra.ProjectInfo] = projects_result.value
         if params.project:
             projects = [p for p in projects if p.name == params.project]
@@ -422,102 +433,184 @@ class FlextInfraCliCodegen:
             src_dir = project_root / c.Infra.Paths.DEFAULT_SRC_DIR
             if not src_dir.is_dir():
                 continue
-
             pkg_name = project.name.replace("-", "_")
             pkg_dir = src_dir / pkg_name
             if not pkg_dir.is_dir():
                 continue
 
-            parent_class = u.derive_constants_class(pkg_name, pkg_dir)
-            project_import = f"from {pkg_name} import {parent_class}"
+            # ── Dynamic namespace resolution ─────────────────────
+            aliases = u.Infra.discover_project_aliases(project_root)
+            if "c" not in aliases:
+                continue
+            constants_class = u.Infra.resolve_parent_constants(pkg_dir)
+            if not constants_class:
+                continue
+            class_path = f"{pkg_name}.{constants_class}"
 
-            for py_file in sorted(pkg_dir.rglob(c.Infra.Extensions.PYTHON_GLOB)):
+            # ── Build canonical value map from MRO (rope-resolved) ─
+            canonical_attrs = FlextInfraUtilitiesCodegenConstantAnalysis.extract_class_attributes_with_mro(
+                class_path
+            )
+            if not canonical_attrs:
+                continue
+            # Invert: value_repr -> (attr_name, class_path)
+            value_to_ref: dict[str, tuple[str, str]] = {}
+            for attr_name, defn in canonical_attrs.items():
+                if defn.value_repr:
+                    value_to_ref[defn.value_repr] = (
+                        attr_name,
+                        defn.class_path,
+                    )
+
+            # ── Init rope project for this project ────────────────
+            rope_project = FlextInfraUtilitiesRope.init_rope_project(
+                project_root,
+            )
+
+            for py_file in sorted(
+                pkg_dir.rglob(c.Infra.Extensions.PYTHON_GLOB),
+            ):
                 if c.Infra.Dunders.PYCACHE in py_file.parts:
                     continue
+                if "_constants" in py_file.parts:
+                    continue  # SSOT files — never rewrite
 
-                definitions = u.extract_constant_definitions(
-                    py_file,
-                    project.name,
+                # ── Detect Final[...] = value in this file ────────
+                file_defs = FlextInfraUtilitiesCodegenConstantDetection.extract_constant_definitions(
+                    py_file, project.name
                 )
-                hardcoded = u.detect_hardcoded_canonicals(definitions)
-
-                if not hardcoded:
+                if not file_defs:
                     continue
 
-                total_found += len(hardcoded)
-
-                if dry_run:
-                    for item in hardcoded:
-                        ref = u.canonical_reference_for(
-                            item.name,
-                            item.value_repr,
-                        )
-                        lines.append(
-                            f"  {py_file.relative_to(workspace)}:{item.line}"
-                            f"  {item.name} = {item.value_repr} -> {ref}",
-                        )
-                    continue
-
-                # Phase 2: Apply with validation
-                try:
-                    backup = py_file.read_text(c.Infra.Encoding.DEFAULT)
-                except (OSError, UnicodeDecodeError):
-                    continue
-
-                modified, changes = u.replace_canonical_values(
-                    py_file,
-                    parent_class,
-                    definitions,
-                )
-                if not modified:
-                    continue
-
-                _, norm_changes = u.normalize_constant_aliases(
-                    py_file,
-                    project_import,
-                    pkg_dir,
-                )
-                all_changes = list(changes) + list(norm_changes)
-
-                # Validate via gates
-                validation_ok = True
-                rel_path = str(py_file)
-                for tool_cmd in (
-                    ["ruff", "check", rel_path, "--no-fix", "--select", "E,F,W"],
-                    ["pyright", rel_path],
-                ):
-                    result = u.run_raw(
-                        tool_cmd,
-                        cwd=workspace,
-                        timeout=c.Infra.Timeouts.SHORT,
+                # ── Match against canonical map ───────────────────
+                matches: list[tuple[m.Infra.ConstantDefinition, str]] = []
+                for defn in file_defs:
+                    hit = value_to_ref.get(defn.value_repr)
+                    if hit is None:
+                        continue
+                    canon_name, canon_class = hit
+                    # Skip self-references
+                    if canon_name == defn.name and canon_class == defn.class_path:
+                        continue
+                    ref = (
+                        f"c.{canon_class}.{canon_name}"
+                        if canon_class
+                        else f"c.{canon_name}"
                     )
-                    if result.is_failure or result.value.exit_code != 0:
-                        validation_ok = False
-                        output = result.value.stdout[:200] if result.is_success else ""
+                    matches.append((defn, ref))
+
+                if not matches:
+                    continue
+                total_found += len(matches)
+                rel = py_file.relative_to(workspace)
+
+                # ── Phase 1: dry-run report ───────────────────────
+                if dry_run:
+                    for defn, ref in matches:
                         lines.append(
-                            f"  FAILED {py_file.relative_to(workspace)}"
-                            f" [{tool_cmd[0]}]: {output}",
+                            f"  {rel}:{defn.line}"
+                            f"  {defn.name} = {defn.value_repr}"
+                            f" -> {ref}",
+                        )
+                    continue
+
+                # ── Phase 2: apply via rope + validate + rollback ─
+                resource = FlextInfraUtilitiesRope.get_resource_from_path(
+                    rope_project,
+                    py_file,
+                )
+                if resource is None:
+                    continue
+                backup = FlextInfraUtilitiesRope.read_source(resource)
+                source_lines = backup.splitlines(keepends=True)
+
+                offset_edits: list[tuple[int, int, str]] = []
+                descriptions: list[str] = []
+                for defn, ref in matches:
+                    if defn.line < 1 or defn.line > len(source_lines):
+                        continue
+                    line_text = source_lines[defn.line - 1]
+                    eq_idx = line_text.find("=")
+                    if eq_idx < 0:
+                        continue
+                    line_offset = sum(
+                        len(source_lines[i]) for i in range(defn.line - 1)
+                    )
+                    value_start = line_offset + eq_idx + 1
+                    value_end = value_start + len(
+                        line_text[eq_idx + 1 :].rstrip(),
+                    )
+                    offset_edits.append((value_start, value_end, f" {ref}"))
+                    descriptions.append(
+                        f"{defn.name} = {defn.value_repr} -> {ref}",
+                    )
+
+                if not offset_edits:
+                    continue
+
+                FlextInfraUtilitiesRope.rewrite_source_at_offsets(
+                    rope_project,
+                    resource,
+                    offset_edits,
+                    apply=True,
+                )
+
+                # ── Validate with linters ─────────────────────────
+                ok = True
+                for tool_cmd in (
+                    [
+                        "ruff",
+                        "check",
+                        str(py_file),
+                        "--no-fix",
+                        "--select",
+                        "E,F",
+                    ],
+                    ["pyright", str(py_file)],
+                ):
+                    try:
+                        proc = subprocess.run(
+                            tool_cmd,
+                            capture_output=True,
+                            text=True,
+                            timeout=c.Infra.Timeouts.SHORT,
+                            cwd=str(workspace),
+                        )
+                    except (
+                        subprocess.TimeoutExpired,
+                        FileNotFoundError,
+                    ):
+                        continue
+                    if proc.returncode != 0:
+                        ok = False
+                        out = (proc.stdout + proc.stderr)[:200]
+                        lines.append(
+                            f"  FAILED {rel} [{tool_cmd[0]}]: {out}",
                         )
                         break
 
-                if not validation_ok:
-                    py_file.write_text(backup, encoding=c.Infra.Encoding.DEFAULT)
+                if not ok:
+                    FlextInfraUtilitiesRope.write_source(
+                        rope_project,
+                        resource,
+                        backup,
+                    )
                     total_failed += 1
                     file_results.append({
-                        "file": str(py_file.relative_to(workspace)),
+                        "file": str(rel),
                         "status": "reverted",
-                        "changes": all_changes,
+                        "changes": descriptions,
                     })
                 else:
-                    total_applied += len(all_changes)
-                    rel = py_file.relative_to(workspace)
-                    lines.extend(f"  APPLIED {rel}: {change}" for change in all_changes)
+                    total_applied += len(descriptions)
+                    lines.extend(f"  APPLIED {rel}: {d}" for d in descriptions)
                     file_results.append({
-                        "file": str(py_file.relative_to(workspace)),
+                        "file": str(rel),
                         "status": "applied",
-                        "changes": all_changes,
+                        "changes": descriptions,
                     })
 
+        # ── Summary ───────────────────────────────────────────────
         lines.append("")
         if dry_run:
             lines.append(
@@ -537,5 +630,4 @@ class FlextInfraCliCodegen:
                 "files": file_results,
             }).decode()
             return r[str].ok(text)
-
         return r[str].ok("\n".join(lines))

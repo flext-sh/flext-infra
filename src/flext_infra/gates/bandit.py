@@ -48,9 +48,9 @@ class FlextInfraBanditGate(FlextInfraGate):
         )
         issues: MutableSequence[m.Infra.Issue] = []
         try:
-            parsed = u.parse(result.stdout or "{}")
+            parsed = u.Infra.parse(result.stdout or "{}")
             bandit_data: Mapping[str, t.Infra.InfraValue] = (
-                u.normalize_str_mapping(parsed.value) if parsed.is_success else {}
+                u.Infra.normalize_str_mapping(parsed.value) if parsed.is_success else {}
             )
             issues.extend(
                 m.Infra.Issue(
@@ -64,7 +64,9 @@ class FlextInfraBanditGate(FlextInfraGate):
                         "MEDIUM",
                     ).lower(),
                 )
-                for raw_item in u.normalize_mapping_list(bandit_data.get("results", []))
+                for raw_item in u.Infra.normalize_mapping_list(
+                    bandit_data.get("results", [])
+                )
             )
         except (TypeError, ValidationError):
             pass

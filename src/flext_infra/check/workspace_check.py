@@ -34,7 +34,7 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
         super().__init__()
         self._workspace_root = self._resolve_workspace_root(workspace_root)
         self._registry = FlextInfraGateRegistry.default()
-        report_dir = u.get_report_dir(
+        report_dir = u.Infra.get_report_dir(
             self._workspace_root,
             c.Infra.PROJECT,
             c.Infra.Verbs.CHECK,
@@ -55,7 +55,7 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
         gates: t.StrSequence,
     ) -> JsonValue:
         """Generate a SARIF payload from gate results."""
-        return u.generate_sarif(results, gates)
+        return u.Infra.generate_sarif(results, gates)
 
     @staticmethod
     def parse_gate_csv(raw: str) -> t.StrSequence:
@@ -101,7 +101,7 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
         timestamp: str,
     ) -> str:
         """Generate a markdown summary report for check results."""
-        return u.generate_markdown(results, gates, timestamp)
+        return u.Infra.generate_markdown(results, gates, timestamp)
 
     def lint(self, project_dir: Path) -> r[m.Infra.GateResult]:
         """Run lint checks for one project."""
@@ -143,19 +143,19 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
         timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
         md_path = report_base / "check-report.md"
         _ = md_path.write_text(
-            u.generate_markdown(results, resolved_gates, timestamp),
+            u.Infra.generate_markdown(results, resolved_gates, timestamp),
             encoding=c.Infra.Encoding.DEFAULT,
         )
         sarif_path = report_base / "check-report.sarif"
-        sarif_payload = u.generate_sarif(results, resolved_gates)
-        json_write_result = u.write_json(sarif_path, sarif_payload)
+        sarif_payload = u.Infra.generate_sarif(results, resolved_gates)
+        json_write_result = u.Infra.write_json(sarif_path, sarif_payload)
         if json_write_result.is_failure:
             return r[Sequence[m.Infra.ProjectResult]].fail(
                 json_write_result.error or "failed to write sarif report",
             )
         total_errors = sum(project.total_errors for project in results)
         success = len(results) - outcome.failed
-        u.summary(
+        u.Infra.summary(
             m.Infra.SummaryStats(
                 verb=c.Infra.Verbs.CHECK,
                 total=len(results),
@@ -165,10 +165,10 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
                 elapsed=outcome.total_elapsed,
             )
         )
-        u.info(f"Reports: {md_path}")
-        u.info(f"         {sarif_path}")
+        u.Infra.info(f"Reports: {md_path}")
+        u.Infra.info(f"         {sarif_path}")
         if total_errors > 0:
-            u.info("Errors by project:")
+            u.Infra.info("Errors by project:")
             for project in sorted(
                 results,
                 key=lambda item: item.total_errors,
@@ -181,7 +181,7 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
                     for gate in resolved_gates
                     if gate in project.gates and project.gates[gate].issues
                 )
-                u.error(
+                u.Infra.error(
                     f"{project.project:30s} {project.total_errors:6d}  ({breakdown})",
                 )
         return r[Sequence[m.Infra.ProjectResult]].ok(results)
@@ -224,7 +224,7 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
         )
 
     def _resolve_workspace_root(self, workspace_root: Path | None) -> Path:
-        return u.resolve_workspace_root_or_cwd(workspace_root)
+        return u.Infra.resolve_workspace_root_or_cwd(workspace_root)
 
 
 build_parser = FlextInfraWorkspaceChecker.build_parser

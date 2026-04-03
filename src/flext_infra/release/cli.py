@@ -40,16 +40,16 @@ class FlextInfraCliRelease:
         """Resolve the target release version from explicit or derived inputs."""
         if version_arg:
             requested = str(version_arg)
-            parse_result = u.parse_semver(requested)
+            parse_result = u.Infra.parse_semver(requested)
             if parse_result.is_failure:
                 return r[str].fail(parse_result.error or "invalid version")
             return r[str].ok(requested)
-        current_result = u.current_workspace_version(root_path)
+        current_result = u.Infra.current_workspace_version(root_path)
         if current_result.is_failure:
             return r[str].fail(current_result.error or "cannot read current version")
         current = str(current_result.value)
         if bump_arg:
-            bump_result = u.bump_version(current, bump_arg)
+            bump_result = u.Infra.bump_version(current, bump_arg)
             if bump_result.is_failure:
                 return r[str].fail(bump_result.error or "bump failed")
             return r[str].ok(str(bump_result.value))
@@ -58,7 +58,7 @@ class FlextInfraCliRelease:
         bump = u.norm_str(input("bump> "), case="lower")
         if bump not in {"major", "minor", "patch"}:
             return r[str].fail("invalid bump type")
-        bump_result = u.bump_version(current, bump)
+        bump_result = u.Infra.bump_version(current, bump)
         if bump_result.is_failure:
             return r[str].fail(bump_result.error or "bump failed")
         return r[str].ok(str(bump_result.value))
@@ -77,7 +77,7 @@ class FlextInfraCliRelease:
     def _handle_run(cls, params: m.Infra.ReleaseRunInput) -> r[bool]:
         """Execute release orchestration with resolved version and phases."""
         resolved_workspace = Path(params.workspace) if params.workspace else Path.cwd()
-        root_result = u.workspace_root(resolved_workspace)
+        root_result = u.Infra.workspace_root(resolved_workspace)
         if root_result.is_failure:
             return r[bool].fail(root_result.error or "workspace root not found")
         root = Path(str(root_result.value))
