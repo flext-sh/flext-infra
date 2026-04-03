@@ -1,0 +1,144 @@
+src/flext_infra/gates/mypy.py
+  cdbb584679205432 79,83-87
+src/flext_infra/codegen/_utilities.py
+  cdbb584679205432 11,15
+src/flext_infra/rules/class_nesting.py
+  e1d2767e43e21b6f 5,33-118,128
+src/flext_infra/refactor/_utilities_cli.py
+  e1d2767e43e21b6f 58-66
+src/flext_infra/docs/fixer.py
+  e1d2767e43e21b6f 80-88
+src/flext_infra/codegen/_cli_codegen_consolidate.py
+  e1d2767e43e21b6f 46,56,58,73,121-123
+src/flext_infra/refactor/__init__.py
+  e1d2767e43e21b6f 28,31,33-34,111,116,118,120,130,253,283,286,296,311,364,404,419
+src/flext_infra/github/cli.py
+  e1d2767e43e21b6f 14-15,22,24-25,32,39,46,59-60,66,73,143
+src/flext_infra/_utilities/codegen_lazy.py
+  cdbb584679205432 1-2,5-19,21-97,99-122,124-165,167-243,245-279,282-297,300-630,632-634,636-755
+src/flext_infra/validate/cli.py
+  e1d2767e43e21b6f 24,32,34-35,41,47,49,53,59,65,76,78-79,84-85,87-88,94,98-99,104-105,112-115,120,122-123,128-134,136-154
+src/flext_infra/release/cli.py
+  e1d2767e43e21b6f 14-15,22,24-25,30,82
+src/flext_infra/refactor/engine.py
+  e1d2767e43e21b6f 40,46
+src/flext_infra/refactor/cli.py
+  e1d2767e43e21b6f 22-23,30,32-33,40,47,54,61,68,84,96,115,144,200,243
+src/flext_infra/refactor/_engine_helpers.py
+  e1d2767e43e21b6f 1-362
+src/flext_infra/_utilities/toml.py
+  cdbb584679205432 53,60-63,76,143
+src/flext_infra/docs/builder.py
+  e1d2767e43e21b6f 84
+src/flext_infra/docs/_auditor_mixin.py
+  e1d2767e43e21b6f 2-107
+src/flext_infra/docs/validator.py
+  e1d2767e43e21b6f 91
+src/flext_infra/refactor/_utilities_pydantic_analysis.py
+  e1d2767e43e21b6f 85,88-101,103,106-120,122-124,126-128,130-131
+src/flext_infra/_utilities/rope_analysis_introspection.py
+  e1d2767e43e21b6f 27-29
+src/flext_infra/deps/detection.py
+  e1d2767e43e21b6f 92
+  cdbb584679205432 79-82,84
+src/flext_infra/docs/auditor.py
+  e1d2767e43e21b6f 17,24,42,56,123-124,151,159,340-343
+src/flext_infra/_utilities/codegen_execution.py
+  e1d2767e43e21b6f 43
+src/flext_infra/check/_workspace_check_gates.py
+  e1d2767e43e21b6f 10-18,25-52,204
+src/flext_infra/refactor/_utilities_namespace_analysis.py
+  e1d2767e43e21b6f 1-40,42-330
+src/flext_infra/gates/pyrefly.py
+  cdbb584679205432 55,57-60,62-63,66-71
+src/flext_infra/_utilities/__init__.py
+  e1d2767e43e21b6f 28,33
+  cdbb584679205432 201-203,205,207-209
+src/flext_infra/__init__.py
+  e1d2767e43e21b6f 659-660,699,701,1276
+src/flext_infra/workspace/orchestrator.py
+  cdbb584679205432 200
+src/flext_infra/_utilities/base.py
+  cdbb584679205432 12,22-23,26-28,31-33,35-37,39-40,42,44-45,47-50,52-54,60-65,74-77,79-92,95-109,117-165,168-174,176-207,209-216
+src/flext_infra/codegen/constants_quality_gate.py
+  cdbb584679205432 109-113,121-123
+src/flext_infra/deps/_detector_runtime.py
+  cdbb584679205432 198-201,203
+src/flext_infra/refactor/_utilities_namespace_runtime.py
+  e1d2767e43e21b6f 15
+src/flext_infra/check/workspace_check.py
+  e1d2767e43e21b6f 21
+src/flext_infra/deps/internal_sync.py
+  cdbb584679205432 155-156,172
+src/flext_infra/refactor/_utilities_namespace_moves.py
+  e1d2767e43e21b6f 10-11
+src/flext_infra/docs/generator.py
+  e1d2767e43e21b6f 95-96,101
+src/flext_infra/codegen/cli.py
+  e1d2767e43e21b6f 7-9,11,16-17,24-26,32,34-35,42,49,56,63,70,77,84,89,92,103
+src/flext_infra/refactor/_utilities_engine.py
+  e1d2767e43e21b6f 13,33,36-54
+src/flext_infra/_utilities/codegen_constants.py
+  cdbb584679205432 1-2,5-15,20-22,25-29,39-52,57-63,155-227,229-236,238-239,243,246,249-250,255-257,259,261-262,266,268,270-271,273-278,281-291,298-299,301-302,307-312,314-317,321,325-331,334,336-341,345-352,358,362-372,374-396,398-399,405-410,415-422,425-427,430,434-437,441,445-446,448-452,454-463,469,471-476,482-494,496,498-499,505,507-510,514,522,545-547,549-552,554-555,557,560-561,563-566,570,574,577-588,590-592,600-601,642-643,686-689,692-702,704-707,709-715,717-725,727-732,734-735,741-743,747-749,757,762,769-780,783,786,789-791,793,795,798-799,806-809,813-815,827,863,892-901,904,906-907,910,912,916,922,924,927,929-931,933-934,944-945,954-961
+src/flext_infra/basemk/cli.py
+  e1d2767e43e21b6f 7,12-13,20,22-23,28
+src/flext_infra/_utilities/cli.py
+  e1d2767e43e21b6f 16,20-21,28-29,201-236,240-243,245-246,248-252,254-255,257-343
+src/flext_infra/docs/cli.py
+  e1d2767e43e21b6f 24,37,39-40,45,48,53,56,61,64,69,72,77,104,106-107,112,115,120,123,128,131,136,139,144,152,154,160-161,163-164,170-172,183,185,188-191,197-199,212
+src/flext_infra/_typings/base.py
+  e1d2767e43e21b6f 9,17
+src/flext_infra/refactor/_utilities_namespace.py
+  e1d2767e43e21b6f 5-7
+src/flext_infra/_constants/census.py
+  e1d2767e43e21b6f 6
+src/flext_infra/gates/pyright.py
+  cdbb584679205432 55-56,61,64,67-69
+src/flext_infra/gates/bandit.py
+  cdbb584679205432 7,13,54-55,61-62,64-66
+src/flext_infra/codegen/_cli_codegen_handlers.py
+  e1d2767e43e21b6f 20-22,32,44,49-51,61-70,85,108,131,138,146-147,150,159-175,177-178,180-181,184-185,188-189,192-193,195-197,212
+src/flext_infra/workspace/cli.py
+  e1d2767e43e21b6f 18,24-25,32,34-35,42,48,55,68,70-71,77,79-83,101,106-109,115,117
+src/flext_infra/codegen/fixer.py
+  e1d2767e43e21b6f 128-134
+src/flext_infra/refactor/_utilities_policy.py
+  e1d2767e43e21b6f 16,30-31,35-36,38,40-41,45,48
+src/flext_infra/gates/ruff_lint.py
+  cdbb584679205432 50,57,59-61
+src/flext_infra/_utilities/parsing.py
+  cdbb584679205432 12-13,15,17-19,27-34,178-212,214-247,250-259,261-302,304-328
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "781d54e0e0e0c0be1d7518384d899ccd81023f26",
+  "prompts": {
+    "cdbb584679205432": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "deb21ed0-98e4-498f-8592-3944a588496c",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 2151,
+      "total_deletions": 300,
+      "accepted_lines": 1600,
+      "overriden_lines": 234
+    },
+    "e1d2767e43e21b6f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b88f5b43-f2ee-4bd5-8e49-f0bc2c3099ed",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 2371,
+      "total_deletions": 3554,
+      "accepted_lines": 1529,
+      "overriden_lines": 79
+    }
+  }
+}
