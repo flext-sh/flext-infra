@@ -1,0 +1,121 @@
+src/flext_infra/deps/internal_sync.py
+  cdbb584679205432 8,155-157,160,170,172,192-194,196
+src/flext_infra/_utilities/codegen_constant_transformation.py
+  cdbb584679205432 1,11
+src/flext_infra/transformers/_utilities_normalizer.py
+  e1d2767e43e21b6f 79,96
+src/flext_infra/release/orchestrator.py
+  bce025263ce5d18b 231
+src/flext_infra/_utilities/codegen_execution_subprocess.py
+  cdbb584679205432 1
+src/flext_infra/refactor/mro_resolver.py
+  bce025263ce5d18b 20
+src/flext_infra/_utilities/codegen_execution.py
+  cdbb584679205432 21,32,37-38,41-43,47,49,55,63,66,74-75,79-156,158-220,239,241,282-283,314-315,390,393,411-412,415,418,421,424,427,504-505
+src/flext_infra/deps/_phases/consolidate_groups.py
+  e1d2767e43e21b6f 92-93
+src/flext_infra/docs/validator.py
+  e1d2767e43e21b6f 138
+src/flext_infra/_utilities/codegen_constant_detection.py
+  cdbb584679205432 48-51,53-63,65-67,69-70
+src/flext_infra/gates/pyrefly.py
+  cdbb584679205432 58-59,63,66-71
+src/flext_infra/refactor/rule.py
+  cdbb584679205432 38,161,163,178
+src/flext_infra/refactor/census.py
+  e1d2767e43e21b6f 43-44
+src/flext_infra/gates/bandit.py
+  cdbb584679205432 53,57-58,60-62,67
+src/flext_infra/_utilities/toml.py
+  cdbb584679205432 119-133
+src/flext_infra/codegen/scaffolder.py
+  cdbb584679205432 79
+src/flext_infra/validate/skill_validator.py
+  cdbb584679205432 16,83,99-100,147,168
+src/flext_infra/refactor/_utilities_mro_scan.py
+  bce025263ce5d18b 28,85
+src/flext_infra/_utilities/codegen_import_cycles.py
+  cdbb584679205432 30,78,107,118,130,171,185-190,195-196,206,214,217
+src/flext_infra/_utilities/codegen_lazy_scanning.py
+  e1d2767e43e21b6f 163
+src/flext_infra/validate/basemk_validator.py
+  cdbb584679205432 59-60
+src/flext_infra/deps/extra_paths.py
+  cdbb584679205432 80,83,86,88-89,95-96
+src/flext_infra/gates/pyright.py
+  cdbb584679205432 53,55,61-62
+src/flext_infra/_utilities/io.py
+  e1d2767e43e21b6f 102
+src/flext_infra/_utilities/yaml.py
+  e1d2767e43e21b6f 78
+src/flext_infra/deps/modernizer.py
+  cdbb584679205432 56,62,68,79,88,91,162,211,215,217,221,224,348,353
+src/flext_infra/workspace/migrator.py
+  cdbb584679205432 55-57,63,65-66,68-69,71-72,155,342-343
+src/flext_infra/gates/ruff_lint.py
+  cdbb584679205432 61-62
+src/flext_infra/_utilities/base.py
+  cdbb584679205432 13,15,92-157
+src/flext_infra/gates/mypy.py
+  cdbb584679205432 14,74,79,86-90
+src/flext_infra/deps/path_sync.py
+  cdbb584679205432 76,79,88,112,116
+src/flext_infra/refactor/_utilities.py
+  bce025263ce5d18b 76
+src/flext_infra/refactor/_constants.py
+  bce025263ce5d18b 76-115
+src/flext_infra/refactor/mro_import_rewriter.py
+  e1d2767e43e21b6f 147,149-152
+src/flext_infra/deps/_detector_runtime.py
+  e1d2767e43e21b6f 73,75,77
+src/flext_infra/_utilities/rope_imports.py
+  e1d2767e43e21b6f 79-81,84
+src/flext_infra/codegen/py_typed.py
+  cdbb584679205432 62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "88398743cfb98c43e0a6bdd792946a588cd2097c",
+  "prompts": {
+    "bce025263ce5d18b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "110c144c-5b33-4bbc-8c7f-99856935f344",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 34,
+      "total_deletions": 6,
+      "accepted_lines": 45,
+      "overriden_lines": 0
+    },
+    "cdbb584679205432": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "deb21ed0-98e4-498f-8592-3944a588496c",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 730,
+      "total_deletions": 1264,
+      "accepted_lines": 586,
+      "overriden_lines": 0
+    },
+    "e1d2767e43e21b6f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b88f5b43-f2ee-4bd5-8e49-f0bc2c3099ed",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 34,
+      "total_deletions": 22,
+      "accepted_lines": 23,
+      "overriden_lines": 2
+    }
+  }
+}
