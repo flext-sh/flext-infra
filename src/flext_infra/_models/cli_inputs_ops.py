@@ -17,17 +17,16 @@ from flext_infra._models.cli_inputs_codegen import FlextInfraModelsCliInputsCode
 class FlextInfraModelsCliInputsOps:
     """Namespaced CLI input models for github, refactor, release, validate, and workspace."""
 
-    # Re-export bases for consumer convenience
-    CliInputBase = FlextInfraModelsCliInputsCodegen.CliInputBase
-    ApplyMixin = FlextInfraModelsCliInputsCodegen.ApplyMixin
-
-    class GithubReportMixin(CliInputBase):
+    class GithubReportMixin(FlextInfraModelsCliInputsCodegen.CliInputBase):
         report: Annotated[
             str | None,
             Field(default=None, description="Output report file"),
         ] = None
 
-    class GithubWorkflowsInput(ApplyMixin, CliInputBase):
+    class GithubWorkflowsInput(
+        FlextInfraModelsCliInputsCodegen.ApplyMixin,
+        FlextInfraModelsCliInputsCodegen.CliInputBase,
+    ):
         prune: Annotated[
             bool,
             Field(default=False, description="Remove unknown files"),
@@ -39,7 +38,7 @@ class FlextInfraModelsCliInputsOps:
             Field(default=False, description="Fail on strict mode warnings"),
         ] = False
 
-    class GithubPrInput(CliInputBase):
+    class GithubPrInput(FlextInfraModelsCliInputsCodegen.CliInputBase):
         repo_root: Annotated[str, Field(..., description="Repository root directory")]
         action: Annotated[
             str,
@@ -79,7 +78,7 @@ class FlextInfraModelsCliInputsOps:
             Field(default=True, description="Run release workflow on merge"),
         ] = True
 
-    class GithubPrWorkspaceInput(CliInputBase):
+    class GithubPrWorkspaceInput(FlextInfraModelsCliInputsCodegen.CliInputBase):
         project: Annotated[
             list[str],
             Field(
@@ -133,7 +132,10 @@ class FlextInfraModelsCliInputsOps:
             Field(default=False, description="Release on merge"),
         ] = False
 
-    class RefactorCentralizeInput(ApplyMixin, CliInputBase):
+    class RefactorCentralizeInput(
+        FlextInfraModelsCliInputsCodegen.ApplyMixin,
+        FlextInfraModelsCliInputsCodegen.CliInputBase,
+    ):
         normalize_remaining: Annotated[
             bool,
             Field(
@@ -142,7 +144,10 @@ class FlextInfraModelsCliInputsOps:
             ),
         ] = False
 
-    class RefactorMigrateMroInput(ApplyMixin, CliInputBase):
+    class RefactorMigrateMroInput(
+        FlextInfraModelsCliInputsCodegen.ApplyMixin,
+        FlextInfraModelsCliInputsCodegen.CliInputBase,
+    ):
         target: Annotated[
             str,
             Field(
@@ -151,7 +156,10 @@ class FlextInfraModelsCliInputsOps:
             ),
         ] = "all"
 
-    class RefactorNamespaceEnforceInput(ApplyMixin, CliInputBase):
+    class RefactorNamespaceEnforceInput(
+        FlextInfraModelsCliInputsCodegen.ApplyMixin,
+        FlextInfraModelsCliInputsCodegen.CliInputBase,
+    ):
         diff: Annotated[
             bool,
             Field(default=False, description="Show diff without applying"),
@@ -164,7 +172,10 @@ class FlextInfraModelsCliInputsOps:
             ),
         ] = None
 
-    class RefactorMigrateRuntimeAliasImportsInput(ApplyMixin, CliInputBase):
+    class RefactorMigrateRuntimeAliasImportsInput(
+        FlextInfraModelsCliInputsCodegen.ApplyMixin,
+        FlextInfraModelsCliInputsCodegen.CliInputBase,
+    ):
         aliases: Annotated[
             str,
             Field(
@@ -180,7 +191,10 @@ class FlextInfraModelsCliInputsOps:
             ),
         ] = None
 
-    class RefactorUltraworkModelsInput(ApplyMixin, CliInputBase):
+    class RefactorUltraworkModelsInput(
+        FlextInfraModelsCliInputsCodegen.ApplyMixin,
+        FlextInfraModelsCliInputsCodegen.CliInputBase,
+    ):
         normalize_remaining: Annotated[
             bool,
             Field(
@@ -189,7 +203,7 @@ class FlextInfraModelsCliInputsOps:
             ),
         ] = False
 
-    class RefactorCensusInput(CliInputBase):
+    class RefactorCensusInput(FlextInfraModelsCliInputsCodegen.CliInputBase):
         family: Annotated[
             str,
             Field(default="u", description="MRO family to census (c/t/p/m/u)"),
@@ -199,7 +213,10 @@ class FlextInfraModelsCliInputsOps:
             Field(default=None, description="Path to write JSON report"),
         ] = None
 
-    class ReleaseRunInput(ApplyMixin, CliInputBase):
+    class ReleaseRunInput(
+        FlextInfraModelsCliInputsCodegen.ApplyMixin,
+        FlextInfraModelsCliInputsCodegen.CliInputBase,
+    ):
         phase: Annotated[str, Field(default="all", description="Release phase")] = "all"
         version: Annotated[str, Field(default="", description="Version string")] = ""
         tag: Annotated[str, Field(default="", description="Git tag (e.g. v1.0.0)")] = ""
@@ -235,10 +252,10 @@ class FlextInfraModelsCliInputsOps:
             Field(default=None, description="Project names to release"),
         ] = None
 
-    class ValidateBaseMkInput(CliInputBase):
+    class ValidateBaseMkInput(FlextInfraModelsCliInputsCodegen.CliInputBase):
         """CLI input for basemk-validate."""
 
-    class ValidateInventoryInput(CliInputBase):
+    class ValidateInventoryInput(FlextInfraModelsCliInputsCodegen.CliInputBase):
         """CLI input for inventory."""
 
         output_dir: Annotated[
@@ -246,7 +263,7 @@ class FlextInfraModelsCliInputsOps:
             Field(default=None, description="Output directory"),
         ] = None
 
-    class ValidatePytestDiagInput(CliInputBase):
+    class ValidatePytestDiagInput(FlextInfraModelsCliInputsCodegen.CliInputBase):
         """CLI input for pytest-diag."""
 
         junit: Annotated[str, Field(..., description="JUnit XML path")]
@@ -272,7 +289,7 @@ class FlextInfraModelsCliInputsOps:
             Field(default=None, description="Path to write skipped cases"),
         ] = None
 
-    class ValidateScanInput(CliInputBase):
+    class ValidateScanInput(FlextInfraModelsCliInputsCodegen.CliInputBase):
         """CLI input for scan."""
 
         pattern: Annotated[str, Field(..., description="Regex pattern")]
@@ -292,7 +309,7 @@ class FlextInfraModelsCliInputsOps:
             ),
         ] = c.Infra.MatchModes.PRESENT
 
-    class ValidateSkillValidateInput(CliInputBase):
+    class ValidateSkillValidateInput(FlextInfraModelsCliInputsCodegen.CliInputBase):
         """CLI input for skill-validate."""
 
         skill: Annotated[str, Field(..., description="Skill folder name")]
@@ -304,7 +321,7 @@ class FlextInfraModelsCliInputsOps:
             ),
         ] = c.Infra.Modes.BASELINE
 
-    class ValidateStubValidateInput(CliInputBase):
+    class ValidateStubValidateInput(FlextInfraModelsCliInputsCodegen.CliInputBase):
         """CLI input for stub-validate."""
 
         project: Annotated[
@@ -316,10 +333,13 @@ class FlextInfraModelsCliInputsOps:
             Field(default=False, description="Validate all projects", alias="all"),
         ] = False
 
-    class WorkspaceDetectInput(CliInputBase):
+    class WorkspaceDetectInput(FlextInfraModelsCliInputsCodegen.CliInputBase):
         """CLI input for workspace detection."""
 
-    class WorkspaceSyncInput(ApplyMixin, CliInputBase):
+    class WorkspaceSyncInput(
+        FlextInfraModelsCliInputsCodegen.ApplyMixin,
+        FlextInfraModelsCliInputsCodegen.CliInputBase,
+    ):
         """CLI input for base.mk sync."""
 
         canonical_root: Annotated[
@@ -327,7 +347,7 @@ class FlextInfraModelsCliInputsOps:
             Field(default="", description="Canonical workspace root"),
         ] = ""
 
-    class WorkspaceOrchestrateInput(CliInputBase):
+    class WorkspaceOrchestrateInput(FlextInfraModelsCliInputsCodegen.CliInputBase):
         """CLI input for project orchestration."""
 
         verb: Annotated[str, Field(description="Make verb to execute")]
@@ -347,13 +367,16 @@ class FlextInfraModelsCliInputsOps:
             ),
         ] = Field(default_factory=list)
 
-    class WorkspaceMigrateInput(ApplyMixin, CliInputBase):
+    class WorkspaceMigrateInput(
+        FlextInfraModelsCliInputsCodegen.ApplyMixin,
+        FlextInfraModelsCliInputsCodegen.CliInputBase,
+    ):
         dry_run: Annotated[
             bool,
             Field(default=False, description="Preview changes without writing"),
         ] = False
 
-    class MaintenanceRunInput(CliInputBase):
+    class MaintenanceRunInput(FlextInfraModelsCliInputsCodegen.CliInputBase):
         """CLI input for maintenance command."""
 
         check: Annotated[

@@ -20,43 +20,6 @@ from flext_core import u
 from flext_infra import FlextInfraUtilitiesOutput, m, t
 
 
-class _SharedFlags(m.FrozenStrictModel):
-    """Bundled CLI flag configuration for shared parser options."""
-
-    include_apply: bool = True
-    include_diff: bool = True
-    include_format: bool = False
-    include_check: bool = False
-    include_project: bool = False
-
-    @model_validator(mode="before")
-    @classmethod
-    def _resolve_include_diff(
-        cls,
-        data: t.OptionalBoolMapping | _SharedFlags,
-    ) -> t.OptionalBoolMapping | _SharedFlags:
-        if u.is_mapping(data) and (
-            "include_diff" not in data or data.get("include_diff") is None
-        ):
-            resolved: t.MutableOptionalBoolMapping = dict(data)
-            resolved["include_diff"] = data.get("include_apply", True)
-            return resolved
-        return data
-
-    def to_dict(self) -> t.MutableBoolMapping:
-        return {
-            "include_apply": self.include_apply,
-            "include_diff": self.include_diff,
-            "include_format": self.include_format,
-            "include_check": self.include_check,
-            "include_project": self.include_project,
-        }
-
-    @staticmethod
-    def from_dict(data: t.BoolMapping) -> _SharedFlags:
-        return _SharedFlags.model_validate(data)
-
-
 class FlextInfraUtilitiesCli:
     """Static facade for CLI argument parsing and resolution.
 
@@ -65,7 +28,41 @@ class FlextInfraUtilitiesCli:
     output format, check mode, and project selection.
     """
 
-    SharedFlags = _SharedFlags
+    class SharedFlags(m.FrozenStrictModel):
+        """Bundled CLI flag configuration for shared parser options."""
+
+        include_apply: bool = True
+        include_diff: bool = True
+        include_format: bool = False
+        include_check: bool = False
+        include_project: bool = False
+
+        @model_validator(mode="before")
+        @classmethod
+        def _resolve_include_diff(
+            cls,
+            data: t.OptionalBoolMapping | FlextInfraUtilitiesCli.SharedFlags,
+        ) -> t.OptionalBoolMapping | FlextInfraUtilitiesCli.SharedFlags:
+            if u.is_mapping(data) and (
+                "include_diff" not in data or data.get("include_diff") is None
+            ):
+                resolved: t.MutableOptionalBoolMapping = dict(data)
+                resolved["include_diff"] = data.get("include_apply", True)
+                return resolved
+            return data
+
+        def to_dict(self) -> t.MutableBoolMapping:
+            return {
+                "include_apply": self.include_apply,
+                "include_diff": self.include_diff,
+                "include_format": self.include_format,
+                "include_check": self.include_check,
+                "include_project": self.include_project,
+            }
+
+        @staticmethod
+        def from_dict(data: t.BoolMapping) -> FlextInfraUtilitiesCli.SharedFlags:
+            return FlextInfraUtilitiesCli.SharedFlags.model_validate(data)
 
     class CliArgs(m.FrozenStrictModel):
         """Parsed CLI arguments with strict validation.
@@ -122,7 +119,7 @@ class FlextInfraUtilitiesCli:
     @staticmethod
     def _add_shared_flags(
         parser: ArgumentParser,
-        flags: _SharedFlags,
+        flags: FlextInfraUtilitiesCli.SharedFlags,
         *,
         suppress_defaults: bool = False,
     ) -> None:
@@ -191,7 +188,7 @@ class FlextInfraUtilitiesCli:
 
     @staticmethod
     def _shared_flags_parser(
-        flags: _SharedFlags,
+        flags: FlextInfraUtilitiesCli.SharedFlags,
         *,
         suppress_defaults: bool = False,
     ) -> ArgumentParser:
@@ -205,7 +202,7 @@ class FlextInfraUtilitiesCli:
 
     @staticmethod
     def shared_flags_parser(
-        flags: _SharedFlags,
+        flags: FlextInfraUtilitiesCli.SharedFlags,
         *,
         suppress_defaults: bool = False,
     ) -> ArgumentParser:
@@ -221,7 +218,7 @@ class FlextInfraUtilitiesCli:
         description: str,
         *,
         subcommands: t.StrMapping,
-        flags: _SharedFlags | None = None,
+        flags: FlextInfraUtilitiesCli.SharedFlags | None = None,
         subcommand_flags: Mapping[str, t.BoolMapping] | None = None,
     ) -> t.Infra.Pair[ArgumentParser, Mapping[str, ArgumentParser]]:
         """Create main parser with subcommands and shared flags."""
@@ -238,20 +235,20 @@ class FlextInfraUtilitiesCli:
         prog: str,
         description: str,
         *,
-        flags: _SharedFlags | None = None,
+        flags: FlextInfraUtilitiesCli.SharedFlags | None = None,
     ) -> ArgumentParser:
         """Create a standard ArgumentParser with common CLI flags.
 
         Args:
             prog: Program name for the parser.
             description: Description of the command.
-            flags: Bundled flag configuration. Defaults to _SharedFlags() if None.
+            flags: Bundled flag configuration. Defaults to FlextInfraUtilitiesCli.SharedFlags() if None.
 
         Returns:
             Configured ArgumentParser instance.
 
         """
-        resolved_flags = flags or _SharedFlags()
+        resolved_flags = flags or FlextInfraUtilitiesCli.SharedFlags()
         parser = ArgumentParser(prog=prog, description=description)
         FlextInfraUtilitiesCli._add_shared_flags(parser, resolved_flags)
         return parser

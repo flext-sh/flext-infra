@@ -14,8 +14,6 @@ from flext_core import u
 from flext_infra import t
 from flext_infra._utilities.cli import FlextInfraUtilitiesCli
 
-_SharedFlags = FlextInfraUtilitiesCli.SharedFlags
-
 
 class FlextInfraUtilitiesCliSubcommand:
     """Subcommand parser creation and argument validation utilities."""
@@ -43,7 +41,7 @@ class FlextInfraUtilitiesCliSubcommand:
         options: Sequence[t.BoolMapping],
     ) -> t.MutableBoolMapping:
         """Compute the union of enabled shared flags across subcommands."""
-        union = _SharedFlags(
+        union = FlextInfraUtilitiesCli.SharedFlags(
             include_apply=False,
             include_diff=False,
             include_format=False,
@@ -82,7 +80,9 @@ class FlextInfraUtilitiesCliSubcommand:
     ) -> t.Infra.Pair[ArgumentParser, Mapping[str, ArgumentParser]]:
         """Create main parser with subcommands and shared flags."""
         resolved_flags = (
-            _SharedFlags.from_dict(flags) if flags is not None else _SharedFlags()
+            FlextInfraUtilitiesCli.SharedFlags.from_dict(flags)
+            if flags is not None
+            else FlextInfraUtilitiesCli.SharedFlags()
         )
         base_options = resolved_flags.to_dict()
         command_options: MutableMapping[str, t.MutableBoolMapping] = {}
@@ -101,14 +101,14 @@ class FlextInfraUtilitiesCliSubcommand:
             FlextInfraUtilitiesCliSubcommand._shared_option_tokens(root_options),
         )
         shared = FlextInfraUtilitiesCli.shared_flags_parser(
-            _SharedFlags.from_dict(root_options),
+            FlextInfraUtilitiesCli.SharedFlags.from_dict(root_options),
         )
         parser = ArgumentParser(prog=prog, description=description, parents=[shared])
         subparsers = parser.add_subparsers(dest="command")
         command_parsers: MutableMapping[str, ArgumentParser] = {}
         for command, command_help in subcommands.items():
             command_shared = FlextInfraUtilitiesCli.shared_flags_parser(
-                _SharedFlags.from_dict(command_options[command]),
+                FlextInfraUtilitiesCli.SharedFlags.from_dict(command_options[command]),
                 suppress_defaults=True,
             )
             command_parsers[command] = subparsers.add_parser(
