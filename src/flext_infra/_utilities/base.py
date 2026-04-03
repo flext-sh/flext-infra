@@ -26,16 +26,6 @@ class FlextInfraUtilitiesBase:
     """
 
     @staticmethod
-    def ensure_structlog_configured() -> None:
-        """Configure structlog through the canonical core implementation."""
-        u.ensure_structlog_configured()
-
-    @staticmethod
-    def generate_iso_timestamp() -> str:
-        """Generate an ISO timestamp through the canonical core implementation."""
-        return u.generate_iso_timestamp()
-
-    @staticmethod
     def get_str_key(
         mapping: Mapping[str, t.Infra.InfraValue],
         key: str,

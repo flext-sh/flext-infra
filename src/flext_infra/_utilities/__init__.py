@@ -49,9 +49,27 @@ if _t.TYPE_CHECKING:
     )
 
     codegen_execution = _flext_infra__utilities_codegen_execution
-    import flext_infra._utilities.codegen_execution_subprocess as _flext_infra__utilities_codegen_execution_subprocess
+    import flext_infra._utilities.codegen_execution_checks as _flext_infra__utilities_codegen_execution_checks
     from flext_infra._utilities.codegen_execution import (
         FlextInfraUtilitiesCodegenExecution,
+    )
+
+    codegen_execution_checks = _flext_infra__utilities_codegen_execution_checks
+    import flext_infra._utilities.codegen_execution_metrics as _flext_infra__utilities_codegen_execution_metrics
+    from flext_infra._utilities.codegen_execution_checks import (
+        FlextInfraUtilitiesCodegenExecutionChecks,
+    )
+
+    codegen_execution_metrics = _flext_infra__utilities_codegen_execution_metrics
+    import flext_infra._utilities.codegen_execution_runner as _flext_infra__utilities_codegen_execution_runner
+    from flext_infra._utilities.codegen_execution_metrics import (
+        FlextInfraUtilitiesCodegenExecutionMetrics,
+    )
+
+    codegen_execution_runner = _flext_infra__utilities_codegen_execution_runner
+    import flext_infra._utilities.codegen_execution_subprocess as _flext_infra__utilities_codegen_execution_subprocess
+    from flext_infra._utilities.codegen_execution_runner import (
+        FlextInfraUtilitiesCodegenExecutionRunner,
     )
 
     codegen_execution_subprocess = _flext_infra__utilities_codegen_execution_subprocess
@@ -236,6 +254,9 @@ _LAZY_IMPORTS = {
     "FlextInfraUtilitiesCodegenConstantDetection": "flext_infra._utilities.codegen_constant_detection",
     "FlextInfraUtilitiesCodegenConstantTransformation": "flext_infra._utilities.codegen_constant_transformation",
     "FlextInfraUtilitiesCodegenExecution": "flext_infra._utilities.codegen_execution",
+    "FlextInfraUtilitiesCodegenExecutionChecks": "flext_infra._utilities.codegen_execution_checks",
+    "FlextInfraUtilitiesCodegenExecutionMetrics": "flext_infra._utilities.codegen_execution_metrics",
+    "FlextInfraUtilitiesCodegenExecutionRunner": "flext_infra._utilities.codegen_execution_runner",
     "FlextInfraUtilitiesCodegenGovernance": "flext_infra._utilities.codegen_governance",
     "FlextInfraUtilitiesCodegenImportCycles": "flext_infra._utilities.codegen_import_cycles",
     "FlextInfraUtilitiesCodegenLazyAliases": "flext_infra._utilities.codegen_lazy_aliases",
@@ -283,6 +304,9 @@ _LAZY_IMPORTS = {
     "codegen_constant_detection": "flext_infra._utilities.codegen_constant_detection",
     "codegen_constant_transformation": "flext_infra._utilities.codegen_constant_transformation",
     "codegen_execution": "flext_infra._utilities.codegen_execution",
+    "codegen_execution_checks": "flext_infra._utilities.codegen_execution_checks",
+    "codegen_execution_metrics": "flext_infra._utilities.codegen_execution_metrics",
+    "codegen_execution_runner": "flext_infra._utilities.codegen_execution_runner",
     "codegen_execution_subprocess": "flext_infra._utilities.codegen_execution_subprocess",
     "codegen_governance": "flext_infra._utilities.codegen_governance",
     "codegen_import_cycles": "flext_infra._utilities.codegen_import_cycles",
@@ -334,6 +358,9 @@ __all__ = [
     "FlextInfraUtilitiesCodegenConstantDetection",
     "FlextInfraUtilitiesCodegenConstantTransformation",
     "FlextInfraUtilitiesCodegenExecution",
+    "FlextInfraUtilitiesCodegenExecutionChecks",
+    "FlextInfraUtilitiesCodegenExecutionMetrics",
+    "FlextInfraUtilitiesCodegenExecutionRunner",
     "FlextInfraUtilitiesCodegenGovernance",
     "FlextInfraUtilitiesCodegenImportCycles",
     "FlextInfraUtilitiesCodegenLazyAliases",
@@ -381,6 +408,9 @@ __all__ = [
     "codegen_constant_detection",
     "codegen_constant_transformation",
     "codegen_execution",
+    "codegen_execution_checks",
+    "codegen_execution_metrics",
+    "codegen_execution_runner",
     "codegen_execution_subprocess",
     "codegen_governance",
     "codegen_import_cycles",

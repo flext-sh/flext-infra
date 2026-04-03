@@ -121,7 +121,7 @@ class FlextInfraCliRefactor:
         """Run namespace enforcement checks and optionally apply fixes."""
         project_names: t.StrSequence | None = None
         if params.project:
-            project_names = u.Infra.project_names_from_values(params.project)
+            project_names = u.Cli.project_names_from_values(params.project)
         enforcer = FlextInfraNamespaceEnforcer(
             workspace_root=Path(params.workspace),
         )
@@ -149,7 +149,7 @@ class FlextInfraCliRefactor:
         """Move selected runtime aliases from `flext_core` to the local MRO root."""
         project_names: t.StrSequence | None = None
         if params.project:
-            project_names = u.Infra.project_names_from_values(params.project)
+            project_names = u.Cli.project_names_from_values(params.project)
         aliases = [item.strip() for item in params.aliases.split(",") if item.strip()]
         results = u.Infra.migrate_runtime_alias_imports(
             workspace_root=Path(params.workspace),

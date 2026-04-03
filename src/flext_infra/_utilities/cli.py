@@ -15,7 +15,7 @@ from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
 from flext_cli import FlextCliUtilities
-from flext_infra._utilities.base import FlextInfraUtilitiesBase
+from flext_core import u
 from flext_infra._utilities.cli_shared import FlextInfraUtilitiesCliShared
 from flext_infra._utilities.cli_subcommand import FlextInfraUtilitiesCliSubcommand
 from flext_infra._utilities.output import FlextInfraUtilitiesOutput
@@ -62,7 +62,7 @@ class FlextInfraUtilitiesCli(FlextInfraUtilitiesCliShared):
                 List of project names if any specified, None if both arguments empty.
 
             """
-            return FlextInfraUtilitiesCli.project_names_from_values(
+            return FlextCliUtilities.Cli.project_names_from_values(
                 self.project,
                 self.projects,
             )
@@ -100,13 +100,6 @@ class FlextInfraUtilitiesCli(FlextInfraUtilitiesCliShared):
             flags=flags.to_dict() if flags is not None else None,
             subcommand_flags=subcommand_flags,
         )
-
-    @staticmethod
-    def project_names_from_values(
-        *values: str | t.StrSequence | None,
-    ) -> t.StrSequence | None:
-        """Normalize project selectors through the canonical CLI utility."""
-        return FlextCliUtilities.Cli.project_names_from_values(*values)
 
     @staticmethod
     def create_parser(
@@ -205,7 +198,7 @@ class FlextInfraUtilitiesCli(FlextInfraUtilitiesCliShared):
         argv: t.StrSequence | None = None,
     ) -> int:
         try:
-            FlextInfraUtilitiesBase.ensure_structlog_configured()
+            u.ensure_structlog_configured()
             return main_fn(argv)
         except SystemExit as exc:
             exit_value = exc.code

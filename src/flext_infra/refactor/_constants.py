@@ -60,58 +60,8 @@ class FlextInfraRefactorConstants:
         "remove_unused_models",
     })
     TIER0_FIX_ACTIONS: ClassVar[frozenset[str]] = frozenset({"fix_tier0_imports"})
-    DUNDER_OBJECT_ALLOWLIST: ClassVar[frozenset[str]] = frozenset({
-        "__eq__",
-        "__ne__",
-        "__hash__",
-        "__lt__",
-        "__le__",
-        "__gt__",
-        "__ge__",
-    })
-    "Dunder methods where `t.NormalizedValue` parameter type is canonical Python."
     FUTURE_FIX_ACTIONS: ClassVar[frozenset[str]] = frozenset({
         "ensure_future_annotations",
-    })
-    FUTURE_FALLBACK_KEYWORDS: ClassVar[frozenset[str]] = frozenset({
-        "ensure-future",
-        "future-annotations",
-    })
-    LEGACY_FALLBACK_KEYWORDS: ClassVar[frozenset[str]] = frozenset({
-        "legacy",
-        "alias",
-        "deprecated",
-        "wrapper",
-        "bypass",
-    })
-    IMPORT_FALLBACK_KEYWORDS: ClassVar[frozenset[str]] = frozenset({
-        "import",
-        "modernize",
-    })
-    CLASS_FALLBACK_KEYWORDS: ClassVar[frozenset[str]] = frozenset({
-        "class",
-        "reorder",
-        "method",
-    })
-    PATTERN_FALLBACK_KEYWORDS: ClassVar[frozenset[str]] = frozenset({
-        "redundant-cast",
-        "dict-to-mapping",
-        "container-invariance",
-    })
-    MRO_MIGRATION_FALLBACK_KEYWORDS: ClassVar[frozenset[str]] = frozenset({
-        "migrate-to-class-mro",
-    })
-    MRO_FALLBACK_KEYWORDS: ClassVar[frozenset[str]] = frozenset({"mro"})
-    PROPAGATION_FALLBACK_KEYWORDS: ClassVar[frozenset[str]] = frozenset({
-        "propagate",
-        "symbol-rename",
-        "rename",
-    })
-    MRO_MIGRATION_ACTIONS: ClassVar[frozenset[str]] = frozenset({
-        "migrate_to_class_mro",
-    })
-    SIGNATURE_PROPAGATION_ACTIONS: ClassVar[frozenset[str]] = frozenset({
-        "propagate_signature_migrations",
     })
     TYPING_DEFINITION_FILES: ClassVar[frozenset[str]] = frozenset({
         "typings.py",
@@ -184,14 +134,8 @@ class FlextInfraRefactorConstants:
     "Constants module glob scanned by the migration scanner."
     CONSTANTS_CLASS_SUFFIX: ClassVar[str] = "Constants"
     "Class-name suffix used to identify constants facades."
-    FINAL_ANNOTATION_NAME: ClassVar[str] = "Final"
-    "Annotation marker used to detect module-level constants."
-    CONSTANT_PATTERN_REGEX: ClassVar[str] = "^_*[A-Z][A-Z0-9_]*$"
-    "Naming pattern for module-level constant candidates."
-    CONSTANT_PATTERN: ClassVar[re.Pattern[str]] = re.compile(CONSTANT_PATTERN_REGEX)
+    CONSTANT_PATTERN: ClassVar[re.Pattern[str]] = re.compile(r"^_*[A-Z][A-Z0-9_]*$")
     "Compiled naming pattern for module-level constant candidates."
-    DEFAULT_FACADE_ALIAS: ClassVar[str] = "c"
-    "Default facade alias inserted during import rewrite."
     FAMILY_SUFFIXES: ClassVar[t.StrMapping] = {
         "c": "Constants",
         "t": "Types",
@@ -308,8 +252,6 @@ class FlextInfraRefactorConstants:
         "utility",
     )
     "Priority order for violation classification."
-    CAST_ARITY: int = 2
-    "Expected number of arguments for typing.cast calls."
     MIN_PATH_DEPTH: int = 2
     "Minimum relative path depth for module prefix detection."
     NAMESPACE_CONSTANT_PATTERN: ClassVar[re.Pattern[str]] = re.compile(
@@ -332,7 +274,6 @@ class FlextInfraRefactorConstants:
     NAMESPACE_MAX_RENDERED_LOOSE_OBJECTS: ClassVar[int] = 10
     NAMESPACE_MAX_RENDERED_IMPORT_VIOLATIONS: ClassVar[int] = 5
     NAMESPACE_NO_RENDER_LIMIT: ClassVar[int] = 10_000
-    MAX_SCAN_FILES: ClassVar[int] = 10_000
     FACADE_ALIAS_RE: ClassVar[re.Pattern[str]] = re.compile(
         r"^(\w)\s*=\s*(\w+)",
         re.MULTILINE,

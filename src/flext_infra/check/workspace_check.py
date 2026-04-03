@@ -9,8 +9,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import override
 
-from pydantic import JsonValue
-
 from flext_core import r, s
 from flext_infra import (
     FlextInfraGateRegistry,
@@ -50,14 +48,6 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
             )
 
     @staticmethod
-    def generate_sarif_report(
-        results: Sequence[m.Infra.ProjectResult],
-        gates: t.StrSequence,
-    ) -> JsonValue:
-        """Generate a SARIF payload from gate results."""
-        return u.Infra.generate_sarif(results, gates)
-
-    @staticmethod
     def parse_gate_csv(raw: str) -> t.StrSequence:
         """Parse a comma-separated gate list."""
         return [gate.strip() for gate in raw.split(",") if gate.strip()]
@@ -93,15 +83,6 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
         return r[m.Infra.GateResult].ok(
             self._run_gate(c.Infra.FORMAT, project_dir).result,
         )
-
-    def generate_markdown_report(
-        self,
-        results: Sequence[m.Infra.ProjectResult],
-        gates: t.StrSequence,
-        timestamp: str,
-    ) -> str:
-        """Generate a markdown summary report for check results."""
-        return u.Infra.generate_markdown(results, gates, timestamp)
 
     def lint(self, project_dir: Path) -> r[m.Infra.GateResult]:
         """Run lint checks for one project."""

@@ -132,21 +132,10 @@ if _t.TYPE_CHECKING:
     from tests.unit.check.extended_project_runners_tests import TestJsonWriteFailure
 
     extended_projects_tests = _tests_unit_check_extended_projects_tests
-    import tests.unit.check.extended_reports_tests as _tests_unit_check_extended_reports_tests
+    import tests.unit.check.extended_resolve_gates_tests as _tests_unit_check_extended_resolve_gates_tests
     from tests.unit.check.extended_projects_tests import (
         TestCheckProjectRunners,
         TestLintAndFormatPublicMethods,
-    )
-
-    extended_reports_tests = _tests_unit_check_extended_reports_tests
-    import tests.unit.check.extended_resolve_gates_tests as _tests_unit_check_extended_resolve_gates_tests
-    from tests.unit.check.extended_reports_tests import (
-        TestMarkdownReportSkipsEmptyGates,
-        TestMarkdownReportWithErrors,
-        TestWorkspaceCheckerMarkdownReport,
-        TestWorkspaceCheckerMarkdownReportEdgeCases,
-        TestWorkspaceCheckerSARIFReport,
-        TestWorkspaceCheckerSARIFReportEdgeCases,
     )
 
     extended_resolve_gates_tests = _tests_unit_check_extended_resolve_gates_tests
@@ -274,8 +263,6 @@ _LAZY_IMPORTS = {
     "TestJsonWriteFailure": "tests.unit.check.extended_project_runners_tests",
     "TestLintAndFormatPublicMethods": "tests.unit.check.extended_projects_tests",
     "TestMarkdownReportEmptyGates": "tests.unit.check.extended_error_reporting_tests",
-    "TestMarkdownReportSkipsEmptyGates": "tests.unit.check.extended_reports_tests",
-    "TestMarkdownReportWithErrors": "tests.unit.check.extended_reports_tests",
     "TestMypyEmptyLinesInOutput": "tests.unit.check.extended_error_reporting_tests",
     "TestProcessFileReadError": "tests.unit.check.extended_config_fixer_errors_tests",
     "TestProjectResultProperties": "tests.unit.check.extended_models_tests",
@@ -305,8 +292,6 @@ _LAZY_IMPORTS = {
     "TestWorkspaceCheckerExistingCheckDirs": "tests.unit.check.extended_workspace_init_tests",
     "TestWorkspaceCheckerInitOSError": "tests.unit.check.extended_workspace_init_tests",
     "TestWorkspaceCheckerInitialization": "tests.unit.check.extended_workspace_init_tests",
-    "TestWorkspaceCheckerMarkdownReport": "tests.unit.check.extended_reports_tests",
-    "TestWorkspaceCheckerMarkdownReportEdgeCases": "tests.unit.check.extended_reports_tests",
     "TestWorkspaceCheckerParseGateCSV": "tests.unit.check.extended_resolve_gates_tests",
     "TestWorkspaceCheckerResolveGates": "tests.unit.check.extended_resolve_gates_tests",
     "TestWorkspaceCheckerResolveWorkspaceRootFallback": "tests.unit.check.extended_workspace_init_tests",
@@ -316,8 +301,6 @@ _LAZY_IMPORTS = {
     "TestWorkspaceCheckerRunMarkdown": "tests.unit.check.extended_gate_bandit_markdown_tests",
     "TestWorkspaceCheckerRunMypy": "tests.unit.check.extended_gate_mypy_pyright_tests",
     "TestWorkspaceCheckerRunPyright": "tests.unit.check.extended_gate_mypy_pyright_tests",
-    "TestWorkspaceCheckerSARIFReport": "tests.unit.check.extended_reports_tests",
-    "TestWorkspaceCheckerSARIFReportEdgeCases": "tests.unit.check.extended_reports_tests",
     "_shared_fixtures": "tests.unit.check._shared_fixtures",
     "_stubs": "tests.unit.check._stubs",
     "c": ("flext_core.constants", "FlextConstants"),
@@ -340,7 +323,6 @@ _LAZY_IMPORTS = {
     "extended_models_tests": "tests.unit.check.extended_models_tests",
     "extended_project_runners_tests": "tests.unit.check.extended_project_runners_tests",
     "extended_projects_tests": "tests.unit.check.extended_projects_tests",
-    "extended_reports_tests": "tests.unit.check.extended_reports_tests",
     "extended_resolve_gates_tests": "tests.unit.check.extended_resolve_gates_tests",
     "extended_run_projects_tests": "tests.unit.check.extended_run_projects_tests",
     "extended_runners_extra_tests": "tests.unit.check.extended_runners_extra_tests",
@@ -412,8 +394,6 @@ __all__ = [
     "TestJsonWriteFailure",
     "TestLintAndFormatPublicMethods",
     "TestMarkdownReportEmptyGates",
-    "TestMarkdownReportSkipsEmptyGates",
-    "TestMarkdownReportWithErrors",
     "TestMypyEmptyLinesInOutput",
     "TestProcessFileReadError",
     "TestProjectResultProperties",
@@ -443,8 +423,6 @@ __all__ = [
     "TestWorkspaceCheckerExistingCheckDirs",
     "TestWorkspaceCheckerInitOSError",
     "TestWorkspaceCheckerInitialization",
-    "TestWorkspaceCheckerMarkdownReport",
-    "TestWorkspaceCheckerMarkdownReportEdgeCases",
     "TestWorkspaceCheckerParseGateCSV",
     "TestWorkspaceCheckerResolveGates",
     "TestWorkspaceCheckerResolveWorkspaceRootFallback",
@@ -454,8 +432,6 @@ __all__ = [
     "TestWorkspaceCheckerRunMarkdown",
     "TestWorkspaceCheckerRunMypy",
     "TestWorkspaceCheckerRunPyright",
-    "TestWorkspaceCheckerSARIFReport",
-    "TestWorkspaceCheckerSARIFReportEdgeCases",
     "_shared_fixtures",
     "_stubs",
     "c",
@@ -478,7 +454,6 @@ __all__ = [
     "extended_models_tests",
     "extended_project_runners_tests",
     "extended_projects_tests",
-    "extended_reports_tests",
     "extended_resolve_gates_tests",
     "extended_run_projects_tests",
     "extended_runners_extra_tests",

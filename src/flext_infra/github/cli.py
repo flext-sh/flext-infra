@@ -129,7 +129,7 @@ class FlextInfraCliGithub:
         """Manage PRs across workspace."""
         project_names: t.StrSequence | None = None
         if params.project:
-            project_names = u.Infra.project_names_from_values(params.project)
+            project_names = u.Cli.project_names_from_values(params.project)
         pr_model = m.Infra.PrWorkspaceArgs(
             include_root=params.include_root,
             branch=params.branch,

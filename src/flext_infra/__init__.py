@@ -117,9 +117,27 @@ if _t.TYPE_CHECKING:
     )
 
     codegen_execution = _flext_infra__utilities_codegen_execution
-    import flext_infra._utilities.codegen_execution_subprocess as _flext_infra__utilities_codegen_execution_subprocess
+    import flext_infra._utilities.codegen_execution_checks as _flext_infra__utilities_codegen_execution_checks
     from flext_infra._utilities.codegen_execution import (
         FlextInfraUtilitiesCodegenExecution,
+    )
+
+    codegen_execution_checks = _flext_infra__utilities_codegen_execution_checks
+    import flext_infra._utilities.codegen_execution_metrics as _flext_infra__utilities_codegen_execution_metrics
+    from flext_infra._utilities.codegen_execution_checks import (
+        FlextInfraUtilitiesCodegenExecutionChecks,
+    )
+
+    codegen_execution_metrics = _flext_infra__utilities_codegen_execution_metrics
+    import flext_infra._utilities.codegen_execution_runner as _flext_infra__utilities_codegen_execution_runner
+    from flext_infra._utilities.codegen_execution_metrics import (
+        FlextInfraUtilitiesCodegenExecutionMetrics,
+    )
+
+    codegen_execution_runner = _flext_infra__utilities_codegen_execution_runner
+    import flext_infra._utilities.codegen_execution_subprocess as _flext_infra__utilities_codegen_execution_subprocess
+    from flext_infra._utilities.codegen_execution_runner import (
+        FlextInfraUtilitiesCodegenExecutionRunner,
     )
 
     codegen_execution_subprocess = _flext_infra__utilities_codegen_execution_subprocess
@@ -335,6 +353,10 @@ if _t.TYPE_CHECKING:
 
     codegen = _flext_infra_codegen
     import flext_infra.codegen.constants_quality_gate as _flext_infra_codegen_constants_quality_gate
+    from flext_infra.codegen._cli_codegen_consolidate import (
+        FlextInfraCliCodegenConsolidate,
+    )
+    from flext_infra.codegen._cli_codegen_handlers import FlextInfraCliCodegenHandlers
     from flext_infra.codegen._codegen_generation import FlextInfraCodegenGeneration
     from flext_infra.codegen._codegen_generation_helpers import (
         _build_lazy_entries,
@@ -1187,6 +1209,8 @@ __all__ = [
     "FlextInfraCliBasemk",
     "FlextInfraCliCheck",
     "FlextInfraCliCodegen",
+    "FlextInfraCliCodegenConsolidate",
+    "FlextInfraCliCodegenHandlers",
     "FlextInfraCliDeps",
     "FlextInfraCliDocs",
     "FlextInfraCliGithub",
@@ -1382,6 +1406,9 @@ __all__ = [
     "FlextInfraUtilitiesCodegenConstantDetection",
     "FlextInfraUtilitiesCodegenConstantTransformation",
     "FlextInfraUtilitiesCodegenExecution",
+    "FlextInfraUtilitiesCodegenExecutionChecks",
+    "FlextInfraUtilitiesCodegenExecutionMetrics",
+    "FlextInfraUtilitiesCodegenExecutionRunner",
     "FlextInfraUtilitiesCodegenGovernance",
     "FlextInfraUtilitiesCodegenImportCycles",
     "FlextInfraUtilitiesCodegenLazyAliases",
@@ -1507,6 +1534,9 @@ __all__ = [
     "codegen_constant_detection",
     "codegen_constant_transformation",
     "codegen_execution",
+    "codegen_execution_checks",
+    "codegen_execution_metrics",
+    "codegen_execution_runner",
     "codegen_execution_subprocess",
     "codegen_governance",
     "codegen_import_cycles",

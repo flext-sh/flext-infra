@@ -342,21 +342,10 @@ if _t.TYPE_CHECKING:
     from tests.unit.check.extended_project_runners_tests import TestJsonWriteFailure
 
     extended_projects_tests = _tests_unit_check_extended_projects_tests
-    import tests.unit.check.extended_reports_tests as _tests_unit_check_extended_reports_tests
+    import tests.unit.check.extended_resolve_gates_tests as _tests_unit_check_extended_resolve_gates_tests
     from tests.unit.check.extended_projects_tests import (
         TestCheckProjectRunners,
         TestLintAndFormatPublicMethods,
-    )
-
-    extended_reports_tests = _tests_unit_check_extended_reports_tests
-    import tests.unit.check.extended_resolve_gates_tests as _tests_unit_check_extended_resolve_gates_tests
-    from tests.unit.check.extended_reports_tests import (
-        TestMarkdownReportSkipsEmptyGates,
-        TestMarkdownReportWithErrors,
-        TestWorkspaceCheckerMarkdownReport,
-        TestWorkspaceCheckerMarkdownReportEdgeCases,
-        TestWorkspaceCheckerSARIFReport,
-        TestWorkspaceCheckerSARIFReportEdgeCases,
     )
 
     extended_resolve_gates_tests = _tests_unit_check_extended_resolve_gates_tests
@@ -2146,8 +2135,6 @@ __all__ = [
     "TestMaintenanceMainEnforcer",
     "TestMaintenanceMainSuccess",
     "TestMarkdownReportEmptyGates",
-    "TestMarkdownReportSkipsEmptyGates",
-    "TestMarkdownReportWithErrors",
     "TestMaybeWriteTodo",
     "TestMergeChildExports",
     "TestMigratorDryRun",
@@ -2290,8 +2277,6 @@ __all__ = [
     "TestWorkspaceCheckerExistingCheckDirs",
     "TestWorkspaceCheckerInitOSError",
     "TestWorkspaceCheckerInitialization",
-    "TestWorkspaceCheckerMarkdownReport",
-    "TestWorkspaceCheckerMarkdownReportEdgeCases",
     "TestWorkspaceCheckerParseGateCSV",
     "TestWorkspaceCheckerResolveGates",
     "TestWorkspaceCheckerResolveWorkspaceRootFallback",
@@ -2301,8 +2286,6 @@ __all__ = [
     "TestWorkspaceCheckerRunMarkdown",
     "TestWorkspaceCheckerRunMypy",
     "TestWorkspaceCheckerRunPyright",
-    "TestWorkspaceCheckerSARIFReport",
-    "TestWorkspaceCheckerSARIFReportEdgeCases",
     "TestWorkspaceRoot",
     "TestWorkspaceRootFromEnv",
     "TestWorkspaceRootFromParents",
@@ -2357,7 +2340,6 @@ __all__ = [
     "extended_models_tests",
     "extended_project_runners_tests",
     "extended_projects_tests",
-    "extended_reports_tests",
     "extended_resolve_gates_tests",
     "extended_run_projects_tests",
     "extended_runners_extra_tests",

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import difflib
 import importlib
 from collections.abc import Sequence
 from pathlib import Path
@@ -31,6 +32,56 @@ if TYPE_CHECKING:
 def _format_text(value: str) -> str:
     """Format text result for CLI output."""
     return str(value)
+
+
+# ── Consolidation validation helpers ─────────────────────────────────
+
+
+_LINT_TOOLS: Sequence[tuple[str, Sequence[str]]] = (
+    ("ruff", ("ruff", "check", "{file}", "--no-fix", "--select", "E,F")),
+    ("pyright", ("pyright", "{file}")),
+    ("mypy", ("mypy", "{file}", "--no-error-summary")),
+    ("pyrefly", ("pyrefly", "check", "{file}")),
+)
+
+
+def _count_lint_errors(
+    py_file: Path,
+    workspace: Path,
+) -> dict[str, list[str]]:
+    """Run all lint tools and return error lines per tool.
+
+    Pre-existing errors are captured so we can compare after changes.
+    """
+    errors: dict[str, list[str]] = {}
+    for tool_name, cmd_template in _LINT_TOOLS:
+        cmd = [arg.replace("{file}", str(py_file)) for arg in cmd_template]
+        result = u.Infra.run_raw(
+            cmd,
+            cwd=workspace,
+            timeout=c.Infra.Timeouts.SHORT,
+        )
+        if result.is_failure:
+            continue
+        if result.value.exit_code != 0:
+            output = (result.value.stdout + result.value.stderr).strip()
+            error_lines = [ln for ln in output.splitlines() if ln.strip()]
+            errors[tool_name] = error_lines
+    return errors
+
+
+def _find_new_errors(
+    baseline: dict[str, list[str]],
+    post: dict[str, list[str]],
+) -> dict[str, list[str]]:
+    """Return only errors that are NEW (not in baseline)."""
+    new_errors: dict[str, list[str]] = {}
+    for tool_name, post_lines in post.items():
+        base_set = frozenset(baseline.get(tool_name, []))
+        new_lines = [ln for ln in post_lines if ln not in base_set]
+        if new_lines:
+            new_errors[tool_name] = new_lines
+    return new_errors
 
 
 class FlextInfraCliCodegen:
@@ -590,6 +641,13 @@ class FlextInfraCliCodegen:
 
                 # ── Phase 2: apply via rope + validate + rollback ─
                 backup = source
+
+                # Baseline: capture pre-existing lint errors BEFORE changes
+                baseline_errors = _count_lint_errors(
+                    py_file,
+                    workspace,
+                )
+
                 source_with_newlines = backup.splitlines(keepends=True)
 
                 offset_edits: list[tuple[int, int, str]] = []
@@ -631,43 +689,54 @@ class FlextInfraCliCodegen:
                     apply=True,
                 )
 
-                # ── Validate with linters ─────────────────────────
-                ok = True
-                for tool_cmd in (
-                    [
-                        "ruff",
-                        "check",
-                        str(py_file),
-                        "--no-fix",
-                        "--select",
-                        "E,F",
-                    ],
-                    ["pyright", str(py_file)],
-                ):
-                    check_result = u.Infra.run_raw(
-                        tool_cmd,
-                        cwd=workspace,
-                        timeout=c.Infra.Timeouts.SHORT,
-                    )
-                    if check_result.is_failure:
-                        continue
-                    if check_result.value.exit_code != 0:
-                        ok = False
-                        out = (check_result.value.stdout + check_result.value.stderr)[
-                            :200
-                        ]
-                        lines.append(
-                            f"  FAILED {rel} [{tool_cmd[0]}]: {out}",
-                        )
-                        break
+                # ── Validate: compare post-edit errors against baseline ─
+                post_errors = _count_lint_errors(py_file, workspace)
+                new_errors = _find_new_errors(
+                    baseline_errors,
+                    post_errors,
+                )
 
-                if not ok:
+                # Run pytest for test files
+                is_test = "tests" in py_file.parts or py_file.name.startswith("test_")
+                test_failure: str | None = None
+                if is_test and not new_errors:
+                    test_result = u.Infra.run_raw(
+                        ["pytest", str(py_file), "-x", "--tb=short", "-q"],
+                        cwd=workspace,
+                        timeout=c.Infra.Timeouts.MEDIUM,
+                    )
+                    if test_result.is_success and test_result.value.exit_code != 0:
+                        test_failure = (
+                            test_result.value.stdout + test_result.value.stderr
+                        )[:300]
+
+                if new_errors or test_failure:
+                    # Show diff of what was attempted
+                    modified = FlextInfraUtilitiesRope.read_source(resource)
+                    diff_lines = list(
+                        difflib.unified_diff(
+                            backup.splitlines(keepends=True),
+                            modified.splitlines(keepends=True),
+                            fromfile=f"a/{rel}",
+                            tofile=f"b/{rel}",
+                            n=3,
+                        )
+                    )
+                    # Rollback
                     FlextInfraUtilitiesRope.write_source(
                         rope_project,
                         resource,
                         backup,
                     )
                     total_failed += 1
+                    lines.append(f"  REVERTED {rel}:")
+                    if diff_lines:
+                        lines.extend(f"    {dl.rstrip()}" for dl in diff_lines[:30])
+                    for tool_name, msgs in new_errors.items():
+                        lines.append(f"    NEW {tool_name} errors:")
+                        lines.extend(f"      {msg}" for msg in msgs[:5])
+                    if test_failure:
+                        lines.append(f"    pytest failure: {test_failure}")
                     file_results.append({
                         "file": str(rel),
                         "status": "reverted",
