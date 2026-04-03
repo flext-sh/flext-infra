@@ -1,0 +1,41 @@
+src/flext_infra/_utilities/codegen_constant_transformation.py
+  e1d2767e43e21b6f 1,11
+src/flext_infra/_utilities/codegen_constant_detection.py
+  e1d2767e43e21b6f 48-55
+src/flext_infra/codegen/cli.py
+  e1d2767e43e21b6f 5,470-471,493,647,649,652,654,656
+  cdbb584679205432 19-20,650
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "be19960e498f1480eea15ed20fa936cf60bb0ea5",
+  "prompts": {
+    "cdbb584679205432": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "deb21ed0-98e4-498f-8592-3944a588496c",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 9,
+      "total_deletions": 10,
+      "accepted_lines": 3,
+      "overriden_lines": 1
+    },
+    "e1d2767e43e21b6f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b88f5b43-f2ee-4bd5-8e49-f0bc2c3099ed",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 30,
+      "total_deletions": 209,
+      "accepted_lines": 20,
+      "overriden_lines": 0
+    }
+  }
+}
