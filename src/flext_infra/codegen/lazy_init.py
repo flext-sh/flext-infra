@@ -39,6 +39,12 @@ class FlextInfraCodegenLazyInit(s[int]):
         super().__init__()
         self._root: Path = workspace_root
         self._aliases = u.Infra(workspace_root)
+        self._modified_files: t.Infra.StrSet = set()
+
+    @property
+    def modified_files(self) -> Sequence[str]:
+        """Return generated __init__.py files that changed on disk."""
+        return tuple(sorted(self._modified_files))
 
     @override
     def execute(self) -> r[int]:
@@ -46,6 +52,7 @@ class FlextInfraCodegenLazyInit(s[int]):
 
     def run(self, *, check_only: bool = False) -> int:
         """Process all package directories bottom-up and generate PEP 562 inits."""
+        self._modified_files.clear()
         pkg_dirs = self._find_package_dirs()
         total, ok, errors, _dir_exports = self._generate_all_inits(
             pkg_dirs,
@@ -146,6 +153,17 @@ class FlextInfraCodegenLazyInit(s[int]):
             pkg_dir,
             current_pkg,
         )
+        version_runtime_modules: t.Infra.StrSet = {
+            module_path for module_path, _attr_name in version_entries.values()
+        }
+        if not version_runtime_modules and (
+            inline_constants and (pkg_dir / "__version__.py").exists()
+        ):
+            version_runtime_modules.add(
+                f"{current_pkg}.__version__" if current_pkg else "__version__",
+            )
+        for export_name, entry in version_entries.items():
+            lazy_map.setdefault(export_name, entry)
         if not pkg_dir.name.startswith("_"):
             self._aliases.resolve_aliases(lazy_map, pkg_dir=pkg_dir)
         for infra_name in ("cleanup_submodule_namespace", "lazy_getattr"):
@@ -155,12 +173,7 @@ class FlextInfraCodegenLazyInit(s[int]):
         )
         for k in inline_constants:
             lazy_map.pop(k, None)
-        eager_version: t.Infra.MutableLazyImportMap = {}
-        for name, entry in version_entries.items():
-            eager_version[name] = entry
-        exports = sorted(
-            set(lazy_map) | set(inline_constants) | eager_tvars | set(eager_version),
-        )
+        exports = sorted(set(lazy_map) | set(inline_constants) | eager_tvars)
         if not exports:
             return (None, dict(lazy_map))
         if check_only:
@@ -173,7 +186,7 @@ class FlextInfraCodegenLazyInit(s[int]):
             inline_constants,
             current_pkg,
             eager_tvars,
-            eager_version or None,
+            wildcard_runtime_imports=tuple(sorted(version_runtime_modules)),
             child_packages_for_lazy=child_packages_for_lazy,
             child_packages_for_tc=child_packages_for_tc,
         )
@@ -188,6 +201,7 @@ class FlextInfraCodegenLazyInit(s[int]):
         current_pkg: str,
         eager_typevar_names: frozenset[str] = frozenset(),
         eager_imports: t.Infra.LazyImportMap | None = None,
+        wildcard_runtime_imports: t.StrSequence | None = None,
         child_packages_for_lazy: t.StrSequence | None = None,
         child_packages_for_tc: t.StrSequence | None = None,
     ) -> t.Infra.LazyInitWriteResult:
@@ -200,11 +214,19 @@ class FlextInfraCodegenLazyInit(s[int]):
                 current_pkg,
                 eager_typevar_names,
                 eager_imports,
+                wildcard_runtime_imports,
                 child_packages_for_lazy=child_packages_for_lazy or [],
                 child_packages_for_tc=child_packages_for_tc or [],
             )
-            init_path.write_text(generated, encoding=c.Infra.Encoding.DEFAULT)
-            u.Infra.run_ruff_fix(init_path, quiet=True)
+            previous = (
+                init_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+                if init_path.exists()
+                else None
+            )
+            if previous != generated:
+                init_path.write_text(generated, encoding=c.Infra.Encoding.DEFAULT)
+                self._modified_files.add(str(init_path))
+                u.Infra.run_ruff_fix(init_path, quiet=True)
         except (OSError, ValueError) as exc:
             u.Infra.error(f"generating {init_path}: {exc}")
             return (-1, dict(lazy_map))

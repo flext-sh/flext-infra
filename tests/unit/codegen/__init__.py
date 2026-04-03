@@ -79,10 +79,9 @@ if _TYPE_CHECKING:
         TestExcludedDirectories,
     )
     from tests.unit.codegen.lazy_init_transforms_tests import (
-        TestExtractInlineConstants,
         TestExtractVersionExports,
         TestMergeChildExports,
-        TestScanAstPublicDefs,
+        TestScanPublicDefs,
         TestShouldBubbleUp,
     )
     from tests.unit.codegen.main_tests import (
@@ -115,7 +114,6 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "TestExcludedDirectories": "tests.unit.codegen.lazy_init_tests",
     "TestExcludedProjects": "tests.unit.codegen.census_models_tests",
     "TestExtractExports": "tests.unit.codegen.lazy_init_helpers_tests",
-    "TestExtractInlineConstants": "tests.unit.codegen.lazy_init_transforms_tests",
     "TestExtractVersionExports": "tests.unit.codegen.lazy_init_transforms_tests",
     "TestFixabilityClassification": "tests.unit.codegen.census_tests",
     "TestFlextInfraCodegenLazyInit": "tests.unit.codegen.lazy_init_service_tests",
@@ -138,7 +136,7 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "TestScaffoldProjectCreatesTestsModules": "tests.unit.codegen.scaffolder_tests",
     "TestScaffoldProjectIdempotency": "tests.unit.codegen.scaffolder_tests",
     "TestScaffoldProjectNoop": "tests.unit.codegen.scaffolder_tests",
-    "TestScanAstPublicDefs": "tests.unit.codegen.lazy_init_transforms_tests",
+    "TestScanPublicDefs": "tests.unit.codegen.lazy_init_transforms_tests",
     "TestShouldBubbleUp": "tests.unit.codegen.lazy_init_transforms_tests",
     "TestViolationPattern": "tests.unit.codegen.census_models_tests",
     "_project_factory": "tests.unit.codegen._project_factory",

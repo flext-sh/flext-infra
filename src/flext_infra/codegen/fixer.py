@@ -191,8 +191,9 @@ class FlextInfraCodegenFixer(s[bool]):
                 dry_run=False,
                 apply_safety=False,
             ):
-                if result.modified:
+                if result.success:
                     ctx.files_modified.add(str(result.file_path))
+                if result.modified:
                     changes = tuple(result.changes) or ("refactor applied",)
                     for change in changes:
                         ctx.fix(
@@ -219,7 +220,9 @@ class FlextInfraCodegenFixer(s[bool]):
                     line=0,
                     message="violations remain after namespace enforcement",
                 )
-        lazy_errors = FlextInfraCodegenLazyInit(project_path).run(check_only=False)
+        lazy_generator = FlextInfraCodegenLazyInit(project_path)
+        lazy_errors = lazy_generator.run(check_only=False)
+        ctx.files_modified.update(lazy_generator.modified_files)
         if lazy_errors > 0:
             ctx.skip(
                 module=project_path.name,

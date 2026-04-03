@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 import re
 from collections.abc import Mapping, MutableSequence
 from pathlib import Path
@@ -147,34 +148,23 @@ class FlextInfraUtilitiesCodegenLazyScanning:
         mod_path: str,
         index: t.Infra.MutableLazyImportMap,
     ) -> None:
-        names: list[str] = []
-        scope_depth = 0
-        for line in source.splitlines():
-            stripped = line.strip()
-            if stripped.startswith(("class ", "def ", "async def ")):
-                if scope_depth == 0:
-                    match = re.match(
-                        r"^(?:class|def|async def)\s+([a-zA-Z_]\w*)", stripped
-                    )
-                    if match:
-                        names.append(match.group(1))
-                scope_depth += 1
-            elif scope_depth > 0 and stripped and not line[0].isspace():
-                scope_depth = 0
-                if stripped.startswith(("class ", "def ", "async def ")):
-                    scope_depth += 1
-                    match = re.match(
-                        r"^(?:class|def|async def)\s+([a-zA-Z_]\w*)", stripped
-                    )
-                    if match:
-                        names.append(match.group(1))
+        try:
+            module = ast.parse(source)
+        except SyntaxError:
+            return
 
-            if scope_depth == 0:
-                match = re.match(
-                    r"^([a-zA-Z_]\w*)\s*(?::\s*\S+\s*)?=\s*(.+)$", stripped
+        names: list[str] = []
+        for node in module.body:
+            if isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+                names.append(node.name)
+                continue
+            if isinstance(node, ast.Assign):
+                names.extend(
+                    target.id for target in node.targets if isinstance(target, ast.Name)
                 )
-                if match:
-                    names.append(match.group(1))
+                continue
+            if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+                names.append(node.target.id)
 
         for name in names:
             if not name.startswith("_"):

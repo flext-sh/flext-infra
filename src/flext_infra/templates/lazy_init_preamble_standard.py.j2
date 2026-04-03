@@ -3,8 +3,16 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING as _TYPE_CHECKING
 
+{%- if use_root_helpers %}
+{%- if include_merge_helper %}
+from flext_core import install_lazy_exports, merge_lazy_imports
+{%- else %}
+from flext_core import install_lazy_exports
+{%- endif %}
+{%- else %}
 {%- if include_merge_helper %}
 from flext_core.lazy import install_lazy_exports, merge_lazy_imports
 {%- else %}
 from flext_core.lazy import install_lazy_exports
+{%- endif %}
 {%- endif %}

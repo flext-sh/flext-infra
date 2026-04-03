@@ -202,6 +202,7 @@ class FlextInfraCodegenGeneration:
         current_pkg: str,
         eager_typevar_names: frozenset[str] = frozenset(),
         eager_imports: t.Infra.LazyImportMap | None = None,
+        wildcard_runtime_modules: t.StrSequence | None = None,
         child_packages_for_lazy: t.StrSequence | None = None,
         child_packages_for_tc: t.StrSequence | None = None,
     ) -> str:
@@ -233,6 +234,7 @@ class FlextInfraCodegenGeneration:
         eager_export_names = [
             name for name in sorted(exports) if name not in lazy_filtered
         ]
+        is_core_pkg = current_pkg == "flext_core"
 
         out: MutableSequence[str] = [c.Infra.AUTOGEN_HEADER]
         if docstring_source:
@@ -240,6 +242,7 @@ class FlextInfraCodegenGeneration:
 
         preamble: str = _ENV.get_template(tpl.PREAMBLE_STANDARD).render(
             include_merge_helper=bool(children_lazy),
+            use_root_helpers=not is_core_pkg,
         )
         out.extend(preamble.splitlines())
 
@@ -253,9 +256,15 @@ class FlextInfraCodegenGeneration:
         runtime_import_lines = FlextInfraCodegenGeneration._generate_import_lines(
             runtime_groups,
         )
+        runtime_import_block: MutableSequence[str] = [
+            f"from {module} import *"
+            for module in sorted(set(wildcard_runtime_modules or ()))
+        ]
+        if runtime_import_block and runtime_import_lines:
+            runtime_import_block.append("")
+        runtime_import_block.extend(runtime_import_lines)
 
         tc_groups = _group_imports(lazy_filtered)
-        is_core_pkg = current_pkg == "flext_core"
         type_checking_lines = FlextInfraCodegenGeneration.generate_type_checking(
             tc_groups,
             include_flext_types=not is_core_pkg,
@@ -270,7 +279,7 @@ class FlextInfraCodegenGeneration:
         )
 
         body: str = _ENV.get_template(tpl.BODY).render(
-            runtime_import_lines="\n".join(runtime_import_lines),
+            runtime_import_lines="\n".join(runtime_import_block),
             child_module_paths=children_lazy,
             type_checking_lines="\n".join(type_checking_lines),
             inline_constants=sorted(inline_constants.items()),
@@ -326,6 +335,12 @@ def _emit_type_checking_module(
     external_imports: t.MutableStrSequenceMapping,
 ) -> None:
     """Emit TYPE_CHECKING lines for a single module using explicit imports only."""
+    symbol_items = tuple(
+        (export_name, attr_name) for export_name, attr_name in items if attr_name
+    )
+    has_symbol_aliases = any(
+        export_name != attr_name for export_name, attr_name in symbol_items
+    )
     alias_exports: MutableSequence[str] = []
     parts: MutableSequence[str] = []
     module_basename = mod.rsplit(".", maxsplit=1)[-1]
@@ -351,6 +366,9 @@ def _emit_type_checking_module(
     if mod in children or (
         _is_local_module(mod, root_name) and ".fixtures." not in mod
     ):
+        if not deduped_aliases and deduped_parts and has_symbol_aliases:
+            lines.append(f"    from {mod} import *")
+            return
         for export_name in deduped_aliases:
             lines.append(_format_module_alias_import("    ", mod, export_name))
         if deduped_parts:

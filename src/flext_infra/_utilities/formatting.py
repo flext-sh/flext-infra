@@ -12,7 +12,8 @@ import contextlib
 from collections.abc import MutableSequence
 from pathlib import Path
 
-from flext_infra import FlextInfraUtilitiesSubprocess, c
+from flext_core import r
+from flext_infra import FlextInfraUtilitiesSubprocess, c, t
 
 
 class FlextInfraUtilitiesFormatting:
@@ -37,28 +38,44 @@ class FlextInfraUtilitiesFormatting:
             quiet: When True, add ``--quiet`` flag and suppress FileNotFoundError.
 
         """
+        if not path.exists():
+            return
+
+        use_quiet = quiet or path.name == c.Infra.Files.INIT_PY
         check_cmd = [
             c.Infra.RUFF,
             c.Infra.CHECK,
             "--fix",
         ]
-        if quiet:
+        if use_quiet:
             check_cmd.append("--quiet")
         check_cmd.append(str(path))
 
-        runner = FlextInfraUtilitiesSubprocess()
-        if quiet:
+        def _run_checked(cmd: t.StrSequence) -> r[bool]:
+            try:
+                return FlextInfraUtilitiesSubprocess.run_checked(cmd)
+            except TypeError:
+                return FlextInfraUtilitiesSubprocess().run_checked(cmd)
+
+        def _require_success(result: r[bool]) -> None:
+            if result.is_failure:
+                raise ValueError(result.error or "ruff post-process failed")
+
+        if use_quiet:
             with contextlib.suppress(FileNotFoundError):
-                runner.run_checked(check_cmd)
+                _run_checked(check_cmd)
         else:
-            runner.run_checked(check_cmd)
+            _run_checked(check_cmd)
 
         if include_format:
-            runner.run_checked([
+            format_cmd = [
                 c.Infra.RUFF,
                 c.Infra.FORMAT,
-                str(path),
-            ])
+            ]
+            if use_quiet:
+                format_cmd.append("--quiet")
+            format_cmd.append(str(path))
+            _require_success(_run_checked(format_cmd))
 
     @staticmethod
     def class_name_to_module(class_name: str) -> str:
