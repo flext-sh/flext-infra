@@ -25,17 +25,17 @@ class FlextInfraEnsureMypyConfigPhase:
         if not isinstance(tool, Table):
             tool = tomlkit.table()
             doc[c.Infra.TOOL] = tool
-        mypy = u.Infra.ensure_table(tool, c.Infra.MYPY)
+        mypy = u.ensure_table(tool, c.Infra.MYPY)
         if (
-            u.Infra.unwrap_item(
-                u.Infra.get(mypy, c.Infra.PYTHON_VERSION_UNDERSCORE),
+            u.unwrap_item(
+                u.get(mypy, c.Infra.PYTHON_VERSION_UNDERSCORE),
             )
             != "3.13"
         ):
             mypy[c.Infra.PYTHON_VERSION_UNDERSCORE] = "3.13"
             changes.append("tool.mypy.python_version set to 3.13")
-        current_plugins = u.Infra.as_string_list(
-            u.Infra.get(mypy, c.Infra.PLUGINS),
+        current_plugins = u.as_string_list(
+            u.get(mypy, c.Infra.PLUGINS),
         )
         needed_plugins = [
             plugin
@@ -43,14 +43,14 @@ class FlextInfraEnsureMypyConfigPhase:
             if plugin not in current_plugins
         ]
         if needed_plugins:
-            mypy[c.Infra.PLUGINS] = u.Infra.array(
+            mypy[c.Infra.PLUGINS] = u.array(
                 sorted(
                     set(current_plugins) | set(self._tool_config.tools.mypy.plugins),
                 ),
             )
             changes.append(f"tool.mypy.plugins added {', '.join(needed_plugins)}")
-        current_disabled = u.Infra.as_string_list(
-            u.Infra.get(mypy, c.Infra.DISABLE_ERROR_CODE),
+        current_disabled = u.as_string_list(
+            u.get(mypy, c.Infra.DISABLE_ERROR_CODE),
         )
         needed_disabled = [
             ec
@@ -58,7 +58,7 @@ class FlextInfraEnsureMypyConfigPhase:
             if ec not in current_disabled
         ]
         if needed_disabled:
-            mypy[c.Infra.DISABLE_ERROR_CODE] = u.Infra.array(
+            mypy[c.Infra.DISABLE_ERROR_CODE] = u.array(
                 sorted(
                     set(current_disabled)
                     | set(self._tool_config.tools.mypy.disabled_error_codes),
@@ -68,7 +68,7 @@ class FlextInfraEnsureMypyConfigPhase:
                 f"tool.mypy.disable_error_code added {', '.join(needed_disabled)}",
             )
         for key, value in self._tool_config.tools.mypy.boolean_settings.items():
-            if u.Infra.unwrap_item(u.Infra.get(mypy, key)) is not value:
+            if u.unwrap_item(u.get(mypy, key)) is not value:
                 mypy[key] = value
                 changes.append(f"tool.mypy.{key} set to {value}")
         self._ensure_overrides(tool, changes)
@@ -90,21 +90,17 @@ class FlextInfraEnsureMypyConfigPhase:
             }
             for entry in configured
         ]
-        mypy_table = u.Infra.get(tool, c.Infra.MYPY)
-        raw = (
-            u.Infra.get(mypy_table, "overrides")
-            if isinstance(mypy_table, Table)
-            else None
-        )
+        mypy_table = u.get(tool, c.Infra.MYPY)
+        raw = u.get(mypy_table, "overrides") if isinstance(mypy_table, Table) else None
         current: Sequence[t.StrSequenceMapping] = []
         if isinstance(raw, (list, AoT)):
             normalized_current: MutableSequence[t.StrSequenceMapping] = []
             for item in raw:
-                normalized_item = u.Infra.as_toml_mapping(u.Infra.unwrap_item(item))
+                normalized_item = u.as_toml_mapping(u.unwrap_item(item))
                 if normalized_item is None:
                     continue
-                module_value = u.Infra.as_string_list(normalized_item.get("module"))
-                disable_value = u.Infra.as_string_list(
+                module_value = u.as_string_list(normalized_item.get("module"))
+                disable_value = u.as_string_list(
                     normalized_item.get("disable_error_code"),
                 )
                 normalized_current.append({
@@ -120,7 +116,7 @@ class FlextInfraEnsureMypyConfigPhase:
             tbl["module"] = list(entry["module"])
             tbl["disable_error_code"] = list(entry["disable_error_code"])
             aot.append(tbl)
-        mypy_section = u.Infra.ensure_table(tool, c.Infra.MYPY)
+        mypy_section = u.ensure_table(tool, c.Infra.MYPY)
         mypy_section["overrides"] = aot
         changes.append(
             "tool.mypy.overrides synchronized for auto-generated files and PEP 695 generics",

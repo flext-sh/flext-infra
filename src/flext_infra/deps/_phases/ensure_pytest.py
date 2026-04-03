@@ -25,38 +25,38 @@ class FlextInfraEnsurePytestConfigPhase:
         if not isinstance(tool, Table):
             tool = tomlkit.table()
             doc[c.Infra.TOOL] = tool
-        pytest_tbl = u.Infra.ensure_table(tool, c.Infra.PYTEST)
-        ini = u.Infra.ensure_table(pytest_tbl, c.Infra.INI_OPTIONS)
-        if u.Infra.unwrap_item(u.Infra.get(ini, c.Infra.MINVERSION)) != "8.0":
+        pytest_tbl = u.ensure_table(tool, c.Infra.PYTEST)
+        ini = u.ensure_table(pytest_tbl, c.Infra.INI_OPTIONS)
+        if u.unwrap_item(u.get(ini, c.Infra.MINVERSION)) != "8.0":
             ini[c.Infra.MINVERSION] = "8.0"
             changes.append("tool.pytest.ini_options.minversion set to 8.0")
-        current_classes = u.Infra.as_string_list(
-            u.Infra.get(ini, c.Infra.PYTHON_CLASSES),
+        current_classes = u.as_string_list(
+            u.get(ini, c.Infra.PYTHON_CLASSES),
         )
         if "Test*" not in current_classes:
-            ini[c.Infra.PYTHON_CLASSES] = u.Infra.array(
+            ini[c.Infra.PYTHON_CLASSES] = u.array(
                 sorted({*current_classes, "Test*"}),
             )
             changes.append("tool.pytest.ini_options.python_classes updated")
         standard_files = {"*_test.py", "*_tests.py", "test_*.py"}
         current_files = set(
-            u.Infra.as_string_list(u.Infra.get(ini, c.Infra.PYTHON_FILES)),
+            u.as_string_list(u.get(ini, c.Infra.PYTHON_FILES)),
         )
         if not standard_files.issubset(current_files):
-            ini[c.Infra.PYTHON_FILES] = u.Infra.array(
+            ini[c.Infra.PYTHON_FILES] = u.array(
                 sorted(current_files | standard_files),
             )
             changes.append("tool.pytest.ini_options.python_files updated")
         current_addopts = set(
-            u.Infra.as_string_list(u.Infra.get(ini, c.Infra.ADDOPTS)),
+            u.as_string_list(u.get(ini, c.Infra.ADDOPTS)),
         )
         needed_addopts = set(self._tool_config.tools.pytest.standard_addopts)
         if not needed_addopts.issubset(current_addopts):
-            ini[c.Infra.ADDOPTS] = u.Infra.array(
+            ini[c.Infra.ADDOPTS] = u.array(
                 sorted(current_addopts | needed_addopts),
             )
             changes.append("tool.pytest.ini_options.addopts updated")
-        current_markers = u.Infra.as_string_list(u.Infra.get(ini, c.Infra.MARKERS))
+        current_markers = u.as_string_list(u.get(ini, c.Infra.MARKERS))
         current_names = {m.split(":")[0].strip() for m in current_markers}
         added: MutableSequence[str] = []
         for marker in self._tool_config.tools.pytest.standard_markers:
@@ -64,7 +64,7 @@ class FlextInfraEnsurePytestConfigPhase:
             if name not in current_names:
                 added.append(marker)
         if added:
-            ini[c.Infra.MARKERS] = u.Infra.array(
+            ini[c.Infra.MARKERS] = u.array(
                 sorted([*current_markers, *added]),
             )
             names = ", ".join(m.split(":")[0].strip() for m in added)

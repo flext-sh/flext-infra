@@ -16,10 +16,10 @@ from tests import t, u
 
 
 def _parse_args(argv: t.StrSequence | None = None) -> Namespace:
-    parser = u.Infra.create_parser(
+    parser = u.create_parser(
         prog="release",
         description="Release orchestration",
-        flags=u.Infra.SharedFlags(include_apply=True),
+        flags=u.SharedFlags(include_apply=True),
     )
     _ = parser.add_argument("--phase", default="all")
     _ = parser.add_argument("--version", default="")

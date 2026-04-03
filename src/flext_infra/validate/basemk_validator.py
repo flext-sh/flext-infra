@@ -56,8 +56,8 @@ class FlextInfraBaseMkValidator:
                         summary="base.mk template generation failed",
                     ),
                 )
-            generated_hash = u.Infra.sha256_content(gen_result.value)
-            existing_hash = u.Infra.sha256_file(source)
+            generated_hash = u.sha256_content(gen_result.value)
+            existing_hash = u.sha256_file(source)
             violations: MutableSequence[str] = []
             if generated_hash != existing_hash:
                 violations.append(

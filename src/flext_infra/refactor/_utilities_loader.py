@@ -13,9 +13,7 @@ from collections.abc import Callable, MutableSequence, Sequence
 from pathlib import Path
 from typing import TypeVar
 
-from pydantic import JsonValue
-
-from flext_infra import FlextInfraUtilitiesRope, c, m, p
+from flext_infra import FlextInfraUtilitiesRope, c, m, p, u
 
 _V = TypeVar("_V", bound=p.Infra.ViolationWithLine)
 
@@ -35,28 +33,6 @@ class FlextInfraUtilitiesRefactorLoader:
             message_builder=lambda v: str(v),
         )
     """
-
-    @staticmethod
-    def _coerce_violation_line(value: JsonValue | None) -> int:
-        """Convert a JSON value to an integer line number.
-
-        Args:
-            value: The value to convert to a line number.
-
-        Returns:
-            Integer line number, or 0 if conversion fails.
-
-        """
-        if isinstance(value, bool):
-            return int(value)
-        if isinstance(value, (int, float)):
-            return int(value)
-        if isinstance(value, str):
-            try:
-                return int(value)
-            except ValueError:
-                return 0
-        return 0
 
     @staticmethod
     def build_scan_result(
@@ -84,9 +60,7 @@ class FlextInfraUtilitiesRefactorLoader:
             file_path=file_path,
             violations=[
                 m.Infra.ScanViolation(
-                    line=FlextInfraUtilitiesRefactorLoader._coerce_violation_line(
-                        violation.model_dump().get("line"),
-                    ),
+                    line=u.to_int(violation.model_dump().get("line")),
                     message=message_builder(violation),
                     severity="error",
                     rule_id=rule_id,

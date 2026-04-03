@@ -47,15 +47,15 @@ class FlextInfraDocAuditor:
         config_path = find_architecture_config(workspace_root)
         if config_path is None:
             return _NO_BUDGETS
-        payload_result = u.Infra.read_json(config_path)
+        payload_result = u.read_json(config_path)
         if payload_result.is_failure:
             return _NO_BUDGETS
-        docs_validation = u.Infra.as_toml_mapping(
+        docs_validation = u.as_toml_mapping(
             payload_result.value.get("docs_validation"),
         )
         if docs_validation is None:
             return _NO_BUDGETS
-        audit_gate = u.Infra.as_toml_mapping(docs_validation.get("audit_gate"))
+        audit_gate = u.as_toml_mapping(docs_validation.get("audit_gate"))
         if audit_gate is None:
             return _NO_BUDGETS
         return parse_audit_gate(audit_gate)
@@ -88,7 +88,7 @@ class FlextInfraDocAuditor:
             "# Docs Audit Report",
             "",
             f"Scope: {scope.name}",
-            f"Files scanned: {len(u.Infra.iter_markdown_files(scope.path))}",
+            f"Files scanned: {len(u.iter_markdown_files(scope.path))}",
             f"Issues: {len(issues)}",
             "",
             "| file | type | severity | message |",
@@ -116,7 +116,7 @@ class FlextInfraDocAuditor:
             strict=resolved.strict,
             budgets=budgets,
         )
-        return u.Infra.run_scoped(
+        return u.run_scoped(
             workspace_root,
             project=project,
             projects=projects,
@@ -227,8 +227,8 @@ class FlextInfraDocAuditor:
                 continue
             if in_fenced_code:
                 continue
-            clean_line = u.Infra.INLINE_CODE_RE.sub("", line)
-            for raw in u.Infra.MARKDOWN_LINK_URL_RE.findall(clean_line):
+            clean_line = u.INLINE_CODE_RE.sub("", line)
+            for raw in u.MARKDOWN_LINK_URL_RE.findall(clean_line):
                 issue = self._check_single_link(md_file, rel, raw, number)
                 if issue is not None:
                     issues.append(issue)
@@ -263,7 +263,7 @@ class FlextInfraDocAuditor:
     ) -> Sequence[m.Infra.AuditIssue]:
         """Collect broken internal-link issues for markdown files in scope."""
         issues: MutableSequence[m.Infra.AuditIssue] = []
-        for md_file in u.Infra.iter_markdown_files(scope.path):
+        for md_file in u.iter_markdown_files(scope.path):
             rel = md_file.relative_to(scope.path).as_posix()
             issues.extend(self._check_links_in_file(md_file, rel))
         return issues
@@ -275,7 +275,7 @@ class FlextInfraDocAuditor:
         """Collect forbidden-term issues for markdown files in scope."""
         issues: MutableSequence[m.Infra.AuditIssue] = []
         terms: t.StrSequence = ()
-        for md_file in u.Infra.iter_markdown_files(scope.path):
+        for md_file in u.iter_markdown_files(scope.path):
             rel = md_file.relative_to(scope.path).as_posix()
             rel_lower = rel.lower()
             if scope.name == c.Infra.ReportKeys.ROOT:
@@ -302,10 +302,10 @@ class FlextInfraDocAuditor:
     @staticmethod
     def main() -> int:
         """CLI entry point for the documentation auditor (legacy argparse)."""
-        parser = u.Infra.create_parser(
+        parser = u.create_parser(
             "flext-infra docs audit",
             "Audit documentation for issues",
-            flags=u.Infra.SharedFlags(
+            flags=u.SharedFlags(
                 include_apply=True,
                 include_project=True,
                 include_check=True,
@@ -317,7 +317,7 @@ class FlextInfraDocAuditor:
             default=c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
         )
         args = parser.parse_args()
-        cli = u.Infra.resolve(args)
+        cli = u.resolve(args)
         auditor = FlextInfraDocAuditor()
         scope_params = m.Infra.AuditScopeParams(
             check="all" if cli.check else "none",
@@ -331,7 +331,7 @@ class FlextInfraDocAuditor:
             params=scope_params,
         )
         if result.is_failure:
-            u.Infra.error(result.error or "audit failed")
+            u.error(result.error or "audit failed")
             return 1
         failures = u.count(result.value, lambda report: not report.passed)
         return 1 if failures else 0

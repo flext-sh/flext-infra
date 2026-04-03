@@ -30,7 +30,7 @@ class FlextInfraCodegenSnapshot:
             root = project_path / root_name
             if not root.is_dir():
                 continue
-            for init_file in u.Infra.iter_directory_python_files(
+            for init_file in u.iter_directory_python_files(
                 root,
                 pattern=c.Infra.Files.INIT_PY,
             ):

@@ -25,13 +25,13 @@ class FlextInfraExtraPathsManager(
 ):
     """Manager for synchronizing pyright and mypy extraPaths from path dependencies."""
 
-    ROOT = u.Infra.resolve_workspace_root(__file__)
+    ROOT = u.resolve_workspace_root(__file__)
 
     def __init__(self, workspace_root: Path | None = None) -> None:
         """Initialize the extra paths manager with path resolver and TOML service."""
         super().__init__()
         self.root = workspace_root or self.ROOT
-        tool_config_result = u.Infra.load_tool_config()
+        tool_config_result = u.load_tool_config()
         if tool_config_result.is_failure:
             msg = tool_config_result.error or "failed to load deps tool config"
             raise ValueError(msg)
@@ -77,23 +77,23 @@ class FlextInfraExtraPathsManager(
             project_dir=project_dir,
             is_root=is_root,
         )
-        tool_table = u.Infra.get_table(doc, c.Infra.TOOL)
+        tool_table = u.get_table(doc, c.Infra.TOOL)
         if tool_table is None:
             return list[str]()
-        pyright_table = u.Infra.get_table(tool_table, c.Infra.PYRIGHT)
+        pyright_table = u.get_table(tool_table, c.Infra.PYRIGHT)
         if pyright_table is None:
             return list[str]()
-        mypy_table = u.Infra.get_table(tool_table, c.Infra.MYPY)
+        mypy_table = u.get_table(tool_table, c.Infra.MYPY)
         changes: MutableSequence[str] = []
-        current_pyright = u.Infra.as_string_list(
-            u.Infra.get_item(pyright_table, "extraPaths"),
+        current_pyright = u.as_string_list(
+            u.get_item(pyright_table, "extraPaths"),
         )
         if current_pyright != expected:
             pyright_table["extraPaths"] = expected
             changes.append("synchronized pyright extraPaths")
         if mypy_table is not None:
-            current_mypy = u.Infra.as_string_list(
-                u.Infra.get_item(mypy_table, "mypy_path"),
+            current_mypy = u.as_string_list(
+                u.get_item(mypy_table, "mypy_path"),
             )
             if current_mypy != expected:
                 mypy_table["mypy_path"] = expected
@@ -114,7 +114,7 @@ class FlextInfraExtraPathsManager(
         """Synchronize pyright and mypy paths for single pyproject.toml."""
         if not pyproject_path.exists():
             return r[bool].fail(f"pyproject not found: {pyproject_path}")
-        doc_result = u.Infra.read_document(pyproject_path)
+        doc_result = u.read_document(pyproject_path)
         if doc_result.is_failure:
             return r[bool].fail(doc_result.error or f"failed to read {pyproject_path}")
         doc: TOMLDocument = doc_result.value
@@ -124,7 +124,7 @@ class FlextInfraExtraPathsManager(
             is_root=is_root,
         )
         if changes and (not dry_run):
-            write_result = u.Infra.write_document(pyproject_path, doc)
+            write_result = u.write_document(pyproject_path, doc)
             if write_result.is_failure:
                 return r[bool].fail(
                     write_result.error or f"failed to write {pyproject_path}",
@@ -173,7 +173,7 @@ class FlextInfraExtraPathsManager(
                         sync_result.error or f"sync failed for {pyproject}",
                     )
                 if sync_result.value and (not dry_run):
-                    u.Infra.info(f"Updated {pyproject}")
+                    u.info(f"Updated {pyproject}")
             return r[int].ok(0)
         pyproject = self.root / c.Infra.Files.PYPROJECT_FILENAME
         if not pyproject.exists():
@@ -182,19 +182,19 @@ class FlextInfraExtraPathsManager(
         if sync_result.is_failure:
             return r[int].fail(sync_result.error or f"sync failed for {pyproject}")
         if sync_result.value and (not dry_run):
-            u.Infra.info("Updated extraPaths and mypy_path from path dependencies.")
+            u.info("Updated extraPaths and mypy_path from path dependencies.")
         return r[int].ok(0)
 
     @staticmethod
     def main(argv: t.StrSequence | None = None) -> int:
         """Execute extra paths synchronization from command line."""
-        parser = u.Infra.create_parser(
+        parser = u.create_parser(
             "flext-infra deps extra-paths",
             "Synchronize pyright and mypy extraPaths from path dependencies",
-            flags=u.Infra.SharedFlags(include_apply=True, include_project=True),
+            flags=u.SharedFlags(include_apply=True, include_project=True),
         )
         args = parser.parse_args(argv)
-        cli = u.Infra.resolve(args)
+        cli = u.resolve(args)
         manager = FlextInfraExtraPathsManager(workspace_root=cli.workspace)
         result = manager.sync_extra_paths(
             dry_run=cli.dry_run,
@@ -202,7 +202,7 @@ class FlextInfraExtraPathsManager(
         )
         if result.is_success:
             return result.value
-        u.Infra.error(result.error or "sync failed")
+        u.error(result.error or "sync failed")
         return 1
 
 

@@ -166,7 +166,11 @@ class FlextInfraUtilitiesRuleHelpers:
             if line != stripped and stripped:
                 continue
             match = rh.FINAL_ASSIGN_RE.match(stripped)
-            if match and rh.is_constant_candidate(match.group(1)):
+            if (
+                match
+                and c.Infra.SourceCode.CONSTANT_NAME_RE.match(match.group(1))
+                is not None
+            ):
                 candidates.append(
                     m.Infra.MROSymbolCandidate(symbol=match.group(1), line=i),
                 )
@@ -189,19 +193,6 @@ class FlextInfraUtilitiesRuleHelpers:
         return FlextInfraUtilitiesParsing.index_after_docstring_and_future_imports(
             lines
         )
-
-    # ── Class reconstructor helper ──────────────────────────────────
-
-    @staticmethod
-    def apply_regex_renames(
-        source: str,
-        mappings: t.StrMapping,
-    ) -> str:
-        """Apply word-boundary regex renames to source text."""
-        ns = source
-        for old_name, new_name in mappings.items():
-            ns, _ = re.compile(rf"\b{re.escape(old_name)}\b").subn(new_name, ns)
-        return ns
 
 
 __all__ = ["FlextInfraUtilitiesRuleHelpers"]

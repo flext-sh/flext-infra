@@ -56,7 +56,7 @@ class FlextInfraRefactorLegacyRemovalTextRule(FlextInfraRefactorRule):
         if _file_path is None:
             return (source, list[str]())
         rule = FlextInfraRefactorLegacyRemovalRule(self.config)
-        return u.Infra.apply_transformer_to_source(
+        return u.apply_transformer_to_source(
             source,
             _file_path,
             lambda rope_project, resource: rule.apply(
@@ -79,7 +79,7 @@ class FlextInfraRefactorPatternCorrectionsTextRule(FlextInfraRefactorRule):
         if _file_path is None:
             return (source, list[str]())
         rule = FlextInfraRefactorPatternCorrectionsRule(self.config)
-        return u.Infra.apply_transformer_to_source(
+        return u.apply_transformer_to_source(
             source,
             _file_path,
             lambda rope_project, resource: rule.apply(
@@ -102,7 +102,7 @@ class FlextInfraRefactorMROClassMigrationTextRule(FlextInfraRefactorRule):
         if _file_path is None:
             return (source, list[str]())
         rule = FlextInfraRefactorMROClassMigrationRule()
-        return u.Infra.apply_transformer_to_source(
+        return u.apply_transformer_to_source(
             source,
             _file_path,
             lambda rope_project, resource: rule.apply(
@@ -138,7 +138,7 @@ class FlextInfraRefactorTypingAnnotationFixRule(FlextInfraRefactorRule):
         source: str,
         _file_path: Path | None = None,
     ) -> t.Infra.Pair[str, t.StrSequence]:
-        fix_action = u.Infra.get_str_key(
+        fix_action = u.get_str_key(
             self.config,
             c.Infra.ReportKeys.FIX_ACTION,
             lower=True,
@@ -170,9 +170,9 @@ class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
         analysis = analyzer.build_analysis()
         if not analysis.has_violations:
             return (source, list[str]())
-        project_root = u.Infra.discover_project_root_from_file(_file_path)
+        project_root = u.discover_project_root_from_file(_file_path)
         core_package = (
-            u.Infra.discover_core_package(project_root)
+            u.discover_core_package(project_root)
             if project_root
             else self._core_package()
         )
@@ -181,7 +181,7 @@ class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
             alias_to_submodule=self._alias_to_submodule(),
             core_package=core_package,
         )
-        return u.Infra.apply_transformer_to_source(
+        return u.apply_transformer_to_source(
             source,
             _file_path,
             transformer.transform,
@@ -225,7 +225,7 @@ class FlextInfraRefactorSymbolPropagationRule(FlextInfraRefactorRule):
         typed_cfg: Mapping[str, t.Infra.InfraValue] = (
             t.Infra.INFRA_MAPPING_ADAPTER.validate_python(self.config)
         )
-        target_modules = set(u.Infra.string_list(typed_cfg.get("target_modules", [])))
+        target_modules = set(u.string_list(typed_cfg.get("target_modules", [])))
         try:
             module_renames: t.StrMapping = t.Infra.STR_MAPPING_ADAPTER.validate_python(
                 typed_cfg.get("module_renames", {}),

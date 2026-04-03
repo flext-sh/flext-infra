@@ -83,11 +83,11 @@ class FlextInfraClassPlacementDetector(FlextInfraScanFileMixin, p.Infra.Scanner)
             or file_path.name in c.Infra.NAMESPACE_SETTINGS_FILE_NAMES
         ):
             return []
-        res = u.Infra.get_resource_from_path(rope_project, file_path)
+        res = u.get_resource_from_path(rope_project, file_path)
         if res is None:
             return []
         ast_class_info = cls._ast_class_info(file_path)
-        rope_class_info = list(u.Infra.get_class_info(rope_project, res))
+        rope_class_info = list(u.get_class_info(rope_project, res))
         processed_names = {ci.name for ci in rope_class_info}
         class_info = [
             *rope_class_info,

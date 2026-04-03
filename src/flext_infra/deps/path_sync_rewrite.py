@@ -53,11 +53,11 @@ class FlextInfraDependencyPathSyncRewrite:
         *,
         internal_names: t.Infra.StrSet,
     ) -> t.Infra.Pair[t.StrSequence, t.Infra.StrSet]:
-        project_section = u.Infra.get_table(doc, c.Infra.PROJECT)
+        project_section = u.get_table(doc, c.Infra.PROJECT)
         if project_section is None:
             return ([], set())
-        deps: t.StrSequence = u.Infra.as_string_list(
-            u.Infra.get_item(project_section, c.Infra.DEPENDENCIES),
+        deps: t.StrSequence = u.as_string_list(
+            u.get_item(project_section, c.Infra.DEPENDENCIES),
         )
         if not deps:
             return ([], set())
@@ -86,7 +86,7 @@ class FlextInfraDependencyPathSyncRewrite:
             project_section[c.Infra.DEPENDENCIES] = updated_deps
         return (changes, internal_deps)
 
-    _ensure_table = staticmethod(u.Infra.ensure_table)
+    _ensure_table = staticmethod(u.ensure_table)
 
     def _rewrite_uv_sources(
         self,
@@ -120,7 +120,7 @@ class FlextInfraDependencyPathSyncRewrite:
                     mode=mode,
                 )
                 expected = {"path": path_value, "editable": True}
-            current_table = u.Infra.get_table(sources, dep_name)
+            current_table = u.get_table(sources, dep_name)
             empty: t.Infra.ContainerDict = {}
             current_map: t.Infra.ContainerDict = (
                 dict(current_table.unwrap()) if current_table is not None else empty
@@ -148,11 +148,11 @@ class FlextInfraDependencyPathSyncRewrite:
         uv_section = self._ensure_table(tool_section, "uv")
         workspace_section = self._ensure_table(uv_section, "workspace")
         expected_members = sorted(set(members))
-        current_members = u.Infra.as_string_list(
-            u.Infra.get_item(workspace_section, "members"),
+        current_members = u.as_string_list(
+            u.get_item(workspace_section, "members"),
         )
         if current_members != expected_members:
-            workspace_section["members"] = u.Infra.array(expected_members)
+            workspace_section["members"] = u.array(expected_members)
             changes.append("  uv.workspace: members synchronized")
         return changes
 
@@ -165,13 +165,13 @@ class FlextInfraDependencyPathSyncRewrite:
     ) -> t.StrSequence:
         from .path_sync import FlextInfraDependencyPathSync  # noqa: PLC0415
 
-        tool_section = u.Infra.get_table(doc, c.Infra.TOOL)
+        tool_section = u.get_table(doc, c.Infra.TOOL)
         if tool_section is None:
             return []
-        poetry_section = u.Infra.get_table(tool_section, c.Infra.POETRY)
+        poetry_section = u.get_table(tool_section, c.Infra.POETRY)
         if poetry_section is None:
             return []
-        deps = u.Infra.get_table(poetry_section, c.Infra.DEPENDENCIES)
+        deps = u.get_table(poetry_section, c.Infra.DEPENDENCIES)
         if deps is None:
             return []
         changes: MutableSequence[str] = []
@@ -208,7 +208,7 @@ class FlextInfraDependencyPathSyncRewrite:
         dry_run: bool = False,
     ) -> r[t.StrSequence]:
         """Rewrite PEP 621 and Poetry dependency paths."""
-        doc_result = u.Infra.read_document(pyproject_path)
+        doc_result = u.read_document(pyproject_path)
         if doc_result.is_failure:
             return r[t.StrSequence].fail(
                 doc_result.error or "failed to read TOML document",
@@ -237,7 +237,7 @@ class FlextInfraDependencyPathSyncRewrite:
         )
         changes += list(self._rewrite_poetry(doc, is_root=is_root, mode=mode))
         if changes and (not dry_run):
-            write_result = u.Infra.write_document(pyproject_path, doc)
+            write_result = u.write_document(pyproject_path, doc)
             if write_result.is_failure:
                 return r[t.StrSequence].fail(
                     write_result.error or "failed to write TOML",

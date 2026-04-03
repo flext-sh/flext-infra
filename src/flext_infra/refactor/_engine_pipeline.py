@@ -62,12 +62,11 @@ class FlextInfraRefactorEnginePipelineMixin:
             current, all_changes = original, list[str]()
             if self.file_rules:
                 workspace_root = (
-                    u.Infra.discover_project_root_from_file(file_path)
-                    or file_path.parent
+                    u.discover_project_root_from_file(file_path) or file_path.parent
                 )
-                rope_project = u.Infra.init_rope_project(workspace_root)
+                rope_project = u.init_rope_project(workspace_root)
                 try:
-                    resource = u.Infra.get_resource_from_path(rope_project, file_path)
+                    resource = u.get_resource_from_path(rope_project, file_path)
                     if resource is None:
                         return self._error_result(
                             file_path,
@@ -117,15 +116,13 @@ class FlextInfraRefactorEnginePipelineMixin:
             result = self.refactor_file(fp, dry_run=dry_run)
             results.append(result)
             if result.success and result.modified:
-                u.Infra.refactor_info(
-                    f"{'[DRY-RUN] ' if dry_run else ''}Modified: {fp.name}"
-                )
+                u.refactor_info(f"{'[DRY-RUN] ' if dry_run else ''}Modified: {fp.name}")
                 for ch in result.changes:
-                    u.Infra.refactor_info(f"  - {ch}")
+                    u.refactor_info(f"  - {ch}")
             elif result.success:
-                u.Infra.refactor_debug(f"Unchanged: {fp.name}")
+                u.refactor_debug(f"Unchanged: {fp.name}")
             else:
-                u.Infra.refactor_error(f"Failed: {fp.name} - {result.error}")
+                u.refactor_error(f"Failed: {fp.name} - {result.error}")
         return results
 
 

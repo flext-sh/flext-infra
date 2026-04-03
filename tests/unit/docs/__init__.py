@@ -7,219 +7,139 @@ from __future__ import annotations
 
 import typing as _t
 
-from tests.unit.docs.auditor_budgets_tests import TestLoadAuditBudgets
-from tests.unit.docs.auditor_cli_tests import (
-    TestAuditorMainCli,
-    TestAuditorScopeFailure,
-)
-from tests.unit.docs.auditor_links_tests import (
-    TestAuditorBrokenLinks,
-    TestAuditorToMarkdown,
-)
-from tests.unit.docs.auditor_scope_tests import (
-    TestAuditorForbiddenTerms,
-    TestAuditorScope,
-)
-from tests.unit.docs.auditor_tests import (
-    TestAuditorCore,
-    TestAuditorNormalize,
-    auditor,
-    is_external,
-    normalize_link,
-    should_skip_target,
-)
-from tests.unit.docs.builder_scope_tests import TestBuilderScope
-from tests.unit.docs.builder_tests import TestBuilderCore, builder
-from tests.unit.docs.fixer_internals_tests import (
-    TestFixerMaybeFixLink,
-    TestFixerProcessFile,
-    TestFixerScope,
-    TestFixerToc,
-    fixer,
-)
-from tests.unit.docs.fixer_tests import TestFixerCore
-from tests.unit.docs.generator_internals_tests import (
-    TestGeneratorHelpers,
-    TestGeneratorScope,
-    gen,
-)
-from tests.unit.docs.generator_tests import TestGeneratorCore
-from tests.unit.docs.init_tests import TestFlextInfraDocs
-from tests.unit.docs.main_commands_tests import (
-    TestRunBuild,
-    TestRunGenerate,
-    TestRunValidate,
-)
-from tests.unit.docs.main_entry_tests import TestMainRouting, TestMainWithFlags
-from tests.unit.docs.main_tests import TestRunAudit, TestRunFix
-from tests.unit.docs.shared_iter_tests import (
-    TestIterMarkdownFiles,
-    TestSelectedProjectNames,
-)
-from tests.unit.docs.shared_tests import TestBuildScopes, TestFlextInfraDocScope
-from tests.unit.docs.shared_write_tests import TestWriteJson, TestWriteMarkdown
-from tests.unit.docs.validator_internals_tests import (
-    TestAdrHelpers,
-    TestMaybeWriteTodo,
-    TestValidateScope,
-    validator,
-)
-from tests.unit.docs.validator_tests import TestValidateCore, TestValidateReport
-
-from flext_core.constants import FlextConstants as c
-from flext_core.decorators import FlextDecorators as d
-from flext_core.exceptions import FlextExceptions as e
-from flext_core.handlers import FlextHandlers as h
 from flext_core.lazy import install_lazy_exports
-from flext_core.mixins import FlextMixins as x
-from flext_core.models import FlextModels as m
-from flext_core.protocols import FlextProtocols as p
-from flext_core.result import FlextResult as r
-from flext_core.service import FlextService as s
-from flext_core.typings import FlextTypes as t
-from flext_core.utilities import FlextUtilities as u
 
 if _t.TYPE_CHECKING:
     import tests.unit.docs.auditor_budgets_tests as _tests_unit_docs_auditor_budgets_tests
 
     auditor_budgets_tests = _tests_unit_docs_auditor_budgets_tests
     import tests.unit.docs.auditor_cli_tests as _tests_unit_docs_auditor_cli_tests
+    from tests.unit.docs.auditor_budgets_tests import TestLoadAuditBudgets
 
     auditor_cli_tests = _tests_unit_docs_auditor_cli_tests
     import tests.unit.docs.auditor_links_tests as _tests_unit_docs_auditor_links_tests
+    from tests.unit.docs.auditor_cli_tests import (
+        TestAuditorMainCli,
+        TestAuditorScopeFailure,
+    )
 
     auditor_links_tests = _tests_unit_docs_auditor_links_tests
     import tests.unit.docs.auditor_scope_tests as _tests_unit_docs_auditor_scope_tests
+    from tests.unit.docs.auditor_links_tests import (
+        TestAuditorBrokenLinks,
+        TestAuditorToMarkdown,
+    )
 
     auditor_scope_tests = _tests_unit_docs_auditor_scope_tests
     import tests.unit.docs.auditor_tests as _tests_unit_docs_auditor_tests
+    from tests.unit.docs.auditor_scope_tests import (
+        TestAuditorForbiddenTerms,
+        TestAuditorScope,
+    )
 
     auditor_tests = _tests_unit_docs_auditor_tests
     import tests.unit.docs.builder_scope_tests as _tests_unit_docs_builder_scope_tests
+    from tests.unit.docs.auditor_tests import (
+        TestAuditorCore,
+        TestAuditorNormalize,
+        auditor,
+        is_external,
+        normalize_link,
+        should_skip_target,
+    )
 
     builder_scope_tests = _tests_unit_docs_builder_scope_tests
     import tests.unit.docs.builder_tests as _tests_unit_docs_builder_tests
+    from tests.unit.docs.builder_scope_tests import TestBuilderScope
 
     builder_tests = _tests_unit_docs_builder_tests
     import tests.unit.docs.fixer_internals_tests as _tests_unit_docs_fixer_internals_tests
+    from tests.unit.docs.builder_tests import TestBuilderCore, builder
 
     fixer_internals_tests = _tests_unit_docs_fixer_internals_tests
     import tests.unit.docs.fixer_tests as _tests_unit_docs_fixer_tests
-
-    fixer_tests = _tests_unit_docs_fixer_tests
-    import tests.unit.docs.generator_internals_tests as _tests_unit_docs_generator_internals_tests
-
-    generator_internals_tests = _tests_unit_docs_generator_internals_tests
-    import tests.unit.docs.generator_tests as _tests_unit_docs_generator_tests
-
-    generator_tests = _tests_unit_docs_generator_tests
-    import tests.unit.docs.init_tests as _tests_unit_docs_init_tests
-
-    init_tests = _tests_unit_docs_init_tests
-    import tests.unit.docs.main_commands_tests as _tests_unit_docs_main_commands_tests
-
-    main_commands_tests = _tests_unit_docs_main_commands_tests
-    import tests.unit.docs.main_entry_tests as _tests_unit_docs_main_entry_tests
-
-    main_entry_tests = _tests_unit_docs_main_entry_tests
-    import tests.unit.docs.main_tests as _tests_unit_docs_main_tests
-
-    main_tests = _tests_unit_docs_main_tests
-    import tests.unit.docs.shared_iter_tests as _tests_unit_docs_shared_iter_tests
-
-    shared_iter_tests = _tests_unit_docs_shared_iter_tests
-    import tests.unit.docs.shared_tests as _tests_unit_docs_shared_tests
-
-    shared_tests = _tests_unit_docs_shared_tests
-    import tests.unit.docs.shared_write_tests as _tests_unit_docs_shared_write_tests
-
-    shared_write_tests = _tests_unit_docs_shared_write_tests
-    import tests.unit.docs.validator_internals_tests as _tests_unit_docs_validator_internals_tests
-
-    validator_internals_tests = _tests_unit_docs_validator_internals_tests
-    import tests.unit.docs.validator_tests as _tests_unit_docs_validator_tests
-
-    validator_tests = _tests_unit_docs_validator_tests
-
-    _ = (
-        TestAdrHelpers,
-        TestAuditorBrokenLinks,
-        TestAuditorCore,
-        TestAuditorForbiddenTerms,
-        TestAuditorMainCli,
-        TestAuditorNormalize,
-        TestAuditorScope,
-        TestAuditorScopeFailure,
-        TestAuditorToMarkdown,
-        TestBuildScopes,
-        TestBuilderCore,
-        TestBuilderScope,
-        TestFixerCore,
+    from tests.unit.docs.fixer_internals_tests import (
         TestFixerMaybeFixLink,
         TestFixerProcessFile,
         TestFixerScope,
         TestFixerToc,
-        TestFlextInfraDocScope,
-        TestFlextInfraDocs,
-        TestGeneratorCore,
+        fixer,
+    )
+
+    fixer_tests = _tests_unit_docs_fixer_tests
+    import tests.unit.docs.generator_internals_tests as _tests_unit_docs_generator_internals_tests
+    from tests.unit.docs.fixer_tests import TestFixerCore
+
+    generator_internals_tests = _tests_unit_docs_generator_internals_tests
+    import tests.unit.docs.generator_tests as _tests_unit_docs_generator_tests
+    from tests.unit.docs.generator_internals_tests import (
         TestGeneratorHelpers,
         TestGeneratorScope,
-        TestIterMarkdownFiles,
-        TestLoadAuditBudgets,
-        TestMainRouting,
-        TestMainWithFlags,
-        TestMaybeWriteTodo,
-        TestRunAudit,
+        gen,
+    )
+
+    generator_tests = _tests_unit_docs_generator_tests
+    import tests.unit.docs.init_tests as _tests_unit_docs_init_tests
+    from tests.unit.docs.generator_tests import TestGeneratorCore
+
+    init_tests = _tests_unit_docs_init_tests
+    import tests.unit.docs.main_commands_tests as _tests_unit_docs_main_commands_tests
+    from tests.unit.docs.init_tests import TestFlextInfraDocs
+
+    main_commands_tests = _tests_unit_docs_main_commands_tests
+    import tests.unit.docs.main_entry_tests as _tests_unit_docs_main_entry_tests
+    from tests.unit.docs.main_commands_tests import (
         TestRunBuild,
-        TestRunFix,
         TestRunGenerate,
         TestRunValidate,
-        TestSelectedProjectNames,
-        TestValidateCore,
-        TestValidateReport,
-        TestValidateScope,
-        TestWriteJson,
-        TestWriteMarkdown,
-        auditor,
-        auditor_budgets_tests,
-        auditor_cli_tests,
-        auditor_links_tests,
-        auditor_scope_tests,
-        auditor_tests,
-        builder,
-        builder_scope_tests,
-        builder_tests,
-        c,
-        d,
-        e,
-        fixer,
-        fixer_internals_tests,
-        fixer_tests,
-        gen,
-        generator_internals_tests,
-        generator_tests,
-        h,
-        init_tests,
-        is_external,
-        m,
-        main_commands_tests,
-        main_entry_tests,
-        main_tests,
-        normalize_link,
-        p,
-        r,
-        s,
-        shared_iter_tests,
-        shared_tests,
-        shared_write_tests,
-        should_skip_target,
-        t,
-        u,
-        validator,
-        validator_internals_tests,
-        validator_tests,
-        x,
     )
+
+    main_entry_tests = _tests_unit_docs_main_entry_tests
+    import tests.unit.docs.main_tests as _tests_unit_docs_main_tests
+    from tests.unit.docs.main_entry_tests import TestMainRouting, TestMainWithFlags
+
+    main_tests = _tests_unit_docs_main_tests
+    import tests.unit.docs.shared_iter_tests as _tests_unit_docs_shared_iter_tests
+    from tests.unit.docs.main_tests import TestRunAudit, TestRunFix
+
+    shared_iter_tests = _tests_unit_docs_shared_iter_tests
+    import tests.unit.docs.shared_tests as _tests_unit_docs_shared_tests
+    from tests.unit.docs.shared_iter_tests import (
+        TestIterMarkdownFiles,
+        TestSelectedProjectNames,
+    )
+
+    shared_tests = _tests_unit_docs_shared_tests
+    import tests.unit.docs.shared_write_tests as _tests_unit_docs_shared_write_tests
+    from tests.unit.docs.shared_tests import TestBuildScopes, TestFlextInfraDocScope
+
+    shared_write_tests = _tests_unit_docs_shared_write_tests
+    import tests.unit.docs.validator_internals_tests as _tests_unit_docs_validator_internals_tests
+    from tests.unit.docs.shared_write_tests import TestWriteJson, TestWriteMarkdown
+
+    validator_internals_tests = _tests_unit_docs_validator_internals_tests
+    import tests.unit.docs.validator_tests as _tests_unit_docs_validator_tests
+    from tests.unit.docs.validator_internals_tests import (
+        TestAdrHelpers,
+        TestMaybeWriteTodo,
+        TestValidateScope,
+        validator,
+    )
+
+    validator_tests = _tests_unit_docs_validator_tests
+    from tests.unit.docs.validator_tests import TestValidateCore, TestValidateReport
+
+    from flext_core.constants import FlextConstants as c
+    from flext_core.decorators import FlextDecorators as d
+    from flext_core.exceptions import FlextExceptions as e
+    from flext_core.handlers import FlextHandlers as h
+    from flext_core.mixins import FlextMixins as x
+    from flext_core.models import FlextModels as m
+    from flext_core.protocols import FlextProtocols as p
+    from flext_core.result import FlextResult as r
+    from flext_core.service import FlextService as s
+    from flext_core.typings import FlextTypes as t
+    from flext_core.utilities import FlextUtilities as u
 _LAZY_IMPORTS = {
     "TestAdrHelpers": "tests.unit.docs.validator_internals_tests",
     "TestAuditorBrokenLinks": "tests.unit.docs.auditor_links_tests",

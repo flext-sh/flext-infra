@@ -69,5 +69,21 @@ class FlextInfraUtilitiesPaths:
                 return candidate
         return here.parents[4]
 
+    @staticmethod
+    def resolve_workspace_root_or_cwd(workspace_root: Path | None = None) -> Path:
+        """Resolve workspace root from an optional path, falling back to cwd.
+
+        Args:
+            workspace_root: Explicit workspace root, or None to auto-detect.
+
+        Returns:
+            Resolved absolute path to the workspace root.
+
+        """
+        if workspace_root is not None:
+            return workspace_root.resolve()
+        result = FlextInfraUtilitiesPaths.workspace_root()
+        return result.value if result.is_success else Path.cwd().resolve()
+
 
 __all__ = ["FlextInfraUtilitiesPaths"]

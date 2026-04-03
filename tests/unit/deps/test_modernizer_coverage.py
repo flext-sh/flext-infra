@@ -12,7 +12,7 @@ from flext_infra import FlextInfraEnsureCoverageConfigPhase
 
 
 def _test_tool_config() -> m.Infra.ToolConfigDocument:
-    result = u.Infra.load_tool_config()
+    result = u.load_tool_config()
     tm.that(not result.is_failure, eq=True)
     if result.is_failure:
         msg = "failed to load tool config"

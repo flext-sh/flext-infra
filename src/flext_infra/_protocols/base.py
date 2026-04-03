@@ -345,7 +345,7 @@ class FlextInfraProtocolsBase:
             ...
 
         @staticmethod
-        def project_filter(cli: u.Infra.CliArgs) -> t.StrSequence | None:
+        def project_filter(cli: u.CliArgs) -> t.StrSequence | None:
             """Resolve project filter list from parsed args."""
             ...
 

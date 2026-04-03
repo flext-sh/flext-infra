@@ -42,30 +42,30 @@ class TestInferPackage:
     def test_src_path(self) -> None:
         """Test inference from src/ path."""
         path = Path("/workspace/src/test_pkg/__init__.py")
-        tm.that(u.Infra.discover_package_from_file(path), eq="test_pkg")
+        tm.that(u.discover_package_from_file(path), eq="test_pkg")
 
     def test_deeply_nested_src_path(self) -> None:
         """Test inference from deeply nested src/ path."""
         path = Path("/workspace/src/a/b/c/d/__init__.py")
-        tm.that(u.Infra.discover_package_from_file(path), eq="a.b.c.d")
+        tm.that(u.discover_package_from_file(path), eq="a.b.c.d")
 
     def test_tests_path(self) -> None:
         """Test inference from tests/ path."""
         path = Path("/workspace/tests/unit/__init__.py")
-        tm.that(u.Infra.discover_package_from_file(path), eq="tests.unit")
+        tm.that(u.discover_package_from_file(path), eq="tests.unit")
 
     def test_examples_nested_tests_path(self) -> None:
         """Test inference preserves examples package before nested tests."""
         path = Path("/workspace/examples/tests/__init__.py")
         tm.that(
-            u.Infra.discover_package_from_file(path),
+            u.discover_package_from_file(path),
             eq="examples.tests",
         )
 
     def test_without_src_directory(self) -> None:
         """Test when path doesn't contain /src/."""
         path = Path("/workspace/lib/test/__init__.py")
-        tm.that(u.Infra.discover_package_from_file(path), eq="")
+        tm.that(u.discover_package_from_file(path), eq="")
 
 
 class TestReadExistingDocstring:

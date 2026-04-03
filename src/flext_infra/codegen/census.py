@@ -46,7 +46,7 @@ class FlextInfraCodegenCensus(s[bool]):
     @staticmethod
     def _is_fixable(*, rule: str, module: str, message: str) -> bool:
         _ = message
-        return u.Infra.is_rule_fixable(rule, module)
+        return u.is_rule_fixable(rule, module)
 
     @staticmethod
     def _parse_violation(violation_str: str) -> m.Infra.CensusViolation | None:
@@ -99,7 +99,7 @@ class FlextInfraCodegenCensus(s[bool]):
         """Fast path: analyze a single class and return a pseudo-project report."""
         class_name = self._class_to_analyze or ""
         simple_class_name = class_name.rsplit(".", 1)[-1]
-        census_data = u.Infra.analyze_class_object_census(
+        census_data = u.analyze_class_object_census(
             class_name,
             workspace,
             frozenset({
@@ -163,7 +163,7 @@ class FlextInfraCodegenCensus(s[bool]):
         workspace: Path,
     ) -> Sequence[m.Infra.CensusReport]:
         """Standard path: census all projects in workspace."""
-        projects_result = u.Infra.discover_projects(workspace)
+        projects_result = u.discover_projects(workspace)
         if not projects_result.is_success:
             return []
         reports: MutableSequence[m.Infra.CensusReport] = []
@@ -206,7 +206,7 @@ class FlextInfraCodegenCensus(s[bool]):
     ) -> None:
         """Analyze constant definitions, duplicates, and usage for a project."""
         skip_dirs = frozenset({".mypy_cache", c.Infra.Dunders.PYCACHE})
-        all_defs = u.Infra.extract_all_constant_definitions(
+        all_defs = u.extract_all_constant_definitions(
             src_dir.parent,
             skip_dirs,
         )
@@ -214,12 +214,12 @@ class FlextInfraCodegenCensus(s[bool]):
         for defs in all_defs.values():
             flat_defs.extend(defs)
         duplicates: Sequence[m.Infra.DuplicateConstantGroup] = (
-            u.Infra.detect_duplicate_constants(flat_defs)
+            u.detect_duplicate_constants(flat_defs)
         )
         all_usage_map: Mapping[str, Sequence[t.Infra.StrIntPair]] = (
-            u.Infra.scan_all_constant_usages(src_dir.parent, skip_dirs)
+            u.scan_all_constant_usages(src_dir.parent, skip_dirs)
         )
-        unused = u.Infra.detect_unused_constants(
+        unused = u.detect_unused_constants(
             flat_defs,
             set(all_usage_map.keys()),
         )

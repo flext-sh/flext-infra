@@ -19,8 +19,8 @@ class FlextInfraEnsureNamespaceToolingPhase:
         changes: MutableSequence[str] = []
         detected = sorted(
             {
-                *u.Infra.discover_first_party_namespaces(path.parent),
-                *u.Infra.workspace_dep_namespaces(doc),
+                *u.discover_first_party_namespaces(path.parent),
+                *u.workspace_dep_namespaces(doc),
             },
         )
         if not detected:
@@ -31,14 +31,14 @@ class FlextInfraEnsureNamespaceToolingPhase:
         if not isinstance(tool, Table):
             tool = tomlkit.table()
             doc[c.Infra.TOOL] = tool
-        deptry = u.Infra.ensure_table(tool, c.Infra.DEPTRY)
+        deptry = u.ensure_table(tool, c.Infra.DEPTRY)
         current_deptry = sorted(
-            u.Infra.as_string_list(
-                u.Infra.get(deptry, c.Infra.KNOWN_FIRST_PARTY_UNDERSCORE),
+            u.as_string_list(
+                u.get(deptry, c.Infra.KNOWN_FIRST_PARTY_UNDERSCORE),
             ),
         )
         if current_deptry != detected:
-            deptry[c.Infra.KNOWN_FIRST_PARTY_UNDERSCORE] = u.Infra.array(detected)
+            deptry[c.Infra.KNOWN_FIRST_PARTY_UNDERSCORE] = u.array(detected)
             changes.append(f"tool.deptry.known_first_party set to {detected}")
         return changes
 

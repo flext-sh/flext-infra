@@ -35,11 +35,11 @@ class FlextInfraDocBuilder:
         report: m.Infra.DocsPhaseReport,
     ) -> None:
         """Persist build JSON summary and markdown report."""
-        _ = u.Infra.write_json(
+        _ = u.write_json(
             scope.report_dir / "build-summary.json",
             {c.Infra.ReportKeys.SUMMARY: report.model_dump()},
         )
-        _ = u.Infra.write_markdown(
+        _ = u.write_markdown(
             scope.report_dir / "build-report.md",
             [
                 "# Docs Build Report",
@@ -71,7 +71,7 @@ class FlextInfraDocBuilder:
             r with list of BuildReport objects.
 
         """
-        return u.Infra.run_scoped(
+        return u.run_scoped(
             workspace_root,
             project=project,
             projects=projects,

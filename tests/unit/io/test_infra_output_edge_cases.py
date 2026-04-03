@@ -20,12 +20,10 @@ def _make_backend(
     use_color: bool = False,
     use_unicode: bool = False,
     stream: io.StringIO | None = None,
-) -> u.Infra.OutputBackend:
+) -> u.OutputBackend:
     """Create a backend with test-friendly settings."""
     buf = stream or io.StringIO()
-    return u.Infra.OutputBackend(
-        use_color=use_color, use_unicode=use_unicode, stream=buf
-    )
+    return u.OutputBackend(use_color=use_color, use_unicode=use_unicode, stream=buf)
 
 
 class TestInfraOutputNoColor:
@@ -52,15 +50,15 @@ class TestMroFacadeMethods:
     """Tests for u.Infra MRO facade methods."""
 
     def test_output_methods_accessible_via_mro(self) -> None:
-        tm.that(callable(u.Infra.info), eq=True)
-        tm.that(callable(u.Infra.error), eq=True)
-        tm.that(callable(u.Infra.warning), eq=True)
-        tm.that(callable(u.Infra.status), eq=True)
-        tm.that(callable(u.Infra.summary), eq=True)
-        tm.that(callable(u.Infra.header), eq=True)
-        tm.that(callable(u.Infra.progress), eq=True)
-        tm.that(callable(u.Infra.debug), eq=True)
-        tm.that(callable(u.Infra.gate_result), eq=True)
+        tm.that(callable(u.info), eq=True)
+        tm.that(callable(u.error), eq=True)
+        tm.that(callable(u.warning), eq=True)
+        tm.that(callable(u.status), eq=True)
+        tm.that(callable(u.summary), eq=True)
+        tm.that(callable(u.header), eq=True)
+        tm.that(callable(u.progress), eq=True)
+        tm.that(callable(u.debug), eq=True)
+        tm.that(callable(u.gate_result), eq=True)
 
 
 class TestInfraOutputEdgeCases:

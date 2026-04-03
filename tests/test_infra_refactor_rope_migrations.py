@@ -24,7 +24,7 @@ def _apply_transformer(
     file_path = tmp_path / "src" / file_name
     file_path.parent.mkdir(parents=True, exist_ok=True)
     file_path.write_text(source, encoding="utf-8")
-    updated, changes = u.Infra.apply_transformer_to_source(
+    updated, changes = u.apply_transformer_to_source(
         source,
         file_path,
         transform,

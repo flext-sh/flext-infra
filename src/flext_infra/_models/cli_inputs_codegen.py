@@ -118,6 +118,18 @@ class FlextInfraModelsCliInputsCodegen:
             Field(default="text", description="Output format (json|text)"),
         ] = "text"
 
+    class CodegenConsolidateInput(ApplyMixin, CliInputBase):
+        """CLI input for constant consolidation."""
+
+        output_format: Annotated[
+            str,
+            Field(default="text", description="Output format (json|text)"),
+        ] = "text"
+        project: Annotated[
+            str | None,
+            Field(default=None, description="Single project to consolidate"),
+        ] = None
+
     class CodegenConstantsQualityGateInput(CliInputBase):
         """CLI input for constants-quality-gate."""
 

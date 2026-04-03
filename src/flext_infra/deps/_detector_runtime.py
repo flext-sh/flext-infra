@@ -33,7 +33,7 @@ class FlextInfraDependencyDetectorRuntime:
         limits_default = Path(__file__).resolve().parent / "dependency_limits.toml"
         parser = detector.parser(limits_default)
         args = parser.parse_args(argv)
-        cli = u.Infra.resolve(args)
+        cli = u.resolve(args)
         root: Path = cli.workspace
         venv_bin = root / c.Infra.Paths.VENV_BIN_REL
         projects_result = detector.deps.discover_project_paths(

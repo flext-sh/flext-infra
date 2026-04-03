@@ -121,7 +121,7 @@ class FlextInfraDependencyAnalyzer:
         if grep_files.is_success and grep_files.value:
             path_set: t.Infra.PathSet = grep_files.value
             return sorted(path_set)
-        files_result = u.Infra.iter_python_files(
+        files_result = u.iter_python_files(
             workspace_root=self._workspace_root,
             project_roots=[project.path],
             include_tests=False,
@@ -182,7 +182,7 @@ class FlextInfraDependencyAnalyzer:
             "--json",
             str(src_path),
         ]
-        capture = u.Infra.capture(cmd)
+        capture = u.capture(cmd)
         if capture.is_failure:
             return r[Sequence[m.Infra.AstGrepMatchEnvelope]].fail(
                 capture.error or "capture failed",
@@ -202,11 +202,11 @@ class FlextInfraDependencyAnalyzer:
 
     def _parse_imports(self, file_path: Path) -> r[m.Infra.FileImportData]:
         """Parse a Python file and extract its import information via rope."""
-        rope_project = u.Infra.init_rope_project(file_path.parent)
-        res = u.Infra.get_resource_from_path(rope_project, file_path)
+        rope_project = u.init_rope_project(file_path.parent)
+        res = u.get_resource_from_path(rope_project, file_path)
         if res is None:
             return r[m.Infra.FileImportData].fail(f"{file_path}: parse_failed")
-        imports = u.Infra.get_module_imports(rope_project, res)
+        imports = u.get_module_imports(rope_project, res)
         return r[m.Infra.FileImportData].ok(
             m.Infra.FileImportData(
                 imported_modules={fqn.split(".")[0] for fqn in imports.values()},

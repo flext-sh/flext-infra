@@ -79,7 +79,7 @@ class FlextInfraLooseObjectDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
             or file_path.name in c.Infra.NAMESPACE_SETTINGS_FILE_NAMES
         ):
             return []
-        res = u.Infra.get_resource_from_path(rope_project, file_path)
+        res = u.get_resource_from_path(rope_project, file_path)
         if res is None:
             return []
         source: str = res.read()
@@ -87,7 +87,7 @@ class FlextInfraLooseObjectDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
             project_name=project_name,
         )
         # Get all classes defined in module (these are NOT loose)
-        known_classes = set(u.Infra.get_module_classes(rope_project, res))
+        known_classes = set(u.get_module_classes(rope_project, res))
 
         file_str = str(file_path)
         violations: MutableSequence[m.Infra.LooseObjectViolation] = []

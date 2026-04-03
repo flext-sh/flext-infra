@@ -49,20 +49,6 @@ class FlextInfraUtilitiesBase:
         raw = str(mapping.get(key, default)).strip()
         return raw.lower() if lower else raw
 
-    @staticmethod
-    def _coerce_violation_line(value: JsonValue | None) -> int:
-        """Convert a JSON scalar into a scan-result line number."""
-        if isinstance(value, bool):
-            return int(value)
-        if isinstance(value, (int, float)):
-            return int(value)
-        if isinstance(value, str):
-            try:
-                return int(value)
-            except ValueError:
-                return 0
-        return 0
-
     @classmethod
     def build_scan_result(
         cls,
@@ -78,9 +64,7 @@ class FlextInfraUtilitiesBase:
             file_path=file_path,
             violations=[
                 m.Infra.ScanViolation(
-                    line=cls._coerce_violation_line(
-                        violation.model_dump().get("line"),
-                    ),
+                    line=u.to_int(violation.model_dump().get("line")),
                     message=message_builder(violation),
                     severity="error",
                     rule_id=rule_id,
@@ -134,11 +118,6 @@ class FlextInfraUtilitiesBase:
             return [str(item) for item in raw_items]
 
     @staticmethod
-    def as_str(value: t.Infra.InfraValue, default: str = "") -> str:
-        """Coerce a value to str with fallback."""
-        return value if isinstance(value, str) else default
-
-    @staticmethod
     def nested_int(
         data: Mapping[str, t.Infra.InfraValue],
         *keys: str,
@@ -147,7 +126,7 @@ class FlextInfraUtilitiesBase:
         """Extract a nested int from a mapping by key path."""
         current: t.Infra.ContainerDict = {str(k): data[k] for k in data}
         for key in keys[:-1]:
-            nested = u.Infra.as_toml_mapping(current.get(key))
+            nested = u.as_toml_mapping(current.get(key))
             if nested is None:
                 return default
             current = nested

@@ -7,49 +7,30 @@ from __future__ import annotations
 
 import typing as _t
 
-from flext_core.constants import FlextConstants as c
-from flext_core.decorators import FlextDecorators as d
-from flext_core.exceptions import FlextExceptions as e
-from flext_core.handlers import FlextHandlers as h
 from flext_core.lazy import install_lazy_exports
-from flext_core.mixins import FlextMixins as x
-from flext_core.models import FlextModels as m
-from flext_core.protocols import FlextProtocols as p
-from flext_core.result import FlextResult as r
-from flext_core.service import FlextService as s
-from flext_core.typings import FlextTypes as t
-from flext_core.utilities import FlextUtilities as u
-from flext_infra.workspace.maintenance.cli import FlextInfraCliMaintenance
-from flext_infra.workspace.maintenance.python_version import (
-    FlextInfraPythonVersionEnforcer,
-    logger,
-)
 
 if _t.TYPE_CHECKING:
     import flext_infra.workspace.maintenance.cli as _flext_infra_workspace_maintenance_cli
 
     cli = _flext_infra_workspace_maintenance_cli
     import flext_infra.workspace.maintenance.python_version as _flext_infra_workspace_maintenance_python_version
+    from flext_infra.workspace.maintenance.cli import FlextInfraCliMaintenance
 
     python_version = _flext_infra_workspace_maintenance_python_version
-
-    _ = (
-        FlextInfraCliMaintenance,
+    from flext_core.constants import FlextConstants as c
+    from flext_core.decorators import FlextDecorators as d
+    from flext_core.exceptions import FlextExceptions as e
+    from flext_core.handlers import FlextHandlers as h
+    from flext_core.mixins import FlextMixins as x
+    from flext_core.models import FlextModels as m
+    from flext_core.protocols import FlextProtocols as p
+    from flext_core.result import FlextResult as r
+    from flext_core.service import FlextService as s
+    from flext_core.typings import FlextTypes as t
+    from flext_core.utilities import FlextUtilities as u
+    from flext_infra.workspace.maintenance.python_version import (
         FlextInfraPythonVersionEnforcer,
-        c,
-        cli,
-        d,
-        e,
-        h,
         logger,
-        m,
-        p,
-        python_version,
-        r,
-        s,
-        t,
-        u,
-        x,
     )
 _LAZY_IMPORTS = {
     "FlextInfraCliMaintenance": "flext_infra.workspace.maintenance.cli",

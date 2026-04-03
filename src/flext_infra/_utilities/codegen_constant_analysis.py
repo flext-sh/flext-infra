@@ -51,6 +51,123 @@ class FlextInfraUtilitiesCodegenConstantAnalysis:
         return attrs, used_attrs, usage_map
 
     @staticmethod
+    def extract_class_attributes_with_mro(
+        class_path: str,
+    ) -> Mapping[str, m.Infra.ConstantDefinition]:
+        """Extract class attributes following MRO chain via importlib.
+
+        Dynamically imports the class specified by ``class_path`` (e.g.,
+        ``"flext_core.FlextConstants"``), walks its MRO, and collects all
+        class-level attributes that look like constant declarations.
+
+        Args:
+            class_path: Dotted path to the class (module.ClassName).
+
+        Returns:
+            Mapping of attribute name to ConstantDefinition.
+
+        """
+        if "." not in class_path:
+            return {}
+        module_path, class_name = class_path.rsplit(".", 1)
+        try:
+            module = importlib.import_module(module_path)
+        except (ImportError, ModuleNotFoundError):
+            return {}
+        cls_obj = getattr(module, class_name, None)
+        if cls_obj is None or not isinstance(cls_obj, type):
+            return {}
+
+        attrs: MutableMapping[str, m.Infra.ConstantDefinition] = {}
+        # Walk MRO in reverse so that more-specific classes override
+        for klass in reversed(cls_obj.__mro__):
+            if klass is object:
+                continue
+            klass_name = klass.__qualname__
+            klass_module = getattr(klass, "__module__", module_path)
+            for attr_name in vars(klass):
+                if attr_name.startswith("_"):
+                    continue
+                attr_value = vars(klass)[attr_name]
+                # Determine type annotation string
+                annotations = getattr(klass, "__annotations__", {})
+                ann = str(annotations.get(attr_name, ""))
+                attrs[attr_name] = m.Infra.ConstantDefinition(
+                    name=attr_name,
+                    value_repr=repr(attr_value)[:200],
+                    type_annotation=ann,
+                    file_path=f"{klass_module}.{klass_name}",
+                    class_path=klass_name,
+                    project=klass_module.split(".")[0].replace("_", "-"),
+                    line=1,
+                )
+        return attrs
+
+    @staticmethod
+    def scan_class_attribute_usages(
+        root_path: Path,
+        class_name: str,
+        exclude_patterns: frozenset[str],
+        max_files: int,
+    ) -> tuple[t.Infra.StrSet, Mapping[str, Sequence[t.Infra.StrIntPair]]]:
+        """Scan for usages of class attributes across Python files.
+
+        Searches for patterns like ``ClassName.ATTR`` and ``c.Xxx.ATTR``
+        in all Python files under ``root_path``.
+
+        Args:
+            root_path: Root directory to scan.
+            class_name: Simple class name (e.g., "FlextConstants").
+            exclude_patterns: Directory names to skip.
+            max_files: Maximum number of files to scan.
+
+        Returns:
+            Tuple of (set of used attribute names,
+            mapping of attr_name -> list of (file_path, line_num) pairs).
+
+        """
+        used_attrs: t.Infra.StrSet = set()
+        usage_map: MutableMapping[str, MutableSequence[t.Infra.StrIntPair]] = {}
+        # Build regex for direct class references: FlextXxxConstants.ATTR
+        direct_pattern = re.compile(
+            rf"\b{re.escape(class_name)}\.([A-Za-z_]\w*)",
+        )
+        # Build regex for alias references: c.Xxx.ATTR or c.ATTR
+        prefix = class_name.replace("Constants", "")
+        prefix = prefix.removeprefix("Flext")
+        alias_pattern = re.compile(
+            rf"\bc\.{re.escape(prefix)}\.([A-Za-z_]\w*)"
+            if prefix
+            else r"\bc\.([A-Za-z_]\w*)",
+        )
+
+        files_scanned = 0
+        for py_file in root_path.rglob(c.Infra.Extensions.PYTHON_GLOB):
+            if files_scanned >= max_files:
+                break
+            if any(excl in py_file.parts for excl in exclude_patterns):
+                continue
+            try:
+                source = py_file.read_text(c.Infra.Encoding.DEFAULT)
+            except (OSError, UnicodeDecodeError):
+                continue
+            files_scanned += 1
+            for line_num, line in enumerate(source.splitlines(), start=1):
+                for match in direct_pattern.finditer(line):
+                    attr_name = match.group(1)
+                    used_attrs.add(attr_name)
+                    if attr_name not in usage_map:
+                        usage_map[attr_name] = list[t.Infra.StrIntPair]()
+                    usage_map[attr_name].append((str(py_file), line_num))
+                for match in alias_pattern.finditer(line):
+                    attr_name = match.group(1)
+                    used_attrs.add(attr_name)
+                    if attr_name not in usage_map:
+                        usage_map[attr_name] = list[t.Infra.StrIntPair]()
+                    usage_map[attr_name].append((str(py_file), line_num))
+        return used_attrs, usage_map
+
+    @staticmethod
     def analyze_class_object_census(
         class_path: str,
         root_path: Path,

@@ -25,7 +25,7 @@ class FlextInfraRefactorLazyImportFixer(FlextInfraRopeTransformer):
         resource: t.Infra.RopeResource,
     ) -> tuple[str, Sequence[str]]:
         """Hoist function-local imports to module level."""
-        source = u.Infra.read_source(resource)
+        source = u.read_source(resource)
         lines = source.splitlines(keepends=True)
         existing_imports: set[str] = set()
         hoisted: list[str] = []
@@ -57,10 +57,10 @@ class FlextInfraRefactorLazyImportFixer(FlextInfraRopeTransformer):
             kept_lines.append(line)
         if not hoisted:
             return source, []
-        insert_idx = u.Infra.find_import_insert_position(kept_lines)
+        insert_idx = u.find_import_insert_position(kept_lines)
         new_lines = kept_lines[:insert_idx] + hoisted + kept_lines[insert_idx:]
         new_source = "".join(new_lines)
-        u.Infra.write_source(
+        u.write_source(
             rope_project,
             resource,
             new_source,

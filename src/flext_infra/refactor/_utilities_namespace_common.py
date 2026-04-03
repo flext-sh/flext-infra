@@ -31,18 +31,6 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
         )
 
     @staticmethod
-    def _looks_like_facade_file(
-        *,
-        file_path: Path,
-        source: str,
-    ) -> bool:
-        family = c.Infra.NAMESPACE_FILE_TO_FAMILY.get(file_path.name)
-        if family is None:
-            return False
-        alias_line = f"{family} = "
-        return any(line.strip().startswith(alias_line) for line in source.splitlines())
-
-    @staticmethod
     def _parse_simple_from_import_line(
         line: str,
     ) -> tuple[str, t.StrSequence] | None:
@@ -115,29 +103,6 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
                 end_idx = idx
                 break
         return (start_idx, end_idx)
-
-    @staticmethod
-    def _find_future_insert_index(*, lines: t.StrSequence) -> int:
-        insert_idx = 0
-        if lines and lines[0].startswith("#!"):
-            insert_idx = 1
-        if insert_idx < len(lines) and "coding" in lines[insert_idx]:
-            insert_idx += 1
-        if insert_idx >= len(lines):
-            return insert_idx
-        line_text = lines[insert_idx]
-        if not line_text.startswith(('"""', "'''")):
-            return insert_idx
-        quote = line_text[:3]
-        if (
-            line_text.count(quote)
-            >= c.Infra.Thresholds.SINGLE_LINE_DOCSTRING_QUOTE_COUNT
-        ):
-            return insert_idx + 1
-        for idx in range(insert_idx + 1, len(lines)):
-            if quote in lines[idx]:
-                return idx + 1
-        return insert_idx
 
     @staticmethod
     def _compat_assignment_target(

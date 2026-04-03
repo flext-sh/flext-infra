@@ -256,6 +256,7 @@ tools:
           - S404
           - S603
         '**/__init__.py':
+          - A004
           - ANN401
           - D107
           - F401
@@ -265,6 +266,7 @@ tools:
           - N999
           - PLC2701
           - RUF067
+          - TC004
         '**/_utilities/parser.py':
           - ARG004
           - FBT001

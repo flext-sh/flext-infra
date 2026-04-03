@@ -11,7 +11,7 @@ from flext_infra import DetectorContext, FlextInfraClassPlacementDetector
 @pytest.fixture
 def rope_project(tmp_path: Path) -> t.Infra.RopeProject:
     """Create a rope project rooted at tmp_path."""
-    return u.Infra.init_rope_project(tmp_path, project_prefix="__never__")
+    return u.init_rope_project(tmp_path, project_prefix="__never__")
 
 
 def test_detects_basemodel_in_non_model_file(

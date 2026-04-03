@@ -8,23 +8,16 @@ from __future__ import annotations
 import typing as _t
 
 from flext_core.lazy import install_lazy_exports
-from flext_infra._protocols.base import FlextInfraProtocolsBase
-from flext_infra._protocols.rope import FlextInfraProtocolsRope
 
 if _t.TYPE_CHECKING:
     import flext_infra._protocols.base as _flext_infra__protocols_base
 
     base = _flext_infra__protocols_base
     import flext_infra._protocols.rope as _flext_infra__protocols_rope
+    from flext_infra._protocols.base import FlextInfraProtocolsBase
 
     rope = _flext_infra__protocols_rope
-
-    _ = (
-        FlextInfraProtocolsBase,
-        FlextInfraProtocolsRope,
-        base,
-        rope,
-    )
+    from flext_infra._protocols.rope import FlextInfraProtocolsRope
 _LAZY_IMPORTS = {
     "FlextInfraProtocolsBase": "flext_infra._protocols.base",
     "FlextInfraProtocolsRope": "flext_infra._protocols.rope",

@@ -40,7 +40,7 @@ class FlextInfraTypingAnnotationReplacer:
 
         Returns (new_source, list_of_change_descriptions).
         """
-        source, total = u.Infra.batch_replace_annotations(
+        source, total = u.batch_replace_annotations(
             rope_project,
             resource,
             self._replacements,

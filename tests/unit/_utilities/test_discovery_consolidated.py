@@ -20,7 +20,7 @@ class TestDiscoveryProjectRoots:
                 break
             candidate = candidate.parent
 
-        roots = u.Infra.discover_project_roots(workspace_root)
+        roots = u.discover_project_roots(workspace_root)
 
         assert any(root.name == "flext-core" for root in roots)
         assert all(root.is_dir() for root in roots)
@@ -37,7 +37,7 @@ class TestDiscoveryProjectRoots:
             encoding="utf-8",
         )
 
-        roots = u.Infra.discover_project_roots(tmp_path)
+        roots = u.discover_project_roots(tmp_path)
 
         assert roots == [project]
 
@@ -54,7 +54,7 @@ class TestDiscoveryIterPythonFiles:
         module_file.write_text("x = 1\n", encoding="utf-8")
         test_file.write_text("def test_x():\n    assert True\n", encoding="utf-8")
 
-        result = u.Infra.iter_python_files(
+        result = u.iter_python_files(
             workspace_root=tmp_path,
             project_roots=[project],
             include_examples=False,
@@ -81,7 +81,7 @@ class TestDiscoveryIterPythonFiles:
             staticmethod(_raise_oserror),
         )
 
-        result = u.Infra.iter_python_files(workspace_root=tmp_path)
+        result = u.iter_python_files(workspace_root=tmp_path)
 
         assert result.is_failure
         error_text = result.error or ""
@@ -117,7 +117,7 @@ class TestDiscoveryIterPythonFiles:
         legit_file.write_text("x = 1\n", encoding="utf-8")
         nested_venv_file.write_text("x = 2\n", encoding="utf-8")
 
-        result = u.Infra.iter_python_files(
+        result = u.iter_python_files(
             workspace_root=tmp_path,
             project_roots=[project],
         )
@@ -138,7 +138,7 @@ class TestDiscoveryFindAllPyprojectFiles:
         first_pyproject.write_text("[project]\nname='first'\n", encoding="utf-8")
         second_pyproject.write_text("[project]\nname='second'\n", encoding="utf-8")
 
-        result = u.Infra.find_all_pyproject_files(
+        result = u.find_all_pyproject_files(
             tmp_path,
             project_paths=[first, second_pyproject],
         )
@@ -156,7 +156,7 @@ class TestDiscoveryFindAllPyprojectFiles:
         included_file.write_text("[project]\nname='ok'\n", encoding="utf-8")
         skipped_file.write_text("[project]\nname='skip'\n", encoding="utf-8")
 
-        result = u.Infra.find_all_pyproject_files(tmp_path)
+        result = u.find_all_pyproject_files(tmp_path)
 
         assert result.is_success
         assert included_file in result.value
@@ -173,7 +173,7 @@ class TestDiscoveryFindAllPyprojectFiles:
 
         monkeypatch.setattr(Path, "rglob", _raise_oserror)
 
-        result = u.Infra.find_all_pyproject_files(tmp_path)
+        result = u.find_all_pyproject_files(tmp_path)
 
         assert result.is_failure
         error_text = result.error or ""
@@ -195,7 +195,7 @@ class TestDiscoveryDiscoverProjects:
             encoding="utf-8",
         )
 
-        result = u.Infra.discover_projects(tmp_path)
+        result = u.discover_projects(tmp_path)
 
         assert result.is_success
         assert len(result.value) == 1
@@ -216,7 +216,7 @@ class TestDiscoveryDiscoverProjects:
 
         monkeypatch.setattr(Path, "iterdir", _raise_oserror)
 
-        result = u.Infra.discover_projects(tmp_path)
+        result = u.discover_projects(tmp_path)
 
         assert result.is_failure
         error_text = result.error or ""

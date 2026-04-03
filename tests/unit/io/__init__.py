@@ -7,82 +7,51 @@ from __future__ import annotations
 
 import typing as _t
 
-from tests.unit.io.test_infra_json_io import SampleModel, TestFlextInfraJsonService
-from tests.unit.io.test_infra_output_edge_cases import (
-    TestInfraOutputEdgeCases,
-    TestInfraOutputNoColor,
-    TestMroFacadeMethods,
-)
-from tests.unit.io.test_infra_output_formatting import (
-    ANSI_RE,
-    TestInfraOutputHeader,
-    TestInfraOutputMessages,
-    TestInfraOutputProgress,
-    TestInfraOutputStatus,
-    TestInfraOutputSummary,
-)
-from tests.unit.io.test_infra_terminal_detection import (
-    TestShouldUseColor,
-    TestShouldUseUnicode,
-)
-
-from flext_core.constants import FlextConstants as c
-from flext_core.decorators import FlextDecorators as d
-from flext_core.exceptions import FlextExceptions as e
-from flext_core.handlers import FlextHandlers as h
 from flext_core.lazy import install_lazy_exports
-from flext_core.mixins import FlextMixins as x
-from flext_core.models import FlextModels as m
-from flext_core.protocols import FlextProtocols as p
-from flext_core.result import FlextResult as r
-from flext_core.service import FlextService as s
-from flext_core.typings import FlextTypes as t
-from flext_core.utilities import FlextUtilities as u
 
 if _t.TYPE_CHECKING:
     import tests.unit.io.test_infra_json_io as _tests_unit_io_test_infra_json_io
 
     test_infra_json_io = _tests_unit_io_test_infra_json_io
     import tests.unit.io.test_infra_output_edge_cases as _tests_unit_io_test_infra_output_edge_cases
+    from tests.unit.io.test_infra_json_io import SampleModel, TestFlextInfraJsonService
 
     test_infra_output_edge_cases = _tests_unit_io_test_infra_output_edge_cases
     import tests.unit.io.test_infra_output_formatting as _tests_unit_io_test_infra_output_formatting
+    from tests.unit.io.test_infra_output_edge_cases import (
+        TestInfraOutputEdgeCases,
+        TestInfraOutputNoColor,
+        TestMroFacadeMethods,
+    )
 
     test_infra_output_formatting = _tests_unit_io_test_infra_output_formatting
     import tests.unit.io.test_infra_terminal_detection as _tests_unit_io_test_infra_terminal_detection
-
-    test_infra_terminal_detection = _tests_unit_io_test_infra_terminal_detection
-
-    _ = (
+    from tests.unit.io.test_infra_output_formatting import (
         ANSI_RE,
-        SampleModel,
-        TestFlextInfraJsonService,
-        TestInfraOutputEdgeCases,
         TestInfraOutputHeader,
         TestInfraOutputMessages,
-        TestInfraOutputNoColor,
         TestInfraOutputProgress,
         TestInfraOutputStatus,
         TestInfraOutputSummary,
-        TestMroFacadeMethods,
+    )
+
+    test_infra_terminal_detection = _tests_unit_io_test_infra_terminal_detection
+    from tests.unit.io.test_infra_terminal_detection import (
         TestShouldUseColor,
         TestShouldUseUnicode,
-        c,
-        d,
-        e,
-        h,
-        m,
-        p,
-        r,
-        s,
-        t,
-        test_infra_json_io,
-        test_infra_output_edge_cases,
-        test_infra_output_formatting,
-        test_infra_terminal_detection,
-        u,
-        x,
     )
+
+    from flext_core.constants import FlextConstants as c
+    from flext_core.decorators import FlextDecorators as d
+    from flext_core.exceptions import FlextExceptions as e
+    from flext_core.handlers import FlextHandlers as h
+    from flext_core.mixins import FlextMixins as x
+    from flext_core.models import FlextModels as m
+    from flext_core.protocols import FlextProtocols as p
+    from flext_core.result import FlextResult as r
+    from flext_core.service import FlextService as s
+    from flext_core.typings import FlextTypes as t
+    from flext_core.utilities import FlextUtilities as u
 _LAZY_IMPORTS = {
     "ANSI_RE": "tests.unit.io.test_infra_output_formatting",
     "SampleModel": "tests.unit.io.test_infra_json_io",

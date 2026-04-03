@@ -52,10 +52,10 @@ class FlextInfraRefactorMROSymbolPropagator(FlextInfraRopeTransformer):
         resource: t.Infra.RopeResource,
     ) -> tuple[str, Sequence[str]]:
         """Apply import and reference rewrites. Returns (new_source, changes)."""
-        source = u.Infra.read_source(resource)
+        source = u.read_source(resource)
         rewritten_source, changes = self.rewrite_source(source)
         if rewritten_source != source and changes:
-            u.Infra.write_source(
+            u.write_source(
                 rope_project,
                 resource,
                 rewritten_source,

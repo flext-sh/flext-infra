@@ -114,7 +114,7 @@ class FlextInfraPythonVersionEnforcer(s[int]):
             Sequence[Path]: List of project paths.
 
         """
-        result = u.Infra.discover_projects(workspace_root)
+        result = u.discover_projects(workspace_root)
         return result.fold(
             on_failure=lambda _: [],
             on_success=lambda v: [

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 from typing import ClassVar, Final
 
@@ -48,6 +48,37 @@ class FlextInfraUtilitiesCodegenGovernance:
             entry.value: entry.canonical_ref
             for entry in config.canonical_values
             if entry.type == "str" and isinstance(entry.value, str)
+        }
+
+    @staticmethod
+    def get_canonical_frozenset_values() -> Mapping[frozenset[str], str]:
+        config = FlextInfraUtilitiesCodegenGovernance.load_governance_config()
+        return {
+            frozenset(entry.value): entry.canonical_ref
+            for entry in config.canonical_values
+            if entry.type == "frozenset"
+            and isinstance(entry.value, Sequence)
+            and not isinstance(entry.value, str)
+        }
+
+    @staticmethod
+    def get_canonical_regex_values() -> t.StrMapping:
+        config = FlextInfraUtilitiesCodegenGovernance.load_governance_config()
+        return {
+            entry.value: entry.canonical_ref
+            for entry in config.canonical_values
+            if entry.type == "regex" and isinstance(entry.value, str)
+        }
+
+    @staticmethod
+    def get_canonical_tuple_values() -> Mapping[tuple[str, ...], str]:
+        config = FlextInfraUtilitiesCodegenGovernance.load_governance_config()
+        return {
+            tuple(entry.value): entry.canonical_ref
+            for entry in config.canonical_values
+            if entry.type == "tuple"
+            and isinstance(entry.value, Sequence)
+            and not isinstance(entry.value, str)
         }
 
     @staticmethod

@@ -43,51 +43,49 @@ from flext_infra import (
 )
 
 
-class FlextInfraUtilities(FlextCliUtilities):
+class FlextInfraUtilities(
+    FlextInfraRefactorTransformerPolicyUtilities,
+    FlextInfraUtilitiesCli,
+    FlextInfraUtilitiesCodegen,
+    FlextInfraUtilitiesBase,
+    FlextInfraUtilitiesGithub,
+    FlextInfraUtilitiesImportNormalizer,
+    FlextInfraUtilitiesDocs,
+    FlextInfraUtilitiesFormatting,
+    FlextInfraUtilitiesGit,
+    FlextInfraUtilitiesIo,
+    FlextInfraUtilitiesLogParser,
+    FlextInfraUtilitiesOutput,
+    FlextInfraUtilitiesParsing,
+    FlextInfraUtilitiesPaths,
+    FlextInfraUtilitiesPatterns,
+    FlextInfraUtilitiesRefactor,
+    FlextInfraUtilitiesRelease,
+    FlextInfraUtilitiesReporting,
+    FlextInfraUtilitiesRope,
+    FlextInfraUtilitiesRuleHelpers,
+    FlextInfraUtilitiesSafety,
+    FlextInfraUtilitiesSelection,
+    FlextInfraUtilitiesSubprocess,
+    FlextInfraUtilitiesTemplates,
+    FlextInfraUtilitiesTerminal,
+    FlextInfraUtilitiesToml,
+    FlextInfraUtilitiesTomlParse,
+    FlextInfraUtilitiesVersioning,
+    FlextInfraUtilitiesYaml,
+    FlextCliUtilities,
+):
     """Utility namespace for flext-infra; extends FlextUtilities.
 
     Usage::
 
         from flext_infra import u
 
-        u.Infra.git_run_checked(["status"])
-        u.Infra.read_json(path)
-        u.Infra.discover_projects(workspace_root)
-        u.Infra.parse_semver("1.2.3")
+        u.git_run_checked(["status"])
+        u.read_json(path)
+        u.discover_projects(workspace_root)
+        u.parse_semver("1.2.3")
     """
-
-    class Infra(
-        FlextInfraRefactorTransformerPolicyUtilities,
-        FlextInfraUtilitiesCli,
-        FlextInfraUtilitiesCodegen,
-        FlextInfraUtilitiesBase,
-        FlextInfraUtilitiesGithub,
-        FlextInfraUtilitiesImportNormalizer,
-        FlextInfraUtilitiesDocs,
-        FlextInfraUtilitiesFormatting,
-        FlextInfraUtilitiesGit,
-        FlextInfraUtilitiesIo,
-        FlextInfraUtilitiesLogParser,
-        FlextInfraUtilitiesOutput,
-        FlextInfraUtilitiesParsing,
-        FlextInfraUtilitiesPaths,
-        FlextInfraUtilitiesPatterns,
-        FlextInfraUtilitiesRefactor,
-        FlextInfraUtilitiesRelease,
-        FlextInfraUtilitiesReporting,
-        FlextInfraUtilitiesRope,
-        FlextInfraUtilitiesRuleHelpers,
-        FlextInfraUtilitiesSafety,
-        FlextInfraUtilitiesSelection,
-        FlextInfraUtilitiesSubprocess,
-        FlextInfraUtilitiesTemplates,
-        FlextInfraUtilitiesTerminal,
-        FlextInfraUtilitiesToml,
-        FlextInfraUtilitiesTomlParse,
-        FlextInfraUtilitiesVersioning,
-        FlextInfraUtilitiesYaml,
-    ):
-        """Infrastructure-domain utilities - all methods exposed directly."""
 
 
 u = FlextInfraUtilities

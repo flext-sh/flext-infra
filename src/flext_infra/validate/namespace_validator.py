@@ -96,7 +96,7 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
                 continue
             result.extend(
                 py_file
-                for py_file in u.Infra.iter_directory_python_files(base_dir)
+                for py_file in u.iter_directory_python_files(base_dir)
                 if not self._is_exempt_file(py_file)
             )
         return sorted(result)
@@ -110,4 +110,4 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
 
     def _parse_file(self, path: Path) -> ast.Module | None:
         """Parse a Python file into an AST, returning None on failure."""
-        return u.Infra.parse_module_ast(path)
+        return u.parse_module_ast(path)

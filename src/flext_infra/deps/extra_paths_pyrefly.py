@@ -75,7 +75,7 @@ class FlextInfraExtraPathsPyrefly:
             return sorted(paths)
         if rules.include_path_dependencies_in_search_path:
             project_pyproject = project_dir / c.Infra.Files.PYPROJECT_FILENAME
-            doc_result = u.Infra.read_document(project_pyproject)
+            doc_result = u.read_document(project_pyproject)
             if doc_result.is_success:
                 dep_paths = self.get_dep_paths(doc_result.value, is_root=False)  # type: ignore[attr-defined]
                 paths.update(dep_paths)
@@ -97,7 +97,7 @@ class FlextInfraExtraPathsPyrefly:
         rules = self._pyrefly_path_rules()
         env_dirs = set(rules.env_dirs)
         includes: t.Infra.StrSet = set()
-        local_dirs = set(u.Infra.discover_python_dirs(project_dir))
+        local_dirs = set(u.discover_python_dirs(project_dir))
         includes.update(
             f"{directory}/**/*.py*" for directory in sorted(local_dirs & env_dirs)
         )
@@ -109,7 +109,7 @@ class FlextInfraExtraPathsPyrefly:
                 continue
             if not (child / c.Infra.Files.PYPROJECT_FILENAME).exists():
                 continue
-            child_dirs = set(u.Infra.discover_python_dirs(child))
+            child_dirs = set(u.discover_python_dirs(child))
             includes.update(
                 f"{child.name}/{directory}/**/*.py*"
                 for directory in sorted(child_dirs & child_env_dirs)

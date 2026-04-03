@@ -12,14 +12,6 @@ import typing as _t
 
 {%- if type_checking_lines %}
 {{ type_checking_lines }}
-{%- if typecheck_names %}
-
-    _ = (
-{%- for name in typecheck_names %}
-        {{ name }},
-{%- endfor %}
-    )
-{%- endif %}
 {%- endif %}
 
 {%- if child_module_paths %}

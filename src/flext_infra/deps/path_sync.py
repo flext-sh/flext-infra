@@ -21,7 +21,7 @@ from .path_sync_rewrite import FlextInfraDependencyPathSyncRewrite
 class FlextInfraDependencyPathSync(FlextInfraDependencyPathSyncRewrite):
     """Rewrite internal FLEXT dependency paths for workspace or standalone mode."""
 
-    ROOT = u.Infra.resolve_workspace_root(__file__)
+    ROOT = u.resolve_workspace_root(__file__)
     _log = FlextLogger.create_module_logger(__name__)
 
     def __init__(self) -> None:
@@ -59,7 +59,7 @@ class FlextInfraDependencyPathSync(FlextInfraDependencyPathSyncRewrite):
             return dep_name if is_root else f"../{dep_name}"
         return f"{c.Infra.FLEXT_DEPS_DIR}/{dep_name}"
 
-    def run(self, *, cli: u.Infra.CliArgs, mode: str) -> int:
+    def run(self, *, cli: u.CliArgs, mode: str) -> int:
         """Execute path synchronization for the given CLI arguments."""
         self.set_workspace_root(cli.workspace)
         dry_run = cli.dry_run
@@ -73,19 +73,19 @@ class FlextInfraDependencyPathSync(FlextInfraDependencyPathSyncRewrite):
         root_pyproject = self._root / c.Infra.Files.PYPROJECT_FILENAME
 
         if root_pyproject.exists():
-            root_data_result = u.Infra.read_document(root_pyproject)
+            root_data_result = u.read_document(root_pyproject)
             if root_data_result.is_success:
                 root_data: TOMLDocument = root_data_result.value
-                root_project = u.Infra.get_item(root_data, c.Infra.PROJECT)
-                root_mapping = u.Infra.as_toml_mapping(
-                    u.Infra.unwrap_item(root_project),
+                root_project = u.get_item(root_data, c.Infra.PROJECT)
+                root_mapping = u.as_toml_mapping(
+                    u.unwrap_item(root_project),
                 )
                 if root_mapping is not None:
                     root_name = self._mapping_str_value(root_mapping, c.Infra.NAME)
                     if root_name is not None:
                         internal_names.add(root_name)
 
-        discover_result = u.Infra.discover_projects(self._root)
+        discover_result = u.discover_projects(self._root)
         if discover_result.is_failure:
             discovery_error = discover_result.error or "sync_dep_paths_discovery_failed"
             self._log.error(
@@ -109,13 +109,13 @@ class FlextInfraDependencyPathSync(FlextInfraDependencyPathSyncRewrite):
             pyproject = project_dir / c.Infra.Files.PYPROJECT_FILENAME
             if not pyproject.exists():
                 continue
-            data_result = u.Infra.read_document(pyproject)
+            data_result = u.read_document(pyproject)
             if data_result.is_failure:
                 continue
             project_data: TOMLDocument = data_result.value
-            project_obj = u.Infra.get_item(project_data, c.Infra.PROJECT)
-            project_mapping = u.Infra.as_toml_mapping(
-                u.Infra.unwrap_item(project_obj),
+            project_obj = u.get_item(project_data, c.Infra.PROJECT)
+            project_mapping = u.as_toml_mapping(
+                u.unwrap_item(project_obj),
             )
             if project_mapping is None:
                 continue
@@ -184,10 +184,10 @@ class FlextInfraDependencyPathSync(FlextInfraDependencyPathSyncRewrite):
     @staticmethod
     def main(argv: t.StrSequence | None = None) -> int:
         """Entry point for path sync CLI."""
-        parser = u.Infra.create_parser(
+        parser = u.create_parser(
             "flext-infra deps path-sync",
             "Rewrite internal FLEXT dependency paths for workspace/standalone mode.",
-            flags=u.Infra.SharedFlags(include_apply=True, include_project=True),
+            flags=u.SharedFlags(include_apply=True, include_project=True),
         )
         _ = parser.add_argument(
             "--mode",
@@ -196,7 +196,7 @@ class FlextInfraDependencyPathSync(FlextInfraDependencyPathSyncRewrite):
             help="Target mode (default: auto-detect)",
         )
         args = parser.parse_args(argv)
-        cli = u.Infra.resolve(args)
+        cli = u.resolve(args)
         return FlextInfraDependencyPathSync().run(cli=cli, mode=args.mode)
 
 

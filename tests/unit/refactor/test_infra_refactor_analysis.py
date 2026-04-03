@@ -77,7 +77,7 @@ def test_violation_analysis_counts_massive_patterns(tmp_path: Path) -> None:
     )
     engine = FlextInfraRefactorEngine(config_path=config_path)
     _ = engine.load_config()
-    files = u.Infra.collect_engine_project_files(
+    files = u.collect_engine_project_files(
         engine.rule_loader,
         engine.config,
         project_root,

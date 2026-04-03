@@ -67,7 +67,7 @@ class FlextInfraCyclicImportDetector:
         for sd in scan_dirs:
             is_src = sd.name == c.Infra.Paths.DEFAULT_SRC_DIR
             is_pkg = (sd / c.Infra.Files.INIT_PY).is_file()
-            for py_file in u.Infra.iter_directory_python_files(sd):
+            for py_file in u.iter_directory_python_files(sd):
                 mod = FlextInfraCyclicImportDetector._file_to_module(
                     py_file,
                     sd,
@@ -78,10 +78,10 @@ class FlextInfraCyclicImportDetector:
                     continue
                 file_map.setdefault(mod, str(py_file))
                 graph.setdefault(mod, set())
-                res = u.Infra.get_resource_from_path(rope_project, py_file)
+                res = u.get_resource_from_path(rope_project, py_file)
                 if res is None:
                     continue
-                for fqn in u.Infra.get_module_imports(rope_project, res).values():
+                for fqn in u.get_module_imports(rope_project, res).values():
                     if fqn.split(".")[0] in package_roots:
                         graph[mod].add(fqn)
         return (graph, file_map)

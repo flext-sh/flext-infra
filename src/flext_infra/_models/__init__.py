@@ -8,53 +8,36 @@ from __future__ import annotations
 import typing as _t
 
 from flext_core.lazy import install_lazy_exports
-from flext_infra._models.base import FlextInfraModelsBase
-from flext_infra._models.census import FlextInfraModelsCensus
-from flext_infra._models.cli_inputs import FlextInfraModelsCliInputs
-from flext_infra._models.cli_inputs_codegen import FlextInfraModelsCliInputsCodegen
-from flext_infra._models.cli_inputs_ops import FlextInfraModelsCliInputsOps
-from flext_infra._models.rope import FlextInfraModelsRope
-from flext_infra._models.scan import FlextInfraModelsScan
 
 if _t.TYPE_CHECKING:
     import flext_infra._models.base as _flext_infra__models_base
 
     base = _flext_infra__models_base
     import flext_infra._models.census as _flext_infra__models_census
+    from flext_infra._models.base import FlextInfraModelsBase
 
     census = _flext_infra__models_census
     import flext_infra._models.cli_inputs as _flext_infra__models_cli_inputs
+    from flext_infra._models.census import FlextInfraModelsCensus
 
     cli_inputs = _flext_infra__models_cli_inputs
     import flext_infra._models.cli_inputs_codegen as _flext_infra__models_cli_inputs_codegen
+    from flext_infra._models.cli_inputs import FlextInfraModelsCliInputs
 
     cli_inputs_codegen = _flext_infra__models_cli_inputs_codegen
     import flext_infra._models.cli_inputs_ops as _flext_infra__models_cli_inputs_ops
+    from flext_infra._models.cli_inputs_codegen import FlextInfraModelsCliInputsCodegen
 
     cli_inputs_ops = _flext_infra__models_cli_inputs_ops
     import flext_infra._models.rope as _flext_infra__models_rope
+    from flext_infra._models.cli_inputs_ops import FlextInfraModelsCliInputsOps
 
     rope = _flext_infra__models_rope
     import flext_infra._models.scan as _flext_infra__models_scan
+    from flext_infra._models.rope import FlextInfraModelsRope
 
     scan = _flext_infra__models_scan
-
-    _ = (
-        FlextInfraModelsBase,
-        FlextInfraModelsCensus,
-        FlextInfraModelsCliInputs,
-        FlextInfraModelsCliInputsCodegen,
-        FlextInfraModelsCliInputsOps,
-        FlextInfraModelsRope,
-        FlextInfraModelsScan,
-        base,
-        census,
-        cli_inputs,
-        cli_inputs_codegen,
-        cli_inputs_ops,
-        rope,
-        scan,
-    )
+    from flext_infra._models.scan import FlextInfraModelsScan
 _LAZY_IMPORTS = {
     "FlextInfraModelsBase": "flext_infra._models.base",
     "FlextInfraModelsCensus": "flext_infra._models.census",

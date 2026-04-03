@@ -60,7 +60,7 @@ class FlextInfraCodegenLazyInit(s[int]):
         )
         if not check_only:
             self._fix_import_cycles(pkg_dirs)
-        u.Infra.info(
+        u.info(
             f"Lazy-init summary: {ok} generated, {errors} errors"
             f" ({total} dirs scanned)",
         )
@@ -98,17 +98,17 @@ class FlextInfraCodegenLazyInit(s[int]):
             init_file = pkg_dir / c.Infra.Files.INIT_PY
             if not init_file.is_file():
                 continue
-            modified, changes = u.Infra.break_import_cycles(pkg_dir)
+            modified, changes = u.break_import_cycles(pkg_dir)
             if modified:
                 for change in changes:
-                    u.Infra.info(f"  CYCLE-FIX: {change}")
+                    u.info(f"  CYCLE-FIX: {change}")
                 cycle_fixes += len(changes)
         if cycle_fixes:
-            u.Infra.info(f"Cycle-fix: {cycle_fixes} circular imports resolved")
+            u.info(f"Cycle-fix: {cycle_fixes} circular imports resolved")
 
     def _find_package_dirs(self) -> Sequence[Path]:
         pkg_dirs: t.Infra.PathSet = set()
-        files_result = u.Infra.iter_python_files(workspace_root=self._root)
+        files_result = u.iter_python_files(workspace_root=self._root)
         if files_result.is_failure:
             return []
         for py_file in files_result.value:
@@ -118,7 +118,7 @@ class FlextInfraCodegenLazyInit(s[int]):
             ):
                 continue
             parent = py_file.parent
-            if u.Infra.dir_has_py_files(parent):
+            if u.dir_has_py_files(parent):
                 pkg_dirs.add(parent)
         return sorted(pkg_dirs, key=lambda p: len(p.parts), reverse=True)
 
@@ -130,26 +130,26 @@ class FlextInfraCodegenLazyInit(s[int]):
         dir_exports: Mapping[str, t.Infra.LazyImportMap],
     ) -> t.Infra.LazyInitProcessResult:
         init_path = pkg_dir / c.Infra.Files.INIT_PY
-        current_pkg = u.Infra.discover_package_from_file(init_path)
+        current_pkg = u.discover_package_from_file(init_path)
         if not current_pkg:
             return (None, {})
-        docstring = u.Infra.read_existing_docstring(init_path)
+        docstring = u.read_existing_docstring(init_path)
         if not docstring:
-            docstring = u.Infra.default_docstring(pkg_dir.name)
-        lazy_map = u.Infra.build_sibling_export_index(pkg_dir, current_pkg)
-        child_packages_for_lazy = u.Infra.collect_child_packages(
+            docstring = u.default_docstring(pkg_dir.name)
+        lazy_map = u.build_sibling_export_index(pkg_dir, current_pkg)
+        child_packages_for_lazy = u.collect_child_packages(
             pkg_dir,
             current_pkg,
             dir_exports,
         )
-        collapse_packages = u.Infra.collect_descendant_packages(
+        collapse_packages = u.collect_descendant_packages(
             pkg_dir,
             current_pkg,
             dir_exports,
         )
-        u.Infra.merge_child_exports(pkg_dir, current_pkg, lazy_map, dir_exports)
+        u.merge_child_exports(pkg_dir, current_pkg, lazy_map, dir_exports)
         child_packages_for_tc = collapse_packages
-        inline_constants, version_entries = u.Infra.extract_version_exports(
+        inline_constants, version_entries = u.extract_version_exports(
             pkg_dir,
             current_pkg,
         )
@@ -172,7 +172,7 @@ class FlextInfraCodegenLazyInit(s[int]):
         for infra_name in ("cleanup_submodule_namespace", "lazy_getattr"):
             lazy_map.pop(infra_name, None)
         eager_tvars = frozenset(
-            u.Infra.detect_eager_typevar_names(pkg_dir) & set(lazy_map),
+            u.detect_eager_typevar_names(pkg_dir) & set(lazy_map),
         )
         for k in inline_constants:
             lazy_map.pop(k, None)
@@ -229,16 +229,16 @@ class FlextInfraCodegenLazyInit(s[int]):
             if previous != generated:
                 init_path.write_text(generated, encoding=c.Infra.Encoding.DEFAULT)
                 self._modified_files.add(str(init_path))
-                u.Infra.run_ruff_fix(init_path, quiet=True)
+                u.run_ruff_fix(init_path, quiet=True)
         except (OSError, ValueError) as exc:
-            u.Infra.error(f"generating {init_path}: {exc}")
+            u.error(f"generating {init_path}: {exc}")
             return (-1, dict(lazy_map))
         rel_path = (
             init_path.relative_to(self._root)
             if self._root in init_path.parents
             else init_path
         )
-        u.Infra.info(f"  OK: {rel_path} — {len(exports)} exports")
+        u.info(f"  OK: {rel_path} — {len(exports)} exports")
         return (0, dict(lazy_map))
 
     @staticmethod

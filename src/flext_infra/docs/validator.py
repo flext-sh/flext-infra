@@ -74,7 +74,7 @@ class FlextInfraDocValidator:
             r with list of ValidateReport objects.
 
         """
-        return u.Infra.run_scoped(
+        return u.run_scoped(
             workspace_root,
             project=project,
             projects=projects,
@@ -112,7 +112,7 @@ class FlextInfraDocValidator:
         config = workspace_root / "docs/architecture/architecture_config.json"
         if not config.exists():
             return []
-        payload_result = u.Infra.read_json(config)
+        payload_result = u.read_json(config)
         if payload_result.is_failure:
             return None
         configured = FlextInfraDocValidator._extract_required_skills_list(
@@ -200,11 +200,11 @@ class FlextInfraDocValidator:
                 "todo_written": wrote_todo,
             },
         }
-        _ = u.Infra.write_json(
+        _ = u.write_json(
             scope.report_dir / "validate-summary.json",
             payload,
         )
-        _ = u.Infra.write_markdown(
+        _ = u.write_markdown(
             scope.report_dir / "validate-report.md",
             [
                 "# Docs Validate Report",

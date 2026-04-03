@@ -340,7 +340,7 @@ def test_sync_regenerates_project_makefile_without_legacy_passthrough(
 
 def test_atomic_write_ok(tmp_path: Path) -> None:
     target = tmp_path / "test.txt"
-    tm.ok(u.Infra.atomic_write_file(target, "test content"), eq=True)
+    tm.ok(u.atomic_write_file(target, "test content"), eq=True)
     tm.that(target.read_text(encoding="utf-8"), eq="test content")
 
 
@@ -354,9 +354,7 @@ def test_atomic_write_fail(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
         "NamedTemporaryFile",
         _temp,
     )
-    tm.fail(
-        u.Infra.atomic_write_file(tmp_path / "t.txt", "c"), has="atomic write failed"
-    )
+    tm.fail(u.atomic_write_file(tmp_path / "t.txt", "c"), has="atomic write failed")
 
 
 @pytest.mark.parametrize(

@@ -35,13 +35,13 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
     ) -> r[Sequence[m.Infra.ProjectInfo]]:
         if self.selector is not None:
             return self.selector.resolve_projects(workspace_root, names)
-        return u.Infra.resolve_projects(workspace_root, names)
+        return u.resolve_projects(workspace_root, names)
 
     @override
     def _read_plain(self, path: Path) -> r[t.Infra.ContainerDict]:
         if self.toml is not None:
             return self.toml.read_plain(path)
-        return u.Infra.read_plain(path)
+        return u.read_plain(path)
 
     @override
     def _run_raw(
@@ -54,7 +54,7 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
     ) -> r[m.Infra.CommandOutput]:
         if self.runner is not None:
             return self.runner.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
-        return u.Infra.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
+        return u.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
 
     @staticmethod
     def classify_issues(

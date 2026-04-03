@@ -123,6 +123,17 @@ class FlextInfraCliCodegen:
                 success_message="constants quality gate passed",
             ),
         )
+        cli.register_result_route(
+            app,
+            route=m.Cli.ResultCommandRouteModel(
+                name="consolidate",
+                help_text="Consolidate inline constants into c.Infra.* references",
+                model_cls=m.Infra.CodegenConsolidateInput,
+                handler=self._handle_consolidate,
+                failure_message="consolidate failed",
+                success_formatter=_format_text,
+            ),
+        )
 
     # ── Handlers ─────────────────────────────────────────────
 
@@ -173,7 +184,7 @@ class FlextInfraCliCodegen:
         """Handle constant deduplication with user selection."""
         workspace = Path(params.workspace).resolve()
         dry_run = not params.apply
-        fixes = u.Infra.propose_deduplication_fixes(
+        fixes = u.propose_deduplication_fixes(
             params.class_to_analyze,
             workspace,
         )
@@ -208,7 +219,7 @@ class FlextInfraCliCodegen:
         lines.append(f"\nApplying {len(fixes)} deduplication fixes...")
         total_files_modified = 0
         for fix in fixes:
-            result = u.Infra.apply_deduplication_fix(
+            result = u.apply_deduplication_fix(
                 fix,
                 workspace,
                 params.class_to_analyze,
@@ -381,3 +392,150 @@ class FlextInfraCliCodegen:
         if FlextInfraCodegenConstantsQualityGate.is_success_verdict(verdict):
             return r[bool].ok(value=True)
         return r[bool].fail(f"quality gate verdict: {verdict}")
+
+    @staticmethod
+    def _handle_consolidate(params: m.Infra.CodegenConsolidateInput) -> r[str]:
+        """Handle constant consolidation with per-file validation."""
+        workspace = Path(params.workspace).resolve()
+        dry_run = not params.apply
+        lines: list[str] = []
+
+        if dry_run:
+            lines.append("[DRY-RUN] Scanning for inline canonicals...\n")
+
+        # Phase 1: Scan — reuse existing detection
+        projects_result = u.discover_projects(workspace)
+        if projects_result.is_failure:
+            return r[str].fail("Failed to discover projects")
+
+        projects: Sequence[m.Infra.ProjectInfo] = projects_result.value
+        if params.project:
+            projects = [p for p in projects if p.name == params.project]
+
+        total_found = 0
+        total_applied = 0
+        total_failed = 0
+        file_results: list[dict[str, t.Infra.InfraValue]] = []
+
+        for project in projects:
+            project_root = workspace / project.name
+            src_dir = project_root / c.Infra.Paths.DEFAULT_SRC_DIR
+            if not src_dir.is_dir():
+                continue
+
+            pkg_name = project.name.replace("-", "_")
+            pkg_dir = src_dir / pkg_name
+            if not pkg_dir.is_dir():
+                continue
+
+            parent_class = u.derive_constants_class(pkg_name, pkg_dir)
+            project_import = f"from {pkg_name} import {parent_class}"
+
+            for py_file in sorted(pkg_dir.rglob(c.Infra.Extensions.PYTHON_GLOB)):
+                if c.Infra.Dunders.PYCACHE in py_file.parts:
+                    continue
+
+                definitions = u.extract_constant_definitions(
+                    py_file,
+                    project.name,
+                )
+                hardcoded = u.detect_hardcoded_canonicals(definitions)
+
+                if not hardcoded:
+                    continue
+
+                total_found += len(hardcoded)
+
+                if dry_run:
+                    for item in hardcoded:
+                        ref = u.canonical_reference_for(
+                            item.name,
+                            item.value_repr,
+                        )
+                        lines.append(
+                            f"  {py_file.relative_to(workspace)}:{item.line}"
+                            f"  {item.name} = {item.value_repr} -> {ref}",
+                        )
+                    continue
+
+                # Phase 2: Apply with validation
+                try:
+                    backup = py_file.read_text(c.Infra.Encoding.DEFAULT)
+                except (OSError, UnicodeDecodeError):
+                    continue
+
+                modified, changes = u.replace_canonical_values(
+                    py_file,
+                    parent_class,
+                    definitions,
+                )
+                if not modified:
+                    continue
+
+                _, norm_changes = u.normalize_constant_aliases(
+                    py_file,
+                    project_import,
+                    pkg_dir,
+                )
+                all_changes = list(changes) + list(norm_changes)
+
+                # Validate via gates
+                validation_ok = True
+                rel_path = str(py_file)
+                for tool_cmd in (
+                    ["ruff", "check", rel_path, "--no-fix", "--select", "E,F,W"],
+                    ["pyright", rel_path],
+                ):
+                    result = u.run_raw(
+                        tool_cmd,
+                        cwd=workspace,
+                        timeout=c.Infra.Timeouts.SHORT,
+                    )
+                    if result.is_failure or result.value.exit_code != 0:
+                        validation_ok = False
+                        output = result.value.stdout[:200] if result.is_success else ""
+                        lines.append(
+                            f"  FAILED {py_file.relative_to(workspace)}"
+                            f" [{tool_cmd[0]}]: {output}",
+                        )
+                        break
+
+                if not validation_ok:
+                    py_file.write_text(backup, encoding=c.Infra.Encoding.DEFAULT)
+                    total_failed += 1
+                    file_results.append({
+                        "file": str(py_file.relative_to(workspace)),
+                        "status": "reverted",
+                        "changes": all_changes,
+                    })
+                else:
+                    total_applied += len(all_changes)
+                    rel = py_file.relative_to(workspace)
+                    lines.extend(f"  APPLIED {rel}: {change}" for change in all_changes)
+                    file_results.append({
+                        "file": str(py_file.relative_to(workspace)),
+                        "status": "applied",
+                        "changes": all_changes,
+                    })
+
+        lines.append("")
+        if dry_run:
+            lines.append(
+                f"Found {total_found} canonical matches"
+                f" across {len(projects)} projects",
+            )
+        else:
+            lines.append(
+                f"Applied {total_applied} replacements, {total_failed} files reverted",
+            )
+
+        if params.output_format == "json":
+            text = t.Infra.CONTAINER_MAPPING_ADAPTER.dump_json({
+                "total_found": total_found,
+                "total_applied": total_applied,
+                "total_failed": total_failed,
+                "files": file_results,
+            }).decode()
+            return r[str].ok(text)
+
+        return r[str].ok("\n".join(lines))

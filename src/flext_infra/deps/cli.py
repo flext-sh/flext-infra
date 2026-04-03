@@ -65,7 +65,7 @@ class FlextInfraCliDeps:
     def run(cls, args: t.StrSequence | None = None) -> int:
         """Dispatch to the appropriate deps subcommand."""
         raw_args = list(args) if args is not None else sys.argv[1:]
-        parser, _ = u.Infra.create_subcommand_parser(
+        parser, _ = u.create_subcommand_parser(
             "flext-infra deps",
             "Dependency management services",
             subcommands={
@@ -75,7 +75,7 @@ class FlextInfraCliDeps:
                 "modernize": "Modernize workspace pyproject files",
                 "path-sync": "Rewrite internal FLEXT dependency paths",
             },
-            flags=u.Infra.SharedFlags(include_apply=False),
+            flags=u.SharedFlags(include_apply=False),
         )
         if not raw_args or raw_args[0] in {"-h", "--help"}:
             parser.print_help()
@@ -90,7 +90,7 @@ class FlextInfraCliDeps:
             return 0
         subcommand = raw_args[command_index]
         if subcommand not in cls._SUBCOMMAND_MODULES:
-            u.Infra.error(f"flext-infra deps: unknown subcommand '{subcommand}'")
+            u.error(f"flext-infra deps: unknown subcommand '{subcommand}'")
             parser.print_help()
             return 1
         forwarded_args = [
@@ -107,6 +107,6 @@ class FlextInfraCliDeps:
         except SystemExit as exc:
             return cls._normalize_exit_code(exc.code)
         except Exception as exc:
-            u.Infra.error(str(exc))
+            u.error(str(exc))
             return 1
         return cls._normalize_exit_code(exit_code)

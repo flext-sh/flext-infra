@@ -14,8 +14,8 @@ from tests import t, u
 
 from flext_infra import FlextInfraSkillValidator
 
-_safe_load_yaml = u.Infra.safe_load_yaml
-_string_list = u.Infra.string_list
+_safe_load_yaml = u.safe_load_yaml
+_string_list = u.string_list
 
 
 class TestSafeLoadYaml:

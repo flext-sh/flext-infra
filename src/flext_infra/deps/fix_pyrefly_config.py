@@ -29,7 +29,7 @@ class FlextInfraConfigFixer(s[bool]):
         """Initialize pyrefly config fixer."""
         super().__init__()
         self._workspace_root = self._resolve_workspace_root(workspace_root)
-        config_result = u.Infra.load_tool_config()
+        config_result = u.load_tool_config()
         if config_result.is_failure:
             msg = config_result.error or "failed to load deps tool config"
             raise ValueError(msg)
@@ -38,7 +38,7 @@ class FlextInfraConfigFixer(s[bool]):
     @staticmethod
     def _to_array(items_list: t.StrSequence) -> items.Array:
         items_infra: Sequence[t.Infra.InfraValue] = list(items_list)
-        serialized_result = u.Infra.serialize(items_infra)
+        serialized_result = u.serialize(items_infra)
         if serialized_result.is_failure:
             return tomlkit.array()
         inline_doc = tomlkit.parse(f"items = {serialized_result.value}\n")
@@ -59,14 +59,14 @@ class FlextInfraConfigFixer(s[bool]):
         project_paths: Sequence[Path] | None = None,
     ) -> r[Sequence[Path]]:
         """Find pyproject.toml files for selected projects."""
-        return u.Infra.find_all_pyproject_files(
+        return u.find_all_pyproject_files(
             self._workspace_root,
             project_paths=project_paths,
         )
 
     def process_file(self, path: Path, *, dry_run: bool = False) -> r[t.StrSequence]:
         """Process one pyproject.toml file and apply fixes."""
-        document_result = u.Infra.read_document(path)
+        document_result = u.read_document(path)
         if document_result.is_failure:
             return r[t.StrSequence].fail(
                 document_result.error or f"failed to read {path}",
@@ -105,7 +105,7 @@ class FlextInfraConfigFixer(s[bool]):
             new_doc = tomlkit.document()
             for key, value in doc_data.items():
                 new_doc[str(key)] = value
-            write_result = u.Infra.write_document(path, new_doc)
+            write_result = u.write_document(path, new_doc)
             if write_result.is_failure:
                 return r[t.StrSequence].fail(
                     write_result.error or f"failed to write {path}",
@@ -236,10 +236,7 @@ class FlextInfraConfigFixer(s[bool]):
         return path.resolve()
 
     def _resolve_workspace_root(self, workspace_root: Path | None) -> Path:
-        if workspace_root is not None:
-            return workspace_root.resolve()
-        result = u.Infra.workspace_root()
-        return result.value if result.is_success else Path.cwd().resolve()
+        return u.resolve_workspace_root_or_cwd(workspace_root)
 
     @staticmethod
     def main(argv: t.StrSequence | None = None) -> int:
@@ -256,7 +253,7 @@ class FlextInfraConfigFixer(s[bool]):
             verbose=args.verbose,
         )
         if result.is_failure:
-            u.Infra.error(result.error or "pyrefly config fix failed")
+            u.error(result.error or "pyrefly config fix failed")
             return 1
         return 0
 

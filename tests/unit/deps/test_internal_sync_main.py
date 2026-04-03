@@ -17,7 +17,7 @@ class TestMain:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        cli_args = u.Infra.CliArgs(workspace=tmp_path)
+        cli_args = u.CliArgs(workspace=tmp_path)
 
         def _parse_args(
             _self: argparse.ArgumentParser,
@@ -26,7 +26,7 @@ class TestMain:
         ) -> argparse.Namespace:
             return argparse.Namespace(workspace=tmp_path)
 
-        def _resolve(_a: argparse.Namespace) -> u.Infra.CliArgs:
+        def _resolve(_a: argparse.Namespace) -> u.CliArgs:
             return cli_args
 
         def _sync(
@@ -49,7 +49,7 @@ class TestMain:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        cli_args = u.Infra.CliArgs(workspace=tmp_path)
+        cli_args = u.CliArgs(workspace=tmp_path)
 
         def _parse_args(
             _self: argparse.ArgumentParser,
@@ -58,7 +58,7 @@ class TestMain:
         ) -> argparse.Namespace:
             return argparse.Namespace(workspace=tmp_path)
 
-        def _resolve(_a: argparse.Namespace) -> u.Infra.CliArgs:
+        def _resolve(_a: argparse.Namespace) -> u.CliArgs:
             return cli_args
 
         def _sync(

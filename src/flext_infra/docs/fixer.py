@@ -67,7 +67,7 @@ class FlextInfraDocFixer:
             r with list of FixReport objects.
 
         """
-        return u.Infra.run_scoped(
+        return u.run_scoped(
             workspace_root,
             project=project,
             projects=projects,
@@ -97,7 +97,7 @@ class FlextInfraDocFixer:
     ) -> m.Infra.DocsPhaseReport:
         """Run link and TOC fixes across all markdown files in scope."""
         items: MutableSequence[m.Infra.DocsPhaseItemModel] = []
-        for md in u.Infra.iter_markdown_files(scope.path):
+        for md in u.iter_markdown_files(scope.path):
             item = self._process_file(md, apply=apply)
             if item.links or item.toc:
                 rel = md.relative_to(scope.path).as_posix()
@@ -121,7 +121,7 @@ class FlextInfraDocFixer:
             },
             "changes": changes_payload,
         }
-        _ = u.Infra.write_json(scope.report_dir / "fix-summary.json", payload)
+        _ = u.write_json(scope.report_dir / "fix-summary.json", payload)
         lines = [
             "# Docs Fix Report",
             "",
@@ -133,7 +133,7 @@ class FlextInfraDocFixer:
             "|---|---:|---:|",
             *[f"| {item.file} | {item.links} | {item.toc} |" for item in items],
         ]
-        _ = u.Infra.write_markdown(
+        _ = u.write_markdown(
             scope.report_dir / "fix-report.md",
             lines,
         )
@@ -178,7 +178,7 @@ class FlextInfraDocFixer:
             link_count += 1
             return f"[{text}]({fixed})"
 
-        updated = u.Infra.MARKDOWN_LINK_RE.sub(replace_link, original)
+        updated = u.MARKDOWN_LINK_RE.sub(replace_link, original)
         updated, toc_changed = self._update_toc(updated)
         if apply and (link_count > 0 or toc_changed > 0) and (updated != original):
             _ = md_file.write_text(updated, encoding=c.Infra.Encoding.DEFAULT)
@@ -192,7 +192,7 @@ class FlextInfraDocFixer:
     @staticmethod
     def _update_toc(content: str) -> t.Infra.StrIntPair:
         """Insert or replace the TOC in content, returning (updated, changed)."""
-        return u.Infra.update_toc(content)
+        return u.update_toc(content)
 
 
 __all__ = ["FlextInfraDocFixer"]

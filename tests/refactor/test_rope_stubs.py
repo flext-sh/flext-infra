@@ -9,7 +9,7 @@ from flext_infra import u
 
 def test_rope_project_wrapper(tmp_path: Path) -> None:
     """Confirm the Rope project wrapper creates a live project."""
-    project = u.Infra.init_rope_project(tmp_path, project_prefix="__never__")
+    project = u.init_rope_project(tmp_path, project_prefix="__never__")
     try:
         assert project is not None
     finally:
@@ -18,7 +18,7 @@ def test_rope_project_wrapper(tmp_path: Path) -> None:
 
 def test_rope_module_syntax_error_wrapper() -> None:
     """Confirm the Rope exception wrapper resolves a concrete exception type."""
-    assert u.Infra.module_syntax_error_type() is not None
+    assert u.module_syntax_error_type() is not None
 
 
 def test_rope_find_occurrences_wrapper(tmp_path: Path) -> None:
@@ -31,13 +31,13 @@ def test_rope_find_occurrences_wrapper(tmp_path: Path) -> None:
         "class Demo:\n    pass\n\nvalue = Demo()\n",
         encoding="utf-8",
     )
-    project = u.Infra.init_rope_project(tmp_path, project_prefix="__never__")
+    project = u.init_rope_project(tmp_path, project_prefix="__never__")
     try:
-        resource = u.Infra.get_resource_from_path(project, target)
+        resource = u.get_resource_from_path(project, target)
         assert resource is not None
-        offset = u.Infra.find_definition_offset(project, resource, "Demo")
+        offset = u.find_definition_offset(project, resource, "Demo")
         assert offset is not None
-        hits = u.Infra.find_occurrences(project, resource, offset)
+        hits = u.find_occurrences(project, resource, offset)
         assert hits
     finally:
         project.close()

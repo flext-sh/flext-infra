@@ -37,18 +37,18 @@ class FlextInfraImportAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
         file_path = ctx.file_path
         if file_path.name == c.Infra.Files.INIT_PY:
             return []
-        resource = u.Infra.get_resource_from_path(
+        resource = u.get_resource_from_path(
             ctx.rope_project,
             file_path,
         )
         if resource is None:
             return []
         source = resource.read()
-        if u.Infra.looks_like_facade_file(file_path=file_path, source=source):
+        if u.looks_like_facade_file(file_path=file_path, source=source):
             return []
         source_lines = source.splitlines()
         violations: list[m.Infra.ImportAliasViolation] = []
-        for from_import in u.Infra.get_absolute_from_imports(
+        for from_import in u.get_absolute_from_imports(
             ctx.rope_project,
             resource,
         ):
@@ -68,7 +68,7 @@ class FlextInfraImportAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
             violations.append(
                 m.Infra.ImportAliasViolation(
                     file=str(file_path),
-                    line=u.Infra.find_import_line(
+                    line=u.find_import_line(
                         lines=source_lines,
                         module_name=from_import.module_name,
                     ),

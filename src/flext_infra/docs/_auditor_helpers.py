@@ -62,7 +62,9 @@ def write_audit_reports(
     checks: set[str],
     *,
     strict: bool,
-    to_markdown_fn: Callable[[m.Infra.DocScope, Sequence[m.Infra.AuditIssue]], str],
+    to_markdown_fn: Callable[
+        [m.Infra.DocScope, Sequence[m.Infra.AuditIssue]], t.StrSequence
+    ],
 ) -> None:
     """Persist JSON summary and markdown report to the scope report directory."""
     sorted_checks: list[JsonValue] = [str(ck) for ck in sorted(checks)]
@@ -86,11 +88,11 @@ def write_audit_reports(
         c.Infra.ReportKeys.SUMMARY: summary,
         "issues": issues_payload,
     }
-    _ = u.Infra.write_json(
+    _ = u.write_json(
         scope.report_dir / "audit-summary.json",
         summary_payload,
     )
-    _ = u.Infra.write_markdown(
+    _ = u.write_markdown(
         scope.report_dir / "audit-report.md",
         to_markdown_fn(scope, issues),
     )

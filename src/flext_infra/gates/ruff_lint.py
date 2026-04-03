@@ -47,7 +47,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             project_dir,
         )
         issues: MutableSequence[m.Infra.Issue] = []
-        ruff_parse_result = u.Infra.parse(result.stdout or "[]")
+        ruff_parse_result = u.parse(result.stdout or "[]")
         ruff_data: t.Infra.InfraValue = (
             ruff_parse_result.value if ruff_parse_result.is_success else []
         )
@@ -58,8 +58,8 @@ class FlextInfraRuffLintGate(FlextInfraGate):
                         issues.append(
                             m.Infra.Issue(
                                 file=str(entry.get("filename", "?")),
-                                line=u.Infra.nested_int(entry, "location", "row"),
-                                column=u.Infra.nested_int(
+                                line=u.nested_int(entry, "location", "row"),
+                                column=u.nested_int(
                                     entry,
                                     "location",
                                     "column",

@@ -23,6 +23,9 @@ rules:
   - id: NS-005
     description: "Direct FlextXConstants.Y.Z ref should use c.Y.Z alias"
     fixable: true
+  - id: NS-006
+    description: "Inline value matches canonical constant — should use c.Infra.* reference"
+    fixable: true
 
 canonical_values:
   - value: 30
@@ -76,5 +79,57 @@ canonical_values:
       - ENCODING
       - DEFAULT_ENCODING
       - CHARSET
+
+  # frozenset canonical values
+  - value: ["__pycache__", ".git", ".mypy_cache", "node_modules", ".venv", ".tox", ".nox", ".ruff_cache", "dist", "build", "site"]
+    type: frozenset
+    canonical_ref: "Excluded.COMMON_EXCLUDED_DIRS"
+    semantic_names:
+      - SKIP_DIRS
+      - EXCLUDED_DIRS
+      - IGNORE_DIRS
+      - COMMON_EXCLUDED_DIRS
+  - value: ["TypeVar", "ParamSpec", "TypeVarTuple"]
+    type: frozenset
+    canonical_ref: "TYPEVAR_CALLABLES"
+    semantic_names:
+      - TYPEVAR_CALL_NAMES
+      - TYPEVAR_CALLABLES
+
+  # tuple canonical values
+  - value: ["src", "tests", "scripts", "examples"]
+    type: tuple
+    canonical_ref: "MRO_SCAN_DIRECTORIES"
+    semantic_names:
+      - SCAN_DIRECTORIES
+      - KNOWN_DIRS
+      - SCOPE_DIRS
+  - value: ["constants.py", "typings.py", "protocols.py"]
+    type: tuple
+    canonical_ref: "TIER0_MODULE_FILES"
+    semantic_names:
+      - TIER0_MODULES
+
+  # regex canonical values (pattern strings)
+  - value: "^class\\s+(\\w+)"
+    type: regex
+    canonical_ref: "SourceCode.CLASS_NAME_RE"
+    semantic_names:
+      - CLASS_RE
+      - CLASS_PATTERN
+      - CLASS_NAME_RE
+  - value: "^class\\s+(\\w+)\\s*\\(([^)]*)\\)\\s*:"
+    type: regex
+    canonical_ref: "SourceCode.CLASS_WITH_BASES_RE"
+    semantic_names:
+      - CLASS_DEF_RE
+      - CLASS_WITH_BASES_RE
+  - value: "^_?[A-Z][A-Z0-9_]*$"
+    type: regex
+    canonical_ref: "SourceCode.CONSTANT_NAME_RE"
+    semantic_names:
+      - CONSTANT_PATTERN
+      - CONSTANT_NAME_RE
+      - MRO_SCAN_CONSTANT_PATTERN
 
 constants_class_pattern: 'Flext\w+Constants'

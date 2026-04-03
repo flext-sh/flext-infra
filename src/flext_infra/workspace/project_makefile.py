@@ -10,7 +10,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import hashlib
 import tomllib
 from pathlib import Path
 from typing import NamedTuple
@@ -76,16 +75,10 @@ class FlextInfraProjectMakefileUpdater:
             except OSError as exc:
                 return r[bool].fail(f"Makefile read failed: {exc}")
 
-            existing_hash = hashlib.sha256(
-                existing.encode(c.Infra.Encoding.DEFAULT)
-            ).hexdigest()
-            new_hash = hashlib.sha256(
-                new_content.encode(c.Infra.Encoding.DEFAULT)
-            ).hexdigest()
-            if existing_hash == new_hash:
+            if u.sha256_content(existing) == u.sha256_content(new_content):
                 return r[bool].ok(False)
 
-        return u.Infra.atomic_write_file(makefile_path, new_content)
+        return u.atomic_write_file(makefile_path, new_content)
 
     @staticmethod
     def _read_pyproject(pyproject: Path) -> r[_ProjectMeta]:

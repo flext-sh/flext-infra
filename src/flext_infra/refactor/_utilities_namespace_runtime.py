@@ -5,17 +5,20 @@ from __future__ import annotations
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
-from flext_infra import (
-    FlextInfraUtilitiesDiscovery,
-    FlextInfraUtilitiesFormatting,
-    FlextInfraUtilitiesImportNormalizer,
-    FlextInfraUtilitiesIteration,
+from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
+from flext_infra._utilities.formatting import FlextInfraUtilitiesFormatting
+from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
+from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
+from flext_infra._utilities.rope import FlextInfraUtilitiesRope
+from flext_infra.constants import FlextInfraConstants as c
+from flext_infra.models import FlextInfraModels as m
+from flext_infra.refactor._utilities_namespace_common import (
     FlextInfraUtilitiesRefactorNamespaceCommon,
-    FlextInfraUtilitiesRope,
-    c,
-    m,
-    t,
 )
+from flext_infra.transformers._utilities_normalizer import (
+    FlextInfraUtilitiesImportNormalizer,
+)
+from flext_infra.typings import FlextInfraTypes as t
 
 
 class FlextInfraUtilitiesRefactorNamespaceRuntime(
@@ -43,7 +46,9 @@ class FlextInfraUtilitiesRefactorNamespaceRuntime(
                     source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
                 except OSError:
                     continue
-                if cls._looks_like_facade_file(file_path=file_path, source=source):
+                if FlextInfraUtilitiesParsing.looks_like_facade_file(
+                    file_path=file_path, source=source
+                ):
                     continue
                 resource = FlextInfraUtilitiesRope.get_resource_from_path(
                     rope_project,

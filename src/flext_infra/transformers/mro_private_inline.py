@@ -33,7 +33,7 @@ class FlextInfraRefactorMROPrivateInlineTransformer(FlextInfraRopeTransformer):
         resource: t.Infra.RopeResource,
     ) -> tuple[str, Sequence[str]]:
         """Apply private constant inlining. Returns (new_source, changes)."""
-        source = u.Infra.read_source(resource)
+        source = u.read_source(resource)
 
         for name, value in self._replacement_values.items():
             pattern = re.compile(rf"\b{re.escape(name)}\b")
@@ -42,8 +42,8 @@ class FlextInfraRefactorMROPrivateInlineTransformer(FlextInfraRopeTransformer):
                 self._record_change(f"Inlined private constant: {name} -> {value}")
                 source = new_source
 
-        if source != u.Infra.read_source(resource):
-            u.Infra.write_source(
+        if source != u.read_source(resource):
+            u.write_source(
                 rope_project,
                 resource,
                 source,
@@ -76,7 +76,7 @@ class FlextInfraRefactorMROQualifiedReferenceTransformer(FlextInfraRopeTransform
         resource: t.Infra.RopeResource,
     ) -> tuple[str, Sequence[str]]:
         """Apply qualified reference rewrites. Returns (new_source, changes)."""
-        source = u.Infra.read_source(resource)
+        source = u.read_source(resource)
 
         for old_name, qualified_path in self._renames.items():
             # Skip definition sites: `type X = ...`, `X: ... = ...`, `X = ...`
@@ -92,8 +92,8 @@ class FlextInfraRefactorMROQualifiedReferenceTransformer(FlextInfraRopeTransform
                 )
                 source = new_source
 
-        if source != u.Infra.read_source(resource):
-            u.Infra.write_source(
+        if source != u.read_source(resource):
+            u.write_source(
                 rope_project,
                 resource,
                 source,

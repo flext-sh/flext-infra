@@ -27,13 +27,13 @@ class FlextInfraEnsureFormattingToolingPhase:
         if not isinstance(tool, Table):
             tool = tomlkit.table()
             doc[c.Infra.TOOL] = tool
-        tomlsort = u.Infra.ensure_table(tool, "tomlsort")
+        tomlsort = u.ensure_table(tool, "tomlsort")
         for key, value in {
             "all": self._tool_config.tools.tomlsort.all,
             "in_place": self._tool_config.tools.tomlsort.in_place,
             "sort_first": self._tool_config.tools.tomlsort.sort_first,
         }.items():
-            current = u.Infra.unwrap_item(u.Infra.get(tomlsort, key))
+            current = u.unwrap_item(u.get(tomlsort, key))
             if isinstance(value, list) and isinstance(current, list):
                 try:
                     current_values: t.StrSequence = TypeAdapter(
@@ -44,15 +44,15 @@ class FlextInfraEnsureFormattingToolingPhase:
                 if sorted(str(i) for i in current_values) != sorted(
                     str(i) for i in value
                 ):
-                    tomlsort[key] = u.Infra.array(sorted(str(item) for item in value))
+                    tomlsort[key] = u.array(sorted(str(item) for item in value))
                     changes.append(f"tool.tomlsort.{key} set")
             elif current != value:
                 if isinstance(value, list):
-                    tomlsort[key] = u.Infra.array(sorted(str(item) for item in value))
+                    tomlsort[key] = u.array(sorted(str(item) for item in value))
                 else:
                     tomlsort[key] = value
                 changes.append(f"tool.tomlsort.{key} set")
-        yamlfix = u.Infra.ensure_table(tool, "yamlfix")
+        yamlfix = u.ensure_table(tool, "yamlfix")
         for key, value in {
             "line_length": self._tool_config.tools.yamlfix.line_length,
             "preserve_quotes": self._tool_config.tools.yamlfix.preserve_quotes,
@@ -60,7 +60,7 @@ class FlextInfraEnsureFormattingToolingPhase:
             "section_whitelines": self._tool_config.tools.yamlfix.section_whitelines,
             "explicit_start": self._tool_config.tools.yamlfix.explicit_start,
         }.items():
-            if u.Infra.unwrap_item(u.Infra.get(yamlfix, key)) != value:
+            if u.unwrap_item(u.get(yamlfix, key)) != value:
                 yamlfix[key] = value
                 changes.append(f"tool.yamlfix.{key} set to {value}")
         return changes

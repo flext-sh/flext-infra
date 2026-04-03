@@ -140,7 +140,7 @@ class FlextInfraRefactorEngine(
         engine = FlextInfraRefactorEngine(config_path=args.config)
         cfg = engine.load_config()
         if not cfg.is_success:
-            u.Infra.refactor_error(f"Config error: {cfg.error}")
+            u.refactor_error(f"Config error: {cfg.error}")
             return 1
         if args.rules:
             engine.set_rule_filters([
@@ -148,10 +148,10 @@ class FlextInfraRefactorEngine(
             ])
         rules_r = engine.load_rules()
         if not rules_r.is_success:
-            u.Infra.refactor_error(f"Rules error: {rules_r.error}")
+            u.refactor_error(f"Rules error: {rules_r.error}")
             return 1
         if args.list_rules:
-            u.Infra.print_rules_table(engine.list_rules())
+            u.print_rules_table(engine.list_rules())
             return 0
         if args.analyze_violations:
             return engine._run_analyze_violations(args)
@@ -166,7 +166,7 @@ class FlextInfraRefactorEngine(
             self.config = TypeAdapter(Mapping[str, t.Infra.InfraValue]).validate_python(
                 dict(result.value)
             )
-            u.Infra.refactor_info(f"Loaded config from {self.config_path}")
+            u.refactor_info(f"Loaded config from {self.config_path}")
         return result
 
     def load_rules(self) -> r[Sequence[FlextInfraRefactorRule]]:
@@ -181,11 +181,11 @@ class FlextInfraRefactorEngine(
             return r[Sequence[FlextInfraRefactorRule]].fail(rr.error or "")
         loaded_rules, loaded_file_rules = rr.value
         self.rules, self.file_rules = list(loaded_rules), list(loaded_file_rules)
-        u.Infra.refactor_info(f"Loaded {len(self.rules)} rules")
+        u.refactor_info(f"Loaded {len(self.rules)} rules")
         if self.file_rules:
-            u.Infra.refactor_info(f"Loaded {len(self.file_rules)} file rules")
+            u.refactor_info(f"Loaded {len(self.file_rules)} file rules")
         if self.rule_filters:
-            u.Infra.refactor_info(f"Active filters: {', '.join(self.rule_filters)}")
+            u.refactor_info(f"Active filters: {', '.join(self.rule_filters)}")
         return r[Sequence[FlextInfraRefactorRule]].ok(loaded_rules)
 
     def set_rule_filters(self, filters: t.StrSequence) -> None:
@@ -213,13 +213,13 @@ class FlextInfraRefactorEngine(
     def _build_rule(
         self, rule_def: Mapping[str, t.Infra.InfraValue]
     ) -> FlextInfraRefactorRule | None:
-        fix_action = u.Infra.get_str_key(
+        fix_action = u.get_str_key(
             rule_def,
             c.Infra.ReportKeys.FIX_ACTION,
-            default=u.Infra.get_str_key(rule_def, c.Infra.ReportKeys.ACTION),
+            default=u.get_str_key(rule_def, c.Infra.ReportKeys.ACTION),
             lower=True,
         )
-        check = u.Infra.get_str_key(rule_def, c.Infra.Verbs.CHECK, lower=True)
+        check = u.get_str_key(rule_def, c.Infra.Verbs.CHECK, lower=True)
         for action_set, rule_class in self._RULE_ACTION_REGISTRY:
             if fix_action in action_set or check in action_set:
                 return rule_class(rule_def)

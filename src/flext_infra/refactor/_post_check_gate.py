@@ -21,15 +21,15 @@ class FlextInfraPostCheckGate:
         if not result.modified:
             return (True, [])
         file_path = result.file_path
-        post_checks = u.Infra.string_list(
+        post_checks = u.string_list(
             expected.get(c.Infra.ReportKeys.POST_CHECKS),
         )
-        quality_gates = u.Infra.string_list(expected.get("quality_gates"))
+        quality_gates = u.string_list(expected.get("quality_gates"))
         if self._check_enabled("imports_resolve", post_checks):
             errors.extend(self._validate_imports(file_path))
         source_symbol_raw = expected.get(c.Infra.ReportKeys.SOURCE_SYMBOL, "")
         source_symbol = source_symbol_raw if isinstance(source_symbol_raw, str) else ""
-        expected_chain = u.Infra.string_list(expected.get("expected_base_chain"))
+        expected_chain = u.string_list(expected.get("expected_base_chain"))
         if (
             source_symbol
             and expected_chain
@@ -84,7 +84,7 @@ class FlextInfraPostCheckGate:
 
     def _validate_types(self, file_path: Path) -> t.StrSequence:
         cmd = [sys.executable, "-m", "py_compile", str(file_path)]
-        result = u.Infra.capture(cmd)
+        result = u.capture(cmd)
         return result.fold(
             on_failure=lambda e: [f"lsp_diagnostics_clean_failed:{e or ''}"],
             on_success=lambda _: [],

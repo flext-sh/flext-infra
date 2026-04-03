@@ -39,7 +39,7 @@ class FlextInfraRefactorSymbolPropagator(FlextInfraRopeTransformer):
         resource: t.Infra.RopeResource,
     ) -> tuple[str, Sequence[str]]:
         """Apply module/symbol renames. Returns (new_source, changes)."""
-        source = u.Infra.read_source(resource)
+        source = u.read_source(resource)
 
         # Phase 1: Rename module paths in from-imports
         for old_module, new_module in self._module_renames.items():
@@ -68,8 +68,8 @@ class FlextInfraRefactorSymbolPropagator(FlextInfraRopeTransformer):
                 new_name=new_name,
             )
 
-        if source != u.Infra.read_source(resource) and self.changes:
-            u.Infra.write_source(
+        if source != u.read_source(resource) and self.changes:
+            u.write_source(
                 rope_project,
                 resource,
                 source,

@@ -152,12 +152,12 @@ class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
                 data_result.error or f"failed to read {pyproject}",
             )
         data = data_result.value
-        tool = u.Infra.normalize_str_mapping(data.get(c.Infra.TOOL))
-        poetry = u.Infra.normalize_str_mapping(tool.get(c.Infra.POETRY))
-        deps = u.Infra.normalize_str_mapping(poetry.get(c.Infra.DEPENDENCIES))
+        tool = u.normalize_str_mapping(data.get(c.Infra.TOOL))
+        poetry = u.normalize_str_mapping(tool.get(c.Infra.POETRY))
+        deps = u.normalize_str_mapping(poetry.get(c.Infra.DEPENDENCIES))
         result: MutableMapping[str, Path] = {}
         for dep_name, dep_value in deps.items():
-            dep_value_map = u.Infra.normalize_str_mapping(dep_value)
+            dep_value_map = u.normalize_str_mapping(dep_value)
             if not dep_value_map:
                 continue
             dep_path = dep_value_map.get(c.Infra.PATH)
@@ -167,9 +167,9 @@ class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
             if repo_name is None:
                 continue
             result[dep_name] = project_root / ".flext-deps" / repo_name
-        project_obj = u.Infra.normalize_str_mapping(data.get(c.Infra.PROJECT))
+        project_obj = u.normalize_str_mapping(data.get(c.Infra.PROJECT))
         project_deps_raw = project_obj.get(c.Infra.DEPENDENCIES)
-        project_deps = u.Infra.normalize_string_list(project_deps_raw)
+        project_deps = u.normalize_string_list(project_deps_raw)
         internal_dep_names: t.Infra.StrSet = set()
         for dep in project_deps:
             dep_name_match = c.Infra.DEP_NAME_RE.match(dep)
@@ -189,11 +189,11 @@ class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
             if repo_name is None:
                 continue
             _ = result.setdefault(repo_name, project_root / ".flext-deps" / repo_name)
-        tool_obj = u.Infra.normalize_str_mapping(data.get(c.Infra.TOOL))
-        uv_obj = u.Infra.normalize_str_mapping(tool_obj.get("uv"))
-        sources_obj = u.Infra.normalize_str_mapping(uv_obj.get("sources"))
+        tool_obj = u.normalize_str_mapping(data.get(c.Infra.TOOL))
+        uv_obj = u.normalize_str_mapping(tool_obj.get("uv"))
+        sources_obj = u.normalize_str_mapping(uv_obj.get("sources"))
         for dep_name in internal_dep_names:
-            source_value = u.Infra.normalize_str_mapping(sources_obj.get(dep_name))
+            source_value = u.normalize_str_mapping(sources_obj.get(dep_name))
             if not source_value:
                 continue
             if source_value.get("workspace") is True:
@@ -229,7 +229,7 @@ class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
                         dep_path.unlink()
             except OSError as exc:
                 return r[bool].fail(f"cleanup failed for {dep_path.name}: {exc}")
-            cloned = u.Infra.git_run_checked([
+            cloned = u.git_run_checked([
                 "clone",
                 "--depth",
                 "1",
@@ -241,34 +241,34 @@ class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
             if cloned.is_failure:
                 return r[bool].fail(f"clone failed for {dep_path.name}: {cloned.error}")
             return r[bool].ok(True)
-        fetch = u.Infra.git_fetch(dep_path, c.Infra.Git.ORIGIN)
+        fetch = u.git_fetch(dep_path, c.Infra.Git.ORIGIN)
         if fetch.is_failure:
             return r[bool].fail(f"fetch failed for {dep_path.name}: {fetch.error}")
-        checkout = u.Infra.git_checkout(dep_path, safe_ref_name)
+        checkout = u.git_checkout(dep_path, safe_ref_name)
         if checkout.is_failure:
             return r[bool].fail(
                 f"checkout failed for {dep_path.name}: {checkout.error}",
             )
-        _ = u.Infra.git_pull(dep_path, remote=c.Infra.Git.ORIGIN, branch=safe_ref_name)
+        _ = u.git_pull(dep_path, remote=c.Infra.Git.ORIGIN, branch=safe_ref_name)
         return r[bool].ok(True)
 
     @staticmethod
     def main() -> int:
         """Entry point for internal dependency synchronization CLI."""
-        parser = u.Infra.create_parser(
+        parser = u.create_parser(
             prog="flext-infra deps internal-sync",
             description="Synchronize internal FLEXT dependencies via git clone or workspace symlinks",
-            flags=u.Infra.SharedFlags(include_apply=False),
+            flags=u.SharedFlags(include_apply=False),
         )
         args = parser.parse_args()
-        cli_args = u.Infra.resolve(args)
+        cli_args = u.resolve(args)
         service = FlextInfraInternalDependencySyncService()
         result = service.sync(cli_args.workspace)
         if result.is_success:
             return result.value
         sync_error = result.error or "sync_internal_deps_failed"
         service.log.error("sync_internal_deps_failed", error_detail=sync_error)
-        u.Infra.error(f"[sync-deps] {sync_error}")
+        u.error(f"[sync-deps] {sync_error}")
         return 1
 
 

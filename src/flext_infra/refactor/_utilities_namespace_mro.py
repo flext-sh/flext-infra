@@ -6,13 +6,14 @@ from collections import defaultdict
 from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
-from flext_infra import (
-    FlextInfraUtilitiesFormatting,
+from flext_infra._utilities.formatting import FlextInfraUtilitiesFormatting
+from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
+from flext_infra.constants import FlextInfraConstants as c
+from flext_infra.models import FlextInfraModels as m
+from flext_infra.refactor._utilities_namespace_common import (
     FlextInfraUtilitiesRefactorNamespaceCommon,
-    c,
-    m,
-    t,
 )
+from flext_infra.typings import FlextInfraTypes as t
 
 
 class FlextInfraUtilitiesRefactorNamespaceMro(
@@ -162,8 +163,8 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
             if not lines:
                 continue
             insert_idx = (
-                FlextInfraUtilitiesRefactorNamespaceMro._find_future_insert_index(
-                    lines=lines,
+                FlextInfraUtilitiesParsing.index_after_docstring_and_future_imports(
+                    lines
                 )
             )
             rewritten = (

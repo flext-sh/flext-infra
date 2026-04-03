@@ -183,7 +183,7 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
             return resolved_root == canonical_root.resolve()
         if (resolved_root / c.Infra.Files.GITMODULES).exists():
             return True
-        discovered = u.Infra.discover_projects(resolved_root)
+        discovered = u.discover_projects(resolved_root)
         if discovered.is_failure:
             return False
         return any(
@@ -250,20 +250,20 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
             return r[bool].fail(gen_result.error or "base.mk generation failed")
         content: str = gen_result.value
         target_path = workspace_root / c.Infra.Files.BASE_MK
-        content_hash = u.Infra.sha256_content(content)
+        content_hash = u.sha256_content(content)
         if target_path.exists():
-            existing_hash = u.Infra.sha256_file(target_path)
+            existing_hash = u.sha256_file(target_path)
             if content_hash == existing_hash:
                 return r[bool].ok(False)
-        return u.Infra.atomic_write_file(target_path, content)
+        return u.atomic_write_file(target_path, content)
 
     @staticmethod
     def main() -> int:
         """CLI entry point for workspace sync."""
-        parser = u.Infra.create_parser(
+        parser = u.create_parser(
             "flext-infra workspace sync",
             "Workspace base.mk sync",
-            flags=u.Infra.SharedFlags(include_apply=False),
+            flags=u.SharedFlags(include_apply=False),
         )
         _ = parser.add_argument(
             "--canonical-root",
@@ -272,7 +272,7 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
             help="Canonical workspace root",
         )
         args = parser.parse_args()
-        cli = u.Infra.resolve(args)
+        cli = u.resolve(args)
         service = FlextInfraSyncService(
             canonical_root=getattr(args, "canonical_root", None),
         )
@@ -282,7 +282,7 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
         )
         if result.is_success:
             return 0
-        u.Infra.error(result.error or "sync failed")
+        u.error(result.error or "sync failed")
         return 1
 
 

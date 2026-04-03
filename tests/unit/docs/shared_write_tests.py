@@ -21,13 +21,13 @@ class TestWriteJson:
     def test_returns_flext_result(self, tmp_path: Path) -> None:
         """Test write_json returns r."""
         json_file = tmp_path / "test.json"
-        result = u.Infra.write_json(json_file, {"key": "value"})
+        result = u.write_json(json_file, {"key": "value"})
         tm.that(result.is_success or result.is_failure, eq=True)
 
     def test_creates_file(self, tmp_path: Path) -> None:
         """Test write_json creates JSON file."""
         json_file = tmp_path / "test.json"
-        result = u.Infra.write_json(json_file, {"key": "value"})
+        result = u.write_json(json_file, {"key": "value"})
         tm.ok(result)
         tm.that(json_file.exists(), eq=True)
 
@@ -42,7 +42,7 @@ class TestWriteJson:
             strict=False,
             passed=True,
         )
-        result = u.Infra.write_json(json_file, report)
+        result = u.write_json(json_file, report)
         tm.that(result.is_success or result.is_failure, eq=True)
 
     def test_with_dict_payload(self, tmp_path: Path) -> None:
@@ -51,34 +51,34 @@ class TestWriteJson:
         payload: t.StrMapping = {
             "key": "value",
         }
-        result = u.Infra.write_json(json_file, payload)
+        result = u.write_json(json_file, payload)
         tm.ok(result)
 
     def test_creates_parent_directories(self, tmp_path: Path) -> None:
         """Test write_json creates parent directories."""
         json_file = tmp_path / "nested/deep/test.json"
-        result = u.Infra.write_json(json_file, {"key": "value"})
+        result = u.write_json(json_file, {"key": "value"})
         tm.ok(result)
         tm.that(json_file.exists(), eq=True)
 
     def test_with_empty_dict(self, tmp_path: Path) -> None:
         """Test write_json with empty dictionary."""
         json_file = tmp_path / "empty.json"
-        result = u.Infra.write_json(json_file, {})
+        result = u.write_json(json_file, {})
         tm.ok(result)
 
     def test_with_nested_structure(self, tmp_path: Path) -> None:
         """Test write_json with nested dictionary."""
         json_file = tmp_path / "nested.json"
         payload: t.StrMapping = {"level1": "value"}
-        result = u.Infra.write_json(json_file, payload)
+        result = u.write_json(json_file, payload)
         tm.ok(result)
 
     def test_file_readable(self, tmp_path: Path) -> None:
         """Test write_json creates readable JSON file."""
         json_file = tmp_path / "readable.json"
         payload: t.Infra.CensusRecord = {"key": "value", "number": 42}
-        u.Infra.write_json(json_file, payload)
+        u.write_json(json_file, payload)
         content = json.loads(json_file.read_text())
         tm.that(content["key"], eq="value")
         tm.that(content["number"], eq=42)
@@ -90,20 +90,20 @@ class TestWriteMarkdown:
     def test_returns_flext_result(self, tmp_path: Path) -> None:
         """Test write_markdown returns r."""
         md_file = tmp_path / "test.md"
-        result = u.Infra.write_markdown(md_file, ["# Test", "", "Content"])
+        result = u.write_markdown(md_file, ["# Test", "", "Content"])
         tm.that(result.is_success or result.is_failure, eq=True)
 
     def test_creates_file(self, tmp_path: Path) -> None:
         """Test write_markdown creates markdown file."""
         md_file = tmp_path / "test.md"
-        result = u.Infra.write_markdown(md_file, ["# Test", "", "Content"])
+        result = u.write_markdown(md_file, ["# Test", "", "Content"])
         tm.ok(result)
         tm.that(md_file.exists(), eq=True)
 
     def test_creates_parent_dirs(self, tmp_path: Path) -> None:
         """Test write_markdown creates parent directories."""
         md_file = tmp_path / "nested/deep/test.md"
-        result = u.Infra.write_markdown(md_file, ["# Test"])
+        result = u.write_markdown(md_file, ["# Test"])
         tm.ok(result)
         tm.that(md_file.exists(), eq=True)
 
@@ -111,7 +111,7 @@ class TestWriteMarkdown:
         """Test write_markdown preserves line structure."""
         md_file = tmp_path / "test.md"
         lines = ["# Title", "", "Paragraph 1", "", "Paragraph 2"]
-        u.Infra.write_markdown(md_file, lines)
+        u.write_markdown(md_file, lines)
         content = md_file.read_text()
         tm.that(content, has="# Title")
         tm.that(content, has="Paragraph 1")
@@ -120,7 +120,7 @@ class TestWriteMarkdown:
         """Test write_markdown preserves empty lines."""
         md_file = tmp_path / "test.md"
         lines = ["# Title", "", "", "Content"]
-        result = u.Infra.write_markdown(md_file, lines)
+        result = u.write_markdown(md_file, lines)
         tm.ok(result)
         content = md_file.read_text()
         tm.that(content.count("\n"), gte=3)
@@ -128,7 +128,7 @@ class TestWriteMarkdown:
     def test_with_single_line(self, tmp_path: Path) -> None:
         """Test write_markdown with single line."""
         md_file = tmp_path / "single.md"
-        result = u.Infra.write_markdown(md_file, ["# Title"])
+        result = u.write_markdown(md_file, ["# Title"])
         tm.ok(result)
         tm.that(md_file.read_text(), has="# Title")
 
@@ -136,14 +136,14 @@ class TestWriteMarkdown:
         """Test write_markdown handles special characters."""
         md_file = tmp_path / "special.md"
         lines = ["# Title with special chars", "Content with accents"]
-        result = u.Infra.write_markdown(md_file, lines)
+        result = u.write_markdown(md_file, lines)
         tm.ok(result)
 
     def test_file_content_exact(self, tmp_path: Path) -> None:
         """Test write_markdown writes exact content."""
         md_file = tmp_path / "exact.md"
         lines = ["Line 1", "Line 2", "Line 3"]
-        u.Infra.write_markdown(md_file, lines)
+        u.write_markdown(md_file, lines)
         content = md_file.read_text()
         tm.that(content, eq="Line 1\nLine 2\nLine 3\n")
 
@@ -165,5 +165,5 @@ class TestWriteMarkdown:
             raise OSError(msg)
 
         monkeypatch.setattr(pathlib.Path, "write_text", mock_write_text)
-        result = u.Infra.write_markdown(md_file, ["test"])
+        result = u.write_markdown(md_file, ["test"])
         tm.fail(result, has="markdown write error")

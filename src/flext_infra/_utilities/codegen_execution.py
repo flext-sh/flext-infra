@@ -29,6 +29,39 @@ class FlextInfraUtilitiesCodegenExecution:
     """Consolidated execution and metrics methods for codegen and quality gate."""
 
     # -------------------------------------------------------------------------
+    # JSON COERCION HELPERS
+    # -------------------------------------------------------------------------
+    @staticmethod
+    def dict_list(
+        value: t.Infra.InfraValue | None,
+    ) -> Sequence[Mapping[str, t.Infra.InfraValue]]:
+        """Coerce a JSON value to a list of dicts. Returns [] if None/invalid."""
+        if value is None or not isinstance(value, list):
+            return []
+        result: MutableSequence[Mapping[str, t.Infra.InfraValue]] = []
+        for item in value:
+            if isinstance(item, Mapping):
+                try:
+                    result.append(
+                        t.Infra.INFRA_MAPPING_ADAPTER.validate_python(item),
+                    )
+                except ValidationError:
+                    continue
+        return result
+
+    @staticmethod
+    def dict_or_empty(
+        value: t.Infra.InfraValue | None,
+    ) -> Mapping[str, t.Infra.InfraValue]:
+        """Coerce a JSON value to a dict. Returns {} if None/invalid."""
+        if value is None:
+            return {}
+        try:
+            return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)
+        except ValidationError:
+            return {}
+
+    # -------------------------------------------------------------------------
     # EXTRACTION HELPERS
     # -------------------------------------------------------------------------
     @staticmethod

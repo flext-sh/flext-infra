@@ -48,25 +48,23 @@ class FlextInfraBanditGate(FlextInfraGate):
         )
         issues: MutableSequence[m.Infra.Issue] = []
         try:
-            parsed = u.Infra.parse(result.stdout or "{}")
+            parsed = u.parse(result.stdout or "{}")
             bandit_data: Mapping[str, t.Infra.InfraValue] = (
-                u.Infra.normalize_str_mapping(parsed.value) if parsed.is_success else {}
+                u.normalize_str_mapping(parsed.value) if parsed.is_success else {}
             )
             issues.extend(
                 m.Infra.Issue(
-                    file=u.Infra.as_str(raw_item.get("filename", "?"), "?"),
+                    file=u.ensure_str(raw_item.get("filename", "?"), "?"),
                     line=u.to_int(raw_item.get("line_number", 0)),
                     column=0,
-                    code=u.Infra.as_str(raw_item.get("test_id", "")),
-                    message=u.Infra.as_str(raw_item.get("issue_text", "")),
-                    severity=u.Infra.as_str(
+                    code=u.ensure_str(raw_item.get("test_id", "")),
+                    message=u.ensure_str(raw_item.get("issue_text", "")),
+                    severity=u.ensure_str(
                         raw_item.get("issue_severity", "MEDIUM"),
                         "MEDIUM",
                     ).lower(),
                 )
-                for raw_item in u.Infra.normalize_mapping_list(
-                    bandit_data.get("results", [])
-                )
+                for raw_item in u.normalize_mapping_list(bandit_data.get("results", []))
             )
         except (TypeError, ValidationError):
             pass

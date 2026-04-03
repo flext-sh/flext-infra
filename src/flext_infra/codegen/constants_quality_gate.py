@@ -27,7 +27,7 @@ class FlextInfraCodegenConstantsQualityGate:
 
     def run(self) -> Mapping[str, t.Infra.InfraValue]:
         """Execute quality gate and return structured report payload."""
-        before_payload, before_source, before_load_error = u.Infra.load_before_payload(
+        before_payload, before_source, before_load_error = u.load_before_payload(
             self._workspace_root,
             self._before_report,
             self._baseline_file,
@@ -35,37 +35,37 @@ class FlextInfraCodegenConstantsQualityGate:
         census_reports = FlextInfraCodegenCensus(
             workspace_root=self._workspace_root,
         ).run()
-        duplicate_groups = u.Infra.detect_duplicate_constant_groups(
+        duplicate_groups = u.detect_duplicate_constant_groups(
             self._workspace_root,
             census_reports,
         )
-        modified_files = u.Infra.modified_python_files(
+        modified_files = u.modified_python_files(
             self._workspace_root,
         )
-        pyrefly_check = u.Infra.run_pyrefly_check(
-            self._workspace_root,
-            modified_files,
-        )
-        ruff_check = u.Infra.run_ruff_check(
+        pyrefly_check = u.run_pyrefly_check(
             self._workspace_root,
             modified_files,
         )
-        import_scan = u.Infra.scan_import_nodes(
+        ruff_check = u.run_ruff_check(
             self._workspace_root,
             modified_files,
         )
-        before_metrics = u.Infra.before_metrics(before_payload)
-        after_metrics = u.Infra.after_metrics(
+        import_scan = u.scan_import_nodes(
+            self._workspace_root,
+            modified_files,
+        )
+        before_metrics = u.before_metrics(before_payload)
+        after_metrics = u.after_metrics(
             census_reports=census_reports,
             duplicate_groups=len(duplicate_groups),
             import_scan=import_scan,
             modified_files=modified_files,
         )
-        improvement = u.Infra.improvement(
+        improvement = u.improvement(
             before_metrics,
             after_metrics,
         )
-        checks = u.Infra.build_checks(
+        checks = u.build_checks(
             after_metrics=after_metrics,
             improvement=improvement,
             pyrefly_check=pyrefly_check,
@@ -73,10 +73,10 @@ class FlextInfraCodegenConstantsQualityGate:
             before_available=before_payload is not None,
             before_load_error=before_load_error,
         )
-        verdict = u.Infra.compute_verdict(checks, improvement)
+        verdict = u.compute_verdict(checks, improvement)
         checks_infra: Sequence[t.Infra.InfraValue] = list(checks)
         projects_infra: Sequence[t.Infra.InfraValue] = list(
-            u.Infra.project_findings(census_reports),
+            u.project_findings(census_reports),
         )
         report: MutableMapping[str, t.Infra.InfraValue] = {
             "workspace": str(self._workspace_root),
@@ -96,7 +96,7 @@ class FlextInfraCodegenConstantsQualityGate:
             ],
             "projects": projects_infra,
         }
-        report["artifacts"] = u.Infra.write_artifacts(
+        report["artifacts"] = u.write_artifacts(
             workspace_root=self._workspace_root,
             report=report,
             render_text=self.render_text(report),
@@ -106,11 +106,11 @@ class FlextInfraCodegenConstantsQualityGate:
     @classmethod
     def render_text(cls, report: Mapping[str, t.Infra.InfraValue]) -> str:
         """Render compact human-readable summary."""
-        checks = u.Infra.dict_list(report.get("checks"))
-        before = u.Infra.dict_or_empty(report.get("before"))
-        after = u.Infra.dict_or_empty(report.get("after"))
-        improvement = u.Infra.dict_or_empty(report.get("improvement"))
-        duplicate_groups = u.Infra.dict_list(report.get("duplicate_constant_groups"))
+        checks = u.dict_list(report.get("checks"))
+        before = u.dict_or_empty(report.get("before"))
+        after = u.dict_or_empty(report.get("after"))
+        improvement = u.dict_or_empty(report.get("improvement"))
+        duplicate_groups = u.dict_list(report.get("duplicate_constant_groups"))
         lines: MutableSequence[str] = [
             f"Workspace: {report.get('workspace', '')}",
             f"Verdict: {report.get('verdict', 'FAIL')}",
@@ -120,7 +120,7 @@ class FlextInfraCodegenConstantsQualityGate:
         for check in checks:
             status = "PASS" if bool(check.get("passed", False)) else "FAIL"
             lines.append(f"- [{status}] {check.get('name', 'unknown')}")
-            detail = u.Infra.get_str_key(check, "detail")
+            detail = u.get_str_key(check, "detail")
             if detail:
                 lines.append(f"  {detail}")
         lines.extend([

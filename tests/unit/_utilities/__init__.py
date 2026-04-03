@@ -7,24 +7,6 @@ from __future__ import annotations
 
 import typing as _t
 
-from tests.unit._utilities.test_discovery_consolidated import (
-    TestDiscoveryDiscoverProjects,
-    TestDiscoveryFindAllPyprojectFiles,
-    TestDiscoveryIterPythonFiles,
-    TestDiscoveryProjectRoots,
-)
-from tests.unit._utilities.test_formatting import TestFormattingRunRuffFix
-from tests.unit._utilities.test_iteration import TestIterWorkspacePythonModules
-from tests.unit._utilities.test_rope_hooks import (
-    test_run_rope_post_hooks_applies_mro_migration,
-    test_run_rope_post_hooks_dry_run_is_non_mutating,
-)
-from tests.unit._utilities.test_safety import (
-    TestSafetyCheckpoint,
-    TestSafetyRollback,
-)
-from tests.unit._utilities.test_scanning import TestScanModels
-
 from flext_core.lazy import install_lazy_exports
 
 if _t.TYPE_CHECKING:
@@ -32,40 +14,37 @@ if _t.TYPE_CHECKING:
 
     test_discovery_consolidated = _tests_unit__utilities_test_discovery_consolidated
     import tests.unit._utilities.test_formatting as _tests_unit__utilities_test_formatting
-
-    test_formatting = _tests_unit__utilities_test_formatting
-    import tests.unit._utilities.test_iteration as _tests_unit__utilities_test_iteration
-
-    test_iteration = _tests_unit__utilities_test_iteration
-    import tests.unit._utilities.test_rope_hooks as _tests_unit__utilities_test_rope_hooks
-
-    test_rope_hooks = _tests_unit__utilities_test_rope_hooks
-    import tests.unit._utilities.test_safety as _tests_unit__utilities_test_safety
-
-    test_safety = _tests_unit__utilities_test_safety
-    import tests.unit._utilities.test_scanning as _tests_unit__utilities_test_scanning
-
-    test_scanning = _tests_unit__utilities_test_scanning
-
-    _ = (
+    from tests.unit._utilities.test_discovery_consolidated import (
         TestDiscoveryDiscoverProjects,
         TestDiscoveryFindAllPyprojectFiles,
         TestDiscoveryIterPythonFiles,
         TestDiscoveryProjectRoots,
-        TestFormattingRunRuffFix,
-        TestIterWorkspacePythonModules,
-        TestSafetyCheckpoint,
-        TestSafetyRollback,
-        TestScanModels,
-        test_discovery_consolidated,
-        test_formatting,
-        test_iteration,
-        test_rope_hooks,
+    )
+
+    test_formatting = _tests_unit__utilities_test_formatting
+    import tests.unit._utilities.test_iteration as _tests_unit__utilities_test_iteration
+    from tests.unit._utilities.test_formatting import TestFormattingRunRuffFix
+
+    test_iteration = _tests_unit__utilities_test_iteration
+    import tests.unit._utilities.test_rope_hooks as _tests_unit__utilities_test_rope_hooks
+    from tests.unit._utilities.test_iteration import TestIterWorkspacePythonModules
+
+    test_rope_hooks = _tests_unit__utilities_test_rope_hooks
+    import tests.unit._utilities.test_safety as _tests_unit__utilities_test_safety
+    from tests.unit._utilities.test_rope_hooks import (
         test_run_rope_post_hooks_applies_mro_migration,
         test_run_rope_post_hooks_dry_run_is_non_mutating,
-        test_safety,
-        test_scanning,
     )
+
+    test_safety = _tests_unit__utilities_test_safety
+    import tests.unit._utilities.test_scanning as _tests_unit__utilities_test_scanning
+    from tests.unit._utilities.test_safety import (
+        TestSafetyCheckpoint,
+        TestSafetyRollback,
+    )
+
+    test_scanning = _tests_unit__utilities_test_scanning
+    from tests.unit._utilities.test_scanning import TestScanModels
 _LAZY_IMPORTS = {
     "TestDiscoveryDiscoverProjects": "tests.unit._utilities.test_discovery_consolidated",
     "TestDiscoveryFindAllPyprojectFiles": "tests.unit._utilities.test_discovery_consolidated",

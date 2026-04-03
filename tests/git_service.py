@@ -39,41 +39,41 @@ class RealGitService(s[bool]):
         """Initialize git repository."""
         path.mkdir(parents=True, exist_ok=True)
         return self._as_success(
-            u.Infra.git_run_checked(["init"], cwd=path),
+            u.git_run_checked(["init"], cwd=path),
             "init",
         )
 
     def add_all(self, path: Path) -> r[bool]:
         """Stage all changes."""
-        return self._as_success(u.Infra.git_add(path), "add")
+        return self._as_success(u.git_add(path), "add")
 
     def commit(self, path: Path, msg: str) -> r[bool]:
         """Commit with configured user."""
         if not msg.strip():
             return r[bool].fail("commit message must not be empty")
 
-        email_result = u.Infra.git_run_checked(
+        email_result = u.git_run_checked(
             ["config", "user.email", "flext-tests@example.com"],
             cwd=path,
         )
         if email_result.is_failure:
             return r[bool].fail(email_result.error or "git config user.email failed")
 
-        name_result = u.Infra.git_run_checked(
+        name_result = u.git_run_checked(
             ["config", "user.name", "Flext Tests"],
             cwd=path,
         )
         if name_result.is_failure:
             return r[bool].fail(name_result.error or "git config user.name failed")
 
-        return self._as_success(u.Infra.git_commit(path, msg), "commit")
+        return self._as_success(u.git_commit(path, msg), "commit")
 
     def create_branch(self, path: Path, name: str) -> r[bool]:
         """Create new branch."""
         if not name.strip():
             return r[bool].fail("branch name must not be empty")
         return self._as_success(
-            u.Infra.git_run_checked(["branch", name], cwd=path),
+            u.git_run_checked(["branch", name], cwd=path),
             "branch",
         )
 

@@ -200,7 +200,7 @@ class FlextInfraCodegenModels:
         line: Annotated[t.PositiveInt, Field(description="Line number")]
 
     class CanonicalValueRule(FlextModels.ArbitraryTypesModel):
-        value: Annotated[int | str, Field(...)]
+        value: Annotated[int | str | Sequence[str], Field(...)]
         type: Annotated[str, Field(...)]
         canonical_ref: Annotated[str, Field(...)]
         semantic_names: t.StrSequence = Field(default_factory=list)

@@ -76,7 +76,7 @@ class FlextInfraOrchestratorService(s[bool]):
                     if cmd_result.stdout
                     else Path(f"{proj_name}.log")
                 )
-                err_count, _ = u.Infra.extract_errors(log_file)
+                err_count, _ = u.extract_errors(log_file)
                 failures.append((proj_name, err_count, log_file))
         return failures
 
@@ -100,7 +100,7 @@ class FlextInfraOrchestratorService(s[bool]):
             r containing list of CommandOutput per project.
 
         """
-        u.Infra.header("Workspace Orchestration")
+        u.header("Workspace Orchestration")
         try:
             allowed_verbs = c.Infra.Make.ORCHESTRATED_PROJECT_VERBS
             if verb not in allowed_verbs:
@@ -115,7 +115,7 @@ class FlextInfraOrchestratorService(s[bool]):
             skipped = 0
             started_total = time.monotonic()
             for idx, project in enumerate(projects, start=1):
-                u.Infra.progress(idx, total, project, verb)
+                u.progress(idx, total, project, verb)
                 if skipped:
                     results.append(
                         m.Infra.CommandOutput(
@@ -140,7 +140,7 @@ class FlextInfraOrchestratorService(s[bool]):
                     if fail_fast:
                         skipped = total - idx
             elapsed_total = time.monotonic() - started_total
-            u.Infra.summary(
+            u.summary(
                 m.Infra.SummaryStats(
                     verb=verb,
                     total=total,
@@ -152,7 +152,7 @@ class FlextInfraOrchestratorService(s[bool]):
             )
             if failed > 0:
                 failures = self._collect_failures(projects, results)
-                u.Infra.failure_summary(verb, failures)
+                u.failure_summary(verb, failures)
             return r[Sequence[m.Infra.CommandOutput]].ok(results)
         except (OSError, RuntimeError, TypeError, ValueError) as exc:
             return r[Sequence[m.Infra.CommandOutput]].fail(
@@ -179,7 +179,7 @@ class FlextInfraOrchestratorService(s[bool]):
             CommandOutput with log path in stdout, exit code, and timing.
 
         """
-        log_path = u.Infra.get_report_path(
+        log_path = u.get_report_path(
             Path.cwd(),
             c.Infra.ReportKeys.WORKSPACE,
             verb,
@@ -192,7 +192,7 @@ class FlextInfraOrchestratorService(s[bool]):
             verb=verb,
             make_args=make_args,
         )
-        proc_result = u.Infra.run_to_file(
+        proc_result = u.run_to_file(
             [c.Infra.MAKE, "-C", project, verb, *normalized_make_args],
             log_path,
             env={"NO_COLOR": "1", **os.environ},
@@ -202,12 +202,12 @@ class FlextInfraOrchestratorService(s[bool]):
         stderr = "" if proc_result.is_success else proc_result.error or ""
         elapsed = time.monotonic() - started
         if return_code == 0:
-            u.Infra.info(
+            u.info(
                 f"  ✓ {project} completed in {int(elapsed)}s  ({log_path})",
             )
         else:
-            error_count, error_lines = u.Infra.extract_errors(log_path)
-            u.Infra.project_failure(
+            error_count, error_lines = u.extract_errors(log_path)
+            u.project_failure(
                 m.Infra.ProjectFailureInfo(
                     project=project,
                     elapsed=elapsed,

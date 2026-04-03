@@ -91,7 +91,7 @@ class FlextInfraCliRefactor:
         params: m.Infra.RefactorCentralizeInput,
     ) -> r[t.IntMapping]:
         """Run pydantic centralization workflow for the workspace."""
-        summary = u.Infra.centralize_workspace(
+        summary = u.centralize_workspace(
             Path(params.workspace),
             apply=params.apply,
             normalize_remaining=params.normalize_remaining,
@@ -121,7 +121,7 @@ class FlextInfraCliRefactor:
         """Run namespace enforcement checks and optionally apply fixes."""
         project_names: t.StrSequence | None = None
         if params.project:
-            project_names = u.Infra.project_names_from_values(params.project)
+            project_names = u.project_names_from_values(params.project)
         enforcer = FlextInfraNamespaceEnforcer(
             workspace_root=Path(params.workspace),
         )
@@ -149,9 +149,9 @@ class FlextInfraCliRefactor:
         """Move selected runtime aliases from `flext_core` to the local MRO root."""
         project_names: t.StrSequence | None = None
         if params.project:
-            project_names = u.Infra.project_names_from_values(params.project)
+            project_names = u.project_names_from_values(params.project)
         aliases = [item.strip() for item in params.aliases.split(",") if item.strip()]
-        results = u.Infra.migrate_runtime_alias_imports(
+        results = u.migrate_runtime_alias_imports(
             workspace_root=Path(params.workspace),
             aliases=aliases,
             apply=params.apply,
@@ -209,7 +209,7 @@ class FlextInfraCliRefactor:
     ) -> r[t.IntMapping]:
         """Run centralization, MRO migration, and namespace enforcement together."""
         workspace = Path(params.workspace)
-        centralize_summary = u.Infra.centralize_workspace(
+        centralize_summary = u.centralize_workspace(
             workspace,
             apply=params.apply,
             normalize_remaining=params.normalize_remaining,
@@ -249,7 +249,7 @@ class FlextInfraCliRefactor:
     ) -> r[m.Infra.UtilitiesCensusReport]:
         """Run method-usage census and optionally export JSON report."""
         census = FlextInfraRefactorCensus()
-        target = u.Infra.build_mro_target(params.family)
+        target = u.build_mro_target(params.family)
         result = census.run(workspace_root=Path(params.workspace), target=target)
         if result.is_failure:
             return result
@@ -257,7 +257,7 @@ class FlextInfraCliRefactor:
         cli.display_text(FlextInfraRefactorCensus.render_text(report))
         if params.json_output:
             json_path = Path(params.json_output).resolve()
-            u.Infra.export_pydantic_json(report, json_path)
+            u.export_pydantic_json(report, json_path)
             cli.display_message(
                 f"JSON report exported to: {json_path}",
                 message_type="info",

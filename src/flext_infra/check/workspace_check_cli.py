@@ -24,14 +24,14 @@ class FlextInfraWorkspaceCheckerCli:
     @staticmethod
     def build_parser() -> argparse.ArgumentParser:
         """Build the workspace check CLI parser."""
-        parser, subs = u.Infra.create_subcommand_parser(
+        parser, subs = u.create_subcommand_parser(
             "flext-infra check",
             "FLEXT check utilities",
             subcommands={
                 c.Infra.Verbs.RUN: "Run quality gates",
                 "fix-pyrefly-config": "Repair [tool.pyrefly] blocks",
             },
-            flags=u.Infra.SharedFlags(include_apply=False),
+            flags=u.SharedFlags(include_apply=False),
             subcommand_flags={
                 "fix-pyrefly-config": {
                     "include_apply": True,
@@ -65,8 +65,8 @@ class FlextInfraWorkspaceCheckerCli:
     def run_cli(argv: t.StrSequence | None = None) -> int:
         """Run the subcommand-based workspace check CLI."""
         parser = FlextInfraWorkspaceCheckerCli.build_parser()
-        args = u.Infra.parse_subcommand_args(parser, argv)
-        cli = u.Infra.resolve(args)
+        args = u.parse_subcommand_args(parser, argv)
+        cli = u.resolve(args)
         if args.command == c.Infra.Verbs.RUN:
             env_workspace = os.getenv("FLEXT_WORKSPACE_ROOT")
             checker_workspace = (
@@ -101,7 +101,7 @@ class FlextInfraWorkspaceCheckerCli:
                 ctx=gate_ctx,
             )
             if run_result.is_failure:
-                u.Infra.error(run_result.error or "check failed")
+                u.error(run_result.error or "check failed")
                 return 2
             run_results: Sequence[m.Infra.ProjectResult] = run_result.value
             failed_projects = [project for project in run_results if not project.passed]
@@ -114,7 +114,7 @@ class FlextInfraWorkspaceCheckerCli:
                 verbose=args.verbose,
             )
             if fix_result.is_failure:
-                u.Infra.error(fix_result.error or "pyrefly config fix failed")
+                u.error(fix_result.error or "pyrefly config fix failed")
                 return 1
             return 0
         parser.print_help()
@@ -123,10 +123,10 @@ class FlextInfraWorkspaceCheckerCli:
     @staticmethod
     def main(argv: t.StrSequence | None = None) -> int:
         """Run the legacy workspace check CLI entrypoint."""
-        parser = u.Infra.create_parser(
+        parser = u.create_parser(
             "flext-infra check-workspace",
             "FLEXT Workspace Check",
-            flags=u.Infra.SharedFlags(include_apply=False),
+            flags=u.SharedFlags(include_apply=False),
         )
         _ = parser.add_argument("projects", nargs="*")
         _ = parser.add_argument("--gates", default=c.Infra.DEFAULT_CSV)
@@ -137,7 +137,7 @@ class FlextInfraWorkspaceCheckerCli:
         _ = parser.add_argument("--fail-fast", action="store_true")
         args = parser.parse_args(argv)
         if not args.projects:
-            u.Infra.error("no projects specified")
+            u.error("no projects specified")
             return 1
         checker = check_services.FlextInfraWorkspaceChecker()
         gates = check_services.FlextInfraWorkspaceChecker.parse_gate_csv(args.gates)
@@ -151,7 +151,7 @@ class FlextInfraWorkspaceCheckerCli:
             fail_fast=args.fail_fast,
         )
         if result.is_failure:
-            u.Infra.error(result.error or "workspace check failed")
+            u.error(result.error or "workspace check failed")
             return 2
         projects = result.value
         failed_projects = [project for project in projects if not project.passed]

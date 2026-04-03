@@ -30,7 +30,7 @@ class FlextInfraDictToMappingTransformer:
         Returns (new_source, list_of_change_descriptions).
         """
         pattern = r"\bdict\["
-        source, count = u.Infra.replace_in_source(
+        source, count = u.replace_in_source(
             rope_project,
             resource,
             pattern,
@@ -54,7 +54,7 @@ class FlextInfraDictToMappingTransformer:
         if "from collections.abc import" in source and "Mapping" in source:
             return
         if "from collections.abc import" not in source:
-            u.Infra.replace_in_source(
+            u.replace_in_source(
                 rope_project,
                 resource,
                 rf"^({re.escape(c.Infra.SourceCode.FUTURE_ANNOTATIONS)}\n)",
