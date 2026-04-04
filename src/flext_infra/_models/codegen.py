@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, MutableSet, Sequence
+from collections.abc import MutableSequence, MutableSet
 from typing import Annotated
 
 from pydantic import Field
@@ -181,7 +181,7 @@ class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
         line: Annotated[t.PositiveInt, Field(description="Line number")]
 
     class CanonicalValueRule(FlextModels.ArbitraryTypesModel):
-        value: int | str | Sequence[str] = Field(description="Canonical value")
+        value: t.Infra.CanonicalValue = Field(description="Canonical value")
         type: str = Field(description="Canonical type")
         canonical_ref: str = Field(description="Canonical reference")
         semantic_names: t.StrSequence = Field(

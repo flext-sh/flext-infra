@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast as _ast
 import re as _re
 from collections.abc import Callable, Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path as _Path
@@ -94,6 +95,12 @@ class FlextInfraTypesBase:
     "Mutable set of (str, str) tuples."
     type IntPairSet = set[StrIntPair]
     "Mutable set of (str, int) tuples."
+    type CanonicalValue = str | int | Sequence[str]
+    "Canonical governance value: scalar string, integer, or string list."
+    type AstMethodNode = _ast.FunctionDef | _ast.AsyncFunctionDef
+    "AST node for a method definition (sync or async)."
+    type AstModule = _ast.Module
+    "AST module node from ast.parse()."
     type TomlData = dict[str, InfraValue]
     "Unwrapped TOML table data — nested dicts of primitives from tomlkit unwrap()."
 

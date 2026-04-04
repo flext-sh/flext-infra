@@ -86,7 +86,7 @@ class FlextInfraRefactorModels(
         name: Annotated[t.NonEmptyStr, Field(description="Method name")]
         category: Annotated[str, Field(description="Method category classification")]
         node: Annotated[
-            object,
+            t.Infra.AstMethodNode,
             Field(
                 description="Node representation from Rope or PyObject",
                 exclude=True,
@@ -269,7 +269,8 @@ class FlextInfraRefactorModels(
 
         source: Annotated[str, Field(description="Raw source text")]
         tree: Annotated[
-            object, Field(description="Parsed PyObject module representation")
+            t.Infra.AstModule,
+            Field(description="Parsed PyObject module representation"),
         ]
 
 
