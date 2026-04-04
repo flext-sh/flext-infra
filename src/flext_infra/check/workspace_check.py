@@ -42,7 +42,6 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
         workspace: Path | None = None,
     ) -> None:
         """Initialize workspace checker services and paths."""
-        super().__init__()
         self._workspace_root = self._resolve_workspace_root(
             workspace_root or workspace,
         )

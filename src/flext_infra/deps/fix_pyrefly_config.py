@@ -32,7 +32,6 @@ class FlextInfraConfigFixer(s[bool]):
         workspace: Path | None = None,
     ) -> None:
         """Initialize pyrefly config fixer."""
-        super().__init__()
         self._workspace_root = self._resolve_workspace_root(
             workspace_root or workspace,
         )
