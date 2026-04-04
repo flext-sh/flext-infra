@@ -54,8 +54,7 @@ class FlextInfraDocValidator:
         self,
         workspace_root: Path,
         *,
-        project: str | None = None,
-        projects: str | None = None,
+        project: Sequence[str] | None = None,
         output_dir: str = c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
         check: str = "all",
         apply: bool = False,
@@ -64,8 +63,7 @@ class FlextInfraDocValidator:
 
         Args:
             workspace_root: Workspace root directory.
-            project: Single project name filter.
-            projects: Comma-separated project names.
+            project: Selected project names.
             output_dir: Report output directory.
             check: Validation checks to run.
             apply: Write TODOS.md if needed.
@@ -77,7 +75,6 @@ class FlextInfraDocValidator:
         return u.Infra.run_scoped(
             workspace_root,
             project=project,
-            projects=projects,
             output_dir=output_dir,
             handler=lambda scope: self._validate_scope(
                 scope,
@@ -93,8 +90,7 @@ class FlextInfraDocValidator:
         )
         result = self.validate(
             workspace_root=resolved_workspace,
-            project=params.project,
-            projects=params.projects,
+            project=params.project_names,
             output_dir=params.output_dir,
             check="all" if params.check else "",
             apply=params.apply,

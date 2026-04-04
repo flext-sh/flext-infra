@@ -20,7 +20,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping, MutableSequence, Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 from flext_infra import c, m, t
@@ -137,13 +137,13 @@ class FlextInfraUtilitiesReporting:
         gates: t.StrSequence,
     ) -> t.Cli.JsonValue:
         """Generate a SARIF 2.1.0 payload from gate results."""
-        sarif_runs = [
+        sarif_runs = tuple(
             FlextInfraUtilitiesReporting._build_sarif_run(gate, results)
             for gate in gates
-        ]
+        )
         sarif_report = m.Infra.SarifReport(runs=sarif_runs)
-        sarif_dict: MutableMapping[str, t.Cli.JsonValue] = sarif_report.model_dump(
-            by_alias=True
+        sarif_dict: dict[str, t.Cli.JsonValue] = dict(
+            sarif_report.model_dump(mode="json", by_alias=True)
         )
         return sarif_dict
 

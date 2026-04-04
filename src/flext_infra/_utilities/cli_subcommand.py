@@ -11,7 +11,7 @@ from argparse import ArgumentParser, Namespace
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 
 from flext_core import u
-from flext_infra import FlextInfraTypes as t, FlextInfraUtilitiesCliShared
+from flext_infra import FlextInfraUtilitiesCliShared, t
 
 
 class FlextInfraUtilitiesCliSubcommand:
@@ -65,7 +65,7 @@ class FlextInfraUtilitiesCliSubcommand:
         if options.get("include_check", False):
             tokens.append("--check")
         if options.get("include_project", False):
-            tokens.extend(["--projects", "--projects"])
+            tokens.append("--project")
         return tokens
 
     @staticmethod

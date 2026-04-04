@@ -21,7 +21,7 @@ from flext_infra import (
 class FlextInfraCliCodegen:
     """Codegen CLI group — composed into FlextInfraCli via MRO."""
 
-    def register_codegen(self, app: t.Cli.TyperApp) -> None:
+    def register_codegen(self, app: t.Cli.CliApp) -> None:
         """Register codegen commands on the given Typer app."""
         cli_service.register_result_routes(
             app,

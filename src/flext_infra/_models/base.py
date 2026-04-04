@@ -13,6 +13,7 @@ from pydantic import Field
 
 from flext_core import FlextModels
 from flext_infra import t
+from flext_infra._models.mixins import FlextInfraModelsMixins
 
 
 class FlextInfraModelsBase:
@@ -28,10 +29,12 @@ class FlextInfraModelsBase:
         skipped: Annotated[int, Field(description="Skipped items")]
         elapsed: Annotated[float, Field(description="Elapsed time in seconds")]
 
-    class ProjectFailureInfo(FlextModels.ContractModel):
+    class ProjectFailureInfo(
+        FlextInfraModelsMixins.ProjectNameMixin,
+        FlextModels.ContractModel,
+    ):
         """Bundled info for project failure output."""
 
-        project: Annotated[str, Field(description="Project display name")]
         elapsed: Annotated[float, Field(description="Elapsed time in seconds")]
         log_path: Annotated[Path, Field(description="Path to the project log")]
         error_count: Annotated[int, Field(description="Total project errors")]

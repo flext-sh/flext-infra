@@ -8,18 +8,18 @@ from pydantic import Field
 
 from flext_core import FlextModels
 from flext_infra import c, t
+from flext_infra._models.mixins import FlextInfraModelsMixins
 
 
 class FlextInfraBasemkModels:
     """Models for base.mk template rendering."""
 
-    class BaseMkConfig(FlextModels.ArbitraryTypesModel):
+    class BaseMkConfig(
+        FlextInfraModelsMixins.ProjectNameFieldMixin,
+        FlextModels.ArbitraryTypesModel,
+    ):
         """Configuration model used to render base.mk templates."""
 
-        project_name: Annotated[
-            t.NonEmptyStr,
-            Field(description="Project identifier"),
-        ]
         python_version: Annotated[
             t.NonEmptyStr,
             Field(description="Target Python version"),

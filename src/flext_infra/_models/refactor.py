@@ -17,6 +17,7 @@ from flext_infra import (
     FlextInfraRefactorModelsViolations,
     t,
 )
+from flext_infra._models.mixins import FlextInfraModelsMixins
 
 
 class FlextInfraRefactorModels(
@@ -97,7 +98,10 @@ class FlextInfraRefactorModels(
             Field(description="Decorator names applied to this method"),
         ] = Field(default_factory=list)
 
-    class Checkpoint(m.ArbitraryTypesModel):
+    class Checkpoint(
+        FlextInfraModelsMixins.StashRefMixin,
+        m.ArbitraryTypesModel,
+    ):
         """Serialisable checkpoint state for refactor safety recovery."""
 
         workspace_root: Annotated[
@@ -108,10 +112,6 @@ class FlextInfraRefactorModels(
             str,
             Field(default="running", description="Checkpoint status"),
         ] = "running"
-        stash_ref: Annotated[
-            str,
-            Field(default="", description="Git stash reference"),
-        ] = ""
         processed_targets: Annotated[
             t.StrSequence,
             Field(description="Already-processed file targets"),

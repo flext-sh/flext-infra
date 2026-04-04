@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import shutil
-from collections.abc import MutableMapping, MutableSequence, Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 from flext_core import r
@@ -186,20 +186,24 @@ class FlextInfraUtilitiesGithub(
                         encoding=c.Infra.Encoding.DEFAULT,
                     )
                 operations.append(
-                    m.Infra.SyncOperation(
-                        project=ctx.project_name,
-                        path=rel_path,
-                        action="update",
-                        reason="force overwrite ci.yml",
+                    m.Infra.SyncOperation.model_validate(
+                        {
+                            "project": ctx.project_name,
+                            "path": rel_path,
+                            "action": "update",
+                            "reason": "force overwrite ci.yml",
+                        },
                     ),
                 )
             else:
                 operations.append(
-                    m.Infra.SyncOperation(
-                        project=ctx.project_name,
-                        path=rel_path,
-                        action="noop",
-                        reason="already synced",
+                    m.Infra.SyncOperation.model_validate(
+                        {
+                            "project": ctx.project_name,
+                            "path": rel_path,
+                            "action": "noop",
+                            "reason": "already synced",
+                        },
                     ),
                 )
         else:
@@ -210,11 +214,13 @@ class FlextInfraUtilitiesGithub(
                     encoding=c.Infra.Encoding.DEFAULT,
                 )
             operations.append(
-                m.Infra.SyncOperation(
-                    project=ctx.project_name,
-                    path=rel_path,
-                    action="create",
-                    reason="missing ci.yml",
+                m.Infra.SyncOperation.model_validate(
+                    {
+                        "project": ctx.project_name,
+                        "path": rel_path,
+                        "action": "create",
+                        "reason": "missing ci.yml",
+                    },
                 ),
             )
 
@@ -233,11 +239,13 @@ class FlextInfraUtilitiesGithub(
             if ctx.apply:
                 path.unlink()
             operations.append(
-                m.Infra.SyncOperation(
-                    project=ctx.project_name,
-                    path=str(path.relative_to(ctx.project_root)),
-                    action="prune",
-                    reason="remove non-canonical workflow",
+                m.Infra.SyncOperation.model_validate(
+                    {
+                        "project": ctx.project_name,
+                        "path": str(path.relative_to(ctx.project_root)),
+                        "action": "prune",
+                        "reason": "remove non-canonical workflow",
+                    },
                 ),
             )
 
@@ -252,7 +260,7 @@ class FlextInfraUtilitiesGithub(
         by_action: t.MutableIntMapping = {}
         for op in operations:
             by_action[op.action] = by_action.get(op.action, 0) + 1
-        summary_dict: MutableMapping[str, t.Cli.JsonValue] = dict(by_action)
+        summary_dict: dict[str, t.Cli.JsonValue] = dict(by_action.items())
         ops_list: list[t.Cli.JsonValue] = [
             {
                 c.Infra.PROJECT: op.project,
@@ -262,7 +270,7 @@ class FlextInfraUtilitiesGithub(
             }
             for op in operations
         ]
-        payload: MutableMapping[str, t.Cli.JsonValue] = {
+        payload: dict[str, t.Cli.JsonValue] = {
             "mode": "apply" if apply else "dry-run",
             c.Infra.ReportKeys.SUMMARY: summary_dict,
             "operations": ops_list,

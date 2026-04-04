@@ -7,7 +7,8 @@ from typing import Annotated, ClassVar
 from pydantic import AliasPath, ConfigDict, Field
 
 from flext_core import FlextModels
-from flext_infra import FlextInfraConstants as c, FlextInfraTypes as t
+from flext_infra import c, t
+from flext_infra._models.mixins import FlextInfraModelsMixins
 
 
 class FlextInfraRefactorGrepModels:
@@ -38,7 +39,10 @@ class FlextInfraRefactorGrepModels:
             ),
         ]
 
-    class MROSymbolCandidate(FlextModels.ArbitraryTypesModel):
+    class MROSymbolCandidate(
+        FlextInfraModelsMixins.FacadeNameMixin,
+        FlextModels.ArbitraryTypesModel,
+    ):
         """Unified symbol candidate used by MRO scan and rewrites."""
 
         model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
@@ -60,12 +64,11 @@ class FlextInfraRefactorGrepModels:
             str,
             Field(default="", description="Target class name"),
         ] = ""
-        facade_name: Annotated[
-            str,
-            Field(default="", description="Facade alias/import name"),
-        ] = ""
 
-    class MROImportRewrite(FlextModels.ArbitraryTypesModel):
+    class MROImportRewrite(
+        FlextInfraModelsMixins.FacadeNameMixin,
+        FlextModels.ArbitraryTypesModel,
+    ):
         """Unified import rewrite payload for MRO reference updates."""
 
         model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
@@ -82,10 +85,6 @@ class FlextInfraRefactorGrepModels:
         symbol: Annotated[
             str,
             Field(default="", description="Resolved symbol in facade"),
-        ] = ""
-        facade_name: Annotated[
-            str,
-            Field(default="", description="Facade alias/import name"),
         ] = ""
 
     class MROScanReport(FlextModels.ArbitraryTypesModel):
@@ -131,7 +130,10 @@ class FlextInfraRefactorGrepModels:
             Field(description="Reference replacements applied"),
         ]
 
-    class MROMigrationReport(FlextModels.ArbitraryTypesModel):
+    class MROMigrationReport(
+        FlextInfraModelsMixins.StashRefMixin,
+        FlextModels.ArbitraryTypesModel,
+    ):
         """End-to-end report for migrate-to-mro command execution."""
 
         workspace: Annotated[
@@ -167,10 +169,6 @@ class FlextInfraRefactorGrepModels:
         mro_failures: Annotated[
             t.NonNegativeInt,
             Field(description="MRO validation failures"),
-        ]
-        stash_ref: Annotated[
-            str,
-            Field(default="", description="Git stash rollback ref"),
         ]
         warnings: t.Infra.VariadicTuple[str] = Field(
             default_factory=tuple, description="Warnings"

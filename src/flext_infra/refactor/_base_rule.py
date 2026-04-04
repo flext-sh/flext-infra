@@ -12,8 +12,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import override
 
-from flext_infra import c, t
-from flext_infra._protocols.refactor import FlextInfraChangeTracker
+from flext_infra import FlextInfraChangeTracker, c, t
 
 
 class FlextInfraRefactorRule:

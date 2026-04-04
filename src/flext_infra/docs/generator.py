@@ -60,8 +60,7 @@ class FlextInfraDocGenerator:
         self,
         workspace_root: Path,
         *,
-        project: str | None = None,
-        projects: str | None = None,
+        project: Sequence[str] | None = None,
         output_dir: str = c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
         apply: bool = False,
     ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
@@ -69,8 +68,7 @@ class FlextInfraDocGenerator:
 
         Args:
             workspace_root: Workspace root directory.
-            project: Single project name filter.
-            projects: Comma-separated project names.
+            project: Selected project names.
             output_dir: Report output directory.
             apply: Actually write generated files.
 
@@ -81,7 +79,6 @@ class FlextInfraDocGenerator:
         return u.Infra.run_scoped(
             workspace_root,
             project=project,
-            projects=projects,
             output_dir=output_dir,
             handler=lambda scope: self._generate_scope(
                 scope,
@@ -94,8 +91,7 @@ class FlextInfraDocGenerator:
         """CLI handler — accepts input model, delegates to generate."""
         return self.generate(
             workspace_root=params.workspace_path,
-            project=params.project,
-            projects=params.projects,
+            project=params.project_names,
             output_dir=params.output_dir,
             apply=params.apply,
         ).map(lambda _: True)

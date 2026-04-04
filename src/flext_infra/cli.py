@@ -10,10 +10,8 @@ from typing import ClassVar
 
 from flext_cli import cli as cli_service
 from flext_core import FlextLogger
-from flext_infra import (
-    FlextInfraConstants as c,
-    FlextInfraTypes as t,
-)
+from flext_infra.constants import c
+from flext_infra.typings import t
 
 
 class FlextInfraCli:
@@ -28,7 +26,7 @@ class FlextInfraCli:
     })
     _SHARED_VALUE_FLAGS: ClassVar[frozenset[str]] = frozenset({
         "--workspace",
-        "--projects",
+        "--project",
     })
     _USAGE_ERROR_MARKERS: ClassVar[tuple[str, ...]] = (
         "No such option",
@@ -84,12 +82,12 @@ class FlextInfraCli:
         return runner(args)
 
     @staticmethod
-    def _register_group(spec: str, app: t.Cli.TyperApp) -> None:
+    def _register_group(spec: str, app: t.Cli.CliApp) -> None:
         """Load and register a lazy CLI group on the shared Typer app."""
         module_path, class_name, method_name = spec.split(":")
         module = importlib.import_module(module_path)
         group_type = getattr(module, class_name)
-        registrar: Callable[[t.Cli.TyperApp], None] = getattr(
+        registrar: Callable[[t.Cli.CliApp], None] = getattr(
             group_type(),
             method_name,
         )

@@ -98,7 +98,7 @@ class FlextInfraUtilitiesIo:
             path.parent.mkdir(parents=True, exist_ok=True)
             materialized: t.Cli.JsonValue | Mapping[str, t.Infra.InfraValue]
             if isinstance(payload, BaseModel):
-                materialized = payload.model_dump()
+                materialized = payload.model_dump(mode="json")
             elif isinstance(payload, Mapping):
                 materialized = dict(payload)
             elif isinstance(payload, Sequence) and not isinstance(payload, str):
@@ -215,7 +215,7 @@ class FlextInfraUtilitiesIo:
         """
         try:
             raw_data: t.Infra.InfraValue = (
-                data.model_dump() if isinstance(data, BaseModel) else data
+                data.model_dump(mode="json") if isinstance(data, BaseModel) else data
             )
             validated_data: t.Cli.JsonValue = t.Cli.JSON_VALUE_ADAPTER.validate_python(
                 raw_data

@@ -9,21 +9,23 @@ from pydantic import Field
 
 from flext_core import FlextModels
 from flext_infra import t
+from flext_infra._models.mixins import FlextInfraModelsMixins
 
 
 class FlextInfraNamespaceEnforcerModels:
     """Namespace enforcer violation and report models."""
 
-    class FileLineViolation(FlextModels.ContractModel):
+    class FileLineViolation(
+        FlextInfraModelsMixins.FileLineViolationMixin,
+        FlextModels.ContractModel,
+    ):
         """Shared base: file + line for all violation models."""
 
-        file: Annotated[t.NonEmptyStr, Field(description="File path")]
-        line: Annotated[t.PositiveInt, Field(description="Line number")]
-
-    class ImportViolationBase(FileLineViolation):
+    class ImportViolationBase(
+        FlextInfraModelsMixins.CurrentImportMixin,
+        FileLineViolation,
+    ):
         """Shared base: file + line + current_import."""
-
-        current_import: Annotated[str, Field(description="Current import statement")]
 
     class FacadeStatus(FlextModels.ContractModel):
         family: Annotated[t.NonEmptyStr, Field(description="Facade family name")]
@@ -73,8 +75,11 @@ class FlextInfraNamespaceEnforcerModels:
         missing_base: Annotated[t.NonEmptyStr, Field(description="Missing base class")]
         suggestion: Annotated[str, Field(description="Fix suggestion")]
 
-    class InternalImportViolation(ImportViolationBase):
-        detail: Annotated[str, Field(description="Violation detail")]
+    class InternalImportViolation(
+        FlextInfraModelsMixins.ViolationDetailMixin,
+        ImportViolationBase,
+    ):
+        pass
 
     class ManualProtocolViolation(FileLineViolation):
         name: Annotated[t.NonEmptyStr, Field(description="Protocol class name")]
@@ -95,32 +100,43 @@ class FlextInfraNamespaceEnforcerModels:
             Field(description="Files in cycle"),
         ] = Field(default_factory=tuple)
 
-    class RuntimeAliasViolation(FlextModels.ContractModel):
-        file: Annotated[t.NonEmptyStr, Field(description="File path")]
-        line: Annotated[t.NonNegativeInt, Field(default=0, description="Line number")]
+    class RuntimeAliasViolation(
+        FlextInfraModelsMixins.FilePathMixin,
+        FlextInfraModelsMixins.NonNegativeLineMixin,
+        FlextInfraModelsMixins.ViolationDetailMixin,
+        FlextModels.ContractModel,
+    ):
         kind: Annotated[str, Field(description="Violation kind")]
         alias: Annotated[str, Field(description="Alias involved")]
-        detail: Annotated[str, Field(default="", description="Violation detail")]
 
-    class FutureAnnotationsViolation(FlextModels.ContractModel):
-        file: Annotated[t.NonEmptyStr, Field(description="File path")]
+    class FutureAnnotationsViolation(
+        FlextInfraModelsMixins.FilePathMixin,
+        FlextModels.ContractModel,
+    ):
+        pass
 
-    class ManualTypingAliasViolation(FileLineViolation):
+    class ManualTypingAliasViolation(
+        FlextInfraModelsMixins.ViolationDetailMixin,
+        FileLineViolation,
+    ):
         name: Annotated[t.NonEmptyStr, Field(description="Alias name")]
-        detail: Annotated[str, Field(default="", description="Violation detail")]
 
     class CompatibilityAliasViolation(FileLineViolation):
         alias_name: Annotated[t.NonEmptyStr, Field(description="Alias name")]
         target_name: Annotated[t.NonEmptyStr, Field(description="Target name")]
 
-    class ParseFailureViolation(FlextModels.ContractModel):
-        file: Annotated[t.NonEmptyStr, Field(description="File path")]
+    class ParseFailureViolation(
+        FlextInfraModelsMixins.FilePathMixin,
+        FlextInfraModelsMixins.ErrorDetailMixin,
+        FlextModels.ContractModel,
+    ):
         stage: Annotated[t.NonEmptyStr, Field(description="Parse stage")]
         error_type: Annotated[t.NonEmptyStr, Field(description="Error type")]
-        detail: Annotated[str, Field(default="", description="Error detail")]
 
-    class ProjectEnforcementReport(FlextModels.ArbitraryTypesModel):
-        project: Annotated[t.NonEmptyStr, Field(description="Project name")]
+    class ProjectEnforcementReport(
+        FlextInfraModelsMixins.ProjectNameMixin,
+        FlextModels.ArbitraryTypesModel,
+    ):
         project_root: Annotated[str, Field(description="Project root path")]
         facade_statuses: Sequence[FlextInfraNamespaceEnforcerModels.FacadeStatus] = (
             Field(default_factory=list, description="Facade status list")

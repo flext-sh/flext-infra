@@ -19,7 +19,7 @@ from flext_infra import (
 class FlextInfraCliRefactor:
     """Refactor CLI group — composed into FlextInfraCli via MRO."""
 
-    def register_refactor(self, app: t.Cli.TyperApp) -> None:
+    def register_refactor(self, app: t.Cli.CliApp) -> None:
         """Register refactor commands on the given Typer app."""
         cls = type(self)
         cli_service.register_result_routes(
@@ -105,9 +105,7 @@ class FlextInfraCliRefactor:
         params: m.Infra.RefactorNamespaceEnforceInput,
     ) -> r[m.Infra.WorkspaceEnforcementReport]:
         """Run namespace enforcement checks and optionally apply fixes."""
-        project_names: t.StrSequence | None = None
-        if params.project:
-            project_names = u.Cli.project_names_from_values(params.project)
+        project_names = params.project_names
         enforcer = FlextInfraNamespaceEnforcer(
             workspace_root=params.workspace_path,
         )
@@ -133,9 +131,7 @@ class FlextInfraCliRefactor:
         params: m.Infra.RefactorMigrateRuntimeAliasImportsInput,
     ) -> r[t.IntMapping]:
         """Move selected runtime aliases from `flext_core` to the local MRO root."""
-        project_names: t.StrSequence | None = None
-        if params.project:
-            project_names = u.Cli.project_names_from_values(params.project)
+        project_names = params.project_names
         aliases = [item.strip() for item in params.aliases.split(",") if item.strip()]
         results = u.Infra.migrate_runtime_alias_imports(
             workspace_root=params.workspace_path,

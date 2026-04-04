@@ -18,7 +18,7 @@ from flext_infra import (
 class FlextInfraCliValidate:
     """Validate CLI group — composed into FlextInfraCli via MRO."""
 
-    def register_validate(self, app: t.Cli.TyperApp) -> None:
+    def register_validate(self, app: t.Cli.CliApp) -> None:
         """Register validate commands on the given Typer app."""
         basemk_validator = FlextInfraBaseMkValidator()
         inventory_service = FlextInfraInventoryService()

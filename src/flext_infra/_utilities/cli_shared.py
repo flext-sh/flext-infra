@@ -9,7 +9,7 @@ from typing import Annotated
 from pydantic import Field, model_validator
 
 from flext_core import u
-from flext_infra import FlextInfraModels as m, FlextInfraTypes as t
+from flext_infra import m, t
 
 
 class FlextInfraUtilitiesCliShared:
@@ -126,16 +126,11 @@ class FlextInfraUtilitiesCliShared:
             )
         if flags.include_project:
             _ = parser.add_argument(
-                "--projects",
+                "--project",
                 type=str,
+                action="append",
                 default=default_project,
-                help="Single project to process",
-            )
-            _ = parser.add_argument(
-                "--projects",
-                type=str,
-                default=default_project,
-                help="Multiple projects (comma-separated or glob pattern)",
+                help="Project to process; repeat --project NAME as needed",
             )
 
     @staticmethod

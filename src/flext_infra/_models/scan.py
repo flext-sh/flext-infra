@@ -14,15 +14,18 @@ from typing import Annotated
 from pydantic import Field
 
 from flext_core import FlextModels
+from flext_infra._models.mixins import FlextInfraModelsMixins
 
 
 class FlextInfraModelsScan:
     """Shared utility domain models for scanning and analysis."""
 
-    class ScanViolation(FlextModels.ContractModel):
+    class ScanViolation(
+        FlextInfraModelsMixins.PositiveLineMixin,
+        FlextModels.ContractModel,
+    ):
         """A single violation found during file scanning."""
 
-        line: Annotated[int, Field(description="Line number of the violation")]
         message: Annotated[
             str,
             Field(description="Human-readable violation description"),

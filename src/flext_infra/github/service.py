@@ -75,26 +75,26 @@ class FlextInfraGithubService:
         params: m.Infra.GithubPrWorkspaceInput,
     ) -> r[m.Infra.PrOrchestrationResult]:
         """Manage pull requests across workspace projects."""
-        project_names: t.StrSequence | None = None
-        if params.project:
-            project_names = u.Cli.project_names_from_values(params.project)
-        pr_model = m.Infra.PrWorkspaceArgs(
-            include_root=params.include_root,
-            branch=params.branch,
-            checkpoint=params.checkpoint,
-            fail_fast=params.fail_fast,
-            pr_action=params.pr_action,
-            pr_base=params.pr_base,
-            pr_head=params.pr_head,
-            pr_number=u.to_str(params.pr_number),
-            pr_title=params.pr_title,
-            pr_body=params.pr_body,
-            pr_draft=params.pr_draft,
-            pr_merge_method=params.pr_merge_method,
-            pr_auto=params.pr_auto,
-            pr_delete_branch=params.pr_delete_branch,
-            pr_checks_strict=params.pr_checks_strict,
-            pr_release_on_merge=params.pr_release_on_merge,
+        project_names = params.project_names
+        pr_model = m.Infra.PrWorkspaceArgs.model_validate(
+            {
+                "include_root": params.include_root,
+                "branch": params.branch,
+                "checkpoint": params.checkpoint,
+                "fail_fast": params.fail_fast,
+                "pr_action": params.pr_action,
+                "pr_base": params.pr_base,
+                "pr_head": params.pr_head,
+                "pr_number": u.to_str(params.pr_number),
+                "pr_title": params.pr_title,
+                "pr_body": params.pr_body,
+                "pr_draft": params.pr_draft,
+                "pr_merge_method": params.pr_merge_method,
+                "pr_auto": params.pr_auto,
+                "pr_delete_branch": params.pr_delete_branch,
+                "pr_checks_strict": params.pr_checks_strict,
+                "pr_release_on_merge": params.pr_release_on_merge,
+            },
         )
         return u.Infra.github_pr_orchestrate(
             workspace_root=params.workspace_path,

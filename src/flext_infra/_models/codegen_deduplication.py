@@ -10,6 +10,7 @@ from pydantic import Field
 
 from flext_core import FlextModels
 from flext_infra import t
+from flext_infra._models.mixins import FlextInfraModelsMixins
 
 
 class FlextInfraCodegenDeduplicationModels:
@@ -91,7 +92,10 @@ class FlextInfraCodegenDeduplicationModels:
             Field(description="Replaced constant name"),
         ]
 
-    class DeduplicationApplyResult(FlextModels.ArbitraryTypesModel):
+    class DeduplicationApplyResult(
+        FlextInfraModelsMixins.DryRunTrueMixin,
+        FlextModels.ArbitraryTypesModel,
+    ):
         """Effect of applying one deduplication proposal."""
 
         canonical_name: Annotated[
@@ -109,10 +113,6 @@ class FlextInfraCodegenDeduplicationModels:
             default=0,
             description="Touched files count",
         )
-        dry_run: bool = Field(
-            default=True,
-            description="Whether no writes were performed",
-        )
 
         def render_summary(self) -> str:
             """Render the per-proposal application summary."""
@@ -121,7 +121,10 @@ class FlextInfraCodegenDeduplicationModels:
                 f" in {self.files_modified} files"
             )
 
-    class DeduplicationRunOptions(FlextModels.ArbitraryTypesModel):
+    class DeduplicationRunOptions(
+        FlextInfraModelsMixins.DryRunTrueMixin,
+        FlextModels.ArbitraryTypesModel,
+    ):
         """Validated options for the deduplication workflow."""
 
         class_path: Annotated[
@@ -132,10 +135,6 @@ class FlextInfraCodegenDeduplicationModels:
             Path,
             Field(description="Workspace root used for scanning and renames"),
         ]
-        dry_run: bool = Field(
-            default=True,
-            description="Whether writes should be skipped",
-        )
         max_files: t.NonNegativeInt = Field(
             default=2000,
             description="Maximum files scanned for usages",
@@ -145,24 +144,24 @@ class FlextInfraCodegenDeduplicationModels:
             description="Directory names excluded from usage scanning",
         )
 
-    class DeduplicationRunReport(FlextModels.ArbitraryTypesModel):
+    class DeduplicationRunReport(
+        FlextInfraModelsMixins.DryRunTrueMixin,
+        FlextModels.ArbitraryTypesModel,
+    ):
         """Typed report emitted by the deduplication workflow."""
 
         class_path: Annotated[
             t.NonEmptyStr,
             Field(description="Analyzed constants facade path"),
         ]
-        dry_run: bool = Field(
-            default=True,
-            description="Whether writes were skipped",
-        )
         proposals: tuple[
             FlextInfraCodegenDeduplicationModels.DeduplicationFixProposal, ...
         ] = Field(
             default_factory=tuple, description="Identified deduplication proposals"
         )
         applied: tuple[
-            FlextInfraCodegenDeduplicationModels.DeduplicationApplyResult
+            FlextInfraCodegenDeduplicationModels.DeduplicationApplyResult,
+            ...,
         ] = Field(
             default_factory=tuple,
             description="Application results for each proposal",

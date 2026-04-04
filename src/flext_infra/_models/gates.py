@@ -9,12 +9,16 @@ from pydantic import ConfigDict, Field
 
 from flext_core import FlextModels
 from flext_infra import t
+from flext_infra._models.mixins import FlextInfraModelsMixins
 
 
 class FlextInfraGatesModels:
     """Quality gate execution domain models."""
 
-    class GateContext(FlextModels.ContractModel):
+    class GateContext(
+        FlextInfraModelsMixins.FailFastMixin,
+        FlextModels.ContractModel,
+    ):
         """Quality gate execution context and configuration."""
 
         model_config: ClassVar[ConfigDict] = ConfigDict(
@@ -27,10 +31,6 @@ class FlextInfraGatesModels:
             Field(alias="workspace", description="Workspace root directory"),
         ]
         reports_dir: Annotated[Path, Field(description="Reports output directory")]
-        fail_fast: Annotated[
-            bool,
-            Field(description="Stop on first gate failure"),
-        ] = False
         apply_fixes: Annotated[
             bool,
             Field(description="Apply supported fixes before checking"),

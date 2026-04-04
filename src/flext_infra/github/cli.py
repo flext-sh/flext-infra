@@ -9,7 +9,7 @@ from flext_infra import FlextInfraGithubService, c, m, t
 class FlextInfraCliGithub:
     """GitHub CLI group — composed into FlextInfraCli via MRO."""
 
-    def register_github(self, app: t.Cli.TyperApp) -> None:
+    def register_github(self, app: t.Cli.CliApp) -> None:
         """Register github commands on the given Typer app."""
         service = FlextInfraGithubService()
         cli_service.register_result_routes(

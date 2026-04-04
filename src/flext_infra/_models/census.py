@@ -8,6 +8,7 @@ from pydantic import ConfigDict, Field
 
 from flext_core import FlextModels
 from flext_infra import t
+from flext_infra._models.mixins import FlextInfraModelsMixins
 
 
 class FlextInfraModelsCensus:
@@ -16,7 +17,13 @@ class FlextInfraModelsCensus:
     class Census:
         """Namespace for unified census pipeline data contracts."""
 
-        class Object(FlextModels.ArbitraryTypesModel):
+        class Object(
+            FlextInfraModelsMixins.AbsoluteFilePathTextMixin,
+            FlextInfraModelsMixins.RequiredNonNegativeLineMixin,
+            FlextInfraModelsMixins.ProjectNameMixin,
+            FlextInfraModelsMixins.NestedClassPathMixin,
+            FlextModels.ArbitraryTypesModel,
+        ):
             """Single discovered Python object with tier and classification metadata."""
 
             model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
@@ -25,13 +32,6 @@ class FlextInfraModelsCensus:
             kind: Annotated[
                 str,
                 Field(description="Object kind (constant/type/protocol/model/utility)"),
-            ]
-            file_path: Annotated[str, Field(description="Absolute file path")]
-            line: Annotated[
-                t.NonNegativeInt, Field(description="Line number (1-based)")
-            ]
-            project: Annotated[
-                t.NonEmptyStr, Field(description="Project directory name")
             ]
             actual_tier: Annotated[
                 str,
@@ -45,13 +45,6 @@ class FlextInfraModelsCensus:
                 Field(
                     default="",
                     description="Tier determined by classifier",
-                ),
-            ] = ""
-            class_path: Annotated[
-                str,
-                Field(
-                    default="",
-                    description="Dotted path within namespace (e.g. Auth.DEFAULT_TIMEOUT)",
                 ),
             ] = ""
             is_facade_member: Annotated[
@@ -69,7 +62,10 @@ class FlextInfraModelsCensus:
                 ),
             ] = 0
 
-        class Violation(FlextModels.ArbitraryTypesModel):
+        class Violation(
+            FlextInfraModelsMixins.ProjectNameMixin,
+            FlextModels.ArbitraryTypesModel,
+        ):
             """Detected census violation with fix metadata."""
 
             model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
@@ -97,7 +93,6 @@ class FlextInfraModelsCensus:
                 t.NonNegativeInt,
                 Field(default=0, description="Line number"),
             ] = 0
-            project: Annotated[t.NonEmptyStr, Field(description="Project name")]
             fixable: Annotated[
                 bool,
                 Field(default=False, description="Whether auto-fix is available"),
@@ -170,12 +165,14 @@ class FlextInfraModelsCensus:
                 ),
             ] = False
 
-        class ProjectReport(FlextModels.ArbitraryTypesModel):
+        class ProjectReport(
+            FlextInfraModelsMixins.ProjectNameMixin,
+            FlextModels.ArbitraryTypesModel,
+        ):
             """Per-project census summary."""
 
             model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
-            project: Annotated[t.NonEmptyStr, Field(description="Project name")]
             objects_total: Annotated[
                 t.NonNegativeInt,
                 Field(default=0, description="Total objects discovered"),

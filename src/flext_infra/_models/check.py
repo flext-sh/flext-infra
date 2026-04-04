@@ -9,6 +9,7 @@ from pydantic import ConfigDict, Field, computed_field, model_serializer
 
 from flext_core import FlextModels
 from flext_infra import c, t
+from flext_infra._models.mixins import FlextInfraModelsMixins
 
 
 class FlextInfraCheckModels:
@@ -39,11 +40,13 @@ class FlextInfraCheckModels:
                 f"{self.file}:{self.line}:{self.column} {code_part}{self.message}"
             ).strip()
 
-    class GateResult(FlextModels.ArbitraryTypesModel):
+    class GateResult(
+        FlextInfraModelsMixins.ProjectNameMixin,
+        FlextModels.ArbitraryTypesModel,
+    ):
         """Result summary for a single quality gate execution."""
 
         gate: Annotated[str, Field(description="Gate name")]
-        project: Annotated[str, Field(description="Project name")]
         passed: Annotated[bool, Field(description="Gate execution status")]
         errors: t.StrSequence = Field(
             default_factory=tuple,
@@ -62,10 +65,12 @@ class FlextInfraCheckModels:
         )
         raw_output: str = Field(default="", description="Raw tool output")
 
-    class ProjectResult(FlextModels.ArbitraryTypesModel):
+    class ProjectResult(
+        FlextInfraModelsMixins.ProjectNameMixin,
+        FlextModels.ArbitraryTypesModel,
+    ):
         """Aggregated gate results for a single project."""
 
-        project: Annotated[str, Field(description="Project name")]
         gates: MutableMapping[str, FlextInfraCheckModels.GateExecution] = Field(
             default_factory=dict,
             description="Gate name to execution mapping",

@@ -18,7 +18,7 @@ from flext_tests import tm
 from tests import t
 
 from flext_core import r
-from flext_infra import cli as codegen_cli, main as infra_main
+from flext_infra import FlextInfraCodegenLazyInit, main as infra_main
 
 
 class TestHandleLazyInit:
@@ -51,10 +51,14 @@ class TestHandleLazyInit:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """lazy-init fails when the generator reports errors."""
+
+        def _fail_execute(_params: object) -> r[bool]:
+            return r[bool].fail("lazy-init failed")
+
         monkeypatch.setattr(
-            codegen_cli.FlextInfraCodegenLazyInit,
+            FlextInfraCodegenLazyInit,
             "execute_command",
-            staticmethod(lambda _params: r[bool].fail("lazy-init failed")),
+            staticmethod(_fail_execute),
         )
         result = infra_main(["codegen", "lazy-init", "--workspace", str(tmp_path)])
         tm.that(result, eq=1)

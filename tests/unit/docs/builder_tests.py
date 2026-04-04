@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import m, t
+from tests import m
 
 from flext_infra import FlextInfraDocBuilder
 
@@ -63,8 +63,8 @@ class TestBuilderCore:
     @pytest.mark.parametrize(
         "kwargs",
         [
-            {"project": "test-project"},
-            {"projects": "proj1,proj2"},
+            {"project": ["test-project"]},
+            {"project": ["proj1", "proj2"]},
             {"output_dir": "custom_output"},
         ],
     )
@@ -72,12 +72,19 @@ class TestBuilderCore:
         self,
         builder: FlextInfraDocBuilder,
         tmp_path: Path,
-        kwargs: t.StrMapping,
+        kwargs: dict[str, object],
     ) -> None:
-        params = dict(kwargs)
-        if "output_dir" in params:
-            params["output_dir"] = str(tmp_path / params["output_dir"])
-        result = builder.build(tmp_path, **params)
+        if "output_dir" in kwargs:
+            output_dir = kwargs["output_dir"]
+            assert isinstance(output_dir, str)
+            result = builder.build(
+                tmp_path,
+                output_dir=str(tmp_path / output_dir),
+            )
+        else:
+            project = kwargs.get("project")
+            assert isinstance(project, list)
+            result = builder.build(tmp_path, project=project)
         tm.that(result.is_success or result.is_failure, eq=True)
 
     @pytest.mark.parametrize("status", ["OK", "FAIL", "SKIP"])
@@ -109,6 +116,6 @@ class TestBuilderCore:
         tmp_path: Path,
     ) -> None:
         """Test build with multiple projects returns list of reports."""
-        result = builder.build(tmp_path, projects="proj1,proj2")
+        result = builder.build(tmp_path, project=["proj1", "proj2"])
         if result.is_success:
             tm.that(len(result.value), gte=0)

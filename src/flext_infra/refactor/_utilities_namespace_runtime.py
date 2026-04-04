@@ -6,9 +6,6 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 from flext_infra import (
-    FlextInfraConstants as c,
-    FlextInfraModels as m,
-    FlextInfraTypes as t,
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesFormatting,
     FlextInfraUtilitiesImportNormalizer,
@@ -16,6 +13,9 @@ from flext_infra import (
     FlextInfraUtilitiesParsing,
     FlextInfraUtilitiesRefactorNamespaceCommon,
     FlextInfraUtilitiesRope,
+    c,
+    m,
+    t,
 )
 
 

@@ -47,8 +47,7 @@ class FlextInfraDocFixer:
         self,
         workspace_root: Path,
         *,
-        project: str | None = None,
-        projects: str | None = None,
+        project: Sequence[str] | None = None,
         output_dir: str = c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
         apply: bool = False,
     ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
@@ -56,8 +55,7 @@ class FlextInfraDocFixer:
 
         Args:
             workspace_root: Workspace root directory.
-            project: Single project name filter.
-            projects: Comma-separated project names.
+            project: Selected project names.
             output_dir: Report output directory.
             apply: Actually write changes (dry-run if False).
 
@@ -68,7 +66,6 @@ class FlextInfraDocFixer:
         return u.Infra.run_scoped(
             workspace_root,
             project=project,
-            projects=projects,
             output_dir=output_dir,
             handler=lambda scope: self._fix_scope(scope, apply=apply),
         )
@@ -77,8 +74,7 @@ class FlextInfraDocFixer:
         """CLI handler — accepts input model, delegates to fix."""
         return self.fix(
             workspace_root=params.workspace_path,
-            project=params.project,
-            projects=params.projects,
+            project=params.project_names,
             output_dir=params.output_dir,
             apply=params.apply,
         ).map(lambda _: True)

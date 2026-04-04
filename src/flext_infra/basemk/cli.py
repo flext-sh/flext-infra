@@ -9,7 +9,7 @@ from flext_infra import FlextInfraBaseMkGenerator, m, t
 class FlextInfraCliBasemk:
     """Basemk CLI group — composed into FlextInfraCli via MRO."""
 
-    def register_basemk(self, app: t.Cli.TyperApp) -> None:
+    def register_basemk(self, app: t.Cli.CliApp) -> None:
         """Register basemk commands on the given Typer app."""
         cli_service.register_result_routes(
             app,

@@ -9,6 +9,7 @@ from pydantic import Field
 
 from flext_core import m
 from flext_infra import FlextInfraDepsModelsToolConfig, t
+from flext_infra._models.mixins import FlextInfraModelsMixins
 
 
 class FlextInfraDepsModels(FlextInfraDepsModelsToolConfig):
@@ -73,10 +74,12 @@ class FlextInfraDepsModels(FlextInfraDepsModelsToolConfig):
             t.NonNegativeInt, Field(default=0, description="Raw issue count")
         ] = 0
 
-    class ProjectDependencyReport(m.ArbitraryTypesModel):
+    class ProjectDependencyReport(
+        FlextInfraModelsMixins.ProjectNameMixin,
+        m.ArbitraryTypesModel,
+    ):
         """Project-level dependency report combining deptry results."""
 
-        project: Annotated[t.NonEmptyStr, Field(description="Project name")]
         deptry: FlextInfraDepsModels.DeptryReport = Field(description="Deptry report")
 
     class TypingsReport(m.ArbitraryTypesModel):

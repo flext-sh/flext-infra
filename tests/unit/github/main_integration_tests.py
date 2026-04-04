@@ -139,17 +139,21 @@ class TestMain:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         ops = [
-            m.Infra.SyncOperation(
-                project="p1",
-                path="ci.yml",
-                action="create",
-                reason="new",
+            m.Infra.SyncOperation.model_validate(
+                {
+                    "project": "p1",
+                    "path": "ci.yml",
+                    "action": "create",
+                    "reason": "new",
+                },
             ),
-            m.Infra.SyncOperation(
-                project="p2",
-                path="ci.yml",
-                action="update",
-                reason="changed",
+            m.Infra.SyncOperation.model_validate(
+                {
+                    "project": "p2",
+                    "path": "ci.yml",
+                    "action": "update",
+                    "reason": "changed",
+                },
             ),
         ]
 

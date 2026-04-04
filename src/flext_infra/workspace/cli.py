@@ -16,7 +16,7 @@ from flext_infra import (
 class FlextInfraCliWorkspace:
     """Workspace CLI group — composed into FlextInfraCli via MRO."""
 
-    def register_workspace(self, app: t.Cli.TyperApp) -> None:
+    def register_workspace(self, app: t.Cli.CliApp) -> None:
         """Register workspace commands on the given Typer app."""
         cli_service.register_result_routes(
             app,

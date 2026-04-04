@@ -9,12 +9,12 @@ from tests import t
 
 from flext_core import r
 from flext_infra import (
-    FlextInfraModels as m,
     FlextInfraOrchestratorService,
     FlextInfraProjectMigrator,
     FlextInfraSyncService,
     FlextInfraWorkspaceDetector,
     FlextInfraWorkspaceMode,
+    m,
     main as infra_main,
 )
 
@@ -113,7 +113,7 @@ class TestRunOrchestrate:
             _orchestrate_success,
         )
         handle_result = FlextInfraOrchestratorService.execute_command(
-            FlextInfraOrchestratorService(verb="check", projects="p-a,p-b"),
+            FlextInfraOrchestratorService(verb="check", project=["p-a", "p-b"]),
         )
         tm.that(handle_result.is_success, eq=True)
 
@@ -142,7 +142,7 @@ class TestRunOrchestrate:
         handle_result = FlextInfraOrchestratorService.execute_command(
             FlextInfraOrchestratorService(
                 verb="test",
-                projects="p-a",
+                project=["p-a"],
                 make_arg=["FILES=a b c.py", "VERBOSE=1"],
             ),
         )
@@ -151,13 +151,13 @@ class TestRunOrchestrate:
 
     def test_rejects_unknown_verb(self) -> None:
         handle_result = FlextInfraOrchestratorService.execute_command(
-            FlextInfraOrchestratorService(verb="legacy-check", projects="p-a"),
+            FlextInfraOrchestratorService(verb="legacy-check", project=["p-a"]),
         )
         tm.fail(handle_result, has="unsupported orchestrate verb")
 
     def test_no_projects(self) -> None:
         handle_result = FlextInfraOrchestratorService.execute_command(
-            FlextInfraOrchestratorService(verb="check", projects=""),
+            FlextInfraOrchestratorService(verb="check", project=[]),
         )
         tm.that(handle_result.is_failure, eq=True)
 
@@ -181,7 +181,7 @@ class TestRunOrchestrate:
             _orchestrate_partial,
         )
         handle_result = FlextInfraOrchestratorService.execute_command(
-            FlextInfraOrchestratorService(verb="check", projects="p-a,p-b"),
+            FlextInfraOrchestratorService(verb="check", project=["p-a", "p-b"]),
         )
         tm.that(handle_result.is_failure, eq=True)
 
@@ -202,7 +202,7 @@ class TestRunOrchestrate:
             _orchestrate_failure,
         )
         handle_result = FlextInfraOrchestratorService.execute_command(
-            FlextInfraOrchestratorService(verb="check", projects="p-a"),
+            FlextInfraOrchestratorService(verb="check", project=["p-a"]),
         )
         tm.that(handle_result.is_failure, eq=True)
 

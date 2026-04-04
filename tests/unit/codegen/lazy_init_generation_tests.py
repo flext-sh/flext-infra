@@ -110,9 +110,7 @@ class TestGenerateTypeChecking:
         groups = {"module": [("c", "FlextConstants"), ("m", "FlextModels")]}
         lines = FlextInfraCodegenGeneration.generate_type_checking(groups)
         joined = " ".join(lines)
-        tm.that(
-            joined, contains="from module import FlextConstants as c, FlextModels as m"
-        )
+        tm.that(joined, contains="from module import c,  m")
 
     def test_with_long_import_line(self) -> None:
         """Test wraps long import lines."""

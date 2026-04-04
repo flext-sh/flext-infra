@@ -12,12 +12,16 @@ from flext_infra import (
     FlextInfraCodegenDeduplicationModels,
     t,
 )
+from flext_infra._models.mixins import FlextInfraModelsMixins
 
 
 class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
     """Models for codegen census, scaffold, and auto-fix pipelines."""
 
-    class CensusViolation(FlextModels.ArbitraryTypesModel):
+    class CensusViolation(
+        FlextInfraModelsMixins.RequiredNonNegativeLineMixin,
+        FlextModels.ArbitraryTypesModel,
+    ):
         """A single namespace violation detected by the census service."""
 
         module: Annotated[t.NonEmptyStr, Field(description="Module file path")]
@@ -25,7 +29,6 @@ class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
             t.NonEmptyStr,
             Field(description="Violated rule identifier (e.g. NS-001)"),
         ]
-        line: Annotated[t.NonNegativeInt, Field(description="Line number of violation")]
         message: Annotated[
             t.NonEmptyStr,
             Field(description="Human-readable violation message"),
@@ -35,10 +38,12 @@ class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
             Field(description="Whether this violation can be auto-fixed"),
         ]
 
-    class CensusReport(FlextModels.ArbitraryTypesModel):
+    class CensusReport(
+        FlextInfraModelsMixins.ProjectNameMixin,
+        FlextModels.ArbitraryTypesModel,
+    ):
         """Aggregated census report for a single project."""
 
-        project: Annotated[t.NonEmptyStr, Field(description="Project name")]
         violations: list[FlextInfraCodegenModels.CensusViolation] = Field(
             default_factory=list,
             description="Detected violations",
@@ -49,10 +54,12 @@ class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
             Field(description="Count of auto-fixable violations"),
         ]
 
-    class ScaffoldResult(FlextModels.ArbitraryTypesModel):
+    class ScaffoldResult(
+        FlextInfraModelsMixins.ProjectNameMixin,
+        FlextModels.ArbitraryTypesModel,
+    ):
         """Result of scaffolding base modules for a project."""
 
-        project: Annotated[t.NonEmptyStr, Field(description="Project name")]
         files_created: t.StrSequence = Field(
             default_factory=list,
             description="Newly created file paths",
@@ -62,10 +69,12 @@ class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
             description="Skipped (already existing) file paths",
         )
 
-    class AutoFixResult(FlextModels.ArbitraryTypesModel):
+    class AutoFixResult(
+        FlextInfraModelsMixins.ProjectNameMixin,
+        FlextModels.ArbitraryTypesModel,
+    ):
         """Result of auto-fixing namespace violations for a project."""
 
-        project: Annotated[t.NonEmptyStr, Field(description="Project name")]
         violations_fixed: list[FlextInfraCodegenModels.CensusViolation] = Field(
             default_factory=list,
             description="Fixed violations",
@@ -90,10 +99,12 @@ class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
         ]
         critical: Annotated[bool, Field(description="Whether failure is critical")]
 
-    class QualityGateProjectFinding(FlextModels.ArbitraryTypesModel):
+    class QualityGateProjectFinding(
+        FlextInfraModelsMixins.ProjectNameMixin,
+        FlextModels.ArbitraryTypesModel,
+    ):
         """Per-project quality gate findings."""
 
-        project: Annotated[t.NonEmptyStr, Field(description="Project name")]
         violations_total: Annotated[
             t.NonNegativeInt,
             Field(description="Total violations"),
@@ -116,17 +127,20 @@ class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
             Field(description="Cross-project reference violation count"),
         ]
 
-    class BulkFixItem(FlextModels.ArbitraryTypesModel):
+    class BulkFixItem(
+        FlextInfraModelsMixins.AbsoluteFilePathTextMixin,
+        FlextInfraModelsMixins.PositiveLineMixin,
+        FlextModels.ArbitraryTypesModel,
+    ):
         """Shared line-addressable item used by bulk codegen fixes."""
 
         name: Annotated[t.NonEmptyStr, Field(description="Item identifier")]
-        file_path: Annotated[
-            t.NonEmptyStr,
-            Field(description="Absolute file path"),
-        ]
-        line: Annotated[t.PositiveInt, Field(description="Line number")]
 
-    class ConstantDefinition(BulkFixItem):
+    class ConstantDefinition(
+        FlextInfraModelsMixins.ProjectNameMixin,
+        FlextInfraModelsMixins.NestedClassPathMixin,
+        BulkFixItem,
+    ):
         """A single constant extracted from a constants.py file."""
 
         value_repr: Annotated[
@@ -137,14 +151,6 @@ class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
             str,
             Field(default="", description="Type annotation string"),
         ]
-        class_path: Annotated[
-            str,
-            Field(
-                default="",
-                description="Nested class path (e.g., 'OracleWms.Connection')",
-            ),
-        ]
-        project: Annotated[t.NonEmptyStr, Field(description="Project name")]
 
     class DuplicateConstantGroup(FlextModels.ArbitraryTypesModel):
         """Cross-project duplicate group with consolidation metadata."""
@@ -156,13 +162,17 @@ class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
         is_value_identical: bool = Field(description="Whether all values match")
         canonical_ref: str = Field(default="", description="Canonical parent reference")
 
-    class UnusedConstant(BulkFixItem):
+    class UnusedConstant(
+        FlextInfraModelsMixins.ProjectNameMixin,
+        FlextInfraModelsMixins.NestedClassPathMixin,
+        BulkFixItem,
+    ):
         """Constant declared but never referenced in workspace."""
 
-        class_path: Annotated[str, Field(default="", description="Nested class path")]
-        project: Annotated[t.NonEmptyStr, Field(description="Project name")]
-
-    class DirectConstantRef(FlextModels.ArbitraryTypesModel):
+    class DirectConstantRef(
+        FlextInfraModelsMixins.ProjectNameMixin,
+        FlextModels.ArbitraryTypesModel,
+    ):
         """Direct FlextXConstants.Y.Z reference that should use c.* alias."""
 
         full_ref: Annotated[
@@ -177,7 +187,6 @@ class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
             t.NonEmptyStr,
             Field(description="File containing the reference"),
         ]
-        project: Annotated[t.NonEmptyStr, Field(description="Project name")]
         line: Annotated[t.PositiveInt, Field(description="Line number")]
 
     class CanonicalValueRule(FlextModels.ArbitraryTypesModel):

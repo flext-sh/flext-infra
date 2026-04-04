@@ -9,6 +9,7 @@ from pydantic import ConfigDict, Field
 
 from flext_core import m
 from flext_infra import c, t
+from flext_infra._models.mixins import FlextInfraModelsMixins
 
 
 class FlextInfraRefactorModelsCensus:
@@ -70,7 +71,10 @@ class FlextInfraRefactorModelsCensus:
         ]
         source_file: Annotated[str, Field(description="Source filename")]
 
-    class CensusUsageRecord(m.ArbitraryTypesModel):
+    class CensusUsageRecord(
+        FlextInfraModelsMixins.ProjectNameMixin,
+        m.ArbitraryTypesModel,
+    ):
         """A single method usage found via CST analysis."""
 
         model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
@@ -85,7 +89,6 @@ class FlextInfraRefactorModelsCensus:
             Field(description="Access mode: alias_flat, alias_namespaced, direct"),
         ]
         file_path: Annotated[str, Field(description="Source file path")]
-        project: Annotated[str, Field(description="Project name")]
 
     class CensusMethodSummary(m.ArbitraryTypesModel):
         """Aggregated usage counts for a single method."""
@@ -132,15 +135,13 @@ class FlextInfraRefactorModelsCensus:
         access_mode: Annotated[str, Field(description="Access mode")]
         count: Annotated[t.NonNegativeInt, Field(description="Usage count")]
 
-    class CensusProjectSummary(m.ArbitraryTypesModel):
+    class CensusProjectSummary(
+        FlextInfraModelsMixins.ProjectNameFieldMixin,
+        m.ArbitraryTypesModel,
+    ):
         """Usage breakdown for one project."""
 
         model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
-
-        project_name: Annotated[
-            t.NonEmptyStr,
-            Field(description="Project directory name"),
-        ]
         usages: Sequence[FlextInfraRefactorModelsCensus.CensusProjectMethodUsage] = (
             Field(default_factory=tuple, description="Per-method usages")
         )

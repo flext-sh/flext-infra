@@ -9,7 +9,7 @@ from flext_infra import FlextInfraReleaseOrchestrator, m, t
 class FlextInfraCliRelease:
     """Release CLI group — composed into the centralized infra CLI."""
 
-    def register_release(self, app: t.Cli.TyperApp) -> None:
+    def register_release(self, app: t.Cli.CliApp) -> None:
         """Register release commands on the given application."""
         orchestrator = FlextInfraReleaseOrchestrator()
         cli_service.register_result_routes(
@@ -19,7 +19,7 @@ class FlextInfraCliRelease:
                     name="run",
                     help_text="Run release orchestration CLI flow",
                     model_cls=m.Infra.ReleaseRunInput,
-                    handler=orchestrator.execute_command,
+                    handler=orchestrator.execute_release_command,
                     failure_message="Release failed",
                     success_message="Release completed successfully",
                 ),

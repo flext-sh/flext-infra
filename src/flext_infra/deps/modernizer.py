@@ -322,7 +322,7 @@ class FlextInfraPyprojectModernizer:
                 u.Infra.info("(dry-run — no files modified)")
         if check_mode and total > 0:
             return 1
-        if not dry_run and (not args.skip_check):
+        if not dry_run and (not bool(getattr(args, "skip_check", False))):
             return self._run_build_check(files)
         return 0
 
@@ -359,6 +359,11 @@ class FlextInfraPyprojectModernizer:
             ),
         )
         _ = parser.add_argument("--audit", action="store_true")
+        _ = parser.add_argument(
+            "--skip-check",
+            action="store_true",
+            help="Skip post-write build-system validation",
+        )
         _ = parser.add_argument("--skip-comments", action="store_true")
         args = parser.parse_args(argv)
         cli = u.Infra.resolve(args)

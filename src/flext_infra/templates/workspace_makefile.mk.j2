@@ -425,7 +425,7 @@ mod: ## Modernize pyproject.toml files (standardize configs without lock/install
 	$(Q)$(ENSURE_SELECTED_PROJECTS)
 	$(Q)$(ENSURE_PROJECTS_EXIST)
 	$(Q)echo "Modernizing pyproject.toml files..."; \
-	$(WORKSPACE_INFRA_DEPS) modernize --skip-check --apply $(if $(PROJECT),--projects "$(PROJECT)",) $(if $(PROJECTS),--projects "$(PROJECTS)",); \
+	$(WORKSPACE_INFRA_DEPS) modernize --apply $(if $(PROJECT),--projects "$(PROJECT)",) $(if $(PROJECTS),--projects "$(PROJECTS)",); \
 	echo ""
 	$(Q)echo "Syncing dependency paths to workspace mode..."; \
 	$(WORKSPACE_INFRA_DEPS) path-sync --mode auto --apply $(if $(PROJECT),--projects "$(PROJECT)",) $(if $(PROJECTS),--projects "$(PROJECTS)",); \

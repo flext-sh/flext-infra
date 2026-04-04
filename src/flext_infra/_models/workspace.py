@@ -10,6 +10,7 @@ from pydantic import Field
 
 from flext_core import m
 from flext_infra import t
+from flext_infra._models.mixins import FlextInfraModelsMixins
 
 
 class FlextInfraWorkspaceModels:
@@ -20,10 +21,12 @@ class FlextInfraWorkspaceModels:
     - ``ContractModel`` reserved for immutable workspace config contracts.
     """
 
-    class ProjectInfo(m.ArbitraryTypesModel):
+    class ProjectInfo(
+        FlextInfraModelsMixins.ProjectEntryNameMixin,
+        m.ArbitraryTypesModel,
+    ):
         """Discovered project metadata for workspace operations."""
 
-        name: Annotated[t.NonEmptyStr, Field(description="Project name")]
         path: Annotated[Path, Field(description="Absolute or relative project path")]
         stack: Annotated[
             t.NonEmptyStr,
@@ -38,10 +41,12 @@ class FlextInfraWorkspaceModels:
             Field(default=True, description="Project has source directory"),
         ] = True
 
-    class ProjectMeta(m.ArbitraryTypesModel):
+    class ProjectMeta(
+        FlextInfraModelsMixins.ProjectEntryNameMixin,
+        m.ArbitraryTypesModel,
+    ):
         """Extracted project metadata for makefile generation."""
 
-        name: Annotated[t.NonEmptyStr, Field(description="Project name")]
         python_version: Annotated[t.NonEmptyStr, Field(description="Python version")]
         description: Annotated[t.NonEmptyStr, Field(description="Project description")]
 
@@ -61,10 +66,12 @@ class FlextInfraWorkspaceModels:
             ),
         ] = Field(default_factory=lambda: datetime.now(UTC))
 
-    class MigrationResult(m.ArbitraryTypesModel):
+    class MigrationResult(
+        FlextInfraModelsMixins.ProjectNameMixin,
+        m.ArbitraryTypesModel,
+    ):
         """Migration operation outcome with applied changes and errors."""
 
-        project: Annotated[t.NonEmptyStr, Field(description="Project identifier")]
         changes: Annotated[
             t.StrSequence,
             Field(description="Applied changes"),

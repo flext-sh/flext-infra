@@ -73,9 +73,10 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
             return r[str].ok(requested)
         return r[str].ok(f"v{version}")
 
-    @override
-    def execute_command(self, params: m.Infra.ReleaseRunInput) -> r[bool]:
+    @classmethod
+    def execute_release_command(cls, params: m.Infra.ReleaseRunInput) -> r[bool]:
         """Execute the release CLI flow for the input model."""
+        service = cls()
         root_result = u.Infra.workspace_root(params.workspace_path)
         if root_result.is_failure:
             return r[bool].fail(root_result.error or "workspace root not found")
@@ -85,7 +86,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
             {c.Infra.VERSION, c.Infra.Directories.BUILD, "publish"} & set(phases),
         )
         if needs_version:
-            version_result = self._resolve_version(
+            version_result = service._resolve_version(
                 params.version,
                 params.bump,
                 params.interactive,
@@ -96,16 +97,16 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
             resolved_version = str(version_result.value)
         else:
             resolved_version = params.version or "0.0.0"
-        tag_result = self._resolve_tag(params.tag, resolved_version)
+        tag_result = service._resolve_tag(params.tag, resolved_version)
         if tag_result.is_failure:
             return r[bool].fail(tag_result.error or "tag resolution failed")
-        return self.run_release(
+        return service.run_release(
             m.Infra.ReleaseOrchestratorConfig(
                 workspace_root=root,
                 version=resolved_version,
                 tag=str(tag_result.value),
                 phases=phases,
-                project_names=params.projects or None,
+                project_names=params.project_names,
                 dry_run=not params.apply,
                 push=params.push,
                 dev_suffix=params.dev_suffix,

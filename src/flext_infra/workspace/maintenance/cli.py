@@ -9,7 +9,7 @@ from flext_infra import FlextInfraPythonVersionEnforcer, m, t
 class FlextInfraCliMaintenance:
     """Maintenance CLI group — composed into FlextInfraCli via MRO."""
 
-    def register_maintenance(self, app: t.Cli.TyperApp) -> None:
+    def register_maintenance(self, app: t.Cli.CliApp) -> None:
         """Register maintenance commands on the given Typer app."""
         service = FlextInfraPythonVersionEnforcer()
         cli.register_result_routes(

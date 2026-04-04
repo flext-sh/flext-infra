@@ -172,6 +172,6 @@ class TestBuilderScope:
         tmp_path: Path,
     ) -> None:
         """Test build returns multiple reports for multiple scopes."""
-        result = builder.build(tmp_path, projects="proj1,proj2,proj3")
+        result = builder.build(tmp_path, project=["proj1", "proj2", "proj3"])
         if result.is_success:
             tm.that(len(result.value), gte=0)

@@ -18,7 +18,7 @@ from flext_infra import (
 class FlextInfraCliDocs:
     """Docs CLI group — composed into FlextInfraCli via MRO."""
 
-    def register_docs(self, app: t.Cli.TyperApp) -> None:
+    def register_docs(self, app: t.Cli.CliApp) -> None:
         """Register documentation commands on the given Typer app."""
         auditor = FlextInfraDocAuditor()
         fixer = FlextInfraDocFixer()

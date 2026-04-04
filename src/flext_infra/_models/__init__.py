@@ -79,8 +79,12 @@ if _t.TYPE_CHECKING:
     from flext_infra._models.gates import FlextInfraGatesModels
 
     github = _flext_infra__models_github
-    import flext_infra._models.refactor as _flext_infra__models_refactor
+    import flext_infra._models.mixins as _flext_infra__models_mixins
     from flext_infra._models.github import FlextInfraGithubModels
+
+    mixins = _flext_infra__models_mixins
+    import flext_infra._models.refactor as _flext_infra__models_refactor
+    from flext_infra._models.mixins import FlextInfraModelsMixins
 
     refactor = _flext_infra__models_refactor
     import flext_infra._models.refactor_ast_grep as _flext_infra__models_refactor_ast_grep
@@ -142,6 +146,7 @@ _LAZY_IMPORTS = {
     "FlextInfraModelsCliInputs": "flext_infra._models.cli_inputs",
     "FlextInfraModelsCliInputsCodegen": "flext_infra._models.cli_inputs_codegen",
     "FlextInfraModelsCliInputsOps": "flext_infra._models.cli_inputs_ops",
+    "FlextInfraModelsMixins": "flext_infra._models.mixins",
     "FlextInfraModelsRope": "flext_infra._models.rope",
     "FlextInfraModelsScan": "flext_infra._models.scan",
     "FlextInfraNamespaceEnforcerModels": "flext_infra._models.refactor_namespace_enforcer",
@@ -167,6 +172,7 @@ _LAZY_IMPORTS = {
     "docs": "flext_infra._models.docs",
     "gates": "flext_infra._models.gates",
     "github": "flext_infra._models.github",
+    "mixins": "flext_infra._models.mixins",
     "refactor": "flext_infra._models.refactor",
     "refactor_ast_grep": "flext_infra._models.refactor_ast_grep",
     "refactor_census": "flext_infra._models.refactor_census",
@@ -197,6 +203,7 @@ __all__ = [
     "FlextInfraModelsCliInputs",
     "FlextInfraModelsCliInputsCodegen",
     "FlextInfraModelsCliInputsOps",
+    "FlextInfraModelsMixins",
     "FlextInfraModelsRope",
     "FlextInfraModelsScan",
     "FlextInfraNamespaceEnforcerModels",
@@ -222,6 +229,7 @@ __all__ = [
     "docs",
     "gates",
     "github",
+    "mixins",
     "refactor",
     "refactor_ast_grep",
     "refactor_census",

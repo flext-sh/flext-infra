@@ -249,13 +249,13 @@ class FlextInfraConfigFixer(s[bool]):
     def main(argv: t.StrSequence | None = None) -> int:
         """Run the pyrefly configuration fixer CLI."""
         parser = argparse.ArgumentParser()
-        _ = parser.add_argument("projects", nargs="*")
+        _ = parser.add_argument("--project", action="append")
         _ = parser.add_argument("--dry-run", action="store_true")
         _ = parser.add_argument("--verbose", action="store_true")
         args = parser.parse_args(argv)
         fixer = FlextInfraConfigFixer()
         result = fixer.run(
-            projects=args.projects,
+            projects=args.project,
             dry_run=args.dry_run,
             verbose=args.verbose,
         )

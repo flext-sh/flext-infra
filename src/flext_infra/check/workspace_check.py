@@ -14,12 +14,12 @@ from flext_core import r, s
 from flext_infra import (
     FlextInfraGateRegistry,
     FlextInfraWorkspaceCheckGatesMixin,
+    WorkspaceLoopOutcome,
     c,
     m,
     u,
     workspace_check_cli as workspace_check_cli_module,
 )
-from flext_infra._protocols.check import WorkspaceLoopOutcome
 
 
 class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):

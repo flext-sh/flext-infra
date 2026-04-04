@@ -88,52 +88,48 @@ class TestSelectedProjectNames:
         """Test _selected_project_names with single project."""
         names = u.Infra._selected_project_names(
             tmp_path,
-            "test-proj",
-            None,
+            ["test-proj"],
         )
         tm.that(names, eq=["test-proj"])
 
-    def test_with_projects_comma(self, tmp_path: Path) -> None:
-        """Test _selected_project_names with comma-separated projects."""
+    def test_with_multiple_projects(self, tmp_path: Path) -> None:
+        """Test _selected_project_names with multiple projects."""
         names = u.Infra._selected_project_names(
             tmp_path,
-            None,
-            "proj1,proj2,proj3",
+            ["proj1", "proj2", "proj3"],
         )
         tm.that(names, has="proj1")
         tm.that(names, has="proj2")
 
-    def test_with_projects_space(self, tmp_path: Path) -> None:
-        """Test _selected_project_names with space-separated projects."""
+    def test_with_blank_project_names(self, tmp_path: Path) -> None:
+        """Test _selected_project_names strips blank project names."""
         names = u.Infra._selected_project_names(
             tmp_path,
-            None,
-            "proj1 proj2 proj3",
+            ["proj1", "", "proj2", "   ", "proj3"],
         )
         tm.that(names, has="proj1")
         tm.that(names, has="proj2")
 
     def test_no_filter(self, tmp_path: Path) -> None:
         """Test _selected_project_names with no filter discovers projects."""
-        names = u.Infra._selected_project_names(tmp_path, None, None)
+        names = u.Infra._selected_project_names(tmp_path, None)
         tm.that(len(names), gte=0)
 
-    def test_empty_string(self, tmp_path: Path) -> None:
-        """Test _selected_project_names with empty string."""
-        names = u.Infra._selected_project_names(tmp_path, None, "")
+    def test_empty_list(self, tmp_path: Path) -> None:
+        """Test _selected_project_names with empty list."""
+        names = u.Infra._selected_project_names(tmp_path, [])
         tm.that(len(names), gte=0)
 
     def test_whitespace_only(self, tmp_path: Path) -> None:
-        """Test _selected_project_names with whitespace-only string."""
-        names = u.Infra._selected_project_names(tmp_path, None, "   ")
+        """Test _selected_project_names with whitespace-only entries."""
+        names = u.Infra._selected_project_names(tmp_path, ["   "])
         tm.that(len(names), gte=0)
 
-    def test_mixed_separators(self, tmp_path: Path) -> None:
-        """Test _selected_project_names with mixed separators."""
+    def test_mixed_entries(self, tmp_path: Path) -> None:
+        """Test _selected_project_names keeps valid entries only."""
         names = u.Infra._selected_project_names(
             tmp_path,
-            None,
-            "proj1, proj2, proj3",
+            ["proj1", " proj2 ", "proj3"],
         )
         tm.that(names, has="proj1")
         tm.that(names, has="proj2")

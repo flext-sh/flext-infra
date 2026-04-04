@@ -115,7 +115,7 @@ class TestValidateCore:
         tmp_path: Path,
     ) -> None:
         """Test validate with single project filter."""
-        result = validator.validate(tmp_path, project="test-project")
+        result = validator.validate(tmp_path, project=["test-project"])
         tm.that(result.is_success or result.is_failure, eq=True)
 
     def test_with_projects_filter(
@@ -124,7 +124,7 @@ class TestValidateCore:
         tmp_path: Path,
     ) -> None:
         """Test validate with multiple projects filter."""
-        result = validator.validate(tmp_path, projects="proj1,proj2")
+        result = validator.validate(tmp_path, project=["proj1", "proj2"])
         tm.that(result.is_success or result.is_failure, eq=True)
 
     def test_with_check_parameter(
@@ -169,7 +169,7 @@ class TestValidateCore:
         tmp_path: Path,
     ) -> None:
         """Test validate returns list for multiple scopes."""
-        result = validator.validate(tmp_path, projects="proj1,proj2,proj3")
+        result = validator.validate(tmp_path, project=["proj1", "proj2", "proj3"])
         if result.is_success:
             tm.that(len(result.value), gte=0)
 

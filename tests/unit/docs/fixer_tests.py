@@ -74,21 +74,20 @@ class TestFixerCore:
         tm.that(m.Infra.DocsPhaseItemModel.model_config.get("frozen"), eq=True)
 
     @pytest.mark.parametrize(
-        ("project", "projects", "apply", "output_dir"),
+        ("project", "apply", "output_dir"),
         [
-            ("test-project", None, False, ".reports/docs"),
-            (None, "proj1,proj2", False, ".reports/docs"),
-            (None, None, False, ".reports/docs"),
-            (None, None, True, ".reports/docs"),
-            (None, None, False, "custom_output"),
+            (["test-project"], False, ".reports/docs"),
+            (["proj1", "proj2"], False, ".reports/docs"),
+            (None, False, ".reports/docs"),
+            (None, True, ".reports/docs"),
+            (None, False, "custom_output"),
         ],
     )
     def test_fix_with_option_variants(
         self,
         fixer: FlextInfraDocFixer,
         tmp_path: Path,
-        project: str | None,
-        projects: str | None,
+        project: list[str] | None,
         apply: bool,
         output_dir: str,
     ) -> None:
@@ -100,7 +99,6 @@ class TestFixerCore:
         result = fixer.fix(
             tmp_path,
             project=project,
-            projects=projects,
             output_dir=output_dir_value,
             apply=apply,
         )

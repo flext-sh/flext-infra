@@ -11,6 +11,7 @@ from pydantic import ConfigDict, Field
 
 from flext_core import FlextModels
 from flext_infra import c, t
+from flext_infra._models.mixins import FlextInfraModelsMixins
 
 
 class FlextInfraGithubModels:
@@ -78,48 +79,16 @@ class FlextInfraGithubModels:
             Field(default=None, description="Captured stderr"),
         ] = None
 
-    class PrWorkspaceArgs(FlextModels.ArbitraryTypesModel):
+    class PrWorkspaceArgs(
+        FlextInfraModelsMixins.GithubWorkspaceControlMixin,
+        FlextInfraModelsMixins.GithubPrWorkspacePayloadMixin,
+        FlextModels.ArbitraryTypesModel,
+    ):
         """Parsed PR workspace arguments from CLI."""
 
         model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True, extra="forbid")
 
-        include_root: Annotated[
-            bool,
-            Field(default=True, description="Include root project"),
-        ]
-        branch: Annotated[str, Field(default="", description="Branch name filter")]
-        checkpoint: Annotated[
-            bool,
-            Field(default=True, description="Enable checkpoints"),
-        ]
-        fail_fast: Annotated[
-            bool,
-            Field(default=False, description="Stop on first failure"),
-        ]
-        pr_action: Annotated[str, Field(default="status", description="PR action")]
-        pr_base: Annotated[str, Field(default="main", description="Base branch")]
-        pr_head: Annotated[str, Field(default="", description="Head branch")]
-        pr_number: Annotated[str, Field(default="", description="PR number")]
-        pr_title: Annotated[str, Field(default="", description="PR title")]
-        pr_body: Annotated[str, Field(default="", description="PR body")]
-        pr_draft: Annotated[bool, Field(default=False, description="Draft PR")]
-        pr_merge_method: Annotated[
-            str,
-            Field(default="squash", description="Merge method"),
-        ]
-        pr_auto: Annotated[bool, Field(default=False, description="Auto-merge")]
-        pr_delete_branch: Annotated[
-            bool,
-            Field(default=False, description="Delete branch on merge"),
-        ]
-        pr_checks_strict: Annotated[
-            bool,
-            Field(default=False, description="Strict checks required"),
-        ]
-        pr_release_on_merge: Annotated[
-            bool,
-            Field(default=True, description="Release on merge"),
-        ]
+        pr_number: Annotated[str, Field(default="", description="PR number")] = ""
 
         @staticmethod
         def _bool_flag(value: t.Scalar) -> bool:
@@ -134,25 +103,33 @@ class FlextInfraGithubModels:
             cls,
             args: Namespace,
         ) -> FlextInfraGithubModels.PrWorkspaceArgs:
-            return cls(
-                include_root=cls._bool_flag(getattr(args, "include_root", 0)),
-                branch=str(getattr(args, "branch", "")),
-                checkpoint=cls._bool_flag(getattr(args, "checkpoint", 1)),
-                fail_fast=cls._bool_flag(getattr(args, "fail_fast", 1)),
-                pr_action=str(getattr(args, "pr_action", "status")),
-                pr_base=str(getattr(args, "pr_base", "")),
-                pr_head=str(getattr(args, "pr_head", "")),
-                pr_number=str(getattr(args, "pr_number", "") or ""),
-                pr_title=str(getattr(args, "pr_title", "")),
-                pr_body=str(getattr(args, "pr_body", "")),
-                pr_draft=cls._bool_flag(getattr(args, "pr_draft", 0)),
-                pr_merge_method=str(getattr(args, "pr_merge_method", "squash")),
-                pr_auto=cls._bool_flag(getattr(args, "pr_auto", 0)),
-                pr_delete_branch=cls._bool_flag(getattr(args, "pr_delete_branch", 1)),
-                pr_checks_strict=cls._bool_flag(getattr(args, "pr_checks_strict", 1)),
-                pr_release_on_merge=cls._bool_flag(
-                    getattr(args, "pr_release_on_merge", 0),
-                ),
+            return cls.model_validate(
+                {
+                    "include_root": cls._bool_flag(getattr(args, "include_root", 0)),
+                    "branch": str(getattr(args, "branch", "")),
+                    "checkpoint": cls._bool_flag(getattr(args, "checkpoint", 1)),
+                    "fail_fast": cls._bool_flag(getattr(args, "fail_fast", 1)),
+                    "pr_action": str(getattr(args, "pr_action", "status")),
+                    "pr_base": str(getattr(args, "pr_base", "")),
+                    "pr_head": str(getattr(args, "pr_head", "")),
+                    "pr_number": str(getattr(args, "pr_number", "") or ""),
+                    "pr_title": str(getattr(args, "pr_title", "")),
+                    "pr_body": str(getattr(args, "pr_body", "")),
+                    "pr_draft": cls._bool_flag(getattr(args, "pr_draft", 0)),
+                    "pr_merge_method": str(
+                        getattr(args, "pr_merge_method", "squash"),
+                    ),
+                    "pr_auto": cls._bool_flag(getattr(args, "pr_auto", 0)),
+                    "pr_delete_branch": cls._bool_flag(
+                        getattr(args, "pr_delete_branch", 1),
+                    ),
+                    "pr_checks_strict": cls._bool_flag(
+                        getattr(args, "pr_checks_strict", 1),
+                    ),
+                    "pr_release_on_merge": cls._bool_flag(
+                        getattr(args, "pr_release_on_merge", 0),
+                    ),
+                },
             )
 
         def as_orchestrate_dict(self) -> t.StrMapping:
@@ -171,12 +148,13 @@ class FlextInfraGithubModels:
                 "release_on_merge": "1" if self.pr_release_on_merge else "0",
             }
 
-    class SyncOperation(FlextModels.ArbitraryTypesModel):
+    class SyncOperation(
+        FlextInfraModelsMixins.ProjectNameMixin,
+        FlextModels.ArbitraryTypesModel,
+    ):
         """Describe one workflow synchronization operation."""
 
         model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True, extra="forbid")
-
-        project: Annotated[str, Field(..., description="Project name.")]
         path: Annotated[
             str,
             Field(..., description="File path relative to project root."),
@@ -190,10 +168,12 @@ class FlextInfraGithubModels:
         ]
         reason: Annotated[str, Field(..., description="Reason for the action.")]
 
-    class GithubSyncContext(FlextModels.ArbitraryTypesModel):
+    class GithubSyncContext(
+        FlextInfraModelsMixins.ProjectNameFieldMixin,
+        FlextModels.ArbitraryTypesModel,
+    ):
         """Bundled parameters for the workflow-sync call chain."""
 
-        project_name: Annotated[str, Field(description="Project name")]
         project_root: Annotated[Path, Field(description="Project root path")]
         rendered_template: Annotated[str, Field(description="Rendered workflow body")]
         apply: Annotated[bool, Field(description="Whether writes are enabled")]
@@ -207,10 +187,12 @@ class FlextInfraGithubModels:
         def ci_destination(self) -> Path:
             return self.workflows_dir / "ci.yml"
 
-    class GithubPrRepoContext(FlextModels.ArbitraryTypesModel):
+    class GithubPrRepoContext(
+        FlextInfraModelsMixins.WorkspaceRootPathMixin,
+        FlextModels.ArbitraryTypesModel,
+    ):
         """Bundled parameters for the PR-per-repo processing chain."""
 
-        workspace_root: Annotated[Path, Field(description="Workspace root path")]
         effective_args: Annotated[
             t.StrMapping,
             Field(description="Effective PR orchestration arguments"),
@@ -244,29 +226,16 @@ class FlextInfraGithubModels:
             Field(default=False, description="Remove non-canonical workflows"),
         ] = False
 
-    class PrOrchestrateParams(FlextModels.ContractModel):
+    class PrOrchestrateParams(
+        FlextInfraModelsMixins.GithubWorkspaceControlMixin,
+        FlextModels.ContractModel,
+    ):
         """Bundled parameters for github_pr_orchestrate."""
 
         projects: Annotated[
             t.StrSequence | None,
             Field(default=None, description="Project filter list"),
         ] = None
-        include_root: Annotated[
-            bool,
-            Field(default=True, description="Include workspace root"),
-        ] = True
-        branch: Annotated[
-            str,
-            Field(default="", description="Branch override"),
-        ] = ""
-        checkpoint: Annotated[
-            bool,
-            Field(default=True, description="Enable checkpoint before PR"),
-        ] = True
-        fail_fast: Annotated[
-            bool,
-            Field(default=False, description="Stop on first failure"),
-        ] = False
         pr_args: Annotated[
             t.StrMapping | None,
             Field(default=None, description="PR argument overrides"),

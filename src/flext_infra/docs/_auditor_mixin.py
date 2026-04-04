@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, MutableMapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
 from pydantic import ValidationError
@@ -74,7 +74,7 @@ class FlextInfraDocAuditorMixin:
     ) -> None:
         """Persist JSON summary and markdown report to the scope report directory."""
         sorted_checks: list[t.Cli.JsonValue] = [str(ck) for ck in sorted(checks)]
-        summary: MutableMapping[str, t.Cli.JsonValue] = {
+        summary: dict[str, t.Cli.JsonValue] = {
             c.Infra.ReportKeys.SCOPE: scope.name,
             "issues": len(issues),
             c.Infra.Verbs.CHECKS: sorted_checks,
@@ -90,7 +90,7 @@ class FlextInfraDocAuditorMixin:
             }
             for issue in issues
         ]
-        summary_payload: MutableMapping[str, t.Cli.JsonValue] = {
+        summary_payload: dict[str, t.Cli.JsonValue] = {
             c.Infra.ReportKeys.SUMMARY: summary,
             "issues": issues_payload,
         }

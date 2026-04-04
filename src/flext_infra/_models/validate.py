@@ -8,6 +8,7 @@ from pydantic import Field
 
 from flext_core import FlextModels
 from flext_infra import t
+from flext_infra._models.mixins import FlextInfraModelsMixins
 
 
 class FlextInfraCoreModels:
@@ -50,10 +51,12 @@ class FlextInfraCoreModels:
             ),
         ]
 
-    class StubAnalysisReport(FlextModels.ArbitraryTypesModel):
+    class StubAnalysisReport(
+        FlextInfraModelsMixins.ProjectNameMixin,
+        FlextModels.ArbitraryTypesModel,
+    ):
         """Structured stub-chain analysis result for a project."""
 
-        project: Annotated[t.NonEmptyStr, Field(description="Project name")]
         mypy_hints: Annotated[
             t.StrSequence,
             Field(
