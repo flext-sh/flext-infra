@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from argparse import SUPPRESS, ArgumentParser
 from pathlib import Path
+from typing import Annotated
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 
 from flext_core import u
 from flext_infra.models import FlextInfraModels as m
@@ -18,11 +19,24 @@ class FlextInfraUtilitiesCliShared:
     class SharedFlags(m.FrozenStrictModel):
         """Bundled CLI flag configuration for shared parser options."""
 
-        include_apply: bool = True
-        include_diff: bool = True
-        include_format: bool = False
-        include_check: bool = False
-        include_project: bool = False
+        include_apply: Annotated[
+            bool, Field(description="Add apply/dry-run mutually exclusive flags")
+        ] = True
+        include_diff: Annotated[
+            bool,
+            Field(
+                description="Include a diff flag, defaults to True if apply is included"
+            ),
+        ] = True
+        include_format: Annotated[
+            bool, Field(description="Add the format output option flag")
+        ] = False
+        include_check: Annotated[bool, Field(description="Add the check mode flag")] = (
+            False
+        )
+        include_project: Annotated[
+            bool, Field(description="Add the project filtering options")
+        ] = False
 
         @model_validator(mode="before")
         @classmethod

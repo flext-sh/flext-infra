@@ -191,8 +191,8 @@ policy_matrix:
 runtime_whitelist:
   - transform_id: runtime_metadata_class_nesting
     source_module_pattern: _models/base.py
-    source_symbol: FlextModelFoundation.Metadata
-    target_namespace: FlextModelFoundation
+    source_symbol: FlextModelsBase.Metadata
+    target_namespace: FlextModelsBase
     target_name: Metadata
     rewrite_scope: workspace
   - transform_id: runtime_lazy_metadata_normalization
@@ -342,9 +342,9 @@ rules:
   - project_kind: core
     facade_family: m
     module_family: _models
-    source_symbol: FlextModelFoundation
+    source_symbol: FlextModelsBase
     target_facade_class: FlextModels
-    target_namespace_path: FlextModels.FlextModelFoundation
+    target_namespace_path: FlextModels.FlextModelsBase
     expected_base_chain: &id003
       - FlextModels
     forbidden_targets: &id004
@@ -358,7 +358,7 @@ rules:
     pre_checks:
       - type: source_symbol_is_class
         params:
-          symbol: FlextModelFoundation
+          symbol: FlextModelsBase
       - type: target_facade_exists
         params:
           facade: FlextModels
@@ -446,8 +446,8 @@ rules:
     facade_family: m
     module_family: _models
     source_symbol: Metadata
-    target_facade_class: FlextModelFoundation
-    target_namespace_path: FlextModelFoundation.Metadata
+    target_facade_class: FlextModelsBase
+    target_namespace_path: FlextModelsBase.Metadata
     expected_base_chain: *id003
     forbidden_targets:
       - FlextUtilities
@@ -463,7 +463,7 @@ rules:
           symbol: Metadata
       - type: target_facade_exists
         params:
-          facade: FlextModelFoundation
+          facade: FlextModelsBase
     post_checks:
       - type: imports_resolve
         params:

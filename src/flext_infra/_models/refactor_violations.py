@@ -17,7 +17,7 @@ class FlextInfraRefactorModelsViolations:
     class ClassNestingMapping(m.ArbitraryTypesModel):
         """Unified mapping contract for class-nesting rewrite planning."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore", frozen=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
         loose_name: Annotated[
             str,
@@ -69,21 +69,21 @@ class FlextInfraRefactorModelsViolations:
     class ClassNestingPolicy(m.FrozenStrictModel):
         """Validated policy contract used by class-nesting transformers."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore", frozen=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
         family_name: Annotated[t.NonEmptyStr, Field(description="Module family name")]
-        allowed_operations: Annotated[
-            t.StrSequence,
-            Field(description="Enabled operation identifiers for this family"),
-        ] = Field(default_factory=list)
-        forbidden_operations: Annotated[
-            t.StrSequence,
-            Field(description="Disabled operation identifiers for this family"),
-        ] = Field(default_factory=list)
-        forbidden_targets: Annotated[
-            t.StrSequence,
-            Field(description="Target namespaces forbidden for this family"),
-        ] = Field(default_factory=list)
+        allowed_operations: t.StrSequence = Field(
+            default_factory=list,
+            description="Enabled operation identifiers for this family",
+        )
+        forbidden_operations: t.StrSequence = Field(
+            default_factory=list,
+            description="Disabled operation identifiers for this family",
+        )
+        forbidden_targets: t.StrSequence = Field(
+            default_factory=list,
+            description="Target namespaces forbidden for this family",
+        )
         enable_class_nesting: Annotated[
             bool,
             Field(
@@ -126,18 +126,14 @@ class FlextInfraRefactorModelsViolations:
                 description="Require signature checks before helper migration",
             ),
         ]
-        required_parameters: Annotated[
-            t.StrSequence,
-            Field(
-                description="Function parameters that must exist in helper signatures"
-            ),
-        ] = Field(default_factory=list)
-        forbidden_parameters: Annotated[
-            t.StrSequence,
-            Field(
-                description="Function parameters that must not exist in helper signatures"
-            ),
-        ] = Field(default_factory=list)
+        required_parameters: t.StrSequence = Field(
+            default_factory=list,
+            description="Function parameters that must exist in helper signatures",
+        )
+        forbidden_parameters: t.StrSequence = Field(
+            default_factory=list,
+            description="Function parameters that must not exist in helper signatures",
+        )
         allow_vararg: Annotated[
             bool,
             Field(
@@ -174,14 +170,13 @@ class FlextInfraRefactorModelsViolations:
                 description="Allow propagating attribute reference rewrites",
             ),
         ]
-        blocked_reference_prefixes: Annotated[
-            t.StrSequence,
-            Field(description="Name prefixes blocked from rewrite propagation"),
-        ] = Field(default_factory=list)
-        allowed_targets: Annotated[
-            t.StrSequence,
-            Field(description="Explicitly allowed target namespaces"),
-        ] = Field(default_factory=list)
+        blocked_reference_prefixes: t.StrSequence = Field(
+            default_factory=list,
+            description="Name prefixes blocked from rewrite propagation",
+        )
+        allowed_targets: t.StrSequence = Field(
+            default_factory=list, description="Explicitly allowed target namespaces"
+        )
 
     class ClassNestingReport(m.ArbitraryTypesModel):
         """Aggregated class-nesting analysis report."""
@@ -190,18 +185,15 @@ class FlextInfraRefactorModelsViolations:
             t.NonNegativeInt,
             Field(description="Total violations"),
         ]
-        confidence_counts: Annotated[
-            t.IntMapping,
-            Field(description="Confidence histogram"),
-        ] = Field(default_factory=dict)
-        violations: Annotated[
-            Sequence[FlextInfraRefactorModelsViolations.ClassNestingViolation],
-            Field(description="Violation details"),
-        ] = Field(default_factory=lambda: ())
-        per_file_counts: Annotated[
-            t.IntMapping,
-            Field(description="Violation counts per file"),
-        ] = Field(default_factory=dict)
+        confidence_counts: t.IntMapping = Field(
+            default_factory=dict, description="Confidence histogram"
+        )
+        violations: Sequence[
+            FlextInfraRefactorModelsViolations.ClassNestingViolation
+        ] = Field(default_factory=tuple, description="Violation details")
+        per_file_counts: t.IntMapping = Field(
+            default_factory=dict, description="Violation counts per file"
+        )
 
     class HelperClassification(m.ArbitraryTypesModel):
         """Classification result for a helper function."""
@@ -213,10 +205,9 @@ class FlextInfraRefactorModelsViolations:
             t.NonEmptyStr,
             Field(description="Target namespace path"),
         ]
-        dependencies: Annotated[
-            t.StrSequence,
-            Field(description="Imported dependencies used by function"),
-        ] = Field(default_factory=list)
+        dependencies: t.StrSequence = Field(
+            default_factory=list, description="Imported dependencies used by function"
+        )
         manual_review: Annotated[
             bool,
             Field(default=False, description="Whether manual review is required"),
@@ -229,32 +220,28 @@ class FlextInfraRefactorModelsViolations:
     class HelperClassificationReport(m.ArbitraryTypesModel):
         """Aggregated helper-function classification payload."""
 
-        totals: Annotated[
-            t.IntMapping,
-            Field(description="Category totals"),
-        ] = Field(default_factory=dict)
-        suggestions: Annotated[
-            Sequence[FlextInfraRefactorModelsViolations.HelperClassification],
-            Field(description="Classification suggestions"),
-        ] = Field(default_factory=lambda: ())
-        manual_review: Annotated[
-            Sequence[FlextInfraRefactorModelsViolations.HelperClassification],
-            Field(description="Manual-review candidates"),
-        ] = Field(default_factory=lambda: ())
+        totals: t.IntMapping = Field(
+            default_factory=dict, description="Category totals"
+        )
+        suggestions: Sequence[
+            FlextInfraRefactorModelsViolations.HelperClassification
+        ] = Field(default_factory=tuple, description="Classification suggestions")
+        manual_review: Sequence[
+            FlextInfraRefactorModelsViolations.HelperClassification
+        ] = Field(default_factory=tuple, description="Manual-review candidates")
 
     class HelperFileAnalysis(m.ArbitraryTypesModel):
-        suggestions: Annotated[
-            Sequence[FlextInfraRefactorModelsViolations.HelperClassification],
-            Field(description="Helper classifications from one file"),
-        ] = Field(default_factory=lambda: ())
-        totals: Annotated[
-            t.IntMapping,
-            Field(description="Category totals for file helpers"),
-        ] = Field(default_factory=dict)
-        manual_review: Annotated[
-            Sequence[FlextInfraRefactorModelsViolations.HelperClassification],
-            Field(description="Helpers requiring manual review"),
-        ] = Field(default_factory=lambda: ())
+        suggestions: Sequence[
+            FlextInfraRefactorModelsViolations.HelperClassification
+        ] = Field(
+            default_factory=tuple, description="Helper classifications from one file"
+        )
+        totals: t.IntMapping = Field(
+            default_factory=dict, description="Category totals for file helpers"
+        )
+        manual_review: Sequence[
+            FlextInfraRefactorModelsViolations.HelperClassification
+        ] = Field(default_factory=tuple, description="Helpers requiring manual review")
 
     class ViolationTopFileSection(m.ArbitraryTypesModel):
         """One ranked hotspot entry in violation analysis output."""
@@ -264,35 +251,29 @@ class FlextInfraRefactorModelsViolations:
             t.NonNegativeInt,
             Field(description="Total violations in file"),
         ]
-        counts: Annotated[
-            t.IntMapping,
-            Field(description="Per-pattern counts"),
-        ] = Field(default_factory=dict)
+        counts: t.IntMapping = Field(
+            default_factory=dict, description="Per-pattern counts"
+        )
 
     class ViolationAnalysisReport(m.ArbitraryTypesModel):
         """Full violation analysis report for refactor diagnostics."""
 
-        totals: Annotated[
-            t.IntMapping,
-            Field(description="Aggregate counts by pattern"),
-        ] = Field(default_factory=dict)
-        files: Annotated[
-            Mapping[str, t.IntMapping],
-            Field(description="Per-file per-pattern counts"),
-        ] = Field(default_factory=dict)
-        top_files: Annotated[
-            Sequence[FlextInfraRefactorModelsViolations.ViolationTopFileSection],
-            Field(description="Top hotspot files"),
-        ] = Field(default_factory=lambda: ())
+        totals: t.IntMapping = Field(
+            default_factory=dict, description="Aggregate counts by pattern"
+        )
+        files: Mapping[str, t.IntMapping] = Field(
+            default_factory=dict, description="Per-file per-pattern counts"
+        )
+        top_files: Sequence[
+            FlextInfraRefactorModelsViolations.ViolationTopFileSection
+        ] = Field(default_factory=tuple, description="Top hotspot files")
         files_scanned: Annotated[t.NonNegativeInt, Field(description="Files scanned")]
-        helper_classification: Annotated[
-            FlextInfraRefactorModelsViolations.HelperClassificationReport,
-            Field(description="Helper classification summary"),
-        ]
-        class_nesting: Annotated[
-            FlextInfraRefactorModelsViolations.ClassNestingReport,
-            Field(description="Class nesting analysis summary"),
-        ]
+        helper_classification: FlextInfraRefactorModelsViolations.HelperClassificationReport = Field(
+            description="Helper classification summary"
+        )
+        class_nesting: FlextInfraRefactorModelsViolations.ClassNestingReport = Field(
+            description="Class nesting analysis summary"
+        )
 
 
 __all__ = ["FlextInfraRefactorModelsViolations"]

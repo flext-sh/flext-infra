@@ -13,12 +13,8 @@ if _t.TYPE_CHECKING:
     import flext_infra.github._constants as _flext_infra_github__constants
 
     _constants = _flext_infra_github__constants
-    import flext_infra.github._models as _flext_infra_github__models
-    from flext_infra.github._constants import FlextInfraGithubConstants
-
-    _models = _flext_infra_github__models
     import flext_infra.github.cli as _flext_infra_github_cli
-    from flext_infra.github._models import FlextInfraGithubModels
+    from flext_infra.github._constants import FlextInfraGithubConstants
 
     cli = _flext_infra_github_cli
     import flext_infra.github.service as _flext_infra_github_service
@@ -37,10 +33,8 @@ if _t.TYPE_CHECKING:
 _LAZY_IMPORTS = {
     "FlextInfraCliGithub": "flext_infra.github.cli",
     "FlextInfraGithubConstants": "flext_infra.github._constants",
-    "FlextInfraGithubModels": "flext_infra.github._models",
     "FlextInfraGithubService": "flext_infra.github.service",
     "_constants": "flext_infra.github._constants",
-    "_models": "flext_infra.github._models",
     "cli": "flext_infra.github.cli",
     "d": ("flext_core.decorators", "FlextDecorators"),
     "e": ("flext_core.exceptions", "FlextExceptions"),
@@ -54,10 +48,8 @@ _LAZY_IMPORTS = {
 __all__ = [
     "FlextInfraCliGithub",
     "FlextInfraGithubConstants",
-    "FlextInfraGithubModels",
     "FlextInfraGithubService",
     "_constants",
-    "_models",
     "cli",
     "d",
     "e",

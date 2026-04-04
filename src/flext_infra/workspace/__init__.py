@@ -13,12 +13,8 @@ if _t.TYPE_CHECKING:
     import flext_infra.workspace._constants as _flext_infra_workspace__constants
 
     _constants = _flext_infra_workspace__constants
-    import flext_infra.workspace._models as _flext_infra_workspace__models
-    from flext_infra.workspace._constants import FlextInfraWorkspaceConstants
-
-    _models = _flext_infra_workspace__models
     import flext_infra.workspace.cli as _flext_infra_workspace_cli
-    from flext_infra.workspace._models import FlextInfraWorkspaceModels
+    from flext_infra.workspace._constants import FlextInfraWorkspaceConstants
 
     cli = _flext_infra_workspace_cli
     import flext_infra.workspace.detector as _flext_infra_workspace_detector
@@ -78,9 +74,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
         "FlextInfraWorkspaceDetector": "flext_infra.workspace.detector",
         "FlextInfraWorkspaceMakefileGenerator": "flext_infra.workspace.workspace_makefile",
         "FlextInfraWorkspaceMode": "flext_infra.workspace.detector",
-        "FlextInfraWorkspaceModels": "flext_infra.workspace._models",
         "_constants": "flext_infra.workspace._constants",
-        "_models": "flext_infra.workspace._models",
         "cli": "flext_infra.workspace.cli",
         "d": ("flext_core.decorators", "FlextDecorators"),
         "detector": "flext_infra.workspace.detector",
@@ -111,9 +105,7 @@ __all__ = [
     "FlextInfraWorkspaceDetector",
     "FlextInfraWorkspaceMakefileGenerator",
     "FlextInfraWorkspaceMode",
-    "FlextInfraWorkspaceModels",
     "_constants",
-    "_models",
     "cli",
     "d",
     "detector",

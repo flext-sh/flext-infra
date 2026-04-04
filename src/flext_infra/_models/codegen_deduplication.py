@@ -39,14 +39,15 @@ class FlextInfraCodegenDeduplicationModels:
             str,
             Field(default="", description="Normalized source representation"),
         ]
-        canonical: Annotated[
-            FlextInfraCodegenDeduplicationModels.DeduplicationCandidate,
-            Field(description="Canonical constant kept after replacement"),
-        ]
-        duplicates: Annotated[
-            Sequence[FlextInfraCodegenDeduplicationModels.DeduplicationCandidate],
-            Field(description="Duplicate constants replaced by canonical"),
-        ] = Field(default_factory=tuple)
+        canonical: FlextInfraCodegenDeduplicationModels.DeduplicationCandidate = Field(
+            description="Canonical constant kept after replacement",
+        )
+        duplicates: Sequence[
+            FlextInfraCodegenDeduplicationModels.DeduplicationCandidate
+        ] = Field(
+            default_factory=tuple,
+            description="Duplicate constants replaced by canonical",
+        )
         total_occurrences: Annotated[
             t.PositiveInt,
             Field(description="Total constants that shared the same value"),
@@ -97,22 +98,24 @@ class FlextInfraCodegenDeduplicationModels:
             t.NonEmptyStr,
             Field(description="Canonical constant kept after rename"),
         ]
-        replaced_names: Annotated[
-            t.StrSequence,
-            Field(description="Duplicate constant names replaced by canonical"),
-        ] = Field(default_factory=tuple)
-        replacements: Annotated[
-            Sequence[FlextInfraCodegenDeduplicationModels.DeduplicationReplacement],
-            Field(description="Concrete per-file replacements"),
-        ] = Field(default_factory=tuple)
-        files_modified: Annotated[
-            t.NonNegativeInt,
-            Field(default=0, description="Touched files count"),
-        ] = 0
-        dry_run: Annotated[
-            bool,
-            Field(default=True, description="Whether no writes were performed"),
-        ] = True
+        replaced_names: t.StrSequence = Field(
+            default_factory=tuple,
+            description="Duplicate constant names replaced by canonical",
+        )
+        replacements: Sequence[
+            FlextInfraCodegenDeduplicationModels.DeduplicationReplacement
+        ] = Field(
+            default_factory=tuple,
+            description="Concrete per-file replacements",
+        )
+        files_modified: t.NonNegativeInt = Field(
+            default=0,
+            description="Touched files count",
+        )
+        dry_run: bool = Field(
+            default=True,
+            description="Whether no writes were performed",
+        )
 
         def render_summary(self) -> str:
             """Render the per-proposal application summary."""
@@ -132,18 +135,18 @@ class FlextInfraCodegenDeduplicationModels:
             Path,
             Field(description="Workspace root used for scanning and renames"),
         ]
-        dry_run: Annotated[
-            bool,
-            Field(default=True, description="Whether writes should be skipped"),
-        ] = True
-        max_files: Annotated[
-            t.NonNegativeInt,
-            Field(default=2000, description="Maximum files scanned for usages"),
-        ] = 2000
-        exclude_patterns: Annotated[
-            frozenset[str],
-            Field(description="Directory names excluded from usage scanning"),
-        ] = Field(default_factory=frozenset)
+        dry_run: bool = Field(
+            default=True,
+            description="Whether writes should be skipped",
+        )
+        max_files: t.NonNegativeInt = Field(
+            default=2000,
+            description="Maximum files scanned for usages",
+        )
+        exclude_patterns: frozenset[str] = Field(
+            default_factory=frozenset,
+            description="Directory names excluded from usage scanning",
+        )
 
     class DeduplicationRunReport(FlextModels.ArbitraryTypesModel):
         """Typed report emitted by the deduplication workflow."""
@@ -152,22 +155,26 @@ class FlextInfraCodegenDeduplicationModels:
             t.NonEmptyStr,
             Field(description="Analyzed constants facade path"),
         ]
-        dry_run: Annotated[
-            bool,
-            Field(default=True, description="Whether writes were skipped"),
-        ] = True
-        proposals: Annotated[
-            Sequence[FlextInfraCodegenDeduplicationModels.DeduplicationFixProposal],
-            Field(description="Identified deduplication proposals"),
-        ] = Field(default_factory=tuple)
-        applied: Annotated[
-            Sequence[FlextInfraCodegenDeduplicationModels.DeduplicationApplyResult],
-            Field(description="Application results for each proposal"),
-        ] = Field(default_factory=tuple)
-        total_files_modified: Annotated[
-            t.NonNegativeInt,
-            Field(default=0, description="Total files touched across proposals"),
-        ] = 0
+        dry_run: bool = Field(
+            default=True,
+            description="Whether writes were skipped",
+        )
+        proposals: Sequence[
+            FlextInfraCodegenDeduplicationModels.DeduplicationFixProposal
+        ] = Field(
+            default_factory=tuple,
+            description="Identified deduplication proposals",
+        )
+        applied: Sequence[
+            FlextInfraCodegenDeduplicationModels.DeduplicationApplyResult
+        ] = Field(
+            default_factory=tuple,
+            description="Application results for each proposal",
+        )
+        total_files_modified: t.NonNegativeInt = Field(
+            default=0,
+            description="Total files touched across proposals",
+        )
 
         def render_text(self) -> str:
             """Render a concise CLI-oriented report."""

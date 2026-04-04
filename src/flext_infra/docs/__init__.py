@@ -17,12 +17,8 @@ if _t.TYPE_CHECKING:
     from flext_infra.docs._auditor_mixin import FlextInfraDocAuditorMixin
 
     _constants = _flext_infra_docs__constants
-    import flext_infra.docs._models as _flext_infra_docs__models
-    from flext_infra.docs._constants import FlextInfraDocsConstants
-
-    _models = _flext_infra_docs__models
     import flext_infra.docs.auditor as _flext_infra_docs_auditor
-    from flext_infra.docs._models import FlextInfraDocsModels
+    from flext_infra.docs._constants import FlextInfraDocsConstants
 
     auditor = _flext_infra_docs_auditor
     import flext_infra.docs.builder as _flext_infra_docs_builder
@@ -62,10 +58,8 @@ _LAZY_IMPORTS = {
     "FlextInfraDocValidator": "flext_infra.docs.validator",
     "FlextInfraDocsCli": "flext_infra.docs.cli",
     "FlextInfraDocsConstants": "flext_infra.docs._constants",
-    "FlextInfraDocsModels": "flext_infra.docs._models",
     "_auditor_mixin": "flext_infra.docs._auditor_mixin",
     "_constants": "flext_infra.docs._constants",
-    "_models": "flext_infra.docs._models",
     "auditor": "flext_infra.docs.auditor",
     "builder": "flext_infra.docs.builder",
     "cli": "flext_infra.docs.cli",
@@ -91,10 +85,8 @@ __all__ = [
     "FlextInfraDocValidator",
     "FlextInfraDocsCli",
     "FlextInfraDocsConstants",
-    "FlextInfraDocsModels",
     "_auditor_mixin",
     "_constants",
-    "_models",
     "auditor",
     "builder",
     "cli",

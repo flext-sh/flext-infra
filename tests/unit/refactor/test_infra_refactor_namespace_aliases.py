@@ -83,7 +83,7 @@ def test_import_alias_detector_skips_private_and_class_imports(
     sample_file = tmp_path / "sample.py"
     sample_file.write_text(
         "from __future__ import annotations\n"
-        "from flext_core import FlextModelFoundation\n"
+        "from flext_core import FlextModelsBase\n"
         "from flext_core import FlextModels\n"
         "from flext_core import m\n",
         encoding="utf-8",
@@ -146,7 +146,7 @@ def test_namespace_rewriter_only_rewrites_runtime_alias_imports(tmp_path: Path) 
     sample_file = tmp_path / "sample.py"
     source = (
         "from __future__ import annotations\n\nfrom collections.abc import Mapping, Sequence\n"
-        "from flext_core import FlextModelFoundation\n"
+        "from flext_core import FlextModelsBase\n"
         "from flext_core import FlextModels\n"
         "from flext_core import m\n"
     )

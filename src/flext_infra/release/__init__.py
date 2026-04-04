@@ -13,12 +13,8 @@ if _t.TYPE_CHECKING:
     import flext_infra.release._constants as _flext_infra_release__constants
 
     _constants = _flext_infra_release__constants
-    import flext_infra.release._models as _flext_infra_release__models
-    from flext_infra.release._constants import FlextInfraReleaseConstants
-
-    _models = _flext_infra_release__models
     import flext_infra.release.cli as _flext_infra_release_cli
-    from flext_infra.release._models import FlextInfraReleaseModels
+    from flext_infra.release._constants import FlextInfraReleaseConstants
 
     cli = _flext_infra_release_cli
     import flext_infra.release.orchestrator as _flext_infra_release_orchestrator
@@ -41,11 +37,9 @@ if _t.TYPE_CHECKING:
 _LAZY_IMPORTS = {
     "FlextInfraCliRelease": "flext_infra.release.cli",
     "FlextInfraReleaseConstants": "flext_infra.release._constants",
-    "FlextInfraReleaseModels": "flext_infra.release._models",
     "FlextInfraReleaseOrchestrator": "flext_infra.release.orchestrator",
     "FlextInfraReleaseOrchestratorPhases": "flext_infra.release.orchestrator_phases",
     "_constants": "flext_infra.release._constants",
-    "_models": "flext_infra.release._models",
     "cli": "flext_infra.release.cli",
     "d": ("flext_core.decorators", "FlextDecorators"),
     "e": ("flext_core.exceptions", "FlextExceptions"),
@@ -60,11 +54,9 @@ _LAZY_IMPORTS = {
 __all__ = [
     "FlextInfraCliRelease",
     "FlextInfraReleaseConstants",
-    "FlextInfraReleaseModels",
     "FlextInfraReleaseOrchestrator",
     "FlextInfraReleaseOrchestratorPhases",
     "_constants",
-    "_models",
     "cli",
     "d",
     "e",

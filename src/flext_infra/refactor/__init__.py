@@ -35,7 +35,7 @@ if _t.TYPE_CHECKING:
     )
 
     _engine_rules = _flext_infra_refactor__engine_rules
-    import flext_infra.refactor._models as _flext_infra_refactor__models
+    import flext_infra.refactor._namespace_enforcer_phases as _flext_infra_refactor__namespace_enforcer_phases
     from flext_infra.refactor._engine_rules import (
         FlextInfraRefactorClassReconstructorRule,
         FlextInfraRefactorLegacyRemovalTextRule,
@@ -47,30 +47,6 @@ if _t.TYPE_CHECKING:
         FlextInfraRefactorTier0ImportFixRule,
         FlextInfraRefactorTypingAnnotationFixRule,
         FlextInfraRefactorTypingUnificationRule,
-    )
-
-    _models = _flext_infra_refactor__models
-    import flext_infra.refactor._models_ast_grep as _flext_infra_refactor__models_ast_grep
-    from flext_infra.refactor._models import FlextInfraRefactorModels
-
-    _models_ast_grep = _flext_infra_refactor__models_ast_grep
-    import flext_infra.refactor._models_census as _flext_infra_refactor__models_census
-    from flext_infra.refactor._models_ast_grep import FlextInfraRefactorAstGrepModels
-
-    _models_census = _flext_infra_refactor__models_census
-    import flext_infra.refactor._models_namespace_enforcer as _flext_infra_refactor__models_namespace_enforcer
-    from flext_infra.refactor._models_census import FlextInfraRefactorModelsCensus
-
-    _models_namespace_enforcer = _flext_infra_refactor__models_namespace_enforcer
-    import flext_infra.refactor._models_violations as _flext_infra_refactor__models_violations
-    from flext_infra.refactor._models_namespace_enforcer import (
-        FlextInfraNamespaceEnforcerModels,
-    )
-
-    _models_violations = _flext_infra_refactor__models_violations
-    import flext_infra.refactor._namespace_enforcer_phases as _flext_infra_refactor__namespace_enforcer_phases
-    from flext_infra.refactor._models_violations import (
-        FlextInfraRefactorModelsViolations,
     )
 
     _namespace_enforcer_phases = _flext_infra_refactor__namespace_enforcer_phases
@@ -236,10 +212,8 @@ _LAZY_IMPORTS = {
     "FlextInfraCliRefactor": "flext_infra.refactor.cli",
     "FlextInfraGenericTransformerRule": "flext_infra.refactor._base_rule",
     "FlextInfraNamespaceEnforcer": "flext_infra.refactor.namespace_enforcer",
-    "FlextInfraNamespaceEnforcerModels": "flext_infra.refactor._models_namespace_enforcer",
     "FlextInfraNamespaceEnforcerPhasesMixin": "flext_infra.refactor._namespace_enforcer_phases",
     "FlextInfraProjectClassifier": "flext_infra.refactor.project_classifier",
-    "FlextInfraRefactorAstGrepModels": "flext_infra.refactor._models_ast_grep",
     "FlextInfraRefactorCensus": "flext_infra.refactor.census",
     "FlextInfraRefactorClassNestingAnalyzer": "flext_infra.refactor.class_nesting_analyzer",
     "FlextInfraRefactorClassReconstructorRule": "flext_infra.refactor._engine_rules",
@@ -254,9 +228,6 @@ _LAZY_IMPORTS = {
     "FlextInfraRefactorMRORedundancyChecker": "flext_infra.refactor._engine_rules",
     "FlextInfraRefactorMROResolver": "flext_infra.refactor.mro_resolver",
     "FlextInfraRefactorMigrateToClassMRO": "flext_infra.refactor.migrate_to_class_mro",
-    "FlextInfraRefactorModels": "flext_infra.refactor._models",
-    "FlextInfraRefactorModelsCensus": "flext_infra.refactor._models_census",
-    "FlextInfraRefactorModelsViolations": "flext_infra.refactor._models_violations",
     "FlextInfraRefactorPatternCorrectionsTextRule": "flext_infra.refactor._engine_rules",
     "FlextInfraRefactorRule": "flext_infra.refactor._base_rule",
     "FlextInfraRefactorRuleDefinitionValidator": "flext_infra.refactor.rule_definition_validator",
@@ -290,11 +261,6 @@ _LAZY_IMPORTS = {
     "_constants": "flext_infra.refactor._constants",
     "_engine_helpers": "flext_infra.refactor._engine_helpers",
     "_engine_rules": "flext_infra.refactor._engine_rules",
-    "_models": "flext_infra.refactor._models",
-    "_models_ast_grep": "flext_infra.refactor._models_ast_grep",
-    "_models_census": "flext_infra.refactor._models_census",
-    "_models_namespace_enforcer": "flext_infra.refactor._models_namespace_enforcer",
-    "_models_violations": "flext_infra.refactor._models_violations",
     "_namespace_enforcer_phases": "flext_infra.refactor._namespace_enforcer_phases",
     "_utilities": "flext_infra.refactor._utilities",
     "_utilities_census": "flext_infra.refactor._utilities_census",
@@ -342,10 +308,8 @@ __all__ = [
     "FlextInfraCliRefactor",
     "FlextInfraGenericTransformerRule",
     "FlextInfraNamespaceEnforcer",
-    "FlextInfraNamespaceEnforcerModels",
     "FlextInfraNamespaceEnforcerPhasesMixin",
     "FlextInfraProjectClassifier",
-    "FlextInfraRefactorAstGrepModels",
     "FlextInfraRefactorCensus",
     "FlextInfraRefactorClassNestingAnalyzer",
     "FlextInfraRefactorClassReconstructorRule",
@@ -360,9 +324,6 @@ __all__ = [
     "FlextInfraRefactorMRORedundancyChecker",
     "FlextInfraRefactorMROResolver",
     "FlextInfraRefactorMigrateToClassMRO",
-    "FlextInfraRefactorModels",
-    "FlextInfraRefactorModelsCensus",
-    "FlextInfraRefactorModelsViolations",
     "FlextInfraRefactorPatternCorrectionsTextRule",
     "FlextInfraRefactorRule",
     "FlextInfraRefactorRuleDefinitionValidator",
@@ -393,11 +354,6 @@ __all__ = [
     "_constants",
     "_engine_helpers",
     "_engine_rules",
-    "_models",
-    "_models_ast_grep",
-    "_models_census",
-    "_models_namespace_enforcer",
-    "_models_violations",
     "_namespace_enforcer_phases",
     "_utilities",
     "_utilities_census",

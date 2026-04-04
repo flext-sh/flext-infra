@@ -13,12 +13,8 @@ if _t.TYPE_CHECKING:
     import flext_infra.check._constants as _flext_infra_check__constants
 
     _constants = _flext_infra_check__constants
-    import flext_infra.check._models as _flext_infra_check__models
-    from flext_infra.check._constants import FlextInfraCheckConstants
-
-    _models = _flext_infra_check__models
     import flext_infra.check._workspace_check_gates as _flext_infra_check__workspace_check_gates
-    from flext_infra.check._models import FlextInfraCheckModels
+    from flext_infra.check._constants import FlextInfraCheckConstants
 
     _workspace_check_gates = _flext_infra_check__workspace_check_gates
     import flext_infra.check.cli as _flext_infra_check_cli
@@ -52,7 +48,6 @@ if _t.TYPE_CHECKING:
     from flext_infra.check.workspace_check_cli import FlextInfraWorkspaceCheckerCli
 _LAZY_IMPORTS = {
     "FlextInfraCheckConstants": "flext_infra.check._constants",
-    "FlextInfraCheckModels": "flext_infra.check._models",
     "FlextInfraCliCheck": "flext_infra.check.cli",
     "FlextInfraConfigFixer": "flext_infra.check.services",
     "FlextInfraGateRegistry": "flext_infra.check._workspace_check_gates",
@@ -60,7 +55,6 @@ _LAZY_IMPORTS = {
     "FlextInfraWorkspaceChecker": "flext_infra.check.services",
     "FlextInfraWorkspaceCheckerCli": "flext_infra.check.workspace_check_cli",
     "_constants": "flext_infra.check._constants",
-    "_models": "flext_infra.check._models",
     "_workspace_check_gates": "flext_infra.check._workspace_check_gates",
     "build_parser": "flext_infra.check.workspace_check",
     "cli": "flext_infra.check.cli",
@@ -79,7 +73,6 @@ _LAZY_IMPORTS = {
 
 __all__ = [
     "FlextInfraCheckConstants",
-    "FlextInfraCheckModels",
     "FlextInfraCliCheck",
     "FlextInfraConfigFixer",
     "FlextInfraGateRegistry",
@@ -87,7 +80,6 @@ __all__ = [
     "FlextInfraWorkspaceChecker",
     "FlextInfraWorkspaceCheckerCli",
     "_constants",
-    "_models",
     "_workspace_check_gates",
     "build_parser",
     "cli",

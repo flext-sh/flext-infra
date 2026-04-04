@@ -153,10 +153,9 @@ class FlextInfraModelsCensus:
                 Field(description="Shared object name across projects"),
             ]
             kind: Annotated[str, Field(description="Object kind")]
-            definitions: Annotated[
-                Sequence[FlextInfraModelsCensus.Census.Object],
-                Field(description="All definitions of this object"),
-            ]
+            definitions: Sequence[FlextInfraModelsCensus.Census.Object] = Field(
+                description="All definitions of this object"
+            )
             canonical: Annotated[
                 str,
                 Field(
@@ -188,10 +187,9 @@ class FlextInfraModelsCensus:
                     description="Object count per kind",
                 ),
             ] = Field(default_factory=dict)
-            violations: Annotated[
-                Sequence[FlextInfraModelsCensus.Census.Violation],
-                Field(description="Detected violations"),
-            ] = Field(default_factory=lambda: ())
+            violations: Sequence[FlextInfraModelsCensus.Census.Violation] = Field(
+                default_factory=lambda: (), description="Detected violations"
+            )
             violations_total: Annotated[
                 t.NonNegativeInt,
                 Field(default=0, description="Total violation count"),
@@ -204,10 +202,9 @@ class FlextInfraModelsCensus:
         class WorkspaceReport(FlextModels.ArbitraryTypesModel):
             """Workspace-wide census summary."""
 
-            projects: Annotated[
-                Sequence[FlextInfraModelsCensus.Census.ProjectReport],
-                Field(description="Per-project reports"),
-            ] = Field(default_factory=lambda: ())
+            projects: Sequence[FlextInfraModelsCensus.Census.ProjectReport] = Field(
+                default_factory=lambda: (), description="Per-project reports"
+            )
             total_objects: Annotated[
                 t.NonNegativeInt,
                 Field(default=0, description="Total objects across workspace"),
@@ -220,10 +217,9 @@ class FlextInfraModelsCensus:
                 t.NonNegativeInt,
                 Field(default=0, description="Total fixable violations"),
             ] = 0
-            duplicates: Annotated[
-                Sequence[FlextInfraModelsCensus.Census.DuplicateGroup],
-                Field(description="Cross-project duplicate groups"),
-            ] = Field(default_factory=lambda: ())
+            duplicates: Sequence[FlextInfraModelsCensus.Census.DuplicateGroup] = Field(
+                default_factory=lambda: (), description="Cross-project duplicate groups"
+            )
             unused_count: Annotated[
                 t.NonNegativeInt,
                 Field(default=0, description="Total unused objects"),

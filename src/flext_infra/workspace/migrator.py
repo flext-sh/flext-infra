@@ -28,11 +28,15 @@ class FlextInfraProjectMigrator(
 
     discovery: Annotated[
         p.Infra.Discovery | None,
-        Field(default=None, exclude=True),
+        Field(
+            default=None, exclude=True, description="Optional custom discovery service"
+        ),
     ] = None
     generator: Annotated[
         FlextInfraBaseMkGenerator | None,
-        Field(default=None, exclude=True),
+        Field(
+            default=None, exclude=True, description="Optional custom generator service"
+        ),
     ] = None
 
     def _get_discovery(self) -> p.Infra.Discovery | None:
@@ -138,11 +142,49 @@ class FlextInfraProjectMigrator(
         )
         if dry_run:
             u.Infra.info("(dry-run — no files modified)")
-        if failed_projects:
-            return r[Sequence[m.Infra.MigrationResult]].fail(
-                f"{failed_projects} project(s) had errors"
-            )
         return result
+
+    def migrate(
+        self,
+        *,
+        workspace_root: Path,
+        dry_run: bool,
+    ) -> r[Sequence[m.Infra.MigrationResult]]:
+        """Build migration results for all discovered projects in a workspace."""
+        resolved_root = workspace_root.resolve()
+        if not resolved_root.exists():
+            return r[Sequence[m.Infra.MigrationResult]].fail(
+                f"workspace root does not exist: {resolved_root}",
+            )
+        discovery = self._get_discovery()
+        projects_result = (
+            discovery.discover_projects(resolved_root)
+            if discovery is not None
+            else u.Infra.discover_projects(resolved_root)
+        )
+        if projects_result.is_failure:
+            return r[Sequence[m.Infra.MigrationResult]].fail(
+                projects_result.error or "workspace discovery failed",
+            )
+        projects_by_path: dict[Path, m.Infra.ProjectInfo] = {
+            project.path.resolve(): project for project in projects_result.value
+        }
+        workspace_project = self._workspace_root_project(resolved_root)
+        if workspace_project is not None:
+            projects_by_path.setdefault(resolved_root, workspace_project)
+        projects = [
+            projects_by_path[path]
+            for path in sorted(projects_by_path, key=lambda current: str(current))
+        ]
+        migrations = [
+            self._migrate_project(
+                project=project,
+                dry_run=dry_run,
+                workspace_root=resolved_root,
+            )
+            for project in projects
+        ]
+        return r[Sequence[m.Infra.MigrationResult]].ok(migrations)
 
     def _migrate_basemk(
         self,

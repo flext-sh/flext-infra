@@ -161,12 +161,9 @@ class FlextInfraDocsModels:
                 description="Whether TODOS.md was written",
             ),
         ] = False
-        items: Annotated[
-            Sequence[FlextInfraDocsModels.DocsPhaseItemModel],
-            Field(
-                description="Phase-specific item payloads",
-            ),
-        ] = []
+        items: Sequence[FlextInfraDocsModels.DocsPhaseItemModel] = Field(
+            default_factory=list, description="Phase-specific item payloads"
+        )
 
 
 __all__ = ["FlextInfraDocsModels"]

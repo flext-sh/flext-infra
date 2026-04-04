@@ -16,11 +16,11 @@ from flext_infra import (
     FlextInfraRefactorModelsViolations,
     t,
 )
-from flext_infra.refactor._models_ast_grep import FlextInfraRefactorAstGrepModels
+from flext_infra._models.refactor_ast_grep import FlextInfraRefactorGrepModels
 
 
 class FlextInfraRefactorModels(
-    FlextInfraRefactorAstGrepModels,
+    FlextInfraRefactorGrepModels,
     FlextInfraNamespaceEnforcerModels,
     FlextInfraRefactorModelsCensus,
     FlextInfraRefactorModelsViolations,
@@ -253,14 +253,12 @@ class FlextInfraRefactorModels(
                 description="Whether the file was skipped as non-necessary",
             ),
         ] = False
-        apply_class_moves: Annotated[
-            Sequence[FlextInfraRefactorModels.ClassMove],
-            Field(description="Class moves to apply"),
-        ] = Field(default_factory=list)
-        apply_alias_moves: Annotated[
-            Sequence[FlextInfraRefactorModels.AliasMove],
-            Field(description="Alias moves to apply"),
-        ] = Field(default_factory=list)
+        apply_class_moves: Sequence[FlextInfraRefactorModels.ClassMove] = Field(
+            default_factory=list, description="Class moves to apply"
+        )
+        apply_alias_moves: Sequence[FlextInfraRefactorModels.AliasMove] = Field(
+            default_factory=list, description="Alias moves to apply"
+        )
 
     # -- Namespace Enforcer Models ---------------------------------------------
 

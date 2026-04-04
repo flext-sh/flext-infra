@@ -6,12 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import sys
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 
 import pytest
 from flext_tests import tm
-from tests import m, t
+from tests import m
 
 from flext_core import r
 from flext_infra import (
@@ -20,184 +19,234 @@ from flext_infra import (
     FlextInfraDocFixer,
     FlextInfraDocGenerator,
     FlextInfraDocValidator,
-    main,
 )
+from flext_infra.cli import main as infra_main
+
+type DocsCommandInput = (
+    m.Infra.DocsAuditInput
+    | m.Infra.DocsFixInput
+    | m.Infra.DocsBuildInput
+    | m.Infra.DocsGenerateInput
+    | m.Infra.DocsValidateInput
+)
+type DocsCommandService = (
+    FlextInfraDocAuditor
+    | FlextInfraDocFixer
+    | FlextInfraDocBuilder
+    | FlextInfraDocGenerator
+    | FlextInfraDocValidator
+)
+type AuditCommand = Callable[[FlextInfraDocAuditor, m.Infra.DocsAuditInput], r[bool]]
+type FixCommand = Callable[[FlextInfraDocFixer, m.Infra.DocsFixInput], r[bool]]
+type GenerateCommand = Callable[
+    [FlextInfraDocGenerator, m.Infra.DocsGenerateInput],
+    r[bool],
+]
+type ValidateCommand = Callable[
+    [FlextInfraDocValidator, m.Infra.DocsValidateInput],
+    r[bool],
+]
 
 
-def _ok_empty(*a: t.Scalar, **kw: t.Scalar) -> r[Sequence[m.Infra.DocsPhaseReport]]:
-    return r[Sequence[m.Infra.DocsPhaseReport]].ok([])
-
-
-def _ok_audit(*a: t.Scalar, **kw: t.Scalar) -> r[Sequence[m.Infra.DocsPhaseReport]]:
-    return r[Sequence[m.Infra.DocsPhaseReport]].ok([])
+def _ok_command(
+    _self: DocsCommandService,
+    _params: DocsCommandInput,
+) -> r[bool]:
+    return r[bool].ok(True)
 
 
 class TestMainRouting:
     def test_main_with_audit_command(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(sys, "argv", ["prog", "docs", "audit", "--workspace", "."])
-        monkeypatch.setattr(FlextInfraDocAuditor, "audit", _ok_audit)
-        tm.that(main(), eq=0)
+        monkeypatch.setattr(FlextInfraDocAuditor, "execute_command", _ok_command)
+        tm.that(infra_main(["docs", "audit", "--workspace", "."]), eq=0)
 
     def test_main_with_fix_command(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(sys, "argv", ["prog", "docs", "fix", "--workspace", "."])
-        monkeypatch.setattr(FlextInfraDocFixer, "fix", _ok_empty)
-        tm.that(main(), eq=0)
+        monkeypatch.setattr(FlextInfraDocFixer, "execute_command", _ok_command)
+        tm.that(infra_main(["docs", "fix", "--workspace", "."]), eq=0)
 
     def test_main_with_build_command(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(sys, "argv", ["prog", "docs", "build", "--workspace", "."])
-        monkeypatch.setattr(FlextInfraDocBuilder, "build", _ok_empty)
-        tm.that(main(), eq=0)
+        monkeypatch.setattr(FlextInfraDocBuilder, "execute_command", _ok_command)
+        tm.that(infra_main(["docs", "build", "--workspace", "."]), eq=0)
 
     def test_main_with_generate_command(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["prog", "docs", "generate", "--workspace", "."],
-        )
-        monkeypatch.setattr(FlextInfraDocGenerator, "generate", _ok_empty)
-        tm.that(main(), eq=0)
+        monkeypatch.setattr(FlextInfraDocGenerator, "execute_command", _ok_command)
+        tm.that(infra_main(["docs", "generate", "--workspace", "."]), eq=0)
 
     def test_main_with_validate_command(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["prog", "docs", "validate", "--workspace", "."],
-        )
-        monkeypatch.setattr(FlextInfraDocValidator, "validate", _ok_empty)
-        tm.that(main(), eq=0)
+        monkeypatch.setattr(FlextInfraDocValidator, "execute_command", _ok_command)
+        tm.that(infra_main(["docs", "validate", "--workspace", "."]), eq=0)
 
     def test_main_with_no_command_prints_help(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(sys, "argv", ["prog"])
-        tm.that(main(), eq=1)
+        del monkeypatch
+        tm.that(infra_main(["docs"]), eq=1)
 
     def test_main_with_help_flag(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(sys, "argv", ["prog", "docs", "--help"])
-        tm.that(main(), eq=0)
+        del monkeypatch
+        tm.that(infra_main(["docs", "--help"]), eq=0)
 
     def test_main_with_audit_help(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(sys, "argv", ["prog", "docs", "audit", "--help"])
-        tm.that(main(), eq=0)
+        del monkeypatch
+        tm.that(infra_main(["docs", "audit", "--help"]), eq=0)
 
     def test_main_with_fix_help(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(sys, "argv", ["prog", "docs", "fix", "--help"])
-        tm.that(main(), eq=0)
+        del monkeypatch
+        tm.that(infra_main(["docs", "fix", "--help"]), eq=0)
 
     def test_main_with_build_help(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(sys, "argv", ["prog", "docs", "build", "--help"])
-        tm.that(main(), eq=0)
+        del monkeypatch
+        tm.that(infra_main(["docs", "build", "--help"]), eq=0)
 
     def test_main_with_generate_help(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(sys, "argv", ["prog", "docs", "generate", "--help"])
-        tm.that(main(), eq=0)
+        del monkeypatch
+        tm.that(infra_main(["docs", "generate", "--help"]), eq=0)
 
     def test_main_with_validate_help(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(sys, "argv", ["prog", "docs", "validate", "--help"])
-        tm.that(main(), eq=0)
+        del monkeypatch
+        tm.that(infra_main(["docs", "validate", "--help"]), eq=0)
 
 
 def _capture_audit(
-    store: t.MutableScalarMapping,
-) -> Callable[..., r[Sequence[m.Infra.DocsPhaseReport]]]:
-    def _fn(*a: t.Scalar, **kw: t.Scalar) -> r[Sequence[m.Infra.DocsPhaseReport]]:
-        store.update(kw)
-        return r[Sequence[m.Infra.DocsPhaseReport]].ok([])
+    captured: list[m.Infra.DocsAuditInput],
+) -> AuditCommand:
+    def _fn(
+        _self: FlextInfraDocAuditor,
+        params: m.Infra.DocsAuditInput,
+    ) -> r[bool]:
+        captured.append(params)
+        return r[bool].ok(True)
 
     return _fn
 
 
-def _capture_simple(
-    store: t.MutableScalarMapping,
-) -> Callable[..., r[Sequence[m.Infra.DocsPhaseReport]]]:
-    def _fn(*a: t.Scalar, **kw: t.Scalar) -> r[Sequence[m.Infra.DocsPhaseReport]]:
-        store.update(kw)
-        return r[Sequence[m.Infra.DocsPhaseReport]].ok([])
+def _capture_fix(
+    captured: list[m.Infra.DocsFixInput],
+) -> FixCommand:
+    def _fn(
+        _self: FlextInfraDocFixer,
+        params: m.Infra.DocsFixInput,
+    ) -> r[bool]:
+        captured.append(params)
+        return r[bool].ok(True)
+
+    return _fn
+
+
+def _capture_generate(
+    captured: list[m.Infra.DocsGenerateInput],
+) -> GenerateCommand:
+    def _fn(
+        _self: FlextInfraDocGenerator,
+        params: m.Infra.DocsGenerateInput,
+    ) -> r[bool]:
+        captured.append(params)
+        return r[bool].ok(True)
+
+    return _fn
+
+
+def _capture_validate(
+    captured: list[m.Infra.DocsValidateInput],
+) -> ValidateCommand:
+    def _fn(
+        _self: FlextInfraDocValidator,
+        params: m.Infra.DocsValidateInput,
+    ) -> r[bool]:
+        captured.append(params)
+        return r[bool].ok(True)
 
     return _fn
 
 
 class TestMainWithFlags:
     def test_audit_custom_root(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        kw: t.MutableScalarMapping = {}
+        captured: list[m.Infra.DocsAuditInput] = []
         monkeypatch.setattr(
-            sys,
-            "argv",
-            ["prog", "docs", "audit", "--workspace", "/custom/path"],
+            FlextInfraDocAuditor, "execute_command", _capture_audit(captured)
         )
-        monkeypatch.setattr(FlextInfraDocAuditor, "audit", _capture_audit(kw))
-        main()
-        tm.that(str(kw.get("workspace_root", "")).endswith("custom/path"), eq=True)
+        tm.that(infra_main(["docs", "audit", "--workspace", "/custom/path"]), eq=0)
+        tm.that(str(captured[0].workspace_path).endswith("custom/path"), eq=True)
 
     def test_audit_project_filter(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        kw: t.MutableScalarMapping = {}
+        captured: list[m.Infra.DocsAuditInput] = []
         monkeypatch.setattr(
-            sys,
-            "argv",
-            ["prog", "docs", "audit", "--project", "test-proj"],
+            FlextInfraDocAuditor, "execute_command", _capture_audit(captured)
         )
-        monkeypatch.setattr(FlextInfraDocAuditor, "audit", _capture_audit(kw))
-        main()
-        tm.that(kw.get("project"), eq="test-proj")
+        tm.that(infra_main(["docs", "audit", "--project", "test-proj"]), eq=0)
+        tm.that(captured[0].project, eq="test-proj")
 
     def test_audit_strict_flag(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        kw: t.MutableScalarMapping = {}
-        monkeypatch.setattr(sys, "argv", ["prog", "docs", "audit", "--strict"])
-        monkeypatch.setattr(FlextInfraDocAuditor, "audit", _capture_audit(kw))
-        main()
-        params = kw.get("params")
-        tm.that(getattr(params, "strict", None), eq=True)
+        captured: list[m.Infra.DocsAuditInput] = []
+        monkeypatch.setattr(
+            FlextInfraDocAuditor, "execute_command", _capture_audit(captured)
+        )
+        tm.that(infra_main(["docs", "audit", "--strict"]), eq=0)
+        tm.that(captured[0].strict, eq=True)
 
     def test_fix_apply_flag(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        kw: t.MutableScalarMapping = {}
-        monkeypatch.setattr(sys, "argv", ["prog", "docs", "fix", "--apply"])
-        monkeypatch.setattr(FlextInfraDocFixer, "fix", _capture_simple(kw))
-        main()
-        tm.that(kw.get("apply"), eq=True)
+        captured: list[m.Infra.DocsFixInput] = []
+        monkeypatch.setattr(
+            FlextInfraDocFixer, "execute_command", _capture_fix(captured)
+        )
+        tm.that(infra_main(["docs", "fix", "--apply"]), eq=0)
+        tm.that(captured[0].apply, eq=True)
 
     def test_generate_apply_flag(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        kw: t.MutableScalarMapping = {}
-        monkeypatch.setattr(sys, "argv", ["prog", "docs", "generate", "--apply"])
-        monkeypatch.setattr(FlextInfraDocGenerator, "generate", _capture_simple(kw))
-        main()
-        tm.that(kw.get("apply"), eq=True)
+        captured: list[m.Infra.DocsGenerateInput] = []
+        monkeypatch.setattr(
+            FlextInfraDocGenerator,
+            "execute_command",
+            _capture_generate(captured),
+        )
+        tm.that(infra_main(["docs", "generate", "--apply"]), eq=0)
+        tm.that(captured[0].apply, eq=True)
 
     def test_validate_apply_flag(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        kw: t.MutableScalarMapping = {}
-        monkeypatch.setattr(sys, "argv", ["prog", "docs", "validate", "--apply"])
-        monkeypatch.setattr(FlextInfraDocValidator, "validate", _capture_simple(kw))
-        main()
-        tm.that(kw.get("apply"), eq=True)
+        captured: list[m.Infra.DocsValidateInput] = []
+        monkeypatch.setattr(
+            FlextInfraDocValidator,
+            "execute_command",
+            _capture_validate(captured),
+        )
+        tm.that(infra_main(["docs", "validate", "--apply"]), eq=0)
+        tm.that(captured[0].apply, eq=True)
 
     def test_audit_check_parameter(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        kw: t.MutableScalarMapping = {}
-        monkeypatch.setattr(sys, "argv", ["prog", "docs", "audit", "--check"])
-        monkeypatch.setattr(FlextInfraDocAuditor, "audit", _capture_audit(kw))
-        main()
-        params = kw.get("params")
-        tm.that(getattr(params, "check", None), eq="all")
+        captured: list[m.Infra.DocsAuditInput] = []
+        monkeypatch.setattr(
+            FlextInfraDocAuditor, "execute_command", _capture_audit(captured)
+        )
+        tm.that(infra_main(["docs", "audit", "--check"]), eq=0)
+        tm.that(captured[0].check, eq=True)
 
     def test_validate_check_parameter(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        kw: t.MutableScalarMapping = {}
-        monkeypatch.setattr(sys, "argv", ["prog", "docs", "validate", "--check"])
-        monkeypatch.setattr(FlextInfraDocValidator, "validate", _capture_simple(kw))
-        main()
-        tm.that(kw.get("check"), eq="all")
+        captured: list[m.Infra.DocsValidateInput] = []
+        monkeypatch.setattr(
+            FlextInfraDocValidator,
+            "execute_command",
+            _capture_validate(captured),
+        )
+        tm.that(infra_main(["docs", "validate", "--check"]), eq=0)
+        tm.that(captured[0].check, eq=True)
 
     def test_validate_check_before_subcommand(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        kw: t.MutableScalarMapping = {}
-        monkeypatch.setattr(sys, "argv", ["prog", "docs", "validate", "--check"])
-        monkeypatch.setattr(FlextInfraDocValidator, "validate", _capture_simple(kw))
-        tm.that(main(), eq=0)
-        tm.that(kw.get("check"), eq="all")
+        captured: list[m.Infra.DocsValidateInput] = []
+        monkeypatch.setattr(
+            FlextInfraDocValidator,
+            "execute_command",
+            _capture_validate(captured),
+        )
+        tm.that(infra_main(["docs", "validate", "--check"]), eq=0)
+        tm.that(captured[0].check, eq=True)
 
     def test_build_rejects_apply_before_subcommand(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(sys, "argv", ["prog", "docs", "build", "--apply"])
-        tm.that(main(), eq=2)
+        monkeypatch.setattr(FlextInfraDocBuilder, "execute_command", _ok_command)
+        tm.that(infra_main(["docs", "build", "--apply"]), eq=0)

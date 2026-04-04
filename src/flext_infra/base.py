@@ -31,30 +31,49 @@ class FlextInfraServiceBase[TDomainResult: t.Infra.DomainOutput](
 
     model_config = ConfigDict(populate_by_name=True)
 
-    config_type: Annotated[type | None, Field(default=None, exclude=True)] = None
+    config_type: Annotated[
+        type | None,
+        Field(default=None, description="Configuration type constraint", exclude=True),
+    ] = None
     config_overrides: Annotated[
         t.Infra.ContainerOverrides | None,
-        Field(default=None, exclude=True),
+        Field(
+            default=None, description="Configuration overrides context", exclude=True
+        ),
     ] = None
-    initial_context: Annotated[p.Context | None, Field(default=None, exclude=True)] = (
-        None
-    )
-    subproject: Annotated[str | None, Field(default=None, exclude=True)] = None
+    initial_context: Annotated[
+        p.Context | None,
+        Field(default=None, description="Initial service context", exclude=True),
+    ] = None
+    subproject: Annotated[
+        str | None,
+        Field(default=None, description="Target subproject identifier", exclude=True),
+    ] = None
     container_overrides: Annotated[
         t.Infra.RuntimeScalarOverrides | None,
-        Field(default=None, exclude=True),
+        Field(
+            default=None,
+            description="Context dependency container overrides",
+            exclude=True,
+        ),
     ] = None
     wire_modules: Annotated[
         Sequence[ModuleType] | None,
-        Field(default=None, exclude=True),
+        Field(
+            default=None, description="Modules to wire dependencies into", exclude=True
+        ),
     ] = None
     wire_packages: Annotated[
         Sequence[str] | None,
-        Field(default=None, exclude=True),
+        Field(
+            default=None, description="Packages to wire dependencies into", exclude=True
+        ),
     ] = None
     wire_classes: Annotated[
         Sequence[type] | None,
-        Field(default=None, exclude=True),
+        Field(
+            default=None, description="Classes to wire dependencies into", exclude=True
+        ),
     ] = None
 
     workspace_root: Annotated[

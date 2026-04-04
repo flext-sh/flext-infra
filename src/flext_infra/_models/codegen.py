@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import MutableSequence, MutableSet, Sequence
 from typing import Annotated
 
 from pydantic import Field
 
 from flext_core import FlextModels
 from flext_infra import t
-from flext_infra.codegen._models_deduplication import (
+from flext_infra._models.codegen_deduplication import (
     FlextInfraCodegenDeduplicationModels,
 )
 
@@ -39,12 +39,10 @@ class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
         """Aggregated census report for a single project."""
 
         project: Annotated[t.NonEmptyStr, Field(description="Project name")]
-        violations: Annotated[
-            Sequence[FlextInfraCodegenModels.CensusViolation],
-            Field(
-                description="Detected violations",
-            ),
-        ] = []
+        violations: Sequence[FlextInfraCodegenModels.CensusViolation] = Field(
+            default_factory=list,
+            description="Detected violations",
+        )
         total: Annotated[t.NonNegativeInt, Field(description="Total violation count")]
         fixable: Annotated[
             t.NonNegativeInt,
@@ -55,41 +53,31 @@ class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
         """Result of scaffolding base modules for a project."""
 
         project: Annotated[t.NonEmptyStr, Field(description="Project name")]
-        files_created: Annotated[
-            t.StrSequence,
-            Field(
-                description="Newly created file paths",
-            ),
-        ] = Field(default_factory=list)
-        files_skipped: Annotated[
-            t.StrSequence,
-            Field(
-                description="Skipped (already existing) file paths",
-            ),
-        ] = Field(default_factory=list)
+        files_created: t.StrSequence = Field(
+            default_factory=list,
+            description="Newly created file paths",
+        )
+        files_skipped: t.StrSequence = Field(
+            default_factory=list,
+            description="Skipped (already existing) file paths",
+        )
 
     class AutoFixResult(FlextModels.ArbitraryTypesModel):
         """Result of auto-fixing namespace violations for a project."""
 
         project: Annotated[t.NonEmptyStr, Field(description="Project name")]
-        violations_fixed: Annotated[
-            Sequence[FlextInfraCodegenModels.CensusViolation],
-            Field(
-                description="Fixed violations",
-            ),
-        ] = []
-        violations_skipped: Annotated[
-            Sequence[FlextInfraCodegenModels.CensusViolation],
-            Field(
-                description="Skipped violations (not auto-fixable)",
-            ),
-        ] = []
-        files_modified: Annotated[
-            t.StrSequence,
-            Field(
-                description="Modified file paths",
-            ),
-        ] = Field(default_factory=list)
+        violations_fixed: Sequence[FlextInfraCodegenModels.CensusViolation] = Field(
+            default_factory=list,
+            description="Fixed violations",
+        )
+        violations_skipped: Sequence[FlextInfraCodegenModels.CensusViolation] = Field(
+            default_factory=list,
+            description="Skipped violations (not auto-fixable)",
+        )
+        files_modified: t.StrSequence = Field(
+            default_factory=list,
+            description="Modified file paths",
+        )
 
     class QualityGateCheck(FlextModels.ArbitraryTypesModel):
         """A single quality gate check result entry."""
@@ -161,22 +149,12 @@ class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
     class DuplicateConstantGroup(FlextModels.ArbitraryTypesModel):
         """Cross-project duplicate group with consolidation metadata."""
 
-        constant_name: Annotated[
-            t.NonEmptyStr,
-            Field(description="Constant identifier"),
-        ]
-        definitions: Annotated[
-            Sequence[FlextInfraCodegenModels.ConstantDefinition],
-            Field(description="Definitions across projects"),
-        ]
-        is_value_identical: Annotated[
-            bool,
-            Field(description="Whether all values match"),
-        ]
-        canonical_ref: Annotated[
-            str,
-            Field(default="", description="Canonical parent reference"),
-        ]
+        constant_name: t.NonEmptyStr = Field(description="Constant identifier")
+        definitions: Sequence[FlextInfraCodegenModels.ConstantDefinition] = Field(
+            description="Definitions across projects",
+        )
+        is_value_identical: bool = Field(description="Whether all values match")
+        canonical_ref: str = Field(default="", description="Canonical parent reference")
 
     class UnusedConstant(BulkFixItem):
         """Constant declared but never referenced in workspace."""
@@ -203,52 +181,52 @@ class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
         line: Annotated[t.PositiveInt, Field(description="Line number")]
 
     class CanonicalValueRule(FlextModels.ArbitraryTypesModel):
-        value: Annotated[int | str | Sequence[str], Field(...)]
-        type: Annotated[str, Field(...)]
-        canonical_ref: Annotated[str, Field(...)]
-        semantic_names: t.StrSequence = Field(default_factory=list)
+        value: int | str | Sequence[str] = Field(description="Canonical value")
+        type: str = Field(description="Canonical type")
+        canonical_ref: str = Field(description="Canonical reference")
+        semantic_names: t.StrSequence = Field(
+            default_factory=list, description="semantic_names"
+        )
 
     class NsRule(FlextModels.ArbitraryTypesModel):
-        id: Annotated[str, Field(...)]
-        description: Annotated[str, Field(...)]
-        fixable: Annotated[bool, Field(...)]
-        fixable_exclusion: Annotated[str | None, Field(default=None)]
+        id: str = Field(description="Rule ID")
+        description: str = Field(description="Rule description")
+        fixable: bool = Field(description="Whether the rule is fixable")
+        fixable_exclusion: str | None = Field(
+            default=None, description="Fixable exclusion reason"
+        )
 
     class ConstantsGovernanceConfig(FlextModels.ArbitraryTypesModel):
-        version: Annotated[str, Field(...)]
-        rules: Annotated[Sequence[FlextInfraCodegenModels.NsRule], Field(...)]
-        canonical_values: Annotated[
-            Sequence[FlextInfraCodegenModels.CanonicalValueRule],
-            Field(
-                ...,
-            ),
-        ]
-        constants_class_pattern: Annotated[str, Field(...)]
+        version: str = Field(description="Config version")
+        rules: Sequence[FlextInfraCodegenModels.NsRule] = Field(
+            description="Governance rules"
+        )
+        canonical_values: Sequence[FlextInfraCodegenModels.CanonicalValueRule] = Field(
+            description="Canonical values config"
+        )
+        constants_class_pattern: str = Field(
+            description="Constants class pattern regex"
+        )
 
     class FixContext(FlextModels.ArbitraryTypesModel):
         """Mutable accumulation context for fix operations."""
 
-        violations_fixed: Annotated[
-            list[FlextInfraCodegenModels.CensusViolation],
+        violations_fixed: MutableSequence[FlextInfraCodegenModels.CensusViolation] = (
             Field(
                 default_factory=list,
                 description="List of violations that were fixed",
-            ),
-        ]
-        violations_skipped: Annotated[
-            list[FlextInfraCodegenModels.CensusViolation],
+            )
+        )
+        violations_skipped: MutableSequence[FlextInfraCodegenModels.CensusViolation] = (
             Field(
                 default_factory=list,
                 description="List of violations that were skipped",
-            ),
-        ]
-        files_modified: Annotated[
-            set[str],
-            Field(
-                default_factory=set,
-                description="Set of unique modified file paths",
-            ),
-        ]
+            )
+        )
+        files_modified: MutableSet[str] = Field(
+            default_factory=set,
+            description="Set of unique modified file paths",
+        )
 
         def skip(self, *, module: str, rule: str, line: int, message: str) -> None:
             self.violations_skipped.append(

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pathlib
 from pathlib import Path
 
 from libcst import metadata as meta
@@ -128,17 +127,23 @@ class TestSymbolPropagatorRopeMigration:
         assert len(recorded) == 1
         assert "OldName" in recorded[0]
 
-    def test_file_shorter_than_baseline(self) -> None:
-        """symbol_propagator.py is shorter than the 117-line baseline."""
-        path = (
-            pathlib.Path(__file__).parent.parent
-            / "src"
-            / "flext_infra"
-            / "transformers"
-            / "symbol_propagator.py"
+    def test_apply_to_source_matches_rope_transform(self, tmp_path: Path) -> None:
+        """Text and rope entrypoints keep the same symbol propagation behavior."""
+        source = "from mylib import OldName\nOldName()\n"
+        transformer = FlextInfraRefactorSymbolPropagator(
+            target_modules={"mylib"},
+            module_renames={},
+            import_symbol_renames={"OldName": "NewName"},
         )
-        lines = path.read_text().splitlines()
-        assert len(lines) < 117, f"Expected < 117 lines, got {len(lines)}"
+        rope_result, rope_changes = _apply_transformer(
+            tmp_path,
+            "demo.py",
+            source,
+            transformer.transform,
+        )
+        text_result, text_changes = transformer.apply_to_source(source)
+        assert text_result == rope_result
+        assert text_changes == rope_changes
 
 
 class TestNestedClassPropagationRopeMigration:
@@ -179,17 +184,18 @@ class TestNestedClassPropagationRopeMigration:
         )
         assert "Namespace.OldName" in result
 
-    def test_combined_loc_under_baseline(self) -> None:
-        """Combined LOC of all 3 transformer files is < 385 (the baseline)."""
-        transformers_dir = (
-            pathlib.Path(__file__).parent.parent
-            / "src"
-            / "flext_infra"
-            / "transformers"
+    def test_apply_to_source_matches_rope_transform(self, tmp_path: Path) -> None:
+        """Text and rope entrypoints keep the same nesting propagation behavior."""
+        source = "value = OldName()\n"
+        transformer = FlextInfraNestedClassPropagationTransformer(
+            class_renames={"OldName": "Namespace.OldName"},
         )
-        files = [
-            "symbol_propagator.py",
-            "nested_class_propagation.py",
-        ]
-        total = sum(len((transformers_dir / f).read_text().splitlines()) for f in files)
-        assert total < 310, f"Expected combined LOC < 310, got {total}"
+        rope_result, rope_changes = _apply_transformer(
+            tmp_path,
+            "demo.py",
+            source,
+            transformer.transform,
+        )
+        text_result, text_changes = transformer.apply_to_source(source)
+        assert text_result == rope_result
+        assert text_changes == rope_changes

@@ -14,6 +14,9 @@ from collections import deque
 from collections.abc import Mapping, MutableMapping
 from functools import lru_cache
 from pathlib import Path
+from typing import Annotated
+
+from pydantic import Field
 
 from flext_cli import FlextCliUtilities
 from flext_core import FlextUtilities, m
@@ -26,11 +29,13 @@ from flext_infra import (
 class FlextInfraNormalizerContext(m.ArbitraryTypesModel):
     """Analysis context for import normalization."""
 
-    file_path: Path
-    project_package: str
-    declared_alias: str
-    alias_tiers: t.IntMapping
-    universal_aliases: frozenset[str]
+    file_path: Annotated[Path, Field(description="File path")]
+    project_package: Annotated[str, Field(description="Project package")]
+    declared_alias: Annotated[str, Field(description="Declared alias")]
+    alias_tiers: Annotated[t.IntMapping, Field(description="Alias tiers mapping")]
+    universal_aliases: Annotated[
+        frozenset[str], Field(description="Universal aliases set")
+    ]
 
 
 class FlextInfraUtilitiesImportNormalizer:

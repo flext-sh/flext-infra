@@ -43,12 +43,9 @@ class FlextInfraGithubModels:
         ]
         success: Annotated[t.NonNegativeInt, Field(description="Successful executions")]
         fail: Annotated[t.NonNegativeInt, Field(description="Failed executions")]
-        results: Annotated[
-            t.Infra.VariadicTuple[FlextInfraGithubModels.PrExecutionResultModel],
-            Field(
-                description="Per-repository results",
-            ),
-        ] = Field(default_factory=tuple)
+        results: t.Infra.VariadicTuple[
+            FlextInfraGithubModels.PrExecutionResultModel
+        ] = Field(default_factory=tuple, description="Per-repository results")
 
     class RepoUrls(FlextModels.ArbitraryTypesModel):
         """Repository URL pair with SSH and HTTPS variants."""
@@ -225,7 +222,7 @@ class FlextInfraGithubModels:
         results: Annotated[
             MutableSequence[FlextInfraGithubModels.PrExecutionResultModel],
             Field(description="Accumulated PR execution results"),
-        ]
+        ] = Field(description="Accumulated PR execution results")
 
     class WorkflowSyncParams(FlextModels.FrozenStrictModel):
         """Bundled parameters for github_sync_workspace_workflows."""

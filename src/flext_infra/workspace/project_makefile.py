@@ -12,17 +12,9 @@ from __future__ import annotations
 
 import tomllib
 from pathlib import Path
-from typing import NamedTuple
 
 from flext_infra import FlextInfraBaseMkGenerator, c, r, u
-
-
-class _ProjectMeta(NamedTuple):
-    """Extracted project metadata from pyproject.toml."""
-
-    name: str
-    python_version: str
-    description: str
+from flext_infra._models.workspace import FlextInfraWorkspaceModels
 
 
 class FlextInfraProjectMakefileUpdater:
@@ -81,13 +73,15 @@ class FlextInfraProjectMakefileUpdater:
         return u.Infra.atomic_write_file(makefile_path, new_content)
 
     @staticmethod
-    def _read_pyproject(pyproject: Path) -> r[_ProjectMeta]:
+    def _read_pyproject(pyproject: Path) -> r[FlextInfraWorkspaceModels.ProjectMeta]:
         """Parse pyproject.toml and extract name, python_version, description."""
         try:
             with pyproject.open("rb") as fh:
                 data = tomllib.load(fh)
         except (OSError, tomllib.TOMLDecodeError) as exc:
-            return r[_ProjectMeta].fail(f"pyproject.toml read failed: {exc}")
+            return r[FlextInfraWorkspaceModels.ProjectMeta].fail(
+                f"pyproject.toml read failed: {exc}"
+            )
 
         try:
             project = data["project"]
@@ -98,12 +92,12 @@ class FlextInfraProjectMakefileUpdater:
             python_version = version_str.split(",")[0].split("<")[0].strip()
             description: str = project.get("description", "")
         except (KeyError, AttributeError) as exc:
-            return r[_ProjectMeta].fail(
+            return r[FlextInfraWorkspaceModels.ProjectMeta].fail(
                 f"pyproject.toml missing required fields: {exc}",
             )
 
-        return r[_ProjectMeta].ok(
-            _ProjectMeta(
+        return r[FlextInfraWorkspaceModels.ProjectMeta].ok(
+            FlextInfraWorkspaceModels.ProjectMeta(
                 name=name,
                 python_version=python_version,
                 description=description,
@@ -111,7 +105,9 @@ class FlextInfraProjectMakefileUpdater:
         )
 
     @staticmethod
-    def _build_makefile(meta: _ProjectMeta, bootstrap: str) -> str:
+    def _build_makefile(
+        meta: FlextInfraWorkspaceModels.ProjectMeta, bootstrap: str
+    ) -> str:
         """Build the fully-generated Makefile content."""
         title = f"# {meta.name}"
         if meta.description:

@@ -13,12 +13,8 @@ if _t.TYPE_CHECKING:
     import flext_infra.basemk._constants as _flext_infra_basemk__constants
 
     _constants = _flext_infra_basemk__constants
-    import flext_infra.basemk._models as _flext_infra_basemk__models
-    from flext_infra.basemk._constants import FlextInfraBasemkConstants
-
-    _models = _flext_infra_basemk__models
     import flext_infra.basemk.cli as _flext_infra_basemk_cli
-    from flext_infra.basemk._models import FlextInfraBasemkModels
+    from flext_infra.basemk._constants import FlextInfraBasemkConstants
 
     cli = _flext_infra_basemk_cli
     import flext_infra.basemk.engine as _flext_infra_basemk_engine
@@ -40,10 +36,8 @@ _LAZY_IMPORTS = {
     "FlextInfraBaseMkGenerator": "flext_infra.basemk.generator",
     "FlextInfraBaseMkTemplateEngine": "flext_infra.basemk.engine",
     "FlextInfraBasemkConstants": "flext_infra.basemk._constants",
-    "FlextInfraBasemkModels": "flext_infra.basemk._models",
     "FlextInfraCliBasemk": "flext_infra.basemk.cli",
     "_constants": "flext_infra.basemk._constants",
-    "_models": "flext_infra.basemk._models",
     "cli": "flext_infra.basemk.cli",
     "d": ("flext_core.decorators", "FlextDecorators"),
     "e": ("flext_core.exceptions", "FlextExceptions"),
@@ -59,10 +53,8 @@ __all__ = [
     "FlextInfraBaseMkGenerator",
     "FlextInfraBaseMkTemplateEngine",
     "FlextInfraBasemkConstants",
-    "FlextInfraBasemkModels",
     "FlextInfraCliBasemk",
     "_constants",
-    "_models",
     "cli",
     "d",
     "e",

@@ -79,19 +79,13 @@ class TestRunSync:
         result: r[m.Infra.SyncResult],
         expected_success: bool,
     ) -> None:
-        def _sync_stub(
+        def _execute_stub(
             _self: FlextInfraSyncService,
-            _source: str | None = None,
-            _target: str | None = None,
-            *,
-            workspace_root: Path | None = None,
-            config: m.Infra.BaseMkConfig | None = None,
-            canonical_root: Path | None = None,
         ) -> r[m.Infra.SyncResult]:
-            del _self, _source, _target, workspace_root, config, canonical_root
+            del _self
             return result
 
-        monkeypatch.setattr(FlextInfraSyncService, "sync", _sync_stub)
+        monkeypatch.setattr(FlextInfraSyncService, "execute", _execute_stub)
         handle_result = FlextInfraSyncService.execute_command(
             FlextInfraSyncService(workspace=tmp_path),
         )
@@ -149,7 +143,7 @@ class TestRunOrchestrate:
             FlextInfraOrchestratorService(
                 verb="test",
                 projects="p-a",
-                make_args=["FILES=a b c.py", "VERBOSE=1"],
+                make_arg=["FILES=a b c.py", "VERBOSE=1"],
             ),
         )
         tm.that(handle_result.is_success, eq=True)
@@ -281,14 +275,11 @@ class TestRunMigrate:
         handle_result = FlextInfraProjectMigrator.execute_command(
             FlextInfraProjectMigrator(workspace=tmp_path, apply=True),
         )
-        tm.that(handle_result.is_failure, eq=True)
+        tm.that(handle_result.is_success, eq=True)
+        tm.that(handle_result.value[0].errors, eq=["Error 1"])
 
 
 def _ok_stub(
-    _self: FlextInfraWorkspaceDetector
-    | FlextInfraSyncService
-    | FlextInfraOrchestratorService
-    | FlextInfraProjectMigrator,
     _params: m.Infra.WorkspaceDetectInput
     | m.Infra.WorkspaceSyncInput
     | FlextInfraOrchestratorService
@@ -334,10 +325,9 @@ class TestMainCli:
     def test_orchestrate_repeats_make_arg(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        captured: list[m.Infra.WorkspaceOrchestrateInput] = []
+        captured: list[FlextInfraOrchestratorService] = []
 
         def _capture_orchestrate(
-            _self: FlextInfraOrchestratorService,
             params: FlextInfraOrchestratorService,
         ) -> r[bool]:
             captured.append(params)
@@ -362,7 +352,7 @@ class TestMainCli:
             ]),
             eq=0,
         )
-        tm.that(captured[0].make_args, eq=["FILES=a b c.py", "VERBOSE=1"])
+        tm.that(captured[0].make_arg, eq=["FILES=a b c.py", "VERBOSE=1"])
 
     def test_migrate(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(

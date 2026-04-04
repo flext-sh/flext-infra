@@ -42,18 +42,18 @@ class FlextInfraOrchestratorService(s[bool]):
         Field(default=False, description="Stop on first failure"),
     ] = False
     make_arg: Annotated[
-        list[str],
+        Sequence[str],
         Field(default_factory=list, description="Additional make arguments"),
     ] = Field(default_factory=list)
 
     @property
-    def project_names(self) -> list[str]:
+    def project_names(self) -> Sequence[str]:
         """Return normalized project names."""
         raw_projects = self.projects.replace(",", " ")
         return [project.strip() for project in raw_projects.split() if project.strip()]
 
     @property
-    def make_args(self) -> list[str]:
+    def make_args(self) -> Sequence[str]:
         """Return normalized make arguments."""
         return [make_arg.strip() for make_arg in self.make_arg if make_arg.strip()]
 

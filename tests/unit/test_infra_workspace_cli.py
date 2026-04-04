@@ -14,19 +14,16 @@ from flext_tests import tm
 from tests import m
 
 from flext_core import r
-from flext_infra import FlextInfraProjectMigrator, main as infra_main
+from flext_infra import FlextInfraProjectMigrator
+from flext_infra.cli import main as infra_main
 
 
 def test_workspace_cli_migrate_command(monkeypatch: MonkeyPatch) -> None:
-
-    def _fake_migrate(
-        self: FlextInfraProjectMigrator,
-        *,
-        workspace_root: Path,
-        dry_run: bool,
+    def _fake_execute(
+        params: FlextInfraProjectMigrator,
     ) -> r[Sequence[m.Infra.MigrationResult]]:
-        del self, workspace_root
-        assert dry_run is True
+        tm.that(params.workspace_root, eq=Path.cwd())
+        tm.that(params.dry_run, eq=True)
         return r[Sequence[m.Infra.MigrationResult]].ok([
             m.Infra.MigrationResult.model_validate(
                 obj={
@@ -37,7 +34,7 @@ def test_workspace_cli_migrate_command(monkeypatch: MonkeyPatch) -> None:
             ),
         ])
 
-    _ = monkeypatch.setattr(FlextInfraProjectMigrator, "migrate", _fake_migrate)
+    _ = monkeypatch.setattr(FlextInfraProjectMigrator, "execute_command", _fake_execute)
     exit_code = infra_main(["workspace", "migrate", "--workspace", ".", "--dry-run"])
     assert exit_code == 0
 
@@ -52,14 +49,10 @@ def test_workspace_cli_accepts_default_dry_run_for_detect(
 def test_workspace_cli_migrate_output_contains_summary(
     monkeypatch: MonkeyPatch,
 ) -> None:
-
-    def _fake_migrate(
-        self: FlextInfraProjectMigrator,
-        *,
-        workspace_root: Path,
-        dry_run: bool,
+    def _fake_execute(
+        params: FlextInfraProjectMigrator,
     ) -> r[Sequence[m.Infra.MigrationResult]]:
-        del self, workspace_root, dry_run
+        del params
         return r[Sequence[m.Infra.MigrationResult]].ok([
             m.Infra.MigrationResult.model_validate(
                 obj={
@@ -72,6 +65,6 @@ def test_workspace_cli_migrate_output_contains_summary(
             ),
         ])
 
-    _ = monkeypatch.setattr(FlextInfraProjectMigrator, "migrate", _fake_migrate)
+    _ = monkeypatch.setattr(FlextInfraProjectMigrator, "execute_command", _fake_execute)
     exit_code = infra_main(["workspace", "migrate", "--workspace", ".", "--dry-run"])
     assert exit_code == 0

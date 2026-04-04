@@ -41,6 +41,16 @@ if _t.TYPE_CHECKING:
     _models = _flext_infra__models
     import flext_infra._protocols as _flext_infra__protocols
     from flext_infra._models import (
+        FlextInfraBasemkModels,
+        FlextInfraCheckModels,
+        FlextInfraCodegenDeduplicationModels,
+        FlextInfraCodegenModels,
+        FlextInfraCoreModels,
+        FlextInfraDepsModels,
+        FlextInfraDepsModelsToolConfig,
+        FlextInfraDocsModels,
+        FlextInfraGatesModels,
+        FlextInfraGithubModels,
         FlextInfraModelsBase,
         FlextInfraModelsCensus,
         FlextInfraModelsCliInputs,
@@ -48,10 +58,45 @@ if _t.TYPE_CHECKING:
         FlextInfraModelsCliInputsOps,
         FlextInfraModelsRope,
         FlextInfraModelsScan,
+        FlextInfraNamespaceEnforcerModels,
+        FlextInfraRefactorGrepModels,
+        FlextInfraRefactorModels,
+        FlextInfraRefactorModelsCensus,
+        FlextInfraRefactorModelsViolations,
+        FlextInfraReleaseModels,
+        FlextInfraWorkspaceModels,
+        MypyConfig,
+        MypyOverrideConfig,
+        PydanticMypyConfig,
+        PyreflyConfig,
+        PyrightConfig,
+        RuffConfig,
+        RuffFormatConfig,
+        RuffIsortConfig,
+        RuffLintConfig,
+        basemk,
+        check,
         cli_inputs,
         cli_inputs_codegen,
         cli_inputs_ops,
+        codegen,
+        codegen_deduplication,
+        deps,
+        deps_tool_config,
+        deps_tool_config_linters,
+        deps_tool_config_type_checkers,
+        docs,
+        gates,
+        github,
+        refactor,
+        refactor_ast_grep,
+        refactor_census,
+        refactor_namespace_enforcer,
+        refactor_violations,
+        release,
         scan,
+        validate,
+        workspace,
     )
 
     _protocols = _flext_infra__protocols
@@ -124,10 +169,8 @@ if _t.TYPE_CHECKING:
         codegen_lazy,
         discovery,
         discovery_scanning,
-        docs,
         formatting,
         git,
-        github,
         github_pr,
         io,
         iteration,
@@ -137,7 +180,6 @@ if _t.TYPE_CHECKING:
         parsing,
         paths,
         patterns,
-        release,
         reporting,
         rope_analysis,
         rope_analysis_introspection,
@@ -157,31 +199,23 @@ if _t.TYPE_CHECKING:
     )
 
     base = _flext_infra_base
-    import flext_infra.basemk as _flext_infra_basemk
+    import flext_infra.cli as _flext_infra_cli
     from flext_infra.base import (
         APPLY_OPTION_DECLS,
         FlextInfraServiceBase,
         FlextInfraServiceBase as s,
         apply_option_json_schema_extra,
     )
-
-    basemk = _flext_infra_basemk
-    import flext_infra.check as _flext_infra_check
     from flext_infra.basemk import (
         FlextInfraBasemkConstants,
         FlextInfraBaseMkGenerator,
-        FlextInfraBasemkModels,
         FlextInfraBaseMkTemplateEngine,
         FlextInfraCliBasemk,
         engine,
         generator,
     )
-
-    check = _flext_infra_check
-    import flext_infra.cli as _flext_infra_cli
     from flext_infra.check import (
         FlextInfraCheckConstants,
-        FlextInfraCheckModels,
         FlextInfraCliCheck,
         FlextInfraConfigFixer,
         FlextInfraGateRegistry,
@@ -197,21 +231,16 @@ if _t.TYPE_CHECKING:
     )
 
     cli = _flext_infra_cli
-    import flext_infra.codegen as _flext_infra_codegen
-    from flext_infra.cli import FlextInfraCli
-
-    codegen = _flext_infra_codegen
     import flext_infra.constants as _flext_infra_constants
+    from flext_infra.cli import FlextInfraCli
     from flext_infra.codegen import (
         FlextInfraCliCodegen,
         FlextInfraCodegenCensus,
         FlextInfraCodegenConstants,
         FlextInfraCodegenConstantsQualityGate,
-        FlextInfraCodegenDeduplicationModels,
         FlextInfraCodegenFixer,
         FlextInfraCodegenGeneration,
         FlextInfraCodegenLazyInit,
-        FlextInfraCodegenModels,
         FlextInfraCodegenPyTyped,
         FlextInfraCodegenScaffolder,
         FlextInfraUtilitiesCodegen,
@@ -223,11 +252,8 @@ if _t.TYPE_CHECKING:
     )
 
     constants = _flext_infra_constants
-    import flext_infra.deps as _flext_infra_deps
-    from flext_infra.constants import FlextInfraConstants, FlextInfraConstants as c
-
-    deps = _flext_infra_deps
     import flext_infra.detectors as _flext_infra_detectors
+    from flext_infra.constants import FlextInfraConstants, FlextInfraConstants as c
     from flext_infra.deps import (
         FlextInfraCliDeps,
         FlextInfraDependencyDetectionAnalysis,
@@ -236,8 +262,6 @@ if _t.TYPE_CHECKING:
         FlextInfraDependencyPathSync,
         FlextInfraDependencyPathSyncRewrite,
         FlextInfraDepsConstants,
-        FlextInfraDepsModels,
-        FlextInfraDepsModelsToolConfig,
         FlextInfraExtraPathsManager,
         FlextInfraExtraPathsPyrefly,
         FlextInfraExtraPathsResolutionMixin,
@@ -245,15 +269,6 @@ if _t.TYPE_CHECKING:
         FlextInfraInternalSyncRepoMixin,
         FlextInfraPyprojectModernizer,
         FlextInfraRuntimeDevDependencyDetector,
-        MypyConfig,
-        MypyOverrideConfig,
-        PydanticMypyConfig,
-        PyreflyConfig,
-        PyrightConfig,
-        RuffConfig,
-        RuffFormatConfig,
-        RuffIsortConfig,
-        RuffLintConfig,
         detection,
         detection_analysis,
         detector,
@@ -295,7 +310,7 @@ if _t.TYPE_CHECKING:
     )
 
     detectors = _flext_infra_detectors
-    import flext_infra.gates as _flext_infra_gates
+    import flext_infra.models as _flext_infra_models
     from flext_infra.detectors import (
         DetectorContext,
         FlextInfraClassPlacementDetector,
@@ -337,19 +352,14 @@ if _t.TYPE_CHECKING:
         FlextInfraDocGenerator,
         FlextInfraDocsCli,
         FlextInfraDocsConstants,
-        FlextInfraDocsModels,
         FlextInfraDocValidator,
         auditor,
         builder,
         validator,
     )
-
-    gates = _flext_infra_gates
-    import flext_infra.models as _flext_infra_models
     from flext_infra.gates import (
         FlextInfraBanditGate,
         FlextInfraGate,
-        FlextInfraGatesModels,
         FlextInfraGoGate,
         FlextInfraMarkdownGate,
         FlextInfraMypyGate,
@@ -369,7 +379,6 @@ if _t.TYPE_CHECKING:
     from flext_infra.github import (
         FlextInfraCliGithub,
         FlextInfraGithubConstants,
-        FlextInfraGithubModels,
         FlextInfraGithubService,
         service,
     )
@@ -379,11 +388,8 @@ if _t.TYPE_CHECKING:
     from flext_infra.models import FlextInfraModels, FlextInfraModels as m
 
     protocols = _flext_infra_protocols
-    import flext_infra.refactor as _flext_infra_refactor
-    from flext_infra.protocols import FlextInfraProtocols, FlextInfraProtocols as p
-
-    refactor = _flext_infra_refactor
     import flext_infra.rules as _flext_infra_rules
+    from flext_infra.protocols import FlextInfraProtocols, FlextInfraProtocols as p
     from flext_infra.refactor import (
         CONTAINER_DICT_SEQ_ADAPTER,
         INFRA_MAPPING_ADAPTER,
@@ -393,10 +399,8 @@ if _t.TYPE_CHECKING:
         FlextInfraCliRefactor,
         FlextInfraGenericTransformerRule,
         FlextInfraNamespaceEnforcer,
-        FlextInfraNamespaceEnforcerModels,
         FlextInfraNamespaceEnforcerPhasesMixin,
         FlextInfraProjectClassifier,
-        FlextInfraRefactorAstGrepModels,
         FlextInfraRefactorCensus,
         FlextInfraRefactorClassNestingAnalyzer,
         FlextInfraRefactorClassReconstructorRule,
@@ -406,9 +410,6 @@ if _t.TYPE_CHECKING:
         FlextInfraRefactorLegacyRemovalTextRule,
         FlextInfraRefactorLooseClassScanner,
         FlextInfraRefactorMigrateToClassMRO,
-        FlextInfraRefactorModels,
-        FlextInfraRefactorModelsCensus,
-        FlextInfraRefactorModelsViolations,
         FlextInfraRefactorMROClassMigrationTextRule,
         FlextInfraRefactorMROImportRewriter,
         FlextInfraRefactorMROMigrationValidator,
@@ -455,7 +456,6 @@ if _t.TYPE_CHECKING:
     from flext_infra.release import (
         FlextInfraCliRelease,
         FlextInfraReleaseConstants,
-        FlextInfraReleaseModels,
         FlextInfraReleaseOrchestrator,
         FlextInfraReleaseOrchestratorPhases,
         orchestrator,
@@ -545,16 +545,12 @@ if _t.TYPE_CHECKING:
     from flext_infra.typings import FlextInfraTypes, FlextInfraTypes as t
 
     utilities = _flext_infra_utilities
-    import flext_infra.validate as _flext_infra_validate
+    import flext_infra.workspace.maintenance as _flext_infra_workspace_maintenance
     from flext_infra.utilities import FlextInfraUtilities, FlextInfraUtilities as u
-
-    validate = _flext_infra_validate
-    import flext_infra.workspace as _flext_infra_workspace
     from flext_infra.validate import (
         FlextInfraBaseMkValidator,
         FlextInfraCliValidate,
         FlextInfraCoreConstants,
-        FlextInfraCoreModels,
         FlextInfraInventoryService,
         FlextInfraNamespaceRules,
         FlextInfraNamespaceValidator,
@@ -571,9 +567,6 @@ if _t.TYPE_CHECKING:
         skill_validator,
         stub_chain,
     )
-
-    workspace = _flext_infra_workspace
-    import flext_infra.workspace.maintenance as _flext_infra_workspace_maintenance
     from flext_infra.workspace import (
         FlextInfraCliWorkspace,
         FlextInfraOrchestratorService,
@@ -584,7 +577,6 @@ if _t.TYPE_CHECKING:
         FlextInfraWorkspaceDetector,
         FlextInfraWorkspaceMakefileGenerator,
         FlextInfraWorkspaceMode,
-        FlextInfraWorkspaceModels,
         migrator,
         project_makefile,
         sync,
@@ -651,24 +643,18 @@ _LAZY_IMPORTS = merge_lazy_imports(
         "_utilities": "flext_infra._utilities",
         "apply_option_json_schema_extra": "flext_infra.base",
         "base": "flext_infra.base",
-        "basemk": "flext_infra.basemk",
         "c": ("flext_infra.constants", "FlextInfraConstants"),
-        "check": "flext_infra.check",
         "cli": "flext_infra.cli",
-        "codegen": "flext_infra.codegen",
         "constants": "flext_infra.constants",
         "d": ("flext_core.decorators", "FlextDecorators"),
-        "deps": "flext_infra.deps",
         "detectors": "flext_infra.detectors",
         "e": ("flext_core.exceptions", "FlextExceptions"),
-        "gates": "flext_infra.gates",
         "h": ("flext_core.handlers", "FlextHandlers"),
         "m": ("flext_infra.models", "FlextInfraModels"),
         "models": "flext_infra.models",
         "p": ("flext_infra.protocols", "FlextInfraProtocols"),
         "protocols": "flext_infra.protocols",
         "r": ("flext_core.result", "FlextResult"),
-        "refactor": "flext_infra.refactor",
         "rules": "flext_infra.rules",
         "s": ("flext_infra.base", "FlextInfraServiceBase"),
         "t": ("flext_infra.typings", "FlextInfraTypes"),
@@ -676,8 +662,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
         "typings": "flext_infra.typings",
         "u": ("flext_infra.utilities", "FlextInfraUtilities"),
         "utilities": "flext_infra.utilities",
-        "validate": "flext_infra.validate",
-        "workspace": "flext_infra.workspace",
         "x": ("flext_core.mixins", "FlextMixins"),
     },
 )
@@ -826,7 +810,6 @@ __all__ = [
     "FlextInfraPythonVersionEnforcer",
     "FlextInfraRedundantCastRemover",
     "FlextInfraRefactorAliasRemover",
-    "FlextInfraRefactorAstGrepModels",
     "FlextInfraRefactorCensus",
     "FlextInfraRefactorClassNestingAnalyzer",
     "FlextInfraRefactorClassNestingTransformer",
@@ -837,6 +820,7 @@ __all__ = [
     "FlextInfraRefactorEngine",
     "FlextInfraRefactorEngineHelpersMixin",
     "FlextInfraRefactorEnsureFutureAnnotationsRule",
+    "FlextInfraRefactorGrepModels",
     "FlextInfraRefactorImportBypassRemover",
     "FlextInfraRefactorImportModernizer",
     "FlextInfraRefactorImportModernizerRule",
@@ -1018,6 +1002,7 @@ __all__ = [
     "cli_subcommand",
     "codegen",
     "codegen_constants",
+    "codegen_deduplication",
     "codegen_execution",
     "codegen_import_cycles",
     "codegen_lazy",
@@ -1032,6 +1017,9 @@ __all__ = [
     "dependency_analyzer_base",
     "deprecated_remover",
     "deps",
+    "deps_tool_config",
+    "deps_tool_config_linters",
+    "deps_tool_config_type_checkers",
     "detection",
     "detection_analysis",
     "detector",
@@ -1133,6 +1121,10 @@ __all__ = [
     "r",
     "redundant_cast_remover",
     "refactor",
+    "refactor_ast_grep",
+    "refactor_census",
+    "refactor_namespace_enforcer",
+    "refactor_violations",
     "release",
     "reporting",
     "rope",

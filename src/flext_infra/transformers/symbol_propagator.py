@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from typing import override
 
-from flext_infra import FlextInfraRopeTransformer, t, u
+from flext_infra import FlextInfraRopeTransformer, t
 
 
 class FlextInfraRefactorSymbolPropagator(FlextInfraRopeTransformer):
@@ -16,6 +16,8 @@ class FlextInfraRefactorSymbolPropagator(FlextInfraRopeTransformer):
     2. Import symbol renames (``import OldName`` -> ``import NewName``)
     3. Local reference propagation (bare ``OldName`` -> ``NewName`` in body)
     """
+
+    _description = "symbol propagator"
 
     def __init__(
         self,
@@ -32,18 +34,14 @@ class FlextInfraRefactorSymbolPropagator(FlextInfraRopeTransformer):
         self._import_symbol_renames = import_symbol_renames
 
     @override
-    def transform(
-        self,
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
-    ) -> t.Infra.TransformResult:
-        """Apply module/symbol renames. Returns (new_source, changes)."""
-        source = u.Infra.read_source(resource)
-
+    def apply_to_source(self, source: str) -> t.Infra.TransformResult:
+        """Apply module/symbol renames to in-memory source."""
+        self.changes.clear()
+        updated = source
         # Phase 1: Rename module paths in from-imports
         for old_module, new_module in self._module_renames.items():
-            source = self._rename_module_in_imports(
-                source,
+            updated = self._rename_module_in_imports(
+                updated,
                 old_module=old_module,
                 new_module=new_module,
             )
@@ -51,8 +49,8 @@ class FlextInfraRefactorSymbolPropagator(FlextInfraRopeTransformer):
         # Phase 2: Rename imported symbols in target modules
         local_renames: t.MutableStrMapping = {}
         for old_name, new_name in self._import_symbol_renames.items():
-            source, renamed = self._rename_import_symbol(
-                source,
+            updated, renamed = self._rename_import_symbol(
+                updated,
                 old_name=old_name,
                 new_name=new_name,
             )
@@ -61,20 +59,12 @@ class FlextInfraRefactorSymbolPropagator(FlextInfraRopeTransformer):
 
         # Phase 3: Propagate local reference renames
         for old_name, new_name in local_renames.items():
-            source = self._propagate_local_rename(
-                source,
+            updated = self._propagate_local_rename(
+                updated,
                 old_name=old_name,
                 new_name=new_name,
             )
-
-        if source != u.Infra.read_source(resource) and self.changes:
-            u.Infra.write_source(
-                rope_project,
-                resource,
-                source,
-                description="symbol propagator",
-            )
-        return source, list(self.changes)
+        return updated, list(self.changes)
 
     def _rename_module_in_imports(
         self,

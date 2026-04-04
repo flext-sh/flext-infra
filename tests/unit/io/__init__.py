@@ -13,27 +13,8 @@ if _t.TYPE_CHECKING:
     import tests.unit.io.test_infra_json_io as _tests_unit_io_test_infra_json_io
 
     test_infra_json_io = _tests_unit_io_test_infra_json_io
-    import tests.unit.io.test_infra_output_edge_cases as _tests_unit_io_test_infra_output_edge_cases
-    from tests.unit.io.test_infra_json_io import SampleModel, TestFlextInfraJsonService
-
-    test_infra_output_edge_cases = _tests_unit_io_test_infra_output_edge_cases
-    import tests.unit.io.test_infra_output_formatting as _tests_unit_io_test_infra_output_formatting
-    from tests.unit.io.test_infra_output_edge_cases import (
-        TestInfraOutputEdgeCases,
-        TestInfraOutputNoColor,
-        TestMroFacadeMethods,
-    )
-
-    test_infra_output_formatting = _tests_unit_io_test_infra_output_formatting
     import tests.unit.io.test_infra_terminal_detection as _tests_unit_io_test_infra_terminal_detection
-    from tests.unit.io.test_infra_output_formatting import (
-        ANSI_RE,
-        TestInfraOutputHeader,
-        TestInfraOutputMessages,
-        TestInfraOutputProgress,
-        TestInfraOutputStatus,
-        TestInfraOutputSummary,
-    )
+    from tests.unit.io.test_infra_json_io import SampleModel, TestFlextInfraJsonService
 
     test_infra_terminal_detection = _tests_unit_io_test_infra_terminal_detection
     from tests.unit.io.test_infra_terminal_detection import (
@@ -48,17 +29,8 @@ if _t.TYPE_CHECKING:
     from flext_core.result import FlextResult as r
     from flext_core.service import FlextService as s
 _LAZY_IMPORTS = {
-    "ANSI_RE": "tests.unit.io.test_infra_output_formatting",
     "SampleModel": "tests.unit.io.test_infra_json_io",
     "TestFlextInfraJsonService": "tests.unit.io.test_infra_json_io",
-    "TestInfraOutputEdgeCases": "tests.unit.io.test_infra_output_edge_cases",
-    "TestInfraOutputHeader": "tests.unit.io.test_infra_output_formatting",
-    "TestInfraOutputMessages": "tests.unit.io.test_infra_output_formatting",
-    "TestInfraOutputNoColor": "tests.unit.io.test_infra_output_edge_cases",
-    "TestInfraOutputProgress": "tests.unit.io.test_infra_output_formatting",
-    "TestInfraOutputStatus": "tests.unit.io.test_infra_output_formatting",
-    "TestInfraOutputSummary": "tests.unit.io.test_infra_output_formatting",
-    "TestMroFacadeMethods": "tests.unit.io.test_infra_output_edge_cases",
     "TestShouldUseColor": "tests.unit.io.test_infra_terminal_detection",
     "TestShouldUseUnicode": "tests.unit.io.test_infra_terminal_detection",
     "d": ("flext_core.decorators", "FlextDecorators"),
@@ -67,24 +39,13 @@ _LAZY_IMPORTS = {
     "r": ("flext_core.result", "FlextResult"),
     "s": ("flext_core.service", "FlextService"),
     "test_infra_json_io": "tests.unit.io.test_infra_json_io",
-    "test_infra_output_edge_cases": "tests.unit.io.test_infra_output_edge_cases",
-    "test_infra_output_formatting": "tests.unit.io.test_infra_output_formatting",
     "test_infra_terminal_detection": "tests.unit.io.test_infra_terminal_detection",
     "x": ("flext_core.mixins", "FlextMixins"),
 }
 
 __all__ = [
-    "ANSI_RE",
     "SampleModel",
     "TestFlextInfraJsonService",
-    "TestInfraOutputEdgeCases",
-    "TestInfraOutputHeader",
-    "TestInfraOutputMessages",
-    "TestInfraOutputNoColor",
-    "TestInfraOutputProgress",
-    "TestInfraOutputStatus",
-    "TestInfraOutputSummary",
-    "TestMroFacadeMethods",
     "TestShouldUseColor",
     "TestShouldUseUnicode",
     "d",
@@ -93,8 +54,6 @@ __all__ = [
     "r",
     "s",
     "test_infra_json_io",
-    "test_infra_output_edge_cases",
-    "test_infra_output_formatting",
     "test_infra_terminal_detection",
     "x",
 ]

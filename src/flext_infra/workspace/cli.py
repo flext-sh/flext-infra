@@ -18,8 +18,6 @@ class FlextInfraCliWorkspace:
 
     def register_workspace(self, app: t.Cli.TyperApp) -> None:
         """Register workspace commands on the given Typer app."""
-        project_migrator = FlextInfraProjectMigrator()
-        sync_service = FlextInfraSyncService()
         cli_service.register_result_routes(
             app,
             [
@@ -33,8 +31,8 @@ class FlextInfraCliWorkspace:
                 m.Cli.ResultCommandRoute(
                     name="sync",
                     help_text="Sync base.mk to project root",
-                    model_cls=m.Infra.WorkspaceSyncInput,
-                    handler=sync_service.execute_command,
+                    model_cls=FlextInfraSyncService,
+                    handler=FlextInfraSyncService.execute_command,
                     failure_message="sync failed",
                 ),
                 m.Cli.ResultCommandRoute(
@@ -47,8 +45,8 @@ class FlextInfraCliWorkspace:
                 m.Cli.ResultCommandRoute(
                     name="migrate",
                     help_text="Migrate workspace projects to flext_infra tooling",
-                    model_cls=m.Infra.WorkspaceMigrateInput,
-                    handler=project_migrator.execute_command,
+                    model_cls=FlextInfraProjectMigrator,
+                    handler=FlextInfraProjectMigrator.execute_command,
                     failure_message="migration failed",
                 ),
             ],

@@ -44,6 +44,15 @@ class TestMigratorWriteFailures:
     ) -> None:
         _root, proj = _setup_basic(tmp_path)
         migrator = _build_migrator(proj, "base", workspace_root=tmp_path, dry_run=False)
+        original_write = Path.write_text
+
+        def _selective_write(self: Path, data: str, **kwargs: str | None) -> int:
+            if self.name == ".gitignore":
+                msg = "Write failed"
+                raise OSError(msg)
+            return original_write(self, data, **kwargs)
+
+        monkeypatch.setattr(Path, "write_text", _selective_write)
         result = migrator.execute()
         migration = tm.ok(result)
         tm.that(

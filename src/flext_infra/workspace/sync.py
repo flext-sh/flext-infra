@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import contextlib
 from pathlib import Path
 from typing import Annotated, override
 
@@ -28,11 +29,13 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
 
     generator: Annotated[
         FlextInfraBaseMkGenerator | None,
-        Field(default=None, exclude=True),
+        Field(
+            default=None, exclude=True, description="Optional custom generator service"
+        ),
     ] = None
     canonical_root: Annotated[
         Path | None,
-        Field(default=None, exclude=True),
+        Field(default=None, description="Optional canonical root path"),
     ] = None
 
     def _get_generator(self) -> FlextInfraBaseMkGenerator:
@@ -45,14 +48,16 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
     def execute(self) -> r[m.Infra.SyncResult]:
         """Execute the workspace sync flow."""
         import fcntl
-        
+
         if not self.workspace_root:
             return r[m.Infra.SyncResult].fail("workspace_root is required")
-            
+
         resolved = self.workspace_root.resolve()
         if not resolved.exists():
-            return r[m.Infra.SyncResult].fail(f"workspace_root '{resolved}' does not exist")
-            
+            return r[m.Infra.SyncResult].fail(
+                f"workspace_root '{resolved}' does not exist"
+            )
+
         lock_file = resolved / ".flext-sync.lock"
         try:
             with lock_file.open("w", encoding=c.Infra.Encoding.DEFAULT) as handle:
@@ -66,10 +71,8 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
                 except OSError as exc:
                     return r[m.Infra.SyncResult].fail(f"lock acquisition failed: {exc}")
                 finally:
-                    try:
+                    with contextlib.suppress(OSError):
                         fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
-                    except OSError:
-                        pass
         except OSError as exc:
             return r[m.Infra.SyncResult].fail(f"Could not open lock file: {exc}")
 
@@ -258,12 +261,10 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
         args = parser.parse_args()
         cli = u.Infra.resolve(args)
         service = FlextInfraSyncService(
+            workspace=cli.workspace,
             canonical_root=getattr(args, "canonical_root", None),
         )
-        result = service.sync(
-            workspace_root=cli.workspace,
-            canonical_root=getattr(args, "canonical_root", None),
-        )
+        result = service.execute()
         if result.is_success:
             return 0
         u.Infra.error(result.error or "sync failed")

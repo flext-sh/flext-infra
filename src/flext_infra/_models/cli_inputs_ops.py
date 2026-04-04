@@ -11,7 +11,7 @@ from typing import Annotated
 
 from pydantic import Field
 
-from flext_infra import FlextInfraModelsCliInputsCodegen, c
+from flext_infra import FlextInfraModelsCliInputsCodegen, c, t
 
 
 class FlextInfraModelsCliInputsOps:
@@ -90,12 +90,15 @@ class FlextInfraModelsCliInputsOps:
 
     class GithubPrWorkspaceInput(FlextInfraModelsCliInputsCodegen.CliInputBase):
         project: Annotated[
-            list[str],
+            t.StrSequence,
             Field(
                 default_factory=list,
                 description="Project to process; repeat --project NAME as needed",
             ),
-        ] = Field(default_factory=list)
+        ] = Field(
+            default_factory=list,
+            description="Project to process; repeat --project NAME as needed",
+        )
         include_root: Annotated[
             bool,
             Field(default=False, description="Include root project"),
@@ -288,7 +291,7 @@ class FlextInfraModelsCliInputsOps:
             Field(default=1, description="Create release branches (1=yes, 0=no)"),
         ] = 1
         projects: Annotated[
-            list[str] | None,
+            t.StrSequence | None,
             Field(default=None, description="Project names to release"),
         ] = None
 
@@ -361,11 +364,11 @@ class FlextInfraModelsCliInputsOps:
 
         pattern: Annotated[str, Field(..., description="Regex pattern")]
         include: Annotated[
-            list[str] | None,
+            t.StrSequence | None,
             Field(default=None, description="Include glob"),
         ] = None
         exclude: Annotated[
-            list[str] | None,
+            t.StrSequence | None,
             Field(default=None, description="Exclude glob"),
         ] = None
         match: Annotated[
@@ -379,12 +382,12 @@ class FlextInfraModelsCliInputsOps:
         @property
         def include_patterns(self) -> list[str]:
             """Return include globs as a concrete list."""
-            return self.include or []
+            return list(self.include or ())
 
         @property
         def exclude_patterns(self) -> list[str]:
             """Return exclude globs as a concrete list."""
-            return self.exclude or []
+            return list(self.exclude or ())
 
     class ValidateSkillValidateInput(FlextInfraModelsCliInputsCodegen.CliInputBase):
         """CLI input for skill-validate."""
@@ -402,7 +405,7 @@ class FlextInfraModelsCliInputsOps:
         """CLI input for stub-validate."""
 
         project: Annotated[
-            list[str] | None,
+            t.StrSequence | None,
             Field(default=None, description="Project to validate"),
         ] = None
         all_projects: Annotated[
@@ -449,12 +452,15 @@ class FlextInfraModelsCliInputsOps:
             Field(default=False, description="Stop on first failure"),
         ] = False
         make_arg: Annotated[
-            list[str],
+            t.StrSequence,
             Field(
                 default_factory=list,
                 description="Additional make arguments; repeat --make-arg KEY=VALUE",
             ),
-        ] = Field(default_factory=list)
+        ] = Field(
+            default_factory=list,
+            description="Additional make arguments; repeat --make-arg KEY=VALUE",
+        )
 
         @property
         def project_names(self) -> list[str]:

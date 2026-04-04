@@ -13,15 +13,11 @@ if _t.TYPE_CHECKING:
     import flext_infra.validate._constants as _flext_infra_validate__constants
 
     _constants = _flext_infra_validate__constants
-    import flext_infra.validate._models as _flext_infra_validate__models
+    import flext_infra.validate.basemk_validator as _flext_infra_validate_basemk_validator
     from flext_infra.validate._constants import (
         FlextInfraCoreConstants,
         FlextInfraSharedInfraConstants,
     )
-
-    _models = _flext_infra_validate__models
-    import flext_infra.validate.basemk_validator as _flext_infra_validate_basemk_validator
-    from flext_infra.validate._models import FlextInfraCoreModels
 
     basemk_validator = _flext_infra_validate_basemk_validator
     import flext_infra.validate.cli as _flext_infra_validate_cli
@@ -67,7 +63,6 @@ _LAZY_IMPORTS = {
     "FlextInfraBaseMkValidator": "flext_infra.validate.basemk_validator",
     "FlextInfraCliValidate": "flext_infra.validate.cli",
     "FlextInfraCoreConstants": "flext_infra.validate._constants",
-    "FlextInfraCoreModels": "flext_infra.validate._models",
     "FlextInfraInventoryService": "flext_infra.validate.inventory",
     "FlextInfraNamespaceRules": "flext_infra.validate.namespace_rules",
     "FlextInfraNamespaceValidator": "flext_infra.validate.namespace_validator",
@@ -77,7 +72,6 @@ _LAZY_IMPORTS = {
     "FlextInfraStubSupplyChain": "flext_infra.validate.stub_chain",
     "FlextInfraTextPatternScanner": "flext_infra.validate.scanner",
     "_constants": "flext_infra.validate._constants",
-    "_models": "flext_infra.validate._models",
     "basemk_validator": "flext_infra.validate.basemk_validator",
     "cli": "flext_infra.validate.cli",
     "d": ("flext_core.decorators", "FlextDecorators"),
@@ -99,7 +93,6 @@ __all__ = [
     "FlextInfraBaseMkValidator",
     "FlextInfraCliValidate",
     "FlextInfraCoreConstants",
-    "FlextInfraCoreModels",
     "FlextInfraInventoryService",
     "FlextInfraNamespaceRules",
     "FlextInfraNamespaceValidator",
@@ -109,7 +102,6 @@ __all__ = [
     "FlextInfraStubSupplyChain",
     "FlextInfraTextPatternScanner",
     "_constants",
-    "_models",
     "basemk_validator",
     "cli",
     "d",

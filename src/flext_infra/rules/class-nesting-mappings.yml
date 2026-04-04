@@ -29,10 +29,10 @@ class_nesting:
     target_name: TimeoutEnforcer
     confidence: high
     reason: top_level_class_in_private_directory
-  - loose_name: FlextModelFoundation
+  - loose_name: FlextModelsBase
     current_file: flext-core/src/flext_core/_models/base.py
     target_namespace: FlextModels
-    target_name: FlextModelFoundation
+    target_name: FlextModelsBase
     confidence: high
     reason: top_level_class_in_private_directory
   - loose_name: _ComparableConfigMap
@@ -55,10 +55,10 @@ class_nesting:
     reason: top_level_class_in_private_directory
   - loose_name: Metadata
     current_file: flext-core/src/flext_core/_models/base.py
-    target_namespace: FlextModelFoundation
+    target_namespace: FlextModelsBase
     target_name: Metadata
     confidence: high
-    reason: nested_class_inside_FlextModelFoundation
+    reason: nested_class_inside_FlextModelsBase
   - loose_name: _Predicate
     current_file: flext-core/src/flext_core/_utilities/collection.py
     target_namespace: FlextUtilities

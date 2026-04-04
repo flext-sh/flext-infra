@@ -214,6 +214,7 @@ if _t.TYPE_CHECKING:
         test_migrator_apply_updates_project_files,
         test_migrator_discovery_failure,
         test_migrator_dry_run_reports_changes_without_writes,
+        test_migrator_execute_returns_failure,
         test_migrator_flext_core_dry_run,
         test_migrator_flext_core_project_skipped,
         test_migrator_gitignore_already_normalized_dry_run,
@@ -821,22 +822,11 @@ if _t.TYPE_CHECKING:
     io = _tests_unit_io
     import tests.unit.release as _tests_unit_release
     from tests.unit.io import (
-        ANSI_RE,
         SampleModel,
         TestFlextInfraJsonService,
-        TestInfraOutputEdgeCases,
-        TestInfraOutputHeader,
-        TestInfraOutputMessages,
-        TestInfraOutputNoColor,
-        TestInfraOutputProgress,
-        TestInfraOutputStatus,
-        TestInfraOutputSummary,
-        TestMroFacadeMethods,
         TestShouldUseColor,
         TestShouldUseUnicode,
         test_infra_json_io,
-        test_infra_output_edge_cases,
-        test_infra_output_formatting,
         test_infra_terminal_detection,
     )
     from tests.unit.refactor import (
@@ -1119,7 +1109,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
 )
 
 __all__ = [
-    "ANSI_RE",
     "FAMILY_FILE_MAP",
     "FAMILY_SUFFIX_MAP",
     "BrokenScenario",
@@ -1316,13 +1305,6 @@ __all__ = [
     "TestInferPackage",
     "TestInfraContainerFunctions",
     "TestInfraMroPattern",
-    "TestInfraOutputEdgeCases",
-    "TestInfraOutputHeader",
-    "TestInfraOutputMessages",
-    "TestInfraOutputNoColor",
-    "TestInfraOutputProgress",
-    "TestInfraOutputStatus",
-    "TestInfraOutputSummary",
     "TestInfraServiceRetrieval",
     "TestInjectCommentsPhase",
     "TestIsInternalPathDep",
@@ -1355,7 +1337,6 @@ __all__ = [
     "TestModernizerRunAndMain",
     "TestModernizerUncoveredLines",
     "TestModuleAndTypingsFlow",
-    "TestMroFacadeMethods",
     "TestMypyEmptyLinesInOutput",
     "TestNestedClassPropagationRopeMigration",
     "TestOrchestratorBasic",
@@ -1765,8 +1746,6 @@ __all__ = [
     "test_infra_maintenance_init",
     "test_infra_maintenance_main",
     "test_infra_maintenance_python_version",
-    "test_infra_output_edge_cases",
-    "test_infra_output_formatting",
     "test_infra_paths",
     "test_infra_patterns_core",
     "test_infra_patterns_extra",
@@ -1876,6 +1855,7 @@ __all__ = [
     "test_migrator_apply_updates_project_files",
     "test_migrator_discovery_failure",
     "test_migrator_dry_run_reports_changes_without_writes",
+    "test_migrator_execute_returns_failure",
     "test_migrator_flext_core_dry_run",
     "test_migrator_flext_core_project_skipped",
     "test_migrator_gitignore_already_normalized_dry_run",

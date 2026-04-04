@@ -81,7 +81,7 @@ class RuffLintConfig(m.ArbitraryTypesModel):
         t.StrSequence,
         Field(description="Ruff lint rule ignore list."),
     ] = Field(default_factory=list)
-    isort: RuffIsortConfig
+    isort: RuffIsortConfig = Field(description="Ruff isort configuration")
     per_file_ignores: Annotated[
         Mapping[str, t.StrSequence],
         Field(
@@ -122,8 +122,8 @@ class RuffConfig(m.ArbitraryTypesModel):
         str,
         Field(alias="target-version", description="Python target version for ruff."),
     ]
-    format: RuffFormatConfig
-    lint: RuffLintConfig
+    format: RuffFormatConfig = Field(description="Ruff format configuration")
+    lint: RuffLintConfig = Field(description="Ruff lint configuration")
 
 
 class MypyOverrideConfig(m.ArbitraryTypesModel):

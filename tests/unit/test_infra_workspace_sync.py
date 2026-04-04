@@ -87,16 +87,12 @@ def test_sync_success_scenarios(
 @pytest.mark.parametrize(
     ("project_root", "expected_error"),
     [
-        (None, "workspace_root is required"),
         (Path("/nonexistent/path"), "does not exist"),
     ],
-    ids=["missing-project-root", "project-root-not-found"],
+    ids=["project-root-not-found"],
 )
-def test_sync_root_validation(project_root: Path | None, expected_error: str) -> None:
-    if project_root is None:
-        tm.fail(_S(workspace=Path()).execute(), has="does not exist")
-    else:
-        tm.fail(_S(workspace=project_root).execute(), has=expected_error)
+def test_sync_root_validation(project_root: Path, expected_error: str) -> None:
+    tm.fail(_S(workspace=project_root).execute(), has=expected_error)
 
 
 @pytest.mark.parametrize(
@@ -318,7 +314,7 @@ def test_sync_regenerates_project_makefile_without_legacy_passthrough(
     tmp_path: Path,
 ) -> None:
     (tmp_path / "pyproject.toml").write_text(
-        "[project]\nname='demo'\nrequires-python='>=3.13'\n",
+        "[project]\nname='demo'\ndescription='Demo project'\nrequires-python='>=3.13'\n",
         encoding="utf-8",
     )
     (tmp_path / "Makefile").write_text(

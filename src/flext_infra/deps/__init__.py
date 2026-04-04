@@ -27,37 +27,8 @@ if _t.TYPE_CHECKING:
     )
 
     _internal_sync_repo = _flext_infra_deps__internal_sync_repo
-    import flext_infra.deps._models as _flext_infra_deps__models
-    from flext_infra.deps._internal_sync_repo import FlextInfraInternalSyncRepoMixin
-
-    _models = _flext_infra_deps__models
-    import flext_infra.deps._models_tool_config as _flext_infra_deps__models_tool_config
-    from flext_infra.deps._models import FlextInfraDepsModels
-
-    _models_tool_config = _flext_infra_deps__models_tool_config
-    import flext_infra.deps._models_tool_config_linters as _flext_infra_deps__models_tool_config_linters
-    from flext_infra.deps._models_tool_config import FlextInfraDepsModelsToolConfig
-
-    _models_tool_config_linters = _flext_infra_deps__models_tool_config_linters
-    import flext_infra.deps._models_tool_config_type_checkers as _flext_infra_deps__models_tool_config_type_checkers
-    from flext_infra.deps._models_tool_config_linters import (
-        MypyConfig,
-        MypyOverrideConfig,
-        PydanticMypyConfig,
-        RuffConfig,
-        RuffFormatConfig,
-        RuffIsortConfig,
-        RuffLintConfig,
-    )
-
-    _models_tool_config_type_checkers = (
-        _flext_infra_deps__models_tool_config_type_checkers
-    )
     import flext_infra.deps._phases as _flext_infra_deps__phases
-    from flext_infra.deps._models_tool_config_type_checkers import (
-        PyreflyConfig,
-        PyrightConfig,
-    )
+    from flext_infra.deps._internal_sync_repo import FlextInfraInternalSyncRepoMixin
 
     _phases = _flext_infra_deps__phases
     import flext_infra.deps.cli as _flext_infra_deps_cli
@@ -151,8 +122,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
         "FlextInfraDependencyPathSync": "flext_infra.deps.path_sync",
         "FlextInfraDependencyPathSyncRewrite": "flext_infra.deps.path_sync_rewrite",
         "FlextInfraDepsConstants": "flext_infra.deps._constants",
-        "FlextInfraDepsModels": "flext_infra.deps._models",
-        "FlextInfraDepsModelsToolConfig": "flext_infra.deps._models_tool_config",
         "FlextInfraExtraPathsManager": "flext_infra.deps.extra_paths",
         "FlextInfraExtraPathsPyrefly": "flext_infra.deps.extra_paths_pyrefly",
         "FlextInfraExtraPathsResolutionMixin": "flext_infra.deps._extra_paths_resolution",
@@ -160,23 +129,10 @@ _LAZY_IMPORTS = merge_lazy_imports(
         "FlextInfraInternalSyncRepoMixin": "flext_infra.deps._internal_sync_repo",
         "FlextInfraPyprojectModernizer": "flext_infra.deps.modernizer",
         "FlextInfraRuntimeDevDependencyDetector": "flext_infra.deps.detector",
-        "MypyConfig": "flext_infra.deps._models_tool_config_linters",
-        "MypyOverrideConfig": "flext_infra.deps._models_tool_config_linters",
-        "PydanticMypyConfig": "flext_infra.deps._models_tool_config_linters",
-        "PyreflyConfig": "flext_infra.deps._models_tool_config_type_checkers",
-        "PyrightConfig": "flext_infra.deps._models_tool_config_type_checkers",
-        "RuffConfig": "flext_infra.deps._models_tool_config_linters",
-        "RuffFormatConfig": "flext_infra.deps._models_tool_config_linters",
-        "RuffIsortConfig": "flext_infra.deps._models_tool_config_linters",
-        "RuffLintConfig": "flext_infra.deps._models_tool_config_linters",
         "_constants": "flext_infra.deps._constants",
         "_detector_runtime": "flext_infra.deps._detector_runtime",
         "_extra_paths_resolution": "flext_infra.deps._extra_paths_resolution",
         "_internal_sync_repo": "flext_infra.deps._internal_sync_repo",
-        "_models": "flext_infra.deps._models",
-        "_models_tool_config": "flext_infra.deps._models_tool_config",
-        "_models_tool_config_linters": "flext_infra.deps._models_tool_config_linters",
-        "_models_tool_config_type_checkers": "flext_infra.deps._models_tool_config_type_checkers",
         "_phases": "flext_infra.deps._phases",
         "cli": "flext_infra.deps.cli",
         "d": ("flext_core.decorators", "FlextDecorators"),
@@ -209,8 +165,6 @@ __all__ = [
     "FlextInfraDependencyPathSync",
     "FlextInfraDependencyPathSyncRewrite",
     "FlextInfraDepsConstants",
-    "FlextInfraDepsModels",
-    "FlextInfraDepsModelsToolConfig",
     "FlextInfraEnsureCoverageConfigPhase",
     "FlextInfraEnsureExtraPathsPhase",
     "FlextInfraEnsureFormattingToolingPhase",
@@ -230,23 +184,10 @@ __all__ = [
     "FlextInfraInternalSyncRepoMixin",
     "FlextInfraPyprojectModernizer",
     "FlextInfraRuntimeDevDependencyDetector",
-    "MypyConfig",
-    "MypyOverrideConfig",
-    "PydanticMypyConfig",
-    "PyreflyConfig",
-    "PyrightConfig",
-    "RuffConfig",
-    "RuffFormatConfig",
-    "RuffIsortConfig",
-    "RuffLintConfig",
     "_constants",
     "_detector_runtime",
     "_extra_paths_resolution",
     "_internal_sync_repo",
-    "_models",
-    "_models_tool_config",
-    "_models_tool_config_linters",
-    "_models_tool_config_type_checkers",
     "_phases",
     "cli",
     "consolidate_groups",

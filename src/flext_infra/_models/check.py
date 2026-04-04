@@ -45,44 +45,32 @@ class FlextInfraCheckModels:
         gate: Annotated[str, Field(description="Gate name")]
         project: Annotated[str, Field(description="Project name")]
         passed: Annotated[bool, Field(description="Gate execution status")]
-        errors: Annotated[
-            t.StrSequence,
-            Field(
-                description="Gate error messages",
-            ),
-        ] = Field(default_factory=lambda: ())
-        duration: Annotated[
-            float,
-            Field(default=0.0, description="Duration in seconds"),
-        ]
+        errors: t.StrSequence = Field(
+            default_factory=tuple,
+            description="Gate error messages",
+        )
+        duration: float = Field(default=0.0, description="Duration in seconds")
 
     class GateExecution(FlextModels.ArbitraryTypesModel):
         """Execution result for a single quality gate."""
 
-        result: Annotated[
-            FlextInfraCheckModels.GateResult,
-            Field(
-                description="Gate result model",
-            ),
-        ]
-        issues: Annotated[
-            Sequence[FlextInfraCheckModels.Issue],
-            Field(
-                description="Detected issues",
-            ),
-        ] = Field(default_factory=lambda: ())
-        raw_output: Annotated[str, Field(default="", description="Raw tool output")]
+        result: FlextInfraCheckModels.GateResult = Field(
+            description="Gate result model",
+        )
+        issues: Sequence[FlextInfraCheckModels.Issue] = Field(
+            default_factory=tuple,
+            description="Detected issues",
+        )
+        raw_output: str = Field(default="", description="Raw tool output")
 
     class ProjectResult(FlextModels.ArbitraryTypesModel):
         """Aggregated gate results for a single project."""
 
         project: Annotated[str, Field(description="Project name")]
-        gates: Annotated[
-            MutableMapping[str, FlextInfraCheckModels.GateExecution],
-            Field(
-                description="Gate name to execution mapping",
-            ),
-        ] = Field(default_factory=dict)
+        gates: MutableMapping[str, FlextInfraCheckModels.GateExecution] = Field(
+            default_factory=dict,
+            description="Gate name to execution mapping",
+        )
 
         @computed_field
         @property
@@ -120,13 +108,10 @@ class FlextInfraCheckModels:
         uri: Annotated[str, Field(description="Artifact URI")]
         start_line: Annotated[int, Field(description="Start line (1-based)")]
         start_column: Annotated[int, Field(description="Start column (1-based)")]
-        uri_base_id: Annotated[
-            str,
-            Field(
-                default="%SRCROOT%",
-                description="URI base identifier",
-            ),
-        ] = "%SRCROOT%"
+        uri_base_id: str = Field(
+            default="%SRCROOT%",
+            description="URI base identifier",
+        )
 
         @model_serializer(mode="plain")
         def _serialize(self) -> t.Cli.JsonMapping:
@@ -149,12 +134,9 @@ class FlextInfraCheckModels:
         rule_id: Annotated[str, Field(description="Rule identifier")]
         level: Annotated[str, Field(description="Result level (error/warning)")]
         message: Annotated[str, Field(description="Result message")]
-        locations: Annotated[
-            Sequence[FlextInfraCheckModels.SarifLocation],
-            Field(
-                description="Result locations",
-            ),
-        ]
+        locations: Sequence[FlextInfraCheckModels.SarifLocation] = Field(
+            description="Result locations",
+        )
 
         @model_serializer(mode="plain")
         def _serialize(self) -> t.Cli.JsonMapping:
@@ -171,25 +153,18 @@ class FlextInfraCheckModels:
         """SARIF run entry."""
 
         tool_name: Annotated[str, Field(description="Tool name")]
-        information_uri: Annotated[
-            str,
-            Field(
-                default="",
-                description="Tool documentation URL",
-            ),
-        ] = ""
-        rules: Annotated[
-            Sequence[FlextInfraCheckModels.SarifRule],
-            Field(
-                description="Rule descriptors",
-            ),
-        ] = Field(default_factory=lambda: ())
-        results: Annotated[
-            Sequence[FlextInfraCheckModels.SarifResult],
-            Field(
-                description="Run results",
-            ),
-        ] = Field(default_factory=lambda: ())
+        information_uri: str = Field(
+            default="",
+            description="Tool documentation URL",
+        )
+        rules: Sequence[FlextInfraCheckModels.SarifRule] = Field(
+            default_factory=tuple,
+            description="Rule descriptors",
+        )
+        results: Sequence[FlextInfraCheckModels.SarifResult] = Field(
+            default_factory=tuple,
+            description="Run results",
+        )
 
         @model_serializer(mode="plain")
         def _serialize(self) -> t.Cli.JsonMapping:
@@ -213,24 +188,16 @@ class FlextInfraCheckModels:
 
         model_config: ClassVar[ConfigDict] = ConfigDict(populate_by_name=True)
 
-        schema_uri: Annotated[
-            str,
-            Field(
-                default="https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
-                alias="$schema",
-                description="SARIF schema URI",
-            ),
-        ] = "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json"
-        version: Annotated[
-            str,
-            Field(default="2.1.0", description="SARIF version"),
-        ] = "2.1.0"
-        runs: Annotated[
-            Sequence[FlextInfraCheckModels.SarifRun],
-            Field(
-                description="SARIF runs",
-            ),
-        ] = Field(default_factory=lambda: ())
+        schema_uri: str = Field(
+            default="https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+            alias="$schema",
+            description="SARIF schema URI",
+        )
+        version: str = Field(default="2.1.0", description="SARIF version")
+        runs: Sequence[FlextInfraCheckModels.SarifRun] = Field(
+            default_factory=tuple,
+            description="SARIF runs",
+        )
 
 
 __all__ = ["FlextInfraCheckModels"]

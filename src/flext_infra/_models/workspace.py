@@ -38,6 +38,13 @@ class FlextInfraWorkspaceModels:
             Field(default=True, description="Project has source directory"),
         ] = True
 
+    class ProjectMeta(m.ArbitraryTypesModel):
+        """Extracted project metadata for makefile generation."""
+
+        name: Annotated[t.NonEmptyStr, Field(description="Project name")]
+        python_version: Annotated[t.NonEmptyStr, Field(description="Python version")]
+        description: Annotated[t.NonEmptyStr, Field(description="Project description")]
+
     class SyncResult(m.ArbitraryTypesModel):
         """Result payload for sync operations."""
 

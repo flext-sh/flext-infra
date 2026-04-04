@@ -20,18 +20,8 @@ if _t.TYPE_CHECKING:
     import flext_infra.codegen._constants as _flext_infra_codegen__constants
 
     _constants = _flext_infra_codegen__constants
-    import flext_infra.codegen._models as _flext_infra_codegen__models
-    from flext_infra.codegen._constants import FlextInfraCodegenConstants
-
-    _models = _flext_infra_codegen__models
-    import flext_infra.codegen._models_deduplication as _flext_infra_codegen__models_deduplication
-    from flext_infra.codegen._models import FlextInfraCodegenModels
-
-    _models_deduplication = _flext_infra_codegen__models_deduplication
     import flext_infra.codegen._utilities as _flext_infra_codegen__utilities
-    from flext_infra.codegen._models_deduplication import (
-        FlextInfraCodegenDeduplicationModels,
-    )
+    from flext_infra.codegen._constants import FlextInfraCodegenConstants
 
     _utilities = _flext_infra_codegen__utilities
     import flext_infra.codegen.census as _flext_infra_codegen_census
@@ -76,19 +66,15 @@ _LAZY_IMPORTS = {
     "FlextInfraCodegenCensus": "flext_infra.codegen.census",
     "FlextInfraCodegenConstants": "flext_infra.codegen._constants",
     "FlextInfraCodegenConstantsQualityGate": "flext_infra.codegen.constants_quality_gate",
-    "FlextInfraCodegenDeduplicationModels": "flext_infra.codegen._models_deduplication",
     "FlextInfraCodegenFixer": "flext_infra.codegen.fixer",
     "FlextInfraCodegenGeneration": "flext_infra.codegen._codegen_generation",
     "FlextInfraCodegenLazyInit": "flext_infra.codegen.lazy_init",
-    "FlextInfraCodegenModels": "flext_infra.codegen._models",
     "FlextInfraCodegenPyTyped": "flext_infra.codegen.py_typed",
     "FlextInfraCodegenScaffolder": "flext_infra.codegen.scaffolder",
     "FlextInfraUtilitiesCodegen": "flext_infra.codegen._utilities",
     "_codegen_generation": "flext_infra.codegen._codegen_generation",
     "_codegen_generation_helpers": "flext_infra.codegen._codegen_generation_helpers",
     "_constants": "flext_infra.codegen._constants",
-    "_models": "flext_infra.codegen._models",
-    "_models_deduplication": "flext_infra.codegen._models_deduplication",
     "_utilities": "flext_infra.codegen._utilities",
     "census": "flext_infra.codegen.census",
     "cli": "flext_infra.codegen.cli",
@@ -110,19 +96,15 @@ __all__ = [
     "FlextInfraCodegenCensus",
     "FlextInfraCodegenConstants",
     "FlextInfraCodegenConstantsQualityGate",
-    "FlextInfraCodegenDeduplicationModels",
     "FlextInfraCodegenFixer",
     "FlextInfraCodegenGeneration",
     "FlextInfraCodegenLazyInit",
-    "FlextInfraCodegenModels",
     "FlextInfraCodegenPyTyped",
     "FlextInfraCodegenScaffolder",
     "FlextInfraUtilitiesCodegen",
     "_codegen_generation",
     "_codegen_generation_helpers",
     "_constants",
-    "_models",
-    "_models_deduplication",
     "_utilities",
     "census",
     "cli",

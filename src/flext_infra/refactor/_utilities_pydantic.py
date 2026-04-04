@@ -207,7 +207,7 @@ class FlextInfraUtilitiesRefactorPydantic:
             apply_class_moves,
             apply_alias_moves,
             import_statement=(
-                f"from ._models import {', '.join(sorted(set(moved_names)))}"
+                f"from flext_infra._models.gates import {', '.join(sorted(set(moved_names)))}"
                 if (file_path.parent / c.Infra.Files.INIT_PY).exists()
                 else f"from _models import {', '.join(sorted(set(moved_names)))}"
             ),

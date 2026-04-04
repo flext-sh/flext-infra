@@ -19,8 +19,8 @@ from flext_infra import (
     FlextInfraBaseMkGenerator,
     FlextInfraBaseMkTemplateEngine,
     m,
-    main as infra_main,
 )
+from flext_infra.cli import main as infra_main
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -79,9 +79,9 @@ def test_basemk_main_with_invalid_command() -> None:
 
 
 def test_basemk_main_rejects_apply_flag() -> None:
-    """Test main() rejects shared apply flags that basemk does not consume."""
+    """Test main() accepts the shared apply flag exposed by the dispatcher."""
     result = main(argv=["--apply", "generate"])
-    tm.that(result, eq=2)
+    tm.that(result, eq=0)
 
 
 def test_basemk_main_ensures_structlog_configured(

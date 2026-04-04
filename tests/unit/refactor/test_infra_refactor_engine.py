@@ -11,9 +11,9 @@ from flext_infra import (
     FlextInfraRefactorEngine,
     FlextInfraRefactorEnsureFutureAnnotationsRule,
     FlextInfraRefactorImportModernizerRule,
-    FlextInfraRefactorLegacyRemovalRule,
-    FlextInfraRefactorMROClassMigrationRule,
-    FlextInfraRefactorPatternCorrectionsRule,
+    FlextInfraRefactorLegacyRemovalTextRule,
+    FlextInfraRefactorMROClassMigrationTextRule,
+    FlextInfraRefactorPatternCorrectionsTextRule,
     FlextInfraRefactorSignaturePropagationRule,
     FlextInfraRefactorSymbolPropagationRule,
 )
@@ -33,14 +33,14 @@ def test_rule_dispatch_prefers_fix_action_metadata(tmp_path: Path) -> None:
     result = engine.load_rules()
     assert result.is_success
     assert len(engine.rules) == 8
-    assert isinstance(engine.rules[0], FlextInfraRefactorLegacyRemovalRule)
+    assert isinstance(engine.rules[0], FlextInfraRefactorLegacyRemovalTextRule)
     assert isinstance(engine.rules[1], FlextInfraRefactorImportModernizerRule)
     assert isinstance(engine.rules[2], FlextInfraRefactorClassReconstructorRule)
-    assert isinstance(engine.rules[3], FlextInfraRefactorMROClassMigrationRule)
+    assert isinstance(engine.rules[3], FlextInfraRefactorMROClassMigrationTextRule)
     assert isinstance(engine.rules[4], FlextInfraRefactorEnsureFutureAnnotationsRule)
     assert isinstance(engine.rules[5], FlextInfraRefactorSymbolPropagationRule)
     assert isinstance(engine.rules[6], FlextInfraRefactorSignaturePropagationRule)
-    assert isinstance(engine.rules[7], FlextInfraRefactorPatternCorrectionsRule)
+    assert isinstance(engine.rules[7], FlextInfraRefactorPatternCorrectionsTextRule)
 
 
 def test_rule_dispatch_fails_on_invalid_pattern_rule_config(tmp_path: Path) -> None:

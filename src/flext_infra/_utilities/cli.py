@@ -13,6 +13,9 @@ from __future__ import annotations
 from argparse import ArgumentParser, Namespace
 from collections.abc import Mapping, Sequence
 from pathlib import Path
+from typing import Annotated
+
+from pydantic import Field
 
 from flext_cli import FlextCliUtilities
 from flext_infra._utilities.cli_shared import FlextInfraUtilitiesCliShared
@@ -36,14 +39,23 @@ class FlextInfraUtilitiesCli(FlextInfraUtilitiesCliShared):
         with optional fields for apply, format, check, and project selection.
         """
 
-        workspace: Path = Path.cwd()
-        apply: bool = False
-        output_format: str = "text"
-        check: bool = False
-        diff: bool = False
-        project: str | None = None
-        projects: str | None = None
-        class_to_analyze: str | None = None
+        workspace: Annotated[
+            Path,
+            Field(
+                default_factory=Path.cwd, description="Workspace root directory path"
+            ),
+        ]
+        apply: Annotated[bool, Field(description="Apply changes flag")] = False
+        output_format: Annotated[str, Field(description="Output format")] = "text"
+        check: Annotated[bool, Field(description="Check mode flag")] = False
+        diff: Annotated[bool, Field(description="Show unified diff of changes")] = False
+        project: Annotated[str | None, Field(description="Single project name")] = None
+        projects: Annotated[str | None, Field(description="Multiple projects list")] = (
+            None
+        )
+        class_to_analyze: Annotated[
+            str | None, Field(description="Class to analyze")
+        ] = None
 
         @property
         def dry_run(self) -> bool:

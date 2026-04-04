@@ -48,27 +48,28 @@ class FlextInfraReleaseModels:
             t.NonNegativeInt,
             Field(description="Total projects with non-zero exit"),
         ]
-        records: Annotated[
-            Sequence[FlextInfraReleaseModels.BuildRecord],
-            Field(
-                description="Per-project build records",
-            ),
-        ] = []
+        records: Sequence[FlextInfraReleaseModels.BuildRecord] = Field(
+            default_factory=list, description="Per-project build records"
+        )
 
     class ReleaseOrchestratorConfig(FlextModels.ArbitraryTypesModel):
         """Configuration for release workflow execution."""
 
         workspace_root: Annotated[Path, Field(description="Workspace root")]
-        version: Annotated[t.NonEmptyStr, Field()]
-        tag: Annotated[t.NonEmptyStr, Field()]
+        version: Annotated[t.NonEmptyStr, Field(description="Release version")]
+        tag: Annotated[t.NonEmptyStr, Field(description="Release tag")]
         phases: Annotated[t.StrSequence, Field(description="Ordered list of phases")]
-        project_names: Annotated[t.StrSequence | None, Field(default=None)]
-        dry_run: Annotated[bool, Field(default=False)]
-        push: Annotated[bool, Field(default=False)]
-        dev_suffix: Annotated[bool, Field(default=False)]
-        create_branches: Annotated[bool, Field(default=True)]
-        next_dev: Annotated[bool, Field(default=False)]
-        next_bump: Annotated[str, Field(default="minor")]
+        project_names: Annotated[
+            t.StrSequence | None, Field(default=None, description="Project names")
+        ]
+        dry_run: Annotated[bool, Field(default=False, description="Dry run flag")]
+        push: Annotated[bool, Field(default=False, description="Push flag")]
+        dev_suffix: Annotated[bool, Field(default=False, description="Dev suffix flag")]
+        create_branches: Annotated[
+            bool, Field(default=True, description="Create branches flag")
+        ]
+        next_dev: Annotated[bool, Field(default=False, description="Next dev flag")]
+        next_bump: Annotated[str, Field(default="minor", description="Next bump")]
 
     class ReleasePhaseDispatchConfig(FlextModels.ArbitraryTypesModel):
         """Configuration for single release phase dispatch."""
@@ -77,10 +78,12 @@ class FlextInfraReleaseModels:
         workspace_root: Annotated[Path, Field(description="Workspace root")]
         version: Annotated[t.NonEmptyStr, Field(description="Release version")]
         tag: Annotated[t.NonEmptyStr, Field(description="Git tag")]
-        project_names: t.StrSequence = Field(default_factory=list)
-        dry_run: Annotated[bool, Field(default=False)]
-        push: Annotated[bool, Field(default=False)]
-        dev_suffix: Annotated[bool, Field(default=False)]
+        project_names: Annotated[
+            t.StrSequence, Field(default_factory=list, description="Project names")
+        ]
+        dry_run: Annotated[bool, Field(default=False, description="Dry run flag")]
+        push: Annotated[bool, Field(default=False, description="Push flag")]
+        dev_suffix: Annotated[bool, Field(default=False, description="Dev suffix flag")]
 
 
 __all__ = ["FlextInfraReleaseModels"]

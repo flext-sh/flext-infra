@@ -89,8 +89,11 @@ class TestDetectorBasicDetection:
         (tmp_path / ".gitmodules").write_text("", encoding="utf-8")
         tm.ok(detector.detect(project_root), eq=FlextInfraWorkspaceMode.WORKSPACE)
 
-    def test_execute_returns_failure(self) -> None:
-        tm.fail(FlextInfraWorkspaceDetector().execute())
+    def test_execute_uses_workspace_root(self, tmp_path: Path) -> None:
+        tm.ok(
+            FlextInfraWorkspaceDetector(workspace=tmp_path).execute(),
+            eq=FlextInfraWorkspaceMode.STANDALONE,
+        )
 
 
 class TestDetectorRepoNameExtraction:

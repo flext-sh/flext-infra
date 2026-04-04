@@ -12,7 +12,7 @@ import pytest
 from flext_tests import tf, tm
 from pydantic import BaseModel
 
-from flext_infra import FlextInfraUtilitiesIo, t
+from flext_infra import t, u
 
 
 class SampleModel(BaseModel):
@@ -51,7 +51,7 @@ class TestFlextInfraJsonService:
         json_file = tmp_path / name
         if content is not None:
             json_file.write_text(content, encoding="utf-8")
-        service = FlextInfraUtilitiesIo()
+        service = u.Infra()
         result = service.read_json(json_file)
         if should_succeed:
             tm.ok(result)
@@ -92,7 +92,7 @@ class TestFlextInfraJsonService:
         expected: str,
     ) -> None:
         json_file = tmp_path.joinpath(*path_parts)
-        service = FlextInfraUtilitiesIo()
+        service = u.Infra()
         result = service.write_json(
             json_file,
             payload,
@@ -111,7 +111,7 @@ class TestFlextInfraJsonService:
         json_file = tmp_path / "readonly.json"
         _ = tf.create_in("{}", "readonly.json", tmp_path)
         json_file.chmod(292)
-        service = FlextInfraUtilitiesIo()
+        service = u.Infra()
         try:
             result = service.write_json(json_file, {"key": "value"})
             tm.fail(result)
@@ -121,14 +121,14 @@ class TestFlextInfraJsonService:
     def test_write_returns_true_on_success(self, tmp_path: Path) -> None:
         """Test write returns True on success."""
         json_file = tmp_path / "test.json"
-        service = FlextInfraUtilitiesIo()
+        service = u.Infra()
         result = service.write_json(json_file, {"key": "value"})
         tm.ok(result)
         tm.that(result.value, eq=True)
 
     def test_removed_direct_api_methods_raise_attribute_error(self) -> None:
         """Direct-return compatibility methods are no longer available."""
-        service = FlextInfraUtilitiesIo()
+        service = u.Infra()
         with pytest.raises(AttributeError):
             _ = getattr(service, "load")
         with pytest.raises(AttributeError):

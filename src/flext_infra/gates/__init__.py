@@ -13,12 +13,8 @@ if _t.TYPE_CHECKING:
     import flext_infra.gates._base_gate as _flext_infra_gates__base_gate
 
     _base_gate = _flext_infra_gates__base_gate
-    import flext_infra.gates._models as _flext_infra_gates__models
-    from flext_infra.gates._base_gate import FlextInfraGate
-
-    _models = _flext_infra_gates__models
     import flext_infra.gates.bandit as _flext_infra_gates_bandit
-    from flext_infra.gates._models import FlextInfraGatesModels
+    from flext_infra.gates._base_gate import FlextInfraGate
 
     bandit = _flext_infra_gates_bandit
     import flext_infra.gates.go as _flext_infra_gates_go
@@ -59,7 +55,6 @@ if _t.TYPE_CHECKING:
 _LAZY_IMPORTS = {
     "FlextInfraBanditGate": "flext_infra.gates.bandit",
     "FlextInfraGate": "flext_infra.gates._base_gate",
-    "FlextInfraGatesModels": "flext_infra.gates._models",
     "FlextInfraGoGate": "flext_infra.gates.go",
     "FlextInfraMarkdownGate": "flext_infra.gates.markdown",
     "FlextInfraMypyGate": "flext_infra.gates.mypy",
@@ -68,7 +63,6 @@ _LAZY_IMPORTS = {
     "FlextInfraRuffFormatGate": "flext_infra.gates.ruff_format",
     "FlextInfraRuffLintGate": "flext_infra.gates.ruff_lint",
     "_base_gate": "flext_infra.gates._base_gate",
-    "_models": "flext_infra.gates._models",
     "bandit": "flext_infra.gates.bandit",
     "d": ("flext_core.decorators", "FlextDecorators"),
     "e": ("flext_core.exceptions", "FlextExceptions"),
@@ -88,7 +82,6 @@ _LAZY_IMPORTS = {
 __all__ = [
     "FlextInfraBanditGate",
     "FlextInfraGate",
-    "FlextInfraGatesModels",
     "FlextInfraGoGate",
     "FlextInfraMarkdownGate",
     "FlextInfraMypyGate",
@@ -97,7 +90,6 @@ __all__ = [
     "FlextInfraRuffFormatGate",
     "FlextInfraRuffLintGate",
     "_base_gate",
-    "_models",
     "bandit",
     "d",
     "e",

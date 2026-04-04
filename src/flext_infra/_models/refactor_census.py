@@ -115,12 +115,9 @@ class FlextInfraRefactorModelsCensus:
             Field(description="Utilities class name"),
         ]
         source_file: Annotated[str, Field(description="Source filename")]
-        methods: Annotated[
-            Sequence[FlextInfraRefactorModelsCensus.CensusMethodSummary],
-            Field(
-                description="Method summaries",
-            ),
-        ] = Field(default_factory=lambda: ())
+        methods: Sequence[FlextInfraRefactorModelsCensus.CensusMethodSummary] = Field(
+            default_factory=tuple, description="Method summaries"
+        )
 
     class CensusProjectMethodUsage(m.ArbitraryTypesModel):
         """Usage of a method within a specific project."""
@@ -144,29 +141,20 @@ class FlextInfraRefactorModelsCensus:
             t.NonEmptyStr,
             Field(description="Project directory name"),
         ]
-        usages: Annotated[
-            Sequence[FlextInfraRefactorModelsCensus.CensusProjectMethodUsage],
-            Field(
-                description="Per-method usages",
-            ),
-        ] = Field(default_factory=lambda: ())
+        usages: Sequence[FlextInfraRefactorModelsCensus.CensusProjectMethodUsage] = (
+            Field(default_factory=tuple, description="Per-method usages")
+        )
         total: Annotated[t.NonNegativeInt, Field(description="Total usages in project")]
 
     class UtilitiesCensusReport(m.ArbitraryTypesModel):
         """Full census report for _utilities method usage."""
 
-        classes: Annotated[
-            Sequence[FlextInfraRefactorModelsCensus.CensusClassSummary],
-            Field(
-                description="Per-class summaries",
-            ),
-        ] = Field(default_factory=lambda: ())
-        projects: Annotated[
-            Sequence[FlextInfraRefactorModelsCensus.CensusProjectSummary],
-            Field(
-                description="Per-project breakdowns",
-            ),
-        ] = Field(default_factory=lambda: ())
+        classes: Sequence[FlextInfraRefactorModelsCensus.CensusClassSummary] = Field(
+            default_factory=tuple, description="Per-class summaries"
+        )
+        projects: Sequence[FlextInfraRefactorModelsCensus.CensusProjectSummary] = Field(
+            default_factory=tuple, description="Per-project breakdowns"
+        )
         total_classes: Annotated[
             t.NonNegativeInt,
             Field(description="Number of utility classes"),

@@ -7,8 +7,14 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Final
 
-from flext_infra import FlextInfraUtilitiesTerminal, c, m, p, t
-from flext_infra._utilities.output_reporting import FlextInfraUtilitiesOutputReporting
+from flext_infra import (
+    FlextInfraUtilitiesOutputReporting,
+    FlextInfraUtilitiesTerminal,
+    c,
+    m,
+    p,
+    t,
+)
 
 
 class FlextInfraUtilitiesOutput(FlextInfraUtilitiesOutputReporting):
@@ -17,78 +23,6 @@ class FlextInfraUtilitiesOutput(FlextInfraUtilitiesOutputReporting):
     _stream: p.Infra.OutputStream = sys.stderr
     _use_color: bool = False
     _use_unicode: bool = False
-
-    class OutputBackend(m.ArbitraryTypesModel):
-        """Instance-based output backend for testing with isolated streams."""
-
-        use_color: bool = False
-        use_unicode: bool = False
-        stream: p.Infra.OutputStream = sys.stderr
-
-        def _fmt(self, level: str, color: str, message: str) -> None:
-            reset = c.Infra.RESET if self.use_color else ""
-            clr = color if self.use_color else ""
-            self.stream.write(f"{clr}{level}{reset}: {message}\n")
-            self.stream.flush()
-
-        def info(self, msg: str) -> None:
-            self._fmt("INFO", c.Infra.BLUE, msg)
-
-        def error(self, msg: str, detail: str | None = None) -> None:
-            self._fmt("ERROR", c.Infra.RED, msg)
-            if detail:
-                self.stream.write(f"  {detail}\n")
-
-        def warning(self, msg: str) -> None:
-            self._fmt("WARN", c.Infra.YELLOW, msg)
-
-        def debug(self, msg: str) -> None:
-            self._fmt("DEBUG", c.Infra.GREEN, msg)
-
-        def header(self, title: str) -> None:
-            sep = "\u2550" if self.use_unicode else "="
-            line = sep * 60
-            self.stream.write(
-                f"\n{c.Infra.BOLD if self.use_color else ''}{line}\n  {title}\n{line}{c.Infra.RESET if self.use_color else ''}\n",
-            )
-
-        def progress(self, idx: int, total: int, proj: str, verb: str) -> None:
-            w = len(str(total))
-            self.stream.write(f"[{idx:0{w}d}/{total:0{w}d}] {proj} {verb} ...\n")
-
-        def status(self, verb: str, proj: str, result: bool, elapsed: float) -> None:
-            sym = (
-                (c.Infra.OK if self.use_unicode else "[OK]")
-                if result
-                else (c.Infra.FAIL if self.use_unicode else "[FAIL]")
-            )
-            clr = (c.Infra.GREEN if result else c.Infra.RED) if self.use_color else ""
-            self.stream.write(
-                f"  {clr}{sym}{c.Infra.RESET if self.use_color else ''} {verb:<8} {proj:<24} {elapsed:.2f}s\n",
-            )
-
-        def summary(self, stats: m.Infra.SummaryStats) -> None:
-            s = stats
-            hdr = (
-                f"\u2500\u2500 {s.verb} summary \u2500\u2500"
-                if self.use_unicode
-                else f"-- {s.verb} summary --"
-            )
-            self.stream.write(
-                f"\n{hdr}\nTotal: {s.total}  Success: {s.success}  Failed: {s.failed}  Skipped: {s.skipped}  ({s.elapsed:.2f}s)\n",
-            )
-
-        def gate_result(
-            self, gate: str, count: int, passed: bool, elapsed: float
-        ) -> None:
-            sym = (
-                (c.Infra.OK if passed else c.Infra.FAIL)
-                if self.use_unicode
-                else ("[OK]" if passed else "[FAIL]")
-            )
-            self.stream.write(
-                f"    {sym} {gate:<10} {count:>5} errors  ({elapsed:.2f}s)\n"
-            )
 
     @classmethod
     def setup(

@@ -35,7 +35,7 @@ class FlextInfraBaseMkGenerator(s[str]):
 
     template_engine: Annotated[
         p.Infra.TemplateRenderer | None,
-        Field(default=None, exclude=True),
+        Field(default=None, exclude=True, description="Template engine"),
     ] = None
 
     @property
