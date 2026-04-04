@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from flext_infra import m, t
 
 
-class FlextInfraProtocolsRope:
+class FlextInfraProtocolsRope(Protocol):
     """Structural contracts for rope objects lacking type stubs."""
 
     @runtime_checkable

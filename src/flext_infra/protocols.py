@@ -10,6 +10,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from typing import Protocol, runtime_checkable
+
 from flext_cli import FlextCliProtocols
 from flext_infra import (
     FlextInfraProtocolsBase,
@@ -25,7 +27,8 @@ class FlextInfraProtocols(FlextCliProtocols):
     protocols live as nested classes below.
     """
 
-    class Infra(FlextInfraProtocolsRope, FlextInfraProtocolsBase):
+    @runtime_checkable
+    class Infra(FlextInfraProtocolsRope, FlextInfraProtocolsBase, Protocol):
         """Infra-specific structural protocol definitions."""
 
 

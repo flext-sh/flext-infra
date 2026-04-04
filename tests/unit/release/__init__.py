@@ -82,17 +82,12 @@ if _t.TYPE_CHECKING:
         TestResolveVersionInteractive,
     )
 
-    from flext_core.constants import FlextConstants as c
     from flext_core.decorators import FlextDecorators as d
     from flext_core.exceptions import FlextExceptions as e
     from flext_core.handlers import FlextHandlers as h
     from flext_core.mixins import FlextMixins as x
-    from flext_core.models import FlextModels as m
-    from flext_core.protocols import FlextProtocols as p
     from flext_core.result import FlextResult as r
     from flext_core.service import FlextService as s
-    from flext_core.typings import FlextTypes as t
-    from flext_core.utilities import FlextUtilities as u
 _LAZY_IMPORTS = {
     "FakeReporting": "tests.unit.release._stubs",
     "FakeSelection": "tests.unit.release._stubs",
@@ -123,12 +118,10 @@ _LAZY_IMPORTS = {
     "TestUpdateChangelog": "tests.unit.release.orchestrator_helpers_tests",
     "TestVersionFiles": "tests.unit.release.orchestrator_helpers_tests",
     "_stubs": "tests.unit.release._stubs",
-    "c": ("flext_core.constants", "FlextConstants"),
     "d": ("flext_core.decorators", "FlextDecorators"),
     "e": ("flext_core.exceptions", "FlextExceptions"),
     "flow_tests": "tests.unit.release.flow_tests",
     "h": ("flext_core.handlers", "FlextHandlers"),
-    "m": ("flext_core.models", "FlextModels"),
     "main": "tests.unit.release.flow_tests",
     "main_tests": "tests.unit.release.main_tests",
     "orchestrator_git_tests": "tests.unit.release.orchestrator_git_tests",
@@ -136,12 +129,9 @@ _LAZY_IMPORTS = {
     "orchestrator_phases_tests": "tests.unit.release.orchestrator_phases_tests",
     "orchestrator_publish_tests": "tests.unit.release.orchestrator_publish_tests",
     "orchestrator_tests": "tests.unit.release.orchestrator_tests",
-    "p": ("flext_core.protocols", "FlextProtocols"),
     "r": ("flext_core.result", "FlextResult"),
     "release_init_tests": "tests.unit.release.release_init_tests",
     "s": ("flext_core.service", "FlextService"),
-    "t": ("flext_core.typings", "FlextTypes"),
-    "u": ("flext_core.utilities", "FlextUtilities"),
     "version_resolution_tests": "tests.unit.release.version_resolution_tests",
     "workspace_root": "tests.unit.release.orchestrator_tests",
     "x": ("flext_core.mixins", "FlextMixins"),
@@ -177,12 +167,10 @@ __all__ = [
     "TestUpdateChangelog",
     "TestVersionFiles",
     "_stubs",
-    "c",
     "d",
     "e",
     "flow_tests",
     "h",
-    "m",
     "main",
     "main_tests",
     "orchestrator_git_tests",
@@ -190,12 +178,9 @@ __all__ = [
     "orchestrator_phases_tests",
     "orchestrator_publish_tests",
     "orchestrator_tests",
-    "p",
     "r",
     "release_init_tests",
     "s",
-    "t",
-    "u",
     "version_resolution_tests",
     "workspace_root",
     "x",

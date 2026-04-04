@@ -225,33 +225,24 @@ if _t.TYPE_CHECKING:
         test_refactor_runtime_alias_imports_accepts_aliases_and_project,
     )
 
-    from flext_core.constants import FlextConstants as c
     from flext_core.decorators import FlextDecorators as d
     from flext_core.exceptions import FlextExceptions as e
     from flext_core.handlers import FlextHandlers as h
     from flext_core.mixins import FlextMixins as x
-    from flext_core.models import FlextModels as m
-    from flext_core.protocols import FlextProtocols as p
     from flext_core.result import FlextResult as r
     from flext_core.service import FlextService as s
-    from flext_core.typings import FlextTypes as t
-    from flext_core.utilities import FlextUtilities as u
 _LAZY_IMPORTS = {
     "EngineSafetyStub": "tests.unit.refactor.test_infra_refactor_safety",
     "FAMILY_FILE_MAP": "tests.unit.refactor.test_infra_refactor_namespace_source",
     "FAMILY_SUFFIX_MAP": "tests.unit.refactor.test_infra_refactor_namespace_source",
-    "c": ("flext_core.constants", "FlextConstants"),
     "conftest": "tests.unit.refactor.conftest",
     "d": ("flext_core.decorators", "FlextDecorators"),
     "e": ("flext_core.exceptions", "FlextExceptions"),
     "h": ("flext_core.handlers", "FlextHandlers"),
-    "m": ("flext_core.models", "FlextModels"),
-    "p": ("flext_core.protocols", "FlextProtocols"),
     "r": ("flext_core.result", "FlextResult"),
     "refactor_main": "tests.unit.refactor.test_main_cli",
     "rope_project": "tests.unit.refactor.conftest",
     "s": ("flext_core.service", "FlextService"),
-    "t": ("flext_core.typings", "FlextTypes"),
     "test_all_three_capabilities_in_one_pass": "tests.unit.refactor.test_infra_refactor_typing_unifier",
     "test_class_reconstructor_reorders_each_contiguous_method_block": "tests.unit.refactor.test_infra_refactor_class_and_propagation",
     "test_class_reconstructor_reorders_methods_by_config": "tests.unit.refactor.test_infra_refactor_class_and_propagation",
@@ -380,7 +371,6 @@ _LAZY_IMPORTS = {
     "test_symbol_propagation_renames_import_and_local_references": "tests.unit.refactor.test_infra_refactor_class_and_propagation",
     "test_symbol_propagation_updates_mro_base_references": "tests.unit.refactor.test_infra_refactor_class_and_propagation",
     "test_typealias_conversion_preserves_used_typing_siblings": "tests.unit.refactor.test_infra_refactor_typing_unifier",
-    "u": ("flext_core.utilities", "FlextUtilities"),
     "x": ("flext_core.mixins", "FlextMixins"),
 }
 
@@ -388,18 +378,14 @@ __all__ = [
     "FAMILY_FILE_MAP",
     "FAMILY_SUFFIX_MAP",
     "EngineSafetyStub",
-    "c",
     "conftest",
     "d",
     "e",
     "h",
-    "m",
-    "p",
     "r",
     "refactor_main",
     "rope_project",
     "s",
-    "t",
     "test_all_three_capabilities_in_one_pass",
     "test_class_reconstructor_reorders_each_contiguous_method_block",
     "test_class_reconstructor_reorders_methods_by_config",
@@ -528,7 +514,6 @@ __all__ = [
     "test_symbol_propagation_renames_import_and_local_references",
     "test_symbol_propagation_updates_mro_base_references",
     "test_typealias_conversion_preserves_used_typing_siblings",
-    "u",
     "x",
 ]
 

@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from flext_infra import m, t, u
 
 
-class FlextInfraProtocolsBase:
+class FlextInfraProtocolsBase(Protocol):
     """Base protocols for flext-infra project."""
 
     @runtime_checkable
