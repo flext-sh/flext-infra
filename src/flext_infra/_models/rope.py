@@ -16,7 +16,7 @@ from flext_core import FlextModels
 class FlextInfraModelsRope:
     """Rope operation result models — accessed via m.Infra.Rope.*."""
 
-    class ClassInfo(FlextModels.FrozenStrictModel):
+    class ClassInfo(FlextModels.ContractModel):
         """Semantic class info from rope — name, line, bases in one shot."""
 
         name: Annotated[str, Field(description="Class name")]
@@ -25,7 +25,7 @@ class FlextInfraModelsRope:
             tuple[str, ...], Field(default=(), description="Base class names")
         ]
 
-    class ConstantInfo(FlextModels.FrozenStrictModel):
+    class ConstantInfo(FlextModels.ContractModel):
         """Final-annotated constant definition from rope semantic analysis."""
 
         name: Annotated[str, Field(description="Constant name")]
@@ -38,7 +38,7 @@ class FlextInfraModelsRope:
             str, Field(default="", description="Enclosing class dotted path")
         ]
 
-    class SymbolInfo(FlextModels.FrozenStrictModel):
+    class SymbolInfo(FlextModels.ContractModel):
         """Top-level symbol metadata from rope semantic analysis."""
 
         name: Annotated[str, Field(description="Symbol name")]

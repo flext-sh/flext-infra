@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import time
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import Mapping, MutableSequence
 from pathlib import Path
+
+from pydantic import Field
 
 from flext_infra import (
     FlextInfraBanditGate,
@@ -55,10 +57,16 @@ class FlextInfraGateRegistry:
 class _LoopOutcome(m.ArbitraryTypesModel):
     """Bundled results from the project-checking loop."""
 
-    results: Sequence[m.Infra.ProjectResult]
-    failed: int
-    skipped: int
-    total_elapsed: float
+    results: tuple[m.Infra.ProjectResult, ...] = Field(
+        description="Individual project execution results."
+    )
+    failed: int = Field(description="Number of projects that failed one or more gates.")
+    skipped: int = Field(
+        description="Number of projects that were skipped during execution."
+    )
+    total_elapsed: float = Field(
+        description="Total time elapsed in seconds for the entire loop."
+    )
 
 
 class FlextInfraWorkspaceCheckGatesMixin:

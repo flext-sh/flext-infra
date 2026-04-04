@@ -26,7 +26,7 @@ from flext_infra.check._workspace_check_gates import (
 class WorkspaceLoopOutcome(Protocol):
     """Public structural view of the workspace gate loop outcome."""
 
-    results: Sequence[m.Infra.ProjectResult]
+    results: tuple[m.Infra.ProjectResult, ...]
     failed: int
     skipped: int
     total_elapsed: float
@@ -125,8 +125,7 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
                 return cli_module.main(raw_argv)
         return workspace_check_cli_module.FlextInfraWorkspaceCheckerCli.main(argv)
 
-    @override
-    def run(
+    def run_project(
         self,
         project: str,
         gates: Sequence[str],

@@ -19,7 +19,7 @@ from flext_infra.base import apply_option_json_schema_extra
 class FlextInfraModelsCliInputsCodegen:
     """Namespaced CLI input models for codegen and docs commands."""
 
-    class CliInputBase(FlextModels.FrozenStrictModel):
+    class CliInputBase(FlextModels.ContractModel):
         """Base for all CLI input models."""
 
         model_config = ConfigDict(populate_by_name=True)
@@ -43,7 +43,7 @@ class FlextInfraModelsCliInputsCodegen:
             """Return the resolved workspace path for CLI execution."""
             return Path(self.workspace).resolve()
 
-    class ApplyMixin(FlextModels.FrozenStrictModel):
+    class ApplyMixin(FlextModels.ContractModel):
         """Shared apply flag for mutating commands."""
 
         apply: Annotated[
@@ -55,7 +55,7 @@ class FlextInfraModelsCliInputsCodegen:
             ),
         ] = False
 
-    class OutputDirMixin(FlextModels.FrozenStrictModel):
+    class OutputDirMixin(FlextModels.ContractModel):
         """Shared output directory option for report-producing commands."""
 
         output_dir: Annotated[

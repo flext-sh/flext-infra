@@ -61,20 +61,13 @@ if _t.TYPE_CHECKING:
     deps_tool_config_linters = _flext_infra__models_deps_tool_config_linters
     import flext_infra._models.deps_tool_config_type_checkers as _flext_infra__models_deps_tool_config_type_checkers
     from flext_infra._models.deps_tool_config_linters import (
-        MypyConfig,
-        MypyOverrideConfig,
-        PydanticMypyConfig,
-        RuffConfig,
-        RuffFormatConfig,
-        RuffIsortConfig,
-        RuffLintConfig,
+        FlextInfraDepsModelsToolConfigLinters,
     )
 
     deps_tool_config_type_checkers = _flext_infra__models_deps_tool_config_type_checkers
     import flext_infra._models.docs as _flext_infra__models_docs
     from flext_infra._models.deps_tool_config_type_checkers import (
-        PyreflyConfig,
-        PyrightConfig,
+        FlextInfraDepsModelsToolConfigTypeCheckers,
     )
 
     docs = _flext_infra__models_docs
@@ -139,6 +132,8 @@ _LAZY_IMPORTS = {
     "FlextInfraCoreModels": "flext_infra._models.validate",
     "FlextInfraDepsModels": "flext_infra._models.deps",
     "FlextInfraDepsModelsToolConfig": "flext_infra._models.deps_tool_config",
+    "FlextInfraDepsModelsToolConfigLinters": "flext_infra._models.deps_tool_config_linters",
+    "FlextInfraDepsModelsToolConfigTypeCheckers": "flext_infra._models.deps_tool_config_type_checkers",
     "FlextInfraDocsModels": "flext_infra._models.docs",
     "FlextInfraGatesModels": "flext_infra._models.gates",
     "FlextInfraGithubModels": "flext_infra._models.github",
@@ -156,15 +151,6 @@ _LAZY_IMPORTS = {
     "FlextInfraRefactorModelsViolations": "flext_infra._models.refactor_violations",
     "FlextInfraReleaseModels": "flext_infra._models.release",
     "FlextInfraWorkspaceModels": "flext_infra._models.workspace",
-    "MypyConfig": "flext_infra._models.deps_tool_config_linters",
-    "MypyOverrideConfig": "flext_infra._models.deps_tool_config_linters",
-    "PydanticMypyConfig": "flext_infra._models.deps_tool_config_linters",
-    "PyreflyConfig": "flext_infra._models.deps_tool_config_type_checkers",
-    "PyrightConfig": "flext_infra._models.deps_tool_config_type_checkers",
-    "RuffConfig": "flext_infra._models.deps_tool_config_linters",
-    "RuffFormatConfig": "flext_infra._models.deps_tool_config_linters",
-    "RuffIsortConfig": "flext_infra._models.deps_tool_config_linters",
-    "RuffLintConfig": "flext_infra._models.deps_tool_config_linters",
     "base": "flext_infra._models.base",
     "basemk": "flext_infra._models.basemk",
     "census": "flext_infra._models.census",
@@ -201,6 +187,8 @@ __all__ = [
     "FlextInfraCoreModels",
     "FlextInfraDepsModels",
     "FlextInfraDepsModelsToolConfig",
+    "FlextInfraDepsModelsToolConfigLinters",
+    "FlextInfraDepsModelsToolConfigTypeCheckers",
     "FlextInfraDocsModels",
     "FlextInfraGatesModels",
     "FlextInfraGithubModels",
@@ -218,15 +206,6 @@ __all__ = [
     "FlextInfraRefactorModelsViolations",
     "FlextInfraReleaseModels",
     "FlextInfraWorkspaceModels",
-    "MypyConfig",
-    "MypyOverrideConfig",
-    "PydanticMypyConfig",
-    "PyreflyConfig",
-    "PyrightConfig",
-    "RuffConfig",
-    "RuffFormatConfig",
-    "RuffIsortConfig",
-    "RuffLintConfig",
     "base",
     "basemk",
     "census",

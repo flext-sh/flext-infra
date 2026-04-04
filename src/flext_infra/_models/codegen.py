@@ -39,7 +39,7 @@ class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
         """Aggregated census report for a single project."""
 
         project: Annotated[t.NonEmptyStr, Field(description="Project name")]
-        violations: Sequence[FlextInfraCodegenModels.CensusViolation] = Field(
+        violations: list[FlextInfraCodegenModels.CensusViolation] = Field(
             default_factory=list,
             description="Detected violations",
         )
@@ -66,11 +66,11 @@ class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
         """Result of auto-fixing namespace violations for a project."""
 
         project: Annotated[t.NonEmptyStr, Field(description="Project name")]
-        violations_fixed: Sequence[FlextInfraCodegenModels.CensusViolation] = Field(
+        violations_fixed: list[FlextInfraCodegenModels.CensusViolation] = Field(
             default_factory=list,
             description="Fixed violations",
         )
-        violations_skipped: Sequence[FlextInfraCodegenModels.CensusViolation] = Field(
+        violations_skipped: list[FlextInfraCodegenModels.CensusViolation] = Field(
             default_factory=list,
             description="Skipped violations (not auto-fixable)",
         )
@@ -150,7 +150,7 @@ class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
         """Cross-project duplicate group with consolidation metadata."""
 
         constant_name: t.NonEmptyStr = Field(description="Constant identifier")
-        definitions: Sequence[FlextInfraCodegenModels.ConstantDefinition] = Field(
+        definitions: list[FlextInfraCodegenModels.ConstantDefinition] = Field(
             description="Definitions across projects",
         )
         is_value_identical: bool = Field(description="Whether all values match")
@@ -198,10 +198,10 @@ class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
 
     class ConstantsGovernanceConfig(FlextModels.ArbitraryTypesModel):
         version: str = Field(description="Config version")
-        rules: Sequence[FlextInfraCodegenModels.NsRule] = Field(
+        rules: list[FlextInfraCodegenModels.NsRule] = Field(
             description="Governance rules"
         )
-        canonical_values: Sequence[FlextInfraCodegenModels.CanonicalValueRule] = Field(
+        canonical_values: list[FlextInfraCodegenModels.CanonicalValueRule] = Field(
             description="Canonical values config"
         )
         constants_class_pattern: str = Field(

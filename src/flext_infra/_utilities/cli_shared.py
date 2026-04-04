@@ -16,7 +16,7 @@ from flext_infra.typings import FlextInfraTypes as t
 class FlextInfraUtilitiesCliShared:
     """Shared flag contracts used by CLI entrypoints and subcommands."""
 
-    class SharedFlags(m.FrozenStrictModel):
+    class SharedFlags(m.ContractModel):
         """Bundled CLI flag configuration for shared parser options."""
 
         include_apply: Annotated[

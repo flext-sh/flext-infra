@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
@@ -66,7 +66,7 @@ class FlextInfraRefactorModelsViolations:
             Field(default="file", description="Rewrite scope"),
         ] = "file"
 
-    class ClassNestingPolicy(m.FrozenStrictModel):
+    class ClassNestingPolicy(m.ContractModel):
         """Validated policy contract used by class-nesting transformers."""
 
         model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
@@ -188,9 +188,9 @@ class FlextInfraRefactorModelsViolations:
         confidence_counts: t.IntMapping = Field(
             default_factory=dict, description="Confidence histogram"
         )
-        violations: Sequence[
-            FlextInfraRefactorModelsViolations.ClassNestingViolation
-        ] = Field(default_factory=tuple, description="Violation details")
+        violations: tuple[FlextInfraRefactorModelsViolations.ClassNestingViolation] = (
+            Field(default_factory=tuple, description="Violation details")
+        )
         per_file_counts: t.IntMapping = Field(
             default_factory=dict, description="Violation counts per file"
         )
@@ -223,23 +223,24 @@ class FlextInfraRefactorModelsViolations:
         totals: t.IntMapping = Field(
             default_factory=dict, description="Category totals"
         )
-        suggestions: Sequence[
-            FlextInfraRefactorModelsViolations.HelperClassification
-        ] = Field(default_factory=tuple, description="Classification suggestions")
-        manual_review: Sequence[
+        suggestions: tuple[FlextInfraRefactorModelsViolations.HelperClassification] = (
+            Field(default_factory=tuple, description="Classification suggestions")
+        )
+        manual_review: tuple[
             FlextInfraRefactorModelsViolations.HelperClassification
         ] = Field(default_factory=tuple, description="Manual-review candidates")
 
     class HelperFileAnalysis(m.ArbitraryTypesModel):
-        suggestions: Sequence[
-            FlextInfraRefactorModelsViolations.HelperClassification
-        ] = Field(
-            default_factory=tuple, description="Helper classifications from one file"
+        suggestions: tuple[FlextInfraRefactorModelsViolations.HelperClassification] = (
+            Field(
+                default_factory=tuple,
+                description="Helper classifications from one file",
+            )
         )
         totals: t.IntMapping = Field(
             default_factory=dict, description="Category totals for file helpers"
         )
-        manual_review: Sequence[
+        manual_review: tuple[
             FlextInfraRefactorModelsViolations.HelperClassification
         ] = Field(default_factory=tuple, description="Helpers requiring manual review")
 
@@ -264,9 +265,9 @@ class FlextInfraRefactorModelsViolations:
         files: Mapping[str, t.IntMapping] = Field(
             default_factory=dict, description="Per-file per-pattern counts"
         )
-        top_files: Sequence[
-            FlextInfraRefactorModelsViolations.ViolationTopFileSection
-        ] = Field(default_factory=tuple, description="Top hotspot files")
+        top_files: tuple[FlextInfraRefactorModelsViolations.ViolationTopFileSection] = (
+            Field(default_factory=tuple, description="Top hotspot files")
+        )
         files_scanned: Annotated[t.NonNegativeInt, Field(description="Files scanned")]
         helper_classification: FlextInfraRefactorModelsViolations.HelperClassificationReport = Field(
             description="Helper classification summary"

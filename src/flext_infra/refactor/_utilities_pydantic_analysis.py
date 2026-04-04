@@ -25,7 +25,7 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         "TypedDict",
         "ArbitraryTypesModel",
         "FrozenModel",
-        "FrozenStrictModel",
+        "ContractModel",
     )
     _DICT_ALIAS_KEYS: tuple[str, ...] = (
         "dict",

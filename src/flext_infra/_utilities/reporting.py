@@ -107,9 +107,9 @@ class FlextInfraUtilitiesReporting:
     ) -> m.Infra.SarifRun:
         """Build a single SARIF run for one gate across all projects."""
         tool_name, tool_url = c.Infra.SARIF_TOOL_INFO.get(gate, (gate, ""))
-        sarif_results: MutableSequence[m.Infra.SarifResult] = []
+        sarif_results: list[m.Infra.SarifResult] = []
         rules_seen: t.Infra.StrSet = set()
-        rules: MutableSequence[m.Infra.SarifRule] = []
+        rules: list[m.Infra.SarifRule] = []
         for project in results:
             gate_result = project.gates.get(gate)
             if not gate_result:
@@ -127,8 +127,8 @@ class FlextInfraUtilitiesReporting:
         return m.Infra.SarifRun(
             tool_name=tool_name,
             information_uri=tool_url,
-            rules=rules,
-            results=sarif_results,
+            rules=tuple(rules),
+            results=tuple(sarif_results),
         )
 
     @staticmethod

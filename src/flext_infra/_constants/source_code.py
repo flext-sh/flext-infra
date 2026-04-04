@@ -189,7 +189,7 @@ class FlextInfraConstantsSourceCode:
             "BaseModel",
             "FrozenModel",
             "ArbitraryTypesModel",
-            "FrozenStrictModel",
+            "ContractModel",
             "FrozenValueModel",
             "TimestampedModel",
         })

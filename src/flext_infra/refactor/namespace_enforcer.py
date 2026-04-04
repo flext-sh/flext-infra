@@ -42,7 +42,7 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerPhasesMixin):
 
         """
         project_roots = self._resolve_project_roots(project_names=project_names)
-        project_reports: MutableSequence[m.Infra.ProjectEnforcementReport] = []
+        project_reports: list[m.Infra.ProjectEnforcementReport] = []
         for project_root in project_roots:
             report = self._enforce_project(
                 project_root=project_root,

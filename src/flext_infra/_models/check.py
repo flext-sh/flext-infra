@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping, Sequence
+from collections.abc import MutableMapping
 from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, computed_field, model_serializer
@@ -14,7 +14,7 @@ from flext_infra import c, t
 class FlextInfraCheckModels:
     """Quality-gate check domain models."""
 
-    class Issue(FlextModels.FrozenStrictModel):
+    class Issue(FlextModels.ContractModel):
         """Single issue reported by a quality gate tool."""
 
         file: Annotated[str, Field(description="Source file path")]
@@ -57,9 +57,8 @@ class FlextInfraCheckModels:
         result: FlextInfraCheckModels.GateResult = Field(
             description="Gate result model",
         )
-        issues: Sequence[FlextInfraCheckModels.Issue] = Field(
-            default_factory=tuple,
-            description="Detected issues",
+        issues: tuple[FlextInfraCheckModels.Issue, ...] = Field(
+            default_factory=tuple, description="Detected issues"
         )
         raw_output: str = Field(default="", description="Raw tool output")
 
@@ -86,7 +85,7 @@ class FlextInfraCheckModels:
 
     # -- SARIF 2.1.0 report models -----------------------------------------
 
-    class SarifRule(FlextModels.FrozenStrictModel):
+    class SarifRule(FlextModels.ContractModel):
         """Compact SARIF rule descriptor."""
 
         id: Annotated[str, Field(description="Rule identifier")]
@@ -102,7 +101,7 @@ class FlextInfraCheckModels:
                 "shortDescription": {"text": self.short_description},
             }
 
-    class SarifLocation(FlextModels.FrozenStrictModel):
+    class SarifLocation(FlextModels.ContractModel):
         """Compact SARIF location source span."""
 
         uri: Annotated[str, Field(description="Artifact URI")]
@@ -128,13 +127,13 @@ class FlextInfraCheckModels:
                 },
             }
 
-    class SarifResult(FlextModels.FrozenStrictModel):
+    class SarifResult(FlextModels.ContractModel):
         """SARIF result entry."""
 
         rule_id: Annotated[str, Field(description="Rule identifier")]
         level: Annotated[str, Field(description="Result level (error/warning)")]
         message: Annotated[str, Field(description="Result message")]
-        locations: Sequence[FlextInfraCheckModels.SarifLocation] = Field(
+        locations: list[FlextInfraCheckModels.SarifLocation] = Field(
             description="Result locations",
         )
 
@@ -149,7 +148,7 @@ class FlextInfraCheckModels:
                 ],
             }
 
-    class SarifRun(FlextModels.FrozenStrictModel):
+    class SarifRun(FlextModels.ContractModel):
         """SARIF run entry."""
 
         tool_name: Annotated[str, Field(description="Tool name")]
@@ -157,13 +156,11 @@ class FlextInfraCheckModels:
             default="",
             description="Tool documentation URL",
         )
-        rules: Sequence[FlextInfraCheckModels.SarifRule] = Field(
-            default_factory=tuple,
-            description="Rule descriptors",
+        rules: tuple[FlextInfraCheckModels.SarifRule, ...] = Field(
+            default_factory=tuple, description="Rule descriptors"
         )
-        results: Sequence[FlextInfraCheckModels.SarifResult] = Field(
-            default_factory=tuple,
-            description="Run results",
+        results: tuple[FlextInfraCheckModels.SarifResult, ...] = Field(
+            default_factory=tuple, description="Run results"
         )
 
         @model_serializer(mode="plain")
@@ -194,9 +191,8 @@ class FlextInfraCheckModels:
             description="SARIF schema URI",
         )
         version: str = Field(default="2.1.0", description="SARIF version")
-        runs: Sequence[FlextInfraCheckModels.SarifRun] = Field(
-            default_factory=tuple,
-            description="SARIF runs",
+        runs: tuple[FlextInfraCheckModels.SarifRun, ...] = Field(
+            default_factory=tuple, description="SARIF runs"
         )
 
 

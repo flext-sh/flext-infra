@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
 from typing import Annotated
 
@@ -48,7 +47,7 @@ class FlextInfraReleaseModels:
             t.NonNegativeInt,
             Field(description="Total projects with non-zero exit"),
         ]
-        records: Sequence[FlextInfraReleaseModels.BuildRecord] = Field(
+        records: list[FlextInfraReleaseModels.BuildRecord] = Field(
             default_factory=list, description="Per-project build records"
         )
 

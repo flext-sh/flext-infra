@@ -15,7 +15,7 @@ class FlextInfraCoreModels:
 
     Canonical base policy:
     - ``ArbitraryTypesModel`` for mutable report/result payloads.
-    - ``FrozenStrictModel`` reserved for immutable settings/config contracts.
+    - ``ContractModel`` reserved for immutable settings/config contracts.
     """
 
     class CommandOutput(FlextModels.ArbitraryTypesModel):

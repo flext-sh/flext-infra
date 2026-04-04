@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
@@ -153,7 +152,7 @@ class FlextInfraModelsCensus:
                 Field(description="Shared object name across projects"),
             ]
             kind: Annotated[str, Field(description="Object kind")]
-            definitions: Sequence[FlextInfraModelsCensus.Census.Object] = Field(
+            definitions: list[FlextInfraModelsCensus.Census.Object] = Field(
                 description="All definitions of this object"
             )
             canonical: Annotated[
@@ -187,8 +186,8 @@ class FlextInfraModelsCensus:
                     description="Object count per kind",
                 ),
             ] = Field(default_factory=dict)
-            violations: Sequence[FlextInfraModelsCensus.Census.Violation] = Field(
-                default_factory=lambda: (), description="Detected violations"
+            violations: tuple[FlextInfraModelsCensus.Census.Violation, ...] = Field(
+                default_factory=tuple, description="Detected violations"
             )
             violations_total: Annotated[
                 t.NonNegativeInt,
@@ -202,8 +201,8 @@ class FlextInfraModelsCensus:
         class WorkspaceReport(FlextModels.ArbitraryTypesModel):
             """Workspace-wide census summary."""
 
-            projects: Sequence[FlextInfraModelsCensus.Census.ProjectReport] = Field(
-                default_factory=lambda: (), description="Per-project reports"
+            projects: tuple[FlextInfraModelsCensus.Census.ProjectReport, ...] = Field(
+                default_factory=tuple, description="Per-project reports"
             )
             total_objects: Annotated[
                 t.NonNegativeInt,
@@ -217,8 +216,10 @@ class FlextInfraModelsCensus:
                 t.NonNegativeInt,
                 Field(default=0, description="Total fixable violations"),
             ] = 0
-            duplicates: Sequence[FlextInfraModelsCensus.Census.DuplicateGroup] = Field(
-                default_factory=lambda: (), description="Cross-project duplicate groups"
+            duplicates: tuple[FlextInfraModelsCensus.Census.DuplicateGroup, ...] = (
+                Field(
+                    default_factory=tuple, description="Cross-project duplicate groups"
+                )
             )
             unused_count: Annotated[
                 t.NonNegativeInt,

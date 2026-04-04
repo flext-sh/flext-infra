@@ -18,7 +18,7 @@ from flext_infra import t
 class FlextInfraModelsBase:
     """Base models for flext-infra project."""
 
-    class SummaryStats(FlextModels.FrozenStrictModel):
+    class SummaryStats(FlextModels.ContractModel):
         """Bundled stats for summary output."""
 
         verb: Annotated[str, Field(description="Verb label for the summary block")]
@@ -28,7 +28,7 @@ class FlextInfraModelsBase:
         skipped: Annotated[int, Field(description="Skipped items")]
         elapsed: Annotated[float, Field(description="Elapsed time in seconds")]
 
-    class ProjectFailureInfo(FlextModels.FrozenStrictModel):
+    class ProjectFailureInfo(FlextModels.ContractModel):
         """Bundled info for project failure output."""
 
         project: Annotated[str, Field(description="Project display name")]

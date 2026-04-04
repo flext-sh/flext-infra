@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, ClassVar
@@ -28,7 +28,7 @@ class FlextInfraRefactorModels(
     """Models for the refactor engine and related tools.
 
     Canonical base policy:
-    - ``FrozenStrictModel`` for configuration/policy contracts.
+    - ``ContractModel`` for configuration/policy contracts.
     - ``ArbitraryTypesModel`` for mutable engine/report/result payloads.
     """
 
@@ -189,7 +189,7 @@ class FlextInfraRefactorModels(
 
     # -- MRO Target Specification -----------------------------------------------
 
-    class MROTargetSpec(m.FrozenStrictModel):
+    class MROTargetSpec(m.ContractModel):
         """Specification for an MRO target family."""
 
         family_alias: Annotated[t.NonEmptyStr, Field(description="Family alias letter")]
@@ -202,7 +202,7 @@ class FlextInfraRefactorModels(
 
     # -- Pydantic Centralizer Models -------------------------------------------
 
-    class ClassMove(m.FrozenStrictModel):
+    class ClassMove(m.ContractModel):
         """Tracks a class definition being moved during centralization."""
 
         name: Annotated[t.NonEmptyStr, Field(description="Class name")]
@@ -211,7 +211,7 @@ class FlextInfraRefactorModels(
         source: Annotated[str, Field(description="Source code text")]
         kind: Annotated[t.NonEmptyStr, Field(description="Model kind classification")]
 
-    class AliasMove(m.FrozenStrictModel):
+    class AliasMove(m.ContractModel):
         """Tracks a type alias being moved during centralization."""
 
         name: Annotated[t.NonEmptyStr, Field(description="Alias name")]
@@ -253,10 +253,10 @@ class FlextInfraRefactorModels(
                 description="Whether the file was skipped as non-necessary",
             ),
         ] = False
-        apply_class_moves: Sequence[FlextInfraRefactorModels.ClassMove] = Field(
+        apply_class_moves: list[FlextInfraRefactorModels.ClassMove] = Field(
             default_factory=list, description="Class moves to apply"
         )
-        apply_alias_moves: Sequence[FlextInfraRefactorModels.AliasMove] = Field(
+        apply_alias_moves: list[FlextInfraRefactorModels.AliasMove] = Field(
             default_factory=list, description="Alias moves to apply"
         )
 

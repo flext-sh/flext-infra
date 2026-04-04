@@ -224,7 +224,7 @@ class FlextInfraGithubModels:
             Field(description="Accumulated PR execution results"),
         ] = Field(description="Accumulated PR execution results")
 
-    class WorkflowSyncParams(FlextModels.FrozenStrictModel):
+    class WorkflowSyncParams(FlextModels.ContractModel):
         """Bundled parameters for github_sync_workspace_workflows."""
 
         source_workflow: Annotated[
@@ -244,7 +244,7 @@ class FlextInfraGithubModels:
             Field(default=False, description="Remove non-canonical workflows"),
         ] = False
 
-    class PrOrchestrateParams(FlextModels.FrozenStrictModel):
+    class PrOrchestrateParams(FlextModels.ContractModel):
         """Bundled parameters for github_pr_orchestrate."""
 
         projects: Annotated[

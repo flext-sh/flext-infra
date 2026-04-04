@@ -179,7 +179,7 @@ class FlextInfraRefactorGrepModels:
             default_factory=tuple, description="Errors"
         )
 
-    class EngineConfig(FlextModels.FrozenStrictModel):
+    class EngineConfig(FlextModels.ContractModel):
         model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
         project_scan_dirs: t.StrSequence = Field(
@@ -199,7 +199,7 @@ class FlextInfraRefactorGrepModels:
             description="Allowed file extensions (empty = all by pattern)",
         )
 
-    class MethodOrderRule(FlextModels.FrozenStrictModel):
+    class MethodOrderRule(FlextModels.ContractModel):
         """A declarative method ordering rule for class reconstruction."""
 
         model_config: ClassVar[ConfigDict] = ConfigDict()
@@ -228,7 +228,7 @@ class FlextInfraRefactorGrepModels:
             default_factory=list, description="Explicit method order"
         )
 
-    class SignatureMigration(FlextModels.FrozenStrictModel):
+    class SignatureMigration(FlextModels.ContractModel):
         """Declarative signature migration rule for callsite propagation."""
 
         id: Annotated[
@@ -258,7 +258,7 @@ class FlextInfraRefactorGrepModels:
             default_factory=dict, description="Keywords to add"
         )
 
-    class ImportModernizerRuleConfig(FlextModels.FrozenStrictModel):
+    class ImportModernizerRuleConfig(FlextModels.ContractModel):
         """Configuration for a single import modernizer rule."""
 
         module: Annotated[

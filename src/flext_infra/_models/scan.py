@@ -8,7 +8,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
 from typing import Annotated
 
@@ -20,7 +19,7 @@ from flext_core import FlextModels
 class FlextInfraModelsScan:
     """Shared utility domain models for scanning and analysis."""
 
-    class ScanViolation(FlextModels.FrozenStrictModel):
+    class ScanViolation(FlextModels.ContractModel):
         """A single violation found during file scanning."""
 
         line: Annotated[int, Field(description="Line number of the violation")]
@@ -38,7 +37,7 @@ class FlextInfraModelsScan:
         """Result of scanning a single file."""
 
         file_path: Annotated[Path, Field(description="Path to the scanned file")]
-        violations: Sequence[FlextInfraModelsScan.ScanViolation] = Field(
+        violations: list[FlextInfraModelsScan.ScanViolation] = Field(
             default_factory=list, description="Violations found in the file"
         )
         detector_name: Annotated[

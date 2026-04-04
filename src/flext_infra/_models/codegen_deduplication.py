@@ -42,8 +42,8 @@ class FlextInfraCodegenDeduplicationModels:
         canonical: FlextInfraCodegenDeduplicationModels.DeduplicationCandidate = Field(
             description="Canonical constant kept after replacement",
         )
-        duplicates: Sequence[
-            FlextInfraCodegenDeduplicationModels.DeduplicationCandidate
+        duplicates: tuple[
+            FlextInfraCodegenDeduplicationModels.DeduplicationCandidate, ...
         ] = Field(
             default_factory=tuple,
             description="Duplicate constants replaced by canonical",
@@ -102,12 +102,9 @@ class FlextInfraCodegenDeduplicationModels:
             default_factory=tuple,
             description="Duplicate constant names replaced by canonical",
         )
-        replacements: Sequence[
-            FlextInfraCodegenDeduplicationModels.DeduplicationReplacement
-        ] = Field(
-            default_factory=tuple,
-            description="Concrete per-file replacements",
-        )
+        replacements: tuple[
+            FlextInfraCodegenDeduplicationModels.DeduplicationReplacement, ...
+        ] = Field(default_factory=tuple, description="Concrete per-file replacements")
         files_modified: t.NonNegativeInt = Field(
             default=0,
             description="Touched files count",
@@ -159,13 +156,12 @@ class FlextInfraCodegenDeduplicationModels:
             default=True,
             description="Whether writes were skipped",
         )
-        proposals: Sequence[
-            FlextInfraCodegenDeduplicationModels.DeduplicationFixProposal
+        proposals: tuple[
+            FlextInfraCodegenDeduplicationModels.DeduplicationFixProposal, ...
         ] = Field(
-            default_factory=tuple,
-            description="Identified deduplication proposals",
+            default_factory=tuple, description="Identified deduplication proposals"
         )
-        applied: Sequence[
+        applied: tuple[
             FlextInfraCodegenDeduplicationModels.DeduplicationApplyResult
         ] = Field(
             default_factory=tuple,

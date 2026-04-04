@@ -32,7 +32,7 @@ class FlextInfraUtilitiesCli(FlextInfraUtilitiesCliShared):
     output format, check mode, and project selection.
     """
 
-    class CliArgs(m.FrozenStrictModel):
+    class CliArgs(m.ContractModel):
         """Parsed CLI arguments with strict validation.
 
         Immutable model representing resolved command-line arguments,

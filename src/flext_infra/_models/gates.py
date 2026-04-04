@@ -14,7 +14,7 @@ from flext_infra import t
 class FlextInfraGatesModels:
     """Quality gate execution domain models."""
 
-    class GateContext(FlextModels.FrozenStrictModel):
+    class GateContext(FlextModels.ContractModel):
         """Quality gate execution context and configuration."""
 
         model_config: ClassVar[ConfigDict] = ConfigDict(

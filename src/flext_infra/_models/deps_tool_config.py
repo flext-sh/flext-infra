@@ -9,35 +9,18 @@ from pydantic import Field
 from flext_core import m
 from flext_infra import t
 from flext_infra._models.deps_tool_config_linters import (
-    MypyConfig,
-    MypyOverrideConfig,
-    PydanticMypyConfig,
-    RuffConfig,
-    RuffFormatConfig,
-    RuffIsortConfig,
-    RuffLintConfig,
+    FlextInfraDepsModelsToolConfigLinters,
 )
 from flext_infra._models.deps_tool_config_type_checkers import (
-    PyreflyConfig,
-    PyrightConfig,
+    FlextInfraDepsModelsToolConfigTypeCheckers,
 )
 
 
-class FlextInfraDepsModelsToolConfig:
+class FlextInfraDepsModelsToolConfig(
+    FlextInfraDepsModelsToolConfigLinters,
+    FlextInfraDepsModelsToolConfigTypeCheckers,
+):
     """Models for tool configuration loaded from YAML."""
-
-    # -- Ruff / Mypy (from _models_tool_config_linters) --
-    RuffFormatConfig = RuffFormatConfig
-    RuffIsortConfig = RuffIsortConfig
-    RuffLintConfig = RuffLintConfig
-    RuffConfig = RuffConfig
-    MypyOverrideConfig = MypyOverrideConfig
-    MypyConfig = MypyConfig
-    PydanticMypyConfig = PydanticMypyConfig
-
-    # -- Pyright / Pyrefly (from _models_tool_config_type_checkers) --
-    PyrightConfig = PyrightConfig
-    PyreflyConfig = PyreflyConfig
 
     class PytestConfig(m.ArbitraryTypesModel):
         """Pytest baseline settings loaded from YAML."""

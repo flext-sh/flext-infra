@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar
 
@@ -68,7 +67,7 @@ class FlextInfraDocsModels:
             Field(description="Report output directory for scope"),
         ]
 
-    class AuditIssue(FlextModels.FrozenStrictModel):
+    class AuditIssue(FlextModels.ContractModel):
         """Single documentation audit finding."""
 
         file: Annotated[str, Field(description="File path relative to scope")]
@@ -76,7 +75,7 @@ class FlextInfraDocsModels:
         severity: Annotated[str, Field(description="Issue severity")]
         message: Annotated[str, Field(description="Issue description")]
 
-    class GeneratedFile(FlextModels.FrozenStrictModel):
+    class GeneratedFile(FlextModels.ContractModel):
         """Record of a generated file operation."""
 
         path: Annotated[str, Field(description="File path")]
@@ -85,7 +84,7 @@ class FlextInfraDocsModels:
             Field(default=False, description="Whether file was written"),
         ] = False
 
-    class AuditScopeParams(FlextModels.FrozenStrictModel):
+    class AuditScopeParams(FlextModels.ContractModel):
         """Bundled parameters for a single audit scope run."""
 
         check: Annotated[
@@ -97,7 +96,7 @@ class FlextInfraDocsModels:
             Field(default=None, description="Budget tuple (default, by_scope)"),
         ] = None
 
-    class DocsPhaseReport(FlextModels.FrozenStrictModel):
+    class DocsPhaseReport(FlextModels.ContractModel):
         """Unified report payload for docs phases."""
 
         phase: Annotated[
@@ -161,7 +160,7 @@ class FlextInfraDocsModels:
                 description="Whether TODOS.md was written",
             ),
         ] = False
-        items: Sequence[FlextInfraDocsModels.DocsPhaseItemModel] = Field(
+        items: list[FlextInfraDocsModels.DocsPhaseItemModel] = Field(
             default_factory=list, description="Phase-specific item payloads"
         )
 
