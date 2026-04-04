@@ -1,0 +1,53 @@
+src/flext_infra/_protocols/__init__.py
+  8c30774f8fbdf45c 16,19-31,36,38-39,41,43-44,49,51-52,54,56-57
+src/flext_infra/codegen/_codegen_generation.py
+  8c30774f8fbdf45c 16
+src/flext_infra/refactor/__init__.py
+  8c30774f8fbdf45c 16,27,29,225,266
+src/flext_infra/check/__init__.py
+  8c30774f8fbdf45c 13,15,17,55,62
+src/flext_infra/validate/__init__.py
+  8c30774f8fbdf45c 13,15,17,70,75,79
+src/flext_infra/deps/__init__.py
+  8c30774f8fbdf45c 13,15,17,20,23-25,29,31,129,132,134,137,139-140
+src/flext_infra/docs/__init__.py
+  8c30774f8fbdf45c 16,19,21,65,67
+src/flext_infra/_protocols/refactor.py
+  8c30774f8fbdf45c 1-32
+src/flext_infra/github/__init__.py
+  8c30774f8fbdf45c 13,15,17,40,42
+src/flext_infra/check/workspace_check.py
+  8c30774f8fbdf45c 11,22
+src/flext_infra/workspace/__init__.py
+  8c30774f8fbdf45c 13,15,17,78,82
+src/flext_infra/_constants/__init__.py
+  8c30774f8fbdf45c 16,19-21,24,27-41,43-46,48,51-53,55-58,64,66-75,77-79,85-92,94,96-100,102-103,106-107,111-113,119-126,128,130-134,136-137,140-141
+src/flext_infra/_protocols/check.py
+  8c30774f8fbdf45c 1-36
+src/flext_infra/basemk/__init__.py
+  8c30774f8fbdf45c 13,15,17,43,45
+src/flext_infra/codegen/__init__.py
+  8c30774f8fbdf45c 16,19,21,69,78-79
+src/flext_infra/release/__init__.py
+  8c30774f8fbdf45c 13,15,17,44,47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "8277b513221b1cf7584fde137eca49df5b5fdd1c",
+  "prompts": {
+    "8c30774f8fbdf45c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b6d4f9dd-d5e0-438f-8321-fa88d0b6ac70",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 252,
+      "total_deletions": 101,
+      "accepted_lines": 248,
+      "overriden_lines": 0
+    }
+  }
+}
