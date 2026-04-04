@@ -10,11 +10,7 @@ import typing as _t
 from flext_core.lazy import install_lazy_exports
 
 if _t.TYPE_CHECKING:
-    import flext_infra._constants.release as _flext_infra__constants_release
-
-    _constants = _flext_infra__constants_release
     import flext_infra.release.cli as _flext_infra_release_cli
-    from flext_infra._constants.release import FlextInfraReleaseConstants
 
     cli = _flext_infra_release_cli
     import flext_infra.release.orchestrator as _flext_infra_release_orchestrator
@@ -41,10 +37,8 @@ if _t.TYPE_CHECKING:
     )
 _LAZY_IMPORTS = {
     "FlextInfraCliRelease": "flext_infra.release.cli",
-    "FlextInfraReleaseConstants": "flext_infra._constants.release",
     "FlextInfraReleaseOrchestrator": "flext_infra.release.orchestrator",
     "FlextInfraReleaseOrchestratorPhases": "flext_infra.release.orchestrator_phases",
-    "_constants": "flext_infra._constants.release",
     "c": ("flext_core.constants", "FlextConstants"),
     "cli": "flext_infra.release.cli",
     "d": ("flext_core.decorators", "FlextDecorators"),
@@ -63,10 +57,8 @@ _LAZY_IMPORTS = {
 
 __all__ = [
     "FlextInfraCliRelease",
-    "FlextInfraReleaseConstants",
     "FlextInfraReleaseOrchestrator",
     "FlextInfraReleaseOrchestratorPhases",
-    "_constants",
     "c",
     "cli",
     "d",

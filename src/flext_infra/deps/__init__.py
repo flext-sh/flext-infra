@@ -10,25 +10,11 @@ import typing as _t
 from flext_core.lazy import install_lazy_exports, merge_lazy_imports
 
 if _t.TYPE_CHECKING:
-    import flext_infra._constants.deps as _flext_infra__constants_deps
-
-    _constants = _flext_infra__constants_deps
     import flext_infra.deps._detector_runtime as _flext_infra_deps__detector_runtime
-    from flext_infra._constants.deps import FlextInfraDepsConstants
 
     _detector_runtime = _flext_infra_deps__detector_runtime
-    import flext_infra._utilities.deps_paths as _flext_infra__utilities_deps_paths
-    from flext_infra.deps._detector_runtime import FlextInfraDependencyDetectorRuntime
-
-    _extra_paths_resolution = _flext_infra__utilities_deps_paths
-    import flext_infra._utilities.deps_repos as _flext_infra__utilities_deps_repos
-    from flext_infra._utilities.deps_paths import (
-        FlextInfraExtraPathsResolutionMixin,
-    )
-
-    _internal_sync_repo = _flext_infra__utilities_deps_repos
     import flext_infra.deps._phases as _flext_infra_deps__phases
-    from flext_infra._utilities.deps_repos import FlextInfraInternalSyncRepoMixin
+    from flext_infra.deps._detector_runtime import FlextInfraDependencyDetectorRuntime
 
     _phases = _flext_infra_deps__phases
     import flext_infra.deps.cli as _flext_infra_deps_cli
@@ -126,18 +112,12 @@ _LAZY_IMPORTS = merge_lazy_imports(
         "FlextInfraDependencyDetectorRuntime": "flext_infra.deps._detector_runtime",
         "FlextInfraDependencyPathSync": "flext_infra.deps.path_sync",
         "FlextInfraDependencyPathSyncRewrite": "flext_infra.deps.path_sync_rewrite",
-        "FlextInfraDepsConstants": "flext_infra._constants.deps",
         "FlextInfraExtraPathsManager": "flext_infra.deps.extra_paths",
         "FlextInfraExtraPathsPyrefly": "flext_infra.deps.extra_paths_pyrefly",
-        "FlextInfraExtraPathsResolutionMixin": "flext_infra._utilities.deps_paths",
         "FlextInfraInternalDependencySyncService": "flext_infra.deps.internal_sync",
-        "FlextInfraInternalSyncRepoMixin": "flext_infra._utilities.deps_repos",
         "FlextInfraPyprojectModernizer": "flext_infra.deps.modernizer",
         "FlextInfraRuntimeDevDependencyDetector": "flext_infra.deps.detector",
-        "_constants": "flext_infra._constants.deps",
         "_detector_runtime": "flext_infra.deps._detector_runtime",
-        "_extra_paths_resolution": "flext_infra._utilities.deps_paths",
-        "_internal_sync_repo": "flext_infra._utilities.deps_repos",
         "_phases": "flext_infra.deps._phases",
         "c": ("flext_core.constants", "FlextConstants"),
         "cli": "flext_infra.deps.cli",
@@ -174,7 +154,6 @@ __all__ = [
     "FlextInfraDependencyDetectorRuntime",
     "FlextInfraDependencyPathSync",
     "FlextInfraDependencyPathSyncRewrite",
-    "FlextInfraDepsConstants",
     "FlextInfraEnsureCoverageConfigPhase",
     "FlextInfraEnsureExtraPathsPhase",
     "FlextInfraEnsureFormattingToolingPhase",
@@ -188,16 +167,11 @@ __all__ = [
     "FlextInfraEnsureRuffConfigPhase",
     "FlextInfraExtraPathsManager",
     "FlextInfraExtraPathsPyrefly",
-    "FlextInfraExtraPathsResolutionMixin",
     "FlextInfraInjectCommentsPhase",
     "FlextInfraInternalDependencySyncService",
-    "FlextInfraInternalSyncRepoMixin",
     "FlextInfraPyprojectModernizer",
     "FlextInfraRuntimeDevDependencyDetector",
-    "_constants",
     "_detector_runtime",
-    "_extra_paths_resolution",
-    "_internal_sync_repo",
     "_phases",
     "c",
     "cli",

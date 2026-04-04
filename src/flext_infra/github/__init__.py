@@ -10,11 +10,7 @@ import typing as _t
 from flext_core.lazy import install_lazy_exports
 
 if _t.TYPE_CHECKING:
-    import flext_infra._constants.github as _flext_infra__constants_github
-
-    _constants = _flext_infra__constants_github
     import flext_infra.github.cli as _flext_infra_github_cli
-    from flext_infra._constants.github import FlextInfraGithubConstants
 
     cli = _flext_infra_github_cli
     import flext_infra.github.service as _flext_infra_github_service
@@ -37,9 +33,7 @@ if _t.TYPE_CHECKING:
     )
 _LAZY_IMPORTS = {
     "FlextInfraCliGithub": "flext_infra.github.cli",
-    "FlextInfraGithubConstants": "flext_infra._constants.github",
     "FlextInfraGithubService": "flext_infra.github.service",
-    "_constants": "flext_infra._constants.github",
     "c": ("flext_core.constants", "FlextConstants"),
     "cli": "flext_infra.github.cli",
     "d": ("flext_core.decorators", "FlextDecorators"),
@@ -57,9 +51,7 @@ _LAZY_IMPORTS = {
 
 __all__ = [
     "FlextInfraCliGithub",
-    "FlextInfraGithubConstants",
     "FlextInfraGithubService",
-    "_constants",
     "c",
     "cli",
     "d",

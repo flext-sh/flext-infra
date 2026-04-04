@@ -13,20 +13,11 @@ if _t.TYPE_CHECKING:
     import flext_infra.refactor._base_rule as _flext_infra_refactor__base_rule
 
     _base_rule = _flext_infra_refactor__base_rule
-    import flext_infra._constants.refactor as _flext_infra__constants_refactor
-    from flext_infra._protocols.refactor import FlextInfraChangeTracker
+    import flext_infra.refactor._engine_helpers as _flext_infra_refactor__engine_helpers
     from flext_infra.refactor._base_rule import (
-        CONTAINER_DICT_SEQ_ADAPTER,
-        INFRA_MAPPING_ADAPTER,
-        INFRA_SEQ_ADAPTER,
-        STR_MAPPING_ADAPTER,
         FlextInfraGenericTransformerRule,
         FlextInfraRefactorRule,
     )
-
-    _constants = _flext_infra__constants_refactor
-    import flext_infra.refactor._engine_helpers as _flext_infra_refactor__engine_helpers
-    from flext_infra._constants.refactor import FlextInfraRefactorConstants
 
     _engine_helpers = _flext_infra_refactor__engine_helpers
     import flext_infra.refactor._engine_rules as _flext_infra_refactor__engine_rules
@@ -212,8 +203,6 @@ if _t.TYPE_CHECKING:
         FlextInfraRefactorViolationAnalyzer,
     )
 _LAZY_IMPORTS = {
-    "CONTAINER_DICT_SEQ_ADAPTER": "flext_infra.refactor._base_rule",
-    "FlextInfraChangeTracker": "flext_infra._protocols.refactor",
     "FlextInfraCliRefactor": "flext_infra.refactor.cli",
     "FlextInfraGenericTransformerRule": "flext_infra.refactor._base_rule",
     "FlextInfraNamespaceEnforcer": "flext_infra.refactor.namespace_enforcer",
@@ -222,7 +211,6 @@ _LAZY_IMPORTS = {
     "FlextInfraRefactorCensus": "flext_infra.refactor.census",
     "FlextInfraRefactorClassNestingAnalyzer": "flext_infra.refactor.class_nesting_analyzer",
     "FlextInfraRefactorClassReconstructorRule": "flext_infra.refactor._engine_rules",
-    "FlextInfraRefactorConstants": "flext_infra._constants.refactor",
     "FlextInfraRefactorEngine": "flext_infra.refactor.engine",
     "FlextInfraRefactorEngineHelpersMixin": "flext_infra.refactor._engine_helpers",
     "FlextInfraRefactorLegacyRemovalTextRule": "flext_infra.refactor._engine_rules",
@@ -259,11 +247,7 @@ _LAZY_IMPORTS = {
     "FlextInfraUtilitiesRefactorPolicy": "flext_infra.refactor._utilities_policy",
     "FlextInfraUtilitiesRefactorPydantic": "flext_infra.refactor._utilities_pydantic",
     "FlextInfraUtilitiesRefactorPydanticAnalysis": "flext_infra.refactor._utilities_pydantic_analysis",
-    "INFRA_MAPPING_ADAPTER": "flext_infra.refactor._base_rule",
-    "INFRA_SEQ_ADAPTER": "flext_infra.refactor._base_rule",
-    "STR_MAPPING_ADAPTER": "flext_infra.refactor._base_rule",
     "_base_rule": "flext_infra.refactor._base_rule",
-    "_constants": "flext_infra._constants.refactor",
     "_engine_helpers": "flext_infra.refactor._engine_helpers",
     "_engine_rules": "flext_infra.refactor._engine_rules",
     "_namespace_enforcer_phases": "flext_infra.refactor._namespace_enforcer_phases",
@@ -310,11 +294,6 @@ _LAZY_IMPORTS = {
 }
 
 __all__ = [
-    "CONTAINER_DICT_SEQ_ADAPTER",
-    "INFRA_MAPPING_ADAPTER",
-    "INFRA_SEQ_ADAPTER",
-    "STR_MAPPING_ADAPTER",
-    "FlextInfraChangeTracker",
     "FlextInfraCliRefactor",
     "FlextInfraGenericTransformerRule",
     "FlextInfraNamespaceEnforcer",
@@ -323,7 +302,6 @@ __all__ = [
     "FlextInfraRefactorCensus",
     "FlextInfraRefactorClassNestingAnalyzer",
     "FlextInfraRefactorClassReconstructorRule",
-    "FlextInfraRefactorConstants",
     "FlextInfraRefactorEngine",
     "FlextInfraRefactorEngineHelpersMixin",
     "FlextInfraRefactorLegacyRemovalTextRule",
@@ -361,7 +339,6 @@ __all__ = [
     "FlextInfraUtilitiesRefactorPydantic",
     "FlextInfraUtilitiesRefactorPydanticAnalysis",
     "_base_rule",
-    "_constants",
     "_engine_helpers",
     "_engine_rules",
     "_namespace_enforcer_phases",

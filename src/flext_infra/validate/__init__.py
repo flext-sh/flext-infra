@@ -10,14 +10,7 @@ import typing as _t
 from flext_core.lazy import install_lazy_exports
 
 if _t.TYPE_CHECKING:
-    import flext_infra._constants.validate as _flext_infra__constants_validate
-
-    _constants = _flext_infra__constants_validate
     import flext_infra.validate.basemk_validator as _flext_infra_validate_basemk_validator
-    from flext_infra._constants.validate import (
-        FlextInfraCoreConstants,
-        FlextInfraSharedInfraConstants,
-    )
 
     basemk_validator = _flext_infra_validate_basemk_validator
     import flext_infra.validate.cli as _flext_infra_validate_cli
@@ -67,16 +60,13 @@ if _t.TYPE_CHECKING:
 _LAZY_IMPORTS = {
     "FlextInfraBaseMkValidator": "flext_infra.validate.basemk_validator",
     "FlextInfraCliValidate": "flext_infra.validate.cli",
-    "FlextInfraCoreConstants": "flext_infra._constants.validate",
     "FlextInfraInventoryService": "flext_infra.validate.inventory",
     "FlextInfraNamespaceRules": "flext_infra.validate.namespace_rules",
     "FlextInfraNamespaceValidator": "flext_infra.validate.namespace_validator",
     "FlextInfraPytestDiagExtractor": "flext_infra.validate.pytest_diag",
-    "FlextInfraSharedInfraConstants": "flext_infra._constants.validate",
     "FlextInfraSkillValidator": "flext_infra.validate.skill_validator",
     "FlextInfraStubSupplyChain": "flext_infra.validate.stub_chain",
     "FlextInfraTextPatternScanner": "flext_infra.validate.scanner",
-    "_constants": "flext_infra._constants.validate",
     "basemk_validator": "flext_infra.validate.basemk_validator",
     "c": ("flext_core.constants", "FlextConstants"),
     "cli": "flext_infra.validate.cli",
@@ -102,16 +92,13 @@ _LAZY_IMPORTS = {
 __all__ = [
     "FlextInfraBaseMkValidator",
     "FlextInfraCliValidate",
-    "FlextInfraCoreConstants",
     "FlextInfraInventoryService",
     "FlextInfraNamespaceRules",
     "FlextInfraNamespaceValidator",
     "FlextInfraPytestDiagExtractor",
-    "FlextInfraSharedInfraConstants",
     "FlextInfraSkillValidator",
     "FlextInfraStubSupplyChain",
     "FlextInfraTextPatternScanner",
-    "_constants",
     "basemk_validator",
     "c",
     "cli",

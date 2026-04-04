@@ -10,11 +10,7 @@ import typing as _t
 from flext_core.lazy import install_lazy_exports
 
 if _t.TYPE_CHECKING:
-    import flext_infra._constants.basemk as _flext_infra__constants_basemk
-
-    _constants = _flext_infra__constants_basemk
     import flext_infra.basemk.cli as _flext_infra_basemk_cli
-    from flext_infra._constants.basemk import FlextInfraBasemkConstants
 
     cli = _flext_infra_basemk_cli
     import flext_infra.basemk.engine as _flext_infra_basemk_engine
@@ -40,9 +36,7 @@ if _t.TYPE_CHECKING:
 _LAZY_IMPORTS = {
     "FlextInfraBaseMkGenerator": "flext_infra.basemk.generator",
     "FlextInfraBaseMkTemplateEngine": "flext_infra.basemk.engine",
-    "FlextInfraBasemkConstants": "flext_infra._constants.basemk",
     "FlextInfraCliBasemk": "flext_infra.basemk.cli",
-    "_constants": "flext_infra._constants.basemk",
     "c": ("flext_core.constants", "FlextConstants"),
     "cli": "flext_infra.basemk.cli",
     "d": ("flext_core.decorators", "FlextDecorators"),
@@ -62,9 +56,7 @@ _LAZY_IMPORTS = {
 __all__ = [
     "FlextInfraBaseMkGenerator",
     "FlextInfraBaseMkTemplateEngine",
-    "FlextInfraBasemkConstants",
     "FlextInfraCliBasemk",
-    "_constants",
     "c",
     "cli",
     "d",

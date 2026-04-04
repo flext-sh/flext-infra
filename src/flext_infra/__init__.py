@@ -16,15 +16,36 @@ if _t.TYPE_CHECKING:
     _constants = _flext_infra__constants
     import flext_infra._models as _flext_infra__models
     from flext_infra._constants import (
+        FlextInfraBasemkConstants,
+        FlextInfraCheckConstants,
+        FlextInfraCodegenConstants,
         FlextInfraConstantsBase,
         FlextInfraConstantsCensus,
         FlextInfraConstantsMake,
         FlextInfraConstantsRope,
         FlextInfraConstantsSourceCode,
+        FlextInfraCoreConstants,
+        FlextInfraDepsConstants,
+        FlextInfraDocsConstants,
+        FlextInfraGithubConstants,
+        FlextInfraRefactorConstants,
+        FlextInfraReleaseConstants,
+        FlextInfraSharedInfraConstants,
+        FlextInfraWorkspaceConstants,
+        basemk,
         census,
+        check,
+        codegen,
+        deps,
+        docs,
+        github,
         make,
+        refactor,
+        release,
         rope,
         source_code,
+        validate,
+        workspace,
     )
 
     _models = _flext_infra__models
@@ -56,34 +77,31 @@ if _t.TYPE_CHECKING:
         FlextInfraRefactorModelsViolations,
         FlextInfraReleaseModels,
         FlextInfraWorkspaceModels,
-        basemk,
-        check,
         cli_inputs,
         cli_inputs_codegen,
         cli_inputs_ops,
-        codegen,
         codegen_deduplication,
-        deps,
         deps_tool_config,
         deps_tool_config_linters,
         deps_tool_config_type_checkers,
-        docs,
         gates,
-        github,
-        refactor,
         refactor_ast_grep,
         refactor_census,
         refactor_namespace_enforcer,
         refactor_violations,
-        release,
         scan,
-        validate,
-        workspace,
     )
 
     _protocols = _flext_infra__protocols
     import flext_infra._typings as _flext_infra__typings
-    from flext_infra._protocols import FlextInfraProtocolsBase, FlextInfraProtocolsRope
+    from flext_infra._protocols import (
+        FlextInfraChangeTracker,
+        FlextInfraProtocolsBase,
+        FlextInfraProtocolsCheck,
+        FlextInfraProtocolsRefactor,
+        FlextInfraProtocolsRope,
+        WorkspaceLoopOutcome,
+    )
 
     _typings = _flext_infra__typings
     import flext_infra._utilities as _flext_infra__utilities
@@ -97,6 +115,8 @@ if _t.TYPE_CHECKING:
     _utilities = _flext_infra__utilities
     import flext_infra.base as _flext_infra_base
     from flext_infra._utilities import (
+        FlextInfraExtraPathsResolutionMixin,
+        FlextInfraInternalSyncRepoMixin,
         FlextInfraUtilitiesBase,
         FlextInfraUtilitiesCli,
         FlextInfraUtilitiesCliShared,
@@ -147,8 +167,11 @@ if _t.TYPE_CHECKING:
         cli_subcommand,
         codegen_constants,
         codegen_execution,
+        codegen_generation,
         codegen_import_cycles,
         codegen_lazy,
+        deps_paths,
+        deps_repos,
         discovery,
         discovery_scanning,
         formatting,
@@ -189,7 +212,6 @@ if _t.TYPE_CHECKING:
         apply_option_json_schema_extra,
     )
     from flext_infra.basemk import (
-        FlextInfraBasemkConstants,
         FlextInfraBaseMkGenerator,
         FlextInfraBaseMkTemplateEngine,
         FlextInfraCliBasemk,
@@ -197,7 +219,6 @@ if _t.TYPE_CHECKING:
         generator,
     )
     from flext_infra.check import (
-        FlextInfraCheckConstants,
         FlextInfraCliCheck,
         FlextInfraConfigFixer,
         FlextInfraGateRegistry,
@@ -218,7 +239,6 @@ if _t.TYPE_CHECKING:
     from flext_infra.codegen import (
         FlextInfraCliCodegen,
         FlextInfraCodegenCensus,
-        FlextInfraCodegenConstants,
         FlextInfraCodegenConstantsQualityGate,
         FlextInfraCodegenFixer,
         FlextInfraCodegenGeneration,
@@ -243,12 +263,9 @@ if _t.TYPE_CHECKING:
         FlextInfraDependencyDetectorRuntime,
         FlextInfraDependencyPathSync,
         FlextInfraDependencyPathSyncRewrite,
-        FlextInfraDepsConstants,
         FlextInfraExtraPathsManager,
         FlextInfraExtraPathsPyrefly,
-        FlextInfraExtraPathsResolutionMixin,
         FlextInfraInternalDependencySyncService,
-        FlextInfraInternalSyncRepoMixin,
         FlextInfraPyprojectModernizer,
         FlextInfraRuntimeDevDependencyDetector,
         detection,
@@ -333,7 +350,6 @@ if _t.TYPE_CHECKING:
         FlextInfraDocFixer,
         FlextInfraDocGenerator,
         FlextInfraDocsCli,
-        FlextInfraDocsConstants,
         FlextInfraDocValidator,
         auditor,
         builder,
@@ -358,12 +374,7 @@ if _t.TYPE_CHECKING:
         ruff_format,
         ruff_lint,
     )
-    from flext_infra.github import (
-        FlextInfraCliGithub,
-        FlextInfraGithubConstants,
-        FlextInfraGithubService,
-        service,
-    )
+    from flext_infra.github import FlextInfraCliGithub, FlextInfraGithubService, service
 
     models = _flext_infra_models
     import flext_infra.protocols as _flext_infra_protocols
@@ -373,11 +384,6 @@ if _t.TYPE_CHECKING:
     import flext_infra.rules as _flext_infra_rules
     from flext_infra.protocols import FlextInfraProtocols, FlextInfraProtocols as p
     from flext_infra.refactor import (
-        CONTAINER_DICT_SEQ_ADAPTER,
-        INFRA_MAPPING_ADAPTER,
-        INFRA_SEQ_ADAPTER,
-        STR_MAPPING_ADAPTER,
-        FlextInfraChangeTracker,
         FlextInfraCliRefactor,
         FlextInfraGenericTransformerRule,
         FlextInfraNamespaceEnforcer,
@@ -386,7 +392,6 @@ if _t.TYPE_CHECKING:
         FlextInfraRefactorCensus,
         FlextInfraRefactorClassNestingAnalyzer,
         FlextInfraRefactorClassReconstructorRule,
-        FlextInfraRefactorConstants,
         FlextInfraRefactorEngine,
         FlextInfraRefactorEngineHelpersMixin,
         FlextInfraRefactorLegacyRemovalTextRule,
@@ -437,7 +442,6 @@ if _t.TYPE_CHECKING:
     )
     from flext_infra.release import (
         FlextInfraCliRelease,
-        FlextInfraReleaseConstants,
         FlextInfraReleaseOrchestrator,
         FlextInfraReleaseOrchestratorPhases,
         orchestrator,
@@ -532,12 +536,10 @@ if _t.TYPE_CHECKING:
     from flext_infra.validate import (
         FlextInfraBaseMkValidator,
         FlextInfraCliValidate,
-        FlextInfraCoreConstants,
         FlextInfraInventoryService,
         FlextInfraNamespaceRules,
         FlextInfraNamespaceValidator,
         FlextInfraPytestDiagExtractor,
-        FlextInfraSharedInfraConstants,
         FlextInfraSkillValidator,
         FlextInfraStubSupplyChain,
         FlextInfraTextPatternScanner,
@@ -555,7 +557,6 @@ if _t.TYPE_CHECKING:
         FlextInfraProjectMakefileUpdater,
         FlextInfraProjectMigrator,
         FlextInfraSyncService,
-        FlextInfraWorkspaceConstants,
         FlextInfraWorkspaceDetector,
         FlextInfraWorkspaceMakefileGenerator,
         FlextInfraWorkspaceMode,
@@ -650,10 +651,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
 
 __all__ = [
     "APPLY_OPTION_DECLS",
-    "CONTAINER_DICT_SEQ_ADAPTER",
-    "INFRA_MAPPING_ADAPTER",
-    "INFRA_SEQ_ADAPTER",
-    "STR_MAPPING_ADAPTER",
     "DetectorContext",
     "FlextInfraBanditGate",
     "FlextInfraBaseMkGenerator",
@@ -786,6 +783,8 @@ __all__ = [
     "FlextInfraProjectMigrator",
     "FlextInfraProtocols",
     "FlextInfraProtocolsBase",
+    "FlextInfraProtocolsCheck",
+    "FlextInfraProtocolsRefactor",
     "FlextInfraProtocolsRope",
     "FlextInfraPyprojectModernizer",
     "FlextInfraPyreflyGate",
@@ -938,6 +937,7 @@ __all__ = [
     "FlextInfraWorkspaceMakefileGenerator",
     "FlextInfraWorkspaceMode",
     "FlextInfraWorkspaceModels",
+    "WorkspaceLoopOutcome",
     "__author__",
     "__author_email__",
     "__description__",
@@ -979,6 +979,7 @@ __all__ = [
     "codegen_constants",
     "codegen_deduplication",
     "codegen_execution",
+    "codegen_generation",
     "codegen_import_cycles",
     "codegen_lazy",
     "compatibility_alias_detector",
@@ -992,6 +993,8 @@ __all__ = [
     "dependency_analyzer_base",
     "deprecated_remover",
     "deps",
+    "deps_paths",
+    "deps_repos",
     "deps_tool_config",
     "deps_tool_config_linters",
     "deps_tool_config_type_checkers",
