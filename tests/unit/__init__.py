@@ -1067,12 +1067,17 @@ if _t.TYPE_CHECKING:
         test_stub_validate_uses_all_flag,
     )
 
+    from flext_core.constants import FlextConstants as c
     from flext_core.decorators import FlextDecorators as d
     from flext_core.exceptions import FlextExceptions as e
     from flext_core.handlers import FlextHandlers as h
     from flext_core.mixins import FlextMixins as x
+    from flext_core.models import FlextModels as m
+    from flext_core.protocols import FlextProtocols as p
     from flext_core.result import FlextResult as r
     from flext_core.service import FlextService as s
+    from flext_core.typings import FlextTypes as t
+    from flext_core.utilities import FlextUtilities as u
 _LAZY_IMPORTS = merge_lazy_imports(
     (
         "tests.unit._utilities",
@@ -1145,6 +1150,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
         "TestWorkspaceRoot": "tests.unit.test_infra_maintenance_python_version",
         "_utilities": "tests.unit._utilities",
         "basemk": "tests.unit.basemk",
+        "c": ("flext_core.constants", "FlextConstants"),
         "check": "tests.unit.check",
         "codegen": "tests.unit.codegen",
         "container": "tests.unit.container",
@@ -1158,8 +1164,10 @@ _LAZY_IMPORTS = merge_lazy_imports(
         "github": "tests.unit.github",
         "h": ("flext_core.handlers", "FlextHandlers"),
         "io": "tests.unit.io",
+        "m": ("flext_core.models", "FlextModels"),
         "main": "tests.unit.test_infra_maintenance_main",
         "orchestrator": "tests.unit.test_infra_workspace_orchestrator",
+        "p": ("flext_core.protocols", "FlextProtocols"),
         "r": ("flext_core.result", "FlextResult"),
         "refactor": "tests.unit.refactor",
         "release": "tests.unit.release",
@@ -1167,6 +1175,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
         "s": ("flext_core.service", "FlextService"),
         "service": "tests.unit.test_infra_versioning",
         "svc": "tests.unit.test_infra_workspace_sync",
+        "t": ("flext_core.typings", "FlextTypes"),
         "test_atomic_write_fail": "tests.unit.test_infra_workspace_sync",
         "test_atomic_write_ok": "tests.unit.test_infra_workspace_sync",
         "test_bump_version_invalid": "tests.unit.test_infra_versioning",
@@ -1264,6 +1273,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
         "test_workspace_migrator_makefile_not_found_dry_run": "tests.unit.test_infra_workspace_migrator_deps",
         "test_workspace_migrator_makefile_read_error": "tests.unit.test_infra_workspace_migrator_deps",
         "test_workspace_migrator_pyproject_write_error": "tests.unit.test_infra_workspace_migrator_deps",
+        "u": ("flext_core.utilities", "FlextUtilities"),
         "validate": "tests.unit.validate",
         "workspace_main": "tests.unit.test_infra_workspace_main",
         "x": ("flext_core.mixins", "FlextMixins"),
@@ -1605,6 +1615,7 @@ __all__ = [
     "builder",
     "builder_scope_tests",
     "builder_tests",
+    "c",
     "census_models_tests",
     "census_tests",
     "check",
@@ -1666,6 +1677,7 @@ __all__ = [
     "lazy_init_service_tests",
     "lazy_init_tests",
     "lazy_init_transforms_tests",
+    "m",
     "main",
     "main_cli_tests",
     "main_commands_tests",
@@ -1684,6 +1696,7 @@ __all__ = [
     "orchestrator_phases_tests",
     "orchestrator_publish_tests",
     "orchestrator_tests",
+    "p",
     "patch_gate_run",
     "patch_python_dir_detection",
     "pipeline_tests",
@@ -1712,6 +1725,7 @@ __all__ = [
     "skill_validator_tests",
     "stub_chain_tests",
     "svc",
+    "t",
     "test_all_three_capabilities_in_one_pass",
     "test_array",
     "test_as_string_list",
@@ -2145,6 +2159,7 @@ __all__ = [
     "test_workspace_migrator_pyproject_write_error",
     "test_workspace_root_doc_construction",
     "test_workspace_root_fallback",
+    "u",
     "validate",
     "validator",
     "validator_internals_tests",
