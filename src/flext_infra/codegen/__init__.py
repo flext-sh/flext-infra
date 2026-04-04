@@ -13,15 +13,12 @@ if _t.TYPE_CHECKING:
     import flext_infra.codegen._codegen_generation as _flext_infra_codegen__codegen_generation
 
     _codegen_generation = _flext_infra_codegen__codegen_generation
-    import flext_infra.codegen._codegen_generation_helpers as _flext_infra_codegen__codegen_generation_helpers
+    import flext_infra._constants.codegen as _flext_infra__constants_codegen
     from flext_infra.codegen._codegen_generation import FlextInfraCodegenGeneration
 
-    _codegen_generation_helpers = _flext_infra_codegen__codegen_generation_helpers
-    import flext_infra.codegen._constants as _flext_infra_codegen__constants
-
-    _constants = _flext_infra_codegen__constants
+    _constants = _flext_infra__constants_codegen
     import flext_infra.codegen._utilities as _flext_infra_codegen__utilities
-    from flext_infra.codegen._constants import FlextInfraCodegenConstants
+    from flext_infra._constants.codegen import FlextInfraCodegenConstants
 
     _utilities = _flext_infra_codegen__utilities
     import flext_infra.codegen.census as _flext_infra_codegen_census
@@ -69,7 +66,7 @@ if _t.TYPE_CHECKING:
 _LAZY_IMPORTS = {
     "FlextInfraCliCodegen": "flext_infra.codegen.cli",
     "FlextInfraCodegenCensus": "flext_infra.codegen.census",
-    "FlextInfraCodegenConstants": "flext_infra.codegen._constants",
+    "FlextInfraCodegenConstants": "flext_infra._constants.codegen",
     "FlextInfraCodegenConstantsQualityGate": "flext_infra.codegen.constants_quality_gate",
     "FlextInfraCodegenFixer": "flext_infra.codegen.fixer",
     "FlextInfraCodegenGeneration": "flext_infra.codegen._codegen_generation",
@@ -78,8 +75,8 @@ _LAZY_IMPORTS = {
     "FlextInfraCodegenScaffolder": "flext_infra.codegen.scaffolder",
     "FlextInfraUtilitiesCodegen": "flext_infra.codegen._utilities",
     "_codegen_generation": "flext_infra.codegen._codegen_generation",
-    "_codegen_generation_helpers": "flext_infra.codegen._codegen_generation_helpers",
-    "_constants": "flext_infra.codegen._constants",
+    "_codegen_generation_helpers": "flext_infra._utilities.codegen_generation",
+    "_constants": "flext_infra._constants.codegen",
     "_utilities": "flext_infra.codegen._utilities",
     "c": ("flext_core.constants", "FlextConstants"),
     "census": "flext_infra.codegen.census",

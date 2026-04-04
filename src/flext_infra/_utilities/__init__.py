@@ -192,8 +192,21 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
 
     yaml = _flext_infra__utilities_yaml
+    import flext_infra._utilities.codegen_generation as _flext_infra__utilities_codegen_generation
     from flext_infra._utilities.yaml import FlextInfraUtilitiesYaml
+
+    codegen_generation = _flext_infra__utilities_codegen_generation
+    import flext_infra._utilities.deps_paths as _flext_infra__utilities_deps_paths
+
+    deps_paths = _flext_infra__utilities_deps_paths
+    import flext_infra._utilities.deps_repos as _flext_infra__utilities_deps_repos
+    from flext_infra._utilities.deps_paths import FlextInfraExtraPathsResolutionMixin
+
+    deps_repos = _flext_infra__utilities_deps_repos
+    from flext_infra._utilities.deps_repos import FlextInfraInternalSyncRepoMixin
 _LAZY_IMPORTS = {
+    "FlextInfraExtraPathsResolutionMixin": "flext_infra._utilities.deps_paths",
+    "FlextInfraInternalSyncRepoMixin": "flext_infra._utilities.deps_repos",
     "FlextInfraUtilitiesBase": "flext_infra._utilities.base",
     "FlextInfraUtilitiesCli": "flext_infra._utilities.cli",
     "FlextInfraUtilitiesCliShared": "flext_infra._utilities.cli_shared",
@@ -241,6 +254,7 @@ _LAZY_IMPORTS = {
     "FlextInfraUtilitiesVersioning": "flext_infra._utilities.versioning",
     "FlextInfraUtilitiesYaml": "flext_infra._utilities.yaml",
     "base": "flext_infra._utilities.base",
+    "codegen_generation": "flext_infra._utilities.codegen_generation",
     "cli": "flext_infra._utilities.cli",
     "cli_shared": "flext_infra._utilities.cli_shared",
     "cli_subcommand": "flext_infra._utilities.cli_subcommand",
@@ -248,6 +262,8 @@ _LAZY_IMPORTS = {
     "codegen_execution": "flext_infra._utilities.codegen_execution",
     "codegen_import_cycles": "flext_infra._utilities.codegen_import_cycles",
     "codegen_lazy": "flext_infra._utilities.codegen_lazy",
+    "deps_paths": "flext_infra._utilities.deps_paths",
+    "deps_repos": "flext_infra._utilities.deps_repos",
     "discovery": "flext_infra._utilities.discovery",
     "discovery_scanning": "flext_infra._utilities.discovery_scanning",
     "docs": "flext_infra._utilities.docs",
@@ -284,6 +300,8 @@ _LAZY_IMPORTS = {
 }
 
 __all__ = [
+    "FlextInfraExtraPathsResolutionMixin",
+    "FlextInfraInternalSyncRepoMixin",
     "FlextInfraUtilitiesBase",
     "FlextInfraUtilitiesCli",
     "FlextInfraUtilitiesCliShared",
@@ -336,8 +354,11 @@ __all__ = [
     "cli_subcommand",
     "codegen_constants",
     "codegen_execution",
+    "codegen_generation",
     "codegen_import_cycles",
     "codegen_lazy",
+    "deps_paths",
+    "deps_repos",
     "discovery",
     "discovery_scanning",
     "docs",

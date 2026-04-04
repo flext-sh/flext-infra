@@ -13,7 +13,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
 
 from flext_infra import c, p, t
-from flext_infra.codegen._codegen_generation_helpers import (
+from flext_infra._utilities.codegen_generation import (
     build_lazy_entries,
     collapse_to_children,
     emit_type_checking_module,

@@ -10,11 +10,11 @@ import typing as _t
 from flext_core.lazy import install_lazy_exports, merge_lazy_imports
 
 if _t.TYPE_CHECKING:
-    import flext_infra.workspace._constants as _flext_infra_workspace__constants
+    import flext_infra._constants.workspace as _flext_infra__constants_workspace
 
-    _constants = _flext_infra_workspace__constants
+    _constants = _flext_infra__constants_workspace
     import flext_infra.workspace.cli as _flext_infra_workspace_cli
-    from flext_infra.workspace._constants import FlextInfraWorkspaceConstants
+    from flext_infra._constants.workspace import FlextInfraWorkspaceConstants
 
     cli = _flext_infra_workspace_cli
     import flext_infra.workspace.detector as _flext_infra_workspace_detector
@@ -75,11 +75,11 @@ _LAZY_IMPORTS = merge_lazy_imports(
         "FlextInfraProjectMakefileUpdater": "flext_infra.workspace.project_makefile",
         "FlextInfraProjectMigrator": "flext_infra.workspace.migrator",
         "FlextInfraSyncService": "flext_infra.workspace.sync",
-        "FlextInfraWorkspaceConstants": "flext_infra.workspace._constants",
+        "FlextInfraWorkspaceConstants": "flext_infra._constants.workspace",
         "FlextInfraWorkspaceDetector": "flext_infra.workspace.detector",
         "FlextInfraWorkspaceMakefileGenerator": "flext_infra.workspace.workspace_makefile",
         "FlextInfraWorkspaceMode": "flext_infra.workspace.detector",
-        "_constants": "flext_infra.workspace._constants",
+        "_constants": "flext_infra._constants.workspace",
         "c": ("flext_core.constants", "FlextConstants"),
         "cli": "flext_infra.workspace.cli",
         "d": ("flext_core.decorators", "FlextDecorators"),

@@ -16,7 +16,7 @@ from typing import ClassVar
 
 from pydantic import TypeAdapter, ValidationError
 
-from flext_infra import CONTAINER_DICT_SEQ_ADAPTER, c, m, t
+from flext_infra import c, m, t
 
 
 class FlextInfraUtilitiesParsing:
@@ -233,7 +233,7 @@ class FlextInfraUtilitiesParsing:
         """Parse and validate forbidden import rule configs."""
         try:
             raw_items: Sequence[t.Infra.ContainerDict] = (
-                CONTAINER_DICT_SEQ_ADAPTER.validate_python(value)
+                t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(value)
             )
         except ValidationError:
             return []

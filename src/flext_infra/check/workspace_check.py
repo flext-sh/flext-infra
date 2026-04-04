@@ -8,7 +8,7 @@ import shlex
 from collections.abc import MutableSequence, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Protocol, override
+from typing import override
 
 from flext_core import r, s
 from flext_infra import (
@@ -19,15 +19,7 @@ from flext_infra import (
     u,
     workspace_check_cli as workspace_check_cli_module,
 )
-
-
-class WorkspaceLoopOutcome(Protocol):
-    """Public structural view of the workspace gate loop outcome."""
-
-    results: tuple[m.Infra.ProjectResult, ...]
-    failed: int
-    skipped: int
-    total_elapsed: float
+from flext_infra._protocols.check import WorkspaceLoopOutcome
 
 
 class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):

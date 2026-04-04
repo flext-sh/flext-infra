@@ -10,11 +10,11 @@ import typing as _t
 from flext_core.lazy import install_lazy_exports
 
 if _t.TYPE_CHECKING:
-    import flext_infra.check._constants as _flext_infra_check__constants
+    import flext_infra._constants.check as _flext_infra__constants_check
 
-    _constants = _flext_infra_check__constants
+    _constants = _flext_infra__constants_check
     import flext_infra.check._workspace_check_gates as _flext_infra_check__workspace_check_gates
-    from flext_infra.check._constants import FlextInfraCheckConstants
+    from flext_infra._constants.check import FlextInfraCheckConstants
 
     _workspace_check_gates = _flext_infra_check__workspace_check_gates
     import flext_infra.check.cli as _flext_infra_check_cli
@@ -52,14 +52,14 @@ if _t.TYPE_CHECKING:
     from flext_core.utilities import FlextUtilities as u
     from flext_infra.check.workspace_check_cli import FlextInfraWorkspaceCheckerCli
 _LAZY_IMPORTS = {
-    "FlextInfraCheckConstants": "flext_infra.check._constants",
+    "FlextInfraCheckConstants": "flext_infra._constants.check",
     "FlextInfraCliCheck": "flext_infra.check.cli",
     "FlextInfraConfigFixer": "flext_infra.check.services",
     "FlextInfraGateRegistry": "flext_infra.check._workspace_check_gates",
     "FlextInfraWorkspaceCheckGatesMixin": "flext_infra.check._workspace_check_gates",
     "FlextInfraWorkspaceChecker": "flext_infra.check.services",
     "FlextInfraWorkspaceCheckerCli": "flext_infra.check.workspace_check_cli",
-    "_constants": "flext_infra.check._constants",
+    "_constants": "flext_infra._constants.check",
     "_workspace_check_gates": "flext_infra.check._workspace_check_gates",
     "build_parser": "flext_infra.check.workspace_check",
     "c": ("flext_core.constants", "FlextConstants"),

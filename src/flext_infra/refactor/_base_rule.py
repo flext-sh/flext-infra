@@ -8,24 +8,12 @@ This module has no dependencies on any rules/ submodule.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSequence
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Protocol, override, runtime_checkable
+from typing import override
 
 from flext_infra import c, t
-
-# ── Shared TypeAdapter re-exports (SSOT: t.Infra.*_ADAPTER) ─────────
-INFRA_MAPPING_ADAPTER = t.Infra.INFRA_MAPPING_ADAPTER
-CONTAINER_DICT_SEQ_ADAPTER = t.Infra.CONTAINER_DICT_SEQ_ADAPTER
-STR_MAPPING_ADAPTER = t.Infra.STR_MAPPING_ADAPTER
-INFRA_SEQ_ADAPTER = t.Infra.INFRA_SEQ_ADAPTER
-
-
-@runtime_checkable
-class FlextInfraChangeTracker(Protocol):
-    """Protocol for objects that track applied changes."""
-
-    changes: MutableSequence[str]
+from flext_infra._protocols.refactor import FlextInfraChangeTracker
 
 
 class FlextInfraRefactorRule:
@@ -93,11 +81,6 @@ class FlextInfraGenericTransformerRule(FlextInfraRefactorRule):
 
 
 __all__ = [
-    "CONTAINER_DICT_SEQ_ADAPTER",
-    "INFRA_MAPPING_ADAPTER",
-    "INFRA_SEQ_ADAPTER",
-    "STR_MAPPING_ADAPTER",
-    "FlextInfraChangeTracker",
     "FlextInfraGenericTransformerRule",
     "FlextInfraRefactorRule",
 ]
