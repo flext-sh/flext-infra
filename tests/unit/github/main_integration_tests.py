@@ -9,8 +9,7 @@ import pytest
 from tests import m
 
 from flext_core import r
-from flext_infra import main, u as infra_u
-from flext_infra.github.service import FlextInfraGithubService
+from flext_infra import FlextInfraGithubService, main, u as infra_u
 
 
 def _orch(*, fail: int = 0, total: int = 1) -> m.Infra.PrOrchestrationResult:

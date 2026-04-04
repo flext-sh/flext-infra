@@ -17,13 +17,13 @@ from pydantic import ValidationError
 
 from flext_core import u
 from flext_infra import (
+    FlextInfraUtilitiesBase,
     FlextInfraUtilitiesCodegenConstantDetection,
     FlextInfraUtilitiesSubprocess,
     c,
     m,
     t,
 )
-from flext_infra._utilities.base import FlextInfraUtilitiesBase
 
 _BARE_IMPORT_FROM_RE = re.compile(r"^from\s+import\s", re.MULTILINE)
 _NO_MODIFIED = {

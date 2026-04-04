@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 from flext_cli import cli as cli_service
-from flext_infra import c, m, t
-from flext_infra.github.service import FlextInfraGithubService
+from flext_infra import FlextInfraGithubService, c, m, t
 
 
 class FlextInfraCliGithub:

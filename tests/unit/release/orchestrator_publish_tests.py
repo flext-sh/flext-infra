@@ -9,9 +9,11 @@ from flext_tests import tm
 from tests import m, t
 
 from flext_core import r
-from flext_infra import FlextInfraReleaseOrchestrator
-from flext_infra._utilities.release import FlextInfraUtilitiesRelease
-from flext_infra._utilities.reporting import FlextInfraUtilitiesReporting
+from flext_infra import (
+    FlextInfraReleaseOrchestrator,
+    FlextInfraUtilitiesRelease,
+    FlextInfraUtilitiesReporting,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path

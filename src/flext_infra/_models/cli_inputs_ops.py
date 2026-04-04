@@ -93,11 +93,11 @@ class FlextInfraModelsCliInputsOps:
             t.StrSequence,
             Field(
                 default_factory=list,
-                description="Project to process; repeat --project NAME as needed",
+                description="Project to process; repeat --projects NAME as needed",
             ),
         ] = Field(
             default_factory=list,
-            description="Project to process; repeat --project NAME as needed",
+            description="Project to process; repeat --projects NAME as needed",
         )
         include_root: Annotated[
             bool,

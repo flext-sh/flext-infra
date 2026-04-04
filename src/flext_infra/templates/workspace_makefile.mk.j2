@@ -123,7 +123,7 @@ endef
 
 define AUTO_SYNC_ALL_PROJECTS
 for proj in $(ALL_PROJECTS); do \
-	$(WORKSPACE_INFRA_WORKSPACE) sync --workspace "$$proj" --canonical-root "$(CURDIR)" --apply >/dev/null || exit 1; \
+	$(WORKSPACE_INFRA_WORKSPACE) sync --workspace "$$proj" --workspace "$(CURDIR)" --apply >/dev/null || exit 1; \
 done
 endef
 
@@ -425,10 +425,10 @@ mod: ## Modernize pyproject.toml files (standardize configs without lock/install
 	$(Q)$(ENSURE_SELECTED_PROJECTS)
 	$(Q)$(ENSURE_PROJECTS_EXIST)
 	$(Q)echo "Modernizing pyproject.toml files..."; \
-	$(WORKSPACE_INFRA_DEPS) modernize --skip-check --apply $(if $(PROJECT),--project "$(PROJECT)",) $(if $(PROJECTS),--projects "$(PROJECTS)",); \
+	$(WORKSPACE_INFRA_DEPS) modernize --skip-check --apply $(if $(PROJECT),--projects "$(PROJECT)",) $(if $(PROJECTS),--projects "$(PROJECTS)",); \
 	echo ""
 	$(Q)echo "Syncing dependency paths to workspace mode..."; \
-	$(WORKSPACE_INFRA_DEPS) path-sync --mode auto --apply $(if $(PROJECT),--project "$(PROJECT)",) $(if $(PROJECTS),--projects "$(PROJECTS)",); \
+	$(WORKSPACE_INFRA_DEPS) path-sync --mode auto --apply $(if $(PROJECT),--projects "$(PROJECT)",) $(if $(PROJECTS),--projects "$(PROJECTS)",); \
 	echo ""
 	$(Q)echo "Formatting pyproject.toml files with taplo..."; \
 	taplo format --config "$(CURDIR)/.taplo.toml" pyproject.toml */pyproject.toml; \
@@ -472,7 +472,7 @@ pr: ## Manage pull requests for selected projects
 	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
 	$(Q)$(WORKSPACE_INFRA_GITHUB) pr-workspace \
 		--workspace "$(CURDIR)" \
-		$(foreach proj,$(SELECTED_PROJECTS),--project "$(proj)") \
+		$(foreach proj,$(SELECTED_PROJECTS),--projects "$(proj)") \
 		--include-root "$(PR_INCLUDE_ROOT)" \
 		--branch "$(PR_BRANCH)" \
 		--checkpoint "$(PR_CHECKPOINT)" \
@@ -612,7 +612,7 @@ types: ## Run typings supply-chain (stubgen + stub_supply_chain + dependency rep
 	fi; \
 	rm -rf "$$tmp_dir"
 	$(Q)$(WORKSPACE_INFRA_VALIDATE) stub-validate \
-		$(if $(PROJECT),--project $(PROJECT),$(if $(PROJECTS),$(addprefix --project ,$(PROJECTS)),--all))
+		$(if $(PROJECT),--projects $(PROJECT),$(if $(PROJECTS),$(addprefix --projects ,$(PROJECTS)),--all))
 	$(Q)if [ "$(DEPS_REPORT)" != "0" ]; then \
 		$(WORKSPACE_INFRA_DEPS) detect --typings -q --no-fail; \
 	fi
@@ -625,7 +625,7 @@ pyre: ## Authoritative repo-wide pyrefly report + policy gate -> .reports/pyrefl
 	$(WORKSPACE_INFRA_CHECK) run \
 		--gates pyrefly \
 		--reports-dir "$(CURDIR)/.reports/pyrefly" \
-		--project "." \
+		--projects "." \
 		2>&1 | tee .sisyphus/evidence/pyrefly-repo-before.txt; \
 	pyre_status=$${PIPESTATUS[0]}; \
 	printf "exit_code: %s\n" "$$pyre_status" >> .sisyphus/evidence/pyrefly-repo-before.txt; \
@@ -885,7 +885,7 @@ sync: ## Sync project Makefiles from pyproject.toml + refresh __init__.py lazy i
 	$(Q)for proj in $(SELECTED_PROJECTS); do \
 		$(WORKSPACE_INFRA_WORKSPACE) sync \
 			--workspace "$$proj" \
-			--canonical-root "$(CURDIR)"; \
+			--workspace "$(CURDIR)"; \
 	done
 	$(Q)echo "==> Regenerating __init__.py lazy imports..."
 	$(Q)$(WORKSPACE_INFRA_CODEGEN) lazy-init --workspace "$(CURDIR)"

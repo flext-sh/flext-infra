@@ -34,7 +34,7 @@ def test_run_cli_run_returns_zero_for_pass(monkeypatch: MonkeyPatch) -> None:
         "run",
         "--gates",
         "lint,type",
-        "--project",
+        "--projects",
         "flext-core",
     ])
     assert exit_code == 0
@@ -51,7 +51,7 @@ def test_run_cli_run_returns_one_for_fail(monkeypatch: MonkeyPatch) -> None:
         "run",
         "--gates",
         "lint",
-        "--project",
+        "--projects",
         "flext-core",
     ])
     assert exit_code == 1
@@ -68,7 +68,7 @@ def test_run_cli_run_returns_two_for_error(monkeypatch: MonkeyPatch) -> None:
         "run",
         "--gates",
         "lint",
-        "--project",
+        "--projects",
         "flext-core",
     ])
     assert exit_code == 2
@@ -86,9 +86,9 @@ def test_run_cli_with_multiple_projects(monkeypatch: MonkeyPatch) -> None:
         "run",
         "--gates",
         "lint",
-        "--project",
+        "--projects",
         "proj1",
-        "--project",
+        "--projects",
         "proj2",
     ])
     assert exit_code == 0
@@ -109,7 +109,7 @@ def test_run_cli_with_fail_fast_flag(monkeypatch: MonkeyPatch) -> None:
         "--gates",
         "lint",
         "--fail-fast",
-        "--project",
+        "--projects",
         "flext-core",
     ])
     assert exit_code == 0
@@ -153,7 +153,7 @@ def test_run_cli_run_forwards_fix_and_tool_args(monkeypatch: MonkeyPatch) -> Non
         "--select E501",
         "--pyright-args",
         "--level basic",
-        "--project",
+        "--projects",
         "flext-core",
     ])
     assert exit_code == 0
@@ -170,7 +170,7 @@ def test_run_cli_accepts_shared_dry_run_flag() -> None:
     exit_code = FlextInfraWorkspaceChecker.run_cli([
         "--dry-run",
         "run",
-        "--project",
+        "--projects",
         "flext-core",
     ])
     assert exit_code == 0

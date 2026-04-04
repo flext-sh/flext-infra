@@ -13,8 +13,7 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
-from flext_infra import FlextInfraBaseMkGenerator, c, r, u
-from flext_infra._models.workspace import FlextInfraWorkspaceModels
+from flext_infra import FlextInfraBaseMkGenerator, FlextInfraWorkspaceModels, c, r, u
 
 
 class FlextInfraProjectMakefileUpdater:

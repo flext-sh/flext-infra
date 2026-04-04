@@ -18,13 +18,13 @@ from pydantic import Field
 from flext_core import r
 from flext_infra import (
     FlextInfraNamespaceValidator,
+    FlextInfraServiceBase,
     c,
     m,
     p,
     t,
     u,
 )
-from flext_infra.base import FlextInfraServiceBase
 
 
 class FlextInfraCodegenCensus(FlextInfraServiceBase[str]):

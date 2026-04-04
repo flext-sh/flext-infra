@@ -18,10 +18,12 @@ from typing import Annotated
 from pydantic import Field
 
 from flext_cli import FlextCliUtilities
-from flext_infra._utilities.cli_shared import FlextInfraUtilitiesCliShared
-from flext_infra._utilities.cli_subcommand import FlextInfraUtilitiesCliSubcommand
-from flext_infra.models import FlextInfraModels as m
-from flext_infra.typings import FlextInfraTypes as t
+from flext_infra import (
+    FlextInfraModels as m,
+    FlextInfraTypes as t,
+    FlextInfraUtilitiesCliShared,
+    FlextInfraUtilitiesCliSubcommand,
+)
 
 
 class FlextInfraUtilitiesCli(FlextInfraUtilitiesCliShared):
@@ -65,7 +67,7 @@ class FlextInfraUtilitiesCli(FlextInfraUtilitiesCliShared):
         def project_names(self) -> t.StrSequence | None:
             """Extract project names from single or comma-separated project string.
 
-            Combines --project (single) and --projects (comma-separated) arguments.
+            Combines --projects (single) and --projects (comma-separated) arguments.
             Strips whitespace and ignores empty entries.
 
             Returns:
@@ -85,7 +87,7 @@ class FlextInfraUtilitiesCli(FlextInfraUtilitiesCliShared):
 
             Returns:
                 List of Path objects (workspace / project_name) if projects specified.
-                None if no projects were specified via --project or --projects.
+                None if no projects were specified via --projects or --projects.
 
             """
             names = self.project_names()

@@ -25,9 +25,9 @@ from flext_infra import (
     FlextInfraRefactorMigrateToClassMRO,
     c,
     m,
+    s,
     u,
 )
-from flext_infra.base import s
 
 
 class FlextInfraCodegenFixer(s[str]):

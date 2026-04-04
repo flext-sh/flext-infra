@@ -84,7 +84,7 @@ class TestMain:
         project_dir.mkdir()
         (project_dir / "pyproject.toml").write_text('[project]\nname = "flext-core"\n')
         monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
-        monkeypatch.setattr(sys, "argv", ["prog", "--project", "flext-core"])
+        monkeypatch.setattr(sys, "argv", ["prog", "--projects", "flext-core"])
         tm.that(path_sync_module.main(), eq=0)
 
     def test_main_discovery_failure(

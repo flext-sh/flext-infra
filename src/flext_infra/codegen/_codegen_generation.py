@@ -202,6 +202,12 @@ class FlextInfraCodegenGeneration:
             for name, val in filtered.items()
             if name not in eager_typevar_names
         }
+        wildcard_runtime_module_set = frozenset(wildcard_runtime_modules or ())
+        type_checking_filtered: t.Infra.LazyImportMap = {
+            name: val
+            for name, val in lazy_filtered.items()
+            if val[0] not in wildcard_runtime_module_set
+        }
         children_lazy = tuple(child_packages_for_lazy or ())
         eager_export_names = [
             name for name in sorted(exports) if name not in lazy_filtered
@@ -243,7 +249,7 @@ class FlextInfraCodegenGeneration:
             children_lazy,
         )
         type_checking_lines = FlextInfraCodegenGeneration.generate_type_checking(
-            group_imports(lazy_filtered),
+            group_imports(type_checking_filtered),
             include_flext_types=False,
             child_packages=child_packages_for_tc or (),
             local_package_root=current_pkg,

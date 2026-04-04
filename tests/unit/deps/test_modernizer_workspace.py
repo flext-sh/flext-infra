@@ -104,8 +104,7 @@ class TestParser:
                 "--audit",
                 "--dry-run",
                 "--skip-comments",
-                "--skip-check",
-                "--project",
+                "--projects",
                 "flext-core",
             ])
         tm.that(exit_code, eq=0)

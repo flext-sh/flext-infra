@@ -142,7 +142,7 @@ class TestAuditorMainCli:
                 "auditor",
                 "--workspace",
                 str(tmp_path),
-                "--project",
+                "--projects",
                 "test-proj",
                 "--output-dir",
                 str(tmp_path / "output"),

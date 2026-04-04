@@ -18,8 +18,7 @@ from flext_tests import tm
 from tests import t
 
 from flext_core import r
-from flext_infra import main as infra_main
-from flext_infra.codegen import cli as codegen_cli
+from flext_infra import cli as codegen_cli, main as infra_main
 
 
 class TestHandleLazyInit:

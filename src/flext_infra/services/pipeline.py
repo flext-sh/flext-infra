@@ -5,13 +5,15 @@ from __future__ import annotations
 from typing import override
 
 from flext_core import r
-from flext_infra import t
-from flext_infra.base import s
-from flext_infra.codegen.census import FlextInfraCodegenCensus
-from flext_infra.codegen.fixer import FlextInfraCodegenFixer
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
-from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
+from flext_infra import (
+    FlextInfraCodegenCensus,
+    FlextInfraCodegenFixer,
+    FlextInfraCodegenLazyInit,
+    FlextInfraCodegenPyTyped,
+    FlextInfraCodegenScaffolder,
+    s,
+    t,
+)
 
 
 class FlextInfraCodegenPipeline(s[str]):

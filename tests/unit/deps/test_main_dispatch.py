@@ -122,12 +122,12 @@ class TestMainSysArgvModification:
     ) -> None:
         _patch_dispatch(
             monkeypatch,
-            ["prog", "--workspace", ".", "--project", "flext-core", "detect"],
+            ["prog", "--workspace", ".", "--projects", "flext-core", "detect"],
         )
         _main_impl()
         tm.that(sys.argv, has="--workspace")
         tm.that(sys.argv, has=".")
-        tm.that(sys.argv, has="--project")
+        tm.that(sys.argv, has="--projects")
         tm.that(sys.argv, has="flext-core")
 
 

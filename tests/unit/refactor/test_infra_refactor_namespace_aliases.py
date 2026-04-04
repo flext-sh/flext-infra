@@ -165,7 +165,7 @@ def test_namespace_rewriter_only_rewrites_runtime_alias_imports(tmp_path: Path) 
 
 def test_namespace_rewriter_keeps_contextual_alias_subset(tmp_path: Path) -> None:
     sample_file = tmp_path / "sample.py"
-    source = "from __future__ import annotations\nfrom flext_core.utilities import u\n"
+    source = "from __future__ import annotations\nfrom flext_core import u\n"
     sample_file.write_text(source, encoding="utf-8")
 
     u.Infra.rewrite_import_violations(

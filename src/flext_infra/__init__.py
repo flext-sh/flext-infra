@@ -12,17 +12,6 @@ from flext_infra.__version__ import *
 
 if _t.TYPE_CHECKING:
     import flext_infra._constants as _flext_infra__constants
-    from flext_infra.__version__ import (
-        FlextInfraVersion,
-        __author__,
-        __author_email__,
-        __description__,
-        __license__,
-        __title__,
-        __url__,
-        __version__,
-        __version_info__,
-    )
 
     _constants = _flext_infra__constants
     import flext_infra._models as _flext_infra__models

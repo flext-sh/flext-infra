@@ -5,20 +5,18 @@ from __future__ import annotations
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
-from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
-from flext_infra._utilities.formatting import FlextInfraUtilitiesFormatting
-from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
-from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
-from flext_infra._utilities.rope import FlextInfraUtilitiesRope
-from flext_infra.constants import FlextInfraConstants as c
-from flext_infra.models import FlextInfraModels as m
-from flext_infra.refactor._utilities_namespace_analysis import (
-    FlextInfraUtilitiesRefactorNamespaceCommon,
-)
-from flext_infra.transformers._utilities_normalizer import (
+from flext_infra import (
+    FlextInfraConstants as c,
+    FlextInfraModels as m,
+    FlextInfraTypes as t,
+    FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesFormatting,
     FlextInfraUtilitiesImportNormalizer,
+    FlextInfraUtilitiesIteration,
+    FlextInfraUtilitiesParsing,
+    FlextInfraUtilitiesRefactorNamespaceCommon,
+    FlextInfraUtilitiesRope,
 )
-from flext_infra.typings import FlextInfraTypes as t
 
 
 class FlextInfraUtilitiesRefactorNamespaceRuntime(

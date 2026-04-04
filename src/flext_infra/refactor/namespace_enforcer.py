@@ -7,12 +7,10 @@ from pathlib import Path
 from typing import override
 
 from flext_infra import (
+    FlextInfraNamespaceEnforcerPhasesMixin,
     m,
     t,
     u,
-)
-from flext_infra.refactor._namespace_enforcer_phases import (
-    FlextInfraNamespaceEnforcerPhasesMixin,
 )
 
 

@@ -184,6 +184,27 @@ class TestGenerateFile:
         )
         tm.that(content, contains="_LAZY_IMPORTS = {")
 
+    def test_skips_wildcard_runtime_modules_in_type_checking(self) -> None:
+        """Test wildcard runtime imports are not duplicated in TYPE_CHECKING."""
+        exports = ["VERSION", "__version__", "Test"]
+        filtered: t.Infra.LazyImportMap = {
+            "VERSION": ("test_pkg.__version__", "VERSION"),
+            "__version__": ("test_pkg.__version__", "__version__"),
+            "Test": ("test_pkg.models", "Test"),
+        }
+        inline_constants: t.StrMapping = {}
+        content = _generate_file(
+            "",
+            exports,
+            filtered,
+            inline_constants,
+            "test_pkg",
+            wildcard_runtime_modules=("test_pkg.__version__",),
+        )
+        tm.that(content, contains="from test_pkg.__version__ import *")
+        tm.that(content, lacks="from test_pkg.__version__ import VERSION")
+        tm.that(content, lacks="from test_pkg.__version__ import __version__")
+
     def test_with_docstring(self) -> None:
         """Test preserves docstring."""
         docstring = '"""Test module."""'

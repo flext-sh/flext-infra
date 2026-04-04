@@ -12,8 +12,7 @@ from typing import Annotated
 from pydantic import ConfigDict, Field
 
 from flext_core import FlextModels
-from flext_infra import c
-from flext_infra.base import apply_option_json_schema_extra
+from flext_infra import apply_option_json_schema_extra, c
 
 
 class FlextInfraModelsCliInputsCodegen:

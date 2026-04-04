@@ -7,8 +7,7 @@ from typing import Annotated, override
 from pydantic import Field
 
 from flext_core import r
-from flext_infra import u
-from flext_infra.base import s
+from flext_infra import s, u
 
 
 class FlextInfraCodegenDeduplicator(s[str]):

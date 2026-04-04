@@ -9,8 +9,7 @@ from flext_tests import tm
 from tests import m
 
 from flext_core import r
-from flext_infra import main as infra_main
-from flext_infra.github.service import FlextInfraGithubService
+from flext_infra import FlextInfraGithubService, main as infra_main
 
 
 def test_main_returns_zero_on_help() -> None:
@@ -49,9 +48,9 @@ def test_pr_workspace_accepts_repeated_project_options(
         "pr-workspace",
         "--workspace",
         str(tmp_path),
-        "--project",
+        "--projects",
         "flext-core",
-        "--project",
+        "--projects",
         "flext-api",
     ])
 

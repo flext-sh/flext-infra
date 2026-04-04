@@ -9,13 +9,13 @@ from pathlib import Path
 
 import flext_infra.check.workspace_check as workspace_check_module
 from flext_infra import (
-    FlextInfraConfigFixer,
     c,
     m,
     r,
     t,
     u,
 )
+from flext_infra.deps import FlextInfraConfigFixer
 
 
 class FlextInfraWorkspaceCheckerCli:
@@ -44,7 +44,7 @@ class FlextInfraWorkspaceCheckerCli:
             default=c.Infra.DEFAULT_CSV,
         )
         _ = subs[c.Infra.Verbs.RUN].add_argument(
-            "--project",
+            "--projects",
             action="append",
             required=True,
         )
@@ -100,7 +100,7 @@ class FlextInfraWorkspaceCheckerCli:
                 pyright_args=tuple(pyright_args),
             )
             run_result = checker.run_projects(
-                projects=args.project,
+                projects=args.projects,
                 gates=gates,
                 reports_dir=reports_dir,
                 fail_fast=args.fail_fast,

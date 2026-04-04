@@ -12,11 +12,11 @@ from pydantic import ConfigDict, Field
 from flext_core import m
 from flext_infra import (
     FlextInfraNamespaceEnforcerModels,
+    FlextInfraRefactorGrepModels,
     FlextInfraRefactorModelsCensus,
     FlextInfraRefactorModelsViolations,
     t,
 )
-from flext_infra._models.refactor_ast_grep import FlextInfraRefactorGrepModels
 
 
 class FlextInfraRefactorModels(

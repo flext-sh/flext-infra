@@ -10,12 +10,14 @@ from collections.abc import Mapping, MutableSequence, Sequence
 from io import StringIO
 from pathlib import Path
 
-from flext_infra._utilities.formatting import FlextInfraUtilitiesFormatting
-from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
-from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
-from flext_infra.constants import FlextInfraConstants as c
-from flext_infra.models import FlextInfraModels as m
-from flext_infra.typings import FlextInfraTypes as t
+from flext_infra import (
+    FlextInfraConstants as c,
+    FlextInfraModels as m,
+    FlextInfraTypes as t,
+    FlextInfraUtilitiesFormatting,
+    FlextInfraUtilitiesIteration,
+    FlextInfraUtilitiesParsing,
+)
 
 
 class FlextInfraUtilitiesRefactorNamespaceCommon:

@@ -28,7 +28,6 @@ class FlextInfraCli:
     })
     _SHARED_VALUE_FLAGS: ClassVar[frozenset[str]] = frozenset({
         "--workspace",
-        "--project",
         "--projects",
     })
     _USAGE_ERROR_MARKERS: ClassVar[tuple[str, ...]] = (

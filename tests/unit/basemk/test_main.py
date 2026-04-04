@@ -19,8 +19,8 @@ from flext_infra import (
     FlextInfraBaseMkGenerator,
     FlextInfraBaseMkTemplateEngine,
     m,
+    main as infra_main,
 )
-from flext_infra.cli import main as infra_main
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -66,7 +66,13 @@ def test_basemk_main_with_project_name(tmp_path: Path) -> None:
     """Test main() accepts project name override."""
     output_file = tmp_path / "base.mk"
     result = main(
-        argv=["generate", "--project-name", "my-project", "--output", str(output_file)],
+        argv=[
+            "generate",
+            "--projects-name",
+            "my-project",
+            "--output",
+            str(output_file),
+        ],
     )
     tm.that(result, eq=0)
     tm.that(output_file.exists(), eq=True)

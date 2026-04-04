@@ -10,13 +10,13 @@ from tomlkit.toml_document import TOMLDocument
 
 from flext_infra import (
     FlextInfraExtraPathsPyrefly,
+    FlextInfraExtraPathsResolutionMixin,
     c,
     m,
     r,
     t,
     u,
 )
-from flext_infra.deps._extra_paths_resolution import FlextInfraExtraPathsResolutionMixin
 
 
 class FlextInfraExtraPathsManager(

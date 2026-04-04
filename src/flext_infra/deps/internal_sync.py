@@ -9,8 +9,7 @@ from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
 from flext_core import FlextLogger
-from flext_infra import c, m, p, r, t, u
-from flext_infra.deps._internal_sync_repo import FlextInfraInternalSyncRepoMixin
+from flext_infra import FlextInfraInternalSyncRepoMixin, c, m, p, r, t, u
 
 
 class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):

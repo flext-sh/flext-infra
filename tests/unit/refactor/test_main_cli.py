@@ -115,7 +115,7 @@ def test_refactor_runtime_alias_imports_accepts_aliases_and_project(
             "migrate-runtime-alias-imports",
             "--workspace",
             str(tmp_path),
-            "--project",
+            "--projects",
             "flext-infra",
             "--aliases",
             "r,s,u",

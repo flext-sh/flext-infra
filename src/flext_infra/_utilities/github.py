@@ -13,6 +13,7 @@ from pathlib import Path
 from flext_core import r
 from flext_infra import (
     FlextInfraUtilitiesGit,
+    FlextInfraUtilitiesGithubPr,
     FlextInfraUtilitiesIo,
     FlextInfraUtilitiesReporting,
     FlextInfraUtilitiesSelection,
@@ -22,7 +23,6 @@ from flext_infra import (
     m,
     t,
 )
-from flext_infra._utilities.github_pr import FlextInfraUtilitiesGithubPr
 
 
 class FlextInfraUtilitiesGithub(

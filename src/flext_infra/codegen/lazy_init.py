@@ -19,12 +19,12 @@ from pydantic import PrivateAttr
 
 from flext_infra import (
     FlextInfraCodegenGeneration,
+    FlextInfraServiceBase,
     c,
     r,
     t,
     u,
 )
-from flext_infra.base import FlextInfraServiceBase
 
 
 class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):

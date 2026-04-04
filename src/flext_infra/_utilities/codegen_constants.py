@@ -27,12 +27,14 @@ from typing import ClassVar, Final
 
 from flext_cli import FlextCliUtilities
 from flext_core import r, u
-from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
-from flext_infra._utilities.rope import FlextInfraUtilitiesRope
-from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
+from flext_infra import (
+    FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesRope,
+    FlextInfraUtilitiesSubprocess,
+    c,
+    m,
+    t,
+)
 
 # ── Module-level SSOT constants ──────────────────────────────────────
 

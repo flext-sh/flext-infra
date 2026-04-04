@@ -8,9 +8,9 @@ from typing import Annotated
 from pydantic import Field
 
 from flext_core import FlextModels
-from flext_infra import t
-from flext_infra._models.codegen_deduplication import (
+from flext_infra import (
     FlextInfraCodegenDeduplicationModels,
+    t,
 )
 
 

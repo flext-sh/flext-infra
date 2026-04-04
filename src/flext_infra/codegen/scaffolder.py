@@ -15,13 +15,13 @@ from typing import override
 
 from flext_infra import (
     FlextInfraNamespaceValidator,
+    FlextInfraServiceBase,
     c,
     m,
     r,
     t,
     u,
 )
-from flext_infra.base import FlextInfraServiceBase
 
 
 class FlextInfraCodegenScaffolder(FlextInfraServiceBase[str]):

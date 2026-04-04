@@ -20,16 +20,16 @@ from flext_infra import (
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesRefactorCensus,
     FlextInfraUtilitiesRefactorCli,
+    FlextInfraUtilitiesRefactorEngine,
     FlextInfraUtilitiesRefactorMroScan,
     FlextInfraUtilitiesRefactorMroTransform,
     FlextInfraUtilitiesRefactorNamespace,
+    FlextInfraUtilitiesRefactorPolicy,
     FlextInfraUtilitiesRefactorPydantic,
     FlextInfraUtilitiesRefactorPydanticAnalysis,
     c,
     t,
 )
-from flext_infra.refactor._utilities_engine import FlextInfraUtilitiesRefactorEngine
-from flext_infra.refactor._utilities_policy import FlextInfraUtilitiesRefactorPolicy
 
 
 class FlextInfraUtilitiesRefactor(

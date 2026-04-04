@@ -10,8 +10,7 @@ from flext_tests import tm
 from tests import m, t
 
 from flext_core import r
-from flext_infra import u as infra_u
-from flext_infra.github.service import FlextInfraGithubService
+from flext_infra import FlextInfraGithubService, u as infra_u
 
 
 class TestRunWorkflows:

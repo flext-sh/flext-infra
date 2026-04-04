@@ -3,18 +3,19 @@
 from __future__ import annotations
 
 from flext_cli import cli as cli_service
-from flext_infra import m, t
-from flext_infra.codegen.census import FlextInfraCodegenCensus
-from flext_infra.codegen.constants_quality_gate import (
+from flext_infra import (
+    FlextInfraCodegenCensus,
+    FlextInfraCodegenConsolidator,
     FlextInfraCodegenConstantsQualityGate,
+    FlextInfraCodegenDeduplicator,
+    FlextInfraCodegenFixer,
+    FlextInfraCodegenLazyInit,
+    FlextInfraCodegenPipeline,
+    FlextInfraCodegenPyTyped,
+    FlextInfraCodegenScaffolder,
+    m,
+    t,
 )
-from flext_infra.codegen.fixer import FlextInfraCodegenFixer
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
-from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
-from flext_infra.services.consolidator import FlextInfraCodegenConsolidator
-from flext_infra.services.deduplicator import FlextInfraCodegenDeduplicator
-from flext_infra.services.pipeline import FlextInfraCodegenPipeline
 
 
 class FlextInfraCliCodegen:

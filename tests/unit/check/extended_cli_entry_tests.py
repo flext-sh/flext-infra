@@ -222,7 +222,7 @@ class TestRunCLIExtended:
             "run",
             "--gates",
             "lint",
-            "--project",
+            "--projects",
             "p",
             "--reports-dir",
             "reports/check",

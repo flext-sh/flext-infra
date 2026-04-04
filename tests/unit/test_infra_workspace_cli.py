@@ -14,8 +14,7 @@ from flext_tests import tm
 from tests import m
 
 from flext_core import r
-from flext_infra import FlextInfraProjectMigrator
-from flext_infra.cli import main as infra_main
+from flext_infra import FlextInfraProjectMigrator, main as infra_main
 
 
 def test_workspace_cli_migrate_command(monkeypatch: MonkeyPatch) -> None:

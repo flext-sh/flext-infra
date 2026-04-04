@@ -125,13 +125,13 @@ def test_sync_extra_paths_sync_failure(
     [
         ("root", ["extra_paths.py"], 0),
         ("root", ["extra_paths.py", "--dry-run"], 0),
-        ("project", ["extra_paths.py", "--project", "proj"], 0),
+        ("project", ["extra_paths.py", "--projects", "proj"], 0),
         (
             "multi",
             ["extra_paths.py", "--projects", "proj-a,proj-b"],
             0,
         ),
-        ("abs-project", ["prog", "--project", "project", "--dry-run"], 0),
+        ("abs-project", ["prog", "--projects", "project", "--dry-run"], 0),
     ],
 )
 def test_main_success_modes(
@@ -159,7 +159,7 @@ def test_main_success_modes(
         project = tmp_path / "project"
         project.mkdir()
         _ = _create_pyproject(project, pyright_content)
-        argv = ["prog", "--project", str(project), "--dry-run"]
+        argv = ["prog", "--projects", str(project), "--dry-run"]
     argv = [argv[0], "--workspace", str(tmp_path), *argv[1:]]
     monkeypatch.setattr(sys, "argv", argv)
     tm.that(FlextInfraExtraPathsManager.main(), eq=expected_exit)

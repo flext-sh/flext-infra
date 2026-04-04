@@ -125,7 +125,7 @@ def test_rendered_base_mk_forwards_canonical_root_in_workspace_preflight() -> No
     rendered = _render_base_mk()
     tm.that(
         rendered,
-        has='--workspace "$(CURDIR)" --canonical-root "$(WORKSPACE_ROOT)" --apply',
+        has='--workspace "$(CURDIR)" --workspace "$(WORKSPACE_ROOT)" --apply',
     )
 
 
@@ -259,7 +259,7 @@ def test_make_check_full_run_forwards_fix_and_tool_args(tmp_path: Path) -> None:
     )
     tm.that(
         log_path.read_text(encoding="utf-8"),
-        has="--project . --fix --ruff-args --select E501 --pyright-args --level basic",
+        has="--projects . --fix --ruff-args --select E501 --pyright-args --level basic",
     )
 
 

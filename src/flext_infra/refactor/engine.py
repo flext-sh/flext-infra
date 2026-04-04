@@ -119,7 +119,7 @@ class FlextInfraRefactorEngine(
             formatter_class=argparse.RawDescriptionHelpFormatter,
         )
         mode = parser.add_mutually_exclusive_group(required=True)
-        _ = mode.add_argument("--project", "-p", type=Path)
+        _ = mode.add_argument("--projects", "-p", type=Path)
         _ = mode.add_argument("--workspace", "-w", type=Path)
         _ = mode.add_argument("--file", "-f", type=Path)
         _ = mode.add_argument("--files", nargs="+", type=Path)

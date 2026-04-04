@@ -360,7 +360,6 @@ class FlextInfraPyprojectModernizer:
         )
         _ = parser.add_argument("--audit", action="store_true")
         _ = parser.add_argument("--skip-comments", action="store_true")
-        _ = parser.add_argument("--skip-check", action="store_true")
         args = parser.parse_args(argv)
         cli = u.Infra.resolve(args)
         return FlextInfraPyprojectModernizer(workspace_root=cli.workspace).run(

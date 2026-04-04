@@ -23,7 +23,7 @@ flext-infra <group> <command> [options]
 Examples:
 
 ```bash
-flext-infra basemk render --project-name flext-core
+flext-infra basemk render --projects-name flext-core
 flext-infra check run --projects flext-core
 flext-infra codegen lazy-init --workspace .
 flext-infra validate inventory --workspace .
