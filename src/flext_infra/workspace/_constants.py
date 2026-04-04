@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from enum import StrEnum, unique
 from typing import TYPE_CHECKING, Final
 
 if TYPE_CHECKING:
@@ -10,6 +11,13 @@ if TYPE_CHECKING:
 
 class FlextInfraWorkspaceConstants:
     """Workspace infrastructure constants."""
+
+    @unique
+    class WorkspaceMode(StrEnum):
+        """Workspace execution mode enumeration."""
+
+        WORKSPACE = "workspace"
+        STANDALONE = "standalone"
 
     MAKEFILE_REPLACEMENTS: Final[t.Infra.VariadicTuple[t.Infra.StrPair]] = (
         (

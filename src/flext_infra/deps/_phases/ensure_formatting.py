@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import MutableSequence
 
 import tomlkit
-from pydantic import TypeAdapter, ValidationError
+from pydantic import ValidationError
 from tomlkit.items import Item, Table
 
 from flext_infra import c, m, t, u
@@ -36,9 +36,11 @@ class FlextInfraEnsureFormattingToolingPhase:
             current = u.Infra.unwrap_item(u.Infra.get(tomlsort, key))
             if isinstance(value, list) and isinstance(current, list):
                 try:
-                    current_values: t.StrSequence = TypeAdapter(
-                        t.StrSequence,
-                    ).validate_python([str(x) for x in current])
+                    current_values: t.StrSequence = (
+                        t.Infra.STR_SEQ_ADAPTER.validate_python(
+                            [str(x) for x in current],
+                        )
+                    )
                 except ValidationError:
                     current_values = []
                 if sorted(str(i) for i in current_values) != sorted(

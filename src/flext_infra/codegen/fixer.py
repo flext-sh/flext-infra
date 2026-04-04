@@ -199,7 +199,8 @@ class FlextInfraCodegenFixer(s[str]):
             {"workspace_root": project_path},
         )
         lazy_errors = lazy_generator.generate_inits(check_only=False)
-        ctx.files_modified.update(lazy_generator.modified_files)
+        for f in lazy_generator.modified_files:
+            ctx.files_modified.add(f)
         if lazy_errors > 0:
             ctx.skip(
                 module=project_path.name,

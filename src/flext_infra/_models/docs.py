@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar
 
@@ -11,51 +12,54 @@ from flext_core import FlextModels
 from flext_infra import t
 
 
+class _DocsPhaseItemModel(BaseModel):
+    """Unified item payload for docs phase reports."""
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(
+        extra="forbid",
+        frozen=True,
+        strict=True,
+    )
+
+    phase: Annotated[
+        str,
+        Field(description="Docs phase: audit, fix, build, generate, validate"),
+    ]
+    file: Annotated[str, Field(default="", description="Relative file path")] = ""
+    issue_type: Annotated[
+        str,
+        Field(default="", description="Audit issue type"),
+    ] = ""
+    severity: Annotated[
+        str,
+        Field(default="", description="Audit issue severity"),
+    ] = ""
+    message: Annotated[
+        str,
+        Field(default="", description="Item detail message"),
+    ] = ""
+    links: Annotated[
+        t.NonNegativeInt,
+        Field(default=0, description="Applied link fixes"),
+    ] = 0
+    toc: Annotated[
+        t.NonNegativeInt,
+        Field(default=0, description="Applied TOC updates"),
+    ] = 0
+    path: Annotated[
+        str,
+        Field(default="", description="Generated file path"),
+    ] = ""
+    written: Annotated[
+        bool,
+        Field(default=False, description="Generated file write flag"),
+    ] = False
+
+
 class FlextInfraDocsModels:
     """Models for documentation services."""
 
-    class DocsPhaseItemModel(BaseModel):
-        """Unified item payload for docs phase reports."""
-
-        model_config: ClassVar[ConfigDict] = ConfigDict(
-            extra="forbid",
-            frozen=True,
-            strict=True,
-        )
-
-        phase: Annotated[
-            str,
-            Field(description="Docs phase: audit, fix, build, generate, validate"),
-        ]
-        file: Annotated[str, Field(default="", description="Relative file path")] = ""
-        issue_type: Annotated[
-            str,
-            Field(default="", description="Audit issue type"),
-        ] = ""
-        severity: Annotated[
-            str,
-            Field(default="", description="Audit issue severity"),
-        ] = ""
-        message: Annotated[
-            str,
-            Field(default="", description="Item detail message"),
-        ] = ""
-        links: Annotated[
-            t.NonNegativeInt,
-            Field(default=0, description="Applied link fixes"),
-        ] = 0
-        toc: Annotated[
-            t.NonNegativeInt,
-            Field(default=0, description="Applied TOC updates"),
-        ] = 0
-        path: Annotated[
-            str,
-            Field(default="", description="Generated file path"),
-        ] = ""
-        written: Annotated[
-            bool,
-            Field(default=False, description="Generated file write flag"),
-        ] = False
+    DocsPhaseItemModel = _DocsPhaseItemModel
 
     class DocScope(FlextModels.ArbitraryTypesModel):
         """Documentation scope targeting a project or workspace root."""
@@ -160,9 +164,10 @@ class FlextInfraDocsModels:
                 description="Whether TODOS.md was written",
             ),
         ] = False
-        items: list[FlextInfraDocsModels.DocsPhaseItemModel] = Field(
-            default_factory=list, description="Phase-specific item payloads"
-        )
+        items: Annotated[
+            Sequence[_DocsPhaseItemModel],
+            Field(description="Phase-specific item payloads"),
+        ] = Field(default_factory=list)
 
 
 __all__ = ["FlextInfraDocsModels"]

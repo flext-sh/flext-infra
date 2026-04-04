@@ -52,17 +52,12 @@ if _t.TYPE_CHECKING:
     from flext_infra.validate.skill_validator import FlextInfraSkillValidator
 
     stub_chain = _flext_infra_validate_stub_chain
-    from flext_core.constants import FlextConstants as c
     from flext_core.decorators import FlextDecorators as d
     from flext_core.exceptions import FlextExceptions as e
     from flext_core.handlers import FlextHandlers as h
     from flext_core.mixins import FlextMixins as x
-    from flext_core.models import FlextModels as m
-    from flext_core.protocols import FlextProtocols as p
     from flext_core.result import FlextResult as r
     from flext_core.service import FlextService as s
-    from flext_core.typings import FlextTypes as t
-    from flext_core.utilities import FlextUtilities as u
     from flext_infra.validate.stub_chain import FlextInfraStubSupplyChain
 _LAZY_IMPORTS = {
     "FlextInfraBaseMkValidator": "flext_infra.validate.basemk_validator",
@@ -78,24 +73,19 @@ _LAZY_IMPORTS = {
     "FlextInfraTextPatternScanner": "flext_infra.validate.scanner",
     "_constants": "flext_infra.validate._constants",
     "basemk_validator": "flext_infra.validate.basemk_validator",
-    "c": ("flext_core.constants", "FlextConstants"),
     "cli": "flext_infra.validate.cli",
     "d": ("flext_core.decorators", "FlextDecorators"),
     "e": ("flext_core.exceptions", "FlextExceptions"),
     "h": ("flext_core.handlers", "FlextHandlers"),
     "inventory": "flext_infra.validate.inventory",
-    "m": ("flext_core.models", "FlextModels"),
     "namespace_rules": "flext_infra.validate.namespace_rules",
     "namespace_validator": "flext_infra.validate.namespace_validator",
-    "p": ("flext_core.protocols", "FlextProtocols"),
     "pytest_diag": "flext_infra.validate.pytest_diag",
     "r": ("flext_core.result", "FlextResult"),
     "s": ("flext_core.service", "FlextService"),
     "scanner": "flext_infra.validate.scanner",
     "skill_validator": "flext_infra.validate.skill_validator",
     "stub_chain": "flext_infra.validate.stub_chain",
-    "t": ("flext_core.typings", "FlextTypes"),
-    "u": ("flext_core.utilities", "FlextUtilities"),
     "x": ("flext_core.mixins", "FlextMixins"),
 }
 
@@ -113,24 +103,19 @@ __all__ = [
     "FlextInfraTextPatternScanner",
     "_constants",
     "basemk_validator",
-    "c",
     "cli",
     "d",
     "e",
     "h",
     "inventory",
-    "m",
     "namespace_rules",
     "namespace_validator",
-    "p",
     "pytest_diag",
     "r",
     "s",
     "scanner",
     "skill_validator",
     "stub_chain",
-    "t",
-    "u",
     "x",
 ]
 

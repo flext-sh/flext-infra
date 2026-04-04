@@ -9,7 +9,7 @@ from types import MappingProxyType
 from typing import ClassVar
 
 from flext_cli import cli as cli_service
-from flext_core import u
+from flext_core import FlextLogger
 from flext_infra import (
     FlextInfraConstants as c,
     FlextInfraTypes as t,
@@ -98,7 +98,7 @@ class FlextInfraCli:
 
     def main(self, args: t.StrSequence | None = None) -> int:
         """Run the centralized dispatcher."""
-        u.ensure_structlog_configured()
+        FlextLogger.ensure_structlog_configured()
         cli_args = list(args) if args is not None else sys.argv[1:]
         if not cli_args:
             self.print_help()

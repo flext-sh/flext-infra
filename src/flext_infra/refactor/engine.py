@@ -11,8 +11,6 @@ from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar
 
-from pydantic import TypeAdapter
-
 from flext_infra import (
     FlextInfraClassNestingRefactorRule,
     FlextInfraRefactorClassReconstructorRule,
@@ -161,7 +159,7 @@ class FlextInfraRefactorEngine(
         """Load YAML configuration for this engine instance."""
         result = self.rule_loader.load_config()
         if result.is_success:
-            self.config = TypeAdapter(Mapping[str, t.Infra.InfraValue]).validate_python(
+            self.config = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
                 dict(result.value)
             )
             u.Infra.refactor_info(f"Loaded config from {self.config_path}")

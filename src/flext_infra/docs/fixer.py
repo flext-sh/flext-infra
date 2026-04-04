@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-from collections.abc import MutableSequence, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_core import FlextLogger
@@ -90,12 +90,12 @@ class FlextInfraDocFixer:
         apply: bool,
     ) -> m.Infra.DocsPhaseReport:
         """Run link and TOC fixes across all markdown files in scope."""
-        items: MutableSequence[m.Infra.DocsPhaseItemModel] = []
+        collected: list[m.Infra.DocsPhaseItemModel] = []
         for md in u.Infra.iter_markdown_files(scope.path):
             item = self._process_file(md, apply=apply)
             if item.links or item.toc:
                 rel = md.relative_to(scope.path).as_posix()
-                items.append(
+                collected.append(
                     m.Infra.DocsPhaseItemModel(
                         phase="fix",
                         file=rel,
@@ -103,6 +103,7 @@ class FlextInfraDocFixer:
                         toc=item.toc,
                     ),
                 )
+        items = tuple(collected)
         changes_payload: t.Cli.JsonValue = [
             {c.Infra.ReportKeys.FILE: item.file, "links": item.links, "toc": item.toc}
             for item in items

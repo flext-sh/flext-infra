@@ -9,20 +9,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from enum import StrEnum, unique
 from pathlib import Path
 from typing import override
 from urllib.parse import urlparse
 
 from flext_infra import c, r, s, u
 
-
-@unique
-class FlextInfraWorkspaceMode(StrEnum):
-    """Workspace execution mode enumeration."""
-
-    WORKSPACE = "workspace"
-    STANDALONE = "standalone"
+# Canonical alias -- single source of truth lives in workspace constants
+FlextInfraWorkspaceMode = c.Infra.WorkspaceMode
 
 
 class FlextInfraWorkspaceDetector(s[FlextInfraWorkspaceMode]):

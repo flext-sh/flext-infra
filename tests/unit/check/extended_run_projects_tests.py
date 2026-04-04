@@ -260,7 +260,7 @@ class TestRunSingleProject:
         monkeypatch.setattr(
             checker, "_check_project_with_ctx", _check_project_stub(project)
         )
-        result = checker.run("p1", ["lint"])
+        result = checker.run_project("p1", ["lint"])
         tm.ok(result)
         tm.that(len(result.value), eq=1)
 
