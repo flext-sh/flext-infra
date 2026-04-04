@@ -19,7 +19,7 @@ class TestProcessDirectory:
 
     def test_generates_init_from_sibling_files(self, tmp_path: Path) -> None:
         """Test _process_directory generates __init__.py from siblings."""
-        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
+        generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
         src_dir = tmp_path / "src" / "test_pkg"
         src_dir.mkdir(parents=True)
         (src_dir / "models.py").write_text(
@@ -38,7 +38,7 @@ class TestProcessDirectory:
 
     def test_check_only_does_not_write(self, tmp_path: Path) -> None:
         """Test _process_directory in check_only mode doesn't write files."""
-        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
+        generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
         src_dir = tmp_path / "src" / "test_pkg"
         src_dir.mkdir(parents=True)
         (src_dir / "models.py").write_text(
@@ -57,7 +57,7 @@ class TestProcessDirectory:
 
     def test_skips_directory_without_package(self, tmp_path: Path) -> None:
         """Test _process_directory skips dirs that can't infer package."""
-        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
+        generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
         random_dir = tmp_path / "random"
         random_dir.mkdir()
         (random_dir / "models.py").write_text("class Model: pass\n")
@@ -72,7 +72,7 @@ class TestProcessDirectory:
 
     def test_includes_child_exports(self, tmp_path: Path) -> None:
         """Test _process_directory includes child subdirectory exports."""
-        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
+        generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
         src_dir = tmp_path / "src" / "pkg"
         sub_dir = src_dir / "sub"
         sub_dir.mkdir(parents=True)
@@ -95,7 +95,7 @@ class TestProcessDirectory:
 
     def test_generates_examples_tests_module_paths(self, tmp_path: Path) -> None:
         """Test nested examples/tests packages keep the examples prefix."""
-        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
+        generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
         examples_tests_dir = tmp_path / "examples" / "tests"
         examples_tests_dir.mkdir(parents=True)
         (examples_tests_dir / "test_declarative_example.py").write_text(
@@ -116,9 +116,38 @@ class TestProcessDirectory:
             contains="examples.tests.test_declarative_example",
         )
 
+    def test_generates_tests_root_with_static_analysis_hints(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test tests/ wrappers get the same static hints as src/ wrappers."""
+        generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
+        tests_dir = tmp_path / "tests"
+        tests_dir.mkdir(parents=True)
+        (tests_dir / "typings.py").write_text(
+            '"""Typings."""\n\n__all__ = ["FlextInfraTestTypes", "t"]\n\n'
+            "class FlextInfraTestTypes:\n    pass\n\n"
+            "t = FlextInfraTestTypes\n",
+        )
+        dir_exports: Mapping[str, Mapping[str, tuple[str, str]]] = {}
+        result, exports = generator._process_directory(
+            tests_dir,
+            check_only=False,
+            dir_exports=dir_exports,
+        )
+        tm.that(result, eq=0)
+        tm.that(exports, contains="t")
+        init_content = (tests_dir / "__init__.py").read_text()
+        tm.that(init_content, contains="if _t.TYPE_CHECKING:")
+        tm.that(init_content, contains="__all__ = [")
+        tm.that(
+            init_content,
+            contains='"t": ("tests.typings", "FlextInfraTestTypes")',
+        )
+
     def test_handles_version_file(self, tmp_path: Path) -> None:
         """Test _process_directory handles __version__.py correctly."""
-        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
+        generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
         src_dir = tmp_path / "src" / "test_pkg"
         src_dir.mkdir(parents=True)
         (src_dir / "models.py").write_text(

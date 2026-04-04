@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-from flext_cli import cli
+from flext_cli import cli as cli_service
 from flext_core import r
 from flext_infra import (
     FlextInfraDocAuditor,
@@ -12,85 +10,74 @@ from flext_infra import (
     FlextInfraDocFixer,
     FlextInfraDocGenerator,
     FlextInfraDocValidator,
-    c,
     m,
     t,
-    u,
 )
-
-if TYPE_CHECKING:
-    import typer
-
-_R = u.Infra.route  # shorthand
 
 
 class FlextInfraCliDocs:
     """Docs CLI group — composed into FlextInfraCli via MRO."""
 
-    def register_docs(self, app: typer.Typer) -> None:
+    def register_docs(self, app: t.Cli.TyperApp) -> None:
         """Register documentation commands on the given Typer app."""
         auditor = FlextInfraDocAuditor()
         fixer = FlextInfraDocFixer()
         builder = FlextInfraDocBuilder()
         generator = FlextInfraDocGenerator()
         validator = FlextInfraDocValidator()
-        u.Infra.register_routes(
+        cli_service.register_result_routes(
             app,
             [
-                _R(
-                    "audit",
-                    "Audit documentation for broken links and forbidden terms",
-                    m.Infra.DocsAuditInput,
-                    auditor.execute_command,
-                    fail_msg="Audit failed",
-                    success_msg="Audit completed successfully",
+                m.Cli.ResultCommandRoute(
+                    name="audit",
+                    help_text="Audit documentation for broken links and forbidden terms",
+                    model_cls=m.Infra.DocsAuditInput,
+                    handler=auditor.execute_command,
+                    failure_message="Audit failed",
+                    success_message="Audit completed successfully",
                 ),
-                _R(
-                    "fix",
-                    "Fix documentation issues",
-                    m.Infra.DocsFixInput,
-                    fixer.execute_command,
-                    fail_msg="Fix failed",
-                    success_msg="Fix completed successfully",
+                m.Cli.ResultCommandRoute(
+                    name="fix",
+                    help_text="Fix documentation issues",
+                    model_cls=m.Infra.DocsFixInput,
+                    handler=fixer.execute_command,
+                    failure_message="Fix failed",
+                    success_message="Fix completed successfully",
                 ),
-                _R(
-                    "build",
-                    "Build MkDocs sites",
-                    m.Infra.DocsBuildInput,
-                    builder.execute_command,
-                    fail_msg="Build failed",
-                    success_msg="Build completed successfully",
+                m.Cli.ResultCommandRoute(
+                    name="build",
+                    help_text="Build MkDocs sites",
+                    model_cls=m.Infra.DocsBuildInput,
+                    handler=builder.execute_command,
+                    failure_message="Build failed",
+                    success_message="Build completed successfully",
                 ),
-                _R(
-                    "generate",
-                    "Generate project docs",
-                    m.Infra.DocsGenerateInput,
-                    generator.execute_command,
-                    fail_msg="Generate failed",
-                    success_msg="Generate completed successfully",
+                m.Cli.ResultCommandRoute(
+                    name="generate",
+                    help_text="Generate project docs",
+                    model_cls=m.Infra.DocsGenerateInput,
+                    handler=generator.execute_command,
+                    failure_message="Generate failed",
+                    success_message="Generate completed successfully",
                 ),
-                _R(
-                    "validate",
-                    "Validate documentation",
-                    m.Infra.DocsValidateInput,
-                    validator.execute_command,
-                    fail_msg="Validate failed",
-                    success_msg="Validate completed successfully",
+                m.Cli.ResultCommandRoute(
+                    name="validate",
+                    help_text="Validate documentation",
+                    model_cls=m.Infra.DocsValidateInput,
+                    handler=validator.execute_command,
+                    failure_message="Validate failed",
+                    success_message="Validate completed successfully",
                 ),
             ],
         )
 
 
 class FlextInfraDocsCli:
-    """Declarative CLI router for documentation services.
-
-    Retained for backward compatibility with tests that call _handle_* directly.
-    New code should use FlextInfraCliDocs.register_docs() instead.
-    """
+    """Declarative CLI router for documentation services."""
 
     def __init__(self) -> None:
         """Initialize CLI app and register declarative routes."""
-        self._app = cli.create_app_with_common_params(
+        self._app = cli_service.create_app_with_common_params(
             name="docs",
             help_text="Documentation management services",
         )
@@ -98,124 +85,10 @@ class FlextInfraDocsCli:
 
     def run(self, args: t.StrSequence | None = None) -> r[bool]:
         """Execute the CLI application."""
-        return cli.execute_app(self._app, prog_name="docs", args=args)
+        return cli_service.execute_app(self._app, prog_name="docs", args=args)
 
     def _register_commands(self) -> None:
-        u.Infra.register_routes(
-            self._app,
-            [
-                _R(
-                    "audit",
-                    "Audit documentation for broken links and forbidden terms",
-                    m.Infra.DocsAuditInput,
-                    self._handle_audit,
-                    fail_msg="Audit failed",
-                    success_msg="Audit completed successfully",
-                ),
-                _R(
-                    "fix",
-                    "Fix documentation issues",
-                    m.Infra.DocsFixInput,
-                    self._handle_fix,
-                    fail_msg="Fix failed",
-                    success_msg="Fix completed successfully",
-                ),
-                _R(
-                    "build",
-                    "Build MkDocs sites",
-                    m.Infra.DocsBuildInput,
-                    self._handle_build,
-                    fail_msg="Build failed",
-                    success_msg="Build completed successfully",
-                ),
-                _R(
-                    "generate",
-                    "Generate project docs",
-                    m.Infra.DocsGenerateInput,
-                    self._handle_generate,
-                    fail_msg="Generate failed",
-                    success_msg="Generate completed successfully",
-                ),
-                _R(
-                    "validate",
-                    "Validate documentation",
-                    m.Infra.DocsValidateInput,
-                    self._handle_validate,
-                    fail_msg="Validate failed",
-                    success_msg="Validate completed successfully",
-                ),
-            ],
-        )
+        FlextInfraCliDocs().register_docs(self._app)
 
-    @staticmethod
-    def _handle_audit(params: m.Infra.DocsAuditInput) -> r[bool]:
-        return u.Infra.then_count(
-            FlextInfraDocAuditor().audit(
-                workspace_root=u.Infra.resolve_workspace(params),
-                project=params.project,
-                projects=params.projects,
-                output_dir=params.output_dir,
-                params=m.Infra.AuditScopeParams(
-                    check="all" if params.check else "",
-                    strict=params.strict,
-                ),
-            ),
-            predicate=lambda report: not report.passed,
-            fail_msg="Audit found failures",
-        )
 
-    @staticmethod
-    def _handle_fix(params: m.Infra.DocsFixInput) -> r[bool]:
-        return (
-            FlextInfraDocFixer()
-            .fix(
-                workspace_root=u.Infra.resolve_workspace(params),
-                project=params.project,
-                projects=params.projects,
-                output_dir=params.output_dir,
-                apply=params.apply,
-            )
-            .map(lambda _: True)
-        )
-
-    @staticmethod
-    def _handle_build(params: m.Infra.DocsBuildInput) -> r[bool]:
-        return u.Infra.then_count(
-            FlextInfraDocBuilder().build(
-                workspace_root=u.Infra.resolve_workspace(params),
-                project=params.project,
-                projects=params.projects,
-                output_dir=params.output_dir,
-            ),
-            predicate=lambda report: report.result == c.Infra.Status.FAIL,
-            fail_msg="Build had failures",
-        )
-
-    @staticmethod
-    def _handle_generate(params: m.Infra.DocsGenerateInput) -> r[bool]:
-        return (
-            FlextInfraDocGenerator()
-            .generate(
-                workspace_root=u.Infra.resolve_workspace(params),
-                project=params.project,
-                projects=params.projects,
-                output_dir=params.output_dir,
-                apply=params.apply,
-            )
-            .map(lambda _: True)
-        )
-
-    @staticmethod
-    def _handle_validate(params: m.Infra.DocsValidateInput) -> r[bool]:
-        return u.Infra.then_count(
-            FlextInfraDocValidator().validate(
-                workspace_root=u.Infra.resolve_workspace(params),
-                project=params.project,
-                projects=params.projects,
-                output_dir=params.output_dir,
-                check="all" if params.check else "",
-                apply=params.apply,
-            ),
-            predicate=lambda report: report.result == c.Infra.Status.FAIL,
-            fail_msg="Validate found failures",
-        )
+__all__ = ["FlextInfraCliDocs", "FlextInfraDocsCli"]

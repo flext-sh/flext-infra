@@ -9,6 +9,8 @@ from pydantic import TypeAdapter, ValidationError
 
 from flext_infra import FlextInfraRopeTransformer, m, t, u
 
+_MIN_METHODS_FOR_REORDER = 2
+
 
 class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
     """Reorder class methods based on declarative ordering configuration."""
@@ -43,7 +45,7 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
                 class_info.name,
                 include_private=True,
             )
-            if len(methods) < 2:
+            if len(methods) < _MIN_METHODS_FOR_REORDER:
                 continue
             body_lines = u.Infra.get_class_body_lines(
                 resource,

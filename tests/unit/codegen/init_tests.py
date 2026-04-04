@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import pytest
 from flext_tests import tm
-from tests import t
 
 import flext_infra.codegen as codegen_module
 from flext_infra import FlextInfraCodegenLazyInit
@@ -29,7 +28,7 @@ def test_codegen_dir_returns_all_exports() -> None:
 def test_codegen_lazy_imports_work() -> None:
     """Test that lazy imports work correctly."""
     tm.that(type(FlextInfraCodegenLazyInit).__name__, eq="ModelMetaclass")
-    tm.that(hasattr(FlextInfraCodegenLazyInit, "run"), eq=True)
+    tm.that(hasattr(FlextInfraCodegenLazyInit, "generate_inits"), eq=True)
 
 
-__all__: t.StrSequence = []
+__all__: list[str] = []

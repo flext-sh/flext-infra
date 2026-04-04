@@ -6,12 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Annotated
 
 from pydantic import ConfigDict, Field
 
 from flext_core import FlextModels
 from flext_infra import c
+from flext_infra.base import apply_option_json_schema_extra
 
 
 class FlextInfraModelsCliInputsCodegen:
@@ -22,17 +24,35 @@ class FlextInfraModelsCliInputsCodegen:
 
         model_config = ConfigDict(populate_by_name=True)
 
+        apply: Annotated[
+            bool,
+            Field(
+                default=False,
+                description="Apply changes",
+                json_schema_extra=apply_option_json_schema_extra,
+            ),
+        ] = False
+
         workspace: Annotated[
             str,
             Field(default=".", description="Workspace root"),
         ] = "."
+
+        @property
+        def workspace_path(self) -> Path:
+            """Return the resolved workspace path for CLI execution."""
+            return Path(self.workspace).resolve()
 
     class ApplyMixin(FlextModels.FrozenStrictModel):
         """Shared apply flag for mutating commands."""
 
         apply: Annotated[
             bool,
-            Field(default=False, description="Apply changes"),
+            Field(
+                default=False,
+                description="Apply changes",
+                json_schema_extra=apply_option_json_schema_extra,
+            ),
         ] = False
 
     class OutputDirMixin(FlextModels.FrozenStrictModel):
@@ -61,91 +81,6 @@ class FlextInfraModelsCliInputsCodegen:
             Field(
                 default=None,
                 description="Override project name in generated base.mk",
-            ),
-        ] = None
-
-    class CodegenLazyInitInput(CliInputBase):
-        """CLI input for lazy-init."""
-
-        check: Annotated[
-            bool,
-            Field(default=False, description="Check mode (no writes)"),
-        ] = False
-
-    class CodegenCensusInput(CliInputBase):
-        """CLI input for census."""
-
-        output_format: Annotated[
-            str,
-            Field(default="text", description="Output format (json|text)"),
-        ] = "text"
-        class_to_analyze: Annotated[
-            str | None,
-            Field(
-                default=None,
-                description="Full class path to analyze (e.g. flext_core.FlextConstants)",
-            ),
-        ] = None
-
-    class CodegenDeduplicateInput(ApplyMixin, CliInputBase):
-        """CLI input for deduplicate."""
-
-        class_to_analyze: Annotated[
-            str,
-            Field(
-                description="Full class path to deduplicate (e.g. flext_core.FlextConstants)",
-            ),
-        ]
-
-    class CodegenScaffoldInput(ApplyMixin, CliInputBase):
-        """CLI input for scaffold."""
-
-    class CodegenAutoFixInput(ApplyMixin, CliInputBase):
-        """CLI input for auto-fix."""
-
-    class CodegenPyTypedInput(CliInputBase):
-        """CLI input for py-typed."""
-
-        check: Annotated[
-            bool,
-            Field(default=False, description="Check mode (no writes)"),
-        ] = False
-
-    class CodegenPipelineInput(ApplyMixin, CliInputBase):
-        """CLI input for pipeline."""
-
-        output_format: Annotated[
-            str,
-            Field(default="text", description="Output format (json|text)"),
-        ] = "text"
-
-    class CodegenConsolidateInput(ApplyMixin, CliInputBase):
-        """CLI input for constant consolidation."""
-
-        output_format: Annotated[
-            str,
-            Field(default="text", description="Output format (json|text)"),
-        ] = "text"
-        project: Annotated[
-            str | None,
-            Field(default=None, description="Single project to consolidate"),
-        ] = None
-
-    class CodegenConstantsQualityGateInput(CliInputBase):
-        """CLI input for constants-quality-gate."""
-
-        before_report: Annotated[
-            str | None,
-            Field(
-                default=None,
-                description="Path to pre-refactor report JSON for comparison",
-            ),
-        ] = None
-        baseline_file: Annotated[
-            str | None,
-            Field(
-                default=None,
-                description="Path to baseline JSON payload for comparison",
             ),
         ] = None
 

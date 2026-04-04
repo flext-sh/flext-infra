@@ -14,18 +14,18 @@ from tests import t, u
 
 from flext_infra import FlextInfraSkillValidator
 
-_safe_load_yaml = u.Infra.safe_load_yaml
+_yaml_load_infra_mapping = u.Infra.yaml_load_infra_mapping
 _string_list = u.Infra.string_list
 
 
 class TestSafeLoadYaml:
-    """Test u.Infra.safe_load_yaml helper function."""
+    """Test u.Infra.yaml_load_infra_mapping helper function."""
 
     def test_valid_yaml(self, tmp_path: Path) -> None:
         """Valid YAML file loads correctly."""
         f = tmp_path / "test.yml"
         f.write_text("key: value\nlist:\n  - item1\n  - item2")
-        result = _safe_load_yaml(f)
+        result = _yaml_load_infra_mapping(f)
         assert result.get("key") == "value"
         list_value = result.get("list")
         assert isinstance(list_value, list)
@@ -34,18 +34,16 @@ class TestSafeLoadYaml:
     def test_empty_and_null(self, tmp_path: Path) -> None:
         """Empty/null YAML returns empty dict."""
         (tmp_path / "empty.yml").write_text("")
-        assert dict(_safe_load_yaml(tmp_path / "empty.yml")) == {}
+        assert dict(_yaml_load_infra_mapping(tmp_path / "empty.yml")) == {}
         (tmp_path / "null.yml").write_text("null")
-        assert dict(_safe_load_yaml(tmp_path / "null.yml")) == {}
+        assert dict(_yaml_load_infra_mapping(tmp_path / "null.yml")) == {}
 
-    def test_non_dict_raises_type_error(self, tmp_path: Path) -> None:
-        """Non-dict YAML raises TypeError."""
+    def test_non_dict_returns_empty_mapping(self, tmp_path: Path) -> None:
+        """Non-mapping YAML normalizes to an empty mapping."""
         (tmp_path / "list.yml").write_text("- item1\n- item2")
-        with pytest.raises(TypeError, match="rules\\.yml must be a mapping"):
-            _safe_load_yaml(tmp_path / "list.yml")
+        assert dict(_yaml_load_infra_mapping(tmp_path / "list.yml")) == {}
         (tmp_path / "str.yml").write_text("just a string")
-        with pytest.raises(TypeError, match="rules\\.yml must be a mapping"):
-            _safe_load_yaml(tmp_path / "str.yml")
+        assert dict(_yaml_load_infra_mapping(tmp_path / "str.yml")) == {}
 
 
 class TestStringList:
@@ -108,16 +106,17 @@ class TestSkillValidatorCore:
         report = tm.ok(validator.validate(tmp_path, "test-skill"))
         tm.that(report.passed, eq=True)
 
-    def test_validate_exception_returns_failure(self, tmp_path: Path) -> None:
-        """Invalid YAML content returns failure."""
+    def test_validate_scalar_rules_yml_yields_empty_success(
+        self, tmp_path: Path
+    ) -> None:
+        """Scalar rules.yml content yields an empty successful report."""
         validator = FlextInfraSkillValidator()
         skill = tmp_path / ".claude" / "skills" / "test-skill"
         skill.mkdir(parents=True)
         (skill / "rules.yml").write_text("just a plain string")
-        tm.fail(
-            validator.validate(tmp_path, "test-skill"),
-            has="skill validation failed",
-        )
+        report = tm.ok(validator.validate(tmp_path, "test-skill"))
+        tm.that(report.passed, eq=True)
+        tm.that(report.violations, eq=[])
 
 
 class TestSkillValidatorRenderTemplate:

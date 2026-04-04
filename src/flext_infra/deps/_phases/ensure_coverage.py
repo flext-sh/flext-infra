@@ -46,37 +46,42 @@ class FlextInfraEnsureCoverageConfigPhase:
         }
         fail_under = fail_under_map.get(project_kind, cov_config.fail_under.core)
 
-        current_fail_under = u.Infra.unwrap_item(u.Infra.get(report_tbl, "fail_under"))
-        if current_fail_under != fail_under:
-            report_tbl["fail_under"] = fail_under
-            changes.append(f"tool.coverage.report.fail_under set to {fail_under}")
-
-        current_show_missing = u.Infra.unwrap_item(
-            u.Infra.get(report_tbl, "show_missing")
-        )
-        if current_show_missing is not True:
-            report_tbl["show_missing"] = True
-            changes.append("tool.coverage.report.show_missing set to true")
-
-        current_skip_covered = u.Infra.unwrap_item(
-            u.Infra.get(report_tbl, "skip_covered")
-        )
-        if current_skip_covered is not False:
-            report_tbl["skip_covered"] = False
-            changes.append("tool.coverage.report.skip_covered set to false")
-
-        current_precision = u.Infra.unwrap_item(u.Infra.get(report_tbl, "precision"))
-        if current_precision != cov_config.precision:
-            report_tbl["precision"] = cov_config.precision
-            changes.append(
-                f"tool.coverage.report.precision set to {cov_config.precision}",
-            )
-
-        current_omit = u.Infra.as_string_list(u.Infra.get(run_tbl, "omit"))
         expected_omit = sorted(set(cov_config.omit))
-        if current_omit != expected_omit:
-            run_tbl["omit"] = u.Infra.array(expected_omit)
-            changes.append(f"tool.coverage.run.omit set to {expected_omit}")
+        _ = u.Cli.toml_sync_value(
+            report_tbl,
+            "fail_under",
+            fail_under,
+            changes,
+            f"tool.coverage.report.fail_under set to {fail_under}",
+        )
+        _ = u.Cli.toml_sync_value(
+            report_tbl,
+            "show_missing",
+            True,
+            changes,
+            "tool.coverage.report.show_missing set to true",
+        )
+        _ = u.Cli.toml_sync_value(
+            report_tbl,
+            "skip_covered",
+            False,
+            changes,
+            "tool.coverage.report.skip_covered set to false",
+        )
+        _ = u.Cli.toml_sync_value(
+            report_tbl,
+            "precision",
+            cov_config.precision,
+            changes,
+            f"tool.coverage.report.precision set to {cov_config.precision}",
+        )
+        _ = u.Cli.toml_sync_string_list(
+            run_tbl,
+            "omit",
+            expected_omit,
+            changes,
+            f"tool.coverage.run.omit set to {expected_omit}",
+        )
 
         return changes
 

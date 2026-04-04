@@ -11,8 +11,6 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-from pydantic import JsonValue
-
 from flext_core import FlextProtocols, r
 
 if TYPE_CHECKING:
@@ -32,6 +30,14 @@ class FlextInfraProtocolsBase:
 
         def flush(self) -> None:
             """Flush buffered text to the underlying sink."""
+            ...
+
+    @runtime_checkable
+    class RenderableTemplate(Protocol):
+        """Structural contract for template engines that expose ``render``."""
+
+        def render(self, **kwargs: t.RecursiveContainer) -> str:
+            """Render a template with keyword context."""
             ...
 
     @runtime_checkable
@@ -361,6 +367,7 @@ class FlextInfraProtocolsBase:
             """Resolve project filter list from parsed args."""
             ...
 
+    @runtime_checkable
     class TemplateRenderer(Protocol):
         """Protocol for template rendering engines."""
 
@@ -375,7 +382,7 @@ class FlextInfraProtocolsBase:
     class ViolationWithLine(Protocol):
         """Protocol for violations that have a line number."""
 
-        def model_dump(self) -> Mapping[str, JsonValue]:
+        def model_dump(self) -> t.Cli.JsonMapping:
             """Dump violation data to a dictionary."""
             ...
 
@@ -392,4 +399,44 @@ class FlextInfraProtocolsBase:
             make_args: t.StrSequence = (),
         ) -> r[Sequence[m.Infra.CommandOutput]]:
             """Execute one make verb across multiple projects."""
+            ...
+
+    @runtime_checkable
+    class ExtraPathsResolver(Protocol):
+        """Structural contract for dependency-backed extra-path resolvers."""
+
+        root: Path
+        _tool_config: m.Infra.ToolConfigDocument
+
+        def _source_root(
+            self,
+            project_dir: Path,
+            *,
+            source_dir: str,
+            project_root: str,
+        ) -> str:
+            """Resolve source root path for a project."""
+            ...
+
+        def _existing_relative_paths(
+            self,
+            project_dir: Path,
+            configured_paths: t.StrSequence,
+        ) -> t.StrSequence:
+            """Filter configured paths to only those that exist."""
+            ...
+
+        def _pyrefly_path_rules(
+            self,
+        ) -> m.Infra.PyreflyConfig.PathRulesConfig:
+            """Get pyrefly path rules from tool config."""
+            ...
+
+        def get_dep_paths(
+            self,
+            doc: t.Cli.TomlDocument,
+            *,
+            is_root: bool = False,
+        ) -> t.StrSequence:
+            """Resolve dependency search paths for one TOML document."""
             ...

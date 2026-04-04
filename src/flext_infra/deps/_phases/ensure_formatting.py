@@ -60,7 +60,11 @@ class FlextInfraEnsureFormattingToolingPhase:
             "section_whitelines": self._tool_config.tools.yamlfix.section_whitelines,
             "explicit_start": self._tool_config.tools.yamlfix.explicit_start,
         }.items():
-            if u.Infra.unwrap_item(u.Infra.get(yamlfix, key)) != value:
-                yamlfix[key] = value
-                changes.append(f"tool.yamlfix.{key} set to {value}")
+            _ = u.Cli.toml_sync_value(
+                yamlfix,
+                key,
+                value,
+                changes,
+                f"tool.yamlfix.{key} set to {value}",
+            )
         return changes

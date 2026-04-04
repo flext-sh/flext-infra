@@ -145,10 +145,9 @@ class FlextInfraRefactorEngineHelpersMixin:
         analysis = FlextInfraRefactorViolationAnalyzer.analyze_files(files)
         u.Infra.print_violation_summary(analysis)
         if args.analysis_output is not None:
-            _ = u.Infra.write_json(
+            _ = u.Cli.json_write(
                 args.analysis_output,
                 analysis.model_dump(mode="json"),
-                ensure_ascii=True,
             )
             u.Infra.refactor_info(f"Analysis report written: {args.analysis_output}")
         return 0

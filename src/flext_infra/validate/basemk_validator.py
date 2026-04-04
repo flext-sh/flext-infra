@@ -81,5 +81,13 @@ class FlextInfraBaseMkValidator:
                 f"base.mk validation failed: {exc}",
             )
 
+    def execute_command(self, params: m.Infra.ValidateBaseMkInput) -> r[bool]:
+        """Execute the basemk validation CLI flow for the input model."""
+        return self.validate(params.workspace_path).flat_map(
+            lambda report: (
+                r[bool].ok(True) if report.passed else r[bool].fail(report.summary)
+            )
+        )
+
 
 __all__ = ["FlextInfraBaseMkValidator"]

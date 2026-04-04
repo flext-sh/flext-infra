@@ -15,7 +15,7 @@ import tempfile
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
-from pydantic import BaseModel, JsonValue, ValidationError
+from pydantic import BaseModel, ValidationError
 
 from flext_core import u
 from flext_infra import c, r, t
@@ -31,11 +31,11 @@ class FlextInfraUtilitiesIo:
 
         from flext_infra import u
 
-        result = u.Infra.read_json(path)
+        result = u.Cli.toml_read_json(path)
     """
 
     @staticmethod
-    def read_json(path: Path) -> r[Mapping[str, JsonValue]]:
+    def read_json(path: Path) -> r[t.Cli.JsonMapping]:
         """Read and parse a JSON file.
 
         Args:
@@ -46,33 +46,33 @@ class FlextInfraUtilitiesIo:
 
         """
         if not path.exists():
-            return r[Mapping[str, JsonValue]].ok({})
+            return r[t.Cli.JsonMapping].ok({})
         try:
             raw_content = path.read_text(encoding=c.Infra.Encoding.DEFAULT)
-            loaded_obj: JsonValue = t.Infra.JSON_VALUE_ADAPTER.validate_json(
+            loaded_obj: t.Cli.JsonValue = t.Cli.JSON_VALUE_ADAPTER.validate_json(
                 raw_content
             )
         except (ValidationError, OSError) as exc:
-            return r[Mapping[str, JsonValue]].fail(f"JSON read error: {exc}")
+            return r[t.Cli.JsonMapping].fail(f"JSON read error: {exc}")
         if not u.is_mapping(loaded_obj):
-            return r[Mapping[str, JsonValue]].fail(
+            return r[t.Cli.JsonMapping].fail(
                 "JSON root must be t.NormalizedValue",
             )
         try:
-            data = t.Infra.JSON_DICT_ADAPTER.validate_python(loaded_obj)
-            return r[Mapping[str, JsonValue]].ok(data)
+            data = t.Cli.JSON_MAPPING_ADAPTER.validate_python(loaded_obj)
+            return r[t.Cli.JsonMapping].ok(data)
         except ValidationError as exc:
-            return r[Mapping[str, JsonValue]].fail(
+            return r[t.Cli.JsonMapping].fail(
                 f"JSON t.NormalizedValue validation error: {exc}",
             )
 
     @staticmethod
     def write_json(
         path: Path,
-        payload: JsonValue
+        payload: t.Cli.JsonValue
         | BaseModel
-        | Mapping[str, JsonValue]
-        | Sequence[JsonValue]
+        | t.Cli.JsonMapping
+        | t.Cli.JsonList
         | Mapping[str, t.Infra.InfraValue],
         *,
         sort_keys: bool = False,
@@ -96,7 +96,7 @@ class FlextInfraUtilitiesIo:
         """
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
-            materialized: JsonValue | Mapping[str, t.Infra.InfraValue]
+            materialized: t.Cli.JsonValue | Mapping[str, t.Infra.InfraValue]
             if isinstance(payload, BaseModel):
                 materialized = payload.model_dump()
             elif isinstance(payload, Mapping):
@@ -105,16 +105,16 @@ class FlextInfraUtilitiesIo:
                 materialized = list(payload)
             else:
                 materialized = payload
-            validated_payload: JsonValue = t.Infra.JSON_VALUE_ADAPTER.validate_python(
-                materialized
+            validated_payload: t.Cli.JsonValue = (
+                t.Cli.JSON_VALUE_ADAPTER.validate_python(materialized)
             )
-            normalized_payload: JsonValue = (
+            normalized_payload: t.Cli.JsonValue = (
                 FlextInfraUtilitiesIo._sort_json_keys(validated_payload)
                 if sort_keys
                 else validated_payload
             )
             content = (
-                t.Infra.JSON_VALUE_ADAPTER.dump_json(
+                t.Cli.JSON_VALUE_ADAPTER.dump_json(
                     normalized_payload,
                     indent=indent,
                     ensure_ascii=ensure_ascii,
@@ -127,10 +127,10 @@ class FlextInfraUtilitiesIo:
         return r[bool].ok(True)
 
     @staticmethod
-    def _sort_json_keys(data: JsonValue) -> JsonValue:
+    def _sort_json_keys(data: t.Cli.JsonValue) -> t.Cli.JsonValue:
         if u.is_mapping(data):
-            mapped_data = t.Infra.JSON_DICT_ADAPTER.validate_python(data)
-            sorted_items: Sequence[t.Infra.Pair[str, JsonValue]] = sorted(
+            mapped_data = t.Cli.JSON_MAPPING_ADAPTER.validate_python(data)
+            sorted_items: Sequence[t.Infra.Pair[str, t.Cli.JsonValue]] = sorted(
                 mapped_data.items(),
                 key=operator.itemgetter(0),
             )
@@ -139,7 +139,7 @@ class FlextInfraUtilitiesIo:
                 for key, value in sorted_items
             }
         if isinstance(data, list):
-            items = t.Infra.JSON_SEQ_ADAPTER.validate_python(data)
+            items = t.Cli.JSON_LIST_ADAPTER.validate_python(data)
             return [FlextInfraUtilitiesIo._sort_json_keys(item) for item in items]
         return data
 
@@ -175,7 +175,7 @@ class FlextInfraUtilitiesIo:
         return r[bool].ok(True)
 
     @staticmethod
-    def parse(text: str) -> r[JsonValue]:
+    def parse(text: str) -> r[t.Cli.JsonValue]:
         """Parse a JSON string.
 
         Args:
@@ -186,12 +186,12 @@ class FlextInfraUtilitiesIo:
 
         """
         try:
-            parsed: JsonValue = t.Infra.JSON_VALUE_ADAPTER.validate_json(
+            parsed: t.Cli.JsonValue = t.Cli.JSON_VALUE_ADAPTER.validate_json(
                 text,
             )
-            return r[JsonValue].ok(parsed)
+            return r[t.Cli.JsonValue].ok(parsed)
         except (ValidationError, ValueError) as exc:
-            return r[JsonValue].fail(f"JSON parse error: {exc}")
+            return r[t.Cli.JsonValue].fail(f"JSON parse error: {exc}")
 
     @staticmethod
     def serialize(
@@ -217,15 +217,15 @@ class FlextInfraUtilitiesIo:
             raw_data: t.Infra.InfraValue = (
                 data.model_dump() if isinstance(data, BaseModel) else data
             )
-            validated_data: JsonValue = t.Infra.JSON_VALUE_ADAPTER.validate_python(
+            validated_data: t.Cli.JsonValue = t.Cli.JSON_VALUE_ADAPTER.validate_python(
                 raw_data
             )
-            normalized_data: JsonValue = (
+            normalized_data: t.Cli.JsonValue = (
                 FlextInfraUtilitiesIo._sort_json_keys(validated_data)
                 if sort_keys
                 else validated_data
             )
-            serialized = t.Infra.JSON_VALUE_ADAPTER.dump_json(
+            serialized = t.Cli.JSON_VALUE_ADAPTER.dump_json(
                 normalized_data,
                 indent=indent,
                 ensure_ascii=ensure_ascii,

@@ -24,27 +24,6 @@ class FlextInfraEnsurePyrightConfigPhase(FlextInfraEnsurePyrightEnvs):
     def _path_rules(self) -> m.Infra.PyrightConfig.PathRulesConfig:
         return self._tool_config.tools.pyright.path_rules
 
-    @override
-    def _suppressions_for_env(self, env_dir: str) -> t.StrMapping:
-        """Return merged pyright suppressions for the given env directory."""
-        pyright_cfg = self._tool_config.tools.pyright
-        merged: t.MutableStrMapping = {**pyright_cfg.lazy_import_suppressions}
-        rules = self._path_rules()
-        if env_dir == rules.source_dir:
-            merged.update(pyright_cfg.source_env_suppressions)
-        elif env_dir in set(rules.test_like_dirs):
-            merged.update(pyright_cfg.test_like_env_suppressions)
-        return merged
-
-    @override
-    def _report_private_usage_for_env(self, env_dir: str) -> str:
-        rules = self._path_rules()
-        if env_dir == rules.source_dir:
-            return rules.source_report_private_usage
-        if env_dir in set(rules.test_like_dirs):
-            return rules.test_like_report_private_usage
-        return rules.other_report_private_usage
-
     def _override_for_kind(
         self,
         project_kind: str,
@@ -68,7 +47,7 @@ class FlextInfraEnsurePyrightConfigPhase(FlextInfraEnsurePyrightEnvs):
         rules = self._path_rules()
         venv_path = rules.root_venv_path if is_root else rules.project_venv_path
         return {
-            "venvPath": venv_path,
+            c.Infra.VENV_PATH: venv_path,
             "venv": rules.venv_name,
         }
 

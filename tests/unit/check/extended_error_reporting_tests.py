@@ -37,7 +37,7 @@ class TestErrorReporting:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
+        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         reports_dir = tmp_path / "reports"
         issue = make_issue(file="test.py")
         gate_exec = make_gate_exec(issues=[issue])
@@ -60,7 +60,7 @@ class TestErrorReporting:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
+        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         reports_dir = tmp_path / "reports"
         issue = make_issue(file="test.py")
         exec_with = make_gate_exec(issues=[issue])
@@ -89,7 +89,7 @@ class TestMarkdownReportEmptyGates:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
+        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         reports_dir = tmp_path / "reports"
         issue = make_issue(file="test.py")
         exec_with = make_gate_exec(issues=[issue])

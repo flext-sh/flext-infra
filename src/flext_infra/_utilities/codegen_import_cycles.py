@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
@@ -19,6 +20,8 @@ from flext_infra import (
     c,
     t,
 )
+
+_logger = logging.getLogger(__name__)
 
 
 class FlextInfraUtilitiesCodegenImportCycles:
@@ -51,6 +54,7 @@ class FlextInfraUtilitiesCodegenImportCycles:
                 pymodule = rope_project.get_pymodule(res)
                 mod_imports = get_imports(rope_project, pymodule)
             except Exception:
+                _logger.debug("Failed to parse imports for %s", py_file.name)
                 continue
 
             deps: t.Infra.StrSet = set()

@@ -8,7 +8,7 @@ from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from flext_infra import c, t
 
 
-def _is_local_module(mod: str, root_name: str) -> bool:
+def is_local_module(mod: str, root_name: str) -> bool:
     """Check if a module path belongs to the local package."""
     return (
         mod.startswith(".")
@@ -17,7 +17,7 @@ def _is_local_module(mod: str, root_name: str) -> bool:
     )
 
 
-def _format_import(
+def format_import(
     indent: str,
     mod: str,
     parts: t.StrSequence,
@@ -34,7 +34,7 @@ def _format_import(
     ]
 
 
-def _format_module_alias_import(
+def format_module_alias_import(
     indent: str,
     mod: str,
     export_name: str,
@@ -46,7 +46,7 @@ def _format_module_alias_import(
     return f"{indent}import {mod} as {export_name}"
 
 
-def _format_type_checking_module_alias_import(
+def format_type_checking_module_alias_import(
     indent: str,
     mod: str,
     export_name: str,
@@ -65,10 +65,10 @@ def _format_type_checking_module_alias_import(
             f"{indent}import {mod} as {private_alias}",
             f"{indent}{export_name} = {private_alias}",
         )
-    return (_format_module_alias_import(indent, mod, export_name),)
+    return (format_module_alias_import(indent, mod, export_name),)
 
 
-def _group_imports(
+def group_imports(
     import_map: t.Infra.LazyImportMap,
 ) -> Mapping[str, MutableSequence[t.Infra.StrPair]]:
     """Group a flat import map into module-keyed pairs."""
@@ -79,12 +79,12 @@ def _group_imports(
     return groups
 
 
-def _collapse_to_children(
+def collapse_to_children(
     groups: Mapping[str, t.Infra.StrPairSequence],
     child_packages: t.StrSequence | None,
 ) -> MutableMapping[str, MutableSequence[t.Infra.StrPair]]:
     """Collapse sub-module imports into parent package when parent is a child package."""
-    sorted_children: list[str] = sorted(
+    sorted_children: MutableSequence[str] = sorted(
         set(child_packages or []), key=len, reverse=True
     )
     collapsed: MutableMapping[str, MutableSequence[t.Infra.StrPair]] = defaultdict(list)
@@ -98,7 +98,7 @@ def _collapse_to_children(
     return collapsed
 
 
-def _has_flext_types(
+def has_flext_types(
     collapsed: Mapping[str, Sequence[t.Infra.StrPair]],
 ) -> bool:
     """Check if FlextTypes is already present in collapsed imports."""
@@ -109,7 +109,7 @@ def _has_flext_types(
     )
 
 
-def _emit_type_checking_module(
+def emit_type_checking_module(
     mod: str,
     items: Sequence[t.Infra.StrPair],
     children: set[str],
@@ -120,7 +120,7 @@ def _emit_type_checking_module(
     """Emit TYPE_CHECKING lines for a single module using explicit imports only."""
     alias_exports: MutableSequence[str] = []
     parts: MutableSequence[str] = []
-    export_name_trace = set()
+    export_name_trace: set[str] = set()
     module_basename = mod.rsplit(".", maxsplit=1)[-1]
     for export_name, attr_name in sorted(
         items,
@@ -143,19 +143,17 @@ def _emit_type_checking_module(
     if not deduped_aliases and not deduped_parts:
         return
 
-    if mod in children or (
-        _is_local_module(mod, root_name) and ".fixtures." not in mod
-    ):
+    if mod in children or (is_local_module(mod, root_name) and ".fixtures." not in mod):
         for export_name in deduped_aliases:
             lines.extend(
-                _format_type_checking_module_alias_import(
+                format_type_checking_module_alias_import(
                     "    ",
                     mod,
                     export_name,
                 ),
             )
         if deduped_parts:
-            lines.extend(_format_import("    ", mod, deduped_parts))
+            lines.extend(format_import("    ", mod, deduped_parts))
         return
 
     for export_name in deduped_aliases:
@@ -163,7 +161,7 @@ def _emit_type_checking_module(
     external_imports[mod].extend(deduped_parts)
 
 
-def _build_lazy_entries(
+def build_lazy_entries(
     exports: t.StrSequence,
     lazy_filtered: t.Infra.LazyImportMap,
     children_lazy: tuple[str, ...],
@@ -181,14 +179,4 @@ def _build_lazy_entries(
     return entries
 
 
-__all__ = [
-    "_build_lazy_entries",
-    "_collapse_to_children",
-    "_emit_type_checking_module",
-    "_format_import",
-    "_format_module_alias_import",
-    "_format_type_checking_module_alias_import",
-    "_group_imports",
-    "_has_flext_types",
-    "_is_local_module",
-]
+__all__: t.StrSequence = ()

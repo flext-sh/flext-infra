@@ -7,14 +7,14 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from collections.abc import Callable, MutableSequence
-from types import ModuleType, SimpleNamespace
+from collections.abc import MutableSequence
+from types import ModuleType
 
 import pytest
 from flext_tests import tm
 from tests import t
 
-from flext_infra import FlextInfraCliDeps, cli as main_mod
+from flext_infra import FlextInfraCliDeps, deps
 
 _SUBCOMMAND_MODULES = FlextInfraCliDeps._SUBCOMMAND_MODULES
 _main_impl = FlextInfraCliDeps.run
@@ -27,12 +27,25 @@ def _fake_module(return_value: t.Infra.InfraValue = 0) -> ModuleType:
     return mod
 
 
-def _stub_import(mod: ModuleType) -> Callable[[str], ModuleType]:
-    def _import(name: str) -> ModuleType:
-        _ = name
-        return mod
+def _subcommand_name(argv: t.StrSequence) -> str:
+    cli_args = list(argv[1:])
+    index = FlextInfraCliDeps._find_subcommand_index(cli_args)
+    if index is None:
+        msg = "missing deps subcommand in argv"
+        raise ValueError(msg)
+    return cli_args[index]
 
-    return _import
+
+def _patch_subcommand(
+    mp: pytest.MonkeyPatch,
+    *,
+    argv: t.StrSequence,
+    module: ModuleType,
+) -> None:
+    subcommand = _subcommand_name(argv)
+    export_name = _SUBCOMMAND_MODULES[subcommand].rsplit(".", maxsplit=1)[-1]
+    mp.setattr(sys, "argv", argv)
+    mp.setattr(deps, export_name, module)
 
 
 def _patch_dispatch(
@@ -40,13 +53,10 @@ def _patch_dispatch(
     argv: t.StrSequence,
     ret: t.Infra.InfraValue = 0,
 ) -> None:
-    mp.setattr(sys, "argv", argv)
-    mp.setattr(
-        main_mod,
-        "importlib",
-        SimpleNamespace(
-            import_module=_stub_import(_fake_module(ret)),
-        ),
+    _patch_subcommand(
+        mp,
+        argv=argv,
+        module=_fake_module(ret),
     )
 
 
@@ -77,22 +87,18 @@ class TestMainModuleImport:
         expected_module: str,
     ) -> None:
         monkeypatch.setattr(sys, "argv", ["prog", subcommand, "--workspace", "."])
-        imported: MutableSequence[str] = []
-        fake = _fake_module(0)
+        called: MutableSequence[str] = []
+        export_name = expected_module.rsplit(".", maxsplit=1)[-1]
+        fake = ModuleType(export_name)
 
-        def tracking_import(name: str) -> ModuleType:
-            imported.append(name)
-            return fake
+        def _main() -> int:
+            called.append(export_name)
+            return 0
 
-        monkeypatch.setattr(
-            main_mod,
-            "importlib",
-            SimpleNamespace(
-                import_module=tracking_import,
-            ),
-        )
+        setattr(fake, "main", _main)
+        monkeypatch.setattr(deps, export_name, fake)
         _main_impl()
-        tm.that(imported[0], eq=expected_module)
+        tm.that(called[0], eq=export_name)
 
 
 class TestMainSysArgvModification:
@@ -135,7 +141,6 @@ class TestMainExceptionHandling:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(sys, "argv", ["prog", "detect", "--workspace", "."])
         error_mod = ModuleType("error_mod")
 
         def raise_error() -> int:
@@ -143,12 +148,10 @@ class TestMainExceptionHandling:
             raise RuntimeError(msg)
 
         setattr(error_mod, "main", raise_error)
-        monkeypatch.setattr(
-            main_mod,
-            "importlib",
-            SimpleNamespace(
-                import_module=_stub_import(error_mod),
-            ),
+        _patch_subcommand(
+            monkeypatch,
+            argv=["prog", "detect", "--workspace", "."],
+            module=error_mod,
         )
         tm.that(main(), eq=1)
 

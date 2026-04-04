@@ -23,7 +23,12 @@ class FlextInfraInternalSyncRepoMixin:
     def _read_plain(self, path: Path) -> r[t.Infra.ContainerDict]:
         if self.toml is not None:
             return self.toml.read_plain(path)
-        return u.Infra.read_plain(path)
+        doc_result = u.Infra.read_document(path)
+        if doc_result.is_failure:
+            return r[t.Infra.ContainerDict].fail(
+                doc_result.error or f"failed to read {path}",
+            )
+        return r[t.Infra.ContainerDict].ok(dict(doc_result.value.unwrap()))
 
     @classmethod
     def owner_from_remote_url(cls, remote_url: str) -> str | None:

@@ -97,8 +97,10 @@ class TestMigratorInternalPyproject:
 
 class TestMigratorEdgeCases:
     def test_invalid_workspace(self) -> None:
-        migrator = FlextInfraProjectMigrator()
-        result = migrator.migrate(workspace_root=Path("/nonexistent"))
+        migrator = FlextInfraProjectMigrator(
+            workspace=Path("/nonexistent"), dry_run=False, apply=True
+        )
+        result = migrator.execute()
         tm.that(result.is_failure or result.is_success, eq=True)
 
 

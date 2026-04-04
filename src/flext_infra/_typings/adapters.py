@@ -13,7 +13,7 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableMapping, Sequence
 from typing import ClassVar
 
-from pydantic import JsonValue, TypeAdapter
+from pydantic import TypeAdapter
 
 from flext_core import FlextTypes
 from flext_infra import FlextInfraTypesBase
@@ -45,11 +45,6 @@ class FlextInfraTypesAdapters:
     )
     "Validates FlextTypes.StrMapping."
 
-    JSON_DICT_ADAPTER: ClassVar[TypeAdapter[Mapping[str, JsonValue]]] = TypeAdapter(
-        Mapping[str, JsonValue],
-    )
-    "Validates Mapping[str, JsonValue]."
-
     CONTAINER_MAPPING_ADAPTER: ClassVar[TypeAdapter[FlextTypes.ContainerMapping]] = (
         TypeAdapter(FlextTypes.ContainerMapping)
     )
@@ -66,11 +61,6 @@ class FlextInfraTypesAdapters:
     ] = TypeAdapter(Sequence[FlextInfraTypesBase.ContainerDict])
     "Validates Sequence[ContainerDict]."
 
-    JSON_SEQ_ADAPTER: ClassVar[TypeAdapter[Sequence[JsonValue]]] = TypeAdapter(
-        Sequence[JsonValue],
-    )
-    "Validates Sequence[JsonValue]."
-
     STR_SEQ_ADAPTER: ClassVar[TypeAdapter[FlextTypes.StrSequence]] = TypeAdapter(
         FlextTypes.StrSequence,
     )
@@ -86,10 +76,7 @@ class FlextInfraTypesAdapters:
     )
     "Validates StrSequence (FlextTypes.StrSequence)."
 
-    # ── Scalar adapters ──────────────────────────────────────────────
-    JSON_VALUE_ADAPTER: ClassVar[TypeAdapter[JsonValue]] = TypeAdapter(JsonValue)
-    "Validates a single JsonValue."
-
+    # ── Composite adapters ────────────────────────────────────────────
     INFRA_SEQ_MAPPING_ADAPTER: ClassVar[
         TypeAdapter[Sequence[Mapping[str, FlextInfraTypesBase.InfraValue]]]
     ] = TypeAdapter(Sequence[Mapping[str, FlextInfraTypesBase.InfraValue]])

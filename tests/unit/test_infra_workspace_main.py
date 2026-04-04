@@ -9,7 +9,6 @@ from tests import t
 
 from flext_core import r
 from flext_infra import (
-    FlextInfraCliWorkspace,
     FlextInfraModels as m,
     FlextInfraOrchestratorService,
     FlextInfraProjectMigrator,
@@ -18,11 +17,6 @@ from flext_infra import (
     FlextInfraWorkspaceMode,
     main as infra_main,
 )
-
-_handle_detect = FlextInfraCliWorkspace.handle_detect
-_handle_sync = FlextInfraCliWorkspace.handle_sync
-_handle_orchestrate = FlextInfraCliWorkspace.handle_orchestrate
-_handle_migrate = FlextInfraCliWorkspace.handle_migrate
 
 
 def workspace_main(argv: list[str] | None = None) -> int:
@@ -55,8 +49,8 @@ class TestRunDetect:
             return result
 
         monkeypatch.setattr(FlextInfraWorkspaceDetector, "detect", _detect_stub)
-        handle_result = _handle_detect(
-            m.Infra.WorkspaceDetectInput(workspace=str(tmp_path)),
+        handle_result = FlextInfraWorkspaceDetector.execute_command(
+            FlextInfraWorkspaceDetector(workspace=tmp_path),
         )
         tm.that(handle_result.is_success, eq=expected_success)
 
@@ -98,8 +92,8 @@ class TestRunSync:
             return result
 
         monkeypatch.setattr(FlextInfraSyncService, "sync", _sync_stub)
-        handle_result = _handle_sync(
-            m.Infra.WorkspaceSyncInput(workspace=str(tmp_path)),
+        handle_result = FlextInfraSyncService.execute_command(
+            FlextInfraSyncService(workspace=tmp_path),
         )
         tm.that(handle_result.is_success, eq=expected_success)
 
@@ -124,8 +118,8 @@ class TestRunOrchestrate:
             "orchestrate",
             _orchestrate_success,
         )
-        handle_result = _handle_orchestrate(
-            m.Infra.WorkspaceOrchestrateInput(verb="check", projects="p-a,p-b"),
+        handle_result = FlextInfraOrchestratorService.execute_command(
+            FlextInfraOrchestratorService(verb="check", projects="p-a,p-b"),
         )
         tm.that(handle_result.is_success, eq=True)
 
@@ -151,25 +145,25 @@ class TestRunOrchestrate:
             "orchestrate",
             _orchestrate_success,
         )
-        handle_result = _handle_orchestrate(
-            m.Infra.WorkspaceOrchestrateInput(
+        handle_result = FlextInfraOrchestratorService.execute_command(
+            FlextInfraOrchestratorService(
                 verb="test",
                 projects="p-a",
-                make_arg=["FILES=a b c.py", "VERBOSE=1"],
+                make_args=["FILES=a b c.py", "VERBOSE=1"],
             ),
         )
         tm.that(handle_result.is_success, eq=True)
         tm.that(captured_make_args, eq=["FILES=a b c.py", "VERBOSE=1"])
 
     def test_rejects_unknown_verb(self) -> None:
-        handle_result = _handle_orchestrate(
-            m.Infra.WorkspaceOrchestrateInput(verb="legacy-check", projects="p-a"),
+        handle_result = FlextInfraOrchestratorService.execute_command(
+            FlextInfraOrchestratorService(verb="legacy-check", projects="p-a"),
         )
         tm.fail(handle_result, has="unsupported orchestrate verb")
 
     def test_no_projects(self) -> None:
-        handle_result = _handle_orchestrate(
-            m.Infra.WorkspaceOrchestrateInput(verb="check", projects=""),
+        handle_result = FlextInfraOrchestratorService.execute_command(
+            FlextInfraOrchestratorService(verb="check", projects=""),
         )
         tm.that(handle_result.is_failure, eq=True)
 
@@ -192,8 +186,8 @@ class TestRunOrchestrate:
             "orchestrate",
             _orchestrate_partial,
         )
-        handle_result = _handle_orchestrate(
-            m.Infra.WorkspaceOrchestrateInput(verb="check", projects="p-a,p-b"),
+        handle_result = FlextInfraOrchestratorService.execute_command(
+            FlextInfraOrchestratorService(verb="check", projects="p-a,p-b"),
         )
         tm.that(handle_result.is_failure, eq=True)
 
@@ -213,8 +207,8 @@ class TestRunOrchestrate:
             "orchestrate",
             _orchestrate_failure,
         )
-        handle_result = _handle_orchestrate(
-            m.Infra.WorkspaceOrchestrateInput(verb="check", projects="p-a"),
+        handle_result = FlextInfraOrchestratorService.execute_command(
+            FlextInfraOrchestratorService(verb="check", projects="p-a"),
         )
         tm.that(handle_result.is_failure, eq=True)
 
@@ -252,8 +246,8 @@ class TestRunMigrate:
             return result
 
         monkeypatch.setattr(FlextInfraProjectMigrator, "migrate", _migrate_stub)
-        handle_result = _handle_migrate(
-            m.Infra.WorkspaceMigrateInput(workspace=str(tmp_path), apply=True),
+        handle_result = FlextInfraProjectMigrator.execute_command(
+            FlextInfraProjectMigrator(workspace=tmp_path, apply=True),
         )
         tm.that(handle_result.is_success, eq=expected_success)
 
@@ -284,17 +278,21 @@ class TestRunMigrate:
             "migrate",
             _migrate_with_errors,
         )
-        handle_result = _handle_migrate(
-            m.Infra.WorkspaceMigrateInput(workspace=str(tmp_path), apply=True),
+        handle_result = FlextInfraProjectMigrator.execute_command(
+            FlextInfraProjectMigrator(workspace=tmp_path, apply=True),
         )
         tm.that(handle_result.is_failure, eq=True)
 
 
 def _ok_stub(
+    _self: FlextInfraWorkspaceDetector
+    | FlextInfraSyncService
+    | FlextInfraOrchestratorService
+    | FlextInfraProjectMigrator,
     _params: m.Infra.WorkspaceDetectInput
     | m.Infra.WorkspaceSyncInput
-    | m.Infra.WorkspaceOrchestrateInput
-    | m.Infra.WorkspaceMigrateInput,
+    | FlextInfraOrchestratorService
+    | FlextInfraProjectMigrator,
 ) -> r[bool]:
     return r[bool].ok(True)
 
@@ -302,21 +300,25 @@ def _ok_stub(
 class TestMainCli:
     def test_detect(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
-            FlextInfraCliWorkspace, "handle_detect", staticmethod(_ok_stub)
+            FlextInfraWorkspaceDetector,
+            "execute_command",
+            _ok_stub,
         )
         tm.that(workspace_main(["detect", "--workspace", str(tmp_path)]), eq=0)
 
     def test_sync(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
-            FlextInfraCliWorkspace, "handle_sync", staticmethod(_ok_stub)
+            FlextInfraSyncService,
+            "execute_command",
+            _ok_stub,
         )
         tm.that(workspace_main(["sync", "--workspace", str(tmp_path)]), eq=0)
 
     def test_orchestrate(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
-            FlextInfraCliWorkspace,
-            "handle_orchestrate",
-            staticmethod(_ok_stub),
+            FlextInfraOrchestratorService,
+            "execute_command",
+            _ok_stub,
         )
         tm.that(
             workspace_main([
@@ -335,15 +337,16 @@ class TestMainCli:
         captured: list[m.Infra.WorkspaceOrchestrateInput] = []
 
         def _capture_orchestrate(
-            params: m.Infra.WorkspaceOrchestrateInput,
+            _self: FlextInfraOrchestratorService,
+            params: FlextInfraOrchestratorService,
         ) -> r[bool]:
             captured.append(params)
             return r[bool].ok(True)
 
         monkeypatch.setattr(
-            FlextInfraCliWorkspace,
-            "handle_orchestrate",
-            staticmethod(_capture_orchestrate),
+            FlextInfraOrchestratorService,
+            "execute_command",
+            _capture_orchestrate,
         )
         tm.that(
             workspace_main([
@@ -359,11 +362,13 @@ class TestMainCli:
             ]),
             eq=0,
         )
-        tm.that(captured[0].make_arg, eq=["FILES=a b c.py", "VERBOSE=1"])
+        tm.that(captured[0].make_args, eq=["FILES=a b c.py", "VERBOSE=1"])
 
     def test_migrate(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
-            FlextInfraCliWorkspace, "handle_migrate", staticmethod(_ok_stub)
+            FlextInfraProjectMigrator,
+            "execute_command",
+            _ok_stub,
         )
         tm.that(workspace_main(["migrate", "--workspace", str(tmp_path)]), eq=0)
 

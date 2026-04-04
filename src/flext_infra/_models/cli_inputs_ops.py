@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Annotated
 
 from pydantic import Field
@@ -21,6 +22,11 @@ class FlextInfraModelsCliInputsOps:
             str | None,
             Field(default=None, description="Output report file"),
         ] = None
+
+        @property
+        def report_path(self) -> Path | None:
+            """Return the resolved report path when provided."""
+            return Path(self.report).resolve() if self.report else None
 
     class GithubWorkflowsInput(
         FlextInfraModelsCliInputsCodegen.ApplyMixin,
@@ -76,6 +82,11 @@ class FlextInfraModelsCliInputsOps:
             bool,
             Field(default=True, description="Run release workflow on merge"),
         ] = True
+
+        @property
+        def repo_root_path(self) -> Path:
+            """Return the resolved repository root path."""
+            return Path(self.repo_root).resolve()
 
     class GithubPrWorkspaceInput(FlextInfraModelsCliInputsCodegen.CliInputBase):
         project: Annotated[
@@ -171,6 +182,16 @@ class FlextInfraModelsCliInputsOps:
             ),
         ] = None
 
+        @property
+        def project_names(self) -> list[str] | None:
+            """Return normalized project filters when provided."""
+            if self.project is None:
+                return None
+            values = [
+                value.strip() for value in self.project.split(",") if value.strip()
+            ]
+            return values or None
+
     class RefactorMigrateRuntimeAliasImportsInput(
         FlextInfraModelsCliInputsCodegen.ApplyMixin,
         FlextInfraModelsCliInputsCodegen.CliInputBase,
@@ -189,6 +210,21 @@ class FlextInfraModelsCliInputsOps:
                 description="Project to process (comma-separated for multiple)",
             ),
         ] = None
+
+        @property
+        def alias_names(self) -> list[str]:
+            """Return normalized runtime alias names."""
+            return [alias.strip() for alias in self.aliases.split(",") if alias.strip()]
+
+        @property
+        def project_names(self) -> list[str] | None:
+            """Return normalized project filters when provided."""
+            if self.project is None:
+                return None
+            values = [
+                value.strip() for value in self.project.split(",") if value.strip()
+            ]
+            return values or None
 
     class RefactorUltraworkModelsInput(
         FlextInfraModelsCliInputsCodegen.ApplyMixin,
@@ -211,6 +247,11 @@ class FlextInfraModelsCliInputsOps:
             str | None,
             Field(default=None, description="Path to write JSON report"),
         ] = None
+
+        @property
+        def json_output_path(self) -> Path | None:
+            """Return the resolved JSON export path when provided."""
+            return Path(self.json_output).resolve() if self.json_output else None
 
     class ReleaseRunInput(
         FlextInfraModelsCliInputsCodegen.ApplyMixin,
@@ -251,6 +292,18 @@ class FlextInfraModelsCliInputsOps:
             Field(default=None, description="Project names to release"),
         ] = None
 
+        @property
+        def phase_names(self) -> list[str]:
+            """Return the normalized phase sequence for release execution."""
+            if self.phase == "all":
+                return [
+                    c.Infra.Verbs.VALIDATE,
+                    c.Infra.VERSION,
+                    c.Infra.Directories.BUILD,
+                    "publish",
+                ]
+            return [part.strip() for part in self.phase.split(",") if part.strip()]
+
     class ValidateBaseMkInput(FlextInfraModelsCliInputsCodegen.CliInputBase):
         """CLI input for basemk-validate."""
 
@@ -261,6 +314,11 @@ class FlextInfraModelsCliInputsOps:
             str | None,
             Field(default=None, description="Output directory"),
         ] = None
+
+        @property
+        def output_dir_path(self) -> Path | None:
+            """Return the resolved output directory when provided."""
+            return Path(self.output_dir).resolve() if self.output_dir else None
 
     class ValidatePytestDiagInput(FlextInfraModelsCliInputsCodegen.CliInputBase):
         """CLI input for pytest-diag."""
@@ -288,6 +346,16 @@ class FlextInfraModelsCliInputsOps:
             Field(default=None, description="Path to write skipped cases"),
         ] = None
 
+        @property
+        def junit_path(self) -> Path:
+            """Return the resolved JUnit XML path."""
+            return Path(self.junit).resolve()
+
+        @property
+        def log_path(self) -> Path:
+            """Return the resolved pytest log path."""
+            return Path(self.log).resolve()
+
     class ValidateScanInput(FlextInfraModelsCliInputsCodegen.CliInputBase):
         """CLI input for scan."""
 
@@ -307,6 +375,16 @@ class FlextInfraModelsCliInputsOps:
                 description="Violation mode (present or absent)",
             ),
         ] = c.Infra.MatchModes.PRESENT
+
+        @property
+        def include_patterns(self) -> list[str]:
+            """Return include globs as a concrete list."""
+            return self.include or []
+
+        @property
+        def exclude_patterns(self) -> list[str]:
+            """Return exclude globs as a concrete list."""
+            return self.exclude or []
 
     class ValidateSkillValidateInput(FlextInfraModelsCliInputsCodegen.CliInputBase):
         """CLI input for skill-validate."""
@@ -332,6 +410,13 @@ class FlextInfraModelsCliInputsOps:
             Field(default=False, description="Validate all projects", alias="all"),
         ] = False
 
+        @property
+        def project_dirs(self) -> list[Path] | None:
+            """Return resolved project directories for targeted validation."""
+            if self.all_projects or not self.project:
+                return None
+            return [self.workspace_path / name for name in self.project]
+
     class WorkspaceDetectInput(FlextInfraModelsCliInputsCodegen.CliInputBase):
         """CLI input for workspace detection."""
 
@@ -345,6 +430,11 @@ class FlextInfraModelsCliInputsOps:
             str,
             Field(default="", description="Canonical workspace root"),
         ] = ""
+
+        @property
+        def canonical_root_path(self) -> Path | None:
+            """Return the resolved canonical root when provided."""
+            return Path(self.canonical_root).resolve() if self.canonical_root else None
 
     class WorkspaceOrchestrateInput(FlextInfraModelsCliInputsCodegen.CliInputBase):
         """CLI input for project orchestration."""
@@ -365,6 +455,19 @@ class FlextInfraModelsCliInputsOps:
                 description="Additional make arguments; repeat --make-arg KEY=VALUE",
             ),
         ] = Field(default_factory=list)
+
+        @property
+        def project_names(self) -> list[str]:
+            """Return normalized project names from comma/space-separated input."""
+            raw_projects = self.projects.replace(",", " ")
+            return [
+                project.strip() for project in raw_projects.split() if project.strip()
+            ]
+
+        @property
+        def make_args(self) -> list[str]:
+            """Return normalized make arguments without blank entries."""
+            return [make_arg.strip() for make_arg in self.make_arg if make_arg.strip()]
 
     class WorkspaceMigrateInput(
         FlextInfraModelsCliInputsCodegen.ApplyMixin,

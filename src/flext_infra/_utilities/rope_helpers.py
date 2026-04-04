@@ -1,4 +1,3 @@
-# pyright: reportMissingTypeStubs=false
 """Generic helper mixin for Rope-backed refactors."""
 
 from __future__ import annotations

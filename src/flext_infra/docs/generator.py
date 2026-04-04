@@ -93,7 +93,7 @@ class FlextInfraDocGenerator:
     def execute_command(self, params: m.Infra.DocsGenerateInput) -> r[bool]:
         """CLI handler — accepts input model, delegates to generate."""
         return self.generate(
-            workspace_root=u.Infra.resolve_workspace(params),
+            workspace_root=params.workspace_path,
             project=params.project,
             projects=params.projects,
             output_dir=params.output_dir,
@@ -224,7 +224,7 @@ class FlextInfraDocGenerator:
             files.extend(self._generate_project_mkdocs(scope=scope, apply=apply))
             source = "workspace-docs-guides"
         generated = u.count(files, lambda item: item.written)
-        _ = u.Infra.write_json(
+        _ = u.Cli.json_write(
             scope.report_dir / "generate-summary.json",
             {
                 c.Infra.ReportKeys.SUMMARY: {

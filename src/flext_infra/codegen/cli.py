@@ -2,99 +2,94 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-from flext_infra import m, u
-from flext_infra.codegen._cli_codegen_consolidate import (
-    FlextInfraCliCodegenConsolidate,
+from flext_cli import cli as cli_service
+from flext_infra import m, t
+from flext_infra.codegen.census import FlextInfraCodegenCensus
+from flext_infra.codegen.constants_quality_gate import (
+    FlextInfraCodegenConstantsQualityGate,
 )
-from flext_infra.codegen._cli_codegen_handlers import FlextInfraCliCodegenHandlers
-
-if TYPE_CHECKING:
-    import typer
-
-_R = u.Infra.route  # shorthand
-
-
-def _format_text(value: str) -> str:
-    """Format text result for CLI output."""
-    return str(value)
+from flext_infra.codegen.fixer import FlextInfraCodegenFixer
+from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
+from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
+from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
+from flext_infra.services.consolidator import FlextInfraCodegenConsolidator
+from flext_infra.services.deduplicator import FlextInfraCodegenDeduplicator
+from flext_infra.services.pipeline import FlextInfraCodegenPipeline
 
 
-class FlextInfraCliCodegen(
-    FlextInfraCliCodegenConsolidate,
-    FlextInfraCliCodegenHandlers,
-):
+class FlextInfraCliCodegen:
     """Codegen CLI group — composed into FlextInfraCli via MRO."""
 
-    def register_codegen(self, app: typer.Typer) -> None:
+    def register_codegen(self, app: t.Cli.TyperApp) -> None:
         """Register codegen commands on the given Typer app."""
-        u.Infra.register_routes(
+        cli_service.register_result_routes(
             app,
             [
-                _R(
-                    "lazy-init",
-                    "Generate/refresh PEP 562 lazy-import __init__.py files",
-                    m.Infra.CodegenLazyInitInput,
-                    self._handle_lazy_init,
-                    success_msg="lazy-init complete",
+                m.Cli.ResultCommandRouteModel(
+                    name="lazy-init",
+                    help_text="Generate/refresh PEP 562 lazy-import __init__.py files",
+                    model_cls=FlextInfraCodegenLazyInit,
+                    handler=FlextInfraCodegenLazyInit.execute_command,
+                    failure_message="lazy-init failed",
+                    success_message="lazy-init complete",
                 ),
-                _R(
-                    "census",
-                    "Count namespace violations across workspace projects",
-                    m.Infra.CodegenCensusInput,
-                    self._handle_codegen_census,
-                    formatter=_format_text,
+                m.Cli.ResultCommandRouteModel(
+                    name="census",
+                    help_text="Count namespace violations across workspace projects",
+                    model_cls=FlextInfraCodegenCensus,
+                    handler=FlextInfraCodegenCensus.execute_command,
+                    failure_message="census failed",
                 ),
-                _R(
-                    "deduplicate",
-                    "Auto-fix duplicated constants (keep most-used)",
-                    m.Infra.CodegenDeduplicateInput,
-                    self._handle_deduplicate,
-                    formatter=_format_text,
+                m.Cli.ResultCommandRouteModel(
+                    name="deduplicate",
+                    help_text="Auto-fix duplicated constants (keep most-used)",
+                    model_cls=FlextInfraCodegenDeduplicator,
+                    handler=FlextInfraCodegenDeduplicator.execute_command,
+                    failure_message="deduplicate failed",
                 ),
-                _R(
-                    "scaffold",
-                    "Generate missing base modules in src/ and tests/",
-                    m.Infra.CodegenScaffoldInput,
-                    self._handle_scaffold,
-                    formatter=_format_text,
+                m.Cli.ResultCommandRouteModel(
+                    name="scaffold",
+                    help_text="Generate missing base modules in src/ and tests/",
+                    model_cls=FlextInfraCodegenScaffolder,
+                    handler=FlextInfraCodegenScaffolder.execute_command,
+                    failure_message="scaffold failed",
                 ),
-                _R(
-                    "auto-fix",
-                    "Auto-fix namespace violations (move Finals/TypeVars)",
-                    m.Infra.CodegenAutoFixInput,
-                    self._handle_auto_fix,
-                    formatter=_format_text,
+                m.Cli.ResultCommandRouteModel(
+                    name="auto-fix",
+                    help_text="Auto-fix namespace violations (move Finals/TypeVars)",
+                    model_cls=FlextInfraCodegenFixer,
+                    handler=FlextInfraCodegenFixer.execute_command,
+                    failure_message="auto-fix failed",
                 ),
-                _R(
-                    "py-typed",
-                    "Create/remove PEP 561 py.typed markers",
-                    m.Infra.CodegenPyTypedInput,
-                    self._handle_py_typed,
-                    success_msg="py-typed markers updated",
+                m.Cli.ResultCommandRouteModel(
+                    name="py-typed",
+                    help_text="Create/remove PEP 561 py.typed markers",
+                    model_cls=FlextInfraCodegenPyTyped,
+                    handler=FlextInfraCodegenPyTyped.execute_command,
+                    failure_message="py-typed failed",
+                    success_message="py-typed markers updated",
                 ),
-                _R(
-                    "pipeline",
-                    "Run full codegen pipeline",
-                    m.Infra.CodegenPipelineInput,
-                    self._handle_pipeline,
-                    formatter=_format_text,
+                m.Cli.ResultCommandRouteModel(
+                    name="pipeline",
+                    help_text="Run full codegen pipeline",
+                    model_cls=FlextInfraCodegenPipeline,
+                    handler=FlextInfraCodegenPipeline.execute_command,
+                    failure_message="pipeline failed",
                 ),
-                _R(
-                    "constants-quality-gate",
-                    "Run constants migration quality gate",
-                    m.Infra.CodegenConstantsQualityGateInput,
-                    self._handle_constants_quality_gate,
-                    fail_msg="constants quality gate failed",
-                    success_msg="constants quality gate passed",
+                m.Cli.ResultCommandRouteModel(
+                    name="constants-quality-gate",
+                    help_text="Run constants migration quality gate",
+                    model_cls=FlextInfraCodegenConstantsQualityGate,
+                    handler=FlextInfraCodegenConstantsQualityGate.execute_command,
+                    failure_message="constants quality gate failed",
+                    success_message="constants quality gate passed",
                 ),
-                _R(
-                    "consolidate",
-                    "Consolidate inline constants into c.Infra.* references",
-                    m.Infra.CodegenConsolidateInput,
-                    self._handle_consolidate,
-                    formatter=_format_text,
+                m.Cli.ResultCommandRouteModel(
+                    name="consolidate",
+                    help_text="Consolidate inline constants into c.Infra.* references",
+                    model_cls=FlextInfraCodegenConsolidator,
+                    handler=FlextInfraCodegenConsolidator.execute_command,
+                    failure_message="consolidate failed",
                 ),
             ],
         )

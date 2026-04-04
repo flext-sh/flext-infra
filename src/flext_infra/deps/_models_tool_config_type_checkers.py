@@ -4,14 +4,35 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 from flext_core import m
-from flext_infra import t
+from flext_infra import c, t
 
 
 class PyrightConfig(m.ArbitraryTypesModel):
     """Pyright strict settings loaded from YAML."""
+
+    class ExecutionEnvironment(m.FrozenStrictModel):
+        """Pyright execution environment entry."""
+
+        model_config = ConfigDict(populate_by_name=True)
+
+        root: Annotated[str, Field(description="Execution environment root path.")]
+        report_private_usage: Annotated[
+            str,
+            Field(
+                alias=c.Infra.REPORT_PRIVATE_USAGE,
+                description="reportPrivateUsage override for this environment.",
+            ),
+        ]
+        extra_paths: Annotated[
+            t.StrSequence,
+            Field(
+                alias=c.Infra.EXTRA_PATHS,
+                description="extraPaths applied to this execution environment.",
+            ),
+        ]
 
     class PathRulesConfig(m.ArbitraryTypesModel):
         """Path resolution rules loaded from YAML."""

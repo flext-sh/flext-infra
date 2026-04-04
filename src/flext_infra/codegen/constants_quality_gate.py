@@ -5,53 +5,70 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Annotated, override
 
-from flext_infra import FlextInfraCodegenCensus, c, m, t, u
+from pydantic import Field
+
+from flext_core import r
+from flext_infra import FlextInfraCodegenCensus, FlextInfraCodegenLazyInit, c, m, t, u
+from flext_infra.base import s
 
 
-class FlextInfraCodegenConstantsQualityGate:
+class FlextInfraCodegenConstantsQualityGate(s[bool]):
     """Run final constants migration checks with before/after comparison."""
 
-    def __init__(
-        self,
-        *,
-        workspace_root: Path,
-        before_report: Path | None = None,
-        baseline_file: Path | None = None,
-    ) -> None:
-        """Initialize quality gate with workspace and optional baseline source."""
-        super().__init__()
-        self._workspace_root = workspace_root.resolve()
-        self._before_report = before_report
-        self._baseline_file = baseline_file
+    before_report: Annotated[
+        Path | None,
+        Field(default=None, description="Pre-refactor report path"),
+    ] = None
+    baseline_file: Annotated[
+        Path | None,
+        Field(default=None, description="Baseline payload path"),
+    ] = None
 
-    def run(self) -> Mapping[str, t.Infra.InfraValue]:
+    @override
+    def execute(self) -> r[bool]:
+        """Execute the quality gate and return its CLI success/failure status."""
+        if self.before_report and self.baseline_file:
+            return r[bool].fail(
+                "--before-report and --baseline-file are mutually exclusive",
+            )
+        report = self.build_report()
+        verdict = u.Infra.pick_str(report, "verdict", "FAIL")
+        if self.is_success_verdict(verdict):
+            return r[bool].ok(True)
+        return r[bool].fail(f"quality gate verdict: {verdict}")
+
+    def build_report(self) -> t.Infra.InfraMapping:
         """Execute quality gate and return structured report payload."""
         before_payload, before_source, before_load_error = u.Infra.load_before_payload(
-            self._workspace_root,
-            self._before_report,
-            self._baseline_file,
+            self.workspace_root,
+            self.before_report,
+            self.baseline_file,
         )
-        census_reports = FlextInfraCodegenCensus(
-            workspace_root=self._workspace_root,
+        FlextInfraCodegenLazyInit.model_validate(
+            {"workspace_root": self.workspace_root},
+        ).generate_inits()
+        census_reports = FlextInfraCodegenCensus.model_validate(
+            {"workspace_root": self.workspace_root},
         ).run()
         duplicate_groups = u.Infra.detect_duplicate_constant_groups(
-            self._workspace_root,
+            self.workspace_root,
             census_reports,
         )
         modified_files = u.Infra.modified_python_files(
-            self._workspace_root,
+            self.workspace_root,
         )
         pyrefly_check = u.Infra.run_pyrefly_check(
-            self._workspace_root,
+            self.workspace_root,
             modified_files,
         )
         ruff_check = u.Infra.run_ruff_check(
-            self._workspace_root,
+            self.workspace_root,
             modified_files,
         )
         import_scan = u.Infra.scan_import_nodes(
-            self._workspace_root,
+            self.workspace_root,
             modified_files,
         )
         before_metrics = u.Infra.before_metrics(before_payload)
@@ -74,12 +91,12 @@ class FlextInfraCodegenConstantsQualityGate:
             before_load_error=before_load_error,
         )
         verdict = u.Infra.compute_verdict(checks, improvement)
-        checks_infra: Sequence[t.Infra.InfraValue] = list(checks)
-        projects_infra: Sequence[t.Infra.InfraValue] = list(
+        checks_infra: Sequence[t.Infra.InfraValue] = tuple(checks)
+        projects_infra: Sequence[t.Infra.InfraValue] = tuple(
             u.Infra.project_findings(census_reports),
         )
         report: MutableMapping[str, t.Infra.InfraValue] = {
-            "workspace": str(self._workspace_root),
+            "workspace": str(self.workspace_root),
             "generated_at": datetime.now(UTC).isoformat(),
             "verdict": verdict,
             "checks": checks_infra,
@@ -91,13 +108,13 @@ class FlextInfraCodegenConstantsQualityGate:
             "before": before_metrics,
             "after": after_metrics,
             "improvement": improvement,
-            "duplicate_constant_groups": [
+            "duplicate_constant_groups": tuple(
                 group.model_dump() for group in duplicate_groups
-            ],
+            ),
             "projects": projects_infra,
         }
         report["artifacts"] = u.Infra.write_artifacts(
-            workspace_root=self._workspace_root,
+            workspace_root=self.workspace_root,
             report=report,
             render_text=self.render_text(report),
         )
@@ -118,9 +135,9 @@ class FlextInfraCodegenConstantsQualityGate:
             "Checks:",
         ]
         for check in checks:
-            status = "PASS" if u.Infra.pick(check, "passed", False) else "FAIL"
-            lines.append(f"- [{status}] {u.Infra.pick(check, 'name', 'unknown')}")
-            detail = u.Infra.pick(check, "detail", "")
+            status = "PASS" if u.Infra.pick_bool(check, "passed") else "FAIL"
+            lines.append(f"- [{status}] {u.Infra.pick_str(check, 'name', 'unknown')}")
+            detail = u.Infra.pick_str(check, "detail")
             if detail:
                 lines.append(f"  {detail}")
         lines.extend([

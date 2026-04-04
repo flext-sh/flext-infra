@@ -124,6 +124,15 @@ class FlextInfraCoreModels:
             ),
         ] = Field(default_factory=list)
 
+    class DiagResult(FlextModels.ArbitraryTypesModel):
+        """Internal container for extracted diagnostics."""
+
+        failed_cases: Annotated[list[str], Field(default_factory=list)]
+        error_traces: Annotated[list[str], Field(default_factory=list)]
+        skip_cases: Annotated[list[str], Field(default_factory=list)]
+        warning_lines: Annotated[list[str], Field(default_factory=list)]
+        slow_entries: Annotated[list[str], Field(default_factory=list)]
+
     class InventoryReport(FlextModels.ArbitraryTypesModel):
         """Summary of written inventory report artifacts."""
 

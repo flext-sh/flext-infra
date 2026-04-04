@@ -1,4 +1,3 @@
-# pyright: reportMissingTypeStubs=false
 """Public Rope facade."""
 
 from __future__ import annotations

@@ -65,12 +65,12 @@ def test_dedupe_specs(
     ],
 )
 def test_unwrap_item(value: t.Infra.InfraValue, expected: t.Infra.InfraValue) -> None:
-    tm.that(u.Infra.unwrap_item(value), eq=expected)
+    tm.that(u.Cli.toml_unwrap_item(value), eq=expected)
 
 
 def test_unwrap_item_toml_item(doc: TOMLDocument) -> None:
     doc["key"] = "value"
-    tm.that(u.Infra.unwrap_item(doc["key"]), eq="value")
+    tm.that(u.Cli.toml_unwrap_item(doc["key"]), eq="value")
 
 
 def _toml_item(value: str | int | t.StrSequence) -> tomlkit.items.Item:
@@ -108,16 +108,16 @@ def test_as_string_list(
     value: tomlkit.items.Item | None,
     expected: t.StrSequence,
 ) -> None:
-    tm.that(u.Infra.as_string_list(value), eq=expected)
+    tm.that(u.Cli.toml_as_string_list(value), eq=expected)
 
 
 def test_as_string_list_toml_item(doc: TOMLDocument) -> None:
     doc["items"] = ["a", "b"]
     items_array: tomlkit.items.Item = _toml_item(["a", "b"])
-    tm.that(u.Infra.as_string_list(items_array), eq=["a", "b"])
+    tm.that(u.Cli.toml_as_string_list(items_array), eq=["a", "b"])
     doc["value"] = 42
     int_val: tomlkit.items.Item = _toml_item(42)
-    tm.that(u.Infra.as_string_list(int_val), eq=[])
+    tm.that(u.Cli.toml_as_string_list(int_val), eq=[])
 
 
 @pytest.mark.parametrize(
@@ -125,7 +125,7 @@ def test_as_string_list_toml_item(doc: TOMLDocument) -> None:
     [(["a", "b", "c"], 3), ([], 0), (["single"], 1)],
 )
 def test_array(items: t.StrSequence, expected: int) -> None:
-    tm.that(len(u.Infra.array(items)), eq=expected)
+    tm.that(len(u.Cli.toml_array(items)), eq=expected)
 
 
 @pytest.mark.parametrize(
@@ -137,15 +137,15 @@ def test_ensure_table(mode: str) -> None:
     if mode == "existing":
         existing = tomlkit.table()
         parent["key"] = existing
-        ensured = u.Infra.ensure_table(parent, "key")
+        ensured = u.Cli.toml_ensure_table(parent, "key")
         assert ensured is existing
         return
     if mode == "replace-non-table":
         parent["key"] = "string_value"
-        _ = u.Infra.ensure_table(parent, "key")
+        _ = u.Cli.toml_ensure_table(parent, "key")
         tm.that(parent, has="key")
         return
-    _ = u.Infra.ensure_table(parent, "key")
+    _ = u.Cli.toml_ensure_table(parent, "key")
     tm.that(parent, has="key")
 
 

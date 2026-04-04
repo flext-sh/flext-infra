@@ -110,6 +110,16 @@ class FlextInfraTypesBase:
     "Read-only infra value sequence."
     type MutableInfraSequence = MutableSequence[InfraValue]
     "Mutable infra value sequence."
+    type DomainResult = BaseModel | FlextTypes.RecursiveContainer
+    "Typed service result payload: model or recursive container."
+    type DomainResultSequence = Sequence[DomainResult]
+    "Read-only sequence of typed service result payloads."
+    type DomainOutput = DomainResult | DomainResultSequence
+    "Single or batched service result payload for infra services."
+    type ContainerOverrides = FlextTypes.ContainerMapping
+    "Container-shaped config overrides passed to service bootstrap."
+    type RuntimeScalarOverrides = FlextTypes.ScalarMapping
+    "Scalar-only runtime/container override mapping."
 
     # ── Transformer / edit result types ──────────────────────────────
 

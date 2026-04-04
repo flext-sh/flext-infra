@@ -15,24 +15,23 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
-from flext_core import r, s
+from flext_core import r
 from flext_infra import c, u
+from flext_infra.base import s
 
 
-class FlextInfraCodegenPyTyped(s[int]):
+class FlextInfraCodegenPyTyped(s[bool]):
     """Creates and removes PEP 561 ``py.typed`` markers across workspace packages."""
 
     _PY_TYPED_FILENAME: str = "py.typed"
 
-    def __init__(self, workspace_root: Path) -> None:
-        """Initialize py.typed marker generator with workspace root."""
-        super().__init__()
-        self._root: Path = workspace_root
+    @override
+    def execute(self) -> r[bool]:
+        """Execute ``py.typed`` synchronization from the validated CLI model."""
+        self.run(check_only=self.check_only)
+        return r[bool].ok(True)
 
     @override
-    def execute(self) -> r[int]:
-        return r[int].ok(self.run())
-
     def run(self, *, check_only: bool = False) -> int:
         """Ensure ``py.typed`` markers exist in every package directory.
 
@@ -43,9 +42,9 @@ class FlextInfraCodegenPyTyped(s[int]):
 
         """
         dirs_to_scan: Sequence[Path] = [
-            self._root / pattern.split("/*")[0]
+            self.workspace_root / pattern.split("/*")[0]
             for pattern in c.Infra.ALL_SCAN_PATTERNS
-            if (self._root / pattern.split("/*")[0]).is_dir()
+            if (self.workspace_root / pattern.split("/*")[0]).is_dir()
         ]
         created = 0
         removed = 0
@@ -55,7 +54,7 @@ class FlextInfraCodegenPyTyped(s[int]):
                     continue
                 if any(
                     part.startswith(".") or part in {"vendor", "node_modules", ".venv"}
-                    for part in dirpath.relative_to(self._root).parts
+                    for part in dirpath.relative_to(self.workspace_root).parts
                 ):
                     continue
                 marker = dirpath / self._PY_TYPED_FILENAME

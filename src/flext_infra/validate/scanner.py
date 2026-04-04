@@ -14,7 +14,7 @@ import re
 from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra import c, r, t
+from flext_infra import c, m, r, t
 
 
 class FlextInfraTextPatternScanner:
@@ -109,6 +109,22 @@ class FlextInfraTextPatternScanner:
             return r[t.ScalarMapping].fail(f"invalid regex pattern: {exc}")
         except (OSError, ValueError, TypeError) as exc:
             return r[t.ScalarMapping].fail(f"text pattern scan failed: {exc}")
+
+    def execute_command(self, params: m.Infra.ValidateScanInput) -> r[bool]:
+        """Execute the text-pattern scan CLI flow for the input model."""
+        result = self.scan(
+            params.workspace_path,
+            params.pattern,
+            includes=params.include_patterns,
+            excludes=params.exclude_patterns,
+            match_mode=params.match,
+        )
+        if result.is_failure:
+            return r[bool].fail(result.error or "scan failed")
+        count = result.value.get("violation_count", 0)
+        if isinstance(count, int) and count > 0:
+            return r[bool].fail(f"Scan found {count} violation(s)")
+        return r[bool].ok(True)
 
     @staticmethod
     def _validate_scan_inputs(

@@ -65,7 +65,8 @@ class FlextInfraRefactorRule:
         """Apply a text transformer with apply_to_source and return (source, changes)."""
         apply_fn = getattr(transformer, "apply_to_source", None)
         if apply_fn is not None:
-            new_source: str = apply_fn(source)
+            result = apply_fn(source)
+            new_source: str = result[0] if isinstance(result, tuple) else result
             return (new_source, list(transformer.changes))
         return (source, list[str]())
 

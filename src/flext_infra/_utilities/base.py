@@ -30,7 +30,7 @@ class FlextInfraUtilitiesBase:
     @staticmethod
     def validate[T](
         adapter: TypeAdapter[T],
-        value: object,
+        value: t.ValueOrModel,
         *,
         default: T,
     ) -> T:
@@ -55,7 +55,7 @@ class FlextInfraUtilitiesBase:
 
     @staticmethod
     def normalize_str_mapping(
-        value: t.Infra.InfraValue | Mapping[str, t.Infra.InfraValue] | None,
+        value: t.ValueOrModel | None,
     ) -> Mapping[str, t.Infra.InfraValue]:
         """Normalize a value to a string-keyed mapping, or ``{}`` on failure."""
         return FlextInfraUtilitiesBase.validate(
@@ -146,33 +146,51 @@ class FlextInfraUtilitiesBase:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def pick[T: (str, int, float, bool)](
-        data: Mapping[str, object],
+    def pick_str(
+        data: Mapping[str, t.Infra.InfraValue],
         key: str,
-        default: T,
-    ) -> T:
-        """Extract a typed scalar from a mapping, coercing to match *default*'s type.
+        default: str = "",
+    ) -> str:
+        """Extract a string from mapping, coercing if needed."""
+        raw = data.get(key, default)
+        return str(raw).strip() if raw is not None else default
 
-        ONE method replaces ``str(x.get(k, ""))``, ``u.to_int(x.get(k))``,
-        ``bool(x.get(k, False))``, and ``get_str_key(x, k)``.
-
-        Example::
-
-            name = u.Infra.pick(diag, "file", "?")  # str
-            line = u.Infra.pick(diag, "line", 0)  # int
-            ok = u.Infra.pick(diag, "passed", False)  # bool
-        """
+    @staticmethod
+    def pick_int(
+        data: Mapping[str, t.Infra.InfraValue],
+        key: str,
+        default: int = 0,
+    ) -> int:
+        """Extract an int from mapping, coercing if needed."""
         raw = data.get(key, default)
         if raw is None:
             return default
-        if isinstance(default, bool):
-            return bool(raw)  # type: ignore[return-value]
-        if isinstance(default, int) and not isinstance(default, bool):
-            return u.to_int(raw, default=default)  # type: ignore[return-value]
-        if isinstance(default, float):
-            return u.to_float(raw, default=default)  # type: ignore[return-value]
-        # str fallback
-        return str(raw).strip() if raw is not None else str(default)  # type: ignore[return-value]
+        if isinstance(raw, int):
+            return raw
+        if isinstance(raw, (str, float, bool)):
+            return u.to_int(raw, default=default)
+        return default
+
+    @staticmethod
+    def pick_bool(
+        data: Mapping[str, t.Infra.InfraValue],
+        key: str,
+        *,
+        default: bool = False,
+    ) -> bool:
+        """Extract a bool from mapping."""
+        raw = data.get(key)
+        if isinstance(raw, bool):
+            return raw
+        if isinstance(raw, str):
+            normalized = raw.strip().lower()
+            if normalized in {"1", "true", "yes", "on"}:
+                return True
+            if normalized in {"0", "false", "no", "off"}:
+                return False
+        if isinstance(raw, int | float):
+            return raw != 0
+        return default
 
     @staticmethod
     def get_str_key(
@@ -180,11 +198,11 @@ class FlextInfraUtilitiesBase:
         key: str,
         *,
         default: str = "",
-        lower: bool = False,
+        case: str | None = None,
     ) -> str:
-        """Extract and normalize a string key (with optional lowercasing)."""
-        raw = FlextInfraUtilitiesBase.pick(mapping, key, default)
-        return raw.lower() if lower else raw
+        """Extract and normalize a string key with optional case conversion."""
+        raw = FlextInfraUtilitiesBase.pick_str(mapping, key, default)
+        return u.normalize(raw, case=case)
 
     # ------------------------------------------------------------------
     # Scan result builder (PEP 695 inline type parameter)
@@ -205,7 +223,9 @@ class FlextInfraUtilitiesBase:
             file_path=file_path,
             violations=[
                 m.Infra.ScanViolation(
-                    line=u.Infra.nested_int(violation.model_dump(), "line"),
+                    line=FlextInfraUtilitiesBase.pick_int(
+                        violation.model_dump(), "line"
+                    ),
                     message=message_builder(violation),
                     severity="error",
                     rule_id=rule_id,

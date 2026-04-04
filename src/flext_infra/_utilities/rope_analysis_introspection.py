@@ -1,4 +1,3 @@
-# pyright: reportMissingTypeStubs=false
 """Rope-backed class and module introspection helpers."""
 
 from __future__ import annotations
@@ -89,7 +88,7 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection(
 
     @classmethod
     def extract_public_methods_from_dir(
-        cls,
+        cls: type[p.Infra.RopeAnalysisMethods],
         package_dir: Path,
     ) -> Mapping[str, Sequence[t.Infra.Triple[str, str, str]]]:
         """Extract public methods from all Python files in a package directory."""
@@ -99,19 +98,15 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection(
             return result
         rope_proj = cls.init_rope_project(project_root.parent)
         try:
-            from flext_infra import FlextInfraUtilitiesRopeAnalysis
-
             for py_file in sorted(package_dir.glob(c.Infra.Extensions.PYTHON_GLOB)):
                 if py_file.name == c.Infra.Files.INIT_PY:
                     continue
                 resource = cls.get_resource_from_path(rope_proj, py_file)
                 if resource is None:
                     continue
-                classes = FlextInfraUtilitiesRopeAnalysis.get_module_classes(
-                    rope_proj, resource
-                )
+                classes = cls.get_module_classes(rope_proj, resource)
                 for class_name in classes:
-                    class_methods = FlextInfraUtilitiesRopeAnalysis.get_class_methods(
+                    class_methods = cls.get_class_methods(
                         rope_proj,
                         resource,
                         class_name,
@@ -130,7 +125,7 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection(
 
     @classmethod
     def extract_public_methods_from_file(
-        cls,
+        cls: type[p.Infra.RopeAnalysisMethods],
         file_path: Path,
     ) -> Mapping[str, Sequence[t.Infra.Triple[str, str, str]]]:
         """Extract public methods from a single Python file."""
@@ -142,16 +137,12 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection(
             return result
         rope_proj = cls.init_rope_project(project_root.parent)
         try:
-            from flext_infra import FlextInfraUtilitiesRopeAnalysis
-
             resource = cls.get_resource_from_path(rope_proj, file_path)
             if resource is None:
                 return {}
-            classes = FlextInfraUtilitiesRopeAnalysis.get_module_classes(
-                rope_proj, resource
-            )
+            classes = cls.get_module_classes(rope_proj, resource)
             for class_name in classes:
-                class_methods = FlextInfraUtilitiesRopeAnalysis.get_class_methods(
+                class_methods = cls.get_class_methods(
                     rope_proj,
                     resource,
                     class_name,

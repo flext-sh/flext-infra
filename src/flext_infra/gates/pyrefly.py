@@ -52,7 +52,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
         if json_file.exists():
             try:
                 raw_text = json_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
-                parsed_value = u.Infra.parse(raw_text).unwrap_or(None)
+                parsed_value = u.Cli.json_parse(raw_text).unwrap_or(None)
                 error_items: Sequence[Mapping[str, t.Infra.InfraValue]] = []
                 if u.is_mapping(parsed_value):
                     error_items = u.Infra.deep_list(
@@ -63,12 +63,12 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                     error_items = u.Infra.normalize_mapping_list(parsed_value)
                 issues.extend(
                     m.Infra.Issue(
-                        file=u.Infra.pick(err, "path", "?"),
-                        line=u.Infra.pick(err, "line", 0),
-                        column=u.Infra.pick(err, "column", 0),
-                        code=u.Infra.pick(err, "name", ""),
-                        message=u.Infra.pick(err, "description", ""),
-                        severity=u.Infra.pick(err, "severity", c.Infra.ERROR),
+                        file=u.Infra.pick_str(err, "path", "?"),
+                        line=u.Infra.pick_int(err, "line"),
+                        column=u.Infra.pick_int(err, "column"),
+                        code=u.Infra.pick_str(err, "name"),
+                        message=u.Infra.pick_str(err, "description"),
+                        severity=u.Infra.pick_str(err, "severity", c.Infra.ERROR),
                     )
                     for err in error_items
                 )

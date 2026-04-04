@@ -35,7 +35,7 @@ class FlextInfraDocBuilder:
         report: m.Infra.DocsPhaseReport,
     ) -> None:
         """Persist build JSON summary and markdown report."""
-        _ = u.Infra.write_json(
+        _ = u.Cli.json_write(
             scope.report_dir / "build-summary.json",
             {c.Infra.ReportKeys.SUMMARY: report.model_dump()},
         )
@@ -81,9 +81,8 @@ class FlextInfraDocBuilder:
 
     def execute_command(self, params: m.Infra.DocsBuildInput) -> r[bool]:
         """CLI handler — accepts input model, delegates to build."""
-        resolved_workspace = u.Infra.resolve_workspace(params)
         result = self.build(
-            workspace_root=resolved_workspace,
+            workspace_root=params.workspace_path,
             project=params.project,
             projects=params.projects,
             output_dir=params.output_dir,

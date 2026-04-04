@@ -70,7 +70,7 @@ class TestGeneratedFilesAreValidPython:
             tmp_path=tmp_path,
             with_all_modules=False,
         )
-        scaffolder = FlextInfraCodegenScaffolder(workspace_root=tmp_path)
+        scaffolder = FlextInfraCodegenScaffolder(workspace=tmp_path)
         scaffolder.scaffold_project(project)
         pkg = project / "src" / "test_project"
         _validate_modules_parse(pkg, _SRC_MODULE_FILES)
@@ -85,7 +85,7 @@ class TestGeneratedFilesAreValidPython:
         )
         tests_dir = project / "tests"
         tests_dir.mkdir()
-        scaffolder = FlextInfraCodegenScaffolder(workspace_root=tmp_path)
+        scaffolder = FlextInfraCodegenScaffolder(workspace=tmp_path)
         scaffolder.scaffold_project(project)
         _validate_modules_parse(tests_dir, _SRC_MODULE_FILES)
 
@@ -96,7 +96,7 @@ class TestGeneratedClassNamingConvention:
             tmp_path=tmp_path,
             with_all_modules=False,
         )
-        scaffolder = FlextInfraCodegenScaffolder(workspace_root=tmp_path)
+        scaffolder = FlextInfraCodegenScaffolder(workspace=tmp_path)
         scaffolder.scaffold_project(project)
         pkg = project / "src" / "test_project"
         _validate_class_names(
@@ -120,7 +120,7 @@ class TestGeneratedClassNamingConvention:
         )
         tests_dir = project / "tests"
         tests_dir.mkdir()
-        scaffolder = FlextInfraCodegenScaffolder(workspace_root=tmp_path)
+        scaffolder = FlextInfraCodegenScaffolder(workspace=tmp_path)
         scaffolder.scaffold_project(project)
         _validate_class_names(
             tests_dir,
@@ -137,7 +137,7 @@ class TestGeneratedClassNamingConvention:
         project = tmp_path / "empty-project"
         project.mkdir()
         (project / "Makefile").touch()
-        scaffolder = FlextInfraCodegenScaffolder(workspace_root=tmp_path)
+        scaffolder = FlextInfraCodegenScaffolder(workspace=tmp_path)
         result = scaffolder.scaffold_project(project)
         tm.that(result.files_created, eq=[])
         tm.that(result.files_skipped, eq=[])

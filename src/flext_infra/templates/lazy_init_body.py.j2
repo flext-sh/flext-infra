@@ -8,9 +8,9 @@
 {%- if inline_constants %}
 
 {% endif %}
+{%- if type_checking_lines %}
 import typing as _t
 
-{%- if type_checking_lines %}
 {{ type_checking_lines }}
 {%- endif %}
 

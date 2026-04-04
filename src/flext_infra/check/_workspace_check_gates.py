@@ -140,7 +140,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
         reports_dir: Path | None = None,
     ) -> m.Infra.GateContext:
         return m.Infra.GateContext(
-            workspace_root=self._workspace_root,
+            workspace=self._workspace_root,
             reports_dir=reports_dir or self._default_reports_dir,
         )
 

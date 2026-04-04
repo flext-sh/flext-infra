@@ -19,7 +19,7 @@ class TestReadDoc:
     def testread_doc_valid_file(self, tmp_path: Path) -> None:
         toml_file = tmp_path / "test.toml"
         toml_file.write_text('key = "value"\n')
-        result = u.Infra.read(toml_file)
+        result = u.Cli.toml_read(toml_file)
         tm.that(result is not None, eq=True)
         if result is not None:
             tm.that(
@@ -28,19 +28,19 @@ class TestReadDoc:
             )
 
     def testread_doc_nonexistent_file(self, tmp_path: Path) -> None:
-        tm.that(u.Infra.read(tmp_path / "nonexistent.toml"), eq=None)
+        tm.that(u.Cli.toml_read(tmp_path / "nonexistent.toml"), eq=None)
 
     def testread_doc_invalid_toml(self, tmp_path: Path) -> None:
         toml_file = tmp_path / "invalid.toml"
         toml_file.write_text("invalid toml content [[[")
-        tm.that(u.Infra.read(toml_file), eq=None)
+        tm.that(u.Cli.toml_read(toml_file), eq=None)
 
     def testread_doc_permission_error(self, tmp_path: Path) -> None:
         toml_file = tmp_path / "test.toml"
         toml_file.write_text("[project]\nname = 'test'")
         toml_file.chmod(0)
         try:
-            tm.that(u.Infra.read(toml_file), eq=None)
+            tm.that(u.Cli.toml_read(toml_file), eq=None)
         finally:
             toml_file.chmod(420)
 

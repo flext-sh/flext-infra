@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    from flext_infra import m
+    from flext_infra import m, t
 
 
 class FlextInfraProtocolsRope:
@@ -45,10 +45,12 @@ class FlextInfraProtocolsRope:
         root: FlextInfraProtocolsRope.RopeProjectRootLike
         """Project root resource."""
 
-        pycore: object
+        pycore: FlextInfraProtocolsRope.RopePyCoreLike
         """Rope's dynamic PyCore object."""
 
-        def get_resource(self, resource_path: str) -> object:
+        def get_resource(
+            self, resource_path: str
+        ) -> FlextInfraProtocolsRope.RopeResourceLike:
             """Resolve one resource path inside the project."""
             ...
 
@@ -59,7 +61,7 @@ class FlextInfraProtocolsRope:
             """Return the PyModule for one resource."""
             ...
 
-        def do(self, changes: object) -> None:
+        def do(self, changes: FlextInfraProtocolsRope.RopeChangesLike) -> None:
             """Apply one rope change set."""
             ...
 
@@ -214,7 +216,7 @@ class FlextInfraProtocolsRope:
     class RopeImportInfoLike(Protocol):
         """Structural contract for rope import descriptors."""
 
-        names_and_aliases: Sequence[tuple[str, str | None]]
+        names_and_aliases: list[tuple[str, str | None]]
         """Imported names and optional aliases."""
 
     @runtime_checkable
@@ -231,7 +233,7 @@ class FlextInfraProtocolsRope:
     class RopeImportStatementLike(Protocol):
         """Structural contract for one import statement wrapper."""
 
-        import_info: object
+        import_info: FlextInfraProtocolsRope.RopeImportInfoLike
         """Underlying import descriptor."""
 
     @runtime_checkable
@@ -241,7 +243,10 @@ class FlextInfraProtocolsRope:
         imports: Sequence[FlextInfraProtocolsRope.RopeImportStatementLike]
         """Discovered import statements."""
 
-        def add_import(self, import_info: object) -> None:
+        def add_import(
+            self,
+            import_info: FlextInfraProtocolsRope.RopeImportInfoLike,
+        ) -> None:
             """Append one import descriptor."""
             ...
 
@@ -304,6 +309,45 @@ class FlextInfraProtocolsRope:
         ) -> Sequence[m.Infra.Result]:
             """Execute the hook and return results."""
             ...
+
+    class RopeAnalysisMethods(Protocol):
+        """Structural contract for Rope analysis class helpers."""
+
+        @staticmethod
+        def get_module_classes(
+            rope_project: t.Infra.RopeProject,
+            resource: t.Infra.RopeResource,
+        ) -> t.StrSequence: ...
+
+        @staticmethod
+        def get_class_methods(
+            rope_project: t.Infra.RopeProject,
+            resource: t.Infra.RopeResource,
+            class_name: str,
+            *,
+            include_private: bool = False,
+        ) -> t.StrMapping: ...
+
+        @staticmethod
+        def _method_kind_label(method_kind: str) -> str: ...
+
+        @staticmethod
+        def discover_project_root_from_file(file_path: Path) -> Path | None: ...
+
+        @staticmethod
+        def init_rope_project(
+            workspace_root: Path,
+            *,
+            project_prefix: str = "",
+            src_dir: str = "",
+            ignored_resources: tuple[str, ...] = (),
+        ) -> t.Infra.RopeProject: ...
+
+        @staticmethod
+        def get_resource_from_path(
+            rope_project: t.Infra.RopeProject,
+            file_path: Path,
+        ) -> t.Infra.RopeResource | None: ...
 
 
 __all__ = ["FlextInfraProtocolsRope"]

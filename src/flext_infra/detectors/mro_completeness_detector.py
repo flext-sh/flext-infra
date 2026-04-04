@@ -21,6 +21,23 @@ class FlextInfraMROCompletenessDetector(FlextInfraScanFileMixin, p.Infra.Scanner
         "Facade '{facade_class}' missing base '{missing_base}' for family '{family}'"
     )
 
+    @staticmethod
+    def _declared_bases_from_source(*, file_path: Path, facade: str) -> set[str]:
+        """Parse declared facade bases directly from source to complement Rope results."""
+        try:
+            source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+        except OSError:
+            return set()
+        for match in c.Infra.SourceCode.CLASS_WITH_BASES_RE.finditer(source):
+            if match.group(1) != facade:
+                continue
+            return {
+                base_part.split("[", maxsplit=1)[0].strip().rsplit(".", maxsplit=1)[-1]
+                for base_part in match.group(2).split(",")
+                if base_part.strip()
+            }
+        return set()
+
     @classmethod
     @override
     def detect_file(
@@ -83,6 +100,9 @@ class FlextInfraMROCompletenessDetector(FlextInfraScanFileMixin, p.Infra.Scanner
                     declared = set(ci.bases)
                 elif not ci.name.startswith("_") and ci.name.startswith(facade):
                     expected[ci.name] = ci.line
+        declared.update(
+            cls._declared_bases_from_source(file_path=file_path, facade=facade)
+        )
         root = u.Infra.resolve_project_root(file_path)
         if root is not None:
             for base in u.Infra.build_expected_base_chains(project_root=root).get(

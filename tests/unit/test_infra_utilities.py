@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from tests import u
+from tests import FlextInfraTestUtilities, u
 
 from flext_core import FlextUtilities
 from flext_infra import FlextInfraUtilities
@@ -24,8 +24,9 @@ class TestFlextInfraUtilitiesImport:
         assert issubclass(FlextInfraUtilities, FlextUtilities)
 
     def test_runtime_alias_u_is_flext_infra_utilities(self) -> None:
-        """Test that u is an alias for FlextInfraUtilities."""
-        assert u is FlextInfraUtilities
+        """Test that test alias u resolves to the local test utilities facade."""
+        assert u is FlextInfraTestUtilities
+        assert issubclass(u, FlextInfraUtilities)
 
     def test_flext_infra_utilities_is_class(self) -> None:
         """Test that FlextInfraUtilities is a class."""

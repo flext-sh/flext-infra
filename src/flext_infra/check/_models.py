@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, Sequence
+from collections.abc import MutableMapping, Sequence
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, JsonValue, computed_field, model_serializer
+from pydantic import ConfigDict, Field, computed_field, model_serializer
 
 from flext_core import FlextModels
 from flext_infra import c, t
@@ -108,7 +108,7 @@ class FlextInfraCheckModels:
         ]
 
         @model_serializer(mode="plain")
-        def _serialize(self) -> Mapping[str, JsonValue]:
+        def _serialize(self) -> t.Cli.JsonMapping:
             return {
                 "id": self.id,
                 "shortDescription": {"text": self.short_description},
@@ -129,7 +129,7 @@ class FlextInfraCheckModels:
         ] = "%SRCROOT%"
 
         @model_serializer(mode="plain")
-        def _serialize(self) -> Mapping[str, JsonValue]:
+        def _serialize(self) -> t.Cli.JsonMapping:
             return {
                 "physicalLocation": {
                     "artifactLocation": {
@@ -157,7 +157,7 @@ class FlextInfraCheckModels:
         ]
 
         @model_serializer(mode="plain")
-        def _serialize(self) -> Mapping[str, JsonValue]:
+        def _serialize(self) -> t.Cli.JsonMapping:
             return {
                 "ruleId": self.rule_id,
                 "level": self.level,
@@ -192,7 +192,7 @@ class FlextInfraCheckModels:
         ] = Field(default_factory=lambda: ())
 
         @model_serializer(mode="plain")
-        def _serialize(self) -> Mapping[str, JsonValue]:
+        def _serialize(self) -> t.Cli.JsonMapping:
             return {
                 "tool": {
                     "driver": {

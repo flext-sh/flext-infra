@@ -42,11 +42,11 @@ def test_workspace_cli_migrate_command(monkeypatch: MonkeyPatch) -> None:
     assert exit_code == 0
 
 
-def test_workspace_cli_rejects_migrate_flags_for_detect(
+def test_workspace_cli_accepts_default_dry_run_for_detect(
     monkeypatch: MonkeyPatch,
 ) -> None:
     del monkeypatch
-    tm.that(infra_main(["workspace", "detect", "--dry-run"]), eq=2)
+    tm.that(infra_main(["workspace", "detect"]), eq=0)
 
 
 def test_workspace_cli_migrate_output_contains_summary(

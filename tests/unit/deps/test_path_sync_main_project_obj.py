@@ -53,8 +53,9 @@ def test_main_project_obj_not_dict_first_loop(
         _discover_projects,
     )
     monkeypatch.setattr(
-        "flext_infra.FlextInfraUtilitiesToml.read_document",
-        _read_document,
+        path_sync_module.u.Cli,
+        "toml_read_document",
+        staticmethod(_read_document),
     )
 
     monkeypatch.setattr(FlextInfraDependencyPathSync, "_log", _SilentLogger())
@@ -82,8 +83,9 @@ def test_main_project_obj_not_dict_second_loop(
         _discover_projects,
     )
     monkeypatch.setattr(
-        "flext_infra.FlextInfraUtilitiesToml.read_document",
-        _read_document,
+        path_sync_module.u.Cli,
+        "toml_read_document",
+        staticmethod(_read_document),
     )
 
     monkeypatch.setattr(FlextInfraDependencyPathSync, "_log", _SilentLogger())

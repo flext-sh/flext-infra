@@ -301,6 +301,12 @@ class FlextInfraRefactorConstants:
         re.MULTILINE,
     )
     "Matches TypeAlias annotation syntax for typing alias detection."
+    TYPING_FACTORY_ASSIGN_RE: ClassVar[re.Pattern[str]] = re.compile(
+        r"^(\w+)\s*=\s*(?:(?:\w+\.)*)?"
+        r"(?:TypeVar|ParamSpec|TypeVarTuple|NewType)\s*\(",
+        re.MULTILINE,
+    )
+    "Matches TypeVar/ParamSpec/TypeVarTuple/NewType assignments."
     COMPAT_ALIAS_RE: ClassVar[re.Pattern[str]] = re.compile(
         r"^([A-Z]\w+)\s*=\s*([A-Z]\w+)\s*$",
         re.MULTILINE,

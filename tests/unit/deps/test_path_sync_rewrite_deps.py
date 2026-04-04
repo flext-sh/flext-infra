@@ -99,7 +99,7 @@ class TestRewriteDepPaths:
             return r[bool].fail("write failed")
 
         monkeypatch.setattr(
-            "flext_infra.FlextInfraUtilitiesToml.write_document",
+            "flext_infra.deps.path_sync_rewrite.u.Cli.toml_write_document",
             fail_write,
         )
         tm.fail(

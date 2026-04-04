@@ -100,6 +100,7 @@ class FlextInfraPythonVersionEnforcer(s[int]):
         )
         return r[int].ok(0)
 
+    @override
     def execute_command(self, params: m.Infra.MaintenanceRunInput) -> r[int]:
         """CLI handler — accepts input model, delegates to execute."""
         return self.execute(check_only=params.check, verbose=params.verbose)

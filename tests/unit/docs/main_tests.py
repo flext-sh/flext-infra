@@ -15,7 +15,6 @@ from flext_core import r
 from flext_infra import (
     FlextInfraDocAuditor,
     FlextInfraDocFixer,
-    FlextInfraDocsCli,
     m,
     t,
 )
@@ -108,14 +107,14 @@ class TestRunAudit:
             passed=passed,
         )
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", _ok([report]))
-        result = FlextInfraDocsCli._handle_audit(
+        result = FlextInfraDocAuditor().execute_command(
             m.Infra.DocsAuditInput(check=True, strict=True),
         )
         tm.that(result.is_success, eq=expected_success)
 
     def test_run_audit_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", _fail_report("audit error"))
-        result = FlextInfraDocsCli._handle_audit(
+        result = FlextInfraDocAuditor().execute_command(
             m.Infra.DocsAuditInput(check=True, strict=True),
         )
         tm.that(result.is_failure, eq=True)
@@ -137,7 +136,7 @@ class TestRunAudit:
     ) -> None:
         captured_kwargs: t.MutableScalarMapping = {}
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", _capturing(captured_kwargs))
-        FlextInfraDocsCli._handle_audit(
+        FlextInfraDocAuditor().execute_command(
             m.Infra.DocsAuditInput(check=check, strict=strict),
         )
         params = captured_kwargs.get("params")
@@ -147,12 +146,12 @@ class TestRunAudit:
 class TestRunFix:
     def test_run_fix_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(FlextInfraDocFixer, "fix", _ok_list([]))
-        result = FlextInfraDocsCli._handle_fix(m.Infra.DocsFixInput())
+        result = FlextInfraDocFixer().execute_command(m.Infra.DocsFixInput())
         tm.that(result.is_success, eq=True)
 
     def test_run_fix_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(FlextInfraDocFixer, "fix", _fail_list("fix error"))
-        result = FlextInfraDocsCli._handle_fix(m.Infra.DocsFixInput())
+        result = FlextInfraDocFixer().execute_command(m.Infra.DocsFixInput())
         tm.that(result.is_failure, eq=True)
 
     @pytest.mark.parametrize(("apply", "expected"), [(True, True), (False, False)])
@@ -174,5 +173,5 @@ class TestRunFix:
             return r[Sequence[m.Infra.DocsPhaseReport]].ok([])
 
         monkeypatch.setattr(FlextInfraDocFixer, "fix", mock_fix)
-        FlextInfraDocsCli._handle_fix(m.Infra.DocsFixInput(apply=apply))
+        FlextInfraDocFixer().execute_command(m.Infra.DocsFixInput(apply=apply))
         assert captured_kwargs.get("apply") == expected

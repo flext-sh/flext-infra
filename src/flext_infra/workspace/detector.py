@@ -33,10 +33,6 @@ class FlextInfraWorkspaceDetector(s[FlextInfraWorkspaceMode]):
 
     """
 
-    def __init__(self) -> None:
-        """Initialize the workspace detector."""
-        super().__init__()
-
     @staticmethod
     def _repo_name_from_url(url: str) -> str:
         """Extract repository name from Git URL.
@@ -104,8 +100,8 @@ class FlextInfraWorkspaceDetector(s[FlextInfraWorkspaceMode]):
 
     @override
     def execute(self) -> r[FlextInfraWorkspaceMode]:
-        """Not used; call detect() directly instead."""
-        return r[FlextInfraWorkspaceMode].fail("Use detect() method directly")
+        """Execute the workspace detection flow."""
+        return self.detect(self.workspace_root)
 
 
 __all__ = ["FlextInfraWorkspaceDetector", "FlextInfraWorkspaceMode"]

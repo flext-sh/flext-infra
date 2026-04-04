@@ -9,7 +9,8 @@ import pytest
 from tests import m
 
 from flext_core import r
-from flext_infra import FlextInfraCliGithub, main, u as infra_u
+from flext_infra import main, u as infra_u
+from flext_infra.github.service import FlextInfraGithubService
 
 
 def _orch(*, fail: int = 0, total: int = 1) -> m.Infra.PrOrchestrationResult:
@@ -69,6 +70,7 @@ class TestMain:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         def _run_pr(
+            _self: FlextInfraGithubService,
             _params: m.Infra.GithubPrInput,
         ) -> r[m.Infra.PrExecutionResultModel]:
             return r[m.Infra.PrExecutionResultModel].ok(
@@ -80,7 +82,11 @@ class TestMain:
                 ),
             )
 
-        monkeypatch.setattr(FlextInfraCliGithub, "_handle_pr", staticmethod(_run_pr))
+        monkeypatch.setattr(
+            FlextInfraGithubService,
+            "execute_pr",
+            _run_pr,
+        )
         assert (
             main(["github", "pr", "--repo-root", str(tmp_path), "--action", "status"])
             == 0

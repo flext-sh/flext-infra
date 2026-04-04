@@ -69,10 +69,16 @@ def _project(
 def _build_migrator(
     project: im.Infra.ProjectInfo,
     base_mk: str,
+    workspace_root: Path | None = None,
+    dry_run: bool = False,
 ) -> FlextInfraProjectMigrator:
-    migrator = FlextInfraProjectMigrator()
-    migrator._discovery = _StubDiscovery([project])
-    migrator._generator = _StubGenerator(base_mk)
+    migrator = FlextInfraProjectMigrator(
+        workspace=workspace_root or Path("/dummy"),
+        apply=not dry_run,
+        dry_run=dry_run,
+    )
+    migrator.discovery = _StubDiscovery([project])
+    migrator.generator = _StubGenerator(base_mk)
     return migrator
 
 
@@ -80,8 +86,10 @@ def test_migrator_dry_run_reports_changes_without_writes(tmp_path: Path) -> None
     project_root = tmp_path / "project-a"
     project_root.mkdir(parents=True)
     h.write_project(project_root)
-    migrator = _build_migrator(_project(project_root), "NEW_BASE\n")
-    result = migrator.migrate(workspace_root=tmp_path, dry_run=True)
+    migrator = _build_migrator(
+        _project(project_root), "NEW_BASE\n", workspace_root=tmp_path, dry_run=True
+    )
+    result = migrator.execute()
     migrations = tm.ok(result)
     tm.that(any(c.startswith("[DRY-RUN]") for c in migrations[0].changes), eq=True)
     tm.that((project_root / "base.mk").read_text(encoding="utf-8"), eq="OLD_BASE\n")
@@ -91,8 +99,10 @@ def test_migrator_apply_updates_project_files(tmp_path: Path) -> None:
     project_root = tmp_path / "project-a"
     project_root.mkdir(parents=True)
     h.write_project(project_root)
-    migrator = _build_migrator(_project(project_root), "NEW_BASE\n")
-    result = migrator.migrate(workspace_root=tmp_path, dry_run=False)
+    migrator = _build_migrator(
+        _project(project_root), "NEW_BASE\n", workspace_root=tmp_path, dry_run=False
+    )
+    result = migrator.execute()
     migrations = tm.ok(result)
     tm.that(migrations[0].errors, eq=[])
     tm.that((project_root / "base.mk").exists(), eq=True)
@@ -108,8 +118,10 @@ def test_migrator_handles_missing_pyproject_gracefully(tmp_path: Path) -> None:
     (project_root / ".git").mkdir(parents=True, exist_ok=True)
     (project_root / "base.mk").write_text("OLD_BASE\n", encoding="utf-8")
     (project_root / "Makefile").write_text("", encoding="utf-8")
-    migrator = _build_migrator(_project(project_root), "NEW_BASE\n")
-    result = migrator.migrate(workspace_root=tmp_path, dry_run=False)
+    migrator = _build_migrator(
+        _project(project_root), "NEW_BASE\n", workspace_root=tmp_path, dry_run=False
+    )
+    result = migrator.execute()
     tm.ok(result)
     tm.that((project_root / "base.mk").read_text(encoding="utf-8"), eq="NEW_BASE\n")
 
@@ -120,29 +132,36 @@ def test_migrator_preserves_custom_makefile_content(tmp_path: Path) -> None:
     h.write_project(project_root)
     custom = "# Custom rule\ncustom-target:\n\t@echo 'custom'\n"
     (project_root / "Makefile").write_text(custom, encoding="utf-8")
-    migrator = _build_migrator(_project(project_root), "NEW_BASE\n")
-    result = migrator.migrate(workspace_root=tmp_path, dry_run=False)
+    migrator = _build_migrator(
+        _project(project_root), "NEW_BASE\n", workspace_root=tmp_path, dry_run=False
+    )
+    result = migrator.execute()
     tm.ok(result)
     text = (project_root / "Makefile").read_text(encoding="utf-8")
     tm.that(text, has="custom-target")
     tm.that(text, has="@echo 'custom'")
 
 
-def test_migrator_execute_returns_failure() -> None:
-    tm.fail(FlextInfraProjectMigrator().execute())
-
-
 def test_migrator_workspace_root_not_exists(tmp_path: Path) -> None:
-    migrator = FlextInfraProjectMigrator()
-    result = migrator.migrate(workspace_root=tmp_path / "nonexistent", dry_run=False)
+    migrator = FlextInfraProjectMigrator(
+        workspace=tmp_path / "nonexistent", dry_run=False, apply=True
+    )
+    result = migrator.execute()
     tm.fail(result, has="does not exist")
 
 
 def test_migrator_discovery_failure(tmp_path: Path) -> None:
-    migrator = FlextInfraProjectMigrator()
-    migrator._discovery = _StubDiscovery(error="Discovery failed")
-    result = migrator.migrate(workspace_root=tmp_path, dry_run=False)
+    migrator = FlextInfraProjectMigrator(workspace=tmp_path, dry_run=False, apply=True)
+    migrator.discovery = _StubDiscovery(error="Discovery failed")
+    result = migrator.execute()
     tm.fail(result, has="Discovery failed")
+
+
+def test_migrator_execute_returns_failure(tmp_path: Path) -> None:
+    migrator = FlextInfraProjectMigrator(workspace=tmp_path, dry_run=False, apply=True)
+    migrator.discovery = _StubDiscovery(error="Execution failed")
+    result = migrator.execute()
+    tm.fail(result, has="Execution failed")
 
 
 def test_migrator_workspace_root_project_detection(tmp_path: Path) -> None:
@@ -151,10 +170,10 @@ def test_migrator_workspace_root_project_detection(tmp_path: Path) -> None:
     (tmp_path / "pyproject.toml").touch()
     (tmp_path / "tests").mkdir()
     (tmp_path / "src").mkdir()
-    migrator = FlextInfraProjectMigrator()
-    migrator._discovery = _StubDiscovery([])
-    migrator._generator = _StubGenerator("base.mk")
-    result = migrator.migrate(workspace_root=tmp_path, dry_run=True)
+    migrator = FlextInfraProjectMigrator(workspace=tmp_path, dry_run=True, apply=False)
+    migrator.discovery = _StubDiscovery([])
+    migrator.generator = _StubGenerator("base.mk")
+    result = migrator.execute()
     migrations = tm.ok(result)
     tm.that(len(migrations), gte=1)
 
@@ -173,7 +192,9 @@ def test_migrator_no_changes_needed(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     (project_root / "base.mk").write_text("base.mk", encoding="utf-8")
-    migrator = _build_migrator(_project(project_root), "base.mk")
-    result = migrator.migrate(workspace_root=tmp_path, dry_run=False)
+    migrator = _build_migrator(
+        _project(project_root), "base.mk", workspace_root=tmp_path, dry_run=False
+    )
+    result = migrator.execute()
     migrations = tm.ok(result)
     tm.that(migrations[0].changes, has="no changes needed")

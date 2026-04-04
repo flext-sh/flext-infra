@@ -1,4 +1,3 @@
-# pyright: reportMissingTypeStubs=false
 """Source-level Rope rewrite helpers."""
 
 from __future__ import annotations

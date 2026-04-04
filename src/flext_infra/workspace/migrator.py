@@ -4,27 +4,47 @@ from __future__ import annotations
 
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
-from typing import override
+from typing import Annotated, override
 
 import tomlkit
-from pydantic import JsonValue
+from pydantic import Field
 
-from flext_infra import FlextInfraBaseMkGenerator, c, m, p, r, s, t, u
+from flext_infra import (
+    FlextInfraBaseMkGenerator,
+    FlextInfraServiceBase,
+    c,
+    m,
+    p,
+    r,
+    t,
+    u,
+)
 
 
-class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
+class FlextInfraProjectMigrator(
+    FlextInfraServiceBase[Sequence[m.Infra.MigrationResult]]
+):
     """Migrate projects to standardized base.mk, Makefile, and pyproject structure."""
 
-    def __init__(
-        self,
-        *,
-        discovery: p.Infra.Discovery | None = None,
-        generator: FlextInfraBaseMkGenerator | None = None,
-    ) -> None:
-        """Initialize migrator with optional custom discovery and generator services."""
-        super().__init__()
-        self._discovery = discovery
-        self._generator = generator or FlextInfraBaseMkGenerator()
+    discovery: Annotated[
+        p.Infra.Discovery | None,
+        Field(default=None, exclude=True),
+    ] = None
+    generator: Annotated[
+        FlextInfraBaseMkGenerator | None,
+        Field(default=None, exclude=True),
+    ] = None
+
+    def _get_discovery(self) -> p.Infra.Discovery | None:
+        """Return the configured discovery service, including test-time private injection."""
+        private_discovery = getattr(self, "_discovery", None)
+        return self.discovery or private_discovery
+
+    def _get_generator(self) -> FlextInfraBaseMkGenerator:
+        """Return the configured generator, including test-time private injection."""
+        private_generator = getattr(self, "_generator", None)
+        configured = self.generator or private_generator
+        return configured if configured is not None else FlextInfraBaseMkGenerator()
 
     @staticmethod
     def _action_text(action: str, *, dry_run: bool) -> str:
@@ -56,9 +76,9 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
         if project is not None:
             deps = u.Infra.get_item(project, c.Infra.DEPENDENCIES)
             if isinstance(deps, list):
-                deps_list: Sequence[JsonValue] = (
-                    t.Infra.JSON_SEQ_ADAPTER.validate_python([*deps])
-                )
+                deps_list: t.Cli.JsonList = t.Cli.JSON_LIST_ADAPTER.validate_python([
+                    *deps
+                ])
                 for dep_raw in deps_list:
                     if str(dep_raw).strip().startswith(c.Infra.Packages.CORE):
                         return True
@@ -93,46 +113,36 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
 
     @override
     def execute(self) -> r[Sequence[m.Infra.MigrationResult]]:
-        return r[Sequence[m.Infra.MigrationResult]].fail(
-            "Use migrate() method directly",
+        """Execute the workspace migration flow."""
+        dry_run = self.dry_run or not self.apply_changes
+        result = self.migrate(
+            workspace_root=self.workspace_root,
+            dry_run=dry_run,
         )
-
-    def migrate(
-        self,
-        *,
-        workspace_root: Path,
-        dry_run: bool = False,
-    ) -> r[Sequence[m.Infra.MigrationResult]]:
-        """Migrate all projects in workspace."""
-        root = workspace_root.resolve()
-        if not root.is_dir():
+        if result.is_failure:
+            return result
+        migrations: Sequence[m.Infra.MigrationResult] = result.value
+        failed_projects = 0
+        for migration in migrations:
+            u.Infra.info(f"{migration.project}:")
+            for change in migration.changes:
+                u.Infra.info(f"  + {change}")
+            for error in migration.errors:
+                u.Infra.error(f"  ! {error}")
+            if migration.errors:
+                failed_projects += 1
+        total_changes = sum(len(migration.changes) for migration in migrations)
+        total_errors = sum(len(migration.errors) for migration in migrations)
+        u.Infra.info(
+            f"Total: {total_changes} change(s), {total_errors} error(s) across {len(migrations)} project(s)"
+        )
+        if dry_run:
+            u.Infra.info("(dry-run — no files modified)")
+        if failed_projects:
             return r[Sequence[m.Infra.MigrationResult]].fail(
-                f"workspace root does not exist: {root}",
+                f"{failed_projects} project(s) had errors"
             )
-        if self._discovery is not None:
-            discovered = self._discovery.discover_projects(root)
-        else:
-            discovered = u.Infra.discover_projects(root)
-        if discovered.is_failure:
-            return r[Sequence[m.Infra.MigrationResult]].fail(
-                discovered.error or "project discovery failed",
-            )
-        discovered_projects: Sequence[m.Infra.ProjectInfo] = discovered.value
-        projects = list(discovered_projects)
-        workspace_project = self._workspace_root_project(root)
-        if workspace_project is not None and all(
-            existing.path != workspace_project.path for existing in projects
-        ):
-            projects.append(workspace_project)
-        results: Sequence[m.Infra.MigrationResult] = [
-            self._migrate_project(
-                project=project,
-                dry_run=dry_run,
-                workspace_root=root,
-            )
-            for project in projects
-        ]
-        return r[Sequence[m.Infra.MigrationResult]].ok(results)
+        return result
 
     def _migrate_basemk(
         self,
@@ -143,7 +153,8 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
     ) -> r[str]:
         _ = is_workspace_root
         target = project_root / c.Infra.Files.BASE_MK
-        generated = self._generator.generate_basemk()
+        generator = self._get_generator()
+        generated = generator.generate_basemk()
         if generated.is_failure:
             return r[str].fail(generated.error or "base.mk generation failed")
         generated_text: str = generated.value
@@ -247,7 +258,8 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
     def _apply_bootstrap_include(self, content: str) -> str:
         if c.Infra.MAKEFILE_INCLUDE_OLD not in content:
             return content
-        bootstrap_result = self._generator.render_bootstrap_include()
+        generator = self._get_generator()
+        bootstrap_result = generator.render_bootstrap_include()
         if bootstrap_result.is_failure:
             return content
         return content.replace(
@@ -343,9 +355,9 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
         dependencies_raw = u.Infra.get_item(project_table, c.Infra.DEPENDENCIES)
         dependencies: MutableSequence[str] = []
         if isinstance(dependencies_raw, list):
-            dependency_items: Sequence[JsonValue] = (
-                t.Infra.JSON_SEQ_ADAPTER.validate_python([*dependencies_raw])
-            )
+            dependency_items: t.Cli.JsonList = t.Cli.JSON_LIST_ADAPTER.validate_python([
+                *dependencies_raw
+            ])
             dependencies = [str(dep_raw) for dep_raw in dependency_items]
         dependency_spec = c.Infra.Packages.CORE
         if dependency_spec not in dependencies:

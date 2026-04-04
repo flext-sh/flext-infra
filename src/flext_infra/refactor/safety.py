@@ -103,10 +103,9 @@ class FlextInfraRefactorSafetyManager:
         )
         payload = checkpoint.model_dump()
         payload["updated_at"] = u.generate_iso_timestamp()
-        return u.Infra.write_json(
+        return u.Cli.json_write(
             self._checkpoint_path,
             payload,
-            ensure_ascii=True,
         )
 
     def clear_checkpoint(self) -> r[bool]:

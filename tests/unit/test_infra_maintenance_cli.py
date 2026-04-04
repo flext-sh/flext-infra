@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from tests import t, u
+from tests import t
 
 from flext_infra import main as infra_main
 
@@ -15,4 +15,4 @@ def main(argv: t.StrSequence | None = None) -> int:
 
 
 def test_maintenance_rejects_apply_flag() -> None:
-    assert u.Infra.run_cli(main, ["--apply"]) == 2
+    assert main(["--apply"]) == 2

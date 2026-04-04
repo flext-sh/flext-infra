@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 
 from pydantic import ValidationError
@@ -76,23 +76,6 @@ class FlextInfraUtilitiesRefactor(
         ]
         return ".".join(parts)
 
-    _MODULE_FAMILY_KEYS: t.StrSequence = (
-        "_models",
-        "_utilities",
-        "_dispatcher",
-        "_decorators",
-        "_runtime",
-    )
-
-    @staticmethod
-    def module_family_from_path(path: str) -> str:
-        """Resolve module family key from a source file path."""
-        normalized = path.replace("\\", "/")
-        for key in FlextInfraUtilitiesRefactor._MODULE_FAMILY_KEYS:
-            if key in normalized:
-                return key
-        return "other_private"
-
     @staticmethod
     def entry_list(value: t.Infra.InfraValue | None) -> Sequence[t.StrMapping]:
         """Normalize class-nesting config entries to a strict list."""
@@ -126,32 +109,6 @@ class FlextInfraUtilitiesRefactor(
                 msg = "expected list value"
                 raise TypeError(msg)
         return [v for v in validated if isinstance(v, str)]
-
-    @staticmethod
-    def mapping_list(
-        value: t.Infra.InfraValue | None,
-    ) -> Sequence[Mapping[str, t.Infra.InfraValue]]:
-        """Normalize policy fields that should contain mapping collections."""
-        if value is None:
-            return []
-        if isinstance(value, list):
-            try:
-                value_items: Sequence[t.Infra.InfraValue] = (
-                    t.Infra.INFRA_SEQ_ADAPTER.validate_python(value)
-                )
-            except ValidationError as exc:
-                msg = "expected Sequence[Mapping[str, t.Infra.InfraValue]] value"
-                raise ValueError(msg) from exc
-            normalized: MutableSequence[Mapping[str, t.Infra.InfraValue]] = []
-            for item in value_items:
-                if not FlextUtilities.is_mapping(item):
-                    continue
-                normalized.append(
-                    t.Infra.INFRA_MAPPING_ADAPTER.validate_python(item),
-                )
-            return normalized
-        msg = "expected Sequence[Mapping[str, t.Infra.InfraValue]] value"
-        raise ValueError(msg)
 
     @staticmethod
     def has_required_fields(

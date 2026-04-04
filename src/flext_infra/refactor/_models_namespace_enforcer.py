@@ -11,21 +11,19 @@ from flext_core import FlextModels
 from flext_infra import t
 
 
-class _FileLineViolation(FlextModels.FrozenStrictModel):
-    """Shared base: file + line for all violation models."""
-
-    file: Annotated[t.NonEmptyStr, Field(description="File path")]
-    line: Annotated[t.PositiveInt, Field(description="Line number")]
-
-
-class _ImportViolationBase(_FileLineViolation):
-    """Shared base: file + line + current_import."""
-
-    current_import: Annotated[str, Field(description="Current import statement")]
-
-
 class FlextInfraNamespaceEnforcerModels:
     """Namespace enforcer violation and report models."""
+
+    class FileLineViolation(FlextModels.FrozenStrictModel):
+        """Shared base: file + line for all violation models."""
+
+        file: Annotated[t.NonEmptyStr, Field(description="File path")]
+        line: Annotated[t.PositiveInt, Field(description="Line number")]
+
+    class ImportViolationBase(FileLineViolation):
+        """Shared base: file + line + current_import."""
+
+        current_import: Annotated[str, Field(description="Current import statement")]
 
     class FacadeStatus(FlextModels.FrozenStrictModel):
         family: Annotated[t.NonEmptyStr, Field(description="Facade family name")]
@@ -37,18 +35,18 @@ class FlextInfraNamespaceEnforcerModels:
             Field(default=0, description="Symbol count"),
         ]
 
-    class LooseObjectViolation(_FileLineViolation):
+    class LooseObjectViolation(FileLineViolation):
         name: Annotated[t.NonEmptyStr, Field(description="Symbol name")]
         kind: Annotated[str, Field(description="Object kind")]
         suggestion: Annotated[str, Field(default="", description="Fix suggestion")]
 
-    class ImportAliasViolation(_ImportViolationBase):
+    class ImportAliasViolation(ImportViolationBase):
         suggested_import: Annotated[
             str,
             Field(description="Suggested import statement"),
         ]
 
-    class NamespaceSourceViolation(_FileLineViolation):
+    class NamespaceSourceViolation(FileLineViolation):
         alias: Annotated[t.NonEmptyStr, Field(description="Runtime alias letter")]
         current_source: Annotated[
             t.NonEmptyStr,
@@ -64,21 +62,21 @@ class FlextInfraNamespaceEnforcerModels:
             Field(description="Suggested import statement"),
         ]
 
-    class ClassPlacementViolation(_FileLineViolation):
+    class ClassPlacementViolation(FileLineViolation):
         name: Annotated[t.NonEmptyStr, Field(description="Class name")]
         base_class: Annotated[t.NonEmptyStr, Field(description="Base class name")]
         suggestion: Annotated[str, Field(description="Fix suggestion")]
 
-    class MROCompletenessViolation(_FileLineViolation):
+    class MROCompletenessViolation(FileLineViolation):
         family: Annotated[t.NonEmptyStr, Field(description="Facade family")]
         facade_class: Annotated[t.NonEmptyStr, Field(description="Facade class name")]
         missing_base: Annotated[t.NonEmptyStr, Field(description="Missing base class")]
         suggestion: Annotated[str, Field(description="Fix suggestion")]
 
-    class InternalImportViolation(_ImportViolationBase):
+    class InternalImportViolation(ImportViolationBase):
         detail: Annotated[str, Field(description="Violation detail")]
 
-    class ManualProtocolViolation(_FileLineViolation):
+    class ManualProtocolViolation(FileLineViolation):
         name: Annotated[t.NonEmptyStr, Field(description="Protocol class name")]
         suggestion: Annotated[
             str,
@@ -107,11 +105,11 @@ class FlextInfraNamespaceEnforcerModels:
     class FutureAnnotationsViolation(FlextModels.FrozenStrictModel):
         file: Annotated[t.NonEmptyStr, Field(description="File path")]
 
-    class ManualTypingAliasViolation(_FileLineViolation):
+    class ManualTypingAliasViolation(FileLineViolation):
         name: Annotated[t.NonEmptyStr, Field(description="Alias name")]
         detail: Annotated[str, Field(default="", description="Violation detail")]
 
-    class CompatibilityAliasViolation(_FileLineViolation):
+    class CompatibilityAliasViolation(FileLineViolation):
         alias_name: Annotated[t.NonEmptyStr, Field(description="Alias name")]
         target_name: Annotated[t.NonEmptyStr, Field(description="Target name")]
 

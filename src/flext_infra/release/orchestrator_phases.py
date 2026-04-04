@@ -85,7 +85,7 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
             failures=failures,
             records=records,
         )
-        u.Infra.write_json(
+        u.Cli.json_write(
             output_dir / "build-report.json",
             report.model_dump(mode="json"),
             sort_keys=True,

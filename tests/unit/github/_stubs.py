@@ -13,7 +13,7 @@ from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar, override
 
-from pydantic import BaseModel, Field, JsonValue
+from pydantic import BaseModel, Field
 from tests import t
 
 from flext_core import FlextModels, r
@@ -153,10 +153,10 @@ class StubJsonIo(FlextInfraUtilitiesIo):
     """Stub for FlextInfraUtilitiesIo (json_io dependency)."""
 
     _PayloadT = (
-        JsonValue
+        t.Cli.JsonValue
         | BaseModel
-        | Mapping[str, JsonValue]
-        | Sequence[JsonValue]
+        | t.Cli.JsonMapping
+        | t.Cli.JsonList
         | Mapping[str, t.Infra.InfraValue]
     )
 
@@ -171,10 +171,10 @@ class StubJsonIo(FlextInfraUtilitiesIo):
     @override
     def write_json(
         path: Path,
-        payload: JsonValue
+        payload: t.Cli.JsonValue
         | BaseModel
-        | Mapping[str, JsonValue]
-        | Sequence[JsonValue]
+        | t.Cli.JsonMapping
+        | t.Cli.JsonList
         | Mapping[str, t.Infra.InfraValue],
         *,
         sort_keys: bool = False,

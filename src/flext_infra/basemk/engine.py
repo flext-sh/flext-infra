@@ -13,8 +13,23 @@ from jinja2 import (
     TemplateError,
     select_autoescape,
 )
+from pydantic import PrivateAttr
 
 from flext_infra import c, m, r, s, t
+
+_TEMPLATES_DIR: Path = Path(__file__).resolve().parent.parent / "templates"
+
+
+def _build_environment() -> Environment:
+    """Create the shared Jinja environment for base.mk rendering."""
+    return Environment(
+        loader=FileSystemLoader(str(_TEMPLATES_DIR)),
+        trim_blocks=False,
+        lstrip_blocks=False,
+        keep_trailing_newline=True,
+        undefined=StrictUndefined,
+        autoescape=select_autoescape(),
+    )
 
 
 class _Renderable(Protocol):
@@ -35,18 +50,7 @@ def _render(
 class FlextInfraBaseMkTemplateEngine(s[str]):
     """Render base.mk templates with configuration context."""
 
-    def __init__(self) -> None:
-        """Initialize template environment for base.mk rendering."""
-        super().__init__()
-        template_root = Path(__file__).resolve().parent.parent / "templates"
-        self._environment = Environment(
-            loader=FileSystemLoader(str(template_root)),
-            trim_blocks=False,
-            lstrip_blocks=False,
-            keep_trailing_newline=True,
-            undefined=StrictUndefined,
-            autoescape=select_autoescape(),
-        )
+    _environment: Environment = PrivateAttr(default_factory=_build_environment)
 
     @staticmethod
     def default_config() -> m.Infra.BaseMkConfig:

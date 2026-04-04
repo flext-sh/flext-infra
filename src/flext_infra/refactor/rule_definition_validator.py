@@ -17,7 +17,7 @@ class FlextInfraRefactorRuleDefinitionValidator:
         """Return validation error text or None when rule definition is valid."""
         rule_id = str(rule_def.get(c.Infra.ReportKeys.ID, c.Infra.Defaults.UNKNOWN))
         fix_action = u.Infra.get_str_key(
-            rule_def, c.Infra.ReportKeys.FIX_ACTION, lower=True
+            rule_def, c.Infra.ReportKeys.FIX_ACTION, case="lower"
         )
         if not fix_action:
             return None

@@ -101,8 +101,8 @@ class TestConstantsQualityGateVerdict:
 
     def test_real_workspace_run_returns_report(self, tmp_path: Path) -> None:
         """Quality gate runs on real empty workspace without errors."""
-        gate = FlextInfraCodegenConstantsQualityGate(workspace_root=tmp_path)
-        report = gate.run()
+        gate = FlextInfraCodegenConstantsQualityGate(workspace=tmp_path)
+        report = gate.build_report()
         assert isinstance(report, dict)
         assert "verdict" in report
 

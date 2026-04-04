@@ -11,36 +11,42 @@ from flext_infra import c, m, t
 class FlextInfraEnsurePyrightEnvs:
     """Helpers for computing pyright executionEnvironments entries.
 
-    Methods that depend on the main class (_path_rules, _report_private_usage_for_env,
-    _suppressions_for_env) are resolved via MRO when the main class inherits this mixin.
+    Methods that depend on the main class (_path_rules, _report_private_usage_for_env)
+    are resolved via MRO when the main class inherits this mixin.
     """
 
     def _path_rules(self) -> m.Infra.PyrightConfig.PathRulesConfig:
         raise NotImplementedError
 
-    def _report_private_usage_for_env(self, env_dir: str) -> str:
-        raise NotImplementedError
-
-    def _suppressions_for_env(self, env_dir: str) -> t.StrMapping:
-        raise NotImplementedError
-
-    @staticmethod
-    def _env_entry(
+    def _report_private_usage_for_env(
+        self,
+        env_dir: str,
         *,
+        rules: m.Infra.PyrightConfig.PathRulesConfig | None = None,
+    ) -> str:
+        effective_rules = rules or self._path_rules()
+        if env_dir == effective_rules.source_dir:
+            return effective_rules.source_report_private_usage
+        if env_dir in self._test_like_dirs_set(effective_rules):
+            return effective_rules.test_like_report_private_usage
+        return effective_rules.other_report_private_usage
+
+    def _env_entry(
+        self,
+        *,
+        env_dir: str,
         root: str,
-        report_private_usage: str,
         extra_paths: t.StrSequence,
-        suppressions: t.StrMapping | None = None,
-    ) -> t.Infra.ContainerDict:
-        entry: t.Infra.MutableInfraMapping = {
-            "root": root,
-            "reportPrivateUsage": report_private_usage,
-            "extraPaths": [*extra_paths],
-        }
-        if suppressions:
-            for key in sorted(suppressions):
-                entry[key] = suppressions[key]
-        return entry
+        rules: m.Infra.PyrightConfig.PathRulesConfig,
+    ) -> m.Infra.PyrightConfig.ExecutionEnvironment:
+        return m.Infra.PyrightConfig.ExecutionEnvironment(
+            root=root,
+            report_private_usage=self._report_private_usage_for_env(
+                env_dir,
+                rules=rules,
+            ),
+            extra_paths=[*extra_paths],
+        )
 
     @staticmethod
     def _test_like_dirs_set(
@@ -62,41 +68,28 @@ class FlextInfraEnsurePyrightEnvs:
             return [project_root]
         return [source_path]
 
-    def _fallback_envs(
+    def _envs_for_dirs(
         self,
         *,
+        env_dirs: t.StrSequence,
         source_path: str,
         project_root: str,
         rules: m.Infra.PyrightConfig.PathRulesConfig,
-    ) -> Sequence[t.Infra.ContainerDict]:
-        default_test_root = (
-            rules.test_like_dirs[0]
-            if rules.test_like_dirs
-            else c.Infra.Directories.TESTS
-        )
-        test_like_extra = self._extra_paths_for_env(
-            env_dir=default_test_root,
-            source_path=source_path,
-            project_root=project_root,
-            test_like_dirs=self._test_like_dirs_set(rules),
-        )
+    ) -> Sequence[m.Infra.PyrightConfig.ExecutionEnvironment]:
+        test_like_dirs = self._test_like_dirs_set(rules)
         return [
             self._env_entry(
-                root=rules.source_dir,
-                report_private_usage=self._report_private_usage_for_env(
-                    rules.source_dir,
+                env_dir=env_dir,
+                root=env_dir,
+                extra_paths=self._extra_paths_for_env(
+                    env_dir=env_dir,
+                    source_path=source_path,
+                    project_root=project_root,
+                    test_like_dirs=test_like_dirs,
                 ),
-                extra_paths=[source_path],
-                suppressions=self._suppressions_for_env(rules.source_dir),
-            ),
-            self._env_entry(
-                root=default_test_root,
-                report_private_usage=self._report_private_usage_for_env(
-                    default_test_root,
-                ),
-                extra_paths=test_like_extra,
-                suppressions=self._suppressions_for_env(default_test_root),
-            ),
+                rules=rules,
+            )
+            for env_dir in env_dirs
         ]
 
     def _project_source_path(
@@ -119,7 +112,7 @@ class FlextInfraEnsurePyrightEnvs:
         is_root: bool,
         workspace_root: Path | None,
         project_dir: Path | None = None,
-    ) -> Sequence[t.Infra.ContainerDict]:
+    ) -> Sequence[m.Infra.PyrightConfig.ExecutionEnvironment]:
         if not is_root:
             return self._expected_envs_for_project(project_dir)
         if workspace_root is None:
@@ -127,12 +120,11 @@ class FlextInfraEnsurePyrightEnvs:
 
         rules = self._path_rules()
         test_like_dirs = self._test_like_dirs_set(rules)
-        expected_envs: MutableSequence[t.Infra.ContainerDict] = []
+        expected_envs: MutableSequence[m.Infra.PyrightConfig.ExecutionEnvironment] = []
         root_source_path = self._project_source_path(workspace_root)
         for env_dir in rules.env_dirs:
             if not (workspace_root / env_dir).is_dir():
                 continue
-            report_private_usage = self._report_private_usage_for_env(env_dir)
             extra_paths = self._extra_paths_for_env(
                 env_dir=env_dir,
                 source_path=root_source_path,
@@ -141,10 +133,10 @@ class FlextInfraEnsurePyrightEnvs:
             )
             expected_envs.append(
                 self._env_entry(
+                    env_dir=env_dir,
                     root=env_dir,
-                    report_private_usage=report_private_usage,
                     extra_paths=extra_paths,
-                    suppressions=self._suppressions_for_env(env_dir),
+                    rules=rules,
                 ),
             )
 
@@ -163,7 +155,6 @@ class FlextInfraEnsurePyrightEnvs:
             for env_dir in rules.env_dirs:
                 if not (child_project / env_dir).is_dir():
                     continue
-                report_private_usage = self._report_private_usage_for_env(env_dir)
                 extra_paths = self._extra_paths_for_env(
                     env_dir=env_dir,
                     source_path=child_source_path,
@@ -172,10 +163,10 @@ class FlextInfraEnsurePyrightEnvs:
                 )
                 expected_envs.append(
                     self._env_entry(
+                        env_dir=env_dir,
                         root=(relative_root / env_dir).as_posix(),
-                        report_private_usage=report_private_usage,
                         extra_paths=extra_paths,
-                        suppressions=self._suppressions_for_env(env_dir),
+                        rules=rules,
                     ),
                 )
         return expected_envs
@@ -183,42 +174,26 @@ class FlextInfraEnsurePyrightEnvs:
     def _expected_envs_for_project(
         self,
         project_dir: Path | None,
-    ) -> Sequence[t.Infra.ContainerDict]:
+    ) -> Sequence[m.Infra.PyrightConfig.ExecutionEnvironment]:
         """Build executionEnvironments from YAML-configured directories."""
         rules = self._path_rules()
         if project_dir is None:
-            return self._fallback_envs(
+            return self._envs_for_dirs(
+                env_dirs=rules.env_dirs,
                 source_path=rules.source_dir,
                 project_root=rules.project_root,
                 rules=rules,
             )
         source_path = self._project_source_path(project_dir)
-        test_like_dirs = self._test_like_dirs_set(rules)
-        envs: MutableSequence[t.Infra.ContainerDict] = []
-        for env_dir in rules.env_dirs:
-            if not (project_dir / env_dir).is_dir():
-                continue
-            report_private_usage = self._report_private_usage_for_env(env_dir)
-            envs.append(
-                self._env_entry(
-                    root=env_dir,
-                    report_private_usage=report_private_usage,
-                    extra_paths=self._extra_paths_for_env(
-                        env_dir=env_dir,
-                        source_path=source_path,
-                        project_root=rules.project_root,
-                        test_like_dirs=test_like_dirs,
-                    ),
-                    suppressions=self._suppressions_for_env(env_dir),
-                ),
-            )
-        if not envs:
-            return self._fallback_envs(
-                source_path=source_path,
-                project_root=rules.project_root,
-                rules=rules,
-            )
-        return envs
+        existing_env_dirs = [
+            env_dir for env_dir in rules.env_dirs if (project_dir / env_dir).is_dir()
+        ]
+        return self._envs_for_dirs(
+            env_dirs=existing_env_dirs,
+            source_path=source_path,
+            project_root=rules.project_root,
+            rules=rules,
+        )
 
 
 __all__ = ["FlextInfraEnsurePyrightEnvs"]

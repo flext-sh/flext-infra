@@ -3,14 +3,17 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping, MutableSequence
+from collections.abc import Mapping
 from pathlib import Path
+from typing import override
 
-from flext_infra import c, t, u
+from flext_infra import FlextInfraRopeTransformer, c, t
 
 
-class FlextInfraRefactorTypingUnifier:
-    """Unify inline type unions into canonical t.* alias references via rope regex."""
+class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
+    """Unify inline type unions into canonical t.* alias references via regex."""
+
+    _description = "canonicalize types and modernize TypeAlias"
 
     def __init__(
         self,
@@ -19,42 +22,34 @@ class FlextInfraRefactorTypingUnifier:
         file_path: Path | None = None,
     ) -> None:
         """Initialize with canonical union map and optional file path for skip logic."""
+        super().__init__()
         self._canonical_map = canonical_map
         self._is_definition_file = self._is_typing_definition_file(file_path)
-        self.changes: MutableSequence[str] = []
 
-    def transform(
-        self,
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
-    ) -> tuple[str, MutableSequence[str]]:
+    @override
+    def apply_to_source(self, source: str) -> t.Infra.TransformResult:
         """Apply union canonicalization and TypeAlias modernization."""
         if self._is_definition_file:
-            return resource.read(), self.changes
+            return source, list(self.changes)
 
-        source = resource.read()
-        replacements = self._build_replacements(source)
-        if replacements:
-            source, _count = u.Infra.batch_replace_annotations(
-                rope_project,
-                resource,
-                replacements,
-                apply=True,
-            )
-            for old, new in replacements.items():
-                self.changes.append(f"Canonicalized inline union {old} -> {new}")
-
-        source = self._modernize_typealias(rope_project, resource)
-        return source, self.changes
-
-    def _build_replacements(self, source: str) -> t.StrMapping:
-        """Scan source for union patterns matching canonical map entries."""
-        result: dict[str, str] = {}
-        for member_set, canonical in self._canonical_map.items():
+        for member_set, canonical in sorted(
+            self._canonical_map.items(), key=lambda i: len(i[0]), reverse=True
+        ):
             pattern = self._union_pattern(member_set)
-            if pattern is not None and pattern.search(source):
-                result[" | ".join(sorted(member_set))] = canonical
-        return result
+            if pattern is not None:
+
+                def replacer(match: re.Match[str], canonical: str = canonical) -> str:
+                    # Capture exact matched text for accurate reporting.
+                    matched_text = match.group(0)
+                    self._record_change(
+                        f"Canonicalized inline union {matched_text} -> {canonical}"
+                    )
+                    return canonical
+
+                source, _count = pattern.subn(replacer, source)
+
+        source = self._modernize_typealias(source)
+        return source, list(self.changes)
 
     @staticmethod
     def _union_pattern(members: frozenset[str]) -> re.Pattern[str] | None:
@@ -65,20 +60,14 @@ class FlextInfraRefactorTypingUnifier:
         part = rf"(?:{'|'.join(escaped)})"
         return re.compile(rf"\b{part}(?:\s*\|\s*{part}){{{len(members) - 1}}}\b")
 
-    @staticmethod
-    def _modernize_typealias(
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
-    ) -> str:
+    def _modernize_typealias(self, source: str) -> str:
         """Convert ``X: TypeAlias = expr`` to ``type X = expr`` (PEP 695)."""
         pattern = re.compile(r"^(\w+)\s*:\s*TypeAlias\s*=\s*(.+)$", re.MULTILINE)
-        new_source, _count = u.Infra.replace_in_source(
-            rope_project,
-            resource,
-            pattern,
-            r"type \1 = \2",
-            apply=True,
-        )
+        for match in pattern.finditer(source):
+            self._record_change(
+                f"Converted legacy TypeAlias assignment: {match.group(1)}"
+            )
+        new_source, _count = pattern.subn(r"type \1 = \2", source)
         return new_source
 
     @staticmethod

@@ -35,7 +35,7 @@ _NO_MODIFIED = {
 
 def _int(payload: Mapping[str, t.Infra.InfraValue], key: str) -> int:
     """Shorthand for ``u.to_int(payload.get(key))``."""
-    return u.Infra.nested_int(payload, key)
+    return FlextInfraUtilitiesBase.nested_int(payload, key)
 
 
 def _totals(
@@ -56,7 +56,7 @@ class FlextInfraUtilitiesCodegenExecution:
         totals = _totals(payload)
         if totals:
             return sum(
-                u.Infra.nested_int(totals, k)
+                _int(totals, k)
                 for k in (
                     "ns001_violations",
                     "layer_violations",
@@ -67,7 +67,7 @@ class FlextInfraUtilitiesCodegenExecution:
             payload.get("projects")
         )
         if projects and all("total" in item for item in projects):
-            return sum(u.Infra.nested_int(item, "total") for item in projects)
+            return sum(_int(item, "total") for item in projects)
         return -1
 
     @staticmethod
@@ -89,7 +89,7 @@ class FlextInfraUtilitiesCodegenExecution:
     def _extract_totals_field(
         payload: Mapping[str, t.Infra.InfraValue], key: str
     ) -> int:
-        return u.Infra.nested_int(_totals(payload), key)
+        return _int(_totals(payload), key)
 
     # ── Metrics ──────────────────────────────────────────────────────
 
@@ -181,10 +181,10 @@ class FlextInfraUtilitiesCodegenExecution:
         before_metrics: Mapping[str, t.Infra.InfraValue],
         after_metrics: Mapping[str, t.Infra.InfraValue],
     ) -> Mapping[str, t.Infra.InfraValue]:
-        bv = u.Infra.nested_int(before_metrics, "total_violations")
-        bd = u.Infra.nested_int(before_metrics, "duplicate_groups")
-        av = u.Infra.nested_int(after_metrics, "total_violations")
-        ad = u.Infra.nested_int(after_metrics, "duplicate_groups")
+        bv = _int(before_metrics, "total_violations")
+        bd = _int(before_metrics, "duplicate_groups")
+        av = _int(after_metrics, "total_violations")
+        ad = _int(after_metrics, "duplicate_groups")
         vd = 0 if bv < 0 else av - bv
         dd = 0 if bd < 0 else ad - bd
         return {

@@ -15,9 +15,9 @@ from collections.abc import Mapping, MutableMapping
 from functools import lru_cache
 from pathlib import Path
 
+from flext_cli import FlextCliUtilities
 from flext_core import FlextUtilities, m
 from flext_infra import (
-    FlextInfraUtilitiesYaml,
     c,
     t,
 )
@@ -34,15 +34,7 @@ class FlextInfraNormalizerContext(m.ArbitraryTypesModel):
 
 
 class FlextInfraUtilitiesImportNormalizer:
-    """Import normalization helpers for alias resolution and tier inference.
-
-    Usage via namespace::
-
-        from flext_infra import u
-
-        config = u.Infra.load_config()
-        tiers = u.Infra.alias_tiers()
-    """
+    """Import normalization helpers for alias resolution and tier inference."""
 
     @staticmethod
     @lru_cache(maxsize=1)
@@ -53,11 +45,10 @@ class FlextInfraUtilitiesImportNormalizer:
             / "rules"
             / "import-normalization.yml"
         )
-        loaded = FlextInfraUtilitiesYaml.safe_load_yaml(rules_path)
+        loaded = FlextCliUtilities.Cli.yaml_load_mapping(rules_path)
         root = loaded.get("import_normalization")
         if FlextUtilities.is_mapping(root):
-            normalized: Mapping[str, t.Infra.InfraValue] = dict(root)
-            return normalized
+            return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(root)
         return {}
 
     @staticmethod

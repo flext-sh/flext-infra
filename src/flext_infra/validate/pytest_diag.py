@@ -16,7 +16,7 @@ from typing import ClassVar
 
 from defusedxml import ElementTree as DefusedET
 
-from flext_infra import c, m, r, t
+from flext_infra import c, m, r, t, u
 
 
 class _DiagResult:
@@ -218,6 +218,33 @@ class FlextInfraPytestDiagExtractor:
             return r[m.Infra.PytestDiagnostics].fail(
                 f"pytest diagnostics extraction failed: {exc}",
             )
+
+    def execute_command(self, params: m.Infra.ValidatePytestDiagInput) -> r[bool]:
+        """Execute the pytest diagnostics CLI flow for the input model."""
+        result = self.extract(params.junit_path, params.log_path)
+        if result.is_failure:
+            return r[bool].fail(result.error or "extraction failed")
+        for param_name, attr_name, separator in [
+            ("failed", "failed_cases", "\n\n"),
+            ("errors", "error_traces", "\n\n"),
+            ("warnings", "warning_lines", "\n"),
+            ("slowest", "slow_entries", "\n"),
+            ("skips", "skip_cases", "\n"),
+        ]:
+            path_str = getattr(params, param_name, None)
+            if not path_str:
+                continue
+            items = [
+                value
+                for value in getattr(result.value, attr_name, [])
+                if isinstance(value, str)
+            ]
+            u.write_file(
+                Path(path_str),
+                separator.join(items) + "\n",
+                encoding=c.Infra.Encoding.DEFAULT,
+            )
+        return r[bool].ok(True)
 
 
 __all__ = ["FlextInfraPytestDiagExtractor"]

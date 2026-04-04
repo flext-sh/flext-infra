@@ -47,18 +47,18 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             project_dir,
         )
         issues: MutableSequence[m.Infra.Issue] = []
-        ruff_data = u.Infra.parse(result.stdout or "[]").unwrap_or([])
+        ruff_data = u.Cli.json_parse(result.stdout or "[]").unwrap_or([])
         try:
             if isinstance(ruff_data, list):
                 for entry in ruff_data:
                     if isinstance(entry, Mapping):
                         issues.append(
                             m.Infra.Issue(
-                                file=u.Infra.pick(entry, "filename", "?"),
+                                file=u.Infra.pick_str(entry, "filename", "?"),
                                 line=u.Infra.nested_int(entry, "location", "row"),
                                 column=u.Infra.nested_int(entry, "location", "column"),
-                                code=u.Infra.pick(entry, "code", ""),
-                                message=u.Infra.pick(entry, "message", ""),
+                                code=u.Infra.pick_str(entry, "code"),
+                                message=u.Infra.pick_str(entry, "message"),
                             )
                         )
         except (TypeError, ValidationError):

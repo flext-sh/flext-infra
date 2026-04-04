@@ -10,10 +10,10 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import m, t
+from tests import m, t, u
 
 from flext_core import r
-from flext_infra import FlextInfraUtilities, FlextInfraWorkspaceChecker
+from flext_infra import FlextInfraWorkspaceChecker
 
 from ._shared_fixtures import create_gate_execution
 
@@ -24,7 +24,7 @@ class TestCheckProjectRunners:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
+        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         (tmp_path / "src").mkdir()
         (tmp_path / "src" / "test.py").touch()
         called: t.MutableBoolMapping = {
@@ -53,7 +53,7 @@ class TestCheckProjectRunners:
         result = checker._check_project_with_ctx(
             tmp_path,
             ["lint", "format", "pyrefly"],
-            m.Infra.GateContext(workspace_root=tmp_path, reports_dir=tmp_path),
+            m.Infra.GateContext(workspace=tmp_path, reports_dir=tmp_path),
         )
         tm.that(called["lint"], eq=True)
         tm.that(called["format"], eq=True)
@@ -69,7 +69,7 @@ class TestJsonWriteFailure:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
+        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         proj_dir = tmp_path / "test-project"
         proj_dir.mkdir()
         (proj_dir / "pyproject.toml").write_text("[tool.poetry]\n")
@@ -78,7 +78,7 @@ class TestJsonWriteFailure:
             del _a, _kw
             return r[bool].fail("write error")
 
-        monkeypatch.setattr(FlextInfraUtilities.Infra, "write_json", _fake_write_json)
+        monkeypatch.setattr(u.Cli, "json_write", _fake_write_json)
 
         class _FakeLintGate:
             def check(
@@ -124,7 +124,7 @@ class TestLintAndFormatPublicMethods:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
+        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         (tmp_path / "pyproject.toml").touch()
         self._assert_gate_public_method(
             checker=checker,
@@ -138,7 +138,7 @@ class TestLintAndFormatPublicMethods:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
+        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         (tmp_path / "pyproject.toml").touch()
         self._assert_gate_public_method(
             checker=checker,

@@ -52,7 +52,7 @@ class FlextInfraUtilities(FlextCliUtilities):
         from flext_infra import u
 
         u.Infra.git_run_checked(["status"])
-        u.Infra.read_json(path)
+        u.Cli.toml_read_json(path)
         u.Infra.discover_projects(workspace_root)
         u.Infra.parse_semver("1.2.3")
     """

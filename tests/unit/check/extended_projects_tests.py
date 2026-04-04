@@ -44,7 +44,7 @@ class TestLintAndFormatPublicMethods:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
+        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         (tmp_path / "pyproject.toml").touch()
         self._assert_gate_public_method(
             checker=checker,
@@ -58,7 +58,7 @@ class TestLintAndFormatPublicMethods:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
+        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         (tmp_path / "pyproject.toml").touch()
         self._assert_gate_public_method(
             checker=checker,
@@ -74,7 +74,7 @@ class TestCheckProjectRunners:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
+        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         (tmp_path / "src").mkdir()
         (tmp_path / "src" / "test.py").touch()
         called: t.MutableBoolMapping = {
@@ -104,7 +104,7 @@ class TestCheckProjectRunners:
         result = checker._check_project_with_ctx(
             tmp_path,
             ["lint", "format", "pyrefly"],
-            m.Infra.GateContext(workspace_root=tmp_path, reports_dir=tmp_path),
+            m.Infra.GateContext(workspace=tmp_path, reports_dir=tmp_path),
         )
         tm.that(called["lint"], eq=True)
         tm.that(called["format"], eq=True)

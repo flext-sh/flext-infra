@@ -9,9 +9,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import fcntl
 from pathlib import Path
-from typing import override
+from typing import Annotated, override
+
+from pydantic import Field
 
 from flext_infra import FlextInfraBaseMkGenerator, c, m, r, s, t, u
 
@@ -25,70 +26,52 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
 
     """
 
-    def __init__(
-        self,
-        generator: FlextInfraBaseMkGenerator | None = None,
-        *,
-        canonical_root: Path | None = None,
-    ) -> None:
-        """Initialize the sync service."""
-        super().__init__()
-        self._generator = generator or FlextInfraBaseMkGenerator()
-        self._canonical_root = canonical_root
+    generator: Annotated[
+        FlextInfraBaseMkGenerator | None,
+        Field(default=None, exclude=True),
+    ] = None
+    canonical_root: Annotated[
+        Path | None,
+        Field(default=None, exclude=True),
+    ] = None
+
+    def _get_generator(self) -> FlextInfraBaseMkGenerator:
+        """Return the configured generator, including test-time private injection."""
+        private_generator = getattr(self, "_generator", None)
+        configured = self.generator or private_generator
+        return configured if configured is not None else FlextInfraBaseMkGenerator()
 
     @override
     def execute(self) -> r[m.Infra.SyncResult]:
-        """Not used; call sync() directly instead."""
-        return r[m.Infra.SyncResult].fail("Use sync() method directly")
-
-    def sync(
-        self,
-        _source: str | None = None,
-        _target: str | None = None,
-        *,
-        workspace_root: Path | None = None,
-        config: m.Infra.BaseMkConfig | None = None,
-        canonical_root: Path | None = None,
-    ) -> r[m.Infra.SyncResult]:
-        """Synchronize base.mk and .gitignore for a project.
-
-        Copies base.mk from canonical root when available, otherwise
-        generates from template. Compares SHA256 hashes and writes only if
-        changed. Also ensures required .gitignore entries exist.
-
-        Args:
-            workspace_root: Workspace root directory. Required.
-            config: Optional base.mk generation configuration.
-            canonical_root: Workspace root with canonical base.mk.
-
-        Returns:
-            r with SyncResult on success, error message on failure.
-
-        """
-        if workspace_root is None:
+        """Execute the workspace sync flow."""
+        import fcntl
+        
+        if not self.workspace_root:
             return r[m.Infra.SyncResult].fail("workspace_root is required")
-        resolved = workspace_root.resolve()
-        if not resolved.is_dir():
-            return r[m.Infra.SyncResult].fail(
-                f"project root does not exist: {resolved}",
-            )
-        lock_path = resolved / ".sync.lock"
-        lock_path.parent.mkdir(parents=True, exist_ok=True)
+            
+        resolved = self.workspace_root.resolve()
+        if not resolved.exists():
+            return r[m.Infra.SyncResult].fail(f"workspace_root '{resolved}' does not exist")
+            
+        lock_file = resolved / ".flext-sync.lock"
         try:
-            with lock_path.open("w", encoding=c.Infra.Encoding.DEFAULT) as lock_handle:
-                fcntl.flock(lock_handle.fileno(), fcntl.LOCK_EX)
+            with lock_file.open("w", encoding=c.Infra.Encoding.DEFAULT) as handle:
                 try:
+                    fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
                     return self._sync_locked_content(
                         resolved,
-                        config,
-                        canonical_root=canonical_root,
+                        config=None,
+                        canonical_root=self.canonical_root,
                     )
+                except OSError as exc:
+                    return r[m.Infra.SyncResult].fail(f"lock acquisition failed: {exc}")
                 finally:
-                    fcntl.flock(lock_handle.fileno(), fcntl.LOCK_UN)
+                    try:
+                        fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+                    except OSError:
+                        pass
         except OSError as exc:
-            return r[m.Infra.SyncResult].fail(
-                f"sync lock acquisition failed: {exc}",
-            )
+            return r[m.Infra.SyncResult].fail(f"Could not open lock file: {exc}")
 
     def _sync_locked_content(
         self,
@@ -99,7 +82,7 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
     ) -> r[m.Infra.SyncResult]:
         """Execute all sync steps under the file lock."""
         changed = 0
-        effective_root = canonical_root or self._canonical_root
+        effective_root = canonical_root or self.canonical_root
         basemk_result = self._sync_basemk(
             resolved,
             config,
@@ -245,7 +228,8 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
         bootstrap.
         """
         _ = canonical_root
-        gen_result = self._generator.generate_basemk(config)
+        generator = self._get_generator()
+        gen_result = generator.generate_basemk(config)
         if gen_result.is_failure:
             return r[bool].fail(gen_result.error or "base.mk generation failed")
         content: str = gen_result.value
@@ -263,7 +247,7 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
         parser = u.Infra.create_parser(
             "flext-infra workspace sync",
             "Workspace base.mk sync",
-            flags=u.Infra.SharedFlags(include_apply=False),
+            flags=u.Infra.SharedFlags(),
         )
         _ = parser.add_argument(
             "--canonical-root",

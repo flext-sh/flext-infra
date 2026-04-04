@@ -81,7 +81,7 @@ class TestRunProjectsValidation:
     """Test run_projects input validation and edge cases."""
 
     def test_invalid_gates(self, tmp_path: Path) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
+        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         result = checker.run_projects(
             ["p1"],
             ["invalid_gate"],
@@ -90,7 +90,7 @@ class TestRunProjectsValidation:
         tm.fail(result)
 
     def test_skips_missing_projects(self, tmp_path: Path) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
+        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         result = checker.run_projects(
             ["nonexistent"],
             ["lint"],
@@ -108,7 +108,7 @@ class TestRunProjectsReports:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
+        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         reports_dir = tmp_path / "reports"
         project = m.Infra.ProjectResult(
             project="p1",
@@ -127,7 +127,7 @@ class TestRunProjectsReports:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
+        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         reports_dir = tmp_path / "reports"
         project = m.Infra.ProjectResult(
             project="p1",
@@ -150,7 +150,7 @@ class TestRunProjectsBehavior:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
+        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         call_count = [0]
 
         def _fake_check(
@@ -183,7 +183,7 @@ class TestRunProjectsBehavior:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
+        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         issue = m.Infra.Issue(
             file="test.py",
             line=1,
@@ -212,7 +212,7 @@ class TestRunProjectsBehavior:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
+        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         issue = m.Infra.Issue(
             file="test.py",
             line=1,
@@ -251,7 +251,7 @@ class TestRunSingleProject:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
+        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         _setup_project(tmp_path, "p1")
         project = m.Infra.ProjectResult(
             project="p1",
@@ -305,7 +305,7 @@ class TestRunProjectFixMode:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
+        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         gate = _FixableGate()
 
         def _fake_create(gate_id: str, workspace_root: Path) -> _FixableGate:
@@ -322,7 +322,7 @@ class TestRunProjectFixMode:
             tmp_path / "p1",
             ["lint"],
             m.Infra.GateContext(
-                workspace_root=tmp_path,
+                workspace=tmp_path,
                 reports_dir=tmp_path / "reports",
                 apply_fixes=True,
             ),
@@ -336,7 +336,7 @@ class TestRunProjectFixMode:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
+        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         gate = _FixableGate()
 
         def _fake_create(gate_id: str, workspace_root: Path) -> _FixableGate:
@@ -353,7 +353,7 @@ class TestRunProjectFixMode:
             tmp_path / "p1",
             ["lint"],
             m.Infra.GateContext(
-                workspace_root=tmp_path,
+                workspace=tmp_path,
                 reports_dir=tmp_path / "reports",
                 apply_fixes=True,
                 check_only=True,

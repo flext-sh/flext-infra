@@ -146,7 +146,7 @@ class TestFlextInfraInitLazyLoading:
 
     def test_lazy_import_toml_service(self) -> None:
         """Test lazy loading of FlextInfraTomlService."""
-        service = flext_infra.FlextInfraUtilitiesToml
+        service = flext_infra.u.Cli.toml_read_document
         assert service is not None
 
     def test_lazy_import_versioning_service(self) -> None:

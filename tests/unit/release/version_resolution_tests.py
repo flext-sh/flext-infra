@@ -14,7 +14,7 @@ from flext_tests import tm
 
 from flext_core import r
 from flext_infra import (
-    FlextInfraCliRelease,
+    FlextInfraReleaseOrchestrator,
     u,
 )
 
@@ -94,7 +94,7 @@ class TestReleaseMainVersionResolution:
             parse=r[str].ok("1.0.0"),
         )
         args = _args(version="1.0.0", bump="", interactive=1)
-        result = FlextInfraCliRelease._resolve_version(
+        result = FlextInfraReleaseOrchestrator()._resolve_version(
             version_arg=args.version or "",
             bump_arg=args.bump or "",
             interactive=args.interactive,
@@ -112,7 +112,7 @@ class TestReleaseMainVersionResolution:
             parse=r[str].fail("invalid"),
         )
         args = _args(version="invalid", bump="", interactive=1)
-        result = FlextInfraCliRelease._resolve_version(
+        result = FlextInfraReleaseOrchestrator()._resolve_version(
             version_arg=args.version or "",
             bump_arg=args.bump or "",
             interactive=args.interactive,
@@ -130,7 +130,7 @@ class TestReleaseMainVersionResolution:
             current=r[str].ok("0.9.0"),
         )
         args = _args(version="", bump="", interactive=0)
-        result = FlextInfraCliRelease._resolve_version(
+        result = FlextInfraReleaseOrchestrator()._resolve_version(
             version_arg=args.version or "",
             bump_arg=args.bump or "",
             interactive=args.interactive,
@@ -148,7 +148,7 @@ class TestReleaseMainVersionResolution:
             current=r[str].fail("read error"),
         )
         args = _args(version="", bump="", interactive=1)
-        result = FlextInfraCliRelease._resolve_version(
+        result = FlextInfraReleaseOrchestrator()._resolve_version(
             version_arg=args.version or "",
             bump_arg=args.bump or "",
             interactive=args.interactive,
@@ -167,7 +167,7 @@ class TestReleaseMainVersionResolution:
             bump=r[str].ok("1.1.0"),
         )
         args = _args(version="", bump="minor", interactive=1)
-        result = FlextInfraCliRelease._resolve_version(
+        result = FlextInfraReleaseOrchestrator()._resolve_version(
             version_arg=args.version or "",
             bump_arg=args.bump or "",
             interactive=args.interactive,
@@ -186,7 +186,7 @@ class TestReleaseMainVersionResolution:
             bump=r[str].fail("invalid bump"),
         )
         args = _args(version="", bump="invalid", interactive=1)
-        result = FlextInfraCliRelease._resolve_version(
+        result = FlextInfraReleaseOrchestrator()._resolve_version(
             version_arg=args.version or "",
             bump_arg=args.bump or "",
             interactive=args.interactive,
@@ -206,7 +206,7 @@ class TestReleaseMainVersionResolution:
         )
         monkeypatch.setattr("builtins.input", _input_minor)
         args = _args(version="", bump="", interactive=1)
-        result = FlextInfraCliRelease._resolve_version(
+        result = FlextInfraReleaseOrchestrator()._resolve_version(
             version_arg=args.version or "",
             bump_arg=args.bump or "",
             interactive=args.interactive,
@@ -225,7 +225,7 @@ class TestReleaseMainVersionResolution:
         )
         monkeypatch.setattr("builtins.input", _input_invalid)
         args = _args(version="", bump="", interactive=1)
-        result = FlextInfraCliRelease._resolve_version(
+        result = FlextInfraReleaseOrchestrator()._resolve_version(
             version_arg=args.version or "",
             bump_arg=args.bump or "",
             interactive=args.interactive,
@@ -243,7 +243,7 @@ class TestReleaseMainVersionResolution:
             current=r[str].ok("1.0.0"),
         )
         args = _args(version="", bump="", interactive=0)
-        result = FlextInfraCliRelease._resolve_version(
+        result = FlextInfraReleaseOrchestrator()._resolve_version(
             version_arg=args.version or "",
             bump_arg=args.bump or "",
             interactive=args.interactive,
@@ -266,7 +266,7 @@ class TestResolveVersionInteractive:
         )
         monkeypatch.setattr("builtins.input", _input_invalid)
         args = _args(version=None, bump=None, interactive=1)
-        result = FlextInfraCliRelease._resolve_version(
+        result = FlextInfraReleaseOrchestrator()._resolve_version(
             version_arg=args.version or "",
             bump_arg=args.bump or "",
             interactive=args.interactive,
@@ -286,7 +286,7 @@ class TestResolveVersionInteractive:
         )
         monkeypatch.setattr("builtins.input", _input_major)
         args = _args(version=None, bump=None, interactive=1)
-        result = FlextInfraCliRelease._resolve_version(
+        result = FlextInfraReleaseOrchestrator()._resolve_version(
             version_arg=args.version or "",
             bump_arg=args.bump or "",
             interactive=args.interactive,
@@ -299,13 +299,13 @@ class TestReleaseMainTagResolution:
     """Test tag resolution logic."""
 
     def test_resolve_tag_explicit(self) -> None:
-        result = FlextInfraCliRelease._resolve_tag("v1.0.0", "1.0.0")
+        result = FlextInfraReleaseOrchestrator._resolve_tag("v1.0.0", "1.0.0")
         tm.that(result, ok=True, eq="v1.0.0")
 
     def test_resolve_tag_invalid_prefix(self) -> None:
-        result = FlextInfraCliRelease._resolve_tag("1.0.0", "1.0.0")
+        result = FlextInfraReleaseOrchestrator._resolve_tag("1.0.0", "1.0.0")
         tm.that(result, ok=False)
 
     def test_resolve_tag_auto_generated(self) -> None:
-        result = FlextInfraCliRelease._resolve_tag("", "1.0.0")
+        result = FlextInfraReleaseOrchestrator._resolve_tag("", "1.0.0")
         tm.that(result, ok=True, eq="v1.0.0")

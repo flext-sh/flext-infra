@@ -13,7 +13,9 @@ import os
 import time
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
-from typing import override
+from typing import Annotated, override
+
+from pydantic import Field
 
 from flext_core import FlextLogger
 from flext_infra import c, m, r, s, t, u
@@ -30,14 +32,54 @@ class FlextInfraOrchestratorService(s[bool]):
 
     """
 
-    def __init__(self) -> None:
-        """Initialize the orchestrator service."""
-        super().__init__()
+    verb: Annotated[str, Field(description="Make verb to execute")]
+    projects: Annotated[
+        str,
+        Field(default="", description="Comma-separated project directories"),
+    ] = ""
+    fail_fast: Annotated[
+        bool,
+        Field(default=False, description="Stop on first failure"),
+    ] = False
+    make_arg: Annotated[
+        list[str],
+        Field(default_factory=list, description="Additional make arguments"),
+    ] = Field(default_factory=list)
+
+    @property
+    def project_names(self) -> list[str]:
+        """Return normalized project names."""
+        raw_projects = self.projects.replace(",", " ")
+        return [project.strip() for project in raw_projects.split() if project.strip()]
+
+    @property
+    def make_args(self) -> list[str]:
+        """Return normalized make arguments."""
+        return [make_arg.strip() for make_arg in self.make_arg if make_arg.strip()]
 
     @override
     def execute(self) -> r[bool]:
-        """Not used; call orchestrate() directly instead."""
-        return r[bool].fail("Use orchestrate() method directly")
+        """Execute the workspace-orchestrate CLI flow."""
+        allowed_verbs = c.Infra.Make.ORCHESTRATED_PROJECT_VERBS
+        if self.verb not in allowed_verbs:
+            allowed = ", ".join(allowed_verbs)
+            return r[bool].fail(
+                f"unsupported orchestrate verb '{self.verb}' (allowed: {allowed})",
+            )
+        if not self.project_names:
+            return r[bool].fail("no projects specified")
+        result = self.orchestrate(
+            projects=self.project_names,
+            verb=self.verb,
+            fail_fast=self.fail_fast,
+            make_args=self.make_args,
+        )
+        if result.is_failure:
+            return r[bool].fail(result.error or "orchestration completed with failures")
+        failures = sum(1 for item in result.value if item.exit_code != 0)
+        if failures:
+            return r[bool].fail(f"orchestration completed with failures: {failures}")
+        return r[bool].ok(True)
 
     def _execute_project(
         self,

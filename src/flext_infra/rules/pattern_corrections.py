@@ -30,7 +30,7 @@ class FlextInfraRefactorPatternCorrectionsRule:
         fix_action = u.Infra.get_str_key(
             self.config,
             c.Infra.ReportKeys.FIX_ACTION,
-            lower=True,
+            case="lower",
         )
         if fix_action == "convert_dict_to_mapping_annotations":
             include_returns = bool(

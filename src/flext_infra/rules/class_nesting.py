@@ -302,7 +302,7 @@ class FlextInfraClassNestingRefactorRule:
         if self._cached_config is not None:
             return self._cached_config
         try:
-            loaded = u.Infra.safe_load_yaml(self._config_path)
+            loaded = u.Infra.yaml_load_infra_mapping(self._config_path)
         except (OSError, TypeError) as exc:
             msg = "invalid class nesting mapping config"
             raise ValueError(msg) from exc

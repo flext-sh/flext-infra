@@ -1,4 +1,3 @@
-# pyright: reportMissingTypeStubs=false
 """Rope-backed import and rename operations."""
 
 from __future__ import annotations

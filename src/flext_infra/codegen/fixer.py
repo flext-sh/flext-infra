@@ -16,9 +16,7 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
-from pydantic import Field
-
-from flext_core import r, s
+from flext_core import r
 from flext_infra import (
     FlextInfraCodegenLazyInit,
     FlextInfraNamespaceEnforcer,
@@ -27,77 +25,39 @@ from flext_infra import (
     FlextInfraRefactorMigrateToClassMRO,
     c,
     m,
-    t,
     u,
 )
+from flext_infra.base import s
 
 
-def _violation(
-    *,
-    module: str,
-    rule: str,
-    line: int,
-    message: str,
-    fixable: bool,
-) -> m.Infra.CensusViolation:
-    """Create a CensusViolation with standard fields."""
-    return m.Infra.CensusViolation(
-        module=module,
-        rule=rule,
-        line=line,
-        message=message,
-        fixable=fixable,
-    )
-
-
-class FlextInfraCodegenFixer(s[bool]):
+class FlextInfraCodegenFixer(s[str]):
     """AST-based auto-fixer for namespace violations (Rules 1-5)."""
 
-    class _FixContext(m.ArbitraryTypesModel):
-        """Mutable accumulation context for fix operations."""
-
-        violations_fixed: MutableSequence[m.Infra.CensusViolation] = Field(
-            default_factory=list,
-        )
-        violations_skipped: MutableSequence[m.Infra.CensusViolation] = Field(
-            default_factory=list,
-        )
-        files_modified: t.Infra.StrSet = Field(default_factory=set)
-
-        def skip(self, *, module: str, rule: str, line: int, message: str) -> None:
-            self.violations_skipped.append(
-                _violation(
-                    module=module, rule=rule, line=line, message=message, fixable=False
-                ),
-            )
-
-        def fix(self, *, module: str, rule: str, line: int, message: str) -> None:
-            self.violations_fixed.append(
-                _violation(
-                    module=module, rule=rule, line=line, message=message, fixable=True
-                ),
-            )
-
-    _workspace_root: Path
-    _dry_run: bool
-    _rules_only: bool
-
-    def __init__(
-        self,
-        workspace_root: Path,
-        *,
-        dry_run: bool = False,
-        rules_only: bool = False,
-    ) -> None:
-        """Initialize codegen fixer with workspace root."""
-        super().__init__()
-        self._workspace_root = workspace_root
-        self._dry_run = dry_run
-        self._rules_only = rules_only
+    dry_run: bool = False
+    rules_only: bool = False
 
     @override
-    def execute(self) -> r[bool]:
-        return r[bool].fail("Use run() directly")
+    def execute(self) -> r[str]:
+        """Execute auto-fix directly from the validated CLI service model."""
+        dry_run = self.dry_run or not self.apply_changes
+        results = self.fix_workspace()
+        total_fixed = sum(len(result.violations_fixed) for result in results)
+        total_skipped = sum(len(result.violations_skipped) for result in results)
+        lines: MutableSequence[str] = []
+        if dry_run:
+            lines.append("Dry-run mode: no files will be modified")
+        lines.extend(
+            (f"  {result.project}: fixed {len(result.violations_fixed)} violations")
+            for result in results
+            if result.violations_fixed
+        )
+        lines.append(
+            (
+                f"Auto-fix: {total_fixed} fixed, {total_skipped} skipped"
+                f" across {len(results)} projects"
+            ),
+        )
+        return r[str].ok("\n".join(lines))
 
     @staticmethod
     def _empty_result(project_name: str) -> m.Infra.AutoFixResult:
@@ -111,7 +71,7 @@ class FlextInfraCodegenFixer(s[bool]):
     @staticmethod
     def _build_result(
         project_name: str,
-        ctx: FlextInfraCodegenFixer._FixContext,
+        ctx: m.Infra.FixContext,
     ) -> m.Infra.AutoFixResult:
         return m.Infra.AutoFixResult(
             project=project_name,
@@ -134,17 +94,27 @@ class FlextInfraCodegenFixer(s[bool]):
                     break
         if pkg_dir is None:
             return self._empty_result(project_path.name)
-        ctx = self._FixContext()
+        ctx = m.Infra.FixContext()
         src_dir = project_path / c.Infra.Paths.DEFAULT_SRC_DIR
         if not src_dir.is_dir():
             return self._empty_result(project_path.name)
+        initial_violations_result = self._namespace_violations(project_path)
+        initial_violations = initial_violations_result.unwrap_or(())
+        if initial_violations_result.is_failure:
+            ctx.skip(
+                module=project_path.name,
+                rule="NAMESPACE",
+                line=0,
+                message=initial_violations_result.error
+                or "namespace validation failed",
+            )
         checkpoint_result = u.Infra.create_checkpoint(
-            self._workspace_root,
+            self.workspace_root,
             label=f"codegen-fix:{project_path.name}",
         )
         stash_ref = checkpoint_result.unwrap_or("")
-        self._apply_ns_rules(project_path=project_path, ctx=ctx)
-        if self._dry_run or self._rules_only:
+        if self.dry_run or self.rules_only:
+            ctx.violations_skipped.extend(initial_violations)
             return self._build_result(project_path.name, ctx)
         report = FlextInfraRefactorMigrateToClassMRO(
             workspace_root=project_path,
@@ -225,8 +195,10 @@ class FlextInfraCodegenFixer(s[bool]):
                     line=0,
                     message="violations remain after namespace enforcement",
                 )
-        lazy_generator = FlextInfraCodegenLazyInit(project_path)
-        lazy_errors = lazy_generator.run(check_only=False)
+        lazy_generator = FlextInfraCodegenLazyInit.model_validate(
+            {"workspace_root": project_path},
+        )
+        lazy_errors = lazy_generator.generate_inits(check_only=False)
         ctx.files_modified.update(lazy_generator.modified_files)
         if lazy_errors > 0:
             ctx.skip(
@@ -241,46 +213,96 @@ class FlextInfraCodegenFixer(s[bool]):
                 if path.is_file():
                     u.Infra.run_ruff_fix(path, quiet=True)
         except (OSError, UnicodeDecodeError):
-            _ = u.Infra.rollback_to_checkpoint(self._workspace_root, stash_ref)
+            _ = u.Infra.rollback_to_checkpoint(self.workspace_root, stash_ref)
             raise
+        self._reconcile_namespace_violations(
+            project_path=project_path,
+            ctx=ctx,
+            initial_violations=initial_violations,
+        )
         return self._build_result(project_path.name, ctx)
 
-    def _apply_ns_rules(
-        self,
-        *,
+    @staticmethod
+    def _namespace_violations(
         project_path: Path,
-        ctx: FlextInfraCodegenFixer._FixContext,
-    ) -> None:
-        """Collect current namespace-rule violations for reporting/dry-run output."""
+    ) -> r[tuple[m.Infra.CensusViolation, ...]]:
+        """Return parsed namespace violations for one project."""
         validation = FlextInfraNamespaceValidator().validate(project_path)
         if validation.is_failure:
+            return r[tuple[m.Infra.CensusViolation, ...]].fail(
+                validation.error or "namespace validation failed",
+            )
+        violations: MutableSequence[m.Infra.CensusViolation] = []
+        for violation_str in validation.value.violations:
+            violation = FlextInfraCodegenFixer._parse_violation(violation_str)
+            if violation is not None:
+                violations.append(violation)
+        return r[tuple[m.Infra.CensusViolation, ...]].ok(tuple(violations))
+
+    @staticmethod
+    def _parse_violation(violation_str: str) -> m.Infra.CensusViolation | None:
+        """Parse a namespace violation string into a typed model."""
+        match = c.Infra.VIOLATION_PATTERN.match(violation_str)
+        if match is None:
+            return None
+        rule = match.group("rule")
+        module = match.group("module")
+        message = match.group("message")
+        return m.Infra.CensusViolation(
+            module=module,
+            rule=rule,
+            line=int(match.group("line")),
+            message=message,
+            fixable=u.Infra.is_rule_fixable(rule, module),
+        )
+
+    @staticmethod
+    def _violation_key(
+        violation: m.Infra.CensusViolation,
+    ) -> tuple[str, str, int, str]:
+        return (
+            violation.module,
+            violation.rule,
+            violation.line,
+            violation.message,
+        )
+
+    @classmethod
+    def _reconcile_namespace_violations(
+        cls,
+        *,
+        project_path: Path,
+        ctx: m.Infra.FixContext,
+        initial_violations: Sequence[m.Infra.CensusViolation],
+    ) -> None:
+        """Classify initial namespace violations as fixed or still skipped."""
+        if not initial_violations:
+            return
+        remaining_result = cls._namespace_violations(project_path)
+        if remaining_result.is_failure:
             ctx.skip(
                 module=project_path.name,
                 rule="NAMESPACE",
                 line=0,
-                message=validation.error or "namespace validation failed",
+                message=remaining_result.error or "namespace validation failed",
             )
             return
-        for violation_str in validation.value.violations:
-            match = c.Infra.VIOLATION_PATTERN.match(violation_str)
-            if match is None:
-                ctx.skip(
-                    module=project_path.name,
-                    rule="NAMESPACE",
-                    line=0,
-                    message=violation_str,
-                )
+        remaining_keys = {
+            cls._violation_key(violation)
+            for violation in remaining_result.unwrap_or(())
+        }
+        for violation in initial_violations:
+            if (
+                violation.fixable
+                and cls._violation_key(violation) not in remaining_keys
+            ):
+                ctx.violations_fixed.append(violation)
                 continue
-            ctx.skip(
-                module=match.group("module"),
-                rule=match.group("rule"),
-                line=int(match.group("line")),
-                message=match.group("message"),
-            )
+            ctx.violations_skipped.append(violation)
 
-    def run(self) -> Sequence[m.Infra.AutoFixResult]:
+    def fix_workspace(self) -> Sequence[m.Infra.AutoFixResult]:
         """Run auto-fix on all projects in workspace."""
-        projects_result = u.Infra.discover_projects(self._workspace_root)
+        projects_result = u.Infra.discover_projects(self.workspace_root)
         if not projects_result.is_success:
             return []
         results: MutableSequence[m.Infra.AutoFixResult] = []

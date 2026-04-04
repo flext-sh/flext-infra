@@ -36,9 +36,14 @@ class FlextInfraPyprojectModernizer:
 
     ROOT = u.Infra.resolve_workspace_root(__file__)
 
-    def __init__(self, workspace_root: Path | None = None) -> None:
+    def __init__(
+        self,
+        workspace_root: Path | None = None,
+        *,
+        workspace: Path | None = None,
+    ) -> None:
         """Initialize pyproject modernizer."""
-        self.root = workspace_root or self.ROOT
+        self.root = workspace_root or workspace or self.ROOT
         tool_config_result = u.Infra.load_tool_config()
         if tool_config_result.is_failure:
             msg = tool_config_result.error or "failed to load deps tool config"

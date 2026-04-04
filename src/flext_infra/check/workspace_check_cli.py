@@ -31,7 +31,7 @@ class FlextInfraWorkspaceCheckerCli:
                 c.Infra.Verbs.RUN: "Run quality gates",
                 "fix-pyrefly-config": "Repair [tool.pyrefly] blocks",
             },
-            flags=u.Infra.SharedFlags(include_apply=False),
+            flags=u.Infra.SharedFlags(),
             subcommand_flags={
                 "fix-pyrefly-config": {
                     "include_apply": True,
@@ -62,7 +62,7 @@ class FlextInfraWorkspaceCheckerCli:
         return parser
 
     @staticmethod
-    def run_cli(argv: t.StrSequence | None = None) -> int:
+    def run_cli(argv: Sequence[str] | None = None) -> int:
         """Run the subcommand-based workspace check CLI."""
         parser = FlextInfraWorkspaceCheckerCli.build_parser()
         args = u.Infra.parse_subcommand_args(parser, argv)
@@ -92,7 +92,7 @@ class FlextInfraWorkspaceCheckerCli:
             if not reports_dir.is_absolute():
                 reports_dir = (Path.cwd() / reports_dir).resolve()
             gate_ctx = m.Infra.GateContext(
-                workspace_root=checker_workspace,
+                workspace=checker_workspace,
                 reports_dir=reports_dir,
                 apply_fixes=args.fix,
                 check_only=args.check_only,
@@ -127,12 +127,12 @@ class FlextInfraWorkspaceCheckerCli:
         return 1
 
     @staticmethod
-    def main(argv: t.StrSequence | None = None) -> int:
+    def main(argv: Sequence[str] | None = None) -> int:
         """Run the legacy workspace check CLI entrypoint."""
         parser = u.Infra.create_parser(
             "flext-infra check-workspace",
             "FLEXT Workspace Check",
-            flags=u.Infra.SharedFlags(include_apply=False),
+            flags=u.Infra.SharedFlags(),
         )
         _ = parser.add_argument("projects", nargs="*")
         _ = parser.add_argument("--gates", default=c.Infra.DEFAULT_CSV)

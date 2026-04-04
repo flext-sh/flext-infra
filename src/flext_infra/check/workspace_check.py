@@ -3,34 +3,49 @@
 from __future__ import annotations
 
 import argparse
+import importlib
 import shlex
 from collections.abc import MutableSequence, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import override
+from typing import Protocol, override
 
 from flext_core import r, s
 from flext_infra import (
     c,
     m,
-    t,
     u,
     workspace_check_cli as workspace_check_cli_module,
 )
 from flext_infra.check._workspace_check_gates import (
     FlextInfraGateRegistry,
     FlextInfraWorkspaceCheckGatesMixin,
-    _LoopOutcome,
 )
+
+
+class WorkspaceLoopOutcome(Protocol):
+    """Public structural view of the workspace gate loop outcome."""
+
+    results: Sequence[m.Infra.ProjectResult]
+    failed: int
+    skipped: int
+    total_elapsed: float
 
 
 class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
     """Run workspace quality gates and generate reports."""
 
-    def __init__(self, workspace_root: Path | None = None) -> None:
+    def __init__(
+        self,
+        workspace_root: Path | None = None,
+        *,
+        workspace: Path | None = None,
+    ) -> None:
         """Initialize workspace checker services and paths."""
         super().__init__()
-        self._workspace_root = self._resolve_workspace_root(workspace_root)
+        self._workspace_root = self._resolve_workspace_root(
+            workspace_root or workspace,
+        )
         self._registry = FlextInfraGateRegistry.default()
         report_dir = u.Infra.get_report_dir(
             self._workspace_root,
@@ -48,19 +63,19 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
             )
 
     @staticmethod
-    def parse_gate_csv(raw: str) -> t.StrSequence:
+    def parse_gate_csv(raw: str) -> list[str]:
         """Parse a comma-separated gate list."""
         return [gate.strip() for gate in raw.split(",") if gate.strip()]
 
     @staticmethod
-    def parse_tool_args(raw: str | None) -> t.StrSequence:
+    def parse_tool_args(raw: str | None) -> list[str]:
         """Parse extra gate arguments passed as a shell-style string."""
         if raw is None:
             return list[str]()
         return [item for item in shlex.split(raw) if item]
 
     @staticmethod
-    def resolve_gates(gates: t.StrSequence) -> r[t.StrSequence]:
+    def resolve_gates(gates: Sequence[str]) -> r[list[str]]:
         """Resolve and validate requested gate names."""
         resolved: MutableSequence[str] = []
         for gate in gates:
@@ -69,10 +84,10 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
                 continue
             mapped = c.Infra.PYREFLY if name == c.Infra.TYPE_ALIAS else name
             if mapped not in c.Infra.ALLOWED_GATES:
-                return r[t.StrSequence].fail(f"ERROR: unknown gate '{gate}'")
+                return r[list[str]].fail(f"ERROR: unknown gate '{gate}'")
             if mapped not in resolved:
                 resolved.append(mapped)
-        return r[t.StrSequence].ok(resolved)
+        return r[list[str]].ok(list(resolved))
 
     @override
     def execute(self) -> r[bool]:
@@ -96,28 +111,34 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
         return workspace_check_cli_module.FlextInfraWorkspaceCheckerCli.build_parser()
 
     @staticmethod
-    def run_cli(argv: t.StrSequence | None = None) -> int:
+    def run_cli(argv: Sequence[str] | None = None) -> int:
         """Run the subcommand-based workspace check CLI."""
         return workspace_check_cli_module.FlextInfraWorkspaceCheckerCli.run_cli(argv)
 
     @staticmethod
-    def main(argv: t.StrSequence | None = None) -> int:
+    def main(argv: Sequence[str] | None = None) -> int:
         """Run the legacy workspace check CLI entrypoint."""
+        raw_argv = list(argv) if argv is not None else None
+        if raw_argv:
+            cli_module = importlib.import_module("flext_infra.cli")
+            if raw_argv[0] in cli_module.FlextInfraCli.GROUPS:
+                return cli_module.main(raw_argv)
         return workspace_check_cli_module.FlextInfraWorkspaceCheckerCli.main(argv)
 
+    @override
     def run(
         self,
         project: str,
-        gates: t.StrSequence,
+        gates: Sequence[str],
     ) -> r[Sequence[m.Infra.ProjectResult]]:
         """Run selected gates for one project."""
         return self.run_projects([project], list(gates)).map(lambda value: value)
 
     @staticmethod
     def _write_reports_and_summary(
-        resolved_gates: t.StrSequence,
+        resolved_gates: Sequence[str],
         report_base: Path,
-        outcome: _LoopOutcome,
+        outcome: WorkspaceLoopOutcome,
     ) -> r[Sequence[m.Infra.ProjectResult]]:
         """Write markdown/SARIF reports and print summary to output."""
         results = outcome.results
@@ -129,7 +150,7 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
         )
         sarif_path = report_base / "check-report.sarif"
         sarif_payload = u.Infra.generate_sarif(results, resolved_gates)
-        json_write_result = u.Infra.write_json(sarif_path, sarif_payload)
+        json_write_result = u.Cli.json_write(sarif_path, sarif_payload)
         if json_write_result.is_failure:
             return r[Sequence[m.Infra.ProjectResult]].fail(
                 json_write_result.error or "failed to write sarif report",
@@ -169,8 +190,8 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
 
     def run_projects(
         self,
-        projects: t.StrSequence,
-        gates: t.StrSequence,
+        projects: Sequence[str],
+        gates: Sequence[str],
         *,
         reports_dir: Path | None = None,
         fail_fast: bool = False,
@@ -185,11 +206,11 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
             return r[Sequence[m.Infra.ProjectResult]].fail(
                 resolved_gates_result.error or "invalid gates",
             )
-        resolved_gates: t.StrSequence = resolved_gates_result.value
+        resolved_gates = resolved_gates_result.value
         report_base = reports_dir or self._default_reports_dir
         report_base.mkdir(parents=True, exist_ok=True)
         effective_ctx = ctx or m.Infra.GateContext(
-            workspace_root=self._workspace_root,
+            workspace=self._workspace_root,
             reports_dir=report_base,
         )
         outcome = self._run_project_loop(

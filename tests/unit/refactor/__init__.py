@@ -212,46 +212,37 @@ if _t.TYPE_CHECKING:
         test_replaces_numeric_union,
         test_replaces_primitives_union,
         test_replaces_scalar_union,
+        test_replaces_subset_union_with_none,
         test_skips_definition_files,
-        test_skips_union_with_none,
         test_typealias_conversion_preserves_used_typing_siblings,
     )
 
     test_main_cli = _tests_unit_refactor_test_main_cli
     from tests.unit.refactor.test_main_cli import (
         refactor_main,
-        test_refactor_census_rejects_apply_before_subcommand,
+        test_refactor_census_accepts_apply_before_subcommand,
         test_refactor_centralize_accepts_apply_before_subcommand,
         test_refactor_runtime_alias_imports_accepts_aliases_and_project,
     )
 
-    from flext_core.constants import FlextConstants as c
     from flext_core.decorators import FlextDecorators as d
     from flext_core.exceptions import FlextExceptions as e
     from flext_core.handlers import FlextHandlers as h
     from flext_core.mixins import FlextMixins as x
-    from flext_core.models import FlextModels as m
-    from flext_core.protocols import FlextProtocols as p
     from flext_core.result import FlextResult as r
     from flext_core.service import FlextService as s
-    from flext_core.typings import FlextTypes as t
-    from flext_core.utilities import FlextUtilities as u
 _LAZY_IMPORTS = {
     "EngineSafetyStub": "tests.unit.refactor.test_infra_refactor_safety",
     "FAMILY_FILE_MAP": "tests.unit.refactor.test_infra_refactor_namespace_source",
     "FAMILY_SUFFIX_MAP": "tests.unit.refactor.test_infra_refactor_namespace_source",
-    "c": ("flext_core.constants", "FlextConstants"),
     "conftest": "tests.unit.refactor.conftest",
     "d": ("flext_core.decorators", "FlextDecorators"),
     "e": ("flext_core.exceptions", "FlextExceptions"),
     "h": ("flext_core.handlers", "FlextHandlers"),
-    "m": ("flext_core.models", "FlextModels"),
-    "p": ("flext_core.protocols", "FlextProtocols"),
     "r": ("flext_core.result", "FlextResult"),
     "refactor_main": "tests.unit.refactor.test_main_cli",
     "rope_project": "tests.unit.refactor.conftest",
     "s": ("flext_core.service", "FlextService"),
-    "t": ("flext_core.typings", "FlextTypes"),
     "test_all_three_capabilities_in_one_pass": "tests.unit.refactor.test_infra_refactor_typing_unifier",
     "test_class_reconstructor_reorders_each_contiguous_method_block": "tests.unit.refactor.test_infra_refactor_class_and_propagation",
     "test_class_reconstructor_reorders_methods_by_config": "tests.unit.refactor.test_infra_refactor_class_and_propagation",
@@ -331,7 +322,7 @@ _LAZY_IMPORTS = {
     "test_project_without_alias_facade_has_no_violation": "tests.unit.refactor.test_infra_refactor_namespace_source",
     "test_read_project_metadata_preserves_pep621_dependency_order": "tests.unit.refactor.test_infra_refactor_project_classifier",
     "test_read_project_metadata_preserves_poetry_dependency_order": "tests.unit.refactor.test_infra_refactor_project_classifier",
-    "test_refactor_census_rejects_apply_before_subcommand": "tests.unit.refactor.test_main_cli",
+    "test_refactor_census_accepts_apply_before_subcommand": "tests.unit.refactor.test_main_cli",
     "test_refactor_centralize_accepts_apply_before_subcommand": "tests.unit.refactor.test_main_cli",
     "test_refactor_files_skips_non_python_inputs": "tests.unit.refactor.test_infra_refactor_engine",
     "test_refactor_project_integrates_safety_manager": "tests.unit.refactor.test_infra_refactor_safety",
@@ -346,6 +337,7 @@ _LAZY_IMPORTS = {
     "test_replaces_numeric_union": "tests.unit.refactor.test_infra_refactor_typing_unifier",
     "test_replaces_primitives_union": "tests.unit.refactor.test_infra_refactor_typing_unifier",
     "test_replaces_scalar_union": "tests.unit.refactor.test_infra_refactor_typing_unifier",
+    "test_replaces_subset_union_with_none": "tests.unit.refactor.test_infra_refactor_typing_unifier",
     "test_rewriter_adds_missing_base_and_formats": "tests.unit.refactor.test_infra_refactor_mro_completeness",
     "test_rewriter_namespace_source_is_idempotent_with_ruff": "tests.unit.refactor.test_infra_refactor_namespace_source",
     "test_rewriter_preserves_non_alias_symbols": "tests.unit.refactor.test_infra_refactor_namespace_source",
@@ -374,13 +366,11 @@ _LAZY_IMPORTS = {
     "test_skips_same_project_private_submodule": "tests.unit.refactor.test_infra_refactor_namespace_source",
     "test_skips_same_project_submodule_class_import": "tests.unit.refactor.test_infra_refactor_namespace_source",
     "test_skips_settings_file": "tests.unit.refactor.test_infra_refactor_class_placement",
-    "test_skips_union_with_none": "tests.unit.refactor.test_infra_refactor_typing_unifier",
     "test_skips_when_candidate_is_already_in_facade_bases": "tests.unit.refactor.test_infra_refactor_mro_completeness",
     "test_symbol_propagation_keeps_alias_reference_when_asname_used": "tests.unit.refactor.test_infra_refactor_class_and_propagation",
     "test_symbol_propagation_renames_import_and_local_references": "tests.unit.refactor.test_infra_refactor_class_and_propagation",
     "test_symbol_propagation_updates_mro_base_references": "tests.unit.refactor.test_infra_refactor_class_and_propagation",
     "test_typealias_conversion_preserves_used_typing_siblings": "tests.unit.refactor.test_infra_refactor_typing_unifier",
-    "u": ("flext_core.utilities", "FlextUtilities"),
     "x": ("flext_core.mixins", "FlextMixins"),
 }
 
@@ -388,18 +378,14 @@ __all__ = [
     "FAMILY_FILE_MAP",
     "FAMILY_SUFFIX_MAP",
     "EngineSafetyStub",
-    "c",
     "conftest",
     "d",
     "e",
     "h",
-    "m",
-    "p",
     "r",
     "refactor_main",
     "rope_project",
     "s",
-    "t",
     "test_all_three_capabilities_in_one_pass",
     "test_class_reconstructor_reorders_each_contiguous_method_block",
     "test_class_reconstructor_reorders_methods_by_config",
@@ -479,7 +465,7 @@ __all__ = [
     "test_project_without_alias_facade_has_no_violation",
     "test_read_project_metadata_preserves_pep621_dependency_order",
     "test_read_project_metadata_preserves_poetry_dependency_order",
-    "test_refactor_census_rejects_apply_before_subcommand",
+    "test_refactor_census_accepts_apply_before_subcommand",
     "test_refactor_centralize_accepts_apply_before_subcommand",
     "test_refactor_files_skips_non_python_inputs",
     "test_refactor_project_integrates_safety_manager",
@@ -494,6 +480,7 @@ __all__ = [
     "test_replaces_numeric_union",
     "test_replaces_primitives_union",
     "test_replaces_scalar_union",
+    "test_replaces_subset_union_with_none",
     "test_rewriter_adds_missing_base_and_formats",
     "test_rewriter_namespace_source_is_idempotent_with_ruff",
     "test_rewriter_preserves_non_alias_symbols",
@@ -522,13 +509,11 @@ __all__ = [
     "test_skips_same_project_private_submodule",
     "test_skips_same_project_submodule_class_import",
     "test_skips_settings_file",
-    "test_skips_union_with_none",
     "test_skips_when_candidate_is_already_in_facade_bases",
     "test_symbol_propagation_keeps_alias_reference_when_asname_used",
     "test_symbol_propagation_renames_import_and_local_references",
     "test_symbol_propagation_updates_mro_base_references",
     "test_typealias_conversion_preserves_used_typing_siblings",
-    "u",
     "x",
 ]
 

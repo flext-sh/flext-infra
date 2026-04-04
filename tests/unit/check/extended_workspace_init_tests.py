@@ -22,7 +22,7 @@ class TestWorkspaceCheckerInitialization:
     """Test FlextInfraWorkspaceChecker initialization."""
 
     def test_init_creates_default_reports_dir(self, tmp_path: Path) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
+        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         tm.that(checker._default_reports_dir.exists(), eq=True)
 
 
@@ -30,7 +30,7 @@ class TestWorkspaceCheckerExecute:
     """Test FlextInfraWorkspaceChecker.execute method."""
 
     def test_execute_returns_failure(self, tmp_path: Path) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
+        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         result = checker.execute()
         tm.fail(result, has="Use run()")
 
@@ -89,7 +89,7 @@ class TestWorkspaceCheckerResolveWorkspaceRootFallback:
     """Test _resolve_workspace_root fallback."""
 
     def test_resolve_workspace_root_fallback_to_cwd(self, tmp_path: Path) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
+        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         result = checker._resolve_workspace_root(None)
         tm.that(result.is_absolute(), eq=True)
 
@@ -107,7 +107,7 @@ class TestWorkspaceCheckerInitOSError:
             raise OSError(msg)
 
         monkeypatch.setattr(Path, "mkdir", _raise_oserror)
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
+        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         tm.that(checker._default_reports_dir.is_absolute(), eq=True)
 
 

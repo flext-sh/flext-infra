@@ -58,12 +58,14 @@ class FlextInfraBanditGate(FlextInfraGate):
             )
             issues.extend(
                 m.Infra.Issue(
-                    file=u.Infra.pick(raw_item, "filename", "?"),
-                    line=u.Infra.pick(raw_item, "line_number", 0),
+                    file=u.Infra.pick_str(raw_item, "filename", "?"),
+                    line=u.Infra.pick_int(raw_item, "line_number"),
                     column=0,
-                    code=u.Infra.pick(raw_item, "test_id", ""),
-                    message=u.Infra.pick(raw_item, "issue_text", ""),
-                    severity=u.Infra.pick(raw_item, "issue_severity", "MEDIUM").lower(),
+                    code=u.Infra.pick_str(raw_item, "test_id"),
+                    message=u.Infra.pick_str(raw_item, "issue_text"),
+                    severity=u.Infra.pick_str(
+                        raw_item, "issue_severity", "MEDIUM"
+                    ).lower(),
                 )
                 for raw_item in u.Infra.normalize_mapping_list(
                     bandit_data.get("results", [])

@@ -7,7 +7,7 @@ from flext_tests import tm
 from tests import m
 
 from flext_core import r
-from flext_infra import FlextInfraCliValidate, main as infra_main
+from flext_infra import FlextInfraStubSupplyChain, main as infra_main
 
 
 def test_stub_validate_uses_all_flag(
@@ -15,13 +15,16 @@ def test_stub_validate_uses_all_flag(
 ) -> None:
     captured: list[bool] = []
 
-    def _mock_handler(params: m.Infra.ValidateStubValidateInput) -> r[bool]:
+    def _mock_handler(
+        _self: FlextInfraStubSupplyChain,
+        params: m.Infra.ValidateStubValidateInput,
+    ) -> r[bool]:
         captured.append(params.all_projects)
         return r[bool].ok(True)
 
     monkeypatch.setattr(
-        FlextInfraCliValidate,
-        "_handle_stub_validate",
+        FlextInfraStubSupplyChain,
+        "execute_command",
         _mock_handler,
     )
     infra_main(["validate", "stub-validate", "--all"])

@@ -117,7 +117,7 @@ class FlextInfraRefactorTypingAnnotationFixRule(FlextInfraRefactorRule):
         fix_action = u.Infra.get_str_key(
             self.config,
             c.Infra.ReportKeys.FIX_ACTION,
-            lower=True,
+            case="lower",
         )
         if fix_action == "replace_object_annotations":
             return self._apply_text_transformer(

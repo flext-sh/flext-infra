@@ -19,36 +19,36 @@ class TestFlextInfraCodegenLazyInit:
 
     def test_init_accepts_workspace_root(self, tmp_path: Path) -> None:
         """Test generator initialization with workspace root."""
-        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
+        generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
         tm.that(generator, none=False)
 
     def test_run_with_empty_workspace_returns_zero(self, tmp_path: Path) -> None:
         """Test run() on empty workspace returns 0 (no errors)."""
-        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
-        result = generator.run(check_only=False)
+        generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
+        result = generator.generate_inits(check_only=False)
         tm.that(result, eq=0)
 
     def test_run_with_check_only_flag(self, tmp_path: Path) -> None:
         """Test run() respects check_only flag without modifying files."""
-        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
-        result = generator.run(check_only=True)
+        generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
+        result = generator.generate_inits(check_only=True)
         tm.that(result, eq=0)
 
     def test_generator_is_flext_service(self, tmp_path: Path) -> None:
         """Test that FlextInfraCodegenLazyInit is a FlextService."""
-        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
+        generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
         tm.that(generator, is_=FlextService)
 
     def test_run_returns_integer_exit_code(self, tmp_path: Path) -> None:
         """Test that run() returns an integer exit code."""
-        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
-        result = generator.run(check_only=False)
+        generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
+        result = generator.generate_inits(check_only=False)
         tm.that(result, is_=int)
         tm.that(result, gte=0)
 
     def test_execute_method_returns_flext_result(self, tmp_path: Path) -> None:
         """Test execute() method returns r[int]."""
-        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
+        generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
         result = generator.execute()
         tm.ok(result)
         tm.that(result.value, is_=int)
@@ -61,8 +61,8 @@ class TestFlextInfraCodegenLazyInit:
         (src_dir / "models.py").write_text(
             '"""Models."""\n\n__all__ = ["TestModel"]\n\nclass TestModel:\n    pass\n',
         )
-        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
-        result = generator.run(check_only=False)
+        generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
+        result = generator.generate_inits(check_only=False)
         tm.that(result, eq=0)
         init_file = src_dir / "__init__.py"
         tm.that(init_file.exists(), eq=True)
@@ -83,8 +83,8 @@ class TestFlextInfraCodegenLazyInit:
         (src_dir / "models.py").write_text(
             '"""Models."""\n\n__all__ = ["PkgModel"]\n\nclass PkgModel:\n    pass\n',
         )
-        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
-        result = generator.run(check_only=False)
+        generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
+        result = generator.generate_inits(check_only=False)
         tm.that(result, eq=0)
         # Child __init__.py should have SubService
         child_init = sub_dir / "__init__.py"
@@ -110,7 +110,7 @@ class TestFlextInfraCodegenLazyInit:
         (src_dir / "models.py").write_text(
             '"""Models."""\n\n__all__ = ["Foo"]\n\nclass Foo:\n    pass\n',
         )
-        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
-        generator.run(check_only=False)
+        generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
+        generator.generate_inits(check_only=False)
         content = (src_dir / "__init__.py").read_text()
         tm.that(content, contains="My custom package docstring")

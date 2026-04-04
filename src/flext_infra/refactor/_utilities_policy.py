@@ -9,12 +9,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
 from pydantic import ValidationError
-from yaml import safe_load
 
+from flext_cli import u
 from flext_infra import (
     c,
     m,
@@ -26,6 +26,14 @@ from flext_infra import (
 class FlextInfraUtilitiesRefactorPolicy:
     """Policy document loading and class-nesting policy enforcement."""
 
+    _MODULE_FAMILY_KEYS: t.StrSequence = (
+        "_models",
+        "_utilities",
+        "_dispatcher",
+        "_decorators",
+        "_runtime",
+    )
+
     @staticmethod
     def default_class_policy_path() -> Path:
         """Return the default class-nesting policy YAML path."""
@@ -36,17 +44,13 @@ class FlextInfraUtilitiesRefactorPolicy:
         policy_path: Path,
     ) -> r[Mapping[str, t.Infra.InfraValue]]:
         """Load and validate a YAML policy document."""
-        try:
-            raw = safe_load(policy_path.read_text(encoding=c.Infra.Encoding.DEFAULT))
-        except (OSError, UnicodeDecodeError) as exc:
+        raw = u.Cli.yaml_load_mapping(policy_path)
+        if not raw:
             return r[Mapping[str, t.Infra.InfraValue]].fail(
-                f"Failed to load policy {policy_path}: {exc}",
+                f"Failed to load policy {policy_path}",
             )
-        if not isinstance(raw, dict):
-            return r[Mapping[str, t.Infra.InfraValue]].fail(
-                f"Policy document must be a mapping, got {type(raw).__name__}",
-            )
-        return r[Mapping[str, t.Infra.InfraValue]].ok(raw)
+        validated = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(raw)
+        return r[Mapping[str, t.Infra.InfraValue]].ok(validated)
 
     @staticmethod
     def class_nesting_policy_by_family(
@@ -78,10 +82,41 @@ class FlextInfraUtilitiesRefactorPolicy:
     def _mapping_list_for_policy(
         value: t.Infra.InfraValue | None,
     ) -> list[Mapping[str, t.Infra.InfraValue]]:
-        """Thin wrapper to call mapping_list from the main facade."""
-        from flext_infra import FlextInfraUtilitiesRefactor
+        """Normalize policy fields that should contain mapping collections."""
+        return list(FlextInfraUtilitiesRefactorPolicy.mapping_list(value))
 
-        return list(FlextInfraUtilitiesRefactor.mapping_list(value))
+    @staticmethod
+    def module_family_from_path(path: str) -> str:
+        """Resolve module family key from a source file path."""
+        normalized = path.replace("\\", "/")
+        for key in FlextInfraUtilitiesRefactorPolicy._MODULE_FAMILY_KEYS:
+            if key in normalized:
+                return key
+        return "other_private"
+
+    @staticmethod
+    def mapping_list(
+        value: t.Infra.InfraValue | None,
+    ) -> Sequence[Mapping[str, t.Infra.InfraValue]]:
+        """Normalize policy fields that should contain mapping collections."""
+        if value is None:
+            return []
+        if not isinstance(value, list):
+            msg = "expected Sequence[Mapping[str, t.Infra.InfraValue]] value"
+            raise TypeError(msg)
+        try:
+            value_items: Sequence[t.Infra.InfraValue] = (
+                t.Infra.INFRA_SEQ_ADAPTER.validate_python(value)
+            )
+        except ValidationError as exc:
+            msg = "expected Sequence[Mapping[str, t.Infra.InfraValue]] value"
+            raise ValueError(msg) from exc
+        normalized: MutableSequence[Mapping[str, t.Infra.InfraValue]] = []
+        for item in value_items:
+            if not u.is_mapping(item):
+                continue
+            normalized.append(t.Infra.INFRA_MAPPING_ADAPTER.validate_python(item))
+        return normalized
 
     @staticmethod
     def _class_nesting_target_matches(target_namespace: str, pattern: str) -> bool:
@@ -158,8 +193,6 @@ class FlextInfraUtilitiesRefactorPolicy:
         policy_path: Path | None = None,
     ) -> t.Infra.Pair[bool, t.StrMapping | None]:
         """Validate one class/helper nesting entry against the family policy."""
-        from flext_infra import FlextInfraUtilitiesRefactor
-
         symbol = entry.get(c.Infra.ReportKeys.LOOSE_NAME, "") or entry.get(
             "helper_name",
             "",
@@ -168,7 +201,7 @@ class FlextInfraUtilitiesRefactorPolicy:
         current_file = entry.get(c.Infra.ReportKeys.CURRENT_FILE, "")
         if not symbol or not target_namespace or not current_file:
             return (True, None)
-        family = FlextInfraUtilitiesRefactor.module_family_from_path(current_file)
+        family = FlextInfraUtilitiesRefactorPolicy.module_family_from_path(current_file)
         if family == "other_private":
             return (True, None)
         policies = (

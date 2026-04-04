@@ -138,10 +138,10 @@ def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
     )
     flexcore_package = flexcore / "src" / "flexcore"
     tm.that(not flexcore_package.joinpath("constants.py").exists(), eq=True)
-    census_service = FlextInfraCodegenCensus(workspace_root=tmp_path)
-    scaffolder = FlextInfraCodegenScaffolder(workspace_root=tmp_path)
-    fixer = FlextInfraCodegenFixer(workspace_root=tmp_path)
-    lazy_init = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
+    census_service = FlextInfraCodegenCensus(workspace=tmp_path)
+    scaffolder = FlextInfraCodegenScaffolder(workspace=tmp_path)
+    fixer = FlextInfraCodegenFixer(workspace=tmp_path)
+    lazy_init = FlextInfraCodegenLazyInit(workspace=tmp_path)
     census_before = census_service.run()
     scaffold_results_first = scaffolder.run()
     scaffold_by_project_first = {
@@ -157,7 +157,7 @@ def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
     tm.that(len(scaffold_by_project_second["project-a"].files_created), eq=0)
     tm.that(len(scaffold_by_project_second["project-b"].files_created), eq=0)
     tm.that(len(scaffold_by_project_second["project-c"].files_created), eq=0)
-    fix_results = fixer.run()
+    fix_results = fixer.fix_workspace()
     fix_by_project = {result.project: result for result in fix_results}
     tm.that(fix_by_project, has="project-a")
     tm.that(fix_by_project, has="project-b")
@@ -168,7 +168,7 @@ def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
         any(v.rule == "NS-002" for v in project_b_fixed.violations_fixed),
         eq=True,
     )
-    unmapped_count = lazy_init.run()
+    unmapped_count = lazy_init.generate_inits()
     tm.that(unmapped_count, gte=0)
     census_after = census_service.run()
     before_total = sum(report.total for report in census_before)

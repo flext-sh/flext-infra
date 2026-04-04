@@ -35,7 +35,7 @@ class FlextInfraRefactorLegacyRemovalRule:
         fix_action = u.Infra.get_str_key(
             self.config,
             c.Infra.ReportKeys.FIX_ACTION,
-            lower=True,
+            case="lower",
         )
         new_source = source
         if "alias" in self.rule_id or fix_action == "remove":

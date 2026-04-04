@@ -42,7 +42,7 @@ class FlextInfraDocAuditor(FlextInfraDocAuditorMixin):
         config_path = FlextInfraDocAuditor.find_architecture_config(workspace_root)
         if config_path is None:
             return _NO_BUDGETS
-        payload_result = u.Infra.read_json(config_path)
+        payload_result = u.Cli.json_read(config_path)
         if payload_result.is_failure:
             return _NO_BUDGETS
         docs_validation = u.Infra.as_toml_mapping(
@@ -121,7 +121,9 @@ class FlextInfraDocAuditor(FlextInfraDocAuditorMixin):
 
     def execute_command(self, params: m.Infra.DocsAuditInput) -> r[bool]:
         """CLI handler -- accepts input model, delegates to audit."""
-        resolved_workspace = u.Infra.resolve_workspace(params)
+        resolved_workspace = u.Infra.resolve_workspace_root_or_cwd(
+            params.workspace_path
+        )
         scope_params = m.Infra.AuditScopeParams(
             check="all" if params.check else "",
             strict=params.strict,

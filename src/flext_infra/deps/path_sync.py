@@ -13,9 +13,7 @@ from pathlib import Path
 from tomlkit.toml_document import TOMLDocument
 
 from flext_core import FlextLogger
-from flext_infra import c, m, t, u
-
-from .path_sync_rewrite import FlextInfraDependencyPathSyncRewrite
+from flext_infra import FlextInfraDependencyPathSyncRewrite, c, m, t, u
 
 
 class FlextInfraDependencyPathSync(FlextInfraDependencyPathSyncRewrite):
@@ -43,21 +41,6 @@ class FlextInfraDependencyPathSync(FlextInfraDependencyPathSyncRewrite):
             if (candidate / c.Infra.Files.GITMODULES).exists():
                 return c.Infra.ReportKeys.WORKSPACE
         return "standalone"
-
-    @staticmethod
-    def extract_dep_name(raw_path: str) -> str:
-        """Extract dependency name from path string."""
-        normalized = raw_path.strip().lstrip("/").removeprefix("./")
-        for prefix in (f"{c.Infra.FLEXT_DEPS_DIR}/", "../"):
-            normalized = normalized.removeprefix(prefix)
-        return normalized
-
-    @staticmethod
-    def _target_path(dep_name: str, *, is_root: bool, mode: str) -> str:
-        """Compute target path for dependency based on mode and location."""
-        if mode == c.Infra.ReportKeys.WORKSPACE:
-            return dep_name if is_root else f"../{dep_name}"
-        return f"{c.Infra.FLEXT_DEPS_DIR}/{dep_name}"
 
     def run(self, *, cli: u.Infra.CliArgs, mode: str) -> int:
         """Execute path synchronization for the given CLI arguments."""

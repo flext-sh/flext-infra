@@ -225,5 +225,44 @@ class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
         ]
         constants_class_pattern: Annotated[str, Field(...)]
 
+    class FixContext(FlextModels.ArbitraryTypesModel):
+        """Mutable accumulation context for fix operations."""
+
+        violations_fixed: Annotated[
+            list[FlextInfraCodegenModels.CensusViolation],
+            Field(
+                default_factory=list,
+                description="List of violations that were fixed",
+            ),
+        ]
+        violations_skipped: Annotated[
+            list[FlextInfraCodegenModels.CensusViolation],
+            Field(
+                default_factory=list,
+                description="List of violations that were skipped",
+            ),
+        ]
+        files_modified: Annotated[
+            set[str],
+            Field(
+                default_factory=set,
+                description="Set of unique modified file paths",
+            ),
+        ]
+
+        def skip(self, *, module: str, rule: str, line: int, message: str) -> None:
+            self.violations_skipped.append(
+                FlextInfraCodegenModels.CensusViolation(
+                    module=module, rule=rule, line=line, message=message, fixable=False
+                ),
+            )
+
+        def fix(self, *, module: str, rule: str, line: int, message: str) -> None:
+            self.violations_fixed.append(
+                FlextInfraCodegenModels.CensusViolation(
+                    module=module, rule=rule, line=line, message=message, fixable=True
+                ),
+            )
+
 
 __all__ = ["FlextInfraCodegenModels"]

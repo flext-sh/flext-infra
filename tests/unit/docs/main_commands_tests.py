@@ -13,7 +13,6 @@ from flext_core import r
 from flext_infra import (
     FlextInfraDocBuilder,
     FlextInfraDocGenerator,
-    FlextInfraDocsCli,
     FlextInfraDocValidator,
     c,
     m,
@@ -37,7 +36,7 @@ class TestRunBuild:
     ) -> None:
         report = _R(phase="test", scope="test", result="OK")
         monkeypatch.setattr(FlextInfraDocBuilder, "build", _stub_ok([report]))
-        result = FlextInfraDocsCli._handle_build(m.Infra.DocsBuildInput())
+        result = FlextInfraDocBuilder().execute_command(m.Infra.DocsBuildInput())
         tm.that(result.is_success, eq=True)
 
     def test_run_build_success_with_failures(
@@ -50,19 +49,19 @@ class TestRunBuild:
             result=c.Infra.Status.FAIL,
         )
         monkeypatch.setattr(FlextInfraDocBuilder, "build", _stub_ok([report]))
-        result = FlextInfraDocsCli._handle_build(m.Infra.DocsBuildInput())
+        result = FlextInfraDocBuilder().execute_command(m.Infra.DocsBuildInput())
         tm.that(result.is_failure, eq=True)
 
     def test_run_build_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(FlextInfraDocBuilder, "build", _stub_fail("build error"))
-        result = FlextInfraDocsCli._handle_build(m.Infra.DocsBuildInput())
+        result = FlextInfraDocBuilder().execute_command(m.Infra.DocsBuildInput())
         tm.that(result.is_failure, eq=True)
 
 
 class TestRunGenerate:
     def test_run_generate_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(FlextInfraDocGenerator, "generate", _stub_ok([]))
-        result = FlextInfraDocsCli._handle_generate(m.Infra.DocsGenerateInput())
+        result = FlextInfraDocGenerator().execute_command(m.Infra.DocsGenerateInput())
         tm.that(result.is_success, eq=True)
 
     def test_run_generate_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -71,7 +70,7 @@ class TestRunGenerate:
             "generate",
             _stub_fail("generate error"),
         )
-        result = FlextInfraDocsCli._handle_generate(m.Infra.DocsGenerateInput())
+        result = FlextInfraDocGenerator().execute_command(m.Infra.DocsGenerateInput())
         tm.that(result.is_failure, eq=True)
 
     def test_run_generate_with_apply_flag(
@@ -85,7 +84,7 @@ class TestRunGenerate:
             return r[Sequence[_R]].ok([])
 
         monkeypatch.setattr(FlextInfraDocGenerator, "generate", mock_gen)
-        FlextInfraDocsCli._handle_generate(m.Infra.DocsGenerateInput(apply=True))
+        FlextInfraDocGenerator().execute_command(m.Infra.DocsGenerateInput(apply=True))
         assert captured_kwargs.get("apply") is True
 
 
@@ -96,7 +95,7 @@ class TestRunValidate:
     ) -> None:
         report = _R(phase="test", scope="test", result="OK")
         monkeypatch.setattr(FlextInfraDocValidator, "validate", _stub_ok([report]))
-        result = FlextInfraDocsCli._handle_validate(m.Infra.DocsValidateInput())
+        result = FlextInfraDocValidator().execute_command(m.Infra.DocsValidateInput())
         tm.that(result.is_success, eq=True)
 
     def test_run_validate_success_with_failures(
@@ -109,7 +108,7 @@ class TestRunValidate:
             result=c.Infra.Status.FAIL,
         )
         monkeypatch.setattr(FlextInfraDocValidator, "validate", _stub_ok([report]))
-        result = FlextInfraDocsCli._handle_validate(m.Infra.DocsValidateInput())
+        result = FlextInfraDocValidator().execute_command(m.Infra.DocsValidateInput())
         tm.that(result.is_failure, eq=True)
 
     def test_run_validate_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -118,7 +117,7 @@ class TestRunValidate:
             "validate",
             _stub_fail("validate error"),
         )
-        result = FlextInfraDocsCli._handle_validate(m.Infra.DocsValidateInput())
+        result = FlextInfraDocValidator().execute_command(m.Infra.DocsValidateInput())
         tm.that(result.is_failure, eq=True)
 
     def test_run_validate_with_check_parameter(
@@ -132,5 +131,5 @@ class TestRunValidate:
             return r[Sequence[_R]].ok([])
 
         monkeypatch.setattr(FlextInfraDocValidator, "validate", mock_val)
-        FlextInfraDocsCli._handle_validate(m.Infra.DocsValidateInput(check=True))
+        FlextInfraDocValidator().execute_command(m.Infra.DocsValidateInput(check=True))
         assert captured_kwargs.get("check") == "all"

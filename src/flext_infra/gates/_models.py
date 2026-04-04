@@ -20,8 +20,12 @@ class FlextInfraGatesModels:
         model_config: ClassVar[ConfigDict] = ConfigDict(
             extra="forbid",
             arbitrary_types_allowed=True,
+            populate_by_name=True,
         )
-        workspace_root: Annotated[Path, Field(description="Workspace root directory")]
+        workspace_root: Annotated[
+            Path,
+            Field(alias="workspace", description="Workspace root directory"),
+        ]
         reports_dir: Annotated[Path, Field(description="Reports output directory")]
         fail_fast: Annotated[
             bool,

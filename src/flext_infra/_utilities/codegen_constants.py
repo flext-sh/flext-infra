@@ -25,8 +25,7 @@ from collections.abc import (
 from pathlib import Path
 from typing import ClassVar, Final
 
-from yaml import safe_load
-
+from flext_cli import FlextCliUtilities
 from flext_core import r, u
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.rope import FlextInfraUtilitiesRope
@@ -100,8 +99,15 @@ def _read_source_safe(path: Path) -> str | None:
         return None
 
 
+_MIN_QUOTED_LEN = 2
+
+
 def _is_quoted(value: str) -> bool:
-    return len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}
+    return (
+        len(value) >= _MIN_QUOTED_LEN
+        and value[0] == value[-1]
+        and value[0] in {"'", '"'}
+    )
 
 
 def _unquote(value: str) -> str:
@@ -172,13 +178,8 @@ class FlextInfraUtilitiesCodegenGovernance:
         cached = FlextInfraUtilitiesCodegenGovernance._config_cache.get("config")
         if cached is not None:
             return cached
-        raw: t.ContainerMapping = (
-            safe_load(
-                FlextInfraUtilitiesCodegenGovernance.GOVERNANCE_FILE.read_text(
-                    c.Infra.Encoding.DEFAULT
-                ),
-            )
-            or {}
+        raw = FlextCliUtilities.Cli.yaml_load_mapping(
+            FlextInfraUtilitiesCodegenGovernance.GOVERNANCE_FILE
         )
         config = m.Infra.ConstantsGovernanceConfig.model_validate(raw)
         FlextInfraUtilitiesCodegenGovernance._config_cache["config"] = config
@@ -612,12 +613,25 @@ class FlextInfraUtilitiesCodegenConstantAnalysis:
     @staticmethod
     def deduplicate_constants(
         options: m.Infra.DeduplicationRunOptions | None = None,
-        **kwargs: object,
+        *,
+        class_path: str = "",
+        root_path: Path | None = None,
+        dry_run: bool = True,
+        max_files: int = 2000,
+        exclude_patterns: frozenset[str] | None = None,
     ) -> r[m.Infra.DeduplicationRunReport]:
         """Run typed constant deduplication end-to-end with validated options."""
+        resolved_patterns: frozenset[str] = exclude_patterns or frozenset()
+        payload: Mapping[str, t.ValueOrModel] = {
+            "class_path": class_path,
+            "root_path": root_path,
+            "dry_run": dry_run,
+            "max_files": max_files,
+            "exclude_patterns": tuple(resolved_patterns),
+        }
         return u.resolve_options(
             options,
-            kwargs,
+            payload,
             m.Infra.DeduplicationRunOptions,
         ).flat_map(FlextInfraUtilitiesCodegenConstantAnalysis._run_deduplication)
 

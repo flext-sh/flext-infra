@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 import tempfile
 from pathlib import Path
-from typing import TextIO, override
+from typing import Annotated, TextIO, override
 
 from jinja2 import (
     Environment,
@@ -14,6 +14,7 @@ from jinja2 import (
     TemplateError,
     select_autoescape,
 )
+from pydantic import Field
 
 from flext_infra import (
     FlextInfraBaseMkTemplateEngine,
@@ -32,10 +33,10 @@ _TEMPLATES_DIR: Path = Path(__file__).resolve().parent.parent / "templates"
 class FlextInfraBaseMkGenerator(s[str]):
     """Generate base.mk content and write to file or stream."""
 
-    def __init__(self, template_engine: p.Infra.TemplateRenderer | None = None) -> None:
-        """Initialize the base.mk generator."""
-        super().__init__()
-        self._template_engine = template_engine or FlextInfraBaseMkTemplateEngine()
+    template_engine: Annotated[
+        p.Infra.TemplateRenderer | None,
+        Field(default=None, exclude=True),
+    ] = None
 
     @property
     def _get_runner(self) -> p.Infra.CommandRunner:
@@ -55,7 +56,9 @@ class FlextInfraBaseMkGenerator(s[str]):
         if config_result.is_failure:
             return r[str].fail(config_result.error or "invalid base.mk configuration")
         config_value = config_result.value
-        render_result = self._template_engine.render_all(config_value)
+        render_result = (
+            self.template_engine or FlextInfraBaseMkTemplateEngine()
+        ).render_all(config_value)
         if render_result.is_failure:
             return r[str].fail(render_result.error or "base.mk render failed")
         return self._validate_generated_output(render_result.value)
@@ -84,6 +87,7 @@ class FlextInfraBaseMkGenerator(s[str]):
         except OSError as exc:
             return r[bool].fail(f"base.mk write failed: {exc}")
 
+    @override
     def execute_command(self, params: m.Infra.BaseMkGenerateInput) -> r[str]:
         """CLI handler — accepts input model, delegates to generate+write."""
         config = (

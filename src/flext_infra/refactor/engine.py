@@ -215,9 +215,9 @@ class FlextInfraRefactorEngine(
             rule_def,
             c.Infra.ReportKeys.FIX_ACTION,
             default=u.Infra.get_str_key(rule_def, c.Infra.ReportKeys.ACTION),
-            lower=True,
+            case="lower",
         )
-        check = u.Infra.get_str_key(rule_def, c.Infra.Verbs.CHECK, lower=True)
+        check = u.Infra.get_str_key(rule_def, c.Infra.Verbs.CHECK, case="lower")
         for action_set, rule_class in self._RULE_ACTION_REGISTRY:
             if fix_action in action_set or check in action_set:
                 return rule_class(rule_def)

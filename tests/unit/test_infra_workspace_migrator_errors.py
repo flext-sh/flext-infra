@@ -43,14 +43,8 @@ class TestMigratorWriteFailures:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         _root, proj = _setup_basic(tmp_path)
-        migrator = _build_migrator(proj, "base")
-
-        def _write_fail(_self: Path, _data: str, **_kw: t.Scalar) -> int:
-            msg = "Write failed"
-            raise OSError(msg)
-
-        monkeypatch.setattr(Path, "write_text", _write_fail)
-        result = migrator.migrate(workspace_root=tmp_path, dry_run=False)
+        migrator = _build_migrator(proj, "base", workspace_root=tmp_path, dry_run=False)
+        result = migrator.execute()
         migration = tm.ok(result)
         tm.that(
             any("Write failed" in err for err in migration[0].errors),
@@ -69,14 +63,16 @@ class TestMigratorWriteFailures:
         (root / "Makefile").write_text("content", encoding="utf-8")
         (root / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
         (root / ".gitignore").write_text("", encoding="utf-8")
-        migrator = _build_migrator(_project(root), "new content")
+        migrator = _build_migrator(
+            _project(root), "new content", workspace_root=tmp_path, dry_run=False
+        )
 
         def _write_fail(_self: Path, _data: str, **_kw: t.Scalar) -> int:
             msg = "Write failed"
             raise OSError(msg)
 
         monkeypatch.setattr(Path, "write_text", _write_fail)
-        result = migrator.migrate(workspace_root=tmp_path, dry_run=False)
+        result = migrator.execute()
         migration = tm.ok(result)
         tm.that(
             any("Write failed" in err for err in migration[0].errors),
@@ -91,7 +87,9 @@ class TestMigratorWriteFailures:
         root = tmp_path / "project-a"
         root.mkdir(parents=True)
         h.write_project(root)
-        migrator = _build_migrator(_project(root), "base")
+        migrator = _build_migrator(
+            _project(root), "base", workspace_root=tmp_path, dry_run=False
+        )
         original_write = Path.write_text
 
         def _selective_write(self: Path, data: str, **kwargs: str | None) -> int:
@@ -101,7 +99,7 @@ class TestMigratorWriteFailures:
             return original_write(self, data, **kwargs)
 
         monkeypatch.setattr(Path, "write_text", _selective_write)
-        result = migrator.migrate(workspace_root=tmp_path, dry_run=False)
+        result = migrator.execute()
         migration = tm.ok(result)
         tm.that(
             any("Makefile write failed" in err for err in migration[0].errors),
@@ -114,7 +112,7 @@ class TestMigratorWriteFailures:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         _root, proj = _setup_basic(tmp_path)
-        migrator = _build_migrator(proj, "base")
+        migrator = _build_migrator(proj, "base", workspace_root=tmp_path, dry_run=False)
         original_write = Path.write_text
 
         def _selective_write(self: Path, data: str, **kwargs: str | None) -> int:
@@ -124,7 +122,7 @@ class TestMigratorWriteFailures:
             return original_write(self, data, **kwargs)
 
         monkeypatch.setattr(Path, "write_text", _selective_write)
-        result = migrator.migrate(workspace_root=tmp_path, dry_run=False)
+        result = migrator.execute()
         migration = tm.ok(result)
         tm.that(
             any("pyproject write failed" in err for err in migration[0].errors),
@@ -145,7 +143,9 @@ class TestMigratorReadFailures:
         (root / "Makefile").write_text("content", encoding="utf-8")
         (root / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
         (root / ".gitignore").write_text("existing", encoding="utf-8")
-        migrator = _build_migrator(_project(root), "base")
+        migrator = _build_migrator(
+            _project(root), "base", workspace_root=tmp_path, dry_run=False
+        )
         original_read = Path.read_text
 
         def _selective_read(self: Path, **kwargs: str | None) -> str:
@@ -155,7 +155,7 @@ class TestMigratorReadFailures:
             return original_read(self, **kwargs)
 
         monkeypatch.setattr(Path, "read_text", _selective_read)
-        result = migrator.migrate(workspace_root=tmp_path, dry_run=False)
+        result = migrator.execute()
         migration = tm.ok(result)
         tm.that(
             any(".gitignore read failed" in err for err in migration[0].errors),
@@ -169,10 +169,12 @@ class TestMigratorReadFailures:
         (root / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
         (root / ".gitignore").write_text("", encoding="utf-8")
         proj = _project(root, "workspace-root")
-        migrator = FlextInfraProjectMigrator()
-        migrator._discovery = _StubDiscovery([proj])
-        migrator._generator = _StubGenerator(fail="Generation failed")
-        result = migrator.migrate(workspace_root=tmp_path, dry_run=False)
+        migrator = FlextInfraProjectMigrator(
+            workspace=tmp_path, dry_run=False, apply=True
+        )
+        migrator.discovery = _StubDiscovery([proj])
+        migrator.generator = _StubGenerator(fail="Generation failed")
+        result = migrator.execute()
         migration = tm.ok(result)
         tm.that(
             any("Generation failed" in err for err in migration[0].errors),
@@ -187,8 +189,10 @@ class TestMigratorReadFailures:
         (root / "Makefile").write_text("content", encoding="utf-8")
         (root / "pyproject.toml").write_text("invalid toml {", encoding="utf-8")
         (root / ".gitignore").write_text("", encoding="utf-8")
-        migrator = _build_migrator(_project(root), "base.mk")
-        result = migrator.migrate(workspace_root=tmp_path, dry_run=False)
+        migrator = _build_migrator(
+            _project(root), "base.mk", workspace_root=tmp_path, dry_run=False
+        )
+        result = migrator.execute()
         migration = tm.ok(result)
         tm.that(
             any("parse failed" in err for err in migration[0].errors),

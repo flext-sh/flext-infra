@@ -60,7 +60,7 @@ def create_checker_project(
     Single Responsibility: Encapsulate shared project setup logic.
     Eliminates duplication of: FlextInfraWorkspaceChecker creation + project initialization.
     """
-    checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
+    checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
     project_dir = h.mk_project(tmp_path, project_name)
     if with_src:
         (project_dir / "src").mkdir(parents=True, exist_ok=True)
@@ -128,7 +128,7 @@ def create_gate_context(
 ) -> m.Infra.GateContext:
     """Build a minimal gate context for direct gate execution in tests."""
     return m.Infra.GateContext(
-        workspace_root=workspace_root,
+        workspace=workspace_root,
         reports_dir=reports_dir or workspace_root,
     )
 

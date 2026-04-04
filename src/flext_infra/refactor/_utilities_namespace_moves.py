@@ -8,6 +8,7 @@ from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_infra import c, m, t
+from flext_infra._utilities.formatting import FlextInfraUtilitiesFormatting
 from flext_infra.refactor._utilities_namespace_analysis import (
     FlextInfraUtilitiesRefactorNamespaceCommon,
 )
@@ -215,13 +216,17 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
         source_file: Path,
         alias_names: t.Infra.StrSet,
     ) -> None:
-        lines = source_file.read_text(encoding=c.Infra.Encoding.DEFAULT).splitlines()
+        source = source_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
+        lines = source.splitlines()
         moved_lines: MutableSequence[str] = []
         kept_lines: MutableSequence[str] = []
         for line in lines:
             stripped = line.strip()
+            typing_match = c.Infra.TYPING_FACTORY_ASSIGN_RE.match(stripped)
+            typing_name = typing_match.group(1) if typing_match is not None else ""
             should_move = any(
                 stripped.startswith((f"type {name} =", f"{name}: TypeAlias ="))
+                or typing_name == name
                 for name in alias_names
             )
             if should_move:
@@ -230,6 +235,12 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
                 kept_lines.append(line)
         if not moved_lines:
             return
+        required_imports = (
+            FlextInfraUtilitiesRefactorNamespaceMoves._collect_required_import_lines(
+                source=source,
+                blocks=moved_lines,
+            )
+        )
         target_file = FlextInfraUtilitiesRefactorNamespaceMoves._canonical_target_file(
             project_root=project_root,
             source_file=source_file,
@@ -240,12 +251,28 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
             if target_file.exists()
             else f"{c.Infra.SourceCode.FUTURE_ANNOTATIONS}\n"
         )
-        updated_target = target_source.rstrip() + "\n\n" + "\n".join(moved_lines) + "\n"
+        target_lines = target_source.splitlines()
+        missing_imports = [
+            import_line
+            for import_line in required_imports
+            if import_line not in target_lines
+        ]
+        target_lines = FlextInfraUtilitiesRefactorNamespaceMoves._insert_import_lines(
+            lines=target_lines,
+            imports=missing_imports,
+        )
+        updated_target = "\n".join(target_lines).rstrip()
+        for moved_line in moved_lines:
+            if moved_line not in target_lines:
+                updated_target += f"\n\n{moved_line}"
+        updated_target += "\n"
         _ = target_file.write_text(updated_target, encoding=c.Infra.Encoding.DEFAULT)
         _ = source_file.write_text(
             "\n".join(kept_lines).rstrip() + "\n",
             encoding=c.Infra.Encoding.DEFAULT,
         )
+        FlextInfraUtilitiesFormatting.run_ruff_fix(source_file, quiet=True)
+        FlextInfraUtilitiesFormatting.run_ruff_fix(target_file, quiet=True)
 
     @staticmethod
     def _rewrite_moved_imports(

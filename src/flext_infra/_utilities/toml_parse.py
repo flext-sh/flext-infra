@@ -15,7 +15,7 @@ from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
 import tomlkit
-from pydantic import TypeAdapter, ValidationError
+from pydantic import BaseModel, TypeAdapter, ValidationError
 from tomlkit.container import Container
 from tomlkit.items import Item, Table
 
@@ -55,7 +55,7 @@ class FlextInfraUtilitiesTomlParse:
     @staticmethod
     def ensure_pyright_execution_envs(
         pyright: Table,
-        expected: Sequence[Mapping[str, t.Infra.InfraValue]],
+        expected: Sequence[Mapping[str, t.Infra.InfraValue]] | Sequence[BaseModel],
         changes: MutableSequence[str],
     ) -> None:
         """Ensure pyright executionEnvironments matches expected; append to changes if updated."""
@@ -66,8 +66,12 @@ class FlextInfraUtilitiesTomlParse:
         if isinstance(raw, list):
             with contextlib.suppress(ValidationError):
                 current = TypeAdapter(Sequence[t.StrMapping]).validate_python(raw)
-        if list(current) != expected:
-            pyright["executionEnvironments"] = expected
+        normalized: Sequence[Mapping[str, t.Infra.InfraValue]] = [
+            entry.model_dump(by_alias=True) if isinstance(entry, BaseModel) else entry
+            for entry in expected
+        ]
+        if list(current) != normalized:
+            pyright["executionEnvironments"] = normalized
             changes.append(
                 "tool.pyright.executionEnvironments set with tests reportPrivateUsage=none",
             )

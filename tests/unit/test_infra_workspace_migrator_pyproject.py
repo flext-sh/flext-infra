@@ -25,8 +25,13 @@ class TestMigratorFlextCore:
         (root / "Makefile").write_text("content", encoding="utf-8")
         (root / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
         (root / ".gitignore").write_text("", encoding="utf-8")
-        migrator = _build_migrator(_project(root, "flext-core"), "base.mk")
-        result = migrator.migrate(workspace_root=tmp_path, dry_run=True)
+        migrator = _build_migrator(
+            _project(root, "flext-core"),
+            "base.mk",
+            workspace_root=tmp_path,
+            dry_run=True,
+        )
+        result = migrator.execute()
         migration = tm.ok(result)
         tm.that(
             any("unchanged for flext-core" in c for c in migration[0].changes),
@@ -41,8 +46,10 @@ class TestMigratorFlextCore:
         (root / "Makefile").write_text("content", encoding="utf-8")
         (root / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
         (root / ".gitignore").write_text("", encoding="utf-8")
-        migrator = _build_migrator(_project(root, "flext-core"), "base")
-        result = migrator.migrate(workspace_root=tmp_path, dry_run=True)
+        migrator = _build_migrator(
+            _project(root, "flext-core"), "base", workspace_root=tmp_path, dry_run=True
+        )
+        result = migrator.execute()
         migration = tm.ok(result)
         tm.that(
             any(
@@ -65,8 +72,10 @@ class TestMigratorPoetryDeps:
             encoding="utf-8",
         )
         (root / ".gitignore").write_text("", encoding="utf-8")
-        migrator = _build_migrator(_project(root), "base.mk")
-        result = migrator.migrate(workspace_root=tmp_path, dry_run=True)
+        migrator = _build_migrator(
+            _project(root), "base.mk", workspace_root=tmp_path, dry_run=True
+        )
+        result = migrator.execute()
         migration = tm.ok(result)
         tm.that(
             any("already includes" in c for c in migration[0].changes),
@@ -81,8 +90,10 @@ class TestMigratorPoetryDeps:
         (root / "Makefile").write_text("content", encoding="utf-8")
         (root / "pyproject.toml").write_text("[tool]\n", encoding="utf-8")
         (root / ".gitignore").write_text("", encoding="utf-8")
-        migrator = _build_migrator(_project(root), "base")
-        result = migrator.migrate(workspace_root=tmp_path, dry_run=True)
+        migrator = _build_migrator(
+            _project(root), "base", workspace_root=tmp_path, dry_run=True
+        )
+        result = migrator.execute()
         migration = tm.ok(result)
         tm.that(
             any("flext-core dependency" in c for c in migration[0].changes),
@@ -100,8 +111,10 @@ class TestMigratorPoetryDeps:
             encoding="utf-8",
         )
         (root / ".gitignore").write_text("", encoding="utf-8")
-        migrator = _build_migrator(_project(root), "base")
-        result = migrator.migrate(workspace_root=tmp_path, dry_run=True)
+        migrator = _build_migrator(
+            _project(root), "base", workspace_root=tmp_path, dry_run=True
+        )
+        result = migrator.execute()
         migration = tm.ok(result)
         tm.that(
             any("flext-core dependency" in c for c in migration[0].changes),
@@ -117,8 +130,10 @@ class TestMigratorDryRun:
         (root / "base.mk").write_text("base", encoding="utf-8")
         (root / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
         (root / ".gitignore").write_text("", encoding="utf-8")
-        migrator = _build_migrator(_project(root), "base")
-        result = migrator.migrate(workspace_root=tmp_path, dry_run=True)
+        migrator = _build_migrator(
+            _project(root), "base", workspace_root=tmp_path, dry_run=True
+        )
+        result = migrator.execute()
         migration = tm.ok(result)
         tm.that(
             any(
@@ -135,8 +150,10 @@ class TestMigratorDryRun:
         (root / "base.mk").write_text("base", encoding="utf-8")
         (root / "Makefile").write_text("content", encoding="utf-8")
         (root / ".gitignore").write_text("", encoding="utf-8")
-        migrator = _build_migrator(_project(root), "base")
-        result = migrator.migrate(workspace_root=tmp_path, dry_run=True)
+        migrator = _build_migrator(
+            _project(root), "base", workspace_root=tmp_path, dry_run=True
+        )
+        result = migrator.execute()
         migration = tm.ok(result)
         tm.that(
             any(
@@ -157,8 +174,10 @@ class TestMigratorDryRun:
             ".reports/\n.venv/\n__pycache__/\nbase.mk\n",
             encoding="utf-8",
         )
-        migrator = _build_migrator(_project(root), "base")
-        result = migrator.migrate(workspace_root=tmp_path, dry_run=True)
+        migrator = _build_migrator(
+            _project(root), "base", workspace_root=tmp_path, dry_run=True
+        )
+        result = migrator.execute()
         migration = tm.ok(result)
         tm.that(
             any(
@@ -176,8 +195,10 @@ class TestMigratorDryRun:
         (root / "Makefile").write_text("content", encoding="utf-8")
         (root / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
         (root / ".gitignore").write_text("", encoding="utf-8")
-        migrator = _build_migrator(_project(root), "base.mk")
-        tm.ok(migrator.migrate(workspace_root=tmp_path, dry_run=False))
+        migrator = _build_migrator(
+            _project(root), "base.mk", workspace_root=tmp_path, dry_run=False
+        )
+        tm.ok(migrator.execute())
 
 
 __all__: t.StrSequence = []

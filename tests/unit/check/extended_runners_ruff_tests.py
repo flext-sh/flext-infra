@@ -105,7 +105,7 @@ class TestRunRuffLint:
         _ = gate.check(
             proj_dir,
             m.Infra.GateContext(
-                workspace_root=tmp_path,
+                workspace=tmp_path,
                 reports_dir=tmp_path,
                 ruff_args=("--select", "E501"),
             ),
@@ -212,7 +212,7 @@ class TestRunPyrightArgs:
         _ = gate.check(
             proj_dir,
             m.Infra.GateContext(
-                workspace_root=tmp_path,
+                workspace=tmp_path,
                 reports_dir=tmp_path,
                 pyright_args=("--level", "basic"),
             ),
@@ -240,7 +240,7 @@ class TestRunCommand:
         gate = FlextInfraRuffLintGate(tmp_path)
         result = gate.check(
             tmp_path,
-            m.Infra.GateContext(workspace_root=tmp_path, reports_dir=tmp_path),
+            m.Infra.GateContext(workspace=tmp_path, reports_dir=tmp_path),
         )
         tm.that(result.result.passed, eq=True)
         tm.that(result.raw_output, eq="")

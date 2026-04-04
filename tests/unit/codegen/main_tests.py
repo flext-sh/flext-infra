@@ -17,19 +17,21 @@ import pytest
 from flext_tests import tm
 from tests import t
 
-from flext_infra import cli as codegen_cli, main as infra_main
+from flext_core import r
+from flext_infra import main as infra_main
+from flext_infra.codegen import cli as codegen_cli
 
 
 class TestHandleLazyInit:
-    """Tests for _handle_lazy_init with real service instances."""
+    """Tests for direct lazy-init command dispatch."""
 
     def test_success(self, tmp_path: Path) -> None:
-        """_handle_lazy_init returns 0 on empty workspace."""
+        """lazy-init returns 0 on empty workspace."""
         result = infra_main(["codegen", "lazy-init", "--workspace", str(tmp_path)])
         tm.that(result, eq=0)
 
     def test_check_mode(self, tmp_path: Path) -> None:
-        """_handle_lazy_init respects --check flag."""
+        """lazy-init respects --check flag."""
         result = infra_main([
             "codegen",
             "lazy-init",
@@ -40,7 +42,7 @@ class TestHandleLazyInit:
         tm.that(result, eq=0)
 
     def test_enforce_mode(self, tmp_path: Path) -> None:
-        """_handle_lazy_init in enforce mode (not check)."""
+        """lazy-init in enforce mode (not check)."""
         result = infra_main(["codegen", "lazy-init", "--workspace", str(tmp_path)])
         tm.that(result, eq=0)
 
@@ -49,17 +51,12 @@ class TestHandleLazyInit:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """_handle_lazy_init fails when the generator reports errors."""
-
-        class _BrokenLazyInit:
-            def __init__(self, workspace_root: Path) -> None:
-                _ = workspace_root
-
-            def run(self, *, check_only: bool = False) -> int:
-                _ = check_only
-                return 1
-
-        monkeypatch.setattr(codegen_cli, "FlextInfraCodegenLazyInit", _BrokenLazyInit)
+        """lazy-init fails when the generator reports errors."""
+        monkeypatch.setattr(
+            codegen_cli.FlextInfraCodegenLazyInit,
+            "execute_command",
+            staticmethod(lambda _params: r[bool].fail("lazy-init failed")),
+        )
         result = infra_main(["codegen", "lazy-init", "--workspace", str(tmp_path)])
         tm.that(result, eq=1)
 

@@ -2,29 +2,29 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from flext_cli import cli
-from flext_infra import FlextInfraPythonVersionEnforcer, m
-
-if TYPE_CHECKING:
-    import typer
+from flext_infra import FlextInfraPythonVersionEnforcer, m, t
 
 
 class FlextInfraCliMaintenance:
     """Maintenance CLI group — composed into FlextInfraCli via MRO."""
 
-    def register_maintenance(self, app: typer.Typer) -> None:
+    def register_maintenance(self, app: t.Cli.TyperApp) -> None:
         """Register maintenance commands on the given Typer app."""
         service = FlextInfraPythonVersionEnforcer()
-        cli.register_result_route(
+        cli.register_result_routes(
             app,
-            route=m.Cli.ResultCommandRouteModel(
-                name="run",
-                help_text="Enforce Python version constraints",
-                model_cls=m.Infra.MaintenanceRunInput,
-                handler=service.execute_command,
-                success_message="Maintenance completed",
-                failure_message="Maintenance failed",
-            ),
+            [
+                m.Cli.ResultCommandRoute(
+                    name="run",
+                    help_text="Enforce Python version constraints",
+                    model_cls=m.Infra.MaintenanceRunInput,
+                    handler=service.execute_command,
+                    failure_message="Maintenance failed",
+                    success_message="Maintenance completed",
+                ),
+            ],
         )
+
+
+__all__ = ["FlextInfraCliMaintenance"]

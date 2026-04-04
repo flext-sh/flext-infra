@@ -30,8 +30,10 @@ def test_migrator_has_flext_core_dependency_in_poetry(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     (project_root / ".gitignore").write_text("", encoding="utf-8")
-    migrator = _build_migrator(_project(project_root), "base.mk")
-    result = migrator.migrate(workspace_root=tmp_path, dry_run=True)
+    migrator = _build_migrator(
+        _project(project_root), "base.mk", workspace_root=tmp_path, dry_run=True
+    )
+    result = migrator.execute()
     migrations = tm.ok(result)
     tm.that(any("already includes" in c for c in migrations[0].changes), eq=True)
 
@@ -46,8 +48,10 @@ def test_migrator_has_flext_core_dependency_poetry_table_missing(
     (project_root / "Makefile").write_text("content", encoding="utf-8")
     (project_root / "pyproject.toml").write_text("[tool]\n", encoding="utf-8")
     (project_root / ".gitignore").write_text("", encoding="utf-8")
-    migrator = _build_migrator(_project(project_root), "base")
-    result = migrator.migrate(workspace_root=tmp_path, dry_run=True)
+    migrator = _build_migrator(
+        _project(project_root), "base", workspace_root=tmp_path, dry_run=True
+    )
+    result = migrator.execute()
     migrations = tm.ok(result)
     tm.that(any("flext-core dependency" in c for c in migrations[0].changes), eq=True)
 
@@ -65,15 +69,19 @@ def test_migrator_has_flext_core_dependency_poetry_deps_not_table(
         encoding="utf-8",
     )
     (project_root / ".gitignore").write_text("", encoding="utf-8")
-    migrator = _build_migrator(_project(project_root), "base")
-    result = migrator.migrate(workspace_root=tmp_path, dry_run=True)
+    migrator = _build_migrator(
+        _project(project_root), "base", workspace_root=tmp_path, dry_run=True
+    )
+    result = migrator.execute()
     migrations = tm.ok(result)
     tm.that(any("flext-core dependency" in c for c in migrations[0].changes), eq=True)
 
 
 def test_workspace_migrator_error_handling_on_invalid_workspace() -> None:
-    migrator = FlextInfraProjectMigrator()
-    result = migrator.migrate(workspace_root=Path("/nonexistent"))
+    migrator = FlextInfraProjectMigrator(
+        workspace=Path("/nonexistent"), dry_run=False, apply=True
+    )
+    result = migrator.execute()
     tm.that(result.is_failure or result.is_success, eq=True)
 
 

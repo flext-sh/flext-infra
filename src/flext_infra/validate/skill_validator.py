@@ -10,10 +10,8 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import Mapping, MutableSequence
 from pathlib import Path
-
-from pydantic import JsonValue
 
 from flext_infra import c, m, p, r, t, u
 
@@ -91,7 +89,7 @@ class FlextInfraSkillValidator:
         )
         if not baseline_path.exists():
             return True
-        bl_data_result = u.Infra.read_json(baseline_path)
+        bl_data_result = u.Cli.json_read(baseline_path)
         if bl_data_result.is_failure:
             return True
         bl_data = u.Infra.normalize_str_mapping(bl_data_result.value)
@@ -138,7 +136,7 @@ class FlextInfraSkillValidator:
                         summary=f"no rules.yml for {skill_name}",
                     ),
                 )
-            rules = u.Infra.safe_load_yaml(rules_path)
+            rules = u.Infra.yaml_load_infra_mapping(rules_path)
             scan_targets_raw = rules.get("scan_targets", {})
             scan_targets = u.Infra.normalize_str_mapping(scan_targets_raw)
             if not scan_targets and scan_targets_raw not in ({}, None):
@@ -154,7 +152,7 @@ class FlextInfraSkillValidator:
             rules_list_obj = rules.get(c.Infra.ReportKeys.RULES, [])
             if not isinstance(rules_list_obj, list):
                 return r[m.Infra.ValidationReport].fail("rules must be a list")
-            rules_list: Sequence[JsonValue] = t.Infra.JSON_SEQ_ADAPTER.validate_python(
+            rules_list: t.Cli.JsonList = t.Cli.JSON_LIST_ADAPTER.validate_python(
                 rules_list_obj,
             )
             counts: t.MutableIntMapping = {}
@@ -198,6 +196,21 @@ class FlextInfraSkillValidator:
             return r[m.Infra.ValidationReport].fail(
                 f"skill validation failed: {exc}",
             )
+
+    def execute_command(
+        self,
+        params: m.Infra.ValidateSkillValidateInput,
+    ) -> r[bool]:
+        """Execute the skill-validation CLI flow for the input model."""
+        return self.validate(
+            params.workspace_path,
+            params.skill,
+            mode=params.mode,
+        ).flat_map(
+            lambda report: (
+                r[bool].ok(True) if report.passed else r[bool].fail(report.summary)
+            )
+        )
 
     def _run_ast_grep_count(
         self,
@@ -243,7 +256,7 @@ class FlextInfraSkillValidator:
             line = raw_line.strip()
             if not line:
                 continue
-            parsed_line_result = u.Infra.parse(line)
+            parsed_line_result = u.Cli.json_parse(line)
             if parsed_line_result.is_success:
                 count += 1
         return count
@@ -256,7 +269,7 @@ class FlextInfraSkillValidator:
             line = raw_line.strip()
             if not line:
                 continue
-            payload_result = u.Infra.parse(line)
+            payload_result = u.Cli.json_parse(line)
             if payload_result.is_success and u.is_mapping(payload_result.value):
                 payload = payload_result.value
                 maybe = payload.get("violation_count", payload.get("count", 0))

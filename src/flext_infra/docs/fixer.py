@@ -13,8 +13,6 @@ import re
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
-from pydantic import JsonValue
-
 from flext_core import FlextLogger
 from flext_infra import c, m, r, t, u
 
@@ -77,16 +75,13 @@ class FlextInfraDocFixer:
 
     def execute_command(self, params: m.Infra.DocsFixInput) -> r[bool]:
         """CLI handler — accepts input model, delegates to fix."""
-        return u.Infra.run_service(
-            self.fix(
-                workspace_root=u.Infra.resolve_workspace(params),
-                project=params.project,
-                projects=params.projects,
-                output_dir=params.output_dir,
-                apply=params.apply,
-            ),
-            fail_msg="fix failed",
-        )
+        return self.fix(
+            workspace_root=params.workspace_path,
+            project=params.project,
+            projects=params.projects,
+            output_dir=params.output_dir,
+            apply=params.apply,
+        ).map(lambda _: True)
 
     def _fix_scope(
         self,
@@ -108,11 +103,11 @@ class FlextInfraDocFixer:
                         toc=item.toc,
                     ),
                 )
-        changes_payload: JsonValue = [
+        changes_payload: t.Cli.JsonValue = [
             {c.Infra.ReportKeys.FILE: item.file, "links": item.links, "toc": item.toc}
             for item in items
         ]
-        payload: JsonValue = {
+        payload: t.Cli.JsonValue = {
             c.Infra.ReportKeys.SUMMARY: {
                 c.Infra.ReportKeys.SCOPE: scope.name,
                 "changed_files": len(items),
@@ -120,7 +115,7 @@ class FlextInfraDocFixer:
             },
             "changes": changes_payload,
         }
-        _ = u.Infra.write_json(scope.report_dir / "fix-summary.json", payload)
+        _ = u.Cli.json_write(scope.report_dir / "fix-summary.json", payload)
         lines = [
             "# Docs Fix Report",
             "",

@@ -15,7 +15,11 @@ from pathlib import Path
 from flext_tests import tm
 from tests import m, t
 
-from flext_infra import FlextInfraCliValidate
+from flext_infra import (
+    FlextInfraBaseMkValidator,
+    FlextInfraInventoryService,
+    FlextInfraTextPatternScanner,
+)
 
 _CWD = "/home/marlonsc/flext/flext-core"
 
@@ -37,7 +41,7 @@ class TestMainBaseMkValidate:
     def test_success(self, tmp_path: Path) -> None:
         """basemk-validate returns r[bool] based on base.mk match."""
         (tmp_path / "base.mk").write_text("# root")
-        result = FlextInfraCliValidate._handle_basemk_validate(
+        result = FlextInfraBaseMkValidator().execute_command(
             m.Infra.ValidateBaseMkInput(workspace=str(tmp_path)),
         )
         assert isinstance(result.is_success, bool)
@@ -49,14 +53,14 @@ class TestMainBaseMkValidate:
         proj.mkdir()
         (proj / "pyproject.toml").write_text("")
         (proj / "base.mk").write_text("# different")
-        result = FlextInfraCliValidate._handle_basemk_validate(
+        result = FlextInfraBaseMkValidator().execute_command(
             m.Infra.ValidateBaseMkInput(workspace=str(tmp_path)),
         )
         tm.that(result.is_failure, eq=True)
 
     def test_missing_root_basemk(self, tmp_path: Path) -> None:
         """basemk-validate returns failure when root base.mk missing."""
-        result = FlextInfraCliValidate._handle_basemk_validate(
+        result = FlextInfraBaseMkValidator().execute_command(
             m.Infra.ValidateBaseMkInput(workspace=str(tmp_path)),
         )
         tm.that(result.is_failure, eq=True)
@@ -67,7 +71,7 @@ class TestMainInventory:
 
     def test_success(self, tmp_path: Path) -> None:
         """Inventory succeeds with empty workspace."""
-        result = FlextInfraCliValidate._handle_inventory(
+        result = FlextInfraInventoryService().execute_command(
             m.Infra.ValidateInventoryInput(workspace=str(tmp_path)),
         )
         tm.that(result.is_success, eq=True)
@@ -76,7 +80,7 @@ class TestMainInventory:
         """Inventory succeeds with output directory."""
         output = tmp_path / "output"
         output.mkdir()
-        result = FlextInfraCliValidate._handle_inventory(
+        result = FlextInfraInventoryService().execute_command(
             m.Infra.ValidateInventoryInput(
                 workspace=str(tmp_path),
                 output_dir=str(output),
@@ -91,7 +95,7 @@ class TestMainScan:
     def test_no_violations(self, tmp_path: Path) -> None:
         """Scan returns success when no violations found."""
         (tmp_path / "test.txt").write_text("hello world")
-        result = FlextInfraCliValidate._handle_scan(
+        result = FlextInfraTextPatternScanner().execute_command(
             m.Infra.ValidateScanInput(
                 workspace=str(tmp_path),
                 pattern="NONEXISTENT_PATTERN",
@@ -105,7 +109,7 @@ class TestMainScan:
     def test_with_violations(self, tmp_path: Path) -> None:
         """Scan returns failure when violations found."""
         (tmp_path / "test.txt").write_text("TODO fix this")
-        result = FlextInfraCliValidate._handle_scan(
+        result = FlextInfraTextPatternScanner().execute_command(
             m.Infra.ValidateScanInput(
                 workspace=str(tmp_path),
                 pattern="TODO",

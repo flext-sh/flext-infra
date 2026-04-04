@@ -150,6 +150,17 @@ class FlextInfraStubSupplyChain:
                 f"stub validation failed: {exc}",
             )
 
+    def execute_command(self, params: m.Infra.ValidateStubValidateInput) -> r[bool]:
+        """Execute the stub-validation CLI flow for the input model."""
+        return self.validate(
+            params.workspace_path,
+            project_dirs=params.project_dirs,
+        ).flat_map(
+            lambda report: (
+                r[bool].ok(True) if report.passed else r[bool].fail(report.summary)
+            )
+        )
+
     def _run_mypy_hints(self, project_dir: Path) -> t.StrSequence:
         """Run mypy and extract types-package hints."""
         result = self._runner.run(

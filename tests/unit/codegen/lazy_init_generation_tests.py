@@ -87,7 +87,7 @@ class TestGenerateTypeChecking:
         """Test with no imports returns header + FlextTypes only."""
         groups: Mapping[str, Sequence[tuple[str, str]]] = {}
         lines = FlextInfraCodegenGeneration.generate_type_checking(groups)
-        tm.that(lines, contains="if _TYPE_CHECKING:")
+        tm.that(lines, contains="if _t.TYPE_CHECKING:")
         tm.that(any("FlextTypes" in line for line in lines), eq=True)
 
     def test_with_empty_groups_no_flext_types(self) -> None:
@@ -182,7 +182,7 @@ class TestGenerateFile:
             content,
             contains="from test_pkg.__version__ import FlextVersion, __version__",
         )
-        tm.that(content, contains="_LAZY_IMPORTS: FlextTypes.LazyImportIndex = {")
+        tm.that(content, contains="_LAZY_IMPORTS = {")
 
     def test_with_docstring(self) -> None:
         """Test preserves docstring."""
@@ -216,6 +216,19 @@ class TestGenerateFile:
         tm.that(content, contains="install_lazy_exports")
         tm.that(content, contains='"Alpha"')
         tm.that(content, contains='"Beta"')
+
+    def test_always_emits_static_analysis_hints(self) -> None:
+        """Test generated file always emits the canonical static hints."""
+        exports = ["Alpha", "Beta"]
+        filtered = {"Alpha": ("mod", "Alpha"), "Beta": ("mod", "Beta")}
+        inline_constants: t.StrMapping = {}
+        content = _generate_file("", exports, filtered, inline_constants, "test_pkg")
+        tm.that(content, contains="if _t.TYPE_CHECKING:")
+        tm.that(content, contains="import typing as _t")
+        tm.that(content, contains="__all__ = [")
+        tm.that(
+            content, contains="install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)"
+        )
 
 
 class TestRunRuffFix:

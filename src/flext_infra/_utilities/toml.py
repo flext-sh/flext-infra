@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableSequence
 from pathlib import Path
 
 import tomlkit
@@ -28,7 +28,7 @@ class FlextInfraUtilitiesToml:
         from flext_infra import u
 
         result = u.Infra.as_toml_mapping(value)
-        doc = u.Infra.read(some_path)
+        doc = u.Cli.toml_read(some_path)
     """
 
     logger = FlextLogger(__name__)
@@ -77,7 +77,7 @@ class FlextInfraUtilitiesToml:
         if normalized is None or isinstance(normalized, str):
             return []
         try:
-            typed_items = t.Infra.JSON_SEQ_ADAPTER.validate_python(normalized)
+            typed_items = t.Cli.JSON_LIST_ADAPTER.validate_python(normalized)
         except ValidationError:
             return []
         return [str(raw) for raw in typed_items]
@@ -131,6 +131,11 @@ class FlextInfraUtilitiesToml:
         return table
 
     @staticmethod
+    def ensure_tool_table(doc: TOMLDocument) -> Table:
+        """Get or create the top-level ``[tool]`` table."""
+        return FlextInfraUtilitiesToml.ensure_table(doc, c.Infra.TOOL)
+
+    @staticmethod
     def get(
         container: TOMLDocument | Table,
         key: t.Infra.InfraValue,
@@ -158,7 +163,7 @@ class FlextInfraUtilitiesToml:
             except ValidationError:
                 return None
         try:
-            return t.Infra.JSON_SEQ_ADAPTER.validate_python(
+            return t.Cli.JSON_LIST_ADAPTER.validate_python(
                 raw_value,
             )
         except ValidationError:
@@ -168,6 +173,79 @@ class FlextInfraUtilitiesToml:
     def table_string_keys(table: Table) -> t.StrSequence:
         """Return table keys as strings."""
         return list(table)
+
+    @staticmethod
+    def remove_key_if_present(
+        container: TOMLDocument | Table,
+        key: str,
+        changes: MutableSequence[str],
+        change_message: str,
+    ) -> bool:
+        """Remove ``key`` when present and record the change."""
+        if key not in container:
+            return False
+        del container[key]
+        changes.append(change_message)
+        return True
+
+    @staticmethod
+    def sync_value(
+        container: TOMLDocument | Table,
+        key: str,
+        expected: t.Infra.InfraValue,
+        changes: MutableSequence[str],
+        change_message: str,
+    ) -> bool:
+        """Synchronize a scalar TOML value when it differs."""
+        current = FlextInfraUtilitiesToml.unwrap_item(
+            FlextInfraUtilitiesToml.get(container, key),
+        )
+        if current == expected:
+            return False
+        container[key] = expected
+        changes.append(change_message)
+        return True
+
+    @staticmethod
+    def sync_string_list(
+        container: TOMLDocument | Table,
+        key: str,
+        expected: t.StrSequence,
+        changes: MutableSequence[str],
+        change_message: str,
+        *,
+        sort_values: bool = False,
+    ) -> bool:
+        """Synchronize a string-array TOML value when it differs."""
+        current = FlextInfraUtilitiesToml.as_string_list(
+            FlextInfraUtilitiesToml.get(container, key),
+        )
+        normalized_expected = sorted(expected) if sort_values else [*expected]
+        normalized_current = sorted(current) if sort_values else [*current]
+        if normalized_current == normalized_expected:
+            return False
+        container[key] = FlextInfraUtilitiesToml.array(normalized_expected)
+        changes.append(change_message)
+        return True
+
+    @staticmethod
+    def merge_string_list(
+        container: TOMLDocument | Table,
+        key: str,
+        required: t.StrSequence,
+        changes: MutableSequence[str],
+        change_message: str,
+    ) -> bool:
+        """Ensure ``required`` values are present in a TOML string array."""
+        current = FlextInfraUtilitiesToml.as_string_list(
+            FlextInfraUtilitiesToml.get(container, key),
+        )
+        merged = sorted({*current, *required})
+        if current == merged:
+            return False
+        container[key] = FlextInfraUtilitiesToml.array(merged)
+        changes.append(change_message)
+        return True
 
     @staticmethod
     def read(path: Path) -> TOMLDocument | None:

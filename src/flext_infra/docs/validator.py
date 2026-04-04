@@ -12,7 +12,7 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
-from pydantic import JsonValue, ValidationError
+from pydantic import ValidationError
 
 from flext_core import FlextLogger
 from flext_infra import c, m, r, t, u
@@ -88,7 +88,9 @@ class FlextInfraDocValidator:
 
     def execute_command(self, params: m.Infra.DocsValidateInput) -> r[bool]:
         """CLI handler — accepts input model, delegates to validate."""
-        resolved_workspace = u.Infra.resolve_workspace(params)
+        resolved_workspace = u.Infra.resolve_workspace_root_or_cwd(
+            params.workspace_path
+        )
         result = self.validate(
             workspace_root=resolved_workspace,
             project=params.project,
@@ -112,7 +114,7 @@ class FlextInfraDocValidator:
         config = workspace_root / "docs/architecture/architecture_config.json"
         if not config.exists():
             return []
-        payload_result = u.Infra.read_json(config)
+        payload_result = u.Cli.json_read(config)
         if payload_result.is_failure:
             return None
         configured = FlextInfraDocValidator._extract_required_skills_list(
@@ -131,9 +133,11 @@ class FlextInfraDocValidator:
 
     @staticmethod
     def _extract_required_skills_list(
-        payload: Mapping[str, JsonValue],
-    ) -> list[JsonValue] | None:
+        payload: t.ValueOrModel,
+    ) -> t.ContainerList | None:
         """Extract the required_skills list from config payload. None if absent/invalid."""
+        if not u.is_mapping(payload):
+            return None
         docs_validation = payload.get("docs_validation")
         if not isinstance(docs_validation, Mapping):
             return None
@@ -187,8 +191,8 @@ class FlextInfraDocValidator:
                 status = c.Infra.Status.FAIL
                 message = f"missing adr references in skills: {', '.join(missing)}"
         wrote_todo = self._maybe_write_todo(scope, apply_mode=apply_mode)
-        adr_skills_json: list[JsonValue] = list(missing_adr_skills)
-        payload: Mapping[str, JsonValue] = {
+        adr_skills_json: list[t.Cli.JsonValue] = list(missing_adr_skills)
+        payload: t.Cli.JsonMapping = {
             c.Infra.ReportKeys.SUMMARY: {
                 c.Infra.ReportKeys.SCOPE: scope.name,
                 "result": status,
@@ -200,7 +204,7 @@ class FlextInfraDocValidator:
                 "todo_written": wrote_todo,
             },
         }
-        _ = u.Infra.write_json(
+        _ = u.Cli.json_write(
             scope.report_dir / "validate-summary.json",
             payload,
         )

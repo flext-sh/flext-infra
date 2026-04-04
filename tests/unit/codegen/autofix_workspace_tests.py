@@ -40,8 +40,8 @@ def test_flexcore_excluded_from_run(tmp_path: Path) -> None:
             "class TestProjBase:\n    pass\n",
         },
     )
-    fixer = FlextInfraCodegenFixer(tmp_path)
-    results = fixer.run()
+    fixer = FlextInfraCodegenFixer(workspace=tmp_path)
+    results = fixer.fix_workspace()
     project_names = [res.project for res in results]
     tm.that("flexcore" not in project_names, eq=True)
     tm.that(project_names, has="test-proj")
@@ -53,7 +53,7 @@ def test_project_without_src_returns_empty(tmp_path: Path) -> None:
     (project / "Makefile").touch()
     (project / "pyproject.toml").write_text("[project]\nname='no-src-proj'\n")
     (project / ".git").mkdir()
-    fixer = FlextInfraCodegenFixer(tmp_path)
+    fixer = FlextInfraCodegenFixer(workspace=tmp_path)
     result = fixer.fix_project(project)
     tm.that(result.project, eq="no-src-proj")
     tm.that(result.violations_fixed, eq=[])
@@ -71,7 +71,7 @@ def test_files_modified_tracks_affected_files(tmp_path: Path) -> None:
             "class TestProjBase:\n    pass\n",
         },
     )
-    fixer = FlextInfraCodegenFixer(tmp_path)
+    fixer = FlextInfraCodegenFixer(workspace=tmp_path)
     result = fixer.fix_project(project)
     modified_str = " ".join(result.files_modified)
     tm.that(modified_str, contains="__init__.py")

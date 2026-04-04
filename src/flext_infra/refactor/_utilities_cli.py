@@ -15,7 +15,7 @@ from collections.abc import Sequence
 from operator import itemgetter
 from pathlib import Path
 
-import orjson
+from pydantic import ValidationError
 
 from flext_core import FlextUtilities
 from flext_infra import c, m, t
@@ -74,10 +74,15 @@ class FlextInfraUtilitiesRefactorCli:
         impact_map = FlextInfraUtilitiesRefactorCli.build_impact_map(results)
         try:
             output_path.parent.mkdir(parents=True, exist_ok=True)
-            payload = (
-                orjson.dumps(impact_map, option=orjson.OPT_INDENT_2).decode() + "\n"
+            payload = t.Cli.JSON_LIST_ADAPTER.validate_python(impact_map)
+            json_bytes = t.Cli.JSON_LIST_ADAPTER.dump_json(
+                payload,
+                indent=2,
             )
-            _ = output_path.write_text(payload, encoding=c.Infra.Encoding.DEFAULT)
+            _ = output_path.write_text(
+                json_bytes.decode(c.Infra.Encoding.DEFAULT) + "\n",
+                encoding=c.Infra.Encoding.DEFAULT,
+            )
             FlextInfraUtilitiesRefactorCli.refactor_info(
                 f"Impact map written: {output_path}",
             )
@@ -85,7 +90,7 @@ class FlextInfraUtilitiesRefactorCli:
                 f"Impact map entries: {len(impact_map)}",
             )
             return True
-        except OSError:
+        except (OSError, ValidationError):
             FlextInfraUtilitiesRefactorCli.refactor_error(
                 f"Failed to write impact map {output_path}",
             )

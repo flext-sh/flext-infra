@@ -12,7 +12,6 @@ from tomlkit.toml_document import TOMLDocument
 from flext_core import r
 from flext_infra import (
     FlextInfraExtraPathsManager,
-    FlextInfraUtilitiesToml,
     extra_paths,
     t,
 )
@@ -231,13 +230,9 @@ def test_sync_one_edge_cases(
         return r[bool].ok(True)
 
     monkeypatch.setattr(
-        FlextInfraUtilitiesToml,
-        "read_document",
-        staticmethod(_read_document),
+        extra_paths.u.Cli, "toml_read_document", staticmethod(_read_document)
     )
     monkeypatch.setattr(
-        FlextInfraUtilitiesToml,
-        "write_document",
-        staticmethod(_write_document),
+        extra_paths.u.Cli, "toml_write_document", staticmethod(_write_document)
     )
     tm.ok(_manager().sync_one(pyproject, is_root=True, dry_run=dry_run))

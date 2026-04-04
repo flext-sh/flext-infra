@@ -12,10 +12,10 @@ from types import SimpleNamespace
 
 from _pytest.monkeypatch import MonkeyPatch
 from flext_tests import tm
-from tests import m, u
+from tests import m
 
 from flext_core import r
-from flext_infra import cli as release_cli, main as infra_main
+from flext_infra import main as infra_main, u as infra_u
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -39,18 +39,18 @@ def _patch_main_deps(
     def _workspace_root(hint: str) -> r[Path]:
         return effective_root if effective_root is not None else r[Path].ok(tmp_path)
 
-    monkeypatch.setattr(u.Infra, "workspace_root", staticmethod(_workspace_root))
+    monkeypatch.setattr(infra_u.Infra, "workspace_root", staticmethod(_workspace_root))
 
     def _parse_semver(version: str) -> r[str]:
         return r[str].ok(version)
 
-    monkeypatch.setattr(u.Infra, "parse_semver", staticmethod(_parse_semver))
+    monkeypatch.setattr(infra_u.Infra, "parse_semver", staticmethod(_parse_semver))
 
     def _current_workspace_version(root: Path) -> r[str]:
         return r[str].ok("1.0.0")
 
     monkeypatch.setattr(
-        u.Infra,
+        infra_u.Infra,
         "current_workspace_version",
         staticmethod(_current_workspace_version),
     )
@@ -58,30 +58,30 @@ def _patch_main_deps(
     def _bump_version(cur: str, kind: str) -> r[str]:
         return r[str].ok("1.1.0")
 
-    monkeypatch.setattr(u.Infra, "bump_version", staticmethod(_bump_version))
+    monkeypatch.setattr(infra_u.Infra, "bump_version", staticmethod(_bump_version))
 
     effective_release = release_result
     effective_capture = capture
 
-    class _Or:
-        def run_release(
-            self,
-            release_config: m.Infra.ReleaseOrchestratorConfig,
-        ) -> r[bool]:
-            if effective_capture is not None:
-                effective_capture.append(
-                    SimpleNamespace(
-                        phases=release_config.phases,
-                        push=release_config.push,
-                        dry_run=release_config.dry_run,
-                        project_names=release_config.project_names,
-                    ),
-                )
-            return (
-                effective_release if effective_release is not None else r[bool].ok(True)
+    def mock_run_release(
+        self: object,
+        release_config: m.Infra.ReleaseOrchestratorConfig,
+    ) -> r[bool]:
+        if effective_capture is not None:
+            effective_capture.append(
+                SimpleNamespace(
+                    phases=release_config.phases,
+                    push=release_config.push,
+                    dry_run=release_config.dry_run,
+                    project_names=release_config.project_names,
+                ),
             )
+        return effective_release if effective_release is not None else r[bool].ok(True)
 
-    monkeypatch.setattr(release_cli, "FlextInfraReleaseOrchestrator", _Or)
+    monkeypatch.setattr(
+        "flext_infra.release.orchestrator.FlextInfraReleaseOrchestrator.run_release",
+        mock_run_release,
+    )
 
 
 def _argv(tmp_path: Path, *extra: str) -> list[str]:
@@ -124,7 +124,7 @@ class TestReleaseMainFlow:
             return r[str].fail("invalid")
 
         monkeypatch.setattr(
-            u.Infra,
+            infra_u.Infra,
             "parse_semver",
             staticmethod(_parse_semver_fail),
         )

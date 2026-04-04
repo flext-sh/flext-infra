@@ -6,11 +6,12 @@ from pathlib import Path
 import pytest
 import tomlkit
 from flext_tests import tm
-from tests import t, u
+from tests import t
 from tomlkit.toml_document import TOMLDocument
 
 from flext_core import r
 from flext_infra import FlextInfraExtraPathsManager
+from flext_infra.deps import extra_paths as deps_extra_paths
 
 
 def _manager() -> FlextInfraExtraPathsManager:
@@ -158,7 +159,7 @@ class TestSyncOne:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         pyproject = tmp_path / "pyproject.toml"
-        pyproject.write_text("[tool.pyright]\nextraPaths = []\n", encoding="utf-8")
+        pyproject.write_text('[tool.pyright]\nextraPaths = ["old"]\n', encoding="utf-8")
 
         def _broken_write(
             _path: Path,
@@ -168,7 +169,7 @@ class TestSyncOne:
             return r[bool].fail("write error")
 
         monkeypatch.setattr(
-            u.Infra,
+            deps_extra_paths.u.Infra,
             "write_document",
             staticmethod(_broken_write),
         )

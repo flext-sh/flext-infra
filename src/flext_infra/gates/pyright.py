@@ -61,12 +61,12 @@ class FlextInfraPyrightGate(FlextInfraGate):
             diagnostics = u.Infra.deep_list(data, "generalDiagnostics")
             issues.extend(
                 m.Infra.Issue(
-                    file=u.Infra.pick(diag, "file", "?"),
+                    file=u.Infra.pick_str(diag, "file", "?"),
                     line=u.Infra.nested_int(diag, "range", "start", "line") + 1,
                     column=u.Infra.nested_int(diag, "range", "start", "character") + 1,
-                    code=u.Infra.pick(diag, "rule", ""),
-                    message=u.Infra.pick(diag, "message", ""),
-                    severity=u.Infra.pick(diag, "severity", c.Infra.ERROR),
+                    code=u.Infra.pick_str(diag, "rule"),
+                    message=u.Infra.pick_str(diag, "message"),
+                    severity=u.Infra.pick_str(diag, "severity", c.Infra.ERROR),
                 )
                 for diag in diagnostics
             )

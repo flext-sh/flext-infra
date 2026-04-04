@@ -1,4 +1,4 @@
-"""Detect type aliases outside canonical typings locations via rope.
+"""Detect loose typing declarations outside canonical typings locations.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -13,10 +13,11 @@ from flext_infra import DetectorContext, FlextInfraScanFileMixin, c, m, p
 
 _PEP695_RE = c.Infra.PEP695_RE
 _TYPEALIAS_ANNOT_RE = c.Infra.TYPEALIAS_ANNOT_RE
+_TYPING_FACTORY_ASSIGN_RE = c.Infra.TYPING_FACTORY_ASSIGN_RE
 
 
 class FlextInfraManualTypingAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
-    """Detect type aliases outside canonical typings files via rope."""
+    """Detect typing declarations outside canonical typings files via rope."""
 
     _rule_id: ClassVar[str] = "namespace.manual_typing_alias"
     _MESSAGE_TEMPLATE: ClassVar[str] = "Typing alias '{name}': {detail}"
@@ -27,7 +28,7 @@ class FlextInfraManualTypingAliasDetector(FlextInfraScanFileMixin, p.Infra.Scann
         cls,
         ctx: DetectorContext,
     ) -> Sequence[m.Infra.ManualTypingAliasViolation]:
-        """Detect type alias placement violations in a single file."""
+        """Detect typing declaration placement violations in a single file."""
         file_path = ctx.file_path
         rope_project = ctx.rope_project
         if (
@@ -58,6 +59,15 @@ class FlextInfraManualTypingAliasDetector(FlextInfraScanFileMixin, p.Infra.Scann
                     line=source[: hit.start()].count("\n") + 1,
                     name=hit.group(1),
                     detail="TypeAlias assignment must be centralized under typings scope",
+                )
+            )
+        for hit in _TYPING_FACTORY_ASSIGN_RE.finditer(source):
+            violations.append(
+                m.Infra.ManualTypingAliasViolation(
+                    file=str(file_path),
+                    line=source[: hit.start()].count("\n") + 1,
+                    name=hit.group(1),
+                    detail="Typing factory assignment must be centralized under typings scope",
                 )
             )
         return violations

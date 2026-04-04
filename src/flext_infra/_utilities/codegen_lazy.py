@@ -36,6 +36,13 @@ _TYPEVAR_ASSIGN_RE: re.Pattern[str] = re.compile(
     r"^(\w+)\s*=\s*(?:TypeVar|ParamSpec|TypeVarTuple)\s*\(",
     re.MULTILINE,
 )
+_ROOT_WRAPPER_SEGMENTS: frozenset[str] = frozenset({
+    c.Infra.Directories.DOCS,
+    c.Infra.Paths.DEFAULT_SRC_DIR,
+    c.Infra.Directories.TESTS,
+    c.Infra.Directories.EXAMPLES,
+    c.Infra.Directories.SCRIPTS,
+})
 
 _CORE_RUNTIME_ALIAS_TARGETS: dict[str, t.Infra.StrPair] = {
     "d": ("flext_core.decorators", "FlextDecorators"),
@@ -95,7 +102,7 @@ class FlextInfraUtilitiesCodegenLazyMerging:
             if str(subdir) not in dir_exports:
                 continue
             child_pkg = (
-                FlextInfraUtilitiesCodegenLazyScanning._package_name_from_rel_parts(
+                FlextInfraUtilitiesCodegenLazyScanning.package_name_from_rel_parts(
                     rel_parts=(subdir.name,),
                     current_pkg=current_pkg,
                     is_project_root=(pkg_dir / "pyproject.toml").exists(),
@@ -120,7 +127,7 @@ class FlextInfraUtilitiesCodegenLazyMerging:
             if not rel_parts:
                 continue
             descendant_pkg = (
-                FlextInfraUtilitiesCodegenLazyScanning._package_name_from_rel_parts(
+                FlextInfraUtilitiesCodegenLazyScanning.package_name_from_rel_parts(
                     rel_parts=rel_parts,
                     current_pkg=current_pkg,
                     is_project_root=(pkg_dir / "pyproject.toml").exists(),
@@ -163,7 +170,7 @@ class FlextInfraUtilitiesCodegenLazyMerging:
 
         if subdir.name != c.Infra.Dunders.INIT and subdir.name not in lazy_map:
             submodule = (
-                FlextInfraUtilitiesCodegenLazyScanning._package_name_from_rel_parts(
+                FlextInfraUtilitiesCodegenLazyScanning.package_name_from_rel_parts(
                     rel_parts=(subdir.name,),
                     current_pkg=current_pkg,
                     is_project_root=is_project_root,
@@ -333,7 +340,7 @@ class FlextInfraUtilitiesCodegenLazyScanning(
             return
 
         has_all = False
-        all_exports: list[str] = []
+        all_exports: MutableSequence[str] = []
         for (
             name,
             value_str,
@@ -343,7 +350,7 @@ class FlextInfraUtilitiesCodegenLazyScanning(
                 words = re.findall(r'["\']([^"\']+)["\']', value_str)
                 all_exports.extend(words)
 
-        if has_all and all_exports:
+        if has_all:
             for name in all_exports:
                 if name not in index and name not in _INFRA_ONLY_EXPORTS:
                     index[name] = (mod_path, name)
@@ -381,13 +388,7 @@ class FlextInfraUtilitiesCodegenLazyScanning(
             return ""
 
         root_segment = rel_parts[0]
-        if is_project_root and root_segment in {
-            c.Infra.Directories.DOCS,
-            c.Infra.Paths.DEFAULT_SRC_DIR,
-            c.Infra.Directories.TESTS,
-            c.Infra.Directories.EXAMPLES,
-            c.Infra.Directories.SCRIPTS,
-        }:
+        if is_project_root and root_segment in _ROOT_WRAPPER_SEGMENTS:
             return FlextInfraUtilitiesCodegenLazyScanning._rooted_module_path(
                 rel_parts=rel_parts,
                 current_pkg=current_pkg,
@@ -415,7 +416,7 @@ class FlextInfraUtilitiesCodegenLazyScanning(
         return ".".join(part for part in module_parts if part)
 
     @staticmethod
-    def _package_name_from_rel_parts(
+    def package_name_from_rel_parts(
         *,
         rel_parts: tuple[str, ...],
         current_pkg: str,
@@ -425,13 +426,7 @@ class FlextInfraUtilitiesCodegenLazyScanning(
         if not rel_parts:
             return current_pkg
         root_segment = rel_parts[0]
-        if is_project_root and root_segment in {
-            c.Infra.Directories.DOCS,
-            c.Infra.Paths.DEFAULT_SRC_DIR,
-            c.Infra.Directories.TESTS,
-            c.Infra.Directories.EXAMPLES,
-            c.Infra.Directories.SCRIPTS,
-        }:
+        if is_project_root and root_segment in _ROOT_WRAPPER_SEGMENTS:
             return FlextInfraUtilitiesCodegenLazyScanning._rooted_module_path(
                 rel_parts=rel_parts,
                 current_pkg=current_pkg,
@@ -693,20 +688,10 @@ class FlextInfraUtilitiesCodegenLazyAliases:
         package_path = Path(*package_name.split("."))
         root_segment = package_path.parts[0] if package_path.parts else ""
         candidates: MutableSequence[Path] = []
-        if root_segment in {
-            c.Infra.Directories.DOCS,
-            c.Infra.Directories.TESTS,
-            c.Infra.Directories.EXAMPLES,
-            c.Infra.Directories.SCRIPTS,
-        }:
+        if root_segment in _ROOT_WRAPPER_SEGMENTS:
             candidates.append(base_dir / package_path)
         candidates.append(base_dir / c.Infra.Paths.DEFAULT_SRC_DIR / package_path)
-        if root_segment not in {
-            c.Infra.Directories.DOCS,
-            c.Infra.Directories.TESTS,
-            c.Infra.Directories.EXAMPLES,
-            c.Infra.Directories.SCRIPTS,
-        }:
+        if root_segment not in _ROOT_WRAPPER_SEGMENTS:
             candidates.extend([
                 base_dir / c.Infra.Directories.DOCS / package_path,
                 base_dir / c.Infra.Directories.TESTS / package_path,
@@ -719,23 +704,13 @@ class FlextInfraUtilitiesCodegenLazyAliases:
         package_path = Path(*package_name.split("."))
         root_segment = package_path.parts[0] if package_path.parts else ""
         patterns: MutableSequence[str] = []
-        if root_segment in {
-            c.Infra.Directories.DOCS,
-            c.Infra.Directories.TESTS,
-            c.Infra.Directories.EXAMPLES,
-            c.Infra.Directories.SCRIPTS,
-        }:
+        if root_segment in _ROOT_WRAPPER_SEGMENTS:
             patterns.append(str(Path("*") / package_path))
         else:
             patterns.append(
                 str(Path("*") / c.Infra.Paths.DEFAULT_SRC_DIR / package_path)
             )
-        if root_segment not in {
-            c.Infra.Directories.DOCS,
-            c.Infra.Directories.TESTS,
-            c.Infra.Directories.EXAMPLES,
-            c.Infra.Directories.SCRIPTS,
-        }:
+        if root_segment not in _ROOT_WRAPPER_SEGMENTS:
             patterns.extend([
                 str(Path("*") / c.Infra.Directories.DOCS / package_path),
                 str(Path("*") / c.Infra.Directories.TESTS / package_path),

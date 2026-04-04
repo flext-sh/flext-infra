@@ -4,13 +4,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 
 
 class FlextInfraExtraPathsPyrefly:
     """Pyrefly search-path and project-includes computation."""
 
-    def _pyrefly_path_rules(self) -> m.Infra.PyreflyConfig.PathRulesConfig:
+    def _pyrefly_path_rules(
+        self: p.Infra.ExtraPathsResolver,
+    ) -> m.Infra.PyreflyConfig.PathRulesConfig:
         return self._tool_config.tools.pyrefly.path_rules
 
     @staticmethod
@@ -37,7 +39,7 @@ class FlextInfraExtraPathsPyrefly:
         return project_root
 
     def pyrefly_search_paths(
-        self,
+        self: p.Infra.ExtraPathsResolver,
         *,
         project_dir: Path,
         is_root: bool,
@@ -88,7 +90,7 @@ class FlextInfraExtraPathsPyrefly:
         return sorted(paths)
 
     def pyrefly_project_includes(
-        self,
+        self: p.Infra.ExtraPathsResolver,
         *,
         project_dir: Path,
         is_root: bool,

@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
+import re
 from collections import defaultdict
 from collections.abc import MutableMapping, Sequence
 from pathlib import Path
 from typing import ClassVar
 
-import tomlkit
-from tomlkit.exceptions import TOMLKitError
-
+from flext_cli import u
 from flext_core import FlextUtilities
 from flext_infra import (
     FlextInfraNamespaceFacadeScanner,
@@ -53,10 +52,11 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
         if not pyproject_path.exists():
             return {}
         try:
-            doc = tomlkit.parse(
-                pyproject_path.read_text(encoding=c.Infra.Encoding.DEFAULT),
-            )
-        except (OSError, TOMLKitError):
+            raw = pyproject_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+        except OSError:
+            return {}
+        doc = u.Cli.toml_parse_text(raw)
+        if doc is None:
             return {}
         dep_names = (
             FlextInfraUtilitiesRefactorNamespaceFacades._extract_dep_names_from_doc(
@@ -81,7 +81,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
     @staticmethod
     def _extract_dep_names_from_doc(
         *,
-        doc: tomlkit.TOMLDocument,
+        doc: t.Cli.TomlDocument,
     ) -> t.StrSequence:
         dep_names: t.Infra.StrSet = set()
         raw: t.Infra.TomlData = doc.unwrap()
@@ -247,26 +247,73 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
         class_name: str,
         base_chains: t.StrSequenceMapping | None = None,
     ) -> None:
-        content = target_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+        lines = target_path.read_text(encoding=c.Infra.Encoding.DEFAULT).splitlines()
+        base_class = FlextInfraUtilitiesRefactorNamespaceFacades._base_class_for_family(
+            family=family,
+            base_chains=base_chains,
+        )
+        base_import = (
+            FlextInfraUtilitiesRefactorNamespaceFacades._base_import_for_family(
+                family=family,
+                base_chains=base_chains,
+            )
+        )
+        canonical_header = f"class {class_name}({base_class}):"
         mutated = False
-        header = f"class {class_name}("
-        if header not in content and f"class {class_name}:" not in content:
-            base_class = (
-                FlextInfraUtilitiesRefactorNamespaceFacades._base_class_for_family(
-                    family=family,
-                    base_chains=base_chains,
-                )
-            )
-            content = (
-                content.rstrip() + f"\n\nclass {class_name}({base_class}):\n    pass\n"
-            )
+        if base_import not in lines:
+            insert_idx = 0
+            if c.Infra.SourceCode.FUTURE_ANNOTATIONS in lines:
+                insert_idx = lines.index(c.Infra.SourceCode.FUTURE_ANNOTATIONS) + 1
+                while insert_idx < len(lines) and not lines[insert_idx].strip():
+                    insert_idx += 1
+            lines.insert(insert_idx, "")
+            lines.insert(insert_idx, base_import)
+            mutated = True
+        class_line_indices = [
+            idx for idx, line in enumerate(lines) if re.match(r"^class\s+\w+", line)
+        ]
+        current_names: t.Infra.StrSet = set()
+        for idx in class_line_indices:
+            match = re.match(r"^class\s+(?P<name>\w+)", lines[idx])
+            if match is not None:
+                current_names.add(match.group("name"))
+        if class_line_indices:
+            if class_name not in current_names and len(class_line_indices) == 1:
+                lines[class_line_indices[0]] = canonical_header
+                mutated = True
+            elif class_name in current_names:
+                for idx in class_line_indices:
+                    if re.match(rf"^class\s+{re.escape(class_name)}\b", lines[idx]):
+                        if lines[idx] != canonical_header:
+                            lines[idx] = canonical_header
+                            mutated = True
+                        break
+            else:
+                lines.extend(["", canonical_header, "    pass"])
+                mutated = True
+        else:
+            lines.extend(["", canonical_header, "    pass"])
             mutated = True
         alias_line = f"{family} = {class_name}"
-        if alias_line not in content:
-            content = content.rstrip() + f"\n\n{alias_line}\n"
+        alias_index = next(
+            (
+                idx
+                for idx, line in enumerate(lines)
+                if re.match(rf"^{re.escape(family)}\s*=", line)
+            ),
+            -1,
+        )
+        if alias_index < 0:
+            lines.extend(["", alias_line])
+            mutated = True
+        elif lines[alias_index] != alias_line:
+            lines[alias_index] = alias_line
             mutated = True
         if mutated:
-            _ = target_path.write_text(content, encoding=c.Infra.Encoding.DEFAULT)
+            _ = target_path.write_text(
+                "\n".join(lines).rstrip() + "\n",
+                encoding=c.Infra.Encoding.DEFAULT,
+            )
 
 
 __all__ = ["FlextInfraUtilitiesRefactorNamespaceFacades"]

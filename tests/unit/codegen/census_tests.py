@@ -20,7 +20,7 @@ from flext_infra import FlextInfraCodegenCensus
 
 @pytest.fixture
 def census(tmp_path: Path) -> FlextInfraCodegenCensus:
-    return FlextInfraCodegenCensus(workspace_root=tmp_path)
+    return FlextInfraCodegenCensus(workspace=tmp_path)
 
 
 class TestParseViolationValid:

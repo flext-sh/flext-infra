@@ -18,17 +18,17 @@ class TestConfigFixerProcessFile:
     """Test FlextInfraConfigFixer.process_file."""
 
     def test_process_file_missing_file(self, tmp_path: Path) -> None:
-        fixer = FlextInfraConfigFixer(workspace_root=tmp_path)
+        fixer = FlextInfraConfigFixer(workspace=tmp_path)
         tm.fail(fixer.process_file(tmp_path / "missing.toml"), has="failed to read")
 
     def test_process_file_invalid_toml(self, tmp_path: Path) -> None:
-        fixer = FlextInfraConfigFixer(workspace_root=tmp_path)
+        fixer = FlextInfraConfigFixer(workspace=tmp_path)
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text("invalid [[[")
         tm.fail(fixer.process_file(pyproject), has="TOML parse failed")
 
     def test_process_file_no_pyrefly_section(self, tmp_path: Path) -> None:
-        fixer = FlextInfraConfigFixer(workspace_root=tmp_path)
+        fixer = FlextInfraConfigFixer(workspace=tmp_path)
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text("[tool]\nother = true\n")
         result = fixer.process_file(pyproject)
@@ -36,7 +36,7 @@ class TestConfigFixerProcessFile:
         tm.that(result.value, eq=[])
 
     def test_process_file_dry_run_no_write(self, tmp_path: Path) -> None:
-        fixer = FlextInfraConfigFixer(workspace_root=tmp_path)
+        fixer = FlextInfraConfigFixer(workspace=tmp_path)
         pyproject = tmp_path / "pyproject.toml"
         original = "[tool.pyrefly]\nsearch-path = []\n"
         pyproject.write_text(original)
@@ -49,21 +49,21 @@ class TestConfigFixerRun:
     """Test FlextInfraConfigFixer.run."""
 
     def test_run_with_empty_projects(self, tmp_path: Path) -> None:
-        fixer = FlextInfraConfigFixer(workspace_root=tmp_path)
+        fixer = FlextInfraConfigFixer(workspace=tmp_path)
         result = fixer.run([])
         tm.ok(result)
         tm.that(len(result.value), gte=0)
 
     def test_run_with_nonexistent_projects(self, tmp_path: Path) -> None:
-        fixer = FlextInfraConfigFixer(workspace_root=tmp_path)
+        fixer = FlextInfraConfigFixer(workspace=tmp_path)
         tm.ok(fixer.run(["nonexistent"]))
 
     def test_run_with_dry_run_flag(self, tmp_path: Path) -> None:
-        fixer = FlextInfraConfigFixer(workspace_root=tmp_path)
+        fixer = FlextInfraConfigFixer(workspace=tmp_path)
         tm.ok(fixer.run([], dry_run=True))
 
     def test_run_with_verbose_flag(self, tmp_path: Path) -> None:
-        fixer = FlextInfraConfigFixer(workspace_root=tmp_path)
+        fixer = FlextInfraConfigFixer(workspace=tmp_path)
         tm.ok(fixer.run([], verbose=True))
 
 
@@ -71,19 +71,19 @@ class TestConfigFixerFindPyprojectFiles:
     """Test FlextInfraConfigFixer.find_pyproject_files."""
 
     def test_find_pyproject_files_empty_workspace(self, tmp_path: Path) -> None:
-        fixer = FlextInfraConfigFixer(workspace_root=tmp_path)
+        fixer = FlextInfraConfigFixer(workspace=tmp_path)
         result = fixer.find_pyproject_files()
         tm.ok(result)
         tm.that(len(result.value), gte=0)
 
     def test_find_pyproject_files_with_specific_paths(self, tmp_path: Path) -> None:
-        fixer = FlextInfraConfigFixer(workspace_root=tmp_path)
+        fixer = FlextInfraConfigFixer(workspace=tmp_path)
         result = fixer.find_pyproject_files(project_paths=[tmp_path / "p1"])
         tm.ok(result)
         tm.that(len(result.value), gte=0)
 
     def test_find_pyproject_files_with_project_paths(self, tmp_path: Path) -> None:
-        fixer = FlextInfraConfigFixer(workspace_root=tmp_path)
+        fixer = FlextInfraConfigFixer(workspace=tmp_path)
         proj1 = tmp_path / "proj1"
         proj2 = tmp_path / "proj2"
         proj1.mkdir()
@@ -97,7 +97,7 @@ class TestConfigFixerExecute:
     """Test FlextInfraConfigFixer.execute method."""
 
     def test_execute_returns_failure(self, tmp_path: Path) -> None:
-        fixer = FlextInfraConfigFixer(workspace_root=tmp_path)
+        fixer = FlextInfraConfigFixer(workspace=tmp_path)
         tm.fail(fixer.execute(), has="Use run()")
 
 
@@ -105,7 +105,7 @@ class TestConfigFixerFixSearchPaths:
     """Test FlextInfraConfigFixer._fix_search_paths_tk method."""
 
     def test_fix_search_paths_normalizes_root_paths(self, tmp_path: Path) -> None:
-        fixer = FlextInfraConfigFixer(workspace_root=tmp_path)
+        fixer = FlextInfraConfigFixer(workspace=tmp_path)
         (tmp_path / "typings" / "generated").mkdir(parents=True)
         pyrefly = tomlkit.document()
         pyrefly["search-path"] = ["../typings/generated", "../typings"]
@@ -113,14 +113,14 @@ class TestConfigFixerFixSearchPaths:
         assert len(fixes) > 0
 
     def test_fix_search_paths_removes_nonexistent(self, tmp_path: Path) -> None:
-        fixer = FlextInfraConfigFixer(workspace_root=tmp_path)
+        fixer = FlextInfraConfigFixer(workspace=tmp_path)
         pyrefly = tomlkit.document()
         pyrefly["search-path"] = ["nonexistent"]
         fixes = fixer._fix_search_paths_tk(pyrefly, tmp_path)
         assert len(fixes) > 0
 
     def test_fix_search_paths_skips_non_list(self, tmp_path: Path) -> None:
-        fixer = FlextInfraConfigFixer(workspace_root=tmp_path)
+        fixer = FlextInfraConfigFixer(workspace=tmp_path)
         pyrefly = tomlkit.document()
         pyrefly["search-path"] = "not-a-list"
         fixes = fixer._fix_search_paths_tk(pyrefly, tmp_path)
@@ -131,7 +131,7 @@ class TestConfigFixerRemoveIgnoreSubConfig:
     """Test FlextInfraConfigFixer._remove_ignore_sub_config_tk method."""
 
     def test_remove_ignore_sub_config_removes_ignored(self, tmp_path: Path) -> None:
-        fixer = FlextInfraConfigFixer(workspace_root=tmp_path)
+        fixer = FlextInfraConfigFixer(workspace=tmp_path)
         pyrefly = tomlkit.document()
         pyrefly["sub-config"] = [
             {"matches": "*.py", "ignore": True},
@@ -143,7 +143,7 @@ class TestConfigFixerRemoveIgnoreSubConfig:
         tm.that(str(sub_config), contains="*.pyi")
 
     def test_remove_ignore_sub_config_skips_non_list(self, tmp_path: Path) -> None:
-        fixer = FlextInfraConfigFixer(workspace_root=tmp_path)
+        fixer = FlextInfraConfigFixer(workspace=tmp_path)
         pyrefly = tomlkit.document()
         pyrefly["sub-config"] = "not-a-list"
         fixes = fixer._remove_ignore_sub_config_tk(pyrefly)
@@ -154,7 +154,7 @@ class TestConfigFixerEnsureProjectExcludes:
     """Test FlextInfraConfigFixer._ensure_project_excludes_tk method."""
 
     def test_ensure_project_excludes_adds_missing(self, tmp_path: Path) -> None:
-        fixer = FlextInfraConfigFixer(workspace_root=tmp_path)
+        fixer = FlextInfraConfigFixer(workspace=tmp_path)
         pyrefly = tomlkit.document()
         pyrefly["project-excludes"] = tomlkit.array()
         fixes = fixer._ensure_project_excludes_tk(pyrefly)
@@ -163,7 +163,7 @@ class TestConfigFixerEnsureProjectExcludes:
         assert str(project_excludes)
 
     def test_ensure_project_excludes_syncs_from_rules(self, tmp_path: Path) -> None:
-        fixer = FlextInfraConfigFixer(workspace_root=tmp_path)
+        fixer = FlextInfraConfigFixer(workspace=tmp_path)
         pyrefly = tomlkit.document()
         pyrefly["project-excludes"] = ["**/*_pb2*.py", "**/*_pb2_grpc*.py"]
         fixes = fixer._ensure_project_excludes_tk(pyrefly)
@@ -175,7 +175,7 @@ class TestConfigFixerToArray:
     """Test FlextInfraConfigFixer._to_array static method."""
 
     def test_to_array_creates_array(self, tmp_path: Path) -> None:
-        fixer = FlextInfraConfigFixer(workspace_root=tmp_path)
+        fixer = FlextInfraConfigFixer(workspace=tmp_path)
         items = ["a", "b", "c"]
         arr = fixer._to_array(items)
         tm.that(len(arr), eq=3)

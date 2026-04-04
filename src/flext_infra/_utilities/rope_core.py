@@ -1,4 +1,3 @@
-# pyright: reportMissingTypeStubs=false
 """Shared Rope lifecycle and validation helpers."""
 
 from __future__ import annotations

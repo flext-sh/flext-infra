@@ -19,9 +19,24 @@ from flext_infra import c, r, t, u
 class FlextInfraDependencyPathSyncRewrite:
     """TOML rewrite operations for PEP 621, uv sources/workspace, and Poetry.
 
-    Static helpers (extract_dep_name, _target_path) are resolved via MRO
+    Static helpers (extract_dep_name, target_path) are resolved via MRO
     from the main FlextInfraDependencyPathSync class.
     """
+
+    @staticmethod
+    def extract_dep_name(raw_path: str) -> str:
+        """Extract dependency name from path string."""
+        normalized = raw_path.strip().lstrip("/").removeprefix("./")
+        for prefix in (f"{c.Infra.FLEXT_DEPS_DIR}/", "../"):
+            normalized = normalized.removeprefix(prefix)
+        return normalized
+
+    @staticmethod
+    def target_path(dep_name: str, *, is_root: bool, mode: str) -> str:
+        """Compute target path for dependency based on mode and location."""
+        if mode == c.Infra.ReportKeys.WORKSPACE:
+            return dep_name if is_root else f"../{dep_name}"
+        return f"{c.Infra.FLEXT_DEPS_DIR}/{dep_name}"
 
     @staticmethod
     def _mapping_str_value(
@@ -107,14 +122,12 @@ class FlextInfraDependencyPathSyncRewrite:
             if source_key in internal_names and source_key not in internal_deps:
                 del sources[source_key]
                 changes.append(f"  uv.sources: removed stale source {source_key}")
-        from .path_sync import FlextInfraDependencyPathSync
-
         for dep_name in sorted(internal_deps):
             expected: t.Infra.ContainerDict
             if mode == c.Infra.ReportKeys.WORKSPACE:
                 expected = {"workspace": True}
             else:
-                path_value = FlextInfraDependencyPathSync._target_path(
+                path_value = self.target_path(
                     dep_name,
                     is_root=is_root,
                     mode=mode,
@@ -163,8 +176,6 @@ class FlextInfraDependencyPathSyncRewrite:
         is_root: bool,
         mode: str,
     ) -> t.StrSequence:
-        from .path_sync import FlextInfraDependencyPathSync
-
         tool_section = u.Infra.get_table(doc, c.Infra.TOOL)
         if tool_section is None:
             return []
@@ -184,8 +195,8 @@ class FlextInfraDependencyPathSyncRewrite:
             raw_path = value_map[c.Infra.PATH]
             if not isinstance(raw_path, str) or not raw_path.strip():
                 continue
-            dep_name = FlextInfraDependencyPathSync.extract_dep_name(raw_path)
-            new_path = FlextInfraDependencyPathSync._target_path(
+            dep_name = FlextInfraDependencyPathSyncRewrite.extract_dep_name(raw_path)
+            new_path = FlextInfraDependencyPathSyncRewrite.target_path(
                 dep_name,
                 is_root=is_root,
                 mode=mode,

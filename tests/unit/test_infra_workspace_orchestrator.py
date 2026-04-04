@@ -19,7 +19,7 @@ def _cmd_out(exit_code: int = 0) -> m.Infra.CommandOutput:
 
 @pytest.fixture
 def orchestrator() -> FlextInfraOrchestratorService:
-    return FlextInfraOrchestratorService()
+    return FlextInfraOrchestratorService(verb="check")
 
 
 class TestOrchestratorBasic:
@@ -39,7 +39,7 @@ class TestOrchestratorBasic:
         tm.ok(orchestrator.orchestrate(["p-a", "p-b"], "test", fail_fast=False), len=2)
 
     def test_execute_returns_failure(self) -> None:
-        tm.fail(FlextInfraOrchestratorService().execute())
+        tm.fail(FlextInfraOrchestratorService(verb="check").execute())
 
     def test_empty_project_list(
         self,
@@ -110,7 +110,7 @@ class TestOrchestratorFailures:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        orchestrator = FlextInfraOrchestratorService()
+        orchestrator = FlextInfraOrchestratorService(verb="test")
         call_count = [0]
 
         def _run_project(
@@ -138,7 +138,7 @@ class TestOrchestratorGateNormalization:
         self,
         tmp_path_factory: pytest.TempPathFactory,
     ) -> None:
-        orchestrator = FlextInfraOrchestratorService()
+        orchestrator = FlextInfraOrchestratorService(verb="check")
         go_project = tmp_path_factory.mktemp("go-project")
         (go_project / "go.mod").write_text("module example.org/go-project\n")
 
@@ -157,7 +157,7 @@ class TestOrchestratorGateNormalization:
         self,
         tmp_path_factory: pytest.TempPathFactory,
     ) -> None:
-        orchestrator = FlextInfraOrchestratorService()
+        orchestrator = FlextInfraOrchestratorService(verb="check")
         python_project = tmp_path_factory.mktemp("python-project")
         (python_project / "pyproject.toml").write_text(
             "[project]\nname='python-project'\n",

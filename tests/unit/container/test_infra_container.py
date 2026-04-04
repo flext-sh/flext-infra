@@ -52,7 +52,7 @@ class TestInfraMroPattern:
 
     def test_io_methods_available(self) -> None:
         """Verify IO methods are accessible via u.Infra MRO."""
-        assert callable(u.Infra.read_json)
+        assert callable(getattr(u.Cli, "toml_read_json"))
         assert callable(u.Infra.write_json)
 
     def test_subprocess_methods_available(self) -> None:
@@ -94,8 +94,8 @@ class TestInfraMroPattern:
 
     def test_toml_methods_available(self) -> None:
         """Verify TOML methods are accessible via u.Infra MRO."""
-        assert callable(u.Infra.ensure_table)
-        assert callable(u.Infra.table_string_keys)
+        assert callable(u.Cli.toml_ensure_table)
+        assert callable(u.Cli.toml_table_string_keys)
 
     def test_patterns_available(self) -> None:
         """Verify pattern constants are accessible via u.Infra MRO."""

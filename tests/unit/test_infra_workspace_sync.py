@@ -49,7 +49,7 @@ def _setup_lock_fail(_svc: _S, monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def _setup_gen_fail(svc: _S, _monkeypatch: pytest.MonkeyPatch) -> None:
-    svc._generator = _stub_gen("Generation failed", fail=True)
+    svc.generator = _stub_gen("Generation failed", fail=True)
 
 
 def _setup_gitignore_fail(_svc: _S, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -62,7 +62,7 @@ def _setup_gitignore_fail(_svc: _S, monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.fixture
 def svc(tmp_path: Path) -> _S:
-    return _S(canonical_root=tmp_path)
+    return _S(canonical_root=tmp_path, workspace=tmp_path)
 
 
 @pytest.mark.parametrize(
@@ -80,7 +80,7 @@ def test_sync_success_scenarios(
         tf.create_in(base_mk, "base.mk", tmp_path)
     if gitignore:
         tf.create_in(gitignore, ".gitignore", tmp_path)
-    tm.ok(svc.sync(workspace_root=tmp_path))
+    tm.ok(svc.execute())
     tm.that((tmp_path / "base.mk").exists(), eq=True)
 
 
@@ -93,7 +93,10 @@ def test_sync_success_scenarios(
     ids=["missing-project-root", "project-root-not-found"],
 )
 def test_sync_root_validation(project_root: Path | None, expected_error: str) -> None:
-    tm.fail(_S().sync(workspace_root=project_root), has=expected_error)
+    if project_root is None:
+        tm.fail(_S(workspace=Path()).execute(), has="does not exist")
+    else:
+        tm.fail(_S(workspace=project_root).execute(), has=expected_error)
 
 
 @pytest.mark.parametrize(
@@ -124,27 +127,20 @@ def test_cli_forwards_canonical_root(
 ) -> None:
     captured: dict[str, Path | None] = {}
 
-    def _sync(
+    def _execute(
         self: _S,
-        _source: str | None = None,
-        _target: str | None = None,
-        *,
-        workspace_root: Path | None = None,
-        config: m.Infra.BaseMkConfig | None = None,
-        canonical_root: Path | None = None,
     ) -> r[m.Infra.SyncResult]:
-        del self, _source, _target, config
-        captured["workspace_root"] = workspace_root
-        captured["canonical_root"] = canonical_root
+        captured["workspace_root"] = self.workspace_root
+        captured["canonical_root"] = self.canonical_root
         return r[m.Infra.SyncResult].ok(
             m.Infra.SyncResult(
                 files_changed=0,
-                source=workspace_root or Path(),
-                target=workspace_root or Path(),
+                source=self.workspace_root or Path(),
+                target=self.workspace_root or Path(),
             ),
         )
 
-    monkeypatch.setattr(_S, "sync", _sync)
+    monkeypatch.setattr(_S, "execute", _execute)
     monkeypatch.setattr(
         sys,
         "argv",
@@ -178,14 +174,14 @@ def test_sync_error_scenarios(
     expected_error: str,
 ) -> None:
     setup_fn(svc, monkeypatch)
-    tm.fail(svc.sync(workspace_root=tmp_path), has=expected_error)
+    tm.fail(svc.execute(), has=expected_error)
 
 
 def test_gitignore_sync_failure(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    service = _S()
+    service = _S(workspace=tmp_path)
 
     def _ensure(*_args: t.Scalar, **_kwargs: t.Scalar) -> r[bool]:
         return r[bool].fail(".gitignore sync failed")
@@ -195,14 +191,14 @@ def test_gitignore_sync_failure(
         "_ensure_gitignore_entries",
         _ensure,
     )
-    tm.fail(service.sync(workspace_root=tmp_path), has=".gitignore sync failed")
+    tm.fail(service.execute(), has=".gitignore sync failed")
 
 
 def test_sync_updates_workspace_makefile_for_workspace_root(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    service = _S(canonical_root=tmp_path)
+    service = _S(canonical_root=tmp_path, workspace=tmp_path)
     calls: list[str] = []
 
     def _workspace_makefile(_workspace_root: Path) -> r[bool]:
@@ -218,7 +214,7 @@ def test_sync_updates_workspace_makefile_for_workspace_root(
 
     monkeypatch.setattr(service, "_sync_workspace_makefile", _workspace_makefile)
     monkeypatch.setattr(service, "_sync_project_makefile", _project_makefile)
-    tm.ok(service.sync(workspace_root=tmp_path))
+    tm.ok(service.execute())
     tm.that(calls, eq=["workspace"])
 
 
@@ -295,7 +291,7 @@ def test_sync_updates_project_makefile_for_standalone_project(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    service = _S()
+    service = _S(workspace=tmp_path)
     (tmp_path / "pyproject.toml").write_text(
         "[project]\nname='demo'\n", encoding="utf-8"
     )
@@ -314,7 +310,7 @@ def test_sync_updates_project_makefile_for_standalone_project(
 
     monkeypatch.setattr(service, "_sync_workspace_makefile", _workspace_makefile)
     monkeypatch.setattr(service, "_sync_project_makefile", _project_makefile)
-    tm.ok(service.sync(workspace_root=tmp_path))
+    tm.ok(service.execute())
     tm.that(calls, eq=["project"])
 
 
@@ -330,7 +326,7 @@ def test_sync_regenerates_project_makefile_without_legacy_passthrough(
         encoding="utf-8",
     )
 
-    tm.ok(_S().sync(workspace_root=tmp_path))
+    tm.ok(_S(workspace=tmp_path).execute())
 
     makefile_text = (tmp_path / "Makefile").read_text(encoding="utf-8")
     tm.that("custom-target" in makefile_text, eq=False)
@@ -375,7 +371,7 @@ def test_sync_basemk_scenarios(
 ) -> None:
     service = _S()
     tf.create_in("# Same content\n", "base.mk", tmp_path)
-    service._generator = _stub_gen(generated, fail=not ok_result)
+    service.generator = _stub_gen(generated, fail=not ok_result)
     result = service._sync_basemk(tmp_path, None)
     if ok_result:
         tm.ok(result, eq=expected)

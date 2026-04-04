@@ -2,31 +2,28 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-from flext_infra import FlextInfraBaseMkGenerator, m, u
-
-if TYPE_CHECKING:
-    import typer
-
-_R = u.Infra.route  # shorthand
+from flext_cli import cli as cli_service
+from flext_infra import FlextInfraBaseMkGenerator, m, t
 
 
 class FlextInfraCliBasemk:
     """Basemk CLI group — composed into FlextInfraCli via MRO."""
 
-    def register_basemk(self, app: typer.Typer) -> None:
+    def register_basemk(self, app: t.Cli.TyperApp) -> None:
         """Register basemk commands on the given Typer app."""
-        u.Infra.register_routes(
+        cli_service.register_result_routes(
             app,
             [
-                _R(
-                    "generate",
-                    "Generate base.mk from templates",
-                    m.Infra.BaseMkGenerateInput,
-                    FlextInfraBaseMkGenerator().execute_command,
-                    fail_msg="base.mk generation failed",
-                    success_msg="base.mk generated",
+                m.Cli.ResultCommandRoute(
+                    name="generate",
+                    help_text="Generate base.mk from templates",
+                    model_cls=m.Infra.BaseMkGenerateInput,
+                    handler=FlextInfraBaseMkGenerator().execute_command,
+                    failure_message="base.mk generation failed",
+                    success_message="base.mk generated",
                 ),
             ],
         )
+
+
+__all__ = ["FlextInfraCliBasemk"]

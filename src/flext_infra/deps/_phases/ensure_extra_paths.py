@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import tomlkit
-
 from flext_infra import FlextInfraExtraPathsManager, t
 
 
@@ -18,7 +16,7 @@ class FlextInfraEnsureExtraPathsPhase:
 
     def apply(
         self,
-        doc: tomlkit.TOMLDocument,
+        doc: t.Cli.TomlDocument,
         *,
         path: Path,
         is_root: bool,

@@ -1,7 +1,8 @@
-"""YAML loading and config normalization helpers for infrastructure.
+"""Infra-specific YAML helpers (tool_config.yml caching).
 
-Centralizes YAML-related helpers previously defined as module-level
-functions in ``flext_infra.validate.skill_validator``.
+Generic YAML operations live in ``flext_cli._utilities.yaml`` and are
+accessible via ``u.Cli.yaml_*``.  This module only contains the
+infra-specific ``load_tool_config`` cached accessor.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -9,55 +10,31 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from importlib.resources import files
 from pathlib import Path
 
 from pydantic import ValidationError
-from yaml import YAMLError, safe_load
 
-from flext_core import r, u
+from flext_cli import FlextCliUtilities
+from flext_core import r
 from flext_infra import c, m, t
 
 
 class FlextInfraUtilitiesYaml:
-    """YAML loading and validation helpers.
-
-    Usage via namespace::
-
-        from flext_infra import u
-
-        data = u.Infra.safe_load_yaml(path)
-    """
+    """Infra-specific YAML helpers — typed wrappers + tool_config.yml caching."""
 
     @staticmethod
-    def safe_load_yaml(path: Path) -> Mapping[str, t.Infra.InfraValue]:
-        """Load YAML file safely, returning empty mapping on missing/invalid.
+    def yaml_load_infra_mapping(path: Path) -> t.Infra.ContainerDict:
+        """Load YAML → ``Mapping[str, InfraValue]`` (infra-typed).
 
-        Args:
-            path: Path to the YAML file to load.
-
-        Returns:
-            Parsed YAML data as a mapping, or empty dict on missing/invalid.
-
-        Raises:
-            TypeError: If the parsed content is not a mapping.
-
+        Delegates to ``u.Cli.yaml_load_mapping`` and normalizes the result
+        to the infra type system via ``normalize_str_mapping``.
         """
-        raw = path.read_text(encoding=c.Infra.Encoding.DEFAULT)
-        parsed: t.Infra.InfraValue | None = safe_load(raw)
-        if parsed is None:
-            return {}
-        if not u.is_mapping(parsed):
-            msg = f"rules.yml must be a mapping: {path}"
-            raise TypeError(msg)
+        raw = FlextCliUtilities.Cli.yaml_load_mapping(path)
         try:
-            return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
-                parsed,
-            )
-        except ValidationError as exc:
-            msg = f"rules.yml must be a mapping: {path}: {exc}"
-            raise TypeError(msg) from exc
+            return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(raw)
+        except ValidationError:
+            return {}
 
     _tool_config_cache: r[m.Infra.ToolConfigDocument] | None = None
 
@@ -70,26 +47,22 @@ class FlextInfraUtilitiesYaml:
             raw_text = (
                 files("flext_infra.deps")
                 .joinpath("tool_config.yml")
-                .read_text(
-                    encoding=c.Infra.Encoding.DEFAULT,
-                )
+                .read_text(encoding=c.Infra.Encoding.DEFAULT)
             )
-            parsed_raw: t.Infra.InfraValue | None = safe_load(raw_text)
-            if not isinstance(parsed_raw, Mapping):
+            parsed = FlextCliUtilities.Cli.yaml_parse(raw_text)
+            if parsed.is_failure:
                 result = r[m.Infra.ToolConfigDocument].fail(
-                    "tool_config.yml must contain a top-level mapping",
+                    parsed.error or "tool_config.yml parse failed",
                 )
                 FlextInfraUtilitiesYaml._tool_config_cache = result
                 return result
-            payload: t.Infra.ContainerDict = dict(parsed_raw)
-            validated = m.Infra.ToolConfigDocument.model_validate(payload)
+            validated = m.Infra.ToolConfigDocument.model_validate(parsed.value)
             result = r[m.Infra.ToolConfigDocument].ok(validated)
             FlextInfraUtilitiesYaml._tool_config_cache = result
             return result
         except (
             FileNotFoundError,
             OSError,
-            YAMLError,
             ValidationError,
             TypeError,
         ) as exc:

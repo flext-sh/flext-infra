@@ -8,7 +8,7 @@ from flext_infra import FlextInfraDependencyPathSync
 
 _PATH_SYNC = FlextInfraDependencyPathSync()
 _extract_requirement_name = FlextInfraDependencyPathSync._extract_requirement_name
-_target_path = _PATH_SYNC._target_path
+_target_path = _PATH_SYNC.target_path
 extract_dep_name = FlextInfraDependencyPathSync.extract_dep_name
 
 

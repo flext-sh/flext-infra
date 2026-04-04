@@ -13,36 +13,52 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
-from flext_core import r, s
 from flext_infra import (
     FlextInfraNamespaceValidator,
     c,
     m,
+    r,
     t,
     u,
 )
+from flext_infra.base import FlextInfraServiceBase
 
 
-class FlextInfraCodegenScaffolder(s[bool]):
+class FlextInfraCodegenScaffolder(FlextInfraServiceBase[str]):
     """Generates missing base modules in src/ and tests/ directories."""
 
-    def __init__(self, workspace_root: Path) -> None:
-        """Initialize scaffolder with workspace root."""
-        super().__init__()
-        self._workspace_root = workspace_root
+    @override
+    def execute(self) -> r[str]:
+        """Execute scaffolding directly from the validated CLI model."""
+        dry_run = self.dry_run or not self.apply_changes
+        results = self.run(dry_run=dry_run)
+        total_created = sum(len(result.files_created) for result in results)
+        total_skipped = sum(len(result.files_skipped) for result in results)
+        lines: MutableSequence[str] = []
+        if dry_run:
+            lines.append("Dry-run mode: no files will be created")
+        lines.extend(
+            f"  {result.project}: created {len(result.files_created)} files"
+            for result in results
+            if result.files_created
+        )
+        lines.append(
+            (
+                f"Scaffold: {total_created} created, {total_skipped} skipped"
+                f" across {len(results)} projects"
+            ),
+        )
+        return r[str].ok("\n".join(lines))
 
     @override
-    def execute(self) -> r[bool]:
-        return r[bool].fail("Use run() directly")
-
-    def run(self) -> Sequence[m.Infra.ScaffoldResult]:
+    def run(self, *, dry_run: bool = False) -> Sequence[m.Infra.ScaffoldResult]:
         """Scaffold missing base modules for all projects in workspace.
 
         Returns:
             List of ScaffoldResult models, one per project.
 
         """
-        projects_result = u.Infra.discover_projects(self._workspace_root)
+        projects_result = u.Infra.discover_projects(self.workspace_root)
         if not projects_result.is_success:
             return []
         results: MutableSequence[m.Infra.ScaffoldResult] = []
@@ -53,11 +69,16 @@ class FlextInfraCodegenScaffolder(s[bool]):
                 continue
             if (project.path / c.Infra.Files.GO_MOD).exists():
                 continue
-            result = self.scaffold_project(project.path)
+            result = self.scaffold_project(project.path, dry_run=dry_run)
             results.append(result)
         return results
 
-    def scaffold_project(self, project_path: Path) -> m.Infra.ScaffoldResult:
+    def scaffold_project(
+        self,
+        project_path: Path,
+        *,
+        dry_run: bool = False,
+    ) -> m.Infra.ScaffoldResult:
         """Scaffold missing base modules for a single project.
 
         Args:
@@ -83,6 +104,7 @@ class FlextInfraCodegenScaffolder(s[bool]):
                 prefix=prefix,
                 modules=c.Infra.SRC_MODULES,
                 test_prefix="",
+                dry_run=dry_run,
                 files_created=files_created,
                 files_skipped=files_skipped,
             )
@@ -93,6 +115,7 @@ class FlextInfraCodegenScaffolder(s[bool]):
                 prefix=prefix,
                 modules=c.Infra.TESTS_MODULES,
                 test_prefix="Tests",
+                dry_run=dry_run,
                 files_created=files_created,
                 files_skipped=files_skipped,
             )
@@ -109,6 +132,7 @@ class FlextInfraCodegenScaffolder(s[bool]):
         prefix: str,
         modules: t.Infra.VariadicTuple[t.Infra.Quad[str, str, str, str]],
         test_prefix: str,
+        dry_run: bool,
         files_created: MutableSequence[str],
         files_skipped: MutableSequence[str],
     ) -> None:
@@ -125,6 +149,9 @@ class FlextInfraCodegenScaffolder(s[bool]):
                 base_class=base_class,
                 docstring=docstring,
             )
+            if dry_run:
+                files_created.append(str(filepath))
+                continue
             u.write_file(filepath, content, encoding=c.Infra.Encoding.DEFAULT)
             u.Infra.run_ruff_fix(filepath)
             files_created.append(str(filepath))

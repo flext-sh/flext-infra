@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import override
 
 import tomlkit
-from pydantic import JsonValue, ValidationError
+from pydantic import ValidationError
 from tomlkit import items
 
 from flext_core import FlextLogger, r, s
@@ -25,10 +25,17 @@ _logger = FlextLogger.create_module_logger(__name__)
 class FlextInfraConfigFixer(s[bool]):
     """Fix pyrefly configuration across workspace projects."""
 
-    def __init__(self, workspace_root: Path | None = None) -> None:
+    def __init__(
+        self,
+        workspace_root: Path | None = None,
+        *,
+        workspace: Path | None = None,
+    ) -> None:
         """Initialize pyrefly config fixer."""
         super().__init__()
-        self._workspace_root = self._resolve_workspace_root(workspace_root)
+        self._workspace_root = self._resolve_workspace_root(
+            workspace_root or workspace,
+        )
         config_result = u.Infra.load_tool_config()
         if config_result.is_failure:
             msg = config_result.error or "failed to load deps tool config"
@@ -112,6 +119,7 @@ class FlextInfraConfigFixer(s[bool]):
                 )
         return r[t.StrSequence].ok(all_fixes)
 
+    @override
     def run(
         self,
         projects: t.StrSequence,
@@ -160,9 +168,9 @@ class FlextInfraConfigFixer(s[bool]):
         excludes = pyrefly.get(c.Infra.PROJECT_EXCLUDES)
         current: t.StrSequence = []
         if isinstance(excludes, list):
-            exclude_items: Sequence[JsonValue] = []
+            exclude_items: t.Cli.JsonList = []
             with contextlib.suppress(ValidationError):
-                exclude_items = t.Infra.JSON_SEQ_ADAPTER.validate_python([*excludes])
+                exclude_items = t.Cli.JSON_LIST_ADAPTER.validate_python([*excludes])
             current = [str(value) for value in exclude_items]
         expected = sorted(set(self._tool_config.tools.pyrefly.project_exclude_globs))
         if current != expected:
@@ -185,10 +193,10 @@ class FlextInfraConfigFixer(s[bool]):
             is_root=project_dir == self._workspace_root,
         )
         search_raw = pyrefly.get(c.Infra.SEARCH_PATH)
-        current_paths: Sequence[JsonValue] = []
+        current_paths: t.Cli.JsonList = []
         if isinstance(search_raw, list):
             with contextlib.suppress(ValidationError):
-                current_paths = t.Infra.JSON_SEQ_ADAPTER.validate_python(
+                current_paths = t.Cli.JSON_LIST_ADAPTER.validate_python(
                     list(search_raw)
                 )
         current_search = [

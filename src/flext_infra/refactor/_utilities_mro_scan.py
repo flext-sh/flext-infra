@@ -307,7 +307,10 @@ class FlextInfraUtilitiesRefactorMroScan:
         if isinstance(obj, AbstractClass):
             try:
                 get_bases = getattr(obj, "get_bases", None)
-                raw_bases = get_bases() if callable(get_bases) else list[object]()
+                raw_bases_value = get_bases() if callable(get_bases) else ()
+                raw_bases: Sequence[object] = (
+                    raw_bases_value if isinstance(raw_bases_value, Sequence) else ()
+                )
                 bases: Sequence[AbstractClass] = (
                     [b for b in raw_bases if isinstance(b, AbstractClass)]
                     if isinstance(raw_bases, Sequence)

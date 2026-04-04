@@ -24,7 +24,7 @@ class TestFlextInfraWorkspaceChecker:
 
     def test_init_with_custom_workspace_root(self, tmp_path: Path) -> None:
         """Test that checker accepts custom workspace root."""
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
+        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         assert checker is not None
 
     def test_execute_returns_failure(self) -> None:
@@ -56,7 +56,7 @@ class TestFlextInfraWorkspaceChecker:
 
     def test_run_projects_with_missing_projects(self, tmp_path: Path) -> None:
         """Test that run_projects handles missing project directories gracefully."""
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
+        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         result = checker.run_projects(
             ["nonexistent"],
             ["lint"],
@@ -67,7 +67,7 @@ class TestFlextInfraWorkspaceChecker:
 
     def test_run_projects_creates_reports_dir(self, tmp_path: Path) -> None:
         """Test that run_projects creates reports directory if missing."""
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
+        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         reports_dir = tmp_path / "reports"
         result = checker.run_projects([], ["lint"], reports_dir=reports_dir)
         tm.ok(result)

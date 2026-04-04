@@ -11,9 +11,11 @@ from __future__ import annotations
 
 from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
-from typing import override
+from typing import Annotated, override
 
-from flext_core import r, s
+from pydantic import Field
+
+from flext_core import r
 from flext_infra import (
     FlextInfraNamespaceValidator,
     c,
@@ -22,26 +24,19 @@ from flext_infra import (
     t,
     u,
 )
+from flext_infra.base import FlextInfraServiceBase
 
 
-class FlextInfraCodegenCensus(s[bool]):
+class FlextInfraCodegenCensus(FlextInfraServiceBase[str]):
     """Read-only census service for namespace violation counting."""
 
-    def __init__(
-        self,
-        workspace_root: Path,
-        class_to_analyze: str | None = None,
-    ) -> None:
-        """Initialize census service with workspace root.
-
-        Args:
-            workspace_root: Root directory of workspace
-            class_to_analyze: Optional class path to analyze (e.g., 'flext_core.FlextConstants')
-
-        """
-        super().__init__()
-        self._workspace_root: Path = workspace_root
-        self._class_to_analyze: str | None = class_to_analyze
+    class_to_analyze: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description="Full class path to analyze (e.g. flext_core.FlextConstants)",
+        ),
+    ] = None
 
     @staticmethod
     def _is_fixable(*, rule: str, module: str, message: str) -> bool:
@@ -69,9 +64,37 @@ class FlextInfraCodegenCensus(s[bool]):
         )
 
     @override
-    def execute(self) -> r[bool]:
-        return r[bool].fail("Use run() directly")
+    def execute(self) -> r[str]:
+        """Execute the census directly from the validated CLI service model."""
+        reports = self.run()
+        total_violations = sum(report.total for report in reports)
+        total_fixable = sum(report.fixable for report in reports)
+        if self.output_format == "json":
+            payload: t.Infra.MutableInfraMapping = {
+                c.Infra.ReportKeys.PROJECTS: [
+                    report.model_dump() for report in reports
+                ],
+                "total_violations": total_violations,
+                "total_fixable": total_fixable,
+            }
+            return r[str].ok(t.Infra.INFRA_MAPPING_ADAPTER.dump_json(payload).decode())
+        lines: MutableSequence[str] = [
+            (
+                f"  {report.project}: {report.total} violations"
+                f" ({report.fixable} fixable)"
+            )
+            for report in reports
+            if report.total > 0
+        ]
+        lines.append(
+            (
+                f"Total: {total_violations} violations ({total_fixable} fixable)"
+                f" across {len(reports)} projects"
+            ),
+        )
+        return r[str].ok("\n".join(lines))
 
+    @override
     def run(
         self,
         workspace_root: Path | None = None,
@@ -85,10 +108,8 @@ class FlextInfraCodegenCensus(s[bool]):
 
         """
         _ = output_format
-        workspace = (
-            workspace_root if workspace_root is not None else self._workspace_root
-        )
-        if self._class_to_analyze:
+        workspace = workspace_root or self.workspace_root
+        if self.class_to_analyze:
             return self._run_class_analysis(workspace)
         return self._run_project_census(workspace)
 
@@ -97,7 +118,7 @@ class FlextInfraCodegenCensus(s[bool]):
         workspace: Path,
     ) -> Sequence[m.Infra.CensusReport]:
         """Fast path: analyze a single class and return a pseudo-project report."""
-        class_name = self._class_to_analyze or ""
+        class_name = self.class_to_analyze or ""
         simple_class_name = class_name.rsplit(".", 1)[-1]
         census_data = u.Infra.analyze_class_object_census(
             class_name,
@@ -190,7 +211,7 @@ class FlextInfraCodegenCensus(s[bool]):
                 if violation is not None:
                     violations.append(violation)
         src_dir = project.path / c.Infra.Paths.DEFAULT_SRC_DIR
-        if src_dir.is_dir() and not self._class_to_analyze:
+        if src_dir.is_dir() and not self.class_to_analyze:
             self._census_constants(src_dir, violations)
         return m.Infra.CensusReport(
             project=project.name,

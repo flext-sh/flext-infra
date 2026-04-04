@@ -1,4 +1,3 @@
-# pyright: reportMissingTypeStubs=false
 """Semantic Rope analysis helpers."""
 
 from __future__ import annotations

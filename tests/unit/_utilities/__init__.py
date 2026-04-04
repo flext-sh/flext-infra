@@ -27,7 +27,6 @@ if _t.TYPE_CHECKING:
 
     test_iteration = _tests_unit__utilities_test_iteration
     import tests.unit._utilities.test_rope_hooks as _tests_unit__utilities_test_rope_hooks
-    from tests.unit._utilities.test_iteration import TestIterWorkspacePythonModules
 
     test_rope_hooks = _tests_unit__utilities_test_rope_hooks
     import tests.unit._utilities.test_safety as _tests_unit__utilities_test_safety
@@ -51,7 +50,6 @@ _LAZY_IMPORTS = {
     "TestDiscoveryIterPythonFiles": "tests.unit._utilities.test_discovery_consolidated",
     "TestDiscoveryProjectRoots": "tests.unit._utilities.test_discovery_consolidated",
     "TestFormattingRunRuffFix": "tests.unit._utilities.test_formatting",
-    "TestIterWorkspacePythonModules": "tests.unit._utilities.test_iteration",
     "TestSafetyCheckpoint": "tests.unit._utilities.test_safety",
     "TestSafetyRollback": "tests.unit._utilities.test_safety",
     "TestScanModels": "tests.unit._utilities.test_scanning",
@@ -71,7 +69,6 @@ __all__ = [
     "TestDiscoveryIterPythonFiles",
     "TestDiscoveryProjectRoots",
     "TestFormattingRunRuffFix",
-    "TestIterWorkspacePythonModules",
     "TestSafetyCheckpoint",
     "TestSafetyRollback",
     "TestScanModels",

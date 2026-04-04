@@ -49,17 +49,12 @@ if _t.TYPE_CHECKING:
     from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
 
     ruff_lint = _flext_infra_gates_ruff_lint
-    from flext_core.constants import FlextConstants as c
     from flext_core.decorators import FlextDecorators as d
     from flext_core.exceptions import FlextExceptions as e
     from flext_core.handlers import FlextHandlers as h
     from flext_core.mixins import FlextMixins as x
-    from flext_core.models import FlextModels as m
-    from flext_core.protocols import FlextProtocols as p
     from flext_core.result import FlextResult as r
     from flext_core.service import FlextService as s
-    from flext_core.typings import FlextTypes as t
-    from flext_core.utilities import FlextUtilities as u
     from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
 _LAZY_IMPORTS = {
     "FlextInfraBanditGate": "flext_infra.gates.bandit",
@@ -75,23 +70,18 @@ _LAZY_IMPORTS = {
     "_base_gate": "flext_infra.gates._base_gate",
     "_models": "flext_infra.gates._models",
     "bandit": "flext_infra.gates.bandit",
-    "c": ("flext_core.constants", "FlextConstants"),
     "d": ("flext_core.decorators", "FlextDecorators"),
     "e": ("flext_core.exceptions", "FlextExceptions"),
     "go": "flext_infra.gates.go",
     "h": ("flext_core.handlers", "FlextHandlers"),
-    "m": ("flext_core.models", "FlextModels"),
     "markdown": "flext_infra.gates.markdown",
     "mypy": "flext_infra.gates.mypy",
-    "p": ("flext_core.protocols", "FlextProtocols"),
     "pyrefly": "flext_infra.gates.pyrefly",
     "pyright": "flext_infra.gates.pyright",
     "r": ("flext_core.result", "FlextResult"),
     "ruff_format": "flext_infra.gates.ruff_format",
     "ruff_lint": "flext_infra.gates.ruff_lint",
     "s": ("flext_core.service", "FlextService"),
-    "t": ("flext_core.typings", "FlextTypes"),
-    "u": ("flext_core.utilities", "FlextUtilities"),
     "x": ("flext_core.mixins", "FlextMixins"),
 }
 
@@ -109,23 +99,18 @@ __all__ = [
     "_base_gate",
     "_models",
     "bandit",
-    "c",
     "d",
     "e",
     "go",
     "h",
-    "m",
     "markdown",
     "mypy",
-    "p",
     "pyrefly",
     "pyright",
     "r",
     "ruff_format",
     "ruff_lint",
     "s",
-    "t",
-    "u",
     "x",
 ]
 

@@ -9,11 +9,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSequence
+from collections.abc import MutableSequence
 from datetime import UTC, datetime
 from pathlib import Path
-
-from pydantic import JsonValue
 
 from flext_infra import c, m, r, t, u
 
@@ -54,21 +52,21 @@ class FlextInfraInventoryService:
                     and path.suffix in {c.Infra.Extensions.PYTHON, ".sh"}
                 )
             now = datetime.now(UTC).isoformat()
-            scripts_infra: list[JsonValue] = list(scripts)
-            inventory: Mapping[str, JsonValue] = {
+            scripts_infra: list[t.Cli.JsonValue] = list(scripts)
+            inventory: t.Cli.JsonMapping = {
                 "generated_at": now,
                 "repo_root": str(root),
                 "total_scripts": len(scripts),
                 "scripts": scripts_infra,
             }
-            wiring: Mapping[str, JsonValue] = {
+            wiring: t.Cli.JsonMapping = {
                 "generated_at": now,
                 "root_makefile": [c.Infra.Files.MAKEFILE_FILENAME],
-                "unwired_scripts": list[JsonValue](),
+                "unwired_scripts": list[t.Cli.JsonValue](),
             }
-            external: Mapping[str, JsonValue] = {
+            external: t.Cli.JsonMapping = {
                 "generated_at": now,
-                "candidates": list[JsonValue](),
+                "candidates": list[t.Cli.JsonValue](),
             }
             reports_dir = output_dir or root / c.Infra.Reporting.REPORTS_DIR_NAME
             written: MutableSequence[str] = []
@@ -77,19 +75,19 @@ class FlextInfraInventoryService:
             external_path = (
                 reports_dir / "scripts-infra--json--external-scripts-candidates.json"
             )
-            write_result = u.Infra.write_json(inventory_path, inventory, sort_keys=True)
+            write_result = u.Cli.json_write(inventory_path, inventory, sort_keys=True)
             if write_result.is_failure:
                 return r[m.Infra.InventoryReport].fail(
                     write_result.error or "write failed",
                 )
             written.append(str(inventory_path))
-            write_result = u.Infra.write_json(wiring_path, wiring, sort_keys=True)
+            write_result = u.Cli.json_write(wiring_path, wiring, sort_keys=True)
             if write_result.is_failure:
                 return r[m.Infra.InventoryReport].fail(
                     write_result.error or "write failed",
                 )
             written.append(str(wiring_path))
-            write_result = u.Infra.write_json(external_path, external, sort_keys=True)
+            write_result = u.Cli.json_write(external_path, external, sort_keys=True)
             if write_result.is_failure:
                 return r[m.Infra.InventoryReport].fail(
                     write_result.error or "write failed",
@@ -104,6 +102,13 @@ class FlextInfraInventoryService:
             return r[m.Infra.InventoryReport].fail(
                 f"inventory generation failed: {exc}",
             )
+
+    def execute_command(self, params: m.Infra.ValidateInventoryInput) -> r[bool]:
+        """Execute the inventory CLI flow for the input model."""
+        return self.generate(
+            params.workspace_path,
+            output_dir=params.output_dir_path,
+        ).map(lambda _: True)
 
 
 __all__ = ["FlextInfraInventoryService"]

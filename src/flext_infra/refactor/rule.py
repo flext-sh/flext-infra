@@ -30,7 +30,7 @@ class FlextInfraRefactorRuleLoader:
     def load_config(self) -> r[Mapping[str, t.Infra.InfraValue]]:
         """Load and validate the refactor engine configuration."""
         try:
-            loaded = u.Infra.safe_load_yaml(self.config_path)
+            loaded = u.Infra.yaml_load_infra_mapping(self.config_path)
             normalized: MutableMapping[str, t.Infra.InfraValue] = dict(
                 t.Infra.INFRA_MAPPING_ADAPTER.validate_python(dict(loaded)),
             )
@@ -82,7 +82,7 @@ class FlextInfraRefactorRuleLoader:
                 try:
                     rule_config: Mapping[str, t.Infra.InfraValue] = (
                         t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
-                            dict(u.Infra.safe_load_yaml(rule_file))
+                            dict(u.Infra.yaml_load_infra_mapping(rule_file))
                         )
                     )
                 except (OSError, TypeError):

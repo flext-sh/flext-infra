@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from flext_cli import cli
+from flext_cli import cli as cli_service
 from flext_core import r
 from flext_infra import (
     FlextInfraNamespaceEnforcer,
@@ -16,61 +15,57 @@ from flext_infra import (
     u,
 )
 
-if TYPE_CHECKING:
-    import typer
-
-_R = u.Infra.route  # shorthand
-
 
 class FlextInfraCliRefactor:
     """Refactor CLI group — composed into FlextInfraCli via MRO."""
 
-    def register_refactor(self, app: typer.Typer) -> None:
+    def register_refactor(self, app: t.Cli.TyperApp) -> None:
         """Register refactor commands on the given Typer app."""
-        u.Infra.register_routes(
+        cls = type(self)
+        cli_service.register_result_routes(
             app,
             [
-                _R(
-                    "centralize-pydantic",
-                    "Centralize BaseModel/TypedDict/dict-like aliases into _models.py",
-                    m.Infra.RefactorCentralizeInput,
-                    self._handle_centralize_pydantic,
-                    fail_msg="Pydantic centralization failed",
+                m.Cli.ResultCommandRoute(
+                    name="centralize-pydantic",
+                    help_text="Centralize BaseModel/TypedDict/dict-like aliases into _models.py",
+                    model_cls=m.Infra.RefactorCentralizeInput,
+                    handler=cls._handle_centralize_pydantic,
+                    failure_message="Pydantic centralization failed",
                 ),
-                _R(
-                    "migrate-mro",
-                    "Migrate loose declarations into MRO facade classes",
-                    m.Infra.RefactorMigrateMroInput,
-                    self._handle_migrate_mro,
-                    fail_msg="MRO migration failed",
+                m.Cli.ResultCommandRoute(
+                    name="migrate-mro",
+                    help_text="Migrate loose declarations into MRO facade classes",
+                    model_cls=m.Infra.RefactorMigrateMroInput,
+                    handler=cls._handle_migrate_mro,
+                    failure_message="MRO migration failed",
                 ),
-                _R(
-                    "namespace-enforce",
-                    "Scan workspace for namespace governance violations",
-                    m.Infra.RefactorNamespaceEnforceInput,
-                    self._handle_namespace_enforce,
-                    fail_msg="Namespace enforcement failed",
+                m.Cli.ResultCommandRoute(
+                    name="namespace-enforce",
+                    help_text="Scan workspace for namespace governance violations",
+                    model_cls=m.Infra.RefactorNamespaceEnforceInput,
+                    handler=cls._handle_namespace_enforce,
+                    failure_message="Namespace enforcement failed",
                 ),
-                _R(
-                    "migrate-runtime-alias-imports",
-                    "Move runtime aliases like r/s from flext_core to local MRO imports",
-                    m.Infra.RefactorMigrateRuntimeAliasImportsInput,
-                    self._handle_migrate_runtime_alias_imports,
-                    fail_msg="Runtime alias import migration failed",
+                m.Cli.ResultCommandRoute(
+                    name="migrate-runtime-alias-imports",
+                    help_text="Move runtime aliases like r/s from flext_core to local MRO imports",
+                    model_cls=m.Infra.RefactorMigrateRuntimeAliasImportsInput,
+                    handler=cls._handle_migrate_runtime_alias_imports,
+                    failure_message="Runtime alias import migration failed",
                 ),
-                _R(
-                    "ultrawork-models",
-                    "Run full centralization + MRO + namespace workflow",
-                    m.Infra.RefactorUltraworkModelsInput,
-                    self._handle_ultrawork_models,
-                    fail_msg="Ultrawork models failed",
+                m.Cli.ResultCommandRoute(
+                    name="ultrawork-models",
+                    help_text="Run full centralization + MRO + namespace workflow",
+                    model_cls=m.Infra.RefactorUltraworkModelsInput,
+                    handler=cls._handle_ultrawork_models,
+                    failure_message="Ultrawork models failed",
                 ),
-                _R(
-                    "census",
-                    "Run AST/CST census of MRO family method usage",
-                    m.Infra.RefactorCensusInput,
-                    self._handle_refactor_census,
-                    fail_msg="Census failed",
+                m.Cli.ResultCommandRoute(
+                    name="census",
+                    help_text="Run AST/CST census of MRO family method usage",
+                    model_cls=m.Infra.RefactorCensusInput,
+                    handler=cls._handle_refactor_census,
+                    failure_message="Census failed",
                 ),
             ],
         )
@@ -81,7 +76,7 @@ class FlextInfraCliRefactor:
     ) -> r[t.IntMapping]:
         """Run pydantic centralization workflow for the workspace."""
         summary = u.Infra.centralize_workspace(
-            u.Infra.resolve_workspace(params),
+            params.workspace_path,
             apply=params.apply,
             normalize_remaining=params.normalize_remaining,
         )
@@ -93,13 +88,15 @@ class FlextInfraCliRefactor:
     ) -> r[m.Infra.MROMigrationReport]:
         """Run MRO migration workflow for the selected target scope."""
         service = FlextInfraRefactorMigrateToClassMRO(
-            workspace_root=u.Infra.resolve_workspace(params),
+            workspace_root=params.workspace_path,
         )
         report = service.run(target=params.target, apply=params.apply)
-        cli.display_text(FlextInfraRefactorMigrateToClassMRO.render_text(report))
+        cli_service.display_text(
+            FlextInfraRefactorMigrateToClassMRO.render_text(report)
+        )
         if report.errors:
             for error in report.errors:
-                cli.display_message(error, message_type="error")
+                cli_service.display_message(error, message_type="error")
             return r[m.Infra.MROMigrationReport].fail("MRO migration had errors")
         return r[m.Infra.MROMigrationReport].ok(report)
 
@@ -112,19 +109,19 @@ class FlextInfraCliRefactor:
         if params.project:
             project_names = u.Cli.project_names_from_values(params.project)
         enforcer = FlextInfraNamespaceEnforcer(
-            workspace_root=u.Infra.resolve_workspace(params),
+            workspace_root=params.workspace_path,
         )
         if params.diff:
             diff_output = enforcer.diff(project_names=project_names)
             if diff_output:
-                cli.display_text(diff_output)
+                cli_service.display_text(diff_output)
             else:
-                cli.display_text("No changes detected.")
+                cli_service.display_text("No changes detected.")
             return r[m.Infra.WorkspaceEnforcementReport].ok(
                 enforcer.enforce(apply=False, project_names=project_names),
             )
         report = enforcer.enforce(apply=params.apply, project_names=project_names)
-        cli.display_text(FlextInfraNamespaceEnforcer.render_text(report))
+        cli_service.display_text(FlextInfraNamespaceEnforcer.render_text(report))
         if report.has_violations:
             return r[m.Infra.WorkspaceEnforcementReport].fail(
                 "Namespace violations found",
@@ -141,7 +138,7 @@ class FlextInfraCliRefactor:
             project_names = u.Cli.project_names_from_values(params.project)
         aliases = [item.strip() for item in params.aliases.split(",") if item.strip()]
         results = u.Infra.migrate_runtime_alias_imports(
-            workspace_root=u.Infra.resolve_workspace(params),
+            workspace_root=params.workspace_path,
             aliases=aliases,
             apply=params.apply,
             project_names=project_names,
@@ -174,7 +171,7 @@ class FlextInfraCliRefactor:
                     summary["aliases_skipped_unsafe"] += 1
                 elif "missing export" in change:
                     summary["aliases_skipped_missing_export"] += 1
-        cli.display_text(
+        cli_service.display_text(
             "\n".join([
                 f"Files changed: {summary['files_changed']}",
                 f"Files planned: {summary['files_planned']}",
@@ -197,7 +194,7 @@ class FlextInfraCliRefactor:
         params: m.Infra.RefactorUltraworkModelsInput,
     ) -> r[t.IntMapping]:
         """Run centralization, MRO migration, and namespace enforcement together."""
-        workspace = u.Infra.resolve_workspace(params)
+        workspace = params.workspace_path
         centralize_summary = u.Infra.centralize_workspace(
             workspace,
             apply=params.apply,
@@ -228,7 +225,7 @@ class FlextInfraCliRefactor:
         }
         if mro_report.errors:
             for error in mro_report.errors:
-                cli.display_message(error, message_type="error")
+                cli_service.display_message(error, message_type="error")
             return r[t.IntMapping].fail("MRO migration had errors")
         return r[t.IntMapping].ok(combined)
 
@@ -240,17 +237,21 @@ class FlextInfraCliRefactor:
         census = FlextInfraRefactorCensus()
         target = u.Infra.build_mro_target(params.family)
         result = census.run(
-            workspace_root=u.Infra.resolve_workspace(params), target=target
+            workspace_root=params.workspace_path,
+            target=target,
         )
         if result.is_failure:
             return result
         report = result.value
-        cli.display_text(FlextInfraRefactorCensus.render_text(report))
+        cli_service.display_text(FlextInfraRefactorCensus.render_text(report))
         if params.json_output:
             json_path = Path(params.json_output).resolve()
             u.Infra.export_pydantic_json(report, json_path)
-            cli.display_message(
+            cli_service.display_message(
                 f"JSON report exported to: {json_path}",
                 message_type="info",
             )
         return result
+
+
+__all__ = ["FlextInfraCliRefactor"]

@@ -41,15 +41,15 @@ class TestAllDirectoriesScanned:
 
     def test_src_dir_is_scanned(self, tmp_path: Path) -> None:
         _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
-        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
-        result = generator.run(check_only=True)
+        generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
+        result = generator.generate_inits(check_only=True)
         tm.that(type(result).__name__, eq="int")
         tm.that(result, gte=0)
 
     def test_tests_dir_is_scanned(self, tmp_path: Path) -> None:
         _create_init_file(tmp_path / "tests" / "helpers", _VALID_TESTS_INIT)
-        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
-        result = generator.run(check_only=True)
+        generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
+        result = generator.generate_inits(check_only=True)
         tm.that(type(result).__name__, eq="int")
         tm.that(result, gte=0)
 
@@ -60,8 +60,8 @@ class TestAllDirectoriesScanned:
             _VALID_TESTS_INIT,
         )
         original_content = tests_init.read_text(encoding="utf-8")
-        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
-        generator.run(check_only=False)
+        generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
+        generator.generate_inits(check_only=False)
         new_content = tests_init.read_text(encoding="utf-8")
         tm.that(
             new_content != original_content or "__all__" in new_content,
@@ -76,8 +76,8 @@ class TestAllDirectoriesScanned:
             "from test_helpers.deep import DeepFixture\n"
             '__all__ = ["DeepFixture"]\n',
         )
-        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
-        generator.run(check_only=False)
+        generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
+        generator.generate_inits(check_only=False)
         tm.that(nested_init.exists(), eq=True)
 
 
@@ -90,8 +90,8 @@ class TestCheckOnlyMode:
             _VALID_TESTS_INIT,
         )
         original_content = tests_init.read_text(encoding="utf-8")
-        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
-        generator.run(check_only=True)
+        generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
+        generator.generate_inits(check_only=True)
         tm.that(
             tests_init.read_text(encoding="utf-8"),
             eq=original_content,
@@ -107,8 +107,8 @@ class TestExcludedDirectories:
             tmp_path / "tests" / "vendor" / "pkg",
             _VALID_TESTS_INIT,
         )
-        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
-        result = generator.run(check_only=True)
+        generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
+        result = generator.generate_inits(check_only=True)
         tm.that(type(result).__name__, eq="int")
         tm.that(result, gte=0)
 
@@ -118,8 +118,8 @@ class TestExcludedDirectories:
             tmp_path / "tests" / ".venv" / "pkg",
             _VALID_TESTS_INIT,
         )
-        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
-        result = generator.run(check_only=True)
+        generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
+        result = generator.generate_inits(check_only=True)
         tm.that(type(result).__name__, eq="int")
         tm.that(result, gte=0)
 
@@ -129,8 +129,8 @@ class TestExcludedDirectories:
             tmp_path / "pkg" / "container" / "venv" / "lib" / "site-packages" / "bad",
             _VALID_TESTS_INIT,
         )
-        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
-        result = generator.run(check_only=True)
+        generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
+        result = generator.generate_inits(check_only=True)
         tm.that(type(result).__name__, eq="int")
         tm.that(result, gte=0)
 
@@ -139,9 +139,9 @@ class TestEdgeCases:
     """Edge cases for directory scanning."""
 
     def test_empty_workspace_returns_zero(self, tmp_path: Path) -> None:
-        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
-        tm.that(generator.run(check_only=True), eq=0)
-        tm.that(generator.run(check_only=False), eq=0)
+        generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
+        tm.that(generator.generate_inits(check_only=True), eq=0)
+        tm.that(generator.generate_inits(check_only=False), eq=0)
 
     def test_tests_dir_without_init_py_is_skipped(
         self,
@@ -151,15 +151,15 @@ class TestEdgeCases:
         tests_dir = tmp_path / "tests" / "helpers"
         tests_dir.mkdir(parents=True)
         (tests_dir / "conftest.py").write_text("# conftest", encoding="utf-8")
-        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
-        result = generator.run(check_only=True)
+        generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
+        result = generator.generate_inits(check_only=True)
         tm.that(type(result).__name__, eq="int")
         tm.that(result, gte=0)
 
     def test_no_tests_dir_at_all(self, tmp_path: Path) -> None:
         _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
-        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
-        result = generator.run(check_only=True)
+        generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
+        result = generator.generate_inits(check_only=True)
         tm.that(type(result).__name__, eq="int")
         tm.that(result, gte=0)
 
@@ -168,10 +168,10 @@ class TestEdgeCases:
         tmp_path: Path,
     ) -> None:
         _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
-        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
+        generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
         result = generator.execute()
         tm.that(result.is_success, eq=True)
-        tm.that(type(result.value).__name__, eq="int")
+        tm.that(type(result.value).__name__, eq="bool")
 
     def test_src_content_consistent_across_runs(
         self,
@@ -182,12 +182,12 @@ class TestEdgeCases:
         )
         src_dir_a = tmp_path / "a" / "src" / "pkg"
         _create_init_file(src_dir_a, src_content)
-        gen_a = FlextInfraCodegenLazyInit(workspace_root=tmp_path / "a")
-        gen_a.run(check_only=False)
+        gen_a = FlextInfraCodegenLazyInit(workspace=tmp_path / "a")
+        gen_a.generate_inits(check_only=False)
         content_a = (src_dir_a / "__init__.py").read_text(encoding="utf-8")
         src_dir_b = tmp_path / "b" / "src" / "pkg"
         _create_init_file(src_dir_b, src_content)
-        gen_b = FlextInfraCodegenLazyInit(workspace_root=tmp_path / "b")
-        gen_b.run(check_only=False)
+        gen_b = FlextInfraCodegenLazyInit(workspace=tmp_path / "b")
+        gen_b.generate_inits(check_only=False)
         content_b = (src_dir_b / "__init__.py").read_text(encoding="utf-8")
         tm.that(content_a, eq=content_b)

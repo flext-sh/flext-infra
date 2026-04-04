@@ -16,8 +16,38 @@ def refactor_main(argv: list[str] | None = None) -> int:
     return infra_main(args)
 
 
-def test_refactor_census_rejects_apply_before_subcommand() -> None:
-    tm.that(refactor_main(["--apply", "census"]), eq=2)
+def test_refactor_census_accepts_apply_before_subcommand(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    def _mock_handler(
+        params: m.Infra.RefactorCensusInput,
+    ) -> r[m.Infra.UtilitiesCensusReport]:
+        return r[m.Infra.UtilitiesCensusReport].ok(
+            m.Infra.UtilitiesCensusReport(
+                classes=[],
+                projects=[],
+                total_classes=0,
+                total_methods=0,
+                files_scanned=0,
+                total_usages=0,
+                total_unused=0,
+                parse_errors=0,
+            )
+        )
+
+    monkeypatch.setattr(
+        FlextInfraCliRefactor,
+        "_handle_refactor_census",
+        staticmethod(_mock_handler),
+    )
+    result = refactor_main([
+        "--apply",
+        "census",
+        "--workspace",
+        str(tmp_path),
+    ])
+    tm.that(result, eq=0)
 
 
 def test_refactor_centralize_accepts_apply_before_subcommand(
