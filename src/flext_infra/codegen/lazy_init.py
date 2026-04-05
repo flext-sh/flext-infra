@@ -19,7 +19,7 @@ from pydantic import PrivateAttr
 
 from flext_infra import (
     FlextInfraCodegenGeneration,
-    FlextInfraServiceBase,
+    FlextInfraCommandContext,
     c,
     r,
     t,
@@ -27,7 +27,7 @@ from flext_infra import (
 )
 
 
-class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
+class FlextInfraCodegenLazyInit(FlextInfraCommandContext[bool]):
     """Generates ``__init__.py`` with PEP 562 lazy imports.
 
     Scans sibling ``.py`` files in each package directory, discovers their

@@ -14,8 +14,8 @@ from pathlib import Path
 from typing import override
 
 from flext_infra import (
+    FlextInfraCommandContext,
     FlextInfraNamespaceValidator,
-    FlextInfraServiceBase,
     c,
     m,
     r,
@@ -24,7 +24,7 @@ from flext_infra import (
 )
 
 
-class FlextInfraCodegenScaffolder(FlextInfraServiceBase[str]):
+class FlextInfraCodegenScaffolder(FlextInfraCommandContext[str]):
     """Generates missing base modules in src/ and tests/ directories."""
 
     @override

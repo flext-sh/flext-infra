@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
-from typing import Annotated, override
+from typing import Annotated, Self, override
 
 import tomlkit
 from pydantic import Field
 
 from flext_infra import (
     FlextInfraBaseMkGenerator,
-    FlextInfraServiceBase,
+    FlextInfraCommandContext,
     c,
     m,
     p,
@@ -22,7 +22,7 @@ from flext_infra import (
 
 
 class FlextInfraProjectMigrator(
-    FlextInfraServiceBase[Sequence[m.Infra.MigrationResult]]
+    FlextInfraCommandContext[Sequence[m.Infra.MigrationResult]]
 ):
     """Migrate projects to standardized base.mk, Makefile, and pyproject structure."""
 
@@ -143,6 +143,16 @@ class FlextInfraProjectMigrator(
         if dry_run:
             u.Infra.info("(dry-run — no files modified)")
         return result
+
+    @classmethod
+    @override
+    def execute_command(
+        cls,
+        params: Self,
+    ) -> r[Sequence[m.Infra.MigrationResult]]:
+        """Execute the validated CLI service instance directly."""
+        _ = cls
+        return params.execute()
 
     def migrate(
         self,

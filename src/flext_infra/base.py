@@ -1,11 +1,24 @@
-"""Shared service base for flext-infra command services."""
+"""Shared service base for flext-infra command services.
+
+Two-class design mirroring flext-cli's base.py pattern:
+
+- ``FlextInfraServiceBase`` (~40 LOC) -- thin foundation with settings
+  access and bootstrap options only.  Suitable for services that need
+  no shared command-context fields (e.g. the API facade).
+
+- ``FlextInfraCommandContext`` (~90 LOC) -- mixin inheriting the thin
+  base and carrying domain fields used by every CLI command service
+  (workspace_root, apply_changes, dry_run, etc.).
+
+The module-level ``s`` alias points to ``FlextInfraCommandContext`` so
+that existing ``s[T]`` consumers keep working without import changes.
+"""
 
 from __future__ import annotations
 
 from abc import ABC
 from collections.abc import Sequence
 from pathlib import Path
-from types import ModuleType
 from typing import Annotated, Self, override
 
 from pydantic import ConfigDict, Field, field_validator
@@ -15,6 +28,10 @@ from flext_cli import FlextCliSettings
 from flext_core import FlextModels, FlextSettings, p, r, s as core_service_base
 from flext_infra import t
 
+# ---------------------------------------------------------------------------
+# Module-level helpers (used by CLI/Typer integration)
+# ---------------------------------------------------------------------------
+
 APPLY_OPTION_DECLS: list[str] = ["--apply/--dry-run"]
 
 
@@ -23,58 +40,50 @@ def apply_option_json_schema_extra(schema: JsonDict) -> None:
     schema["typer_param_decls"] = list(APPLY_OPTION_DECLS)
 
 
+# ---------------------------------------------------------------------------
+# Thin service base (~40 LOC) -- mirrors FlextCliServiceBase
+# ---------------------------------------------------------------------------
+
+
 class FlextInfraServiceBase[TDomainResult: t.Infra.DomainOutput](
     core_service_base[TDomainResult],
     ABC,
 ):
-    """Base class for flext-infra services with normalized command context."""
+    """Thin base class for flext-infra services.
+
+    Provides settings access and runtime bootstrap only.
+    Domain command fields live in :class:`FlextInfraCommandContext`.
+    """
+
+    @property
+    @override
+    def settings(self) -> FlextCliSettings:
+        """Return the typed CLI settings namespace."""
+        return FlextSettings.get_global().get_namespace("cli", FlextCliSettings)
+
+    @classmethod
+    @override
+    def _runtime_bootstrap_options(cls) -> p.RuntimeBootstrapOptions:
+        """Bootstrap service runtime using the shared CLI settings namespace."""
+        return FlextModels.RuntimeBootstrapOptions(config_type=FlextCliSettings)
+
+
+# ---------------------------------------------------------------------------
+# Command context mixin (~90 LOC) -- carries all domain fields
+# ---------------------------------------------------------------------------
+
+
+class FlextInfraCommandContext[TDomainResult: t.Infra.DomainOutput](
+    FlextInfraServiceBase[TDomainResult],
+):
+    """Domain command context shared by all flext-infra CLI services.
+
+    Inherits settings + bootstrap from :class:`FlextInfraServiceBase`
+    and adds fields for workspace location, apply/dry-run toggles,
+    output formatting, and project filtering.
+    """
 
     model_config = ConfigDict(populate_by_name=True)
-
-    config_type: Annotated[
-        type | None,
-        Field(default=None, description="Configuration type constraint", exclude=True),
-    ] = None
-    config_overrides: Annotated[
-        t.Infra.ContainerOverrides | None,
-        Field(
-            default=None, description="Configuration overrides context", exclude=True
-        ),
-    ] = None
-    initial_context: Annotated[
-        p.Context | None,
-        Field(default=None, description="Initial service context", exclude=True),
-    ] = None
-    subproject: Annotated[
-        str | None,
-        Field(default=None, description="Target subproject identifier", exclude=True),
-    ] = None
-    container_overrides: Annotated[
-        t.Infra.RuntimeScalarOverrides | None,
-        Field(
-            default=None,
-            description="Context dependency container overrides",
-            exclude=True,
-        ),
-    ] = None
-    wire_modules: Annotated[
-        Sequence[ModuleType] | None,
-        Field(
-            default=None, description="Modules to wire dependencies into", exclude=True
-        ),
-    ] = None
-    wire_packages: Annotated[
-        Sequence[str] | None,
-        Field(
-            default=None, description="Packages to wire dependencies into", exclude=True
-        ),
-    ] = None
-    wire_classes: Annotated[
-        Sequence[type] | None,
-        Field(
-            default=None, description="Classes to wire dependencies into", exclude=True
-        ),
-    ] = None
 
     workspace_root: Annotated[
         Path,
@@ -165,18 +174,6 @@ class FlextInfraServiceBase[TDomainResult: t.Infra.DomainOutput](
         path = value if isinstance(value, Path) else Path(value)
         return path.resolve()
 
-    @property
-    @override
-    def settings(self) -> FlextCliSettings:
-        """Return the typed CLI settings namespace."""
-        return FlextSettings.get_global().get_namespace("cli", FlextCliSettings)
-
-    @classmethod
-    @override
-    def _runtime_bootstrap_options(cls) -> p.RuntimeBootstrapOptions:
-        """Bootstrap service runtime using the shared CLI settings namespace."""
-        return FlextModels.RuntimeBootstrapOptions(config_type=FlextCliSettings)
-
     @classmethod
     def execute_command(
         cls,
@@ -187,10 +184,17 @@ class FlextInfraServiceBase[TDomainResult: t.Infra.DomainOutput](
         return params.execute()
 
 
-s = FlextInfraServiceBase
+# ---------------------------------------------------------------------------
+# Aliases & exports
+# ---------------------------------------------------------------------------
+
+# ``s`` points to FlextInfraCommandContext for backward compatibility.
+# All existing ``s[T]`` consumers access domain fields and need them.
+s = FlextInfraCommandContext
 
 __all__ = [
     "APPLY_OPTION_DECLS",
+    "FlextInfraCommandContext",
     "FlextInfraServiceBase",
     "apply_option_json_schema_extra",
     "s",
