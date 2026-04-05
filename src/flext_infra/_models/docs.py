@@ -71,6 +71,14 @@ class FlextInfraDocsModels:
             Path,
             Field(description="Report output directory for scope"),
         ]
+        project_class: Annotated[
+            str,
+            Field(default="root", description="Docs scope classification"),
+        ] = "root"
+        package_name: Annotated[
+            str,
+            Field(default="", description="Primary package name for scope"),
+        ] = ""
 
     class AuditIssue(FlextModels.ContractModel):
         """Single documentation audit finding."""

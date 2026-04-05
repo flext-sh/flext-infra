@@ -32,15 +32,9 @@ if _t.TYPE_CHECKING:
     )
 
     cyclic_import_detector = _flext_infra_detectors_cyclic_import_detector
-    import flext_infra.detectors.dependency_analyzer_base as _flext_infra_detectors_dependency_analyzer_base
+    import flext_infra.detectors.future_annotations_detector as _flext_infra_detectors_future_annotations_detector
     from flext_infra.detectors.cyclic_import_detector import (
         FlextInfraCyclicImportDetector,
-    )
-
-    dependency_analyzer_base = _flext_infra_detectors_dependency_analyzer_base
-    import flext_infra.detectors.future_annotations_detector as _flext_infra_detectors_future_annotations_detector
-    from flext_infra.detectors.dependency_analyzer_base import (
-        FlextInfraDependencyAnalyzer,
     )
 
     future_annotations_detector = _flext_infra_detectors_future_annotations_detector
@@ -117,7 +111,6 @@ _LAZY_IMPORTS = {
     "FlextInfraClassPlacementDetector": "flext_infra.detectors.class_placement_detector",
     "FlextInfraCompatibilityAliasDetector": "flext_infra.detectors.compatibility_alias_detector",
     "FlextInfraCyclicImportDetector": "flext_infra.detectors.cyclic_import_detector",
-    "FlextInfraDependencyAnalyzer": "flext_infra.detectors.dependency_analyzer_base",
     "FlextInfraFutureAnnotationsDetector": "flext_infra.detectors.future_annotations_detector",
     "FlextInfraImportAliasDetector": "flext_infra.detectors.import_alias_detector",
     "FlextInfraInternalImportDetector": "flext_infra.detectors.internal_import_detector",
@@ -135,7 +128,6 @@ _LAZY_IMPORTS = {
     "compatibility_alias_detector": "flext_infra.detectors.compatibility_alias_detector",
     "cyclic_import_detector": "flext_infra.detectors.cyclic_import_detector",
     "d": ("flext_core.decorators", "FlextDecorators"),
-    "dependency_analyzer_base": "flext_infra.detectors.dependency_analyzer_base",
     "e": ("flext_core.exceptions", "FlextExceptions"),
     "future_annotations_detector": "flext_infra.detectors.future_annotations_detector",
     "h": ("flext_core.handlers", "FlextHandlers"),
@@ -162,7 +154,6 @@ __all__ = [
     "FlextInfraClassPlacementDetector",
     "FlextInfraCompatibilityAliasDetector",
     "FlextInfraCyclicImportDetector",
-    "FlextInfraDependencyAnalyzer",
     "FlextInfraFutureAnnotationsDetector",
     "FlextInfraImportAliasDetector",
     "FlextInfraInternalImportDetector",
@@ -180,7 +171,6 @@ __all__ = [
     "compatibility_alias_detector",
     "cyclic_import_detector",
     "d",
-    "dependency_analyzer_base",
     "e",
     "future_annotations_detector",
     "h",

@@ -79,8 +79,44 @@ if _t.TYPE_CHECKING:
     )
 
     docs = _flext_infra__utilities_docs
-    import flext_infra._utilities.formatting as _flext_infra__utilities_formatting
+    import flext_infra._utilities.docs_api as _flext_infra__utilities_docs_api
     from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
+
+    docs_api = _flext_infra__utilities_docs_api
+    import flext_infra._utilities.docs_audit as _flext_infra__utilities_docs_audit
+    from flext_infra._utilities.docs_api import FlextInfraUtilitiesDocsApi
+
+    docs_audit = _flext_infra__utilities_docs_audit
+    import flext_infra._utilities.docs_build as _flext_infra__utilities_docs_build
+    from flext_infra._utilities.docs_audit import FlextInfraUtilitiesDocsAudit
+
+    docs_build = _flext_infra__utilities_docs_build
+    import flext_infra._utilities.docs_contract as _flext_infra__utilities_docs_contract
+    from flext_infra._utilities.docs_build import FlextInfraUtilitiesDocsBuild
+
+    docs_contract = _flext_infra__utilities_docs_contract
+    import flext_infra._utilities.docs_fix as _flext_infra__utilities_docs_fix
+    from flext_infra._utilities.docs_contract import FlextInfraUtilitiesDocsContract
+
+    docs_fix = _flext_infra__utilities_docs_fix
+    import flext_infra._utilities.docs_generate as _flext_infra__utilities_docs_generate
+    from flext_infra._utilities.docs_fix import FlextInfraUtilitiesDocsFix
+
+    docs_generate = _flext_infra__utilities_docs_generate
+    import flext_infra._utilities.docs_render as _flext_infra__utilities_docs_render
+    from flext_infra._utilities.docs_generate import FlextInfraUtilitiesDocsGenerate
+
+    docs_render = _flext_infra__utilities_docs_render
+    import flext_infra._utilities.docs_scope as _flext_infra__utilities_docs_scope
+    from flext_infra._utilities.docs_render import FlextInfraUtilitiesDocsRender
+
+    docs_scope = _flext_infra__utilities_docs_scope
+    import flext_infra._utilities.docs_validate as _flext_infra__utilities_docs_validate
+    from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
+
+    docs_validate = _flext_infra__utilities_docs_validate
+    import flext_infra._utilities.formatting as _flext_infra__utilities_formatting
+    from flext_infra._utilities.docs_validate import FlextInfraUtilitiesDocsValidate
 
     formatting = _flext_infra__utilities_formatting
     import flext_infra._utilities.git as _flext_infra__utilities_git
@@ -223,6 +259,15 @@ _LAZY_IMPORTS = {
     "FlextInfraUtilitiesDiscovery": "flext_infra._utilities.discovery",
     "FlextInfraUtilitiesDiscoveryScanning": "flext_infra._utilities.discovery_scanning",
     "FlextInfraUtilitiesDocs": "flext_infra._utilities.docs",
+    "FlextInfraUtilitiesDocsApi": "flext_infra._utilities.docs_api",
+    "FlextInfraUtilitiesDocsAudit": "flext_infra._utilities.docs_audit",
+    "FlextInfraUtilitiesDocsBuild": "flext_infra._utilities.docs_build",
+    "FlextInfraUtilitiesDocsContract": "flext_infra._utilities.docs_contract",
+    "FlextInfraUtilitiesDocsFix": "flext_infra._utilities.docs_fix",
+    "FlextInfraUtilitiesDocsGenerate": "flext_infra._utilities.docs_generate",
+    "FlextInfraUtilitiesDocsRender": "flext_infra._utilities.docs_render",
+    "FlextInfraUtilitiesDocsScope": "flext_infra._utilities.docs_scope",
+    "FlextInfraUtilitiesDocsValidate": "flext_infra._utilities.docs_validate",
     "FlextInfraUtilitiesFormatting": "flext_infra._utilities.formatting",
     "FlextInfraUtilitiesGit": "flext_infra._utilities.git",
     "FlextInfraUtilitiesGithub": "flext_infra._utilities.github",
@@ -267,6 +312,15 @@ _LAZY_IMPORTS = {
     "discovery": "flext_infra._utilities.discovery",
     "discovery_scanning": "flext_infra._utilities.discovery_scanning",
     "docs": "flext_infra._utilities.docs",
+    "docs_api": "flext_infra._utilities.docs_api",
+    "docs_audit": "flext_infra._utilities.docs_audit",
+    "docs_build": "flext_infra._utilities.docs_build",
+    "docs_contract": "flext_infra._utilities.docs_contract",
+    "docs_fix": "flext_infra._utilities.docs_fix",
+    "docs_generate": "flext_infra._utilities.docs_generate",
+    "docs_render": "flext_infra._utilities.docs_render",
+    "docs_scope": "flext_infra._utilities.docs_scope",
+    "docs_validate": "flext_infra._utilities.docs_validate",
     "formatting": "flext_infra._utilities.formatting",
     "git": "flext_infra._utilities.git",
     "github": "flext_infra._utilities.github",
@@ -318,6 +372,15 @@ __all__ = [
     "FlextInfraUtilitiesDiscovery",
     "FlextInfraUtilitiesDiscoveryScanning",
     "FlextInfraUtilitiesDocs",
+    "FlextInfraUtilitiesDocsApi",
+    "FlextInfraUtilitiesDocsAudit",
+    "FlextInfraUtilitiesDocsBuild",
+    "FlextInfraUtilitiesDocsContract",
+    "FlextInfraUtilitiesDocsFix",
+    "FlextInfraUtilitiesDocsGenerate",
+    "FlextInfraUtilitiesDocsRender",
+    "FlextInfraUtilitiesDocsScope",
+    "FlextInfraUtilitiesDocsValidate",
     "FlextInfraUtilitiesFormatting",
     "FlextInfraUtilitiesGit",
     "FlextInfraUtilitiesGithub",
@@ -362,6 +425,15 @@ __all__ = [
     "discovery",
     "discovery_scanning",
     "docs",
+    "docs_api",
+    "docs_audit",
+    "docs_build",
+    "docs_contract",
+    "docs_fix",
+    "docs_generate",
+    "docs_render",
+    "docs_scope",
+    "docs_validate",
     "formatting",
     "git",
     "github",

@@ -76,6 +76,7 @@ class FlextInfraSharedInfraConstants:
         TYPINGS_PY: Final[str] = "typings.py"
         PROTOCOLS_PY: Final[str] = "protocols.py"
         CONFTEST_PY: Final[str] = "conftest.py"
+        PY_TYPED: Final[str] = "py.typed"
 
     class Git:
         DIR: Final[str] = ".git"

@@ -13,7 +13,8 @@ from pathlib import Path
 from typing import override
 from urllib.parse import urlparse
 
-from flext_infra import c, r, s, u
+from flext_infra import c, m, r, u
+from flext_infra.base import s
 
 # Canonical alias -- single source of truth lives in workspace constants
 FlextInfraWorkspaceMode = c.Infra.WorkspaceMode
@@ -92,10 +93,29 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             u.Infra.info(f"Running in standalone mode (detection error: {exc})")
             return r[c.Infra.WorkspaceMode].fail(f"Detection failed: {exc}")
 
+    def _resolved_workspace_root(self) -> Path:
+        """Return the validated workspace root from the command context."""
+        raw = getattr(self, "workspace_root", None)
+        if isinstance(raw, Path):
+            return raw.resolve()
+        if isinstance(raw, str) and raw.strip():
+            return Path(raw).resolve()
+        return Path.cwd().resolve()
+
     @override
     def execute(self) -> r[c.Infra.WorkspaceMode]:
         """Execute the workspace detection flow."""
-        return self.detect(self.workspace_root)
+        return self.detect(self._resolved_workspace_root())
+
+    @classmethod
+    @override
+    def execute_command(
+        cls,
+        params: m.Infra.WorkspaceDetectInput,
+    ) -> r[c.Infra.WorkspaceMode]:
+        """Execute the validated CLI service instance directly."""
+        service = cls.model_validate({"workspace_root": params.workspace_path})
+        return service.execute()
 
 
 __all__ = ["FlextInfraWorkspaceDetector", "FlextInfraWorkspaceMode"]

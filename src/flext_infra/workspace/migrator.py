@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
-from typing import Annotated, Self, override
+from typing import Annotated, override
 
 import tomlkit
 from pydantic import Field
@@ -148,11 +148,15 @@ class FlextInfraProjectMigrator(
     @override
     def execute_command(
         cls,
-        params: Self,
+        params: m.Infra.WorkspaceMigrateInput,
     ) -> r[Sequence[m.Infra.MigrationResult]]:
         """Execute the validated CLI service instance directly."""
-        _ = cls
-        return params.execute()
+        service = cls.model_validate({
+            "workspace_root": params.workspace_path,
+            "apply_changes": params.apply,
+            "dry_run": params.dry_run,
+        })
+        return service.execute()
 
     def migrate(
         self,

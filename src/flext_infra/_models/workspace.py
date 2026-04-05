@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
 
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 from flext_core import m
 from flext_infra import t
@@ -27,6 +27,8 @@ class FlextInfraWorkspaceModels:
     ):
         """Discovered project metadata for workspace operations."""
 
+        model_config = ConfigDict(frozen=True, validate_default=False)
+
         path: Annotated[Path, Field(description="Absolute or relative project path")]
         stack: Annotated[
             t.NonEmptyStr,
@@ -40,6 +42,17 @@ class FlextInfraWorkspaceModels:
             bool,
             Field(default=True, description="Project has source directory"),
         ] = True
+        project_class: Annotated[
+            t.NonEmptyStr,
+            Field(
+                default="platform",
+                description="Docs/governance project classification",
+            ),
+        ] = "platform"
+        package_name: Annotated[
+            str,
+            Field(default="", description="Primary Python package name"),
+        ] = ""
 
     class ProjectMeta(
         FlextInfraModelsMixins.ProjectEntryNameMixin,

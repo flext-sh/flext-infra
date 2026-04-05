@@ -115,7 +115,7 @@ if _t.TYPE_CHECKING:
     )
 
     _utilities = _flext_infra__utilities
-    import flext_infra.base as _flext_infra_base
+    import flext_infra.api as _flext_infra_api
     from flext_infra._utilities import (
         FlextInfraExtraPathsResolutionMixin,
         FlextInfraInternalSyncRepoMixin,
@@ -223,14 +223,18 @@ if _t.TYPE_CHECKING:
         yaml,
     )
 
+    api = _flext_infra_api
+    import flext_infra.base as _flext_infra_base
+    from flext_infra.api import FlextInfra
+
     base = _flext_infra_base
     import flext_infra.cli as _flext_infra_cli
     from flext_infra.base import (
         APPLY_OPTION_DECLS,
         FlextInfraCommandContext,
-        FlextInfraCommandContext as s,
         FlextInfraServiceBase,
         apply_option_json_schema_extra,
+        s,
     )
     from flext_infra.basemk import (
         FlextInfraBaseMkGenerator,
@@ -614,11 +618,12 @@ _LAZY_IMPORTS = merge_lazy_imports(
     ),
     {
         "APPLY_OPTION_DECLS": "flext_infra.base",
+        "FlextInfra": "flext_infra.api",
         "FlextInfraCli": "flext_infra.cli",
+        "FlextInfraCommandContext": "flext_infra.base",
         "FlextInfraConstants": "flext_infra.constants",
         "FlextInfraModels": "flext_infra.models",
         "FlextInfraProtocols": "flext_infra.protocols",
-        "FlextInfraCommandContext": "flext_infra.base",
         "FlextInfraServiceBase": "flext_infra.base",
         "FlextInfraTypes": "flext_infra.typings",
         "FlextInfraUtilities": "flext_infra.utilities",
@@ -636,6 +641,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
         "_protocols": "flext_infra._protocols",
         "_typings": "flext_infra._typings",
         "_utilities": "flext_infra._utilities",
+        "api": "flext_infra.api",
         "apply_option_json_schema_extra": "flext_infra.base",
         "base": "flext_infra.base",
         "c": ("flext_infra.constants", "FlextInfraConstants"),
@@ -651,7 +657,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
         "protocols": "flext_infra.protocols",
         "r": ("flext_core.result", "FlextResult"),
         "rules": "flext_infra.rules",
-        "s": ("flext_infra.base", "FlextInfraCommandContext"),
+        "s": "flext_infra.base",
         "t": ("flext_infra.typings", "FlextInfraTypes"),
         "transformers": "flext_infra.transformers",
         "typings": "flext_infra.typings",
@@ -664,6 +670,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
 __all__ = [
     "APPLY_OPTION_DECLS",
     "DetectorContext",
+    "FlextInfra",
     "FlextInfraBanditGate",
     "FlextInfraBaseMkGenerator",
     "FlextInfraBaseMkTemplateEngine",
@@ -703,6 +710,7 @@ __all__ = [
     "FlextInfraCodegenPipeline",
     "FlextInfraCodegenPyTyped",
     "FlextInfraCodegenScaffolder",
+    "FlextInfraCommandContext",
     "FlextInfraCompatibilityAliasDetector",
     "FlextInfraConfigFixer",
     "FlextInfraConsolidateGroupsPhase",
@@ -858,7 +866,6 @@ __all__ = [
     "FlextInfraRuntimeAliasDetector",
     "FlextInfraRuntimeDevDependencyDetector",
     "FlextInfraScanFileMixin",
-    "FlextInfraCommandContext",
     "FlextInfraServiceBase",
     "FlextInfraSharedInfraConstants",
     "FlextInfraSkillValidator",
@@ -970,6 +977,7 @@ __all__ = [
     "_utilities",
     "adapters",
     "alias_remover",
+    "api",
     "apply_option_json_schema_extra",
     "auditor",
     "bandit",

@@ -4,12 +4,15 @@ from __future__ import annotations
 
 from collections.abc import Mapping, MutableSequence
 from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
 import tomlkit
 from tomlkit.items import Item, Table
 
-from flext_infra import FlextInfraExtraPathsManager, c, m, t, u
+from flext_infra import c, m, t, u
+
+if TYPE_CHECKING:
+    from flext_infra import FlextInfraExtraPathsManager
 
 from .ensure_pyright_envs import FlextInfraEnsurePyrightEnvs
 
@@ -108,6 +111,7 @@ class FlextInfraEnsurePyrightConfigPhase(FlextInfraEnsurePyrightEnvs):
         workspace_root: Path | None = None,
         project_dir: Path | None = None,
         project_kind: str = "core",
+        paths_manager: FlextInfraExtraPathsManager | None = None,
     ) -> t.StrSequence:
         changes: MutableSequence[str] = []
         tool: Item | None = None
@@ -169,8 +173,8 @@ class FlextInfraEnsurePyrightConfigPhase(FlextInfraEnsurePyrightEnvs):
         elif "stubPath" in pyright:
             del pyright["stubPath"]
             changes.append("tool.pyright.stubPath removed (no typings configured)")
-        if project_root is not None:
-            expected_extra = FlextInfraExtraPathsManager().pyright_extra_paths(
+        if project_root is not None and paths_manager is not None:
+            expected_extra = paths_manager.pyright_extra_paths(
                 project_dir=project_root,
                 is_root=is_root,
             )

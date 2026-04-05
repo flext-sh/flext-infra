@@ -71,11 +71,6 @@ class FlextInfraTypesAdapters:
     )
     "Validates Sequence[StrMapping]."
 
-    STR_SEQ_SIMPLE_ADAPTER: ClassVar[TypeAdapter[FlextTypes.StrSequence]] = TypeAdapter(
-        FlextTypes.StrSequence
-    )
-    "Validates StrSequence (FlextTypes.StrSequence)."
-
     # ── Composite adapters ────────────────────────────────────────────
     INFRA_SEQ_MAPPING_ADAPTER: ClassVar[
         TypeAdapter[Sequence[Mapping[str, FlextInfraTypesBase.InfraValue]]]

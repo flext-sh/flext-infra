@@ -1,97 +1,127 @@
-"""Documentation auditor service.
-
-Audits documentation for broken links and forbidden terms,
-returning structured r reports.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Documentation auditor service."""
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
+import sys
+from collections.abc import Sequence
 from pathlib import Path
+from typing import Annotated, override
 
-from flext_core import FlextLogger
-from flext_infra import FlextInfraDocAuditorMixin, c, m, r, t, u
+from pydantic import Field
 
-logger = FlextLogger.create_module_logger(__name__)
+from flext_core import r
+from flext_infra import c, m, t, u
+from flext_infra.base import s
+from flext_infra.docs._auditor_mixin import FlextInfraDocAuditorMixin
 
-_NO_BUDGETS: t.Infra.Pair[int | None, t.IntMapping] = (None, {})
 
+class FlextInfraDocAuditor(s[bool], FlextInfraDocAuditorMixin):
+    """Audit governed docs scopes using code-backed and policy-backed checks."""
 
-class FlextInfraDocAuditor(FlextInfraDocAuditorMixin):
-    """Infrastructure service for documentation auditing.
-
-    Scans markdown documentation for broken internal links and
-    forbidden terms, returning structured r reports.
-    """
-
-    @staticmethod
-    def is_external(target: str) -> bool:
-        """Return True when target points outside the repository."""
-        lower = u.norm_str(target, case="lower").lstrip("<")
-        return lower.startswith(("http://", "https://", "mailto:", "tel:", "data:"))
-
-    @staticmethod
-    def load_audit_budgets(
-        workspace_root: Path,
-    ) -> t.Infra.Pair[int | None, t.IntMapping]:
-        """Load audit issue budgets from architecture config."""
-        config_path = FlextInfraDocAuditor.find_architecture_config(workspace_root)
-        if config_path is None:
-            return _NO_BUDGETS
-        payload_result = u.Cli.json_read(config_path)
-        if payload_result.is_failure:
-            return _NO_BUDGETS
-        docs_validation = u.Infra.as_toml_mapping(
-            payload_result.value.get("docs_validation"),
-        )
-        if docs_validation is None:
-            return _NO_BUDGETS
-        audit_gate = u.Infra.as_toml_mapping(docs_validation.get("audit_gate"))
-        if audit_gate is None:
-            return _NO_BUDGETS
-        return FlextInfraDocAuditor.parse_audit_gate(audit_gate)
+    selected_projects: Annotated[
+        t.StrSequence | None,
+        Field(default=None, description="Selected projects", exclude=True),
+    ] = None
+    docs_output_dir: Annotated[
+        str,
+        Field(
+            default=c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
+            description="Docs output dir",
+            exclude=True,
+        ),
+    ] = c.Infra.DEFAULT_DOCS_OUTPUT_DIR
+    strict_mode: Annotated[
+        bool,
+        Field(default=False, description="Strict audit mode", exclude=True),
+    ] = False
 
     @staticmethod
     def normalize_link(target: str) -> str:
-        """Strip fragment and query-string from a markdown link target."""
-        value = target.strip()
-        if value.startswith("<") and value.endswith(">"):
-            value = value[1:-1].strip()
-        return value.split("#", maxsplit=1)[0].split("?", maxsplit=1)[0]
+        """Normalize one markdown link target."""
+        return u.Infra.docs_normalize_link(target)
 
     @staticmethod
     def should_skip_target(raw: str, target: str) -> bool:
-        """Return whether link text should be ignored as a non-path target."""
-        if target.startswith("http"):
-            return False
-        looks_like_prose = ".md" not in raw and "/" not in raw
-        if not looks_like_prose:
-            return False
-        return "," in raw or " " in raw
+        """Return whether one raw markdown target should be ignored."""
+        return u.Infra.docs_should_skip_target(raw, target)
+
+    @staticmethod
+    def is_external(target: str) -> bool:
+        """Return whether one target points outside the repository."""
+        return u.Infra.docs_is_external(target)
 
     @staticmethod
     def to_markdown(
         scope: m.Infra.DocScope,
         issues: Sequence[m.Infra.AuditIssue],
     ) -> t.StrSequence:
-        """Format audit issues as a markdown report."""
-        return [
-            "# Docs Audit Report",
-            "",
-            f"Scope: {scope.name}",
-            f"Files scanned: {len(u.Infra.iter_markdown_files(scope.path))}",
-            f"Issues: {len(issues)}",
-            "",
-            "| file | type | severity | message |",
-            "|---|---|---|---|",
-            *[
-                f"| {issue.file} | {issue.issue_type} | {issue.severity} | {issue.message} |"
-                for issue in issues
-            ],
-        ]
+        """Render the canonical markdown report for one audit scope."""
+        return u.Infra.docs_audit_markdown(scope, issues)
+
+    @staticmethod
+    def broken_link_issues(
+        scope: m.Infra.DocScope,
+    ) -> Sequence[m.Infra.AuditIssue]:
+        """Return broken internal link issues for one scope."""
+        return u.Infra.docs_broken_link_issues(scope)
+
+    @staticmethod
+    def forbidden_term_issues(
+        scope: m.Infra.DocScope,
+    ) -> Sequence[m.Infra.AuditIssue]:
+        """Return forbidden-term issues configured for one scope."""
+        return u.Infra.docs_text_token_issues(
+            scope,
+            tokens=u.Infra.docs_policy_list(
+                scope,
+                section="audit",
+                key="forbidden_terms",
+            ),
+            issue_type="forbidden_term",
+        )
+
+    @staticmethod
+    def placeholder_issues(
+        scope: m.Infra.DocScope,
+    ) -> Sequence[m.Infra.AuditIssue]:
+        """Return placeholder-text issues for one scope."""
+        return u.Infra.docs_text_token_issues(
+            scope,
+            tokens=u.Infra.docs_policy_list(
+                scope,
+                section="audit",
+                key="placeholder_terms",
+            ),
+            issue_type="placeholder",
+        )
+
+    @staticmethod
+    def stale_symbol_issues(
+        scope: m.Infra.DocScope,
+    ) -> Sequence[m.Infra.AuditIssue]:
+        """Return stale forward-guidance symbol issues for one scope."""
+        return u.Infra.docs_stale_symbol_issues(scope)
+
+    @staticmethod
+    def scope_boundary_issues(
+        scope: m.Infra.DocScope,
+    ) -> Sequence[m.Infra.AuditIssue]:
+        """Return root scope-boundary violations."""
+        return u.Infra.docs_scope_boundary_issues(scope)
+
+    @staticmethod
+    def generated_ownership_issues(
+        scope: m.Infra.DocScope,
+    ) -> Sequence[m.Infra.AuditIssue]:
+        """Return manual API page ownership violations."""
+        return u.Infra.docs_generated_ownership_issues(scope)
+
+    @staticmethod
+    def public_docstring_issues(
+        scope: m.Infra.DocScope,
+    ) -> Sequence[m.Infra.AuditIssue]:
+        """Return missing public docstring issues."""
+        return u.Infra.docs_public_docstring_issues(scope)
 
     def audit(
         self,
@@ -101,88 +131,58 @@ class FlextInfraDocAuditor(FlextInfraDocAuditorMixin):
         output_dir: str = c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
         params: m.Infra.AuditScopeParams | None = None,
     ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
-        """Run documentation audit across project scopes."""
-        resolved = params or m.Infra.AuditScopeParams()
-        budgets = resolved.budgets or self.load_audit_budgets(workspace_root)
-        scope_params = m.Infra.AuditScopeParams(
-            check=resolved.check,
-            strict=resolved.strict,
-            budgets=budgets,
-        )
+        """Audit root and governed project docs scopes."""
+        resolved_params = self._audit_params(workspace_root, params)
         return u.Infra.run_scoped(
             workspace_root,
             projects=projects,
             output_dir=output_dir,
-            handler=lambda scope: self.audit_scope(scope, params=scope_params),
+            handler=lambda scope: self.audit_scope(scope, params=resolved_params),
         )
-
-    def execute_command(self, params: m.Infra.DocsAuditInput) -> r[bool]:
-        """CLI handler -- accepts input model, delegates to audit."""
-        resolved_workspace = u.Infra.resolve_workspace_root_or_cwd(
-            params.workspace_path
-        )
-        scope_params = m.Infra.AuditScopeParams(
-            check="all" if params.check else "",
-            strict=params.strict,
-        )
-        result = self.audit(
-            workspace_root=resolved_workspace,
-            projects=params.project_names,
-            output_dir=params.output_dir,
-            params=scope_params,
-        )
-        if result.is_failure:
-            return r[bool].fail(result.error or "audit failed")
-        failures = u.count(result.value, lambda report: not report.passed)
-        if failures:
-            return r[bool].fail(f"Audit found {failures} failure(s)")
-        return r[bool].ok(True)
 
     def audit_scope(
         self,
         scope: m.Infra.DocScope,
         *,
-        params: m.Infra.AuditScopeParams | None = None,
+        params: m.Infra.AuditScopeParams,
     ) -> m.Infra.DocsPhaseReport:
-        """Run configured audit checks on a single scope."""
-        resolved = params or m.Infra.AuditScopeParams()
-        checks = self.resolve_checks(resolved.check)
-
-        issues: MutableSequence[m.Infra.AuditIssue] = []
-        if "links" in checks:
-            issues.extend(self.broken_link_issues(scope))
-        if "forbidden-terms" in checks:
-            issues.extend(self.forbidden_term_issues(scope))
-
-        self.write_audit_reports(
-            scope,
-            issues,
-            checks,
-            strict=resolved.strict,
-            to_markdown_fn=FlextInfraDocAuditor.to_markdown,
+        """Audit one scope and persist the standard reports."""
+        checks = sorted(self.resolve_checks(params.check))
+        issues = self._collect_issues(scope, checks)
+        default_budget, per_scope_budget = params.budgets or (None, {})
+        scope_budget = per_scope_budget.get(scope.name, default_budget)
+        issue_count = len(issues)
+        passed = True
+        if params.strict:
+            passed = (
+                issue_count == 0
+                if scope_budget is None
+                else issue_count <= scope_budget
+            )
+        result = (
+            c.Infra.Status.OK
+            if passed and issue_count == 0
+            else c.Infra.Status.WARN
+            if passed
+            else c.Infra.Status.FAIL
         )
-
-        budgets = resolved.budgets or _NO_BUDGETS
-        if not resolved.strict:
-            passed = True
-        else:
-            default_limit, by_scope = budgets
-            max_issues = by_scope.get(scope.name, default_limit)
-            limit = 0 if max_issues is None else max_issues
-            passed = len(issues) <= limit
-
-        status = c.Infra.Status.OK if passed else c.Infra.Status.FAIL
-        reason = f"issues:{len(issues)}"
-        logger.info(
-            "docs_audit_scope_completed",
-            project=scope.name,
-            phase="audit",
-            result=status,
-            reason=reason,
+        reason = (
+            f"issues:{issue_count}"
+            if scope_budget is None
+            else f"issues:{issue_count};budget:{scope_budget}"
         )
-        return m.Infra.DocsPhaseReport(
+        message = (
+            "audit passed" if issue_count == 0 else f"found {issue_count} issue(s)"
+        )
+        report = m.Infra.DocsPhaseReport(
             phase="audit",
             scope=scope.name,
+            result=result,
+            reason=reason,
+            message=message,
+            checks=checks,
+            strict=params.strict,
+            passed=passed,
             items=[
                 m.Infra.DocsPhaseItemModel(
                     phase="audit",
@@ -193,149 +193,142 @@ class FlextInfraDocAuditor(FlextInfraDocAuditorMixin):
                 )
                 for issue in issues
             ],
-            checks=sorted(checks),
-            strict=resolved.strict,
-            passed=passed,
-            result=status,
-            reason=reason,
-            message=f"issues: {len(issues)}",
         )
-
-    def _check_links_in_file(
-        self,
-        md_file: Path,
-        rel: str,
-    ) -> Sequence[m.Infra.AuditIssue]:
-        """Check a single markdown file for broken internal links."""
-        content = md_file.read_text(
-            encoding=c.Infra.Encoding.DEFAULT,
-            errors=c.Infra.IGNORE,
+        self.write_audit_reports(
+            scope,
+            issues,
+            set(checks),
+            strict=params.strict,
+            to_markdown_fn=self.to_markdown,
         )
-        issues: MutableSequence[m.Infra.AuditIssue] = []
-        in_fenced_code = False
-        for number, line in enumerate(content.splitlines(), start=1):
-            stripped = line.lstrip()
-            if stripped.startswith("```"):
-                in_fenced_code = not in_fenced_code
-                continue
-            if in_fenced_code:
-                continue
-            clean_line = u.Infra.INLINE_CODE_RE.sub("", line)
-            for raw in u.Infra.MARKDOWN_LINK_URL_RE.findall(clean_line):
-                issue = self._check_single_link(md_file, rel, raw, number)
-                if issue is not None:
-                    issues.append(issue)
-        return issues
-
-    def _check_single_link(
-        self,
-        md_file: Path,
-        rel: str,
-        raw: str,
-        line_number: int,
-    ) -> m.Infra.AuditIssue | None:
-        """Return an AuditIssue if a single link target is broken, else None."""
-        target = self.normalize_link(raw)
-        if not target or target.startswith("#") or self.is_external(target):
-            return None
-        if self.should_skip_target(raw, target):
-            return None
-        path = (md_file.parent / target).resolve()
-        if path.exists():
-            return None
-        return m.Infra.AuditIssue(
-            file=rel,
-            issue_type="broken_link",
-            severity="high",
-            message=f"line {line_number}: target not found -> {raw}",
+        self.logger.info(
+            "docs_audit_scope_completed",
+            project=scope.name,
+            phase="audit",
+            result=report.result,
+            reason=report.reason,
         )
+        return report
 
-    def broken_link_issues(
-        self,
-        scope: m.Infra.DocScope,
-    ) -> Sequence[m.Infra.AuditIssue]:
-        """Collect broken internal-link issues for markdown files in scope."""
-        issues: MutableSequence[m.Infra.AuditIssue] = []
-        for md_file in u.Infra.iter_markdown_files(scope.path):
-            rel = md_file.relative_to(scope.path).as_posix()
-            issues.extend(self._check_links_in_file(md_file, rel))
-        return issues
-
-    def forbidden_term_issues(
-        self,
-        scope: m.Infra.DocScope,
-    ) -> Sequence[m.Infra.AuditIssue]:
-        """Collect forbidden-term issues for markdown files in scope."""
-        issues: MutableSequence[m.Infra.AuditIssue] = []
-        terms: t.StrSequence = ()
-        for md_file in u.Infra.iter_markdown_files(scope.path):
-            rel = md_file.relative_to(scope.path).as_posix()
-            rel_lower = rel.lower()
-            if scope.name == c.Infra.ReportKeys.ROOT:
-                if not rel_lower.startswith("docs/"):
-                    continue
-            elif not scope.name.startswith(c.Infra.Packages.PREFIX_HYPHEN):
-                continue
-            content = md_file.read_text(
-                encoding=c.Infra.Encoding.DEFAULT,
-                errors=c.Infra.IGNORE,
-            ).lower()
-            issues.extend(
-                m.Infra.AuditIssue(
-                    file=rel,
-                    issue_type="forbidden_term",
-                    severity="medium",
-                    message=f"contains forbidden term '{term}'",
-                )
-                for term in terms
-                if term in content
-            )
-        return issues
-
-    @staticmethod
-    def main() -> int:
-        """CLI entry point for the documentation auditor (legacy argparse)."""
-        parser = u.Infra.create_parser(
-            "flext-infra docs audit",
-            "Audit documentation for issues",
-            flags=u.Infra.SharedFlags(
-                include_apply=True,
-                include_project=True,
-                include_check=True,
+    @override
+    def execute(self) -> r[bool]:
+        """Execute the configured docs audit flow."""
+        result = self.audit(
+            workspace_root=self.workspace_root,
+            projects=self.selected_projects,
+            output_dir=self.docs_output_dir,
+            params=m.Infra.AuditScopeParams(
+                check="all",
+                strict=self.strict_mode,
             ),
         )
-        _ = parser.add_argument("--strict", action="store_true", help="Strict mode")
+        if result.is_failure:
+            return r[bool].fail(result.error or "audit failed")
+        failures = sum(1 for report in result.value if not report.passed)
+        if failures:
+            return r[bool].fail(f"Audit found {failures} failing scope(s)")
+        return r[bool].ok(True)
+
+    @override
+    def execute_command(self, params: m.Infra.DocsAuditInput) -> r[bool]:
+        """CLI handler that normalizes input into the canonical service model."""
+        service = type(self)(
+            workspace=params.workspace_path,
+            check=params.check,
+            selected_projects=params.project_names,
+            docs_output_dir=params.output_dir,
+            strict_mode=params.strict,
+        )
+        return service.execute()
+
+    @classmethod
+    def main(cls, argv: t.StrSequence | None = None) -> int:
+        """CLI entrypoint retained for compatibility with the existing tests."""
+        parser = u.Infra.create_parser(
+            "flext-infra docs audit",
+            "Audit generated and curated FLEXT documentation.",
+            flags=u.Infra.SharedFlags(
+                include_apply=False,
+                include_check=True,
+                include_project=True,
+            ),
+        )
         _ = parser.add_argument(
             "--output-dir",
             default=c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
+            help="Report output directory",
         )
-        args = parser.parse_args()
+        _ = parser.add_argument(
+            "--strict",
+            action="store_true",
+            default=False,
+            help="Fail when issues exceed the allowed budget",
+        )
+        args = parser.parse_args(argv)
         cli = u.Infra.resolve(args)
-        auditor = FlextInfraDocAuditor()
-        scope_params = m.Infra.AuditScopeParams(
-            check="all" if cli.check else "none",
-            strict=bool(getattr(args, "strict", False)),
-        )
-        result = auditor.audit(
-            workspace_root=cli.workspace,
-            projects=cli.project_names(),
-            output_dir=args.output_dir,
-            params=scope_params,
+        result = cls().audit(
+            cli.workspace,
+            projects=cli.projects,
+            output_dir=str(args.output_dir),
+            params=m.Infra.AuditScopeParams(
+                check="all",
+                strict=bool(args.strict),
+            ),
         )
         if result.is_failure:
-            u.Infra.error(result.error or "audit failed")
             return 1
-        failures = u.count(result.value, lambda report: not report.passed)
-        return 1 if failures else 0
+        return 0 if all(report.passed for report in result.value) else 1
+
+    def _audit_params(
+        self,
+        workspace_root: Path,
+        params: m.Infra.AuditScopeParams | None,
+    ) -> m.Infra.AuditScopeParams:
+        """Resolve runtime audit parameters and load default budgets when absent."""
+        if params is not None and params.budgets is not None:
+            return params
+        budgets = self.load_audit_budgets(workspace_root)
+        if params is None:
+            return m.Infra.AuditScopeParams(
+                check="all",
+                strict=self.strict_mode,
+                budgets=budgets,
+            )
+        return m.Infra.AuditScopeParams(
+            check=params.check,
+            strict=params.strict,
+            budgets=budgets,
+        )
+
+    def _collect_issues(
+        self,
+        scope: m.Infra.DocScope,
+        checks: Sequence[str],
+    ) -> Sequence[m.Infra.AuditIssue]:
+        """Collect issues for the requested check set in canonical order."""
+        issues: list[m.Infra.AuditIssue] = []
+        if "links" in checks:
+            issues.extend(self.broken_link_issues(scope))
+        if "forbidden-terms" in checks:
+            issues.extend(self.forbidden_term_issues(scope))
+        if "placeholders" in checks:
+            issues.extend(self.placeholder_issues(scope))
+        if "stale-symbols" in checks:
+            issues.extend(self.stale_symbol_issues(scope))
+        if "scope-boundary" in checks:
+            issues.extend(self.scope_boundary_issues(scope))
+        if "generated-ownership" in checks:
+            issues.extend(self.generated_ownership_issues(scope))
+        if "docstrings" in checks:
+            issues.extend(self.public_docstring_issues(scope))
+        return tuple(issues)
 
 
 main = FlextInfraDocAuditor.main
 
 
 if __name__ == "__main__":
-    raise SystemExit(FlextInfraDocAuditor.main())
-__all__ = [
-    "FlextInfraDocAuditor",
-    "FlextInfraDocAuditorMixin",
-    "main",
-]
+    sys.exit(FlextInfraDocAuditor.main())
+
+
+__all__ = ["FlextInfraDocAuditor", "main"]

@@ -1,55 +1,34 @@
-"""Documentation builder service.
-
-Builds MkDocs sites for workspace projects, returning structured
-r reports.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Documentation builder service."""
 
 from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
+from typing import Annotated, override
 
-from flext_core import FlextLogger
-from flext_infra import c, m, p, r, u
+from pydantic import Field, PrivateAttr
 
-logger = FlextLogger.create_module_logger(__name__)
+from flext_core import r
+from flext_infra import c, m, p, t, u
+from flext_infra.base import s
 
 
-class FlextInfraDocBuilder:
-    """Infrastructure service for documentation building.
+class FlextInfraDocBuilder(s[bool]):
+    """Build MkDocs sites for governed FLEXT scopes."""
 
-    Runs MkDocs build for workspace projects and returns
-    structured r reports.
-    """
-
-    def __init__(self) -> None:
-        """Initialize the documentation builder."""
-        self._runner: p.Infra.CommandRunner = u.Infra()
-
-    @staticmethod
-    def _write_reports(
-        scope: m.Infra.DocScope,
-        report: m.Infra.DocsPhaseReport,
-    ) -> None:
-        """Persist build JSON summary and markdown report."""
-        _ = u.Cli.json_write(
-            scope.report_dir / "build-summary.json",
-            {c.Infra.ReportKeys.SUMMARY: report.model_dump()},
-        )
-        _ = u.Infra.write_markdown(
-            scope.report_dir / "build-report.md",
-            [
-                "# Docs Build Report",
-                "",
-                f"Scope: {report.scope}",
-                f"Result: {report.result}",
-                f"Reason: {report.reason}",
-                f"Site dir: {report.site_dir}",
-            ],
-        )
+    selected_projects: Annotated[
+        t.StrSequence | None,
+        Field(default=None, description="Selected projects", exclude=True),
+    ] = None
+    docs_output_dir: Annotated[
+        str,
+        Field(
+            default=c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
+            description="Docs output dir",
+            exclude=True,
+        ),
+    ] = c.Infra.DEFAULT_DOCS_OUTPUT_DIR
+    _runner: p.Infra.CommandRunner = PrivateAttr(default_factory=u.Infra)
 
     def build(
         self,
@@ -58,17 +37,7 @@ class FlextInfraDocBuilder:
         projects: Sequence[str] | None = None,
         output_dir: str = c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
     ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
-        """Build MkDocs sites across project scopes.
-
-        Args:
-            workspace_root: Workspace root directory.
-            projects: Selected project names.
-            output_dir: Report output directory.
-
-        Returns:
-            r with list of BuildReport objects.
-
-        """
+        """Build MkDocs sites across project scopes."""
         return u.Infra.run_scoped(
             workspace_root,
             projects=projects,
@@ -76,12 +45,13 @@ class FlextInfraDocBuilder:
             handler=self._build_scope,
         )
 
-    def execute_command(self, params: m.Infra.DocsBuildInput) -> r[bool]:
-        """CLI handler — accepts input model, delegates to build."""
+    @override
+    def execute(self) -> r[bool]:
+        """Execute the configured docs build flow."""
         result = self.build(
-            workspace_root=params.workspace_path,
-            projects=params.project_names,
-            output_dir=params.output_dir,
+            workspace_root=self.workspace_root,
+            projects=self.selected_projects,
+            output_dir=self.docs_output_dir,
         )
         if result.is_failure:
             return r[bool].fail(result.error or "build failed")
@@ -92,14 +62,21 @@ class FlextInfraDocBuilder:
             return r[bool].fail(f"Build had {failures} failure(s)")
         return r[bool].ok(True)
 
-    def _build_scope(
-        self,
-        scope: m.Infra.DocScope,
-    ) -> m.Infra.DocsPhaseReport:
-        """Run mkdocs build --strict for a single scope."""
+    @override
+    def execute_command(self, params: m.Infra.DocsBuildInput) -> r[bool]:
+        """CLI handler that normalizes input into the canonical service model."""
+        service = type(self)(
+            workspace=params.workspace_path,
+            selected_projects=params.project_names,
+            docs_output_dir=params.output_dir,
+        )
+        return service.execute()
+
+    def _build_scope(self, scope: m.Infra.DocScope) -> m.Infra.DocsPhaseReport:
+        """Build one scope via ``u.Infra`` and persist its reports."""
         report = self._run_mkdocs(scope)
         self._write_reports(scope, report)
-        logger.info(
+        self.logger.info(
             "docs_build_scope_completed",
             project=scope.name,
             phase=c.Infra.Directories.BUILD,
@@ -108,64 +85,17 @@ class FlextInfraDocBuilder:
         )
         return report
 
-    def _run_mkdocs(
+    def _run_mkdocs(self, scope: m.Infra.DocScope) -> m.Infra.DocsPhaseReport:
+        """Delegate MkDocs execution to the docs utilities."""
+        return u.Infra.docs_run_mkdocs(scope, runner=self._runner)
+
+    def _write_reports(
         self,
         scope: m.Infra.DocScope,
-    ) -> m.Infra.DocsPhaseReport:
-        """Run mkdocs build --strict and return the result."""
-        config = scope.path / "mkdocs.yml"
-        if not config.exists():
-            return m.Infra.DocsPhaseReport(
-                phase="build",
-                scope=scope.name,
-                result="SKIP",
-                reason="mkdocs.yml not found",
-                site_dir="",
-                passed=True,
-            )
-        site_dir = (
-            scope.path / c.Infra.DEFAULT_DOCS_OUTPUT_DIR / c.Infra.Directories.SITE
-        ).resolve()
-        site_dir.parent.mkdir(parents=True, exist_ok=True)
-        cmd = [
-            "mkdocs",
-            c.Infra.Directories.BUILD,
-            "--strict",
-            "-f",
-            str(config),
-            "-d",
-            str(site_dir),
-        ]
-        completed = self._runner.run_raw(cmd, cwd=scope.path)
-        if completed.is_failure:
-            return m.Infra.DocsPhaseReport(
-                phase="build",
-                scope=scope.name,
-                result=c.Infra.Status.FAIL,
-                reason=completed.error or "mkdocs build failed",
-                site_dir=site_dir.as_posix(),
-                passed=False,
-            )
-        output = completed.value
-        if output.exit_code == 0:
-            return m.Infra.DocsPhaseReport(
-                phase="build",
-                scope=scope.name,
-                result=c.Infra.Status.OK,
-                reason="build succeeded",
-                site_dir=site_dir.as_posix(),
-                passed=True,
-            )
-        reason = (output.stderr or output.stdout).strip().splitlines()
-        tail = reason[-1] if reason else f"mkdocs exited {output.exit_code}"
-        return m.Infra.DocsPhaseReport(
-            phase="build",
-            scope=scope.name,
-            result=c.Infra.Status.FAIL,
-            reason=tail,
-            site_dir=site_dir.as_posix(),
-            passed=False,
-        )
+        report: m.Infra.DocsPhaseReport,
+    ) -> None:
+        """Delegate build report persistence to the docs utilities."""
+        u.Infra.docs_write_build_reports(scope, report)
 
 
 __all__ = ["FlextInfraDocBuilder"]

@@ -25,8 +25,8 @@ class FlextInfra(FlextInfraServiceBase[bool]):
     Usage::
 
         infra = FlextInfra.get_instance()
-        infra.basemk(...)   # Returns FlextInfraBaseMkGenerator instance
-        infra.check(...)    # Returns FlextInfraWorkspaceChecker instance
+        infra.basemk(...)  # Returns FlextInfraBaseMkGenerator instance
+        infra.check(...)  # Returns FlextInfraWorkspaceChecker instance
 
     Domain factory accessors will be added by Plan 08 after
     Plans 02-07 complete domain refactoring.

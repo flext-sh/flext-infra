@@ -15,7 +15,8 @@ from typing import Annotated, override
 
 from pydantic import Field
 
-from flext_infra import FlextInfraBaseMkGenerator, c, m, r, s, t, u
+from flext_infra import FlextInfraBaseMkGenerator, c, m, r, t, u
+from flext_infra.base import s
 
 
 class FlextInfraSyncService(s[m.Infra.SyncResult]):
@@ -44,15 +45,21 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
         configured = self.generator or private_generator
         return configured if configured is not None else FlextInfraBaseMkGenerator()
 
+    def _resolved_workspace_root(self) -> Path:
+        """Return the validated workspace root from the command context."""
+        raw = getattr(self, "workspace_root", None)
+        if isinstance(raw, Path):
+            return raw.resolve()
+        if isinstance(raw, str) and raw.strip():
+            return Path(raw).resolve()
+        return Path.cwd().resolve()
+
     @override
     def execute(self) -> r[m.Infra.SyncResult]:
         """Execute the workspace sync flow."""
         import fcntl
 
-        if not self.workspace_root:
-            return r[m.Infra.SyncResult].fail("workspace_root is required")
-
-        resolved = self.workspace_root.resolve()
+        resolved = self._resolved_workspace_root()
         if not resolved.exists():
             return r[m.Infra.SyncResult].fail(
                 f"workspace_root '{resolved}' does not exist"
@@ -75,6 +82,20 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
                         fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
         except OSError as exc:
             return r[m.Infra.SyncResult].fail(f"Could not open lock file: {exc}")
+
+    @classmethod
+    @override
+    def execute_command(
+        cls,
+        params: m.Infra.WorkspaceSyncInput,
+    ) -> r[m.Infra.SyncResult]:
+        """Execute the validated CLI service instance directly."""
+        service = cls.model_validate({
+            "workspace_root": params.workspace_path,
+            "apply_changes": params.apply,
+            "canonical_root": params.canonical_root_path,
+        })
+        return service.execute()
 
     def _sync_locked_content(
         self,
@@ -259,12 +280,8 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
             help="Canonical workspace root",
         )
         args = parser.parse_args()
-        cli = u.Infra.resolve(args)
-        service = FlextInfraSyncService(
-            workspace=cli.workspace,
-            canonical_root=getattr(args, "canonical_root", None),
-        )
-        result = service.execute()
+        params = m.Infra.WorkspaceSyncInput.model_validate(vars(args))
+        result = FlextInfraSyncService.execute_command(params)
         if result.is_success:
             return 0
         u.Infra.error(result.error or "sync failed")

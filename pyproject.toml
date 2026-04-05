@@ -149,6 +149,10 @@ known_first_party = [
 ]
 pep621_dev_dependency_groups = [ "dev" ]
 
+[tool.flext.docs]
+project_class = "infra"
+site_title = "FLEXT Infra"
+
 [tool.hatch.build.targets.wheel]
 packages = [ "src/flext_infra" ]
 

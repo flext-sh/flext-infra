@@ -11,9 +11,9 @@ from flext_infra import (
     FlextInfraCodegenLazyInit,
     FlextInfraCodegenPyTyped,
     FlextInfraCodegenScaffolder,
-    s,
     t,
 )
+from flext_infra.base import s
 
 
 class FlextInfraCodegenPipeline(s[str]):

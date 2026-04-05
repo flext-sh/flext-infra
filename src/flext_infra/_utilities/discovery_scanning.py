@@ -78,18 +78,16 @@ class FlextInfraUtilitiesDiscoveryScanning:
             content = init_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
             targets: t.MutableStrMapping = {}
             dict_match = re.search(
-                r"_LAZY_IMPORTS\s*(?::\s*[^=]+)?\s*=\s*(?:merge_lazy_imports\s*\(\s*)?\{([^}]+)\}",
+                r"_LAZY_IMPORTS\s*(?::\s*[^=]+)?\s*=\s*(?:merge_lazy_imports\s*\(\s*(?:\([^)]*\)\s*,\s*)?)?\{(.*?)\}\s*(?:,\s*\))?",
                 content,
                 re.DOTALL,
             )
             if dict_match:
-                for line in dict_match.group(1).splitlines():
-                    match = re.search(
-                        r"""["']([a-zA-Z0-9_]+)["']\s*:\s*[([]?\s*["']([a-zA-Z0-9_\.]+)["']""",
-                        line,
-                    )
-                    if match:
-                        targets[match.group(1)] = match.group(2)
+                for match in re.finditer(
+                    r"""["']([a-zA-Z0-9_]+)["']\s*:\s*(?:\(\s*)?["']([a-zA-Z0-9_\.]+)["']""",
+                    dict_match.group(1),
+                ):
+                    targets[match.group(1)] = match.group(2)
             return targets
         except OSError:
             return {}

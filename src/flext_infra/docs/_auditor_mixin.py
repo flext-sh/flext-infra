@@ -53,12 +53,47 @@ class FlextInfraDocAuditorMixin:
         )
         return (resolved_default, by_scope)
 
+    @classmethod
+    def load_audit_budgets(
+        cls,
+        workspace_root: Path,
+    ) -> t.Infra.Pair[int | None, t.IntMapping]:
+        """Load audit budgets from the nearest architecture config."""
+        config = cls.find_architecture_config(workspace_root)
+        if config is None:
+            return (None, {})
+        payload_result = u.Cli.json_read(config)
+        if payload_result.is_failure or not u.is_mapping(payload_result.value):
+            return (None, {})
+        docs_validation = payload_result.value.get("docs_validation")
+        if not isinstance(docs_validation, Mapping):
+            return (None, {})
+        audit_gate = docs_validation.get("audit_gate")
+        if not isinstance(audit_gate, Mapping):
+            return (None, {})
+        try:
+            validated_gate = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
+                audit_gate,
+                strict=False,
+            )
+        except ValidationError:
+            return (None, {})
+        return cls.parse_audit_gate(validated_gate)
+
     @staticmethod
     def resolve_checks(check: str) -> set[str]:
         """Parse check string into a resolved set of check names."""
         checks = {part.strip() for part in check.split(",") if part.strip()}
         if not checks or "all" in checks:
-            return {"links", "forbidden-terms"}
+            return {
+                "links",
+                "forbidden-terms",
+                "placeholders",
+                "stale-symbols",
+                "scope-boundary",
+                "generated-ownership",
+                "docstrings",
+            }
         return checks
 
     @staticmethod

@@ -9,6 +9,7 @@ class FlextInfraDocsConstants:
     """Docs infrastructure constants."""
 
     DEFAULT_DOCS_OUTPUT_DIR: Final[str] = ".reports/docs"
+    DOCS_CONFIG_FILENAME: Final[str] = "docs_config.json"
 
 
 __all__ = ["FlextInfraDocsConstants"]

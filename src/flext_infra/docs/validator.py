@@ -1,79 +1,47 @@
-"""Documentation validator service.
-
-Validates documentation for ADR skill references and generates
-validation reports, returning structured r reports.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Documentation validator service."""
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import Sequence
 from pathlib import Path
+from typing import Annotated, override
 
-from pydantic import ValidationError
+from pydantic import Field
 
-from flext_core import FlextLogger
-from flext_infra import c, m, r, t, u
+from flext_core import r
+from flext_infra import c, m, t, u
+from flext_infra.base import s
 
-logger = FlextLogger.create_module_logger(__name__)
 
+class FlextInfraDocValidator(s[bool]):
+    """Validate the governed docs contract for root and FLEXT projects."""
 
-class FlextInfraDocValidator:
-    """Infrastructure service for documentation validation.
+    selected_projects: Annotated[
+        t.StrSequence | None,
+        Field(default=None, description="Selected projects", exclude=True),
+    ] = None
+    docs_output_dir: Annotated[
+        str,
+        Field(
+            default=c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
+            description="Docs output dir",
+            exclude=True,
+        ),
+    ] = c.Infra.DEFAULT_DOCS_OUTPUT_DIR
 
-    Checks ADR skill references and generates validation reports,
-    returning structured r reports.
-    """
-
-    @staticmethod
-    def _has_adr_reference(skill_path: Path) -> bool:
-        """Check whether a skill file contains an ADR reference."""
-        text = skill_path.read_text(
-            encoding=c.Infra.Encoding.DEFAULT,
-            errors=c.Infra.IGNORE,
-        ).lower()
-        return "adr" in text
-
-    @staticmethod
-    def _maybe_write_todo(
-        scope: m.Infra.DocScope,
-        *,
-        apply_mode: bool,
-    ) -> bool:
-        """Write a TODOS.md file for the scope if apply mode is enabled."""
-        if scope.name == c.Infra.ReportKeys.ROOT or not apply_mode:
-            return False
-        path = scope.path / "TODOS.md"
-        content = "# TODOS\n\n- [ ] Resolve documentation validation findings from `.reports/docs/validate-report.md`.\n"
-        _ = path.write_text(content, encoding=c.Infra.Encoding.DEFAULT)
-        return True
-
+    @override
     def validate(
         self,
-        workspace_root: Path,
+        value: Path,
         *,
         projects: Sequence[str] | None = None,
         output_dir: str = c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
         check: str = "all",
         apply: bool = False,
     ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
-        """Run documentation validation across project scopes.
-
-        Args:
-            workspace_root: Workspace root directory.
-            projects: Selected project names.
-            output_dir: Report output directory.
-            check: Validation checks to run.
-            apply: Write TODOS.md if needed.
-
-        Returns:
-            r with list of ValidateReport objects.
-
-        """
+        """Validate documentation across the workspace root and governed projects."""
         return u.Infra.run_scoped(
-            workspace_root,
+            value,
             projects=projects,
             output_dir=output_dir,
             handler=lambda scope: self._validate_scope(
@@ -83,17 +51,15 @@ class FlextInfraDocValidator:
             ),
         )
 
-    def execute_command(self, params: m.Infra.DocsValidateInput) -> r[bool]:
-        """CLI handler — accepts input model, delegates to validate."""
-        resolved_workspace = u.Infra.resolve_workspace_root_or_cwd(
-            params.workspace_path
-        )
+    @override
+    def execute(self) -> r[bool]:
+        """Execute the configured docs validation flow."""
         result = self.validate(
-            workspace_root=resolved_workspace,
-            projects=params.project_names,
-            output_dir=params.output_dir,
-            check="all" if params.check else "",
-            apply=params.apply,
+            self.workspace_root,
+            projects=self.selected_projects,
+            output_dir=self.docs_output_dir,
+            check="all" if self.check_only else "",
+            apply=self.apply_changes,
         )
         if result.is_failure:
             return r[bool].fail(result.error or "validate failed")
@@ -104,63 +70,53 @@ class FlextInfraDocValidator:
             return r[bool].fail(f"Validate found {failures} failure(s)")
         return r[bool].ok(True)
 
-    @staticmethod
-    def _load_required_skills(workspace_root: Path) -> t.StrSequence | None:
-        """Load required skill names from architecture config. Returns None on error."""
-        config = workspace_root / "docs/architecture/architecture_config.json"
-        if not config.exists():
-            return []
-        payload_result = u.Cli.json_read(config)
-        if payload_result.is_failure:
-            return None
-        configured = FlextInfraDocValidator._extract_required_skills_list(
-            payload_result.value,
+    @override
+    def execute_command(self, params: m.Infra.DocsValidateInput) -> r[bool]:
+        """CLI handler that normalizes input into the canonical service model."""
+        service = type(self)(
+            workspace=params.workspace_path,
+            apply=params.apply,
+            check=params.check,
+            selected_projects=params.project_names,
+            docs_output_dir=params.output_dir,
         )
-        if configured is None:
-            return []
-        try:
-            required_items: t.StrSequence = t.Infra.STR_SEQ_ADAPTER.validate_python(
-                configured,
-                strict=True,
-            )
-            return [str(item) for item in required_items if item]
-        except ValidationError:
-            return []
-
-    @staticmethod
-    def _extract_required_skills_list(
-        payload: t.ValueOrModel,
-    ) -> t.ContainerList | None:
-        """Extract the required_skills list from config payload. None if absent/invalid."""
-        if not u.is_mapping(payload):
-            return None
-        docs_validation = payload.get("docs_validation")
-        if not isinstance(docs_validation, Mapping):
-            return None
-        configured = docs_validation.get("required_skills")
-        if not isinstance(configured, list):
-            return None
-        return configured
+        return service.execute()
 
     def _run_adr_skill_check(
-        self, workspace_root: Path
+        self,
+        workspace_root: Path,
     ) -> t.Infra.Pair[int, t.StrSequence]:
-        """Run ADR skill check and return exit code with missing skill names."""
-        loaded = self._load_required_skills(workspace_root)
-        if loaded is None:
+        """Run the ADR skill validation check for the root docs scope."""
+        required = u.Infra.docs_load_required_skills(workspace_root)
+        if required is None:
             return (1, [])
-        required = loaded or [
+        required_skills = required or [
             "rules-docs",
             "scripts-maintenance",
             "readme-standardization",
         ]
         skills_root = workspace_root / ".claude/skills"
-        missing: MutableSequence[str] = []
-        for name in required:
-            skill = skills_root / name / "SKILL.md"
-            if not skill.exists() or not self._has_adr_reference(skill):
-                missing.append(name)
+        missing: list[str] = []
+        for skill_name in required_skills:
+            skill_path = skills_root / skill_name / "SKILL.md"
+            if not skill_path.exists() or not u.Infra.docs_has_adr_reference(
+                skill_path
+            ):
+                missing.append(skill_name)
         return (0 if not missing else 1, missing)
+
+    def _has_adr_reference(self, skill_path: Path) -> bool:
+        """Delegate ADR reference detection to ``u.Infra``."""
+        return u.Infra.docs_has_adr_reference(skill_path)
+
+    def _maybe_write_todo(
+        self,
+        scope: m.Infra.DocScope,
+        *,
+        apply_mode: bool,
+    ) -> bool:
+        """Delegate optional TODO creation to ``u.Infra``."""
+        return u.Infra.docs_write_todo(scope, apply_mode=apply_mode)
 
     def _validate_scope(
         self,
@@ -169,60 +125,33 @@ class FlextInfraDocValidator:
         check: str,
         apply_mode: bool,
     ) -> m.Infra.DocsPhaseReport:
-        """Run validation for a single project scope."""
+        """Validate one docs scope and persist the standard reports."""
+        _ = check
         status = c.Infra.Status.OK
-        message = "validation passed"
+        messages: list[str] = []
         missing_adr_skills: t.StrSequence = []
         config_exists = (
             scope.path / "docs/architecture/architecture_config.json"
         ).exists()
-        if (
-            scope.name == c.Infra.ReportKeys.ROOT
-            and config_exists
-            and (check in {"adr-skill", "all"})
-        ):
+        if scope.name == c.Infra.ReportKeys.ROOT and config_exists:
             code, missing = self._run_adr_skill_check(scope.path)
             missing_adr_skills = missing
             if code != 0:
                 status = c.Infra.Status.FAIL
-                message = f"missing adr references in skills: {', '.join(missing)}"
+                messages.append(
+                    f"missing adr references in skills: {', '.join(missing)}"
+                )
+        missing_paths = u.Infra.docs_missing_required_paths(scope)
+        if missing_paths:
+            status = c.Infra.Status.FAIL
+            messages.append(f"missing required docs files: {', '.join(missing_paths)}")
+        contract_messages = u.Infra.docs_contract_messages(scope)
+        if contract_messages:
+            status = c.Infra.Status.FAIL
+            messages.extend(contract_messages)
+        message = "; ".join(messages) if messages else "validation passed"
         wrote_todo = self._maybe_write_todo(scope, apply_mode=apply_mode)
-        adr_skills_json: list[t.Cli.JsonValue] = list(missing_adr_skills)
-        payload: t.Cli.JsonMapping = {
-            c.Infra.ReportKeys.SUMMARY: {
-                c.Infra.ReportKeys.SCOPE: scope.name,
-                "result": status,
-                c.Infra.ReportKeys.MESSAGE: message,
-                "apply": apply_mode,
-            },
-            "details": {
-                "missing_adr_skills": adr_skills_json,
-                "todo_written": wrote_todo,
-            },
-        }
-        _ = u.Cli.json_write(
-            scope.report_dir / "validate-summary.json",
-            payload,
-        )
-        _ = u.Infra.write_markdown(
-            scope.report_dir / "validate-report.md",
-            [
-                "# Docs Validate Report",
-                "",
-                f"Scope: {scope.name}",
-                f"Result: {status}",
-                f"Message: {message}",
-                f"TODO written: {int(wrote_todo)}",
-            ],
-        )
-        logger.info(
-            "docs_validate_scope_completed",
-            project=scope.name,
-            phase=c.Infra.Verbs.VALIDATE,
-            result=status,
-            reason=message,
-        )
-        return m.Infra.DocsPhaseReport(
+        report = m.Infra.DocsPhaseReport(
             phase="validate",
             scope=scope.name,
             result=status,
@@ -231,6 +160,15 @@ class FlextInfraDocValidator:
             todo_written=wrote_todo,
             passed=status == c.Infra.Status.OK,
         )
+        u.Infra.docs_write_validate_reports(scope, report)
+        self.logger.info(
+            "docs_validate_scope_completed",
+            project=scope.name,
+            phase=c.Infra.Verbs.VALIDATE,
+            result=status,
+            reason=message,
+        )
+        return report
 
 
 __all__ = ["FlextInfraDocValidator"]

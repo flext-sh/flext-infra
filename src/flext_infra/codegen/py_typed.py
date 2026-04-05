@@ -16,13 +16,14 @@ from pathlib import Path
 from typing import override
 
 from flext_core import r
-from flext_infra import c, s, u
+from flext_infra import c, u
+from flext_infra.base import s
 
 
 class FlextInfraCodegenPyTyped(s[bool]):
     """Creates and removes PEP 561 ``py.typed`` markers across workspace packages."""
 
-    _PY_TYPED_FILENAME: str = "py.typed"
+    _PY_TYPED_FILENAME: str = c.Infra.Files.PY_TYPED
 
     @override
     def execute(self) -> r[bool]:

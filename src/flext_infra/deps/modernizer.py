@@ -22,6 +22,7 @@ from flext_infra import (
     FlextInfraEnsurePyrightConfigPhase,
     FlextInfraEnsurePytestConfigPhase,
     FlextInfraEnsureRuffConfigPhase,
+    FlextInfraExtraPathsManager,
     FlextInfraInjectCommentsPhase,
     FlextInfraProjectClassifier,
     c,
@@ -49,6 +50,9 @@ class FlextInfraPyprojectModernizer:
             msg = tool_config_result.error or "failed to load deps tool config"
             raise ValueError(msg)
         self._tool_config = tool_config_result.value
+        self._paths_manager = FlextInfraExtraPathsManager(
+            workspace_root=self.root,
+        )
 
     def _classify_project(self, project_dir: Path) -> r[str]:
         """Classify project kind for pyright/coverage config selection."""
@@ -229,6 +233,7 @@ class FlextInfraPyprojectModernizer:
                 doc,
                 is_root=is_root,
                 project_dir=path.parent,
+                paths_manager=self._paths_manager,
             ),
         )
         changes.extend(FlextInfraEnsureMypyConfigPhase(self._tool_config).apply(doc))
@@ -252,6 +257,7 @@ class FlextInfraPyprojectModernizer:
                 workspace_root=self.root,
                 project_dir=path.parent,
                 project_kind=project_kind,
+                paths_manager=self._paths_manager,
             ),
         )
         changes.extend(
@@ -266,6 +272,7 @@ class FlextInfraPyprojectModernizer:
                 path=path,
                 is_root=is_root,
                 dry_run=dry_run,
+                paths_manager=self._paths_manager,
             ),
         )
         self._reorder_document_inplace(doc)

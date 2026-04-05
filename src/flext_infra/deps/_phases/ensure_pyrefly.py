@@ -4,11 +4,15 @@ from __future__ import annotations
 
 from collections.abc import MutableSequence
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import tomlkit
 from tomlkit.items import Item, Table
 
-from flext_infra import FlextInfraExtraPathsManager, c, m, t, u
+from flext_infra import c, m, t, u
+
+if TYPE_CHECKING:
+    from flext_infra import FlextInfraExtraPathsManager
 
 
 class FlextInfraEnsurePyreflyConfigPhase:
@@ -23,6 +27,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
         *,
         is_root: bool,
         project_dir: Path | None = None,
+        paths_manager: FlextInfraExtraPathsManager | None = None,
     ) -> t.StrSequence:
         changes: MutableSequence[str] = []
         tool: Item | None = None
@@ -60,13 +65,12 @@ class FlextInfraEnsurePyreflyConfigPhase:
             changes.append(
                 "tool.pyrefly.ignore-errors-in-generated-code synchronized from YAML rules",
             )
-        if project_dir is not None:
-            manager = FlextInfraExtraPathsManager()
-            expected_search = manager.pyrefly_search_paths(
+        if project_dir is not None and paths_manager is not None:
+            expected_search = paths_manager.pyrefly_search_paths(
                 project_dir=project_dir,
                 is_root=is_root,
             )
-            expected_includes = manager.pyrefly_project_includes(
+            expected_includes = paths_manager.pyrefly_project_includes(
                 project_dir=project_dir,
                 is_root=is_root,
             )

@@ -183,9 +183,6 @@ class FlextInfraUtilitiesIteration:
             Result[Sequence[Path]] - Success contains sorted unique file paths.
             Failure if: workspace inaccessible, discovery fails, or OSError.
 
-        Raises:
-            None (all errors captured in Result.fail()).
-
         """
         try:
             roots = (

@@ -299,7 +299,7 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
         py_files: Sequence[Path],
     ) -> None:
         for file_path in py_files:
-            if file_path.name == "py.typed":
+            if file_path.name == c.Infra.Files.PY_TYPED:
                 continue
             try:
                 source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)

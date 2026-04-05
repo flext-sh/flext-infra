@@ -105,7 +105,9 @@ class FlextInfraUtilitiesCodegenLazyMerging:
                 FlextInfraUtilitiesCodegenLazyScanning.package_name_from_rel_parts(
                     rel_parts=(subdir.name,),
                     current_pkg=current_pkg,
-                    is_project_root=(pkg_dir / "pyproject.toml").exists(),
+                    is_project_root=(
+                        pkg_dir / c.Infra.Files.PYPROJECT_FILENAME
+                    ).exists(),
                 )
             )
             children.append(child_pkg)
@@ -130,7 +132,9 @@ class FlextInfraUtilitiesCodegenLazyMerging:
                 FlextInfraUtilitiesCodegenLazyScanning.package_name_from_rel_parts(
                     rel_parts=rel_parts,
                     current_pkg=current_pkg,
-                    is_project_root=(pkg_dir / "pyproject.toml").exists(),
+                    is_project_root=(
+                        pkg_dir / c.Infra.Files.PYPROJECT_FILENAME
+                    ).exists(),
                 )
             )
             descendants.append(descendant_pkg)
@@ -166,7 +170,9 @@ class FlextInfraUtilitiesCodegenLazyMerging:
     ) -> None:
         is_project_root = False
         if hasattr(subdir.parent, "joinpath"):
-            is_project_root = (subdir.parent / "pyproject.toml").exists()
+            is_project_root = (
+                subdir.parent / c.Infra.Files.PYPROJECT_FILENAME
+            ).exists()
 
         if subdir.name != c.Infra.Dunders.INIT and subdir.name not in lazy_map:
             submodule = (
@@ -327,7 +333,7 @@ class FlextInfraUtilitiesCodegenLazyScanning(
         mod_path = FlextInfraUtilitiesCodegenLazyScanning._module_path_from_rel_path(
             rel_path=rel_path,
             current_pkg=current_pkg,
-            is_project_root=(pkg_dir / "pyproject.toml").exists(),
+            is_project_root=(pkg_dir / c.Infra.Files.PYPROJECT_FILENAME).exists(),
         )
         if not mod_path:
             return
@@ -579,8 +585,15 @@ class FlextInfraUtilitiesCodegenLazyAliases:
         lazy_map: t.Infra.MutableLazyImportMap,
     ) -> t.Infra.StrPair | None:
         """Resolve the canonical `s` alias from local public service/base modules."""
+        explicit_alias = lazy_map.get("s")
+        if explicit_alias is not None and explicit_alias[0].rsplit(".", 1)[-1] in {
+            "base",
+            "service",
+            "api",
+        }:
+            return explicit_alias
         for module_name, suffixes in (
-            ("base", ("ServiceBase",)),
+            ("base", ("CommandContext", "ServiceBase")),
             ("service", ("Service",)),
             ("api", ("Service",)),
         ):

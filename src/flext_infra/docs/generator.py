@@ -1,60 +1,33 @@
-"""Documentation generator service.
-
-Generates project-level docs from workspace SSOT guides,
-returning structured r reports.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Documentation generator service driven by code, exports, and docstrings."""
 
 from __future__ import annotations
 
-import re
-from collections.abc import MutableSequence, Sequence
+from collections.abc import Sequence
 from pathlib import Path
+from typing import Annotated, override
 
-from flext_core import FlextLogger
-from flext_infra import c, m, r, u
+from pydantic import Field
 
-logger = FlextLogger.create_module_logger(__name__)
+from flext_core import r
+from flext_infra import c, m, t, u
+from flext_infra.base import s
 
 
-class FlextInfraDocGenerator:
-    """Infrastructure service for documentation generation.
+class FlextInfraDocGenerator(s[bool]):
+    """Generate managed docs artifacts from package exports and docstrings."""
 
-    Generates project-level docs from workspace SSOT guides and
-    returns structured r reports.
-    """
-
-    @staticmethod
-    def _sanitize_internal_anchor_links(content: str) -> str:
-        """Normalize generated guides by stripping non-external markdown links."""
-
-        def replace(match: re.Match[str]) -> str:
-            label, target = match.groups()
-            lower = target.lower().strip()
-            if lower.startswith(("http://", "https://", "mailto:", "tel:")):
-                return match.group(0)
-            return label
-
-        return u.Infra.MARKDOWN_LINK_RE.sub(replace, content)
-
-    @staticmethod
-    def _write_if_needed(
-        path: Path,
-        content: str,
-        *,
-        apply: bool,
-    ) -> m.Infra.GeneratedFile:
-        """Write content to path only when changed and apply is True."""
-        exists = path.exists()
-        current = path.read_text(encoding=c.Infra.Encoding.DEFAULT) if exists else ""
-        if current == content:
-            return m.Infra.GeneratedFile(path=path.as_posix(), written=False)
-        if apply:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            _ = path.write_text(content, encoding=c.Infra.Encoding.DEFAULT)
-        return m.Infra.GeneratedFile(path=path.as_posix(), written=apply)
+    selected_projects: Annotated[
+        t.StrSequence | None,
+        Field(default=None, description="Selected projects", exclude=True),
+    ] = None
+    docs_output_dir: Annotated[
+        str,
+        Field(
+            default=c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
+            description="Docs output dir",
+            exclude=True,
+        ),
+    ] = c.Infra.DEFAULT_DOCS_OUTPUT_DIR
 
     def generate(
         self,
@@ -64,18 +37,7 @@ class FlextInfraDocGenerator:
         output_dir: str = c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
         apply: bool = False,
     ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
-        """Generate docs across project scopes.
-
-        Args:
-            workspace_root: Workspace root directory.
-            projects: Selected project names.
-            output_dir: Report output directory.
-            apply: Actually write generated files.
-
-        Returns:
-            r with list of GenerateReport objects.
-
-        """
+        """Generate docs across the workspace root and governed FLEXT projects."""
         return u.Infra.run_scoped(
             workspace_root,
             projects=projects,
@@ -84,119 +46,33 @@ class FlextInfraDocGenerator:
                 scope,
                 apply=apply,
                 workspace_root=workspace_root,
+                projects=projects,
             ),
         )
 
+    @override
+    def execute(self) -> r[bool]:
+        """Execute the configured docs generation flow."""
+        result = self.generate(
+            workspace_root=self.workspace_root,
+            projects=self.selected_projects,
+            output_dir=self.docs_output_dir,
+            apply=self.apply_changes,
+        )
+        if result.is_failure:
+            return r[bool].fail(result.error or "generate failed")
+        return r[bool].ok(True)
+
+    @override
     def execute_command(self, params: m.Infra.DocsGenerateInput) -> r[bool]:
-        """CLI handler — accepts input model, delegates to generate."""
-        return self.generate(
-            workspace_root=params.workspace_path,
-            projects=params.project_names,
-            output_dir=params.output_dir,
+        """CLI handler that normalizes input into the canonical service model."""
+        service = type(self)(
+            workspace=params.workspace_path,
             apply=params.apply,
-        ).map(lambda _: True)
-
-    def _generate_project_guides(
-        self,
-        scope: m.Infra.DocScope,
-        workspace_root: Path,
-        *,
-        apply: bool,
-    ) -> Sequence[m.Infra.GeneratedFile]:
-        """Copy workspace guides into a project, injecting the project name."""
-        source_dir = workspace_root / "docs/guides"
-        if not source_dir.exists():
-            return []
-        files: MutableSequence[m.Infra.GeneratedFile] = []
-        for source in sorted(source_dir.glob("*.md")):
-            rendered = self._project_guide_content(
-                content=source.read_text(encoding=c.Infra.Encoding.DEFAULT),
-                project=scope.name,
-                source_name=source.name,
-            )
-            files.append(
-                self._write_if_needed(
-                    scope.path / "docs/guides" / source.name,
-                    rendered,
-                    apply=apply,
-                ),
-            )
-        return files
-
-    def _generate_project_mkdocs(
-        self,
-        scope: m.Infra.DocScope,
-        *,
-        apply: bool,
-    ) -> Sequence[m.Infra.GeneratedFile]:
-        """Generate mkdocs.yml for projects that do not have one yet."""
-        mkdocs_path = scope.path / "mkdocs.yml"
-        if mkdocs_path.exists():
-            return []
-        site_name = f"{scope.name} Documentation"
-        content = (
-            "\n".join([
-                f"site_name: {site_name}",
-                f"site_description: Standard guides for {scope.name}",
-                f"site_url: {c.Infra.GITHUB_REPO_URL}",
-                f"repo_name: {c.Infra.GITHUB_REPO_NAME}",
-                f"repo_url: {c.Infra.GITHUB_REPO_URL}",
-                f"edit_uri: edit/main/{scope.name}/docs/guides/",
-                "docs_dir: docs/guides",
-                f"site_dir: {c.Infra.DEFAULT_DOCS_OUTPUT_DIR}/site",
-                "",
-                "theme:",
-                "  name: mkdocs",
-                "",
-                "plugins: []",
-                "",
-                "nav:",
-                "  - Home: README.md",
-                "  - Getting Started: getting-started.md",
-                "  - Configuration: configuration.md",
-                "  - Development: development.md",
-                "  - Testing: testing.md",
-                "  - Troubleshooting: troubleshooting.md",
-                "  - Security: security.md",
-                "  - Automation Skill Pattern: skill-automation-pattern.md",
-            ])
-            + "\n"
+            selected_projects=params.project_names,
+            docs_output_dir=params.output_dir,
         )
-        return [self._write_if_needed(mkdocs_path, content, apply=apply)]
-
-    def _generate_root_docs(
-        self,
-        scope: m.Infra.DocScope,
-        *,
-        apply: bool,
-    ) -> Sequence[m.Infra.GeneratedFile]:
-        """Generate placeholder docs at the workspace root."""
-        changelog = self._update_toc(
-            "# Changelog\n\nThis file is managed by `make docs DOCS_PHASE=generate`.\n",
-        )
-        release = self._update_toc(
-            "# Latest Release\n\nNo tagged release notes were generated yet.\n",
-        )
-        roadmap = self._update_toc(
-            "# Roadmap\n\nRoadmap updates are generated from docs validation outputs.\n",
-        )
-        return [
-            self._write_if_needed(
-                scope.path / "docs/CHANGELOG.md",
-                changelog,
-                apply=apply,
-            ),
-            self._write_if_needed(
-                scope.path / "docs/releases/latest.md",
-                release,
-                apply=apply,
-            ),
-            self._write_if_needed(
-                scope.path / "docs/roadmap/index.md",
-                roadmap,
-                apply=apply,
-            ),
-        ]
+        return service.execute()
 
     def _generate_scope(
         self,
@@ -204,107 +80,105 @@ class FlextInfraDocGenerator:
         *,
         apply: bool,
         workspace_root: Path,
+        projects: Sequence[str] | None = None,
     ) -> m.Infra.DocsPhaseReport:
-        """Generate docs for a single scope and write reports."""
-        if scope.name == c.Infra.ReportKeys.ROOT:
-            files = self._generate_root_docs(scope=scope, apply=apply)
-            source = "root-generated-artifacts"
-        else:
-            files = list(
-                self._generate_project_guides(
-                    scope=scope,
-                    workspace_root=workspace_root,
-                    apply=apply,
-                ),
-            )
-            files.extend(self._generate_project_mkdocs(scope=scope, apply=apply))
-            source = "workspace-docs-guides"
-        generated = u.count(files, lambda item: item.written)
-        _ = u.Cli.json_write(
-            scope.report_dir / "generate-summary.json",
-            {
-                c.Infra.ReportKeys.SUMMARY: {
-                    c.Infra.ReportKeys.SCOPE: scope.name,
-                    "generated": generated,
-                    "apply": apply,
-                    "source": source,
-                },
-                "files": [{c.Infra.PATH: f.path, "written": f.written} for f in files],
-            },
+        """Generate one scope via ``u.Infra`` and log the result."""
+        report = u.Infra.docs_generate_scope(
+            scope,
+            apply=apply,
+            workspace_root=workspace_root,
+            projects=projects,
         )
-        _ = u.Infra.write_markdown(
-            scope.report_dir / "generate-report.md",
-            [
-                "# Docs Generate Report",
-                "",
-                f"Scope: {scope.name}",
-                f"Apply: {int(apply)}",
-                f"Generated files: {generated}",
-                f"Source: {source}",
-            ],
-        )
-        result = c.Infra.Status.OK if apply else c.Infra.Status.WARN
-        reason = f"generated:{generated}" if apply else "dry-run"
-        logger.info(
+        self.logger.info(
             "docs_generate_scope_completed",
             project=scope.name,
             phase="generate",
-            result=result,
-            reason=reason,
+            result=report.result,
+            reason=report.reason,
         )
-        return m.Infra.DocsPhaseReport(
-            phase="generate",
-            scope=scope.name,
-            generated=generated,
-            applied=apply,
-            source=source,
-            items=[
-                m.Infra.DocsPhaseItemModel(
-                    phase="generate",
-                    path=file.path,
-                    written=file.written,
-                )
-                for file in files
-            ],
-            result=result,
-            reason=reason,
-            passed=apply,
+        return report
+
+    def _generate_root_docs(
+        self,
+        scope: m.Infra.DocScope,
+        *,
+        apply: bool,
+    ) -> Sequence[m.Infra.GeneratedFile]:
+        """Delegate root docs generation to ``u.Infra``."""
+        return u.Infra.docs_root_generated_files(scope.path, apply=apply)
+
+    def _generate_project_guides(
+        self,
+        scope: m.Infra.DocScope,
+        *,
+        workspace_root: Path,
+        apply: bool,
+    ) -> Sequence[m.Infra.GeneratedFile]:
+        """Delegate project guide generation to ``u.Infra``."""
+        return u.Infra.docs_project_guides_files(
+            scope,
+            workspace_root=workspace_root,
+            apply=apply,
         )
+
+    def _generate_project_mkdocs(
+        self,
+        scope: m.Infra.DocScope,
+        *,
+        apply: bool,
+    ) -> Sequence[m.Infra.GeneratedFile]:
+        """Delegate project mkdocs generation to ``u.Infra``."""
+        return u.Infra.docs_project_mkdocs_files(scope, apply=apply)
 
     def _project_guide_content(
         self,
         content: str,
-        project: str,
-        source_name: str,
+        project_name: str,
+        guide_name: str,
     ) -> str:
-        """Render workspace guide content with project-specific heading."""
-        lines = content.splitlines()
-        out: MutableSequence[str] = [
-            f"<!-- Generated from docs/guides/{source_name} for {project}. -->",
-            "<!-- Source of truth: workspace docs/guides/. -->",
-            "",
-        ]
-        heading_done = False
-        for line in lines:
-            if not heading_done and line.startswith("# "):
-                title = line[2:].strip()
-                out.extend([
-                    f"# {project} - {title}",
-                    "",
-                    f"> Project profile: `{project}`",
-                    "",
-                ])
-                heading_done = True
-                continue
-            out.append(line)
-        rendered = "\n".join(out).rstrip() + "\n"
-        return self._update_toc(self._sanitize_internal_anchor_links(rendered))
+        """Delegate guide content normalization to ``u.Infra``."""
+        return u.Infra.docs_project_guide_content(
+            content,
+            project_name,
+            guide_name,
+        )
 
-    @staticmethod
-    def _update_toc(content: str) -> str:
-        """Insert or replace TOC markers in markdown content."""
-        updated, _ = u.Infra.update_toc(content)
+    def _sanitize_internal_anchor_links(self, content: str) -> str:
+        """Delegate markdown link sanitization to ``u.Infra``."""
+        return u.Infra.docs_sanitize_internal_anchor_links(content)
+
+    def _update_toc(self, content: str) -> str:
+        """Delegate TOC updates to ``u.Infra`` and return updated content only."""
+        updated, _ = u.Infra.docs_update_toc(content)
         return updated
+
+    def _write_if_needed(
+        self,
+        path: Path,
+        content: str,
+        *,
+        apply: bool,
+    ) -> m.Infra.GeneratedFile:
+        """Delegate conditional writes to ``u.Infra``."""
+        return u.Infra.docs_write_if_needed(path, content, apply=apply)
+
+    def _project_files(
+        self,
+        scope: m.Infra.DocScope,
+        *,
+        apply: bool,
+    ) -> Sequence[m.Infra.GeneratedFile]:
+        """Return generated project files via ``u.Infra``."""
+        return u.Infra.docs_project_generated_files(scope, apply=apply)
+
+    def _root_files(
+        self,
+        workspace_root: Path,
+        *,
+        apply: bool,
+    ) -> Sequence[m.Infra.GeneratedFile]:
+        """Return generated root files via ``u.Infra``."""
+        return u.Infra.docs_root_generated_files(workspace_root, apply=apply)
 
 
 __all__ = ["FlextInfraDocGenerator"]
