@@ -235,7 +235,10 @@ class FlextInfraCodegenLazyInit(FlextInfraCommandContext[bool]):
                 else None
             )
             if previous != generated:
-                init_path.write_text(generated, encoding=c.Infra.Encoding.DEFAULT)
+                write_result = u.Infra.atomic_write_file(init_path, generated)
+                if write_result.is_failure:
+                    u.Infra.error(f"writing {init_path}: {write_result.error}")
+                    return (-1, dict(lazy_map))
                 self._modified_files.add(str(init_path))
                 u.Infra.run_ruff_fix(init_path, quiet=True)
         except (OSError, ValueError) as exc:
