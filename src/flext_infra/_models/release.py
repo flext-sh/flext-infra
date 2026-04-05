@@ -11,6 +11,10 @@ from flext_infra import t
 from flext_infra._models.mixins import FlextInfraModelsMixins
 
 
+def _build_records() -> list[FlextInfraReleaseModels.BuildRecord]:
+    return []
+
+
 class FlextInfraReleaseModels:
     """Models for release management."""
 
@@ -48,7 +52,8 @@ class FlextInfraReleaseModels:
             Field(description="Total projects with non-zero exit"),
         ]
         records: list[FlextInfraReleaseModels.BuildRecord] = Field(
-            default_factory=list, description="Per-project build records"
+            default_factory=_build_records,
+            description="Per-project build records",
         )
 
     class ReleaseOrchestratorConfig(

@@ -66,12 +66,12 @@ class TestBuildScopes:
     @staticmethod
     def _build(
         root: Path,
-        project: list[str] | None = None,
+        projects: list[str] | None = None,
         output_dir: str = _OUT,
     ) -> r[Sequence[m.Infra.DocScope]]:
         return u.Infra.build_scopes(
             workspace_root=root,
-            project=project,
+            projects=projects,
             output_dir=output_dir,
         )
 
@@ -94,12 +94,12 @@ class TestBuildScopes:
 
     def test_with_single_project(self, tmp_path: Path) -> None:
         """Test build_scopes with single project filter."""
-        result = self._build(tmp_path, project=["test-project"])
+        result = self._build(tmp_path, projects=["test-project"])
         tm.that(result.is_success or result.is_failure, eq=True)
 
     def test_with_multiple_projects(self, tmp_path: Path) -> None:
         """Test build_scopes with multiple projects filter."""
-        result = self._build(tmp_path, project=["proj1", "proj2", "proj3"])
+        result = self._build(tmp_path, projects=["proj1", "proj2", "proj3"])
         tm.that(result.is_success or result.is_failure, eq=True)
 
     def test_with_custom_output_dir(self, tmp_path: Path) -> None:
@@ -130,18 +130,18 @@ class TestBuildScopes:
     def test_skips_missing_projects(self, tmp_path: Path) -> None:
         """Test build_scopes skips projects without pyproject.toml."""
         (tmp_path / "missing-proj").mkdir(parents=True, exist_ok=True)
-        tm.ok(self._build(tmp_path, project=["missing-proj"]))
+        tm.ok(self._build(tmp_path, projects=["missing-proj"]))
 
     def test_nonexistent_project_skips(self, tmp_path: Path) -> None:
         """Test build_scopes skips nonexistent projects gracefully."""
-        tm.ok(self._build(tmp_path, project=["nonexistent_proj"]))
+        tm.ok(self._build(tmp_path, projects=["nonexistent_proj"]))
 
     def test_appends_valid_project_scope(self, tmp_path: Path) -> None:
         """Test build_scopes appends scope for valid project."""
         proj_dir = tmp_path / "test-proj"
         proj_dir.mkdir()
         (proj_dir / "pyproject.toml").write_text('[project]\nname = "test-proj"\n')
-        result = self._build(tmp_path, project=["test-proj"])
+        result = self._build(tmp_path, projects=["test-proj"])
         tm.ok(result)
         tm.that([s.name for s in result.value], has="test-proj")
 
@@ -172,5 +172,5 @@ class TestBuildScopes:
             return original_resolve(self_path)
 
         monkeypatch.setattr(Path, "resolve", mock_resolve)
-        result = self._build(tmp_path, project=["oserror_proj"])
+        result = self._build(tmp_path, projects=["oserror_proj"])
         tm.fail(result, has="scope resolution failed")

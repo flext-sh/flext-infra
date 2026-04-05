@@ -124,12 +124,18 @@ class StubSyncer:
 
     def __init__(
         self,
-        sync_returns: r[list[m.Infra.SyncOperation]] | None = None,
+        sync_returns: r[m.Infra.GithubWorkflowSyncReport] | None = None,
     ) -> None:
-        self._sync_returns: r[list[m.Infra.SyncOperation]] = (
+        self._sync_returns: r[m.Infra.GithubWorkflowSyncReport] = (
             sync_returns
             if sync_returns is not None
-            else r[list[m.Infra.SyncOperation]].ok(list[m.Infra.SyncOperation]())
+            else r[m.Infra.GithubWorkflowSyncReport].ok(
+                m.Infra.GithubWorkflowSyncReport(
+                    mode="dry-run",
+                    summary={},
+                    operations=(),
+                ),
+            )
         )
         self.sync_workspace_calls: MutableSequence[
             Mapping[str, t.Infra.InfraValue]
@@ -143,7 +149,7 @@ class StubSyncer:
         report_path: Path | None = None,
         apply: bool = False,
         prune: bool = False,
-    ) -> r[list[m.Infra.SyncOperation]]:
+    ) -> r[m.Infra.GithubWorkflowSyncReport]:
         kwargs: Mapping[str, t.Infra.InfraValue] = {
             "workspace_root": str(workspace_root),
             "source_workflow": str(source_workflow) if source_workflow else None,
@@ -160,13 +166,13 @@ class StubLinter:
 
     def __init__(
         self,
-        lint_returns: r[m.Infra.WorkflowLintResult] | None = None,
+        lint_returns: r[m.Infra.GithubWorkflowLintOutcome] | None = None,
     ) -> None:
         self._lint_returns = (
             lint_returns
             if lint_returns is not None
-            else r[m.Infra.WorkflowLintResult].ok(
-                m.Infra.WorkflowLintResult(status="ok", exit_code=0),
+            else r[m.Infra.GithubWorkflowLintOutcome].ok(
+                m.Infra.GithubWorkflowLintOutcome(status="ok", exit_code=0),
             )
         )
         self.lint_calls: MutableSequence[Mapping[str, t.Infra.InfraValue]] = []
@@ -177,7 +183,7 @@ class StubLinter:
         *,
         report_path: Path | None = None,
         strict: bool = False,
-    ) -> r[m.Infra.WorkflowLintResult]:
+    ) -> r[m.Infra.GithubWorkflowLintOutcome]:
         kwargs: Mapping[str, t.Infra.InfraValue] = {
             "root": str(root),
             "report_path": str(report_path) if report_path else None,
@@ -192,17 +198,17 @@ class StubWorkspaceManager:
 
     def __init__(
         self,
-        orchestrate_returns: r[m.Infra.PrOrchestrationResult] | None = None,
+        orchestrate_returns: r[m.Infra.GithubPullRequestWorkspaceReport] | None = None,
     ) -> None:
         self._orchestrate_returns = (
             orchestrate_returns
             if orchestrate_returns is not None
-            else r[m.Infra.PrOrchestrationResult].ok(
-                m.Infra.PrOrchestrationResult(
+            else r[m.Infra.GithubPullRequestWorkspaceReport].ok(
+                m.Infra.GithubPullRequestWorkspaceReport(
                     total=0,
                     success=0,
                     fail=0,
-                    results=(),
+                    outcomes=(),
                 ),
             )
         )
@@ -218,7 +224,7 @@ class StubWorkspaceManager:
         checkpoint: bool = True,
         fail_fast: bool = False,
         pr_args: t.StrMapping | None = None,
-    ) -> r[m.Infra.PrOrchestrationResult]:
+    ) -> r[m.Infra.GithubPullRequestWorkspaceReport]:
         infra_projects: MutableSequence[str] | None = (
             [str(p) for p in projects] if projects else None
         )

@@ -41,7 +41,7 @@ class TestFlextInfraRuntimeDevDependencyDetectorInit:
             "--limits",
             "/custom/limits.toml",
         ])
-        tm.that(args.project, eq="test")
+        tm.that(args.projects, eq=["test"])
         tm.that(args.no_pip_check, eq=True)
         tm.that(args.dry_run, eq=True)
         tm.that(args.output_format, eq="json")

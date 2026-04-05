@@ -9,13 +9,13 @@ from pathlib import Path
 
 import flext_infra.check.workspace_check as workspace_check_module
 from flext_infra import (
-    FlextInfraConfigFixer,
     c,
     m,
     r,
     t,
     u,
 )
+from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
 
 
 class FlextInfraWorkspaceCheckerCli:
@@ -31,7 +31,7 @@ class FlextInfraWorkspaceCheckerCli:
                 c.Infra.Verbs.RUN: "Run quality gates",
                 "fix-pyrefly-config": "Repair [tool.pyrefly] blocks",
             },
-            flags=u.Infra.SharedFlags(),
+            flags=u.Infra.SharedFlags(include_project=True),
             subcommand_flags={
                 "fix-pyrefly-config": {
                     "include_apply": True,
@@ -44,11 +44,6 @@ class FlextInfraWorkspaceCheckerCli:
             default=c.Infra.DEFAULT_CSV,
         )
         _ = subs[c.Infra.Verbs.RUN].add_argument(
-            "--project",
-            action="append",
-            required=True,
-        )
-        _ = subs[c.Infra.Verbs.RUN].add_argument(
             "--reports-dir",
             default=f"{c.Infra.Reporting.REPORTS_DIR_NAME}/check",
         )
@@ -57,7 +52,6 @@ class FlextInfraWorkspaceCheckerCli:
         _ = subs[c.Infra.Verbs.RUN].add_argument("--check-only", action="store_true")
         _ = subs[c.Infra.Verbs.RUN].add_argument("--ruff-args")
         _ = subs[c.Infra.Verbs.RUN].add_argument("--pyright-args")
-        _ = subs["fix-pyrefly-config"].add_argument("--project", action="append")
         _ = subs["fix-pyrefly-config"].add_argument("--verbose", action="store_true")
         return parser
 
@@ -72,6 +66,13 @@ class FlextInfraWorkspaceCheckerCli:
             checker_workspace = (
                 Path(env_workspace).resolve() if env_workspace else cli.workspace
             )
+            project_names = cli.project_names()
+            if not project_names:
+                u.Infra.error("no projects specified")
+                return 1
+            if args.dry_run:
+                u.Infra.info("dry-run: skipping gate execution")
+                return 0
             checker = workspace_check_module.FlextInfraWorkspaceChecker(
                 workspace_root=checker_workspace
             )
@@ -100,7 +101,7 @@ class FlextInfraWorkspaceCheckerCli:
                 pyright_args=tuple(pyright_args),
             )
             run_result = checker.run_projects(
-                projects=args.project,
+                projects=project_names,
                 gates=gates,
                 reports_dir=reports_dir,
                 fail_fast=args.fail_fast,
@@ -113,9 +114,9 @@ class FlextInfraWorkspaceCheckerCli:
             failed_projects = [project for project in run_results if not project.passed]
             return 1 if failed_projects else 0
         if args.command == "fix-pyrefly-config":
-            fixer = FlextInfraConfigFixer()
+            fixer: FlextInfraConfigFixer = FlextInfraConfigFixer()
             fix_result: r[t.StrSequence] = fixer.run(
-                projects=args.project,
+                projects=cli.project_names() or [],
                 dry_run=args.dry_run,
                 verbose=args.verbose,
             )
@@ -132,9 +133,8 @@ class FlextInfraWorkspaceCheckerCli:
         parser = u.Infra.create_parser(
             "flext-infra check-workspace",
             "FLEXT Workspace Check",
-            flags=u.Infra.SharedFlags(),
+            flags=u.Infra.SharedFlags(include_project=True),
         )
-        _ = parser.add_argument("--project", action="append", required=True)
         _ = parser.add_argument("--gates", default=c.Infra.DEFAULT_CSV)
         _ = parser.add_argument(
             "--reports-dir",
@@ -142,7 +142,9 @@ class FlextInfraWorkspaceCheckerCli:
         )
         _ = parser.add_argument("--fail-fast", action="store_true")
         args = parser.parse_args(argv)
-        if not args.project:
+        cli = u.Infra.resolve(args)
+        project_names = cli.project_names()
+        if not project_names:
             u.Infra.error("no projects specified")
             return 1
         checker = workspace_check_module.FlextInfraWorkspaceChecker()
@@ -153,7 +155,7 @@ class FlextInfraWorkspaceCheckerCli:
         if not reports_dir.is_absolute():
             reports_dir = (Path.cwd() / reports_dir).resolve()
         result = checker.run_projects(
-            projects=args.project,
+            projects=project_names,
             gates=gates,
             reports_dir=reports_dir,
             fail_fast=args.fail_fast,

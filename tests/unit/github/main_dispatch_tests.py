@@ -12,47 +12,55 @@ from flext_core import r
 from flext_infra import FlextInfraGithubService, u as infra_u
 
 
-def _orch(*, fail: int = 0, total: int = 1) -> m.Infra.PrOrchestrationResult:
-    return m.Infra.PrOrchestrationResult(
+def _workspace_report(
+    *,
+    fail: int = 0,
+    total: int = 1,
+) -> m.Infra.GithubPullRequestWorkspaceReport:
+    return m.Infra.GithubPullRequestWorkspaceReport(
         total=total,
         success=max(total - fail, 0),
         fail=fail,
-        results=(),
+        outcomes=(),
     )
 
 
 class TestRunPrWorkspace:
     def test_success(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         def _ok(
-            workspace_root: Path,
-            params: m.Infra.PrOrchestrateParams,
-        ) -> r[m.Infra.PrOrchestrationResult]:
-            return r[m.Infra.PrOrchestrationResult].ok(_orch(fail=0))
+            request: m.Infra.GithubPullRequestWorkspaceRequest,
+        ) -> r[m.Infra.GithubPullRequestWorkspaceReport]:
+            _ = request
+            return r[m.Infra.GithubPullRequestWorkspaceReport].ok(
+                _workspace_report(fail=0),
+            )
 
         monkeypatch.setattr(
             infra_u.Infra,
-            "github_pr_orchestrate",
+            "github_run_workspace_pull_requests",
             staticmethod(_ok),
         )
-        result = FlextInfraGithubService().execute_pr_workspace(
-            m.Infra.GithubPrWorkspaceInput(workspace=str(tmp_path)),
+        result = FlextInfraGithubService().execute_workspace_pull_requests(
+            m.Infra.GithubPullRequestWorkspaceRequest(workspace=str(tmp_path)),
         )
         tm.that(result.is_success, eq=True)
 
     def test_failure(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         def _fail(
-            workspace_root: Path,
-            params: m.Infra.PrOrchestrateParams,
-        ) -> r[m.Infra.PrOrchestrationResult]:
-            return r[m.Infra.PrOrchestrationResult].fail("orchestration failed")
+            request: m.Infra.GithubPullRequestWorkspaceRequest,
+        ) -> r[m.Infra.GithubPullRequestWorkspaceReport]:
+            _ = request
+            return r[m.Infra.GithubPullRequestWorkspaceReport].fail(
+                "orchestration failed",
+            )
 
         monkeypatch.setattr(
             infra_u.Infra,
-            "github_pr_orchestrate",
+            "github_run_workspace_pull_requests",
             staticmethod(_fail),
         )
-        result = FlextInfraGithubService().execute_pr_workspace(
-            m.Infra.GithubPrWorkspaceInput(workspace=str(tmp_path)),
+        result = FlextInfraGithubService().execute_workspace_pull_requests(
+            m.Infra.GithubPullRequestWorkspaceRequest(workspace=str(tmp_path)),
         )
         tm.that(result.is_failure, eq=True)
 
@@ -61,132 +69,142 @@ class TestRunPrWorkspace:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        captured_params: list[m.Infra.PrOrchestrateParams] = []
+        captured_requests: list[m.Infra.GithubPullRequestWorkspaceRequest] = []
 
         def _fake_orchestrate(
-            workspace_root: Path,
-            params: m.Infra.PrOrchestrateParams,
-        ) -> r[m.Infra.PrOrchestrationResult]:
-            captured_params.append(params)
-            return r[m.Infra.PrOrchestrationResult].ok(_orch(fail=0))
+            request: m.Infra.GithubPullRequestWorkspaceRequest,
+        ) -> r[m.Infra.GithubPullRequestWorkspaceReport]:
+            captured_requests.append(request)
+            return r[m.Infra.GithubPullRequestWorkspaceReport].ok(
+                _workspace_report(fail=0),
+            )
 
         monkeypatch.setattr(
             infra_u.Infra,
-            "github_pr_orchestrate",
+            "github_run_workspace_pull_requests",
             staticmethod(_fake_orchestrate),
         )
-        result = FlextInfraGithubService().execute_pr_workspace(
-            m.Infra.GithubPrWorkspaceInput(
+        result = FlextInfraGithubService().execute_workspace_pull_requests(
+            m.Infra.GithubPullRequestWorkspaceRequest(
                 workspace=str(tmp_path),
-                pr_action="merge",
-                pr_base="main",
-                pr_head="feature/test",
+                action="merge",
+                base="main",
+                head="feature/test",
             ),
         )
         tm.that(result.is_success, eq=True)
-        pr_args_val = captured_params[0].pr_args or {}
-        tm.that(str(pr_args_val), has="action")
-        tm.that(str(pr_args_val), has="base")
-        tm.that(str(pr_args_val), has="head")
+        assert captured_requests[0].action == "merge"
+        assert captured_requests[0].base == "main"
+        assert captured_requests[0].head == "feature/test"
 
     def test_with_branch(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        captured_params: list[m.Infra.PrOrchestrateParams] = []
+        captured_requests: list[m.Infra.GithubPullRequestWorkspaceRequest] = []
 
         def _fake_orchestrate(
-            workspace_root: Path,
-            params: m.Infra.PrOrchestrateParams,
-        ) -> r[m.Infra.PrOrchestrationResult]:
-            captured_params.append(params)
-            return r[m.Infra.PrOrchestrationResult].ok(_orch(fail=0))
+            request: m.Infra.GithubPullRequestWorkspaceRequest,
+        ) -> r[m.Infra.GithubPullRequestWorkspaceReport]:
+            captured_requests.append(request)
+            return r[m.Infra.GithubPullRequestWorkspaceReport].ok(
+                _workspace_report(fail=0),
+            )
 
         monkeypatch.setattr(
             infra_u.Infra,
-            "github_pr_orchestrate",
+            "github_run_workspace_pull_requests",
             staticmethod(_fake_orchestrate),
         )
-        FlextInfraGithubService().execute_pr_workspace(
-            m.Infra.GithubPrWorkspaceInput(
+        FlextInfraGithubService().execute_workspace_pull_requests(
+            m.Infra.GithubPullRequestWorkspaceRequest(
                 workspace=str(tmp_path),
                 branch="feature/test",
             ),
         )
-        assert captured_params[0].branch == "feature/test"
+        assert captured_requests[0].branch == "feature/test"
 
     def test_with_checkpoint(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        captured_params: list[m.Infra.PrOrchestrateParams] = []
+        captured_requests: list[m.Infra.GithubPullRequestWorkspaceRequest] = []
 
         def _fake_orchestrate(
-            workspace_root: Path,
-            params: m.Infra.PrOrchestrateParams,
-        ) -> r[m.Infra.PrOrchestrationResult]:
-            captured_params.append(params)
-            return r[m.Infra.PrOrchestrationResult].ok(_orch(fail=0))
+            request: m.Infra.GithubPullRequestWorkspaceRequest,
+        ) -> r[m.Infra.GithubPullRequestWorkspaceReport]:
+            captured_requests.append(request)
+            return r[m.Infra.GithubPullRequestWorkspaceReport].ok(
+                _workspace_report(fail=0),
+            )
 
         monkeypatch.setattr(
             infra_u.Infra,
-            "github_pr_orchestrate",
+            "github_run_workspace_pull_requests",
             staticmethod(_fake_orchestrate),
         )
-        FlextInfraGithubService().execute_pr_workspace(
-            m.Infra.GithubPrWorkspaceInput(workspace=str(tmp_path), checkpoint=True),
+        FlextInfraGithubService().execute_workspace_pull_requests(
+            m.Infra.GithubPullRequestWorkspaceRequest(
+                workspace=str(tmp_path),
+                checkpoint=True,
+            ),
         )
-        assert captured_params[0].checkpoint is True
+        assert captured_requests[0].checkpoint is True
 
     def test_with_fail_fast(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        captured_params: list[m.Infra.PrOrchestrateParams] = []
+        captured_requests: list[m.Infra.GithubPullRequestWorkspaceRequest] = []
 
         def _fake_orchestrate(
-            workspace_root: Path,
-            params: m.Infra.PrOrchestrateParams,
-        ) -> r[m.Infra.PrOrchestrationResult]:
-            captured_params.append(params)
-            return r[m.Infra.PrOrchestrationResult].ok(_orch(fail=0))
+            request: m.Infra.GithubPullRequestWorkspaceRequest,
+        ) -> r[m.Infra.GithubPullRequestWorkspaceReport]:
+            captured_requests.append(request)
+            return r[m.Infra.GithubPullRequestWorkspaceReport].ok(
+                _workspace_report(fail=0),
+            )
 
         monkeypatch.setattr(
             infra_u.Infra,
-            "github_pr_orchestrate",
+            "github_run_workspace_pull_requests",
             staticmethod(_fake_orchestrate),
         )
-        FlextInfraGithubService().execute_pr_workspace(
-            m.Infra.GithubPrWorkspaceInput(workspace=str(tmp_path), fail_fast=True),
+        FlextInfraGithubService().execute_workspace_pull_requests(
+            m.Infra.GithubPullRequestWorkspaceRequest(
+                workspace=str(tmp_path),
+                fail_fast=True,
+            ),
         )
-        assert captured_params[0].fail_fast is True
+        assert captured_requests[0].fail_fast is True
 
     def test_with_selected_projects(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        captured_params: list[m.Infra.PrOrchestrateParams] = []
+        captured_requests: list[m.Infra.GithubPullRequestWorkspaceRequest] = []
 
         def _fake_orchestrate(
-            workspace_root: Path,
-            params: m.Infra.PrOrchestrateParams,
-        ) -> r[m.Infra.PrOrchestrationResult]:
-            captured_params.append(params)
-            return r[m.Infra.PrOrchestrationResult].ok(_orch(fail=0))
+            request: m.Infra.GithubPullRequestWorkspaceRequest,
+        ) -> r[m.Infra.GithubPullRequestWorkspaceReport]:
+            captured_requests.append(request)
+            return r[m.Infra.GithubPullRequestWorkspaceReport].ok(
+                _workspace_report(fail=0),
+            )
 
         monkeypatch.setattr(
             infra_u.Infra,
-            "github_pr_orchestrate",
+            "github_run_workspace_pull_requests",
             staticmethod(_fake_orchestrate),
         )
-        FlextInfraGithubService().execute_pr_workspace(
-            m.Infra.GithubPrWorkspaceInput(
+        FlextInfraGithubService().execute_workspace_pull_requests(
+            m.Infra.GithubPullRequestWorkspaceRequest(
                 workspace=str(tmp_path),
-                project=["flext-core", "flext-api"],
+                projects=["flext-core", "flext-api"],
             ),
         )
-        assert captured_params[0].projects == ["flext-core", "flext-api"]
+        assert captured_requests[0].project_names == ["flext-core", "flext-api"]

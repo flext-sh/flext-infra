@@ -68,7 +68,7 @@ def test_basemk_main_with_project_name(tmp_path: Path) -> None:
     result = main(
         argv=[
             "generate",
-            "--projects-name",
+            "--project-name",
             "my-project",
             "--output",
             str(output_file),

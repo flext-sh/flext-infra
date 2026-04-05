@@ -79,7 +79,7 @@ class TestGeneratorCore:
         tmp_path: Path,
     ) -> None:
         """Test generate with single project filter."""
-        result = gen.generate(tmp_path, project="test-project")
+        result = gen.generate(tmp_path, projects=["test-project"])
         tm.that(result.is_success or result.is_failure, eq=True)
 
     def test_generate_with_projects_filter(
@@ -88,7 +88,7 @@ class TestGeneratorCore:
         tmp_path: Path,
     ) -> None:
         """Test generate with multiple projects filter."""
-        result = gen.generate(tmp_path, project=["proj1", "proj2"])
+        result = gen.generate(tmp_path, projects=["proj1", "proj2"])
         tm.that(result.is_success or result.is_failure, eq=True)
 
     def test_generate_with_apply_false_dry_run(

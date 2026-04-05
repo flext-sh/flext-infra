@@ -12,16 +12,15 @@ from collections.abc import MutableSequence
 from pathlib import Path
 
 from flext_core import r
-from flext_infra import (
-    FlextInfraUtilitiesGit,
-    FlextInfraUtilitiesIo,
-    FlextInfraUtilitiesReporting,
-    FlextInfraUtilitiesSelection,
-    FlextInfraUtilitiesSubprocess,
-    c,
-    m,
-    t,
-)
+from flext_infra._constants.base import FlextInfraConstantsBase
+from flext_infra._constants.validate import FlextInfraSharedInfraConstants
+from flext_infra._models.cli_inputs_ops import FlextInfraModelsCliInputsOps
+from flext_infra._models.github import FlextInfraGithubModels
+from flext_infra._utilities.git import FlextInfraUtilitiesGit
+from flext_infra._utilities.io import FlextInfraUtilitiesIo
+from flext_infra._utilities.reporting import FlextInfraUtilitiesReporting
+from flext_infra._utilities.selection import FlextInfraUtilitiesSelection
+from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
 
 
 class FlextInfraUtilitiesGithubPr(
@@ -31,57 +30,46 @@ class FlextInfraUtilitiesGithubPr(
     FlextInfraUtilitiesSelection,
     FlextInfraUtilitiesSubprocess,
 ):
-    """Mixin for GitHub PR orchestration and execution."""
+    """Mixin for GitHub pull-request execution."""
 
     @classmethod
-    def github_pr_orchestrate(
+    def github_run_workspace_pull_requests(
         cls,
-        workspace_root: Path,
-        params: m.Infra.PrOrchestrateParams,
-    ) -> r[m.Infra.PrOrchestrationResult]:
-        """Run PR operations across workspace repositories."""
+        request: FlextInfraModelsCliInputsOps.GithubPullRequestWorkspaceRequest,
+    ) -> r[FlextInfraGithubModels.GithubPullRequestWorkspaceReport]:
+        """Run pull-request commands across workspace repositories."""
+        workspace_root = request.workspace_path
         projects_result = cls.resolve_projects(
             workspace_root,
-            list(params.projects or []),
+            list(request.project_names or []),
         )
         if projects_result.is_failure:
-            return r[m.Infra.PrOrchestrationResult].fail(
+            return r[FlextInfraGithubModels.GithubPullRequestWorkspaceReport].fail(
                 projects_result.error or "project resolution failed",
             )
-        repos = [p.path for p in projects_result.value]
-        if params.include_root:
+        repos = [project.path for project in projects_result.value]
+        if request.include_root:
             repos.append(workspace_root)
-        effective_args = params.pr_args or {
-            c.Infra.ReportKeys.ACTION: c.Infra.ReportKeys.STATUS,
-            "base": c.Infra.Git.MAIN,
-        }
-        failures = 0
-        results: MutableSequence[m.Infra.PrExecutionResultModel] = []
-        pr_ctx = m.Infra.GithubPrRepoContext(
+        outcomes: MutableSequence[FlextInfraGithubModels.GithubPullRequestOutcome] = []
+        context = FlextInfraGithubModels.GithubPullRequestWorkspaceContext(
             workspace_root=workspace_root,
-            effective_args=effective_args,
-            branch=params.branch,
-            checkpoint=params.checkpoint,
-            results=results,
+            request=request,
+            outcomes=outcomes,
         )
+        failures = 0
         for repo_root in repos:
-            failed = cls._github_pr_process_repo(repo_root, pr_ctx)
+            failed = cls._github_pr_process_repo(repo_root, context)
             if failed:
                 failures += 1
-                if params.fail_fast:
+                if request.fail_fast:
                     break
         total = len(repos)
-        orchestration_results: t.Infra.VariadicTuple[m.Infra.PrExecutionResultModel] = (
-            tuple(
-                results,
-            )
-        )
-        return r[m.Infra.PrOrchestrationResult].ok(
-            m.Infra.PrOrchestrationResult(
+        return r[FlextInfraGithubModels.GithubPullRequestWorkspaceReport].ok(
+            FlextInfraGithubModels.GithubPullRequestWorkspaceReport(
                 total=total,
                 success=total - failures,
                 fail=failures,
-                results=orchestration_results,
+                outcomes=tuple(outcomes),
             ),
         )
 
@@ -89,22 +77,24 @@ class FlextInfraUtilitiesGithubPr(
     def _github_pr_process_repo(
         cls,
         repo_root: Path,
-        ctx: m.Infra.GithubPrRepoContext,
+        context: FlextInfraGithubModels.GithubPullRequestWorkspaceContext,
     ) -> bool:
-        """Process a single repo in PR orchestration. Returns True on failure."""
-        if ctx.branch:
-            cls.git_checkout(repo_root, ctx.branch)
-        if ctx.checkpoint:
-            cls._github_pr_checkpoint(repo_root, ctx.branch)
-        run_result: r[m.Infra.PrExecutionResultModel] = cls.github_pr_run_single(
-            repo_root,
-            ctx.workspace_root,
-            ctx.effective_args,
+        """Process one repository during workspace pull-request execution."""
+        if context.request.branch:
+            cls.git_checkout(repo_root, context.request.branch)
+        if context.request.checkpoint:
+            cls._github_pr_checkpoint(repo_root, context.request.branch)
+        run_result: r[FlextInfraGithubModels.GithubPullRequestOutcome] = (
+            cls.github_run_pull_request(
+                repo_root=repo_root,
+                workspace_root=context.workspace_root,
+                request=context.request,
+            )
         )
         if run_result.is_success:
-            pr_data = run_result.value
-            ctx.results.append(pr_data)
-            return pr_data.exit_code != 0
+            outcome = run_result.value
+            context.outcomes.append(outcome)
+            return outcome.exit_code != 0
         return True
 
     @classmethod
@@ -128,24 +118,28 @@ class FlextInfraUtilitiesGithubPr(
             return r[bool].fail(commit_result.error or "git commit failed")
         return cls.git_push(
             repo_root,
-            remote=c.Infra.Git.ORIGIN if branch else "",
+            remote=FlextInfraSharedInfraConstants.Git.ORIGIN if branch else "",
             branch=branch,
             upstream=bool(branch),
         )
 
     @classmethod
-    def github_pr_run_single(
+    def github_run_pull_request(
         cls,
+        *,
         repo_root: Path,
         workspace_root: Path,
-        pr_args: t.StrMapping,
-    ) -> r[m.Infra.PrExecutionResultModel]:
-        """Execute one PR command for a single repository."""
+        request: (
+            FlextInfraModelsCliInputsOps.GithubPullRequestRequest
+            | FlextInfraModelsCliInputsOps.GithubPullRequestWorkspaceRequest
+        ),
+    ) -> r[FlextInfraGithubModels.GithubPullRequestOutcome]:
+        """Execute one pull-request command for a single repository."""
         display = workspace_root.name if repo_root == workspace_root else repo_root.name
         report_dir = cls.get_report_dir(
             workspace_root,
-            c.Infra.ReportKeys.WORKSPACE,
-            c.Infra.PR,
+            FlextInfraConstantsBase.ReportKeys.WORKSPACE,
+            FlextInfraConstantsBase.PR,
         )
         with contextlib.suppress(OSError):
             report_dir.mkdir(parents=True, exist_ok=True)
@@ -153,19 +147,23 @@ class FlextInfraUtilitiesGithubPr(
         command = cls._github_build_pr_command(
             repo_root=repo_root,
             workspace_root=workspace_root,
-            pr_args=pr_args,
+            request=request,
         )
         started = time.monotonic()
         to_file_result: r[int] = cls.run_to_file(command, log_path)
         if to_file_result.is_failure:
-            return r[m.Infra.PrExecutionResultModel].fail(
+            return r[FlextInfraGithubModels.GithubPullRequestOutcome].fail(
                 to_file_result.error or "command execution error",
             )
         exit_code = to_file_result.value
         elapsed = int(time.monotonic() - started)
-        status = c.Infra.Status.OK if exit_code == 0 else c.Infra.Status.FAIL
-        return r[m.Infra.PrExecutionResultModel].ok(
-            m.Infra.PrExecutionResultModel(
+        status = (
+            FlextInfraConstantsBase.Status.OK
+            if exit_code == 0
+            else FlextInfraConstantsBase.Status.FAIL
+        )
+        return r[FlextInfraGithubModels.GithubPullRequestOutcome].ok(
+            FlextInfraGithubModels.GithubPullRequestOutcome(
                 display=display,
                 status=status,
                 elapsed=elapsed,
@@ -179,56 +177,62 @@ class FlextInfraUtilitiesGithubPr(
         *,
         repo_root: Path,
         workspace_root: Path,
-        pr_args: t.StrMapping,
+        request: (
+            FlextInfraModelsCliInputsOps.GithubPullRequestRequest
+            | FlextInfraModelsCliInputsOps.GithubPullRequestWorkspaceRequest
+        ),
     ) -> list[str]:
-        """Build the CLI command list for a single PR operation."""
+        """Build the CLI command list for a single pull-request operation."""
         is_root = repo_root == workspace_root
         if is_root:
             command = [
-                c.Infra.PYTHON,
+                FlextInfraConstantsBase.PYTHON,
                 "-m",
                 "flext_infra.github.pr",
                 "--repo-root",
                 str(repo_root),
                 "--action",
-                pr_args.get(c.Infra.ReportKeys.ACTION, c.Infra.ReportKeys.STATUS),
+                request.action,
                 "--base",
-                pr_args.get("base", c.Infra.Git.MAIN),
+                request.base,
                 "--draft",
-                pr_args.get("draft", "0"),
+                "1" if request.draft else "0",
                 "--merge-method",
-                pr_args.get("merge_method", c.Infra.SQUASH),
+                request.merge_method,
                 "--auto",
-                pr_args.get("auto", "0"),
+                "1" if request.auto else "0",
                 "--delete-branch",
-                pr_args.get("delete_branch", "0"),
+                "1" if request.delete_branch else "0",
                 "--checks-strict",
-                pr_args.get("checks_strict", "0"),
+                "1" if request.checks_strict else "0",
                 "--release-on-merge",
-                pr_args.get("release_on_merge", "1"),
+                "1" if request.release_on_merge else "0",
             ]
         else:
             command = [
-                c.Infra.MAKE,
+                FlextInfraConstantsBase.MAKE,
                 "-C",
                 str(repo_root),
-                c.Infra.PR,
-                f"PR_ACTION={pr_args.get('action', 'status')}",
-                f"PR_BASE={pr_args.get('base', 'main')}",
-                f"PR_DRAFT={pr_args.get('draft', '0')}",
-                f"PR_MERGE_METHOD={pr_args.get('merge_method', 'squash')}",
-                f"PR_AUTO={pr_args.get('auto', '0')}",
-                f"PR_DELETE_BRANCH={pr_args.get('delete_branch', '0')}",
-                f"PR_CHECKS_STRICT={pr_args.get('checks_strict', '0')}",
-                f"PR_RELEASE_ON_MERGE={pr_args.get('release_on_merge', '1')}",
+                FlextInfraConstantsBase.PR,
+                f"PR_ACTION={request.action}",
+                f"PR_BASE={request.base}",
+                f"PR_DRAFT={1 if request.draft else 0}",
+                f"PR_MERGE_METHOD={request.merge_method}",
+                f"PR_AUTO={1 if request.auto else 0}",
+                f"PR_DELETE_BRANCH={1 if request.delete_branch else 0}",
+                f"PR_CHECKS_STRICT={1 if request.checks_strict else 0}",
+                f"PR_RELEASE_ON_MERGE={1 if request.release_on_merge else 0}",
             ]
-        for key, flag in (
-            ("head", "PR_HEAD"),
-            ("number", "PR_NUMBER"),
-            ("title", "PR_TITLE"),
-            ("body", "PR_BODY"),
+        for key, flag, value in (
+            ("head", "PR_HEAD", request.head or ""),
+            (
+                "number",
+                "PR_NUMBER",
+                "" if request.number is None else str(request.number),
+            ),
+            ("title", "PR_TITLE", request.title or ""),
+            ("body", "PR_BODY", request.body or ""),
         ):
-            value = pr_args.get(key, "")
             if value:
                 if is_root:
                     command.extend([f"--{key}", value])
@@ -237,6 +241,4 @@ class FlextInfraUtilitiesGithubPr(
         return command
 
 
-__all__ = [
-    "FlextInfraUtilitiesGithubPr",
-]
+__all__ = ["FlextInfraUtilitiesGithubPr"]

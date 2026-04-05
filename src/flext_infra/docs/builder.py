@@ -55,14 +55,14 @@ class FlextInfraDocBuilder:
         self,
         workspace_root: Path,
         *,
-        project: Sequence[str] | None = None,
+        projects: Sequence[str] | None = None,
         output_dir: str = c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
     ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
         """Build MkDocs sites across project scopes.
 
         Args:
             workspace_root: Workspace root directory.
-            project: Selected project names.
+            projects: Selected project names.
             output_dir: Report output directory.
 
         Returns:
@@ -71,7 +71,7 @@ class FlextInfraDocBuilder:
         """
         return u.Infra.run_scoped(
             workspace_root,
-            project=project,
+            projects=projects,
             output_dir=output_dir,
             handler=self._build_scope,
         )
@@ -80,7 +80,7 @@ class FlextInfraDocBuilder:
         """CLI handler — accepts input model, delegates to build."""
         result = self.build(
             workspace_root=params.workspace_path,
-            project=params.project_names,
+            projects=params.project_names,
             output_dir=params.output_dir,
         )
         if result.is_failure:

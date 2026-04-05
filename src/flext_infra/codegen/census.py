@@ -94,7 +94,6 @@ class FlextInfraCodegenCensus(FlextInfraServiceBase[str]):
         )
         return r[str].ok("\n".join(lines))
 
-    @override
     def run(
         self,
         workspace_root: Path | None = None,

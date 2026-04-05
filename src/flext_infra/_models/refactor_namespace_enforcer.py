@@ -12,6 +12,92 @@ from flext_infra import t
 from flext_infra._models.mixins import FlextInfraModelsMixins
 
 
+def _facade_statuses() -> list[FlextInfraNamespaceEnforcerModels.FacadeStatus]:
+    return []
+
+
+def _loose_object_violations() -> list[
+    FlextInfraNamespaceEnforcerModels.LooseObjectViolation
+]:
+    return []
+
+
+def _import_alias_violations() -> list[
+    FlextInfraNamespaceEnforcerModels.ImportAliasViolation
+]:
+    return []
+
+
+def _namespace_source_violations() -> list[
+    FlextInfraNamespaceEnforcerModels.NamespaceSourceViolation
+]:
+    return []
+
+
+def _internal_import_violations() -> list[
+    FlextInfraNamespaceEnforcerModels.InternalImportViolation
+]:
+    return []
+
+
+def _manual_protocol_violations() -> list[
+    FlextInfraNamespaceEnforcerModels.ManualProtocolViolation
+]:
+    return []
+
+
+def _cyclic_import_violations() -> list[
+    FlextInfraNamespaceEnforcerModels.CyclicImportViolation
+]:
+    return []
+
+
+def _runtime_alias_violations() -> list[
+    FlextInfraNamespaceEnforcerModels.RuntimeAliasViolation
+]:
+    return []
+
+
+def _future_annotations_violations() -> list[
+    FlextInfraNamespaceEnforcerModels.FutureAnnotationsViolation
+]:
+    return []
+
+
+def _manual_typing_violations() -> list[
+    FlextInfraNamespaceEnforcerModels.ManualTypingAliasViolation
+]:
+    return []
+
+
+def _compatibility_alias_violations() -> list[
+    FlextInfraNamespaceEnforcerModels.CompatibilityAliasViolation
+]:
+    return []
+
+
+def _class_placement_violations() -> list[
+    FlextInfraNamespaceEnforcerModels.ClassPlacementViolation
+]:
+    return []
+
+
+def _mro_completeness_violations() -> list[
+    FlextInfraNamespaceEnforcerModels.MROCompletenessViolation
+]:
+    return []
+
+
+def _parse_failures() -> list[FlextInfraNamespaceEnforcerModels.ParseFailureViolation]:
+    return []
+
+
+def _project_enforcement_reports() -> list[
+    FlextInfraNamespaceEnforcerModels.ProjectEnforcementReport
+]:
+    return []
+
+
 class FlextInfraNamespaceEnforcerModels:
     """Namespace enforcer violation and report models."""
 
@@ -139,47 +225,89 @@ class FlextInfraNamespaceEnforcerModels:
     ):
         project_root: Annotated[str, Field(description="Project root path")]
         facade_statuses: Sequence[FlextInfraNamespaceEnforcerModels.FacadeStatus] = (
-            Field(default_factory=list, description="Facade status list")
+            Field(
+                default_factory=_facade_statuses,
+                description="Facade status list",
+            )
         )
         loose_objects: list[FlextInfraNamespaceEnforcerModels.LooseObjectViolation] = (
-            Field(default_factory=list, description="Loose object violations")
+            Field(
+                default_factory=_loose_object_violations,
+                description="Loose object violations",
+            )
         )
         import_violations: list[
             FlextInfraNamespaceEnforcerModels.ImportAliasViolation
-        ] = Field(default_factory=list, description="Import alias violations")
+        ] = Field(
+            default_factory=_import_alias_violations,
+            description="Import alias violations",
+        )
         namespace_source_violations: list[
             FlextInfraNamespaceEnforcerModels.NamespaceSourceViolation
-        ] = Field(default_factory=list, description="Namespace source violations")
+        ] = Field(
+            default_factory=_namespace_source_violations,
+            description="Namespace source violations",
+        )
         internal_import_violations: list[
             FlextInfraNamespaceEnforcerModels.InternalImportViolation
-        ] = Field(default_factory=list, description="Internal import violations")
+        ] = Field(
+            default_factory=_internal_import_violations,
+            description="Internal import violations",
+        )
         manual_protocol_violations: list[
             FlextInfraNamespaceEnforcerModels.ManualProtocolViolation
-        ] = Field(default_factory=list, description="Manual protocol violations")
+        ] = Field(
+            default_factory=_manual_protocol_violations,
+            description="Manual protocol violations",
+        )
         cyclic_imports: list[
             FlextInfraNamespaceEnforcerModels.CyclicImportViolation
-        ] = Field(default_factory=list, description="Cyclic import violations")
+        ] = Field(
+            default_factory=_cyclic_import_violations,
+            description="Cyclic import violations",
+        )
         runtime_alias_violations: list[
             FlextInfraNamespaceEnforcerModels.RuntimeAliasViolation
-        ] = Field(default_factory=list, description="Runtime alias violations")
+        ] = Field(
+            default_factory=_runtime_alias_violations,
+            description="Runtime alias violations",
+        )
         future_violations: list[
             FlextInfraNamespaceEnforcerModels.FutureAnnotationsViolation
-        ] = Field(default_factory=list, description="Future annotations violations")
+        ] = Field(
+            default_factory=_future_annotations_violations,
+            description="Future annotations violations",
+        )
         manual_typing_violations: list[
             FlextInfraNamespaceEnforcerModels.ManualTypingAliasViolation
-        ] = Field(default_factory=list, description="Manual typing alias violations")
+        ] = Field(
+            default_factory=_manual_typing_violations,
+            description="Manual typing alias violations",
+        )
         compatibility_alias_violations: list[
             FlextInfraNamespaceEnforcerModels.CompatibilityAliasViolation
-        ] = Field(default_factory=list, description="Compatibility alias violations")
+        ] = Field(
+            default_factory=_compatibility_alias_violations,
+            description="Compatibility alias violations",
+        )
         class_placement_violations: list[
             FlextInfraNamespaceEnforcerModels.ClassPlacementViolation
-        ] = Field(default_factory=list, description="Class placement violations")
+        ] = Field(
+            default_factory=_class_placement_violations,
+            description="Class placement violations",
+        )
         mro_completeness_violations: list[
             FlextInfraNamespaceEnforcerModels.MROCompletenessViolation
-        ] = Field(default_factory=list, description="MRO completeness violations")
+        ] = Field(
+            default_factory=_mro_completeness_violations,
+            description="MRO completeness violations",
+        )
         parse_failures: list[
             FlextInfraNamespaceEnforcerModels.ParseFailureViolation
-        ] = Field(default_factory=list, description="Parse failures")
+        ] = Field(
+            default_factory=_parse_failures,
+            description="Parse failures",
+        )
         files_scanned: Annotated[
             t.NonNegativeInt,
             Field(default=0, description="Files scanned"),
@@ -209,7 +337,10 @@ class FlextInfraNamespaceEnforcerModels:
     class WorkspaceEnforcementReport(FlextModels.ArbitraryTypesModel):
         workspace: Annotated[t.NonEmptyStr, Field(description="Workspace root path")]
         projects: list[FlextInfraNamespaceEnforcerModels.ProjectEnforcementReport] = (
-            Field(default_factory=list, description="Project enforcement reports")
+            Field(
+                default_factory=_project_enforcement_reports,
+                description="Project enforcement reports",
+            )
         )
         total_facades_missing: Annotated[
             t.NonNegativeInt,

@@ -80,7 +80,7 @@ class FlextInfraUtilitiesCliShared:
         default_path = SUPPRESS if suppress_defaults else Path.cwd()
         default_bool = SUPPRESS if suppress_defaults else False
         default_text = SUPPRESS if suppress_defaults else "text"
-        default_project = SUPPRESS if suppress_defaults else None
+        default_projects = SUPPRESS if suppress_defaults else None
         _ = parser.add_argument(
             "--workspace",
             type=Path,
@@ -126,11 +126,11 @@ class FlextInfraUtilitiesCliShared:
             )
         if flags.include_project:
             _ = parser.add_argument(
-                "--project",
+                "--projects",
                 type=str,
                 action="append",
-                default=default_project,
-                help="Project to process; repeat --project NAME as needed",
+                default=default_projects,
+                help="Projects to process; repeat --projects NAME as needed",
             )
 
     @staticmethod

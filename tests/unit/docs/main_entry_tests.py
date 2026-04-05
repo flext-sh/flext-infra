@@ -175,7 +175,7 @@ class TestMainWithFlags:
             FlextInfraDocAuditor, "execute_command", _capture_audit(captured)
         )
         tm.that(infra_main(["docs", "audit", "--projects", "test-proj"]), eq=0)
-        tm.that(captured[0].project, eq="test-proj")
+        tm.that(captured[0].projects, eq=["test-proj"])
 
     def test_audit_strict_flag(self, monkeypatch: pytest.MonkeyPatch) -> None:
         captured: list[m.Infra.DocsAuditInput] = []

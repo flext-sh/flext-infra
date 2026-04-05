@@ -22,7 +22,7 @@ class FlextInfraCliDeps:
     })
     _VALUE_FLAGS: ClassVar[frozenset[str]] = frozenset({
         "--workspace",
-        "--project",
+        "--projects",
         "--format",
         "--output",
         "-o",

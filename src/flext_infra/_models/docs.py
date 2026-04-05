@@ -12,6 +12,10 @@ from flext_core import FlextModels
 from flext_infra import t
 
 
+def _docs_phase_items() -> Sequence[FlextInfraDocsModels.DocsPhaseItemModel]:
+    return []
+
+
 class FlextInfraDocsModels:
     """Models for documentation services."""
 
@@ -164,7 +168,10 @@ class FlextInfraDocsModels:
         items: Annotated[
             Sequence[FlextInfraDocsModels.DocsPhaseItemModel],
             Field(description="Phase-specific item payloads"),
-        ] = Field(default_factory=list)
+        ] = Field(
+            default_factory=_docs_phase_items,
+            description="Phase-specific item payloads",
+        )
 
 
 __all__ = ["FlextInfraDocsModels"]

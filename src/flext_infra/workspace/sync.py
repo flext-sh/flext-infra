@@ -253,7 +253,7 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
             flags=u.Infra.SharedFlags(),
         )
         _ = parser.add_argument(
-            "--workspace",
+            "--canonical-root",
             type=Path,
             default=None,
             help="Canonical workspace root",

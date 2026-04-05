@@ -366,6 +366,8 @@ class FlextInfraPyprojectModernizer:
         )
         _ = parser.add_argument("--skip-comments", action="store_true")
         args = parser.parse_args(argv)
+        if bool(args.dry_run or args.audit or args.check):
+            args.skip_check = True
         cli = u.Infra.resolve(args)
         return FlextInfraPyprojectModernizer(workspace_root=cli.workspace).run(
             args,

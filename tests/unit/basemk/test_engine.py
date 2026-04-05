@@ -82,7 +82,7 @@ def test_generator_write_saves_output_file(tmp_path: Path) -> None:
 
 
 def test_basemk_cli_generate_to_stdout(capsys: CaptureFixture[str]) -> None:
-    exit_code = basemk_main(["generate", "--projects-name", "cli-project"])
+    exit_code = basemk_main(["generate", "--project-name", "cli-project"])
     captured = capsys.readouterr()
     assert exit_code == 0
     assert "PROJECT_NAME ?= cli-project" in captured.out

@@ -23,11 +23,11 @@ class FlextInfraUtilitiesDocs:
     @staticmethod
     def _selected_project_names(
         workspace_root: Path,
-        project: Sequence[str] | None,
+        projects: Sequence[str] | None,
     ) -> t.StrSequence:
         """Resolve CLI project flags to a concrete name list."""
-        if project:
-            return [name.strip() for name in project if name.strip()]
+        if projects:
+            return [name.strip() for name in projects if name.strip()]
         result: r[Sequence[m.Infra.ProjectInfo]] = (
             FlextInfraUtilitiesDiscovery.discover_projects(workspace_root)
         )
@@ -39,7 +39,7 @@ class FlextInfraUtilitiesDocs:
     @staticmethod
     def build_scopes(
         workspace_root: Path,
-        project: Sequence[str] | None,
+        projects: Sequence[str] | None,
         output_dir: str,
     ) -> r[Sequence[m.Infra.DocScope]]:
         """Build DocScope objects for workspace root and each selected project."""
@@ -53,7 +53,7 @@ class FlextInfraUtilitiesDocs:
             ]
             names = FlextInfraUtilitiesDocs._selected_project_names(
                 workspace_root,
-                project,
+                projects,
             )
             for name in names:
                 path = (workspace_root / name).resolve()
@@ -161,14 +161,14 @@ class FlextInfraUtilitiesDocs:
     def run_scoped(
         workspace_root: Path,
         *,
-        project: Sequence[str] | None,
+        projects: Sequence[str] | None,
         output_dir: str,
         handler: Callable[[m.Infra.DocScope], m.Infra.DocsPhaseReport],
     ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
         """Build scopes and run handler on each, collecting reports."""
         scopes_result = FlextInfraUtilitiesDocs.build_scopes(
             workspace_root=workspace_root,
-            project=project,
+            projects=projects,
             output_dir=output_dir,
         )
         if scopes_result.is_failure:

@@ -10,23 +10,19 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from flext_cli import FlextCliUtilities
-from flext_infra import (
-    FlextInfraRefactorTransformerPolicyUtilities,
+from flext_infra._utilities import (
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesCli,
-    FlextInfraUtilitiesCodegen,
     FlextInfraUtilitiesDocs,
     FlextInfraUtilitiesFormatting,
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesGithub,
-    FlextInfraUtilitiesImportNormalizer,
     FlextInfraUtilitiesIo,
     FlextInfraUtilitiesLogParser,
     FlextInfraUtilitiesOutput,
     FlextInfraUtilitiesParsing,
     FlextInfraUtilitiesPaths,
     FlextInfraUtilitiesPatterns,
-    FlextInfraUtilitiesRefactor,
     FlextInfraUtilitiesRelease,
     FlextInfraUtilitiesReporting,
     FlextInfraUtilitiesRope,
@@ -39,6 +35,12 @@ from flext_infra import (
     FlextInfraUtilitiesTomlParse,
     FlextInfraUtilitiesVersioning,
     FlextInfraUtilitiesYaml,
+)
+from flext_infra.codegen import FlextInfraUtilitiesCodegen
+from flext_infra.refactor import FlextInfraUtilitiesRefactor
+from flext_infra.transformers import (
+    FlextInfraRefactorTransformerPolicyUtilities,
+    FlextInfraUtilitiesImportNormalizer,
 )
 
 
@@ -56,12 +58,12 @@ class FlextInfraUtilities(FlextCliUtilities):
     """
 
     class Infra(
-        FlextInfraRefactorTransformerPolicyUtilities,
         FlextInfraUtilitiesCli,
         FlextInfraUtilitiesCodegen,
         FlextInfraUtilitiesBase,
         FlextInfraUtilitiesGithub,
         FlextInfraUtilitiesImportNormalizer,
+        FlextInfraRefactorTransformerPolicyUtilities,
         FlextInfraUtilitiesDocs,
         FlextInfraUtilitiesFormatting,
         FlextInfraUtilitiesGit,

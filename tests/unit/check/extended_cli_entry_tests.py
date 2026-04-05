@@ -97,7 +97,7 @@ class TestWorkspaceCheckCLI:
             "FlextInfraWorkspaceChecker",
             _fake_checker_cls(["lint"], ok_result),
         )
-        tm.that(ws_mod.main(["p1", "--gates", "lint"]), eq=0)
+        tm.that(ws_mod.main(["--projects", "p1", "--gates", "lint"]), eq=0)
 
     def test_with_projects_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         ok_result = r[list[SimpleNamespace]].ok([SimpleNamespace(passed=False)])
@@ -106,7 +106,7 @@ class TestWorkspaceCheckCLI:
             "FlextInfraWorkspaceChecker",
             _fake_checker_cls(["lint"], ok_result),
         )
-        tm.that(ws_mod.main(["p1", "--gates", "lint"]), eq=1)
+        tm.that(ws_mod.main(["--projects", "p1", "--gates", "lint"]), eq=1)
 
     def test_run_projects_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
         fail_result = r[Sequence[SimpleNamespace]].fail("error")
@@ -115,7 +115,7 @@ class TestWorkspaceCheckCLI:
             "FlextInfraWorkspaceChecker",
             _fake_checker_cls(["lint"], fail_result),
         )
-        tm.that(ws_mod.main(["p1", "--gates", "lint"]), eq=2)
+        tm.that(ws_mod.main(["--projects", "p1", "--gates", "lint"]), eq=2)
 
 
 class TestFixPyrelfyCLI:

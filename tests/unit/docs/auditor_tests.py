@@ -76,7 +76,7 @@ class TestAuditorCore:
         tm.that(issue.severity, eq="high")
 
     @pytest.mark.parametrize(
-        ("project", "check", "strict", "output_dir"),
+        ("projects", "check", "strict", "output_dir"),
         [
             (["test-project"], "all", True, ".reports/docs"),
             (["proj1", "proj2"], "all", True, ".reports/docs"),
@@ -90,7 +90,7 @@ class TestAuditorCore:
         self,
         auditor: FlextInfraDocAuditor,
         tmp_path: Path,
-        project: list[str] | None,
+        projects: list[str] | None,
         check: str,
         strict: bool,
         output_dir: str,
@@ -100,7 +100,7 @@ class TestAuditorCore:
         )
         result = auditor.audit(
             tmp_path,
-            project=project,
+            projects=projects,
             output_dir=output_dir_value,
             params=m.Infra.AuditScopeParams(check=check, strict=strict),
         )

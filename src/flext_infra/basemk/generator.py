@@ -30,6 +30,13 @@ from flext_infra import (
 _TEMPLATES_DIR: Path = Path(__file__).resolve().parent.parent / "templates"
 
 
+def _render_template(
+    template: p.Infra.RenderableTemplate,
+    **kwargs: object,
+) -> str:
+    return template.render(**kwargs)
+
+
 class FlextInfraBaseMkGenerator(s[str]):
     """Generate base.mk content and write to file or stream."""
 
@@ -87,9 +94,8 @@ class FlextInfraBaseMkGenerator(s[str]):
         except OSError as exc:
             return r[bool].fail(f"base.mk write failed: {exc}")
 
-    @override
-    def execute_command(self, params: m.Infra.BaseMkGenerateInput) -> r[str]:
-        """CLI handler — accepts input model, delegates to generate+write."""
+    def handle_generate_input(self, params: m.Infra.BaseMkGenerateInput) -> r[str]:
+        """CLI handler for generate command input."""
         config = (
             FlextInfraBaseMkTemplateEngine.default_config().model_copy(
                 update={"project_name": params.project_name},
@@ -101,7 +107,11 @@ class FlextInfraBaseMkGenerator(s[str]):
         if result.is_failure:
             return result
         output_path = Path(params.output) if params.output else None
-        write_result = self.write(result.value, output=output_path, stream=sys.stdout)
+        write_result = self.write(
+            result.value,
+            output=output_path,
+            stream=sys.stdout,
+        )
         if write_result.is_failure:
             return r[str].fail(write_result.error or "write failed")
         return result
@@ -166,8 +176,11 @@ class FlextInfraBaseMkGenerator(s[str]):
                 undefined=StrictUndefined,
                 autoescape=select_autoescape(),
             )
-            template = environment.get_template(c.Infra.MAKEFILE_BOOTSTRAP_TEMPLATE)
-            content: str = template.render(
+            template: p.Infra.RenderableTemplate = environment.get_template(
+                c.Infra.MAKEFILE_BOOTSTRAP_TEMPLATE,
+            )
+            content = _render_template(
+                template,
                 make=c.Infra.Make,
             )
             return r[str].ok(content.rstrip("\n"))

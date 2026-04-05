@@ -97,7 +97,7 @@ class FlextInfraDocAuditor(FlextInfraDocAuditorMixin):
         self,
         workspace_root: Path,
         *,
-        project: Sequence[str] | None = None,
+        projects: Sequence[str] | None = None,
         output_dir: str = c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
         params: m.Infra.AuditScopeParams | None = None,
     ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
@@ -111,7 +111,7 @@ class FlextInfraDocAuditor(FlextInfraDocAuditorMixin):
         )
         return u.Infra.run_scoped(
             workspace_root,
-            project=project,
+            projects=projects,
             output_dir=output_dir,
             handler=lambda scope: self.audit_scope(scope, params=scope_params),
         )
@@ -127,7 +127,7 @@ class FlextInfraDocAuditor(FlextInfraDocAuditorMixin):
         )
         result = self.audit(
             workspace_root=resolved_workspace,
-            project=params.project_names,
+            projects=params.project_names,
             output_dir=params.output_dir,
             params=scope_params,
         )
@@ -318,7 +318,7 @@ class FlextInfraDocAuditor(FlextInfraDocAuditorMixin):
         )
         result = auditor.audit(
             workspace_root=cli.workspace,
-            project=cli.project,
+            projects=cli.project_names(),
             output_dir=args.output_dir,
             params=scope_params,
         )

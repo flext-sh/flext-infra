@@ -144,7 +144,7 @@ def test_cli_forwards_canonical_root(
             "sync",
             "--workspace",
             str(tmp_path),
-            "--workspace",
+            "--canonical-root",
             str(tmp_path.parent),
         ],
     )

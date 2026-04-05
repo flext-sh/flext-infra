@@ -125,7 +125,7 @@ def test_rendered_base_mk_forwards_canonical_root_in_workspace_preflight() -> No
     rendered = _render_base_mk()
     tm.that(
         rendered,
-        has='--workspace "$(CURDIR)" --workspace "$(WORKSPACE_ROOT)" --apply',
+        has='--workspace "$(CURDIR)" --canonical-root "$(WORKSPACE_ROOT)" --apply',
     )
 
 

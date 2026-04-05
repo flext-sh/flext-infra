@@ -47,18 +47,19 @@ class FlextInfraModelsMixins:
             return [
                 item.strip()
                 for value in values
-                for item in (value or "").split(",")
+                for group in (value or "").split(",")
+                for item in group.split()
                 if item.strip()
             ]
 
     class ProjectSelectionMixin:
-        """Repeated --project selector with normalized accessor."""
+        """Repeated --projects selector with normalized accessor."""
 
-        project: Annotated[
+        projects: Annotated[
             t.StrSequence | None,
             Field(
                 default=None,
-                description="Project to process; repeat --project NAME as needed",
+                description="Projects to process; repeat --projects NAME as needed",
             ),
         ] = None
 
@@ -66,7 +67,7 @@ class FlextInfraModelsMixins:
         def project_names(self) -> list[str] | None:
             """Return normalized project names from repeated selectors."""
             names = FlextInfraModelsMixins.CliInputBase.split_csv_values(
-                *(self.project or ()),
+                *(self.projects or ()),
             )
             return names or None
 
@@ -204,8 +205,8 @@ class FlextInfraModelsMixins:
             """Return the resolved report path when provided."""
             return self.resolve_optional_path(self.report)
 
-    class GithubWorkspaceControlMixin:
-        """Shared branch/checkpoint flags for workspace PR orchestration."""
+    class GithubWorkspaceRequestMixin:
+        """Shared branch/checkpoint flags for workspace GitHub requests."""
 
         include_root: Annotated[
             bool,
@@ -224,8 +225,8 @@ class FlextInfraModelsMixins:
             Field(default=False, description="Stop on first failure"),
         ] = False
 
-    class GithubWorkspaceCliControlMixin(GithubWorkspaceControlMixin):
-        """CLI-specific PR workspace defaults."""
+    class GithubWorkspaceCliRequestMixin(GithubWorkspaceRequestMixin):
+        """CLI-specific defaults for workspace GitHub requests."""
 
         include_root: Annotated[
             bool,
@@ -236,35 +237,40 @@ class FlextInfraModelsMixins:
             Field(default=True, description="Stop on first failure"),
         ] = True
 
-    class GithubPrWorkspacePayloadMixin:
-        """Shared PR workspace payload fields for CLI and orchestration models."""
+    class GithubPullRequestFieldsMixin:
+        """Shared pull-request fields used by single and workspace requests."""
 
-        pr_action: Annotated[
+        action: Annotated[
             str,
             Field(default="status", description="PR action"),
         ] = "status"
-        pr_base: Annotated[str, Field(default="", description="Base branch")] = ""
-        pr_head: Annotated[str, Field(default="", description="Head branch")] = ""
-        pr_title: Annotated[str, Field(default="", description="PR title")] = ""
-        pr_body: Annotated[str, Field(default="", description="PR body")] = ""
-        pr_draft: Annotated[bool, Field(default=False, description="Draft PR")] = False
-        pr_merge_method: Annotated[
+        base: Annotated[str, Field(default="main", description="Base branch")] = "main"
+        head: Annotated[str | None, Field(default=None, description="Head branch")] = (
+            None
+        )
+        number: Annotated[int | None, Field(default=None, description="PR number")] = (
+            None
+        )
+        title: Annotated[str | None, Field(default=None, description="PR title")] = None
+        body: Annotated[str | None, Field(default=None, description="PR body")] = None
+        draft: Annotated[bool, Field(default=False, description="Draft PR")] = False
+        merge_method: Annotated[
             str,
             Field(default="squash", description="Merge method"),
         ] = "squash"
-        pr_auto: Annotated[bool, Field(default=False, description="Auto-merge")] = False
-        pr_delete_branch: Annotated[
+        auto: Annotated[bool, Field(default=False, description="Auto-merge")] = False
+        delete_branch: Annotated[
             bool,
             Field(default=True, description="Delete branch on merge"),
         ] = True
-        pr_checks_strict: Annotated[
+        checks_strict: Annotated[
             bool,
             Field(default=True, description="Strict checks required"),
         ] = True
-        pr_release_on_merge: Annotated[
+        release_on_merge: Annotated[
             bool,
             Field(default=False, description="Release on merge"),
-        ] = False
+        ] = True
 
     class FacadeNameMixin:
         """Shared facade alias/import field for MRO rewrites."""

@@ -30,7 +30,6 @@ class FlextInfraCodegenPyTyped(s[bool]):
         self.run(check_only=self.check_only)
         return r[bool].ok(True)
 
-    @override
     def run(self, *, check_only: bool = False) -> int:
         """Ensure ``py.typed`` markers exist in every package directory.
 

@@ -137,7 +137,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
                 if fail_fast:
                     break
         return _LoopOutcome(
-            results=results,
+            results=tuple(results),
             failed=failed,
             skipped=skipped,
             total_elapsed=time.monotonic() - loop_start,
@@ -170,7 +170,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
                     errors=[f"{gate_id} gate not registered"],
                     duration=0.0,
                 ),
-                issues=[],
+                issues=(),
                 raw_output=f"{gate_id} gate not registered",
             )
         return gate.check(project_dir, ctx or self._gate_ctx(reports_dir))

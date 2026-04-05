@@ -92,16 +92,16 @@ def test_refactor_runtime_alias_imports_accepts_aliases_and_project(
 ) -> None:
     captured_apply = False
     captured_aliases = ""
-    captured_project = ""
+    captured_projects: list[str] | None = None
     captured_workspace = Path()
 
     def _mock_handler(
         params: m.Infra.RefactorMigrateRuntimeAliasImportsInput,
     ) -> r[t.IntMapping]:
-        nonlocal captured_apply, captured_aliases, captured_project, captured_workspace
+        nonlocal captured_apply, captured_aliases, captured_projects, captured_workspace
         captured_apply = params.apply
         captured_aliases = params.aliases
-        captured_project = params.project or ""
+        captured_projects = list(params.projects or [])
         captured_workspace = Path(params.workspace).resolve()
         return r[t.IntMapping].ok({"files_changed": 1})
 
@@ -125,5 +125,5 @@ def test_refactor_runtime_alias_imports_accepts_aliases_and_project(
     tm.that(result, eq=0)
     tm.that(captured_apply, eq=True)
     tm.that(captured_aliases, eq="r,s,u")
-    tm.that(captured_project, eq="flext-infra")
+    tm.that(captured_projects, eq=["flext-infra"])
     tm.that(captured_workspace, eq=tmp_path.resolve())

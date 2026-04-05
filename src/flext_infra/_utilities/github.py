@@ -11,18 +11,17 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 from flext_core import r
-from flext_infra import (
-    FlextInfraUtilitiesGit,
-    FlextInfraUtilitiesGithubPr,
-    FlextInfraUtilitiesIo,
-    FlextInfraUtilitiesReporting,
-    FlextInfraUtilitiesSelection,
-    FlextInfraUtilitiesSubprocess,
-    FlextInfraUtilitiesTemplates,
-    c,
-    m,
-    t,
-)
+from flext_infra._constants.base import FlextInfraConstantsBase
+from flext_infra._constants.github import FlextInfraGithubConstants
+from flext_infra._models.cli_inputs_ops import FlextInfraModelsCliInputsOps
+from flext_infra._models.github import FlextInfraGithubModels
+from flext_infra._utilities.git import FlextInfraUtilitiesGit
+from flext_infra._utilities.github_pr import FlextInfraUtilitiesGithubPr
+from flext_infra._utilities.io import FlextInfraUtilitiesIo
+from flext_infra._utilities.reporting import FlextInfraUtilitiesReporting
+from flext_infra._utilities.selection import FlextInfraUtilitiesSelection
+from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
+from flext_infra._utilities.templates import FlextInfraUtilitiesTemplates
 
 
 class FlextInfraUtilitiesGithub(
@@ -39,93 +38,96 @@ class FlextInfraUtilitiesGithub(
     @classmethod
     def github_lint_workflows(
         cls,
-        workspace_root: Path,
-        *,
-        report_path: Path | None = None,
-        strict: bool = False,
-    ) -> r[m.Infra.WorkflowLintResult]:
+        request: FlextInfraModelsCliInputsOps.GithubWorkflowLintRequest,
+    ) -> r[FlextInfraGithubModels.GithubWorkflowLintOutcome]:
         """Run actionlint on the repository and return results."""
         actionlint = shutil.which("actionlint")
+        workspace_root = request.workspace_path
         if actionlint is None:
-            payload_skipped = m.Infra.WorkflowLintResult(
+            payload_skipped = FlextInfraGithubModels.GithubWorkflowLintOutcome(
                 status="skipped",
                 reason="actionlint not installed",
             )
-            if report_path is not None:
-                cls.write_json(report_path, payload_skipped, sort_keys=True)
-            return r[m.Infra.WorkflowLintResult].ok(payload_skipped)
+            if request.report_path is not None:
+                cls.write_json(request.report_path, payload_skipped, sort_keys=True)
+            return r[FlextInfraGithubModels.GithubWorkflowLintOutcome].ok(
+                payload_skipped,
+            )
         result = cls.run_raw([actionlint], cwd=workspace_root)
         if result.is_success:
             output = result.value
-            payload = m.Infra.WorkflowLintResult(
+            payload = FlextInfraGithubModels.GithubWorkflowLintOutcome(
                 status="ok",
                 exit_code=output.exit_code,
                 stdout=output.stdout,
                 stderr=output.stderr,
             )
         else:
-            payload = m.Infra.WorkflowLintResult(
+            payload = FlextInfraGithubModels.GithubWorkflowLintOutcome(
                 status="fail",
                 exit_code=1,
                 detail=result.error or "",
             )
-        if report_path is not None:
-            cls.write_json(report_path, payload, sort_keys=True)
-        if payload.status == "fail" and strict:
-            return r[m.Infra.WorkflowLintResult].fail(
+        if request.report_path is not None:
+            cls.write_json(request.report_path, payload, sort_keys=True)
+        if payload.status == "fail" and request.strict:
+            return r[FlextInfraGithubModels.GithubWorkflowLintOutcome].fail(
                 result.error or "actionlint found issues",
             )
-        return r[m.Infra.WorkflowLintResult].ok(payload)
+        return r[FlextInfraGithubModels.GithubWorkflowLintOutcome].ok(payload)
 
     @classmethod
-    def github_sync_workspace_workflows(
+    def github_sync_workflows(
         cls,
-        workspace_root: Path,
-        params: m.Infra.WorkflowSyncParams,
-    ) -> r[Sequence[m.Infra.SyncOperation]]:
+        request: FlextInfraModelsCliInputsOps.GithubWorkflowSyncRequest,
+    ) -> r[FlextInfraGithubModels.GithubWorkflowSyncReport]:
         """Sync workflows across all workspace projects."""
+        workspace_root = request.workspace_path
         source_result = cls._github_resolve_source_workflow(
             workspace_root,
-            params.source_workflow,
+            None,
         )
         if source_result.is_failure:
-            return r[Sequence[m.Infra.SyncOperation]].fail(
+            return r[FlextInfraGithubModels.GithubWorkflowSyncReport].fail(
                 source_result.error or "source resolution failed",
             )
         template_result = cls._github_render_template(source_result.value)
         if template_result.is_failure:
-            return r[Sequence[m.Infra.SyncOperation]].fail(
+            return r[FlextInfraGithubModels.GithubWorkflowSyncReport].fail(
                 template_result.error or "template render failed",
             )
         projects_result = cls.resolve_projects(workspace_root, [])
         if projects_result.is_failure:
-            return r[Sequence[m.Infra.SyncOperation]].fail(
+            return r[FlextInfraGithubModels.GithubWorkflowSyncReport].fail(
                 projects_result.error or "project discovery failed",
             )
-        all_operations: MutableSequence[m.Infra.SyncOperation] = []
+        all_operations: MutableSequence[
+            FlextInfraGithubModels.GithubWorkflowSyncOperation
+        ] = []
         for project in projects_result.value:
-            ctx = m.Infra.GithubSyncContext(
+            ctx = FlextInfraGithubModels.GithubWorkflowSyncContext(
                 project_name=project.name,
                 project_root=project.path,
                 rendered_template=template_result.value,
-                apply=params.apply,
-                prune=params.prune,
+                request=request,
             )
             ops_result = cls._github_sync_project(ctx)
             if ops_result.is_success:
                 all_operations.extend(ops_result.value)
-        if params.report_path is not None:
-            cls._github_write_report(
-                params.report_path,
-                apply=params.apply,
-                operations=all_operations,
-            )
-        return r[Sequence[m.Infra.SyncOperation]].ok(all_operations)
+        report = FlextInfraGithubModels.GithubWorkflowSyncReport.from_operations(
+            apply=request.apply,
+            operations=all_operations,
+        )
+        if request.report_path is not None:
+            cls.write_json(request.report_path, report, sort_keys=True)
+        return r[FlextInfraGithubModels.GithubWorkflowSyncReport].ok(report)
 
     @classmethod
     def _github_render_template(cls, template_path: Path) -> r[str]:
         try:
-            body = template_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+            body = template_path.read_text(
+                encoding=FlextInfraConstantsBase.Encoding.DEFAULT,
+            )
         except OSError as exc:
             return r[str].fail(f"failed to read template: {exc}")
         header_template = cls.GENERATED_SHELL_HEADER
@@ -157,36 +159,44 @@ class FlextInfraUtilitiesGithub(
     @classmethod
     def _github_sync_project(
         cls,
-        ctx: m.Infra.GithubSyncContext,
-    ) -> r[Sequence[m.Infra.SyncOperation]]:
-        operations: MutableSequence[m.Infra.SyncOperation] = []
+        ctx: FlextInfraGithubModels.GithubWorkflowSyncContext,
+    ) -> r[Sequence[FlextInfraGithubModels.GithubWorkflowSyncOperation]]:
+        operations: MutableSequence[
+            FlextInfraGithubModels.GithubWorkflowSyncOperation
+        ] = []
         try:
             cls._github_sync_ci_yml(ctx, operations)
             if ctx.prune and ctx.workflows_dir.exists():
                 cls._github_prune_workflows(ctx, operations)
         except OSError as exc:
-            return r[Sequence[m.Infra.SyncOperation]].fail(f"sync error: {exc}")
-        return r[Sequence[m.Infra.SyncOperation]].ok(operations)
+            return r[Sequence[FlextInfraGithubModels.GithubWorkflowSyncOperation]].fail(
+                f"sync error: {exc}",
+            )
+        return r[Sequence[FlextInfraGithubModels.GithubWorkflowSyncOperation]].ok(
+            operations,
+        )
 
     @classmethod
     def _github_sync_ci_yml(
         cls,
-        ctx: m.Infra.GithubSyncContext,
-        operations: MutableSequence[m.Infra.SyncOperation],
+        ctx: FlextInfraGithubModels.GithubWorkflowSyncContext,
+        operations: MutableSequence[FlextInfraGithubModels.GithubWorkflowSyncOperation],
     ) -> None:
         """Sync a single ci.yml file for a project."""
         destination = ctx.ci_destination
         rel_path = str(destination.relative_to(ctx.project_root))
         if destination.exists():
-            current = destination.read_text(encoding=c.Infra.Encoding.DEFAULT)
+            current = destination.read_text(
+                encoding=FlextInfraConstantsBase.Encoding.DEFAULT,
+            )
             if current != ctx.rendered_template:
                 if ctx.apply:
                     _ = destination.write_text(
                         ctx.rendered_template,
-                        encoding=c.Infra.Encoding.DEFAULT,
+                        encoding=FlextInfraConstantsBase.Encoding.DEFAULT,
                     )
                 operations.append(
-                    m.Infra.SyncOperation.model_validate(
+                    FlextInfraGithubModels.GithubWorkflowSyncOperation.model_validate(
                         {
                             "project": ctx.project_name,
                             "path": rel_path,
@@ -197,7 +207,7 @@ class FlextInfraUtilitiesGithub(
                 )
             else:
                 operations.append(
-                    m.Infra.SyncOperation.model_validate(
+                    FlextInfraGithubModels.GithubWorkflowSyncOperation.model_validate(
                         {
                             "project": ctx.project_name,
                             "path": rel_path,
@@ -211,10 +221,10 @@ class FlextInfraUtilitiesGithub(
                 ctx.workflows_dir.mkdir(parents=True, exist_ok=True)
                 _ = destination.write_text(
                     ctx.rendered_template,
-                    encoding=c.Infra.Encoding.DEFAULT,
+                    encoding=FlextInfraConstantsBase.Encoding.DEFAULT,
                 )
             operations.append(
-                m.Infra.SyncOperation.model_validate(
+                FlextInfraGithubModels.GithubWorkflowSyncOperation.model_validate(
                     {
                         "project": ctx.project_name,
                         "path": rel_path,
@@ -226,20 +236,20 @@ class FlextInfraUtilitiesGithub(
 
     @staticmethod
     def _github_prune_workflows(
-        ctx: m.Infra.GithubSyncContext,
-        operations: MutableSequence[m.Infra.SyncOperation],
+        ctx: FlextInfraGithubModels.GithubWorkflowSyncContext,
+        operations: MutableSequence[FlextInfraGithubModels.GithubWorkflowSyncOperation],
     ) -> None:
         """Remove non-canonical workflow files from a project."""
         candidates = sorted(ctx.workflows_dir.glob("*.yml")) + sorted(
             ctx.workflows_dir.glob("*.yaml"),
         )
         for path in candidates:
-            if path.name in c.Infra.MANAGED_FILES:
+            if path.name in FlextInfraGithubConstants.MANAGED_FILES:
                 continue
             if ctx.apply:
                 path.unlink()
             operations.append(
-                m.Infra.SyncOperation.model_validate(
+                FlextInfraGithubModels.GithubWorkflowSyncOperation.model_validate(
                     {
                         "project": ctx.project_name,
                         "path": str(path.relative_to(ctx.project_root)),
@@ -248,31 +258,3 @@ class FlextInfraUtilitiesGithub(
                     },
                 ),
             )
-
-    @classmethod
-    def _github_write_report(
-        cls,
-        report_path: Path,
-        *,
-        apply: bool,
-        operations: Sequence[m.Infra.SyncOperation],
-    ) -> None:
-        by_action: t.MutableIntMapping = {}
-        for op in operations:
-            by_action[op.action] = by_action.get(op.action, 0) + 1
-        summary_dict: dict[str, t.Cli.JsonValue] = dict(by_action.items())
-        ops_list: list[t.Cli.JsonValue] = [
-            {
-                c.Infra.PROJECT: op.project,
-                c.Infra.PATH: op.path,
-                c.Infra.ReportKeys.ACTION: op.action,
-                "reason": op.reason,
-            }
-            for op in operations
-        ]
-        payload: dict[str, t.Cli.JsonValue] = {
-            "mode": "apply" if apply else "dry-run",
-            c.Infra.ReportKeys.SUMMARY: summary_dict,
-            "operations": ops_list,
-        }
-        cls.write_json(report_path, payload, sort_keys=True)

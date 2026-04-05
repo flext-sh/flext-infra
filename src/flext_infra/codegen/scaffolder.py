@@ -50,7 +50,6 @@ class FlextInfraCodegenScaffolder(FlextInfraServiceBase[str]):
         )
         return r[str].ok("\n".join(lines))
 
-    @override
     def run(self, *, dry_run: bool = False) -> Sequence[m.Infra.ScaffoldResult]:
         """Scaffold missing base modules for all projects in workspace.
 

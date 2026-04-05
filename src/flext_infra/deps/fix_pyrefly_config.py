@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import argparse
 import contextlib
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
@@ -118,7 +117,6 @@ class FlextInfraConfigFixer(s[bool]):
                 )
         return r[t.StrSequence].ok(all_fixes)
 
-    @override
     def run(
         self,
         projects: t.StrSequence,
@@ -248,14 +246,21 @@ class FlextInfraConfigFixer(s[bool]):
     @staticmethod
     def main(argv: t.StrSequence | None = None) -> int:
         """Run the pyrefly configuration fixer CLI."""
-        parser = argparse.ArgumentParser()
-        _ = parser.add_argument("--project", action="append")
-        _ = parser.add_argument("--dry-run", action="store_true")
+        parser = u.Infra.create_parser(
+            "flext-infra check fix-pyrefly-config",
+            "Repair [tool.pyrefly] blocks",
+            flags=u.Infra.SharedFlags(
+                include_apply=True,
+                include_diff=False,
+                include_project=True,
+            ),
+        )
         _ = parser.add_argument("--verbose", action="store_true")
         args = parser.parse_args(argv)
+        cli = u.Infra.resolve(args)
         fixer = FlextInfraConfigFixer()
         result = fixer.run(
-            projects=args.project,
+            projects=cli.project_names() or [],
             dry_run=args.dry_run,
             verbose=args.verbose,
         )

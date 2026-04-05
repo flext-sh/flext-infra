@@ -36,7 +36,7 @@ class FlextInfraProtocolsBase(Protocol):
     class RenderableTemplate(Protocol):
         """Structural contract for template engines that expose ``render``."""
 
-        def render(self, **kwargs: t.RecursiveContainer) -> str:
+        def render(self, **kwargs: object) -> str:
             """Render a template with keyword context."""
             ...
 

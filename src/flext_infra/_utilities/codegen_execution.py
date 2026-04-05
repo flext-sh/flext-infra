@@ -26,7 +26,7 @@ from flext_infra import (
 )
 
 _BARE_IMPORT_FROM_RE = re.compile(r"^from\s+import\s", re.MULTILINE)
-_NO_MODIFIED = {
+_NO_MODIFIED: dict[str, t.Infra.InfraValue] = {
     "passed": True,
     "detail": "no modified python files detected",
     "exit_code": 0,
@@ -447,7 +447,7 @@ class FlextInfraUtilitiesCodegenExecution:
         workspace_root: Path,
         census_reports: Sequence[m.Infra.CensusReport],
     ) -> Sequence[m.Infra.DuplicateConstantGroup]:
-        all_defs: MutableSequence[m.Infra.ConstantDefinition] = []
+        all_defs: list[m.Infra.ConstantDefinition] = []
         for report in census_reports:
             cf = (
                 workspace_root
@@ -462,9 +462,7 @@ class FlextInfraUtilitiesCodegenExecution:
                         cf, report.project
                     ),
                 )
-        by_name: defaultdict[str, MutableSequence[m.Infra.ConstantDefinition]] = (
-            defaultdict(list)
-        )
+        by_name: defaultdict[str, list[m.Infra.ConstantDefinition]] = defaultdict(list)
         for d in all_defs:
             by_name[d.name].append(d)
         return [

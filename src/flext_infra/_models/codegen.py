@@ -15,6 +15,10 @@ from flext_infra import (
 from flext_infra._models.mixins import FlextInfraModelsMixins
 
 
+def _census_violations() -> list[FlextInfraCodegenModels.CensusViolation]:
+    return []
+
+
 class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
     """Models for codegen census, scaffold, and auto-fix pipelines."""
 
@@ -45,7 +49,7 @@ class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
         """Aggregated census report for a single project."""
 
         violations: list[FlextInfraCodegenModels.CensusViolation] = Field(
-            default_factory=list,
+            default_factory=_census_violations,
             description="Detected violations",
         )
         total: Annotated[t.NonNegativeInt, Field(description="Total violation count")]
@@ -76,11 +80,11 @@ class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
         """Result of auto-fixing namespace violations for a project."""
 
         violations_fixed: list[FlextInfraCodegenModels.CensusViolation] = Field(
-            default_factory=list,
+            default_factory=_census_violations,
             description="Fixed violations",
         )
         violations_skipped: list[FlextInfraCodegenModels.CensusViolation] = Field(
-            default_factory=list,
+            default_factory=_census_violations,
             description="Skipped violations (not auto-fixable)",
         )
         files_modified: t.StrSequence = Field(
@@ -222,18 +226,18 @@ class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
 
         violations_fixed: MutableSequence[FlextInfraCodegenModels.CensusViolation] = (
             Field(
-                default_factory=list,
+                default_factory=_census_violations,
                 description="List of violations that were fixed",
             )
         )
         violations_skipped: MutableSequence[FlextInfraCodegenModels.CensusViolation] = (
             Field(
-                default_factory=list,
+                default_factory=_census_violations,
                 description="List of violations that were skipped",
             )
         )
         files_modified: MutableSet[str] = Field(
-            default_factory=set,
+            default_factory=set[str],
             description="Set of unique modified file paths",
         )
 

@@ -74,7 +74,7 @@ class TestFixerCore:
         tm.that(m.Infra.DocsPhaseItemModel.model_config.get("frozen"), eq=True)
 
     @pytest.mark.parametrize(
-        ("project", "apply", "output_dir"),
+        ("projects", "apply", "output_dir"),
         [
             (["test-project"], False, ".reports/docs"),
             (["proj1", "proj2"], False, ".reports/docs"),
@@ -87,7 +87,7 @@ class TestFixerCore:
         self,
         fixer: FlextInfraDocFixer,
         tmp_path: Path,
-        project: list[str] | None,
+        projects: list[str] | None,
         apply: bool,
         output_dir: str,
     ) -> None:
@@ -98,7 +98,7 @@ class TestFixerCore:
         )
         result = fixer.fix(
             tmp_path,
-            project=project,
+            projects=projects,
             output_dir=output_dir_value,
             apply=apply,
         )

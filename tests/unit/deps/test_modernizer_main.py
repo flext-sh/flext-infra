@@ -158,7 +158,7 @@ class TestModernizerRunAndMain:
         tm.that(
             modernizer.run(
                 args,
-                u.Infra.CliArgs(workspace=tmp_path, project=["missing-project"]),
+                u.Infra.CliArgs(workspace=tmp_path, projects=["missing-project"]),
             ),
             eq=2,
         )

@@ -28,18 +28,25 @@ def test_pr_workspace_accepts_repeated_project_options(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    captured: list[m.Infra.GithubPrWorkspaceInput] = []
+    captured: list[m.Infra.GithubPullRequestWorkspaceRequest] = []
 
     def _capture(
         _self: FlextInfraGithubService,
-        params: m.Infra.GithubPrWorkspaceInput,
-    ) -> r[bool]:
+        params: m.Infra.GithubPullRequestWorkspaceRequest,
+    ) -> r[m.Infra.GithubPullRequestWorkspaceReport]:
         captured.append(params)
-        return r[bool].ok(True)
+        return r[m.Infra.GithubPullRequestWorkspaceReport].ok(
+            m.Infra.GithubPullRequestWorkspaceReport(
+                total=0,
+                success=0,
+                fail=0,
+                outcomes=(),
+            ),
+        )
 
     monkeypatch.setattr(
         FlextInfraGithubService,
-        "execute_pr_workspace",
+        "execute_workspace_pull_requests",
         _capture,
     )
 
@@ -55,4 +62,4 @@ def test_pr_workspace_accepts_repeated_project_options(
     ])
 
     tm.that(result, eq=0)
-    tm.that(captured[0].project, eq=["flext-core", "flext-api"])
+    tm.that(captured[0].projects, eq=["flext-core", "flext-api"])

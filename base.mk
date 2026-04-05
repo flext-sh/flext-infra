@@ -368,7 +368,7 @@ check: ## Run lint gates (CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,
 			if [ "$(CURDIR)" = "$(WORKSPACE_ROOT)" ]; then \
 				project_key="."; \
 			fi; \
-			$(PROJECT_INFRA_CHECK) run --gates "$$python_gates" --reports-dir "$(CURDIR)/.reports/check" --project "$$project_key" $(if $(filter 1,$(FIX)),$(if $(filter 1,$(CHECK_ONLY)),,--fix),) $(if $(filter 1,$(CHECK_ONLY)),--check-only,) $(if $(RUFF_ARGS),--ruff-args "$(RUFF_ARGS)",) $(if $(PYRIGHT_ARGS),--pyright-args "$(PYRIGHT_ARGS)",) || exit $$?; \
+			$(PROJECT_INFRA_CHECK) run --gates "$$python_gates" --reports-dir "$(CURDIR)/.reports/check" --projects "$$project_key" $(if $(filter 1,$(FIX)),$(if $(filter 1,$(CHECK_ONLY)),,--fix),) $(if $(filter 1,$(CHECK_ONLY)),--check-only,) $(if $(RUFF_ARGS),--ruff-args "$(RUFF_ARGS)",) $(if $(PYRIGHT_ARGS),--pyright-args "$(PYRIGHT_ARGS)",) || exit $$?; \
 		fi; \
 		exit 0; \
 	fi
@@ -423,7 +423,7 @@ check: ## Run lint gates (CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,
 	if [ "$(CURDIR)" = "$(WORKSPACE_ROOT)" ]; then \
 		project_key="."; \
 	fi; \
-	$(PROJECT_INFRA_CHECK) run --gates "$$gates" --reports-dir "$(CURDIR)/.reports/check" --project "$$project_key" $(if $(filter 1,$(FIX)),$(if $(filter 1,$(CHECK_ONLY)),,--fix),) $(if $(filter 1,$(CHECK_ONLY)),--check-only,) $(if $(RUFF_ARGS),--ruff-args "$(RUFF_ARGS)",) $(if $(PYRIGHT_ARGS),--pyright-args "$(PYRIGHT_ARGS)",); \
+	$(PROJECT_INFRA_CHECK) run --gates "$$gates" --reports-dir "$(CURDIR)/.reports/check" --projects "$$project_key" $(if $(filter 1,$(FIX)),$(if $(filter 1,$(CHECK_ONLY)),,--fix),) $(if $(filter 1,$(CHECK_ONLY)),--check-only,) $(if $(RUFF_ARGS),--ruff-args "$(RUFF_ARGS)",) $(if $(PYRIGHT_ARGS),--pyright-args "$(PYRIGHT_ARGS)",); \
 	exit $$?
 
 scan: ## Run all security checks
@@ -439,7 +439,7 @@ scan: ## Run all security checks
 		--workspace "$(WORKSPACE_ROOT)" \
 		--gates "security" \
 		--reports-dir "$(CURDIR)/.reports/scan" \
-		--project "$$project_key"; \
+		--projects "$$project_key"; \
 	exit $$?
 
 fmt: ## Run code formatting (ruff/gofmt + markdownlint on tracked files)

@@ -123,7 +123,7 @@ endef
 
 define AUTO_SYNC_ALL_PROJECTS
 for proj in $(ALL_PROJECTS); do \
-	$(WORKSPACE_INFRA_WORKSPACE) sync --workspace "$$proj" --workspace "$(CURDIR)" --apply >/dev/null || exit 1; \
+	$(WORKSPACE_INFRA_WORKSPACE) sync --workspace "$$proj" --canonical-root "$(CURDIR)" --apply >/dev/null || exit 1; \
 done
 endef
 

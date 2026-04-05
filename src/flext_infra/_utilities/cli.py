@@ -15,7 +15,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Annotated
 
-from pydantic import Field
+from pydantic import AliasChoices, Field
 
 from flext_cli import FlextCliUtilities
 from flext_infra import (
@@ -51,9 +51,12 @@ class FlextInfraUtilitiesCli(FlextInfraUtilitiesCliShared):
         output_format: Annotated[str, Field(description="Output format")] = "text"
         check: Annotated[bool, Field(description="Check mode flag")] = False
         diff: Annotated[bool, Field(description="Show unified diff of changes")] = False
-        project: Annotated[
+        projects: Annotated[
             list[str] | None,
-            Field(description="Selected project names"),
+            Field(
+                description="Selected project names",
+                validation_alias=AliasChoices("projects", "project"),
+            ),
         ] = None
         class_to_analyze: Annotated[
             str | None, Field(description="Class to analyze")
@@ -65,13 +68,13 @@ class FlextInfraUtilitiesCli(FlextInfraUtilitiesCliShared):
             return not self.apply
 
         def project_names(self) -> t.StrSequence | None:
-            """Extract project names from repeated or comma-separated `--project` flags.
+            """Extract project names from repeated or comma-separated `--projects` flags.
 
             Returns:
                 List of project names if any specified, else None.
 
             """
-            return FlextCliUtilities.Cli.project_names_from_values(self.project)
+            return FlextCliUtilities.Cli.project_names_from_values(self.projects)
 
         def project_dirs(self) -> Sequence[Path] | None:
             """Convert project names to absolute directory paths under workspace.
@@ -81,7 +84,7 @@ class FlextInfraUtilitiesCli(FlextInfraUtilitiesCliShared):
 
             Returns:
                 List of Path objects (workspace / project_name) if projects specified.
-                None if no projects were specified via --project.
+                None if no projects were specified via --projects.
 
             """
             names = self.project_names()
@@ -168,8 +171,8 @@ class FlextInfraUtilitiesCli(FlextInfraUtilitiesCliShared):
         # Get check flag, defaulting to False
         check_flag = bool(getattr(args, "check", False))
 
-        raw_project = getattr(args, "project", None)
-        project = FlextCliUtilities.Cli.project_names_from_values(raw_project)
+        raw_projects = getattr(args, "projects", None)
+        projects = FlextCliUtilities.Cli.project_names_from_values(raw_projects)
 
         raw_class_to_analyze = getattr(args, "class_to_analyze", None)
         class_to_analyze = (
@@ -190,7 +193,7 @@ class FlextInfraUtilitiesCli(FlextInfraUtilitiesCliShared):
             diff=diff_flag,
             output_format=output_format,
             check=check_flag,
-            project=project,
+            projects=projects,
             class_to_analyze=class_to_analyze,
         )
 

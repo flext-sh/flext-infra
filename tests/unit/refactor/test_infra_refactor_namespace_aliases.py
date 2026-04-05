@@ -174,8 +174,8 @@ def test_namespace_rewriter_keeps_contextual_alias_subset(tmp_path: Path) -> Non
     )
 
     rewritten = sample_file.read_text(encoding="utf-8")
-    # Submodule import with short alias name removed; only future import remains.
-    assert rewritten == "from __future__ import annotations\n"
+    # Top-level package imports are preserved by the cleaner.
+    assert rewritten == source
 
 
 def test_namespace_rewriter_skips_facade_and_subclass_files(tmp_path: Path) -> None:

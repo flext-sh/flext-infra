@@ -65,7 +65,7 @@ class FlextInfraUtilitiesCliSubcommand:
         if options.get("include_check", False):
             tokens.append("--check")
         if options.get("include_project", False):
-            tokens.append("--project")
+            tokens.append("--projects")
         return tokens
 
     @staticmethod

@@ -19,7 +19,7 @@ from flext_infra._models.mixins import FlextInfraModelsMixins
 class FlextInfraModelsCliInputsOps:
     """Namespaced CLI input models for github, refactor, release, validate, and workspace."""
 
-    class GithubWorkflowsInput(
+    class GithubWorkflowSyncRequest(
         FlextInfraModelsMixins.ReportPathMixin,
         FlextModels.ContractModel,
     ):
@@ -28,7 +28,7 @@ class FlextInfraModelsCliInputsOps:
             Field(default=False, description="Remove unknown files"),
         ] = False
 
-    class GithubLintInput(
+    class GithubWorkflowLintRequest(
         FlextInfraModelsMixins.ReportPathMixin,
         FlextModels.ContractModel,
     ):
@@ -37,65 +37,26 @@ class FlextInfraModelsCliInputsOps:
             Field(default=False, description="Fail on strict mode warnings"),
         ] = False
 
-    class GithubPrInput(
+    class GithubPullRequestRequest(
+        FlextInfraModelsMixins.GithubPullRequestFieldsMixin,
         FlextInfraModelsMixins.CliInputBase,
         FlextModels.ContractModel,
     ):
         repo_root: Annotated[str, Field(..., description="Repository root directory")]
-        action: Annotated[
-            str,
-            Field(
-                default="status",
-                description="PR action (status/create/view/checks/merge/close)",
-            ),
-        ] = "status"
-        base: Annotated[str, Field(default="main", description="Base branch")] = "main"
-        head: Annotated[str | None, Field(default=None, description="Head branch")] = (
-            None
-        )
-        number: Annotated[int | None, Field(default=None, description="PR number")] = (
-            None
-        )
-        title: Annotated[str | None, Field(default=None, description="PR title")] = None
-        body: Annotated[str | None, Field(default=None, description="PR body")] = None
-        draft: Annotated[
-            bool,
-            Field(default=False, description="Create as draft"),
-        ] = False
-        merge_method: Annotated[
-            str,
-            Field(default="squash", description="Merge method (merge/squash/rebase)"),
-        ] = "squash"
-        auto: Annotated[bool, Field(default=False, description="Auto-merge")] = False
-        delete_branch: Annotated[
-            bool,
-            Field(default=True, description="Delete head branch on merge"),
-        ] = True
-        checks_strict: Annotated[
-            bool,
-            Field(default=True, description="Fail if checks fail"),
-        ] = True
-        release_on_merge: Annotated[
-            bool,
-            Field(default=True, description="Run release workflow on merge"),
-        ] = True
 
         @property
         def repo_root_path(self) -> Path:
             """Return the resolved repository root path."""
             return Path(self.repo_root).resolve()
 
-    class GithubPrWorkspaceInput(
-        FlextInfraModelsMixins.GithubWorkspaceCliControlMixin,
-        FlextInfraModelsMixins.GithubPrWorkspacePayloadMixin,
+    class GithubPullRequestWorkspaceRequest(
+        FlextInfraModelsMixins.GithubWorkspaceCliRequestMixin,
+        FlextInfraModelsMixins.GithubPullRequestFieldsMixin,
         FlextInfraModelsMixins.ProjectSelectionMixin,
         FlextInfraModelsMixins.CliInputBase,
         FlextModels.ContractModel,
     ):
-        pr_number: Annotated[
-            int | None,
-            Field(default=None, description="PR number"),
-        ] = None
+        """Request for running a pull-request action across workspace projects."""
 
     class RefactorCentralizeInput(
         FlextInfraModelsMixins.CliInputBase,
