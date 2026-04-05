@@ -11,7 +11,6 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 from tests import FlextInfraTestHelpers as h, m, t
@@ -21,6 +20,7 @@ from flext_infra import FlextInfraGate
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 
 type GateClass = type[FlextInfraGate]
+type GatePatchClass = type[object]
 
 
 def create_gate_execution(
@@ -30,10 +30,7 @@ def create_gate_execution(
     passed: bool = True,
     issues: Sequence[m.Infra.Issue] | None = None,
 ) -> m.Infra.GateExecution:
-    """Factory for GateExecution with standard defaults.
-
-    Single Responsibility: Create consistent test execution results.
-    """
+    """Factory for GateExecution with standard defaults."""
     return m.Infra.GateExecution(
         result=m.Infra.GateResult(
             gate=gate,
@@ -53,11 +50,7 @@ def create_checker_project(
     project_name: str = "p1",
     with_src: bool = False,
 ) -> tuple[FlextInfraWorkspaceChecker, Path]:
-    """Factory for checker + project directory pair.
-
-    Single Responsibility: Encapsulate shared project setup logic.
-    Eliminates duplication of: FlextInfraWorkspaceChecker creation + project initialization.
-    """
+    """Factory for checker + project directory pair."""
     checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
     project_dir = h.mk_project(tmp_path, project_name)
     if with_src:
@@ -67,56 +60,49 @@ def create_checker_project(
 
 def patch_gate_run(
     monkeypatch: pytest.MonkeyPatch,
-    gate_class: GateClass,
+    gate_class: GatePatchClass,
     *,
     stdout: str = "",
     stderr: str = "",
     returncode: int,
 ) -> None:
-    """Patch gate._run() with controlled output.
+    """Patch gate._run() with controlled CommandOutput."""
+    fixed_result = h.stub_run(stdout=stdout, stderr=stderr, returncode=returncode)
 
-    Single Responsibility: Encapsulate monkeypatch setup for gate mocking.
-    Eliminates duplication of: gate._run stub creation + monkeypatch.setattr() call.
-    """
-
-    def _as_command_output(
-        output: m.Infra.CommandOutput | SimpleNamespace,
+    def _run(
+        _self: FlextInfraGate,
+        _cmd: t.StrSequence,
+        _cwd: Path,
+        timeout: int = 120,
+        env: t.StrMapping | None = None,
     ) -> m.Infra.CommandOutput:
-        """Convert SimpleNamespace or CommandOutput to CommandOutput."""
-        if isinstance(output, m.Infra.CommandOutput):
-            return output
-        # Handle SimpleNamespace from h.stub_run
-        return m.Infra.CommandOutput(
-            stdout=getattr(output, "stdout", ""),
-            stderr=getattr(output, "stderr", ""),
-            exit_code=getattr(output, "exit_code", getattr(output, "returncode", 0)),
-        )
+        del _self, _cmd, _cwd, timeout, env
+        return fixed_result
 
-    def _stub_run(
-        result: m.Infra.CommandOutput | SimpleNamespace,
-    ) -> Callable[
-        [t.NormalizedValue, t.StrSequence, Path, int, t.StrMapping | None],
-        m.Infra.CommandOutput,
-    ]:
-        """Create stub returning fixed result or SimpleNamespace."""
+    monkeypatch.setattr(gate_class, "_run", _run)
 
-        def _run(
-            _self: t.NormalizedValue,
-            _cmd: t.StrSequence,
-            _cwd: Path,
-            _timeout: int = 120,
-            _env: t.StrMapping | None = None,
-        ) -> m.Infra.CommandOutput:
-            del _self, _cmd, _cwd, _timeout, _env
-            return _as_command_output(result)
 
-        return _run
+def patch_gate_run_sequence(
+    monkeypatch: pytest.MonkeyPatch,
+    gate_class: GatePatchClass,
+    outputs: Sequence[m.Infra.CommandOutput],
+) -> None:
+    """Patch gate._run() with a fixed sequence of CommandOutput values."""
+    index = {"value": 0}
 
-    monkeypatch.setattr(
-        gate_class,
-        "_run",
-        _stub_run(h.stub_run(stdout=stdout, stderr=stderr, returncode=returncode)),
-    )
+    def _run(
+        _self: FlextInfraGate,
+        _cmd: t.StrSequence,
+        _cwd: Path,
+        timeout: int = 120,
+        env: t.StrMapping | None = None,
+    ) -> m.Infra.CommandOutput:
+        del _self, _cmd, _cwd, timeout, env
+        current = index["value"]
+        index["value"] = current + 1
+        return outputs[current] if current < len(outputs) else outputs[-1]
+
+    monkeypatch.setattr(gate_class, "_run", _run)
 
 
 def create_gate_context(
@@ -251,7 +237,7 @@ def create_check_project_stub(
     """
 
     def _fake_check(
-        *_args: t.NormalizedValue, **_kwargs: t.Infra.InfraValue
+        *_args: t.Infra.InfraValue, **_kwargs: t.Infra.InfraValue
     ) -> m.Infra.ProjectResult:
         return project
 
@@ -269,7 +255,7 @@ def create_check_project_iter_stub(
     project_iter = iter(projects)
 
     def _fake_check(
-        *_args: t.NormalizedValue, **_kwargs: t.Infra.InfraValue
+        *_args: t.Infra.InfraValue, **_kwargs: t.Infra.InfraValue
     ) -> m.Infra.ProjectResult:
         return next(project_iter)
 
@@ -287,7 +273,7 @@ def patch_python_dir_detection(
     Single Responsibility: Mock python directory discovery for gate tests.
     """
 
-    def _existing_dirs(_self: t.NormalizedValue, _project_dir: Path) -> t.StrSequence:
+    def _existing_dirs(_self: FlextInfraGate, _project_dir: Path) -> t.StrSequence:
         del _self, _project_dir
         return ["src"]
 
@@ -314,6 +300,7 @@ __all__ = [
     "create_gate_context",
     "create_gate_execution",
     "patch_gate_run",
+    "patch_gate_run_sequence",
     "patch_python_dir_detection",
     "run_gate_check",
 ]

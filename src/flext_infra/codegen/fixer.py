@@ -16,6 +16,8 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
+from pydantic import Field
+
 from flext_core import r
 from flext_infra import (
     FlextInfraCodegenLazyInit,
@@ -33,8 +35,12 @@ from flext_infra import (
 class FlextInfraCodegenFixer(s[str]):
     """AST-based auto-fixer for namespace violations (Rules 1-5)."""
 
-    dry_run: bool = False
-    rules_only: bool = False
+    dry_run: bool = Field(
+        default=False, description="Preview changes without modifying files"
+    )
+    rules_only: bool = Field(
+        default=False, description="Only apply rule-based fixes, skip heuristic ones"
+    )
 
     @override
     def execute(self) -> r[str]:

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from flext_tests import tm
 from tests import m, t
@@ -166,11 +167,13 @@ def test_run_cli_run_forwards_fix_and_tool_args(monkeypatch: MonkeyPatch) -> Non
     assert list(captured_ctx[0].pyright_args) == ["--level", "basic"]
 
 
-def test_run_cli_accepts_shared_dry_run_flag() -> None:
-    exit_code = FlextInfraWorkspaceChecker.run_cli([
-        "--dry-run",
-        "run",
-        "--projects",
-        "flext-core",
-    ])
-    assert exit_code == 0
+def test_run_cli_rejects_shared_dry_run_flag() -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        FlextInfraWorkspaceChecker.run_cli([
+            "--dry-run",
+            "run",
+            "--projects",
+            "flext-core",
+        ])
+
+    assert exc_info.value.code == 2

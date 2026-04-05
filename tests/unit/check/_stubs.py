@@ -9,9 +9,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
-from types import SimpleNamespace
 
 from tests import m, t
+from tests.unit.check._shared_fixtures import create_gate_execution
 
 
 class Spy:
@@ -57,45 +57,11 @@ class Spy:
         return self.call_args[1]
 
     @property
-    def args(self) -> tuple[t.NormalizedValue, ...]:
+    def args(self) -> tuple[t.Infra.InfraValue, ...]:
         """Return positional args from last call."""
         if self.call_args is None:
             return ()
         return self.call_args[0]
-
-
-def make_cmd_result(
-    stdout: str = "",
-    stderr: str = "",
-    returncode: int = 0,
-) -> SimpleNamespace:
-    """Create a SimpleNamespace mimicking subprocess result."""
-    return SimpleNamespace(
-        stdout=stdout,
-        stderr=stderr,
-        returncode=returncode,
-        exit_code=returncode,
-    )
-
-
-def make_gate_exec(
-    gate: str = "lint",
-    project: str = "p",
-    passed: bool = True,
-    issues: Sequence[m.Infra.Issue] | None = None,
-) -> m.Infra.GateExecution:
-    """Create a _GateExecution with defaults."""
-    return m.Infra.GateExecution(
-        result=m.Infra.GateResult(
-            gate=gate,
-            project=project,
-            passed=passed,
-            errors=(),
-            duration=0.0,
-        ),
-        issues=tuple(issues or ()),
-        raw_output="",
-    )
 
 
 def make_issue(
@@ -122,7 +88,7 @@ def make_project(
 ) -> m.Infra.ProjectResult:
     """Create a _ProjectResult with defaults."""
     resolved_gates: MutableMapping[str, m.Infra.GateExecution] = (
-        gates if gates is not None else {"lint": make_gate_exec()}
+        gates if gates is not None else {"lint": create_gate_execution()}
     )
     return m.Infra.ProjectResult.model_validate({
         "project": name,
@@ -132,8 +98,6 @@ def make_project(
 
 __all__ = [
     "Spy",
-    "make_cmd_result",
-    "make_gate_exec",
     "make_issue",
     "make_project",
 ]

@@ -10,7 +10,11 @@ import typing as _t
 from flext_core.lazy import install_lazy_exports, merge_lazy_imports
 
 if _t.TYPE_CHECKING:
+    import tests.conftest as _tests_conftest
+
+    conftest = _tests_conftest
     import tests.constants as _tests_constants
+    from tests.conftest import pytest_plugins
 
     constants = _tests_constants
     import tests.fixtures as _tests_fixtures
@@ -345,9 +349,7 @@ if _t.TYPE_CHECKING:
     check = _tests_unit_check
     import tests.unit.codegen as _tests_unit_codegen
     from tests.unit.check import (
-        CheckProjectStub,
         GateClass,
-        RunCallable,
         RunProjectsMock,
         Spy,
         TestCheckIssueFormatted,
@@ -440,11 +442,10 @@ if _t.TYPE_CHECKING:
         fix_pyrefly_config_tests,
         init_tests,
         main_tests,
-        make_cmd_result,
-        make_gate_exec,
         make_issue,
         make_project,
         patch_gate_run,
+        patch_gate_run_sequence,
         patch_python_dir_detection,
         pyrefly_tests,
         run_command_failure_check,
@@ -452,7 +453,7 @@ if _t.TYPE_CHECKING:
         test_check_main_executes_real_cli,
         test_fix_pyrefly_config_main_executes_real_cli_help,
         test_resolve_gates_maps_type_alias,
-        test_run_cli_accepts_shared_dry_run_flag,
+        test_run_cli_rejects_shared_dry_run_flag,
         test_run_cli_run_forwards_fix_and_tool_args,
         test_run_cli_run_returns_one_for_fail,
         test_run_cli_run_returns_two_for_error,
@@ -833,7 +834,6 @@ if _t.TYPE_CHECKING:
         FAMILY_FILE_MAP,
         FAMILY_SUFFIX_MAP,
         EngineSafetyStub,
-        conftest,
         refactor_main,
         rope_project,
         test_all_three_capabilities_in_one_pass,
@@ -1073,6 +1073,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
         "WorkspaceScenario": "tests.scenarios",
         "WorkspaceScenarios": "tests.scenarios",
         "c": ("tests.constants", "FlextInfraTestConstants"),
+        "conftest": "tests.conftest",
         "constants": "tests.constants",
         "d": ("flext_core.decorators", "FlextDecorators"),
         "e": ("flext_core.exceptions", "FlextExceptions"),
@@ -1085,6 +1086,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
         "models": "tests.models",
         "p": ("tests.protocols", "FlextInfraTestProtocols"),
         "protocols": "tests.protocols",
+        "pytest_plugins": "tests.conftest",
         "r": ("flext_core.result", "FlextResult"),
         "real_docs_project": "tests.fixtures",
         "real_git_repo": "tests.fixtures_git",
@@ -1112,7 +1114,6 @@ __all__ = [
     "FAMILY_FILE_MAP",
     "FAMILY_SUFFIX_MAP",
     "BrokenScenario",
-    "CheckProjectStub",
     "DependencyScenario",
     "DependencyScenarios",
     "EmptyScenario",
@@ -1136,7 +1137,6 @@ __all__ = [
     "MinimalScenario",
     "RealGitService",
     "RealSubprocessRunner",
-    "RunCallable",
     "RunProjectsMock",
     "SampleModel",
     "SetupFn",
@@ -1545,8 +1545,6 @@ __all__ = [
     "main_entry_tests",
     "main_integration_tests",
     "main_tests",
-    "make_cmd_result",
-    "make_gate_exec",
     "make_issue",
     "make_project",
     "models",
@@ -1560,12 +1558,14 @@ __all__ = [
     "orchestrator_tests",
     "p",
     "patch_gate_run",
+    "patch_gate_run_sequence",
     "patch_python_dir_detection",
     "pipeline_tests",
     "protocols",
     "pyrefly_tests",
     "pyright_content",
     "pytest_diag",
+    "pytest_plugins",
     "r",
     "real_docs_project",
     "real_git_repo",
@@ -1971,7 +1971,7 @@ __all__ = [
     "test_rule_dispatch_keeps_legacy_id_fallback_mapping",
     "test_rule_dispatch_prefers_fix_action_metadata",
     "test_run_cases",
-    "test_run_cli_accepts_shared_dry_run_flag",
+    "test_run_cli_rejects_shared_dry_run_flag",
     "test_run_cli_run_forwards_fix_and_tool_args",
     "test_run_cli_run_returns_one_for_fail",
     "test_run_cli_run_returns_two_for_error",

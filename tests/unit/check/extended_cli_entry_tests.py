@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 from flext_tests import tm
@@ -29,12 +28,7 @@ from flext_infra import (
 
 def _fake_checker_cls(
     parse_result: t.StrSequence,
-    run_result: (
-        r[Sequence[SimpleNamespace]]
-        | r[Sequence[m.Infra.ProjectResult]]
-        | r[list[SimpleNamespace]]
-        | r[list[m.Infra.ProjectResult]]
-    ),
+    run_result: r[Sequence[m.Infra.ProjectResult]],
 ) -> type:
     class _Fake:
         def __init__(self, **_kw: t.Scalar) -> None:
@@ -49,12 +43,7 @@ def _fake_checker_cls(
             projects: t.StrSequence | None = None,
             gates: t.StrSequence | None = None,
             **kw: t.Scalar,
-        ) -> (
-            r[Sequence[SimpleNamespace]]
-            | r[Sequence[m.Infra.ProjectResult]]
-            | r[list[SimpleNamespace]]
-            | r[list[m.Infra.ProjectResult]]
-        ):
+        ) -> r[Sequence[m.Infra.ProjectResult]]:
             _ = projects, gates, kw
             return run_result
 
@@ -91,7 +80,9 @@ class TestWorkspaceCheckCLI:
         tm.that(ws_mod.main([]), eq=1)
 
     def test_with_projects_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        ok_result = r[list[SimpleNamespace]].ok([SimpleNamespace(passed=True)])
+        ok_result = r[Sequence[m.Infra.ProjectResult]].ok([
+            m.Infra.ProjectResult(project="p1"),
+        ])
         monkeypatch.setattr(
             ws_mod,
             "FlextInfraWorkspaceChecker",
@@ -100,7 +91,19 @@ class TestWorkspaceCheckCLI:
         tm.that(ws_mod.main(["--projects", "p1", "--gates", "lint"]), eq=0)
 
     def test_with_projects_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        ok_result = r[list[SimpleNamespace]].ok([SimpleNamespace(passed=False)])
+        fail_gate = m.Infra.GateExecution(
+            result=m.Infra.GateResult(
+                gate="lint",
+                project="p1",
+                passed=False,
+                errors=(),
+                duration=0.0,
+            ),
+            issues=(),
+            raw_output="",
+        )
+        project = m.Infra.ProjectResult(project="p1", gates={"lint": fail_gate})
+        ok_result = r[Sequence[m.Infra.ProjectResult]].ok([project])
         monkeypatch.setattr(
             ws_mod,
             "FlextInfraWorkspaceChecker",
@@ -109,7 +112,7 @@ class TestWorkspaceCheckCLI:
         tm.that(ws_mod.main(["--projects", "p1", "--gates", "lint"]), eq=1)
 
     def test_run_projects_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        fail_result = r[Sequence[SimpleNamespace]].fail("error")
+        fail_result = r[Sequence[m.Infra.ProjectResult]].fail("error")
         monkeypatch.setattr(
             ws_mod,
             "FlextInfraWorkspaceChecker",

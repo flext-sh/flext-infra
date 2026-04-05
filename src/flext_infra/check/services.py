@@ -1,7 +1,6 @@
-"""FLEXT infrastructure check services.
+"""FLEXT infrastructure check service exports.
 
-Re-exports FlextInfraWorkspaceChecker and FlextInfraConfigFixer
-for backwards-compatible imports.
+Expose the canonical check service classes through the public check package.
 """
 
 from __future__ import annotations

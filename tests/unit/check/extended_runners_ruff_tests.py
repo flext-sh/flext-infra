@@ -8,9 +8,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 from flext_tests import tm
@@ -19,10 +17,10 @@ from tests.models import m
 from tests.typings import t
 from tests.unit.check._shared_fixtures import (
     create_checker_project,
+    create_fake_run_raw,
     patch_gate_run,
     run_gate_check,
 )
-from tests.unit.check.extended_gate_go_cmd_tests import run_command_failure_check
 
 from flext_core import r
 from flext_infra import (
@@ -32,18 +30,6 @@ from flext_infra import (
     FlextInfraRuffLintGate,
     FlextInfraUtilitiesSubprocess,
 )
-
-
-def _create_run_raw_result(
-    result: r[SimpleNamespace] | str,
-) -> Callable[[t.StrSequence], r[SimpleNamespace]]:
-    def _fake_run_raw(_cmd: t.StrSequence, **_kw: str) -> r[SimpleNamespace]:
-        del _cmd, _kw
-        if isinstance(result, str):
-            return r[SimpleNamespace].fail(result)
-        return result
-
-    return _fake_run_raw
 
 
 class TestRunRuffLint:
@@ -231,9 +217,9 @@ class TestRunCommand:
         monkeypatch.setattr(
             FlextInfraUtilitiesSubprocess,
             "run_raw",
-            _create_run_raw_result(
-                r[SimpleNamespace].ok(
-                    SimpleNamespace(stdout="[]", stderr="", exit_code=0),
+            create_fake_run_raw(
+                r[m.Infra.CommandOutput].ok(
+                    m.Infra.CommandOutput(stdout="[]", stderr="", exit_code=0),
                 ),
             ),
         )
@@ -250,13 +236,15 @@ class TestRunCommand:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        passed, raw_output = run_command_failure_check(
-            monkeypatch,
-            tmp_path,
-            FlextInfraRuffLintGate,
+        monkeypatch.setattr(
+            FlextInfraUtilitiesSubprocess,
+            "run_raw",
+            create_fake_run_raw("execution failed"),
         )
-        tm.that(not passed, eq=True)
-        tm.that(raw_output, contains="execution failed")
+        gate = FlextInfraRuffLintGate(tmp_path)
+        result = gate._run(["echo"], tmp_path)
+        tm.that(result.exit_code, eq=1)
+        tm.that(result.stderr, contains="execution failed")
 
 
 class TestCollectMarkdownFiles:

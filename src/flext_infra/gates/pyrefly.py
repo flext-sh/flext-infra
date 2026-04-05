@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import re
 import sys
-import time
 from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
-from typing import override
+from typing import ClassVar, override
 
 from pydantic import ValidationError
 
@@ -17,21 +15,32 @@ from flext_infra import FlextInfraGate, c, m, t, u
 class FlextInfraPyreflyGate(FlextInfraGate):
     """Pyrefly quality gate."""
 
-    gate_id = c.Infra.PYREFLY
-    gate_name = "Pyrefly"
-    can_fix = False
-    tool_name = c.Infra.SARIF_TOOL_INFO[c.Infra.PYREFLY][0]
-    tool_url = c.Infra.SARIF_TOOL_INFO[c.Infra.PYREFLY][1]
+    gate_id: ClassVar[str] = c.Infra.PYREFLY
+    gate_name: ClassVar[str] = "Pyrefly"
+    can_fix: ClassVar[bool] = False
+    tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.PYREFLY][0]
+    tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.PYREFLY][1]
 
     @override
-    def check(
+    def _get_check_dirs(
         self,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
-        started = time.monotonic()
+    ) -> t.StrSequence:
+        """Pyrefly always runs on '.' — never skip."""
+        _ = project_dir, ctx
+        return ["."]
+
+    @override
+    def _build_check_command(
+        self,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+        check_dirs: t.StrSequence,
+    ) -> t.StrSequence:
+        _ = check_dirs
         json_file = ctx.reports_dir / f"{project_dir.name}-pyrefly.json"
-        cmd = [
+        return [
             sys.executable,
             "-m",
             c.Infra.PYREFLY,
@@ -47,7 +56,15 @@ class FlextInfraPyreflyGate(FlextInfraGate):
             str(json_file),
             "--summary=none",
         ]
-        result = self._run(cmd, project_dir)
+
+    @override
+    def _parse_check_output(
+        self,
+        result: m.Infra.CommandOutput,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+    ) -> tuple[bool, Sequence[m.Infra.Issue]]:
+        json_file = ctx.reports_dir / f"{project_dir.name}-pyrefly.json"
         issues: MutableSequence[m.Infra.Issue] = []
         if json_file.exists():
             try:
@@ -57,7 +74,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                 if u.is_mapping(parsed_value):
                     error_items = u.Infra.deep_list(
                         u.Infra.normalize_str_mapping(parsed_value),
-                        "errors",
+                        c.Infra.GateJsonKeys.PYREFLY_ERRORS,
                     )
                 elif isinstance(parsed_value, list):
                     error_items = u.Infra.normalize_mapping_list(parsed_value)
@@ -74,26 +91,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                 )
             except (TypeError, ValidationError):
                 pass
-        if not issues and result.exit_code != 0:
-            match = re.search(r"(\d+)\s+errors?", result.stderr + result.stdout)
-            if match:
-                count = int(match.group(1))
-                issues = [
-                    m.Infra.Issue(
-                        file="?",
-                        line=0,
-                        column=0,
-                        code=c.Infra.PYREFLY,
-                        message=f"Pyrefly reported {count} error(s)",
-                    ),
-                ] * count
-        return self._build_gate_result(
-            project=project_dir.name,
-            passed=result.exit_code == 0,
-            issues=issues,
-            duration=time.monotonic() - started,
-            raw_output=result.stderr,
-        )
+        return result.exit_code == 0, issues
 
 
 __all__ = ["FlextInfraPyreflyGate"]

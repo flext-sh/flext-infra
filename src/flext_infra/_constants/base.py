@@ -215,6 +215,7 @@ class FlextInfraConstantsBase(
 
         ERROR: Final[str] = "error"
         WARNING: Final[str] = "warning"
+        NOTE: Final[str] = "note"
         LOW: Final[str] = "low"
         SKIP: Final[str] = "skip"
 

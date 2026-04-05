@@ -48,5 +48,19 @@ class FlextInfraCheckConstants:
     )
     MAX_DISPLAY_ISSUES: Final[int] = 50
 
+    VALID_GATE_SEVERITIES: Final[frozenset[str]] = frozenset({
+        "error",
+        "warning",
+        "note",
+    })
+    "Severity levels accepted by gate output parsers."
+
+    class GateJsonKeys:
+        """Tool-specific JSON field names used by gate output parsers."""
+
+        PYRIGHT_DIAGNOSTICS: Final[str] = "generalDiagnostics"
+        BANDIT_RESULTS: Final[str] = "results"
+        PYREFLY_ERRORS: Final[str] = "errors"
+
 
 __all__ = ["FlextInfraCheckConstants"]

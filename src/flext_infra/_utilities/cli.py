@@ -15,7 +15,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Annotated
 
-from pydantic import AliasChoices, Field
+from pydantic import Field
 
 from flext_cli import FlextCliUtilities
 from flext_infra import (
@@ -53,10 +53,7 @@ class FlextInfraUtilitiesCli(FlextInfraUtilitiesCliShared):
         diff: Annotated[bool, Field(description="Show unified diff of changes")] = False
         projects: Annotated[
             list[str] | None,
-            Field(
-                description="Selected project names",
-                validation_alias=AliasChoices("projects", "project"),
-            ),
+            Field(description="Selected project names"),
         ] = None
         class_to_analyze: Annotated[
             str | None, Field(description="Class to analyze")

@@ -2,22 +2,21 @@
 
 from __future__ import annotations
 
-import time
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
-from typing import override
+from typing import ClassVar, override
 
-from flext_infra import FlextInfraGate, c, m
+from flext_infra import FlextInfraGate, c, m, t
 
 
 class FlextInfraMarkdownGate(FlextInfraGate):
     """Markdown quality gate."""
 
-    gate_id = c.Infra.MARKDOWN
-    gate_name = "Markdown"
-    can_fix = True
-    tool_name = c.Infra.SARIF_TOOL_INFO[c.Infra.MARKDOWN][0]
-    tool_url = c.Infra.SARIF_TOOL_INFO[c.Infra.MARKDOWN][1]
+    gate_id: ClassVar[str] = c.Infra.MARKDOWN
+    gate_name: ClassVar[str] = "Markdown"
+    can_fix: ClassVar[bool] = True
+    tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.MARKDOWN][0]
+    tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.MARKDOWN][1]
 
     def _collect_markdown_files(self, project_dir: Path) -> Sequence[Path]:
         return [
@@ -28,84 +27,85 @@ class FlextInfraMarkdownGate(FlextInfraGate):
             )
         ]
 
-    def _run_markdown(
-        self,
-        project_dir: Path,
-        *,
-        fix: bool,
-    ) -> m.Infra.GateExecution:
-        started = time.monotonic()
-        md_files = self._collect_markdown_files(project_dir)
-        if not md_files:
-            return self._skip_result(project_dir, started)
-        cmd = [c.Infra.MARKDOWNLINT]
-        if fix:
-            cmd.append("--fix")
+    def _resolve_config_args(self, project_dir: Path) -> t.StrSequence:
+        """Resolve markdownlint config file args."""
         root_config = self._workspace_root / ".markdownlint.json"
         local_config = project_dir / ".markdownlint.json"
         if root_config.exists():
-            cmd.extend(["--config", str(root_config)])
-        elif local_config.exists():
-            cmd.extend(["--config", str(local_config)])
-        cmd.extend(str(path.relative_to(project_dir)) for path in md_files)
-        result = self._run(cmd, project_dir)
+            return ["--config", str(root_config)]
+        if local_config.exists():
+            return ["--config", str(local_config)]
+        return []
+
+    @override
+    def _get_check_dirs(
+        self,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+    ) -> t.StrSequence:
+        """Return relative markdown file paths (doubles as check_dirs for _build_check_command)."""
+        _ = ctx
+        return [
+            str(path.relative_to(project_dir))
+            for path in self._collect_markdown_files(project_dir)
+        ]
+
+    @override
+    def _build_check_command(
+        self,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+        check_dirs: t.StrSequence,
+    ) -> t.StrSequence:
+        _ = ctx
+        return [
+            c.Infra.MARKDOWNLINT,
+            *self._resolve_config_args(project_dir),
+            *check_dirs,
+        ]
+
+    @override
+    def _parse_check_output(
+        self,
+        result: m.Infra.CommandOutput,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+    ) -> tuple[bool, Sequence[m.Infra.Issue]]:
+        _ = project_dir, ctx
         issues: MutableSequence[m.Infra.Issue] = []
-        if not fix:
-            for line in (result.stdout + "\n" + result.stderr).splitlines():
-                match = c.Infra.MARKDOWN_RE.match(line.strip())
-                if not match:
-                    continue
-                issues.append(
-                    m.Infra.Issue(
-                        file=match.group("file"),
-                        line=int(match.group("line")),
-                        column=int(match.group("col") or 1),
-                        code=match.group("code"),
-                        message=match.group("msg"),
-                    ),
-                )
-            if result.exit_code != 0 and (not issues):
-                issues.append(
-                    m.Infra.Issue(
-                        file=".",
-                        line=1,
-                        column=1,
-                        code=c.Infra.MARKDOWNLINT,
-                        message=(
-                            result.stdout or result.stderr or "markdownlint failed"
-                        ).strip(),
-                    ),
-                )
-        raw_output = (
-            result.stderr
-            if not fix
-            else "\n".join(part for part in (result.stdout, result.stderr) if part)
-        )
-        return self._build_gate_result(
-            project=project_dir.name,
-            passed=result.exit_code == 0,
-            issues=issues,
-            duration=time.monotonic() - started,
-            raw_output=raw_output,
-        )
+        for line in (result.stdout + "\n" + result.stderr).splitlines():
+            match = c.Infra.MARKDOWN_RE.match(line.strip())
+            if not match:
+                continue
+            issues.append(
+                m.Infra.Issue(
+                    file=match.group("file"),
+                    line=int(match.group("line")),
+                    column=int(match.group("col") or 1),
+                    code=match.group("code"),
+                    message=match.group("msg"),
+                ),
+            )
+        return result.exit_code == 0, issues
 
     @override
-    def check(
+    def _build_fix_command(
         self,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
+        targets: t.StrSequence,
+    ) -> t.StrSequence:
         _ = ctx
-        return self._run_markdown(project_dir, fix=False)
+        return [
+            c.Infra.MARKDOWNLINT,
+            "--fix",
+            *self._resolve_config_args(project_dir),
+            *targets,
+        ]
 
     @override
-    def fix(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
-        _ = ctx
-        return self._run_markdown(project_dir, fix=True)
+    def _fix_raw_output(self, result: m.Infra.CommandOutput) -> str:
+        return "\n".join(part for part in (result.stdout, result.stderr) if part)
 
 
 __all__ = ["FlextInfraMarkdownGate"]

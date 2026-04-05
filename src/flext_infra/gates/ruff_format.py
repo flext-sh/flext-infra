@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import sys
-import time
-from collections.abc import MutableSequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
-from typing import override
+from typing import ClassVar, override
 
 from flext_infra import FlextInfraGate, c, m, t
 
@@ -14,98 +13,82 @@ from flext_infra import FlextInfraGate, c, m, t
 class FlextInfraRuffFormatGate(FlextInfraGate):
     """Gate for Ruff formatter checks and fixes."""
 
-    gate_id = c.Infra.FORMAT
-    gate_name = "Ruff Format"
-    can_fix = True
-    tool_name = c.Infra.SARIF_TOOL_INFO[c.Infra.FORMAT][0]
-    tool_url = c.Infra.SARIF_TOOL_INFO[c.Infra.FORMAT][1]
+    gate_id: ClassVar[str] = c.Infra.FORMAT
+    gate_name: ClassVar[str] = "Ruff Format"
+    can_fix: ClassVar[bool] = True
+    tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.FORMAT][0]
+    tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.FORMAT][1]
 
     @override
-    def check(
+    def _get_check_dirs(
         self,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
+    ) -> t.StrSequence:
         _ = ctx
-        started = time.monotonic()
-        check_dirs = self._existing_check_dirs(project_dir)
-        targets = check_dirs or ["."]
-        result = self._run(
-            [
-                sys.executable,
-                "-m",
-                c.Infra.RUFF,
-                c.Infra.FORMAT,
-                "--check",
-                *targets,
-                "--quiet",
-            ],
-            project_dir,
-        )
+        return self._existing_check_dirs(project_dir) or ["."]
+
+    @override
+    def _build_check_command(
+        self,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+        check_dirs: t.StrSequence,
+    ) -> t.StrSequence:
+        _ = project_dir, ctx
+        return [
+            sys.executable,
+            "-m",
+            c.Infra.RUFF,
+            c.Infra.FORMAT,
+            "--check",
+            *check_dirs,
+            "--quiet",
+        ]
+
+    @override
+    def _parse_check_output(
+        self,
+        result: m.Infra.CommandOutput,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+    ) -> tuple[bool, Sequence[m.Infra.Issue]]:
+        _ = project_dir, ctx
         issues: MutableSequence[m.Infra.Issue] = []
         if result.exit_code != 0 and result.stdout.strip():
             seen: t.Infra.StrSet = set()
             for line in result.stdout.strip().splitlines():
-                path = line.strip()
-                if not path:
+                raw = line.strip()
+                if not raw:
                     continue
-                match = c.Infra.RUFF_FORMAT_FILE_RE.match(path)
-                if match:
-                    file_path = match.group(1).strip()
-                    if file_path in seen:
-                        continue
-                    seen.add(file_path)
-                    issues.append(
-                        m.Infra.Issue(
-                            file=file_path,
-                            line=0,
-                            column=0,
-                            code=c.Infra.FORMAT,
-                            message="Would be reformatted",
-                        ),
-                    )
-                elif (
-                    path.endswith(c.Infra.Extensions.PYTHON)
-                    and " " not in path
-                    and (path not in seen)
+                match = c.Infra.RUFF_FORMAT_FILE_RE.match(raw)
+                resolved = match.group(1).strip() if match else raw
+                if not resolved or resolved in seen:
+                    continue
+                if match or (
+                    resolved.endswith(c.Infra.Extensions.PYTHON) and " " not in resolved
                 ):
-                    seen.add(path)
+                    seen.add(resolved)
                     issues.append(
                         m.Infra.Issue(
-                            file=path,
+                            file=resolved,
                             line=0,
                             column=0,
                             code=c.Infra.FORMAT,
                             message="Would be reformatted",
                         ),
                     )
-        return self._build_gate_result(
-            project=project_dir.name,
-            passed=result.exit_code == 0,
-            issues=issues,
-            duration=time.monotonic() - started,
-            raw_output=result.stderr,
-        )
+        return result.exit_code == 0, issues
 
     @override
-    def fix(
+    def _build_fix_command(
         self,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
-        _ = ctx
-        started = time.monotonic()
-        result = self._run(
-            [sys.executable, "-m", c.Infra.RUFF, c.Infra.FORMAT, "."],
-            project_dir,
-        )
-        return self._build_gate_result(
-            project=project_dir.name,
-            passed=result.exit_code == 0,
-            issues=[],
-            duration=time.monotonic() - started,
-            raw_output=result.stderr,
-        )
+        targets: t.StrSequence,
+    ) -> t.StrSequence:
+        _ = project_dir, ctx, targets
+        return [sys.executable, "-m", c.Infra.RUFF, c.Infra.FORMAT, "."]
 
 
 __all__ = ["FlextInfraRuffFormatGate"]

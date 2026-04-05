@@ -31,7 +31,11 @@ class FlextInfraWorkspaceCheckerCli:
                 c.Infra.Verbs.RUN: "Run quality gates",
                 "fix-pyrefly-config": "Repair [tool.pyrefly] blocks",
             },
-            flags=u.Infra.SharedFlags(include_project=True),
+            flags=u.Infra.SharedFlags(
+                include_apply=False,
+                include_diff=False,
+                include_project=True,
+            ),
             subcommand_flags={
                 "fix-pyrefly-config": {
                     "include_apply": True,
@@ -70,9 +74,6 @@ class FlextInfraWorkspaceCheckerCli:
             if not project_names:
                 u.Infra.error("no projects specified")
                 return 1
-            if args.dry_run:
-                u.Infra.info("dry-run: skipping gate execution")
-                return 0
             checker = workspace_check_module.FlextInfraWorkspaceChecker(
                 workspace_root=checker_workspace
             )

@@ -24,9 +24,10 @@ from ...helpers import h
 from ._shared_fixtures import (
     create_check_project_iter_stub,
     create_check_project_stub,
+    create_gate_execution,
     run_gate_check,
 )
-from ._stubs import make_gate_exec, make_issue
+from ._stubs import make_issue
 
 
 class TestErrorReporting:
@@ -40,7 +41,7 @@ class TestErrorReporting:
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         reports_dir = tmp_path / "reports"
         issue = make_issue(file="test.py")
-        gate_exec = make_gate_exec(issues=[issue])
+        gate_exec = create_gate_execution(issues=[issue])
         project = m.Infra.ProjectResult(project="p1", gates={"lint": gate_exec})
 
         monkeypatch.setattr(
@@ -63,8 +64,8 @@ class TestErrorReporting:
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         reports_dir = tmp_path / "reports"
         issue = make_issue(file="test.py")
-        exec_with = make_gate_exec(issues=[issue])
-        exec_without = make_gate_exec(issues=[])
+        exec_with = create_gate_execution(issues=[issue])
+        exec_without = create_gate_execution(issues=[])
         project1 = m.Infra.ProjectResult(project="p1", gates={"lint": exec_with})
         project2 = m.Infra.ProjectResult(project="p2", gates={"lint": exec_without})
         monkeypatch.setattr(
@@ -92,8 +93,8 @@ class TestMarkdownReportEmptyGates:
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         reports_dir = tmp_path / "reports"
         issue = make_issue(file="test.py")
-        exec_with = make_gate_exec(issues=[issue])
-        exec_without = make_gate_exec(issues=[])
+        exec_with = create_gate_execution(issues=[issue])
+        exec_without = create_gate_execution(issues=[])
         project = m.Infra.ProjectResult(
             project="p1",
             gates={"lint": exec_with, "format": exec_without},

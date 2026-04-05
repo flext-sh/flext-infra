@@ -3,62 +3,70 @@
 from __future__ import annotations
 
 import sys
-import time
-from collections.abc import MutableSequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
-from typing import override
+from typing import ClassVar, override
 
 from pydantic import ValidationError
 
-from flext_infra import FlextInfraGate, c, m, u
+from flext_infra import FlextInfraGate, c, m, t, u
 
 
 class FlextInfraPyrightGate(FlextInfraGate):
     """Pyright quality gate."""
 
-    gate_id: str = c.Infra.PYRIGHT
-    gate_name: str = "Pyright"
-    can_fix: bool = False
-    tool_name: str = "Pyright"
-    tool_url: str = "https://github.com/microsoft/pyright"
+    gate_id: ClassVar[str] = c.Infra.PYRIGHT
+    gate_name: ClassVar[str] = "Pyright"
+    can_fix: ClassVar[bool] = False
+    tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.PYRIGHT][0]
+    tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.PYRIGHT][1]
 
     @override
-    def check(
+    def _build_check_command(
         self,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
-        _ = ctx
-        started = time.monotonic()
-        check_dirs = self._dirs_with_py(
-            project_dir,
-            self._existing_check_dirs(project_dir),
-        )
-        if not check_dirs:
-            return self._skip_result(project_dir, started)
-        result = self._run(
-            [
-                sys.executable,
-                "-m",
-                c.Infra.PYRIGHT,
-                *check_dirs,
-                *ctx.pyright_args,
-                "--outputjson",
-            ],
-            project_dir,
-            timeout=c.Infra.Timeouts.LONG,
-        )
+        check_dirs: t.StrSequence,
+    ) -> t.StrSequence:
+        _ = project_dir
+        return [
+            sys.executable,
+            "-m",
+            c.Infra.PYRIGHT,
+            *check_dirs,
+            *ctx.pyright_args,
+            "--outputjson",
+        ]
+
+    @override
+    def _check_timeout(
+        self,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+    ) -> int:
+        _ = project_dir, ctx
+        return c.Infra.Timeouts.LONG
+
+    @override
+    def _parse_check_output(
+        self,
+        result: m.Infra.CommandOutput,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+    ) -> tuple[bool, Sequence[m.Infra.Issue]]:
+        _ = project_dir, ctx
         issues: MutableSequence[m.Infra.Issue] = []
         data = (
             u.Infra
             .parse(result.stdout or "{}")
-            .map(
-                u.Infra.normalize_str_mapping,
-            )
+            .map(u.Infra.normalize_str_mapping)
             .unwrap_or({})
         )
         try:
-            diagnostics = u.Infra.deep_list(data, "generalDiagnostics")
+            diagnostics = u.Infra.deep_list(
+                data,
+                c.Infra.GateJsonKeys.PYRIGHT_DIAGNOSTICS,
+            )
             issues.extend(
                 m.Infra.Issue(
                     file=u.Infra.pick_str(diag, "file", "?"),
@@ -72,13 +80,7 @@ class FlextInfraPyrightGate(FlextInfraGate):
             )
         except (TypeError, ValidationError):
             pass
-        return self._build_gate_result(
-            project=project_dir.name,
-            passed=result.exit_code == 0,
-            issues=issues,
-            duration=time.monotonic() - started,
-            raw_output=result.stderr,
-        )
+        return result.exit_code == 0, issues
 
 
 __all__ = ["FlextInfraPyrightGate"]

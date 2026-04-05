@@ -24,25 +24,20 @@ if _t.TYPE_CHECKING:
         create_gate_context,
         create_gate_execution,
         patch_gate_run,
+        patch_gate_run_sequence,
         patch_python_dir_detection,
         run_gate_check,
     )
 
     _stubs = _tests_unit_check__stubs
     import tests.unit.check.cli_tests as _tests_unit_check_cli_tests
-    from tests.unit.check._stubs import (
-        Spy,
-        make_cmd_result,
-        make_gate_exec,
-        make_issue,
-        make_project,
-    )
+    from tests.unit.check._stubs import Spy, make_issue, make_project
 
     cli_tests = _tests_unit_check_cli_tests
     import tests.unit.check.extended_cli_entry_tests as _tests_unit_check_extended_cli_entry_tests
     from tests.unit.check.cli_tests import (
         test_resolve_gates_maps_type_alias,
-        test_run_cli_accepts_shared_dry_run_flag,
+        test_run_cli_rejects_shared_dry_run_flag,
         test_run_cli_run_forwards_fix_and_tool_args,
         test_run_cli_run_returns_one_for_fail,
         test_run_cli_run_returns_two_for_error,
@@ -106,6 +101,7 @@ if _t.TYPE_CHECKING:
     extended_gate_go_cmd_tests = _tests_unit_check_extended_gate_go_cmd_tests
     import tests.unit.check.extended_gate_mypy_pyright_tests as _tests_unit_check_extended_gate_mypy_pyright_tests
     from tests.unit.check.extended_gate_go_cmd_tests import (
+        GateClass,
         TestWorkspaceCheckerCollectMarkdownFiles,
         TestWorkspaceCheckerRunCommand,
         TestWorkspaceCheckerRunGo,
@@ -150,7 +146,6 @@ if _t.TYPE_CHECKING:
     extended_run_projects_tests = _tests_unit_check_extended_run_projects_tests
     import tests.unit.check.extended_runners_extra_tests as _tests_unit_check_extended_runners_extra_tests
     from tests.unit.check.extended_run_projects_tests import (
-        CheckProjectStub,
         TestRunProjectFixMode,
         TestRunProjectsBehavior,
         TestRunProjectsReports,
@@ -161,7 +156,6 @@ if _t.TYPE_CHECKING:
     extended_runners_extra_tests = _tests_unit_check_extended_runners_extra_tests
     import tests.unit.check.extended_runners_go_tests as _tests_unit_check_extended_runners_go_tests
     from tests.unit.check.extended_runners_extra_tests import (
-        GateClass,
         TestRunBandit,
         TestRunMarkdown,
         TestRunPyright,
@@ -169,7 +163,7 @@ if _t.TYPE_CHECKING:
 
     extended_runners_go_tests = _tests_unit_check_extended_runners_go_tests
     import tests.unit.check.extended_runners_ruff_tests as _tests_unit_check_extended_runners_ruff_tests
-    from tests.unit.check.extended_runners_go_tests import RunCallable, TestRunGo
+    from tests.unit.check.extended_runners_go_tests import TestRunGo
 
     extended_runners_ruff_tests = _tests_unit_check_extended_runners_ruff_tests
     import tests.unit.check.extended_runners_tests as _tests_unit_check_extended_runners_tests
@@ -224,16 +218,19 @@ if _t.TYPE_CHECKING:
     workspace_tests = _tests_unit_check_workspace_tests
     from tests.unit.check.workspace_tests import TestFlextInfraWorkspaceChecker
 
+    from flext_core.constants import FlextConstants as c
     from flext_core.decorators import FlextDecorators as d
     from flext_core.exceptions import FlextExceptions as e
     from flext_core.handlers import FlextHandlers as h
     from flext_core.mixins import FlextMixins as x
+    from flext_core.models import FlextModels as m
+    from flext_core.protocols import FlextProtocols as p
     from flext_core.result import FlextResult as r
     from flext_core.service import FlextService as s
+    from flext_core.typings import FlextTypes as t
+    from flext_core.utilities import FlextUtilities as u
 _LAZY_IMPORTS = {
-    "CheckProjectStub": "tests.unit.check.extended_run_projects_tests",
-    "GateClass": "tests.unit.check.extended_runners_extra_tests",
-    "RunCallable": "tests.unit.check.extended_runners_go_tests",
+    "GateClass": "tests.unit.check.extended_gate_go_cmd_tests",
     "RunProjectsMock": "tests.unit.check._shared_fixtures",
     "Spy": "tests.unit.check._stubs",
     "TestCheckIssueFormatted": "tests.unit.check.extended_models_tests",
@@ -300,6 +297,7 @@ _LAZY_IMPORTS = {
     "TestWorkspaceCheckerRunPyright": "tests.unit.check.extended_gate_mypy_pyright_tests",
     "_shared_fixtures": "tests.unit.check._shared_fixtures",
     "_stubs": "tests.unit.check._stubs",
+    "c": ("flext_core.constants", "FlextConstants"),
     "cli_tests": "tests.unit.check.cli_tests",
     "create_check_project_iter_stub": "tests.unit.check._shared_fixtures",
     "create_check_project_stub": "tests.unit.check._shared_fixtures",
@@ -330,22 +328,24 @@ _LAZY_IMPORTS = {
     "fix_pyrefly_config_tests": "tests.unit.check.fix_pyrefly_config_tests",
     "h": ("flext_core.handlers", "FlextHandlers"),
     "init_tests": "tests.unit.check.init_tests",
+    "m": ("flext_core.models", "FlextModels"),
     "main_tests": "tests.unit.check.main_tests",
-    "make_cmd_result": "tests.unit.check._stubs",
-    "make_gate_exec": "tests.unit.check._stubs",
     "make_issue": "tests.unit.check._stubs",
     "make_project": "tests.unit.check._stubs",
+    "p": ("flext_core.protocols", "FlextProtocols"),
     "patch_gate_run": "tests.unit.check._shared_fixtures",
+    "patch_gate_run_sequence": "tests.unit.check._shared_fixtures",
     "patch_python_dir_detection": "tests.unit.check._shared_fixtures",
     "pyrefly_tests": "tests.unit.check.pyrefly_tests",
     "r": ("flext_core.result", "FlextResult"),
     "run_command_failure_check": "tests.unit.check.extended_gate_go_cmd_tests",
     "run_gate_check": "tests.unit.check._shared_fixtures",
     "s": ("flext_core.service", "FlextService"),
+    "t": ("flext_core.typings", "FlextTypes"),
     "test_check_main_executes_real_cli": "tests.unit.check.main_tests",
     "test_fix_pyrefly_config_main_executes_real_cli_help": "tests.unit.check.fix_pyrefly_config_tests",
     "test_resolve_gates_maps_type_alias": "tests.unit.check.cli_tests",
-    "test_run_cli_accepts_shared_dry_run_flag": "tests.unit.check.cli_tests",
+    "test_run_cli_rejects_shared_dry_run_flag": "tests.unit.check.cli_tests",
     "test_run_cli_run_forwards_fix_and_tool_args": "tests.unit.check.cli_tests",
     "test_run_cli_run_returns_one_for_fail": "tests.unit.check.cli_tests",
     "test_run_cli_run_returns_two_for_error": "tests.unit.check.cli_tests",
@@ -353,15 +353,14 @@ _LAZY_IMPORTS = {
     "test_run_cli_with_fail_fast_flag": "tests.unit.check.cli_tests",
     "test_run_cli_with_multiple_projects": "tests.unit.check.cli_tests",
     "test_workspace_check_main_returns_error_without_projects": "tests.unit.check.workspace_check_tests",
+    "u": ("flext_core.utilities", "FlextUtilities"),
     "workspace_check_tests": "tests.unit.check.workspace_check_tests",
     "workspace_tests": "tests.unit.check.workspace_tests",
     "x": ("flext_core.mixins", "FlextMixins"),
 }
 
 __all__ = [
-    "CheckProjectStub",
     "GateClass",
-    "RunCallable",
     "RunProjectsMock",
     "Spy",
     "TestCheckIssueFormatted",
@@ -428,6 +427,7 @@ __all__ = [
     "TestWorkspaceCheckerRunPyright",
     "_shared_fixtures",
     "_stubs",
+    "c",
     "cli_tests",
     "create_check_project_iter_stub",
     "create_check_project_stub",
@@ -458,22 +458,24 @@ __all__ = [
     "fix_pyrefly_config_tests",
     "h",
     "init_tests",
+    "m",
     "main_tests",
-    "make_cmd_result",
-    "make_gate_exec",
     "make_issue",
     "make_project",
+    "p",
     "patch_gate_run",
+    "patch_gate_run_sequence",
     "patch_python_dir_detection",
     "pyrefly_tests",
     "r",
     "run_command_failure_check",
     "run_gate_check",
     "s",
+    "t",
     "test_check_main_executes_real_cli",
     "test_fix_pyrefly_config_main_executes_real_cli_help",
     "test_resolve_gates_maps_type_alias",
-    "test_run_cli_accepts_shared_dry_run_flag",
+    "test_run_cli_rejects_shared_dry_run_flag",
     "test_run_cli_run_forwards_fix_and_tool_args",
     "test_run_cli_run_returns_one_for_fail",
     "test_run_cli_run_returns_two_for_error",
@@ -481,6 +483,7 @@ __all__ = [
     "test_run_cli_with_fail_fast_flag",
     "test_run_cli_with_multiple_projects",
     "test_workspace_check_main_returns_error_without_projects",
+    "u",
     "workspace_check_tests",
     "workspace_tests",
     "x",

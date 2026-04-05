@@ -2,44 +2,63 @@
 
 from __future__ import annotations
 
-import time
-from collections.abc import MutableSequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
-from typing import override
+from typing import ClassVar, override
 
-from flext_infra import FlextInfraGate, c, m
+from flext_infra import FlextInfraGate, c, m, t
 
 
 class FlextInfraGoGate(FlextInfraGate):
-    """Go quality gate."""
+    """Go quality gate — runs go vet + gofmt."""
 
-    gate_id = c.Infra.GO
-    gate_name = "Go"
-    can_fix = False
-    tool_name = c.Infra.SARIF_TOOL_INFO[c.Infra.GO][0]
-    tool_url = c.Infra.SARIF_TOOL_INFO[c.Infra.GO][1]
+    gate_id: ClassVar[str] = c.Infra.GO
+    gate_name: ClassVar[str] = "Go"
+    can_fix: ClassVar[bool] = False
+    tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.GO][0]
+    tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.GO][1]
 
     @override
-    def check(
+    def _get_check_dirs(
         self,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
+    ) -> t.StrSequence:
         _ = ctx
-        started = time.monotonic()
         if not (project_dir / c.Infra.Files.GO_MOD).exists():
-            return self._skip_result(project_dir, started)
+            return []
+        return ["."]
+
+    @override
+    def _build_check_command(
+        self,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+        check_dirs: t.StrSequence,
+    ) -> t.StrSequence:
+        _ = project_dir, ctx, check_dirs
+        return [c.Infra.GOVET, "vet", "./..."]
+
+    @override
+    def _check_timeout(
+        self,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+    ) -> int:
+        _ = project_dir, ctx
+        return c.Infra.Timeouts.CI
+
+    @override
+    def _parse_check_output(
+        self,
+        result: m.Infra.CommandOutput,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+    ) -> tuple[bool, Sequence[m.Infra.Issue]]:
+        _ = ctx
         issues: MutableSequence[m.Infra.Issue] = []
-        raw_output = ""
-        vet_result = self._run(
-            [c.Infra.GOVET, "vet", "./..."],
-            project_dir,
-            timeout=c.Infra.Timeouts.CI,
-        )
-        raw_output = "\n".join(
-            part for part in (vet_result.stdout, vet_result.stderr) if part
-        )
-        for line in (vet_result.stdout + "\n" + vet_result.stderr).splitlines():
+        passed = result.exit_code == 0
+        for line in (result.stdout + "\n" + result.stderr).splitlines():
             match = c.Infra.GO_VET_RE.match(line.strip())
             if not match:
                 continue
@@ -50,18 +69,6 @@ class FlextInfraGoGate(FlextInfraGate):
                     column=int(match.group("col") or 1),
                     code=c.Infra.GOVET,
                     message=match.group("msg"),
-                ),
-            )
-        if vet_result.exit_code != 0 and (not issues):
-            issues.append(
-                m.Infra.Issue(
-                    file=".",
-                    line=1,
-                    column=1,
-                    code=c.Infra.GOVET,
-                    message=(
-                        vet_result.stdout or vet_result.stderr or "go vet failed"
-                    ).strip(),
                 ),
             )
         go_files = list(project_dir.rglob("*.go"))
@@ -75,32 +82,20 @@ class FlextInfraGoGate(FlextInfraGate):
                 project_dir,
                 timeout=c.Infra.Timeouts.CI,
             )
-            fmt_raw_output = "\n".join(
-                part for part in (fmt_result.stdout, fmt_result.stderr) if part
-            )
-            raw_output = "\n".join(
-                part for part in (raw_output, fmt_raw_output) if part
-            )
+            passed = passed and fmt_result.exit_code == 0
             for file_name in fmt_result.stdout.splitlines():
                 cleaned = file_name.strip()
-                if not cleaned:
-                    continue
-                issues.append(
-                    m.Infra.Issue(
-                        file=cleaned,
-                        line=1,
-                        column=1,
-                        code=c.Infra.GOFMT,
-                        message="File is not gofmt-formatted",
-                    ),
-                )
-        return self._build_gate_result(
-            project=project_dir.name,
-            passed=not issues,
-            issues=issues,
-            duration=time.monotonic() - started,
-            raw_output=raw_output,
-        )
+                if cleaned:
+                    issues.append(
+                        m.Infra.Issue(
+                            file=cleaned,
+                            line=1,
+                            column=1,
+                            code=c.Infra.GOFMT,
+                            message="File is not gofmt-formatted",
+                        ),
+                    )
+        return passed and not issues, issues
 
 
 __all__ = ["FlextInfraGoGate"]

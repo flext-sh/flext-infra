@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from flext_cli import cli as cli_service
-from flext_core import r
 from flext_infra import (
     FlextInfraDocAuditor,
     FlextInfraDocBuilder,
@@ -72,23 +71,4 @@ class FlextInfraCliDocs:
         )
 
 
-class FlextInfraDocsCli:
-    """Declarative CLI router for documentation services."""
-
-    def __init__(self) -> None:
-        """Initialize CLI app and register declarative routes."""
-        self._app = cli_service.create_app_with_common_params(
-            name="docs",
-            help_text="Documentation management services",
-        )
-        self._register_commands()
-
-    def run(self, args: t.StrSequence | None = None) -> r[bool]:
-        """Execute the CLI application."""
-        return cli_service.execute_app(self._app, prog_name="docs", args=args)
-
-    def _register_commands(self) -> None:
-        FlextInfraCliDocs().register_docs(self._app)
-
-
-__all__ = ["FlextInfraCliDocs", "FlextInfraDocsCli"]
+__all__ = ["FlextInfraCliDocs"]

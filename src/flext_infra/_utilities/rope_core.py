@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar, TypeGuard
@@ -13,7 +14,7 @@ from rope.base.exceptions import (
     ResourceNotFoundError,
 )
 from rope.base.project import Project
-from rope.base.pyobjectsdef import PyClass, PyFunction
+from rope.base.pyobjects import AbstractClass, PyFunction
 from rope.base.resources import File
 from rope.refactor.importutils import get_module_imports
 
@@ -25,6 +26,9 @@ class FlextInfraUtilitiesRopeCore:
     """Core Rope lifecycle, hooks, and boundary validation."""
 
     _post_hooks: ClassVar[MutableSequence[p.Infra.RopePostHook]] = []
+    _rope_project_deprecation_message: ClassVar[str] = (
+        "Delete once deprecated functions are gone"
+    )
 
     @staticmethod
     def init_rope_project(
@@ -41,7 +45,7 @@ class FlextInfraUtilitiesRopeCore:
             if project.name.startswith(project_prefix) and (project / src_dir).is_dir()
         )
         return FlextInfraUtilitiesRopeCore._ensure_rope_project(
-            Project(
+            FlextInfraUtilitiesRopeCore._build_rope_project(
                 str(workspace_root),
                 ropefolder="",
                 save_objectdb=False,
@@ -139,7 +143,7 @@ class FlextInfraUtilitiesRopeCore:
         value: object,
     ) -> TypeGuard[p.Infra.RopeAbstractClassLike]:
         """Narrow one Rope object to the class-like contract via concrete Rope types."""
-        return isinstance(value, PyClass)
+        return isinstance(value, AbstractClass)
 
     @staticmethod
     def is_rope_pyfunction_like(
@@ -155,6 +159,31 @@ class FlextInfraUtilitiesRopeCore:
             msg = "rope pycore does not satisfy RopePyCoreLike"
             raise TypeError(msg)
         return value
+
+    @staticmethod
+    def _build_rope_project(
+        project_root: str,
+        *,
+        ropefolder: str,
+        save_objectdb: bool,
+        ignored_resources: list[str],
+        source_folders: Sequence[str],
+    ) -> Project:
+        """Create a rope Project while isolating Rope's own deprecated init path."""
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message=FlextInfraUtilitiesRopeCore._rope_project_deprecation_message,
+                category=DeprecationWarning,
+                module=r"rope\.base\.project",
+            )
+            return Project(
+                project_root,
+                ropefolder=ropefolder,
+                save_objectdb=save_objectdb,
+                ignored_resources=ignored_resources,
+                source_folders=source_folders,
+            )
 
     @staticmethod
     def _ensure_rope_project(value: object) -> t.Infra.RopeProject:

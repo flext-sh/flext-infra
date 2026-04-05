@@ -13,7 +13,7 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from flext_infra import m, t, u
 
@@ -21,11 +21,22 @@ from flext_infra import m, t, u
 class DetectorContext(m.ArbitraryTypesModel):
     """Bundles the common parameters passed to every ``detect_file`` classmethod."""
 
-    file_path: Path
-    rope_project: t.Infra.RopeProject
-    parse_failures: MutableSequence[m.Infra.ParseFailureViolation] | None = None
-    project_name: str = ""
-    project_root: Path | None = None
+    file_path: Path = Field(description="Filesystem path of the file being scanned.")
+    rope_project: t.Infra.RopeProject = Field(
+        description="Initialized Rope project used to resolve semantic metadata."
+    )
+    parse_failures: MutableSequence[m.Infra.ParseFailureViolation] | None = Field(
+        default=None,
+        description="Shared parse-failure collector reused across detector passes.",
+    )
+    project_name: str = Field(
+        default="",
+        description="Optional project name associated with the scanned file.",
+    )
+    project_root: Path | None = Field(
+        default=None,
+        description="Optional project root containing the scanned file.",
+    )
 
 
 class FlextInfraScanFileMixin:

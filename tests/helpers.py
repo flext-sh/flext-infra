@@ -18,10 +18,9 @@ import sys
 import tomllib
 from collections.abc import Mapping
 from pathlib import Path
-from types import SimpleNamespace
 
 from flext_tests import tm
-from tests import t
+from tests import m, t
 
 from flext_core import r
 
@@ -46,7 +45,7 @@ class FlextInfraTestHelpers:
         h.mk_project(root, name)       — create minimal project dir
         h.write_project(root)          — full migration test project
         h.ns(**kw)                     — argparse.Namespace
-        h.stub_run(stdout, stderr, rc) — SimpleNamespace for subprocess
+        h.stub_run(stdout, stderr, rc) — m.Infra.CommandOutput for subprocess
         h.workspace(root)              — workspace root with markers
     """
 
@@ -348,22 +347,13 @@ class FlextInfraTestHelpers:
         stdout: str = "",
         stderr: str = "",
         returncode: int = 0,
-    ) -> SimpleNamespace:
-        """Create a ``SimpleNamespace`` mimicking a subprocess result.
-
-        Replaces the pervasive ``SimpleNamespace(stdout=..., stderr=..., returncode=...)``
-        pattern across checker/runner test stubs.
-
-        Args:
-            stdout: Standard output content.
-            stderr: Standard error content.
-            returncode: Process return code.
-
-        Returns:
-            ``SimpleNamespace`` with stdout, stderr, returncode attributes.
-
-        """
-        return SimpleNamespace(stdout=stdout, stderr=stderr, returncode=returncode)
+    ) -> m.Infra.CommandOutput:
+        """Create a CommandOutput for test stubs."""
+        return m.Infra.CommandOutput(
+            stdout=stdout,
+            stderr=stderr,
+            exit_code=returncode,
+        )
 
     @staticmethod
     def workspace(

@@ -1,4 +1,4 @@
-"""Tests for documentation CLI — FlextInfraDocsCli handlers."""
+"""Tests for documentation command handlers registered by FlextInfraCliDocs."""
 
 from __future__ import annotations
 
