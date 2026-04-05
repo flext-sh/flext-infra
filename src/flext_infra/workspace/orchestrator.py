@@ -18,7 +18,8 @@ from typing import Annotated, override
 from pydantic import Field
 
 from flext_core import FlextLogger
-from flext_infra import c, m, r, s, t, u
+from flext_infra import c, m, r, t, u
+from flext_infra.base import s
 
 logger = FlextLogger.create_module_logger(__name__)
 
@@ -52,7 +53,12 @@ class FlextInfraOrchestratorService(s[bool]):
     @property
     def project_names(self) -> Sequence[str]:
         """Return normalized project names."""
-        return [project.strip() for project in self.projects if project.strip()]
+        return [
+            project_name
+            for project in self.projects
+            for project_name in project.split()
+            if project_name.strip()
+        ]
 
     @property
     def make_args(self) -> Sequence[str]:
@@ -82,6 +88,22 @@ class FlextInfraOrchestratorService(s[bool]):
         if failures:
             return r[bool].fail(f"orchestration completed with failures: {failures}")
         return r[bool].ok(True)
+
+    @classmethod
+    @override
+    def execute_command(
+        cls,
+        params: m.Infra.WorkspaceOrchestrateInput,
+    ) -> r[bool]:
+        """Execute the validated CLI service instance directly."""
+        service = cls.model_validate({
+            "workspace_root": params.workspace_path,
+            "verb": params.verb,
+            "projects": params.project_names or (),
+            "fail_fast": params.fail_fast,
+            "make_arg": params.make_args,
+        })
+        return service.execute()
 
     def _execute_project(
         self,
@@ -229,7 +251,7 @@ class FlextInfraOrchestratorService(s[bool]):
             verb,
             f"{project}.log",
         )
-        log_path.parent.mkdir(parents=True, exist_ok=True)
+        u.Infra.ensure_dir(log_path.parent)
         started = time.monotonic()
         normalized_make_args = self._normalize_make_args_for_project(
             project=project,
