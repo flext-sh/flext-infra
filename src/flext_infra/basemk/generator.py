@@ -7,13 +7,6 @@ import tempfile
 from pathlib import Path
 from typing import Annotated, TextIO, override
 
-from jinja2 import (
-    Environment,
-    FileSystemLoader,
-    StrictUndefined,
-    TemplateError,
-    select_autoescape,
-)
 from pydantic import Field
 
 from flext_infra import (
@@ -26,15 +19,6 @@ from flext_infra import (
     t,
     u,
 )
-
-_TEMPLATES_DIR: Path = Path(__file__).resolve().parent.parent / "templates"
-
-
-def _render_template(
-    template: p.Infra.RenderableTemplate,
-    **kwargs: object,
-) -> str:
-    return template.render(**kwargs)
 
 
 class FlextInfraBaseMkGenerator(s[str]):
@@ -167,25 +151,10 @@ class FlextInfraBaseMkGenerator(s[str]):
     @staticmethod
     def render_bootstrap_include() -> r[str]:
         """Render the Makefile bootstrap include block from template."""
-        try:
-            environment = Environment(
-                loader=FileSystemLoader(str(_TEMPLATES_DIR)),
-                trim_blocks=False,
-                lstrip_blocks=False,
-                keep_trailing_newline=True,
-                undefined=StrictUndefined,
-                autoescape=select_autoescape(),
-            )
-            template: p.Infra.RenderableTemplate = environment.get_template(
-                c.Infra.MAKEFILE_BOOTSTRAP_TEMPLATE,
-            )
-            content = _render_template(
-                template,
-                make=c.Infra.Make,
-            )
-            return r[str].ok(content.rstrip("\n"))
-        except (OSError, TemplateError, TypeError, ValueError) as exc:
-            return r[str].fail(f"bootstrap template render failed: {exc}")
+        return FlextInfraBaseMkTemplateEngine().render_single(
+            c.Infra.MAKEFILE_BOOTSTRAP_TEMPLATE,
+            make=c.Infra.Make,
+        )
 
 
 __all__ = ["FlextInfraBaseMkGenerator"]

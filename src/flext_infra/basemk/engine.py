@@ -96,5 +96,18 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
         except (TemplateError, ValueError, TypeError) as exc:
             return r[str].fail(f"base.mk template render failed: {exc}")
 
+    def render_single(
+        self,
+        template_name: str,
+        **kwargs: m.Infra.BaseMkConfig | t.Infra.InfraValue | type,
+    ) -> r[str]:
+        """Render a single named template with the given context."""
+        try:
+            template = self._environment.get_template(template_name)
+            content = _render(template, **kwargs)
+            return r[str].ok(content.rstrip("\n"))
+        except (TemplateError, OSError, ValueError, TypeError) as exc:
+            return r[str].fail(f"template render failed: {exc}")
+
 
 __all__ = ["FlextInfraBaseMkTemplateEngine"]
