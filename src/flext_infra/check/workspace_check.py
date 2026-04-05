@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import argparse
 import importlib
 import shlex
 from collections.abc import MutableSequence, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from flext_core import r, s
 from flext_infra import (
@@ -20,6 +19,9 @@ from flext_infra import (
     u,
     workspace_check_cli as workspace_check_cli_module,
 )
+
+if TYPE_CHECKING:
+    import argparse
 
 
 class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
@@ -41,15 +43,15 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
             c.Infra.PROJECT,
             c.Infra.Verbs.CHECK,
         )
-        try:
-            report_dir.mkdir(parents=True, exist_ok=True)
-            self._default_reports_dir = report_dir
-        except OSError:
+        dir_result = u.Infra.ensure_dir(report_dir)
+        if dir_result.is_failure:
             self._default_reports_dir = (
                 self._workspace_root
                 / c.Infra.Reporting.REPORTS_DIR_NAME
                 / c.Infra.Verbs.CHECK
             )
+        else:
+            self._default_reports_dir = report_dir
 
     @staticmethod
     def parse_gate_csv(raw: str) -> list[str]:
@@ -132,10 +134,14 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
         results = outcome.results
         timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
         md_path = report_base / "check-report.md"
-        _ = md_path.write_text(
+        md_write_result = u.Infra.atomic_write_file(
+            md_path,
             u.Infra.generate_markdown(results, resolved_gates, timestamp),
-            encoding=c.Infra.Encoding.DEFAULT,
         )
+        if md_write_result.is_failure:
+            return r[Sequence[m.Infra.ProjectResult]].fail(
+                md_write_result.error or "failed to write markdown report",
+            )
         sarif_path = report_base / "check-report.sarif"
         sarif_payload = u.Infra.generate_sarif(results, resolved_gates)
         json_write_result = u.Cli.json_write(sarif_path, sarif_payload)
@@ -196,7 +202,11 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
             )
         resolved_gates = resolved_gates_result.value
         report_base = reports_dir or self._default_reports_dir
-        report_base.mkdir(parents=True, exist_ok=True)
+        dir_ensure = u.Infra.ensure_dir(report_base)
+        if dir_ensure.is_failure:
+            return r[Sequence[m.Infra.ProjectResult]].fail(
+                dir_ensure.error or "failed to create report directory",
+            )
         effective_ctx = ctx or m.Infra.GateContext(
             workspace=self._workspace_root,
             reports_dir=report_base,

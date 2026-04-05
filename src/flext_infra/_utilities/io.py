@@ -175,6 +175,23 @@ class FlextInfraUtilitiesIo:
         return r[bool].ok(True)
 
     @staticmethod
+    def ensure_dir(path: Path) -> r[bool]:
+        """Create a directory and parents if they do not exist.
+
+        Args:
+            path: Directory path to ensure.
+
+        Returns:
+            r[bool] with True on success.
+
+        """
+        try:
+            path.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            return r[bool].fail(f"ensure_dir failed: {exc}")
+        return r[bool].ok(True)
+
+    @staticmethod
     def parse(text: str) -> r[t.Cli.JsonValue]:
         """Parse a JSON string.
 
