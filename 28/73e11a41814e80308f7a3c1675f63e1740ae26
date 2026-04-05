@@ -1,0 +1,33 @@
+src/flext_infra/refactor/_utilities_namespace_analysis.py
+  a76a993d62d454b0 302
+src/flext_infra/codegen/py_typed.py
+  a76a993d62d454b0 26
+src/flext_infra/_constants/validate.py
+  a76a993d62d454b0 79
+src/flext_infra/_models/refactor_namespace_enforcer.py
+  a76a993d62d454b0 143,149,156,162,168,174,180,186,192,198,204,210,216,222,255
+src/flext_infra/_utilities/codegen_lazy.py
+  a76a993d62d454b0 108-110,135-137,173-175,336
+src/flext_infra/_models/workspace.py
+  a76a993d62d454b0 9,30-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "2873e11a41814e80308f7a3c1675f63e1740ae26",
+  "prompts": {
+    "a76a993d62d454b0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "618a25e1-4dba-4d13-b1c4-184026969e81",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 31,
+      "overriden_lines": 0
+    }
+  }
+}
