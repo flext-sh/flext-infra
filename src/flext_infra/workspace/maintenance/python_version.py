@@ -30,10 +30,12 @@ import re
 import sys
 from collections.abc import Sequence
 from pathlib import Path
-from typing import override
+from typing import Annotated, override
+
+from pydantic import Field
 
 from flext_core import FlextLogger
-from flext_infra import c, m, r, s, u
+from flext_infra import c, r, s, u
 
 logger = FlextLogger.create_module_logger(__name__)
 
@@ -50,11 +52,22 @@ class FlextInfraPythonVersionEnforcer(s[int]):
 
     """
 
-    check_only: bool = False
-    verbose: bool = False
+    check_only: Annotated[
+        bool,
+        Field(default=False, description="Only validate Python version constraints"),
+    ] = False
+    verbose: Annotated[
+        bool,
+        Field(default=False, description="Emit detailed per-project validation logs"),
+    ] = False
 
     @override
-    def execute(self, *, check_only: bool = False, verbose: bool = False) -> r[int]:
+    def execute(
+        self,
+        *,
+        check_only: bool | None = None,
+        verbose: bool | None = None,
+    ) -> r[int]:
         """Execute Python version enforcement.
 
         Args:
@@ -65,12 +78,14 @@ class FlextInfraPythonVersionEnforcer(s[int]):
             r[int]: Exit code (0 for success, 1 for failure).
 
         """
-        self.check_only = check_only
-        self.verbose = verbose
-        root = self._workspace_root_from_file(__file__)
+        if check_only is not None:
+            self.check_only = check_only
+        if verbose is not None:
+            self.verbose = verbose
+        root = self._resolve_workspace_root()
         required_minor = self._read_required_minor(root)
         projects = self._discover_projects(root)
-        mode = "Checking" if check_only else "Enforcing"
+        mode = "Checking" if self.check_only else "Enforcing"
         logger.info(
             "python_version_enforcement_started",
             mode=mode,
@@ -100,10 +115,11 @@ class FlextInfraPythonVersionEnforcer(s[int]):
         )
         return r[int].ok(0)
 
-    @override
-    def execute_command(self, params: m.Infra.MaintenanceRunInput) -> r[int]:
-        """CLI handler — accepts input model, delegates to execute."""
-        return self.execute(check_only=params.check, verbose=params.verbose)
+    def _resolve_workspace_root(self) -> Path:
+        """Prefer the validated CLI workspace when provided, otherwise auto-detect."""
+        if "workspace_root" in self.model_fields_set:
+            return self.workspace_root.resolve()
+        return self._workspace_root_from_file(__file__)
 
     def _discover_projects(self, workspace_root: Path) -> Sequence[Path]:
         """Discover all Python projects in workspace.

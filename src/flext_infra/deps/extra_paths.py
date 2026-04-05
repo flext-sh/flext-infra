@@ -43,6 +43,10 @@ class FlextInfraExtraPathsManager(
     def _pyright_path_rules(self) -> m.Infra.PyrightConfig.PathRulesConfig:
         return self._tool_config.tools.pyright.path_rules
 
+    def pyrefly_path_rules(self) -> m.Infra.PyreflyConfig.PathRulesConfig:
+        """Expose pyrefly path rules through the public resolver contract."""
+        return self._tool_config.tools.pyrefly.path_rules
+
     def pyright_extra_paths(
         self,
         *,

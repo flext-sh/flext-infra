@@ -171,8 +171,8 @@ class FlextInfraUtilitiesRefactorPydantic:
         return m.Infra.CentralizerFileResult(
             found_models=found_models,
             found_aliases=found_aliases,
-            apply_class_moves=apply_class_moves,
-            apply_alias_moves=apply_alias_moves,
+            apply_class_moves=list(apply_class_moves),
+            apply_alias_moves=list(apply_alias_moves),
         )
 
     @staticmethod

@@ -51,9 +51,13 @@ class FlextInfraRefactorRule:
     ) -> t.Infra.TransformResult:
         """Apply a text transformer with apply_to_source and return (source, changes)."""
         apply_fn = getattr(transformer, "apply_to_source", None)
-        if apply_fn is not None:
+        if callable(apply_fn):
             result = apply_fn(source)
-            new_source: str = result[0] if isinstance(result, tuple) else result
+            new_source = (
+                result[0]
+                if isinstance(result, tuple) and result and isinstance(result[0], str)
+                else source
+            )
             return (new_source, list(transformer.changes))
         return (source, list[str]())
 
@@ -65,7 +69,7 @@ class FlextInfraGenericTransformerRule(FlextInfraRefactorRule):
     instantiates the transformer and delegates to ``_apply_text_transformer``.
     """
 
-    TRANSFORMER_CLASS: type[FlextInfraChangeTracker]
+    TRANSFORMER_CLASS: type[object]
     """The transformer class to instantiate and apply."""
 
     @override
@@ -76,6 +80,9 @@ class FlextInfraGenericTransformerRule(FlextInfraRefactorRule):
     ) -> t.Infra.TransformResult:
         """Instantiate TRANSFORMER_CLASS and apply it."""
         transformer = self.TRANSFORMER_CLASS()
+        if not isinstance(transformer, FlextInfraChangeTracker):
+            msg = "TRANSFORMER_CLASS must produce a change-tracking transformer"
+            raise TypeError(msg)
         return self._apply_text_transformer(transformer, source)
 
 

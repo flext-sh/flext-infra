@@ -73,7 +73,7 @@ class FlextInfraGate(ABC):
         )
         return m.Infra.GateExecution(
             result=model,
-            issues=issues,
+            issues=tuple(issues),
             raw_output=raw_output,
         )
 

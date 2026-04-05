@@ -38,7 +38,9 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
         self,
         *,
         project_names: t.StrSequence | None = None,
-    ) -> Sequence[Path]: ...
+    ) -> Sequence[Path]:
+        msg = "_resolve_project_roots must be provided by the concrete enforcer"
+        raise NotImplementedError(msg)
 
     @staticmethod
     def _detect_and_apply[V](
@@ -47,14 +49,20 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
         detect_fn: Callable[[Path], Sequence[V]],
         rewrite_fn: Callable[[MutableSequence[V]], None] | None,
         apply: bool,
-    ) -> MutableSequence[V]: ...
+    ) -> MutableSequence[V]:
+        _ = py_files, detect_fn, rewrite_fn, apply
+        msg = "_detect_and_apply must be provided by the concrete enforcer"
+        raise NotImplementedError(msg)
 
     def enforce(
         self,
         *,
         apply: bool = False,
         project_names: t.StrSequence | None = None,
-    ) -> m.Infra.WorkspaceEnforcementReport: ...
+    ) -> m.Infra.WorkspaceEnforcementReport:
+        _ = apply, project_names
+        msg = "enforce must be provided by the concrete enforcer"
+        raise NotImplementedError(msg)
 
     def _enforce_project(
         self,
@@ -240,19 +248,19 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
             project=project_name,
             project_root=str(project_root),
             facade_statuses=facade_statuses,
-            loose_objects=loose_objects,
-            import_violations=import_violations,
-            namespace_source_violations=namespace_source_violations,
-            internal_import_violations=internal_import_violations,
-            manual_protocol_violations=manual_protocol_violations,
-            cyclic_imports=cyclic_imports,
-            runtime_alias_violations=runtime_alias_violations,
-            future_violations=future_violations,
-            manual_typing_violations=manual_typing_violations,
-            compatibility_alias_violations=compatibility_alias_violations,
-            class_placement_violations=class_placement_violations,
-            mro_completeness_violations=mro_completeness_violations,
-            parse_failures=parse_failures,
+            loose_objects=list(loose_objects),
+            import_violations=list(import_violations),
+            namespace_source_violations=list(namespace_source_violations),
+            internal_import_violations=list(internal_import_violations),
+            manual_protocol_violations=list(manual_protocol_violations),
+            cyclic_imports=list(cyclic_imports),
+            runtime_alias_violations=list(runtime_alias_violations),
+            future_violations=list(future_violations),
+            manual_typing_violations=list(manual_typing_violations),
+            compatibility_alias_violations=list(compatibility_alias_violations),
+            class_placement_violations=list(class_placement_violations),
+            mro_completeness_violations=list(mro_completeness_violations),
+            parse_failures=list(parse_failures),
             files_scanned=len(py_files),
         )
 

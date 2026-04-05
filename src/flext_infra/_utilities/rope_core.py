@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, TypeGuard
 
 from rope.base.change import ChangeContents, ChangeSet
 from rope.base.exceptions import (
@@ -13,6 +13,7 @@ from rope.base.exceptions import (
     ResourceNotFoundError,
 )
 from rope.base.project import Project
+from rope.base.pyobjectsdef import PyClass, PyFunction
 from rope.base.resources import File
 from rope.refactor.importutils import get_module_imports
 
@@ -129,18 +130,36 @@ class FlextInfraUtilitiesRopeCore:
         )
 
     @staticmethod
-    def get_pycore(rope_project: t.Infra.RopeProject) -> p.Infra.RopePyCoreLike:
+    def get_pycore(rope_project: t.Infra.RopeProject) -> t.Infra.RopePyCore:
         """Extract PyCore via protocol validation at the Rope boundary."""
-        pycore = rope_project.pycore
-        if not isinstance(pycore, p.Infra.RopePyCoreLike):
-            msg = "rope project pycore does not satisfy RopePyCoreLike"
+        return FlextInfraUtilitiesRopeCore._ensure_pycore(rope_project.pycore)
+
+    @staticmethod
+    def is_rope_abstract_class_like(
+        value: object,
+    ) -> TypeGuard[p.Infra.RopeAbstractClassLike]:
+        """Narrow one Rope object to the class-like contract via concrete Rope types."""
+        return isinstance(value, PyClass)
+
+    @staticmethod
+    def is_rope_pyfunction_like(
+        value: object,
+    ) -> TypeGuard[p.Infra.RopePyFunctionLike]:
+        """Narrow one Rope object to the function-like contract via concrete Rope types."""
+        return isinstance(value, PyFunction)
+
+    @staticmethod
+    def _ensure_pycore(value: object) -> t.Infra.RopePyCore:
+        """Validate one rope pycore object against the public contract."""
+        if not isinstance(value, p.Infra.RopePyCoreLike):
+            msg = "rope pycore does not satisfy RopePyCoreLike"
             raise TypeError(msg)
-        return pycore
+        return value
 
     @staticmethod
     def _ensure_rope_project(value: object) -> t.Infra.RopeProject:
         """Validate one concrete rope Project against the public contract."""
-        if not isinstance(value, p.Infra.RopeProjectLike):
+        if not isinstance(value, Project):
             msg = "rope project does not satisfy RopeProjectLike"
             raise TypeError(msg)
         return value
@@ -148,7 +167,7 @@ class FlextInfraUtilitiesRopeCore:
     @staticmethod
     def _ensure_rope_resource(value: object) -> t.Infra.RopeResource:
         """Validate one concrete rope resource against the public contract."""
-        if not isinstance(value, p.Infra.RopeResourceLike):
+        if not isinstance(value, File):
             msg = "rope resource does not satisfy RopeResourceLike"
             raise TypeError(msg)
         return value
@@ -157,7 +176,7 @@ class FlextInfraUtilitiesRopeCore:
     def _get_module_imports(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-    ) -> p.Infra.RopeModuleImportsLike | None:
+    ) -> t.Infra.RopeModuleImports | None:
         try:
             pymodule = rope_project.get_pymodule(resource)
             return FlextInfraUtilitiesRopeCore._ensure_module_imports(
@@ -169,8 +188,8 @@ class FlextInfraUtilitiesRopeCore:
     @staticmethod
     def _ensure_module_imports(
         value: object,
-    ) -> p.Infra.RopeModuleImportsLike:
-        """Validate one concrete ModuleImports helper against the protocol."""
+    ) -> t.Infra.RopeModuleImports:
+        """Validate one module-import helper against the public rope protocol."""
         if not isinstance(value, p.Infra.RopeModuleImportsLike):
             msg = "rope module imports helper does not satisfy RopeModuleImportsLike"
             raise TypeError(msg)
@@ -179,7 +198,7 @@ class FlextInfraUtilitiesRopeCore:
     @staticmethod
     def ensure_module_imports(
         value: object,
-    ) -> p.Infra.RopeModuleImportsLike:
+    ) -> t.Infra.RopeModuleImports:
         """Validate module-import helpers through the public Rope core boundary."""
         return FlextInfraUtilitiesRopeCore._ensure_module_imports(value)
 

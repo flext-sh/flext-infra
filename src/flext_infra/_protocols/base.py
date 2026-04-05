@@ -406,7 +406,6 @@ class FlextInfraProtocolsBase(Protocol):
         """Structural contract for dependency-backed extra-path resolvers."""
 
         root: Path
-        _tool_config: m.Infra.ToolConfigDocument
 
         def _source_root(
             self,
@@ -426,7 +425,7 @@ class FlextInfraProtocolsBase(Protocol):
             """Filter configured paths to only those that exist."""
             ...
 
-        def _pyrefly_path_rules(
+        def pyrefly_path_rules(
             self,
         ) -> m.Infra.PyreflyConfig.PathRulesConfig:
             """Get pyrefly path rules from tool config."""

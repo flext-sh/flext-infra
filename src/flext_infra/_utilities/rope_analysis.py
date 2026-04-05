@@ -12,7 +12,6 @@ from flext_infra import (
     FlextInfraUtilitiesRopeCore,
     c,
     m,
-    p,
     t,
 )
 
@@ -77,7 +76,7 @@ class FlextInfraUtilitiesRopeAnalysis(
             for name, pyname in pymodule.get_attributes().items():
                 obj = pyname.get_object()
                 module = obj.get_module()
-                if not isinstance(module, p.Infra.RopePyModuleLike):
+                if module is None:
                     continue
                 module_name = module.get_name()
                 object_name = obj.get_name()
@@ -105,7 +104,7 @@ class FlextInfraUtilitiesRopeAnalysis(
             resource_path = resource.path
             for name, pyname in pymodule.get_attributes().items():
                 obj = pyname.get_object()
-                if not isinstance(obj, p.Infra.RopeAbstractClassLike):
+                if not FlextInfraUtilitiesRopeAnalysis.is_rope_abstract_class_like(obj):
                     continue
                 module = obj.get_module()
                 origin = module.get_resource() if module is not None else None
@@ -165,7 +164,7 @@ class FlextInfraUtilitiesRopeAnalysis(
             resource_path = resource.path
             for name, pyname in pymodule.get_attributes().items():
                 obj = pyname.get_object()
-                if not isinstance(obj, p.Infra.RopeAbstractClassLike):
+                if not FlextInfraUtilitiesRopeAnalysis.is_rope_abstract_class_like(obj):
                     continue
                 module = obj.get_module()
                 origin = module.get_resource() if module is not None else None
@@ -209,7 +208,7 @@ class FlextInfraUtilitiesRopeAnalysis(
             if class_name not in attributes:
                 return 0
             obj = attributes[class_name].get_object()
-            if not isinstance(obj, p.Infra.RopeAbstractClassLike):
+            if not FlextInfraUtilitiesRopeAnalysis.is_rope_abstract_class_like(obj):
                 return 0
             return len(obj.get_attributes())
         except (RefactoringError, ResourceNotFoundError, AttributeError):
@@ -246,14 +245,14 @@ class FlextInfraUtilitiesRopeAnalysis(
             if class_name not in attributes:
                 return result
             obj = attributes[class_name].get_object()
-            if not isinstance(obj, p.Infra.RopeAbstractClassLike):
+            if not FlextInfraUtilitiesRopeAnalysis.is_rope_abstract_class_like(obj):
                 return result
             for name, pyname in obj.get_attributes().items():
                 if not include_private and name.startswith("_"):
                     continue
                 child = pyname.get_object()
                 kind = "method"
-                if isinstance(child, p.Infra.RopePyFunctionLike):
+                if FlextInfraUtilitiesRopeAnalysis.is_rope_pyfunction_like(child):
                     raw_kind = child.get_kind()
                     if raw_kind in {"staticmethod", "classmethod"}:
                         kind = raw_kind

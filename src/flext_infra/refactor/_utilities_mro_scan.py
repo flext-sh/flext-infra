@@ -11,8 +11,6 @@ import re
 from collections.abc import Sequence
 from pathlib import Path
 
-from rope.base.pyobjects import AbstractClass
-
 from flext_infra import (
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesRope,
@@ -304,18 +302,9 @@ class FlextInfraUtilitiesRefactorMroScan:
         obj: object,
         class_header: str,
     ) -> bool:
-        if isinstance(obj, AbstractClass):
+        if FlextInfraUtilitiesRope.is_rope_abstract_class_like(obj):
             try:
-                get_bases = getattr(obj, "get_bases", None)
-                raw_bases_value = get_bases() if callable(get_bases) else ()
-                raw_bases: Sequence[object] = (
-                    raw_bases_value if isinstance(raw_bases_value, Sequence) else ()
-                )
-                bases: Sequence[AbstractClass] = (
-                    [b for b in raw_bases if isinstance(b, AbstractClass)]
-                    if isinstance(raw_bases, Sequence)
-                    else []
-                )
+                bases = tuple(obj.get_superclasses())
                 if any("Protocol" in str(b.get_name()) for b in bases):
                     return True
             except Exception as exc:
@@ -344,12 +333,14 @@ class FlextInfraUtilitiesRefactorMroScan:
             root = project_root / dn
             if not root.is_dir():
                 continue
-            for p in FlextInfraUtilitiesIteration.iter_directory_python_files(root):
+            for file_path in FlextInfraUtilitiesIteration.iter_directory_python_files(
+                root
+            ):
                 if (
-                    p.name in target_spec.file_names
-                    or target_spec.package_directory in p.parts
+                    file_path.name in target_spec.file_names
+                    or target_spec.package_directory in file_path.parts
                 ):
-                    cands.add(p)
+                    cands.add(file_path)
         return sorted(cands)
 
 

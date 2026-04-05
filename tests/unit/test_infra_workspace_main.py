@@ -240,8 +240,10 @@ class TestRunMigrate:
             return result
 
         monkeypatch.setattr(FlextInfraProjectMigrator, "migrate", _migrate_stub)
-        handle_result = FlextInfraProjectMigrator.execute_command(
-            FlextInfraProjectMigrator(workspace=tmp_path, apply=True),
+        handle_result: r[Sequence[m.Infra.MigrationResult]] = (
+            FlextInfraProjectMigrator.execute_command(
+                FlextInfraProjectMigrator(workspace=tmp_path, apply=True),
+            )
         )
         tm.that(handle_result.is_success, eq=expected_success)
 
@@ -272,8 +274,10 @@ class TestRunMigrate:
             "migrate",
             _migrate_with_errors,
         )
-        handle_result = FlextInfraProjectMigrator.execute_command(
-            FlextInfraProjectMigrator(workspace=tmp_path, apply=True),
+        handle_result: r[Sequence[m.Infra.MigrationResult]] = (
+            FlextInfraProjectMigrator.execute_command(
+                FlextInfraProjectMigrator(workspace=tmp_path, apply=True),
+            )
         )
         tm.that(handle_result.is_success, eq=True)
         tm.that(handle_result.value[0].errors, eq=["Error 1"])

@@ -17,8 +17,8 @@ from flext_infra import (
     FlextInfraGoGate,
     FlextInfraMypyGate,
     FlextInfraRuffFormatGate,
-    FlextInfraWorkspaceChecker,
 )
+from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 
 from ...helpers import h
 from ._shared_fixtures import (

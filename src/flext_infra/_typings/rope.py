@@ -11,21 +11,33 @@ from __future__ import annotations
 
 from collections.abc import Callable, MutableSequence, Sequence
 
+from rope.base.change import ChangeSet
+from rope.base.project import Project
+from rope.base.pyobjects import PyModule
+from rope.base.resources import File
+from rope.contrib.findit import Location
+
 from flext_core import FlextTypes
-from flext_infra import FlextInfraProtocolsRope
+from flext_infra._protocols.rope import FlextInfraProtocolsRope
 
 
 class FlextInfraTypesRope:
     """Rope type aliases — accessed via t.Infra.*."""
 
-    type RopeProject = FlextInfraProtocolsRope.RopeProjectLike
+    type RopeProject = Project
     "Opaque handle to rope Project — orchestrators use this, never import rope directly."
-    type RopeResource = FlextInfraProtocolsRope.RopeResourceLike
+    type RopeResource = File
     "Opaque handle to rope File resource — orchestrators use this, never import rope directly."
-    type RopeLocation = FlextInfraProtocolsRope.RopeLocationLike
+    type RopeLocation = Location
     "Opaque handle to one rope occurrence result."
-    type RopeChanges = FlextInfraProtocolsRope.RopeChangesLike
+    type RopeChanges = ChangeSet
     "Opaque handle to one rope change set."
+    type RopePyCore = FlextInfraProtocolsRope.RopePyCoreLike
+    "Typed Rope PyCore facade backed by the public structural protocol."
+    type RopePyModule = PyModule
+    "Concrete Rope PyModule handle."
+    type RopeModuleImports = FlextInfraProtocolsRope.RopeModuleImportsLike
+    "Typed Rope ModuleImports facade backed by the public structural protocol."
 
     type ImportMap = FlextTypes.StrMapping
     "Mapping of local name → fully qualified import path."
@@ -45,8 +57,8 @@ class FlextInfraTypesRope:
     "Mutable sequence of class names."
     type RopeTransformFn = Callable[
         [
-            FlextInfraProtocolsRope.RopeProjectLike,
-            FlextInfraProtocolsRope.RopeResourceLike,
+            Project,
+            File,
         ],
         tuple[str, Sequence[str]],
     ]

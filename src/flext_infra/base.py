@@ -12,7 +12,7 @@ from pydantic import ConfigDict, Field, field_validator
 from pydantic.config import JsonDict
 
 from flext_cli import FlextCliSettings
-from flext_core import FlextModels, FlextSettings, p, r, s
+from flext_core import FlextModels, FlextSettings, p, r, s as core_service_base
 from flext_infra import t
 
 APPLY_OPTION_DECLS: list[str] = ["--apply/--dry-run"]
@@ -24,7 +24,7 @@ def apply_option_json_schema_extra(schema: JsonDict) -> None:
 
 
 class FlextInfraServiceBase[TDomainResult: t.Infra.DomainOutput](
-    s[TDomainResult],
+    core_service_base[TDomainResult],
     ABC,
 ):
     """Base class for flext-infra services with normalized command context."""

@@ -305,13 +305,5 @@ class FlextInfraModelsCliInputsOps:
             Field(default=False, description="Preview changes without writing"),
         ] = False
 
-    class MaintenanceRunInput(
-        FlextInfraModelsMixins.VerboseMixin,
-        FlextInfraModelsMixins.CheckMixin,
-        FlextInfraModelsMixins.CliInputBase,
-        FlextModels.ContractModel,
-    ):
-        """CLI input for maintenance command."""
-
 
 __all__ = ["FlextInfraModelsCliInputsOps"]

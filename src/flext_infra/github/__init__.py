@@ -17,16 +17,11 @@ if _t.TYPE_CHECKING:
     from flext_infra.github.cli import FlextInfraCliGithub
 
     service = _flext_infra_github_service
-    from flext_core.constants import FlextConstants as c
     from flext_core.decorators import FlextDecorators as d
     from flext_core.exceptions import FlextExceptions as e
     from flext_core.handlers import FlextHandlers as h
     from flext_core.mixins import FlextMixins as x
-    from flext_core.models import FlextModels as m
-    from flext_core.protocols import FlextProtocols as p
     from flext_core.result import FlextResult as r
-    from flext_core.typings import FlextTypes as t
-    from flext_core.utilities import FlextUtilities as u
     from flext_infra.github.service import (
         FlextInfraGithubService,
         FlextInfraGithubService as s,
@@ -34,36 +29,26 @@ if _t.TYPE_CHECKING:
 _LAZY_IMPORTS = {
     "FlextInfraCliGithub": "flext_infra.github.cli",
     "FlextInfraGithubService": "flext_infra.github.service",
-    "c": ("flext_core.constants", "FlextConstants"),
     "cli": "flext_infra.github.cli",
     "d": ("flext_core.decorators", "FlextDecorators"),
     "e": ("flext_core.exceptions", "FlextExceptions"),
     "h": ("flext_core.handlers", "FlextHandlers"),
-    "m": ("flext_core.models", "FlextModels"),
-    "p": ("flext_core.protocols", "FlextProtocols"),
     "r": ("flext_core.result", "FlextResult"),
     "s": ("flext_infra.github.service", "FlextInfraGithubService"),
     "service": "flext_infra.github.service",
-    "t": ("flext_core.typings", "FlextTypes"),
-    "u": ("flext_core.utilities", "FlextUtilities"),
     "x": ("flext_core.mixins", "FlextMixins"),
 }
 
 __all__ = [
     "FlextInfraCliGithub",
     "FlextInfraGithubService",
-    "c",
     "cli",
     "d",
     "e",
     "h",
-    "m",
-    "p",
     "r",
     "s",
     "service",
-    "t",
-    "u",
     "x",
 ]
 

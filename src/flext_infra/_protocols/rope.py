@@ -21,18 +21,24 @@ class FlextInfraProtocolsRope(Protocol):
     class RopeProjectRootLike(Protocol):
         """Minimal contract for rope project's root resource."""
 
-        real_path: str
-        """Absolute filesystem path for the project root."""
+        @property
+        def real_path(self) -> str:
+            """Absolute filesystem path for the project root."""
+            ...
 
     @runtime_checkable
     class RopeResourceLike(Protocol):
         """Minimal contract for rope Resource objects."""
 
-        path: str
-        """Relative path within the rope project."""
+        @property
+        def path(self) -> str:
+            """Relative path within the rope project."""
+            ...
 
-        real_path: str
-        """Absolute filesystem path."""
+        @property
+        def real_path(self) -> str:
+            """Absolute filesystem path."""
+            ...
 
         def read(self) -> str:
             """Read file contents as string."""
@@ -117,8 +123,8 @@ class FlextInfraProtocolsRope(Protocol):
 
         def resource_to_pyobject(
             self,
-            resource: FlextInfraProtocolsRope.RopeResourceLike,
-        ) -> FlextInfraProtocolsRope.RopePyModuleLike:
+            resource: t.Infra.RopeResource,
+        ) -> t.Infra.RopePyModule:
             """Convert a resource to its PyModule representation."""
             ...
 
@@ -287,9 +293,9 @@ class FlextInfraProtocolsRope(Protocol):
 
         def __call__(
             self,
-            project: FlextInfraProtocolsRope.RopeProjectLike,
-            pymodule: FlextInfraProtocolsRope.RopePyModuleLike,
-        ) -> FlextInfraProtocolsRope.RopeModuleImportsLike:
+            project: t.Infra.RopeProject,
+            pymodule: t.Infra.RopePyModule,
+        ) -> t.Infra.RopeModuleImports:
             """Build one module-import helper for the given module."""
             ...
 
@@ -329,7 +335,7 @@ class FlextInfraProtocolsRope(Protocol):
         ) -> t.StrMapping: ...
 
         @staticmethod
-        def _method_kind_label(method_kind: str) -> str: ...
+        def method_kind_label(method_kind: str) -> str: ...
 
         @staticmethod
         def discover_project_root_from_file(file_path: Path) -> Path | None: ...

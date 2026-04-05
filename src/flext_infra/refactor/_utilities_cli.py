@@ -62,7 +62,6 @@ class FlextInfraUtilitiesRefactorCli:
             if hasattr(result, "model_dump")
             else {"value": str(result)}
             for result in results
-            if result is not None
         ]
 
     @staticmethod

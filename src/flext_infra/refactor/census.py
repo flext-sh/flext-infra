@@ -40,8 +40,6 @@ class FlextInfraRefactorCensus:
         target = target or u.Infra.build_mro_target(
             c.Infra.Census.DEFAULT_FAMILY,
         )
-        if target is None:
-            return r[m.Infra.UtilitiesCensusReport].fail("no MRO target configured")
         t0 = time.monotonic()
         u.Infra.header(f"Usage Census — family={target.family} ({target.class_suffix})")
 

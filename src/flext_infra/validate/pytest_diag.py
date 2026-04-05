@@ -10,13 +10,25 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-from collections.abc import MutableSequence
+from collections.abc import Iterator, MutableSequence
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, Protocol, runtime_checkable
 
 from defusedxml import ElementTree as DefusedET
 
 from flext_infra import c, m, r, t, u
+
+
+@runtime_checkable
+class _XmlElementLike(Protocol):
+    """Typed subset of the safe XML element API returned by defusedxml."""
+
+    attrib: dict[str, str]
+    text: str | None
+
+    def find(self, path: str) -> _XmlElementLike | None: ...
+
+    def iter(self, tag: str | None = None) -> Iterator[_XmlElementLike]: ...
 
 
 class _DiagResult:
@@ -105,7 +117,12 @@ class FlextInfraPytestDiagExtractor:
         diag.error_traces = block
 
     @staticmethod
-    def _build_trace_chunk(heading: str, label: str, element: DefusedET.Element) -> str:
+    def _as_xml_element(value: object) -> _XmlElementLike | None:
+        """Normalize dynamic defusedxml nodes to the typed stdlib element API."""
+        return value if isinstance(value, _XmlElementLike) else None
+
+    @staticmethod
+    def _build_trace_chunk(heading: str, label: str, element: _XmlElementLike) -> str:
         """Build an error/failure trace chunk from a JUnit XML element."""
         msg = (element.attrib.get(c.Infra.ReportKeys.MESSAGE) or "").strip()
         trace = (element.text or "").strip()
@@ -118,7 +135,7 @@ class FlextInfraPytestDiagExtractor:
 
     @staticmethod
     def _process_testcase(
-        case: DefusedET.Element,
+        case: _XmlElementLike,
         diag: _DiagResult,
     ) -> t.Infra.Pair[float, str]:
         """Process a single testcase element; returns (seconds, label)."""
@@ -156,13 +173,17 @@ class FlextInfraPytestDiagExtractor:
         if not junit_path.exists():
             return False
         try:
-            root = DefusedET.parse(junit_path).getroot()
+            root_raw = DefusedET.parse(junit_path).getroot()
         except DefusedET.ParseError:
             return False
+        root = FlextInfraPytestDiagExtractor._as_xml_element(root_raw)
         if root is None:
             return False
         slow_rows: MutableSequence[t.Infra.Pair[float, str]] = []
-        for case in root.iter("testcase"):
+        for case_raw in root.iter("testcase"):
+            case = FlextInfraPytestDiagExtractor._as_xml_element(case_raw)
+            if case is None:
+                continue
             slow_rows.append(
                 FlextInfraPytestDiagExtractor._process_testcase(case, diag),
             )

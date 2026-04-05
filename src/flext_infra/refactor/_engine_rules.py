@@ -14,7 +14,6 @@ from typing import override
 from pydantic import TypeAdapter, ValidationError
 
 from flext_infra import (
-    FlextInfraChangeTracker,
     FlextInfraGenericTransformerRule,
     FlextInfraRefactorClassReconstructor,
     FlextInfraRefactorLegacyRemovalRule,
@@ -41,7 +40,7 @@ _SIG_MIGRATION_SEQ_ADAPTER: TypeAdapter[Sequence[m.Infra.SignatureMigration]] = 
 class FlextInfraRefactorMRORedundancyChecker(FlextInfraGenericTransformerRule):
     """Detect and fix nested classes inheriting from their parent namespace."""
 
-    TRANSFORMER_CLASS: type[FlextInfraChangeTracker] = FlextInfraRefactorMRORemover
+    TRANSFORMER_CLASS: type[object] = FlextInfraRefactorMRORemover
 
 
 class _RopeTextRuleBridge(FlextInfraRefactorRule):
@@ -184,9 +183,10 @@ class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
 
     def _alias_to_submodule(self) -> t.StrMapping:
         value = self.config.get("alias_to_submodule", {})
-        if not u.is_mapping(value):
+        mapping_value = u.Infra.as_toml_mapping(value)
+        if mapping_value is None:
             return dict[str, str]()
-        return {str(key): str(item) for key, item in value.items()}
+        return {str(key): str(item) for key, item in mapping_value.items()}
 
 
 class FlextInfraRefactorSymbolPropagationRule(FlextInfraRefactorRule):

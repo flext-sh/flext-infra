@@ -172,10 +172,12 @@ class FlextInfraCodegenCensus(FlextInfraServiceBase[str]):
         if by_type:
             for type_key in sorted(by_type.keys())[:3]:
                 type_info_val = by_type[type_key]
-                if u.is_mapping(type_info_val):
-                    cnt_val = type_info_val.get("total", 0)
-                    cnt = int(cnt_val) if isinstance(cnt_val, int) else 0
-                    type_stats.append(f"{type_key}:{cnt}")
+                type_info = u.Infra.as_toml_mapping(type_info_val)
+                if type_info is None:
+                    continue
+                cnt_val = type_info.get("total", 0)
+                cnt = int(cnt_val) if isinstance(cnt_val, int) else 0
+                type_stats.append(f"{type_key}:{cnt}")
         return f" [{', '.join(type_stats)}]" if type_stats else ""
 
     def _run_project_census(
@@ -214,7 +216,7 @@ class FlextInfraCodegenCensus(FlextInfraServiceBase[str]):
             self._census_constants(src_dir, violations)
         return m.Infra.CensusReport(
             project=project.name,
-            violations=violations,
+            violations=list(violations),
             total=len(violations),
             fixable=u.count(violations, lambda v: v.fixable),
         )

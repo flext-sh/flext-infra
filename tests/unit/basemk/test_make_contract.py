@@ -39,6 +39,25 @@ def _write_stubs(bin_dir: Path, log_path: Path) -> None:
     )
 
 
+def _write_venv_python_stub(
+    project_root: Path, log_path: Path, *, include_env: bool = False
+) -> None:
+    venv_bin = project_root / ".venv" / "bin"
+    venv_bin.mkdir(parents=True, exist_ok=True)
+    body = (
+        "#!/usr/bin/env bash\nprintf "
+        "'PYTHONPATH=%s MYPYPATH=%s python %s\\n' "
+        '"${PYTHONPATH-unset}" "${MYPYPATH-unset}" "$*" >> "'
+        + str(log_path)
+        + '"\nexit 0\n'
+        if include_env
+        else '#!/usr/bin/env bash\nprintf \'python %s\\n\' "$*" >> "'
+        + str(log_path)
+        + '"\nexit 0\n'
+    )
+    _write_executable(venv_bin / "python", body)
+
+
 def _write_project(project_root: Path, *, include_parent: bool = False) -> None:
     if include_parent:
         (project_root.parent / "base.mk").write_text(
@@ -111,12 +130,15 @@ def test_rendered_base_mk_declares_cli_group_roots() -> None:
     tm.that(
         rendered,
         has=[
-            "PROJECT_INFRA_ROOT := $(POETRY) run python -m flext_infra",
-            'PROJECT_INFRA_CHECK := env -u PYTHONPATH -u MYPYPATH FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) check',
-            "PROJECT_INFRA_DEPS := $(PROJECT_INFRA_ROOT) deps",
-            "PROJECT_INFRA_DOCS := env -u PYTHONPATH -u MYPYPATH $(VENV_PYTHON) -m flext_infra docs",
-            "PROJECT_INFRA_GITHUB := env -u PYTHONPATH -u MYPYPATH $(VENV_PYTHON) -m flext_infra github",
-            "PROJECT_INFRA_VALIDATE := $(VENV_PYTHON) -m flext_infra validate",
+            "PROJECT_INFRA_HOME := $(WORKSPACE_ROOT)/flext-infra",
+            "PROJECT_INFRA_SRC := $(PROJECT_INFRA_HOME)/src",
+            'PROJECT_INFRA_BOOT := env -u MYPYPATH PYTHONPATH="$(PROJECT_INFRA_SRC)" $(POETRY) run python -m flext_infra',
+            'PROJECT_INFRA_ROOT := env -u MYPYPATH PYTHONPATH="$(PROJECT_INFRA_SRC)" $(VENV_PYTHON) -m flext_infra',
+            'PROJECT_INFRA_CHECK := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) check',
+            'PROJECT_INFRA_DEPS := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_BOOT) deps',
+            'PROJECT_INFRA_DOCS := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) docs',
+            'PROJECT_INFRA_GITHUB := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) github',
+            'PROJECT_INFRA_VALIDATE := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) validate',
         ],
     )
 
@@ -209,8 +231,7 @@ def test_make_check_full_run_unsets_python_path_env(tmp_path: Path) -> None:
         + '"\nexit 0\n',
     )
     _write_project(tmp_path)
-    (tmp_path / ".venv" / "bin").mkdir(parents=True)
-    (tmp_path / ".venv" / "bin" / "python").write_text("", encoding="utf-8")
+    _write_venv_python_stub(tmp_path, log_path, include_env=True)
     (tmp_path / "src").mkdir()
     (tmp_path / "src" / "demo.py").write_text("x = 1\n", encoding="utf-8")
 
@@ -226,9 +247,13 @@ def test_make_check_full_run_unsets_python_path_env(tmp_path: Path) -> None:
     )
 
     tm.that(result.returncode, eq=0)
+    expected_src = tmp_path / "src"
     tm.that(
         log_path.read_text(encoding="utf-8"),
-        has="PYTHONPATH=unset MYPYPATH=unset run python -m flext_infra check run --gates mypy",
+        has=(
+            f"PYTHONPATH={expected_src} MYPYPATH=unset "
+            "python -m flext_infra check run --gates mypy"
+        ),
     )
 
 
@@ -237,8 +262,7 @@ def test_make_check_full_run_forwards_fix_and_tool_args(tmp_path: Path) -> None:
     bin_dir = tmp_path / "bin"
     _write_stubs(bin_dir, log_path)
     _write_project(tmp_path)
-    (tmp_path / ".venv" / "bin").mkdir(parents=True)
-    (tmp_path / ".venv" / "bin" / "python").write_text("", encoding="utf-8")
+    _write_venv_python_stub(tmp_path, log_path)
     (tmp_path / "src").mkdir()
     (tmp_path / "src" / "demo.py").write_text("x = 1\n", encoding="utf-8")
 
@@ -255,7 +279,7 @@ def test_make_check_full_run_forwards_fix_and_tool_args(tmp_path: Path) -> None:
     tm.that(result.returncode, eq=0)
     tm.that(
         log_path.read_text(encoding="utf-8"),
-        has=("run python -m flext_infra check run --gates lint,pyright --reports-dir "),
+        has=("python -m flext_infra check run --gates lint,pyright --reports-dir "),
     )
     tm.that(
         log_path.read_text(encoding="utf-8"),

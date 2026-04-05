@@ -90,10 +90,10 @@ def make_gate_exec(
             gate=gate,
             project=project,
             passed=passed,
-            errors=[],
+            errors=(),
             duration=0.0,
         ),
-        issues=issues or [],
+        issues=tuple(issues or ()),
         raw_output="",
     )
 

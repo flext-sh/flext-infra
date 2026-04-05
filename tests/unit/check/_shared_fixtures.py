@@ -17,10 +17,8 @@ import pytest
 from tests import FlextInfraTestHelpers as h, m, t
 
 from flext_core import r
-from flext_infra import (
-    FlextInfraGate,
-    FlextInfraWorkspaceChecker,
-)
+from flext_infra import FlextInfraGate
+from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 
 type GateClass = type[FlextInfraGate]
 
@@ -41,10 +39,10 @@ def create_gate_execution(
             gate=gate,
             project=project,
             passed=passed,
-            errors=[],
+            errors=(),
             duration=0.0,
         ),
-        issues=issues or [],
+        issues=tuple(issues or ()),
         raw_output="",
     )
 
@@ -212,10 +210,10 @@ class RunProjectsMock:
                     gate="test",
                     project="test-project",
                     passed=False,
-                    errors=[],
+                    errors=(),
                     duration=0.0,
                 ),
-                issues=[],
+                issues=(),
                 raw_output="",
             )
             result.gates["test"] = fail_gate

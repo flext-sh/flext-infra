@@ -192,7 +192,7 @@ class TestRunCLIExtended:
             errors=[],
             duration=0.0,
         )
-        gate_exec = m.Infra.GateExecution(result=gate, issues=[], raw_output="")
+        gate_exec = m.Infra.GateExecution(result=gate, issues=(), raw_output="")
         project = m.Infra.ProjectResult(project="p", gates={"lint": gate_exec})
         ok_result = r[list[m.Infra.ProjectResult]].ok([project])
 

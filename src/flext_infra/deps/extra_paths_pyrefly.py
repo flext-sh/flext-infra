@@ -4,16 +4,18 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, m, p, t, u
+from flext_infra import c, p, t, u
 
 
 class FlextInfraExtraPathsPyrefly:
     """Pyrefly search-path and project-includes computation."""
 
-    def _pyrefly_path_rules(
-        self: p.Infra.ExtraPathsResolver,
-    ) -> m.Infra.PyreflyConfig.PathRulesConfig:
-        return self._tool_config.tools.pyrefly.path_rules
+    def _resolver(self) -> p.Infra.ExtraPathsResolver:
+        """Validate the owning object against the shared resolver contract."""
+        if not isinstance(self, p.Infra.ExtraPathsResolver):
+            msg = "FlextInfraExtraPathsPyrefly requires an ExtraPathsResolver owner"
+            raise TypeError(msg)
+        return self
 
     @staticmethod
     def _existing_relative_paths(
@@ -39,13 +41,14 @@ class FlextInfraExtraPathsPyrefly:
         return project_root
 
     def pyrefly_search_paths(
-        self: p.Infra.ExtraPathsResolver,
+        self,
         *,
         project_dir: Path,
         is_root: bool,
     ) -> t.StrSequence:
         """Compute pyrefly search paths for a project."""
-        rules = self._pyrefly_path_rules()
+        resolver = self._resolver()
+        rules = resolver.pyrefly_path_rules()
         source_root = self._source_root(
             project_dir,
             source_dir=rules.source_dir,
@@ -54,7 +57,10 @@ class FlextInfraExtraPathsPyrefly:
         configured_typings = (
             rules.root_typings_paths if is_root else rules.project_typings_paths
         )
-        typings_paths = self._existing_relative_paths(project_dir, configured_typings)
+        typings_paths = self._existing_relative_paths(
+            project_dir,
+            configured_typings,
+        )
         paths: t.Infra.StrSet = {source_root, *typings_paths}
         if is_root:
             local_dirs = self._existing_relative_paths(
@@ -79,7 +85,7 @@ class FlextInfraExtraPathsPyrefly:
             project_pyproject = project_dir / c.Infra.Files.PYPROJECT_FILENAME
             doc_result = u.Infra.read_document(project_pyproject)
             if doc_result.is_success:
-                dep_paths = self.get_dep_paths(doc_result.value, is_root=False)
+                dep_paths = resolver.get_dep_paths(doc_result.value, is_root=False)
                 paths.update(dep_paths)
         shared_paths = self._existing_relative_paths(
             project_dir,
@@ -90,13 +96,13 @@ class FlextInfraExtraPathsPyrefly:
         return sorted(paths)
 
     def pyrefly_project_includes(
-        self: p.Infra.ExtraPathsResolver,
+        self,
         *,
         project_dir: Path,
         is_root: bool,
     ) -> t.StrSequence:
         """Build pyrefly project-includes from YAML rules and discovered dirs."""
-        rules = self._pyrefly_path_rules()
+        rules = self._resolver().pyrefly_path_rules()
         env_dirs = set(rules.env_dirs)
         includes: t.Infra.StrSet = set()
         local_dirs = set(u.Infra.discover_python_dirs(project_dir))

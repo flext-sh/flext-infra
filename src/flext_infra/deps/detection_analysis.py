@@ -23,7 +23,10 @@ class FlextInfraDependencyDetectionAnalysis:
 
     DEFAULT_MODULE_TO_TYPES_PACKAGE: t.StrMapping
 
-    def _read_plain(self, path: Path) -> r[t.Infra.ContainerDict]: ...
+    def _read_plain(self, path: Path) -> r[t.Infra.ContainerDict]:
+        _ = path
+        msg = "_read_plain must be implemented by the concrete analyzer"
+        raise NotImplementedError(msg)
 
     def _run_raw(
         self,
@@ -32,7 +35,10 @@ class FlextInfraDependencyDetectionAnalysis:
         cwd: Path | None = None,
         timeout: int | None = None,
         env: t.StrMapping | None = None,
-    ) -> r[m.Infra.CommandOutput]: ...
+    ) -> r[m.Infra.CommandOutput]:
+        _ = cmd, cwd, timeout, env
+        msg = "_run_raw must be implemented by the concrete analyzer"
+        raise NotImplementedError(msg)
 
     @staticmethod
     def _to_toml_config(
@@ -128,8 +134,10 @@ class FlextInfraDependencyDetectionAnalysis:
                     .split("==", maxsplit=1)[0]
                     .strip(),
                 )
-        elif u.is_mapping(typings):
-            names.update(str(k) for k in typings)
+        else:
+            typings_mapping = u.Infra.as_toml_mapping(typings)
+            if typings_mapping is not None:
+                names.update(str(key) for key in typings_mapping)
         return sorted(names)
 
     def get_required_typings(

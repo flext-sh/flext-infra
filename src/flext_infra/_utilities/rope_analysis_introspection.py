@@ -45,10 +45,15 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection(
             if class_name not in attributes:
                 return result
             obj = attributes[class_name].get_object()
-            if not isinstance(obj, p.Infra.RopeAbstractClassLike):
+            if not FlextInfraUtilitiesRopeAnalysisIntrospection.is_rope_abstract_class_like(
+                obj
+            ):
                 return result
             for name, pyname in obj.get_attributes().items():
-                if isinstance(pyname.get_object(), p.Infra.RopeAbstractClassLike):
+                child = pyname.get_object()
+                if FlextInfraUtilitiesRopeAnalysisIntrospection.is_rope_abstract_class_like(
+                    child
+                ):
                     result.append(name)
         except (RefactoringError, ResourceNotFoundError, AttributeError):
             return result
@@ -75,9 +80,13 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection(
                 origin = module.get_resource() if module is not None else None
                 if origin is not None and origin.path != resource_path:
                     continue
-                if isinstance(obj, p.Infra.RopeAbstractClassLike):
+                if FlextInfraUtilitiesRopeAnalysisIntrospection.is_rope_abstract_class_like(
+                    obj
+                ):
                     kind = "class"
-                elif isinstance(obj, p.Infra.RopePyFunctionLike):
+                elif FlextInfraUtilitiesRopeAnalysisIntrospection.is_rope_pyfunction_like(
+                    obj
+                ):
                     kind = "function"
                 else:
                     kind = "assignment"
@@ -116,7 +125,7 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection(
                     for method_name, method_kind in class_methods.items():
                         methods.append((
                             method_name,
-                            cls._method_kind_label(method_kind),
+                            cls.method_kind_label(method_kind),
                             py_file.name,
                         ))
         finally:
@@ -152,7 +161,7 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection(
                 for method_name, method_kind in class_methods.items():
                     methods.append((
                         method_name,
-                        cls._method_kind_label(method_kind),
+                        cls.method_kind_label(method_kind),
                         file_path.name,
                     ))
         finally:
@@ -160,7 +169,7 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection(
         return result
 
     @staticmethod
-    def _method_kind_label(method_kind: str) -> str:
+    def method_kind_label(method_kind: str) -> str:
         """Normalize Rope method kinds to census labels."""
         if method_kind == "staticmethod":
             return "static"

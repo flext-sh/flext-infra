@@ -11,15 +11,14 @@ class FlextInfraCliMaintenance:
 
     def register_maintenance(self, app: t.Cli.CliApp) -> None:
         """Register maintenance commands on the given Typer app."""
-        service = FlextInfraPythonVersionEnforcer()
         cli.register_result_routes(
             app,
             [
                 m.Cli.ResultCommandRoute(
                     name="run",
                     help_text="Enforce Python version constraints",
-                    model_cls=m.Infra.MaintenanceRunInput,
-                    handler=service.execute_command,
+                    model_cls=FlextInfraPythonVersionEnforcer,
+                    handler=FlextInfraPythonVersionEnforcer.execute_command,
                     failure_message="Maintenance failed",
                     success_message="Maintenance completed",
                 ),

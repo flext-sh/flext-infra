@@ -56,6 +56,11 @@ class FlextInfraRefactorMROSymbolPropagator(FlextInfraRopeTransformer):
         return (rewritten_source, list(self.changes))
 
     @override
+    def apply_to_source(self, source: str) -> t.Infra.TransformResult:
+        """Satisfy the base rope-transformer contract with the same rewrite flow."""
+        return self.rewrite_source(source)
+
+    @override
     def transform(
         self,
         rope_project: t.Infra.RopeProject,

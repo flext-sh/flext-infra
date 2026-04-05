@@ -72,7 +72,7 @@ class TestBuilderCore:
         self,
         builder: FlextInfraDocBuilder,
         tmp_path: Path,
-        kwargs: dict[str, object],
+        kwargs: dict[str, str | list[str]],
     ) -> None:
         if "output_dir" in kwargs:
             output_dir = kwargs["output_dir"]

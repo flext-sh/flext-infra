@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 
 import tomlkit
+from pydantic import ValidationError
 from tomlkit.container import Container
 from tomlkit.items import AoT, Item, Table
+from tomlkit.toml_document import TOMLDocument
 
 from flext_infra import c, m, t, u
 
@@ -17,8 +19,29 @@ class FlextInfraEnsureMypyConfigPhase:
     def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:
         self._tool_config = tool_config
 
+    @staticmethod
+    def _normalize_override_entry(item: object) -> t.StrSequenceMapping | None:
+        """Normalize one ``[[tool.mypy.overrides]]`` entry into the shared schema."""
+        normalized_value = (
+            item.unwrap() if isinstance(item, (Item, TOMLDocument)) else item
+        )
+        if not isinstance(normalized_value, Mapping):
+            return None
+        try:
+            normalized_item = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
+                normalized_value,
+            )
+        except ValidationError:
+            return None
+        return {
+            "module": u.Infra.as_string_list(normalized_item.get("module")),
+            "disable_error_code": u.Infra.as_string_list(
+                normalized_item.get("disable_error_code")
+            ),
+        }
+
     def apply(self, doc: tomlkit.TOMLDocument) -> t.StrSequence:
-        changes: MutableSequence[str] = []
+        changes: list[str] = []
         tool: Item | Container | None = None
         if c.Infra.TOOL in doc:
             tool = doc[c.Infra.TOOL]
@@ -95,29 +118,23 @@ class FlextInfraEnsureMypyConfigPhase:
         current: Sequence[t.StrSequenceMapping] = []
         if isinstance(raw, (list, AoT)):
             normalized_current: MutableSequence[t.StrSequenceMapping] = []
-            for item in raw:
-                normalized_item = u.Infra.as_toml_mapping(u.Infra.unwrap_item(item))
+            raw_items: Sequence[object] = list(raw)
+            for item in raw_items:
+                normalized_item = self._normalize_override_entry(item)
                 if normalized_item is None:
                     continue
-                module_value = u.Infra.as_string_list(normalized_item.get("module"))
-                disable_value = u.Infra.as_string_list(
-                    normalized_item.get("disable_error_code")
-                )
-                normalized_current.append({
-                    "module": module_value,
-                    "disable_error_code": disable_value,
-                })
+                normalized_current.append(normalized_item)
             current = normalized_current
         if list(current) == list(expected):
             return
-        aot = tomlkit.aot()
-        for entry in expected:
-            tbl = tomlkit.table()
-            tbl["module"] = list(entry["module"])
-            tbl["disable_error_code"] = list(entry["disable_error_code"])
-            aot.append(tbl)
         mypy_section = u.Infra.ensure_table(tool, c.Infra.MYPY)
-        mypy_section["overrides"] = aot
+        mypy_section["overrides"] = [
+            {
+                "module": list(entry["module"]),
+                "disable_error_code": list(entry["disable_error_code"]),
+            }
+            for entry in expected
+        ]
         changes.append(
             "tool.mypy.overrides synchronized for auto-generated files and PEP 695 generics",
         )

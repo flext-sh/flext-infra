@@ -81,10 +81,10 @@ class TestProjectResultProperties:
         )
         exec1 = m.Infra.GateExecution(
             result=gate1,
-            issues=[issue1, issue2],
+            issues=(issue1, issue2),
             raw_output="",
         )
-        exec2 = m.Infra.GateExecution(result=gate2, issues=[issue3], raw_output="")
+        exec2 = m.Infra.GateExecution(result=gate2, issues=(issue3,), raw_output="")
         project = m.Infra.ProjectResult(
             project="p",
             gates={"lint": exec1, "format": exec2},
@@ -106,8 +106,8 @@ class TestProjectResultProperties:
             errors=[],
             duration=0.0,
         )
-        exec1 = m.Infra.GateExecution(result=gate1, issues=[], raw_output="")
-        exec2 = m.Infra.GateExecution(result=gate2, issues=[], raw_output="")
+        exec1 = m.Infra.GateExecution(result=gate1, issues=(), raw_output="")
+        exec2 = m.Infra.GateExecution(result=gate2, issues=(), raw_output="")
         project = m.Infra.ProjectResult(
             project="p",
             gates={"lint": exec1, "format": exec2},
@@ -129,8 +129,8 @@ class TestProjectResultProperties:
             errors=[],
             duration=0.0,
         )
-        exec1 = m.Infra.GateExecution(result=gate1, issues=[], raw_output="")
-        exec2 = m.Infra.GateExecution(result=gate2, issues=[], raw_output="")
+        exec1 = m.Infra.GateExecution(result=gate1, issues=(), raw_output="")
+        exec2 = m.Infra.GateExecution(result=gate2, issues=(), raw_output="")
         project = m.Infra.ProjectResult(
             project="p",
             gates={"lint": exec1, "format": exec2},
@@ -182,10 +182,10 @@ class TestWorkspaceCheckerErrorSummary:
         )
         exec1 = m.Infra.GateExecution(
             result=gate1,
-            issues=[issue1, issue2],
+            issues=(issue1, issue2),
             raw_output="",
         )
-        exec2 = m.Infra.GateExecution(result=gate2, issues=[issue3], raw_output="")
+        exec2 = m.Infra.GateExecution(result=gate2, issues=(issue3,), raw_output="")
         proj1 = m.Infra.ProjectResult(project="proj1", gates={"lint": exec1})
         proj2 = m.Infra.ProjectResult(project="proj2", gates={"format": exec2})
         tm.that(proj1.total_errors, eq=2)

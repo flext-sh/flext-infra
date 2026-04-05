@@ -8,7 +8,7 @@ from typing import ClassVar
 
 from rope.refactor.importutils import get_module_imports as rope_get_module_imports
 
-from flext_infra import FlextInfraUtilitiesRopeCore, c, m, p
+from flext_infra import FlextInfraUtilitiesRopeCore, c, m, p, t
 
 
 class FlextInfraUtilitiesRopeHelpers:
@@ -19,9 +19,9 @@ class FlextInfraUtilitiesRopeHelpers:
         """Expose ``get_module_imports`` through the public Rope protocol boundary."""
 
         def _get_module_imports(
-            project: p.Infra.RopeProjectLike,
-            pymodule: p.Infra.RopePyModuleLike,
-        ) -> p.Infra.RopeModuleImportsLike:
+            project: t.Infra.RopeProject,
+            pymodule: t.Infra.RopePyModule,
+        ) -> t.Infra.RopeModuleImports:
             return FlextInfraUtilitiesRopeCore.ensure_module_imports(
                 rope_get_module_imports(project, pymodule)
             )

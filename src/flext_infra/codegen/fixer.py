@@ -75,8 +75,8 @@ class FlextInfraCodegenFixer(s[str]):
     ) -> m.Infra.AutoFixResult:
         return m.Infra.AutoFixResult(
             project=project_name,
-            violations_fixed=ctx.violations_fixed,
-            violations_skipped=ctx.violations_skipped,
+            violations_fixed=list(ctx.violations_fixed),
+            violations_skipped=list(ctx.violations_skipped),
             files_modified=sorted(ctx.files_modified),
         )
 

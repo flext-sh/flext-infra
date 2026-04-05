@@ -25,8 +25,8 @@ def test_refactor_census_accepts_apply_before_subcommand(
     ) -> r[m.Infra.UtilitiesCensusReport]:
         return r[m.Infra.UtilitiesCensusReport].ok(
             m.Infra.UtilitiesCensusReport(
-                classes=[],
-                projects=[],
+                classes=(),
+                projects=(),
                 total_classes=0,
                 total_methods=0,
                 files_scanned=0,

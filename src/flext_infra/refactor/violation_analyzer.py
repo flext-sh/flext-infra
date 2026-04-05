@@ -88,13 +88,13 @@ class FlextInfraRefactorViolationAnalyzer:
         ]
         helper_report = m.Infra.HelperClassificationReport(
             totals=dict(helper_totals),
-            suggestions=helper_suggestions,
-            manual_review=helper_manual_review,
+            suggestions=tuple(helper_suggestions),
+            manual_review=tuple(helper_manual_review),
         )
         return m.Infra.ViolationAnalysisReport(
             totals=dict(totals),
             files={k: {**v} for k, v in per_file.items()},
-            top_files=hottest_files,
+            top_files=tuple(hottest_files),
             files_scanned=len(files),
             helper_classification=helper_report,
             class_nesting=class_nesting,
@@ -126,9 +126,9 @@ class FlextInfraRefactorViolationAnalyzer:
             if classification.manual_review:
                 manual_review.append(classification)
         return m.Infra.HelperFileAnalysis(
-            suggestions=suggestions,
+            suggestions=tuple(suggestions),
             totals=dict(totals),
-            manual_review=manual_review,
+            manual_review=tuple(manual_review),
         )
 
     @classmethod

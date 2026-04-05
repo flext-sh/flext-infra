@@ -32,7 +32,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
             return m.Infra.ClassNestingReport(
                 violations_count=0,
                 confidence_counts={},
-                violations=[],
+                violations=(),
                 per_file_counts={},
             )
         grouped_targets = cls._group_targets_by_project_root(files)
@@ -40,7 +40,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
             return m.Infra.ClassNestingReport(
                 violations_count=0,
                 confidence_counts={},
-                violations=[],
+                violations=(),
                 per_file_counts={},
             )
         scanner = FlextInfraRefactorLooseClassScanner()
@@ -98,7 +98,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
         return m.Infra.ClassNestingReport(
             violations_count=len(violations),
             confidence_counts=dict(confidence_counts),
-            violations=violations,
+            violations=tuple(violations),
             per_file_counts=dict(per_file_counts),
         )
 

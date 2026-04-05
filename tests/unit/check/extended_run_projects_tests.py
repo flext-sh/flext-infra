@@ -13,7 +13,7 @@ import pytest
 from flext_tests import tm
 from tests import m, t
 
-from flext_infra import FlextInfraWorkspaceChecker
+from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 
 CheckProjectStub = Callable[..., m.Infra.ProjectResult]
 
@@ -31,10 +31,10 @@ def _make_gate_exec(
             gate=gate,
             project=project,
             passed=passed,
-            errors=[],
+            errors=(),
             duration=0.0,
         ),
-        issues=issues or [],
+        issues=tuple(issues or ()),
         raw_output="",
     )
 

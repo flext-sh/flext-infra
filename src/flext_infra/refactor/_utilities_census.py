@@ -150,7 +150,7 @@ class FlextInfraUtilitiesRefactorCensus:
                 m.Infra.CensusClassSummary(
                     class_name=cls,
                     source_file=items[0].source_file if items else "",
-                    methods=m_list,
+                    methods=tuple(m_list),
                 ),
             )
 
@@ -169,15 +169,15 @@ class FlextInfraUtilitiesRefactorCensus:
             )
 
         return m.Infra.UtilitiesCensusReport(
-            classes=cls_sums,
-            projects=[
+            classes=tuple(cls_sums),
+            projects=tuple(
                 m.Infra.CensusProjectSummary(
                     project_name=p,
-                    usages=us,
+                    usages=tuple(us),
                     total=sum(u.count for u in us),
                 )
                 for p, us in sorted(pj_sums.items())
-            ],
+            ),
             total_classes=len(methods),
             total_methods=sum(len(v) for v in methods.values()),
             total_usages=len(records),
