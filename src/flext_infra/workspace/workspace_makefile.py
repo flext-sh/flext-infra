@@ -134,7 +134,7 @@ class FlextInfraWorkspaceMakefileGenerator:
         template_content = self._build_template_lines(content)
 
         try:
-            _TEMPLATES_DIR.mkdir(parents=True, exist_ok=True)
+            u.Infra.ensure_dir(_TEMPLATES_DIR)
             template_write = u.Infra.atomic_write_file(
                 self.template_path, template_content
             )
