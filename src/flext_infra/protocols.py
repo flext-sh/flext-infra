@@ -15,6 +15,8 @@ from typing import Protocol, runtime_checkable
 from flext_cli import FlextCliProtocols
 from flext_infra import (
     FlextInfraProtocolsBase,
+    FlextInfraProtocolsCheck,
+    FlextInfraProtocolsRefactor,
     FlextInfraProtocolsRope,
 )
 
@@ -28,7 +30,13 @@ class FlextInfraProtocols(FlextCliProtocols):
     """
 
     @runtime_checkable
-    class Infra(FlextInfraProtocolsRope, FlextInfraProtocolsBase, Protocol):
+    class Infra(
+        FlextInfraProtocolsCheck,
+        FlextInfraProtocolsRefactor,
+        FlextInfraProtocolsRope,
+        FlextInfraProtocolsBase,
+        Protocol,
+    ):
         """Infra-specific structural protocol definitions."""
 
 

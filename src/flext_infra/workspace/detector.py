@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import override
 from urllib.parse import urlparse
 
-from flext_infra import c, m, r, u
+from flext_infra import c, r, u
 from flext_infra.base import s
 
 # Canonical alias -- single source of truth lives in workspace constants
@@ -111,11 +111,11 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
     @override
     def execute_command(
         cls,
-        params: m.Infra.WorkspaceDetectInput,
+        params: s[c.Infra.WorkspaceMode],
     ) -> r[c.Infra.WorkspaceMode]:
         """Execute the validated CLI service instance directly."""
-        service = cls.model_validate({"workspace_root": params.workspace_path})
-        return service.execute()
+        _ = cls
+        return params.execute()
 
 
 __all__ = ["FlextInfraWorkspaceDetector", "FlextInfraWorkspaceMode"]

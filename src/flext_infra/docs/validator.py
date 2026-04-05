@@ -29,8 +29,7 @@ class FlextInfraDocValidator(s[bool]):
         ),
     ] = c.Infra.DEFAULT_DOCS_OUTPUT_DIR
 
-    @override
-    def validate(
+    def validate_docs(
         self,
         value: Path,
         *,
@@ -54,7 +53,7 @@ class FlextInfraDocValidator(s[bool]):
     @override
     def execute(self) -> r[bool]:
         """Execute the configured docs validation flow."""
-        result = self.validate(
+        result = self.validate_docs(
             self.workspace_root,
             projects=self.selected_projects,
             output_dir=self.docs_output_dir,
@@ -70,16 +69,17 @@ class FlextInfraDocValidator(s[bool]):
             return r[bool].fail(f"Validate found {failures} failure(s)")
         return r[bool].ok(True)
 
+    @classmethod
     @override
-    def execute_command(self, params: m.Infra.DocsValidateInput) -> r[bool]:
-        """CLI handler that normalizes input into the canonical service model."""
-        service = type(self)(
-            workspace=params.workspace_path,
-            apply=params.apply,
-            check=params.check,
-            selected_projects=params.project_names,
-            docs_output_dir=params.output_dir,
-        )
+    def execute_command(cls, params: m.Infra.DocsValidateInput) -> r[bool]:
+        """Build the docs validator service from CLI input and execute it."""
+        service = cls.model_validate({
+            "workspace_root": params.workspace_path,
+            "apply_changes": params.apply,
+            "check_only": params.check,
+            "selected_projects": params.project_names,
+            "docs_output_dir": params.output_dir,
+        })
         return service.execute()
 
     def _run_adr_skill_check(

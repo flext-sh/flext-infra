@@ -148,15 +148,11 @@ class FlextInfraProjectMigrator(
     @override
     def execute_command(
         cls,
-        params: m.Infra.WorkspaceMigrateInput,
+        params: FlextInfraCommandContext[Sequence[m.Infra.MigrationResult]],
     ) -> r[Sequence[m.Infra.MigrationResult]]:
         """Execute the validated CLI service instance directly."""
-        service = cls.model_validate({
-            "workspace_root": params.workspace_path,
-            "apply_changes": params.apply,
-            "dry_run": params.dry_run,
-        })
-        return service.execute()
+        _ = cls
+        return params.execute()
 
     def migrate(
         self,

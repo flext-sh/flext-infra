@@ -24,7 +24,7 @@ class WorkspaceLoopOutcome(Protocol):
     total_elapsed: float
 
 
-class FlextInfraProtocolsCheck:
+class FlextInfraProtocolsCheck(Protocol):
     """Check-domain protocol definitions."""
 
     WorkspaceLoopOutcome = WorkspaceLoopOutcome

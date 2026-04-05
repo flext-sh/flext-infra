@@ -64,6 +64,8 @@ EXTERNAL_PROJECTS := $(shell \
 
 ALL_PROJECTS := $(FLEXT_PROJECTS) $(EXTERNAL_PROJECTS)
 SELECTED_PROJECTS := $(strip $(if $(PROJECT),$(PROJECT),$(if $(PROJECTS),$(PROJECTS),$(ALL_PROJECTS))))
+DOCS_DEFAULT_PROJECTS := $(strip $(filter flext-%,$(ALL_PROJECTS)))
+DOCS_SELECTED_PROJECTS := $(strip $(if $(PROJECT),$(PROJECT),$(if $(PROJECTS),$(PROJECTS),$(DOCS_DEFAULT_PROJECTS))))
 
 # Auto-detect PYTHONPATH from all project src/ directories (no hardcoded names)
 # Priority: flext-infra and flext-tests BEFORE flext-core (they split from flext-core
@@ -88,6 +90,7 @@ WORKSPACE_INFRA_VALIDATE := $(WORKSPACE_FLEXT_INFRA) {{ make.CLI_GROUP_VALIDATE 
 WORKSPACE_INFRA_WORKSPACE := $(WORKSPACE_FLEXT_INFRA) {{ make.CLI_GROUP_WORKSPACE }}
 ORCHESTRATOR := $(WORKSPACE_INFRA_WORKSPACE) orchestrate
 ORCHESTRATOR_PROJECTS := $(strip $(foreach proj,$(SELECTED_PROJECTS),--projects $(proj)))
+DOCS_ORCHESTRATOR_PROJECTS := $(strip $(foreach proj,$(DOCS_SELECTED_PROJECTS),--projects $(proj)))
 
 define ENSURE_NO_PROJECT_CONFLICT
 	if [ -n "$(PROJECT)" ] && [ -n "$(PROJECTS)" ]; then \
@@ -112,8 +115,25 @@ if [ -z "$(SELECTED_PROJECTS)" ]; then \
 fi
 endef
 
+define ENSURE_DOCS_PROJECTS
+if [ -z "$(DOCS_SELECTED_PROJECTS)" ]; then \
+	echo "{{ make.PROJECT_SELECTION_EMPTY_ERROR }}"; \
+	echo "{{ make.PROJECT_SELECTION_EMPTY_HINT | replace('"', '\\"') }}"; \
+	exit 1; \
+fi
+endef
+
 define ENSURE_PROJECTS_EXIST
 for proj in $(SELECTED_PROJECTS); do \
+	if [ ! -d "$$proj" ] || [ ! -f "$$proj/pyproject.toml" ]; then \
+		echo "ERROR: invalid project '$$proj'"; \
+		exit 1; \
+	fi; \
+done
+endef
+
+define ENSURE_DOCS_PROJECTS_EXIST
+for proj in $(DOCS_SELECTED_PROJECTS); do \
 	if [ ! -d "$$proj" ] || [ ! -f "$$proj/pyproject.toml" ]; then \
 		echo "ERROR: invalid project '$$proj'"; \
 		exit 1; \
@@ -161,6 +181,14 @@ define PREPARE_RUNTIME_SELECTED_PROJECTS
 $(REQUIRE_VENV)
 $(ENFORCE_WORKSPACE_VENV)
 $(PREPARE_SELECTED_PROJECTS)
+endef
+
+define PREPARE_RUNTIME_DOCS_PROJECTS
+$(REQUIRE_VENV)
+$(ENFORCE_WORKSPACE_VENV)
+$(ENSURE_NO_PROJECT_CONFLICT)
+$(ENSURE_DOCS_PROJECTS)
+$(ENSURE_DOCS_PROJECTS_EXIST)
 endef
 
 # Guard: ensure .venv exists before running any target (read-only, no side effects)
@@ -531,11 +559,11 @@ fmt: ## Run code formatting across all workspace projects (ruff/gofmt + markdown
 	$(Q)echo "Format complete."
 
 docs: ## Run docs pipeline (DOCS_PHASE=audit|fix|build|generate|validate|all)
-	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
+	$(Q)$(PREPARE_RUNTIME_DOCS_PROJECTS)
 	$(Q)$(ORCHESTRATOR) --verb docs \
 		$(if $(filter 1,$(FAIL_FAST)),--fail-fast) \
 {{ forward_make_args(make.DOCS_FORWARD_ARGS) | trim }}
-		$(ORCHESTRATOR_PROJECTS)
+		$(DOCS_ORCHESTRATOR_PROJECTS)
 
 test: ## Run tests only in all projects
 	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)

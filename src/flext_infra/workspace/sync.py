@@ -87,7 +87,7 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
     @override
     def execute_command(
         cls,
-        params: m.Infra.WorkspaceSyncInput,
+        params: m.Infra.WorkspaceSyncInput,  # type: ignore[override]
     ) -> r[m.Infra.SyncResult]:
         """Execute the validated CLI service instance directly."""
         service = cls.model_validate({

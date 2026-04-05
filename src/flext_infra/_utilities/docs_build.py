@@ -2,15 +2,8 @@
 
 from __future__ import annotations
 
-from mkdocs.commands.build import build as mkdocs_build
-from mkdocs.config import load_config
-from mkdocs.exceptions import (
-    Abort,
-    BuildError,
-    ConfigurationError,
-    MkDocsException,
-    PluginError,
-)
+from collections.abc import Callable, Mapping
+from pathlib import Path
 
 from flext_cli import FlextCliUtilitiesJson
 from flext_infra import c, m, p
@@ -84,22 +77,8 @@ class FlextInfraUtilitiesDocsBuild:
                 passed=False,
             )
         try:
-            site_dir.parent.mkdir(parents=True, exist_ok=True)
-            config_obj = load_config(
-                config_file_path=str(config),
-                site_dir=str(site_dir),
-            )
-            config_obj["strict"] = True
-            mkdocs_build(config_obj, dirty=False)
-        except (
-            Abort,
-            BuildError,
-            ConfigurationError,
-            MkDocsException,
-            OSError,
-            PluginError,
-            ValueError,
-        ) as exc:
+            FlextInfraUtilitiesDocsBuild._run_mkdocs_api(config, site_dir)
+        except (OSError, ValueError) as exc:
             return m.Infra.DocsPhaseReport(
                 phase="build",
                 scope=scope.name,
@@ -116,6 +95,37 @@ class FlextInfraUtilitiesDocsBuild:
             site_dir=site_dir.as_posix(),
             passed=True,
         )
+
+    @staticmethod
+    def _run_mkdocs_api(config: Path, site_dir: Path) -> None:
+        """Run MkDocs build via the Python API with lazy imports.
+
+        Converts mkdocs-specific exceptions to ``OSError`` so callers only
+        need to catch standard exception types.
+        """
+        from mkdocs.commands import build as _build_mod  # noqa: PLC0415
+        from mkdocs.config import load_config as _raw_load  # noqa: PLC0415
+        from mkdocs.exceptions import (  # noqa: PLC0415
+            Abort,
+            BuildError,
+            ConfigurationError,
+            MkDocsException,
+            PluginError,
+        )
+
+        _typed_load: Callable[..., Mapping[str, bool]] = _raw_load
+        _typed_build: Callable[..., None] = _build_mod.build
+        try:
+            site_dir.parent.mkdir(parents=True, exist_ok=True)
+            config_obj: Mapping[str, bool] = _typed_load(
+                config_file_path=str(config),
+                site_dir=str(site_dir),
+            )
+            config_obj["strict"] = True
+            _typed_build(config_obj, dirty=False)
+        except (Abort, BuildError, ConfigurationError, MkDocsException, PluginError) as exc:
+            msg = str(exc) or "mkdocs build failed"
+            raise OSError(msg) from exc
 
     @staticmethod
     def docs_write_build_reports(

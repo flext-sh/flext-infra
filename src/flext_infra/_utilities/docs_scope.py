@@ -242,7 +242,7 @@ class FlextInfraUtilitiesDocsScope:
                 with pyproject.open("rb") as fh:
                     payload = tomllib.load(fh)
             except (OSError, tomllib.TOMLDecodeError):
-                payload = {}
+                payload: t.Infra.ContainerDict = {}
             docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(payload)
             enabled = docs_meta.get("enabled", True)
             if isinstance(enabled, bool) and not enabled:

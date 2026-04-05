@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import re
-import tomllib
-from collections.abc import MutableSequence, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_core import r
@@ -24,52 +23,17 @@ class FlextInfraUtilitiesDiscovery(FlextInfraUtilitiesDiscoveryScanning):
     def discover_projects(
         workspace_root: Path,
     ) -> r[Sequence[m.Infra.ProjectInfo]]:
-        """Find valid projects in the workspace."""
-        try:
-            if not workspace_root.exists() or not workspace_root.is_dir():
-                return r[Sequence[m.Infra.ProjectInfo]].fail(
-                    f"discovery failed: invalid workspace root {workspace_root}",
-                )
-            projects: MutableSequence[m.Infra.ProjectInfo] = []
-            for entry in sorted(workspace_root.iterdir(), key=lambda item: item.name):
-                if not entry.is_dir() or entry.name.startswith("."):
-                    continue
-                if not (entry / c.Infra.Files.PYPROJECT_FILENAME).exists():
-                    continue
-                if not (entry / c.Infra.Files.MAKEFILE_FILENAME).exists():
-                    continue
-                pyproject = entry / c.Infra.Files.PYPROJECT_FILENAME
-                try:
-                    with pyproject.open("rb") as fh:
-                        payload = tomllib.load(fh)
-                except (OSError, tomllib.TOMLDecodeError):
-                    payload = {}
-                docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(
-                    payload,
-                )
-                projects.append(
-                    m.Infra.ProjectInfo.model_construct(
-                        path=entry,
-                        name=entry.name,
-                        stack="python/flext",
-                        has_tests=(entry / c.Infra.Directories.TESTS).is_dir(),
-                        has_src=(entry / c.Infra.Paths.DEFAULT_SRC_DIR).is_dir(),
-                        project_class=FlextInfraUtilitiesDocsScope.classify_project_from_meta(
-                            entry.name,
-                            docs_meta,
-                        ),
-                        package_name=FlextInfraUtilitiesDocsScope.package_name_from_payload(
-                            entry,
-                            payload,
-                            docs_meta,
-                        ),
-                    ),
-                )
-            return r[Sequence[m.Infra.ProjectInfo]].ok(projects)
-        except OSError as exc:
+        """Find valid projects in the workspace.
+
+        Delegates to ``FlextInfraUtilitiesDocsScope.discover_projects`` which
+        is the canonical implementation with governance filtering and
+        ``tomllib``-based fast parsing.
+        """
+        if not workspace_root.exists() or not workspace_root.is_dir():
             return r[Sequence[m.Infra.ProjectInfo]].fail(
-                f"discovery failed: {exc}",
+                f"discovery failed: invalid workspace root {workspace_root}",
             )
+        return FlextInfraUtilitiesDocsScope.discover_projects(workspace_root)
 
     @staticmethod
     def _submodule_names(workspace_root: Path) -> t.Infra.StrSet:

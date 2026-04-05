@@ -229,16 +229,18 @@ class FlextInfraDocAuditor(s[bool], FlextInfraDocAuditorMixin):
             return r[bool].fail(f"Audit found {failures} failing scope(s)")
         return r[bool].ok(True)
 
+    @classmethod
     @override
-    def execute_command(self, params: m.Infra.DocsAuditInput) -> r[bool]:
-        """CLI handler that normalizes input into the canonical service model."""
-        service = type(self)(
-            workspace=params.workspace_path,
-            check=params.check,
-            selected_projects=params.project_names,
-            docs_output_dir=params.output_dir,
-            strict_mode=params.strict,
-        )
+    def execute_command(cls, params: m.Infra.DocsAuditInput) -> r[bool]:
+        """Build the docs auditor service from CLI input and execute it."""
+        service = cls.model_validate({
+            "workspace_root": params.workspace_path,
+            "apply_changes": params.apply,
+            "check_only": params.check,
+            "selected_projects": params.project_names,
+            "docs_output_dir": params.output_dir,
+            "strict_mode": params.strict,
+        })
         return service.execute()
 
     @classmethod

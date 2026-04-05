@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
-from flext_infra import c, m, t
+from flext_infra import c, m
 from flext_infra._utilities.templates import FlextInfraUtilitiesTemplates
 
 
@@ -12,12 +12,13 @@ class FlextInfraUtilitiesDocsRender:
     """Rendering helpers for generated docs content."""
 
     @staticmethod
-    def _string_list(data: t.Infra.ContainerDict, key: str) -> Sequence[str]:
+    def _string_list(data: Mapping[str, object], key: str) -> Sequence[str]:
         """Return one contract field as a normalized string sequence."""
-        value = data.get(key)
-        if not isinstance(value, Sequence) or isinstance(value, str):
+        value: object = data.get(key)
+        if not isinstance(value, list):
             return []
-        return [str(item) for item in value]
+        items: list[object] = value
+        return [str(entry) for entry in items]
 
     @staticmethod
     def _preview(values: Sequence[str], *, limit: int = 6) -> str:
@@ -44,7 +45,7 @@ class FlextInfraUtilitiesDocsRender:
         return f"{relative}.md"
 
     @staticmethod
-    def _exclude_plugin_lines(data: t.Infra.ContainerDict) -> Sequence[str]:
+    def _exclude_plugin_lines(data: Mapping[str, object]) -> Sequence[str]:
         """Render optional ``mkdocs-exclude`` plugin lines."""
         patterns = FlextInfraUtilitiesDocsRender._string_list(data, "exclude_docs")
         if not patterns:
@@ -56,7 +57,7 @@ class FlextInfraUtilitiesDocsRender:
         ]
 
     @staticmethod
-    def _exclude_docs_lines(data: t.Infra.ContainerDict) -> Sequence[str]:
+    def _exclude_docs_lines(data: Mapping[str, object]) -> Sequence[str]:
         """Render optional native ``exclude_docs`` lines for early MkDocs filtering."""
         patterns = FlextInfraUtilitiesDocsRender._string_list(data, "exclude_docs")
         if not patterns:
@@ -86,10 +87,10 @@ class FlextInfraUtilitiesDocsRender:
     @staticmethod
     def docs_project_index(
         scope: m.Infra.DocScope,
-        contract: object,
+        contract: Mapping[str, object],
     ) -> str:
         """Return the standard project docs landing page."""
-        data: t.Infra.ContainerDict = contract if isinstance(contract, Mapping) else {}
+        data: Mapping[str, object] = contract or {}
         aliases = FlextInfraUtilitiesDocsRender._string_list(data, "aliases")
         facades = FlextInfraUtilitiesDocsRender._string_list(data, "facades")
         module_exports = FlextInfraUtilitiesDocsRender._string_list(
@@ -146,10 +147,10 @@ class FlextInfraUtilitiesDocsRender:
     @staticmethod
     def docs_api_readme(
         scope: m.Infra.DocScope,
-        contract: object,
+        contract: Mapping[str, object],
     ) -> str:
         """Return the standard API readme for a project."""
-        data: t.Infra.ContainerDict = contract if isinstance(contract, Mapping) else {}
+        data: Mapping[str, object] = contract or {}
         facades = FlextInfraUtilitiesDocsRender._string_list(data, "facades")
         modules = FlextInfraUtilitiesDocsRender._string_list(data, "modules")
         return "\n".join([
@@ -184,12 +185,12 @@ class FlextInfraUtilitiesDocsRender:
     @staticmethod
     def docs_project_mkdocs(
         scope: m.Infra.DocScope,
-        contract: object,
+        contract: Mapping[str, object],
         modules: Sequence[str],
     ) -> str:
         """Return the managed mkdocs.yml for a project scope."""
         _ = modules
-        data: t.Infra.ContainerDict = contract if isinstance(contract, Mapping) else {}
+        data: Mapping[str, object] = contract or {}
         site_title = str(data.get("site_title", "")).strip() or scope.name
         site_url = str(data.get("site_url", "")).strip() or c.Infra.GITHUB_REPO_URL
         repo_url = str(data.get("repo_url", "")).strip() or c.Infra.GITHUB_REPO_URL
@@ -218,6 +219,11 @@ class FlextInfraUtilitiesDocsRender:
             "        python:",
             "          paths:",
             "            - src",
+            "          docstring_style: auto",
+            "          docstring_options:",
+            "            warnings: false",
+            "            warn_unknown_params: false",
+            "            warn_missing_types: false",
             "          options:",
             "            show_root_heading: true",
             "            show_root_full_path: false",
@@ -236,9 +242,12 @@ class FlextInfraUtilitiesDocsRender:
         ])
 
     @staticmethod
-    def docs_overview_page(scope: m.Infra.DocScope, contract: object) -> str:
+    def docs_overview_page(
+        scope: m.Infra.DocScope,
+        contract: Mapping[str, object],
+    ) -> str:
         """Return the generated overview page for a project API."""
-        data: t.Infra.ContainerDict = contract if isinstance(contract, Mapping) else {}
+        data: Mapping[str, object] = contract or {}
         aliases = FlextInfraUtilitiesDocsRender._preview(
             FlextInfraUtilitiesDocsRender._string_list(data, "aliases"),
             limit=11,
@@ -310,9 +319,9 @@ class FlextInfraUtilitiesDocsRender:
         return "\n".join(lines)
 
     @staticmethod
-    def docs_root_mkdocs(contract: object) -> str:
+    def docs_root_mkdocs(contract: Mapping[str, object]) -> str:
         """Return the managed mkdocs.yml for the workspace root."""
-        data: t.Infra.ContainerDict = contract if isinstance(contract, Mapping) else {}
+        data: Mapping[str, object] = contract or {}
         site_title = str(data.get("site_title", "")).strip() or "FLEXT Workspace"
         site_url = str(data.get("site_url", "")).strip() or c.Infra.GITHUB_REPO_URL
         repo_url = str(data.get("repo_url", "")).strip() or c.Infra.GITHUB_REPO_URL
@@ -338,6 +347,11 @@ class FlextInfraUtilitiesDocsRender:
             "  - mkdocstrings:",
             "      handlers:",
             "        python:",
+            "          docstring_style: auto",
+            "          docstring_options:",
+            "            warnings: false",
+            "            warn_unknown_params: false",
+            "            warn_missing_types: false",
             "          options:",
             "            show_root_heading: true",
             "            show_root_full_path: false",
@@ -361,13 +375,13 @@ class FlextInfraUtilitiesDocsRender:
 
     @staticmethod
     def docs_root_overview_page(
-        contract: object,
+        contract: Mapping[str, object],
         *,
         project_count: int,
         class_counts: Mapping[str, int],
     ) -> str:
         """Return the generated root API overview page."""
-        data: t.Infra.ContainerDict = contract if isinstance(contract, Mapping) else {}
+        data: Mapping[str, object] = contract or {}
         classes = (
             ", ".join(
                 f"`{name}`={count}" for name, count in sorted(class_counts.items())

@@ -83,7 +83,7 @@ class TestValidateCore:
         tmp_path: Path,
     ) -> None:
         """Test that validate returns r."""
-        result = validator.validate(tmp_path)
+        result = validator.validate_docs(tmp_path)
         tm.that(result.is_success or result.is_failure, eq=True)
 
     def test_valid_scope_returns_success(
@@ -92,7 +92,7 @@ class TestValidateCore:
         tmp_path: Path,
     ) -> None:
         """Test validate with valid scope returns success."""
-        result = validator.validate(tmp_path)
+        result = validator.validate_docs(tmp_path)
         tm.ok(result)
         tm.that(len(result.value), gte=0)
 
@@ -102,7 +102,7 @@ class TestValidateCore:
         tmp_path: Path,
     ) -> None:
         """Test ValidateReport has required fields."""
-        result = validator.validate(tmp_path)
+        result = validator.validate_docs(tmp_path)
         if result.is_success and result.value:
             report = result.value[0]
             tm.that(hasattr(report, "scope"), eq=True)
@@ -115,7 +115,7 @@ class TestValidateCore:
         tmp_path: Path,
     ) -> None:
         """Test validate with single project filter."""
-        result = validator.validate(tmp_path, projects=["test-project"])
+        result = validator.validate_docs(tmp_path, projects=["test-project"])
         tm.that(result.is_success or result.is_failure, eq=True)
 
     def test_with_projects_filter(
@@ -124,7 +124,7 @@ class TestValidateCore:
         tmp_path: Path,
     ) -> None:
         """Test validate with multiple projects filter."""
-        result = validator.validate(tmp_path, projects=["proj1", "proj2"])
+        result = validator.validate_docs(tmp_path, projects=["proj1", "proj2"])
         tm.that(result.is_success or result.is_failure, eq=True)
 
     def test_with_check_parameter(
@@ -133,7 +133,7 @@ class TestValidateCore:
         tmp_path: Path,
     ) -> None:
         """Test validate with check parameter."""
-        result = validator.validate(tmp_path, check="adr-skills")
+        result = validator.validate_docs(tmp_path, check="adr-skills")
         tm.that(result.is_success or result.is_failure, eq=True)
 
     def test_apply_false_dry_run(
@@ -142,7 +142,7 @@ class TestValidateCore:
         tmp_path: Path,
     ) -> None:
         """Test validate with apply=False (dry-run mode)."""
-        result = validator.validate(tmp_path, apply=False)
+        result = validator.validate_docs(tmp_path, apply=False)
         tm.that(result.is_success or result.is_failure, eq=True)
 
     def test_apply_true(
@@ -151,7 +151,7 @@ class TestValidateCore:
         tmp_path: Path,
     ) -> None:
         """Test validate with apply=True."""
-        result = validator.validate(tmp_path, apply=True)
+        result = validator.validate_docs(tmp_path, apply=True)
         tm.that(result.is_success or result.is_failure, eq=True)
 
     def test_custom_output_dir(
@@ -160,7 +160,7 @@ class TestValidateCore:
         tmp_path: Path,
     ) -> None:
         """Test validate with custom output directory."""
-        result = validator.validate(tmp_path, output_dir=str(tmp_path / "custom"))
+        result = validator.validate_docs(tmp_path, output_dir=str(tmp_path / "custom"))
         tm.that(result.is_success or result.is_failure, eq=True)
 
     def test_multiple_scopes(
@@ -169,7 +169,7 @@ class TestValidateCore:
         tmp_path: Path,
     ) -> None:
         """Test validate returns list for multiple scopes."""
-        result = validator.validate(tmp_path, projects=["proj1", "proj2", "proj3"])
+        result = validator.validate_docs(tmp_path, projects=["proj1", "proj2", "proj3"])
         if result.is_success:
             tm.that(len(result.value), gte=0)
 
@@ -188,5 +188,5 @@ class TestValidateCore:
             return r[Sequence[m.Infra.DocScope]].fail("Scope error")
 
         monkeypatch.setattr(FlextInfraUtilitiesDocs, "build_scopes", mock_build_scopes)
-        result = validator.validate(tmp_path)
+        result = validator.validate_docs(tmp_path)
         tm.fail(result, has="Scope error")

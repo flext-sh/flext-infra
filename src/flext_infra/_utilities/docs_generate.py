@@ -53,10 +53,12 @@ class FlextInfraUtilitiesDocsGenerate:
             scope.path,
             scope.package_name,
         )
-        modules = contract.get("modules", [])
-        module_names = (
-            [str(item) for item in modules] if isinstance(modules, list) else []
-        )
+        raw_modules: object = contract.get("modules", [])
+        if isinstance(raw_modules, list):
+            items: list[object] = raw_modules
+            module_names: list[str] = [str(entry) for entry in items]
+        else:
+            module_names = []
         expected_generated: MutableSequence[Path] = [
             scope.path / "docs/api-reference/generated/overview.md",
             scope.path / "docs/api-reference/generated/public-api.md",
@@ -167,10 +169,12 @@ class FlextInfraUtilitiesDocsGenerate:
             scope.path,
             scope.package_name,
         )
-        modules = contract.get("modules", [])
-        module_names = (
-            [str(item) for item in modules] if isinstance(modules, list) else []
-        )
+        raw_modules2: object = contract.get("modules", [])
+        if isinstance(raw_modules2, list):
+            items2: list[object] = raw_modules2
+            module_names: list[str] = [str(entry) for entry in items2]
+        else:
+            module_names = []
         return [
             FlextInfraUtilitiesDocsContract.docs_write_if_needed(
                 path,

@@ -86,10 +86,11 @@ class FlextInfraUtilitiesDocsApi:
     @staticmethod
     def _project_keywords(project_meta: Mapping[str, object]) -> Sequence[str]:
         """Return normalized project keywords from ``pyproject.toml`` metadata."""
-        raw = project_meta.get("keywords")
+        raw: object = project_meta.get("keywords")
         if not isinstance(raw, list):
             return []
-        return [str(item).strip() for item in raw if str(item).strip()]
+        items: list[object] = raw
+        return [text for entry in items if (text := str(entry).strip())]
 
     @staticmethod
     def _rope_public_symbols(
@@ -265,8 +266,17 @@ class FlextInfraUtilitiesDocsApi:
     ) -> Sequence[m.Infra.AuditIssue]:
         """Return audit issues for public modules and exports missing docstrings."""
         package_name = str(contract.get("package_name", ""))
-        target_map = contract.get("target_map", {})
-        modules = contract.get("modules", [])
+        raw_target_map: object = contract.get("target_map", {})
+        raw_modules: object = contract.get("modules", [])
+        if isinstance(raw_modules, list):
+            module_items: list[object] = raw_modules
+            module_list: Sequence[str] = [str(entry) for entry in module_items]
+        else:
+            module_list = []
+        target_map: dict[str, str] = {}
+        if isinstance(raw_target_map, dict):
+            map_entries: dict[object, object] = raw_target_map
+            target_map = {str(k): str(v) for k, v in map_entries.items()}
         issues: MutableSequence[m.Infra.AuditIssue] = []
         if package_name:
             root_module = FlextInfraUtilitiesDocsApi._module_file(
@@ -283,9 +293,9 @@ class FlextInfraUtilitiesDocsApi:
                             message="package module is missing a docstring",
                         ),
                     )
-        for module_name in modules if isinstance(modules, list) else []:
+        for module_name in module_list:
             module_file = FlextInfraUtilitiesDocsApi._module_file(
-                project_root, str(module_name)
+                project_root, module_name
             )
             if not module_file.exists():
                 continue
@@ -299,8 +309,6 @@ class FlextInfraUtilitiesDocsApi:
                         message=f"public module `{module_name}` is missing a docstring",
                     ),
                 )
-        if not isinstance(target_map, dict):
-            return issues
         for export_name, module_name in target_map.items():
             if (
                 export_name in FlextInfraUtilitiesDocsApi._ALIAS_EXPORTS
@@ -308,7 +316,7 @@ class FlextInfraUtilitiesDocsApi:
             ):
                 continue
             module_file = FlextInfraUtilitiesDocsApi._module_file(
-                project_root, str(module_name)
+                project_root, module_name
             )
             if not module_file.exists():
                 continue

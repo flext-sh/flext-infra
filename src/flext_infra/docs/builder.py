@@ -62,14 +62,16 @@ class FlextInfraDocBuilder(s[bool]):
             return r[bool].fail(f"Build had {failures} failure(s)")
         return r[bool].ok(True)
 
+    @classmethod
     @override
-    def execute_command(self, params: m.Infra.DocsBuildInput) -> r[bool]:
-        """CLI handler that normalizes input into the canonical service model."""
-        service = type(self)(
-            workspace=params.workspace_path,
-            selected_projects=params.project_names,
-            docs_output_dir=params.output_dir,
-        )
+    def execute_command(cls, params: m.Infra.DocsBuildInput) -> r[bool]:
+        """Build the docs builder service from CLI input and execute it."""
+        service = cls.model_validate({
+            "workspace_root": params.workspace_path,
+            "apply_changes": params.apply,
+            "selected_projects": params.project_names,
+            "docs_output_dir": params.output_dir,
+        })
         return service.execute()
 
     def _build_scope(self, scope: m.Infra.DocScope) -> m.Infra.DocsPhaseReport:

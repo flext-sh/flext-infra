@@ -93,17 +93,11 @@ class FlextInfraOrchestratorService(s[bool]):
     @override
     def execute_command(
         cls,
-        params: m.Infra.WorkspaceOrchestrateInput,
+        params: s[bool],
     ) -> r[bool]:
         """Execute the validated CLI service instance directly."""
-        service = cls.model_validate({
-            "workspace_root": params.workspace_path,
-            "verb": params.verb,
-            "projects": params.project_names or (),
-            "fail_fast": params.fail_fast,
-            "make_arg": params.make_args,
-        })
-        return service.execute()
+        _ = cls
+        return params.execute()
 
     def _execute_project(
         self,

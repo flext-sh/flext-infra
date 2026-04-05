@@ -20,7 +20,7 @@ class FlextInfraChangeTracker(Protocol):
     changes: MutableSequence[str]
 
 
-class FlextInfraProtocolsRefactor:
+class FlextInfraProtocolsRefactor(Protocol):
     """Refactor-domain protocol definitions."""
 
     ChangeTracker = FlextInfraChangeTracker

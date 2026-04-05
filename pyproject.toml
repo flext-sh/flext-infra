@@ -29,6 +29,12 @@ dependencies = [
   "flext-cli",
   "flext-core",
   "libcst (>=1.5.1,<2)",
+  "mkdocs-exclude>=1",
+  "mkdocs-material>=9.5",
+  "mkdocs-section-index>=0.3",
+  "mkdocs>=1.6",
+  "mkdocstrings-python>=1.7",
+  "mkdocstrings>=0.24",
   "rope>=1.14.0,<2.0.0",
 ]
 description = "FLEXT Infrastructure Tooling - Build automation, code generation, and workspace management"
