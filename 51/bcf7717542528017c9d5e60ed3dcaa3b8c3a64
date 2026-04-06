@@ -1,0 +1,27 @@
+src/flext_infra/deps/internal_sync.py
+  851db9fe50f869f3 34-38,225-229
+src/flext_infra/deps/fix_pyrefly_config.py
+  851db9fe50f869f3 47-51,53,111
+src/flext_infra/deps/path_sync_rewrite.py
+  851db9fe50f869f3 142
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "51bcf7717542528017c9d5e60ed3dcaa3b8c3a64",
+  "prompts": {
+    "851db9fe50f869f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17a80e18-13b2-40de-b145-9cd2e136d4ec",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 18,
+      "total_deletions": 10,
+      "accepted_lines": 18,
+      "overriden_lines": 0
+    }
+  }
+}
