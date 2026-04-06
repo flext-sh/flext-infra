@@ -3,9 +3,15 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from typing import TypeIs
 
-from flext_infra import c, m
+from flext_infra import c, m, t
 from flext_infra._utilities.templates import FlextInfraUtilitiesTemplates
+
+
+def _is_object_list(value: object) -> TypeIs[list[object]]:
+    """Type guard: narrow object to list[object]."""
+    return isinstance(value, list)
 
 
 class FlextInfraUtilitiesDocsRender:
@@ -15,10 +21,9 @@ class FlextInfraUtilitiesDocsRender:
     def _string_list(data: Mapping[str, object], key: str) -> Sequence[str]:
         """Return one contract field as a normalized string sequence."""
         value: object = data.get(key)
-        if not isinstance(value, list):
+        if not _is_object_list(value):
             return []
-        items: list[object] = value
-        return [str(entry) for entry in items]
+        return [str(entry) for entry in value]
 
     @staticmethod
     def _preview(values: Sequence[str], *, limit: int = 6) -> str:
@@ -87,7 +92,7 @@ class FlextInfraUtilitiesDocsRender:
     @staticmethod
     def docs_project_index(
         scope: m.Infra.DocScope,
-        contract: Mapping[str, object],
+        contract: t.Infra.ContainerDict,
     ) -> str:
         """Return the standard project docs landing page."""
         data: Mapping[str, object] = contract or {}
@@ -147,7 +152,7 @@ class FlextInfraUtilitiesDocsRender:
     @staticmethod
     def docs_api_readme(
         scope: m.Infra.DocScope,
-        contract: Mapping[str, object],
+        contract: t.Infra.ContainerDict,
     ) -> str:
         """Return the standard API readme for a project."""
         data: Mapping[str, object] = contract or {}
@@ -185,7 +190,7 @@ class FlextInfraUtilitiesDocsRender:
     @staticmethod
     def docs_project_mkdocs(
         scope: m.Infra.DocScope,
-        contract: Mapping[str, object],
+        contract: t.Infra.ContainerDict,
         modules: Sequence[str],
     ) -> str:
         """Return the managed mkdocs.yml for a project scope."""
@@ -244,7 +249,7 @@ class FlextInfraUtilitiesDocsRender:
     @staticmethod
     def docs_overview_page(
         scope: m.Infra.DocScope,
-        contract: Mapping[str, object],
+        contract: t.Infra.ContainerDict,
     ) -> str:
         """Return the generated overview page for a project API."""
         data: Mapping[str, object] = contract or {}
@@ -319,7 +324,7 @@ class FlextInfraUtilitiesDocsRender:
         return "\n".join(lines)
 
     @staticmethod
-    def docs_root_mkdocs(contract: Mapping[str, object]) -> str:
+    def docs_root_mkdocs(contract: t.Infra.ContainerDict) -> str:
         """Return the managed mkdocs.yml for the workspace root."""
         data: Mapping[str, object] = contract or {}
         site_title = str(data.get("site_title", "")).strip() or "FLEXT Workspace"
@@ -375,7 +380,7 @@ class FlextInfraUtilitiesDocsRender:
 
     @staticmethod
     def docs_root_overview_page(
-        contract: Mapping[str, object],
+        contract: t.Infra.ContainerDict,
         *,
         project_count: int,
         class_counts: Mapping[str, int],

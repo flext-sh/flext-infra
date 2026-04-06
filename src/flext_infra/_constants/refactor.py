@@ -130,8 +130,6 @@ class FlextInfraRefactorConstants:
 
     DEFAULT_CONSTANTS_CLASS: ClassVar[str] = "FlextConstants"
     "Fallback constants class name when none exists in module."
-    CONSTANTS_FILE_GLOB: ClassVar[str] = "constants.py"
-    "Constants module glob scanned by the migration scanner."
     CONSTANTS_CLASS_SUFFIX: ClassVar[str] = "Constants"
     "Class-name suffix used to identify constants facades."
     CONSTANT_PATTERN: ClassVar[re.Pattern[str]] = re.compile(r"^_*[A-Z][A-Z0-9_]*$")
@@ -353,8 +351,6 @@ class FlextInfraRefactorConstants:
         "Usage via u.ClassName.method_name (namespaced)."
         MODE_DIRECT: ClassVar[str] = "direct"
         "Usage via FlextUtilitiesXxx.method_name (direct)."
-        CORE_PROJECT: ClassVar[str] = "flext-core"
-        "Core project directory name."
         DEFAULT_FAMILY: ClassVar[str] = "u"
         "Default census family."
 

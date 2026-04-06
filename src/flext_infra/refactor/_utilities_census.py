@@ -88,7 +88,7 @@ class FlextInfraUtilitiesRefactorCensus:
     @staticmethod
     def build_mro_target(
         family: str,
-        core_project: str = c.Infra.Census.CORE_PROJECT,
+        core_project: str = c.Infra.Packages.CORE,
     ) -> m.Infra.MROFamilyTarget:
         """Create a generic target config from a family code."""
         if family not in c.Infra.MRO_FAMILIES:

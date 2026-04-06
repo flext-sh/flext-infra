@@ -24,7 +24,7 @@ class FlextInfraRefactorMROClassMigrationRule:
     ) -> t.Infra.TransformResult:
         """Migrate module-level Final constants into the facade class."""
         file_path = Path(rope_project.root.real_path) / resource.path
-        if file_path.name != c.Infra.CONSTANTS_FILE_GLOB:
+        if file_path.name != c.Infra.Files.CONSTANTS_PY:
             return (u.Infra.read_source(resource), [])
         source = u.Infra.read_source(resource)
         candidates = u.Infra.find_final_candidates(source)

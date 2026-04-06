@@ -71,16 +71,21 @@ class FlextInfraDocValidator(s[bool]):
 
     @classmethod
     @override
-    def execute_command(cls, params: m.Infra.DocsValidateInput) -> r[bool]:
-        """Build the docs validator service from CLI input and execute it."""
-        service = cls.model_validate({
-            "workspace_root": params.workspace_path,
-            "apply_changes": params.apply,
-            "check_only": params.check,
-            "selected_projects": params.project_names,
-            "docs_output_dir": params.output_dir,
-        })
-        return service.execute()
+    def execute_command(
+        cls,
+        params: s[bool] | m.Infra.DocsValidateInput,
+    ) -> r[bool]:
+        """Normalize docs CLI input into the canonical validator service model."""
+        if isinstance(params, m.Infra.DocsValidateInput):
+            service = cls.model_validate({
+                "workspace_root": params.workspace_path,
+                "apply_changes": params.apply,
+                "check_only": params.check,
+                "selected_projects": params.project_names,
+                "docs_output_dir": params.output_dir,
+            })
+            return service.execute()
+        return params.execute()
 
     def _run_adr_skill_check(
         self,

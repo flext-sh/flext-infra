@@ -188,32 +188,6 @@ class FlextInfraUtilitiesCodegenGovernance:
         return config
 
     @staticmethod
-    def get_canonical_int_values() -> Mapping[int, str]:
-        config = FlextInfraUtilitiesCodegenGovernance.load_governance_config()
-        return {
-            entry.value: entry.canonical_ref
-            for entry in config.canonical_values
-            if entry.type == "int" and isinstance(entry.value, int)
-        }
-
-    @staticmethod
-    def get_canonical_str_values() -> t.StrMapping:
-        config = FlextInfraUtilitiesCodegenGovernance.load_governance_config()
-        return {
-            entry.value: entry.canonical_ref
-            for entry in config.canonical_values
-            if entry.type == "str" and isinstance(entry.value, str)
-        }
-
-    @staticmethod
-    def get_semantic_names(canonical_ref: str) -> frozenset[str]:
-        config = FlextInfraUtilitiesCodegenGovernance.load_governance_config()
-        for entry in config.canonical_values:
-            if entry.canonical_ref == canonical_ref:
-                return frozenset(entry.semantic_names)
-        return frozenset()
-
-    @staticmethod
     def is_rule_fixable(rule_id: str, module: str) -> bool:
         config = FlextInfraUtilitiesCodegenGovernance.load_governance_config()
         for rule in config.rules:

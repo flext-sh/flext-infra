@@ -6,7 +6,9 @@ import re
 from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
-from flext_infra import c, m, t
+from pydantic import ValidationError
+
+from flext_infra import c, m, t, u
 from flext_infra._utilities.discovery_scanning import (
     FlextInfraUtilitiesDiscoveryScanning,
 )
@@ -32,6 +34,24 @@ class FlextInfraUtilitiesDocsApi:
         "x",
     )
     _STRING_RE: re.Pattern[str] = re.compile(r"""["']([a-zA-Z0-9_\.]+)["']""")
+
+    @staticmethod
+    def _string_values(value: object) -> Sequence[str]:
+        """Normalize one infra sequence payload into strings."""
+        try:
+            items = t.Infra.INFRA_SEQ_ADAPTER.validate_python(value)
+        except ValidationError:
+            return []
+        return [str(item) for item in items]
+
+    @staticmethod
+    def _string_mapping(value: object) -> Mapping[str, str]:
+        """Normalize one infra mapping payload into string keys and values."""
+        try:
+            items = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)
+        except ValidationError:
+            return {}
+        return {str(key): str(entry) for key, entry in items.items()}
 
     @staticmethod
     def _module_file(project_root: Path, module_name: str) -> Path:
@@ -86,11 +106,13 @@ class FlextInfraUtilitiesDocsApi:
     @staticmethod
     def _project_keywords(project_meta: Mapping[str, object]) -> Sequence[str]:
         """Return normalized project keywords from ``pyproject.toml`` metadata."""
-        raw: object = project_meta.get("keywords")
-        if not isinstance(raw, list):
-            return []
-        items: list[object] = raw
-        return [text for entry in items if (text := str(entry).strip())]
+        return [
+            text
+            for entry in FlextInfraUtilitiesDocsApi._string_values(
+                project_meta.get("keywords")
+            )
+            if (text := str(entry).strip())
+        ]
 
     @staticmethod
     def _rope_public_symbols(
@@ -126,7 +148,7 @@ class FlextInfraUtilitiesDocsApi:
     def public_contract(
         project_root: Path,
         package_name: str,
-    ) -> Mapping[str, object]:
+    ) -> t.Infra.ContainerDict:
         """Build the public API contract from pyproject, exports, and Rope validation."""
         payload = FlextInfraUtilitiesDocsScope.pyproject_payload(project_root)
         docs_meta = FlextInfraUtilitiesDocsScope.project_docs_meta(project_root)
@@ -135,13 +157,9 @@ class FlextInfraUtilitiesDocsApi:
             "exclude_docs",
         )
         project_meta_value = payload.get(c.Infra.PROJECT)
-        project_meta: t.Infra.ContainerDict = (
-            project_meta_value if isinstance(project_meta_value, Mapping) else {}
-        )
+        project_meta = u.Cli.toml_as_mapping(project_meta_value) or {}
         project_urls_value = project_meta.get("urls")
-        project_urls: t.Infra.ContainerDict = (
-            project_urls_value if isinstance(project_urls_value, Mapping) else {}
-        )
+        project_urls = u.Cli.toml_as_mapping(project_urls_value) or {}
         if not package_name:
             site_title = (
                 str(docs_meta.get("site_title", "")).strip()
@@ -213,15 +231,19 @@ class FlextInfraUtilitiesDocsApi:
             and not name.startswith("_")
             and name not in module_exports
         ]
-        include_modules = docs_meta.get("module_include")
-        exclude_modules = docs_meta.get("module_exclude")
-        if isinstance(include_modules, list):
+        include_modules = FlextInfraUtilitiesDocsApi._string_values(
+            docs_meta.get("module_include")
+        )
+        exclude_modules = FlextInfraUtilitiesDocsApi._string_values(
+            docs_meta.get("module_exclude")
+        )
+        if include_modules:
             modules = sorted({
                 str(item).strip()
                 for item in include_modules
                 if str(item).strip().startswith(package_name)
             })
-        if isinstance(exclude_modules, list):
+        if exclude_modules:
             excluded = {
                 str(item).strip() for item in exclude_modules if str(item).strip()
             }
@@ -262,21 +284,16 @@ class FlextInfraUtilitiesDocsApi:
     @staticmethod
     def docstring_issues(
         project_root: Path,
-        contract: Mapping[str, object],
+        contract: t.Infra.ContainerDict,
     ) -> Sequence[m.Infra.AuditIssue]:
         """Return audit issues for public modules and exports missing docstrings."""
         package_name = str(contract.get("package_name", ""))
-        raw_target_map: object = contract.get("target_map", {})
-        raw_modules: object = contract.get("modules", [])
-        if isinstance(raw_modules, list):
-            module_items: list[object] = raw_modules
-            module_list: Sequence[str] = [str(entry) for entry in module_items]
-        else:
-            module_list = []
-        target_map: dict[str, str] = {}
-        if isinstance(raw_target_map, dict):
-            map_entries: dict[object, object] = raw_target_map
-            target_map = {str(k): str(v) for k, v in map_entries.items()}
+        module_list = FlextInfraUtilitiesDocsApi._string_values(
+            contract.get("modules", [])
+        )
+        target_map = FlextInfraUtilitiesDocsApi._string_mapping(
+            contract.get("target_map", {})
+        )
         issues: MutableSequence[m.Infra.AuditIssue] = []
         if package_name:
             root_module = FlextInfraUtilitiesDocsApi._module_file(

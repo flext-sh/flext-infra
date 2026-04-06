@@ -50,7 +50,7 @@ class TestRunDetect:
 
         monkeypatch.setattr(FlextInfraWorkspaceDetector, "detect", _detect_stub)
         handle_result = FlextInfraWorkspaceDetector.execute_command(
-            FlextInfraWorkspaceDetector(workspace=tmp_path),
+            m.Infra.WorkspaceDetectInput(workspace_path=str(tmp_path), apply=False),
         )
         tm.that(handle_result.is_success, eq=expected_success)
 
@@ -113,7 +113,7 @@ class TestRunOrchestrate:
             _orchestrate_success,
         )
         handle_result = FlextInfraOrchestratorService.execute_command(
-            FlextInfraOrchestratorService(verb="check", projects=["p-a", "p-b"]),
+            m.Infra.WorkspaceOrchestrateInput(verb="check", projects=["p-a", "p-b"]),
         )
         tm.that(handle_result.is_success, eq=True)
 
@@ -140,7 +140,7 @@ class TestRunOrchestrate:
             _orchestrate_success,
         )
         handle_result = FlextInfraOrchestratorService.execute_command(
-            FlextInfraOrchestratorService(
+            m.Infra.WorkspaceOrchestrateInput(
                 verb="test",
                 projects=["p-a"],
                 make_arg=["FILES=a b c.py", "VERBOSE=1"],
@@ -151,13 +151,13 @@ class TestRunOrchestrate:
 
     def test_rejects_unknown_verb(self) -> None:
         handle_result = FlextInfraOrchestratorService.execute_command(
-            FlextInfraOrchestratorService(verb="legacy-check", projects=["p-a"]),
+            m.Infra.WorkspaceOrchestrateInput(verb="legacy-check", projects=["p-a"]),
         )
         tm.fail(handle_result, has="unsupported orchestrate verb")
 
     def test_no_projects(self) -> None:
         handle_result = FlextInfraOrchestratorService.execute_command(
-            FlextInfraOrchestratorService(verb="check", projects=[]),
+            m.Infra.WorkspaceOrchestrateInput(verb="check", projects=[]),
         )
         tm.that(handle_result.is_failure, eq=True)
 
@@ -181,7 +181,7 @@ class TestRunOrchestrate:
             _orchestrate_partial,
         )
         handle_result = FlextInfraOrchestratorService.execute_command(
-            FlextInfraOrchestratorService(verb="check", projects=["p-a", "p-b"]),
+            m.Infra.WorkspaceOrchestrateInput(verb="check", projects=["p-a", "p-b"]),
         )
         tm.that(handle_result.is_failure, eq=True)
 
@@ -202,7 +202,7 @@ class TestRunOrchestrate:
             _orchestrate_failure,
         )
         handle_result = FlextInfraOrchestratorService.execute_command(
-            FlextInfraOrchestratorService(verb="check", projects=["p-a"]),
+            m.Infra.WorkspaceOrchestrateInput(verb="check", projects=["p-a"]),
         )
         tm.that(handle_result.is_failure, eq=True)
 
@@ -242,7 +242,7 @@ class TestRunMigrate:
         monkeypatch.setattr(FlextInfraProjectMigrator, "migrate", _migrate_stub)
         handle_result: r[Sequence[m.Infra.MigrationResult]] = (
             FlextInfraProjectMigrator.execute_command(
-                FlextInfraProjectMigrator(workspace=tmp_path, apply=True),
+                m.Infra.WorkspaceMigrateInput(workspace_path=str(tmp_path), apply=True),
             )
         )
         tm.that(handle_result.is_success, eq=expected_success)
@@ -276,7 +276,7 @@ class TestRunMigrate:
         )
         handle_result: r[Sequence[m.Infra.MigrationResult]] = (
             FlextInfraProjectMigrator.execute_command(
-                FlextInfraProjectMigrator(workspace=tmp_path, apply=True),
+                m.Infra.WorkspaceMigrateInput(workspace_path=str(tmp_path), apply=True),
             )
         )
         tm.that(handle_result.is_success, eq=True)

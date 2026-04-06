@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import contextlib
 from pathlib import Path
-from typing import Annotated, override
+from typing import Annotated, Self, overload, override
 
 from pydantic import Field
 
@@ -83,13 +83,27 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
         except OSError as exc:
             return r[m.Infra.SyncResult].fail(f"Could not open lock file: {exc}")
 
+    @overload
     @classmethod
-    @override
+    def execute_command(cls, params: Self) -> r[m.Infra.SyncResult]: ...
+
+    @overload
+    @classmethod
     def execute_command(
         cls,
-        params: m.Infra.WorkspaceSyncInput,  # type: ignore[override]
-    ) -> r[m.Infra.SyncResult]:
-        """Execute the validated CLI service instance directly."""
+        params: m.Infra.WorkspaceSyncInput,
+    ) -> r[m.Infra.SyncResult]: ...
+
+    @classmethod
+    @override
+    def execute_command(cls, params: object) -> r[m.Infra.SyncResult]:
+        """Convert CLI input model to service instance and execute."""
+        if isinstance(params, cls):
+            return params.execute()
+        if not isinstance(params, m.Infra.WorkspaceSyncInput):
+            return r[m.Infra.SyncResult].fail(
+                "expected WorkspaceSyncInput or service instance"
+            )
         service = cls.model_validate({
             "workspace_root": params.workspace_path,
             "apply_changes": params.apply,
@@ -280,8 +294,12 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
             help="Canonical workspace root",
         )
         args = parser.parse_args()
-        params = m.Infra.WorkspaceSyncInput.model_validate(vars(args))
-        result = FlextInfraSyncService.execute_command(params)
+        service = FlextInfraSyncService.model_validate({
+            "workspace_root": args.workspace,
+            "apply_changes": args.apply,
+            "canonical_root": args.canonical_root,
+        })
+        result = service.execute()
         if result.is_success:
             return 0
         u.Infra.error(result.error or "sync failed")

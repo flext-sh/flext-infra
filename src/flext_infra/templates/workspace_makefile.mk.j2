@@ -913,7 +913,7 @@ sync: ## Sync project Makefiles from pyproject.toml + refresh __init__.py lazy i
 	$(Q)for proj in $(SELECTED_PROJECTS); do \
 		$(WORKSPACE_INFRA_WORKSPACE) sync \
 			--workspace "$$proj" \
-			--workspace "$(CURDIR)"; \
+			--canonical-root "$(CURDIR)"; \
 	done
 	$(Q)echo "==> Regenerating __init__.py lazy imports..."
 	$(Q)$(WORKSPACE_INFRA_CODEGEN) lazy-init --workspace "$(CURDIR)"

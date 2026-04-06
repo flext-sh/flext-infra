@@ -10,7 +10,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import contextlib
-import tomllib
 from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
@@ -19,8 +18,8 @@ from pydantic import BaseModel, TypeAdapter, ValidationError
 from tomlkit.container import Container
 from tomlkit.items import Item, Table
 
-from flext_core import r, u
-from flext_infra import FlextInfraUtilitiesToml, c, t
+from flext_core import r
+from flext_infra import FlextInfraUtilitiesToml, c, t, u
 
 
 class FlextInfraUtilitiesTomlParse:
@@ -126,7 +125,7 @@ class FlextInfraUtilitiesTomlParse:
             value: t.Infra.InfraValue | Item | None = None
             if group_key in opt_deps:
                 value = opt_deps[group_key]
-            return FlextInfraUtilitiesToml.as_string_list(value)
+            return u.Cli.toml_as_string_list(value)
 
         return {
             c.Infra.DEV: _group_values(c.Infra.DEV),
@@ -198,16 +197,18 @@ class FlextInfraUtilitiesTomlParse:
     @staticmethod
     def read_plain(path: Path) -> r[t.Infra.ContainerDict]:
         """Read and parse a TOML file as a plain dict with r error handling."""
-        if not path.exists():
-            return r[t.Infra.ContainerDict].ok({})
-        try:
-            data_raw = tomllib.loads(
-                path.read_text(encoding=c.Infra.Encoding.DEFAULT),
+        result = u.Cli.toml_read_json(path)
+        if result.is_failure:
+            if not path.exists():
+                return r[t.Infra.ContainerDict].ok({})
+            return r[t.Infra.ContainerDict].fail(
+                result.error or f"TOML read error: {path}",
             )
-            data: t.Infra.ContainerDict = data_raw
-            return r[t.Infra.ContainerDict].ok(data)
-        except (tomllib.TOMLDecodeError, OSError) as exc:
+        try:
+            data = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(result.value)
+        except ValidationError as exc:
             return r[t.Infra.ContainerDict].fail(f"TOML read error: {exc}")
+        return r[t.Infra.ContainerDict].ok(data)
 
 
 __all__ = ["FlextInfraUtilitiesTomlParse"]

@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from pathlib import Path
 
-from flext_infra import c, m, t
+from flext_infra import c, m, t, u
 from flext_infra._utilities.docs_api import FlextInfraUtilitiesDocsApi
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 
@@ -17,16 +16,14 @@ class FlextInfraUtilitiesDocsContract:
     def docs_contract(
         project_root: Path,
         package_name: str,
-    ) -> dict[str, object]:
+    ) -> t.Infra.ContainerDict:
         """Return the public docs contract for a project."""
-        return dict(
-            FlextInfraUtilitiesDocsApi.public_contract(project_root, package_name)
-        )
+        return FlextInfraUtilitiesDocsApi.public_contract(project_root, package_name)
 
     @staticmethod
     def docs_workspace_contract(
         workspace_root: Path,
-    ) -> dict[str, object]:
+    ) -> t.Infra.ContainerDict:
         """Return the root docs contract using root ``pyproject.toml`` metadata."""
         payload = FlextInfraUtilitiesDocsScope.pyproject_payload(workspace_root)
         docs_meta = FlextInfraUtilitiesDocsScope.workspace_docs_meta(workspace_root)
@@ -35,13 +32,9 @@ class FlextInfraUtilitiesDocsContract:
             "exclude_docs",
         )
         project_meta_value = payload.get(c.Infra.PROJECT)
-        project_meta: t.Infra.ContainerDict = (
-            project_meta_value if isinstance(project_meta_value, Mapping) else {}
-        )
+        project_meta = u.Cli.toml_as_mapping(project_meta_value) or {}
         project_urls_value = project_meta.get("urls")
-        project_urls: t.Infra.ContainerDict = (
-            project_urls_value if isinstance(project_urls_value, Mapping) else {}
-        )
+        project_urls = u.Cli.toml_as_mapping(project_urls_value) or {}
         return {
             "name": str(project_meta.get("name", "flext")).strip() or "flext",
             "description": str(project_meta.get("description", "")).strip(),

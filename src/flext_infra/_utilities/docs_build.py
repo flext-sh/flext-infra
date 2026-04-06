@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, MutableMapping
 from pathlib import Path
 
-from flext_cli import FlextCliUtilitiesJson
-from flext_infra import c, m, p
+from flext_infra import c, m, p, u
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
 
 
@@ -103,27 +102,29 @@ class FlextInfraUtilitiesDocsBuild:
         Converts mkdocs-specific exceptions to ``OSError`` so callers only
         need to catch standard exception types.
         """
-        from mkdocs.commands import build as _build_mod  # noqa: PLC0415
-        from mkdocs.config import load_config as _raw_load  # noqa: PLC0415
-        from mkdocs.exceptions import (  # noqa: PLC0415
-            Abort,
-            BuildError,
-            ConfigurationError,
-            MkDocsException,
-            PluginError,
-        )
+        import mkdocs.commands.build  # noqa: PLC0415
+        import mkdocs.config  # noqa: PLC0415
+        import mkdocs.exceptions  # noqa: PLC0415
 
-        _typed_load: Callable[..., Mapping[str, bool]] = _raw_load
-        _typed_build: Callable[..., None] = _build_mod.build
+        load: Callable[..., MutableMapping[str, bool]] = getattr(
+            mkdocs.config, "load_config"
+        )
+        build: Callable[..., None] = mkdocs.commands.build.build
         try:
             site_dir.parent.mkdir(parents=True, exist_ok=True)
-            config_obj: Mapping[str, bool] = _typed_load(
+            config_obj: MutableMapping[str, bool] = load(
                 config_file_path=str(config),
                 site_dir=str(site_dir),
             )
             config_obj["strict"] = True
-            _typed_build(config_obj, dirty=False)
-        except (Abort, BuildError, ConfigurationError, MkDocsException, PluginError) as exc:
+            build(config_obj, dirty=False)
+        except (
+            mkdocs.exceptions.Abort,
+            mkdocs.exceptions.BuildError,
+            mkdocs.exceptions.ConfigurationError,
+            mkdocs.exceptions.MkDocsException,
+            mkdocs.exceptions.PluginError,
+        ) as exc:
             msg = str(exc) or "mkdocs build failed"
             raise OSError(msg) from exc
 
@@ -133,7 +134,7 @@ class FlextInfraUtilitiesDocsBuild:
         report: m.Infra.DocsPhaseReport,
     ) -> None:
         """Persist the standard build summary and markdown report."""
-        _ = FlextCliUtilitiesJson.json_write(
+        _ = u.Cli.json_write(
             scope.report_dir / "build-summary.json",
             {c.Infra.ReportKeys.SUMMARY: report.model_dump()},
         )

@@ -15,20 +15,27 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from flext_core import FlextUtilities
-from flext_infra import (
-    FlextInfraUtilitiesDiscovery,
-    FlextInfraUtilitiesIteration,
-    FlextInfraUtilitiesRefactorCensus,
-    FlextInfraUtilitiesRefactorCli,
-    FlextInfraUtilitiesRefactorEngine,
+from flext_infra import c, t
+from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
+from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
+from flext_infra.refactor._utilities_census import FlextInfraUtilitiesRefactorCensus
+from flext_infra.refactor._utilities_cli import FlextInfraUtilitiesRefactorCli
+from flext_infra.refactor._utilities_engine import FlextInfraUtilitiesRefactorEngine
+from flext_infra.refactor._utilities_mro_scan import (
     FlextInfraUtilitiesRefactorMroScan,
+)
+from flext_infra.refactor._utilities_mro_transform import (
     FlextInfraUtilitiesRefactorMroTransform,
+)
+from flext_infra.refactor._utilities_namespace import (
     FlextInfraUtilitiesRefactorNamespace,
-    FlextInfraUtilitiesRefactorPolicy,
+)
+from flext_infra.refactor._utilities_policy import FlextInfraUtilitiesRefactorPolicy
+from flext_infra.refactor._utilities_pydantic import (
     FlextInfraUtilitiesRefactorPydantic,
+)
+from flext_infra.refactor._utilities_pydantic_analysis import (
     FlextInfraUtilitiesRefactorPydanticAnalysis,
-    c,
-    t,
 )
 
 

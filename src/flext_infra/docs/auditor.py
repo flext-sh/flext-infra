@@ -231,17 +231,22 @@ class FlextInfraDocAuditor(s[bool], FlextInfraDocAuditorMixin):
 
     @classmethod
     @override
-    def execute_command(cls, params: m.Infra.DocsAuditInput) -> r[bool]:
-        """Build the docs auditor service from CLI input and execute it."""
-        service = cls.model_validate({
-            "workspace_root": params.workspace_path,
-            "apply_changes": params.apply,
-            "check_only": params.check,
-            "selected_projects": params.project_names,
-            "docs_output_dir": params.output_dir,
-            "strict_mode": params.strict,
-        })
-        return service.execute()
+    def execute_command(
+        cls,
+        params: s[bool] | m.Infra.DocsAuditInput,
+    ) -> r[bool]:
+        """Normalize docs CLI input into the canonical auditor service model."""
+        if isinstance(params, m.Infra.DocsAuditInput):
+            service = cls.model_validate({
+                "workspace_root": params.workspace_path,
+                "apply_changes": params.apply,
+                "check_only": params.check,
+                "selected_projects": params.project_names,
+                "docs_output_dir": params.output_dir,
+                "strict_mode": params.strict,
+            })
+            return service.execute()
+        return params.execute()
 
     @classmethod
     def main(cls, argv: t.StrSequence | None = None) -> int:

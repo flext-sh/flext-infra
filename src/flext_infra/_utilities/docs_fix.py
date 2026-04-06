@@ -6,8 +6,7 @@ import re
 from collections.abc import Sequence
 from pathlib import Path
 
-from flext_cli import FlextCliUtilitiesJson
-from flext_infra import c, m, t
+from flext_infra import c, m, t, u
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
 from flext_infra._utilities.patterns import FlextInfraUtilitiesPatterns
 
@@ -80,7 +79,7 @@ class FlextInfraUtilitiesDocsFix:
         apply: bool,
     ) -> None:
         """Persist the standard fix summary and markdown report."""
-        _ = FlextCliUtilitiesJson.json_write(
+        _ = u.Cli.json_write(
             scope.report_dir / "fix-summary.json",
             {
                 c.Infra.ReportKeys.SUMMARY: {

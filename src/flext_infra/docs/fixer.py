@@ -60,15 +60,20 @@ class FlextInfraDocFixer(s[bool]):
 
     @classmethod
     @override
-    def execute_command(cls, params: m.Infra.DocsFixInput) -> r[bool]:
-        """Build the docs fixer service from CLI input and execute it."""
-        service = cls.model_validate({
-            "workspace_root": params.workspace_path,
-            "apply_changes": params.apply,
-            "selected_projects": params.project_names,
-            "docs_output_dir": params.output_dir,
-        })
-        return service.execute()
+    def execute_command(
+        cls,
+        params: s[bool] | m.Infra.DocsFixInput,
+    ) -> r[bool]:
+        """Normalize docs CLI input into the canonical fixer service model."""
+        if isinstance(params, m.Infra.DocsFixInput):
+            service = cls.model_validate({
+                "workspace_root": params.workspace_path,
+                "apply_changes": params.apply,
+                "selected_projects": params.project_names,
+                "docs_output_dir": params.output_dir,
+            })
+            return service.execute()
+        return params.execute()
 
     def _fix_scope(
         self,

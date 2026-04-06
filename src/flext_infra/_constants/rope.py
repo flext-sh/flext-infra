@@ -22,11 +22,5 @@ class FlextInfraConstantsRope:
     )
     "Resources rope should ignore when scanning the project tree."
 
-    ROPE_PROJECT_PREFIX: Final[str] = "flext-"
-    "Prefix identifying sub-projects inside the monorepo."
-
-    ROPE_SRC_DIR: Final[str] = "src"
-    "Source directory name within each sub-project."
-
 
 __all__ = ["FlextInfraConstantsRope"]

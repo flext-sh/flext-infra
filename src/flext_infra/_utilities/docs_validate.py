@@ -7,9 +7,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from flext_cli import FlextCliUtilitiesJson
-from flext_core import u
-from flext_infra import c, m, t
+from flext_infra import c, m, t, u
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
 from flext_infra._utilities.docs_api import FlextInfraUtilitiesDocsApi
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
@@ -45,7 +43,7 @@ class FlextInfraUtilitiesDocsValidate:
         config = workspace_root / "docs/architecture/architecture_config.json"
         if not config.exists():
             return []
-        payload_result = FlextCliUtilitiesJson.json_read(config)
+        payload_result = u.Cli.json_read(config)
         if payload_result.is_failure:
             return None
         configured = FlextInfraUtilitiesDocsValidate.docs_extract_required_skills(
@@ -133,7 +131,7 @@ class FlextInfraUtilitiesDocsValidate:
         report: m.Infra.DocsPhaseReport,
     ) -> None:
         """Persist the standard validate summary and markdown report."""
-        _ = FlextCliUtilitiesJson.json_write(
+        _ = u.Cli.json_write(
             scope.report_dir / "validate-summary.json",
             {c.Infra.ReportKeys.SUMMARY: report.model_dump(mode="json")},
         )

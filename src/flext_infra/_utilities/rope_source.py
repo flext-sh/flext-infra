@@ -60,32 +60,6 @@ class FlextInfraUtilitiesRopeSource(FlextInfraUtilitiesRopeCore):
         return new_source, count
 
     @staticmethod
-    def get_class_body_lines(
-        resource: t.Infra.RopeResource,
-        class_name: str,
-    ) -> Sequence[str] | None:
-        """Extract body lines of a class (excluding the class definition line)."""
-        lines = resource.read().splitlines()
-        in_class = False
-        indent = 0
-        body: list[str] = []
-        for line in lines:
-            if not in_class:
-                stripped = line.lstrip()
-                if stripped.startswith((f"class {class_name}", f"class {class_name}(")):
-                    in_class = True
-                    indent = len(line) - len(stripped) + 4
-                continue
-            if not line.strip():
-                body.append("")
-                continue
-            current_indent = len(line) - len(line.lstrip())
-            if current_indent < indent and line.strip():
-                break
-            body.append(line)
-        return body or None
-
-    @staticmethod
     def remove_module_level_aliases(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,

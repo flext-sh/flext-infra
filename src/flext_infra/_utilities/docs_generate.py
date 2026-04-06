@@ -5,9 +5,9 @@ from __future__ import annotations
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
-from flext_cli import FlextCliUtilitiesJson
-from flext_core import u
-from flext_infra import c, m
+from pydantic import ValidationError
+
+from flext_infra import c, m, t, u
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
 from flext_infra._utilities.docs_contract import FlextInfraUtilitiesDocsContract
 from flext_infra._utilities.docs_render import FlextInfraUtilitiesDocsRender
@@ -16,6 +16,17 @@ from flext_infra._utilities.patterns import FlextInfraUtilitiesPatterns
 
 class FlextInfraUtilitiesDocsGenerate:
     """Reusable generation helpers exposed through ``u.Infra``."""
+
+    @staticmethod
+    def _module_names(contract: t.Infra.ContainerDict) -> list[str]:
+        """Extract normalized module names from one docs contract payload."""
+        try:
+            items = t.Infra.INFRA_SEQ_ADAPTER.validate_python(
+                contract.get("modules", [])
+            )
+        except ValidationError:
+            return []
+        return [str(item) for item in items]
 
     @staticmethod
     def _prune_generated_tree(
@@ -53,12 +64,7 @@ class FlextInfraUtilitiesDocsGenerate:
             scope.path,
             scope.package_name,
         )
-        raw_modules: object = contract.get("modules", [])
-        if isinstance(raw_modules, list):
-            items: list[object] = raw_modules
-            module_names: list[str] = [str(entry) for entry in items]
-        else:
-            module_names = []
+        module_names = FlextInfraUtilitiesDocsGenerate._module_names(contract)
         expected_generated: MutableSequence[Path] = [
             scope.path / "docs/api-reference/generated/overview.md",
             scope.path / "docs/api-reference/generated/public-api.md",
@@ -169,12 +175,7 @@ class FlextInfraUtilitiesDocsGenerate:
             scope.path,
             scope.package_name,
         )
-        raw_modules2: object = contract.get("modules", [])
-        if isinstance(raw_modules2, list):
-            items2: list[object] = raw_modules2
-            module_names: list[str] = [str(entry) for entry in items2]
-        else:
-            module_names = []
+        module_names = FlextInfraUtilitiesDocsGenerate._module_names(contract)
         return [
             FlextInfraUtilitiesDocsContract.docs_write_if_needed(
                 path,
@@ -313,7 +314,7 @@ class FlextInfraUtilitiesDocsGenerate:
             )
         )
         generated = u.count(files, lambda item: item.written)
-        _ = FlextCliUtilitiesJson.json_write(
+        _ = u.Cli.json_write(
             scope.report_dir / "generate-summary.json",
             {
                 c.Infra.ReportKeys.SUMMARY: {

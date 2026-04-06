@@ -11,13 +11,12 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableSequence
 from pathlib import Path
 
-import tomlkit
 from pydantic import BaseModel, ValidationError
-from tomlkit.items import Array, Item, Table
+from tomlkit.items import Item, Table
 from tomlkit.toml_document import TOMLDocument
 
-from flext_core import FlextLogger, r, u
-from flext_infra import FlextInfraUtilitiesSubprocess, c, t
+from flext_core import r
+from flext_infra import t, u
 
 
 class FlextInfraUtilitiesToml:
@@ -31,21 +30,20 @@ class FlextInfraUtilitiesToml:
         doc = u.Cli.toml_read(some_path)
     """
 
-    logger = FlextLogger(__name__)
-
     @staticmethod
     def as_toml_mapping(value: t.Infra.InfraValue) -> t.Infra.ContainerDict | None:
         """Check if value is a MutableMapping and return it typed, otherwise None."""
-        if not u.is_mapping(value):
+        normalized_value = u.Cli.toml_as_mapping(value)
+        if normalized_value is None:
             return None
         try:
-            normalized_value = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
-                value,
+            validated = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
+                normalized_value,
             )
         except ValidationError:
             return None
         result: t.Infra.ContainerDict = {
-            str(key): normalized_value[key] for key in normalized_value
+            str(key): validated[key] for key in validated
         }
         return result
 
@@ -61,50 +59,40 @@ class FlextInfraUtilitiesToml:
 
         SSOT for TOML value normalization — replaces ``normalize_container_value``.
         """
-        normalized: (
-            t.Infra.InfraValue | Item | Mapping[str, t.Infra.InfraValue] | None
-        ) = value
-        if isinstance(value, (TOMLDocument, Item)):
-            normalized = value.unwrap()
-        if isinstance(normalized, Item):
-            return None
-        return normalized
+        normalized = u.Cli.toml_unwrap_item(value)
+        if normalized is None or isinstance(normalized, (str, int, float, bool)):
+            return normalized
+        if u.is_mapping(normalized):
+            try:
+                return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(normalized)
+            except ValidationError:
+                return None
+        if isinstance(normalized, (list, tuple)):
+            try:
+                return t.Infra.INFRA_SEQ_ADAPTER.validate_python(normalized)
+            except ValidationError:
+                return None
+        return None
 
     @staticmethod
     def as_string_list(value: t.Infra.InfraValue | Item | None) -> t.StrSequence:
         """Convert TOML value to list of strings."""
-        normalized = FlextInfraUtilitiesToml.unwrap_item(value)
-        if normalized is None or isinstance(normalized, str):
-            return []
-        try:
-            typed_items = t.Cli.JSON_LIST_ADAPTER.validate_python(normalized)
-        except ValidationError:
-            return []
-        return [str(raw) for raw in typed_items]
+        return u.Cli.toml_as_string_list(value)
 
     @staticmethod
-    def array(items: t.StrSequence) -> Array:
+    def array(items: t.StrSequence) -> t.Cli.TomlArray:
         """Create multiline TOML array from string items."""
-        arr: Array = tomlkit.array()
-        for item in items:
-            arr.add_line(item)
-        return arr.multiline(True)
+        return u.Cli.toml_array(items)
 
     @staticmethod
     def get_table(container: TOMLDocument | Table, key: str) -> Table | None:
         """Get a sub-table from a TOML container, or None if missing/not a Table."""
-        if key not in container:
-            return None
-        value = container[key]
-        return value if isinstance(value, Table) else None
+        return u.Cli.toml_get_table(container, key)
 
     @staticmethod
     def get_item(container: TOMLDocument | Table, key: str) -> Item | None:
         """Get a raw TOML Item from a container, or None if missing."""
-        if key not in container:
-            return None
-        value = container[key]
-        return value if isinstance(value, Item) else None
+        return u.Cli.toml_get_item(container, key)
 
     @staticmethod
     def ensure_table(parent: Table | TOMLDocument, key: str) -> Table:
@@ -114,26 +102,7 @@ class FlextInfraUtilitiesToml:
         promote it to an explicit table so that tomlkit serializes sub-tables
         under the correct parent path instead of creating bare top-level sections.
         """
-        existing: t.Infra.InfraValue | Item | None = None
-        if key in parent:
-            existing = parent[key]
-        if isinstance(existing, Table):
-            if not existing.is_super_table():
-                return existing
-            del parent[key]
-            table = tomlkit.table()
-            for k in FlextInfraUtilitiesToml.table_string_keys(existing):
-                table[k] = existing[k]
-            parent[key] = table
-            return table
-        table = tomlkit.table()
-        parent[key] = table
-        return table
-
-    @staticmethod
-    def ensure_tool_table(doc: TOMLDocument) -> Table:
-        """Get or create the top-level ``[tool]`` table."""
-        return FlextInfraUtilitiesToml.ensure_table(doc, c.Infra.TOOL)
+        return u.Cli.toml_ensure_table(parent, key)
 
     @staticmethod
     def get(
@@ -143,11 +112,7 @@ class FlextInfraUtilitiesToml:
         """Retrieve and normalize a value from a TOML container by key."""
         if not isinstance(key, str):
             return None
-        raw_value: t.Infra.InfraValue | None = None
-        if key in container:
-            raw_value = FlextInfraUtilitiesToml.unwrap_item(
-                container[key],
-            )
+        raw_value = u.Cli.toml_get(container, key)
         if raw_value is None:
             return None
         if isinstance(
@@ -172,21 +137,7 @@ class FlextInfraUtilitiesToml:
     @staticmethod
     def table_string_keys(table: Table) -> t.StrSequence:
         """Return table keys as strings."""
-        return list(table)
-
-    @staticmethod
-    def remove_key_if_present(
-        container: TOMLDocument | Table,
-        key: str,
-        changes: MutableSequence[str],
-        change_message: str,
-    ) -> bool:
-        """Remove ``key`` when present and record the change."""
-        if key not in container:
-            return False
-        del container[key]
-        changes.append(change_message)
-        return True
+        return u.Cli.toml_table_string_keys(table)
 
     @staticmethod
     def sync_value(
@@ -197,9 +148,7 @@ class FlextInfraUtilitiesToml:
         change_message: str,
     ) -> bool:
         """Synchronize a scalar TOML value when it differs."""
-        current = FlextInfraUtilitiesToml.unwrap_item(
-            FlextInfraUtilitiesToml.get(container, key),
-        )
+        current = FlextInfraUtilitiesToml.unwrap_item(u.Cli.toml_get(container, key))
         if current == expected:
             return False
         container[key] = expected
@@ -217,35 +166,14 @@ class FlextInfraUtilitiesToml:
         sort_values: bool = False,
     ) -> bool:
         """Synchronize a string-array TOML value when it differs."""
-        current = FlextInfraUtilitiesToml.as_string_list(
-            FlextInfraUtilitiesToml.get(container, key),
+        return u.Cli.toml_sync_string_list(
+            container,
+            key,
+            expected,
+            changes,
+            change_message,
+            sort_values=sort_values,
         )
-        normalized_expected = sorted(expected) if sort_values else [*expected]
-        normalized_current = sorted(current) if sort_values else [*current]
-        if normalized_current == normalized_expected:
-            return False
-        container[key] = FlextInfraUtilitiesToml.array(normalized_expected)
-        changes.append(change_message)
-        return True
-
-    @staticmethod
-    def merge_string_list(
-        container: TOMLDocument | Table,
-        key: str,
-        required: t.StrSequence,
-        changes: MutableSequence[str],
-        change_message: str,
-    ) -> bool:
-        """Ensure ``required`` values are present in a TOML string array."""
-        current = FlextInfraUtilitiesToml.as_string_list(
-            FlextInfraUtilitiesToml.get(container, key),
-        )
-        merged = sorted({*current, *required})
-        if current == merged:
-            return False
-        container[key] = FlextInfraUtilitiesToml.array(merged)
-        changes.append(change_message)
-        return True
 
     @staticmethod
     def read(path: Path) -> TOMLDocument | None:
@@ -254,20 +182,7 @@ class FlextInfraUtilitiesToml:
         Returns None when the file does not exist or is invalid TOML.
         Prefer ``read_document`` for r-wrapped semantics.
         """
-        if not path.exists():
-            return None
-        try:
-            return tomlkit.parse(
-                path.read_text(encoding=c.Infra.Encoding.DEFAULT),
-            )
-        except (OSError, ValueError) as exc:
-            FlextInfraUtilitiesToml.logger.warning(
-                "Failed to read or parse TOML document",
-                path=str(path),
-                error=exc,
-                error_type=type(exc).__name__,
-            )
-            return None
+        return u.Cli.toml_read(path)
 
     @staticmethod
     def read_document(path: Path) -> r[TOMLDocument]:
@@ -281,34 +196,7 @@ class FlextInfraUtilitiesToml:
             or failure with descriptive error.
 
         """
-        if not path.exists():
-            return r[TOMLDocument].fail(f"failed to read TOML: {path}")
-        doc = FlextInfraUtilitiesToml.read(path)
-        if doc is None:
-            return r[TOMLDocument].fail(f"TOML parse failed: {path}")
-        return r[TOMLDocument].ok(doc)
-
-    @staticmethod
-    def _resolve_taplo_config(path: Path) -> Path | None:
-        """Return the nearest ``.taplo.toml`` config for a managed pyproject."""
-        resolved = path.resolve()
-        for candidate in (resolved.parent, *resolved.parents):
-            config_path = candidate / ".taplo.toml"
-            if config_path.is_file():
-                return config_path
-        return None
-
-    @staticmethod
-    def _format_pyproject(path: Path) -> r[bool]:
-        """Format generated ``pyproject.toml`` files with taplo."""
-        if path.name != c.Infra.Files.PYPROJECT_FILENAME:
-            return r[bool].ok(False)
-        command: list[str] = ["taplo", "format"]
-        config_path = FlextInfraUtilitiesToml._resolve_taplo_config(path)
-        if config_path is not None:
-            command.extend(["--config", str(config_path)])
-        command.append(str(path))
-        return FlextInfraUtilitiesSubprocess.run_checked(command, cwd=path.parent)
+        return u.Cli.toml_read_document(path)
 
     @staticmethod
     def write_document(path: Path, doc: TOMLDocument) -> r[bool]:
@@ -324,18 +212,7 @@ class FlextInfraUtilitiesToml:
             r[bool] with True on success.
 
         """
-        try:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            _ = path.write_text(
-                doc.as_string(),
-                encoding=c.Infra.Encoding.DEFAULT,
-            )
-        except OSError as exc:
-            return r[bool].fail(f"TOML write error: {exc}")
-        format_result = FlextInfraUtilitiesToml._format_pyproject(path)
-        if format_result.is_failure:
-            return r[bool].fail(format_result.error or f"taplo format failed: {path}")
-        return r[bool].ok(True)
+        return u.Cli.toml_write_document(path, doc)
 
 
 __all__ = ["FlextInfraUtilitiesToml"]

@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-import tomllib
 from collections.abc import MutableSequence, Sequence
 from fnmatch import fnmatch
 from pathlib import Path
 
-from flext_cli import FlextCliUtilitiesJson, FlextCliUtilitiesToml
-from flext_core import r
-from flext_infra import c, m, t
+from flext_infra import c, m, r, t, u
 
 
 class FlextInfraUtilitiesDocsScope:
@@ -26,7 +23,7 @@ class FlextInfraUtilitiesDocsScope:
         pyproject = project_root / c.Infra.Files.PYPROJECT_FILENAME
         if not pyproject.exists():
             return {}
-        result = FlextCliUtilitiesToml.toml_read_json(pyproject)
+        result = u.Cli.toml_read_json(pyproject)
         return result.value if result.is_success else {}
 
     @staticmethod
@@ -37,7 +34,7 @@ class FlextInfraUtilitiesDocsScope:
         path = FlextInfraUtilitiesDocsScope.config_path(workspace_root)
         if not path.exists():
             return {}
-        result = FlextCliUtilitiesJson.json_read(path)
+        result = u.Cli.json_read(path)
         return result.value if result.is_success else {}
 
     @staticmethod
@@ -238,11 +235,7 @@ class FlextInfraUtilitiesDocsScope:
                 continue
             if not (entry / c.Infra.Files.MAKEFILE_FILENAME).exists():
                 continue
-            try:
-                with pyproject.open("rb") as fh:
-                    payload = tomllib.load(fh)
-            except (OSError, tomllib.TOMLDecodeError):
-                payload: t.Infra.ContainerDict = {}
+            payload = FlextInfraUtilitiesDocsScope.pyproject_payload(entry)
             docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(payload)
             enabled = docs_meta.get("enabled", True)
             if isinstance(enabled, bool) and not enabled:
