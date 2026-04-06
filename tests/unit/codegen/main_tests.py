@@ -9,13 +9,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import subprocess
 import sys
 from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import t
+from tests import t, u
 
 from flext_core import r
 from flext_infra import FlextInfraCodegenLazyInit, main as infra_main
@@ -120,14 +119,12 @@ class TestMainEntryPoint:
 
     def test_entry_point_via_sys_exit(self) -> None:
         """The root process entrypoint works via subprocess."""
-        result = subprocess.run(
+        result = u.Cli.run_raw(
             [sys.executable, "-m", "flext_infra", "codegen", "lazy-init", "--help"],
-            capture_output=True,
-            text=True,
-            check=False,
         )
-        tm.that(result.returncode, eq=0)
-        tm.that(result.stdout, contains="lazy-init")
+        tm.ok(result)
+        tm.that(result.value.exit_code, eq=0)
+        tm.that(result.value.stdout, contains="lazy-init")
 
 
 __all__: t.StrSequence = []

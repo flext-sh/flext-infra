@@ -17,7 +17,7 @@ from typing import Annotated
 
 from pydantic import Field
 
-from flext_cli import u
+from flext_cli import FlextCliUtilitiesConfiguration
 from flext_infra import (
     FlextInfraUtilitiesCliShared,
     FlextInfraUtilitiesCliSubcommand,
@@ -27,7 +27,10 @@ from flext_infra import (
 )
 
 
-class FlextInfraUtilitiesCli(FlextInfraUtilitiesCliShared):
+class FlextInfraUtilitiesCli(
+    FlextInfraUtilitiesCliShared,
+    FlextCliUtilitiesConfiguration,
+):
     """Static facade for CLI argument parsing and resolution.
 
     Provides standardized argument parser creation and resolution for
@@ -77,7 +80,7 @@ class FlextInfraUtilitiesCli(FlextInfraUtilitiesCliShared):
                 List of project names if any specified, else None.
 
             """
-            return u.Cli.project_names_from_values(self.projects)
+            return FlextInfraUtilitiesCli.project_names_from_values(self.projects)
 
         def project_dirs(self) -> Sequence[Path] | None:
             """Convert project names to absolute directory paths under workspace.
@@ -177,7 +180,7 @@ class FlextInfraUtilitiesCli(FlextInfraUtilitiesCliShared):
         check_flag = bool(getattr(args, "check", False))
 
         raw_projects = getattr(args, "projects", None)
-        projects = u.Cli.project_names_from_values(raw_projects)
+        projects = FlextInfraUtilitiesCli.project_names_from_values(raw_projects)
 
         raw_class_to_analyze = getattr(args, "class_to_analyze", None)
         class_to_analyze = (

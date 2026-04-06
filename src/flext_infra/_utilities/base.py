@@ -12,11 +12,12 @@ from pathlib import Path
 
 from pydantic import TypeAdapter, ValidationError
 
-from flext_cli import u
+from flext_cli import FlextCliUtilitiesYaml
+from flext_core import u
 from flext_infra import c, m, p, r, t
 
 
-class FlextInfraUtilitiesBase:
+class FlextInfraUtilitiesBase(FlextCliUtilitiesYaml):
     """Base utilities for flext-infra project.
 
     Provides primitive helpers used across all infra utility subclasses.
@@ -219,7 +220,7 @@ class FlextInfraUtilitiesBase:
                 .joinpath("tool_config.yml")
                 .read_text(encoding=c.Infra.Encoding.DEFAULT)
             )
-            parsed = u.Cli.yaml_parse(raw_text)
+            parsed = FlextInfraUtilitiesBase.yaml_parse(raw_text)
             if parsed.is_failure:
                 result = r[m.Infra.ToolConfigDocument].fail(
                     parsed.error or "tool_config.yml parse failed",

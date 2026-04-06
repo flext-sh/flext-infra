@@ -5,9 +5,8 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import m, t
+from tests import m, t, u
 
-from flext_cli import u
 from flext_infra import FlextInfraDependencyDetectionService
 
 

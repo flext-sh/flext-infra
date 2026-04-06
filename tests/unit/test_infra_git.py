@@ -6,11 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 
 import pytest
 from flext_tests import tm
+from tests import u
 
 from flext_infra import FlextInfraUtilitiesGit
 
@@ -18,27 +18,28 @@ from flext_infra import FlextInfraUtilitiesGit
 @pytest.fixture
 def git_repo(tmp_path: Path) -> Path:
     """Create a real git repository for testing."""
-    subprocess.run(["git", "init", str(tmp_path)], check=True, capture_output=True)
-    subprocess.run(
+    init_result = u.Cli.run_raw(["git", "init", str(tmp_path)])
+    tm.ok(init_result)
+    tm.that(init_result.value.exit_code, eq=0)
+    email_result = u.Cli.run_raw(
         ["git", "config", "user.email", "test@test.com"],
         cwd=tmp_path,
-        check=True,
-        capture_output=True,
     )
-    subprocess.run(
+    tm.ok(email_result)
+    tm.that(email_result.value.exit_code, eq=0)
+    name_result = u.Cli.run_raw(
         ["git", "config", "user.name", "Test"],
         cwd=tmp_path,
-        check=True,
-        capture_output=True,
     )
+    tm.ok(name_result)
+    tm.that(name_result.value.exit_code, eq=0)
     (tmp_path / "README.md").write_text("# Test\n")
-    subprocess.run(["git", "add", "."], cwd=tmp_path, check=True, capture_output=True)
-    subprocess.run(
-        ["git", "commit", "-m", "init"],
-        cwd=tmp_path,
-        check=True,
-        capture_output=True,
-    )
+    add_result = u.Cli.run_raw(["git", "add", "."], cwd=tmp_path)
+    tm.ok(add_result)
+    tm.that(add_result.value.exit_code, eq=0)
+    commit_result = u.Cli.run_raw(["git", "commit", "-m", "init"], cwd=tmp_path)
+    tm.ok(commit_result)
+    tm.that(commit_result.value.exit_code, eq=0)
     return tmp_path
 
 
@@ -54,12 +55,12 @@ class TestFlextInfraGitService:
         tm.fail(result)
 
     def test_tag_exists_true(self, git_repo: Path) -> None:
-        subprocess.run(
+        tag_result = u.Cli.run_raw(
             ["git", "tag", "-a", "v1.0.0", "-m", "release"],
             cwd=git_repo,
-            check=True,
-            capture_output=True,
         )
+        tm.ok(tag_result)
+        tm.that(tag_result.value.exit_code, eq=0)
         result = FlextInfraUtilitiesGit.git_tag_exists(git_repo, "v1.0.0")
         tm.ok(result, eq=True)
 

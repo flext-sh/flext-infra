@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import os
 import stat
-import subprocess
 from pathlib import Path
 
 from flext_tests import tm
+from tests import m, u
 
 from flext_infra import FlextInfraBaseMkGenerator
 
@@ -72,7 +72,7 @@ def _write_project(project_root: Path, *, include_parent: bool = False) -> None:
 
 def _run_make(
     project_root: Path, *args: str, env: dict[str, str] | None = None
-) -> subprocess.CompletedProcess[str]:
+) -> m.Cli.CommandOutput:
     active_env = os.environ.copy()
     for key in (
         "FILE",
@@ -95,20 +95,24 @@ def _run_make(
         active_env.pop(key, None)
     if env is not None:
         active_env.update(env)
-    return subprocess.run(
+    result = u.Cli.run_raw(
         ["make", *args],
         cwd=project_root,
-        capture_output=True,
-        text=True,
-        check=False,
         env=active_env,
+    )
+    if result.is_success:
+        return result.value
+    return m.Cli.CommandOutput(
+        stdout="",
+        stderr=result.error or "make execution failed",
+        exit_code=1,
     )
 
 
 def test_make_help_lists_supported_options(tmp_path: Path) -> None:
     _write_project(tmp_path)
     result = _run_make(tmp_path, "help")
-    tm.that(result.returncode, eq=0)
+    tm.that(result.exit_code, eq=0)
     tm.that(
         result.stdout,
         has=[
@@ -169,7 +173,7 @@ def test_make_check_file_scope_runs_mypy(tmp_path: Path) -> None:
         env={"PATH": f"{bin_dir}:{os.environ['PATH']}"},
     )
 
-    tm.that(result.returncode, eq=0)
+    tm.that(result.exit_code, eq=0)
     tm.that(log_path.read_text(encoding="utf-8"), has="run mypy src/demo.py")
 
 
@@ -207,7 +211,7 @@ def test_make_check_file_scope_unsets_python_path_env(tmp_path: Path) -> None:
         },
     )
 
-    tm.that(result.returncode, eq=0)
+    tm.that(result.exit_code, eq=0)
     tm.that(
         log_path.read_text(encoding="utf-8"),
         has="PYTHONPATH=unset MYPYPATH=unset run mypy src/demo.py",
@@ -246,7 +250,7 @@ def test_make_check_full_run_unsets_python_path_env(tmp_path: Path) -> None:
         },
     )
 
-    tm.that(result.returncode, eq=0)
+    tm.that(result.exit_code, eq=0)
     expected_src = tmp_path / "src"
     tm.that(
         log_path.read_text(encoding="utf-8"),
@@ -276,7 +280,7 @@ def test_make_check_full_run_forwards_fix_and_tool_args(tmp_path: Path) -> None:
         env={"PATH": f"{bin_dir}:{os.environ['PATH']}"},
     )
 
-    tm.that(result.returncode, eq=0)
+    tm.that(result.exit_code, eq=0)
     tm.that(
         log_path.read_text(encoding="utf-8"),
         has=("python -m flext_infra check run --gates lint,pyright --reports-dir "),
@@ -307,7 +311,7 @@ def test_make_check_fast_path_check_only_suppresses_fix_writes(tmp_path: Path) -
         env={"PATH": f"{bin_dir}:{os.environ['PATH']}"},
     )
 
-    tm.that(result.returncode, eq=0)
+    tm.that(result.exit_code, eq=0)
     tm.that(log_path.read_text(encoding="utf-8"), has="run ruff check src/demo.py")
     tm.that("--fix" not in log_path.read_text(encoding="utf-8"), eq=True)
 
@@ -326,7 +330,7 @@ def test_make_check_file_scope_rejects_unsupported_gates(tmp_path: Path) -> None
         "CHECK_GATES=security",
     )
 
-    tm.that(result.returncode, eq=2)
+    tm.that(result.exit_code, eq=2)
     tm.that(
         result.stdout + result.stderr,
         has="FILE/FILES/CHANGED_ONLY fast-path only supports lint,format,pyrefly,mypy,pyright",
@@ -350,7 +354,7 @@ def test_make_boot_works_without_existing_venv_in_workspace_mode(
         env={"PATH": f"{bin_dir}:{os.environ['PATH']}"},
     )
 
-    tm.that(result.returncode, eq=0)
+    tm.that(result.exit_code, eq=0)
     tm.that(
         log_path.read_text(encoding="utf-8"),
         has=[

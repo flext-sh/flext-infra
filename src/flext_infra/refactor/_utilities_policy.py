@@ -14,7 +14,8 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from flext_cli import u
+from flext_cli import FlextCliUtilitiesYaml
+from flext_core import u
 from flext_infra import (
     c,
     m,
@@ -23,7 +24,7 @@ from flext_infra import (
 )
 
 
-class FlextInfraUtilitiesRefactorPolicy:
+class FlextInfraUtilitiesRefactorPolicy(FlextCliUtilitiesYaml):
     """Policy document loading and class-nesting policy enforcement."""
 
     _MODULE_FAMILY_KEYS: t.StrSequence = (
@@ -44,7 +45,7 @@ class FlextInfraUtilitiesRefactorPolicy:
         policy_path: Path,
     ) -> r[Mapping[str, t.Infra.InfraValue]]:
         """Load and validate a YAML policy document."""
-        raw = u.Cli.yaml_load_mapping(policy_path)
+        raw = FlextInfraUtilitiesRefactorPolicy.yaml_load_mapping(policy_path)
         if not raw:
             return r[Mapping[str, t.Infra.InfraValue]].fail(
                 f"Failed to load policy {policy_path}",

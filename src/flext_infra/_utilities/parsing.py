@@ -15,11 +15,12 @@ from pathlib import Path
 
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
-from flext_cli import u
+from flext_cli import FlextCliUtilitiesToml
+from flext_core import u
 from flext_infra import c, m, p, r, t
 
 
-class FlextInfraUtilitiesParsing:
+class FlextInfraUtilitiesParsing(FlextCliUtilitiesToml):
     """Static parsing utilities for Python source and import analysis."""
 
     _DOCSTRING_QUOTES = ('"""', "'''")
@@ -157,8 +158,8 @@ class FlextInfraUtilitiesParsing:
         changes: MutableSequence[str],
     ) -> None:
         """Ensure pyright ``executionEnvironments`` matches one expected payload."""
-        raw = u.Cli.toml_unwrap_item(
-            u.Cli.toml_get_item(pyright, "executionEnvironments")
+        raw = FlextInfraUtilitiesParsing.toml_unwrap_item(
+            FlextInfraUtilitiesParsing.toml_get_item(pyright, "executionEnvironments")
         )
         current: Sequence[t.StrMapping] = []
         if isinstance(raw, list):
@@ -202,16 +203,19 @@ class FlextInfraUtilitiesParsing:
     @staticmethod
     def project_dev_groups(doc: t.Cli.TomlDocument) -> dict[str, t.StrSequence]:
         """Extract optional dependency groups from the ``project`` table."""
-        project_raw = u.Cli.toml_get_table(doc, c.Infra.PROJECT)
+        project_raw = FlextInfraUtilitiesParsing.toml_get_table(doc, c.Infra.PROJECT)
         if project_raw is None:
             return {}
-        optional_raw = u.Cli.toml_get_table(project_raw, c.Infra.OPTIONAL_DEPENDENCIES)
+        optional_raw = FlextInfraUtilitiesParsing.toml_get_table(
+            project_raw,
+            c.Infra.OPTIONAL_DEPENDENCIES,
+        )
         if optional_raw is None:
             return {}
 
         def _group_values(group_key: str) -> t.StrSequence:
-            value = u.Cli.toml_get_item(optional_raw, group_key)
-            return u.Cli.toml_as_string_list(value)
+            value = FlextInfraUtilitiesParsing.toml_get_item(optional_raw, group_key)
+            return FlextInfraUtilitiesParsing.toml_as_string_list(value)
 
         return {
             c.Infra.DEV: _group_values(c.Infra.DEV),
@@ -281,7 +285,7 @@ class FlextInfraUtilitiesParsing:
     @staticmethod
     def read_plain(path: Path) -> r[t.Infra.ContainerDict]:
         """Read one TOML file as a plain infra mapping."""
-        result = u.Cli.toml_read_json(path)
+        result = FlextInfraUtilitiesParsing.toml_read_json(path)
         if result.is_failure:
             if not path.exists():
                 return r[t.Infra.ContainerDict].ok({})

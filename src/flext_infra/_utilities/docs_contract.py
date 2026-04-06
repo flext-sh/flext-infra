@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_cli import u
+from flext_cli import FlextCliUtilitiesToml
 from flext_infra import (
     FlextInfraUtilitiesDocsApi,
     FlextInfraUtilitiesDocsScope,
@@ -14,7 +14,7 @@ from flext_infra import (
 )
 
 
-class FlextInfraUtilitiesDocsContract:
+class FlextInfraUtilitiesDocsContract(FlextCliUtilitiesToml):
     """Contract helpers for docs services."""
 
     @staticmethod
@@ -37,9 +37,13 @@ class FlextInfraUtilitiesDocsContract:
             "exclude_docs",
         )
         project_meta_value = payload.get(c.Infra.PROJECT)
-        project_meta = u.Cli.toml_as_mapping(project_meta_value) or {}
+        project_meta = (
+            FlextInfraUtilitiesDocsContract.toml_as_mapping(project_meta_value) or {}
+        )
         project_urls_value = project_meta.get("urls")
-        project_urls = u.Cli.toml_as_mapping(project_urls_value) or {}
+        project_urls = (
+            FlextInfraUtilitiesDocsContract.toml_as_mapping(project_urls_value) or {}
+        )
         return {
             "name": str(project_meta.get("name", "flext")).strip() or "flext",
             "description": str(project_meta.get("description", "")).strip(),

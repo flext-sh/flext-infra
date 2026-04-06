@@ -8,7 +8,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from flext_cli import u
+from flext_cli import FlextCliUtilitiesToml
 from flext_infra import (
     FlextInfraUtilitiesDiscoveryScanning,
     FlextInfraUtilitiesDocsScope,
@@ -20,7 +20,7 @@ from flext_infra import (
 )
 
 
-class FlextInfraUtilitiesDocsApi:
+class FlextInfraUtilitiesDocsApi(FlextCliUtilitiesToml):
     """Extract public package metadata, exports, modules, and docstring issues."""
 
     _ALIAS_EXPORTS: tuple[str, ...] = (
@@ -160,9 +160,13 @@ class FlextInfraUtilitiesDocsApi:
             "exclude_docs",
         )
         project_meta_value = payload.get(c.Infra.PROJECT)
-        project_meta = u.Cli.toml_as_mapping(project_meta_value) or {}
+        project_meta = (
+            FlextInfraUtilitiesDocsApi.toml_as_mapping(project_meta_value) or {}
+        )
         project_urls_value = project_meta.get("urls")
-        project_urls = u.Cli.toml_as_mapping(project_urls_value) or {}
+        project_urls = (
+            FlextInfraUtilitiesDocsApi.toml_as_mapping(project_urls_value) or {}
+        )
         if not package_name:
             site_title = (
                 str(docs_meta.get("site_title", "")).strip()

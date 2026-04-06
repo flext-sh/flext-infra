@@ -14,11 +14,12 @@ from pathlib import Path
 
 from pydantic import BaseModel, ValidationError
 
-from flext_cli import u
+from flext_cli import FlextCliUtilitiesToml
+from flext_core import u
 from flext_infra import t
 
 
-class FlextInfraUtilitiesToml:
+class FlextInfraUtilitiesToml(FlextCliUtilitiesToml):
     """Infra-specific TOML helpers — validation via INFRA adapters.
 
     For pure TOML operations use ``u.Cli.toml_*`` directly::
@@ -30,7 +31,7 @@ class FlextInfraUtilitiesToml:
     @staticmethod
     def as_toml_mapping(value: t.Infra.InfraValue) -> t.Infra.ContainerDict | None:
         """Check if value is a MutableMapping and return it typed, otherwise None."""
-        normalized_value = u.Cli.toml_as_mapping(value)
+        normalized_value = FlextInfraUtilitiesToml.toml_as_mapping(value)
         if normalized_value is None:
             return None
         try:
@@ -54,7 +55,7 @@ class FlextInfraUtilitiesToml:
 
         SSOT for TOML value normalization — replaces ``normalize_container_value``.
         """
-        normalized = u.Cli.toml_unwrap_item(value)
+        normalized = FlextInfraUtilitiesToml.toml_unwrap_item(value)
         if normalized is None or isinstance(normalized, (str, int, float, bool)):
             return normalized
         if u.is_mapping(normalized):
@@ -77,7 +78,7 @@ class FlextInfraUtilitiesToml:
         """Retrieve and normalize a value from a TOML container by key."""
         if not isinstance(key, str):
             return None
-        raw_value = u.Cli.toml_get(container, key)
+        raw_value = FlextInfraUtilitiesToml.toml_get(container, key)
         if raw_value is None:
             return None
         if isinstance(
@@ -108,7 +109,9 @@ class FlextInfraUtilitiesToml:
         change_message: str,
     ) -> bool:
         """Synchronize a scalar TOML value when it differs."""
-        current = FlextInfraUtilitiesToml.unwrap_item(u.Cli.toml_get(container, key))
+        current = FlextInfraUtilitiesToml.unwrap_item(
+            FlextInfraUtilitiesToml.toml_get(container, key)
+        )
         if current == expected:
             return False
         container[key] = expected

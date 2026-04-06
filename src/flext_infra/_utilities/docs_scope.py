@@ -6,11 +6,11 @@ from collections.abc import MutableSequence, Sequence
 from fnmatch import fnmatch
 from pathlib import Path
 
-from flext_cli import u
+from flext_cli import FlextCliUtilitiesJson, FlextCliUtilitiesToml
 from flext_infra import c, m, r, t
 
 
-class FlextInfraUtilitiesDocsScope:
+class FlextInfraUtilitiesDocsScope(FlextCliUtilitiesToml, FlextCliUtilitiesJson):
     """Utility helpers for docs scope policy and project classification."""
 
     @staticmethod
@@ -24,7 +24,7 @@ class FlextInfraUtilitiesDocsScope:
         pyproject = project_root / c.Infra.Files.PYPROJECT_FILENAME
         if not pyproject.exists():
             return {}
-        result = u.Cli.toml_read_json(pyproject)
+        result = FlextInfraUtilitiesDocsScope.toml_read_json(pyproject)
         return result.value if result.is_success else {}
 
     @staticmethod
@@ -35,7 +35,7 @@ class FlextInfraUtilitiesDocsScope:
         path = FlextInfraUtilitiesDocsScope.config_path(workspace_root)
         if not path.exists():
             return {}
-        result = u.Cli.json_read(path)
+        result = FlextInfraUtilitiesDocsScope.json_read(path)
         return result.value if result.is_success else {}
 
     @staticmethod

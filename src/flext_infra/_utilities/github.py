@@ -10,7 +10,7 @@ import shutil
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
-from flext_cli import u
+from flext_cli import FlextCliUtilitiesJson
 from flext_infra import (
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesGithubPr,
@@ -27,6 +27,7 @@ class FlextInfraUtilitiesGithub(
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesReporting,
     FlextInfraUtilitiesSelection,
+    FlextCliUtilitiesJson,
 ):
     """Utilities for GitHub automation including PRs and Workflows."""
 
@@ -44,7 +45,7 @@ class FlextInfraUtilitiesGithub(
                 reason="actionlint not installed",
             )
             if request.report_path is not None:
-                _ = u.Cli.json_write(
+                _ = cls.json_write(
                     request.report_path,
                     payload_skipped,
                     sort_keys=True,
@@ -52,7 +53,7 @@ class FlextInfraUtilitiesGithub(
             return r[m.Infra.GithubWorkflowLintOutcome].ok(
                 payload_skipped,
             )
-        result = u.Cli.run_raw([actionlint], cwd=workspace_root)
+        result = cls.run_raw([actionlint], cwd=workspace_root)
         if result.is_success:
             output = result.value
             payload = m.Infra.GithubWorkflowLintOutcome(
@@ -68,7 +69,7 @@ class FlextInfraUtilitiesGithub(
                 detail=result.error or "",
             )
         if request.report_path is not None:
-            _ = u.Cli.json_write(request.report_path, payload, sort_keys=True)
+            _ = cls.json_write(request.report_path, payload, sort_keys=True)
         if payload.status == "fail" and request.strict:
             return r[m.Infra.GithubWorkflowLintOutcome].fail(
                 result.error or "actionlint found issues",
@@ -116,7 +117,7 @@ class FlextInfraUtilitiesGithub(
             operations=all_operations,
         )
         if request.report_path is not None:
-            _ = u.Cli.json_write(request.report_path, report, sort_keys=True)
+            _ = cls.json_write(request.report_path, report, sort_keys=True)
         return r[m.Infra.GithubWorkflowSyncReport].ok(report)
 
     @classmethod

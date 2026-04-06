@@ -25,19 +25,23 @@ from collections.abc import (
 from pathlib import Path
 from typing import ClassVar, Final
 
-from flext_cli import u as u_cli
-from flext_core import r, u
-from flext_infra import c, m, t
-
-from .discovery import FlextInfraUtilitiesDiscovery
-from .rope import FlextInfraUtilitiesRope
+from flext_cli import FlextCliUtilitiesBase, FlextCliUtilitiesYaml
+from flext_core import u
+from flext_infra import (
+    FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesRope,
+    c,
+    m,
+    r,
+    t,
+)
 
 # =====================================================================
 # Governance — canonical values and rule configuration
 # =====================================================================
 
 
-class FlextInfraUtilitiesCodegenGovernance:
+class FlextInfraUtilitiesCodegenGovernance(FlextCliUtilitiesYaml):
     """Loads and caches constants-governance YAML config."""
 
     _config_cache: ClassVar[MutableMapping[str, m.Infra.ConstantsGovernanceConfig]] = {}
@@ -50,7 +54,7 @@ class FlextInfraUtilitiesCodegenGovernance:
         cached = FlextInfraUtilitiesCodegenGovernance._config_cache.get("config")
         if cached is not None:
             return cached
-        raw = u_cli.Cli.yaml_load_mapping(
+        raw = FlextInfraUtilitiesCodegenGovernance.yaml_load_mapping(
             FlextInfraUtilitiesCodegenGovernance.GOVERNANCE_FILE
         )
         config = m.Infra.ConstantsGovernanceConfig.model_validate(raw)
@@ -689,7 +693,7 @@ class FlextInfraUtilitiesCodegenConstantAnalysis:
 # =====================================================================
 
 
-class FlextInfraUtilitiesCodegenConstantTransformation:
+class FlextInfraUtilitiesCodegenConstantTransformation(FlextCliUtilitiesBase):
     """Consolidation: inline values → ``c.*`` references with rollback."""
 
     @staticmethod
@@ -776,7 +780,11 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
         errors: MutableMapping[str, Sequence[str]] = {}
         for tool, tmpl in c.Infra.LINT_TOOLS:
             cmd = [a.replace("{file}", str(py_file)) for a in tmpl]
-            res = u.Cli.run_raw(cmd, cwd=workspace, timeout=c.Infra.Timeouts.SHORT)
+            res = FlextInfraUtilitiesCodegenConstantTransformation.run_raw(
+                cmd,
+                cwd=workspace,
+                timeout=c.Infra.Timeouts.SHORT,
+            )
             if res.is_success and res.value.exit_code != 0:
                 out = (res.value.stdout + res.value.stderr).strip()
                 errors[tool] = [ln for ln in out.splitlines() if ln.strip()]
@@ -826,7 +834,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
         if not new_errors and (
             "tests" in py_file.parts or py_file.name.startswith("test_")
         ):
-            tr = u.Cli.run_raw(
+            tr = FlextInfraUtilitiesCodegenConstantTransformation.run_raw(
                 ["pytest", str(py_file), "-x", "--tb=short", "-q"],
                 cwd=workspace,
                 timeout=c.Infra.Timeouts.MEDIUM,

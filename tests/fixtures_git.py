@@ -8,10 +8,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 
 import pytest
+from tests import u
 
 
 @pytest.fixture
@@ -29,41 +29,35 @@ def real_git_repo(tmp_path: Path) -> Path:
     repo_root.mkdir()
 
     # Initialize git repo
-    subprocess.run(
-        ["git", "init"],
-        cwd=repo_root,
-        check=True,
-        capture_output=True,
-    )
+    init_result = u.Cli.run_raw(["git", "init"], cwd=repo_root)
+    assert init_result.is_success
+    assert init_result.value.exit_code == 0
 
     # Configure git user for commits
-    subprocess.run(
+    email_result = u.Cli.run_raw(
         ["git", "config", "user.email", "test@example.com"],
         cwd=repo_root,
-        check=True,
-        capture_output=True,
     )
-    subprocess.run(
+    assert email_result.is_success
+    assert email_result.value.exit_code == 0
+    name_result = u.Cli.run_raw(
         ["git", "config", "user.name", "Test User"],
         cwd=repo_root,
-        check=True,
-        capture_output=True,
     )
+    assert name_result.is_success
+    assert name_result.value.exit_code == 0
 
     # Create initial file and commit
     (repo_root / "README.md").write_text("# Test Repository\n")
-    subprocess.run(
-        ["git", "add", "README.md"],
-        cwd=repo_root,
-        check=True,
-        capture_output=True,
-    )
-    subprocess.run(
+    add_result = u.Cli.run_raw(["git", "add", "README.md"], cwd=repo_root)
+    assert add_result.is_success
+    assert add_result.value.exit_code == 0
+    commit_result = u.Cli.run_raw(
         ["git", "commit", "-m", "Initial commit"],
         cwd=repo_root,
-        check=True,
-        capture_output=True,
     )
+    assert commit_result.is_success
+    assert commit_result.value.exit_code == 0
 
     return repo_root
 

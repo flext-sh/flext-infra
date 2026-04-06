@@ -1,19 +1,17 @@
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 
 from tests import c, u
 
 
 def _run_git(repo: Path, *args: str) -> None:
-    subprocess.run(
+    result = u.Cli.run_raw(
         [c.Infra.GIT, *args],
         cwd=repo,
-        check=True,
-        capture_output=True,
-        text=True,
     )
+    assert result.is_success
+    assert result.value.exit_code == 0
 
 
 def _init_git_repo(repo: Path) -> None:

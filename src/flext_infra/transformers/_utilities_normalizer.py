@@ -18,7 +18,8 @@ from typing import Annotated
 
 from pydantic import Field
 
-from flext_cli import u
+from flext_cli import FlextCliUtilitiesYaml
+from flext_core import u
 from flext_infra import (
     c,
     m,
@@ -38,7 +39,7 @@ class FlextInfraNormalizerContext(m.ArbitraryTypesModel):
     ]
 
 
-class FlextInfraUtilitiesImportNormalizer:
+class FlextInfraUtilitiesImportNormalizer(FlextCliUtilitiesYaml):
     """Import normalization helpers for alias resolution and tier inference."""
 
     @staticmethod
@@ -50,7 +51,7 @@ class FlextInfraUtilitiesImportNormalizer:
             / "rules"
             / "import-normalization.yml"
         )
-        loaded = u.Cli.yaml_load_mapping(rules_path)
+        loaded = FlextInfraUtilitiesImportNormalizer.yaml_load_mapping(rules_path)
         root = loaded.get("import_normalization")
         if u.is_mapping(root):
             return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(root)

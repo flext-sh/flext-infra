@@ -5,11 +5,11 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-from flext_cli import u
+from flext_cli import FlextCliUtilitiesJson
 from flext_infra import FlextInfraUtilitiesDocs, FlextInfraUtilitiesPatterns, c, m, t
 
 
-class FlextInfraUtilitiesDocsFix:
+class FlextInfraUtilitiesDocsFix(FlextCliUtilitiesJson):
     """Reusable fix helpers exposed through ``u.Infra``."""
 
     @staticmethod
@@ -77,7 +77,7 @@ class FlextInfraUtilitiesDocsFix:
         apply: bool,
     ) -> None:
         """Persist the standard fix summary and markdown report."""
-        _ = u.Cli.json_write(
+        _ = FlextInfraUtilitiesDocsFix.json_write(
             scope.report_dir / "fix-summary.json",
             {
                 c.Infra.ReportKeys.SUMMARY: {

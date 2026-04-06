@@ -12,39 +12,38 @@ from typing import Annotated, Literal, Self
 
 from pydantic import Field
 
-from flext_cli import FlextCliTypes
-from flext_core import FlextModels
-from flext_infra import FlextInfraConstantsBase
+from flext_core import m
+from flext_infra import c, t
 
 
 class FlextInfraEngineModels:
     """Engine models accessible via ``m.Infra.*``."""
 
-    class TomlSetOp(FlextModels.ContractModel):
+    class TomlSetOp(m.ContractModel):
         """Set one TOML key to one JSON-compatible value."""
 
         kind: Literal["set"] = Field(default="set", description="Operation kind")
         key: str = Field(description="TOML key name")
-        value: FlextCliTypes.Cli.JsonValue = Field(description="JSON-compatible value")
+        value: t.Cli.JsonValue = Field(description="JSON-compatible value")
 
-    class TomlListOp(FlextModels.ContractModel):
+    class TomlListOp(m.ContractModel):
         """Set or merge one TOML string list."""
 
         kind: Literal["list"] = Field(default="list", description="Operation kind")
         key: str = Field(description="TOML key name")
-        values: FlextCliTypes.StrSequence = Field(description="Expected values")
+        values: t.StrSequence = Field(description="Expected values")
         strategy: str = Field(
-            default=FlextInfraConstantsBase.TomlMerge.REPLACE,
+            default=c.Infra.TomlMerge.REPLACE,
             description="Merge strategy",
         )
         sort: bool = Field(default=True, description="Sort values before sync")
 
-    class TomlRemoveOp(FlextModels.ContractModel):
+    class TomlRemoveOp(m.ContractModel):
         """Remove one TOML key, optionally from a nested relative table."""
 
         kind: Literal["remove"] = Field(default="remove", description="Operation kind")
         key: str = Field(description="Key to remove")
-        table_path: FlextCliTypes.StrSequence = Field(
+        table_path: t.StrSequence = Field(
             default=(),
             description="Relative sub-table path",
         )
@@ -54,17 +53,15 @@ class FlextInfraEngineModels:
         Field(discriminator="kind"),
     ]
 
-    class TomlPhaseConfig(FlextModels.ContractModel):
+    class TomlPhaseConfig(m.ContractModel):
         """Declarative TOML phase with inline Builder DSL."""
 
         name: str = Field(description="Phase name")
-        root_path: FlextCliTypes.StrSequence = Field(
-            default=(FlextInfraConstantsBase.TOOL,),
+        root_path: t.StrSequence = Field(
+            default=(c.Infra.TOOL,),
             description="Root path before table_path",
         )
-        table_path: FlextCliTypes.StrSequence = Field(
-            default=(), description="Primary table path"
-        )
+        table_path: t.StrSequence = Field(default=(), description="Primary table path")
         operations: Sequence[FlextInfraEngineModels.TomlOperation] = Field(
             default=(),
             description="Declarative TOML operations",
@@ -72,15 +69,13 @@ class FlextInfraEngineModels:
         nested_tables: Sequence[FlextInfraEngineModels.TomlPhaseConfig] = Field(
             default=(), description="Nested TOML phase configs"
         )
-        custom_handler: Callable[..., FlextCliTypes.StrSequence] | None = Field(
+        custom_handler: Callable[..., t.StrSequence] | None = Field(
             default=None,
             exclude=True,
             description="Custom handler",
         )
 
-        class Builder(
-            FlextModels.Builder.Identity["FlextInfraEngineModels.TomlPhaseConfig"]
-        ):
+        class Builder(m.Builder.Identity["FlextInfraEngineModels.TomlPhaseConfig"]):
             """Fluent builder — ``m.Infra.TomlPhaseConfig.Builder("ruff").table(...).build()``."""
 
             def __init__(self, name: str) -> None:
@@ -92,9 +87,9 @@ class FlextInfraEngineModels:
             def _nested_operations(
                 cls,
                 *,
-                values: Sequence[tuple[str, FlextCliTypes.Cli.JsonValue]] = (),
-                lists: Sequence[tuple[str, FlextCliTypes.StrSequence]] = (),
-                deprecated_keys: FlextCliTypes.StrSequence = (),
+                values: Sequence[tuple[str, t.Cli.JsonValue]] = (),
+                lists: Sequence[tuple[str, t.StrSequence]] = (),
+                deprecated_keys: t.StrSequence = (),
             ) -> tuple[FlextInfraEngineModels.TomlOperation, ...]:
                 return tuple(
                     chain(
@@ -120,7 +115,7 @@ class FlextInfraEngineModels:
                 )
 
             def _operation(
-                self, operation_type: type[FlextModels.ContractModel], /, **data: object
+                self, operation_type: type[m.ContractModel], /, **data: object
             ) -> Self:
                 return self._append_model("operations", operation_type, **data)
 
@@ -130,7 +125,7 @@ class FlextInfraEngineModels:
             def table(self, *path: str) -> Self:
                 return self._path("table_path", *path)
 
-            def value(self, key: str, value: FlextCliTypes.Cli.JsonValue) -> Self:
+            def value(self, key: str, value: t.Cli.JsonValue) -> Self:
                 return self._operation(
                     FlextInfraEngineModels.TomlSetOp, key=key, value=value
                 )
@@ -138,9 +133,9 @@ class FlextInfraEngineModels:
             def list(
                 self,
                 key: str,
-                values: FlextCliTypes.StrSequence,
+                values: t.StrSequence,
                 *,
-                strategy: str = FlextInfraConstantsBase.TomlMerge.REPLACE,
+                strategy: str = c.Infra.TomlMerge.REPLACE,
                 sort: bool = True,
             ) -> Self:
                 return self._operation(
@@ -161,9 +156,9 @@ class FlextInfraEngineModels:
             def nested(
                 self,
                 *path: str,
-                values: Sequence[tuple[str, FlextCliTypes.Cli.JsonValue]] = (),
-                lists: Sequence[tuple[str, FlextCliTypes.StrSequence]] = (),
-                deprecated_keys: FlextCliTypes.StrSequence = (),
+                values: Sequence[tuple[str, t.Cli.JsonValue]] = (),
+                lists: Sequence[tuple[str, t.StrSequence]] = (),
+                deprecated_keys: t.StrSequence = (),
             ) -> Self:
                 return self._append_model(
                     "nested_tables",
@@ -176,7 +171,7 @@ class FlextInfraEngineModels:
                     ),
                 )
 
-            def handler(self, fn: Callable[..., FlextCliTypes.StrSequence]) -> Self:
+            def handler(self, fn: Callable[..., t.StrSequence]) -> Self:
                 return self._set(custom_handler=fn)
 
 

@@ -7,7 +7,8 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from flext_cli import u
+from flext_cli import FlextCliUtilitiesJson
+from flext_core import u
 from flext_infra import (
     FlextInfraUtilitiesDocs,
     FlextInfraUtilitiesDocsContract,
@@ -19,7 +20,7 @@ from flext_infra import (
 )
 
 
-class FlextInfraUtilitiesDocsGenerate:
+class FlextInfraUtilitiesDocsGenerate(FlextCliUtilitiesJson):
     """Reusable generation helpers exposed through ``u.Infra``."""
 
     @staticmethod
@@ -319,7 +320,7 @@ class FlextInfraUtilitiesDocsGenerate:
             )
         )
         generated = u.count(files, lambda item: item.written)
-        _ = u.Cli.json_write(
+        _ = FlextInfraUtilitiesDocsGenerate.json_write(
             scope.report_dir / "generate-summary.json",
             {
                 c.Infra.ReportKeys.SUMMARY: {

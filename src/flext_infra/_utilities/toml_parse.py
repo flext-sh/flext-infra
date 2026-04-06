@@ -15,12 +15,12 @@ from pathlib import Path
 
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
-from flext_cli import u
-from flext_core import r
+from flext_cli import FlextCliUtilitiesToml
+from flext_core import r, u
 from flext_infra import FlextInfraUtilitiesToml, c, t
 
 
-class FlextInfraUtilitiesTomlParse:
+class FlextInfraUtilitiesTomlParse(FlextCliUtilitiesToml):
     """TOML parsing helpers — dependency extraction and project configuration.
 
     Usage::
@@ -107,17 +107,20 @@ class FlextInfraUtilitiesTomlParse:
     @staticmethod
     def project_dev_groups(doc: t.Cli.TomlDocument) -> Mapping[str, t.StrSequence]:
         """Extract optional-dependencies groups from project table."""
-        project_raw = u.Cli.toml_get_table(doc, c.Infra.PROJECT)
+        project_raw = FlextInfraUtilitiesTomlParse.toml_get_table(doc, c.Infra.PROJECT)
         if project_raw is None:
             return {}
-        optional_raw = u.Cli.toml_get_table(project_raw, c.Infra.OPTIONAL_DEPENDENCIES)
+        optional_raw = FlextInfraUtilitiesTomlParse.toml_get_table(
+            project_raw,
+            c.Infra.OPTIONAL_DEPENDENCIES,
+        )
         if optional_raw is None:
             return {}
         opt_deps: t.Cli.TomlTable = optional_raw
 
         def _group_values(group_key: str) -> t.StrSequence:
-            value = u.Cli.toml_get_item(opt_deps, group_key)
-            return u.Cli.toml_as_string_list(value)
+            value = FlextInfraUtilitiesTomlParse.toml_get_item(opt_deps, group_key)
+            return FlextInfraUtilitiesTomlParse.toml_as_string_list(value)
 
         return {
             c.Infra.DEV: _group_values(c.Infra.DEV),
@@ -189,7 +192,7 @@ class FlextInfraUtilitiesTomlParse:
     @staticmethod
     def read_plain(path: Path) -> r[t.Infra.ContainerDict]:
         """Read and parse a TOML file as a plain dict with r error handling."""
-        result = u.Cli.toml_read_json(path)
+        result = FlextInfraUtilitiesTomlParse.toml_read_json(path)
         if result.is_failure:
             if not path.exists():
                 return r[t.Infra.ContainerDict].ok({})

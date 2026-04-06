@@ -11,7 +11,6 @@ import time
 from collections.abc import MutableSequence
 from pathlib import Path
 
-from flext_cli import u
 from flext_core import r
 from flext_infra import (
     FlextInfraConstantsBase,
@@ -149,7 +148,7 @@ class FlextInfraUtilitiesGithubPr(
             request=request,
         )
         started = time.monotonic()
-        to_file_result: r[int] = u.Cli.run_to_file(command, log_path)
+        to_file_result: r[int] = cls.run_to_file(command, log_path)
         if to_file_result.is_failure:
             return r[FlextInfraGithubModels.GithubPullRequestOutcome].fail(
                 to_file_result.error or "command execution error",

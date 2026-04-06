@@ -9,11 +9,11 @@ import mkdocs.commands.build
 import mkdocs.config
 import mkdocs.exceptions
 
-from flext_cli import u
+from flext_cli import FlextCliUtilitiesJson
 from flext_infra import FlextInfraUtilitiesDocs, c, m, p
 
 
-class FlextInfraUtilitiesDocsBuild:
+class FlextInfraUtilitiesDocsBuild(FlextCliUtilitiesJson):
     """Reusable build helpers exposed through ``u.Infra``."""
 
     @staticmethod
@@ -134,7 +134,7 @@ class FlextInfraUtilitiesDocsBuild:
         report: m.Infra.DocsPhaseReport,
     ) -> None:
         """Persist the standard build summary and markdown report."""
-        _ = u.Cli.json_write(
+        _ = FlextInfraUtilitiesDocsBuild.json_write(
             scope.report_dir / "build-summary.json",
             {c.Infra.ReportKeys.SUMMARY: report.model_dump()},
         )
