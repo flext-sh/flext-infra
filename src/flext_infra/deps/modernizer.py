@@ -6,9 +6,9 @@ from argparse import Namespace
 from collections.abc import MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
-import tomlkit
 from tomlkit.container import Container
 from tomlkit.items import AoT, Item, Table
+from tomlkit.toml_document import TOMLDocument
 
 from flext_infra import (
     FlextInfraConsolidateGroupsPhase,
@@ -59,12 +59,12 @@ class FlextInfraPyprojectModernizer:
         kind = FlextInfraProjectClassifier(project_dir).classify().project_kind
         return r[str].ok(kind)
 
-    def _ensure_build_system(self, doc: tomlkit.TOMLDocument) -> t.StrSequence:
+    def _ensure_build_system(self, doc: TOMLDocument) -> t.StrSequence:
         """Ensure canonical build-system backend/requirements."""
         changes: MutableSequence[str] = []
         build_system = u.Infra.get_table(doc, "build-system")
         if build_system is None:
-            build_system = tomlkit.table()
+            build_system = u.Infra.table()
             doc["build-system"] = build_system
             changes.append("created [build-system]")
         expected_backend = "hatchling.build"
@@ -140,7 +140,7 @@ class FlextInfraPyprojectModernizer:
             table[key] = value
 
     @classmethod
-    def _reorder_document_inplace(cls, doc: tomlkit.TOMLDocument) -> None:
+    def _reorder_document_inplace(cls, doc: TOMLDocument) -> None:
         """Apply deterministic ordering for top-level groups and nested tables."""
         root_keys = [str(key) for key in doc]
         ordered_root = cls._ordered_keys(
@@ -206,7 +206,7 @@ class FlextInfraPyprojectModernizer:
         changes.extend(self._ensure_build_system(doc))
         tool_item = u.Infra.get_table(doc, c.Infra.TOOL)
         if tool_item is None:
-            tool_item = tomlkit.table()
+            tool_item = u.Infra.table()
             doc[c.Infra.TOOL] = tool_item
         poetry_item = u.Infra.get_table(tool_item, c.Infra.POETRY)
         if poetry_item is not None:

@@ -12,11 +12,12 @@ from collections.abc import Mapping, MutableSequence
 from pathlib import Path
 
 from pydantic import BaseModel, ValidationError
-from tomlkit.items import Item, Table
+from tomlkit.items import AoT, Item, Table
 from tomlkit.toml_document import TOMLDocument
 
+from flext_cli import u
 from flext_core import r
-from flext_infra import t, u
+from flext_infra import t
 
 
 class FlextInfraUtilitiesToml:
@@ -211,6 +212,31 @@ class FlextInfraUtilitiesToml:
 
         """
         return u.Cli.toml_write_document(path, doc)
+
+    @staticmethod
+    def table() -> Table:
+        """Create a new explicit TOML table."""
+        return u.Cli.toml_table()
+
+    @staticmethod
+    def document() -> TOMLDocument:
+        """Create a new TOML document."""
+        return u.Cli.toml_document()
+
+    @staticmethod
+    def parse_text(text: str) -> TOMLDocument | None:
+        """Parse TOML text, returning None on invalid input."""
+        return u.Cli.toml_parse_text(text)
+
+    @staticmethod
+    def is_table(value: t.Infra.InfraValue | Item | Table | None) -> bool:
+        """Check whether value is a TOML Table."""
+        return isinstance(value, Table)
+
+    @staticmethod
+    def is_aot(value: t.Infra.InfraValue | Item | Table | None) -> bool:
+        """Check whether value is a TOML Array of Tables."""
+        return isinstance(value, AoT)
 
 
 __all__ = ["FlextInfraUtilitiesToml"]

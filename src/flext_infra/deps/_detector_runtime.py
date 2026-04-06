@@ -176,10 +176,11 @@ class FlextInfraDependencyDetectorRuntime:
                 c.Infra.PROJECT,
                 c.Infra.DEPENDENCIES,
             )
-            try:
-                report_dir.mkdir(parents=True, exist_ok=True)
-            except OSError as exc:
-                return r[int].fail(f"failed to create report directory: {exc}")
+            dir_result = u.Infra.ensure_dir(report_dir)
+            if dir_result.is_failure:
+                return r[int].fail(
+                    dir_result.error or "failed to create report directory",
+                )
             out_path = report_dir / "detect-runtime-dev-latest.json"
         if out_path is not None and not cli.dry_run:
             write_result = detector.json.write_json(out_path, report_payload)
