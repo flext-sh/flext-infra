@@ -42,9 +42,7 @@ class FlextInfraUtilitiesToml:
             )
         except ValidationError:
             return None
-        result: t.Infra.ContainerDict = {
-            str(key): validated[key] for key in validated
-        }
+        result: t.Infra.ContainerDict = {str(key): validated[key] for key in validated}
         return result
 
     @staticmethod
