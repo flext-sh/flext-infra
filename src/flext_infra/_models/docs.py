@@ -108,6 +108,10 @@ class FlextInfraDocsModels:
     class DocsPhaseReport(FlextModels.ContractModel):
         """Unified report payload for docs phases."""
 
+        @staticmethod
+        def _items_default() -> list[FlextInfraDocsModels.DocsPhaseItemModel]:
+            return []
+
         phase: Annotated[
             str,
             Field(
@@ -171,11 +175,11 @@ class FlextInfraDocsModels:
         ] = False
         items: Annotated[
             Sequence[FlextInfraDocsModels.DocsPhaseItemModel],
-            Field(description="Phase-specific item payloads"),
-        ] = Field(
-            default_factory=list,
-            description="Phase-specific item payloads",
-        )
+            Field(
+                default_factory=_items_default,
+                description="Phase-specific item payloads",
+            ),
+        ]
 
 
 __all__ = ["FlextInfraDocsModels"]

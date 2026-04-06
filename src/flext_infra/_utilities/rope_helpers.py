@@ -262,7 +262,7 @@ class FlextInfraUtilitiesRopeHelpers:
     _PROPERTY_DECORATORS: ClassVar[frozenset[str]] = frozenset(
         {"property", "cached_property", "computed_field"},
     )
-    _DECORATOR_TO_CATEGORY: ClassVar[Sequence[tuple[str, str]]] = [
+    _DECORATOR_TO_CATEGORY: ClassVar[Sequence[t.Infra.StrPair]] = [
         ("staticmethod", "static"),
         ("classmethod", "class"),
     ]

@@ -29,8 +29,7 @@ class FlextInfraDocValidator(s[bool]):
         ),
     ] = c.Infra.DEFAULT_DOCS_OUTPUT_DIR
 
-    @override
-    def validate(
+    def validate_workspace(
         self,
         value: Path,
         *,
@@ -61,7 +60,7 @@ class FlextInfraDocValidator(s[bool]):
         apply: bool = False,
     ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
         """Backward-compatible alias for the canonical validate entrypoint."""
-        return self.validate(
+        return self.validate_workspace(
             value,
             projects=projects,
             output_dir=output_dir,
@@ -72,7 +71,7 @@ class FlextInfraDocValidator(s[bool]):
     @override
     def execute(self) -> r[bool]:
         """Execute the configured docs validation flow."""
-        result = self.validate(
+        result = self.validate_workspace(
             self.workspace_root,
             projects=self.selected_projects,
             output_dir=self.docs_output_dir,

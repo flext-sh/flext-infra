@@ -190,7 +190,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         if source is None:
             return []
         definitions: MutableSequence[m.Infra.ConstantDefinition] = []
-        class_stack: MutableSequence[tuple[str, int]] = []
+        class_stack: MutableSequence[t.Infra.StrIntPair] = []
 
         for line_num, line in enumerate(source.splitlines(), 1):
             stripped = line.lstrip()

@@ -38,6 +38,10 @@ class FlextInfraReleaseModels:
     class BuildReport(FlextModels.ArbitraryTypesModel):
         """Aggregated build report payload written to JSON."""
 
+        @staticmethod
+        def _records_default() -> list[FlextInfraReleaseModels.BuildRecord]:
+            return []
+
         version: Annotated[t.NonEmptyStr, Field(description="Release version")]
         total: Annotated[
             t.NonNegativeInt,
@@ -47,10 +51,13 @@ class FlextInfraReleaseModels:
             t.NonNegativeInt,
             Field(description="Total projects with non-zero exit"),
         ]
-        records: list[FlextInfraReleaseModels.BuildRecord] = Field(
-            default_factory=list,
-            description="Per-project build records",
-        )
+        records: Annotated[
+            list[FlextInfraReleaseModels.BuildRecord],
+            Field(
+                default_factory=_records_default,
+                description="Per-project build records",
+            ),
+        ]
 
     class ReleaseOrchestratorConfig(
         FlextInfraModelsMixins.DryRunFalseMixin,

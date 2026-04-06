@@ -187,7 +187,12 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunReport:
             return tmp_path / "reports"
 
         reporting = types.SimpleNamespace(get_report_dir=_report_dir)
-        monkeypatch.setattr(u.Cli, "ensure_dir", lambda path: r[bool].ok(True))
+
+        def _ensure_dir_ok(path: Path) -> r[bool]:
+            del path
+            return r[bool].ok(True)
+
+        monkeypatch.setattr(u.Cli, "ensure_dir", _ensure_dir_ok)
         monkeypatch.setattr(u.Cli, "json_write", _write_json_fail)
         detector = _setup(
             monkeypatch,

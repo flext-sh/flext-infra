@@ -23,8 +23,6 @@ class FlextInfraChangeTracker(Protocol):
 class FlextInfraProtocolsRefactor(Protocol):
     """Refactor-domain protocol definitions."""
 
-    ChangeTracker = FlextInfraChangeTracker
-
 
 __all__ = [
     "FlextInfraChangeTracker",

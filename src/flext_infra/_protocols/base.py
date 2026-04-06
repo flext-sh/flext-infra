@@ -32,6 +32,10 @@ class FlextInfraProtocolsBase(Protocol):
             """Flush buffered text to the underlying sink."""
             ...
 
+        def isatty(self) -> bool:
+            """Return whether the stream is attached to a TTY."""
+            ...
+
     @runtime_checkable
     class RenderableTemplate(Protocol):
         """Structural contract for template engines that expose ``render``."""

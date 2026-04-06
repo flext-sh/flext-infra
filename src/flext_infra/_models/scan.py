@@ -69,11 +69,18 @@ class FlextInfraModelsScan:
     class ScanResult(FlextModels.ArbitraryTypesModel):
         """Result of scanning a single file."""
 
+        @staticmethod
+        def _violations_default() -> list[FlextInfraModelsScan.ScanViolation]:
+            return []
+
         file_path: Annotated[Path, Field(description="Path to the scanned file")]
-        violations: list[FlextInfraModelsScan.ScanViolation] = Field(
-            default_factory=list,
-            description="Violations found in the file",
-        )
+        violations: Annotated[
+            list[FlextInfraModelsScan.ScanViolation],
+            Field(
+                default_factory=_violations_default,
+                description="Violations found in the file",
+            ),
+        ]
         detector_name: Annotated[
             str,
             Field(description="Name of the detector that produced this result"),

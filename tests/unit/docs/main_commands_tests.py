@@ -94,7 +94,11 @@ class TestRunValidate:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         report = _R(phase="test", scope="test", result="OK")
-        monkeypatch.setattr(FlextInfraDocValidator, "validate", _stub_ok([report]))
+        monkeypatch.setattr(
+            FlextInfraDocValidator,
+            "validate_workspace",
+            _stub_ok([report]),
+        )
         result = FlextInfraDocValidator().execute_command(m.Infra.DocsValidateInput())
         tm.that(result.is_success, eq=True)
 
@@ -107,14 +111,18 @@ class TestRunValidate:
             scope="test",
             result=c.Infra.Status.FAIL,
         )
-        monkeypatch.setattr(FlextInfraDocValidator, "validate", _stub_ok([report]))
+        monkeypatch.setattr(
+            FlextInfraDocValidator,
+            "validate_workspace",
+            _stub_ok([report]),
+        )
         result = FlextInfraDocValidator().execute_command(m.Infra.DocsValidateInput())
         tm.that(result.is_failure, eq=True)
 
     def test_run_validate_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             FlextInfraDocValidator,
-            "validate",
+            "validate_workspace",
             _stub_fail("validate error"),
         )
         result = FlextInfraDocValidator().execute_command(m.Infra.DocsValidateInput())
@@ -130,6 +138,6 @@ class TestRunValidate:
             captured_kwargs.update(kw)
             return r[Sequence[_R]].ok([])
 
-        monkeypatch.setattr(FlextInfraDocValidator, "validate", mock_val)
+        monkeypatch.setattr(FlextInfraDocValidator, "validate_workspace", mock_val)
         FlextInfraDocValidator().execute_command(m.Infra.DocsValidateInput(check=True))
         assert captured_kwargs.get("check") == "all"

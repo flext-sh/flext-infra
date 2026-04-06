@@ -44,10 +44,17 @@ class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
     ):
         """Aggregated census report for a single project."""
 
-        violations: list[FlextInfraCodegenModels.CensusViolation] = Field(
-            default_factory=list,
-            description="Detected violations",
-        )
+        @staticmethod
+        def _violations_default() -> list[FlextInfraCodegenModels.CensusViolation]:
+            return []
+
+        violations: Annotated[
+            list[FlextInfraCodegenModels.CensusViolation],
+            Field(
+                default_factory=_violations_default,
+                description="Detected violations",
+            ),
+        ]
         total: Annotated[t.NonNegativeInt, Field(description="Total violation count")]
         fixable: Annotated[
             t.NonNegativeInt,
@@ -75,14 +82,24 @@ class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
     ):
         """Result of auto-fixing namespace violations for a project."""
 
-        violations_fixed: list[FlextInfraCodegenModels.CensusViolation] = Field(
-            default_factory=list,
-            description="Fixed violations",
-        )
-        violations_skipped: list[FlextInfraCodegenModels.CensusViolation] = Field(
-            default_factory=list,
-            description="Skipped violations (not auto-fixable)",
-        )
+        @staticmethod
+        def _violations_default() -> list[FlextInfraCodegenModels.CensusViolation]:
+            return []
+
+        violations_fixed: Annotated[
+            list[FlextInfraCodegenModels.CensusViolation],
+            Field(
+                default_factory=_violations_default,
+                description="Fixed violations",
+            ),
+        ]
+        violations_skipped: Annotated[
+            list[FlextInfraCodegenModels.CensusViolation],
+            Field(
+                default_factory=_violations_default,
+                description="Skipped violations (not auto-fixable)",
+            ),
+        ]
         files_modified: t.StrSequence = Field(
             default_factory=list,
             description="Modified file paths",
@@ -220,22 +237,31 @@ class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
     class FixContext(FlextModels.ArbitraryTypesModel):
         """Mutable accumulation context for fix operations."""
 
-        violations_fixed: MutableSequence[FlextInfraCodegenModels.CensusViolation] = (
+        @staticmethod
+        def _violations_default() -> list[FlextInfraCodegenModels.CensusViolation]:
+            return []
+
+        violations_fixed: Annotated[
+            MutableSequence[FlextInfraCodegenModels.CensusViolation],
             Field(
-                default_factory=list,
+                default_factory=_violations_default,
                 description="List of violations that were fixed",
-            )
-        )
-        violations_skipped: MutableSequence[FlextInfraCodegenModels.CensusViolation] = (
+            ),
+        ]
+        violations_skipped: Annotated[
+            MutableSequence[FlextInfraCodegenModels.CensusViolation],
             Field(
-                default_factory=list,
+                default_factory=_violations_default,
                 description="List of violations that were skipped",
-            )
-        )
-        files_modified: MutableSet[str] = Field(
-            default_factory=set[str],
-            description="Set of unique modified file paths",
-        )
+            ),
+        ]
+        files_modified: Annotated[
+            MutableSet[str],
+            Field(
+                default_factory=set,
+                description="Set of unique modified file paths",
+            ),
+        ]
 
         def skip(self, *, module: str, rule: str, line: int, message: str) -> None:
             self.violations_skipped.append(

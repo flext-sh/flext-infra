@@ -24,7 +24,9 @@ class FlextInfraUtilitiesParsing:
 
     _DOCSTRING_QUOTES = ('"""', "'''")
     _SINGLE_LINE_DOCSTRING_QUOTE_COUNT = 2
-    _RULE_CONFIG_SEQ_ADAPTER = TypeAdapter(
+    _RULE_CONFIG_SEQ_ADAPTER: TypeAdapter[
+        Sequence[m.Infra.ImportModernizerRuleConfig]
+    ] = TypeAdapter(
         Sequence[m.Infra.ImportModernizerRuleConfig],
     )
 
@@ -338,9 +340,9 @@ class FlextInfraUtilitiesParsing:
         return 1
 
     @staticmethod
-    def parse_import_names(names_str: str) -> Sequence[tuple[str, str]]:
+    def parse_import_names(names_str: str) -> Sequence[t.Infra.StrPair]:
         """Parse 'A, B as C, D' into [(name, bound), ...]."""
-        result: MutableSequence[tuple[str, str]] = []
+        result: MutableSequence[t.Infra.StrPair] = []
         for part in names_str.split(","):
             part = part.strip().rstrip("\\").strip()
             if not part or part.startswith(("(", ")")):

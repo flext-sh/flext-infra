@@ -13,9 +13,9 @@ from flext_core import r, s
 from flext_infra import (
     FlextInfraGateRegistry,
     FlextInfraWorkspaceCheckGatesMixin,
+    WorkspaceLoopOutcome,
     c,
     m,
-    p,
     t,
     u,
     workspace_check_cli as workspace_check_cli_module,
@@ -126,7 +126,7 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
     def _write_reports_and_summary(
         resolved_gates: Sequence[str],
         report_base: Path,
-        outcome: p.Infra.WorkspaceLoopOutcome,
+        outcome: WorkspaceLoopOutcome,
     ) -> r[Sequence[m.Infra.ProjectResult]]:
         """Write markdown/SARIF reports and print summary to output."""
         results = outcome.results

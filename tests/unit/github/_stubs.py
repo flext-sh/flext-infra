@@ -159,16 +159,15 @@ class StubJsonIo:
         | Mapping[str, t.Infra.InfraValue]
     )
 
-    write_json_returns: ClassVar[r[bool]] = r[bool].ok(True)
-    write_json_calls: ClassVar[list[tuple[Path, _PayloadT]]] = []
+    json_write_returns: ClassVar[r[bool]] = r[bool].ok(True)
+    json_write_calls: ClassVar[list[tuple[Path, _PayloadT]]] = []
 
     def __init__(self, write_returns: r[bool] | None = None) -> None:
-        StubJsonIo.write_json_returns = write_returns or r[bool].ok(True)
-        StubJsonIo.write_json_calls = []
+        StubJsonIo.json_write_returns = write_returns or r[bool].ok(True)
+        StubJsonIo.json_write_calls = []
 
     @staticmethod
-    @override
-    def write_json(
+    def json_write(
         path: Path,
         payload: t.Cli.JsonValue
         | BaseModel
@@ -181,8 +180,8 @@ class StubJsonIo:
         indent: int = 2,
     ) -> r[bool]:
         _ = sort_keys, ensure_ascii, indent
-        StubJsonIo.write_json_calls.append((path, payload))
-        return StubJsonIo.write_json_returns
+        StubJsonIo.json_write_calls.append((path, payload))
+        return StubJsonIo.json_write_returns
 
 
 class StubVersioning(FlextInfraUtilitiesVersioning):

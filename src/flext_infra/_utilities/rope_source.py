@@ -45,7 +45,7 @@ class FlextInfraUtilitiesRopeSource(FlextInfraUtilitiesRopeCore):
         replacement: str,
         *,
         apply: bool = True,
-    ) -> tuple[str, int]:
+    ) -> t.Infra.StrIntPair:
         """Regex replace in source. Returns (new_source, count)."""
         source = resource.read()
         compiled = re.compile(pattern) if isinstance(pattern, str) else pattern
@@ -113,7 +113,7 @@ class FlextInfraUtilitiesRopeSource(FlextInfraUtilitiesRopeCore):
         replacements: t.StrMapping,
         *,
         apply: bool = True,
-    ) -> tuple[str, int]:
+    ) -> t.Infra.StrIntPair:
         """Apply multiple annotation replacements in one pass."""
         source = resource.read()
         total = 0
@@ -136,7 +136,7 @@ class FlextInfraUtilitiesRopeSource(FlextInfraUtilitiesRopeCore):
         resource: t.Infra.RopeResource,
         *,
         apply: bool = True,
-    ) -> tuple[str, int]:
+    ) -> t.Infra.StrIntPair:
         """Remove ``cast(Type, value)`` calls, replacing with just ``value``."""
         pattern = re.compile(r"\bcast\s*\(\s*[^,]+\s*,\s*([^)]+)\s*\)")
         return FlextInfraUtilitiesRopeSource.replace_in_source(

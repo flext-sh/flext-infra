@@ -14,11 +14,15 @@ from flext_infra import FlextInfraRefactorLooseClassScanner, c, m, r, t, u
 class FlextInfraRefactorClassNestingAnalyzer:
     """Detect class nesting violations and report MRO hierarchy issues."""
 
-    _LOOSE_CLASS_SEQ_ADAPTER = TypeAdapter(
-        Sequence[m.Infra.LooseClassViolation],
+    _LOOSE_CLASS_SEQ_ADAPTER: TypeAdapter[Sequence[m.Infra.LooseClassViolation]] = (
+        TypeAdapter(
+            Sequence[m.Infra.LooseClassViolation],
+        )
     )
-    _NESTING_MAPPING_SEQ_ADAPTER = TypeAdapter(
-        Sequence[m.Infra.ClassNestingMapping],
+    _NESTING_MAPPING_SEQ_ADAPTER: TypeAdapter[Sequence[m.Infra.ClassNestingMapping]] = (
+        TypeAdapter(
+            Sequence[m.Infra.ClassNestingMapping],
+        )
     )
 
     @classmethod

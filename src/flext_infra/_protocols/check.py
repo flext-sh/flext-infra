@@ -27,8 +27,6 @@ class WorkspaceLoopOutcome(Protocol):
 class FlextInfraProtocolsCheck(Protocol):
     """Check-domain protocol definitions."""
 
-    WorkspaceLoopOutcome = WorkspaceLoopOutcome
-
 
 __all__ = [
     "FlextInfraProtocolsCheck",

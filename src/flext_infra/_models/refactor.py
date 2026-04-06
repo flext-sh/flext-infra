@@ -238,6 +238,14 @@ class FlextInfraRefactorModels(
     class CentralizerFileResult(m.ArbitraryTypesModel):
         """Result of processing a single file for model centralization."""
 
+        @staticmethod
+        def _class_moves_default() -> list[FlextInfraRefactorModels.ClassMove]:
+            return []
+
+        @staticmethod
+        def _alias_moves_default() -> list[FlextInfraRefactorModels.AliasMove]:
+            return []
+
         found_models: Annotated[
             t.NonNegativeInt,
             Field(default=0, description="Detected model violations"),
@@ -253,14 +261,20 @@ class FlextInfraRefactorModels(
                 description="Whether the file was skipped as non-necessary",
             ),
         ] = False
-        apply_class_moves: list[FlextInfraRefactorModels.ClassMove] = Field(
-            default_factory=list,
-            description="Class moves to apply",
-        )
-        apply_alias_moves: list[FlextInfraRefactorModels.AliasMove] = Field(
-            default_factory=list,
-            description="Alias moves to apply",
-        )
+        apply_class_moves: Annotated[
+            list[FlextInfraRefactorModels.ClassMove],
+            Field(
+                default_factory=_class_moves_default,
+                description="Class moves to apply",
+            ),
+        ]
+        apply_alias_moves: Annotated[
+            list[FlextInfraRefactorModels.AliasMove],
+            Field(
+                default_factory=_alias_moves_default,
+                description="Alias moves to apply",
+            ),
+        ]
 
     # -- Namespace Enforcer Models ---------------------------------------------
 

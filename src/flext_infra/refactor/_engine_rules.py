@@ -223,8 +223,10 @@ class FlextInfraRefactorSymbolPropagationRule(FlextInfraRefactorRule):
 class FlextInfraRefactorSignaturePropagationRule(FlextInfraRefactorRule):
     """Apply declarative signature migrations in a generic, workspace-safe way."""
 
-    _SIG_MIGRATION_SEQ_ADAPTER = TypeAdapter(
-        Sequence[m.Infra.SignatureMigration],
+    _SIG_MIGRATION_SEQ_ADAPTER: TypeAdapter[Sequence[m.Infra.SignatureMigration]] = (
+        TypeAdapter(
+            Sequence[m.Infra.SignatureMigration],
+        )
     )
 
     @override

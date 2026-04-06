@@ -14,8 +14,10 @@ from flext_infra import c, m, r, t, u
 class FlextInfraRefactorLooseClassScanner:
     """Scan a project tree and report top-level classes lacking namespace prefixes."""
 
-    _AST_GREP_MATCH_SEQ_ADAPTER = TypeAdapter(
-        Sequence[m.Infra.GrepMatchEnvelope],
+    _AST_GREP_MATCH_SEQ_ADAPTER: TypeAdapter[Sequence[m.Infra.GrepMatchEnvelope]] = (
+        TypeAdapter(
+            Sequence[m.Infra.GrepMatchEnvelope],
+        )
     )
 
     def scan(self, project_root: Path) -> r[t.Infra.ContainerDict]:

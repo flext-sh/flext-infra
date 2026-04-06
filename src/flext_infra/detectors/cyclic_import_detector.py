@@ -60,9 +60,9 @@ class FlextInfraCyclicImportDetector:
         scan_dirs: Sequence[Path],
         rope_project: t.Infra.RopeProject,
         package_roots: t.Infra.StrSet,
-    ) -> t.Infra.Pair[MutableMapping[str, set[str]], t.MutableStrMapping]:
+    ) -> t.Infra.Pair[MutableMapping[str, t.Infra.StrSet], t.MutableStrMapping]:
         """Build module import graph and file map from scan directories."""
-        graph: MutableMapping[str, set[str]] = {}
+        graph: MutableMapping[str, t.Infra.StrSet] = {}
         file_map: t.MutableStrMapping = {}
         for sd in scan_dirs:
             is_src = sd.name == c.Infra.Paths.DEFAULT_SRC_DIR

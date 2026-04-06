@@ -15,7 +15,7 @@ from jinja2 import (
 )
 from pydantic import PrivateAttr
 
-from flext_infra import c, m, r, s, t
+from flext_infra import c, m, p, r, s, t
 
 
 class FlextInfraBaseMkTemplateEngine(s[str]):
@@ -68,6 +68,13 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
     def execute(self) -> r[str]:
         return self.render_all()
 
+    @staticmethod
+    def _render_template(
+        template: p.Infra.RenderableTemplate,
+        **kwargs: m.Infra.BaseMkConfig | t.Infra.InfraValue | type,
+    ) -> str:
+        return template.render(**kwargs)
+
     def render_all(self, config: m.Infra.BaseMkConfig | None = None) -> r[str]:
         """Render all base.mk templates into a single output string."""
         active_config = config or self.default_config()
@@ -75,8 +82,11 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
         sections: MutableSequence[str] = []
         try:
             for template_name in c.Infra.TEMPLATE_ORDER:
-                template = self._environment.get_template(template_name)
-                rendered = template.render(
+                template: p.Infra.RenderableTemplate = self._environment.get_template(
+                    template_name,
+                )
+                rendered = self._render_template(
+                    template,
                     config=active_config,
                     lint_gates_csv=lint_gates_csv,
                     make=c.Infra.Make,
@@ -94,8 +104,10 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
     ) -> r[str]:
         """Render a single named template with the given context."""
         try:
-            template = self._environment.get_template(template_name)
-            content = template.render(**kwargs)
+            template: p.Infra.RenderableTemplate = self._environment.get_template(
+                template_name,
+            )
+            content = self._render_template(template, **kwargs)
             return r[str].ok(content.rstrip("\n"))
         except (TemplateError, OSError, ValueError, TypeError) as exc:
             return r[str].fail(f"template render failed: {exc}")

@@ -179,31 +179,12 @@ class FlextInfraUtilitiesDocsScope:
                             if isinstance(packages, list):
                                 for item in packages:
                                     package_path = Path(str(item).strip())
-                                    if not package_path.parts:
-                                        continue
-                                    if (
-                                        package_path.parts[0]
-                                        != c.Infra.Paths.DEFAULT_SRC_DIR
-                                    ):
-                                        continue
-                                    return package_path.name
-        project = payload.get(c.Infra.PROJECT)
-        if isinstance(project, dict):
-            project_name = project.get("name")
-            if isinstance(project_name, str) and project_name.strip():
-                guessed = project_name.strip().replace("-", "_")
-                guessed_root = (
-                    project_root
-                    / c.Infra.Paths.DEFAULT_SRC_DIR
-                    / guessed
-                    / c.Infra.Files.INIT_PY
-                )
-                if guessed_root.is_file():
-                    return guessed
+                                    if package_path.parts:
+                                        return package_path.parts[-1]
         src_dir = project_root / c.Infra.Paths.DEFAULT_SRC_DIR
         if not src_dir.is_dir():
             return ""
-        for child in sorted(src_dir.iterdir(), key=lambda item: item.name):
+        for child in sorted(src_dir.iterdir()):
             if child.is_dir() and (child / c.Infra.Files.INIT_PY).is_file():
                 return child.name
         return ""
@@ -249,29 +230,27 @@ class FlextInfraUtilitiesDocsScope:
                 enabled = docs_meta.get("enabled", True)
                 if isinstance(enabled, bool) and not enabled:
                     continue
-                (
-                    projects.append(
-                        m.Infra.ProjectInfo.model_construct(
-                            path=entry,
-                            name=entry.name,
-                            stack="python/flext",
-                            has_tests=(entry / c.Infra.Directories.TESTS).is_dir(),
-                            has_src=(entry / c.Infra.Paths.DEFAULT_SRC_DIR).is_dir(),
-                            project_class=(
-                                FlextInfraUtilitiesDocsScope.classify_project_from_meta(
-                                    entry.name,
-                                    docs_meta,
-                                )
-                            ),
-                            package_name=(
-                                FlextInfraUtilitiesDocsScope.package_name_from_payload(
-                                    entry,
-                                    payload,
-                                    docs_meta,
-                                )
-                            ),
-                        )
-                    ),
+                projects.append(
+                    m.Infra.ProjectInfo.model_construct(
+                        path=entry,
+                        name=entry.name,
+                        stack="python/flext",
+                        has_tests=(entry / c.Infra.Directories.TESTS).is_dir(),
+                        has_src=(entry / c.Infra.Paths.DEFAULT_SRC_DIR).is_dir(),
+                        project_class=(
+                            FlextInfraUtilitiesDocsScope.classify_project_from_meta(
+                                entry.name,
+                                docs_meta,
+                            )
+                        ),
+                        package_name=(
+                            FlextInfraUtilitiesDocsScope.package_name_from_payload(
+                                entry,
+                                payload,
+                                docs_meta,
+                            )
+                        ),
+                    )
                 )
         except OSError as exc:
             return r[Sequence[m.Infra.ProjectInfo]].fail(
