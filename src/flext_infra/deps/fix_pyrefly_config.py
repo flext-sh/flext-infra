@@ -29,7 +29,7 @@ class FlextInfraConfigFixer(s[bool]):
         workspace: Path | None = None,
     ) -> None:
         """Initialize pyrefly config fixer."""
-        self._workspace_root = self._resolve_workspace_root(
+        self._workspace_root = u.Infra.resolve_workspace_root_or_cwd(
             workspace_root or workspace,
         )
         config_result = u.Infra.load_tool_config()
@@ -37,10 +37,6 @@ class FlextInfraConfigFixer(s[bool]):
             msg = config_result.error or "failed to load deps tool config"
             raise ValueError(msg)
         self._tool_config: m.Infra.ToolConfigDocument = config_result.value
-
-    @staticmethod
-    def _to_array(items_list: t.StrSequence) -> t.Cli.TomlArray:
-        return u.Cli.toml_array(items_list)
 
     @override
     def execute(self) -> r[bool]:
@@ -158,7 +154,7 @@ class FlextInfraConfigFixer(s[bool]):
             current = [str(value) for value in exclude_items]
         expected = sorted(set(self._tool_config.tools.pyrefly.project_exclude_globs))
         if current != expected:
-            pyrefly[c.Infra.PROJECT_EXCLUDES] = self._to_array(expected)
+            pyrefly[c.Infra.PROJECT_EXCLUDES] = u.Cli.toml_array(expected)
             fixes.append("synchronized project-excludes from YAML rules")
         return fixes
 
@@ -187,7 +183,7 @@ class FlextInfraConfigFixer(s[bool]):
             str(path_item) for path_item in current_paths if isinstance(path_item, str)
         ]
         if current_search != expected_search:
-            pyrefly[c.Infra.SEARCH_PATH] = self._to_array(expected_search)
+            pyrefly[c.Infra.SEARCH_PATH] = u.Cli.toml_array(expected_search)
             fixes.append("synchronized search-path from YAML rules")
         return fixes
 
@@ -226,9 +222,6 @@ class FlextInfraConfigFixer(s[bool]):
         if not path.is_absolute():
             path = self._workspace_root / path
         return path.resolve()
-
-    def _resolve_workspace_root(self, workspace_root: Path | None) -> Path:
-        return u.Infra.resolve_workspace_root_or_cwd(workspace_root)
 
     @staticmethod
     def main(argv: t.StrSequence | None = None) -> int:

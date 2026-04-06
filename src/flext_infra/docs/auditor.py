@@ -34,36 +34,6 @@ class FlextInfraDocAuditor(s[bool], FlextInfraDocAuditorMixin):
     ] = False
 
     @staticmethod
-    def normalize_link(target: str) -> str:
-        """Normalize one markdown link target."""
-        return u.Infra.docs_normalize_link(target)
-
-    @staticmethod
-    def should_skip_target(raw: str, target: str) -> bool:
-        """Return whether one raw markdown target should be ignored."""
-        return u.Infra.docs_should_skip_target(raw, target)
-
-    @staticmethod
-    def is_external(target: str) -> bool:
-        """Return whether one target points outside the repository."""
-        return u.Infra.docs_is_external(target)
-
-    @staticmethod
-    def to_markdown(
-        scope: m.Infra.DocScope,
-        issues: Sequence[m.Infra.AuditIssue],
-    ) -> t.StrSequence:
-        """Render the canonical markdown report for one audit scope."""
-        return u.Infra.docs_audit_markdown(scope, issues)
-
-    @staticmethod
-    def broken_link_issues(
-        scope: m.Infra.DocScope,
-    ) -> Sequence[m.Infra.AuditIssue]:
-        """Return broken internal link issues for one scope."""
-        return u.Infra.docs_broken_link_issues(scope)
-
-    @staticmethod
     def forbidden_term_issues(
         scope: m.Infra.DocScope,
     ) -> Sequence[m.Infra.AuditIssue]:
@@ -92,34 +62,6 @@ class FlextInfraDocAuditor(s[bool], FlextInfraDocAuditorMixin):
             ),
             issue_type="placeholder",
         )
-
-    @staticmethod
-    def stale_symbol_issues(
-        scope: m.Infra.DocScope,
-    ) -> Sequence[m.Infra.AuditIssue]:
-        """Return stale forward-guidance symbol issues for one scope."""
-        return u.Infra.docs_stale_symbol_issues(scope)
-
-    @staticmethod
-    def scope_boundary_issues(
-        scope: m.Infra.DocScope,
-    ) -> Sequence[m.Infra.AuditIssue]:
-        """Return root scope-boundary violations."""
-        return u.Infra.docs_scope_boundary_issues(scope)
-
-    @staticmethod
-    def generated_ownership_issues(
-        scope: m.Infra.DocScope,
-    ) -> Sequence[m.Infra.AuditIssue]:
-        """Return manual API page ownership violations."""
-        return u.Infra.docs_generated_ownership_issues(scope)
-
-    @staticmethod
-    def public_docstring_issues(
-        scope: m.Infra.DocScope,
-    ) -> Sequence[m.Infra.AuditIssue]:
-        """Return missing public docstring issues."""
-        return u.Infra.docs_public_docstring_issues(scope)
 
     def audit(
         self,
@@ -197,7 +139,7 @@ class FlextInfraDocAuditor(s[bool], FlextInfraDocAuditorMixin):
             issues,
             set(checks),
             strict=params.strict,
-            to_markdown_fn=self.to_markdown,
+            to_markdown_fn=u.Infra.docs_audit_markdown,
         )
         self.logger.info(
             "docs_audit_scope_completed",
@@ -313,19 +255,19 @@ class FlextInfraDocAuditor(s[bool], FlextInfraDocAuditorMixin):
         """Collect issues for the requested check set in canonical order."""
         issues: list[m.Infra.AuditIssue] = []
         if "links" in checks:
-            issues.extend(self.broken_link_issues(scope))
+            issues.extend(u.Infra.docs_broken_link_issues(scope))
         if "forbidden-terms" in checks:
             issues.extend(self.forbidden_term_issues(scope))
         if "placeholders" in checks:
             issues.extend(self.placeholder_issues(scope))
         if "stale-symbols" in checks:
-            issues.extend(self.stale_symbol_issues(scope))
+            issues.extend(u.Infra.docs_stale_symbol_issues(scope))
         if "scope-boundary" in checks:
-            issues.extend(self.scope_boundary_issues(scope))
+            issues.extend(u.Infra.docs_scope_boundary_issues(scope))
         if "generated-ownership" in checks:
-            issues.extend(self.generated_ownership_issues(scope))
+            issues.extend(u.Infra.docs_generated_ownership_issues(scope))
         if "docstrings" in checks:
-            issues.extend(self.public_docstring_issues(scope))
+            issues.extend(u.Infra.docs_public_docstring_issues(scope))
         return tuple(issues)
 
 

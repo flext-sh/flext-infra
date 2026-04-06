@@ -11,7 +11,7 @@ from pathlib import Path
 import tomlkit
 from flext_tests import tm
 
-from flext_infra import FlextInfraConfigFixer
+from flext_infra import FlextInfraConfigFixer, u
 
 
 class TestConfigFixerProcessFile:
@@ -172,11 +172,10 @@ class TestConfigFixerEnsureProjectExcludes:
 
 
 class TestConfigFixerToArray:
-    """Test FlextInfraConfigFixer._to_array static method."""
+    """Test u.Cli.toml_array."""
 
     def test_to_array_creates_array(self, tmp_path: Path) -> None:
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
         items = ["a", "b", "c"]
-        arr = fixer._to_array(items)
+        arr = u.Cli.toml_array(items)
         tm.that(len(arr), eq=3)
         assert "a" in list(arr)

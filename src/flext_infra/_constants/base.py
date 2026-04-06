@@ -277,5 +277,26 @@ class FlextInfraConstantsBase(
         M = "m"
         U = "u"
 
+    class SafeExecution:
+        """Constants for safe execution pipeline with automatic rollback."""
+
+        DEFAULT_GATES: Final[str] = "lint,pyrefly"
+        "Default quality gates for post-transform validation."
+        BAK_SUFFIX: Final[str] = ".bak"
+        "File backup suffix for copy-on-write safety."
+
+    @unique
+    class ExecutionMode(StrEnum):
+        """Execution mode for commands that modify files."""
+
+        DRY_RUN = "dry-run"
+        "Preview changes without writing."
+        CHECK_ONLY = "check-only"
+        "Detect violations without fixing."
+        APPLY_SAFE = "apply-safe"
+        "Apply with backup, validate, rollback on failure."
+        APPLY_FORCE = "apply-force"
+        "Apply without post-validation."
+
 
 __all__ = ["FlextInfraConstantsBase"]

@@ -59,7 +59,6 @@ if _t.TYPE_CHECKING:
     fixer_internals_tests = _tests_unit_docs_fixer_internals_tests
     import tests.unit.docs.fixer_tests as _tests_unit_docs_fixer_tests
     from tests.unit.docs.fixer_internals_tests import (
-        TestFixerMaybeFixLink,
         TestFixerProcessFile,
         TestFixerScope,
         TestFixerToc,
@@ -154,7 +153,6 @@ _LAZY_IMPORTS = {
     "TestBuilderCore": "tests.unit.docs.builder_tests",
     "TestBuilderScope": "tests.unit.docs.builder_scope_tests",
     "TestFixerCore": "tests.unit.docs.fixer_tests",
-    "TestFixerMaybeFixLink": "tests.unit.docs.fixer_internals_tests",
     "TestFixerProcessFile": "tests.unit.docs.fixer_internals_tests",
     "TestFixerScope": "tests.unit.docs.fixer_internals_tests",
     "TestFixerToc": "tests.unit.docs.fixer_internals_tests",
@@ -234,7 +232,6 @@ __all__ = [
     "TestBuilderCore",
     "TestBuilderScope",
     "TestFixerCore",
-    "TestFixerMaybeFixLink",
     "TestFixerProcessFile",
     "TestFixerScope",
     "TestFixerToc",

@@ -12,7 +12,7 @@ import pytest
 from flext_tests import tm
 from tests import m, t
 
-from flext_infra import FlextInfraDocValidator
+from flext_infra import FlextInfraDocValidator, u
 
 
 @pytest.fixture
@@ -108,21 +108,19 @@ class TestValidateScope:
 class TestAdrHelpers:
     def test_has_adr_with_text(
         self,
-        validator: FlextInfraDocValidator,
         tmp_path: Path,
     ) -> None:
         sf = tmp_path / "SKILL.md"
         sf.write_text("# Skill\n\nADR: This is an ADR reference.\n")
-        tm.that(validator._has_adr_reference(sf), eq=True)
+        tm.that(u.Infra.docs_has_adr_reference(sf), eq=True)
 
     def test_has_adr_without_text(
         self,
-        validator: FlextInfraDocValidator,
         tmp_path: Path,
     ) -> None:
         sf = tmp_path / "SKILL.md"
         sf.write_text("# Skill\n\nNo architecture decision record here.\n")
-        tm.that(not validator._has_adr_reference(sf), eq=True)
+        tm.that(not u.Infra.docs_has_adr_reference(sf), eq=True)
 
     def test_adr_check_no_config(
         self,
@@ -158,11 +156,10 @@ class TestAdrHelpers:
 class TestMaybeWriteTodo:
     def test_root_scope_skipped(
         self,
-        validator: FlextInfraDocValidator,
         tmp_path: Path,
     ) -> None:
         tm.that(
-            not validator._maybe_write_todo(
+            not u.Infra.docs_write_todo(
                 _scope(tmp_path, "root"),
                 apply_mode=True,
             ),
@@ -171,11 +168,10 @@ class TestMaybeWriteTodo:
 
     def test_apply_false(
         self,
-        validator: FlextInfraDocValidator,
         tmp_path: Path,
     ) -> None:
         tm.that(
-            not validator._maybe_write_todo(
+            not u.Infra.docs_write_todo(
                 _scope(tmp_path),
                 apply_mode=False,
             ),
@@ -184,9 +180,8 @@ class TestMaybeWriteTodo:
 
     def test_creates_file(
         self,
-        validator: FlextInfraDocValidator,
         tmp_path: Path,
     ) -> None:
-        result = validator._maybe_write_todo(_scope(tmp_path), apply_mode=True)
+        result = u.Infra.docs_write_todo(_scope(tmp_path), apply_mode=True)
         tm.that(result, eq=True)
         tm.that((tmp_path / "TODOS.md").exists(), eq=True)

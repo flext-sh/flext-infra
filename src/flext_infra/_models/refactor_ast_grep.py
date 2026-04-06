@@ -39,13 +39,16 @@ class FlextInfraRefactorGrepModels:
         ]
 
     class MROSymbolCandidate(
-        FlextInfraModelsMixins.FacadeNameMixin,
         FlextModels.ArbitraryTypesModel,
     ):
         """Unified symbol candidate used by MRO scan and rewrites."""
 
         model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
+        facade_name: Annotated[
+            str,
+            Field(default="", description="Facade alias/import name"),
+        ] = ""
         symbol: Annotated[t.NonEmptyStr, Field(description="Symbol name")]
         line: Annotated[t.PositiveInt, Field(description="Source line number")]
         end_line: Annotated[
@@ -65,13 +68,16 @@ class FlextInfraRefactorGrepModels:
         ] = ""
 
     class MROImportRewrite(
-        FlextInfraModelsMixins.FacadeNameMixin,
         FlextModels.ArbitraryTypesModel,
     ):
         """Unified import rewrite payload for MRO reference updates."""
 
         model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
+        facade_name: Annotated[
+            str,
+            Field(default="", description="Facade alias/import name"),
+        ] = ""
         module: Annotated[t.NonEmptyStr, Field(description="Import module path")]
         import_name: Annotated[
             str,

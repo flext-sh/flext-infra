@@ -211,7 +211,6 @@ class FlextInfraCodegenGeneration:
             Complete Python module file as a single string.
 
         """
-        tpl = c.Infra.Templates
         runtime_imports: t.Infra.LazyImportMap = eager_imports or {}
         lazy_filtered: t.Infra.LazyImportMap = {
             name: val
@@ -235,7 +234,7 @@ class FlextInfraCodegenGeneration:
             out.extend([docstring_source, ""])
 
         preamble_template = FlextInfraCodegenGeneration._get_template(
-            tpl.PREAMBLE_STANDARD
+            c.Infra.Templates.PREAMBLE_STANDARD
         )
         preamble: str = preamble_template.render(
             include_merge_helper=bool(children_lazy),
@@ -282,7 +281,9 @@ class FlextInfraCodegenGeneration:
             for _lin in type_checking_lines:
                 pass
 
-        body_template = FlextInfraCodegenGeneration._get_template(tpl.BODY)
+        body_template = FlextInfraCodegenGeneration._get_template(
+            c.Infra.Templates.BODY
+        )
         body: str = body_template.render(
             runtime_import_lines="\n".join(runtime_import_block),
             child_module_paths=children_lazy,
@@ -300,7 +301,7 @@ class FlextInfraCodegenGeneration:
         out.append("")
 
         getattr_template = FlextInfraCodegenGeneration._get_template(
-            tpl.GETATTR_STANDARD
+            c.Infra.Templates.GETATTR_STANDARD
         )
         getattr_rendered: str = getattr_template.render(
             eager_export_names=eager_export_names,

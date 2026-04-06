@@ -123,13 +123,5 @@ class FlextInfraDocFixer(s[bool]):
         """Delegate one-file markdown fixing to ``u.Infra``."""
         return u.Infra.docs_process_markdown_file(md_file, apply=apply)
 
-    def _maybe_fix_link(self, md_file: Path, raw_link: str) -> str | None:
-        """Delegate link normalization to ``u.Infra``."""
-        return u.Infra.docs_maybe_fix_link(md_file, raw_link)
-
-    def _update_toc(self, content: str) -> t.Infra.StrIntPair:
-        """Delegate TOC normalization to ``u.Infra``."""
-        return u.Infra.docs_update_toc(content)
-
 
 __all__ = ["FlextInfraDocFixer"]

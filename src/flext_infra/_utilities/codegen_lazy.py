@@ -302,8 +302,6 @@ class FlextInfraUtilitiesCodegenLazyScanning(
         )
         if not mod_path:
             return
-        if len(rel_path.parts) == 1 and py_file.stem not in index:
-            index[py_file.stem] = (mod_path, "")
         try:
             source = py_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
         except OSError:
@@ -333,6 +331,8 @@ class FlextInfraUtilitiesCodegenLazyScanning(
                 mod_path,
                 index,
             )
+        if len(rel_path.parts) == 1 and py_file.stem not in index:
+            index[py_file.stem] = (mod_path, "")
 
     @staticmethod
     def _skip_wrapper_root_file(

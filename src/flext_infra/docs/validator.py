@@ -49,24 +49,6 @@ class FlextInfraDocValidator(s[bool]):
             ),
         )
 
-    def validate_docs(
-        self,
-        value: Path,
-        *,
-        projects: Sequence[str] | None = None,
-        output_dir: str = c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
-        check: str = "all",
-        apply: bool = False,
-    ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
-        """Backward-compatible alias for the canonical validate entrypoint."""
-        return self.validate_workspace(
-            value,
-            projects=projects,
-            output_dir=output_dir,
-            check=check,
-            apply=apply,
-        )
-
     @override
     def execute(self) -> r[bool]:
         """Execute the configured docs validation flow."""
@@ -127,19 +109,6 @@ class FlextInfraDocValidator(s[bool]):
                 missing.append(skill_name)
         return (0 if not missing else 1, missing)
 
-    def _has_adr_reference(self, skill_path: Path) -> bool:
-        """Delegate ADR reference detection to ``u.Infra``."""
-        return u.Infra.docs_has_adr_reference(skill_path)
-
-    def _maybe_write_todo(
-        self,
-        scope: m.Infra.DocScope,
-        *,
-        apply_mode: bool,
-    ) -> bool:
-        """Delegate optional TODO creation to ``u.Infra``."""
-        return u.Infra.docs_write_todo(scope, apply_mode=apply_mode)
-
     def _validate_scope(
         self,
         scope: m.Infra.DocScope,
@@ -172,7 +141,7 @@ class FlextInfraDocValidator(s[bool]):
             status = c.Infra.Status.FAIL
             messages.extend(contract_messages)
         message = "; ".join(messages) if messages else "validation passed"
-        wrote_todo = self._maybe_write_todo(scope, apply_mode=apply_mode)
+        wrote_todo = u.Infra.docs_write_todo(scope, apply_mode=apply_mode)
         report = m.Infra.DocsPhaseReport(
             phase="validate",
             scope=scope.name,

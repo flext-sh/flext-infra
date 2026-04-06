@@ -80,8 +80,8 @@ class FlextInfraDocBuilder(s[bool]):
 
     def _build_scope(self, scope: m.Infra.DocScope) -> m.Infra.DocsPhaseReport:
         """Build one scope via ``u.Infra`` and persist its reports."""
-        report = self._run_mkdocs(scope)
-        self._write_reports(scope, report)
+        report = u.Infra.docs_run_mkdocs(scope, runner=self._runner)
+        u.Infra.docs_write_build_reports(scope, report)
         self.logger.info(
             "docs_build_scope_completed",
             project=scope.name,
@@ -90,18 +90,6 @@ class FlextInfraDocBuilder(s[bool]):
             reason=report.reason,
         )
         return report
-
-    def _run_mkdocs(self, scope: m.Infra.DocScope) -> m.Infra.DocsPhaseReport:
-        """Delegate MkDocs execution to the docs utilities."""
-        return u.Infra.docs_run_mkdocs(scope, runner=self._runner)
-
-    def _write_reports(
-        self,
-        scope: m.Infra.DocScope,
-        report: m.Infra.DocsPhaseReport,
-    ) -> None:
-        """Delegate build report persistence to the docs utilities."""
-        u.Infra.docs_write_build_reports(scope, report)
 
 
 __all__ = ["FlextInfraDocBuilder"]

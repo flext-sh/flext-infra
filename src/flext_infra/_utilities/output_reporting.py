@@ -32,9 +32,6 @@ class FlextInfraUtilitiesOutputReporting:
         report: m.Infra.WorkspaceEnforcementReport,
     ) -> str:
         """Render a human-readable namespace enforcement report."""
-        max_loose = c.Infra.NAMESPACE_MAX_RENDERED_LOOSE_OBJECTS
-        max_imports = c.Infra.NAMESPACE_MAX_RENDERED_IMPORT_VIOLATIONS
-        no_limit = c.Infra.NAMESPACE_NO_RENDER_LIMIT
         lines: MutableSequence[str] = [
             f"Workspace: {report.workspace}",
             f"Projects scanned: {len(report.projects)}",
@@ -75,70 +72,70 @@ class FlextInfraUtilitiesOutputReporting:
                 lambda obj: (
                     f"    {obj.file}:{obj.line} {obj.kind} '{obj.name}' -> {obj.suggestion}"
                 ),
-                max_loose,
+                c.Infra.NAMESPACE_MAX_RENDERED_LOOSE_OBJECTS,
             )
             FlextInfraUtilitiesOutputReporting._add_violation_section(
                 lines,
                 proj.import_violations,
                 "Import violations",
                 lambda iv: f"    {iv.file}:{iv.line} {iv.current_import}",
-                max_imports,
+                c.Infra.NAMESPACE_MAX_RENDERED_IMPORT_VIOLATIONS,
             )
             FlextInfraUtilitiesOutputReporting._add_violation_section(
                 lines,
                 proj.internal_import_violations,
                 "Internal imports",
                 lambda iv: f"    {iv.file}:{iv.line} {iv.current_import} ({iv.detail})",
-                max_imports,
+                c.Infra.NAMESPACE_MAX_RENDERED_IMPORT_VIOLATIONS,
             )
             FlextInfraUtilitiesOutputReporting._add_violation_section(
                 lines,
                 proj.cyclic_imports,
                 "Cyclic imports",
                 lambda ci: f"    Cycle: {' -> '.join(ci.cycle)}",
-                no_limit,
+                c.Infra.NAMESPACE_NO_RENDER_LIMIT,
             )
             FlextInfraUtilitiesOutputReporting._add_violation_section(
                 lines,
                 proj.runtime_alias_violations,
                 "Runtime alias violations",
                 lambda rv: f"    {rv.file} [{rv.kind}] alias='{rv.alias}' {rv.detail}",
-                no_limit,
+                c.Infra.NAMESPACE_NO_RENDER_LIMIT,
             )
             FlextInfraUtilitiesOutputReporting._add_violation_section(
                 lines,
                 proj.future_violations,
                 "Missing __future__ annotations",
                 lambda fv: f"    {fv.file}",
-                max_loose,
+                c.Infra.NAMESPACE_MAX_RENDERED_LOOSE_OBJECTS,
             )
             FlextInfraUtilitiesOutputReporting._add_violation_section(
                 lines,
                 proj.manual_protocol_violations,
                 "Manual protocols",
                 lambda pv: f"    {pv.file}:{pv.line} {pv.name}",
-                max_loose,
+                c.Infra.NAMESPACE_MAX_RENDERED_LOOSE_OBJECTS,
             )
             FlextInfraUtilitiesOutputReporting._add_violation_section(
                 lines,
                 proj.manual_typing_violations,
                 "Manual typing aliases",
                 lambda tv: f"    {tv.file}:{tv.line} {tv.name}",
-                max_loose,
+                c.Infra.NAMESPACE_MAX_RENDERED_LOOSE_OBJECTS,
             )
             FlextInfraUtilitiesOutputReporting._add_violation_section(
                 lines,
                 proj.compatibility_alias_violations,
                 "Compatibility aliases",
                 lambda cv: f"    {cv.file}:{cv.line} {cv.alias_name}={cv.target_name}",
-                max_loose,
+                c.Infra.NAMESPACE_MAX_RENDERED_LOOSE_OBJECTS,
             )
             FlextInfraUtilitiesOutputReporting._add_violation_section(
                 lines,
                 proj.class_placement_violations,
                 "Class placement violations",
                 lambda cpv: f"    {cpv.file}:{cpv.line} {cpv.name} -> {cpv.suggestion}",
-                max_loose,
+                c.Infra.NAMESPACE_MAX_RENDERED_LOOSE_OBJECTS,
             )
             FlextInfraUtilitiesOutputReporting._add_violation_section(
                 lines,
@@ -148,7 +145,7 @@ class FlextInfraUtilitiesOutputReporting:
                     f"    {mv.file}:{mv.line} '{mv.facade_class}'"
                     f" missing base '{mv.missing_base}' (family={mv.family})"
                 ),
-                max_loose,
+                c.Infra.NAMESPACE_MAX_RENDERED_LOOSE_OBJECTS,
             )
             FlextInfraUtilitiesOutputReporting._add_violation_section(
                 lines,
@@ -158,14 +155,14 @@ class FlextInfraUtilitiesOutputReporting:
                     f"    {nsv.file}:{nsv.line} alias='{nsv.alias}'"
                     f" {nsv.current_source} -> {nsv.correct_source}"
                 ),
-                max_loose,
+                c.Infra.NAMESPACE_MAX_RENDERED_LOOSE_OBJECTS,
             )
             FlextInfraUtilitiesOutputReporting._add_violation_section(
                 lines,
                 proj.parse_failures,
                 "Parse failures",
                 lambda pf: f"    {pf.file} [{pf.stage}] {pf.error_type}: {pf.detail}",
-                max_loose,
+                c.Infra.NAMESPACE_MAX_RENDERED_LOOSE_OBJECTS,
             )
             lines.append("")
         return "\n".join(lines) + "\n"

@@ -1,4 +1,4 @@
-"""Tests for FlextInfraDocFixer — internal methods: _process_file, _maybe_fix_link, TOC.
+"""Tests for FlextInfraDocFixer — internal methods: _process_file, TOC.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -66,54 +66,6 @@ class TestFixerProcessFile:
         tm.that(item.links, eq=1)
 
 
-class TestFixerMaybeFixLink:
-    @pytest.mark.parametrize(
-        "link",
-        [
-            "http://example.com",
-            "https://example.com",
-            "mailto:test@example.com",
-            "#section",
-            "",
-        ],
-    )
-    def test_unchanged_links_return_none(
-        self,
-        fixer: FlextInfraDocFixer,
-        tmp_path: Path,
-        link: str,
-    ) -> None:
-        _ = tf.create_in("# Test", "README.md", tmp_path)
-        tm.that(fixer._maybe_fix_link(tmp_path / "README.md", link), eq=None)
-
-    def test_maybe_fix_link_existing_file(
-        self,
-        fixer: FlextInfraDocFixer,
-        tmp_path: Path,
-    ) -> None:
-        _ = tf.create_in("# Existing", "existing.md", tmp_path)
-        tm.that(fixer._maybe_fix_link(tmp_path / "test.md", "existing.md"), eq=None)
-
-    def test_maybe_fix_link_adds_md_extension(
-        self,
-        fixer: FlextInfraDocFixer,
-        tmp_path: Path,
-    ) -> None:
-        _ = tf.create_in("# Missing", "missing.md", tmp_path)
-        tm.that(fixer._maybe_fix_link(tmp_path / "test.md", "missing"), eq="missing.md")
-
-    def test_maybe_fix_link_with_existing_target(
-        self,
-        fixer: FlextInfraDocFixer,
-        tmp_path: Path,
-    ) -> None:
-        docs_dir = tmp_path / "docs"
-        docs_dir.mkdir(parents=True)
-        md_file = tf.create_in("", "foo.md", docs_dir)
-        _ = tf.create_in("", "bar.md", docs_dir)
-        tm.that(fixer._maybe_fix_link(md_file, "bar"), eq="bar.md")
-
-
 class TestFixerToc:
     @pytest.mark.parametrize(
         ("title", "expected"),
@@ -154,19 +106,6 @@ class TestFixerToc:
         toc = u.Infra.build_toc("## !!!\n\n## Valid Section\n")
         tm.that(toc, has="Valid Section")
         tm.that("!!!" not in toc, eq=True)
-
-    @pytest.mark.parametrize(
-        "content",
-        [
-            "# Main\n\n<!-- TOC START -->\nOld TOC\n<!-- TOC END -->\n\n## Section\n",
-            "# Main\n\n## Section\n",
-            "## Section 1\n\nContent here.",
-        ],
-    )
-    def test_update_toc_paths(self, fixer: FlextInfraDocFixer, content: str) -> None:
-        updated, changed = fixer._update_toc(content)
-        tm.that(changed, eq=1)
-        tm.that(updated, has="<!-- TOC START -->")
 
 
 class TestFixerScope:

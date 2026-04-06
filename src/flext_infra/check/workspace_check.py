@@ -32,7 +32,7 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
         workspace: Path | None = None,
     ) -> None:
         """Initialize workspace checker services and paths."""
-        self._workspace_root = self._resolve_workspace_root(
+        self._workspace_root = u.Infra.resolve_workspace_root_or_cwd(
             workspace_root or workspace,
         )
         self._registry = FlextInfraGateRegistry.default()
@@ -220,9 +220,6 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
             report_base,
             outcome,
         )
-
-    def _resolve_workspace_root(self, workspace_root: Path | None) -> Path:
-        return u.Infra.resolve_workspace_root_or_cwd(workspace_root)
 
 
 build_parser = FlextInfraWorkspaceChecker.build_parser

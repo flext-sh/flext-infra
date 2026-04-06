@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import m
+from tests import m, u
 
 from flext_infra import FlextInfraDocAuditor
 
@@ -23,17 +23,17 @@ def auditor() -> FlextInfraDocAuditor:
 
 @pytest.fixture
 def normalize_link() -> Callable[[str], str]:
-    return FlextInfraDocAuditor.normalize_link
+    return u.Infra.docs_normalize_link
 
 
 @pytest.fixture
 def should_skip_target() -> Callable[[str, str], bool]:
-    return FlextInfraDocAuditor.should_skip_target
+    return u.Infra.docs_should_skip_target
 
 
 @pytest.fixture
 def is_external() -> Callable[[str], bool]:
-    return FlextInfraDocAuditor.is_external
+    return u.Infra.docs_is_external
 
 
 class TestAuditorCore:

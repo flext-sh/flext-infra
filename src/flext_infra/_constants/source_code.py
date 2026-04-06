@@ -173,6 +173,24 @@ class FlextInfraConstantsSourceCode:
 
         TAIL_LINES: Final[int] = 50
         "Number of tail lines to extract from log output."
+        ERROR_PATTERNS: Final[tuple[re.Pattern[str], ...]] = (
+            re.compile(r"^\s*\S+\.py:\d+"),
+            re.compile(r"^ERROR:", re.IGNORECASE),
+            re.compile(r"^\s+\[B\d+\]"),
+            re.compile(r"^FAIL:", re.IGNORECASE),
+            re.compile(r"^error:", re.IGNORECASE),
+            re.compile(r"^E\s+\w"),
+            re.compile(r"^FAILED\s"),
+        )
+        "Regex patterns for identifying error lines in logs."
+        NOISE_PATTERNS: Final[tuple[re.Pattern[str], ...]] = (
+            re.compile(r"^make\["),
+            re.compile(r"warning:\s+(overriding|ignoring)"),
+            re.compile(r"^(Total|Success|Failed|Skipped):"),
+            re.compile(r"^──\s"),
+            re.compile(r"^INFO:"),
+        )
+        "Regex patterns for identifying noise lines in logs."
 
     class Tier:
         """Module tier classification constants."""

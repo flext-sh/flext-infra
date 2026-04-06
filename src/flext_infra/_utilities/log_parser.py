@@ -9,10 +9,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import re
-from collections.abc import MutableSequence, Sequence
+from collections.abc import MutableSequence
 from pathlib import Path
-from typing import ClassVar
 
 from flext_infra import c, t
 
@@ -20,23 +18,7 @@ from flext_infra import c, t
 class FlextInfraUtilitiesLogParser:
     """Extract error information from verb log files."""
 
-    _ERROR_PATTERNS: ClassVar[Sequence[t.Infra.RegexPattern]] = [
-        re.compile(r"^\s*\S+\.py:\d+"),
-        re.compile(r"^ERROR:", re.IGNORECASE),
-        re.compile(r"^\s+\[B\d+\]"),
-        re.compile(r"^FAIL:", re.IGNORECASE),
-        re.compile(r"^error:", re.IGNORECASE),
-        re.compile(r"^E\s+\w"),
-        re.compile(r"^FAILED\s"),
-    ]
-
-    _NOISE_PATTERNS: ClassVar[Sequence[t.Infra.RegexPattern]] = [
-        re.compile(r"^make\["),
-        re.compile(r"warning:\s+(overriding|ignoring)"),
-        re.compile(r"^(Total|Success|Failed|Skipped):"),
-        re.compile(r"^──\s"),
-        re.compile(r"^INFO:"),
-    ]
+    # Inline patterns moved to c.Infra.LogParser
 
     @staticmethod
     def extract_errors(
@@ -69,13 +51,11 @@ class FlextInfraUtilitiesLogParser:
             if not stripped:
                 continue
             if any(
-                pattern.search(stripped)
-                for pattern in FlextInfraUtilitiesLogParser._NOISE_PATTERNS
+                pattern.search(stripped) for pattern in c.Infra.LogParser.NOISE_PATTERNS
             ):
                 continue
             if any(
-                pattern.search(stripped)
-                for pattern in FlextInfraUtilitiesLogParser._ERROR_PATTERNS
+                pattern.search(stripped) for pattern in c.Infra.LogParser.ERROR_PATTERNS
             ):
                 error_lines.append(stripped)
         total = len(error_lines)

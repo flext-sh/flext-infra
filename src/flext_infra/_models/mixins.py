@@ -279,14 +279,6 @@ class FlextInfraModelsMixins:
             Field(default=False, description="Release on merge"),
         ] = True
 
-    class FacadeNameMixin:
-        """Shared facade alias/import field for MRO rewrites."""
-
-        facade_name: Annotated[
-            str,
-            Field(default="", description="Facade alias/import name"),
-        ] = ""
-
     class FailFastMixin:
         """Shared stop-on-first-failure flag."""
 
