@@ -540,6 +540,7 @@ split-on-trailing-comma = true
 
 "**/.vulture_whitelist.py" = [ "ALL" ]
 "**/*_pb2*.py" = [ "ALL" ]
+"**/*dispatcher*" = [  ]
 "**/*docs*" = [ "INP001", "S404", "S603", "T201" ]
 "**/*examples*" = [
   "ANN401",
@@ -561,12 +562,14 @@ split-on-trailing-comma = true
   "TID252",
 ]
 "**/*exceptions*" = [ "A001", "S105", "SLF001" ]
+"**/*handlers*" = [  ]
 "**/*instrumentation*" = [ "C901", "FBT001", "SLF001" ]
 "**/*loggings*" = [ "PLR0904", "PLW0603" ]
 "**/*middleware*" = [ "ANN401", "FBT001", "FBT002", "PLC2801", "S107" ]
 "**/*models*" = [ "ANN401", "FBT001", "PLC2701", "PLR0206", "PLW0603" ]
 "**/*oracle*" = [ "DTZ007" ]
 "**/*result*" = [ "PLC2701", "SLF001" ]
+"**/*runtime*" = [  ]
 "**/*scripts*" = [
   "EXE001",
   "FIX002",
@@ -676,11 +679,13 @@ split-on-trailing-comma = true
   "RUF067",
   "TC004",
 ]
+"**/_constants/*.py" = [ "S105" ]
 "**/_utilities/parser.py" = [ "ARG004", "FBT001" ]
 "**/alert_manager*.py" = [ "S310" ]
 "**/config.py" = [ "ANN401", "FBT001", "SLF001" ]
 "**/constants.py" = [ "S105" ]
 "**/container.py" = [ "ANN401", "SLF001" ]
+"**/context.py" = [  ]
 "**/external_command*.py" = [ "S404", "S603" ]
 "**/file_tools.py" = [ "D102" ]
 "**/managers.py" = [ "S105" ]

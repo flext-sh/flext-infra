@@ -275,6 +275,8 @@ tools:
           - ANN401
           - FBT001
           - SLF001
+        '**/_constants/*.py':
+          - S105
         '**/constants.py':
           - S105
         '**/container.py':

@@ -5,6 +5,10 @@ from __future__ import annotations
 from collections.abc import Callable, MutableMapping
 from pathlib import Path
 
+import mkdocs.commands.build
+import mkdocs.config
+import mkdocs.exceptions
+
 from flext_cli import u
 from flext_infra import c, m, p
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
@@ -103,10 +107,6 @@ class FlextInfraUtilitiesDocsBuild:
         Converts mkdocs-specific exceptions to ``OSError`` so callers only
         need to catch standard exception types.
         """
-        import mkdocs.commands.build  # noqa: PLC0415
-        import mkdocs.config  # noqa: PLC0415
-        import mkdocs.exceptions  # noqa: PLC0415
-
         load: Callable[..., MutableMapping[str, bool]] = getattr(
             mkdocs.config, "load_config"
         )
