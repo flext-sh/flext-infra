@@ -15,7 +15,7 @@ import os
 from _pytest.monkeypatch import MonkeyPatch
 from flext_tests import tm
 
-from flext_infra import FlextInfraUtilitiesTerminal
+from flext_infra import FlextInfraUtilitiesReporting
 
 
 class TestShouldUseColor:
@@ -23,24 +23,24 @@ class TestShouldUseColor:
 
     def test_no_color_env_disables(self, monkeypatch: MonkeyPatch) -> None:
         monkeypatch.setenv("NO_COLOR", "1")
-        tm.that(not FlextInfraUtilitiesTerminal.terminal_should_use_color(), eq=True)
+        tm.that(not FlextInfraUtilitiesReporting.terminal_should_use_color(), eq=True)
 
     def test_no_color_empty_string_disables(self, monkeypatch: MonkeyPatch) -> None:
         monkeypatch.setenv("NO_COLOR", "")
-        tm.that(not FlextInfraUtilitiesTerminal.terminal_should_use_color(), eq=True)
+        tm.that(not FlextInfraUtilitiesReporting.terminal_should_use_color(), eq=True)
 
     def test_force_color_enables(self, monkeypatch: MonkeyPatch) -> None:
         for key in list(os.environ):
             monkeypatch.delenv(key, raising=False)
         monkeypatch.setenv("FORCE_COLOR", "1")
-        tm.that(FlextInfraUtilitiesTerminal.terminal_should_use_color(), eq=True)
+        tm.that(FlextInfraUtilitiesReporting.terminal_should_use_color(), eq=True)
 
     def test_no_color_beats_force_color(self, monkeypatch: MonkeyPatch) -> None:
         for key in list(os.environ):
             monkeypatch.delenv(key, raising=False)
         monkeypatch.setenv("NO_COLOR", "1")
         monkeypatch.setenv("FORCE_COLOR", "1")
-        tm.that(not FlextInfraUtilitiesTerminal.terminal_should_use_color(), eq=True)
+        tm.that(not FlextInfraUtilitiesReporting.terminal_should_use_color(), eq=True)
 
     def test_ci_env_disables(self, monkeypatch: MonkeyPatch) -> None:
         for var in ("CI", "GITHUB_ACTIONS", "GITLAB_CI"):
@@ -48,7 +48,7 @@ class TestShouldUseColor:
                 monkeypatch.delenv(key, raising=False)
             monkeypatch.setenv(var, "true")
             tm.that(
-                FlextInfraUtilitiesTerminal.terminal_should_use_color(),
+                FlextInfraUtilitiesReporting.terminal_should_use_color(),
                 eq=False,
                 msg=f"{var} should disable color",
             )
@@ -59,7 +59,7 @@ class TestShouldUseColor:
         for key in list(os.environ):
             monkeypatch.delenv(key, raising=False)
         monkeypatch.setenv("TERM", "xterm-256color")
-        tm.that(FlextInfraUtilitiesTerminal.terminal_should_use_color(stream), eq=True)
+        tm.that(FlextInfraUtilitiesReporting.terminal_should_use_color(stream), eq=True)
 
     def test_tty_with_dumb_term_disables(self, monkeypatch: MonkeyPatch) -> None:
         stream = io.StringIO()
@@ -68,7 +68,7 @@ class TestShouldUseColor:
             monkeypatch.delenv(key, raising=False)
         monkeypatch.setenv("TERM", "dumb")
         tm.that(
-            not FlextInfraUtilitiesTerminal.terminal_should_use_color(stream), eq=True
+            not FlextInfraUtilitiesReporting.terminal_should_use_color(stream), eq=True
         )
 
     def test_tty_with_empty_term_disables(self, monkeypatch: MonkeyPatch) -> None:
@@ -78,7 +78,7 @@ class TestShouldUseColor:
             monkeypatch.delenv(key, raising=False)
         monkeypatch.setenv("TERM", "")
         tm.that(
-            not FlextInfraUtilitiesTerminal.terminal_should_use_color(stream), eq=True
+            not FlextInfraUtilitiesReporting.terminal_should_use_color(stream), eq=True
         )
 
     def test_non_tty_disables(self, monkeypatch: MonkeyPatch) -> None:
@@ -86,7 +86,7 @@ class TestShouldUseColor:
         for key in list(os.environ):
             monkeypatch.delenv(key, raising=False)
         tm.that(
-            not FlextInfraUtilitiesTerminal.terminal_should_use_color(stream), eq=True
+            not FlextInfraUtilitiesReporting.terminal_should_use_color(stream), eq=True
         )
 
 
@@ -97,28 +97,28 @@ class TestShouldUseUnicode:
         for key in list(os.environ):
             monkeypatch.delenv(key, raising=False)
         monkeypatch.setenv("LANG", "en_US.UTF-8")
-        tm.that(FlextInfraUtilitiesTerminal.terminal_should_use_unicode(), eq=True)
+        tm.that(FlextInfraUtilitiesReporting.terminal_should_use_unicode(), eq=True)
 
     def test_lc_all_utf8_enables(self, monkeypatch: MonkeyPatch) -> None:
         for key in list(os.environ):
             monkeypatch.delenv(key, raising=False)
         monkeypatch.setenv("LC_ALL", "en_US.utf8")
-        tm.that(FlextInfraUtilitiesTerminal.terminal_should_use_unicode(), eq=True)
+        tm.that(FlextInfraUtilitiesReporting.terminal_should_use_unicode(), eq=True)
 
     def test_c_locale_disables(self, monkeypatch: MonkeyPatch) -> None:
         for key in list(os.environ):
             monkeypatch.delenv(key, raising=False)
         monkeypatch.setenv("LANG", "C")
-        tm.that(not FlextInfraUtilitiesTerminal.terminal_should_use_unicode(), eq=True)
+        tm.that(not FlextInfraUtilitiesReporting.terminal_should_use_unicode(), eq=True)
 
     def test_empty_env_disables(self, monkeypatch: MonkeyPatch) -> None:
         for key in list(os.environ):
             monkeypatch.delenv(key, raising=False)
-        tm.that(not FlextInfraUtilitiesTerminal.terminal_should_use_unicode(), eq=True)
+        tm.that(not FlextInfraUtilitiesReporting.terminal_should_use_unicode(), eq=True)
 
     def test_lc_all_takes_priority(self, monkeypatch: MonkeyPatch) -> None:
         for key in list(os.environ):
             monkeypatch.delenv(key, raising=False)
         monkeypatch.setenv("LC_ALL", "en_US.UTF-8")
         monkeypatch.setenv("LANG", "C")
-        tm.that(FlextInfraUtilitiesTerminal.terminal_should_use_unicode(), eq=True)
+        tm.that(FlextInfraUtilitiesReporting.terminal_should_use_unicode(), eq=True)

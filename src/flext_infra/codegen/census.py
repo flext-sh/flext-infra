@@ -172,7 +172,7 @@ class FlextInfraCodegenCensus(FlextInfraCommandContext[str]):
         if by_type:
             for type_key in sorted(by_type.keys())[:3]:
                 type_info_val = by_type[type_key]
-                type_info = u.Infra.as_toml_mapping(type_info_val)
+                type_info = u.Cli.toml_as_mapping(type_info_val)
                 if type_info is None:
                     continue
                 cnt_val = type_info.get("total", 0)

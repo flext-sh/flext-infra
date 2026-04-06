@@ -184,6 +184,13 @@ class FlextInfraConstantsBase(
     TYPE_ALIAS: Final[str] = "type"
     DEFAULT_CSV: Final[str] = "lint,format,pyrefly,mypy,pyright,security,markdown,go"
 
+    class TomlMerge:
+        """Merge strategies for TOML list synchronization."""
+
+        REPLACE: Final[str] = "replace"
+        ADDITIVE: Final[str] = "additive"
+        MERGE: Final[str] = "merge"
+
     class Status:
         """Status strings for check results."""
 

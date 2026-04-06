@@ -9,13 +9,16 @@ domain.
 from __future__ import annotations
 
 import ast
+import contextlib
 import re
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar
 
-from pydantic import TypeAdapter, ValidationError
+from pydantic import BaseModel, TypeAdapter, ValidationError
 
+from flext_cli import u
+from flext_core import r
 from flext_infra import c, m, t
 
 
@@ -129,6 +132,173 @@ class FlextInfraUtilitiesParsing:
                 continue
             break
         return idx
+
+    # ------------------------------------------------------------------
+    # Dependency / pyproject parsing helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def dep_name(spec: str) -> str:
+        """Extract one normalized dependency name from a requirement spec."""
+        base = spec.strip().split("@", 1)[0].strip()
+        match = c.Infra.DEP_NAME_RE.match(base)
+        if match:
+            return match.group(1).lower().replace("_", "-")
+        return base.lower().replace("_", "-")
+
+    @staticmethod
+    def dedupe_specs(specs: t.StrSequence) -> t.StrSequence:
+        """Deduplicate requirement specs by normalized dependency name."""
+        seen: dict[str, str] = {}
+        for spec in specs:
+            key = FlextInfraUtilitiesParsing.dep_name(spec)
+            if key and key not in seen:
+                seen[key] = spec
+        return sorted(seen.values())
+
+    @staticmethod
+    def ensure_pyright_execution_envs(
+        pyright: t.Cli.TomlTable,
+        expected: Sequence[t.Infra.ContainerDict] | Sequence[BaseModel],
+        changes: MutableSequence[str],
+    ) -> None:
+        """Ensure pyright ``executionEnvironments`` matches one expected payload."""
+        raw = u.Cli.toml_unwrap_item(
+            u.Cli.toml_get_item(pyright, "executionEnvironments")
+        )
+        current: Sequence[t.StrMapping] = []
+        if isinstance(raw, list):
+            with contextlib.suppress(ValidationError):
+                current = TypeAdapter(Sequence[t.StrMapping]).validate_python(raw)
+        normalized: Sequence[t.Infra.ContainerDict] = [
+            entry.model_dump(by_alias=True) if isinstance(entry, BaseModel) else entry
+            for entry in expected
+        ]
+        if list(current) != list(normalized):
+            pyright["executionEnvironments"] = normalized
+            changes.append(
+                "tool.pyright.executionEnvironments set with tests reportPrivateUsage=none",
+            )
+
+    @staticmethod
+    def discover_first_party_namespaces(project_dir: Path) -> t.StrSequence:
+        """Discover first-party namespaces directly under ``src/``."""
+        src_dir = project_dir / c.Infra.Paths.DEFAULT_SRC_DIR
+        if not src_dir.is_dir():
+            return []
+        return [
+            entry.name
+            for entry in sorted(src_dir.iterdir())
+            if entry.is_dir()
+            and entry.name != c.Infra.Dunders.PYCACHE
+            and entry.name.isidentifier()
+            and "-" not in entry.name
+        ]
+
+    @staticmethod
+    def workspace_dep_namespaces(doc: t.Cli.TomlDocument) -> t.StrSequence:
+        """Return workspace dependency namespaces normalized for Python imports."""
+        all_deps = FlextInfraUtilitiesParsing.declared_dependency_names(doc)
+        return sorted(
+            dep.replace("-", "_")
+            for dep in all_deps
+            if dep.startswith(c.Infra.Packages.PREFIX_HYPHEN)
+        )
+
+    @staticmethod
+    def project_dev_groups(doc: t.Cli.TomlDocument) -> dict[str, t.StrSequence]:
+        """Extract optional dependency groups from the ``project`` table."""
+        project_raw = u.Cli.toml_get_table(doc, c.Infra.PROJECT)
+        if project_raw is None:
+            return {}
+        optional_raw = u.Cli.toml_get_table(project_raw, c.Infra.OPTIONAL_DEPENDENCIES)
+        if optional_raw is None:
+            return {}
+
+        def _group_values(group_key: str) -> t.StrSequence:
+            value = u.Cli.toml_get_item(optional_raw, group_key)
+            return u.Cli.toml_as_string_list(value)
+
+        return {
+            c.Infra.DEV: _group_values(c.Infra.DEV),
+            c.Infra.Directories.DOCS: _group_values(c.Infra.DOCS),
+            c.Infra.SECURITY: _group_values(c.Infra.SECURITY),
+            c.Infra.TEST: _group_values(c.Infra.TEST),
+            c.Infra.Directories.TYPINGS: _group_values(c.Infra.Directories.TYPINGS),
+        }
+
+    @staticmethod
+    def declared_dependency_names(doc: t.Cli.TomlDocument) -> t.StrSequence:
+        """Extract normalized dependency names from supported dependency groups."""
+        raw: t.Infra.TomlData = doc.unwrap()
+        names: set[str] = set()
+
+        def _collect(items: t.Infra.InfraValue) -> None:
+            if not isinstance(items, Sequence) or isinstance(items, str):
+                return
+            for item in items:
+                if not isinstance(item, str):
+                    continue
+                dep = FlextInfraUtilitiesParsing.dep_name(item)
+                if dep:
+                    names.add(dep)
+
+        project_val = raw.get(c.Infra.PROJECT)
+        if u.is_mapping(project_val):
+            _collect(project_val.get(c.Infra.DEPENDENCIES))
+            optional_val = project_val.get(c.Infra.OPTIONAL_DEPENDENCIES)
+            if u.is_mapping(optional_val):
+                for specs in optional_val.values():
+                    _collect(specs)
+
+        groups_val = raw.get("dependency-groups")
+        if u.is_mapping(groups_val):
+            for specs in groups_val.values():
+                _collect(specs)
+
+        tool_val = raw.get(c.Infra.TOOL)
+        if not u.is_mapping(tool_val):
+            return sorted(names)
+        poetry_val = tool_val.get(c.Infra.POETRY)
+        if not u.is_mapping(poetry_val):
+            return sorted(names)
+        deps_val = poetry_val.get(c.Infra.DEPENDENCIES)
+        if not u.is_mapping(deps_val):
+            return sorted(names)
+        for dep_key in deps_val:
+            dep = FlextInfraUtilitiesParsing.dep_name(str(dep_key))
+            if dep and dep != c.Infra.PYTHON:
+                names.add(dep)
+        return sorted(names)
+
+    @staticmethod
+    def canonical_dev_dependencies(root_doc: t.Cli.TomlDocument) -> t.StrSequence:
+        """Merge and deduplicate all canonical dev dependency groups."""
+        groups = FlextInfraUtilitiesParsing.project_dev_groups(root_doc)
+        merged = [
+            *groups.get(c.Infra.DEV, []),
+            *groups.get(c.Infra.Directories.DOCS, []),
+            *groups.get(c.Infra.SECURITY, []),
+            *groups.get(c.Infra.TEST, []),
+            *groups.get(c.Infra.Directories.TYPINGS, []),
+        ]
+        return FlextInfraUtilitiesParsing.dedupe_specs(merged)
+
+    @staticmethod
+    def read_plain(path: Path) -> r[t.Infra.ContainerDict]:
+        """Read one TOML file as a plain infra mapping."""
+        result = u.Cli.toml_read_json(path)
+        if result.is_failure:
+            if not path.exists():
+                return r[t.Infra.ContainerDict].ok({})
+            return r[t.Infra.ContainerDict].fail(
+                result.error or f"TOML read error: {path}",
+            )
+        try:
+            data = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(result.value)
+        except ValidationError as exc:
+            return r[t.Infra.ContainerDict].fail(f"TOML read error: {exc}")
+        return r[t.Infra.ContainerDict].ok(data)
 
     # ── Generic AST helpers (shared across validate/refactor/codegen) ──
 
@@ -325,6 +495,57 @@ class FlextInfraUtilitiesParsing:
             if name.endswith(c.Infra.CONSTANTS_CLASS_SUFFIX):
                 return name
         return ""
+
+    @staticmethod
+    def parse_class_bases(source: str, class_name: str) -> Sequence[str]:
+        """Extract base class names from a named class definition in source code.
+
+        Finds the class matching *class_name* in *source*, parses its base classes,
+        and returns the terminal (unqualified, unsubscripted) names in declaration order.
+        Returns an empty sequence when the class is not found.
+        """
+        for match in c.Infra.SourceCode.CLASS_WITH_BASES_RE.finditer(source):
+            if match.group(1) != class_name:
+                continue
+            bases_str = match.group(2)
+            return [
+                terminal
+                for base_part in bases_str.split(",")
+                if (stripped := base_part.strip())
+                if (
+                    terminal := stripped
+                    .split("[", maxsplit=1)[0]
+                    .strip()
+                    .rsplit(".", maxsplit=1)[-1]
+                )
+            ]
+        return []
+
+    @staticmethod
+    def parse_all_class_bases(source: str) -> Sequence[m.Infra.ClassInfo]:
+        """Extract class info (name, line, bases) for every class in *source*.
+
+        Line-by-line regex scan — useful when rope cannot resolve imported bases.
+        """
+        result: MutableSequence[m.Infra.ClassInfo] = []
+        for lineno, line in enumerate(source.splitlines(), start=1):
+            match = c.Infra.SourceCode.CLASS_WITH_BASES_RE.match(line)
+            if not match:
+                continue
+            name = match.group(1)
+            bases: list[str] = [
+                terminal
+                for base_part in match.group(2).split(",")
+                if (stripped := base_part.strip())
+                if (
+                    terminal := stripped
+                    .split("[", maxsplit=1)[0]
+                    .strip()
+                    .rsplit(".", maxsplit=1)[-1]
+                )
+            ]
+            result.append(m.Infra.ClassInfo(name=name, line=lineno, bases=tuple(bases)))
+        return result
 
 
 __all__ = ["FlextInfraUtilitiesParsing"]

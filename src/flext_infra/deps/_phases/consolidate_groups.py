@@ -42,9 +42,9 @@ class FlextInfraConsolidateGroupsPhase:
             *existing.get(c.Infra.TEST, []),
             *existing.get(c.Infra.Directories.TYPINGS, []),
         ])
-        current_dev = u.Infra.as_string_list(u.Infra.get(optional, c.Infra.DEV))
+        current_dev = u.Cli.toml_as_string_list(u.Infra.get(optional, c.Infra.DEV))
         if sorted(current_dev) != sorted(merged_dev):
-            optional[c.Infra.DEV] = u.Infra.array(sorted(merged_dev))
+            optional[c.Infra.DEV] = u.Cli.toml_array(sorted(merged_dev))
             changes.append("project.optional-dependencies.dev consolidated")
         for old_key in (
             c.Infra.DOCS,
@@ -61,7 +61,7 @@ class FlextInfraConsolidateGroupsPhase:
         if not isinstance(tool, Table):
             tool = tomlkit.table()
             doc[c.Infra.TOOL] = tool
-        poetry = u.Infra.ensure_table(tool, c.Infra.POETRY)
+        poetry = u.Cli.toml_ensure_table(tool, c.Infra.POETRY)
         poetry_group_raw: Item | Container | None = None
         if c.Infra.GROUP in poetry:
             poetry_group_raw = poetry[c.Infra.GROUP]
@@ -85,8 +85,8 @@ class FlextInfraConsolidateGroupsPhase:
                 old_deps = old_group_table[c.Infra.DEPENDENCIES]
             if isinstance(old_deps, Table):
                 if poetry_dev_table is None:
-                    poetry_dev_table = u.Infra.ensure_table(
-                        u.Infra.ensure_table(poetry_group, c.Infra.DEV),
+                    poetry_dev_table = u.Cli.toml_ensure_table(
+                        u.Cli.toml_ensure_table(poetry_group, c.Infra.DEV),
                         c.Infra.DEPENDENCIES,
                     )
                 for dep_name_raw in old_deps:
@@ -96,12 +96,12 @@ class FlextInfraConsolidateGroupsPhase:
                         poetry_dev_table[dep_name] = dep_value
             del poetry_group[old_group]
             changes.append(f"tool.poetry.group.{old_group} removed")
-        deptry = u.Infra.ensure_table(tool, c.Infra.DEPTRY)
-        current_groups = u.Infra.as_string_list(
+        deptry = u.Cli.toml_ensure_table(tool, c.Infra.DEPTRY)
+        current_groups = u.Cli.toml_as_string_list(
             u.Infra.get(deptry, "pep621_dev_dependency_groups")
         )
         if current_groups != [c.Infra.DEV]:
-            deptry["pep621_dev_dependency_groups"] = u.Infra.array([c.Infra.DEV])
+            deptry["pep621_dev_dependency_groups"] = u.Cli.toml_array([c.Infra.DEV])
             changes.append("tool.deptry.pep621_dev_dependency_groups set to ['dev']")
         return changes
 

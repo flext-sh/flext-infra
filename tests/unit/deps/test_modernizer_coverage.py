@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
-
 import tomlkit
 from flext_tests import tm
-from tests import m, u
+from tests import m, t, u
 
 from flext_infra import FlextInfraEnsureCoverageConfigPhase
 
@@ -20,25 +18,50 @@ def _test_tool_config() -> m.Infra.ToolConfigDocument:
     return result.value
 
 
+def _doc_mapping(doc: t.Cli.TomlDocument) -> t.Cli.JsonMapping:
+    return t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+        u.Cli.normalize_json_value(doc.unwrap()),
+    )
+
+
+def _mapping(value: t.Cli.JsonValue) -> t.Cli.JsonMapping:
+    return t.Cli.JSON_MAPPING_ADAPTER.validate_python(value)
+
+
+def _strings(value: t.Cli.JsonValue) -> t.StrSequence:
+    return t.Infra.STR_SEQ_ADAPTER.validate_python(value)
+
+
 class TestEnsureCoverageConfigPhase:
     """Tests coverage config phase behavior."""
 
-    def test_apply_sets_report_and_run_fields(self) -> None:
+    def test_apply_sets_report_and_run_state(self) -> None:
+        tool_config = _test_tool_config()
         doc = tomlkit.document()
-        doc["tool"] = tomlkit.table()
-        changes = FlextInfraEnsureCoverageConfigPhase(_test_tool_config()).apply(
+
+        _ = FlextInfraEnsureCoverageConfigPhase(tool_config).apply(
             doc,
             project_kind="integration",
         )
-        tm.that(
-            any("tool.coverage.report.fail_under" in item for item in changes), eq=True
+
+        tool = _mapping(_doc_mapping(doc)["tool"])
+        coverage = _mapping(tool["coverage"])
+        report = _mapping(coverage["report"])
+        run = _mapping(coverage["run"])
+        assert report["fail_under"] == tool_config.tools.coverage.fail_under.integration
+        assert report["show_missing"] is True
+        assert report["skip_covered"] is False
+        assert report["precision"] == tool_config.tools.coverage.precision
+        assert list(_strings(run["omit"])) == sorted(
+            set(tool_config.tools.coverage.omit)
         )
-        tm.that(any("tool.coverage.run.omit" in item for item in changes), eq=True)
-        tool = doc["tool"]
-        assert isinstance(tool, MutableMapping)
-        coverage = tool["coverage"]
-        assert isinstance(coverage, MutableMapping)
-        run = coverage["run"]
-        assert isinstance(run, MutableMapping)
-        omit = run["omit"]
-        tm.that(str(omit), has="dependency_injector/providers.pyx")
+
+    def test_apply_is_idempotent(self) -> None:
+        tool_config = _test_tool_config()
+        phase = FlextInfraEnsureCoverageConfigPhase(tool_config)
+        doc = tomlkit.document()
+
+        _ = phase.apply(doc, project_kind="core")
+        second_changes = phase.apply(doc, project_kind="core")
+
+        tm.that(second_changes, eq=[])

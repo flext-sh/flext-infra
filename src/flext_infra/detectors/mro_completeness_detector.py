@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import DetectorContext, FlextInfraScanFileMixin, c, m, p, u
+from flext_infra import DetectorContext, FlextInfraScanFileMixin, c, m, p, t, u
 
 
 class FlextInfraMROCompletenessDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
@@ -21,22 +21,19 @@ class FlextInfraMROCompletenessDetector(FlextInfraScanFileMixin, p.Infra.Scanner
         "Facade '{facade_class}' missing base '{missing_base}' for family '{family}'"
     )
 
-    @staticmethod
-    def _declared_bases_from_source(*, file_path: Path, facade: str) -> set[str]:
+    @classmethod
+    def _declared_bases_from_source(
+        cls,
+        *,
+        rope_project: t.Infra.RopeProject,
+        file_path: Path,
+        facade: str,
+    ) -> set[str]:
         """Parse declared facade bases directly from source to complement Rope results."""
-        try:
-            source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
-        except OSError:
+        source = cls._get_source_or_empty(rope_project, file_path)
+        if source is None:
             return set()
-        for match in c.Infra.SourceCode.CLASS_WITH_BASES_RE.finditer(source):
-            if match.group(1) != facade:
-                continue
-            return {
-                base_part.split("[", maxsplit=1)[0].strip().rsplit(".", maxsplit=1)[-1]
-                for base_part in match.group(2).split(",")
-                if base_part.strip()
-            }
-        return set()
+        return set(u.Infra.parse_class_bases(source, facade))
 
     @classmethod
     @override
@@ -101,7 +98,11 @@ class FlextInfraMROCompletenessDetector(FlextInfraScanFileMixin, p.Infra.Scanner
                 elif not ci.name.startswith("_") and ci.name.startswith(facade):
                     expected[ci.name] = ci.line
         declared.update(
-            cls._declared_bases_from_source(file_path=file_path, facade=facade)
+            cls._declared_bases_from_source(
+                rope_project=rope_project,
+                file_path=file_path,
+                facade=facade,
+            )
         )
         root = u.Infra.resolve_project_root(file_path)
         if root is not None:

@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
-
 import tomlkit
 from flext_tests import tm
-from tests import m, u
+from tests import m, t, u
 
 from flext_infra import FlextInfraEnsurePytestConfigPhase
 
@@ -20,83 +18,87 @@ def _test_tool_config() -> m.Infra.ToolConfigDocument:
     return result.value
 
 
+def _doc_mapping(doc: t.Cli.TomlDocument) -> t.Cli.JsonMapping:
+    return t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+        u.Cli.normalize_json_value(doc.unwrap()),
+    )
+
+
+def _mapping(value: t.Cli.JsonValue) -> t.Cli.JsonMapping:
+    return t.Cli.JSON_MAPPING_ADAPTER.validate_python(value)
+
+
+def _strings(value: t.Cli.JsonValue) -> t.StrSequence:
+    return t.Infra.STR_SEQ_ADAPTER.validate_python(value)
+
+
 class TestEnsurePytestConfigPhase:
     """Tests pytest config phase behavior."""
 
-    def test_ensure_pytest_config_sets_fields(self) -> None:
+    def test_apply_sets_expected_ini_options(self) -> None:
+        tool_config = _test_tool_config()
         doc = tomlkit.document()
-        doc["tool"] = tomlkit.table()
-        changes = FlextInfraEnsurePytestConfigPhase(_test_tool_config()).apply(doc)
-        tm.that(any("minversion" in c for c in changes), eq=True)
-        tm.that(any("python_classes" in c for c in changes), eq=True)
-        tm.that(any("python_files" in c for c in changes), eq=True)
-        tm.that(any("addopts" in c for c in changes), eq=True)
-        tm.that(any("markers" in c for c in changes), eq=True)
 
-    def test_ensure_pytest_config_preserves_existing(self) -> None:
-        doc = tomlkit.document()
-        doc["tool"] = {
-            "pytest": {
-                "ini_options": {"minversion": "8.0", "python_classes": ["Test*"]},
-            },
+        _ = FlextInfraEnsurePytestConfigPhase(tool_config).apply(doc)
+
+        ini = _mapping(
+            _mapping(_mapping(_doc_mapping(doc)["tool"])["pytest"])["ini_options"]
+        )
+        assert ini["minversion"] == "8.0"
+        assert list(_strings(ini["python_classes"])) == ["Test*"]
+        assert set(_strings(ini["python_files"])) == {
+            "*_test.py",
+            "*_tests.py",
+            "test_*.py",
         }
-        _ = FlextInfraEnsurePytestConfigPhase(_test_tool_config()).apply(doc)
-        tool = doc["tool"]
-        assert isinstance(tool, MutableMapping)
-        tm.that(tool, is_=MutableMapping)
-        pytest_section = tool["pytest"]
-        assert isinstance(pytest_section, MutableMapping)
-        tm.that(pytest_section, is_=MutableMapping)
-        ini_options = pytest_section["ini_options"]
-        assert isinstance(ini_options, MutableMapping)
-        tm.that(ini_options, is_=MutableMapping)
-        tm.that(str(ini_options["minversion"]), eq="8.0")
+        assert set(_strings(ini["addopts"])) == set(
+            tool_config.tools.pytest.standard_addopts
+        )
+        assert set(_strings(ini["markers"])) == set(
+            tool_config.tools.pytest.standard_markers
+        )
 
+    def test_apply_merges_existing_project_specific_entries(self) -> None:
+        tool_config = _test_tool_config()
+        doc = tomlkit.parse(
+            """
+[tool.pytest.ini_options]
+minversion = "7.0"
+python_classes = ["Spec*"]
+python_files = ["spec_*.py"]
+addopts = ["--maxfail=1"]
+markers = ["custom: custom marker"]
+""",
+        )
 
-def test_ensure_pytest_config_phase_apply_minversion() -> None:
-    doc = tomlkit.document()
-    doc["tool"] = tomlkit.table()
-    tool = doc["tool"]
-    assert isinstance(tool, MutableMapping)
-    tm.that(tool, is_=MutableMapping)
-    tool["pytest"] = tomlkit.table()
-    pytest_section = tool["pytest"]
-    assert isinstance(pytest_section, MutableMapping)
-    tm.that(pytest_section, is_=MutableMapping)
-    pytest_section["ini_options"] = tomlkit.table()
-    changes = FlextInfraEnsurePytestConfigPhase(_test_tool_config()).apply(doc)
-    tm.that(any("minversion set to 8.0" in c for c in changes), eq=True)
-    ini_options = pytest_section["ini_options"]
-    assert isinstance(ini_options, MutableMapping)
-    tm.that(ini_options, is_=MutableMapping)
-    tm.that(str(ini_options["minversion"]), eq="8.0")
+        _ = FlextInfraEnsurePytestConfigPhase(tool_config).apply(doc)
 
+        ini = _mapping(
+            _mapping(_mapping(_doc_mapping(doc)["tool"])["pytest"])["ini_options"]
+        )
+        assert ini["minversion"] == "8.0"
+        assert set(_strings(ini["python_classes"])) == {"Spec*", "Test*"}
+        assert set(_strings(ini["python_files"])) == {
+            "spec_*.py",
+            "*_test.py",
+            "*_tests.py",
+            "test_*.py",
+        }
+        assert set(_strings(ini["addopts"])) == {
+            "--maxfail=1",
+            *tool_config.tools.pytest.standard_addopts,
+        }
+        assert set(_strings(ini["markers"])) == {
+            "custom: custom marker",
+            *tool_config.tools.pytest.standard_markers,
+        }
 
-def test_ensure_pytest_config_phase_apply_python_classes() -> None:
-    doc = tomlkit.document()
-    doc["tool"] = tomlkit.table()
-    tool = doc["tool"]
-    assert isinstance(tool, MutableMapping)
-    tm.that(tool, is_=MutableMapping)
-    tool["pytest"] = tomlkit.table()
-    pytest_section = tool["pytest"]
-    assert isinstance(pytest_section, MutableMapping)
-    tm.that(pytest_section, is_=MutableMapping)
-    pytest_section["ini_options"] = tomlkit.table()
-    changes = FlextInfraEnsurePytestConfigPhase(_test_tool_config()).apply(doc)
-    tm.that(any("python_classes updated" in c for c in changes), eq=True)
+    def test_apply_is_idempotent(self) -> None:
+        tool_config = _test_tool_config()
+        phase = FlextInfraEnsurePytestConfigPhase(tool_config)
+        doc = tomlkit.document()
 
+        _ = phase.apply(doc)
+        second_changes = phase.apply(doc)
 
-def test_ensure_pytest_config_phase_apply_markers() -> None:
-    doc = tomlkit.document()
-    doc["tool"] = tomlkit.table()
-    tool = doc["tool"]
-    assert isinstance(tool, MutableMapping)
-    tm.that(tool, is_=MutableMapping)
-    tool["pytest"] = tomlkit.table()
-    pytest_section = tool["pytest"]
-    assert isinstance(pytest_section, MutableMapping)
-    tm.that(pytest_section, is_=MutableMapping)
-    pytest_section["ini_options"] = tomlkit.table()
-    changes = FlextInfraEnsurePytestConfigPhase(_test_tool_config()).apply(doc)
-    tm.that(any("markers" in c for c in changes), eq=True)
+        tm.that(second_changes, eq=[])

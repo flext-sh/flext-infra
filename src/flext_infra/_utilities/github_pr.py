@@ -17,7 +17,6 @@ from flext_infra._constants.validate import FlextInfraSharedInfraConstants
 from flext_infra._models.cli_inputs_ops import FlextInfraModelsCliInputsOps
 from flext_infra._models.github import FlextInfraGithubModels
 from flext_infra._utilities.git import FlextInfraUtilitiesGit
-from flext_infra._utilities.io import FlextInfraUtilitiesIo
 from flext_infra._utilities.reporting import FlextInfraUtilitiesReporting
 from flext_infra._utilities.selection import FlextInfraUtilitiesSelection
 from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
@@ -25,7 +24,6 @@ from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
 
 class FlextInfraUtilitiesGithubPr(
     FlextInfraUtilitiesGit,
-    FlextInfraUtilitiesIo,
     FlextInfraUtilitiesReporting,
     FlextInfraUtilitiesSelection,
     FlextInfraUtilitiesSubprocess,

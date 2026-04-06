@@ -272,12 +272,12 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
             return r[bool].fail(gen_result.error or "base.mk generation failed")
         content: str = gen_result.value
         target_path = workspace_root / c.Infra.Files.BASE_MK
-        content_hash = u.Infra.sha256_content(content)
+        content_hash = u.Cli.sha256_content(content)
         if target_path.exists():
-            existing_hash = u.Infra.sha256_file(target_path)
+            existing_hash = u.Cli.sha256_file(target_path)
             if content_hash == existing_hash:
                 return r[bool].ok(False)
-        return u.Infra.atomic_write_file(target_path, content)
+        return u.Cli.atomic_write_text_file(target_path, content)
 
     @staticmethod
     def main() -> int:

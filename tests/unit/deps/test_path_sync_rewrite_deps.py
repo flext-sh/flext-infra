@@ -7,8 +7,7 @@ from flext_tests import tm
 from tests import t
 from tomlkit.toml_document import TOMLDocument
 
-from flext_core import r
-from flext_infra import FlextInfraDependencyPathSync
+from flext_infra import FlextInfraDependencyPathSync, r
 
 
 def rewrite_dep_paths(
@@ -99,7 +98,7 @@ class TestRewriteDepPaths:
             return r[bool].fail("write failed")
 
         monkeypatch.setattr(
-            "flext_infra.deps.path_sync_rewrite.u.Infra.write_document",
+            "flext_infra.deps.path_sync_rewrite.u.Cli.toml_write_document",
             fail_write,
         )
         tm.fail(

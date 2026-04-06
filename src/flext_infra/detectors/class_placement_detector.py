@@ -36,36 +36,16 @@ class FlextInfraClassPlacementDetector(FlextInfraScanFileMixin, p.Infra.Scanner)
         return None
 
     @classmethod
-    def _ast_class_info(cls, file_path: Path) -> Mapping[str, m.Infra.ClassInfo]:
+    def _ast_class_info(
+        cls,
+        rope_project: t.Infra.RopeProject,
+        file_path: Path,
+    ) -> Mapping[str, m.Infra.ClassInfo]:
         """Parse class declarations when rope cannot resolve imported base classes."""
-        try:
-            source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
-        except (OSError, UnicodeDecodeError):
+        source = cls._get_source_or_empty(rope_project, file_path)
+        if source is None:
             return {}
-
-        class_info: dict[str, m.Infra.ClassInfo] = {}
-        for lineno, line in enumerate(source.splitlines(), start=1):
-            match = c.Infra.SourceCode.CLASS_WITH_BASES_RE.match(line)
-            if not match:
-                continue
-            name = match.group(1)
-            bases_str = match.group(2)
-            bases: list[str] = []
-            for base_part in bases_str.split(","):
-                base_part = base_part.strip()
-                if not base_part:
-                    continue
-                # Extract terminal name (last part after dots, strip subscripts)
-                base_clean = base_part.split("[")[0].strip()
-                terminal = base_clean.rsplit(".", maxsplit=1)[-1]
-                if terminal:
-                    bases.append(terminal)
-            class_info[name] = m.Infra.ClassInfo(
-                name=name,
-                line=lineno,
-                bases=tuple(bases),
-            )
-        return class_info
+        return {ci.name: ci for ci in u.Infra.parse_all_class_bases(source)}
 
     @classmethod
     @override
@@ -86,7 +66,7 @@ class FlextInfraClassPlacementDetector(FlextInfraScanFileMixin, p.Infra.Scanner)
         res = u.Infra.get_resource_from_path(rope_project, file_path)
         if res is None:
             return []
-        ast_class_info = cls._ast_class_info(file_path)
+        ast_class_info = cls._ast_class_info(rope_project, file_path)
         rope_class_info = list(u.Infra.get_class_info(rope_project, res))
         processed_names = {ci.name for ci in rope_class_info}
         class_info = [

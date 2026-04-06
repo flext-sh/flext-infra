@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import tomlkit
-from tomlkit.items import Item, Table
-
-from flext_infra import c, m, t, u
+from flext_infra import FlextInfraToml, c, m, t
 
 if TYPE_CHECKING:
     from flext_infra import FlextInfraExtraPathsManager
@@ -23,48 +20,13 @@ class FlextInfraEnsurePyreflyConfigPhase:
 
     def apply(
         self,
-        doc: tomlkit.TOMLDocument,
+        doc: t.Cli.TomlDocument,
         *,
         is_root: bool,
         project_dir: Path | None = None,
         paths_manager: FlextInfraExtraPathsManager | None = None,
     ) -> t.StrSequence:
-        changes: MutableSequence[str] = []
-        tool: Item | None = None
-        if c.Infra.TOOL in doc:
-            raw_tool = doc[c.Infra.TOOL]
-            if isinstance(raw_tool, Item):
-                tool = raw_tool
-        if not isinstance(tool, Table):
-            tool = tomlkit.table()
-            doc[c.Infra.TOOL] = tool
-        pyrefly = u.Infra.ensure_table(tool, c.Infra.PYREFLY)
         pyrefly_rules = self._tool_config.tools.pyrefly
-        if (
-            u.Infra.unwrap_item(u.Infra.get(pyrefly, c.Infra.PYTHON_VERSION_HYPHEN))
-            != pyrefly_rules.python_version
-        ):
-            pyrefly[c.Infra.PYTHON_VERSION_HYPHEN] = pyrefly_rules.python_version
-            changes.append(
-                f"tool.pyrefly.python-version set to {pyrefly_rules.python_version}",
-            )
-        if "python-interpreter-path" in pyrefly:
-            del pyrefly["python-interpreter-path"]
-            changes.append(
-                "tool.pyrefly.python-interpreter-path removed (non-portable)",
-            )
-        if (
-            u.Infra.unwrap_item(
-                u.Infra.get(pyrefly, c.Infra.IGNORE_ERRORS_IN_GENERATED)
-            )
-            is not pyrefly_rules.ignore_errors_in_generated_code
-        ):
-            pyrefly[c.Infra.IGNORE_ERRORS_IN_GENERATED] = (
-                pyrefly_rules.ignore_errors_in_generated_code
-            )
-            changes.append(
-                "tool.pyrefly.ignore-errors-in-generated-code synchronized from YAML rules",
-            )
         if project_dir is not None and paths_manager is not None:
             expected_search = paths_manager.pyrefly_search_paths(
                 project_dir=project_dir,
@@ -77,58 +39,41 @@ class FlextInfraEnsurePyreflyConfigPhase:
         else:
             expected_search = [c.Infra.Paths.DEFAULT_SRC_DIR]
             expected_includes = [f"{c.Infra.Paths.DEFAULT_SRC_DIR}/**/*.py*"]
-        current_search = u.Infra.as_string_list(
-            u.Infra.get(pyrefly, c.Infra.SEARCH_PATH)
+        error_values: Sequence[tuple[str, t.Cli.JsonValue]] = (
+            *(
+                (error_rule, True)
+                for error_rule in self._tool_config.tools.pyrefly.strict_errors
+            ),
+            *(
+                (error_rule, False)
+                for error_rule in self._tool_config.tools.pyrefly.disabled_errors
+            ),
         )
-        if current_search != expected_search:
-            pyrefly[c.Infra.SEARCH_PATH] = u.Infra.array(expected_search)
-            changes.append(f"tool.pyrefly.search-path set to {expected_search}")
-        current_includes = u.Infra.as_string_list(
-            u.Infra.get(pyrefly, "project-includes")
+        phase = (
+            m.Infra.TomlPhaseConfig
+            .Builder("pyrefly")
+            .table(c.Infra.PYREFLY)
+            .value(c.Infra.PYTHON_VERSION_HYPHEN, pyrefly_rules.python_version)
+            .deprecated("python-interpreter-path")
+            .value(
+                c.Infra.IGNORE_ERRORS_IN_GENERATED,
+                pyrefly_rules.ignore_errors_in_generated_code,
+            )
+            .list(c.Infra.SEARCH_PATH, expected_search)
+            .list("project-includes", expected_includes)
+            .value(
+                "disable-project-excludes-heuristics",
+                pyrefly_rules.disable_project_excludes_heuristics,
+            )
+            .value("use-ignore-files", pyrefly_rules.use_ignore_files)
+            .list(
+                c.Infra.PROJECT_EXCLUDES,
+                sorted(set(pyrefly_rules.project_exclude_globs)),
+            )
+            .nested("errors", values=error_values)
+            .build()
         )
-        if current_includes != expected_includes:
-            pyrefly["project-includes"] = u.Infra.array(expected_includes)
-            changes.append("tool.pyrefly.project-includes synchronized from YAML rules")
-        if (
-            u.Infra.unwrap_item(
-                u.Infra.get(pyrefly, "disable-project-excludes-heuristics")
-            )
-            is not pyrefly_rules.disable_project_excludes_heuristics
-        ):
-            pyrefly["disable-project-excludes-heuristics"] = (
-                pyrefly_rules.disable_project_excludes_heuristics
-            )
-            changes.append(
-                "tool.pyrefly.disable-project-excludes-heuristics synchronized from YAML rules",
-            )
-        if (
-            u.Infra.unwrap_item(u.Infra.get(pyrefly, "use-ignore-files"))
-            is not pyrefly_rules.use_ignore_files
-        ):
-            pyrefly["use-ignore-files"] = pyrefly_rules.use_ignore_files
-            changes.append("tool.pyrefly.use-ignore-files synchronized from YAML rules")
-        errors = u.Infra.ensure_table(pyrefly, "errors")
-        for error_rule in self._tool_config.tools.pyrefly.strict_errors:
-            if u.Infra.unwrap_item(u.Infra.get(errors, error_rule)) is not True:
-                errors[error_rule] = True
-                changes.append(f"tool.pyrefly.errors.{error_rule} enabled")
-        for error_rule in self._tool_config.tools.pyrefly.disabled_errors:
-            if u.Infra.unwrap_item(u.Infra.get(errors, error_rule)) is not False:
-                errors[error_rule] = False
-                changes.append(f"tool.pyrefly.errors.{error_rule} disabled")
-        current_excludes = u.Infra.as_string_list(
-            u.Infra.get(pyrefly, c.Infra.PROJECT_EXCLUDES)
-        )
-        configured_excludes = self._tool_config.tools.pyrefly.project_exclude_globs
-        expected_excludes = sorted(set(configured_excludes))
-        if current_excludes != expected_excludes:
-            pyrefly[c.Infra.PROJECT_EXCLUDES] = u.Infra.array(
-                expected_excludes,
-            )
-            changes.append(
-                "tool.pyrefly.project-excludes synchronized from YAML rules",
-            )
-        return changes
+        return FlextInfraToml.apply_phases(doc, phase)
 
 
 __all__ = ["FlextInfraEnsurePyreflyConfigPhase"]

@@ -22,7 +22,7 @@ from flext_infra import (
     t,
 )
 
-from .output import FlextInfraUtilitiesOutput
+from .reporting import FlextInfraUtilitiesReporting
 from .rope_helpers import FlextInfraUtilitiesRopeHelpers
 
 _INFRA_ONLY_EXPORTS: frozenset[str] = frozenset({
@@ -342,7 +342,9 @@ class FlextInfraUtilitiesCodegenLazyScanning(
         try:
             source = py_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
         except OSError:
-            FlextInfraUtilitiesOutput.warning(f"skipping {py_file.name}: read failed")
+            FlextInfraUtilitiesReporting.warning(
+                f"skipping {py_file.name}: read failed",
+            )
             return
 
         has_all = False

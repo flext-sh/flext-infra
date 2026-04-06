@@ -18,7 +18,6 @@ from tests import t
 
 from flext_core import FlextModels, r
 from flext_infra import (
-    FlextInfraUtilitiesIo,
     FlextInfraUtilitiesReporting,
     FlextInfraUtilitiesSelection,
     FlextInfraUtilitiesTemplates,
@@ -149,8 +148,8 @@ class StubRunner:
         return self.run(cmd, cwd=cwd, timeout=timeout, env=env)
 
 
-class StubJsonIo(FlextInfraUtilitiesIo):
-    """Stub for FlextInfraUtilitiesIo (json_io dependency)."""
+class StubJsonIo:
+    """Stub for a JSON writer dependency."""
 
     _PayloadT = (
         t.Cli.JsonValue

@@ -85,7 +85,7 @@ class FlextInfraUtilitiesOutput(FlextInfraUtilitiesOutputReporting):
         cls._stream.write(f"[{idx:0{w}d}/{total:0{w}d}] {proj} {verb} ...\n")
 
     @classmethod
-    def status(cls, verb: str, proj: str, result: bool, elapsed: float) -> None:
+    def status(cls, verb: str, proj: str, *, result: bool, elapsed: float) -> None:
         sym = (
             (c.Infra.OK if cls._use_unicode else "[OK]")
             if result
@@ -113,7 +113,14 @@ class FlextInfraUtilitiesOutput(FlextInfraUtilitiesOutputReporting):
         )
 
     @classmethod
-    def gate_result(cls, gate: str, count: int, passed: bool, elapsed: float) -> None:
+    def gate_result(
+        cls,
+        gate: str,
+        count: int,
+        *,
+        passed: bool,
+        elapsed: float,
+    ) -> None:
         sym = (
             (c.Infra.OK if passed else c.Infra.FAIL)
             if cls._use_unicode

@@ -98,7 +98,7 @@ class FlextInfraDependencyDetectionAnalysis:
     ) -> t.Infra.ContainerDict:
         if value is None:
             return {}
-        mapped_value = u.Infra.as_toml_mapping(value)
+        mapped_value = u.Cli.toml_as_mapping(value)
         if mapped_value is None:
             return {}
         return FlextInfraDependencyDetectionAnalysis._to_toml_config(mapped_value)
@@ -135,7 +135,7 @@ class FlextInfraDependencyDetectionAnalysis:
                     .strip(),
                 )
         else:
-            typings_mapping = u.Infra.as_toml_mapping(typings)
+            typings_mapping = u.Cli.toml_as_mapping(typings)
             if typings_mapping is not None:
                 names.update(str(key) for key in typings_mapping)
         return sorted(names)
@@ -214,7 +214,7 @@ class FlextInfraDependencyDetectionAnalysis:
         typing_libraries = limits.get(c.Infra.TYPING_LIBRARIES)
         if isinstance(typing_libraries, Mapping):
             module_to_package = typing_libraries.get(c.Infra.MODULE_TO_PACKAGE)
-            mapped_packages = u.Infra.as_toml_mapping(module_to_package)
+            mapped_packages = u.Cli.toml_as_mapping(module_to_package)
             if mapped_packages is not None and root in mapped_packages:
                 value = mapped_packages.get(root)
                 return str(value) if value is not None else None

@@ -71,8 +71,12 @@ if _t.TYPE_CHECKING:
     )
 
     docs = _flext_infra__models_docs
-    import flext_infra._models.gates as _flext_infra__models_gates
+    import flext_infra._models.engine as _flext_infra__models_engine
     from flext_infra._models.docs import FlextInfraDocsModels
+
+    engine = _flext_infra__models_engine
+    import flext_infra._models.gates as _flext_infra__models_gates
+    from flext_infra._models.engine import FlextInfraEngineModels
 
     gates = _flext_infra__models_gates
     import flext_infra._models.github as _flext_infra__models_github
@@ -139,6 +143,7 @@ _LAZY_IMPORTS = {
     "FlextInfraDepsModelsToolConfigLinters": "flext_infra._models.deps_tool_config_linters",
     "FlextInfraDepsModelsToolConfigTypeCheckers": "flext_infra._models.deps_tool_config_type_checkers",
     "FlextInfraDocsModels": "flext_infra._models.docs",
+    "FlextInfraEngineModels": "flext_infra._models.engine",
     "FlextInfraGatesModels": "flext_infra._models.gates",
     "FlextInfraGithubModels": "flext_infra._models.github",
     "FlextInfraModelsBase": "flext_infra._models.base",
@@ -170,6 +175,7 @@ _LAZY_IMPORTS = {
     "deps_tool_config_linters": "flext_infra._models.deps_tool_config_linters",
     "deps_tool_config_type_checkers": "flext_infra._models.deps_tool_config_type_checkers",
     "docs": "flext_infra._models.docs",
+    "engine": "flext_infra._models.engine",
     "gates": "flext_infra._models.gates",
     "github": "flext_infra._models.github",
     "mixins": "flext_infra._models.mixins",
@@ -196,6 +202,7 @@ __all__ = [
     "FlextInfraDepsModelsToolConfigLinters",
     "FlextInfraDepsModelsToolConfigTypeCheckers",
     "FlextInfraDocsModels",
+    "FlextInfraEngineModels",
     "FlextInfraGatesModels",
     "FlextInfraGithubModels",
     "FlextInfraModelsBase",
@@ -227,6 +234,7 @@ __all__ = [
     "deps_tool_config_linters",
     "deps_tool_config_type_checkers",
     "docs",
+    "engine",
     "gates",
     "github",
     "mixins",

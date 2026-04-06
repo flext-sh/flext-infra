@@ -20,18 +20,26 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import os
+import sys
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
+from typing import TextIO
 
-from flext_infra import c, m, t
+from flext_infra import c, m, p, t
+from flext_infra._utilities.output_reporting import FlextInfraUtilitiesOutputReporting
 
 
-class FlextInfraUtilitiesReporting:
+class FlextInfraUtilitiesReporting(FlextInfraUtilitiesOutputReporting):
     """Static reporting utilities for standardized report path management.
 
     All methods are ``@staticmethod`` — no instantiation required.
     Exposed via ``u.Infra.get_report_dir()`` etc. through MRO.
     """
+
+    _stream: p.Infra.OutputStream = sys.stderr
+    _use_color: bool = False
+    _use_unicode: bool = False
 
     @staticmethod
     def get_report_dir(workspace_root: Path | str, scope: str, verb: str) -> Path:
@@ -77,6 +85,186 @@ class FlextInfraUtilitiesReporting:
             FlextInfraUtilitiesReporting.get_report_dir(workspace_root, scope, verb)
             / filename
         )
+
+    @staticmethod
+    def terminal_should_use_color(stream: TextIO | None = None) -> bool:
+        """Return whether ANSI color should be emitted for one target stream."""
+        target = stream if stream is not None else sys.stderr
+        if os.environ.get("NO_COLOR") is not None:
+            return False
+        if os.environ.get("FORCE_COLOR") is not None:
+            return True
+        if any(
+            os.environ.get(var) is not None
+            for var in ("CI", "GITHUB_ACTIONS", "GITLAB_CI")
+        ):
+            return False
+        if hasattr(target, "isatty") and target.isatty():
+            term = os.environ.get("TERM", "")
+            return term not in {"", "dumb"}
+        return False
+
+    @staticmethod
+    def terminal_should_use_unicode() -> bool:
+        """Return whether the current locale safely supports Unicode symbols."""
+        for var in ("LC_ALL", "LANG"):
+            value = os.environ.get(var, "")
+            if value and "utf" in value.lower():
+                return True
+        return False
+
+    @classmethod
+    def setup(
+        cls,
+        *,
+        color: bool | None = None,
+        unicode: bool | None = None,
+        stream: p.Infra.OutputStream | None = None,
+    ) -> None:
+        """Initialize reporting output capabilities."""
+        cls._use_color = cls.terminal_should_use_color() if color is None else color
+        cls._use_unicode = (
+            cls.terminal_should_use_unicode() if unicode is None else unicode
+        )
+        if stream is not None:
+            cls._stream = stream
+
+    @classmethod
+    def _fmt(cls, level: str, color: str, message: str) -> None:
+        reset = c.Infra.RESET if cls._use_color else ""
+        prefix = color if cls._use_color else ""
+        cls._stream.write(f"{prefix}{level}{reset}: {message}\n")
+        cls._stream.flush()
+
+    @classmethod
+    def info(cls, msg: str) -> None:
+        cls._fmt("INFO", c.Infra.BLUE, msg)
+
+    @classmethod
+    def error(cls, msg: str, detail: str | None = None) -> None:
+        cls._fmt("ERROR", c.Infra.RED, msg)
+        if detail:
+            cls._stream.write(f"  {detail}\n")
+            cls._stream.flush()
+
+    @classmethod
+    def warning(cls, msg: str) -> None:
+        cls._fmt("WARN", c.Infra.YELLOW, msg)
+
+    @classmethod
+    def debug(cls, msg: str) -> None:
+        cls._fmt("DEBUG", c.Infra.GREEN, msg)
+
+    @classmethod
+    def header(cls, title: str) -> None:
+        sep = "═" if cls._use_unicode else "="
+        line = sep * 60
+        start = c.Infra.BOLD if cls._use_color else ""
+        reset = c.Infra.RESET if cls._use_color else ""
+        cls._stream.write(f"\n{start}{line}\n  {title}\n{line}{reset}\n")
+        cls._stream.flush()
+
+    @classmethod
+    def progress(cls, idx: int, total: int, proj: str, verb: str) -> None:
+        width = len(str(total))
+        cls._stream.write(f"[{idx:0{width}d}/{total:0{width}d}] {proj} {verb} ...\n")
+        cls._stream.flush()
+
+    @classmethod
+    def status(cls, verb: str, proj: str, *, result: bool, elapsed: float) -> None:
+        symbol = (
+            (c.Infra.OK if result and cls._use_unicode else "[OK]")
+            if result
+            else (c.Infra.FAIL if cls._use_unicode else "[FAIL]")
+        )
+        color = (c.Infra.GREEN if result else c.Infra.RED) if cls._use_color else ""
+        reset = c.Infra.RESET if cls._use_color else ""
+        cls._stream.write(
+            f"  {color}{symbol}{reset} {verb:<8} {proj:<24} {elapsed:.2f}s\n",
+        )
+        cls._stream.flush()
+
+    @classmethod
+    def write(cls, text: str) -> None:
+        """Write raw text to the configured output stream."""
+        cls._stream.write(text)
+        cls._stream.flush()
+
+    @classmethod
+    def summary(cls, stats: m.Infra.SummaryStats) -> None:
+        hdr = (
+            f"── {stats.verb} summary ──"
+            if cls._use_unicode
+            else f"-- {stats.verb} summary --"
+        )
+        cls._stream.write(
+            f"\n{hdr}\nTotal: {stats.total}  Success: {stats.success}  "
+            f"Failed: {stats.failed}  Skipped: {stats.skipped}  "
+            f"({stats.elapsed:.2f}s)\n",
+        )
+        cls._stream.flush()
+
+    @classmethod
+    def gate_result(
+        cls,
+        gate: str,
+        count: int,
+        *,
+        passed: bool,
+        elapsed: float,
+    ) -> None:
+        symbol = (
+            (c.Infra.OK if passed and cls._use_unicode else "[OK]")
+            if passed
+            else (c.Infra.FAIL if cls._use_unicode else "[FAIL]")
+        )
+        cls._stream.write(
+            f"    {symbol} {gate:<10} {count:>5} errors  ({elapsed:.2f}s)\n",
+        )
+        cls._stream.flush()
+
+    @classmethod
+    def project_failure(cls, info: m.Infra.ProjectFailureInfo) -> None:
+        """Render one failed project summary with a truncated error excerpt."""
+        color = c.Infra.RED if cls._use_color else ""
+        reset = c.Infra.RESET if cls._use_color else ""
+        fail_sym = c.Infra.FAIL if cls._use_unicode else "[FAIL]"
+        count_label = f"  [{info.error_count} errors]" if info.error_count > 0 else ""
+        cls._stream.write(
+            f"  {color}{fail_sym}{reset} {info.project} completed in {int(info.elapsed)}s"
+            f"{count_label}  ({info.log_path})\n",
+        )
+        for line in info.errors[: info.max_show]:
+            cls._stream.write(f"      {line}\n")
+        remaining = info.error_count - info.max_show
+        if remaining > 0:
+            cls._stream.write(f"      ... and {remaining} more (see log)\n")
+        cls._stream.flush()
+
+    @classmethod
+    def failure_summary(
+        cls,
+        verb: str,
+        failures: Sequence[t.Infra.Triple[str, int, Path]],
+    ) -> None:
+        """Render an end-of-run failed-projects block."""
+        if not failures:
+            return
+        hdr = (
+            f"── {verb} failed projects ──"
+            if cls._use_unicode
+            else f"-- {verb} failed projects --"
+        )
+        color = c.Infra.RED if cls._use_color else ""
+        reset = c.Infra.RESET if cls._use_color else ""
+        fail_sym = c.Infra.FAIL if cls._use_unicode else "[FAIL]"
+        cls._stream.write(f"\n{hdr}\n")
+        for project, error_count, log_path in failures:
+            count_label = f"{error_count} errors" if error_count > 0 else "failed"
+            cls._stream.write(
+                f"{color}{fail_sym}{reset} {project:<20} {count_label}  ({log_path})\n",
+            )
+        cls._stream.flush()
 
     @staticmethod
     def _issue_to_sarif_result(issue: m.Infra.Issue) -> m.Infra.SarifResult:
@@ -244,5 +432,7 @@ class FlextInfraUtilitiesReporting:
         )
         return "\n".join(lines)
 
+
+FlextInfraUtilitiesReporting.setup()
 
 __all__ = ["FlextInfraUtilitiesReporting"]

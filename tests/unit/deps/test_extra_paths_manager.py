@@ -168,8 +168,8 @@ class TestSyncOne:
             return r[bool].fail("write error")
 
         monkeypatch.setattr(
-            deps_extra_paths.u.Infra,
-            "write_document",
+            deps_extra_paths.u.Cli,
+            "toml_write_document",
             staticmethod(_broken_write),
         )
         tm.fail(_manager().sync_one(pyproject, is_root=True), has="write error")

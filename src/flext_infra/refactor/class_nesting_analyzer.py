@@ -134,7 +134,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
     ) -> r[Mapping[t.Infra.StrPair, m.Infra.ClassNestingMapping]]:
         mapping_path = Path(__file__).resolve().parent / c.Infra.MAPPINGS_RELATIVE_PATH
         try:
-            typed_doc = u.Infra.yaml_load_infra_mapping(mapping_path)
+            typed_doc = u.Cli.yaml_load_mapping(mapping_path)
         except (OSError, TypeError) as exc:
             return r[Mapping[t.Infra.Pair[str, str], m.Infra.ClassNestingMapping]].fail(
                 str(exc),

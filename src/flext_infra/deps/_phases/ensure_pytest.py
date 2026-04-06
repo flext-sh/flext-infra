@@ -2,13 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence
-
-import tomlkit
-from tomlkit.container import Container
-from tomlkit.items import Item, Table
-
-from flext_infra import c, m, t, u
+from flext_infra import FlextInfraToml, c, m, t
 
 
 class FlextInfraEnsurePytestConfigPhase:
@@ -17,59 +11,35 @@ class FlextInfraEnsurePytestConfigPhase:
     def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:
         self._tool_config = tool_config
 
-    def apply(self, doc: tomlkit.TOMLDocument) -> t.StrSequence:
-        changes: MutableSequence[str] = []
-        tool: Item | Container | None = None
-        if c.Infra.TOOL in doc:
-            tool = doc[c.Infra.TOOL]
-        if not isinstance(tool, Table):
-            tool = tomlkit.table()
-            doc[c.Infra.TOOL] = tool
-        pytest_tbl = u.Infra.ensure_table(tool, c.Infra.PYTEST)
-        ini = u.Infra.ensure_table(pytest_tbl, c.Infra.INI_OPTIONS)
-        if u.Infra.unwrap_item(u.Infra.get(ini, c.Infra.MINVERSION)) != "8.0":
-            ini[c.Infra.MINVERSION] = "8.0"
-            changes.append("tool.pytest.ini_options.minversion set to 8.0")
-        current_classes = u.Infra.as_string_list(
-            u.Infra.get(ini, c.Infra.PYTHON_CLASSES)
+    def apply(self, doc: t.Cli.TomlDocument) -> t.StrSequence:
+        phase = (
+            m.Infra.TomlPhaseConfig
+            .Builder("pytest")
+            .table(c.Infra.PYTEST, c.Infra.INI_OPTIONS)
+            .value(c.Infra.MINVERSION, "8.0")
+            .list(
+                c.Infra.PYTHON_CLASSES,
+                ("Test*",),
+                strategy=c.Infra.TomlMerge.MERGE,
+            )
+            .list(
+                c.Infra.PYTHON_FILES,
+                ("*_test.py", "*_tests.py", "test_*.py"),
+                strategy=c.Infra.TomlMerge.MERGE,
+            )
+            .list(
+                c.Infra.ADDOPTS,
+                self._tool_config.tools.pytest.standard_addopts,
+                strategy=c.Infra.TomlMerge.MERGE,
+            )
+            .list(
+                c.Infra.MARKERS,
+                self._tool_config.tools.pytest.standard_markers,
+                strategy=c.Infra.TomlMerge.MERGE,
+            )
+            .build()
         )
-        if "Test*" not in current_classes:
-            ini[c.Infra.PYTHON_CLASSES] = u.Infra.array(
-                sorted({*current_classes, "Test*"}),
-            )
-            changes.append("tool.pytest.ini_options.python_classes updated")
-        standard_files = {"*_test.py", "*_tests.py", "test_*.py"}
-        current_files = set(
-            u.Infra.as_string_list(u.Infra.get(ini, c.Infra.PYTHON_FILES)),
-        )
-        if not standard_files.issubset(current_files):
-            ini[c.Infra.PYTHON_FILES] = u.Infra.array(
-                sorted(current_files | standard_files),
-            )
-            changes.append("tool.pytest.ini_options.python_files updated")
-        current_addopts = set(
-            u.Infra.as_string_list(u.Infra.get(ini, c.Infra.ADDOPTS)),
-        )
-        needed_addopts = set(self._tool_config.tools.pytest.standard_addopts)
-        if not needed_addopts.issubset(current_addopts):
-            ini[c.Infra.ADDOPTS] = u.Infra.array(
-                sorted(current_addopts | needed_addopts),
-            )
-            changes.append("tool.pytest.ini_options.addopts updated")
-        current_markers = u.Infra.as_string_list(u.Infra.get(ini, c.Infra.MARKERS))
-        current_names = {m.split(":")[0].strip() for m in current_markers}
-        added: MutableSequence[str] = []
-        for marker in self._tool_config.tools.pytest.standard_markers:
-            name = marker.split(":")[0].strip()
-            if name not in current_names:
-                added.append(marker)
-        if added:
-            ini[c.Infra.MARKERS] = u.Infra.array(
-                sorted([*current_markers, *added]),
-            )
-            names = ", ".join(m.split(":")[0].strip() for m in added)
-            changes.append(f"tool.pytest.ini_options.markers: added {names}")
-        return changes
+        return FlextInfraToml.apply_phases(doc, phase)
 
 
 __all__ = ["FlextInfraEnsurePytestConfigPhase"]

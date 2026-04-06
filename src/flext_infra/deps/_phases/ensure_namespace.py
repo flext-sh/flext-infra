@@ -2,21 +2,15 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence
 from pathlib import Path
 
-import tomlkit
-from tomlkit.container import Container
-from tomlkit.items import Item, Table
-
-from flext_infra import c, t, u
+from flext_infra import FlextInfraToml, c, m, t, u
 
 
 class FlextInfraEnsureNamespaceToolingPhase:
     """Ensure namespace discovery is reflected across project tooling tables."""
 
-    def apply(self, doc: tomlkit.TOMLDocument, *, path: Path) -> t.StrSequence:
-        changes: MutableSequence[str] = []
+    def apply(self, doc: t.Cli.TomlDocument, *, path: Path) -> t.StrSequence:
         detected = sorted(
             {
                 *u.Infra.discover_first_party_namespaces(path.parent),
@@ -24,23 +18,15 @@ class FlextInfraEnsureNamespaceToolingPhase:
             },
         )
         if not detected:
-            return changes
-        tool: Item | Container | None = None
-        if c.Infra.TOOL in doc:
-            tool = doc[c.Infra.TOOL]
-        if not isinstance(tool, Table):
-            tool = tomlkit.table()
-            doc[c.Infra.TOOL] = tool
-        deptry = u.Infra.ensure_table(tool, c.Infra.DEPTRY)
-        current_deptry = sorted(
-            u.Infra.as_string_list(
-                u.Infra.get(deptry, c.Infra.KNOWN_FIRST_PARTY_UNDERSCORE)
-            ),
+            return []
+        phase = (
+            m.Infra.TomlPhaseConfig
+            .Builder("namespace-tooling")
+            .table(c.Infra.DEPTRY)
+            .list(c.Infra.KNOWN_FIRST_PARTY_UNDERSCORE, detected)
+            .build()
         )
-        if current_deptry != detected:
-            deptry[c.Infra.KNOWN_FIRST_PARTY_UNDERSCORE] = u.Infra.array(detected)
-            changes.append(f"tool.deptry.known_first_party set to {detected}")
-        return changes
+        return FlextInfraToml.apply_phases(doc, phase)
 
 
 __all__ = ["FlextInfraEnsureNamespaceToolingPhase"]

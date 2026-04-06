@@ -254,7 +254,7 @@ class FlextInfraOrchestratorService(s[bool]):
             verb,
             f"{project}.log",
         )
-        u.Infra.ensure_dir(log_path.parent)
+        _ = u.Cli.ensure_dir(log_path.parent)
         started = time.monotonic()
         normalized_make_args = self._normalize_make_args_for_project(
             project=project,

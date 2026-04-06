@@ -28,6 +28,7 @@ from flext_infra import (
     FlextInfraReleaseModels,
     FlextInfraWorkspaceModels,
 )
+from flext_infra._models.engine import FlextInfraEngineModels
 
 
 class FlextInfraModels(FlextCliModels):
@@ -50,6 +51,7 @@ class FlextInfraModels(FlextCliModels):
         FlextInfraModelsRope,
         FlextInfraModelsScan,
         FlextInfraModelsBase,
+        FlextInfraEngineModels,
     ):
         """Infrastructure-domain models - all classes exposed directly."""
 

@@ -92,17 +92,12 @@ if _t.TYPE_CHECKING:
     )
 
     runtime_alias_detector = _flext_infra_detectors_runtime_alias_detector
-    from flext_core.constants import FlextConstants as c
     from flext_core.decorators import FlextDecorators as d
     from flext_core.exceptions import FlextExceptions as e
     from flext_core.handlers import FlextHandlers as h
     from flext_core.mixins import FlextMixins as x
-    from flext_core.models import FlextModels as m
-    from flext_core.protocols import FlextProtocols as p
     from flext_core.result import FlextResult as r
     from flext_core.service import FlextService as s
-    from flext_core.typings import FlextTypes as t
-    from flext_core.utilities import FlextUtilities as u
     from flext_infra.detectors.runtime_alias_detector import (
         FlextInfraRuntimeAliasDetector,
     )
@@ -123,7 +118,6 @@ _LAZY_IMPORTS = {
     "FlextInfraRuntimeAliasDetector": "flext_infra.detectors.runtime_alias_detector",
     "FlextInfraScanFileMixin": "flext_infra.detectors._base_detector",
     "_base_detector": "flext_infra.detectors._base_detector",
-    "c": ("flext_core.constants", "FlextConstants"),
     "class_placement_detector": "flext_infra.detectors.class_placement_detector",
     "compatibility_alias_detector": "flext_infra.detectors.compatibility_alias_detector",
     "cyclic_import_detector": "flext_infra.detectors.cyclic_import_detector",
@@ -134,18 +128,14 @@ _LAZY_IMPORTS = {
     "import_alias_detector": "flext_infra.detectors.import_alias_detector",
     "internal_import_detector": "flext_infra.detectors.internal_import_detector",
     "loose_object_detector": "flext_infra.detectors.loose_object_detector",
-    "m": ("flext_core.models", "FlextModels"),
     "manual_protocol_detector": "flext_infra.detectors.manual_protocol_detector",
     "manual_typing_alias_detector": "flext_infra.detectors.manual_typing_alias_detector",
     "mro_completeness_detector": "flext_infra.detectors.mro_completeness_detector",
     "namespace_facade_scanner": "flext_infra.detectors.namespace_facade_scanner",
     "namespace_source_detector": "flext_infra.detectors.namespace_source_detector",
-    "p": ("flext_core.protocols", "FlextProtocols"),
     "r": ("flext_core.result", "FlextResult"),
     "runtime_alias_detector": "flext_infra.detectors.runtime_alias_detector",
     "s": ("flext_core.service", "FlextService"),
-    "t": ("flext_core.typings", "FlextTypes"),
-    "u": ("flext_core.utilities", "FlextUtilities"),
     "x": ("flext_core.mixins", "FlextMixins"),
 }
 
@@ -166,7 +156,6 @@ __all__ = [
     "FlextInfraRuntimeAliasDetector",
     "FlextInfraScanFileMixin",
     "_base_detector",
-    "c",
     "class_placement_detector",
     "compatibility_alias_detector",
     "cyclic_import_detector",
@@ -177,18 +166,14 @@ __all__ = [
     "import_alias_detector",
     "internal_import_detector",
     "loose_object_detector",
-    "m",
     "manual_protocol_detector",
     "manual_typing_alias_detector",
     "mro_completeness_detector",
     "namespace_facade_scanner",
     "namespace_source_detector",
-    "p",
     "r",
     "runtime_alias_detector",
     "s",
-    "t",
-    "u",
     "x",
 ]
 

@@ -10,8 +10,6 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from tomlkit.toml_document import TOMLDocument
-
 from flext_core import FlextLogger
 from flext_infra import FlextInfraDependencyPathSyncRewrite, c, m, t, u
 
@@ -56,12 +54,12 @@ class FlextInfraDependencyPathSync(FlextInfraDependencyPathSyncRewrite):
         root_pyproject = self._root / c.Infra.Files.PYPROJECT_FILENAME
 
         if root_pyproject.exists():
-            root_data_result = u.Infra.read_document(root_pyproject)
+            root_data_result = u.Cli.toml_read_document(root_pyproject)
             if root_data_result.is_success:
-                root_data: TOMLDocument = root_data_result.value
-                root_project = u.Infra.get_item(root_data, c.Infra.PROJECT)
-                root_mapping = u.Infra.as_toml_mapping(
-                    u.Infra.unwrap_item(root_project),
+                root_data: t.Cli.TomlDocument = root_data_result.value
+                root_project = u.Cli.toml_get_item(root_data, c.Infra.PROJECT)
+                root_mapping = u.Cli.toml_as_mapping(
+                    u.Cli.toml_unwrap_item(root_project),
                 )
                 if root_mapping is not None:
                     root_name = self._mapping_str_value(root_mapping, c.Infra.NAME)
@@ -92,13 +90,13 @@ class FlextInfraDependencyPathSync(FlextInfraDependencyPathSyncRewrite):
             pyproject = project_dir / c.Infra.Files.PYPROJECT_FILENAME
             if not pyproject.exists():
                 continue
-            data_result = u.Infra.read_document(pyproject)
+            data_result = u.Cli.toml_read_document(pyproject)
             if data_result.is_failure:
                 continue
-            project_data: TOMLDocument = data_result.value
-            project_obj = u.Infra.get_item(project_data, c.Infra.PROJECT)
-            project_mapping = u.Infra.as_toml_mapping(
-                u.Infra.unwrap_item(project_obj),
+            project_data: t.Cli.TomlDocument = data_result.value
+            project_obj = u.Cli.toml_get_item(project_data, c.Infra.PROJECT)
+            project_mapping = u.Cli.toml_as_mapping(
+                u.Cli.toml_unwrap_item(project_obj),
             )
             if project_mapping is None:
                 continue

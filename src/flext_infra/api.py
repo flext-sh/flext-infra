@@ -105,7 +105,9 @@ class FlextInfra(FlextInfraServiceBase[bool]):
     @staticmethod
     def release() -> type[FlextInfraReleaseOrchestrator]:
         """Return the release orchestrator class."""
-        return _load("flext_infra.release.orchestrator", "FlextInfraReleaseOrchestrator")
+        return _load(
+            "flext_infra.release.orchestrator", "FlextInfraReleaseOrchestrator"
+        )
 
     @staticmethod
     def validate_scanner() -> type[FlextInfraTextPatternScanner]:
@@ -115,7 +117,9 @@ class FlextInfra(FlextInfraServiceBase[bool]):
     @staticmethod
     def workspace() -> type[FlextInfraOrchestratorService]:
         """Return the workspace orchestrator service class."""
-        return _load("flext_infra.workspace.orchestrator", "FlextInfraOrchestratorService")
+        return _load(
+            "flext_infra.workspace.orchestrator", "FlextInfraOrchestratorService"
+        )
 
 
 __all__ = ["FlextInfra"]

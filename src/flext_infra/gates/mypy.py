@@ -29,10 +29,14 @@ class FlextInfraMypyGate(FlextInfraGate):
     ) -> Path:
         """Resolve mypy config: project-local if it has [tool.mypy], else workspace."""
         proj_py = project_dir / c.Infra.Files.PYPROJECT_FILENAME
-        if proj_py.exists() and "[tool.mypy]" in proj_py.read_text(
-            encoding=c.Infra.Encoding.DEFAULT
-        ):
-            return proj_py
+        doc = u.Cli.toml_read(proj_py)
+        if doc is not None:
+            tool_table = u.Cli.toml_get_table(doc, c.Infra.TOOL)
+            if (
+                tool_table is not None
+                and u.Cli.toml_get_table(tool_table, c.Infra.MYPY) is not None
+            ):
+                return proj_py
         return ctx.workspace_root / c.Infra.Files.PYPROJECT_FILENAME
 
     @override

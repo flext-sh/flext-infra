@@ -1,4 +1,4 @@
-"""Tests for u.Infra — write_json and write_markdown.
+"""Tests for CLI JSON writes and infra markdown writes.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -16,18 +16,18 @@ from tests import m, t, u
 
 
 class TestWriteJson:
-    """Tests for u.Infra.write_json."""
+    """Tests for ``u.Cli.json_write``."""
 
     def test_returns_flext_result(self, tmp_path: Path) -> None:
         """Test write_json returns r."""
         json_file = tmp_path / "test.json"
-        result = u.Infra.write_json(json_file, {"key": "value"})
+        result = u.Cli.json_write(json_file, {"key": "value"})
         tm.that(result.is_success or result.is_failure, eq=True)
 
     def test_creates_file(self, tmp_path: Path) -> None:
         """Test write_json creates JSON file."""
         json_file = tmp_path / "test.json"
-        result = u.Infra.write_json(json_file, {"key": "value"})
+        result = u.Cli.json_write(json_file, {"key": "value"})
         tm.ok(result)
         tm.that(json_file.exists(), eq=True)
 
@@ -42,7 +42,7 @@ class TestWriteJson:
             strict=False,
             passed=True,
         )
-        result = u.Infra.write_json(json_file, report)
+        result = u.Cli.json_write(json_file, report)
         tm.that(result.is_success or result.is_failure, eq=True)
 
     def test_with_dict_payload(self, tmp_path: Path) -> None:
@@ -51,34 +51,34 @@ class TestWriteJson:
         payload: t.StrMapping = {
             "key": "value",
         }
-        result = u.Infra.write_json(json_file, payload)
+        result = u.Cli.json_write(json_file, payload)
         tm.ok(result)
 
     def test_creates_parent_directories(self, tmp_path: Path) -> None:
         """Test write_json creates parent directories."""
         json_file = tmp_path / "nested/deep/test.json"
-        result = u.Infra.write_json(json_file, {"key": "value"})
+        result = u.Cli.json_write(json_file, {"key": "value"})
         tm.ok(result)
         tm.that(json_file.exists(), eq=True)
 
     def test_with_empty_dict(self, tmp_path: Path) -> None:
         """Test write_json with empty dictionary."""
         json_file = tmp_path / "empty.json"
-        result = u.Infra.write_json(json_file, {})
+        result = u.Cli.json_write(json_file, {})
         tm.ok(result)
 
     def test_with_nested_structure(self, tmp_path: Path) -> None:
         """Test write_json with nested dictionary."""
         json_file = tmp_path / "nested.json"
         payload: t.StrMapping = {"level1": "value"}
-        result = u.Infra.write_json(json_file, payload)
+        result = u.Cli.json_write(json_file, payload)
         tm.ok(result)
 
     def test_file_readable(self, tmp_path: Path) -> None:
         """Test write_json creates readable JSON file."""
         json_file = tmp_path / "readable.json"
         payload: t.Infra.CensusRecord = {"key": "value", "number": 42}
-        u.Infra.write_json(json_file, payload)
+        _ = u.Cli.json_write(json_file, payload)
         content = json.loads(json_file.read_text())
         tm.that(content["key"], eq="value")
         tm.that(content["number"], eq=42)

@@ -1,4 +1,4 @@
-"""Tests for FlextInfraJsonService.
+"""Tests for CLI-backed JSON helpers exposed in flext-infra context.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -23,15 +23,15 @@ class SampleModel(BaseModel):
 
 
 class TestFlextInfraJsonService:
-    """Test suite for FlextInfraJsonService."""
+    """Test suite for ``u.Cli.json_*`` inside flext-infra."""
 
     @pytest.mark.parametrize(
         ("name", "content", "should_succeed", "expected_fragment"),
         [
             ("test.json", '{"key": "value", "number": 42}', True, "key"),
             ("missing.json", None, True, "{}"),
-            ("invalid.json", "{invalid json}", False, "JSON read error"),
-            ("array.json", "[1, 2, 3]", False, "must be t.NormalizedValue"),
+            ("invalid.json", "{invalid json}", False, "json_read:"),
+            ("array.json", "[1, 2, 3]", False, "root must be an object"),
         ],
         ids=[
             "read-existing",
@@ -51,8 +51,7 @@ class TestFlextInfraJsonService:
         json_file = tmp_path / name
         if content is not None:
             json_file.write_text(content, encoding="utf-8")
-        service = u.Infra()
-        result = service.read_json(json_file)
+        result = u.Cli.json_read(json_file)
         if should_succeed:
             tm.ok(result)
             tm.that(str(result.value), has=expected_fragment)
@@ -92,8 +91,7 @@ class TestFlextInfraJsonService:
         expected: str,
     ) -> None:
         json_file = tmp_path.joinpath(*path_parts)
-        service = u.Infra()
-        result = service.write_json(
+        result = u.Cli.json_write(
             json_file,
             payload,
             sort_keys=sort_keys,
@@ -111,9 +109,8 @@ class TestFlextInfraJsonService:
         json_file = tmp_path / "readonly.json"
         _ = tf.create_in("{}", "readonly.json", tmp_path)
         json_file.chmod(292)
-        service = u.Infra()
         try:
-            result = service.write_json(json_file, {"key": "value"})
+            result = u.Cli.json_write(json_file, {"key": "value"})
             tm.fail(result)
         finally:
             json_file.chmod(420)
@@ -121,14 +118,17 @@ class TestFlextInfraJsonService:
     def test_write_returns_true_on_success(self, tmp_path: Path) -> None:
         """Test write returns True on success."""
         json_file = tmp_path / "test.json"
-        service = u.Infra()
-        result = service.write_json(json_file, {"key": "value"})
+        result = u.Cli.json_write(json_file, {"key": "value"})
         tm.ok(result)
         tm.that(result.value, eq=True)
 
     def test_removed_direct_api_methods_raise_attribute_error(self) -> None:
-        """Direct-return compatibility methods are no longer available."""
+        """Infra no longer re-exposes JSON wrapper methods directly."""
         service = u.Infra()
+        with pytest.raises(AttributeError):
+            _ = getattr(service, "read_json")
+        with pytest.raises(AttributeError):
+            _ = getattr(service, "write_json")
         with pytest.raises(AttributeError):
             _ = getattr(service, "load")
         with pytest.raises(AttributeError):

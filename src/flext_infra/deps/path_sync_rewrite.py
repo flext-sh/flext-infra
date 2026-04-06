@@ -9,9 +9,6 @@ from __future__ import annotations
 from collections.abc import MutableSequence
 from pathlib import Path
 
-from tomlkit.items import Table
-from tomlkit.toml_document import TOMLDocument
-
 from flext_infra import c, r, t, u
 
 
@@ -39,7 +36,7 @@ class FlextInfraDependencyPathSyncRewrite:
 
     @staticmethod
     def _mapping_str_value(
-        mapping: Table | t.Infra.ContainerDict,
+        mapping: t.Cli.TomlTable | t.Infra.ContainerDict,
         key: str,
     ) -> str | None:
         if key not in mapping:
@@ -63,15 +60,15 @@ class FlextInfraDependencyPathSyncRewrite:
 
     def _rewrite_pep621(
         self,
-        doc: TOMLDocument,
+        doc: t.Cli.TomlDocument,
         *,
         internal_names: t.Infra.StrSet,
     ) -> t.Infra.Pair[t.StrSequence, t.Infra.StrSet]:
-        project_section = u.Infra.get_table(doc, c.Infra.PROJECT)
+        project_section = u.Cli.toml_get_table(doc, c.Infra.PROJECT)
         if project_section is None:
             return ([], set())
-        deps: t.StrSequence = u.Infra.as_string_list(
-            u.Infra.get_item(project_section, c.Infra.DEPENDENCIES)
+        deps: t.StrSequence = u.Cli.toml_as_string_list(
+            u.Cli.toml_get_item(project_section, c.Infra.DEPENDENCIES)
         )
         if not deps:
             return ([], set())
@@ -100,11 +97,11 @@ class FlextInfraDependencyPathSyncRewrite:
             project_section[c.Infra.DEPENDENCIES] = updated_deps
         return (changes, internal_deps)
 
-    _ensure_table = staticmethod(u.Infra.ensure_table)
+    _ensure_table = staticmethod(u.Cli.toml_ensure_table)
 
     def _rewrite_uv_sources(
         self,
-        doc: TOMLDocument,
+        doc: t.Cli.TomlDocument,
         *,
         is_root: bool,
         mode: str,
@@ -132,14 +129,14 @@ class FlextInfraDependencyPathSyncRewrite:
                     mode=mode,
                 )
                 expected = {"path": path_value, "editable": True}
-            current_table = u.Infra.get_table(sources, dep_name)
+            current_table = u.Cli.toml_get_table(sources, dep_name)
             empty: t.Infra.ContainerDict = {}
             current_map: t.Infra.ContainerDict = (
                 dict(current_table.unwrap()) if current_table is not None else empty
             )
             if current_map == expected:
                 continue
-            source_table = u.Infra.table()
+            source_table = u.Cli.toml_table()
             for key in sorted(expected):
                 source_table[key] = expected[key]
             sources[dep_name] = source_table
@@ -148,7 +145,7 @@ class FlextInfraDependencyPathSyncRewrite:
 
     def _rewrite_uv_workspace(
         self,
-        doc: TOMLDocument,
+        doc: t.Cli.TomlDocument,
         *,
         is_root: bool,
         members: t.StrSequence,
@@ -160,37 +157,37 @@ class FlextInfraDependencyPathSyncRewrite:
         uv_section = self._ensure_table(tool_section, "uv")
         workspace_section = self._ensure_table(uv_section, "workspace")
         expected_members = sorted(set(members))
-        current_members = u.Infra.as_string_list(
-            u.Infra.get_item(workspace_section, "members")
+        current_members = u.Cli.toml_as_string_list(
+            u.Cli.toml_get_item(workspace_section, "members")
         )
         if current_members != expected_members:
-            workspace_section["members"] = u.Infra.array(expected_members)
+            workspace_section["members"] = u.Cli.toml_array(expected_members)
             changes.append("  uv.workspace: members synchronized")
         return changes
 
     @staticmethod
     def _rewrite_poetry(
-        doc: TOMLDocument,
+        doc: t.Cli.TomlDocument,
         *,
         is_root: bool,
         mode: str,
     ) -> t.StrSequence:
-        tool_section = u.Infra.get_table(doc, c.Infra.TOOL)
+        tool_section = u.Cli.toml_get_table(doc, c.Infra.TOOL)
         if tool_section is None:
             return []
-        poetry_section = u.Infra.get_table(tool_section, c.Infra.POETRY)
+        poetry_section = u.Cli.toml_get_table(tool_section, c.Infra.POETRY)
         if poetry_section is None:
             return []
-        deps = u.Infra.get_table(poetry_section, c.Infra.DEPENDENCIES)
+        deps = u.Cli.toml_get_table(poetry_section, c.Infra.DEPENDENCIES)
         if deps is None:
             return []
         changes: MutableSequence[str] = []
         for dep_key_raw in deps:
             dep_key = dep_key_raw
             value = deps[dep_key_raw]
-            if not isinstance(value, Table) or c.Infra.PATH not in value:
+            if not u.Cli.toml_is_table(value) or c.Infra.PATH not in value:
                 continue
-            value_map: Table = value
+            value_map: t.Cli.TomlTable = value
             raw_path = value_map[c.Infra.PATH]
             if not isinstance(raw_path, str) or not raw_path.strip():
                 continue
@@ -218,12 +215,12 @@ class FlextInfraDependencyPathSyncRewrite:
         dry_run: bool = False,
     ) -> r[t.StrSequence]:
         """Rewrite PEP 621 and Poetry dependency paths."""
-        doc_result = u.Infra.read_document(pyproject_path)
+        doc_result = u.Cli.toml_read_document(pyproject_path)
         if doc_result.is_failure:
             return r[t.StrSequence].fail(
                 doc_result.error or "failed to read TOML document",
             )
-        doc: TOMLDocument = doc_result.value
+        doc: t.Cli.TomlDocument = doc_result.value
         pep_changes, internal_deps = self._rewrite_pep621(
             doc,
             internal_names=internal_names,
@@ -247,7 +244,7 @@ class FlextInfraDependencyPathSyncRewrite:
         )
         changes += list(self._rewrite_poetry(doc, is_root=is_root, mode=mode))
         if changes and (not dry_run):
-            write_result = u.Infra.write_document(pyproject_path, doc)
+            write_result = u.Cli.toml_write_document(pyproject_path, doc)
             if write_result.is_failure:
                 return r[t.StrSequence].fail(
                     write_result.error or "failed to write TOML",

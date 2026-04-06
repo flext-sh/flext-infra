@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-import tomllib
 from collections.abc import Mapping, MutableMapping, MutableSequence
 from pathlib import Path
 
@@ -43,9 +42,10 @@ class FlextInfraProjectClassifier:
     def _read_project_metadata(self) -> t.Infra.TransformResult:
         if not self._pyproject_path.is_file():
             return ("", [])
-        parsed: t.Infra.ContainerDict = tomllib.loads(
-            self._pyproject_path.read_text(encoding=c.Infra.Encoding.DEFAULT),
-        )
+        data_result = u.Infra.read_plain(self._pyproject_path)
+        if data_result.is_failure:
+            return ("", [])
+        parsed: t.Infra.ContainerDict = data_result.value
         raw_project = self._as_mapping(parsed.get(c.Infra.PROJECT))
         project_name = self._normalized_name_from_mapping(raw_project)
         dependencies: MutableSequence[str] = []

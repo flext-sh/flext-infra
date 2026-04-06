@@ -1,6 +1,7 @@
 """TOML utility helpers for flext-infra.
 
-Provides type-safe TOML operations: normalization, reading, table manipulation.
+Provides infra-specific TOML operations with validation via INFRA adapters.
+Pure TOML operations are available directly via ``u.Cli.toml_*``.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -14,19 +15,16 @@ from pathlib import Path
 from pydantic import BaseModel, ValidationError
 
 from flext_cli import u
-from flext_core import r
 from flext_infra import t
 
 
 class FlextInfraUtilitiesToml:
-    """TOML utility helpers — normalization, reading, table manipulation.
+    """Infra-specific TOML helpers — validation via INFRA adapters.
 
-    Usage::
+    For pure TOML operations use ``u.Cli.toml_*`` directly::
 
-        from flext_infra import u
-
-        result = u.Infra.as_toml_mapping(value)
         doc = u.Cli.toml_read(some_path)
+        table = u.Cli.toml_ensure_table(parent, key)
     """
 
     @staticmethod
@@ -72,47 +70,6 @@ class FlextInfraUtilitiesToml:
         return None
 
     @staticmethod
-    def as_string_list(
-        value: t.Infra.InfraValue | t.Cli.TomlItem | None,
-    ) -> t.StrSequence:
-        """Convert TOML value to list of strings."""
-        return u.Cli.toml_as_string_list(value)
-
-    @staticmethod
-    def array(items: t.StrSequence) -> t.Cli.TomlArray:
-        """Create multiline TOML array from string items."""
-        return u.Cli.toml_array(items)
-
-    @staticmethod
-    def get_table(
-        container: t.Cli.TomlDocument | t.Cli.TomlTable,
-        key: str,
-    ) -> t.Cli.TomlTable | None:
-        """Get a sub-table from a TOML container, or None if missing/not a Table."""
-        return u.Cli.toml_get_table(container, key)
-
-    @staticmethod
-    def get_item(
-        container: t.Cli.TomlDocument | t.Cli.TomlTable,
-        key: str,
-    ) -> t.Cli.TomlItem | None:
-        """Get a raw TOML Item from a container, or None if missing."""
-        return u.Cli.toml_get_item(container, key)
-
-    @staticmethod
-    def ensure_table(
-        parent: t.Cli.TomlTable | t.Cli.TomlDocument,
-        key: str,
-    ) -> t.Cli.TomlTable:
-        """Get or create a TOML table in parent.
-
-        When the key already exists as a dotted-key implicit ("super") table,
-        promote it to an explicit table so that the TOML serializer places sub-tables
-        under the correct parent path instead of creating bare top-level sections.
-        """
-        return u.Cli.toml_ensure_table(parent, key)
-
-    @staticmethod
     def get(
         container: t.Cli.TomlDocument | t.Cli.TomlTable,
         key: t.Infra.InfraValue,
@@ -143,11 +100,6 @@ class FlextInfraUtilitiesToml:
             return None
 
     @staticmethod
-    def table_string_keys(table: t.Cli.TomlTable) -> t.StrSequence:
-        """Return table keys as strings."""
-        return u.Cli.toml_table_string_keys(table)
-
-    @staticmethod
     def sync_value(
         container: t.Cli.TomlDocument | t.Cli.TomlTable,
         key: str,
@@ -162,94 +114,6 @@ class FlextInfraUtilitiesToml:
         container[key] = expected
         changes.append(change_message)
         return True
-
-    @staticmethod
-    def sync_string_list(
-        container: t.Cli.TomlDocument | t.Cli.TomlTable,
-        key: str,
-        expected: t.StrSequence,
-        changes: MutableSequence[str],
-        change_message: str,
-        *,
-        sort_values: bool = False,
-    ) -> bool:
-        """Synchronize a string-array TOML value when it differs."""
-        return u.Cli.toml_sync_string_list(
-            container,
-            key,
-            expected,
-            changes,
-            change_message,
-            sort_values=sort_values,
-        )
-
-    @staticmethod
-    def read(path: Path) -> t.Cli.TomlDocument | None:
-        """Read and parse TOML document from file.
-
-        Returns None when the file does not exist or is invalid TOML.
-        Prefer ``read_document`` for r-wrapped semantics.
-        """
-        return u.Cli.toml_read(path)
-
-    @staticmethod
-    def read_document(path: Path) -> r[t.Cli.TomlDocument]:
-        """Read and parse a TOML document, returning r.
-
-        Args:
-            path: Path to the TOML file.
-
-        Returns:
-            r[t.Cli.TomlDocument] with parsed document on success,
-            or failure with descriptive error.
-
-        """
-        return u.Cli.toml_read_document(path)
-
-    @staticmethod
-    def write_document(path: Path, doc: t.Cli.TomlDocument) -> r[bool]:
-        """Write a TOML document to file.
-
-        Creates parent directories as needed.
-
-        Args:
-            path: Destination file path.
-            doc: TOML document to serialize.
-
-        Returns:
-            r[bool] with True on success.
-
-        """
-        return u.Cli.toml_write_document(path, doc)
-
-    @staticmethod
-    def table() -> t.Cli.TomlTable:
-        """Create a new explicit TOML table."""
-        return u.Cli.toml_table()
-
-    @staticmethod
-    def document() -> t.Cli.TomlDocument:
-        """Create a new TOML document."""
-        return u.Cli.toml_document()
-
-    @staticmethod
-    def parse_text(text: str) -> t.Cli.TomlDocument | None:
-        """Parse TOML text, returning None on invalid input."""
-        return u.Cli.toml_parse_text(text)
-
-    @staticmethod
-    def is_table(
-        value: t.Infra.InfraValue | t.Cli.TomlItem | t.Cli.TomlTable | None,
-    ) -> bool:
-        """Check whether value is a TOML Table."""
-        return u.Cli.toml_is_table(value)
-
-    @staticmethod
-    def is_aot(
-        value: t.Infra.InfraValue | t.Cli.TomlItem | t.Cli.TomlTable | None,
-    ) -> bool:
-        """Check whether value is a TOML Array of Tables."""
-        return u.Cli.toml_is_aot(value)
 
 
 __all__ = ["FlextInfraUtilitiesToml"]

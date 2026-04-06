@@ -10,8 +10,8 @@ from tests import m, t
 from flext_core import r
 from flext_infra import (
     FlextInfraDependencyDetectionService,
+    FlextInfraUtilitiesParsing,
     FlextInfraUtilitiesSubprocess,
-    FlextInfraUtilitiesTomlParse,
 )
 
 
@@ -85,7 +85,7 @@ class TestModuleAndTypingsFlow:
             },
         }
         monkeypatch.setattr(
-            FlextInfraUtilitiesTomlParse,
+            FlextInfraUtilitiesParsing,
             "read_plain",
             _StubReadPlain([r[Mapping[str, t.Infra.InfraValue]].ok(payload)]),
         )
@@ -98,7 +98,7 @@ class TestModuleAndTypingsFlow:
     ) -> None:
         service = FlextInfraDependencyDetectionService()
         monkeypatch.setattr(
-            FlextInfraUtilitiesTomlParse,
+            FlextInfraUtilitiesParsing,
             "read_plain",
             _StubReadPlain([
                 r[Mapping[str, t.Infra.InfraValue]].ok({
@@ -144,7 +144,7 @@ class TestModuleAndTypingsFlow:
             _StubRunRaw(r[m.Infra.CommandOutput].ok(out)),
         )
         monkeypatch.setattr(
-            FlextInfraUtilitiesTomlParse,
+            FlextInfraUtilitiesParsing,
             "read_plain",
             _StubReadPlain([
                 r[Mapping[str, t.Infra.InfraValue]].ok({}),
@@ -155,7 +155,7 @@ class TestModuleAndTypingsFlow:
         )
         tm.ok(service.get_required_typings(tmp_path, venv_bin))
         monkeypatch.setattr(
-            FlextInfraUtilitiesTomlParse,
+            FlextInfraUtilitiesParsing,
             "read_plain",
             _StubReadPlain([
                 r[Mapping[str, t.Infra.InfraValue]].ok({}),
@@ -169,7 +169,7 @@ class TestModuleAndTypingsFlow:
             _StubRunRaw(r[m.Infra.CommandOutput].fail("mypy crash")),
         )
         monkeypatch.setattr(
-            FlextInfraUtilitiesTomlParse,
+            FlextInfraUtilitiesParsing,
             "read_plain",
             _StubReadPlain([r[Mapping[str, t.Infra.InfraValue]].ok({})]),
         )

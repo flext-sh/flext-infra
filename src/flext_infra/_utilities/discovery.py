@@ -178,16 +178,8 @@ class FlextInfraUtilitiesDiscovery(FlextInfraUtilitiesDiscoveryScanning):
         return best_dir, best_name
 
     @staticmethod
-    def discover_core_package(project_root: Path) -> str:
+    def discover_core_package(_project_root: Path) -> str:
         """Discover the core package name for a project."""
-        pyproject = project_root / c.Infra.Files.PYPROJECT_FILENAME
-        if pyproject.is_file():
-            content = pyproject.read_text(encoding=c.Infra.Encoding.DEFAULT)
-            if (
-                c.Infra.Packages.CORE in content
-                or c.Infra.Packages.CORE_UNDERSCORE in content
-            ):
-                return c.Infra.Packages.CORE_UNDERSCORE
         return c.Infra.Packages.CORE_UNDERSCORE
 
 

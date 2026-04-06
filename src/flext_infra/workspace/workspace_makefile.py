@@ -19,7 +19,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import tomllib
 from collections.abc import MutableSequence
 from pathlib import Path
 
@@ -82,10 +81,10 @@ class FlextInfraWorkspaceMakefileGenerator:
                 existing = makefile.read_text(encoding=c.Infra.Encoding.DEFAULT)
             except OSError as exc:
                 return r[bool].fail(f"Makefile read failed: {exc}")
-            if u.Infra.sha256_content(existing) == u.Infra.sha256_content(content):
+            if u.Cli.sha256_content(existing) == u.Cli.sha256_content(content):
                 return r[bool].ok(False)
 
-        return u.Infra.atomic_write_file(makefile, content)
+        return u.Cli.atomic_write_text_file(makefile, content)
 
     @staticmethod
     def _build_template_lines(content: str) -> str:
@@ -134,8 +133,8 @@ class FlextInfraWorkspaceMakefileGenerator:
         template_content = self._build_template_lines(content)
 
         try:
-            u.Infra.ensure_dir(_TEMPLATES_DIR)
-            template_write = u.Infra.atomic_write_file(
+            _ = u.Cli.ensure_dir(_TEMPLATES_DIR)
+            template_write = u.Cli.atomic_write_text_file(
                 self.template_path, template_content
             )
             if template_write.is_failure:
@@ -149,7 +148,7 @@ class FlextInfraWorkspaceMakefileGenerator:
         )
         if render_result.is_failure:
             return r[bool].fail(render_result.error or "template render failed")
-        return u.Infra.atomic_write_file(makefile, render_result.value)
+        return u.Cli.atomic_write_text_file(makefile, render_result.value)
 
     def _render_template(
         self,
@@ -205,14 +204,14 @@ class FlextInfraWorkspaceMakefileGenerator:
 
         # Fallback: read version from pyproject.toml
         pyproject = workspace_root / c.Infra.Files.PYPROJECT_FILENAME
-        if pyproject.exists():
-            try:
-                with pyproject.open("rb") as fh:
-                    data = tomllib.load(fh)
-                version: str = data.get("project", {}).get("version", c.Infra.Git.MAIN)
-                return version
-            except (OSError, tomllib.TOMLDecodeError, KeyError):
-                pass
+        data_result = u.Infra.read_plain(pyproject)
+        if data_result.is_success:
+            data = data_result.value
+            project_raw = data.get("project")
+            if isinstance(project_raw, dict):
+                version_raw = project_raw.get("version", c.Infra.Git.MAIN)
+                if isinstance(version_raw, str):
+                    return version_raw
         return c.Infra.Git.MAIN
 
 

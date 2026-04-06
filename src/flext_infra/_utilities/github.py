@@ -10,6 +10,7 @@ import shutil
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
+from flext_cli import u
 from flext_core import r
 from flext_infra._constants.base import FlextInfraConstantsBase
 from flext_infra._constants.github import FlextInfraGithubConstants
@@ -17,7 +18,6 @@ from flext_infra._models.cli_inputs_ops import FlextInfraModelsCliInputsOps
 from flext_infra._models.github import FlextInfraGithubModels
 from flext_infra._utilities.git import FlextInfraUtilitiesGit
 from flext_infra._utilities.github_pr import FlextInfraUtilitiesGithubPr
-from flext_infra._utilities.io import FlextInfraUtilitiesIo
 from flext_infra._utilities.reporting import FlextInfraUtilitiesReporting
 from flext_infra._utilities.selection import FlextInfraUtilitiesSelection
 from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
@@ -27,7 +27,6 @@ from flext_infra._utilities.templates import FlextInfraUtilitiesTemplates
 class FlextInfraUtilitiesGithub(
     FlextInfraUtilitiesGithubPr,
     FlextInfraUtilitiesGit,
-    FlextInfraUtilitiesIo,
     FlextInfraUtilitiesReporting,
     FlextInfraUtilitiesSelection,
     FlextInfraUtilitiesSubprocess,
@@ -49,7 +48,11 @@ class FlextInfraUtilitiesGithub(
                 reason="actionlint not installed",
             )
             if request.report_path is not None:
-                cls.write_json(request.report_path, payload_skipped, sort_keys=True)
+                _ = u.Cli.json_write(
+                    request.report_path,
+                    payload_skipped,
+                    sort_keys=True,
+                )
             return r[FlextInfraGithubModels.GithubWorkflowLintOutcome].ok(
                 payload_skipped,
             )
@@ -69,7 +72,7 @@ class FlextInfraUtilitiesGithub(
                 detail=result.error or "",
             )
         if request.report_path is not None:
-            cls.write_json(request.report_path, payload, sort_keys=True)
+            _ = u.Cli.json_write(request.report_path, payload, sort_keys=True)
         if payload.status == "fail" and request.strict:
             return r[FlextInfraGithubModels.GithubWorkflowLintOutcome].fail(
                 result.error or "actionlint found issues",
@@ -119,7 +122,7 @@ class FlextInfraUtilitiesGithub(
             operations=all_operations,
         )
         if request.report_path is not None:
-            cls.write_json(request.report_path, report, sort_keys=True)
+            _ = u.Cli.json_write(request.report_path, report, sort_keys=True)
         return r[FlextInfraGithubModels.GithubWorkflowSyncReport].ok(report)
 
     @classmethod

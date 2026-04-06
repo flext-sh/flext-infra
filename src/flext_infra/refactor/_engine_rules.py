@@ -183,7 +183,7 @@ class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
 
     def _alias_to_submodule(self) -> t.StrMapping:
         value = self.config.get("alias_to_submodule", {})
-        mapping_value = u.Infra.as_toml_mapping(value)
+        mapping_value = u.Cli.toml_as_mapping(value)
         if mapping_value is None:
             return dict[str, str]()
         return {str(key): str(item) for key, item in mapping_value.items()}

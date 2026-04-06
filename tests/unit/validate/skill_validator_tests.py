@@ -14,7 +14,7 @@ from tests import t, u
 
 from flext_infra import FlextInfraSkillValidator
 
-_yaml_load_infra_mapping = u.Infra.yaml_load_infra_mapping
+_yaml_load_infra_mapping = u.Cli.yaml_load_mapping
 _string_list = u.Infra.string_list
 
 

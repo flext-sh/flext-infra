@@ -83,7 +83,7 @@ class FlextInfraExtraPathsPyrefly:
             return sorted(paths)
         if rules.include_path_dependencies_in_search_path:
             project_pyproject = project_dir / c.Infra.Files.PYPROJECT_FILENAME
-            doc_result = u.Infra.read_document(project_pyproject)
+            doc_result = u.Cli.toml_read_document(project_pyproject)
             if doc_result.is_success:
                 dep_paths = resolver.get_dep_paths(doc_result.value, is_root=False)
                 paths.update(dep_paths)

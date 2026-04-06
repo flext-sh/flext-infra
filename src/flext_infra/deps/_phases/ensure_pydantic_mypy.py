@@ -2,13 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence
-
-import tomlkit
-from tomlkit.container import Container
-from tomlkit.items import Item, Table
-
-from flext_infra import c, m, t, u
+from flext_infra import FlextInfraToml, m, t
 
 
 class FlextInfraEnsurePydanticMypyConfigPhase:
@@ -17,24 +11,23 @@ class FlextInfraEnsurePydanticMypyConfigPhase:
     def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:
         self._tool_config = tool_config
 
-    def apply(self, doc: tomlkit.TOMLDocument) -> t.StrSequence:
-        changes: MutableSequence[str] = []
-        tool: Item | Container | None = None
-        if c.Infra.TOOL in doc:
-            tool = doc[c.Infra.TOOL]
-        if not isinstance(tool, Table):
-            tool = tomlkit.table()
-            doc[c.Infra.TOOL] = tool
-        pydantic_mypy = u.Infra.ensure_table(tool, "pydantic-mypy")
-        for key, value in {
-            "init_forbid_extra": self._tool_config.tools.pydantic_mypy.init_forbid_extra,
-            "init_typed": self._tool_config.tools.pydantic_mypy.init_typed,
-            "warn_required_dynamic_aliases": self._tool_config.tools.pydantic_mypy.warn_required_dynamic_aliases,
-        }.items():
-            if u.Infra.unwrap_item(u.Infra.get(pydantic_mypy, key)) is not value:
-                pydantic_mypy[key] = value
-                changes.append(f"tool.pydantic-mypy.{key} set to {value}")
-        return changes
+    def apply(self, doc: t.Cli.TomlDocument) -> t.StrSequence:
+        phase = (
+            m.Infra.TomlPhaseConfig
+            .Builder("pydantic-mypy")
+            .table("pydantic-mypy")
+            .value(
+                "init_forbid_extra",
+                self._tool_config.tools.pydantic_mypy.init_forbid_extra,
+            )
+            .value("init_typed", self._tool_config.tools.pydantic_mypy.init_typed)
+            .value(
+                "warn_required_dynamic_aliases",
+                self._tool_config.tools.pydantic_mypy.warn_required_dynamic_aliases,
+            )
+            .build()
+        )
+        return FlextInfraToml.apply_phases(doc, phase)
 
 
 __all__ = ["FlextInfraEnsurePydanticMypyConfigPhase"]

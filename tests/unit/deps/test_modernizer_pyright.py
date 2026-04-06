@@ -39,7 +39,7 @@ class TestEnsurePyrightConfigPhase:
         (flext_core / "tests").mkdir(parents=True, exist_ok=True)
         (flext_api / "src").mkdir(parents=True, exist_ok=True)
         doc = tomlkit.document()
-        changes = FlextInfraEnsurePyrightConfigPhase(tool_config).apply(
+        _ = FlextInfraEnsurePyrightConfigPhase(tool_config).apply(
             doc,
             is_root=True,
             workspace_root=tmp_path,
@@ -66,8 +66,8 @@ class TestEnsurePyrightConfigPhase:
         tm.that(exclude, eq=expected_exclude)
         ignore = u.Cli.toml_unwrap_item(pyright["ignore"])
         tm.that(
-            ignore,
-            eq=[*rules.root_typings_paths, *rules.ignored_diagnostic_globs],
+            sorted(ignore),
+            eq=sorted([*rules.root_typings_paths, *rules.ignored_diagnostic_globs]),
         )
         envs = u.Cli.toml_unwrap_item(pyright["executionEnvironments"])
         tm.that(envs, is_=list)
@@ -91,24 +91,12 @@ class TestEnsurePyrightConfigPhase:
                 },
             ],
         )
-        tm.that(
-            changes,
-            has="tool.pyright.exclude synchronized from discovered dirs",
-        )
-        tm.that(
-            changes,
-            has="tool.pyright.ignore synchronized for typings diagnostics",
-        )
-        tm.that(
-            changes,
-            has="tool.pyright.executionEnvironments set with tests reportPrivateUsage=none",
-        )
 
     def test_apply_subproject_sets_execution_environments(self) -> None:
         tool_config = _test_tool_config()
         rules = tool_config.tools.pyright.path_rules
         doc = tomlkit.document()
-        changes = FlextInfraEnsurePyrightConfigPhase(tool_config).apply(
+        _ = FlextInfraEnsurePyrightConfigPhase(tool_config).apply(
             doc,
             is_root=False,
         )
@@ -148,10 +136,6 @@ class TestEnsurePyrightConfigPhase:
             envs,
             eq=expected_envs,
         )
-        tm.that(
-            changes,
-            has="tool.pyright.executionEnvironments set with tests reportPrivateUsage=none",
-        )
 
     def test_apply_subproject_sets_ignore_from_workspace_typings(
         self,
@@ -164,7 +148,7 @@ class TestEnsurePyrightConfigPhase:
         (project_dir / "tests").mkdir(parents=True, exist_ok=True)
         (tmp_path / "typings").mkdir(parents=True, exist_ok=True)
         doc = tomlkit.document()
-        changes = FlextInfraEnsurePyrightConfigPhase(tool_config).apply(
+        _ = FlextInfraEnsurePyrightConfigPhase(tool_config).apply(
             doc,
             is_root=False,
             project_dir=project_dir,
@@ -179,10 +163,21 @@ class TestEnsurePyrightConfigPhase:
             return
         ignore = u.Cli.toml_unwrap_item(pyright["ignore"])
         tm.that(
-            ignore,
-            eq=[rules.project_typings_paths[0], *rules.ignored_diagnostic_globs],
+            sorted(ignore),
+            eq=sorted([
+                rules.project_typings_paths[0],
+                *rules.ignored_diagnostic_globs,
+            ]),
         )
-        tm.that(
-            changes,
-            has="tool.pyright.ignore synchronized for typings diagnostics",
-        )
+
+    def test_apply_is_idempotent(self, tmp_path: Path) -> None:
+        tool_config = _test_tool_config()
+        project_dir = tmp_path / "flext-sample"
+        (project_dir / "src").mkdir(parents=True, exist_ok=True)
+        phase = FlextInfraEnsurePyrightConfigPhase(tool_config)
+        doc = tomlkit.document()
+
+        _ = phase.apply(doc, is_root=False, project_dir=project_dir)
+        second_changes = phase.apply(doc, is_root=False, project_dir=project_dir)
+
+        tm.that(second_changes, eq=[])

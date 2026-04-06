@@ -235,7 +235,7 @@ class FlextInfraCodegenLazyInit(FlextInfraCommandContext[bool]):
                 else None
             )
             if previous != generated:
-                write_result = u.Infra.atomic_write_file(init_path, generated)
+                write_result = u.Cli.atomic_write_text_file(init_path, generated)
                 if write_result.is_failure:
                     u.Infra.error(f"writing {init_path}: {write_result.error}")
                     return (-1, dict(lazy_map))

@@ -136,7 +136,7 @@ class FlextInfraSkillValidator:
                         summary=f"no rules.yml for {skill_name}",
                     ),
                 )
-            rules = u.Infra.yaml_load_infra_mapping(rules_path)
+            rules = u.Cli.yaml_load_mapping(rules_path)
             scan_targets_raw = rules.get("scan_targets", {})
             scan_targets = u.Infra.normalize_str_mapping(scan_targets_raw)
             if not scan_targets and scan_targets_raw not in ({}, None):

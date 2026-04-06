@@ -13,12 +13,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from flext_cli import FlextCliTypes
 from flext_infra import (
     FlextInfraTypesAdapters,
     FlextInfraTypesBase,
     FlextInfraTypesRope,
 )
+
+if TYPE_CHECKING:
+    from flext_infra._models.engine import FlextInfraEngineModels
 
 
 class FlextInfraTypes(FlextCliTypes):
@@ -40,6 +45,9 @@ class FlextInfraTypes(FlextCliTypes):
         These aliases compose ``FlextTypes.Scalar`` and collection generics
         for infrastructure payload contracts and common patterns.
         """
+
+        if TYPE_CHECKING:
+            type TomlOperation = FlextInfraEngineModels.TomlOperation
 
 
 t = FlextInfraTypes

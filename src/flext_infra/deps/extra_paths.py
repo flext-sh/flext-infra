@@ -6,8 +6,6 @@ import sys
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
-from tomlkit.toml_document import TOMLDocument
-
 from flext_infra import (
     FlextInfraExtraPathsPyrefly,
     FlextInfraExtraPathsResolutionMixin,
@@ -68,7 +66,7 @@ class FlextInfraExtraPathsManager(
 
     def _apply_paths_to_doc(
         self,
-        doc: TOMLDocument,
+        doc: t.Cli.TomlDocument,
         *,
         project_dir: Path,
         is_root: bool,
@@ -81,23 +79,23 @@ class FlextInfraExtraPathsManager(
             project_dir=project_dir,
             is_root=is_root,
         )
-        tool_table = u.Infra.get_table(doc, c.Infra.TOOL)
+        tool_table = u.Cli.toml_get_table(doc, c.Infra.TOOL)
         if tool_table is None:
             return list[str]()
-        pyright_table = u.Infra.get_table(tool_table, c.Infra.PYRIGHT)
+        pyright_table = u.Cli.toml_get_table(tool_table, c.Infra.PYRIGHT)
         if pyright_table is None:
             return list[str]()
-        mypy_table = u.Infra.get_table(tool_table, c.Infra.MYPY)
+        mypy_table = u.Cli.toml_get_table(tool_table, c.Infra.MYPY)
         changes: MutableSequence[str] = []
-        current_pyright = u.Infra.as_string_list(
-            u.Infra.get_item(pyright_table, "extraPaths")
+        current_pyright = u.Cli.toml_as_string_list(
+            u.Cli.toml_get_item(pyright_table, "extraPaths")
         )
         if current_pyright != expected:
             pyright_table["extraPaths"] = expected
             changes.append("synchronized pyright extraPaths")
         if mypy_table is not None:
-            current_mypy = u.Infra.as_string_list(
-                u.Infra.get_item(mypy_table, "mypy_path")
+            current_mypy = u.Cli.toml_as_string_list(
+                u.Cli.toml_get_item(mypy_table, "mypy_path")
             )
             if current_mypy != expected:
                 mypy_table["mypy_path"] = expected
@@ -118,17 +116,17 @@ class FlextInfraExtraPathsManager(
         """Synchronize pyright and mypy paths for single pyproject.toml."""
         if not pyproject_path.exists():
             return r[bool].fail(f"pyproject not found: {pyproject_path}")
-        doc_result = u.Infra.read_document(pyproject_path)
+        doc_result = u.Cli.toml_read_document(pyproject_path)
         if doc_result.is_failure:
             return r[bool].fail(doc_result.error or f"failed to read {pyproject_path}")
-        doc: TOMLDocument = doc_result.value
+        doc: t.Cli.TomlDocument = doc_result.value
         changes = self._apply_paths_to_doc(
             doc,
             project_dir=pyproject_path.parent,
             is_root=is_root,
         )
         if changes and (not dry_run):
-            write_result = u.Infra.write_document(pyproject_path, doc)
+            write_result = u.Cli.toml_write_document(pyproject_path, doc)
             if write_result.is_failure:
                 return r[bool].fail(
                     write_result.error or f"failed to write {pyproject_path}",
@@ -137,7 +135,7 @@ class FlextInfraExtraPathsManager(
 
     def sync_doc(
         self,
-        doc: TOMLDocument,
+        doc: t.Cli.TomlDocument,
         *,
         project_dir: Path,
         is_root: bool = False,

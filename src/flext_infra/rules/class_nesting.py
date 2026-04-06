@@ -33,6 +33,14 @@ _SECTION_KEYS: tuple[str, ...] = (
 class _PostCheckGate:
     """Inline post-check gate for class nesting validation."""
 
+    @staticmethod
+    def _read_source_safe(file_path: Path) -> str | None:
+        """Read source text from disk, returning None on I/O or encoding errors."""
+        try:
+            return file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+        except (OSError, UnicodeDecodeError):
+            return None
+
     def validate(
         self,
         result: m.Infra.Result,
@@ -69,9 +77,8 @@ class _PostCheckGate:
         return check_name in checks
 
     def _validate_imports(self, file_path: Path) -> t.StrSequence:
-        try:
-            source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
-        except (OSError, UnicodeDecodeError):
+        source = self._read_source_safe(file_path)
+        if source is None:
             return [f"parse_error:{file_path}:parse_failed"]
         unresolved: MutableSequence[str] = []
         for lineno, line in enumerate(source.splitlines(), start=1):
@@ -85,27 +92,18 @@ class _PostCheckGate:
         class_name: str,
         expected_bases: t.StrSequence,
     ) -> t.StrSequence:
-        try:
-            source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
-        except (OSError, UnicodeDecodeError):
+        source = self._read_source_safe(file_path)
+        if source is None:
             return [f"mro_parse_error:{file_path}:parse_failed"]
-        for match in c.Infra.SourceCode.CLASS_WITH_BASES_RE.finditer(source):
-            if match.group(1) != class_name:
-                continue
-            bases_str = match.group(2)
-            actual = [
-                b.strip().split("[")[0].rsplit(".", maxsplit=1)[-1]
-                for b in bases_str.split(",")
-                if b.strip()
+        actual_clean = list(u.Infra.parse_class_bases(source, class_name))
+        if not actual_clean:
+            return [f"class_not_found:{class_name}"]
+        expected_prefix = list(expected_bases)[: len(actual_clean)]
+        if actual_clean != expected_prefix:
+            return [
+                f"mro_mismatch:{class_name}:expected={expected_prefix}:actual={actual_clean}",
             ]
-            actual_clean = [name for name in actual if name]
-            expected_prefix = list(expected_bases)[: len(actual_clean)]
-            if actual_clean != expected_prefix:
-                return [
-                    f"mro_mismatch:{class_name}:expected={expected_prefix}:actual={actual_clean}",
-                ]
-            return []
-        return [f"class_not_found:{class_name}"]
+        return []
 
     def _validate_types(self, file_path: Path) -> t.StrSequence:
         cmd = [sys.executable, "-m", "py_compile", str(file_path)]
@@ -302,7 +300,7 @@ class FlextInfraClassNestingRefactorRule:
         if self._cached_config is not None:
             return self._cached_config
         try:
-            loaded = u.Infra.yaml_load_infra_mapping(self._config_path)
+            loaded = u.Cli.yaml_load_mapping(self._config_path)
         except (OSError, TypeError) as exc:
             msg = "invalid class nesting mapping config"
             raise ValueError(msg) from exc

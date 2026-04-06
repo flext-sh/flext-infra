@@ -43,7 +43,7 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
             c.Infra.PROJECT,
             c.Infra.Verbs.CHECK,
         )
-        dir_result = u.Infra.ensure_dir(report_dir)
+        dir_result = u.Cli.ensure_dir(report_dir)
         if dir_result.is_failure:
             self._default_reports_dir = (
                 self._workspace_root
@@ -134,7 +134,7 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
         results = outcome.results
         timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
         md_path = report_base / "check-report.md"
-        md_write_result = u.Infra.atomic_write_file(
+        md_write_result = u.Cli.atomic_write_text_file(
             md_path,
             u.Infra.generate_markdown(results, resolved_gates, timestamp),
         )
@@ -202,7 +202,7 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
             )
         resolved_gates = resolved_gates_result.value
         report_base = reports_dir or self._default_reports_dir
-        dir_ensure = u.Infra.ensure_dir(report_base)
+        dir_ensure = u.Cli.ensure_dir(report_base)
         if dir_ensure.is_failure:
             return r[Sequence[m.Infra.ProjectResult]].fail(
                 dir_ensure.error or "failed to create report directory",

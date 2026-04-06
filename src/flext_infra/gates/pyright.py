@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import MutableSequence, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
@@ -56,12 +56,9 @@ class FlextInfraPyrightGate(FlextInfraGate):
     ) -> tuple[bool, Sequence[m.Infra.Issue]]:
         _ = project_dir, ctx
         issues: MutableSequence[m.Infra.Issue] = []
-        data = (
-            u.Infra
-            .parse(result.stdout or "{}")
-            .map(u.Infra.normalize_str_mapping)
-            .unwrap_or({})
-        )
+        parsed = u.Cli.json_parse(result.stdout or "{}").unwrap_or({})
+        empty: Mapping[str, t.Infra.InfraValue] = {}
+        data = u.Infra.normalize_str_mapping(parsed) if u.is_mapping(parsed) else empty
         try:
             diagnostics = u.Infra.deep_list(
                 data,

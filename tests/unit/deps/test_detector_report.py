@@ -10,6 +10,7 @@ from tests import t
 
 import flext_infra.deps as detector_module
 from flext_core import r
+from flext_infra import u
 
 
 class _ReportStub:
@@ -65,7 +66,6 @@ def _setup(
     tmp_path: Path,
     deps: _DepsStub,
     *,
-    json_service: types.SimpleNamespace | None = None,
     reporting_service: types.SimpleNamespace | None = None,
 ) -> detector_module.FlextInfraRuntimeDevDependencyDetector:
     def _exists(path: Path) -> bool:
@@ -76,8 +76,6 @@ def _setup(
 
     detector = detector_module.FlextInfraRuntimeDevDependencyDetector()
     monkeypatch.setattr(detector, "deps", deps)
-    if json_service is not None:
-        monkeypatch.setattr(detector, "json", json_service)
     if reporting_service is not None:
         monkeypatch.setattr(detector, "reporting", reporting_service)
     return detector
@@ -93,18 +91,25 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunReport:
 
         def _write_json(
             path: Path,
-            payload: Mapping[str, Mapping[str, t.IntMapping]],
+            payload: t.Cli.JsonPayload,
+            *,
+            sort_keys: bool = False,
+            ensure_ascii: bool = False,
+            indent: int = 2,
         ) -> r[bool]:
+            del sort_keys
+            del ensure_ascii
+            del indent
             _ = payload
             call_paths.append(str(path))
             return r[bool].ok(True)
 
         custom_output = tmp_path / "custom_report.json"
+        monkeypatch.setattr(u.Cli, "json_write", _write_json)
         detector = _setup(
             monkeypatch,
             tmp_path,
             _DepsStub(tmp_path / "proj-a", 0, 0),
-            json_service=types.SimpleNamespace(write_json=_write_json),
         )
         tm.ok(
             detector.run([
@@ -132,19 +137,11 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunReport:
 
         reporting = types.SimpleNamespace(get_report_dir=_report_dir)
 
-        def _mkdir_fail(
-            path: Path,
-            *,
-            parents: bool = False,
-            exist_ok: bool = False,
-        ) -> None:
+        def _ensure_dir_fail(path: Path) -> r[bool]:
             del path
-            del parents
-            del exist_ok
-            msg = "Permission denied"
-            raise OSError(msg)
+            return r[bool].fail("failed to create report directory")
 
-        monkeypatch.setattr(Path, "mkdir", _mkdir_fail)
+        monkeypatch.setattr(u.Cli, "ensure_dir", _ensure_dir_fail)
         detector = _setup(
             monkeypatch,
             tmp_path,
@@ -170,10 +167,17 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunReport:
     ) -> None:
         def _write_json_fail(
             path: Path,
-            payload: Mapping[str, Mapping[str, t.IntMapping]],
+            payload: t.Cli.JsonPayload,
+            *,
+            sort_keys: bool = False,
+            ensure_ascii: bool = False,
+            indent: int = 2,
         ) -> r[bool]:
             del path
             del payload
+            del sort_keys
+            del ensure_ascii
+            del indent
             return r[bool].fail("write failed")
 
         def _report_dir(root: Path, category: str, name: str) -> Path:
@@ -182,24 +186,13 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunReport:
             del name
             return tmp_path / "reports"
 
-        def _mkdir_ok(
-            path: Path,
-            *,
-            parents: bool = False,
-            exist_ok: bool = False,
-        ) -> None:
-            del path
-            del parents
-            del exist_ok
-
-        json_service = types.SimpleNamespace(write_json=_write_json_fail)
         reporting = types.SimpleNamespace(get_report_dir=_report_dir)
-        monkeypatch.setattr(Path, "mkdir", _mkdir_ok)
+        monkeypatch.setattr(u.Cli, "ensure_dir", lambda path: r[bool].ok(True))
+        monkeypatch.setattr(u.Cli, "json_write", _write_json_fail)
         detector = _setup(
             monkeypatch,
             tmp_path,
             _DepsStub(tmp_path / "proj-a", 0, 0),
-            json_service=json_service,
             reporting_service=reporting,
         )
         error = tm.fail(

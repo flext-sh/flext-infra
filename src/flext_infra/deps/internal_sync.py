@@ -31,7 +31,7 @@ class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
     def ensure_symlink(target: Path, source: Path) -> r[bool]:
         """Ensure target points to source via directory symlink."""
         try:
-            dir_result = u.Infra.ensure_dir(target.parent)
+            dir_result = u.Cli.ensure_dir(target.parent)
             if dir_result.is_failure:
                 return r[bool].fail(
                     dir_result.error or f"failed to create parent dir for {target}",
@@ -172,7 +172,7 @@ class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
             result[dep_name] = project_root / ".flext-deps" / repo_name
         project_obj = u.Infra.deep_mapping(data, c.Infra.PROJECT)
         project_deps_raw = project_obj.get(c.Infra.DEPENDENCIES)
-        project_deps = u.Infra.as_string_list(project_deps_raw)
+        project_deps = u.Cli.toml_as_string_list(project_deps_raw)
         internal_dep_names: t.Infra.StrSet = set()
         for dep in project_deps:
             dep_name_match = c.Infra.DEP_NAME_RE.match(dep)
@@ -222,10 +222,11 @@ class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
             return r[bool].fail(safe_ref_name_result.error or "invalid git ref")
         safe_repo_url = safe_repo_url_result.value
         safe_ref_name = safe_ref_name_result.value
-        parent_dir_result = u.Infra.ensure_dir(dep_path.parent)
+        parent_dir_result = u.Cli.ensure_dir(dep_path.parent)
         if parent_dir_result.is_failure:
             return r[bool].fail(
-                parent_dir_result.error or f"failed to create parent dir for {dep_path}",
+                parent_dir_result.error
+                or f"failed to create parent dir for {dep_path}",
             )
         if not (dep_path / c.Infra.Git.DIR).exists():
             try:

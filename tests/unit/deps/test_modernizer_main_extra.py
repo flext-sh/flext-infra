@@ -96,7 +96,7 @@ class TestModernizerUncoveredLines:
             return []
 
         monkeypatch.setattr(modernizer, "find_pyproject_files", _find_files)
-        monkeypatch.setattr(u.Infra, "read", _read_doc)
+        monkeypatch.setattr(u.Cli, "toml_read", _read_doc)
         monkeypatch.setattr(modernizer, "process_file", _process_file)
         tm.that(modernizer.run(args, _default_cli(tmp_path)), eq=0)
 

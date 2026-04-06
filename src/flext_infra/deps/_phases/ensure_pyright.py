@@ -6,10 +6,7 @@ from collections.abc import Mapping, MutableSequence
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
-import tomlkit
-from tomlkit.items import Item, Table
-
-from flext_infra import c, m, t, u
+from flext_infra import FlextInfraToml, c, m, t, u
 
 if TYPE_CHECKING:
     from flext_infra import FlextInfraExtraPathsManager
@@ -105,7 +102,7 @@ class FlextInfraEnsurePyrightConfigPhase(FlextInfraEnsurePyrightEnvs):
 
     def apply(
         self,
-        doc: tomlkit.TOMLDocument,
+        doc: t.Cli.TomlDocument,
         *,
         is_root: bool,
         workspace_root: Path | None = None,
@@ -113,41 +110,13 @@ class FlextInfraEnsurePyrightConfigPhase(FlextInfraEnsurePyrightEnvs):
         project_kind: str = "core",
         paths_manager: FlextInfraExtraPathsManager | None = None,
     ) -> t.StrSequence:
-        changes: MutableSequence[str] = []
-        tool: Item | None = None
-        if c.Infra.TOOL in doc:
-            raw_tool = doc[c.Infra.TOOL]
-            if isinstance(raw_tool, Item):
-                tool = raw_tool
-        if not isinstance(tool, Table):
-            tool = tomlkit.table()
-            doc[c.Infra.TOOL] = tool
-        pyright = u.Infra.ensure_table(tool, c.Infra.PYRIGHT)
         project_root = workspace_root if is_root else project_dir
         expected_excludes = self._expected_excludes(project_root)
-        current_excludes = u.Infra.as_string_list(u.Infra.get(pyright, c.Infra.EXCLUDE))
-        if expected_excludes:
-            if current_excludes != expected_excludes:
-                pyright[c.Infra.EXCLUDE] = u.Infra.array(expected_excludes)
-                changes.append("tool.pyright.exclude synchronized from discovered dirs")
-        elif c.Infra.EXCLUDE in pyright:
-            del pyright[c.Infra.EXCLUDE]
-            changes.append("tool.pyright.exclude removed (no discovered excludes)")
         expected_ignores = self._expected_ignores(
             is_root=is_root,
             workspace_root=workspace_root,
             project_dir=project_dir,
         )
-        current_ignores = u.Infra.as_string_list(u.Infra.get(pyright, c.Infra.IGNORE))
-        if expected_ignores:
-            if current_ignores != expected_ignores:
-                pyright[c.Infra.IGNORE] = u.Infra.array(expected_ignores)
-                changes.append(
-                    "tool.pyright.ignore synchronized for typings diagnostics",
-                )
-        elif c.Infra.IGNORE in pyright:
-            del pyright[c.Infra.IGNORE]
-            changes.append("tool.pyright.ignore removed (no discovered ignores)")
         stub_rules = self._path_rules()
         expected_stub_path: str | None = (
             stub_rules.root_typings_paths[0]
@@ -158,54 +127,57 @@ class FlextInfraEnsurePyrightConfigPhase(FlextInfraEnsurePyrightEnvs):
                 else None
             )
         )
-        if expected_stub_path is not None:
-            existing = project_root / expected_stub_path if project_root else None
-            if existing is not None and existing.is_dir():
-                current_stub = u.Infra.unwrap_item(u.Infra.get(pyright, "stubPath"))
-                if current_stub != expected_stub_path:
-                    pyright["stubPath"] = expected_stub_path
-                    changes.append(
-                        f"tool.pyright.stubPath set to {expected_stub_path}",
-                    )
-            elif "stubPath" in pyright:
-                del pyright["stubPath"]
-                changes.append("tool.pyright.stubPath removed (typings dir missing)")
-        elif "stubPath" in pyright:
-            del pyright["stubPath"]
-            changes.append("tool.pyright.stubPath removed (no typings configured)")
-        if project_root is not None and paths_manager is not None:
-            expected_extra = paths_manager.pyright_extra_paths(
-                project_dir=project_root,
-                is_root=is_root,
-            )
-            current_extra = u.Infra.as_string_list(u.Infra.get(pyright, "extraPaths"))
-            if current_extra != expected_extra:
-                pyright["extraPaths"] = u.Infra.array(expected_extra)
-                changes.append("tool.pyright.extraPaths synchronized")
         expected_envs = self._expected_envs(
             is_root=is_root,
             workspace_root=workspace_root,
             project_dir=project_dir,
         )
+        phase_builder = m.Infra.TomlPhaseConfig.Builder("pyright").table(
+            c.Infra.PYRIGHT
+        )
+        if expected_excludes:
+            phase_builder = phase_builder.list(c.Infra.EXCLUDE, expected_excludes)
+        else:
+            phase_builder = phase_builder.deprecated(c.Infra.EXCLUDE)
+        if expected_ignores:
+            phase_builder = phase_builder.list(c.Infra.IGNORE, expected_ignores)
+        else:
+            phase_builder = phase_builder.deprecated(c.Infra.IGNORE)
+        if project_root is not None and paths_manager is not None:
+            phase_builder = phase_builder.list(
+                "extraPaths",
+                paths_manager.pyright_extra_paths(
+                    project_dir=project_root,
+                    is_root=is_root,
+                ),
+            )
+        if expected_stub_path is not None:
+            existing = project_root / expected_stub_path if project_root else None
+            if existing is not None and existing.is_dir():
+                phase_builder = phase_builder.value("stubPath", expected_stub_path)
+            else:
+                phase_builder = phase_builder.deprecated("stubPath")
+        else:
+            phase_builder = phase_builder.deprecated("stubPath")
         for key, value in self._venv_settings(is_root=is_root).items():
-            if u.Infra.unwrap_item(u.Infra.get(pyright, key)) != value:
-                pyright[key] = value
-                changes.append(f"tool.pyright.{key} set to {value}")
+            phase_builder = phase_builder.value(key, value)
+        phase_builder = phase_builder.value(
+            "executionEnvironments",
+            [
+                u.Cli.normalize_json_value(
+                    expected_env.model_dump(mode="json", by_alias=True),
+                )
+                for expected_env in expected_envs
+            ],
+        )
         if is_root:
             for key, value in self._tool_config.tools.pyright.strict_settings.items():
-                if u.Infra.unwrap_item(u.Infra.get(pyright, key)) != value:
-                    pyright[key] = value
-                    changes.append(f"tool.pyright.{key} set to {value}")
+                phase_builder = phase_builder.value(key, value)
             for key, value in self._tool_config.tools.pyright.extended_settings.items():
-                if u.Infra.unwrap_item(u.Infra.get(pyright, key)) != value:
-                    pyright[key] = value
-                    changes.append(f"tool.pyright.{key} set to {value}")
-            u.Infra.ensure_pyright_execution_envs(pyright, expected_envs, changes)
-            return changes
+                phase_builder = phase_builder.value(key, value)
+            return FlextInfraToml.apply_phases(doc, phase_builder.build())
         for key, value in self._tool_config.tools.pyright.strict_settings.items():
-            if u.Infra.unwrap_item(u.Infra.get(pyright, key)) != value:
-                pyright[key] = value
-                changes.append(f"tool.pyright.{key} set to {value}")
+            phase_builder = phase_builder.value(key, value)
         merged_settings: t.MutableStrMapping = {
             **self._tool_config.tools.pyright.extended_settings,
         }
@@ -213,11 +185,8 @@ class FlextInfraEnsurePyrightConfigPhase(FlextInfraEnsurePyrightEnvs):
         if override is not None:
             merged_settings.update(override.pyright)
         for key, value in merged_settings.items():
-            if u.Infra.unwrap_item(u.Infra.get(pyright, key)) != value:
-                pyright[key] = value
-                changes.append(f"tool.pyright.{key} set to {value}")
-        u.Infra.ensure_pyright_execution_envs(pyright, expected_envs, changes)
-        return changes
+            phase_builder = phase_builder.value(key, value)
+        return FlextInfraToml.apply_phases(doc, phase_builder.build())
 
 
 __all__ = ["FlextInfraEnsurePyrightConfigPhase"]

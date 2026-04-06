@@ -61,6 +61,7 @@ if _t.TYPE_CHECKING:
         FlextInfraDepsModelsToolConfigLinters,
         FlextInfraDepsModelsToolConfigTypeCheckers,
         FlextInfraDocsModels,
+        FlextInfraEngineModels,
         FlextInfraGatesModels,
         FlextInfraGithubModels,
         FlextInfraModelsBase,
@@ -85,6 +86,7 @@ if _t.TYPE_CHECKING:
         deps_tool_config,
         deps_tool_config_linters,
         deps_tool_config_type_checkers,
+        engine,
         gates,
         mixins,
         refactor_ast_grep,
@@ -240,7 +242,6 @@ if _t.TYPE_CHECKING:
         FlextInfraBaseMkGenerator,
         FlextInfraBaseMkTemplateEngine,
         FlextInfraCliBasemk,
-        engine,
         generator,
     )
     from flext_infra.check import (
@@ -490,9 +491,11 @@ if _t.TYPE_CHECKING:
         FlextInfraCodegenConsolidator,
         FlextInfraCodegenDeduplicator,
         FlextInfraCodegenPipeline,
+        FlextInfraToml,
         consolidator,
         deduplicator,
         pipeline,
+        toml_engine,
     )
 
     transformers = _flext_infra_transformers
@@ -741,6 +744,7 @@ __all__ = [
     "FlextInfraDocValidator",
     "FlextInfraDocsConstants",
     "FlextInfraDocsModels",
+    "FlextInfraEngineModels",
     "FlextInfraEnsureCoverageConfigPhase",
     "FlextInfraEnsureExtraPathsPhase",
     "FlextInfraEnsureFormattingToolingPhase",
@@ -872,6 +876,7 @@ __all__ = [
     "FlextInfraStubSupplyChain",
     "FlextInfraSyncService",
     "FlextInfraTextPatternScanner",
+    "FlextInfraToml",
     "FlextInfraTransformerTier0ImportFixer",
     "FlextInfraTypes",
     "FlextInfraTypesAdapters",
@@ -1170,6 +1175,7 @@ __all__ = [
     "terminal",
     "tier0_import_fixer",
     "toml",
+    "toml_engine",
     "toml_parse",
     "transformers",
     "typing_annotation_replacer",

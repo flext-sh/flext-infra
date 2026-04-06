@@ -6,7 +6,6 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import Annotated, override
 
-import tomlkit
 from pydantic import Field
 
 from flext_infra import (
@@ -75,24 +74,22 @@ class FlextInfraProjectMigrator(
             changes.append(val)
 
     @staticmethod
-    def _has_flext_core_dependency(document: tomlkit.TOMLDocument) -> bool:
-        project = u.Infra.get_table(document, c.Infra.PROJECT)
+    def _has_flext_core_dependency(document: t.Cli.TomlDocument) -> bool:
+        project = u.Cli.toml_get_table(document, c.Infra.PROJECT)
         if project is not None:
-            deps = u.Infra.get_item(project, c.Infra.DEPENDENCIES)
-            if isinstance(deps, list):
-                deps_list: t.Cli.JsonList = t.Cli.JSON_LIST_ADAPTER.validate_python([
-                    *deps
-                ])
-                for dep_raw in deps_list:
-                    if str(dep_raw).strip().startswith(c.Infra.Packages.CORE):
-                        return True
-        tool = u.Infra.get_table(document, c.Infra.TOOL)
+            deps = u.Cli.toml_as_string_list(
+                u.Cli.toml_get_item(project, c.Infra.DEPENDENCIES),
+            )
+            for dep_raw in deps:
+                if str(dep_raw).strip().startswith(c.Infra.Packages.CORE):
+                    return True
+        tool = u.Cli.toml_get_table(document, c.Infra.TOOL)
         if tool is None:
             return False
-        poetry = u.Infra.get_table(tool, c.Infra.POETRY)
+        poetry = u.Cli.toml_get_table(tool, c.Infra.POETRY)
         if poetry is None:
             return False
-        poetry_deps = u.Infra.get_table(poetry, c.Infra.DEPENDENCIES)
+        poetry_deps = u.Cli.toml_get_table(poetry, c.Infra.DEPENDENCIES)
         if poetry_deps is None:
             return False
         return c.Infra.Packages.CORE in poetry_deps
@@ -222,7 +219,7 @@ class FlextInfraProjectMigrator(
             if target.exists()
             else ""
         )
-        if u.Infra.sha256_content(current) == u.Infra.sha256_content(generated_text):
+        if u.Cli.sha256_content(current) == u.Cli.sha256_content(generated_text):
             if dry_run:
                 return r[str].ok(
                     self._action_text("base.mk already up-to-date", dry_run=True),
@@ -387,12 +384,12 @@ class FlextInfraProjectMigrator(
                 "pyproject.toml dependency unchanged for flext-core",
                 dry_run=dry_run,
             )
-        document_result = u.Infra.read_document(pyproject_path)
+        document_result = u.Cli.toml_read_document(pyproject_path)
         if document_result.is_failure:
             return r[str].fail(
                 document_result.error or "pyproject parse failed",
             )
-        document: tomlkit.TOMLDocument = document_result.value
+        document: t.Cli.TomlDocument = document_result.value
         if self._has_flext_core_dependency(document):
             return self._no_change_result(
                 "pyproject.toml already includes flext-core dependency",
@@ -404,26 +401,24 @@ class FlextInfraProjectMigrator(
 
     def _apply_flext_core_dependency(
         self,
-        document: tomlkit.TOMLDocument,
+        document: t.Cli.TomlDocument,
         pyproject_path: Path,
         *,
         dry_run: bool,
     ) -> r[str]:
         """Add flext-core dependency to the pyproject document and write if not dry-run."""
-        project_table = u.Infra.ensure_table(document, c.Infra.PROJECT)
-        dependencies_raw = u.Infra.get_item(project_table, c.Infra.DEPENDENCIES)
-        dependencies: MutableSequence[str] = []
-        if isinstance(dependencies_raw, list):
-            dependency_items: t.Cli.JsonList = t.Cli.JSON_LIST_ADAPTER.validate_python([
-                *dependencies_raw
-            ])
-            dependencies = [str(dep_raw) for dep_raw in dependency_items]
+        project_table = u.Cli.toml_ensure_table(document, c.Infra.PROJECT)
+        dependencies = list(
+            u.Cli.toml_as_string_list(
+                u.Cli.toml_get_item(project_table, c.Infra.DEPENDENCIES),
+            ),
+        )
         dependency_spec = c.Infra.Packages.CORE
         if dependency_spec not in dependencies:
             dependencies.append(dependency_spec)
         project_table[c.Infra.DEPENDENCIES] = dependencies
         if not dry_run:
-            write_result = u.Infra.write_document(pyproject_path, document)
+            write_result = u.Cli.toml_write_document(pyproject_path, document)
             if write_result.is_failure:
                 return r[str].fail(
                     write_result.error or "pyproject update failed",

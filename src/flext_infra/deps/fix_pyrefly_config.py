@@ -12,10 +12,9 @@ from pathlib import Path
 from typing import override
 
 from pydantic import ValidationError
-from tomlkit import items
 
-from flext_core import FlextLogger, r, s
-from flext_infra import FlextInfraExtraPathsManager, c, m, t, u
+from flext_core import FlextLogger
+from flext_infra import FlextInfraExtraPathsManager, c, m, r, s, t, u
 
 _logger = FlextLogger.create_module_logger(__name__)
 
@@ -40,21 +39,8 @@ class FlextInfraConfigFixer(s[bool]):
         self._tool_config: m.Infra.ToolConfigDocument = config_result.value
 
     @staticmethod
-    def _to_array(items_list: t.StrSequence) -> items.Array:
-        items_infra: Sequence[t.Infra.InfraValue] = list(items_list)
-        serialized_result = u.Infra.serialize(items_infra)
-        if serialized_result.is_failure:
-            return u.Infra.array([])
-        parsed = u.Infra.parse_text(f"items = {serialized_result.value}\n")
-        if parsed is None:
-            return u.Infra.array([])
-        arr_raw = parsed["items"]
-        if not isinstance(arr_raw, items.Array):
-            return u.Infra.array([])
-        arr = arr_raw
-        if len(items_list) > 1:
-            arr.multiline(True)
-        return arr
+    def _to_array(items_list: t.StrSequence) -> t.Cli.TomlArray:
+        return u.Cli.toml_array(items_list)
 
     @override
     def execute(self) -> r[bool]:
@@ -72,7 +58,7 @@ class FlextInfraConfigFixer(s[bool]):
 
     def process_file(self, path: Path, *, dry_run: bool = False) -> r[t.StrSequence]:
         """Process one pyproject.toml file and apply fixes."""
-        document_result = u.Infra.read_document(path)
+        document_result = u.Cli.toml_read_document(path)
         if document_result.is_failure:
             return r[t.StrSequence].fail(
                 document_result.error or f"failed to read {path}",
@@ -108,10 +94,10 @@ class FlextInfraConfigFixer(s[bool]):
         if all_fixes and (not dry_run):
             typed_tool_data[c.Infra.PYREFLY] = dict(pyrefly)
             doc_data[c.Infra.TOOL] = typed_tool_data
-            new_doc = u.Infra.document()
+            new_doc = u.Cli.toml_document()
             for key, value in doc_data.items():
                 new_doc[str(key)] = value
-            write_result = u.Infra.write_document(path, new_doc)
+            write_result = u.Cli.toml_write_document(path, new_doc)
             if write_result.is_failure:
                 return r[t.StrSequence].fail(
                     write_result.error or f"failed to write {path}",

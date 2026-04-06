@@ -164,7 +164,6 @@ class FlextInfraDependencyDetectorRuntime:
             pip_lines, pip_exit = pip_result.value
             pip_ok = pip_exit == 0
             report_model.pip_check = self._pip_check_factory(ok=pip_ok, lines=pip_lines)
-        report_payload = report_model.model_dump()
         if cli.output_format == "json":
             return r[int].ok(0)
         out_path: Path | None = None
@@ -176,14 +175,18 @@ class FlextInfraDependencyDetectorRuntime:
                 c.Infra.PROJECT,
                 c.Infra.DEPENDENCIES,
             )
-            dir_result = u.Infra.ensure_dir(report_dir)
+            dir_result = u.Cli.ensure_dir(report_dir)
             if dir_result.is_failure:
                 return r[int].fail(
                     dir_result.error or "failed to create report directory",
                 )
             out_path = report_dir / "detect-runtime-dev-latest.json"
         if out_path is not None and not cli.dry_run:
-            write_result = detector.json.write_json(out_path, report_payload)
+            report_payload: dict[str, t.Cli.JsonValue] = {
+                key: u.Cli.normalize_json_value(value)
+                for key, value in report_model.model_dump().items()
+            }
+            write_result = u.Cli.json_write(out_path, report_payload)
             if write_result.is_failure:
                 return r[int].fail(write_result.error or "failed to write report")
             if not args.quiet:

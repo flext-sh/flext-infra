@@ -101,8 +101,8 @@ class FlextInfraWorkspaceCheckGatesMixin:
         u.Infra.status(
             c.Infra.Verbs.CHECK,
             project_name,
-            project_result.passed,
-            elapsed,
+            result=project_result.passed,
+            elapsed=elapsed,
         )
         return project_result
 
@@ -194,8 +194,8 @@ class FlextInfraWorkspaceCheckGatesMixin:
                     u.Infra.gate_result(
                         gate,
                         len(fix_execution.issues),
-                        fix_execution.result.passed,
-                        fix_execution.result.duration,
+                        passed=fix_execution.result.passed,
+                        elapsed=fix_execution.result.duration,
                     )
                     continue
             execution = gate_instance.check(project_dir, ctx)
@@ -203,8 +203,8 @@ class FlextInfraWorkspaceCheckGatesMixin:
             u.Infra.gate_result(
                 gate,
                 len(execution.issues),
-                execution.result.passed,
-                execution.result.duration,
+                passed=execution.result.passed,
+                elapsed=execution.result.duration,
             )
         return result
 

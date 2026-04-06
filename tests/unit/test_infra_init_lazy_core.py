@@ -140,8 +140,8 @@ class TestFlextInfraInitLazyLoading:
         assert service is not None
 
     def test_lazy_import_json_service(self) -> None:
-        """Test lazy loading of FlextInfraJsonService."""
-        service = flext_infra.FlextInfraUtilitiesIo
+        """Test CLI JSON helpers remain reachable through infra MRO."""
+        service = flext_infra.u.Cli.json_write
         assert service is not None
 
     def test_lazy_import_toml_service(self) -> None:
@@ -164,10 +164,10 @@ class TestFlextInfraInitLazyLoading:
         service = flext_infra.FlextInfraUtilitiesReporting
         assert service is not None
 
-    def test_lazy_import_output(self) -> None:
-        """Test lazy loading of output."""
-        output = flext_infra.output
-        assert output is not None
+    def test_removed_legacy_output_export(self) -> None:
+        """Legacy output wrapper is no longer exported."""
+        with pytest.raises(AttributeError):
+            _ = flext_infra.output
 
     def test_known_verbs_accessible_via_constants(self) -> None:
         """Test KNOWN_VERBS is accessible via c.Infra.KNOWN_VERBS."""

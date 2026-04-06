@@ -10,7 +10,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import tomllib
 from pathlib import Path
 
 from flext_infra import FlextInfraBaseMkGenerator, c, m, r, u
@@ -66,29 +65,45 @@ class FlextInfraProjectMakefileUpdater:
             except OSError as exc:
                 return r[bool].fail(f"Makefile read failed: {exc}")
 
-            if u.Infra.sha256_content(existing) == u.Infra.sha256_content(new_content):
+            if u.Cli.sha256_content(existing) == u.Cli.sha256_content(new_content):
                 return r[bool].ok(False)
 
-        return u.Infra.atomic_write_file(makefile_path, new_content)
+        return u.Cli.atomic_write_text_file(makefile_path, new_content)
 
     @staticmethod
     def _read_pyproject(pyproject: Path) -> r[m.Infra.ProjectMeta]:
         """Parse pyproject.toml and extract name, python_version, description."""
-        try:
-            with pyproject.open("rb") as fh:
-                data = tomllib.load(fh)
-        except (OSError, tomllib.TOMLDecodeError) as exc:
-            return r[m.Infra.ProjectMeta].fail(f"pyproject.toml read failed: {exc}")
+        data_result = u.Infra.read_plain(pyproject)
+        if data_result.is_failure:
+            return r[m.Infra.ProjectMeta].fail(
+                f"pyproject.toml read failed: {data_result.error}",
+            )
+        data = data_result.value
 
         try:
             project = data["project"]
-            name: str = project["name"]
-            requires_python: str = project.get("requires-python", ">=3.13")
+            if not isinstance(project, dict):
+                msg = "project table is not a mapping"
+                raise KeyError(msg)
+            name_raw = project["name"]
+            if not isinstance(name_raw, str):
+                msg = "project.name is not a string"
+                raise KeyError(msg)
+            name: str = name_raw
+            requires_python_raw = project.get("requires-python", ">=3.13")
+            requires_python = (
+                requires_python_raw
+                if isinstance(requires_python_raw, str)
+                else ">=3.13"
+            )
             # Extract "3.13" from ">=3.13,<3.14" or ">=3.13"
             version_str = requires_python.lstrip(">= ")
             python_version = version_str.split(",")[0].split("<")[0].strip()
-            description: str = project.get("description", "")
-        except (KeyError, AttributeError) as exc:
+            description_raw = project.get("description", "")
+            description: str = (
+                description_raw if isinstance(description_raw, str) else ""
+            )
+        except KeyError as exc:
             return r[m.Infra.ProjectMeta].fail(
                 f"pyproject.toml missing required fields: {exc}",
             )

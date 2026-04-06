@@ -62,30 +62,30 @@ class FlextInfraPyprojectModernizer:
     def _ensure_build_system(self, doc: TOMLDocument) -> t.StrSequence:
         """Ensure canonical build-system backend/requirements."""
         changes: MutableSequence[str] = []
-        build_system = u.Infra.get_table(doc, "build-system")
+        build_system = u.Cli.toml_get_table(doc, "build-system")
         if build_system is None:
-            build_system = u.Infra.table()
+            build_system = u.Cli.toml_table()
             doc["build-system"] = build_system
             changes.append("created [build-system]")
         expected_backend = "hatchling.build"
-        backend_item = u.Infra.get_item(build_system, "build-backend")
-        current_backend = u.norm_str(u.Infra.unwrap_item(backend_item))
+        backend_item = u.Cli.toml_get_item(build_system, "build-backend")
+        current_backend = u.norm_str(u.Cli.toml_unwrap_item(backend_item))
         if current_backend != expected_backend:
             build_system["build-backend"] = expected_backend
             changes.append("build-system.build-backend set to hatchling.build")
         expected_requires = ["hatchling"]
-        requires_item = u.Infra.get_item(build_system, "requires")
+        requires_item = u.Cli.toml_get_item(build_system, "requires")
         current_requires = sorted(
-            u.Infra.as_string_list(requires_item),
+            u.Cli.toml_as_string_list(requires_item),
         )
         if current_requires != expected_requires:
-            build_system["requires"] = u.Infra.array(expected_requires)
+            build_system["requires"] = u.Cli.toml_array(expected_requires)
             changes.append("build-system.requires set to ['hatchling']")
         # Backend is now guaranteed to be hatchling.build (set above or already correct)
-        tool_table = u.Infra.ensure_table(doc, c.Infra.TOOL)
-        hatch_table = u.Infra.ensure_table(tool_table, "hatch")
-        metadata_table = u.Infra.ensure_table(hatch_table, "metadata")
-        allow_item = u.Infra.get_item(metadata_table, "allow-direct-references")
+        tool_table = u.Cli.toml_ensure_table(doc, c.Infra.TOOL)
+        hatch_table = u.Cli.toml_ensure_table(tool_table, "hatch")
+        metadata_table = u.Cli.toml_ensure_table(hatch_table, "metadata")
+        allow_item = u.Cli.toml_get_item(metadata_table, "allow-direct-references")
         if allow_item is None or u.norm_str(str(allow_item), case="lower") != "true":
             metadata_table["allow-direct-references"] = True
             changes.append("tool.hatch.metadata.allow-direct-references set to true")
@@ -155,7 +155,7 @@ class FlextInfraPyprojectModernizer:
                 del doc[key]
             for key in ordered_root:
                 doc[key] = root_items[key]
-        tool_child = u.Infra.get_table(doc, "tool")
+        tool_child = u.Cli.toml_get_table(doc, "tool")
         if tool_child is not None:
             cls._reorder_table_inplace(tool_child)
         for key in ordered_root:
@@ -193,7 +193,7 @@ class FlextInfraPyprojectModernizer:
         skip_comments: bool,
     ) -> t.StrSequence:
         """Process one pyproject.toml file and collect changes."""
-        doc = u.Infra.read(path)
+        doc = u.Cli.toml_read(path)
         if doc is None:
             return ["invalid TOML"]
         is_root = path.parent.resolve() == self.root.resolve()
@@ -204,20 +204,22 @@ class FlextInfraPyprojectModernizer:
                 project_kind = kind_result.value
         changes: MutableSequence[str] = []
         changes.extend(self._ensure_build_system(doc))
-        tool_item = u.Infra.get_table(doc, c.Infra.TOOL)
+        tool_item = u.Cli.toml_get_table(doc, c.Infra.TOOL)
         if tool_item is None:
-            tool_item = u.Infra.table()
+            tool_item = u.Cli.toml_table()
             doc[c.Infra.TOOL] = tool_item
-        poetry_item = u.Infra.get_table(tool_item, c.Infra.POETRY)
+        poetry_item = u.Cli.toml_get_table(tool_item, c.Infra.POETRY)
         if poetry_item is not None:
-            group_item = u.Infra.get_table(poetry_item, c.Infra.GROUP)
+            group_item = u.Cli.toml_get_table(poetry_item, c.Infra.GROUP)
             if group_item is not None:
                 empty_groups: MutableSequence[str] = []
-                for name in u.Infra.table_string_keys(group_item):
-                    group_dep_item = u.Infra.get_table(group_item, name)
+                for name in u.Cli.toml_table_string_keys(group_item):
+                    group_dep_item = u.Cli.toml_get_table(group_item, name)
                     if group_dep_item is None:
                         continue
-                    deps_item = u.Infra.get_table(group_dep_item, c.Infra.DEPENDENCIES)
+                    deps_item = u.Cli.toml_get_table(
+                        group_dep_item, c.Infra.DEPENDENCIES
+                    )
                     if deps_item is not None and not deps_item:
                         empty_groups.append(name)
                 for name in empty_groups:
@@ -299,7 +301,7 @@ class FlextInfraPyprojectModernizer:
                 return 2
             project_paths = [project.path for project in selected_projects.value]
         files = self.find_pyproject_files(project_paths=project_paths)
-        root_doc = u.Infra.read(self.root / c.Infra.Files.PYPROJECT_FILENAME)
+        root_doc = u.Cli.toml_read(self.root / c.Infra.Files.PYPROJECT_FILENAME)
         if root_doc is None:
             return 2
         canonical_dev = u.Infra.canonical_dev_dependencies(root_doc)
@@ -337,17 +339,17 @@ class FlextInfraPyprojectModernizer:
         """Validate pyproject.toml files have hatchling build backend."""
         has_warning = False
         for path in files:
-            doc = u.Infra.read(path)
+            doc = u.Cli.toml_read(path)
             if doc is None:
                 has_warning = True
                 continue
-            build_sys = u.Infra.get_table(doc, "build-system")
+            build_sys = u.Cli.toml_get_table(doc, "build-system")
             if build_sys is None:
                 u.Infra.info(f"{path}: missing [build-system]")
                 has_warning = True
                 continue
-            backend_item = u.Infra.get_item(build_sys, "build-backend")
-            backend = u.norm_str(u.Infra.unwrap_item(backend_item))
+            backend_item = u.Cli.toml_get_item(build_sys, "build-backend")
+            backend = u.norm_str(u.Cli.toml_unwrap_item(backend_item))
             if backend != "hatchling.build":
                 u.Infra.info(f"{path}: expected hatchling.build, got {backend}")
                 has_warning = True
