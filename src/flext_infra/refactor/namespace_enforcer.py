@@ -52,7 +52,7 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerPhasesMixin):
                 project_name=project_root.name,
                 apply=apply,
             )
-            if apply and report.total_violations > 0:
+            if apply and report.has_violations:
                 u.Infra.restore_files(bak_paths)
             elif apply:
                 u.Infra.cleanup_backups(bak_paths)
