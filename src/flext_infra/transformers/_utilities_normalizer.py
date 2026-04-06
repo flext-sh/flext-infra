@@ -39,29 +39,32 @@ class FlextInfraNormalizerContext(m.ArbitraryTypesModel):
     ]
 
 
+@lru_cache(maxsize=1)
+def _load_import_normalization_config() -> Mapping[str, t.Infra.InfraValue]:
+    """Load import normalization configuration from YAML (cached)."""
+    rules_path = (
+        Path(__file__).resolve().parent.parent / "rules" / "import-normalization.yml"
+    )
+    loaded = FlextInfraUtilitiesImportNormalizer.yaml_load_mapping(rules_path)
+    root = loaded.get("import_normalization")
+    if u.is_mapping(root):
+        return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(root)
+    return {}
+
+
 class FlextInfraUtilitiesImportNormalizer(_CliYaml):
     """Import normalization helpers for alias resolution and tier inference."""
 
     @staticmethod
-    @lru_cache(maxsize=1)
-    def load_config() -> Mapping[str, t.Infra.InfraValue]:
+    def load_import_config() -> Mapping[str, t.Infra.InfraValue]:
         """Load import normalization configuration from YAML."""
-        rules_path = (
-            Path(__file__).resolve().parent.parent
-            / "rules"
-            / "import-normalization.yml"
-        )
-        loaded = FlextInfraUtilitiesImportNormalizer.yaml_load_mapping(rules_path)
-        root = loaded.get("import_normalization")
-        if u.is_mapping(root):
-            return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(root)
-        return {}
+        return _load_import_normalization_config()
 
     @staticmethod
     @lru_cache(maxsize=1)
     def alias_tiers() -> t.IntMapping:
         """Return configured alias-to-tier mapping."""
-        config = FlextInfraUtilitiesImportNormalizer.load_config().get(
+        config = FlextInfraUtilitiesImportNormalizer.load_import_config().get(
             "alias_tiers",
         )
         if not isinstance(config, Mapping):

@@ -29,6 +29,8 @@ class FlextInfraInternalImportDetector(FlextInfraScanFileMixin, p.Infra.Scanner)
         rope_project = ctx.rope_project
         if file_path.name == c.Infra.Files.INIT_PY:
             return []
+        current_package = u.Infra.discover_package_from_file(file_path)
+        current_root = current_package.split(".", 1)[0] if current_package else ""
         res = u.Infra.get_resource_from_path(rope_project, file_path)
         if res is None:
             return []
@@ -43,8 +45,28 @@ class FlextInfraInternalImportDetector(FlextInfraScanFileMixin, p.Infra.Scanner)
                 else "private symbol import",
             )
             for local, fqn in imports.items()
-            if "._" in fqn or local.startswith("_")
+            if local.startswith("_")
+            or (
+                "._" in fqn
+                and cls._is_first_party_private_import(
+                    fqn=fqn,
+                    current_root=current_root,
+                )
+            )
         ]
+
+    @staticmethod
+    def _is_first_party_private_import(*, fqn: str, current_root: str) -> bool:
+        root = fqn.split(".", 1)[0]
+        if root.startswith("flext_"):
+            return True
+        if current_root and root == current_root:
+            return True
+        return root in {
+            c.Infra.Directories.TESTS,
+            c.Infra.Directories.EXAMPLES,
+            c.Infra.Directories.SCRIPTS,
+        }
 
 
 __all__ = ["FlextInfraInternalImportDetector"]

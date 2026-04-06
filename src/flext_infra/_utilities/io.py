@@ -143,23 +143,6 @@ class FlextInfraUtilitiesIo:
         return data
 
     @staticmethod
-    def ensure_dir(path: Path) -> r[bool]:
-        """Create a directory and parents if they do not exist.
-
-        Args:
-            path: Directory path to ensure.
-
-        Returns:
-            r[bool] with True on success.
-
-        """
-        try:
-            path.mkdir(parents=True, exist_ok=True)
-        except OSError as exc:
-            return r[bool].fail(f"ensure_dir failed: {exc}")
-        return r[bool].ok(True)
-
-    @staticmethod
     def parse(text: str) -> r[t.Cli.JsonValue]:
         """Parse a JSON string.
 
@@ -225,10 +208,10 @@ class FlextInfraUtilitiesIo:
         return hashlib.sha256(content.encode(c.Infra.Encoding.DEFAULT)).hexdigest()
 
     @staticmethod
-    def sha256_file(path: Path) -> str:
+    def sha256_file(file_path: t.Cli.TextPath) -> str:
         """Compute SHA256 hex digest of a file on disk."""
         hasher = hashlib.sha256()
-        with path.open("rb") as handle:
+        with Path(file_path).open("rb") as handle:
             for chunk in iter(lambda: handle.read(1024 * 1024), b""):
                 hasher.update(chunk)
         return hasher.hexdigest()

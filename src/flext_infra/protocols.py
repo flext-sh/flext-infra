@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
-from flext_cli import p as _cli_p
+from flext_cli import FlextCliProtocols
 from flext_infra import (
     FlextInfraProtocolsBase,
     FlextInfraProtocolsCheck,
@@ -21,7 +21,7 @@ from flext_infra import (
 )
 
 
-class FlextInfraProtocols(_cli_p):
+class FlextInfraProtocols(FlextCliProtocols):
     """Structural contracts for flext-infra utilities and services.
 
     All parent protocols (Result, Config, DI, Service, etc.) are inherited

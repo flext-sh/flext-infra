@@ -10,11 +10,12 @@ from tests import m
 
 from flext_infra import FlextInfraNamespaceValidator
 
-_FIXTURES_DIR = Path(__file__).parent.parent / "fixtures" / "namespace_validator"
+_FIXTURES_DIR = Path(__file__).parent.parent.parent / "fixtures" / "namespace_validator"
 
 
 def _read_fixture(name: str) -> str:
-    return (_FIXTURES_DIR / name).read_text(encoding="utf-8")
+    fixture_name = name.replace(".py", ".pysrc") if name.endswith(".py") else name
+    return (_FIXTURES_DIR / fixture_name).read_text(encoding="utf-8")
 
 
 def _make_project_with_module(

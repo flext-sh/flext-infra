@@ -11,7 +11,7 @@ from tests import t, u
 pytest_plugins = ["flext_tests.conftest_plugin"]
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def infra_test_workspace(tmp_path: Path) -> Path:
     workspace = tmp_path / "workspace"
     src_pkg = workspace / "src" / "infra_pkg"

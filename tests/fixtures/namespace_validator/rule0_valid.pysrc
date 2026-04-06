@@ -1,0 +1,6 @@
+from __future__ import annotations
+
+
+class FlextTestModels:
+    class Domain:
+        pass

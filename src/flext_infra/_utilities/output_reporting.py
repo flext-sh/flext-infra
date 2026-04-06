@@ -174,7 +174,7 @@ class FlextInfraUtilitiesOutputReporting:
         lines: MutableSequence[str] = [
             sep,
             "FLEXT MRO Family Method Usage Census",
-            "Engine: libcst + stdlib ast | Infrastructure: flext_infra",
+            "Engine: rope + source visitors | Infrastructure: flext_infra",
             sep,
             (
                 f"\nClasses: {report.total_classes} | Methods: {report.total_methods}"

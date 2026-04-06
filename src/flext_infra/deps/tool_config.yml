@@ -505,7 +505,6 @@ tools:
       - implicitly-defined-attribute
       - inconsistent-inheritance
       - inconsistent-overload
-      - inconsistent-overload-default
       - invalid-annotation
       - invalid-argument
       - invalid-decorator
@@ -559,6 +558,7 @@ tools:
       - unused-coroutine
       - unused-ignore
       - variance-mismatch
+      - inconsistent-overload-default
     disabled-errors:
       - abstract-method-call
       - bad-override

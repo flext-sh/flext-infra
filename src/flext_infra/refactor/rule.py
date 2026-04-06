@@ -23,6 +23,12 @@ from flext_infra import (
 class FlextInfraRefactorRuleLoader:
     """Load and resolve refactor rules from YAML configuration files."""
 
+    _ENGINE_CONFIG_KEYS: tuple[str, ...] = (
+        "project_scan_dirs",
+        "ignore_patterns",
+        "file_extensions",
+    )
+
     def __init__(self, config_path: Path) -> None:
         """Initialize with path to the refactor engine configuration file."""
         self.config_path = config_path
@@ -36,6 +42,11 @@ class FlextInfraRefactorRuleLoader:
             )
             scope_raw = normalized.get("refactor_engine")
             scope_map = u.Infra.normalize_str_mapping(scope_raw)
+            scope_map = {
+                key: value
+                for key, value in scope_map.items()
+                if key in self._ENGINE_CONFIG_KEYS
+            }
             scope = m.Infra.EngineConfig.model_validate(scope_map)
             normalized["refactor_engine"] = scope.model_dump(mode="python")
             return r[Mapping[str, t.Infra.InfraValue]].ok(normalized)
@@ -161,6 +172,11 @@ class FlextInfraRefactorRuleLoader:
         config_map = u.Infra.normalize_str_mapping(config)
         scope_raw = config_map.get("refactor_engine")
         scope_map = u.Infra.normalize_str_mapping(scope_raw)
+        scope_map = {
+            key: value
+            for key, value in scope_map.items()
+            if key in self._ENGINE_CONFIG_KEYS
+        }
         return m.Infra.EngineConfig.model_validate(scope_map)
 
     @staticmethod

@@ -97,7 +97,7 @@ class TestPhaseValidate:
             return r[bool].ok(True)
 
         monkeypatch.setattr(
-            release_orchestrator_module.u.Infra,
+            release_orchestrator_module.u.Cli,
             "run_checked",
             staticmethod(_fake_run_checked),
         )

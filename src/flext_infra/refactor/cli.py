@@ -62,7 +62,7 @@ class FlextInfraCliRefactor:
                 ),
                 m.Cli.ResultCommandRoute(
                     name="census",
-                    help_text="Run AST/CST census of MRO family method usage",
+                    help_text="Run rope-oriented census of MRO family method usage",
                     model_cls=m.Infra.RefactorCensusInput,
                     handler=cls._handle_refactor_census,
                     failure_message="Census failed",

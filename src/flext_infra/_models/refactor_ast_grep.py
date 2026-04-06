@@ -1,42 +1,17 @@
-"""Ast-grep and MRO migration model mixins for refactor."""
+"""Refactor migration model mixins for rope-oriented orchestration."""
 
 from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AliasPath, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from flext_core import FlextModels
 from flext_infra import FlextInfraModelsMixins, c, t
 
 
 class FlextInfraRefactorGrepModels:
-    """Mixin containing ast-grep and migration model contracts."""
-
-    class GrepMatchEnvelope(FlextModels.ArbitraryTypesModel):
-        """Compact ast-grep envelope carrying file, symbol and location."""
-
-        model_config: ClassVar[ConfigDict] = ConfigDict(
-            populate_by_name=True,
-        )
-
-        file: Annotated[t.NonEmptyStr, Field(description="Matched file path")]
-        symbol_name: Annotated[
-            str | None,
-            Field(
-                default=None,
-                validation_alias=AliasPath("metaVariables", "single", "NAME", "text"),
-                description="Captured symbol name from ast-grep metadata",
-            ),
-        ]
-        start_line: Annotated[
-            int | None,
-            Field(
-                default=None,
-                validation_alias=AliasPath("range", "start", "line"),
-                description="Start line from ast-grep range",
-            ),
-        ]
+    """Mixin containing migration/reporting contracts for refactor orchestration."""
 
     class MROSymbolCandidate(
         FlextModels.ArbitraryTypesModel,

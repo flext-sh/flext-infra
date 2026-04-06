@@ -28,12 +28,13 @@ from flext_infra import (
     c,
     m,
     s,
+    t,
     u,
 )
 
 
 class FlextInfraCodegenFixer(s[str]):
-    """AST-based auto-fixer for namespace violations (Rules 1-5)."""
+    """Rope-oriented auto-fixer for namespace violations (Rules 1-5)."""
 
     dry_run: bool = Field(
         default=False, description="Preview changes without modifying files"
@@ -119,6 +120,7 @@ class FlextInfraCodegenFixer(s[str]):
         if self.dry_run or self.rules_only:
             ctx.violations_skipped.extend(initial_violations)
             return self._build_result(project_path.name, ctx)
+        self._normalize_canonical_facades(pkg_dir=pkg_dir, ctx=ctx)
         report = FlextInfraRefactorMigrateToClassMRO(
             workspace_root=project_path,
         ).run(target="all", apply=True)
@@ -225,6 +227,131 @@ class FlextInfraCodegenFixer(s[str]):
             initial_violations=initial_violations,
         )
         return self._build_result(project_path.name, ctx)
+
+    @classmethod
+    def _normalize_canonical_facades(
+        cls,
+        *,
+        pkg_dir: Path,
+        ctx: m.Infra.FixContext,
+    ) -> None:
+        cls._normalize_facade_base(
+            file_path=pkg_dir / c.Infra.Files.CONSTANTS_PY,
+            base_import="from flext_core import FlextConstants as Constants",
+            base_name="Constants",
+            ctx=ctx,
+        )
+        cls._normalize_facade_base(
+            file_path=pkg_dir / c.Infra.Files.TYPINGS_PY,
+            base_import="from flext_core import FlextTypes as Types",
+            base_name="Types",
+            ctx=ctx,
+        )
+
+    @staticmethod
+    def _normalize_facade_base(
+        *,
+        file_path: Path,
+        base_import: str,
+        base_name: str,
+        ctx: m.Infra.FixContext,
+    ) -> None:
+        if not file_path.is_file():
+            return
+        rope_project = u.Infra.init_rope_project(file_path.parent)
+        try:
+            resource = u.Infra.get_resource_from_path(rope_project, file_path)
+            if resource is None:
+                return
+            source = u.Infra.read_source(resource)
+            updated, class_name = FlextInfraCodegenFixer._normalize_facade_base_source(
+                rope_project=rope_project,
+                resource=resource,
+                source=source,
+                base_import=base_import,
+                base_name=base_name,
+            )
+            if updated == source or not class_name:
+                return
+            u.Infra.write_source(
+                rope_project,
+                resource,
+                updated,
+                description=f"normalize facade base in <{resource.path}>",
+            )
+        finally:
+            rope_project.close()
+        ctx.files_modified.add(str(file_path))
+        ctx.fix(
+            module=str(file_path),
+            rule="NAMESPACE",
+            line=1,
+            message=f"normalized {class_name} to inherit from {base_name}",
+        )
+
+    @staticmethod
+    def _normalize_facade_base_source(
+        *,
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+        source: str,
+        base_import: str,
+        base_name: str,
+    ) -> tuple[str, str]:
+        class_infos = sorted(
+            u.Infra.get_class_info(rope_project, resource),
+            key=lambda item: item.line,
+        )
+        if not class_infos:
+            return source, ""
+        class_name = class_infos[0].name
+        lines = source.splitlines()
+        header_idx = class_infos[0].line - 1
+        if header_idx < 0 or header_idx >= len(lines):
+            return source, ""
+        rewritten_header = FlextInfraCodegenFixer._normalize_class_header(
+            line=lines[header_idx],
+            class_name=class_name,
+            base_name=base_name,
+        )
+        if rewritten_header == lines[header_idx] and base_import in source:
+            return source, class_name
+        lines[header_idx] = rewritten_header
+        updated = "\n".join(lines)
+        if source.endswith("\n"):
+            updated += "\n"
+        if base_import not in updated:
+            updated = FlextInfraCodegenFixer._insert_import_line(
+                source=updated,
+                import_line=base_import,
+            )
+        return updated, class_name
+
+    @staticmethod
+    def _normalize_class_header(*, line: str, class_name: str, base_name: str) -> str:
+        stripped = line.strip()
+        prefix = f"class {class_name}"
+        if not stripped.startswith(prefix) or not stripped.endswith(":"):
+            return line
+        indent = line[: len(line) - len(line.lstrip())]
+        return f"{indent}class {class_name}({base_name}):"
+
+    @staticmethod
+    def _insert_import_line(*, source: str, import_line: str) -> str:
+        lines = source.splitlines()
+        if import_line in lines:
+            return source
+        insert_at = u.Infra.find_import_insert_position(lines, past_existing=False)
+        before = lines[:insert_at]
+        after = lines[insert_at:]
+        inserted: MutableSequence[str] = list(before)
+        if inserted and inserted[-1]:
+            inserted.append("")
+        inserted.append(import_line)
+        if after and after[0]:
+            inserted.append("")
+        inserted.extend(after)
+        return "\n".join(inserted) + ("\n" if source.endswith("\n") else "")
 
     @staticmethod
     def _namespace_violations(

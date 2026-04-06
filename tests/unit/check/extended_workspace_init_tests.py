@@ -83,11 +83,12 @@ class TestWorkspaceCheckerDirsWithPy:
 
 
 class TestWorkspaceCheckerResolveWorkspaceRootFallback:
-    """Test _resolve_workspace_root fallback."""
+    """Test resolve_workspace_root_or_cwd fallback."""
 
-    def test_resolve_workspace_root_fallback_to_cwd(self, tmp_path: Path) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
-        result = checker._resolve_workspace_root(None)
+    def test_resolve_workspace_root_fallback_to_cwd(self) -> None:
+        from flext_infra import u
+
+        result = u.Infra.resolve_workspace_root_or_cwd(None)
         tm.that(result.is_absolute(), eq=True)
 
 

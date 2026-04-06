@@ -25,7 +25,7 @@ class FlextInfraUtilitiesPatterns:
 
         from flext_infra import u
 
-        if u.Infra.matches("MYPY_HINT_RE", text):
+        if u.Infra.matches_pattern("MYPY_HINT_RE", text):
             ...
     """
 
@@ -129,7 +129,7 @@ class FlextInfraUtilitiesPatterns:
         return isinstance(value, re.Pattern)
 
     @staticmethod
-    def matches(pattern_name: str, text: str) -> bool:
+    def matches_pattern(pattern_name: str, text: str) -> bool:
         """Check if a pattern matches text.
 
         Dynamically retrieves a pattern class variable by name and searches

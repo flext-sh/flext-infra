@@ -96,6 +96,7 @@ if _t.TYPE_CHECKING:
         test_make_help_lists_supported_options,
         test_rendered_base_mk_declares_cli_group_roots,
         test_rendered_base_mk_forwards_canonical_root_in_workspace_preflight,
+        test_rendered_base_mk_sanitizes_workspace_sync_env,
     )
 
     from flext_core.constants import FlextConstants as c
@@ -352,6 +353,10 @@ _LAZY_IMPORTS = {
         "tests.unit.basemk.test_make_contract",
         "test_rendered_base_mk_forwards_canonical_root_in_workspace_preflight",
     ),
+    "test_rendered_base_mk_sanitizes_workspace_sync_env": (
+        "tests.unit.basemk.test_make_contract",
+        "test_rendered_base_mk_sanitizes_workspace_sync_env",
+    ),
     "u": ("flext_core.utilities", "FlextUtilities"),
     "x": ("flext_core.mixins", "FlextMixins"),
 }
@@ -431,6 +436,7 @@ __all__ = [
     "test_render_all_has_no_scripts_path_references",
     "test_rendered_base_mk_declares_cli_group_roots",
     "test_rendered_base_mk_forwards_canonical_root_in_workspace_preflight",
+    "test_rendered_base_mk_sanitizes_workspace_sync_env",
     "u",
     "x",
 ]

@@ -46,7 +46,7 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerPhasesMixin):
             py_files = list(
                 project_root.rglob(c.Infra.Extensions.PYTHON_GLOB),
             )
-            bak_paths = u.Infra.backup_files(py_files) if apply else []
+            bak_paths: Sequence[Path] = u.Infra.backup_files(py_files) if apply else []
             report = self._enforce_project(
                 project_root=project_root,
                 project_name=project_root.name,

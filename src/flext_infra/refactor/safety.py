@@ -53,6 +53,33 @@ class FlextInfraRefactorSafetyManager:
         self._bak_paths = []
         return r[bool].ok(True)
 
+    def save_checkpoint_state(
+        self,
+        workspace_root: Path,
+        *,
+        status: str,
+        stash_ref: str,
+        processed_targets: t.StrSequence,
+    ) -> r[bool]:
+        """Persist checkpoint metadata for the current refactor run.
+
+        The current safety flow relies on copy-on-write backups, so saving
+        checkpoint state is intentionally a no-op hook used by integrations
+        and tests to observe lifecycle sequencing.
+        """
+        _ = workspace_root, status, stash_ref, processed_targets
+        return r[bool].ok(True)
+
+    @staticmethod
+    def _is_no_tests_collected_error(message: str | None) -> bool:
+        """Return True when pytest exit code 5 only indicates no collected tests."""
+        if not message:
+            return False
+        normalized = message.lower()
+        return "failed (5):" in normalized and (
+            "no tests collected" in normalized or "no tests ran" in normalized
+        )
+
     def run_semantic_validation(self, workspace_root: Path) -> r[bool]:
         """Run import checks and tests against the workspace root."""
         if self._emergency_stop_reason:
@@ -63,10 +90,10 @@ class FlextInfraRefactorSafetyManager:
             [c.Infra.PYTHON, "-m", c.Infra.PYTEST, "--collect-only", "-q"],
             cwd=workspace_root,
         )
-        if ic.is_failure:
+        if ic.is_failure and not self._is_no_tests_collected_error(ic.error):
             return r[bool].fail(ic.error or "import validation failed")
         tc = u.Cli.run_checked(self._test_command, cwd=workspace_root)
-        if tc.is_failure:
+        if tc.is_failure and not self._is_no_tests_collected_error(tc.error):
             return r[bool].fail(tc.error or "test validation failed")
         return r[bool].ok(True)
 

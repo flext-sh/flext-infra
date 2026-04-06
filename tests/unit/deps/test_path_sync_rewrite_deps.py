@@ -190,10 +190,13 @@ def test_root_workspace_sources_cover_all_workspace_members(tmp_path: Path) -> N
     )
 
     tm.ok(result)
-    rendered = tomlkit.parse(pyproject.read_text(encoding="utf-8"))
+    rendered = tomlkit.parse(pyproject.read_text(encoding="utf-8")).unwrap()
     tool_table = rendered["tool"]
+    assert isinstance(tool_table, dict)
     uv_table = tool_table["uv"]
+    assert isinstance(uv_table, dict)
     sources = uv_table["sources"]
+    assert isinstance(sources, dict)
     tm.that(sorted(str(key) for key in sources), eq=["flext-api", "flext-core"])
     tm.that(sources["flext-api"]["workspace"], eq=True)
     tm.that(sources["flext-core"]["workspace"], eq=True)

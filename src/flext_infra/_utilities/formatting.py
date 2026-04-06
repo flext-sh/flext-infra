@@ -12,12 +12,12 @@ import contextlib
 from collections.abc import MutableSequence
 from pathlib import Path
 
-from flext_cli import FlextCliUtilitiesBase as _CliBase
+from flext_cli import u
 from flext_core import r
 from flext_infra import c, t
 
 
-class FlextInfraUtilitiesFormatting(_CliBase):
+class FlextInfraUtilitiesFormatting:
     """Static formatting utilities for code normalization.
 
     All methods are ``@staticmethod`` — no instantiation required.
@@ -53,7 +53,7 @@ class FlextInfraUtilitiesFormatting(_CliBase):
         check_cmd.append(str(path))
 
         def _run_checked(cmd: t.StrSequence) -> r[bool]:
-            return FlextInfraUtilitiesFormatting.run_checked(cmd)
+            return u.Cli.run_checked(cmd)
 
         def _require_success(result: r[bool]) -> None:
             if result.is_failure:

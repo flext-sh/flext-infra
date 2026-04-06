@@ -3,22 +3,14 @@
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
-
-from pydantic import TypeAdapter, ValidationError
 
 from flext_infra import c, m, r, t, u
 
 
 class FlextInfraRefactorLooseClassScanner:
-    """Scan a project tree and report top-level classes lacking namespace prefixes."""
-
-    _AST_GREP_MATCH_SEQ_ADAPTER: TypeAdapter[Sequence[m.Infra.GrepMatchEnvelope]] = (
-        TypeAdapter(
-            Sequence[m.Infra.GrepMatchEnvelope],
-        )
-    )
+    """Scan a project tree using rope and report loose top-level classes."""
 
     def scan(self, project_root: Path) -> r[t.Infra.ContainerDict]:
         """Scan *project_root*/src and return a violation report dict."""
@@ -29,28 +21,31 @@ class FlextInfraRefactorLooseClassScanner:
             )
             return out
         discovered_files: Sequence[Path] = files_result.value
-        grep_result = self._scan_with_ast_grep(project_root)
-        grep_index: Mapping[Path, t.IntMapping] = grep_result.unwrap_or({})
         violations: MutableSequence[m.Infra.LooseClassViolation] = []
         targets_found = dict.fromkeys(c.Infra.REQUIRED_CLASS_TARGETS, False)
         classes_scanned = 0
-        for fp in discovered_files:
-            parsed = self._scan_file_with_libcst(fp)
-            if parsed.is_failure:
-                continue
-            occurrences: Sequence[m.Infra.ClassOccurrence] = parsed.value
-            classes_scanned += len(occurrences)
-            rel = self._relative_module_path(project_root, fp)
-            if rel.is_failure:
-                continue
-            rel_path: Path = rel.value
-            for occ in occurrences:
-                viol = self._build_violation(rel_path, occ, grep_index.get(fp, {}))
-                if viol is None:
+        src_root = project_root / c.Infra.Paths.DEFAULT_SRC_DIR
+        rope_project = u.Infra.init_rope_project(src_root)
+        try:
+            for fp in discovered_files:
+                parsed = self._scan_file_with_rope(rope_project, fp)
+                if parsed.is_failure:
                     continue
-                violations.append(viol)
-                if viol.class_name in targets_found:
-                    targets_found[viol.class_name] = True
+                occurrences: Sequence[m.Infra.ClassOccurrence] = parsed.value
+                classes_scanned += len(occurrences)
+                rel = self._relative_module_path(project_root, fp)
+                if rel.is_failure:
+                    continue
+                rel_path: Path = rel.value
+                for occ in occurrences:
+                    viol = self._build_violation(rel_path, occ)
+                    if viol is None:
+                        continue
+                    violations.append(viol)
+                    if viol.class_name in targets_found:
+                        targets_found[viol.class_name] = True
+        finally:
+            rope_project.close()
         counters = Counter(v.confidence for v in violations)
         violations_infra: Sequence[t.Infra.InfraValue] = [
             v.model_dump() for v in violations
@@ -73,7 +68,6 @@ class FlextInfraRefactorLooseClassScanner:
         self,
         rel_path: Path,
         occ: m.Infra.ClassOccurrence,
-        grep_hits: t.IntMapping,
     ) -> m.Infra.LooseClassViolation | None:
         if not occ.is_top_level:
             return None
@@ -82,13 +76,9 @@ class FlextInfraRefactorLooseClassScanner:
             return None
         confidence = self._confidence_from_location(rel_path)
         score = c.Infra.CONFIDENCE_TO_SCORE[confidence]
-        line = occ.line
-        if occ.name in grep_hits:
-            score = min(score + 0.02, 0.99)
-            line = grep_hits[occ.name]
         return m.Infra.LooseClassViolation(
             file=rel_path.as_posix(),
-            line=max(line, 1),
+            line=max(occ.line, 1),
             class_name=occ.name,
             expected_prefix=prefix,
             rule=c.Infra.ReportKeys.CLASS_NESTING,
@@ -144,11 +134,11 @@ class FlextInfraRefactorLooseClassScanner:
             out2: r[Path] = r[Path].fail(str(exc))
             return out2
 
-    def _scan_file_with_libcst(
+    def _scan_file_with_rope(
         self,
+        rope_project: t.Infra.RopeProject,
         file_path: Path,
     ) -> r[Sequence[m.Infra.ClassOccurrence]]:
-        rope_project = u.Infra.init_rope_project(file_path.parent)
         res = u.Infra.get_resource_from_path(rope_project, file_path)
         if res is None:
             out: r[Sequence[m.Infra.ClassOccurrence]] = r[
@@ -164,53 +154,6 @@ class FlextInfraRefactorLooseClassScanner:
             for ci in u.Infra.get_class_info(rope_project, res)
         ]
         return r[Sequence[m.Infra.ClassOccurrence]].ok(classes)
-
-    def _scan_with_ast_grep(
-        self,
-        project_root: Path,
-    ) -> r[Mapping[Path, t.IntMapping]]:
-        cmd = [
-            "sg",
-            "--pattern",
-            "class $NAME",
-            "--lang",
-            c.Infra.PYTHON,
-            "--json",
-            str(project_root / c.Infra.Paths.DEFAULT_SRC_DIR),
-        ]
-        capture = u.Cli.capture(cmd)
-        if capture.is_failure:
-            out: r[Mapping[Path, t.IntMapping]] = r[Mapping[Path, t.IntMapping]].fail(
-                capture.error or "ast-grep failed",
-            )
-            return out
-        if not capture.value:
-            out2: r[Mapping[Path, t.IntMapping]] = r[Mapping[Path, t.IntMapping]].ok({})
-            return out2
-        try:
-            json_raw: str | bytes | bytearray = capture.value
-            entries: Sequence[m.Infra.GrepMatchEnvelope] = (
-                self._AST_GREP_MATCH_SEQ_ADAPTER.validate_json(json_raw)
-            )
-        except ValidationError as exc:
-            out3: r[Mapping[Path, t.IntMapping]] = r[Mapping[Path, t.IntMapping]].fail(
-                str(exc)
-            )
-            return out3
-        idx: MutableMapping[Path, t.MutableIntMapping] = {}
-        for entry in entries:
-            name = entry.symbol_name
-            if name is None:
-                continue
-            line = 1
-            if entry.start_line is not None and entry.start_line > 0:
-                line = entry.start_line
-            fp = Path(entry.file)
-            if not fp.is_absolute():
-                fp = (project_root / fp).resolve()
-            idx.setdefault(fp, {}).setdefault(name, line)
-        out4: r[Mapping[Path, t.IntMapping]] = r[Mapping[Path, t.IntMapping]].ok(idx)
-        return out4
 
 
 __all__ = ["FlextInfraRefactorLooseClassScanner"]

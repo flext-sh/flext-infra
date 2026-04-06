@@ -236,8 +236,24 @@ class FlextInfraRefactorEngineHelpersMixin:
         *,
         target: Path,
         stash_ref: str,
+        processed_targets: Sequence[str],
         results: MutableSequence[m.Infra.Result],
     ) -> None:
+        checkpoint = self.safety_manager.save_checkpoint_state(
+            target,
+            status="post-transform",
+            stash_ref=stash_ref,
+            processed_targets=processed_targets,
+        )
+        if checkpoint.is_failure:
+            msg = checkpoint.error or "checkpoint save failed"
+            self.safety_manager.request_emergency_stop(msg)
+            u.Infra.refactor_error(msg)
+            rb = self.safety_manager.rollback(target, stash_ref)
+            if rb.is_failure:
+                u.Infra.refactor_error(rb.error or "rollback failed")
+            results.append(self._error_result(target, msg))
+            return
         val = self.safety_manager.run_semantic_validation(target)
         if val.is_failure:
             msg = val.error or "semantic validation failed"
@@ -286,7 +302,10 @@ class FlextInfraRefactorEngineHelpersMixin:
         results.extend(u.Infra.run_rope_post_hooks(project_path, dry_run=dry_run))
         if apply_safety and not dry_run:
             self._finalize_safety(
-                target=project_path, stash_ref=stash_ref, results=results
+                target=project_path,
+                stash_ref=stash_ref,
+                processed_targets=[str(project_path)],
+                results=results,
             )
         return results
 
@@ -337,7 +356,12 @@ class FlextInfraRefactorEngineHelpersMixin:
                 processed.append(str(proj))
         results.extend(u.Infra.run_rope_post_hooks(root, dry_run=dry_run))
         if apply_safety and not dry_run:
-            self._finalize_safety(target=root, stash_ref=stash_ref, results=results)
+            self._finalize_safety(
+                target=root,
+                stash_ref=stash_ref,
+                processed_targets=processed,
+                results=results,
+            )
         return results
 
 

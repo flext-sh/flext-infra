@@ -23,8 +23,8 @@ class TestFlextInfraProtocolsImport:
         assert hasattr(p.Infra, "ProjectInfo")
 
     def test_flext_infra_protocols_has_command_output_protocol(self) -> None:
-        """Test that CommandOutput is defined."""
-        assert hasattr(p.Infra, "CommandOutput")
+        """Test that CommandOutput is defined in CLI namespace."""
+        assert hasattr(p.Cli, "CommandOutput")
 
     def test_flext_infra_protocols_has_checker_protocol(self) -> None:
         """Test that Checker is defined."""
@@ -55,8 +55,8 @@ class TestFlextInfraProtocolsImport:
         assert hasattr(p.Infra, "Discovery")
 
     def test_flext_infra_protocols_has_command_runner_protocol(self) -> None:
-        """Test that CommandRunner is defined."""
-        assert hasattr(p.Infra, "CommandRunner")
+        """Test that CommandRunner is defined in CLI namespace."""
+        assert hasattr(p.Cli, "CommandRunner")
 
     def test_runtime_alias_p_is_flext_infra_protocols(self) -> None:
         """Test that p has the same Infra namespace as FlextInfraProtocols."""

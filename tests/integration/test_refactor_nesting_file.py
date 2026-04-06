@@ -35,7 +35,7 @@ def _apply_rule(
 def test_class_nesting_refactor_single_file_end_to_end(tmp_path: Path) -> None:
     """Verify class nesting refactor handles unknown module families gracefully."""
     fixture_file = (
-        Path(__file__).parent.parent / "fixtures/namespace_validator/rule0_valid.py"
+        Path(__file__).parent.parent / "fixtures/namespace_validator/rule0_valid.pysrc"
     )
     source = fixture_file.read_text(encoding="utf-8")
     utilities_dir = tmp_path / "_utilities"

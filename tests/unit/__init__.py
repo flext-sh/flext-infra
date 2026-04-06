@@ -100,6 +100,7 @@ if _t.TYPE_CHECKING:
         test_render_all_has_no_scripts_path_references,
         test_rendered_base_mk_declares_cli_group_roots,
         test_rendered_base_mk_forwards_canonical_root_in_workspace_preflight,
+        test_rendered_base_mk_sanitizes_workspace_sync_env,
     )
 
     check = _tests_unit_check
@@ -2455,6 +2456,7 @@ __all__ = [
     "test_render_all_has_no_scripts_path_references",
     "test_rendered_base_mk_declares_cli_group_roots",
     "test_rendered_base_mk_forwards_canonical_root_in_workspace_preflight",
+    "test_rendered_base_mk_sanitizes_workspace_sync_env",
     "test_replace_project_version",
     "test_replaces_container_union",
     "test_replaces_numeric_union",

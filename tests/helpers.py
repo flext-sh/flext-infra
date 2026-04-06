@@ -51,7 +51,9 @@ class FlextInfraTestHelpers:
     # ── Assertions ───────────────────────────────────────────────────
 
     @staticmethod
-    def assert_ok[TResult: t.Tests.Testobject](result: r[TResult]) -> TResult:
+    def assert_ok[TResult: t.Tests.TestobjectSerializable](
+        result: r[TResult],
+    ) -> TResult:
         """Assert r success and return unwrapped value.
 
         Args:
@@ -67,7 +69,7 @@ class FlextInfraTestHelpers:
         return tm.ok(result)
 
     @staticmethod
-    def assert_fail[TResult: t.Tests.Testobject](
+    def assert_fail[TResult: t.Tests.TestobjectSerializable](
         result: r[TResult],
         contains: str | None = None,
     ) -> str:

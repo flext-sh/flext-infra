@@ -15,10 +15,18 @@ from typing import Annotated, Self, overload, override
 
 from pydantic import Field
 
-from flext_infra import FlextInfraBaseMkGenerator, c, m, r, s, t, u
+from flext_infra import (
+    FlextInfraBaseMkGenerator,
+    FlextInfraCommandContext,
+    c,
+    m,
+    r,
+    t,
+    u,
+)
 
 
-class FlextInfraSyncService(s[m.Infra.SyncResult]):
+class FlextInfraSyncService(FlextInfraCommandContext[m.Infra.SyncResult]):
     """Infrastructure service for workspace base.mk synchronization.
 
     Generates a fresh base.mk via ``FlextInfraBaseMkGenerator``, compares its SHA256
@@ -46,12 +54,7 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
 
     def _resolved_workspace_root(self) -> Path:
         """Return the validated workspace root from the command context."""
-        raw = getattr(self, "workspace_root", None)
-        if isinstance(raw, Path):
-            return raw.resolve()
-        if isinstance(raw, str) and raw.strip():
-            return Path(raw).resolve()
-        return Path.cwd().resolve()
+        return self.workspace_root.resolve()
 
     @override
     def execute(self) -> r[m.Infra.SyncResult]:

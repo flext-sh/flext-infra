@@ -1,6 +1,6 @@
 """Usage census orchestrator logic.
 
-Delegates core file crawling and parsing to `u.Infra` and regex-based visitors.
+Delegates core file crawling to `u.Infra` and applies rope-oriented discovery.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -76,7 +76,7 @@ class FlextInfraRefactorCensus:
         inner = u.Infra.build_facade_inner_class_map(facade, target.facade_class_prefix)
 
         # 4. Scanning & Visitors
-        u.Infra.progress(4, 5, "scan-files", "libcst")
+        u.Infra.progress(4, 5, "scan-files", "rope+visitors")
         files_result = u.Infra.iter_workspace_python_modules(
             workspace_root,
             exclude_packages=frozenset({target.core_project}),
