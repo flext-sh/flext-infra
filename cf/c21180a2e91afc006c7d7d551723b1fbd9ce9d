@@ -1,0 +1,61 @@
+src/flext_infra/services/pipeline.py
+  6cff451c18d7ce6e 6,23-31,58-59,63,132,135-137,150-151,156-159,175,180-182,198,204-206,222,226-228,242-243,249-251,267-271
+tests/unit/github/main_tests.py
+  ed06264c3f07e70f 12,45,60,81,104,123,146,163,182,208,225,245
+tests/unit/github/main_integration_tests.py
+  ed06264c3f07e70f 9,11,52,72,118,143,183
+tests/unit/check/extended_workspace_init_tests.py
+  ed06264c3f07e70f 15
+src/flext_infra/release/orchestrator.py
+  6cff451c18d7ce6e 241
+tests/unit/github/main_dispatch_tests.py
+  ed06264c3f07e70f 9,11,38,57,82,115,143,171,199
+tests/unit/codegen/pipeline_tests.py
+  ed06264c3f07e70f 170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "cfc21180a2e91afc006c7d7d551723b1fbd9ce9d",
+  "prompts": {
+    "6cff451c18d7ce6e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "402d2823-dbda-4a2a-a6e4-189ba4b8a964",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 75,
+      "total_deletions": 65,
+      "accepted_lines": 48,
+      "overriden_lines": 0
+    },
+    "851db9fe50f869f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17a80e18-13b2-40de-b145-9cd2e136d4ec",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    },
+    "ed06264c3f07e70f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3c479ce-c75f-432e-8929-7a3082f1d8a3",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 36,
+      "total_deletions": 38,
+      "accepted_lines": 31,
+      "overriden_lines": 2
+    }
+  }
+}
