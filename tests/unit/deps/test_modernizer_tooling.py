@@ -48,8 +48,16 @@ class TestEnsureFormattingToolingPhase:
         _ = FlextInfraEnsureFormattingToolingPhase(tool_config).apply(doc)
 
         tool = _mapping(_doc_mapping(doc)["tool"])
+        codespell = _mapping(tool["codespell"])
         tomlsort = _mapping(tool["tomlsort"])
         yamlfix = _mapping(tool["yamlfix"])
+        assert (
+            codespell["check-filenames"] == tool_config.tools.codespell.check_filenames
+        )
+        assert (
+            codespell["ignore-words-list"]
+            == tool_config.tools.codespell.ignore_words_list
+        )
         assert tomlsort["all"] == tool_config.tools.tomlsort.all
         assert tomlsort["in_place"] == tool_config.tools.tomlsort.in_place
         assert list(_strings(tomlsort["sort_first"])) == sorted(
@@ -73,6 +81,25 @@ class TestEnsureFormattingToolingPhase:
         second_changes = phase.apply(doc)
 
         tm.that(second_changes, eq=[])
+
+    def test_apply_removes_codespell_skip(self) -> None:
+        tool_config = _test_tool_config()
+        phase = FlextInfraEnsureFormattingToolingPhase(tool_config)
+        doc = tomlkit.parse(
+            """
+[tool.codespell]
+check-filenames = true
+ignore-words-list = "crate,nd"
+skip = ".git,poetry.lock"
+""",
+        )
+
+        changes = phase.apply(doc)
+
+        tool = _mapping(_doc_mapping(doc)["tool"])
+        codespell = _mapping(tool["codespell"])
+        assert "skip" not in codespell
+        tm.that(changes, has="removed codespell.skip hardcode")
 
 
 class TestEnsureNamespaceToolingPhase:

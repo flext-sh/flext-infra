@@ -61,38 +61,15 @@ class FlextInfraExtraPathsPyrefly:
             project_dir,
             configured_typings,
         )
-        paths: t.Infra.StrSet = {source_root, *typings_paths}
-        if is_root:
-            local_dirs = self._existing_relative_paths(
-                project_dir,
-                rules.env_dirs,
-            )
-            paths.update(local_dirs)
-            if rules.workspace_include_children:
-                child_env_dirs = set(rules.workspace_include_child_env_dirs)
-                for child in sorted(project_dir.iterdir()):
-                    if not child.is_dir():
-                        continue
-                    if not (child / c.Infra.Files.PYPROJECT_FILENAME).exists():
-                        continue
-                    paths.add(child.name)
-                    for env_dir in sorted(child_env_dirs):
-                        child_env = child / env_dir
-                        if child_env.is_dir():
-                            paths.add(f"{child.name}/{env_dir}")
-            return sorted(paths)
-        if rules.include_path_dependencies_in_search_path:
-            project_pyproject = project_dir / c.Infra.Files.PYPROJECT_FILENAME
-            doc_result = u.Cli.toml_read_document(project_pyproject)
-            if doc_result.is_success:
-                dep_paths = resolver.get_dep_paths(doc_result.value, is_root=False)
-                paths.update(dep_paths)
-        shared_paths = self._existing_relative_paths(
+        local_dirs = self._existing_relative_paths(
             project_dir,
-            rules.project_shared_search_paths,
+            rules.env_dirs,
         )
-        paths.update(shared_paths)
-        paths.add(rules.project_root)
+        paths: t.Infra.StrSet = {*typings_paths, *local_dirs}
+        if (not paths) and (project_dir / source_root).is_dir():
+            paths.add(source_root)
+        if (not paths) and (project_dir / rules.project_root).is_dir():
+            paths.add(rules.project_root)
         return sorted(paths)
 
     def pyrefly_project_includes(

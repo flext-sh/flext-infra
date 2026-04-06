@@ -14,6 +14,24 @@ from flext_infra import t
 class FlextInfraDepsModelsToolConfigLinters:
     """Linters tool configuration models."""
 
+    class CodespellConfig(m.ArbitraryTypesModel):
+        """Codespell settings loaded from YAML."""
+
+        check_filenames: Annotated[
+            bool,
+            Field(
+                alias="check-filenames",
+                description="Check filenames in addition to file contents.",
+            ),
+        ]
+        ignore_words_list: Annotated[
+            str,
+            Field(
+                alias="ignore-words-list",
+                description="Comma-separated allowlist for known project terms.",
+            ),
+        ] = ""
+
     class RuffFormatConfig(m.ArbitraryTypesModel):
         """Ruff format settings loaded from YAML."""
 

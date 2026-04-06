@@ -188,7 +188,7 @@ class TestConstants:
         tm.that(manager.ROOT.is_absolute(), eq=True)
 
 
-def test_pyrefly_search_paths_include_workspace_declared_dev_dependencies(
+def test_pyrefly_search_paths_only_use_local_project_dirs(
     tmp_path: Path,
 ) -> None:
     consumer = tmp_path / "flext-core"
@@ -225,5 +225,4 @@ def test_pyrefly_search_paths_include_workspace_declared_dev_dependencies(
     manager = FlextInfraExtraPathsManager(workspace_root=tmp_path)
     result = manager.pyrefly_search_paths(project_dir=consumer, is_root=False)
 
-    tm.that(result, has="../flext-infra/src")
-    tm.that(result, has="../flext-tests/src")
+    tm.that(result, eq=["src"])

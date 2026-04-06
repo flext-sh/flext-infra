@@ -127,6 +127,9 @@ class FlextInfraDepsModelsToolConfig(
     class ToolConfigTools(m.ArbitraryTypesModel):
         """Tool map loaded from YAML."""
 
+        codespell: FlextInfraDepsModelsToolConfig.CodespellConfig = Field(
+            description="Codespell config"
+        )
         ruff: FlextInfraDepsModelsToolConfig.RuffConfig = Field(
             description="Ruff config"
         )

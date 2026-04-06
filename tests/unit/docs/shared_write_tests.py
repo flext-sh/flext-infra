@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import json
 import pathlib
 from pathlib import Path
 
@@ -79,7 +78,7 @@ class TestWriteJson:
         json_file = tmp_path / "readable.json"
         payload: t.Infra.CensusRecord = {"key": "value", "number": 42}
         _ = u.Cli.json_write(json_file, payload)
-        content = json.loads(json_file.read_text())
+        content = u.Cli.json_read(json_file).unwrap_or({})
         tm.that(content["key"], eq="value")
         tm.that(content["number"], eq=42)
 

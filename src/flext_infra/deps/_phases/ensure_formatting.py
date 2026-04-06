@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from flext_infra import FlextInfraToml, m, t
+from flext_infra import FlextInfraToml, m, t, u
 
 
 class FlextInfraEnsureFormattingToolingPhase:
@@ -12,6 +12,21 @@ class FlextInfraEnsureFormattingToolingPhase:
         self._tool_config = tool_config
 
     def apply(self, doc: t.Cli.TomlDocument) -> t.StrSequence:
+        codespell_builder = (
+            m.Infra.TomlPhaseConfig
+            .Builder("codespell")
+            .table("codespell")
+            .value(
+                "check-filenames",
+                self._tool_config.tools.codespell.check_filenames,
+            )
+        )
+        if self._tool_config.tools.codespell.ignore_words_list:
+            codespell_builder = codespell_builder.value(
+                "ignore-words-list",
+                self._tool_config.tools.codespell.ignore_words_list,
+            )
+        codespell_phase = codespell_builder.build()
         tomlsort_phase = (
             m.Infra.TomlPhaseConfig
             .Builder("tomlsort")
@@ -41,4 +56,18 @@ class FlextInfraEnsureFormattingToolingPhase:
             )
             .build()
         )
-        return FlextInfraToml.apply_phases(doc, tomlsort_phase, yamlfix_phase)
+        changes = FlextInfraToml.apply_phases(
+            doc,
+            codespell_phase,
+            tomlsort_phase,
+            yamlfix_phase,
+        )
+        tool_table = u.Cli.toml_get_table(doc, "tool")
+        if tool_table is None:
+            return changes
+        codespell_table = u.Cli.toml_get_table(tool_table, "codespell")
+        if codespell_table is None or "skip" not in codespell_table:
+            return changes
+        del codespell_table["skip"]
+        changes.append("removed codespell.skip hardcode")
+        return changes

@@ -55,6 +55,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
             .table(c.Infra.PYREFLY)
             .value(c.Infra.PYTHON_VERSION_HYPHEN, pyrefly_rules.python_version)
             .deprecated("python-interpreter-path")
+            .deprecated("disable-search-path-heuristics")
             .value(
                 c.Infra.IGNORE_ERRORS_IN_GENERATED,
                 pyrefly_rules.ignore_errors_in_generated_code,
