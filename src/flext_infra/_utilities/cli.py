@@ -10,13 +10,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from argparse import ArgumentParser, Namespace
+from argparse import ArgumentParser
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Annotated
 
 from pydantic import Field
-from pydantic.config import JsonDict
 
 from flext_cli import FlextCliUtilities
 from flext_infra import (
@@ -37,7 +36,7 @@ class FlextInfraUtilitiesCli(FlextInfraUtilitiesCliShared):
     """
 
     @staticmethod
-    def apply_option_json_schema_extra(schema: JsonDict) -> None:
+    def apply_option_json_schema_extra(schema: t.Infra.JsonDict) -> None:
         """Inject Typer dual-flag metadata using a Pydantic-supported hook."""
         schema["typer_param_decls"] = list(c.Infra.Cli.APPLY_OPTION_DECLS)
 
@@ -104,7 +103,7 @@ class FlextInfraUtilitiesCli(FlextInfraUtilitiesCliShared):
         subcommands: t.StrMapping,
         flags: FlextInfraUtilitiesCli.SharedFlags | None = None,
         subcommand_flags: Mapping[str, t.BoolMapping] | None = None,
-    ) -> t.Infra.Pair[ArgumentParser, Mapping[str, ArgumentParser]]:
+    ) -> t.Infra.Pair[t.Infra.CliArgumentParser, Mapping[str, t.Infra.CliArgumentParser]]:
         """Create main parser with subcommands and shared flags."""
         return FlextInfraUtilitiesCliSubcommand.create_subcommand_parser(
             prog,
@@ -120,7 +119,7 @@ class FlextInfraUtilitiesCli(FlextInfraUtilitiesCliShared):
         description: str,
         *,
         flags: FlextInfraUtilitiesCli.SharedFlags | None = None,
-    ) -> ArgumentParser:
+    ) -> t.Infra.CliArgumentParser:
         """Create a standard ArgumentParser with common CLI flags.
 
         Args:
@@ -139,11 +138,11 @@ class FlextInfraUtilitiesCli(FlextInfraUtilitiesCliShared):
 
     @staticmethod
     def parse_subcommand_args(
-        parser: ArgumentParser,
+        parser: t.Infra.CliArgumentParser,
         argv: t.StrSequence | None = None,
         *,
         passthrough_subcommands: t.StrSequence | None = None,
-    ) -> Namespace:
+    ) -> t.Infra.CliNamespace:
         """Parse and validate subcommand args against per-command shared flags."""
         return FlextInfraUtilitiesCliSubcommand.parse_subcommand_args(
             parser,
@@ -152,7 +151,7 @@ class FlextInfraUtilitiesCli(FlextInfraUtilitiesCliShared):
         )
 
     @staticmethod
-    def resolve(args: Namespace) -> FlextInfraUtilitiesCli.CliArgs:
+    def resolve(args: t.Infra.CliNamespace) -> FlextInfraUtilitiesCli.CliArgs:
         """Resolve parsed arguments into a typed CliArgs model.
 
         Args:

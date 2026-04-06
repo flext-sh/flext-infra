@@ -9,7 +9,7 @@ from typing import Annotated
 from pydantic import Field, model_validator
 
 from flext_core import u
-from flext_infra import m, t
+from flext_infra import m, p, t
 
 
 class FlextInfraUtilitiesCliShared:
@@ -70,7 +70,7 @@ class FlextInfraUtilitiesCliShared:
 
     @staticmethod
     def _add_shared_flags(
-        parser: ArgumentParser,
+        parser: t.Infra.CliArgumentParser,
         flags: FlextInfraUtilitiesCliShared.SharedFlags,
         *,
         suppress_defaults: bool = False,

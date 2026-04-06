@@ -6,12 +6,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import argparse as _argparse
 import ast as _ast
+import re as _re
 from collections.abc import Callable, Mapping, MutableMapping, MutableSequence, Sequence
+from io import TextIOBase as _TextIOBase
 from pathlib import Path as _Path
 from typing import TYPE_CHECKING
 
 from pydantic import BaseModel
+from pydantic.config import JsonDict as _JsonDict
 
 from flext_core import FlextTypes
 
@@ -25,6 +29,16 @@ if TYPE_CHECKING:
 class FlextInfraTypesBase:
     """Base typings for flext-infra project."""
 
+    type CliArgumentParser = _argparse.ArgumentParser
+    "argparse ArgumentParser for CLI command definitions."
+    type CliNamespace = _argparse.Namespace
+    "argparse Namespace for parsed CLI arguments."
+    type JsonDict = _JsonDict
+    "Pydantic JSON schema dict (used by json_schema_extra callbacks)."
+    type RegexPattern = _re.Pattern[str]
+    "Compiled regex pattern for string matching."
+    type TextStream = _TextIOBase
+    "Text I/O stream (file-like object with write/read)."
     type JinjaEnvironment = _JinjaEnvironment
     "Jinja2 template rendering environment."
     type JinjaTemplate = _JinjaTemplate

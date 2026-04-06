@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 import tempfile
 from pathlib import Path
-from typing import Annotated, TextIO, override
+from typing import Annotated, override
 
 from pydantic import Field
 
@@ -59,7 +59,7 @@ class FlextInfraBaseMkGenerator(s[str]):
         content: str,
         *,
         output: Path | None = None,
-        stream: TextIO | None = None,
+        stream: p.Infra.OutputStream | None = None,
     ) -> r[bool]:
         """Write generated content to file or stream."""
         if output is None:
