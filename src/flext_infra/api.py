@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import importlib
 from typing import TYPE_CHECKING, ClassVar, Self, override
 
 from flext_core import r
@@ -28,6 +29,11 @@ if TYPE_CHECKING:
     from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
     from flext_infra.validate.scanner import FlextInfraTextPatternScanner
     from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
+
+
+def _load(module: str, name: str) -> type:
+    """Lazy-load a class from a module to avoid circular imports."""
+    return getattr(importlib.import_module(module), name)  # type: ignore[no-any-return]
 
 
 class FlextInfra(FlextInfraServiceBase[bool]):
@@ -68,65 +74,47 @@ class FlextInfra(FlextInfraServiceBase[bool]):
     @staticmethod
     def basemk() -> type[FlextInfraBaseMkGenerator]:
         """Return the base.mk template generator class."""
-        from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
-
-        return FlextInfraBaseMkGenerator
+        return _load("flext_infra.basemk.generator", "FlextInfraBaseMkGenerator")
 
     @staticmethod
     def check() -> type[FlextInfraWorkspaceChecker]:
         """Return the workspace quality-gate checker class."""
-        from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-
-        return FlextInfraWorkspaceChecker
+        return _load("flext_infra.check.workspace_check", "FlextInfraWorkspaceChecker")
 
     @staticmethod
     def codegen() -> type[FlextInfraCodegenFixer]:
         """Return the codegen fixer class."""
-        from flext_infra.codegen.fixer import FlextInfraCodegenFixer
-
-        return FlextInfraCodegenFixer
+        return _load("flext_infra.codegen.fixer", "FlextInfraCodegenFixer")
 
     @staticmethod
     def deps() -> type[FlextInfraPyprojectModernizer]:
         """Return the pyproject.toml modernizer class."""
-        from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
-
-        return FlextInfraPyprojectModernizer
+        return _load("flext_infra.deps.modernizer", "FlextInfraPyprojectModernizer")
 
     @staticmethod
     def github() -> type[FlextInfraGithubService]:
         """Return the GitHub operations service class."""
-        from flext_infra.github.service import FlextInfraGithubService
-
-        return FlextInfraGithubService
+        return _load("flext_infra.github.service", "FlextInfraGithubService")
 
     @staticmethod
     def refactor() -> type[FlextInfraRefactorEngine]:
         """Return the rope-based refactor engine class."""
-        from flext_infra.refactor.engine import FlextInfraRefactorEngine
-
-        return FlextInfraRefactorEngine
+        return _load("flext_infra.refactor.engine", "FlextInfraRefactorEngine")
 
     @staticmethod
     def release() -> type[FlextInfraReleaseOrchestrator]:
         """Return the release orchestrator class."""
-        from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
-
-        return FlextInfraReleaseOrchestrator
+        return _load("flext_infra.release.orchestrator", "FlextInfraReleaseOrchestrator")
 
     @staticmethod
     def validate_scanner() -> type[FlextInfraTextPatternScanner]:
         """Return the text-pattern validation scanner class."""
-        from flext_infra.validate.scanner import FlextInfraTextPatternScanner
-
-        return FlextInfraTextPatternScanner
+        return _load("flext_infra.validate.scanner", "FlextInfraTextPatternScanner")
 
     @staticmethod
     def workspace() -> type[FlextInfraOrchestratorService]:
         """Return the workspace orchestrator service class."""
-        from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
-
-        return FlextInfraOrchestratorService
+        return _load("flext_infra.workspace.orchestrator", "FlextInfraOrchestratorService")
 
 
 __all__ = ["FlextInfra"]
