@@ -1,0 +1,36 @@
+src/flext_infra/api.py
+  851db9fe50f869f3 16,34-38,77,82,87,92,97,102,107,112,117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "9b6a63ae88a829c91cb2980f7fb76514c3c89c1c",
+  "prompts": {
+    "851db9fe50f869f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17a80e18-13b2-40de-b145-9cd2e136d4ec",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 190,
+      "total_deletions": 177,
+      "accepted_lines": 33,
+      "overriden_lines": 18
+    },
+    "a76a993d62d454b0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "618a25e1-4dba-4d13-b1c4-184026969e81",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 756,
+      "total_deletions": 495,
+      "accepted_lines": 10,
+      "overriden_lines": 105
+    }
+  }
+}
