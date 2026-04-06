@@ -1,0 +1,56 @@
+src/flext_infra/deps/_phases/ensure_pyright.py
+  a76a993d62d454b0 153,171-172
+src/flext_infra/_utilities/deps_paths.py
+  a76a993d62d454b0 152-153,155
+src/flext_infra/_utilities/github.py
+  a76a993d62d454b0 51-55,75,125
+src/flext_infra/deps/_phases/ensure_namespace.py
+  a76a993d62d454b0 7,21-23,25,27
+src/flext_infra/check/_workspace_check_gates.py
+  a76a993d62d454b0 104-105,197-198,206-207
+src/flext_infra/_constants/base.py
+  a76a993d62d454b0 187-193
+src/flext_infra/deps/_phases/ensure_pydantic_mypy.py
+  a76a993d62d454b0 5,15-19,22,24-25,27-28
+tests/unit/deps/test_modernizer_main_extra.py
+  a76a993d62d454b0 99
+src/flext_infra/_models/refactor_namespace_enforcer.py
+  851db9fe50f869f3 141-196,225-228
+tests/unit/docs/shared_write_tests.py
+  a76a993d62d454b0 1,19
+src/flext_infra/deps/_phases/ensure_ruff.py
+  a76a993d62d454b0 8,27,71-77,86-87,90,92,97,100-101,110-111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "7290c4e52aa8ce533801826295e93f355b48976b",
+  "prompts": {
+    "851db9fe50f869f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17a80e18-13b2-40de-b145-9cd2e136d4ec",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 60,
+      "total_deletions": 43,
+      "accepted_lines": 65,
+      "overriden_lines": 4
+    },
+    "a76a993d62d454b0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "618a25e1-4dba-4d13-b1c4-184026969e81",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 870,
+      "total_deletions": 879,
+      "accepted_lines": 127,
+      "overriden_lines": 207
+    }
+  }
+}
