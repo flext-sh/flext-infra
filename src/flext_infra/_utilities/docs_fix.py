@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-import re
 from collections.abc import Sequence
 from pathlib import Path
 
 from flext_cli import u
-from flext_infra import c, m, t
-from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
-from flext_infra._utilities.patterns import FlextInfraUtilitiesPatterns
+from flext_infra import FlextInfraUtilitiesDocs, FlextInfraUtilitiesPatterns, c, m, t
 
 
 class FlextInfraUtilitiesDocsFix:
@@ -49,7 +46,7 @@ class FlextInfraUtilitiesDocsFix:
         )
         link_count = 0
 
-        def replace_link(match: re.Match[str]) -> str:
+        def replace_link(match: t.Infra.RegexMatch) -> str:
             nonlocal link_count
             text, link = match.groups()
             fixed = FlextInfraUtilitiesDocsFix.docs_maybe_fix_link(md_file, link)

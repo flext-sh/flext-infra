@@ -38,7 +38,9 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
             pattern = self._union_pattern(member_set)
             if pattern is not None:
 
-                def replacer(match: re.Match[str], canonical: str = canonical) -> str:
+                def replacer(
+                    match: t.Infra.RegexMatch, canonical: str = canonical
+                ) -> str:
                     # Capture exact matched text for accurate reporting.
                     matched_text = match.group(0)
                     self._record_change(
@@ -52,7 +54,7 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
         return source, list(self.changes)
 
     @staticmethod
-    def _union_pattern(members: frozenset[str]) -> re.Pattern[str] | None:
+    def _union_pattern(members: frozenset[str]) -> t.Infra.RegexPattern | None:
         """Build regex matching any permutation of a ``A | B | C`` union."""
         if len(members) < c.Infra.Thresholds.MIN_UNION_MEMBERS:
             return None

@@ -17,7 +17,10 @@ class FlextInfraNamespaceRules:
     """Implementation of namespace rules 0-2 for AST-based validation."""
 
     @staticmethod
-    def _annotation_contains(annotation: ast.expr | None, name: str) -> bool:
+    def _annotation_contains(
+        annotation: t.Infra.AstExpr | None,
+        name: str,
+    ) -> bool:
         """Check whether an annotation AST node references a given name."""
         if annotation is None:
             return False
@@ -26,24 +29,27 @@ class FlextInfraNamespaceRules:
         if isinstance(annotation, ast.Attribute) and annotation.attr == name:
             return True
         if isinstance(annotation, ast.Subscript):
-            return FlextInfraNamespaceRules._annotation_contains(annotation.value, name)
+            return FlextInfraNamespaceRules._annotation_contains(
+                annotation.value,
+                name,
+            )
         return False
 
     @staticmethod
-    def _base_contains(base: ast.expr, name: str) -> bool:
+    def _base_contains(base: t.Infra.AstExpr, name: str) -> bool:
         """Check whether a class base AST node references a given name."""
         if isinstance(base, ast.Name) and base.id == name:
             return True
         return isinstance(base, ast.Attribute) and base.attr == name
 
     @staticmethod
-    def _get_assign_target_name(node: ast.Assign) -> str:
+    def _get_assign_target_name(node: t.Infra.AstAssign) -> str:
         if node.targets and isinstance(node.targets[0], ast.Name):
             return node.targets[0].id
         return ""
 
     @staticmethod
-    def _get_call_name(func: ast.expr) -> str:
+    def _get_call_name(func: t.Infra.AstExpr) -> str:
         if isinstance(func, ast.Name):
             return func.id
         if isinstance(func, ast.Attribute):
@@ -51,14 +57,14 @@ class FlextInfraNamespaceRules:
         return ""
 
     @staticmethod
-    def _get_target_name(target: ast.expr) -> str:
+    def _get_target_name(target: t.Infra.AstExpr) -> str:
         if isinstance(target, ast.Name):
             return target.id
         return ""
 
     def check_rule_0(
         self,
-        tree: ast.Module,
+        tree: t.Infra.AstModule,
         filepath: Path,
         prefix: str,
     ) -> t.StrSequence:
@@ -91,14 +97,20 @@ class FlextInfraNamespaceRules:
                 )
         return violations
 
-    def check_rule_1(self, tree: ast.Module, filepath: Path) -> t.StrSequence:
+    def check_rule_1(
+        self,
+        tree: t.Infra.AstModule,
+        filepath: Path,
+    ) -> t.StrSequence:
         """Rule 1 -- Constants centralization."""
         if filepath.name == c.Infra.Files.CONSTANTS_PY:
             return self._check_rule_1_canonical(tree, filepath)
         return self._check_rule_1_non_canonical(tree, filepath)
 
     def _check_rule_1_canonical(
-        self, tree: ast.Module, filepath: Path
+        self,
+        tree: t.Infra.AstModule,
+        filepath: Path,
     ) -> t.StrSequence:
         violations: MutableSequence[str] = []
         seq = 0
@@ -118,14 +130,19 @@ class FlextInfraNamespaceRules:
         return violations
 
     def _check_rule_1_non_canonical(
-        self, tree: ast.Module, filepath: Path
+        self,
+        tree: t.Infra.AstModule,
+        filepath: Path,
     ) -> t.StrSequence:
         violations: MutableSequence[str] = []
         seq = 0
         for node in tree.body:
             seq, violations = self._check_loose_final(node, filepath, seq, violations)
             seq, violations = self._check_loose_collection(
-                node, filepath, seq, violations
+                node,
+                filepath,
+                seq,
+                violations,
             )
         outer_classes = [n for n in tree.body if isinstance(n, ast.ClassDef)]
         for cls in outer_classes:
@@ -134,7 +151,7 @@ class FlextInfraNamespaceRules:
 
     def _check_loose_final(
         self,
-        node: ast.stmt,
+        node: t.Infra.AstStmt,
         filepath: Path,
         seq: int,
         violations: MutableSequence[str],
@@ -154,7 +171,7 @@ class FlextInfraNamespaceRules:
 
     def _check_loose_collection(
         self,
-        node: ast.stmt,
+        node: t.Infra.AstStmt,
         filepath: Path,
         seq: int,
         violations: MutableSequence[str],
@@ -178,7 +195,7 @@ class FlextInfraNamespaceRules:
 
     def _check_loose_enums(
         self,
-        cls: ast.ClassDef,
+        cls: t.Infra.AstClassDef,
         filepath: Path,
         seq: int,
         violations: MutableSequence[str],
@@ -195,14 +212,20 @@ class FlextInfraNamespaceRules:
                 )
         return seq, violations
 
-    def check_rule_2(self, tree: ast.Module, filepath: Path) -> t.StrSequence:
+    def check_rule_2(
+        self,
+        tree: t.Infra.AstModule,
+        filepath: Path,
+    ) -> t.StrSequence:
         """Rule 2 -- Types centralization."""
         if filepath.name == c.Infra.Files.TYPINGS_PY:
             return self._check_rule_2_canonical(tree, filepath)
         return self._check_rule_2_non_canonical(tree, filepath)
 
     def _check_rule_2_canonical(
-        self, tree: ast.Module, filepath: Path
+        self,
+        tree: t.Infra.AstModule,
+        filepath: Path,
     ) -> t.StrSequence:
         violations: MutableSequence[str] = []
         seq = 0
@@ -215,7 +238,8 @@ class FlextInfraNamespaceRules:
                 )
             for inner in cls.body:
                 if isinstance(
-                    inner, ast.ClassDef
+                    inner,
+                    ast.ClassDef,
                 ) and self._inner_inherits_forbidden_base(inner):
                     seq += 1
                     violations.append(
@@ -223,7 +247,10 @@ class FlextInfraNamespaceRules:
                     )
         return violations
 
-    def _inner_inherits_forbidden_base(self, inner: ast.ClassDef) -> bool:
+    def _inner_inherits_forbidden_base(
+        self,
+        inner: t.Infra.AstClassDef,
+    ) -> bool:
         return any(
             self._base_contains(base, "BaseModel")
             or self._base_contains(base, "Protocol")
@@ -231,23 +258,36 @@ class FlextInfraNamespaceRules:
         )
 
     def _check_rule_2_non_canonical(
-        self, tree: ast.Module, filepath: Path
+        self,
+        tree: t.Infra.AstModule,
+        filepath: Path,
     ) -> t.StrSequence:
         violations: MutableSequence[str] = []
         seq = 0
         for node in tree.body:
-            seq, violations = self._check_loose_typevar(node, filepath, seq, violations)
+            seq, violations = self._check_loose_typevar(
+                node,
+                filepath,
+                seq,
+                violations,
+            )
             seq, violations = self._check_loose_typealias_annotation(
-                node, filepath, seq, violations
+                node,
+                filepath,
+                seq,
+                violations,
             )
             seq, violations = self._check_loose_pep695_typealias(
-                node, filepath, seq, violations
+                node,
+                filepath,
+                seq,
+                violations,
             )
         return violations
 
     def _check_loose_typevar(
         self,
-        node: ast.stmt,
+        node: t.Infra.AstStmt,
         filepath: Path,
         seq: int,
         violations: MutableSequence[str],
@@ -266,7 +306,7 @@ class FlextInfraNamespaceRules:
 
     def _check_loose_typealias_annotation(
         self,
-        node: ast.stmt,
+        node: t.Infra.AstStmt,
         filepath: Path,
         seq: int,
         violations: MutableSequence[str],
@@ -285,7 +325,7 @@ class FlextInfraNamespaceRules:
 
     def _check_loose_pep695_typealias(
         self,
-        node: ast.stmt,
+        node: t.Infra.AstStmt,
         filepath: Path,
         seq: int,
         violations: MutableSequence[str],
@@ -306,7 +346,11 @@ class FlextInfraNamespaceRules:
 
     # -- Module-level statement allowlist ---
 
-    def _is_allowed_module_level(self, node: ast.stmt, filepath: Path) -> bool:
+    def _is_allowed_module_level(
+        self,
+        node: t.Infra.AstStmt,
+        filepath: Path,
+    ) -> bool:
         if isinstance(node, (ast.Import, ast.ImportFrom)):
             return True
         if self._is_module_docstring(node):
@@ -317,7 +361,7 @@ class FlextInfraNamespaceRules:
 
     def _is_allowed_assignment(
         self,
-        node: ast.Assign | ast.TypeAlias | ast.AnnAssign,
+        node: t.Infra.AstAssign | t.Infra.AstTypeAlias | t.Infra.AstAnnAssign,
         filepath: Path,
     ) -> bool:
         if isinstance(node, ast.Assign):
@@ -327,14 +371,18 @@ class FlextInfraNamespaceRules:
         return self._is_allowed_ann_assign(node, filepath)
 
     @staticmethod
-    def _is_module_docstring(node: ast.stmt) -> bool:
+    def _is_module_docstring(node: t.Infra.AstStmt) -> bool:
         return (
             isinstance(node, ast.Expr)
             and isinstance(node.value, ast.Constant)
             and isinstance(node.value.value, str)
         )
 
-    def _is_allowed_assign(self, node: ast.Assign, filepath: Path) -> bool:
+    def _is_allowed_assign(
+        self,
+        node: t.Infra.AstAssign,
+        filepath: Path,
+    ) -> bool:
         for target in node.targets:
             if isinstance(target, ast.Name) and target.id in c.Infra.DUNDER_ALLOWED:
                 return True
@@ -348,7 +396,11 @@ class FlextInfraNamespaceRules:
                 return filepath.name == c.Infra.Files.TYPINGS_PY
         return False
 
-    def _is_allowed_ann_assign(self, node: ast.AnnAssign, filepath: Path) -> bool:
+    def _is_allowed_ann_assign(
+        self,
+        node: t.Infra.AstAnnAssign,
+        filepath: Path,
+    ) -> bool:
         if self._annotation_contains(node.annotation, "TypeAlias"):
             return filepath.name == c.Infra.Files.TYPINGS_PY
         if (

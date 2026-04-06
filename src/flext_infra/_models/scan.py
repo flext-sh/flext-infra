@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableSequence
 from pathlib import Path
 from typing import Annotated
 
@@ -15,10 +16,39 @@ from pydantic import Field
 
 from flext_core import FlextModels
 from flext_infra._models.mixins import FlextInfraModelsMixins
+from flext_infra._models.refactor_namespace_enforcer import (
+    FlextInfraNamespaceEnforcerModels,
+)
+from flext_infra._typings.rope import FlextInfraTypesRope
 
 
 class FlextInfraModelsScan:
     """Shared utility domain models for scanning and analysis."""
+
+    class DetectorContext(FlextModels.ArbitraryTypesModel):
+        """Bundles common parameters passed to every detect_file classmethod."""
+
+        file_path: Path = Field(
+            description="Filesystem path of the file being scanned.",
+        )
+        rope_project: FlextInfraTypesRope.RopeProject = Field(
+            description="Initialized Rope project for semantic metadata.",
+        )
+        parse_failures: (
+            MutableSequence[FlextInfraNamespaceEnforcerModels.ParseFailureViolation]
+            | None
+        ) = Field(
+            default=None,
+            description="Shared parse-failure collector across detector passes.",
+        )
+        project_name: str = Field(
+            default="",
+            description="Optional project name for the scanned file.",
+        )
+        project_root: Path | None = Field(
+            default=None,
+            description="Optional project root containing the scanned file.",
+        )
 
     class ScanViolation(
         FlextInfraModelsMixins.PositiveLineMixin,

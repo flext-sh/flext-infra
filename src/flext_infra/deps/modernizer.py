@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-from argparse import Namespace
 from collections.abc import MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
-from tomlkit.container import Container
-from tomlkit.items import AoT, Item, Table
-from tomlkit.toml_document import TOMLDocument
+from tomlkit.items import AoT, Table
 
 from flext_infra import (
     FlextInfraConsolidateGroupsPhase,
@@ -66,7 +63,7 @@ class FlextInfraPyprojectModernizer:
         kind = FlextInfraProjectClassifier(project_dir).classify().project_kind
         return r[str].ok(kind)
 
-    def _ensure_build_system(self, doc: TOMLDocument) -> t.StrSequence:
+    def _ensure_build_system(self, doc: t.Infra.TomlDocument) -> t.StrSequence:
         """Ensure canonical build-system backend/requirements."""
         changes: MutableSequence[str] = []
         build_system = u.Cli.toml_get_table(doc, "build-system")
@@ -115,7 +112,7 @@ class FlextInfraPyprojectModernizer:
     @classmethod
     def _reorder_table_inplace(
         cls,
-        table: Table,
+        table: t.Infra.TomlTable,
         *,
         preferred_first: t.StrSequence | None = None,
     ) -> None:
@@ -134,7 +131,9 @@ class FlextInfraPyprojectModernizer:
                     for entry in value.body:
                         cls._reorder_table_inplace(entry)
             return
-        items: MutableMapping[str, Item] = {key: table[key] for key in original_keys}
+        items: MutableMapping[str, t.Infra.TomlItem] = {
+            key: table[key] for key in original_keys
+        }
         for key in original_keys:
             del table[key]
         for key in ordered_keys:
@@ -147,7 +146,7 @@ class FlextInfraPyprojectModernizer:
             table[key] = value
 
     @classmethod
-    def _reorder_document_inplace(cls, doc: TOMLDocument) -> None:
+    def _reorder_document_inplace(cls, doc: t.Infra.TomlDocument) -> None:
         """Apply deterministic ordering for top-level groups and nested tables."""
         root_keys = [str(key) for key in doc]
         ordered_root = cls._ordered_keys(
@@ -155,9 +154,9 @@ class FlextInfraPyprojectModernizer:
             preferred_first=("build-system", "dependency-groups", "project", "tool"),
         )
         if ordered_root != root_keys:
-            root_items: MutableMapping[str, Item | Container] = {
-                key: doc[key] for key in root_keys
-            }
+            root_items: MutableMapping[
+                str, t.Infra.TomlItem | t.Infra.TomlContainer
+            ] = {key: doc[key] for key in root_keys}
             for key in root_keys:
                 del doc[key]
             for key in ordered_root:
@@ -293,7 +292,7 @@ class FlextInfraPyprojectModernizer:
             u.write_file(path, rendered, encoding=c.Infra.Encoding.DEFAULT)
         return changes
 
-    def run(self, args: Namespace, cli: u.Infra.CliArgs) -> int:
+    def run(self, args: t.Infra.CliNamespace, cli: u.Infra.CliArgs) -> int:
         """Run pyproject modernization for the workspace."""
         check_mode = bool(args.audit or cli.check)
         dry_run = bool(cli.dry_run or check_mode)

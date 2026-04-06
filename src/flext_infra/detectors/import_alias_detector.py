@@ -10,7 +10,6 @@ from collections.abc import Sequence
 from typing import ClassVar, override
 
 from flext_infra import (
-    DetectorContext,
     FlextInfraScanFileMixin,
     c,
     m,
@@ -31,7 +30,7 @@ class FlextInfraImportAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
     @override
     def detect_file(
         cls,
-        ctx: DetectorContext,
+        ctx: m.Infra.DetectorContext,
     ) -> Sequence[m.Infra.ImportAliasViolation]:
         """Detect deep alias imports directly from Rope import descriptors."""
         file_path = ctx.file_path

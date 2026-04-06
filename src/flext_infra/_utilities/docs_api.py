@@ -34,7 +34,7 @@ class FlextInfraUtilitiesDocsApi:
         "u",
         "x",
     )
-    _STRING_RE: re.Pattern[str] = re.compile(r"""["']([a-zA-Z0-9_\.]+)["']""")
+    _STRING_RE: t.Infra.RegexPattern = re.compile(r"""["']([a-zA-Z0-9_\.]+)["']""")
 
     @staticmethod
     def _string_values(value: object) -> Sequence[str]:

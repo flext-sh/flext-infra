@@ -9,12 +9,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 from flext_core import r
-from flext_infra import FlextInfraNamespaceRules, c, m, u
+from flext_infra import FlextInfraNamespaceRules, c, m, t, u
 
 __all__ = ["FlextInfraNamespaceValidator"]
 
@@ -108,6 +107,6 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
             return True
         return any(name.startswith(pfx) for pfx in c.Infra.EXEMPT_PREFIXES)
 
-    def _parse_file(self, path: Path) -> ast.Module | None:
+    def _parse_file(self, path: Path) -> t.Infra.AstModule | None:
         """Parse a Python file into an AST, returning None on failure."""
         return u.Infra.parse_module_ast(path)

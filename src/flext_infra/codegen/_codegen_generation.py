@@ -22,7 +22,7 @@ class FlextInfraCodegenGeneration:
     """Generate Python module files with lazy import infrastructure."""
 
     @staticmethod
-    def _build_env() -> Environment:
+    def _build_env() -> t.Infra.JinjaEnvironment:
         """Create a Jinja2 environment for codegen templates."""
         template_root = Path(__file__).resolve().parent.parent / "templates"
         return Environment(
@@ -34,7 +34,7 @@ class FlextInfraCodegenGeneration:
             autoescape=select_autoescape(),
         )
 
-    _env: Environment | None = None
+    _env: t.Infra.JinjaEnvironment | None = None
 
     @classmethod
     def _get_template(cls, name: str) -> p.Infra.RenderableTemplate:

@@ -18,10 +18,10 @@ from typing import Annotated
 
 from pydantic import Field
 
-from flext_cli import FlextCliUtilities
-from flext_core import FlextUtilities, m
+from flext_cli import u
 from flext_infra import (
     c,
+    m,
     t,
 )
 
@@ -50,9 +50,9 @@ class FlextInfraUtilitiesImportNormalizer:
             / "rules"
             / "import-normalization.yml"
         )
-        loaded = FlextCliUtilities.Cli.yaml_load_mapping(rules_path)
+        loaded = u.Cli.yaml_load_mapping(rules_path)
         root = loaded.get("import_normalization")
-        if FlextUtilities.is_mapping(root):
+        if u.is_mapping(root):
             return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(root)
         return {}
 
@@ -114,11 +114,11 @@ class FlextInfraUtilitiesImportNormalizer:
             raise ValueError(msg)
         return ".".join(module_parts)
 
-    _FROM_IMPORT_RE: re.Pattern[str] = re.compile(
+    _FROM_IMPORT_RE: t.Infra.RegexPattern = re.compile(
         r"^from\s+([\w.]+)\s+import\s",
         re.MULTILINE,
     )
-    _PLAIN_IMPORT_RE: re.Pattern[str] = re.compile(
+    _PLAIN_IMPORT_RE: t.Infra.RegexPattern = re.compile(
         r"^import\s+([\w., ]+)",
         re.MULTILINE,
     )

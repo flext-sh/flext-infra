@@ -10,16 +10,13 @@ from __future__ import annotations
 
 import ast
 import contextlib
-import re
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
-from typing import ClassVar
 
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from flext_cli import u
-from flext_core import r
-from flext_infra import c, m, t
+from flext_infra import c, m, p, r, t
 
 
 class FlextInfraUtilitiesParsing:
@@ -27,17 +24,12 @@ class FlextInfraUtilitiesParsing:
 
     _DOCSTRING_QUOTES = ('"""', "'''")
     _SINGLE_LINE_DOCSTRING_QUOTE_COUNT = 2
-    DEF_CLASS_RE: ClassVar[re.Pattern[str]] = c.Infra.SourceCode.DEF_CLASS_RE
-    IMPORT_FROM_RE: ClassVar[re.Pattern[str]] = c.Infra.SourceCode.FROM_IMPORT_RE
-    IMPORT_RE: ClassVar[re.Pattern[str]] = c.Infra.SourceCode.IMPORT_RE
-    ASSIGN_RE: ClassVar[re.Pattern[str]] = c.Infra.SourceCode.ASSIGN_RE
-    FINAL_ASSIGN_RE: ClassVar[re.Pattern[str]] = c.Infra.SourceCode.FINAL_ASSIGN_RE
-    _RULE_CONFIG_SEQ_ADAPTER: TypeAdapter[
-        Sequence[m.Infra.ImportModernizerRuleConfig]
-    ] = TypeAdapter(Sequence[m.Infra.ImportModernizerRuleConfig])
+    _RULE_CONFIG_SEQ_ADAPTER = TypeAdapter(
+        Sequence[m.Infra.ImportModernizerRuleConfig],
+    )
 
     @staticmethod
-    def parse_module_ast(file_path: Path) -> ast.Module | None:
+    def parse_module_ast(file_path: Path) -> t.Infra.AstModule | None:
         """Parse a Python file into an AST module."""
         try:
             return ast.parse(
@@ -159,7 +151,7 @@ class FlextInfraUtilitiesParsing:
     @staticmethod
     def ensure_pyright_execution_envs(
         pyright: t.Cli.TomlTable,
-        expected: Sequence[t.Infra.ContainerDict] | Sequence[BaseModel],
+        expected: Sequence[t.Infra.ContainerDict] | Sequence[p.HasModelDump],
         changes: MutableSequence[str],
     ) -> None:
         """Ensure pyright ``executionEnvironments`` matches one expected payload."""
@@ -170,7 +162,7 @@ class FlextInfraUtilitiesParsing:
         if isinstance(raw, list):
             with contextlib.suppress(ValidationError):
                 current = TypeAdapter(Sequence[t.StrMapping]).validate_python(raw)
-        normalized: Sequence[t.Infra.ContainerDict] = [
+        normalized = [
             entry.model_dump(by_alias=True) if isinstance(entry, BaseModel) else entry
             for entry in expected
         ]
@@ -303,7 +295,7 @@ class FlextInfraUtilitiesParsing:
     # ── Generic AST helpers (shared across validate/refactor/codegen) ──
 
     @staticmethod
-    def ast_expr_name(node: ast.expr) -> str:
+    def ast_expr_name(node: t.Infra.AstExpr) -> str:
         """Extract the simple name from any AST expression node."""
         if isinstance(node, ast.Name):
             return node.id
@@ -314,7 +306,7 @@ class FlextInfraUtilitiesParsing:
         return ""
 
     @staticmethod
-    def ast_expr_contains(node: ast.expr | None, name: str) -> bool:
+    def ast_expr_contains(node: t.Infra.AstExpr | None, name: str) -> bool:
         """Check if an AST expression tree references a given name."""
         if node is None:
             return False
@@ -429,22 +421,22 @@ class FlextInfraUtilitiesParsing:
         """Collect aliases blocked by definitions, non-core imports, and assignments."""
         rh = FlextInfraUtilitiesParsing
         blocked: t.Infra.StrSet = set()
-        for match in rh.DEF_CLASS_RE.finditer(source):
+        for match in c.Infra.SourceCode.DEF_CLASS_RE.finditer(source):
             name = match.group(1)
             if name in runtime_aliases:
                 blocked.add(name)
-        for match in rh.IMPORT_FROM_RE.finditer(source):
+        for match in c.Infra.SourceCode.FROM_IMPORT_RE.finditer(source):
             module = match.group(1)
             if module == c.Infra.Packages.CORE_UNDERSCORE:
                 continue
             for _name, bound in rh.parse_import_names(match.group(2)):
                 if bound in runtime_aliases:
                     blocked.add(bound)
-        for match in rh.IMPORT_RE.finditer(source):
+        for match in c.Infra.SourceCode.IMPORT_RE.finditer(source):
             for _name, bound in rh.parse_import_names(match.group(1)):
                 if bound in runtime_aliases:
                     blocked.add(bound)
-        for match in rh.ASSIGN_RE.finditer(source):
+        for match in c.Infra.SourceCode.ASSIGN_RE.finditer(source):
             name = match.group(1)
             if name in runtime_aliases:
                 blocked.add(name)
@@ -470,13 +462,12 @@ class FlextInfraUtilitiesParsing:
     @staticmethod
     def find_final_candidates(source: str) -> Sequence[m.Infra.MROSymbolCandidate]:
         """Find module-level Final-annotated constants via regex."""
-        rh = FlextInfraUtilitiesParsing
         candidates: MutableSequence[m.Infra.MROSymbolCandidate] = []
         for i, line in enumerate(source.splitlines(), start=1):
             stripped = line.lstrip()
             if line != stripped and stripped:
                 continue
-            match = rh.FINAL_ASSIGN_RE.match(stripped)
+            match = c.Infra.SourceCode.FINAL_ASSIGN_RE.match(stripped)
             if (
                 match
                 and c.Infra.SourceCode.CONSTANT_NAME_RE.match(match.group(1))

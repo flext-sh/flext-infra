@@ -51,6 +51,28 @@ class FlextInfraTypesBase:
     "Tomlkit item (value or table)."
     type TomlTable = _TOMLTable
     "Tomlkit table."
+    type RegexMatch = _re.Match[str]
+    "Compiled regex match result."
+    type AstClassDef = _ast.ClassDef
+    "AST class definition node."
+    type AstFunctionDef = _ast.FunctionDef
+    "AST function definition node."
+    type AstAsyncFunctionDef = _ast.AsyncFunctionDef
+    "AST async function definition node."
+    type AstExpr = _ast.expr
+    "AST expression node."
+    type AstStmt = _ast.stmt
+    "AST statement node."
+    type AstCall = _ast.Call
+    "AST function call node."
+    type AstAssign = _ast.Assign
+    "AST assignment node."
+    type AstAnnAssign = _ast.AnnAssign
+    "AST annotated assignment node."
+    type AstTypeAlias = _ast.TypeAlias
+    "AST PEP 695 type alias node."
+    type AstKeyword = _ast.keyword
+    "AST keyword argument node."
 
     type Pair[LeftT, RightT] = tuple[LeftT, RightT]
     "Generic pair alias for two ordered values."

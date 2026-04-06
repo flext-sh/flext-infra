@@ -11,7 +11,8 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import TextIO
+
+from flext_infra import p
 
 
 class FlextInfraUtilitiesTerminal:
@@ -30,7 +31,7 @@ class FlextInfraUtilitiesTerminal:
     """
 
     @staticmethod
-    def terminal_should_use_color(stream: TextIO | None = None) -> bool:
+    def terminal_should_use_color(stream: p.Infra.OutputStream | None = None) -> bool:
         """Detect whether ANSI colors should be used on the given stream.
 
         Priority chain:

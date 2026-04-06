@@ -159,7 +159,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
     @staticmethod
     def scan_patterns(
         source: str,
-        patterns: Sequence[re.Pattern[str]],
+        patterns: Sequence[t.Infra.RegexPattern],
     ) -> tuple[Sequence[t.Infra.StrIntPair], ...]:
         """Scan *source* for multiple regex patterns."""
         results: list[MutableSequence[t.Infra.StrIntPair]] = [[] for _ in patterns]

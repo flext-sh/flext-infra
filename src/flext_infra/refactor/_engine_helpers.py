@@ -6,7 +6,6 @@ and project/workspace orchestration with safety stash/rollback coordination.
 
 from __future__ import annotations
 
-import argparse
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
@@ -138,7 +137,7 @@ class FlextInfraRefactorEngineHelpersMixin:
 
     # ── Violation analysis ─────────────────────────────────────────
 
-    def _run_analyze_violations(self, args: argparse.Namespace) -> int:
+    def _run_analyze_violations(self, args: t.Infra.CliNamespace) -> int:
         files = self._collect_files(args)
         if files is None:
             return 1
@@ -154,7 +153,9 @@ class FlextInfraRefactorEngineHelpersMixin:
 
     # ── File collection ────────────────────────────────────────────
 
-    def _collect_files(self, args: argparse.Namespace) -> MutableSequence[Path] | None:
+    def _collect_files(
+        self, args: t.Infra.CliNamespace
+    ) -> MutableSequence[Path] | None:
         if args.project:
             return u.Infra.collect_engine_project_files(
                 self.rule_loader, self.config, args.project, pattern=args.pattern
@@ -179,7 +180,7 @@ class FlextInfraRefactorEngineHelpersMixin:
 
     # ── Refactoring dispatch ───────────────────────────────────────
 
-    def _run_refactor(self, args: argparse.Namespace) -> int:
+    def _run_refactor(self, args: t.Infra.CliNamespace) -> int:
         if args.project:
             results = list(
                 self.refactor_project(

@@ -168,7 +168,7 @@ class FlextInfraUtilitiesRopeCore:
         save_objectdb: bool,
         ignored_resources: list[str],
         source_folders: Sequence[str],
-    ) -> Project:
+    ) -> t.Infra.RopeProject:
         """Create a rope Project while isolating Rope's own deprecated init path."""
         with warnings.catch_warnings():
             warnings.filterwarnings(

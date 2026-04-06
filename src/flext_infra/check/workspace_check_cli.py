@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import argparse
 import os
 from collections.abc import Sequence
 from pathlib import Path
@@ -22,7 +21,7 @@ class FlextInfraWorkspaceCheckerCli:
     """CLI builder and entry points for workspace check commands."""
 
     @staticmethod
-    def build_parser() -> argparse.ArgumentParser:
+    def build_parser() -> t.Infra.CliArgumentParser:
         """Build the workspace check CLI parser."""
         parser, subs = u.Infra.create_subcommand_parser(
             "flext-infra check",

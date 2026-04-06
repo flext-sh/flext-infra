@@ -178,7 +178,7 @@ class FlextInfraDepsModelsToolConfigTypeCheckers:
             ),
         ] = Field(default_factory=dict)
         path_rules: Annotated[
-            PathRulesConfig,
+            FlextInfraDepsModelsToolConfigTypeCheckers.PyrightConfig.PathRulesConfig,
             Field(
                 alias="path-rules",
                 description="Pyright path resolution and execution-env rules.",
@@ -301,7 +301,7 @@ class FlextInfraDepsModelsToolConfigTypeCheckers:
             ),
         ]
         path_rules: Annotated[
-            PathRulesConfig,
+            FlextInfraDepsModelsToolConfigTypeCheckers.PyreflyConfig.PathRulesConfig,
             Field(alias="path-rules", description="Pyrefly search-path rules."),
         ]
 

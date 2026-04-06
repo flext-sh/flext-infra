@@ -179,7 +179,7 @@ class TestReleaseMainFlow:
                     tmp_path,
                     "--phase",
                     "validate",
-                    "--no-apply",
+                    "--dry-run",
                     "--interactive",
                     "0",
                 ),

@@ -19,9 +19,9 @@ class TestFlextInfraRuntimeDevDependencyDetectorInit:
     def test_detector_has_required_services(self) -> None:
         detector = FlextInfraRuntimeDevDependencyDetector()
         tm.that(hasattr(detector, "reporting"), eq=True)
-        tm.that(hasattr(detector, "json"), eq=True)
         tm.that(hasattr(detector, "deps"), eq=True)
         tm.that(hasattr(detector, "runner"), eq=True)
+        tm.that(hasattr(detector, "json"), eq=False)
 
     def test_parser_all_arguments(self, tmp_path: Path) -> None:
         parser = FlextInfraRuntimeDevDependencyDetector.parser(tmp_path / "limits.toml")

@@ -229,7 +229,7 @@ class FlextInfraUtilitiesCodegenLazyScanning(
         label = dir_name.replace("_", " ").replace("-", " ").strip()
         return f'"""{label.capitalize()} package."""'
 
-    _DOCSTRING_RE: re.Pattern[str] = re.compile(
+    _DOCSTRING_RE: t.Infra.RegexPattern = re.compile(
         r'\A\s*("""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\'|"[^"]*"|\'[^\']*\')',
     )
 

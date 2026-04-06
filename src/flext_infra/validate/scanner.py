@@ -48,7 +48,7 @@ class FlextInfraTextPatternScanner:
         ]
 
     @staticmethod
-    def _count_matches(files: Sequence[Path], regex: re.Pattern[str]) -> int:
+    def _count_matches(files: Sequence[Path], regex: t.Infra.RegexPattern) -> int:
         """Count regex matches across files."""
         total = 0
         for file_path in files:

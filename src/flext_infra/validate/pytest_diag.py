@@ -57,8 +57,6 @@ class FlextInfraPytestDiagExtractor:
     and uses regex-based log parsing when XML is unavailable.
     """
 
-    _ENCODING: ClassVar[str] = c.Infra.Encoding.DEFAULT
-
     @staticmethod
     def _extract_slow_from_log(lines: t.StrSequence, diag: _DiagResult) -> None:
         """Extract slow test durations from log when XML unavailable."""
@@ -211,7 +209,7 @@ class FlextInfraPytestDiagExtractor:
         """
         try:
             log_text = (
-                log_path.read_text(encoding=self._ENCODING, errors="replace")
+                log_path.read_text(encoding=c.Infra.Encoding.DEFAULT, errors="replace")
                 if log_path.exists()
                 else ""
             )

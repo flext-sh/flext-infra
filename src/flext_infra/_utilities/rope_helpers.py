@@ -241,7 +241,7 @@ class FlextInfraUtilitiesRopeHelpers:
             return name.startswith("__") and not name.endswith("__")
         return True
 
-    _WORD_BOUNDARY_RE_CACHE: ClassVar[dict[str, re.Pattern[str]]] = {}
+    _WORD_BOUNDARY_RE_CACHE: ClassVar[dict[str, t.Infra.RegexPattern]] = {}
 
     @staticmethod
     def bound_name(name_part: str) -> str:
@@ -252,7 +252,7 @@ class FlextInfraUtilitiesRopeHelpers:
         return item
 
     @staticmethod
-    def word_boundary_re(name: str) -> re.Pattern[str]:
+    def word_boundary_re(name: str) -> t.Infra.RegexPattern:
         """Get compiled word-boundary regex for a name."""
         cache = FlextInfraUtilitiesRopeHelpers._WORD_BOUNDARY_RE_CACHE
         if name not in cache:

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import inspect
-import re
 from collections.abc import Mapping, MutableSequence, Sequence
 
 from flext_infra import (
@@ -17,7 +16,7 @@ from flext_infra import (
 class FlextInfraRefactorMROResolver:
     """Resolve MRO inheritance chains and detect loose classes needing absorption."""
 
-    CONSTANT_PATTERN: re.Pattern[str] = c.Infra.SourceCode.CONSTANT_NAME_RE
+    CONSTANT_PATTERN: t.Infra.RegexPattern = c.Infra.SourceCode.CONSTANT_NAME_RE
 
     @classmethod
     def resolve(

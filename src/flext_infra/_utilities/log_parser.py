@@ -20,7 +20,7 @@ from flext_infra import c, t
 class FlextInfraUtilitiesLogParser:
     """Extract error information from verb log files."""
 
-    _ERROR_PATTERNS: ClassVar[Sequence[re.Pattern[str]]] = [
+    _ERROR_PATTERNS: ClassVar[Sequence[t.Infra.RegexPattern]] = [
         re.compile(r"^\s*\S+\.py:\d+"),
         re.compile(r"^ERROR:", re.IGNORECASE),
         re.compile(r"^\s+\[B\d+\]"),
@@ -30,7 +30,7 @@ class FlextInfraUtilitiesLogParser:
         re.compile(r"^FAILED\s"),
     ]
 
-    _NOISE_PATTERNS: ClassVar[Sequence[re.Pattern[str]]] = [
+    _NOISE_PATTERNS: ClassVar[Sequence[t.Infra.RegexPattern]] = [
         re.compile(r"^make\["),
         re.compile(r"warning:\s+(overriding|ignoring)"),
         re.compile(r"^(Total|Success|Failed|Skipped):"),

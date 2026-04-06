@@ -122,13 +122,13 @@ class TestFlextInfraJsonService:
         tm.ok(result)
         tm.that(result.value, eq=True)
 
-    def test_removed_direct_api_methods_raise_attribute_error(self) -> None:
-        """Infra no longer re-exposes JSON wrapper methods directly."""
+    def test_direct_json_api_matches_current_public_surface(self) -> None:
+        """Infra exposes the current JSON helpers and rejects removed legacy names."""
         service = u.Infra()
-        with pytest.raises(AttributeError):
-            _ = getattr(service, "read_json")
-        with pytest.raises(AttributeError):
-            _ = getattr(service, "write_json")
+        tm.that(callable(getattr(service, "read_json")), eq=True)
+        tm.that(callable(getattr(service, "write_json")), eq=True)
+        tm.that(callable(getattr(service, "parse")), eq=True)
+        tm.that(callable(getattr(service, "serialize")), eq=True)
         with pytest.raises(AttributeError):
             _ = getattr(service, "load")
         with pytest.raises(AttributeError):

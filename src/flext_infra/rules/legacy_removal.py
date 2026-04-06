@@ -161,8 +161,8 @@ class FlextInfraRefactorLegacyRemovalRule:
 
     @staticmethod
     def _is_passthrough_wrapper(
-        func: ast.FunctionDef,
-        call: ast.Call,
+        func: t.Infra.AstFunctionDef,
+        call: t.Infra.AstCall,
     ) -> bool:
         """Return True when call forwards parameters without changing values."""
         param_names = [arg.arg for arg in (*func.args.posonlyargs, *func.args.args)]
@@ -173,7 +173,7 @@ class FlextInfraRefactorLegacyRemovalRule:
         keyword_unpack = [kw.value for kw in call.keywords if kw.arg is None]
         pos_index = 0
 
-        def _is_name(node: ast.expr, name: str) -> bool:
+        def _is_name(node: t.Infra.AstExpr, name: str) -> bool:
             return isinstance(node, ast.Name) and node.id == name
 
         for name in param_names:

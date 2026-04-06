@@ -24,7 +24,6 @@ import os
 import sys
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
-from typing import TextIO
 
 from flext_infra import c, m, p, t
 from flext_infra._utilities.output_reporting import FlextInfraUtilitiesOutputReporting
@@ -87,7 +86,7 @@ class FlextInfraUtilitiesReporting(FlextInfraUtilitiesOutputReporting):
         )
 
     @staticmethod
-    def terminal_should_use_color(stream: TextIO | None = None) -> bool:
+    def terminal_should_use_color(stream: p.Infra.OutputStream | None = None) -> bool:
         """Return whether ANSI color should be emitted for one target stream."""
         target = stream if stream is not None else sys.stderr
         if os.environ.get("NO_COLOR") is not None:

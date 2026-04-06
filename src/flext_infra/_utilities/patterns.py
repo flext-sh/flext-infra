@@ -12,6 +12,8 @@ from __future__ import annotations
 import re
 from typing import ClassVar, TypeIs
 
+from flext_infra import t
+
 
 class FlextInfraUtilitiesPatterns:
     """Centralized regex patterns for infrastructure operations.
@@ -27,12 +29,12 @@ class FlextInfraUtilitiesPatterns:
             ...
     """
 
-    MYPY_HINT_RE: ClassVar[re.Pattern[str]] = re.compile(
+    MYPY_HINT_RE: ClassVar[t.Infra.RegexPattern] = re.compile(
         r'note: Hint: "python3 -m pip install ([^"]+)"',
     )
     """Match mypy install hint messages, capturing the package name."""
 
-    MYPY_STUB_RE: ClassVar[re.Pattern[str]] = re.compile(
+    MYPY_STUB_RE: ClassVar[t.Infra.RegexPattern] = re.compile(
         r'Library stubs not installed for "([^"]+)"',
     )
     """Match mypy missing stub messages, capturing the library name."""
@@ -40,82 +42,88 @@ class FlextInfraUtilitiesPatterns:
     INTERNAL_PREFIXES: ClassVar[tuple[str, ...]] = ("flext_",)
     """Prefixes identifying internal FLEXT packages."""
 
-    MARKDOWN_LINK_RE: ClassVar[re.Pattern[str]] = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
+    MARKDOWN_LINK_RE: ClassVar[t.Infra.RegexPattern] = re.compile(
+        r"\[([^\]]+)\]\(([^)]+)\)"
+    )
     """Match markdown links capturing text (group 1) and URL (group 2)."""
 
-    MARKDOWN_LINK_URL_RE: ClassVar[re.Pattern[str]] = re.compile(
+    MARKDOWN_LINK_URL_RE: ClassVar[t.Infra.RegexPattern] = re.compile(
         r"\[[^\]]+\]\(([^)]+)\)",
     )
     """Match markdown links capturing only the URL (group 1)."""
 
-    HEADING_RE: ClassVar[re.Pattern[str]] = re.compile(
+    HEADING_RE: ClassVar[t.Infra.RegexPattern] = re.compile(
         r"^#{1,6}\s+(.+?)\s*$",
         re.MULTILINE,
     )
     """Match any markdown heading (h1-h6), capturing the text."""
 
-    HEADING_H2_H3_RE: ClassVar[re.Pattern[str]] = re.compile(
+    HEADING_H2_H3_RE: ClassVar[t.Infra.RegexPattern] = re.compile(
         r"^(##|###)\s+(.+?)\s*$",
         re.MULTILINE,
     )
     """Match h2/h3 headings, capturing level (group 1) and text (group 2)."""
 
-    ANCHOR_LINK_RE: ClassVar[re.Pattern[str]] = re.compile(r"\[([^\]]+)\]\(#([^)]+)\)")
+    ANCHOR_LINK_RE: ClassVar[t.Infra.RegexPattern] = re.compile(
+        r"\[([^\]]+)\]\(#([^)]+)\)"
+    )
     """Match internal anchor links, capturing text and anchor."""
 
-    INLINE_CODE_RE: ClassVar[re.Pattern[str]] = re.compile(r"`[^`]*`")
+    INLINE_CODE_RE: ClassVar[t.Infra.RegexPattern] = re.compile(r"`[^`]*`")
     """Match inline code spans for stripping before analysis."""
 
     # ── Source code patterns (shared across rules/transformers/codegen) ──
 
-    CLASS_DEF_RE: ClassVar[re.Pattern[str]] = re.compile(
+    CLASS_DEF_RE: ClassVar[t.Infra.RegexPattern] = re.compile(
         r"^class\s+(\w+)",
         re.MULTILINE,
     )
     """Match class definitions, capturing the class name."""
 
-    FUNCTION_DEF_RE: ClassVar[re.Pattern[str]] = re.compile(
+    FUNCTION_DEF_RE: ClassVar[t.Infra.RegexPattern] = re.compile(
         r"^(?:async\s+)?def\s+(\w+)",
         re.MULTILINE,
     )
     """Match function/async function definitions, capturing the name."""
 
-    FROM_IMPORT_RE: ClassVar[re.Pattern[str]] = re.compile(
+    FROM_IMPORT_RE: ClassVar[t.Infra.RegexPattern] = re.compile(
         r"^from\s+([\w.]+)\s+import\s+(.+)$",
         re.MULTILINE,
     )
     """Match 'from X import Y' statements, capturing module and names."""
 
-    IMPORT_RE: ClassVar[re.Pattern[str]] = re.compile(
+    IMPORT_RE: ClassVar[t.Infra.RegexPattern] = re.compile(
         r"^import\s+([\w.]+)",
         re.MULTILINE,
     )
     """Match 'import X' statements, capturing module name."""
 
-    ASSIGN_RE: ClassVar[re.Pattern[str]] = re.compile(
+    ASSIGN_RE: ClassVar[t.Infra.RegexPattern] = re.compile(
         r"^(\w+)\s*(?::\s*\S+\s*)?=",
         re.MULTILINE,
     )
     """Match module-level assignments, capturing the target name."""
 
-    FINAL_ASSIGN_RE: ClassVar[re.Pattern[str]] = re.compile(
+    FINAL_ASSIGN_RE: ClassVar[t.Infra.RegexPattern] = re.compile(
         r"^\s+(\w+)\s*:\s*(?:Final|ClassVar\[Final)\b.*?=\s*(.+)$",
         re.MULTILINE,
     )
     """Match Final/ClassVar[Final] assignments, capturing name and value."""
 
-    CONSTANT_NAME_RE: ClassVar[re.Pattern[str]] = re.compile(r"^[A-Z][A-Z0-9_]+$")
+    CONSTANT_NAME_RE: ClassVar[t.Infra.RegexPattern] = re.compile(r"^[A-Z][A-Z0-9_]+$")
     """Match UPPER_CASE constant naming convention."""
 
     @staticmethod
-    def _is_str_pattern(value: re.Pattern[str] | None) -> TypeIs[re.Pattern[str]]:
+    def _is_str_pattern(
+        value: t.Infra.RegexPattern | None,
+    ) -> TypeIs[t.Infra.RegexPattern]:
         """Check if value is a compiled regex pattern.
 
         Args:
             value: Value to check.
 
         Returns:
-            True if value is a compiled re.Pattern[str].
+            True if value is a compiled t.Infra.RegexPattern.
 
         """
         return isinstance(value, re.Pattern)
@@ -135,7 +143,7 @@ class FlextInfraUtilitiesPatterns:
             True if the pattern matches, False if pattern not found or no match.
 
         """
-        pattern_obj: re.Pattern[str] | None = getattr(
+        pattern_obj: t.Infra.RegexPattern | None = getattr(
             FlextInfraUtilitiesPatterns,
             pattern_name,
             None,

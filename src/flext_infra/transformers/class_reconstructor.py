@@ -67,7 +67,7 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
     def _class_method_block_edits(
         self,
         source: str,
-        class_node: ast.ClassDef,
+        class_node: t.Infra.AstClassDef,
         *,
         line_offsets: Sequence[int],
     ) -> Sequence[tuple[int, int, str]]:
@@ -101,8 +101,8 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
         source: str,
         *,
         class_name: str,
-        method_nodes: Sequence[ast.FunctionDef | ast.AsyncFunctionDef],
-        next_sibling: ast.stmt | None,
+        method_nodes: Sequence[t.Infra.AstFunctionDef | t.Infra.AstAsyncFunctionDef],
+        next_sibling: t.Infra.AstStmt | None,
         line_offsets: Sequence[int],
     ) -> tuple[int, int, str] | None:
         start = self._node_start_offset(method_nodes[0], line_offsets)
@@ -144,8 +144,8 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
         self,
         source: str,
         *,
-        node: ast.FunctionDef | ast.AsyncFunctionDef,
-        next_node: ast.stmt | None,
+        node: t.Infra.AstFunctionDef | t.Infra.AstAsyncFunctionDef,
+        next_node: t.Infra.AstStmt | None,
         line_offsets: Sequence[int],
     ) -> tuple[m.Infra.MethodInfo, str]:
         start = self._node_start_offset(node, line_offsets)
@@ -165,7 +165,7 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
 
     @staticmethod
     def _decorator_names(
-        node: ast.FunctionDef | ast.AsyncFunctionDef,
+        node: t.Infra.AstFunctionDef | t.Infra.AstAsyncFunctionDef,
     ) -> Sequence[str]:
         return [
             name
@@ -174,7 +174,7 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
         ]
 
     @staticmethod
-    def _decorator_name(decorator: ast.expr) -> str:
+    def _decorator_name(decorator: t.Infra.AstExpr) -> str:
         if isinstance(decorator, ast.Name):
             return decorator.id
         if isinstance(decorator, ast.Attribute):
@@ -191,7 +191,7 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
         return offsets
 
     @staticmethod
-    def _node_start_offset(node: ast.stmt, line_offsets: Sequence[int]) -> int:
+    def _node_start_offset(node: t.Infra.AstStmt, line_offsets: Sequence[int]) -> int:
         start_line = min(
             (
                 decorator.lineno
@@ -211,15 +211,15 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
         return line_offsets[start_line - 1] + start_col
 
     @staticmethod
-    def _node_end_offset(node: ast.stmt, line_offsets: Sequence[int]) -> int:
+    def _node_end_offset(node: t.Infra.AstStmt, line_offsets: Sequence[int]) -> int:
         end_line = node.end_lineno or node.lineno
         end_col = node.end_col_offset or 0
         return line_offsets[end_line - 1] + end_col
 
     @staticmethod
     def _is_method_node(
-        node: ast.stmt,
-    ) -> TypeGuard[ast.FunctionDef | ast.AsyncFunctionDef]:
+        node: t.Infra.AstStmt,
+    ) -> TypeGuard[t.Infra.AstFunctionDef | t.Infra.AstAsyncFunctionDef]:
         return isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
 
 

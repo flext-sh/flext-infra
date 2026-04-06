@@ -6,13 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import re
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
 from flext_infra import (
-    DetectorContext,
     FlextInfraNamespaceFacadeScanner,
     FlextInfraScanFileMixin,
     c,
@@ -45,7 +43,7 @@ class FlextInfraLooseObjectDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
         self, file_path: Path
     ) -> Sequence[m.Infra.LooseObjectViolation]:
         return self.detect_file(
-            DetectorContext(
+            m.Infra.DetectorContext(
                 file_path=file_path,
                 project_name=self._project_name,
                 rope_project=self._rope,
@@ -57,7 +55,7 @@ class FlextInfraLooseObjectDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
     @override
     def detect_file(
         cls,
-        ctx: DetectorContext,
+        ctx: m.Infra.DetectorContext,
     ) -> Sequence[m.Infra.LooseObjectViolation]:
         """Detect loose top-level objects in a single file."""
         file_path = ctx.file_path
@@ -81,7 +79,7 @@ class FlextInfraLooseObjectDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
         file_str = str(file_path)
         violations: MutableSequence[m.Infra.LooseObjectViolation] = []
 
-        def _add(hit: re.Match[str], name: str, kind: str, suffix: str) -> None:
+        def _add(hit: t.Infra.RegexMatch, name: str, kind: str, suffix: str) -> None:
             violations.append(
                 m.Infra.LooseObjectViolation(
                     file=file_str,

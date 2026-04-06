@@ -1,7 +1,7 @@
 """Tests for flext_infra service importability and u.Infra MRO pattern.
 
 Tests verify that all FlextInfra services are accessible via u.Infra MRO
-and that the output singleton works correctly.
+and that the current output namespace works correctly.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -9,11 +9,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from io import StringIO
+
 import pytest
 from tests import u
 
 from flext_core import FlextContainer
-from flext_infra import output
 
 
 class TestInfraContainerFunctions:
@@ -118,6 +119,12 @@ class TestInfraServiceRetrieval:
         """Verify FlextContainer has list_services method."""
         assert callable(FlextContainer.list_services)
 
-    def test_output_singleton_returns_same_instance(self) -> None:
-        """Verify output singleton is consistent."""
-        assert output is not None
+    def test_output_methods_write_to_configured_stream(self) -> None:
+        """Verify output methods write through the shared namespace stream."""
+        stream = StringIO()
+
+        u.Infra.setup(color=False, unicode=False, stream=stream)
+        u.Infra.info("hello")
+        u.Infra.warning("careful")
+
+        assert stream.getvalue() == "INFO: hello\nWARN: careful\n"

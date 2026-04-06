@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import argparse
 from pathlib import Path
 
 from flext_core import FlextLogger
@@ -34,7 +33,7 @@ class FlextInfraRuntimeDevDependencyDetector:
         self.runner = infra_instance
 
     @staticmethod
-    def parser(default_limits_path: Path) -> argparse.ArgumentParser:
+    def parser(default_limits_path: Path) -> t.Infra.CliArgumentParser:
         """Create argument parser for CLI with deptry, pip-check, and typing options."""
         parser = u.Infra.create_parser(
             prog="flext-infra deps detect",

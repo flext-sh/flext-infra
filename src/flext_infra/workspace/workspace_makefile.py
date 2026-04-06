@@ -26,12 +26,11 @@ from jinja2 import (
     Environment,
     FileSystemLoader,
     StrictUndefined,
-    Template,
     TemplateError,
     select_autoescape,
 )
 
-from flext_infra import c, p, r, u
+from flext_infra import c, p, r, t, u
 
 
 class FlextInfraWorkspaceMakefileGenerator:
@@ -164,7 +163,7 @@ class FlextInfraWorkspaceMakefileGenerator:
                 autoescape=select_autoescape(),
             )
             if template_text is None:
-                template_obj: Template = environment.get_template(
+                template_obj: t.Infra.JinjaTemplate = environment.get_template(
                     c.Infra.Makefile.TEMPLATE_NAME
                 )
             else:

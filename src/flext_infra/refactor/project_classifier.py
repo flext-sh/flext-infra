@@ -203,7 +203,7 @@ class FlextInfraProjectClassifier:
                 local_facade_classes.update(class_names)
         return (family_bases, local_facade_classes)
 
-    _CLASS_DEF_RE: re.Pattern[str] = c.Infra.SourceCode.CLASS_WITH_BASES_RE
+    _CLASS_DEF_RE: t.Infra.RegexPattern = c.Infra.SourceCode.CLASS_WITH_BASES_RE
 
     def _parse_family_file(
         self,

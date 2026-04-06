@@ -10,7 +10,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import DetectorContext, FlextInfraScanFileMixin, c, m, p, t, u
+from flext_infra import FlextInfraScanFileMixin, c, m, p, t, u
 
 
 class FlextInfraClassPlacementDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
@@ -51,7 +51,7 @@ class FlextInfraClassPlacementDetector(FlextInfraScanFileMixin, p.Infra.Scanner)
     @override
     def detect_file(
         cls,
-        ctx: DetectorContext,
+        ctx: m.Infra.DetectorContext,
     ) -> Sequence[m.Infra.ClassPlacementViolation]:
         """Detect misplaced Pydantic model classes."""
         file_path = ctx.file_path

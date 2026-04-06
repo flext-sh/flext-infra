@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import DetectorContext, FlextInfraScanFileMixin, c, m, p, t, u
+from flext_infra import FlextInfraScanFileMixin, c, m, p, t, u
 
 
 class FlextInfraMROCompletenessDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
@@ -39,7 +39,7 @@ class FlextInfraMROCompletenessDetector(FlextInfraScanFileMixin, p.Infra.Scanner
     @override
     def detect_file(
         cls,
-        ctx: DetectorContext,
+        ctx: m.Infra.DetectorContext,
     ) -> Sequence[m.Infra.MROCompletenessViolation]:
         """Detect missing MRO bases: expected - declared = violations."""
         file_path = ctx.file_path

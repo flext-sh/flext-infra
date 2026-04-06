@@ -5,8 +5,7 @@ from __future__ import annotations
 from collections.abc import MutableSequence
 
 import tomlkit
-from tomlkit.container import Container
-from tomlkit.items import Item, Table
+from tomlkit.items import Table
 
 from flext_infra import c, t, u
 
@@ -16,18 +15,18 @@ class FlextInfraConsolidateGroupsPhase:
 
     def apply(
         self,
-        doc: tomlkit.TOMLDocument,
+        doc: t.Infra.TomlDocument,
         canonical_dev: t.StrSequence,
     ) -> t.StrSequence:
         changes: MutableSequence[str] = []
-        project: Item | Container | None = None
+        project: t.Infra.TomlItem | t.Infra.TomlContainer | None = None
         if c.Infra.PROJECT in doc:
             project = doc[c.Infra.PROJECT]
         if not isinstance(project, Table):
             project = tomlkit.table()
             doc[c.Infra.PROJECT] = project
 
-        optional: Item | Container | None = None
+        optional: t.Infra.TomlItem | t.Infra.TomlContainer | None = None
         if c.Infra.OPTIONAL_DEPENDENCIES in project:
             optional = project[c.Infra.OPTIONAL_DEPENDENCIES]
         if not isinstance(optional, Table):
@@ -55,18 +54,18 @@ class FlextInfraConsolidateGroupsPhase:
             if old_key in optional:
                 del optional[old_key]
                 changes.append(f"project.optional-dependencies.{old_key} removed")
-        tool: Item | Container | None = None
+        tool: t.Infra.TomlItem | t.Infra.TomlContainer | None = None
         if c.Infra.TOOL in doc:
             tool = doc[c.Infra.TOOL]
         if not isinstance(tool, Table):
             tool = tomlkit.table()
             doc[c.Infra.TOOL] = tool
         poetry = u.Cli.toml_ensure_table(tool, c.Infra.POETRY)
-        poetry_group_raw: Item | Container | None = None
+        poetry_group_raw: t.Infra.TomlItem | t.Infra.TomlContainer | None = None
         if c.Infra.GROUP in poetry:
             poetry_group_raw = poetry[c.Infra.GROUP]
         poetry_group = poetry_group_raw if isinstance(poetry_group_raw, Table) else None
-        poetry_dev_table: Table | None = None
+        poetry_dev_table: t.Infra.TomlTable | None = None
         for old_group in (
             c.Infra.DOCS,
             c.Infra.SECURITY,
@@ -75,12 +74,12 @@ class FlextInfraConsolidateGroupsPhase:
         ):
             if poetry_group is None:
                 continue
-            old_group_table: Item | Container | None = None
+            old_group_table: t.Infra.TomlItem | t.Infra.TomlContainer | None = None
             if old_group in poetry_group:
                 old_group_table = poetry_group[old_group]
             if not isinstance(old_group_table, Table):
                 continue
-            old_deps: Item | Container | None = None
+            old_deps: t.Infra.TomlItem | t.Infra.TomlContainer | None = None
             if c.Infra.DEPENDENCIES in old_group_table:
                 old_deps = old_group_table[c.Infra.DEPENDENCIES]
             if isinstance(old_deps, Table):

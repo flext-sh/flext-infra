@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import MutableSequence, Sequence
 from typing import ClassVar, override
 
-from flext_infra import DetectorContext, FlextInfraScanFileMixin, c, m, p
+from flext_infra import FlextInfraScanFileMixin, c, m, p
 
 
 class FlextInfraManualTypingAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
@@ -22,7 +22,7 @@ class FlextInfraManualTypingAliasDetector(FlextInfraScanFileMixin, p.Infra.Scann
     @override
     def detect_file(
         cls,
-        ctx: DetectorContext,
+        ctx: m.Infra.DetectorContext,
     ) -> Sequence[m.Infra.ManualTypingAliasViolation]:
         """Detect typing declaration placement violations in a single file."""
         file_path = ctx.file_path

@@ -7,21 +7,19 @@ import shlex
 from collections.abc import MutableSequence, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, override
+from typing import override
 
 from flext_core import r, s
 from flext_infra import (
     FlextInfraGateRegistry,
     FlextInfraWorkspaceCheckGatesMixin,
-    WorkspaceLoopOutcome,
     c,
     m,
+    p,
+    t,
     u,
     workspace_check_cli as workspace_check_cli_module,
 )
-
-if TYPE_CHECKING:
-    import argparse
 
 
 class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
@@ -97,7 +95,7 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
         )
 
     @staticmethod
-    def build_parser() -> argparse.ArgumentParser:
+    def build_parser() -> t.Infra.CliArgumentParser:
         """Build the workspace check CLI parser."""
         return workspace_check_cli_module.FlextInfraWorkspaceCheckerCli.build_parser()
 
@@ -128,7 +126,7 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
     def _write_reports_and_summary(
         resolved_gates: Sequence[str],
         report_base: Path,
-        outcome: WorkspaceLoopOutcome,
+        outcome: p.Infra.WorkspaceLoopOutcome,
     ) -> r[Sequence[m.Infra.ProjectResult]]:
         """Write markdown/SARIF reports and print summary to output."""
         results = outcome.results

@@ -41,7 +41,7 @@ class FlextInfraUtilitiesRopeSource(FlextInfraUtilitiesRopeCore):
     def replace_in_source(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-        pattern: str | re.Pattern[str],
+        pattern: str | t.Infra.RegexPattern,
         replacement: str,
         *,
         apply: bool = True,

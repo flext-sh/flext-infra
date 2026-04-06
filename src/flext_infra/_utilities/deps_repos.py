@@ -4,21 +4,19 @@ from __future__ import annotations
 
 import configparser
 import os
-import re
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
-from flext_core import FlextLogger
 from flext_infra import c, m, p, r, t, u
 
 
 class FlextInfraInternalSyncRepoMixin:
     """Repository mapping, ref resolution, and workspace detection methods."""
 
-    log: FlextLogger
+    log: p.Logger
     toml: p.Infra.TomlReader | None
 
-    _OWNER_PATTERNS: tuple[re.Pattern[str], ...]
+    _OWNER_PATTERNS: tuple[t.Infra.RegexPattern, ...]
 
     def _read_plain(self, path: Path) -> r[t.Infra.ContainerDict]:
         if self.toml is not None:

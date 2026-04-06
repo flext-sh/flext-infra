@@ -23,9 +23,13 @@ logger = logging.getLogger(__name__)
 
 
 class FlextInfraUtilitiesRefactorMroScan:
-    _MRO_SCAN_CONSTANT_PATTERN: re.Pattern[str] = c.Infra.SourceCode.CONSTANT_NAME_RE
-    _MRO_SCAN_TYPE_PATTERN: re.Pattern[str] = re.compile(r"^_?[A-Za-z][A-Za-z0-9_]*$")
-    _MRO_SCAN_PROTOCOL_BASE_PATTERN: re.Pattern[str] = re.compile(
+    _MRO_SCAN_CONSTANT_PATTERN: t.Infra.RegexPattern = (
+        c.Infra.SourceCode.CONSTANT_NAME_RE
+    )
+    _MRO_SCAN_TYPE_PATTERN: t.Infra.RegexPattern = re.compile(
+        r"^_?[A-Za-z][A-Za-z0-9_]*$"
+    )
+    _MRO_SCAN_PROTOCOL_BASE_PATTERN: t.Infra.RegexPattern = re.compile(
         r"(^|[\s,(])(?:[A-Za-z_]\w*\.)?Protocol(?:\[[^\]]+\])?(?=$|[\s,)])",
     )
 

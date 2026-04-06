@@ -13,44 +13,18 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from flext_infra import m, t, u
 
-
-class DetectorContext(m.ArbitraryTypesModel):
-    """Bundles the common parameters passed to every ``detect_file`` classmethod."""
-
-    file_path: Path = Field(description="Filesystem path of the file being scanned.")
-    rope_project: t.Infra.RopeProject = Field(
-        description="Initialized Rope project used to resolve semantic metadata."
-    )
-    parse_failures: MutableSequence[m.Infra.ParseFailureViolation] | None = Field(
-        default=None,
-        description="Shared parse-failure collector reused across detector passes.",
-    )
-    project_name: str = Field(
-        default="",
-        description="Optional project name associated with the scanned file.",
-    )
-    project_root: Path | None = Field(
-        default=None,
-        description="Optional project root containing the scanned file.",
-    )
+# Re-export for backward compat — canonical path is m.Infra.DetectorContext
+DetectorContext = m.Infra.DetectorContext
 
 
 class FlextInfraScanFileMixin:
     """Base mixin: stores rope_project + parse_failures, provides scan_file().
 
     Subclasses MUST define ``_rule_id`` and ``detect_file`` classmethod.
-
-    Boilerplate elimination hooks:
-
-    * **_MESSAGE_TEMPLATE** — if set, ``_build_message`` formats the template with
-      ``violation.model_dump()`` so subclasses can skip overriding it entirely.
-    * **_collect_violations** — default delegates to ``cls.detect_file(ctx)``
-      which covers the majority of detectors.  Override only when ``detect_file``
-      needs extra parameters.
     """
 
     _rule_id: ClassVar[str]
@@ -67,14 +41,10 @@ class FlextInfraScanFileMixin:
         self._rope = rope_project
         self._pf = parse_failures
 
-    # ------------------------------------------------------------------
-    # Subclass interface
-    # ------------------------------------------------------------------
-
     @classmethod
     def detect_file(
         cls,
-        ctx: DetectorContext,
+        ctx: m.Infra.DetectorContext,
     ) -> Sequence[BaseModel]:
         """Detect violations in a single file.
 
@@ -86,43 +56,28 @@ class FlextInfraScanFileMixin:
         )
         raise NotImplementedError(msg)
 
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
-
     @staticmethod
     def _get_source_or_empty(
-        rope_project: t.Infra.RopeProject, file_path: Path
+        rope_project: t.Infra.RopeProject,
+        file_path: Path,
     ) -> str | None:
-        """Read source text via rope, returning *None* when the resource is missing."""
+        """Read source text via rope, returning None when resource is missing."""
         res = u.Infra.get_resource_from_path(rope_project, file_path)
         if res is None:
             return None
         source: str = res.read()
         return source
 
-    # ------------------------------------------------------------------
-    # Template hooks
-    # ------------------------------------------------------------------
-
     def _build_message(self, violation: BaseModel) -> str:
-        """Format a single violation into a human-readable message.
-
-        If ``_MESSAGE_TEMPLATE`` is set, uses ``str.format(**violation.model_dump())``.
-        Subclasses with non-trivial formatting should override this method.
-        """
+        """Format a single violation into a human-readable message."""
         if self._MESSAGE_TEMPLATE:
             return self._MESSAGE_TEMPLATE.format(**violation.model_dump())
         return f"[{self._rule_id}] violation"
 
     def _collect_violations(self, file_path: Path) -> Sequence[BaseModel]:
-        """Collect violations for the given file.
-
-        Default: delegates to ``cls.detect_file(ctx)``.
-        Override when ``detect_file`` requires extra params.
-        """
+        """Collect violations for the given file."""
         return self.detect_file(
-            DetectorContext(
+            m.Infra.DetectorContext(
                 file_path=file_path,
                 rope_project=self._rope,
                 parse_failures=self._pf,

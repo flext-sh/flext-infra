@@ -112,7 +112,7 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
         return updated
 
     @staticmethod
-    def _matches_target(func: ast.expr, simple_name: str) -> bool:
+    def _matches_target(func: t.Infra.AstExpr, simple_name: str) -> bool:
         """Return whether a call target matches the migrated simple name."""
         if isinstance(func, ast.Name):
             return func.id == simple_name
@@ -122,13 +122,13 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
 
     def _rewrite_call_node(
         self,
-        node: ast.Call,
+        node: t.Infra.AstCall,
         *,
         keyword_renames: t.MutableStrMapping,
         remove_keywords: t.Infra.StrSet,
         add_keywords: t.MutableStrMapping,
     ) -> tuple[str, bool]:
-        rewritten_keywords: list[ast.keyword] = []
+        rewritten_keywords: list[t.Infra.AstKeyword] = []
         changed = False
         for keyword in node.keywords:
             if keyword.arg is None:
@@ -161,7 +161,7 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
         return ast.unparse(rewritten_call), True
 
     @staticmethod
-    def _literal_expr(value_literal: str) -> ast.expr:
+    def _literal_expr(value_literal: str) -> t.Infra.AstExpr:
         """Parse an expression literal used by add_keywords."""
         try:
             parsed = ast.parse(value_literal, mode="eval")

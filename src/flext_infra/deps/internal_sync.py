@@ -17,7 +17,7 @@ class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
 
     log = FlextLogger.create_module_logger(__name__)
 
-    _OWNER_PATTERNS: tuple[re.Pattern[str], ...] = (
+    _OWNER_PATTERNS: tuple[t.Infra.RegexPattern, ...] = (
         re.compile(r"^git@github\.com:(?P<owner>[^/]+)/[^/]+(?:\.git)?$"),
         re.compile(r"^https://github\.com/(?P<owner>[^/]+)/[^/]+(?:\.git)?$"),
         re.compile(r"^http://github\.com/(?P<owner>[^/]+)/[^/]+(?:\.git)?$"),
