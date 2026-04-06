@@ -9,7 +9,6 @@ from __future__ import annotations
 from collections.abc import MutableSequence
 from pathlib import Path
 
-import tomlkit
 from tomlkit.items import Table
 from tomlkit.toml_document import TOMLDocument
 
@@ -140,7 +139,7 @@ class FlextInfraDependencyPathSyncRewrite:
             )
             if current_map == expected:
                 continue
-            source_table = tomlkit.table()
+            source_table = u.Infra.table()
             for key in sorted(expected):
                 source_table[key] = expected[key]
             sources[dep_name] = source_table

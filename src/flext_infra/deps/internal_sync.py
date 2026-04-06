@@ -31,7 +31,11 @@ class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
     def ensure_symlink(target: Path, source: Path) -> r[bool]:
         """Ensure target points to source via directory symlink."""
         try:
-            target.parent.mkdir(parents=True, exist_ok=True)
+            dir_result = u.Infra.ensure_dir(target.parent)
+            if dir_result.is_failure:
+                return r[bool].fail(
+                    dir_result.error or f"failed to create parent dir for {target}",
+                )
             if target.is_symlink() and target.resolve() == source.resolve():
                 return r[bool].ok(True)
             if target.exists() or target.is_symlink():
@@ -218,7 +222,11 @@ class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
             return r[bool].fail(safe_ref_name_result.error or "invalid git ref")
         safe_repo_url = safe_repo_url_result.value
         safe_ref_name = safe_ref_name_result.value
-        dep_path.parent.mkdir(parents=True, exist_ok=True)
+        parent_dir_result = u.Infra.ensure_dir(dep_path.parent)
+        if parent_dir_result.is_failure:
+            return r[bool].fail(
+                parent_dir_result.error or f"failed to create parent dir for {dep_path}",
+            )
         if not (dep_path / c.Infra.Git.DIR).exists():
             try:
                 if dep_path.exists() or dep_path.is_symlink():

@@ -11,7 +11,6 @@ from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
-import tomlkit
 from pydantic import ValidationError
 from tomlkit import items
 
@@ -45,11 +44,13 @@ class FlextInfraConfigFixer(s[bool]):
         items_infra: Sequence[t.Infra.InfraValue] = list(items_list)
         serialized_result = u.Infra.serialize(items_infra)
         if serialized_result.is_failure:
-            return tomlkit.array()
-        inline_doc = tomlkit.parse(f"items = {serialized_result.value}\n")
-        arr_raw = inline_doc["items"]
+            return u.Infra.array([])
+        parsed = u.Infra.parse_text(f"items = {serialized_result.value}\n")
+        if parsed is None:
+            return u.Infra.array([])
+        arr_raw = parsed["items"]
         if not isinstance(arr_raw, items.Array):
-            return tomlkit.array()
+            return u.Infra.array([])
         arr = arr_raw
         if len(items_list) > 1:
             arr.multiline(True)
@@ -107,7 +108,7 @@ class FlextInfraConfigFixer(s[bool]):
         if all_fixes and (not dry_run):
             typed_tool_data[c.Infra.PYREFLY] = dict(pyrefly)
             doc_data[c.Infra.TOOL] = typed_tool_data
-            new_doc = tomlkit.document()
+            new_doc = u.Infra.document()
             for key, value in doc_data.items():
                 new_doc[str(key)] = value
             write_result = u.Infra.write_document(path, new_doc)
