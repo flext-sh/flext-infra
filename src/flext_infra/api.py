@@ -33,7 +33,8 @@ if TYPE_CHECKING:
 
 def _load(module: str, name: str) -> type:
     """Lazy-load a class from a module to avoid circular imports."""
-    return getattr(importlib.import_module(module), name)  # type: ignore[no-any-return]
+    cls: type = getattr(importlib.import_module(module), name)
+    return cls
 
 
 class FlextInfra(FlextInfraServiceBase[bool]):
