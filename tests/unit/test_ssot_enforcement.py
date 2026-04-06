@@ -1,0 +1,71 @@
+"""SSOT enforcement: no duplicate utility implementations across the workspace."""
+
+from __future__ import annotations
+
+import ast
+from pathlib import Path
+
+import pytest
+
+WORKSPACE = Path(__file__).resolve().parents[3]  # flext/ root
+
+# Methods that must have exactly ONE implementation across the workspace.
+SSOT_METHODS = [
+    ("sha256_content", "flext_cli"),
+    ("sha256_file", "flext_cli"),
+    ("json_read", "flext_cli"),
+    ("json_write", "flext_cli"),
+    ("json_parse", "flext_cli"),
+]
+
+
+def _find_method_definitions(
+    method_name: str,
+    search_dirs: tuple[Path, ...],
+) -> list[str]:
+    """Find all static/class methods with exact name in _utilities/ dirs."""
+    found: list[str] = []
+    for search_dir in search_dirs:
+        utils_dir = search_dir / "_utilities"
+        if not utils_dir.exists():
+            continue
+        for py_file in utils_dir.rglob("*.py"):
+            if py_file.name.startswith("_") and py_file.name != "__init__.py":
+                continue
+            try:
+                tree = ast.parse(py_file.read_text())
+            except SyntaxError:
+                continue
+            found.extend(
+                f"{py_file.relative_to(WORKSPACE)}"
+                for node in ast.walk(tree)
+                if isinstance(node, ast.FunctionDef) and node.name == method_name
+            )
+    return found
+
+
+@pytest.mark.parametrize(
+    ("method", "canonical_package"),
+    SSOT_METHODS,
+    ids=[m for m, _ in SSOT_METHODS],
+)
+def test_no_duplicate_utility_implementations(
+    method: str,
+    canonical_package: str,
+) -> None:
+    """Each utility method must have exactly one implementation in its canonical package."""
+    search_dirs = (
+        WORKSPACE / "flext-core" / "src" / "flext_core",
+        WORKSPACE / "flext-cli" / "src" / "flext_cli",
+        WORKSPACE / "flext-infra" / "src" / "flext_infra",
+    )
+    definitions = _find_method_definitions(method, search_dirs)
+    canonical_defs = [d for d in definitions if canonical_package in d]
+    duplicate_defs = [d for d in definitions if canonical_package not in d]
+
+    assert len(canonical_defs) >= 1, (
+        f"{method} not found in canonical package {canonical_package}"
+    )
+    assert len(duplicate_defs) == 0, (
+        f"{method} has duplicate implementations outside {canonical_package}: {duplicate_defs}"
+    )

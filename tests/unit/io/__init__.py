@@ -10,11 +10,7 @@ import typing as _t
 from flext_core.lazy import install_lazy_exports
 
 if _t.TYPE_CHECKING:
-    import tests.unit.io.test_infra_json_io as _tests_unit_io_test_infra_json_io
-
-    test_infra_json_io = _tests_unit_io_test_infra_json_io
     import tests.unit.io.test_infra_terminal_detection as _tests_unit_io_test_infra_terminal_detection
-    from tests.unit.io.test_infra_json_io import SampleModel, TestFlextInfraJsonService
 
     test_infra_terminal_detection = _tests_unit_io_test_infra_terminal_detection
     from tests.unit.io.test_infra_terminal_detection import (
@@ -34,11 +30,6 @@ if _t.TYPE_CHECKING:
     from flext_core.typings import FlextTypes as t
     from flext_core.utilities import FlextUtilities as u
 _LAZY_IMPORTS = {
-    "SampleModel": ("tests.unit.io.test_infra_json_io", "SampleModel"),
-    "TestFlextInfraJsonService": (
-        "tests.unit.io.test_infra_json_io",
-        "TestFlextInfraJsonService",
-    ),
     "TestShouldUseColor": (
         "tests.unit.io.test_infra_terminal_detection",
         "TestShouldUseColor",
@@ -56,15 +47,12 @@ _LAZY_IMPORTS = {
     "r": ("flext_core.result", "FlextResult"),
     "s": ("flext_core.service", "FlextService"),
     "t": ("flext_core.typings", "FlextTypes"),
-    "test_infra_json_io": "tests.unit.io.test_infra_json_io",
     "test_infra_terminal_detection": "tests.unit.io.test_infra_terminal_detection",
     "u": ("flext_core.utilities", "FlextUtilities"),
     "x": ("flext_core.mixins", "FlextMixins"),
 }
 
 __all__ = [
-    "SampleModel",
-    "TestFlextInfraJsonService",
     "TestShouldUseColor",
     "TestShouldUseUnicode",
     "c",
@@ -76,7 +64,6 @@ __all__ = [
     "r",
     "s",
     "t",
-    "test_infra_json_io",
     "test_infra_terminal_detection",
     "u",
     "x",

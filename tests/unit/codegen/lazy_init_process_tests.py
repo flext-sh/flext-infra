@@ -166,4 +166,7 @@ class TestProcessDirectory:
         content = (src_dir / "__init__.py").read_text()
         tm.that(content, contains='__version__ = "1.0.0"')
         tm.that(content, contains="from test_pkg.__version__ import *")
-        tm.that(content, contains='"__version_info__": "test_pkg.__version__"')
+        tm.that(
+            content,
+            contains='"__version_info__": ("test_pkg.__version__", "__version_info__")',
+        )

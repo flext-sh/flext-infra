@@ -18,7 +18,7 @@ from typing import override
 
 from pydantic import Field
 
-from flext_core import r
+from flext_core import FlextLogger, r
 from flext_infra import (
     FlextInfraCodegenLazyInit,
     FlextInfraNamespaceEnforcer,
@@ -31,6 +31,8 @@ from flext_infra import (
     t,
     u,
 )
+
+_log = FlextLogger.create_module_logger(__name__)
 
 
 class FlextInfraCodegenFixer(s[str]):
@@ -108,6 +110,11 @@ class FlextInfraCodegenFixer(s[str]):
         initial_violations_result = self._namespace_violations(project_path)
         initial_violations = initial_violations_result.unwrap_or(())
         if initial_violations_result.is_failure:
+            _log.warning(
+                "namespace_validation_failed",
+                project=project_path.name,
+                error=str(initial_violations_result.error),
+            )
             ctx.skip(
                 module=project_path.name,
                 rule="NAMESPACE",
@@ -124,6 +131,11 @@ class FlextInfraCodegenFixer(s[str]):
         report = FlextInfraRefactorMigrateToClassMRO(
             workspace_root=project_path,
         ).run(target="all", apply=True)
+        _log.info(
+            "mro_migration_complete",
+            project=project_path.name,
+            migrations=len(report.migrations),
+        )
         for migration in report.migrations:
             ctx.files_modified.add(migration.file)
             symbols = ", ".join(migration.moved_symbols) or "symbols"
@@ -388,14 +400,27 @@ class FlextInfraCodegenFixer(s[str]):
         )
 
     @staticmethod
-    def _violation_key(
+    def _read_source_lines(project_path: Path, module: str) -> Sequence[str]:
+        """Read source lines for a module, returning empty on failure."""
+        module_path = project_path / module
+        if not module_path.is_file():
+            return ()
+        return module_path.read_text(encoding="utf-8").splitlines()
+
+    @classmethod
+    def _build_violation_key(
+        cls,
         violation: m.Infra.CensusViolation,
-    ) -> tuple[str, str, int, str]:
-        return (
-            violation.module,
-            violation.rule,
-            violation.line,
-            violation.message,
+        project_path: Path,
+        source_cache: dict[str, Sequence[str]],
+    ) -> m.Infra.ViolationKey:
+        """Build a content-hash ViolationKey, caching source reads per module."""
+        if violation.module not in source_cache:
+            source_cache[violation.module] = cls._read_source_lines(
+                project_path, violation.module
+            )
+        return m.Infra.ViolationKey.from_violation(
+            violation, source_cache[violation.module]
         )
 
     @classmethod
@@ -418,15 +443,14 @@ class FlextInfraCodegenFixer(s[str]):
                 message=remaining_result.error or "namespace validation failed",
             )
             return
-        remaining_keys = {
-            cls._violation_key(violation)
+        source_cache: dict[str, Sequence[str]] = {}
+        remaining_keys = frozenset(
+            cls._build_violation_key(violation, project_path, source_cache)
             for violation in remaining_result.unwrap_or(())
-        }
+        )
         for violation in initial_violations:
-            if (
-                violation.fixable
-                and cls._violation_key(violation) not in remaining_keys
-            ):
+            key = cls._build_violation_key(violation, project_path, source_cache)
+            if violation.fixable and key not in remaining_keys:
                 ctx.violations_fixed.append(violation)
                 continue
             ctx.violations_skipped.append(violation)

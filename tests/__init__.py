@@ -133,6 +133,8 @@ if _t.TYPE_CHECKING:
     unit = _tests_unit
     import tests.unit.basemk as _tests_unit_basemk
     from tests.unit import (
+        SSOT_METHODS,
+        WORKSPACE,
         SetupFn,
         TestDetectorBasicDetection,
         TestDetectorGitRunScenarios,
@@ -262,10 +264,12 @@ if _t.TYPE_CHECKING:
         test_migrator_pyproject_not_found_dry_run,
         test_migrator_workspace_root_not_exists,
         test_migrator_workspace_root_project_detection,
+        test_no_duplicate_utility_implementations,
         test_parse_semver_invalid,
         test_parse_semver_result_type,
         test_parse_semver_valid,
         test_replace_project_version,
+        test_ssot_enforcement,
         test_sync_basemk_scenarios,
         test_sync_error_scenarios,
         test_sync_regenerates_project_makefile_without_legacy_passthrough,
@@ -858,11 +862,8 @@ if _t.TYPE_CHECKING:
     io = _tests_unit_io
     import tests.unit.release as _tests_unit_release
     from tests.unit.io import (
-        SampleModel,
-        TestFlextInfraJsonService,
         TestShouldUseColor,
         TestShouldUseUnicode,
-        test_infra_json_io,
         test_infra_terminal_detection,
     )
     from tests.unit.refactor import (
@@ -1090,7 +1091,7 @@ if _t.TYPE_CHECKING:
     )
 
     validate = _tests_unit_validate
-    import tests.utilities as _tests_utilities
+    import tests.unit.workspace as _tests_unit_workspace
     from tests.unit.validate import (
         TestFlextInfraNamespaceValidator,
         basemk_validator_tests,
@@ -1103,6 +1104,10 @@ if _t.TYPE_CHECKING:
         test_stub_validate_help_returns_zero,
         test_stub_validate_uses_all_flag,
     )
+
+    workspace = _tests_unit_workspace
+    import tests.utilities as _tests_utilities
+    from tests.unit.workspace import TestSyncService, test_sync
 
     utilities = _tests_utilities
     import tests.workspace_factory as _tests_workspace_factory
@@ -1222,6 +1227,8 @@ _ = _LAZY_IMPORTS.pop("output_reporting", None)
 __all__ = [
     "FAMILY_FILE_MAP",
     "FAMILY_SUFFIX_MAP",
+    "SSOT_METHODS",
+    "WORKSPACE",
     "BrokenScenario",
     "DependencyScenario",
     "DependencyScenarios",
@@ -1247,7 +1254,6 @@ __all__ = [
     "RealGitService",
     "RealSubprocessRunner",
     "RunProjectsMock",
-    "SampleModel",
     "SetupFn",
     "Spy",
     "StubCommandOutput",
@@ -1371,7 +1377,6 @@ __all__ = [
     "TestFlextInfraGitService",
     "TestFlextInfraInitLazyLoading",
     "TestFlextInfraInternalDependencySyncService",
-    "TestFlextInfraJsonService",
     "TestFlextInfraMaintenance",
     "TestFlextInfraNamespaceValidator",
     "TestFlextInfraPathResolver",
@@ -1541,6 +1546,7 @@ __all__ = [
     "TestSyncMethodEdgeCases",
     "TestSyncMethodEdgeCasesMore",
     "TestSyncOne",
+    "TestSyncService",
     "TestSynthesizedRepoMap",
     "TestToInfraValue",
     "TestUpdateChangelog",
@@ -1880,7 +1886,6 @@ __all__ = [
     "test_infra_init_lazy_core",
     "test_infra_init_lazy_submodules",
     "test_infra_integration",
-    "test_infra_json_io",
     "test_infra_main",
     "test_infra_maintenance_cli",
     "test_infra_maintenance_init",
@@ -2054,6 +2059,7 @@ __all__ = [
     "test_nested_class_propagation_preserves_asname_and_rewrites_alias_usage",
     "test_nested_class_propagation_updates_import_annotations_and_calls",
     "test_no_duplicate_t_import_when_t_from_project_package",
+    "test_no_duplicate_utility_implementations",
     "test_non_pydantic_class_not_flagged",
     "test_noop_clean_module",
     "test_parse_semver_invalid",
@@ -2181,12 +2187,14 @@ __all__ = [
     "test_skips_same_project_submodule_class_import",
     "test_skips_settings_file",
     "test_skips_when_candidate_is_already_in_facade_bases",
+    "test_ssot_enforcement",
     "test_string_zero_return_value",
     "test_stub_validate_help_returns_zero",
     "test_stub_validate_uses_all_flag",
     "test_symbol_propagation_keeps_alias_reference_when_asname_used",
     "test_symbol_propagation_renames_import_and_local_references",
     "test_symbol_propagation_updates_mro_base_references",
+    "test_sync",
     "test_sync_basemk_scenarios",
     "test_sync_error_scenarios",
     "test_sync_extra_paths_missing_root_pyproject",
@@ -2229,6 +2237,7 @@ __all__ = [
     "validator_internals_tests",
     "validator_tests",
     "version_resolution_tests",
+    "workspace",
     "workspace_check_tests",
     "workspace_factory",
     "workspace_main",

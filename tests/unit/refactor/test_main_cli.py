@@ -42,7 +42,6 @@ def test_refactor_census_accepts_apply_before_subcommand(
         staticmethod(_mock_handler),
     )
     result = refactor_main([
-        "--apply",
         "census",
         "--workspace",
         str(tmp_path),

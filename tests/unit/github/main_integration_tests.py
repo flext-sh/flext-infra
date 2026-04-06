@@ -6,9 +6,9 @@ from collections.abc import MutableSequence
 from pathlib import Path
 
 import pytest
-from tests import m, r, u
+from tests import m, r
 
-from flext_infra import FlextInfraGithubService, main
+from flext_infra import FlextInfraGithubService, FlextInfraUtilities, main
 
 
 def _orch(
@@ -49,7 +49,7 @@ class TestMain:
             )
 
         monkeypatch.setattr(
-            u.Infra,
+            FlextInfraUtilities.Infra,
             "github_sync_workflows",
             staticmethod(_sync),
         )
@@ -69,7 +69,7 @@ class TestMain:
             )
 
         monkeypatch.setattr(
-            u.Infra,
+            FlextInfraUtilities.Infra,
             "github_lint_workflows",
             staticmethod(_lint),
         )
@@ -115,7 +115,7 @@ class TestMain:
             return r[m.Infra.GithubPullRequestWorkspaceReport].ok(_orch(fail=0))
 
         monkeypatch.setattr(
-            u.Infra,
+            FlextInfraUtilities.Infra,
             "github_run_workspace_pull_requests",
             staticmethod(_orchestrate),
         )
@@ -140,7 +140,7 @@ class TestMain:
             )
 
         monkeypatch.setattr(
-            u.Infra,
+            FlextInfraUtilities.Infra,
             "github_lint_workflows",
             staticmethod(_lint),
         )
@@ -180,7 +180,7 @@ class TestMain:
             )
 
         monkeypatch.setattr(
-            u.Infra,
+            FlextInfraUtilities.Infra,
             "github_sync_workflows",
             staticmethod(_sync),
         )

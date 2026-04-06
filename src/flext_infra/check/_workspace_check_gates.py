@@ -5,9 +5,11 @@ from __future__ import annotations
 import time
 from collections.abc import Mapping, MutableSequence
 from pathlib import Path
+from typing import ClassVar
 
 from pydantic import Field
 
+from flext_core import FlextLogger
 from flext_infra import (
     FlextInfraBanditGate,
     FlextInfraGate,
@@ -77,6 +79,23 @@ class FlextInfraWorkspaceCheckGatesMixin:
     _workspace_root: Path
     _registry: FlextInfraGateRegistry
     _default_reports_dir: Path
+    _gate_logger: ClassVar[FlextLogger] = FlextLogger(__name__)
+
+    def _isolate_context(
+        self,
+        ctx: m.Infra.GateContext,
+        project_name: str,
+    ) -> m.Infra.GateContext:
+        """Create a fresh GateContext scoped to a single project."""
+        return m.Infra.GateContext(
+            workspace=ctx.workspace_root,
+            reports_dir=ctx.reports_dir / project_name,
+            apply_fixes=ctx.apply_fixes,
+            check_only=ctx.check_only,
+            fail_fast=ctx.fail_fast,
+            ruff_args=ctx.ruff_args,
+            pyright_args=ctx.pyright_args,
+        )
 
     def _run_single_project(
         self,
@@ -93,11 +112,12 @@ class FlextInfraWorkspaceCheckGatesMixin:
             u.Infra.progress(index, total, project_name, c.Infra.Severity.SKIP)
             return None
         u.Infra.progress(index, total, project_name, c.Infra.Verbs.CHECK)
+        project_ctx = self._isolate_context(ctx, project_name)
         start = time.monotonic()
         project_result = self._check_project_with_ctx(
             project_dir,
             resolved_gates,
-            ctx,
+            project_ctx,
         )
         elapsed = time.monotonic() - start
         u.Infra.status(
@@ -184,13 +204,20 @@ class FlextInfraWorkspaceCheckGatesMixin:
         ctx: m.Infra.GateContext,
     ) -> m.Infra.ProjectResult:
         """Run gates for one project using a pre-built GateContext."""
-        result = m.Infra.ProjectResult(project=project_dir.name)
+        project_name = project_dir.name
+        result = m.Infra.ProjectResult(project=project_name)
         for gate in gates:
             gate_instance = self._registry.create(gate, self._workspace_root)
             if gate_instance is None:
                 continue
             if ctx.apply_fixes and (not ctx.check_only) and gate_instance.can_fix:
                 fix_execution = gate_instance.fix(project_dir, ctx)
+                self._gate_logger.debug(
+                    "gate_executed",
+                    project=project_name,
+                    gate=gate,
+                    passed=fix_execution.result.passed,
+                )
                 if not fix_execution.result.passed:
                     result.gates[gate] = fix_execution
                     u.Infra.gate_result(
@@ -201,6 +228,12 @@ class FlextInfraWorkspaceCheckGatesMixin:
                     )
                     continue
             execution = gate_instance.check(project_dir, ctx)
+            self._gate_logger.debug(
+                "gate_executed",
+                project=project_name,
+                gate=gate,
+                passed=execution.result.passed,
+            )
             result.gates[gate] = execution
             u.Infra.gate_result(
                 gate,

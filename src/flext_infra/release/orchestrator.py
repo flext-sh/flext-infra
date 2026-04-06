@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
+from collections.abc import Callable, MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
@@ -120,7 +120,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
         self,
         release_config: m.Infra.ReleaseOrchestratorConfig,
     ) -> r[bool]:
-        """Run release workflow for the provided ordered phases."""
+        """Run release workflow via DAG pipeline execution."""
         workspace_root = release_config.workspace_root
         version = release_config.version
         tag = release_config.tag
@@ -151,25 +151,104 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
             branch_result = self._create_branches(workspace_root, version, names)
             if branch_result.is_failure:
                 return branch_result
-        for phase in phases:
-            result = self._dispatch_phase(
-                m.Infra.ReleasePhaseDispatchConfig(
-                    phase=phase,
-                    workspace_root=workspace_root,
-                    version=spec.version,
-                    tag=spec.tag,
-                    project_names=names,
-                    dry_run=dry_run,
-                    push=push,
-                    dev_suffix=dev_suffix,
-                ),
-            )
-            if result.is_failure:
-                return result
+
+        dispatch_cfg = m.Infra.ReleasePhaseDispatchConfig(
+            phase="validate",  # placeholder — overridden per stage
+            workspace_root=workspace_root,
+            version=spec.version,
+            tag=spec.tag,
+            project_names=names,
+            dry_run=dry_run,
+            push=push,
+            dev_suffix=dev_suffix,
+        )
+
+        pipeline_ctx = m.Cli.PipelineStageContext(
+            workspace_root=workspace_root,
+            shared={},
+            config={
+                "dry_run": dry_run,
+                "push": push,
+                "dev_suffix": dev_suffix,
+            },
+        )
+
+        active_stages = self._build_release_stages(phases, dispatch_cfg)
+
+        pipeline_result = u.Cli.execute_pipeline(
+            active_stages,
+            pipeline_ctx,
+            fail_fast=True,
+        )
+        if pipeline_result.is_failure:
+            return r[bool].fail(pipeline_result.error or "pipeline execution failed")
+
+        result = pipeline_result.value
+        if not result.ok:
+            failed = result.failed_stages
+            error_msg = failed[0].error if failed else "pipeline failed"
+            return r[bool].fail(error_msg or "pipeline failed")
+
         if next_dev and (not dry_run):
             return self._bump_next_dev(workspace_root, version, names, next_bump)
         self.logger.info("release_run_completed", status=c.Infra.ReportKeys.OK)
         return r[bool].ok(True)
+
+    def _build_release_stages(
+        self,
+        phases: Sequence[str],
+        dispatch_cfg: m.Infra.ReleasePhaseDispatchConfig,
+    ) -> Sequence[m.Cli.PipelineStageSpec]:
+        """Build DAG stage specs from the requested release phases.
+
+        Dependencies chain only between active phases, preserving their
+        canonical order: validate → version → build → publish.
+        """
+        active: set[str] = set(phases)
+        phase_order: Sequence[str] = [
+            c.Infra.Verbs.VALIDATE,
+            c.Infra.VERSION,
+            c.Infra.Directories.BUILD,
+            "publish",
+        ]
+        stage_list: MutableSequence[m.Cli.PipelineStageSpec] = []
+        prev: str | None = None
+        for phase_name in phase_order:
+            if phase_name not in active:
+                continue
+            deps = frozenset({prev}) if prev is not None else frozenset()
+            stage_list.append(
+                m.Cli.PipelineStageSpec(
+                    stage_id=phase_name,
+                    depends_on=deps,
+                    handler=self._make_phase_handler(phase_name, dispatch_cfg),
+                ),
+            )
+            prev = phase_name
+        return stage_list
+
+    def _make_phase_handler(
+        self,
+        phase_name: str,
+        dispatch_cfg: m.Infra.ReleasePhaseDispatchConfig,
+    ) -> Callable[[m.Cli.PipelineStageContext], r[m.Cli.PipelineStageResult]]:
+        """Create a handler closure that adapts r[bool] to r[PipelineStageResult]."""
+
+        def handler(_ctx: m.Cli.PipelineStageContext) -> r[m.Cli.PipelineStageResult]:
+            phase_cfg = dispatch_cfg.model_copy(update={"phase": phase_name})
+            phase_result = self._dispatch_phase(phase_cfg)
+            if phase_result.is_failure:
+                return r[m.Cli.PipelineStageResult].fail(
+                    phase_result.error or f"{phase_name} failed",
+                )
+            return r[m.Cli.PipelineStageResult].ok(
+                m.Cli.PipelineStageResult(
+                    stage_id=phase_name,
+                    status="ok",
+                ),
+            )
+
+        return handler
 
     def phase_validate(self, workspace_root: Path, *, dry_run: bool = False) -> r[bool]:
         """Execute validation phase via the workspace make validation target."""

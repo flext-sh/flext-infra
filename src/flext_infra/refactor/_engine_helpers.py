@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
+from flext_core import FlextLogger
 from flext_infra import (
     FlextInfraClassNestingRefactorRule,
     FlextInfraRefactorRule,
@@ -20,6 +21,8 @@ from flext_infra import (
     t,
     u,
 )
+
+_log = FlextLogger.create_module_logger(__name__)
 
 
 class FlextInfraRefactorEngineHelpersMixin:
@@ -130,6 +133,10 @@ class FlextInfraRefactorEngineHelpersMixin:
                 for ch in result.changes:
                     u.Infra.refactor_info(f"  - {ch}")
             elif result.success:
+                _log.debug(
+                    "refactor_noop",
+                    file=str(result.file_path),
+                )
                 u.Infra.refactor_debug(f"Unchanged: {fp.name}")
             else:
                 u.Infra.refactor_error(f"Failed: {fp.name} - {result.error}")

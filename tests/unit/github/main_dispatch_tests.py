@@ -6,9 +6,9 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import m, r, u
+from tests import m, r
 
-from flext_infra import FlextInfraGithubService
+from flext_infra import FlextInfraGithubService, FlextInfraUtilities
 
 
 def _workspace_report(
@@ -35,7 +35,7 @@ class TestRunPrWorkspace:
             )
 
         monkeypatch.setattr(
-            u.Infra,
+            FlextInfraUtilities.Infra,
             "github_run_workspace_pull_requests",
             staticmethod(_ok),
         )
@@ -54,7 +54,7 @@ class TestRunPrWorkspace:
             )
 
         monkeypatch.setattr(
-            u.Infra,
+            FlextInfraUtilities.Infra,
             "github_run_workspace_pull_requests",
             staticmethod(_fail),
         )
@@ -79,7 +79,7 @@ class TestRunPrWorkspace:
             )
 
         monkeypatch.setattr(
-            u.Infra,
+            FlextInfraUtilities.Infra,
             "github_run_workspace_pull_requests",
             staticmethod(_fake_orchestrate),
         )
@@ -112,7 +112,7 @@ class TestRunPrWorkspace:
             )
 
         monkeypatch.setattr(
-            u.Infra,
+            FlextInfraUtilities.Infra,
             "github_run_workspace_pull_requests",
             staticmethod(_fake_orchestrate),
         )
@@ -140,7 +140,7 @@ class TestRunPrWorkspace:
             )
 
         monkeypatch.setattr(
-            u.Infra,
+            FlextInfraUtilities.Infra,
             "github_run_workspace_pull_requests",
             staticmethod(_fake_orchestrate),
         )
@@ -168,7 +168,7 @@ class TestRunPrWorkspace:
             )
 
         monkeypatch.setattr(
-            u.Infra,
+            FlextInfraUtilities.Infra,
             "github_run_workspace_pull_requests",
             staticmethod(_fake_orchestrate),
         )
@@ -196,7 +196,7 @@ class TestRunPrWorkspace:
             )
 
         monkeypatch.setattr(
-            u.Infra,
+            FlextInfraUtilities.Infra,
             "github_run_workspace_pull_requests",
             staticmethod(_fake_orchestrate),
         )

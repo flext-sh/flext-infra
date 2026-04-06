@@ -60,8 +60,8 @@ class FlextInfraBanditGate(FlextInfraGate):
         issues: MutableSequence[m.Infra.Issue] = []
         try:
             bandit_data = (
-                u.Infra
-                .parse(result.stdout or "{}")
+                u.Cli
+                .json_parse(result.stdout or "{}")
                 .map(u.Infra.normalize_str_mapping)
                 .unwrap_or({})
             )

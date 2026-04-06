@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, MutableSet
-from typing import Annotated
+import hashlib
+from collections.abc import MutableSequence, MutableSet, Sequence
+from typing import Annotated, ClassVar
 
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 from flext_core import FlextModels
 from flext_infra._models.codegen_deduplication import (
@@ -275,6 +276,35 @@ class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
                 FlextInfraCodegenModels.CensusViolation(
                     module=module, rule=rule, line=line, message=message, fixable=True
                 ),
+            )
+
+    class ViolationKey(FlextModels.ContractModel):
+        """Content-stable violation identifier — resilient to line shifts."""
+
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True, extra="forbid")
+
+        module: Annotated[str, Field(description="Module containing the violation")]
+        rule: Annotated[str, Field(description="Rule that was violated")]
+        content_hash: Annotated[
+            str, Field(description="SHA256 of surrounding context lines")
+        ]
+
+        @staticmethod
+        def from_violation(
+            violation: FlextInfraCodegenModels.CensusViolation,
+            source_lines: Sequence[str],
+        ) -> FlextInfraCodegenModels.ViolationKey:
+            """Build key from violation and source context (+-2 lines)."""
+            ctx_start = max(0, violation.line - 2)
+            ctx_end = min(len(source_lines), violation.line + 3)
+            context = "\n".join(source_lines[ctx_start:ctx_end])
+            content_hash = hashlib.sha256(
+                context.encode("utf-8"),
+            ).hexdigest()
+            return FlextInfraCodegenModels.ViolationKey(
+                module=violation.module,
+                rule=violation.rule,
+                content_hash=content_hash,
             )
 
 

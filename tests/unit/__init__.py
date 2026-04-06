@@ -586,11 +586,8 @@ if _t.TYPE_CHECKING:
     io = _tests_unit_io
     import tests.unit.refactor as _tests_unit_refactor
     from tests.unit.io import (
-        SampleModel,
-        TestFlextInfraJsonService,
         TestShouldUseColor,
         TestShouldUseUnicode,
-        test_infra_json_io,
         test_infra_terminal_detection,
     )
 
@@ -1054,7 +1051,7 @@ if _t.TYPE_CHECKING:
     )
 
     test_infra_workspace_sync = _tests_unit_test_infra_workspace_sync
-    import tests.unit.transformers as _tests_unit_transformers
+    import tests.unit.test_ssot_enforcement as _tests_unit_test_ssot_enforcement
     from tests.unit.test_infra_workspace_sync import (
         SetupFn,
         svc,
@@ -1078,6 +1075,14 @@ if _t.TYPE_CHECKING:
         test_workspace_makefile_generator_sanitizes_orchestrator_env,
     )
 
+    test_ssot_enforcement = _tests_unit_test_ssot_enforcement
+    import tests.unit.transformers as _tests_unit_transformers
+    from tests.unit.test_ssot_enforcement import (
+        SSOT_METHODS,
+        WORKSPACE,
+        test_no_duplicate_utility_implementations,
+    )
+
     transformers = _tests_unit_transformers
     import tests.unit.validate as _tests_unit_validate
     from tests.unit.transformers import (
@@ -1093,6 +1098,7 @@ if _t.TYPE_CHECKING:
     )
 
     validate = _tests_unit_validate
+    import tests.unit.workspace as _tests_unit_workspace
     from tests.unit.validate import (
         TestFlextInfraNamespaceValidator,
         basemk_validator_tests,
@@ -1105,6 +1111,9 @@ if _t.TYPE_CHECKING:
         test_stub_validate_help_returns_zero,
         test_stub_validate_uses_all_flag,
     )
+
+    workspace = _tests_unit_workspace
+    from tests.unit.workspace import TestSyncService, test_sync
 
     from flext_core.constants import FlextConstants as c
     from flext_core.decorators import FlextDecorators as d
@@ -1133,8 +1142,10 @@ _LAZY_IMPORTS = merge_lazy_imports(
         "tests.unit.release",
         "tests.unit.transformers",
         "tests.unit.validate",
+        "tests.unit.workspace",
     ),
     {
+        "SSOT_METHODS": ("tests.unit.test_ssot_enforcement", "SSOT_METHODS"),
         "SetupFn": ("tests.unit.test_infra_workspace_sync", "SetupFn"),
         "TestDetectorBasicDetection": (
             "tests.unit.test_infra_workspace_detector",
@@ -1322,6 +1333,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             "tests.unit.test_infra_maintenance_python_version",
             "TestWorkspaceRoot",
         ),
+        "WORKSPACE": ("tests.unit.test_ssot_enforcement", "WORKSPACE"),
         "_utilities": "tests.unit._utilities",
         "basemk": "tests.unit.basemk",
         "c": ("flext_core.constants", "FlextConstants"),
@@ -1534,6 +1546,10 @@ _LAZY_IMPORTS = merge_lazy_imports(
             "tests.unit.test_infra_workspace_migrator",
             "test_migrator_workspace_root_project_detection",
         ),
+        "test_no_duplicate_utility_implementations": (
+            "tests.unit.test_ssot_enforcement",
+            "test_no_duplicate_utility_implementations",
+        ),
         "test_parse_semver_invalid": (
             "tests.unit.test_infra_versioning",
             "test_parse_semver_invalid",
@@ -1550,6 +1566,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             "tests.unit.test_infra_versioning",
             "test_replace_project_version",
         ),
+        "test_ssot_enforcement": "tests.unit.test_ssot_enforcement",
         "test_sync_basemk_scenarios": (
             "tests.unit.test_infra_workspace_sync",
             "test_sync_basemk_scenarios",
@@ -1625,6 +1642,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
         "transformers": "tests.unit.transformers",
         "u": ("flext_core.utilities", "FlextUtilities"),
         "validate": "tests.unit.validate",
+        "workspace": "tests.unit.workspace",
         "workspace_main": ("tests.unit.test_infra_workspace_main", "workspace_main"),
         "x": ("flext_core.mixins", "FlextMixins"),
     },
@@ -1639,6 +1657,8 @@ _ = _LAZY_IMPORTS.pop("output_reporting", None)
 __all__ = [
     "FAMILY_FILE_MAP",
     "FAMILY_SUFFIX_MAP",
+    "SSOT_METHODS",
+    "WORKSPACE",
     "EngineSafetyStub",
     "FakeReporting",
     "FakeSelection",
@@ -1648,7 +1668,6 @@ __all__ = [
     "FlextInfraCodegenTestProjectFactory",
     "GateClass",
     "RunProjectsMock",
-    "SampleModel",
     "SetupFn",
     "Spy",
     "StubCommandOutput",
@@ -1769,7 +1788,6 @@ __all__ = [
     "TestFlextInfraGitService",
     "TestFlextInfraInitLazyLoading",
     "TestFlextInfraInternalDependencySyncService",
-    "TestFlextInfraJsonService",
     "TestFlextInfraMaintenance",
     "TestFlextInfraNamespaceValidator",
     "TestFlextInfraPathResolver",
@@ -1928,6 +1946,7 @@ __all__ = [
     "TestSyncMethodEdgeCases",
     "TestSyncMethodEdgeCasesMore",
     "TestSyncOne",
+    "TestSyncService",
     "TestSynthesizedRepoMap",
     "TestToInfraValue",
     "TestUpdateChangelog",
@@ -2228,7 +2247,6 @@ __all__ = [
     "test_infra_git",
     "test_infra_init_lazy_core",
     "test_infra_init_lazy_submodules",
-    "test_infra_json_io",
     "test_infra_main",
     "test_infra_maintenance_cli",
     "test_infra_maintenance_init",
@@ -2401,6 +2419,7 @@ __all__ = [
     "test_nested_class_propagation_preserves_asname_and_rewrites_alias_usage",
     "test_nested_class_propagation_updates_import_annotations_and_calls",
     "test_no_duplicate_t_import_when_t_from_project_package",
+    "test_no_duplicate_utility_implementations",
     "test_non_pydantic_class_not_flagged",
     "test_noop_clean_module",
     "test_parse_semver_invalid",
@@ -2517,12 +2536,14 @@ __all__ = [
     "test_skips_same_project_submodule_class_import",
     "test_skips_settings_file",
     "test_skips_when_candidate_is_already_in_facade_bases",
+    "test_ssot_enforcement",
     "test_string_zero_return_value",
     "test_stub_validate_help_returns_zero",
     "test_stub_validate_uses_all_flag",
     "test_symbol_propagation_keeps_alias_reference_when_asname_used",
     "test_symbol_propagation_renames_import_and_local_references",
     "test_symbol_propagation_updates_mro_base_references",
+    "test_sync",
     "test_sync_basemk_scenarios",
     "test_sync_error_scenarios",
     "test_sync_extra_paths_missing_root_pyproject",
@@ -2562,6 +2583,7 @@ __all__ = [
     "validator_internals_tests",
     "validator_tests",
     "version_resolution_tests",
+    "workspace",
     "workspace_check_tests",
     "workspace_main",
     "workspace_root",

@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import m, r, t, u
+from tests import m, r, t
 
-from flext_infra import FlextInfraGithubService
+from flext_infra import FlextInfraGithubService, FlextInfraUtilities
 
 
 def _sync_report() -> m.Infra.GithubWorkflowSyncReport:
@@ -41,7 +41,9 @@ class TestRunWorkflows:
             _ = request
             return r[m.Infra.GithubWorkflowSyncReport].ok(_sync_report())
 
-        monkeypatch.setattr(u.Infra, "github_sync_workflows", staticmethod(_sync))
+        monkeypatch.setattr(
+            FlextInfraUtilities.Infra, "github_sync_workflows", staticmethod(_sync)
+        )
         result = FlextInfraGithubService().execute_workflow_sync(
             m.Infra.GithubWorkflowSyncRequest(workspace=str(tmp_path)),
         )
@@ -54,7 +56,9 @@ class TestRunWorkflows:
             _ = request
             return r[m.Infra.GithubWorkflowSyncReport].fail("sync failed")
 
-        monkeypatch.setattr(u.Infra, "github_sync_workflows", staticmethod(_sync))
+        monkeypatch.setattr(
+            FlextInfraUtilities.Infra, "github_sync_workflows", staticmethod(_sync)
+        )
         result = FlextInfraGithubService().execute_workflow_sync(
             m.Infra.GithubWorkflowSyncRequest(workspace=str(tmp_path)),
         )
@@ -74,7 +78,7 @@ class TestRunWorkflows:
             return r[m.Infra.GithubWorkflowSyncReport].ok(_sync_report())
 
         monkeypatch.setattr(
-            u.Infra,
+            FlextInfraUtilities.Infra,
             "github_sync_workflows",
             staticmethod(_fake_sync),
         )
@@ -97,7 +101,7 @@ class TestRunWorkflows:
             return r[m.Infra.GithubWorkflowSyncReport].ok(_sync_report())
 
         monkeypatch.setattr(
-            u.Infra,
+            FlextInfraUtilities.Infra,
             "github_sync_workflows",
             staticmethod(_fake_sync),
         )
@@ -116,7 +120,7 @@ class TestRunWorkflows:
             return r[m.Infra.GithubWorkflowSyncReport].ok(_sync_report())
 
         monkeypatch.setattr(
-            u.Infra,
+            FlextInfraUtilities.Infra,
             "github_sync_workflows",
             staticmethod(_fake_sync),
         )
@@ -139,7 +143,7 @@ class TestRunLint:
             return r[m.Infra.GithubWorkflowLintOutcome].ok(_lint_outcome())
 
         monkeypatch.setattr(
-            u.Infra,
+            FlextInfraUtilities.Infra,
             "github_lint_workflows",
             staticmethod(_lint),
         )
@@ -156,7 +160,7 @@ class TestRunLint:
             return r[m.Infra.GithubWorkflowLintOutcome].fail("lint failed")
 
         monkeypatch.setattr(
-            u.Infra,
+            FlextInfraUtilities.Infra,
             "github_lint_workflows",
             staticmethod(_lint),
         )
@@ -175,7 +179,7 @@ class TestRunLint:
             return r[m.Infra.GithubWorkflowLintOutcome].ok(_lint_outcome())
 
         monkeypatch.setattr(
-            u.Infra,
+            FlextInfraUtilities.Infra,
             "github_lint_workflows",
             staticmethod(_fake_lint),
         )
@@ -201,7 +205,7 @@ class TestRunLint:
             return r[m.Infra.GithubWorkflowLintOutcome].ok(_lint_outcome())
 
         monkeypatch.setattr(
-            u.Infra,
+            FlextInfraUtilities.Infra,
             "github_lint_workflows",
             staticmethod(_fake_lint),
         )
@@ -218,7 +222,7 @@ class TestRunPr:
             return r[m.Infra.GithubPullRequestOutcome].ok(_pull_request_outcome())
 
         monkeypatch.setattr(
-            u.Infra,
+            FlextInfraUtilities.Infra,
             "github_run_pull_request",
             staticmethod(_pr),
         )
@@ -238,7 +242,7 @@ class TestRunPr:
             )
 
         monkeypatch.setattr(
-            u.Infra,
+            FlextInfraUtilities.Infra,
             "github_run_pull_request",
             staticmethod(_pr),
         )

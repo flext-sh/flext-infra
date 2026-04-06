@@ -134,12 +134,8 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.github import FlextInfraUtilitiesGithub
 
     github_pr = _flext_infra__utilities_github_pr
-    import flext_infra._utilities.io as _flext_infra__utilities_io
-    from flext_infra._utilities.github_pr import FlextInfraUtilitiesGithubPr
-
-    io = _flext_infra__utilities_io
     import flext_infra._utilities.iteration as _flext_infra__utilities_iteration
-    from flext_infra._utilities.io import FlextInfraUtilitiesIo
+    from flext_infra._utilities.github_pr import FlextInfraUtilitiesGithubPr
 
     iteration = _flext_infra__utilities_iteration
     import flext_infra._utilities.log_parser as _flext_infra__utilities_log_parser
@@ -358,7 +354,6 @@ _LAZY_IMPORTS = {
         "flext_infra._utilities.github_pr",
         "FlextInfraUtilitiesGithubPr",
     ),
-    "FlextInfraUtilitiesIo": ("flext_infra._utilities.io", "FlextInfraUtilitiesIo"),
     "FlextInfraUtilitiesIteration": (
         "flext_infra._utilities.iteration",
         "FlextInfraUtilitiesIteration",
@@ -478,7 +473,6 @@ _LAZY_IMPORTS = {
     "git": "flext_infra._utilities.git",
     "github": "flext_infra._utilities.github",
     "github_pr": "flext_infra._utilities.github_pr",
-    "io": "flext_infra._utilities.io",
     "iteration": "flext_infra._utilities.iteration",
     "log_parser": "flext_infra._utilities.log_parser",
     "output": "flext_infra._utilities.output",
@@ -537,7 +531,6 @@ __all__ = [
     "FlextInfraUtilitiesGit",
     "FlextInfraUtilitiesGithub",
     "FlextInfraUtilitiesGithubPr",
-    "FlextInfraUtilitiesIo",
     "FlextInfraUtilitiesIteration",
     "FlextInfraUtilitiesLogParser",
     "FlextInfraUtilitiesOutput",
@@ -588,7 +581,6 @@ __all__ = [
     "git",
     "github",
     "github_pr",
-    "io",
     "iteration",
     "log_parser",
     "output",

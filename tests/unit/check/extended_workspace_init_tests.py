@@ -12,7 +12,7 @@ import pytest
 from flext_tests import tm
 from tests import c, m, t
 
-from flext_infra import FlextInfraRuffLintGate, FlextInfraWorkspaceChecker
+from flext_infra import FlextInfraRuffLintGate, FlextInfraWorkspaceChecker, u
 
 
 class TestWorkspaceCheckerInitialization:
@@ -86,8 +86,6 @@ class TestWorkspaceCheckerResolveWorkspaceRootFallback:
     """Test resolve_workspace_root_or_cwd fallback."""
 
     def test_resolve_workspace_root_fallback_to_cwd(self) -> None:
-        from flext_infra import u
-
         result = u.Infra.resolve_workspace_root_or_cwd(None)
         tm.that(result.is_absolute(), eq=True)
 
