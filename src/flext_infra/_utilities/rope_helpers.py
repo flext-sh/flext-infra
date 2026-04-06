@@ -31,12 +31,12 @@ class FlextInfraUtilitiesRopeHelpers:
     @staticmethod
     def get_module_level_assignments(
         source: str,
-    ) -> Sequence[tuple[str, str]]:
+    ) -> Sequence[t.Infra.StrPair]:
         """Return (name, value_str) for module-level simple assignments."""
         assignment_pattern = re.compile(
             r"^([A-Za-z_]\w*)\s*(?::\s*[^=]+)?=\s*(.+)$",
         )
-        results: list[tuple[str, str]] = []
+        results: list[t.Infra.StrPair] = []
         scope_depth = 0
         in_multiline_assignment = False
         current_name = ""

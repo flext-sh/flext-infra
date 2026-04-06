@@ -15,7 +15,10 @@ from flext_infra import FlextInfraUtilitiesDiscovery
 
 
 class TestFlextInfraDiscoveryServiceUncoveredLines:
-    def test_discover_projects_skips_non_git_projects(self, tmp_path: Path) -> None:
+    def test_discover_projects_includes_non_git_flext_projects(
+        self,
+        tmp_path: Path,
+    ) -> None:
         service = FlextInfraUtilitiesDiscovery()
         workspace_root = tmp_path
         non_git_dir = workspace_root / "non_git_project"
@@ -24,7 +27,9 @@ class TestFlextInfraDiscoveryServiceUncoveredLines:
         (non_git_dir / "pyproject.toml").touch()
         result = service.discover_projects(workspace_root)
         tm.ok(result)
-        assert not result.value
+        assert len(result.value) == 1
+        assert result.value[0].name == "non_git_project"
+        assert result.value[0].path == non_git_dir
 
     def test_find_all_pyproject_files_with_nonexistent_path(self) -> None:
         service = FlextInfraUtilitiesDiscovery()

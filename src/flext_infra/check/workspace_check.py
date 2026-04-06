@@ -52,12 +52,12 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
             self._default_reports_dir = report_dir
 
     @staticmethod
-    def parse_gate_csv(raw: str) -> list[str]:
+    def parse_gate_csv(raw: str) -> t.StrSequence:
         """Parse a comma-separated gate list."""
         return [gate.strip() for gate in raw.split(",") if gate.strip()]
 
     @staticmethod
-    def parse_tool_args(raw: str | None) -> list[str]:
+    def parse_tool_args(raw: str | None) -> t.StrSequence:
         """Parse extra gate arguments passed as a shell-style string."""
         if raw is None:
             return list[str]()

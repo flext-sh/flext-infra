@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from typing import Final
 
 from flext_infra import t
@@ -103,7 +104,7 @@ class FlextInfraCodegenConstants:
         "scripts",
     })
     "Directory segments recognized as project-root wrapper paths."
-    CORE_RUNTIME_ALIAS_TARGETS: Final[dict[str, tuple[str, str]]] = {
+    CORE_RUNTIME_ALIAS_TARGETS: Final[Mapping[str, t.Infra.StrPair]] = {
         "d": ("flext_core.decorators", "FlextDecorators"),
         "e": ("flext_core.exceptions", "FlextExceptions"),
         "h": ("flext_core.handlers", "FlextHandlers"),

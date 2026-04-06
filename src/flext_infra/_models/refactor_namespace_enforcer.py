@@ -292,7 +292,9 @@ class FlextInfraNamespaceEnforcerModels:
             cls,
             *,
             workspace: str,
-            projects: list[FlextInfraNamespaceEnforcerModels.ProjectEnforcementReport],
+            projects: Sequence[
+                FlextInfraNamespaceEnforcerModels.ProjectEnforcementReport
+            ],
         ) -> Self:
             return cls(
                 workspace=workspace,

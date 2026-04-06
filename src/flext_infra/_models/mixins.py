@@ -49,7 +49,7 @@ class FlextInfraModelsMixins:
             return Path(value).resolve() if value else None
 
         @staticmethod
-        def split_csv_values(*values: str | None) -> list[str]:
+        def split_csv_values(*values: str | None) -> t.StrSequence:
             """Normalize comma-separated CLI values into a compact list."""
             return [
                 item.strip()
@@ -71,7 +71,7 @@ class FlextInfraModelsMixins:
         ] = None
 
         @property
-        def project_names(self) -> list[str] | None:
+        def project_names(self) -> t.StrSequence | None:
             """Return normalized project names from repeated selectors."""
             names = FlextInfraModelsMixins.CliInputBase.split_csv_values(
                 *(self.projects or ()),
@@ -143,7 +143,7 @@ class FlextInfraModelsMixins:
         ] = "r,s"
 
         @property
-        def alias_names(self) -> list[str]:
+        def alias_names(self) -> t.StrSequence:
             """Return normalized runtime alias names."""
             return self.split_csv_values(self.aliases)
 
@@ -156,7 +156,7 @@ class FlextInfraModelsMixins:
         ] = "all"
 
         @property
-        def phase_names(self) -> list[str]:
+        def phase_names(self) -> t.StrSequence:
             """Return the normalized phase sequence for release execution."""
             if self.phase == "all":
                 return [
@@ -182,7 +182,7 @@ class FlextInfraModelsMixins:
         )
 
         @property
-        def make_args(self) -> list[str]:
+        def make_args(self) -> t.StrSequence:
             """Return normalized make arguments without blank entries."""
             return [make_arg.strip() for make_arg in self.make_arg if make_arg.strip()]
 

@@ -39,7 +39,7 @@ class FlextInfraUtilitiesDocsScope:
         return result.value if result.is_success else {}
 
     @staticmethod
-    def excluded_roots(workspace_root: Path) -> set[str]:
+    def excluded_roots(workspace_root: Path) -> t.Infra.StrSet:
         """Return explicitly excluded root directories from docs scope."""
         payload = FlextInfraUtilitiesDocsScope.load_config(workspace_root)
         scope = payload.get("scope")

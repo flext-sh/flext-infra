@@ -167,7 +167,7 @@ class TestFlextInfraInitLazyLoading:
     def test_removed_legacy_output_export(self) -> None:
         """Legacy output wrapper is no longer exported."""
         with pytest.raises(AttributeError):
-            _ = flext_infra.output
+            _ = getattr(flext_infra, "output")
 
     def test_known_verbs_accessible_via_constants(self) -> None:
         """Test KNOWN_VERBS is accessible via c.Infra.KNOWN_VERBS."""

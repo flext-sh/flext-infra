@@ -225,12 +225,12 @@ class FlextInfraModelsCliInputsOps:
         ] = c.Infra.MatchModes.PRESENT
 
         @property
-        def include_patterns(self) -> list[str]:
+        def include_patterns(self) -> t.StrSequence:
             """Return include globs as a concrete list."""
             return list(self.include or ())
 
         @property
-        def exclude_patterns(self) -> list[str]:
+        def exclude_patterns(self) -> t.StrSequence:
             """Return exclude globs as a concrete list."""
             return list(self.exclude or ())
 

@@ -7,7 +7,7 @@ import pytest
 from flext_infra import main as infra_main
 
 
-def test_check_main_executes_real_cli(capsys) -> None:
+def test_check_main_executes_real_cli(capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit) as exc_info:
         infra_main(["check", "run", "--help"])
     captured = capsys.readouterr()

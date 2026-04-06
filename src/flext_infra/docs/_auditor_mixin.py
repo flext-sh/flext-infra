@@ -81,7 +81,7 @@ class FlextInfraDocAuditorMixin:
         return cls.parse_audit_gate(validated_gate)
 
     @staticmethod
-    def resolve_checks(check: str) -> set[str]:
+    def resolve_checks(check: str) -> t.Infra.StrSet:
         """Parse check string into a resolved set of check names."""
         checks = {part.strip() for part in check.split(",") if part.strip()}
         if not checks or "all" in checks:
@@ -100,7 +100,7 @@ class FlextInfraDocAuditorMixin:
     def write_audit_reports(
         scope: m.Infra.DocScope,
         issues: Sequence[m.Infra.AuditIssue],
-        checks: set[str],
+        checks: t.Infra.StrSet,
         *,
         strict: bool,
         to_markdown_fn: Callable[

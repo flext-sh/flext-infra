@@ -59,7 +59,7 @@ class FlextInfraCyclicImportDetector:
     def _build_import_graph(
         scan_dirs: Sequence[Path],
         rope_project: t.Infra.RopeProject,
-        package_roots: set[str],
+        package_roots: t.Infra.StrSet,
     ) -> t.Infra.Pair[MutableMapping[str, set[str]], t.MutableStrMapping]:
         """Build module import graph and file map from scan directories."""
         graph: MutableMapping[str, set[str]] = {}

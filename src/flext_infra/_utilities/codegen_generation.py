@@ -124,7 +124,7 @@ class FlextInfraUtilitiesCodegenGeneration:
     def emit_type_checking_module(
         mod: str,
         items: Sequence[t.Infra.StrPair],
-        children: set[str],
+        children: t.Infra.StrSet,
         root_name: str,
         lines: MutableSequence[str],
         external_imports: t.MutableStrSequenceMapping,

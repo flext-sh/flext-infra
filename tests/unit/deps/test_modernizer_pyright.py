@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import typing
 from collections.abc import MutableMapping
 from pathlib import Path
 
@@ -66,7 +67,7 @@ class TestEnsurePyrightConfigPhase:
         tm.that(exclude, eq=expected_exclude)
         ignore = u.Cli.toml_unwrap_item(pyright["ignore"])
         tm.that(
-            sorted(ignore),
+            sorted(typing.cast("typing.Iterable[str]", ignore)),
             eq=sorted([*rules.root_typings_paths, *rules.ignored_diagnostic_globs]),
         )
         envs = u.Cli.toml_unwrap_item(pyright["executionEnvironments"])
@@ -163,7 +164,7 @@ class TestEnsurePyrightConfigPhase:
             return
         ignore = u.Cli.toml_unwrap_item(pyright["ignore"])
         tm.that(
-            sorted(ignore),
+            sorted(typing.cast("typing.Iterable[str]", ignore)),
             eq=sorted([
                 rules.project_typings_paths[0],
                 *rules.ignored_diagnostic_globs,
