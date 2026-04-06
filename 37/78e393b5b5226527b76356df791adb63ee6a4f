@@ -1,0 +1,64 @@
+src/flext_infra/_utilities/patterns.py
+  ed06264c3f07e70f 28,132
+src/flext_infra/workspace/sync.py
+  ed06264c3f07e70f 18-26,29,57
+tests/unit/validate/namespace_validator_tests.py
+  ed06264c3f07e70f 13,17-18
+tests/unit/check/extended_workspace_init_tests.py
+  ed06264c3f07e70f 86,88-91
+src/flext_infra/codegen/lazy_init.py
+  ed06264c3f07e70f 14
+src/flext_infra/transformers/_utilities_normalizer.py
+  ed06264c3f07e70f 42-54,59,61,67
+tests/unit/test_infra_protocols.py
+  ed06264c3f07e70f 26-27,58-59
+tests/unit/release/orchestrator_phases_tests.py
+  ed06264c3f07e70f 100
+tests/unit/deps/test_path_sync_rewrite_deps.py
+  ed06264c3f07e70f 193,195,197,199
+src/flext_infra/refactor/namespace_enforcer.py
+  ed06264c3f07e70f 49
+src/flext_infra/typings.py
+  ed06264c3f07e70f 18,29
+tests/unit/workspace/test_sync.py
+  ed06264c3f07e70f 22,41
+tests/integration/test_refactor_nesting_file.py
+  ed06264c3f07e70f 38
+src/flext_infra/_utilities/io.py
+  ed06264c3f07e70f 211,214
+src/flext_infra/models.py
+  ed06264c3f07e70f 12,34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "3778e393b5b5226527b76356df791adb63ee6a4f",
+  "prompts": {
+    "851db9fe50f869f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17a80e18-13b2-40de-b145-9cd2e136d4ec",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    },
+    "ed06264c3f07e70f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3c479ce-c75f-432e-8929-7a3082f1d8a3",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 95,
+      "total_deletions": 98,
+      "accepted_lines": 58,
+      "overriden_lines": 0
+    }
+  }
+}
