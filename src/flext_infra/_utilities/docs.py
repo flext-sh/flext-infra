@@ -7,11 +7,14 @@ from collections.abc import Callable, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_core import r, u
-from flext_infra import FlextInfraUtilitiesDocsScope, c, m, t
-
-from .discovery import FlextInfraUtilitiesDiscovery
-from .patterns import FlextInfraUtilitiesPatterns
-from .templates import FlextInfraUtilitiesTemplates
+from flext_infra import (
+    FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesDocsScope,
+    FlextInfraUtilitiesPatterns,
+    c,
+    m,
+    t,
+)
 
 
 class FlextInfraUtilitiesDocs:
@@ -225,9 +228,9 @@ class FlextInfraUtilitiesDocs:
         if not items:
             items = ["- No sections found"]
         return (
-            f"{FlextInfraUtilitiesTemplates.TOC_START}\n"
+            f"{c.Infra.SourceCode.TOC_START}\n"
             + "\n".join(items)
-            + f"\n{FlextInfraUtilitiesTemplates.TOC_END}"
+            + f"\n{c.Infra.SourceCode.TOC_END}"
         )
 
     @staticmethod
@@ -235,8 +238,8 @@ class FlextInfraUtilitiesDocs:
         """Insert or replace the TOC in content, returning (updated, changed)."""
         toc = FlextInfraUtilitiesDocs.build_toc(content)
         if (
-            FlextInfraUtilitiesTemplates.TOC_START in content
-            and FlextInfraUtilitiesTemplates.TOC_END in content
+            c.Infra.SourceCode.TOC_START in content
+            and c.Infra.SourceCode.TOC_END in content
         ):
             updated = re.sub(
                 r"<!-- TOC START -->.*?<!-- TOC END -->",

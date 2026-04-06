@@ -218,12 +218,8 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.selection import FlextInfraUtilitiesSelection
 
     subprocess = _flext_infra__utilities_subprocess
-    import flext_infra._utilities.templates as _flext_infra__utilities_templates
-    from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
-
-    templates = _flext_infra__utilities_templates
     import flext_infra._utilities.terminal as _flext_infra__utilities_terminal
-    from flext_infra._utilities.templates import FlextInfraUtilitiesTemplates
+    from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
 
     terminal = _flext_infra__utilities_terminal
     import flext_infra._utilities.toml as _flext_infra__utilities_toml
@@ -443,10 +439,6 @@ _LAZY_IMPORTS = {
         "flext_infra._utilities.subprocess",
         "FlextInfraUtilitiesSubprocess",
     ),
-    "FlextInfraUtilitiesTemplates": (
-        "flext_infra._utilities.templates",
-        "FlextInfraUtilitiesTemplates",
-    ),
     "FlextInfraUtilitiesTerminal": (
         "flext_infra._utilities.terminal",
         "FlextInfraUtilitiesTerminal",
@@ -514,7 +506,6 @@ _LAZY_IMPORTS = {
     "safety": "flext_infra._utilities.safety",
     "selection": "flext_infra._utilities.selection",
     "subprocess": "flext_infra._utilities.subprocess",
-    "templates": "flext_infra._utilities.templates",
     "terminal": "flext_infra._utilities.terminal",
     "toml": "flext_infra._utilities.toml",
     "toml_parse": "flext_infra._utilities.toml_parse",
@@ -575,7 +566,6 @@ __all__ = [
     "FlextInfraUtilitiesSafety",
     "FlextInfraUtilitiesSelection",
     "FlextInfraUtilitiesSubprocess",
-    "FlextInfraUtilitiesTemplates",
     "FlextInfraUtilitiesTerminal",
     "FlextInfraUtilitiesToml",
     "FlextInfraUtilitiesTomlParse",
@@ -628,7 +618,6 @@ __all__ = [
     "safety",
     "selection",
     "subprocess",
-    "templates",
     "terminal",
     "toml",
     "toml_parse",

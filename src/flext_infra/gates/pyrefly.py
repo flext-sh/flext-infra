@@ -41,8 +41,6 @@ class FlextInfraPyreflyGate(FlextInfraGate):
         _ = check_dirs
         json_file = ctx.reports_dir / f"{project_dir.name}-pyrefly.json"
         return [
-            sys.executable,
-            "-m",
             c.Infra.PYREFLY,
             c.Infra.CHECK,
             ".",

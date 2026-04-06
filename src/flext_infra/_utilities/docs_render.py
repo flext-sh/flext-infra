@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import TypeIs
 
-from flext_infra import FlextInfraUtilitiesTemplates, c, m, t
+from flext_infra import c, m, t
 
 
 class FlextInfraUtilitiesDocsRender:
@@ -76,7 +76,7 @@ class FlextInfraUtilitiesDocsRender:
     def docs_directive_page(title: str, dotted_path: str) -> str:
         """Return a mkdocstrings page for a module path."""
         return "\n".join([
-            FlextInfraUtilitiesTemplates.GENERATED_HEADER,
+            c.Infra.SourceCode.GENERATED_HEADER,
             "",
             f"# {title}",
             "",
@@ -106,7 +106,7 @@ class FlextInfraUtilitiesDocsRender:
             "public_symbols",
         )
         return "\n".join([
-            FlextInfraUtilitiesTemplates.GENERATED_HEADER,
+            c.Infra.SourceCode.GENERATED_HEADER,
             "",
             f"# {scope.name} Documentation",
             "",
@@ -137,7 +137,7 @@ class FlextInfraUtilitiesDocsRender:
     def docs_guides_index(scope: m.Infra.DocScope) -> str:
         """Return a minimal guides index for projects missing one."""
         return "\n".join([
-            FlextInfraUtilitiesTemplates.GENERATED_HEADER,
+            c.Infra.SourceCode.GENERATED_HEADER,
             "",
             f"# {scope.name} Guides",
             "",
@@ -158,7 +158,7 @@ class FlextInfraUtilitiesDocsRender:
         facades = FlextInfraUtilitiesDocsRender._string_list(data, "facades")
         modules = FlextInfraUtilitiesDocsRender._string_list(data, "modules")
         return "\n".join([
-            FlextInfraUtilitiesTemplates.GENERATED_HEADER,
+            c.Infra.SourceCode.GENERATED_HEADER,
             "",
             f"# {scope.name} API Reference",
             "",
@@ -274,7 +274,7 @@ class FlextInfraUtilitiesDocsRender:
             limit=8,
         )
         return "\n".join([
-            FlextInfraUtilitiesTemplates.GENERATED_HEADER,
+            c.Infra.SourceCode.GENERATED_HEADER,
             "",
             f"# {(data.get('site_title', '') or scope.name)} API Overview",
             "",
@@ -303,7 +303,7 @@ class FlextInfraUtilitiesDocsRender:
     ) -> str:
         """Return the generated module index page for one project."""
         lines: list[str] = [
-            FlextInfraUtilitiesTemplates.GENERATED_HEADER,
+            c.Infra.SourceCode.GENERATED_HEADER,
             "",
             f"# {scope.name} Module Index",
             "",
@@ -393,7 +393,7 @@ class FlextInfraUtilitiesDocsRender:
             or "_none_"
         )
         return "\n".join([
-            FlextInfraUtilitiesTemplates.GENERATED_HEADER,
+            c.Infra.SourceCode.GENERATED_HEADER,
             "",
             f"# {str(data.get('site_title', '')).strip() or 'FLEXT Workspace'} API Overview",
             "",
@@ -425,7 +425,7 @@ class FlextInfraUtilitiesDocsRender:
             for entry in entries
         ]
         return "\n".join([
-            FlextInfraUtilitiesTemplates.GENERATED_HEADER,
+            c.Infra.SourceCode.GENERATED_HEADER,
             "",
             "# FLEXT Project Catalog",
             "",

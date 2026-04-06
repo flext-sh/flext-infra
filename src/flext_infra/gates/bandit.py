@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sys
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar, override
@@ -41,8 +40,6 @@ class FlextInfraBanditGate(FlextInfraGate):
     ) -> t.StrSequence:
         _ = project_dir, ctx
         return [
-            sys.executable,
-            "-m",
             c.Infra.BANDIT,
             "-r",
             *check_dirs,

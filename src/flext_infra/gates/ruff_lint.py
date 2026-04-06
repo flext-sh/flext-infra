@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sys
 from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar, override
@@ -40,8 +39,6 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     ) -> t.StrSequence:
         _ = project_dir
         return [
-            sys.executable,
-            "-m",
             c.Infra.RUFF,
             c.Infra.Verbs.CHECK,
             *check_dirs,
@@ -87,8 +84,6 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     ) -> t.StrSequence:
         _ = project_dir
         return [
-            sys.executable,
-            "-m",
             c.Infra.RUFF,
             c.Infra.Verbs.CHECK,
             *targets,

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sys
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar, override
@@ -37,8 +36,6 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
     ) -> t.StrSequence:
         _ = project_dir, ctx
         return [
-            sys.executable,
-            "-m",
             c.Infra.RUFF,
             c.Infra.FORMAT,
             "--check",
@@ -88,7 +85,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
         targets: t.StrSequence,
     ) -> t.StrSequence:
         _ = project_dir, ctx, targets
-        return [sys.executable, "-m", c.Infra.RUFF, c.Infra.FORMAT, "."]
+        return [c.Infra.RUFF, c.Infra.FORMAT, "."]
 
 
 __all__ = ["FlextInfraRuffFormatGate"]
