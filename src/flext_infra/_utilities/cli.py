@@ -103,7 +103,9 @@ class FlextInfraUtilitiesCli(FlextInfraUtilitiesCliShared):
         subcommands: t.StrMapping,
         flags: FlextInfraUtilitiesCli.SharedFlags | None = None,
         subcommand_flags: Mapping[str, t.BoolMapping] | None = None,
-    ) -> t.Infra.Pair[t.Infra.CliArgumentParser, Mapping[str, t.Infra.CliArgumentParser]]:
+    ) -> t.Infra.Pair[
+        t.Infra.CliArgumentParser, Mapping[str, t.Infra.CliArgumentParser]
+    ]:
         """Create main parser with subcommands and shared flags."""
         return FlextInfraUtilitiesCliSubcommand.create_subcommand_parser(
             prog,

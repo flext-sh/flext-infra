@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from argparse import ArgumentParser, Namespace
+from argparse import ArgumentParser
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 
 from flext_core import u
@@ -76,7 +76,9 @@ class FlextInfraUtilitiesCliSubcommand:
         subcommands: t.StrMapping,
         flags: t.BoolMapping | None = None,
         subcommand_flags: Mapping[str, t.BoolMapping] | None = None,
-    ) -> t.Infra.Pair[ArgumentParser, Mapping[str, ArgumentParser]]:
+    ) -> t.Infra.Pair[
+        t.Infra.CliArgumentParser, Mapping[str, t.Infra.CliArgumentParser]
+    ]:
         """Create main parser with subcommands and shared flags."""
         resolved_flags = (
             FlextInfraUtilitiesCliShared.SharedFlags.from_dict(flags)
@@ -104,7 +106,7 @@ class FlextInfraUtilitiesCliSubcommand:
         )
         parser = ArgumentParser(prog=prog, description=description, parents=[shared])
         subparsers = parser.add_subparsers(dest="command")
-        command_parsers: MutableMapping[str, ArgumentParser] = {}
+        command_parsers: MutableMapping[str, t.Infra.CliArgumentParser] = {}
         for command, command_help in subcommands.items():
             command_shared = FlextInfraUtilitiesCliShared.shared_flags_parser(
                 FlextInfraUtilitiesCliShared.SharedFlags.from_dict(
@@ -153,11 +155,11 @@ class FlextInfraUtilitiesCliSubcommand:
 
     @staticmethod
     def parse_subcommand_args(
-        parser: ArgumentParser,
+        parser: t.Infra.CliArgumentParser,
         argv: t.StrSequence | None = None,
         *,
         passthrough_subcommands: t.StrSequence | None = None,
-    ) -> Namespace:
+    ) -> t.Infra.CliNamespace:
         """Parse and validate subcommand args against per-command shared flags."""
         args, unknown_args = parser.parse_known_args(argv)
         raw_argv = list(argv) if argv is not None else sys.argv[1:]
