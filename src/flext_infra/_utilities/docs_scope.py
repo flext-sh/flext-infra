@@ -6,11 +6,14 @@ from collections.abc import MutableSequence, Sequence
 from fnmatch import fnmatch
 from pathlib import Path
 
-from flext_cli import FlextCliUtilitiesJson, FlextCliUtilitiesToml
+from flext_cli import (
+    FlextCliUtilitiesJson as _CliJson,
+    FlextCliUtilitiesToml as _CliToml,
+)
 from flext_infra import c, m, r, t
 
 
-class FlextInfraUtilitiesDocsScope(FlextCliUtilitiesToml, FlextCliUtilitiesJson):
+class FlextInfraUtilitiesDocsScope(_CliToml, _CliJson):
     """Utility helpers for docs scope policy and project classification."""
 
     @staticmethod

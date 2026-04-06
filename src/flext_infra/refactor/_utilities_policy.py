@@ -14,7 +14,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from flext_cli import FlextCliUtilitiesYaml
+from flext_cli import FlextCliUtilitiesYaml as _CliYaml
 from flext_core import u
 from flext_infra import (
     c,
@@ -24,7 +24,7 @@ from flext_infra import (
 )
 
 
-class FlextInfraUtilitiesRefactorPolicy(FlextCliUtilitiesYaml):
+class FlextInfraUtilitiesRefactorPolicy(_CliYaml):
     """Policy document loading and class-nesting policy enforcement."""
 
     _MODULE_FAMILY_KEYS: t.StrSequence = (

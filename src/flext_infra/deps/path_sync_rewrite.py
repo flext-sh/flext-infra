@@ -107,18 +107,24 @@ class FlextInfraDependencyPathSyncRewrite:
         mode: str,
         internal_names: t.Infra.StrSet,
         internal_deps: t.Infra.StrSet,
+        workspace_members: t.StrSequence,
     ) -> t.StrSequence:
-        if not internal_deps:
+        expected_names: t.Infra.StrSet = (
+            set(workspace_members)
+            if is_root and mode == c.Infra.ReportKeys.WORKSPACE
+            else set(internal_deps)
+        )
+        if not expected_names:
             return []
         changes: MutableSequence[str] = []
         tool_section = self._ensure_table(doc, c.Infra.TOOL)
         uv_section = self._ensure_table(tool_section, "uv")
         sources = self._ensure_table(uv_section, "sources")
         for source_key in [str(k) for k in sources]:
-            if source_key in internal_names and source_key not in internal_deps:
+            if source_key in internal_names and source_key not in expected_names:
                 del sources[source_key]
                 changes.append(f"  uv.sources: removed stale source {source_key}")
-        for dep_name in sorted(internal_deps):
+        for dep_name in sorted(expected_names):
             expected: t.Infra.ContainerDict
             if mode == c.Infra.ReportKeys.WORKSPACE:
                 expected = {"workspace": True}
@@ -233,6 +239,7 @@ class FlextInfraDependencyPathSyncRewrite:
                 mode=mode,
                 internal_names=internal_names,
                 internal_deps=internal_deps,
+                workspace_members=workspace_members,
             ),
         )
         changes += list(

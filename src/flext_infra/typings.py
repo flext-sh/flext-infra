@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_cli import FlextCliTypes
+from flext_cli import t as _cli_t
 from flext_infra import (
     FlextInfraTypesAdapters,
     FlextInfraTypesBase,
@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from flext_infra import FlextInfraEngineModels
 
 
-class FlextInfraTypes(FlextCliTypes):
+class FlextInfraTypes(_cli_t):
     """Type namespace for flext-infra; extends FlextTypes via MRO.
 
     Infra-specific types are nested under the ``Infra`` inner class to

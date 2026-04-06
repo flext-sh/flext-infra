@@ -56,12 +56,14 @@ class FlextInfraEnsureFormattingToolingPhase:
             )
             .build()
         )
-        changes = FlextInfraToml.apply_phases(
-            doc,
-            codespell_phase,
-            tomlsort_phase,
-            yamlfix_phase,
-        )
+        changes = [
+            *FlextInfraToml.apply_phases(
+                doc,
+                codespell_phase,
+                tomlsort_phase,
+                yamlfix_phase,
+            ),
+        ]
         tool_table = u.Cli.toml_get_table(doc, "tool")
         if tool_table is None:
             return changes

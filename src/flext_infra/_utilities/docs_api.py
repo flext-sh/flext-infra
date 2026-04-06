@@ -8,7 +8,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from flext_cli import FlextCliUtilitiesToml
+from flext_cli import FlextCliUtilitiesToml as _CliToml
 from flext_infra import (
     FlextInfraUtilitiesDiscoveryScanning,
     FlextInfraUtilitiesDocsScope,
@@ -20,7 +20,7 @@ from flext_infra import (
 )
 
 
-class FlextInfraUtilitiesDocsApi(FlextCliUtilitiesToml):
+class FlextInfraUtilitiesDocsApi(_CliToml):
     """Extract public package metadata, exports, modules, and docstring issues."""
 
     _ALIAS_EXPORTS: tuple[str, ...] = (

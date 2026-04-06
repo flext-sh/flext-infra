@@ -14,7 +14,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from flext_core import u
+from flext_cli import u
 from flext_infra import c, m, t
 
 from .base import FlextInfraUtilitiesBase

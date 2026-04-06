@@ -7,7 +7,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from flext_cli import FlextCliUtilitiesJson
+from flext_cli import FlextCliUtilitiesJson as _CliJson
 from flext_core import u
 from flext_infra import (
     FlextInfraUtilitiesDocs,
@@ -20,7 +20,7 @@ from flext_infra import (
 )
 
 
-class FlextInfraUtilitiesDocsGenerate(FlextCliUtilitiesJson):
+class FlextInfraUtilitiesDocsGenerate(_CliJson):
     """Reusable generation helpers exposed through ``u.Infra``."""
 
     @staticmethod

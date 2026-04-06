@@ -15,12 +15,12 @@ from pathlib import Path
 
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
-from flext_cli import FlextCliUtilitiesToml
+from flext_cli import FlextCliUtilitiesToml as _CliToml
 from flext_core import u
 from flext_infra import c, m, p, r, t
 
 
-class FlextInfraUtilitiesParsing(FlextCliUtilitiesToml):
+class FlextInfraUtilitiesParsing(_CliToml):
     """Static parsing utilities for Python source and import analysis."""
 
     _DOCSTRING_QUOTES = ('"""', "'''")

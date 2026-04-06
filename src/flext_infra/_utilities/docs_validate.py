@@ -7,7 +7,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from flext_cli import FlextCliUtilitiesJson
+from flext_cli import FlextCliUtilitiesJson as _CliJson
 from flext_core import u
 from flext_infra import (
     FlextInfraUtilitiesDocs,
@@ -19,7 +19,7 @@ from flext_infra import (
 )
 
 
-class FlextInfraUtilitiesDocsValidate(FlextCliUtilitiesJson):
+class FlextInfraUtilitiesDocsValidate(_CliJson):
     """Reusable validation helpers exposed through ``u.Infra``."""
 
     @staticmethod

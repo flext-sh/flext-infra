@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+import tomlkit
 from flext_tests import tm
 from tests import t
 from tomlkit.toml_document import TOMLDocument
@@ -166,3 +167,33 @@ def test_rewrite_dep_paths_with_no_deps(tmp_path: Path) -> None:
             dry_run=True,
         ),
     )
+
+
+def test_root_workspace_sources_cover_all_workspace_members(tmp_path: Path) -> None:
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text(
+        (
+            "[project]\n"
+            'dependencies = ["flext-core>=0.1.0"]\n'
+            "[tool.uv.sources]\n"
+            "flexcore = { workspace = true }\n"
+        ),
+        encoding="utf-8",
+    )
+
+    result = rewrite_dep_paths(
+        pyproject,
+        mode="workspace",
+        internal_names={"flext-api", "flext-core", "flexcore"},
+        workspace_members=("flext-api", "flext-core"),
+        is_root=True,
+    )
+
+    tm.ok(result)
+    rendered = tomlkit.parse(pyproject.read_text(encoding="utf-8"))
+    tool_table = rendered["tool"]
+    uv_table = tool_table["uv"]
+    sources = uv_table["sources"]
+    tm.that(sorted(str(key) for key in sources), eq=["flext-api", "flext-core"])
+    tm.that(sources["flext-api"]["workspace"], eq=True)
+    tm.that(sources["flext-core"]["workspace"], eq=True)

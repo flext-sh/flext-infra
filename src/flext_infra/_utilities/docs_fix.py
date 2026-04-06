@@ -5,11 +5,11 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-from flext_cli import FlextCliUtilitiesJson
+from flext_cli import FlextCliUtilitiesJson as _CliJson
 from flext_infra import FlextInfraUtilitiesDocs, FlextInfraUtilitiesPatterns, c, m, t
 
 
-class FlextInfraUtilitiesDocsFix(FlextCliUtilitiesJson):
+class FlextInfraUtilitiesDocsFix(_CliJson):
     """Reusable fix helpers exposed through ``u.Infra``."""
 
     @staticmethod

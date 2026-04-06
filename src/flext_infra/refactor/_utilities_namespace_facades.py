@@ -8,7 +8,7 @@ from collections.abc import MutableMapping, Sequence
 from pathlib import Path
 from typing import ClassVar
 
-from flext_cli import FlextCliUtilitiesToml
+from flext_cli import FlextCliUtilitiesToml as _CliToml
 from flext_core import FlextUtilities
 from flext_infra import (
     FlextInfraNamespaceFacadeScanner,
@@ -19,7 +19,7 @@ from flext_infra import (
 )
 
 
-class FlextInfraUtilitiesRefactorNamespaceFacades(FlextCliUtilitiesToml):
+class FlextInfraUtilitiesRefactorNamespaceFacades(_CliToml):
     """Facade generation and dependency-chain helpers."""
 
     _base_chains_cache: ClassVar[MutableMapping[Path, t.StrSequenceMapping]] = {}

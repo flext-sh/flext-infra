@@ -10,7 +10,7 @@ import shutil
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
-from flext_cli import FlextCliUtilitiesJson
+from flext_cli import FlextCliUtilitiesJson as _CliJson
 from flext_infra import (
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesGithubPr,
@@ -27,7 +27,7 @@ class FlextInfraUtilitiesGithub(
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesReporting,
     FlextInfraUtilitiesSelection,
-    FlextCliUtilitiesJson,
+    _CliJson,
 ):
     """Utilities for GitHub automation including PRs and Workflows."""
 

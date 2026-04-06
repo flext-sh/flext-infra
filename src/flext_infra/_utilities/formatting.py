@@ -12,12 +12,12 @@ import contextlib
 from collections.abc import MutableSequence
 from pathlib import Path
 
-from flext_cli import FlextCliUtilitiesBase
+from flext_cli import FlextCliUtilitiesBase as _CliBase
 from flext_core import r
 from flext_infra import c, t
 
 
-class FlextInfraUtilitiesFormatting(FlextCliUtilitiesBase):
+class FlextInfraUtilitiesFormatting(_CliBase):
     """Static formatting utilities for code normalization.
 
     All methods are ``@staticmethod`` — no instantiation required.

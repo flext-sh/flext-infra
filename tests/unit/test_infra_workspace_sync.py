@@ -273,7 +273,7 @@ def test_workspace_makefile_generator_reuses_mod_and_boot_feedback(
     generator = FlextInfraWorkspaceMakefileGenerator()
     tm.ok(generator.generate(tmp_path))
     makefile_text = (tmp_path / "Makefile").read_text(encoding="utf-8")
-    tm.that(makefile_text.count("$(MAKE) mod"), eq=2)
+    tm.that(makefile_text.count("$(MAKE) mod"), eq=1)
     tm.that(
         makefile_text,
         has=[
@@ -284,11 +284,35 @@ def test_workspace_makefile_generator_reuses_mod_and_boot_feedback(
     )
 
 
+def test_workspace_makefile_generator_declares_workspace_boot_separation(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        "[project]\nversion='0.1.0'\n",
+        encoding="utf-8",
+    )
+    generator = FlextInfraWorkspaceMakefileGenerator()
+    tm.ok(generator.generate(tmp_path))
+    makefile_text = (tmp_path / "Makefile").read_text(encoding="utf-8")
+    tm.that(
+        makefile_text,
+        has=[
+            "WORKSPACE_PROJECTS :=",
+            "ATTACHABLE_PROJECTS :=",
+            'submodule_paths="$$(git config --file .gitmodules',
+            "independent project (no workspace writes)",
+            "attach-only project (outside uv workspace)",
+            'uv pip install --python "$(PY)" --editable "$$proj[dev]" --no-sources --no-deps',
+            '$(MAKE) val VALIDATE_SCOPE=workspace PROJECTS="$(WORKSPACE_PROJECTS)"',
+        ],
+    )
+
+
 def test_sync_updates_project_makefile_for_standalone_project(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    service = _S(workspace=tmp_path)
+    service = _S(workspace=tmp_path, canonical_root=tmp_path.parent)
     (tmp_path / "pyproject.toml").write_text(
         "[project]\nname='demo'\n", encoding="utf-8"
     )
@@ -323,7 +347,7 @@ def test_sync_regenerates_project_makefile_without_legacy_passthrough(
         encoding="utf-8",
     )
 
-    tm.ok(_S(workspace=tmp_path).execute())
+    tm.ok(_S(workspace=tmp_path, canonical_root=tmp_path.parent).execute())
 
     makefile_text = (tmp_path / "Makefile").read_text(encoding="utf-8")
     tm.that("custom-target" in makefile_text, eq=False)

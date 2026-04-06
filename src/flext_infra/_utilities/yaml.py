@@ -15,12 +15,12 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from flext_cli import FlextCliUtilitiesYaml
+from flext_cli import FlextCliUtilitiesYaml as _CliYaml
 from flext_core import r
 from flext_infra import c, m, t
 
 
-class FlextInfraUtilitiesYaml(FlextCliUtilitiesYaml):
+class FlextInfraUtilitiesYaml(_CliYaml):
     """Infra-specific YAML helpers — typed wrappers + tool_config.yml caching."""
 
     @staticmethod

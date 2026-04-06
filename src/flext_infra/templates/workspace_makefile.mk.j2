@@ -62,7 +62,16 @@ EXTERNAL_PROJECTS := $(shell \
 		fi; \
 	done)
 
-ALL_PROJECTS := $(FLEXT_PROJECTS) $(EXTERNAL_PROJECTS)
+MANAGED_PROJECTS := $(strip $(FLEXT_PROJECTS))
+INDEPENDENT_PROJECTS := $(strip $(EXTERNAL_PROJECTS))
+WORKSPACE_PROJECTS := $(strip $(shell awk '\
+	/^\[tool\.uv\.workspace\]$$/ { in_workspace = 1; next } \
+	in_workspace && /^members = \[$$/ { in_members = 1; next } \
+	in_members && /^\]$$/ { exit } \
+	in_members { gsub(/[ ",]/, "", $$0); if (length($$0)) printf "%s ", $$0 } \
+' pyproject.toml))
+ALL_PROJECTS := $(MANAGED_PROJECTS) $(INDEPENDENT_PROJECTS)
+ATTACHABLE_PROJECTS := $(strip $(filter-out $(WORKSPACE_PROJECTS),$(ALL_PROJECTS)))
 SELECTED_PROJECTS := $(strip $(if $(PROJECT),$(PROJECT),$(if $(PROJECTS),$(PROJECTS),$(ALL_PROJECTS))))
 DOCS_DEFAULT_PROJECTS := $(strip $(filter flext-%,$(ALL_PROJECTS)))
 DOCS_SELECTED_PROJECTS := $(strip $(if $(PROJECT),$(PROJECT),$(if $(PROJECTS),$(PROJECTS),$(DOCS_DEFAULT_PROJECTS))))
@@ -142,7 +151,7 @@ done
 endef
 
 define AUTO_SYNC_ALL_PROJECTS
-for proj in $(ALL_PROJECTS); do \
+for proj in $(WORKSPACE_PROJECTS); do \
 	$(WORKSPACE_INFRA_WORKSPACE) sync --workspace "$$proj" --canonical-root "$(CURDIR)" --apply >/dev/null || exit 1; \
 done
 endef
@@ -158,7 +167,7 @@ if [ ! -d "$(WORKSPACE_VENV)" ]; then \
 	echo "ERROR: workspace venv not found at $(WORKSPACE_VENV). Run '{{ make.WORKSPACE_BOOT_HINT }}'."; \
 	exit 1; \
 fi; \
-local_venvs=$$(for proj in $(ALL_PROJECTS); do \
+local_venvs=$$(for proj in $(WORKSPACE_PROJECTS); do \
 	if [ -d "$$proj/.venv" ]; then echo "$$proj/.venv"; fi; \
 done); \
 if [ -n "$$local_venvs" ]; then \
@@ -167,7 +176,7 @@ if [ -n "$$local_venvs" ]; then \
 	for venv_path in $$local_venvs; do rm -rf "$$venv_path"; done; \
 	echo "Project-local .venv directories removed."; \
 fi; \
-residual_venvs=$$(for proj in $(ALL_PROJECTS); do \
+residual_venvs=$$(for proj in $(WORKSPACE_PROJECTS); do \
 	if [ -d "$$proj/.venv" ]; then echo "$$proj/.venv"; fi; \
 done); \
 if [ -n "$$residual_venvs" ]; then \
@@ -276,9 +285,13 @@ boot: ## Install all projects into workspace .venv
 	$(Q)$(PREFLIGHT_CHECK)
 	$(Q)$(ENSURE_NO_PROJECT_CONFLICT)
 	$(Q)if [ -f .gitmodules ]; then \
+		submodule_paths="$$(git config --file .gitmodules --get-regexp '^submodule\..*\.path$$' 2>/dev/null | awk '{print $$2}' | tr '\n' ' ')"; \
+		if [ -z "$$submodule_paths" ]; then \
+			echo "No declared submodules found in .gitmodules."; \
+		else \
 		echo "Initializing and updating submodules..."; \
-		git submodule sync --recursive; \
-		if ! git submodule update --init --recursive --jobs $${JOBS:-8}; then \
+		git submodule sync --recursive -- $$submodule_paths; \
+		if ! git submodule update --init --recursive --jobs $${JOBS:-8} -- $$submodule_paths; then \
 			echo "Submodule update with configured URLs failed. Retrying with HTTPS fallback..."; \
 			while IFS=' ' read -r key url; do \
 				name="$${key#submodule.}"; \
@@ -288,13 +301,14 @@ boot: ## Install all projects into workspace .venv
 					git config "submodule.$$name.url" "$$https_url"; \
 				fi; \
 			done < <(git config --file .gitmodules --get-regexp '^submodule\..*\.url$$'); \
-			git submodule sync --recursive; \
-			git submodule update --init --recursive --jobs $${JOBS:-8} || { \
+			git submodule sync --recursive -- $$submodule_paths; \
+			git submodule update --init --recursive --jobs $${JOBS:-8} -- $$submodule_paths || { \
 				echo "ERROR: failed to update submodules"; \
 				exit 1; \
 			}; \
 		fi; \
 		echo "Submodules ready."; \
+		fi; \
 	fi
 	$(Q)[ -d ".venv" ] || { \
 		echo "Creating .venv..."; \
@@ -308,16 +322,27 @@ boot: ## Install all projects into workspace .venv
 	$(Q)$(ENSURE_WORKSPACE_RUNTIME)
 	$(Q)$(PREPARE_SELECTED_PROJECTS)
 	$(Q)echo "Enforcing Python version guards..."; $(WORKSPACE_INFRA_MAINTENANCE) || exit 1
-	$(Q)echo "Standardizing project metadata (make mod)..."
-	$(Q)$(MAKE) mod
 	$(Q)total_steps=$$(( $(words $(SELECTED_PROJECTS)) + 1 )); \
 	echo "Starting workspace setup for $$total_steps item(s) ($(words $(SELECTED_PROJECTS)) projects + root)"; \
-	failed=0; installed=0; step=1; failed_projects=""; \
+	failed=0; prepared=0; installed=0; attached=0; step=1; failed_projects=""; external_projects=""; \
 	for proj in $(SELECTED_PROJECTS); do \
 		if [ -d "$$proj" ] && [ -f "$$proj/pyproject.toml" ]; then \
 			log_file="/tmp/flext-setup-$$proj.log"; \
 			start_ts=$$(date +%s); \
 			printf "[%2d/%2d] boot %s\n" $$step $$total_steps "$$proj"; \
+			if echo " $(ATTACHABLE_PROJECTS) " | grep -qF " $$proj "; then \
+				if echo " $(INDEPENDENT_PROJECTS) " | grep -qF " $$proj "; then \
+					echo "     detect ... independent project (no workspace writes)"; \
+				else \
+					echo "     detect ... attach-only project (outside uv workspace)"; \
+				fi; \
+				echo "     install ... deferred to editable workspace attach"; \
+				external_projects="$$external_projects $$proj"; \
+				prepared=$$((prepared + 1)); \
+				rm -f "$$log_file"; \
+				step=$$((step + 1)); \
+				continue; \
+			fi; \
 			if $(WORKSPACE_INFRA_DEPS) internal-sync --workspace "$$proj" >>"$$log_file" 2>&1; then \
 				:; \
 			else \
@@ -340,16 +365,9 @@ boot: ## Install all projects into workspace .venv
 				continue; \
 			fi; \
 			printf "     install ... "; \
-			if uv sync --directory "$$proj" --all-groups --all-extras >>"$$log_file" 2>&1; then \
-				elapsed=$$(( $$(date +%s) - start_ts )); \
-				echo "ok ($${elapsed}s)"; \
-				installed=$$((installed + 1)); \
-			else \
-				echo "failed"; \
-				cat "$$log_file"; \
-				failed=$$((failed + 1)); \
-				failed_projects="$$failed_projects $$proj"; \
-			fi; \
+			elapsed=$$(( $$(date +%s) - start_ts )); \
+			echo "deferred to workspace sync ($${elapsed}s)"; \
+			prepared=$$((prepared + 1)); \
 			rm -f "$$log_file"; \
 			step=$$((step + 1)); \
 		fi; \
@@ -376,10 +394,26 @@ boot: ## Install all projects into workspace .venv
 	fi; \
 	if [ $$root_lock_ok -eq 1 ]; then \
 		printf "     install ... "; \
-		if uv sync --all-groups >>"$$log_file" 2>&1; then \
+		if uv sync --all-packages --all-groups --all-extras >>"$$log_file" 2>&1; then \
 			elapsed=$$(( $$(date +%s) - start_ts )); \
 			echo "ok ($${elapsed}s)"; \
 			installed=$$((installed + 1)); \
+			for proj in $$external_projects; do \
+				attach_log="/tmp/flext-attach-$$proj.log"; \
+				attach_ts=$$(date +%s); \
+				printf "     attach  %s ... " "$$proj"; \
+				if uv pip install --python "$(PY)" --editable "$$proj[dev]" --no-sources --no-deps >"$$attach_log" 2>&1; then \
+					attach_elapsed=$$(( $$(date +%s) - attach_ts )); \
+					echo "ok ($${attach_elapsed}s)"; \
+					attached=$$((attached + 1)); \
+				else \
+					echo "failed"; \
+					cat "$$attach_log"; \
+					failed=$$((failed + 1)); \
+					failed_projects="$$failed_projects $$proj"; \
+				fi; \
+				rm -f "$$attach_log"; \
+			done; \
 		else \
 			echo "failed"; \
 			cat "$$log_file"; \
@@ -390,14 +424,14 @@ boot: ## Install all projects into workspace .venv
 		printf "     install ... skipped\n"; \
 	fi; \
 	rm -f "$$log_file"; \
-	echo "Setup summary: Installed=$$installed Failed=$$failed Total=$$total_steps"; \
+	echo "Setup summary: Prepared=$$prepared Installed=$$installed Attached=$$attached Failed=$$failed Total=$$total_steps"; \
 	if [ $$failed -ne 0 ]; then \
 		echo "Failed projects:$$failed_projects"; \
 		echo "FAIL: boot ($$failed projects)"; \
 		exit 1; \
 	fi; \
 	echo "Validating workspace (validate VALIDATE_SCOPE=workspace)..."; \
-	$(MAKE) val VALIDATE_SCOPE=workspace || { echo "FAIL: boot validation"; exit 1; }
+	$(MAKE) val VALIDATE_SCOPE=workspace PROJECTS="$(WORKSPACE_PROJECTS)" || { echo "FAIL: boot validation"; exit 1; }
 
 up: ## Upgrade Python dependencies to latest via Poetry
 	$(Q)$(REQUIRE_VENV)

@@ -17,7 +17,7 @@ from typing import Annotated
 
 from pydantic import Field
 
-from flext_cli import FlextCliUtilitiesConfiguration
+from flext_cli import FlextCliUtilitiesConfiguration as _CliConfig
 from flext_infra import (
     FlextInfraUtilitiesCliShared,
     FlextInfraUtilitiesCliSubcommand,
@@ -29,7 +29,7 @@ from flext_infra import (
 
 class FlextInfraUtilitiesCli(
     FlextInfraUtilitiesCliShared,
-    FlextCliUtilitiesConfiguration,
+    _CliConfig,
 ):
     """Static facade for CLI argument parsing and resolution.
 

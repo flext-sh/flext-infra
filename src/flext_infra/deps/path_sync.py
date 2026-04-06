@@ -32,6 +32,17 @@ class FlextInfraDependencyPathSync(FlextInfraDependencyPathSyncRewrite):
         """Emit informational progress through the module logger."""
         _ = self._log.info(message)
 
+    def _workspace_members(
+        self,
+        projects_list: Sequence[m.Infra.ProjectInfo],
+    ) -> t.StrSequence:
+        """Return canonical uv workspace members for the root pyproject."""
+        return sorted(
+            str(project.path.relative_to(self._root))
+            for project in projects_list
+            if project.name.startswith(c.Infra.Packages.PREFIX_HYPHEN)
+        )
+
     @staticmethod
     def detect_mode(project_root: Path) -> str:
         """Detect workspace or standalone mode from project structure."""
@@ -78,9 +89,7 @@ class FlextInfraDependencyPathSync(FlextInfraDependencyPathSyncRewrite):
 
         projects_list: Sequence[m.Infra.ProjectInfo] = discover_result.value
         all_project_dirs = [project.path for project in projects_list]
-        workspace_members = sorted(
-            str(path.relative_to(self._root)) for path in all_project_dirs
-        )
+        workspace_members = self._workspace_members(projects_list)
         if selected_projects:
             project_dirs = [self._root / project for project in selected_projects]
         else:

@@ -235,3 +235,51 @@ def test_main_with_changes_no_dry_run(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(FlextInfraDependencyPathSync, "_log", recorder)
     tm.that(path_sync.main(), eq=0)
     assert len(recorder.calls) > 0
+
+
+def test_workspace_members_only_include_flext_projects(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    (tmp_path / "pyproject.toml").write_text('[project]\nname = "flext-workspace"\n')
+    flext_core = tmp_path / "flext-core"
+    flext_core.mkdir()
+    (flext_core / "pyproject.toml").write_text('[project]\nname = "flext-core"\n')
+    flexcore = tmp_path / "flexcore"
+    flexcore.mkdir()
+    (flexcore / "pyproject.toml").write_text('[project]\nname = "flexcore"\n')
+    algar = tmp_path / "algar-oud-mig"
+    algar.mkdir()
+    (algar / "pyproject.toml").write_text('[project]\nname = "algar-oud-mig"\n')
+    seen: list[t.StrSequence] = []
+
+    def _discover(
+        _root: Path,
+    ) -> r[Sequence[m.Infra.ProjectInfo]]:
+        return r[Sequence[m.Infra.ProjectInfo]].ok([
+            _project(flext_core, "flext-core"),
+            _project(flexcore, "flexcore"),
+            _project(algar, "algar-oud-mig"),
+        ])
+
+    def _rewrite_ok(
+        _self: FlextInfraDependencyPathSync,
+        _pyproject_path: Path,
+        *,
+        mode: str,
+        internal_names: set[str],
+        workspace_members: t.StrSequence = (),
+        is_root: bool = False,
+        dry_run: bool = False,
+    ) -> r[t.StrSequence]:
+        _ = (_self, _pyproject_path, mode, internal_names, is_root, dry_run)
+        seen.append(tuple(workspace_members))
+        return r[t.StrSequence].ok([])
+
+    monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
+    monkeypatch.setattr(u.Infra, "discover_projects", _discover)
+    monkeypatch.setattr(FlextInfraDependencyPathSync, "rewrite_dep_paths", _rewrite_ok)
+    monkeypatch.setattr(sys, "argv", ["sync-paths", "--workspace", str(tmp_path)])
+
+    tm.that(path_sync.main(), eq=0)
+    assert {tuple(item) for item in seen} == {("flext-core",)}

@@ -12,12 +12,12 @@ from pathlib import Path
 
 from pydantic import TypeAdapter, ValidationError
 
-from flext_cli import FlextCliUtilitiesYaml
+from flext_cli import FlextCliUtilitiesYaml as _CliYaml
 from flext_core import u
 from flext_infra import c, m, p, r, t
 
 
-class FlextInfraUtilitiesBase(FlextCliUtilitiesYaml):
+class FlextInfraUtilitiesBase(_CliYaml):
     """Base utilities for flext-infra project.
 
     Provides primitive helpers used across all infra utility subclasses.

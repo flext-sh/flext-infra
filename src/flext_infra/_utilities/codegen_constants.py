@@ -25,7 +25,10 @@ from collections.abc import (
 from pathlib import Path
 from typing import ClassVar, Final
 
-from flext_cli import FlextCliUtilitiesBase, FlextCliUtilitiesYaml
+from flext_cli import (
+    FlextCliUtilitiesBase as _CliBase,
+    FlextCliUtilitiesYaml as _CliYaml,
+)
 from flext_core import u
 from flext_infra import (
     FlextInfraUtilitiesDiscovery,
@@ -41,7 +44,7 @@ from flext_infra import (
 # =====================================================================
 
 
-class FlextInfraUtilitiesCodegenGovernance(FlextCliUtilitiesYaml):
+class FlextInfraUtilitiesCodegenGovernance(_CliYaml):
     """Loads and caches constants-governance YAML config."""
 
     _config_cache: ClassVar[MutableMapping[str, m.Infra.ConstantsGovernanceConfig]] = {}
@@ -693,7 +696,7 @@ class FlextInfraUtilitiesCodegenConstantAnalysis:
 # =====================================================================
 
 
-class FlextInfraUtilitiesCodegenConstantTransformation(FlextCliUtilitiesBase):
+class FlextInfraUtilitiesCodegenConstantTransformation(_CliBase):
     """Consolidation: inline values → ``c.*`` references with rollback."""
 
     @staticmethod

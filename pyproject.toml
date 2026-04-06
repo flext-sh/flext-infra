@@ -132,7 +132,6 @@ targets = [ "src" ]
 [tool.codespell]
 check-filenames = true
 ignore-words-list = "crate,nd"
-skip = ".git,poetry.lock,.mypy_cache,.pytest_cache,.ruff_cache"
 
 # [MANAGED] coverage
 [tool.coverage.report]
@@ -229,7 +228,6 @@ warn_required_dynamic_aliases = true
 # [MANAGED] pyrefly
 [tool.pyrefly]
 disable-project-excludes-heuristics = true
-disable-search-path-heuristics = true
 ignore-errors-in-generated-code = true
 project-excludes = [
   "**/*_pb2*.py",
@@ -248,13 +246,8 @@ project-excludes = [
 project-includes = [ "src/**/*.py*", "tests/**/*.py*" ]
 python-version = "3.13"
 search-path = [
-  ".",
-  "../flext-cli/examples",
-  "../flext-cli/src",
-  "../flext-core/examples",
-  "../flext-core/src",
-  "../flext-tests/src",
   "src",
+  "tests",
 ]
 use-ignore-files = false
 

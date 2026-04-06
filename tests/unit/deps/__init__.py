@@ -100,7 +100,7 @@ if _t.TYPE_CHECKING:
         TestFlextInfraExtraPathsManager,
         TestGetDepPaths,
         TestSyncOne,
-        test_pyrefly_search_paths_include_workspace_declared_dev_dependencies,
+        test_pyrefly_search_paths_only_use_local_project_dirs,
     )
 
     test_extra_paths_pep621 = _tests_unit_deps_test_extra_paths_pep621
@@ -365,6 +365,7 @@ if _t.TYPE_CHECKING:
         test_main_project_non_string_name,
         test_main_with_changes_and_dry_run,
         test_main_with_changes_no_dry_run,
+        test_workspace_members_only_include_flext_projects,
         test_workspace_root_fallback,
     )
 
@@ -385,6 +386,7 @@ if _t.TYPE_CHECKING:
         test_rewrite_dep_paths_read_failure,
         test_rewrite_dep_paths_with_internal_names,
         test_rewrite_dep_paths_with_no_deps,
+        test_root_workspace_sources_cover_all_workspace_members,
     )
 
     test_path_sync_rewrite_pep621 = _tests_unit_deps_test_path_sync_rewrite_pep621
@@ -935,9 +937,9 @@ _LAZY_IMPORTS = {
         "tests.unit.deps.test_modernizer_helpers",
         "test_project_dev_groups_missing_sections",
     ),
-    "test_pyrefly_search_paths_include_workspace_declared_dev_dependencies": (
+    "test_pyrefly_search_paths_only_use_local_project_dirs": (
         "tests.unit.deps.test_extra_paths_manager",
-        "test_pyrefly_search_paths_include_workspace_declared_dev_dependencies",
+        "test_pyrefly_search_paths_only_use_local_project_dirs",
     ),
     "test_rewrite_dep_paths_dry_run": (
         "tests.unit.deps.test_path_sync_rewrite_deps",
@@ -979,6 +981,10 @@ _LAZY_IMPORTS = {
         "tests.unit.deps.test_path_sync_rewrite_poetry",
         "test_rewrite_poetry_with_non_dict_value",
     ),
+    "test_root_workspace_sources_cover_all_workspace_members": (
+        "tests.unit.deps.test_path_sync_rewrite_deps",
+        "test_root_workspace_sources_cover_all_workspace_members",
+    ),
     "test_string_zero_return_value": (
         "tests.unit.deps.test_main_dispatch",
         "test_string_zero_return_value",
@@ -1004,6 +1010,10 @@ _LAZY_IMPORTS = {
     "test_unwrap_item_toml_item": (
         "tests.unit.deps.test_modernizer_helpers",
         "test_unwrap_item_toml_item",
+    ),
+    "test_workspace_members_only_include_flext_projects": (
+        "tests.unit.deps.test_path_sync_main_more",
+        "test_workspace_members_only_include_flext_projects",
     ),
     "test_workspace_root_doc_construction": (
         "tests.unit.deps.test_modernizer_workspace",
@@ -1213,7 +1223,7 @@ __all__ = [
     "test_path_sync_rewrite_poetry",
     "test_project_dev_groups",
     "test_project_dev_groups_missing_sections",
-    "test_pyrefly_search_paths_include_workspace_declared_dev_dependencies",
+    "test_pyrefly_search_paths_only_use_local_project_dirs",
     "test_rewrite_dep_paths_dry_run",
     "test_rewrite_dep_paths_read_failure",
     "test_rewrite_dep_paths_with_internal_names",
@@ -1224,6 +1234,7 @@ __all__ = [
     "test_rewrite_poetry_no_poetry_table",
     "test_rewrite_poetry_no_tool_table",
     "test_rewrite_poetry_with_non_dict_value",
+    "test_root_workspace_sources_cover_all_workspace_members",
     "test_string_zero_return_value",
     "test_sync_extra_paths_missing_root_pyproject",
     "test_sync_extra_paths_success_modes",
@@ -1232,6 +1243,7 @@ __all__ = [
     "test_target_path",
     "test_unwrap_item",
     "test_unwrap_item_toml_item",
+    "test_workspace_members_only_include_flext_projects",
     "test_workspace_root_doc_construction",
     "test_workspace_root_fallback",
     "u",

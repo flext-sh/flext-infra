@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_cli import FlextCliUtilitiesToml
+from flext_cli import FlextCliUtilitiesToml as _CliToml
 from flext_infra import (
     FlextInfraUtilitiesDocsApi,
     FlextInfraUtilitiesDocsScope,
@@ -14,7 +14,7 @@ from flext_infra import (
 )
 
 
-class FlextInfraUtilitiesDocsContract(FlextCliUtilitiesToml):
+class FlextInfraUtilitiesDocsContract(_CliToml):
     """Contract helpers for docs services."""
 
     @staticmethod
