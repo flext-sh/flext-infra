@@ -10,20 +10,16 @@ from pydantic import TypeAdapter, ValidationError
 
 from flext_infra import FlextInfraRefactorLooseClassScanner, c, m, r, t, u
 
-_LOOSE_CLASS_SEQ_ADAPTER: TypeAdapter[Sequence[m.Infra.LooseClassViolation]] = (
-    TypeAdapter(
-        Sequence[m.Infra.LooseClassViolation],
-    )
-)
-_NESTING_MAPPING_SEQ_ADAPTER: TypeAdapter[Sequence[m.Infra.ClassNestingMapping]] = (
-    TypeAdapter(
-        Sequence[m.Infra.ClassNestingMapping],
-    )
-)
-
 
 class FlextInfraRefactorClassNestingAnalyzer:
     """Detect class nesting violations and report MRO hierarchy issues."""
+
+    _LOOSE_CLASS_SEQ_ADAPTER = TypeAdapter(
+        Sequence[m.Infra.LooseClassViolation],
+    )
+    _NESTING_MAPPING_SEQ_ADAPTER = TypeAdapter(
+        Sequence[m.Infra.ClassNestingMapping],
+    )
 
     @classmethod
     def analyze_files(cls, files: Sequence[Path]) -> m.Infra.ClassNestingReport:
@@ -57,7 +53,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
                 continue
             try:
                 parsed_violations: Sequence[m.Infra.LooseClassViolation] = (
-                    _LOOSE_CLASS_SEQ_ADAPTER.validate_python(
+                    cls._LOOSE_CLASS_SEQ_ADAPTER.validate_python(
                         scan_result.value.get(c.Infra.ReportKeys.VIOLATIONS, []),
                     )
                 )
@@ -146,7 +142,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
             ].ok({})
         try:
             entries: Sequence[m.Infra.ClassNestingMapping] = (
-                _NESTING_MAPPING_SEQ_ADAPTER.validate_python(raw_nesting)
+                cls._NESTING_MAPPING_SEQ_ADAPTER.validate_python(raw_nesting)
             )
         except ValidationError as exc:
             return r[Mapping[t.Infra.Pair[str, str], m.Infra.ClassNestingMapping]].fail(

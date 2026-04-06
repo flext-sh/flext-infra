@@ -19,9 +19,9 @@ from flext_infra import FlextInfraProjectMigrator, main as infra_main
 
 def test_workspace_cli_migrate_command(monkeypatch: MonkeyPatch) -> None:
     def _fake_execute(
-        params: FlextInfraProjectMigrator,
+        params: m.Infra.WorkspaceMigrateInput,
     ) -> r[Sequence[m.Infra.MigrationResult]]:
-        tm.that(params.workspace_root, eq=Path.cwd())
+        tm.that(params.workspace_path, eq=Path.cwd())
         tm.that(params.dry_run, eq=True)
         return r[Sequence[m.Infra.MigrationResult]].ok([
             m.Infra.MigrationResult.model_validate(
@@ -49,7 +49,7 @@ def test_workspace_cli_migrate_output_contains_summary(
     monkeypatch: MonkeyPatch,
 ) -> None:
     def _fake_execute(
-        params: FlextInfraProjectMigrator,
+        params: m.Infra.WorkspaceMigrateInput,
     ) -> r[Sequence[m.Infra.MigrationResult]]:
         del params
         return r[Sequence[m.Infra.MigrationResult]].ok([

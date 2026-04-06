@@ -223,41 +223,57 @@ class FlextInfraUtilitiesDocsScope:
     def discover_projects(
         workspace_root: Path,
     ) -> r[Sequence[m.Infra.ProjectInfo]]:
-        """Discover FLEXT-governed projects from the workspace layout."""
+        """Discover workspace projects that participate in the docs scope."""
+        if not workspace_root.exists() or not workspace_root.is_dir():
+            return r[Sequence[m.Infra.ProjectInfo]].fail(
+                f"discovery failed: invalid workspace root {workspace_root}",
+            )
         excluded = FlextInfraUtilitiesDocsScope.excluded_roots(workspace_root)
         projects: MutableSequence[m.Infra.ProjectInfo] = []
-        for entry in sorted(workspace_root.iterdir(), key=lambda item: item.name):
-            if not entry.is_dir() or entry.name.startswith(".") or entry.name == "cmd":
-                continue
-            if not entry.name.startswith("flext-") or entry.name in excluded:
-                continue
-            pyproject = entry / c.Infra.Files.PYPROJECT_FILENAME
-            if not pyproject.exists():
-                continue
-            if not (entry / c.Infra.Files.MAKEFILE_FILENAME).exists():
-                continue
-            payload = FlextInfraUtilitiesDocsScope.pyproject_payload(entry)
-            docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(payload)
-            enabled = docs_meta.get("enabled", True)
-            if isinstance(enabled, bool) and not enabled:
-                continue
-            projects.append(
-                m.Infra.ProjectInfo.model_construct(
-                    path=entry,
-                    name=entry.name,
-                    stack="python/flext",
-                    has_tests=(entry / c.Infra.Directories.TESTS).is_dir(),
-                    has_src=(entry / c.Infra.Paths.DEFAULT_SRC_DIR).is_dir(),
-                    project_class=FlextInfraUtilitiesDocsScope.classify_project_from_meta(
-                        entry.name,
-                        docs_meta,
-                    ),
-                    package_name=FlextInfraUtilitiesDocsScope.package_name_from_payload(
-                        entry,
-                        payload,
-                        docs_meta,
-                    ),
+        try:
+            for entry in sorted(workspace_root.iterdir(), key=lambda item: item.name):
+                if (
+                    not entry.is_dir()
+                    or entry.name.startswith(".")
+                    or entry.name == "cmd"
+                    or entry.name in excluded
+                ):
+                    continue
+                pyproject = entry / c.Infra.Files.PYPROJECT_FILENAME
+                if not pyproject.is_file():
+                    continue
+                if not (entry / c.Infra.Files.MAKEFILE_FILENAME).is_file():
+                    continue
+                payload = FlextInfraUtilitiesDocsScope.pyproject_payload(entry)
+                docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(payload)
+                enabled = docs_meta.get("enabled", True)
+                if isinstance(enabled, bool) and not enabled:
+                    continue
+                projects.append(
+                    m.Infra.ProjectInfo.model_construct(
+                        path=entry,
+                        name=entry.name,
+                        stack="python/flext",
+                        has_tests=(entry / c.Infra.Directories.TESTS).is_dir(),
+                        has_src=(entry / c.Infra.Paths.DEFAULT_SRC_DIR).is_dir(),
+                        project_class=(
+                            FlextInfraUtilitiesDocsScope.classify_project_from_meta(
+                                entry.name,
+                                docs_meta,
+                            )
+                        ),
+                        package_name=(
+                            FlextInfraUtilitiesDocsScope.package_name_from_payload(
+                                entry,
+                                payload,
+                                docs_meta,
+                            )
+                        ),
+                    )
                 ),
+        except OSError as exc:
+            return r[Sequence[m.Infra.ProjectInfo]].fail(
+                f"discovery failed: {exc}",
             )
         return r[Sequence[m.Infra.ProjectInfo]].ok(projects)
 

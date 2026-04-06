@@ -83,8 +83,13 @@ class TestMainCommandDispatch:
         ])
         tm.that(result, eq=0)
 
-    def test_lazy_init_default_root(self) -> None:
+    def test_lazy_init_default_root(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         """main() lazy-init uses cwd as default root."""
+        monkeypatch.chdir(tmp_path)
         result = infra_main(["codegen", "lazy-init"])
         tm.that(result, eq=0)
 
@@ -108,9 +113,9 @@ class TestMainCommandDispatch:
 class TestMainEntryPoint:
     """Tests for the centralized process entrypoint."""
 
-    def test_entry_point_returns_int(self) -> None:
+    def test_entry_point_returns_int(self, tmp_path: Path) -> None:
         """main() returns an integer exit code."""
-        result = infra_main(["codegen", "lazy-init"])
+        result = infra_main(["codegen", "lazy-init", "--workspace", str(tmp_path)])
         tm.that(type(result).__name__, eq="int")
 
     def test_entry_point_via_sys_exit(self) -> None:

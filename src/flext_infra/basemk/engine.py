@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import MutableSequence
 from pathlib import Path
-from typing import Protocol, override
+from typing import override
 
 from jinja2 import (
     Environment,
@@ -17,40 +17,32 @@ from pydantic import PrivateAttr
 
 from flext_infra import c, m, r, s, t
 
-_TEMPLATES_DIR: Path = Path(__file__).resolve().parent.parent / "templates"
-
-
-def _build_environment() -> Environment:
-    """Create the shared Jinja environment for base.mk rendering."""
-    return Environment(
-        loader=FileSystemLoader(str(_TEMPLATES_DIR)),
-        trim_blocks=False,
-        lstrip_blocks=False,
-        keep_trailing_newline=True,
-        undefined=StrictUndefined,
-        autoescape=select_autoescape(),
-    )
-
-
-class _Renderable(Protocol):
-    def render(
-        self,
-        **kwargs: m.Infra.BaseMkConfig | t.Infra.InfraValue | type,
-    ) -> str: ...
-
-
-def _render(
-    template: _Renderable,
-    **kwargs: m.Infra.BaseMkConfig | t.Infra.InfraValue | type,
-) -> str:
-    """Render a jinja2 template with explicit str return type."""
-    return template.render(**kwargs)
-
 
 class FlextInfraBaseMkTemplateEngine(s[str]):
     """Render base.mk templates with configuration context."""
 
-    _environment: Environment = PrivateAttr(default_factory=_build_environment)
+    _environment: Environment = PrivateAttr(
+        default_factory=lambda: FlextInfraBaseMkTemplateEngine._build_environment(),
+    )
+
+    @staticmethod
+    def _templates_dir() -> Path:
+        """Resolve templates directory relative to this package."""
+        return Path(__file__).resolve().parent.parent / "templates"
+
+    @staticmethod
+    def _build_environment() -> Environment:
+        """Create the shared Jinja environment for base.mk rendering."""
+        return Environment(
+            loader=FileSystemLoader(
+                str(FlextInfraBaseMkTemplateEngine._templates_dir()),
+            ),
+            trim_blocks=False,
+            lstrip_blocks=False,
+            keep_trailing_newline=True,
+            undefined=StrictUndefined,
+            autoescape=select_autoescape(),
+        )
 
     @staticmethod
     def default_config() -> m.Infra.BaseMkConfig:
@@ -84,8 +76,7 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
         try:
             for template_name in c.Infra.TEMPLATE_ORDER:
                 template = self._environment.get_template(template_name)
-                rendered = _render(
-                    template,
+                rendered = template.render(
                     config=active_config,
                     lint_gates_csv=lint_gates_csv,
                     make=c.Infra.Make,
@@ -104,7 +95,7 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
         """Render a single named template with the given context."""
         try:
             template = self._environment.get_template(template_name)
-            content = _render(template, **kwargs)
+            content = template.render(**kwargs)
             return r[str].ok(content.rstrip("\n"))
         except (TemplateError, OSError, ValueError, TypeError) as exc:
             return r[str].fail(f"template render failed: {exc}")

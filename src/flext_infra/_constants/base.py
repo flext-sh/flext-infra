@@ -261,6 +261,12 @@ class FlextInfraConstantsBase(
         HELPER_CONSOLIDATION: Final[str] = "helper_consolidation"
         POST_CHECKS: Final[str] = "post_checks"
 
+    class Cli:
+        """CLI integration constants."""
+
+        APPLY_OPTION_DECLS: Final[tuple[str, ...]] = ("--apply/--dry-run",)
+        "Typer dual-flag declarations for --apply/--dry-run option."
+
     @unique
     class FacadeFamily(StrEnum):
         """Facade family enumeration."""

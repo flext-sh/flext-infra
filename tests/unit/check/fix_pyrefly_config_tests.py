@@ -5,16 +5,14 @@ Tests the real CLI entry point.
 
 from __future__ import annotations
 
-import subprocess
-import sys
+import pytest
+
+from flext_infra import main as infra_main
 
 
-def test_fix_pyrefly_config_main_executes_real_cli_help() -> None:
-    completed = subprocess.run(
-        [sys.executable, "-m", "flext_infra", "check", "fix-pyrefly-config", "--help"],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    assert completed.returncode == 0
-    assert "usage:" in completed.stdout
+def test_fix_pyrefly_config_main_executes_real_cli_help(capsys) -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        infra_main(["check", "fix-pyrefly-config", "--help"])
+    captured = capsys.readouterr()
+    assert exc_info.value.code == 0
+    assert "usage:" in captured.out

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from flext_tests import tm
 from tests import t
 
@@ -36,20 +37,32 @@ class TestStubChainCore:
 class TestStubChainAnalyze:
     """Analyze method tests for FlextInfraStubSupplyChain."""
 
-    def test_analyze_valid_project(self, tmp_path: Path) -> None:
+    def test_analyze_valid_project(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         """Valid project returns success."""
         chain = FlextInfraStubSupplyChain()
         proj = tmp_path / "project"
         proj.mkdir()
         (proj / "pyproject.toml").write_text("[project]\nname = 'test'")
+        monkeypatch.setattr(chain, "_run_mypy_hints", lambda _project_dir: [])
+        monkeypatch.setattr(chain, "_run_pyrefly_missing", lambda _project_dir: [])
         result = chain.analyze(proj, tmp_path)
         tm.ok(result)
 
-    def test_analyze_returns_flextresult(self, tmp_path: Path) -> None:
+    def test_analyze_returns_flextresult(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         """Analyze returns r type."""
         chain = FlextInfraStubSupplyChain()
         proj = tmp_path / "project"
         proj.mkdir()
+        monkeypatch.setattr(chain, "_run_mypy_hints", lambda _project_dir: [])
+        monkeypatch.setattr(chain, "_run_pyrefly_missing", lambda _project_dir: [])
         result = chain.analyze(proj, tmp_path)
         tm.ok(result)
 
@@ -75,13 +88,19 @@ class TestStubChainValidate:
         result = chain.validate(tmp_path / "nonexistent")
         tm.fail(result)
 
-    def test_validate_with_project_dirs(self, tmp_path: Path) -> None:
+    def test_validate_with_project_dirs(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         """Validate respects project_dirs filter."""
         chain = FlextInfraStubSupplyChain()
         proj = tmp_path / "project1"
         proj.mkdir()
         (proj / "pyproject.toml").write_text("")
         (proj / "src").mkdir()
+        monkeypatch.setattr(chain, "_run_mypy_hints", lambda _project_dir: [])
+        monkeypatch.setattr(chain, "_run_pyrefly_missing", lambda _project_dir: [])
         result = chain.validate(tmp_path, project_dirs=[proj])
         tm.ok(result)
 

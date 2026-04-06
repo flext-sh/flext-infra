@@ -13,17 +13,24 @@ from flext_core import r
 from flext_infra import FlextInfraExtraPathsManager, extra_paths as deps_extra_paths
 
 
-def _manager() -> FlextInfraExtraPathsManager:
-    return FlextInfraExtraPathsManager()
+_TEST_WORKSPACE_ROOT = Path(__file__).resolve().parent
+
+
+def _manager(
+    workspace_root: Path | None = None,
+) -> FlextInfraExtraPathsManager:
+    return FlextInfraExtraPathsManager(
+        workspace_root=workspace_root or _TEST_WORKSPACE_ROOT
+    )
 
 
 class TestFlextInfraExtraPathsManager:
     def test_manager_initialization(self) -> None:
-        manager = FlextInfraExtraPathsManager()
+        manager = _manager()
         tm.that(manager.__class__.__name__, eq="FlextInfraExtraPathsManager")
 
     def test_manager_has_required_services(self) -> None:
-        manager = FlextInfraExtraPathsManager()
+        manager = _manager()
         tm.that(hasattr(manager, "get_dep_paths"), eq=True)
         tm.that(hasattr(manager, "sync_one"), eq=True)
 
@@ -177,7 +184,7 @@ class TestSyncOne:
 
 class TestConstants:
     def test_base_constants(self) -> None:
-        manager = FlextInfraExtraPathsManager()
+        manager = _manager()
         tm.that(hasattr(manager, "ROOT"), eq=True)
         tm.that(manager.ROOT.is_absolute(), eq=True)
 

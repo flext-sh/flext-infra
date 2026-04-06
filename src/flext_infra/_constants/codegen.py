@@ -68,21 +68,85 @@ class FlextInfraCodegenConstants:
     )
     "Glob patterns for all directories the lazy-init generator scans."
 
+    BARE_IMPORT_FROM_RE: Final[re.Pattern[str]] = re.compile(
+        r"^from\s+import\s",
+        re.MULTILINE,
+    )
+    "Regex: malformed ``from import`` statement (missing module name)."
+
+    LINT_TOOLS: Final[tuple[tuple[str, tuple[str, ...]], ...]] = (
+        ("ruff", ("ruff", "check", "{file}", "--no-fix", "--select", "E,F")),
+        ("pyright", ("pyright", "{file}")),
+        ("mypy", ("mypy", "{file}", "--no-error-summary")),
+        ("pyrefly", ("pyrefly", "check", "{file}")),
+    )
+    "Lint tool names and their CLI command templates for validation."
+    DEFAULT_EXCLUDE: Final[frozenset[str]] = frozenset({
+        ".mypy_cache",
+        "__pycache__",
+    })
+    "Directories excluded from codegen file scanning."
+    INFRA_ONLY_EXPORTS: Final[frozenset[str]] = frozenset({
+        "cleanup_submodule_namespace",
+        "install_lazy_exports",
+        "lazy_getattr",
+        "merge_lazy_imports",
+        "output",
+        "output_reporting",
+    })
+    "Exports exclusive to flext-infra that should not bubble up."
+    ROOT_WRAPPER_SEGMENTS: Final[frozenset[str]] = frozenset({
+        "docs", "src", "tests", "examples", "scripts",
+    })
+    "Directory segments recognized as project-root wrapper paths."
+    CORE_RUNTIME_ALIAS_TARGETS: Final[dict[str, tuple[str, str]]] = {
+        "d": ("flext_core.decorators", "FlextDecorators"),
+        "e": ("flext_core.exceptions", "FlextExceptions"),
+        "h": ("flext_core.handlers", "FlextHandlers"),
+        "r": ("flext_core.result", "FlextResult"),
+        "s": ("flext_core.service", "FlextService"),
+        "x": ("flext_core.mixins", "FlextMixins"),
+    }
+    "Mapping of single-letter aliases to flext-core runtime targets."
+
     class Detection:
         """Constants for constant detection and analysis."""
 
         MIN_QUOTED_LITERAL_LEN: Final[int] = 2
         "Minimum length for a quoted string to be considered a literal."
+        TYPEVAR_ASSIGN_RE: Final[re.Pattern[str]] = re.compile(
+            r"^(\w+)\s*=\s*(?:TypeVar|ParamSpec|TypeVarTuple)\s*\(",
+            re.MULTILINE,
+        )
+        "Regex: TypeVar/ParamSpec/TypeVarTuple assignments."
         MIN_ATTRIBUTE_CHAIN: Final[int] = 2
         "Minimum dotted-chain length for direct constant references."
         MIN_DIRECT_REFERENCE_CHAIN: Final[int] = 2
         "Minimum chain length for FlextXxxConstants.ATTR references."
+        TRIVIAL_VALUES: Final[frozenset[str]] = frozenset({
+            "True", "False", "None",
+            "0", "1", "2", "3", "4", "5", "-1",
+            '""', "''", "[]", "{}", "()",
+        })
+        "Literal values considered trivial for constant detection heuristics."
         FINAL_DECL_RE: Final[re.Pattern[str]] = re.compile(
             r"^(?P<indent>\s*)(?P<name>[A-Z_][A-Z0-9_]*)"
             r"\s*:\s*(?P<ann>Final\[.*?\])\s*=\s*(?P<value>.+?)\s*(?:#.*)?$",
             re.MULTILINE,
         )
         "Regex: NAME: Final[TYPE] = VALUE (with optional inline comment)."
+        CLASS_DECL_RE: Final[re.Pattern[str]] = re.compile(
+            r"class\s+(\w+)",
+        )
+        "Regex: class ClassName (captures class name)."
+        DIRECT_USAGE_RE: Final[re.Pattern[str]] = re.compile(
+            r"\bFlext\w*Constants\.([A-Z_][A-Z0-9_]*)",
+        )
+        "Regex: FlextXxxConstants.CONSTANT_NAME (captures constant name)."
+        ALIAS_USAGE_RE: Final[re.Pattern[str]] = re.compile(
+            r"\bc\.\w*\.([A-Z_][A-Z0-9_]*)",
+        )
+        "Regex: c.Namespace.CONSTANT_NAME (captures constant name)."
         C_ALIAS_RE: Final[re.Pattern[str]] = re.compile(r"\bc\.([A-Za-z_]\w*)")
         "Regex: c.ATTR (captures ATTR after literal ``c.``)."
         DIRECT_REF_RE: Final[re.Pattern[str]] = re.compile(
@@ -95,21 +159,9 @@ class FlextInfraCodegenConstants:
         )
         "Regex: ``from <pkg> import FlextXxxConstants`` in import lines."
         CANONICAL_ALIASES: Final[frozenset[str]] = frozenset({
-            "c",
-            "m",
-            "p",
-            "t",
-            "u",
-            "r",
-            "e",
-            "s",
-            "d",
-            "h",
-            "x",
+            "c", "m", "p", "t", "u", "r", "e", "s", "d", "h", "x",
         })
         "Canonical single-letter runtime aliases."
-        # CLASS_DEF_RE → use c.Infra.SourceCode.CLASS_NAME_RE
-        # FINAL_ASSIGN_RE → use c.Infra.SourceCode.FINAL_ASSIGN_RE or Detection.FINAL_DECL_RE
 
     class Templates:
         """Jinja2 template file names for the lazy-init file generator.

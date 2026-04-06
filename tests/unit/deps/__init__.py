@@ -108,6 +108,7 @@ if _t.TYPE_CHECKING:
     from tests.unit.deps.test_extra_paths_pep621 import (
         TestPathDepPathsPep621,
         TestPathDepPathsPoetry,
+        manager,
     )
 
     test_extra_paths_sync = _tests_unit_deps_test_extra_paths_sync
@@ -403,12 +404,17 @@ if _t.TYPE_CHECKING:
         test_rewrite_poetry_with_non_dict_value,
     )
 
+    from flext_core.constants import FlextConstants as c
     from flext_core.decorators import FlextDecorators as d
     from flext_core.exceptions import FlextExceptions as e
     from flext_core.handlers import FlextHandlers as h
     from flext_core.mixins import FlextMixins as x
+    from flext_core.models import FlextModels as m
+    from flext_core.protocols import FlextProtocols as p
     from flext_core.result import FlextResult as r
     from flext_core.service import FlextService as s
+    from flext_core.typings import FlextTypes as t
+    from flext_core.utilities import FlextUtilities as u
 _LAZY_IMPORTS = {
     "TestBuildProjectReport": "tests.unit.deps.test_detection_classify",
     "TestClassifyIssues": "tests.unit.deps.test_detection_classify",
@@ -493,16 +499,21 @@ _LAZY_IMPORTS = {
     "TestWorkspaceRoot": "tests.unit.deps.test_modernizer_workspace",
     "TestWorkspaceRootFromEnv": "tests.unit.deps.test_internal_sync_workspace",
     "TestWorkspaceRootFromParents": "tests.unit.deps.test_internal_sync_workspace",
+    "c": ("flext_core.constants", "FlextConstants"),
     "d": ("flext_core.decorators", "FlextDecorators"),
     "doc": "tests.unit.deps.test_modernizer_helpers",
     "e": ("flext_core.exceptions", "FlextExceptions"),
     "extract_dep_name": "tests.unit.deps.test_path_sync_helpers",
     "h": ("flext_core.handlers", "FlextHandlers"),
+    "m": ("flext_core.models", "FlextModels"),
     "main": "tests.unit.deps.test_main_dispatch",
+    "manager": "tests.unit.deps.test_extra_paths_pep621",
+    "p": ("flext_core.protocols", "FlextProtocols"),
     "pyright_content": "tests.unit.deps.test_extra_paths_sync",
     "r": ("flext_core.result", "FlextResult"),
     "rewrite_dep_paths": "tests.unit.deps.test_path_sync_rewrite_deps",
     "s": ("flext_core.service", "FlextService"),
+    "t": ("flext_core.typings", "FlextTypes"),
     "test_array": "tests.unit.deps.test_modernizer_helpers",
     "test_as_string_list": "tests.unit.deps.test_modernizer_helpers",
     "test_as_string_list_toml_item": "tests.unit.deps.test_modernizer_helpers",
@@ -621,6 +632,7 @@ _LAZY_IMPORTS = {
     "test_unwrap_item_toml_item": "tests.unit.deps.test_modernizer_helpers",
     "test_workspace_root_doc_construction": "tests.unit.deps.test_modernizer_workspace",
     "test_workspace_root_fallback": "tests.unit.deps.test_path_sync_main_more",
+    "u": ("flext_core.utilities", "FlextUtilities"),
     "x": ("flext_core.mixins", "FlextMixins"),
 }
 
@@ -708,16 +720,21 @@ __all__ = [
     "TestWorkspaceRoot",
     "TestWorkspaceRootFromEnv",
     "TestWorkspaceRootFromParents",
+    "c",
     "d",
     "doc",
     "e",
     "extract_dep_name",
     "h",
+    "m",
     "main",
+    "manager",
+    "p",
     "pyright_content",
     "r",
     "rewrite_dep_paths",
     "s",
+    "t",
     "test_array",
     "test_as_string_list",
     "test_as_string_list_toml_item",
@@ -836,6 +853,7 @@ __all__ = [
     "test_unwrap_item_toml_item",
     "test_workspace_root_doc_construction",
     "test_workspace_root_fallback",
+    "u",
     "x",
 ]
 

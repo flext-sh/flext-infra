@@ -9,19 +9,19 @@ from flext_infra import c, m, t
 from flext_infra._utilities.templates import FlextInfraUtilitiesTemplates
 
 
-def _is_object_list(value: object) -> TypeIs[list[object]]:
-    """Type guard: narrow object to list[object]."""
-    return isinstance(value, list)
-
-
 class FlextInfraUtilitiesDocsRender:
     """Rendering helpers for generated docs content."""
+
+    @staticmethod
+    def _is_object_list(value: object) -> TypeIs[list[object]]:
+        """Type guard: narrow object to list[object]."""
+        return isinstance(value, list)
 
     @staticmethod
     def _string_list(data: Mapping[str, object], key: str) -> Sequence[str]:
         """Return one contract field as a normalized string sequence."""
         value: object = data.get(key)
-        if not _is_object_list(value):
+        if not FlextInfraUtilitiesDocsRender._is_object_list(value):
             return []
         return [str(entry) for entry in value]
 

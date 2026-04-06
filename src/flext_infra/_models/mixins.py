@@ -5,9 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated
 
-from pydantic import ConfigDict, Field
+from pydantic import AliasChoices, ConfigDict, Field
 
-from flext_infra import apply_option_json_schema_extra, c, t
+from flext_infra import c, t
 
 
 class FlextInfraModelsMixins:
@@ -23,12 +23,19 @@ class FlextInfraModelsMixins:
             Field(
                 default=False,
                 description="Apply changes",
-                json_schema_extra=apply_option_json_schema_extra,
+                json_schema_extra={
+                    "typer_param_decls": list(c.Infra.Cli.APPLY_OPTION_DECLS),
+                },
             ),
         ] = False
         workspace: Annotated[
             str,
-            Field(default=".", description="Workspace root"),
+            Field(
+                default=".",
+                alias="workspace",
+                validation_alias=AliasChoices("workspace", "workspace_path"),
+                description="Workspace root",
+            ),
         ] = "."
 
         @property

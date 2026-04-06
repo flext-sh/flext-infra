@@ -20,14 +20,6 @@ from flext_infra import (
 from flext_infra._models.mixins import FlextInfraModelsMixins
 
 
-def _class_moves() -> list[FlextInfraRefactorModels.ClassMove]:
-    return []
-
-
-def _alias_moves() -> list[FlextInfraRefactorModels.AliasMove]:
-    return []
-
-
 class FlextInfraRefactorModels(
     FlextInfraRefactorGrepModels,
     FlextInfraNamespaceEnforcerModels,
@@ -262,11 +254,11 @@ class FlextInfraRefactorModels(
             ),
         ] = False
         apply_class_moves: list[FlextInfraRefactorModels.ClassMove] = Field(
-            default_factory=_class_moves,
+            default_factory=list,
             description="Class moves to apply",
         )
         apply_alias_moves: list[FlextInfraRefactorModels.AliasMove] = Field(
-            default_factory=_alias_moves,
+            default_factory=list,
             description="Alias moves to apply",
         )
 

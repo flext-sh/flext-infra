@@ -19,33 +19,32 @@ from __future__ import annotations
 from abc import ABC
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Annotated, Self, override
+from typing import Annotated, Self, TypeVar, override
 
 from pydantic import ConfigDict, Field, field_validator
 from pydantic.config import JsonDict
 
-from flext_cli import FlextCliSettings
-from flext_core import FlextModels, FlextSettings, p, r, s as core_service_base
-from flext_infra import t
+from flext_cli.settings import FlextCliSettings
+from flext_core.models import FlextModels
+from flext_core.result import FlextResult as r
+from flext_core.service import FlextService as core_service_base
+from flext_core.settings import FlextSettings
+from flext_infra._constants.base import FlextInfraConstantsBase
+from flext_infra._typings.base import FlextInfraTypesBase
 
-# ---------------------------------------------------------------------------
-# Module-level helpers (used by CLI/Typer integration)
-# ---------------------------------------------------------------------------
-
-APPLY_OPTION_DECLS: list[str] = ["--apply/--dry-run"]
+TDomainResult = TypeVar("TDomainResult", bound=FlextInfraTypesBase.DomainOutput)
 
 
-def apply_option_json_schema_extra(schema: JsonDict) -> None:
-    """Inject Typer dual-flag metadata using a Pydantic-supported hook."""
-    schema["typer_param_decls"] = list(APPLY_OPTION_DECLS)
-
+def _apply_option_json_schema_extra(schema: JsonDict) -> None:
+    """Inject Typer dual-flag metadata without importing the facade root."""
+    schema["typer_param_decls"] = list(FlextInfraConstantsBase.Cli.APPLY_OPTION_DECLS)
 
 # ---------------------------------------------------------------------------
 # Thin service base (~40 LOC) -- mirrors FlextCliServiceBase
 # ---------------------------------------------------------------------------
 
 
-class FlextInfraServiceBase[TDomainResult: t.Infra.DomainOutput](
+class FlextInfraServiceBase(
     core_service_base[TDomainResult],
     ABC,
 ):
@@ -63,7 +62,7 @@ class FlextInfraServiceBase[TDomainResult: t.Infra.DomainOutput](
 
     @classmethod
     @override
-    def _runtime_bootstrap_options(cls) -> p.RuntimeBootstrapOptions:
+    def _runtime_bootstrap_options(cls) -> FlextModels.RuntimeBootstrapOptions:
         """Bootstrap service runtime using the shared CLI settings namespace."""
         return FlextModels.RuntimeBootstrapOptions(config_type=FlextCliSettings)
 
@@ -73,7 +72,7 @@ class FlextInfraServiceBase[TDomainResult: t.Infra.DomainOutput](
 # ---------------------------------------------------------------------------
 
 
-class FlextInfraCommandContext[TDomainResult: t.Infra.DomainOutput](
+class FlextInfraCommandContext(
     FlextInfraServiceBase[TDomainResult],
 ):
     """Domain command context shared by all flext-infra CLI services.
@@ -99,7 +98,7 @@ class FlextInfraCommandContext[TDomainResult: t.Infra.DomainOutput](
             default=False,
             alias="apply",
             description="Apply changes",
-            json_schema_extra=apply_option_json_schema_extra,
+            json_schema_extra=_apply_option_json_schema_extra,
         ),
     ]
     check_only: Annotated[
@@ -193,9 +192,7 @@ class FlextInfraCommandContext[TDomainResult: t.Infra.DomainOutput](
 s = FlextInfraCommandContext
 
 __all__ = [
-    "APPLY_OPTION_DECLS",
     "FlextInfraCommandContext",
     "FlextInfraServiceBase",
-    "apply_option_json_schema_extra",
     "s",
 ]

@@ -27,140 +27,11 @@ from typing import ClassVar, Final
 
 from flext_cli import FlextCliUtilities
 from flext_core import r, u
-from flext_infra import (
-    FlextInfraUtilitiesDiscovery,
-    FlextInfraUtilitiesRope,
-    FlextInfraUtilitiesSubprocess,
-    c,
-    m,
-    t,
-)
+from flext_infra import c, m, t
 
-# ── Module-level SSOT constants ──────────────────────────────────────
-
-_LINT_TOOLS: Sequence[tuple[str, Sequence[str]]] = (
-    ("ruff", ("ruff", "check", "{file}", "--no-fix", "--select", "E,F")),
-    ("pyright", ("pyright", "{file}")),
-    ("mypy", ("mypy", "{file}", "--no-error-summary")),
-    ("pyrefly", ("pyrefly", "check", "{file}")),
-)
-
-_TRIVIAL_VALUES: frozenset[str] = frozenset({
-    "True",
-    "False",
-    "None",
-    "0",
-    "1",
-    "2",
-    "3",
-    "4",
-    "5",
-    "-1",
-    '""',
-    "''",
-    "[]",
-    "{}",
-    "()",
-})
-
-_FINAL_DECL_RE = re.compile(
-    r"^(?P<indent>\s*)(?P<name>[A-Z_][A-Z0-9_]*)"
-    r"\s*:\s*(?P<ann>Final\[.*?\])\s*=\s*(?P<value>.+?)\s*(?:#.*)?$",
-)
-_CLASS_DECL_RE = re.compile(r"class\s+(\w+)")
-_DIRECT_USAGE_RE = re.compile(r"\bFlext\w*Constants\.([A-Z_][A-Z0-9_]*)")
-_ALIAS_USAGE_RE = re.compile(r"\bc\.\w*\.([A-Z_][A-Z0-9_]*)")
-_DEFAULT_EXCLUDE: frozenset[str] = frozenset({".mypy_cache", c.Infra.Dunders.PYCACHE})
-
-
-# ── Shared helpers ───────────────────────────────────────────────────
-
-
-def _iter_py_files(
-    root: Path,
-    exclude: frozenset[str] = frozenset(),
-    *,
-    max_files: int = 0,
-) -> Iterator[Path]:
-    """Yield ``*.py`` files under *root*, skipping excluded dirs."""
-    count = 0
-    for py_file in root.rglob(c.Infra.Extensions.PYTHON_GLOB):
-        if max_files and count >= max_files:
-            return
-        if any(excl in py_file.parts for excl in exclude):
-            continue
-        count += 1
-        yield py_file
-
-
-def _read_source_safe(path: Path) -> str | None:
-    """Read a file, returning ``None`` on error."""
-    try:
-        return path.read_text(c.Infra.Encoding.DEFAULT)
-    except (OSError, UnicodeDecodeError):
-        return None
-
-
-_MIN_QUOTED_LEN = 2
-
-
-def _is_quoted(value: str) -> bool:
-    return (
-        len(value) >= _MIN_QUOTED_LEN
-        and value[0] == value[-1]
-        and value[0] in {"'", '"'}
-    )
-
-
-def _unquote(value: str) -> str:
-    return value[1:-1] if _is_quoted(value) else value
-
-
-def _infer_project(py_file: Path, root: Path) -> str:
-    try:
-        parts = py_file.relative_to(root).parts
-        src = c.Infra.Paths.DEFAULT_SRC_DIR
-        if src in parts:
-            idx = parts.index(src)
-            if idx + 1 < len(parts):
-                return parts[idx + 1].replace("_", "-")
-    except ValueError:
-        pass
-    return "unknown"
-
-
-def _walk_mro_attrs(
-    cls: type,
-    *,
-    skip_types: bool = False,
-) -> Iterator[tuple[str, object, str, str]]:
-    """Yield ``(attr_name, attr_value, klass_qualname, klass_module)`` from MRO."""
-    for klass in reversed(cls.__mro__):
-        if klass is object:
-            continue
-        for name, value in dict(vars(klass)).items():
-            if name.startswith("_"):
-                continue
-            if skip_types and isinstance(value, type):
-                continue
-            yield name, value, klass.__qualname__, getattr(klass, "__module__", "")
-
-
-def _scan_patterns(
-    source: str,
-    patterns: Sequence[re.Pattern[str]],
-) -> tuple[
-    Sequence[t.Infra.StrIntPair],
-    ...,
-]:
-    """Scan *source* for multiple regex patterns → tuple of match lists."""
-    results: list[MutableSequence[t.Infra.StrIntPair]] = [[] for _ in patterns]
-    for line_num, line in enumerate(source.splitlines(), 1):
-        for i, pat in enumerate(patterns):
-            for match in pat.finditer(line):
-                results[i].append((match.group(1), line_num))
-    return tuple(results)
-
+from .discovery import FlextInfraUtilitiesDiscovery
+from .rope import FlextInfraUtilitiesRope
+from .subprocess import FlextInfraUtilitiesSubprocess
 
 # =====================================================================
 # Governance — canonical values and rule configuration
@@ -210,6 +81,97 @@ class FlextInfraUtilitiesCodegenConstantDetection:
     """Regex-based detection of constant declarations and usages."""
 
     @staticmethod
+    def iter_py_files(
+        root: Path,
+        exclude: frozenset[str] = frozenset(),
+        *,
+        max_files: int = 0,
+    ) -> Iterator[Path]:
+        """Yield ``*.py`` files under *root*, skipping excluded dirs."""
+        count = 0
+        for py_file in root.rglob(c.Infra.Extensions.PYTHON_GLOB):
+            if max_files and count >= max_files:
+                return
+            if any(excl in py_file.parts for excl in exclude):
+                continue
+            count += 1
+            yield py_file
+
+    @staticmethod
+    def read_source_safe(path: Path) -> str | None:
+        """Read a file, returning ``None`` on error."""
+        try:
+            return path.read_text(c.Infra.Encoding.DEFAULT)
+        except (OSError, UnicodeDecodeError):
+            return None
+
+    @staticmethod
+    def is_quoted(value: str) -> bool:
+        """Check if a string value is quoted."""
+        return (
+            len(value) >= c.Infra.Detection.MIN_QUOTED_LITERAL_LEN
+            and value[0] == value[-1]
+            and value[0] in {"'", '"'}
+        )
+
+    @staticmethod
+    def unquote(value: str) -> str:
+        """Remove surrounding quotes from a string value."""
+        det = FlextInfraUtilitiesCodegenConstantDetection
+        return value[1:-1] if det.is_quoted(value) else value
+
+    @staticmethod
+    def infer_project(py_file: Path, root: Path) -> str:
+        """Infer the project name from a Python file path."""
+        try:
+            parts = py_file.relative_to(root).parts
+            src = c.Infra.Paths.DEFAULT_SRC_DIR
+            if src in parts:
+                idx = parts.index(src)
+                if idx + 1 < len(parts):
+                    return parts[idx + 1].replace("_", "-")
+        except ValueError:
+            pass
+        return "unknown"
+
+    @staticmethod
+    def walk_mro_attrs(
+        target_cls: type,
+        *,
+        skip_types: bool = False,
+    ) -> Iterator[tuple[str, object, str, str]]:
+        """Yield ``(attr_name, attr_value, qualname, module)`` from MRO."""
+        for klass in reversed(target_cls.__mro__):
+            if klass is object:
+                continue
+            for name, value in dict(vars(klass)).items():
+                if name.startswith("_"):
+                    continue
+                if skip_types and isinstance(value, type):
+                    continue
+                yield (
+                    name,
+                    value,
+                    klass.__qualname__,
+                    getattr(klass, "__module__", ""),
+                )
+
+    @staticmethod
+    def scan_patterns(
+        source: str,
+        patterns: Sequence[re.Pattern[str]],
+    ) -> tuple[Sequence[t.Infra.StrIntPair], ...]:
+        """Scan *source* for multiple regex patterns."""
+        results: list[MutableSequence[t.Infra.StrIntPair]] = [
+            [] for _ in patterns
+        ]
+        for line_num, line in enumerate(source.splitlines(), 1):
+            for i, pat in enumerate(patterns):
+                for match in pat.finditer(line):
+                    results[i].append((match.group(1), line_num))
+        return tuple(results)
+
+    @staticmethod
     def semantic_name_matches(symbol_name: str, canonical_name: str) -> bool:
         """Return True when *symbol_name* semantically matches *canonical_name*."""
         if not canonical_name:
@@ -226,7 +188,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         project: str,
     ) -> Sequence[m.Infra.ConstantDefinition]:
         """Extract ``NAME: Final[...] = VALUE`` declarations from a file."""
-        source = _read_source_safe(file_path)
+        source = FlextInfraUtilitiesCodegenConstantDetection.read_source_safe(file_path)
         if source is None:
             return []
         definitions: MutableSequence[m.Infra.ConstantDefinition] = []
@@ -237,7 +199,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
             indent = len(line) - len(stripped)
 
             if stripped.startswith("class ") and stripped.endswith(":"):
-                cm = _CLASS_DECL_RE.match(stripped)
+                cm = c.Infra.Detection.CLASS_DECL_RE.match(stripped)
                 if cm:
                     while class_stack and class_stack[-1][1] >= indent:
                         class_stack.pop()
@@ -246,7 +208,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
             while class_stack and indent <= class_stack[-1][1]:
                 class_stack.pop()
 
-            match = _FINAL_DECL_RE.match(line)
+            match = c.Infra.Detection.FINAL_DECL_RE.match(line)
             if match:
                 definitions.append(
                     m.Infra.ConstantDefinition(
@@ -270,8 +232,8 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         all_defs: defaultdict[str, MutableSequence[m.Infra.ConstantDefinition]] = (
             defaultdict(list)
         )
-        for py_file in _iter_py_files(root_path, exclude_packages or frozenset()):
-            proj = _infer_project(py_file, root_path)
+        for py_file in FlextInfraUtilitiesCodegenConstantDetection.iter_py_files(root_path, exclude_packages or frozenset()):
+            proj = FlextInfraUtilitiesCodegenConstantDetection.infer_project(py_file, root_path)
             defs = FlextInfraUtilitiesCodegenConstantDetection.extract_constant_definitions(
                 py_file,
                 proj,
@@ -293,10 +255,10 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         Sequence[t.Infra.StrIntPair],
     ]:
         """Scan one file → ``(direct_refs, alias_refs, all_refs)``."""
-        source = _read_source_safe(py_file)
+        source = FlextInfraUtilitiesCodegenConstantDetection.read_source_safe(py_file)
         if source is None:
             return ([], [], [])
-        direct, alias = _scan_patterns(source, [_DIRECT_USAGE_RE, _ALIAS_USAGE_RE])
+        direct, alias = FlextInfraUtilitiesCodegenConstantDetection.scan_patterns(source, [c.Infra.Detection.DIRECT_USAGE_RE, c.Infra.Detection.ALIAS_USAGE_RE])
         all_refs = [*direct, *alias] if collect_all_refs else []
         return (direct, alias, all_refs)
 
@@ -309,7 +271,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         usage_map: defaultdict[str, MutableSequence[t.Infra.StrIntPair]] = defaultdict(
             list
         )
-        for py_file in _iter_py_files(root_path, exclude_packages or frozenset()):
+        for py_file in FlextInfraUtilitiesCodegenConstantDetection.iter_py_files(root_path, exclude_packages or frozenset()):
             _, _, all_refs = (
                 FlextInfraUtilitiesCodegenConstantDetection.scan_constant_usages(
                     py_file,
@@ -371,7 +333,7 @@ class FlextInfraUtilitiesCodegenConstantAnalysis:
             return {}
 
         attrs: MutableMapping[str, m.Infra.ConstantDefinition] = {}
-        for attr_name, attr_value, klass_qualname, klass_module in _walk_mro_attrs(
+        for attr_name, attr_value, klass_qualname, klass_module in FlextInfraUtilitiesCodegenConstantDetection.walk_mro_attrs(
             cls_obj
         ):
             annotations = getattr(
@@ -397,7 +359,7 @@ class FlextInfraUtilitiesCodegenConstantAnalysis:
     def scan_class_attribute_usages(
         root_path: Path,
         class_name: str,
-        exclude_patterns: frozenset[str] = _DEFAULT_EXCLUDE,
+        exclude_patterns: frozenset[str] = c.Infra.DEFAULT_EXCLUDE,
         max_files: int = 5000,
     ) -> tuple[t.Infra.StrSet, Mapping[str, Sequence[t.Infra.StrIntPair]]]:
         """Scan for usages of class attributes across Python files."""
@@ -412,11 +374,11 @@ class FlextInfraUtilitiesCodegenConstantAnalysis:
             if prefix
             else r"\bc\.([A-Za-z_]\w*)",
         )
-        for py_file in _iter_py_files(root_path, exclude_patterns, max_files=max_files):
-            source = _read_source_safe(py_file)
+        for py_file in FlextInfraUtilitiesCodegenConstantDetection.iter_py_files(root_path, exclude_patterns, max_files=max_files):
+            source = FlextInfraUtilitiesCodegenConstantDetection.read_source_safe(py_file)
             if source is None:
                 continue
-            direct, alias = _scan_patterns(source, [direct_pat, alias_pat])
+            direct, alias = FlextInfraUtilitiesCodegenConstantDetection.scan_patterns(source, [direct_pat, alias_pat])
             for refs in (direct, alias):
                 for attr_name, line_num in refs:
                     used_attrs.add(attr_name)
@@ -427,7 +389,7 @@ class FlextInfraUtilitiesCodegenConstantAnalysis:
     def analyze_class_object_census(
         class_path: str,
         root_path: Path,
-        exclude_patterns: frozenset[str] = _DEFAULT_EXCLUDE,
+        exclude_patterns: frozenset[str] = c.Infra.DEFAULT_EXCLUDE,
         max_files: int = 5000,
     ) -> Mapping[
         str,
@@ -469,7 +431,7 @@ class FlextInfraUtilitiesCodegenConstantAnalysis:
     def propose_deduplication_fixes(
         class_path: str,
         root_path: Path,
-        exclude_patterns: frozenset[str] = _DEFAULT_EXCLUDE,
+        exclude_patterns: frozenset[str] = c.Infra.DEFAULT_EXCLUDE,
         max_files: int = 2000,
     ) -> r[Sequence[m.Infra.DeduplicationFixProposal]]:
         """Propose fixes to deduplicate constant values across a class."""
@@ -615,7 +577,7 @@ class FlextInfraUtilitiesCodegenConstantAnalysis:
     def _run_deduplication(
         options: m.Infra.DeduplicationRunOptions,
     ) -> r[m.Infra.DeduplicationRunReport]:
-        effective_excludes = options.exclude_patterns or _DEFAULT_EXCLUDE
+        effective_excludes = options.exclude_patterns or c.Infra.DEFAULT_EXCLUDE
         return FlextInfraUtilitiesCodegenConstantAnalysis.propose_deduplication_fixes(
             options.class_path,
             options.root_path,
@@ -746,14 +708,14 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
             if isinstance(a, type) and a is not type
         )
         for cls, prefix in targets:
-            for name, value, _, _ in _walk_mro_attrs(cls, skip_types=True):
+            for name, value, _, _ in FlextInfraUtilitiesCodegenConstantDetection.walk_mro_attrs(cls, skip_types=True):
                 raw = repr(value)[:200]
                 if not raw:
                     continue
                 canon = f"{prefix}.{name}" if prefix else name
                 vmap[raw] = canon
-                if _is_quoted(raw):
-                    inner = _unquote(raw)
+                if FlextInfraUtilitiesCodegenConstantDetection.is_quoted(raw):
+                    inner = FlextInfraUtilitiesCodegenConstantDetection.unquote(raw)
                     vmap[f"'{inner}'"] = vmap[f'"{inner}"'] = canon
         return vmap
 
@@ -772,7 +734,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
             if eq < 0:
                 continue
             raw = source_lines[sym.line - 1][eq + 1 :].strip()
-            if raw in _TRIVIAL_VALUES:
+            if raw in c.Infra.Detection.TRIVIAL_VALUES:
                 continue
             canon = value_to_ref.get(raw)
             if canon is None or canon == sym.name:
@@ -790,7 +752,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
     def lint_snapshot(py_file: Path, workspace: Path) -> t.Infra.LintSnapshot:
         """Run all lint tools on *py_file* → ``{tool: [error_lines]}``."""
         errors: MutableMapping[str, Sequence[str]] = {}
-        for tool, tmpl in _LINT_TOOLS:
+        for tool, tmpl in c.Infra.LINT_TOOLS:
             cmd = [a.replace("{file}", str(py_file)) for a in tmpl]
             res = FlextInfraUtilitiesSubprocess.run_raw(
                 cmd,

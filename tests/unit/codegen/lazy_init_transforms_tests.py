@@ -91,9 +91,9 @@ class TestShouldBubbleUp:
         tm.that(not _should_bubble_up("BLUE"), eq=True)
         tm.that(not _should_bubble_up("SYM_ARROW"), eq=True)
 
-    def test_singleton_name_passes(self) -> None:
-        """Test that lowercase singleton names pass."""
-        tm.that(_should_bubble_up("output"), eq=True)
+    def test_legacy_output_wrapper_is_filtered(self) -> None:
+        """Legacy output wrappers must not bubble to package root exports."""
+        tm.that(not _should_bubble_up("output"), eq=True)
 
     def test_single_letter_alias_passes(self) -> None:
         """Test that single-letter aliases pass."""

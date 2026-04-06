@@ -11,10 +11,6 @@ from typing import ClassVar, override
 
 from flext_infra import DetectorContext, FlextInfraScanFileMixin, c, m, p
 
-_PEP695_RE = c.Infra.PEP695_RE
-_TYPEALIAS_ANNOT_RE = c.Infra.TYPEALIAS_ANNOT_RE
-_TYPING_FACTORY_ASSIGN_RE = c.Infra.TYPING_FACTORY_ASSIGN_RE
-
 
 class FlextInfraManualTypingAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
     """Detect typing declarations outside canonical typings files via rope."""
@@ -42,7 +38,7 @@ class FlextInfraManualTypingAliasDetector(FlextInfraScanFileMixin, p.Infra.Scann
             return []
         violations: MutableSequence[m.Infra.ManualTypingAliasViolation] = []
         # PEP 695: type Foo = ...
-        for hit in _PEP695_RE.finditer(source):
+        for hit in c.Infra.PEP695_RE.finditer(source):
             violations.append(
                 m.Infra.ManualTypingAliasViolation(
                     file=str(file_path),
@@ -52,7 +48,7 @@ class FlextInfraManualTypingAliasDetector(FlextInfraScanFileMixin, p.Infra.Scann
                 )
             )
         # TypeAlias annotation: Foo: TypeAlias = ...
-        for hit in _TYPEALIAS_ANNOT_RE.finditer(source):
+        for hit in c.Infra.TYPEALIAS_ANNOT_RE.finditer(source):
             violations.append(
                 m.Infra.ManualTypingAliasViolation(
                     file=str(file_path),
@@ -61,7 +57,7 @@ class FlextInfraManualTypingAliasDetector(FlextInfraScanFileMixin, p.Infra.Scann
                     detail="TypeAlias assignment must be centralized under typings scope",
                 )
             )
-        for hit in _TYPING_FACTORY_ASSIGN_RE.finditer(source):
+        for hit in c.Infra.TYPING_FACTORY_ASSIGN_RE.finditer(source):
             violations.append(
                 m.Infra.ManualTypingAliasViolation(
                     file=str(file_path),

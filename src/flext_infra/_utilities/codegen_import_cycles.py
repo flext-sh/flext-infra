@@ -13,13 +13,11 @@ import logging
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
-from flext_infra import (
-    FlextInfraUtilitiesCodegenConstantDetection,
-    FlextInfraUtilitiesDiscovery,
-    FlextInfraUtilitiesRope,
-    c,
-    t,
-)
+from flext_infra import c, t
+
+from .codegen_constants import FlextInfraUtilitiesCodegenConstantDetection
+from .discovery import FlextInfraUtilitiesDiscovery
+from .rope import FlextInfraUtilitiesRope
 
 _logger = logging.getLogger(__name__)
 

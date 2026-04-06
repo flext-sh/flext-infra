@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import re
 import shutil
 import sys
 from collections import defaultdict
@@ -16,32 +15,11 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from flext_core import u
-from flext_infra import (
-    FlextInfraUtilitiesBase,
-    FlextInfraUtilitiesCodegenConstantDetection,
-    FlextInfraUtilitiesSubprocess,
-    c,
-    m,
-    t,
-)
+from flext_infra import c, m, t
 
-_BARE_IMPORT_FROM_RE = re.compile(r"^from\s+import\s", re.MULTILINE)
-_NO_MODIFIED: dict[str, t.Infra.InfraValue] = {
-    "passed": True,
-    "detail": "no modified python files detected",
-    "exit_code": 0,
-}
-
-
-def _int(payload: Mapping[str, t.Infra.InfraValue], key: str) -> int:
-    """Shorthand for ``u.to_int(payload.get(key))``."""
-    return FlextInfraUtilitiesBase.nested_int(payload, key)
-
-
-def _totals(
-    payload: Mapping[str, t.Infra.InfraValue],
-) -> Mapping[str, t.Infra.InfraValue]:
-    return FlextInfraUtilitiesBase.normalize_str_mapping(payload.get("totals"))
+from .base import FlextInfraUtilitiesBase
+from .codegen_constants import FlextInfraUtilitiesCodegenConstantDetection
+from .subprocess import FlextInfraUtilitiesSubprocess
 
 
 class FlextInfraUtilitiesCodegenExecution:
@@ -52,11 +30,11 @@ class FlextInfraUtilitiesCodegenExecution:
     @staticmethod
     def extract_total_violations(payload: Mapping[str, t.Infra.InfraValue]) -> int:
         if "total_violations" in payload:
-            return _int(payload, "total_violations")
-        totals = _totals(payload)
+            return FlextInfraUtilitiesBase.nested_int(payload, "total_violations")
+        totals = FlextInfraUtilitiesBase.normalize_str_mapping(payload.get("totals"))
         if totals:
             return sum(
-                _int(totals, k)
+                FlextInfraUtilitiesBase.nested_int(totals, k)
                 for k in (
                     "ns001_violations",
                     "layer_violations",
@@ -67,19 +45,19 @@ class FlextInfraUtilitiesCodegenExecution:
             payload.get("projects")
         )
         if projects and all("total" in item for item in projects):
-            return sum(_int(item, "total") for item in projects)
+            return sum(FlextInfraUtilitiesBase.nested_int(item, "total") for item in projects)
         return -1
 
     @staticmethod
     def extract_duplicate_groups(payload: Mapping[str, t.Infra.InfraValue]) -> int:
         if "duplicate_groups" in payload:
-            return _int(payload, "duplicate_groups")
+            return FlextInfraUtilitiesBase.nested_int(payload, "duplicate_groups")
         dups = payload.get("duplicates")
         return sum(1 for _ in dups) if isinstance(dups, list) else -1
 
     @staticmethod
     def extract_projects_total(payload: Mapping[str, t.Infra.InfraValue]) -> int:
-        value = _totals(payload).get(c.Infra.ReportKeys.PROJECTS)
+        value = FlextInfraUtilitiesBase.normalize_str_mapping(payload.get("totals")).get(c.Infra.ReportKeys.PROJECTS)
         if value is not None:
             return u.to_int(value)
         projects = payload.get("projects")
@@ -89,7 +67,7 @@ class FlextInfraUtilitiesCodegenExecution:
     def _extract_totals_field(
         payload: Mapping[str, t.Infra.InfraValue], key: str
     ) -> int:
-        return _int(_totals(payload), key)
+        return FlextInfraUtilitiesBase.nested_int(FlextInfraUtilitiesBase.normalize_str_mapping(payload.get("totals")), key)
 
     # ── Metrics ──────────────────────────────────────────────────────
 
@@ -171,8 +149,8 @@ class FlextInfraUtilitiesCodegenExecution:
             "mro_failures": 0,
             "layer_violations": 0,
             "cross_project_reference_violations": 0,
-            "import_parse_violations": _int(import_scan, "invalid_import_from_count"),
-            "import_parse_errors": _int(import_scan, "parse_error_count"),
+            "import_parse_violations": FlextInfraUtilitiesBase.nested_int(import_scan, "invalid_import_from_count"),
+            "import_parse_errors": FlextInfraUtilitiesBase.nested_int(import_scan, "parse_error_count"),
             "modified_python_files": modified_value,
         }
 
@@ -181,10 +159,10 @@ class FlextInfraUtilitiesCodegenExecution:
         before_metrics: Mapping[str, t.Infra.InfraValue],
         after_metrics: Mapping[str, t.Infra.InfraValue],
     ) -> Mapping[str, t.Infra.InfraValue]:
-        bv = _int(before_metrics, "total_violations")
-        bd = _int(before_metrics, "duplicate_groups")
-        av = _int(after_metrics, "total_violations")
-        ad = _int(after_metrics, "duplicate_groups")
+        bv = FlextInfraUtilitiesBase.nested_int(before_metrics, "total_violations")
+        bd = FlextInfraUtilitiesBase.nested_int(before_metrics, "duplicate_groups")
+        av = FlextInfraUtilitiesBase.nested_int(after_metrics, "total_violations")
+        ad = FlextInfraUtilitiesBase.nested_int(after_metrics, "duplicate_groups")
         vd = 0 if bv < 0 else av - bv
         dd = 0 if bd < 0 else ad - bd
         return {
@@ -258,7 +236,11 @@ class FlextInfraUtilitiesCodegenExecution:
     ) -> Mapping[str, t.Infra.InfraValue]:
         """Shared runner for ruff/pyrefly: skip if no files, else run_external_check."""
         if not modified_files:
-            return dict(_NO_MODIFIED)
+            return {
+                "passed": True,
+                "detail": "no modified python files detected",
+                "exit_code": 0,
+            }
         return FlextInfraUtilitiesCodegenExecution.run_external_check(
             workspace_root, cmd
         )
@@ -326,7 +308,7 @@ class FlextInfraUtilitiesCodegenExecution:
                 errors.append(f"{rel}:parse failed")
                 continue
             for lineno, line in enumerate(source.splitlines(), 1):
-                if _BARE_IMPORT_FROM_RE.match(line.lstrip()):
+                if c.Infra.BARE_IMPORT_FROM_RE.match(line.lstrip()):
                     invalid.append(f"{rel}:{lineno}")
         inv_v: Sequence[t.Infra.InfraValue] = list(invalid)
         err_v: Sequence[t.Infra.InfraValue] = list(errors)
@@ -351,15 +333,15 @@ class FlextInfraUtilitiesCodegenExecution:
     ) -> Sequence[Mapping[str, t.Infra.InfraValue]]:
         am = after_metrics
         im = improvement
-        vt = _int(am, "total_violations")
-        vd = _int(im, "violations_delta")
-        mro = _int(am, "mro_failures")
-        xref = _int(am, "cross_project_reference_violations")
-        ip = _int(am, "import_parse_violations")
-        ipe = _int(am, "import_parse_errors")
-        lv = _int(am, "layer_violations")
-        dg = _int(am, "duplicate_groups")
-        dd = _int(im, "duplicates_delta")
+        vt = FlextInfraUtilitiesBase.nested_int(am, "total_violations")
+        vd = FlextInfraUtilitiesBase.nested_int(im, "violations_delta")
+        mro = FlextInfraUtilitiesBase.nested_int(am, "mro_failures")
+        xref = FlextInfraUtilitiesBase.nested_int(am, "cross_project_reference_violations")
+        ip = FlextInfraUtilitiesBase.nested_int(am, "import_parse_violations")
+        ipe = FlextInfraUtilitiesBase.nested_int(am, "import_parse_errors")
+        lv = FlextInfraUtilitiesBase.nested_int(am, "layer_violations")
+        dg = FlextInfraUtilitiesBase.nested_int(am, "duplicate_groups")
+        dd = FlextInfraUtilitiesBase.nested_int(im, "duplicates_delta")
         ba = before_available
 
         def _delta_pass(total: int, delta: int) -> bool:
@@ -436,8 +418,8 @@ class FlextInfraUtilitiesCodegenExecution:
         ):
             return "FAIL"
         if (
-            _int(improvement, "violations_increased") > 0
-            or _int(improvement, "duplicates_increased") > 0
+            FlextInfraUtilitiesBase.nested_int(improvement, "violations_increased") > 0
+            or FlextInfraUtilitiesBase.nested_int(improvement, "duplicates_increased") > 0
         ):
             return "FAIL"
         return "CONDITIONAL_PASS"

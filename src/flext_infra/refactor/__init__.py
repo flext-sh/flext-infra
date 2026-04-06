@@ -188,12 +188,17 @@ if _t.TYPE_CHECKING:
     from flext_infra.refactor.scanner import FlextInfraRefactorLooseClassScanner
 
     violation_analyzer = _flext_infra_refactor_violation_analyzer
+    from flext_core.constants import FlextConstants as c
     from flext_core.decorators import FlextDecorators as d
     from flext_core.exceptions import FlextExceptions as e
     from flext_core.handlers import FlextHandlers as h
     from flext_core.mixins import FlextMixins as x
+    from flext_core.models import FlextModels as m
+    from flext_core.protocols import FlextProtocols as p
     from flext_core.result import FlextResult as r
     from flext_core.service import FlextService as s
+    from flext_core.typings import FlextTypes as t
+    from flext_core.utilities import FlextUtilities as u
     from flext_infra.refactor.violation_analyzer import (
         FlextInfraRefactorViolationAnalyzer,
     )
@@ -260,6 +265,7 @@ _LAZY_IMPORTS = {
     "_utilities_policy": "flext_infra.refactor._utilities_policy",
     "_utilities_pydantic": "flext_infra.refactor._utilities_pydantic",
     "_utilities_pydantic_analysis": "flext_infra.refactor._utilities_pydantic_analysis",
+    "c": ("flext_core.constants", "FlextConstants"),
     "census": "flext_infra.refactor.census",
     "class_nesting_analyzer": "flext_infra.refactor.class_nesting_analyzer",
     "cli": "flext_infra.refactor.cli",
@@ -267,11 +273,13 @@ _LAZY_IMPORTS = {
     "e": ("flext_core.exceptions", "FlextExceptions"),
     "engine": "flext_infra.refactor.engine",
     "h": ("flext_core.handlers", "FlextHandlers"),
+    "m": ("flext_core.models", "FlextModels"),
     "migrate_to_class_mro": "flext_infra.refactor.migrate_to_class_mro",
     "mro_import_rewriter": "flext_infra.refactor.mro_import_rewriter",
     "mro_migration_validator": "flext_infra.refactor.mro_migration_validator",
     "mro_resolver": "flext_infra.refactor.mro_resolver",
     "namespace_enforcer": "flext_infra.refactor.namespace_enforcer",
+    "p": ("flext_core.protocols", "FlextProtocols"),
     "project_classifier": "flext_infra.refactor.project_classifier",
     "r": ("flext_core.result", "FlextResult"),
     "rule": "flext_infra.refactor.rule",
@@ -279,6 +287,8 @@ _LAZY_IMPORTS = {
     "s": ("flext_core.service", "FlextService"),
     "safety": "flext_infra.refactor.safety",
     "scanner": "flext_infra.refactor.scanner",
+    "t": ("flext_core.typings", "FlextTypes"),
+    "u": ("flext_core.utilities", "FlextUtilities"),
     "violation_analyzer": "flext_infra.refactor.violation_analyzer",
     "x": ("flext_core.mixins", "FlextMixins"),
 }
@@ -346,6 +356,7 @@ __all__ = [
     "_utilities_policy",
     "_utilities_pydantic",
     "_utilities_pydantic_analysis",
+    "c",
     "census",
     "class_nesting_analyzer",
     "cli",
@@ -353,11 +364,13 @@ __all__ = [
     "e",
     "engine",
     "h",
+    "m",
     "migrate_to_class_mro",
     "mro_import_rewriter",
     "mro_migration_validator",
     "mro_resolver",
     "namespace_enforcer",
+    "p",
     "project_classifier",
     "r",
     "rule",
@@ -365,6 +378,8 @@ __all__ = [
     "s",
     "safety",
     "scanner",
+    "t",
+    "u",
     "violation_analyzer",
     "x",
 ]

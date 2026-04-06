@@ -32,11 +32,6 @@ from flext_infra import (
     u,
 )
 
-_SIG_MIGRATION_SEQ_ADAPTER: TypeAdapter[Sequence[m.Infra.SignatureMigration]] = (
-    TypeAdapter(Sequence[m.Infra.SignatureMigration])
-)
-
-
 class FlextInfraRefactorMRORedundancyChecker(FlextInfraGenericTransformerRule):
     """Detect and fix nested classes inheriting from their parent namespace."""
 
@@ -227,6 +222,10 @@ class FlextInfraRefactorSymbolPropagationRule(FlextInfraRefactorRule):
 class FlextInfraRefactorSignaturePropagationRule(FlextInfraRefactorRule):
     """Apply declarative signature migrations in a generic, workspace-safe way."""
 
+    _SIG_MIGRATION_SEQ_ADAPTER = TypeAdapter(
+        Sequence[m.Infra.SignatureMigration],
+    )
+
     @override
     def apply(
         self,
@@ -236,7 +235,7 @@ class FlextInfraRefactorSignaturePropagationRule(FlextInfraRefactorRule):
         migrations_raw = self.config.get("signature_migrations", [])
         try:
             parsed: Sequence[m.Infra.SignatureMigration] = (
-                _SIG_MIGRATION_SEQ_ADAPTER.validate_python(migrations_raw)
+                self._SIG_MIGRATION_SEQ_ADAPTER.validate_python(migrations_raw)
             )
         except ValidationError:
             return (source, list[str]())

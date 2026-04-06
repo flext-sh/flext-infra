@@ -76,7 +76,12 @@ class TestRewritePep621:
             doc,
             internal_names={"flext-core"},
         )
-        tm.that(len(changes), eq=1)
+        tm.that(changes, eq=[])
+        unwrapped = doc.unwrap()
+        tm.that(
+            unwrapped["project"]["dependencies"],
+            eq=[123, "flext-core @ file://.flext-deps/flext-core"],
+        )
 
     def test_rewrite_pep621_subproject_mode(self) -> None:
         doc = TOMLDocument()

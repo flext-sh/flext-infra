@@ -11,9 +11,6 @@ from typing import ClassVar, override
 
 from flext_infra import DetectorContext, FlextInfraScanFileMixin, c, m, p
 
-_FUTURE_ANNOTATIONS_RE = c.Infra.FUTURE_ANNOTATIONS_RE
-_ONLY_DOCSTRING_RE = c.Infra.ONLY_DOCSTRING_RE
-
 
 class FlextInfraFutureAnnotationsDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
     """Detect missing future annotations import via rope resource read."""
@@ -37,9 +34,9 @@ class FlextInfraFutureAnnotationsDetector(FlextInfraScanFileMixin, p.Infra.Scann
             return []
         if not source.strip():
             return []
-        if _ONLY_DOCSTRING_RE.match(source.strip()):
+        if c.Infra.ONLY_DOCSTRING_RE.match(source.strip()):
             return []
-        if _FUTURE_ANNOTATIONS_RE.search(source):
+        if c.Infra.FUTURE_ANNOTATIONS_RE.search(source):
             return []
         return [m.Infra.FutureAnnotationsViolation(file=str(file_path))]
 

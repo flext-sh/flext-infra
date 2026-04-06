@@ -231,7 +231,8 @@ def test_workspace_makefile_generator_sanitizes_orchestrator_env(
             'WORKSPACE_FLEXT_INFRA := FLEXT_WORKSPACE_ROOT="$(CURDIR)" $(WORKSPACE_PYTHON) -m flext_infra',
             "WORKSPACE_INFRA_WORKSPACE := $(WORKSPACE_FLEXT_INFRA) workspace",
             "ORCHESTRATOR := $(WORKSPACE_INFRA_WORKSPACE) orchestrate",
-            'ORCHESTRATOR_PROJECTS := --projects "$(SELECTED_PROJECTS)"',
+            "ORCHESTRATOR_PROJECTS :=",
+            "--projects $(proj)",
         ],
     )
 

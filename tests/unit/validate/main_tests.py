@@ -8,8 +8,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import subprocess
-import sys
 from pathlib import Path
 
 from flext_tests import tm
@@ -19,20 +17,12 @@ from flext_infra import (
     FlextInfraBaseMkValidator,
     FlextInfraInventoryService,
     FlextInfraTextPatternScanner,
+    main as infra_main,
 )
 
-_CWD = "/home/marlonsc/flext/flext-core"
-
-
-def _cli(*args: str) -> subprocess.CompletedProcess[str]:
-    """Run flext_infra.validate CLI via subprocess."""
-    return subprocess.run(
-        [sys.executable, "-m", "flext_infra", "validate", *args],
-        capture_output=True,
-        text=True,
-        cwd=_CWD,
-        check=False,
-    )
+def _cli(*args: str) -> int:
+    """Run validate routing through the canonical infra CLI."""
+    return infra_main(["validate", *args])
 
 
 class TestMainBaseMkValidate:
@@ -126,17 +116,17 @@ class TestMainCliRouting:
 
     def test_help_flag(self) -> None:
         """--help returns 0."""
-        tm.that(_cli("--help").returncode, eq=0)
+        tm.that(_cli("--help"), eq=0)
 
     def test_basemk_validate_routing(self, tmp_path: Path) -> None:
         """basemk-validate subcommand routes correctly."""
         result = _cli("basemk-validate", "--workspace", str(tmp_path))
-        assert result.returncode in {0, 1}
+        assert result in {0, 1}
 
     def test_inventory_routing(self, tmp_path: Path) -> None:
         """Inventory subcommand routes correctly."""
         result = _cli("inventory", "--workspace", str(tmp_path))
-        assert result.returncode in {0, 1}
+        assert result in {0, 1}
 
     def test_scan_routing(self, tmp_path: Path) -> None:
         """Scan subcommand routes correctly."""
@@ -150,15 +140,15 @@ class TestMainCliRouting:
             "--include",
             "*.txt",
         )
-        assert result.returncode in {0, 1}
+        assert result in {0, 1}
 
     def test_no_command_returns_1(self) -> None:
         """No subcommand returns exit code 1."""
-        tm.that(_cli().returncode, eq=1)
+        tm.that(_cli(), eq=1)
 
     def test_unknown_command_returns_error(self) -> None:
         """Unknown subcommand returns non-zero exit code."""
-        tm.that(_cli("unknown").returncode, ne=0)
+        tm.that(_cli("unknown"), ne=0)
 
     def test_skill_validate_routing(self, tmp_path: Path) -> None:
         """skill-validate subcommand routes correctly."""
@@ -169,12 +159,12 @@ class TestMainCliRouting:
             "--workspace",
             str(tmp_path),
         )
-        assert result.returncode in {0, 1}
+        assert result in {0, 1}
 
     def test_stub_validate_routing(self, tmp_path: Path) -> None:
         """stub-validate subcommand routes correctly."""
         result = _cli("stub-validate", "--workspace", str(tmp_path))
-        assert result.returncode in {0, 1}
+        assert result in {0, 1}
 
 
 __all__: t.StrSequence = []

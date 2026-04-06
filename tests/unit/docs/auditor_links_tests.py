@@ -17,23 +17,25 @@ from flext_infra import FlextInfraDocAuditor
 class TestAuditorToMarkdown:
     """Tests for to_markdown helper."""
 
-    def test_to_markdown_empty_issues(self) -> None:
+    def test_to_markdown_empty_issues(self, tmp_path: Path) -> None:
         """Test to_markdown with no issues."""
+        (tmp_path / "docs").mkdir()
         scope = m.Infra.DocScope(
             name="test",
-            path=Path(),
-            report_dir=Path(),
+            path=tmp_path,
+            report_dir=tmp_path / "reports",
         )
         result = FlextInfraDocAuditor.to_markdown(scope, [])
         tm.that(len(result), gte=0)
         tm.that(result, has="# Docs Audit Report")
 
-    def test_to_markdown_with_issues(self) -> None:
+    def test_to_markdown_with_issues(self, tmp_path: Path) -> None:
         """Test to_markdown with issues."""
+        (tmp_path / "docs").mkdir()
         scope = m.Infra.DocScope(
             name="test",
-            path=Path(),
-            report_dir=Path(),
+            path=tmp_path,
+            report_dir=tmp_path / "reports",
         )
         issue = m.Infra.AuditIssue(
             file="README.md",

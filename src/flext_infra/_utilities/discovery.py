@@ -23,17 +23,59 @@ class FlextInfraUtilitiesDiscovery(FlextInfraUtilitiesDiscoveryScanning):
     def discover_projects(
         workspace_root: Path,
     ) -> r[Sequence[m.Infra.ProjectInfo]]:
-        """Find valid projects in the workspace.
-
-        Delegates to ``FlextInfraUtilitiesDocsScope.discover_projects`` which
-        is the canonical implementation with governance filtering and
-        ``tomllib``-based fast parsing.
-        """
+        """Find valid projects in the workspace."""
         if not workspace_root.exists() or not workspace_root.is_dir():
             return r[Sequence[m.Infra.ProjectInfo]].fail(
                 f"discovery failed: invalid workspace root {workspace_root}",
             )
-        return FlextInfraUtilitiesDocsScope.discover_projects(workspace_root)
+        excluded = FlextInfraUtilitiesDocsScope.excluded_roots(workspace_root)
+        projects: list[m.Infra.ProjectInfo] = []
+        try:
+            for entry in sorted(workspace_root.iterdir(), key=lambda item: item.name):
+                if (
+                    not entry.is_dir()
+                    or entry.name.startswith(".")
+                    or entry.name == "cmd"
+                    or entry.name in excluded
+                ):
+                    continue
+                pyproject = entry / c.Infra.Files.PYPROJECT_FILENAME
+                if not pyproject.is_file():
+                    continue
+                if not (entry / c.Infra.Files.MAKEFILE_FILENAME).is_file():
+                    continue
+                payload = FlextInfraUtilitiesDocsScope.pyproject_payload(entry)
+                docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(payload)
+                enabled = docs_meta.get("enabled", True)
+                if isinstance(enabled, bool) and not enabled:
+                    continue
+                projects.append(
+                    m.Infra.ProjectInfo.model_construct(
+                        path=entry,
+                        name=entry.name,
+                        stack="python/flext",
+                        has_tests=(entry / c.Infra.Directories.TESTS).is_dir(),
+                        has_src=(entry / c.Infra.Paths.DEFAULT_SRC_DIR).is_dir(),
+                        project_class=(
+                            FlextInfraUtilitiesDocsScope.classify_project_from_meta(
+                                entry.name,
+                                docs_meta,
+                            )
+                        ),
+                        package_name=(
+                            FlextInfraUtilitiesDocsScope.package_name_from_payload(
+                                entry,
+                                payload,
+                                docs_meta,
+                            )
+                        ),
+                    )
+                )
+        except OSError as exc:
+            return r[Sequence[m.Infra.ProjectInfo]].fail(
+                f"discovery failed: {exc}",
+            )
+        return r[Sequence[m.Infra.ProjectInfo]].ok(projects)
 
     @staticmethod
     def _submodule_names(workspace_root: Path) -> t.Infra.StrSet:

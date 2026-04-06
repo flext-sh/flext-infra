@@ -16,20 +16,6 @@ from flext_infra import (
     u,
 )
 
-_COERCE_KEYS: tuple[str, ...] = (
-    c.Infra.ReportKeys.LOOSE_NAME,
-    "helper_name",
-    c.Infra.ReportKeys.TARGET_NAMESPACE,
-    "target_name",
-    c.Infra.ReportKeys.REWRITE_SCOPE,
-    c.Infra.ReportKeys.CONFIDENCE,
-)
-_SECTION_KEYS: tuple[str, ...] = (
-    c.Infra.ReportKeys.CLASS_NESTING,
-    c.Infra.ReportKeys.HELPER_CONSOLIDATION,
-)
-
-
 class _PostCheckGate:
     """Inline post-check gate for class nesting validation."""
 

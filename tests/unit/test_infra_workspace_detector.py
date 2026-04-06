@@ -16,7 +16,7 @@ from flext_tests import tm
 from tests import t
 
 from flext_core import r
-from flext_infra import FlextInfraWorkspaceDetector, FlextInfraWorkspaceMode
+from flext_infra import FlextInfraWorkspaceDetector, c
 
 
 @pytest.fixture
@@ -69,7 +69,7 @@ class TestDetectorBasicDetection:
     ) -> None:
         project_root = tmp_path / "project"
         project_root.mkdir()
-        tm.ok(detector.detect(project_root), eq=FlextInfraWorkspaceMode.STANDALONE)
+        tm.ok(detector.detect(project_root), eq=c.Infra.WorkspaceMode.STANDALONE)
 
     def test_handles_git_command_errors(
         self,
@@ -87,12 +87,12 @@ class TestDetectorBasicDetection:
         project_root = tmp_path / "project"
         project_root.mkdir()
         (tmp_path / ".gitmodules").write_text("", encoding="utf-8")
-        tm.ok(detector.detect(project_root), eq=FlextInfraWorkspaceMode.WORKSPACE)
+        tm.ok(detector.detect(project_root), eq=c.Infra.WorkspaceMode.WORKSPACE)
 
     def test_execute_uses_workspace_root(self, tmp_path: Path) -> None:
         tm.ok(
             FlextInfraWorkspaceDetector(workspace=tmp_path).execute(),
-            eq=FlextInfraWorkspaceMode.STANDALONE,
+            eq=c.Infra.WorkspaceMode.STANDALONE,
         )
 
 
@@ -132,7 +132,7 @@ class TestDetectorGitRunScenarios:
             "flext_infra._utilities.git.FlextInfraUtilitiesGit.git_run",
             _git_run_ok(""),
         )
-        tm.ok(detector.detect(project_root), eq=FlextInfraWorkspaceMode.STANDALONE)
+        tm.ok(detector.detect(project_root), eq=c.Infra.WorkspaceMode.STANDALONE)
 
     def test_git_command_failure(
         self,
@@ -145,7 +145,7 @@ class TestDetectorGitRunScenarios:
             "flext_infra._utilities.git.FlextInfraUtilitiesGit.git_run",
             _git_run_fail("git config failed"),
         )
-        tm.ok(detector.detect(project_root), eq=FlextInfraWorkspaceMode.STANDALONE)
+        tm.ok(detector.detect(project_root), eq=c.Infra.WorkspaceMode.STANDALONE)
 
     def test_flext_repo_detected(
         self,
@@ -158,7 +158,7 @@ class TestDetectorGitRunScenarios:
             "flext_infra._utilities.git.FlextInfraUtilitiesGit.git_run",
             _git_run_ok("https://github.com/flext-sh/flext.git"),
         )
-        tm.ok(detector.detect(project_root), eq=FlextInfraWorkspaceMode.WORKSPACE)
+        tm.ok(detector.detect(project_root), eq=c.Infra.WorkspaceMode.WORKSPACE)
 
     def test_non_flext_repo(
         self,
@@ -171,7 +171,7 @@ class TestDetectorGitRunScenarios:
             "flext_infra._utilities.git.FlextInfraUtilitiesGit.git_run",
             _git_run_ok("https://github.com/other-org/other-repo.git"),
         )
-        tm.ok(detector.detect(project_root), eq=FlextInfraWorkspaceMode.STANDALONE)
+        tm.ok(detector.detect(project_root), eq=c.Infra.WorkspaceMode.STANDALONE)
 
     def test_runner_failure(
         self,
@@ -184,7 +184,7 @@ class TestDetectorGitRunScenarios:
             "flext_infra._utilities.git.FlextInfraUtilitiesGit.git_run",
             _git_run_fail("no remote"),
         )
-        tm.ok(detector.detect(project_root), eq=FlextInfraWorkspaceMode.STANDALONE)
+        tm.ok(detector.detect(project_root), eq=c.Infra.WorkspaceMode.STANDALONE)
 
     def test_exception_during_detection(
         self,

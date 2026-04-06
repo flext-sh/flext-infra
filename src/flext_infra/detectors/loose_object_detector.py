@@ -22,17 +22,6 @@ from flext_infra import (
     u,
 )
 
-_CONSTANT_RE = c.Infra.NAMESPACE_CONSTANT_PATTERN
-_ALLOWED_TOP_LEVEL: frozenset[str] = frozenset({
-    c.Infra.Dunders.ALL,
-    c.Infra.Dunders.VERSION,
-    "__version_info__",
-})
-
-_FUNC_DEF_RE = c.Infra.FUNC_DEF_RE
-_ASSIGN_RE = c.Infra.ASSIGN_RE
-_TYPE_ALIAS_RE = c.Infra.PEP695_RE
-
 
 class FlextInfraLooseObjectDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
     """Detect loose top-level objects outside namespace classes via rope."""
@@ -103,25 +92,25 @@ class FlextInfraLooseObjectDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
                 )
             )
 
-        for hit in _FUNC_DEF_RE.finditer(source):
+        for hit in c.Infra.FUNC_DEF_RE.finditer(source):
             name = hit.group(2)
             if not name.startswith("_"):
                 _add(hit, name, "function", "Utilities")
 
-        for hit in _ASSIGN_RE.finditer(source):
+        for hit in c.Infra.ASSIGN_RE.finditer(source):
             name = hit.group(1)
             if (
-                name not in _ALLOWED_TOP_LEVEL
+                name not in c.Infra.Scan.ALLOWED_TOP_LEVEL
                 and name not in known_classes
                 and len(name) > c.Infra.NAMESPACE_MIN_ALIAS_LENGTH
                 and not name.startswith("_")
-                and _CONSTANT_RE.match(name)
+                and c.Infra.NAMESPACE_CONSTANT_PATTERN.match(name)
             ):
                 _add(hit, name, "constant", "Constants")
 
-        for hit in _TYPE_ALIAS_RE.finditer(source):
+        for hit in c.Infra.PEP695_RE.finditer(source):
             name = hit.group(1)
-            if name not in _ALLOWED_TOP_LEVEL:
+            if name not in c.Infra.Scan.ALLOWED_TOP_LEVEL:
                 _add(hit, name, "typealias", "Types")
 
         return violations

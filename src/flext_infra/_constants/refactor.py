@@ -333,6 +333,27 @@ class FlextInfraRefactorConstants:
         for alias, suffix in FAMILY_SUFFIXES.items()
     }
 
+    MIN_METHODS_FOR_REORDER: ClassVar[int] = 2
+    "Minimum method count before class method reordering is attempted."
+
+    class ClassNesting:
+        """Constants for class nesting refactor rules."""
+
+        COERCE_KEYS: ClassVar[tuple[str, ...]] = (
+            "loose_name",
+            "helper_name",
+            "target_namespace",
+            "target_name",
+            "rewrite_scope",
+            "confidence",
+        )
+        "Keys to coerce from string to typed values in nesting mappings."
+        SECTION_KEYS: ClassVar[tuple[str, ...]] = (
+            "class_nesting",
+            "helper_consolidation",
+        )
+        "Top-level section keys in class nesting YAML configs."
+
     class MethodCategory:
         MAGIC: ClassVar[str] = "magic"
         PROPERTY: ClassVar[str] = "property"
@@ -341,6 +362,16 @@ class FlextInfraRefactorConstants:
         PUBLIC: ClassVar[str] = "public"
         PROTECTED: ClassVar[str] = "protected"
         PRIVATE: ClassVar[str] = "private"
+
+    class Scan:
+        """Constants for file scanning and loose object detection."""
+
+        ALLOWED_TOP_LEVEL: ClassVar[frozenset[str]] = frozenset({
+            "__all__",
+            "__version__",
+            "__version_info__",
+        })
+        "Top-level names allowed without namespace classification."
 
     class Census:
         """Constants for the usage census module."""

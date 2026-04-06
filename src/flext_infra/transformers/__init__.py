@@ -130,12 +130,17 @@ if _t.TYPE_CHECKING:
     from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
 
     violation_census_visitor = _flext_infra_transformers_violation_census_visitor
+    from flext_core.constants import FlextConstants as c
     from flext_core.decorators import FlextDecorators as d
     from flext_core.exceptions import FlextExceptions as e
     from flext_core.handlers import FlextHandlers as h
     from flext_core.mixins import FlextMixins as x
+    from flext_core.models import FlextModels as m
+    from flext_core.protocols import FlextProtocols as p
     from flext_core.result import FlextResult as r
     from flext_core.service import FlextService as s
+    from flext_core.typings import FlextTypes as t
+    from flext_core.utilities import FlextUtilities as u
     from flext_infra.transformers.violation_census_visitor import (
         FlextInfraViolationCensusVisitor,
     )
@@ -167,6 +172,7 @@ _LAZY_IMPORTS = {
     "_base": "flext_infra.transformers._base",
     "_utilities_normalizer": "flext_infra.transformers._utilities_normalizer",
     "alias_remover": "flext_infra.transformers.alias_remover",
+    "c": ("flext_core.constants", "FlextConstants"),
     "census_visitors": "flext_infra.transformers.census_visitors",
     "class_nesting": "flext_infra.transformers.class_nesting",
     "class_reconstructor": "flext_infra.transformers.class_reconstructor",
@@ -178,17 +184,21 @@ _LAZY_IMPORTS = {
     "import_bypass_remover": "flext_infra.transformers.import_bypass_remover",
     "import_modernizer": "flext_infra.transformers.import_modernizer",
     "lazy_import_fixer": "flext_infra.transformers.lazy_import_fixer",
+    "m": ("flext_core.models", "FlextModels"),
     "mro_remover": "flext_infra.transformers.mro_remover",
     "mro_symbol_propagator": "flext_infra.transformers.mro_symbol_propagator",
     "nested_class_propagation": "flext_infra.transformers.nested_class_propagation",
+    "p": ("flext_core.protocols", "FlextProtocols"),
     "policy": "flext_infra.transformers.policy",
     "r": ("flext_core.result", "FlextResult"),
     "s": ("flext_core.service", "FlextService"),
     "signature_propagator": "flext_infra.transformers.signature_propagator",
     "symbol_propagator": "flext_infra.transformers.symbol_propagator",
+    "t": ("flext_core.typings", "FlextTypes"),
     "tier0_import_fixer": "flext_infra.transformers.tier0_import_fixer",
     "typing_annotation_replacer": "flext_infra.transformers.typing_annotation_replacer",
     "typing_unifier": "flext_infra.transformers.typing_unifier",
+    "u": ("flext_core.utilities", "FlextUtilities"),
     "violation_census_visitor": "flext_infra.transformers.violation_census_visitor",
     "x": ("flext_core.mixins", "FlextMixins"),
 }
@@ -221,6 +231,7 @@ __all__ = [
     "_base",
     "_utilities_normalizer",
     "alias_remover",
+    "c",
     "census_visitors",
     "class_nesting",
     "class_reconstructor",
@@ -232,17 +243,21 @@ __all__ = [
     "import_bypass_remover",
     "import_modernizer",
     "lazy_import_fixer",
+    "m",
     "mro_remover",
     "mro_symbol_propagator",
     "nested_class_propagation",
+    "p",
     "policy",
     "r",
     "s",
     "signature_propagator",
     "symbol_propagator",
+    "t",
     "tier0_import_fixer",
     "typing_annotation_replacer",
     "typing_unifier",
+    "u",
     "violation_census_visitor",
     "x",
 ]

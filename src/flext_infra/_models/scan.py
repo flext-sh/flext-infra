@@ -17,10 +17,6 @@ from flext_core import FlextModels
 from flext_infra._models.mixins import FlextInfraModelsMixins
 
 
-def _scan_violations() -> list[FlextInfraModelsScan.ScanViolation]:
-    return []
-
-
 class FlextInfraModelsScan:
     """Shared utility domain models for scanning and analysis."""
 
@@ -45,7 +41,7 @@ class FlextInfraModelsScan:
 
         file_path: Annotated[Path, Field(description="Path to the scanned file")]
         violations: list[FlextInfraModelsScan.ScanViolation] = Field(
-            default_factory=_scan_violations,
+            default_factory=list,
             description="Violations found in the file",
         )
         detector_name: Annotated[

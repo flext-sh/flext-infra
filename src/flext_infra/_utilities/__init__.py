@@ -45,6 +45,9 @@ if _t.TYPE_CHECKING:
 
     codegen_generation = _flext_infra__utilities_codegen_generation
     import flext_infra._utilities.codegen_import_cycles as _flext_infra__utilities_codegen_import_cycles
+    from flext_infra._utilities.codegen_generation import (
+        FlextInfraUtilitiesCodegenGeneration,
+    )
 
     codegen_import_cycles = _flext_infra__utilities_codegen_import_cycles
     import flext_infra._utilities.codegen_lazy as _flext_infra__utilities_codegen_lazy
@@ -251,6 +254,7 @@ _LAZY_IMPORTS = {
     "FlextInfraUtilitiesCodegenConstantDetection": "flext_infra._utilities.codegen_constants",
     "FlextInfraUtilitiesCodegenConstantTransformation": "flext_infra._utilities.codegen_constants",
     "FlextInfraUtilitiesCodegenExecution": "flext_infra._utilities.codegen_execution",
+    "FlextInfraUtilitiesCodegenGeneration": "flext_infra._utilities.codegen_generation",
     "FlextInfraUtilitiesCodegenGovernance": "flext_infra._utilities.codegen_constants",
     "FlextInfraUtilitiesCodegenImportCycles": "flext_infra._utilities.codegen_import_cycles",
     "FlextInfraUtilitiesCodegenLazyAliases": "flext_infra._utilities.codegen_lazy",
@@ -364,6 +368,7 @@ __all__ = [
     "FlextInfraUtilitiesCodegenConstantDetection",
     "FlextInfraUtilitiesCodegenConstantTransformation",
     "FlextInfraUtilitiesCodegenExecution",
+    "FlextInfraUtilitiesCodegenGeneration",
     "FlextInfraUtilitiesCodegenGovernance",
     "FlextInfraUtilitiesCodegenImportCycles",
     "FlextInfraUtilitiesCodegenLazyAliases",

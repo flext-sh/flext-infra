@@ -2,16 +2,14 @@
 
 from __future__ import annotations
 
-import subprocess
-import sys
+import pytest
+
+from flext_infra import main as infra_main
 
 
-def test_check_main_executes_real_cli() -> None:
-    completed = subprocess.run(
-        [sys.executable, "-m", "flext_infra", "check", "run", "--help"],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    assert completed.returncode == 0
-    assert "usage:" in completed.stdout
+def test_check_main_executes_real_cli(capsys) -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        infra_main(["check", "run", "--help"])
+    captured = capsys.readouterr()
+    assert exc_info.value.code == 0
+    assert "usage:" in captured.out

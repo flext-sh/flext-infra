@@ -15,8 +15,6 @@ from flext_infra import (
     u,
 )
 
-_ROPE_MODULE_SYNTAX_ERROR = u.Infra.module_syntax_error_type()
-
 
 class FlextInfraRefactorMigrateToClassMRO:
     """Orchestrate scan, migration, rewrite, and validation phases."""
@@ -103,7 +101,7 @@ class FlextInfraRefactorMigrateToClassMRO:
             report = cls(workspace_root=path).run(target="all", apply=not dry_run)
         except (
             SyntaxError,
-            _ROPE_MODULE_SYNTAX_ERROR,
+            u.Infra.module_syntax_error_type(),
             OSError,
             ValueError,
             KeyError,

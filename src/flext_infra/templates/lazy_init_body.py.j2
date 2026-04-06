@@ -31,6 +31,11 @@ _LAZY_IMPORTS = merge_lazy_imports(
 {%- endfor %}
     },
 )
+{%- if excluded_lazy_names %}
+{%- for name in excluded_lazy_names %}
+_ = _LAZY_IMPORTS.pop("{{ name }}", None)
+{%- endfor %}
+{%- endif %}
 {%- else %}
 _LAZY_IMPORTS = {
 {%- for name, mod, attr in lazy_entries %}

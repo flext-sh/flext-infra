@@ -90,12 +90,17 @@ if _t.TYPE_CHECKING:
     from flext_infra.deps.path_sync import FlextInfraDependencyPathSync
 
     path_sync_rewrite = _flext_infra_deps_path_sync_rewrite
+    from flext_core.constants import FlextConstants as c
     from flext_core.decorators import FlextDecorators as d
     from flext_core.exceptions import FlextExceptions as e
     from flext_core.handlers import FlextHandlers as h
     from flext_core.mixins import FlextMixins as x
+    from flext_core.models import FlextModels as m
+    from flext_core.protocols import FlextProtocols as p
     from flext_core.result import FlextResult as r
     from flext_core.service import FlextService as s
+    from flext_core.typings import FlextTypes as t
+    from flext_core.utilities import FlextUtilities as u
     from flext_infra.deps.path_sync_rewrite import FlextInfraDependencyPathSyncRewrite
 _LAZY_IMPORTS = merge_lazy_imports(
     ("flext_infra.deps._phases",),
@@ -114,6 +119,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
         "FlextInfraRuntimeDevDependencyDetector": "flext_infra.deps.detector",
         "_detector_runtime": "flext_infra.deps._detector_runtime",
         "_phases": "flext_infra.deps._phases",
+        "c": ("flext_core.constants", "FlextConstants"),
         "cli": "flext_infra.deps.cli",
         "d": ("flext_core.decorators", "FlextDecorators"),
         "detection": "flext_infra.deps.detection",
@@ -125,15 +131,25 @@ _LAZY_IMPORTS = merge_lazy_imports(
         "fix_pyrefly_config": "flext_infra.deps.fix_pyrefly_config",
         "h": ("flext_core.handlers", "FlextHandlers"),
         "internal_sync": "flext_infra.deps.internal_sync",
+        "m": ("flext_core.models", "FlextModels"),
         "main": "flext_infra.deps.detector",
         "modernizer": "flext_infra.deps.modernizer",
+        "p": ("flext_core.protocols", "FlextProtocols"),
         "path_sync": "flext_infra.deps.path_sync",
         "path_sync_rewrite": "flext_infra.deps.path_sync_rewrite",
         "r": ("flext_core.result", "FlextResult"),
         "s": ("flext_core.service", "FlextService"),
+        "t": ("flext_core.typings", "FlextTypes"),
+        "u": ("flext_core.utilities", "FlextUtilities"),
         "x": ("flext_core.mixins", "FlextMixins"),
     },
 )
+_ = _LAZY_IMPORTS.pop("cleanup_submodule_namespace", None)
+_ = _LAZY_IMPORTS.pop("install_lazy_exports", None)
+_ = _LAZY_IMPORTS.pop("lazy_getattr", None)
+_ = _LAZY_IMPORTS.pop("merge_lazy_imports", None)
+_ = _LAZY_IMPORTS.pop("output", None)
+_ = _LAZY_IMPORTS.pop("output_reporting", None)
 
 __all__ = [
     "FlextInfraCliDeps",
@@ -163,6 +179,7 @@ __all__ = [
     "FlextInfraRuntimeDevDependencyDetector",
     "_detector_runtime",
     "_phases",
+    "c",
     "cli",
     "consolidate_groups",
     "d",
@@ -187,12 +204,16 @@ __all__ = [
     "h",
     "inject_comments",
     "internal_sync",
+    "m",
     "main",
     "modernizer",
+    "p",
     "path_sync",
     "path_sync_rewrite",
     "r",
     "s",
+    "t",
+    "u",
     "x",
 ]
 

@@ -10,15 +10,13 @@ from pydantic import TypeAdapter, ValidationError
 
 from flext_infra import c, m, r, t, u
 
-_AST_GREP_MATCH_SEQ_ADAPTER: TypeAdapter[Sequence[m.Infra.GrepMatchEnvelope]] = (
-    TypeAdapter(
-        Sequence[m.Infra.GrepMatchEnvelope],
-    )
-)
-
 
 class FlextInfraRefactorLooseClassScanner:
     """Scan a project tree and report top-level classes lacking namespace prefixes."""
+
+    _AST_GREP_MATCH_SEQ_ADAPTER = TypeAdapter(
+        Sequence[m.Infra.GrepMatchEnvelope],
+    )
 
     def scan(self, project_root: Path) -> r[t.Infra.ContainerDict]:
         """Scan *project_root*/src and return a violation report dict."""
@@ -190,7 +188,7 @@ class FlextInfraRefactorLooseClassScanner:
         try:
             json_raw: str | bytes | bytearray = capture.value
             entries: Sequence[m.Infra.GrepMatchEnvelope] = (
-                _AST_GREP_MATCH_SEQ_ADAPTER.validate_json(json_raw)
+                self._AST_GREP_MATCH_SEQ_ADAPTER.validate_json(json_raw)
             )
         except ValidationError as exc:
             out3: r[Mapping[Path, t.IntMapping]] = r[Mapping[Path, t.IntMapping]].fail(

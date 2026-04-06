@@ -129,6 +129,7 @@ if _t.TYPE_CHECKING:
         FlextInfraUtilitiesCodegenConstantDetection,
         FlextInfraUtilitiesCodegenConstantTransformation,
         FlextInfraUtilitiesCodegenExecution,
+        FlextInfraUtilitiesCodegenGeneration,
         FlextInfraUtilitiesCodegenGovernance,
         FlextInfraUtilitiesCodegenImportCycles,
         FlextInfraUtilitiesCodegenLazyAliases,
@@ -202,8 +203,6 @@ if _t.TYPE_CHECKING:
         io,
         iteration,
         log_parser,
-        output,
-        output_reporting,
         parsing,
         paths,
         patterns,
@@ -231,13 +230,7 @@ if _t.TYPE_CHECKING:
 
     base = _flext_infra_base
     import flext_infra.cli as _flext_infra_cli
-    from flext_infra.base import (
-        APPLY_OPTION_DECLS,
-        FlextInfraCommandContext,
-        FlextInfraServiceBase,
-        apply_option_json_schema_extra,
-        s,
-    )
+    from flext_infra.base import FlextInfraCommandContext, FlextInfraServiceBase, s
     from flext_infra.basemk import (
         FlextInfraBaseMkGenerator,
         FlextInfraBaseMkTemplateEngine,
@@ -577,7 +570,6 @@ if _t.TYPE_CHECKING:
         FlextInfraSyncService,
         FlextInfraWorkspaceDetector,
         FlextInfraWorkspaceMakefileGenerator,
-        FlextInfraWorkspaceMode,
         migrator,
         project_makefile,
         sync,
@@ -620,7 +612,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
         "flext_infra.workspace",
     ),
     {
-        "APPLY_OPTION_DECLS": "flext_infra.base",
         "FlextInfra": "flext_infra.api",
         "FlextInfraCli": "flext_infra.cli",
         "FlextInfraCommandContext": "flext_infra.base",
@@ -645,7 +636,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
         "_typings": "flext_infra._typings",
         "_utilities": "flext_infra._utilities",
         "api": "flext_infra.api",
-        "apply_option_json_schema_extra": "flext_infra.base",
         "base": "flext_infra.base",
         "c": ("flext_infra.constants", "FlextInfraConstants"),
         "cli": "flext_infra.cli",
@@ -669,9 +659,14 @@ _LAZY_IMPORTS = merge_lazy_imports(
         "x": ("flext_core.mixins", "FlextMixins"),
     },
 )
+_ = _LAZY_IMPORTS.pop("cleanup_submodule_namespace", None)
+_ = _LAZY_IMPORTS.pop("install_lazy_exports", None)
+_ = _LAZY_IMPORTS.pop("lazy_getattr", None)
+_ = _LAZY_IMPORTS.pop("merge_lazy_imports", None)
+_ = _LAZY_IMPORTS.pop("output", None)
+_ = _LAZY_IMPORTS.pop("output_reporting", None)
 
 __all__ = [
-    "APPLY_OPTION_DECLS",
     "DetectorContext",
     "FlextInfra",
     "FlextInfraBanditGate",
@@ -893,6 +888,7 @@ __all__ = [
     "FlextInfraUtilitiesCodegenConstantDetection",
     "FlextInfraUtilitiesCodegenConstantTransformation",
     "FlextInfraUtilitiesCodegenExecution",
+    "FlextInfraUtilitiesCodegenGeneration",
     "FlextInfraUtilitiesCodegenGovernance",
     "FlextInfraUtilitiesCodegenImportCycles",
     "FlextInfraUtilitiesCodegenLazyAliases",
@@ -964,7 +960,6 @@ __all__ = [
     "FlextInfraWorkspaceConstants",
     "FlextInfraWorkspaceDetector",
     "FlextInfraWorkspaceMakefileGenerator",
-    "FlextInfraWorkspaceMode",
     "FlextInfraWorkspaceModels",
     "WorkspaceLoopOutcome",
     "__author__",
@@ -983,7 +978,6 @@ __all__ = [
     "adapters",
     "alias_remover",
     "api",
-    "apply_option_json_schema_extra",
     "auditor",
     "bandit",
     "base",
@@ -1114,8 +1108,6 @@ __all__ = [
     "nested_class_propagation",
     "orchestrator",
     "orchestrator_phases",
-    "output",
-    "output_reporting",
     "p",
     "parsing",
     "path_sync",

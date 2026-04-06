@@ -14,35 +14,35 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoes
 
 from flext_infra import c, p, t
 from flext_infra._utilities.codegen_generation import (
-    build_lazy_entries,
-    collapse_to_children,
-    emit_type_checking_module,
-    format_import,
-    format_module_alias_import,
-    format_type_checking_module_alias_import,
-    group_imports,
-    has_flext_types,
+    FlextInfraUtilitiesCodegenGeneration,
 )
-
-_TEMPLATE_ROOT = Path(__file__).resolve().parent.parent / "templates"
-
-_ENV = Environment(
-    loader=FileSystemLoader(str(_TEMPLATE_ROOT)),
-    trim_blocks=False,
-    lstrip_blocks=False,
-    keep_trailing_newline=False,
-    undefined=StrictUndefined,
-    autoescape=select_autoescape(),
-)
-
-
-def _get_template(name: str) -> p.Infra.RenderableTemplate:
-    """Return a template narrowed to the local render protocol."""
-    return _ENV.get_template(name)
+from flext_infra._utilities.codegen_lazy import FlextInfraUtilitiesCodegenLazyScanning
 
 
 class FlextInfraCodegenGeneration:
     """Generate Python module files with lazy import infrastructure."""
+
+    @staticmethod
+    def _build_env() -> Environment:
+        """Create a Jinja2 environment for codegen templates."""
+        template_root = Path(__file__).resolve().parent.parent / "templates"
+        return Environment(
+            loader=FileSystemLoader(str(template_root)),
+            trim_blocks=False,
+            lstrip_blocks=False,
+            keep_trailing_newline=False,
+            undefined=StrictUndefined,
+            autoescape=select_autoescape(),
+        )
+
+    _env: Environment | None = None
+
+    @classmethod
+    def _get_template(cls, name: str) -> p.Infra.RenderableTemplate:
+        """Return a template narrowed to the local render protocol."""
+        if cls._env is None:
+            cls._env = cls._build_env()
+        return cls._env.get_template(name)
 
     @staticmethod
     def _generate_import_lines(
@@ -67,7 +67,7 @@ class FlextInfraCodegenGeneration:
                 key=lambda x: (x[1], x[0] != x[1]),
             )
             for export_name, _ in alias_items:
-                lines.append(format_module_alias_import(indent, mod, export_name))
+                lines.append(FlextInfraUtilitiesCodegenGeneration.format_module_alias_import(indent, mod, export_name))
             if not sorted_items:
                 return
             parts: t.StrSequence = [
@@ -76,7 +76,7 @@ class FlextInfraCodegenGeneration:
                 else f"{attr_name} as {export_name}"
                 for export_name, attr_name in sorted_items
             ]
-            lines.extend(format_import(indent, mod, parts))
+            lines.extend(FlextInfraUtilitiesCodegenGeneration.format_import(indent, mod, parts))
 
         sorted_mods = sorted(groups, key=str.lower)
         prev_top: str | None = None
@@ -116,12 +116,12 @@ class FlextInfraCodegenGeneration:
         if not groups and include_flext_types:
             return ("if _t.TYPE_CHECKING:", "    from flext_core import FlextTypes")
 
-        collapsed = collapse_to_children(groups, child_packages)
+        collapsed = FlextInfraUtilitiesCodegenGeneration.collapse_to_children(groups, child_packages)
         children = set(child_packages or [])
         root_name = "" if not local_package_root else local_package_root.split(".")[0]
 
         lines: MutableSequence[str] = ["if _t.TYPE_CHECKING:"]
-        if include_flext_types and not has_flext_types(collapsed):
+        if include_flext_types and not FlextInfraUtilitiesCodegenGeneration.has_flext_types(collapsed):
             lines.append("    from flext_core import FlextTypes")
 
         external_imports: t.MutableStrSequenceMapping = defaultdict(list)
@@ -132,7 +132,7 @@ class FlextInfraCodegenGeneration:
             top = mod.split(".")[0]
             if prev_top is not None and top != prev_top:
                 lines.append("")
-            emit_type_checking_module(
+            FlextInfraUtilitiesCodegenGeneration.emit_type_checking_module(
                 mod,
                 collapsed[mod],
                 children,
@@ -154,14 +154,14 @@ class FlextInfraCodegenGeneration:
             )
             for export_name in alias_exports:
                 lines.extend(
-                    format_type_checking_module_alias_import(
+                    FlextInfraUtilitiesCodegenGeneration.format_type_checking_module_alias_import(
                         "    ",
                         mod,
                         export_name,
                     ),
                 )
             if symbol_parts:
-                lines.extend(format_import("    ", mod, symbol_parts))
+                lines.extend(FlextInfraUtilitiesCodegenGeneration.format_import("    ", mod, symbol_parts))
 
         return () if len(lines) == 1 else lines
 
@@ -218,7 +218,7 @@ class FlextInfraCodegenGeneration:
         if docstring_source:
             out.extend([docstring_source, ""])
 
-        preamble_template = _get_template(tpl.PREAMBLE_STANDARD)
+        preamble_template = FlextInfraCodegenGeneration._get_template(tpl.PREAMBLE_STANDARD)
         preamble: str = preamble_template.render(
             include_merge_helper=bool(children_lazy),
             use_root_helpers=not is_core_pkg,
@@ -228,10 +228,10 @@ class FlextInfraCodegenGeneration:
         if eager_typevar_names:
             typings_mod = f"{current_pkg}.typings"
             sorted_tvars = sorted(eager_typevar_names)
-            out.extend(format_import("", typings_mod, sorted_tvars))
+            out.extend(FlextInfraUtilitiesCodegenGeneration.format_import("", typings_mod, sorted_tvars))
         out.append("")
 
-        runtime_groups = group_imports(runtime_imports)
+        runtime_groups = FlextInfraUtilitiesCodegenGeneration.group_imports(runtime_imports)
         runtime_import_lines = FlextInfraCodegenGeneration._generate_import_lines(
             runtime_groups,
         )
@@ -243,13 +243,13 @@ class FlextInfraCodegenGeneration:
             runtime_import_block.append("")
         runtime_import_block.extend(runtime_import_lines)
 
-        lazy_entries = build_lazy_entries(
+        lazy_entries = FlextInfraUtilitiesCodegenGeneration.build_lazy_entries(
             exports,
             lazy_filtered,
             children_lazy,
         )
         type_checking_lines = FlextInfraCodegenGeneration.generate_type_checking(
-            group_imports(type_checking_filtered),
+            FlextInfraUtilitiesCodegenGeneration.group_imports(type_checking_filtered),
             include_flext_types=False,
             child_packages=child_packages_for_tc or (),
             local_package_root=current_pkg,
@@ -258,10 +258,13 @@ class FlextInfraCodegenGeneration:
             for _lin in type_checking_lines:
                 pass
 
-        body_template = _get_template(tpl.BODY)
+        body_template = FlextInfraCodegenGeneration._get_template(tpl.BODY)
         body: str = body_template.render(
             runtime_import_lines="\n".join(runtime_import_block),
             child_module_paths=children_lazy,
+            excluded_lazy_names=sorted(
+                c.Infra.INFRA_ONLY_EXPORTS,
+            ),
             inline_constants=sorted(inline_constants.items()),
             eager_export_names=eager_export_names,
             lazy_entries=lazy_entries,
@@ -272,7 +275,7 @@ class FlextInfraCodegenGeneration:
         out.extend(body.splitlines())
         out.append("")
 
-        getattr_template = _get_template(tpl.GETATTR_STANDARD)
+        getattr_template = FlextInfraCodegenGeneration._get_template(tpl.GETATTR_STANDARD)
         getattr_rendered: str = getattr_template.render(
             eager_export_names=eager_export_names,
         )

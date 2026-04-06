@@ -9,9 +9,7 @@ from typing import TypeGuard, override
 
 from pydantic import TypeAdapter, ValidationError
 
-from flext_infra import FlextInfraRopeTransformer, m, t, u
-
-_MIN_METHODS_FOR_REORDER = 2
+from flext_infra import FlextInfraRopeTransformer, c, m, t, u
 
 
 class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
@@ -85,7 +83,7 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
             while index < len(body) and self._is_method_node(body[index]):
                 index += 1
             run = [node for node in body[run_start:index] if self._is_method_node(node)]
-            if len(run) < _MIN_METHODS_FOR_REORDER:
+            if len(run) < c.Infra.MIN_METHODS_FOR_REORDER:
                 continue
             edit = self._build_block_edit(
                 source,

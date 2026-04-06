@@ -16,11 +16,13 @@ from pathlib import Path
 from typing import Annotated
 
 from pydantic import Field
+from pydantic.config import JsonDict
 
 from flext_cli import FlextCliUtilities
 from flext_infra import (
     FlextInfraUtilitiesCliShared,
     FlextInfraUtilitiesCliSubcommand,
+    c,
     m,
     t,
 )
@@ -33,6 +35,11 @@ class FlextInfraUtilitiesCli(FlextInfraUtilitiesCliShared):
     flext_infra commands, supporting optional flags for apply/dry-run,
     output format, check mode, and project selection.
     """
+
+    @staticmethod
+    def apply_option_json_schema_extra(schema: JsonDict) -> None:
+        """Inject Typer dual-flag metadata using a Pydantic-supported hook."""
+        schema["typer_param_decls"] = list(c.Infra.Cli.APPLY_OPTION_DECLS)
 
     class CliArgs(m.ContractModel):
         """Parsed CLI arguments with strict validation.

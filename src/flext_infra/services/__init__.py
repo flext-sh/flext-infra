@@ -25,27 +25,37 @@ if _t.TYPE_CHECKING:
     from flext_infra.services.pipeline import FlextInfraCodegenPipeline
 
     toml_engine = _flext_infra_services_toml_engine
+    from flext_core.constants import FlextConstants as c
     from flext_core.decorators import FlextDecorators as d
     from flext_core.exceptions import FlextExceptions as e
     from flext_core.handlers import FlextHandlers as h
     from flext_core.mixins import FlextMixins as x
+    from flext_core.models import FlextModels as m
+    from flext_core.protocols import FlextProtocols as p
     from flext_core.result import FlextResult as r
     from flext_core.service import FlextService as s
+    from flext_core.typings import FlextTypes as t
+    from flext_core.utilities import FlextUtilities as u
     from flext_infra.services.toml_engine import FlextInfraToml
 _LAZY_IMPORTS = {
     "FlextInfraCodegenConsolidator": "flext_infra.services.consolidator",
     "FlextInfraCodegenDeduplicator": "flext_infra.services.deduplicator",
     "FlextInfraCodegenPipeline": "flext_infra.services.pipeline",
     "FlextInfraToml": "flext_infra.services.toml_engine",
+    "c": ("flext_core.constants", "FlextConstants"),
     "consolidator": "flext_infra.services.consolidator",
     "d": ("flext_core.decorators", "FlextDecorators"),
     "deduplicator": "flext_infra.services.deduplicator",
     "e": ("flext_core.exceptions", "FlextExceptions"),
     "h": ("flext_core.handlers", "FlextHandlers"),
+    "m": ("flext_core.models", "FlextModels"),
+    "p": ("flext_core.protocols", "FlextProtocols"),
     "pipeline": "flext_infra.services.pipeline",
     "r": ("flext_core.result", "FlextResult"),
     "s": ("flext_core.service", "FlextService"),
+    "t": ("flext_core.typings", "FlextTypes"),
     "toml_engine": "flext_infra.services.toml_engine",
+    "u": ("flext_core.utilities", "FlextUtilities"),
     "x": ("flext_core.mixins", "FlextMixins"),
 }
 
@@ -54,15 +64,20 @@ __all__ = [
     "FlextInfraCodegenDeduplicator",
     "FlextInfraCodegenPipeline",
     "FlextInfraToml",
+    "c",
     "consolidator",
     "d",
     "deduplicator",
     "e",
     "h",
+    "m",
+    "p",
     "pipeline",
     "r",
     "s",
+    "t",
     "toml_engine",
+    "u",
     "x",
 ]
 

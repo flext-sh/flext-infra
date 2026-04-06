@@ -7,15 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast as _ast
-import re as _re
 from collections.abc import Callable, Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path as _Path
 
 from pydantic import BaseModel
 
 from flext_core import FlextTypes
-
-_re_Pattern_str = _re.Pattern[str]
 
 
 class FlextInfraTypesBase:

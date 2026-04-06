@@ -7,7 +7,6 @@ from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
-import tomlkit
 from flext_tests import tm
 from tests import u
 
@@ -17,9 +16,14 @@ from flext_infra import FlextInfraPyprojectModernizer
 class TestFlextInfraPyprojectModernizer:
     """Tests modernizer class behavior."""
 
-    def test_modernizer_initialization(self) -> None:
+    def test_modernizer_initialization(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(FlextInfraPyprojectModernizer, "ROOT", tmp_path)
         modernizer = FlextInfraPyprojectModernizer()
-        tm.that(str(modernizer.root), ne="")
+        tm.that(modernizer.root, eq=tmp_path)
 
     def test_modernizer_with_custom_root(self, tmp_path: Path) -> None:
         modernizer = FlextInfraPyprojectModernizer(workspace_root=tmp_path)
@@ -123,8 +127,6 @@ class TestModernizerRunAndMain:
     ) -> None:
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text('[project]\nname = "test"\n')
-        doc = tomlkit.document()
-        doc["project"] = {"name": "test"}
         args = argparse.Namespace(
             dry_run=False,
             audit=True,
@@ -139,11 +141,7 @@ class TestModernizerRunAndMain:
             tm.that(project_paths, eq=None)
             return [pyproject]
 
-        def _read_doc(_path: Path) -> tomlkit.TOMLDocument:
-            return doc
-
         monkeypatch.setattr(modernizer, "find_pyproject_files", _find_files)
-        monkeypatch.setattr(u.Infra, "read", _read_doc)
         assert modernizer.run(args, u.Infra.CliArgs(workspace=tmp_path)) in {0, 1}
 
     def test_run_rejects_unknown_selected_project(self, tmp_path: Path) -> None:
@@ -170,8 +168,6 @@ class TestModernizerRunAndMain:
     ) -> None:
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text('[project]\nname = "test"\n')
-        doc = tomlkit.document()
-        doc["project"] = {"name": "test"}
         args = argparse.Namespace(
             dry_run=False,
             audit=False,
@@ -186,14 +182,10 @@ class TestModernizerRunAndMain:
             tm.that(project_paths, eq=None)
             return [pyproject]
 
-        def _read_doc(_path: Path) -> tomlkit.TOMLDocument:
-            return doc
-
         def _check(_files: Sequence[Path]) -> int:
             return 0
 
         monkeypatch.setattr(modernizer, "find_pyproject_files", _find_files)
-        monkeypatch.setattr(u.Infra, "read", _read_doc)
         monkeypatch.setattr(modernizer, "_run_build_check", _check)
         tm.that(
             modernizer.run(

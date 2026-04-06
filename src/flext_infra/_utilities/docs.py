@@ -7,15 +7,12 @@ from collections.abc import Callable, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_core import r, u
-from flext_infra import (
-    FlextInfraUtilitiesDiscovery,
-    FlextInfraUtilitiesPatterns,
-    FlextInfraUtilitiesTemplates,
-    c,
-    m,
-    t,
-)
+from flext_infra import c, m, t
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
+
+from .discovery import FlextInfraUtilitiesDiscovery
+from .patterns import FlextInfraUtilitiesPatterns
+from .templates import FlextInfraUtilitiesTemplates
 
 
 class FlextInfraUtilitiesDocs:
@@ -61,7 +58,7 @@ class FlextInfraUtilitiesDocs:
         workspace_root: Path,
     ) -> r[Sequence[m.Infra.ProjectInfo]]:
         """Return the discovered FLEXT project metadata for docs workflows."""
-        return FlextInfraUtilitiesDocsScope.discover_projects(workspace_root)
+        return FlextInfraUtilitiesDiscovery.discover_projects(workspace_root)
 
     @staticmethod
     def build_scopes(
@@ -109,11 +106,6 @@ class FlextInfraUtilitiesDocs:
                 for project_name in selected_names:
                     project_root = (resolved_root / project_name).resolve()
                     if not project_root.is_dir():
-                        continue
-                    if not FlextInfraUtilitiesDocsScope.is_governed_project(
-                        project_name,
-                        resolved_root,
-                    ):
                         continue
                     if not (project_root / c.Infra.Files.PYPROJECT_FILENAME).is_file():
                         continue

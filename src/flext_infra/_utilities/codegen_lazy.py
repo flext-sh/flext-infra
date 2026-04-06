@@ -13,46 +13,13 @@ import ast
 import re
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
-from typing import ClassVar
 
-from flext_infra import (
-    FlextInfraUtilitiesDiscovery,
-    FlextInfraUtilitiesIteration,
-    c,
-    t,
-)
+from flext_infra import c, t
 
+from .discovery import FlextInfraUtilitiesDiscovery
+from .iteration import FlextInfraUtilitiesIteration
 from .reporting import FlextInfraUtilitiesReporting
 from .rope_helpers import FlextInfraUtilitiesRopeHelpers
-
-_INFRA_ONLY_EXPORTS: frozenset[str] = frozenset({
-    "cleanup_submodule_namespace",
-    "install_lazy_exports",
-    "lazy_getattr",
-    "merge_lazy_imports",
-})
-
-_TYPEVAR_ASSIGN_RE: re.Pattern[str] = re.compile(
-    r"^(\w+)\s*=\s*(?:TypeVar|ParamSpec|TypeVarTuple)\s*\(",
-    re.MULTILINE,
-)
-_ROOT_WRAPPER_SEGMENTS: frozenset[str] = frozenset({
-    c.Infra.Directories.DOCS,
-    c.Infra.Paths.DEFAULT_SRC_DIR,
-    c.Infra.Directories.TESTS,
-    c.Infra.Directories.EXAMPLES,
-    c.Infra.Directories.SCRIPTS,
-})
-
-_CORE_RUNTIME_ALIAS_TARGETS: dict[str, t.Infra.StrPair] = {
-    "d": ("flext_core.decorators", "FlextDecorators"),
-    "e": ("flext_core.exceptions", "FlextExceptions"),
-    "h": ("flext_core.handlers", "FlextHandlers"),
-    "r": ("flext_core.result", "FlextResult"),
-    "s": ("flext_core.service", "FlextService"),
-    "x": ("flext_core.mixins", "FlextMixins"),
-}
-
 
 # =====================================================================
 # Merging — child/descendant collection, export merging
@@ -73,7 +40,7 @@ class FlextInfraUtilitiesCodegenLazyMerging:
         except OSError:
             return set()
         names: t.Infra.StrSet = set()
-        for match in _TYPEVAR_ASSIGN_RE.finditer(source):
+        for match in c.Infra.Detection.TYPEVAR_ASSIGN_RE.finditer(source):
             name = match.group(1)
             if not name.startswith("_"):
                 names.add(name)
@@ -84,7 +51,7 @@ class FlextInfraUtilitiesCodegenLazyMerging:
         """Check if an export should bubble up to the parent package."""
         if name.startswith("_") or name in {c.Infra.Dunders.INIT, "main"}:
             return False
-        if name in _INFRA_ONLY_EXPORTS:
+        if name in c.Infra.INFRA_ONLY_EXPORTS:
             return False
         return not name.isupper()
 
@@ -247,8 +214,6 @@ class FlextInfraUtilitiesCodegenLazyScanning(
 ):
     """Export scanning and package discovery helpers."""
 
-    INFRA_ONLY_EXPORTS: ClassVar[frozenset[str]] = _INFRA_ONLY_EXPORTS
-
     @staticmethod
     def dir_has_py_files(pkg_dir: Path) -> bool:
         """Return True if directory has .py files besides __init__.py."""
@@ -360,7 +325,7 @@ class FlextInfraUtilitiesCodegenLazyScanning(
 
         if has_all:
             for name in all_exports:
-                if name not in index and name not in _INFRA_ONLY_EXPORTS:
+                if name not in index and name not in c.Infra.INFRA_ONLY_EXPORTS:
                     index[name] = (mod_path, name)
         else:
             FlextInfraUtilitiesCodegenLazyScanning._scan_public_defs(
@@ -396,7 +361,7 @@ class FlextInfraUtilitiesCodegenLazyScanning(
             return ""
 
         root_segment = rel_parts[0]
-        if is_project_root and root_segment in _ROOT_WRAPPER_SEGMENTS:
+        if is_project_root and root_segment in c.Infra.ROOT_WRAPPER_SEGMENTS:
             return FlextInfraUtilitiesCodegenLazyScanning._rooted_module_path(
                 rel_parts=rel_parts,
                 current_pkg=current_pkg,
@@ -434,7 +399,7 @@ class FlextInfraUtilitiesCodegenLazyScanning(
         if not rel_parts:
             return current_pkg
         root_segment = rel_parts[0]
-        if is_project_root and root_segment in _ROOT_WRAPPER_SEGMENTS:
+        if is_project_root and root_segment in c.Infra.ROOT_WRAPPER_SEGMENTS:
             return FlextInfraUtilitiesCodegenLazyScanning._rooted_module_path(
                 rel_parts=rel_parts,
                 current_pkg=current_pkg,
@@ -517,9 +482,9 @@ class FlextInfraUtilitiesCodegenLazyAliases:
                 continue
             if (
                 current_pkg == c.Infra.Packages.CORE_UNDERSCORE
-                and alias in _CORE_RUNTIME_ALIAS_TARGETS
+                and alias in c.Infra.CORE_RUNTIME_ALIAS_TARGETS
             ):
-                lazy_map[alias] = _CORE_RUNTIME_ALIAS_TARGETS[alias]
+                lazy_map[alias] = c.Infra.CORE_RUNTIME_ALIAS_TARGETS[alias]
                 continue
             if alias == "s":
                 service_target = self._find_service_target(lazy_map)
@@ -530,8 +495,8 @@ class FlextInfraUtilitiesCodegenLazyAliases:
             if facade_target is not None:
                 lazy_map[alias] = facade_target
                 continue
-            if alias in _CORE_RUNTIME_ALIAS_TARGETS:
-                lazy_map[alias] = _CORE_RUNTIME_ALIAS_TARGETS[alias]
+            if alias in c.Infra.CORE_RUNTIME_ALIAS_TARGETS:
+                lazy_map[alias] = c.Infra.CORE_RUNTIME_ALIAS_TARGETS[alias]
                 continue
             if alias in lazy_map:
                 continue
@@ -703,10 +668,10 @@ class FlextInfraUtilitiesCodegenLazyAliases:
         package_path = Path(*package_name.split("."))
         root_segment = package_path.parts[0] if package_path.parts else ""
         candidates: MutableSequence[Path] = []
-        if root_segment in _ROOT_WRAPPER_SEGMENTS:
+        if root_segment in c.Infra.ROOT_WRAPPER_SEGMENTS:
             candidates.append(base_dir / package_path)
         candidates.append(base_dir / c.Infra.Paths.DEFAULT_SRC_DIR / package_path)
-        if root_segment not in _ROOT_WRAPPER_SEGMENTS:
+        if root_segment not in c.Infra.ROOT_WRAPPER_SEGMENTS:
             candidates.extend([
                 base_dir / c.Infra.Directories.DOCS / package_path,
                 base_dir / c.Infra.Directories.TESTS / package_path,
@@ -719,13 +684,13 @@ class FlextInfraUtilitiesCodegenLazyAliases:
         package_path = Path(*package_name.split("."))
         root_segment = package_path.parts[0] if package_path.parts else ""
         patterns: MutableSequence[str] = []
-        if root_segment in _ROOT_WRAPPER_SEGMENTS:
+        if root_segment in c.Infra.ROOT_WRAPPER_SEGMENTS:
             patterns.append(str(Path("*") / package_path))
         else:
             patterns.append(
                 str(Path("*") / c.Infra.Paths.DEFAULT_SRC_DIR / package_path)
             )
-        if root_segment not in _ROOT_WRAPPER_SEGMENTS:
+        if root_segment not in c.Infra.ROOT_WRAPPER_SEGMENTS:
             patterns.extend([
                 str(Path("*") / c.Infra.Directories.DOCS / package_path),
                 str(Path("*") / c.Infra.Directories.TESTS / package_path),

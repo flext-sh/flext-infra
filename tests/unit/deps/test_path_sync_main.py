@@ -9,7 +9,7 @@ from flext_tests import tm
 from tests import m, t
 
 from flext_core import r
-from flext_infra import FlextInfraDependencyPathSync, path_sync as path_sync_module
+from flext_infra import FlextInfraDependencyPathSync, path_sync as path_sync_module, u
 
 
 def _project(path: Path, name: str = "flext-core") -> m.Infra.ProjectInfo:
@@ -102,10 +102,7 @@ class TestMain:
             return r[Sequence[m.Infra.ProjectInfo]].fail("discovery failed")
 
         monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
-        monkeypatch.setattr(
-            "flext_infra.FlextInfraUtilitiesDiscovery.discover_projects",
-            _discover_fail,
-        )
+        monkeypatch.setattr(u.Infra, "discover_projects", _discover_fail)
         monkeypatch.setattr(sys, "argv", ["prog"])
         tm.that(path_sync_module.main(), eq=1)
 
@@ -166,10 +163,7 @@ class TestMain:
             return r[Sequence[m.Infra.ProjectInfo]].ok([_project(project_dir)])
 
         monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
-        monkeypatch.setattr(
-            "flext_infra.FlextInfraUtilitiesDiscovery.discover_projects",
-            _discover_project,
-        )
+        monkeypatch.setattr(u.Infra, "discover_projects", _discover_project)
         calls = {"n": 0}
 
         def rewrite_stub(
