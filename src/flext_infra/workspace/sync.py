@@ -15,8 +15,7 @@ from typing import Annotated, Self, overload, override
 
 from pydantic import Field
 
-from flext_infra import FlextInfraBaseMkGenerator, c, m, r, t, u
-from flext_infra.base import s
+from flext_infra import FlextInfraBaseMkGenerator, c, m, r, s, t, u
 
 
 class FlextInfraSyncService(s[m.Infra.SyncResult]):

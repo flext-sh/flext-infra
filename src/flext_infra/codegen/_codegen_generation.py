@@ -12,9 +12,11 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
 
-from flext_infra import c, p, t
-from flext_infra._utilities.codegen_generation import (
+from flext_infra import (
     FlextInfraUtilitiesCodegenGeneration,
+    c,
+    p,
+    t,
 )
 
 

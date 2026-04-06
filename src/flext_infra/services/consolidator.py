@@ -8,8 +8,7 @@ from typing import Annotated, override
 from pydantic import Field
 
 from flext_core import r
-from flext_infra import c, t, u
-from flext_infra.base import s
+from flext_infra import c, s, t, u
 
 
 class FlextInfraCodegenConsolidator(s[str]):

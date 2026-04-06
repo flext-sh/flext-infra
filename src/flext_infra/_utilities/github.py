@@ -12,16 +12,18 @@ from pathlib import Path
 
 from flext_cli import u
 from flext_core import r
-from flext_infra._constants.base import FlextInfraConstantsBase
-from flext_infra._constants.github import FlextInfraGithubConstants
-from flext_infra._models.cli_inputs_ops import FlextInfraModelsCliInputsOps
-from flext_infra._models.github import FlextInfraGithubModels
-from flext_infra._utilities.git import FlextInfraUtilitiesGit
-from flext_infra._utilities.github_pr import FlextInfraUtilitiesGithubPr
-from flext_infra._utilities.reporting import FlextInfraUtilitiesReporting
-from flext_infra._utilities.selection import FlextInfraUtilitiesSelection
-from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
-from flext_infra._utilities.templates import FlextInfraUtilitiesTemplates
+from flext_infra import (
+    FlextInfraConstantsBase,
+    FlextInfraGithubConstants,
+    FlextInfraGithubModels,
+    FlextInfraModelsCliInputsOps,
+    FlextInfraUtilitiesGit,
+    FlextInfraUtilitiesGithubPr,
+    FlextInfraUtilitiesReporting,
+    FlextInfraUtilitiesSelection,
+    FlextInfraUtilitiesSubprocess,
+    FlextInfraUtilitiesTemplates,
+)
 
 
 class FlextInfraUtilitiesGithub(

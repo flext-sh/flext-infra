@@ -17,7 +17,7 @@ import importlib
 from typing import TYPE_CHECKING, ClassVar, Self, override
 
 from flext_core import r
-from flext_infra.base import FlextInfraServiceBase
+from flext_infra import FlextInfraServiceBase
 
 if TYPE_CHECKING:
     from flext_infra import p

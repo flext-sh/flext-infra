@@ -12,7 +12,7 @@ import pytest
 from flext_tests import tm
 from tests import m, t
 
-from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
+from flext_infra import FlextInfraWorkspaceChecker
 
 from ._shared_fixtures import create_gate_execution
 

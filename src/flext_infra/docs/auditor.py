@@ -10,9 +10,7 @@ from typing import Annotated, override
 from pydantic import Field
 
 from flext_core import r
-from flext_infra import c, m, t, u
-from flext_infra.base import s
-from flext_infra.docs._auditor_mixin import FlextInfraDocAuditorMixin
+from flext_infra import FlextInfraDocAuditorMixin, c, m, s, t, u
 
 
 class FlextInfraDocAuditor(s[bool], FlextInfraDocAuditorMixin):

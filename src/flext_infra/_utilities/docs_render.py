@@ -5,8 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import TypeIs
 
-from flext_infra import c, m, t
-from flext_infra._utilities.templates import FlextInfraUtilitiesTemplates
+from flext_infra import FlextInfraUtilitiesTemplates, c, m, t
 
 
 class FlextInfraUtilitiesDocsRender:

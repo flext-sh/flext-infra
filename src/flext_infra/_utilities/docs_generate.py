@@ -8,11 +8,15 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from flext_cli import u
-from flext_infra import c, m, t
-from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
-from flext_infra._utilities.docs_contract import FlextInfraUtilitiesDocsContract
-from flext_infra._utilities.docs_render import FlextInfraUtilitiesDocsRender
-from flext_infra._utilities.patterns import FlextInfraUtilitiesPatterns
+from flext_infra import (
+    FlextInfraUtilitiesDocs,
+    FlextInfraUtilitiesDocsContract,
+    FlextInfraUtilitiesDocsRender,
+    FlextInfraUtilitiesPatterns,
+    c,
+    m,
+    t,
+)
 
 
 class FlextInfraUtilitiesDocsGenerate:

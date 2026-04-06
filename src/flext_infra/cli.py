@@ -10,8 +10,7 @@ from typing import ClassVar
 
 from flext_cli import cli as cli_service
 from flext_core import FlextLogger
-from flext_infra.constants import c
-from flext_infra.typings import t
+from flext_infra import c, t
 
 
 class FlextInfraCli:

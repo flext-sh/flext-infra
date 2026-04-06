@@ -9,11 +9,11 @@ from pathlib import Path
 from flext_core import r
 from flext_infra import (
     FlextInfraUtilitiesDiscoveryScanning,
+    FlextInfraUtilitiesDocsScope,
     c,
     m,
     t,
 )
-from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 
 
 class FlextInfraUtilitiesDiscovery(FlextInfraUtilitiesDiscoveryScanning):

@@ -10,9 +10,9 @@ from pydantic import Field
 from flext_core import FlextModels
 from flext_infra import (
     FlextInfraCodegenDeduplicationModels,
+    FlextInfraModelsMixins,
     t,
 )
-from flext_infra._models.mixins import FlextInfraModelsMixins
 
 
 class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):

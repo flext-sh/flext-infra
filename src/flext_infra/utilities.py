@@ -10,18 +10,31 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from flext_cli import FlextCliUtilities
-from flext_infra._utilities import (
+from flext_infra import (
+    FlextInfraRefactorTransformerPolicyUtilities,
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesCli,
+    FlextInfraUtilitiesCodegen,
     FlextInfraUtilitiesDocs,
+    FlextInfraUtilitiesDocsApi,
+    FlextInfraUtilitiesDocsAudit,
+    FlextInfraUtilitiesDocsBuild,
+    FlextInfraUtilitiesDocsContract,
+    FlextInfraUtilitiesDocsFix,
+    FlextInfraUtilitiesDocsGenerate,
+    FlextInfraUtilitiesDocsRender,
+    FlextInfraUtilitiesDocsScope,
+    FlextInfraUtilitiesDocsValidate,
     FlextInfraUtilitiesFormatting,
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesGithub,
+    FlextInfraUtilitiesImportNormalizer,
     FlextInfraUtilitiesIo,
     FlextInfraUtilitiesLogParser,
     FlextInfraUtilitiesParsing,
     FlextInfraUtilitiesPaths,
     FlextInfraUtilitiesPatterns,
+    FlextInfraUtilitiesRefactor,
     FlextInfraUtilitiesRelease,
     FlextInfraUtilitiesReporting,
     FlextInfraUtilitiesRope,
@@ -34,21 +47,6 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesTomlParse,
     FlextInfraUtilitiesVersioning,
     FlextInfraUtilitiesYaml,
-)
-from flext_infra._utilities.docs_api import FlextInfraUtilitiesDocsApi
-from flext_infra._utilities.docs_audit import FlextInfraUtilitiesDocsAudit
-from flext_infra._utilities.docs_build import FlextInfraUtilitiesDocsBuild
-from flext_infra._utilities.docs_contract import FlextInfraUtilitiesDocsContract
-from flext_infra._utilities.docs_fix import FlextInfraUtilitiesDocsFix
-from flext_infra._utilities.docs_generate import FlextInfraUtilitiesDocsGenerate
-from flext_infra._utilities.docs_render import FlextInfraUtilitiesDocsRender
-from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
-from flext_infra._utilities.docs_validate import FlextInfraUtilitiesDocsValidate
-from flext_infra.codegen import FlextInfraUtilitiesCodegen
-from flext_infra.refactor import FlextInfraUtilitiesRefactor
-from flext_infra.transformers import (
-    FlextInfraRefactorTransformerPolicyUtilities,
-    FlextInfraUtilitiesImportNormalizer,
 )
 
 

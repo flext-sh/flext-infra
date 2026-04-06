@@ -13,8 +13,7 @@ from pathlib import Path
 from typing import override
 from urllib.parse import urlparse
 
-from flext_infra import c, m, r, u
-from flext_infra.base import s
+from flext_infra import c, m, r, s, u
 
 
 class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):

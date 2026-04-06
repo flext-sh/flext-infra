@@ -9,13 +9,15 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from flext_cli import u
-from flext_infra import c, m, t
-from flext_infra._utilities.discovery_scanning import (
+from flext_infra import (
     FlextInfraUtilitiesDiscoveryScanning,
+    FlextInfraUtilitiesDocsScope,
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeHelpers,
+    c,
+    m,
+    t,
 )
-from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities.rope_helpers import FlextInfraUtilitiesRopeHelpers
 
 
 class FlextInfraUtilitiesDocsApi:

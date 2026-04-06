@@ -17,6 +17,7 @@ from flext_infra import (
     FlextInfraCoreModels,
     FlextInfraDepsModels,
     FlextInfraDocsModels,
+    FlextInfraEngineModels,
     FlextInfraGatesModels,
     FlextInfraGithubModels,
     FlextInfraModelsBase,
@@ -28,7 +29,6 @@ from flext_infra import (
     FlextInfraReleaseModels,
     FlextInfraWorkspaceModels,
 )
-from flext_infra._models.engine import FlextInfraEngineModels
 
 
 class FlextInfraModels(FlextCliModels):

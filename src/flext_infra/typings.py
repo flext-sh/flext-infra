@@ -23,7 +23,7 @@ from flext_infra import (
 )
 
 if TYPE_CHECKING:
-    from flext_infra._models.engine import FlextInfraEngineModels
+    from flext_infra import FlextInfraEngineModels
 
 
 class FlextInfraTypes(FlextCliTypes):

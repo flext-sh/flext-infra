@@ -15,10 +15,10 @@ from flext_infra import (
     FlextInfraCodegenLazyInit,
     c,
     m,
+    s,
     t,
     u,
 )
-from flext_infra.base import s
 
 
 class FlextInfraCodegenConstantsQualityGate(s[bool]):

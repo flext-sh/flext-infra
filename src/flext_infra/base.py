@@ -24,14 +24,15 @@ from typing import Annotated, Self, TypeVar, override
 from pydantic import ConfigDict, Field, field_validator
 from pydantic.config import JsonDict
 
-from flext_cli.settings import FlextCliSettings
-from flext_core.models import FlextModels
-from flext_core.protocols import FlextProtocols
-from flext_core.result import FlextResult as r
-from flext_core.service import FlextService as core_service_base
-from flext_core.settings import FlextSettings
-from flext_infra._constants.base import FlextInfraConstantsBase
-from flext_infra._typings.base import FlextInfraTypesBase
+from flext_cli import FlextCliSettings
+from flext_core import (
+    FlextModels,
+    FlextProtocols,
+    FlextResult as r,
+    FlextService as core_service_base,
+    FlextSettings,
+)
+from flext_infra import FlextInfraConstantsBase, FlextInfraTypesBase
 
 TDomainResult = TypeVar("TDomainResult", bound=FlextInfraTypesBase.DomainOutput)
 

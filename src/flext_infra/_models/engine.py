@@ -14,7 +14,7 @@ from pydantic import Field
 
 from flext_cli import FlextCliTypes
 from flext_core import FlextModels
-from flext_infra._constants.base import FlextInfraConstantsBase
+from flext_infra import FlextInfraConstantsBase
 
 
 class FlextInfraEngineModels:

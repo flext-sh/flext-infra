@@ -18,7 +18,7 @@ from rope.base.resources import File
 from rope.contrib.findit import Location
 
 from flext_core import FlextTypes
-from flext_infra._protocols.rope import FlextInfraProtocolsRope
+from flext_infra import FlextInfraProtocolsRope
 
 
 class FlextInfraTypesRope:

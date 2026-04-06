@@ -9,8 +9,7 @@ from typing import Annotated, override
 from pydantic import Field
 
 from flext_core import r
-from flext_infra import c, m, t, u
-from flext_infra.base import s
+from flext_infra import c, m, s, t, u
 
 
 class FlextInfraDocValidator(s[bool]):
