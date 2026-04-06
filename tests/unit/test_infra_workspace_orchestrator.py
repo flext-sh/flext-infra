@@ -8,8 +8,8 @@ from flext_core import r
 from flext_infra import FlextInfraOrchestratorService
 
 
-def _cmd_out(exit_code: int = 0) -> m.Infra.CommandOutput:
-    return m.Infra.CommandOutput(
+def _cmd_out(exit_code: int = 0) -> m.Cli.CommandOutput:
+    return m.Cli.CommandOutput(
         stdout="",
         stderr="",
         exit_code=exit_code,
@@ -69,9 +69,9 @@ class TestOrchestratorFailures:
             verb: str,
             idx: int,
             make_args: t.StrSequence,
-        ) -> r[m.Infra.CommandOutput]:
+        ) -> r[m.Cli.CommandOutput]:
             del self, project, verb, idx, make_args
-            return r[m.Infra.CommandOutput].fail("Failed")
+            return r[m.Cli.CommandOutput].fail("Failed")
 
         monkeypatch.setattr(
             FlextInfraOrchestratorService,
@@ -94,7 +94,7 @@ class TestOrchestratorFailures:
             verb: str,
             idx: int,
             make_args: t.StrSequence,
-        ) -> r[m.Infra.CommandOutput]:
+        ) -> r[m.Cli.CommandOutput]:
             del self, project, verb, idx, make_args
             msg = "Runner failed"
             raise OSError(msg)
@@ -119,12 +119,12 @@ class TestOrchestratorFailures:
             verb: str,
             idx: int,
             make_args: t.StrSequence,
-        ) -> r[m.Infra.CommandOutput]:
+        ) -> r[m.Cli.CommandOutput]:
             del self, project, verb, idx, make_args
             call_count[0] += 1
             if call_count[0] == 1:
-                return r[m.Infra.CommandOutput].fail("project execution failed")
-            return r[m.Infra.CommandOutput].ok(_cmd_out(0))
+                return r[m.Cli.CommandOutput].fail("project execution failed")
+            return r[m.Cli.CommandOutput].ok(_cmd_out(0))
 
         monkeypatch.setattr(FlextInfraOrchestratorService, "_run_project", _run_project)
         tm.ok(

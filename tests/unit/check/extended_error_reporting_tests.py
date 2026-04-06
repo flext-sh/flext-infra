@@ -136,9 +136,9 @@ class TestMypyEmptyLinesInOutput:
             _cwd: Path,
             timeout: int = 120,
             env: t.StrMapping | None = None,
-        ) -> m.Infra.CommandOutput:
+        ) -> m.Cli.CommandOutput:
             del _self, _cmd, _cwd, timeout, env
-            return m.Infra.CommandOutput(
+            return m.Cli.CommandOutput(
                 stdout=f"{line1}\n\n{line2}\n",
                 stderr="",
                 exit_code=1,
@@ -187,8 +187,8 @@ class TestGoFmtEmptyLinesInOutput:
         (proj_dir / "main.go").write_text("package main\n")
         call_idx = [0]
         results = [
-            m.Infra.CommandOutput(stdout="", stderr="", exit_code=0),
-            m.Infra.CommandOutput(
+            m.Cli.CommandOutput(stdout="", stderr="", exit_code=0),
+            m.Cli.CommandOutput(
                 stdout="src/file.go\n\nsrc/other.go\n",
                 stderr="",
                 exit_code=1,
@@ -201,7 +201,7 @@ class TestGoFmtEmptyLinesInOutput:
             _cwd: Path,
             timeout: int = 120,
             env: t.StrMapping | None = None,
-        ) -> m.Infra.CommandOutput:
+        ) -> m.Cli.CommandOutput:
             del _self, _cmd, _cwd, timeout, env
             index = min(call_idx[0], len(results) - 1)
             call_idx[0] += 1
@@ -231,9 +231,9 @@ class TestRuffFormatDuplicateFiles:
             _cwd: Path,
             timeout: int = 120,
             env: t.StrMapping | None = None,
-        ) -> m.Infra.CommandOutput:
+        ) -> m.Cli.CommandOutput:
             del _self, _cmd, _cwd, timeout, env
-            return m.Infra.CommandOutput(
+            return m.Cli.CommandOutput(
                 stdout="--> src/file.py:1:1\n--> src/file.py:1:1\n--> src/other.py:1:1\n",
                 stderr="",
                 exit_code=1,

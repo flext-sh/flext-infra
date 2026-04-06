@@ -12,29 +12,21 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
+from tests import r, t, u
 
 import flext_infra.codegen as mod
-from flext_core import r
-from flext_infra import (
-    FlextInfraCodegenGeneration,
-    FlextInfraUtilitiesCodegenLazyAliases,
-    FlextInfraUtilitiesFormatting,
-    FlextInfraUtilitiesSubprocess,
-    t,
-)
 
 
 def _resolve_aliases(lazy_map: MutableMapping[str, tuple[str, str]]) -> None:
-    FlextInfraUtilitiesCodegenLazyAliases(Path("/workspace/")).resolve_aliases(
-        lazy_map, pkg_dir=Path("/workspace/pkg")
-    )
+    u.Infra().resolve_aliases(lazy_map, pkg_dir=Path("/workspace/pkg"))
 
 
-_generate_file = FlextInfraCodegenGeneration.generate_file
+_generate_file = mod.FlextInfraCodegenGeneration.generate_file
+_generate_type_checking = mod.FlextInfraCodegenGeneration.generate_type_checking
 
 
 def _run_ruff_fix(path: Path) -> None:
-    FlextInfraUtilitiesFormatting.run_ruff_fix(path)
+    u.Infra.run_ruff_fix(path)
 
 
 class TestResolveAliases:
@@ -86,14 +78,14 @@ class TestGenerateTypeChecking:
     def test_with_empty_groups(self) -> None:
         """Test with no imports returns header + FlextTypes only."""
         groups: Mapping[str, Sequence[tuple[str, str]]] = {}
-        lines = FlextInfraCodegenGeneration.generate_type_checking(groups)
+        lines = _generate_type_checking(groups)
         tm.that(lines, contains="if _t.TYPE_CHECKING:")
         tm.that(any("FlextTypes" in line for line in lines), eq=True)
 
     def test_with_empty_groups_no_flext_types(self) -> None:
         """Test with no imports and no FlextTypes returns empty list."""
         groups: Mapping[str, Sequence[tuple[str, str]]] = {}
-        lines = FlextInfraCodegenGeneration.generate_type_checking(
+        lines = _generate_type_checking(
             groups,
             include_flext_types=False,
         )
@@ -102,13 +94,13 @@ class TestGenerateTypeChecking:
     def test_with_single_module(self) -> None:
         """Test with single module."""
         groups = {"module": [("Test", "Test")]}
-        lines = FlextInfraCodegenGeneration.generate_type_checking(groups)
+        lines = _generate_type_checking(groups)
         tm.that(" ".join(lines), contains="from module import")
 
     def test_with_aliased_imports(self) -> None:
         """Test with aliased imports."""
         groups = {"module": [("c", "FlextConstants"), ("m", "FlextModels")]}
-        lines = FlextInfraCodegenGeneration.generate_type_checking(groups)
+        lines = _generate_type_checking(groups)
         joined = " ".join(lines)
         tm.that(
             joined, contains="from module import FlextConstants as c, FlextModels as m"
@@ -122,7 +114,7 @@ class TestGenerateTypeChecking:
             ("VeryLongClassName2", "VeryLongClassName2"),
             ("VeryLongClassName3", "VeryLongClassName3"),
         ]
-        lines = FlextInfraCodegenGeneration.generate_type_checking(groups)
+        lines = _generate_type_checking(groups)
         tm.that(any("module" in line for line in lines), eq=True)
 
     def test_with_multiple_modules_spacing(self) -> None:
@@ -130,7 +122,7 @@ class TestGenerateTypeChecking:
         groups: MutableMapping[str, Sequence[tuple[str, str]]] = defaultdict(list)
         groups["alpha_pkg.module"] = [("Test1", "Test1")]
         groups["beta_pkg.module"] = [("Test2", "Test2")]
-        lines = FlextInfraCodegenGeneration.generate_type_checking(groups)
+        lines = _generate_type_checking(groups)
         tm.that(lines, contains="")
 
 
@@ -280,7 +272,7 @@ class TestRunRuffFix:
             commands.append(list(cmd))
             return r[bool].ok(True)
 
-        monkeypatch.setattr(FlextInfraUtilitiesSubprocess, "run_checked", _run_checked)
+        monkeypatch.setattr(u.Cli, "run_checked", _run_checked)
         _run_ruff_fix(generated)
         tm.that(len(commands), eq=2)
         tm.that(commands[0], eq=["ruff", "check", "--fix", "--quiet", str(generated)])
@@ -309,7 +301,7 @@ class TestRunRuffFix:
                 return r[bool].ok(True)
             return r[bool].fail("ruff format failed")
 
-        monkeypatch.setattr(FlextInfraUtilitiesSubprocess, "run_checked", _run_checked)
+        monkeypatch.setattr(u.Cli, "run_checked", _run_checked)
         with pytest.raises(ValueError, match="ruff format failed"):
             _run_ruff_fix(generated)
 

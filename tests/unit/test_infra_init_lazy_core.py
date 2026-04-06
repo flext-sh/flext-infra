@@ -125,8 +125,8 @@ class TestFlextInfraInitLazyLoading:
         assert u is not None
 
     def test_lazy_import_command_runner(self) -> None:
-        """Test lazy loading of FlextInfraUtilitiesSubprocess."""
-        runner = flext_infra.FlextInfraUtilitiesSubprocess
+        """Test CLI runtime helpers remain reachable through infra MRO."""
+        runner = flext_infra.u.Cli.run_raw
         assert runner is not None
 
     def test_lazy_import_discovery_service(self) -> None:

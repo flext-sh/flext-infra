@@ -176,9 +176,8 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
         if dry_run:
             self.logger.info("release_phase_validate", action="dry-run", status="ok")
             return r[bool].ok(True)
-        return u.Infra.run_checked(
-            [c.Infra.MAKE, "val", "VALIDATE_SCOPE=workspace"],
-            cwd=workspace_root,
+        return u.Cli.run_checked(
+            [c.Infra.MAKE, "val", "VALIDATE_SCOPE=workspace"], cwd=workspace_root
         )
 
     @override

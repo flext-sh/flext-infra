@@ -75,17 +75,17 @@ class TestFlextInfraProtocolsImport:
 
     def test_command_output_protocol_has_stdout_property(self) -> None:
         """Test that CommandOutput defines stdout property."""
-        proto = p.Infra.CommandOutput
+        proto = p.Cli.CommandOutput
         assert hasattr(proto, "stdout")
 
     def test_command_output_protocol_has_stderr_property(self) -> None:
         """Test that CommandOutput defines stderr property."""
-        proto = p.Infra.CommandOutput
+        proto = p.Cli.CommandOutput
         assert hasattr(proto, "stderr")
 
     def test_command_output_protocol_has_exit_code_property(self) -> None:
         """Test that CommandOutput defines exit_code property."""
-        proto = p.Infra.CommandOutput
+        proto = p.Cli.CommandOutput
         assert hasattr(proto, "exit_code")
 
     def test_checker_protocol_has_run_method(self) -> None:
@@ -125,5 +125,5 @@ class TestFlextInfraProtocolsImport:
 
     def test_command_runner_protocol_has_run_method(self) -> None:
         """Test that CommandRunner defines run method."""
-        proto = p.Infra.CommandRunner
+        proto = p.Cli.CommandRunner
         assert hasattr(proto, "run")

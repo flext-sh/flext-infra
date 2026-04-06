@@ -5,16 +5,11 @@ from __future__ import annotations
 from typing import override
 
 from flext_tests import s
-from tests import t
-
-from flext_core import r
-from flext_infra import FlextInfraUtilitiesSubprocess
+from tests import r, t, u
 
 
 class RealSubprocessRunner(s[str]):
-    subprocess_utility: type[FlextInfraUtilitiesSubprocess] = (
-        FlextInfraUtilitiesSubprocess
-    )
+    subprocess_utility: type[u.Cli] = u.Cli
     allowed_commands: frozenset[str] = frozenset({"echo", "pwd", "ls", "git"})
 
     @override

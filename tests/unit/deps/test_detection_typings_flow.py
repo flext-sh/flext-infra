@@ -1,28 +1,23 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import m, t
+from tests import m, r, t, u
 
-from flext_core import r
-from flext_infra import (
-    FlextInfraDependencyDetectionService,
-    FlextInfraUtilitiesParsing,
-    FlextInfraUtilitiesSubprocess,
-)
+from flext_infra import FlextInfraDependencyDetectionService
 
 
-class _StubReadPlain:
-    """Stub for read_plain returning predefined values in sequence."""
+class _StubTomlReadJson:
+    """Stub for u.Cli.toml_read_json returning predefined values in sequence."""
 
-    def __init__(self, values: Sequence[r[Mapping[str, t.Infra.InfraValue]]]) -> None:
+    def __init__(self, values: Sequence[r[t.Cli.JsonMapping]]) -> None:
         self._values = values
         self._idx = 0
 
-    def __call__(self, path: Path) -> r[Mapping[str, t.Infra.InfraValue]]:
+    def __call__(self, path: Path) -> r[t.Cli.JsonMapping]:
         _ = path
         value = self._values[self._idx]
         if self._idx < len(self._values) - 1:
@@ -30,10 +25,14 @@ class _StubReadPlain:
         return value
 
 
+def _json_mapping(value: t.Infra.InfraMapping) -> t.Cli.JsonMapping:
+    return t.Cli.JSON_MAPPING_ADAPTER.validate_python(value)
+
+
 class _StubRunRaw:
     """Stub for run_raw returning a predefined result."""
 
-    def __init__(self, result: r[m.Infra.CommandOutput]) -> None:
+    def __init__(self, result: r[m.Cli.CommandOutput]) -> None:
         self._result = result
 
     def __call__(
@@ -42,7 +41,7 @@ class _StubRunRaw:
         cwd: Path | None = None,
         timeout: int | None = None,
         env: t.StrMapping | None = None,
-    ) -> r[m.Infra.CommandOutput]:
+    ) -> r[m.Cli.CommandOutput]:
         _ = cmd, cwd, timeout, env
         return self._result
 
@@ -52,13 +51,13 @@ class TestModuleAndTypingsFlow:
         service = FlextInfraDependencyDetectionService()
         tm.that(service.module_to_types_package("yaml", {}), eq="types-pyyaml")
         tm.that(service.module_to_types_package("flext_core", {}), eq=None)
-        module_to_package: Mapping[str, t.Infra.InfraValue] = {
+        module_to_package: t.Infra.InfraMapping = {
             "yaml": "custom-types-yaml",
         }
-        typing_libraries: Mapping[str, t.Infra.InfraValue] = {
+        typing_libraries: t.Infra.InfraMapping = {
             "module_to_package": module_to_package,
         }
-        limits: Mapping[str, t.Infra.InfraValue] = {
+        limits: t.Infra.InfraMapping = {
             "typing_libraries": typing_libraries,
         }
         tm.that(service.module_to_types_package("yaml", limits), eq="custom-types-yaml")
@@ -70,7 +69,7 @@ class TestModuleAndTypingsFlow:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         service = FlextInfraDependencyDetectionService()
-        payload: Mapping[str, t.Infra.InfraValue] = {
+        payload: t.Infra.InfraMapping = {
             "tool": {
                 "poetry": {
                     "group": {
@@ -85,9 +84,9 @@ class TestModuleAndTypingsFlow:
             },
         }
         monkeypatch.setattr(
-            FlextInfraUtilitiesParsing,
-            "read_plain",
-            _StubReadPlain([r[Mapping[str, t.Infra.InfraValue]].ok(payload)]),
+            u.Cli,
+            "toml_read_json",
+            _StubTomlReadJson([r[t.Cli.JsonMapping].ok(_json_mapping(payload))]),
         )
         got = service.get_current_typings_from_pyproject(Path("/dummy"))
         tm.that(got, eq=[])
@@ -98,28 +97,32 @@ class TestModuleAndTypingsFlow:
     ) -> None:
         service = FlextInfraDependencyDetectionService()
         monkeypatch.setattr(
-            FlextInfraUtilitiesParsing,
-            "read_plain",
-            _StubReadPlain([
-                r[Mapping[str, t.Infra.InfraValue]].ok({
-                    "project": {
-                        "optional-dependencies": {
-                            "typings": [
-                                "types-pyyaml>=6.0",
-                                "types-requests[extra]==2.28",
-                            ],
+            u.Cli,
+            "toml_read_json",
+            _StubTomlReadJson([
+                r[t.Cli.JsonMapping].ok(
+                    _json_mapping({
+                        "project": {
+                            "optional-dependencies": {
+                                "typings": [
+                                    "types-pyyaml>=6.0",
+                                    "types-requests[extra]==2.28",
+                                ],
+                            },
                         },
-                    },
-                }),
-                r[Mapping[str, t.Infra.InfraValue]].ok({
-                    "project": {
-                        "optional-dependencies": {
-                            "typings": {"types-pyyaml": ">=6.0"},
+                    })
+                ),
+                r[t.Cli.JsonMapping].ok(
+                    _json_mapping({
+                        "project": {
+                            "optional-dependencies": {
+                                "typings": {"types-pyyaml": ">=6.0"},
+                            },
                         },
-                    },
-                }),
-                r[Mapping[str, t.Infra.InfraValue]].fail("not found"),
-                r[Mapping[str, t.Infra.InfraValue]].ok({}),
+                    })
+                ),
+                r[t.Cli.JsonMapping].fail("not found"),
+                r[t.Cli.JsonMapping].ok(_json_mapping({})),
             ]),
         )
         path = Path("/dummy")
@@ -136,41 +139,39 @@ class TestModuleAndTypingsFlow:
         venv_bin = tmp_path / "venv" / "bin"
         venv_bin.mkdir(parents=True)
         (venv_bin / "mypy").write_text("")
-        out = m.Infra.CommandOutput(exit_code=0, stdout="", stderr="")
+        out = m.Cli.CommandOutput(exit_code=0, stdout="", stderr="")
         service = FlextInfraDependencyDetectionService()
         monkeypatch.setattr(
-            FlextInfraUtilitiesSubprocess,
-            "run_raw",
-            _StubRunRaw(r[m.Infra.CommandOutput].ok(out)),
+            u.Cli, "run_raw", _StubRunRaw(r[m.Cli.CommandOutput].ok(out))
         )
         monkeypatch.setattr(
-            FlextInfraUtilitiesParsing,
-            "read_plain",
-            _StubReadPlain([
-                r[Mapping[str, t.Infra.InfraValue]].ok({}),
-                r[Mapping[str, t.Infra.InfraValue]].ok({
-                    "project": {"optional-dependencies": {"typings": []}},
-                }),
+            u.Cli,
+            "toml_read_json",
+            _StubTomlReadJson([
+                r[t.Cli.JsonMapping].ok(_json_mapping({})),
+                r[t.Cli.JsonMapping].ok(
+                    _json_mapping({
+                        "project": {"optional-dependencies": {"typings": []}},
+                    })
+                ),
             ]),
         )
         tm.ok(service.get_required_typings(tmp_path, venv_bin))
         monkeypatch.setattr(
-            FlextInfraUtilitiesParsing,
-            "read_plain",
-            _StubReadPlain([
-                r[Mapping[str, t.Infra.InfraValue]].ok({}),
-                r[Mapping[str, t.Infra.InfraValue]].ok({}),
+            u.Cli,
+            "toml_read_json",
+            _StubTomlReadJson([
+                r[t.Cli.JsonMapping].ok(_json_mapping({})),
+                r[t.Cli.JsonMapping].ok(_json_mapping({})),
             ]),
         )
         tm.ok(service.get_required_typings(tmp_path, venv_bin, include_mypy=False))
         monkeypatch.setattr(
-            FlextInfraUtilitiesSubprocess,
-            "run_raw",
-            _StubRunRaw(r[m.Infra.CommandOutput].fail("mypy crash")),
+            u.Cli, "run_raw", _StubRunRaw(r[m.Cli.CommandOutput].fail("mypy crash"))
         )
         monkeypatch.setattr(
-            FlextInfraUtilitiesParsing,
-            "read_plain",
-            _StubReadPlain([r[Mapping[str, t.Infra.InfraValue]].ok({})]),
+            u.Cli,
+            "toml_read_json",
+            _StubTomlReadJson([r[t.Cli.JsonMapping].ok(_json_mapping({}))]),
         )
         tm.fail(service.get_required_typings(tmp_path, venv_bin))

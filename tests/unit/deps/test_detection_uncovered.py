@@ -1,26 +1,24 @@
 from __future__ import annotations
 
-import json
 from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import m, t
+from tests import m, r, t, u
 
-from flext_core import r
 from flext_infra import FlextInfraDependencyDetectionService
 
 
 class _StubRunner:
-    def __init__(self, result: r[m.Infra.CommandOutput]) -> None:
+    def __init__(self, result: r[m.Cli.CommandOutput]) -> None:
         self._result = result
 
     def run_raw(
         self,
         *args: t.Infra.InfraValue,
         **kwargs: t.Infra.InfraValue,
-    ) -> r[m.Infra.CommandOutput]:
+    ) -> r[m.Cli.CommandOutput]:
         _ = args
         _ = kwargs
         return self._result
@@ -39,12 +37,12 @@ class TestDetectionUncoveredLines:
         project.mkdir()
         (project / "pyproject.toml").write_text("")
         out_file = project / ".deptry-report.json"
-        out_file.write_text(json.dumps(["not_a_dict", {"error": {"code": "DEP001"}}]))
-        out = m.Infra.CommandOutput(exit_code=0, stdout="", stderr="")
+        u.Cli.json_write(out_file, ["not_a_dict", {"error": {"code": "DEP001"}}])
+        out = m.Cli.CommandOutput(exit_code=0, stdout="", stderr="")
         monkeypatch.setattr(
             service,
             "runner",
-            _StubRunner(r[m.Infra.CommandOutput].ok(out)),
+            _StubRunner(r[m.Cli.CommandOutput].ok(out)),
         )
         issues, _ = tm.ok(
             service.run_deptry(project, venv_bin, json_output_path=out_file),
@@ -60,11 +58,11 @@ class TestDetectionUncoveredLines:
         venv_bin = tmp_path / "venv" / "bin"
         venv_bin.mkdir(parents=True)
         (venv_bin / "pip").write_text("")
-        out = m.Infra.CommandOutput(exit_code=0, stdout="", stderr="")
+        out = m.Cli.CommandOutput(exit_code=0, stdout="", stderr="")
         monkeypatch.setattr(
             service,
             "runner",
-            _StubRunner(r[m.Infra.CommandOutput].ok(out)),
+            _StubRunner(r[m.Cli.CommandOutput].ok(out)),
         )
         lines, exit_code = tm.ok(service.run_pip_check(tmp_path, venv_bin))
         tm.that(lines, eq=[])
@@ -79,11 +77,11 @@ class TestDetectionUncoveredLines:
         venv_bin = tmp_path / "venv" / "bin"
         venv_bin.mkdir(parents=True)
         (venv_bin / "mypy").write_text("")
-        out = m.Infra.CommandOutput(exit_code=0, stdout="", stderr="")
+        out = m.Cli.CommandOutput(exit_code=0, stdout="", stderr="")
         monkeypatch.setattr(
             service,
             "runner",
-            _StubRunner(r[m.Infra.CommandOutput].ok(out)),
+            _StubRunner(r[m.Cli.CommandOutput].ok(out)),
         )
 
         class _Toml:

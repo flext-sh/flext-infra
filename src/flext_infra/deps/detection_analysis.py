@@ -35,7 +35,7 @@ class FlextInfraDependencyDetectionAnalysis:
         cwd: Path | None = None,
         timeout: int | None = None,
         env: t.StrMapping | None = None,
-    ) -> r[m.Infra.CommandOutput]:
+    ) -> r[m.Cli.CommandOutput]:
         _ = cmd, cwd, timeout, env
         msg = "_run_raw must be implemented by the concrete analyzer"
         raise NotImplementedError(msg)
@@ -279,7 +279,7 @@ class FlextInfraDependencyDetectionAnalysis:
             if json_output_path is None:
                 with contextlib.suppress(OSError):
                     out_file.unlink()
-        cmd_result: m.Infra.CommandOutput = result.value
+        cmd_result: m.Cli.CommandOutput = result.value
         return r[t.Infra.Pair[Sequence[t.Infra.ContainerDict], int]].ok((
             issues,
             cmd_result.exit_code,
@@ -313,7 +313,7 @@ class FlextInfraDependencyDetectionAnalysis:
             return r[t.Infra.Pair[t.StrSequence, t.StrSequence]].fail(
                 result.error or "mypy execution failed",
             )
-        cmd_result: m.Infra.CommandOutput = result.value
+        cmd_result: m.Cli.CommandOutput = result.value
         output = f"{cmd_result.stdout}\n{cmd_result.stderr}"
         hinted = {
             match.group(1).strip()
@@ -350,7 +350,7 @@ class FlextInfraDependencyDetectionAnalysis:
             return r[t.Infra.Pair[t.StrSequence, int]].fail(
                 result.error or "pip check failed"
             )
-        cmd_result: m.Infra.CommandOutput = result.value
+        cmd_result: m.Cli.CommandOutput = result.value
         output = cmd_result.stdout
         lines = output.strip().splitlines() if output else []
         return r[t.Infra.Pair[t.StrSequence, int]].ok((lines, cmd_result.exit_code))

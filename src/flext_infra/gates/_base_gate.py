@@ -108,7 +108,7 @@ class FlextInfraGate(ABC):
     @abstractmethod
     def _parse_check_output(
         self,
-        result: m.Infra.CommandOutput,
+        result: m.Cli.CommandOutput,
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> tuple[bool, Sequence[m.Infra.Issue]]:
@@ -188,7 +188,7 @@ class FlextInfraGate(ABC):
         msg = f"Gate {self.gate_id} set can_fix=True but did not implement _build_fix_command"
         raise NotImplementedError(msg)
 
-    def _fix_raw_output(self, result: m.Infra.CommandOutput) -> str:
+    def _fix_raw_output(self, result: m.Cli.CommandOutput) -> str:
         """Assemble raw output from fix result. Default: stderr only."""
         return result.stderr
 
@@ -198,10 +198,10 @@ class FlextInfraGate(ABC):
         cwd: Path,
         timeout: int = c.Infra.Timeouts.DEFAULT,
         env: t.StrMapping | None = None,
-    ) -> m.Infra.CommandOutput:
-        result = u.Infra.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
+    ) -> m.Cli.CommandOutput:
+        result = u.Cli.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
         if result.is_failure:
-            return m.Infra.CommandOutput(
+            return m.Cli.CommandOutput(
                 stdout="",
                 stderr=result.error or "command execution failed",
                 exit_code=1,

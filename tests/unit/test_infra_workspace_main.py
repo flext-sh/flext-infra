@@ -100,11 +100,11 @@ class TestRunOrchestrate:
             verb: str,
             fail_fast: bool = False,
             make_args: t.StrSequence | None = None,
-        ) -> r[Sequence[m.Infra.CommandOutput]]:
+        ) -> r[Sequence[m.Cli.CommandOutput]]:
             del _self, projects, verb, fail_fast, make_args
-            return r[Sequence[m.Infra.CommandOutput]].ok([
-                m.Infra.CommandOutput(stdout="", stderr="", exit_code=0, duration=0.0),
-                m.Infra.CommandOutput(stdout="", stderr="", exit_code=0, duration=0.0),
+            return r[Sequence[m.Cli.CommandOutput]].ok([
+                m.Cli.CommandOutput(stdout="", stderr="", exit_code=0, duration=0.0),
+                m.Cli.CommandOutput(stdout="", stderr="", exit_code=0, duration=0.0),
             ])
 
         monkeypatch.setattr(
@@ -126,12 +126,12 @@ class TestRunOrchestrate:
             verb: str,
             fail_fast: bool = False,
             make_args: t.StrSequence | None = None,
-        ) -> r[Sequence[m.Infra.CommandOutput]]:
+        ) -> r[Sequence[m.Cli.CommandOutput]]:
             del _self, projects, verb, fail_fast
             if make_args is not None:
                 captured_make_args.extend(make_args)
-            return r[Sequence[m.Infra.CommandOutput]].ok([
-                m.Infra.CommandOutput(stdout="", stderr="", exit_code=0, duration=0.0),
+            return r[Sequence[m.Cli.CommandOutput]].ok([
+                m.Cli.CommandOutput(stdout="", stderr="", exit_code=0, duration=0.0),
             ])
 
         monkeypatch.setattr(
@@ -168,11 +168,11 @@ class TestRunOrchestrate:
             verb: str,
             fail_fast: bool = False,
             make_args: t.StrSequence | None = None,
-        ) -> r[Sequence[m.Infra.CommandOutput]]:
+        ) -> r[Sequence[m.Cli.CommandOutput]]:
             del _self, projects, verb, fail_fast, make_args
-            return r[Sequence[m.Infra.CommandOutput]].ok([
-                m.Infra.CommandOutput(stdout="", stderr="", exit_code=0, duration=0.0),
-                m.Infra.CommandOutput(stdout="", stderr="", exit_code=1, duration=0.0),
+            return r[Sequence[m.Cli.CommandOutput]].ok([
+                m.Cli.CommandOutput(stdout="", stderr="", exit_code=0, duration=0.0),
+                m.Cli.CommandOutput(stdout="", stderr="", exit_code=1, duration=0.0),
             ])
 
         monkeypatch.setattr(
@@ -192,9 +192,9 @@ class TestRunOrchestrate:
             verb: str,
             fail_fast: bool = False,
             make_args: t.StrSequence | None = None,
-        ) -> r[Sequence[m.Infra.CommandOutput]]:
+        ) -> r[Sequence[m.Cli.CommandOutput]]:
             del _self, projects, verb, fail_fast, make_args
-            return r[Sequence[m.Infra.CommandOutput]].fail("Orchestration failed")
+            return r[Sequence[m.Cli.CommandOutput]].fail("Orchestration failed")
 
         monkeypatch.setattr(
             FlextInfraOrchestratorService,

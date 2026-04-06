@@ -214,12 +214,8 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
 
     selection = _flext_infra__utilities_selection
-    import flext_infra._utilities.subprocess as _flext_infra__utilities_subprocess
-    from flext_infra._utilities.selection import FlextInfraUtilitiesSelection
-
-    subprocess = _flext_infra__utilities_subprocess
     import flext_infra._utilities.terminal as _flext_infra__utilities_terminal
-    from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
+    from flext_infra._utilities.selection import FlextInfraUtilitiesSelection
 
     terminal = _flext_infra__utilities_terminal
     import flext_infra._utilities.toml as _flext_infra__utilities_toml
@@ -435,10 +431,6 @@ _LAZY_IMPORTS = {
         "flext_infra._utilities.selection",
         "FlextInfraUtilitiesSelection",
     ),
-    "FlextInfraUtilitiesSubprocess": (
-        "flext_infra._utilities.subprocess",
-        "FlextInfraUtilitiesSubprocess",
-    ),
     "FlextInfraUtilitiesTerminal": (
         "flext_infra._utilities.terminal",
         "FlextInfraUtilitiesTerminal",
@@ -505,7 +497,6 @@ _LAZY_IMPORTS = {
     "rope_source": "flext_infra._utilities.rope_source",
     "safety": "flext_infra._utilities.safety",
     "selection": "flext_infra._utilities.selection",
-    "subprocess": "flext_infra._utilities.subprocess",
     "terminal": "flext_infra._utilities.terminal",
     "toml": "flext_infra._utilities.toml",
     "toml_parse": "flext_infra._utilities.toml_parse",
@@ -565,7 +556,6 @@ __all__ = [
     "FlextInfraUtilitiesRopeSource",
     "FlextInfraUtilitiesSafety",
     "FlextInfraUtilitiesSelection",
-    "FlextInfraUtilitiesSubprocess",
     "FlextInfraUtilitiesTerminal",
     "FlextInfraUtilitiesToml",
     "FlextInfraUtilitiesTomlParse",
@@ -617,7 +607,6 @@ __all__ = [
     "rope_source",
     "safety",
     "selection",
-    "subprocess",
     "terminal",
     "toml",
     "toml_parse",

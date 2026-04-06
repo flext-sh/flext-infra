@@ -12,9 +12,7 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import FlextInfraTestHelpers
-from tests.models import m
-from tests.typings import t
+from tests import FlextInfraTestHelpers, m, r, t, u
 from tests.unit.check._shared_fixtures import (
     create_checker_project,
     create_fake_run_raw,
@@ -22,13 +20,11 @@ from tests.unit.check._shared_fixtures import (
     run_gate_check,
 )
 
-from flext_core import r
 from flext_infra import (
     FlextInfraMarkdownGate,
     FlextInfraPyrightGate,
     FlextInfraRuffFormatGate,
     FlextInfraRuffLintGate,
-    FlextInfraUtilitiesSubprocess,
 )
 
 
@@ -80,10 +76,10 @@ class TestRunRuffLint:
             cwd: Path,
             timeout: int = 0,
             env: t.StrMapping | None = None,
-        ) -> m.Infra.CommandOutput:
+        ) -> m.Cli.CommandOutput:
             _ = cwd, timeout, env
             captured_cmd.extend(cmd)
-            return m.Infra.CommandOutput(stdout="[]", stderr="", exit_code=0)
+            return m.Cli.CommandOutput(stdout="[]", stderr="", exit_code=0)
 
         monkeypatch.setattr(FlextInfraRuffLintGate, "_run", _fake_run)
         gate = FlextInfraRuffLintGate(tmp_path)
@@ -182,10 +178,10 @@ class TestRunPyrightArgs:
             cwd: Path,
             timeout: int = 0,
             env: t.StrMapping | None = None,
-        ) -> m.Infra.CommandOutput:
+        ) -> m.Cli.CommandOutput:
             _ = cwd, timeout, env
             captured_cmd.extend(cmd)
-            return m.Infra.CommandOutput(
+            return m.Cli.CommandOutput(
                 stdout='{"generalDiagnostics":[]}',
                 stderr="",
                 exit_code=0,
@@ -215,11 +211,11 @@ class TestRunCommand:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setattr(
-            FlextInfraUtilitiesSubprocess,
+            u.Cli,
             "run_raw",
             create_fake_run_raw(
-                r[m.Infra.CommandOutput].ok(
-                    m.Infra.CommandOutput(stdout="[]", stderr="", exit_code=0),
+                r[m.Cli.CommandOutput].ok(
+                    m.Cli.CommandOutput(stdout="[]", stderr="", exit_code=0),
                 ),
             ),
         )
@@ -236,11 +232,7 @@ class TestRunCommand:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(
-            FlextInfraUtilitiesSubprocess,
-            "run_raw",
-            create_fake_run_raw("execution failed"),
-        )
+        monkeypatch.setattr(u.Cli, "run_raw", create_fake_run_raw("execution failed"))
         gate = FlextInfraRuffLintGate(tmp_path)
         result = gate._run(["echo"], tmp_path)
         tm.that(result.exit_code, eq=1)

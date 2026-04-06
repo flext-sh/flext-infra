@@ -4,10 +4,7 @@ from collections.abc import MutableSequence
 from pathlib import Path
 
 import pytest
-from tests import c, t, u
-
-from flext_core import r
-from flext_infra import FlextInfraUtilitiesSubprocess
+from tests import c, r, t, u
 
 
 class TestFormattingRunRuffFix:
@@ -21,16 +18,12 @@ class TestFormattingRunRuffFix:
         calls: MutableSequence[t.StrSequence] = []
 
         def _fake_run_checked(
-            _self: FlextInfraUtilitiesSubprocess,
             cmd: t.StrSequence,
         ) -> r[bool]:
             calls.append(cmd)
             return r[bool].ok(True)
 
-        monkeypatch.setattr(
-            "flext_infra._utilities.formatting.FlextInfraUtilitiesSubprocess.run_checked",
-            _fake_run_checked,
-        )
+        monkeypatch.setattr(u.Cli, "run_checked", _fake_run_checked)
 
         u.Infra.run_ruff_fix(target)
 
@@ -56,17 +49,12 @@ class TestFormattingRunRuffFix:
         calls: MutableSequence[t.StrSequence] = []
 
         def _raise_missing(
-            _self: FlextInfraUtilitiesSubprocess,
             cmd: t.StrSequence,
-        ) -> None:
+        ) -> r[bool]:
             calls.append(cmd)
-            msg = "ruff not found"
-            raise FileNotFoundError(msg)
+            return r[bool].fail("ruff not found")
 
-        monkeypatch.setattr(
-            "flext_infra._utilities.formatting.FlextInfraUtilitiesSubprocess.run_checked",
-            _raise_missing,
-        )
+        monkeypatch.setattr(u.Cli, "run_checked", _raise_missing)
 
         u.Infra.run_ruff_fix(target, include_format=False, quiet=True)
 

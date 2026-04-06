@@ -145,7 +145,7 @@ class FlextInfraDependencyDetectorRuntime:
                                 package=package,
                             )
                         else:
-                            run_output: m.Infra.CommandOutput = run.value
+                            run_output: m.Cli.CommandOutput = run.value
                             if run_output.exit_code != 0:
                                 detector.log.warning(
                                     "deps_typings_add_failed",

@@ -58,7 +58,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
     @override
     def _parse_check_output(
         self,
-        result: m.Infra.CommandOutput,
+        result: m.Cli.CommandOutput,
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> tuple[bool, Sequence[m.Infra.Issue]]:

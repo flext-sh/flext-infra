@@ -9,32 +9,26 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar, override
 
-from pydantic import BaseModel, Field
-from tests import t
-
-from flext_core import FlextModels, r
-from flext_infra import (
-    FlextInfraUtilitiesReporting,
-    FlextInfraUtilitiesSelection,
-    FlextInfraUtilitiesVersioning,
-    m,
-)
-
-from ._stubs_extra import (
+from pydantic import Field
+from tests import (
     StubLinter,
     StubPrManager,
     StubSyncer,
     StubUtilities,
     StubWorkspaceManager,
+    m,
+    r,
+    t,
+    u,
 )
 
 
-class StubCommandOutput(FlextModels.ArbitraryTypesModel):
-    """Stub command output matching p.Infra.CommandOutput protocol."""
+class StubCommandOutput(m.ArbitraryTypesModel):
+    """Stub command output matching p.Cli.CommandOutput protocol."""
 
     exit_code: Annotated[int, Field(default=0, description="Command exit code")] = 0
     stdout: Annotated[str, Field(default="", description="Captured stdout")] = ""
@@ -42,16 +36,16 @@ class StubCommandOutput(FlextModels.ArbitraryTypesModel):
 
 
 class StubRunner:
-    """Configurable stub for p.Infra.CommandRunner protocol."""
+    """Configurable stub for p.Cli.CommandRunner protocol."""
 
     def __init__(
         self,
-        run_returns: Sequence[r[m.Infra.CommandOutput]] | None = None,
+        run_returns: Sequence[r[m.Cli.CommandOutput]] | None = None,
         capture_returns: Sequence[r[str]] | None = None,
         run_checked_returns: Sequence[r[bool]] | None = None,
         run_to_file_returns: Sequence[r[int]] | None = None,
     ) -> None:
-        self._run_returns: MutableSequence[r[m.Infra.CommandOutput]] = list(
+        self._run_returns: MutableSequence[r[m.Cli.CommandOutput]] = list(
             run_returns or []
         )
         self._capture_returns: MutableSequence[r[str]] = list(capture_returns or [])
@@ -68,10 +62,10 @@ class StubRunner:
 
     @staticmethod
     def _pop_run(
-        returns: MutableSequence[r[m.Infra.CommandOutput]],
-    ) -> r[m.Infra.CommandOutput]:
+        returns: MutableSequence[r[m.Cli.CommandOutput]],
+    ) -> r[m.Cli.CommandOutput]:
         if not returns:
-            return r[m.Infra.CommandOutput].fail("no return value configured")
+            return r[m.Cli.CommandOutput].fail("no return value configured")
         return returns[0] if len(returns) == 1 else returns.pop(0)
 
     @staticmethod
@@ -98,7 +92,7 @@ class StubRunner:
         cwd: Path | None = None,
         timeout: int | None = None,
         env: t.StrMapping | None = None,
-    ) -> r[m.Infra.CommandOutput]:
+    ) -> r[m.Cli.CommandOutput]:
         _ = cwd, timeout, env
         self.run_calls.append(list(cmd))
         return self._pop_run(self._run_returns)
@@ -143,23 +137,15 @@ class StubRunner:
         cwd: Path | None = None,
         timeout: int | None = None,
         env: t.StrMapping | None = None,
-    ) -> r[m.Infra.CommandOutput]:
+    ) -> r[m.Cli.CommandOutput]:
         return self.run(cmd, cwd=cwd, timeout=timeout, env=env)
 
 
 class StubJsonIo:
     """Stub for a JSON writer dependency."""
 
-    _PayloadT = (
-        t.Cli.JsonValue
-        | BaseModel
-        | t.Cli.JsonMapping
-        | t.Cli.JsonList
-        | Mapping[str, t.Infra.InfraValue]
-    )
-
     json_write_returns: ClassVar[r[bool]] = r[bool].ok(True)
-    json_write_calls: ClassVar[list[tuple[Path, _PayloadT]]] = []
+    json_write_calls: ClassVar[list[tuple[Path, t.Cli.JsonPayload]]] = []
 
     def __init__(self, write_returns: r[bool] | None = None) -> None:
         StubJsonIo.json_write_returns = write_returns or r[bool].ok(True)
@@ -168,11 +154,7 @@ class StubJsonIo:
     @staticmethod
     def json_write(
         path: Path,
-        payload: t.Cli.JsonValue
-        | BaseModel
-        | t.Cli.JsonMapping
-        | t.Cli.JsonList
-        | Mapping[str, t.Infra.InfraValue],
+        payload: t.Cli.JsonPayload,
         *,
         sort_keys: bool = False,
         ensure_ascii: bool = False,
@@ -183,8 +165,8 @@ class StubJsonIo:
         return StubJsonIo.json_write_returns
 
 
-class StubVersioning(FlextInfraUtilitiesVersioning):
-    """Stub for FlextInfraUtilitiesVersioning."""
+class StubVersioning(u.Infra):
+    """Stub for u.Infra."""
 
     _release_tag_returns: ClassVar[r[str]] = r[str].fail("no tag")
 
@@ -199,8 +181,8 @@ class StubVersioning(FlextInfraUtilitiesVersioning):
         return StubVersioning._release_tag_returns
 
 
-class StubSelector(FlextInfraUtilitiesSelection):
-    """Stub for FlextInfraUtilitiesSelection."""
+class StubSelector(u.Infra):
+    """Stub for u.Infra."""
 
     _resolve_returns: ClassVar[r[Sequence[m.Infra.ProjectInfo]]] = r[
         Sequence[m.Infra.ProjectInfo]
@@ -226,8 +208,8 @@ class StubSelector(FlextInfraUtilitiesSelection):
         return StubSelector._resolve_returns
 
 
-class StubReporting(FlextInfraUtilitiesReporting):
-    """Stub for FlextInfraUtilitiesReporting."""
+class StubReporting(u.Infra):
+    """Stub for u.Infra."""
 
     _report_dir: ClassVar[Path] = Path("/tmp/reports")
 

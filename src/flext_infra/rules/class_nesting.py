@@ -94,7 +94,7 @@ class _PostCheckGate:
 
     def _validate_types(self, file_path: Path) -> t.StrSequence:
         cmd = [sys.executable, "-m", "py_compile", str(file_path)]
-        result = u.Infra.capture(cmd)
+        result = u.Cli.capture(cmd)
         return result.fold(
             on_failure=lambda e: [f"lsp_diagnostics_clean_failed:{e or ''}"],
             on_success=lambda _: [],

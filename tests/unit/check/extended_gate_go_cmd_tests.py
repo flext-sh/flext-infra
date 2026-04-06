@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
+from tests import u
 from tests.unit.check._shared_fixtures import (
     create_checker_project,
     create_fake_run_raw,
@@ -17,7 +18,6 @@ from flext_infra import (
     FlextInfraGoGate,
     FlextInfraMarkdownGate,
     FlextInfraRuffLintGate,
-    FlextInfraUtilitiesSubprocess,
     m,
 )
 
@@ -32,11 +32,7 @@ def run_command_failure_check(
     gate_class: GateClass,
 ) -> tuple[bool, str]:
     """Test _run failure by patching run_raw to return r.fail()."""
-    monkeypatch.setattr(
-        FlextInfraUtilitiesSubprocess,
-        "run_raw",
-        create_fake_run_raw("execution failed"),
-    )
+    monkeypatch.setattr(u.Cli, "run_raw", create_fake_run_raw("execution failed"))
     gate = gate_class(tmp_path)
     result = gate._run(["echo"], tmp_path)
     return result.exit_code == 0, result.stderr
@@ -123,11 +119,9 @@ class TestWorkspaceCheckerRunCommand:
     ) -> None:
         (tmp_path / "go.mod").write_text("module test")
         monkeypatch.setattr(
-            FlextInfraUtilitiesSubprocess,
+            u.Cli,
             "run_raw",
-            create_fake_run_raw(
-                r[m.Infra.CommandOutput].ok(h.stub_run()),
-            ),
+            create_fake_run_raw(r[m.Cli.CommandOutput].ok(h.stub_run())),
         )
         gate = FlextInfraGoGate(tmp_path)
         result = gate.check(

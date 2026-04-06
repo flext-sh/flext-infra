@@ -25,13 +25,12 @@ from collections.abc import (
 from pathlib import Path
 from typing import ClassVar, Final
 
-from flext_cli import FlextCliUtilities
+from flext_cli import u as u_cli
 from flext_core import r, u
 from flext_infra import c, m, t
 
 from .discovery import FlextInfraUtilitiesDiscovery
 from .rope import FlextInfraUtilitiesRope
-from .subprocess import FlextInfraUtilitiesSubprocess
 
 # =====================================================================
 # Governance — canonical values and rule configuration
@@ -51,7 +50,7 @@ class FlextInfraUtilitiesCodegenGovernance:
         cached = FlextInfraUtilitiesCodegenGovernance._config_cache.get("config")
         if cached is not None:
             return cached
-        raw = FlextCliUtilities.Cli.yaml_load_mapping(
+        raw = u_cli.Cli.yaml_load_mapping(
             FlextInfraUtilitiesCodegenGovernance.GOVERNANCE_FILE
         )
         config = m.Infra.ConstantsGovernanceConfig.model_validate(raw)
@@ -777,11 +776,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
         errors: MutableMapping[str, Sequence[str]] = {}
         for tool, tmpl in c.Infra.LINT_TOOLS:
             cmd = [a.replace("{file}", str(py_file)) for a in tmpl]
-            res = FlextInfraUtilitiesSubprocess.run_raw(
-                cmd,
-                cwd=workspace,
-                timeout=c.Infra.Timeouts.SHORT,
-            )
+            res = u.Cli.run_raw(cmd, cwd=workspace, timeout=c.Infra.Timeouts.SHORT)
             if res.is_success and res.value.exit_code != 0:
                 out = (res.value.stdout + res.value.stderr).strip()
                 errors[tool] = [ln for ln in out.splitlines() if ln.strip()]
@@ -831,7 +826,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
         if not new_errors and (
             "tests" in py_file.parts or py_file.name.startswith("test_")
         ):
-            tr = FlextInfraUtilitiesSubprocess.run_raw(
+            tr = u.Cli.run_raw(
                 ["pytest", str(py_file), "-x", "--tb=short", "-q"],
                 cwd=workspace,
                 timeout=c.Infra.Timeouts.MEDIUM,

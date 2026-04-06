@@ -12,7 +12,7 @@ from __future__ import annotations
 from io import StringIO
 
 import pytest
-from tests import u
+from tests import c, u
 
 from flext_core import FlextContainer
 
@@ -56,11 +56,11 @@ class TestInfraMroPattern:
         assert callable(getattr(u.Cli, "toml_read_json"))
         assert callable(u.Cli.json_write)
 
-    def test_subprocess_methods_available(self) -> None:
-        """Verify subprocess methods are accessible via u.Infra MRO."""
-        assert callable(u.Infra.run_checked)
-        assert callable(u.Infra.run_raw)
-        assert callable(u.Infra.capture)
+    def test_cli_runtime_methods_available(self) -> None:
+        """Verify command runtime methods are accessible via u.Cli."""
+        assert callable(u.Cli.run_checked)
+        assert callable(u.Cli.run_raw)
+        assert callable(u.Cli.capture)
 
     def test_discovery_methods_available(self) -> None:
         """Verify discovery methods are accessible via u.Infra MRO."""
@@ -82,11 +82,10 @@ class TestInfraMroPattern:
         assert callable(u.Infra.workspace_root)
 
     def test_template_methods_available(self) -> None:
-        """Verify template methods are accessible via u.Infra MRO."""
-        assert callable(u.Infra.render)
-        assert hasattr(u.Infra, "TOC_START")
-        assert hasattr(u.Infra, "TOC_END")
-        assert hasattr(u.Infra, "GENERATED_HEADER")
+        """Verify template constants are accessible via c.Infra MRO."""
+        assert isinstance(c.Infra.SourceCode.TOC_START, str)
+        assert isinstance(c.Infra.SourceCode.TOC_END, str)
+        assert isinstance(c.Infra.SourceCode.GENERATED_HEADER, str)
 
     def test_versioning_methods_available(self) -> None:
         """Verify versioning methods are accessible via u.Infra MRO."""

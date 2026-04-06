@@ -19,7 +19,6 @@ from flext_infra import c, m, t
 
 from .base import FlextInfraUtilitiesBase
 from .codegen_constants import FlextInfraUtilitiesCodegenConstantDetection
-from .subprocess import FlextInfraUtilitiesSubprocess
 
 
 class FlextInfraUtilitiesCodegenExecution:
@@ -207,7 +206,7 @@ class FlextInfraUtilitiesCodegenExecution:
         git_bin = shutil.which(c.Infra.GIT)
         if not git_bin:
             return []
-        result = FlextInfraUtilitiesSubprocess().run_raw([
+        result = u.Cli.run_raw([
             git_bin,
             "-C",
             str(workspace_root),
@@ -222,7 +221,7 @@ class FlextInfraUtilitiesCodegenExecution:
         workspace_root: Path,
         cmd: t.StrSequence,
     ) -> MutableMapping[str, t.Infra.InfraValue]:
-        result = FlextInfraUtilitiesSubprocess().run_raw(cmd, cwd=workspace_root)
+        result = u.Cli.run_raw(cmd, cwd=workspace_root)
         if result.is_failure:
             return {
                 "passed": False,

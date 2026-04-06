@@ -8,15 +8,13 @@ from typing import TYPE_CHECKING
 
 import pytest
 from flext_tests import tm
-from tests import m as _m, t
+from tests import m as _m, r, t, u
 
 import flext_infra.release.orchestrator as _orch_mod
-from flext_core import r
 from flext_infra import (
     FlextInfraReleaseOrchestrator,
     m,
     m as infra_models,
-    u,
 )
 
 from ._stubs import (
@@ -33,7 +31,7 @@ _CLS = FlextInfraReleaseOrchestrator
 @pytest.fixture
 def workspace_root(tmp_path: Path) -> Path:
     root = tmp_path / "workspace"
-    root.mkdir()
+    root.mkdir(exist_ok=True)
     (root / ".git").mkdir()
     (root / "Makefile").touch()
     (root / "pyproject.toml").write_text('version = "0.1.0"\n', encoding="utf-8")
@@ -103,15 +101,15 @@ class TestRunMake:
     """Tests for _run_make."""
 
     def test_success(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
-        output = _m.Infra.CommandOutput(exit_code=0, stdout="ok", stderr="")
+        output = _m.Cli.CommandOutput(exit_code=0, stdout="ok", stderr="")
 
         def _fake_run_raw(
             cmd: t.StrSequence,
             **kw: t.Scalar,
-        ) -> r[_m.Infra.CommandOutput]:
-            return r[_m.Infra.CommandOutput].ok(output)
+        ) -> r[_m.Cli.CommandOutput]:
+            return r[_m.Cli.CommandOutput].ok(output)
 
-        monkeypatch.setattr(u.Infra, "run_raw", staticmethod(_fake_run_raw))
+        monkeypatch.setattr(u.Cli, "run_raw", staticmethod(_fake_run_raw))
         result = _CLS._run_make(workspace_root, "build")
         tm.ok(result)
         code, _out = result.value
@@ -121,10 +119,10 @@ class TestRunMake:
         def _fake_run_raw(
             cmd: t.StrSequence,
             **kw: t.Scalar,
-        ) -> r[_m.Infra.CommandOutput]:
-            return r[_m.Infra.CommandOutput].fail("failed")
+        ) -> r[_m.Cli.CommandOutput]:
+            return r[_m.Cli.CommandOutput].fail("failed")
 
-        monkeypatch.setattr(u.Infra, "run_raw", staticmethod(_fake_run_raw))
+        monkeypatch.setattr(u.Cli, "run_raw", staticmethod(_fake_run_raw))
         tm.fail(_CLS._run_make(workspace_root, "build"))
 
 

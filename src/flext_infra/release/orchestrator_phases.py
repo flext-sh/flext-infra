@@ -18,7 +18,7 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
     @staticmethod
     def _run_make(project_path: Path, verb: str) -> r[t.Infra.Pair[int, str]]:
         """Execute a make command for a project and return (exit_code, output)."""
-        result = u.Infra.run_raw([
+        result = u.Cli.run_raw([
             c.Infra.MAKE,
             "-C",
             str(project_path),

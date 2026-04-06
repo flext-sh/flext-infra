@@ -23,7 +23,7 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
         """Initialize the dependency detection service with selector, toml, and runner."""
         self.selector: u.Infra | None = None
         self.toml: p.Infra.TomlReader | None = None
-        self.runner: p.Infra.CommandRunner | None = None
+        self.runner: p.Cli.CommandRunner | None = None
 
     def _resolve_projects(
         self,
@@ -57,10 +57,10 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
         cwd: Path | None = None,
         timeout: int | None = None,
         env: t.StrMapping | None = None,
-    ) -> r[m.Infra.CommandOutput]:
+    ) -> r[m.Cli.CommandOutput]:
         if self.runner is not None:
             return self.runner.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
-        return u.Infra.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
+        return u.Cli.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
 
     @staticmethod
     def classify_issues(

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -8,6 +7,7 @@ import pytest
 from flext_tests import tm
 from tests import m, t
 
+from flext_cli import u
 from flext_infra import FlextInfraDependencyDetectionService
 
 
@@ -15,7 +15,7 @@ class _FakeResult:
     def __init__(
         self,
         success: bool,
-        value: Sequence[m.Infra.ProjectInfo] | m.Infra.CommandOutput | None = None,
+        value: Sequence[m.Infra.ProjectInfo] | m.Cli.CommandOutput | None = None,
         error: str | None = None,
     ) -> None:
         self.is_success = success
@@ -117,10 +117,8 @@ class TestRunDeptry:
         project.mkdir()
         (project / "pyproject.toml").write_text("")
         out_file = project / ".deptry-report.json"
-        out_file.write_text(
-            json.dumps([{"error": {"code": "DEP001"}, "module": "foo"}]),
-        )
-        cmd_out = m.Infra.CommandOutput(
+        u.Cli.json_write(out_file, [{"error": {"code": "DEP001"}, "module": "foo"}])
+        cmd_out = m.Cli.CommandOutput(
             exit_code=0,
             stdout="",
             stderr="",
@@ -174,7 +172,7 @@ class TestRunDeptry:
         project = tmp_path / "project"
         project.mkdir()
         (project / "pyproject.toml").write_text("")
-        cmd_out = m.Infra.CommandOutput(
+        cmd_out = m.Cli.CommandOutput(
             exit_code=0,
             stdout="",
             stderr="",
@@ -202,7 +200,7 @@ class TestRunDeptry:
         (project / "pyproject.toml").write_text("")
         default_out = project / ".deptry-report.json"
         default_out.write_text("[]")
-        cmd_out = m.Infra.CommandOutput(
+        cmd_out = m.Cli.CommandOutput(
             exit_code=0,
             stdout="",
             stderr="",

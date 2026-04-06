@@ -6,11 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from flext_tests import tm
 
+from flext_cli import u
 from flext_infra import FlextInfraDocAuditor
 
 
@@ -31,7 +31,7 @@ class TestLoadAuditBudgets:
                 },
             },
         }
-        (arch_dir / "architecture_config.json").write_text(json.dumps(config_data))
+        u.Cli.json_write(arch_dir / "architecture_config.json", config_data)
         default, by_scope = FlextInfraDocAuditor.load_audit_budgets(tmp_path)
         tm.that(default, eq=5)
         tm.that(by_scope.get("test-project"), eq=3)
@@ -55,7 +55,7 @@ class TestLoadAuditBudgets:
                 },
             },
         }
-        (arch_dir / "architecture_config.json").write_text(json.dumps(config_data))
+        u.Cli.json_write(arch_dir / "architecture_config.json", config_data)
         default, by_scope = FlextInfraDocAuditor.load_audit_budgets(tmp_path)
         tm.that(default, eq=5)
         tm.that(by_scope.get("test-project"), eq=3)
@@ -68,7 +68,7 @@ class TestLoadAuditBudgets:
                 "audit_gate": {"max_issues_by_scope": {"test-project": 3}},
             },
         }
-        (arch_dir / "architecture_config.json").write_text(json.dumps(config_data))
+        u.Cli.json_write(arch_dir / "architecture_config.json", config_data)
         default, by_scope = FlextInfraDocAuditor.load_audit_budgets(tmp_path)
         tm.that(default, eq=None)
         tm.that(by_scope.get("test-project"), eq=3)

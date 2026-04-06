@@ -27,7 +27,7 @@ class FlextInfraDocBuilder(s[bool]):
             exclude=True,
         ),
     ] = c.Infra.DEFAULT_DOCS_OUTPUT_DIR
-    _runner: p.Infra.CommandRunner = PrivateAttr(default_factory=u.Infra)
+    _runner: p.Cli.CommandRunner = PrivateAttr(default_factory=u.Cli)
 
     def build(
         self,

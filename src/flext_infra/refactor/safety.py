@@ -59,13 +59,13 @@ class FlextInfraRefactorSafetyManager:
             return r[bool].fail(
                 f"Emergency stop: {self._emergency_stop_reason}",
             )
-        ic = u.Infra.run_checked(
+        ic = u.Cli.run_checked(
             [c.Infra.PYTHON, "-m", c.Infra.PYTEST, "--collect-only", "-q"],
             cwd=workspace_root,
         )
         if ic.is_failure:
             return r[bool].fail(ic.error or "import validation failed")
-        tc = u.Infra.run_checked(self._test_command, cwd=workspace_root)
+        tc = u.Cli.run_checked(self._test_command, cwd=workspace_root)
         if tc.is_failure:
             return r[bool].fail(tc.error or "test validation failed")
         return r[bool].ok(True)

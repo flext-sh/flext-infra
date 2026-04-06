@@ -18,20 +18,6 @@ class FlextInfraCoreModels:
     - ``ContractModel`` reserved for immutable settings/config contracts.
     """
 
-    class CommandOutput(FlextModels.ArbitraryTypesModel):
-        """Standardized subprocess output payload."""
-
-        stdout: Annotated[
-            str,
-            Field(default="", description="Captured standard output"),
-        ]
-        stderr: Annotated[str, Field(default="", description="Captured standard error")]
-        exit_code: Annotated[int, Field(description="Command exit code")]
-        duration: Annotated[
-            t.NonNegativeFloat,
-            Field(default=0.0, description="Duration in seconds"),
-        ] = 0.0
-
     class ValidationReport(FlextModels.ArbitraryTypesModel):
         """Validation report model with violations and summary."""
 

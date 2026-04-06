@@ -16,7 +16,6 @@ from flext_infra import (
     FlextInfraUtilitiesGithubPr,
     FlextInfraUtilitiesReporting,
     FlextInfraUtilitiesSelection,
-    FlextInfraUtilitiesSubprocess,
     c,
     m,
     r,
@@ -28,7 +27,6 @@ class FlextInfraUtilitiesGithub(
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesReporting,
     FlextInfraUtilitiesSelection,
-    FlextInfraUtilitiesSubprocess,
 ):
     """Utilities for GitHub automation including PRs and Workflows."""
 
@@ -54,7 +52,7 @@ class FlextInfraUtilitiesGithub(
             return r[m.Infra.GithubWorkflowLintOutcome].ok(
                 payload_skipped,
             )
-        result = cls.run_raw([actionlint], cwd=workspace_root)
+        result = u.Cli.run_raw([actionlint], cwd=workspace_root)
         if result.is_success:
             output = result.value
             payload = m.Infra.GithubWorkflowLintOutcome(

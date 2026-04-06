@@ -24,7 +24,7 @@ class FlextInfraStubSupplyChain:
 
     def __init__(self) -> None:
         """Initialize the stub supply chain."""
-        self._runner: p.Infra.CommandRunner = u.Infra
+        self._runner: p.Cli.CommandRunner = u.Cli()
 
     def _discover_stub_projects(self, workspace_root: Path) -> Sequence[Path]:
         """Discover projects that should participate in stub checks."""
@@ -177,7 +177,7 @@ class FlextInfraStubSupplyChain:
         )
         output = ""
         if result.is_success:
-            cmd_output: p.Infra.CommandOutput = result.value
+            cmd_output: p.Cli.CommandOutput = result.value
             output = cmd_output.stdout
         return sorted({
             m.group(1).strip()
@@ -201,7 +201,7 @@ class FlextInfraStubSupplyChain:
         )
         output = ""
         if result.is_success:
-            cmd_output: p.Infra.CommandOutput = result.value
+            cmd_output: p.Cli.CommandOutput = result.value
             output = cmd_output.stdout
         seen: t.Infra.StrSet = set()
         ordered: MutableSequence[str] = []

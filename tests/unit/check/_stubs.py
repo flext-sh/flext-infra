@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import MutableMapping, MutableSequence, Sequence
 
 from tests import m, t
 from tests.unit.check._shared_fixtures import create_gate_execution
@@ -24,11 +24,10 @@ class Spy:
     ) -> None:
         self.call_count: int = 0
         self.call_args: (
-            tuple[tuple[t.Infra.InfraValue, ...], Mapping[str, t.Infra.InfraValue]]
-            | None
+            tuple[tuple[t.Infra.InfraValue, ...], t.Infra.InfraMapping] | None
         ) = None
         self.call_args_list: MutableSequence[
-            tuple[tuple[t.Infra.InfraValue, ...], Mapping[str, t.Infra.InfraValue]]
+            tuple[tuple[t.Infra.InfraValue, ...], t.Infra.InfraMapping]
         ] = []
         self.called: bool = False
         self._return_value: t.Infra.InfraValue = return_value
@@ -50,7 +49,7 @@ class Spy:
         return self._return_value
 
     @property
-    def kwargs(self) -> Mapping[str, t.Infra.InfraValue]:
+    def kwargs(self) -> t.Infra.InfraMapping:
         """Return kwargs from last call."""
         if self.call_args is None:
             return {}

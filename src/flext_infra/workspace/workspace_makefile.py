@@ -191,7 +191,7 @@ class FlextInfraWorkspaceMakefileGenerator:
     @staticmethod
     def _current_branch(workspace_root: Path) -> str:
         """Return current git branch or version from pyproject.toml."""
-        capture_result = u.Infra.capture(
+        capture_result = u.Cli.capture(
             ["git", "-C", str(workspace_root), "rev-parse", "--abbrev-ref", "HEAD"],
             timeout=5,
         )

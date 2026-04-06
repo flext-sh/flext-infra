@@ -29,7 +29,13 @@ if _t.TYPE_CHECKING:
     )
 
     main_tests = _tests_unit_validate_main_tests
+    import tests.unit.validate.namespace_validator_tests as _tests_unit_validate_namespace_validator_tests
+
+    namespace_validator_tests = _tests_unit_validate_namespace_validator_tests
     import tests.unit.validate.pytest_diag as _tests_unit_validate_pytest_diag
+    from tests.unit.validate.namespace_validator_tests import (
+        TestFlextInfraNamespaceValidator,
+    )
 
     pytest_diag = _tests_unit_validate_pytest_diag
     import tests.unit.validate.scanner_tests as _tests_unit_validate_scanner_tests
@@ -53,6 +59,10 @@ if _t.TYPE_CHECKING:
     from flext_core.typings import FlextTypes as t
     from flext_core.utilities import FlextUtilities as u
 _LAZY_IMPORTS = {
+    "TestFlextInfraNamespaceValidator": (
+        "tests.unit.validate.namespace_validator_tests",
+        "TestFlextInfraNamespaceValidator",
+    ),
     "basemk_validator_tests": "tests.unit.validate.basemk_validator_tests",
     "c": ("flext_core.constants", "FlextConstants"),
     "d": ("flext_core.decorators", "FlextDecorators"),
@@ -63,6 +73,7 @@ _LAZY_IMPORTS = {
     "m": ("flext_core.models", "FlextModels"),
     "main_cli_tests": "tests.unit.validate.main_cli_tests",
     "main_tests": "tests.unit.validate.main_tests",
+    "namespace_validator_tests": "tests.unit.validate.namespace_validator_tests",
     "p": ("flext_core.protocols", "FlextProtocols"),
     "pytest_diag": "tests.unit.validate.pytest_diag",
     "r": ("flext_core.result", "FlextResult"),
@@ -84,6 +95,7 @@ _LAZY_IMPORTS = {
 }
 
 __all__ = [
+    "TestFlextInfraNamespaceValidator",
     "basemk_validator_tests",
     "c",
     "d",
@@ -94,6 +106,7 @@ __all__ = [
     "m",
     "main_cli_tests",
     "main_tests",
+    "namespace_validator_tests",
     "p",
     "pytest_diag",
     "r",

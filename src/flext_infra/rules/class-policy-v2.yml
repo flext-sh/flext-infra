@@ -4151,27 +4151,6 @@ rules:
         params:
           expected: *id006
     rewrite_scope: file
-  - project_kind: core
-    facade_family: u
-    module_family: other_private
-    source_symbol: FlextInfraUtilitiesSubprocess
-    target_facade_class: FlextSubprocess
-    target_namespace_path: FlextSubprocess.FlextInfraUtilitiesSubprocess
-    expected_base_chain: *id006
-    forbidden_targets: []
-    confidence: 0.5
-    pre_checks:
-      - type: source_symbol_is_class
-        params:
-          symbol: FlextInfraUtilitiesSubprocess
-      - type: target_facade_exists
-        params:
-          facade: FlextSubprocess
-    post_checks:
-      - type: imports_resolve
-        params:
-          scope: file
-      - type: mro_valid
         params:
           expected: *id006
     rewrite_scope: file

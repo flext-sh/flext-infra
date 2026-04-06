@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 from tests import m, t
@@ -137,9 +137,7 @@ class StubSyncer:
                 ),
             )
         )
-        self.sync_workspace_calls: MutableSequence[
-            Mapping[str, t.Infra.InfraValue]
-        ] = []
+        self.sync_workspace_calls: MutableSequence[t.Infra.InfraMapping] = []
 
     def sync_workspace(
         self,
@@ -150,7 +148,7 @@ class StubSyncer:
         apply: bool = False,
         prune: bool = False,
     ) -> r[m.Infra.GithubWorkflowSyncReport]:
-        kwargs: Mapping[str, t.Infra.InfraValue] = {
+        kwargs: t.Infra.InfraMapping = {
             "workspace_root": str(workspace_root),
             "source_workflow": str(source_workflow) if source_workflow else None,
             "report_path": str(report_path) if report_path else None,
@@ -175,7 +173,7 @@ class StubLinter:
                 m.Infra.GithubWorkflowLintOutcome(status="ok", exit_code=0),
             )
         )
-        self.lint_calls: MutableSequence[Mapping[str, t.Infra.InfraValue]] = []
+        self.lint_calls: MutableSequence[t.Infra.InfraMapping] = []
 
     def lint(
         self,
@@ -184,7 +182,7 @@ class StubLinter:
         report_path: Path | None = None,
         strict: bool = False,
     ) -> r[m.Infra.GithubWorkflowLintOutcome]:
-        kwargs: Mapping[str, t.Infra.InfraValue] = {
+        kwargs: t.Infra.InfraMapping = {
             "root": str(root),
             "report_path": str(report_path) if report_path else None,
             "strict": strict,
@@ -212,7 +210,7 @@ class StubWorkspaceManager:
                 ),
             )
         )
-        self.orchestrate_calls: MutableSequence[Mapping[str, t.Infra.InfraValue]] = []
+        self.orchestrate_calls: MutableSequence[t.Infra.InfraMapping] = []
 
     def orchestrate(
         self,
@@ -228,10 +226,10 @@ class StubWorkspaceManager:
         infra_projects: MutableSequence[str] | None = (
             [str(p) for p in projects] if projects else None
         )
-        infra_pr_args: MutableMapping[str, t.Infra.InfraValue] | None = (
+        infra_pr_args: t.Infra.MutableInfraMapping | None = (
             dict(pr_args) if pr_args else None
         )
-        kwargs: Mapping[str, t.Infra.InfraValue] = {
+        kwargs: t.Infra.InfraMapping = {
             "workspace_root": str(workspace_root),
             "projects": infra_projects,
             "include_root": include_root,

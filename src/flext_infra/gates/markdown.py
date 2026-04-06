@@ -67,7 +67,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
     @override
     def _parse_check_output(
         self,
-        result: m.Infra.CommandOutput,
+        result: m.Cli.CommandOutput,
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> tuple[bool, Sequence[m.Infra.Issue]]:
@@ -104,7 +104,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
         ]
 
     @override
-    def _fix_raw_output(self, result: m.Infra.CommandOutput) -> str:
+    def _fix_raw_output(self, result: m.Cli.CommandOutput) -> str:
         return "\n".join(part for part in (result.stdout, result.stderr) if part)
 
 

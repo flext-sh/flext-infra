@@ -25,7 +25,7 @@ class _StubToml:
 
 
 class _StubRunner:
-    def __init__(self, result: r[m.Infra.CommandOutput]) -> None:
+    def __init__(self, result: r[m.Cli.CommandOutput]) -> None:
         self._result = result
         self.last_kwargs: Mapping[str, str | int | Path | t.StrMapping] = {}
 
@@ -33,7 +33,7 @@ class _StubRunner:
         self,
         *args: t.Infra.InfraValue,
         **kwargs: str | int | Path | t.StrMapping,
-    ) -> r[m.Infra.CommandOutput]:
+    ) -> r[m.Cli.CommandOutput]:
         _ = args
         self.last_kwargs = kwargs
         return self._result
@@ -105,7 +105,7 @@ class TestRunMypyStubHints:
         monkeypatch.setattr(
             service,
             "runner",
-            _StubRunner(r[m.Infra.CommandOutput].fail("mypy crash")),
+            _StubRunner(r[m.Cli.CommandOutput].fail("mypy crash")),
         )
         tm.fail(service.run_mypy_stub_hints(tmp_path, venv_bin))
 
@@ -118,7 +118,7 @@ class TestRunMypyStubHints:
         venv_bin = tmp_path / "venv" / "bin"
         venv_bin.mkdir(parents=True)
         (venv_bin / "mypy").write_text("")
-        out = m.Infra.CommandOutput(
+        out = m.Cli.CommandOutput(
             exit_code=0,
             stdout='note: hint: "pip install types-pyyaml"',
             stderr='error: Library stubs not installed for "requests"',
@@ -126,7 +126,7 @@ class TestRunMypyStubHints:
         monkeypatch.setattr(
             service,
             "runner",
-            _StubRunner(r[m.Infra.CommandOutput].ok(out)),
+            _StubRunner(r[m.Cli.CommandOutput].ok(out)),
         )
         tm.ok(service.run_mypy_stub_hints(tmp_path, venv_bin))
 
@@ -139,8 +139,8 @@ class TestRunMypyStubHints:
         venv_bin = tmp_path / "venv" / "bin"
         venv_bin.mkdir(parents=True)
         (venv_bin / "mypy").write_text("")
-        out = m.Infra.CommandOutput(exit_code=0, stdout="", stderr="")
-        runner = _StubRunner(r[m.Infra.CommandOutput].ok(out))
+        out = m.Cli.CommandOutput(exit_code=0, stdout="", stderr="")
+        runner = _StubRunner(r[m.Cli.CommandOutput].ok(out))
         monkeypatch.setattr(service, "runner", runner)
         tm.ok(service.run_mypy_stub_hints(tmp_path, venv_bin, timeout=600))
         tm.that(runner.last_kwargs["timeout"], eq=600)

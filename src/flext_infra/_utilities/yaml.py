@@ -15,7 +15,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from flext_cli import FlextCliUtilities
+from flext_cli import u as u_cli
 from flext_core import r
 from flext_infra import c, m, t
 
@@ -30,7 +30,7 @@ class FlextInfraUtilitiesYaml:
         Delegates to ``u.Cli.yaml_load_mapping`` and normalizes the result
         to the infra type system via ``normalize_str_mapping``.
         """
-        raw = FlextCliUtilities.Cli.yaml_load_mapping(path)
+        raw = u_cli.Cli.yaml_load_mapping(path)
         try:
             return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(raw)
         except ValidationError:
@@ -49,7 +49,7 @@ class FlextInfraUtilitiesYaml:
                 .joinpath("tool_config.yml")
                 .read_text(encoding=c.Infra.Encoding.DEFAULT)
             )
-            parsed = FlextCliUtilities.Cli.yaml_parse(raw_text)
+            parsed = u_cli.Cli.yaml_parse(raw_text)
             if parsed.is_failure:
                 result = r[m.Infra.ToolConfigDocument].fail(
                     parsed.error or "tool_config.yml parse failed",

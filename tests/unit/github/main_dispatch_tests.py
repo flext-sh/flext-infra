@@ -6,10 +6,9 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import m
+from tests import m, r, u
 
-from flext_core import r
-from flext_infra import FlextInfraGithubService, u as infra_u
+from flext_infra import FlextInfraGithubService
 
 
 def _workspace_report(
@@ -36,7 +35,7 @@ class TestRunPrWorkspace:
             )
 
         monkeypatch.setattr(
-            infra_u.Infra,
+            u.Infra,
             "github_run_workspace_pull_requests",
             staticmethod(_ok),
         )
@@ -55,7 +54,7 @@ class TestRunPrWorkspace:
             )
 
         monkeypatch.setattr(
-            infra_u.Infra,
+            u.Infra,
             "github_run_workspace_pull_requests",
             staticmethod(_fail),
         )
@@ -80,7 +79,7 @@ class TestRunPrWorkspace:
             )
 
         monkeypatch.setattr(
-            infra_u.Infra,
+            u.Infra,
             "github_run_workspace_pull_requests",
             staticmethod(_fake_orchestrate),
         )
@@ -113,7 +112,7 @@ class TestRunPrWorkspace:
             )
 
         monkeypatch.setattr(
-            infra_u.Infra,
+            u.Infra,
             "github_run_workspace_pull_requests",
             staticmethod(_fake_orchestrate),
         )
@@ -141,7 +140,7 @@ class TestRunPrWorkspace:
             )
 
         monkeypatch.setattr(
-            infra_u.Infra,
+            u.Infra,
             "github_run_workspace_pull_requests",
             staticmethod(_fake_orchestrate),
         )
@@ -169,7 +168,7 @@ class TestRunPrWorkspace:
             )
 
         monkeypatch.setattr(
-            infra_u.Infra,
+            u.Infra,
             "github_run_workspace_pull_requests",
             staticmethod(_fake_orchestrate),
         )
@@ -197,7 +196,7 @@ class TestRunPrWorkspace:
             )
 
         monkeypatch.setattr(
-            infra_u.Infra,
+            u.Infra,
             "github_run_workspace_pull_requests",
             staticmethod(_fake_orchestrate),
         )

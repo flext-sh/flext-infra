@@ -314,9 +314,6 @@ tools:
         '**/singer/*.py':
           - S404
           - S603
-        '**/subprocess.py':
-          - S404
-          - S603
         '**/tools/*.py':
           - FBT001
           - FBT002

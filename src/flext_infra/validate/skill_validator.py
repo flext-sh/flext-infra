@@ -241,14 +241,12 @@ class FlextInfraSkillValidator:
         for pat in exclude_globs:
             cmd.extend(["--globs", f"!{pat}"])
         cmd.append(str(project_path))
-        result_wrapper = u.Infra.run_raw(
-            cmd,
-            cwd=project_path,
-            timeout=c.Infra.Timeouts.DEFAULT,
+        result_wrapper = u.Cli.run_raw(
+            cmd, cwd=project_path, timeout=c.Infra.Timeouts.DEFAULT
         )
         if result_wrapper.is_failure:
             return 0
-        result: p.Infra.CommandOutput = result_wrapper.value
+        result: p.Cli.CommandOutput = result_wrapper.value
         if result.exit_code not in {0, 1}:
             return 0
         count = 0
@@ -301,14 +299,12 @@ class FlextInfraSkillValidator:
         cmd.extend(["--workspace", str(project_path)])
         if bool(rule.get("pass_mode")):
             cmd.extend(["--mode", mode])
-        result_wrapper = u.Infra.run_raw(
-            cmd,
-            cwd=project_path,
-            timeout=c.Infra.Timeouts.DEFAULT,
+        result_wrapper = u.Cli.run_raw(
+            cmd, cwd=project_path, timeout=c.Infra.Timeouts.DEFAULT
         )
         if result_wrapper.is_failure:
             return 0
-        result: p.Infra.CommandOutput = result_wrapper.value
+        result: p.Cli.CommandOutput = result_wrapper.value
         count = self._parse_violation_count(result.stdout or "")
         if result.exit_code == 1:
             count = max(count, 1)

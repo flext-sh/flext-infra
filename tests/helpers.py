@@ -16,7 +16,6 @@ import argparse
 import shutil
 import sys
 import tomllib
-from collections.abc import Mapping
 from pathlib import Path
 
 from flext_tests import tm
@@ -45,7 +44,7 @@ class FlextInfraTestHelpers:
         h.mk_project(root, name)       — create minimal project dir
         h.write_project(root)          — full migration test project
         h.ns(**kw)                     — argparse.Namespace
-        h.stub_run(stdout, stderr, rc) — m.Infra.CommandOutput for subprocess
+        h.stub_run(stdout, stderr, rc) — m.Cli.CommandOutput for subprocess
         h.workspace(root)              — workspace root with markers
     """
 
@@ -153,7 +152,7 @@ class FlextInfraTestHelpers:
         cls,
         path: Path,
         msg: str | None = None,
-    ) -> Mapping[str, t.Infra.InfraValue]:
+    ) -> t.Infra.InfraMapping:
         """Assert TOML file is valid and return parsed content.
 
         Args:
@@ -169,7 +168,7 @@ class FlextInfraTestHelpers:
         """
         cls.assert_file_exists(path, msg)
         try:
-            content: Mapping[str, t.Infra.InfraValue] = tomllib.loads(
+            content: t.Infra.InfraMapping = tomllib.loads(
                 path.read_text(encoding="utf-8"),
             )
         except tomllib.TOMLDecodeError as exc:
@@ -182,7 +181,7 @@ class FlextInfraTestHelpers:
         path: Path,
         section: str,
         msg: str | None = None,
-    ) -> Mapping[str, t.Infra.InfraValue]:
+    ) -> t.Infra.InfraMapping:
         """Assert TOML file has specific section.
 
         Args:
@@ -196,7 +195,7 @@ class FlextInfraTestHelpers:
         """
         content = cls.assert_toml_valid(path, msg)
         parts = section.split(".")
-        current: Mapping[str, t.Infra.InfraValue] | t.Infra.InfraValue = content
+        current: t.Infra.InfraMapping | t.Infra.InfraValue = content
         for part in parts:
             tm.that(
                 isinstance(current, dict),
@@ -204,7 +203,7 @@ class FlextInfraTestHelpers:
                 msg=msg or f"TOML section '{section}' not found in {path}",
             )
             assert isinstance(current, dict)
-            current_map: Mapping[str, t.Infra.InfraValue] = current
+            current_map: t.Infra.InfraMapping = current
             tm.that(
                 part in current_map,
                 eq=True,
@@ -347,9 +346,9 @@ class FlextInfraTestHelpers:
         stdout: str = "",
         stderr: str = "",
         returncode: int = 0,
-    ) -> m.Infra.CommandOutput:
+    ) -> m.Cli.CommandOutput:
         """Create a CommandOutput for test stubs."""
-        return m.Infra.CommandOutput(
+        return m.Cli.CommandOutput(
             stdout=stdout,
             stderr=stderr,
             exit_code=returncode,

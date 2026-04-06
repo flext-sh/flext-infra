@@ -114,12 +114,12 @@ class FlextInfraOrchestratorService(s[bool]):
         idx: int,
         *,
         make_args: t.StrSequence,
-    ) -> t.Infra.Pair[m.Infra.CommandOutput, bool]:
+    ) -> t.Infra.Pair[m.Cli.CommandOutput, bool]:
         """Run one project and return (output, succeeded)."""
         output_result = self._run_project(project, verb, idx, make_args=list(make_args))
         if output_result.is_failure:
             return (
-                m.Infra.CommandOutput(
+                m.Cli.CommandOutput(
                     stdout="",
                     stderr=output_result.error or "project execution failed",
                     exit_code=1,
@@ -127,13 +127,13 @@ class FlextInfraOrchestratorService(s[bool]):
                 ),
                 False,
             )
-        cmd_output: m.Infra.CommandOutput = output_result.value
+        cmd_output: m.Cli.CommandOutput = output_result.value
         return (cmd_output, cmd_output.exit_code == 0)
 
     @staticmethod
     def _collect_failures(
         projects: t.StrSequence,
-        results: Sequence[m.Infra.CommandOutput],
+        results: Sequence[m.Cli.CommandOutput],
     ) -> Sequence[t.Infra.Triple[str, int, Path]]:
         """Collect failure details for projects with non-zero exit codes."""
         failures: MutableSequence[t.Infra.Triple[str, int, Path]] = []
@@ -155,7 +155,7 @@ class FlextInfraOrchestratorService(s[bool]):
         *,
         fail_fast: bool = False,
         make_args: t.StrSequence = (),
-    ) -> r[Sequence[m.Infra.CommandOutput]]:
+    ) -> r[Sequence[m.Cli.CommandOutput]]:
         """Execute make verb across projects with per-project logging.
 
         Args:
@@ -173,10 +173,10 @@ class FlextInfraOrchestratorService(s[bool]):
             allowed_verbs = c.Infra.Make.ORCHESTRATED_PROJECT_VERBS
             if verb not in allowed_verbs:
                 allowed = ", ".join(allowed_verbs)
-                return r[Sequence[m.Infra.CommandOutput]].fail(
+                return r[Sequence[m.Cli.CommandOutput]].fail(
                     f"unsupported orchestrate verb '{verb}' (allowed: {allowed})",
                 )
-            results: MutableSequence[m.Infra.CommandOutput] = []
+            results: MutableSequence[m.Cli.CommandOutput] = []
             total = len(projects)
             success = 0
             failed = 0
@@ -186,7 +186,7 @@ class FlextInfraOrchestratorService(s[bool]):
                 u.Infra.progress(idx, total, project, verb)
                 if skipped:
                     results.append(
-                        m.Infra.CommandOutput(
+                        m.Cli.CommandOutput(
                             stdout="",
                             stderr="",
                             exit_code=0,
@@ -221,9 +221,9 @@ class FlextInfraOrchestratorService(s[bool]):
             if failed > 0:
                 failures = self._collect_failures(projects, results)
                 u.Infra.failure_summary(verb, failures)
-            return r[Sequence[m.Infra.CommandOutput]].ok(results)
+            return r[Sequence[m.Cli.CommandOutput]].ok(results)
         except (OSError, RuntimeError, TypeError, ValueError) as exc:
-            return r[Sequence[m.Infra.CommandOutput]].fail(
+            return r[Sequence[m.Cli.CommandOutput]].fail(
                 f"Orchestration failed: {exc}",
             )
 
@@ -234,7 +234,7 @@ class FlextInfraOrchestratorService(s[bool]):
         _index: int,
         *,
         make_args: t.StrSequence,
-    ) -> r[m.Infra.CommandOutput]:
+    ) -> r[m.Cli.CommandOutput]:
         """Execute make verb for a single project.
 
         Args:
@@ -260,7 +260,7 @@ class FlextInfraOrchestratorService(s[bool]):
             verb=verb,
             make_args=make_args,
         )
-        proc_result = u.Infra.run_to_file(
+        proc_result = u.Cli.run_to_file(
             [c.Infra.MAKE, "-C", project, verb, *normalized_make_args],
             log_path,
             env={"NO_COLOR": "1", **os.environ},
@@ -285,8 +285,8 @@ class FlextInfraOrchestratorService(s[bool]):
             )
             if error_lines:
                 stderr = "\n".join(error_lines)
-        return r[m.Infra.CommandOutput].ok(
-            m.Infra.CommandOutput(
+        return r[m.Cli.CommandOutput].ok(
+            m.Cli.CommandOutput(
                 stdout=str(log_path),
                 stderr=stderr,
                 exit_code=return_code,

@@ -74,7 +74,7 @@ def patch_gate_run(
         _cwd: Path,
         timeout: int = 120,
         env: t.StrMapping | None = None,
-    ) -> m.Infra.CommandOutput:
+    ) -> m.Cli.CommandOutput:
         del _self, _cmd, _cwd, timeout, env
         return fixed_result
 
@@ -84,7 +84,7 @@ def patch_gate_run(
 def patch_gate_run_sequence(
     monkeypatch: pytest.MonkeyPatch,
     gate_class: GatePatchClass,
-    outputs: Sequence[m.Infra.CommandOutput],
+    outputs: Sequence[m.Cli.CommandOutput],
 ) -> None:
     """Patch gate._run() with a fixed sequence of CommandOutput values."""
     index = {"value": 0}
@@ -95,7 +95,7 @@ def patch_gate_run_sequence(
         _cwd: Path,
         timeout: int = 120,
         env: t.StrMapping | None = None,
-    ) -> m.Infra.CommandOutput:
+    ) -> m.Cli.CommandOutput:
         del _self, _cmd, _cwd, timeout, env
         current = index["value"]
         index["value"] = current + 1
@@ -133,8 +133,8 @@ def run_gate_check(
 
 
 def create_fake_run_raw(
-    result: r[m.Infra.CommandOutput] | str,
-) -> Callable[[t.StrSequence], r[m.Infra.CommandOutput]]:
+    result: r[m.Cli.CommandOutput] | str,
+) -> Callable[[t.StrSequence], r[m.Cli.CommandOutput]]:
     """Factory for _fake_run_raw that handles both success and failure.
 
     Single Responsibility: Encapsulate subprocess.run_raw mock creation.
@@ -148,9 +148,9 @@ def create_fake_run_raw(
     def _fake_run_raw(
         _cmd: t.StrSequence,
         **_kw: t.Scalar,
-    ) -> r[m.Infra.CommandOutput]:
+    ) -> r[m.Cli.CommandOutput]:
         if isinstance(result, str):
-            return r[m.Infra.CommandOutput].fail(result)
+            return r[m.Cli.CommandOutput].fail(result)
         return result
 
     return _fake_run_raw

@@ -59,25 +59,6 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
-    class CommandOutput(Protocol):
-        """Minimal command execution output contract."""
-
-        @property
-        def exit_code(self) -> int:
-            """Return the command exit code."""
-            ...
-
-        @property
-        def stderr(self) -> str:
-            """Return the command standard error."""
-            ...
-
-        @property
-        def stdout(self) -> str:
-            """Return the command standard output."""
-            ...
-
-    @runtime_checkable
     class Validator(Protocol):
         """Contract for validation services."""
 
@@ -146,61 +127,6 @@ class FlextInfraProtocolsBase(Protocol):
 
         def read_plain(self, path: Path) -> r[t.Infra.ContainerDict]:
             """Read and parse a TOML file as a plain dict with r error handling."""
-            ...
-
-    @runtime_checkable
-    class CommandRunner(Protocol):
-        """Contract for command execution services."""
-
-        def run(
-            self,
-            cmd: t.StrSequence,
-            cwd: Path | None = None,
-            timeout: int | None = None,
-            env: t.StrMapping | None = None,
-        ) -> r[m.Infra.CommandOutput]:
-            """Execute a command and return output."""
-            ...
-
-        def capture(
-            self,
-            cmd: t.StrSequence,
-            cwd: Path | None = None,
-            timeout: int | None = None,
-            env: t.StrMapping | None = None,
-        ) -> r[str]:
-            """Execute a command and return captured stdout."""
-            ...
-
-        def run_raw(
-            self,
-            cmd: t.StrSequence,
-            cwd: Path | None = None,
-            timeout: int | None = None,
-            env: t.StrMapping | None = None,
-        ) -> r[m.Infra.CommandOutput]:
-            """Execute a command and return raw output, including non-zero exit codes."""
-            ...
-
-        def run_checked(
-            self,
-            cmd: t.StrSequence,
-            cwd: Path | None = None,
-            timeout: int | None = None,
-            env: t.StrMapping | None = None,
-        ) -> r[bool]:
-            """Execute a command and return success/failure status."""
-            ...
-
-        def run_to_file(
-            self,
-            cmd: t.StrSequence,
-            output_file: Path,
-            cwd: Path | None = None,
-            timeout: int | None = None,
-            env: t.StrMapping | None = None,
-        ) -> r[int]:
-            """Execute a command and write combined output to file."""
             ...
 
     @runtime_checkable
@@ -348,7 +274,7 @@ class FlextInfraProtocolsBase(Protocol):
             cwd: Path | None = None,
             timeout: int | None = None,
             env: t.StrMapping | None = None,
-        ) -> r[m.Infra.CommandOutput]:
+        ) -> r[m.Cli.CommandOutput]:
             """Run command and return raw output."""
             ...
 
@@ -400,7 +326,7 @@ class FlextInfraProtocolsBase(Protocol):
             *,
             fail_fast: bool = False,
             make_args: t.StrSequence = (),
-        ) -> r[Sequence[m.Infra.CommandOutput]]:
+        ) -> r[Sequence[m.Cli.CommandOutput]]:
             """Execute one make verb across multiple projects."""
             ...
 

@@ -134,10 +134,10 @@ class TestWorkspaceCheckerRunMarkdown:
             cwd: Path,
             timeout: int = 120,
             env: t.StrMapping | None = None,
-        ) -> m.Infra.CommandOutput:
+        ) -> m.Cli.CommandOutput:
             del _self, cwd, timeout, env
             captured_args.append(cmd)
-            return m.Infra.CommandOutput(stdout="", stderr="", exit_code=0)
+            return m.Cli.CommandOutput(stdout="", stderr="", exit_code=0)
 
         monkeypatch.setattr(FlextInfraMarkdownGate, "_run", _fake_run)
         _ = run_gate_check(FlextInfraMarkdownGate, tmp_path, proj_dir)

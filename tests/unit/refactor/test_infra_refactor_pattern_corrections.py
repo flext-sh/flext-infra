@@ -14,7 +14,7 @@ from flext_infra import (
 def _apply_rule(
     tmp_path: Path,
     source: str,
-    config: dict[str, t.Infra.InfraValue],
+    config: t.Infra.InfraMapping,
 ) -> tuple[str, list[str]]:
     file_path = tmp_path / "src" / "demo.py"
     file_path.parent.mkdir(parents=True, exist_ok=True)

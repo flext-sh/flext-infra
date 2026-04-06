@@ -20,7 +20,7 @@ class FlextInfraUtilitiesDocsBuild:
     def docs_run_mkdocs(
         scope: m.Infra.DocScope,
         *,
-        runner: p.Infra.CommandRunner,
+        runner: p.Cli.CommandRunner,
     ) -> m.Infra.DocsPhaseReport:
         """Run MkDocs directly through the MkDocs Python API for one scope."""
         config = scope.path / "mkdocs.yml"
