@@ -21,7 +21,7 @@ from flext_infra import c, m, r, s, t
 class FlextInfraBaseMkTemplateEngine(s[str]):
     """Render base.mk templates with configuration context."""
 
-    _environment: Environment = PrivateAttr(
+    _environment: t.Infra.JinjaEnvironment = PrivateAttr(
         default_factory=lambda: FlextInfraBaseMkTemplateEngine._build_environment(),
     )
 
@@ -31,7 +31,7 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
         return Path(__file__).resolve().parent.parent / "templates"
 
     @staticmethod
-    def _build_environment() -> Environment:
+    def _build_environment() -> t.Infra.JinjaEnvironment:
         """Create the shared Jinja environment for base.mk rendering."""
         return Environment(
             loader=FileSystemLoader(

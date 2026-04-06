@@ -12,7 +12,6 @@ from tomlkit.toml_document import TOMLDocument
 from flext_core import r
 from flext_infra import FlextInfraExtraPathsManager, extra_paths as deps_extra_paths
 
-
 _TEST_WORKSPACE_ROOT = Path(__file__).resolve().parent
 
 

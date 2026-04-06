@@ -16,6 +16,7 @@ from flext_infra import (
     u,
 )
 
+
 class _PostCheckGate:
     """Inline post-check gate for class nesting validation."""
 
@@ -239,7 +240,7 @@ class FlextInfraClassNestingRefactorRule:
         violations: MutableSequence[str] = []
         policy_by_family = self._policy_by_family()
         entries: MutableSequence[t.StrMapping] = []
-        for key in _SECTION_KEYS:
+        for key in c.Infra.ClassNesting.SECTION_KEYS:
             entries.extend(
                 self._filter_entries(u.Infra.entry_list(cfg.get(key)), fp, thr)
             )
@@ -294,7 +295,7 @@ class FlextInfraClassNestingRefactorRule:
         ct = loaded.get("confidence_threshold")
         if isinstance(ct, str):
             config["confidence_threshold"] = ct
-        for key in _SECTION_KEYS:
+        for key in c.Infra.ClassNesting.SECTION_KEYS:
             raw = loaded.get(key)
             if isinstance(raw, list):
                 try:
@@ -323,7 +324,7 @@ class FlextInfraClassNestingRefactorRule:
             if not isinstance(cf, str):
                 continue
             entry: t.MutableStrMapping = {c.Infra.ReportKeys.CURRENT_FILE: cf}
-            for k in _COERCE_KEYS:
+            for k in c.Infra.ClassNesting.COERCE_KEYS:
                 v = typed.get(k)
                 if isinstance(v, str):
                     entry[k] = v

@@ -20,6 +20,7 @@ from flext_infra import (
     main as infra_main,
 )
 
+
 def _cli(*args: str) -> int:
     """Run validate routing through the canonical infra CLI."""
     return infra_main(["validate", *args])

@@ -45,7 +45,9 @@ class FlextInfraWorkspaceMakefileGenerator:
     @property
     def template_path(self) -> Path:
         """Path to the Makefile Jinja2 template used for workspace generation."""
-        return Path(__file__).parent.parent / "templates" / c.Infra.Makefile.TEMPLATE_NAME
+        return (
+            Path(__file__).parent.parent / "templates" / c.Infra.Makefile.TEMPLATE_NAME
+        )
 
     def generate(self, workspace_root: Path) -> r[bool]:
         """Regenerate the workspace root Makefile from the stored template.
@@ -152,7 +154,9 @@ class FlextInfraWorkspaceMakefileGenerator:
         """Render the workspace Makefile template with canonical make metadata."""
         try:
             environment = Environment(
-                loader=FileSystemLoader(str(Path(__file__).parent.parent / "templates")),
+                loader=FileSystemLoader(
+                    str(Path(__file__).parent.parent / "templates")
+                ),
                 trim_blocks=False,
                 lstrip_blocks=False,
                 keep_trailing_newline=True,
@@ -160,7 +164,9 @@ class FlextInfraWorkspaceMakefileGenerator:
                 autoescape=select_autoescape(),
             )
             if template_text is None:
-                template_obj: Template = environment.get_template(c.Infra.Makefile.TEMPLATE_NAME)
+                template_obj: Template = environment.get_template(
+                    c.Infra.Makefile.TEMPLATE_NAME
+                )
             else:
                 template_obj = environment.from_string(template_text)
             rendered = self._render_template_content(

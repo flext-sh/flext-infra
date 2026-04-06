@@ -47,8 +47,7 @@ class FlextInfraUtilitiesCodegenGeneration:
         if mod.startswith(".") and mod != ".":
             parent_mod, _, child_name = mod.rpartition(".")
             return (
-                f"{indent}from {parent_mod or '.'}"
-                f" import {child_name} as {export_name}"
+                f"{indent}from {parent_mod or '.'} import {child_name} as {export_name}"
             )
         return f"{indent}import {mod} as {export_name}"
 
@@ -68,7 +67,9 @@ class FlextInfraUtilitiesCodegenGeneration:
             )
         return (
             FlextInfraUtilitiesCodegenGeneration.format_module_alias_import(
-                indent, mod, export_name,
+                indent,
+                mod,
+                export_name,
             ),
         )
 
@@ -92,7 +93,9 @@ class FlextInfraUtilitiesCodegenGeneration:
     ) -> MutableMapping[str, MutableSequence[t.Infra.StrPair]]:
         """Collapse sub-module imports into parent package."""
         sorted_children: MutableSequence[str] = sorted(
-            set(child_packages or []), key=len, reverse=True,
+            set(child_packages or []),
+            key=len,
+            reverse=True,
         )
         collapsed: MutableMapping[str, MutableSequence[t.Infra.StrPair]] = defaultdict(
             list,
@@ -156,16 +159,23 @@ class FlextInfraUtilitiesCodegenGeneration:
             return
 
         if mod in children or (
-            FlextInfraUtilitiesCodegenGeneration.is_local_module(mod, root_name) and ".fixtures." not in mod
+            FlextInfraUtilitiesCodegenGeneration.is_local_module(mod, root_name)
+            and ".fixtures." not in mod
         ):
             for export_name in deduped_aliases:
                 lines.extend(
                     FlextInfraUtilitiesCodegenGeneration.format_type_checking_module_alias_import(
-                        "    ", mod, export_name,
+                        "    ",
+                        mod,
+                        export_name,
                     ),
                 )
             if deduped_parts:
-                lines.extend(FlextInfraUtilitiesCodegenGeneration.format_import("    ", mod, deduped_parts))
+                lines.extend(
+                    FlextInfraUtilitiesCodegenGeneration.format_import(
+                        "    ", mod, deduped_parts
+                    )
+                )
             return
 
         for export_name in deduped_aliases:
@@ -186,9 +196,9 @@ class FlextInfraUtilitiesCodegenGeneration:
             if exp not in lazy_filtered:
                 continue
             mod, attr = lazy_filtered[exp]
-            if (
-                mod in child_aliases and not attr
-            ) or not mod.startswith(child_prefixes):
+            if (mod in child_aliases and not attr) or not mod.startswith(
+                child_prefixes
+            ):
                 entries.append((exp, mod, attr))
         return entries
 

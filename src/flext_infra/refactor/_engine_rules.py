@@ -32,6 +32,7 @@ from flext_infra import (
     u,
 )
 
+
 class FlextInfraRefactorMRORedundancyChecker(FlextInfraGenericTransformerRule):
     """Detect and fix nested classes inheriting from their parent namespace."""
 

@@ -29,6 +29,7 @@ class FlextInfraDocValidator(s[bool]):
         ),
     ] = c.Infra.DEFAULT_DOCS_OUTPUT_DIR
 
+    @override
     def validate(
         self,
         value: Path,

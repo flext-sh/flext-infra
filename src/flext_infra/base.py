@@ -26,6 +26,7 @@ from pydantic.config import JsonDict
 
 from flext_cli.settings import FlextCliSettings
 from flext_core.models import FlextModels
+from flext_core.protocols import FlextProtocols
 from flext_core.result import FlextResult as r
 from flext_core.service import FlextService as core_service_base
 from flext_core.settings import FlextSettings
@@ -38,6 +39,7 @@ TDomainResult = TypeVar("TDomainResult", bound=FlextInfraTypesBase.DomainOutput)
 def _apply_option_json_schema_extra(schema: JsonDict) -> None:
     """Inject Typer dual-flag metadata without importing the facade root."""
     schema["typer_param_decls"] = list(FlextInfraConstantsBase.Cli.APPLY_OPTION_DECLS)
+
 
 # ---------------------------------------------------------------------------
 # Thin service base (~40 LOC) -- mirrors FlextCliServiceBase
@@ -56,13 +58,13 @@ class FlextInfraServiceBase(
 
     @property
     @override
-    def settings(self) -> FlextCliSettings:
+    def settings(self) -> FlextProtocols.Settings:
         """Return the typed CLI settings namespace."""
         return FlextSettings.get_global().get_namespace("cli", FlextCliSettings)
 
     @classmethod
     @override
-    def _runtime_bootstrap_options(cls) -> FlextModels.RuntimeBootstrapOptions:
+    def _runtime_bootstrap_options(cls) -> FlextProtocols.RuntimeBootstrapOptions:
         """Bootstrap service runtime using the shared CLI settings namespace."""
         return FlextModels.RuntimeBootstrapOptions(config_type=FlextCliSettings)
 

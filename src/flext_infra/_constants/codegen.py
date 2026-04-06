@@ -96,7 +96,11 @@ class FlextInfraCodegenConstants:
     })
     "Exports exclusive to flext-infra that should not bubble up."
     ROOT_WRAPPER_SEGMENTS: Final[frozenset[str]] = frozenset({
-        "docs", "src", "tests", "examples", "scripts",
+        "docs",
+        "src",
+        "tests",
+        "examples",
+        "scripts",
     })
     "Directory segments recognized as project-root wrapper paths."
     CORE_RUNTIME_ALIAS_TARGETS: Final[dict[str, tuple[str, str]]] = {
@@ -124,9 +128,21 @@ class FlextInfraCodegenConstants:
         MIN_DIRECT_REFERENCE_CHAIN: Final[int] = 2
         "Minimum chain length for FlextXxxConstants.ATTR references."
         TRIVIAL_VALUES: Final[frozenset[str]] = frozenset({
-            "True", "False", "None",
-            "0", "1", "2", "3", "4", "5", "-1",
-            '""', "''", "[]", "{}", "()",
+            "True",
+            "False",
+            "None",
+            "0",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "-1",
+            '""',
+            "''",
+            "[]",
+            "{}",
+            "()",
         })
         "Literal values considered trivial for constant detection heuristics."
         FINAL_DECL_RE: Final[re.Pattern[str]] = re.compile(
@@ -159,7 +175,17 @@ class FlextInfraCodegenConstants:
         )
         "Regex: ``from <pkg> import FlextXxxConstants`` in import lines."
         CANONICAL_ALIASES: Final[frozenset[str]] = frozenset({
-            "c", "m", "p", "t", "u", "r", "e", "s", "d", "h", "x",
+            "c",
+            "m",
+            "p",
+            "t",
+            "u",
+            "r",
+            "e",
+            "s",
+            "d",
+            "h",
+            "x",
         })
         "Canonical single-letter runtime aliases."
 

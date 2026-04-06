@@ -45,7 +45,9 @@ class FlextInfraUtilitiesCodegenExecution:
             payload.get("projects")
         )
         if projects and all("total" in item for item in projects):
-            return sum(FlextInfraUtilitiesBase.nested_int(item, "total") for item in projects)
+            return sum(
+                FlextInfraUtilitiesBase.nested_int(item, "total") for item in projects
+            )
         return -1
 
     @staticmethod
@@ -57,7 +59,9 @@ class FlextInfraUtilitiesCodegenExecution:
 
     @staticmethod
     def extract_projects_total(payload: Mapping[str, t.Infra.InfraValue]) -> int:
-        value = FlextInfraUtilitiesBase.normalize_str_mapping(payload.get("totals")).get(c.Infra.ReportKeys.PROJECTS)
+        value = FlextInfraUtilitiesBase.normalize_str_mapping(
+            payload.get("totals")
+        ).get(c.Infra.ReportKeys.PROJECTS)
         if value is not None:
             return u.to_int(value)
         projects = payload.get("projects")
@@ -67,7 +71,9 @@ class FlextInfraUtilitiesCodegenExecution:
     def _extract_totals_field(
         payload: Mapping[str, t.Infra.InfraValue], key: str
     ) -> int:
-        return FlextInfraUtilitiesBase.nested_int(FlextInfraUtilitiesBase.normalize_str_mapping(payload.get("totals")), key)
+        return FlextInfraUtilitiesBase.nested_int(
+            FlextInfraUtilitiesBase.normalize_str_mapping(payload.get("totals")), key
+        )
 
     # ── Metrics ──────────────────────────────────────────────────────
 
@@ -149,8 +155,12 @@ class FlextInfraUtilitiesCodegenExecution:
             "mro_failures": 0,
             "layer_violations": 0,
             "cross_project_reference_violations": 0,
-            "import_parse_violations": FlextInfraUtilitiesBase.nested_int(import_scan, "invalid_import_from_count"),
-            "import_parse_errors": FlextInfraUtilitiesBase.nested_int(import_scan, "parse_error_count"),
+            "import_parse_violations": FlextInfraUtilitiesBase.nested_int(
+                import_scan, "invalid_import_from_count"
+            ),
+            "import_parse_errors": FlextInfraUtilitiesBase.nested_int(
+                import_scan, "parse_error_count"
+            ),
             "modified_python_files": modified_value,
         }
 
@@ -336,7 +346,9 @@ class FlextInfraUtilitiesCodegenExecution:
         vt = FlextInfraUtilitiesBase.nested_int(am, "total_violations")
         vd = FlextInfraUtilitiesBase.nested_int(im, "violations_delta")
         mro = FlextInfraUtilitiesBase.nested_int(am, "mro_failures")
-        xref = FlextInfraUtilitiesBase.nested_int(am, "cross_project_reference_violations")
+        xref = FlextInfraUtilitiesBase.nested_int(
+            am, "cross_project_reference_violations"
+        )
         ip = FlextInfraUtilitiesBase.nested_int(am, "import_parse_violations")
         ipe = FlextInfraUtilitiesBase.nested_int(am, "import_parse_errors")
         lv = FlextInfraUtilitiesBase.nested_int(am, "layer_violations")
@@ -419,7 +431,8 @@ class FlextInfraUtilitiesCodegenExecution:
             return "FAIL"
         if (
             FlextInfraUtilitiesBase.nested_int(improvement, "violations_increased") > 0
-            or FlextInfraUtilitiesBase.nested_int(improvement, "duplicates_increased") > 0
+            or FlextInfraUtilitiesBase.nested_int(improvement, "duplicates_increased")
+            > 0
         ):
             return "FAIL"
         return "CONDITIONAL_PASS"

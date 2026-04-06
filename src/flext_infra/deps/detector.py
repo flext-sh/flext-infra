@@ -22,7 +22,6 @@ class FlextInfraRuntimeDevDependencyDetector:
 
     log: p.Logger = FlextLogger.create_module_logger(__name__)
     reporting: p.Infra.ReportingService
-    json: p.Infra.JsonService
     deps: p.Infra.DepsService
     runner: p.Infra.RunnerService
 
@@ -31,7 +30,6 @@ class FlextInfraRuntimeDevDependencyDetector:
         super().__init__()
         infra_instance = u.Infra()
         self.reporting = infra_instance
-        self.json = infra_instance
         self.deps = FlextInfraDependencyDetectionService()
         self.runner = infra_instance
 

@@ -9,14 +9,34 @@ from __future__ import annotations
 import ast as _ast
 from collections.abc import Callable, Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path as _Path
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel
 
 from flext_core import FlextTypes
 
+if TYPE_CHECKING:
+    from jinja2 import Environment as _JinjaEnvironment, Template as _JinjaTemplate
+    from tomlkit import TOMLDocument as _TOMLDocument
+    from tomlkit.container import Container as _TOMLContainer
+    from tomlkit.items import Item as _TOMLItem, Table as _TOMLTable
+
 
 class FlextInfraTypesBase:
     """Base typings for flext-infra project."""
+
+    type JinjaEnvironment = _JinjaEnvironment
+    "Jinja2 template rendering environment."
+    type JinjaTemplate = _JinjaTemplate
+    "Jinja2 template object."
+    type TomlDocument = _TOMLDocument
+    "Tomlkit TOML document."
+    type TomlContainer = _TOMLContainer
+    "Tomlkit container (mutable TOML section)."
+    type TomlItem = _TOMLItem
+    "Tomlkit item (value or table)."
+    type TomlTable = _TOMLTable
+    "Tomlkit table."
 
     type Pair[LeftT, RightT] = tuple[LeftT, RightT]
     "Generic pair alias for two ordered values."

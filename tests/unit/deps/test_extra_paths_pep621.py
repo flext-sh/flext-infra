@@ -8,7 +8,6 @@ from flext_tests import tm
 
 from flext_infra import FlextInfraExtraPathsManager
 
-
 _TEST_WORKSPACE_ROOT = Path(__file__).resolve().parent
 
 

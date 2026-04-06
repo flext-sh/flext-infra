@@ -24,23 +24,25 @@ from flext_infra import (
     u,
 )
 
-_GATES: t.Infra.VariadicTuple[type[FlextInfraGate]] = (
-    FlextInfraRuffLintGate,
-    FlextInfraRuffFormatGate,
-    FlextInfraPyreflyGate,
-    FlextInfraMypyGate,
-    FlextInfraPyrightGate,
-    FlextInfraBanditGate,
-    FlextInfraMarkdownGate,
-    FlextInfraGoGate,
-)
-
 
 class FlextInfraGateRegistry:
     """Explicit gate registry mapping gate IDs to gate classes."""
 
+    GATE_CLASSES: t.Infra.VariadicTuple[type[FlextInfraGate]] = (
+        FlextInfraRuffLintGate,
+        FlextInfraRuffFormatGate,
+        FlextInfraPyreflyGate,
+        FlextInfraMypyGate,
+        FlextInfraPyrightGate,
+        FlextInfraBanditGate,
+        FlextInfraMarkdownGate,
+        FlextInfraGoGate,
+    )
+
     def __init__(self) -> None:
-        self._gates: Mapping[str, type[FlextInfraGate]] = {g.gate_id: g for g in _GATES}
+        self._gates: Mapping[str, type[FlextInfraGate]] = {
+            g.gate_id: g for g in self.GATE_CLASSES
+        }
 
     def get(self, gate_id: str) -> type[FlextInfraGate] | None:
         return self._gates.get(gate_id)

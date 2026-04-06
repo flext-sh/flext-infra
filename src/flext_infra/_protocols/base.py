@@ -352,7 +352,6 @@ class FlextInfraProtocolsBase(Protocol):
         """Protocol for detector runtime service dependencies."""
 
         reporting: FlextInfraProtocolsBase.ReportingService
-        json: FlextInfraProtocolsBase.JsonService
         deps: FlextInfraProtocolsBase.DepsService
         runner: FlextInfraProtocolsBase.RunnerService
         log: FlextProtocols.Logger
@@ -438,4 +437,39 @@ class FlextInfraProtocolsBase(Protocol):
             is_root: bool = False,
         ) -> t.StrSequence:
             """Resolve dependency search paths for one TOML document."""
+            ...
+
+    class CodegenFixer(Protocol):
+        """Protocol for codegen namespace fixer services."""
+
+        def execute(self) -> r[bool]:
+            """Execute codegen fix pass."""
+            ...
+
+    class PyprojectModernizer(Protocol):
+        """Protocol for pyproject.toml modernization services."""
+
+        def execute(self) -> r[bool]:
+            """Execute modernization pass."""
+            ...
+
+    class GithubService(Protocol):
+        """Protocol for GitHub operations services."""
+
+        def execute(self) -> r[bool]:
+            """Execute GitHub operations."""
+            ...
+
+    class RefactorEngine(Protocol):
+        """Protocol for rope-based refactor engine services."""
+
+        def execute(self) -> r[bool]:
+            """Execute refactoring pass."""
+            ...
+
+    class ReleaseOrchestrator(Protocol):
+        """Protocol for release orchestration services."""
+
+        def execute(self) -> r[bool]:
+            """Execute release orchestration."""
             ...

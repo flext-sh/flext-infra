@@ -162,9 +162,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         patterns: Sequence[re.Pattern[str]],
     ) -> tuple[Sequence[t.Infra.StrIntPair], ...]:
         """Scan *source* for multiple regex patterns."""
-        results: list[MutableSequence[t.Infra.StrIntPair]] = [
-            [] for _ in patterns
-        ]
+        results: list[MutableSequence[t.Infra.StrIntPair]] = [[] for _ in patterns]
         for line_num, line in enumerate(source.splitlines(), 1):
             for i, pat in enumerate(patterns):
                 for match in pat.finditer(line):
@@ -232,8 +230,12 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         all_defs: defaultdict[str, MutableSequence[m.Infra.ConstantDefinition]] = (
             defaultdict(list)
         )
-        for py_file in FlextInfraUtilitiesCodegenConstantDetection.iter_py_files(root_path, exclude_packages or frozenset()):
-            proj = FlextInfraUtilitiesCodegenConstantDetection.infer_project(py_file, root_path)
+        for py_file in FlextInfraUtilitiesCodegenConstantDetection.iter_py_files(
+            root_path, exclude_packages or frozenset()
+        ):
+            proj = FlextInfraUtilitiesCodegenConstantDetection.infer_project(
+                py_file, root_path
+            )
             defs = FlextInfraUtilitiesCodegenConstantDetection.extract_constant_definitions(
                 py_file,
                 proj,
@@ -258,7 +260,10 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         source = FlextInfraUtilitiesCodegenConstantDetection.read_source_safe(py_file)
         if source is None:
             return ([], [], [])
-        direct, alias = FlextInfraUtilitiesCodegenConstantDetection.scan_patterns(source, [c.Infra.Detection.DIRECT_USAGE_RE, c.Infra.Detection.ALIAS_USAGE_RE])
+        direct, alias = FlextInfraUtilitiesCodegenConstantDetection.scan_patterns(
+            source,
+            [c.Infra.Detection.DIRECT_USAGE_RE, c.Infra.Detection.ALIAS_USAGE_RE],
+        )
         all_refs = [*direct, *alias] if collect_all_refs else []
         return (direct, alias, all_refs)
 
@@ -271,7 +276,9 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         usage_map: defaultdict[str, MutableSequence[t.Infra.StrIntPair]] = defaultdict(
             list
         )
-        for py_file in FlextInfraUtilitiesCodegenConstantDetection.iter_py_files(root_path, exclude_packages or frozenset()):
+        for py_file in FlextInfraUtilitiesCodegenConstantDetection.iter_py_files(
+            root_path, exclude_packages or frozenset()
+        ):
             _, _, all_refs = (
                 FlextInfraUtilitiesCodegenConstantDetection.scan_constant_usages(
                     py_file,
@@ -333,9 +340,12 @@ class FlextInfraUtilitiesCodegenConstantAnalysis:
             return {}
 
         attrs: MutableMapping[str, m.Infra.ConstantDefinition] = {}
-        for attr_name, attr_value, klass_qualname, klass_module in FlextInfraUtilitiesCodegenConstantDetection.walk_mro_attrs(
-            cls_obj
-        ):
+        for (
+            attr_name,
+            attr_value,
+            klass_qualname,
+            klass_module,
+        ) in FlextInfraUtilitiesCodegenConstantDetection.walk_mro_attrs(cls_obj):
             annotations = getattr(
                 next(
                     (k for k in cls_obj.__mro__ if attr_name in dict(vars(k))),
@@ -374,11 +384,17 @@ class FlextInfraUtilitiesCodegenConstantAnalysis:
             if prefix
             else r"\bc\.([A-Za-z_]\w*)",
         )
-        for py_file in FlextInfraUtilitiesCodegenConstantDetection.iter_py_files(root_path, exclude_patterns, max_files=max_files):
-            source = FlextInfraUtilitiesCodegenConstantDetection.read_source_safe(py_file)
+        for py_file in FlextInfraUtilitiesCodegenConstantDetection.iter_py_files(
+            root_path, exclude_patterns, max_files=max_files
+        ):
+            source = FlextInfraUtilitiesCodegenConstantDetection.read_source_safe(
+                py_file
+            )
             if source is None:
                 continue
-            direct, alias = FlextInfraUtilitiesCodegenConstantDetection.scan_patterns(source, [direct_pat, alias_pat])
+            direct, alias = FlextInfraUtilitiesCodegenConstantDetection.scan_patterns(
+                source, [direct_pat, alias_pat]
+            )
             for refs in (direct, alias):
                 for attr_name, line_num in refs:
                     used_attrs.add(attr_name)
@@ -708,7 +724,14 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
             if isinstance(a, type) and a is not type
         )
         for cls, prefix in targets:
-            for name, value, _, _ in FlextInfraUtilitiesCodegenConstantDetection.walk_mro_attrs(cls, skip_types=True):
+            for (
+                name,
+                value,
+                _,
+                _,
+            ) in FlextInfraUtilitiesCodegenConstantDetection.walk_mro_attrs(
+                cls, skip_types=True
+            ):
                 raw = repr(value)[:200]
                 if not raw:
                     continue

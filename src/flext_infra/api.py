@@ -20,15 +20,7 @@ from flext_core import r
 from flext_infra.base import FlextInfraServiceBase
 
 if TYPE_CHECKING:
-    from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
-    from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-    from flext_infra.codegen.fixer import FlextInfraCodegenFixer
-    from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
-    from flext_infra.github.service import FlextInfraGithubService
-    from flext_infra.refactor.engine import FlextInfraRefactorEngine
-    from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
-    from flext_infra.validate.scanner import FlextInfraTextPatternScanner
-    from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
+    from flext_infra import p
 
 
 class FlextInfra(FlextInfraServiceBase[bool]):
@@ -73,52 +65,64 @@ class FlextInfra(FlextInfraServiceBase[bool]):
     # ------------------------------------------------------------------
 
     @staticmethod
-    def basemk() -> type[FlextInfraBaseMkGenerator]:
+    def basemk() -> type[p.Infra.Generator]:
         """Return the base.mk template generator class."""
-        return FlextInfra._load("flext_infra.basemk.generator", "FlextInfraBaseMkGenerator")
+        return FlextInfra._load(
+            "flext_infra.basemk.generator", "FlextInfraBaseMkGenerator"
+        )
 
     @staticmethod
-    def check() -> type[FlextInfraWorkspaceChecker]:
+    def check() -> type[p.Infra.Checker]:
         """Return the workspace quality-gate checker class."""
-        return FlextInfra._load("flext_infra.check.workspace_check", "FlextInfraWorkspaceChecker")
+        return FlextInfra._load(
+            "flext_infra.check.workspace_check", "FlextInfraWorkspaceChecker"
+        )
 
     @staticmethod
-    def codegen() -> type[FlextInfraCodegenFixer]:
+    def codegen() -> type[p.Infra.CodegenFixer]:
         """Return the codegen fixer class."""
         return FlextInfra._load("flext_infra.codegen.fixer", "FlextInfraCodegenFixer")
 
     @staticmethod
-    def deps() -> type[FlextInfraPyprojectModernizer]:
+    def deps() -> type[p.Infra.PyprojectModernizer]:
         """Return the pyproject.toml modernizer class."""
-        return FlextInfra._load("flext_infra.deps.modernizer", "FlextInfraPyprojectModernizer")
+        return FlextInfra._load(
+            "flext_infra.deps.modernizer", "FlextInfraPyprojectModernizer"
+        )
 
     @staticmethod
-    def github() -> type[FlextInfraGithubService]:
+    def github() -> type[p.Infra.GithubService]:
         """Return the GitHub operations service class."""
         return FlextInfra._load("flext_infra.github.service", "FlextInfraGithubService")
 
     @staticmethod
-    def refactor() -> type[FlextInfraRefactorEngine]:
+    def refactor() -> type[p.Infra.RefactorEngine]:
         """Return the rope-based refactor engine class."""
-        return FlextInfra._load("flext_infra.refactor.engine", "FlextInfraRefactorEngine")
-
-    @staticmethod
-    def release() -> type[FlextInfraReleaseOrchestrator]:
-        """Return the release orchestrator class."""
         return FlextInfra._load(
-            "flext_infra.release.orchestrator", "FlextInfraReleaseOrchestrator"
+            "flext_infra.refactor.engine", "FlextInfraRefactorEngine"
         )
 
     @staticmethod
-    def validate_scanner() -> type[FlextInfraTextPatternScanner]:
-        """Return the text-pattern validation scanner class."""
-        return FlextInfra._load("flext_infra.validate.scanner", "FlextInfraTextPatternScanner")
+    def release() -> type[p.Infra.ReleaseOrchestrator]:
+        """Return the release orchestrator class."""
+        return FlextInfra._load(
+            "flext_infra.release.orchestrator",
+            "FlextInfraReleaseOrchestrator",
+        )
 
     @staticmethod
-    def workspace() -> type[FlextInfraOrchestratorService]:
+    def validate_scanner() -> type[p.Infra.Scanner]:
+        """Return the text-pattern validation scanner class."""
+        return FlextInfra._load(
+            "flext_infra.validate.scanner", "FlextInfraTextPatternScanner"
+        )
+
+    @staticmethod
+    def workspace() -> type[p.Infra.Orchestrator]:
         """Return the workspace orchestrator service class."""
         return FlextInfra._load(
-            "flext_infra.workspace.orchestrator", "FlextInfraOrchestratorService"
+            "flext_infra.workspace.orchestrator",
+            "FlextInfraOrchestratorService",
         )
 
 

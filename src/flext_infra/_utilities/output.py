@@ -5,7 +5,6 @@ from __future__ import annotations
 import sys
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Final
 
 from flext_infra import (
     FlextInfraUtilitiesOutputReporting,
@@ -175,8 +174,6 @@ class FlextInfraUtilitiesOutput(FlextInfraUtilitiesOutputReporting):
 
 # Initialize default state
 FlextInfraUtilitiesOutput.setup()
-output: Final[type[FlextInfraUtilitiesOutput]] = FlextInfraUtilitiesOutput
 __all__ = [
     "FlextInfraUtilitiesOutput",
-    "output",
 ]

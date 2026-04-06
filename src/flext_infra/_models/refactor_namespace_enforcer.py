@@ -138,9 +138,9 @@ class FlextInfraNamespaceEnforcerModels:
         FlextModels.ArbitraryTypesModel,
     ):
         project_root: Annotated[str, Field(description="Project root path")]
-        facade_statuses: Sequence[
-            FlextInfraNamespaceEnforcerModels.FacadeStatus
-        ] = Field(default_factory=list, description="Facade status list")
+        facade_statuses: Sequence[FlextInfraNamespaceEnforcerModels.FacadeStatus] = (
+            Field(default_factory=list, description="Facade status list")
+        )
         loose_objects: Sequence[
             FlextInfraNamespaceEnforcerModels.LooseObjectViolation
         ] = Field(default_factory=list, description="Loose object violations")

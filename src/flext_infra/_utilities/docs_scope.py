@@ -249,28 +249,30 @@ class FlextInfraUtilitiesDocsScope:
                 enabled = docs_meta.get("enabled", True)
                 if isinstance(enabled, bool) and not enabled:
                     continue
-                projects.append(
-                    m.Infra.ProjectInfo.model_construct(
-                        path=entry,
-                        name=entry.name,
-                        stack="python/flext",
-                        has_tests=(entry / c.Infra.Directories.TESTS).is_dir(),
-                        has_src=(entry / c.Infra.Paths.DEFAULT_SRC_DIR).is_dir(),
-                        project_class=(
-                            FlextInfraUtilitiesDocsScope.classify_project_from_meta(
-                                entry.name,
-                                docs_meta,
-                            )
-                        ),
-                        package_name=(
-                            FlextInfraUtilitiesDocsScope.package_name_from_payload(
-                                entry,
-                                payload,
-                                docs_meta,
-                            )
-                        ),
-                    )
-                ),
+                (
+                    projects.append(
+                        m.Infra.ProjectInfo.model_construct(
+                            path=entry,
+                            name=entry.name,
+                            stack="python/flext",
+                            has_tests=(entry / c.Infra.Directories.TESTS).is_dir(),
+                            has_src=(entry / c.Infra.Paths.DEFAULT_SRC_DIR).is_dir(),
+                            project_class=(
+                                FlextInfraUtilitiesDocsScope.classify_project_from_meta(
+                                    entry.name,
+                                    docs_meta,
+                                )
+                            ),
+                            package_name=(
+                                FlextInfraUtilitiesDocsScope.package_name_from_payload(
+                                    entry,
+                                    payload,
+                                    docs_meta,
+                                )
+                            ),
+                        )
+                    ),
+                )
         except OSError as exc:
             return r[Sequence[m.Infra.ProjectInfo]].fail(
                 f"discovery failed: {exc}",
