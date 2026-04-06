@@ -34,10 +34,19 @@ if _t.TYPE_CHECKING:
     from flext_core.typings import FlextTypes as t
     from flext_core.utilities import FlextUtilities as u
 _LAZY_IMPORTS = {
-    "SampleModel": "tests.unit.io.test_infra_json_io",
-    "TestFlextInfraJsonService": "tests.unit.io.test_infra_json_io",
-    "TestShouldUseColor": "tests.unit.io.test_infra_terminal_detection",
-    "TestShouldUseUnicode": "tests.unit.io.test_infra_terminal_detection",
+    "SampleModel": ("tests.unit.io.test_infra_json_io", "SampleModel"),
+    "TestFlextInfraJsonService": (
+        "tests.unit.io.test_infra_json_io",
+        "TestFlextInfraJsonService",
+    ),
+    "TestShouldUseColor": (
+        "tests.unit.io.test_infra_terminal_detection",
+        "TestShouldUseColor",
+    ),
+    "TestShouldUseUnicode": (
+        "tests.unit.io.test_infra_terminal_detection",
+        "TestShouldUseUnicode",
+    ),
     "c": ("flext_core.constants", "FlextConstants"),
     "d": ("flext_core.decorators", "FlextDecorators"),
     "e": ("flext_core.exceptions", "FlextExceptions"),

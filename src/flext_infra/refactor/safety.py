@@ -1,26 +1,22 @@
-"""Safety management for refactor operations: checkpoints, rollback, and validation."""
+"""Safety management for refactor operations: backup, validate, rollback."""
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra import c, m, p, r, t, u
+from flext_infra import c, r, t, u
 
 
 class FlextInfraRefactorSafetyManager:
-    """Orchestrate pre-/post-transform safety: stash, validate, rollback."""
+    """Orchestrate pre-/post-transform safety: .bak backup, validate, rollback."""
 
     def __init__(
         self,
-        runner: p.Infra.SafetyRunner | None = None,
-        checkpoint_path: Path | None = None,
+        *,
         test_command: t.StrSequence | None = None,
     ) -> None:
-        """Initialize safety manager with runner, checkpoint path, and test command."""
-        self._runner: p.Infra.SafetyRunner | None = runner
-        self._checkpoint_path = checkpoint_path or Path(
-            ".sisyphus/refactor/safety-checkpoint.json",
-        )
+        """Initialize safety manager with test command."""
         self._test_command = test_command or [
             c.Infra.PYTHON,
             "-m",
@@ -28,12 +24,7 @@ class FlextInfraRefactorSafetyManager:
             "-q",
         ]
         self._emergency_stop_reason = ""
-        self._last_workspace_root: Path | None = None
-
-    def _run_checked(self, cmd: t.StrSequence, cwd: Path) -> r[bool]:
-        if self._runner is not None:
-            return self._runner.run_checked(cmd, cwd=cwd)
-        return u.Infra.run_checked(cmd, cwd=cwd)
+        self._bak_paths: Sequence[Path] = []
 
     def request_emergency_stop(self, reason: str) -> None:
         """Record an emergency stop reason for later inspection."""
@@ -49,83 +40,41 @@ class FlextInfraRefactorSafetyManager:
         *,
         label: str = "flext-refactor-pre-transform",
     ) -> r[str]:
-        """Stash uncommitted changes and return the stash reference."""
-        self._last_workspace_root = workspace_root
-        return u.Infra.create_checkpoint(workspace_root, label=label)
+        """Back up files in workspace root and return label as reference."""
+        _ = label
+        py_files = list(workspace_root.rglob(c.Infra.Extensions.PYTHON_GLOB))
+        self._bak_paths = u.Infra.backup_files(py_files)
+        return r[str].ok(str(workspace_root))
 
     def rollback(self, workspace_root: Path, stash_ref: str = "") -> r[bool]:
-        """Restore previously stashed state."""
-        self._last_workspace_root = workspace_root
-        return self._rollback_to_stash(workspace_root, stash_ref)
+        """Restore previously backed up files."""
+        _ = workspace_root, stash_ref
+        u.Infra.restore_files(self._bak_paths)
+        self._bak_paths = []
+        return r[bool].ok(True)
 
     def run_semantic_validation(self, workspace_root: Path) -> r[bool]:
         """Run import checks and tests against the workspace root."""
-        self._last_workspace_root = workspace_root
         if self._emergency_stop_reason:
             return r[bool].fail(
                 f"Emergency stop: {self._emergency_stop_reason}",
             )
-        if not u.Infra.git_is_repo(workspace_root):
-            out2: r[bool] = r[bool].ok(True)
-            return out2
-        import_cmd = [
-            c.Infra.PYTHON,
-            "-m",
-            c.Infra.PYTEST,
-            "--collect-only",
-            "-q",
-        ]
-        ic = self._run_checked(import_cmd, workspace_root)
+        ic = u.Infra.run_checked(
+            [c.Infra.PYTHON, "-m", c.Infra.PYTEST, "--collect-only", "-q"],
+            cwd=workspace_root,
+        )
         if ic.is_failure:
-            out3: r[bool] = r[bool].fail(ic.error or "import validation failed")
-            return out3
-        tc = self._run_checked(self._test_command, workspace_root)
+            return r[bool].fail(ic.error or "import validation failed")
+        tc = u.Infra.run_checked(self._test_command, cwd=workspace_root)
         if tc.is_failure:
-            out4: r[bool] = r[bool].fail(tc.error or "test validation failed")
-            return out4
-        out5: r[bool] = r[bool].ok(True)
-        return out5
-
-    def save_checkpoint_state(
-        self,
-        workspace_root: Path,
-        *,
-        status: str,
-        stash_ref: str,
-        processed_targets: t.StrSequence,
-    ) -> r[bool]:
-        """Build and persist a checkpoint from individual state components."""
-        checkpoint = m.Infra.Checkpoint(
-            workspace_root=str(workspace_root),
-            status=status,
-            stash_ref=stash_ref,
-            processed_targets=processed_targets,
-        )
-        payload = checkpoint.model_dump()
-        payload["updated_at"] = u.generate_iso_timestamp()
-        return u.Cli.json_write(
-            self._checkpoint_path,
-            payload,
-        )
+            return r[bool].fail(tc.error or "test validation failed")
+        return r[bool].ok(True)
 
     def clear_checkpoint(self) -> r[bool]:
-        """Remove the on-disk checkpoint file."""
-        if not self._checkpoint_path.exists():
-            out: r[bool] = r[bool].ok(True)
-            return out
-        try:
-            self._checkpoint_path.unlink()
-            out2: r[bool] = r[bool].ok(True)
-            return out2
-        except OSError as exc:
-            out3: r[bool] = r[bool].fail(str(exc))
-            return out3
-
-    def _rollback_to_stash(self, workspace_root: Path, stash_ref: str) -> r[bool]:
-        return u.Infra.rollback_to_checkpoint(
-            workspace_root,
-            stash_ref,
-        )
+        """Clean up backup files after successful validation."""
+        u.Infra.cleanup_backups(self._bak_paths)
+        self._bak_paths = []
+        return r[bool].ok(True)
 
 
 __all__ = ["FlextInfraRefactorSafetyManager"]

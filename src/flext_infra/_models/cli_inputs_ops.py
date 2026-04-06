@@ -19,26 +19,35 @@ class FlextInfraModelsCliInputsOps:
     """Namespaced CLI input models for github, refactor, release, validate, and workspace."""
 
     class GithubWorkflowSyncRequest(
-        FlextInfraModelsMixins.ReportPathMixin,
+        FlextInfraModelsMixins.WriteMixin,
         FlextModels.ContractModel,
     ):
+        report: Annotated[
+            str | None,
+            Field(default=None, description="Output report file"),
+        ] = None
         prune: Annotated[
             bool,
             Field(default=False, description="Remove unknown files"),
         ] = False
 
+        @property
+        def report_path(self) -> Path | None:
+            """Return the resolved report path when provided."""
+            return self.resolve_optional_path(self.report)
+
     class GithubWorkflowLintRequest(
-        FlextInfraModelsMixins.ReportPathMixin,
+        FlextInfraModelsMixins.ReadMixin,
         FlextModels.ContractModel,
     ):
         strict: Annotated[
             bool,
-            Field(default=False, description="Fail on strict mode warnings"),
+            Field(default=False, description="Strict mode"),
         ] = False
 
     class GithubPullRequestRequest(
         FlextInfraModelsMixins.GithubPullRequestFieldsMixin,
-        FlextInfraModelsMixins.CliInputBase,
+        FlextInfraModelsMixins.WriteMixin,
         FlextModels.ContractModel,
     ):
         repo_root: Annotated[str, Field(..., description="Repository root directory")]
@@ -51,14 +60,13 @@ class FlextInfraModelsCliInputsOps:
     class GithubPullRequestWorkspaceRequest(
         FlextInfraModelsMixins.GithubWorkspaceCliRequestMixin,
         FlextInfraModelsMixins.GithubPullRequestFieldsMixin,
-        FlextInfraModelsMixins.ProjectSelectionMixin,
-        FlextInfraModelsMixins.CliInputBase,
+        FlextInfraModelsMixins.WriteMixin,
         FlextModels.ContractModel,
     ):
         """Request for running a pull-request action across workspace projects."""
 
     class RefactorCentralizeInput(
-        FlextInfraModelsMixins.CliInputBase,
+        FlextInfraModelsMixins.WriteMixin,
         FlextModels.ContractModel,
     ):
         normalize_remaining: Annotated[
@@ -70,7 +78,7 @@ class FlextInfraModelsCliInputsOps:
         ] = False
 
     class RefactorMigrateMroInput(
-        FlextInfraModelsMixins.CliInputBase,
+        FlextInfraModelsMixins.WriteMixin,
         FlextModels.ContractModel,
     ):
         target: Annotated[
@@ -82,25 +90,19 @@ class FlextInfraModelsCliInputsOps:
         ] = "all"
 
     class RefactorNamespaceEnforceInput(
-        FlextInfraModelsMixins.ProjectSelectionMixin,
-        FlextInfraModelsMixins.CliInputBase,
+        FlextInfraModelsMixins.WriteMixin,
         FlextModels.ContractModel,
     ):
-        diff: Annotated[
-            bool,
-            Field(default=False, description="Show diff without applying"),
-        ] = False
+        """CLI input for namespace enforcement."""
 
     class RefactorMigrateRuntimeAliasImportsInput(
         FlextInfraModelsMixins.AliasSelectionMixin,
-        FlextInfraModelsMixins.ProjectSelectionMixin,
-        FlextInfraModelsMixins.CliInputBase,
         FlextModels.ContractModel,
     ):
         """CLI input for runtime alias migration."""
 
     class RefactorUltraworkModelsInput(
-        FlextInfraModelsMixins.CliInputBase,
+        FlextInfraModelsMixins.WriteMixin,
         FlextModels.ContractModel,
     ):
         normalize_remaining: Annotated[
@@ -112,7 +114,7 @@ class FlextInfraModelsCliInputsOps:
         ] = False
 
     class RefactorCensusInput(
-        FlextInfraModelsMixins.JsonOutputPathMixin,
+        FlextInfraModelsMixins.ReadMixin,
         FlextModels.ContractModel,
     ):
         family: Annotated[
@@ -124,8 +126,6 @@ class FlextInfraModelsCliInputsOps:
         FlextInfraModelsMixins.ReleaseVersionTagMixin,
         FlextInfraModelsMixins.ReleaseAutomationMixin,
         FlextInfraModelsMixins.ReleasePhaseMixin,
-        FlextInfraModelsMixins.ProjectSelectionMixin,
-        FlextInfraModelsMixins.CliInputBase,
         FlextModels.ContractModel,
     ):
         bump: Annotated[
@@ -150,19 +150,19 @@ class FlextInfraModelsCliInputsOps:
         ] = 1
 
     class ValidateBaseMkInput(
-        FlextInfraModelsMixins.CliInputBase,
+        FlextInfraModelsMixins.WriteMixin,
         FlextModels.ContractModel,
     ):
         """CLI input for basemk-validate."""
 
     class ValidateInventoryInput(
-        FlextInfraModelsMixins.OutputDirPathMixin,
+        FlextInfraModelsMixins.ReadMixin,
         FlextModels.ContractModel,
     ):
         """CLI input for inventory."""
 
     class ValidatePytestDiagInput(
-        FlextInfraModelsMixins.CliInputBase,
+        FlextInfraModelsMixins.ReadMixin,
         FlextModels.ContractModel,
     ):
         """CLI input for pytest-diag."""
@@ -201,7 +201,7 @@ class FlextInfraModelsCliInputsOps:
             return Path(self.log).resolve()
 
     class ValidateScanInput(
-        FlextInfraModelsMixins.CliInputBase,
+        FlextInfraModelsMixins.ReadMixin,
         FlextModels.ContractModel,
     ):
         """CLI input for scan."""
@@ -234,7 +234,7 @@ class FlextInfraModelsCliInputsOps:
             return list(self.exclude or ())
 
     class ValidateSkillValidateInput(
-        FlextInfraModelsMixins.CliInputBase,
+        FlextInfraModelsMixins.ReadMixin,
         FlextModels.ContractModel,
     ):
         """CLI input for skill-validate."""
@@ -249,8 +249,7 @@ class FlextInfraModelsCliInputsOps:
         ] = c.Infra.Modes.BASELINE
 
     class ValidateStubValidateInput(
-        FlextInfraModelsMixins.ProjectSelectionMixin,
-        FlextInfraModelsMixins.CliInputBase,
+        FlextInfraModelsMixins.ReadMixin,
         FlextModels.ContractModel,
     ):
         """CLI input for stub-validate."""
@@ -269,40 +268,30 @@ class FlextInfraModelsCliInputsOps:
             return [self.workspace_path / name for name in names]
 
     class WorkspaceDetectInput(
-        FlextInfraModelsMixins.CliInputBase,
+        FlextInfraModelsMixins.WriteMixin,
         FlextModels.ContractModel,
     ):
         """CLI input for workspace detection."""
 
     class WorkspaceSyncInput(
         FlextInfraModelsMixins.CanonicalRootMixin,
-        FlextInfraModelsMixins.CliInputBase,
         FlextModels.ContractModel,
     ):
         """CLI input for base.mk sync."""
 
     class WorkspaceOrchestrateInput(
         FlextInfraModelsMixins.MakeArgMixin,
-        FlextInfraModelsMixins.ProjectSelectionMixin,
-        FlextInfraModelsMixins.CliInputBase,
         FlextModels.ContractModel,
     ):
         """CLI input for project orchestration."""
 
         verb: Annotated[str, Field(description="Make verb to execute")]
-        fail_fast: Annotated[
-            bool,
-            Field(default=False, description="Stop on first failure"),
-        ] = False
 
     class WorkspaceMigrateInput(
-        FlextInfraModelsMixins.CliInputBase,
+        FlextInfraModelsMixins.WriteMixin,
         FlextModels.ContractModel,
     ):
-        dry_run: Annotated[
-            bool,
-            Field(default=False, description="Preview changes without writing"),
-        ] = False
+        """CLI input for workspace migration."""
 
 
 __all__ = ["FlextInfraModelsCliInputsOps"]

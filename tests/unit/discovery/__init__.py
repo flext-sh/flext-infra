@@ -34,7 +34,10 @@ if _t.TYPE_CHECKING:
     from flext_core.typings import FlextTypes as t
     from flext_core.utilities import FlextUtilities as u
 _LAZY_IMPORTS = {
-    "TestFlextInfraDiscoveryServiceUncoveredLines": "tests.unit.discovery.test_infra_discovery_edge_cases",
+    "TestFlextInfraDiscoveryServiceUncoveredLines": (
+        "tests.unit.discovery.test_infra_discovery_edge_cases",
+        "TestFlextInfraDiscoveryServiceUncoveredLines",
+    ),
     "c": ("flext_core.constants", "FlextConstants"),
     "d": ("flext_core.decorators", "FlextDecorators"),
     "e": ("flext_core.exceptions", "FlextExceptions"),

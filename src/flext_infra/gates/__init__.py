@@ -58,15 +58,18 @@ if _t.TYPE_CHECKING:
     from flext_core.utilities import FlextUtilities as u
     from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
 _LAZY_IMPORTS = {
-    "FlextInfraBanditGate": "flext_infra.gates.bandit",
-    "FlextInfraGate": "flext_infra.gates._base_gate",
-    "FlextInfraGoGate": "flext_infra.gates.go",
-    "FlextInfraMarkdownGate": "flext_infra.gates.markdown",
-    "FlextInfraMypyGate": "flext_infra.gates.mypy",
-    "FlextInfraPyreflyGate": "flext_infra.gates.pyrefly",
-    "FlextInfraPyrightGate": "flext_infra.gates.pyright",
-    "FlextInfraRuffFormatGate": "flext_infra.gates.ruff_format",
-    "FlextInfraRuffLintGate": "flext_infra.gates.ruff_lint",
+    "FlextInfraBanditGate": ("flext_infra.gates.bandit", "FlextInfraBanditGate"),
+    "FlextInfraGate": ("flext_infra.gates._base_gate", "FlextInfraGate"),
+    "FlextInfraGoGate": ("flext_infra.gates.go", "FlextInfraGoGate"),
+    "FlextInfraMarkdownGate": ("flext_infra.gates.markdown", "FlextInfraMarkdownGate"),
+    "FlextInfraMypyGate": ("flext_infra.gates.mypy", "FlextInfraMypyGate"),
+    "FlextInfraPyreflyGate": ("flext_infra.gates.pyrefly", "FlextInfraPyreflyGate"),
+    "FlextInfraPyrightGate": ("flext_infra.gates.pyright", "FlextInfraPyrightGate"),
+    "FlextInfraRuffFormatGate": (
+        "flext_infra.gates.ruff_format",
+        "FlextInfraRuffFormatGate",
+    ),
+    "FlextInfraRuffLintGate": ("flext_infra.gates.ruff_lint", "FlextInfraRuffLintGate"),
     "_base_gate": "flext_infra.gates._base_gate",
     "bandit": "flext_infra.gates.bandit",
     "c": ("flext_core.constants", "FlextConstants"),

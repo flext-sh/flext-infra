@@ -8,6 +8,7 @@ from typing import override
 
 from flext_infra import (
     FlextInfraNamespaceEnforcerPhasesMixin,
+    c,
     m,
     t,
     u,
@@ -42,11 +43,19 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerPhasesMixin):
         project_roots = self._resolve_project_roots(project_names=project_names)
         project_reports: list[m.Infra.ProjectEnforcementReport] = []
         for project_root in project_roots:
+            py_files = list(
+                project_root.rglob(c.Infra.Extensions.PYTHON_GLOB),
+            )
+            bak_paths = u.Infra.backup_files(py_files) if apply else []
             report = self._enforce_project(
                 project_root=project_root,
                 project_name=project_root.name,
                 apply=apply,
             )
+            if apply and report.total_violations > 0:
+                u.Infra.restore_files(bak_paths)
+            elif apply:
+                u.Infra.cleanup_backups(bak_paths)
             project_reports.append(report)
         return m.Infra.WorkspaceEnforcementReport.from_projects(
             workspace=str(self._workspace_root),

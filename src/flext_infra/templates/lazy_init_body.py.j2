@@ -23,7 +23,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
     ),
     {
 {%- for name, mod, attr in lazy_entries %}
-{%- if attr == name or attr == "" %}
+{%- if attr == "" %}
         "{{ name }}": "{{ mod }}",
 {%- else %}
         "{{ name }}": ("{{ mod }}", "{{ attr }}"),
@@ -39,7 +39,7 @@ _ = _LAZY_IMPORTS.pop("{{ name }}", None)
 {%- else %}
 _LAZY_IMPORTS = {
 {%- for name, mod, attr in lazy_entries %}
-{%- if attr == name or attr == "" %}
+{%- if attr == "" %}
     "{{ name }}": "{{ mod }}",
 {%- else %}
     "{{ name }}": ("{{ mod }}", "{{ attr }}"),

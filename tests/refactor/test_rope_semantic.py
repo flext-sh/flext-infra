@@ -2,15 +2,24 @@
 
 from __future__ import annotations
 
+import typing as _t
 from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
-from tests import t, u
+
+from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
+
+if _t.TYPE_CHECKING:
+    from rope.base.project import Project
+    from rope.base.resources import File
+
+# Runtime alias — all methods used in tests live on this class (via MRO).
+_rope = FlextInfraUtilitiesRopeAnalysis
 
 
 @pytest.fixture
-def rope_workspace(tmp_path: Path) -> Iterator[tuple[t.Infra.RopeProject, Path]]:
+def rope_workspace(tmp_path: Path) -> Iterator[tuple[Project, Path]]:
     """Create a temp workspace with a rope project and sample modules."""
     pkg = tmp_path / "example"
     pkg.mkdir()
@@ -53,27 +62,27 @@ active_dog = Dog()
 """,
     )
 
-    project = u.Infra.init_rope_project(tmp_path, project_prefix="__never__")
+    project = _rope.init_rope_project(tmp_path, project_prefix="__never__")
     yield project, tmp_path
     project.close()
 
 
 @pytest.fixture
 def models_resource(
-    rope_workspace: tuple[t.Infra.RopeProject, Path],
-) -> t.Infra.RopeResource:
+    rope_workspace: tuple[Project, Path],
+) -> File:
     proj, workspace = rope_workspace
-    res = u.Infra.get_resource_from_path(proj, workspace / "example" / "models.py")
+    res = _rope.get_resource_from_path(proj, workspace / "example" / "models.py")
     assert res is not None
     return res
 
 
 @pytest.fixture
 def services_resource(
-    rope_workspace: tuple[t.Infra.RopeProject, Path],
-) -> t.Infra.RopeResource:
+    rope_workspace: tuple[Project, Path],
+) -> File:
     proj, workspace = rope_workspace
-    res = u.Infra.get_resource_from_path(proj, workspace / "example" / "services.py")
+    res = _rope.get_resource_from_path(proj, workspace / "example" / "services.py")
     assert res is not None
     return res
 
@@ -81,20 +90,20 @@ def services_resource(
 class TestGetModuleImports:
     def test_returns_imports(
         self,
-        rope_workspace: tuple[t.Infra.RopeProject, Path],
-        services_resource: t.Infra.RopeResource,
+        rope_workspace: tuple[Project, Path],
+        services_resource: File,
     ) -> None:
         proj, _ = rope_workspace
-        imports = u.Infra.get_module_imports(proj, services_resource)
+        imports = _rope.get_module_imports(proj, services_resource)
         assert "Dog" in imports
 
     def test_no_imports_returns_empty(
         self,
-        rope_workspace: tuple[t.Infra.RopeProject, Path],
-        models_resource: t.Infra.RopeResource,
+        rope_workspace: tuple[Project, Path],
+        models_resource: File,
     ) -> None:
         proj, _ = rope_workspace
-        imports = u.Infra.get_module_imports(proj, models_resource)
+        imports = _rope.get_module_imports(proj, models_resource)
         # Path is imported
         assert "Path" in imports
         # Animal is defined, not imported
@@ -104,21 +113,21 @@ class TestGetModuleImports:
 class TestGetModuleClasses:
     def test_returns_defined_classes(
         self,
-        rope_workspace: tuple[t.Infra.RopeProject, Path],
-        models_resource: t.Infra.RopeResource,
+        rope_workspace: tuple[Project, Path],
+        models_resource: File,
     ) -> None:
         proj, _ = rope_workspace
-        classes = u.Infra.get_module_classes(proj, models_resource)
+        classes = _rope.get_module_classes(proj, models_resource)
         assert "Animal" in classes
         assert "Dog" in classes
 
     def test_excludes_imported_classes(
         self,
-        rope_workspace: tuple[t.Infra.RopeProject, Path],
-        services_resource: t.Infra.RopeResource,
+        rope_workspace: tuple[Project, Path],
+        services_resource: File,
     ) -> None:
         proj, _ = rope_workspace
-        classes = u.Infra.get_module_classes(proj, services_resource)
+        classes = _rope.get_module_classes(proj, services_resource)
         # Dog is imported, not defined here
         assert "Dog" not in classes
 
@@ -126,41 +135,41 @@ class TestGetModuleClasses:
 class TestGetClassBases:
     def test_returns_base_classes(
         self,
-        rope_workspace: tuple[t.Infra.RopeProject, Path],
-        models_resource: t.Infra.RopeResource,
+        rope_workspace: tuple[Project, Path],
+        models_resource: File,
     ) -> None:
         proj, _ = rope_workspace
-        bases = u.Infra.get_class_bases(proj, models_resource, "Dog")
+        bases = _rope.get_class_bases(proj, models_resource, "Dog")
         assert "Animal" in bases
 
     def test_no_bases_for_root_class(
         self,
-        rope_workspace: tuple[t.Infra.RopeProject, Path],
-        models_resource: t.Infra.RopeResource,
+        rope_workspace: tuple[Project, Path],
+        models_resource: File,
     ) -> None:
         proj, _ = rope_workspace
-        bases = u.Infra.get_class_bases(proj, models_resource, "Animal")
+        bases = _rope.get_class_bases(proj, models_resource, "Animal")
         # object is implicit base, rope may or may not return it
         assert "Dog" not in bases
 
     def test_nonexistent_class_returns_empty(
         self,
-        rope_workspace: tuple[t.Infra.RopeProject, Path],
-        models_resource: t.Infra.RopeResource,
+        rope_workspace: tuple[Project, Path],
+        models_resource: File,
     ) -> None:
         proj, _ = rope_workspace
-        bases = u.Infra.get_class_bases(proj, models_resource, "DoesNotExist")
+        bases = _rope.get_class_bases(proj, models_resource, "DoesNotExist")
         assert bases == []
 
 
 class TestGetClassMethods:
     def test_returns_public_methods(
         self,
-        rope_workspace: tuple[t.Infra.RopeProject, Path],
-        models_resource: t.Infra.RopeResource,
+        rope_workspace: tuple[Project, Path],
+        models_resource: File,
     ) -> None:
         proj, _ = rope_workspace
-        methods = u.Infra.get_class_methods(proj, models_resource, "Dog")
+        methods = _rope.get_class_methods(proj, models_resource, "Dog")
         assert "fetch" in methods
         assert methods["fetch"] == "staticmethod"
         assert "breed" in methods
@@ -168,20 +177,20 @@ class TestGetClassMethods:
 
     def test_excludes_private_by_default(
         self,
-        rope_workspace: tuple[t.Infra.RopeProject, Path],
-        models_resource: t.Infra.RopeResource,
+        rope_workspace: tuple[Project, Path],
+        models_resource: File,
     ) -> None:
         proj, _ = rope_workspace
-        methods = u.Infra.get_class_methods(proj, models_resource, "Dog")
+        methods = _rope.get_class_methods(proj, models_resource, "Dog")
         assert "_wag" not in methods
 
     def test_includes_private_when_requested(
         self,
-        rope_workspace: tuple[t.Infra.RopeProject, Path],
-        models_resource: t.Infra.RopeResource,
+        rope_workspace: tuple[Project, Path],
+        models_resource: File,
     ) -> None:
         proj, _ = rope_workspace
-        methods = u.Infra.get_class_methods(
+        methods = _rope.get_class_methods(
             proj, models_resource, "Dog", include_private=True
         )
         assert "_wag" in methods
@@ -189,22 +198,22 @@ class TestGetClassMethods:
 
     def test_nonexistent_class_returns_empty(
         self,
-        rope_workspace: tuple[t.Infra.RopeProject, Path],
-        models_resource: t.Infra.RopeResource,
+        rope_workspace: tuple[Project, Path],
+        models_resource: File,
     ) -> None:
         proj, _ = rope_workspace
-        methods = u.Infra.get_class_methods(proj, models_resource, "DoesNotExist")
+        methods = _rope.get_class_methods(proj, models_resource, "DoesNotExist")
         assert methods == {}
 
 
 class TestFindDefinitionOffset:
     def test_returns_character_offset_for_semantic_definition(
         self,
-        rope_workspace: tuple[t.Infra.RopeProject, Path],
-        models_resource: t.Infra.RopeResource,
+        rope_workspace: tuple[Project, Path],
+        models_resource: File,
     ) -> None:
         proj, _ = rope_workspace
-        offset = u.Infra.find_definition_offset(proj, models_resource, "Dog")
+        offset = _rope.find_definition_offset(proj, models_resource, "Dog")
         source = models_resource.read()
         assert offset is not None
         assert source[offset : offset + 3] == "Dog"

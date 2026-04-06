@@ -32,8 +32,11 @@ if _t.TYPE_CHECKING:
         FlextInfraGithubService as s,
     )
 _LAZY_IMPORTS = {
-    "FlextInfraCliGithub": "flext_infra.github.cli",
-    "FlextInfraGithubService": "flext_infra.github.service",
+    "FlextInfraCliGithub": ("flext_infra.github.cli", "FlextInfraCliGithub"),
+    "FlextInfraGithubService": (
+        "flext_infra.github.service",
+        "FlextInfraGithubService",
+    ),
     "c": ("flext_core.constants", "FlextConstants"),
     "cli": "flext_infra.github.cli",
     "d": ("flext_core.decorators", "FlextDecorators"),

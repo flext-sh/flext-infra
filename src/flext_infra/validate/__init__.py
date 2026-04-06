@@ -58,15 +58,39 @@ if _t.TYPE_CHECKING:
     from flext_core.utilities import FlextUtilities as u
     from flext_infra.validate.stub_chain import FlextInfraStubSupplyChain
 _LAZY_IMPORTS = {
-    "FlextInfraBaseMkValidator": "flext_infra.validate.basemk_validator",
-    "FlextInfraCliValidate": "flext_infra.validate.cli",
-    "FlextInfraInventoryService": "flext_infra.validate.inventory",
-    "FlextInfraNamespaceRules": "flext_infra.validate.namespace_rules",
-    "FlextInfraNamespaceValidator": "flext_infra.validate.namespace_validator",
-    "FlextInfraPytestDiagExtractor": "flext_infra.validate.pytest_diag",
-    "FlextInfraSkillValidator": "flext_infra.validate.skill_validator",
-    "FlextInfraStubSupplyChain": "flext_infra.validate.stub_chain",
-    "FlextInfraTextPatternScanner": "flext_infra.validate.scanner",
+    "FlextInfraBaseMkValidator": (
+        "flext_infra.validate.basemk_validator",
+        "FlextInfraBaseMkValidator",
+    ),
+    "FlextInfraCliValidate": ("flext_infra.validate.cli", "FlextInfraCliValidate"),
+    "FlextInfraInventoryService": (
+        "flext_infra.validate.inventory",
+        "FlextInfraInventoryService",
+    ),
+    "FlextInfraNamespaceRules": (
+        "flext_infra.validate.namespace_rules",
+        "FlextInfraNamespaceRules",
+    ),
+    "FlextInfraNamespaceValidator": (
+        "flext_infra.validate.namespace_validator",
+        "FlextInfraNamespaceValidator",
+    ),
+    "FlextInfraPytestDiagExtractor": (
+        "flext_infra.validate.pytest_diag",
+        "FlextInfraPytestDiagExtractor",
+    ),
+    "FlextInfraSkillValidator": (
+        "flext_infra.validate.skill_validator",
+        "FlextInfraSkillValidator",
+    ),
+    "FlextInfraStubSupplyChain": (
+        "flext_infra.validate.stub_chain",
+        "FlextInfraStubSupplyChain",
+    ),
+    "FlextInfraTextPatternScanner": (
+        "flext_infra.validate.scanner",
+        "FlextInfraTextPatternScanner",
+    ),
     "basemk_validator": "flext_infra.validate.basemk_validator",
     "c": ("flext_core.constants", "FlextConstants"),
     "cli": "flext_infra.validate.cli",

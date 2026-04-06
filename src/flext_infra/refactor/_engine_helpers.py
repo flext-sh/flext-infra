@@ -285,14 +285,6 @@ class FlextInfraRefactorEngineHelpersMixin:
         results.extend(self.refactor_files(collected, dry_run=dry_run))
         results.extend(u.Infra.run_rope_post_hooks(project_path, dry_run=dry_run))
         if apply_safety and not dry_run:
-            cp = self.safety_manager.save_checkpoint_state(
-                project_path,
-                status="transformed",
-                stash_ref=stash_ref,
-                processed_targets=[str(f) for f in collected],
-            )
-            if cp.is_failure:
-                u.Infra.refactor_error(cp.error or "checkpoint save failed")
             self._finalize_safety(
                 target=project_path, stash_ref=stash_ref, results=results
             )
@@ -343,14 +335,6 @@ class FlextInfraRefactorEngineHelpersMixin:
             )
             if apply_safety and not dry_run:
                 processed.append(str(proj))
-                cp = self.safety_manager.save_checkpoint_state(
-                    root,
-                    status="running",
-                    stash_ref=stash_ref,
-                    processed_targets=list(processed),
-                )
-                if cp.is_failure:
-                    u.Infra.refactor_error(cp.error or "checkpoint save failed")
         results.extend(u.Infra.run_rope_post_hooks(root, dry_run=dry_run))
         if apply_safety and not dry_run:
             self._finalize_safety(target=root, stash_ref=stash_ref, results=results)

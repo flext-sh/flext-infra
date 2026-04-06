@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated
 
-from pydantic import AliasChoices, ConfigDict, Field
+from pydantic import AliasChoices, ConfigDict, Field, computed_field
 
 from flext_infra import c, t
 
@@ -13,21 +13,13 @@ from flext_infra import c, t
 class FlextInfraModelsMixins:
     """Centralized reusable field and helper mixins for _models."""
 
-    class CliInputBase:
-        """Shared CLI flags and path helpers."""
+    # ── Hierarchy: BaseMixin → ProjectMixin → ReadMixin / WriteMixin ──
+
+    class BaseMixin:
+        """Foundation for all CLI commands: workspace path and verbose flag."""
 
         model_config = ConfigDict(populate_by_name=True)
 
-        apply: Annotated[
-            bool,
-            Field(
-                default=False,
-                description="Apply changes",
-                json_schema_extra={
-                    "typer_param_decls": list(c.Infra.Cli.APPLY_OPTION_DECLS),
-                },
-            ),
-        ] = False
         workspace: Annotated[
             str,
             Field(
@@ -37,6 +29,10 @@ class FlextInfraModelsMixins:
                 description="Workspace root",
             ),
         ] = "."
+        verbose: Annotated[
+            bool,
+            Field(default=False, description="Verbose output"),
+        ] = False
 
         @property
         def workspace_path(self) -> Path:
@@ -59,8 +55,8 @@ class FlextInfraModelsMixins:
                 if item.strip()
             ]
 
-    class ProjectSelectionMixin:
-        """Repeated --projects selector with normalized accessor."""
+    class ProjectMixin(BaseMixin):
+        """Commands that operate on one or more projects."""
 
         projects: Annotated[
             t.StrSequence | None,
@@ -69,61 +65,37 @@ class FlextInfraModelsMixins:
                 description="Projects to process; repeat --projects NAME as needed",
             ),
         ] = None
+        fail_fast: Annotated[
+            bool,
+            Field(default=True, description="Stop on first failure"),
+        ] = True
 
         @property
         def project_names(self) -> t.StrSequence | None:
             """Return normalized project names from repeated selectors."""
-            names = FlextInfraModelsMixins.CliInputBase.split_csv_values(
+            names = FlextInfraModelsMixins.BaseMixin.split_csv_values(
                 *(self.projects or ()),
             )
             return names or None
 
-    class OutputDirMixin:
-        """Default docs output directory."""
-
-        output_dir: Annotated[
-            str,
-            Field(
-                default=f"{c.Infra.Reporting.REPORTS_DIR_NAME}/docs",
-                description="Output directory for reports",
-            ),
-        ] = f"{c.Infra.Reporting.REPORTS_DIR_NAME}/docs"
-
-    class CheckMixin:
-        """Shared check flag."""
+    class ReadMixin(ProjectMixin):
+        """Read-only commands with output configuration."""
 
         check: Annotated[
             bool,
             Field(default=False, description="Enable check mode"),
         ] = False
-
-    class VerboseMixin:
-        """Shared verbose flag."""
-
-        verbose: Annotated[
-            bool,
-            Field(default=False, description="Verbose output"),
-        ] = False
-
-    class JsonOutputPathMixin(CliInputBase):
-        """Optional JSON report destination with resolved accessor."""
-
+        output_dir: Annotated[
+            str | None,
+            Field(default=None, description="Output directory for reports"),
+        ] = None
+        report: Annotated[
+            str | None,
+            Field(default=None, description="Output report file"),
+        ] = None
         json_output: Annotated[
             str | None,
             Field(default=None, description="Path to write JSON report"),
-        ] = None
-
-        @property
-        def json_output_path(self) -> Path | None:
-            """Return the resolved JSON export path when provided."""
-            return self.resolve_optional_path(self.json_output)
-
-    class OutputDirPathMixin(CliInputBase):
-        """Optional output directory with resolved accessor."""
-
-        output_dir: Annotated[
-            str | None,
-            Field(default=None, description="Output directory"),
         ] = None
 
         @property
@@ -131,7 +103,66 @@ class FlextInfraModelsMixins:
             """Return the resolved output directory when provided."""
             return self.resolve_optional_path(self.output_dir)
 
-    class AliasSelectionMixin(CliInputBase):
+        @property
+        def report_path(self) -> Path | None:
+            """Return the resolved report path when provided."""
+            return self.resolve_optional_path(self.report)
+
+        @property
+        def json_output_path(self) -> Path | None:
+            """Return the resolved JSON export path when provided."""
+            return self.resolve_optional_path(self.json_output)
+
+    class WriteMixin(ProjectMixin):
+        """Commands that modify files with safety and rollback support."""
+
+        apply: Annotated[
+            bool,
+            Field(
+                default=False,
+                description="Apply changes",
+                json_schema_extra={
+                    "typer_param_decls": list(c.Infra.Cli.APPLY_OPTION_DECLS),
+                },
+            ),
+        ] = False
+        diff: Annotated[
+            bool,
+            Field(default=False, description="Show diff without applying"),
+        ] = False
+        rollback: Annotated[
+            bool,
+            Field(
+                default=True, description="Enable automatic rollback on gate failure"
+            ),
+        ] = True
+        gates: Annotated[
+            str,
+            Field(
+                default=c.Infra.SafeExecution.DEFAULT_GATES,
+                description="Comma-separated gate names for post-transform validation",
+            ),
+        ] = c.Infra.SafeExecution.DEFAULT_GATES
+
+        @computed_field  # type: ignore[prop-decorator]
+        @property
+        def dry_run(self) -> bool:
+            """Whether writes are disabled (inverse of apply)."""
+            return not self.apply
+
+        @computed_field  # type: ignore[prop-decorator]
+        @property
+        def execution_mode(self) -> c.Infra.ExecutionMode:
+            """Resolve execution mode from CLI flags."""
+            if not self.apply:
+                return c.Infra.ExecutionMode.DRY_RUN
+            if self.rollback:
+                return c.Infra.ExecutionMode.APPLY_SAFE
+            return c.Infra.ExecutionMode.APPLY_FORCE
+
+    # ── Specialized mixins that extend WriteMixin ──
+
+    class AliasSelectionMixin(WriteMixin):
         """Comma-separated runtime alias selector."""
 
         aliases: Annotated[
@@ -147,7 +178,7 @@ class FlextInfraModelsMixins:
             """Return normalized runtime alias names."""
             return self.split_csv_values(self.aliases)
 
-    class ReleasePhaseMixin(CliInputBase):
+    class ReleasePhaseMixin(WriteMixin):
         """Release phase selector with normalized expansion."""
 
         phase: Annotated[
@@ -167,7 +198,7 @@ class FlextInfraModelsMixins:
                 ]
             return self.split_csv_values(self.phase)
 
-    class MakeArgMixin(CliInputBase):
+    class MakeArgMixin(WriteMixin):
         """Repeated --make-arg option with normalized accessor."""
 
         make_arg: Annotated[
@@ -186,7 +217,7 @@ class FlextInfraModelsMixins:
             """Return normalized make arguments without blank entries."""
             return [make_arg.strip() for make_arg in self.make_arg if make_arg.strip()]
 
-    class CanonicalRootMixin(CliInputBase):
+    class CanonicalRootMixin(WriteMixin):
         """Canonical root selector with resolved accessor."""
 
         canonical_root: Annotated[
@@ -198,19 +229,6 @@ class FlextInfraModelsMixins:
         def canonical_root_path(self) -> Path | None:
             """Return the resolved canonical root when provided."""
             return self.resolve_optional_path(self.canonical_root)
-
-    class ReportPathMixin(CliInputBase):
-        """Optional report file with resolved accessor."""
-
-        report: Annotated[
-            str | None,
-            Field(default=None, description="Output report file"),
-        ] = None
-
-        @property
-        def report_path(self) -> Path | None:
-            """Return the resolved report path when provided."""
-            return self.resolve_optional_path(self.report)
 
     class GithubWorkspaceRequestMixin:
         """Shared branch/checkpoint flags for workspace GitHub requests."""
@@ -278,14 +296,6 @@ class FlextInfraModelsMixins:
             bool,
             Field(default=False, description="Release on merge"),
         ] = True
-
-    class FailFastMixin:
-        """Shared stop-on-first-failure flag."""
-
-        fail_fast: Annotated[
-            bool,
-            Field(default=False, description="Stop on first failure"),
-        ] = False
 
     class FilePathMixin:
         """Shared required file path field."""
@@ -398,21 +408,6 @@ class FlextInfraModelsMixins:
         """Shared workspace root path field."""
 
         workspace_root: Annotated[Path, Field(description="Workspace root path")]
-
-    class DryRunFalseMixin:
-        """Shared disabled-by-default dry_run flag."""
-
-        dry_run: Annotated[bool, Field(default=False, description="Dry run flag")] = (
-            False
-        )
-
-    class DryRunTrueMixin:
-        """Shared enabled-by-default dry_run flag."""
-
-        dry_run: Annotated[
-            bool,
-            Field(default=True, description="Whether writes were skipped"),
-        ] = True
 
     class StashRefMixin:
         """Shared git stash reference field."""

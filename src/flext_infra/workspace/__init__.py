@@ -63,13 +63,34 @@ if _t.TYPE_CHECKING:
 _LAZY_IMPORTS = merge_lazy_imports(
     ("flext_infra.workspace.maintenance",),
     {
-        "FlextInfraCliWorkspace": "flext_infra.workspace.cli",
-        "FlextInfraOrchestratorService": "flext_infra.workspace.orchestrator",
-        "FlextInfraProjectMakefileUpdater": "flext_infra.workspace.project_makefile",
-        "FlextInfraProjectMigrator": "flext_infra.workspace.migrator",
-        "FlextInfraSyncService": "flext_infra.workspace.sync",
-        "FlextInfraWorkspaceDetector": "flext_infra.workspace.detector",
-        "FlextInfraWorkspaceMakefileGenerator": "flext_infra.workspace.workspace_makefile",
+        "FlextInfraCliWorkspace": (
+            "flext_infra.workspace.cli",
+            "FlextInfraCliWorkspace",
+        ),
+        "FlextInfraOrchestratorService": (
+            "flext_infra.workspace.orchestrator",
+            "FlextInfraOrchestratorService",
+        ),
+        "FlextInfraProjectMakefileUpdater": (
+            "flext_infra.workspace.project_makefile",
+            "FlextInfraProjectMakefileUpdater",
+        ),
+        "FlextInfraProjectMigrator": (
+            "flext_infra.workspace.migrator",
+            "FlextInfraProjectMigrator",
+        ),
+        "FlextInfraSyncService": (
+            "flext_infra.workspace.sync",
+            "FlextInfraSyncService",
+        ),
+        "FlextInfraWorkspaceDetector": (
+            "flext_infra.workspace.detector",
+            "FlextInfraWorkspaceDetector",
+        ),
+        "FlextInfraWorkspaceMakefileGenerator": (
+            "flext_infra.workspace.workspace_makefile",
+            "FlextInfraWorkspaceMakefileGenerator",
+        ),
         "c": ("flext_core.constants", "FlextConstants"),
         "cli": "flext_infra.workspace.cli",
         "d": ("flext_core.decorators", "FlextDecorators"),
@@ -77,7 +98,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
         "e": ("flext_core.exceptions", "FlextExceptions"),
         "h": ("flext_core.handlers", "FlextHandlers"),
         "m": ("flext_core.models", "FlextModels"),
-        "main": "flext_infra.workspace.sync",
+        "main": ("flext_infra.workspace.sync", "main"),
         "maintenance": "flext_infra.workspace.maintenance",
         "migrator": "flext_infra.workspace.migrator",
         "orchestrator": "flext_infra.workspace.orchestrator",

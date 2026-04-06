@@ -33,12 +33,27 @@ if _t.TYPE_CHECKING:
     rope = _flext_infra__protocols_rope
     from flext_infra._protocols.rope import FlextInfraProtocolsRope
 _LAZY_IMPORTS = {
-    "FlextInfraChangeTracker": "flext_infra._protocols.refactor",
-    "FlextInfraProtocolsBase": "flext_infra._protocols.base",
-    "FlextInfraProtocolsCheck": "flext_infra._protocols.check",
-    "FlextInfraProtocolsRefactor": "flext_infra._protocols.refactor",
-    "FlextInfraProtocolsRope": "flext_infra._protocols.rope",
-    "WorkspaceLoopOutcome": "flext_infra._protocols.check",
+    "FlextInfraChangeTracker": (
+        "flext_infra._protocols.refactor",
+        "FlextInfraChangeTracker",
+    ),
+    "FlextInfraProtocolsBase": (
+        "flext_infra._protocols.base",
+        "FlextInfraProtocolsBase",
+    ),
+    "FlextInfraProtocolsCheck": (
+        "flext_infra._protocols.check",
+        "FlextInfraProtocolsCheck",
+    ),
+    "FlextInfraProtocolsRefactor": (
+        "flext_infra._protocols.refactor",
+        "FlextInfraProtocolsRefactor",
+    ),
+    "FlextInfraProtocolsRope": (
+        "flext_infra._protocols.rope",
+        "FlextInfraProtocolsRope",
+    ),
+    "WorkspaceLoopOutcome": ("flext_infra._protocols.check", "WorkspaceLoopOutcome"),
     "base": "flext_infra._protocols.base",
     "check": "flext_infra._protocols.check",
     "refactor": "flext_infra._protocols.refactor",

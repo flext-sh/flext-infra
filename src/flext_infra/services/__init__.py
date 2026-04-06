@@ -38,10 +38,19 @@ if _t.TYPE_CHECKING:
     from flext_core.utilities import FlextUtilities as u
     from flext_infra.services.toml_engine import FlextInfraToml
 _LAZY_IMPORTS = {
-    "FlextInfraCodegenConsolidator": "flext_infra.services.consolidator",
-    "FlextInfraCodegenDeduplicator": "flext_infra.services.deduplicator",
-    "FlextInfraCodegenPipeline": "flext_infra.services.pipeline",
-    "FlextInfraToml": "flext_infra.services.toml_engine",
+    "FlextInfraCodegenConsolidator": (
+        "flext_infra.services.consolidator",
+        "FlextInfraCodegenConsolidator",
+    ),
+    "FlextInfraCodegenDeduplicator": (
+        "flext_infra.services.deduplicator",
+        "FlextInfraCodegenDeduplicator",
+    ),
+    "FlextInfraCodegenPipeline": (
+        "flext_infra.services.pipeline",
+        "FlextInfraCodegenPipeline",
+    ),
+    "FlextInfraToml": ("flext_infra.services.toml_engine", "FlextInfraToml"),
     "c": ("flext_core.constants", "FlextConstants"),
     "consolidator": "flext_infra.services.consolidator",
     "d": ("flext_core.decorators", "FlextDecorators"),

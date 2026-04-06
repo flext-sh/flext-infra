@@ -71,8 +71,14 @@ _LAZY_IMPORTS = {
     "skill_validator_tests": "tests.unit.validate.skill_validator_tests",
     "stub_chain_tests": "tests.unit.validate.stub_chain_tests",
     "t": ("flext_core.typings", "FlextTypes"),
-    "test_stub_validate_help_returns_zero": "tests.unit.validate.main_cli_tests",
-    "test_stub_validate_uses_all_flag": "tests.unit.validate.main_cli_tests",
+    "test_stub_validate_help_returns_zero": (
+        "tests.unit.validate.main_cli_tests",
+        "test_stub_validate_help_returns_zero",
+    ),
+    "test_stub_validate_uses_all_flag": (
+        "tests.unit.validate.main_cli_tests",
+        "test_stub_validate_uses_all_flag",
+    ),
     "u": ("flext_core.utilities", "FlextUtilities"),
     "x": ("flext_core.mixins", "FlextMixins"),
 }

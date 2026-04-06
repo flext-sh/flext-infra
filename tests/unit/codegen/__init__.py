@@ -102,27 +102,84 @@ if _t.TYPE_CHECKING:
     from flext_core.typings import FlextTypes as t
     from flext_core.utilities import FlextUtilities as u
 _LAZY_IMPORTS = {
-    "FlextInfraCodegenTestProjectFactory": "tests.unit.codegen._project_factory",
-    "TestAllDirectoriesScanned": "tests.unit.codegen.lazy_init_tests",
-    "TestBuildSiblingExportIndex": "tests.unit.codegen.lazy_init_helpers_tests",
-    "TestCheckOnlyMode": "tests.unit.codegen.lazy_init_tests",
-    "TestEdgeCases": "tests.unit.codegen.lazy_init_tests",
-    "TestExcludedDirectories": "tests.unit.codegen.lazy_init_tests",
-    "TestExtractExports": "tests.unit.codegen.lazy_init_helpers_tests",
-    "TestExtractVersionExports": "tests.unit.codegen.lazy_init_transforms_tests",
-    "TestFlextInfraCodegenLazyInit": "tests.unit.codegen.lazy_init_service_tests",
-    "TestGenerateFile": "tests.unit.codegen.lazy_init_generation_tests",
-    "TestGenerateTypeChecking": "tests.unit.codegen.lazy_init_generation_tests",
-    "TestGeneratedClassNamingConvention": "tests.unit.codegen.scaffolder_naming_tests",
-    "TestGeneratedFilesAreValidPython": "tests.unit.codegen.scaffolder_naming_tests",
-    "TestInferPackage": "tests.unit.codegen.lazy_init_helpers_tests",
-    "TestMergeChildExports": "tests.unit.codegen.lazy_init_transforms_tests",
-    "TestProcessDirectory": "tests.unit.codegen.lazy_init_process_tests",
-    "TestReadExistingDocstring": "tests.unit.codegen.lazy_init_helpers_tests",
-    "TestResolveAliases": "tests.unit.codegen.lazy_init_generation_tests",
-    "TestRunRuffFix": "tests.unit.codegen.lazy_init_generation_tests",
-    "TestScanPublicDefs": "tests.unit.codegen.lazy_init_transforms_tests",
-    "TestShouldBubbleUp": "tests.unit.codegen.lazy_init_transforms_tests",
+    "FlextInfraCodegenTestProjectFactory": (
+        "tests.unit.codegen._project_factory",
+        "FlextInfraCodegenTestProjectFactory",
+    ),
+    "TestAllDirectoriesScanned": (
+        "tests.unit.codegen.lazy_init_tests",
+        "TestAllDirectoriesScanned",
+    ),
+    "TestBuildSiblingExportIndex": (
+        "tests.unit.codegen.lazy_init_helpers_tests",
+        "TestBuildSiblingExportIndex",
+    ),
+    "TestCheckOnlyMode": ("tests.unit.codegen.lazy_init_tests", "TestCheckOnlyMode"),
+    "TestEdgeCases": ("tests.unit.codegen.lazy_init_tests", "TestEdgeCases"),
+    "TestExcludedDirectories": (
+        "tests.unit.codegen.lazy_init_tests",
+        "TestExcludedDirectories",
+    ),
+    "TestExtractExports": (
+        "tests.unit.codegen.lazy_init_helpers_tests",
+        "TestExtractExports",
+    ),
+    "TestExtractVersionExports": (
+        "tests.unit.codegen.lazy_init_transforms_tests",
+        "TestExtractVersionExports",
+    ),
+    "TestFlextInfraCodegenLazyInit": (
+        "tests.unit.codegen.lazy_init_service_tests",
+        "TestFlextInfraCodegenLazyInit",
+    ),
+    "TestGenerateFile": (
+        "tests.unit.codegen.lazy_init_generation_tests",
+        "TestGenerateFile",
+    ),
+    "TestGenerateTypeChecking": (
+        "tests.unit.codegen.lazy_init_generation_tests",
+        "TestGenerateTypeChecking",
+    ),
+    "TestGeneratedClassNamingConvention": (
+        "tests.unit.codegen.scaffolder_naming_tests",
+        "TestGeneratedClassNamingConvention",
+    ),
+    "TestGeneratedFilesAreValidPython": (
+        "tests.unit.codegen.scaffolder_naming_tests",
+        "TestGeneratedFilesAreValidPython",
+    ),
+    "TestInferPackage": (
+        "tests.unit.codegen.lazy_init_helpers_tests",
+        "TestInferPackage",
+    ),
+    "TestMergeChildExports": (
+        "tests.unit.codegen.lazy_init_transforms_tests",
+        "TestMergeChildExports",
+    ),
+    "TestProcessDirectory": (
+        "tests.unit.codegen.lazy_init_process_tests",
+        "TestProcessDirectory",
+    ),
+    "TestReadExistingDocstring": (
+        "tests.unit.codegen.lazy_init_helpers_tests",
+        "TestReadExistingDocstring",
+    ),
+    "TestResolveAliases": (
+        "tests.unit.codegen.lazy_init_generation_tests",
+        "TestResolveAliases",
+    ),
+    "TestRunRuffFix": (
+        "tests.unit.codegen.lazy_init_generation_tests",
+        "TestRunRuffFix",
+    ),
+    "TestScanPublicDefs": (
+        "tests.unit.codegen.lazy_init_transforms_tests",
+        "TestScanPublicDefs",
+    ),
+    "TestShouldBubbleUp": (
+        "tests.unit.codegen.lazy_init_transforms_tests",
+        "TestShouldBubbleUp",
+    ),
     "_project_factory": "tests.unit.codegen._project_factory",
     "autofix_workspace_tests": "tests.unit.codegen.autofix_workspace_tests",
     "c": ("flext_core.constants", "FlextConstants"),
@@ -148,7 +205,10 @@ _LAZY_IMPORTS = {
     "scaffolder_naming_tests": "tests.unit.codegen.scaffolder_naming_tests",
     "scaffolder_tests": "tests.unit.codegen.scaffolder_tests",
     "t": ("flext_core.typings", "FlextTypes"),
-    "test_codegen_init_getattr_raises_attribute_error": "tests.unit.codegen.lazy_init_generation_tests",
+    "test_codegen_init_getattr_raises_attribute_error": (
+        "tests.unit.codegen.lazy_init_generation_tests",
+        "test_codegen_init_getattr_raises_attribute_error",
+    ),
     "u": ("flext_core.utilities", "FlextUtilities"),
     "x": ("flext_core.mixins", "FlextMixins"),
 }

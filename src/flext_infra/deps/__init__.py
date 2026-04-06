@@ -105,18 +105,51 @@ if _t.TYPE_CHECKING:
 _LAZY_IMPORTS = merge_lazy_imports(
     ("flext_infra.deps._phases",),
     {
-        "FlextInfraCliDeps": "flext_infra.deps.cli",
-        "FlextInfraConfigFixer": "flext_infra.deps.fix_pyrefly_config",
-        "FlextInfraDependencyDetectionAnalysis": "flext_infra.deps.detection_analysis",
-        "FlextInfraDependencyDetectionService": "flext_infra.deps.detection",
-        "FlextInfraDependencyDetectorRuntime": "flext_infra.deps._detector_runtime",
-        "FlextInfraDependencyPathSync": "flext_infra.deps.path_sync",
-        "FlextInfraDependencyPathSyncRewrite": "flext_infra.deps.path_sync_rewrite",
-        "FlextInfraExtraPathsManager": "flext_infra.deps.extra_paths",
-        "FlextInfraExtraPathsPyrefly": "flext_infra.deps.extra_paths_pyrefly",
-        "FlextInfraInternalDependencySyncService": "flext_infra.deps.internal_sync",
-        "FlextInfraPyprojectModernizer": "flext_infra.deps.modernizer",
-        "FlextInfraRuntimeDevDependencyDetector": "flext_infra.deps.detector",
+        "FlextInfraCliDeps": ("flext_infra.deps.cli", "FlextInfraCliDeps"),
+        "FlextInfraConfigFixer": (
+            "flext_infra.deps.fix_pyrefly_config",
+            "FlextInfraConfigFixer",
+        ),
+        "FlextInfraDependencyDetectionAnalysis": (
+            "flext_infra.deps.detection_analysis",
+            "FlextInfraDependencyDetectionAnalysis",
+        ),
+        "FlextInfraDependencyDetectionService": (
+            "flext_infra.deps.detection",
+            "FlextInfraDependencyDetectionService",
+        ),
+        "FlextInfraDependencyDetectorRuntime": (
+            "flext_infra.deps._detector_runtime",
+            "FlextInfraDependencyDetectorRuntime",
+        ),
+        "FlextInfraDependencyPathSync": (
+            "flext_infra.deps.path_sync",
+            "FlextInfraDependencyPathSync",
+        ),
+        "FlextInfraDependencyPathSyncRewrite": (
+            "flext_infra.deps.path_sync_rewrite",
+            "FlextInfraDependencyPathSyncRewrite",
+        ),
+        "FlextInfraExtraPathsManager": (
+            "flext_infra.deps.extra_paths",
+            "FlextInfraExtraPathsManager",
+        ),
+        "FlextInfraExtraPathsPyrefly": (
+            "flext_infra.deps.extra_paths_pyrefly",
+            "FlextInfraExtraPathsPyrefly",
+        ),
+        "FlextInfraInternalDependencySyncService": (
+            "flext_infra.deps.internal_sync",
+            "FlextInfraInternalDependencySyncService",
+        ),
+        "FlextInfraPyprojectModernizer": (
+            "flext_infra.deps.modernizer",
+            "FlextInfraPyprojectModernizer",
+        ),
+        "FlextInfraRuntimeDevDependencyDetector": (
+            "flext_infra.deps.detector",
+            "FlextInfraRuntimeDevDependencyDetector",
+        ),
         "_detector_runtime": "flext_infra.deps._detector_runtime",
         "_phases": "flext_infra.deps._phases",
         "c": ("flext_core.constants", "FlextConstants"),
@@ -132,7 +165,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
         "h": ("flext_core.handlers", "FlextHandlers"),
         "internal_sync": "flext_infra.deps.internal_sync",
         "m": ("flext_core.models", "FlextModels"),
-        "main": "flext_infra.deps.detector",
+        "main": ("flext_infra.deps.detector", "main"),
         "modernizer": "flext_infra.deps.modernizer",
         "p": ("flext_core.protocols", "FlextProtocols"),
         "path_sync": "flext_infra.deps.path_sync",

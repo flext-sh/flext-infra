@@ -74,22 +74,70 @@ if _t.TYPE_CHECKING:
     workspace = _flext_infra__constants_workspace
     from flext_infra._constants.workspace import FlextInfraWorkspaceConstants
 _LAZY_IMPORTS = {
-    "FlextInfraBasemkConstants": "flext_infra._constants.basemk",
-    "FlextInfraCheckConstants": "flext_infra._constants.check",
-    "FlextInfraCodegenConstants": "flext_infra._constants.codegen",
-    "FlextInfraConstantsBase": "flext_infra._constants.base",
-    "FlextInfraConstantsCensus": "flext_infra._constants.census",
-    "FlextInfraConstantsMake": "flext_infra._constants.make",
-    "FlextInfraConstantsRope": "flext_infra._constants.rope",
-    "FlextInfraConstantsSourceCode": "flext_infra._constants.source_code",
-    "FlextInfraCoreConstants": "flext_infra._constants.validate",
-    "FlextInfraDepsConstants": "flext_infra._constants.deps",
-    "FlextInfraDocsConstants": "flext_infra._constants.docs",
-    "FlextInfraGithubConstants": "flext_infra._constants.github",
-    "FlextInfraRefactorConstants": "flext_infra._constants.refactor",
-    "FlextInfraReleaseConstants": "flext_infra._constants.release",
-    "FlextInfraSharedInfraConstants": "flext_infra._constants.validate",
-    "FlextInfraWorkspaceConstants": "flext_infra._constants.workspace",
+    "FlextInfraBasemkConstants": (
+        "flext_infra._constants.basemk",
+        "FlextInfraBasemkConstants",
+    ),
+    "FlextInfraCheckConstants": (
+        "flext_infra._constants.check",
+        "FlextInfraCheckConstants",
+    ),
+    "FlextInfraCodegenConstants": (
+        "flext_infra._constants.codegen",
+        "FlextInfraCodegenConstants",
+    ),
+    "FlextInfraConstantsBase": (
+        "flext_infra._constants.base",
+        "FlextInfraConstantsBase",
+    ),
+    "FlextInfraConstantsCensus": (
+        "flext_infra._constants.census",
+        "FlextInfraConstantsCensus",
+    ),
+    "FlextInfraConstantsMake": (
+        "flext_infra._constants.make",
+        "FlextInfraConstantsMake",
+    ),
+    "FlextInfraConstantsRope": (
+        "flext_infra._constants.rope",
+        "FlextInfraConstantsRope",
+    ),
+    "FlextInfraConstantsSourceCode": (
+        "flext_infra._constants.source_code",
+        "FlextInfraConstantsSourceCode",
+    ),
+    "FlextInfraCoreConstants": (
+        "flext_infra._constants.validate",
+        "FlextInfraCoreConstants",
+    ),
+    "FlextInfraDepsConstants": (
+        "flext_infra._constants.deps",
+        "FlextInfraDepsConstants",
+    ),
+    "FlextInfraDocsConstants": (
+        "flext_infra._constants.docs",
+        "FlextInfraDocsConstants",
+    ),
+    "FlextInfraGithubConstants": (
+        "flext_infra._constants.github",
+        "FlextInfraGithubConstants",
+    ),
+    "FlextInfraRefactorConstants": (
+        "flext_infra._constants.refactor",
+        "FlextInfraRefactorConstants",
+    ),
+    "FlextInfraReleaseConstants": (
+        "flext_infra._constants.release",
+        "FlextInfraReleaseConstants",
+    ),
+    "FlextInfraSharedInfraConstants": (
+        "flext_infra._constants.validate",
+        "FlextInfraSharedInfraConstants",
+    ),
+    "FlextInfraWorkspaceConstants": (
+        "flext_infra._constants.workspace",
+        "FlextInfraWorkspaceConstants",
+    ),
     "base": "flext_infra._constants.base",
     "basemk": "flext_infra._constants.basemk",
     "census": "flext_infra._constants.census",

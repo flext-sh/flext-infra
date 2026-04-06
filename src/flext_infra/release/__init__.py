@@ -36,9 +36,15 @@ if _t.TYPE_CHECKING:
         FlextInfraReleaseOrchestratorPhases,
     )
 _LAZY_IMPORTS = {
-    "FlextInfraCliRelease": "flext_infra.release.cli",
-    "FlextInfraReleaseOrchestrator": "flext_infra.release.orchestrator",
-    "FlextInfraReleaseOrchestratorPhases": "flext_infra.release.orchestrator_phases",
+    "FlextInfraCliRelease": ("flext_infra.release.cli", "FlextInfraCliRelease"),
+    "FlextInfraReleaseOrchestrator": (
+        "flext_infra.release.orchestrator",
+        "FlextInfraReleaseOrchestrator",
+    ),
+    "FlextInfraReleaseOrchestratorPhases": (
+        "flext_infra.release.orchestrator_phases",
+        "FlextInfraReleaseOrchestratorPhases",
+    ),
     "c": ("flext_core.constants", "FlextConstants"),
     "cli": "flext_infra.release.cli",
     "d": ("flext_core.decorators", "FlextDecorators"),

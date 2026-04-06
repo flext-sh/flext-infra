@@ -23,9 +23,12 @@ if _t.TYPE_CHECKING:
     rope = _flext_infra__typings_rope
     from flext_infra._typings.rope import FlextInfraTypesRope
 _LAZY_IMPORTS = {
-    "FlextInfraTypesAdapters": "flext_infra._typings.adapters",
-    "FlextInfraTypesBase": "flext_infra._typings.base",
-    "FlextInfraTypesRope": "flext_infra._typings.rope",
+    "FlextInfraTypesAdapters": (
+        "flext_infra._typings.adapters",
+        "FlextInfraTypesAdapters",
+    ),
+    "FlextInfraTypesBase": ("flext_infra._typings.base", "FlextInfraTypesBase"),
+    "FlextInfraTypesRope": ("flext_infra._typings.rope", "FlextInfraTypesRope"),
     "adapters": "flext_infra._typings.adapters",
     "base": "flext_infra._typings.base",
     "rope": "flext_infra._typings.rope",

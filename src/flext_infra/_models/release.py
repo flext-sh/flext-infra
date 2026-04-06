@@ -59,7 +59,6 @@ class FlextInfraReleaseModels:
         ]
 
     class ReleaseOrchestratorConfig(
-        FlextInfraModelsMixins.DryRunFalseMixin,
         FlextInfraModelsMixins.ProjectNamesOptionalMixin,
         FlextInfraModelsMixins.WorkspaceRootPathMixin,
         FlextInfraModelsMixins.ReleaseVersionTagMixin,
@@ -68,6 +67,9 @@ class FlextInfraReleaseModels:
     ):
         """Configuration for release workflow execution."""
 
+        dry_run: Annotated[bool, Field(default=False, description="Dry run flag")] = (
+            False
+        )
         phases: Annotated[t.StrSequence, Field(description="Ordered list of phases")]
         create_branches: Annotated[
             bool, Field(default=True, description="Create branches flag")
@@ -76,7 +78,6 @@ class FlextInfraReleaseModels:
         next_bump: Annotated[str, Field(default="minor", description="Next bump")]
 
     class ReleasePhaseDispatchConfig(
-        FlextInfraModelsMixins.DryRunFalseMixin,
         FlextInfraModelsMixins.ProjectNamesListMixin,
         FlextInfraModelsMixins.WorkspaceRootPathMixin,
         FlextInfraModelsMixins.ReleaseVersionTagMixin,
@@ -85,6 +86,9 @@ class FlextInfraReleaseModels:
     ):
         """Configuration for single release phase dispatch."""
 
+        dry_run: Annotated[bool, Field(default=False, description="Dry run flag")] = (
+            False
+        )
         phase: Annotated[t.NonEmptyStr, Field(description="Release phase")]
 
 

@@ -145,30 +145,102 @@ if _t.TYPE_CHECKING:
         FlextInfraViolationCensusVisitor,
     )
 _LAZY_IMPORTS = {
-    "FlextInfraCensusImportDiscoveryVisitor": "flext_infra.transformers.census_visitors",
-    "FlextInfraCensusUsageCollector": "flext_infra.transformers.census_visitors",
-    "FlextInfraChangeTrackingTransformer": "flext_infra.transformers._base",
-    "FlextInfraHelperConsolidationTransformer": "flext_infra.transformers.helper_consolidation",
-    "FlextInfraNestedClassPropagationTransformer": "flext_infra.transformers.nested_class_propagation",
-    "FlextInfraNormalizerContext": "flext_infra.transformers._utilities_normalizer",
-    "FlextInfraRefactorAliasRemover": "flext_infra.transformers.alias_remover",
-    "FlextInfraRefactorClassNestingTransformer": "flext_infra.transformers.class_nesting",
-    "FlextInfraRefactorClassReconstructor": "flext_infra.transformers.class_reconstructor",
-    "FlextInfraRefactorDeprecatedRemover": "flext_infra.transformers.deprecated_remover",
-    "FlextInfraRefactorImportBypassRemover": "flext_infra.transformers.import_bypass_remover",
-    "FlextInfraRefactorImportModernizer": "flext_infra.transformers.import_modernizer",
-    "FlextInfraRefactorLazyImportFixer": "flext_infra.transformers.lazy_import_fixer",
-    "FlextInfraRefactorMRORemover": "flext_infra.transformers.mro_remover",
-    "FlextInfraRefactorMROSymbolPropagator": "flext_infra.transformers.mro_symbol_propagator",
-    "FlextInfraRefactorSignaturePropagator": "flext_infra.transformers.signature_propagator",
-    "FlextInfraRefactorSymbolPropagator": "flext_infra.transformers.symbol_propagator",
-    "FlextInfraRefactorTransformerPolicyUtilities": "flext_infra.transformers.policy",
-    "FlextInfraRefactorTypingUnifier": "flext_infra.transformers.typing_unifier",
-    "FlextInfraRopeTransformer": "flext_infra.transformers._base",
-    "FlextInfraTransformerTier0ImportFixer": "flext_infra.transformers.tier0_import_fixer",
-    "FlextInfraTypingAnnotationReplacer": "flext_infra.transformers.typing_annotation_replacer",
-    "FlextInfraUtilitiesImportNormalizer": "flext_infra.transformers._utilities_normalizer",
-    "FlextInfraViolationCensusVisitor": "flext_infra.transformers.violation_census_visitor",
+    "FlextInfraCensusImportDiscoveryVisitor": (
+        "flext_infra.transformers.census_visitors",
+        "FlextInfraCensusImportDiscoveryVisitor",
+    ),
+    "FlextInfraCensusUsageCollector": (
+        "flext_infra.transformers.census_visitors",
+        "FlextInfraCensusUsageCollector",
+    ),
+    "FlextInfraChangeTrackingTransformer": (
+        "flext_infra.transformers._base",
+        "FlextInfraChangeTrackingTransformer",
+    ),
+    "FlextInfraHelperConsolidationTransformer": (
+        "flext_infra.transformers.helper_consolidation",
+        "FlextInfraHelperConsolidationTransformer",
+    ),
+    "FlextInfraNestedClassPropagationTransformer": (
+        "flext_infra.transformers.nested_class_propagation",
+        "FlextInfraNestedClassPropagationTransformer",
+    ),
+    "FlextInfraNormalizerContext": (
+        "flext_infra.transformers._utilities_normalizer",
+        "FlextInfraNormalizerContext",
+    ),
+    "FlextInfraRefactorAliasRemover": (
+        "flext_infra.transformers.alias_remover",
+        "FlextInfraRefactorAliasRemover",
+    ),
+    "FlextInfraRefactorClassNestingTransformer": (
+        "flext_infra.transformers.class_nesting",
+        "FlextInfraRefactorClassNestingTransformer",
+    ),
+    "FlextInfraRefactorClassReconstructor": (
+        "flext_infra.transformers.class_reconstructor",
+        "FlextInfraRefactorClassReconstructor",
+    ),
+    "FlextInfraRefactorDeprecatedRemover": (
+        "flext_infra.transformers.deprecated_remover",
+        "FlextInfraRefactorDeprecatedRemover",
+    ),
+    "FlextInfraRefactorImportBypassRemover": (
+        "flext_infra.transformers.import_bypass_remover",
+        "FlextInfraRefactorImportBypassRemover",
+    ),
+    "FlextInfraRefactorImportModernizer": (
+        "flext_infra.transformers.import_modernizer",
+        "FlextInfraRefactorImportModernizer",
+    ),
+    "FlextInfraRefactorLazyImportFixer": (
+        "flext_infra.transformers.lazy_import_fixer",
+        "FlextInfraRefactorLazyImportFixer",
+    ),
+    "FlextInfraRefactorMRORemover": (
+        "flext_infra.transformers.mro_remover",
+        "FlextInfraRefactorMRORemover",
+    ),
+    "FlextInfraRefactorMROSymbolPropagator": (
+        "flext_infra.transformers.mro_symbol_propagator",
+        "FlextInfraRefactorMROSymbolPropagator",
+    ),
+    "FlextInfraRefactorSignaturePropagator": (
+        "flext_infra.transformers.signature_propagator",
+        "FlextInfraRefactorSignaturePropagator",
+    ),
+    "FlextInfraRefactorSymbolPropagator": (
+        "flext_infra.transformers.symbol_propagator",
+        "FlextInfraRefactorSymbolPropagator",
+    ),
+    "FlextInfraRefactorTransformerPolicyUtilities": (
+        "flext_infra.transformers.policy",
+        "FlextInfraRefactorTransformerPolicyUtilities",
+    ),
+    "FlextInfraRefactorTypingUnifier": (
+        "flext_infra.transformers.typing_unifier",
+        "FlextInfraRefactorTypingUnifier",
+    ),
+    "FlextInfraRopeTransformer": (
+        "flext_infra.transformers._base",
+        "FlextInfraRopeTransformer",
+    ),
+    "FlextInfraTransformerTier0ImportFixer": (
+        "flext_infra.transformers.tier0_import_fixer",
+        "FlextInfraTransformerTier0ImportFixer",
+    ),
+    "FlextInfraTypingAnnotationReplacer": (
+        "flext_infra.transformers.typing_annotation_replacer",
+        "FlextInfraTypingAnnotationReplacer",
+    ),
+    "FlextInfraUtilitiesImportNormalizer": (
+        "flext_infra.transformers._utilities_normalizer",
+        "FlextInfraUtilitiesImportNormalizer",
+    ),
+    "FlextInfraViolationCensusVisitor": (
+        "flext_infra.transformers.violation_census_visitor",
+        "FlextInfraViolationCensusVisitor",
+    ),
     "_base": "flext_infra.transformers._base",
     "_utilities_normalizer": "flext_infra.transformers._utilities_normalizer",
     "alias_remover": "flext_infra.transformers.alias_remover",

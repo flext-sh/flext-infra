@@ -114,11 +114,8 @@ class FlextInfraCodegenFixer(s[str]):
                 message=initial_violations_result.error
                 or "namespace validation failed",
             )
-        checkpoint_result = u.Infra.create_checkpoint(
-            self.workspace_root,
-            label=f"codegen-fix:{project_path.name}",
-        )
-        stash_ref = checkpoint_result.unwrap_or("")
+        py_files = list(project_path.rglob(c.Infra.Extensions.PYTHON_GLOB))
+        bak_paths = u.Infra.backup_files(py_files)
         if self.dry_run or self.rules_only:
             ctx.violations_skipped.extend(initial_violations)
             return self._build_result(project_path.name, ctx)
@@ -220,7 +217,7 @@ class FlextInfraCodegenFixer(s[str]):
                 if path.is_file():
                     u.Infra.run_ruff_fix(path, quiet=True)
         except (OSError, UnicodeDecodeError):
-            _ = u.Infra.rollback_to_checkpoint(self.workspace_root, stash_ref)
+            u.Infra.restore_files(bak_paths)
             raise
         self._reconcile_namespace_violations(
             project_path=project_path,

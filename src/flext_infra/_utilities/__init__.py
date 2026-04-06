@@ -244,64 +244,229 @@ if _t.TYPE_CHECKING:
     yaml = _flext_infra__utilities_yaml
     from flext_infra._utilities.yaml import FlextInfraUtilitiesYaml
 _LAZY_IMPORTS = {
-    "FlextInfraExtraPathsResolutionMixin": "flext_infra._utilities.deps_paths",
-    "FlextInfraInternalSyncRepoMixin": "flext_infra._utilities.deps_repos",
-    "FlextInfraUtilitiesBase": "flext_infra._utilities.base",
-    "FlextInfraUtilitiesCli": "flext_infra._utilities.cli",
-    "FlextInfraUtilitiesCliShared": "flext_infra._utilities.cli_shared",
-    "FlextInfraUtilitiesCliSubcommand": "flext_infra._utilities.cli_subcommand",
-    "FlextInfraUtilitiesCodegenConstantAnalysis": "flext_infra._utilities.codegen_constants",
-    "FlextInfraUtilitiesCodegenConstantDetection": "flext_infra._utilities.codegen_constants",
-    "FlextInfraUtilitiesCodegenConstantTransformation": "flext_infra._utilities.codegen_constants",
-    "FlextInfraUtilitiesCodegenExecution": "flext_infra._utilities.codegen_execution",
-    "FlextInfraUtilitiesCodegenGeneration": "flext_infra._utilities.codegen_generation",
-    "FlextInfraUtilitiesCodegenGovernance": "flext_infra._utilities.codegen_constants",
-    "FlextInfraUtilitiesCodegenImportCycles": "flext_infra._utilities.codegen_import_cycles",
-    "FlextInfraUtilitiesCodegenLazyAliases": "flext_infra._utilities.codegen_lazy",
-    "FlextInfraUtilitiesCodegenLazyMerging": "flext_infra._utilities.codegen_lazy",
-    "FlextInfraUtilitiesCodegenLazyScanning": "flext_infra._utilities.codegen_lazy",
-    "FlextInfraUtilitiesDiscovery": "flext_infra._utilities.discovery",
-    "FlextInfraUtilitiesDiscoveryScanning": "flext_infra._utilities.discovery_scanning",
-    "FlextInfraUtilitiesDocs": "flext_infra._utilities.docs",
-    "FlextInfraUtilitiesDocsApi": "flext_infra._utilities.docs_api",
-    "FlextInfraUtilitiesDocsAudit": "flext_infra._utilities.docs_audit",
-    "FlextInfraUtilitiesDocsBuild": "flext_infra._utilities.docs_build",
-    "FlextInfraUtilitiesDocsContract": "flext_infra._utilities.docs_contract",
-    "FlextInfraUtilitiesDocsFix": "flext_infra._utilities.docs_fix",
-    "FlextInfraUtilitiesDocsGenerate": "flext_infra._utilities.docs_generate",
-    "FlextInfraUtilitiesDocsRender": "flext_infra._utilities.docs_render",
-    "FlextInfraUtilitiesDocsScope": "flext_infra._utilities.docs_scope",
-    "FlextInfraUtilitiesDocsValidate": "flext_infra._utilities.docs_validate",
-    "FlextInfraUtilitiesFormatting": "flext_infra._utilities.formatting",
-    "FlextInfraUtilitiesGit": "flext_infra._utilities.git",
-    "FlextInfraUtilitiesGithub": "flext_infra._utilities.github",
-    "FlextInfraUtilitiesGithubPr": "flext_infra._utilities.github_pr",
-    "FlextInfraUtilitiesIo": "flext_infra._utilities.io",
-    "FlextInfraUtilitiesIteration": "flext_infra._utilities.iteration",
-    "FlextInfraUtilitiesLogParser": "flext_infra._utilities.log_parser",
-    "FlextInfraUtilitiesOutput": "flext_infra._utilities.output",
-    "FlextInfraUtilitiesOutputReporting": "flext_infra._utilities.output_reporting",
-    "FlextInfraUtilitiesParsing": "flext_infra._utilities.parsing",
-    "FlextInfraUtilitiesPaths": "flext_infra._utilities.paths",
-    "FlextInfraUtilitiesPatterns": "flext_infra._utilities.patterns",
-    "FlextInfraUtilitiesRelease": "flext_infra._utilities.release",
-    "FlextInfraUtilitiesReporting": "flext_infra._utilities.reporting",
-    "FlextInfraUtilitiesRope": "flext_infra._utilities.rope",
-    "FlextInfraUtilitiesRopeAnalysis": "flext_infra._utilities.rope_analysis",
-    "FlextInfraUtilitiesRopeAnalysisIntrospection": "flext_infra._utilities.rope_analysis_introspection",
-    "FlextInfraUtilitiesRopeCore": "flext_infra._utilities.rope_core",
-    "FlextInfraUtilitiesRopeHelpers": "flext_infra._utilities.rope_helpers",
-    "FlextInfraUtilitiesRopeImports": "flext_infra._utilities.rope_imports",
-    "FlextInfraUtilitiesRopeSource": "flext_infra._utilities.rope_source",
-    "FlextInfraUtilitiesSafety": "flext_infra._utilities.safety",
-    "FlextInfraUtilitiesSelection": "flext_infra._utilities.selection",
-    "FlextInfraUtilitiesSubprocess": "flext_infra._utilities.subprocess",
-    "FlextInfraUtilitiesTemplates": "flext_infra._utilities.templates",
-    "FlextInfraUtilitiesTerminal": "flext_infra._utilities.terminal",
-    "FlextInfraUtilitiesToml": "flext_infra._utilities.toml",
-    "FlextInfraUtilitiesTomlParse": "flext_infra._utilities.toml_parse",
-    "FlextInfraUtilitiesVersioning": "flext_infra._utilities.versioning",
-    "FlextInfraUtilitiesYaml": "flext_infra._utilities.yaml",
+    "FlextInfraExtraPathsResolutionMixin": (
+        "flext_infra._utilities.deps_paths",
+        "FlextInfraExtraPathsResolutionMixin",
+    ),
+    "FlextInfraInternalSyncRepoMixin": (
+        "flext_infra._utilities.deps_repos",
+        "FlextInfraInternalSyncRepoMixin",
+    ),
+    "FlextInfraUtilitiesBase": (
+        "flext_infra._utilities.base",
+        "FlextInfraUtilitiesBase",
+    ),
+    "FlextInfraUtilitiesCli": ("flext_infra._utilities.cli", "FlextInfraUtilitiesCli"),
+    "FlextInfraUtilitiesCliShared": (
+        "flext_infra._utilities.cli_shared",
+        "FlextInfraUtilitiesCliShared",
+    ),
+    "FlextInfraUtilitiesCliSubcommand": (
+        "flext_infra._utilities.cli_subcommand",
+        "FlextInfraUtilitiesCliSubcommand",
+    ),
+    "FlextInfraUtilitiesCodegenConstantAnalysis": (
+        "flext_infra._utilities.codegen_constants",
+        "FlextInfraUtilitiesCodegenConstantAnalysis",
+    ),
+    "FlextInfraUtilitiesCodegenConstantDetection": (
+        "flext_infra._utilities.codegen_constants",
+        "FlextInfraUtilitiesCodegenConstantDetection",
+    ),
+    "FlextInfraUtilitiesCodegenConstantTransformation": (
+        "flext_infra._utilities.codegen_constants",
+        "FlextInfraUtilitiesCodegenConstantTransformation",
+    ),
+    "FlextInfraUtilitiesCodegenExecution": (
+        "flext_infra._utilities.codegen_execution",
+        "FlextInfraUtilitiesCodegenExecution",
+    ),
+    "FlextInfraUtilitiesCodegenGeneration": (
+        "flext_infra._utilities.codegen_generation",
+        "FlextInfraUtilitiesCodegenGeneration",
+    ),
+    "FlextInfraUtilitiesCodegenGovernance": (
+        "flext_infra._utilities.codegen_constants",
+        "FlextInfraUtilitiesCodegenGovernance",
+    ),
+    "FlextInfraUtilitiesCodegenImportCycles": (
+        "flext_infra._utilities.codegen_import_cycles",
+        "FlextInfraUtilitiesCodegenImportCycles",
+    ),
+    "FlextInfraUtilitiesCodegenLazyAliases": (
+        "flext_infra._utilities.codegen_lazy",
+        "FlextInfraUtilitiesCodegenLazyAliases",
+    ),
+    "FlextInfraUtilitiesCodegenLazyMerging": (
+        "flext_infra._utilities.codegen_lazy",
+        "FlextInfraUtilitiesCodegenLazyMerging",
+    ),
+    "FlextInfraUtilitiesCodegenLazyScanning": (
+        "flext_infra._utilities.codegen_lazy",
+        "FlextInfraUtilitiesCodegenLazyScanning",
+    ),
+    "FlextInfraUtilitiesDiscovery": (
+        "flext_infra._utilities.discovery",
+        "FlextInfraUtilitiesDiscovery",
+    ),
+    "FlextInfraUtilitiesDiscoveryScanning": (
+        "flext_infra._utilities.discovery_scanning",
+        "FlextInfraUtilitiesDiscoveryScanning",
+    ),
+    "FlextInfraUtilitiesDocs": (
+        "flext_infra._utilities.docs",
+        "FlextInfraUtilitiesDocs",
+    ),
+    "FlextInfraUtilitiesDocsApi": (
+        "flext_infra._utilities.docs_api",
+        "FlextInfraUtilitiesDocsApi",
+    ),
+    "FlextInfraUtilitiesDocsAudit": (
+        "flext_infra._utilities.docs_audit",
+        "FlextInfraUtilitiesDocsAudit",
+    ),
+    "FlextInfraUtilitiesDocsBuild": (
+        "flext_infra._utilities.docs_build",
+        "FlextInfraUtilitiesDocsBuild",
+    ),
+    "FlextInfraUtilitiesDocsContract": (
+        "flext_infra._utilities.docs_contract",
+        "FlextInfraUtilitiesDocsContract",
+    ),
+    "FlextInfraUtilitiesDocsFix": (
+        "flext_infra._utilities.docs_fix",
+        "FlextInfraUtilitiesDocsFix",
+    ),
+    "FlextInfraUtilitiesDocsGenerate": (
+        "flext_infra._utilities.docs_generate",
+        "FlextInfraUtilitiesDocsGenerate",
+    ),
+    "FlextInfraUtilitiesDocsRender": (
+        "flext_infra._utilities.docs_render",
+        "FlextInfraUtilitiesDocsRender",
+    ),
+    "FlextInfraUtilitiesDocsScope": (
+        "flext_infra._utilities.docs_scope",
+        "FlextInfraUtilitiesDocsScope",
+    ),
+    "FlextInfraUtilitiesDocsValidate": (
+        "flext_infra._utilities.docs_validate",
+        "FlextInfraUtilitiesDocsValidate",
+    ),
+    "FlextInfraUtilitiesFormatting": (
+        "flext_infra._utilities.formatting",
+        "FlextInfraUtilitiesFormatting",
+    ),
+    "FlextInfraUtilitiesGit": ("flext_infra._utilities.git", "FlextInfraUtilitiesGit"),
+    "FlextInfraUtilitiesGithub": (
+        "flext_infra._utilities.github",
+        "FlextInfraUtilitiesGithub",
+    ),
+    "FlextInfraUtilitiesGithubPr": (
+        "flext_infra._utilities.github_pr",
+        "FlextInfraUtilitiesGithubPr",
+    ),
+    "FlextInfraUtilitiesIo": ("flext_infra._utilities.io", "FlextInfraUtilitiesIo"),
+    "FlextInfraUtilitiesIteration": (
+        "flext_infra._utilities.iteration",
+        "FlextInfraUtilitiesIteration",
+    ),
+    "FlextInfraUtilitiesLogParser": (
+        "flext_infra._utilities.log_parser",
+        "FlextInfraUtilitiesLogParser",
+    ),
+    "FlextInfraUtilitiesOutput": (
+        "flext_infra._utilities.output",
+        "FlextInfraUtilitiesOutput",
+    ),
+    "FlextInfraUtilitiesOutputReporting": (
+        "flext_infra._utilities.output_reporting",
+        "FlextInfraUtilitiesOutputReporting",
+    ),
+    "FlextInfraUtilitiesParsing": (
+        "flext_infra._utilities.parsing",
+        "FlextInfraUtilitiesParsing",
+    ),
+    "FlextInfraUtilitiesPaths": (
+        "flext_infra._utilities.paths",
+        "FlextInfraUtilitiesPaths",
+    ),
+    "FlextInfraUtilitiesPatterns": (
+        "flext_infra._utilities.patterns",
+        "FlextInfraUtilitiesPatterns",
+    ),
+    "FlextInfraUtilitiesRelease": (
+        "flext_infra._utilities.release",
+        "FlextInfraUtilitiesRelease",
+    ),
+    "FlextInfraUtilitiesReporting": (
+        "flext_infra._utilities.reporting",
+        "FlextInfraUtilitiesReporting",
+    ),
+    "FlextInfraUtilitiesRope": (
+        "flext_infra._utilities.rope",
+        "FlextInfraUtilitiesRope",
+    ),
+    "FlextInfraUtilitiesRopeAnalysis": (
+        "flext_infra._utilities.rope_analysis",
+        "FlextInfraUtilitiesRopeAnalysis",
+    ),
+    "FlextInfraUtilitiesRopeAnalysisIntrospection": (
+        "flext_infra._utilities.rope_analysis_introspection",
+        "FlextInfraUtilitiesRopeAnalysisIntrospection",
+    ),
+    "FlextInfraUtilitiesRopeCore": (
+        "flext_infra._utilities.rope_core",
+        "FlextInfraUtilitiesRopeCore",
+    ),
+    "FlextInfraUtilitiesRopeHelpers": (
+        "flext_infra._utilities.rope_helpers",
+        "FlextInfraUtilitiesRopeHelpers",
+    ),
+    "FlextInfraUtilitiesRopeImports": (
+        "flext_infra._utilities.rope_imports",
+        "FlextInfraUtilitiesRopeImports",
+    ),
+    "FlextInfraUtilitiesRopeSource": (
+        "flext_infra._utilities.rope_source",
+        "FlextInfraUtilitiesRopeSource",
+    ),
+    "FlextInfraUtilitiesSafety": (
+        "flext_infra._utilities.safety",
+        "FlextInfraUtilitiesSafety",
+    ),
+    "FlextInfraUtilitiesSelection": (
+        "flext_infra._utilities.selection",
+        "FlextInfraUtilitiesSelection",
+    ),
+    "FlextInfraUtilitiesSubprocess": (
+        "flext_infra._utilities.subprocess",
+        "FlextInfraUtilitiesSubprocess",
+    ),
+    "FlextInfraUtilitiesTemplates": (
+        "flext_infra._utilities.templates",
+        "FlextInfraUtilitiesTemplates",
+    ),
+    "FlextInfraUtilitiesTerminal": (
+        "flext_infra._utilities.terminal",
+        "FlextInfraUtilitiesTerminal",
+    ),
+    "FlextInfraUtilitiesToml": (
+        "flext_infra._utilities.toml",
+        "FlextInfraUtilitiesToml",
+    ),
+    "FlextInfraUtilitiesTomlParse": (
+        "flext_infra._utilities.toml_parse",
+        "FlextInfraUtilitiesTomlParse",
+    ),
+    "FlextInfraUtilitiesVersioning": (
+        "flext_infra._utilities.versioning",
+        "FlextInfraUtilitiesVersioning",
+    ),
+    "FlextInfraUtilitiesYaml": (
+        "flext_infra._utilities.yaml",
+        "FlextInfraUtilitiesYaml",
+    ),
     "base": "flext_infra._utilities.base",
     "cli": "flext_infra._utilities.cli",
     "cli_shared": "flext_infra._utilities.cli_shared",

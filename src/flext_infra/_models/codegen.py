@@ -8,11 +8,11 @@ from typing import Annotated
 from pydantic import Field
 
 from flext_core import FlextModels
-from flext_infra import (
+from flext_infra._models.codegen_deduplication import (
     FlextInfraCodegenDeduplicationModels,
-    FlextInfraModelsMixins,
-    t,
 )
+from flext_infra._models.mixins import FlextInfraModelsMixins
+from flext_infra.typings import FlextInfraTypes as t
 
 
 class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):

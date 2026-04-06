@@ -31,9 +31,18 @@ if _t.TYPE_CHECKING:
     from flext_core.typings import FlextTypes as t
     from flext_core.utilities import FlextUtilities as u
 _LAZY_IMPORTS = {
-    "TestInfraContainerFunctions": "tests.unit.container.test_infra_container",
-    "TestInfraMroPattern": "tests.unit.container.test_infra_container",
-    "TestInfraServiceRetrieval": "tests.unit.container.test_infra_container",
+    "TestInfraContainerFunctions": (
+        "tests.unit.container.test_infra_container",
+        "TestInfraContainerFunctions",
+    ),
+    "TestInfraMroPattern": (
+        "tests.unit.container.test_infra_container",
+        "TestInfraMroPattern",
+    ),
+    "TestInfraServiceRetrieval": (
+        "tests.unit.container.test_infra_container",
+        "TestInfraServiceRetrieval",
+    ),
     "c": ("flext_core.constants", "FlextConstants"),
     "d": ("flext_core.decorators", "FlextDecorators"),
     "e": ("flext_core.exceptions", "FlextExceptions"),

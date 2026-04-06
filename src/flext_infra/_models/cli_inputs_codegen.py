@@ -11,7 +11,7 @@ from typing import Annotated
 from pydantic import Field
 
 from flext_core import FlextModels
-from flext_infra import FlextInfraModelsMixins
+from flext_infra import FlextInfraModelsMixins, c
 
 
 class FlextInfraModelsCliInputsCodegen:
@@ -19,7 +19,7 @@ class FlextInfraModelsCliInputsCodegen:
 
     class BaseMkGenerateInput(
         FlextInfraModelsMixins.OptionalProjectNameFieldMixin,
-        FlextInfraModelsMixins.CliInputBase,
+        FlextInfraModelsMixins.WriteMixin,
         FlextModels.ContractModel,
     ):
         """CLI input for base.mk generation."""
@@ -33,49 +33,76 @@ class FlextInfraModelsCliInputsCodegen:
         ] = None
 
     class DocsAuditInput(
-        FlextInfraModelsMixins.CheckMixin,
-        FlextInfraModelsMixins.OutputDirMixin,
-        FlextInfraModelsMixins.ProjectSelectionMixin,
-        FlextInfraModelsMixins.CliInputBase,
+        FlextInfraModelsMixins.WriteMixin,
         FlextModels.ContractModel,
     ):
+        check: Annotated[
+            bool,
+            Field(default=False, description="Enable check mode"),
+        ] = False
+        output_dir: Annotated[
+            str | None,
+            Field(
+                default=f"{c.Infra.Reporting.REPORTS_DIR_NAME}/docs",
+                description="Output directory for reports",
+            ),
+        ] = f"{c.Infra.Reporting.REPORTS_DIR_NAME}/docs"
         strict: Annotated[
             bool,
             Field(default=False, description="Strict mode"),
         ] = False
 
     class DocsFixInput(
-        FlextInfraModelsMixins.OutputDirMixin,
-        FlextInfraModelsMixins.ProjectSelectionMixin,
-        FlextInfraModelsMixins.CliInputBase,
+        FlextInfraModelsMixins.WriteMixin,
         FlextModels.ContractModel,
     ):
-        pass
+        output_dir: Annotated[
+            str | None,
+            Field(
+                default=f"{c.Infra.Reporting.REPORTS_DIR_NAME}/docs",
+                description="Output directory for reports",
+            ),
+        ] = f"{c.Infra.Reporting.REPORTS_DIR_NAME}/docs"
 
     class DocsBuildInput(
-        FlextInfraModelsMixins.OutputDirMixin,
-        FlextInfraModelsMixins.ProjectSelectionMixin,
-        FlextInfraModelsMixins.CliInputBase,
+        FlextInfraModelsMixins.WriteMixin,
         FlextModels.ContractModel,
     ):
-        pass
+        output_dir: Annotated[
+            str | None,
+            Field(
+                default=f"{c.Infra.Reporting.REPORTS_DIR_NAME}/docs",
+                description="Output directory for reports",
+            ),
+        ] = f"{c.Infra.Reporting.REPORTS_DIR_NAME}/docs"
 
     class DocsGenerateInput(
-        FlextInfraModelsMixins.OutputDirMixin,
-        FlextInfraModelsMixins.ProjectSelectionMixin,
-        FlextInfraModelsMixins.CliInputBase,
+        FlextInfraModelsMixins.WriteMixin,
         FlextModels.ContractModel,
     ):
-        pass
+        output_dir: Annotated[
+            str | None,
+            Field(
+                default=f"{c.Infra.Reporting.REPORTS_DIR_NAME}/docs",
+                description="Output directory for reports",
+            ),
+        ] = f"{c.Infra.Reporting.REPORTS_DIR_NAME}/docs"
 
     class DocsValidateInput(
-        FlextInfraModelsMixins.CheckMixin,
-        FlextInfraModelsMixins.OutputDirMixin,
-        FlextInfraModelsMixins.ProjectSelectionMixin,
-        FlextInfraModelsMixins.CliInputBase,
+        FlextInfraModelsMixins.WriteMixin,
         FlextModels.ContractModel,
     ):
-        pass
+        check: Annotated[
+            bool,
+            Field(default=False, description="Enable check mode"),
+        ] = False
+        output_dir: Annotated[
+            str | None,
+            Field(
+                default=f"{c.Infra.Reporting.REPORTS_DIR_NAME}/docs",
+                description="Output directory for reports",
+            ),
+        ] = f"{c.Infra.Reporting.REPORTS_DIR_NAME}/docs"
 
 
 __all__ = ["FlextInfraModelsCliInputsCodegen"]

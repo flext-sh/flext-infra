@@ -9,7 +9,7 @@ from typing import Annotated
 from pydantic import Field
 
 from flext_core import FlextModels
-from flext_infra import FlextInfraModelsMixins, t
+from flext_infra import t
 
 
 class FlextInfraCodegenDeduplicationModels:
@@ -92,11 +92,14 @@ class FlextInfraCodegenDeduplicationModels:
         ]
 
     class DeduplicationApplyResult(
-        FlextInfraModelsMixins.DryRunTrueMixin,
         FlextModels.ArbitraryTypesModel,
     ):
         """Effect of applying one deduplication proposal."""
 
+        dry_run: Annotated[
+            bool,
+            Field(default=True, description="Whether writes were skipped"),
+        ] = True
         canonical_name: Annotated[
             t.NonEmptyStr,
             Field(description="Canonical constant kept after rename"),
@@ -121,11 +124,14 @@ class FlextInfraCodegenDeduplicationModels:
             )
 
     class DeduplicationRunOptions(
-        FlextInfraModelsMixins.DryRunTrueMixin,
         FlextModels.ArbitraryTypesModel,
     ):
         """Validated options for the deduplication workflow."""
 
+        dry_run: Annotated[
+            bool,
+            Field(default=True, description="Whether writes were skipped"),
+        ] = True
         class_path: Annotated[
             t.NonEmptyStr,
             Field(description="Fully qualified constants facade path"),
@@ -144,11 +150,14 @@ class FlextInfraCodegenDeduplicationModels:
         )
 
     class DeduplicationRunReport(
-        FlextInfraModelsMixins.DryRunTrueMixin,
         FlextModels.ArbitraryTypesModel,
     ):
         """Typed report emitted by the deduplication workflow."""
 
+        dry_run: Annotated[
+            bool,
+            Field(default=True, description="Whether writes were skipped"),
+        ] = True
         class_path: Annotated[
             t.NonEmptyStr,
             Field(description="Analyzed constants facade path"),

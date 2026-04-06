@@ -60,15 +60,36 @@ if _t.TYPE_CHECKING:
     from flext_core.utilities import FlextUtilities as u
     from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
 _LAZY_IMPORTS = {
-    "FlextInfraCliCodegen": "flext_infra.codegen.cli",
-    "FlextInfraCodegenCensus": "flext_infra.codegen.census",
-    "FlextInfraCodegenConstantsQualityGate": "flext_infra.codegen.constants_quality_gate",
-    "FlextInfraCodegenFixer": "flext_infra.codegen.fixer",
-    "FlextInfraCodegenGeneration": "flext_infra.codegen._codegen_generation",
-    "FlextInfraCodegenLazyInit": "flext_infra.codegen.lazy_init",
-    "FlextInfraCodegenPyTyped": "flext_infra.codegen.py_typed",
-    "FlextInfraCodegenScaffolder": "flext_infra.codegen.scaffolder",
-    "FlextInfraUtilitiesCodegen": "flext_infra.codegen._utilities",
+    "FlextInfraCliCodegen": ("flext_infra.codegen.cli", "FlextInfraCliCodegen"),
+    "FlextInfraCodegenCensus": (
+        "flext_infra.codegen.census",
+        "FlextInfraCodegenCensus",
+    ),
+    "FlextInfraCodegenConstantsQualityGate": (
+        "flext_infra.codegen.constants_quality_gate",
+        "FlextInfraCodegenConstantsQualityGate",
+    ),
+    "FlextInfraCodegenFixer": ("flext_infra.codegen.fixer", "FlextInfraCodegenFixer"),
+    "FlextInfraCodegenGeneration": (
+        "flext_infra.codegen._codegen_generation",
+        "FlextInfraCodegenGeneration",
+    ),
+    "FlextInfraCodegenLazyInit": (
+        "flext_infra.codegen.lazy_init",
+        "FlextInfraCodegenLazyInit",
+    ),
+    "FlextInfraCodegenPyTyped": (
+        "flext_infra.codegen.py_typed",
+        "FlextInfraCodegenPyTyped",
+    ),
+    "FlextInfraCodegenScaffolder": (
+        "flext_infra.codegen.scaffolder",
+        "FlextInfraCodegenScaffolder",
+    ),
+    "FlextInfraUtilitiesCodegen": (
+        "flext_infra.codegen._utilities",
+        "FlextInfraUtilitiesCodegen",
+    ),
     "_codegen_generation": "flext_infra.codegen._codegen_generation",
     "_utilities": "flext_infra.codegen._utilities",
     "c": ("flext_core.constants", "FlextConstants"),

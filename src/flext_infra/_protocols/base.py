@@ -477,3 +477,23 @@ class FlextInfraProtocolsBase(Protocol):
         def execute(self) -> r[bool]:
             """Execute release orchestration."""
             ...
+
+    @runtime_checkable
+    class SafeTransformer(Protocol):
+        """Contract for transformers that run with copy-on-write protection."""
+
+        def transform(self, files: Sequence[Path]) -> r[Sequence[Path]]:
+            """Apply transformation to files, return paths of modified files."""
+            ...
+
+    @runtime_checkable
+    class SafeValidator(Protocol):
+        """Contract for post-transform quality gate validators."""
+
+        def validate(
+            self,
+            files: Sequence[Path],
+            project_dir: Path,
+        ) -> r[m.Infra.GateResult]:
+            """Validate files pass quality gates after transformation."""
+            ...

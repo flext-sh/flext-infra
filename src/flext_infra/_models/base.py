@@ -12,7 +12,7 @@ from typing import Annotated
 from pydantic import Field
 
 from flext_core import FlextModels
-from flext_infra import FlextInfraModelsMixins, t
+from flext_infra import FlextInfraModelsMixins, c, t
 
 
 class FlextInfraModelsBase:
@@ -42,3 +42,39 @@ class FlextInfraModelsBase:
             Field(description="Rendered error excerpt lines"),
         ]
         max_show: Annotated[int, Field(description="Maximum errors to render")] = 3
+
+    class SafeExecutionResult(FlextModels.ContractModel):
+        """Result of a safe execution pipeline run."""
+
+        mode: Annotated[
+            c.Infra.ExecutionMode,
+            Field(description="Execution mode used"),
+        ]
+        files_backed_up: Annotated[
+            t.StrSequence,
+            Field(description="Paths of files backed up before transform"),
+        ]
+        gate_results: Annotated[
+            t.StrSequence,
+            Field(description="Gate validation outcome summaries"),
+        ]
+        rolled_back: Annotated[
+            bool,
+            Field(description="Whether rollback was performed"),
+        ]
+
+    class TransformStep(FlextModels.ContractModel):
+        """Declarative step for enforcement pipeline."""
+
+        detector: Annotated[
+            str,
+            Field(description="Detector rule_id to run"),
+        ]
+        transformer: Annotated[
+            str,
+            Field(description="Transformer class name to apply"),
+        ]
+        gates: Annotated[
+            str,
+            Field(description="Comma-separated gate names for post-validation"),
+        ] = c.Infra.SafeExecution.DEFAULT_GATES

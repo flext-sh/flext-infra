@@ -8,18 +8,21 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from flext_core import FlextModels
-from flext_infra import FlextInfraModelsMixins, t
+from flext_infra import t
 
 
 class FlextInfraGatesModels:
     """Quality gate execution domain models."""
 
     class GateContext(
-        FlextInfraModelsMixins.FailFastMixin,
         FlextModels.ContractModel,
     ):
         """Quality gate execution context and configuration."""
 
+        fail_fast: Annotated[
+            bool,
+            Field(default=True, description="Stop on first failure"),
+        ] = True
         model_config: ClassVar[ConfigDict] = ConfigDict(
             extra="forbid",
             arbitrary_types_allowed=True,

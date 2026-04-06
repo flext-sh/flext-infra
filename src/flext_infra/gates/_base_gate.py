@@ -49,6 +49,39 @@ class FlextInfraGate(ABC):
             raw_output=result.stderr,
         )
 
+    def check_files(
+        self,
+        files: Sequence[Path],
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+    ) -> m.Infra.GateExecution:
+        """Check specific files instead of whole directory.
+
+        Passes file paths directly to the tool CLI for scoped validation.
+        Falls back to directory check if no files provided.
+        """
+        if not files:
+            return self.check(project_dir, ctx)
+        started = time.monotonic()
+        file_strs = [str(f.relative_to(project_dir)) for f in files if f.exists()]
+        if not file_strs:
+            return self._skip_result(project_dir, started)
+        cmd = self._build_check_command(project_dir, ctx, file_strs)
+        result = self._run(
+            cmd,
+            project_dir,
+            timeout=self._check_timeout(project_dir, ctx),
+            env=self._check_env(project_dir, ctx),
+        )
+        passed, issues = self._parse_check_output(result, project_dir, ctx)
+        return self._build_gate_result(
+            project=project_dir.name,
+            passed=passed,
+            issues=issues,
+            duration=time.monotonic() - started,
+            raw_output=result.stderr,
+        )
+
     # ------------------------------------------------------------------
     # Template hooks — subclasses override these
     # ------------------------------------------------------------------

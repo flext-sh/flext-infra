@@ -34,9 +34,15 @@ if _t.TYPE_CHECKING:
     from flext_core.utilities import FlextUtilities as u
     from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 _LAZY_IMPORTS = {
-    "FlextInfraBaseMkGenerator": "flext_infra.basemk.generator",
-    "FlextInfraBaseMkTemplateEngine": "flext_infra.basemk.engine",
-    "FlextInfraCliBasemk": "flext_infra.basemk.cli",
+    "FlextInfraBaseMkGenerator": (
+        "flext_infra.basemk.generator",
+        "FlextInfraBaseMkGenerator",
+    ),
+    "FlextInfraBaseMkTemplateEngine": (
+        "flext_infra.basemk.engine",
+        "FlextInfraBaseMkTemplateEngine",
+    ),
+    "FlextInfraCliBasemk": ("flext_infra.basemk.cli", "FlextInfraCliBasemk"),
     "c": ("flext_core.constants", "FlextConstants"),
     "cli": "flext_infra.basemk.cli",
     "d": ("flext_core.decorators", "FlextDecorators"),
