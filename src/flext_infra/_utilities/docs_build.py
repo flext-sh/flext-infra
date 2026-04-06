@@ -5,7 +5,8 @@ from __future__ import annotations
 from collections.abc import Callable, MutableMapping
 from pathlib import Path
 
-from flext_infra import c, m, p, u
+from flext_cli import u
+from flext_infra import c, m, p
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
 
 

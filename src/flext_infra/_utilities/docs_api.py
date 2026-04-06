@@ -8,7 +8,8 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from flext_infra import c, m, t, u
+from flext_cli import u
+from flext_infra import c, m, t
 from flext_infra._utilities.discovery_scanning import (
     FlextInfraUtilitiesDiscoveryScanning,
 )

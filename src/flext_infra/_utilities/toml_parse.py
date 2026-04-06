@@ -13,13 +13,11 @@ import contextlib
 from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
-import tomlkit
 from pydantic import BaseModel, TypeAdapter, ValidationError
-from tomlkit.container import Container
-from tomlkit.items import Item, Table
 
+from flext_cli import u
 from flext_core import r
-from flext_infra import FlextInfraUtilitiesToml, c, t, u
+from flext_infra import FlextInfraUtilitiesToml, c, t
 
 
 class FlextInfraUtilitiesTomlParse:
@@ -53,7 +51,7 @@ class FlextInfraUtilitiesTomlParse:
 
     @staticmethod
     def ensure_pyright_execution_envs(
-        pyright: Table,
+        pyright: t.Cli.TomlTable,
         expected: Sequence[Mapping[str, t.Infra.InfraValue]] | Sequence[BaseModel],
         changes: MutableSequence[str],
     ) -> None:
@@ -92,7 +90,7 @@ class FlextInfraUtilitiesTomlParse:
         return namespaces
 
     @staticmethod
-    def workspace_dep_namespaces(doc: tomlkit.TOMLDocument) -> t.StrSequence:
+    def workspace_dep_namespaces(doc: t.Cli.TomlDocument) -> t.StrSequence:
         """Extract Python package names of workspace (flext-*) dependencies.
 
         Converts hyphenated dependency names (``flext-core``) to Python namespace
@@ -107,24 +105,18 @@ class FlextInfraUtilitiesTomlParse:
         )
 
     @staticmethod
-    def project_dev_groups(doc: tomlkit.TOMLDocument) -> Mapping[str, t.StrSequence]:
+    def project_dev_groups(doc: t.Cli.TomlDocument) -> Mapping[str, t.StrSequence]:
         """Extract optional-dependencies groups from project table."""
-        project_raw: t.Infra.InfraValue | Item | Container | None = None
-        if c.Infra.PROJECT in doc:
-            project_raw = doc[c.Infra.PROJECT]
-        if not isinstance(project_raw, (Table, dict)):
+        project_raw = u.Cli.toml_get_table(doc, c.Infra.PROJECT)
+        if project_raw is None:
             return {}
-        optional_raw: t.Infra.InfraValue | Item | None = None
-        if c.Infra.OPTIONAL_DEPENDENCIES in project_raw:
-            optional_raw = project_raw[c.Infra.OPTIONAL_DEPENDENCIES]
-        if not isinstance(optional_raw, (Table, dict)):
+        optional_raw = u.Cli.toml_get_table(project_raw, c.Infra.OPTIONAL_DEPENDENCIES)
+        if optional_raw is None:
             return {}
-        opt_deps: Table | Mapping[str, t.Infra.InfraValue] = optional_raw
+        opt_deps: t.Cli.TomlTable = optional_raw
 
         def _group_values(group_key: str) -> t.StrSequence:
-            value: t.Infra.InfraValue | Item | None = None
-            if group_key in opt_deps:
-                value = opt_deps[group_key]
+            value = u.Cli.toml_get_item(opt_deps, group_key)
             return u.Cli.toml_as_string_list(value)
 
         return {
@@ -136,7 +128,7 @@ class FlextInfraUtilitiesTomlParse:
         }
 
     @staticmethod
-    def declared_dependency_names(doc: tomlkit.TOMLDocument) -> t.StrSequence:
+    def declared_dependency_names(doc: t.Cli.TomlDocument) -> t.StrSequence:
         """Extract normalized dependency names from all declared project groups."""
         raw: t.Infra.TomlData = doc.unwrap()
         names: set[str] = set()
@@ -182,7 +174,7 @@ class FlextInfraUtilitiesTomlParse:
         return sorted(names)
 
     @staticmethod
-    def canonical_dev_dependencies(root_doc: tomlkit.TOMLDocument) -> t.StrSequence:
+    def canonical_dev_dependencies(root_doc: t.Cli.TomlDocument) -> t.StrSequence:
         """Merge all dev dependency groups from root pyproject."""
         groups = FlextInfraUtilitiesTomlParse.project_dev_groups(root_doc)
         merged = [

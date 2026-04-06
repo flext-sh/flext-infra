@@ -6,7 +6,8 @@ from collections.abc import MutableSequence, Sequence
 from fnmatch import fnmatch
 from pathlib import Path
 
-from flext_infra import c, m, r, t, u
+from flext_cli import u
+from flext_infra import c, m, r, t
 
 
 class FlextInfraUtilitiesDocsScope:
