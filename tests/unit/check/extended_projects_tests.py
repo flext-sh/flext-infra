@@ -84,8 +84,11 @@ class TestCheckProjectRunners:
         }
 
         class _FakeGate:
+            can_fix: bool = False
+
             def __init__(self, gate_name: str) -> None:
                 self._gate_name = gate_name
+                self.gate_id = gate_name
 
             def check(
                 self,

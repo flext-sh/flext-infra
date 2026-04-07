@@ -40,6 +40,23 @@ class FlextInfraExtraPathsPyrefly:
             return source_dir
         return project_root
 
+    @staticmethod
+    def _needs_project_root(
+        project_dir: Path,
+        *,
+        source_root: str,
+        local_dirs: t.StrSequence,
+    ) -> bool:
+        """Return True when package-style imports require the project root.
+
+        `from tests import ...` and similar imports resolve from the project
+        root, not from `tests/` itself, so pyrefly must include `"."` whenever
+        top-level Python packages other than the main source root are present.
+        """
+        if any(directory != source_root for directory in local_dirs):
+            return True
+        return any(project_dir.glob("*.py")) or any(project_dir.glob("*.pyi"))
+
     def pyrefly_search_paths(
         self,
         *,
@@ -65,9 +82,15 @@ class FlextInfraExtraPathsPyrefly:
             project_dir,
             rules.env_dirs,
         )
-        paths: t.Infra.StrSet = {*typings_paths, *local_dirs}
-        if (not paths) and (project_dir / source_root).is_dir():
+        paths: t.Infra.StrSet = {*typings_paths}
+        if (project_dir / source_root).is_dir():
             paths.add(source_root)
+        if self._needs_project_root(
+            project_dir,
+            source_root=source_root,
+            local_dirs=local_dirs,
+        ):
+            paths.add(rules.project_root)
         if (not paths) and (project_dir / rules.project_root).is_dir():
             paths.add(rules.project_root)
         return sorted(paths)

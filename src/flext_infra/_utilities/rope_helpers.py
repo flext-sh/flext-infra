@@ -6,8 +6,6 @@ import re
 from collections.abc import Sequence
 from typing import ClassVar
 
-from rope.refactor.importutils import get_module_imports as rope_get_module_imports
-
 from flext_infra import FlextInfraUtilitiesRopeCore, c, m, p, t
 
 
@@ -23,7 +21,10 @@ class FlextInfraUtilitiesRopeHelpers:
             pymodule: t.Infra.RopePyModule,
         ) -> t.Infra.RopeModuleImports:
             return FlextInfraUtilitiesRopeCore.ensure_module_imports(
-                rope_get_module_imports(project, pymodule)
+                FlextInfraUtilitiesRopeCore.get_module_imports_for_pymodule(
+                    project,
+                    pymodule,
+                )
             )
 
         return _get_module_imports

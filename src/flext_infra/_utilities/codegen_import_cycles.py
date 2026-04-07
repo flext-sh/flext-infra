@@ -49,7 +49,7 @@ class FlextInfraUtilitiesCodegenImportCycles:
                 continue
 
             try:
-                pymodule = rope_project.get_pymodule(res)
+                pymodule = FlextInfraUtilitiesRope.get_pymodule(rope_project, res)
                 mod_imports = get_imports(rope_project, pymodule)
             except Exception:
                 _logger.debug("Failed to parse imports for %s", py_file.name)

@@ -10,8 +10,8 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
-from typing import Final
+from collections.abc import Mapping, Sequence
+from typing import ClassVar, Final
 
 from flext_infra import t
 
@@ -212,6 +212,29 @@ class FlextInfraCodegenConstants:
 
         GETATTR_L0: Final[str] = "lazy_init_getattr_l0.py.j2"
         "L0-typings __getattr__ + __dir__ + namespace-cleanup."
+
+    class Pipeline:
+        """Codegen pipeline stage and configuration constants."""
+
+        STAGE_DISCOVER: Final[str] = "discover"
+        STAGE_PY_TYPED: Final[str] = "py_typed"
+        STAGE_CENSUS_BEFORE: Final[str] = "census_before"
+        STAGE_SCAFFOLD: Final[str] = "scaffold"
+        STAGE_AUTO_FIX: Final[str] = "auto_fix"
+        STAGE_LAZY_INIT: Final[str] = "lazy_init"
+        STAGE_CENSUS_AFTER: Final[str] = "census_after"
+
+        STAGE_ORDER: ClassVar[Sequence[str]] = (
+            STAGE_DISCOVER,
+            STAGE_PY_TYPED,
+            STAGE_CENSUS_BEFORE,
+            STAGE_SCAFFOLD,
+            STAGE_AUTO_FIX,
+            STAGE_LAZY_INIT,
+            STAGE_CENSUS_AFTER,
+        )
+
+        KEY_DRY_RUN: Final[str] = "dry_run"
 
     class QualityGate:
         """Constants used by constants quality gate analysis/reporting."""

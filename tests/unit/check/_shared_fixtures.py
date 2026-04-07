@@ -271,6 +271,18 @@ def patch_python_dir_detection(
 
     Single Responsibility: Mock python directory discovery for gate tests.
     """
+    if gate_class.__name__ == "FlextInfraPyreflyGate":
+
+        def _get_check_dirs(
+            _self: FlextInfraGate,
+            _project_dir: Path,
+            _ctx: m.Infra.GateContext,
+        ) -> t.StrSequence:
+            del _self, _project_dir, _ctx
+            return ["src"] if has_python_dirs else []
+
+        monkeypatch.setattr(gate_class, "_get_check_dirs", _get_check_dirs)
+        return
 
     def _existing_dirs(_self: FlextInfraGate, _project_dir: Path) -> t.StrSequence:
         del _self, _project_dir

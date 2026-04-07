@@ -19,6 +19,7 @@ class FlextInfraConstantsMake:
 
         CHECK: Final[str] = "check"
         VALIDATE: Final[str] = "validate"
+        PUBLISH: Final[str] = "publish"
         RUN: Final[str] = "run"
         CHECKS: Final[str] = "checks"
 

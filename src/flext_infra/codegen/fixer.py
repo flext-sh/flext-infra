@@ -27,6 +27,7 @@ from flext_infra import (
     FlextInfraRefactorMigrateToClassMRO,
     c,
     m,
+    p,
     s,
     t,
     u,
@@ -206,6 +207,11 @@ class FlextInfraCodegenFixer(s[str]):
         ).enforce(apply=True)
         for project_report in enforcement.projects:
             if project_report.has_violations:
+                _log.warning(
+                    "namespace_enforcement_failed",
+                    project=project_path.name,
+                    error="violations remain after namespace enforcement",
+                )
                 ctx.skip(
                     module=project_report.project,
                     rule="NAMESPACE",
@@ -455,13 +461,25 @@ class FlextInfraCodegenFixer(s[str]):
                 continue
             ctx.violations_skipped.append(violation)
 
-    def fix_workspace(self) -> Sequence[m.Infra.AutoFixResult]:
-        """Run auto-fix on all projects in workspace."""
-        projects_result = u.Infra.discover_projects(self.workspace_root)
-        if not projects_result.is_success:
-            return []
+    def fix_workspace(
+        self,
+        *,
+        projects: Sequence[p.Infra.ProjectInfo] | None = None,
+    ) -> Sequence[m.Infra.AutoFixResult]:
+        """Run auto-fix on all projects in workspace.
+
+        Args:
+            projects: Pre-discovered projects to skip redundant discovery.
+
+        """
+        if projects is None:
+            projects_result = u.Infra.discover_projects(self.workspace_root)
+            if not projects_result.is_success:
+                return []
+            discovered: Sequence[p.Infra.ProjectInfo] = projects_result.unwrap()
+        else:
+            discovered = projects
         results: MutableSequence[m.Infra.AutoFixResult] = []
-        discovered: Sequence[m.Infra.ProjectInfo] = projects_result.unwrap()
         for project in discovered:
             if project.name in c.Infra.EXCLUDED_PROJECTS:
                 continue

@@ -90,6 +90,12 @@ if _t.TYPE_CHECKING:
     )
 
     scaffolder_tests = _tests_unit_codegen_scaffolder_tests
+    import tests.unit.codegen.test_codegen_pipeline_dag as _tests_unit_codegen_test_codegen_pipeline_dag
+
+    test_codegen_pipeline_dag = _tests_unit_codegen_test_codegen_pipeline_dag
+    import tests.unit.codegen.test_violation_key as _tests_unit_codegen_test_violation_key
+
+    test_violation_key = _tests_unit_codegen_test_violation_key
     from flext_core.constants import FlextConstants as c
     from flext_core.decorators import FlextDecorators as d
     from flext_core.exceptions import FlextExceptions as e
@@ -209,6 +215,8 @@ _LAZY_IMPORTS = {
         "tests.unit.codegen.lazy_init_generation_tests",
         "test_codegen_init_getattr_raises_attribute_error",
     ),
+    "test_codegen_pipeline_dag": "tests.unit.codegen.test_codegen_pipeline_dag",
+    "test_violation_key": "tests.unit.codegen.test_violation_key",
     "u": ("flext_core.utilities", "FlextUtilities"),
     "x": ("flext_core.mixins", "FlextMixins"),
 }
@@ -261,6 +269,8 @@ __all__ = [
     "scaffolder_tests",
     "t",
     "test_codegen_init_getattr_raises_attribute_error",
+    "test_codegen_pipeline_dag",
+    "test_violation_key",
     "u",
     "x",
 ]

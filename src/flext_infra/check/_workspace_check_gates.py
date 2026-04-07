@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import time
-from collections.abc import Mapping, MutableSequence
+from collections.abc import Callable, Mapping, MutableMapping, MutableSequence
 from pathlib import Path
 from typing import ClassVar
 
 from pydantic import Field
 
-from flext_core import FlextLogger
+from flext_core import FlextLogger, r
 from flext_infra import (
     FlextInfraBanditGate,
     FlextInfraGate,
@@ -113,6 +113,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
             return None
         u.Infra.progress(index, total, project_name, c.Infra.Verbs.CHECK)
         project_ctx = self._isolate_context(ctx, project_name)
+        _ = u.Cli.ensure_dir(project_ctx.reports_dir)
         start = time.monotonic()
         project_result = self._check_project_with_ctx(
             project_dir,
@@ -203,45 +204,104 @@ class FlextInfraWorkspaceCheckGatesMixin:
         gates: t.StrSequence,
         ctx: m.Infra.GateContext,
     ) -> m.Infra.ProjectResult:
-        """Run gates for one project using a pre-built GateContext."""
+        """Run gates for one project as independent DAG stages."""
         project_name = project_dir.name
         result = m.Infra.ProjectResult(project=project_name)
-        for gate in gates:
-            gate_instance = self._registry.create(gate, self._workspace_root)
+
+        stages: MutableSequence[m.Cli.PipelineStageSpec] = []
+        for gate_id in gates:
+            gate_instance = self._registry.create(gate_id, self._workspace_root)
             if gate_instance is None:
                 continue
-            if ctx.apply_fixes and (not ctx.check_only) and gate_instance.can_fix:
-                fix_execution = gate_instance.fix(project_dir, ctx)
-                self._gate_logger.debug(
-                    "gate_executed",
-                    project=project_name,
-                    gate=gate,
-                    passed=fix_execution.result.passed,
-                )
-                if not fix_execution.result.passed:
-                    result.gates[gate] = fix_execution
-                    u.Infra.gate_result(
-                        gate,
-                        len(fix_execution.issues),
-                        passed=fix_execution.result.passed,
-                        elapsed=fix_execution.result.duration,
-                    )
-                    continue
-            execution = gate_instance.check(project_dir, ctx)
+            stages.append(
+                m.Cli.PipelineStageSpec(
+                    stage_id=gate_id,
+                    handler=self._make_gate_handler(
+                        gate_instance,
+                        project_dir,
+                        ctx,
+                        result.gates,
+                    ),
+                ),
+            )
+
+        if not stages:
+            return result
+
+        pipeline_ctx = m.Cli.PipelineStageContext(
+            workspace_root=project_dir,
+        )
+        u.Cli.execute_pipeline(
+            stages,
+            pipeline_ctx,
+            fail_fast=ctx.fail_fast,
+            logger=self._gate_logger,
+        )
+        return result
+
+    # ------------------------------------------------------------------
+    # Pipeline stage helpers
+    # ------------------------------------------------------------------
+
+    def _make_gate_handler(
+        self,
+        gate_instance: FlextInfraGate,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+        gates_sink: MutableMapping[str, m.Infra.GateExecution],
+    ) -> Callable[[m.Cli.PipelineStageContext], r[m.Cli.PipelineStageResult]]:
+        """Build a pipeline stage handler that executes a single gate.
+
+        The handler writes GateExecution into *gates_sink* as a side-effect
+        (same pattern as _CodegenPipelineState in the codegen pipeline).
+        """
+        gate_id = gate_instance.gate_id
+        project_name = project_dir.name
+
+        def _handler(
+            _pipeline_ctx: m.Cli.PipelineStageContext,
+        ) -> r[m.Cli.PipelineStageResult]:
+            execution = self._execute_gate(gate_instance, project_dir, ctx)
+            gates_sink[gate_id] = execution
             self._gate_logger.debug(
                 "gate_executed",
                 project=project_name,
-                gate=gate,
+                gate=gate_id,
                 passed=execution.result.passed,
             )
-            result.gates[gate] = execution
             u.Infra.gate_result(
-                gate,
+                gate_id,
                 len(execution.issues),
                 passed=execution.result.passed,
                 elapsed=execution.result.duration,
             )
-        return result
+            status: t.Cli.PipelineStageStatus = (
+                c.Cli.Pipeline.STATUS_OK
+                if execution.result.passed
+                else c.Cli.Pipeline.STATUS_FAILED
+            )
+            return r[m.Cli.PipelineStageResult].ok(
+                m.Cli.PipelineStageResult(
+                    stage_id=gate_id,
+                    status=status,
+                    output={"issues": len(execution.issues)},
+                ),
+            )
+
+        return _handler
+
+    @staticmethod
+    def _execute_gate(
+        gate_instance: FlextInfraGate,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+    ) -> m.Infra.GateExecution:
+        """Run fix-then-check or check-only for a single gate instance."""
+        if ctx.apply_fixes and (not ctx.check_only) and gate_instance.can_fix:
+            fix_execution = gate_instance.fix(project_dir, ctx)
+            if not fix_execution.result.passed:
+                return fix_execution
+        return gate_instance.check(project_dir, ctx)
 
 
 __all__ = ["FlextInfraGateRegistry", "FlextInfraWorkspaceCheckGatesMixin"]

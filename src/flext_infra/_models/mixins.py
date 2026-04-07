@@ -194,7 +194,7 @@ class FlextInfraModelsMixins:
                     c.Infra.Verbs.VALIDATE,
                     c.Infra.VERSION,
                     c.Infra.Directories.BUILD,
-                    "publish",
+                    c.Infra.Verbs.PUBLISH,
                 ]
             return self.split_csv_values(self.phase)
 

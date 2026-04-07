@@ -5,7 +5,10 @@ from __future__ import annotations
 import re
 from collections.abc import Sequence
 
+from rope.base.change import Change
 from rope.base.exceptions import RefactoringError, ResourceNotFoundError
+from rope.base.project import Project
+from rope.base.resources import Resource
 from rope.contrib.findit import find_occurrences
 from rope.refactor.importutils import ImportOrganizer
 from rope.refactor.importutils.importinfo import FromImport
@@ -29,8 +32,14 @@ class FlextInfraUtilitiesRopeImports(FlextInfraUtilitiesRopeCore):
         """Rename symbol at offset across the whole project."""
         changed_files: t.MutableIntMapping = {}
         try:
+            if not isinstance(rope_project, Project):
+                return []
+            if not isinstance(resource, Resource):
+                return []
             changes = Rename(rope_project, resource, offset).get_changes(new_name)
         except RefactoringError:
+            return []
+        if not isinstance(changes, Change):
             return []
         for change in changes.changes:
             changed_files[change.resource.path] = 1
@@ -48,6 +57,10 @@ class FlextInfraUtilitiesRopeImports(FlextInfraUtilitiesRopeCore):
     ) -> Sequence[t.Infra.RopeLocation]:
         """Find all occurrences of the symbol at offset across the project."""
         try:
+            if not isinstance(rope_project, Project):
+                return []
+            if not isinstance(resource, Resource):
+                return []
             return list(
                 find_occurrences(
                     rope_project,
@@ -69,11 +82,18 @@ class FlextInfraUtilitiesRopeImports(FlextInfraUtilitiesRopeCore):
         """Organize imports for one rope resource using rope's import engine."""
         original_source = resource.read()
         try:
+            if not isinstance(rope_project, Project):
+                return False
+            if not isinstance(resource, Resource):
+                return False
             organizer = ImportOrganizer(rope_project)
             changes = organizer.organize_imports(resource)
         except (RefactoringError, ResourceNotFoundError, AttributeError):
             return False
-        if not isinstance(changes, p.Infra.RopeChangesLike):
+        if not isinstance(changes, Change) or not isinstance(
+            changes,
+            p.Infra.RopeChangesLike,
+        ):
             return False
         change_list = getattr(changes, "changes", None)
         if not change_list:

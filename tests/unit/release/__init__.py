@@ -72,8 +72,11 @@ if _t.TYPE_CHECKING:
     )
 
     release_init_tests = _tests_unit_release_release_init_tests
-    import tests.unit.release.version_resolution_tests as _tests_unit_release_version_resolution_tests
+    import tests.unit.release.test_release_dag as _tests_unit_release_test_release_dag
     from tests.unit.release.release_init_tests import TestReleaseInit
+
+    test_release_dag = _tests_unit_release_test_release_dag
+    import tests.unit.release.version_resolution_tests as _tests_unit_release_version_resolution_tests
 
     version_resolution_tests = _tests_unit_release_version_resolution_tests
     from tests.unit.release.version_resolution_tests import (
@@ -192,6 +195,7 @@ _LAZY_IMPORTS = {
     "release_init_tests": "tests.unit.release.release_init_tests",
     "s": ("flext_core.service", "FlextService"),
     "t": ("flext_core.typings", "FlextTypes"),
+    "test_release_dag": "tests.unit.release.test_release_dag",
     "u": ("flext_core.utilities", "FlextUtilities"),
     "version_resolution_tests": "tests.unit.release.version_resolution_tests",
     "workspace_root": ("tests.unit.release.orchestrator_tests", "workspace_root"),
@@ -246,6 +250,7 @@ __all__ = [
     "release_init_tests",
     "s",
     "t",
+    "test_release_dag",
     "u",
     "version_resolution_tests",
     "workspace_root",

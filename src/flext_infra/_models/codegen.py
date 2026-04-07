@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import hashlib
 from collections.abc import MutableSequence, MutableSet, Sequence
 from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
+from flext_cli import u
 from flext_core import FlextModels
 from flext_infra._models.codegen_deduplication import (
     FlextInfraCodegenDeduplicationModels,
@@ -298,9 +298,7 @@ class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
             ctx_start = max(0, violation.line - 2)
             ctx_end = min(len(source_lines), violation.line + 3)
             context = "\n".join(source_lines[ctx_start:ctx_end])
-            content_hash = hashlib.sha256(
-                context.encode("utf-8"),
-            ).hexdigest()
+            content_hash = u.Cli.sha256_content(context)
             return FlextInfraCodegenModels.ViolationKey(
                 module=violation.module,
                 rule=violation.rule,

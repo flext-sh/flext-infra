@@ -226,3 +226,24 @@ def test_pyrefly_search_paths_only_use_local_project_dirs(
     result = manager.pyrefly_search_paths(project_dir=consumer, is_root=False)
 
     tm.that(result, eq=["src"])
+
+
+def test_pyrefly_search_paths_include_project_root_for_tests_package(
+    tmp_path: Path,
+) -> None:
+    consumer = tmp_path / "flext-infra"
+    consumer.mkdir()
+    (consumer / ".git").mkdir()
+    (consumer / "src").mkdir()
+    (consumer / "tests").mkdir()
+    (consumer / "Makefile").write_text("", encoding="utf-8")
+    (consumer / "pyproject.toml").write_text(
+        "[project]\nname = 'flext-infra'\n",
+        encoding="utf-8",
+    )
+    (consumer / "tests" / "__init__.py").write_text("", encoding="utf-8")
+
+    manager = FlextInfraExtraPathsManager(workspace_root=tmp_path)
+    result = manager.pyrefly_search_paths(project_dir=consumer, is_root=False)
+
+    tm.that(result, eq=[".", "src"])

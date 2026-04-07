@@ -83,7 +83,8 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
         root = Path(str(root_result.value))
         phases = params.phase_names
         needs_version = bool(
-            {c.Infra.VERSION, c.Infra.Directories.BUILD, "publish"} & set(phases),
+            {c.Infra.VERSION, c.Infra.Directories.BUILD, c.Infra.Verbs.PUBLISH}
+            & set(phases),
         )
         if needs_version:
             version_result = service._resolve_version(
@@ -153,7 +154,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
                 return branch_result
 
         dispatch_cfg = m.Infra.ReleasePhaseDispatchConfig(
-            phase="validate",  # placeholder — overridden per stage
+            phase=c.Infra.Verbs.VALIDATE,  # placeholder — overridden per stage
             workspace_root=workspace_root,
             version=spec.version,
             tag=spec.tag,
@@ -209,7 +210,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
             c.Infra.Verbs.VALIDATE,
             c.Infra.VERSION,
             c.Infra.Directories.BUILD,
-            "publish",
+            c.Infra.Verbs.PUBLISH,
         ]
         stage_list: MutableSequence[m.Cli.PipelineStageSpec] = []
         prev: str | None = None
@@ -244,7 +245,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
             return r[m.Cli.PipelineStageResult].ok(
                 m.Cli.PipelineStageResult(
                     stage_id=phase_name,
-                    status="ok",
+                    status=c.Cli.Pipeline.STATUS_OK,
                 ),
             )
 
@@ -253,7 +254,11 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
     def phase_validate(self, workspace_root: Path, *, dry_run: bool = False) -> r[bool]:
         """Execute validation phase via the workspace make validation target."""
         if dry_run:
-            self.logger.info("release_phase_validate", action="dry-run", status="ok")
+            self.logger.info(
+                "release_phase_validate",
+                action="dry-run",
+                status=c.Cli.Pipeline.STATUS_OK,
+            )
             return r[bool].ok(True)
         return u.Cli.run_checked(
             [c.Infra.MAKE, "val", "VALIDATE_SCOPE=workspace"], cwd=workspace_root
@@ -352,7 +357,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
             return self.phase_version(ctx)
         if phase == c.Infra.Directories.BUILD:
             return self.phase_build(ctx)
-        if phase == "publish":
+        if phase == c.Infra.Verbs.PUBLISH:
             return self.phase_publish(ctx)
         return r[bool].fail(f"unknown phase: {phase}")
 

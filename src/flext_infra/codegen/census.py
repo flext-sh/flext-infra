@@ -99,8 +99,14 @@ class FlextInfraCodegenCensus(FlextInfraCommandContext[str]):
         workspace_root: Path | None = None,
         *,
         output_format: str = "json",
+        projects: Sequence[p.Infra.ProjectInfo] | None = None,
     ) -> Sequence[m.Infra.CensusReport]:
         """Run census on all projects in workspace.
+
+        Args:
+            workspace_root: Override workspace root (defaults to self.workspace_root).
+            output_format: Unused, kept for API compat.
+            projects: Pre-discovered projects to skip redundant discovery.
 
         Returns:
             List of CensusReport models, one per scanned project.
@@ -110,7 +116,7 @@ class FlextInfraCodegenCensus(FlextInfraCommandContext[str]):
         workspace = workspace_root or self.workspace_root
         if self.class_to_analyze:
             return self._run_class_analysis(workspace)
-        return self._run_project_census(workspace)
+        return self._run_project_census(workspace, projects=projects)
 
     def _run_class_analysis(
         self,
@@ -183,13 +189,18 @@ class FlextInfraCodegenCensus(FlextInfraCommandContext[str]):
     def _run_project_census(
         self,
         workspace: Path,
+        *,
+        projects: Sequence[p.Infra.ProjectInfo] | None = None,
     ) -> Sequence[m.Infra.CensusReport]:
         """Standard path: census all projects in workspace."""
-        projects_result = u.Infra.discover_projects(workspace)
-        if not projects_result.is_success:
-            return []
+        if projects is None:
+            projects_result = u.Infra.discover_projects(workspace)
+            if not projects_result.is_success:
+                return []
+            discovered: Sequence[p.Infra.ProjectInfo] = projects_result.unwrap()
+        else:
+            discovered = projects
         reports: MutableSequence[m.Infra.CensusReport] = []
-        discovered: Sequence[p.Infra.ProjectInfo] = projects_result.unwrap()
         for project in discovered:
             if project.name in c.Infra.EXCLUDED_PROJECTS:
                 continue

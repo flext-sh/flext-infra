@@ -10,13 +10,14 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import patch_python_dir_detection
+from tests import m, patch_python_dir_detection
 from tests.unit.check._shared_fixtures import (
     create_checker_project,
     patch_gate_run,
     run_gate_check,
 )
 
+import flext_infra.gates.pyrefly as pyrefly_gate_module
 from flext_infra import FlextInfraMypyGate, FlextInfraPyreflyGate
 
 
@@ -127,6 +128,80 @@ class TestRunPyrefly:
             reports_dir=reports_dir,
         )
         tm.that(len(result.issues), eq=1)
+
+    def test_run_pyrefly_limits_check_to_local_python_dirs(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        _, proj_dir = create_checker_project(tmp_path, with_src=True)
+        workspace_root = tmp_path
+        reports_dir = tmp_path / "reports"
+        reports_dir.mkdir()
+        (proj_dir / "tests").mkdir()
+        (reports_dir / "p1-pyrefly.json").write_text('{"errors": []}')
+        captured: dict[str, list[str]] = {}
+
+        def _run(
+            _self: FlextInfraPyreflyGate,
+            _cmd: list[str],
+            _cwd: Path,
+            timeout: int = 120,
+            env: dict[str, str] | None = None,
+        ) -> m.Cli.CommandOutput:
+            del _self, _cwd, timeout, env
+            captured["cmd"] = list(_cmd)
+            return m.Cli.CommandOutput(stdout="", stderr="", exit_code=0)
+
+        monkeypatch.setattr(FlextInfraPyreflyGate, "_run", _run)
+        monkeypatch.setattr(
+            pyrefly_gate_module.u.Infra,
+            "discover_python_dirs",
+            staticmethod(lambda *_args, **_kwargs: ["src", "tests"]),
+        )
+
+        result = run_gate_check(
+            FlextInfraPyreflyGate,
+            workspace_root,
+            proj_dir,
+            reports_dir=reports_dir,
+        )
+
+        tm.that(result.result.passed, eq=True)
+        assert captured["cmd"][0:4] == ["pyrefly", "check", "src", "tests"]
+
+    def test_run_pyrefly_reports_command_failures_without_json(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        _, proj_dir = create_checker_project(tmp_path, with_src=True)
+        workspace_root = tmp_path
+        reports_dir = tmp_path / "reports"
+        reports_dir.mkdir()
+        patch_gate_run(
+            monkeypatch,
+            FlextInfraPyreflyGate,
+            stderr="pyrefly crashed",
+            returncode=1,
+        )
+        monkeypatch.setattr(
+            pyrefly_gate_module.u.Infra,
+            "discover_python_dirs",
+            staticmethod(lambda *_args, **_kwargs: ["src"]),
+        )
+
+        result = run_gate_check(
+            FlextInfraPyreflyGate,
+            workspace_root,
+            proj_dir,
+            reports_dir=reports_dir,
+        )
+
+        tm.that(not result.result.passed, eq=True)
+        tm.that(len(result.issues), eq=1)
+        tm.that(result.issues[0].code, eq="pyrefly-exec")
+        tm.that(result.issues[0].message, contains="pyrefly crashed")
 
 
 class TestRunMypy:

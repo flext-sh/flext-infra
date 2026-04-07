@@ -13,7 +13,7 @@ from collections.abc import Callable, MutableSequence, Sequence
 
 from rope.base.change import ChangeSet
 from rope.base.project import Project
-from rope.base.pyobjects import PyModule
+from rope.base.pyobjectsdef import PyModule
 from rope.base.resources import File
 from rope.contrib.findit import Location
 

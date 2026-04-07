@@ -260,6 +260,8 @@ if _t.TYPE_CHECKING:
         scaffolder_naming_tests,
         scaffolder_tests,
         test_codegen_init_getattr_raises_attribute_error,
+        test_codegen_pipeline_dag,
+        test_violation_key,
     )
 
     container = _tests_unit_container
@@ -389,6 +391,7 @@ if _t.TYPE_CHECKING:
         test_ensure_pyrefly_config_phase_apply_ignore_errors,
         test_ensure_pyrefly_config_phase_apply_python_version,
         test_ensure_pyrefly_config_phase_apply_search_path,
+        test_ensure_pyrefly_config_phase_apply_search_path_with_project_context,
         test_ensure_pyrefly_config_phase_is_idempotent,
         test_ensure_table,
         test_extra_paths_manager,
@@ -454,6 +457,7 @@ if _t.TYPE_CHECKING:
         test_path_sync_rewrite_poetry,
         test_project_dev_groups,
         test_project_dev_groups_missing_sections,
+        test_pyrefly_search_paths_include_project_root_for_tests_package,
         test_pyrefly_search_paths_only_use_local_project_dirs,
         test_rewrite_dep_paths_dry_run,
         test_rewrite_dep_paths_read_failure,
@@ -799,6 +803,7 @@ if _t.TYPE_CHECKING:
         orchestrator_publish_tests,
         orchestrator_tests,
         release_init_tests,
+        test_release_dag,
         version_resolution_tests,
         workspace_root,
     )
@@ -1081,6 +1086,7 @@ if _t.TYPE_CHECKING:
         SSOT_METHODS,
         WORKSPACE,
         test_no_duplicate_utility_implementations,
+        test_no_utility_method_shadows_parent,
     )
 
     transformers = _tests_unit_transformers
@@ -1549,6 +1555,10 @@ _LAZY_IMPORTS = merge_lazy_imports(
         "test_no_duplicate_utility_implementations": (
             "tests.unit.test_ssot_enforcement",
             "test_no_duplicate_utility_implementations",
+        ),
+        "test_no_utility_method_shadows_parent": (
+            "tests.unit.test_ssot_enforcement",
+            "test_no_utility_method_shadows_parent",
         ),
         "test_parse_semver_invalid": (
             "tests.unit.test_infra_versioning",
@@ -2142,6 +2152,7 @@ __all__ = [
     "test_cli_forwards_canonical_root",
     "test_cli_result_by_project_root",
     "test_codegen_init_getattr_raises_attribute_error",
+    "test_codegen_pipeline_dag",
     "test_consolidate_groups_phase_apply_removes_old_groups",
     "test_consolidate_groups_phase_apply_with_empty_poetry_group",
     "test_converts_multiple_aliases",
@@ -2187,6 +2198,7 @@ __all__ = [
     "test_ensure_pyrefly_config_phase_apply_ignore_errors",
     "test_ensure_pyrefly_config_phase_apply_python_version",
     "test_ensure_pyrefly_config_phase_apply_search_path",
+    "test_ensure_pyrefly_config_phase_apply_search_path_with_project_context",
     "test_ensure_pyrefly_config_phase_is_idempotent",
     "test_ensure_table",
     "test_extra_paths_manager",
@@ -2420,6 +2432,7 @@ __all__ = [
     "test_nested_class_propagation_updates_import_annotations_and_calls",
     "test_no_duplicate_t_import_when_t_from_project_package",
     "test_no_duplicate_utility_implementations",
+    "test_no_utility_method_shadows_parent",
     "test_non_pydantic_class_not_flagged",
     "test_noop_clean_module",
     "test_parse_semver_invalid",
@@ -2454,6 +2467,7 @@ __all__ = [
     "test_project_dev_groups",
     "test_project_dev_groups_missing_sections",
     "test_project_without_alias_facade_has_no_violation",
+    "test_pyrefly_search_paths_include_project_root_for_tests_package",
     "test_pyrefly_search_paths_only_use_local_project_dirs",
     "test_read_project_metadata_preserves_pep621_dependency_order",
     "test_read_project_metadata_preserves_poetry_dependency_order",
@@ -2464,6 +2478,7 @@ __all__ = [
     "test_refactor_project_scans_tests_and_scripts_dirs",
     "test_refactor_runtime_alias_imports_accepts_aliases_and_project",
     "test_refactor_utilities_iter_python_files_includes_examples_and_scripts",
+    "test_release_dag",
     "test_removes_all_imports_when_none_used_import_first",
     "test_removes_all_unused_typing_imports",
     "test_removes_dead_typealias_import",
@@ -2561,6 +2576,7 @@ __all__ = [
     "test_unwrap_item",
     "test_unwrap_item_toml_item",
     "test_utilities_family_allows_utilities_target",
+    "test_violation_key",
     "test_workspace_check_main_returns_error_without_projects",
     "test_workspace_cli_accepts_default_dry_run_for_detect",
     "test_workspace_cli_migrate_command",

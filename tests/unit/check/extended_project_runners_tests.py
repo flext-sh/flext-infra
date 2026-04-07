@@ -34,8 +34,11 @@ class TestCheckProjectRunners:
         }
 
         class _FakeGate:
+            can_fix: bool = False
+
             def __init__(self, gate_name: str) -> None:
                 self._gate_name = gate_name
+                self.gate_id = gate_name
 
             def check(
                 self,
@@ -81,6 +84,9 @@ class TestJsonWriteFailure:
         monkeypatch.setattr(u.Cli, "json_write", _fake_write_json)
 
         class _FakeLintGate:
+            gate_id: str = "lint"
+            can_fix: bool = False
+
             def check(
                 self,
                 _project_dir: Path,

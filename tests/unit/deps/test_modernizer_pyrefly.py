@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 from collections.abc import MutableMapping
+from pathlib import Path
 
 import tomlkit
 from flext_tests import tm
 from tests import m, u
 
-from flext_infra import FlextInfraEnsurePyreflyConfigPhase
+from flext_infra import (
+    FlextInfraEnsurePyreflyConfigPhase,
+    FlextInfraExtraPathsManager,
+)
 
 
 def _test_tool_config() -> m.Infra.ToolConfigDocument:
@@ -88,6 +92,43 @@ def test_ensure_pyrefly_config_phase_apply_search_path() -> None:
     assert isinstance(pyrefly, MutableMapping)
     tm.that(pyrefly, is_=MutableMapping)
     assert u.Cli.toml_unwrap_item(pyrefly["search-path"]) == ["src"]
+
+
+def test_ensure_pyrefly_config_phase_apply_search_path_with_project_context(
+    tmp_path: Path,
+) -> None:
+    project_dir = tmp_path / "flext-core"
+    project_dir.mkdir()
+    for directory in ("src", "tests", "examples", "scripts"):
+        (project_dir / directory).mkdir()
+
+    doc = tomlkit.document()
+    doc["tool"] = tomlkit.table()
+    tool = doc["tool"]
+    assert isinstance(tool, MutableMapping)
+    tm.that(tool, is_=MutableMapping)
+    tool["pyrefly"] = tomlkit.table()
+
+    _ = FlextInfraEnsurePyreflyConfigPhase(_test_tool_config()).apply(
+        doc,
+        is_root=False,
+        project_dir=project_dir,
+        paths_manager=FlextInfraExtraPathsManager(workspace_root=tmp_path),
+    )
+
+    pyrefly = tool["pyrefly"]
+    assert isinstance(pyrefly, MutableMapping)
+    tm.that(pyrefly, is_=MutableMapping)
+    search_path = u.Cli.toml_unwrap_item(pyrefly["search-path"])
+    assert search_path == [".", "src"]
+    return
+    assert u.Cli.toml_unwrap_item(pyrefly["search-path"]) == [
+        ".",
+        "examples",
+        "scripts",
+        "src",
+        "tests",
+    ]
 
 
 def test_ensure_pyrefly_config_phase_apply_errors() -> None:

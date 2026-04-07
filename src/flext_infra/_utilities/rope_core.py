@@ -7,7 +7,7 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar, TypeGuard
 
-from rope.base.change import ChangeContents, ChangeSet
+from rope.base.change import Change, ChangeContents, ChangeSet
 from rope.base.exceptions import (
     ModuleSyntaxError,
     RefactoringError,
@@ -15,7 +15,8 @@ from rope.base.exceptions import (
 )
 from rope.base.project import Project
 from rope.base.pyobjects import AbstractClass, PyFunction
-from rope.base.resources import File
+from rope.base.pyobjectsdef import PyModule
+from rope.base.resources import File, Resource
 from rope.refactor.importutils import get_module_imports
 
 import flext_infra
@@ -202,14 +203,68 @@ class FlextInfraUtilitiesRopeCore:
         return value
 
     @staticmethod
+    def _ensure_rope_api_resource(value: object) -> Resource:
+        """Validate a rope resource against Rope's broader API boundary."""
+        if not isinstance(value, Resource):
+            msg = "rope resource does not satisfy Rope API resource contract"
+            raise TypeError(msg)
+        return value
+
+    @staticmethod
+    def _ensure_pymodule(value: object) -> t.Infra.RopePyModule:
+        """Validate one concrete rope PyModule against the public contract."""
+        if not isinstance(value, PyModule):
+            msg = "rope pymodule does not satisfy RopePyModuleLike"
+            raise TypeError(msg)
+        return value
+
+    @staticmethod
+    def _ensure_rope_change(value: object) -> Change:
+        """Validate one rope change object against Rope's execution boundary."""
+        if not isinstance(value, Change):
+            msg = "rope change does not satisfy Rope change contract"
+            raise TypeError(msg)
+        return value
+
+    @staticmethod
+    def get_pymodule(
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+    ) -> t.Infra.RopePyModule:
+        """Resolve one concrete rope PyModule through the validated API boundary."""
+        project_impl = FlextInfraUtilitiesRopeCore._ensure_rope_project(rope_project)
+        resource_impl = FlextInfraUtilitiesRopeCore._ensure_rope_api_resource(
+            resource,
+        )
+        return FlextInfraUtilitiesRopeCore._ensure_pymodule(
+            project_impl.get_pymodule(resource_impl)
+        )
+
+    @staticmethod
+    def get_module_imports_for_pymodule(
+        rope_project: t.Infra.RopeProject,
+        pymodule: t.Infra.RopePyModule,
+    ) -> t.Infra.RopeModuleImports:
+        """Resolve module imports through Rope's concrete Project/PyModule API."""
+        project_impl = FlextInfraUtilitiesRopeCore._ensure_rope_project(rope_project)
+        pymodule_impl = FlextInfraUtilitiesRopeCore._ensure_pymodule(pymodule)
+        return FlextInfraUtilitiesRopeCore._ensure_module_imports(
+            get_module_imports(project_impl, pymodule_impl)
+        )
+
+    @staticmethod
     def _get_module_imports(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
     ) -> t.Infra.RopeModuleImports | None:
         try:
-            pymodule = rope_project.get_pymodule(resource)
-            return FlextInfraUtilitiesRopeCore._ensure_module_imports(
-                get_module_imports(rope_project, pymodule)
+            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(
+                rope_project,
+                resource,
+            )
+            return FlextInfraUtilitiesRopeCore.get_module_imports_for_pymodule(
+                rope_project,
+                pymodule,
             )
         except (RefactoringError, ResourceNotFoundError, AttributeError):
             return None
@@ -264,9 +319,15 @@ class FlextInfraUtilitiesRopeCore:
         description: str,
     ) -> None:
         """Apply a single-file content change via rope ChangeSet."""
-        change_set = ChangeSet(description)
-        change_set.add_change(ChangeContents(resource, content))
-        rope_project.do(change_set)
+        project_impl = FlextInfraUtilitiesRopeCore._ensure_rope_project(rope_project)
+        resource_impl = FlextInfraUtilitiesRopeCore._ensure_rope_api_resource(
+            resource,
+        )
+        change_set_impl = ChangeSet(description)
+        change_set_impl.add_change(ChangeContents(resource_impl, content))
+        project_impl.do(
+            FlextInfraUtilitiesRopeCore._ensure_rope_change(change_set_impl)
+        )
 
     @staticmethod
     def _line_offset_for_symbol(

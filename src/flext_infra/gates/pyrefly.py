@@ -27,9 +27,16 @@ class FlextInfraPyreflyGate(FlextInfraGate):
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> t.StrSequence:
-        """Pyrefly always runs on '.' — never skip."""
-        _ = project_dir, ctx
-        return ["."]
+        """Check only local Python roots to avoid scanning dependency trees."""
+        _ = ctx
+        discovered_dirs = u.Infra.discover_python_dirs(project_dir)
+        if discovered_dirs:
+            return discovered_dirs
+        if any(project_dir.glob(c.Infra.Extensions.PYTHON_GLOB)) or any(
+            project_dir.glob("*.pyi")
+        ):
+            return ["."]
+        return []
 
     @override
     def _build_check_command(
@@ -38,12 +45,11 @@ class FlextInfraPyreflyGate(FlextInfraGate):
         ctx: m.Infra.GateContext,
         check_dirs: t.StrSequence,
     ) -> t.StrSequence:
-        _ = check_dirs
         json_file = ctx.reports_dir / f"{project_dir.name}-pyrefly.json"
         return [
             c.Infra.PYREFLY,
             c.Infra.CHECK,
-            ".",
+            *check_dirs,
             "--config",
             c.Infra.Files.PYPROJECT_FILENAME,
             "--python-interpreter-path",
@@ -89,6 +95,23 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                 )
             except (TypeError, ValidationError):
                 pass
+        if (not issues) and result.exit_code != 0:
+            message = (result.stderr or result.stdout).strip()
+            if not message:
+                message = (
+                    f"pyrefly exited with code {result.exit_code} "
+                    "without JSON diagnostics"
+                )
+            issues.append(
+                m.Infra.Issue(
+                    file=c.Infra.Files.PYPROJECT_FILENAME,
+                    line=1,
+                    column=1,
+                    code="pyrefly-exec",
+                    message=message,
+                    severity=c.Infra.ERROR,
+                )
+            )
         return result.exit_code == 0, issues
 
 

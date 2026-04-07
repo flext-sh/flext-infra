@@ -18,6 +18,7 @@ from flext_infra import (
     FlextInfraNamespaceValidator,
     c,
     m,
+    p,
     r,
     t,
     u,
@@ -50,20 +51,31 @@ class FlextInfraCodegenScaffolder(FlextInfraCommandContext[str]):
         )
         return r[str].ok("\n".join(lines))
 
-    def run(self, *, dry_run: bool = False) -> Sequence[m.Infra.ScaffoldResult]:
+    def run(
+        self,
+        *,
+        dry_run: bool = False,
+        projects: Sequence[p.Infra.ProjectInfo] | None = None,
+    ) -> Sequence[m.Infra.ScaffoldResult]:
         """Scaffold missing base modules for all projects in workspace.
+
+        Args:
+            dry_run: If True, only report changes without writing.
+            projects: Pre-discovered projects to skip redundant discovery.
 
         Returns:
             List of ScaffoldResult models, one per project.
 
         """
-        projects_result = u.Infra.discover_projects(self.workspace_root)
-        if not projects_result.is_success:
-            return []
+        if projects is None:
+            projects_result = u.Infra.discover_projects(self.workspace_root)
+            if not projects_result.is_success:
+                return []
+            discovered: Sequence[p.Infra.ProjectInfo] = projects_result.unwrap()
+        else:
+            discovered = projects
         results: MutableSequence[m.Infra.ScaffoldResult] = []
-        discovered: Sequence[m.Infra.ProjectInfo] = projects_result.unwrap()
-        projects = discovered
-        for project in projects:
+        for project in discovered:
             if project.name in c.Infra.EXCLUDED_PROJECTS:
                 continue
             if (project.path / c.Infra.Files.GO_MOD).exists():

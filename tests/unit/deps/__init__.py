@@ -100,6 +100,7 @@ if _t.TYPE_CHECKING:
         TestFlextInfraExtraPathsManager,
         TestGetDepPaths,
         TestSyncOne,
+        test_pyrefly_search_paths_include_project_root_for_tests_package,
         test_pyrefly_search_paths_only_use_local_project_dirs,
     )
 
@@ -299,6 +300,7 @@ if _t.TYPE_CHECKING:
         test_ensure_pyrefly_config_phase_apply_ignore_errors,
         test_ensure_pyrefly_config_phase_apply_python_version,
         test_ensure_pyrefly_config_phase_apply_search_path,
+        test_ensure_pyrefly_config_phase_apply_search_path_with_project_context,
         test_ensure_pyrefly_config_phase_is_idempotent,
     )
 
@@ -783,6 +785,10 @@ _LAZY_IMPORTS = {
         "tests.unit.deps.test_modernizer_pyrefly",
         "test_ensure_pyrefly_config_phase_apply_search_path",
     ),
+    "test_ensure_pyrefly_config_phase_apply_search_path_with_project_context": (
+        "tests.unit.deps.test_modernizer_pyrefly",
+        "test_ensure_pyrefly_config_phase_apply_search_path_with_project_context",
+    ),
     "test_ensure_pyrefly_config_phase_is_idempotent": (
         "tests.unit.deps.test_modernizer_pyrefly",
         "test_ensure_pyrefly_config_phase_is_idempotent",
@@ -936,6 +942,10 @@ _LAZY_IMPORTS = {
     "test_project_dev_groups_missing_sections": (
         "tests.unit.deps.test_modernizer_helpers",
         "test_project_dev_groups_missing_sections",
+    ),
+    "test_pyrefly_search_paths_include_project_root_for_tests_package": (
+        "tests.unit.deps.test_extra_paths_manager",
+        "test_pyrefly_search_paths_include_project_root_for_tests_package",
     ),
     "test_pyrefly_search_paths_only_use_local_project_dirs": (
         "tests.unit.deps.test_extra_paths_manager",
@@ -1156,6 +1166,7 @@ __all__ = [
     "test_ensure_pyrefly_config_phase_apply_ignore_errors",
     "test_ensure_pyrefly_config_phase_apply_python_version",
     "test_ensure_pyrefly_config_phase_apply_search_path",
+    "test_ensure_pyrefly_config_phase_apply_search_path_with_project_context",
     "test_ensure_pyrefly_config_phase_is_idempotent",
     "test_ensure_table",
     "test_extra_paths_manager",
@@ -1223,6 +1234,7 @@ __all__ = [
     "test_path_sync_rewrite_poetry",
     "test_project_dev_groups",
     "test_project_dev_groups_missing_sections",
+    "test_pyrefly_search_paths_include_project_root_for_tests_package",
     "test_pyrefly_search_paths_only_use_local_project_dirs",
     "test_rewrite_dep_paths_dry_run",
     "test_rewrite_dep_paths_read_failure",

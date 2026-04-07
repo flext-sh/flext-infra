@@ -85,6 +85,35 @@ class TestRunProjectsReports:
         tm.ok(result)
         tm.that((reports_dir / "check-report.sarif").exists(), eq=True)
 
+    def test_creates_project_scoped_reports_dir(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
+        reports_dir = tmp_path / "reports"
+        captured: dict[str, Path] = {}
+
+        def _fake_check(
+            _project_dir: Path,
+            _gates: t.StrSequence,
+            ctx: m.Infra.GateContext,
+        ) -> m.Infra.ProjectResult:
+            captured["reports_dir"] = ctx.reports_dir
+            return m.Infra.ProjectResult(
+                project="p1",
+                gates={"lint": create_gate_execution(passed=True)},
+            )
+
+        monkeypatch.setattr(checker, "_check_project_with_ctx", _fake_check)
+        _ = h.mk_project(tmp_path, "p1")
+
+        result = checker.run_projects(["p1"], ["lint"], reports_dir=reports_dir)
+
+        tm.ok(result)
+        tm.that((reports_dir / "p1").is_dir(), eq=True)
+        tm.that(captured["reports_dir"], eq=reports_dir / "p1")
+
 
 class TestRunProjectsBehavior:
     """Test run_projects fail_fast and error reporting."""
@@ -211,6 +240,7 @@ class TestRunSingleProject:
 
 class _FixableGate:
     can_fix = True
+    gate_id: str = "lint"
 
     def __init__(self) -> None:
         self.calls: list[str] = []
