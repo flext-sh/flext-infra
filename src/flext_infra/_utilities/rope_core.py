@@ -7,15 +7,14 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar, TypeGuard
 
-from rope.base.change import Change, ChangeContents, ChangeSet
+from rope.base.change import ChangeContents, ChangeSet
 from rope.base.exceptions import (
     ModuleSyntaxError,
     RefactoringError,
     ResourceNotFoundError,
 )
 from rope.base.project import Project
-from rope.base.pyobjects import AbstractClass, PyFunction
-from rope.base.pyobjectsdef import PyModule
+from rope.base.pyobjects import AbstractClass, PyFunction, PyModule
 from rope.base.resources import File, Resource
 from rope.refactor.importutils import get_module_imports
 
@@ -219,10 +218,10 @@ class FlextInfraUtilitiesRopeCore:
         return value
 
     @staticmethod
-    def _ensure_rope_change(value: object) -> Change:
-        """Validate one rope change object against Rope's execution boundary."""
-        if not isinstance(value, Change):
-            msg = "rope change does not satisfy Rope change contract"
+    def _ensure_rope_change_set(value: object) -> t.Infra.RopeChanges:
+        """Validate one rope ChangeSet against Rope's execution boundary."""
+        if not isinstance(value, ChangeSet):
+            msg = "rope change set does not satisfy Rope change contract"
             raise TypeError(msg)
         return value
 
@@ -326,7 +325,7 @@ class FlextInfraUtilitiesRopeCore:
         change_set_impl = ChangeSet(description)
         change_set_impl.add_change(ChangeContents(resource_impl, content))
         project_impl.do(
-            FlextInfraUtilitiesRopeCore._ensure_rope_change(change_set_impl)
+            FlextInfraUtilitiesRopeCore._ensure_rope_change_set(change_set_impl)
         )
 
     @staticmethod

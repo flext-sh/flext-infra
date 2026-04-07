@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from collections.abc import Sequence
 
-from rope.base.change import Change
+from rope.base.change import ChangeSet
 from rope.base.exceptions import RefactoringError, ResourceNotFoundError
 from rope.base.project import Project
 from rope.base.resources import Resource
@@ -39,7 +39,7 @@ class FlextInfraUtilitiesRopeImports(FlextInfraUtilitiesRopeCore):
             changes = Rename(rope_project, resource, offset).get_changes(new_name)
         except RefactoringError:
             return []
-        if not isinstance(changes, Change):
+        if not isinstance(changes, ChangeSet):
             return []
         for change in changes.changes:
             changed_files[change.resource.path] = 1
@@ -90,7 +90,7 @@ class FlextInfraUtilitiesRopeImports(FlextInfraUtilitiesRopeCore):
             changes = organizer.organize_imports(resource)
         except (RefactoringError, ResourceNotFoundError, AttributeError):
             return False
-        if not isinstance(changes, Change) or not isinstance(
+        if not isinstance(changes, ChangeSet) or not isinstance(
             changes,
             p.Infra.RopeChangesLike,
         ):

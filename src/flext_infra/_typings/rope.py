@@ -11,12 +11,6 @@ from __future__ import annotations
 
 from collections.abc import Callable, MutableSequence, Sequence
 
-from rope.base.change import ChangeSet
-from rope.base.project import Project
-from rope.base.pyobjectsdef import PyModule
-from rope.base.resources import File
-from rope.contrib.findit import Location
-
 from flext_core import FlextTypes
 from flext_infra import FlextInfraProtocolsRope
 
@@ -24,18 +18,18 @@ from flext_infra import FlextInfraProtocolsRope
 class FlextInfraTypesRope:
     """Rope type aliases — accessed via t.Infra.*."""
 
-    type RopeProject = Project
-    "Opaque handle to rope Project — orchestrators use this, never import rope directly."
-    type RopeResource = File
-    "Opaque handle to rope File resource — orchestrators use this, never import rope directly."
-    type RopeLocation = Location
-    "Opaque handle to one rope occurrence result."
-    type RopeChanges = ChangeSet
-    "Opaque handle to one rope change set."
+    type RopeProject = FlextInfraProtocolsRope.RopeProjectLike
+    "Typed Rope project facade backed by the public structural protocol."
+    type RopeResource = FlextInfraProtocolsRope.RopeResourceLike
+    "Typed Rope file-like resource facade backed by the public structural protocol."
+    type RopeLocation = FlextInfraProtocolsRope.RopeLocationLike
+    "Typed Rope occurrence facade backed by the public structural protocol."
+    type RopeChanges = FlextInfraProtocolsRope.RopeChangesLike
+    "Typed Rope change-set facade backed by the public structural protocol."
     type RopePyCore = FlextInfraProtocolsRope.RopePyCoreLike
     "Typed Rope PyCore facade backed by the public structural protocol."
-    type RopePyModule = PyModule
-    "Concrete Rope PyModule handle."
+    type RopePyModule = FlextInfraProtocolsRope.RopePyModuleLike
+    "Typed Rope PyModule facade backed by the public structural protocol."
     type RopeModuleImports = FlextInfraProtocolsRope.RopeModuleImportsLike
     "Typed Rope ModuleImports facade backed by the public structural protocol."
 
@@ -57,8 +51,8 @@ class FlextInfraTypesRope:
     "Mutable sequence of class names."
     type RopeTransformFn = Callable[
         [
-            Project,
-            File,
+            FlextInfraProtocolsRope.RopeProjectLike,
+            FlextInfraProtocolsRope.RopeResourceLike,
         ],
         tuple[str, Sequence[str]],
     ]
