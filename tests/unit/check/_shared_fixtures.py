@@ -16,7 +16,8 @@ import pytest
 from tests import FlextInfraTestHelpers as h, m, t
 
 from flext_core import r
-from flext_infra import FlextInfraGate, FlextInfraWorkspaceChecker
+from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
+from flext_infra.gates import FlextInfraGate
 
 type GateClass = type[FlextInfraGate]
 type GatePatchClass = type[object]

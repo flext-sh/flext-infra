@@ -27,17 +27,40 @@ def _create_project_with_facades(
     *,
     tmp_path: Path,
     families: tuple[str, ...],
+    parent_package: str = "flext_core",
 ) -> tuple[Path, Path, str, str, t.Infra.RopeProject]:
     project_root = tmp_path / "flext-xyz"
     package_name = "flext_xyz"
     package_dir = project_root / "src" / package_name
     package_dir.mkdir(parents=True)
-    (package_dir / "__init__.py").write_text("", encoding="utf-8")
+    lazy_imports = "\n".join(
+        (
+            f'    "{family}": ("{package_name}.{FAMILY_FILE_MAP[family].removesuffix(".py")}", "{family}"),'
+        )
+        for family in families
+    )
+    (package_dir / "__init__.py").write_text(
+        "from __future__ import annotations\n\n"
+        "_LAZY_IMPORTS: dict[str, tuple[str, str]] = {\n"
+        f"{lazy_imports}\n"
+        "}\n",
+        encoding="utf-8",
+    )
     class_stem = "FlextXyz"
     for family in families:
         suffix = FAMILY_SUFFIX_MAP[family]
         class_name = f"{class_stem}{suffix}"
         facade_file = package_dir / FAMILY_FILE_MAP[family]
+        if family == "c":
+            facade_file.write_text(
+                "from __future__ import annotations\n"
+                f"from {parent_package} import FlextParentConstants\n\n"
+                f"class {class_name}(FlextParentConstants):\n"
+                "    pass\n\n"
+                f"{family} = {class_name}\n",
+                encoding="utf-8",
+            )
+            continue
         facade_file.write_text(
             "from __future__ import annotations\n"
             f"class {class_name}:\n"
@@ -70,7 +93,9 @@ def test_detects_wrong_source_m_import(tmp_path: Path) -> None:
         ),
     )
 
-    assert violations == []
+    assert len(violations) == 1
+    assert violations[0].current_source == "flext_core"
+    assert violations[0].correct_source == "flext_xyz"
 
 
 def test_detects_wrong_source_u_import(tmp_path: Path) -> None:
@@ -94,7 +119,9 @@ def test_detects_wrong_source_u_import(tmp_path: Path) -> None:
         ),
     )
 
-    assert violations == []
+    assert len(violations) == 1
+    assert violations[0].current_source == "flext_core"
+    assert violations[0].correct_source == "flext_xyz"
 
 
 def test_skips_r_alias_universal_exception(tmp_path: Path) -> None:
@@ -240,7 +267,7 @@ def test_detects_only_wrong_alias_in_mixed_import(tmp_path: Path) -> None:
         ),
     )
 
-    assert violations == []
+    assert [violation.alias for violation in violations] == ["m"]
 
 
 def test_project_without_alias_facade_has_no_violation(tmp_path: Path) -> None:
@@ -265,6 +292,66 @@ def test_project_without_alias_facade_has_no_violation(tmp_path: Path) -> None:
     )
 
     assert violations == []
+
+
+def test_allows_parent_u_import_in_private_utilities_module(tmp_path: Path) -> None:
+    project_root, package_dir, _package_name, project_name, rope_project = (
+        _create_project_with_facades(
+            tmp_path=tmp_path,
+            families=("c", "u"),
+            parent_package="flext_cli",
+        )
+    )
+    utilities_dir = package_dir / "_utilities"
+    utilities_dir.mkdir()
+    target = utilities_dir / "consumer.py"
+    target.write_text(
+        "from __future__ import annotations\n\n"
+        "from collections.abc import Mapping, Sequence\n"
+        "from flext_cli import u\n",
+    )
+
+    violations = FlextInfraNamespaceSourceDetector.detect_file(
+        DetectorContext(
+            file_path=target,
+            project_name=project_name,
+            project_root=project_root,
+            rope_project=rope_project,
+        ),
+    )
+
+    assert violations == []
+
+
+def test_detects_parent_u_import_outside_private_utilities_module(
+    tmp_path: Path,
+) -> None:
+    project_root, package_dir, _package_name, project_name, rope_project = (
+        _create_project_with_facades(
+            tmp_path=tmp_path,
+            families=("c", "u"),
+            parent_package="flext_cli",
+        )
+    )
+    target = package_dir / "consumer.py"
+    target.write_text(
+        "from __future__ import annotations\n\n"
+        "from collections.abc import Mapping, Sequence\n"
+        "from flext_cli import u\n",
+    )
+
+    violations = FlextInfraNamespaceSourceDetector.detect_file(
+        DetectorContext(
+            file_path=target,
+            project_name=project_name,
+            project_root=project_root,
+            rope_project=rope_project,
+        ),
+    )
+
+    assert len(violations) == 1
+    assert violations[0].current_source == "flext_cli"
+    assert violations[0].correct_source == "flext_xyz"
 
 
 def test_rewriter_splits_mixed_imports_correctly(tmp_path: Path) -> None:

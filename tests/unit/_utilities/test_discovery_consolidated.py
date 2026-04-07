@@ -41,6 +41,38 @@ class TestDiscoveryProjectRoots:
 
         assert roots == [project]
 
+    def test_discover_project_roots_prefers_tool_flext_workspace_members(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace_src = tmp_path / c.Infra.Paths.DEFAULT_SRC_DIR
+        workspace_src.mkdir(parents=True)
+        (tmp_path / c.Infra.Files.MAKEFILE_FILENAME).write_text(
+            "all:\n",
+            encoding="utf-8",
+        )
+        (tmp_path / c.Infra.Files.PYPROJECT_FILENAME).write_text(
+            "[project]\nname='workspace'\n\n"
+            "[tool.flext.workspace]\n"
+            "members = ['beta', 'alpha']\n",
+            encoding="utf-8",
+        )
+        for project_name in ("alpha", "beta"):
+            project_root = tmp_path / project_name
+            (project_root / c.Infra.Paths.DEFAULT_SRC_DIR).mkdir(parents=True)
+            (project_root / c.Infra.Files.MAKEFILE_FILENAME).write_text(
+                "all:\n",
+                encoding="utf-8",
+            )
+            (project_root / c.Infra.Files.PYPROJECT_FILENAME).write_text(
+                f"[project]\nname='{project_name}'\n",
+                encoding="utf-8",
+            )
+
+        roots = u.Infra.discover_project_roots(tmp_path)
+
+        assert roots == [tmp_path / "beta", tmp_path / "alpha"]
+
 
 class TestDiscoveryIterPythonFiles:
     def test_iter_python_files_returns_result_with_paths(self, tmp_path: Path) -> None:

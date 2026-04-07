@@ -13,11 +13,13 @@ import logging
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
-from flext_infra import c, t
-
-from .codegen_constants import FlextInfraUtilitiesCodegenConstantDetection
-from .discovery import FlextInfraUtilitiesDiscovery
-from .rope import FlextInfraUtilitiesRope
+from flext_infra import (
+    FlextInfraUtilitiesCodegenConstantDetection,
+    FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesRope,
+    c,
+    t,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -56,16 +58,18 @@ class FlextInfraUtilitiesCodegenImportCycles:
                 continue
 
             deps: t.Infra.StrSet = set()
-            for imp in mod_imports.imports:
-                info = getattr(imp, "import_info", None)
-                if not info or type(info).__name__ != "FromImport":
+            for import_stmt in FlextInfraUtilitiesRope.get_import_statements(
+                mod_imports,
+            ):
+                from_import = FlextInfraUtilitiesRope.absolute_from_import_any(
+                    import_stmt.import_info,
+                )
+                if from_import is None:
                     continue
-                mod_name = getattr(info, "module_name", "")
-                if mod_name != package_name:
+                if from_import.module_name != package_name:
                     continue
 
-                names_and_aliases = getattr(info, "names_and_aliases", [])
-                for name, _ in names_and_aliases:
+                for name, _ in from_import.names_and_aliases:
                     if name == "*":
                         continue
                     target = lazy_map.get(name)

@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraProtocolsRope(Protocol):
-    """Structural contracts for rope objects lacking type stubs."""
+    """Structural contracts layered on top of Rope's concrete runtime classes."""
 
     @runtime_checkable
     class RopeProjectRootLike(Protocol):
@@ -45,29 +45,51 @@ class FlextInfraProtocolsRope(Protocol):
             ...
 
     @runtime_checkable
+    class RopeApiResourceLike(Protocol):
+        """Minimal contract for rope resources used by refactor APIs."""
+
+        @property
+        def path(self) -> str:
+            """Relative path within the rope project."""
+            ...
+
+        @property
+        def real_path(self) -> str:
+            """Absolute filesystem path."""
+            ...
+
+    @runtime_checkable
     class RopeProjectLike(Protocol):
         """Minimal contract for rope Project objects."""
 
-        root: FlextInfraProtocolsRope.RopeProjectRootLike
-        """Project root resource."""
+        @property
+        def root(self) -> FlextInfraProtocolsRope.RopeProjectRootLike:
+            """Project root resource."""
+            ...
 
-        pycore: FlextInfraProtocolsRope.RopePyCoreLike
-        """Rope's dynamic PyCore object."""
+        @property
+        def pycore(self) -> object:
+            """Rope's dynamic PyCore object."""
+            ...
 
-        def get_resource(
-            self, resource_path: str
-        ) -> FlextInfraProtocolsRope.RopeResourceLike:
+        def get_resource(self, resource_name: str) -> object:
             """Resolve one resource path inside the project."""
             ...
 
         def get_pymodule(
             self,
-            resource: FlextInfraProtocolsRope.RopeResourceLike,
-        ) -> FlextInfraProtocolsRope.RopePyModuleLike:
+            resource: t.Infra.RopeApiResource,
+            *,
+            force_errors: bool = False,
+        ) -> object:
             """Return the PyModule for one resource."""
             ...
 
-        def do(self, changes: FlextInfraProtocolsRope.RopeChangesLike) -> None:
+        def do(
+            self,
+            changes: t.Infra.RopeChanges,
+            task_handle: object = None,
+        ) -> None:
             """Apply one rope change set."""
             ...
 
@@ -84,7 +106,7 @@ class FlextInfraProtocolsRope(Protocol):
         """
 
         @property
-        def resource(self) -> FlextInfraProtocolsRope.RopeResourceLike:
+        def resource(self) -> t.Infra.RopeApiResource:
             """The resource affected by this change."""
             ...
 
@@ -98,7 +120,7 @@ class FlextInfraProtocolsRope(Protocol):
         """Structural contract for rope ChangeSet-like objects."""
 
         @property
-        def changes(self) -> Sequence[FlextInfraProtocolsRope.RopeChangeLike]:
+        def changes(self) -> Sequence[t.Infra.RopeChange]:
             """Return nested changes carried by this change set."""
             ...
 
@@ -108,7 +130,7 @@ class FlextInfraProtocolsRope(Protocol):
 
         def add_change(
             self,
-            change: FlextInfraProtocolsRope.RopeChangeLike,
+            change: t.Infra.RopeChange,
         ) -> None:
             """Append one child change."""
             ...
@@ -124,6 +146,8 @@ class FlextInfraProtocolsRope(Protocol):
         def resource_to_pyobject(
             self,
             resource: t.Infra.RopeResource,
+            *,
+            force_errors: bool = False,
         ) -> t.Infra.RopePyModule:
             """Convert a resource to its PyModule representation."""
             ...
@@ -132,12 +156,7 @@ class FlextInfraProtocolsRope(Protocol):
     class RopePyModuleLike(Protocol):
         """Structural contract for rope PyModule objects."""
 
-        @property
-        def source_code(self) -> str:
-            """Return module source text."""
-            ...
-
-        def get_attributes(self) -> dict[str, FlextInfraProtocolsRope.RopePyNameLike]:
+        def get_attributes(self) -> dict[str, t.Infra.RopePyName]:
             """Return module-level attributes as a name → pyname mapping."""
             ...
 
@@ -145,7 +164,7 @@ class FlextInfraProtocolsRope(Protocol):
             """Return the module name, or None."""
             ...
 
-        def get_resource(self) -> FlextInfraProtocolsRope.RopeResourceLike | None:
+        def get_resource(self) -> t.Infra.RopeResource | None:
             """Return the resource backing this module, or None for builtins."""
             ...
 
@@ -153,13 +172,13 @@ class FlextInfraProtocolsRope(Protocol):
     class RopePyNameLike(Protocol):
         """Structural contract for rope PyName objects."""
 
-        def get_object(self) -> FlextInfraProtocolsRope.RopePyObjectLike:
+        def get_object(self) -> t.Infra.RopePyObject:
             """Return the Python object this name refers to."""
             ...
 
         def get_definition_location(
             self,
-        ) -> tuple[FlextInfraProtocolsRope.RopePyModuleLike | None, int | None]:
+        ) -> tuple[t.Infra.RopePyModule | None, int | None]:
             """Return (module, line_number) of this name's definition."""
             ...
 
@@ -167,11 +186,11 @@ class FlextInfraProtocolsRope(Protocol):
     class RopeAbstractClassLike(Protocol):
         """Structural contract for rope class-like objects."""
 
-        def get_attributes(self) -> dict[str, FlextInfraProtocolsRope.RopePyNameLike]:
+        def get_attributes(self) -> dict[str, t.Infra.RopePyName]:
             """Return class attributes."""
             ...
 
-        def get_module(self) -> FlextInfraProtocolsRope.RopePyModuleLike | None:
+        def get_module(self) -> t.Infra.RopePyModule | None:
             """Return the module containing this class."""
             ...
 
@@ -181,7 +200,7 @@ class FlextInfraProtocolsRope(Protocol):
 
         def get_superclasses(
             self,
-        ) -> Sequence[FlextInfraProtocolsRope.RopeAbstractClassLike]:
+        ) -> Sequence[t.Infra.RopeAbstractClass]:
             """Return direct superclasses."""
             ...
 
@@ -197,9 +216,13 @@ class FlextInfraProtocolsRope(Protocol):
     class RopePyObjectLike(Protocol):
         """Structural contract for rope PyObject hierarchy."""
 
-        def get_module(self) -> FlextInfraProtocolsRope.RopePyModuleLike | None:
+        def get_module(self) -> t.Infra.RopePyModule | None:
             """Return the module containing this object, or None."""
             ...
+
+    @runtime_checkable
+    class RopeNamedObjectLike(Protocol):
+        """Structural contract for Rope objects that expose ``get_name``."""
 
         def get_name(self) -> str | None:
             """Return the name of this object, or None."""
@@ -209,7 +232,7 @@ class FlextInfraProtocolsRope(Protocol):
     class RopeLocationLike(Protocol):
         """Structural contract for rope occurrence search results."""
 
-        resource: FlextInfraProtocolsRope.RopeResourceLike
+        resource: t.Infra.RopeApiResource
         """Resource containing the occurrence."""
 
         lineno: int
@@ -239,19 +262,33 @@ class FlextInfraProtocolsRope(Protocol):
     class RopeImportStatementLike(Protocol):
         """Structural contract for one import statement wrapper."""
 
-        import_info: FlextInfraProtocolsRope.RopeImportInfoLike
-        """Underlying import descriptor."""
+        @property
+        def import_info(self) -> t.Infra.RopeImportInfo:
+            """Underlying import descriptor."""
+            ...
+
+        @import_info.setter
+        def import_info(self, value: t.Infra.RopeImportInfo) -> None:
+            """Replace the underlying import descriptor."""
+            ...
 
     @runtime_checkable
     class RopeModuleImportsLike(Protocol):
         """Structural contract for rope's ModuleImports helper."""
 
-        imports: Sequence[FlextInfraProtocolsRope.RopeImportStatementLike]
-        """Discovered import statements."""
+        @property
+        def imports(
+            self,
+        ) -> (
+            Sequence[t.Infra.RopeImportStatement]
+            | Callable[[], Sequence[t.Infra.RopeImportStatement]]
+        ):
+            """Discovered import statements."""
+            ...
 
         def add_import(
             self,
-            import_info: FlextInfraProtocolsRope.RopeImportInfoLike,
+            import_info: t.Infra.RopeImportInfo,
         ) -> None:
             """Append one import descriptor."""
             ...
@@ -272,7 +309,7 @@ class FlextInfraProtocolsRope(Protocol):
     class RopeRenameLike(Protocol):
         """Structural contract for rope Rename refactor objects."""
 
-        def get_changes(self, new_name: str) -> FlextInfraProtocolsRope.RopeChangesLike:
+        def get_changes(self, new_name: str) -> t.Infra.RopeChanges:
             """Build rename changes for the requested symbol."""
             ...
 
@@ -282,10 +319,40 @@ class FlextInfraProtocolsRope(Protocol):
 
         def organize_imports(
             self,
-            resource: FlextInfraProtocolsRope.RopeResourceLike,
+            resource: FlextInfraProtocolsRope.RopeApiResourceLike,
             offset: int | None = None,
         ) -> FlextInfraProtocolsRope.RopeChangesLike | None:
             """Return one change set that rewrites imports."""
+            ...
+
+    @runtime_checkable
+    class RopeImportUtilsModuleLike(Protocol):
+        """Structural contract for the rope.refactor.importutils module."""
+
+        def get_module_imports(
+            self,
+            project: t.Infra.RopeProject,
+            pymodule: t.Infra.RopePyModule,
+        ) -> object:
+            """Build one module-import helper for the given module."""
+            ...
+
+    @runtime_checkable
+    class RopeFindItModuleLike(Protocol):
+        """Structural contract for the rope.contrib.findit module."""
+
+        def find_occurrences(
+            self,
+            project: t.Infra.RopeProject,
+            resource: t.Infra.RopeApiResource,
+            offset: int,
+            *,
+            unsure: bool = False,
+            resources: Sequence[t.Infra.RopeApiResource] | None = None,
+            in_hierarchy: bool = False,
+            task_handle: object = None,
+        ) -> Sequence[t.Infra.RopeLocation]:
+            """Return occurrences for the symbol at the given offset."""
             ...
 
     class RopeGetModuleImportsFn(Protocol):
@@ -297,6 +364,23 @@ class FlextInfraProtocolsRope(Protocol):
             pymodule: t.Infra.RopePyModule,
         ) -> t.Infra.RopeModuleImports:
             """Build one module-import helper for the given module."""
+            ...
+
+    class RopeFindOccurrencesFn(Protocol):
+        """Callable signature for ``rope.contrib.findit.find_occurrences``."""
+
+        def __call__(
+            self,
+            project: t.Infra.RopeProject,
+            resource: t.Infra.RopeApiResource,
+            offset: int,
+            *,
+            unsure: bool = False,
+            resources: Sequence[t.Infra.RopeApiResource] | None = None,
+            in_hierarchy: bool = False,
+            task_handle: object = None,
+        ) -> Sequence[t.Infra.RopeLocation]:
+            """Return occurrences for the symbol at the given offset."""
             ...
 
     @runtime_checkable

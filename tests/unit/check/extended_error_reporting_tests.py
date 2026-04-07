@@ -10,24 +10,24 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import m, t
+from tests import (
+    FlextInfraTestHelpers,
+    create_check_project_iter_stub,
+    create_check_project_stub,
+    create_gate_execution,
+    m,
+    make_issue,
+    run_gate_check,
+    t,
+)
 
-from flext_infra import (
+from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
+from flext_infra.gates import (
     FlextInfraGate,
     FlextInfraGoGate,
     FlextInfraMypyGate,
     FlextInfraRuffFormatGate,
-    FlextInfraWorkspaceChecker,
 )
-
-from ...helpers import h
-from ._shared_fixtures import (
-    create_check_project_iter_stub,
-    create_check_project_stub,
-    create_gate_execution,
-    run_gate_check,
-)
-from ._stubs import make_issue
 
 
 class TestErrorReporting:
@@ -49,7 +49,7 @@ class TestErrorReporting:
             "_check_project_with_ctx",
             create_check_project_stub(project),
         )
-        h.mk_project(tmp_path, "p1")
+        FlextInfraTestHelpers.mk_project(tmp_path, "p1")
 
         result = checker.run_projects(["p1"], ["lint"], reports_dir=reports_dir)
         tm.ok(result)
@@ -73,8 +73,8 @@ class TestErrorReporting:
             "_check_project_with_ctx",
             create_check_project_iter_stub([project1, project2]),
         )
-        h.mk_project(tmp_path, "p1")
-        h.mk_project(tmp_path, "p2")
+        FlextInfraTestHelpers.mk_project(tmp_path, "p1")
+        FlextInfraTestHelpers.mk_project(tmp_path, "p2")
         result = checker.run_projects(["p1", "p2"], ["lint"], reports_dir=reports_dir)
         tm.ok(result)
         tm.that(len(result.value), eq=2)
@@ -104,7 +104,7 @@ class TestMarkdownReportEmptyGates:
             "_check_project_with_ctx",
             create_check_project_stub(project),
         )
-        h.mk_project(tmp_path, "p1")
+        FlextInfraTestHelpers.mk_project(tmp_path, "p1")
         result = checker.run_projects(
             ["p1"],
             ["lint", "format"],
@@ -124,7 +124,7 @@ class TestMypyEmptyLinesInOutput:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        proj_dir = h.mk_project(tmp_path, "p1")
+        proj_dir = FlextInfraTestHelpers.mk_project(tmp_path, "p1")
         (proj_dir / "src").mkdir()
         (proj_dir / "src" / "main.py").write_text("# code")
         line1 = '{"file": "a.py", "line": 1, "column": 0, "code": "E001", "message": "Error", "severity": "error"}'
@@ -182,7 +182,7 @@ class TestGoFmtEmptyLinesInOutput:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        proj_dir = h.mk_project(tmp_path, "p1")
+        proj_dir = FlextInfraTestHelpers.mk_project(tmp_path, "p1")
         (proj_dir / "go.mod").write_text("module test\n")
         (proj_dir / "main.go").write_text("package main\n")
         call_idx = [0]
@@ -221,7 +221,7 @@ class TestRuffFormatDuplicateFiles:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        proj_dir = h.mk_project(tmp_path, "p1")
+        proj_dir = FlextInfraTestHelpers.mk_project(tmp_path, "p1")
         (proj_dir / "src").mkdir()
         (proj_dir / "src" / "main.py").write_text("# code")
 

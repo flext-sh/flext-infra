@@ -72,6 +72,11 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerPhasesMixin):
         project_roots = u.Infra.discover_project_roots(
             workspace_root=self._workspace_root,
         )
+        project_roots = [
+            project_root
+            for project_root in project_roots
+            if u.Infra.namespace_enabled(project_root)
+        ]
         if project_names:
             name_set = set(project_names)
             project_roots = [r for r in project_roots if r.name in name_set]

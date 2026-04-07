@@ -10,9 +10,10 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import c, m, t
+from tests import c, m, t, u
 
-from flext_infra import FlextInfraRuffLintGate, FlextInfraWorkspaceChecker, u
+from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
+from flext_infra.gates import FlextInfraRuffLintGate
 
 
 class TestWorkspaceCheckerInitialization:

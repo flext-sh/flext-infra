@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TypeGuard
 
 import pytest
 import tomlkit
@@ -9,6 +10,10 @@ from tests import t
 from tomlkit.toml_document import TOMLDocument
 
 from flext_infra import FlextInfraDependencyPathSync, r
+
+
+def _is_str_object_dict(value: object) -> TypeGuard[dict[str, object]]:
+    return isinstance(value, dict)
 
 
 def rewrite_dep_paths(
@@ -191,12 +196,27 @@ def test_root_workspace_sources_cover_all_workspace_members(tmp_path: Path) -> N
 
     tm.ok(result)
     rendered = tomlkit.parse(pyproject.read_text(encoding="utf-8")).unwrap()
-    tool_table = rendered["tool"]
-    assert isinstance(tool_table, dict)
-    uv_table = tool_table["uv"]
-    assert isinstance(uv_table, dict)
-    sources = uv_table["sources"]
-    assert isinstance(sources, dict)
-    tm.that(sorted(str(key) for key in sources), eq=["flext-api", "flext-core"])
-    tm.that(sources["flext-api"]["workspace"], eq=True)
-    tm.that(sources["flext-core"]["workspace"], eq=True)
+    assert _is_str_object_dict(rendered)
+    rendered_map = rendered
+    tool_table_raw = rendered_map["tool"]
+    assert _is_str_object_dict(tool_table_raw)
+    tool_table = tool_table_raw
+    uv_table_raw_obj = tool_table["uv"]
+    assert _is_str_object_dict(uv_table_raw_obj)
+    uv_table_raw = uv_table_raw_obj
+    sources_raw_obj = uv_table_raw["sources"]
+    assert _is_str_object_dict(sources_raw_obj)
+    sources_raw = sources_raw_obj
+    sources: dict[str, dict[str, bool]] = {}
+    for raw_name, raw_source_obj in sources_raw.items():
+        assert _is_str_object_dict(raw_source_obj)
+        raw_source = raw_source_obj
+        workspace_raw_obj = raw_source["workspace"]
+        assert isinstance(workspace_raw_obj, bool)
+        workspace_raw = workspace_raw_obj
+        sources[raw_name] = {"workspace": workspace_raw}
+    tm.that(sorted(sources), eq=["flext-api", "flext-core"])
+    flext_api_source = sources["flext-api"]
+    flext_core_source = sources["flext-core"]
+    tm.that(flext_api_source["workspace"], eq=True)
+    tm.that(flext_core_source["workspace"], eq=True)

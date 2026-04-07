@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_core import r
@@ -222,6 +222,41 @@ class FlextInfraUtilitiesDiscoveryScanning:
             project_root,
         )
         return result[1] if result is not None else None
+
+    @staticmethod
+    def discover_parent_package(project_root: Path) -> str:
+        """Resolve the direct parent FLEXT package for a project."""
+        package_dir = FlextInfraUtilitiesDiscoveryScanning.find_package_dir(
+            project_root
+        )
+        if package_dir is None:
+            return c.Infra.Packages.CORE_UNDERSCORE
+        return FlextInfraUtilitiesDiscoveryScanning.resolve_parent_constants(
+            package_dir,
+            return_module=True,
+        )
+
+    @staticmethod
+    def contextual_runtime_alias_sources(
+        *,
+        project_root: Path,
+        file_path: Path,
+    ) -> Mapping[str, frozenset[str]]:
+        """Return allowed foreign-package runtime alias sources for a file."""
+        package_dir = FlextInfraUtilitiesDiscoveryScanning.find_package_dir(
+            project_root
+        )
+        if package_dir is None:
+            return {}
+        utilities_dir = package_dir / c.Infra.FAMILY_DIRECTORIES["u"]
+        if not file_path.is_relative_to(utilities_dir):
+            return {}
+        parent_package = FlextInfraUtilitiesDiscoveryScanning.discover_parent_package(
+            project_root,
+        )
+        if not parent_package:
+            return {}
+        return {"u": frozenset({parent_package})}
 
 
 __all__ = ["FlextInfraUtilitiesDiscoveryScanning"]

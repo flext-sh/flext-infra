@@ -75,6 +75,10 @@ class FlextInfraNamespaceSourceDetector(FlextInfraScanFileMixin, p.Infra.Scanner
         )
         if not local_aliases:
             return []
+        contextual_sources = u.Infra.contextual_runtime_alias_sources(
+            project_root=project_root,
+            file_path=file_path,
+        )
         resource = u.Infra.get_resource_from_path(
             ctx.rope_project,
             file_path,
@@ -103,6 +107,7 @@ class FlextInfraNamespaceSourceDetector(FlextInfraScanFileMixin, p.Infra.Scanner
                     alias is None
                     and name in local_aliases
                     and name not in c.Infra.NAMESPACE_SOURCE_UNIVERSAL_ALIASES
+                    and current_source not in contextual_sources.get(name, frozenset())
                 )
             )
             if not wrong_aliases:

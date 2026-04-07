@@ -7,6 +7,7 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar, TypeGuard
 
+import rope.refactor.importutils as rope_importutils
 from rope.base.change import ChangeContents, ChangeSet
 from rope.base.exceptions import (
     ModuleSyntaxError,
@@ -14,9 +15,11 @@ from rope.base.exceptions import (
     ResourceNotFoundError,
 )
 from rope.base.project import Project
+from rope.base.pycore import PyCore
 from rope.base.pyobjects import AbstractClass, PyFunction, PyModule
 from rope.base.resources import File, Resource
-from rope.refactor.importutils import get_module_imports
+from rope.refactor.importutils.importinfo import FromImport
+from rope.refactor.importutils.module_imports import ModuleImports
 
 import flext_infra
 from flext_infra import c, m, p, t
@@ -134,6 +137,52 @@ class FlextInfraUtilitiesRopeCore:
         )
 
     @staticmethod
+    def _is_rope_project_like(value: object) -> TypeGuard[t.Infra.RopeProject]:
+        """Narrow one value to the public Rope project contract."""
+        return isinstance(value, Project)
+
+    @staticmethod
+    def _is_rope_resource_like(value: object) -> TypeGuard[t.Infra.RopeResource]:
+        """Narrow one value to the public readable Rope resource contract."""
+        return isinstance(value, File)
+
+    @staticmethod
+    def _is_rope_api_resource_like(value: object) -> TypeGuard[t.Infra.RopeApiResource]:
+        """Narrow one value to the public Rope API resource contract."""
+        return isinstance(value, Resource)
+
+    @staticmethod
+    def _is_rope_change_set(value: object) -> TypeGuard[t.Infra.RopeChanges]:
+        """Narrow one value to the public Rope ChangeSet contract."""
+        return isinstance(value, ChangeSet)
+
+    @staticmethod
+    def _is_rope_mutable_changes_like(
+        value: object,
+    ) -> TypeGuard[t.Infra.RopeMutableChanges]:
+        """Narrow one value to a mutable Rope change-set contract."""
+        return isinstance(value, ChangeSet)
+
+    @staticmethod
+    def _is_rope_change_like(value: object) -> TypeGuard[t.Infra.RopeChange]:
+        """Narrow one value to a Rope child-change contract."""
+        return isinstance(value, ChangeContents)
+
+    @staticmethod
+    def _is_get_module_imports_fn(
+        value: object,
+    ) -> TypeGuard[t.Infra.RopeGetModuleImportsFn]:
+        """Narrow one callable to Rope's get_module_imports contract."""
+        return callable(value)
+
+    @staticmethod
+    def _is_rope_importutils_module(
+        value: object,
+    ) -> TypeGuard[t.Infra.RopeImportUtilsModule]:
+        """Narrow one module object to Rope's importutils contract."""
+        return isinstance(value, p.Infra.RopeImportUtilsModuleLike)
+
+    @staticmethod
     def get_pycore(rope_project: t.Infra.RopeProject) -> t.Infra.RopePyCore:
         """Extract PyCore via protocol validation at the Rope boundary."""
         return FlextInfraUtilitiesRopeCore._ensure_pycore(rope_project.pycore)
@@ -141,22 +190,29 @@ class FlextInfraUtilitiesRopeCore:
     @staticmethod
     def is_rope_abstract_class_like(
         value: object,
-    ) -> TypeGuard[p.Infra.RopeAbstractClassLike]:
+    ) -> TypeGuard[t.Infra.RopeAbstractClass]:
         """Narrow one Rope object to the class-like contract via concrete Rope types."""
         return isinstance(value, AbstractClass)
 
     @staticmethod
     def is_rope_pyfunction_like(
         value: object,
-    ) -> TypeGuard[p.Infra.RopePyFunctionLike]:
+    ) -> TypeGuard[t.Infra.RopePyFunction]:
         """Narrow one Rope object to the function-like contract via concrete Rope types."""
         return isinstance(value, PyFunction)
 
     @staticmethod
+    def is_rope_named_object_like(
+        value: object,
+    ) -> TypeGuard[t.Infra.RopeNamedObject]:
+        """Narrow one Rope object to the named-object contract."""
+        return isinstance(value, p.Infra.RopeNamedObjectLike)
+
+    @staticmethod
     def _ensure_pycore(value: object) -> t.Infra.RopePyCore:
-        """Validate one rope pycore object against the public contract."""
-        if not isinstance(value, p.Infra.RopePyCoreLike):
-            msg = "rope pycore does not satisfy RopePyCoreLike"
+        """Validate one rope pycore object against the concrete Rope alias."""
+        if not isinstance(value, PyCore):
+            msg = "rope pycore does not satisfy RopePyCore"
             raise TypeError(msg)
         return value
 
@@ -168,7 +224,7 @@ class FlextInfraUtilitiesRopeCore:
         save_objectdb: bool,
         ignored_resources: Sequence[str],
         source_folders: Sequence[str],
-    ) -> t.Infra.RopeProject:
+    ) -> object:
         """Create a rope Project while isolating Rope's own deprecated init path."""
         with warnings.catch_warnings():
             warnings.filterwarnings(
@@ -188,7 +244,7 @@ class FlextInfraUtilitiesRopeCore:
     @staticmethod
     def _ensure_rope_project(value: object) -> t.Infra.RopeProject:
         """Validate one concrete rope Project against the public contract."""
-        if not isinstance(value, Project):
+        if not FlextInfraUtilitiesRopeCore._is_rope_project_like(value):
             msg = "rope project does not satisfy RopeProjectLike"
             raise TypeError(msg)
         return value
@@ -196,15 +252,15 @@ class FlextInfraUtilitiesRopeCore:
     @staticmethod
     def _ensure_rope_resource(value: object) -> t.Infra.RopeResource:
         """Validate one concrete rope resource against the public contract."""
-        if not isinstance(value, File):
+        if not FlextInfraUtilitiesRopeCore._is_rope_resource_like(value):
             msg = "rope resource does not satisfy RopeResourceLike"
             raise TypeError(msg)
         return value
 
     @staticmethod
-    def _ensure_rope_api_resource(value: object) -> Resource:
+    def _ensure_rope_api_resource(value: object) -> t.Infra.RopeApiResource:
         """Validate a rope resource against Rope's broader API boundary."""
-        if not isinstance(value, Resource):
+        if not FlextInfraUtilitiesRopeCore._is_rope_api_resource_like(value):
             msg = "rope resource does not satisfy Rope API resource contract"
             raise TypeError(msg)
         return value
@@ -220,8 +276,28 @@ class FlextInfraUtilitiesRopeCore:
     @staticmethod
     def _ensure_rope_change_set(value: object) -> t.Infra.RopeChanges:
         """Validate one rope ChangeSet against Rope's execution boundary."""
-        if not isinstance(value, ChangeSet):
+        if not FlextInfraUtilitiesRopeCore._is_rope_change_set(value):
             msg = "rope change set does not satisfy Rope change contract"
+            raise TypeError(msg)
+        return value
+
+    @staticmethod
+    def _ensure_get_module_imports_fn(
+        value: object,
+    ) -> t.Infra.RopeGetModuleImportsFn:
+        """Validate Rope's get_module_imports callable against the local contract."""
+        if not FlextInfraUtilitiesRopeCore._is_get_module_imports_fn(value):
+            msg = "rope get_module_imports helper is not callable"
+            raise TypeError(msg)
+        return value
+
+    @staticmethod
+    def _ensure_rope_importutils_module(
+        value: object,
+    ) -> t.Infra.RopeImportUtilsModule:
+        """Validate rope.refactor.importutils against the local module contract."""
+        if not FlextInfraUtilitiesRopeCore._is_rope_importutils_module(value):
+            msg = "rope importutils module does not satisfy RopeImportUtilsModuleLike"
             raise TypeError(msg)
         return value
 
@@ -247,8 +323,13 @@ class FlextInfraUtilitiesRopeCore:
         """Resolve module imports through Rope's concrete Project/PyModule API."""
         project_impl = FlextInfraUtilitiesRopeCore._ensure_rope_project(rope_project)
         pymodule_impl = FlextInfraUtilitiesRopeCore._ensure_pymodule(pymodule)
+        importutils_module = (
+            FlextInfraUtilitiesRopeCore._ensure_rope_importutils_module(
+                rope_importutils,
+            )
+        )
         return FlextInfraUtilitiesRopeCore._ensure_module_imports(
-            get_module_imports(project_impl, pymodule_impl)
+            importutils_module.get_module_imports(project_impl, pymodule_impl)
         )
 
     @staticmethod
@@ -272,11 +353,11 @@ class FlextInfraUtilitiesRopeCore:
     def _ensure_module_imports(
         value: object,
     ) -> t.Infra.RopeModuleImports:
-        """Validate one module-import helper against the public rope protocol."""
-        if not isinstance(value, p.Infra.RopeModuleImportsLike):
-            msg = "rope module imports helper does not satisfy RopeModuleImportsLike"
+        """Wrap Rope's raw ModuleImports helper in the typed flext-infra model."""
+        if not isinstance(value, ModuleImports):
+            msg = "rope module imports helper does not satisfy RopeModuleImports"
             raise TypeError(msg)
-        return value
+        return m.Infra.RopeModuleImports.from_runtime(value)
 
     @staticmethod
     def ensure_module_imports(
@@ -286,11 +367,26 @@ class FlextInfraUtilitiesRopeCore:
         return FlextInfraUtilitiesRopeCore._ensure_module_imports(value)
 
     @staticmethod
+    def get_import_statements(
+        module_imports: t.Infra.RopeModuleImports,
+    ) -> Sequence[t.Infra.RopeImportStatement]:
+        """Expose Rope import statements through the public Rope protocol boundary."""
+        raw_imports = module_imports.imports
+        return raw_imports() if callable(raw_imports) else raw_imports
+
+    @staticmethod
+    def absolute_from_import_any(
+        import_info: t.Infra.RopeImportInfo,
+    ) -> t.Infra.RopeFromImport | None:
+        """Expose absolute from-import narrowing through the public Rope boundary."""
+        return FlextInfraUtilitiesRopeCore._absolute_from_import_any(import_info)
+
+    @staticmethod
     def _absolute_from_import(
         import_info: object,
         *,
         module_name: str,
-    ) -> p.Infra.RopeFromImportLike | None:
+    ) -> t.Infra.RopeFromImport | None:
         absolute_import = FlextInfraUtilitiesRopeCore._absolute_from_import_any(
             import_info
         )
@@ -304,8 +400,8 @@ class FlextInfraUtilitiesRopeCore:
     @staticmethod
     def _absolute_from_import_any(
         import_info: object,
-    ) -> p.Infra.RopeFromImportLike | None:
-        if not isinstance(import_info, p.Infra.RopeFromImportLike):
+    ) -> t.Infra.RopeFromImport | None:
+        if not isinstance(import_info, FromImport):
             return None
         return import_info if import_info.level == 0 else None
 
@@ -323,7 +419,16 @@ class FlextInfraUtilitiesRopeCore:
             resource,
         )
         change_set_impl = ChangeSet(description)
-        change_set_impl.add_change(ChangeContents(resource_impl, content))
+        if not FlextInfraUtilitiesRopeCore._is_rope_mutable_changes_like(
+            change_set_impl,
+        ):
+            msg = "rope change set does not support add_change"
+            raise TypeError(msg)
+        change = ChangeContents(resource_impl, content)
+        if not FlextInfraUtilitiesRopeCore._is_rope_change_like(change):
+            msg = "rope change does not satisfy RopeChangeLike"
+            raise TypeError(msg)
+        change_set_impl.add_change(change)
         project_impl.do(
             FlextInfraUtilitiesRopeCore._ensure_rope_change_set(change_set_impl)
         )

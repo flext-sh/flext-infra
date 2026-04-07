@@ -128,7 +128,9 @@ class FlextInfraCodegenPipeline(s[str]):
         prev: str | None = None
         for stage_id in c.Infra.Pipeline.STAGE_ORDER:
             handler = handlers[stage_id]
-            deps = frozenset({prev}) if prev is not None else frozenset()
+            deps: frozenset[str] = (
+                frozenset((prev,)) if prev is not None else frozenset()
+            )
             retry = 1 if stage_id == c.Infra.Pipeline.STAGE_AUTO_FIX else 0
             stage_list.append(
                 m.Cli.PipelineStageSpec(

@@ -7,8 +7,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import MutableSequence, Sequence
+from functools import cache
 from pathlib import Path
 
+from flext_cli import u
 from flext_infra import c, r, t
 
 
@@ -28,6 +30,100 @@ class FlextInfraUtilitiesIteration:
         c.Infra.Directories.EXAMPLES,
         c.Infra.Directories.SCRIPTS,
     })
+
+    @staticmethod
+    @cache
+    def _pyproject_payload(pyproject_path: str) -> t.Infra.ContainerDict:
+        """Return one parsed ``pyproject.toml`` payload cached by absolute path."""
+        path = Path(pyproject_path)
+        if not path.is_file():
+            return {}
+        result = u.Cli.toml_read_json(path)
+        if result.is_failure:
+            return {}
+        payload = result.value
+        return payload if isinstance(payload, dict) else {}
+
+    @staticmethod
+    def _tool_flext_meta(project_root: Path) -> t.Infra.ContainerDict:
+        """Return the normalized ``tool.flext`` table from a project root."""
+        payload = FlextInfraUtilitiesIteration._pyproject_payload(
+            str(project_root / c.Infra.Files.PYPROJECT_FILENAME),
+        )
+        tool = payload.get(c.Infra.TOOL)
+        if not isinstance(tool, dict):
+            return {}
+        flext = tool.get("flext")
+        return flext if isinstance(flext, dict) else {}
+
+    @staticmethod
+    def _workspace_member_names(workspace_root: Path) -> Sequence[str]:
+        """Return configured workspace members from ``tool.flext`` or ``tool.uv``."""
+        flext_meta = FlextInfraUtilitiesIteration._tool_flext_meta(workspace_root)
+        flext_workspace = flext_meta.get("workspace")
+        if isinstance(flext_workspace, dict):
+            members = flext_workspace.get("members")
+            if isinstance(members, list):
+                normalized = [
+                    str(member).strip() for member in members if str(member).strip()
+                ]
+                if normalized:
+                    return normalized
+
+        payload = FlextInfraUtilitiesIteration._pyproject_payload(
+            str(workspace_root / c.Infra.Files.PYPROJECT_FILENAME),
+        )
+        tool = payload.get(c.Infra.TOOL)
+        if not isinstance(tool, dict):
+            return []
+        uv = tool.get("uv")
+        if not isinstance(uv, dict):
+            return []
+        uv_workspace = uv.get("workspace")
+        if not isinstance(uv_workspace, dict):
+            return []
+        members = uv_workspace.get("members")
+        if not isinstance(members, list):
+            return []
+        return [str(member).strip() for member in members if str(member).strip()]
+
+    @staticmethod
+    def namespace_meta(project_root: Path) -> t.Infra.ContainerDict:
+        """Return optional ``tool.flext.namespace`` metadata for one project."""
+        flext_meta = FlextInfraUtilitiesIteration._tool_flext_meta(project_root)
+        namespace = flext_meta.get("namespace")
+        return namespace if isinstance(namespace, dict) else {}
+
+    @staticmethod
+    def namespace_enabled(project_root: Path) -> bool:
+        """Return whether namespace enforcement is enabled for a project."""
+        enabled = FlextInfraUtilitiesIteration.namespace_meta(project_root).get(
+            "enabled",
+            True,
+        )
+        return enabled if isinstance(enabled, bool) else True
+
+    @staticmethod
+    def namespace_scan_dirs(project_root: Path) -> frozenset[str]:
+        """Return configured scan dirs for namespace enforcement."""
+        configured = FlextInfraUtilitiesIteration.namespace_meta(project_root).get(
+            "scan_dirs",
+        )
+        if isinstance(configured, list):
+            normalized = frozenset(
+                str(item).strip() for item in configured if str(item).strip()
+            )
+            if normalized:
+                return normalized
+        return frozenset(c.Infra.MRO_SCAN_DIRECTORIES)
+
+    @staticmethod
+    def namespace_include_dynamic_dirs(project_root: Path) -> bool:
+        """Return whether namespace enforcement should scan non-canonical dirs."""
+        include_dynamic_dirs = FlextInfraUtilitiesIteration.namespace_meta(
+            project_root,
+        ).get("include_dynamic_dirs")
+        return include_dynamic_dirs if isinstance(include_dynamic_dirs, bool) else False
 
     @staticmethod
     def discover_project_roots(
@@ -71,6 +167,18 @@ class FlextInfraUtilitiesIteration:
             ):
                 return False
             return any((path / dir_name).is_dir() for dir_name in effective_scan_dirs)
+
+        configured_members = FlextInfraUtilitiesIteration._workspace_member_names(
+            workspace_root,
+        )
+        if configured_members:
+            configured_roots = [
+                (workspace_root / member).resolve()
+                for member in configured_members
+                if _looks_like_project((workspace_root / member).resolve())
+            ]
+            if configured_roots:
+                return configured_roots
 
         if _looks_like_project(workspace_root):
             roots.append(workspace_root)
@@ -165,6 +273,7 @@ class FlextInfraUtilitiesIteration:
         include_tests: bool = True,
         include_examples: bool = True,
         include_scripts: bool = True,
+        include_dynamic_dirs: bool = True,
         src_dirs: frozenset[str] | None = None,
     ) -> r[Sequence[Path]]:
         """Discover and iterate all Python files across workspace projects.
@@ -213,10 +322,11 @@ class FlextInfraUtilitiesIteration:
                     selected_dirs,
                     files,
                 )
-                FlextInfraUtilitiesIteration._iter_dynamic_dirs(
-                    project_root,
-                    files,
-                )
+                if include_dynamic_dirs:
+                    FlextInfraUtilitiesIteration._iter_dynamic_dirs(
+                        project_root,
+                        files,
+                    )
             return r[Sequence[Path]].ok(sorted(set(files)))
         except OSError as exc:
             return r[Sequence[Path]].fail(f"python file iteration failed: {exc}")

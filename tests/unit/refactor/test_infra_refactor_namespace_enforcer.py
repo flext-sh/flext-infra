@@ -224,6 +224,60 @@ def test_namespace_enforcer_detects_missing_runtime_alias_outside_src(
     tm.that(report.total_runtime_alias_violations, gt=0)
 
 
+def test_namespace_enforcer_respects_tool_flext_namespace_scan_dirs(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "workspace"
+    project = workspace / "sample-proj"
+    pkg = project / "src" / "sample_pkg"
+    examples_dir = project / "examples"
+    pkg.mkdir(parents=True)
+    examples_dir.mkdir(parents=True)
+    _ = (project / "pyproject.toml").write_text(
+        "[project]\nname='sample'\n\n[tool.flext.namespace]\nscan_dirs = ['src']\n",
+        encoding="utf-8",
+    )
+    _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
+    _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
+    _ = (examples_dir / "constants.py").write_text(
+        "from __future__ import annotations\n\nclass DemoConstants:\n    pass\n",
+        encoding="utf-8",
+    )
+
+    report = FlextInfraNamespaceEnforcer(workspace_root=workspace).enforce(
+        apply=False,
+    )
+
+    tm.that(report.total_runtime_alias_violations, eq=0)
+
+
+def test_namespace_enforcer_skips_dynamic_dirs_by_default(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "workspace"
+    project = workspace / "sample-proj"
+    pkg = project / "src" / "sample_pkg"
+    docs_dir = project / "docs"
+    pkg.mkdir(parents=True)
+    docs_dir.mkdir(parents=True)
+    _ = (project / "pyproject.toml").write_text(
+        "[project]\nname='sample'\n",
+        encoding="utf-8",
+    )
+    _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
+    _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
+    _ = (docs_dir / "contracts.py").write_text(
+        "from __future__ import annotations\nfrom typing import Protocol\n\nclass HiddenContract(Protocol):\n    def run(self) -> str:\n        ...\n",
+        encoding="utf-8",
+    )
+
+    report = FlextInfraNamespaceEnforcer(workspace_root=workspace).enforce(
+        apply=False,
+    )
+
+    tm.that(report.total_manual_protocol_violations, eq=0)
+
+
 def test_namespace_enforcer_apply_keeps_script_shebang_when_adding_future(
     tmp_path: Path,
 ) -> None:

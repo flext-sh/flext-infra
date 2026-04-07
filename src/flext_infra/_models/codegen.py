@@ -289,6 +289,10 @@ class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
             str, Field(description="SHA256 of surrounding context lines")
         ]
 
+        def __hash__(self) -> int:
+            """Hash by stable business identity so keys work in sets and frozensets."""
+            return hash((self.module, self.rule, self.content_hash))
+
         @staticmethod
         def from_violation(
             violation: FlextInfraCodegenModels.CensusViolation,

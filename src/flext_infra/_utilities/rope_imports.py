@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import re
 from collections.abc import Sequence
+from typing import TypeGuard
 
+import rope.contrib.findit as rope_findit
+import rope.refactor.importutils as rope_importutils
+import rope.refactor.rename as rope_rename
 from rope.base.change import ChangeSet
 from rope.base.exceptions import RefactoringError, ResourceNotFoundError
-from rope.base.project import Project
-from rope.base.resources import Resource
-from rope.contrib.findit import find_occurrences
 from rope.refactor.importutils import ImportOrganizer
 from rope.refactor.importutils.importinfo import FromImport
 from rope.refactor.rename import Rename
@@ -19,6 +20,45 @@ from flext_infra import FlextInfraUtilitiesRopeCore, c, p, t
 
 class FlextInfraUtilitiesRopeImports(FlextInfraUtilitiesRopeCore):
     """Rope-backed import organization and rename helpers."""
+
+    @staticmethod
+    def _is_rope_rename_like(value: object) -> TypeGuard[t.Infra.RopeRename]:
+        """Return True when one object exposes Rope's rename contract."""
+        return isinstance(value, Rename)
+
+    @staticmethod
+    def _is_rope_find_occurrences_fn(
+        value: object,
+    ) -> TypeGuard[t.Infra.RopeFindOccurrencesFn]:
+        """Return True when one object is callable as Rope's occurrence finder."""
+        return callable(value)
+
+    @staticmethod
+    def _is_rope_findit_module(
+        value: object,
+    ) -> TypeGuard[t.Infra.RopeFindItModule]:
+        """Return True when one module exposes Rope's occurrence finder contract."""
+        return isinstance(value, p.Infra.RopeFindItModuleLike)
+
+    @staticmethod
+    def _is_rope_import_organizer_like(
+        value: object,
+    ) -> TypeGuard[t.Infra.RopeImportOrganizer]:
+        """Return True when one object exposes Rope's import organizer contract."""
+        return isinstance(value, ImportOrganizer)
+
+    @staticmethod
+    def _is_rope_changes_like(value: object) -> TypeGuard[t.Infra.RopeChanges]:
+        """Return True when one object exposes Rope's change-set contract."""
+        return isinstance(value, ChangeSet)
+
+    @staticmethod
+    def _ensure_rope_findit_module(value: object) -> t.Infra.RopeFindItModule:
+        """Validate rope.contrib.findit against the local module contract."""
+        if not FlextInfraUtilitiesRopeImports._is_rope_findit_module(value):
+            msg = "rope findit module does not satisfy RopeFindItModuleLike"
+            raise TypeError(msg)
+        return value
 
     @staticmethod
     def rename_symbol_workspace(
@@ -32,19 +72,26 @@ class FlextInfraUtilitiesRopeImports(FlextInfraUtilitiesRopeCore):
         """Rename symbol at offset across the whole project."""
         changed_files: t.MutableIntMapping = {}
         try:
-            if not isinstance(rope_project, Project):
+            project_impl = FlextInfraUtilitiesRopeImports._ensure_rope_project(
+                rope_project,
+            )
+            resource_impl = FlextInfraUtilitiesRopeImports._ensure_rope_api_resource(
+                resource,
+            )
+            rename = rope_rename.Rename(project_impl, resource_impl, offset)
+            if not FlextInfraUtilitiesRopeImports._is_rope_rename_like(rename):
                 return []
-            if not isinstance(resource, Resource):
-                return []
-            changes = Rename(rope_project, resource, offset).get_changes(new_name)
-        except RefactoringError:
+            changes = rename.get_changes(new_name)
+        except (RefactoringError, TypeError):
             return []
-        if not isinstance(changes, ChangeSet):
+        if not FlextInfraUtilitiesRopeImports._is_rope_changes_like(changes):
             return []
         for change in changes.changes:
             changed_files[change.resource.path] = 1
         if apply:
-            rope_project.do(changes)
+            project_impl.do(
+                FlextInfraUtilitiesRopeImports._ensure_rope_change_set(changes)
+            )
         return list(changed_files)
 
     @staticmethod
@@ -57,19 +104,24 @@ class FlextInfraUtilitiesRopeImports(FlextInfraUtilitiesRopeCore):
     ) -> Sequence[t.Infra.RopeLocation]:
         """Find all occurrences of the symbol at offset across the project."""
         try:
-            if not isinstance(rope_project, Project):
-                return []
-            if not isinstance(resource, Resource):
-                return []
+            project_impl = FlextInfraUtilitiesRopeImports._ensure_rope_project(
+                rope_project,
+            )
+            resource_impl = FlextInfraUtilitiesRopeImports._ensure_rope_api_resource(
+                resource,
+            )
+            findit_module = FlextInfraUtilitiesRopeImports._ensure_rope_findit_module(
+                rope_findit,
+            )
             return list(
-                find_occurrences(
-                    rope_project,
-                    resource,
+                findit_module.find_occurrences(
+                    project_impl,
+                    resource_impl,
                     offset,
                     in_hierarchy=in_hierarchy,
                 )
             )
-        except (RefactoringError, ResourceNotFoundError, AttributeError):
+        except (RefactoringError, ResourceNotFoundError, AttributeError, TypeError):
             return []
 
     @staticmethod
@@ -80,22 +132,25 @@ class FlextInfraUtilitiesRopeImports(FlextInfraUtilitiesRopeCore):
         apply: bool,
     ) -> bool:
         """Organize imports for one rope resource using rope's import engine."""
-        original_source = resource.read()
         try:
-            if not isinstance(rope_project, Project):
+            project_impl = FlextInfraUtilitiesRopeImports._ensure_rope_project(
+                rope_project,
+            )
+            resource_impl = FlextInfraUtilitiesRopeImports._ensure_rope_resource(
+                resource,
+            )
+            original_source = resource_impl.read()
+            organizer = rope_importutils.ImportOrganizer(project_impl)
+            if not FlextInfraUtilitiesRopeImports._is_rope_import_organizer_like(
+                organizer,
+            ):
                 return False
-            if not isinstance(resource, Resource):
-                return False
-            organizer = ImportOrganizer(rope_project)
-            changes = organizer.organize_imports(resource)
-        except (RefactoringError, ResourceNotFoundError, AttributeError):
+            changes = organizer.organize_imports(resource_impl)
+        except (RefactoringError, ResourceNotFoundError, AttributeError, TypeError):
             return False
-        if not isinstance(changes, ChangeSet) or not isinstance(
-            changes,
-            p.Infra.RopeChangesLike,
-        ):
+        if not FlextInfraUtilitiesRopeImports._is_rope_changes_like(changes):
             return False
-        change_list = getattr(changes, "changes", None)
+        change_list = tuple(changes.changes)
         if not change_list:
             return False
         changed = any(
@@ -103,7 +158,9 @@ class FlextInfraUtilitiesRopeImports(FlextInfraUtilitiesRopeCore):
             for change in change_list
         )
         if changed and apply:
-            rope_project.do(changes)
+            project_impl.do(
+                FlextInfraUtilitiesRopeImports._ensure_rope_change_set(changes)
+            )
         return changed
 
     @staticmethod
@@ -121,7 +178,9 @@ class FlextInfraUtilitiesRopeImports(FlextInfraUtilitiesRopeCore):
         )
         if module_imports is None:
             return imported
-        for import_stmt in module_imports.imports:
+        for import_stmt in FlextInfraUtilitiesRopeImports.get_import_statements(
+            module_imports,
+        ):
             from_import = FlextInfraUtilitiesRopeImports._absolute_from_import(
                 import_stmt.import_info,
                 module_name=module_name,
@@ -137,7 +196,7 @@ class FlextInfraUtilitiesRopeImports(FlextInfraUtilitiesRopeCore):
     def get_absolute_from_imports(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-    ) -> Sequence[p.Infra.RopeFromImportLike]:
+    ) -> Sequence[t.Infra.RopeFromImport]:
         """Return all absolute ``from x import ...`` descriptors in a module."""
         module_imports = FlextInfraUtilitiesRopeImports._get_module_imports(
             rope_project,
@@ -147,7 +206,9 @@ class FlextInfraUtilitiesRopeImports(FlextInfraUtilitiesRopeCore):
             return ()
         return tuple(
             from_import
-            for import_stmt in module_imports.imports
+            for import_stmt in FlextInfraUtilitiesRopeImports.get_import_statements(
+                module_imports
+            )
             if (
                 from_import := FlextInfraUtilitiesRopeImports._absolute_from_import_any(
                     import_stmt.import_info
@@ -178,9 +239,11 @@ class FlextInfraUtilitiesRopeImports(FlextInfraUtilitiesRopeCore):
         if module_imports is None:
             return None
         moved_aliases: t.Infra.StrSet = set()
-        target_import_stmt: p.Infra.RopeImportStatementLike | None = None
+        target_import_stmt: t.Infra.RopeImportStatement | None = None
         merged_target_pairs: Sequence[tuple[str, str | None]] = ()
-        for import_stmt in module_imports.imports:
+        for import_stmt in FlextInfraUtilitiesRopeImports.get_import_statements(
+            module_imports,
+        ):
             target_from_import = FlextInfraUtilitiesRopeImports._absolute_from_import(
                 import_stmt.import_info,
                 module_name=target_module,
@@ -309,7 +372,9 @@ class FlextInfraUtilitiesRopeImports(FlextInfraUtilitiesRopeCore):
             return None
         moved_aliases: t.Infra.StrSet = set()
         package_prefix = f"{package_name}."
-        for import_stmt in module_imports.imports:
+        for import_stmt in FlextInfraUtilitiesRopeImports.get_import_statements(
+            module_imports,
+        ):
             from_import = cls._absolute_from_import_any(import_stmt.import_info)
             if from_import is None or not from_import.module_name.startswith(
                 package_prefix
@@ -402,7 +467,9 @@ class FlextInfraUtilitiesRopeImports(FlextInfraUtilitiesRopeCore):
         if module_imports is None:
             return None
         changed = False
-        for import_stmt in module_imports.imports:
+        for import_stmt in FlextInfraUtilitiesRopeImports.get_import_statements(
+            module_imports,
+        ):
             from_import = FlextInfraUtilitiesRopeImports._absolute_from_import(
                 import_stmt.import_info,
                 module_name=from_module,

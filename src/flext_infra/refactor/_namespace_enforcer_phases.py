@@ -302,7 +302,8 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
         py_files_result = u.Infra.iter_python_files(
             workspace_root=project_root,
             project_roots=[project_root],
-            src_dirs=frozenset(c.Infra.MRO_SCAN_DIRECTORIES),
+            include_dynamic_dirs=u.Infra.namespace_include_dynamic_dirs(project_root),
+            src_dirs=u.Infra.namespace_scan_dirs(project_root),
         )
         if py_files_result.is_failure:
             return []

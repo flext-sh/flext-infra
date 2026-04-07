@@ -79,7 +79,11 @@ class FlextInfraUtilitiesRopeAnalysis(
                 if module is None:
                     continue
                 module_name = module.get_name()
-                object_name = obj.get_name()
+                object_name = (
+                    obj.get_name()
+                    if FlextInfraUtilitiesRopeAnalysis.is_rope_named_object_like(obj)
+                    else None
+                )
                 if not module_name or module_name == current_module_name:
                     continue
                 result[name] = (

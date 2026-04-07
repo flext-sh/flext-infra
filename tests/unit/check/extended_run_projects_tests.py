@@ -18,7 +18,7 @@ from tests.unit.check._shared_fixtures import (
     create_gate_execution,
 )
 
-from flext_infra import FlextInfraWorkspaceChecker
+from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 
 
 class TestRunProjectsValidation:

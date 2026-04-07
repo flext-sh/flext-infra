@@ -217,7 +217,9 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
         for phase_name in phase_order:
             if phase_name not in active:
                 continue
-            deps = frozenset({prev}) if prev is not None else frozenset()
+            deps: frozenset[str] = (
+                frozenset((prev,)) if prev is not None else frozenset()
+            )
             stage_list.append(
                 m.Cli.PipelineStageSpec(
                     stage_id=phase_name,
