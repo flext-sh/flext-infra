@@ -5,7 +5,11 @@ from __future__ import annotations
 
 import typing as _t
 
-from flext_core.lazy import install_lazy_exports, merge_lazy_imports
+from flext_core.lazy import (
+    build_lazy_import_map,
+    install_lazy_exports,
+    merge_lazy_imports,
+)
 from flext_infra.__version__ import *
 
 if _t.TYPE_CHECKING:
@@ -513,37 +517,49 @@ _LAZY_IMPORTS = merge_lazy_imports(
         ".validate",
         ".workspace",
     ),
-    {
-        "FlextInfra": ".api",
-        "FlextInfraCli": ".cli",
-        "FlextInfraConstants": ".constants",
-        "FlextInfraModels": ".models",
-        "FlextInfraProtocols": ".protocols",
-        "FlextInfraServiceBase": ".base",
-        "FlextInfraTypes": ".typings",
-        "FlextInfraUtilities": ".utilities",
-        "FlextInfraVersion": ".__version__",
-        "__author__": ".__version__",
-        "__author_email__": ".__version__",
-        "__description__": ".__version__",
-        "__license__": ".__version__",
-        "__title__": ".__version__",
-        "__url__": ".__version__",
-        "__version__": ".__version__",
-        "__version_info__": ".__version__",
-        "c": (".constants", "FlextInfraConstants"),
-        "d": ("flext_core.decorators", "FlextDecorators"),
-        "e": ("flext_core.exceptions", "FlextExceptions"),
-        "h": ("flext_core.handlers", "FlextHandlers"),
-        "infra": ".api",
-        "m": (".models", "FlextInfraModels"),
-        "main": ".cli",
-        "p": (".protocols", "FlextInfraProtocols"),
-        "r": ("flext_core.result", "FlextResult"),
-        "s": ".base",
-        "t": (".typings", "FlextInfraTypes"),
-        "u": (".utilities", "FlextInfraUtilities"),
-    },
+    build_lazy_import_map(
+        {
+            ".__version__": (
+                "FlextInfraVersion",
+                "__author__",
+                "__author_email__",
+                "__description__",
+                "__license__",
+                "__title__",
+                "__url__",
+                "__version__",
+                "__version_info__",
+            ),
+            ".api": (
+                "FlextInfra",
+                "infra",
+            ),
+            ".base": (
+                "FlextInfraServiceBase",
+                "s",
+            ),
+            ".cli": (
+                "FlextInfraCli",
+                "main",
+            ),
+            ".constants": ("FlextInfraConstants",),
+            ".models": ("FlextInfraModels",),
+            ".protocols": ("FlextInfraProtocols",),
+            ".typings": ("FlextInfraTypes",),
+            ".utilities": ("FlextInfraUtilities",),
+        },
+        alias_groups={
+            ".constants": (("c", "FlextInfraConstants"),),
+            ".models": (("m", "FlextInfraModels"),),
+            ".protocols": (("p", "FlextInfraProtocols"),),
+            ".typings": (("t", "FlextInfraTypes"),),
+            ".utilities": (("u", "FlextInfraUtilities"),),
+            "flext_core.decorators": (("d", "FlextDecorators"),),
+            "flext_core.exceptions": (("e", "FlextExceptions"),),
+            "flext_core.handlers": (("h", "FlextHandlers"),),
+            "flext_core.result": (("r", "FlextResult"),),
+        },
+    ),
     exclude_names=(
         "cleanup_submodule_namespace",
         "install_lazy_exports",

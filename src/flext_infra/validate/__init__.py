@@ -3,19 +3,21 @@
 
 from __future__ import annotations
 
-from flext_core.lazy import install_lazy_exports
+from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
-_LAZY_IMPORTS = {
-    "FlextInfraBaseMkValidator": ".basemk_validator",
-    "FlextInfraCliValidate": ".cli",
-    "FlextInfraInventoryService": ".inventory",
-    "FlextInfraNamespaceRules": ".namespace_rules",
-    "FlextInfraNamespaceValidator": ".namespace_validator",
-    "FlextInfraPytestDiagExtractor": ".pytest_diag",
-    "FlextInfraSkillValidator": ".skill_validator",
-    "FlextInfraStubSupplyChain": ".stub_chain",
-    "FlextInfraTextPatternScanner": ".scanner",
-}
+_LAZY_IMPORTS = build_lazy_import_map(
+    {
+        ".basemk_validator": ("FlextInfraBaseMkValidator",),
+        ".cli": ("FlextInfraCliValidate",),
+        ".inventory": ("FlextInfraInventoryService",),
+        ".namespace_rules": ("FlextInfraNamespaceRules",),
+        ".namespace_validator": ("FlextInfraNamespaceValidator",),
+        ".pytest_diag": ("FlextInfraPytestDiagExtractor",),
+        ".scanner": ("FlextInfraTextPatternScanner",),
+        ".skill_validator": ("FlextInfraSkillValidator",),
+        ".stub_chain": ("FlextInfraStubSupplyChain",),
+    },
+)
 
 
 install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, publish_all=False)

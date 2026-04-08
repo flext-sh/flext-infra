@@ -3,19 +3,25 @@
 
 from __future__ import annotations
 
-from flext_core.lazy import install_lazy_exports, merge_lazy_imports
+from flext_core.lazy import (
+    build_lazy_import_map,
+    install_lazy_exports,
+    merge_lazy_imports,
+)
 
 _LAZY_IMPORTS = merge_lazy_imports(
     (".maintenance",),
-    {
-        "FlextInfraCliWorkspace": ".cli",
-        "FlextInfraOrchestratorService": ".orchestrator",
-        "FlextInfraProjectMakefileUpdater": ".project_makefile",
-        "FlextInfraProjectMigrator": ".migrator",
-        "FlextInfraSyncService": ".sync",
-        "FlextInfraWorkspaceDetector": ".detector",
-        "FlextInfraWorkspaceMakefileGenerator": ".workspace_makefile",
-    },
+    build_lazy_import_map(
+        {
+            ".cli": ("FlextInfraCliWorkspace",),
+            ".detector": ("FlextInfraWorkspaceDetector",),
+            ".migrator": ("FlextInfraProjectMigrator",),
+            ".orchestrator": ("FlextInfraOrchestratorService",),
+            ".project_makefile": ("FlextInfraProjectMakefileUpdater",),
+            ".sync": ("FlextInfraSyncService",),
+            ".workspace_makefile": ("FlextInfraWorkspaceMakefileGenerator",),
+        },
+    ),
     exclude_names=(
         "cleanup_submodule_namespace",
         "install_lazy_exports",

@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import typing as _t
 
-from flext_core.lazy import install_lazy_exports
+from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if _t.TYPE_CHECKING:
     from tests.constants import TestsFlextInfraConstants, TestsFlextInfraConstants as c
@@ -21,25 +21,29 @@ if _t.TYPE_CHECKING:
     from flext_core.mixins import FlextMixins as x
     from flext_core.result import FlextResult as r
     from flext_core.service import FlextService as s
-_LAZY_IMPORTS = {
-    "TestsFlextInfraConstants": ".constants",
-    "TestsFlextInfraHelpers": ".helpers",
-    "TestsFlextInfraModels": ".models",
-    "TestsFlextInfraProtocols": ".protocols",
-    "TestsFlextInfraTypes": ".typings",
-    "TestsFlextInfraUtilities": ".utilities",
-    "c": (".constants", "TestsFlextInfraConstants"),
-    "d": ("flext_core.decorators", "FlextDecorators"),
-    "e": ("flext_core.exceptions", "FlextExceptions"),
-    "h": ("flext_core.handlers", "FlextHandlers"),
-    "m": (".models", "TestsFlextInfraModels"),
-    "p": (".protocols", "TestsFlextInfraProtocols"),
-    "r": ("flext_core.result", "FlextResult"),
-    "s": ("flext_core.service", "FlextService"),
-    "t": (".typings", "TestsFlextInfraTypes"),
-    "u": (".utilities", "TestsFlextInfraUtilities"),
-    "x": ("flext_core.mixins", "FlextMixins"),
-}
+_LAZY_IMPORTS = build_lazy_import_map(
+    {
+        ".constants": ("TestsFlextInfraConstants",),
+        ".helpers": ("TestsFlextInfraHelpers",),
+        ".models": ("TestsFlextInfraModels",),
+        ".protocols": ("TestsFlextInfraProtocols",),
+        ".typings": ("TestsFlextInfraTypes",),
+        ".utilities": ("TestsFlextInfraUtilities",),
+    },
+    alias_groups={
+        ".constants": (("c", "TestsFlextInfraConstants"),),
+        ".models": (("m", "TestsFlextInfraModels"),),
+        ".protocols": (("p", "TestsFlextInfraProtocols"),),
+        ".typings": (("t", "TestsFlextInfraTypes"),),
+        ".utilities": (("u", "TestsFlextInfraUtilities"),),
+        "flext_core.decorators": (("d", "FlextDecorators"),),
+        "flext_core.exceptions": (("e", "FlextExceptions"),),
+        "flext_core.handlers": (("h", "FlextHandlers"),),
+        "flext_core.mixins": (("x", "FlextMixins"),),
+        "flext_core.result": (("r", "FlextResult"),),
+        "flext_core.service": (("s", "FlextService"),),
+    },
+)
 
 __all__ = [
     "TestsFlextInfraConstants",

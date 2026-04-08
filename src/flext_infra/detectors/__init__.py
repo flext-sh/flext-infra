@@ -3,25 +3,29 @@
 
 from __future__ import annotations
 
-from flext_core.lazy import install_lazy_exports
+from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
-_LAZY_IMPORTS = {
-    "DetectorContext": "._base_detector",
-    "FlextInfraClassPlacementDetector": ".class_placement_detector",
-    "FlextInfraCompatibilityAliasDetector": ".compatibility_alias_detector",
-    "FlextInfraCyclicImportDetector": ".cyclic_import_detector",
-    "FlextInfraFutureAnnotationsDetector": ".future_annotations_detector",
-    "FlextInfraImportAliasDetector": ".import_alias_detector",
-    "FlextInfraInternalImportDetector": ".internal_import_detector",
-    "FlextInfraLooseObjectDetector": ".loose_object_detector",
-    "FlextInfraMROCompletenessDetector": ".mro_completeness_detector",
-    "FlextInfraManualProtocolDetector": ".manual_protocol_detector",
-    "FlextInfraManualTypingAliasDetector": ".manual_typing_alias_detector",
-    "FlextInfraNamespaceFacadeScanner": ".namespace_facade_scanner",
-    "FlextInfraNamespaceSourceDetector": ".namespace_source_detector",
-    "FlextInfraRuntimeAliasDetector": ".runtime_alias_detector",
-    "FlextInfraScanFileMixin": "._base_detector",
-}
+_LAZY_IMPORTS = build_lazy_import_map(
+    {
+        "._base_detector": (
+            "DetectorContext",
+            "FlextInfraScanFileMixin",
+        ),
+        ".class_placement_detector": ("FlextInfraClassPlacementDetector",),
+        ".compatibility_alias_detector": ("FlextInfraCompatibilityAliasDetector",),
+        ".cyclic_import_detector": ("FlextInfraCyclicImportDetector",),
+        ".future_annotations_detector": ("FlextInfraFutureAnnotationsDetector",),
+        ".import_alias_detector": ("FlextInfraImportAliasDetector",),
+        ".internal_import_detector": ("FlextInfraInternalImportDetector",),
+        ".loose_object_detector": ("FlextInfraLooseObjectDetector",),
+        ".manual_protocol_detector": ("FlextInfraManualProtocolDetector",),
+        ".manual_typing_alias_detector": ("FlextInfraManualTypingAliasDetector",),
+        ".mro_completeness_detector": ("FlextInfraMROCompletenessDetector",),
+        ".namespace_facade_scanner": ("FlextInfraNamespaceFacadeScanner",),
+        ".namespace_source_detector": ("FlextInfraNamespaceSourceDetector",),
+        ".runtime_alias_detector": ("FlextInfraRuntimeAliasDetector",),
+    },
+)
 
 
 install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, publish_all=False)

@@ -276,6 +276,9 @@ class FlextInfraCodegenGeneration:
             current_pkg,
             children_lazy,
         )
+        lazy_module_groups, lazy_alias_groups = (
+            FlextInfraUtilitiesCodegenGeneration.group_lazy_entries(lazy_entries)
+        )
         type_checking_lines = (
             FlextInfraCodegenGeneration.generate_type_checking(
                 FlextInfraUtilitiesCodegenGeneration.group_imports(
@@ -306,7 +309,8 @@ class FlextInfraCodegenGeneration:
             ),
             inline_constants=sorted(inline_constants.items()),
             eager_export_names=eager_export_names,
-            lazy_entries=lazy_entries,
+            lazy_module_groups=lazy_module_groups,
+            lazy_alias_groups=lazy_alias_groups,
             type_checking_lines="\n".join(type_checking_lines),
             exports=published_exports,
             publish_all=publish_all,

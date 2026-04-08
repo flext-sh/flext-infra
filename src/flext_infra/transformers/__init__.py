@@ -3,31 +3,37 @@
 
 from __future__ import annotations
 
-from flext_core.lazy import install_lazy_exports
+from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
-_LAZY_IMPORTS = {
-    "FlextInfraCensusImportDiscoveryVisitor": ".census_visitors",
-    "FlextInfraCensusUsageCollector": ".census_visitors",
-    "FlextInfraChangeTrackingTransformer": "._base",
-    "FlextInfraHelperConsolidationTransformer": ".helper_consolidation",
-    "FlextInfraNestedClassPropagationTransformer": ".nested_class_propagation",
-    "FlextInfraRefactorAliasRemover": ".alias_remover",
-    "FlextInfraRefactorClassNestingTransformer": ".class_nesting",
-    "FlextInfraRefactorClassReconstructor": ".class_reconstructor",
-    "FlextInfraRefactorDeprecatedRemover": ".deprecated_remover",
-    "FlextInfraRefactorImportBypassRemover": ".import_bypass_remover",
-    "FlextInfraRefactorImportModernizer": ".import_modernizer",
-    "FlextInfraRefactorLazyImportFixer": ".lazy_import_fixer",
-    "FlextInfraRefactorMRORemover": ".mro_remover",
-    "FlextInfraRefactorMROSymbolPropagator": ".mro_symbol_propagator",
-    "FlextInfraRefactorSignaturePropagator": ".signature_propagator",
-    "FlextInfraRefactorSymbolPropagator": ".symbol_propagator",
-    "FlextInfraRefactorTypingUnifier": ".typing_unifier",
-    "FlextInfraRopeTransformer": "._base",
-    "FlextInfraTransformerTier0ImportFixer": ".tier0_import_fixer",
-    "FlextInfraTypingAnnotationReplacer": ".typing_annotation_replacer",
-    "FlextInfraViolationCensusVisitor": ".violation_census_visitor",
-}
+_LAZY_IMPORTS = build_lazy_import_map(
+    {
+        "._base": (
+            "FlextInfraChangeTrackingTransformer",
+            "FlextInfraRopeTransformer",
+        ),
+        ".alias_remover": ("FlextInfraRefactorAliasRemover",),
+        ".census_visitors": (
+            "FlextInfraCensusImportDiscoveryVisitor",
+            "FlextInfraCensusUsageCollector",
+        ),
+        ".class_nesting": ("FlextInfraRefactorClassNestingTransformer",),
+        ".class_reconstructor": ("FlextInfraRefactorClassReconstructor",),
+        ".deprecated_remover": ("FlextInfraRefactorDeprecatedRemover",),
+        ".helper_consolidation": ("FlextInfraHelperConsolidationTransformer",),
+        ".import_bypass_remover": ("FlextInfraRefactorImportBypassRemover",),
+        ".import_modernizer": ("FlextInfraRefactorImportModernizer",),
+        ".lazy_import_fixer": ("FlextInfraRefactorLazyImportFixer",),
+        ".mro_remover": ("FlextInfraRefactorMRORemover",),
+        ".mro_symbol_propagator": ("FlextInfraRefactorMROSymbolPropagator",),
+        ".nested_class_propagation": ("FlextInfraNestedClassPropagationTransformer",),
+        ".signature_propagator": ("FlextInfraRefactorSignaturePropagator",),
+        ".symbol_propagator": ("FlextInfraRefactorSymbolPropagator",),
+        ".tier0_import_fixer": ("FlextInfraTransformerTier0ImportFixer",),
+        ".typing_annotation_replacer": ("FlextInfraTypingAnnotationReplacer",),
+        ".typing_unifier": ("FlextInfraRefactorTypingUnifier",),
+        ".violation_census_visitor": ("FlextInfraViolationCensusVisitor",),
+    },
+)
 
 
 install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, publish_all=False)

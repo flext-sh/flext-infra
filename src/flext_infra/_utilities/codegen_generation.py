@@ -258,6 +258,49 @@ class FlextInfraUtilitiesCodegenGeneration:
         return entries
 
     @staticmethod
+    def group_lazy_entries(
+        lazy_entries: Sequence[tuple[str, str, str]],
+    ) -> tuple[
+        Sequence[tuple[str, t.StrSequence]],
+        Sequence[tuple[str, t.Infra.StrPairSequence]],
+    ]:
+        """Group lazy entries into compact module- and alias-based buckets.
+
+        Returns:
+            - module_groups: (module_path, (export_name, ...)) entries where
+              ``export_name == attr_name`` (same-name imports).
+            - alias_groups: (module_path, ((export_name, attr_name), ...)) entries
+              where ``export_name != attr_name``.
+
+        """
+        module_groups: MutableMapping[str, MutableSequence[str]] = defaultdict(list)
+        alias_groups: MutableMapping[str, MutableSequence[t.Infra.StrPair]] = (
+            defaultdict(
+                list,
+            )
+        )
+
+        for export_name, mod, attr_name in lazy_entries:
+            if not attr_name or attr_name == export_name:
+                module_groups[mod].append(export_name)
+            else:
+                alias_groups[mod].append((export_name, attr_name))
+
+        module_items: Sequence[tuple[str, t.StrSequence]] = tuple(
+            (mod, tuple(sorted(names)))
+            for mod, names in sorted(
+                module_groups.items(), key=lambda item: item[0].lower()
+            )
+        )
+        alias_items: Sequence[tuple[str, t.Infra.StrPairSequence]] = tuple(
+            (mod, tuple(sorted(pairs)))
+            for mod, pairs in sorted(
+                alias_groups.items(), key=lambda item: item[0].lower()
+            )
+        )
+        return module_items, alias_items
+
+    @staticmethod
     def build_published_exports(
         exports: t.StrSequence,
         lazy_filtered: t.Infra.LazyImportMap,

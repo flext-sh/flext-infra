@@ -3,24 +3,26 @@
 
 from __future__ import annotations
 
-from flext_core.lazy import install_lazy_exports
+from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
-_LAZY_IMPORTS = {
-    "FlextInfraCodegenConsolidator": ".consolidator",
-    "FlextInfraCodegenDeduplicator": ".deduplicator",
-    "FlextInfraCodegenPipeline": ".pipeline",
-    "FlextInfraServiceBasemkMixin": ".basemk",
-    "FlextInfraServiceCheckMixin": ".check",
-    "FlextInfraServiceCodegenMixin": ".codegen",
-    "FlextInfraServiceDepsMixin": ".deps",
-    "FlextInfraServiceDocsMixin": ".docs",
-    "FlextInfraServiceGithubMixin": ".github",
-    "FlextInfraServiceRefactorMixin": ".refactor",
-    "FlextInfraServiceReleaseMixin": ".release",
-    "FlextInfraServiceValidateMixin": ".validate",
-    "FlextInfraServiceWorkspaceMixin": ".workspace",
-    "FlextInfraToml": ".toml_engine",
-}
+_LAZY_IMPORTS = build_lazy_import_map(
+    {
+        ".basemk": ("FlextInfraServiceBasemkMixin",),
+        ".check": ("FlextInfraServiceCheckMixin",),
+        ".codegen": ("FlextInfraServiceCodegenMixin",),
+        ".consolidator": ("FlextInfraCodegenConsolidator",),
+        ".deduplicator": ("FlextInfraCodegenDeduplicator",),
+        ".deps": ("FlextInfraServiceDepsMixin",),
+        ".docs": ("FlextInfraServiceDocsMixin",),
+        ".github": ("FlextInfraServiceGithubMixin",),
+        ".pipeline": ("FlextInfraCodegenPipeline",),
+        ".refactor": ("FlextInfraServiceRefactorMixin",),
+        ".release": ("FlextInfraServiceReleaseMixin",),
+        ".toml_engine": ("FlextInfraToml",),
+        ".validate": ("FlextInfraServiceValidateMixin",),
+        ".workspace": ("FlextInfraServiceWorkspaceMixin",),
+    },
+)
 
 
 install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, publish_all=False)

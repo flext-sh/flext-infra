@@ -21,15 +21,36 @@ _LAZY_IMPORTS = merge_lazy_imports(
         "{{ child_module_path }}",
 {%- endfor %}
     ),
-    {
-{%- for name, mod, attr in lazy_entries %}
-{%- if attr == "" or attr == name %}
-        "{{ name }}": "{{ mod }}",
+    build_lazy_import_map(
+        {
+{%- for mod, names in lazy_module_groups %}
+{%- if names|length == 1 %}
+            "{{ mod }}": ("{{ names[0] }}",),
 {%- else %}
-        "{{ name }}": ("{{ mod }}", "{{ attr }}"),
+            "{{ mod }}": (
+{%- for name in names %}
+                "{{ name }}",
+{%- endfor %}
+            ),
 {%- endif %}
 {%- endfor %}
-    },
+        },
+{%- if lazy_alias_groups %}
+        alias_groups={
+{%- for mod, pairs in lazy_alias_groups %}
+{%- if pairs|length == 1 %}
+            "{{ mod }}": (("{{ pairs[0][0] }}", "{{ pairs[0][1] }}"),),
+{%- else %}
+            "{{ mod }}": (
+{%- for export_name, attr_name in pairs %}
+                ("{{ export_name }}", "{{ attr_name }}"),
+{%- endfor %}
+            ),
+{%- endif %}
+{%- endfor %}
+        },
+{%- endif %}
+    ),
 {%- if excluded_lazy_names %}
     exclude_names=(
 {%- for name in excluded_lazy_names %}
@@ -40,15 +61,36 @@ _LAZY_IMPORTS = merge_lazy_imports(
     module_name=__name__,
 )
 {%- else %}
-_LAZY_IMPORTS = {
-{%- for name, mod, attr in lazy_entries %}
-{%- if attr == "" or attr == name %}
-    "{{ name }}": "{{ mod }}",
+_LAZY_IMPORTS = build_lazy_import_map(
+    {
+{%- for mod, names in lazy_module_groups %}
+{%- if names|length == 1 %}
+        "{{ mod }}": ("{{ names[0] }}",),
 {%- else %}
-    "{{ name }}": ("{{ mod }}", "{{ attr }}"),
+        "{{ mod }}": (
+{%- for name in names %}
+            "{{ name }}",
+{%- endfor %}
+        ),
 {%- endif %}
 {%- endfor %}
-}
+    },
+{%- if lazy_alias_groups %}
+    alias_groups={
+{%- for mod, pairs in lazy_alias_groups %}
+{%- if pairs|length == 1 %}
+        "{{ mod }}": (("{{ pairs[0][0] }}", "{{ pairs[0][1] }}"),),
+{%- else %}
+        "{{ mod }}": (
+{%- for export_name, attr_name in pairs %}
+            ("{{ export_name }}", "{{ attr_name }}"),
+{%- endfor %}
+        ),
+{%- endif %}
+{%- endfor %}
+    },
+{%- endif %}
+)
 {%- endif %}
 
 {%- if exports %}

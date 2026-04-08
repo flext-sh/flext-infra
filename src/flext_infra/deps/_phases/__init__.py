@@ -3,23 +3,25 @@
 
 from __future__ import annotations
 
-from flext_core.lazy import install_lazy_exports
+from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
-_LAZY_IMPORTS = {
-    "FlextInfraConsolidateGroupsPhase": ".consolidate_groups",
-    "FlextInfraEnsureCoverageConfigPhase": ".ensure_coverage",
-    "FlextInfraEnsureExtraPathsPhase": ".ensure_extra_paths",
-    "FlextInfraEnsureFormattingToolingPhase": ".ensure_formatting",
-    "FlextInfraEnsureMypyConfigPhase": ".ensure_mypy",
-    "FlextInfraEnsureNamespaceToolingPhase": ".ensure_namespace",
-    "FlextInfraEnsurePydanticMypyConfigPhase": ".ensure_pydantic_mypy",
-    "FlextInfraEnsurePyreflyConfigPhase": ".ensure_pyrefly",
-    "FlextInfraEnsurePyrightConfigPhase": ".ensure_pyright",
-    "FlextInfraEnsurePyrightEnvs": ".ensure_pyright_envs",
-    "FlextInfraEnsurePytestConfigPhase": ".ensure_pytest",
-    "FlextInfraEnsureRuffConfigPhase": ".ensure_ruff",
-    "FlextInfraInjectCommentsPhase": ".inject_comments",
-}
+_LAZY_IMPORTS = build_lazy_import_map(
+    {
+        ".consolidate_groups": ("FlextInfraConsolidateGroupsPhase",),
+        ".ensure_coverage": ("FlextInfraEnsureCoverageConfigPhase",),
+        ".ensure_extra_paths": ("FlextInfraEnsureExtraPathsPhase",),
+        ".ensure_formatting": ("FlextInfraEnsureFormattingToolingPhase",),
+        ".ensure_mypy": ("FlextInfraEnsureMypyConfigPhase",),
+        ".ensure_namespace": ("FlextInfraEnsureNamespaceToolingPhase",),
+        ".ensure_pydantic_mypy": ("FlextInfraEnsurePydanticMypyConfigPhase",),
+        ".ensure_pyrefly": ("FlextInfraEnsurePyreflyConfigPhase",),
+        ".ensure_pyright": ("FlextInfraEnsurePyrightConfigPhase",),
+        ".ensure_pyright_envs": ("FlextInfraEnsurePyrightEnvs",),
+        ".ensure_pytest": ("FlextInfraEnsurePytestConfigPhase",),
+        ".ensure_ruff": ("FlextInfraEnsureRuffConfigPhase",),
+        ".inject_comments": ("FlextInfraInjectCommentsPhase",),
+    },
+)
 
 
 install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, publish_all=False)
