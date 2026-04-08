@@ -8,29 +8,14 @@ from __future__ import annotations
 from flext_core.lazy import install_lazy_exports
 
 _LAZY_IMPORTS = {
-    "FlextInfraCheckServices": (
-        "flext_infra.check.services",
-        "FlextInfraCheckServices",
-    ),
-    "FlextInfraCliCheck": ("flext_infra.check.cli", "FlextInfraCliCheck"),
-    "FlextInfraGateRegistry": (
-        "flext_infra.check._workspace_check_gates",
-        "FlextInfraGateRegistry",
-    ),
-    "FlextInfraWorkspaceCheckGatesMixin": (
-        "flext_infra.check._workspace_check_gates",
-        "FlextInfraWorkspaceCheckGatesMixin",
-    ),
-    "FlextInfraWorkspaceChecker": (
-        "flext_infra.check.workspace_check",
-        "FlextInfraWorkspaceChecker",
-    ),
-    "FlextInfraWorkspaceCheckerCli": (
-        "flext_infra.check.workspace_check_cli",
-        "FlextInfraWorkspaceCheckerCli",
-    ),
-    "build_parser": ("flext_infra.check.workspace_check", "build_parser"),
-    "run_cli": ("flext_infra.check.workspace_check", "run_cli"),
+    "FlextInfraCheckServices": ".services",
+    "FlextInfraCliCheck": ".cli",
+    "FlextInfraGateRegistry": "._workspace_check_gates",
+    "FlextInfraWorkspaceCheckGatesMixin": "._workspace_check_gates",
+    "FlextInfraWorkspaceChecker": ".workspace_check",
+    "FlextInfraWorkspaceCheckerCli": ".workspace_check_cli",
+    "build_parser": ".workspace_check",
+    "run_cli": ".workspace_check",
 }
 
 

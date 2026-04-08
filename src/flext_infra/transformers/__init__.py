@@ -8,90 +8,27 @@ from __future__ import annotations
 from flext_core.lazy import install_lazy_exports
 
 _LAZY_IMPORTS = {
-    "FlextInfraCensusImportDiscoveryVisitor": (
-        "flext_infra.transformers.census_visitors",
-        "FlextInfraCensusImportDiscoveryVisitor",
-    ),
-    "FlextInfraCensusUsageCollector": (
-        "flext_infra.transformers.census_visitors",
-        "FlextInfraCensusUsageCollector",
-    ),
-    "FlextInfraChangeTrackingTransformer": (
-        "flext_infra.transformers._base",
-        "FlextInfraChangeTrackingTransformer",
-    ),
-    "FlextInfraHelperConsolidationTransformer": (
-        "flext_infra.transformers.helper_consolidation",
-        "FlextInfraHelperConsolidationTransformer",
-    ),
-    "FlextInfraNestedClassPropagationTransformer": (
-        "flext_infra.transformers.nested_class_propagation",
-        "FlextInfraNestedClassPropagationTransformer",
-    ),
-    "FlextInfraRefactorAliasRemover": (
-        "flext_infra.transformers.alias_remover",
-        "FlextInfraRefactorAliasRemover",
-    ),
-    "FlextInfraRefactorClassNestingTransformer": (
-        "flext_infra.transformers.class_nesting",
-        "FlextInfraRefactorClassNestingTransformer",
-    ),
-    "FlextInfraRefactorClassReconstructor": (
-        "flext_infra.transformers.class_reconstructor",
-        "FlextInfraRefactorClassReconstructor",
-    ),
-    "FlextInfraRefactorDeprecatedRemover": (
-        "flext_infra.transformers.deprecated_remover",
-        "FlextInfraRefactorDeprecatedRemover",
-    ),
-    "FlextInfraRefactorImportBypassRemover": (
-        "flext_infra.transformers.import_bypass_remover",
-        "FlextInfraRefactorImportBypassRemover",
-    ),
-    "FlextInfraRefactorImportModernizer": (
-        "flext_infra.transformers.import_modernizer",
-        "FlextInfraRefactorImportModernizer",
-    ),
-    "FlextInfraRefactorLazyImportFixer": (
-        "flext_infra.transformers.lazy_import_fixer",
-        "FlextInfraRefactorLazyImportFixer",
-    ),
-    "FlextInfraRefactorMRORemover": (
-        "flext_infra.transformers.mro_remover",
-        "FlextInfraRefactorMRORemover",
-    ),
-    "FlextInfraRefactorMROSymbolPropagator": (
-        "flext_infra.transformers.mro_symbol_propagator",
-        "FlextInfraRefactorMROSymbolPropagator",
-    ),
-    "FlextInfraRefactorSignaturePropagator": (
-        "flext_infra.transformers.signature_propagator",
-        "FlextInfraRefactorSignaturePropagator",
-    ),
-    "FlextInfraRefactorSymbolPropagator": (
-        "flext_infra.transformers.symbol_propagator",
-        "FlextInfraRefactorSymbolPropagator",
-    ),
-    "FlextInfraRefactorTypingUnifier": (
-        "flext_infra.transformers.typing_unifier",
-        "FlextInfraRefactorTypingUnifier",
-    ),
-    "FlextInfraRopeTransformer": (
-        "flext_infra.transformers._base",
-        "FlextInfraRopeTransformer",
-    ),
-    "FlextInfraTransformerTier0ImportFixer": (
-        "flext_infra.transformers.tier0_import_fixer",
-        "FlextInfraTransformerTier0ImportFixer",
-    ),
-    "FlextInfraTypingAnnotationReplacer": (
-        "flext_infra.transformers.typing_annotation_replacer",
-        "FlextInfraTypingAnnotationReplacer",
-    ),
-    "FlextInfraViolationCensusVisitor": (
-        "flext_infra.transformers.violation_census_visitor",
-        "FlextInfraViolationCensusVisitor",
-    ),
+    "FlextInfraCensusImportDiscoveryVisitor": ".census_visitors",
+    "FlextInfraCensusUsageCollector": ".census_visitors",
+    "FlextInfraChangeTrackingTransformer": "._base",
+    "FlextInfraHelperConsolidationTransformer": ".helper_consolidation",
+    "FlextInfraNestedClassPropagationTransformer": ".nested_class_propagation",
+    "FlextInfraRefactorAliasRemover": ".alias_remover",
+    "FlextInfraRefactorClassNestingTransformer": ".class_nesting",
+    "FlextInfraRefactorClassReconstructor": ".class_reconstructor",
+    "FlextInfraRefactorDeprecatedRemover": ".deprecated_remover",
+    "FlextInfraRefactorImportBypassRemover": ".import_bypass_remover",
+    "FlextInfraRefactorImportModernizer": ".import_modernizer",
+    "FlextInfraRefactorLazyImportFixer": ".lazy_import_fixer",
+    "FlextInfraRefactorMRORemover": ".mro_remover",
+    "FlextInfraRefactorMROSymbolPropagator": ".mro_symbol_propagator",
+    "FlextInfraRefactorSignaturePropagator": ".signature_propagator",
+    "FlextInfraRefactorSymbolPropagator": ".symbol_propagator",
+    "FlextInfraRefactorTypingUnifier": ".typing_unifier",
+    "FlextInfraRopeTransformer": "._base",
+    "FlextInfraTransformerTier0ImportFixer": ".tier0_import_fixer",
+    "FlextInfraTypingAnnotationReplacer": ".typing_annotation_replacer",
+    "FlextInfraViolationCensusVisitor": ".violation_census_visitor",
 }
 
 

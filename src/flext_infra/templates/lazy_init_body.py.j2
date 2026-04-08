@@ -23,23 +23,26 @@ _LAZY_IMPORTS = merge_lazy_imports(
     ),
     {
 {%- for name, mod, attr in lazy_entries %}
-{%- if attr == "" %}
+{%- if attr == "" or attr == name %}
         "{{ name }}": "{{ mod }}",
 {%- else %}
         "{{ name }}": ("{{ mod }}", "{{ attr }}"),
 {%- endif %}
 {%- endfor %}
     },
-)
 {%- if excluded_lazy_names %}
+    exclude_names=(
 {%- for name in excluded_lazy_names %}
-_ = _LAZY_IMPORTS.pop("{{ name }}", None)
+        "{{ name }}",
 {%- endfor %}
+    ),
 {%- endif %}
+    module_name=__name__,
+)
 {%- else %}
 _LAZY_IMPORTS = {
 {%- for name, mod, attr in lazy_entries %}
-{%- if attr == "" %}
+{%- if attr == "" or attr == name %}
     "{{ name }}": "{{ mod }}",
 {%- else %}
     "{{ name }}": ("{{ mod }}", "{{ attr }}"),

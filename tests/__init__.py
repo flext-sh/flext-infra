@@ -24,22 +24,22 @@ if _t.TYPE_CHECKING:
     from flext_core.result import FlextResult as r
     from flext_core.service import FlextService as s
 _LAZY_IMPORTS = {
-    "TestsFlextInfraConstants": ("tests.constants", "TestsFlextInfraConstants"),
-    "TestsFlextInfraHelpers": ("tests.helpers", "TestsFlextInfraHelpers"),
-    "TestsFlextInfraModels": ("tests.models", "TestsFlextInfraModels"),
-    "TestsFlextInfraProtocols": ("tests.protocols", "TestsFlextInfraProtocols"),
-    "TestsFlextInfraTypes": ("tests.typings", "TestsFlextInfraTypes"),
-    "TestsFlextInfraUtilities": ("tests.utilities", "TestsFlextInfraUtilities"),
-    "c": ("tests.constants", "TestsFlextInfraConstants"),
+    "TestsFlextInfraConstants": ".constants",
+    "TestsFlextInfraHelpers": ".helpers",
+    "TestsFlextInfraModels": ".models",
+    "TestsFlextInfraProtocols": ".protocols",
+    "TestsFlextInfraTypes": ".typings",
+    "TestsFlextInfraUtilities": ".utilities",
+    "c": (".constants", "TestsFlextInfraConstants"),
     "d": ("flext_core.decorators", "FlextDecorators"),
     "e": ("flext_core.exceptions", "FlextExceptions"),
     "h": ("flext_core.handlers", "FlextHandlers"),
-    "m": ("tests.models", "TestsFlextInfraModels"),
-    "p": ("tests.protocols", "TestsFlextInfraProtocols"),
+    "m": (".models", "TestsFlextInfraModels"),
+    "p": (".protocols", "TestsFlextInfraProtocols"),
     "r": ("flext_core.result", "FlextResult"),
     "s": ("flext_core.service", "FlextService"),
-    "t": ("tests.typings", "TestsFlextInfraTypes"),
-    "u": ("tests.utilities", "TestsFlextInfraUtilities"),
+    "t": (".typings", "TestsFlextInfraTypes"),
+    "u": (".utilities", "TestsFlextInfraUtilities"),
     "x": ("flext_core.mixins", "FlextMixins"),
 }
 

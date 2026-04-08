@@ -111,7 +111,7 @@ class TestProcessDirectory:
         tm.that(init_content, contains="__all__ = [")
         tm.that(
             init_content,
-            contains='"t": ("tests.typings", "TestsFlextDemoTypes")',
+            contains='"t": (".typings", "TestsFlextDemoTypes")',
         )
 
     def test_handles_version_file(self, tmp_path: Path) -> None:
@@ -132,5 +132,5 @@ class TestProcessDirectory:
         tm.that(content, contains="from test_pkg.__version__ import *")
         tm.that(
             content,
-            contains='"__version_info__": ("test_pkg.__version__", "__version_info__")',
+            contains='"__version_info__": (".__version__", "__version_info__")',
         )

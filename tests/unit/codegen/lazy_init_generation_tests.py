@@ -285,8 +285,8 @@ class TestGenerateFile:
             "test_pkg",
         )
         tm.that(content, lacks="from test_pkg.typings import T, U")
-        tm.that(content, contains='"T": ("test_pkg.typings", "T")')
-        tm.that(content, contains='"U": ("test_pkg.typings", "U")')
+        tm.that(content, contains='"T": ".typings"')
+        tm.that(content, contains='"U": ".typings"')
 
     def test_root_namespace_emits_static_analysis_hints(self) -> None:
         """Root namespace __init__.py keeps TYPE_CHECKING and __all__."""
@@ -370,7 +370,7 @@ class TestGenerateFile:
             child_packages_for_lazy=("test_pkg._constants", "test_pkg.tools"),
             child_packages_for_tc=("test_pkg._constants", "test_pkg.tools"),
         )
-        tm.that(content, contains='"Alpha": ("test_pkg._utilities.alpha", "Alpha")')
+        tm.that(content, contains='"Alpha": "._utilities.alpha"')
         tm.that(content, lacks='"_constants": "test_pkg._constants"')
         tm.that(content, lacks='"api": "test_pkg.api"')
         tm.that(content, lacks='"constants": "test_pkg.constants"')
@@ -380,6 +380,27 @@ class TestGenerateFile:
         tm.that(content, lacks='    "api",')
         tm.that(content, lacks='    "constants",')
         tm.that(content, lacks='    "tools",')
+
+    def test_root_namespace_uses_relative_child_package_paths(self) -> None:
+        """Root merge list uses relative child package paths for local children."""
+        exports = ["Alpha"]
+        filtered = {"Alpha": ("test_pkg.models", "Alpha")}
+        inline_constants: t.StrMapping = {}
+        content = FlextInfraCodegenGeneration.generate_file(
+            "",
+            exports,
+            filtered,
+            inline_constants,
+            "test_pkg",
+            child_packages_for_lazy=("test_pkg._constants", "test_pkg.services"),
+        )
+        tm.that(content, contains='"._constants"')
+        tm.that(content, contains='".services"')
+        tm.that(content, contains='exclude_names=(')
+        tm.that(content, contains="module_name=__name__")
+        tm.that(content, lacks='"test_pkg._constants"')
+        tm.that(content, lacks='"test_pkg.services"')
+        tm.that(content, lacks='_LAZY_IMPORTS.pop(')
 
     def test_subpackage_omits_static_analysis_hints(self) -> None:
         """Non-root package __init__.py keeps only _LAZY_IMPORTS + lazy loader."""

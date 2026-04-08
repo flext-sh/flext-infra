@@ -8,18 +8,15 @@ from __future__ import annotations
 from flext_core.lazy import install_lazy_exports
 
 _LAZY_IMPORTS = {
-    "FlextInfraBanditGate": ("flext_infra.gates.bandit", "FlextInfraBanditGate"),
-    "FlextInfraGate": ("flext_infra.gates._base_gate", "FlextInfraGate"),
-    "FlextInfraGoGate": ("flext_infra.gates.go", "FlextInfraGoGate"),
-    "FlextInfraMarkdownGate": ("flext_infra.gates.markdown", "FlextInfraMarkdownGate"),
-    "FlextInfraMypyGate": ("flext_infra.gates.mypy", "FlextInfraMypyGate"),
-    "FlextInfraPyreflyGate": ("flext_infra.gates.pyrefly", "FlextInfraPyreflyGate"),
-    "FlextInfraPyrightGate": ("flext_infra.gates.pyright", "FlextInfraPyrightGate"),
-    "FlextInfraRuffFormatGate": (
-        "flext_infra.gates.ruff_format",
-        "FlextInfraRuffFormatGate",
-    ),
-    "FlextInfraRuffLintGate": ("flext_infra.gates.ruff_lint", "FlextInfraRuffLintGate"),
+    "FlextInfraBanditGate": ".bandit",
+    "FlextInfraGate": "._base_gate",
+    "FlextInfraGoGate": ".go",
+    "FlextInfraMarkdownGate": ".markdown",
+    "FlextInfraMypyGate": ".mypy",
+    "FlextInfraPyreflyGate": ".pyrefly",
+    "FlextInfraPyrightGate": ".pyright",
+    "FlextInfraRuffFormatGate": ".ruff_format",
+    "FlextInfraRuffLintGate": ".ruff_lint",
 }
 
 

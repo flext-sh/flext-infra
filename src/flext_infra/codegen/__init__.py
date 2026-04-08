@@ -8,32 +8,14 @@ from __future__ import annotations
 from flext_core.lazy import install_lazy_exports
 
 _LAZY_IMPORTS = {
-    "FlextInfraCliCodegen": ("flext_infra.codegen.cli", "FlextInfraCliCodegen"),
-    "FlextInfraCodegenCensus": (
-        "flext_infra.codegen.census",
-        "FlextInfraCodegenCensus",
-    ),
-    "FlextInfraCodegenFixer": ("flext_infra.codegen.fixer", "FlextInfraCodegenFixer"),
-    "FlextInfraCodegenGeneration": (
-        "flext_infra.codegen._codegen_generation",
-        "FlextInfraCodegenGeneration",
-    ),
-    "FlextInfraCodegenLazyInit": (
-        "flext_infra.codegen.lazy_init",
-        "FlextInfraCodegenLazyInit",
-    ),
-    "FlextInfraCodegenPyTyped": (
-        "flext_infra.codegen.py_typed",
-        "FlextInfraCodegenPyTyped",
-    ),
-    "FlextInfraCodegenScaffolder": (
-        "flext_infra.codegen.scaffolder",
-        "FlextInfraCodegenScaffolder",
-    ),
-    "FlextInfraConstantsCodegenQualityGate": (
-        "flext_infra.codegen.constants_quality_gate",
-        "FlextInfraConstantsCodegenQualityGate",
-    ),
+    "FlextInfraCliCodegen": ".cli",
+    "FlextInfraCodegenCensus": ".census",
+    "FlextInfraCodegenFixer": ".fixer",
+    "FlextInfraCodegenGeneration": "._codegen_generation",
+    "FlextInfraCodegenLazyInit": ".lazy_init",
+    "FlextInfraCodegenPyTyped": ".py_typed",
+    "FlextInfraCodegenScaffolder": ".scaffolder",
+    "FlextInfraConstantsCodegenQualityGate": ".constants_quality_gate",
 }
 
 

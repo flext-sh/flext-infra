@@ -8,45 +8,27 @@ from __future__ import annotations
 from flext_core.lazy import install_lazy_exports, merge_lazy_imports
 
 _LAZY_IMPORTS = merge_lazy_imports(
-    ("flext_infra.workspace.maintenance",),
+    (".maintenance",),
     {
-        "FlextInfraCliWorkspace": (
-            "flext_infra.workspace.cli",
-            "FlextInfraCliWorkspace",
-        ),
-        "FlextInfraOrchestratorService": (
-            "flext_infra.workspace.orchestrator",
-            "FlextInfraOrchestratorService",
-        ),
-        "FlextInfraProjectMakefileUpdater": (
-            "flext_infra.workspace.project_makefile",
-            "FlextInfraProjectMakefileUpdater",
-        ),
-        "FlextInfraProjectMigrator": (
-            "flext_infra.workspace.migrator",
-            "FlextInfraProjectMigrator",
-        ),
-        "FlextInfraSyncService": (
-            "flext_infra.workspace.sync",
-            "FlextInfraSyncService",
-        ),
-        "FlextInfraWorkspaceDetector": (
-            "flext_infra.workspace.detector",
-            "FlextInfraWorkspaceDetector",
-        ),
-        "FlextInfraWorkspaceMakefileGenerator": (
-            "flext_infra.workspace.workspace_makefile",
-            "FlextInfraWorkspaceMakefileGenerator",
-        ),
+        "FlextInfraCliWorkspace": ".cli",
+        "FlextInfraOrchestratorService": ".orchestrator",
+        "FlextInfraProjectMakefileUpdater": ".project_makefile",
+        "FlextInfraProjectMigrator": ".migrator",
+        "FlextInfraSyncService": ".sync",
+        "FlextInfraWorkspaceDetector": ".detector",
+        "FlextInfraWorkspaceMakefileGenerator": ".workspace_makefile",
     },
+    exclude_names=(
+        "cleanup_submodule_namespace",
+        "install_lazy_exports",
+        "lazy_getattr",
+        "logger",
+        "merge_lazy_imports",
+        "output",
+        "output_reporting",
+    ),
+    module_name=__name__,
 )
-_ = _LAZY_IMPORTS.pop("cleanup_submodule_namespace", None)
-_ = _LAZY_IMPORTS.pop("install_lazy_exports", None)
-_ = _LAZY_IMPORTS.pop("lazy_getattr", None)
-_ = _LAZY_IMPORTS.pop("logger", None)
-_ = _LAZY_IMPORTS.pop("merge_lazy_imports", None)
-_ = _LAZY_IMPORTS.pop("output", None)
-_ = _LAZY_IMPORTS.pop("output_reporting", None)
 
 
 install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, publish_all=False)

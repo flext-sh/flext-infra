@@ -8,63 +8,21 @@ from __future__ import annotations
 from flext_core.lazy import install_lazy_exports
 
 _LAZY_IMPORTS = {
-    "DetectorContext": ("flext_infra.detectors._base_detector", "DetectorContext"),
-    "FlextInfraClassPlacementDetector": (
-        "flext_infra.detectors.class_placement_detector",
-        "FlextInfraClassPlacementDetector",
-    ),
-    "FlextInfraCompatibilityAliasDetector": (
-        "flext_infra.detectors.compatibility_alias_detector",
-        "FlextInfraCompatibilityAliasDetector",
-    ),
-    "FlextInfraCyclicImportDetector": (
-        "flext_infra.detectors.cyclic_import_detector",
-        "FlextInfraCyclicImportDetector",
-    ),
-    "FlextInfraFutureAnnotationsDetector": (
-        "flext_infra.detectors.future_annotations_detector",
-        "FlextInfraFutureAnnotationsDetector",
-    ),
-    "FlextInfraImportAliasDetector": (
-        "flext_infra.detectors.import_alias_detector",
-        "FlextInfraImportAliasDetector",
-    ),
-    "FlextInfraInternalImportDetector": (
-        "flext_infra.detectors.internal_import_detector",
-        "FlextInfraInternalImportDetector",
-    ),
-    "FlextInfraLooseObjectDetector": (
-        "flext_infra.detectors.loose_object_detector",
-        "FlextInfraLooseObjectDetector",
-    ),
-    "FlextInfraMROCompletenessDetector": (
-        "flext_infra.detectors.mro_completeness_detector",
-        "FlextInfraMROCompletenessDetector",
-    ),
-    "FlextInfraManualProtocolDetector": (
-        "flext_infra.detectors.manual_protocol_detector",
-        "FlextInfraManualProtocolDetector",
-    ),
-    "FlextInfraManualTypingAliasDetector": (
-        "flext_infra.detectors.manual_typing_alias_detector",
-        "FlextInfraManualTypingAliasDetector",
-    ),
-    "FlextInfraNamespaceFacadeScanner": (
-        "flext_infra.detectors.namespace_facade_scanner",
-        "FlextInfraNamespaceFacadeScanner",
-    ),
-    "FlextInfraNamespaceSourceDetector": (
-        "flext_infra.detectors.namespace_source_detector",
-        "FlextInfraNamespaceSourceDetector",
-    ),
-    "FlextInfraRuntimeAliasDetector": (
-        "flext_infra.detectors.runtime_alias_detector",
-        "FlextInfraRuntimeAliasDetector",
-    ),
-    "FlextInfraScanFileMixin": (
-        "flext_infra.detectors._base_detector",
-        "FlextInfraScanFileMixin",
-    ),
+    "DetectorContext": "._base_detector",
+    "FlextInfraClassPlacementDetector": ".class_placement_detector",
+    "FlextInfraCompatibilityAliasDetector": ".compatibility_alias_detector",
+    "FlextInfraCyclicImportDetector": ".cyclic_import_detector",
+    "FlextInfraFutureAnnotationsDetector": ".future_annotations_detector",
+    "FlextInfraImportAliasDetector": ".import_alias_detector",
+    "FlextInfraInternalImportDetector": ".internal_import_detector",
+    "FlextInfraLooseObjectDetector": ".loose_object_detector",
+    "FlextInfraMROCompletenessDetector": ".mro_completeness_detector",
+    "FlextInfraManualProtocolDetector": ".manual_protocol_detector",
+    "FlextInfraManualTypingAliasDetector": ".manual_typing_alias_detector",
+    "FlextInfraNamespaceFacadeScanner": ".namespace_facade_scanner",
+    "FlextInfraNamespaceSourceDetector": ".namespace_source_detector",
+    "FlextInfraRuntimeAliasDetector": ".runtime_alias_detector",
+    "FlextInfraScanFileMixin": "._base_detector",
 }
 
 

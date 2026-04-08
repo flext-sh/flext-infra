@@ -8,15 +8,9 @@ from __future__ import annotations
 from flext_core.lazy import install_lazy_exports
 
 _LAZY_IMPORTS = {
-    "FlextInfraBaseMkGenerator": (
-        "flext_infra.basemk.generator",
-        "FlextInfraBaseMkGenerator",
-    ),
-    "FlextInfraBaseMkTemplateEngine": (
-        "flext_infra.basemk.engine",
-        "FlextInfraBaseMkTemplateEngine",
-    ),
-    "FlextInfraCliBasemk": ("flext_infra.basemk.cli", "FlextInfraCliBasemk"),
+    "FlextInfraBaseMkGenerator": ".generator",
+    "FlextInfraBaseMkTemplateEngine": ".engine",
+    "FlextInfraCliBasemk": ".cli",
 }
 
 

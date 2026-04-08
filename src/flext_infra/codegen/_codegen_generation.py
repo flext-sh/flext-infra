@@ -227,6 +227,13 @@ class FlextInfraCodegenGeneration:
             if val[0] not in wildcard_runtime_module_set
         }
         children_lazy = tuple(child_packages_for_lazy or ())
+        rendered_child_module_paths = tuple(
+            FlextInfraUtilitiesCodegenGeneration.compact_lazy_module_path(
+                current_pkg,
+                child_module_path,
+            )
+            for child_module_path in children_lazy
+        )
         eager_export_names = [
             name for name in published_exports if name not in lazy_filtered
         ]
@@ -291,7 +298,7 @@ class FlextInfraCodegenGeneration:
         )
         body: str = body_template.render(
             runtime_import_lines="\n".join(runtime_import_block),
-            child_module_paths=children_lazy,
+            child_module_paths=rendered_child_module_paths,
             excluded_lazy_names=sorted(
                 c.Infra.INFRA_ONLY_EXPORTS,
             ),

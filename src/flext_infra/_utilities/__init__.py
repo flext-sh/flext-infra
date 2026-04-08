@@ -8,304 +8,83 @@ from __future__ import annotations
 from flext_core.lazy import install_lazy_exports
 
 _LAZY_IMPORTS = {
-    "FlextInfraExtraPathsResolutionMixin": (
-        "flext_infra._utilities.deps_paths",
-        "FlextInfraExtraPathsResolutionMixin",
-    ),
-    "FlextInfraInternalSyncRepoMixin": (
-        "flext_infra._utilities.deps_repos",
-        "FlextInfraInternalSyncRepoMixin",
-    ),
-    "FlextInfraNormalizerContext": (
-        "flext_infra._utilities.normalizer",
-        "FlextInfraNormalizerContext",
-    ),
-    "FlextInfraUtilitiesBase": (
-        "flext_infra._utilities.base",
-        "FlextInfraUtilitiesBase",
-    ),
-    "FlextInfraUtilitiesCli": ("flext_infra._utilities.cli", "FlextInfraUtilitiesCli"),
-    "FlextInfraUtilitiesCliShared": (
-        "flext_infra._utilities.cli_shared",
-        "FlextInfraUtilitiesCliShared",
-    ),
-    "FlextInfraUtilitiesCliSubcommand": (
-        "flext_infra._utilities.cli_subcommand",
-        "FlextInfraUtilitiesCliSubcommand",
-    ),
-    "FlextInfraUtilitiesCodegen": (
-        "flext_infra._utilities.codegen",
-        "FlextInfraUtilitiesCodegen",
-    ),
-    "FlextInfraUtilitiesCodegenConstantAnalysis": (
-        "flext_infra._utilities.codegen_constants",
-        "FlextInfraUtilitiesCodegenConstantAnalysis",
-    ),
-    "FlextInfraUtilitiesCodegenConstantDetection": (
-        "flext_infra._utilities.codegen_constants",
-        "FlextInfraUtilitiesCodegenConstantDetection",
-    ),
-    "FlextInfraUtilitiesCodegenConstantTransformation": (
-        "flext_infra._utilities.codegen_constants",
-        "FlextInfraUtilitiesCodegenConstantTransformation",
-    ),
-    "FlextInfraUtilitiesCodegenExecution": (
-        "flext_infra._utilities.codegen_execution",
-        "FlextInfraUtilitiesCodegenExecution",
-    ),
-    "FlextInfraUtilitiesCodegenGeneration": (
-        "flext_infra._utilities.codegen_generation",
-        "FlextInfraUtilitiesCodegenGeneration",
-    ),
-    "FlextInfraUtilitiesCodegenGovernance": (
-        "flext_infra._utilities.codegen_constants",
-        "FlextInfraUtilitiesCodegenGovernance",
-    ),
-    "FlextInfraUtilitiesCodegenImportCycles": (
-        "flext_infra._utilities.codegen_import_cycles",
-        "FlextInfraUtilitiesCodegenImportCycles",
-    ),
-    "FlextInfraUtilitiesCodegenLazyAliases": (
-        "flext_infra._utilities.lazy",
-        "FlextInfraUtilitiesCodegenLazyAliases",
-    ),
-    "FlextInfraUtilitiesCodegenLazyMerging": (
-        "flext_infra._utilities.lazy",
-        "FlextInfraUtilitiesCodegenLazyMerging",
-    ),
-    "FlextInfraUtilitiesCodegenLazyScanning": (
-        "flext_infra._utilities.lazy",
-        "FlextInfraUtilitiesCodegenLazyScanning",
-    ),
-    "FlextInfraUtilitiesCodegenNamespace": (
-        "flext_infra._utilities.namespace",
-        "FlextInfraUtilitiesCodegenNamespace",
-    ),
-    "FlextInfraUtilitiesDiscovery": (
-        "flext_infra._utilities.discovery",
-        "FlextInfraUtilitiesDiscovery",
-    ),
-    "FlextInfraUtilitiesDiscoveryScanning": (
-        "flext_infra._utilities.discovery_scanning",
-        "FlextInfraUtilitiesDiscoveryScanning",
-    ),
-    "FlextInfraUtilitiesDocs": (
-        "flext_infra._utilities.docs",
-        "FlextInfraUtilitiesDocs",
-    ),
-    "FlextInfraUtilitiesDocsApi": (
-        "flext_infra._utilities.docs_api",
-        "FlextInfraUtilitiesDocsApi",
-    ),
-    "FlextInfraUtilitiesDocsAudit": (
-        "flext_infra._utilities.docs_audit",
-        "FlextInfraUtilitiesDocsAudit",
-    ),
-    "FlextInfraUtilitiesDocsBuild": (
-        "flext_infra._utilities.docs_build",
-        "FlextInfraUtilitiesDocsBuild",
-    ),
-    "FlextInfraUtilitiesDocsContract": (
-        "flext_infra._utilities.docs_contract",
-        "FlextInfraUtilitiesDocsContract",
-    ),
-    "FlextInfraUtilitiesDocsFix": (
-        "flext_infra._utilities.docs_fix",
-        "FlextInfraUtilitiesDocsFix",
-    ),
-    "FlextInfraUtilitiesDocsGenerate": (
-        "flext_infra._utilities.docs_generate",
-        "FlextInfraUtilitiesDocsGenerate",
-    ),
-    "FlextInfraUtilitiesDocsRender": (
-        "flext_infra._utilities.docs_render",
-        "FlextInfraUtilitiesDocsRender",
-    ),
-    "FlextInfraUtilitiesDocsScope": (
-        "flext_infra._utilities.docs_scope",
-        "FlextInfraUtilitiesDocsScope",
-    ),
-    "FlextInfraUtilitiesDocsValidate": (
-        "flext_infra._utilities.docs_validate",
-        "FlextInfraUtilitiesDocsValidate",
-    ),
-    "FlextInfraUtilitiesFormatting": (
-        "flext_infra._utilities.formatting",
-        "FlextInfraUtilitiesFormatting",
-    ),
-    "FlextInfraUtilitiesGit": ("flext_infra._utilities.git", "FlextInfraUtilitiesGit"),
-    "FlextInfraUtilitiesGithub": (
-        "flext_infra._utilities.github",
-        "FlextInfraUtilitiesGithub",
-    ),
-    "FlextInfraUtilitiesGithubPr": (
-        "flext_infra._utilities.github_pr",
-        "FlextInfraUtilitiesGithubPr",
-    ),
-    "FlextInfraUtilitiesImportNormalizer": (
-        "flext_infra._utilities.normalizer",
-        "FlextInfraUtilitiesImportNormalizer",
-    ),
-    "FlextInfraUtilitiesIteration": (
-        "flext_infra._utilities.iteration",
-        "FlextInfraUtilitiesIteration",
-    ),
-    "FlextInfraUtilitiesLogParser": (
-        "flext_infra._utilities.log_parser",
-        "FlextInfraUtilitiesLogParser",
-    ),
-    "FlextInfraUtilitiesOutput": (
-        "flext_infra._utilities.output",
-        "FlextInfraUtilitiesOutput",
-    ),
-    "FlextInfraUtilitiesOutputReporting": (
-        "flext_infra._utilities.output_reporting",
-        "FlextInfraUtilitiesOutputReporting",
-    ),
-    "FlextInfraUtilitiesParsing": (
-        "flext_infra._utilities.parsing",
-        "FlextInfraUtilitiesParsing",
-    ),
-    "FlextInfraUtilitiesPaths": (
-        "flext_infra._utilities.paths",
-        "FlextInfraUtilitiesPaths",
-    ),
-    "FlextInfraUtilitiesPatterns": (
-        "flext_infra._utilities.patterns",
-        "FlextInfraUtilitiesPatterns",
-    ),
-    "FlextInfraUtilitiesProtectedEdit": (
-        "flext_infra._utilities.protected_edit",
-        "FlextInfraUtilitiesProtectedEdit",
-    ),
-    "FlextInfraUtilitiesRefactor": (
-        "flext_infra._utilities._utilities",
-        "FlextInfraUtilitiesRefactor",
-    ),
-    "FlextInfraUtilitiesRefactorCensus": (
-        "flext_infra._utilities.census",
-        "FlextInfraUtilitiesRefactorCensus",
-    ),
-    "FlextInfraUtilitiesRefactorCli": (
-        "flext_infra._utilities._utilities_cli",
-        "FlextInfraUtilitiesRefactorCli",
-    ),
-    "FlextInfraUtilitiesRefactorEngine": (
-        "flext_infra._utilities.engine",
-        "FlextInfraUtilitiesRefactorEngine",
-    ),
-    "FlextInfraUtilitiesRefactorMroScan": (
-        "flext_infra._utilities.mro_scan",
-        "FlextInfraUtilitiesRefactorMroScan",
-    ),
-    "FlextInfraUtilitiesRefactorMroTransform": (
-        "flext_infra._utilities._utilities_mro_transform",
-        "FlextInfraUtilitiesRefactorMroTransform",
-    ),
-    "FlextInfraUtilitiesRefactorNamespace": (
-        "flext_infra._utilities._utilities_namespace",
-        "FlextInfraUtilitiesRefactorNamespace",
-    ),
-    "FlextInfraUtilitiesRefactorNamespaceCommon": (
-        "flext_infra._utilities._utilities_namespace_analysis",
-        "FlextInfraUtilitiesRefactorNamespaceCommon",
-    ),
-    "FlextInfraUtilitiesRefactorNamespaceFacades": (
-        "flext_infra._utilities._utilities_namespace_facades",
-        "FlextInfraUtilitiesRefactorNamespaceFacades",
-    ),
-    "FlextInfraUtilitiesRefactorNamespaceMoves": (
-        "flext_infra._utilities._utilities_namespace_moves",
-        "FlextInfraUtilitiesRefactorNamespaceMoves",
-    ),
-    "FlextInfraUtilitiesRefactorNamespaceMro": (
-        "flext_infra._utilities._utilities_namespace_analysis",
-        "FlextInfraUtilitiesRefactorNamespaceMro",
-    ),
-    "FlextInfraUtilitiesRefactorNamespaceRuntime": (
-        "flext_infra._utilities._utilities_namespace_runtime",
-        "FlextInfraUtilitiesRefactorNamespaceRuntime",
-    ),
-    "FlextInfraUtilitiesRefactorPolicy": (
-        "flext_infra._utilities._utilities_policy",
-        "FlextInfraUtilitiesRefactorPolicy",
-    ),
-    "FlextInfraUtilitiesRefactorPydantic": (
-        "flext_infra._utilities._utilities_pydantic",
-        "FlextInfraUtilitiesRefactorPydantic",
-    ),
-    "FlextInfraUtilitiesRefactorPydanticAnalysis": (
-        "flext_infra._utilities._utilities_pydantic_analysis",
-        "FlextInfraUtilitiesRefactorPydanticAnalysis",
-    ),
-    "FlextInfraUtilitiesRefactorTransformerPolicy": (
-        "flext_infra._utilities.transformer_policy",
-        "FlextInfraUtilitiesRefactorTransformerPolicy",
-    ),
-    "FlextInfraUtilitiesRelease": (
-        "flext_infra._utilities.release",
-        "FlextInfraUtilitiesRelease",
-    ),
-    "FlextInfraUtilitiesReporting": (
-        "flext_infra._utilities.reporting",
-        "FlextInfraUtilitiesReporting",
-    ),
-    "FlextInfraUtilitiesRope": (
-        "flext_infra._utilities.rope",
-        "FlextInfraUtilitiesRope",
-    ),
-    "FlextInfraUtilitiesRopeAnalysis": (
-        "flext_infra._utilities.rope_analysis",
-        "FlextInfraUtilitiesRopeAnalysis",
-    ),
-    "FlextInfraUtilitiesRopeAnalysisIntrospection": (
-        "flext_infra._utilities.rope_analysis_introspection",
-        "FlextInfraUtilitiesRopeAnalysisIntrospection",
-    ),
-    "FlextInfraUtilitiesRopeCore": (
-        "flext_infra._utilities.rope_core",
-        "FlextInfraUtilitiesRopeCore",
-    ),
-    "FlextInfraUtilitiesRopeHelpers": (
-        "flext_infra._utilities.rope_helpers",
-        "FlextInfraUtilitiesRopeHelpers",
-    ),
-    "FlextInfraUtilitiesRopeImports": (
-        "flext_infra._utilities.rope_imports",
-        "FlextInfraUtilitiesRopeImports",
-    ),
-    "FlextInfraUtilitiesRopeSource": (
-        "flext_infra._utilities.rope_source",
-        "FlextInfraUtilitiesRopeSource",
-    ),
-    "FlextInfraUtilitiesSafety": (
-        "flext_infra._utilities.safety",
-        "FlextInfraUtilitiesSafety",
-    ),
-    "FlextInfraUtilitiesSelection": (
-        "flext_infra._utilities.selection",
-        "FlextInfraUtilitiesSelection",
-    ),
-    "FlextInfraUtilitiesTerminal": (
-        "flext_infra._utilities.terminal",
-        "FlextInfraUtilitiesTerminal",
-    ),
-    "FlextInfraUtilitiesToml": (
-        "flext_infra._utilities.toml",
-        "FlextInfraUtilitiesToml",
-    ),
-    "FlextInfraUtilitiesTomlParse": (
-        "flext_infra._utilities.toml_parse",
-        "FlextInfraUtilitiesTomlParse",
-    ),
-    "FlextInfraUtilitiesVersioning": (
-        "flext_infra._utilities.versioning",
-        "FlextInfraUtilitiesVersioning",
-    ),
-    "FlextInfraUtilitiesYaml": (
-        "flext_infra._utilities.yaml",
-        "FlextInfraUtilitiesYaml",
-    ),
+    "FlextInfraExtraPathsResolutionMixin": ".deps_paths",
+    "FlextInfraInternalSyncRepoMixin": ".deps_repos",
+    "FlextInfraNormalizerContext": ".normalizer",
+    "FlextInfraUtilitiesBase": ".base",
+    "FlextInfraUtilitiesCli": ".cli",
+    "FlextInfraUtilitiesCliShared": ".cli_shared",
+    "FlextInfraUtilitiesCliSubcommand": ".cli_subcommand",
+    "FlextInfraUtilitiesCodegen": ".codegen",
+    "FlextInfraUtilitiesCodegenConstantAnalysis": ".codegen_constants",
+    "FlextInfraUtilitiesCodegenConstantDetection": ".codegen_constants",
+    "FlextInfraUtilitiesCodegenConstantTransformation": ".codegen_constants",
+    "FlextInfraUtilitiesCodegenExecution": ".codegen_execution",
+    "FlextInfraUtilitiesCodegenGeneration": ".codegen_generation",
+    "FlextInfraUtilitiesCodegenGovernance": ".codegen_constants",
+    "FlextInfraUtilitiesCodegenImportCycles": ".codegen_import_cycles",
+    "FlextInfraUtilitiesCodegenLazyAliases": ".lazy",
+    "FlextInfraUtilitiesCodegenLazyMerging": ".lazy",
+    "FlextInfraUtilitiesCodegenLazyScanning": ".lazy",
+    "FlextInfraUtilitiesCodegenNamespace": ".namespace",
+    "FlextInfraUtilitiesDiscovery": ".discovery",
+    "FlextInfraUtilitiesDiscoveryScanning": ".discovery_scanning",
+    "FlextInfraUtilitiesDocs": ".docs",
+    "FlextInfraUtilitiesDocsApi": ".docs_api",
+    "FlextInfraUtilitiesDocsAudit": ".docs_audit",
+    "FlextInfraUtilitiesDocsBuild": ".docs_build",
+    "FlextInfraUtilitiesDocsContract": ".docs_contract",
+    "FlextInfraUtilitiesDocsFix": ".docs_fix",
+    "FlextInfraUtilitiesDocsGenerate": ".docs_generate",
+    "FlextInfraUtilitiesDocsRender": ".docs_render",
+    "FlextInfraUtilitiesDocsScope": ".docs_scope",
+    "FlextInfraUtilitiesDocsValidate": ".docs_validate",
+    "FlextInfraUtilitiesFormatting": ".formatting",
+    "FlextInfraUtilitiesGit": ".git",
+    "FlextInfraUtilitiesGithub": ".github",
+    "FlextInfraUtilitiesGithubPr": ".github_pr",
+    "FlextInfraUtilitiesImportNormalizer": ".normalizer",
+    "FlextInfraUtilitiesIteration": ".iteration",
+    "FlextInfraUtilitiesLogParser": ".log_parser",
+    "FlextInfraUtilitiesOutput": ".output",
+    "FlextInfraUtilitiesOutputFailureSummary": ".output_failure_summary",
+    "FlextInfraUtilitiesOutputReporting": ".output_reporting",
+    "FlextInfraUtilitiesParsing": ".parsing",
+    "FlextInfraUtilitiesPaths": ".paths",
+    "FlextInfraUtilitiesPatterns": ".patterns",
+    "FlextInfraUtilitiesProtectedEdit": ".protected_edit",
+    "FlextInfraUtilitiesRefactor": "._utilities",
+    "FlextInfraUtilitiesRefactorCensus": ".census",
+    "FlextInfraUtilitiesRefactorCli": "._utilities_cli",
+    "FlextInfraUtilitiesRefactorEngine": ".engine",
+    "FlextInfraUtilitiesRefactorMroScan": ".mro_scan",
+    "FlextInfraUtilitiesRefactorMroTransform": "._utilities_mro_transform",
+    "FlextInfraUtilitiesRefactorNamespace": "._utilities_namespace",
+    "FlextInfraUtilitiesRefactorNamespaceCommon": "._utilities_namespace_analysis",
+    "FlextInfraUtilitiesRefactorNamespaceFacades": "._utilities_namespace_facades",
+    "FlextInfraUtilitiesRefactorNamespaceMoves": "._utilities_namespace_moves",
+    "FlextInfraUtilitiesRefactorNamespaceMro": "._utilities_namespace_analysis",
+    "FlextInfraUtilitiesRefactorNamespaceRuntime": "._utilities_namespace_runtime",
+    "FlextInfraUtilitiesRefactorPolicy": "._utilities_policy",
+    "FlextInfraUtilitiesRefactorPydantic": "._utilities_pydantic",
+    "FlextInfraUtilitiesRefactorPydanticAnalysis": "._utilities_pydantic_analysis",
+    "FlextInfraUtilitiesRefactorTransformerPolicy": ".transformer_policy",
+    "FlextInfraUtilitiesRelease": ".release",
+    "FlextInfraUtilitiesReporting": ".reporting",
+    "FlextInfraUtilitiesRope": ".rope",
+    "FlextInfraUtilitiesRopeAnalysis": ".rope_analysis",
+    "FlextInfraUtilitiesRopeAnalysisIntrospection": ".rope_analysis_introspection",
+    "FlextInfraUtilitiesRopeCore": ".rope_core",
+    "FlextInfraUtilitiesRopeHelpers": ".rope_helpers",
+    "FlextInfraUtilitiesRopeImports": ".rope_imports",
+    "FlextInfraUtilitiesRopeSource": ".rope_source",
+    "FlextInfraUtilitiesSafety": ".safety",
+    "FlextInfraUtilitiesSelection": ".selection",
+    "FlextInfraUtilitiesTerminal": ".terminal",
+    "FlextInfraUtilitiesToml": ".toml",
+    "FlextInfraUtilitiesTomlParse": ".toml_parse",
+    "FlextInfraUtilitiesVersioning": ".versioning",
+    "FlextInfraUtilitiesYaml": ".yaml",
 }
 
 

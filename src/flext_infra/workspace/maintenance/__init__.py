@@ -8,14 +8,8 @@ from __future__ import annotations
 from flext_core.lazy import install_lazy_exports
 
 _LAZY_IMPORTS = {
-    "FlextInfraCliMaintenance": (
-        "flext_infra.workspace.maintenance.cli",
-        "FlextInfraCliMaintenance",
-    ),
-    "FlextInfraPythonVersionEnforcer": (
-        "flext_infra.workspace.maintenance.python_version",
-        "FlextInfraPythonVersionEnforcer",
-    ),
+    "FlextInfraCliMaintenance": ".cli",
+    "FlextInfraPythonVersionEnforcer": ".python_version",
 }
 
 
