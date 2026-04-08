@@ -31,6 +31,18 @@ class FlextInfraUtilitiesCodegenGeneration:
         )
 
     @staticmethod
+    def compact_lazy_module_path(current_pkg: str, mod: str) -> str:
+        """Compact same-package lazy targets to relative module paths."""
+        if not current_pkg:
+            return mod
+        if mod == current_pkg:
+            return "."
+        prefix = f"{current_pkg}."
+        if mod.startswith(prefix):
+            return f".{mod.removeprefix(prefix)}"
+        return mod
+
+    @staticmethod
     def format_import(
         indent: str,
         mod: str,
@@ -215,22 +227,27 @@ class FlextInfraUtilitiesCodegenGeneration:
     def build_lazy_entries(
         exports: t.StrSequence,
         lazy_filtered: t.Infra.LazyImportMap,
+        current_pkg: str,
         children_lazy: tuple[str, ...],
     ) -> Sequence[tuple[str, str, str]]:
         """Build lazy import entries, excluding child-package sub-modules."""
         child_prefixes = tuple(f"{cp}." for cp in children_lazy)
         child_aliases = set(children_lazy)
         entries: MutableSequence[tuple[str, str, str]] = []
-        for exp in sorted(exports):
+        for exp in exports:
             if exp not in lazy_filtered:
                 continue
             mod, attr = lazy_filtered[exp]
             if FlextInfraUtilitiesCodegenGeneration.is_module_or_package_export(attr):
                 continue
+            compact_mod = FlextInfraUtilitiesCodegenGeneration.compact_lazy_module_path(
+                current_pkg,
+                mod,
+            )
             if (mod in child_aliases and not attr) or not mod.startswith(
                 child_prefixes
             ):
-                entries.append((exp, mod, attr))
+                entries.append((exp, compact_mod, attr))
         return entries
 
     @staticmethod

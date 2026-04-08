@@ -3,19 +3,19 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import Sequence
-from pathlib import Path
 
 from flext_infra import (
     FlextInfraUtilitiesTerminal,
     c,
     m,
     p,
-    t,
+)
+from flext_infra._utilities.output_failure_summary import (
+    FlextInfraUtilitiesOutputFailureSummary,
 )
 
 
-class FlextInfraUtilitiesOutput:
+class FlextInfraUtilitiesOutput(FlextInfraUtilitiesOutputFailureSummary):
     """Terminal output formatter with color and unicode support."""
 
     _stream: p.Infra.OutputStream = sys.stderr
@@ -143,31 +143,6 @@ class FlextInfraUtilitiesOutput:
         remaining = f.error_count - f.max_show
         if remaining > 0:
             cls._stream.write(f"      ... and {remaining} more (see log)\n")
-        cls._stream.flush()
-
-    @classmethod
-    def failure_summary(
-        cls,
-        verb: str,
-        failures: Sequence[t.Infra.Triple[str, int, Path]],
-    ) -> None:
-        """Show end-of-run failure summary block."""
-        if not failures:
-            return
-        hdr = (
-            f"── {verb} failed projects ──"
-            if cls._use_unicode
-            else f"-- {verb} failed projects --"
-        )
-        clr = c.Infra.RED if cls._use_color else ""
-        reset = c.Infra.RESET if cls._use_color else ""
-        fail_sym = c.Infra.FAIL if cls._use_unicode else "[FAIL]"
-        cls._stream.write(f"\n{hdr}\n")
-        for project, error_count, log_path in failures:
-            count_label = f"{error_count} errors" if error_count > 0 else "failed"
-            cls._stream.write(
-                f"{clr}{fail_sym}{reset} {project:<20} {count_label}  ({log_path})\n",
-            )
         cls._stream.flush()
 
 

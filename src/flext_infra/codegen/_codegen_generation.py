@@ -264,6 +264,7 @@ class FlextInfraCodegenGeneration:
         lazy_entries = FlextInfraUtilitiesCodegenGeneration.build_lazy_entries(
             published_exports,
             lazy_filtered,
+            current_pkg,
             children_lazy,
         )
         type_checking_lines = (

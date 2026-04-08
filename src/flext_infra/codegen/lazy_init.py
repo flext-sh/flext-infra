@@ -144,13 +144,7 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
                 current_pkg,
                 dir_exports,
             )
-            collapse_packages = u.Infra.collect_descendant_packages(
-                pkg_dir,
-                current_pkg,
-                dir_exports,
-            )
             u.Infra.merge_child_exports(pkg_dir, lazy_map, dir_exports)
-            child_packages_for_tc = collapse_packages
             inline_constants, version_entries = u.Infra.extract_version_exports(
                 pkg_dir,
                 current_pkg,
@@ -189,7 +183,11 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
                 current_pkg,
                 wildcard_runtime_imports=tuple(sorted(version_runtime_modules)),
                 child_packages_for_lazy=child_packages_for_lazy,
-                child_packages_for_tc=child_packages_for_tc,
+                child_packages_for_tc=u.Infra.collect_descendant_packages(
+                    pkg_dir,
+                    current_pkg,
+                    dir_exports,
+                ),
             )
         except ValueError as exc:
             u.Infra.error(

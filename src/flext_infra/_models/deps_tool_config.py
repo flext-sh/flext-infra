@@ -67,30 +67,21 @@ class FlextInfraModelsDepsToolConfig(
     class CoverageFailUnderConfig(m.ArbitraryTypesModel):
         """Coverage fail-under thresholds by layer."""
 
-        core: Annotated[
-            int,
-            Field(description="Minimum coverage percentage required for core layer."),
-        ]
-        domain: Annotated[
-            int,
-            Field(description="Minimum coverage percentage required for domain layer."),
-        ]
-        platform: Annotated[
-            int,
-            Field(
-                description="Minimum coverage percentage required for platform layer."
-            ),
-        ]
-        integration: Annotated[
-            int,
-            Field(
-                description="Minimum coverage percentage required for integration layer."
-            ),
-        ]
-        app: Annotated[
-            int,
-            Field(description="Minimum coverage percentage required for app layer."),
-        ]
+        core: int = Field(
+            description="Minimum coverage percentage required for core layer."
+        )
+        domain: int = Field(
+            description="Minimum coverage percentage required for domain layer."
+        )
+        platform: int = Field(
+            description="Minimum coverage percentage required for platform layer."
+        )
+        integration: int = Field(
+            description="Minimum coverage percentage required for integration layer."
+        )
+        app: int = Field(
+            description="Minimum coverage percentage required for app layer."
+        )
 
     class CoverageConfig(m.ArbitraryTypesModel):
         """Coverage baseline settings loaded from YAML."""
