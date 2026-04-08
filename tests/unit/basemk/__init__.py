@@ -99,30 +99,21 @@ if _t.TYPE_CHECKING:
         test_rendered_base_mk_sanitizes_workspace_sync_env,
     )
 
-    from flext_core.constants import FlextConstants as c
     from flext_core.decorators import FlextDecorators as d
     from flext_core.exceptions import FlextExceptions as e
     from flext_core.handlers import FlextHandlers as h
     from flext_core.mixins import FlextMixins as x
-    from flext_core.models import FlextModels as m
-    from flext_core.protocols import FlextProtocols as p
     from flext_core.result import FlextResult as r
     from flext_core.service import FlextService as s
-    from flext_core.typings import FlextTypes as t
-    from flext_core.utilities import FlextUtilities as u
 _LAZY_IMPORTS = {
     "TestFlextInfraBaseMk": ("tests.unit.basemk.test_init", "TestFlextInfraBaseMk"),
     "basemk_main": ("tests.unit.basemk.test_engine", "basemk_main"),
-    "c": ("flext_core.constants", "FlextConstants"),
     "d": ("flext_core.decorators", "FlextDecorators"),
     "e": ("flext_core.exceptions", "FlextExceptions"),
     "h": ("flext_core.handlers", "FlextHandlers"),
-    "m": ("flext_core.models", "FlextModels"),
     "main": ("tests.unit.basemk.test_main", "main"),
-    "p": ("flext_core.protocols", "FlextProtocols"),
     "r": ("flext_core.result", "FlextResult"),
     "s": ("flext_core.service", "FlextService"),
-    "t": ("flext_core.typings", "FlextTypes"),
     "test_basemk_build_config_with_none": (
         "tests.unit.basemk.test_main",
         "test_basemk_build_config_with_none",
@@ -357,23 +348,18 @@ _LAZY_IMPORTS = {
         "tests.unit.basemk.test_make_contract",
         "test_rendered_base_mk_sanitizes_workspace_sync_env",
     ),
-    "u": ("flext_core.utilities", "FlextUtilities"),
     "x": ("flext_core.mixins", "FlextMixins"),
 }
 
 __all__ = [
     "TestFlextInfraBaseMk",
     "basemk_main",
-    "c",
     "d",
     "e",
     "h",
-    "m",
     "main",
-    "p",
     "r",
     "s",
-    "t",
     "test_basemk_build_config_with_none",
     "test_basemk_build_config_with_project_name",
     "test_basemk_cli_generate_to_file",
@@ -437,7 +423,6 @@ __all__ = [
     "test_rendered_base_mk_declares_cli_group_roots",
     "test_rendered_base_mk_forwards_canonical_root_in_workspace_preflight",
     "test_rendered_base_mk_sanitizes_workspace_sync_env",
-    "u",
     "x",
 ]
 

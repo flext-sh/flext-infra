@@ -77,7 +77,7 @@ def _fake_fixer_cls(
 
 class TestWorkspaceCheckCLI:
     def test_no_projects_error(self) -> None:
-        tm.that(ws_mod.main([]), eq=1)
+        tm.that(FlextInfraWorkspaceChecker.main([]), eq=1)
 
     def test_with_projects_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
         ok_result = r[Sequence[m.Infra.ProjectResult]].ok([
@@ -88,7 +88,10 @@ class TestWorkspaceCheckCLI:
             "FlextInfraWorkspaceChecker",
             _fake_checker_cls(["lint"], ok_result),
         )
-        tm.that(ws_mod.main(["--projects", "p1", "--gates", "lint"]), eq=0)
+        tm.that(
+            FlextInfraWorkspaceChecker.main(["--projects", "p1", "--gates", "lint"]),
+            eq=0,
+        )
 
     def test_with_projects_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         fail_gate = m.Infra.GateExecution(
@@ -109,7 +112,10 @@ class TestWorkspaceCheckCLI:
             "FlextInfraWorkspaceChecker",
             _fake_checker_cls(["lint"], ok_result),
         )
-        tm.that(ws_mod.main(["--projects", "p1", "--gates", "lint"]), eq=1)
+        tm.that(
+            FlextInfraWorkspaceChecker.main(["--projects", "p1", "--gates", "lint"]),
+            eq=1,
+        )
 
     def test_run_projects_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
         fail_result = r[Sequence[m.Infra.ProjectResult]].fail("error")
@@ -118,7 +124,10 @@ class TestWorkspaceCheckCLI:
             "FlextInfraWorkspaceChecker",
             _fake_checker_cls(["lint"], fail_result),
         )
-        tm.that(ws_mod.main(["--projects", "p1", "--gates", "lint"]), eq=2)
+        tm.that(
+            FlextInfraWorkspaceChecker.main(["--projects", "p1", "--gates", "lint"]),
+            eq=2,
+        )
 
 
 class TestFixPyrelfyCLI:

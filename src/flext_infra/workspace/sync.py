@@ -312,9 +312,8 @@ class FlextInfraSyncService(FlextInfraCommandContext[m.Infra.SyncResult]):
         return 1
 
 
-main = FlextInfraSyncService.main
-
-
 if __name__ == "__main__":
     raise SystemExit(FlextInfraSyncService.main())
-__all__ = ["FlextInfraSyncService", "main"]
+
+
+__all__ = ["FlextInfraSyncService"]

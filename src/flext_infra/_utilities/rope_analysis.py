@@ -8,11 +8,12 @@ from typing import TYPE_CHECKING
 
 from rope.base.exceptions import RefactoringError, ResourceNotFoundError
 
-from flext_infra import c, m
-from flext_infra._utilities.rope_analysis_introspection import (
+from flext_infra import (
     FlextInfraUtilitiesRopeAnalysisIntrospection,
+    FlextInfraUtilitiesRopeCore,
+    c,
+    m,
 )
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 
 if TYPE_CHECKING:
     from flext_infra import t

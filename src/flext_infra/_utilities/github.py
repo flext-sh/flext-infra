@@ -12,13 +12,13 @@ from pathlib import Path
 
 from flext_cli import FlextCliUtilitiesJson as _CliJson
 from flext_infra import (
+    FlextInfraUtilitiesGit,
     FlextInfraUtilitiesGithubPr,
+    FlextInfraUtilitiesSelection,
     c,
     m,
     r,
 )
-from flext_infra._utilities.git import FlextInfraUtilitiesGit
-from flext_infra._utilities.selection import FlextInfraUtilitiesSelection
 
 
 class FlextInfraUtilitiesGithub(

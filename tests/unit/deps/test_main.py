@@ -10,7 +10,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from types import ModuleType
 
 import pytest
 from flext_tests import tm
@@ -19,11 +18,15 @@ from tests import t
 from flext_infra import FlextInfraCliDeps, deps
 
 
-def _fake_module(return_value: t.Infra.InfraValue = 0) -> ModuleType:
-    """Create a real ModuleType with a main() returning *return_value*."""
-    mod = ModuleType("fake_subcommand")
-    setattr(mod, "main", lambda: return_value)
-    return mod
+def _fake_service(return_value: t.Infra.InfraValue = 0) -> type:
+    """Create a fake service class exposing the canonical class-level main()."""
+
+    class _FakeService:
+        @staticmethod
+        def main() -> t.Infra.InfraValue:
+            return return_value
+
+    return _FakeService
 
 
 def _patch_dispatch(
@@ -33,50 +36,46 @@ def _patch_dispatch(
 ) -> None:
     """Patch sys.argv and lazy-exported deps modules for dispatch tests."""
     mp.setattr(sys, "argv", argv)
-    export_name = FlextInfraCliDeps._SUBCOMMAND_MODULES["detect"].rsplit(
-        ".",
-        maxsplit=1,
-    )[-1]
-    mp.setattr(deps, export_name, _fake_module(ret))
+    service_name = FlextInfraCliDeps._SUBCOMMAND_SERVICES["detect"]
+    mp.setattr(deps, service_name, _fake_service(ret))
 
 
 class TestSubcommandMapping:
     """Test subcommand mapping completeness."""
 
-    EXPECTED_SUBCOMMAND_MODULES: t.StrMapping = {
-        "detect": "flext_infra.deps.detector",
-        "extra-paths": "flext_infra.deps.extra_paths",
-        "internal-sync": "flext_infra.deps.internal_sync",
-        "modernize": "flext_infra.deps.modernizer",
-        "path-sync": "flext_infra.deps.path_sync",
+    EXPECTED_SUBCOMMAND_SERVICES: t.StrMapping = {
+        "detect": "FlextInfraRuntimeDevDependencyDetector",
+        "extra-paths": "FlextInfraExtraPathsManager",
+        "internal-sync": "FlextInfraInternalDependencySyncService",
+        "modernize": "FlextInfraPyprojectModernizer",
+        "path-sync": "FlextInfraDependencyPathSync",
     }
 
     def test_subcommands_count(self) -> None:
         """Test correct number of subcommands."""
-        tm.that(len(FlextInfraCliDeps._SUBCOMMAND_MODULES), eq=5)
+        tm.that(len(FlextInfraCliDeps._SUBCOMMAND_SERVICES), eq=5)
 
     @pytest.mark.parametrize(
         ("name", "module"),
-        list(EXPECTED_SUBCOMMAND_MODULES.items()),
-        ids=list(EXPECTED_SUBCOMMAND_MODULES.keys()),
+        list(EXPECTED_SUBCOMMAND_SERVICES.items()),
+        ids=list(EXPECTED_SUBCOMMAND_SERVICES.keys()),
     )
-    def test_subcommand_mapping(self, name: str, module: str) -> None:
-        """Test each subcommand maps to correct module."""
+    def test_subcommand_mapping(self, name: str, service_name: str) -> None:
+        """Test each subcommand maps to the correct public service class."""
         tm.that(
-            name in FlextInfraCliDeps._SUBCOMMAND_MODULES,
+            name in FlextInfraCliDeps._SUBCOMMAND_SERVICES,
             eq=True,
             msg=f"Missing subcommand: {name}",
         )
-        tm.that(FlextInfraCliDeps._SUBCOMMAND_MODULES[name], eq=module)
+        tm.that(FlextInfraCliDeps._SUBCOMMAND_SERVICES[name], eq=service_name)
 
-    @pytest.mark.parametrize("name", list(EXPECTED_SUBCOMMAND_MODULES.keys()))
-    def test_subcommand_module_importable(self, name: str) -> None:
-        """Test each subcommand module can be imported."""
-        module = getattr(
-            deps,
-            FlextInfraCliDeps._SUBCOMMAND_MODULES[name].rsplit(".", maxsplit=1)[-1],
+    @pytest.mark.parametrize("name", list(EXPECTED_SUBCOMMAND_SERVICES.keys()))
+    def test_subcommand_service_importable(self, name: str) -> None:
+        """Test each subcommand service is importable and exposes main()."""
+        service_cls = getattr(deps, FlextInfraCliDeps._SUBCOMMAND_SERVICES[name])
+        tm.that(
+            hasattr(service_cls, "main"), eq=True, msg=f"{name} service has no main()"
         )
-        tm.that(hasattr(module, "main"), eq=True, msg=f"{name} module has no main()")
 
 
 class TestMainHelpAndErrors:

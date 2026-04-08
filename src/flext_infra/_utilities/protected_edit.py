@@ -10,8 +10,7 @@ from collections.abc import Callable, Mapping, MutableMapping, MutableSequence, 
 from pathlib import Path
 
 from flext_cli import u
-from flext_infra import c, t
-from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
+from flext_infra import FlextInfraUtilitiesDiscovery, c, t
 
 
 class FlextInfraUtilitiesProtectedEdit:

@@ -116,14 +116,10 @@ class FlextInfraRuntimeDevDependencyDetector:
         return result.value
 
 
-main = FlextInfraRuntimeDevDependencyDetector.main
-
-
 if __name__ == "__main__":
     raise SystemExit(FlextInfraRuntimeDevDependencyDetector.main())
 
 
 __all__ = [
     "FlextInfraRuntimeDevDependencyDetector",
-    "main",
 ]

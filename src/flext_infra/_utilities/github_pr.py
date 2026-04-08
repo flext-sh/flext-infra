@@ -16,10 +16,10 @@ from flext_infra import (
     FlextInfraConstantsBase,
     FlextInfraGithubModels,
     FlextInfraSharedInfraConstants,
+    FlextInfraUtilitiesGit,
+    FlextInfraUtilitiesReporting,
+    FlextInfraUtilitiesSelection,
 )
-from flext_infra._utilities.git import FlextInfraUtilitiesGit
-from flext_infra._utilities.reporting import FlextInfraUtilitiesReporting
-from flext_infra._utilities.selection import FlextInfraUtilitiesSelection
 
 
 class FlextInfraUtilitiesGithubPr:

@@ -9,11 +9,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_tests import tm
-from tests import (
-    _build_migrator,
-    _project,
-    t,
-)
+from tests import t
+from tests.unit.test_infra_workspace_migrator import _build_migrator, _project
 
 
 class TestMigratorFlextCore:

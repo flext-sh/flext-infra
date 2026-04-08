@@ -30,6 +30,35 @@ class FlextInfraUtilitiesCodegenLazyMerging:
     """Child/descendant package collection and export merging helpers."""
 
     @staticmethod
+    def _format_export_target(target: t.Infra.StrPair) -> str:
+        """Render one lazy-export target for collision diagnostics."""
+        module_path, attr_name = target
+        return f"{module_path}.{attr_name}" if attr_name else module_path
+
+    @classmethod
+    def register_export(
+        cls,
+        index: t.Infra.MutableLazyImportMap,
+        name: str,
+        target: t.Infra.StrPair,
+    ) -> None:
+        """Register one export or raise when another module already owns it."""
+        existing = index.get(name)
+        if existing is None:
+            index[name] = target
+            return
+        if existing == target:
+            return
+        msg = (
+            f"export collision for {name!r}: "
+            f"{cls._format_export_target(existing)} != "
+            f"{cls._format_export_target(target)}"
+        )
+        raise ValueError(
+            msg,
+        )
+
+    @staticmethod
     def detect_eager_typevar_names(pkg_dir: Path) -> t.Infra.StrSet:
         """Detect module-level TypeVar/ParamSpec names in typings.py."""
         typings_file = pkg_dir / c.Infra.Files.TYPINGS_PY
@@ -149,13 +178,18 @@ class FlextInfraUtilitiesCodegenLazyMerging:
                     is_project_root=is_project_root,
                 )
             )
-            lazy_map[subdir.name] = (submodule, "")
+            FlextInfraUtilitiesCodegenLazyMerging.register_export(
+                lazy_map,
+                subdir.name,
+                (submodule, ""),
+            )
         for name, (mod, attr) in sub_exports.items():
-            if (
-                FlextInfraUtilitiesCodegenLazyMerging.should_bubble_up(name)
-                and name not in lazy_map
-            ):
-                lazy_map[name] = (mod, attr)
+            if FlextInfraUtilitiesCodegenLazyMerging.should_bubble_up(name):
+                FlextInfraUtilitiesCodegenLazyMerging.register_export(
+                    lazy_map,
+                    name,
+                    (mod, attr),
+                )
 
     @staticmethod
     def extract_version_exports(
@@ -323,8 +357,13 @@ class FlextInfraUtilitiesCodegenLazyScanning(
 
         if has_all:
             for name in all_exports:
-                if name not in index and name not in c.Infra.INFRA_ONLY_EXPORTS:
-                    index[name] = (mod_path, name)
+                if name in c.Infra.INFRA_ONLY_EXPORTS:
+                    continue
+                FlextInfraUtilitiesCodegenLazyScanning.register_export(
+                    index,
+                    name,
+                    (mod_path, name),
+                )
         else:
             FlextInfraUtilitiesCodegenLazyScanning._scan_public_defs(
                 source,
@@ -332,7 +371,11 @@ class FlextInfraUtilitiesCodegenLazyScanning(
                 index,
             )
         if len(rel_path.parts) == 1 and py_file.stem not in index:
-            index[py_file.stem] = (mod_path, "")
+            FlextInfraUtilitiesCodegenLazyScanning.register_export(
+                index,
+                py_file.stem,
+                (mod_path, ""),
+            )
 
     @staticmethod
     def _skip_wrapper_root_file(
@@ -435,8 +478,13 @@ class FlextInfraUtilitiesCodegenLazyScanning(
                 names.append(node.target.id)
 
         for name in names:
-            if not name.startswith("_"):
-                index[name] = (mod_path, name)
+            if name.startswith("_") or name in c.Infra.INFRA_ONLY_EXPORTS:
+                continue
+            FlextInfraUtilitiesCodegenLazyScanning.register_export(
+                index,
+                name,
+                (mod_path, name),
+            )
 
 
 # =====================================================================

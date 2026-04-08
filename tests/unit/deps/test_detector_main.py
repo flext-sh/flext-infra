@@ -9,8 +9,8 @@ from flext_tests import tm
 from tests import t
 
 import flext_infra.deps as detector_module
-import flext_infra.deps.detector as detector_main_module
 from flext_core import r
+from flext_infra import FlextInfraRuntimeDevDependencyDetector
 
 
 class _ReportStub:
@@ -219,5 +219,9 @@ class TestMainFunction:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(detector_main_module, "main", lambda: 1)
-        tm.that(detector_main_module.main(), eq=1)
+        monkeypatch.setattr(
+            FlextInfraRuntimeDevDependencyDetector,
+            "run",
+            lambda _self, argv=None: r[int].fail("boom"),
+        )
+        tm.that(FlextInfraRuntimeDevDependencyDetector.main(), eq=1)

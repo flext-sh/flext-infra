@@ -7,12 +7,10 @@ from typing import Annotated
 from pydantic import Field
 
 from flext_core import m
-from flext_infra import t
-from flext_infra._models.deps_tool_config_linters import (
+from flext_infra import (
     FlextInfraDepsModelsToolConfigLinters,
-)
-from flext_infra._models.deps_tool_config_type_checkers import (
     FlextInfraDepsModelsToolConfigTypeCheckers,
+    t,
 )
 
 

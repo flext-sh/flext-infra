@@ -208,9 +208,6 @@ class FlextInfraExtraPathsManager(
         return 1
 
 
-main = FlextInfraExtraPathsManager.main
-
-
 if __name__ == "__main__":
     sys.exit(FlextInfraExtraPathsManager.main())
 

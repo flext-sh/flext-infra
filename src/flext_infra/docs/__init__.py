@@ -18,7 +18,7 @@ if _t.TYPE_CHECKING:
 
     auditor = _flext_infra_docs_auditor
     import flext_infra.docs.builder as _flext_infra_docs_builder
-    from flext_infra.docs.auditor import FlextInfraDocAuditor, main
+    from flext_infra.docs.auditor import FlextInfraDocAuditor
 
     builder = _flext_infra_docs_builder
     import flext_infra.docs.cli as _flext_infra_docs_cli
@@ -37,17 +37,12 @@ if _t.TYPE_CHECKING:
     from flext_infra.docs.generator import FlextInfraDocGenerator
 
     validator = _flext_infra_docs_validator
-    from flext_core.constants import FlextConstants as c
     from flext_core.decorators import FlextDecorators as d
     from flext_core.exceptions import FlextExceptions as e
     from flext_core.handlers import FlextHandlers as h
     from flext_core.mixins import FlextMixins as x
-    from flext_core.models import FlextModels as m
-    from flext_core.protocols import FlextProtocols as p
     from flext_core.result import FlextResult as r
     from flext_core.service import FlextService as s
-    from flext_core.typings import FlextTypes as t
-    from flext_core.utilities import FlextUtilities as u
     from flext_infra.docs.validator import FlextInfraDocValidator
 _LAZY_IMPORTS = {
     "FlextInfraCliDocs": ("flext_infra.docs.cli", "FlextInfraCliDocs"),
@@ -63,20 +58,14 @@ _LAZY_IMPORTS = {
     "_auditor_mixin": "flext_infra.docs._auditor_mixin",
     "auditor": "flext_infra.docs.auditor",
     "builder": "flext_infra.docs.builder",
-    "c": ("flext_core.constants", "FlextConstants"),
     "cli": "flext_infra.docs.cli",
     "d": ("flext_core.decorators", "FlextDecorators"),
     "e": ("flext_core.exceptions", "FlextExceptions"),
     "fixer": "flext_infra.docs.fixer",
     "generator": "flext_infra.docs.generator",
     "h": ("flext_core.handlers", "FlextHandlers"),
-    "m": ("flext_core.models", "FlextModels"),
-    "main": ("flext_infra.docs.auditor", "main"),
-    "p": ("flext_core.protocols", "FlextProtocols"),
     "r": ("flext_core.result", "FlextResult"),
     "s": ("flext_core.service", "FlextService"),
-    "t": ("flext_core.typings", "FlextTypes"),
-    "u": ("flext_core.utilities", "FlextUtilities"),
     "validator": "flext_infra.docs.validator",
     "x": ("flext_core.mixins", "FlextMixins"),
 }
@@ -92,20 +81,14 @@ __all__ = [
     "_auditor_mixin",
     "auditor",
     "builder",
-    "c",
     "cli",
     "d",
     "e",
     "fixer",
     "generator",
     "h",
-    "m",
-    "main",
-    "p",
     "r",
     "s",
-    "t",
-    "u",
     "validator",
     "x",
 ]

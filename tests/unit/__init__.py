@@ -1064,6 +1064,9 @@ if _t.TYPE_CHECKING:
         _tests_unit_test_infra_workspace_migrator_internal
     )
     import tests.unit.test_infra_workspace_migrator_pyproject as _tests_unit_test_infra_workspace_migrator_pyproject
+    from tests.unit.test_infra_workspace_migrator_internal import (
+        TestMigratorPublicBehavior,
+    )
 
     test_infra_workspace_migrator_pyproject = (
         _tests_unit_test_infra_workspace_migrator_pyproject
@@ -1333,6 +1336,10 @@ _LAZY_IMPORTS = merge_lazy_imports(
         "TestMaintenanceMainSuccess": (
             "tests.unit.test_infra_maintenance_main",
             "TestMaintenanceMainSuccess",
+        ),
+        "TestMigratorPublicBehavior": (
+            "tests.unit.test_infra_workspace_migrator_internal",
+            "TestMigratorPublicBehavior",
         ),
         "TestOrchestratorBasic": (
             "tests.unit.test_infra_workspace_orchestrator",
@@ -1903,6 +1910,7 @@ __all__ = [
     "TestMarkdownReportEmptyGates",
     "TestMaybeWriteTodo",
     "TestMergeChildExports",
+    "TestMigratorPublicBehavior",
     "TestModernizerEdgeCases",
     "TestModernizerRunAndMain",
     "TestModernizerUncoveredLines",

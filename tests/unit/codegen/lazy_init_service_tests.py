@@ -114,3 +114,14 @@ class TestFlextInfraCodegenLazyInit:
         generator.generate_inits(check_only=False)
         content = (src_dir / "__init__.py").read_text()
         tm.that(content, contains="My custom package docstring")
+
+    def test_fails_when_public_exports_collide(self, tmp_path: Path) -> None:
+        """Conflicting exports must fail instead of generating a broken __init__.py."""
+        src_dir = tmp_path / "src" / "test_pkg"
+        src_dir.mkdir(parents=True)
+        (src_dir / "alpha.py").write_text("def main() -> None:\n    pass\n")
+        (src_dir / "beta.py").write_text("def main() -> None:\n    pass\n")
+        generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
+        result = generator.generate_inits(check_only=False)
+        tm.that(result, eq=1)
+        tm.that((src_dir / "__init__.py").exists(), eq=False)

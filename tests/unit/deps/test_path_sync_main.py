@@ -9,7 +9,7 @@ from flext_tests import tm
 from tests import m, t
 
 from flext_core import r
-from flext_infra import FlextInfraDependencyPathSync, path_sync as path_sync_module, u
+from flext_infra import FlextInfraDependencyPathSync, u
 
 
 def _project(path: Path, name: str = "flext-core") -> m.Infra.ProjectInfo:
@@ -34,7 +34,7 @@ class TestMain:
         )
         monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
         monkeypatch.setattr(sys, "argv", ["prog", "--mode", "auto"])
-        tm.that(path_sync_module.main(), eq=0)
+        tm.that(FlextInfraDependencyPathSync.main(), eq=0)
 
     def test_main_explicit_workspace_mode(
         self,
@@ -46,7 +46,7 @@ class TestMain:
         )
         monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
         monkeypatch.setattr(sys, "argv", ["prog", "--mode", "workspace"])
-        tm.that(path_sync_module.main(), eq=0)
+        tm.that(FlextInfraDependencyPathSync.main(), eq=0)
 
     def test_main_explicit_standalone_mode(
         self,
@@ -58,7 +58,7 @@ class TestMain:
         )
         monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
         monkeypatch.setattr(sys, "argv", ["prog", "--mode", "standalone"])
-        tm.that(path_sync_module.main(), eq=0)
+        tm.that(FlextInfraDependencyPathSync.main(), eq=0)
 
     def test_main_dry_run(
         self,
@@ -70,7 +70,7 @@ class TestMain:
         )
         monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
         monkeypatch.setattr(sys, "argv", ["prog", "--dry-run"])
-        tm.that(path_sync_module.main(), eq=0)
+        tm.that(FlextInfraDependencyPathSync.main(), eq=0)
 
     def test_main_specific_projects(
         self,
@@ -85,7 +85,7 @@ class TestMain:
         (project_dir / "pyproject.toml").write_text('[project]\nname = "flext-core"\n')
         monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
         monkeypatch.setattr(sys, "argv", ["prog", "--projects", "flext-core"])
-        tm.that(path_sync_module.main(), eq=0)
+        tm.that(FlextInfraDependencyPathSync.main(), eq=0)
 
     def test_main_discovery_failure(
         self,
@@ -104,7 +104,7 @@ class TestMain:
         monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
         monkeypatch.setattr(u.Infra, "discover_projects", _discover_fail)
         monkeypatch.setattr(sys, "argv", ["prog"])
-        tm.that(path_sync_module.main(), eq=1)
+        tm.that(FlextInfraDependencyPathSync.main(), eq=1)
 
     def test_main_root_rewrite_failure(
         self,
@@ -143,7 +143,7 @@ class TestMain:
             _rewrite_fail,
         )
         monkeypatch.setattr(sys, "argv", ["prog"])
-        tm.that(path_sync_module.main(), eq=1)
+        tm.that(FlextInfraDependencyPathSync.main(), eq=1)
 
     def test_main_project_rewrite_failure(
         self,
@@ -196,4 +196,4 @@ class TestMain:
             rewrite_stub,
         )
         monkeypatch.setattr(sys, "argv", ["prog", "--workspace", str(tmp_path)])
-        tm.that(path_sync_module.main(), eq=1)
+        tm.that(FlextInfraDependencyPathSync.main(), eq=1)

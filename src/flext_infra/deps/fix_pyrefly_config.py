@@ -250,11 +250,8 @@ class FlextInfraConfigFixer(s[bool]):
         return 0
 
 
-main = FlextInfraConfigFixer.main
-
-
 if __name__ == "__main__":
     raise SystemExit(FlextInfraConfigFixer.main())
 
 
-__all__ = ["FlextInfraConfigFixer", "main"]
+__all__ = ["FlextInfraConfigFixer"]

@@ -224,6 +224,5 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
 
 build_parser = FlextInfraWorkspaceChecker.build_parser
 run_cli = FlextInfraWorkspaceChecker.run_cli
-main = FlextInfraWorkspaceChecker.main
 
-__all__ = ["FlextInfraWorkspaceChecker", "build_parser", "main", "run_cli"]
+__all__ = ["FlextInfraWorkspaceChecker", "build_parser", "run_cli"]

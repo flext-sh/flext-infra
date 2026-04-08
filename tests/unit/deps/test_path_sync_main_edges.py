@@ -9,7 +9,7 @@ from flext_tests import tm
 from tests import m, t
 
 from flext_core import r
-from flext_infra import FlextInfraDependencyPathSync, path_sync as path_sync_module
+from flext_infra import FlextInfraDependencyPathSync
 
 
 def _project(path: Path, name: str = "flext-core") -> m.Infra.ProjectInfo:
@@ -43,7 +43,7 @@ class TestMainEdgeCases:
             _discover_none,
         )
         monkeypatch.setattr(sys, "argv", ["prog", "--workspace", str(tmp_path)])
-        tm.that(path_sync_module.main(), eq=0)
+        tm.that(FlextInfraDependencyPathSync.main(), eq=0)
 
     def test_main_with_changes(
         self,
@@ -99,7 +99,7 @@ class TestMainEdgeCases:
             rewrite_stub,
         )
         monkeypatch.setattr(sys, "argv", ["prog", "--workspace", str(tmp_path)])
-        tm.that(path_sync_module.main(), eq=0)
+        tm.that(FlextInfraDependencyPathSync.main(), eq=0)
 
     def test_main_root_project_name_extraction(
         self,
@@ -121,7 +121,7 @@ class TestMainEdgeCases:
             _discover_none,
         )
         monkeypatch.setattr(sys, "argv", ["prog", "--workspace", str(tmp_path)])
-        tm.that(path_sync_module.main(), eq=0)
+        tm.that(FlextInfraDependencyPathSync.main(), eq=0)
 
     def test_main_project_name_extraction(
         self,
@@ -173,7 +173,7 @@ class TestMainEdgeCases:
             _rewrite_ok,
         )
         monkeypatch.setattr(sys, "argv", ["prog", "--workspace", str(tmp_path)])
-        tm.that(path_sync_module.main(), eq=0)
+        tm.that(FlextInfraDependencyPathSync.main(), eq=0)
 
     def test_main_invalid_project_toml(
         self,
@@ -183,7 +183,7 @@ class TestMainEdgeCases:
         (tmp_path / "pyproject.toml").write_text("invalid toml [[[")
         monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
         monkeypatch.setattr(sys, "argv", ["prog", "--workspace", str(tmp_path)])
-        tm.that(path_sync_module.main(), eq=1)
+        tm.that(FlextInfraDependencyPathSync.main(), eq=1)
 
     def test_main_missing_root_pyproject(
         self,
@@ -202,7 +202,7 @@ class TestMainEdgeCases:
             _discover_none,
         )
         monkeypatch.setattr(sys, "argv", ["prog", "--workspace", str(tmp_path)])
-        tm.that(path_sync_module.main(), eq=0)
+        tm.that(FlextInfraDependencyPathSync.main(), eq=0)
 
     def test_main_project_without_pyproject(
         self,
@@ -226,4 +226,4 @@ class TestMainEdgeCases:
             _discover_project,
         )
         monkeypatch.setattr(sys, "argv", ["prog", "--workspace", str(tmp_path)])
-        tm.that(path_sync_module.main(), eq=0)
+        tm.that(FlextInfraDependencyPathSync.main(), eq=0)

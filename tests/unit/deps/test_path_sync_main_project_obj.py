@@ -59,7 +59,7 @@ def test_main_project_obj_not_dict_first_loop(
     )
 
     monkeypatch.setattr(FlextInfraDependencyPathSync, "_log", _SilentLogger())
-    tm.that(path_sync_module.main(), eq=0)
+    tm.that(FlextInfraDependencyPathSync.main(), eq=0)
 
 
 def test_main_project_obj_not_dict_second_loop(
@@ -89,7 +89,7 @@ def test_main_project_obj_not_dict_second_loop(
     )
 
     monkeypatch.setattr(FlextInfraDependencyPathSync, "_log", _SilentLogger())
-    tm.that(path_sync_module.main(), eq=0)
+    tm.that(FlextInfraDependencyPathSync.main(), eq=0)
 
 
 def test_helpers_alias_is_reachable_project_obj() -> None:

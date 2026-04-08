@@ -20,6 +20,13 @@ class FlextInfraCliDeps:
         "modernize": "flext_infra.deps.modernizer",
         "path-sync": "flext_infra.deps.path_sync",
     })
+    _SUBCOMMAND_SERVICES: t.StrMapping = MappingProxyType({
+        "detect": "FlextInfraRuntimeDevDependencyDetector",
+        "extra-paths": "FlextInfraExtraPathsManager",
+        "internal-sync": "FlextInfraInternalDependencySyncService",
+        "modernize": "FlextInfraPyprojectModernizer",
+        "path-sync": "FlextInfraDependencyPathSync",
+    })
     _VALUE_FLAGS: ClassVar[frozenset[str]] = frozenset({
         "--workspace",
         "--projects",
@@ -97,12 +104,9 @@ class FlextInfraCliDeps:
         ]
         sys.argv = [f"flext-infra deps {subcommand}", *forwarded_args]
         try:
-            export_name = cls._SUBCOMMAND_MODULES[subcommand].rsplit(
-                ".",
-                maxsplit=1,
-            )[-1]
-            module = getattr(deps_package, export_name)
-            exit_code = module.main()
+            service_name = cls._SUBCOMMAND_SERVICES[subcommand]
+            service_cls = getattr(deps_package, service_name)
+            exit_code = service_cls.main()
         except SystemExit as exc:
             return cls._normalize_exit_code(exc.code)
         except Exception as exc:

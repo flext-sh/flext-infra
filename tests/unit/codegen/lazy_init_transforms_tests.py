@@ -6,123 +6,93 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
 from pathlib import Path
 
+import pytest
 from flext_tests import tm
-
-from flext_infra import (
-    FlextInfraUtilitiesCodegenLazyScanning,
-    t,
-)
-
-_scan_public_defs: Callable[
-    [str, str, Mapping[str, tuple[str, str]]],
-    None,
-] = getattr(FlextInfraUtilitiesCodegenLazyScanning, "_scan_public_defs")
-_should_bubble_up: Callable[[str], bool] = getattr(
-    FlextInfraUtilitiesCodegenLazyScanning,
-    "should_bubble_up",
-)
-_merge_child_exports: Callable[
-    [
-        Path,
-        str,
-        Mapping[str, tuple[str, str]],
-        Mapping[str, Mapping[str, tuple[str, str]]],
-    ],
-    None,
-] = getattr(FlextInfraUtilitiesCodegenLazyScanning, "merge_child_exports")
-_extract_version_exports: Callable[
-    [Path, str],
-    tuple[t.StrMapping, Mapping[str, tuple[str, str]]],
-] = getattr(FlextInfraUtilitiesCodegenLazyScanning, "extract_version_exports")
+from tests import u
 
 
 class TestScanPublicDefs:
-    """Test _scan_public_defs function."""
+    """Test public export scanning behavior."""
 
-    def test_finds_classes(self) -> None:
+    def test_finds_classes(self, tmp_path: Path) -> None:
         """Test scanning finds public classes."""
-        source = "class PublicClass:\n    pass\n"
-        index: Mapping[str, tuple[str, str]] = {}
-        _scan_public_defs(source, "mod", index)
+        (tmp_path / "module.py").write_text("class PublicClass:\n    pass\n")
+        index = u.Infra.build_sibling_export_index(tmp_path, "mod")
         tm.that(index, contains="PublicClass")
 
-    def test_skips_private(self) -> None:
+    def test_skips_private(self, tmp_path: Path) -> None:
         """Test scanning skips private names."""
-        source = "class _PrivateClass:\n    pass\n"
-        index: Mapping[str, tuple[str, str]] = {}
-        _scan_public_defs(source, "mod", index)
+        (tmp_path / "module.py").write_text("class _PrivateClass:\n    pass\n")
+        index = u.Infra.build_sibling_export_index(tmp_path, "mod")
         tm.that(index, excludes="_PrivateClass")
 
-    def test_finds_functions(self) -> None:
+    def test_finds_functions(self, tmp_path: Path) -> None:
         """Test scanning finds public functions."""
-        source = "def public_func():\n    pass\n"
-        index: Mapping[str, tuple[str, str]] = {}
-        _scan_public_defs(source, "mod", index)
+        (tmp_path / "module.py").write_text("def public_func() -> None:\n    pass\n")
+        index = u.Infra.build_sibling_export_index(tmp_path, "mod")
         tm.that(index, contains="public_func")
 
-    def test_finds_assignments(self) -> None:
+    def test_finds_assignments(self, tmp_path: Path) -> None:
         """Test scanning finds public assignments."""
-        source = "MY_CONST = 42\n"
-        index: Mapping[str, tuple[str, str]] = {}
-        _scan_public_defs(source, "mod", index)
+        (tmp_path / "module.py").write_text("MY_CONST = 42\n")
+        index = u.Infra.build_sibling_export_index(tmp_path, "mod")
         tm.that(index, contains="MY_CONST")
 
 
 class TestShouldBubbleUp:
-    """Test _should_bubble_up function."""
+    """Test bubble-up filtering for child exports."""
 
     def test_public_class_name(self) -> None:
         """Test that public class names bubble up."""
-        tm.that(_should_bubble_up("FlextInfraModels"), eq=True)
+        tm.that(u.Infra.should_bubble_up("FlextInfraModels"), eq=True)
 
     def test_private_name_filtered(self) -> None:
         """Test that private names are filtered."""
-        tm.that(not _should_bubble_up("_internal"), eq=True)
+        tm.that(not u.Infra.should_bubble_up("_internal"), eq=True)
 
     def test_main_filtered(self) -> None:
         """Test that 'main' entry point is filtered."""
-        tm.that(not _should_bubble_up("main"), eq=True)
+        tm.that(not u.Infra.should_bubble_up("main"), eq=True)
 
     def test_all_caps_filtered(self) -> None:
         """Test that ALL_CAPS constants are filtered."""
-        tm.that(not _should_bubble_up("BLUE"), eq=True)
-        tm.that(not _should_bubble_up("SYM_ARROW"), eq=True)
+        tm.that(not u.Infra.should_bubble_up("BLUE"), eq=True)
+        tm.that(not u.Infra.should_bubble_up("SYM_ARROW"), eq=True)
 
     def test_legacy_output_wrapper_is_filtered(self) -> None:
         """Legacy output wrappers must not bubble to package root exports."""
-        tm.that(not _should_bubble_up("output"), eq=True)
+        tm.that(not u.Infra.should_bubble_up("output"), eq=True)
 
     def test_single_letter_alias_passes(self) -> None:
         """Test that single-letter aliases pass."""
-        tm.that(_should_bubble_up("c"), eq=True)
-        tm.that(_should_bubble_up("e"), eq=True)
+        tm.that(u.Infra.should_bubble_up("c"), eq=True)
+        tm.that(u.Infra.should_bubble_up("e"), eq=True)
 
 
 class TestMergeChildExports:
-    """Test _merge_child_exports function."""
+    """Test public child-export merge behavior."""
 
     def test_merges_child_exports(self, tmp_path: Path) -> None:
         """Test that child exports are merged into parent."""
         sub_dir = tmp_path / "sub"
         sub_dir.mkdir()
-        lazy_map: Mapping[str, tuple[str, str]] = {}
+        lazy_map: dict[str, tuple[str, str]] = {}
         dir_exports = {
             str(sub_dir): {
                 "SubService": ("pkg.sub.service", "SubService"),
             },
         }
-        _merge_child_exports(tmp_path, "pkg", lazy_map, dir_exports)
+        u.Infra.merge_child_exports(tmp_path, "pkg", lazy_map, dir_exports)
         tm.that(lazy_map, contains="SubService")
         tm.that(lazy_map["SubService"], eq=("pkg.sub.service", "SubService"))
 
-    def test_sibling_exports_take_precedence(self, tmp_path: Path) -> None:
-        """Test that existing sibling exports are NOT overwritten."""
+    def test_duplicate_child_export_raises(self, tmp_path: Path) -> None:
+        """Duplicate exports must abort instead of silently overwriting."""
         sub_dir = tmp_path / "sub"
         sub_dir.mkdir()
-        lazy_map: Mapping[str, tuple[str, str]] = {
+        lazy_map: dict[str, tuple[str, str]] = {
             "Model": ("pkg.models", "Model"),
         }
         dir_exports = {
@@ -130,33 +100,32 @@ class TestMergeChildExports:
                 "Model": ("pkg.sub.models", "Model"),
             },
         }
-        _merge_child_exports(tmp_path, "pkg", lazy_map, dir_exports)
-        # Sibling wins
-        tm.that(lazy_map["Model"], eq=("pkg.models", "Model"))
+        with pytest.raises(ValueError, match="export collision"):
+            u.Infra.merge_child_exports(tmp_path, "pkg", lazy_map, dir_exports)
 
     def test_filters_all_caps(self, tmp_path: Path) -> None:
         """Test that ALL_CAPS constants don't bubble up."""
         sub_dir = tmp_path / "sub"
         sub_dir.mkdir()
-        lazy_map: Mapping[str, tuple[str, str]] = {}
+        lazy_map: dict[str, tuple[str, str]] = {}
         dir_exports = {
             str(sub_dir): {
                 "BLUE": ("pkg.sub.colors", "BLUE"),
                 "Service": ("pkg.sub.service", "Service"),
             },
         }
-        _merge_child_exports(tmp_path, "pkg", lazy_map, dir_exports)
+        u.Infra.merge_child_exports(tmp_path, "pkg", lazy_map, dir_exports)
         tm.that(lazy_map, excludes="BLUE")
         tm.that(lazy_map, contains="Service")
 
 
 class TestExtractVersionExports:
-    """Test _extract_version_exports function."""
+    """Test public version export extraction."""
 
     def test_extracts_string_constants(self, tmp_path: Path) -> None:
         """Test extracting __version__ as inline constant."""
         (tmp_path / "__version__.py").write_text('__version__ = "1.0.0"\n')
-        inline, _ = _extract_version_exports(tmp_path, "test_pkg")
+        inline, _ = u.Infra.extract_version_exports(tmp_path, "test_pkg")
         tm.that(inline, contains="__version__")
         tm.that(inline["__version__"], eq="1.0.0")
 
@@ -165,7 +134,7 @@ class TestExtractVersionExports:
         (tmp_path / "__version__.py").write_text(
             '__version__ = "1.0.0"\n__version_info__ = (1, 0, 0)\n',
         )
-        inline, lazy = _extract_version_exports(tmp_path, "test_pkg")
+        inline, lazy = u.Infra.extract_version_exports(tmp_path, "test_pkg")
         tm.that(inline, contains="__version__")
         tm.that(lazy, contains="__version_info__")
         tm.that(
@@ -175,6 +144,6 @@ class TestExtractVersionExports:
 
     def test_no_version_file(self, tmp_path: Path) -> None:
         """Test returns empty when __version__.py doesn't exist."""
-        inline, lazy = _extract_version_exports(tmp_path, "test_pkg")
+        inline, lazy = u.Infra.extract_version_exports(tmp_path, "test_pkg")
         tm.that(inline, eq={})
         tm.that(lazy, eq={})

@@ -22,11 +22,11 @@ from rope.refactor.importutils.importinfo import FromImport
 from rope.refactor.importutils.module_imports import ModuleImports
 
 from flext_infra import (
+    FlextInfraUtilitiesIteration,
     c,
     m,
     t,
 )
-from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
 
 
 class FlextInfraUtilitiesRopeCore:
@@ -160,7 +160,7 @@ class FlextInfraUtilitiesRopeCore:
 
     @staticmethod
     def get_pycore(
-        rope_project: t.Infra.RopeProject,
+        rope_project: Project | t.Infra.RopeProject,
     ) -> PyCore:
         """Extract PyCore via protocol validation at the Rope boundary."""
         return FlextInfraUtilitiesRopeCore._ensure_pycore(rope_project.pycore)

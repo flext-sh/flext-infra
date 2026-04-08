@@ -260,11 +260,8 @@ class FlextInfraDocAuditor(s[bool], FlextInfraDocAuditorMixin):
         return tuple(issues)
 
 
-main = FlextInfraDocAuditor.main
-
-
 if __name__ == "__main__":
     sys.exit(FlextInfraDocAuditor.main())
 
 
-__all__ = ["FlextInfraDocAuditor", "main"]
+__all__ = ["FlextInfraDocAuditor"]

@@ -1,8 +1,4 @@
-"""Tests for FlextInfraPytestDiagExtractor.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Behavior tests for FlextInfraPytestDiagExtractor."""
 
 from __future__ import annotations
 
@@ -11,27 +7,32 @@ from pathlib import Path
 from flext_tests import tm
 from tests import m, t
 
-from flext_infra import FlextInfraPytestDiagExtractor, pytest_diag
+from flext_infra import FlextInfraPytestDiagExtractor
 
 
-class TestPytestDiagExtractorCore:
-    """Core extraction and _DiagResult tests."""
+def _extractor(
+    junit: Path,
+    log: Path,
+    *,
+    failed: Path | None = None,
+    errors: Path | None = None,
+    warnings: Path | None = None,
+    slowest: Path | None = None,
+    skips: Path | None = None,
+) -> FlextInfraPytestDiagExtractor:
+    return FlextInfraPytestDiagExtractor(
+        junit=junit,
+        log=log,
+        failed=failed,
+        errors=errors,
+        warnings=warnings,
+        slowest=slowest,
+        skips=skips,
+    )
 
-    def test_diag_result_init(self) -> None:
-        """_DiagResult initializes with empty lists."""
-        diag = pytest_diag._DiagResult()
-        for attr in (
-            "failed_cases",
-            "error_traces",
-            "skip_cases",
-            "warning_lines",
-            "slow_entries",
-        ):
-            tm.that(getattr(diag, attr), eq=[])
 
+class TestPytestDiagExtractorBehavior:
     def test_extract_valid_junit_xml(self, tmp_path: Path) -> None:
-        """Valid JUnit XML returns success with diagnostics model."""
-        ext = FlextInfraPytestDiagExtractor()
         junit = tmp_path / "junit.xml"
         junit.write_text(
             '<?xml version="1.0"?><testsuites><testsuite name="t" tests="1"'
@@ -39,43 +40,56 @@ class TestPytestDiagExtractorCore:
         )
         log = tmp_path / "log.txt"
         log.write_text("")
-        report = tm.ok(ext.extract(junit, log))
-        tm.that(report, is_=m.Infra.PytestDiagnostics)
 
-    def test_extract_fallback_to_log(self, tmp_path: Path) -> None:
-        """Missing/invalid XML falls back to log parsing."""
-        ext = FlextInfraPytestDiagExtractor()
+        report = tm.ok(_extractor(junit, log).extract(junit, log))
+
+        tm.that(report, is_=m.Infra.PytestDiagnostics)
+        tm.that(report.failed_count, eq=0)
+        tm.that(report.error_count, eq=0)
+
+    def test_extract_falls_back_to_log_when_xml_missing_or_invalid(
+        self,
+        tmp_path: Path,
+    ) -> None:
         log = tmp_path / "log.txt"
         log.write_text("FAILED test_case.py::test_foo")
-        tm.ok(ext.extract(tmp_path / "missing.xml", log))
-        (tmp_path / "bad.xml").write_text("invalid xml content")
-        tm.ok(ext.extract(tmp_path / "bad.xml", log))
+        missing_xml = tmp_path / "missing.xml"
 
-    def test_extract_failed_and_error_tests(self, tmp_path: Path) -> None:
-        """Failed and error tests are reported."""
-        ext = FlextInfraPytestDiagExtractor()
+        missing_report = tm.ok(_extractor(missing_xml, log).extract(missing_xml, log))
+        tm.that(missing_report.failed_cases, length_gt=0)
+
+        bad_xml = tmp_path / "bad.xml"
+        bad_xml.write_text("invalid xml content")
+        invalid_report = tm.ok(_extractor(bad_xml, log).extract(bad_xml, log))
+        tm.that(invalid_report.failed_cases, length_gt=0)
+
+    def test_extract_failed_and_error_tests_from_xml(self, tmp_path: Path) -> None:
         log = tmp_path / "log.txt"
         log.write_text("")
-        (tmp_path / "fail.xml").write_text(
+        fail_xml = tmp_path / "fail.xml"
+        fail_xml.write_text(
             '<?xml version="1.0"?><testsuites><testsuite name="t" tests="1"'
             ' failures="1" errors="0" skipped="0"><testcase name="test_fail"'
             ' classname="TC"><failure message="fail">Traceback</failure>'
             "</testcase></testsuite></testsuites>",
         )
-        report = tm.ok(ext.extract(tmp_path / "fail.xml", log))
-        tm.that(report.failed_count, eq=1)
-        tm.that(report.error_traces, length_gt=0)
-        (tmp_path / "err.xml").write_text(
+
+        fail_report = tm.ok(_extractor(fail_xml, log).extract(fail_xml, log))
+        tm.that(fail_report.failed_count, eq=1)
+        tm.that(fail_report.error_traces, length_gt=0)
+
+        err_xml = tmp_path / "err.xml"
+        err_xml.write_text(
             '<?xml version="1.0"?><testsuites><testsuite name="t" tests="1"'
             ' failures="0" errors="1" skipped="0"><testcase name="test_err"'
             ' classname="TC"><error message="err">Trace</error>'
             "</testcase></testsuite></testsuites>",
         )
-        tm.that(tm.ok(ext.extract(tmp_path / "err.xml", log)).error_count, eq=1)
 
-    def test_extract_skipped_and_slow(self, tmp_path: Path) -> None:
-        """Skipped tests and slow timings are extracted."""
-        ext = FlextInfraPytestDiagExtractor()
+        err_report = tm.ok(_extractor(err_xml, log).extract(err_xml, log))
+        tm.that(err_report.error_count, eq=1)
+
+    def test_extract_skipped_and_slow_tests_from_xml(self, tmp_path: Path) -> None:
         log = tmp_path / "log.txt"
         log.write_text("")
         skip_xml = tmp_path / "skip.xml"
@@ -85,114 +99,111 @@ class TestPytestDiagExtractorCore:
             ' classname="TC"><skipped message="skip"/>'
             "</testcase></testsuite></testsuites>",
         )
-        tm.that(tm.ok(ext.extract(skip_xml, log)).skipped_count, eq=1)
+
+        skip_report = tm.ok(_extractor(skip_xml, log).extract(skip_xml, log))
+        tm.that(skip_report.skipped_count, eq=1)
+
         slow_xml = tmp_path / "slow.xml"
         slow_xml.write_text(
             '<?xml version="1.0"?><testsuites><testsuite name="t" tests="2">'
             '<testcase name="fast" time="0.1"/><testcase name="slow" time="5.5"/>'
             "</testsuite></testsuites>",
         )
-        tm.that(tm.ok(ext.extract(slow_xml, log)).slow_entries, length_gt=0)
 
-    def test_extract_missing_log(self, tmp_path: Path) -> None:
-        """Missing log file is handled gracefully."""
+        slow_report = tm.ok(_extractor(slow_xml, log).extract(slow_xml, log))
+        tm.that(slow_report.slow_entries, length_gt=0)
+
+    def test_extract_missing_log_is_graceful(self, tmp_path: Path) -> None:
         junit = tmp_path / "junit.xml"
         junit.write_text(
             '<?xml version="1.0"?><testsuites>'
             '<testsuite name="t" tests="0"/></testsuites>',
         )
-        tm.ok(FlextInfraPytestDiagExtractor().extract(junit, tmp_path / "missing.txt"))
 
+        report = tm.ok(
+            _extractor(junit, tmp_path / "missing.txt").extract(
+                junit,
+                tmp_path / "missing.txt",
+            ),
+        )
 
-class TestPytestDiagParseXml:
-    """Tests for _parse_xml static method."""
+        tm.that(report.warning_count, eq=0)
 
-    def test_parse_xml_missing_or_invalid(self, tmp_path: Path) -> None:
-        """Missing/invalid file returns False."""
-        diag = pytest_diag._DiagResult()
-        parse = FlextInfraPytestDiagExtractor._parse_xml
-        tm.that(not parse(tmp_path / "missing.xml", diag), eq=True)
-        (tmp_path / "bad.xml").write_text("not valid xml")
-        tm.that(not parse(tmp_path / "bad.xml", diag), eq=True)
+    def test_extract_warnings_and_error_block_from_log(self, tmp_path: Path) -> None:
+        junit = tmp_path / "missing.xml"
+        log = tmp_path / "log.txt"
+        log.write_text(
+            "=== FAILURES ===\n"
+            "test_case.py::test_foo\n"
+            "AssertionError: expected True\n"
+            "=== short test summary info ===\n"
+            "=== warnings summary ===\n"
+            "DeprecationWarning: test warning\n"
+            "-- Docs: https://docs.pytest.org/\n",
+        )
 
-    def test_parse_xml_extracts_timing(self, tmp_path: Path) -> None:
-        """Test timing data is extracted."""
+        report = tm.ok(_extractor(junit, log).extract(junit, log))
+
+        tm.that(report.error_traces, length_gt=0)
+        tm.that(report.warning_lines, length_gt=0)
+
+    def test_extract_inline_warning_without_summary(self, tmp_path: Path) -> None:
+        junit = tmp_path / "missing.xml"
+        log = tmp_path / "log.txt"
+        log.write_text("test_case.py:10: DeprecationWarning: test warning")
+
+        report = tm.ok(_extractor(junit, log).extract(junit, log))
+
+        tm.that(report.warning_lines, length_gt=0)
+
+    def test_extract_slow_entries_from_log_when_xml_missing(
+        self, tmp_path: Path
+    ) -> None:
+        junit = tmp_path / "missing.xml"
+        log = tmp_path / "log.txt"
+        log.write_text(
+            "=== slowest durations ===\n"
+            "5.50s call     test_case.py::test_slow\n"
+            "0.50s call     test_case.py::test_fast\n"
+            "=== 2 passed in 6.00s ===\n",
+        )
+
+        report = tm.ok(_extractor(junit, log).extract(junit, log))
+
+        tm.that(report.slow_entries, length_gt=0)
+
+    def test_execute_writes_selected_output_files(self, tmp_path: Path) -> None:
         junit = tmp_path / "junit.xml"
         junit.write_text(
-            '<?xml version="1.0"?><testsuites><testsuite name="t">'
-            '<testcase name="a" classname="TC" time="1.5"/>'
-            '<testcase name="b" classname="TC" time="0.5"/>'
-            "</testsuite></testsuites>",
+            '<?xml version="1.0"?><testsuites><testsuite name="t" tests="2">'
+            '<testcase name="test_fail" classname="TC" time="2.5">'
+            '<failure message="fail">Traceback</failure></testcase>'
+            '<testcase name="test_skip" classname="TC" time="0.1">'
+            '<skipped message="skip"/></testcase></testsuite></testsuites>',
         )
-        diag = pytest_diag._DiagResult()
-        tm.that(FlextInfraPytestDiagExtractor._parse_xml(junit, diag), eq=True)
-        tm.that(diag.slow_entries, length=2)
-
-    def test_parse_xml_invalid_time(self, tmp_path: Path) -> None:
-        """Invalid time attribute is handled."""
-        junit = tmp_path / "junit.xml"
-        junit.write_text(
-            '<?xml version="1.0"?><testsuites><testsuite name="t">'
-            '<testcase name="a" classname="TC" time="invalid"/>'
-            "</testsuite></testsuites>",
+        log = tmp_path / "log.txt"
+        log.write_text(
+            "=== warnings summary ===\n"
+            "DeprecationWarning: test warning\n"
+            "-- Docs: https://docs.pytest.org/\n",
         )
-        diag = pytest_diag._DiagResult()
-        tm.that(FlextInfraPytestDiagExtractor._parse_xml(junit, diag), eq=True)
-
-
-class TestPytestDiagLogParsing:
-    """Tests for log parsing methods."""
-
-    def test_parse_log_failures_and_skips(self) -> None:
-        """Failures and skips are extracted from log lines."""
-        diag = pytest_diag._DiagResult()
-        FlextInfraPytestDiagExtractor._parse_log_into_diag(
-            ["FAILED test_case.py::test_foo", "SKIPPED test_case.py::test_skip"],
-            diag,
+        extractor = _extractor(
+            junit,
+            log,
+            failed=tmp_path / "failed.txt",
+            errors=tmp_path / "errors.txt",
+            warnings=tmp_path / "warnings.txt",
+            slowest=tmp_path / "slow.txt",
+            skips=tmp_path / "skips.txt",
         )
-        tm.that(diag.failed_cases, length_gt=0)
-        tm.that(diag.skip_cases, length_gt=0)
 
-    def test_parse_log_error_block(self) -> None:
-        """Error blocks are extracted from log lines."""
-        lines = [
-            "=== FAILURES ===",
-            "test_case.py::test_foo",
-            "AssertionError: expected True",
-            "=== short test summary info ===",
-        ]
-        diag = pytest_diag._DiagResult()
-        FlextInfraPytestDiagExtractor._parse_log_into_diag(lines, diag)
-        tm.that(diag.error_traces, length_gt=0)
+        tm.ok(extractor.execute())
 
-    def test_extract_warnings(self) -> None:
-        """Warnings section and inline warnings are extracted."""
-        diag = pytest_diag._DiagResult()
-        warn_lines = [
-            "=== warnings summary ===",
-            "DeprecationWarning: test warning",
-            "-- Docs: https://docs.pytest.org/",
-        ]
-        FlextInfraPytestDiagExtractor._extract_warnings(warn_lines, diag)
-        tm.that(diag.warning_lines, length_gt=0)
-        diag2 = pytest_diag._DiagResult()
-        FlextInfraPytestDiagExtractor._extract_warnings(
-            ["test_case.py:10: DeprecationWarning: test"],
-            diag2,
-        )
-        tm.that(diag2.warning_lines, length_gt=0)
-
-    def test_extract_slow_from_log(self) -> None:
-        """Slow test durations are extracted from log."""
-        lines = [
-            "=== slowest durations ===",
-            "5.50s call     test_case.py::test_slow",
-            "0.50s call     test_case.py::test_fast",
-            "=== 2 passed in 6.00s ===",
-        ]
-        diag = pytest_diag._DiagResult()
-        FlextInfraPytestDiagExtractor._extract_slow_from_log(lines, diag)
-        tm.that(diag.slow_entries, length_gt=0)
+        tm.that((tmp_path / "failed.txt").read_text(), contains="TC::test_fail")
+        tm.that((tmp_path / "errors.txt").read_text(), contains="Traceback")
+        tm.that((tmp_path / "warnings.txt").read_text(), contains="DeprecationWarning")
+        tm.that((tmp_path / "slow.txt").read_text(), contains="TC::test_fail")
+        tm.that((tmp_path / "skips.txt").read_text(), contains="TC::test_skip")
 
 
 __all__: t.StrSequence = []

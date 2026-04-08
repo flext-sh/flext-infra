@@ -190,9 +190,6 @@ class FlextInfraDependencyPathSync(FlextInfraDependencyPathSyncRewrite):
         return FlextInfraDependencyPathSync().run(cli=cli, mode=args.mode)
 
 
-main = FlextInfraDependencyPathSync.main
-
-
 if __name__ == "__main__":
     sys.exit(FlextInfraDependencyPathSync.main())
 

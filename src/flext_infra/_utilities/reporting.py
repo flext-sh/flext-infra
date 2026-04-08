@@ -25,8 +25,7 @@ import sys
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
-from flext_infra import c, m, p, t
-from flext_infra._utilities.output_reporting import FlextInfraUtilitiesOutputReporting
+from flext_infra import FlextInfraUtilitiesOutputReporting, c, m, p, t
 
 
 class FlextInfraUtilitiesReporting(FlextInfraUtilitiesOutputReporting):

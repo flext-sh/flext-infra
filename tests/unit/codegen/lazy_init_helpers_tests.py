@@ -10,6 +10,7 @@ import re
 from collections.abc import Sequence
 from pathlib import Path
 
+import pytest
 from flext_tests import tm
 from tests import u
 
@@ -175,6 +176,13 @@ class TestBuildSiblingExportIndex:
             index["ArchitectureValidator"],
             eq=("docs.architecture.tools.validate_docs", "ArchitectureValidator"),
         )
+
+    def test_duplicate_public_export_raises(self, tmp_path: Path) -> None:
+        """Conflicting public exports must abort lazy-init generation."""
+        (tmp_path / "alpha.py").write_text("def main() -> None:\n    pass\n")
+        (tmp_path / "beta.py").write_text("def main() -> None:\n    pass\n")
+        with pytest.raises(ValueError, match="export collision"):
+            u.Infra.build_sibling_export_index(tmp_path, "test_pkg")
 
 
 class TestExtractExports:
