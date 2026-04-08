@@ -4,28 +4,21 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import pytest
+from _pytest.monkeypatch import MonkeyPatch
 from flext_tests import tm
-from tests import m as _m, r, t, u
-
-import flext_infra.release.orchestrator as _orch_mod
-from flext_infra import (
-    FlextInfraReleaseOrchestrator,
-    m,
-    m as infra_models,
-)
-
-from ._stubs import (
+from tests import (
     FakeSelection,
     FakeUtilsNamespace,
+    m,
+    r,
+    t,
+    u,
 )
 
-if TYPE_CHECKING:
-    from _pytest.monkeypatch import MonkeyPatch
-
-_CLS = FlextInfraReleaseOrchestrator
+import flext_infra.release.orchestrator as _orch_mod
+from flext_infra import FlextInfraReleaseOrchestrator
 
 
 @pytest.fixture
@@ -50,7 +43,7 @@ def _patch_sel(mp: MonkeyPatch, sel: FakeSelection) -> None:
 
 class TestVersionFiles:
     def test_includes_workspace_root(self, workspace_root: Path) -> None:
-        files = _CLS()._version_files(workspace_root, [])
+        files = FlextInfraReleaseOrchestrator()._version_files(workspace_root, [])
         tm.that(any(f.name == "pyproject.toml" for f in files), eq=True)
 
     def test_discovery(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
@@ -58,11 +51,19 @@ class TestVersionFiles:
         proj_dir.mkdir()
         (proj_dir / "pyproject.toml").touch()
         fake_sel = FakeSelection()
-        fake_sel._resolve_result = r[Sequence[_m.Infra.ProjectInfo]].ok([
-            _m.Infra.ProjectInfo(name="proj1", path=proj_dir, stack="python"),
+        fake_sel._resolve_result = r[Sequence[m.Infra.ProjectInfo]].ok([
+            m.Infra.ProjectInfo(name="proj1", path=proj_dir, stack="python"),
         ])
         _patch_sel(monkeypatch, fake_sel)
-        tm.that(len(_CLS()._version_files(workspace_root, ["proj1"])), gt=0)
+        tm.that(
+            len(
+                FlextInfraReleaseOrchestrator()._version_files(
+                    workspace_root,
+                    ["proj1"],
+                ),
+            ),
+            gt=0,
+        )
 
 
 class TestBuildTargets:
@@ -74,7 +75,7 @@ class TestBuildTargets:
         monkeypatch: MonkeyPatch,
     ) -> None:
         _patch_sel(monkeypatch, FakeSelection())
-        targets = _CLS()._build_targets(workspace_root, [])
+        targets = FlextInfraReleaseOrchestrator()._build_targets(workspace_root, [])
         name, path = targets[0]
         tm.that(name, eq="root")
         tm.that(str(path), eq=str(workspace_root))
@@ -85,15 +86,21 @@ class TestBuildTargets:
         monkeypatch: MonkeyPatch,
     ) -> None:
         fake_sel = FakeSelection()
-        fake_sel._resolve_result = r[Sequence[_m.Infra.ProjectInfo]].ok([
-            _m.Infra.ProjectInfo(
+        fake_sel._resolve_result = r[Sequence[m.Infra.ProjectInfo]].ok([
+            m.Infra.ProjectInfo(
                 name="proj1",
                 path=workspace_root / "proj1",
                 stack="python",
             ),
         ])
         _patch_sel(monkeypatch, fake_sel)
-        names = [n for n, _ in _CLS()._build_targets(workspace_root, ["proj1"])]
+        names = [
+            name
+            for name, _ in FlextInfraReleaseOrchestrator()._build_targets(
+                workspace_root,
+                ["proj1"],
+            )
+        ]
         tm.that(len(names), eq=len(set(names)))
 
 
@@ -101,16 +108,16 @@ class TestRunMake:
     """Tests for _run_make."""
 
     def test_success(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
-        output = _m.Cli.CommandOutput(exit_code=0, stdout="ok", stderr="")
+        output = m.Cli.CommandOutput(exit_code=0, stdout="ok", stderr="")
 
         def _fake_run_raw(
             cmd: t.StrSequence,
             **kw: t.Scalar,
-        ) -> r[_m.Cli.CommandOutput]:
-            return r[_m.Cli.CommandOutput].ok(output)
+        ) -> r[m.Cli.CommandOutput]:
+            return r[m.Cli.CommandOutput].ok(output)
 
         monkeypatch.setattr(u.Cli, "run_raw", staticmethod(_fake_run_raw))
-        result = _CLS._run_make(workspace_root, "build")
+        result = FlextInfraReleaseOrchestrator._run_make(workspace_root, "build")
         tm.ok(result)
         code, _out = result.value
         tm.that(code, eq=0)
@@ -119,11 +126,11 @@ class TestRunMake:
         def _fake_run_raw(
             cmd: t.StrSequence,
             **kw: t.Scalar,
-        ) -> r[_m.Cli.CommandOutput]:
-            return r[_m.Cli.CommandOutput].fail("failed")
+        ) -> r[m.Cli.CommandOutput]:
+            return r[m.Cli.CommandOutput].fail("failed")
 
         monkeypatch.setattr(u.Cli, "run_raw", staticmethod(_fake_run_raw))
-        tm.fail(_CLS._run_make(workspace_root, "build"))
+        tm.fail(FlextInfraReleaseOrchestrator._run_make(workspace_root, "build"))
 
 
 class TestGenerateNotes:
@@ -141,10 +148,18 @@ class TestGenerateNotes:
             del a, kw
             return r[str].ok("")
 
-        monkeypatch.setattr(_CLS, "_previous_tag", _previous_tag)
-        monkeypatch.setattr(_CLS, "_collect_changes", _collect_changes)
+        monkeypatch.setattr(
+            FlextInfraReleaseOrchestrator,
+            "_previous_tag",
+            _previous_tag,
+        )
+        monkeypatch.setattr(
+            FlextInfraReleaseOrchestrator,
+            "_collect_changes",
+            _collect_changes,
+        )
         notes_path = workspace_root / "notes.md"
-        config = infra_models.Infra.ReleasePhaseDispatchConfig(
+        config = m.Infra.ReleasePhaseDispatchConfig(
             phase="publish",
             workspace_root=workspace_root,
             version="1.0.0",
@@ -154,7 +169,7 @@ class TestGenerateNotes:
             push=False,
             dev_suffix=False,
         )
-        result = _CLS()._generate_notes(
+        result = FlextInfraReleaseOrchestrator()._generate_notes(
             config,
             notes_path,
         )
@@ -212,8 +227,19 @@ class TestBumpNextDev:
             del a, kw
             return r[bool].ok(True)
 
-        monkeypatch.setattr(_CLS, "phase_version", _phase_version)
-        tm.ok(_CLS()._bump_next_dev(workspace_root, "1.0.0", [], "minor"))
+        monkeypatch.setattr(
+            FlextInfraReleaseOrchestrator,
+            "phase_version",
+            _phase_version,
+        )
+        tm.ok(
+            FlextInfraReleaseOrchestrator()._bump_next_dev(
+                workspace_root,
+                "1.0.0",
+                [],
+                "minor",
+            ),
+        )
 
     def test_bump_failure(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
         def _bump_fail(cur: str, kind: str) -> r[str]:
@@ -221,7 +247,14 @@ class TestBumpNextDev:
             return r[str].fail("invalid bump")
 
         monkeypatch.setattr(u.Infra, "bump_version", staticmethod(_bump_fail))
-        tm.fail(_CLS()._bump_next_dev(workspace_root, "1.0.0", [], "invalid"))
+        tm.fail(
+            FlextInfraReleaseOrchestrator()._bump_next_dev(
+                workspace_root,
+                "1.0.0",
+                [],
+                "invalid",
+            ),
+        )
 
 
 class TestDispatchPhase:
@@ -233,7 +266,7 @@ class TestDispatchPhase:
         phase: str,
         root: Path,
     ) -> r[bool]:
-        config = infra_models.Infra.ReleasePhaseDispatchConfig(
+        config = m.Infra.ReleasePhaseDispatchConfig(
             phase=phase,
             workspace_root=root,
             version="1.0.0",
@@ -246,7 +279,11 @@ class TestDispatchPhase:
         return orch._dispatch_phase(config)
 
     def test_unknown_phase(self, workspace_root: Path) -> None:
-        result = self._dispatch(_CLS(), "unknown", workspace_root)
+        result = self._dispatch(
+            FlextInfraReleaseOrchestrator(),
+            "unknown",
+            workspace_root,
+        )
         tm.fail(result)
         tm.that(result.error, contains="unknown phase")
 
@@ -259,5 +296,15 @@ class TestDispatchPhase:
             del a, kw
             return r[bool].ok(True)
 
-        monkeypatch.setattr(_CLS, "phase_validate", _phase_validate)
-        tm.ok(self._dispatch(_CLS(), "validate", workspace_root))
+        monkeypatch.setattr(
+            FlextInfraReleaseOrchestrator,
+            "phase_validate",
+            _phase_validate,
+        )
+        tm.ok(
+            self._dispatch(
+                FlextInfraReleaseOrchestrator(),
+                "validate",
+                workspace_root,
+            ),
+        )

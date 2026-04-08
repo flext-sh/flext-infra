@@ -35,15 +35,15 @@ class RealSubprocessRunner(s[str]):
             return r[str].fail(self._failure_message(res))
         return r[str].ok(res.value.stdout.strip())
 
-    def capture_output(self, cmd: t.StrSequence) -> r[tuple[str, str]]:
+    def capture_output(self, cmd: t.StrSequence) -> r[t.Pair[str, str]]:
         v = self._validate_safe_command(cmd)
         if v.is_failure:
-            return r[tuple[str, str]].fail(v.error or "unsafe")
+            return r[t.Pair[str, str]].fail(v.error or "unsafe")
         res = self.subprocess_utility.run(cmd)
         if res.is_failure:
-            return r[tuple[str, str]].fail(self._failure_message(res))
+            return r[t.Pair[str, str]].fail(self._failure_message(res))
         o = res.value
-        return r[tuple[str, str]].ok((o.stdout.strip(), o.stderr.strip()))
+        return r[t.Pair[str, str]].ok((o.stdout.strip(), o.stderr.strip()))
 
 
 __all__ = ["RealSubprocessRunner"]

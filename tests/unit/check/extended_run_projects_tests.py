@@ -92,7 +92,7 @@ class TestRunProjectsReports:
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         reports_dir = tmp_path / "reports"
-        captured: dict[str, Path] = {}
+        captured: t.MutableMappingKV[str, Path] = {}
 
         def _fake_check(
             _project_dir: Path,
@@ -243,7 +243,7 @@ class _FixableGate:
     gate_id: str = "lint"
 
     def __init__(self) -> None:
-        self.calls: list[str] = []
+        self.calls: t.MutableSequenceOf[str] = []
 
     def fix(
         self,

@@ -15,8 +15,6 @@ from tests import c, m, u
 
 from flext_core import r
 
-_OUT = c.Infra.DEFAULT_DOCS_OUTPUT_DIR
-
 
 class TestFlextInfraDocScope:
     """Tests for DocScope model."""
@@ -67,7 +65,7 @@ class TestBuildScopes:
     def _build(
         root: Path,
         projects: list[str] | None = None,
-        output_dir: str = _OUT,
+        output_dir: str = c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
     ) -> r[Sequence[m.Infra.DocScope]]:
         return u.Infra.build_scopes(
             workspace_root=root,
@@ -109,7 +107,7 @@ class TestBuildScopes:
 
     def test_default_docs_output_dir_constant(self) -> None:
         """Test DEFAULT_DOCS_OUTPUT_DIR constant is defined."""
-        assert _OUT
+        assert c.Infra.DEFAULT_DOCS_OUTPUT_DIR
 
     def test_scope_structure(self, tmp_path: Path) -> None:
         """Test scopes returned have required structure."""

@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import ast
-from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import pytest
+from tests import t
 
 WORKSPACE = Path(__file__).resolve().parents[3]  # flext/ root
 
@@ -21,7 +21,7 @@ SSOT_METHODS = [
 
 # MRO parent chain: child -> parent.  A child MUST NOT re-implement a method
 # from any of its parents' _utilities/ directories.
-_MRO_CHAIN: Sequence[tuple[str, str]] = [
+_MRO_CHAIN: t.SequenceOf[t.Pair[str, str]] = [
     ("flext_cli", "flext_core"),
     ("flext_infra", "flext_core"),
     ("flext_infra", "flext_cli"),
@@ -30,17 +30,17 @@ _MRO_CHAIN: Sequence[tuple[str, str]] = [
 # Methods that legitimately have different semantics across packages (e.g.,
 # ``run`` for CLI execution vs service execution, ``to_str`` with different
 # input types).  Keyed by (child_package, parent_package) -> frozenset of names.
-_ALLOWED_OVERLAPS: Mapping[tuple[str, str], frozenset[str]] = {
+_ALLOWED_OVERLAPS: t.MappingKV[t.Pair[str, str], frozenset[str]] = {
     ("flext_cli", "flext_core"): frozenset({"run", "to_str"}),
 }
 
 
 def _find_method_definitions(
     method_name: str,
-    search_dirs: tuple[Path, ...],
-) -> list[str]:
+    search_dirs: t.SequenceOf[Path],
+) -> t.MutableSequenceOf[str]:
     """Find all static/class methods with exact name in _utilities/ dirs."""
-    found: list[str] = []
+    found: t.MutableSequenceOf[str] = []
     for search_dir in search_dirs:
         utils_dir = search_dir / "_utilities"
         if not utils_dir.exists():
@@ -60,10 +60,10 @@ def _find_method_definitions(
     return found
 
 
-def _collect_utility_methods(src_dir: Path) -> Mapping[str, str]:
+def _collect_utility_methods(src_dir: Path) -> t.MutableMappingKV[str, str]:
     """Return {method_name: relative_path} for all public methods in _utilities/."""
     utils_dir = src_dir / "_utilities"
-    methods: dict[str, str] = {}
+    methods: t.MutableMappingKV[str, str] = {}
     if not utils_dir.exists():
         return methods
     for py_file in utils_dir.rglob("*.py"):

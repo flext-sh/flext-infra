@@ -31,13 +31,9 @@ class TestViolationPattern:
         assert set(match.groupdict().keys()) == {"rule", "module", "line", "message"}
 
 
-_CV = m.Infra.CensusViolation
-_CR = m.Infra.CensusReport
-
-
 class TestCensusViolationModel:
     def test_model_fields(self) -> None:
-        v = _CV(
+        v = m.Infra.CensusViolation(
             module="src/file.py",
             rule="NS-001",
             line=10,
@@ -53,7 +49,12 @@ class TestCensusViolationModel:
 
 class TestCensusReportModel:
     def test_empty_report(self) -> None:
-        report = _CR(project="test-project", violations=[], total=0, fixable=0)
+        report = m.Infra.CensusReport(
+            project="test-project",
+            violations=[],
+            total=0,
+            fixable=0,
+        )
         tm.that(report.project, eq="test-project")
         tm.that(report.total, eq=0)
         tm.that(report.fixable, eq=0)
@@ -61,11 +62,29 @@ class TestCensusReportModel:
 
     def test_report_with_mixed_violations(self) -> None:
         violations = [
-            _CV(module="src/a.py", rule="NS-000", line=1, message="m1", fixable=False),
-            _CV(module="src/b.py", rule="NS-001", line=2, message="m2", fixable=True),
-            _CV(module="src/c.py", rule="NS-002", line=3, message="m3", fixable=True),
+            m.Infra.CensusViolation(
+                module="src/a.py",
+                rule="NS-000",
+                line=1,
+                message="m1",
+                fixable=False,
+            ),
+            m.Infra.CensusViolation(
+                module="src/b.py",
+                rule="NS-001",
+                line=2,
+                message="m2",
+                fixable=True,
+            ),
+            m.Infra.CensusViolation(
+                module="src/c.py",
+                rule="NS-002",
+                line=3,
+                message="m3",
+                fixable=True,
+            ),
         ]
-        report = _CR(
+        report = m.Infra.CensusReport(
             project="test-project",
             violations=violations,
             total=len(violations),

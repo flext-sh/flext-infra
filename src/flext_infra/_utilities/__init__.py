@@ -56,11 +56,17 @@ if _t.TYPE_CHECKING:
     )
 
     codegen_lazy = _flext_infra__utilities_codegen_lazy
-    import flext_infra._utilities.deps_paths as _flext_infra__utilities_deps_paths
+    import flext_infra._utilities.codegen_namespace as _flext_infra__utilities_codegen_namespace
     from flext_infra._utilities.codegen_lazy import (
         FlextInfraUtilitiesCodegenLazyAliases,
         FlextInfraUtilitiesCodegenLazyMerging,
         FlextInfraUtilitiesCodegenLazyScanning,
+    )
+
+    codegen_namespace = _flext_infra__utilities_codegen_namespace
+    import flext_infra._utilities.deps_paths as _flext_infra__utilities_deps_paths
+    from flext_infra._utilities.codegen_namespace import (
+        FlextInfraUtilitiesCodegenNamespace,
     )
 
     deps_paths = _flext_infra__utilities_deps_paths
@@ -297,6 +303,10 @@ _LAZY_IMPORTS = {
         "flext_infra._utilities.codegen_lazy",
         "FlextInfraUtilitiesCodegenLazyScanning",
     ),
+    "FlextInfraUtilitiesCodegenNamespace": (
+        "flext_infra._utilities.codegen_namespace",
+        "FlextInfraUtilitiesCodegenNamespace",
+    ),
     "FlextInfraUtilitiesDiscovery": (
         "flext_infra._utilities.discovery",
         "FlextInfraUtilitiesDiscovery",
@@ -463,6 +473,7 @@ _LAZY_IMPORTS = {
     "codegen_generation": "flext_infra._utilities.codegen_generation",
     "codegen_import_cycles": "flext_infra._utilities.codegen_import_cycles",
     "codegen_lazy": "flext_infra._utilities.codegen_lazy",
+    "codegen_namespace": "flext_infra._utilities.codegen_namespace",
     "deps_paths": "flext_infra._utilities.deps_paths",
     "deps_repos": "flext_infra._utilities.deps_repos",
     "discovery": "flext_infra._utilities.discovery",
@@ -524,6 +535,7 @@ __all__ = [
     "FlextInfraUtilitiesCodegenLazyAliases",
     "FlextInfraUtilitiesCodegenLazyMerging",
     "FlextInfraUtilitiesCodegenLazyScanning",
+    "FlextInfraUtilitiesCodegenNamespace",
     "FlextInfraUtilitiesDiscovery",
     "FlextInfraUtilitiesDiscoveryScanning",
     "FlextInfraUtilitiesDocs",
@@ -573,6 +585,7 @@ __all__ = [
     "codegen_generation",
     "codegen_import_cycles",
     "codegen_lazy",
+    "codegen_namespace",
     "deps_paths",
     "deps_repos",
     "discovery",

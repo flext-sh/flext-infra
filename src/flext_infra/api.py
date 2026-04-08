@@ -126,4 +126,6 @@ class FlextInfra(FlextInfraServiceBase[bool]):
         )
 
 
-__all__ = ["FlextInfra"]
+infra = FlextInfra()
+
+__all__ = ["FlextInfra", "infra"]

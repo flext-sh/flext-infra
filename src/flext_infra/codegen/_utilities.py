@@ -7,10 +7,12 @@ from flext_infra import (
     FlextInfraUtilitiesCodegenConstantDetection,
     FlextInfraUtilitiesCodegenConstantTransformation,
     FlextInfraUtilitiesCodegenExecution,
-    FlextInfraUtilitiesCodegenGovernance,
     FlextInfraUtilitiesCodegenImportCycles,
     FlextInfraUtilitiesCodegenLazyAliases,
     FlextInfraUtilitiesCodegenLazyScanning,
+)
+from flext_infra._utilities.codegen_namespace import (
+    FlextInfraUtilitiesCodegenNamespace,
 )
 
 
@@ -18,7 +20,7 @@ class FlextInfraUtilitiesCodegen(
     FlextInfraUtilitiesCodegenConstantAnalysis,
     FlextInfraUtilitiesCodegenConstantDetection,
     FlextInfraUtilitiesCodegenConstantTransformation,
-    FlextInfraUtilitiesCodegenGovernance,
+    FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesCodegenImportCycles,
     FlextInfraUtilitiesCodegenLazyAliases,
     FlextInfraUtilitiesCodegenLazyScanning,

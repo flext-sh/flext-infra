@@ -268,6 +268,7 @@ if _t.TYPE_CHECKING:
         test_converts_multiple_aliases,
         test_converts_typealias_to_pep695,
         test_injects_t_import_when_needed,
+        test_inserts_t_import_after_parenthesized_import_block,
         test_no_duplicate_t_import_when_t_from_project_package,
         test_noop_clean_module,
         test_preserves_annotated_in_function_params,
@@ -288,7 +289,11 @@ if _t.TYPE_CHECKING:
         test_replaces_primitives_union,
         test_replaces_scalar_union,
         test_replaces_subset_union_with_none,
+        test_rewrites_builtin_containers_to_canonical_t_aliases,
+        test_rewrites_fixed_arity_four_tuple_to_quad,
+        test_rewrites_tuple_variadics_and_any_annotations,
         test_skips_definition_files,
+        test_skips_duplicate_t_import_in_parenthesized_import_block,
         test_typealias_conversion_preserves_used_typing_siblings,
     )
 
@@ -504,6 +509,10 @@ _LAZY_IMPORTS = {
     "test_injects_t_import_when_needed": (
         "tests.unit.refactor.test_infra_refactor_typing_unifier",
         "test_injects_t_import_when_needed",
+    ),
+    "test_inserts_t_import_after_parenthesized_import_block": (
+        "tests.unit.refactor.test_infra_refactor_typing_unifier",
+        "test_inserts_t_import_after_parenthesized_import_block",
     ),
     "test_lazy_import_rule_hoists_import_to_module_level": (
         "tests.unit.refactor.test_infra_refactor_import_modernizer",
@@ -850,6 +859,18 @@ _LAZY_IMPORTS = {
         "tests.unit.refactor.test_infra_refactor_namespace_source",
         "test_rewriter_splits_mixed_imports_correctly",
     ),
+    "test_rewrites_builtin_containers_to_canonical_t_aliases": (
+        "tests.unit.refactor.test_infra_refactor_typing_unifier",
+        "test_rewrites_builtin_containers_to_canonical_t_aliases",
+    ),
+    "test_rewrites_fixed_arity_four_tuple_to_quad": (
+        "tests.unit.refactor.test_infra_refactor_typing_unifier",
+        "test_rewrites_fixed_arity_four_tuple_to_quad",
+    ),
+    "test_rewrites_tuple_variadics_and_any_annotations": (
+        "tests.unit.refactor.test_infra_refactor_typing_unifier",
+        "test_rewrites_tuple_variadics_and_any_annotations",
+    ),
     "test_rule_dispatch_fails_on_invalid_pattern_rule_config": (
         "tests.unit.refactor.test_infra_refactor_engine",
         "test_rule_dispatch_fails_on_invalid_pattern_rule_config",
@@ -897,6 +918,10 @@ _LAZY_IMPORTS = {
     "test_skips_definition_files": (
         "tests.unit.refactor.test_infra_refactor_typing_unifier",
         "test_skips_definition_files",
+    ),
+    "test_skips_duplicate_t_import_in_parenthesized_import_block": (
+        "tests.unit.refactor.test_infra_refactor_typing_unifier",
+        "test_skips_duplicate_t_import_in_parenthesized_import_block",
     ),
     "test_skips_facade_declaration_files": (
         "tests.unit.refactor.test_infra_refactor_namespace_source",
@@ -1057,6 +1082,7 @@ __all__ = [
     "test_infra_refactor_safety",
     "test_infra_refactor_typing_unifier",
     "test_injects_t_import_when_needed",
+    "test_inserts_t_import_after_parenthesized_import_block",
     "test_lazy_import_rule_hoists_import_to_module_level",
     "test_lazy_import_rule_uses_fix_action_for_hoist",
     "test_legacy_import_bypass_collapses_to_primary_import",
@@ -1144,6 +1170,9 @@ __all__ = [
     "test_rewriter_namespace_source_is_idempotent_with_ruff",
     "test_rewriter_preserves_non_alias_symbols",
     "test_rewriter_splits_mixed_imports_correctly",
+    "test_rewrites_builtin_containers_to_canonical_t_aliases",
+    "test_rewrites_fixed_arity_four_tuple_to_quad",
+    "test_rewrites_tuple_variadics_and_any_annotations",
     "test_rule_dispatch_fails_on_invalid_pattern_rule_config",
     "test_rule_dispatch_fails_on_unknown_rule_mapping",
     "test_rule_dispatch_keeps_legacy_id_fallback_mapping",
@@ -1156,6 +1185,7 @@ __all__ = [
     "test_signature_propagation_removes_and_adds_keywords",
     "test_signature_propagation_renames_call_keyword",
     "test_skips_definition_files",
+    "test_skips_duplicate_t_import_in_parenthesized_import_block",
     "test_skips_facade_declaration_files",
     "test_skips_import_as_rename",
     "test_skips_init_file",

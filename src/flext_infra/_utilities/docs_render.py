@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
 from typing import TypeIs
 
 from flext_infra import c, m, t
@@ -12,20 +11,25 @@ class FlextInfraUtilitiesDocsRender:
     """Rendering helpers for generated docs content."""
 
     @staticmethod
-    def _is_object_list(value: object) -> TypeIs[list[object]]:
-        """Type guard: narrow object to list[object]."""
+    def _is_object_list(
+        value: t.Infra.InfraValue | None,
+    ) -> TypeIs[t.MutableSequenceOf[t.Infra.InfraValue]]:
+        """Type guard: narrow one infra value to a mutable sequence."""
         return isinstance(value, list)
 
     @staticmethod
-    def _string_list(data: Mapping[str, object], key: str) -> Sequence[str]:
+    def _string_list(
+        data: t.Infra.ContainerDict,
+        key: str,
+    ) -> t.SequenceOf[str]:
         """Return one contract field as a normalized string sequence."""
-        value: object = data.get(key)
+        value = data.get(key)
         if not FlextInfraUtilitiesDocsRender._is_object_list(value):
             return []
         return [str(entry) for entry in value]
 
     @staticmethod
-    def _preview(values: Sequence[str], *, limit: int = 6) -> str:
+    def _preview(values: t.SequenceOf[str], *, limit: int = 6) -> str:
         """Render one compact preview list with overflow summary."""
         normalized = [value for value in values if value]
         if not normalized:
@@ -49,7 +53,7 @@ class FlextInfraUtilitiesDocsRender:
         return f"{relative}.md"
 
     @staticmethod
-    def _exclude_plugin_lines(data: Mapping[str, object]) -> Sequence[str]:
+    def _exclude_plugin_lines(data: t.Infra.ContainerDict) -> t.SequenceOf[str]:
         """Render optional ``mkdocs-exclude`` plugin lines."""
         patterns = FlextInfraUtilitiesDocsRender._string_list(data, "exclude_docs")
         if not patterns:
@@ -61,7 +65,7 @@ class FlextInfraUtilitiesDocsRender:
         ]
 
     @staticmethod
-    def _exclude_docs_lines(data: Mapping[str, object]) -> Sequence[str]:
+    def _exclude_docs_lines(data: t.Infra.ContainerDict) -> t.SequenceOf[str]:
         """Render optional native ``exclude_docs`` lines for early MkDocs filtering."""
         patterns = FlextInfraUtilitiesDocsRender._string_list(data, "exclude_docs")
         if not patterns:
@@ -94,7 +98,7 @@ class FlextInfraUtilitiesDocsRender:
         contract: t.Infra.ContainerDict,
     ) -> str:
         """Return the standard project docs landing page."""
-        data: Mapping[str, object] = contract or {}
+        data = contract
         aliases = FlextInfraUtilitiesDocsRender._string_list(data, "aliases")
         facades = FlextInfraUtilitiesDocsRender._string_list(data, "facades")
         module_exports = FlextInfraUtilitiesDocsRender._string_list(
@@ -154,7 +158,7 @@ class FlextInfraUtilitiesDocsRender:
         contract: t.Infra.ContainerDict,
     ) -> str:
         """Return the standard API readme for a project."""
-        data: Mapping[str, object] = contract or {}
+        data = contract
         facades = FlextInfraUtilitiesDocsRender._string_list(data, "facades")
         modules = FlextInfraUtilitiesDocsRender._string_list(data, "modules")
         return "\n".join([
@@ -190,11 +194,11 @@ class FlextInfraUtilitiesDocsRender:
     def docs_project_mkdocs(
         scope: m.Infra.DocScope,
         contract: t.Infra.ContainerDict,
-        modules: Sequence[str],
+        modules: t.SequenceOf[str],
     ) -> str:
         """Return the managed mkdocs.yml for a project scope."""
         _ = modules
-        data: Mapping[str, object] = contract or {}
+        data = contract
         site_title = str(data.get("site_title", "")).strip() or scope.name
         site_url = str(data.get("site_url", "")).strip() or c.Infra.GITHUB_REPO_URL
         repo_url = str(data.get("repo_url", "")).strip() or c.Infra.GITHUB_REPO_URL
@@ -251,7 +255,7 @@ class FlextInfraUtilitiesDocsRender:
         contract: t.Infra.ContainerDict,
     ) -> str:
         """Return the generated overview page for a project API."""
-        data: Mapping[str, object] = contract or {}
+        data = contract
         aliases = FlextInfraUtilitiesDocsRender._preview(
             FlextInfraUtilitiesDocsRender._string_list(data, "aliases"),
             limit=11,
@@ -299,10 +303,10 @@ class FlextInfraUtilitiesDocsRender:
     @staticmethod
     def docs_modules_index(
         scope: m.Infra.DocScope,
-        modules: Sequence[str],
+        modules: t.SequenceOf[str],
     ) -> str:
         """Return the generated module index page for one project."""
-        lines: list[str] = [
+        lines: t.MutableSequenceOf[str] = [
             c.Infra.SourceCode.GENERATED_HEADER,
             "",
             f"# {scope.name} Module Index",
@@ -325,7 +329,7 @@ class FlextInfraUtilitiesDocsRender:
     @staticmethod
     def docs_root_mkdocs(contract: t.Infra.ContainerDict) -> str:
         """Return the managed mkdocs.yml for the workspace root."""
-        data: Mapping[str, object] = contract or {}
+        data = contract
         site_title = str(data.get("site_title", "")).strip() or "FLEXT Workspace"
         site_url = str(data.get("site_url", "")).strip() or c.Infra.GITHUB_REPO_URL
         repo_url = str(data.get("repo_url", "")).strip() or c.Infra.GITHUB_REPO_URL
@@ -382,10 +386,10 @@ class FlextInfraUtilitiesDocsRender:
         contract: t.Infra.ContainerDict,
         *,
         project_count: int,
-        class_counts: Mapping[str, int],
+        class_counts: t.MappingKV[str, int],
     ) -> str:
         """Return the generated root API overview page."""
-        data: Mapping[str, object] = contract or {}
+        data = contract
         classes = (
             ", ".join(
                 f"`{name}`={count}" for name, count in sorted(class_counts.items())
@@ -407,7 +411,7 @@ class FlextInfraUtilitiesDocsRender:
         ])
 
     @staticmethod
-    def docs_project_catalog_page(entries: Sequence[Mapping[str, str]]) -> str:
+    def docs_project_catalog_page(entries: t.SequenceOf[t.StrMapping]) -> str:
         """Return the generated workspace project catalog page."""
         rows = [
             "| "

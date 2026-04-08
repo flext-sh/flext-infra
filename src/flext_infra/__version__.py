@@ -15,15 +15,19 @@ from importlib.metadata import PackageMetadata, PackageNotFoundError, metadata
 from pathlib import Path
 from typing import TypeIs
 
-from flext_core import FlextVersion
+from flext_core import FlextVersion, t
 
 
-def _is_object_mapping(value: object) -> TypeIs[Mapping[object, object]]:
+def _is_object_mapping(
+    value: t.OpaqueValue,
+) -> TypeIs[t.MappingKV[t.OpaqueValue, t.OpaqueValue]]:
     """Return whether one payload is a generic runtime mapping."""
     return isinstance(value, Mapping)
 
 
-def _is_object_sequence(value: object) -> TypeIs[Sequence[object]]:
+def _is_object_sequence(
+    value: t.OpaqueValue,
+) -> TypeIs[t.SequenceOf[t.OpaqueValue]]:
     """Return whether one payload is a non-string runtime sequence."""
     return isinstance(value, Sequence) and not isinstance(
         value,
@@ -31,24 +35,23 @@ def _is_object_sequence(value: object) -> TypeIs[Sequence[object]]:
     )
 
 
-def _object_mapping(value: object) -> Mapping[str, object]:
+def _object_mapping(
+    value: t.OpaqueValue,
+) -> t.MutableMappingKV[str, t.OpaqueValue]:
     """Normalize one runtime payload to a string-key mapping."""
     if not _is_object_mapping(value):
         return {}
-    normalized: dict[str, object] = {}
-    for key, entry in value.items():
-        normalized[str(key)] = entry
-    return normalized
+    return {str(key): entry for key, entry in value.items()}
 
 
-def _object_sequence(value: object) -> Sequence[object]:
+def _object_sequence(value: t.OpaqueValue) -> t.SequenceOf[t.OpaqueValue]:
     """Normalize one runtime payload to a generic object sequence."""
     if not _is_object_sequence(value):
         return ()
     return tuple(value)
 
 
-def _pyproject_metadata() -> dict[str, str]:
+def _pyproject_metadata() -> t.MutableStrMapping:
     """Load fallback package metadata directly from the local pyproject."""
     pyproject_path = Path(__file__).resolve().parents[2] / "pyproject.toml"
     with pyproject_path.open("rb") as handle:
@@ -57,7 +60,7 @@ def _pyproject_metadata() -> dict[str, str]:
     authors = _object_sequence(project.get("authors", ()))
     first_author = _object_mapping(authors[0] if authors else {})
     urls = _object_mapping(project.get("urls", {}))
-    home_page_obj: object = (
+    home_page_obj: t.OpaqueValue = (
         urls.get("Homepage")
         or urls.get("Repository")
         or urls.get("Documentation")
@@ -74,7 +77,7 @@ def _pyproject_metadata() -> dict[str, str]:
     }
 
 
-def _load_metadata() -> PackageMetadata | Mapping[str, str]:
+def _load_metadata() -> PackageMetadata | t.StrMapping:
     """Load installed metadata when available, otherwise fall back to pyproject."""
     try:
         return metadata("flext-infra")
@@ -85,9 +88,9 @@ def _load_metadata() -> PackageMetadata | Mapping[str, str]:
 class FlextInfraVersion(FlextVersion):
     """Package version and metadata for flext-infra — inherits FlextVersion."""
 
-    _metadata: PackageMetadata | Mapping[str, str] = _load_metadata()
+    _metadata: PackageMetadata | t.StrMapping = _load_metadata()
     __version__ = _metadata["Version"]
-    __version_info__ = tuple(
+    __version_info__: t.VariadicTuple[int | str] = tuple(
         int(part) if part.isdigit() else part for part in __version__.split(".")
     )
     __title__ = _metadata["Name"]

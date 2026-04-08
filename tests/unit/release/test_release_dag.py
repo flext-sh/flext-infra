@@ -12,17 +12,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_tests import tm
-from tests import c, m, t
+from tests import c, m, r, t
 
-from flext_core import r
 from flext_infra import FlextInfraReleaseOrchestrator
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from _pytest.monkeypatch import MonkeyPatch
-
-_CLS = FlextInfraReleaseOrchestrator
 
 # Canonical phase order as used by _build_release_stages.
 _ALL_PHASES: list[str] = [
@@ -77,11 +74,19 @@ class TestReleaseDag:
             executed_phases.append(dispatch_config.phase)
             return r[bool].ok(True)
 
-        monkeypatch.setattr(_CLS, "_dispatch_phase", _tracking_dispatch)
-        monkeypatch.setattr(_CLS, "_create_branches", _noop_branches)
+        monkeypatch.setattr(
+            FlextInfraReleaseOrchestrator,
+            "_dispatch_phase",
+            _tracking_dispatch,
+        )
+        monkeypatch.setattr(
+            FlextInfraReleaseOrchestrator,
+            "_create_branches",
+            _noop_branches,
+        )
 
         config = _make_config(tmp_path)
-        result = _CLS().run_release(config)
+        result = FlextInfraReleaseOrchestrator().run_release(config)
         tm.ok(result)
         tm.that(executed_phases, eq=_ALL_PHASES)
 
@@ -100,11 +105,15 @@ class TestReleaseDag:
             executed_phases.append(dispatch_config.phase)
             return r[bool].ok(True)
 
-        monkeypatch.setattr(_CLS, "_dispatch_phase", _tracking_dispatch)
+        monkeypatch.setattr(
+            FlextInfraReleaseOrchestrator,
+            "_dispatch_phase",
+            _tracking_dispatch,
+        )
 
         selected = [c.Infra.Verbs.VALIDATE, c.Infra.Directories.BUILD]
         config = _make_config(tmp_path, phases=selected)
-        result = _CLS().run_release(config)
+        result = FlextInfraReleaseOrchestrator().run_release(config)
         tm.ok(result)
         tm.that(executed_phases, eq=selected)
         # version and publish must not appear.
@@ -128,10 +137,14 @@ class TestReleaseDag:
                 return r[bool].fail("validation failed")
             return r[bool].ok(True)
 
-        monkeypatch.setattr(_CLS, "_dispatch_phase", _failing_dispatch)
+        monkeypatch.setattr(
+            FlextInfraReleaseOrchestrator,
+            "_dispatch_phase",
+            _failing_dispatch,
+        )
 
         config = _make_config(tmp_path)
-        result = _CLS().run_release(config)
+        result = FlextInfraReleaseOrchestrator().run_release(config)
         tm.fail(result)
         # Only validate should have been dispatched.
         tm.that(executed_phases, eq=[c.Infra.Verbs.VALIDATE])

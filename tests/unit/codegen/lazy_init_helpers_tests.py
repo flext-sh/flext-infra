@@ -7,33 +7,18 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-from collections.abc import Callable, Mapping
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_tests import tm
-
-from flext_infra import (
-    FlextInfraUtilitiesCodegenLazyScanning,
-    FlextInfraUtilitiesRopeHelpers,
-    u,
-)
-
-_read_existing_docstring: Callable[[Path], str] = getattr(
-    FlextInfraUtilitiesCodegenLazyScanning,
-    "read_existing_docstring",
-)
-_build_sibling_export_index: Callable[[Path, str], Mapping[str, tuple[str, str]]] = (
-    getattr(FlextInfraUtilitiesCodegenLazyScanning, "build_sibling_export_index")
-)
+from tests import u
 
 
-def _extract_exports(source: str) -> tuple[bool, list[str]]:
-    for name, value_str in FlextInfraUtilitiesRopeHelpers.get_module_level_assignments(
-        source
-    ):
+def _extract_exports(source: str) -> tuple[bool, Sequence[str]]:
+    for name, value_str in u.Infra.get_module_level_assignments(source):
         if name == "__all__":
-            return True, re.findall(r'["\']([^"\']+)["\']', value_str)
-    return False, []
+            return True, tuple(re.findall(r'["\']([^"\']+)["\']', value_str))
+    return False, ()
 
 
 class TestInferPackage:
@@ -77,52 +62,52 @@ class TestInferPackage:
 
 
 class TestReadExistingDocstring:
-    """Test _read_existing_docstring function."""
+    """Test public docstring discovery utility."""
 
     def test_with_docstring(self, tmp_path: Path) -> None:
         """Test extracting docstring from existing __init__.py."""
         init_file = tmp_path / "__init__.py"
         init_file.write_text('"""Package docstring."""\nx = 1\n')
-        result = _read_existing_docstring(init_file)
+        result = u.Infra.read_existing_docstring(init_file)
         tm.that(result, contains="Package docstring")
 
     def test_without_docstring(self, tmp_path: Path) -> None:
         """Test returns empty when no docstring exists."""
         init_file = tmp_path / "__init__.py"
         init_file.write_text("x = 1\ny = 2\n")
-        result = _read_existing_docstring(init_file)
+        result = u.Infra.read_existing_docstring(init_file)
         tm.that(result, eq="")
 
     def test_nonexistent_file(self, tmp_path: Path) -> None:
         """Test returns empty when file doesn't exist."""
         init_file = tmp_path / "__init__.py"
-        result = _read_existing_docstring(init_file)
+        result = u.Infra.read_existing_docstring(init_file)
         tm.that(result, eq="")
 
     def test_with_syntax_error(self, tmp_path: Path) -> None:
         """Test returns empty on syntax error."""
         init_file = tmp_path / "__init__.py"
         init_file.write_text("invalid syntax ][")
-        result = _read_existing_docstring(init_file)
+        result = u.Infra.read_existing_docstring(init_file)
         tm.that(result, eq="")
 
     def test_with_single_quotes(self, tmp_path: Path) -> None:
         """Test preserves single-quote docstring style."""
         init_file = tmp_path / "__init__.py"
         init_file.write_text("'''Module docstring.'''\nx = 1\n")
-        result = _read_existing_docstring(init_file)
+        result = u.Infra.read_existing_docstring(init_file)
         tm.that(result, contains="Module docstring")
 
 
 class TestBuildSiblingExportIndex:
-    """Test _build_sibling_export_index function."""
+    """Test public sibling export discovery utility."""
 
     def test_with_all_exports(self, tmp_path: Path) -> None:
         """Test scanning sibling files with __all__."""
         (tmp_path / "models.py").write_text(
             '"""Models."""\n\n__all__ = ["Foo", "Bar"]\n\nclass Foo: pass\nclass Bar: pass\n',
         )
-        index = _build_sibling_export_index(tmp_path, "test_pkg")
+        index = u.Infra.build_sibling_export_index(tmp_path, "test_pkg")
         tm.that(index, contains="Foo")
         tm.that(index, contains="Bar")
         tm.that(index["Foo"], eq=("test_pkg.models", "Foo"))
@@ -132,7 +117,7 @@ class TestBuildSiblingExportIndex:
         (tmp_path / "service.py").write_text(
             "class PublicService:\n    pass\n\ndef public_func():\n    pass\n",
         )
-        index = _build_sibling_export_index(tmp_path, "test_pkg")
+        index = u.Infra.build_sibling_export_index(tmp_path, "test_pkg")
         tm.that(index, contains="PublicService")
         tm.that(index, contains="public_func")
 
@@ -143,7 +128,7 @@ class TestBuildSiblingExportIndex:
         (tmp_path / "models.py").write_text(
             '__all__ = ["Model"]\nclass Model: pass\n',
         )
-        index = _build_sibling_export_index(tmp_path, "test_pkg")
+        index = u.Infra.build_sibling_export_index(tmp_path, "test_pkg")
         tm.that(index, excludes="Init")
         tm.that(index, excludes="main")
         tm.that(index, contains="Model")
@@ -152,7 +137,7 @@ class TestBuildSiblingExportIndex:
         """Test that _private.py files are skipped."""
         (tmp_path / "_internal.py").write_text("class Internal: pass\n")
         (tmp_path / "public.py").write_text("class Public: pass\n")
-        index = _build_sibling_export_index(tmp_path, "test_pkg")
+        index = u.Infra.build_sibling_export_index(tmp_path, "test_pkg")
         tm.that(index, excludes="Internal")
         tm.that(index, contains="Public")
 
@@ -162,7 +147,7 @@ class TestBuildSiblingExportIndex:
         (tmp_path / "models.py").write_text(
             '__all__ = ["Model"]\nclass Model: pass\n',
         )
-        index = _build_sibling_export_index(tmp_path, "test_pkg")
+        index = u.Infra.build_sibling_export_index(tmp_path, "test_pkg")
         tm.that(index, excludes="__version__")
         tm.that(index, contains="Model")
 
@@ -172,7 +157,7 @@ class TestBuildSiblingExportIndex:
         (tmp_path / "good.py").write_text(
             '__all__ = ["Good"]\nclass Good: pass\n',
         )
-        index = _build_sibling_export_index(tmp_path, "test_pkg")
+        index = u.Infra.build_sibling_export_index(tmp_path, "test_pkg")
         tm.that(index, contains="Good")
 
     def test_preserves_docs_module_path(self, tmp_path: Path) -> None:
@@ -182,7 +167,10 @@ class TestBuildSiblingExportIndex:
         (tools_dir / "validate_docs.py").write_text(
             '__all__ = ["ArchitectureValidator"]\nclass ArchitectureValidator: pass\n',
         )
-        index = _build_sibling_export_index(tools_dir, "docs.architecture.tools")
+        index = u.Infra.build_sibling_export_index(
+            tools_dir,
+            "docs.architecture.tools",
+        )
         tm.that(
             index["ArchitectureValidator"],
             eq=("docs.architecture.tools.validate_docs", "ArchitectureValidator"),
@@ -197,25 +185,25 @@ class TestExtractExports:
         code = '__all__ = ["Foo", "Bar"]'
         has_all, exports = _extract_exports(code)
         tm.that(has_all, eq=True)
-        tm.that(exports, eq=["Foo", "Bar"])
+        tm.that(exports, eq=("Foo", "Bar"))
 
     def test_with_tuple_all(self) -> None:
         """Test __all__ as tuple."""
         code = '__all__ = ("Foo", "Bar")'
         has_all, exports = _extract_exports(code)
         tm.that(has_all, eq=True)
-        tm.that(exports, eq=["Foo", "Bar"])
+        tm.that(exports, eq=("Foo", "Bar"))
 
     def test_with_non_string_elements(self) -> None:
         """Test ignores non-string elements."""
         code = '__all__ = ["Foo", 123, "Bar"]'
         has_all, exports = _extract_exports(code)
         tm.that(has_all, eq=True)
-        tm.that(exports, eq=["Foo", "Bar"])
+        tm.that(exports, eq=("Foo", "Bar"))
 
     def test_without_all(self) -> None:
         """Test when __all__ is missing."""
         code = "x = 1"
         has_all, exports = _extract_exports(code)
         tm.that(not has_all, eq=True)
-        tm.that(exports, eq=[])
+        tm.that(exports, eq=())

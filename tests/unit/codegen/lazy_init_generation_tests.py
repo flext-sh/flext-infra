@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Mapping, MutableMapping, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 import pytest
@@ -17,27 +17,15 @@ from tests import r, t, u
 import flext_infra.codegen as mod
 
 
-def _resolve_aliases(lazy_map: MutableMapping[str, tuple[str, str]]) -> None:
-    u.Infra().resolve_aliases(lazy_map, pkg_dir=Path("/workspace/pkg"))
-
-
-_generate_file = mod.FlextInfraCodegenGeneration.generate_file
-_generate_type_checking = mod.FlextInfraCodegenGeneration.generate_type_checking
-
-
-def _run_ruff_fix(path: Path) -> None:
-    u.Infra.run_ruff_fix(path)
-
-
 class TestResolveAliases:
-    """Test _resolve_aliases function."""
+    """Test public alias resolution utility behavior."""
 
     def test_resolves_c_alias(self) -> None:
         """Test resolving 'c' alias to Constants class."""
         lazy_map: MutableMapping[str, tuple[str, str]] = {
             "FlextConstants": ("pkg.constants", "FlextConstants"),
         }
-        _resolve_aliases(lazy_map)
+        u.Infra().resolve_aliases(lazy_map, pkg_dir=Path("/workspace/pkg"))
         tm.that(lazy_map, contains="c")
         tm.that(lazy_map["c"], eq=("pkg.constants", "FlextConstants"))
 
@@ -47,7 +35,7 @@ class TestResolveAliases:
             "c": ("pkg.constants", "FlextConstants"),
             "FlextConstants": ("pkg.constants", "FlextConstants"),
         }
-        _resolve_aliases(lazy_map)
+        u.Infra().resolve_aliases(lazy_map, pkg_dir=Path("/workspace/pkg"))
         tm.that(lazy_map["c"], eq=("pkg.constants", "FlextConstants"))
 
     def test_overwrites_non_canonical_existing(self) -> None:
@@ -56,7 +44,7 @@ class TestResolveAliases:
             "c": ("pkg.custom", "CustomConst"),
             "FlextConstants": ("pkg.constants", "FlextConstants"),
         }
-        _resolve_aliases(lazy_map)
+        u.Infra().resolve_aliases(lazy_map, pkg_dir=Path("/workspace/pkg"))
         tm.that(lazy_map["c"], eq=("pkg.constants", "FlextConstants"))
 
     def test_resolves_multiple_aliases(self) -> None:
@@ -66,7 +54,7 @@ class TestResolveAliases:
             "FlextModels": ("pkg.models", "FlextModels"),
             "FlextTypes": ("pkg.typings", "FlextTypes"),
         }
-        _resolve_aliases(lazy_map)
+        u.Infra().resolve_aliases(lazy_map, pkg_dir=Path("/workspace/pkg"))
         tm.that(lazy_map, contains="c")
         tm.that(lazy_map, contains="m")
         tm.that(lazy_map, contains="t")
@@ -78,14 +66,14 @@ class TestGenerateTypeChecking:
     def test_with_empty_groups(self) -> None:
         """Test with no imports returns header + FlextTypes only."""
         groups: Mapping[str, Sequence[tuple[str, str]]] = {}
-        lines = _generate_type_checking(groups)
+        lines = mod.FlextInfraCodegenGeneration.generate_type_checking(groups)
         tm.that(lines, contains="if _t.TYPE_CHECKING:")
         tm.that(any("FlextTypes" in line for line in lines), eq=True)
 
     def test_with_empty_groups_no_flext_types(self) -> None:
         """Test with no imports and no FlextTypes returns empty list."""
         groups: Mapping[str, Sequence[tuple[str, str]]] = {}
-        lines = _generate_type_checking(
+        lines = mod.FlextInfraCodegenGeneration.generate_type_checking(
             groups,
             include_flext_types=False,
         )
@@ -94,13 +82,13 @@ class TestGenerateTypeChecking:
     def test_with_single_module(self) -> None:
         """Test with single module."""
         groups = {"module": [("Test", "Test")]}
-        lines = _generate_type_checking(groups)
+        lines = mod.FlextInfraCodegenGeneration.generate_type_checking(groups)
         tm.that(" ".join(lines), contains="from module import")
 
     def test_with_aliased_imports(self) -> None:
         """Test with aliased imports."""
         groups = {"module": [("c", "FlextConstants"), ("m", "FlextModels")]}
-        lines = _generate_type_checking(groups)
+        lines = mod.FlextInfraCodegenGeneration.generate_type_checking(groups)
         joined = " ".join(lines)
         tm.that(
             joined, contains="from module import FlextConstants as c, FlextModels as m"
@@ -114,7 +102,7 @@ class TestGenerateTypeChecking:
             ("VeryLongClassName2", "VeryLongClassName2"),
             ("VeryLongClassName3", "VeryLongClassName3"),
         ]
-        lines = _generate_type_checking(groups)
+        lines = mod.FlextInfraCodegenGeneration.generate_type_checking(groups)
         tm.that(any("module" in line for line in lines), eq=True)
 
     def test_with_multiple_modules_spacing(self) -> None:
@@ -122,19 +110,25 @@ class TestGenerateTypeChecking:
         groups: MutableMapping[str, Sequence[tuple[str, str]]] = defaultdict(list)
         groups["alpha_pkg.module"] = [("Test1", "Test1")]
         groups["beta_pkg.module"] = [("Test2", "Test2")]
-        lines = _generate_type_checking(groups)
+        lines = mod.FlextInfraCodegenGeneration.generate_type_checking(groups)
         tm.that(lines, contains="")
 
 
 class TestGenerateFile:
-    """Test _generate_file function."""
+    """Test public lazy-init file generation behavior."""
 
     def test_with_flext_core_package(self) -> None:
         """Test uses correct lazy import for flext_core."""
         exports = ["Test"]
         filtered = {"Test": ("module", "Test")}
         inline_constants: t.StrMapping = {}
-        content = _generate_file("", exports, filtered, inline_constants, "flext_core")
+        content = mod.FlextInfraCodegenGeneration.generate_file(
+            "",
+            exports,
+            filtered,
+            inline_constants,
+            "flext_core",
+        )
         tm.that(content, contains="from flext_core.lazy import install_lazy_exports")
 
     def test_with_other_package(self) -> None:
@@ -142,7 +136,13 @@ class TestGenerateFile:
         exports = ["Test"]
         filtered = {"Test": ("module", "Test")}
         inline_constants: t.StrMapping = {}
-        content = _generate_file("", exports, filtered, inline_constants, "other_pkg")
+        content = mod.FlextInfraCodegenGeneration.generate_file(
+            "",
+            exports,
+            filtered,
+            inline_constants,
+            "other_pkg",
+        )
         tm.that(content, contains="from flext_core.lazy import install_lazy_exports")
 
     def test_with_inline_constants(self) -> None:
@@ -150,7 +150,13 @@ class TestGenerateFile:
         exports = ["__version__", "Test"]
         filtered = {"Test": ("module", "Test")}
         inline_constants = {"__version__": "1.0.0"}
-        content = _generate_file("", exports, filtered, inline_constants, "test_pkg")
+        content = mod.FlextInfraCodegenGeneration.generate_file(
+            "",
+            exports,
+            filtered,
+            inline_constants,
+            "test_pkg",
+        )
         tm.that(content, contains='__version__ = "1.0.0"')
 
     def test_with_eager_runtime_imports(self) -> None:
@@ -162,7 +168,7 @@ class TestGenerateFile:
             "FlextVersion": ("test_pkg.__version__", "FlextVersion"),
             "__version__": ("test_pkg.__version__", "__version__"),
         }
-        content = _generate_file(
+        content = mod.FlextInfraCodegenGeneration.generate_file(
             "",
             exports,
             filtered,
@@ -185,7 +191,7 @@ class TestGenerateFile:
             "Test": ("test_pkg.models", "Test"),
         }
         inline_constants: t.StrMapping = {}
-        content = _generate_file(
+        content = mod.FlextInfraCodegenGeneration.generate_file(
             "",
             exports,
             filtered,
@@ -203,7 +209,7 @@ class TestGenerateFile:
         exports = ["Test"]
         filtered = {"Test": ("module", "Test")}
         inline_constants: t.StrMapping = {}
-        content = _generate_file(
+        content = mod.FlextInfraCodegenGeneration.generate_file(
             docstring,
             exports,
             filtered,
@@ -217,7 +223,13 @@ class TestGenerateFile:
         exports = ["Test"]
         filtered = {"Test": ("module", "Test")}
         inline_constants: t.StrMapping = {}
-        content = _generate_file("", exports, filtered, inline_constants, "test_pkg")
+        content = mod.FlextInfraCodegenGeneration.generate_file(
+            "",
+            exports,
+            filtered,
+            inline_constants,
+            "test_pkg",
+        )
         tm.that(content, contains="AUTO-GENERATED")
 
     def test_has_lazy_imports_with_exports(self) -> None:
@@ -225,7 +237,13 @@ class TestGenerateFile:
         exports = ["Alpha", "Beta"]
         filtered = {"Alpha": ("mod", "Alpha"), "Beta": ("mod", "Beta")}
         inline_constants: t.StrMapping = {}
-        content = _generate_file("", exports, filtered, inline_constants, "test_pkg")
+        content = mod.FlextInfraCodegenGeneration.generate_file(
+            "",
+            exports,
+            filtered,
+            inline_constants,
+            "test_pkg",
+        )
         tm.that(content, contains="install_lazy_exports")
         tm.that(content, contains='"Alpha"')
         tm.that(content, contains='"Beta"')
@@ -235,7 +253,13 @@ class TestGenerateFile:
         exports = ["Alpha", "Beta"]
         filtered = {"Alpha": ("mod", "Alpha"), "Beta": ("mod", "Beta")}
         inline_constants: t.StrMapping = {}
-        content = _generate_file("", exports, filtered, inline_constants, "test_pkg")
+        content = mod.FlextInfraCodegenGeneration.generate_file(
+            "",
+            exports,
+            filtered,
+            inline_constants,
+            "test_pkg",
+        )
         tm.that(content, contains="if _t.TYPE_CHECKING:")
         tm.that(content, contains="import typing as _t")
         tm.that(content, contains="__all__ = [")
@@ -245,12 +269,12 @@ class TestGenerateFile:
 
 
 class TestRunRuffFix:
-    """Test _run_ruff_fix function."""
+    """Test public ruff post-processing utility behavior."""
 
     def test_with_nonexistent_file(self, tmp_path: Path) -> None:
         """Test handles nonexistent files gracefully."""
         nonexistent = tmp_path / "nonexistent.py"
-        _run_ruff_fix(nonexistent)  # Should not raise
+        u.Infra.run_ruff_fix(nonexistent)
 
     def test_runs_ruff_check_and_format(
         self,
@@ -260,7 +284,7 @@ class TestRunRuffFix:
         """Test generated files are lint-fixed and formatted."""
         generated = tmp_path / "__init__.py"
         generated.write_text("__all__=[]\n", encoding="utf-8")
-        commands: list[list[str]] = []
+        commands: MutableSequence[t.StrSequence] = []
 
         def _run_checked(
             cmd: t.StrSequence,
@@ -269,14 +293,20 @@ class TestRunRuffFix:
             env: t.StrMapping | None = None,
         ) -> r[bool]:
             _ = (cwd, timeout, env)
-            commands.append(list(cmd))
+            commands.append(tuple(cmd))
             return r[bool].ok(True)
 
         monkeypatch.setattr(u.Cli, "run_checked", _run_checked)
-        _run_ruff_fix(generated)
+        u.Infra.run_ruff_fix(generated)
         tm.that(len(commands), eq=2)
-        tm.that(commands[0], eq=["ruff", "check", "--fix", "--quiet", str(generated)])
-        tm.that(commands[1], eq=["ruff", "format", "--quiet", str(generated)])
+        tm.that(
+            commands[0],
+            eq=("ruff", "check", "--fix", "--quiet", str(generated)),
+        )
+        tm.that(
+            commands[1],
+            eq=("ruff", "format", "--quiet", str(generated)),
+        )
 
     def test_raises_when_ruff_postprocess_fails(
         self,
@@ -303,7 +333,7 @@ class TestRunRuffFix:
 
         monkeypatch.setattr(u.Cli, "run_checked", _run_checked)
         with pytest.raises(ValueError, match="ruff format failed"):
-            _run_ruff_fix(generated)
+            u.Infra.run_ruff_fix(generated)
 
 
 def test_codegen_init_getattr_raises_attribute_error() -> None:

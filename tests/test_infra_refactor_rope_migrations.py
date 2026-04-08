@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from tests import t, u
+
 from flext_infra import (
     FlextInfraNestedClassPropagationTransformer,
     FlextInfraRefactorSymbolPropagator,
-    t,
-    u,
 )
 
 
@@ -17,7 +17,7 @@ def _apply_transformer(
     file_name: str,
     source: str,
     transform: t.Infra.RopeTransformFn,
-) -> tuple[str, list[str]]:
+) -> t.Infra.TransformResult:
     file_path = tmp_path / "src" / file_name
     file_path.parent.mkdir(parents=True, exist_ok=True)
     file_path.write_text(source, encoding="utf-8")
@@ -29,7 +29,7 @@ def _apply_transformer(
     return updated, list(changes)
 
 
-def _metadata_dependency_names(subject: object) -> set[str]:
+def _metadata_dependency_names(subject: type) -> set[str]:
     deps = getattr(subject, "METADATA_DEPENDENCIES", ())
     names: set[str] = set()
     for dep in deps:
@@ -118,7 +118,7 @@ class TestSymbolPropagatorRopeMigration:
     def test_on_change_callback_invoked(self, tmp_path: Path) -> None:
         """on_change callback is invoked for each change made."""
         source = "from mylib import OldName\n"
-        recorded: list[str] = []
+        recorded: t.MutableSequenceOf[str] = []
         transformer = FlextInfraRefactorSymbolPropagator(
             target_modules={"mylib"},
             module_renames={},

@@ -13,9 +13,6 @@ import pytest
 from flext_tests import tm
 from tests import m, t
 
-_VK = m.Infra.ViolationKey
-_CV = m.Infra.CensusViolation
-
 
 def _violation(
     *,
@@ -25,7 +22,13 @@ def _violation(
     message: str = "test violation",
     fixable: bool = True,
 ) -> m.Infra.CensusViolation:
-    return _CV(module=module, rule=rule, line=line, message=message, fixable=fixable)
+    return m.Infra.CensusViolation(
+        module=module,
+        rule=rule,
+        line=line,
+        message=message,
+        fixable=fixable,
+    )
 
 
 _SOURCE_10 = [f"line {i}" for i in range(10)]
@@ -37,7 +40,7 @@ class TestViolationKeyFromViolation:
     def test_from_violation_produces_content_hash(self) -> None:
         """ViolationKey has correct module, rule, and a non-empty content_hash."""
         v = _violation(module="src/models.py", rule="NS-002", line=5)
-        key = _VK.from_violation(v, _SOURCE_10)
+        key = m.Infra.ViolationKey.from_violation(v, _SOURCE_10)
         tm.that(key.module, eq="src/models.py")
         tm.that(key.rule, eq="NS-002")
         tm.that(len(key.content_hash) > 0, eq=True)
@@ -45,35 +48,35 @@ class TestViolationKeyFromViolation:
     def test_content_hash_stable_across_calls(self) -> None:
         """Same input produces identical hash on repeated calls."""
         v = _violation(line=4)
-        key_a = _VK.from_violation(v, _SOURCE_10)
-        key_b = _VK.from_violation(v, _SOURCE_10)
+        key_a = m.Infra.ViolationKey.from_violation(v, _SOURCE_10)
+        key_b = m.Infra.ViolationKey.from_violation(v, _SOURCE_10)
         tm.that(key_a.content_hash, eq=key_b.content_hash)
 
     def test_content_hash_changes_with_context(self) -> None:
         """Different surrounding lines produce different hash."""
         v = _violation(line=4)
         alt_source = [f"different {i}" for i in range(10)]
-        key_original = _VK.from_violation(v, _SOURCE_10)
-        key_altered = _VK.from_violation(v, alt_source)
+        key_original = m.Infra.ViolationKey.from_violation(v, _SOURCE_10)
+        key_altered = m.Infra.ViolationKey.from_violation(v, alt_source)
         tm.that(key_original.content_hash != key_altered.content_hash, eq=True)
 
     def test_boundary_line_zero(self) -> None:
         """Violation at line=0 does not crash."""
         v = _violation(line=0)
-        key = _VK.from_violation(v, _SOURCE_10)
+        key = m.Infra.ViolationKey.from_violation(v, _SOURCE_10)
         tm.that(len(key.content_hash) > 0, eq=True)
 
     def test_boundary_last_line(self) -> None:
         """Violation at line beyond source_lines length does not crash."""
         v = _violation(line=999)
-        key = _VK.from_violation(v, _SOURCE_10)
+        key = m.Infra.ViolationKey.from_violation(v, _SOURCE_10)
         # Context window clamps to source bounds; hash is of empty string.
         tm.that(len(key.content_hash) > 0, eq=True)
 
     def test_frozen_model(self) -> None:
         """ViolationKey is immutable (frozen=True)."""
         v = _violation()
-        key = _VK.from_violation(v, _SOURCE_10)
+        key = m.Infra.ViolationKey.from_violation(v, _SOURCE_10)
         with pytest.raises(Exception):
             key.module = "changed"  # type: ignore[misc]
 
@@ -84,15 +87,15 @@ class TestViolationKeyFromViolation:
         v3 = _violation(module="c.py", rule="NS-003", line=4)
 
         before = frozenset({
-            _VK.from_violation(v1, _SOURCE_10),
-            _VK.from_violation(v2, _SOURCE_10),
-            _VK.from_violation(v3, _SOURCE_10),
+            m.Infra.ViolationKey.from_violation(v1, _SOURCE_10),
+            m.Infra.ViolationKey.from_violation(v2, _SOURCE_10),
+            m.Infra.ViolationKey.from_violation(v3, _SOURCE_10),
         })
 
         # After fixing, only v1 and v3 remain.
         after = frozenset({
-            _VK.from_violation(v1, _SOURCE_10),
-            _VK.from_violation(v3, _SOURCE_10),
+            m.Infra.ViolationKey.from_violation(v1, _SOURCE_10),
+            m.Infra.ViolationKey.from_violation(v3, _SOURCE_10),
         })
 
         fixed = before - after

@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable, MutableSequence, Sequence
+from collections.abc import Callable, MutableSequence
 
 from flext_core import FlextTypes
 from flext_infra import FlextInfraProtocolsRope
@@ -88,7 +88,7 @@ class FlextInfraTypesRope:
             FlextInfraProtocolsRope.RopeProjectLike,
             FlextInfraProtocolsRope.RopeResourceLike,
         ],
-        tuple[str, Sequence[str]],
+        FlextTypes.Pair[str, FlextTypes.StrSequence],
     ]
     "Callback signature for rope-based transformers: (project, resource) -> (source, changes)."
 

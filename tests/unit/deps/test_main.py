@@ -18,10 +18,6 @@ from tests import t
 
 from flext_infra import FlextInfraCliDeps, deps
 
-_SUBCOMMAND_MODULES = FlextInfraCliDeps._SUBCOMMAND_MODULES
-_main_impl = FlextInfraCliDeps.run
-main = FlextInfraCliDeps.run
-
 
 def _fake_module(return_value: t.Infra.InfraValue = 0) -> ModuleType:
     """Create a real ModuleType with a main() returning *return_value*."""
@@ -37,7 +33,10 @@ def _patch_dispatch(
 ) -> None:
     """Patch sys.argv and lazy-exported deps modules for dispatch tests."""
     mp.setattr(sys, "argv", argv)
-    export_name = _SUBCOMMAND_MODULES["detect"].rsplit(".", maxsplit=1)[-1]
+    export_name = FlextInfraCliDeps._SUBCOMMAND_MODULES["detect"].rsplit(
+        ".",
+        maxsplit=1,
+    )[-1]
     mp.setattr(deps, export_name, _fake_module(ret))
 
 
@@ -54,7 +53,7 @@ class TestSubcommandMapping:
 
     def test_subcommands_count(self) -> None:
         """Test correct number of subcommands."""
-        tm.that(len(_SUBCOMMAND_MODULES), eq=5)
+        tm.that(len(FlextInfraCliDeps._SUBCOMMAND_MODULES), eq=5)
 
     @pytest.mark.parametrize(
         ("name", "module"),
@@ -63,13 +62,20 @@ class TestSubcommandMapping:
     )
     def test_subcommand_mapping(self, name: str, module: str) -> None:
         """Test each subcommand maps to correct module."""
-        tm.that(name in _SUBCOMMAND_MODULES, eq=True, msg=f"Missing subcommand: {name}")
-        tm.that(_SUBCOMMAND_MODULES[name], eq=module)
+        tm.that(
+            name in FlextInfraCliDeps._SUBCOMMAND_MODULES,
+            eq=True,
+            msg=f"Missing subcommand: {name}",
+        )
+        tm.that(FlextInfraCliDeps._SUBCOMMAND_MODULES[name], eq=module)
 
     @pytest.mark.parametrize("name", list(EXPECTED_SUBCOMMAND_MODULES.keys()))
     def test_subcommand_module_importable(self, name: str) -> None:
         """Test each subcommand module can be imported."""
-        module = getattr(deps, _SUBCOMMAND_MODULES[name].rsplit(".", maxsplit=1)[-1])
+        module = getattr(
+            deps,
+            FlextInfraCliDeps._SUBCOMMAND_MODULES[name].rsplit(".", maxsplit=1)[-1],
+        )
         tm.that(hasattr(module, "main"), eq=True, msg=f"{name} module has no main()")
 
 
@@ -79,12 +85,12 @@ class TestMainHelpAndErrors:
     def test_main_with_help_flag(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test main with -h flag returns 0."""
         monkeypatch.setattr(sys, "argv", ["prog", "-h"])
-        tm.that(main(), eq=0)
+        tm.that(FlextInfraCliDeps.run(), eq=0)
 
     def test_main_with_no_arguments(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test main with no arguments returns 0 after help."""
         monkeypatch.setattr(sys, "argv", ["prog"])
-        result = main()
+        result = FlextInfraCliDeps.run()
         tm.that(result, eq=0)
 
     def test_main_with_unknown_subcommand(
@@ -93,7 +99,7 @@ class TestMainHelpAndErrors:
     ) -> None:
         """Test main with unknown subcommand returns parser exit code."""
         monkeypatch.setattr(sys, "argv", ["prog", "unknown"])
-        tm.that(main(), eq=2)
+        tm.that(FlextInfraCliDeps.run(), eq=2)
 
 
 class TestMainReturnValues:
@@ -118,5 +124,5 @@ class TestMainReturnValues:
     ) -> None:
         """Test _main_impl normalizes subcommand return values."""
         _patch_dispatch(monkeypatch, ["prog", "detect", "--workspace", "."], return_val)
-        result = _main_impl()
+        result = FlextInfraCliDeps.run()
         tm.that(result, eq=expected)

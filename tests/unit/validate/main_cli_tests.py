@@ -4,16 +4,15 @@ from __future__ import annotations
 
 import pytest
 from flext_tests import tm
-from tests import m
+from tests import m, r, t
 
-from flext_core import r
 from flext_infra import FlextInfraStubSupplyChain, main as infra_main
 
 
 def test_stub_validate_uses_all_flag(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    captured: list[bool] = []
+    captured: t.MutableSequenceOf[bool] = []
 
     def _mock_handler(
         _self: FlextInfraStubSupplyChain,

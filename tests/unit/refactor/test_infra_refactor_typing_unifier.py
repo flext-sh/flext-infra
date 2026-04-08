@@ -2,9 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import (
-    FlextInfraRefactorTypingUnificationRule,
-)
+from flext_infra import FlextInfraRefactorTypingUnificationRule
 
 
 def test_converts_typealias_to_pep695() -> None:
@@ -417,3 +415,105 @@ def test_removes_typealias_import_only_when_all_usages_converted() -> None:
     })
     updated, _changes = rule.apply(source)
     assert "type MyType = str" in updated
+
+
+def test_rewrites_builtin_containers_to_canonical_t_aliases() -> None:
+    source = (
+        "from __future__ import annotations\n\n"
+        "def build(data: dict[str, list[object]]) -> tuple[str, int]:\n"
+        "    return ('ok', len(data))\n"
+    )
+    rule = FlextInfraRefactorTypingUnificationRule({
+        "id": "unify-typings",
+        "fix_action": "unify_typings",
+    })
+    updated, changes = rule.apply(
+        source,
+        _file_path=Path("/tmp/demo/src/flext_demo/sample.py"),
+    )
+    assert "from flext_demo import t" in updated
+    assert (
+        "data: t.MutableMappingKV[str, t.MutableSequenceOf[t.OpaqueValue]]" in updated
+    )
+    assert "-> t.Pair[str, int]" in updated
+    assert any(
+        "Canonicalized built-in annotation dict[str, list[object]]" in change
+        for change in changes
+    )
+
+
+def test_rewrites_tuple_variadics_and_any_annotations() -> None:
+    source = "from __future__ import annotations\n\nvalue: tuple[Any, ...]\n"
+    rule = FlextInfraRefactorTypingUnificationRule({
+        "id": "unify-typings",
+        "fix_action": "unify_typings",
+    })
+    updated, _changes = rule.apply(
+        source,
+        _file_path=Path("/tmp/demo/tests/test_sample.py"),
+    )
+    assert "from tests import t" in updated
+    assert "value: t.VariadicTuple[t.OpaqueValue]" in updated
+
+
+def test_rewrites_fixed_arity_four_tuple_to_quad() -> None:
+    source = (
+        "from __future__ import annotations\n\nvalue: tuple[str, int, float, bool]\n"
+    )
+    rule = FlextInfraRefactorTypingUnificationRule({
+        "id": "unify-typings",
+        "fix_action": "unify_typings",
+    })
+    updated, _changes = rule.apply(
+        source,
+        _file_path=Path("/tmp/demo/src/flext_demo/sample.py"),
+    )
+    assert "from flext_demo import t" in updated
+    assert "value: t.Quad[str, int, float, bool]" in updated
+
+
+def test_inserts_t_import_after_parenthesized_import_block() -> None:
+    source = (
+        "from __future__ import annotations\n"
+        "from flext_demo import (\n"
+        "    c,\n"
+        "    m,\n"
+        ")\n\n"
+        "value: list[object]\n"
+    )
+    rule = FlextInfraRefactorTypingUnificationRule({
+        "id": "unify-typings",
+        "fix_action": "unify_typings",
+    })
+    updated, _changes = rule.apply(
+        source,
+        _file_path=Path("/tmp/demo/src/flext_demo/sample.py"),
+    )
+    assert (
+        "from flext_demo import (\n    c,\n    m,\n)\nfrom flext_demo import t\n"
+        in updated
+    )
+    assert "value: t.MutableSequenceOf[t.OpaqueValue]" in updated
+
+
+def test_skips_duplicate_t_import_in_parenthesized_import_block() -> None:
+    source = (
+        "from __future__ import annotations\n"
+        "from flext_demo import (\n"
+        "    c,\n"
+        "    m,\n"
+        "    t,\n"
+        ")\n\n"
+        "value: list[object]\n"
+    )
+    rule = FlextInfraRefactorTypingUnificationRule({
+        "id": "unify-typings",
+        "fix_action": "unify_typings",
+    })
+    updated, _changes = rule.apply(
+        source,
+        _file_path=Path("/tmp/demo/src/flext_demo/sample.py"),
+    )
+    assert "from flext_demo import (\n    c,\n    m,\n    t,\n)" in updated
+    assert updated.count("from flext_demo import t") == 0
+    assert "value: t.MutableSequenceOf[t.OpaqueValue]" in updated

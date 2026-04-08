@@ -98,7 +98,10 @@ class FlextInfraSyncService(FlextInfraCommandContext[m.Infra.SyncResult]):
 
     @classmethod
     @override
-    def execute_command(cls, params: object) -> r[m.Infra.SyncResult]:
+    def execute_command(
+        cls,
+        params: t.OpaqueValue,
+    ) -> r[m.Infra.SyncResult]:
         """Convert CLI input model to service instance and execute."""
         if isinstance(params, cls):
             return params.execute()

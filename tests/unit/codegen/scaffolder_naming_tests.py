@@ -20,8 +20,6 @@ from tests import (
 
 from flext_infra import FlextInfraCodegenScaffolder
 
-_SRC_MODULE_FILES = FlextInfraCodegenTestProjectFactory.SRC_MODULE_FILES
-
 
 def _parse_class_names(source: str) -> t.StrSequence:
     """Extract all class names from Python source code via AST.
@@ -73,7 +71,10 @@ class TestGeneratedFilesAreValidPython:
         scaffolder = FlextInfraCodegenScaffolder(workspace=tmp_path)
         scaffolder.scaffold_project(project)
         pkg = project / "src" / "test_project"
-        _validate_modules_parse(pkg, _SRC_MODULE_FILES)
+        _validate_modules_parse(
+            pkg,
+            FlextInfraCodegenTestProjectFactory.SRC_MODULE_FILES,
+        )
 
     def test_generated_tests_modules_parse_successfully(
         self,
@@ -87,7 +88,10 @@ class TestGeneratedFilesAreValidPython:
         tests_dir.mkdir()
         scaffolder = FlextInfraCodegenScaffolder(workspace=tmp_path)
         scaffolder.scaffold_project(project)
-        _validate_modules_parse(tests_dir, _SRC_MODULE_FILES)
+        _validate_modules_parse(
+            tests_dir,
+            FlextInfraCodegenTestProjectFactory.SRC_MODULE_FILES,
+        )
 
 
 class TestGeneratedClassNamingConvention:

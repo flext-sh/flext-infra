@@ -6,11 +6,6 @@ from flext_tests import tm
 from flext_core import r
 from flext_infra import FlextInfraDependencyPathSync
 
-_PATH_SYNC = FlextInfraDependencyPathSync()
-_extract_requirement_name = FlextInfraDependencyPathSync._extract_requirement_name
-_target_path = _PATH_SYNC.target_path
-extract_dep_name = FlextInfraDependencyPathSync.extract_dep_name
-
 
 @pytest.mark.parametrize(
     ("source", "expected"),
@@ -36,7 +31,7 @@ extract_dep_name = FlextInfraDependencyPathSync.extract_dep_name
     ],
 )
 def test_extract_dep_name(source: str, expected: str) -> None:
-    tm.that(extract_dep_name(source), eq=expected)
+    tm.that(FlextInfraDependencyPathSync.extract_dep_name(source), eq=expected)
 
 
 @pytest.mark.parametrize(
@@ -55,7 +50,14 @@ def test_extract_dep_name(source: str, expected: str) -> None:
     ],
 )
 def test_target_path(dep_name: str, is_root: bool, mode: str, expected: str) -> None:
-    tm.that(_target_path(dep_name, is_root=is_root, mode=mode), eq=expected)
+    tm.that(
+        FlextInfraDependencyPathSync.target_path(
+            dep_name,
+            is_root=is_root,
+            mode=mode,
+        ),
+        eq=expected,
+    )
 
 
 @pytest.mark.parametrize(
@@ -85,7 +87,10 @@ def test_target_path(dep_name: str, is_root: bool, mode: str, expected: str) -> 
     ],
 )
 def test_extract_requirement_name(requirement: str, expected: str | None) -> None:
-    tm.that(_extract_requirement_name(requirement), eq=expected)
+    tm.that(
+        FlextInfraDependencyPathSync._extract_requirement_name(requirement),
+        eq=expected,
+    )
 
 
 def test_helpers_alias_is_reachable_helpers() -> None:

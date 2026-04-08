@@ -11,9 +11,8 @@ from pathlib import Path
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from flext_tests import tm
-from tests import m, t
+from tests import m, r, t
 
-from flext_core import r
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 
 from ._shared_fixtures import create_fake_run_projects
@@ -118,9 +117,9 @@ def test_run_cli_with_fail_fast_flag(monkeypatch: MonkeyPatch) -> None:
 
 
 def test_run_cli_run_forwards_fix_and_tool_args(monkeypatch: MonkeyPatch) -> None:
-    captured_projects: list[str] = []
-    captured_gates: list[str] = []
-    captured_ctx: list[m.Infra.GateContext] = []
+    captured_projects: t.MutableSequenceOf[str] = []
+    captured_gates: t.MutableSequenceOf[str] = []
+    captured_ctx: t.MutableSequenceOf[m.Infra.GateContext] = []
 
     def _fake_run_projects(
         _self: FlextInfraWorkspaceChecker,
@@ -130,14 +129,14 @@ def test_run_cli_run_forwards_fix_and_tool_args(monkeypatch: MonkeyPatch) -> Non
         reports_dir: Path | None = None,
         fail_fast: bool = False,
         ctx: m.Infra.GateContext | None = None,
-    ) -> r[list[m.Infra.ProjectResult]]:
+    ) -> r[t.MutableSequenceOf[m.Infra.ProjectResult]]:
         del reports_dir, fail_fast
         captured_projects.extend(projects)
         captured_gates.extend(gates)
         if ctx is not None:
             captured_ctx.append(ctx)
         project = m.Infra.ProjectResult(project="flext-core", gates={})
-        return r[list[m.Infra.ProjectResult]].ok([project])
+        return r[t.MutableSequenceOf[m.Infra.ProjectResult]].ok([project])
 
     _ = monkeypatch.setattr(
         FlextInfraWorkspaceChecker,

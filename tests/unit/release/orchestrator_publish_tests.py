@@ -2,25 +2,14 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 import pytest
+from _pytest.monkeypatch import MonkeyPatch
 from flext_tests import tm
-from tests import m, t
+from tests import m, r, t, u
 
-from flext_core import r
-from flext_infra import (
-    FlextInfraReleaseOrchestrator,
-    FlextInfraUtilitiesRelease,
-    FlextInfraUtilitiesReporting,
-)
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from _pytest.monkeypatch import MonkeyPatch
-
-_CLS = FlextInfraReleaseOrchestrator
+from flext_infra import FlextInfraReleaseOrchestrator
 
 
 def _publish_ctx(
@@ -60,7 +49,7 @@ def _stub_publish(mp: MonkeyPatch, root: Path) -> None:
         return root_ / "reports"
 
     mp.setattr(
-        FlextInfraUtilitiesReporting,
+        u.Infra,
         "get_report_dir",
         staticmethod(_get_report_dir),
     )
@@ -74,7 +63,7 @@ def _stub_publish(mp: MonkeyPatch, root: Path) -> None:
         output_path.write_text("# Release v1.0.0\n", encoding="utf-8")
         return r[bool].ok(True)
 
-    mp.setattr(_CLS, "_generate_notes", _generate_notes)
+    mp.setattr(FlextInfraReleaseOrchestrator, "_generate_notes", _generate_notes)
 
 
 def _stub_full_publish(mp: MonkeyPatch, root: Path) -> None:
@@ -86,7 +75,7 @@ def _stub_full_publish(mp: MonkeyPatch, root: Path) -> None:
         return r[bool].ok(True)
 
     mp.setattr(
-        FlextInfraUtilitiesRelease,
+        u.Infra,
         "update_changelog",
         staticmethod(_update_changelog),
     )
@@ -95,7 +84,7 @@ def _stub_full_publish(mp: MonkeyPatch, root: Path) -> None:
         del a, kw
         return r[bool].ok(True)
 
-    mp.setattr(_CLS, "_create_tag", _create_tag)
+    mp.setattr(FlextInfraReleaseOrchestrator, "_create_tag", _create_tag)
 
 
 class TestPhasePublish:
@@ -105,7 +94,11 @@ class TestPhasePublish:
         monkeypatch: MonkeyPatch,
     ) -> None:
         _stub_publish(monkeypatch, workspace_root)
-        tm.ok(_CLS().phase_publish(_publish_ctx(workspace_root, dry_run=True)))
+        tm.ok(
+            FlextInfraReleaseOrchestrator().phase_publish(
+                _publish_ctx(workspace_root, dry_run=True),
+            ),
+        )
 
     def test_dry_run_skips_changelog(
         self,
@@ -121,11 +114,15 @@ class TestPhasePublish:
 
         _stub_publish(monkeypatch, workspace_root)
         monkeypatch.setattr(
-            FlextInfraUtilitiesRelease,
+            u.Infra,
             "update_changelog",
             staticmethod(fake_changelog),
         )
-        tm.ok(_CLS().phase_publish(_publish_ctx(workspace_root, dry_run=True)))
+        tm.ok(
+            FlextInfraReleaseOrchestrator().phase_publish(
+                _publish_ctx(workspace_root, dry_run=True),
+            ),
+        )
         tm.that(not changelog_called, eq=True)
 
     def test_updates_changelog(
@@ -135,7 +132,9 @@ class TestPhasePublish:
     ) -> None:
         _stub_full_publish(monkeypatch, workspace_root)
         tm.ok(
-            _CLS().phase_publish(_publish_ctx(workspace_root)),
+            FlextInfraReleaseOrchestrator().phase_publish(
+                _publish_ctx(workspace_root),
+            ),
         )
 
     def test_with_push(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
@@ -147,9 +146,15 @@ class TestPhasePublish:
             return r[bool].ok(True)
 
         _stub_full_publish(monkeypatch, workspace_root)
-        monkeypatch.setattr(_CLS, "_push_release", fake_push)
+        monkeypatch.setattr(
+            FlextInfraReleaseOrchestrator,
+            "_push_release",
+            fake_push,
+        )
         tm.ok(
-            _CLS().phase_publish(_publish_ctx(workspace_root, push=True)),
+            FlextInfraReleaseOrchestrator().phase_publish(
+                _publish_ctx(workspace_root, push=True),
+            ),
         )
         tm.that(push_called, eq=True)
 
@@ -165,7 +170,7 @@ class TestPhasePublish:
             return ws_root / "reports"
 
         monkeypatch.setattr(
-            FlextInfraUtilitiesReporting,
+            u.Infra,
             "get_report_dir",
             staticmethod(_get_report_dir_2),
         )
@@ -175,12 +180,14 @@ class TestPhasePublish:
             return r[bool].fail("notes failed")
 
         monkeypatch.setattr(
-            _CLS,
+            FlextInfraReleaseOrchestrator,
             "_generate_notes",
             _generate_notes,
         )
         tm.fail(
-            _CLS().phase_publish(_publish_ctx(workspace_root)),
+            FlextInfraReleaseOrchestrator().phase_publish(
+                _publish_ctx(workspace_root),
+            ),
         )
 
     def test_changelog_update_failure(
@@ -191,12 +198,14 @@ class TestPhasePublish:
         _stub_publish(monkeypatch, workspace_root)
 
         monkeypatch.setattr(
-            FlextInfraUtilitiesRelease,
+            u.Infra,
             "update_changelog",
             staticmethod(lambda *a, **kw: r[bool].fail("changelog failed")),
         )
         tm.fail(
-            _CLS().phase_publish(_publish_ctx(workspace_root)),
+            FlextInfraReleaseOrchestrator().phase_publish(
+                _publish_ctx(workspace_root),
+            ),
         )
 
     def test_tag_creation_failure(
@@ -207,7 +216,7 @@ class TestPhasePublish:
         _stub_publish(monkeypatch, workspace_root)
 
         monkeypatch.setattr(
-            FlextInfraUtilitiesRelease,
+            u.Infra,
             "update_changelog",
             staticmethod(lambda *a, **kw: r[bool].ok(True)),
         )
@@ -217,10 +226,12 @@ class TestPhasePublish:
             return r[bool].fail("tag failed")
 
         monkeypatch.setattr(
-            _CLS,
+            FlextInfraReleaseOrchestrator,
             "_create_tag",
             _create_tag,
         )
         tm.fail(
-            _CLS().phase_publish(_publish_ctx(workspace_root)),
+            FlextInfraReleaseOrchestrator().phase_publish(
+                _publish_ctx(workspace_root),
+            ),
         )

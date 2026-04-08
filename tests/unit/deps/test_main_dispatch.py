@@ -16,10 +16,6 @@ from tests import t
 
 from flext_infra import FlextInfraCliDeps, deps
 
-_SUBCOMMAND_MODULES = FlextInfraCliDeps._SUBCOMMAND_MODULES
-_main_impl = FlextInfraCliDeps.run
-main = FlextInfraCliDeps.run
-
 
 def _fake_module(return_value: t.Infra.InfraValue = 0) -> ModuleType:
     mod = ModuleType("fake_subcommand")
@@ -43,7 +39,10 @@ def _patch_subcommand(
     module: ModuleType,
 ) -> None:
     subcommand = _subcommand_name(argv)
-    export_name = _SUBCOMMAND_MODULES[subcommand].rsplit(".", maxsplit=1)[-1]
+    export_name = FlextInfraCliDeps._SUBCOMMAND_MODULES[subcommand].rsplit(
+        ".",
+        maxsplit=1,
+    )[-1]
     mp.setattr(sys, "argv", argv)
     mp.setattr(deps, export_name, module)
 
@@ -61,14 +60,17 @@ def _patch_dispatch(
 
 
 class TestMainSubcommandDispatch:
-    @pytest.mark.parametrize("name", list(_SUBCOMMAND_MODULES.keys()))
+    @pytest.mark.parametrize(
+        "name",
+        list(FlextInfraCliDeps._SUBCOMMAND_MODULES.keys()),
+    )
     def test_dispatch_each_subcommand(
         self,
         monkeypatch: pytest.MonkeyPatch,
         name: str,
     ) -> None:
         _patch_dispatch(monkeypatch, ["prog", name, "--workspace", "."])
-        tm.that(_main_impl(), eq=0)
+        tm.that(FlextInfraCliDeps.run(), eq=0)
 
 
 class TestMainModuleImport:
@@ -97,7 +99,7 @@ class TestMainModuleImport:
 
         setattr(fake, "main", _main)
         monkeypatch.setattr(deps, export_name, fake)
-        _main_impl()
+        FlextInfraCliDeps.run()
         tm.that(called[0], eq=export_name)
 
 
@@ -107,12 +109,12 @@ class TestMainSysArgvModification:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         _patch_dispatch(monkeypatch, ["prog", "detect", "--arg1", "value1"])
-        _main_impl()
+        FlextInfraCliDeps.run()
         tm.that(sys.argv[0], has="detect")
 
     def test_passes_remaining_args(self, monkeypatch: pytest.MonkeyPatch) -> None:
         _patch_dispatch(monkeypatch, ["prog", "detect", "-q", "--no-fail"])
-        _main_impl()
+        FlextInfraCliDeps.run()
         tm.that(sys.argv, has="-q")
         tm.that(sys.argv, has="--no-fail")
 
@@ -124,7 +126,7 @@ class TestMainSysArgvModification:
             monkeypatch,
             ["prog", "--workspace", ".", "--projects", "flext-core", "detect"],
         )
-        _main_impl()
+        FlextInfraCliDeps.run()
         tm.that(sys.argv, has="--workspace")
         tm.that(sys.argv, has=".")
         tm.that(sys.argv, has="--projects")
@@ -133,7 +135,7 @@ class TestMainSysArgvModification:
 
 class TestMainDelegation:
     def test_main_alias_runs_help_path(self) -> None:
-        tm.that(main(["--help"]), eq=0)
+        tm.that(FlextInfraCliDeps.run(["--help"]), eq=0)
 
 
 class TestMainExceptionHandling:
@@ -153,10 +155,10 @@ class TestMainExceptionHandling:
             argv=["prog", "detect", "--workspace", "."],
             module=error_mod,
         )
-        tm.that(main(), eq=1)
+        tm.that(FlextInfraCliDeps.run(), eq=1)
 
 
 def test_string_zero_return_value(monkeypatch: pytest.MonkeyPatch) -> None:
     """Test string '0' return value normalization (edge case)."""
     _patch_dispatch(monkeypatch, ["prog", "detect", "--workspace", "."], "0")
-    tm.that(_main_impl(), eq=0)
+    tm.that(FlextInfraCliDeps.run(), eq=0)

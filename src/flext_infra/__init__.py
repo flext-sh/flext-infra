@@ -137,6 +137,7 @@ if _t.TYPE_CHECKING:
         FlextInfraUtilitiesCodegenLazyAliases,
         FlextInfraUtilitiesCodegenLazyMerging,
         FlextInfraUtilitiesCodegenLazyScanning,
+        FlextInfraUtilitiesCodegenNamespace,
         FlextInfraUtilitiesDiscovery,
         FlextInfraUtilitiesDiscoveryScanning,
         FlextInfraUtilitiesDocs,
@@ -184,6 +185,7 @@ if _t.TYPE_CHECKING:
         codegen_generation,
         codegen_import_cycles,
         codegen_lazy,
+        codegen_namespace,
         deps_paths,
         deps_repos,
         discovery,
@@ -224,7 +226,7 @@ if _t.TYPE_CHECKING:
 
     api = _flext_infra_api
     import flext_infra.base as _flext_infra_base
-    from flext_infra.api import FlextInfra
+    from flext_infra.api import FlextInfra, infra
 
     base = _flext_infra_base
     import flext_infra.cli as _flext_infra_cli
@@ -642,6 +644,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
         "detectors": "flext_infra.detectors",
         "e": ("flext_core.exceptions", "FlextExceptions"),
         "h": ("flext_core.handlers", "FlextHandlers"),
+        "infra": ("flext_infra.api", "infra"),
         "m": ("flext_infra.models", "FlextInfraModels"),
         "models": "flext_infra.models",
         "p": ("flext_infra.protocols", "FlextInfraProtocols"),
@@ -893,6 +896,7 @@ __all__ = [
     "FlextInfraUtilitiesCodegenLazyAliases",
     "FlextInfraUtilitiesCodegenLazyMerging",
     "FlextInfraUtilitiesCodegenLazyScanning",
+    "FlextInfraUtilitiesCodegenNamespace",
     "FlextInfraUtilitiesDiscovery",
     "FlextInfraUtilitiesDiscoveryScanning",
     "FlextInfraUtilitiesDocs",
@@ -1003,6 +1007,7 @@ __all__ = [
     "codegen_generation",
     "codegen_import_cycles",
     "codegen_lazy",
+    "codegen_namespace",
     "compatibility_alias_detector",
     "consolidate_groups",
     "consolidator",
@@ -1066,6 +1071,7 @@ __all__ = [
     "import_alias_detector",
     "import_bypass_remover",
     "import_modernizer",
+    "infra",
     "inject_comments",
     "internal_import_detector",
     "internal_sync",

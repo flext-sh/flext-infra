@@ -38,31 +38,6 @@ class FlextInfraCodegenCensus(FlextInfraCommandContext[str]):
         ),
     ] = None
 
-    @staticmethod
-    def _is_fixable(*, rule: str, module: str, message: str) -> bool:
-        _ = message
-        return u.Infra.is_rule_fixable(rule, module)
-
-    @staticmethod
-    def _parse_violation(violation_str: str) -> m.Infra.CensusViolation | None:
-        """Parse a violation string into a CensusViolation model."""
-        match = c.Infra.VIOLATION_PATTERN.match(violation_str)
-        if match is None:
-            return None
-        rule = match.group("rule")
-        fixable = FlextInfraCodegenCensus._is_fixable(
-            rule=rule,
-            module=match.group("module"),
-            message=match.group("message"),
-        )
-        return m.Infra.CensusViolation(
-            module=match.group("module"),
-            rule=rule,
-            line=int(match.group("line")),
-            message=match.group("message"),
-            fixable=fixable,
-        )
-
     @override
     def execute(self) -> r[str]:
         """Execute the census directly from the validated CLI service model."""
@@ -193,35 +168,27 @@ class FlextInfraCodegenCensus(FlextInfraCommandContext[str]):
         projects: Sequence[p.Infra.ProjectInfo] | None = None,
     ) -> Sequence[m.Infra.CensusReport]:
         """Standard path: census all projects in workspace."""
-        if projects is None:
-            projects_result = u.Infra.discover_projects(workspace)
-            if not projects_result.is_success:
-                return []
-            discovered: Sequence[p.Infra.ProjectInfo] = projects_result.unwrap()
-        else:
-            discovered = projects
-        reports: MutableSequence[m.Infra.CensusReport] = []
-        for project in discovered:
-            if project.name in c.Infra.EXCLUDED_PROJECTS:
-                continue
-            report = self._census_project(project)
-            reports.append(report)
-        return reports
+        projects_result = u.Infra.discover_codegen_projects(
+            workspace,
+            projects=projects,
+        )
+        if not projects_result.is_success:
+            return []
+        return [self._census_project(project) for project in projects_result.unwrap()]
 
     def _census_project(
         self,
         project: p.Infra.ProjectInfo,
     ) -> m.Infra.CensusReport:
         """Run census on a single project."""
-        validator = FlextInfraNamespaceValidator()
-        result = validator.validate(project.path, scan_tests=False)
-        violations: MutableSequence[m.Infra.CensusViolation] = []
-        if result.is_success:
-            report: m.Infra.ValidationReport = result.unwrap()
-            for violation_str in report.violations:
-                violation = self._parse_violation(violation_str)
-                if violation is not None:
-                    violations.append(violation)
+        violations = list(
+            u.Infra.parse_namespace_validation(
+                FlextInfraNamespaceValidator().validate(
+                    project.path,
+                    scan_tests=False,
+                ),
+            ).unwrap_or(())
+        )
         src_dir = project.path / c.Infra.Paths.DEFAULT_SRC_DIR
         if src_dir.is_dir() and not self.class_to_analyze:
             self._census_constants(src_dir, violations)

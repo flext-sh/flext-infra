@@ -9,18 +9,15 @@ from typing import override
 
 import pytest
 from flext_tests import tf, tm
-from tests import m, t
+from tests import m, r, t, u
 
-from flext_core import r
 from flext_infra import (
     FlextInfraBaseMkGenerator,
     FlextInfraSyncService,
     FlextInfraWorkspaceMakefileGenerator,
-    u,
 )
 
-_S = FlextInfraSyncService
-SetupFn = Callable[[_S, pytest.MonkeyPatch], None]
+SetupFn = Callable[[FlextInfraSyncService, pytest.MonkeyPatch], None]
 
 
 def _stub_gen(content: str, *, fail: bool = False) -> FlextInfraBaseMkGenerator:
@@ -40,7 +37,10 @@ def _stub_gen(content: str, *, fail: bool = False) -> FlextInfraBaseMkGenerator:
     return _Gen()
 
 
-def _setup_lock_fail(_svc: _S, monkeypatch: pytest.MonkeyPatch) -> None:
+def _setup_lock_fail(
+    _svc: FlextInfraSyncService,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     def _flock(_fd: int, _op: int) -> None:
         msg = "Lock failed"
         raise OSError(msg)
@@ -48,11 +48,17 @@ def _setup_lock_fail(_svc: _S, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(fcntl, "flock", _flock)
 
 
-def _setup_gen_fail(svc: _S, _monkeypatch: pytest.MonkeyPatch) -> None:
+def _setup_gen_fail(
+    svc: FlextInfraSyncService,
+    _monkeypatch: pytest.MonkeyPatch,
+) -> None:
     svc.generator = _stub_gen("Generation failed", fail=True)
 
 
-def _setup_gitignore_fail(_svc: _S, monkeypatch: pytest.MonkeyPatch) -> None:
+def _setup_gitignore_fail(
+    _svc: FlextInfraSyncService,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     def _open(*_args: t.Scalar, **_kwargs: t.Scalar) -> None:
         msg = "Write failed"
         raise OSError(msg)
@@ -61,8 +67,8 @@ def _setup_gitignore_fail(_svc: _S, monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
-def svc(tmp_path: Path) -> _S:
-    return _S(canonical_root=tmp_path, workspace=tmp_path)
+def svc(tmp_path: Path) -> FlextInfraSyncService:
+    return FlextInfraSyncService(canonical_root=tmp_path, workspace=tmp_path)
 
 
 @pytest.mark.parametrize(
@@ -71,7 +77,7 @@ def svc(tmp_path: Path) -> _S:
     ids=["empty", "existing-base-mk", "existing-gitignore"],
 )
 def test_sync_success_scenarios(
-    svc: _S,
+    svc: FlextInfraSyncService,
     tmp_path: Path,
     base_mk: str,
     gitignore: str,
@@ -92,7 +98,10 @@ def test_sync_success_scenarios(
     ids=["project-root-not-found"],
 )
 def test_sync_root_validation(project_root: Path, expected_error: str) -> None:
-    tm.fail(_S(workspace=project_root).execute(), has=expected_error)
+    tm.fail(
+        FlextInfraSyncService(workspace=project_root).execute(),
+        has=expected_error,
+    )
 
 
 @pytest.mark.parametrize(
@@ -121,10 +130,10 @@ def test_cli_forwards_canonical_root(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    captured: dict[str, Path | None] = {}
+    captured: t.MutableMappingKV[str, Path | None] = {}
 
     def _execute(
-        self: _S,
+        self: FlextInfraSyncService,
     ) -> r[m.Infra.SyncResult]:
         captured["workspace_root"] = self.workspace_root
         captured["canonical_root"] = self.canonical_root
@@ -136,7 +145,7 @@ def test_cli_forwards_canonical_root(
             ),
         )
 
-    monkeypatch.setattr(_S, "execute", _execute)
+    monkeypatch.setattr(FlextInfraSyncService, "execute", _execute)
     monkeypatch.setattr(
         sys,
         "argv",
@@ -163,7 +172,7 @@ def test_cli_forwards_canonical_root(
     ids=["lock-fail", "gen-fail", "gitignore-fail"],
 )
 def test_sync_error_scenarios(
-    svc: _S,
+    svc: FlextInfraSyncService,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     setup_fn: SetupFn,
@@ -177,7 +186,7 @@ def test_gitignore_sync_failure(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    service = _S(workspace=tmp_path)
+    service = FlextInfraSyncService(workspace=tmp_path)
 
     def _ensure(*_args: t.Scalar, **_kwargs: t.Scalar) -> r[bool]:
         return r[bool].fail(".gitignore sync failed")
@@ -194,8 +203,8 @@ def test_sync_updates_workspace_makefile_for_workspace_root(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    service = _S(canonical_root=tmp_path, workspace=tmp_path)
-    calls: list[str] = []
+    service = FlextInfraSyncService(canonical_root=tmp_path, workspace=tmp_path)
+    calls: t.MutableSequenceOf[str] = []
 
     def _workspace_makefile(_workspace_root: Path) -> r[bool]:
         calls.append("workspace")
@@ -312,11 +321,14 @@ def test_sync_updates_project_makefile_for_standalone_project(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    service = _S(workspace=tmp_path, canonical_root=tmp_path.parent)
+    service = FlextInfraSyncService(
+        workspace=tmp_path,
+        canonical_root=tmp_path.parent,
+    )
     (tmp_path / "pyproject.toml").write_text(
         "[project]\nname='demo'\n", encoding="utf-8"
     )
-    calls: list[str] = []
+    calls: t.MutableSequenceOf[str] = []
 
     def _workspace_makefile(_workspace_root: Path) -> r[bool]:
         calls.append("workspace")
@@ -347,7 +359,12 @@ def test_sync_regenerates_project_makefile_without_legacy_passthrough(
         encoding="utf-8",
     )
 
-    tm.ok(_S(workspace=tmp_path, canonical_root=tmp_path.parent).execute())
+    tm.ok(
+        FlextInfraSyncService(
+            workspace=tmp_path,
+            canonical_root=tmp_path.parent,
+        ).execute(),
+    )
 
     makefile_text = (tmp_path / "Makefile").read_text(encoding="utf-8")
     tm.that("custom-target" in makefile_text, eq=False)
@@ -391,7 +408,7 @@ def test_sync_basemk_scenarios(
     ok_result: bool,
     expected: bool | str,
 ) -> None:
-    service = _S()
+    service = FlextInfraSyncService()
     tf.create_in("# Same content\n", "base.mk", tmp_path)
     service.generator = _stub_gen(generated, fail=not ok_result)
     result = service._sync_basemk(tmp_path, None)
@@ -416,7 +433,10 @@ def test_gitignore_entry_scenarios(
     expected: bool,
 ) -> None:
     tf.create_in(initial_content, ".gitignore", tmp_path)
-    tm.ok(_S()._ensure_gitignore_entries(tmp_path, entries), eq=expected)
+    tm.ok(
+        FlextInfraSyncService()._ensure_gitignore_entries(tmp_path, entries),
+        eq=expected,
+    )
     content = (tmp_path / ".gitignore").read_text(encoding="utf-8")
     for entry in entries:
         tm.that(content, has=entry)
@@ -438,6 +458,6 @@ def test_gitignore_write_failure(
         _open,
     )
     tm.fail(
-        _S()._ensure_gitignore_entries(tmp_path, [".reports/"]),
+        FlextInfraSyncService()._ensure_gitignore_entries(tmp_path, [".reports/"]),
         has=".gitignore update failed",
     )

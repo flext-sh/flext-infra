@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 from typing import override
 
@@ -115,23 +115,12 @@ class FlextInfraCodegenLazyInit(FlextInfraCommandContext[bool]):
             u.Infra.info(f"Cycle-fix: {cycle_fixes} circular imports resolved")
 
     def _find_package_dirs(self) -> Sequence[Path]:
-        pkg_dirs: t.Infra.PathSet = set()
         files_result = u.Infra.iter_python_files(workspace_root=self.workspace_root)
-        workspace_files: MutableSequence[Path] = []
-        if files_result.is_success:
-            workspace_files.extend(files_result.value)
-        src_dir = self.workspace_root / c.Infra.Paths.DEFAULT_SRC_DIR
-        if src_dir.is_dir():
-            workspace_files.extend(u.Infra.iter_directory_python_files(src_dir))
-        for py_file in sorted(set(workspace_files)):
-            if any(
-                part.startswith(".") or part in {"vendor", "node_modules", ".venv"}
-                for part in py_file.parts
-            ):
-                continue
-            parent = py_file.parent
-            if u.Infra.dir_has_py_files(parent):
-                pkg_dirs.add(parent)
+        pkg_dirs: t.Infra.PathSet = {
+            py_file.parent
+            for py_file in files_result.unwrap_or(())
+            if u.Infra.dir_has_py_files(py_file.parent)
+        }
         return sorted(pkg_dirs, key=lambda p: len(p.parts), reverse=True)
 
     def _process_directory(

@@ -68,11 +68,11 @@ class FlextInfraProtocolsRope(Protocol):
             ...
 
         @property
-        def pycore(self) -> object:
+        def pycore(self) -> t.OpaqueValue:
             """Rope's dynamic PyCore object."""
             ...
 
-        def get_resource(self, resource_name: str) -> object:
+        def get_resource(self, resource_name: str) -> t.OpaqueValue:
             """Resolve one resource path inside the project."""
             ...
 
@@ -81,14 +81,14 @@ class FlextInfraProtocolsRope(Protocol):
             resource: t.Infra.RopeApiResource,
             *,
             force_errors: bool = False,
-        ) -> object:
+        ) -> t.OpaqueValue:
             """Return the PyModule for one resource."""
             ...
 
         def do(
             self,
             changes: t.Infra.RopeChanges,
-            task_handle: object = None,
+            task_handle: t.OpaqueValue | None = None,
         ) -> None:
             """Apply one rope change set."""
             ...
@@ -156,7 +156,7 @@ class FlextInfraProtocolsRope(Protocol):
     class RopePyModuleLike(Protocol):
         """Structural contract for rope PyModule objects."""
 
-        def get_attributes(self) -> dict[str, t.Infra.RopePyName]:
+        def get_attributes(self) -> t.MappingKV[str, t.Infra.RopePyName]:
             """Return module-level attributes as a name → pyname mapping."""
             ...
 
@@ -178,7 +178,7 @@ class FlextInfraProtocolsRope(Protocol):
 
         def get_definition_location(
             self,
-        ) -> tuple[t.Infra.RopePyModule | None, int | None]:
+        ) -> t.Pair[t.Infra.RopePyModule | None, int | None]:
             """Return (module, line_number) of this name's definition."""
             ...
 
@@ -186,7 +186,7 @@ class FlextInfraProtocolsRope(Protocol):
     class RopeAbstractClassLike(Protocol):
         """Structural contract for rope class-like objects."""
 
-        def get_attributes(self) -> dict[str, t.Infra.RopePyName]:
+        def get_attributes(self) -> t.MappingKV[str, t.Infra.RopePyName]:
             """Return class attributes."""
             ...
 
@@ -238,14 +238,14 @@ class FlextInfraProtocolsRope(Protocol):
         lineno: int
         """1-based line number."""
 
-        region: tuple[int, int]
+        region: t.IntPair
         """Byte-offset region."""
 
     @runtime_checkable
     class RopeImportInfoLike(Protocol):
         """Structural contract for rope import descriptors."""
 
-        names_and_aliases: list[tuple[str, str | None]]
+        names_and_aliases: t.MutableSequenceOf[t.Pair[str, str | None]]
         """Imported names and optional aliases."""
 
     @runtime_checkable
@@ -333,7 +333,7 @@ class FlextInfraProtocolsRope(Protocol):
             self,
             project: t.Infra.RopeProject,
             pymodule: t.Infra.RopePyModule,
-        ) -> object:
+        ) -> t.Infra.RopeModuleImports:
             """Build one module-import helper for the given module."""
             ...
 
@@ -348,10 +348,10 @@ class FlextInfraProtocolsRope(Protocol):
             offset: int,
             *,
             unsure: bool = False,
-            resources: Sequence[t.Infra.RopeApiResource] | None = None,
+            resources: t.SequenceOf[t.Infra.RopeApiResource] | None = None,
             in_hierarchy: bool = False,
-            task_handle: object = None,
-        ) -> Sequence[t.Infra.RopeLocation]:
+            task_handle: t.OpaqueValue | None = None,
+        ) -> t.SequenceOf[t.Infra.RopeLocation]:
             """Return occurrences for the symbol at the given offset."""
             ...
 
@@ -376,10 +376,10 @@ class FlextInfraProtocolsRope(Protocol):
             offset: int,
             *,
             unsure: bool = False,
-            resources: Sequence[t.Infra.RopeApiResource] | None = None,
+            resources: t.SequenceOf[t.Infra.RopeApiResource] | None = None,
             in_hierarchy: bool = False,
-            task_handle: object = None,
-        ) -> Sequence[t.Infra.RopeLocation]:
+            task_handle: t.OpaqueValue | None = None,
+        ) -> t.SequenceOf[t.Infra.RopeLocation]:
             """Return occurrences for the symbol at the given offset."""
             ...
 
@@ -396,7 +396,7 @@ class FlextInfraProtocolsRope(Protocol):
             path: Path,
             *,
             dry_run: bool,
-        ) -> Sequence[m.Infra.Result]:
+        ) -> t.SequenceOf[m.Infra.Result]:
             """Execute the hook and return results."""
             ...
 
@@ -430,7 +430,7 @@ class FlextInfraProtocolsRope(Protocol):
             *,
             project_prefix: str = "",
             src_dir: str = "",
-            ignored_resources: tuple[str, ...] = (),
+            ignored_resources: t.VariadicTuple[str] = (),
         ) -> t.Infra.RopeProject: ...
 
         @staticmethod

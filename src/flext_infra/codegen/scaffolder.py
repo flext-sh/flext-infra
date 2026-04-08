@@ -67,22 +67,16 @@ class FlextInfraCodegenScaffolder(FlextInfraCommandContext[str]):
             List of ScaffoldResult models, one per project.
 
         """
-        if projects is None:
-            projects_result = u.Infra.discover_projects(self.workspace_root)
-            if not projects_result.is_success:
-                return []
-            discovered: Sequence[p.Infra.ProjectInfo] = projects_result.unwrap()
-        else:
-            discovered = projects
-        results: MutableSequence[m.Infra.ScaffoldResult] = []
-        for project in discovered:
-            if project.name in c.Infra.EXCLUDED_PROJECTS:
-                continue
-            if (project.path / c.Infra.Files.GO_MOD).exists():
-                continue
-            result = self.scaffold_project(project.path, dry_run=dry_run)
-            results.append(result)
-        return results
+        projects_result = u.Infra.discover_codegen_projects(
+            self.workspace_root,
+            projects=projects,
+        )
+        if not projects_result.is_success:
+            return []
+        return [
+            self.scaffold_project(project.path, dry_run=dry_run)
+            for project in projects_result.unwrap()
+        ]
 
     def scaffold_project(
         self,

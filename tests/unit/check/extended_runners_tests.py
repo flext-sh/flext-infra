@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import m, patch_python_dir_detection
+from tests import m, patch_python_dir_detection, t
 from tests.unit.check._shared_fixtures import (
     create_checker_project,
     patch_gate_run,
@@ -140,14 +140,14 @@ class TestRunPyrefly:
         reports_dir.mkdir()
         (proj_dir / "tests").mkdir()
         (reports_dir / "p1-pyrefly.json").write_text('{"errors": []}')
-        captured: dict[str, list[str]] = {}
+        captured: t.MutableMappingKV[str, t.MutableSequenceOf[str]] = {}
 
         def _run(
             _self: FlextInfraPyreflyGate,
-            _cmd: list[str],
+            _cmd: t.StrSequence,
             _cwd: Path,
             timeout: int = 120,
-            env: dict[str, str] | None = None,
+            env: t.StrMapping | None = None,
         ) -> m.Cli.CommandOutput:
             del _self, _cwd, timeout, env
             captured["cmd"] = list(_cmd)

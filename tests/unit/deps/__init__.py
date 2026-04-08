@@ -221,7 +221,6 @@ if _t.TYPE_CHECKING:
         TestMainModuleImport,
         TestMainSubcommandDispatch,
         TestMainSysArgvModification,
-        main,
         test_string_zero_return_value,
     )
 
@@ -332,7 +331,6 @@ if _t.TYPE_CHECKING:
     test_path_sync_helpers = _tests_unit_deps_test_path_sync_helpers
     import tests.unit.deps.test_path_sync_init as _tests_unit_deps_test_path_sync_init
     from tests.unit.deps.test_path_sync_helpers import (
-        extract_dep_name,
         test_extract_dep_name,
         test_extract_requirement_name,
         test_helpers_alias_is_reachable_helpers,
@@ -702,10 +700,8 @@ _LAZY_IMPORTS = {
     "d": ("flext_core.decorators", "FlextDecorators"),
     "doc": ("tests.unit.deps.test_modernizer_helpers", "doc"),
     "e": ("flext_core.exceptions", "FlextExceptions"),
-    "extract_dep_name": ("tests.unit.deps.test_path_sync_helpers", "extract_dep_name"),
     "h": ("flext_core.handlers", "FlextHandlers"),
     "m": ("flext_core.models", "FlextModels"),
-    "main": ("tests.unit.deps.test_main_dispatch", "main"),
     "manager": ("tests.unit.deps.test_extra_paths_pep621", "manager"),
     "p": ("flext_core.protocols", "FlextProtocols"),
     "pyright_content": ("tests.unit.deps.test_extra_paths_sync", "pyright_content"),
@@ -1125,10 +1121,8 @@ __all__ = [
     "d",
     "doc",
     "e",
-    "extract_dep_name",
     "h",
     "m",
-    "main",
     "manager",
     "p",
     "pyright_content",

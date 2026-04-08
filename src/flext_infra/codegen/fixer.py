@@ -29,7 +29,6 @@ from flext_infra import (
     m,
     p,
     s,
-    t,
     u,
 )
 
@@ -95,20 +94,16 @@ class FlextInfraCodegenFixer(s[str]):
         prefix = FlextInfraNamespaceValidator.derive_prefix(project_path)
         if not prefix:
             return self._empty_result(project_path.name)
-        src_dir_for_pkg = project_path / c.Infra.Paths.DEFAULT_SRC_DIR
-        pkg_dir: Path | None = None
-        if src_dir_for_pkg.is_dir():
-            for child in sorted(src_dir_for_pkg.iterdir()):
-                if child.is_dir() and (child / c.Infra.Files.INIT_PY).exists():
-                    pkg_dir = child
-                    break
+        pkg_dir = u.Infra.find_package_dir(project_path)
         if pkg_dir is None:
             return self._empty_result(project_path.name)
         ctx = m.Infra.FixContext()
-        src_dir = project_path / c.Infra.Paths.DEFAULT_SRC_DIR
+        src_dir = pkg_dir.parent
         if not src_dir.is_dir():
             return self._empty_result(project_path.name)
-        initial_violations_result = self._namespace_violations(project_path)
+        initial_violations_result = u.Infra.parse_namespace_validation(
+            FlextInfraNamespaceValidator().validate(project_path),
+        )
         initial_violations = initial_violations_result.unwrap_or(())
         if initial_violations_result.is_failure:
             _log.warning(
@@ -123,12 +118,12 @@ class FlextInfraCodegenFixer(s[str]):
                 message=initial_violations_result.error
                 or "namespace validation failed",
             )
-        py_files = list(project_path.rglob(c.Infra.Extensions.PYTHON_GLOB))
+        py_files = tuple(project_path.rglob(c.Infra.Extensions.PYTHON_GLOB))
         bak_paths = u.Infra.backup_files(py_files)
         if self.dry_run or self.rules_only:
             ctx.violations_skipped.extend(initial_violations)
             return self._build_result(project_path.name, ctx)
-        self._normalize_canonical_facades(pkg_dir=pkg_dir, ctx=ctx)
+        u.Infra.normalize_canonical_facades(pkg_dir=pkg_dir, ctx=ctx)
         report = FlextInfraRefactorMigrateToClassMRO(
             workspace_root=project_path,
         ).run(target="all", apply=True)
@@ -239,227 +234,26 @@ class FlextInfraCodegenFixer(s[str]):
         except (OSError, UnicodeDecodeError):
             u.Infra.restore_files(bak_paths)
             raise
-        self._reconcile_namespace_violations(
-            project_path=project_path,
-            ctx=ctx,
-            initial_violations=initial_violations,
+        remaining_violations_result = u.Infra.parse_namespace_validation(
+            FlextInfraNamespaceValidator().validate(project_path),
         )
-        return self._build_result(project_path.name, ctx)
-
-    @classmethod
-    def _normalize_canonical_facades(
-        cls,
-        *,
-        pkg_dir: Path,
-        ctx: m.Infra.FixContext,
-    ) -> None:
-        cls._normalize_facade_base(
-            file_path=pkg_dir / c.Infra.Files.CONSTANTS_PY,
-            base_import="from flext_core import FlextConstants as Constants",
-            base_name="Constants",
-            ctx=ctx,
-        )
-        cls._normalize_facade_base(
-            file_path=pkg_dir / c.Infra.Files.TYPINGS_PY,
-            base_import="from flext_core import FlextTypes as Types",
-            base_name="Types",
-            ctx=ctx,
-        )
-
-    @staticmethod
-    def _normalize_facade_base(
-        *,
-        file_path: Path,
-        base_import: str,
-        base_name: str,
-        ctx: m.Infra.FixContext,
-    ) -> None:
-        if not file_path.is_file():
-            return
-        rope_project = u.Infra.init_rope_project(file_path.parent)
-        try:
-            resource = u.Infra.get_resource_from_path(rope_project, file_path)
-            if resource is None:
-                return
-            source = u.Infra.read_source(resource)
-            updated, class_name = FlextInfraCodegenFixer._normalize_facade_base_source(
-                rope_project=rope_project,
-                resource=resource,
-                source=source,
-                base_import=base_import,
-                base_name=base_name,
-            )
-            if updated == source or not class_name:
-                return
-            u.Infra.write_source(
-                rope_project,
-                resource,
-                updated,
-                description=f"normalize facade base in <{resource.path}>",
-            )
-        finally:
-            rope_project.close()
-        ctx.files_modified.add(str(file_path))
-        ctx.fix(
-            module=str(file_path),
-            rule="NAMESPACE",
-            line=1,
-            message=f"normalized {class_name} to inherit from {base_name}",
-        )
-
-    @staticmethod
-    def _normalize_facade_base_source(
-        *,
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
-        source: str,
-        base_import: str,
-        base_name: str,
-    ) -> tuple[str, str]:
-        class_infos = sorted(
-            u.Infra.get_class_info(rope_project, resource),
-            key=lambda item: item.line,
-        )
-        if not class_infos:
-            return source, ""
-        class_name = class_infos[0].name
-        lines = source.splitlines()
-        header_idx = class_infos[0].line - 1
-        if header_idx < 0 or header_idx >= len(lines):
-            return source, ""
-        rewritten_header = FlextInfraCodegenFixer._normalize_class_header(
-            line=lines[header_idx],
-            class_name=class_name,
-            base_name=base_name,
-        )
-        if rewritten_header == lines[header_idx] and base_import in source:
-            return source, class_name
-        lines[header_idx] = rewritten_header
-        updated = "\n".join(lines)
-        if source.endswith("\n"):
-            updated += "\n"
-        if base_import not in updated:
-            updated = FlextInfraCodegenFixer._insert_import_line(
-                source=updated,
-                import_line=base_import,
-            )
-        return updated, class_name
-
-    @staticmethod
-    def _normalize_class_header(*, line: str, class_name: str, base_name: str) -> str:
-        stripped = line.strip()
-        prefix = f"class {class_name}"
-        if not stripped.startswith(prefix) or not stripped.endswith(":"):
-            return line
-        indent = line[: len(line) - len(line.lstrip())]
-        return f"{indent}class {class_name}({base_name}):"
-
-    @staticmethod
-    def _insert_import_line(*, source: str, import_line: str) -> str:
-        lines = source.splitlines()
-        if import_line in lines:
-            return source
-        insert_at = u.Infra.find_import_insert_position(lines, past_existing=False)
-        before = lines[:insert_at]
-        after = lines[insert_at:]
-        inserted: MutableSequence[str] = list(before)
-        if inserted and inserted[-1]:
-            inserted.append("")
-        inserted.append(import_line)
-        if after and after[0]:
-            inserted.append("")
-        inserted.extend(after)
-        return "\n".join(inserted) + ("\n" if source.endswith("\n") else "")
-
-    @staticmethod
-    def _namespace_violations(
-        project_path: Path,
-    ) -> r[tuple[m.Infra.CensusViolation, ...]]:
-        """Return parsed namespace violations for one project."""
-        validation = FlextInfraNamespaceValidator().validate(project_path)
-        if validation.is_failure:
-            return r[tuple[m.Infra.CensusViolation, ...]].fail(
-                validation.error or "namespace validation failed",
-            )
-        violations: MutableSequence[m.Infra.CensusViolation] = []
-        for violation_str in validation.value.violations:
-            violation = FlextInfraCodegenFixer._parse_violation(violation_str)
-            if violation is not None:
-                violations.append(violation)
-        return r[tuple[m.Infra.CensusViolation, ...]].ok(tuple(violations))
-
-    @staticmethod
-    def _parse_violation(violation_str: str) -> m.Infra.CensusViolation | None:
-        """Parse a namespace violation string into a typed model."""
-        match = c.Infra.VIOLATION_PATTERN.match(violation_str)
-        if match is None:
-            return None
-        rule = match.group("rule")
-        module = match.group("module")
-        message = match.group("message")
-        return m.Infra.CensusViolation(
-            module=module,
-            rule=rule,
-            line=int(match.group("line")),
-            message=message,
-            fixable=u.Infra.is_rule_fixable(rule, module),
-        )
-
-    @staticmethod
-    def _read_source_lines(project_path: Path, module: str) -> Sequence[str]:
-        """Read source lines for a module, returning empty on failure."""
-        module_path = project_path / module
-        if not module_path.is_file():
-            return ()
-        return module_path.read_text(encoding="utf-8").splitlines()
-
-    @classmethod
-    def _build_violation_key(
-        cls,
-        violation: m.Infra.CensusViolation,
-        project_path: Path,
-        source_cache: dict[str, Sequence[str]],
-    ) -> m.Infra.ViolationKey:
-        """Build a content-hash ViolationKey, caching source reads per module."""
-        if violation.module not in source_cache:
-            source_cache[violation.module] = cls._read_source_lines(
-                project_path, violation.module
-            )
-        return m.Infra.ViolationKey.from_violation(
-            violation, source_cache[violation.module]
-        )
-
-    @classmethod
-    def _reconcile_namespace_violations(
-        cls,
-        *,
-        project_path: Path,
-        ctx: m.Infra.FixContext,
-        initial_violations: Sequence[m.Infra.CensusViolation],
-    ) -> None:
-        """Classify initial namespace violations as fixed or still skipped."""
-        if not initial_violations:
-            return
-        remaining_result = cls._namespace_violations(project_path)
-        if remaining_result.is_failure:
+        if remaining_violations_result.is_failure:
             ctx.skip(
                 module=project_path.name,
                 rule="NAMESPACE",
                 line=0,
-                message=remaining_result.error or "namespace validation failed",
+                message=remaining_violations_result.error
+                or "namespace validation failed",
             )
-            return
-        source_cache: dict[str, Sequence[str]] = {}
-        remaining_keys = frozenset(
-            cls._build_violation_key(violation, project_path, source_cache)
-            for violation in remaining_result.unwrap_or(())
-        )
-        for violation in initial_violations:
-            key = cls._build_violation_key(violation, project_path, source_cache)
-            if violation.fixable and key not in remaining_keys:
-                ctx.violations_fixed.append(violation)
-                continue
-            ctx.violations_skipped.append(violation)
+        else:
+            fixed, skipped = u.Infra.classify_violation_outcomes(
+                project_path=project_path,
+                initial_violations=initial_violations,
+                remaining_violations=remaining_violations_result.unwrap_or(()),
+            )
+            ctx.violations_fixed.extend(fixed)
+            ctx.violations_skipped.extend(skipped)
+        return self._build_result(project_path.name, ctx)
 
     def fix_workspace(
         self,
@@ -472,21 +266,13 @@ class FlextInfraCodegenFixer(s[str]):
             projects: Pre-discovered projects to skip redundant discovery.
 
         """
-        if projects is None:
-            projects_result = u.Infra.discover_projects(self.workspace_root)
-            if not projects_result.is_success:
-                return []
-            discovered: Sequence[p.Infra.ProjectInfo] = projects_result.unwrap()
-        else:
-            discovered = projects
-        results: MutableSequence[m.Infra.AutoFixResult] = []
-        for project in discovered:
-            if project.name in c.Infra.EXCLUDED_PROJECTS:
-                continue
-            if (project.path / c.Infra.Files.GO_MOD).exists():
-                continue
-            results.append(self.fix_project(project.path))
-        return results
+        projects_result = u.Infra.discover_codegen_projects(
+            self.workspace_root,
+            projects=projects,
+        )
+        if not projects_result.is_success:
+            return []
+        return [self.fix_project(project.path) for project in projects_result.unwrap()]
 
 
 __all__ = ["FlextInfraCodegenFixer"]

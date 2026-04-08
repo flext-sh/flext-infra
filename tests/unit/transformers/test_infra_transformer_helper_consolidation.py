@@ -4,13 +4,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import FlextInfraHelperConsolidationTransformer, u
+from tests import t, u
+
+from flext_infra import FlextInfraHelperConsolidationTransformer
 
 
 def _transform_source(
     tmp_path: Path,
     source: str,
-    mappings: dict[str, str],
+    mappings: t.MappingKV[str, str],
 ) -> str:
     file_path = tmp_path / "helper_consolidation.py"
     file_path.write_text(source, encoding="utf-8")

@@ -5,22 +5,19 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import t
+from tests import c, m, r, t
 
-from flext_core import r
 from flext_infra import (
     FlextInfraOrchestratorService,
     FlextInfraProjectMigrator,
     FlextInfraSyncService,
     FlextInfraWorkspaceDetector,
-    c,
-    m,
     main as infra_main,
 )
 
 
-def workspace_main(argv: list[str] | None = None) -> int:
-    args = ["workspace"]
+def workspace_main(argv: t.StrSequence | None = None) -> int:
+    args: t.MutableSequenceOf[str] = ["workspace"]
     if argv is not None:
         args.extend(argv)
     return infra_main(args)
@@ -118,7 +115,7 @@ class TestRunOrchestrate:
         tm.that(handle_result.is_success, eq=True)
 
     def test_preserves_make_args(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        captured_make_args: list[str] = []
+        captured_make_args: t.MutableSequenceOf[str] = []
 
         def _orchestrate_success(
             _self: FlextInfraOrchestratorService,
@@ -329,7 +326,7 @@ class TestMainCli:
     def test_orchestrate_repeats_make_arg(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        captured: list[FlextInfraOrchestratorService] = []
+        captured: t.MutableSequenceOf[FlextInfraOrchestratorService] = []
 
         def _capture_orchestrate(
             params: FlextInfraOrchestratorService,

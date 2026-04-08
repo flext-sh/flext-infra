@@ -23,6 +23,9 @@ if _t.TYPE_CHECKING:
     import tests.unit.codegen.census_tests as _tests_unit_codegen_census_tests
 
     census_tests = _tests_unit_codegen_census_tests
+    import tests.unit.codegen.consolidator_tests as _tests_unit_codegen_consolidator_tests
+
+    consolidator_tests = _tests_unit_codegen_consolidator_tests
     import tests.unit.codegen.constants_quality_gate_tests as _tests_unit_codegen_constants_quality_gate_tests
 
     constants_quality_gate_tests = _tests_unit_codegen_constants_quality_gate_tests
@@ -191,6 +194,7 @@ _LAZY_IMPORTS = {
     "c": ("flext_core.constants", "FlextConstants"),
     "census_models_tests": "tests.unit.codegen.census_models_tests",
     "census_tests": "tests.unit.codegen.census_tests",
+    "consolidator_tests": "tests.unit.codegen.consolidator_tests",
     "constants_quality_gate_tests": "tests.unit.codegen.constants_quality_gate_tests",
     "d": ("flext_core.decorators", "FlextDecorators"),
     "e": ("flext_core.exceptions", "FlextExceptions"),
@@ -248,6 +252,7 @@ __all__ = [
     "c",
     "census_models_tests",
     "census_tests",
+    "consolidator_tests",
     "constants_quality_gate_tests",
     "d",
     "e",

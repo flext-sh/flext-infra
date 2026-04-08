@@ -9,24 +9,20 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, MutableSequence, Sequence
 from typing import TYPE_CHECKING
 
 from flext_tests import tm
-from tests import c, m, t
+from tests import c, m, p, t
 
 from flext_core import r
-from flext_infra import (
-    FlextInfraCodegenPipeline,
-)
-from flext_infra.services import pipeline as pipeline_module
+from flext_infra import FlextInfraCodegenPipeline, pipeline
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from _pytest.monkeypatch import MonkeyPatch
 
-_P = c.Infra.Pipeline
 type StageHandler = Callable[
     [FlextInfraCodegenPipeline, m.Cli.PipelineStageContext],
     r[m.Cli.PipelineStageResult],
@@ -46,10 +42,10 @@ def _ok_stage(
 
 def _stub_all_stages(
     monkeypatch: MonkeyPatch,
-    call_order: list[str],
+    call_order: MutableSequence[str],
 ) -> None:
     """Replace every stage handler with a lightweight tracker."""
-    for stage_id in _P.STAGE_ORDER:
+    for stage_id in c.Infra.Pipeline.STAGE_ORDER:
 
         def _make_handler(sid: str) -> StageHandler:
             def _handler(
@@ -77,7 +73,7 @@ class TestCodegenPipelineDag:
         monkeypatch: MonkeyPatch,
     ) -> None:
         """All stages execute in the canonical dependency order."""
-        call_order: list[str] = []
+        call_order: MutableSequence[str] = []
         _stub_all_stages(monkeypatch, call_order)
 
         svc = FlextInfraCodegenPipeline.model_validate({
@@ -85,32 +81,32 @@ class TestCodegenPipelineDag:
         })
         result = svc.execute()
         tm.ok(result)
-        tm.that(call_order, eq=list(_P.STAGE_ORDER))
+        tm.that(tuple(call_order), eq=tuple(c.Infra.Pipeline.STAGE_ORDER))
 
     def test_pipeline_project_discovery_cached(
         self,
         tmp_path: Path,
         monkeypatch: MonkeyPatch,
     ) -> None:
-        """u.Infra.discover_projects is called exactly ONCE across all stages."""
+        """u.Infra.discover_codegen_projects is called exactly once."""
         discover_count = 0
 
         def _counting_discover(
             *args: t.Scalar, **kwargs: t.Scalar
-        ) -> r[Sequence[t.NormalizedValue]]:
+        ) -> r[Sequence[p.Infra.ProjectInfo]]:
             nonlocal discover_count
             discover_count += 1
-            return r[Sequence[t.NormalizedValue]].ok(())
+            return r[Sequence[p.Infra.ProjectInfo]].ok(())
 
         monkeypatch.setattr(
-            pipeline_module.u.Infra,
-            "discover_projects",
+            pipeline.u.Infra,
+            "discover_codegen_projects",
             staticmethod(_counting_discover),
         )
 
         # Stub remaining stages to not call real services.
-        for stage_id in _P.STAGE_ORDER:
-            if stage_id == _P.STAGE_DISCOVER:
+        for stage_id in c.Infra.Pipeline.STAGE_ORDER:
+            if stage_id == c.Infra.Pipeline.STAGE_DISCOVER:
                 continue
 
             def _make_noop(sid: str) -> StageHandler:
@@ -141,9 +137,9 @@ class TestCodegenPipelineDag:
         monkeypatch: MonkeyPatch,
     ) -> None:
         """If census_before fails, scaffold/fix/etc don't run."""
-        executed: list[str] = []
+        executed: MutableSequence[str] = []
 
-        for stage_id in _P.STAGE_ORDER:
+        for stage_id in c.Infra.Pipeline.STAGE_ORDER:
 
             def _make_handler(sid: str) -> StageHandler:
                 def _handler(
@@ -151,7 +147,7 @@ class TestCodegenPipelineDag:
                     _ctx: m.Cli.PipelineStageContext,
                 ) -> r[m.Cli.PipelineStageResult]:
                     executed.append(sid)
-                    if sid == _P.STAGE_CENSUS_BEFORE:
+                    if sid == c.Infra.Pipeline.STAGE_CENSUS_BEFORE:
                         return r[m.Cli.PipelineStageResult].fail("census exploded")
                     return _ok_stage(sid)
 
@@ -170,12 +166,12 @@ class TestCodegenPipelineDag:
         tm.fail(result)
 
         # Stages before census_before should have run.
-        tm.that(_P.STAGE_DISCOVER in executed, eq=True)
-        tm.that(_P.STAGE_PY_TYPED in executed, eq=True)
-        tm.that(_P.STAGE_CENSUS_BEFORE in executed, eq=True)
+        tm.that(c.Infra.Pipeline.STAGE_DISCOVER in executed, eq=True)
+        tm.that(c.Infra.Pipeline.STAGE_PY_TYPED in executed, eq=True)
+        tm.that(c.Infra.Pipeline.STAGE_CENSUS_BEFORE in executed, eq=True)
         # Stages after census_before should NOT have run.
-        tm.that(_P.STAGE_SCAFFOLD not in executed, eq=True)
-        tm.that(_P.STAGE_AUTO_FIX not in executed, eq=True)
+        tm.that(c.Infra.Pipeline.STAGE_SCAFFOLD not in executed, eq=True)
+        tm.that(c.Infra.Pipeline.STAGE_AUTO_FIX not in executed, eq=True)
 
     def test_pipeline_state_propagated(
         self,
@@ -183,7 +179,7 @@ class TestCodegenPipelineDag:
         monkeypatch: MonkeyPatch,
     ) -> None:
         """_CodegenPipelineState accumulates results across stages."""
-        call_order: list[str] = []
+        call_order: MutableSequence[str] = []
         _stub_all_stages(monkeypatch, call_order)
 
         svc = FlextInfraCodegenPipeline.model_validate({
@@ -191,9 +187,7 @@ class TestCodegenPipelineDag:
         })
         result = svc.execute()
         tm.ok(result)
-        # After successful execution, the internal state object should exist.
-        # The execute() method creates _state and all stages ran.
-        tm.that(len(call_order), eq=len(_P.STAGE_ORDER))
+        tm.that(len(call_order), eq=len(c.Infra.Pipeline.STAGE_ORDER))
 
 
 __all__: t.StrSequence = []
