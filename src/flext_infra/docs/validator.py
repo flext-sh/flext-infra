@@ -38,7 +38,6 @@ class FlextInfraDocValidator(s[bool]):
         *,
         projects: Sequence[str] | None = None,
         output_dir: str = c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
-        check: str = "all",
         apply: bool = False,
     ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
         """Validate documentation across the workspace root and governed projects."""
@@ -48,7 +47,6 @@ class FlextInfraDocValidator(s[bool]):
             output_dir=output_dir,
             handler=lambda scope: self._validate_scope(
                 scope,
-                check=check,
                 apply_mode=apply,
             ),
         )
@@ -60,7 +58,6 @@ class FlextInfraDocValidator(s[bool]):
             self.workspace_root,
             projects=self.selected_projects,
             output_dir=self.docs_output_dir,
-            check="all" if self.check_only else "",
             apply=self.apply_changes,
         )
         if result.is_failure:
@@ -99,11 +96,9 @@ class FlextInfraDocValidator(s[bool]):
         self,
         scope: m.Infra.DocScope,
         *,
-        check: str,
         apply_mode: bool,
     ) -> m.Infra.DocsPhaseReport:
         """Validate one docs scope and persist the standard reports."""
-        _ = check
         status = c.Infra.Status.OK
         messages: list[str] = []
         missing_adr_skills: t.StrSequence = []

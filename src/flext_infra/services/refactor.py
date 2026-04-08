@@ -20,6 +20,40 @@ from flext_infra import (
 class FlextInfraServiceRefactorMixin:
     """Expose refactor operations through the public infra facade."""
 
+    @staticmethod
+    def _runtime_alias_import_summary(
+        results: Sequence[m.Infra.Result],
+    ) -> t.MutableIntMapping:
+        successful = [result for result in results if result.success]
+        alias_changes = [
+            change
+            for result in successful
+            for change in result.changes
+            if "runtime alias import" in change
+        ]
+        return {
+            "files_changed": sum(1 for result in successful if result.modified),
+            "files_failed": len(results) - len(successful),
+            "files_planned": sum(
+                1
+                for result in successful
+                if (not result.modified)
+                and any(
+                    change.startswith("planned runtime alias import")
+                    for change in result.changes
+                )
+            ),
+            "aliases_migrated": sum(
+                1 for change in alias_changes if change.startswith("migrated")
+            ),
+            "aliases_skipped_unsafe": sum(
+                1 for change in alias_changes if "unsafe" in change
+            ),
+            "aliases_skipped_missing_export": sum(
+                1 for change in alias_changes if "missing export" in change
+            ),
+        }
+
     def centralize_pydantic(
         self,
         params: m.Infra.RefactorCentralizeInput,
@@ -86,34 +120,7 @@ class FlextInfraServiceRefactorMixin:
             apply=params.apply,
             project_names=params.project_names,
         )
-        summary: t.MutableIntMapping = {
-            "files_changed": 0,
-            "files_failed": 0,
-            "files_planned": 0,
-            "aliases_migrated": 0,
-            "aliases_skipped_unsafe": 0,
-            "aliases_skipped_missing_export": 0,
-        }
-        for result in results:
-            if not result.success:
-                summary["files_failed"] += 1
-                continue
-            if result.modified:
-                summary["files_changed"] += 1
-            elif any(
-                change.startswith("planned runtime alias import")
-                for change in result.changes
-            ):
-                summary["files_planned"] += 1
-            for change in result.changes:
-                if "runtime alias import" not in change:
-                    continue
-                if change.startswith("migrated"):
-                    summary["aliases_migrated"] += 1
-                elif "unsafe" in change:
-                    summary["aliases_skipped_unsafe"] += 1
-                elif "missing export" in change:
-                    summary["aliases_skipped_missing_export"] += 1
+        summary = self._runtime_alias_import_summary(results)
         cli_service.display_text(
             "\n".join([
                 f"Files changed: {summary['files_changed']}",

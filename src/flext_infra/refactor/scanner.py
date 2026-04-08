@@ -20,23 +20,45 @@ class FlextInfraRefactorLooseClassScanner:
                 files_result.error or "discovery failed",
             )
             return out
-        discovered_files: Sequence[Path] = files_result.value
+        discovered_files = files_result.value
+        violations, targets_found, classes_scanned = self._scan_discovered_files(
+            project_root=project_root,
+            discovered_files=discovered_files,
+        )
+        return r[t.Infra.ContainerDict].ok(
+            self._build_report(
+                discovered_files=discovered_files,
+                violations=violations,
+                targets_found=targets_found,
+                classes_scanned=classes_scanned,
+            ),
+        )
+
+    def _scan_discovered_files(
+        self,
+        *,
+        project_root: Path,
+        discovered_files: Sequence[Path],
+    ) -> tuple[Sequence[m.Infra.LooseClassViolation], Mapping[str, bool], int]:
         violations: MutableSequence[m.Infra.LooseClassViolation] = []
-        targets_found = dict.fromkeys(c.Infra.REQUIRED_CLASS_TARGETS, False)
+        targets_found: dict[str, bool] = dict.fromkeys(
+            c.Infra.REQUIRED_CLASS_TARGETS,
+            False,
+        )
         classes_scanned = 0
         src_root = project_root / c.Infra.Paths.DEFAULT_SRC_DIR
         rope_project = u.Infra.init_rope_project(src_root)
         try:
-            for fp in discovered_files:
-                parsed = self._scan_file_with_rope(rope_project, fp)
+            for file_path in discovered_files:
+                parsed = self._scan_file_with_rope(rope_project, file_path)
                 if parsed.is_failure:
                     continue
-                occurrences: Sequence[m.Infra.ClassOccurrence] = parsed.value
+                occurrences = parsed.value
                 classes_scanned += len(occurrences)
-                rel = self._relative_module_path(project_root, fp)
+                rel = self._relative_module_path(project_root, file_path)
                 if rel.is_failure:
                     continue
-                rel_path: Path = rel.value
+                rel_path = rel.value
                 for occ in occurrences:
                     viol = self._build_violation(rel_path, occ)
                     if viol is None:
@@ -46,13 +68,23 @@ class FlextInfraRefactorLooseClassScanner:
                         targets_found[viol.class_name] = True
         finally:
             rope_project.close()
+        return (tuple(violations), targets_found, classes_scanned)
+
+    def _build_report(
+        self,
+        *,
+        discovered_files: Sequence[Path],
+        violations: Sequence[m.Infra.LooseClassViolation],
+        targets_found: Mapping[str, bool],
+        classes_scanned: int,
+    ) -> t.Infra.ContainerDict:
         counters = Counter(v.confidence for v in violations)
         violations_infra: Sequence[t.Infra.InfraValue] = [
             v.model_dump() for v in violations
         ]
         confidence_counts: Mapping[str, t.Infra.InfraValue] = dict(counters)
         required_targets_infra: Mapping[str, t.Infra.InfraValue] = dict(targets_found)
-        result_dict: t.Infra.ContainerDict = {
+        return {
             "rule": c.Infra.ReportKeys.CLASS_NESTING,
             "files_scanned": len(discovered_files),
             "classes_scanned": classes_scanned,
@@ -61,8 +93,6 @@ class FlextInfraRefactorLooseClassScanner:
             "required_targets": required_targets_infra,
             c.Infra.ReportKeys.VIOLATIONS: violations_infra,
         }
-        out2: r[t.Infra.ContainerDict] = r[t.Infra.ContainerDict].ok(result_dict)
-        return out2
 
     def _build_violation(
         self,

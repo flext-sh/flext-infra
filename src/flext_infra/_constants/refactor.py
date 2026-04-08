@@ -239,7 +239,7 @@ class FlextInfraConstantsRefactor:
     NAMESPACE_PREFIXES: ClassVar[t.StrMapping] = {
         "utility": "FlextUtilities",
         "models": "FlextModels",
-        "decorators": "FlextDecorators",
+        "decorators": "d",
         "dispatcher": "FlextDispatcher",
     }
     "Namespace → class prefix mapping for violation classification."

@@ -34,7 +34,7 @@ rules:
     namespaces:
       - FlextDispatcher
       - FlextModels
-      - FlextDecorators
+      - d
       - FlextUtilities
       - FlextCore
     

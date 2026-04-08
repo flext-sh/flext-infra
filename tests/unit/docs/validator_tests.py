@@ -127,15 +127,6 @@ class TestValidateCore:
         result = validator.validate_workspace(tmp_path, projects=["proj1", "proj2"])
         tm.that(result.is_success or result.is_failure, eq=True)
 
-    def test_with_check_parameter(
-        self,
-        validator: FlextInfraDocValidator,
-        tmp_path: Path,
-    ) -> None:
-        """Test validate with check parameter."""
-        result = validator.validate_workspace(tmp_path, check="adr-skills")
-        tm.that(result.is_success or result.is_failure, eq=True)
-
     def test_apply_false_dry_run(
         self,
         validator: FlextInfraDocValidator,

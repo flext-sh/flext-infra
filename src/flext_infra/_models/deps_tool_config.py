@@ -14,7 +14,7 @@ from flext_infra import (
 )
 
 
-class FlextInfraModelsDepsToolConfig(
+class FlextInfraModelsDepsToolSettings(
     FlextInfraModelsDepsToolConfigLinters,
     FlextInfraModelsDepsToolConfigTypeCheckers,
 ):
@@ -86,7 +86,7 @@ class FlextInfraModelsDepsToolConfig(
     class CoverageConfig(m.ArbitraryTypesModel):
         """Coverage baseline settings loaded from YAML."""
 
-        fail_under: FlextInfraModelsDepsToolConfig.CoverageFailUnderConfig = Field(
+        fail_under: FlextInfraModelsDepsToolSettings.CoverageFailUnderConfig = Field(
             alias="fail-under",
             description="Coverage fail-under thresholds by layer.",
         )
@@ -118,34 +118,34 @@ class FlextInfraModelsDepsToolConfig(
     class ToolConfigTools(m.ArbitraryTypesModel):
         """Tool map loaded from YAML."""
 
-        codespell: FlextInfraModelsDepsToolConfig.CodespellConfig = Field(
+        codespell: FlextInfraModelsDepsToolSettings.CodespellConfig = Field(
             description="Codespell config"
         )
-        ruff: FlextInfraModelsDepsToolConfig.RuffConfig = Field(
+        ruff: FlextInfraModelsDepsToolSettings.RuffConfig = Field(
             description="Ruff config"
         )
-        mypy: FlextInfraModelsDepsToolConfig.MypyConfig = Field(
+        mypy: FlextInfraModelsDepsToolSettings.MypyConfig = Field(
             description="Mypy config"
         )
-        pydantic_mypy: FlextInfraModelsDepsToolConfig.PydanticMypyConfig = Field(
+        pydantic_mypy: FlextInfraModelsDepsToolSettings.PydanticMypyConfig = Field(
             alias="pydantic-mypy", description="Pydantic mypy plugin configuration."
         )
-        pyright: FlextInfraModelsDepsToolConfig.PyrightConfig = Field(
+        pyright: FlextInfraModelsDepsToolSettings.PyrightConfig = Field(
             description="Pyright config"
         )
-        pyrefly: FlextInfraModelsDepsToolConfig.PyreflyConfig = Field(
+        pyrefly: FlextInfraModelsDepsToolSettings.PyreflyConfig = Field(
             description="Pyrefly config"
         )
-        pytest: FlextInfraModelsDepsToolConfig.PytestConfig = Field(
+        pytest: FlextInfraModelsDepsToolSettings.PytestConfig = Field(
             description="Pytest config"
         )
-        tomlsort: FlextInfraModelsDepsToolConfig.TomlsortConfig = Field(
+        tomlsort: FlextInfraModelsDepsToolSettings.TomlsortConfig = Field(
             description="Tomlsort config"
         )
-        yamlfix: FlextInfraModelsDepsToolConfig.YamlfixConfig = Field(
+        yamlfix: FlextInfraModelsDepsToolSettings.YamlfixConfig = Field(
             description="Yamlfix config"
         )
-        coverage: FlextInfraModelsDepsToolConfig.CoverageConfig = Field(
+        coverage: FlextInfraModelsDepsToolSettings.CoverageConfig = Field(
             description="Coverage configuration with per-project-type thresholds."
         )
 
@@ -160,32 +160,32 @@ class FlextInfraModelsDepsToolConfig(
     class ProjectTypeOverridesConfig(m.ArbitraryTypesModel):
         """Project-type-specific override matrix from tool_config.yml."""
 
-        core: FlextInfraModelsDepsToolConfig.ProjectTypeOverrideConfig = Field(
+        core: FlextInfraModelsDepsToolSettings.ProjectTypeOverrideConfig = Field(
             description="Core overrides"
         )
-        domain: FlextInfraModelsDepsToolConfig.ProjectTypeOverrideConfig = Field(
+        domain: FlextInfraModelsDepsToolSettings.ProjectTypeOverrideConfig = Field(
             description="Domain overrides"
         )
-        platform: FlextInfraModelsDepsToolConfig.ProjectTypeOverrideConfig = Field(
+        platform: FlextInfraModelsDepsToolSettings.ProjectTypeOverrideConfig = Field(
             description="Platform overrides"
         )
-        integration: FlextInfraModelsDepsToolConfig.ProjectTypeOverrideConfig = Field(
+        integration: FlextInfraModelsDepsToolSettings.ProjectTypeOverrideConfig = Field(
             description="Integration overrides"
         )
-        app: FlextInfraModelsDepsToolConfig.ProjectTypeOverrideConfig = Field(
+        app: FlextInfraModelsDepsToolSettings.ProjectTypeOverrideConfig = Field(
             description="App overrides"
         )
 
     class ToolConfigDocument(m.ArbitraryTypesModel):
         """Root schema for tool_config.yml."""
 
-        tools: FlextInfraModelsDepsToolConfig.ToolConfigTools = Field(
+        tools: FlextInfraModelsDepsToolSettings.ToolConfigTools = Field(
             description="Tools"
         )
-        project_type_overrides: FlextInfraModelsDepsToolConfig.ProjectTypeOverridesConfig = Field(
+        project_type_overrides: FlextInfraModelsDepsToolSettings.ProjectTypeOverridesConfig = Field(
             alias="project-type-overrides",
             description="Per-project-type configuration overrides.",
         )
 
 
-__all__ = ["FlextInfraModelsDepsToolConfig"]
+__all__ = ["FlextInfraModelsDepsToolSettings"]

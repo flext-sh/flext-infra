@@ -10,7 +10,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_core import FlextService
+from flext_core import s
 from flext_infra import FlextInfraCodegenLazyInit
 
 
@@ -35,9 +35,9 @@ class TestFlextInfraCodegenLazyInit:
         tm.that(result, eq=0)
 
     def test_generator_is_flext_service(self, tmp_path: Path) -> None:
-        """Test that FlextInfraCodegenLazyInit is a FlextService."""
+        """Test that FlextInfraCodegenLazyInit is a s."""
         generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
-        tm.that(generator, is_=FlextService)
+        tm.that(generator, is_=s)
 
     def test_run_returns_integer_exit_code(self, tmp_path: Path) -> None:
         """Test that run() returns an integer exit code."""

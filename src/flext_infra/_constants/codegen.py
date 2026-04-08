@@ -104,12 +104,12 @@ class FlextInfraConstantsCodegen:
     })
     "Directory segments recognized as project-root wrapper paths."
     CORE_RUNTIME_ALIAS_TARGETS: Final[Mapping[str, t.Infra.StrPair]] = {
-        "d": ("flext_core.decorators", "FlextDecorators"),
-        "e": ("flext_core.exceptions", "FlextExceptions"),
-        "h": ("flext_core.handlers", "FlextHandlers"),
-        "r": ("flext_core.result", "FlextResult"),
-        "s": ("flext_core.service", "FlextService"),
-        "x": ("flext_core.mixins", "FlextMixins"),
+        "d": ("flext_core.decorators", "d"),
+        "e": ("flext_core.exceptions", "e"),
+        "h": ("flext_core.handlers", "h"),
+        "r": ("flext_core.result", "r"),
+        "s": ("flext_core.service", "s"),
+        "x": ("flext_core.mixins", "x"),
     }
     "Mapping of single-letter aliases to flext-core runtime targets."
 

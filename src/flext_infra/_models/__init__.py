@@ -14,7 +14,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".codegen": ("FlextInfraModelsCodegen",),
         ".codegen_deduplication": ("FlextInfraModelsCodegenDeduplication",),
         ".deps": ("FlextInfraModelsDeps",),
-        ".deps_tool_config": ("FlextInfraModelsDepsToolConfig",),
+        ".deps_tool_config": ("FlextInfraModelsDepsToolSettings",),
         ".deps_tool_config_linters": ("FlextInfraModelsDepsToolConfigLinters",),
         ".deps_tool_config_type_checkers": (
             "FlextInfraModelsDepsToolConfigTypeCheckers",

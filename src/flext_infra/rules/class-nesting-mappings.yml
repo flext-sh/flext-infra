@@ -1,7 +1,7 @@
 class_nesting:
   - loose_name: FactoryDecoratorsDiscovery
     current_file: flext-core/src/flext_core/_decorators/discovery.py
-    target_namespace: FlextDecorators
+    target_namespace: d
     target_name: FactoryDecoratorsDiscovery
     confidence: high
     reason: top_level_class_in_private_directory
@@ -47,10 +47,10 @@ class_nesting:
     target_name: FlextGenericModels
     confidence: high
     reason: top_level_class_in_private_directory
-  - loose_name: FlextModelsConfig
+  - loose_name: FlextModelsSettings
     current_file: flext-core/src/flext_core/_models/settings.py
     target_namespace: FlextModels
-    target_name: FlextModelsConfig
+    target_name: FlextModelsSettings
     confidence: high
     reason: top_level_class_in_private_directory
   - loose_name: Metadata
@@ -103,7 +103,7 @@ class_nesting:
     reason: top_level_class_without_namespace_prefix
   - loose_name: Metadata
     current_file: flext-core/src/flext_core/exceptions.py
-    target_namespace: FlextExceptions
+    target_namespace: e
     target_name: Metadata
     confidence: low
     reason: top_level_class_without_namespace_prefix

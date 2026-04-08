@@ -21,7 +21,7 @@ policy_matrix:
       - convert_models_to_static_helper_functions
     forbidden_targets:
       - FlextUtilities
-      - FlextDecorators
+      - d
       - FlextDispatcher
       - u.*
       - d.*
@@ -57,7 +57,7 @@ policy_matrix:
     forbidden_targets:
       - FlextModels
       - FlextDispatcher
-      - FlextDecorators
+      - d
       - m.*
       - d.*
       - dispatcher.*
@@ -90,7 +90,7 @@ policy_matrix:
     forbidden_targets:
       - FlextModels
       - FlextUtilities
-      - FlextDecorators
+      - d
       - m.*
       - u.*
     validation_requirements:
@@ -155,7 +155,7 @@ policy_matrix:
       - FlextModels
       - FlextUtilities
       - FlextDispatcher
-      - FlextDecorators
+      - d
       - m.*
       - u.*
       - d.*
@@ -211,8 +211,8 @@ rules:
     facade_family: p
     module_family: _decorators
     source_symbol: FactoryDecoratorsDiscovery
-    target_facade_class: FlextDecorators
-    target_namespace_path: FlextDecorators.FactoryDecoratorsDiscovery
+    target_facade_class: d
+    target_namespace_path: d.FactoryDecoratorsDiscovery
     expected_base_chain: &id001
       - FlextProtocols
     forbidden_targets:
@@ -229,7 +229,7 @@ rules:
           symbol: FactoryDecoratorsDiscovery
       - type: target_facade_exists
         params:
-          facade: FlextDecorators
+          facade: d
     post_checks:
       - type: imports_resolve
         params:
@@ -248,7 +248,7 @@ rules:
     forbidden_targets: &id002
       - FlextModels
       - FlextUtilities
-      - FlextDecorators
+      - d
       - m.*
       - u.*
     confidence: 0.9
@@ -349,7 +349,7 @@ rules:
       - FlextModels
     forbidden_targets: &id004
       - FlextUtilities
-      - FlextDecorators
+      - d
       - FlextDispatcher
       - u.*
       - d.*
@@ -421,16 +421,16 @@ rules:
   - project_kind: core
     facade_family: m
     module_family: _models
-    source_symbol: FlextModelsConfig
+    source_symbol: FlextModelsSettings
     target_facade_class: FlextModels
-    target_namespace_path: FlextModels.FlextModelsConfig
+    target_namespace_path: FlextModels.FlextModelsSettings
     expected_base_chain: *id003
     forbidden_targets: *id004
     confidence: 0.9
     pre_checks:
       - type: source_symbol_is_class
         params:
-          symbol: FlextModelsConfig
+          symbol: FlextModelsSettings
       - type: target_facade_exists
         params:
           facade: FlextModels
@@ -452,7 +452,7 @@ rules:
     forbidden_targets:
       - FlextUtilities
       - FlextDispatcher
-      - FlextDecorators
+      - d
       - u.*
       - d.*
       - dispatcher.*
@@ -483,7 +483,7 @@ rules:
     forbidden_targets: &id007
       - FlextModels
       - FlextDispatcher
-      - FlextDecorators
+      - d
       - m.*
       - d.*
       - dispatcher.*
@@ -651,8 +651,8 @@ rules:
     facade_family: u
     module_family: other_private
     source_symbol: Metadata
-    target_facade_class: FlextExceptions
-    target_namespace_path: FlextExceptions.Metadata
+    target_facade_class: e
+    target_namespace_path: e.Metadata
     expected_base_chain: *id006
     forbidden_targets: []
     confidence: 0.5
@@ -662,7 +662,7 @@ rules:
           symbol: Metadata
       - type: target_facade_exists
         params:
-          facade: FlextExceptions
+          facade: e
     post_checks:
       - type: imports_resolve
         params:

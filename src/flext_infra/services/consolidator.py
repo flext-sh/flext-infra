@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence
+from collections.abc import MutableSequence, Sequence
+from pathlib import Path
 from typing import Annotated, override
 
 from pydantic import Field
 
 from flext_core import r
-from flext_infra import s, t, u
+from flext_infra import m, p, s, t, u
 
 
 class FlextInfraCodegenConsolidator(s[str]):
@@ -31,55 +32,26 @@ class FlextInfraCodegenConsolidator(s[str]):
         )
         found = applied = failed = 0
         file_results: MutableSequence[t.Infra.InfraMapping] = []
-        projects_result = u.Infra.discover_codegen_projects(
-            self.workspace_root,
-        )
+        projects_result = self._selected_projects()
         if projects_result.is_failure:
             return r[str].fail("Failed to discover projects")
-        projects = [
-            project
-            for project in projects_result.value
-            if self.project_name is None or project.name == self.project_name
-        ]
+        projects = projects_result.value
         for project in projects:
-            package_dir = u.Infra.find_package_dir(project.path)
-            package_name = u.Infra.discover_project_package_name(
-                project_root=project.path,
-            )
-            if package_dir is None or not package_name:
+            project_ctx = self._project_context(project)
+            if project_ctx is None:
                 continue
-            aliases = u.Infra.discover_project_aliases(project.path)
-            if "c" not in aliases:
-                continue
-            constants_facade = u.Infra.resolve_constants_facade(package_name)
-            if constants_facade is None:
-                continue
-            value_map = u.Infra.build_value_map(constants_facade)
+            package_dir, package_name, value_map = project_ctx
             rope = u.Infra.init_rope_project(project.path)
             try:
-                for python_file in u.Infra.iter_directory_python_files(package_dir):
-                    if "_constants" in python_file.parts:
+                for python_file in (
+                    fp
+                    for fp in u.Infra.iter_directory_python_files(package_dir)
+                    if "_constants" not in fp.parts
+                ):
+                    scanned = self._scan_file(rope, python_file, value_map)
+                    if scanned is None:
                         continue
-                    resource = u.Infra.get_resource_from_path(
-                        rope,
-                        python_file,
-                    )
-                    if resource is None:
-                        continue
-                    symbols = u.Infra.get_module_symbols(rope, resource)
-                    assignments = [
-                        symbol for symbol in symbols if symbol.kind == "assignment"
-                    ]
-                    if not assignments:
-                        continue
-                    source = u.Infra.read_source(resource)
-                    matches = u.Infra.match_assignments(
-                        assignments,
-                        source.splitlines(),
-                        value_map,
-                    )
-                    if not matches:
-                        continue
+                    resource, source, matches = scanned
                     found += len(matches)
                     rel_path = python_file.relative_to(self.workspace_root)
                     if self.dry_run:
@@ -124,6 +96,66 @@ class FlextInfraCodegenConsolidator(s[str]):
             }
             return r[str].ok(t.Infra.INFRA_MAPPING_ADAPTER.dump_json(payload).decode())
         return r[str].ok("\n".join(output_lines))
+
+    def _selected_projects(self) -> r[Sequence[p.Infra.ProjectInfo]]:
+        projects_result = u.Infra.discover_codegen_projects(self.workspace_root)
+        if projects_result.is_failure:
+            return r[Sequence[p.Infra.ProjectInfo]].fail(
+                projects_result.error or "Failed to discover projects",
+            )
+        selected = tuple(
+            project
+            for project in projects_result.value
+            if self.project_name is None or project.name == self.project_name
+        )
+        return r[Sequence[p.Infra.ProjectInfo]].ok(selected)
+
+    def _project_context(
+        self,
+        project: p.Infra.ProjectInfo,
+    ) -> tuple[Path, str, t.StrMapping] | None:
+        package_dir = u.Infra.find_package_dir(project.path)
+        package_name = u.Infra.discover_project_package_name(
+            project_root=project.path,
+        )
+        if package_dir is None or not package_name:
+            return None
+        if "c" not in u.Infra.discover_project_aliases(project.path):
+            return None
+        constants_facade = u.Infra.resolve_constants_facade(package_name)
+        if constants_facade is None:
+            return None
+        return (package_dir, package_name, u.Infra.build_value_map(constants_facade))
+
+    def _scan_file(
+        self,
+        rope_project: t.Infra.RopeProject,
+        python_file: Path,
+        value_map: t.StrMapping,
+    ) -> (
+        tuple[
+            t.Infra.RopeResource,
+            str,
+            Sequence[tuple[m.Infra.SymbolInfo, str, str]],
+        ]
+        | None
+    ):
+        resource = u.Infra.get_resource_from_path(rope_project, python_file)
+        if resource is None:
+            return None
+        symbols = u.Infra.get_module_symbols(rope_project, resource)
+        assignments = [symbol for symbol in symbols if symbol.kind == "assignment"]
+        if not assignments:
+            return None
+        source = u.Infra.read_source(resource)
+        matches = u.Infra.match_assignments(
+            assignments,
+            source.splitlines(),
+            value_map,
+        )
+        if not matches:
+            return None
+        return (resource, source, matches)
 
 
 __all__ = ["FlextInfraCodegenConsolidator"]

@@ -17,6 +17,38 @@ class FlextInfraCyclicImportDetector:
     """Detect cyclic imports at project level via rope semantic import resolution."""
 
     @staticmethod
+    def _iter_scan_dir_modules(*, scan_dir: Path) -> Sequence[tuple[str, Path]]:
+        is_src = scan_dir.name == c.Infra.Paths.DEFAULT_SRC_DIR
+        is_pkg = (scan_dir / c.Infra.Files.INIT_PY).is_file()
+        modules: list[tuple[str, Path]] = []
+        for py_file in u.Infra.iter_directory_python_files(scan_dir):
+            mod = FlextInfraCyclicImportDetector._file_to_module(
+                py_file,
+                scan_dir,
+                is_src=is_src,
+                is_pkg=is_pkg,
+            )
+            if mod is not None:
+                modules.append((mod, py_file))
+        return modules
+
+    @staticmethod
+    def _module_imports(
+        *,
+        rope_project: t.Infra.RopeProject,
+        file_path: Path,
+        package_roots: t.Infra.StrSet,
+    ) -> t.Infra.StrSet:
+        resource = u.Infra.get_resource_from_path(rope_project, file_path)
+        if resource is None:
+            return set()
+        imports: t.Infra.StrSet = set()
+        for fqn in u.Infra.get_module_imports(rope_project, resource).values():
+            if fqn.split(".", maxsplit=1)[0] in package_roots:
+                imports.add(fqn)
+        return imports
+
+    @staticmethod
     def _discover_package_roots(scan_dirs: Sequence[Path]) -> set[str]:
         """Discover local package roots for import filtering."""
         package_roots: set[str] = set()
@@ -55,8 +87,9 @@ class FlextInfraCyclicImportDetector:
             return base
         return f"{scan_dir.name}.{base}" if is_pkg else base
 
-    @staticmethod
+    @classmethod
     def _build_import_graph(
+        cls,
         scan_dirs: Sequence[Path],
         rope_project: t.Infra.RopeProject,
         package_roots: t.Infra.StrSet,
@@ -64,26 +97,17 @@ class FlextInfraCyclicImportDetector:
         """Build module import graph and file map from scan directories."""
         graph: MutableMapping[str, t.Infra.StrSet] = {}
         file_map: t.MutableStrMapping = {}
-        for sd in scan_dirs:
-            is_src = sd.name == c.Infra.Paths.DEFAULT_SRC_DIR
-            is_pkg = (sd / c.Infra.Files.INIT_PY).is_file()
-            for py_file in u.Infra.iter_directory_python_files(sd):
-                mod = FlextInfraCyclicImportDetector._file_to_module(
-                    py_file,
-                    sd,
-                    is_src=is_src,
-                    is_pkg=is_pkg,
+        for scan_dir in scan_dirs:
+            for module_name, py_file in cls._iter_scan_dir_modules(scan_dir=scan_dir):
+                file_map.setdefault(module_name, str(py_file))
+                graph.setdefault(module_name, set())
+                graph[module_name].update(
+                    cls._module_imports(
+                        rope_project=rope_project,
+                        file_path=py_file,
+                        package_roots=package_roots,
+                    ),
                 )
-                if mod is None:
-                    continue
-                file_map.setdefault(mod, str(py_file))
-                graph.setdefault(mod, set())
-                res = u.Infra.get_resource_from_path(rope_project, py_file)
-                if res is None:
-                    continue
-                for fqn in u.Infra.get_module_imports(rope_project, res).values():
-                    if fqn.split(".")[0] in package_roots:
-                        graph[mod].add(fqn)
         return (graph, file_map)
 
     @classmethod

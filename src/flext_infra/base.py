@@ -13,9 +13,9 @@ from flext_cli import FlextCliSettings
 from flext_core import (
     FlextModels,
     FlextProtocols,
-    FlextResult as r,
-    FlextService as core_service_base,
     FlextSettings,
+    r,
+    s as core_service_base,
 )
 from flext_infra import FlextInfraConstantsBase, FlextInfraTypesBase
 

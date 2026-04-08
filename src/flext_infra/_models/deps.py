@@ -8,10 +8,10 @@ from typing import Annotated
 from pydantic import Field
 
 from flext_core import m
-from flext_infra import FlextInfraModelsDepsToolConfig, FlextInfraModelsMixins, t
+from flext_infra import FlextInfraModelsDepsToolSettings, FlextInfraModelsMixins, t
 
 
-class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig):
+class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
     """Models for dependency detection and modernization reporting."""
 
     class DependencyLimitsInfo(m.ArbitraryTypesModel):
