@@ -12,6 +12,11 @@ class FlextInfraUtilitiesCodegenGeneration:
     """Utilities for codegen import formatting, grouping, and lazy entries."""
 
     @staticmethod
+    def is_module_or_package_export(attr_name: str) -> bool:
+        """Return True for compatibility exports that point at a module object."""
+        return attr_name == ""
+
+    @staticmethod
     def is_root_namespace_package(current_pkg: str) -> bool:
         """Return True only for top-level root namespace packages."""
         return bool(current_pkg) and "." not in current_pkg
@@ -220,11 +225,28 @@ class FlextInfraUtilitiesCodegenGeneration:
             if exp not in lazy_filtered:
                 continue
             mod, attr = lazy_filtered[exp]
+            if FlextInfraUtilitiesCodegenGeneration.is_module_or_package_export(attr):
+                continue
             if (mod in child_aliases and not attr) or not mod.startswith(
                 child_prefixes
             ):
                 entries.append((exp, mod, attr))
         return entries
+
+    @staticmethod
+    def build_published_exports(
+        exports: t.StrSequence,
+        lazy_filtered: t.Infra.LazyImportMap,
+    ) -> t.StrSequence:
+        """Drop compatibility module/package names from published exports."""
+        return tuple(
+            export_name
+            for export_name in sorted(exports)
+            if export_name not in lazy_filtered
+            or not FlextInfraUtilitiesCodegenGeneration.is_module_or_package_export(
+                lazy_filtered[export_name][1]
+            )
+        )
 
 
 __all__: t.StrSequence = ["FlextInfraUtilitiesCodegenGeneration"]

@@ -8,15 +8,6 @@ from __future__ import annotations
 from flext_core.lazy import install_lazy_exports
 
 _LAZY_IMPORTS = {
-    "c": ("flext_core.constants", "FlextConstants"),
-    "d": ("flext_core.decorators", "FlextDecorators"),
-    "e": ("flext_core.exceptions", "FlextExceptions"),
-    "h": ("flext_core.handlers", "FlextHandlers"),
-    "m": ("flext_core.models", "FlextModels"),
-    "p": ("flext_core.protocols", "FlextProtocols"),
-    "r": ("flext_core.result", "FlextResult"),
-    "s": ("flext_core.service", "FlextService"),
-    "t": ("flext_core.typings", "FlextTypes"),
     "test_infra_refactor_class_and_propagation": "tests.unit.refactor.test_infra_refactor_class_and_propagation",
     "test_infra_refactor_class_placement": "tests.unit.refactor.test_infra_refactor_class_placement",
     "test_infra_refactor_cli_models_workflow": "tests.unit.refactor.test_infra_refactor_cli_models_workflow",
@@ -36,8 +27,6 @@ _LAZY_IMPORTS = {
     "test_infra_refactor_safety": "tests.unit.refactor.test_infra_refactor_safety",
     "test_infra_refactor_typing_unifier": "tests.unit.refactor.test_infra_refactor_typing_unifier",
     "test_main_cli": "tests.unit.refactor.test_main_cli",
-    "u": ("flext_core.utilities", "FlextUtilities"),
-    "x": ("flext_core.mixins", "FlextMixins"),
 }
 
 

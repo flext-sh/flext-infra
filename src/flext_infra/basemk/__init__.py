@@ -17,20 +17,9 @@ _LAZY_IMPORTS = {
         "FlextInfraBaseMkTemplateEngine",
     ),
     "FlextInfraCliBasemk": ("flext_infra.basemk.cli", "FlextInfraCliBasemk"),
-    "c": ("flext_core.constants", "FlextConstants"),
     "cli": "flext_infra.basemk.cli",
-    "d": ("flext_core.decorators", "FlextDecorators"),
-    "e": ("flext_core.exceptions", "FlextExceptions"),
     "engine": "flext_infra.basemk.engine",
     "generator": "flext_infra.basemk.generator",
-    "h": ("flext_core.handlers", "FlextHandlers"),
-    "m": ("flext_core.models", "FlextModels"),
-    "p": ("flext_core.protocols", "FlextProtocols"),
-    "r": ("flext_core.result", "FlextResult"),
-    "s": ("flext_core.service", "FlextService"),
-    "t": ("flext_core.typings", "FlextTypes"),
-    "u": ("flext_core.utilities", "FlextUtilities"),
-    "x": ("flext_core.mixins", "FlextMixins"),
 }
 
 

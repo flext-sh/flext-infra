@@ -8,15 +8,6 @@ from __future__ import annotations
 from flext_core.lazy import install_lazy_exports
 
 _LAZY_IMPORTS = {
-    "c": ("flext_core.constants", "FlextConstants"),
-    "d": ("flext_core.decorators", "FlextDecorators"),
-    "e": ("flext_core.exceptions", "FlextExceptions"),
-    "h": ("flext_core.handlers", "FlextHandlers"),
-    "m": ("flext_core.models", "FlextModels"),
-    "p": ("flext_core.protocols", "FlextProtocols"),
-    "r": ("flext_core.result", "FlextResult"),
-    "s": ("flext_core.service", "FlextService"),
-    "t": ("flext_core.typings", "FlextTypes"),
     "test_detection_classify": "tests.unit.deps.test_detection_classify",
     "test_detection_deptry": "tests.unit.deps.test_detection_deptry",
     "test_detection_discover": "tests.unit.deps.test_detection_discover",
@@ -70,8 +61,6 @@ _LAZY_IMPORTS = {
     "test_path_sync_rewrite_deps": "tests.unit.deps.test_path_sync_rewrite_deps",
     "test_path_sync_rewrite_pep621": "tests.unit.deps.test_path_sync_rewrite_pep621",
     "test_path_sync_rewrite_poetry": "tests.unit.deps.test_path_sync_rewrite_poetry",
-    "u": ("flext_core.utilities", "FlextUtilities"),
-    "x": ("flext_core.mixins", "FlextMixins"),
 }
 
 

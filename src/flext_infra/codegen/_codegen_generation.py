@@ -218,6 +218,10 @@ class FlextInfraCodegenGeneration:
         publish_all = FlextInfraUtilitiesCodegenGeneration.is_root_namespace_package(
             current_pkg
         )
+        published_exports = FlextInfraUtilitiesCodegenGeneration.build_published_exports(
+            exports,
+            lazy_filtered,
+        )
         type_checking_filtered: t.Infra.LazyImportMap = {
             name: val
             for name, val in lazy_filtered.items()
@@ -225,7 +229,7 @@ class FlextInfraCodegenGeneration:
         }
         children_lazy = tuple(child_packages_for_lazy or ())
         eager_export_names = [
-            name for name in sorted(exports) if name not in lazy_filtered
+            name for name in published_exports if name not in lazy_filtered
         ]
         is_core_pkg = current_pkg == c.Infra.Packages.CORE_UNDERSCORE
 
@@ -259,7 +263,7 @@ class FlextInfraCodegenGeneration:
         runtime_import_block.extend(runtime_import_lines)
 
         lazy_entries = FlextInfraUtilitiesCodegenGeneration.build_lazy_entries(
-            exports,
+            published_exports,
             lazy_filtered,
             children_lazy,
         )
@@ -296,7 +300,7 @@ class FlextInfraCodegenGeneration:
             lazy_entries=lazy_entries,
             type_checking_lines="\n".join(type_checking_lines),
             typecheck_names=sorted(lazy_filtered),
-            exports=sorted(exports),
+            exports=published_exports,
             publish_all=publish_all,
         )
         out.extend(body.splitlines())

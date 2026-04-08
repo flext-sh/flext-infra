@@ -10,26 +10,6 @@ import typing as _t
 from flext_core.lazy import install_lazy_exports, merge_lazy_imports
 
 if _t.TYPE_CHECKING:
-    from tests import (
-        conftest,
-        constants,
-        fixtures,
-        fixtures_git,
-        git_service,
-        helpers,
-        integration,
-        models,
-        protocols,
-        refactor,
-        runner_service,
-        scenarios,
-        test_infra_refactor_rope_migrations,
-        typings,
-        unit,
-        utilities,
-        workspace_factory,
-        workspace_scenarios,
-    )
     from tests.constants import TestsFlextInfraConstants, TestsFlextInfraConstants as c
     from tests.helpers import TestsFlextInfraHelpers
     from tests.models import TestsFlextInfraModels, TestsFlextInfraModels as m

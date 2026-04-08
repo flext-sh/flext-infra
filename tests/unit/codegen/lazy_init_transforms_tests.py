@@ -34,6 +34,12 @@ class TestScanPublicDefs:
         index = u.Infra.build_sibling_export_index(tmp_path, "mod")
         tm.that(index, contains="public_func")
 
+    def test_does_not_export_module_name(self, tmp_path: Path) -> None:
+        """Top-level module names are not exported as compatibility entries."""
+        (tmp_path / "module.py").write_text("class PublicClass:\n    pass\n")
+        index = u.Infra.build_sibling_export_index(tmp_path, "mod")
+        tm.that(index, excludes="module")
+
     def test_finds_assignments(self, tmp_path: Path) -> None:
         """Test scanning finds public assignments."""
         (tmp_path / "module.py").write_text("MY_CONST = 42\n")
@@ -117,6 +123,19 @@ class TestMergeChildExports:
         u.Infra.merge_child_exports(tmp_path, "pkg", lazy_map, dir_exports)
         tm.that(lazy_map, excludes="BLUE")
         tm.that(lazy_map, contains="Service")
+
+    def test_does_not_export_child_directory_name(self, tmp_path: Path) -> None:
+        """Child package names are not exported as compatibility entries."""
+        sub_dir = tmp_path / "sub"
+        sub_dir.mkdir()
+        lazy_map: dict[str, tuple[str, str]] = {}
+        dir_exports = {
+            str(sub_dir): {
+                "SubService": ("pkg.sub.service", "SubService"),
+            },
+        }
+        u.Infra.merge_child_exports(tmp_path, "pkg", lazy_map, dir_exports)
+        tm.that(lazy_map, excludes="sub")
 
 
 class TestExtractVersionExports:

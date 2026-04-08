@@ -20,21 +20,10 @@ _LAZY_IMPORTS = {
     "FlextInfraDocValidator": ("flext_infra.docs.validator", "FlextInfraDocValidator"),
     "auditor": "flext_infra.docs.auditor",
     "builder": "flext_infra.docs.builder",
-    "c": ("flext_core.constants", "FlextConstants"),
     "cli": "flext_infra.docs.cli",
-    "d": ("flext_core.decorators", "FlextDecorators"),
-    "e": ("flext_core.exceptions", "FlextExceptions"),
     "fixer": "flext_infra.docs.fixer",
     "generator": "flext_infra.docs.generator",
-    "h": ("flext_core.handlers", "FlextHandlers"),
-    "m": ("flext_core.models", "FlextModels"),
-    "p": ("flext_core.protocols", "FlextProtocols"),
-    "r": ("flext_core.result", "FlextResult"),
-    "s": ("flext_core.service", "FlextService"),
-    "t": ("flext_core.typings", "FlextTypes"),
-    "u": ("flext_core.utilities", "FlextUtilities"),
     "validator": "flext_infra.docs.validator",
-    "x": ("flext_core.mixins", "FlextMixins"),
 }
 
 

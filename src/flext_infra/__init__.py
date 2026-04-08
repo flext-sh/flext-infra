@@ -15,36 +15,7 @@ if _t.TYPE_CHECKING:
     from flext_core.exceptions import FlextExceptions as e
     from flext_core.handlers import FlextHandlers as h
     from flext_core.result import FlextResult as r
-    from flext_infra import (
-        _constants,
-        _models,
-        _protocols,
-        _typings,
-        _utilities,
-        api,
-        base,
-        basemk,
-        check,
-        cli,
-        codegen,
-        constants,
-        deps,
-        detectors,
-        docs,
-        gates,
-        github,
-        models,
-        protocols,
-        refactor,
-        release,
-        rules,
-        services,
-        transformers,
-        typings,
-        utilities,
-        validate,
-        workspace,
-    )
+    from flext_infra import cli
     from flext_infra._constants.base import FlextInfraConstantsBase
     from flext_infra._constants.basemk import FlextInfraConstantsBasemk
     from flext_infra._constants.census import FlextInfraConstantsCensus

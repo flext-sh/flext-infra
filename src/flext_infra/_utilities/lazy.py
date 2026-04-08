@@ -170,25 +170,6 @@ class FlextInfraUtilitiesCodegenLazyMerging:
         lazy_map: t.Infra.MutableLazyImportMap,
         sub_exports: t.Infra.LazyImportMap,
     ) -> None:
-        is_project_root = False
-        if hasattr(subdir.parent, "joinpath"):
-            is_project_root = (
-                subdir.parent / c.Infra.Files.PYPROJECT_FILENAME
-            ).exists()
-
-        if subdir.name != c.Infra.Dunders.INIT and subdir.name not in lazy_map:
-            submodule = (
-                FlextInfraUtilitiesCodegenLazyScanning.package_name_from_rel_parts(
-                    rel_parts=(subdir.name,),
-                    current_pkg=current_pkg,
-                    is_project_root=is_project_root,
-                )
-            )
-            FlextInfraUtilitiesCodegenLazyMerging.register_export(
-                lazy_map,
-                subdir.name,
-                (submodule, ""),
-            )
         for name, (mod, attr) in sub_exports.items():
             if not attr:
                 continue
@@ -402,16 +383,6 @@ class FlextInfraUtilitiesCodegenLazyScanning(
                 source,
                 mod_path,
                 index,
-            )
-        if (
-            len(rel_path.parts) == 1
-            and not py_file.stem.startswith("_")
-            and py_file.stem not in index
-        ):
-            FlextInfraUtilitiesCodegenLazyScanning.register_export(
-                index,
-                py_file.stem,
-                (mod_path, ""),
             )
 
     @staticmethod
@@ -1164,6 +1135,10 @@ class FlextInfraUtilitiesCodegenLazyAliases:
         current_pkg = FlextInfraUtilitiesDiscovery.discover_package_from_file(
             pkg_dir / c.Infra.Files.INIT_PY
         )
+        if not FlextInfraUtilitiesCodegenGeneration.is_root_namespace_package(
+            current_pkg
+        ):
+            return
         for alias, suffix in c.Infra.ALIAS_TO_SUFFIX.items():
             expected_module = "typings" if suffix == "Types" else suffix.lower()
             if self._existing_alias_is_canonical(

@@ -60,6 +60,25 @@ class TestResolveAliases:
         tm.that(lazy_map, contains="m")
         tm.that(lazy_map, contains="t")
 
+    def test_subpackage_does_not_add_runtime_aliases(self, tmp_path: Path) -> None:
+        """Subpackages keep _LAZY_IMPORTS free of runtime aliases."""
+        pkg_dir = tmp_path / "src" / "pkg" / "tools"
+        pkg_dir.mkdir(parents=True)
+        _ = (tmp_path / "src" / "pkg" / "__init__.py").write_text(
+            "",
+            encoding="utf-8",
+        )
+        _ = (pkg_dir / "__init__.py").write_text("", encoding="utf-8")
+        lazy_map: MutableMapping[str, tuple[str, str]] = {
+            "FlextConstants": ("pkg.constants", "FlextConstants"),
+            "FlextModels": ("pkg.models", "FlextModels"),
+            "FlextTypes": ("pkg.typings", "FlextTypes"),
+        }
+        u.Infra().resolve_aliases(lazy_map, pkg_dir=pkg_dir)
+        tm.that(lazy_map, lacks="c")
+        tm.that(lazy_map, lacks="m")
+        tm.that(lazy_map, lacks="t")
+
 
 class TestGenerateTypeChecking:
     """Test generate_type_checking function."""
@@ -331,6 +350,37 @@ class TestGenerateFile:
         tm.that(content, lacks="from test_pkg import _constants")
         tm.that(content, lacks="from test_pkg import api")
         tm.that(content, lacks="from test_pkg import constants")
+
+    def test_root_namespace_omits_module_and_directory_exports(self) -> None:
+        """Root namespace omits compatibility module/directory names entirely."""
+        exports = ["Alpha", "_constants", "api", "constants", "tools"]
+        filtered = {
+            "Alpha": ("test_pkg._utilities.alpha", "Alpha"),
+            "_constants": ("test_pkg._constants", ""),
+            "api": ("test_pkg.api", ""),
+            "constants": ("test_pkg.constants", ""),
+            "tools": ("test_pkg.tools", ""),
+        }
+        inline_constants: t.StrMapping = {}
+        content = FlextInfraCodegenGeneration.generate_file(
+            "",
+            exports,
+            filtered,
+            inline_constants,
+            "test_pkg",
+            child_packages_for_lazy=("test_pkg._constants", "test_pkg.tools"),
+            child_packages_for_tc=("test_pkg._constants", "test_pkg.tools"),
+        )
+        tm.that(content, contains='"Alpha": ("test_pkg._utilities.alpha", "Alpha")')
+        tm.that(content, lacks='"_constants": "test_pkg._constants"')
+        tm.that(content, lacks='"api": "test_pkg.api"')
+        tm.that(content, lacks='"constants": "test_pkg.constants"')
+        tm.that(content, lacks='"tools": "test_pkg.tools"')
+        tm.that(content, contains='    "Alpha",')
+        tm.that(content, lacks='    "_constants",')
+        tm.that(content, lacks='    "api",')
+        tm.that(content, lacks='    "constants",')
+        tm.that(content, lacks='    "tools",')
 
     def test_subpackage_omits_static_analysis_hints(self) -> None:
         """Non-root package __init__.py keeps only _LAZY_IMPORTS + lazy loader."""
