@@ -6,8 +6,6 @@ from pathlib import Path
 import pytest
 from tests import c, m, t, u
 
-from flext_infra import FlextInfraUtilitiesIteration
-
 
 class TestDiscoveryProjectRoots:
     def test_discover_project_roots_with_real_workspace_root(self) -> None:
@@ -108,7 +106,7 @@ class TestDiscoveryIterPythonFiles:
             raise OSError(msg)
 
         monkeypatch.setattr(
-            FlextInfraUtilitiesIteration,
+            u.Infra,
             "discover_project_roots",
             staticmethod(_raise_oserror),
         )
@@ -215,15 +213,10 @@ class TestDiscoveryFindAllPyprojectFiles:
 class TestDiscoveryDiscoverProjects:
     def test_discover_projects_returns_project_info(self, tmp_path: Path) -> None:
         project = tmp_path / "alpha"
-        (project / c.Infra.Git.DIR).mkdir(parents=True)
         (project / c.Infra.Paths.DEFAULT_SRC_DIR).mkdir(parents=True)
         (project / c.Infra.Directories.TESTS).mkdir(parents=True)
-        (project / c.Infra.Files.MAKEFILE_FILENAME).write_text(
-            "all:\n",
-            encoding="utf-8",
-        )
         (project / c.Infra.Files.PYPROJECT_FILENAME).write_text(
-            "[project]\nname='alpha'\n",
+            "[project]\nname='alpha'\ndependencies=['flext-core>=0.1.0']\n",
             encoding="utf-8",
         )
 
@@ -236,6 +229,31 @@ class TestDiscoveryDiscoverProjects:
         assert info.name == "alpha"
         assert info.has_src is True
         assert info.has_tests is True
+        assert info.workspace_role == c.Infra.WorkspaceProjectRole.ATTACHED
+
+    def test_discover_projects_includes_workspace_members_without_core_dep(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        (tmp_path / c.Infra.Files.PYPROJECT_FILENAME).write_text(
+            "[project]\nname='workspace'\n\n[tool.uv.workspace]\nmembers = ['alpha']\n",
+            encoding="utf-8",
+        )
+        project = tmp_path / "alpha"
+        (project / c.Infra.Paths.DEFAULT_SRC_DIR).mkdir(parents=True)
+        (project / c.Infra.Files.PYPROJECT_FILENAME).write_text(
+            "[project]\nname='alpha'\n",
+            encoding="utf-8",
+        )
+
+        result = u.Infra.discover_projects(tmp_path)
+
+        assert result.is_success
+        assert len(result.value) == 1
+        assert (
+            result.value[0].workspace_role
+            == c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER
+        )
 
     def test_discover_projects_returns_failure_on_oserror(
         self,

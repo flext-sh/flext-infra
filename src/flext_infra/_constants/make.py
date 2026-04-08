@@ -53,6 +53,7 @@ class FlextInfraConstantsMake:
         PR_ACTIONS_ALLOWED: Final[str] = "status|create|view|checks|merge|close"
         PR_MERGE_METHODS_ALLOWED: Final[str] = "squash|merge|rebase"
         ORCHESTRATED_PROJECT_VERBS: Final[t.StrSequence] = (
+            "boot",
             "build",
             "check",
             "clean",

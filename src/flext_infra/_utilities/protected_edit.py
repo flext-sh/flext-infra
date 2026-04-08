@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import difflib
+import os
 import re
 import shutil
 from collections.abc import Callable, Mapping, MutableMapping, MutableSequence, Sequence
@@ -10,6 +11,7 @@ from pathlib import Path
 
 from flext_cli import u
 from flext_infra import c, t
+from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 
 
 class FlextInfraUtilitiesProtectedEdit:
@@ -61,6 +63,26 @@ class FlextInfraUtilitiesProtectedEdit:
         except ValueError:
             return py_file
 
+    @staticmethod
+    def _command_cwd(py_file: Path, workspace: Path) -> Path:
+        resolved_workspace = workspace.resolve()
+        project_root = FlextInfraUtilitiesDiscovery.discover_project_root_from_file(
+            py_file,
+        )
+        if project_root is None:
+            return resolved_workspace
+        try:
+            project_root.relative_to(resolved_workspace)
+        except ValueError:
+            return resolved_workspace
+        return project_root
+
+    @staticmethod
+    def _command_env() -> Mapping[str, str]:
+        env = dict(os.environ)
+        _ = env.pop("PYTHONPATH", None)
+        return env
+
     @classmethod
     def lint_snapshot(
         cls,
@@ -71,9 +93,15 @@ class FlextInfraUtilitiesProtectedEdit:
     ) -> t.Infra.LintSnapshot:
         """Run selected lint tools on *py_file* and return failing output lines."""
         errors: MutableMapping[str, Sequence[str]] = {}
+        command_cwd = cls._command_cwd(py_file, workspace)
         for tool, tmpl in cls._selected_lint_tools(gates):
             cmd = [item.replace("{file}", str(py_file)) for item in tmpl]
-            result = u.Cli.run_raw(cmd, cwd=workspace, timeout=c.Infra.Timeouts.SHORT)
+            result = u.Cli.run_raw(
+                cmd,
+                cwd=command_cwd,
+                env=cls._command_env(),
+                timeout=c.Infra.Timeouts.SHORT,
+            )
             if result.is_success and result.value.exit_code != 0:
                 output = (result.value.stdout + result.value.stderr).strip()
                 errors[tool] = [line for line in output.splitlines() if line.strip()]
@@ -112,9 +140,11 @@ class FlextInfraUtilitiesProtectedEdit:
     def _pytest_failure(py_file: Path, workspace: Path) -> str | None:
         if "tests" not in py_file.parts and not py_file.name.startswith("test_"):
             return None
+        command_cwd = FlextInfraUtilitiesProtectedEdit._command_cwd(py_file, workspace)
         result = u.Cli.run_raw(
             ["pytest", str(py_file), "-x", "--tb=short", "-q"],
-            cwd=workspace,
+            cwd=command_cwd,
+            env=FlextInfraUtilitiesProtectedEdit._command_env(),
             timeout=c.Infra.Timeouts.MEDIUM,
         )
         if result.is_failure:
@@ -168,7 +198,10 @@ class FlextInfraUtilitiesProtectedEdit:
             if restore_fn is not None:
                 restore_fn()
                 return
-            py_file.write_text(before_source, encoding=c.Infra.Encoding.DEFAULT)
+            py_file.write_text(
+                before_source,
+                encoding=c.Infra.Encoding.DEFAULT,
+            )
 
         edit_completed = False
         try:
@@ -188,7 +221,9 @@ class FlextInfraUtilitiesProtectedEdit:
                 return (True, [])
             return (True, [f"  BACKUP {rel} -> {backup_path.name}"])
 
-        modified = py_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
+        modified = py_file.read_text(
+            encoding=c.Infra.Encoding.DEFAULT,
+        )
         diff = list(
             difflib.unified_diff(
                 before_source.splitlines(keepends=True),
@@ -221,15 +256,23 @@ class FlextInfraUtilitiesProtectedEdit:
         gates: Sequence[str] | None = None,
     ) -> t.Infra.EditResult:
         """Write *updated_source* with protected validation and rollback."""
-        original_source = py_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
+        original_source = py_file.read_text(
+            encoding=c.Infra.Encoding.DEFAULT,
+        )
         if updated_source == original_source:
             return (True, [])
 
         def _write_updated() -> None:
-            py_file.write_text(updated_source, encoding=c.Infra.Encoding.DEFAULT)
+            py_file.write_text(
+                updated_source,
+                encoding=c.Infra.Encoding.DEFAULT,
+            )
 
         def _restore_original() -> None:
-            py_file.write_text(original_source, encoding=c.Infra.Encoding.DEFAULT)
+            py_file.write_text(
+                original_source,
+                encoding=c.Infra.Encoding.DEFAULT,
+            )
 
         return cls.protected_file_edit(
             py_file,
@@ -264,7 +307,9 @@ class FlextInfraUtilitiesProtectedEdit:
         backup_paths: MutableMapping[Path, Path] = {}
         for path in normalized_updates:
             if path.exists():
-                before_sources[path] = path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+                before_sources[path] = path.read_text(
+                    encoding=c.Infra.Encoding.DEFAULT,
+                )
                 before_lints[path] = cls.lint_snapshot(path, workspace, gates=gates)
                 if (
                     keep_backup
@@ -281,13 +326,19 @@ class FlextInfraUtilitiesProtectedEdit:
                     if path.exists():
                         path.unlink()
                     continue
-                path.write_text(original_source, encoding=c.Infra.Encoding.DEFAULT)
+                path.write_text(
+                    original_source,
+                    encoding=c.Infra.Encoding.DEFAULT,
+                )
 
         write_completed = False
         try:
             for path, updated_source in normalized_updates.items():
                 path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text(updated_source, encoding=c.Infra.Encoding.DEFAULT)
+                path.write_text(
+                    updated_source,
+                    encoding=c.Infra.Encoding.DEFAULT,
+                )
             if post_write is not None:
                 post_write()
             write_completed = True
@@ -308,7 +359,9 @@ class FlextInfraUtilitiesProtectedEdit:
             failed = True
             rel = cls._relative_path(path, workspace)
             before_source = before_sources[path] or ""
-            modified = path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+            modified = path.read_text(
+                encoding=c.Infra.Encoding.DEFAULT,
+            )
             diff = list(
                 difflib.unified_diff(
                     before_source.splitlines(keepends=True),

@@ -9,15 +9,16 @@ from typing import Annotated, override
 
 from pydantic import Field
 
+from flext_cli import p, u
+from flext_core import r
 from flext_infra import (
+    FlextInfraBasemkModels,
     FlextInfraBaseMkTemplateEngine,
+    FlextInfraConstantsBase,
+    FlextInfraProtocolsBase,
     c,
-    m,
-    p,
-    r,
     s,
     t,
-    u,
 )
 
 
@@ -34,7 +35,7 @@ class FlextInfraBaseMkGenerator(s[str]):
     ] = None
 
     template_engine: Annotated[
-        p.Infra.TemplateRenderer | None,
+        FlextInfraProtocolsBase.TemplateRenderer | None,
         Field(default=None, exclude=True, description="Template engine"),
     ] = None
 
@@ -66,7 +67,7 @@ class FlextInfraBaseMkGenerator(s[str]):
 
     def generate_basemk(
         self,
-        config: m.Infra.BaseMkConfig | t.ScalarMapping | None = None,
+        config: FlextInfraBasemkModels.BaseMkConfig | t.ScalarMapping | None = None,
     ) -> r[str]:
         """Generate base.mk content from configuration."""
         config_result = self._normalize_config(config)
@@ -85,7 +86,7 @@ class FlextInfraBaseMkGenerator(s[str]):
         content: str,
         *,
         output: Path | None = None,
-        stream: p.Infra.OutputStream | None = None,
+        stream: FlextInfraProtocolsBase.OutputStream | None = None,
     ) -> r[bool]:
         """Write generated content to file or stream."""
         if output is None:
@@ -99,28 +100,31 @@ class FlextInfraBaseMkGenerator(s[str]):
                 return r[bool].fail(f"base.mk stdout write failed: {exc}")
         try:
             output.parent.mkdir(parents=True, exist_ok=True)
-            _ = output.write_text(content, encoding=c.Infra.Encoding.DEFAULT)
+            _ = output.write_text(
+                content,
+                encoding=FlextInfraConstantsBase.Encoding.DEFAULT,
+            )
             return r[bool].ok(True)
         except OSError as exc:
             return r[bool].fail(f"base.mk write failed: {exc}")
 
     def _normalize_config(
         self,
-        config: m.Infra.BaseMkConfig | t.ScalarMapping | None,
-    ) -> r[m.Infra.BaseMkConfig]:
+        config: FlextInfraBasemkModels.BaseMkConfig | t.ScalarMapping | None,
+    ) -> r[FlextInfraBasemkModels.BaseMkConfig]:
         if config is None:
-            return r[m.Infra.BaseMkConfig].ok(
+            return r[FlextInfraBasemkModels.BaseMkConfig].ok(
                 FlextInfraBaseMkTemplateEngine.default_config(),
             )
-        if isinstance(config, m.Infra.BaseMkConfig):
-            return r[m.Infra.BaseMkConfig].ok(config)
+        if isinstance(config, FlextInfraBasemkModels.BaseMkConfig):
+            return r[FlextInfraBasemkModels.BaseMkConfig].ok(config)
         try:
-            normalized = m.Infra.BaseMkConfig.model_validate(
+            normalized = FlextInfraBasemkModels.BaseMkConfig.model_validate(
                 dict(config),
             )
-            return r[m.Infra.BaseMkConfig].ok(normalized)
+            return r[FlextInfraBasemkModels.BaseMkConfig].ok(normalized)
         except (TypeError, ValueError) as exc:
-            return r[m.Infra.BaseMkConfig].fail(
+            return r[FlextInfraBasemkModels.BaseMkConfig].fail(
                 f"base.mk configuration validation failed: {exc}",
             )
 
@@ -129,15 +133,20 @@ class FlextInfraBaseMkGenerator(s[str]):
         try:
             with tempfile.TemporaryDirectory(prefix="flext-basemk-") as temp_dir_name:
                 temp_dir = Path(temp_dir_name)
-                base_mk_path = temp_dir / c.Infra.Files.BASE_MK
-                makefile_path = temp_dir / c.Infra.Files.MAKEFILE_FILENAME
-                _ = base_mk_path.write_text(content, encoding=c.Infra.Encoding.DEFAULT)
+                base_mk_path = temp_dir / FlextInfraConstantsBase.Files.BASE_MK
+                makefile_path = (
+                    temp_dir / FlextInfraConstantsBase.Files.MAKEFILE_FILENAME
+                )
+                _ = base_mk_path.write_text(
+                    content,
+                    encoding=FlextInfraConstantsBase.Encoding.DEFAULT,
+                )
                 _ = makefile_path.write_text(
                     "include base.mk\n",
-                    encoding=c.Infra.Encoding.DEFAULT,
+                    encoding=FlextInfraConstantsBase.Encoding.DEFAULT,
                 )
                 process_result = self._get_runner.run([
-                    c.Infra.MAKE,
+                    FlextInfraConstantsBase.MAKE,
                     "-C",
                     str(temp_dir),
                     "--dry-run",
@@ -157,7 +166,7 @@ class FlextInfraBaseMkGenerator(s[str]):
         """Render the Makefile bootstrap include block from template."""
         return FlextInfraBaseMkTemplateEngine().render_single(
             c.Infra.MAKEFILE_BOOTSTRAP_TEMPLATE,
-            make=c.Infra.Make,
+            make=FlextInfraConstantsBase.Make,
         )
 
 

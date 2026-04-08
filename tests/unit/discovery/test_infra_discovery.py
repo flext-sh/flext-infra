@@ -10,44 +10,53 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import m, t
-
-from flext_core import r
-from flext_infra import FlextInfraUtilitiesDiscovery
+from tests import c, m, r, t, u
 
 
 class TestFlextInfraDiscoveryService:
     @pytest.fixture
-    def service(self) -> FlextInfraUtilitiesDiscovery:
-        return FlextInfraUtilitiesDiscovery()
+    def service(self) -> u.Infra:
+        return u.Infra()
 
     @pytest.fixture
     def workspace_with_projects(self, tmp_path: Path) -> Path:
+        (tmp_path / "pyproject.toml").write_text(
+            "[project]\nname='workspace'\n\n"
+            "[tool.uv.workspace]\n"
+            "members = ['project2']\n",
+            encoding="utf-8",
+        )
         proj1 = tmp_path / "project1"
         proj1.mkdir()
-        (proj1 / ".git").mkdir()
-        (proj1 / "Makefile").touch()
-        (proj1 / "pyproject.toml").touch()
+        (proj1 / "pyproject.toml").write_text(
+            "[project]\nname='project1'\ndependencies=['flext-core>=0.1.0']\n",
+            encoding="utf-8",
+        )
         (proj1 / "src").mkdir()
         (proj1 / "tests").mkdir()
         proj2 = tmp_path / "project2"
         proj2.mkdir()
-        (proj2 / ".git").mkdir()
-        (proj2 / "Makefile").touch()
-        (proj2 / "pyproject.toml").touch()
+        (proj2 / "pyproject.toml").write_text(
+            "[project]\nname='project2'\n",
+            encoding="utf-8",
+        )
         invalid = tmp_path / "invalid"
         invalid.mkdir()
-        (invalid / ".git").mkdir()
-        (invalid / "pyproject.toml").touch()
+        (invalid / "pyproject.toml").write_text(
+            "[project]\nname='invalid'\n",
+            encoding="utf-8",
+        )
         hidden = tmp_path / ".hidden"
         hidden.mkdir()
-        (hidden / ".git").mkdir()
-        (hidden / "Makefile").touch()
+        (hidden / "pyproject.toml").write_text(
+            "[project]\nname='hidden'\ndependencies=['flext-core>=0.1.0']\n",
+            encoding="utf-8",
+        )
         return tmp_path
 
     def test_discover_projects_happy_path(
         self,
-        service: FlextInfraUtilitiesDiscovery,
+        service: u.Infra,
         workspace_with_projects: Path,
     ) -> None:
         result = service.discover_projects(workspace_with_projects)
@@ -60,10 +69,14 @@ class TestFlextInfraDiscoveryService:
         assert projects[0].has_src is True
         assert projects[1].has_src is False
         assert projects[1].has_tests is False
+        assert projects[0].workspace_role == c.Infra.WorkspaceProjectRole.ATTACHED
+        assert (
+            projects[1].workspace_role == c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER
+        )
 
     def test_discover_projects_empty_workspace(
         self,
-        service: FlextInfraUtilitiesDiscovery,
+        service: u.Infra,
         tmp_path: Path,
     ) -> None:
         result = service.discover_projects(tmp_path)
@@ -72,7 +85,7 @@ class TestFlextInfraDiscoveryService:
 
     def test_discover_projects_nonexistent_path(
         self,
-        service: FlextInfraUtilitiesDiscovery,
+        service: u.Infra,
     ) -> None:
         nonexistent = Path("/nonexistent/path/to/workspace")
         result = service.discover_projects(nonexistent)
@@ -83,7 +96,7 @@ class TestFlextInfraDiscoveryService:
 
     def test_find_all_pyproject_files_happy_path(
         self,
-        service: FlextInfraUtilitiesDiscovery,
+        service: u.Infra,
         tmp_path: Path,
     ) -> None:
         (tmp_path / "project1").mkdir()
@@ -100,7 +113,7 @@ class TestFlextInfraDiscoveryService:
 
     def test_find_all_pyproject_files_with_skip_dirs(
         self,
-        service: FlextInfraUtilitiesDiscovery,
+        service: u.Infra,
         tmp_path: Path,
     ) -> None:
         (tmp_path / "project1").mkdir()
@@ -118,7 +131,7 @@ class TestFlextInfraDiscoveryService:
 
     def test_find_all_pyproject_files_with_project_paths(
         self,
-        service: FlextInfraUtilitiesDiscovery,
+        service: u.Infra,
         tmp_path: Path,
     ) -> None:
         proj1 = tmp_path / "project1"
@@ -135,7 +148,7 @@ class TestFlextInfraDiscoveryService:
 
     def test_discover_projects_result_type(
         self,
-        service: FlextInfraUtilitiesDiscovery,
+        service: u.Infra,
         workspace_with_projects: Path,
     ) -> None:
         result = service.discover_projects(workspace_with_projects)
@@ -147,7 +160,7 @@ class TestFlextInfraDiscoveryService:
 
     def test_discover_projects_empty_workspace_v2(
         self,
-        service: FlextInfraUtilitiesDiscovery,
+        service: u.Infra,
         tmp_path: Path,
     ) -> None:
         result = service.discover_projects(tmp_path)

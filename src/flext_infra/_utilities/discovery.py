@@ -12,7 +12,6 @@ from flext_infra import (
     FlextInfraUtilitiesDocsScope,
     c,
     m,
-    t,
 )
 
 
@@ -24,66 +23,19 @@ class FlextInfraUtilitiesDiscovery(FlextInfraUtilitiesDiscoveryScanning):
         workspace_root: Path,
     ) -> r[Sequence[m.Infra.ProjectInfo]]:
         """Find valid projects in the workspace."""
-        if not workspace_root.exists() or not workspace_root.is_dir():
-            return r[Sequence[m.Infra.ProjectInfo]].fail(
-                f"discovery failed: invalid workspace root {workspace_root}",
-            )
-        excluded = FlextInfraUtilitiesDocsScope.excluded_roots(workspace_root)
-        projects: list[m.Infra.ProjectInfo] = []
-        try:
-            for entry in sorted(workspace_root.iterdir(), key=lambda item: item.name):
-                if (
-                    not entry.is_dir()
-                    or entry.name.startswith(".")
-                    or entry.name == "cmd"
-                    or entry.name in excluded
-                ):
-                    continue
-                pyproject = entry / c.Infra.Files.PYPROJECT_FILENAME
-                if not pyproject.is_file():
-                    continue
-                if not (entry / c.Infra.Files.MAKEFILE_FILENAME).is_file():
-                    continue
-                payload = FlextInfraUtilitiesDocsScope.pyproject_payload(entry)
-                docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(payload)
-                enabled = docs_meta.get("enabled", True)
-                if isinstance(enabled, bool) and not enabled:
-                    continue
-                projects.append(
-                    m.Infra.ProjectInfo.model_construct(
-                        path=entry,
-                        name=entry.name,
-                        stack="python/flext",
-                        has_tests=(entry / c.Infra.Directories.TESTS).is_dir(),
-                        has_src=(entry / c.Infra.Paths.DEFAULT_SRC_DIR).is_dir(),
-                        project_class=(
-                            FlextInfraUtilitiesDocsScope.classify_project_from_meta(
-                                entry.name,
-                                docs_meta,
-                            )
-                        ),
-                        package_name=(
-                            FlextInfraUtilitiesDocsScope.package_name_from_payload(
-                                entry,
-                                payload,
-                                docs_meta,
-                            )
-                        ),
-                    )
-                )
-        except OSError as exc:
-            return r[Sequence[m.Infra.ProjectInfo]].fail(
-                f"discovery failed: {exc}",
-            )
-        return r[Sequence[m.Infra.ProjectInfo]].ok(projects)
+        return FlextInfraUtilitiesDocsScope.discover_projects(workspace_root)
 
     @staticmethod
-    def _submodule_names(workspace_root: Path) -> t.Infra.StrSet:
+    def _submodule_names(
+        workspace_root: Path,
+    ) -> set[str]:
         gitmodules = workspace_root / ".gitmodules"
         if not gitmodules.exists():
             return set()
         try:
-            content = gitmodules.read_text(encoding=c.Infra.Encoding.DEFAULT)
+            content = gitmodules.read_text(
+                encoding=c.Infra.Encoding.DEFAULT,
+            )
         except OSError:
             return set()
         return set(re.findall(r"^\s*path\s*=\s*(.+?)\s*$", content, re.MULTILINE))
@@ -196,25 +148,24 @@ class FlextInfraUtilitiesDiscovery(FlextInfraUtilitiesDiscoveryScanning):
         return root.parent if root else file_path.resolve().parent
 
     @staticmethod
-    def package_context(file_path: Path) -> t.Infra.Pair[Path, str]:
+    def package_context(
+        file_path: Path,
+    ) -> tuple[Path, str]:
         """Return (package_dir, package_name) for any project type."""
         parts = file_path.resolve().parts
-        # 1. Standard FLEXT structure: .../src/<package_name>/...
         if c.Infra.Paths.DEFAULT_SRC_DIR in parts:
             src_idx = parts.index(c.Infra.Paths.DEFAULT_SRC_DIR)
-            # Package name is always the directory immediately after 'src'
             if src_idx + 1 < len(parts):
                 package_name = parts[src_idx + 1]
                 package_dir = Path(*parts[: src_idx + 2])
                 return package_dir, package_name
 
-        # 2. Alternative structure: find highest-level directory with __init__.py
         current = file_path.resolve().parent
         best_dir, best_name = current, ""
         while current.parent != current:
             if (current / c.Infra.Files.INIT_PY).is_file():
                 best_dir, best_name = current, current.name
-            elif best_name:  # Stop once we've crossed out of the package
+            elif best_name:
                 break
             current = current.parent
         return best_dir, best_name

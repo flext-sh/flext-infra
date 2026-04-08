@@ -28,17 +28,36 @@ class TestEnsurePyrightConfigPhase:
     def test_apply_root_sets_execution_environments(self, tmp_path: Path) -> None:
         tool_config = _test_tool_config()
         rules = tool_config.tools.pyright.path_rules
+        (tmp_path / "pyproject.toml").write_text(
+            "[project]\nname='workspace'\n\n"
+            "[tool.uv.workspace]\n"
+            "members = ['flext-core', 'flext-api']\n",
+            encoding="utf-8",
+        )
         flext_core = tmp_path / "flext-core"
         flext_api = tmp_path / "flext-api"
+        algar = tmp_path / "algar-oud-mig"
         (tmp_path / "vendor").mkdir(parents=True, exist_ok=True)
         (tmp_path / "typings" / "generated").mkdir(parents=True, exist_ok=True)
         (flext_core / "pyproject.toml").parent.mkdir(parents=True, exist_ok=True)
         (flext_api / "pyproject.toml").parent.mkdir(parents=True, exist_ok=True)
-        _ = (flext_core / "pyproject.toml").write_text("", encoding="utf-8")
-        _ = (flext_api / "pyproject.toml").write_text("", encoding="utf-8")
+        _ = (algar / "pyproject.toml").parent.mkdir(parents=True, exist_ok=True)
+        _ = (flext_core / "pyproject.toml").write_text(
+            "[project]\nname='flext-core'\n",
+            encoding="utf-8",
+        )
+        _ = (flext_api / "pyproject.toml").write_text(
+            "[project]\nname='flext-api'\n",
+            encoding="utf-8",
+        )
+        _ = (algar / "pyproject.toml").write_text(
+            "[project]\nname='algar-oud-mig'\ndependencies=['flext-core>=0.1.0']\n",
+            encoding="utf-8",
+        )
         (flext_core / "src").mkdir(parents=True, exist_ok=True)
         (flext_core / "tests").mkdir(parents=True, exist_ok=True)
         (flext_api / "src").mkdir(parents=True, exist_ok=True)
+        (algar / "src").mkdir(parents=True, exist_ok=True)
         doc = tomlkit.document()
         _ = FlextInfraEnsurePyrightConfigPhase(tool_config).apply(
             doc,

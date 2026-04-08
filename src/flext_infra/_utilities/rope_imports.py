@@ -15,7 +15,13 @@ from rope.refactor.importutils import ImportOrganizer
 from rope.refactor.importutils.importinfo import FromImport
 from rope.refactor.rename import Rename
 
-from flext_infra import FlextInfraUtilitiesRopeCore, c, p, t
+from flext_infra import (
+    FlextInfraConstantsBase,
+    FlextInfraProtocolsRope,
+    FlextInfraRefactorConstants,
+    FlextInfraUtilitiesRopeCore,
+    t,
+)
 
 
 class FlextInfraUtilitiesRopeImports(FlextInfraUtilitiesRopeCore):
@@ -38,7 +44,7 @@ class FlextInfraUtilitiesRopeImports(FlextInfraUtilitiesRopeCore):
         value: object,
     ) -> TypeGuard[t.Infra.RopeFindItModule]:
         """Return True when one module exposes Rope's occurrence finder contract."""
-        return isinstance(value, p.Infra.RopeFindItModuleLike)
+        return isinstance(value, FlextInfraProtocolsRope.RopeFindItModuleLike)
 
     @staticmethod
     def _is_rope_import_organizer_like(
@@ -358,7 +364,7 @@ class FlextInfraUtilitiesRopeImports(FlextInfraUtilitiesRopeCore):
         resource: t.Infra.RopeResource,
         *,
         package_name: str,
-        aliases: t.StrSequence = tuple(c.Infra.RUNTIME_ALIAS_NAMES),
+        aliases: t.StrSequence = tuple(FlextInfraRefactorConstants.RUNTIME_ALIAS_NAMES),
         apply: bool,
     ) -> str | None:
         """Hoist ``from package.sub import alias`` into ``from package import alias``."""
@@ -509,7 +515,7 @@ class FlextInfraUtilitiesRopeImports(FlextInfraUtilitiesRopeCore):
     ) -> bool:
         """Ensure ``from __future__ import annotations`` is present."""
         source = resource.read()
-        if c.Infra.SourceCode.FUTURE_ANNOTATIONS in source:
+        if FlextInfraConstantsBase.SourceCode.FUTURE_ANNOTATIONS in source:
             return False
         lines = source.splitlines(keepends=True)
         insert_idx = 0

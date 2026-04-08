@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
-from flext_infra import c, m, t
+from flext_infra import c, m, t, u
 
 
 class FlextInfraEnsurePyrightEnvs:
@@ -140,10 +140,21 @@ class FlextInfraEnsurePyrightEnvs:
                 ),
             )
 
-        child_projects = sorted(
-            child
-            for child in workspace_root.iterdir()
-            if child.is_dir() and (child / c.Infra.Files.PYPROJECT_FILENAME).exists()
+        discovered = u.Infra.discover_projects(workspace_root)
+        child_projects = (
+            sorted(
+                (
+                    project.path
+                    for project in discovered.value
+                    if (
+                        project.workspace_role
+                        == c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER
+                    )
+                ),
+                key=lambda project_path: project_path.name,
+            )
+            if discovered.is_success
+            else []
         )
         for child_project in child_projects:
             relative_root = child_project.relative_to(workspace_root)

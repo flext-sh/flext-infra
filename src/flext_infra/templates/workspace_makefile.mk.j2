@@ -44,37 +44,130 @@ ifdef VERBOSE
 Q :=
 endif
 
-# Project discovery: parse .gitmodules directly - no Python needed, works before venv exists.
-# submodule paths: listed in .gitmodules path = <dir>
-# external projects: git repos with Makefile+pyproject.toml that are NOT in .gitmodules
+# Project discovery is owned by flext-infra, but the workspace Makefile keeps
+# a rich inventory so help/status/git verbs continue to work before and after boot.
+# - FLEXT_PROJECTS: declared git submodules from .gitmodules
+# - WORKSPACE_PROJECTS: configured workspace members from tool.flext.workspace or tool.uv.workspace
+# - EXTERNAL_PROJECTS: top-level children with pyproject.toml declaring flext-core
 FLEXT_PROJECTS := $(shell \
 	if [ -f .gitmodules ]; then \
 		git config --file .gitmodules --get-regexp '\.path$$' 2>/dev/null \
 			| awk '{print $$2}' | tr '\n' ' '; \
 	fi)
+WORKSPACE_PROJECTS := $(shell \
+	$(PYTHON_CMD) -c 'import pathlib, tomllib; \
+root_pyproject = pathlib.Path("pyproject.toml"); \
+if not root_pyproject.is_file(): \
+    raise SystemExit(0); \
+try: \
+    payload = tomllib.loads(root_pyproject.read_text()); \
+except Exception: \
+    raise SystemExit(0); \
+tool_payload = payload.get("tool", {}) if isinstance(payload, dict) else {}; \
+flext_payload = tool_payload.get("flext", {}) if isinstance(tool_payload, dict) else {}; \
+workspace_payload = flext_payload.get("workspace", {}) if isinstance(flext_payload, dict) else {}; \
+members = workspace_payload.get("members", []) if isinstance(workspace_payload, dict) else []; \
+if not isinstance(members, list) or not members: \
+    uv_payload = tool_payload.get("uv", {}) if isinstance(tool_payload, dict) else {}; \
+    uv_workspace = uv_payload.get("workspace", {}) if isinstance(uv_payload, dict) else {}; \
+    members = uv_workspace.get("members", []) if isinstance(uv_workspace, dict) else []; \
+if isinstance(members, list): \
+    print(" ".join(str(item).strip() for item in members if str(item).strip()), end="")')
 EXTERNAL_PROJECTS := $(shell \
-	submods=$$(git config --file .gitmodules --get-regexp '\.path$$' 2>/dev/null | awk '{print $$2}' | tr '\n' ' '); \
-	for d in */; do d="$${d%/}"; \
-		if [ -d "$$d/.git" ] && [ -f "$$d/Makefile" ] && [ -f "$$d/pyproject.toml" ]; then \
-			if ! echo " $$submods " | grep -qF " $$d "; then \
-				printf '%s ' "$$d"; \
-			fi; \
-		fi; \
-	done)
-
+	$(PYTHON_CMD) -c 'import json, pathlib, tomllib; \
+root = pathlib.Path("."); \
+root_payload = {}; \
+root_pyproject = root / "pyproject.toml"; \
+if root_pyproject.is_file(): \
+    try: root_payload = tomllib.loads(root_pyproject.read_text()); \
+    except Exception: root_payload = {}; \
+tool_payload = root_payload.get("tool", {}) if isinstance(root_payload, dict) else {}; \
+flext_payload = tool_payload.get("flext", {}) if isinstance(tool_payload, dict) else {}; \
+workspace_payload = flext_payload.get("workspace", {}) if isinstance(flext_payload, dict) else {}; \
+members = workspace_payload.get("members", []) if isinstance(workspace_payload, dict) else []; \
+if not isinstance(members, list) or not members: \
+    uv_payload = tool_payload.get("uv", {}) if isinstance(tool_payload, dict) else {}; \
+    uv_workspace = uv_payload.get("workspace", {}) if isinstance(uv_payload, dict) else {}; \
+    members = uv_workspace.get("members", []) if isinstance(uv_workspace, dict) else []; \
+members = {str(item).strip() for item in members if str(item).strip()} if isinstance(members, list) else set(); \
+excluded = set(); \
+docs_config = root / "docs" / "config.json"; \
+if docs_config.is_file(): \
+    try: \
+        docs_payload = json.loads(docs_config.read_text()); \
+        scope_payload = docs_payload.get("scope", {}) if isinstance(docs_payload, dict) else {}; \
+        excluded = {str(item).strip() for item in scope_payload.get("exclude_roots", []) if str(item).strip()} if isinstance(scope_payload, dict) else set(); \
+    except Exception: \
+        excluded = set(); \
+def normalize_name(spec): \
+    if not isinstance(spec, str): \
+        return ""; \
+    base = spec.strip().split("@", 1)[0].strip(); \
+    if not base: \
+        return ""; \
+    token = []; \
+    for char in base: \
+        if char.isalnum() or char in "-_.": \
+            token.append(char); \
+            continue; \
+        if token: \
+            break; \
+    return "".join(token).lower().replace("_", "-"); \
+def dependency_names(payload): \
+    names = set(); \
+    project_payload = payload.get("project", {}) if isinstance(payload, dict) else {}; \
+    if isinstance(project_payload, dict): \
+        for item in project_payload.get("dependencies", []) or []: \
+            dep_name = normalize_name(item); \
+            if dep_name: names.add(dep_name); \
+        optional_payload = project_payload.get("optional-dependencies", {}); \
+        if isinstance(optional_payload, dict): \
+            for group in optional_payload.values(): \
+                if isinstance(group, list): \
+                    for item in group: \
+                        dep_name = normalize_name(item); \
+                        if dep_name: names.add(dep_name); \
+    groups_payload = payload.get("dependency-groups", {}) if isinstance(payload, dict) else {}; \
+    if isinstance(groups_payload, dict): \
+        for group in groups_payload.values(): \
+            if isinstance(group, list): \
+                for item in group: \
+                    dep_name = normalize_name(item); \
+                    if dep_name: names.add(dep_name); \
+    tool_section = payload.get("tool", {}) if isinstance(payload, dict) else {}; \
+    poetry_payload = tool_section.get("poetry", {}) if isinstance(tool_section, dict) else {}; \
+    poetry_deps = poetry_payload.get("dependencies", {}) if isinstance(poetry_payload, dict) else {}; \
+    if isinstance(poetry_deps, dict): \
+        for key in poetry_deps: \
+            dep_name = normalize_name(key); \
+            if dep_name and dep_name != "python": names.add(dep_name); \
+    return names; \
+for child in sorted(root.iterdir(), key=lambda item: item.name): \
+    if (not child.is_dir()) or child.name.startswith(".") or child.name == "cmd" or child.name in excluded or child.name in members: \
+        continue; \
+    pyproject = child / "pyproject.toml"; \
+    if not pyproject.is_file(): \
+        continue; \
+    try: payload = tomllib.loads(pyproject.read_text()); \
+    except Exception: \
+        continue; \
+    tool_section = payload.get("tool", {}) if isinstance(payload, dict) else {}; \
+    child_flext = tool_section.get("flext", {}) if isinstance(tool_section, dict) else {}; \
+    docs_payload = child_flext.get("docs", {}) if isinstance(child_flext, dict) else {}; \
+    enabled = docs_payload.get("enabled", True) if isinstance(docs_payload, dict) else True; \
+    if isinstance(enabled, bool) and (not enabled): \
+        continue; \
+    if "flext-core" in dependency_names(payload): \
+        print(child.name, end=" ");')
 MANAGED_PROJECTS := $(strip $(FLEXT_PROJECTS))
 INDEPENDENT_PROJECTS := $(strip $(EXTERNAL_PROJECTS))
-WORKSPACE_PROJECTS := $(strip $(shell awk '\
-	/^\[tool\.uv\.workspace\]$$/ { in_workspace = 1; next } \
-	in_workspace && /^members = \[$$/ { in_members = 1; next } \
-	in_members && /^\]$$/ { exit } \
-	in_members { gsub(/[ ",]/, "", $$0); if (length($$0)) printf "%s ", $$0 } \
-' pyproject.toml))
-ALL_PROJECTS := $(MANAGED_PROJECTS) $(INDEPENDENT_PROJECTS)
+ALL_PROJECTS := $(strip $(sort $(MANAGED_PROJECTS) $(WORKSPACE_PROJECTS) $(INDEPENDENT_PROJECTS)))
 ATTACHABLE_PROJECTS := $(strip $(filter-out $(WORKSPACE_PROJECTS),$(ALL_PROJECTS)))
 SELECTED_PROJECTS := $(strip $(if $(PROJECT),$(PROJECT),$(if $(PROJECTS),$(PROJECTS),$(ALL_PROJECTS))))
 DOCS_DEFAULT_PROJECTS := $(strip $(filter flext-%,$(ALL_PROJECTS)))
 DOCS_SELECTED_PROJECTS := $(strip $(if $(PROJECT),$(PROJECT),$(if $(PROJECTS),$(PROJECTS),$(DOCS_DEFAULT_PROJECTS))))
+GIT_SELECTED_PROJECTS := $(strip $(if $(SELECTED_PROJECTS),$(SELECTED_PROJECTS),$(ALL_PROJECTS)))
+SELECTED_PROJECT_FLAGS := $(strip $(foreach proj,$(SELECTED_PROJECTS),--projects $(proj)))
 
 # Auto-detect PYTHONPATH from all project src/ directories (no hardcoded names)
 # Priority: flext-infra and flext-tests BEFORE flext-core (they split from flext-core
@@ -98,8 +191,7 @@ WORKSPACE_INFRA_RELEASE := $(WORKSPACE_FLEXT_INFRA) {{ make.CLI_ROUTE_RELEASE }}
 WORKSPACE_INFRA_VALIDATE := $(WORKSPACE_FLEXT_INFRA) {{ make.CLI_GROUP_VALIDATE }}
 WORKSPACE_INFRA_WORKSPACE := $(WORKSPACE_FLEXT_INFRA) {{ make.CLI_GROUP_WORKSPACE }}
 ORCHESTRATOR := $(WORKSPACE_INFRA_WORKSPACE) orchestrate
-ORCHESTRATOR_PROJECTS := $(strip $(foreach proj,$(SELECTED_PROJECTS),--projects $(proj)))
-DOCS_ORCHESTRATOR_PROJECTS := $(strip $(foreach proj,$(DOCS_SELECTED_PROJECTS),--projects $(proj)))
+ORCHESTRATOR_PROJECTS := $(SELECTED_PROJECT_FLAGS)
 
 define ENSURE_NO_PROJECT_CONFLICT
 	if [ -n "$(PROJECT)" ] && [ -n "$(PROJECTS)" ]; then \
@@ -151,9 +243,7 @@ done
 endef
 
 define AUTO_SYNC_ALL_PROJECTS
-for proj in $(WORKSPACE_PROJECTS); do \
-	$(WORKSPACE_INFRA_WORKSPACE) sync --workspace "$$proj" --canonical-root "$(CURDIR)" --apply >/dev/null || exit 1; \
-done
+$(WORKSPACE_INFRA_WORKSPACE) sync --workspace "$(CURDIR)" --apply >/dev/null || exit 1
 endef
 
 define PREPARE_SELECTED_PROJECTS
@@ -167,7 +257,7 @@ if [ ! -d "$(WORKSPACE_VENV)" ]; then \
 	echo "ERROR: workspace venv not found at $(WORKSPACE_VENV). Run '{{ make.WORKSPACE_BOOT_HINT }}'."; \
 	exit 1; \
 fi; \
-local_venvs=$$(for proj in $(WORKSPACE_PROJECTS); do \
+local_venvs=$$(for proj in $(ALL_PROJECTS); do \
 	if [ -d "$$proj/.venv" ]; then echo "$$proj/.venv"; fi; \
 done); \
 if [ -n "$$local_venvs" ]; then \
@@ -176,7 +266,7 @@ if [ -n "$$local_venvs" ]; then \
 	for venv_path in $$local_venvs; do rm -rf "$$venv_path"; done; \
 	echo "Project-local .venv directories removed."; \
 fi; \
-residual_venvs=$$(for proj in $(WORKSPACE_PROJECTS); do \
+residual_venvs=$$(for proj in $(ALL_PROJECTS); do \
 	if [ -d "$$proj/.venv" ]; then echo "$$proj/.venv"; fi; \
 done); \
 if [ -n "$$residual_venvs" ]; then \
@@ -279,7 +369,7 @@ help: ## Show simple workspace verbs
 {% for example_line in make.WORKSPACE_EXAMPLES %}
 	$(Q)echo " {{ example_line | replace('"', '\\"') }}"
 {% endfor %}
-	$(Q)echo " NOTE: External projects (not in .gitmodules) require manual clone."
+	$(Q)echo " NOTE: Attached projects are discovered from top-level pyproject.toml files that declare flext-core."
 
 boot: ## Install all projects into workspace .venv
 	$(Q)$(PREFLIGHT_CHECK)
@@ -321,6 +411,7 @@ boot: ## Install all projects into workspace .venv
 	uv sync --directory flext-core --no-dev || exit 1
 	$(Q)$(ENSURE_WORKSPACE_RUNTIME)
 	$(Q)$(PREPARE_SELECTED_PROJECTS)
+	$(Q)$(AUTO_SYNC_ALL_PROJECTS)
 	$(Q)echo "Enforcing Python version guards..."; $(WORKSPACE_INFRA_MAINTENANCE) || exit 1
 	$(Q)total_steps=$$(( $(words $(SELECTED_PROJECTS)) + 1 )); \
 	echo "Starting workspace setup for $$total_steps item(s) ($(words $(SELECTED_PROJECTS)) projects + root)"; \
@@ -440,6 +531,7 @@ up: ## Upgrade Python dependencies to latest via Poetry
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
 	$(Q)$(ENSURE_SELECTED_PROJECTS)
 	$(Q)$(ENSURE_PROJECTS_EXIST)
+	$(Q)$(AUTO_SYNC_ALL_PROJECTS)
 	$(Q)echo "Enforcing Python version guards..."; $(WORKSPACE_INFRA_MAINTENANCE) || exit 1
 	$(Q)echo "Standardizing project metadata (make mod)..."
 	$(Q)$(MAKE) mod
@@ -487,10 +579,10 @@ mod: ## Modernize pyproject.toml files (standardize configs without lock/install
 	$(Q)$(ENSURE_SELECTED_PROJECTS)
 	$(Q)$(ENSURE_PROJECTS_EXIST)
 	$(Q)echo "Modernizing pyproject.toml files..."; \
-	$(WORKSPACE_INFRA_DEPS) modernize --apply $(if $(PROJECT),--projects "$(PROJECT)",) $(if $(PROJECTS),--projects "$(PROJECTS)",); \
+	$(WORKSPACE_INFRA_DEPS) modernize --apply $(SELECTED_PROJECT_FLAGS); \
 	echo ""
 	$(Q)echo "Syncing dependency paths to workspace mode..."; \
-	$(WORKSPACE_INFRA_DEPS) path-sync --mode auto --apply $(if $(PROJECT),--projects "$(PROJECT)",) $(if $(PROJECTS),--projects "$(PROJECTS)",); \
+	$(WORKSPACE_INFRA_DEPS) path-sync --mode auto --apply $(SELECTED_PROJECT_FLAGS); \
 	echo ""
 	$(Q)echo "Formatting pyproject.toml files with taplo..."; \
 	taplo format --config "$(CURDIR)/.taplo.toml" pyproject.toml */pyproject.toml; \
@@ -521,7 +613,7 @@ rel: ## Interactive workspace release orchestration
 		--interactive "$(INTERACTIVE)" \
 		--next-bump "$(RELEASE_NEXT_BUMP)" \
 		--create-branches "$(CREATE_BRANCHES)" \
-		--projects $(SELECTED_PROJECTS) \
+		$(SELECTED_PROJECT_FLAGS) \
 		$(if $(filter 1,$(RELEASE_DEV_SUFFIX)),--dev-suffix,) \
 		$(if $(filter 1,$(RELEASE_NEXT_DEV)),--next-dev,) \
 		$(if $(filter 1,$(DRY_RUN)),--dry-run,) \
@@ -534,7 +626,7 @@ pr: ## Manage pull requests for selected projects
 	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
 	$(Q)$(WORKSPACE_INFRA_GITHUB) pr-workspace \
 		--workspace "$(CURDIR)" \
-		$(foreach proj,$(SELECTED_PROJECTS),--projects "$(proj)") \
+		$(SELECTED_PROJECT_FLAGS) \
 		--include-root "$(PR_INCLUDE_ROOT)" \
 		--branch "$(PR_BRANCH)" \
 		--checkpoint "$(PR_CHECKPOINT)" \
@@ -597,7 +689,7 @@ docs: ## Run docs pipeline (DOCS_PHASE=audit|fix|build|generate|validate|all)
 	$(Q)$(ORCHESTRATOR) --verb docs \
 		$(if $(filter 1,$(FAIL_FAST)),--fail-fast) \
 {{ forward_make_args(make.DOCS_FORWARD_ARGS) | trim }}
-		$(DOCS_ORCHESTRATOR_PROJECTS)
+		$(ORCHESTRATOR_PROJECTS)
 
 test: ## Run tests only in all projects
 	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
@@ -674,7 +766,7 @@ types: ## Run typings supply-chain (stubgen + stub_supply_chain + dependency rep
 	fi; \
 	rm -rf "$$tmp_dir"
 	$(Q)$(WORKSPACE_INFRA_VALIDATE) stub-validate \
-		$(if $(PROJECT),--projects $(PROJECT),$(if $(PROJECTS),$(addprefix --projects ,$(PROJECTS)),--all))
+		$(if $(SELECTED_PROJECT_FLAGS),$(SELECTED_PROJECT_FLAGS),--all)
 	$(Q)if [ "$(DEPS_REPORT)" != "0" ]; then \
 		$(WORKSPACE_INFRA_DEPS) detect --typings -q --no-fail; \
 	fi
@@ -798,7 +890,7 @@ save: ## Commit all changes in selected projects (MESSAGE=)
 		exit 1; \
 	fi
 	$(Q)committed=0; skipped=0; failed=0; \
-	for proj in $(SELECTED_PROJECTS); do \
+	for proj in $(GIT_SELECTED_PROJECTS); do \
 		if [ -e "$$proj/.git" ]; then \
 			changes=$$(cd "$$proj" && git status --porcelain 2>/dev/null | wc -l); \
 			if [ "$$changes" -gt 0 ]; then \
@@ -849,7 +941,7 @@ stat: ## Show git status for all workspace projects (submodules + external + roo
 tag: ## Create git tags for selected projects (TAG= optional, DRY_RUN=1)
 	$(Q)$(PREPARE_SELECTED_PROJECTS)
 	$(Q)tagged=0; skipped=0; failed=0; \
-	for proj in $(SELECTED_PROJECTS); do \
+	for proj in $(GIT_SELECTED_PROJECTS); do \
 		if [ -e "$$proj/.git" ] && [ -f "$$proj/pyproject.toml" ]; then \
 			ver=$$(grep '^version' "$$proj/pyproject.toml" | head -1 | awk -F'"' '{print $$2}'); \
 			tag_name="$${TAG:-v$$ver}"; \
@@ -898,7 +990,7 @@ tag: ## Create git tags for selected projects (TAG= optional, DRY_RUN=1)
 push: ## Push branches and tags for selected projects
 	$(Q)$(PREPARE_SELECTED_PROJECTS)
 	$(Q)pushed=0; failed=0; \
-	for proj in $(SELECTED_PROJECTS); do \
+	for proj in $(GIT_SELECTED_PROJECTS); do \
 		if [ -e "$$proj/.git" ]; then \
 			if [ "$(DRY_RUN)" = "1" ]; then \
 				echo "  ~ $$proj (dry-run)"; \
@@ -940,15 +1032,10 @@ gen: ## Recreate standardized pyproject.toml, base.mk, Makefile and __init__.py
 sync: ## Sync project Makefiles from pyproject.toml + refresh __init__.py lazy imports
 	$(Q)$(REQUIRE_VENV)
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
-	$(Q)echo "==> Syncing workspace root base.mk..."
+	$(Q)echo "==> Syncing workspace and discovered projects..."
 	$(Q)$(WORKSPACE_INFRA_WORKSPACE) sync \
-		--workspace "$(CURDIR)"
-	$(Q)echo "==> Syncing project Makefiles..."
-	$(Q)for proj in $(SELECTED_PROJECTS); do \
-		$(WORKSPACE_INFRA_WORKSPACE) sync \
-			--workspace "$$proj" \
-			--canonical-root "$(CURDIR)"; \
-	done
+		--workspace "$(CURDIR)" \
+		--apply
 	$(Q)echo "==> Regenerating __init__.py lazy imports..."
 	$(Q)$(WORKSPACE_INFRA_CODEGEN) lazy-init --workspace "$(CURDIR)"
 	$(Q)echo "==> Sync complete."

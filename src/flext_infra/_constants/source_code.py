@@ -168,7 +168,11 @@ class FlextInfraConstantsSourceCode:
         "scripts",
     )
     "Default directories to check in a project (root only uses scripts)."
-    CHECK_DIRS_SUBPROJECT: Final[t.StrSequence] = ("src", "tests", "examples")
+    CHECK_DIRS_SUBPROJECT: Final[t.StrSequence] = (
+        "src",
+        "tests",
+        "examples",
+    )
     "Subprojects: type-check src/tests/examples only (scripts are workspace copies, run from root)."
 
     GITHUB_REPO_URL: Final[str] = "https://github.com/flext-sh/flext"

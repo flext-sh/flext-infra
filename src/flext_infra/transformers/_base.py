@@ -5,7 +5,10 @@ from __future__ import annotations
 from abc import abstractmethod
 from collections.abc import MutableSequence
 
-from flext_infra import t, u
+from flext_infra import (
+    FlextInfraTypes,
+    FlextInfraUtilitiesRopeSource,
+)
 
 
 class FlextInfraChangeTrackingTransformer:
@@ -16,7 +19,11 @@ class FlextInfraChangeTrackingTransformer:
     inherit :class:`FlextInfraRopeTransformer` instead.
     """
 
-    def __init__(self, *, on_change: t.Infra.ChangeCallback = None) -> None:
+    def __init__(
+        self,
+        *,
+        on_change: FlextInfraTypes.Infra.ChangeCallback = None,
+    ) -> None:
         self._on_change = on_change
         self.changes: MutableSequence[str] = []
 
@@ -37,20 +44,20 @@ class FlextInfraRopeTransformer(FlextInfraChangeTrackingTransformer):
     _description: str = "transformation"
 
     @abstractmethod
-    def apply_to_source(self, source: str) -> t.Infra.TransformResult:
+    def apply_to_source(self, source: str) -> FlextInfraTypes.Infra.TransformResult:
         """Apply transformation to in-memory source."""
         ...
 
     def transform(
         self,
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
-    ) -> t.Infra.TransformResult:
+        rope_project: FlextInfraTypes.Infra.RopeProject,
+        resource: FlextInfraTypes.Infra.RopeResource,
+    ) -> FlextInfraTypes.Infra.TransformResult:
         """Read → apply_to_source → write if changed. Override for custom logic."""
-        source = u.Infra.read_source(resource)
+        source = FlextInfraUtilitiesRopeSource.read_source(resource)
         updated, changes = self.apply_to_source(source)
         if updated != source and changes:
-            u.Infra.write_source(
+            FlextInfraUtilitiesRopeSource.write_source(
                 rope_project,
                 resource,
                 updated,

@@ -18,7 +18,7 @@ from typing import Annotated, override
 from pydantic import Field
 
 from flext_core import FlextLogger
-from flext_infra import c, m, r, s, t, u
+from flext_infra import FlextInfraSyncService, c, m, r, s, t, u
 
 logger = FlextLogger.create_module_logger(__name__)
 
@@ -64,6 +64,55 @@ class FlextInfraOrchestratorService(s[bool]):
         """Return normalized make arguments."""
         return [make_arg.strip() for make_arg in self.make_arg if make_arg.strip()]
 
+    @staticmethod
+    def _workspace_root() -> Path:
+        """Resolve the active workspace root for orchestration."""
+        return u.Infra.resolve_workspace_root_or_cwd()
+
+    def _resolved_projects(self) -> r[Sequence[m.Infra.ProjectInfo]]:
+        """Resolve the selected project names through canonical discovery."""
+        return u.Infra.resolve_projects(
+            self._workspace_root(),
+            self.project_names,
+        )
+
+    @staticmethod
+    def _project_target(
+        project: m.Infra.ProjectInfo,
+        *,
+        workspace_root: Path,
+    ) -> str:
+        """Return the relative make target directory for one project."""
+        return str(project.path.resolve().relative_to(workspace_root))
+
+    def _prepare_projects(
+        self,
+        projects: Sequence[m.Infra.ProjectInfo],
+        *,
+        workspace_root: Path,
+    ) -> r[bool]:
+        """Ensure selected projects have generated make infrastructure."""
+        for project in projects:
+            project_root = project.path.resolve()
+            needs_sync = any(
+                not (project_root / filename).is_file()
+                for filename in (
+                    c.Infra.Files.BASE_MK,
+                    c.Infra.Files.MAKEFILE_FILENAME,
+                )
+            )
+            if not needs_sync:
+                continue
+            sync_result = FlextInfraSyncService(
+                workspace=project_root,
+                canonical_root=workspace_root,
+                apply=True,
+            ).execute()
+            if sync_result.is_failure:
+                sync_error = sync_result.error or "workspace sync failed"
+                return r[bool].fail(f"{project.name}: {sync_error}")
+        return r[bool].ok(True)
+
     @override
     def execute(self) -> r[bool]:
         """Execute the workspace-orchestrate CLI flow."""
@@ -73,10 +122,21 @@ class FlextInfraOrchestratorService(s[bool]):
             return r[bool].fail(
                 f"unsupported orchestrate verb '{self.verb}' (allowed: {allowed})",
             )
-        if not self.project_names:
-            return r[bool].fail("no projects specified")
+        resolved_projects = self._resolved_projects()
+        if resolved_projects.is_failure:
+            return r[bool].fail(resolved_projects.error or "project resolution failed")
+        projects = resolved_projects.value
+        if not projects:
+            return r[bool].fail("no projects discovered")
+        workspace_root = self._workspace_root()
+        prepare_result = self._prepare_projects(projects, workspace_root=workspace_root)
+        if prepare_result.is_failure:
+            return prepare_result
         result = self.orchestrate(
-            projects=self.project_names,
+            projects=[
+                self._project_target(project, workspace_root=workspace_root)
+                for project in projects
+            ],
             verb=self.verb,
             fail_fast=self.fail_fast,
             make_args=self.make_args,

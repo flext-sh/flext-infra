@@ -5,14 +5,18 @@ from __future__ import annotations
 from collections.abc import MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
+from rope.base.exceptions import ModuleSyntaxError
+
 from flext_core import FlextUtilities
 from flext_infra import (
+    FlextInfraRefactorConstants,
+    FlextInfraRefactorGrepModels,
+    FlextInfraRefactorModels,
     FlextInfraRefactorMROImportRewriter,
     FlextInfraRefactorMROMigrationValidator,
-    c,
-    m,
-    t,
-    u,
+    FlextInfraTypes,
+    FlextInfraUtilitiesRefactorMroScan,
+    FlextInfraUtilitiesRopeHelpers,
 )
 
 
@@ -28,14 +32,14 @@ class FlextInfraRefactorMigrateToClassMRO:
         *,
         target: str,
         apply: bool,
-    ) -> m.Infra.MROMigrationReport:
+    ) -> FlextInfraRefactorGrepModels.MROMigrationReport:
         """Run scan, transform, rewrite, and validation phases."""
         normalized_target = self._normalize_target(target=target)
-        scan_results, files_scanned = u.Infra.scan_workspace(
+        scan_results, files_scanned = FlextInfraUtilitiesRefactorMroScan.scan_workspace(
             workspace_root=self._workspace_root,
             target=normalized_target,
         )
-        warnings: t.StrSequence = []
+        warnings: FlextInfraTypes.StrSequence = []
         stash_ref = ""
         migrations, rewrites, errors = (
             FlextInfraRefactorMROImportRewriter.migrate_workspace(
@@ -50,7 +54,7 @@ class FlextInfraRefactorMigrateToClassMRO:
                 target=normalized_target,
             )
         )
-        return m.Infra.MROMigrationReport(
+        return FlextInfraRefactorGrepModels.MROMigrationReport(
             workspace=str(self._workspace_root),
             target=normalized_target,
             dry_run=not apply,
@@ -66,7 +70,7 @@ class FlextInfraRefactorMigrateToClassMRO:
         )
 
     @staticmethod
-    def render_text(report: m.Infra.MROMigrationReport) -> str:
+    def render_text(report: FlextInfraRefactorGrepModels.MROMigrationReport) -> str:
         """Render migration report in CLI-friendly plain text."""
         lines = [
             f"Workspace: {report.workspace}",
@@ -95,13 +99,13 @@ class FlextInfraRefactorMigrateToClassMRO:
         path: Path,
         *,
         dry_run: bool,
-    ) -> Sequence[m.Infra.Result]:
+    ) -> Sequence[FlextInfraRefactorModels.Result]:
         """Execute MRO migration as a rope post-hook (implements p.Infra.RopePostHook)."""
         try:
             report = cls(workspace_root=path).run(target="all", apply=not dry_run)
         except (
             SyntaxError,
-            u.Infra.module_syntax_error_type(),
+            ModuleSyntaxError,
             OSError,
             ValueError,
             KeyError,
@@ -113,9 +117,9 @@ class FlextInfraRefactorMigrateToClassMRO:
     @staticmethod
     def _report_to_results(
         *,
-        report: m.Infra.MROMigrationReport,
+        report: FlextInfraRefactorGrepModels.MROMigrationReport,
         dry_run: bool,
-    ) -> Sequence[m.Infra.Result]:
+    ) -> Sequence[FlextInfraRefactorModels.Result]:
         """Convert MRO migration report into rope-compatible Result sequence."""
         per_file_changes: MutableMapping[Path, MutableSequence[str]] = {}
         for migration in report.migrations:
@@ -134,7 +138,7 @@ class FlextInfraRefactorMigrateToClassMRO:
                 f"{action} {rewrite.replacements} consumer references after MRO migration",
             )
         return [
-            m.Infra.Result(
+            FlextInfraRefactorModels.Result(
                 file_path=file_path,
                 success=True,
                 modified=(not dry_run),
@@ -151,10 +155,14 @@ class FlextInfraRefactorMigrateToClassMRO:
     @staticmethod
     def _normalize_target(*, target: str) -> str:
         value = FlextUtilities.norm_str(target, case="lower")
-        if value in c.Infra.MRO_TARGETS:
+        if value in FlextInfraRefactorConstants.MRO_TARGETS:
             return value
         msg = f"unsupported target: {target}"
         raise ValueError(msg)
 
 
 __all__ = ["FlextInfraRefactorMigrateToClassMRO"]
+
+FlextInfraUtilitiesRopeHelpers.register_rope_post_hook(
+    FlextInfraRefactorMigrateToClassMRO.run_as_hook,
+)

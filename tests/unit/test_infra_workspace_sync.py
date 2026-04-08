@@ -9,7 +9,7 @@ from typing import override
 
 import pytest
 from flext_tests import tf, tm
-from tests import m, r, t, u
+from tests import c, m, r, t, u
 
 from flext_infra import (
     FlextInfraBaseMkGenerator,
@@ -219,8 +219,66 @@ def test_sync_updates_workspace_makefile_for_workspace_root(
 
     monkeypatch.setattr(service, "_sync_workspace_makefile", _workspace_makefile)
     monkeypatch.setattr(service, "_sync_project_makefile", _project_makefile)
+    monkeypatch.setattr(
+        service,
+        "_sync_workspace_children",
+        lambda *_args, **_kwargs: r[int].ok(0),
+    )
     tm.ok(service.execute())
     tm.that(calls, eq=["workspace"])
+
+
+def test_sync_workspace_root_also_syncs_discovered_children(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = FlextInfraSyncService(canonical_root=tmp_path, workspace=tmp_path)
+    child = tmp_path / "external-project"
+    child.mkdir()
+    calls: t.MutableSequenceOf[tuple[Path, Path | None]] = []
+
+    def _sync_locked_content(
+        self: FlextInfraSyncService,
+        resolved: Path,
+        _config: m.Infra.BaseMkConfig | None,
+        *,
+        canonical_root: Path | None = None,
+    ) -> r[m.Infra.SyncResult]:
+        del self
+        calls.append((resolved, canonical_root))
+        return r[m.Infra.SyncResult].ok(
+            m.Infra.SyncResult(
+                files_changed=1,
+                source=resolved,
+                target=resolved,
+            ),
+        )
+
+    monkeypatch.setattr(
+        FlextInfraSyncService,
+        "_sync_locked_content",
+        _sync_locked_content,
+    )
+    monkeypatch.setattr(
+        "flext_infra.workspace.sync.u.Infra.discover_projects",
+        lambda _workspace_root: r[t.SequenceOf[m.Infra.ProjectInfo]].ok([
+            m.Infra.ProjectInfo.model_construct(
+                path=child,
+                name="external-project",
+                stack="python/flext",
+                has_tests=False,
+                has_src=False,
+                project_class="domain",
+                package_name="external_project",
+                workspace_role=c.Infra.WorkspaceProjectRole.ATTACHED,
+            ),
+        ]),
+    )
+
+    result = service._sync_workspace_children(tmp_path, canonical_root=tmp_path)
+
+    tm.ok(result, eq=1)
+    tm.that(calls, eq=[(child.resolve(), tmp_path)])
 
 
 def test_workspace_makefile_generator_sanitizes_orchestrator_env(
@@ -306,8 +364,10 @@ def test_workspace_makefile_generator_declares_workspace_boot_separation(
     tm.that(
         makefile_text,
         has=[
+            "FLEXT_PROJECTS :=",
             "WORKSPACE_PROJECTS :=",
             "ATTACHABLE_PROJECTS :=",
+            "tool.flext.workspace or tool.uv.workspace",
             'submodule_paths="$$(git config --file .gitmodules',
             "independent project (no workspace writes)",
             "attach-only project (outside uv workspace)",
@@ -315,6 +375,22 @@ def test_workspace_makefile_generator_declares_workspace_boot_separation(
             '$(MAKE) val VALIDATE_SCOPE=workspace PROJECTS="$(WORKSPACE_PROJECTS)"',
         ],
     )
+
+
+def test_workspace_makefile_generator_does_not_persist_external_project_names(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        "[project]\nversion='0.1.0'\n",
+        encoding="utf-8",
+    )
+    generator = FlextInfraWorkspaceMakefileGenerator()
+    tm.ok(generator.generate(tmp_path))
+
+    makefile_text = (tmp_path / "Makefile").read_text(encoding="utf-8")
+
+    tm.that("algar-oud-mig" in makefile_text, eq=False)
+    tm.that("gruponos-meltano-native" in makefile_text, eq=False)
 
 
 def test_sync_updates_project_makefile_for_standalone_project(

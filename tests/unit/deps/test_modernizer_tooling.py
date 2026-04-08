@@ -203,7 +203,10 @@ select = ["E501"]
 
         tm.that(second_changes, eq=[])
 
-    def test_apply_includes_workspace_project_namespaces(self, tmp_path: Path) -> None:
+    def test_apply_excludes_attached_workspace_project_namespaces(
+        self,
+        tmp_path: Path,
+    ) -> None:
         tool_config = _test_tool_config()
         workspace_root = tmp_path / "workspace"
         project_dir = workspace_root / "algar-oud-mig"
@@ -213,10 +216,25 @@ select = ["E501"]
             encoding="utf-8",
         )
         _ = (project_dir / "pyproject.toml").write_text(
-            '[project]\nname = "algar-oud-mig"\nversion = "0.1.0"\n',
+            '[project]\nname = "algar-oud-mig"\nversion = "0.1.0"\ndependencies = ["flext-core>=0.1.0"]\n',
             encoding="utf-8",
         )
-        _ = (project_dir / "Makefile").write_text("help:\n\t@:\n", encoding="utf-8")
+        _ = (workspace_root / "pyproject.toml").write_text(
+            "[project]\nname = 'workspace'\n\n"
+            "[tool.uv.workspace]\n"
+            "members = ['flext-core']\n",
+            encoding="utf-8",
+        )
+        internal_project = workspace_root / "flext-core"
+        (internal_project / "src" / "flext_core").mkdir(parents=True, exist_ok=True)
+        _ = (internal_project / "src" / "flext_core" / "__init__.py").write_text(
+            "",
+            encoding="utf-8",
+        )
+        _ = (internal_project / "pyproject.toml").write_text(
+            '[project]\nname = "flext-core"\nversion = "0.1.0"\n',
+            encoding="utf-8",
+        )
         doc = tomlkit.document()
 
         _ = FlextInfraEnsureRuffConfigPhase(tool_config).apply(
@@ -228,4 +246,5 @@ select = ["E501"]
         ruff = _mapping(_mapping(root["tool"])["ruff"])
         lint_section = _mapping(ruff["lint"])
         isort = _mapping(lint_section["isort"])
-        tm.that(list(_strings(isort["known-first-party"])), has="algar_oud_mig")
+        tm.that(list(_strings(isort["known-first-party"])), has="flext_core")
+        tm.that("algar_oud_mig" in list(_strings(isort["known-first-party"])), eq=False)

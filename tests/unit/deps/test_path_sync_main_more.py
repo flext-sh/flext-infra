@@ -6,14 +6,11 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
+from tests import c, m, r, t, u
 
 from flext_infra import (
     FlextInfraDependencyPathSync,
-    m,
     path_sync,
-    r,
-    t,
-    u,
 )
 
 
@@ -21,13 +18,19 @@ def _workspace_root() -> Path:
     return FlextInfraDependencyPathSync.ROOT
 
 
-def _project(path: Path, name: str = "flext-core") -> m.Infra.ProjectInfo:
+def _project(
+    path: Path,
+    name: str = "flext-core",
+    *,
+    workspace_role: c.Infra.WorkspaceProjectRole = c.Infra.WorkspaceProjectRole.ATTACHED,
+) -> m.Infra.ProjectInfo:
     return m.Infra.ProjectInfo(
         path=path,
         name=name,
         stack="python",
         has_tests=False,
         has_src=False,
+        workspace_role=workspace_role,
     )
 
 
@@ -257,7 +260,11 @@ def test_workspace_members_only_include_flext_projects(
         _root: Path,
     ) -> r[Sequence[m.Infra.ProjectInfo]]:
         return r[Sequence[m.Infra.ProjectInfo]].ok([
-            _project(flext_core, "flext-core"),
+            _project(
+                flext_core,
+                "flext-core",
+                workspace_role=c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER,
+            ),
             _project(flexcore, "flexcore"),
             _project(algar, "algar-oud-mig"),
         ])

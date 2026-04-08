@@ -402,7 +402,7 @@ def test_runtime_alias_migrator_rewrites_deep_concrete_alias_import_in_src(
         target,
         (
             "from __future__ import annotations\n\n"
-            "from flext_demo.typings import FlextDemoTypes as t\n\n"
+            "from flext_demo import FlextDemoTypes as t\n\n"
             "VALUE = t\n"
         ),
     )
@@ -418,7 +418,7 @@ def test_runtime_alias_migrator_rewrites_deep_concrete_alias_import_in_src(
     rewritten = target.read_text(encoding="utf-8")
     assert result.success is True
     assert result.modified is True
-    assert "from flext_demo.typings import FlextDemoTypes as t" not in rewritten
+    assert "from flext_demo import FlextDemoTypes as t" not in rewritten
     assert "from flext_demo import t" in rewritten
 
 

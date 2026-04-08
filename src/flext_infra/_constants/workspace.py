@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 from enum import StrEnum, unique
-from typing import TYPE_CHECKING, Final
+from typing import Final
 
-if TYPE_CHECKING:
-    from flext_infra import t
+from flext_infra import FlextInfraTypesBase, t
 
 
 class FlextInfraWorkspaceConstants:
@@ -19,7 +18,16 @@ class FlextInfraWorkspaceConstants:
         WORKSPACE = "workspace"
         STANDALONE = "standalone"
 
-    MAKEFILE_REPLACEMENTS: Final[t.Infra.VariadicTuple[t.Infra.StrPair]] = (
+    @unique
+    class WorkspaceProjectRole(StrEnum):
+        """Role of one discovered project relative to the uv workspace root."""
+
+        WORKSPACE_MEMBER = "member"
+        ATTACHED = "attached"
+
+    MAKEFILE_REPLACEMENTS: Final[
+        FlextInfraTypesBase.Infra.VariadicTuple[FlextInfraTypesBase.Infra.StrPair]
+    ] = (
         (
             'python3 "$(BASE_MK_DIR)/scripts/mode.py"',
             "python -m flext_infra workspace detect",

@@ -4,23 +4,22 @@ from __future__ import annotations
 
 import re
 from collections.abc import MutableSequence, Sequence
+from typing import TYPE_CHECKING
 
 from rope.base.exceptions import RefactoringError, ResourceNotFoundError
 
-from flext_infra import (
-    FlextInfraUtilitiesDiscovery,
-    FlextInfraUtilitiesRopeCore,
-    c,
-    m,
-    t,
+from flext_infra import c, m
+from flext_infra._utilities.rope_analysis_introspection import (
+    FlextInfraUtilitiesRopeAnalysisIntrospection,
 )
+from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 
-from .rope_analysis_introspection import FlextInfraUtilitiesRopeAnalysisIntrospection
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraUtilitiesRopeAnalysis(
     FlextInfraUtilitiesRopeAnalysisIntrospection,
-    FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesRopeCore,
 ):
     """Rope-backed semantic analysis helpers."""

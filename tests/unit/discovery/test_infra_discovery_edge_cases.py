@@ -10,8 +10,7 @@ from pathlib import Path
 
 from _pytest.monkeypatch import MonkeyPatch
 from flext_tests import tm
-
-from flext_infra import FlextInfraUtilitiesDiscovery
+from tests import u
 
 
 class TestFlextInfraDiscoveryServiceUncoveredLines:
@@ -19,12 +18,14 @@ class TestFlextInfraDiscoveryServiceUncoveredLines:
         self,
         tmp_path: Path,
     ) -> None:
-        service = FlextInfraUtilitiesDiscovery()
+        service = u.Infra()
         workspace_root = tmp_path
         non_git_dir = workspace_root / "non_git_project"
         non_git_dir.mkdir()
-        (non_git_dir / "Makefile").touch()
-        (non_git_dir / "pyproject.toml").touch()
+        (non_git_dir / "pyproject.toml").write_text(
+            "[project]\nname='non_git_project'\ndependencies=['flext-core>=0.1.0']\n",
+            encoding="utf-8",
+        )
         result = service.discover_projects(workspace_root)
         tm.ok(result)
         assert len(result.value) == 1
@@ -32,7 +33,7 @@ class TestFlextInfraDiscoveryServiceUncoveredLines:
         assert result.value[0].path == non_git_dir
 
     def test_find_all_pyproject_files_with_nonexistent_path(self) -> None:
-        service = FlextInfraUtilitiesDiscovery()
+        service = u.Infra()
         nonexistent = Path("/nonexistent/path/to/workspace")
         result = service.find_all_pyproject_files(nonexistent)
         tm.ok(result)
@@ -42,7 +43,7 @@ class TestFlextInfraDiscoveryServiceUncoveredLines:
         self,
         tmp_path: Path,
     ) -> None:
-        service = FlextInfraUtilitiesDiscovery()
+        service = u.Infra()
         (tmp_path / "pyproject.toml").touch()
         result = service.find_all_pyproject_files(tmp_path)
         tm.ok(result)
@@ -52,12 +53,14 @@ class TestFlextInfraDiscoveryServiceUncoveredLines:
         self,
         tmp_path: Path,
     ) -> None:
-        service = FlextInfraUtilitiesDiscovery()
+        service = u.Infra()
         workspace_root = tmp_path
         proj = workspace_root / "incomplete_project"
         proj.mkdir()
-        (proj / ".git").mkdir()
-        (proj / "Makefile").touch()
+        (proj / "pyproject.toml").write_text(
+            "[project]\nname='incomplete_project'\n",
+            encoding="utf-8",
+        )
         result = service.discover_projects(workspace_root)
         tm.ok(result)
         assert not result.value
@@ -67,7 +70,7 @@ class TestFlextInfraDiscoveryServiceUncoveredLines:
         tmp_path: Path,
         monkeypatch: MonkeyPatch,
     ) -> None:
-        service = FlextInfraUtilitiesDiscovery()
+        service = u.Infra()
 
         def mock_rglob(self: Path, pattern: str) -> None:
             msg = "permission denied"
@@ -93,7 +96,7 @@ class TestFlextInfraDiscoveryServiceUncoveredLines:
             raise OSError(msg)
 
         monkeypatch.setattr(Path, "read_text", mock_read_text)
-        result = FlextInfraUtilitiesDiscovery._submodule_names(workspace_root)
+        result = u.Infra._submodule_names(workspace_root)
         assert result == set()
 
     def test_submodule_names_with_valid_gitmodules(self, tmp_path: Path) -> None:
@@ -103,5 +106,5 @@ class TestFlextInfraDiscoveryServiceUncoveredLines:
             '[submodule "sub1"]\n    path = submodule-one\n[submodule "sub2"]\n    path = submodule-two\n',
             encoding="utf-8",
         )
-        result = FlextInfraUtilitiesDiscovery._submodule_names(workspace_root)
+        result = u.Infra._submodule_names(workspace_root)
         assert result == {"submodule-one", "submodule-two"}

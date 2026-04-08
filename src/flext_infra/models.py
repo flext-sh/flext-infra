@@ -9,28 +9,26 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_cli import FlextCliModels
-from flext_infra import (
-    FlextInfraBasemkModels,
-    FlextInfraCheckModels,
-    FlextInfraCodegenModels,
-    FlextInfraCoreModels,
-    FlextInfraDepsModels,
-    FlextInfraDocsModels,
-    FlextInfraEngineModels,
-    FlextInfraGatesModels,
-    FlextInfraGithubModels,
-    FlextInfraModelsBase,
-    FlextInfraModelsCensus,
-    FlextInfraModelsRope,
-    FlextInfraModelsScan,
-    FlextInfraRefactorModels,
-    FlextInfraReleaseModels,
-    FlextInfraWorkspaceModels,
-)
+from flext_cli import m
+from flext_infra._models.base import FlextInfraModelsBase
+from flext_infra._models.basemk import FlextInfraBasemkModels
+from flext_infra._models.census import FlextInfraModelsCensus
+from flext_infra._models.check import FlextInfraCheckModels
+from flext_infra._models.codegen import FlextInfraCodegenModels
+from flext_infra._models.deps import FlextInfraDepsModels
+from flext_infra._models.docs import FlextInfraDocsModels
+from flext_infra._models.engine import FlextInfraEngineModels
+from flext_infra._models.gates import FlextInfraGatesModels
+from flext_infra._models.github import FlextInfraGithubModels
+from flext_infra._models.refactor import FlextInfraRefactorModels
+from flext_infra._models.release import FlextInfraReleaseModels
+from flext_infra._models.rope import FlextInfraModelsRope
+from flext_infra._models.scan import FlextInfraModelsScan
+from flext_infra._models.validate import FlextInfraCoreModels
+from flext_infra._models.workspace import FlextInfraWorkspaceModels
 
 
-class FlextInfraModels(FlextCliModels):
+class FlextInfraModels(m):
     """Merged model namespace for flext-infra domain objects."""
 
     class Infra(

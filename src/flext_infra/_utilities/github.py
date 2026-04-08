@@ -12,21 +12,17 @@ from pathlib import Path
 
 from flext_cli import FlextCliUtilitiesJson as _CliJson
 from flext_infra import (
-    FlextInfraUtilitiesGit,
     FlextInfraUtilitiesGithubPr,
-    FlextInfraUtilitiesReporting,
-    FlextInfraUtilitiesSelection,
     c,
     m,
     r,
 )
+from flext_infra._utilities.git import FlextInfraUtilitiesGit
+from flext_infra._utilities.selection import FlextInfraUtilitiesSelection
 
 
 class FlextInfraUtilitiesGithub(
     FlextInfraUtilitiesGithubPr,
-    FlextInfraUtilitiesGit,
-    FlextInfraUtilitiesReporting,
-    FlextInfraUtilitiesSelection,
     _CliJson,
 ):
     """Utilities for GitHub automation including PRs and Workflows."""
@@ -53,7 +49,7 @@ class FlextInfraUtilitiesGithub(
             return r[m.Infra.GithubWorkflowLintOutcome].ok(
                 payload_skipped,
             )
-        result = cls.run_raw([actionlint], cwd=workspace_root)
+        result = FlextInfraUtilitiesGit.run_raw([actionlint], cwd=workspace_root)
         if result.is_success:
             output = result.value
             payload = m.Infra.GithubWorkflowLintOutcome(
@@ -96,7 +92,10 @@ class FlextInfraUtilitiesGithub(
             return r[m.Infra.GithubWorkflowSyncReport].fail(
                 template_result.error or "template render failed",
             )
-        projects_result = cls.resolve_projects(workspace_root, [])
+        projects_result = FlextInfraUtilitiesSelection.resolve_projects(
+            workspace_root,
+            [],
+        )
         if projects_result.is_failure:
             return r[m.Infra.GithubWorkflowSyncReport].fail(
                 projects_result.error or "project discovery failed",

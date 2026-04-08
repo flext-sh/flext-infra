@@ -24,7 +24,14 @@ class FlextInfraEnsureRuffConfigPhase:
             {
                 project.package_name
                 for project in discovered.value
-                if project.package_name and project.package_name.isidentifier()
+                if (
+                    project.package_name
+                    and project.package_name.isidentifier()
+                    and (
+                        project.workspace_role
+                        == c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER
+                    )
+                )
             },
         )
 

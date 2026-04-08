@@ -7,18 +7,12 @@ from pathlib import Path
 
 from rope.base.exceptions import RefactoringError, ResourceNotFoundError
 
-from flext_infra import (
-    FlextInfraUtilitiesDiscovery,
-    FlextInfraUtilitiesRopeCore,
-    c,
-    m,
-    p,
-    t,
-)
+from flext_infra import c, m, p, t
+from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
+from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 
 
 class FlextInfraUtilitiesRopeAnalysisIntrospection(
-    FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesRopeCore,
 ):
     """Rope-backed class and module introspection helpers.
@@ -102,7 +96,9 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection(
     ) -> Mapping[str, Sequence[t.Infra.Triple[str, str, str]]]:
         """Extract public methods from all Python files in a package directory."""
         result: MutableMapping[str, MutableSequence[t.Infra.Triple[str, str, str]]] = {}
-        project_root = cls.discover_project_root_from_file(package_dir / "foo.py")
+        project_root = FlextInfraUtilitiesDiscovery.discover_project_root_from_file(
+            package_dir / "foo.py",
+        )
         if project_root is None:
             return result
         rope_proj = cls.init_rope_project(project_root.parent)
@@ -141,7 +137,9 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection(
         if not file_path.exists():
             return {}
         result: MutableMapping[str, MutableSequence[t.Infra.Triple[str, str, str]]] = {}
-        project_root = cls.discover_project_root_from_file(file_path)
+        project_root = FlextInfraUtilitiesDiscovery.discover_project_root_from_file(
+            file_path,
+        )
         if project_root is None:
             return result
         rope_proj = cls.init_rope_project(project_root.parent)

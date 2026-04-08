@@ -72,24 +72,7 @@ class FlextInfraProjectMigrator(
 
     @staticmethod
     def _has_flext_core_dependency(document: t.Cli.TomlDocument) -> bool:
-        project = u.Cli.toml_get_table(document, c.Infra.PROJECT)
-        if project is not None:
-            deps = u.Cli.toml_as_string_list(
-                u.Cli.toml_get_item(project, c.Infra.DEPENDENCIES),
-            )
-            for dep_raw in deps:
-                if str(dep_raw).strip().startswith(c.Infra.Packages.CORE):
-                    return True
-        tool = u.Cli.toml_get_table(document, c.Infra.TOOL)
-        if tool is None:
-            return False
-        poetry = u.Cli.toml_get_table(tool, c.Infra.POETRY)
-        if poetry is None:
-            return False
-        poetry_deps = u.Cli.toml_get_table(poetry, c.Infra.DEPENDENCIES)
-        if poetry_deps is None:
-            return False
-        return c.Infra.Packages.CORE in poetry_deps
+        return c.Infra.Packages.CORE in u.Infra.declared_dependency_names(document)
 
     @staticmethod
     def _workspace_root_project(

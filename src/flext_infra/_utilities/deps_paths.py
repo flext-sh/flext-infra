@@ -5,11 +5,14 @@ from __future__ import annotations
 from collections.abc import MutableSequence
 from pathlib import Path
 
+from flext_cli import u
 from flext_infra import (
     FlextInfraDependencyPathSync,
+    FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesDiscoveryScanning,
+    FlextInfraUtilitiesParsing,
     c,
     t,
-    u,
 )
 
 
@@ -144,7 +147,7 @@ class FlextInfraExtraPathsResolutionMixin:
         )
 
     def _discover_workspace_project_names(self) -> t.Infra.StrSet:
-        projects_result = u.Infra.discover_projects(self.root)
+        projects_result = FlextInfraUtilitiesDiscovery.discover_projects(self.root)
         if projects_result.is_failure:
             return set()
         return {project.name for project in projects_result.value}
@@ -153,7 +156,7 @@ class FlextInfraExtraPathsResolutionMixin:
         self,
         doc: t.Cli.TomlDocument,
     ) -> t.StrSequence:
-        declared_names = u.Infra.declared_dependency_names(doc)
+        declared_names = FlextInfraUtilitiesParsing.declared_dependency_names(doc)
         return sorted(
             name for name in declared_names if name in self._workspace_project_names
         )
@@ -233,7 +236,9 @@ class FlextInfraExtraPathsResolutionMixin:
             prefix = f"{name}" if is_root else f"../{name}"
             dep_dir = self.root / name
             if dep_dir.is_dir():
-                py_dirs = u.Infra.discover_python_dirs(dep_dir, skip_dirs=dep_skip)
+                py_dirs = FlextInfraUtilitiesDiscoveryScanning.discover_python_dirs(
+                    dep_dir, skip_dirs=dep_skip
+                )
                 for dir_name in py_dirs:
                     resolved.append(f"{prefix}/{dir_name}")
             else:

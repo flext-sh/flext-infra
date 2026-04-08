@@ -9,11 +9,11 @@ from pydantic import ConfigDict, Field
 
 from flext_cli import u
 from flext_core import FlextModels
-from flext_infra import (
+from flext_infra import FlextInfraTypes as t
+from flext_infra._models.codegen_deduplication import (
     FlextInfraCodegenDeduplicationModels,
-    FlextInfraModelsMixins,
-    FlextInfraTypes as t,
 )
+from flext_infra._models.mixins import FlextInfraModelsMixins
 
 
 class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):

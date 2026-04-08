@@ -16,7 +16,6 @@ from pydantic import ValidationError
 
 from flext_core import FlextUtilities
 from flext_infra import (
-    FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesRefactorCensus,
     FlextInfraUtilitiesRefactorCli,
@@ -41,7 +40,6 @@ class FlextInfraUtilitiesRefactor(
     FlextInfraUtilitiesRefactorPydantic,
     FlextInfraUtilitiesRefactorPydanticAnalysis,
     FlextInfraUtilitiesIteration,
-    FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesRefactorCli,
     FlextInfraUtilitiesRefactorCensus,
 ):

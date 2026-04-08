@@ -7,11 +7,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 
-from flext_core import u
-from flext_infra import FlextInfraUtilitiesCliShared, t
+from flext_core import t, u
+from flext_infra import FlextInfraUtilitiesCliShared
 
 
 class FlextInfraUtilitiesCliSubcommand:
@@ -76,9 +76,7 @@ class FlextInfraUtilitiesCliSubcommand:
         subcommands: t.StrMapping,
         flags: t.BoolMapping | None = None,
         subcommand_flags: Mapping[str, t.BoolMapping] | None = None,
-    ) -> t.Infra.Pair[
-        t.Infra.CliArgumentParser, Mapping[str, t.Infra.CliArgumentParser]
-    ]:
+    ) -> tuple[ArgumentParser, Mapping[str, ArgumentParser]]:
         """Create main parser with subcommands and shared flags."""
         resolved_flags = (
             FlextInfraUtilitiesCliShared.SharedFlags.from_dict(flags)
@@ -106,7 +104,7 @@ class FlextInfraUtilitiesCliSubcommand:
         )
         parser = ArgumentParser(prog=prog, description=description, parents=[shared])
         subparsers = parser.add_subparsers(dest="command")
-        command_parsers: MutableMapping[str, t.Infra.CliArgumentParser] = {}
+        command_parsers: MutableMapping[str, ArgumentParser] = {}
         for command, command_help in subcommands.items():
             command_shared = FlextInfraUtilitiesCliShared.shared_flags_parser(
                 FlextInfraUtilitiesCliShared.SharedFlags.from_dict(
@@ -155,11 +153,11 @@ class FlextInfraUtilitiesCliSubcommand:
 
     @staticmethod
     def parse_subcommand_args(
-        parser: t.Infra.CliArgumentParser,
+        parser: ArgumentParser,
         argv: t.StrSequence | None = None,
         *,
         passthrough_subcommands: t.StrSequence | None = None,
-    ) -> t.Infra.CliNamespace:
+    ) -> Namespace:
         """Parse and validate subcommand args against per-command shared flags."""
         args, unknown_args = parser.parse_known_args(argv)
         raw_argv = list(argv) if argv is not None else sys.argv[1:]

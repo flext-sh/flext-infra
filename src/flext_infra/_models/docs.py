@@ -8,7 +8,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from flext_core import FlextModels
+from flext_core import m
 from flext_infra import t
 
 
@@ -58,7 +58,7 @@ class FlextInfraDocsModels:
             Field(default=False, description="Generated file write flag"),
         ] = False
 
-    class DocScope(FlextModels.ArbitraryTypesModel):
+    class DocScope(m.ArbitraryTypesModel):
         """Documentation scope targeting a project or workspace root."""
 
         name: Annotated[t.NonEmptyStr, Field(description="Scope name")]
@@ -76,7 +76,7 @@ class FlextInfraDocsModels:
             Field(default="", description="Primary package name for scope"),
         ] = ""
 
-    class AuditIssue(FlextModels.ContractModel):
+    class AuditIssue(m.ContractModel):
         """Single documentation audit finding."""
 
         file: Annotated[str, Field(description="File path relative to scope")]
@@ -84,7 +84,7 @@ class FlextInfraDocsModels:
         severity: Annotated[str, Field(description="Issue severity")]
         message: Annotated[str, Field(description="Issue description")]
 
-    class GeneratedFile(FlextModels.ContractModel):
+    class GeneratedFile(m.ContractModel):
         """Record of a generated file operation."""
 
         path: Annotated[str, Field(description="File path")]
@@ -93,7 +93,7 @@ class FlextInfraDocsModels:
             Field(default=False, description="Whether file was written"),
         ] = False
 
-    class AuditScopeParams(FlextModels.ContractModel):
+    class AuditScopeParams(m.ContractModel):
         """Bundled parameters for a single audit scope run."""
 
         check: Annotated[
@@ -101,11 +101,11 @@ class FlextInfraDocsModels:
         ]
         strict: Annotated[bool, Field(default=True, description="Strict mode")]
         budgets: Annotated[
-            t.Infra.Pair[int | None, t.IntMapping] | None,
+            tuple[int | None, t.IntMapping] | None,
             Field(default=None, description="Budget tuple (default, by_scope)"),
         ] = None
 
-    class DocsPhaseReport(FlextModels.ContractModel):
+    class DocsPhaseReport(m.ContractModel):
         """Unified report payload for docs phases."""
 
         @staticmethod

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Sequence
+from pathlib import Path
 from typing import ClassVar
 
 from flext_infra import FlextInfraUtilitiesRopeCore, c, m, p, t
@@ -11,6 +12,8 @@ from flext_infra import FlextInfraUtilitiesRopeCore, c, m, p, t
 
 class FlextInfraUtilitiesRopeHelpers:
     """Generic text, import-placement, and method-order helpers."""
+
+    _post_hooks: ClassVar[list[p.Infra.RopePostHook]] = []
 
     @staticmethod
     def get_rope_get_module_imports_fn() -> p.Infra.RopeGetModuleImportsFn:
@@ -28,6 +31,44 @@ class FlextInfraUtilitiesRopeHelpers:
             )
 
         return _get_module_imports
+
+    @classmethod
+    def run_rope_pre_hooks(
+        cls,
+        path: Path,
+        *,
+        dry_run: bool,
+    ) -> Sequence[m.Infra.Result]:
+        """Run declarative semantic pre-hooks before local refactors."""
+        _ = cls, path, dry_run
+        return []
+
+    @classmethod
+    def run_rope_post_hooks(
+        cls,
+        path: Path,
+        *,
+        dry_run: bool,
+    ) -> Sequence[m.Infra.Result]:
+        """Run workspace-scale semantic passes after local refactors."""
+        cls._ensure_default_post_hooks()
+        results: list[m.Infra.Result] = []
+        for hook in cls._post_hooks:
+            results.extend(hook(path, dry_run=dry_run))
+        return results
+
+    @classmethod
+    def register_rope_post_hook(
+        cls,
+        hook: p.Infra.RopePostHook,
+    ) -> None:
+        """Register a post-processing hook for rope refactoring pipelines."""
+        if hook not in cls._post_hooks:
+            cls._post_hooks.append(hook)
+
+    @classmethod
+    def _ensure_default_post_hooks(cls) -> None:
+        _ = cls
 
     @staticmethod
     def get_module_level_assignments(

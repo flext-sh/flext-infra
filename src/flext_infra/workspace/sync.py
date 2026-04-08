@@ -113,6 +113,17 @@ class FlextInfraSyncService(FlextInfraCommandContext[m.Infra.SyncResult]):
             )
         changed += 1 if gitignore_result.value else 0
         changed += self._sync_makefile_if_needed(resolved, effective_root)
+        is_workspace_root = self._is_workspace_root(resolved, effective_root)
+        if is_workspace_root:
+            child_sync_result = self._sync_workspace_children(
+                resolved,
+                canonical_root=effective_root or resolved,
+            )
+            if child_sync_result.is_failure:
+                return r[m.Infra.SyncResult].fail(
+                    child_sync_result.error or "workspace child sync failed",
+                )
+            changed += child_sync_result.value
         return r[m.Infra.SyncResult].ok(
             m.Infra.SyncResult(
                 files_changed=changed,
@@ -120,6 +131,29 @@ class FlextInfraSyncService(FlextInfraCommandContext[m.Infra.SyncResult]):
                 target=resolved,
             ),
         )
+
+    def _sync_workspace_children(
+        self,
+        workspace_root: Path,
+        *,
+        canonical_root: Path,
+    ) -> r[int]:
+        """Synchronize all discovered child projects under the workspace root."""
+        discovered = u.Infra.discover_projects(workspace_root)
+        if discovered.is_failure:
+            return r[int].fail(discovered.error or "workspace discovery failed")
+        changed = 0
+        for project in discovered.value:
+            sync_result = self._sync_locked_content(
+                project.path.resolve(),
+                config=None,
+                canonical_root=canonical_root,
+            )
+            if sync_result.is_failure:
+                project_error = sync_result.error or "project sync failed"
+                return r[int].fail(f"{project.name}: {project_error}")
+            changed += sync_result.value.files_changed
+        return r[int].ok(changed)
 
     def _sync_makefile_if_needed(
         self,

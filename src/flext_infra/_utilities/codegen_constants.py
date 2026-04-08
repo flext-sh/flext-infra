@@ -29,15 +29,10 @@ from flext_cli import (
     FlextCliUtilitiesYaml as _CliYaml,
 )
 from flext_core import u
-from flext_infra import (
-    FlextInfraUtilitiesDiscovery,
-    FlextInfraUtilitiesProtectedEdit,
-    FlextInfraUtilitiesRope,
-    c,
-    m,
-    r,
-    t,
-)
+from flext_infra import c, m, r, t
+from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
+from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
+from flext_infra._utilities.rope import FlextInfraUtilitiesRope
 
 # =====================================================================
 # Governance — canonical values and rule configuration

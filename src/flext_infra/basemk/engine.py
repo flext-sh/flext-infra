@@ -15,13 +15,20 @@ from jinja2 import (
 )
 from pydantic import PrivateAttr
 
-from flext_infra import c, m, p, r, s, t
+from flext_core import r, s
+from flext_infra import (
+    FlextInfraBasemkConstants,
+    FlextInfraBasemkModels,
+    FlextInfraConstantsBase,
+    FlextInfraProtocolsBase,
+    FlextInfraTypesBase,
+)
 
 
 class FlextInfraBaseMkTemplateEngine(s[str]):
     """Render base.mk templates with configuration context."""
 
-    _environment: t.Infra.JinjaEnvironment = PrivateAttr(
+    _environment: FlextInfraTypesBase.JinjaEnvironment = PrivateAttr(
         default_factory=lambda: FlextInfraBaseMkTemplateEngine._build_environment(),
     )
 
@@ -31,7 +38,7 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
         return Path(__file__).resolve().parent.parent / "templates"
 
     @staticmethod
-    def _build_environment() -> t.Infra.JinjaEnvironment:
+    def _build_environment() -> FlextInfraTypesBase.JinjaEnvironment:
         """Create the shared Jinja environment for base.mk rendering."""
         return Environment(
             loader=FileSystemLoader(
@@ -45,23 +52,23 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
         )
 
     @staticmethod
-    def default_config() -> m.Infra.BaseMkConfig:
+    def default_config() -> FlextInfraBasemkModels.BaseMkConfig:
         """Return default base.mk generation configuration."""
-        return m.Infra.BaseMkConfig(
-            project_name=c.Infra.Defaults.UNNAMED,
+        return FlextInfraBasemkModels.BaseMkConfig(
+            project_name=FlextInfraConstantsBase.Defaults.UNNAMED,
             python_version="3.13",
-            core_stack=c.Infra.PYTHON,
-            package_manager=c.Infra.POETRY,
-            source_dir=c.Infra.Paths.DEFAULT_SRC_DIR,
-            tests_dir=c.Infra.Directories.TESTS,
+            core_stack=FlextInfraConstantsBase.PYTHON,
+            package_manager=FlextInfraConstantsBase.POETRY,
+            source_dir=FlextInfraConstantsBase.Paths.DEFAULT_SRC_DIR,
+            tests_dir=FlextInfraConstantsBase.Directories.TESTS,
             lint_gates=[
-                c.Infra.LINT,
-                c.Infra.FORMAT,
-                c.Infra.PYREFLY,
-                c.Infra.MYPY,
-                c.Infra.PYRIGHT,
+                FlextInfraConstantsBase.LINT,
+                FlextInfraConstantsBase.FORMAT,
+                FlextInfraConstantsBase.PYREFLY,
+                FlextInfraConstantsBase.MYPY,
+                FlextInfraConstantsBase.PYRIGHT,
             ],
-            test_command=c.Infra.PYTEST,
+            test_command=FlextInfraConstantsBase.PYTEST,
         )
 
     @override
@@ -70,26 +77,33 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
 
     @staticmethod
     def _render_template(
-        template: p.Infra.RenderableTemplate,
-        **kwargs: m.Infra.BaseMkConfig | t.Infra.InfraValue | type,
+        template: FlextInfraProtocolsBase.RenderableTemplate,
+        **kwargs: FlextInfraBasemkModels.BaseMkConfig
+        | FlextInfraTypesBase.InfraValue
+        | type,
     ) -> str:
         return template.render(**kwargs)
 
-    def render_all(self, config: m.Infra.BaseMkConfig | None = None) -> r[str]:
+    def render_all(
+        self,
+        config: FlextInfraBasemkModels.BaseMkConfig | None = None,
+    ) -> r[str]:
         """Render all base.mk templates into a single output string."""
         active_config = config or self.default_config()
         lint_gates_csv = ",".join(active_config.lint_gates)
         sections: MutableSequence[str] = []
         try:
-            for template_name in c.Infra.TEMPLATE_ORDER:
-                template: p.Infra.RenderableTemplate = self._environment.get_template(
-                    template_name,
+            for template_name in FlextInfraBasemkConstants.TEMPLATE_ORDER:
+                template: FlextInfraProtocolsBase.RenderableTemplate = (
+                    self._environment.get_template(
+                        template_name,
+                    )
                 )
                 rendered = self._render_template(
                     template,
                     config=active_config,
                     lint_gates_csv=lint_gates_csv,
-                    make=c.Infra.Make,
+                    make=FlextInfraConstantsBase.Make,
                 )
                 sections.append(rendered.rstrip("\n"))
             content = "\n\n".join(sections).rstrip("\n") + "\n"
@@ -100,12 +114,16 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
     def render_single(
         self,
         template_name: str,
-        **kwargs: m.Infra.BaseMkConfig | t.Infra.InfraValue | type,
+        **kwargs: FlextInfraBasemkModels.BaseMkConfig
+        | FlextInfraTypesBase.InfraValue
+        | type,
     ) -> r[str]:
         """Render a single named template with the given context."""
         try:
-            template: p.Infra.RenderableTemplate = self._environment.get_template(
-                template_name,
+            template: FlextInfraProtocolsBase.RenderableTemplate = (
+                self._environment.get_template(
+                    template_name,
+                )
             )
             content = self._render_template(template, **kwargs)
             return r[str].ok(content.rstrip("\n"))

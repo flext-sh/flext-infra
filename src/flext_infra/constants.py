@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_cli import FlextCliConstants
+from flext_cli import c
 from flext_infra import (
     FlextInfraBasemkConstants,
     FlextInfraCheckConstants,
@@ -23,12 +23,11 @@ from flext_infra import (
     FlextInfraGithubConstants,
     FlextInfraRefactorConstants,
     FlextInfraReleaseConstants,
-    FlextInfraSharedInfraConstants,
     FlextInfraWorkspaceConstants,
 )
 
 
-class FlextInfraConstants(FlextCliConstants):
+class FlextInfraConstants(c):
     """Centralized constants for FLEXT infrastructure (Layer 0).
 
     Provides immutable, namespace-organized constants for infrastructure
@@ -42,8 +41,8 @@ class FlextInfraConstants(FlextCliConstants):
     """
 
     class Infra(
+        FlextInfraConstantsBase,
         FlextInfraConstantsCensus,
-        FlextInfraSharedInfraConstants,
         FlextInfraBasemkConstants,
         FlextInfraCheckConstants,
         FlextInfraCodegenConstants,
@@ -55,7 +54,6 @@ class FlextInfraConstants(FlextCliConstants):
         FlextInfraRefactorConstants,
         FlextInfraReleaseConstants,
         FlextInfraWorkspaceConstants,
-        FlextInfraConstantsBase,
     ):
         """Merged infra-domain constants from all sub-packages."""
 

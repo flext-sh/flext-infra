@@ -7,7 +7,6 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import (
-    FlextInfraUtilitiesOutputReporting,
     FlextInfraUtilitiesTerminal,
     c,
     m,
@@ -16,7 +15,7 @@ from flext_infra import (
 )
 
 
-class FlextInfraUtilitiesOutput(FlextInfraUtilitiesOutputReporting):
+class FlextInfraUtilitiesOutput:
     """Terminal output formatter with color and unicode support."""
 
     _stream: p.Infra.OutputStream = sys.stderr

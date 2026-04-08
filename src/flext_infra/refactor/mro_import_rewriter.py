@@ -6,12 +6,19 @@ from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 
 from flext_infra import (
+    FlextInfraConstantsBase,
+    FlextInfraRefactorConstants,
+    FlextInfraRefactorGrepModels,
     FlextInfraRefactorMROSymbolPropagator,
+    FlextInfraTypes,
+    FlextInfraTypesBase,
+    FlextInfraTypesRope,
+    FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesProtectedEdit,
-    c,
-    m,
-    t,
-    u,
+    FlextInfraUtilitiesRefactorMroTransform,
+    FlextInfraUtilitiesRopeAnalysis,
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeImports,
 )
 
 
@@ -23,23 +30,27 @@ class FlextInfraRefactorMROImportRewriter:
         cls,
         *,
         workspace_root: Path,
-        scan_results: Sequence[m.Infra.MROScanReport],
+        scan_results: Sequence[FlextInfraRefactorGrepModels.MROScanReport],
         apply: bool,
-    ) -> t.Infra.Triple[
-        Sequence[m.Infra.MROFileMigration],
-        Sequence[m.Infra.MRORewriteResult],
-        t.StrSequence,
+    ) -> FlextInfraTypes.Infra.Triple[
+        Sequence[FlextInfraRefactorGrepModels.MROFileMigration],
+        Sequence[FlextInfraRefactorGrepModels.MRORewriteResult],
+        FlextInfraTypes.StrSequence,
     ]:
         """Transform migrated files and propagate consumer rewrites across the workspace."""
         errors: list[str] = []
-        migrations: list[m.Infra.MROFileMigration] = []
-        module_moves: MutableMapping[str, t.Infra.Pair[str, t.StrMapping]] = {}
+        migrations: list[FlextInfraRefactorGrepModels.MROFileMigration] = []
+        module_moves: MutableMapping[
+            str, FlextInfraTypesBase.Pair[str, FlextInfraTypes.StrMapping]
+        ] = {}
         module_source_paths: MutableMapping[str, Path] = {}
         pending_sources: MutableMapping[Path, str] = {}
         for scan_result in scan_results:
             try:
-                updated_source, migration, symbol_map = u.Infra.migrate_file(
-                    scan_result=scan_result,
+                updated_source, migration, symbol_map = (
+                    FlextInfraUtilitiesRefactorMroTransform.migrate_file(
+                        scan_result=scan_result,
+                    )
                 )
             except Exception as exc:
                 errors.append(f"{scan_result.file}: {exc}")
@@ -86,10 +97,15 @@ class FlextInfraRefactorMROImportRewriter:
         cls,
         *,
         workspace_root: Path,
-        module_moves: Mapping[str, t.Infra.Pair[str, t.StrMapping]],
+        module_moves: Mapping[
+            str, FlextInfraTypesBase.Pair[str, FlextInfraTypes.StrMapping]
+        ],
         pending_sources: Mapping[Path, str],
         apply: bool,
-    ) -> t.Infra.Pair[Sequence[m.Infra.MRORewriteResult], t.StrSequence]:
+    ) -> tuple[
+        Sequence[FlextInfraRefactorGrepModels.MRORewriteResult],
+        FlextInfraTypes.StrSequence,
+    ]:
         """Rewrite consumer imports/usages using rope occurrence discovery + source transforms."""
         if not module_moves:
             return ((), ())
@@ -109,12 +125,19 @@ class FlextInfraRefactorMROImportRewriter:
         cls,
         *,
         workspace_root: Path,
-        module_moves: Mapping[str, t.Infra.Pair[str, t.StrMapping]],
-    ) -> Mapping[Path, Mapping[str, t.Infra.Pair[str, t.StrMapping]]]:
-        rope_project = u.Infra.init_rope_project(workspace_root)
+        module_moves: Mapping[
+            str, FlextInfraTypesBase.Pair[str, FlextInfraTypes.StrMapping]
+        ],
+    ) -> Mapping[
+        Path,
+        Mapping[str, FlextInfraTypesBase.Pair[str, FlextInfraTypes.StrMapping]],
+    ]:
+        rope_project = FlextInfraUtilitiesRopeCore.init_rope_project(workspace_root)
         module_file_moves: MutableMapping[
             Path,
-            MutableMapping[str, t.Infra.Pair[str, t.StrMapping]],
+            MutableMapping[
+                str, FlextInfraTypesBase.Pair[str, FlextInfraTypes.StrMapping]
+            ],
         ] = {}
         try:
             for module_name, module_move in module_moves.items():
@@ -134,16 +157,18 @@ class FlextInfraRefactorMROImportRewriter:
 
     @staticmethod
     def _collect_module_occurrences(
-        rope_project: t.Infra.RopeProject,
+        rope_project: FlextInfraTypesRope.RopeProject,
         module_name: str,
-        module_move: t.Infra.Pair[str, t.StrMapping],
+        module_move: FlextInfraTypesBase.Pair[str, FlextInfraTypes.StrMapping],
         module_file_moves: MutableMapping[
             Path,
-            MutableMapping[str, t.Infra.Pair[str, t.StrMapping]],
+            MutableMapping[
+                str, FlextInfraTypesBase.Pair[str, FlextInfraTypes.StrMapping]
+            ],
         ],
     ) -> None:
         """Find rope occurrences for one module's symbols and merge into file_moves."""
-        resource = u.Infra.get_file_resource(
+        resource = FlextInfraUtilitiesRopeCore.get_file_resource(
             rope_project,
             module_name,
         )
@@ -151,14 +176,14 @@ class FlextInfraRefactorMROImportRewriter:
             return
         facade_alias, symbol_paths = module_move
         for symbol_name, target_path in symbol_paths.items():
-            offset = u.Infra.find_definition_offset(
+            offset = FlextInfraUtilitiesRopeAnalysis.find_definition_offset(
                 rope_project,
                 resource,
                 symbol_name,
             )
             if offset is None:
                 continue
-            for occurrence in u.Infra.find_occurrences(
+            for occurrence in FlextInfraUtilitiesRopeImports.find_occurrences(
                 rope_project,
                 resource,
                 offset,
@@ -172,7 +197,7 @@ class FlextInfraRefactorMROImportRewriter:
                 file_path = Path(str(real_path)).resolve()
                 per_file = module_file_moves.setdefault(file_path, {})
                 existing_move = per_file.get(module_name)
-                existing_paths: t.MutableStrMapping = (
+                existing_paths: FlextInfraTypes.MutableStrMapping = (
                     dict(existing_move[1]) if existing_move is not None else {}
                 )
                 existing_paths[symbol_name] = target_path
@@ -182,9 +207,14 @@ class FlextInfraRefactorMROImportRewriter:
     def _merge_file_moves(
         file_moves: Mapping[
             Path,
-            MutableMapping[str, t.Infra.Pair[str, t.StrMapping]],
+            MutableMapping[
+                str, FlextInfraTypesBase.Pair[str, FlextInfraTypes.StrMapping]
+            ],
         ],
-    ) -> Mapping[Path, Mapping[str, t.Infra.Pair[str, t.StrMapping]]]:
+    ) -> Mapping[
+        Path,
+        Mapping[str, FlextInfraTypesBase.Pair[str, FlextInfraTypes.StrMapping]],
+    ]:
         return {
             file_path: {
                 module_name: (facade_alias, dict(symbol_paths))
@@ -198,11 +228,20 @@ class FlextInfraRefactorMROImportRewriter:
         cls,
         *,
         workspace_root: Path,
-        file_moves: Mapping[Path, Mapping[str, t.Infra.Pair[str, t.StrMapping]]],
-        module_moves: Mapping[str, t.Infra.Pair[str, t.StrMapping]],
-    ) -> Mapping[Path, Mapping[str, t.Infra.Pair[str, t.StrMapping]]]:
+        file_moves: Mapping[
+            Path,
+            Mapping[str, FlextInfraTypesBase.Pair[str, FlextInfraTypes.StrMapping]],
+        ],
+        module_moves: Mapping[
+            str, FlextInfraTypesBase.Pair[str, FlextInfraTypes.StrMapping]
+        ],
+    ) -> Mapping[
+        Path,
+        Mapping[str, FlextInfraTypesBase.Pair[str, FlextInfraTypes.StrMapping]],
+    ]:
         expanded: MutableMapping[
-            Path, Mapping[str, t.Infra.Pair[str, t.StrMapping]]
+            Path,
+            Mapping[str, FlextInfraTypesBase.Pair[str, FlextInfraTypes.StrMapping]],
         ] = dict(file_moves)
         for file_path in cls._iter_workspace_python_files(
             workspace_root=workspace_root
@@ -213,13 +252,13 @@ class FlextInfraRefactorMROImportRewriter:
     @staticmethod
     def _iter_workspace_python_files(*, workspace_root: Path) -> Sequence[Path]:
         paths: list[Path] = []
-        for project_root in u.Infra.discover_project_roots(
+        for project_root in FlextInfraUtilitiesIteration.discover_project_roots(
             workspace_root=workspace_root
         ):
-            iter_result = u.Infra.iter_python_files(
+            iter_result = FlextInfraUtilitiesIteration.iter_python_files(
                 workspace_root=workspace_root,
                 project_roots=[project_root],
-                src_dirs=frozenset(c.Infra.MRO_SCAN_DIRECTORIES),
+                src_dirs=frozenset(FlextInfraRefactorConstants.MRO_SCAN_DIRECTORIES),
             )
             if iter_result.is_failure:
                 continue
@@ -231,17 +270,25 @@ class FlextInfraRefactorMROImportRewriter:
         cls,
         *,
         workspace_root: Path,
-        file_moves: Mapping[Path, Mapping[str, t.Infra.Pair[str, t.StrMapping]]],
+        file_moves: Mapping[
+            Path,
+            Mapping[str, FlextInfraTypesBase.Pair[str, FlextInfraTypes.StrMapping]],
+        ],
         pending_sources: Mapping[Path, str],
         apply: bool,
-    ) -> t.Infra.Pair[Sequence[m.Infra.MRORewriteResult], t.StrSequence]:
-        rewrites: list[m.Infra.MRORewriteResult] = []
+    ) -> tuple[
+        Sequence[FlextInfraRefactorGrepModels.MRORewriteResult],
+        FlextInfraTypes.StrSequence,
+    ]:
+        rewrites: list[FlextInfraRefactorGrepModels.MRORewriteResult] = []
         errors: list[str] = []
         for file_path in sorted(file_moves):
             source = pending_sources.get(file_path)
             if source is None:
                 try:
-                    source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+                    source = file_path.read_text(
+                        encoding=FlextInfraConstantsBase.Encoding.DEFAULT
+                    )
                 except OSError:
                     continue
             transformer = FlextInfraRefactorMROSymbolPropagator(
@@ -262,7 +309,7 @@ class FlextInfraRefactorMROImportRewriter:
                     )
                     continue
             rewrites.append(
-                m.Infra.MRORewriteResult(
+                FlextInfraRefactorGrepModels.MRORewriteResult(
                     file=str(file_path),
                     replacements=len(changes),
                 ),
@@ -275,7 +322,7 @@ class FlextInfraRefactorMROImportRewriter:
         workspace_root: Path,
         file_path: Path,
         updated_source: str,
-    ) -> t.Infra.EditResult:
+    ) -> FlextInfraTypesBase.EditResult:
         return FlextInfraUtilitiesProtectedEdit.protected_source_write(
             file_path,
             workspace=workspace_root,
@@ -289,7 +336,7 @@ class FlextInfraRefactorMROImportRewriter:
         *,
         workspace_root: Path,
         pending_sources: Mapping[Path, str],
-    ) -> t.Infra.Pair[t.StrSequence, Sequence[Path]]:
+    ) -> tuple[FlextInfraTypes.StrSequence, Sequence[Path]]:
         errors: list[str] = []
         failed_paths: list[Path] = []
         for file_path, source in pending_sources.items():

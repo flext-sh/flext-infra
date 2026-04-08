@@ -16,17 +16,13 @@ from flext_infra import (
     FlextInfraConstantsBase,
     FlextInfraGithubModels,
     FlextInfraSharedInfraConstants,
-    FlextInfraUtilitiesGit,
-    FlextInfraUtilitiesReporting,
-    FlextInfraUtilitiesSelection,
 )
+from flext_infra._utilities.git import FlextInfraUtilitiesGit
+from flext_infra._utilities.reporting import FlextInfraUtilitiesReporting
+from flext_infra._utilities.selection import FlextInfraUtilitiesSelection
 
 
-class FlextInfraUtilitiesGithubPr(
-    FlextInfraUtilitiesGit,
-    FlextInfraUtilitiesReporting,
-    FlextInfraUtilitiesSelection,
-):
+class FlextInfraUtilitiesGithubPr:
     """Mixin for GitHub pull-request execution."""
 
     @classmethod
@@ -36,7 +32,7 @@ class FlextInfraUtilitiesGithubPr(
     ) -> r[FlextInfraGithubModels.GithubPullRequestWorkspaceReport]:
         """Run pull-request commands across workspace repositories."""
         workspace_root = request.workspace_path
-        projects_result = cls.resolve_projects(
+        projects_result = FlextInfraUtilitiesSelection.resolve_projects(
             workspace_root,
             list(request.project_names or []),
         )
@@ -78,7 +74,7 @@ class FlextInfraUtilitiesGithubPr(
     ) -> bool:
         """Process one repository during workspace pull-request execution."""
         if context.request.branch:
-            cls.git_checkout(repo_root, context.request.branch)
+            FlextInfraUtilitiesGit.git_checkout(repo_root, context.request.branch)
         if context.request.checkpoint:
             cls._github_pr_checkpoint(repo_root, context.request.branch)
         run_result: r[FlextInfraGithubModels.GithubPullRequestOutcome] = (
@@ -96,24 +92,24 @@ class FlextInfraUtilitiesGithubPr(
 
     @classmethod
     def _github_pr_checkpoint(cls, repo_root: Path, branch: str) -> r[bool]:
-        changes_result = cls.git_has_changes(repo_root)
+        changes_result = FlextInfraUtilitiesGit.git_has_changes(repo_root)
         if changes_result.is_failure:
             return r[bool].fail(changes_result.error or "changes check failed")
         if not changes_result.value:
             return r[bool].ok(True)
-        add_result = cls.git_add(repo_root)
+        add_result = FlextInfraUtilitiesGit.git_add(repo_root)
         if add_result.is_failure:
             return r[bool].fail(add_result.error or "git add failed")
-        staged_result = cls.git_diff_names(repo_root, cached=True)
+        staged_result = FlextInfraUtilitiesGit.git_diff_names(repo_root, cached=True)
         if staged_result.is_success and (not staged_result.value.strip()):
             return r[bool].ok(True)
-        commit_result = cls.git_commit(
+        commit_result = FlextInfraUtilitiesGit.git_commit(
             repo_root,
             "chore: checkpoint pending changes",
         )
         if commit_result.is_failure:
             return r[bool].fail(commit_result.error or "git commit failed")
-        return cls.git_push(
+        return FlextInfraUtilitiesGit.git_push(
             repo_root,
             remote=FlextInfraSharedInfraConstants.Git.ORIGIN if branch else "",
             branch=branch,
@@ -133,7 +129,7 @@ class FlextInfraUtilitiesGithubPr(
     ) -> r[FlextInfraGithubModels.GithubPullRequestOutcome]:
         """Execute one pull-request command for a single repository."""
         display = workspace_root.name if repo_root == workspace_root else repo_root.name
-        report_dir = cls.get_report_dir(
+        report_dir = FlextInfraUtilitiesReporting.get_report_dir(
             workspace_root,
             FlextInfraConstantsBase.ReportKeys.WORKSPACE,
             FlextInfraConstantsBase.PR,
@@ -147,7 +143,7 @@ class FlextInfraUtilitiesGithubPr(
             request=request,
         )
         started = time.monotonic()
-        to_file_result: r[int] = cls.run_to_file(command, log_path)
+        to_file_result = FlextInfraUtilitiesGit.run_to_file(command, log_path)
         if to_file_result.is_failure:
             return r[FlextInfraGithubModels.GithubPullRequestOutcome].fail(
                 to_file_result.error or "command execution error",

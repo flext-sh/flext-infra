@@ -8,8 +8,7 @@ from typing import Annotated
 
 from pydantic import Field, model_validator
 
-from flext_core import u
-from flext_infra import m, t
+from flext_core import m, t, u
 
 
 class FlextInfraUtilitiesCliShared:
@@ -70,7 +69,7 @@ class FlextInfraUtilitiesCliShared:
 
     @staticmethod
     def _add_shared_flags(
-        parser: t.Infra.CliArgumentParser,
+        parser: ArgumentParser,
         flags: FlextInfraUtilitiesCliShared.SharedFlags,
         *,
         suppress_defaults: bool = False,
@@ -138,7 +137,7 @@ class FlextInfraUtilitiesCliShared:
         flags: FlextInfraUtilitiesCliShared.SharedFlags,
         *,
         suppress_defaults: bool = False,
-    ) -> t.Infra.CliArgumentParser:
+    ) -> ArgumentParser:
         """Build the shared-flags parser exposed to sibling CLI helpers."""
         base = ArgumentParser(add_help=False)
         FlextInfraUtilitiesCliShared._add_shared_flags(

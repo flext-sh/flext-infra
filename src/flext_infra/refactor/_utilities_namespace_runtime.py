@@ -41,6 +41,18 @@ class FlextInfraUtilitiesRefactorNamespaceRuntime(
             for file_path in py_files:
                 if file_path.name == c.Infra.Files.INIT_PY:
                     continue
+                project_root = (
+                    FlextInfraUtilitiesDiscovery.discover_project_root_from_file(
+                        file_path,
+                    )
+                )
+                if project_root is not None and (
+                    FlextInfraUtilitiesDiscovery.contextual_runtime_alias_sources(
+                        project_root=project_root,
+                        file_path=file_path,
+                    )
+                ):
+                    continue
                 try:
                     source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
                 except OSError:
@@ -176,6 +188,24 @@ class FlextInfraUtilitiesRefactorNamespaceRuntime(
         }
         if not requested_aliases:
             return None
+        project_root = FlextInfraUtilitiesDiscovery.discover_project_root_from_file(
+            file_path,
+        )
+        contextual_sources = (
+            FlextInfraUtilitiesDiscovery.contextual_runtime_alias_sources(
+                project_root=project_root,
+                file_path=file_path,
+            )
+            if project_root is not None
+            else {}
+        )
+        alias_target_roots: t.MutableStrMapping = dict.fromkeys(
+            requested_aliases, package_name
+        )
+        for alias_name, allowed_sources in contextual_sources.items():
+            if alias_name not in requested_aliases or not allowed_sources:
+                continue
+            alias_target_roots[alias_name] = min(allowed_sources)
         reachability = FlextInfraUtilitiesImportNormalizer.build_reachability(
             package_dir=package_dir,
             package_name=package_name,
@@ -221,8 +251,14 @@ class FlextInfraUtilitiesRefactorNamespaceRuntime(
             rope_project: t.Infra.RopeProject,
             resource: t.Infra.RopeResource,
         ) -> t.Infra.TransformResult:
-            alias_moves: MutableMapping[str, t.Infra.StrSet] = {}
-            class_alias_moves: MutableMapping[str, t.MutableStrMapping] = {}
+            alias_moves: MutableMapping[
+                t.Infra.StrPair,
+                t.Infra.StrSet,
+            ] = {}
+            class_alias_moves: MutableMapping[
+                t.Infra.StrPair,
+                t.MutableStrMapping,
+            ] = {}
             changed_aliases: t.Infra.StrSet = set()
             for from_import in FlextInfraUtilitiesRope.get_absolute_from_imports(
                 rope_project,
@@ -239,27 +275,32 @@ class FlextInfraUtilitiesRefactorNamespaceRuntime(
                     bound_name = alias_name or imported_name
                     if bound_name not in safe_aliases:
                         continue
-                    if alias_name is None and current_source != package_name:
-                        alias_moves.setdefault(current_source, set()).add(bound_name)
+                    target_root = alias_target_roots[bound_name]
+                    if alias_name is None and current_source != target_root:
+                        alias_moves.setdefault(
+                            (current_source, target_root),
+                            set(),
+                        ).add(bound_name)
                         continue
                     if alias_name == bound_name and imported_name != bound_name:
-                        class_alias_moves.setdefault(current_source, {})[
-                            imported_name
-                        ] = bound_name
-            for source_module in sorted(alias_moves):
-                moved_aliases = tuple(sorted(alias_moves[source_module]))
+                        class_alias_moves.setdefault(
+                            (current_source, target_root),
+                            {},
+                        )[imported_name] = bound_name
+            for source_module, target_module in sorted(alias_moves):
+                moved_aliases = tuple(sorted(alias_moves[source_module, target_module]))
                 rewritten = FlextInfraUtilitiesRope.relocate_from_import_aliases(
                     rope_project,
                     resource,
                     source_module=source_module,
-                    target_module=package_name,
+                    target_module=target_module,
                     aliases=moved_aliases,
                     apply=True,
                 )
                 if rewritten is not None:
                     changed_aliases.update(moved_aliases)
-            for source_module in sorted(class_alias_moves):
-                alias_map = class_alias_moves[source_module]
+            for source_module, target_module in sorted(class_alias_moves):
+                alias_map = class_alias_moves[source_module, target_module]
                 removed = FlextInfraUtilitiesRope.remove_import_names(
                     rope_project,
                     resource,
@@ -273,18 +314,13 @@ class FlextInfraUtilitiesRefactorNamespaceRuntime(
                 _ = FlextInfraUtilitiesRope.add_import(
                     rope_project,
                     resource,
-                    package_name,
+                    target_module,
                     normalized_aliases,
                     apply=True,
                 )
                 changed_aliases.update(normalized_aliases)
             if not changed_aliases:
                 return resource.read(), []
-            _ = FlextInfraUtilitiesRope.organize_imports(
-                rope_project,
-                resource,
-                apply=True,
-            )
             return resource.read(), [
                 f"{action} runtime alias import: {alias_name}"
                 for alias_name in sorted(changed_aliases)

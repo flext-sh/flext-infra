@@ -10,13 +10,15 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from flext_core import m
-from flext_infra import (
-    FlextInfraModelsMixins,
+from flext_infra import t
+from flext_infra._models.mixins import FlextInfraModelsMixins
+from flext_infra._models.refactor_ast_grep import FlextInfraRefactorGrepModels
+from flext_infra._models.refactor_census import FlextInfraRefactorModelsCensus
+from flext_infra._models.refactor_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels,
-    FlextInfraRefactorGrepModels,
-    FlextInfraRefactorModelsCensus,
+)
+from flext_infra._models.refactor_violations import (
     FlextInfraRefactorModelsViolations,
-    t,
 )
 
 

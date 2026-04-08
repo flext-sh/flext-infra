@@ -9,7 +9,8 @@ from typing import Annotated
 from pydantic import ConfigDict, Field
 
 from flext_core import m
-from flext_infra import FlextInfraModelsMixins, t
+from flext_infra import c, t
+from flext_infra._models.mixins import FlextInfraModelsMixins
 
 
 class FlextInfraWorkspaceModels:
@@ -52,6 +53,13 @@ class FlextInfraWorkspaceModels:
             str,
             Field(default="", description="Primary Python package name"),
         ] = ""
+        workspace_role: Annotated[
+            c.Infra.WorkspaceProjectRole,
+            Field(
+                default=c.Infra.WorkspaceProjectRole.ATTACHED,
+                description="Operational role relative to the uv workspace root",
+            ),
+        ] = c.Infra.WorkspaceProjectRole.ATTACHED
 
     class ProjectMeta(
         FlextInfraModelsMixins.ProjectEntryNameMixin,

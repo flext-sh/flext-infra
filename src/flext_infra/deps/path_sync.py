@@ -40,7 +40,7 @@ class FlextInfraDependencyPathSync(FlextInfraDependencyPathSyncRewrite):
         return sorted(
             str(project.path.relative_to(self._root))
             for project in projects_list
-            if project.name.startswith(c.Infra.Packages.PREFIX_HYPHEN)
+            if (project.workspace_role == c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER)
         )
 
     @staticmethod

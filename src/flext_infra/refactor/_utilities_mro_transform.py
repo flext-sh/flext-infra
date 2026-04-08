@@ -12,7 +12,12 @@ import re
 from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra import c, m, t
+from flext_core import t
+from flext_infra import (
+    FlextInfraConstantsBase,
+    FlextInfraRefactorConstants,
+    FlextInfraRefactorGrepModels,
+)
 
 
 class FlextInfraUtilitiesRefactorMroTransform:
@@ -30,13 +35,15 @@ class FlextInfraUtilitiesRefactorMroTransform:
     @staticmethod
     def migrate_file(
         *,
-        scan_result: m.Infra.MROScanReport,
-    ) -> t.Infra.Triple[str, m.Infra.MROFileMigration, t.StrMapping]:
+        scan_result: FlextInfraRefactorGrepModels.MROScanReport,
+    ) -> tuple[str, FlextInfraRefactorGrepModels.MROFileMigration, t.StrMapping]:
         """Transform a candidate file and return code plus symbol map."""
-        source = Path(scan_result.file).read_text(encoding=c.Infra.Encoding.DEFAULT)
+        source = Path(scan_result.file).read_text(
+            encoding=FlextInfraConstantsBase.Encoding.DEFAULT
+        )
         lines = source.splitlines()
 
-        empty_migration = m.Infra.MROFileMigration(
+        empty_migration = FlextInfraRefactorGrepModels.MROFileMigration(
             file=scan_result.file,
             module=scan_result.module,
             moved_symbols=(),
@@ -45,7 +52,10 @@ class FlextInfraUtilitiesRefactorMroTransform:
         if not scan_result.candidates:
             return (source, empty_migration, {})
 
-        class_name = scan_result.constants_class or c.Infra.DEFAULT_CONSTANTS_CLASS
+        class_name = (
+            scan_result.constants_class
+            or FlextInfraRefactorConstants.DEFAULT_CONSTANTS_CLASS
+        )
         facade_alias = scan_result.facade_alias or class_name
 
         # Process from bottom to top to preserve line indices when deleting
@@ -128,7 +138,7 @@ class FlextInfraUtilitiesRefactorMroTransform:
             symbol_map=symbol_map,
         )
 
-        migration = m.Infra.MROFileMigration(
+        migration = FlextInfraRefactorGrepModels.MROFileMigration(
             file=scan_result.file,
             module=scan_result.module,
             moved_symbols=tuple(reversed(moved_symbols)),
