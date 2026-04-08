@@ -215,6 +215,9 @@ class FlextInfraCodegenGeneration:
         runtime_imports: t.Infra.LazyImportMap = eager_imports or {}
         lazy_filtered: t.Infra.LazyImportMap = dict(filtered)
         wildcard_runtime_module_set = frozenset(wildcard_runtime_modules or ())
+        publish_all = FlextInfraUtilitiesCodegenGeneration.is_root_namespace_package(
+            current_pkg
+        )
         type_checking_filtered: t.Infra.LazyImportMap = {
             name: val
             for name, val in lazy_filtered.items()
@@ -260,15 +263,18 @@ class FlextInfraCodegenGeneration:
             lazy_filtered,
             children_lazy,
         )
-        type_checking_lines = FlextInfraCodegenGeneration.generate_type_checking(
-            FlextInfraUtilitiesCodegenGeneration.group_imports(type_checking_filtered),
-            include_flext_types=False,
-            child_packages=child_packages_for_tc or (),
-            local_package_root=current_pkg,
+        type_checking_lines = (
+            FlextInfraCodegenGeneration.generate_type_checking(
+                FlextInfraUtilitiesCodegenGeneration.group_imports(
+                    type_checking_filtered
+                ),
+                include_flext_types=False,
+                child_packages=child_packages_for_tc or (),
+                local_package_root=current_pkg,
+            )
+            if publish_all
+            else ()
         )
-        if current_pkg == "flext_core":
-            for _lin in type_checking_lines:
-                pass
 
         body_template = FlextInfraCodegenGeneration._get_template(
             c.Infra.Templates.BODY
@@ -285,6 +291,7 @@ class FlextInfraCodegenGeneration:
             type_checking_lines="\n".join(type_checking_lines),
             typecheck_names=sorted(lazy_filtered),
             exports=sorted(exports),
+            publish_all=publish_all,
         )
         out.extend(body.splitlines())
         out.append("")
@@ -294,6 +301,7 @@ class FlextInfraCodegenGeneration:
         )
         getattr_rendered: str = getattr_template.render(
             eager_export_names=eager_export_names,
+            publish_all=publish_all,
         )
         out.extend(getattr_rendered.splitlines())
 

@@ -10,13 +10,10 @@ import typing as _t
 from flext_core.lazy import install_lazy_exports
 
 if _t.TYPE_CHECKING:
-    import flext_infra.codegen._codegen_generation as _flext_infra_codegen__codegen_generation
     import flext_infra.codegen.census as _flext_infra_codegen_census
 
-    _codegen_generation = _flext_infra_codegen__codegen_generation
     census = _flext_infra_codegen_census
     import flext_infra.codegen.cli as _flext_infra_codegen_cli
-    from flext_infra.codegen._codegen_generation import FlextInfraCodegenGeneration
     from flext_infra.codegen.census import FlextInfraCodegenCensus
 
     cli = _flext_infra_codegen_cli
@@ -55,10 +52,6 @@ if _t.TYPE_CHECKING:
     from flext_core.utilities import FlextUtilities as u
     from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
 _LAZY_IMPORTS = {
-    "FlextInfraCodegenGeneration": (
-        "flext_infra.codegen._codegen_generation",
-        "FlextInfraCodegenGeneration",
-    ),
     "FlextInfraCliCodegen": ("flext_infra.codegen.cli", "FlextInfraCliCodegen"),
     "FlextInfraCodegenCensus": (
         "flext_infra.codegen.census",
@@ -105,7 +98,6 @@ __all__ = [
     "FlextInfraCliCodegen",
     "FlextInfraCodegenCensus",
     "FlextInfraCodegenFixer",
-    "FlextInfraCodegenGeneration",
     "FlextInfraCodegenLazyInit",
     "FlextInfraCodegenPyTyped",
     "FlextInfraCodegenScaffolder",

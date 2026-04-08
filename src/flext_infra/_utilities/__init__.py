@@ -13,30 +13,12 @@ if _t.TYPE_CHECKING:
     import flext_infra._utilities._utilities as _flext_infra__utilities__utilities
 
     _utilities = _flext_infra__utilities__utilities
-    import flext_infra._utilities.census as _flext_infra__utilities__utilities_census
+    import flext_infra._utilities._utilities_cli as _flext_infra__utilities__utilities_cli
     from flext_infra._utilities._utilities import FlextInfraUtilitiesRefactor
 
-    census = _flext_infra__utilities__utilities_census
-    import flext_infra._utilities._utilities_cli as _flext_infra__utilities__utilities_cli
-    from flext_infra._utilities.census import (
-        FlextInfraUtilitiesRefactorCensus,
-    )
-
     _utilities_cli = _flext_infra__utilities__utilities_cli
-    import flext_infra._utilities.engine as _flext_infra__utilities__utilities_engine
-    from flext_infra._utilities._utilities_cli import FlextInfraUtilitiesRefactorCli
-
-    _utilities_engine = _flext_infra__utilities__utilities_engine
-    import flext_infra._utilities.mro_scan as _flext_infra__utilities__utilities_mro_scan
-    from flext_infra._utilities.engine import (
-        FlextInfraUtilitiesRefactorEngine,
-    )
-
-    mro_scan = _flext_infra__utilities__utilities_mro_scan
     import flext_infra._utilities._utilities_mro_transform as _flext_infra__utilities__utilities_mro_transform
-    from flext_infra._utilities.mro_scan import (
-        FlextInfraUtilitiesRefactorMroScan,
-    )
+    from flext_infra._utilities._utilities_cli import FlextInfraUtilitiesRefactorCli
 
     _utilities_mro_transform = _flext_infra__utilities__utilities_mro_transform
     import flext_infra._utilities._utilities_namespace as _flext_infra__utilities__utilities_namespace
@@ -96,8 +78,12 @@ if _t.TYPE_CHECKING:
     )
 
     base = _flext_infra__utilities_base
-    import flext_infra._utilities.cli as _flext_infra__utilities_cli
+    import flext_infra._utilities.census as _flext_infra__utilities_census
     from flext_infra._utilities.base import FlextInfraUtilitiesBase
+
+    census = _flext_infra__utilities_census
+    import flext_infra._utilities.cli as _flext_infra__utilities_cli
+    from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
 
     cli = _flext_infra__utilities_cli
     import flext_infra._utilities.cli_shared as _flext_infra__utilities_cli_shared
@@ -137,23 +123,9 @@ if _t.TYPE_CHECKING:
     )
 
     codegen_import_cycles = _flext_infra__utilities_codegen_import_cycles
-    import flext_infra._utilities.lazy as _flext_infra__utilities_codegen_lazy
+    import flext_infra._utilities.deps_paths as _flext_infra__utilities_deps_paths
     from flext_infra._utilities.codegen_import_cycles import (
         FlextInfraUtilitiesCodegenImportCycles,
-    )
-
-    lazy = _flext_infra__utilities_codegen_lazy
-    import flext_infra._utilities.namespace as _flext_infra__utilities_codegen_namespace
-    from flext_infra._utilities.lazy import (
-        FlextInfraUtilitiesCodegenLazyAliases,
-        FlextInfraUtilitiesCodegenLazyMerging,
-        FlextInfraUtilitiesCodegenLazyScanning,
-    )
-
-    namespace = _flext_infra__utilities_codegen_namespace
-    import flext_infra._utilities.deps_paths as _flext_infra__utilities_deps_paths
-    from flext_infra._utilities.namespace import (
-        FlextInfraUtilitiesCodegenNamespace,
     )
 
     deps_paths = _flext_infra__utilities_deps_paths
@@ -211,8 +183,12 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 
     docs_validate = _flext_infra__utilities_docs_validate
-    import flext_infra._utilities.formatting as _flext_infra__utilities_formatting
+    import flext_infra._utilities.engine as _flext_infra__utilities_engine
     from flext_infra._utilities.docs_validate import FlextInfraUtilitiesDocsValidate
+
+    engine = _flext_infra__utilities_engine
+    import flext_infra._utilities.formatting as _flext_infra__utilities_formatting
+    from flext_infra._utilities.engine import FlextInfraUtilitiesRefactorEngine
 
     formatting = _flext_infra__utilities_formatting
     import flext_infra._utilities.git as _flext_infra__utilities_git
@@ -227,23 +203,39 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.github import FlextInfraUtilitiesGithub
 
     github_pr = _flext_infra__utilities_github_pr
-    import flext_infra._utilities.normalizer as _flext_infra__utilities_import_normalizer
+    import flext_infra._utilities.iteration as _flext_infra__utilities_iteration
     from flext_infra._utilities.github_pr import FlextInfraUtilitiesGithubPr
 
-    normalizer = _flext_infra__utilities_import_normalizer
-    import flext_infra._utilities.iteration as _flext_infra__utilities_iteration
+    iteration = _flext_infra__utilities_iteration
+    import flext_infra._utilities.lazy as _flext_infra__utilities_lazy
+    from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
+
+    lazy = _flext_infra__utilities_lazy
+    import flext_infra._utilities.log_parser as _flext_infra__utilities_log_parser
+    from flext_infra._utilities.lazy import (
+        FlextInfraUtilitiesCodegenLazyAliases,
+        FlextInfraUtilitiesCodegenLazyMerging,
+        FlextInfraUtilitiesCodegenLazyScanning,
+    )
+
+    log_parser = _flext_infra__utilities_log_parser
+    import flext_infra._utilities.mro_scan as _flext_infra__utilities_mro_scan
+    from flext_infra._utilities.log_parser import FlextInfraUtilitiesLogParser
+
+    mro_scan = _flext_infra__utilities_mro_scan
+    import flext_infra._utilities.namespace as _flext_infra__utilities_namespace
+    from flext_infra._utilities.mro_scan import FlextInfraUtilitiesRefactorMroScan
+
+    namespace = _flext_infra__utilities_namespace
+    import flext_infra._utilities.normalizer as _flext_infra__utilities_normalizer
+    from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
+
+    normalizer = _flext_infra__utilities_normalizer
+    import flext_infra._utilities.output as _flext_infra__utilities_output
     from flext_infra._utilities.normalizer import (
         FlextInfraNormalizerContext,
         FlextInfraUtilitiesImportNormalizer,
     )
-
-    iteration = _flext_infra__utilities_iteration
-    import flext_infra._utilities.log_parser as _flext_infra__utilities_log_parser
-    from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
-
-    log_parser = _flext_infra__utilities_log_parser
-    import flext_infra._utilities.output as _flext_infra__utilities_output
-    from flext_infra._utilities.log_parser import FlextInfraUtilitiesLogParser
 
     output = _flext_infra__utilities_output
     import flext_infra._utilities.output_reporting as _flext_infra__utilities_output_reporting
@@ -641,10 +633,7 @@ _LAZY_IMPORTS = {
         "FlextInfraUtilitiesYaml",
     ),
     "_utilities": "flext_infra._utilities._utilities",
-    "census": "flext_infra._utilities.census",
     "_utilities_cli": "flext_infra._utilities._utilities_cli",
-    "_utilities_engine": "flext_infra._utilities.engine",
-    "mro_scan": "flext_infra._utilities.mro_scan",
     "_utilities_mro_transform": "flext_infra._utilities._utilities_mro_transform",
     "_utilities_namespace": "flext_infra._utilities._utilities_namespace",
     "_utilities_namespace_analysis": "flext_infra._utilities._utilities_namespace_analysis",
@@ -655,6 +644,7 @@ _LAZY_IMPORTS = {
     "_utilities_pydantic": "flext_infra._utilities._utilities_pydantic",
     "_utilities_pydantic_analysis": "flext_infra._utilities._utilities_pydantic_analysis",
     "base": "flext_infra._utilities.base",
+    "census": "flext_infra._utilities.census",
     "cli": "flext_infra._utilities.cli",
     "cli_shared": "flext_infra._utilities.cli_shared",
     "cli_subcommand": "flext_infra._utilities.cli_subcommand",
@@ -663,8 +653,6 @@ _LAZY_IMPORTS = {
     "codegen_execution": "flext_infra._utilities.codegen_execution",
     "codegen_generation": "flext_infra._utilities.codegen_generation",
     "codegen_import_cycles": "flext_infra._utilities.codegen_import_cycles",
-    "lazy": "flext_infra._utilities.lazy",
-    "namespace": "flext_infra._utilities.namespace",
     "deps_paths": "flext_infra._utilities.deps_paths",
     "deps_repos": "flext_infra._utilities.deps_repos",
     "discovery": "flext_infra._utilities.discovery",
@@ -679,13 +667,17 @@ _LAZY_IMPORTS = {
     "docs_render": "flext_infra._utilities.docs_render",
     "docs_scope": "flext_infra._utilities.docs_scope",
     "docs_validate": "flext_infra._utilities.docs_validate",
+    "engine": "flext_infra._utilities.engine",
     "formatting": "flext_infra._utilities.formatting",
     "git": "flext_infra._utilities.git",
     "github": "flext_infra._utilities.github",
     "github_pr": "flext_infra._utilities.github_pr",
-    "normalizer": "flext_infra._utilities.normalizer",
     "iteration": "flext_infra._utilities.iteration",
+    "lazy": "flext_infra._utilities.lazy",
     "log_parser": "flext_infra._utilities.log_parser",
+    "mro_scan": "flext_infra._utilities.mro_scan",
+    "namespace": "flext_infra._utilities.namespace",
+    "normalizer": "flext_infra._utilities.normalizer",
     "output": "flext_infra._utilities.output",
     "output_reporting": "flext_infra._utilities.output_reporting",
     "parsing": "flext_infra._utilities.parsing",
@@ -790,7 +782,6 @@ __all__ = [
     "FlextInfraUtilitiesYaml",
     "_utilities",
     "_utilities_cli",
-    "_utilities_engine",
     "_utilities_mro_transform",
     "_utilities_namespace",
     "_utilities_namespace_analysis",
@@ -824,6 +815,7 @@ __all__ = [
     "docs_render",
     "docs_scope",
     "docs_validate",
+    "engine",
     "formatting",
     "git",
     "github",

@@ -1,4 +1,5 @@
 {%- if eager_export_names %}
+{%- if publish_all %}
 install_lazy_exports(
     __name__,
     globals(),
@@ -10,5 +11,22 @@ install_lazy_exports(
     ],
 )
 {%- else %}
+install_lazy_exports(
+    __name__,
+    globals(),
+    _LAZY_IMPORTS,
+    [
+{%- for export_name in eager_export_names %}
+        "{{ export_name }}",
+{%- endfor %}
+    ],
+    publish_all=False,
+)
+{%- endif %}
+{%- else %}
+{%- if publish_all %}
 install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)
+{%- else %}
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, publish_all=False)
+{%- endif %}
 {%- endif %}

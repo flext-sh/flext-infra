@@ -10,14 +10,7 @@ import typing as _t
 from flext_core.lazy import install_lazy_exports
 
 if _t.TYPE_CHECKING:
-    import flext_infra.detectors._base_detector as _flext_infra_detectors__base_detector
-
-    _base_detector = _flext_infra_detectors__base_detector
     import flext_infra.detectors.class_placement_detector as _flext_infra_detectors_class_placement_detector
-    from flext_infra.detectors._base_detector import (
-        DetectorContext,
-        FlextInfraScanFileMixin,
-    )
 
     class_placement_detector = _flext_infra_detectors_class_placement_detector
     import flext_infra.detectors.compatibility_alias_detector as _flext_infra_detectors_compatibility_alias_detector
@@ -107,10 +100,6 @@ if _t.TYPE_CHECKING:
         FlextInfraRuntimeAliasDetector,
     )
 _LAZY_IMPORTS = {
-    "DetectorContext": (
-        "flext_infra.detectors._base_detector",
-        "DetectorContext",
-    ),
     "FlextInfraClassPlacementDetector": (
         "flext_infra.detectors.class_placement_detector",
         "FlextInfraClassPlacementDetector",
@@ -139,11 +128,6 @@ _LAZY_IMPORTS = {
         "flext_infra.detectors.loose_object_detector",
         "FlextInfraLooseObjectDetector",
     ),
-    "FlextInfraScanFileMixin": (
-        "flext_infra.detectors._base_detector",
-        "FlextInfraScanFileMixin",
-    ),
-    "_base_detector": "flext_infra.detectors._base_detector",
     "FlextInfraMROCompletenessDetector": (
         "flext_infra.detectors.mro_completeness_detector",
         "FlextInfraMROCompletenessDetector",
@@ -195,7 +179,6 @@ _LAZY_IMPORTS = {
 }
 
 __all__ = [
-    "DetectorContext",
     "FlextInfraClassPlacementDetector",
     "FlextInfraCompatibilityAliasDetector",
     "FlextInfraCyclicImportDetector",
@@ -209,8 +192,6 @@ __all__ = [
     "FlextInfraNamespaceFacadeScanner",
     "FlextInfraNamespaceSourceDetector",
     "FlextInfraRuntimeAliasDetector",
-    "FlextInfraScanFileMixin",
-    "_base_detector",
     "c",
     "class_placement_detector",
     "compatibility_alias_detector",

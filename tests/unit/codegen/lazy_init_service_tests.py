@@ -139,6 +139,18 @@ class TestFlextInfraCodegenLazyInit:
         tm.that(result, eq=0)
         tm.that((src_dir / "__init__.py").exists(), eq=True)
 
+    def test_accepts_plural_services_class_in_service_py(self, tmp_path: Path) -> None:
+        """Root service.py may own a canonical plural Services facade."""
+        src_dir = tmp_path / "src" / "test_pkg"
+        src_dir.mkdir(parents=True)
+        (src_dir / "service.py").write_text(
+            "class TestPkgServices:\n    pass\n\ns = TestPkgServices\n",
+        )
+        generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
+        result = generator.generate_inits(check_only=False)
+        tm.that(result, eq=0)
+        tm.that((src_dir / "__init__.py").read_text(), contains="TestPkgServices")
+
     def test_nested_private_base_module_does_not_trigger_root_contract(
         self,
         tmp_path: Path,

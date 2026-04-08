@@ -49,10 +49,12 @@ _LAZY_IMPORTS = {
 {%- endif %}
 
 {%- if exports %}
+{%- if publish_all %}
 
 __all__ = [
 {%- for export in exports %}
     "{{ export }}",
 {%- endfor %}
 ]
+{%- endif %}
 {%- endif %}

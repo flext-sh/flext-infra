@@ -269,8 +269,8 @@ class TestGenerateFile:
         tm.that(content, contains='"T": ("test_pkg.typings", "T")')
         tm.that(content, contains='"U": ("test_pkg.typings", "U")')
 
-    def test_always_emits_static_analysis_hints(self) -> None:
-        """Test generated file always emits the canonical static hints."""
+    def test_root_namespace_emits_static_analysis_hints(self) -> None:
+        """Root namespace __init__.py keeps TYPE_CHECKING and __all__."""
         exports = ["Alpha", "Beta"]
         filtered = {"Alpha": ("mod", "Alpha"), "Beta": ("mod", "Beta")}
         inline_constants: t.StrMapping = {}
@@ -286,6 +286,29 @@ class TestGenerateFile:
         tm.that(content, contains="__all__ = [")
         tm.that(
             content, contains="install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)"
+        )
+
+    def test_subpackage_omits_static_analysis_hints(self) -> None:
+        """Non-root package __init__.py keeps only _LAZY_IMPORTS + lazy loader."""
+        exports = ["Alpha", "Beta"]
+        filtered = {"Alpha": ("mod", "Alpha"), "Beta": ("mod", "Beta")}
+        inline_constants: t.StrMapping = {}
+        content = mod.FlextInfraCodegenGeneration.generate_file(
+            "",
+            exports,
+            filtered,
+            inline_constants,
+            "test_pkg.transformers",
+        )
+        tm.that(content, lacks="if _t.TYPE_CHECKING:")
+        tm.that(content, lacks="import typing as _t")
+        tm.that(content, lacks="__all__ = [")
+        tm.that(
+            content,
+            contains=(
+                "install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, "
+                "publish_all=False)"
+            ),
         )
 
 

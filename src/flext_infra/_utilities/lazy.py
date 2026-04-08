@@ -744,10 +744,15 @@ class FlextInfraUtilitiesCodegenLazyScanning(
                     msg,
                 )
             return
-        if not class_name.endswith(family):
+        accepted_suffixes = (
+            ("Service", "Services")
+            if py_file.name == "service.py" and family == "Service"
+            else (family,)
+        )
+        if not any(class_name.endswith(suffix) for suffix in accepted_suffixes):
             msg = (
                 f"{py_file}:{class_node.lineno}: class {class_name!r} must end "
-                f"with {family!r}"
+                f"with one of {accepted_suffixes!r}"
             )
             raise ValueError(
                 msg,
@@ -1226,7 +1231,7 @@ class FlextInfraUtilitiesCodegenLazyAliases:
             return explicit_alias
         for module_name, suffixes in (
             ("base", ("CommandContext", "ServiceBase")),
-            ("service", ("Service",)),
+            ("service", ("Service", "Services")),
             ("api", ("Service",)),
         ):
             for name, (mod, _attr) in list(lazy_map.items()):

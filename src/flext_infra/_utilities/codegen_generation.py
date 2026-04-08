@@ -12,6 +12,11 @@ class FlextInfraUtilitiesCodegenGeneration:
     """Utilities for codegen import formatting, grouping, and lazy entries."""
 
     @staticmethod
+    def is_root_namespace_package(current_pkg: str) -> bool:
+        """Return True only for top-level root namespace packages."""
+        return bool(current_pkg) and "." not in current_pkg
+
+    @staticmethod
     def is_local_module(mod: str, root_name: str) -> bool:
         """Check if a module path belongs to the local package."""
         return (

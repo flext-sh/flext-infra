@@ -10,35 +10,7 @@ import typing as _t
 from flext_core.lazy import install_lazy_exports
 
 if _t.TYPE_CHECKING:
-    import flext_infra.refactor._base_rule as _flext_infra_refactor__base_rule
-
-    _base_rule = _flext_infra_refactor__base_rule
-    import flext_infra.refactor._engine_rules as _flext_infra_refactor__engine_rules
-    from flext_infra.refactor._base_rule import (
-        FlextInfraGenericTransformerRule,
-        FlextInfraRefactorRule,
-    )
-
-    _engine_rules = _flext_infra_refactor__engine_rules
-    import flext_infra.refactor._namespace_enforcer_phases as _flext_infra_refactor__namespace_enforcer_phases
-    from flext_infra.refactor._engine_rules import (
-        FlextInfraRefactorClassReconstructorRule,
-        FlextInfraRefactorLegacyRemovalTextRule,
-        FlextInfraRefactorMROClassMigrationTextRule,
-        FlextInfraRefactorMRORedundancyChecker,
-        FlextInfraRefactorPatternCorrectionsTextRule,
-        FlextInfraRefactorSignaturePropagationRule,
-        FlextInfraRefactorSymbolPropagationRule,
-        FlextInfraRefactorTier0ImportFixRule,
-        FlextInfraRefactorTypingAnnotationFixRule,
-        FlextInfraRefactorTypingUnificationRule,
-    )
-
-    _namespace_enforcer_phases = _flext_infra_refactor__namespace_enforcer_phases
     import flext_infra.refactor.census as _flext_infra_refactor_census
-    from flext_infra.refactor._namespace_enforcer_phases import (
-        FlextInfraNamespaceEnforcerPhasesMixin,
-    )
 
     census = _flext_infra_refactor_census
     import flext_infra.refactor.class_nesting_analyzer as _flext_infra_refactor_class_nesting_analyzer
@@ -122,18 +94,10 @@ if _t.TYPE_CHECKING:
         FlextInfraRefactorViolationAnalyzer,
     )
 _LAZY_IMPORTS = {
-    "FlextInfraGenericTransformerRule": (
-        "flext_infra.refactor._base_rule",
-        "FlextInfraGenericTransformerRule",
-    ),
     "FlextInfraCliRefactor": ("flext_infra.refactor.cli", "FlextInfraCliRefactor"),
     "FlextInfraNamespaceEnforcer": (
         "flext_infra.refactor.namespace_enforcer",
         "FlextInfraNamespaceEnforcer",
-    ),
-    "FlextInfraNamespaceEnforcerPhasesMixin": (
-        "flext_infra.refactor._namespace_enforcer_phases",
-        "FlextInfraNamespaceEnforcerPhasesMixin",
     ),
     "FlextInfraProjectClassifier": (
         "flext_infra.refactor.project_classifier",
@@ -147,25 +111,13 @@ _LAZY_IMPORTS = {
         "flext_infra.refactor.class_nesting_analyzer",
         "FlextInfraRefactorClassNestingAnalyzer",
     ),
-    "FlextInfraRefactorClassReconstructorRule": (
-        "flext_infra.refactor._engine_rules",
-        "FlextInfraRefactorClassReconstructorRule",
-    ),
     "FlextInfraRefactorEngine": (
         "flext_infra.refactor.engine",
         "FlextInfraRefactorEngine",
     ),
-    "FlextInfraRefactorLegacyRemovalTextRule": (
-        "flext_infra.refactor._engine_rules",
-        "FlextInfraRefactorLegacyRemovalTextRule",
-    ),
     "FlextInfraRefactorLooseClassScanner": (
         "flext_infra.refactor.scanner",
         "FlextInfraRefactorLooseClassScanner",
-    ),
-    "FlextInfraRefactorMROClassMigrationTextRule": (
-        "flext_infra.refactor._engine_rules",
-        "FlextInfraRefactorMROClassMigrationTextRule",
     ),
     "FlextInfraRefactorMROImportRewriter": (
         "flext_infra.refactor.mro_import_rewriter",
@@ -175,10 +127,6 @@ _LAZY_IMPORTS = {
         "flext_infra.refactor.mro_migration_validator",
         "FlextInfraRefactorMROMigrationValidator",
     ),
-    "FlextInfraRefactorMRORedundancyChecker": (
-        "flext_infra.refactor._engine_rules",
-        "FlextInfraRefactorMRORedundancyChecker",
-    ),
     "FlextInfraRefactorMROResolver": (
         "flext_infra.refactor.mro_resolver",
         "FlextInfraRefactorMROResolver",
@@ -186,14 +134,6 @@ _LAZY_IMPORTS = {
     "FlextInfraRefactorMigrateToClassMRO": (
         "flext_infra.refactor.migrate_to_class_mro",
         "FlextInfraRefactorMigrateToClassMRO",
-    ),
-    "FlextInfraRefactorPatternCorrectionsTextRule": (
-        "flext_infra.refactor._engine_rules",
-        "FlextInfraRefactorPatternCorrectionsTextRule",
-    ),
-    "FlextInfraRefactorRule": (
-        "flext_infra.refactor._base_rule",
-        "FlextInfraRefactorRule",
     ),
     "FlextInfraRefactorRuleDefinitionValidator": (
         "flext_infra.refactor.rule_definition_validator",
@@ -203,37 +143,14 @@ _LAZY_IMPORTS = {
         "flext_infra.refactor.rule",
         "FlextInfraRefactorRuleLoader",
     ),
-    "FlextInfraRefactorSignaturePropagationRule": (
-        "flext_infra.refactor._engine_rules",
-        "FlextInfraRefactorSignaturePropagationRule",
-    ),
     "FlextInfraRefactorSafetyManager": (
         "flext_infra.refactor.safety",
         "FlextInfraRefactorSafetyManager",
-    ),
-    "FlextInfraRefactorSymbolPropagationRule": (
-        "flext_infra.refactor._engine_rules",
-        "FlextInfraRefactorSymbolPropagationRule",
-    ),
-    "FlextInfraRefactorTier0ImportFixRule": (
-        "flext_infra.refactor._engine_rules",
-        "FlextInfraRefactorTier0ImportFixRule",
-    ),
-    "FlextInfraRefactorTypingAnnotationFixRule": (
-        "flext_infra.refactor._engine_rules",
-        "FlextInfraRefactorTypingAnnotationFixRule",
-    ),
-    "FlextInfraRefactorTypingUnificationRule": (
-        "flext_infra.refactor._engine_rules",
-        "FlextInfraRefactorTypingUnificationRule",
     ),
     "FlextInfraRefactorViolationAnalyzer": (
         "flext_infra.refactor.violation_analyzer",
         "FlextInfraRefactorViolationAnalyzer",
     ),
-    "_base_rule": "flext_infra.refactor._base_rule",
-    "_engine_rules": "flext_infra.refactor._engine_rules",
-    "_namespace_enforcer_phases": "flext_infra.refactor._namespace_enforcer_phases",
     "c": ("flext_core.constants", "FlextConstants"),
     "census": "flext_infra.refactor.census",
     "class_nesting_analyzer": "flext_infra.refactor.class_nesting_analyzer",
@@ -264,36 +181,20 @@ _LAZY_IMPORTS = {
 
 __all__ = [
     "FlextInfraCliRefactor",
-    "FlextInfraGenericTransformerRule",
     "FlextInfraNamespaceEnforcer",
-    "FlextInfraNamespaceEnforcerPhasesMixin",
     "FlextInfraProjectClassifier",
     "FlextInfraRefactorCensus",
     "FlextInfraRefactorClassNestingAnalyzer",
-    "FlextInfraRefactorClassReconstructorRule",
     "FlextInfraRefactorEngine",
-    "FlextInfraRefactorLegacyRemovalTextRule",
     "FlextInfraRefactorLooseClassScanner",
-    "FlextInfraRefactorMROClassMigrationTextRule",
     "FlextInfraRefactorMROImportRewriter",
     "FlextInfraRefactorMROMigrationValidator",
-    "FlextInfraRefactorMRORedundancyChecker",
     "FlextInfraRefactorMROResolver",
     "FlextInfraRefactorMigrateToClassMRO",
-    "FlextInfraRefactorPatternCorrectionsTextRule",
-    "FlextInfraRefactorRule",
     "FlextInfraRefactorRuleDefinitionValidator",
     "FlextInfraRefactorRuleLoader",
     "FlextInfraRefactorSafetyManager",
-    "FlextInfraRefactorSignaturePropagationRule",
-    "FlextInfraRefactorSymbolPropagationRule",
-    "FlextInfraRefactorTier0ImportFixRule",
-    "FlextInfraRefactorTypingAnnotationFixRule",
-    "FlextInfraRefactorTypingUnificationRule",
     "FlextInfraRefactorViolationAnalyzer",
-    "_base_rule",
-    "_engine_rules",
-    "_namespace_enforcer_phases",
     "c",
     "census",
     "class_nesting_analyzer",

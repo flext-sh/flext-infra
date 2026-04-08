@@ -78,12 +78,14 @@ if _t.TYPE_CHECKING:
 
     _typings = _flext_infra__typings
     import flext_infra._utilities as _flext_infra__utilities
-    import flext_infra.api as _flext_infra_api
     from flext_infra._typings import (
         FlextInfraTypesAdapters,
         FlextInfraTypesBase,
         FlextInfraTypesRope,
     )
+
+    _utilities = _flext_infra__utilities
+    import flext_infra.api as _flext_infra_api
     from flext_infra._utilities import (
         FlextInfraExtraPathsResolutionMixin,
         FlextInfraInternalSyncRepoMixin,
@@ -144,6 +146,7 @@ if _t.TYPE_CHECKING:
         FlextInfraUtilitiesRefactorPolicy,
         FlextInfraUtilitiesRefactorPydantic,
         FlextInfraUtilitiesRefactorPydanticAnalysis,
+        FlextInfraUtilitiesRefactorTransformerPolicy,
         FlextInfraUtilitiesRelease,
         FlextInfraUtilitiesReporting,
         FlextInfraUtilitiesRope,
@@ -162,7 +165,6 @@ if _t.TYPE_CHECKING:
         FlextInfraUtilitiesYaml,
     )
 
-    _utilities = _flext_infra__utilities
     api = _flext_infra_api
     import flext_infra.base as _flext_infra_base
     from flext_infra.api import FlextInfra, infra
