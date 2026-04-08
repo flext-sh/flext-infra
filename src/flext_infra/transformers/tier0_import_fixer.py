@@ -136,10 +136,10 @@ class FlextInfraTransformerTier0ImportFixer:
             "FlextUtilitiesCache": "flext_core._utilities.cache",
             "FlextUtilitiesMapper": "flext_core._utilities.mapper",
             "FlextUtilitiesModel": "flext_core._utilities.model",
-            "EnumT": "flext_core._typings.generics",
-            "T": "flext_core._typings.generics",
-            "U": "flext_core._typings.generics",
-            "T_Model": "flext_core._typings.generics",
+            "EnumT": "flext_core.typings",
+            "T": "flext_core.typings",
+            "U": "flext_core.typings",
+            "T_Model": "flext_core.typings",
         }
 
         def __init__(

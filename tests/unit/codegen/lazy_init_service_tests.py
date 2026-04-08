@@ -125,3 +125,17 @@ class TestFlextInfraCodegenLazyInit:
         result = generator.generate_inits(check_only=False)
         tm.that(result, eq=1)
         tm.that((src_dir / "__init__.py").exists(), eq=False)
+
+    def test_fails_when_namespace_module_shape_is_invalid(self, tmp_path: Path) -> None:
+        """Namespace enforcement must abort generation on invalid module shape."""
+        src_dir = tmp_path / "src" / "test_pkg"
+        src_dir.mkdir(parents=True)
+        (src_dir / "base.py").write_text(
+            "def helper() -> None:\n    pass\n\n"
+            "class TestPkgServiceBase:\n    pass\n\n"
+            "class TestPkgCommandContext:\n    pass\n",
+        )
+        generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
+        result = generator.generate_inits(check_only=False)
+        tm.that(result, eq=1)
+        tm.that((src_dir / "__init__.py").exists(), eq=False)

@@ -198,4 +198,4 @@ class FlextInfraRefactorRuleLoader:
         return definitions
 
 
-__all__ = ["FlextInfraRefactorRule", "FlextInfraRefactorRuleLoader"]
+__all__ = ["FlextInfraRefactorRuleLoader"]

@@ -5,18 +5,140 @@ from __future__ import annotations
 from collections.abc import MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
-from flext_core import r
-from flext_infra import c, m, p, t
-
-from .codegen_constants import FlextInfraUtilitiesCodegenGovernance
-from .discovery import FlextInfraUtilitiesDiscovery
-from .parsing import FlextInfraUtilitiesParsing
-from .rope_analysis import FlextInfraUtilitiesRopeAnalysis
-from .rope_source import FlextInfraUtilitiesRopeSource
+from flext_cli import r, u
+from flext_infra import (
+    FlextInfraUtilitiesCodegenGovernance,
+    FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesParsing,
+    FlextInfraUtilitiesRopeAnalysis,
+    FlextInfraUtilitiesRopeSource,
+    c,
+    m,
+    p,
+    t,
+)
 
 
 class FlextInfraUtilitiesCodegenNamespace:
     """Canonical namespace helpers for codegen discovery, parsing, and fixes."""
+
+    _GENINIT_ROOT_NAMESPACE_FILES: tuple[str, ...] = (
+        "api.py",
+        "base.py",
+        "cli.py",
+        c.Infra.Files.CONSTANTS_PY,
+        "helpers.py",
+        c.Infra.Files.MODELS_PY,
+        c.Infra.Files.PROTOCOLS_PY,
+        "service.py",
+        "services.py",
+        "settings.py",
+        c.Infra.Files.TYPINGS_PY,
+        c.Infra.Files.UTILITIES_PY,
+    )
+    _GENINIT_PUBLIC_FILE_ALIASES: t.StrMapping = {
+        c.Infra.Files.CONSTANTS_PY: "c",
+        "helpers.py": "h",
+        c.Infra.Files.MODELS_PY: "m",
+        c.Infra.Files.PROTOCOLS_PY: "p",
+        c.Infra.Files.TYPINGS_PY: "t",
+        c.Infra.Files.UTILITIES_PY: "u",
+    }
+    _GENINIT_PUBLIC_FILE_SUFFIXES: t.StrMapping = {
+        c.Infra.Files.CONSTANTS_PY: "Constants",
+        "helpers.py": "Helpers",
+        c.Infra.Files.MODELS_PY: "Models",
+        c.Infra.Files.PROTOCOLS_PY: "Protocols",
+        c.Infra.Files.TYPINGS_PY: "Types",
+        c.Infra.Files.UTILITIES_PY: "Utilities",
+    }
+
+    @staticmethod
+    def discover_project_root(path: Path) -> Path | None:
+        """Return the nearest project root containing ``pyproject.toml``."""
+        start = path.parent if path.is_file() else path
+        for candidate in (start, *start.parents):
+            if (candidate / c.Infra.Files.PYPROJECT_FILENAME).is_file():
+                return candidate
+        return None
+
+    @classmethod
+    def derive_project_prefix(cls, path: Path) -> str:
+        """Return the canonical project class prefix for *path*."""
+        project_root = cls.discover_project_root(path)
+        if project_root is None:
+            return ""
+        prefix = cls._derive_prefix(project_root)
+        if prefix:
+            return prefix
+        project_name = project_root.name
+        return cls.project_class_stem(project_name=project_name)
+
+    @staticmethod
+    def _derive_prefix(project_root: Path) -> str:
+        """Derive the expected class prefix from the canonical ``src/`` package."""
+        src_dir = project_root / c.Infra.Paths.DEFAULT_SRC_DIR
+        if not src_dir.is_dir():
+            return ""
+        for child in sorted(src_dir.iterdir()):
+            if child.is_dir() and (child / c.Infra.Files.INIT_PY).exists():
+                return "".join(part.title() for part in child.name.split("_"))
+        return ""
+
+    @staticmethod
+    def project_class_stem(*, project_name: str) -> str:
+        """Derive the canonical facade class stem from a project name."""
+        normalized = u.norm_str(project_name, case="lower").replace(
+            "_",
+            "-",
+        )
+        if normalized == c.Infra.Packages.CORE:
+            return "Flext"
+        if normalized.startswith(c.Infra.Packages.PREFIX_HYPHEN):
+            tail = normalized.removeprefix(c.Infra.Packages.PREFIX_HYPHEN)
+            parts = [part for part in tail.split("-") if part]
+            return "Flext" + "".join(part.capitalize() for part in parts)
+        parts = [part for part in normalized.split("-") if part]
+        return "".join(part.capitalize() for part in parts) if parts else ""
+
+    @classmethod
+    def geninit_expected_alias(cls, file_path: Path) -> str | None:
+        """Return the canonical alias allowed at module level for *file_path*."""
+        if file_path.parent.name in c.Infra.FAMILY_DIRECTORIES.values():
+            family = cls.geninit_expected_family(file_path)
+            if family is None:
+                return None
+            return next(
+                (
+                    alias
+                    for alias, suffix in c.Infra.FAMILY_SUFFIXES.items()
+                    if suffix == family
+                ),
+                None,
+            )
+        return cls._GENINIT_PUBLIC_FILE_ALIASES.get(file_path.name)
+
+    @classmethod
+    def geninit_expected_family(cls, file_path: Path) -> str | None:
+        """Return the canonical namespace family suffix for *file_path*."""
+        for alias, directory in c.Infra.FAMILY_DIRECTORIES.items():
+            if file_path.parent.name == directory:
+                return c.Infra.FAMILY_SUFFIXES[alias]
+        if file_path.parent.name == "services" or file_path.name in {
+            "service.py",
+            "services.py",
+        }:
+            return "Mixin"
+        return cls._GENINIT_PUBLIC_FILE_SUFFIXES.get(file_path.name)
+
+    @classmethod
+    def should_enforce_geninit_contract(cls, rel_path: Path) -> bool:
+        """Return True when ``gen-init`` must enforce strict namespace shape."""
+        if any(part in c.Infra.FAMILY_DIRECTORIES.values() for part in rel_path.parts):
+            return True
+        if "services" in rel_path.parts:
+            return True
+        return rel_path.name in cls._GENINIT_ROOT_NAMESPACE_FILES
 
     @classmethod
     def discover_codegen_projects(

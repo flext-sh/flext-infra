@@ -13,8 +13,6 @@ if _t.TYPE_CHECKING:
     import tests.unit.workspace.test_sync as _tests_unit_workspace_test_sync
 
     test_sync = _tests_unit_workspace_test_sync
-    from tests.unit.workspace.test_sync import TestSyncService
-
     from flext_core.decorators import FlextDecorators as d
     from flext_core.exceptions import FlextExceptions as e
     from flext_core.handlers import FlextHandlers as h
@@ -22,7 +20,6 @@ if _t.TYPE_CHECKING:
     from flext_core.result import FlextResult as r
     from flext_core.service import FlextService as s
 _LAZY_IMPORTS = {
-    "TestSyncService": ("tests.unit.workspace.test_sync", "TestSyncService"),
     "d": ("flext_core.decorators", "FlextDecorators"),
     "e": ("flext_core.exceptions", "FlextExceptions"),
     "h": ("flext_core.handlers", "FlextHandlers"),
@@ -33,7 +30,6 @@ _LAZY_IMPORTS = {
 }
 
 __all__ = [
-    "TestSyncService",
     "d",
     "e",
     "h",

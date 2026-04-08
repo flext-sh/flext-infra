@@ -18,10 +18,6 @@ if _t.TYPE_CHECKING:
     test_infra_discovery_edge_cases = (
         _tests_unit_discovery_test_infra_discovery_edge_cases
     )
-    from tests.unit.discovery.test_infra_discovery_edge_cases import (
-        TestFlextInfraDiscoveryServiceUncoveredLines,
-    )
-
     from flext_core.decorators import FlextDecorators as d
     from flext_core.exceptions import FlextExceptions as e
     from flext_core.handlers import FlextHandlers as h
@@ -29,10 +25,6 @@ if _t.TYPE_CHECKING:
     from flext_core.result import FlextResult as r
     from flext_core.service import FlextService as s
 _LAZY_IMPORTS = {
-    "TestFlextInfraDiscoveryServiceUncoveredLines": (
-        "tests.unit.discovery.test_infra_discovery_edge_cases",
-        "TestFlextInfraDiscoveryServiceUncoveredLines",
-    ),
     "d": ("flext_core.decorators", "FlextDecorators"),
     "e": ("flext_core.exceptions", "FlextExceptions"),
     "h": ("flext_core.handlers", "FlextHandlers"),
@@ -44,7 +36,6 @@ _LAZY_IMPORTS = {
 }
 
 __all__ = [
-    "TestFlextInfraDiscoveryServiceUncoveredLines",
     "d",
     "e",
     "h",

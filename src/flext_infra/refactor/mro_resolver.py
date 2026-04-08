@@ -6,7 +6,6 @@ import inspect
 from collections.abc import Mapping, MutableSequence, Sequence
 
 from flext_infra import (
-    FlextInfraRefactorMROImportRewriter,
     c,
     m,
     t,
@@ -191,6 +190,5 @@ class FlextInfraRefactorMROResolver:
 
 
 __all__ = [
-    "FlextInfraRefactorMROImportRewriter",
     "FlextInfraRefactorMROResolver",
 ]

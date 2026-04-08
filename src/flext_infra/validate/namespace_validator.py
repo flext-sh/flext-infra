@@ -9,13 +9,19 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 from flext_core import r
-from flext_infra import FlextInfraNamespaceRules, c, m, t, u
-
-__all__ = ["FlextInfraNamespaceValidator"]
+from flext_infra import (
+    FlextInfraCoreConstants,
+    FlextInfraCoreModels,
+    FlextInfraNamespaceRules,
+    FlextInfraSharedInfraConstants,
+    FlextInfraUtilitiesIteration,
+    FlextInfraUtilitiesParsing,
+)
 
 
 class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
@@ -29,11 +35,14 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
     @staticmethod
     def _derive_prefix(project_root: Path) -> str:
         """Derive the expected class name prefix from the package directory."""
-        src_dir = project_root / c.Infra.Paths.DEFAULT_SRC_DIR
+        src_dir = project_root / FlextInfraSharedInfraConstants.Paths.DEFAULT_SRC_DIR
         if not src_dir.is_dir():
             return ""
         for child in sorted(src_dir.iterdir()):
-            if child.is_dir() and (child / c.Infra.Files.INIT_PY).exists():
+            if (
+                child.is_dir()
+                and (child / FlextInfraSharedInfraConstants.Files.INIT_PY).exists()
+            ):
                 return "".join(part.title() for part in child.name.split("_"))
         return ""
 
@@ -47,7 +56,7 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
         project_root: Path,
         *,
         scan_tests: bool = False,
-    ) -> r[m.Infra.ValidationReport]:
+    ) -> r[FlextInfraCoreModels.ValidationReport]:
         """Validate namespace rules 0-2 for all discovered Python files."""
         try:
             files = self._discover_files(project_root, scan_tests=scan_tests)
@@ -67,15 +76,15 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
                 if passed
                 else f"{len(violations)} namespace violation(s) found ({len(files)} files checked)"
             )
-            return r[m.Infra.ValidationReport].ok(
-                m.Infra.ValidationReport(
+            return r[FlextInfraCoreModels.ValidationReport].ok(
+                FlextInfraCoreModels.ValidationReport(
                     passed=passed,
                     violations=violations,
                     summary=summary,
                 ),
             )
         except (OSError, TypeError, ValueError, RuntimeError) as exc:
-            return r[m.Infra.ValidationReport].fail(
+            return r[FlextInfraCoreModels.ValidationReport].fail(
                 f"Namespace validation failed: {exc}",
             )
 
@@ -87,15 +96,21 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
     ) -> Sequence[Path]:
         """Walk ``src/`` (and optionally ``tests/``) for non-exempt .py files."""
         result: MutableSequence[Path] = []
-        dirs_to_scan = [workspace_root / c.Infra.Paths.DEFAULT_SRC_DIR]
+        dirs_to_scan = [
+            workspace_root / FlextInfraSharedInfraConstants.Paths.DEFAULT_SRC_DIR,
+        ]
         if scan_tests:
-            dirs_to_scan.append(workspace_root / c.Infra.Directories.TESTS)
+            dirs_to_scan.append(
+                workspace_root / FlextInfraSharedInfraConstants.Directories.TESTS,
+            )
         for base_dir in dirs_to_scan:
             if not base_dir.is_dir():
                 continue
             result.extend(
                 py_file
-                for py_file in u.Infra.iter_directory_python_files(base_dir)
+                for py_file in FlextInfraUtilitiesIteration.iter_directory_python_files(
+                    base_dir,
+                )
                 if not self._is_exempt_file(py_file)
             )
         return sorted(result)
@@ -103,10 +118,16 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
     def _is_exempt_file(self, filepath: Path) -> bool:
         """Check whether a file should be skipped from validation."""
         name = filepath.name
-        if name in c.Infra.EXEMPT_FILENAMES:
+        if name in FlextInfraCoreConstants.EXEMPT_FILENAMES:
             return True
-        return any(name.startswith(pfx) for pfx in c.Infra.EXEMPT_PREFIXES)
+        return any(
+            name.startswith(prefix)
+            for prefix in FlextInfraCoreConstants.EXEMPT_PREFIXES
+        )
 
-    def _parse_file(self, path: Path) -> t.Infra.AstModule | None:
+    def _parse_file(self, path: Path) -> ast.Module | None:
         """Parse a Python file into an AST, returning None on failure."""
-        return u.Infra.parse_module_ast(path)
+        return FlextInfraUtilitiesParsing.parse_module_ast(path)
+
+
+__all__ = ["FlextInfraNamespaceValidator"]

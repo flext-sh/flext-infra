@@ -14,12 +14,15 @@ import re
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
-from flext_infra import c, t
-
-from .discovery import FlextInfraUtilitiesDiscovery
-from .iteration import FlextInfraUtilitiesIteration
-from .reporting import FlextInfraUtilitiesReporting
-from .rope_helpers import FlextInfraUtilitiesRopeHelpers
+from flext_infra import (
+    FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesIteration,
+    FlextInfraUtilitiesReporting,
+    FlextInfraUtilitiesRopeHelpers,
+    c,
+    t,
+)
 
 # =====================================================================
 # Merging — child/descendant collection, export merging
@@ -184,6 +187,8 @@ class FlextInfraUtilitiesCodegenLazyMerging:
                 (submodule, ""),
             )
         for name, (mod, attr) in sub_exports.items():
+            if attr == "":
+                continue
             if FlextInfraUtilitiesCodegenLazyMerging.should_bubble_up(name):
                 FlextInfraUtilitiesCodegenLazyMerging.register_export(
                     lazy_map,
@@ -343,6 +348,11 @@ class FlextInfraUtilitiesCodegenLazyScanning(
                 f"skipping {py_file.name}: read failed",
             )
             return
+        FlextInfraUtilitiesCodegenLazyScanning._validate_namespace_source(
+            source=source,
+            py_file=py_file,
+            rel_path=rel_path,
+        )
 
         has_all = False
         all_exports: MutableSequence[str] = []
@@ -467,6 +477,11 @@ class FlextInfraUtilitiesCodegenLazyScanning(
         names: list[str] = []
         for node in module.body:
             if isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+                if FlextInfraUtilitiesCodegenLazyScanning._skip_test_only_node(
+                    node,
+                    mod_path=mod_path,
+                ):
+                    continue
                 names.append(node.name)
                 continue
             if isinstance(node, ast.Assign):
@@ -478,6 +493,8 @@ class FlextInfraUtilitiesCodegenLazyScanning(
                 names.append(node.target.id)
 
         for name in names:
+            if mod_path.startswith("tests.") and name == "pytestmark":
+                continue
             if name.startswith("_") or name in c.Infra.INFRA_ONLY_EXPORTS:
                 continue
             FlextInfraUtilitiesCodegenLazyScanning.register_export(
@@ -485,6 +502,298 @@ class FlextInfraUtilitiesCodegenLazyScanning(
                 name,
                 (mod_path, name),
             )
+
+    @staticmethod
+    def _validate_namespace_source(
+        *,
+        source: str,
+        py_file: Path,
+        rel_path: Path,
+    ) -> None:
+        try:
+            module = ast.parse(source)
+        except SyntaxError:
+            return
+        FlextInfraUtilitiesCodegenLazyScanning._validate_namespace_contract(
+            module=module,
+            py_file=py_file,
+            rel_path=rel_path,
+        )
+
+    @classmethod
+    def _validate_namespace_contract(
+        cls,
+        *,
+        module: ast.Module,
+        py_file: Path,
+        rel_path: Path,
+    ) -> None:
+        if not FlextInfraUtilitiesCodegenNamespace.should_enforce_geninit_contract(
+            rel_path,
+        ):
+            return
+        outer_classes = [node for node in module.body if isinstance(node, ast.ClassDef)]
+        if len(outer_classes) != 1:
+            count = len(outer_classes)
+            msg = (
+                f"{py_file}: gen-init requires exactly one outer class (found {count})"
+            )
+            raise ValueError(
+                msg,
+            )
+        class_node = outer_classes[0]
+        cls._validate_outer_class_name(class_node=class_node, py_file=py_file)
+        expected_alias = FlextInfraUtilitiesCodegenNamespace.geninit_expected_alias(
+            py_file,
+        )
+        for node in module.body:
+            if isinstance(node, ast.ClassDef):
+                continue
+            if cls._is_allowed_namespace_module_level(
+                node=node,
+                py_file=py_file,
+                expected_alias=expected_alias,
+            ):
+                continue
+            alias_error = cls._unexpected_alias_error(
+                node=node,
+                py_file=py_file,
+                expected_alias=expected_alias,
+            )
+            if alias_error:
+                raise ValueError(alias_error)
+            lineno = getattr(node, "lineno", 1)
+            statement_name = cls._describe_top_level_statement(node)
+            msg = (
+                f"{py_file}:{lineno}: disallowed top-level {statement_name}; "
+                "move it into the single namespace class"
+            )
+            raise ValueError(
+                msg,
+            )
+
+    @classmethod
+    def _validate_outer_class_name(
+        cls,
+        *,
+        class_node: ast.ClassDef,
+        py_file: Path,
+    ) -> None:
+        class_name = class_node.name
+        prefix = FlextInfraUtilitiesCodegenNamespace.derive_project_prefix(py_file)
+        family = FlextInfraUtilitiesCodegenNamespace.geninit_expected_family(py_file)
+        if prefix and not class_name.startswith(prefix):
+            msg = (
+                f"{py_file}:{class_node.lineno}: class {class_name!r} must start "
+                f"with {prefix!r}"
+            )
+            raise ValueError(
+                msg,
+            )
+        if not family:
+            return
+        if py_file.parent.name in c.Infra.FAMILY_DIRECTORIES.values():
+            expected_prefix = f"{prefix}{family}" if prefix else family
+            if not class_name.startswith(expected_prefix):
+                msg = (
+                    f"{py_file}:{class_node.lineno}: class {class_name!r} must "
+                    f"start with {expected_prefix!r}"
+                )
+                raise ValueError(
+                    msg,
+                )
+            return
+        if not class_name.endswith(family):
+            msg = (
+                f"{py_file}:{class_node.lineno}: class {class_name!r} must end "
+                f"with {family!r}"
+            )
+            raise ValueError(
+                msg,
+            )
+
+    @classmethod
+    def _is_allowed_namespace_module_level(
+        cls,
+        *,
+        node: ast.stmt,
+        py_file: Path,
+        expected_alias: str | None,
+    ) -> bool:
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            return True
+        if cls._is_module_docstring(node):
+            return True
+        if cls._is_type_checking_block(node):
+            return True
+        if isinstance(node, ast.Assign):
+            return cls._is_allowed_namespace_assign(
+                node=node,
+                py_file=py_file,
+                expected_alias=expected_alias,
+            )
+        if isinstance(node, ast.AnnAssign):
+            return cls._is_allowed_namespace_ann_assign(node=node, py_file=py_file)
+        if isinstance(node, ast.TypeAlias):
+            return cls._is_typings_namespace(py_file)
+        return False
+
+    @staticmethod
+    def _is_module_docstring(node: ast.stmt) -> bool:
+        return (
+            isinstance(node, ast.Expr)
+            and isinstance(node.value, ast.Constant)
+            and isinstance(node.value.value, str)
+        )
+
+    @classmethod
+    def _is_type_checking_block(cls, node: ast.stmt) -> bool:
+        if not isinstance(node, ast.If) or node.orelse:
+            return False
+        test = node.test
+        is_type_checking = isinstance(test, ast.Name) and test.id == "TYPE_CHECKING"
+        if not is_type_checking:
+            return False
+        return all(
+            isinstance(item, (ast.Import, ast.ImportFrom, ast.Pass))
+            for item in node.body
+        )
+
+    @classmethod
+    def _is_allowed_namespace_assign(
+        cls,
+        *,
+        node: ast.Assign,
+        py_file: Path,
+        expected_alias: str | None,
+    ) -> bool:
+        target_names = [
+            target.id for target in node.targets if isinstance(target, ast.Name)
+        ]
+        if not target_names:
+            return False
+        if all(name in c.Infra.DUNDER_ALLOWED for name in target_names):
+            return True
+        if (
+            expected_alias is not None
+            and target_names == [expected_alias]
+            and isinstance(node.value, (ast.Name, ast.Attribute))
+        ):
+            return True
+        if not isinstance(node.value, ast.Call):
+            return False
+        func_name = cls._call_name(node.value.func)
+        return func_name in c.Infra.TYPEVAR_CALLABLES and cls._is_typings_namespace(
+            py_file,
+        )
+
+    @classmethod
+    def _is_allowed_namespace_ann_assign(
+        cls,
+        *,
+        node: ast.AnnAssign,
+        py_file: Path,
+    ) -> bool:
+        if cls._annotation_contains(node.annotation, "TypeAlias"):
+            return cls._is_typings_namespace(py_file)
+        return False
+
+    @staticmethod
+    def _is_typings_namespace(py_file: Path) -> bool:
+        return (
+            py_file.name == c.Infra.Files.TYPINGS_PY
+            or py_file.parent.name == "_typings"
+        )
+
+    @staticmethod
+    def _annotation_contains(annotation: ast.expr | None, name: str) -> bool:
+        if annotation is None:
+            return False
+        if isinstance(annotation, ast.Name):
+            return annotation.id == name
+        if isinstance(annotation, ast.Attribute):
+            return annotation.attr == name
+        if isinstance(annotation, ast.Subscript):
+            return FlextInfraUtilitiesCodegenLazyScanning._annotation_contains(
+                annotation.value,
+                name,
+            )
+        return False
+
+    @staticmethod
+    def _call_name(func: ast.expr) -> str:
+        if isinstance(func, ast.Name):
+            return func.id
+        if isinstance(func, ast.Attribute):
+            return func.attr
+        return ""
+
+    @staticmethod
+    def _describe_top_level_statement(node: ast.stmt) -> str:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            return f"function {node.name!r}"
+        if isinstance(node, ast.Assign):
+            names = [
+                target.id for target in node.targets if isinstance(target, ast.Name)
+            ]
+            if names:
+                return f"assignment {', '.join(repr(name) for name in names)}"
+        if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            return f"assignment {node.target.id!r}"
+        return type(node).__name__
+
+    @staticmethod
+    def _unexpected_alias_error(
+        *,
+        node: ast.stmt,
+        py_file: Path,
+        expected_alias: str | None,
+    ) -> str:
+        if not isinstance(node, ast.Assign):
+            return ""
+        names = [target.id for target in node.targets if isinstance(target, ast.Name)]
+        if len(names) != 1:
+            return ""
+        alias = names[0]
+        if alias not in c.Infra.ALIAS_NAMES:
+            return ""
+        if expected_alias == alias:
+            return ""
+        if expected_alias is None:
+            return (
+                f"{py_file}:{node.lineno}: canonical alias {alias!r} is not allowed "
+                "in this module"
+            )
+        return (
+            f"{py_file}:{node.lineno}: canonical alias for {py_file.name} must be "
+            f"{expected_alias!r}, found {alias!r}"
+        )
+
+    @staticmethod
+    def _skip_test_only_node(
+        node: ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef,
+        *,
+        mod_path: str,
+    ) -> bool:
+        """Skip pytest-local symbols that must never become package exports."""
+        if mod_path.startswith("tests.") and node.name.startswith(
+            ("Test", "test_", "main"),
+        ):
+            return True
+        if isinstance(node, ast.ClassDef):
+            return False
+        return FlextInfraUtilitiesCodegenLazyScanning._is_pytest_fixture(node)
+
+    @staticmethod
+    def _is_pytest_fixture(node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+        """Return True when a function is decorated as a pytest fixture."""
+        for decorator in node.decorator_list:
+            target = decorator.func if isinstance(decorator, ast.Call) else decorator
+            if isinstance(target, ast.Name) and target.id == "fixture":
+                return True
+            if isinstance(target, ast.Attribute) and target.attr == "fixture":
+                return True
+        return False
 
 
 # =====================================================================

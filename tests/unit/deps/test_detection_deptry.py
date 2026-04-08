@@ -51,7 +51,7 @@ class _StubSelector:
         return self._result
 
 
-class TestDiscoverProjects:
+class TestDiscoverProjectPathsDeptry:
     def test_success(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         service = FlextInfraDependencyDetectionService()
         proj = m.Infra.ProjectInfo(

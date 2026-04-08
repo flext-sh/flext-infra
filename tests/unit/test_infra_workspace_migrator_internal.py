@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests.unit.test_infra_workspace_migrator import _build_migrator, _project
+from tests import _build_migrator, _project
 
 from flext_infra import FlextInfraProjectMigrator
 

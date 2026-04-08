@@ -23,13 +23,13 @@ from flext_infra import (
 
 from ...helpers import h
 
-GateClass = type[FlextInfraGoGate] | type[FlextInfraRuffLintGate]
+_GateClass = type[FlextInfraGoGate] | type[FlextInfraRuffLintGate]
 
 
 def run_command_failure_check(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
-    gate_class: GateClass,
+    gate_class: _GateClass,
 ) -> tuple[bool, str]:
     """Test _run failure by patching run_raw to return r.fail()."""
     monkeypatch.setattr(u.Cli, "run_raw", create_fake_run_raw("execution failed"))

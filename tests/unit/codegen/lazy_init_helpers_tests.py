@@ -184,6 +184,50 @@ class TestBuildSiblingExportIndex:
         with pytest.raises(ValueError, match="export collision"):
             u.Infra.build_sibling_export_index(tmp_path, "test_pkg")
 
+    def test_typings_allows_typevar_and_canonical_alias(self, tmp_path: Path) -> None:
+        """Type variables stay allowed only inside typings namespace modules."""
+        (tmp_path / "typings.py").write_text(
+            "from typing import TypeVar\n\n"
+            'TValue = TypeVar("TValue")\n\n'
+            "class ProjectTypes:\n    pass\n\n"
+            "t = ProjectTypes\n",
+        )
+        index = u.Infra.build_sibling_export_index(tmp_path, "test_pkg")
+        tm.that(index, contains="ProjectTypes")
+        tm.that(index, contains="t")
+
+    def test_helpers_rejects_wrong_canonical_alias(self, tmp_path: Path) -> None:
+        """Only the canonical alias for a namespace file may stay at module level."""
+        (tmp_path / "helpers.py").write_text(
+            "class ProjectHelpers:\n    pass\n\nu = ProjectHelpers\n",
+        )
+        with pytest.raises(ValueError, match="canonical alias"):
+            u.Infra.build_sibling_export_index(tmp_path, "test_pkg")
+
+    def test_base_rejects_loose_objects_and_multiple_classes(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Base-like modules must fail fast on loose objects and extra classes."""
+        (tmp_path / "base.py").write_text(
+            "def helper() -> None:\n    pass\n\n"
+            "class ProjectServiceBase:\n    pass\n\n"
+            "class ProjectCommandContext:\n    pass\n",
+        )
+        with pytest.raises(ValueError, match="exactly one outer class"):
+            u.Infra.build_sibling_export_index(tmp_path, "test_pkg")
+
+    def test_public_namespace_rejects_wrong_class_name(self, tmp_path: Path) -> None:
+        """Project-root namespace files must keep the canonical class pattern."""
+        (tmp_path / "pyproject.toml").write_text('[project]\nname = "test-pkg"\n')
+        src_dir = tmp_path / "src" / "test_pkg"
+        src_dir.mkdir(parents=True)
+        (src_dir / "utilities.py").write_text(
+            "class UtilityBag:\n    pass\n\nu = UtilityBag\n"
+        )
+        with pytest.raises(ValueError, match="must start with|must end with"):
+            u.Infra.build_sibling_export_index(src_dir, "test_pkg")
+
 
 class TestExtractExports:
     """Test extract_exports function."""

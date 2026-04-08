@@ -18,7 +18,7 @@ from flext_infra import (
     m,
     t,
     u,
-    workspace_check_cli as workspace_check_cli_module,
+    workspace_check_cli,
 )
 
 
@@ -97,12 +97,12 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
     @staticmethod
     def build_parser() -> t.Infra.CliArgumentParser:
         """Build the workspace check CLI parser."""
-        return workspace_check_cli_module.FlextInfraWorkspaceCheckerCli.build_parser()
+        return workspace_check_cli.FlextInfraWorkspaceCheckerCli.build_parser()
 
     @staticmethod
     def run_cli(argv: Sequence[str] | None = None) -> int:
         """Run the subcommand-based workspace check CLI."""
-        return workspace_check_cli_module.FlextInfraWorkspaceCheckerCli.run_cli(argv)
+        return workspace_check_cli.FlextInfraWorkspaceCheckerCli.run_cli(argv)
 
     @staticmethod
     def main(argv: Sequence[str] | None = None) -> int:
@@ -112,7 +112,7 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
             cli_module = importlib.import_module("flext_infra.cli")
             if raw_argv[0] in cli_module.FlextInfraCli.GROUPS:
                 return cli_module.main(raw_argv)
-        return workspace_check_cli_module.FlextInfraWorkspaceCheckerCli.main(argv)
+        return workspace_check_cli.FlextInfraWorkspaceCheckerCli.main(argv)
 
     def run_project(
         self,

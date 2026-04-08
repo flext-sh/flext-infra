@@ -13,11 +13,6 @@ if _t.TYPE_CHECKING:
     import tests.unit.io.test_infra_terminal_detection as _tests_unit_io_test_infra_terminal_detection
 
     test_infra_terminal_detection = _tests_unit_io_test_infra_terminal_detection
-    from tests.unit.io.test_infra_terminal_detection import (
-        TestShouldUseColor,
-        TestShouldUseUnicode,
-    )
-
     from flext_core.decorators import FlextDecorators as d
     from flext_core.exceptions import FlextExceptions as e
     from flext_core.handlers import FlextHandlers as h
@@ -25,14 +20,6 @@ if _t.TYPE_CHECKING:
     from flext_core.result import FlextResult as r
     from flext_core.service import FlextService as s
 _LAZY_IMPORTS = {
-    "TestShouldUseColor": (
-        "tests.unit.io.test_infra_terminal_detection",
-        "TestShouldUseColor",
-    ),
-    "TestShouldUseUnicode": (
-        "tests.unit.io.test_infra_terminal_detection",
-        "TestShouldUseUnicode",
-    ),
     "d": ("flext_core.decorators", "FlextDecorators"),
     "e": ("flext_core.exceptions", "FlextExceptions"),
     "h": ("flext_core.handlers", "FlextHandlers"),
@@ -43,8 +30,6 @@ _LAZY_IMPORTS = {
 }
 
 __all__ = [
-    "TestShouldUseColor",
-    "TestShouldUseUnicode",
     "d",
     "e",
     "h",

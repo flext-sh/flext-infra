@@ -9,7 +9,7 @@ from flext_core import r
 from flext_infra import FlextInfraDependencyPathSync
 
 
-def rewrite_dep_paths(
+def _rewrite_dep_paths(
     pyproject_path: Path,
     *,
     mode: str,
@@ -79,7 +79,7 @@ class TestPathSyncEdgeCases:
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text('[tool.poetry.dependencies]\npython = "^3.13"')
         tm.ok(
-            rewrite_dep_paths(
+            _rewrite_dep_paths(
                 pyproject,
                 mode="poetry",
                 internal_names=set(),

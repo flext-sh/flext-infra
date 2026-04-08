@@ -9,8 +9,13 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-from flext_core import FlextUtilities
-from flext_infra import FlextInfraUtilitiesRope, c, m, t
+from flext_infra import (
+    FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesRope,
+    c,
+    m,
+    t,
+)
 
 
 class FlextInfraNamespaceFacadeScanner:
@@ -84,17 +89,9 @@ class FlextInfraNamespaceFacadeScanner:
 
         Examples: 'flext-core' → 'Flext', 'flext-db-oracle' → 'FlextDbOracle'.
         """
-        normalized = FlextUtilities.norm_str(project_name, case="lower").replace(
-            "_", "-"
+        return FlextInfraUtilitiesCodegenNamespace.project_class_stem(
+            project_name=project_name,
         )
-        if normalized == c.Infra.Packages.CORE:
-            return "Flext"
-        if normalized.startswith(c.Infra.Packages.PREFIX_HYPHEN):
-            tail = normalized.removeprefix(c.Infra.Packages.PREFIX_HYPHEN)
-            parts = [p for p in tail.split("-") if p]
-            return "Flext" + "".join(p.capitalize() for p in parts)
-        parts = [p for p in normalized.split("-") if p]
-        return "".join(p.capitalize() for p in parts) if parts else ""
 
 
 __all__ = ["FlextInfraNamespaceFacadeScanner"]

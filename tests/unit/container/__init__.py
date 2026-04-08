@@ -13,12 +13,6 @@ if _t.TYPE_CHECKING:
     import tests.unit.container.test_infra_container as _tests_unit_container_test_infra_container
 
     test_infra_container = _tests_unit_container_test_infra_container
-    from tests.unit.container.test_infra_container import (
-        TestInfraContainerFunctions,
-        TestInfraMroPattern,
-        TestInfraServiceRetrieval,
-    )
-
     from flext_core.decorators import FlextDecorators as d
     from flext_core.exceptions import FlextExceptions as e
     from flext_core.handlers import FlextHandlers as h
@@ -26,18 +20,6 @@ if _t.TYPE_CHECKING:
     from flext_core.result import FlextResult as r
     from flext_core.service import FlextService as s
 _LAZY_IMPORTS = {
-    "TestInfraContainerFunctions": (
-        "tests.unit.container.test_infra_container",
-        "TestInfraContainerFunctions",
-    ),
-    "TestInfraMroPattern": (
-        "tests.unit.container.test_infra_container",
-        "TestInfraMroPattern",
-    ),
-    "TestInfraServiceRetrieval": (
-        "tests.unit.container.test_infra_container",
-        "TestInfraServiceRetrieval",
-    ),
     "d": ("flext_core.decorators", "FlextDecorators"),
     "e": ("flext_core.exceptions", "FlextExceptions"),
     "h": ("flext_core.handlers", "FlextHandlers"),
@@ -48,9 +30,6 @@ _LAZY_IMPORTS = {
 }
 
 __all__ = [
-    "TestInfraContainerFunctions",
-    "TestInfraMroPattern",
-    "TestInfraServiceRetrieval",
     "d",
     "e",
     "h",

@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_tests import tm
-from tests.unit.test_infra_workspace_migrator import _build_migrator, _project
+from tests import _build_migrator, _project
 
 
 def test_migrator_flext_core_project_skipped(tmp_path: Path) -> None:

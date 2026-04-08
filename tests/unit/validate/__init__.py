@@ -23,19 +23,12 @@ if _t.TYPE_CHECKING:
 
     main_cli_tests = _tests_unit_validate_main_cli_tests
     import tests.unit.validate.main_tests as _tests_unit_validate_main_tests
-    from tests.unit.validate.main_cli_tests import (
-        test_stub_validate_help_returns_zero,
-        test_stub_validate_uses_all_flag,
-    )
 
     main_tests = _tests_unit_validate_main_tests
     import tests.unit.validate.namespace_validator_tests as _tests_unit_validate_namespace_validator_tests
 
     namespace_validator_tests = _tests_unit_validate_namespace_validator_tests
     import tests.unit.validate.pytest_diag as _tests_unit_validate_pytest_diag
-    from tests.unit.validate.namespace_validator_tests import (
-        TestFlextInfraNamespaceValidator,
-    )
 
     pytest_diag = _tests_unit_validate_pytest_diag
     import tests.unit.validate.scanner_tests as _tests_unit_validate_scanner_tests
@@ -54,10 +47,6 @@ if _t.TYPE_CHECKING:
     from flext_core.result import FlextResult as r
     from flext_core.service import FlextService as s
 _LAZY_IMPORTS = {
-    "TestFlextInfraNamespaceValidator": (
-        "tests.unit.validate.namespace_validator_tests",
-        "TestFlextInfraNamespaceValidator",
-    ),
     "basemk_validator_tests": "tests.unit.validate.basemk_validator_tests",
     "d": ("flext_core.decorators", "FlextDecorators"),
     "e": ("flext_core.exceptions", "FlextExceptions"),
@@ -73,19 +62,10 @@ _LAZY_IMPORTS = {
     "scanner_tests": "tests.unit.validate.scanner_tests",
     "skill_validator_tests": "tests.unit.validate.skill_validator_tests",
     "stub_chain_tests": "tests.unit.validate.stub_chain_tests",
-    "test_stub_validate_help_returns_zero": (
-        "tests.unit.validate.main_cli_tests",
-        "test_stub_validate_help_returns_zero",
-    ),
-    "test_stub_validate_uses_all_flag": (
-        "tests.unit.validate.main_cli_tests",
-        "test_stub_validate_uses_all_flag",
-    ),
     "x": ("flext_core.mixins", "FlextMixins"),
 }
 
 __all__ = [
-    "TestFlextInfraNamespaceValidator",
     "basemk_validator_tests",
     "d",
     "e",
@@ -101,8 +81,6 @@ __all__ = [
     "scanner_tests",
     "skill_validator_tests",
     "stub_chain_tests",
-    "test_stub_validate_help_returns_zero",
-    "test_stub_validate_uses_all_flag",
     "x",
 ]
 

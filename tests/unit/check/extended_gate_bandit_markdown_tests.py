@@ -24,7 +24,7 @@ from flext_infra import (
     FlextInfraMarkdownGate,
 )
 
-GateClass = type[FlextInfraBanditGate] | type[FlextInfraMarkdownGate]
+_GateClass = type[FlextInfraBanditGate] | type[FlextInfraMarkdownGate]
 
 
 def _run_failed_gate_check(
@@ -32,7 +32,7 @@ def _run_failed_gate_check(
     project_dir: Path,
     monkeypatch: pytest.MonkeyPatch,
     *,
-    gate_class: GateClass,
+    gate_class: _GateClass,
     stdout: str = "",
     stderr: str = "",
 ) -> m.Infra.GateExecution:

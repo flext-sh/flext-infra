@@ -36,48 +36,21 @@ if _t.TYPE_CHECKING:
 
     lazy_init_generation_tests = _tests_unit_codegen_lazy_init_generation_tests
     import tests.unit.codegen.lazy_init_helpers_tests as _tests_unit_codegen_lazy_init_helpers_tests
-    from tests.unit.codegen.lazy_init_generation_tests import (
-        TestGenerateFile,
-        TestGenerateTypeChecking,
-        TestResolveAliases,
-        TestRunRuffFix,
-        test_codegen_init_getattr_raises_attribute_error,
-    )
 
     lazy_init_helpers_tests = _tests_unit_codegen_lazy_init_helpers_tests
     import tests.unit.codegen.lazy_init_process_tests as _tests_unit_codegen_lazy_init_process_tests
-    from tests.unit.codegen.lazy_init_helpers_tests import (
-        TestBuildSiblingExportIndex,
-        TestExtractExports,
-        TestInferPackage,
-        TestReadExistingDocstring,
-    )
 
     lazy_init_process_tests = _tests_unit_codegen_lazy_init_process_tests
     import tests.unit.codegen.lazy_init_service_tests as _tests_unit_codegen_lazy_init_service_tests
-    from tests.unit.codegen.lazy_init_process_tests import TestProcessDirectory
 
     lazy_init_service_tests = _tests_unit_codegen_lazy_init_service_tests
     import tests.unit.codegen.lazy_init_tests as _tests_unit_codegen_lazy_init_tests
-    from tests.unit.codegen.lazy_init_service_tests import TestFlextInfraCodegenLazyInit
 
     lazy_init_tests = _tests_unit_codegen_lazy_init_tests
     import tests.unit.codegen.lazy_init_transforms_tests as _tests_unit_codegen_lazy_init_transforms_tests
-    from tests.unit.codegen.lazy_init_tests import (
-        TestAllDirectoriesScanned,
-        TestCheckOnlyMode,
-        TestEdgeCases,
-        TestExcludedDirectories,
-    )
 
     lazy_init_transforms_tests = _tests_unit_codegen_lazy_init_transforms_tests
     import tests.unit.codegen.main_tests as _tests_unit_codegen_main_tests
-    from tests.unit.codegen.lazy_init_transforms_tests import (
-        TestExtractVersionExports,
-        TestMergeChildExports,
-        TestScanPublicDefs,
-        TestShouldBubbleUp,
-    )
 
     main_tests = _tests_unit_codegen_main_tests
     import tests.unit.codegen.pipeline_tests as _tests_unit_codegen_pipeline_tests
@@ -87,10 +60,6 @@ if _t.TYPE_CHECKING:
 
     scaffolder_naming_tests = _tests_unit_codegen_scaffolder_naming_tests
     import tests.unit.codegen.scaffolder_tests as _tests_unit_codegen_scaffolder_tests
-    from tests.unit.codegen.scaffolder_naming_tests import (
-        TestGeneratedClassNamingConvention,
-        TestGeneratedFilesAreValidPython,
-    )
 
     scaffolder_tests = _tests_unit_codegen_scaffolder_tests
     import tests.unit.codegen.test_codegen_pipeline_dag as _tests_unit_codegen_test_codegen_pipeline_dag
@@ -109,80 +78,6 @@ _LAZY_IMPORTS = {
     "FlextInfraCodegenTestProjectFactory": (
         "tests.unit.codegen._project_factory",
         "FlextInfraCodegenTestProjectFactory",
-    ),
-    "TestAllDirectoriesScanned": (
-        "tests.unit.codegen.lazy_init_tests",
-        "TestAllDirectoriesScanned",
-    ),
-    "TestBuildSiblingExportIndex": (
-        "tests.unit.codegen.lazy_init_helpers_tests",
-        "TestBuildSiblingExportIndex",
-    ),
-    "TestCheckOnlyMode": ("tests.unit.codegen.lazy_init_tests", "TestCheckOnlyMode"),
-    "TestEdgeCases": ("tests.unit.codegen.lazy_init_tests", "TestEdgeCases"),
-    "TestExcludedDirectories": (
-        "tests.unit.codegen.lazy_init_tests",
-        "TestExcludedDirectories",
-    ),
-    "TestExtractExports": (
-        "tests.unit.codegen.lazy_init_helpers_tests",
-        "TestExtractExports",
-    ),
-    "TestExtractVersionExports": (
-        "tests.unit.codegen.lazy_init_transforms_tests",
-        "TestExtractVersionExports",
-    ),
-    "TestFlextInfraCodegenLazyInit": (
-        "tests.unit.codegen.lazy_init_service_tests",
-        "TestFlextInfraCodegenLazyInit",
-    ),
-    "TestGenerateFile": (
-        "tests.unit.codegen.lazy_init_generation_tests",
-        "TestGenerateFile",
-    ),
-    "TestGenerateTypeChecking": (
-        "tests.unit.codegen.lazy_init_generation_tests",
-        "TestGenerateTypeChecking",
-    ),
-    "TestGeneratedClassNamingConvention": (
-        "tests.unit.codegen.scaffolder_naming_tests",
-        "TestGeneratedClassNamingConvention",
-    ),
-    "TestGeneratedFilesAreValidPython": (
-        "tests.unit.codegen.scaffolder_naming_tests",
-        "TestGeneratedFilesAreValidPython",
-    ),
-    "TestInferPackage": (
-        "tests.unit.codegen.lazy_init_helpers_tests",
-        "TestInferPackage",
-    ),
-    "TestMergeChildExports": (
-        "tests.unit.codegen.lazy_init_transforms_tests",
-        "TestMergeChildExports",
-    ),
-    "TestProcessDirectory": (
-        "tests.unit.codegen.lazy_init_process_tests",
-        "TestProcessDirectory",
-    ),
-    "TestReadExistingDocstring": (
-        "tests.unit.codegen.lazy_init_helpers_tests",
-        "TestReadExistingDocstring",
-    ),
-    "TestResolveAliases": (
-        "tests.unit.codegen.lazy_init_generation_tests",
-        "TestResolveAliases",
-    ),
-    "TestRunRuffFix": (
-        "tests.unit.codegen.lazy_init_generation_tests",
-        "TestRunRuffFix",
-    ),
-    "TestScanPublicDefs": (
-        "tests.unit.codegen.lazy_init_transforms_tests",
-        "TestScanPublicDefs",
-    ),
-    "TestShouldBubbleUp": (
-        "tests.unit.codegen.lazy_init_transforms_tests",
-        "TestShouldBubbleUp",
     ),
     "_project_factory": "tests.unit.codegen._project_factory",
     "autofix_workspace_tests": "tests.unit.codegen.autofix_workspace_tests",
@@ -206,10 +101,6 @@ _LAZY_IMPORTS = {
     "s": ("flext_core.service", "FlextService"),
     "scaffolder_naming_tests": "tests.unit.codegen.scaffolder_naming_tests",
     "scaffolder_tests": "tests.unit.codegen.scaffolder_tests",
-    "test_codegen_init_getattr_raises_attribute_error": (
-        "tests.unit.codegen.lazy_init_generation_tests",
-        "test_codegen_init_getattr_raises_attribute_error",
-    ),
     "test_codegen_pipeline_dag": "tests.unit.codegen.test_codegen_pipeline_dag",
     "test_violation_key": "tests.unit.codegen.test_violation_key",
     "x": ("flext_core.mixins", "FlextMixins"),
@@ -217,26 +108,6 @@ _LAZY_IMPORTS = {
 
 __all__ = [
     "FlextInfraCodegenTestProjectFactory",
-    "TestAllDirectoriesScanned",
-    "TestBuildSiblingExportIndex",
-    "TestCheckOnlyMode",
-    "TestEdgeCases",
-    "TestExcludedDirectories",
-    "TestExtractExports",
-    "TestExtractVersionExports",
-    "TestFlextInfraCodegenLazyInit",
-    "TestGenerateFile",
-    "TestGenerateTypeChecking",
-    "TestGeneratedClassNamingConvention",
-    "TestGeneratedFilesAreValidPython",
-    "TestInferPackage",
-    "TestMergeChildExports",
-    "TestProcessDirectory",
-    "TestReadExistingDocstring",
-    "TestResolveAliases",
-    "TestRunRuffFix",
-    "TestScanPublicDefs",
-    "TestShouldBubbleUp",
     "_project_factory",
     "autofix_workspace_tests",
     "census_models_tests",
@@ -259,7 +130,6 @@ __all__ = [
     "s",
     "scaffolder_naming_tests",
     "scaffolder_tests",
-    "test_codegen_init_getattr_raises_attribute_error",
     "test_codegen_pipeline_dag",
     "test_violation_key",
     "x",

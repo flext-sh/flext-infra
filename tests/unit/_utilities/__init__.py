@@ -14,94 +14,34 @@ if _t.TYPE_CHECKING:
 
     test_discovery_consolidated = _tests_unit__utilities_test_discovery_consolidated
     import tests.unit._utilities.test_formatting as _tests_unit__utilities_test_formatting
-    from tests.unit._utilities.test_discovery_consolidated import (
-        TestDiscoveryDiscoverProjects,
-        TestDiscoveryFindAllPyprojectFiles,
-        TestDiscoveryIterPythonFiles,
-        TestDiscoveryProjectRoots,
-    )
 
     test_formatting = _tests_unit__utilities_test_formatting
     import tests.unit._utilities.test_iteration as _tests_unit__utilities_test_iteration
-    from tests.unit._utilities.test_formatting import TestFormattingRunRuffFix
 
     test_iteration = _tests_unit__utilities_test_iteration
     import tests.unit._utilities.test_rope_hooks as _tests_unit__utilities_test_rope_hooks
 
     test_rope_hooks = _tests_unit__utilities_test_rope_hooks
     import tests.unit._utilities.test_safety as _tests_unit__utilities_test_safety
-    from tests.unit._utilities.test_rope_hooks import (
-        test_run_rope_post_hooks_applies_mro_migration,
-        test_run_rope_post_hooks_dry_run_is_non_mutating,
-    )
 
     test_safety = _tests_unit__utilities_test_safety
     import tests.unit._utilities.test_scanning as _tests_unit__utilities_test_scanning
-    from tests.unit._utilities.test_safety import (
-        TestSafetyCheckpoint,
-        TestSafetyRollback,
-    )
 
     test_scanning = _tests_unit__utilities_test_scanning
-    from tests.unit._utilities.test_scanning import TestScanModels
 _LAZY_IMPORTS = {
-    "TestDiscoveryDiscoverProjects": (
-        "tests.unit._utilities.test_discovery_consolidated",
-        "TestDiscoveryDiscoverProjects",
-    ),
-    "TestDiscoveryFindAllPyprojectFiles": (
-        "tests.unit._utilities.test_discovery_consolidated",
-        "TestDiscoveryFindAllPyprojectFiles",
-    ),
-    "TestDiscoveryIterPythonFiles": (
-        "tests.unit._utilities.test_discovery_consolidated",
-        "TestDiscoveryIterPythonFiles",
-    ),
-    "TestDiscoveryProjectRoots": (
-        "tests.unit._utilities.test_discovery_consolidated",
-        "TestDiscoveryProjectRoots",
-    ),
-    "TestFormattingRunRuffFix": (
-        "tests.unit._utilities.test_formatting",
-        "TestFormattingRunRuffFix",
-    ),
-    "TestSafetyCheckpoint": (
-        "tests.unit._utilities.test_safety",
-        "TestSafetyCheckpoint",
-    ),
-    "TestSafetyRollback": ("tests.unit._utilities.test_safety", "TestSafetyRollback"),
-    "TestScanModels": ("tests.unit._utilities.test_scanning", "TestScanModels"),
     "test_discovery_consolidated": "tests.unit._utilities.test_discovery_consolidated",
     "test_formatting": "tests.unit._utilities.test_formatting",
     "test_iteration": "tests.unit._utilities.test_iteration",
     "test_rope_hooks": "tests.unit._utilities.test_rope_hooks",
-    "test_run_rope_post_hooks_applies_mro_migration": (
-        "tests.unit._utilities.test_rope_hooks",
-        "test_run_rope_post_hooks_applies_mro_migration",
-    ),
-    "test_run_rope_post_hooks_dry_run_is_non_mutating": (
-        "tests.unit._utilities.test_rope_hooks",
-        "test_run_rope_post_hooks_dry_run_is_non_mutating",
-    ),
     "test_safety": "tests.unit._utilities.test_safety",
     "test_scanning": "tests.unit._utilities.test_scanning",
 }
 
 __all__ = [
-    "TestDiscoveryDiscoverProjects",
-    "TestDiscoveryFindAllPyprojectFiles",
-    "TestDiscoveryIterPythonFiles",
-    "TestDiscoveryProjectRoots",
-    "TestFormattingRunRuffFix",
-    "TestSafetyCheckpoint",
-    "TestSafetyRollback",
-    "TestScanModels",
     "test_discovery_consolidated",
     "test_formatting",
     "test_iteration",
     "test_rope_hooks",
-    "test_run_rope_post_hooks_applies_mro_migration",
-    "test_run_rope_post_hooks_dry_run_is_non_mutating",
     "test_safety",
     "test_scanning",
 ]

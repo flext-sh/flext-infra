@@ -5,13 +5,8 @@ Expose the canonical check service classes through the public check package.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-from flext_core.lazy import lazy_getattr
+from flext_core import lazy_getattr
 from flext_infra import t
-
-if TYPE_CHECKING:
-    from flext_infra import FlextInfraConfigFixer, FlextInfraWorkspaceChecker
 
 _LAZY_IMPORTS: t.StrSequenceMapping = {
     "FlextInfraWorkspaceChecker": (
@@ -23,11 +18,6 @@ _LAZY_IMPORTS: t.StrSequenceMapping = {
         "FlextInfraConfigFixer",
     ),
 }
-
-__all__ = [
-    "FlextInfraConfigFixer",
-    "FlextInfraWorkspaceChecker",
-]
 
 
 def __getattr__(name: str) -> type:

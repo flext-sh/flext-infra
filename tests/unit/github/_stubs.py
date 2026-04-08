@@ -15,11 +15,6 @@ from typing import Annotated, ClassVar, override
 
 from pydantic import Field
 from tests import (
-    StubLinter,
-    StubPrManager,
-    StubSyncer,
-    StubUtilities,
-    StubWorkspaceManager,
     m,
     r,
     t,
@@ -253,14 +248,9 @@ class StubProjectInfo(m.Infra.ProjectInfo):
 __all__ = [
     "StubCommandOutput",
     "StubJsonIo",
-    "StubLinter",
-    "StubPrManager",
     "StubProjectInfo",
     "StubReporting",
     "StubRunner",
     "StubSelector",
-    "StubSyncer",
-    "StubUtilities",
     "StubVersioning",
-    "StubWorkspaceManager",
 ]
