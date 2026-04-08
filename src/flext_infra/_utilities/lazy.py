@@ -145,7 +145,6 @@ class FlextInfraUtilitiesCodegenLazyMerging:
     @staticmethod
     def merge_child_exports(
         pkg_dir: Path,
-        current_pkg: str,
         lazy_map: t.Infra.MutableLazyImportMap,
         dir_exports: Mapping[str, t.Infra.LazyImportMap],
     ) -> None:
@@ -157,16 +156,12 @@ class FlextInfraUtilitiesCodegenLazyMerging:
             if subdir_key not in dir_exports:
                 continue
             FlextInfraUtilitiesCodegenLazyMerging._merge_single_child(
-                subdir,
-                current_pkg,
                 lazy_map,
                 dir_exports[subdir_key],
             )
 
     @staticmethod
     def _merge_single_child(
-        subdir: Path,
-        current_pkg: str,
         lazy_map: t.Infra.MutableLazyImportMap,
         sub_exports: t.Infra.LazyImportMap,
     ) -> None:

@@ -41,15 +41,6 @@ _LAZY_IMPORTS = {
         "flext_infra.validate.scanner",
         "FlextInfraTextPatternScanner",
     ),
-    "basemk_validator": "flext_infra.validate.basemk_validator",
-    "cli": "flext_infra.validate.cli",
-    "inventory": "flext_infra.validate.inventory",
-    "namespace_rules": "flext_infra.validate.namespace_rules",
-    "namespace_validator": "flext_infra.validate.namespace_validator",
-    "pytest_diag": "flext_infra.validate.pytest_diag",
-    "scanner": "flext_infra.validate.scanner",
-    "skill_validator": "flext_infra.validate.skill_validator",
-    "stub_chain": "flext_infra.validate.stub_chain",
 }
 
 

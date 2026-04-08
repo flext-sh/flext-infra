@@ -14,9 +14,6 @@ _LAZY_IMPORTS = {
     ),
     "FlextInfraTypesBase": ("flext_infra._typings.base", "FlextInfraTypesBase"),
     "FlextInfraTypesRope": ("flext_infra._typings.rope", "FlextInfraTypesRope"),
-    "adapters": "flext_infra._typings.adapters",
-    "base": "flext_infra._typings.base",
-    "rope": "flext_infra._typings.rope",
 }
 
 

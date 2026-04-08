@@ -90,7 +90,7 @@ class TestMergeChildExports:
                 "SubService": ("pkg.sub.service", "SubService"),
             },
         }
-        u.Infra.merge_child_exports(tmp_path, "pkg", lazy_map, dir_exports)
+        u.Infra.merge_child_exports(tmp_path, lazy_map, dir_exports)
         tm.that(lazy_map, contains="SubService")
         tm.that(lazy_map["SubService"], eq=("pkg.sub.service", "SubService"))
 
@@ -107,7 +107,7 @@ class TestMergeChildExports:
             },
         }
         with pytest.raises(ValueError, match="export collision"):
-            u.Infra.merge_child_exports(tmp_path, "pkg", lazy_map, dir_exports)
+            u.Infra.merge_child_exports(tmp_path, lazy_map, dir_exports)
 
     def test_filters_all_caps(self, tmp_path: Path) -> None:
         """Test that ALL_CAPS constants don't bubble up."""
@@ -120,7 +120,7 @@ class TestMergeChildExports:
                 "Service": ("pkg.sub.service", "Service"),
             },
         }
-        u.Infra.merge_child_exports(tmp_path, "pkg", lazy_map, dir_exports)
+        u.Infra.merge_child_exports(tmp_path, lazy_map, dir_exports)
         tm.that(lazy_map, excludes="BLUE")
         tm.that(lazy_map, contains="Service")
 
@@ -134,7 +134,7 @@ class TestMergeChildExports:
                 "SubService": ("pkg.sub.service", "SubService"),
             },
         }
-        u.Infra.merge_child_exports(tmp_path, "pkg", lazy_map, dir_exports)
+        u.Infra.merge_child_exports(tmp_path, lazy_map, dir_exports)
         tm.that(lazy_map, excludes="sub")
 
 

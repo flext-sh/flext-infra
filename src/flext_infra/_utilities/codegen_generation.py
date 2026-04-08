@@ -14,7 +14,7 @@ class FlextInfraUtilitiesCodegenGeneration:
     @staticmethod
     def is_module_or_package_export(attr_name: str) -> bool:
         """Return True for compatibility exports that point at a module object."""
-        return attr_name == ""
+        return not attr_name
 
     @staticmethod
     def is_root_namespace_package(current_pkg: str) -> bool:

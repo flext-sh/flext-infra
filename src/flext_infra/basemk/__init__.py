@@ -17,9 +17,6 @@ _LAZY_IMPORTS = {
         "FlextInfraBaseMkTemplateEngine",
     ),
     "FlextInfraCliBasemk": ("flext_infra.basemk.cli", "FlextInfraCliBasemk"),
-    "cli": "flext_infra.basemk.cli",
-    "engine": "flext_infra.basemk.engine",
-    "generator": "flext_infra.basemk.generator",
 }
 
 

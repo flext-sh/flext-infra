@@ -30,11 +30,7 @@ _LAZY_IMPORTS = {
         "FlextInfraWorkspaceCheckerCli",
     ),
     "build_parser": ("flext_infra.check.workspace_check", "build_parser"),
-    "cli": "flext_infra.check.cli",
     "run_cli": ("flext_infra.check.workspace_check", "run_cli"),
-    "services": "flext_infra.check.services",
-    "workspace_check": "flext_infra.check.workspace_check",
-    "workspace_check_cli": "flext_infra.check.workspace_check_cli",
 }
 
 

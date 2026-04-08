@@ -218,9 +218,11 @@ class FlextInfraCodegenGeneration:
         publish_all = FlextInfraUtilitiesCodegenGeneration.is_root_namespace_package(
             current_pkg
         )
-        published_exports = FlextInfraUtilitiesCodegenGeneration.build_published_exports(
-            exports,
-            lazy_filtered,
+        published_exports = (
+            FlextInfraUtilitiesCodegenGeneration.build_published_exports(
+                exports,
+                lazy_filtered,
+            )
         )
         type_checking_filtered: t.Infra.LazyImportMap = {
             name: val
@@ -299,7 +301,6 @@ class FlextInfraCodegenGeneration:
             eager_export_names=eager_export_names,
             lazy_entries=lazy_entries,
             type_checking_lines="\n".join(type_checking_lines),
-            typecheck_names=sorted(lazy_filtered),
             exports=published_exports,
             publish_all=publish_all,
         )

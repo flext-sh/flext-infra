@@ -61,20 +61,6 @@ _LAZY_IMPORTS = {
         "FlextInfraServiceWorkspaceMixin",
     ),
     "FlextInfraToml": ("flext_infra.services.toml_engine", "FlextInfraToml"),
-    "basemk": "flext_infra.services.basemk",
-    "check": "flext_infra.services.check",
-    "codegen": "flext_infra.services.codegen",
-    "consolidator": "flext_infra.services.consolidator",
-    "deduplicator": "flext_infra.services.deduplicator",
-    "deps": "flext_infra.services.deps",
-    "docs": "flext_infra.services.docs",
-    "github": "flext_infra.services.github",
-    "pipeline": "flext_infra.services.pipeline",
-    "refactor": "flext_infra.services.refactor",
-    "release": "flext_infra.services.release",
-    "toml_engine": "flext_infra.services.toml_engine",
-    "validate": "flext_infra.services.validate",
-    "workspace": "flext_infra.services.workspace",
 }
 
 

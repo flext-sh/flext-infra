@@ -16,8 +16,6 @@ _LAZY_IMPORTS = {
         "flext_infra.workspace.maintenance.python_version",
         "FlextInfraPythonVersionEnforcer",
     ),
-    "cli": "flext_infra.workspace.maintenance.cli",
-    "python_version": "flext_infra.workspace.maintenance.python_version",
 }
 
 

@@ -143,6 +143,29 @@ class FlextInfraRefactorMROSymbolPropagator(FlextInfraRopeTransformer):
             ),
         )
 
+    def _qualify_prefixed_annotations(
+        self,
+        source: str,
+        *,
+        facade_alias: str,
+        symbol_paths: FlextInfraTypes.StrMapping,
+        prefix: str,
+        message_prefix: str,
+    ) -> str:
+        """Replace prefixed annotations with qualified facade paths."""
+        escaped_prefix = re.escape(prefix)
+        return self._apply_symbol_rewrites(
+            source,
+            symbol_paths,
+            pattern_fn=lambda old, _: re.compile(
+                rf"({escaped_prefix}[ \t]*)\b{re.escape(old)}\b",
+            ),
+            replacement_fn=lambda _, tp: rf"\1{facade_alias}.{tp}",
+            message_fn=lambda old, tp: (
+                f"{message_prefix}: {old} -> {facade_alias}.{tp}"
+            ),
+        )
+
     def _qualify_type_annotations(
         self,
         source: str,
@@ -151,14 +174,12 @@ class FlextInfraRefactorMROSymbolPropagator(FlextInfraRopeTransformer):
         symbol_paths: FlextInfraTypes.StrMapping,
     ) -> str:
         """Replace ``: Symbol`` with ``: Facade.Symbol``."""
-        return self._apply_symbol_rewrites(
+        return self._qualify_prefixed_annotations(
             source,
-            symbol_paths,
-            pattern_fn=lambda old, _: re.compile(rf"(:[ \t]*)\b{re.escape(old)}\b"),
-            replacement_fn=lambda _, tp: rf"\1{facade_alias}.{tp}",
-            message_fn=lambda old, tp: (
-                f"Qualified annotation: {old} -> {facade_alias}.{tp}"
-            ),
+            facade_alias=facade_alias,
+            symbol_paths=symbol_paths,
+            prefix=":",
+            message_prefix="Qualified annotation",
         )
 
     def _qualify_return_annotations(
@@ -169,14 +190,12 @@ class FlextInfraRefactorMROSymbolPropagator(FlextInfraRopeTransformer):
         symbol_paths: FlextInfraTypes.StrMapping,
     ) -> str:
         """Replace ``-> Symbol`` with ``-> Facade.Symbol``."""
-        return self._apply_symbol_rewrites(
+        return self._qualify_prefixed_annotations(
             source,
-            symbol_paths,
-            pattern_fn=lambda old, _: re.compile(rf"(->[ \t]*)\b{re.escape(old)}\b"),
-            replacement_fn=lambda _, tp: rf"\1{facade_alias}.{tp}",
-            message_fn=lambda old, tp: (
-                f"Qualified return: {old} -> {facade_alias}.{tp}"
-            ),
+            facade_alias=facade_alias,
+            symbol_paths=symbol_paths,
+            prefix="->",
+            message_prefix="Qualified return",
         )
 
 

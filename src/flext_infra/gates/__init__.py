@@ -20,14 +20,6 @@ _LAZY_IMPORTS = {
         "FlextInfraRuffFormatGate",
     ),
     "FlextInfraRuffLintGate": ("flext_infra.gates.ruff_lint", "FlextInfraRuffLintGate"),
-    "bandit": "flext_infra.gates.bandit",
-    "go": "flext_infra.gates.go",
-    "markdown": "flext_infra.gates.markdown",
-    "mypy": "flext_infra.gates.mypy",
-    "pyrefly": "flext_infra.gates.pyrefly",
-    "pyright": "flext_infra.gates.pyright",
-    "ruff_format": "flext_infra.gates.ruff_format",
-    "ruff_lint": "flext_infra.gates.ruff_lint",
 }
 
 

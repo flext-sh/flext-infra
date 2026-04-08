@@ -17,9 +17,6 @@ _LAZY_IMPORTS = {
         "flext_infra.release.orchestrator_phases",
         "FlextInfraReleaseOrchestratorPhases",
     ),
-    "cli": "flext_infra.release.cli",
-    "orchestrator": "flext_infra.release.orchestrator",
-    "orchestrator_phases": "flext_infra.release.orchestrator_phases",
 }
 
 

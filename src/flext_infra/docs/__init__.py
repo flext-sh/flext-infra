@@ -18,12 +18,6 @@ _LAZY_IMPORTS = {
     "FlextInfraDocFixer": ("flext_infra.docs.fixer", "FlextInfraDocFixer"),
     "FlextInfraDocGenerator": ("flext_infra.docs.generator", "FlextInfraDocGenerator"),
     "FlextInfraDocValidator": ("flext_infra.docs.validator", "FlextInfraDocValidator"),
-    "auditor": "flext_infra.docs.auditor",
-    "builder": "flext_infra.docs.builder",
-    "cli": "flext_infra.docs.cli",
-    "fixer": "flext_infra.docs.fixer",
-    "generator": "flext_infra.docs.generator",
-    "validator": "flext_infra.docs.validator",
 }
 
 

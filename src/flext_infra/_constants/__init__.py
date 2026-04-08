@@ -68,21 +68,6 @@ _LAZY_IMPORTS = {
         "flext_infra._constants.workspace",
         "FlextInfraConstantsWorkspace",
     ),
-    "base": "flext_infra._constants.base",
-    "basemk": "flext_infra._constants.basemk",
-    "census": "flext_infra._constants.census",
-    "check": "flext_infra._constants.check",
-    "codegen": "flext_infra._constants.codegen",
-    "deps": "flext_infra._constants.deps",
-    "docs": "flext_infra._constants.docs",
-    "github": "flext_infra._constants.github",
-    "make": "flext_infra._constants.make",
-    "refactor": "flext_infra._constants.refactor",
-    "release": "flext_infra._constants.release",
-    "rope": "flext_infra._constants.rope",
-    "source_code": "flext_infra._constants.source_code",
-    "validate": "flext_infra._constants.validate",
-    "workspace": "flext_infra._constants.workspace",
 }
 
 

@@ -38,14 +38,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
             "flext_infra.workspace.workspace_makefile",
             "FlextInfraWorkspaceMakefileGenerator",
         ),
-        "cli": "flext_infra.workspace.cli",
-        "detector": "flext_infra.workspace.detector",
-        "maintenance": "flext_infra.workspace.maintenance",
-        "migrator": "flext_infra.workspace.migrator",
-        "orchestrator": "flext_infra.workspace.orchestrator",
-        "project_makefile": "flext_infra.workspace.project_makefile",
-        "sync": "flext_infra.workspace.sync",
-        "workspace_makefile": "flext_infra.workspace.workspace_makefile",
     },
 )
 _ = _LAZY_IMPORTS.pop("cleanup_submodule_namespace", None)

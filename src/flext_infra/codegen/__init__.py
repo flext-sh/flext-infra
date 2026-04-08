@@ -34,13 +34,6 @@ _LAZY_IMPORTS = {
         "flext_infra.codegen.constants_quality_gate",
         "FlextInfraConstantsCodegenQualityGate",
     ),
-    "census": "flext_infra.codegen.census",
-    "cli": "flext_infra.codegen.cli",
-    "constants_quality_gate": "flext_infra.codegen.constants_quality_gate",
-    "fixer": "flext_infra.codegen.fixer",
-    "lazy_init": "flext_infra.codegen.lazy_init",
-    "py_typed": "flext_infra.codegen.py_typed",
-    "scaffolder": "flext_infra.codegen.scaffolder",
 }
 
 

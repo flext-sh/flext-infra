@@ -55,18 +55,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
             "flext_infra.deps.detector",
             "FlextInfraRuntimeDevDependencyDetector",
         ),
-        "_phases": "flext_infra.deps._phases",
-        "cli": "flext_infra.deps.cli",
-        "detection": "flext_infra.deps.detection",
-        "detection_analysis": "flext_infra.deps.detection_analysis",
-        "detector": "flext_infra.deps.detector",
-        "extra_paths": "flext_infra.deps.extra_paths",
-        "extra_paths_pyrefly": "flext_infra.deps.extra_paths_pyrefly",
-        "fix_pyrefly_config": "flext_infra.deps.fix_pyrefly_config",
-        "internal_sync": "flext_infra.deps.internal_sync",
-        "modernizer": "flext_infra.deps.modernizer",
-        "path_sync": "flext_infra.deps.path_sync",
-        "path_sync_rewrite": "flext_infra.deps.path_sync_rewrite",
     },
 )
 _ = _LAZY_IMPORTS.pop("cleanup_submodule_namespace", None)

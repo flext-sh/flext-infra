@@ -32,12 +32,6 @@ _LAZY_IMPORTS = {
         "flext_infra.rules.pattern_corrections",
         "FlextInfraRefactorPatternCorrectionsRule",
     ),
-    "class_nesting": "flext_infra.rules.class_nesting",
-    "ensure_future_annotations": "flext_infra.rules.ensure_future_annotations",
-    "import_modernizer": "flext_infra.rules.import_modernizer",
-    "legacy_removal": "flext_infra.rules.legacy_removal",
-    "mro_class_migration": "flext_infra.rules.mro_class_migration",
-    "pattern_corrections": "flext_infra.rules.pattern_corrections",
 }
 
 

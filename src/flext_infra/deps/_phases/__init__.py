@@ -60,19 +60,6 @@ _LAZY_IMPORTS = {
         "flext_infra.deps._phases.inject_comments",
         "FlextInfraInjectCommentsPhase",
     ),
-    "consolidate_groups": "flext_infra.deps._phases.consolidate_groups",
-    "ensure_coverage": "flext_infra.deps._phases.ensure_coverage",
-    "ensure_extra_paths": "flext_infra.deps._phases.ensure_extra_paths",
-    "ensure_formatting": "flext_infra.deps._phases.ensure_formatting",
-    "ensure_mypy": "flext_infra.deps._phases.ensure_mypy",
-    "ensure_namespace": "flext_infra.deps._phases.ensure_namespace",
-    "ensure_pydantic_mypy": "flext_infra.deps._phases.ensure_pydantic_mypy",
-    "ensure_pyrefly": "flext_infra.deps._phases.ensure_pyrefly",
-    "ensure_pyright": "flext_infra.deps._phases.ensure_pyright",
-    "ensure_pyright_envs": "flext_infra.deps._phases.ensure_pyright_envs",
-    "ensure_pytest": "flext_infra.deps._phases.ensure_pytest",
-    "ensure_ruff": "flext_infra.deps._phases.ensure_ruff",
-    "inject_comments": "flext_infra.deps._phases.inject_comments",
 }
 
 

@@ -29,10 +29,6 @@ _LAZY_IMPORTS = {
         "FlextInfraProtocolsRope",
     ),
     "WorkspaceLoopOutcome": ("flext_infra._protocols.check", "WorkspaceLoopOutcome"),
-    "base": "flext_infra._protocols.base",
-    "check": "flext_infra._protocols.check",
-    "refactor": "flext_infra._protocols.refactor",
-    "rope": "flext_infra._protocols.rope",
 }
 
 

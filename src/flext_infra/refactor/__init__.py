@@ -121,21 +121,6 @@ _LAZY_IMPORTS = {
         "flext_infra.refactor.violation_analyzer",
         "FlextInfraRefactorViolationAnalyzer",
     ),
-    "census": "flext_infra.refactor.census",
-    "class_nesting_analyzer": "flext_infra.refactor.class_nesting_analyzer",
-    "cli": "flext_infra.refactor.cli",
-    "engine": "flext_infra.refactor.engine",
-    "migrate_to_class_mro": "flext_infra.refactor.migrate_to_class_mro",
-    "mro_import_rewriter": "flext_infra.refactor.mro_import_rewriter",
-    "mro_migration_validator": "flext_infra.refactor.mro_migration_validator",
-    "mro_resolver": "flext_infra.refactor.mro_resolver",
-    "namespace_enforcer": "flext_infra.refactor.namespace_enforcer",
-    "project_classifier": "flext_infra.refactor.project_classifier",
-    "rule": "flext_infra.refactor.rule",
-    "rule_definition_validator": "flext_infra.refactor.rule_definition_validator",
-    "safety": "flext_infra.refactor.safety",
-    "scanner": "flext_infra.refactor.scanner",
-    "violation_analyzer": "flext_infra.refactor.violation_analyzer",
 }
 
 

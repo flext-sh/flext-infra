@@ -149,7 +149,7 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
                 current_pkg,
                 dir_exports,
             )
-            u.Infra.merge_child_exports(pkg_dir, current_pkg, lazy_map, dir_exports)
+            u.Infra.merge_child_exports(pkg_dir, lazy_map, dir_exports)
             child_packages_for_tc = collapse_packages
             inline_constants, version_entries = u.Infra.extract_version_exports(
                 pkg_dir,
