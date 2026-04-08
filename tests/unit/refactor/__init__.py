@@ -153,6 +153,9 @@ if _t.TYPE_CHECKING:
         test_runtime_alias_migrator_merges_local_imports_in_src,
         test_runtime_alias_migrator_merges_local_imports_in_tests,
         test_runtime_alias_migrator_reports_protected_write_failure,
+        test_runtime_alias_migrator_rewrites_concrete_root_alias_import_in_src,
+        test_runtime_alias_migrator_rewrites_deep_concrete_alias_import_in_src,
+        test_runtime_alias_migrator_rewrites_foreign_package_alias_in_tests,
         test_runtime_alias_migrator_skips_unsafe_local_cycle,
     )
 
@@ -899,6 +902,18 @@ _LAZY_IMPORTS = {
         "tests.unit.refactor.test_infra_refactor_namespace_aliases",
         "test_runtime_alias_migrator_reports_protected_write_failure",
     ),
+    "test_runtime_alias_migrator_rewrites_concrete_root_alias_import_in_src": (
+        "tests.unit.refactor.test_infra_refactor_namespace_aliases",
+        "test_runtime_alias_migrator_rewrites_concrete_root_alias_import_in_src",
+    ),
+    "test_runtime_alias_migrator_rewrites_deep_concrete_alias_import_in_src": (
+        "tests.unit.refactor.test_infra_refactor_namespace_aliases",
+        "test_runtime_alias_migrator_rewrites_deep_concrete_alias_import_in_src",
+    ),
+    "test_runtime_alias_migrator_rewrites_foreign_package_alias_in_tests": (
+        "tests.unit.refactor.test_infra_refactor_namespace_aliases",
+        "test_runtime_alias_migrator_rewrites_foreign_package_alias_in_tests",
+    ),
     "test_runtime_alias_migrator_skips_unsafe_local_cycle": (
         "tests.unit.refactor.test_infra_refactor_namespace_aliases",
         "test_runtime_alias_migrator_skips_unsafe_local_cycle",
@@ -1180,6 +1195,9 @@ __all__ = [
     "test_runtime_alias_migrator_merges_local_imports_in_src",
     "test_runtime_alias_migrator_merges_local_imports_in_tests",
     "test_runtime_alias_migrator_reports_protected_write_failure",
+    "test_runtime_alias_migrator_rewrites_concrete_root_alias_import_in_src",
+    "test_runtime_alias_migrator_rewrites_deep_concrete_alias_import_in_src",
+    "test_runtime_alias_migrator_rewrites_foreign_package_alias_in_tests",
     "test_runtime_alias_migrator_skips_unsafe_local_cycle",
     "test_runtime_family_blocks_non_runtime_target",
     "test_signature_propagation_removes_and_adds_keywords",

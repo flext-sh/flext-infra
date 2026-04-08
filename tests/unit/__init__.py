@@ -757,6 +757,9 @@ if _t.TYPE_CHECKING:
         test_runtime_alias_migrator_merges_local_imports_in_src,
         test_runtime_alias_migrator_merges_local_imports_in_tests,
         test_runtime_alias_migrator_reports_protected_write_failure,
+        test_runtime_alias_migrator_rewrites_concrete_root_alias_import_in_src,
+        test_runtime_alias_migrator_rewrites_deep_concrete_alias_import_in_src,
+        test_runtime_alias_migrator_rewrites_foreign_package_alias_in_tests,
         test_runtime_alias_migrator_skips_unsafe_local_cycle,
         test_runtime_family_blocks_non_runtime_target,
         test_signature_propagation_removes_and_adds_keywords,
@@ -1095,8 +1098,10 @@ if _t.TYPE_CHECKING:
         test_sync_success_scenarios,
         test_sync_updates_project_makefile_for_standalone_project,
         test_sync_updates_workspace_makefile_for_workspace_root,
+        test_sync_workspace_root_also_syncs_discovered_children,
         test_workspace_makefile_generator_declares_canonical_workspace_variables,
         test_workspace_makefile_generator_declares_workspace_boot_separation,
+        test_workspace_makefile_generator_does_not_persist_external_project_names,
         test_workspace_makefile_generator_reuses_mod_and_boot_feedback,
         test_workspace_makefile_generator_sanitizes_orchestrator_env,
     )
@@ -1626,6 +1631,10 @@ _LAZY_IMPORTS = merge_lazy_imports(
             "tests.unit.test_infra_workspace_sync",
             "test_sync_updates_workspace_makefile_for_workspace_root",
         ),
+        "test_sync_workspace_root_also_syncs_discovered_children": (
+            "tests.unit.test_infra_workspace_sync",
+            "test_sync_workspace_root_also_syncs_discovered_children",
+        ),
         "test_workspace_cli_accepts_default_dry_run_for_detect": (
             "tests.unit.test_infra_workspace_cli",
             "test_workspace_cli_accepts_default_dry_run_for_detect",
@@ -1645,6 +1654,10 @@ _LAZY_IMPORTS = merge_lazy_imports(
         "test_workspace_makefile_generator_declares_workspace_boot_separation": (
             "tests.unit.test_infra_workspace_sync",
             "test_workspace_makefile_generator_declares_workspace_boot_separation",
+        ),
+        "test_workspace_makefile_generator_does_not_persist_external_project_names": (
+            "tests.unit.test_infra_workspace_sync",
+            "test_workspace_makefile_generator_does_not_persist_external_project_names",
         ),
         "test_workspace_makefile_generator_reuses_mod_and_boot_feedback": (
             "tests.unit.test_infra_workspace_sync",
@@ -2570,6 +2583,9 @@ __all__ = [
     "test_runtime_alias_migrator_merges_local_imports_in_src",
     "test_runtime_alias_migrator_merges_local_imports_in_tests",
     "test_runtime_alias_migrator_reports_protected_write_failure",
+    "test_runtime_alias_migrator_rewrites_concrete_root_alias_import_in_src",
+    "test_runtime_alias_migrator_rewrites_deep_concrete_alias_import_in_src",
+    "test_runtime_alias_migrator_rewrites_foreign_package_alias_in_tests",
     "test_runtime_alias_migrator_skips_unsafe_local_cycle",
     "test_runtime_family_blocks_non_runtime_target",
     "test_safety",
@@ -2612,6 +2628,7 @@ __all__ = [
     "test_sync_success_scenarios",
     "test_sync_updates_project_makefile_for_standalone_project",
     "test_sync_updates_workspace_makefile_for_workspace_root",
+    "test_sync_workspace_root_also_syncs_discovered_children",
     "test_target_path",
     "test_typealias_conversion_preserves_used_typing_siblings",
     "test_ultrawork_models_cli_runs_dry_run_copy",
@@ -2625,6 +2642,7 @@ __all__ = [
     "test_workspace_cli_migrate_output_contains_summary",
     "test_workspace_makefile_generator_declares_canonical_workspace_variables",
     "test_workspace_makefile_generator_declares_workspace_boot_separation",
+    "test_workspace_makefile_generator_does_not_persist_external_project_names",
     "test_workspace_makefile_generator_reuses_mod_and_boot_feedback",
     "test_workspace_makefile_generator_sanitizes_orchestrator_env",
     "test_workspace_members_only_include_flext_projects",

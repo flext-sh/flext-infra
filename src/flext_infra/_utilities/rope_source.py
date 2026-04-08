@@ -121,7 +121,7 @@ class FlextInfraUtilitiesRopeSource(FlextInfraUtilitiesRopeCore):
     def batch_replace_annotations(
         rope_project: FlextInfraTypesRope.RopeProject,
         resource: FlextInfraTypesRope.RopeResource,
-        replacements: FlextInfraTypesBase.InfraMapping,
+        replacements: FlextInfraTypesBase.StrMapping,
         *,
         apply: bool = True,
     ) -> FlextInfraTypesBase.StrIntPair:

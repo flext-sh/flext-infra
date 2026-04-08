@@ -161,7 +161,7 @@ class FlextInfraUtilitiesRopeCore:
     @staticmethod
     def get_pycore(
         rope_project: t.Infra.RopeProject,
-    ) -> t.Infra.RopePyCore:
+    ) -> PyCore:
         """Extract PyCore via protocol validation at the Rope boundary."""
         return FlextInfraUtilitiesRopeCore._ensure_pycore(rope_project.pycore)
 
@@ -187,7 +187,7 @@ class FlextInfraUtilitiesRopeCore:
         return callable(getattr(value, "get_name", None))
 
     @staticmethod
-    def _ensure_pycore(value: object) -> t.Infra.RopePyCore:
+    def _ensure_pycore(value: object) -> PyCore:
         """Validate one rope pycore object against the concrete Rope alias."""
         if not isinstance(value, PyCore):
             msg = "rope pycore does not satisfy RopePyCore"

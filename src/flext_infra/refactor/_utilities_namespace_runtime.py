@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping, MutableSequence, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_infra import (
@@ -191,7 +191,7 @@ class FlextInfraUtilitiesRefactorNamespaceRuntime(
         project_root = FlextInfraUtilitiesDiscovery.discover_project_root_from_file(
             file_path,
         )
-        contextual_sources = (
+        contextual_sources: Mapping[str, frozenset[str]] = (
             FlextInfraUtilitiesDiscovery.contextual_runtime_alias_sources(
                 project_root=project_root,
                 file_path=file_path,

@@ -26,9 +26,10 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 from flext_infra import c, m, p, t
+from flext_infra._utilities.output_reporting import FlextInfraUtilitiesOutputReporting
 
 
-class FlextInfraUtilitiesReporting:
+class FlextInfraUtilitiesReporting(FlextInfraUtilitiesOutputReporting):
     """Static reporting utilities for standardized report path management.
 
     All methods are ``@staticmethod`` — no instantiation required.
