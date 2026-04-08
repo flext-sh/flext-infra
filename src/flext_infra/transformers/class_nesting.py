@@ -8,8 +8,8 @@ from collections.abc import Sequence
 from typing import override
 
 from flext_infra import (
-    FlextInfraRefactorTransformerPolicyUtilities,
     FlextInfraRopeTransformer,
+    FlextInfraUtilitiesRefactorTransformerPolicy,
     c,
     m,
     t,
@@ -119,7 +119,7 @@ class FlextInfraRefactorClassNestingTransformer(FlextInfraRopeTransformer):
             return True
         if not policy.enable_class_nesting:
             return False
-        return FlextInfraRefactorTransformerPolicyUtilities.target_allowed(
+        return FlextInfraUtilitiesRefactorTransformerPolicy.target_allowed(
             policy=policy,
             target_namespace=target_namespace,
         )
@@ -138,7 +138,7 @@ class FlextInfraRefactorClassNestingTransformer(FlextInfraRopeTransformer):
                 return False
             if operation == "merge" and not policy.allow_existing_namespace_merge:
                 return False
-            if not FlextInfraRefactorTransformerPolicyUtilities.target_allowed(
+            if not FlextInfraUtilitiesRefactorTransformerPolicy.target_allowed(
                 policy=policy,
                 target_namespace=target_namespace,
             ):
@@ -146,7 +146,7 @@ class FlextInfraRefactorClassNestingTransformer(FlextInfraRopeTransformer):
         return True
 
     def _policy_for(self, symbol_name: str) -> m.Infra.ClassNestingPolicy | None:
-        return FlextInfraRefactorTransformerPolicyUtilities.policy_for_symbol(
+        return FlextInfraUtilitiesRefactorTransformerPolicy.policy_for_symbol(
             policy_context=self._policy_context,
             symbol_families=self._class_families,
             symbol_name=symbol_name,

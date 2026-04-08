@@ -6,7 +6,7 @@ import re
 from typing import Final
 
 
-class FlextInfraReleaseConstants:
+class FlextInfraConstantsRelease:
     """Release infrastructure constants."""
 
     VALID_PHASES: Final[frozenset[str]] = frozenset({
@@ -21,4 +21,4 @@ class FlextInfraReleaseConstants:
     )
 
 
-__all__ = ["FlextInfraReleaseConstants"]
+__all__ = ["FlextInfraConstantsRelease"]

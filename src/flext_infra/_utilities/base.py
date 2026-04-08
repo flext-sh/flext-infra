@@ -16,7 +16,7 @@ from flext_cli import FlextCliUtilitiesYaml as _CliYaml
 from flext_core import r, u
 from flext_infra import (
     FlextInfraConstantsBase,
-    FlextInfraDepsModelsToolConfig,
+    FlextInfraModelsDepsToolConfig,
     FlextInfraModelsScan,
     FlextInfraProtocolsBase,
     FlextInfraTypes,
@@ -33,7 +33,7 @@ class FlextInfraUtilitiesBase(_CliYaml):
     so callers can validate ANY shape with a single SSOT helper.
     """
 
-    _tool_config_cache: r[FlextInfraDepsModelsToolConfig.ToolConfigDocument] | None = (
+    _tool_config_cache: r[FlextInfraModelsDepsToolConfig.ToolConfigDocument] | None = (
         None
     )
 
@@ -230,7 +230,7 @@ class FlextInfraUtilitiesBase(_CliYaml):
 
     @staticmethod
     def _load_tool_config_cached() -> r[
-        FlextInfraDepsModelsToolConfig.ToolConfigDocument
+        FlextInfraModelsDepsToolConfig.ToolConfigDocument
     ]:
         """Load, validate, and cache ``tool_config.yml`` for dependency tooling."""
         cached = FlextInfraUtilitiesBase._tool_config_cache
@@ -244,17 +244,17 @@ class FlextInfraUtilitiesBase(_CliYaml):
             )
             parsed = FlextInfraUtilitiesBase.yaml_parse(raw_text)
             if parsed.is_failure:
-                result = r[FlextInfraDepsModelsToolConfig.ToolConfigDocument].fail(
+                result = r[FlextInfraModelsDepsToolConfig.ToolConfigDocument].fail(
                     parsed.error or "tool_config.yml parse failed",
                 )
                 FlextInfraUtilitiesBase._tool_config_cache = result
                 return result
             validated = (
-                FlextInfraDepsModelsToolConfig.ToolConfigDocument.model_validate(
+                FlextInfraModelsDepsToolConfig.ToolConfigDocument.model_validate(
                     parsed.value
                 )
             )
-            result = r[FlextInfraDepsModelsToolConfig.ToolConfigDocument].ok(validated)
+            result = r[FlextInfraModelsDepsToolConfig.ToolConfigDocument].ok(validated)
             FlextInfraUtilitiesBase._tool_config_cache = result
             return result
         except (
@@ -264,14 +264,14 @@ class FlextInfraUtilitiesBase(_CliYaml):
             ValidationError,
             ValueError,
         ) as exc:
-            result = r[FlextInfraDepsModelsToolConfig.ToolConfigDocument].fail(
+            result = r[FlextInfraModelsDepsToolConfig.ToolConfigDocument].fail(
                 f"failed to load tool_config.yml: {exc}",
             )
             FlextInfraUtilitiesBase._tool_config_cache = result
             return result
 
     @staticmethod
-    def load_tool_config() -> r[FlextInfraDepsModelsToolConfig.ToolConfigDocument]:
+    def load_tool_config() -> r[FlextInfraModelsDepsToolConfig.ToolConfigDocument]:
         """Return cached dependency tool configuration."""
         return FlextInfraUtilitiesBase._load_tool_config_cached()
 

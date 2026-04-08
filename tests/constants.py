@@ -1,7 +1,8 @@
 """Constants for FLEXT infra tests.
 
-Provides FlextInfraTestConstants, extending FlextTestsConstants with infra-specific
-constants for infrastructure testing, project names, and test markers.
+Provides TestsFlextInfraConstants, extending FlextTestsConstants with
+infra-specific constants for infrastructure testing, project names, and test
+markers.
 
 Copyright (FlextTestsConstants) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -16,7 +17,7 @@ from flext_tests import FlextTestsConstants
 from flext_infra import FlextInfraConstants
 
 
-class FlextInfraTestConstants(FlextTestsConstants, FlextInfraConstants):
+class TestsFlextInfraConstants(FlextTestsConstants, FlextInfraConstants):
     """Constants for FLEXT infra tests - extends FlextTestsConstants.
 
     Architecture layer: Layer 0 foundation constants with infra test extensions.
@@ -90,5 +91,5 @@ class FlextInfraTestConstants(FlextTestsConstants, FlextInfraConstants):
                 INTEGRATION_DIR: Final[str] = "tests/integration"
 
 
-c = FlextInfraTestConstants
-__all__ = ["FlextInfraTestConstants", "c"]
+c = TestsFlextInfraConstants
+__all__ = ["TestsFlextInfraConstants", "c"]

@@ -17,10 +17,10 @@ from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from flext_cli import FlextCliUtilitiesToml as _CliToml, u
 from flext_infra import (
+    FlextInfraConstantsRefactor,
+    FlextInfraModelsRefactorGrep,
     FlextInfraModelsRope,
     FlextInfraProtocols,
-    FlextInfraRefactorConstants,
-    FlextInfraRefactorGrepModels,
     FlextInfraTypes,
     FlextInfraTypesAdapters,
     FlextInfraTypesBase,
@@ -35,9 +35,9 @@ class FlextInfraUtilitiesParsing(_CliToml):
     _DOCSTRING_QUOTES = ('"""', "'''")
     _SINGLE_LINE_DOCSTRING_QUOTE_COUNT = 2
     _RULE_CONFIG_SEQ_ADAPTER: TypeAdapter[
-        Sequence[FlextInfraRefactorGrepModels.ImportModernizerRuleConfig]
+        Sequence[FlextInfraModelsRefactorGrep.ImportModernizerRuleConfig]
     ] = TypeAdapter(
-        Sequence[FlextInfraRefactorGrepModels.ImportModernizerRuleConfig],
+        Sequence[FlextInfraModelsRefactorGrep.ImportModernizerRuleConfig],
     )
 
     @staticmethod
@@ -429,7 +429,7 @@ class FlextInfraUtilitiesParsing(_CliToml):
     @staticmethod
     def parse_forbidden_rules(
         value: FlextInfraTypesBase.InfraValue,
-    ) -> Sequence[FlextInfraRefactorGrepModels.ImportModernizerRuleConfig]:
+    ) -> Sequence[FlextInfraModelsRefactorGrep.ImportModernizerRuleConfig]:
         """Parse and validate forbidden import rule configs."""
         try:
             raw_items: Sequence[FlextInfraTypesBase.ContainerDict] = (
@@ -502,10 +502,10 @@ class FlextInfraUtilitiesParsing(_CliToml):
     @staticmethod
     def find_final_candidates(
         source: str,
-    ) -> Sequence[FlextInfraRefactorGrepModels.MROSymbolCandidate]:
+    ) -> Sequence[FlextInfraModelsRefactorGrep.MROSymbolCandidate]:
         """Find module-level Final-annotated constants via regex."""
         candidates: MutableSequence[
-            FlextInfraRefactorGrepModels.MROSymbolCandidate
+            FlextInfraModelsRefactorGrep.MROSymbolCandidate
         ] = []
         for i, line in enumerate(source.splitlines(), start=1):
             stripped = line.lstrip()
@@ -518,7 +518,7 @@ class FlextInfraUtilitiesParsing(_CliToml):
                 is not None
             ):
                 candidates.append(
-                    FlextInfraRefactorGrepModels.MROSymbolCandidate(
+                    FlextInfraModelsRefactorGrep.MROSymbolCandidate(
                         symbol=match.group(1),
                         line=i,
                     ),
@@ -530,7 +530,7 @@ class FlextInfraUtilitiesParsing(_CliToml):
         """Find the first class ending with Constants suffix."""
         for match in c.Infra.SourceCode.CLASS_NAME_RE.finditer(source):
             name = match.group(1)
-            if name.endswith(FlextInfraRefactorConstants.CONSTANTS_CLASS_SUFFIX):
+            if name.endswith(FlextInfraConstantsRefactor.CONSTANTS_CLASS_SUFFIX):
                 return name
         return ""
 

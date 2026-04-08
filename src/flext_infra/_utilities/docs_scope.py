@@ -10,12 +10,12 @@ from flext_cli import u
 from flext_core import r
 from flext_infra import (
     FlextInfraConstantsBase,
-    FlextInfraDocsConstants,
+    FlextInfraConstantsDocs,
+    FlextInfraConstantsWorkspace,
+    FlextInfraModelsWorkspace,
     FlextInfraTypesBase,
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesParsing,
-    FlextInfraWorkspaceConstants,
-    FlextInfraWorkspaceModels,
 )
 
 
@@ -43,7 +43,7 @@ class FlextInfraUtilitiesDocsScope:
         entry: Path,
         *,
         workspace_members: FlextInfraTypesBase.StrSet,
-    ) -> FlextInfraWorkspaceModels.ProjectInfo | None:
+    ) -> FlextInfraModelsWorkspace.ProjectInfo | None:
         """Build one canonical project descriptor when a child qualifies."""
         pyproject = entry / FlextInfraConstantsBase.Files.PYPROJECT_FILENAME
         if not pyproject.is_file():
@@ -59,11 +59,11 @@ class FlextInfraUtilitiesDocsScope:
         if isinstance(enabled, bool) and not enabled:
             return None
         workspace_role = (
-            FlextInfraWorkspaceConstants.WorkspaceProjectRole.WORKSPACE_MEMBER
+            FlextInfraConstantsWorkspace.WorkspaceProjectRole.WORKSPACE_MEMBER
             if is_workspace_member
-            else FlextInfraWorkspaceConstants.WorkspaceProjectRole.ATTACHED
+            else FlextInfraConstantsWorkspace.WorkspaceProjectRole.ATTACHED
         )
-        return FlextInfraWorkspaceModels.ProjectInfo.model_construct(
+        return FlextInfraModelsWorkspace.ProjectInfo.model_construct(
             path=entry,
             name=entry.name,
             stack="python/flext",
@@ -91,7 +91,7 @@ class FlextInfraUtilitiesDocsScope:
         return (
             workspace_root
             / FlextInfraConstantsBase.Directories.DOCS
-            / FlextInfraDocsConstants.DOCS_CONFIG_FILENAME
+            / FlextInfraConstantsDocs.DOCS_CONFIG_FILENAME
         )
 
     @staticmethod
@@ -284,17 +284,17 @@ class FlextInfraUtilitiesDocsScope:
     @staticmethod
     def discover_projects(
         workspace_root: Path,
-    ) -> r[Sequence[FlextInfraWorkspaceModels.ProjectInfo]]:
+    ) -> r[Sequence[FlextInfraModelsWorkspace.ProjectInfo]]:
         """Discover workspace projects that participate in the docs scope."""
         if not workspace_root.exists() or not workspace_root.is_dir():
-            return r[Sequence[FlextInfraWorkspaceModels.ProjectInfo]].fail(
+            return r[Sequence[FlextInfraModelsWorkspace.ProjectInfo]].fail(
                 f"discovery failed: invalid workspace root {workspace_root}",
             )
         excluded = FlextInfraUtilitiesDocsScope.excluded_roots(workspace_root)
         workspace_members = FlextInfraUtilitiesDocsScope._workspace_member_name_set(
             workspace_root,
         )
-        projects: list[FlextInfraWorkspaceModels.ProjectInfo] = []
+        projects: list[FlextInfraModelsWorkspace.ProjectInfo] = []
         try:
             for entry in sorted(workspace_root.iterdir(), key=lambda item: item.name):
                 if (
@@ -312,10 +312,10 @@ class FlextInfraUtilitiesDocsScope:
                     continue
                 projects.append(project_info)
         except OSError as exc:
-            return r[Sequence[FlextInfraWorkspaceModels.ProjectInfo]].fail(
+            return r[Sequence[FlextInfraModelsWorkspace.ProjectInfo]].fail(
                 f"discovery failed: {exc}",
             )
-        return r[Sequence[FlextInfraWorkspaceModels.ProjectInfo]].ok(projects)
+        return r[Sequence[FlextInfraModelsWorkspace.ProjectInfo]].ok(projects)
 
     @staticmethod
     def required_project_files() -> Sequence[str]:

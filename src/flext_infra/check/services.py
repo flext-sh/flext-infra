@@ -1,29 +1,15 @@
-"""FLEXT infrastructure check service exports.
-
-Expose the canonical check service classes through the public check package.
-"""
+"""FLEXT infrastructure check service namespace."""
 
 from __future__ import annotations
 
-from flext_core import lazy_getattr
-from flext_infra import t
-
-_LAZY_IMPORTS: t.StrSequenceMapping = {
-    "FlextInfraWorkspaceChecker": (
-        "flext_infra.check.workspace_check",
-        "FlextInfraWorkspaceChecker",
-    ),
-    "FlextInfraConfigFixer": (
-        "flext_infra.deps.fix_pyrefly_config",
-        "FlextInfraConfigFixer",
-    ),
-}
+from flext_infra import FlextInfraConfigFixer, FlextInfraWorkspaceChecker
 
 
-def __getattr__(name: str) -> type:
-    """Lazy-load module attributes on first access (PEP 562)."""
-    value = lazy_getattr(name, _LAZY_IMPORTS, globals(), __name__)
-    if isinstance(value, type):
-        return value
-    msg = f"{__name__} export {name!r} did not resolve to a class"
-    raise AttributeError(msg)
+class FlextInfraCheckServices:
+    """Canonical check service namespace for public check package exports."""
+
+    FlextInfraWorkspaceChecker = FlextInfraWorkspaceChecker
+    FlextInfraConfigFixer = FlextInfraConfigFixer
+
+
+__all__ = ["FlextInfraCheckServices"]

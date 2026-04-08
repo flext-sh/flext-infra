@@ -8,13 +8,13 @@ from flext_cli import cli
 from flext_infra import (
     FlextInfraCodegenCensus,
     FlextInfraCodegenConsolidator,
-    FlextInfraCodegenConstantsQualityGate,
     FlextInfraCodegenDeduplicator,
     FlextInfraCodegenFixer,
     FlextInfraCodegenLazyInit,
     FlextInfraCodegenPipeline,
     FlextInfraCodegenPyTyped,
     FlextInfraCodegenScaffolder,
+    FlextInfraConstantsCodegenQualityGate,
     m,
     t,
 )
@@ -85,8 +85,8 @@ class FlextInfraCliCodegen:
                 m.Cli.ResultCommandRoute(
                     name="constants-quality-gate",
                     help_text="Run constants migration quality gate",
-                    model_cls=FlextInfraCodegenConstantsQualityGate,
-                    handler=FlextInfraCodegenConstantsQualityGate.execute_command,
+                    model_cls=FlextInfraConstantsCodegenQualityGate,
+                    handler=FlextInfraConstantsCodegenQualityGate.execute_command,
                     failure_message="constants quality gate failed",
                     success_message="constants quality gate passed",
                 ),

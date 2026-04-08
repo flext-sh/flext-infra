@@ -11,8 +11,8 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 from flext_infra import (
-    FlextInfraCoreConstants,
-    FlextInfraSharedInfraConstants,
+    FlextInfraConstantsCore,
+    FlextInfraConstantsSharedInfra,
 )
 
 
@@ -106,7 +106,7 @@ class FlextInfraNamespaceRules:
         filepath: Path,
     ) -> Sequence[str]:
         """Rule 1 -- Constants centralization."""
-        if filepath.name == FlextInfraSharedInfraConstants.Files.CONSTANTS_PY:
+        if filepath.name == FlextInfraConstantsSharedInfra.Files.CONSTANTS_PY:
             return self._check_rule_1_canonical(tree, filepath)
         return self._check_rule_1_non_canonical(tree, filepath)
 
@@ -182,13 +182,13 @@ class FlextInfraNamespaceRules:
         if not (isinstance(node, ast.Assign) and isinstance(node.value, ast.Call)):
             return seq, violations
         func_name = self._get_call_name(node.value.func)
-        if func_name not in FlextInfraCoreConstants.COLLECTION_CALLS:
+        if func_name not in FlextInfraConstantsCore.COLLECTION_CALLS:
             return seq, violations
         target_name = self._get_assign_target_name(node)
         if (
             target_name
-            and target_name not in FlextInfraCoreConstants.DUNDER_ALLOWED
-            and target_name not in FlextInfraCoreConstants.ALIAS_NAMES
+            and target_name not in FlextInfraConstantsCore.DUNDER_ALLOWED
+            and target_name not in FlextInfraConstantsCore.ALIAS_NAMES
         ):
             seq += 1
             violations.append(
@@ -207,7 +207,7 @@ class FlextInfraNamespaceRules:
             if isinstance(inner, ast.ClassDef) and any(
                 self._base_contains(b, base)
                 for b in inner.bases
-                for base in FlextInfraCoreConstants.ENUM_BASES
+                for base in FlextInfraConstantsCore.ENUM_BASES
             ):
                 seq += 1
                 violations.append(
@@ -221,7 +221,7 @@ class FlextInfraNamespaceRules:
         filepath: Path,
     ) -> Sequence[str]:
         """Rule 2 -- Types centralization."""
-        if filepath.name == FlextInfraSharedInfraConstants.Files.TYPINGS_PY:
+        if filepath.name == FlextInfraConstantsSharedInfra.Files.TYPINGS_PY:
             return self._check_rule_2_canonical(tree, filepath)
         return self._check_rule_2_non_canonical(tree, filepath)
 
@@ -298,7 +298,7 @@ class FlextInfraNamespaceRules:
         if not (isinstance(node, ast.Assign) and isinstance(node.value, ast.Call)):
             return seq, violations
         func_name = self._get_call_name(node.value.func)
-        if func_name not in FlextInfraCoreConstants.TYPEVAR_CALLABLES:
+        if func_name not in FlextInfraConstantsCore.TYPEVAR_CALLABLES:
             return seq, violations
         target_name = self._get_assign_target_name(node)
         seq += 1
@@ -335,7 +335,7 @@ class FlextInfraNamespaceRules:
     ) -> tuple[int, MutableSequence[str]]:
         if not isinstance(node, ast.TypeAlias):
             return seq, violations
-        name = getattr(node, FlextInfraSharedInfraConstants.Dunders.NAME, None)
+        name = getattr(node, FlextInfraConstantsSharedInfra.Dunders.NAME, None)
         name_str = getattr(name, "id", str(name)) if name else "unknown"
         seq += 1
         violations.append(
@@ -366,7 +366,7 @@ class FlextInfraNamespaceRules:
         if isinstance(node, ast.Assign):
             return self._is_allowed_assign(node, filepath)
         if isinstance(node, ast.TypeAlias):
-            return filepath.name == FlextInfraSharedInfraConstants.Files.TYPINGS_PY
+            return filepath.name == FlextInfraConstantsSharedInfra.Files.TYPINGS_PY
         return self._is_allowed_ann_assign(node, filepath)
 
     @staticmethod
@@ -385,20 +385,20 @@ class FlextInfraNamespaceRules:
         for target in node.targets:
             if (
                 isinstance(target, ast.Name)
-                and target.id in FlextInfraCoreConstants.DUNDER_ALLOWED
+                and target.id in FlextInfraConstantsCore.DUNDER_ALLOWED
             ):
                 return True
         if len(node.targets) == 1:
             target = node.targets[0]
             if (
                 isinstance(target, ast.Name)
-                and target.id in FlextInfraCoreConstants.ALIAS_NAMES
+                and target.id in FlextInfraConstantsCore.ALIAS_NAMES
             ):
                 return True
         if isinstance(node.value, ast.Call):
             func_name = self._get_call_name(node.value.func)
-            if func_name in FlextInfraCoreConstants.TYPEVAR_CALLABLES:
-                return filepath.name == FlextInfraSharedInfraConstants.Files.TYPINGS_PY
+            if func_name in FlextInfraConstantsCore.TYPEVAR_CALLABLES:
+                return filepath.name == FlextInfraConstantsSharedInfra.Files.TYPINGS_PY
         return False
 
     def _is_allowed_ann_assign(
@@ -407,13 +407,13 @@ class FlextInfraNamespaceRules:
         filepath: Path,
     ) -> bool:
         if self._annotation_contains(node.annotation, "TypeAlias"):
-            return filepath.name == FlextInfraSharedInfraConstants.Files.TYPINGS_PY
+            return filepath.name == FlextInfraConstantsSharedInfra.Files.TYPINGS_PY
         if (
             isinstance(node.target, ast.Name)
             and node.target.id.startswith("_")
             and self._annotation_contains(node.annotation, "Final")
         ):
-            return filepath.name == FlextInfraSharedInfraConstants.Files.CONSTANTS_PY
+            return filepath.name == FlextInfraConstantsSharedInfra.Files.CONSTANTS_PY
         return False
 
 

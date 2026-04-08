@@ -112,7 +112,7 @@ def test_import_alias_detector_skips_nested_private_and_as_renames(
     sample_file = tmp_path / "sample.py"
     sample_file.write_text(
         "from __future__ import annotations\n"
-        "from flext_infra import FlextInfraNamespaceEnforcerModels\n"
+        "from flext_infra import FlextInfraModelsNamespaceEnforcer\n"
         "from flext_core import m as mm\n",
         encoding="utf-8",
     )
@@ -215,7 +215,7 @@ def test_namespace_rewriter_skips_nested_private_as_rename_and_duplicates(
     source = (
         "from __future__ import annotations\n"
         "from flext_core import c, m, r, t, u, p\n"
-        "from flext_infra import FlextInfraNamespaceEnforcerModels\n"
+        "from flext_infra import FlextInfraModelsNamespaceEnforcer\n"
         "from flext_core import m as mm\n"
         "from flext_core import (m)\n"
     )
@@ -488,7 +488,7 @@ def test_runtime_alias_migrator_reports_protected_write_failure(
         return (False, ("  REVERTED src/flext_demo/codegen/lazy_init.py:",))
 
     _ = monkeypatch.setattr(
-        "flext_infra.refactor._utilities_namespace_runtime.FlextInfraUtilitiesProtectedEdit.protected_file_edit",
+        "flext_infra._utilities._utilities_namespace_runtime.FlextInfraUtilitiesProtectedEdit.protected_file_edit",
         _fail_write,
     )
 

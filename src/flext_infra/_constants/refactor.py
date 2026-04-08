@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from flext_infra import t
 
 
-class FlextInfraRefactorConstants:
+class FlextInfraConstantsRefactor:
     """Shared constants for refactor engine modules."""
 
     RUNTIME_ALIAS_NAMES: ClassVar[frozenset[str]] = frozenset({
@@ -392,4 +392,4 @@ class FlextInfraRefactorConstants:
         "Default census family."
 
 
-__all__ = ["FlextInfraRefactorConstants"]
+__all__ = ["FlextInfraConstantsRefactor"]

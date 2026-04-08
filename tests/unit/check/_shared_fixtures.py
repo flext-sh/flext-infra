@@ -13,7 +13,7 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 
 import pytest
-from tests import FlextInfraTestHelpers as h, m, t
+from tests import TestsFlextInfraHelpers as h, m, t
 
 from flext_core import r
 from flext_infra import FlextInfraGate, FlextInfraWorkspaceChecker

@@ -12,9 +12,9 @@ from pydantic import Field
 from flext_cli import p, u
 from flext_core import r
 from flext_infra import (
-    FlextInfraBasemkModels,
     FlextInfraBaseMkTemplateEngine,
     FlextInfraConstantsBase,
+    FlextInfraModelsBasemk,
     FlextInfraProtocolsBase,
     c,
     s,
@@ -67,7 +67,7 @@ class FlextInfraBaseMkGenerator(s[str]):
 
     def generate_basemk(
         self,
-        config: FlextInfraBasemkModels.BaseMkConfig | t.ScalarMapping | None = None,
+        config: FlextInfraModelsBasemk.BaseMkConfig | t.ScalarMapping | None = None,
     ) -> r[str]:
         """Generate base.mk content from configuration."""
         config_result = self._normalize_config(config)
@@ -110,21 +110,21 @@ class FlextInfraBaseMkGenerator(s[str]):
 
     def _normalize_config(
         self,
-        config: FlextInfraBasemkModels.BaseMkConfig | t.ScalarMapping | None,
-    ) -> r[FlextInfraBasemkModels.BaseMkConfig]:
+        config: FlextInfraModelsBasemk.BaseMkConfig | t.ScalarMapping | None,
+    ) -> r[FlextInfraModelsBasemk.BaseMkConfig]:
         if config is None:
-            return r[FlextInfraBasemkModels.BaseMkConfig].ok(
+            return r[FlextInfraModelsBasemk.BaseMkConfig].ok(
                 FlextInfraBaseMkTemplateEngine.default_config(),
             )
-        if isinstance(config, FlextInfraBasemkModels.BaseMkConfig):
-            return r[FlextInfraBasemkModels.BaseMkConfig].ok(config)
+        if isinstance(config, FlextInfraModelsBasemk.BaseMkConfig):
+            return r[FlextInfraModelsBasemk.BaseMkConfig].ok(config)
         try:
-            normalized = FlextInfraBasemkModels.BaseMkConfig.model_validate(
+            normalized = FlextInfraModelsBasemk.BaseMkConfig.model_validate(
                 dict(config),
             )
-            return r[FlextInfraBasemkModels.BaseMkConfig].ok(normalized)
+            return r[FlextInfraModelsBasemk.BaseMkConfig].ok(normalized)
         except (TypeError, ValueError) as exc:
-            return r[FlextInfraBasemkModels.BaseMkConfig].fail(
+            return r[FlextInfraModelsBasemk.BaseMkConfig].fail(
                 f"base.mk configuration validation failed: {exc}",
             )
 

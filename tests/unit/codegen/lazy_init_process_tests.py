@@ -100,9 +100,9 @@ class TestProcessDirectory:
         tests_dir = tmp_path / "tests"
         tests_dir.mkdir(parents=True)
         (tests_dir / "typings.py").write_text(
-            '"""Typings."""\n\n__all__ = ["FlextInfraTestTypes", "t"]\n\n'
-            "class FlextInfraTestTypes:\n    pass\n\n"
-            "t = FlextInfraTestTypes\n",
+            '"""Typings."""\n\n__all__ = ["TestsFlextDemoTypes", "t"]\n\n'
+            "class TestsFlextDemoTypes:\n    pass\n\n"
+            "t = TestsFlextDemoTypes\n",
         )
         result = generator.generate_inits(check_only=False)
         tm.that(result, eq=0)
@@ -111,7 +111,7 @@ class TestProcessDirectory:
         tm.that(init_content, contains="__all__ = [")
         tm.that(
             init_content,
-            contains='"t": ("tests.typings", "FlextInfraTestTypes")',
+            contains='"t": ("tests.typings", "TestsFlextDemoTypes")',
         )
 
     def test_handles_version_file(self, tmp_path: Path) -> None:

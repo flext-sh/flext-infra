@@ -10,7 +10,7 @@ from flext_core import FlextModels
 from flext_infra import FlextInfraModelsMixins, c, t
 
 
-class FlextInfraRefactorGrepModels:
+class FlextInfraModelsRefactorGrep:
     """Mixin containing migration/reporting contracts for refactor orchestration."""
 
     class MROSymbolCandidate(
@@ -86,7 +86,7 @@ class FlextInfraRefactorGrepModels:
             Field(default="c", description="Facade alias letter"),
         ] = "c"
         candidates: t.Infra.VariadicTuple[
-            FlextInfraRefactorGrepModels.MROSymbolCandidate
+            FlextInfraModelsRefactorGrep.MROSymbolCandidate
         ] = Field(default_factory=tuple, description="Module-level symbol candidates")
 
     class MROFileMigration(FlextModels.ArbitraryTypesModel):
@@ -134,10 +134,10 @@ class FlextInfraRefactorGrepModels:
             ),
         ]
         migrations: t.Infra.VariadicTuple[
-            FlextInfraRefactorGrepModels.MROFileMigration
+            FlextInfraModelsRefactorGrep.MROFileMigration
         ] = Field(default_factory=tuple, description="File migration summaries")
         rewrites: t.Infra.VariadicTuple[
-            FlextInfraRefactorGrepModels.MRORewriteResult
+            FlextInfraModelsRefactorGrep.MRORewriteResult
         ] = Field(default_factory=tuple, description="Reference rewrite summaries")
         remaining_violations: Annotated[
             int,
@@ -248,4 +248,4 @@ class FlextInfraRefactorGrepModels:
         )
 
 
-__all__ = ["FlextInfraRefactorGrepModels"]
+__all__ = ["FlextInfraModelsRefactorGrep"]

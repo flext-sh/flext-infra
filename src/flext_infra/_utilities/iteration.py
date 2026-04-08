@@ -14,7 +14,7 @@ from flext_cli import u
 from flext_core import r
 from flext_infra import (
     FlextInfraConstantsBase,
-    FlextInfraRefactorConstants,
+    FlextInfraConstantsRefactor,
     FlextInfraTypesBase,
     FlextInfraUtilitiesParsing,
 )
@@ -132,7 +132,7 @@ class FlextInfraUtilitiesIteration:
             )
             if normalized:
                 return normalized
-        return frozenset(FlextInfraRefactorConstants.MRO_SCAN_DIRECTORIES)
+        return frozenset(FlextInfraConstantsRefactor.MRO_SCAN_DIRECTORIES)
 
     @staticmethod
     def namespace_include_dynamic_dirs(project_root: Path) -> bool:
@@ -171,7 +171,7 @@ class FlextInfraUtilitiesIteration:
         """
         roots: MutableSequence[Path] = []
         effective_scan_dirs = scan_dirs or frozenset(
-            FlextInfraRefactorConstants.MRO_SCAN_DIRECTORIES
+            FlextInfraConstantsRefactor.MRO_SCAN_DIRECTORIES
         )
         configured_members = FlextInfraUtilitiesIteration._workspace_member_names(
             workspace_root,

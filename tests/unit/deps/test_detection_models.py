@@ -14,7 +14,7 @@ from flext_infra import (
 )
 
 
-class TestFlextInfraDependencyDetectionModels:
+class TestFlextInfraModelsDependencyDetection:
     def test_deptry_issue_groups_creation(self) -> None:
         groups = m.Infra.DeptryIssueGroups()
         assert groups.dep001 == []

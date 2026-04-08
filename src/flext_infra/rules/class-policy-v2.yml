@@ -794,16 +794,16 @@ rules:
   - project_kind: core
     facade_family: u
     module_family: other_private
-    source_symbol: FlextInfraPathsConstants
+    source_symbol: FlextInfraConstantsPaths
     target_facade_class: FlextConstantsModules
-    target_namespace_path: FlextConstantsModules.FlextInfraPathsConstants
+    target_namespace_path: FlextConstantsModules.FlextInfraConstantsPaths
     expected_base_chain: *id006
     forbidden_targets: []
     confidence: 0.5
     pre_checks:
       - type: source_symbol_is_class
         params:
-          symbol: FlextInfraPathsConstants
+          symbol: FlextInfraConstantsPaths
       - type: target_facade_exists
         params:
           facade: FlextConstantsModules
@@ -818,16 +818,16 @@ rules:
   - project_kind: core
     facade_family: u
     module_family: other_private
-    source_symbol: FlextInfraVersioningConstants
+    source_symbol: FlextInfraConstantsVersioning
     target_facade_class: FlextConstantsModules
-    target_namespace_path: FlextConstantsModules.FlextInfraVersioningConstants
+    target_namespace_path: FlextConstantsModules.FlextInfraConstantsVersioning
     expected_base_chain: *id006
     forbidden_targets: []
     confidence: 0.5
     pre_checks:
       - type: source_symbol_is_class
         params:
-          symbol: FlextInfraVersioningConstants
+          symbol: FlextInfraConstantsVersioning
       - type: target_facade_exists
         params:
           facade: FlextConstantsModules
@@ -842,16 +842,16 @@ rules:
   - project_kind: core
     facade_family: u
     module_family: other_private
-    source_symbol: FlextInfraReportingConstants
+    source_symbol: FlextInfraConstantsReporting
     target_facade_class: FlextConstantsModules
-    target_namespace_path: FlextConstantsModules.FlextInfraReportingConstants
+    target_namespace_path: FlextConstantsModules.FlextInfraConstantsReporting
     expected_base_chain: *id006
     forbidden_targets: []
     confidence: 0.5
     pre_checks:
       - type: source_symbol_is_class
         params:
-          symbol: FlextInfraReportingConstants
+          symbol: FlextInfraConstantsReporting
       - type: target_facade_exists
         params:
           facade: FlextConstantsModules
@@ -866,16 +866,16 @@ rules:
   - project_kind: core
     facade_family: u
     module_family: other_private
-    source_symbol: FlextInfraBasemkConstants
+    source_symbol: FlextInfraConstantsBasemk
     target_facade_class: FlextBasemkConstants
-    target_namespace_path: FlextBasemkConstants.FlextInfraBasemkConstants
+    target_namespace_path: FlextBasemkConstants.FlextInfraConstantsBasemk
     expected_base_chain: *id006
     forbidden_targets: []
     confidence: 0.7
     pre_checks:
       - type: source_symbol_is_class
         params:
-          symbol: FlextInfraBasemkConstants
+          symbol: FlextInfraConstantsBasemk
       - type: target_facade_exists
         params:
           facade: FlextBasemkConstants
@@ -962,16 +962,16 @@ rules:
   - project_kind: core
     facade_family: u
     module_family: other_private
-    source_symbol: FlextInfraCheckConstants
+    source_symbol: FlextInfraConstantsCheck
     target_facade_class: FlextCheckConstants
-    target_namespace_path: FlextCheckConstants.FlextInfraCheckConstants
+    target_namespace_path: FlextCheckConstants.FlextInfraConstantsCheck
     expected_base_chain: *id006
     forbidden_targets: []
     confidence: 0.7
     pre_checks:
       - type: source_symbol_is_class
         params:
-          symbol: FlextInfraCheckConstants
+          symbol: FlextInfraConstantsCheck
       - type: target_facade_exists
         params:
           facade: FlextCheckConstants
@@ -1658,16 +1658,16 @@ rules:
   - project_kind: core
     facade_family: u
     module_family: other_private
-    source_symbol: FlextInfraCodegenConstants
+    source_symbol: FlextInfraConstantsCodegen
     target_facade_class: FlextCodegenConstants
-    target_namespace_path: FlextCodegenConstants.FlextInfraCodegenConstants
+    target_namespace_path: FlextCodegenConstants.FlextInfraConstantsCodegen
     expected_base_chain: *id006
     forbidden_targets: []
     confidence: 0.7
     pre_checks:
       - type: source_symbol_is_class
         params:
-          symbol: FlextInfraCodegenConstants
+          symbol: FlextInfraConstantsCodegen
       - type: target_facade_exists
         params:
           facade: FlextCodegenConstants
@@ -1826,16 +1826,16 @@ rules:
   - project_kind: core
     facade_family: u
     module_family: other_private
-    source_symbol: FlextInfraCoreConstants
+    source_symbol: FlextInfraConstantsCore
     target_facade_class: FlextCoreConstants
-    target_namespace_path: FlextCoreConstants.FlextInfraCoreConstants
+    target_namespace_path: FlextCoreConstants.FlextInfraConstantsCore
     expected_base_chain: *id006
     forbidden_targets: []
     confidence: 0.7
     pre_checks:
       - type: source_symbol_is_class
         params:
-          symbol: FlextInfraCoreConstants
+          symbol: FlextInfraConstantsCore
       - type: target_facade_exists
         params:
           facade: FlextCoreConstants
@@ -2042,16 +2042,16 @@ rules:
   - project_kind: core
     facade_family: u
     module_family: other_private
-    source_symbol: FlextInfraDepsConstants
+    source_symbol: FlextInfraConstantsDeps
     target_facade_class: FlextDepsConstants
-    target_namespace_path: FlextDepsConstants.FlextInfraDepsConstants
+    target_namespace_path: FlextDepsConstants.FlextInfraConstantsDeps
     expected_base_chain: *id006
     forbidden_targets: []
     confidence: 0.7
     pre_checks:
       - type: source_symbol_is_class
         params:
-          symbol: FlextInfraDepsConstants
+          symbol: FlextInfraConstantsDeps
       - type: target_facade_exists
         params:
           facade: FlextDepsConstants
@@ -2066,16 +2066,16 @@ rules:
   - project_kind: core
     facade_family: u
     module_family: other_private
-    source_symbol: FlextInfraDependencyDetectionModels
+    source_symbol: FlextInfraModelsDependencyDetection
     target_facade_class: FlextDepsDetection
-    target_namespace_path: FlextDepsDetection.FlextInfraDependencyDetectionModels
+    target_namespace_path: FlextDepsDetection.FlextInfraModelsDependencyDetection
     expected_base_chain: *id006
     forbidden_targets: []
     confidence: 0.7
     pre_checks:
       - type: source_symbol_is_class
         params:
-          symbol: FlextInfraDependencyDetectionModels
+          symbol: FlextInfraModelsDependencyDetection
       - type: target_facade_exists
         params:
           facade: FlextDepsDetection
@@ -2114,16 +2114,16 @@ rules:
   - project_kind: core
     facade_family: u
     module_family: other_private
-    source_symbol: FlextInfraDependencyDetectorModels
+    source_symbol: FlextInfraModelsDependencyDetector
     target_facade_class: FlextDepsDetector
-    target_namespace_path: FlextDepsDetector.FlextInfraDependencyDetectorModels
+    target_namespace_path: FlextDepsDetector.FlextInfraModelsDependencyDetector
     expected_base_chain: *id006
     forbidden_targets: []
     confidence: 0.7
     pre_checks:
       - type: source_symbol_is_class
         params:
-          symbol: FlextInfraDependencyDetectorModels
+          symbol: FlextInfraModelsDependencyDetector
       - type: target_facade_exists
         params:
           facade: FlextDepsDetector
@@ -2498,16 +2498,16 @@ rules:
   - project_kind: core
     facade_family: u
     module_family: other_private
-    source_symbol: FlextInfraDocsConstants
+    source_symbol: FlextInfraConstantsDocs
     target_facade_class: FlextDocsConstants
-    target_namespace_path: FlextDocsConstants.FlextInfraDocsConstants
+    target_namespace_path: FlextDocsConstants.FlextInfraConstantsDocs
     expected_base_chain: *id006
     forbidden_targets: []
     confidence: 0.7
     pre_checks:
       - type: source_symbol_is_class
         params:
-          symbol: FlextInfraDocsConstants
+          symbol: FlextInfraConstantsDocs
       - type: target_facade_exists
         params:
           facade: FlextDocsConstants
@@ -2906,16 +2906,16 @@ rules:
   - project_kind: core
     facade_family: u
     module_family: other_private
-    source_symbol: FlextInfraGithubConstants
+    source_symbol: FlextInfraConstantsGithub
     target_facade_class: FlextGithubConstants
-    target_namespace_path: FlextGithubConstants.FlextInfraGithubConstants
+    target_namespace_path: FlextGithubConstants.FlextInfraConstantsGithub
     expected_base_chain: *id006
     forbidden_targets: []
     confidence: 0.7
     pre_checks:
       - type: source_symbol_is_class
         params:
-          symbol: FlextInfraGithubConstants
+          symbol: FlextInfraConstantsGithub
       - type: target_facade_exists
         params:
           facade: FlextGithubConstants
@@ -3314,16 +3314,16 @@ rules:
   - project_kind: core
     facade_family: u
     module_family: other_private
-    source_symbol: FlextInfraRefactorConstants
+    source_symbol: FlextInfraConstantsRefactor
     target_facade_class: FlextRefactorConstants
-    target_namespace_path: FlextRefactorConstants.FlextInfraRefactorConstants
+    target_namespace_path: FlextRefactorConstants.FlextInfraConstantsRefactor
     expected_base_chain: *id006
     forbidden_targets: []
     confidence: 0.7
     pre_checks:
       - type: source_symbol_is_class
         params:
-          symbol: FlextInfraRefactorConstants
+          symbol: FlextInfraConstantsRefactor
       - type: target_facade_exists
         params:
           facade: FlextRefactorConstants
@@ -4058,16 +4058,16 @@ rules:
   - project_kind: core
     facade_family: u
     module_family: other_private
-    source_symbol: FlextInfraReleaseConstants
+    source_symbol: FlextInfraConstantsRelease
     target_facade_class: FlextReleaseConstants
-    target_namespace_path: FlextReleaseConstants.FlextInfraReleaseConstants
+    target_namespace_path: FlextReleaseConstants.FlextInfraConstantsRelease
     expected_base_chain: *id006
     forbidden_targets: []
     confidence: 0.7
     pre_checks:
       - type: source_symbol_is_class
         params:
-          symbol: FlextInfraReleaseConstants
+          symbol: FlextInfraConstantsRelease
       - type: target_facade_exists
         params:
           facade: FlextReleaseConstants
@@ -4277,16 +4277,16 @@ rules:
   - project_kind: core
     facade_family: u
     module_family: other_private
-    source_symbol: FlextInfraWorkspaceConstants
+    source_symbol: FlextInfraConstantsWorkspace
     target_facade_class: FlextWorkspaceConstants
-    target_namespace_path: FlextWorkspaceConstants.FlextInfraWorkspaceConstants
+    target_namespace_path: FlextWorkspaceConstants.FlextInfraConstantsWorkspace
     expected_base_chain: *id006
     forbidden_targets: []
     confidence: 0.7
     pre_checks:
       - type: source_symbol_is_class
         params:
-          symbol: FlextInfraWorkspaceConstants
+          symbol: FlextInfraConstantsWorkspace
       - type: target_facade_exists
         params:
           facade: FlextWorkspaceConstants

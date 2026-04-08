@@ -7,7 +7,7 @@ import pytest
 from tests import c, m, t, u
 
 
-class TestDiscoveryProjectRoots:
+class TestDiscoveryConsolidated:
     def test_discover_project_roots_with_real_workspace_root(self) -> None:
         # Walk up from the test file to find the workspace root (contains flext-core)
         candidate = Path(__file__).resolve()
@@ -71,8 +71,6 @@ class TestDiscoveryProjectRoots:
 
         assert roots == [tmp_path / "beta", tmp_path / "alpha"]
 
-
-class TestDiscoveryIterPythonFiles:
     def test_iter_python_files_returns_result_with_paths(self, tmp_path: Path) -> None:
         project = tmp_path / "pkg"
         src_dir = project / c.Infra.Paths.DEFAULT_SRC_DIR
@@ -156,8 +154,6 @@ class TestDiscoveryIterPythonFiles:
         assert legit_file in result.value
         assert nested_venv_file not in result.value
 
-
-class TestDiscoveryFindAllPyprojectFiles:
     def test_find_all_pyproject_files_with_project_paths(self, tmp_path: Path) -> None:
         first = tmp_path / "first"
         second = tmp_path / "second"
@@ -209,8 +205,6 @@ class TestDiscoveryFindAllPyprojectFiles:
         error_text = result.error or ""
         assert "pyproject file scan failed" in error_text
 
-
-class TestDiscoveryDiscoverProjects:
     def test_discover_projects_returns_project_info(self, tmp_path: Path) -> None:
         project = tmp_path / "alpha"
         (project / c.Infra.Paths.DEFAULT_SRC_DIR).mkdir(parents=True)

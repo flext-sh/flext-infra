@@ -21,7 +21,7 @@ from flext_infra import (
 )
 
 
-class FlextInfraCodegenConstantsQualityGate(s[bool]):
+class FlextInfraConstantsCodegenQualityGate(s[bool]):
     """Run final constants migration checks with before/after comparison."""
 
     before_report: Annotated[
@@ -186,4 +186,4 @@ class FlextInfraCodegenConstantsQualityGate(s[bool]):
         return verdict in c.Infra.QualityGate.PASS_VERDICTS
 
 
-__all__ = ["FlextInfraCodegenConstantsQualityGate"]
+__all__ = ["FlextInfraConstantsCodegenQualityGate"]

@@ -10,7 +10,90 @@ import typing as _t
 from flext_core.lazy import install_lazy_exports
 
 if _t.TYPE_CHECKING:
+    import flext_infra._utilities._utilities as _flext_infra__utilities__utilities
+
+    _utilities = _flext_infra__utilities__utilities
+    import flext_infra._utilities._utilities_census as _flext_infra__utilities__utilities_census
+    from flext_infra._utilities._utilities import FlextInfraUtilitiesRefactor
+
+    _utilities_census = _flext_infra__utilities__utilities_census
+    import flext_infra._utilities._utilities_cli as _flext_infra__utilities__utilities_cli
+    from flext_infra._utilities._utilities_census import (
+        FlextInfraUtilitiesRefactorCensus,
+    )
+
+    _utilities_cli = _flext_infra__utilities__utilities_cli
+    import flext_infra._utilities._utilities_engine as _flext_infra__utilities__utilities_engine
+    from flext_infra._utilities._utilities_cli import FlextInfraUtilitiesRefactorCli
+
+    _utilities_engine = _flext_infra__utilities__utilities_engine
+    import flext_infra._utilities._utilities_mro_scan as _flext_infra__utilities__utilities_mro_scan
+    from flext_infra._utilities._utilities_engine import (
+        FlextInfraUtilitiesRefactorEngine,
+    )
+
+    _utilities_mro_scan = _flext_infra__utilities__utilities_mro_scan
+    import flext_infra._utilities._utilities_mro_transform as _flext_infra__utilities__utilities_mro_transform
+    from flext_infra._utilities._utilities_mro_scan import (
+        FlextInfraUtilitiesRefactorMroScan,
+    )
+
+    _utilities_mro_transform = _flext_infra__utilities__utilities_mro_transform
+    import flext_infra._utilities._utilities_namespace as _flext_infra__utilities__utilities_namespace
+    from flext_infra._utilities._utilities_mro_transform import (
+        FlextInfraUtilitiesRefactorMroTransform,
+    )
+
+    _utilities_namespace = _flext_infra__utilities__utilities_namespace
+    import flext_infra._utilities._utilities_namespace_analysis as _flext_infra__utilities__utilities_namespace_analysis
+    from flext_infra._utilities._utilities_namespace import (
+        FlextInfraUtilitiesRefactorNamespace,
+    )
+
+    _utilities_namespace_analysis = (
+        _flext_infra__utilities__utilities_namespace_analysis
+    )
+    import flext_infra._utilities._utilities_namespace_facades as _flext_infra__utilities__utilities_namespace_facades
+    from flext_infra._utilities._utilities_namespace_analysis import (
+        FlextInfraUtilitiesRefactorNamespaceCommon,
+        FlextInfraUtilitiesRefactorNamespaceMro,
+    )
+
+    _utilities_namespace_facades = _flext_infra__utilities__utilities_namespace_facades
+    import flext_infra._utilities._utilities_namespace_moves as _flext_infra__utilities__utilities_namespace_moves
+    from flext_infra._utilities._utilities_namespace_facades import (
+        FlextInfraUtilitiesRefactorNamespaceFacades,
+    )
+
+    _utilities_namespace_moves = _flext_infra__utilities__utilities_namespace_moves
+    import flext_infra._utilities._utilities_namespace_runtime as _flext_infra__utilities__utilities_namespace_runtime
+    from flext_infra._utilities._utilities_namespace_moves import (
+        FlextInfraUtilitiesRefactorNamespaceMoves,
+    )
+
+    _utilities_namespace_runtime = _flext_infra__utilities__utilities_namespace_runtime
+    import flext_infra._utilities._utilities_policy as _flext_infra__utilities__utilities_policy
+    from flext_infra._utilities._utilities_namespace_runtime import (
+        FlextInfraUtilitiesRefactorNamespaceRuntime,
+    )
+
+    _utilities_policy = _flext_infra__utilities__utilities_policy
+    import flext_infra._utilities._utilities_pydantic as _flext_infra__utilities__utilities_pydantic
+    from flext_infra._utilities._utilities_policy import (
+        FlextInfraUtilitiesRefactorPolicy,
+    )
+
+    _utilities_pydantic = _flext_infra__utilities__utilities_pydantic
+    import flext_infra._utilities._utilities_pydantic_analysis as _flext_infra__utilities__utilities_pydantic_analysis
+    from flext_infra._utilities._utilities_pydantic import (
+        FlextInfraUtilitiesRefactorPydantic,
+    )
+
+    _utilities_pydantic_analysis = _flext_infra__utilities__utilities_pydantic_analysis
     import flext_infra._utilities.base as _flext_infra__utilities_base
+    from flext_infra._utilities._utilities_pydantic_analysis import (
+        FlextInfraUtilitiesRefactorPydanticAnalysis,
+    )
 
     base = _flext_infra__utilities_base
     import flext_infra._utilities.cli as _flext_infra__utilities_cli
@@ -25,8 +108,12 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.cli_shared import FlextInfraUtilitiesCliShared
 
     cli_subcommand = _flext_infra__utilities_cli_subcommand
-    import flext_infra._utilities.codegen_constants as _flext_infra__utilities_codegen_constants
+    import flext_infra._utilities.codegen as _flext_infra__utilities_codegen
     from flext_infra._utilities.cli_subcommand import FlextInfraUtilitiesCliSubcommand
+
+    codegen = _flext_infra__utilities_codegen
+    import flext_infra._utilities.codegen_constants as _flext_infra__utilities_codegen_constants
+    from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen
 
     codegen_constants = _flext_infra__utilities_codegen_constants
     import flext_infra._utilities.codegen_execution as _flext_infra__utilities_codegen_execution
@@ -140,8 +227,15 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.github import FlextInfraUtilitiesGithub
 
     github_pr = _flext_infra__utilities_github_pr
-    import flext_infra._utilities.iteration as _flext_infra__utilities_iteration
+    import flext_infra._utilities.import_normalizer as _flext_infra__utilities_import_normalizer
     from flext_infra._utilities.github_pr import FlextInfraUtilitiesGithubPr
+
+    import_normalizer = _flext_infra__utilities_import_normalizer
+    import flext_infra._utilities.iteration as _flext_infra__utilities_iteration
+    from flext_infra._utilities.import_normalizer import (
+        FlextInfraNormalizerContext,
+        FlextInfraUtilitiesImportNormalizer,
+    )
 
     iteration = _flext_infra__utilities_iteration
     import flext_infra._utilities.log_parser as _flext_infra__utilities_log_parser
@@ -232,8 +326,14 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.toml import FlextInfraUtilitiesToml
 
     toml_parse = _flext_infra__utilities_toml_parse
-    import flext_infra._utilities.versioning as _flext_infra__utilities_versioning
+    import flext_infra._utilities.transformer_policy as _flext_infra__utilities_transformer_policy
     from flext_infra._utilities.toml_parse import FlextInfraUtilitiesTomlParse
+
+    transformer_policy = _flext_infra__utilities_transformer_policy
+    import flext_infra._utilities.versioning as _flext_infra__utilities_versioning
+    from flext_infra._utilities.transformer_policy import (
+        FlextInfraUtilitiesRefactorTransformerPolicy,
+    )
 
     versioning = _flext_infra__utilities_versioning
     import flext_infra._utilities.yaml as _flext_infra__utilities_yaml
@@ -250,6 +350,10 @@ _LAZY_IMPORTS = {
         "flext_infra._utilities.deps_repos",
         "FlextInfraInternalSyncRepoMixin",
     ),
+    "FlextInfraNormalizerContext": (
+        "flext_infra._utilities.import_normalizer",
+        "FlextInfraNormalizerContext",
+    ),
     "FlextInfraUtilitiesBase": (
         "flext_infra._utilities.base",
         "FlextInfraUtilitiesBase",
@@ -262,6 +366,10 @@ _LAZY_IMPORTS = {
     "FlextInfraUtilitiesCliSubcommand": (
         "flext_infra._utilities.cli_subcommand",
         "FlextInfraUtilitiesCliSubcommand",
+    ),
+    "FlextInfraUtilitiesCodegen": (
+        "flext_infra._utilities.codegen",
+        "FlextInfraUtilitiesCodegen",
     ),
     "FlextInfraUtilitiesCodegenConstantAnalysis": (
         "flext_infra._utilities.codegen_constants",
@@ -368,6 +476,10 @@ _LAZY_IMPORTS = {
         "flext_infra._utilities.github_pr",
         "FlextInfraUtilitiesGithubPr",
     ),
+    "FlextInfraUtilitiesImportNormalizer": (
+        "flext_infra._utilities.import_normalizer",
+        "FlextInfraUtilitiesImportNormalizer",
+    ),
     "FlextInfraUtilitiesIteration": (
         "flext_infra._utilities.iteration",
         "FlextInfraUtilitiesIteration",
@@ -399,6 +511,70 @@ _LAZY_IMPORTS = {
     "FlextInfraUtilitiesProtectedEdit": (
         "flext_infra._utilities.protected_edit",
         "FlextInfraUtilitiesProtectedEdit",
+    ),
+    "FlextInfraUtilitiesRefactor": (
+        "flext_infra._utilities._utilities",
+        "FlextInfraUtilitiesRefactor",
+    ),
+    "FlextInfraUtilitiesRefactorCensus": (
+        "flext_infra._utilities._utilities_census",
+        "FlextInfraUtilitiesRefactorCensus",
+    ),
+    "FlextInfraUtilitiesRefactorCli": (
+        "flext_infra._utilities._utilities_cli",
+        "FlextInfraUtilitiesRefactorCli",
+    ),
+    "FlextInfraUtilitiesRefactorEngine": (
+        "flext_infra._utilities._utilities_engine",
+        "FlextInfraUtilitiesRefactorEngine",
+    ),
+    "FlextInfraUtilitiesRefactorMroScan": (
+        "flext_infra._utilities._utilities_mro_scan",
+        "FlextInfraUtilitiesRefactorMroScan",
+    ),
+    "FlextInfraUtilitiesRefactorMroTransform": (
+        "flext_infra._utilities._utilities_mro_transform",
+        "FlextInfraUtilitiesRefactorMroTransform",
+    ),
+    "FlextInfraUtilitiesRefactorNamespace": (
+        "flext_infra._utilities._utilities_namespace",
+        "FlextInfraUtilitiesRefactorNamespace",
+    ),
+    "FlextInfraUtilitiesRefactorNamespaceCommon": (
+        "flext_infra._utilities._utilities_namespace_analysis",
+        "FlextInfraUtilitiesRefactorNamespaceCommon",
+    ),
+    "FlextInfraUtilitiesRefactorNamespaceFacades": (
+        "flext_infra._utilities._utilities_namespace_facades",
+        "FlextInfraUtilitiesRefactorNamespaceFacades",
+    ),
+    "FlextInfraUtilitiesRefactorNamespaceMoves": (
+        "flext_infra._utilities._utilities_namespace_moves",
+        "FlextInfraUtilitiesRefactorNamespaceMoves",
+    ),
+    "FlextInfraUtilitiesRefactorNamespaceMro": (
+        "flext_infra._utilities._utilities_namespace_analysis",
+        "FlextInfraUtilitiesRefactorNamespaceMro",
+    ),
+    "FlextInfraUtilitiesRefactorNamespaceRuntime": (
+        "flext_infra._utilities._utilities_namespace_runtime",
+        "FlextInfraUtilitiesRefactorNamespaceRuntime",
+    ),
+    "FlextInfraUtilitiesRefactorPolicy": (
+        "flext_infra._utilities._utilities_policy",
+        "FlextInfraUtilitiesRefactorPolicy",
+    ),
+    "FlextInfraUtilitiesRefactorPydantic": (
+        "flext_infra._utilities._utilities_pydantic",
+        "FlextInfraUtilitiesRefactorPydantic",
+    ),
+    "FlextInfraUtilitiesRefactorPydanticAnalysis": (
+        "flext_infra._utilities._utilities_pydantic_analysis",
+        "FlextInfraUtilitiesRefactorPydanticAnalysis",
+    ),
+    "FlextInfraUtilitiesRefactorTransformerPolicy": (
+        "flext_infra._utilities.transformer_policy",
+        "FlextInfraUtilitiesRefactorTransformerPolicy",
     ),
     "FlextInfraUtilitiesRelease": (
         "flext_infra._utilities.release",
@@ -464,10 +640,25 @@ _LAZY_IMPORTS = {
         "flext_infra._utilities.yaml",
         "FlextInfraUtilitiesYaml",
     ),
+    "_utilities": "flext_infra._utilities._utilities",
+    "_utilities_census": "flext_infra._utilities._utilities_census",
+    "_utilities_cli": "flext_infra._utilities._utilities_cli",
+    "_utilities_engine": "flext_infra._utilities._utilities_engine",
+    "_utilities_mro_scan": "flext_infra._utilities._utilities_mro_scan",
+    "_utilities_mro_transform": "flext_infra._utilities._utilities_mro_transform",
+    "_utilities_namespace": "flext_infra._utilities._utilities_namespace",
+    "_utilities_namespace_analysis": "flext_infra._utilities._utilities_namespace_analysis",
+    "_utilities_namespace_facades": "flext_infra._utilities._utilities_namespace_facades",
+    "_utilities_namespace_moves": "flext_infra._utilities._utilities_namespace_moves",
+    "_utilities_namespace_runtime": "flext_infra._utilities._utilities_namespace_runtime",
+    "_utilities_policy": "flext_infra._utilities._utilities_policy",
+    "_utilities_pydantic": "flext_infra._utilities._utilities_pydantic",
+    "_utilities_pydantic_analysis": "flext_infra._utilities._utilities_pydantic_analysis",
     "base": "flext_infra._utilities.base",
     "cli": "flext_infra._utilities.cli",
     "cli_shared": "flext_infra._utilities.cli_shared",
     "cli_subcommand": "flext_infra._utilities.cli_subcommand",
+    "codegen": "flext_infra._utilities.codegen",
     "codegen_constants": "flext_infra._utilities.codegen_constants",
     "codegen_execution": "flext_infra._utilities.codegen_execution",
     "codegen_generation": "flext_infra._utilities.codegen_generation",
@@ -492,6 +683,7 @@ _LAZY_IMPORTS = {
     "git": "flext_infra._utilities.git",
     "github": "flext_infra._utilities.github",
     "github_pr": "flext_infra._utilities.github_pr",
+    "import_normalizer": "flext_infra._utilities.import_normalizer",
     "iteration": "flext_infra._utilities.iteration",
     "log_parser": "flext_infra._utilities.log_parser",
     "output": "flext_infra._utilities.output",
@@ -514,6 +706,7 @@ _LAZY_IMPORTS = {
     "terminal": "flext_infra._utilities.terminal",
     "toml": "flext_infra._utilities.toml",
     "toml_parse": "flext_infra._utilities.toml_parse",
+    "transformer_policy": "flext_infra._utilities.transformer_policy",
     "versioning": "flext_infra._utilities.versioning",
     "yaml": "flext_infra._utilities.yaml",
 }
@@ -521,10 +714,12 @@ _LAZY_IMPORTS = {
 __all__ = [
     "FlextInfraExtraPathsResolutionMixin",
     "FlextInfraInternalSyncRepoMixin",
+    "FlextInfraNormalizerContext",
     "FlextInfraUtilitiesBase",
     "FlextInfraUtilitiesCli",
     "FlextInfraUtilitiesCliShared",
     "FlextInfraUtilitiesCliSubcommand",
+    "FlextInfraUtilitiesCodegen",
     "FlextInfraUtilitiesCodegenConstantAnalysis",
     "FlextInfraUtilitiesCodegenConstantDetection",
     "FlextInfraUtilitiesCodegenConstantTransformation",
@@ -552,6 +747,7 @@ __all__ = [
     "FlextInfraUtilitiesGit",
     "FlextInfraUtilitiesGithub",
     "FlextInfraUtilitiesGithubPr",
+    "FlextInfraUtilitiesImportNormalizer",
     "FlextInfraUtilitiesIteration",
     "FlextInfraUtilitiesLogParser",
     "FlextInfraUtilitiesOutput",
@@ -560,6 +756,22 @@ __all__ = [
     "FlextInfraUtilitiesPaths",
     "FlextInfraUtilitiesPatterns",
     "FlextInfraUtilitiesProtectedEdit",
+    "FlextInfraUtilitiesRefactor",
+    "FlextInfraUtilitiesRefactorCensus",
+    "FlextInfraUtilitiesRefactorCli",
+    "FlextInfraUtilitiesRefactorEngine",
+    "FlextInfraUtilitiesRefactorMroScan",
+    "FlextInfraUtilitiesRefactorMroTransform",
+    "FlextInfraUtilitiesRefactorNamespace",
+    "FlextInfraUtilitiesRefactorNamespaceCommon",
+    "FlextInfraUtilitiesRefactorNamespaceFacades",
+    "FlextInfraUtilitiesRefactorNamespaceMoves",
+    "FlextInfraUtilitiesRefactorNamespaceMro",
+    "FlextInfraUtilitiesRefactorNamespaceRuntime",
+    "FlextInfraUtilitiesRefactorPolicy",
+    "FlextInfraUtilitiesRefactorPydantic",
+    "FlextInfraUtilitiesRefactorPydanticAnalysis",
+    "FlextInfraUtilitiesRefactorTransformerPolicy",
     "FlextInfraUtilitiesRelease",
     "FlextInfraUtilitiesReporting",
     "FlextInfraUtilitiesRope",
@@ -576,10 +788,25 @@ __all__ = [
     "FlextInfraUtilitiesTomlParse",
     "FlextInfraUtilitiesVersioning",
     "FlextInfraUtilitiesYaml",
+    "_utilities",
+    "_utilities_census",
+    "_utilities_cli",
+    "_utilities_engine",
+    "_utilities_mro_scan",
+    "_utilities_mro_transform",
+    "_utilities_namespace",
+    "_utilities_namespace_analysis",
+    "_utilities_namespace_facades",
+    "_utilities_namespace_moves",
+    "_utilities_namespace_runtime",
+    "_utilities_policy",
+    "_utilities_pydantic",
+    "_utilities_pydantic_analysis",
     "base",
     "cli",
     "cli_shared",
     "cli_subcommand",
+    "codegen",
     "codegen_constants",
     "codegen_execution",
     "codegen_generation",
@@ -604,6 +831,7 @@ __all__ = [
     "git",
     "github",
     "github_pr",
+    "import_normalizer",
     "iteration",
     "log_parser",
     "output",
@@ -626,6 +854,7 @@ __all__ = [
     "terminal",
     "toml",
     "toml_parse",
+    "transformer_policy",
     "versioning",
     "yaml",
 ]

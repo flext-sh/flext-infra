@@ -7,8 +7,8 @@ from collections.abc import Sequence
 from typing import override
 
 from flext_infra import (
-    FlextInfraRefactorTransformerPolicyUtilities,
     FlextInfraRopeTransformer,
+    FlextInfraUtilitiesRefactorTransformerPolicy,
     t,
 )
 
@@ -201,7 +201,7 @@ class FlextInfraNestedClassPropagationTransformer(FlextInfraRopeTransformer):
 
     def _should_propagate(self, symbol_name: str, policy_key: str) -> bool:
         """Check policy for a specific propagation mode."""
-        policy = FlextInfraRefactorTransformerPolicyUtilities.policy_for_symbol(
+        policy = FlextInfraUtilitiesRefactorTransformerPolicy.policy_for_symbol(
             policy_context=self._policy_context,
             symbol_families=self._class_families,
             symbol_name=symbol_name,
@@ -218,7 +218,7 @@ class FlextInfraNestedClassPropagationTransformer(FlextInfraRopeTransformer):
 
     def _blocked_by_prefix(self, symbol_name: str) -> bool:
         """Check if symbol is blocked by prefix policy."""
-        policy = FlextInfraRefactorTransformerPolicyUtilities.policy_for_symbol(
+        policy = FlextInfraUtilitiesRefactorTransformerPolicy.policy_for_symbol(
             policy_context=self._policy_context,
             symbol_families=self._class_families,
             symbol_name=symbol_name,

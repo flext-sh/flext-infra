@@ -11,19 +11,19 @@ from __future__ import annotations
 
 from flext_cli import c
 from flext_infra import (
-    FlextInfraBasemkConstants,
-    FlextInfraCheckConstants,
-    FlextInfraCodegenConstants,
     FlextInfraConstantsBase,
+    FlextInfraConstantsBasemk,
     FlextInfraConstantsCensus,
+    FlextInfraConstantsCheck,
+    FlextInfraConstantsCodegen,
+    FlextInfraConstantsCore,
+    FlextInfraConstantsDeps,
+    FlextInfraConstantsDocs,
+    FlextInfraConstantsGithub,
+    FlextInfraConstantsRefactor,
+    FlextInfraConstantsRelease,
     FlextInfraConstantsRope,
-    FlextInfraCoreConstants,
-    FlextInfraDepsConstants,
-    FlextInfraDocsConstants,
-    FlextInfraGithubConstants,
-    FlextInfraRefactorConstants,
-    FlextInfraReleaseConstants,
-    FlextInfraWorkspaceConstants,
+    FlextInfraConstantsWorkspace,
 )
 
 
@@ -43,17 +43,17 @@ class FlextInfraConstants(c):
     class Infra(
         FlextInfraConstantsBase,
         FlextInfraConstantsCensus,
-        FlextInfraBasemkConstants,
-        FlextInfraCheckConstants,
-        FlextInfraCodegenConstants,
+        FlextInfraConstantsBasemk,
+        FlextInfraConstantsCheck,
+        FlextInfraConstantsCodegen,
         FlextInfraConstantsRope,
-        FlextInfraCoreConstants,
-        FlextInfraDepsConstants,
-        FlextInfraDocsConstants,
-        FlextInfraGithubConstants,
-        FlextInfraRefactorConstants,
-        FlextInfraReleaseConstants,
-        FlextInfraWorkspaceConstants,
+        FlextInfraConstantsCore,
+        FlextInfraConstantsDeps,
+        FlextInfraConstantsDocs,
+        FlextInfraConstantsGithub,
+        FlextInfraConstantsRefactor,
+        FlextInfraConstantsRelease,
+        FlextInfraConstantsWorkspace,
     ):
         """Merged infra-domain constants from all sub-packages."""
 

@@ -11,7 +11,7 @@ from flext_core import FlextModels
 from flext_infra import t
 
 
-class FlextInfraGatesModels:
+class FlextInfraModelsGates:
     """Quality gate execution domain models."""
 
     class GateContext(
@@ -53,4 +53,4 @@ class FlextInfraGatesModels:
         ] = ()
 
 
-__all__ = ["FlextInfraGatesModels"]
+__all__ = ["FlextInfraModelsGates"]

@@ -14,7 +14,7 @@ from flext_core import m
 from flext_infra import c, t
 
 
-class FlextInfraEngineOperationModels:
+class FlextInfraModelsEngineOperation:
     """TOML operation models used by the phase builder and executor."""
 
     class TomlSetOp(m.ContractModel):
@@ -47,4 +47,4 @@ class FlextInfraEngineOperationModels:
         )
 
 
-__all__ = ["FlextInfraEngineOperationModels"]
+__all__ = ["FlextInfraModelsEngineOperation"]

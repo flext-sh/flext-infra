@@ -8,10 +8,10 @@ from typing import Annotated
 from pydantic import Field
 
 from flext_core import m
-from flext_infra import FlextInfraDepsModelsToolConfig, FlextInfraModelsMixins, t
+from flext_infra import FlextInfraModelsDepsToolConfig, FlextInfraModelsMixins, t
 
 
-class FlextInfraDepsModels(FlextInfraDepsModelsToolConfig):
+class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig):
     """Models for dependency detection and modernization reporting."""
 
     class DependencyLimitsInfo(m.ArbitraryTypesModel):
@@ -79,7 +79,7 @@ class FlextInfraDepsModels(FlextInfraDepsModelsToolConfig):
     ):
         """Project-level dependency report combining deptry results."""
 
-        deptry: FlextInfraDepsModels.DeptryReport = Field(description="Deptry report")
+        deptry: FlextInfraModelsDeps.DeptryReport = Field(description="Deptry report")
 
     class TypingsReport(m.ArbitraryTypesModel):
         """Typing stubs analysis report with required/current/delta packages."""
@@ -112,8 +112,8 @@ class FlextInfraDepsModels(FlextInfraDepsModelsToolConfig):
     class ProjectRuntimeReport(m.ArbitraryTypesModel):
         """Project runtime dependency and typings report."""
 
-        deptry: FlextInfraDepsModels.DeptryReport = Field(description="Deptry report")
-        typings: FlextInfraDepsModels.TypingsReport | None = Field(
+        deptry: FlextInfraModelsDeps.DeptryReport = Field(description="Deptry report")
+        typings: FlextInfraModelsDeps.TypingsReport | None = Field(
             default=None, description="Typings report"
         )
 
@@ -121,15 +121,15 @@ class FlextInfraDepsModels(FlextInfraDepsModelsToolConfig):
         """Workspace-level dependency analysis report aggregating all projects."""
 
         workspace: Annotated[str, Field(description="Workspace name")]
-        projects: Mapping[str, FlextInfraDepsModels.ProjectRuntimeReport] = Field(
+        projects: Mapping[str, FlextInfraModelsDeps.ProjectRuntimeReport] = Field(
             default_factory=dict, description="Per-project reports"
         )
-        pip_check: FlextInfraDepsModels.PipCheckReport | None = Field(
+        pip_check: FlextInfraModelsDeps.PipCheckReport | None = Field(
             default=None, description="Pip check report"
         )
-        dependency_limits: FlextInfraDepsModels.DependencyLimitsInfo | None = Field(
+        dependency_limits: FlextInfraModelsDeps.DependencyLimitsInfo | None = Field(
             default=None, description="Dependency limits"
         )
 
 
-__all__ = ["FlextInfraDepsModels"]
+__all__ = ["FlextInfraModelsDeps"]

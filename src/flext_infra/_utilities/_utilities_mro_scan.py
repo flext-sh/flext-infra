@@ -17,7 +17,7 @@ from rope.base.pyobjects import AbstractClass
 from rope.base.resources import File
 
 from flext_infra import (
-    FlextInfraRefactorGrepModels,
+    FlextInfraModelsRefactorGrep,
     FlextInfraTypesRope,
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesRopeCore,
@@ -40,13 +40,13 @@ class FlextInfraUtilitiesRefactorMroScan:
         *,
         workspace_root: Path,
         target: str,
-    ) -> tuple[Sequence[FlextInfraRefactorGrepModels.MROScanReport], int]:
+    ) -> tuple[Sequence[FlextInfraModelsRefactorGrep.MROScanReport], int]:
         """Scan workspace and collect migration reports for a target family."""
         if target not in c.Infra.MRO_TARGETS:
-            empty_list: list[FlextInfraRefactorGrepModels.MROScanReport] = []
+            empty_list: list[FlextInfraModelsRefactorGrep.MROScanReport] = []
             return (empty_list, 0)
 
-        results: list[FlextInfraRefactorGrepModels.MROScanReport] = []
+        results: list[FlextInfraModelsRefactorGrep.MROScanReport] = []
         scanned = 0
         target_specs = FlextInfraUtilitiesRefactorMroScan._target_specs(target=target)
         for project_root in FlextInfraUtilitiesIteration.discover_project_roots(
@@ -84,7 +84,7 @@ class FlextInfraUtilitiesRefactorMroScan:
         resource: FlextInfraTypesRope.RopeResource,
         project_root: Path,
         target_spec: m.Infra.MROTargetSpec,
-    ) -> FlextInfraRefactorGrepModels.MROScanReport | None:
+    ) -> FlextInfraModelsRefactorGrep.MROScanReport | None:
         """Scan one file using rope and return migration candidates."""
         source = resource.read()
         facade = FlextInfraUtilitiesRefactorMroScan._find_facade(source, target_spec)
@@ -96,7 +96,7 @@ class FlextInfraUtilitiesRefactorMroScan:
             p for p in rel.with_suffix("").parts if p != c.Infra.Paths.DEFAULT_SRC_DIR
         ])
 
-        candidates: list[FlextInfraRefactorGrepModels.MROSymbolCandidate] = []
+        candidates: list[FlextInfraModelsRefactorGrep.MROSymbolCandidate] = []
         rope_proj = FlextInfraUtilitiesRefactorMroScan._init_rope_project(project_root)
         try:
             pycore = FlextInfraUtilitiesRopeCore.get_pycore(rope_proj)
@@ -147,7 +147,7 @@ class FlextInfraUtilitiesRefactorMroScan:
         finally:
             rope_proj.close()
 
-        return FlextInfraRefactorGrepModels.MROScanReport(
+        return FlextInfraModelsRefactorGrep.MROScanReport(
             file=resource.real_path,
             module=module,
             constants_class=facade,
@@ -165,7 +165,7 @@ class FlextInfraUtilitiesRefactorMroScan:
         class_header: str,
         target_spec: m.Infra.MROTargetSpec,
         obj: object,
-    ) -> FlextInfraRefactorGrepModels.MROSymbolCandidate | None:
+    ) -> FlextInfraModelsRefactorGrep.MROSymbolCandidate | None:
         alias = target_spec.family_alias
         kind = ""
 
@@ -192,7 +192,7 @@ class FlextInfraUtilitiesRefactorMroScan:
         if not kind:
             return None
 
-        return FlextInfraRefactorGrepModels.MROSymbolCandidate(
+        return FlextInfraModelsRefactorGrep.MROSymbolCandidate(
             symbol=name,
             line=line,
             end_line=(end_line if end_line > line else None),

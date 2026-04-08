@@ -16,7 +16,7 @@ from flext_core import m
 from flext_infra import c, t
 
 
-class FlextInfraEngineModels:
+class FlextInfraModelsEngine:
     """Engine models accessible via ``m.Infra.*``."""
 
     class TomlSetOp(m.ContractModel):
@@ -62,11 +62,11 @@ class FlextInfraEngineModels:
             description="Root path before table_path",
         )
         table_path: t.StrSequence = Field(default=(), description="Primary table path")
-        operations: Sequence[FlextInfraEngineModels.TomlOperation] = Field(
+        operations: Sequence[FlextInfraModelsEngine.TomlOperation] = Field(
             default=(),
             description="Declarative TOML operations",
         )
-        nested_tables: Sequence[FlextInfraEngineModels.TomlPhaseConfig] = Field(
+        nested_tables: Sequence[FlextInfraModelsEngine.TomlPhaseConfig] = Field(
             default=(), description="Nested TOML phase configs"
         )
         custom_handler: Callable[..., t.StrSequence] | None = Field(
@@ -75,12 +75,12 @@ class FlextInfraEngineModels:
             description="Custom handler",
         )
 
-        class Builder(m.Builder.Identity["FlextInfraEngineModels.TomlPhaseConfig"]):
+        class Builder(m.Builder.Identity["FlextInfraModelsEngine.TomlPhaseConfig"]):
             """Fluent builder — ``m.Infra.TomlPhaseConfig.Builder("ruff").table(...).build()``."""
 
             def __init__(self, name: str) -> None:
                 super().__init__(
-                    state=FlextInfraEngineModels.TomlPhaseConfig(name=name)
+                    state=FlextInfraModelsEngine.TomlPhaseConfig(name=name)
                 )
 
             @classmethod
@@ -90,25 +90,25 @@ class FlextInfraEngineModels:
                 values: Sequence[tuple[str, t.Cli.JsonValue]] = (),
                 lists: Sequence[tuple[str, t.StrSequence]] = (),
                 deprecated_keys: t.StrSequence = (),
-            ) -> tuple[FlextInfraEngineModels.TomlOperation, ...]:
+            ) -> tuple[FlextInfraModelsEngine.TomlOperation, ...]:
                 return tuple(
                     chain(
                         (
                             cls._model(
-                                FlextInfraEngineModels.TomlSetOp, key=key, value=value
+                                FlextInfraModelsEngine.TomlSetOp, key=key, value=value
                             )
                             for key, value in values
                         ),
                         (
                             cls._model(
-                                FlextInfraEngineModels.TomlListOp,
+                                FlextInfraModelsEngine.TomlListOp,
                                 key=key,
                                 values=tuple(entries),
                             )
                             for key, entries in lists
                         ),
                         (
-                            cls._model(FlextInfraEngineModels.TomlRemoveOp, key=key)
+                            cls._model(FlextInfraModelsEngine.TomlRemoveOp, key=key)
                             for key in deprecated_keys
                         ),
                     ),
@@ -127,7 +127,7 @@ class FlextInfraEngineModels:
 
             def value(self, key: str, value: t.Cli.JsonValue) -> Self:
                 return self._operation(
-                    FlextInfraEngineModels.TomlSetOp, key=key, value=value
+                    FlextInfraModelsEngine.TomlSetOp, key=key, value=value
                 )
 
             def list(
@@ -139,7 +139,7 @@ class FlextInfraEngineModels:
                 sort: bool = True,
             ) -> Self:
                 return self._operation(
-                    FlextInfraEngineModels.TomlListOp,
+                    FlextInfraModelsEngine.TomlListOp,
                     key=key,
                     values=tuple(values),
                     strategy=strategy,
@@ -148,7 +148,7 @@ class FlextInfraEngineModels:
 
             def deprecated(self, key: str, *sub_path: str) -> Self:
                 return self._operation(
-                    FlextInfraEngineModels.TomlRemoveOp,
+                    FlextInfraModelsEngine.TomlRemoveOp,
                     key=key,
                     table_path=tuple(sub_path),
                 )
@@ -162,7 +162,7 @@ class FlextInfraEngineModels:
             ) -> Self:
                 return self._append_model(
                     "nested_tables",
-                    FlextInfraEngineModels.TomlPhaseConfig,
+                    FlextInfraModelsEngine.TomlPhaseConfig,
                     name=self.state.name,
                     root_path=(),
                     table_path=tuple(path),
@@ -175,4 +175,4 @@ class FlextInfraEngineModels:
                 return self._set(custom_handler=fn)
 
 
-__all__ = ["FlextInfraEngineModels"]
+__all__ = ["FlextInfraModelsEngine"]

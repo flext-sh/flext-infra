@@ -7,7 +7,7 @@ from typing import Final
 from flext_infra import t
 
 
-class FlextInfraBasemkConstants:
+class FlextInfraConstantsBasemk:
     """Basemk infrastructure constants."""
 
     TEMPLATE_ORDER: Final[t.StrSequence] = (
@@ -22,4 +22,4 @@ class FlextInfraBasemkConstants:
     )
 
 
-__all__ = ["FlextInfraBasemkConstants"]
+__all__ = ["FlextInfraConstantsBasemk"]

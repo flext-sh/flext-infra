@@ -11,7 +11,7 @@ from flext_core import m
 from flext_infra import FlextInfraModelsMixins, t
 
 
-class FlextInfraRefactorModelsViolations:
+class FlextInfraModelsRefactorViolations:
     """Class-nesting violation, helper classification, and analysis report models."""
 
     class ClassNestingMapping(m.ArbitraryTypesModel):
@@ -183,7 +183,7 @@ class FlextInfraRefactorModelsViolations:
             default_factory=dict, description="Confidence histogram"
         )
         violations: tuple[
-            FlextInfraRefactorModelsViolations.ClassNestingViolation,
+            FlextInfraModelsRefactorViolations.ClassNestingViolation,
             ...,
         ] = Field(default_factory=tuple, description="Violation details")
         per_file_counts: t.IntMapping = Field(
@@ -219,17 +219,17 @@ class FlextInfraRefactorModelsViolations:
             default_factory=dict, description="Category totals"
         )
         suggestions: tuple[
-            FlextInfraRefactorModelsViolations.HelperClassification,
+            FlextInfraModelsRefactorViolations.HelperClassification,
             ...,
         ] = Field(default_factory=tuple, description="Classification suggestions")
         manual_review: tuple[
-            FlextInfraRefactorModelsViolations.HelperClassification,
+            FlextInfraModelsRefactorViolations.HelperClassification,
             ...,
         ] = Field(default_factory=tuple, description="Manual-review candidates")
 
     class HelperFileAnalysis(m.ArbitraryTypesModel):
         suggestions: tuple[
-            FlextInfraRefactorModelsViolations.HelperClassification,
+            FlextInfraModelsRefactorViolations.HelperClassification,
             ...,
         ] = Field(
             default_factory=tuple,
@@ -239,7 +239,7 @@ class FlextInfraRefactorModelsViolations:
             default_factory=dict, description="Category totals for file helpers"
         )
         manual_review: tuple[
-            FlextInfraRefactorModelsViolations.HelperClassification,
+            FlextInfraModelsRefactorViolations.HelperClassification,
             ...,
         ] = Field(default_factory=tuple, description="Helpers requiring manual review")
 
@@ -265,16 +265,16 @@ class FlextInfraRefactorModelsViolations:
             default_factory=dict, description="Per-file per-pattern counts"
         )
         top_files: tuple[
-            FlextInfraRefactorModelsViolations.ViolationTopFileSection,
+            FlextInfraModelsRefactorViolations.ViolationTopFileSection,
             ...,
         ] = Field(default_factory=tuple, description="Top hotspot files")
         files_scanned: Annotated[t.NonNegativeInt, Field(description="Files scanned")]
-        helper_classification: FlextInfraRefactorModelsViolations.HelperClassificationReport = Field(
+        helper_classification: FlextInfraModelsRefactorViolations.HelperClassificationReport = Field(
             description="Helper classification summary"
         )
-        class_nesting: FlextInfraRefactorModelsViolations.ClassNestingReport = Field(
+        class_nesting: FlextInfraModelsRefactorViolations.ClassNestingReport = Field(
             description="Class nesting analysis summary"
         )
 
 
-__all__ = ["FlextInfraRefactorModelsViolations"]
+__all__ = ["FlextInfraModelsRefactorViolations"]

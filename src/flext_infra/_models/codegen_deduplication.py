@@ -12,7 +12,7 @@ from flext_core import FlextModels
 from flext_infra import t
 
 
-class FlextInfraCodegenDeduplicationModels:
+class FlextInfraModelsCodegenDeduplication:
     """Typed contracts for constant deduplication workflows."""
 
     class DeduplicationCandidate(FlextModels.ArbitraryTypesModel):
@@ -39,11 +39,11 @@ class FlextInfraCodegenDeduplicationModels:
             str,
             Field(default="", description="Normalized source representation"),
         ]
-        canonical: FlextInfraCodegenDeduplicationModels.DeduplicationCandidate = Field(
+        canonical: FlextInfraModelsCodegenDeduplication.DeduplicationCandidate = Field(
             description="Canonical constant kept after replacement",
         )
         duplicates: tuple[
-            FlextInfraCodegenDeduplicationModels.DeduplicationCandidate, ...
+            FlextInfraModelsCodegenDeduplication.DeduplicationCandidate, ...
         ] = Field(
             default_factory=tuple,
             description="Duplicate constants replaced by canonical",
@@ -109,7 +109,7 @@ class FlextInfraCodegenDeduplicationModels:
             description="Duplicate constant names replaced by canonical",
         )
         replacements: tuple[
-            FlextInfraCodegenDeduplicationModels.DeduplicationReplacement, ...
+            FlextInfraModelsCodegenDeduplication.DeduplicationReplacement, ...
         ] = Field(default_factory=tuple, description="Concrete per-file replacements")
         files_modified: t.NonNegativeInt = Field(
             default=0,
@@ -163,12 +163,12 @@ class FlextInfraCodegenDeduplicationModels:
             Field(description="Analyzed constants facade path"),
         ]
         proposals: tuple[
-            FlextInfraCodegenDeduplicationModels.DeduplicationFixProposal, ...
+            FlextInfraModelsCodegenDeduplication.DeduplicationFixProposal, ...
         ] = Field(
             default_factory=tuple, description="Identified deduplication proposals"
         )
         applied: tuple[
-            FlextInfraCodegenDeduplicationModels.DeduplicationApplyResult,
+            FlextInfraModelsCodegenDeduplication.DeduplicationApplyResult,
             ...,
         ] = Field(
             default_factory=tuple,
@@ -209,4 +209,4 @@ class FlextInfraCodegenDeduplicationModels:
             return "\n".join(lines)
 
 
-__all__ = ["FlextInfraCodegenDeduplicationModels"]
+__all__ = ["FlextInfraModelsCodegenDeduplication"]

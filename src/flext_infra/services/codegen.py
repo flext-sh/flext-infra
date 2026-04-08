@@ -9,13 +9,13 @@ from flext_core import r
 from flext_infra import (
     FlextInfraCodegenCensus,
     FlextInfraCodegenConsolidator,
-    FlextInfraCodegenConstantsQualityGate,
     FlextInfraCodegenDeduplicator,
     FlextInfraCodegenFixer,
     FlextInfraCodegenLazyInit,
     FlextInfraCodegenPipeline,
     FlextInfraCodegenPyTyped,
     FlextInfraCodegenScaffolder,
+    FlextInfraConstantsCodegenQualityGate,
     m,
     p,
     t,
@@ -96,7 +96,7 @@ class FlextInfraServiceCodegenMixin:
         self: FlextInfraCommandContext[t.MutableContainerMapping],
     ) -> r[bool]:
         """Execute the constants quality gate through the public facade."""
-        return FlextInfraCodegenConstantsQualityGate.model_validate(
+        return FlextInfraConstantsCodegenQualityGate.model_validate(
             self.command_payload(),
         ).execute()
 

@@ -1,30 +1,7 @@
-"""Codegen utilities composition for the infrastructure namespace."""
+"""Re-export codegen utility composition from infrastructure utilities."""
 
 from __future__ import annotations
 
-from flext_infra import (
-    FlextInfraUtilitiesCodegenConstantAnalysis,
-    FlextInfraUtilitiesCodegenConstantDetection,
-    FlextInfraUtilitiesCodegenConstantTransformation,
-    FlextInfraUtilitiesCodegenExecution,
-    FlextInfraUtilitiesCodegenImportCycles,
-    FlextInfraUtilitiesCodegenLazyAliases,
-    FlextInfraUtilitiesCodegenLazyScanning,
-    FlextInfraUtilitiesCodegenNamespace,
-)
-
-
-class FlextInfraUtilitiesCodegen(
-    FlextInfraUtilitiesCodegenConstantAnalysis,
-    FlextInfraUtilitiesCodegenConstantDetection,
-    FlextInfraUtilitiesCodegenConstantTransformation,
-    FlextInfraUtilitiesCodegenNamespace,
-    FlextInfraUtilitiesCodegenImportCycles,
-    FlextInfraUtilitiesCodegenLazyAliases,
-    FlextInfraUtilitiesCodegenLazyScanning,
-    FlextInfraUtilitiesCodegenExecution,
-):
-    """Compose all codegen utility concerns for ``u.Infra``."""
-
+from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen
 
 __all__ = ["FlextInfraUtilitiesCodegen"]

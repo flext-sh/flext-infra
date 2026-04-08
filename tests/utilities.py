@@ -1,7 +1,7 @@
 """Test utilities for FLEXT infra tests.
 
-Provides FlextInfraTestUtilities, extending FlextTestsUtilities with infra-specific
-helper functions for infrastructure testing.
+Provides TestsFlextInfraUtilities, extending FlextTestsUtilities with
+infra-specific helper functions for infrastructure testing.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -16,7 +16,7 @@ from flext_tests import FlextTestsUtilities
 from flext_infra import FlextInfraUtilities
 
 
-class FlextInfraTestUtilities(FlextTestsUtilities, FlextInfraUtilities):
+class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
     """Infra test utilities extending FlextTestsUtilities with infra-specific helpers.
 
     Architecture: Extends FlextTestsUtilities with infra-specific utility functions.
@@ -55,5 +55,5 @@ class FlextInfraTestUtilities(FlextTestsUtilities, FlextInfraUtilities):
                 return project_name.replace("-", "").replace("_", "").isalnum()
 
 
-u = FlextInfraTestUtilities
-__all__ = ["FlextInfraTestUtilities", "u"]
+u = TestsFlextInfraUtilities
+__all__ = ["TestsFlextInfraUtilities", "u"]

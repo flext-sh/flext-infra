@@ -10,7 +10,7 @@ from flext_core import FlextModels
 from flext_infra import FlextInfraModelsMixins, t
 
 
-class FlextInfraCoreModels:
+class FlextInfraModelsCore:
     """Models for core infrastructure services (subprocess, validation).
 
     Canonical base policy:
@@ -146,4 +146,4 @@ class FlextInfraCoreModels:
         ] = Field(default_factory=list)
 
 
-__all__ = ["FlextInfraCoreModels"]
+__all__ = ["FlextInfraModelsCore"]

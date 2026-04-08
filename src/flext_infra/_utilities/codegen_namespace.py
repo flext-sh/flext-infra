@@ -22,6 +22,12 @@ from flext_infra import (
 class FlextInfraUtilitiesCodegenNamespace:
     """Canonical namespace helpers for codegen discovery, parsing, and fixes."""
 
+    _GENINIT_SURFACE_PREFIXES: t.StrMapping = {
+        c.Infra.Directories.TESTS: "Tests",
+        c.Infra.Directories.EXAMPLES: "Examples",
+        c.Infra.Directories.SCRIPTS: "Scripts",
+    }
+
     _GENINIT_ROOT_NAMESPACE_FILES: tuple[str, ...] = (
         "api.py",
         "base.py",
@@ -68,11 +74,17 @@ class FlextInfraUtilitiesCodegenNamespace:
         project_root = cls.discover_project_root(path)
         if project_root is None:
             return ""
-        prefix = cls._derive_prefix(project_root)
-        if prefix:
+        prefix = cls._derive_prefix(project_root) or cls.project_class_stem(
+            project_name=project_root.name,
+        )
+        if not prefix:
+            return ""
+        try:
+            rel_parts = path.relative_to(project_root).parts
+        except ValueError:
             return prefix
-        project_name = project_root.name
-        return cls.project_class_stem(project_name=project_name)
+        surface_prefix = cls._surface_prefix(rel_parts)
+        return f"{surface_prefix}{prefix}" if surface_prefix else prefix
 
     @staticmethod
     def _derive_prefix(project_root: Path) -> str:
@@ -84,6 +96,16 @@ class FlextInfraUtilitiesCodegenNamespace:
             if child.is_dir() and (child / c.Infra.Files.INIT_PY).exists():
                 return "".join(part.title() for part in child.name.split("_"))
         return ""
+
+    @staticmethod
+    def _surface_prefix(rel_parts: tuple[str, ...]) -> str:
+        """Return the facade surface prefix for top-level tests/examples/scripts."""
+        if not rel_parts:
+            return ""
+        return FlextInfraUtilitiesCodegenNamespace._GENINIT_SURFACE_PREFIXES.get(
+            rel_parts[0],
+            "",
+        )
 
     @staticmethod
     def project_class_stem(*, project_name: str) -> str:
@@ -124,11 +146,10 @@ class FlextInfraUtilitiesCodegenNamespace:
         for alias, directory in c.Infra.FAMILY_DIRECTORIES.items():
             if file_path.parent.name == directory:
                 return c.Infra.FAMILY_SUFFIXES[alias]
-        if file_path.parent.name == "services" or file_path.name in {
-            "service.py",
-            "services.py",
-        }:
+        if file_path.parent.name == "services":
             return "Mixin"
+        if file_path.name in {"service.py", "services.py"}:
+            return "Services"
         return cls._GENINIT_PUBLIC_FILE_SUFFIXES.get(file_path.name)
 
     @classmethod

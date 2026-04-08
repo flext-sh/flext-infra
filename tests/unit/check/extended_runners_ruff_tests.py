@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 from tests import (
-    FlextInfraTestHelpers,
+    TestsFlextInfraHelpers,
     create_checker_project,
     create_fake_run_raw,
     m,
@@ -247,7 +247,7 @@ class TestCollectMarkdownFiles:
     """Test FlextInfraWorkspaceChecker._collect_markdown_files method."""
 
     def test_collect_markdown_files_finds_files(self, tmp_path: Path) -> None:
-        proj_dir = FlextInfraTestHelpers.mk_project(tmp_path, "p1")
+        proj_dir = TestsFlextInfraHelpers.mk_project(tmp_path, "p1")
         (proj_dir / "README.md").write_text("# Test")
         (proj_dir / "docs").mkdir()
         (proj_dir / "docs" / "guide.md").write_text("# Guide")
@@ -255,7 +255,7 @@ class TestCollectMarkdownFiles:
         tm.that(len(files), eq=2)
 
     def test_collect_markdown_files_excludes_dirs(self, tmp_path: Path) -> None:
-        proj_dir = FlextInfraTestHelpers.mk_project(tmp_path, "p1", with_git=True)
+        proj_dir = TestsFlextInfraHelpers.mk_project(tmp_path, "p1", with_git=True)
         (proj_dir / "README.md").write_text("# Test")
         (proj_dir / ".git" / "README.md").write_text("# Git")
         files = FlextInfraMarkdownGate(tmp_path)._collect_markdown_files(proj_dir)

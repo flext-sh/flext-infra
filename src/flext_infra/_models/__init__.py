@@ -18,7 +18,7 @@ if _t.TYPE_CHECKING:
 
     basemk = _flext_infra__models_basemk
     import flext_infra._models.census as _flext_infra__models_census
-    from flext_infra._models.basemk import FlextInfraBasemkModels
+    from flext_infra._models.basemk import FlextInfraModelsBasemk
 
     census = _flext_infra__models_census
     import flext_infra._models.check as _flext_infra__models_check
@@ -26,57 +26,57 @@ if _t.TYPE_CHECKING:
 
     check = _flext_infra__models_check
     import flext_infra._models.codegen as _flext_infra__models_codegen
-    from flext_infra._models.check import FlextInfraCheckModels
+    from flext_infra._models.check import FlextInfraModelsCheck
 
     codegen = _flext_infra__models_codegen
     import flext_infra._models.codegen_deduplication as _flext_infra__models_codegen_deduplication
-    from flext_infra._models.codegen import FlextInfraCodegenModels
+    from flext_infra._models.codegen import FlextInfraModelsCodegen
 
     codegen_deduplication = _flext_infra__models_codegen_deduplication
     import flext_infra._models.deps as _flext_infra__models_deps
     from flext_infra._models.codegen_deduplication import (
-        FlextInfraCodegenDeduplicationModels,
+        FlextInfraModelsCodegenDeduplication,
     )
 
     deps = _flext_infra__models_deps
     import flext_infra._models.deps_tool_config as _flext_infra__models_deps_tool_config
-    from flext_infra._models.deps import FlextInfraDepsModels
+    from flext_infra._models.deps import FlextInfraModelsDeps
 
     deps_tool_config = _flext_infra__models_deps_tool_config
     import flext_infra._models.deps_tool_config_linters as _flext_infra__models_deps_tool_config_linters
-    from flext_infra._models.deps_tool_config import FlextInfraDepsModelsToolConfig
+    from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolConfig
 
     deps_tool_config_linters = _flext_infra__models_deps_tool_config_linters
     import flext_infra._models.deps_tool_config_type_checkers as _flext_infra__models_deps_tool_config_type_checkers
     from flext_infra._models.deps_tool_config_linters import (
-        FlextInfraDepsModelsToolConfigLinters,
+        FlextInfraModelsDepsToolConfigLinters,
     )
 
     deps_tool_config_type_checkers = _flext_infra__models_deps_tool_config_type_checkers
     import flext_infra._models.docs as _flext_infra__models_docs
     from flext_infra._models.deps_tool_config_type_checkers import (
-        FlextInfraDepsModelsToolConfigTypeCheckers,
+        FlextInfraModelsDepsToolConfigTypeCheckers,
     )
 
     docs = _flext_infra__models_docs
     import flext_infra._models.engine as _flext_infra__models_engine
-    from flext_infra._models.docs import FlextInfraDocsModels
+    from flext_infra._models.docs import FlextInfraModelsDocs
 
     engine = _flext_infra__models_engine
     import flext_infra._models.engine_ops as _flext_infra__models_engine_ops
-    from flext_infra._models.engine import FlextInfraEngineModels
+    from flext_infra._models.engine import FlextInfraModelsEngine
 
     engine_ops = _flext_infra__models_engine_ops
     import flext_infra._models.gates as _flext_infra__models_gates
-    from flext_infra._models.engine_ops import FlextInfraEngineOperationModels
+    from flext_infra._models.engine_ops import FlextInfraModelsEngineOperation
 
     gates = _flext_infra__models_gates
     import flext_infra._models.github as _flext_infra__models_github
-    from flext_infra._models.gates import FlextInfraGatesModels
+    from flext_infra._models.gates import FlextInfraModelsGates
 
     github = _flext_infra__models_github
     import flext_infra._models.mixins as _flext_infra__models_mixins
-    from flext_infra._models.github import FlextInfraGithubModels
+    from flext_infra._models.github import FlextInfraModelsGithub
 
     mixins = _flext_infra__models_mixins
     import flext_infra._models.refactor as _flext_infra__models_refactor
@@ -84,31 +84,31 @@ if _t.TYPE_CHECKING:
 
     refactor = _flext_infra__models_refactor
     import flext_infra._models.refactor_ast_grep as _flext_infra__models_refactor_ast_grep
-    from flext_infra._models.refactor import FlextInfraRefactorModels
+    from flext_infra._models.refactor import FlextInfraModelsRefactor
 
     refactor_ast_grep = _flext_infra__models_refactor_ast_grep
     import flext_infra._models.refactor_census as _flext_infra__models_refactor_census
-    from flext_infra._models.refactor_ast_grep import FlextInfraRefactorGrepModels
+    from flext_infra._models.refactor_ast_grep import FlextInfraModelsRefactorGrep
 
     refactor_census = _flext_infra__models_refactor_census
     import flext_infra._models.refactor_namespace_enforcer as _flext_infra__models_refactor_namespace_enforcer
-    from flext_infra._models.refactor_census import FlextInfraRefactorModelsCensus
+    from flext_infra._models.refactor_census import FlextInfraModelsRefactorCensus
 
     refactor_namespace_enforcer = _flext_infra__models_refactor_namespace_enforcer
     import flext_infra._models.refactor_violations as _flext_infra__models_refactor_violations
     from flext_infra._models.refactor_namespace_enforcer import (
-        FlextInfraNamespaceEnforcerModels,
+        FlextInfraModelsNamespaceEnforcer,
     )
 
     refactor_violations = _flext_infra__models_refactor_violations
     import flext_infra._models.release as _flext_infra__models_release
     from flext_infra._models.refactor_violations import (
-        FlextInfraRefactorModelsViolations,
+        FlextInfraModelsRefactorViolations,
     )
 
     release = _flext_infra__models_release
     import flext_infra._models.rope as _flext_infra__models_rope
-    from flext_infra._models.release import FlextInfraReleaseModels
+    from flext_infra._models.release import FlextInfraModelsRelease
 
     rope = _flext_infra__models_rope
     import flext_infra._models.scan as _flext_infra__models_scan
@@ -120,75 +120,75 @@ if _t.TYPE_CHECKING:
 
     validate = _flext_infra__models_validate
     import flext_infra._models.workspace as _flext_infra__models_workspace
-    from flext_infra._models.validate import FlextInfraCoreModels
+    from flext_infra._models.validate import FlextInfraModelsCore
 
     workspace = _flext_infra__models_workspace
-    from flext_infra._models.workspace import FlextInfraWorkspaceModels
+    from flext_infra._models.workspace import FlextInfraModelsWorkspace
 _LAZY_IMPORTS = {
-    "FlextInfraBasemkModels": ("flext_infra._models.basemk", "FlextInfraBasemkModels"),
-    "FlextInfraCheckModels": ("flext_infra._models.check", "FlextInfraCheckModels"),
-    "FlextInfraCodegenDeduplicationModels": (
-        "flext_infra._models.codegen_deduplication",
-        "FlextInfraCodegenDeduplicationModels",
-    ),
-    "FlextInfraCodegenModels": (
-        "flext_infra._models.codegen",
-        "FlextInfraCodegenModels",
-    ),
-    "FlextInfraCoreModels": ("flext_infra._models.validate", "FlextInfraCoreModels"),
-    "FlextInfraDepsModels": ("flext_infra._models.deps", "FlextInfraDepsModels"),
-    "FlextInfraDepsModelsToolConfig": (
-        "flext_infra._models.deps_tool_config",
-        "FlextInfraDepsModelsToolConfig",
-    ),
-    "FlextInfraDepsModelsToolConfigLinters": (
-        "flext_infra._models.deps_tool_config_linters",
-        "FlextInfraDepsModelsToolConfigLinters",
-    ),
-    "FlextInfraDepsModelsToolConfigTypeCheckers": (
-        "flext_infra._models.deps_tool_config_type_checkers",
-        "FlextInfraDepsModelsToolConfigTypeCheckers",
-    ),
-    "FlextInfraDocsModels": ("flext_infra._models.docs", "FlextInfraDocsModels"),
-    "FlextInfraEngineModels": ("flext_infra._models.engine", "FlextInfraEngineModels"),
-    "FlextInfraEngineOperationModels": (
-        "flext_infra._models.engine_ops",
-        "FlextInfraEngineOperationModels",
-    ),
-    "FlextInfraGatesModels": ("flext_infra._models.gates", "FlextInfraGatesModels"),
-    "FlextInfraGithubModels": ("flext_infra._models.github", "FlextInfraGithubModels"),
     "FlextInfraModelsBase": ("flext_infra._models.base", "FlextInfraModelsBase"),
+    "FlextInfraModelsBasemk": ("flext_infra._models.basemk", "FlextInfraModelsBasemk"),
     "FlextInfraModelsCensus": ("flext_infra._models.census", "FlextInfraModelsCensus"),
+    "FlextInfraModelsCheck": ("flext_infra._models.check", "FlextInfraModelsCheck"),
+    "FlextInfraModelsCodegen": (
+        "flext_infra._models.codegen",
+        "FlextInfraModelsCodegen",
+    ),
+    "FlextInfraModelsCodegenDeduplication": (
+        "flext_infra._models.codegen_deduplication",
+        "FlextInfraModelsCodegenDeduplication",
+    ),
+    "FlextInfraModelsCore": ("flext_infra._models.validate", "FlextInfraModelsCore"),
+    "FlextInfraModelsDeps": ("flext_infra._models.deps", "FlextInfraModelsDeps"),
+    "FlextInfraModelsDepsToolConfig": (
+        "flext_infra._models.deps_tool_config",
+        "FlextInfraModelsDepsToolConfig",
+    ),
+    "FlextInfraModelsDepsToolConfigLinters": (
+        "flext_infra._models.deps_tool_config_linters",
+        "FlextInfraModelsDepsToolConfigLinters",
+    ),
+    "FlextInfraModelsDepsToolConfigTypeCheckers": (
+        "flext_infra._models.deps_tool_config_type_checkers",
+        "FlextInfraModelsDepsToolConfigTypeCheckers",
+    ),
+    "FlextInfraModelsDocs": ("flext_infra._models.docs", "FlextInfraModelsDocs"),
+    "FlextInfraModelsEngine": ("flext_infra._models.engine", "FlextInfraModelsEngine"),
+    "FlextInfraModelsEngineOperation": (
+        "flext_infra._models.engine_ops",
+        "FlextInfraModelsEngineOperation",
+    ),
+    "FlextInfraModelsGates": ("flext_infra._models.gates", "FlextInfraModelsGates"),
+    "FlextInfraModelsGithub": ("flext_infra._models.github", "FlextInfraModelsGithub"),
     "FlextInfraModelsMixins": ("flext_infra._models.mixins", "FlextInfraModelsMixins"),
+    "FlextInfraModelsNamespaceEnforcer": (
+        "flext_infra._models.refactor_namespace_enforcer",
+        "FlextInfraModelsNamespaceEnforcer",
+    ),
+    "FlextInfraModelsRefactor": (
+        "flext_infra._models.refactor",
+        "FlextInfraModelsRefactor",
+    ),
+    "FlextInfraModelsRefactorCensus": (
+        "flext_infra._models.refactor_census",
+        "FlextInfraModelsRefactorCensus",
+    ),
+    "FlextInfraModelsRefactorGrep": (
+        "flext_infra._models.refactor_ast_grep",
+        "FlextInfraModelsRefactorGrep",
+    ),
+    "FlextInfraModelsRefactorViolations": (
+        "flext_infra._models.refactor_violations",
+        "FlextInfraModelsRefactorViolations",
+    ),
+    "FlextInfraModelsRelease": (
+        "flext_infra._models.release",
+        "FlextInfraModelsRelease",
+    ),
     "FlextInfraModelsRope": ("flext_infra._models.rope", "FlextInfraModelsRope"),
     "FlextInfraModelsScan": ("flext_infra._models.scan", "FlextInfraModelsScan"),
-    "FlextInfraNamespaceEnforcerModels": (
-        "flext_infra._models.refactor_namespace_enforcer",
-        "FlextInfraNamespaceEnforcerModels",
-    ),
-    "FlextInfraRefactorGrepModels": (
-        "flext_infra._models.refactor_ast_grep",
-        "FlextInfraRefactorGrepModels",
-    ),
-    "FlextInfraRefactorModels": (
-        "flext_infra._models.refactor",
-        "FlextInfraRefactorModels",
-    ),
-    "FlextInfraRefactorModelsCensus": (
-        "flext_infra._models.refactor_census",
-        "FlextInfraRefactorModelsCensus",
-    ),
-    "FlextInfraRefactorModelsViolations": (
-        "flext_infra._models.refactor_violations",
-        "FlextInfraRefactorModelsViolations",
-    ),
-    "FlextInfraReleaseModels": (
-        "flext_infra._models.release",
-        "FlextInfraReleaseModels",
-    ),
-    "FlextInfraWorkspaceModels": (
+    "FlextInfraModelsWorkspace": (
         "flext_infra._models.workspace",
-        "FlextInfraWorkspaceModels",
+        "FlextInfraModelsWorkspace",
     ),
     "base": "flext_infra._models.base",
     "basemk": "flext_infra._models.basemk",
@@ -219,32 +219,32 @@ _LAZY_IMPORTS = {
 }
 
 __all__ = [
-    "FlextInfraBasemkModels",
-    "FlextInfraCheckModels",
-    "FlextInfraCodegenDeduplicationModels",
-    "FlextInfraCodegenModels",
-    "FlextInfraCoreModels",
-    "FlextInfraDepsModels",
-    "FlextInfraDepsModelsToolConfig",
-    "FlextInfraDepsModelsToolConfigLinters",
-    "FlextInfraDepsModelsToolConfigTypeCheckers",
-    "FlextInfraDocsModels",
-    "FlextInfraEngineModels",
-    "FlextInfraEngineOperationModels",
-    "FlextInfraGatesModels",
-    "FlextInfraGithubModels",
     "FlextInfraModelsBase",
+    "FlextInfraModelsBasemk",
     "FlextInfraModelsCensus",
+    "FlextInfraModelsCheck",
+    "FlextInfraModelsCodegen",
+    "FlextInfraModelsCodegenDeduplication",
+    "FlextInfraModelsCore",
+    "FlextInfraModelsDeps",
+    "FlextInfraModelsDepsToolConfig",
+    "FlextInfraModelsDepsToolConfigLinters",
+    "FlextInfraModelsDepsToolConfigTypeCheckers",
+    "FlextInfraModelsDocs",
+    "FlextInfraModelsEngine",
+    "FlextInfraModelsEngineOperation",
+    "FlextInfraModelsGates",
+    "FlextInfraModelsGithub",
     "FlextInfraModelsMixins",
+    "FlextInfraModelsNamespaceEnforcer",
+    "FlextInfraModelsRefactor",
+    "FlextInfraModelsRefactorCensus",
+    "FlextInfraModelsRefactorGrep",
+    "FlextInfraModelsRefactorViolations",
+    "FlextInfraModelsRelease",
     "FlextInfraModelsRope",
     "FlextInfraModelsScan",
-    "FlextInfraNamespaceEnforcerModels",
-    "FlextInfraRefactorGrepModels",
-    "FlextInfraRefactorModels",
-    "FlextInfraRefactorModelsCensus",
-    "FlextInfraRefactorModelsViolations",
-    "FlextInfraReleaseModels",
-    "FlextInfraWorkspaceModels",
+    "FlextInfraModelsWorkspace",
     "base",
     "basemk",
     "census",

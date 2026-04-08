@@ -593,6 +593,24 @@ class FlextInfraUtilitiesCodegenLazyScanning(
         if not family:
             return
         if py_file.parent.name in c.Infra.FAMILY_DIRECTORIES.values():
+            if py_file.parent.name == c.Infra.FAMILY_DIRECTORIES["c"]:
+                if prefix and not class_name.startswith(prefix):
+                    msg = (
+                        f"{py_file}:{class_node.lineno}: class {class_name!r} must "
+                        f"start with {prefix!r}"
+                    )
+                    raise ValueError(
+                        msg,
+                    )
+                if not class_name.endswith(family):
+                    msg = (
+                        f"{py_file}:{class_node.lineno}: class {class_name!r} must "
+                        f"end with {family!r}"
+                    )
+                    raise ValueError(
+                        msg,
+                    )
+                return
             expected_prefix = f"{prefix}{family}" if prefix else family
             if not class_name.startswith(expected_prefix):
                 msg = (

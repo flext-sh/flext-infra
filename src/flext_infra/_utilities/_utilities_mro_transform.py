@@ -15,8 +15,8 @@ from pathlib import Path
 from flext_core import t
 from flext_infra import (
     FlextInfraConstantsBase,
-    FlextInfraRefactorConstants,
-    FlextInfraRefactorGrepModels,
+    FlextInfraConstantsRefactor,
+    FlextInfraModelsRefactorGrep,
 )
 
 
@@ -35,15 +35,15 @@ class FlextInfraUtilitiesRefactorMroTransform:
     @staticmethod
     def migrate_file(
         *,
-        scan_result: FlextInfraRefactorGrepModels.MROScanReport,
-    ) -> tuple[str, FlextInfraRefactorGrepModels.MROFileMigration, t.StrMapping]:
+        scan_result: FlextInfraModelsRefactorGrep.MROScanReport,
+    ) -> tuple[str, FlextInfraModelsRefactorGrep.MROFileMigration, t.StrMapping]:
         """Transform a candidate file and return code plus symbol map."""
         source = Path(scan_result.file).read_text(
             encoding=FlextInfraConstantsBase.Encoding.DEFAULT
         )
         lines = source.splitlines()
 
-        empty_migration = FlextInfraRefactorGrepModels.MROFileMigration(
+        empty_migration = FlextInfraModelsRefactorGrep.MROFileMigration(
             file=scan_result.file,
             module=scan_result.module,
             moved_symbols=(),
@@ -54,7 +54,7 @@ class FlextInfraUtilitiesRefactorMroTransform:
 
         class_name = (
             scan_result.constants_class
-            or FlextInfraRefactorConstants.DEFAULT_CONSTANTS_CLASS
+            or FlextInfraConstantsRefactor.DEFAULT_CONSTANTS_CLASS
         )
         facade_alias = scan_result.facade_alias or class_name
 
@@ -138,7 +138,7 @@ class FlextInfraUtilitiesRefactorMroTransform:
             symbol_map=symbol_map,
         )
 
-        migration = FlextInfraRefactorGrepModels.MROFileMigration(
+        migration = FlextInfraModelsRefactorGrep.MROFileMigration(
             file=scan_result.file,
             module=scan_result.module,
             moved_symbols=tuple(reversed(moved_symbols)),

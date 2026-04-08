@@ -8,7 +8,7 @@ from typing import Final
 from flext_infra import t
 
 
-class FlextInfraDepsConstants:
+class FlextInfraConstantsDeps:
     """Deps infrastructure constants."""
 
     # NOTE: Hardcoded base path constants removed.
@@ -95,4 +95,4 @@ class FlextInfraDepsConstants:
     """Default mapping from module name to ``types-*`` stub package."""
 
 
-__all__ = ["FlextInfraDepsConstants"]
+__all__ = ["FlextInfraConstantsDeps"]

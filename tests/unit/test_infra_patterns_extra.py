@@ -7,7 +7,7 @@ import re
 from tests import u
 
 
-class TestFlextInfraPatternsPatternTypes:
+class TestFlextInfraTypesPatternsPattern:
     """Tests for pattern type consistency."""
 
     def test_all_patterns_are_compiled_regex(self) -> None:

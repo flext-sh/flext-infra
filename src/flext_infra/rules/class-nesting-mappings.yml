@@ -137,28 +137,28 @@ class_nesting:
     target_name: FlextTypes
     confidence: low
     reason: top_level_class_without_namespace_prefix
-  - loose_name: FlextInfraPathsConstants
+  - loose_name: FlextInfraConstantsPaths
     current_file: flext-core/src/flext_infra/_constants_modules.py
     target_namespace: FlextConstantsModules
-    target_name: FlextInfraPathsConstants
+    target_name: FlextInfraConstantsPaths
     confidence: low
     reason: top_level_class_without_namespace_prefix
-  - loose_name: FlextInfraVersioningConstants
+  - loose_name: FlextInfraConstantsVersioning
     current_file: flext-core/src/flext_infra/_constants_modules.py
     target_namespace: FlextConstantsModules
-    target_name: FlextInfraVersioningConstants
+    target_name: FlextInfraConstantsVersioning
     confidence: low
     reason: top_level_class_without_namespace_prefix
-  - loose_name: FlextInfraReportingConstants
+  - loose_name: FlextInfraConstantsReporting
     current_file: flext-core/src/flext_infra/_constants_modules.py
     target_namespace: FlextConstantsModules
-    target_name: FlextInfraReportingConstants
+    target_name: FlextInfraConstantsReporting
     confidence: low
     reason: top_level_class_without_namespace_prefix
-  - loose_name: FlextInfraBasemkConstants
+  - loose_name: FlextInfraConstantsBasemk
     current_file: flext-core/src/flext_infra/basemk/_constants.py
     target_namespace: FlextBasemkConstants
-    target_name: FlextInfraBasemkConstants
+    target_name: FlextInfraConstantsBasemk
     confidence: medium
     reason: top_level_class_without_namespace_prefix
   - loose_name: FlextInfraBaseMkTemplateEngine
@@ -179,10 +179,10 @@ class_nesting:
     target_name: FlextInfraBaseMkGenerator
     confidence: medium
     reason: top_level_class_without_namespace_prefix
-  - loose_name: FlextInfraCheckConstants
+  - loose_name: FlextInfraConstantsCheck
     current_file: flext-core/src/flext_infra/check/_constants.py
     target_namespace: FlextCheckConstants
-    target_name: FlextInfraCheckConstants
+    target_name: FlextInfraConstantsCheck
     confidence: medium
     reason: top_level_class_without_namespace_prefix
   - loose_name: _CheckIssue
@@ -353,10 +353,10 @@ class_nesting:
     target_name: FlextInfraConfigFixer
     confidence: medium
     reason: top_level_class_without_namespace_prefix
-  - loose_name: FlextInfraCodegenConstants
+  - loose_name: FlextInfraConstantsCodegen
     current_file: flext-core/src/flext_infra/codegen/_constants.py
     target_namespace: FlextCodegenConstants
-    target_name: FlextInfraCodegenConstants
+    target_name: FlextInfraConstantsCodegen
     confidence: medium
     reason: top_level_class_without_namespace_prefix
   - loose_name: FlextInfraCodegenCensus
@@ -395,10 +395,10 @@ class_nesting:
     target_name: FlextInfraConstants
     confidence: low
     reason: top_level_class_without_namespace_prefix
-  - loose_name: FlextInfraCoreConstants
+  - loose_name: FlextInfraConstantsCore
     current_file: flext-core/src/flext_infra/core/_constants.py
     target_namespace: FlextCoreConstants
-    target_name: FlextInfraCoreConstants
+    target_name: FlextInfraConstantsCore
     confidence: medium
     reason: top_level_class_without_namespace_prefix
   - loose_name: FlextInfraBaseMkValidator
@@ -449,16 +449,16 @@ class_nesting:
     target_name: FlextInfraStubSupplyChain
     confidence: medium
     reason: top_level_class_without_namespace_prefix
-  - loose_name: FlextInfraDepsConstants
+  - loose_name: FlextInfraConstantsDeps
     current_file: flext-core/src/flext_infra/deps/_constants.py
     target_namespace: FlextDepsConstants
-    target_name: FlextInfraDepsConstants
+    target_name: FlextInfraConstantsDeps
     confidence: medium
     reason: top_level_class_without_namespace_prefix
-  - loose_name: FlextInfraDependencyDetectionModels
+  - loose_name: FlextInfraModelsDependencyDetection
     current_file: flext-core/src/flext_infra/deps/detection.py
     target_namespace: FlextDepsDetection
-    target_name: FlextInfraDependencyDetectionModels
+    target_name: FlextInfraModelsDependencyDetection
     confidence: medium
     reason: top_level_class_without_namespace_prefix
   - loose_name: FlextInfraDependencyDetectionService
@@ -467,10 +467,10 @@ class_nesting:
     target_name: FlextInfraDependencyDetectionService
     confidence: medium
     reason: top_level_class_without_namespace_prefix
-  - loose_name: FlextInfraDependencyDetectorModels
+  - loose_name: FlextInfraModelsDependencyDetector
     current_file: flext-core/src/flext_infra/deps/detector.py
     target_namespace: FlextDepsDetector
-    target_name: FlextInfraDependencyDetectorModels
+    target_name: FlextInfraModelsDependencyDetector
     confidence: medium
     reason: top_level_class_without_namespace_prefix
   - loose_name: FlextInfraRuntimeDevDependencyDetector
@@ -563,10 +563,10 @@ class_nesting:
     target_name: _BaseInfraCommand
     confidence: low
     reason: top_level_class_without_namespace_prefix
-  - loose_name: FlextInfraDocsConstants
+  - loose_name: FlextInfraConstantsDocs
     current_file: flext-core/src/flext_infra/docs/_constants.py
     target_namespace: FlextDocsConstants
-    target_name: FlextInfraDocsConstants
+    target_name: FlextInfraConstantsDocs
     confidence: medium
     reason: top_level_class_without_namespace_prefix
   - loose_name: AuditIssue
@@ -665,10 +665,10 @@ class_nesting:
     target_name: FlextInfraGitService
     confidence: low
     reason: top_level_class_without_namespace_prefix
-  - loose_name: FlextInfraGithubConstants
+  - loose_name: FlextInfraConstantsGithub
     current_file: flext-core/src/flext_infra/github/_constants.py
     target_namespace: FlextGithubConstants
-    target_name: FlextInfraGithubConstants
+    target_name: FlextInfraConstantsGithub
     confidence: medium
     reason: top_level_class_without_namespace_prefix
   - loose_name: FlextInfraWorkflowLinter
@@ -767,10 +767,10 @@ class_nesting:
     target_name: FlextInfraRefactorViolationAnalyzer
     confidence: medium
     reason: top_level_class_without_namespace_prefix
-  - loose_name: FlextInfraRefactorConstants
+  - loose_name: FlextInfraConstantsRefactor
     current_file: flext-core/src/flext_infra/refactor/constants.py
     target_namespace: FlextRefactorConstants
-    target_name: FlextInfraRefactorConstants
+    target_name: FlextInfraConstantsRefactor
     confidence: medium
     reason: top_level_class_without_namespace_prefix
   - loose_name: FlextInfraRefactorEngine
@@ -953,10 +953,10 @@ class_nesting:
     target_name: FlextInfraRefactorSymbolPropagator
     confidence: medium
     reason: top_level_class_without_namespace_prefix
-  - loose_name: FlextInfraReleaseConstants
+  - loose_name: FlextInfraConstantsRelease
     current_file: flext-core/src/flext_infra/release/_constants.py
     target_namespace: FlextReleaseConstants
-    target_name: FlextInfraReleaseConstants
+    target_name: FlextInfraConstantsRelease
     confidence: medium
     reason: top_level_class_without_namespace_prefix
   - loose_name: FlextInfraReleaseOrchestrator
@@ -1007,10 +1007,10 @@ class_nesting:
     target_name: FlextInfraVersioningService
     confidence: low
     reason: top_level_class_without_namespace_prefix
-  - loose_name: FlextInfraWorkspaceConstants
+  - loose_name: FlextInfraConstantsWorkspace
     current_file: flext-core/src/flext_infra/workspace/_constants.py
     target_namespace: FlextWorkspaceConstants
-    target_name: FlextInfraWorkspaceConstants
+    target_name: FlextInfraConstantsWorkspace
     confidence: medium
     reason: top_level_class_without_namespace_prefix
   - loose_name: WorkspaceMode

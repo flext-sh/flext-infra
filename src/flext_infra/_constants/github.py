@@ -5,11 +5,11 @@ from __future__ import annotations
 from typing import Final
 
 
-class FlextInfraGithubConstants:
+class FlextInfraConstantsGithub:
     """Github infrastructure constants."""
 
     MANAGED_FILES: Final[frozenset[str]] = frozenset({"ci.yml"})
     MIN_ARGV: Final[int] = 2
 
 
-__all__ = ["FlextInfraGithubConstants"]
+__all__ = ["FlextInfraConstantsGithub"]

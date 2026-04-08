@@ -12,7 +12,7 @@ from flext_core import m
 from flext_infra import FlextInfraModelsMixins, c, t
 
 
-class FlextInfraWorkspaceModels:
+class FlextInfraModelsWorkspace:
     """Models for workspace discovery, sync, and migration.
 
     Canonical base policy:
@@ -101,4 +101,4 @@ class FlextInfraWorkspaceModels:
         ] = Field(default_factory=list)
 
 
-__all__ = ["FlextInfraWorkspaceModels"]
+__all__ = ["FlextInfraModelsWorkspace"]

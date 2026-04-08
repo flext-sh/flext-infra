@@ -16,7 +16,7 @@ from typing import ClassVar, Final
 from flext_infra import t
 
 
-class FlextInfraCodegenConstants:
+class FlextInfraConstantsCodegen:
     """Namespace for all codegen-related constants."""
 
     EXCLUDED_PROJECTS: Final[frozenset[str]] = frozenset({"flexcore"})
@@ -259,4 +259,4 @@ class FlextInfraCodegenConstants:
         CHECK_BASELINE_LOAD: Final[str] = "baseline_load"
 
 
-__all__ = ["FlextInfraCodegenConstants"]
+__all__ = ["FlextInfraConstantsCodegen"]

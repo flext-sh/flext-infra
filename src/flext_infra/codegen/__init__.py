@@ -13,12 +13,12 @@ if _t.TYPE_CHECKING:
     import flext_infra.codegen._codegen_generation as _flext_infra_codegen__codegen_generation
 
     _codegen_generation = _flext_infra_codegen__codegen_generation
-    import flext_infra.codegen._utilities as _flext_infra_codegen__utilities
+    import flext_infra._utilities.codegen as _flext_infra__utilities_codegen
     from flext_infra.codegen._codegen_generation import FlextInfraCodegenGeneration
 
-    _utilities = _flext_infra_codegen__utilities
+    _utilities = _flext_infra__utilities_codegen
     import flext_infra.codegen.census as _flext_infra_codegen_census
-    from flext_infra.codegen._utilities import FlextInfraUtilitiesCodegen
+    from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen
 
     census = _flext_infra_codegen_census
     import flext_infra.codegen.cli as _flext_infra_codegen_cli
@@ -31,7 +31,7 @@ if _t.TYPE_CHECKING:
     constants_quality_gate = _flext_infra_codegen_constants_quality_gate
     import flext_infra.codegen.fixer as _flext_infra_codegen_fixer
     from flext_infra.codegen.constants_quality_gate import (
-        FlextInfraCodegenConstantsQualityGate,
+        FlextInfraConstantsCodegenQualityGate,
     )
 
     fixer = _flext_infra_codegen_fixer
@@ -60,9 +60,9 @@ _LAZY_IMPORTS = {
         "flext_infra.codegen.census",
         "FlextInfraCodegenCensus",
     ),
-    "FlextInfraCodegenConstantsQualityGate": (
+    "FlextInfraConstantsCodegenQualityGate": (
         "flext_infra.codegen.constants_quality_gate",
-        "FlextInfraCodegenConstantsQualityGate",
+        "FlextInfraConstantsCodegenQualityGate",
     ),
     "FlextInfraCodegenFixer": ("flext_infra.codegen.fixer", "FlextInfraCodegenFixer"),
     "FlextInfraCodegenGeneration": (
@@ -82,11 +82,11 @@ _LAZY_IMPORTS = {
         "FlextInfraCodegenScaffolder",
     ),
     "FlextInfraUtilitiesCodegen": (
-        "flext_infra.codegen._utilities",
+        "flext_infra._utilities.codegen",
         "FlextInfraUtilitiesCodegen",
     ),
     "_codegen_generation": "flext_infra.codegen._codegen_generation",
-    "_utilities": "flext_infra.codegen._utilities",
+    "_utilities": "flext_infra._utilities.codegen",
     "census": "flext_infra.codegen.census",
     "cli": "flext_infra.codegen.cli",
     "constants_quality_gate": "flext_infra.codegen.constants_quality_gate",
@@ -105,12 +105,12 @@ _LAZY_IMPORTS = {
 __all__ = [
     "FlextInfraCliCodegen",
     "FlextInfraCodegenCensus",
-    "FlextInfraCodegenConstantsQualityGate",
     "FlextInfraCodegenFixer",
     "FlextInfraCodegenGeneration",
     "FlextInfraCodegenLazyInit",
     "FlextInfraCodegenPyTyped",
     "FlextInfraCodegenScaffolder",
+    "FlextInfraConstantsCodegenQualityGate",
     "FlextInfraUtilitiesCodegen",
     "_codegen_generation",
     "_utilities",

@@ -9,7 +9,7 @@ from pathlib import Path
 
 from flext_infra import (
     FlextInfraConstantsBase,
-    FlextInfraSharedInfraConstants,
+    FlextInfraConstantsSharedInfra,
     FlextInfraTypesBase,
     FlextInfraTypesRope,
     FlextInfraUtilitiesDiscovery,
@@ -99,8 +99,8 @@ class FlextInfraUtilitiesRopeSource(FlextInfraUtilitiesRopeCore):
                 or target in allow_set
                 or target
                 in {
-                    FlextInfraSharedInfraConstants.Dunders.VERSION,
-                    FlextInfraSharedInfraConstants.Dunders.ALL,
+                    FlextInfraConstantsSharedInfra.Dunders.VERSION,
+                    FlextInfraConstantsSharedInfra.Dunders.ALL,
                 }
             ):
                 kept.append(line)

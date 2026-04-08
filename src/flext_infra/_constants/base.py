@@ -11,13 +11,13 @@ from typing import Final
 
 from flext_infra import (
     FlextInfraConstantsMake,
+    FlextInfraConstantsSharedInfra,
     FlextInfraConstantsSourceCode,
-    FlextInfraSharedInfraConstants,
 )
 
 
 class FlextInfraConstantsBase(
-    FlextInfraSharedInfraConstants,
+    FlextInfraConstantsSharedInfra,
     FlextInfraConstantsMake,
     FlextInfraConstantsSourceCode,
 ):

@@ -1,6 +1,6 @@
 """Models for FLEXT infra tests.
 
-Provides FlextInfraTestModels, extending TestsFlextModels with infra-specific
+Provides TestsFlextInfraModels, extending FlextTestsModels with infra-specific
 model definitions for infrastructure testing and validation.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
@@ -14,7 +14,7 @@ from flext_tests import FlextTestsModels
 from flext_infra import FlextInfraModels
 
 
-class FlextInfraTestModels(FlextTestsModels, FlextInfraModels):
+class TestsFlextInfraModels(FlextTestsModels, FlextInfraModels):
     """Infra test models extending FlextTestsModels with infra-specific models.
 
     Architecture: Extends FlextTestsModels with infra-specific model definitions.
@@ -52,6 +52,6 @@ class FlextInfraTestModels(FlextTestsModels, FlextInfraModels):
                 error_message: str | None = None
 
 
-m = FlextInfraTestModels
+m = TestsFlextInfraModels
 
-__all__ = ["FlextInfraTestModels", "m"]
+__all__ = ["TestsFlextInfraModels", "m"]

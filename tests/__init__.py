@@ -18,7 +18,7 @@ if _t.TYPE_CHECKING:
 
     constants = _tests_constants
     import tests.fixtures as _tests_fixtures
-    from tests.constants import FlextInfraTestConstants, FlextInfraTestConstants as c
+    from tests.constants import FlextInfraConstantsTest, FlextInfraConstantsTest as c
 
     fixtures = _tests_fixtures
     import tests.fixtures_git as _tests_fixtures_git
@@ -44,11 +44,11 @@ if _t.TYPE_CHECKING:
 
     models = _tests_models
     import tests.protocols as _tests_protocols
-    from tests.models import FlextInfraTestModels, FlextInfraTestModels as m
+    from tests.models import FlextInfraModelsTest, FlextInfraModelsTest as m
 
     protocols = _tests_protocols
     import tests.runner_service as _tests_runner_service
-    from tests.protocols import FlextInfraTestProtocols, FlextInfraTestProtocols as p
+    from tests.protocols import FlextInfraProtocolsTest, FlextInfraProtocolsTest as p
 
     runner_service = _tests_runner_service
     import tests.scenarios as _tests_scenarios
@@ -72,7 +72,7 @@ if _t.TYPE_CHECKING:
 
     typings = _tests_typings
     import tests.utilities as _tests_utilities
-    from tests.typings import FlextInfraTestTypes, FlextInfraTestTypes as t
+    from tests.typings import FlextInfraTypesTest, FlextInfraTypesTest as t
     from tests.unit.basemk.test_engine import basemk_main
     from tests.unit.check._shared_fixtures import (
         RunProjectsMock,
@@ -128,7 +128,7 @@ if _t.TYPE_CHECKING:
 
     utilities = _tests_utilities
     import tests.workspace_factory as _tests_workspace_factory
-    from tests.utilities import FlextInfraTestUtilities, FlextInfraTestUtilities as u
+    from tests.utilities import FlextInfraUtilitiesTest, FlextInfraUtilitiesTest as u
 
     workspace_factory = _tests_workspace_factory
     import tests.workspace_scenarios as _tests_workspace_scenarios
@@ -175,12 +175,12 @@ _LAZY_IMPORTS = {
         "tests.unit.codegen._project_factory",
         "FlextInfraCodegenTestProjectFactory",
     ),
-    "FlextInfraTestConstants": ("tests.constants", "FlextInfraTestConstants"),
+    "FlextInfraConstantsTest": ("tests.constants", "FlextInfraConstantsTest"),
     "FlextInfraTestHelpers": ("tests.helpers", "FlextInfraTestHelpers"),
-    "FlextInfraTestModels": ("tests.models", "FlextInfraTestModels"),
-    "FlextInfraTestProtocols": ("tests.protocols", "FlextInfraTestProtocols"),
-    "FlextInfraTestTypes": ("tests.typings", "FlextInfraTestTypes"),
-    "FlextInfraTestUtilities": ("tests.utilities", "FlextInfraTestUtilities"),
+    "FlextInfraModelsTest": ("tests.models", "FlextInfraModelsTest"),
+    "FlextInfraProtocolsTest": ("tests.protocols", "FlextInfraProtocolsTest"),
+    "FlextInfraTypesTest": ("tests.typings", "FlextInfraTypesTest"),
+    "FlextInfraUtilitiesTest": ("tests.utilities", "FlextInfraUtilitiesTest"),
     "FullScenario": ("tests.workspace_scenarios", "FullScenario"),
     "GitScenario": ("tests.scenarios", "GitScenario"),
     "GitScenarios": ("tests.scenarios", "GitScenarios"),
@@ -210,7 +210,7 @@ _LAZY_IMPORTS = {
     "WorkspaceScenario": ("tests.scenarios", "WorkspaceScenario"),
     "WorkspaceScenarios": ("tests.scenarios", "WorkspaceScenarios"),
     "basemk_main": ("tests.unit.basemk.test_engine", "basemk_main"),
-    "c": ("tests.constants", "FlextInfraTestConstants"),
+    "c": ("tests.constants", "FlextInfraConstantsTest"),
     "conftest": "tests.conftest",
     "constants": "tests.constants",
     "create_check_project_iter_stub": (
@@ -242,11 +242,11 @@ _LAZY_IMPORTS = {
     "git_service": "tests.git_service",
     "h": ("flext_core.handlers", "FlextHandlers"),
     "helpers": "tests.helpers",
-    "m": ("tests.models", "FlextInfraTestModels"),
+    "m": ("tests.models", "FlextInfraModelsTest"),
     "make_issue": ("tests.unit.check._stubs", "make_issue"),
     "make_project": ("tests.unit.check._stubs", "make_project"),
     "models": "tests.models",
-    "p": ("tests.protocols", "FlextInfraTestProtocols"),
+    "p": ("tests.protocols", "FlextInfraProtocolsTest"),
     "patch_gate_run": ("tests.unit.check._shared_fixtures", "patch_gate_run"),
     "patch_gate_run_sequence": (
         "tests.unit.check._shared_fixtures",
@@ -274,10 +274,10 @@ _LAZY_IMPORTS = {
     "runner_service": "tests.runner_service",
     "s": ("flext_core.service", "FlextService"),
     "scenarios": "tests.scenarios",
-    "t": ("tests.typings", "FlextInfraTestTypes"),
+    "t": ("tests.typings", "FlextInfraTypesTest"),
     "test_infra_refactor_rope_migrations": "tests.test_infra_refactor_rope_migrations",
     "typings": "tests.typings",
-    "u": ("tests.utilities", "FlextInfraTestUtilities"),
+    "u": ("tests.utilities", "FlextInfraUtilitiesTest"),
     "utilities": "tests.utilities",
     "workspace_factory": "tests.workspace_factory",
     "workspace_main": ("tests.unit.test_infra_workspace_main", "workspace_main"),
@@ -303,12 +303,12 @@ __all__ = [
     "FakeUtilsNamespace",
     "FakeVersioning",
     "FlextInfraCodegenTestProjectFactory",
-    "FlextInfraTestConstants",
+    "FlextInfraConstantsTest",
+    "FlextInfraModelsTest",
+    "FlextInfraProtocolsTest",
     "FlextInfraTestHelpers",
-    "FlextInfraTestModels",
-    "FlextInfraTestProtocols",
-    "FlextInfraTestTypes",
-    "FlextInfraTestUtilities",
+    "FlextInfraTypesTest",
+    "FlextInfraUtilitiesTest",
     "FullScenario",
     "GitScenario",
     "GitScenarios",

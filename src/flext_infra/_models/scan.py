@@ -17,7 +17,7 @@ from pydantic import Field
 from flext_core import FlextModels
 from flext_infra import (
     FlextInfraModelsMixins,
-    FlextInfraNamespaceEnforcerModels,
+    FlextInfraModelsNamespaceEnforcer,
     FlextInfraTypesRope,
 )
 
@@ -35,7 +35,7 @@ class FlextInfraModelsScan:
             description="Initialized Rope project for semantic metadata.",
         )
         parse_failures: (
-            MutableSequence[FlextInfraNamespaceEnforcerModels.ParseFailureViolation]
+            MutableSequence[FlextInfraModelsNamespaceEnforcer.ParseFailureViolation]
             | None
         ) = Field(
             default=None,

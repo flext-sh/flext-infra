@@ -17,8 +17,8 @@ from rope.refactor.rename import Rename
 
 from flext_infra import (
     FlextInfraConstantsBase,
+    FlextInfraConstantsRefactor,
     FlextInfraProtocolsRope,
-    FlextInfraRefactorConstants,
     FlextInfraUtilitiesRopeCore,
     t,
 )
@@ -364,7 +364,7 @@ class FlextInfraUtilitiesRopeImports(FlextInfraUtilitiesRopeCore):
         resource: t.Infra.RopeResource,
         *,
         package_name: str,
-        aliases: t.StrSequence = tuple(FlextInfraRefactorConstants.RUNTIME_ALIAS_NAMES),
+        aliases: t.StrSequence = tuple(FlextInfraConstantsRefactor.RUNTIME_ALIAS_NAMES),
         apply: bool,
     ) -> str | None:
         """Hoist ``from package.sub import alias`` into ``from package import alias``."""

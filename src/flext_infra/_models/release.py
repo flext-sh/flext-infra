@@ -10,7 +10,7 @@ from flext_core import FlextModels
 from flext_infra import FlextInfraModelsMixins, t
 
 
-class FlextInfraReleaseModels:
+class FlextInfraModelsRelease:
     """Models for release management."""
 
     class BuildRecord(
@@ -38,7 +38,7 @@ class FlextInfraReleaseModels:
         """Aggregated build report payload written to JSON."""
 
         @staticmethod
-        def _records_default() -> list[FlextInfraReleaseModels.BuildRecord]:
+        def _records_default() -> list[FlextInfraModelsRelease.BuildRecord]:
             return []
 
         version: Annotated[t.NonEmptyStr, Field(description="Release version")]
@@ -51,7 +51,7 @@ class FlextInfraReleaseModels:
             Field(description="Total projects with non-zero exit"),
         ]
         records: Annotated[
-            list[FlextInfraReleaseModels.BuildRecord],
+            list[FlextInfraModelsRelease.BuildRecord],
             Field(
                 default_factory=_records_default,
                 description="Per-project build records",
@@ -92,4 +92,4 @@ class FlextInfraReleaseModels:
         phase: Annotated[t.NonEmptyStr, Field(description="Release phase")]
 
 
-__all__ = ["FlextInfraReleaseModels"]
+__all__ = ["FlextInfraModelsRelease"]

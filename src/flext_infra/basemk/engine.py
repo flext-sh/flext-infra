@@ -17,9 +17,9 @@ from pydantic import PrivateAttr
 
 from flext_core import r, s
 from flext_infra import (
-    FlextInfraBasemkConstants,
-    FlextInfraBasemkModels,
     FlextInfraConstantsBase,
+    FlextInfraConstantsBasemk,
+    FlextInfraModelsBasemk,
     FlextInfraProtocolsBase,
     FlextInfraTypesBase,
 )
@@ -52,9 +52,9 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
         )
 
     @staticmethod
-    def default_config() -> FlextInfraBasemkModels.BaseMkConfig:
+    def default_config() -> FlextInfraModelsBasemk.BaseMkConfig:
         """Return default base.mk generation configuration."""
-        return FlextInfraBasemkModels.BaseMkConfig(
+        return FlextInfraModelsBasemk.BaseMkConfig(
             project_name=FlextInfraConstantsBase.Defaults.UNNAMED,
             python_version="3.13",
             core_stack=FlextInfraConstantsBase.PYTHON,
@@ -78,7 +78,7 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
     @staticmethod
     def _render_template(
         template: FlextInfraProtocolsBase.RenderableTemplate,
-        **kwargs: FlextInfraBasemkModels.BaseMkConfig
+        **kwargs: FlextInfraModelsBasemk.BaseMkConfig
         | FlextInfraTypesBase.InfraValue
         | type,
     ) -> str:
@@ -86,14 +86,14 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
 
     def render_all(
         self,
-        config: FlextInfraBasemkModels.BaseMkConfig | None = None,
+        config: FlextInfraModelsBasemk.BaseMkConfig | None = None,
     ) -> r[str]:
         """Render all base.mk templates into a single output string."""
         active_config = config or self.default_config()
         lint_gates_csv = ",".join(active_config.lint_gates)
         sections: MutableSequence[str] = []
         try:
-            for template_name in FlextInfraBasemkConstants.TEMPLATE_ORDER:
+            for template_name in FlextInfraConstantsBasemk.TEMPLATE_ORDER:
                 template: FlextInfraProtocolsBase.RenderableTemplate = (
                     self._environment.get_template(
                         template_name,
@@ -114,7 +114,7 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
     def render_single(
         self,
         template_name: str,
-        **kwargs: FlextInfraBasemkModels.BaseMkConfig
+        **kwargs: FlextInfraModelsBasemk.BaseMkConfig
         | FlextInfraTypesBase.InfraValue
         | type,
     ) -> r[str]:

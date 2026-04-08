@@ -15,10 +15,10 @@ from pathlib import Path
 
 from flext_core import r
 from flext_infra import (
-    FlextInfraCoreConstants,
-    FlextInfraCoreModels,
+    FlextInfraConstantsCore,
+    FlextInfraConstantsSharedInfra,
+    FlextInfraModelsCore,
     FlextInfraNamespaceRules,
-    FlextInfraSharedInfraConstants,
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesParsing,
 )
@@ -35,13 +35,13 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
     @staticmethod
     def _derive_prefix(project_root: Path) -> str:
         """Derive the expected class name prefix from the package directory."""
-        src_dir = project_root / FlextInfraSharedInfraConstants.Paths.DEFAULT_SRC_DIR
+        src_dir = project_root / FlextInfraConstantsSharedInfra.Paths.DEFAULT_SRC_DIR
         if not src_dir.is_dir():
             return ""
         for child in sorted(src_dir.iterdir()):
             if (
                 child.is_dir()
-                and (child / FlextInfraSharedInfraConstants.Files.INIT_PY).exists()
+                and (child / FlextInfraConstantsSharedInfra.Files.INIT_PY).exists()
             ):
                 return "".join(part.title() for part in child.name.split("_"))
         return ""
@@ -56,7 +56,7 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
         project_root: Path,
         *,
         scan_tests: bool = False,
-    ) -> r[FlextInfraCoreModels.ValidationReport]:
+    ) -> r[FlextInfraModelsCore.ValidationReport]:
         """Validate namespace rules 0-2 for all discovered Python files."""
         try:
             files = self._discover_files(project_root, scan_tests=scan_tests)
@@ -76,15 +76,15 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
                 if passed
                 else f"{len(violations)} namespace violation(s) found ({len(files)} files checked)"
             )
-            return r[FlextInfraCoreModels.ValidationReport].ok(
-                FlextInfraCoreModels.ValidationReport(
+            return r[FlextInfraModelsCore.ValidationReport].ok(
+                FlextInfraModelsCore.ValidationReport(
                     passed=passed,
                     violations=violations,
                     summary=summary,
                 ),
             )
         except (OSError, TypeError, ValueError, RuntimeError) as exc:
-            return r[FlextInfraCoreModels.ValidationReport].fail(
+            return r[FlextInfraModelsCore.ValidationReport].fail(
                 f"Namespace validation failed: {exc}",
             )
 
@@ -97,11 +97,11 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
         """Walk ``src/`` (and optionally ``tests/``) for non-exempt .py files."""
         result: MutableSequence[Path] = []
         dirs_to_scan = [
-            workspace_root / FlextInfraSharedInfraConstants.Paths.DEFAULT_SRC_DIR,
+            workspace_root / FlextInfraConstantsSharedInfra.Paths.DEFAULT_SRC_DIR,
         ]
         if scan_tests:
             dirs_to_scan.append(
-                workspace_root / FlextInfraSharedInfraConstants.Directories.TESTS,
+                workspace_root / FlextInfraConstantsSharedInfra.Directories.TESTS,
             )
         for base_dir in dirs_to_scan:
             if not base_dir.is_dir():
@@ -118,11 +118,11 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
     def _is_exempt_file(self, filepath: Path) -> bool:
         """Check whether a file should be skipped from validation."""
         name = filepath.name
-        if name in FlextInfraCoreConstants.EXEMPT_FILENAMES:
+        if name in FlextInfraConstantsCore.EXEMPT_FILENAMES:
             return True
         return any(
             name.startswith(prefix)
-            for prefix in FlextInfraCoreConstants.EXEMPT_PREFIXES
+            for prefix in FlextInfraConstantsCore.EXEMPT_PREFIXES
         )
 
     def _parse_file(self, path: Path) -> ast.Module | None:

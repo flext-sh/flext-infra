@@ -11,7 +11,7 @@ from flext_core import FlextModels
 from flext_infra import FlextInfraModelsMixins, c, t
 
 
-class FlextInfraCheckModels:
+class FlextInfraModelsCheck:
     """Quality-gate check domain models."""
 
     class Issue(FlextModels.ContractModel):
@@ -56,10 +56,10 @@ class FlextInfraCheckModels:
     class GateExecution(FlextModels.ArbitraryTypesModel):
         """Execution result for a single quality gate."""
 
-        result: FlextInfraCheckModels.GateResult = Field(
+        result: FlextInfraModelsCheck.GateResult = Field(
             description="Gate result model",
         )
-        issues: tuple[FlextInfraCheckModels.Issue, ...] = Field(
+        issues: tuple[FlextInfraModelsCheck.Issue, ...] = Field(
             default_factory=tuple, description="Detected issues"
         )
         raw_output: str = Field(default="", description="Raw tool output")
@@ -70,7 +70,7 @@ class FlextInfraCheckModels:
     ):
         """Aggregated gate results for a single project."""
 
-        gates: MutableMapping[str, FlextInfraCheckModels.GateExecution] = Field(
+        gates: MutableMapping[str, FlextInfraModelsCheck.GateExecution] = Field(
             default_factory=dict,
             description="Gate name to execution mapping",
         )
@@ -137,7 +137,7 @@ class FlextInfraCheckModels:
         rule_id: Annotated[str, Field(description="Rule identifier")]
         level: Annotated[str, Field(description="Result level (error/warning)")]
         message: Annotated[str, Field(description="Result message")]
-        locations: list[FlextInfraCheckModels.SarifLocation] = Field(
+        locations: list[FlextInfraModelsCheck.SarifLocation] = Field(
             description="Result locations",
         )
 
@@ -160,10 +160,10 @@ class FlextInfraCheckModels:
             default="",
             description="Tool documentation URL",
         )
-        rules: tuple[FlextInfraCheckModels.SarifRule, ...] = Field(
+        rules: tuple[FlextInfraModelsCheck.SarifRule, ...] = Field(
             default_factory=tuple, description="Rule descriptors"
         )
-        results: tuple[FlextInfraCheckModels.SarifResult, ...] = Field(
+        results: tuple[FlextInfraModelsCheck.SarifResult, ...] = Field(
             default_factory=tuple, description="Run results"
         )
 
@@ -195,9 +195,9 @@ class FlextInfraCheckModels:
             description="SARIF schema URI",
         )
         version: str = Field(default="2.1.0", description="SARIF version")
-        runs: tuple[FlextInfraCheckModels.SarifRun, ...] = Field(
+        runs: tuple[FlextInfraModelsCheck.SarifRun, ...] = Field(
             default_factory=tuple, description="SARIF runs"
         )
 
 
-__all__ = ["FlextInfraCheckModels"]
+__all__ = ["FlextInfraModelsCheck"]

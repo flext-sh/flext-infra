@@ -13,15 +13,15 @@ if _t.TYPE_CHECKING:
     import flext_infra.transformers._base as _flext_infra_transformers__base
 
     _base = _flext_infra_transformers__base
-    import flext_infra.transformers._utilities_normalizer as _flext_infra_transformers__utilities_normalizer
+    import flext_infra._utilities.import_normalizer as _flext_infra__utilities_import_normalizer
     from flext_infra.transformers._base import (
         FlextInfraChangeTrackingTransformer,
         FlextInfraRopeTransformer,
     )
 
-    _utilities_normalizer = _flext_infra_transformers__utilities_normalizer
+    _utilities_normalizer = _flext_infra__utilities_import_normalizer
     import flext_infra.transformers.alias_remover as _flext_infra_transformers_alias_remover
-    from flext_infra.transformers._utilities_normalizer import (
+    from flext_infra._utilities.import_normalizer import (
         FlextInfraNormalizerContext,
         FlextInfraUtilitiesImportNormalizer,
     )
@@ -90,15 +90,15 @@ if _t.TYPE_CHECKING:
     )
 
     nested_class_propagation = _flext_infra_transformers_nested_class_propagation
-    import flext_infra.transformers.policy as _flext_infra_transformers_policy
+    import flext_infra._utilities.transformer_policy as _flext_infra__utilities_transformer_policy
     from flext_infra.transformers.nested_class_propagation import (
         FlextInfraNestedClassPropagationTransformer,
     )
 
-    policy = _flext_infra_transformers_policy
+    policy = _flext_infra__utilities_transformer_policy
     import flext_infra.transformers.signature_propagator as _flext_infra_transformers_signature_propagator
-    from flext_infra.transformers.policy import (
-        FlextInfraRefactorTransformerPolicyUtilities,
+    from flext_infra._utilities.transformer_policy import (
+        FlextInfraUtilitiesRefactorTransformerPolicy,
     )
 
     signature_propagator = _flext_infra_transformers_signature_propagator
@@ -161,7 +161,7 @@ _LAZY_IMPORTS = {
         "FlextInfraNestedClassPropagationTransformer",
     ),
     "FlextInfraNormalizerContext": (
-        "flext_infra.transformers._utilities_normalizer",
+        "flext_infra._utilities.import_normalizer",
         "FlextInfraNormalizerContext",
     ),
     "FlextInfraRefactorAliasRemover": (
@@ -208,9 +208,9 @@ _LAZY_IMPORTS = {
         "flext_infra.transformers.symbol_propagator",
         "FlextInfraRefactorSymbolPropagator",
     ),
-    "FlextInfraRefactorTransformerPolicyUtilities": (
-        "flext_infra.transformers.policy",
-        "FlextInfraRefactorTransformerPolicyUtilities",
+    "FlextInfraUtilitiesRefactorTransformerPolicy": (
+        "flext_infra._utilities.transformer_policy",
+        "FlextInfraUtilitiesRefactorTransformerPolicy",
     ),
     "FlextInfraRefactorTypingUnifier": (
         "flext_infra.transformers.typing_unifier",
@@ -229,7 +229,7 @@ _LAZY_IMPORTS = {
         "FlextInfraTypingAnnotationReplacer",
     ),
     "FlextInfraUtilitiesImportNormalizer": (
-        "flext_infra.transformers._utilities_normalizer",
+        "flext_infra._utilities.import_normalizer",
         "FlextInfraUtilitiesImportNormalizer",
     ),
     "FlextInfraViolationCensusVisitor": (
@@ -237,7 +237,7 @@ _LAZY_IMPORTS = {
         "FlextInfraViolationCensusVisitor",
     ),
     "_base": "flext_infra.transformers._base",
-    "_utilities_normalizer": "flext_infra.transformers._utilities_normalizer",
+    "_utilities_normalizer": "flext_infra._utilities.import_normalizer",
     "alias_remover": "flext_infra.transformers.alias_remover",
     "census_visitors": "flext_infra.transformers.census_visitors",
     "class_nesting": "flext_infra.transformers.class_nesting",
@@ -253,7 +253,7 @@ _LAZY_IMPORTS = {
     "mro_remover": "flext_infra.transformers.mro_remover",
     "mro_symbol_propagator": "flext_infra.transformers.mro_symbol_propagator",
     "nested_class_propagation": "flext_infra.transformers.nested_class_propagation",
-    "policy": "flext_infra.transformers.policy",
+    "policy": "flext_infra._utilities.transformer_policy",
     "r": ("flext_core.result", "FlextResult"),
     "s": ("flext_core.service", "FlextService"),
     "signature_propagator": "flext_infra.transformers.signature_propagator",
@@ -283,12 +283,12 @@ __all__ = [
     "FlextInfraRefactorMROSymbolPropagator",
     "FlextInfraRefactorSignaturePropagator",
     "FlextInfraRefactorSymbolPropagator",
-    "FlextInfraRefactorTransformerPolicyUtilities",
     "FlextInfraRefactorTypingUnifier",
     "FlextInfraRopeTransformer",
     "FlextInfraTransformerTier0ImportFixer",
     "FlextInfraTypingAnnotationReplacer",
     "FlextInfraUtilitiesImportNormalizer",
+    "FlextInfraUtilitiesRefactorTransformerPolicy",
     "FlextInfraViolationCensusVisitor",
     "_base",
     "_utilities_normalizer",

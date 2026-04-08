@@ -12,7 +12,7 @@ from flext_core import FlextModels
 from flext_infra import FlextInfraModelsMixins, t
 
 
-class FlextInfraGithubModels:
+class FlextInfraModelsGithub:
     """Models for GitHub PR orchestration and repository management."""
 
     class GithubWorkflowSyncRequest(
@@ -101,7 +101,7 @@ class FlextInfraGithubModels:
         success: Annotated[t.NonNegativeInt, Field(description="Successful executions")]
         fail: Annotated[t.NonNegativeInt, Field(description="Failed executions")]
         outcomes: t.Infra.VariadicTuple[
-            FlextInfraGithubModels.GithubPullRequestOutcome
+            FlextInfraModelsGithub.GithubPullRequestOutcome
         ] = Field(default_factory=tuple, description="Per-repository outcomes")
 
         @property
@@ -181,7 +181,7 @@ class FlextInfraGithubModels:
             Field(description="Count of operations by action"),
         ]
         operations: t.Infra.VariadicTuple[
-            FlextInfraGithubModels.GithubWorkflowSyncOperation
+            FlextInfraModelsGithub.GithubWorkflowSyncOperation
         ] = Field(default_factory=tuple, description="Workflow operations")
 
         @classmethod
@@ -190,9 +190,9 @@ class FlextInfraGithubModels:
             *,
             apply: bool,
             operations: MutableSequence[
-                FlextInfraGithubModels.GithubWorkflowSyncOperation
+                FlextInfraModelsGithub.GithubWorkflowSyncOperation
             ],
-        ) -> FlextInfraGithubModels.GithubWorkflowSyncReport:
+        ) -> FlextInfraModelsGithub.GithubWorkflowSyncReport:
             """Build a typed report from collected operations."""
             summary: dict[str, int] = {}
             for operation in operations:
@@ -217,7 +217,7 @@ class FlextInfraGithubModels:
         project_root: Annotated[Path, Field(description="Project root path")]
         rendered_template: Annotated[str, Field(description="Rendered workflow body")]
         request: Annotated[
-            FlextInfraGithubModels.GithubWorkflowSyncRequest,
+            FlextInfraModelsGithub.GithubWorkflowSyncRequest,
             Field(description="Original sync request"),
         ]
 
@@ -244,13 +244,13 @@ class FlextInfraGithubModels:
         """Resolved context for workspace-wide pull-request execution."""
 
         request: Annotated[
-            FlextInfraGithubModels.GithubPullRequestWorkspaceRequest,
+            FlextInfraModelsGithub.GithubPullRequestWorkspaceRequest,
             Field(description="Original workspace pull-request request"),
         ]
         outcomes: Annotated[
-            MutableSequence[FlextInfraGithubModels.GithubPullRequestOutcome],
+            MutableSequence[FlextInfraModelsGithub.GithubPullRequestOutcome],
             Field(description="Accumulated pull-request outcomes"),
         ] = Field(description="Accumulated pull-request outcomes")
 
 
-__all__ = ["FlextInfraGithubModels"]
+__all__ = ["FlextInfraModelsGithub"]

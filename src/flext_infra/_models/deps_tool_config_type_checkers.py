@@ -10,7 +10,7 @@ from flext_core import m
 from flext_infra import c, t
 
 
-class FlextInfraDepsModelsToolConfigTypeCheckers:
+class FlextInfraModelsDepsToolConfigTypeCheckers:
     """Type checker configuration models."""
 
     class PyrightConfig(m.ArbitraryTypesModel):
@@ -178,7 +178,7 @@ class FlextInfraDepsModelsToolConfigTypeCheckers:
             ),
         ] = Field(default_factory=dict)
         path_rules: Annotated[
-            FlextInfraDepsModelsToolConfigTypeCheckers.PyrightConfig.PathRulesConfig,
+            FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig.PathRulesConfig,
             Field(
                 alias="path-rules",
                 description="Pyright path resolution and execution-env rules.",
@@ -301,11 +301,11 @@ class FlextInfraDepsModelsToolConfigTypeCheckers:
             ),
         ]
         path_rules: Annotated[
-            FlextInfraDepsModelsToolConfigTypeCheckers.PyreflyConfig.PathRulesConfig,
+            FlextInfraModelsDepsToolConfigTypeCheckers.PyreflyConfig.PathRulesConfig,
             Field(alias="path-rules", description="Pyrefly search-path rules."),
         ]
 
 
 __all__ = [
-    "FlextInfraDepsModelsToolConfigTypeCheckers",
+    "FlextInfraModelsDepsToolConfigTypeCheckers",
 ]

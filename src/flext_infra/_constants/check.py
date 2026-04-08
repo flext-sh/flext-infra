@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from flext_infra import t
 
 
-class FlextInfraCheckConstants:
+class FlextInfraConstantsCheck:
     """Check infrastructure constants."""
 
     ALLOWED_GATES: Final[frozenset[str]] = frozenset({
@@ -63,4 +63,4 @@ class FlextInfraCheckConstants:
         PYREFLY_ERRORS: Final[str] = "errors"
 
 
-__all__ = ["FlextInfraCheckConstants"]
+__all__ = ["FlextInfraConstantsCheck"]

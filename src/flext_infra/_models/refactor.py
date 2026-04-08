@@ -12,19 +12,19 @@ from pydantic import ConfigDict, Field
 from flext_core import m
 from flext_infra import (
     FlextInfraModelsMixins,
-    FlextInfraNamespaceEnforcerModels,
-    FlextInfraRefactorGrepModels,
-    FlextInfraRefactorModelsCensus,
-    FlextInfraRefactorModelsViolations,
+    FlextInfraModelsNamespaceEnforcer,
+    FlextInfraModelsRefactorCensus,
+    FlextInfraModelsRefactorGrep,
+    FlextInfraModelsRefactorViolations,
     t,
 )
 
 
-class FlextInfraRefactorModels(
-    FlextInfraRefactorGrepModels,
-    FlextInfraNamespaceEnforcerModels,
-    FlextInfraRefactorModelsCensus,
-    FlextInfraRefactorModelsViolations,
+class FlextInfraModelsRefactor(
+    FlextInfraModelsRefactorGrep,
+    FlextInfraModelsNamespaceEnforcer,
+    FlextInfraModelsRefactorCensus,
+    FlextInfraModelsRefactorViolations,
 ):
     """Models for the refactor engine and related tools.
 
@@ -304,11 +304,11 @@ class FlextInfraRefactorModels(
         """Result of processing a single file for model centralization."""
 
         @staticmethod
-        def _class_moves_default() -> list[FlextInfraRefactorModels.ClassMove]:
+        def _class_moves_default() -> list[FlextInfraModelsRefactor.ClassMove]:
             return []
 
         @staticmethod
-        def _alias_moves_default() -> list[FlextInfraRefactorModels.AliasMove]:
+        def _alias_moves_default() -> list[FlextInfraModelsRefactor.AliasMove]:
             return []
 
         found_models: Annotated[
@@ -327,14 +327,14 @@ class FlextInfraRefactorModels(
             ),
         ] = False
         apply_class_moves: Annotated[
-            list[FlextInfraRefactorModels.ClassMove],
+            list[FlextInfraModelsRefactor.ClassMove],
             Field(
                 default_factory=_class_moves_default,
                 description="Class moves to apply",
             ),
         ]
         apply_alias_moves: Annotated[
-            list[FlextInfraRefactorModels.AliasMove],
+            list[FlextInfraModelsRefactor.AliasMove],
             Field(
                 default_factory=_alias_moves_default,
                 description="Alias moves to apply",
@@ -355,4 +355,4 @@ class FlextInfraRefactorModels(
         ]
 
 
-__all__ = ["FlextInfraRefactorModels"]
+__all__ = ["FlextInfraModelsRefactor"]

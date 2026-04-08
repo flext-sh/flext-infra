@@ -11,22 +11,22 @@ from __future__ import annotations
 
 from flext_cli import m
 from flext_infra import (
-    FlextInfraBasemkModels,
-    FlextInfraCheckModels,
-    FlextInfraCodegenModels,
-    FlextInfraCoreModels,
-    FlextInfraDepsModels,
-    FlextInfraDocsModels,
-    FlextInfraEngineModels,
-    FlextInfraGatesModels,
-    FlextInfraGithubModels,
     FlextInfraModelsBase,
+    FlextInfraModelsBasemk,
     FlextInfraModelsCensus,
+    FlextInfraModelsCheck,
+    FlextInfraModelsCodegen,
+    FlextInfraModelsCore,
+    FlextInfraModelsDeps,
+    FlextInfraModelsDocs,
+    FlextInfraModelsEngine,
+    FlextInfraModelsGates,
+    FlextInfraModelsGithub,
+    FlextInfraModelsRefactor,
+    FlextInfraModelsRelease,
     FlextInfraModelsRope,
     FlextInfraModelsScan,
-    FlextInfraRefactorModels,
-    FlextInfraReleaseModels,
-    FlextInfraWorkspaceModels,
+    FlextInfraModelsWorkspace,
 )
 
 
@@ -35,21 +35,21 @@ class FlextInfraModels(m):
 
     class Infra(
         FlextInfraModelsCensus,
-        FlextInfraBasemkModels,
-        FlextInfraCheckModels,
-        FlextInfraCodegenModels,
-        FlextInfraDepsModels,
-        FlextInfraDocsModels,
-        FlextInfraGatesModels,
-        FlextInfraGithubModels,
-        FlextInfraRefactorModels,
-        FlextInfraReleaseModels,
-        FlextInfraCoreModels,
-        FlextInfraWorkspaceModels,
+        FlextInfraModelsBasemk,
+        FlextInfraModelsCheck,
+        FlextInfraModelsCodegen,
+        FlextInfraModelsDeps,
+        FlextInfraModelsDocs,
+        FlextInfraModelsGates,
+        FlextInfraModelsGithub,
+        FlextInfraModelsRefactor,
+        FlextInfraModelsRelease,
+        FlextInfraModelsCore,
+        FlextInfraModelsWorkspace,
         FlextInfraModelsRope,
         FlextInfraModelsScan,
         FlextInfraModelsBase,
-        FlextInfraEngineModels,
+        FlextInfraModelsEngine,
     ):
         """Infrastructure-domain models - all classes exposed directly."""
 

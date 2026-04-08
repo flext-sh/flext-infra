@@ -8,7 +8,7 @@ from typing import Final
 from flext_infra import FlextInfraTypesBase, t
 
 
-class FlextInfraWorkspaceConstants:
+class FlextInfraConstantsWorkspace:
     """Workspace infrastructure constants."""
 
     @unique
@@ -124,4 +124,4 @@ class FlextInfraWorkspaceConstants:
         "Makefile include for user customization overrides."
 
 
-__all__ = ["FlextInfraWorkspaceConstants"]
+__all__ = ["FlextInfraConstantsWorkspace"]

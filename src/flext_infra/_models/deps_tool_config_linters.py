@@ -11,7 +11,7 @@ from flext_core import m
 from flext_infra import t
 
 
-class FlextInfraDepsModelsToolConfigLinters:
+class FlextInfraModelsDepsToolConfigLinters:
     """Linters tool configuration models."""
 
     class CodespellConfig(m.ArbitraryTypesModel):
@@ -100,7 +100,7 @@ class FlextInfraDepsModelsToolConfigLinters:
             t.StrSequence,
             Field(description="Ruff lint rule ignore list."),
         ] = Field(default_factory=list)
-        isort: FlextInfraDepsModelsToolConfigLinters.RuffIsortConfig = Field(
+        isort: FlextInfraModelsDepsToolConfigLinters.RuffIsortConfig = Field(
             description="Ruff isort configuration"
         )
         per_file_ignores: Annotated[
@@ -146,10 +146,10 @@ class FlextInfraDepsModelsToolConfigLinters:
                 alias="target-version", description="Python target version for ruff."
             ),
         ]
-        format: FlextInfraDepsModelsToolConfigLinters.RuffFormatConfig = Field(
+        format: FlextInfraModelsDepsToolConfigLinters.RuffFormatConfig = Field(
             description="Ruff format configuration"
         )
-        lint: FlextInfraDepsModelsToolConfigLinters.RuffLintConfig = Field(
+        lint: FlextInfraModelsDepsToolConfigLinters.RuffLintConfig = Field(
             description="Ruff lint configuration"
         )
 
@@ -188,7 +188,7 @@ class FlextInfraDepsModelsToolConfigLinters:
             ),
         ]
         overrides: Annotated[
-            tuple[FlextInfraDepsModelsToolConfigLinters.MypyOverrideConfig, ...],
+            tuple[FlextInfraModelsDepsToolConfigLinters.MypyOverrideConfig, ...],
             Field(
                 description="Per-module mypy overrides for auto-generated files and PEP 695 generics."
             ),
@@ -221,5 +221,5 @@ class FlextInfraDepsModelsToolConfigLinters:
 
 
 __all__ = [
-    "FlextInfraDepsModelsToolConfigLinters",
+    "FlextInfraModelsDepsToolConfigLinters",
 ]

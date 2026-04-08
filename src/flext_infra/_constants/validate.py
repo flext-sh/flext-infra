@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Final
 
 
-class FlextInfraCoreConstants:
+class FlextInfraConstantsCore:
     """Core infrastructure constants."""
 
     EXEMPT_FILENAMES: Final[frozenset[str]] = frozenset({
@@ -59,7 +59,7 @@ class FlextInfraCoreConstants:
     INTERNAL_PREFIXES: Final[tuple[str, ...]] = ("flext_", "flext-")
 
 
-class FlextInfraSharedInfraConstants:
+class FlextInfraConstantsSharedInfra:
     """Shared infrastructure constants consumed by flext_infra.constants."""
 
     class Files:
@@ -136,4 +136,4 @@ class FlextInfraSharedInfraConstants:
         DEFAULT_SRC_DIR: Final[str] = "src"
 
 
-__all__ = ["FlextInfraCoreConstants", "FlextInfraSharedInfraConstants"]
+__all__ = ["FlextInfraConstantsCore", "FlextInfraConstantsSharedInfra"]

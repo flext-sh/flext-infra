@@ -7,8 +7,8 @@ from pathlib import Path
 
 from flext_infra import (
     FlextInfraConstantsBase,
-    FlextInfraRefactorConstants,
-    FlextInfraRefactorGrepModels,
+    FlextInfraConstantsRefactor,
+    FlextInfraModelsRefactorGrep,
     FlextInfraRefactorMROSymbolPropagator,
     FlextInfraTypes,
     FlextInfraTypesBase,
@@ -30,16 +30,16 @@ class FlextInfraRefactorMROImportRewriter:
         cls,
         *,
         workspace_root: Path,
-        scan_results: Sequence[FlextInfraRefactorGrepModels.MROScanReport],
+        scan_results: Sequence[FlextInfraModelsRefactorGrep.MROScanReport],
         apply: bool,
     ) -> FlextInfraTypes.Infra.Triple[
-        Sequence[FlextInfraRefactorGrepModels.MROFileMigration],
-        Sequence[FlextInfraRefactorGrepModels.MRORewriteResult],
+        Sequence[FlextInfraModelsRefactorGrep.MROFileMigration],
+        Sequence[FlextInfraModelsRefactorGrep.MRORewriteResult],
         FlextInfraTypes.StrSequence,
     ]:
         """Transform migrated files and propagate consumer rewrites across the workspace."""
         errors: list[str] = []
-        migrations: list[FlextInfraRefactorGrepModels.MROFileMigration] = []
+        migrations: list[FlextInfraModelsRefactorGrep.MROFileMigration] = []
         module_moves: MutableMapping[
             str, FlextInfraTypesBase.Pair[str, FlextInfraTypes.StrMapping]
         ] = {}
@@ -103,7 +103,7 @@ class FlextInfraRefactorMROImportRewriter:
         pending_sources: Mapping[Path, str],
         apply: bool,
     ) -> tuple[
-        Sequence[FlextInfraRefactorGrepModels.MRORewriteResult],
+        Sequence[FlextInfraModelsRefactorGrep.MRORewriteResult],
         FlextInfraTypes.StrSequence,
     ]:
         """Rewrite consumer imports/usages using rope occurrence discovery + source transforms."""
@@ -258,7 +258,7 @@ class FlextInfraRefactorMROImportRewriter:
             iter_result = FlextInfraUtilitiesIteration.iter_python_files(
                 workspace_root=workspace_root,
                 project_roots=[project_root],
-                src_dirs=frozenset(FlextInfraRefactorConstants.MRO_SCAN_DIRECTORIES),
+                src_dirs=frozenset(FlextInfraConstantsRefactor.MRO_SCAN_DIRECTORIES),
             )
             if iter_result.is_failure:
                 continue
@@ -277,10 +277,10 @@ class FlextInfraRefactorMROImportRewriter:
         pending_sources: Mapping[Path, str],
         apply: bool,
     ) -> tuple[
-        Sequence[FlextInfraRefactorGrepModels.MRORewriteResult],
+        Sequence[FlextInfraModelsRefactorGrep.MRORewriteResult],
         FlextInfraTypes.StrSequence,
     ]:
-        rewrites: list[FlextInfraRefactorGrepModels.MRORewriteResult] = []
+        rewrites: list[FlextInfraModelsRefactorGrep.MRORewriteResult] = []
         errors: list[str] = []
         for file_path in sorted(file_moves):
             source = pending_sources.get(file_path)
@@ -309,7 +309,7 @@ class FlextInfraRefactorMROImportRewriter:
                     )
                     continue
             rewrites.append(
-                FlextInfraRefactorGrepModels.MRORewriteResult(
+                FlextInfraModelsRefactorGrep.MRORewriteResult(
                     file=str(file_path),
                     replacements=len(changes),
                 ),

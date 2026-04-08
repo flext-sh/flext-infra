@@ -463,8 +463,8 @@ def test_namespace_enforcer_does_not_rewrite_multiline_import_alias_blocks(
     _ = module_file.write_text(
         "from __future__ import annotations\n"
         "from flext_infra import (\n"
-        "    FlextInfraCoreConstants,\n"
-        "    FlextInfraSharedInfraConstants,\n"
+        "    FlextInfraConstantsCore,\n"
+        "    FlextInfraConstantsSharedInfra,\n"
         ")\n"
         "\n"
         "class DemoConstants:\n"
@@ -478,4 +478,4 @@ def test_namespace_enforcer_does_not_rewrite_multiline_import_alias_blocks(
 
     module_source = module_file.read_text(encoding="utf-8")
     tm.that(module_source, has="from flext_infra import (")
-    tm.that(module_source, has="FlextInfraCoreConstants")
+    tm.that(module_source, has="FlextInfraConstantsCore")

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import u
+from tests import u
 
 
 def test_rope_project_wrapper(tmp_path: Path) -> None:

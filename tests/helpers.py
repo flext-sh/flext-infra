@@ -12,11 +12,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
 import argparse
 import shutil
 import sys
 import tomllib
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import override
 
@@ -27,7 +27,7 @@ from flext_core import r
 from flext_infra import FlextInfraBaseMkGenerator, FlextInfraProjectMigrator
 
 
-class FlextInfraTestHelpers:
+class TestsFlextInfraHelpers:
     """Assertion helpers and factories for infra testing with tm integration.
 
     Wraps flext_tests matchers (tm) with infra-specific validation context.
@@ -173,9 +173,10 @@ class FlextInfraTestHelpers:
         """
         cls.assert_file_exists(path, msg)
         try:
-            content: t.Infra.InfraMapping = tomllib.loads(
+            parsed: Mapping[str, t.Infra.InfraValue] = tomllib.loads(
                 path.read_text(encoding="utf-8"),
             )
+            content: t.Infra.InfraMapping = dict(parsed)
         except tomllib.TOMLDecodeError as exc:
             raise AssertionError(msg or f"Invalid TOML in {path}: {exc}") from exc
         return content
@@ -483,5 +484,5 @@ class FlextInfraTestHelpers:
 
 
 # Canonical alias for infra test helpers
-h = FlextInfraTestHelpers
-__all__ = ["FlextInfraTestHelpers", "h"]
+h = TestsFlextInfraHelpers
+__all__ = ["TestsFlextInfraHelpers", "h"]

@@ -11,7 +11,7 @@ from flext_core import m
 from flext_infra import FlextInfraModelsMixins, c, t
 
 
-class FlextInfraRefactorModelsCensus:
+class FlextInfraModelsRefactorCensus:
     """Census and MRO models for the refactor engine."""
 
     # -- MRO Generic Models ----------------------------------------------------
@@ -117,7 +117,7 @@ class FlextInfraRefactorModelsCensus:
             Field(description="Utilities class name"),
         ]
         source_file: Annotated[str, Field(description="Source filename")]
-        methods: tuple[FlextInfraRefactorModelsCensus.CensusMethodSummary, ...] = Field(
+        methods: tuple[FlextInfraModelsRefactorCensus.CensusMethodSummary, ...] = Field(
             default_factory=tuple, description="Method summaries"
         )
 
@@ -141,7 +141,7 @@ class FlextInfraRefactorModelsCensus:
         """Usage breakdown for one project."""
 
         model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
-        usages: Sequence[FlextInfraRefactorModelsCensus.CensusProjectMethodUsage] = (
+        usages: Sequence[FlextInfraModelsRefactorCensus.CensusProjectMethodUsage] = (
             Field(default_factory=tuple, description="Per-method usages")
         )
         total: Annotated[t.NonNegativeInt, Field(description="Total usages in project")]
@@ -149,10 +149,10 @@ class FlextInfraRefactorModelsCensus:
     class UtilitiesCensusReport(m.ArbitraryTypesModel):
         """Full census report for _utilities method usage."""
 
-        classes: tuple[FlextInfraRefactorModelsCensus.CensusClassSummary, ...] = Field(
+        classes: tuple[FlextInfraModelsRefactorCensus.CensusClassSummary, ...] = Field(
             default_factory=tuple, description="Per-class summaries"
         )
-        projects: tuple[FlextInfraRefactorModelsCensus.CensusProjectSummary, ...] = (
+        projects: tuple[FlextInfraModelsRefactorCensus.CensusProjectSummary, ...] = (
             Field(default_factory=tuple, description="Per-project breakdowns")
         )
         total_classes: Annotated[
@@ -178,4 +178,4 @@ class FlextInfraRefactorModelsCensus:
         ]
 
 
-__all__ = ["FlextInfraRefactorModelsCensus"]
+__all__ = ["FlextInfraModelsRefactorCensus"]

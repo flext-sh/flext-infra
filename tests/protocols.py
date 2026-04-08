@@ -1,7 +1,7 @@
 """Protocol definitions for FLEXT infra tests.
 
-Provides FlextInfraTestProtocols, extending FlextTestsProtocols with infra-specific
-protocol definitions for infrastructure testing.
+Provides TestsFlextInfraProtocols, extending FlextTestsProtocols with
+infra-specific protocol definitions for infrastructure testing.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -16,7 +16,7 @@ from flext_tests import FlextTestsProtocols
 from flext_infra import FlextInfraProtocols
 
 
-class FlextInfraTestProtocols(FlextTestsProtocols, FlextInfraProtocols):
+class TestsFlextInfraProtocols(FlextTestsProtocols, FlextInfraProtocols):
     """Protocol definitions for FLEXT infra tests - extends FlextTestsProtocols.
 
     Architecture: Extends FlextTestsProtocols with infra-specific protocol definitions.
@@ -57,5 +57,5 @@ class FlextInfraTestProtocols(FlextTestsProtocols, FlextInfraProtocols):
                     ...
 
 
-p = FlextInfraTestProtocols
-__all__ = ["FlextInfraTestProtocols", "p"]
+p = TestsFlextInfraProtocols
+__all__ = ["TestsFlextInfraProtocols", "p"]

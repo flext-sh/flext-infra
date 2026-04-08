@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 import tomlkit
 from flext_tests import tm
-from tests import FlextInfraTestHelpers as h, m
+from tests import TestsFlextInfraHelpers as h, m
 from tomlkit.toml_document import TOMLDocument
 
 from flext_core import r

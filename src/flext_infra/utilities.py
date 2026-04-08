@@ -11,7 +11,6 @@ from __future__ import annotations
 
 from flext_cli import FlextCliUtilities
 from flext_infra import (
-    FlextInfraRefactorTransformerPolicyUtilities,
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesCli,
     FlextInfraUtilitiesCodegen,
@@ -36,6 +35,7 @@ from flext_infra import (
     FlextInfraUtilitiesPaths,
     FlextInfraUtilitiesPatterns,
     FlextInfraUtilitiesRefactor,
+    FlextInfraUtilitiesRefactorTransformerPolicy,
     FlextInfraUtilitiesRelease,
     FlextInfraUtilitiesReporting,
     FlextInfraUtilitiesRope,
@@ -70,7 +70,7 @@ class FlextInfraUtilities(FlextCliUtilities):
         FlextInfraUtilitiesBase,
         FlextInfraUtilitiesGithub,
         FlextInfraUtilitiesImportNormalizer,
-        FlextInfraRefactorTransformerPolicyUtilities,
+        FlextInfraUtilitiesRefactorTransformerPolicy,
         FlextInfraUtilitiesDocs,
         FlextInfraUtilitiesDocsApi,
         FlextInfraUtilitiesDocsAudit,

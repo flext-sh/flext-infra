@@ -1,6 +1,6 @@
 """Type system for FLEXT infra tests.
 
-Provides FlextInfraTestTypes, extending FlextTestsTypes with infra-specific
+Provides TestsFlextInfraTypes, extending FlextTestsTypes with infra-specific
 type definitions for infrastructure testing.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
@@ -14,7 +14,7 @@ from flext_tests import FlextTestsTypes
 from flext_infra import FlextInfraTypes
 
 
-class FlextInfraTestTypes(FlextTestsTypes, FlextInfraTypes):
+class TestsFlextInfraTypes(FlextTestsTypes, FlextInfraTypes):
     """Type system for FLEXT infra tests - extends FlextTestsTypes.
 
     Architecture: Extends FlextTestsTypes with infra-specific type definitions.
@@ -35,5 +35,5 @@ class FlextInfraTestTypes(FlextTestsTypes, FlextInfraTypes):
             "Type for test markers (infra, integration, docker, etc.)."
 
 
-t = FlextInfraTestTypes
-__all__ = ["FlextInfraTestTypes", "t"]
+t = TestsFlextInfraTypes
+__all__ = ["TestsFlextInfraTypes", "t"]

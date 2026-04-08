@@ -4,7 +4,7 @@ from flext_tests import tm
 from tests import m
 
 
-class TestFlextInfraDependencyDetectorModels:
+class TestFlextInfraModelsDependencyDetector:
     def test_dependency_limits_info_creation(self) -> None:
         info = m.Infra.DependencyLimitsInfo(python_version=None, limits_path="")
         tm.that(info.python_version, eq=None)

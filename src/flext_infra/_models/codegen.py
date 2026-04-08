@@ -10,13 +10,13 @@ from pydantic import ConfigDict, Field
 from flext_cli import u
 from flext_core import FlextModels
 from flext_infra import (
-    FlextInfraCodegenDeduplicationModels,
+    FlextInfraModelsCodegenDeduplication,
     FlextInfraModelsMixins,
     FlextInfraTypes as t,
 )
 
 
-class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
+class FlextInfraModelsCodegen(FlextInfraModelsCodegenDeduplication):
     """Models for codegen census, scaffold, and auto-fix pipelines."""
 
     class CensusViolation(
@@ -46,11 +46,11 @@ class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
         """Aggregated census report for a single project."""
 
         @staticmethod
-        def _violations_default() -> list[FlextInfraCodegenModels.CensusViolation]:
+        def _violations_default() -> list[FlextInfraModelsCodegen.CensusViolation]:
             return []
 
         violations: Annotated[
-            list[FlextInfraCodegenModels.CensusViolation],
+            list[FlextInfraModelsCodegen.CensusViolation],
             Field(
                 default_factory=_violations_default,
                 description="Detected violations",
@@ -84,18 +84,18 @@ class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
         """Result of auto-fixing namespace violations for a project."""
 
         @staticmethod
-        def _violations_default() -> list[FlextInfraCodegenModels.CensusViolation]:
+        def _violations_default() -> list[FlextInfraModelsCodegen.CensusViolation]:
             return []
 
         violations_fixed: Annotated[
-            list[FlextInfraCodegenModels.CensusViolation],
+            list[FlextInfraModelsCodegen.CensusViolation],
             Field(
                 default_factory=_violations_default,
                 description="Fixed violations",
             ),
         ]
         violations_skipped: Annotated[
-            list[FlextInfraCodegenModels.CensusViolation],
+            list[FlextInfraModelsCodegen.CensusViolation],
             Field(
                 default_factory=_violations_default,
                 description="Skipped violations (not auto-fixable)",
@@ -174,7 +174,7 @@ class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
         """Cross-project duplicate group with consolidation metadata."""
 
         constant_name: t.NonEmptyStr = Field(description="Constant identifier")
-        definitions: list[FlextInfraCodegenModels.ConstantDefinition] = Field(
+        definitions: list[FlextInfraModelsCodegen.ConstantDefinition] = Field(
             description="Definitions across projects",
         )
         is_value_identical: bool = Field(description="Whether all values match")
@@ -225,10 +225,10 @@ class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
 
     class ConstantsGovernanceConfig(FlextModels.ArbitraryTypesModel):
         version: str = Field(description="Config version")
-        rules: list[FlextInfraCodegenModels.NsRule] = Field(
+        rules: list[FlextInfraModelsCodegen.NsRule] = Field(
             description="Governance rules"
         )
-        canonical_values: list[FlextInfraCodegenModels.CanonicalValueRule] = Field(
+        canonical_values: list[FlextInfraModelsCodegen.CanonicalValueRule] = Field(
             description="Canonical values config"
         )
         constants_class_pattern: str = Field(
@@ -239,18 +239,18 @@ class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
         """Mutable accumulation context for fix operations."""
 
         @staticmethod
-        def _violations_default() -> list[FlextInfraCodegenModels.CensusViolation]:
+        def _violations_default() -> list[FlextInfraModelsCodegen.CensusViolation]:
             return []
 
         violations_fixed: Annotated[
-            MutableSequence[FlextInfraCodegenModels.CensusViolation],
+            MutableSequence[FlextInfraModelsCodegen.CensusViolation],
             Field(
                 default_factory=_violations_default,
                 description="List of violations that were fixed",
             ),
         ]
         violations_skipped: Annotated[
-            MutableSequence[FlextInfraCodegenModels.CensusViolation],
+            MutableSequence[FlextInfraModelsCodegen.CensusViolation],
             Field(
                 default_factory=_violations_default,
                 description="List of violations that were skipped",
@@ -266,14 +266,14 @@ class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
 
         def skip(self, *, module: str, rule: str, line: int, message: str) -> None:
             self.violations_skipped.append(
-                FlextInfraCodegenModels.CensusViolation(
+                FlextInfraModelsCodegen.CensusViolation(
                     module=module, rule=rule, line=line, message=message, fixable=False
                 ),
             )
 
         def fix(self, *, module: str, rule: str, line: int, message: str) -> None:
             self.violations_fixed.append(
-                FlextInfraCodegenModels.CensusViolation(
+                FlextInfraModelsCodegen.CensusViolation(
                     module=module, rule=rule, line=line, message=message, fixable=True
                 ),
             )
@@ -295,19 +295,19 @@ class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
 
         @staticmethod
         def from_violation(
-            violation: FlextInfraCodegenModels.CensusViolation,
+            violation: FlextInfraModelsCodegen.CensusViolation,
             source_lines: Sequence[str],
-        ) -> FlextInfraCodegenModels.ViolationKey:
+        ) -> FlextInfraModelsCodegen.ViolationKey:
             """Build key from violation and source context (+-2 lines)."""
             ctx_start = max(0, violation.line - 2)
             ctx_end = min(len(source_lines), violation.line + 3)
             context = "\n".join(source_lines[ctx_start:ctx_end])
             content_hash = u.Cli.sha256_content(context)
-            return FlextInfraCodegenModels.ViolationKey(
+            return FlextInfraModelsCodegen.ViolationKey(
                 module=violation.module,
                 rule=violation.rule,
                 content_hash=content_hash,
             )
 
 
-__all__ = ["FlextInfraCodegenModels"]
+__all__ = ["FlextInfraModelsCodegen"]

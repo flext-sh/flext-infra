@@ -10,7 +10,7 @@ from flext_cli import m
 from flext_infra import FlextInfraModelsMixins, c, t
 
 
-class FlextInfraBasemkModels:
+class FlextInfraModelsBasemk:
     """Models for base.mk template rendering."""
 
     class BaseMkConfig(
@@ -63,4 +63,4 @@ class FlextInfraBasemkModels:
         ]
 
 
-__all__ = ["FlextInfraBasemkModels"]
+__all__ = ["FlextInfraModelsBasemk"]

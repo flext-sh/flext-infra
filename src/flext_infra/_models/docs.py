@@ -12,7 +12,7 @@ from flext_core import m
 from flext_infra import t
 
 
-class FlextInfraDocsModels:
+class FlextInfraModelsDocs:
     """Models for documentation services."""
 
     class DocsPhaseItemModel(BaseModel):
@@ -109,7 +109,7 @@ class FlextInfraDocsModels:
         """Unified report payload for docs phases."""
 
         @staticmethod
-        def _items_default() -> list[FlextInfraDocsModels.DocsPhaseItemModel]:
+        def _items_default() -> list[FlextInfraModelsDocs.DocsPhaseItemModel]:
             return []
 
         phase: Annotated[
@@ -174,7 +174,7 @@ class FlextInfraDocsModels:
             ),
         ] = False
         items: Annotated[
-            Sequence[FlextInfraDocsModels.DocsPhaseItemModel],
+            Sequence[FlextInfraModelsDocs.DocsPhaseItemModel],
             Field(
                 default_factory=_items_default,
                 description="Phase-specific item payloads",
@@ -182,4 +182,4 @@ class FlextInfraDocsModels:
         ]
 
 
-__all__ = ["FlextInfraDocsModels"]
+__all__ = ["FlextInfraModelsDocs"]

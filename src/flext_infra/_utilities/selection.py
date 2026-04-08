@@ -12,7 +12,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from flext_core import r
-from flext_infra import FlextInfraUtilitiesDiscovery, FlextInfraWorkspaceModels
+from flext_infra import FlextInfraModelsWorkspace, FlextInfraUtilitiesDiscovery
 
 
 class FlextInfraUtilitiesSelection:
@@ -26,7 +26,7 @@ class FlextInfraUtilitiesSelection:
     def resolve_projects(
         workspace_root: Path,
         names: Sequence[str],
-    ) -> r[Sequence[FlextInfraWorkspaceModels.ProjectInfo]]:
+    ) -> r[Sequence[FlextInfraModelsWorkspace.ProjectInfo]]:
         """Resolve project names into ProjectInfo structures.
 
         Args:
@@ -41,23 +41,23 @@ class FlextInfraUtilitiesSelection:
             workspace_root,
         )
         if discover_result.is_failure:
-            return r[Sequence[FlextInfraWorkspaceModels.ProjectInfo]].fail(
+            return r[Sequence[FlextInfraModelsWorkspace.ProjectInfo]].fail(
                 discover_result.error or "discovery failed",
             )
         projects = discover_result.value
         if not names:
-            return r[Sequence[FlextInfraWorkspaceModels.ProjectInfo]].ok(
+            return r[Sequence[FlextInfraModelsWorkspace.ProjectInfo]].ok(
                 sorted(projects, key=lambda proj: proj.name),
             )
         by_name = {proj.name: proj for proj in projects}
         missing = [name for name in names if name not in by_name]
         if missing:
             missing_text = ", ".join(sorted(missing))
-            return r[Sequence[FlextInfraWorkspaceModels.ProjectInfo]].fail(
+            return r[Sequence[FlextInfraModelsWorkspace.ProjectInfo]].fail(
                 f"unknown projects: {missing_text}",
             )
         resolved = [by_name[name] for name in names]
-        return r[Sequence[FlextInfraWorkspaceModels.ProjectInfo]].ok(
+        return r[Sequence[FlextInfraModelsWorkspace.ProjectInfo]].ok(
             sorted(resolved, key=lambda proj: proj.name),
         )
 

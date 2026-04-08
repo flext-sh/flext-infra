@@ -109,6 +109,7 @@ class FlextInfraCodegenScaffolder(FlextInfraCommandContext[str]):
                 prefix=prefix,
                 modules=c.Infra.SRC_MODULES,
                 test_prefix="",
+                inherit_project_facade=False,
                 dry_run=dry_run,
                 files_created=files_created,
                 files_skipped=files_skipped,
@@ -120,6 +121,31 @@ class FlextInfraCodegenScaffolder(FlextInfraCommandContext[str]):
                 prefix=prefix,
                 modules=c.Infra.TESTS_MODULES,
                 test_prefix="Tests",
+                inherit_project_facade=False,
+                dry_run=dry_run,
+                files_created=files_created,
+                files_skipped=files_skipped,
+            )
+        examples_dir = project_path / c.Infra.Directories.EXAMPLES
+        if examples_dir.is_dir():
+            self._scaffold_dir(
+                target_dir=examples_dir,
+                prefix=prefix,
+                modules=c.Infra.SRC_MODULES,
+                test_prefix="Examples",
+                inherit_project_facade=True,
+                dry_run=dry_run,
+                files_created=files_created,
+                files_skipped=files_skipped,
+            )
+        scripts_dir = project_path / c.Infra.Directories.SCRIPTS
+        if scripts_dir.is_dir():
+            self._scaffold_dir(
+                target_dir=scripts_dir,
+                prefix=prefix,
+                modules=c.Infra.SRC_MODULES,
+                test_prefix="Scripts",
+                inherit_project_facade=True,
                 dry_run=dry_run,
                 files_created=files_created,
                 files_skipped=files_skipped,
@@ -137,6 +163,7 @@ class FlextInfraCodegenScaffolder(FlextInfraCommandContext[str]):
         prefix: str,
         modules: t.Infra.VariadicTuple[t.Infra.Quad[str, str, str, str]],
         test_prefix: str,
+        inherit_project_facade: bool,
         dry_run: bool,
         files_created: MutableSequence[str],
         files_skipped: MutableSequence[str],
@@ -148,10 +175,13 @@ class FlextInfraCodegenScaffolder(FlextInfraCommandContext[str]):
                 files_skipped.append(str(filepath))
                 continue
             class_name = f"{test_prefix}{prefix}{suffix}"
+            resolved_base = (
+                f"{prefix}{suffix}" if inherit_project_facade else base_class
+            )
             docstring = f"{doc_suffix} for {prefix.lower()}."
             content = u.Infra.generate_module_skeleton(
                 class_name=class_name,
-                base_class=base_class,
+                base_class=resolved_base,
                 docstring=docstring,
             )
             if dry_run:
