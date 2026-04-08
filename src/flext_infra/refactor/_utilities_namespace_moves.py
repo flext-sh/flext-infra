@@ -9,12 +9,12 @@ from pathlib import Path
 
 from flext_infra import (
     FlextInfraUtilitiesFormatting,
+    FlextInfraUtilitiesProtectedEdit,
     FlextInfraUtilitiesRefactorNamespaceCommon,
     c,
     m,
     t,
 )
-from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
 
 
 class FlextInfraUtilitiesRefactorNamespaceMoves(

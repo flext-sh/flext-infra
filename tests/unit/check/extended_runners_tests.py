@@ -10,11 +10,13 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import m, patch_python_dir_detection, t
-from tests.unit.check._shared_fixtures import (
+from tests import (
     create_checker_project,
+    m,
     patch_gate_run,
+    patch_python_dir_detection,
     run_gate_check,
+    t,
 )
 
 import flext_infra.gates.pyrefly as pyrefly_gate_module

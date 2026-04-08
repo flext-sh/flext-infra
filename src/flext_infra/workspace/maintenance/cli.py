@@ -2,14 +2,30 @@
 
 from __future__ import annotations
 
+from typing import Protocol
+
 from flext_cli import cli
-from flext_infra import FlextInfraPythonVersionEnforcer, m, t
+from flext_infra import FlextInfraPythonVersionEnforcer, m, r, t
+
+
+class _FlextInfraMaintenanceFacade(Protocol):
+    """Public maintenance API surface consumed by the CLI mixin."""
+
+    def enforce_python_version(
+        self,
+        params: FlextInfraPythonVersionEnforcer,
+    ) -> r[int]:
+        """Run Python version enforcement through the public facade."""
+        ...
 
 
 class FlextInfraCliMaintenance:
     """Maintenance CLI group — composed into FlextInfraCli via MRO."""
 
-    def register_maintenance(self, app: t.Cli.CliApp) -> None:
+    def register_maintenance(
+        self: _FlextInfraMaintenanceFacade,
+        app: t.Cli.CliApp,
+    ) -> None:
         """Register maintenance commands on the given Typer app."""
         cli.register_result_routes(
             app,
@@ -18,7 +34,7 @@ class FlextInfraCliMaintenance:
                     name="run",
                     help_text="Enforce Python version constraints",
                     model_cls=FlextInfraPythonVersionEnforcer,
-                    handler=FlextInfraPythonVersionEnforcer.execute_command,
+                    handler=self.enforce_python_version,
                     failure_message="Maintenance failed",
                     success_message="Maintenance completed",
                 ),

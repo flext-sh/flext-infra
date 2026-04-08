@@ -202,3 +202,30 @@ select = ["E501"]
         second_changes = phase.apply(doc, path=project_dir / "pyproject.toml")
 
         tm.that(second_changes, eq=[])
+
+    def test_apply_includes_workspace_project_namespaces(self, tmp_path: Path) -> None:
+        tool_config = _test_tool_config()
+        workspace_root = tmp_path / "workspace"
+        project_dir = workspace_root / "algar-oud-mig"
+        (project_dir / "src" / "algar_oud_mig").mkdir(parents=True, exist_ok=True)
+        _ = (project_dir / "src" / "algar_oud_mig" / "__init__.py").write_text(
+            "",
+            encoding="utf-8",
+        )
+        _ = (project_dir / "pyproject.toml").write_text(
+            '[project]\nname = "algar-oud-mig"\nversion = "0.1.0"\n',
+            encoding="utf-8",
+        )
+        _ = (project_dir / "Makefile").write_text("help:\n\t@:\n", encoding="utf-8")
+        doc = tomlkit.document()
+
+        _ = FlextInfraEnsureRuffConfigPhase(tool_config).apply(
+            doc,
+            path=workspace_root / "pyproject.toml",
+        )
+
+        root = _doc_mapping(doc)
+        ruff = _mapping(_mapping(root["tool"])["ruff"])
+        lint_section = _mapping(ruff["lint"])
+        isort = _mapping(lint_section["isort"])
+        tm.that(list(_strings(isort["known-first-party"])), has="algar_oud_mig")

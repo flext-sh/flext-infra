@@ -8,10 +8,12 @@ from flext_tests import tm
 from tests import c, m, r, t
 
 from flext_infra import (
+    FlextInfra,
     FlextInfraOrchestratorService,
     FlextInfraProjectMigrator,
     FlextInfraSyncService,
     FlextInfraWorkspaceDetector,
+    infra,
     main as infra_main,
 )
 
@@ -39,15 +41,15 @@ class TestRunDetect:
         expected_success: bool,
     ) -> None:
         def _detect_stub(
-            _self: FlextInfraWorkspaceDetector,
-            project_root: Path,
+            _self: FlextInfra,
+            params: FlextInfraWorkspaceDetector,
         ) -> r[c.Infra.WorkspaceMode]:
-            del _self, project_root
+            tm.that(params.workspace_root, eq=tmp_path)
             return result
 
-        monkeypatch.setattr(FlextInfraWorkspaceDetector, "detect", _detect_stub)
-        handle_result = FlextInfraWorkspaceDetector.execute_command(
-            m.Infra.WorkspaceDetectInput(workspace_path=str(tmp_path), apply=False),
+        monkeypatch.setattr(FlextInfra, "detect_workspace", _detect_stub)
+        handle_result = infra.detect_workspace(
+            FlextInfraWorkspaceDetector(workspace=tmp_path, apply=False),
         )
         tm.that(handle_result.is_success, eq=expected_success)
 
@@ -77,14 +79,15 @@ class TestRunSync:
         expected_success: bool,
     ) -> None:
         def _execute_stub(
-            _self: FlextInfraSyncService,
+            _self: FlextInfra,
+            params: FlextInfraSyncService,
         ) -> r[m.Infra.SyncResult]:
-            del _self
+            tm.that(params.workspace_root, eq=tmp_path)
             return result
 
-        monkeypatch.setattr(FlextInfraSyncService, "execute", _execute_stub)
-        handle_result = FlextInfraSyncService.execute_command(
-            FlextInfraSyncService(workspace=tmp_path),
+        monkeypatch.setattr(FlextInfra, "sync_workspace", _execute_stub)
+        handle_result = infra.sync_workspace(
+            FlextInfraSyncService(workspace=tmp_path, apply=False),
         )
         tm.that(handle_result.is_success, eq=expected_success)
 
@@ -92,25 +95,16 @@ class TestRunSync:
 class TestRunOrchestrate:
     def test_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
         def _orchestrate_success(
-            _self: FlextInfraOrchestratorService,
-            projects: t.StrSequence,
-            verb: str,
-            fail_fast: bool = False,
-            make_args: t.StrSequence | None = None,
-        ) -> r[Sequence[m.Cli.CommandOutput]]:
-            del _self, projects, verb, fail_fast, make_args
-            return r[Sequence[m.Cli.CommandOutput]].ok([
-                m.Cli.CommandOutput(stdout="", stderr="", exit_code=0, duration=0.0),
-                m.Cli.CommandOutput(stdout="", stderr="", exit_code=0, duration=0.0),
-            ])
+            _self: FlextInfra,
+            params: FlextInfraOrchestratorService,
+        ) -> r[bool]:
+            tm.that(params.verb, eq="check")
+            tm.that(params.project_names, eq=["p-a", "p-b"])
+            return r[bool].ok(True)
 
-        monkeypatch.setattr(
-            FlextInfraOrchestratorService,
-            "orchestrate",
-            _orchestrate_success,
-        )
-        handle_result = FlextInfraOrchestratorService.execute_command(
-            m.Infra.WorkspaceOrchestrateInput(verb="check", projects=["p-a", "p-b"]),
+        monkeypatch.setattr(FlextInfra, "orchestrate_workspace", _orchestrate_success)
+        handle_result = infra.orchestrate_workspace(
+            FlextInfraOrchestratorService(verb="check", projects=["p-a", "p-b"]),
         )
         tm.that(handle_result.is_success, eq=True)
 
@@ -118,26 +112,15 @@ class TestRunOrchestrate:
         captured_make_args: t.MutableSequenceOf[str] = []
 
         def _orchestrate_success(
-            _self: FlextInfraOrchestratorService,
-            projects: t.StrSequence,
-            verb: str,
-            fail_fast: bool = False,
-            make_args: t.StrSequence | None = None,
-        ) -> r[Sequence[m.Cli.CommandOutput]]:
-            del _self, projects, verb, fail_fast
-            if make_args is not None:
-                captured_make_args.extend(make_args)
-            return r[Sequence[m.Cli.CommandOutput]].ok([
-                m.Cli.CommandOutput(stdout="", stderr="", exit_code=0, duration=0.0),
-            ])
+            _self: FlextInfra,
+            params: FlextInfraOrchestratorService,
+        ) -> r[bool]:
+            captured_make_args.extend(params.make_args)
+            return r[bool].ok(True)
 
-        monkeypatch.setattr(
-            FlextInfraOrchestratorService,
-            "orchestrate",
-            _orchestrate_success,
-        )
-        handle_result = FlextInfraOrchestratorService.execute_command(
-            m.Infra.WorkspaceOrchestrateInput(
+        monkeypatch.setattr(FlextInfra, "orchestrate_workspace", _orchestrate_success)
+        handle_result = infra.orchestrate_workspace(
+            FlextInfraOrchestratorService(
                 verb="test",
                 projects=["p-a"],
                 make_arg=["FILES=a b c.py", "VERBOSE=1"],
@@ -147,59 +130,48 @@ class TestRunOrchestrate:
         tm.that(captured_make_args, eq=["FILES=a b c.py", "VERBOSE=1"])
 
     def test_rejects_unknown_verb(self) -> None:
-        handle_result = FlextInfraOrchestratorService.execute_command(
-            m.Infra.WorkspaceOrchestrateInput(verb="legacy-check", projects=["p-a"]),
+        handle_result = infra.orchestrate_workspace(
+            FlextInfraOrchestratorService(verb="legacy-check", projects=["p-a"]),
         )
         tm.fail(handle_result, has="unsupported orchestrate verb")
 
     def test_no_projects(self) -> None:
-        handle_result = FlextInfraOrchestratorService.execute_command(
-            m.Infra.WorkspaceOrchestrateInput(verb="check", projects=[]),
+        handle_result = infra.orchestrate_workspace(
+            FlextInfraOrchestratorService(verb="check", projects=[]),
         )
         tm.that(handle_result.is_failure, eq=True)
 
     def test_with_failures(self, monkeypatch: pytest.MonkeyPatch) -> None:
         def _orchestrate_partial(
-            _self: FlextInfraOrchestratorService,
-            projects: t.StrSequence,
-            verb: str,
-            fail_fast: bool = False,
-            make_args: t.StrSequence | None = None,
-        ) -> r[Sequence[m.Cli.CommandOutput]]:
-            del _self, projects, verb, fail_fast, make_args
-            return r[Sequence[m.Cli.CommandOutput]].ok([
-                m.Cli.CommandOutput(stdout="", stderr="", exit_code=0, duration=0.0),
-                m.Cli.CommandOutput(stdout="", stderr="", exit_code=1, duration=0.0),
-            ])
+            _self: FlextInfra,
+            params: FlextInfraOrchestratorService,
+        ) -> r[bool]:
+            tm.that(params.project_names, eq=["p-a", "p-b"])
+            return r[bool].fail("orchestration completed with failures: 1")
 
-        monkeypatch.setattr(
-            FlextInfraOrchestratorService,
-            "orchestrate",
-            _orchestrate_partial,
-        )
-        handle_result = FlextInfraOrchestratorService.execute_command(
-            m.Infra.WorkspaceOrchestrateInput(verb="check", projects=["p-a", "p-b"]),
+        monkeypatch.setattr(FlextInfra, "orchestrate_workspace", _orchestrate_partial)
+        handle_result = infra.orchestrate_workspace(
+            FlextInfraOrchestratorService(
+                verb="check",
+                projects=["p-a", "p-b"],
+            ),
         )
         tm.that(handle_result.is_failure, eq=True)
 
     def test_orchestration_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         def _orchestrate_failure(
-            _self: FlextInfraOrchestratorService,
-            projects: t.StrSequence,
-            verb: str,
-            fail_fast: bool = False,
-            make_args: t.StrSequence | None = None,
-        ) -> r[Sequence[m.Cli.CommandOutput]]:
-            del _self, projects, verb, fail_fast, make_args
-            return r[Sequence[m.Cli.CommandOutput]].fail("Orchestration failed")
+            _self: FlextInfra,
+            _params: FlextInfraOrchestratorService,
+        ) -> r[bool]:
+            return r[bool].fail("Orchestration failed")
 
         monkeypatch.setattr(
-            FlextInfraOrchestratorService,
-            "orchestrate",
+            FlextInfra,
+            "orchestrate_workspace",
             _orchestrate_failure,
         )
-        handle_result = FlextInfraOrchestratorService.execute_command(
-            m.Infra.WorkspaceOrchestrateInput(verb="check", projects=["p-a"]),
+        handle_result = infra.orchestrate_workspace(
+            FlextInfraOrchestratorService(verb="check", projects=["p-a"]),
         )
         tm.that(handle_result.is_failure, eq=True)
 
@@ -229,18 +201,15 @@ class TestRunMigrate:
         expected_success: bool,
     ) -> None:
         def _migrate_stub(
-            _self: FlextInfraProjectMigrator,
-            workspace_root: Path,
-            dry_run: bool,
+            _self: FlextInfra,
+            params: FlextInfraProjectMigrator,
         ) -> r[Sequence[m.Infra.MigrationResult]]:
-            del _self, workspace_root, dry_run
+            tm.that(params.workspace_root, eq=tmp_path)
             return result
 
-        monkeypatch.setattr(FlextInfraProjectMigrator, "migrate", _migrate_stub)
-        handle_result: r[Sequence[m.Infra.MigrationResult]] = (
-            FlextInfraProjectMigrator.execute_command(
-                m.Infra.WorkspaceMigrateInput(workspace_path=str(tmp_path), apply=True),
-            )
+        monkeypatch.setattr(FlextInfra, "migrate_workspace", _migrate_stub)
+        handle_result = infra.migrate_workspace(
+            FlextInfraProjectMigrator(workspace=tmp_path, apply=True),
         )
         tm.that(handle_result.is_success, eq=expected_success)
 
@@ -259,30 +228,24 @@ class TestRunMigrate:
         ]
 
         def _migrate_with_errors(
-            _self: FlextInfraProjectMigrator,
-            workspace_root: Path,
-            dry_run: bool,
+            _self: FlextInfra,
+            params: FlextInfraProjectMigrator,
         ) -> r[Sequence[m.Infra.MigrationResult]]:
-            del _self, workspace_root, dry_run
+            tm.that(params.workspace_root, eq=tmp_path)
             return r[Sequence[m.Infra.MigrationResult]].ok(mrs)
 
-        monkeypatch.setattr(
-            FlextInfraProjectMigrator,
-            "migrate",
-            _migrate_with_errors,
-        )
-        handle_result: r[Sequence[m.Infra.MigrationResult]] = (
-            FlextInfraProjectMigrator.execute_command(
-                m.Infra.WorkspaceMigrateInput(workspace_path=str(tmp_path), apply=True),
-            )
+        monkeypatch.setattr(FlextInfra, "migrate_workspace", _migrate_with_errors)
+        handle_result = infra.migrate_workspace(
+            FlextInfraProjectMigrator(workspace=tmp_path, apply=True),
         )
         tm.that(handle_result.is_success, eq=True)
         tm.that(handle_result.value[0].errors, eq=["Error 1"])
 
 
 def _ok_stub(
-    _params: m.Infra.WorkspaceDetectInput
-    | m.Infra.WorkspaceSyncInput
+    _self: FlextInfra,
+    _params: FlextInfraWorkspaceDetector
+    | FlextInfraSyncService
     | FlextInfraOrchestratorService
     | FlextInfraProjectMigrator,
 ) -> r[bool]:
@@ -292,24 +255,24 @@ def _ok_stub(
 class TestMainCli:
     def test_detect(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
-            FlextInfraWorkspaceDetector,
-            "execute_command",
+            FlextInfra,
+            "detect_workspace",
             _ok_stub,
         )
         tm.that(workspace_main(["detect", "--workspace", str(tmp_path)]), eq=0)
 
     def test_sync(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
-            FlextInfraSyncService,
-            "execute_command",
+            FlextInfra,
+            "sync_workspace",
             _ok_stub,
         )
         tm.that(workspace_main(["sync", "--workspace", str(tmp_path)]), eq=0)
 
     def test_orchestrate(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
-            FlextInfraOrchestratorService,
-            "execute_command",
+            FlextInfra,
+            "orchestrate_workspace",
             _ok_stub,
         )
         tm.that(
@@ -329,14 +292,15 @@ class TestMainCli:
         captured: t.MutableSequenceOf[FlextInfraOrchestratorService] = []
 
         def _capture_orchestrate(
+            _self: FlextInfra,
             params: FlextInfraOrchestratorService,
         ) -> r[bool]:
             captured.append(params)
             return r[bool].ok(True)
 
         monkeypatch.setattr(
-            FlextInfraOrchestratorService,
-            "execute_command",
+            FlextInfra,
+            "orchestrate_workspace",
             _capture_orchestrate,
         )
         tm.that(
@@ -357,8 +321,8 @@ class TestMainCli:
 
     def test_migrate(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
-            FlextInfraProjectMigrator,
-            "execute_command",
+            FlextInfra,
+            "migrate_workspace",
             _ok_stub,
         )
         tm.that(workspace_main(["migrate", "--workspace", str(tmp_path)]), eq=0)

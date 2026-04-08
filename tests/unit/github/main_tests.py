@@ -9,7 +9,7 @@ import pytest
 from flext_tests import tm
 from tests import m, r, t
 
-from flext_infra import FlextInfraGithubService, FlextInfraUtilities
+from flext_infra import FlextInfraUtilities, infra
 
 
 def _sync_report() -> m.Infra.GithubWorkflowSyncReport:
@@ -44,7 +44,7 @@ class TestRunWorkflows:
         monkeypatch.setattr(
             FlextInfraUtilities.Infra, "github_sync_workflows", staticmethod(_sync)
         )
-        result = FlextInfraGithubService().execute_workflow_sync(
+        result = infra.sync_github_workflows(
             m.Infra.GithubWorkflowSyncRequest(workspace=str(tmp_path)),
         )
         tm.that(result.is_success, eq=True)
@@ -59,7 +59,7 @@ class TestRunWorkflows:
         monkeypatch.setattr(
             FlextInfraUtilities.Infra, "github_sync_workflows", staticmethod(_sync)
         )
-        result = FlextInfraGithubService().execute_workflow_sync(
+        result = infra.sync_github_workflows(
             m.Infra.GithubWorkflowSyncRequest(workspace=str(tmp_path)),
         )
         tm.that(result.is_failure, eq=True)
@@ -82,7 +82,7 @@ class TestRunWorkflows:
             "github_sync_workflows",
             staticmethod(_fake_sync),
         )
-        FlextInfraGithubService().execute_workflow_sync(
+        infra.sync_github_workflows(
             m.Infra.GithubWorkflowSyncRequest(workspace=str(tmp_path), apply=True),
         )
         assert captured["request"].apply is True
@@ -105,7 +105,7 @@ class TestRunWorkflows:
             "github_sync_workflows",
             staticmethod(_fake_sync),
         )
-        FlextInfraGithubService().execute_workflow_sync(
+        infra.sync_github_workflows(
             m.Infra.GithubWorkflowSyncRequest(workspace=str(tmp_path), prune=True),
         )
         assert captured["request"].prune is True
@@ -125,7 +125,7 @@ class TestRunWorkflows:
             staticmethod(_fake_sync),
         )
         report = tmp_path / "report.json"
-        FlextInfraGithubService().execute_workflow_sync(
+        infra.sync_github_workflows(
             m.Infra.GithubWorkflowSyncRequest(
                 workspace=str(tmp_path),
                 report=str(report),
@@ -147,7 +147,7 @@ class TestRunLint:
             "github_lint_workflows",
             staticmethod(_lint),
         )
-        result = FlextInfraGithubService().execute_workflow_lint(
+        result = infra.lint_github_workflows(
             m.Infra.GithubWorkflowLintRequest(workspace=str(tmp_path)),
         )
         tm.that(result.is_success, eq=True)
@@ -164,7 +164,7 @@ class TestRunLint:
             "github_lint_workflows",
             staticmethod(_lint),
         )
-        result = FlextInfraGithubService().execute_workflow_lint(
+        result = infra.lint_github_workflows(
             m.Infra.GithubWorkflowLintRequest(workspace=str(tmp_path)),
         )
         tm.that(result.is_failure, eq=True)
@@ -184,7 +184,7 @@ class TestRunLint:
             staticmethod(_fake_lint),
         )
         report = tmp_path / "report.json"
-        FlextInfraGithubService().execute_workflow_lint(
+        infra.lint_github_workflows(
             m.Infra.GithubWorkflowLintRequest(
                 workspace=str(tmp_path), report=str(report)
             ),
@@ -209,7 +209,7 @@ class TestRunLint:
             "github_lint_workflows",
             staticmethod(_fake_lint),
         )
-        FlextInfraGithubService().execute_workflow_lint(
+        infra.lint_github_workflows(
             m.Infra.GithubWorkflowLintRequest(workspace=str(tmp_path), strict=True),
         )
         assert captured["strict"] is True
@@ -226,7 +226,7 @@ class TestRunPr:
             "github_run_pull_request",
             staticmethod(_pr),
         )
-        result = FlextInfraGithubService().execute_pull_request(
+        result = infra.run_github_pull_request(
             m.Infra.GithubPullRequestRequest(repo_root="/tmp", action="status"),
         )
         tm.that(result.is_success, eq=True)
@@ -246,7 +246,7 @@ class TestRunPr:
             "github_run_pull_request",
             staticmethod(_pr),
         )
-        result = FlextInfraGithubService().execute_pull_request(
+        result = infra.run_github_pull_request(
             m.Infra.GithubPullRequestRequest(repo_root="/tmp", action="status"),
         )
         tm.that(result.is_failure, eq=True)

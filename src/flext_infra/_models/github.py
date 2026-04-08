@@ -9,11 +9,64 @@ from typing import Annotated
 from pydantic import Field
 
 from flext_core import FlextModels
-from flext_infra import FlextInfraModelsCliInputsOps, FlextInfraModelsMixins, t
+from flext_infra import FlextInfraModelsMixins, t
 
 
 class FlextInfraGithubModels:
     """Models for GitHub PR orchestration and repository management."""
+
+    class GithubWorkflowSyncRequest(
+        FlextInfraModelsMixins.WriteMixin,
+        FlextModels.ContractModel,
+    ):
+        """CLI/service request for workflow synchronization."""
+
+        report: Annotated[
+            str | None,
+            Field(default=None, description="Output report file"),
+        ] = None
+        prune: Annotated[
+            bool,
+            Field(default=False, description="Remove unknown files"),
+        ] = False
+
+        @property
+        def report_path(self) -> Path | None:
+            """Return the resolved report path when provided."""
+            return self.resolve_optional_path(self.report)
+
+    class GithubWorkflowLintRequest(
+        FlextInfraModelsMixins.ReadMixin,
+        FlextModels.ContractModel,
+    ):
+        """CLI/service request for workflow lint."""
+
+        strict: Annotated[
+            bool,
+            Field(default=False, description="Strict mode"),
+        ] = False
+
+    class GithubPullRequestRequest(
+        FlextInfraModelsMixins.GithubPullRequestFieldsMixin,
+        FlextInfraModelsMixins.WriteMixin,
+        FlextModels.ContractModel,
+    ):
+        """CLI/service request for a single-repository PR action."""
+
+        repo_root: Annotated[str, Field(..., description="Repository root directory")]
+
+        @property
+        def repo_root_path(self) -> Path:
+            """Return the resolved repository root path."""
+            return Path(self.repo_root).resolve()
+
+    class GithubPullRequestWorkspaceRequest(
+        FlextInfraModelsMixins.GithubWorkspaceCliRequestMixin,
+        FlextInfraModelsMixins.GithubPullRequestFieldsMixin,
+        FlextInfraModelsMixins.WriteMixin,
+        FlextModels.ContractModel,
+    ):
+        """CLI/service request for workspace-wide PR automation."""
 
     class GithubPullRequestOutcome(FlextModels.ArbitraryTypesModel):
         """Outcome of a single pull-request command on one repository."""
@@ -164,7 +217,7 @@ class FlextInfraGithubModels:
         project_root: Annotated[Path, Field(description="Project root path")]
         rendered_template: Annotated[str, Field(description="Rendered workflow body")]
         request: Annotated[
-            FlextInfraModelsCliInputsOps.GithubWorkflowSyncRequest,
+            FlextInfraGithubModels.GithubWorkflowSyncRequest,
             Field(description="Original sync request"),
         ]
 
@@ -191,7 +244,7 @@ class FlextInfraGithubModels:
         """Resolved context for workspace-wide pull-request execution."""
 
         request: Annotated[
-            FlextInfraModelsCliInputsOps.GithubPullRequestWorkspaceRequest,
+            FlextInfraGithubModels.GithubPullRequestWorkspaceRequest,
             Field(description="Original workspace pull-request request"),
         ]
         outcomes: Annotated[

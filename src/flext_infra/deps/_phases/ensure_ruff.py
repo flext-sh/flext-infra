@@ -15,6 +15,20 @@ class FlextInfraEnsureRuffConfigPhase:
         self._tool_config = tool_config
 
     @staticmethod
+    def _workspace_project_namespaces(project_dir: Path) -> t.StrSequence:
+        """Discover child project packages when generating workspace root config."""
+        discovered = u.Infra.discover_projects(project_dir)
+        if discovered.is_failure:
+            return []
+        return sorted(
+            {
+                project.package_name
+                for project in discovered.value
+                if project.package_name and project.package_name.isidentifier()
+            },
+        )
+
+    @staticmethod
     def _remove_stale_lint_section(doc: t.Cli.TomlDocument) -> t.StrSequence:
         """Remove the stale top-level ``[lint]`` table left by old configs."""
         if c.Infra.LINT_SECTION not in doc:
@@ -35,6 +49,7 @@ class FlextInfraEnsureRuffConfigPhase:
             {
                 *u.Infra.discover_first_party_namespaces(path.parent),
                 *u.Infra.workspace_dep_namespaces(doc),
+                *self._workspace_project_namespaces(path.parent),
             },
         )
         per_file_ignores = u.Cli.toml_get_table_path(

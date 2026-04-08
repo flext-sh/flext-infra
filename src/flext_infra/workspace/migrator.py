@@ -39,15 +39,12 @@ class FlextInfraProjectMigrator(
     ] = None
 
     def _get_discovery(self) -> p.Infra.Discovery | None:
-        """Return the configured discovery service, including test-time private injection."""
-        private_discovery = getattr(self, "_discovery", None)
-        return self.discovery or private_discovery
+        """Return the configured discovery service."""
+        return self.discovery
 
     def _get_generator(self) -> FlextInfraBaseMkGenerator:
-        """Return the configured generator, including test-time private injection."""
-        private_generator = getattr(self, "_generator", None)
-        configured = self.generator or private_generator
-        return configured if configured is not None else FlextInfraBaseMkGenerator()
+        """Return the configured generator."""
+        return self.generator or FlextInfraBaseMkGenerator()
 
     @staticmethod
     def _action_text(action: str, *, dry_run: bool) -> str:
@@ -140,23 +137,6 @@ class FlextInfraProjectMigrator(
         if dry_run:
             u.Infra.info("(dry-run — no files modified)")
         return result
-
-    @classmethod
-    @override
-    def execute_command(
-        cls,
-        params: FlextInfraCommandContext[Sequence[m.Infra.MigrationResult]]
-        | m.Infra.WorkspaceMigrateInput,
-    ) -> r[Sequence[m.Infra.MigrationResult]]:
-        """Normalize workspace CLI input into the canonical migrator model."""
-        if isinstance(params, m.Infra.WorkspaceMigrateInput):
-            service = cls.model_validate({
-                "workspace_root": params.workspace_path,
-                "apply_changes": params.apply,
-                "dry_run": params.dry_run,
-            })
-            return service.execute()
-        return params.execute()
 
     def migrate(
         self,

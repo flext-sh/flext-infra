@@ -42,11 +42,24 @@ class FlextInfraUtilitiesRopeCore:
         ignored_resources: tuple[str, ...] = c.Infra.ROPE_IGNORED_RESOURCES,
     ) -> t.Infra.RopeProject:
         """Create a rope Project over workspace_root with no disk artifacts."""
+        _ = project_prefix
         source_folders = sorted(
-            f"{project.name}/{src_dir}"
+            (
+                str(project.relative_to(workspace_root) / src_dir)
+                if project != workspace_root
+                else src_dir
+            )
             for project in workspace_root.iterdir()
-            if project.name.startswith(project_prefix) and (project / src_dir).is_dir()
+            if project.is_dir()
+            and (project / src_dir).is_dir()
+            and (project / c.Infra.Files.MAKEFILE_FILENAME).is_file()
+            and (
+                (project / c.Infra.Files.PYPROJECT_FILENAME).is_file()
+                or (project / c.Infra.Files.GO_MOD).is_file()
+            )
         )
+        if (workspace_root / src_dir).is_dir():
+            source_folders.append(src_dir)
         return FlextInfraUtilitiesRopeCore._ensure_rope_project(
             FlextInfraUtilitiesRopeCore._build_rope_project(
                 str(workspace_root),

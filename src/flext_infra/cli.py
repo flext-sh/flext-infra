@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import importlib
 import sys
 from collections.abc import Callable
 from types import MappingProxyType
@@ -10,7 +9,7 @@ from typing import ClassVar
 
 from flext_cli import cli as cli_service
 from flext_core import FlextLogger
-from flext_infra import c, t
+from flext_infra import c, infra, t
 
 
 class FlextInfraCli:
@@ -49,48 +48,31 @@ class FlextInfraCli:
         c.Infra.ReportKeys.RELEASE: "Release orchestration",
         c.Infra.ReportKeys.WORKSPACE: "Workspace detection, sync, orchestration, migration",
     })
-    _GROUP_REGISTRARS: ClassVar[t.StrMapping] = MappingProxyType({
-        "basemk": "flext_infra.basemk.cli:FlextInfraCliBasemk:register_basemk",
-        "codegen": "flext_infra.codegen.cli:FlextInfraCliCodegen:register_codegen",
-        "validate": "flext_infra.validate.cli:FlextInfraCliValidate:register_validate",
-        c.Infra.Directories.DOCS: "flext_infra.docs.cli:FlextInfraCliDocs:register_docs",
-        "github": "flext_infra.github.cli:FlextInfraCliGithub:register_github",
-        "maintenance": (
-            "flext_infra.workspace.maintenance.cli:"
-            "FlextInfraCliMaintenance:register_maintenance"
-        ),
-        "refactor": "flext_infra.refactor.cli:FlextInfraCliRefactor:register_refactor",
-        c.Infra.ReportKeys.RELEASE: "flext_infra.release.cli:FlextInfraCliRelease:register_release",
-        c.Infra.ReportKeys.WORKSPACE: "flext_infra.workspace.cli:FlextInfraCliWorkspace:register_workspace",
-    })
-    _GROUP_RUNNERS: ClassVar[t.StrMapping] = MappingProxyType({
-        c.Infra.Verbs.CHECK: "flext_infra.check.cli:FlextInfraCliCheck:run",
-        "deps": "flext_infra.deps.cli:FlextInfraCliDeps:run",
-    })
 
-    @staticmethod
-    def _run_group_runner(spec: str, args: t.StrSequence | None) -> int:
-        """Load and run a ``module:class:method`` CLI entrypoint."""
-        module_path, class_name, method_name = spec.split(":")
-        module = importlib.import_module(module_path)
-        group_type = getattr(module, class_name)
-        runner: Callable[[t.StrSequence | None], int] = getattr(
-            group_type(),
-            method_name,
-        )
-        return runner(args)
-
-    @staticmethod
-    def _register_group(spec: str, app: t.Cli.CliApp) -> None:
-        """Load and register a lazy CLI group on the shared Typer app."""
-        module_path, class_name, method_name = spec.split(":")
-        module = importlib.import_module(module_path)
-        group_type = getattr(module, class_name)
-        registrar: Callable[[t.Cli.CliApp], None] = getattr(
-            group_type(),
-            method_name,
-        )
-        registrar(app)
+    def __init__(self) -> None:
+        """Initialize the thin CLI router over the public infra facade."""
+        self._service = infra
+        self._group_registrars: t.MappingKV[
+            str,
+            Callable[[t.Cli.CliApp], None],
+        ] = MappingProxyType({
+            "basemk": self._service.register_basemk,
+            "codegen": self._service.register_codegen,
+            "validate": self._service.register_validate,
+            c.Infra.Directories.DOCS: self._service.register_docs,
+            "github": self._service.register_github,
+            "maintenance": self._service.register_maintenance,
+            "refactor": self._service.register_refactor,
+            c.Infra.ReportKeys.RELEASE: self._service.register_release,
+            c.Infra.ReportKeys.WORKSPACE: self._service.register_workspace,
+        })
+        self._group_runners: t.MappingKV[
+            str,
+            Callable[[t.StrSequence | None], int],
+        ] = MappingProxyType({
+            c.Infra.Verbs.CHECK: self._service.run_check_cli,
+            "deps": self._service.run_deps_cli,
+        })
 
     def main(self, args: t.StrSequence | None = None) -> int:
         """Run the centralized dispatcher."""
@@ -103,8 +85,9 @@ class FlextInfraCli:
             self.print_help()
             return 0
         group, group_args = cli_args[0], cli_args[1:]
-        if group in self._GROUP_RUNNERS:
-            return self._run_group_runner(self._GROUP_RUNNERS[group], group_args)
+        runner = self._group_runners.get(group)
+        if runner is not None:
+            return runner(group_args)
         if group not in self.GROUPS:
             cli_service.display_message(
                 f"unknown group '{group}'",
@@ -162,8 +145,9 @@ class FlextInfraCli:
         app = cli_service.create_app_with_common_params(
             name=f"{self.app_name} {group}",
             help_text=self.GROUPS[group],
+            config=self._service.settings,
         )
-        self._register_group(self._GROUP_REGISTRARS[group], app)
+        self._group_registrars[group](app)
         normalized_args = self._normalize_group_args(args)
         if not normalized_args:
             _ = cli_service.execute_app(

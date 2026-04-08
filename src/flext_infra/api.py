@@ -1,44 +1,58 @@
-"""Public API facade for flext-infra.
-
-Factory-method composition over domain services.
-Each domain is accessed via a static factory that returns
-the domain's service **class** — ready for caller instantiation.
-
-MRO composition is infeasible because domain services use
-different type params (s[bool] vs s[str]).
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Public API facade for flext-infra."""
 
 from __future__ import annotations
 
-import importlib
-from typing import TYPE_CHECKING, ClassVar, Self, override
+from typing import ClassVar, Self, override
 
 from flext_core import r
-from flext_infra import FlextInfraServiceBase
+from flext_infra import (
+    FlextInfraCliBasemk,
+    FlextInfraCliCodegen,
+    FlextInfraCliDocs,
+    FlextInfraCliGithub,
+    FlextInfraCliMaintenance,
+    FlextInfraCliRefactor,
+    FlextInfraCliRelease,
+    FlextInfraCliValidate,
+    FlextInfraCliWorkspace,
+    FlextInfraCommandContext,
+    FlextInfraServiceBasemkMixin,
+    FlextInfraServiceCheckMixin,
+    FlextInfraServiceCodegenMixin,
+    FlextInfraServiceDepsMixin,
+    FlextInfraServiceDocsMixin,
+    FlextInfraServiceGithubMixin,
+    FlextInfraServiceRefactorMixin,
+    FlextInfraServiceReleaseMixin,
+    FlextInfraServiceValidateMixin,
+    FlextInfraServiceWorkspaceMixin,
+    t,
+)
 
-if TYPE_CHECKING:
-    from flext_infra import p
 
-
-class FlextInfra(FlextInfraServiceBase[bool]):
-    """Coordinate infrastructure operations via factory-method accessors.
-
-    Each domain is accessed via a static factory that returns the domain's
-    service **class**.  Callers instantiate with domain-specific kwargs::
-
-        Generator = FlextInfra.basemk()
-        gen = Generator(workspace_root=root)
-
-        Checker = FlextInfra.check()
-        result = Checker(workspace_root=root).execute()
-
-    Domain services have incompatible type parameters (``s[bool]`` vs
-    ``s[str]``), making MRO composition infeasible.  Factory methods
-    avoid the diamond while keeping a single discovery entry point.
-    """
+class FlextInfra(
+    FlextInfraCliBasemk,
+    FlextInfraCliCodegen,
+    FlextInfraCliDocs,
+    FlextInfraCliGithub,
+    FlextInfraCliMaintenance,
+    FlextInfraCliRefactor,
+    FlextInfraCliRelease,
+    FlextInfraCliValidate,
+    FlextInfraCliWorkspace,
+    FlextInfraServiceBasemkMixin,
+    FlextInfraServiceCheckMixin,
+    FlextInfraServiceCodegenMixin,
+    FlextInfraServiceDepsMixin,
+    FlextInfraServiceDocsMixin,
+    FlextInfraServiceGithubMixin,
+    FlextInfraServiceRefactorMixin,
+    FlextInfraServiceReleaseMixin,
+    FlextInfraServiceValidateMixin,
+    FlextInfraServiceWorkspaceMixin,
+    FlextInfraCommandContext[t.MutableContainerMapping],
+):
+    """Thin public MRO facade over infra services and CLI groups."""
 
     _instance: ClassVar[Self | None] = None
 
@@ -50,82 +64,17 @@ class FlextInfra(FlextInfraServiceBase[bool]):
         return cls._instance
 
     @override
-    def execute(self) -> r[bool]:
-        """Execute infrastructure service health check."""
-        return r[bool].ok(True)
-
-    @staticmethod
-    def _load(module: str, name: str) -> type:
-        """Lazy-load a class from a module to avoid circular imports."""
-        cls: type = getattr(importlib.import_module(module), name)
-        return cls
-
-    # ------------------------------------------------------------------
-    # Domain factory accessors — return the class, caller instantiates
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def basemk() -> type[p.Infra.Generator]:
-        """Return the base.mk template generator class."""
-        return FlextInfra._load(
-            "flext_infra.basemk.generator", "FlextInfraBaseMkGenerator"
-        )
-
-    @staticmethod
-    def check() -> type[p.Infra.Checker]:
-        """Return the workspace quality-gate checker class."""
-        return FlextInfra._load(
-            "flext_infra.check.workspace_check", "FlextInfraWorkspaceChecker"
-        )
-
-    @staticmethod
-    def codegen() -> type[p.Infra.CodegenFixer]:
-        """Return the codegen fixer class."""
-        return FlextInfra._load("flext_infra.codegen.fixer", "FlextInfraCodegenFixer")
-
-    @staticmethod
-    def deps() -> type[p.Infra.PyprojectModernizer]:
-        """Return the pyproject.toml modernizer class."""
-        return FlextInfra._load(
-            "flext_infra.deps.modernizer", "FlextInfraPyprojectModernizer"
-        )
-
-    @staticmethod
-    def github() -> type[p.Infra.GithubService]:
-        """Return the GitHub operations service class."""
-        return FlextInfra._load("flext_infra.github.service", "FlextInfraGithubService")
-
-    @staticmethod
-    def refactor() -> type[p.Infra.RefactorEngine]:
-        """Return the rope-based refactor engine class."""
-        return FlextInfra._load(
-            "flext_infra.refactor.engine", "FlextInfraRefactorEngine"
-        )
-
-    @staticmethod
-    def release() -> type[p.Infra.ReleaseOrchestrator]:
-        """Return the release orchestrator class."""
-        return FlextInfra._load(
-            "flext_infra.release.orchestrator",
-            "FlextInfraReleaseOrchestrator",
-        )
-
-    @staticmethod
-    def validate_scanner() -> type[p.Infra.Scanner]:
-        """Return the text-pattern validation scanner class."""
-        return FlextInfra._load(
-            "flext_infra.validate.scanner", "FlextInfraTextPatternScanner"
-        )
-
-    @staticmethod
-    def workspace() -> type[p.Infra.Orchestrator]:
-        """Return the workspace orchestrator service class."""
-        return FlextInfra._load(
-            "flext_infra.workspace.orchestrator",
-            "FlextInfraOrchestratorService",
-        )
+    def execute(self) -> r[t.MutableContainerMapping]:
+        """Execute a lightweight facade health report."""
+        report: t.MutableContainerMapping = {
+            "service": "flext-infra",
+            "status": "ok",
+            "workspace_root": str(self.workspace_root),
+            "apply_changes": self.apply_changes,
+        }
+        return r[t.MutableContainerMapping].ok(report)
 
 
-infra = FlextInfra()
+infra = FlextInfra.get_instance()
 
 __all__ = ["FlextInfra", "infra"]

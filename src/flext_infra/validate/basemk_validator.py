@@ -11,21 +11,26 @@ from __future__ import annotations
 
 from collections.abc import MutableSequence
 from pathlib import Path
+from typing import Annotated, override
 
-from flext_infra import FlextInfraBaseMkGenerator, c, m, r, u
+from pydantic import Field
+
+from flext_infra import FlextInfraBaseMkGenerator, c, m, r, s, u
 
 
-class FlextInfraBaseMkValidator:
+class FlextInfraBaseMkValidator(s[bool]):
     """Validates root base.mk freshness against the template generator."""
 
-    def __init__(
-        self,
-        generator: FlextInfraBaseMkGenerator | None = None,
-    ) -> None:
-        """Initialize with optional generator for freshness comparison."""
-        self._generator = generator or FlextInfraBaseMkGenerator()
+    generator: Annotated[
+        FlextInfraBaseMkGenerator | None,
+        Field(
+            default=None,
+            exclude=True,
+            description="Optional generator for freshness comparison",
+        ),
+    ] = None
 
-    def validate(self, workspace_root: Path) -> r[m.Infra.ValidationReport]:
+    def build_report(self, workspace_root: Path) -> r[m.Infra.ValidationReport]:
         """Validate root base.mk exists and matches generated template output.
 
         Args:
@@ -45,7 +50,8 @@ class FlextInfraBaseMkValidator:
                         summary="missing root base.mk",
                     ),
                 )
-            gen_result = self._generator.generate_basemk()
+            generator = self.generator or FlextInfraBaseMkGenerator()
+            gen_result = generator.generate_basemk()
             if gen_result.is_failure:
                 return r[m.Infra.ValidationReport].ok(
                     m.Infra.ValidationReport(
@@ -81,9 +87,10 @@ class FlextInfraBaseMkValidator:
                 f"base.mk validation failed: {exc}",
             )
 
-    def execute_command(self, params: m.Infra.ValidateBaseMkInput) -> r[bool]:
-        """Execute the basemk validation CLI flow for the input model."""
-        return self.validate(params.workspace_path).flat_map(
+    @override
+    def execute(self) -> r[bool]:
+        """Execute the basemk validation CLI flow."""
+        return self.build_report(self.workspace_root).flat_map(
             lambda report: (
                 r[bool].ok(True) if report.passed else r[bool].fail(report.summary)
             )

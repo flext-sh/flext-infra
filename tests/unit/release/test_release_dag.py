@@ -68,7 +68,7 @@ class TestReleaseDag:
         executed_phases: list[str] = []
 
         def _tracking_dispatch(
-            self_: FlextInfraReleaseOrchestrator,
+            _self: FlextInfraReleaseOrchestrator,
             dispatch_config: m.Infra.ReleasePhaseDispatchConfig,
         ) -> r[bool]:
             executed_phases.append(dispatch_config.phase)
@@ -99,7 +99,7 @@ class TestReleaseDag:
         executed_phases: list[str] = []
 
         def _tracking_dispatch(
-            self_: FlextInfraReleaseOrchestrator,
+            _self: FlextInfraReleaseOrchestrator,
             dispatch_config: m.Infra.ReleasePhaseDispatchConfig,
         ) -> r[bool]:
             executed_phases.append(dispatch_config.phase)
@@ -129,7 +129,7 @@ class TestReleaseDag:
         executed_phases: list[str] = []
 
         def _failing_dispatch(
-            self_: FlextInfraReleaseOrchestrator,
+            _self: FlextInfraReleaseOrchestrator,
             dispatch_config: m.Infra.ReleasePhaseDispatchConfig,
         ) -> r[bool]:
             executed_phases.append(dispatch_config.phase)

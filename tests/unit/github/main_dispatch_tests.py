@@ -8,7 +8,7 @@ import pytest
 from flext_tests import tm
 from tests import m, r
 
-from flext_infra import FlextInfraGithubService, FlextInfraUtilities
+from flext_infra import FlextInfraUtilities, infra
 
 
 def _workspace_report(
@@ -39,7 +39,7 @@ class TestRunPrWorkspace:
             "github_run_workspace_pull_requests",
             staticmethod(_ok),
         )
-        result = FlextInfraGithubService().execute_workspace_pull_requests(
+        result = infra.run_github_workspace_pull_requests(
             m.Infra.GithubPullRequestWorkspaceRequest(workspace=str(tmp_path)),
         )
         tm.that(result.is_success, eq=True)
@@ -58,7 +58,7 @@ class TestRunPrWorkspace:
             "github_run_workspace_pull_requests",
             staticmethod(_fail),
         )
-        result = FlextInfraGithubService().execute_workspace_pull_requests(
+        result = infra.run_github_workspace_pull_requests(
             m.Infra.GithubPullRequestWorkspaceRequest(workspace=str(tmp_path)),
         )
         tm.that(result.is_failure, eq=True)
@@ -83,7 +83,7 @@ class TestRunPrWorkspace:
             "github_run_workspace_pull_requests",
             staticmethod(_fake_orchestrate),
         )
-        result = FlextInfraGithubService().execute_workspace_pull_requests(
+        result = infra.run_github_workspace_pull_requests(
             m.Infra.GithubPullRequestWorkspaceRequest(
                 workspace=str(tmp_path),
                 action="merge",
@@ -116,7 +116,7 @@ class TestRunPrWorkspace:
             "github_run_workspace_pull_requests",
             staticmethod(_fake_orchestrate),
         )
-        FlextInfraGithubService().execute_workspace_pull_requests(
+        infra.run_github_workspace_pull_requests(
             m.Infra.GithubPullRequestWorkspaceRequest(
                 workspace=str(tmp_path),
                 branch="feature/test",
@@ -144,7 +144,7 @@ class TestRunPrWorkspace:
             "github_run_workspace_pull_requests",
             staticmethod(_fake_orchestrate),
         )
-        FlextInfraGithubService().execute_workspace_pull_requests(
+        infra.run_github_workspace_pull_requests(
             m.Infra.GithubPullRequestWorkspaceRequest(
                 workspace=str(tmp_path),
                 checkpoint=True,
@@ -172,7 +172,7 @@ class TestRunPrWorkspace:
             "github_run_workspace_pull_requests",
             staticmethod(_fake_orchestrate),
         )
-        FlextInfraGithubService().execute_workspace_pull_requests(
+        infra.run_github_workspace_pull_requests(
             m.Infra.GithubPullRequestWorkspaceRequest(
                 workspace=str(tmp_path),
                 fail_fast=True,
@@ -200,7 +200,7 @@ class TestRunPrWorkspace:
             "github_run_workspace_pull_requests",
             staticmethod(_fake_orchestrate),
         )
-        FlextInfraGithubService().execute_workspace_pull_requests(
+        infra.run_github_workspace_pull_requests(
             m.Infra.GithubPullRequestWorkspaceRequest(
                 workspace=str(tmp_path),
                 projects=["flext-core", "flext-api"],

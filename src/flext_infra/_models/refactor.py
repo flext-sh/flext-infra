@@ -33,6 +33,71 @@ class FlextInfraRefactorModels(
     - ``ArbitraryTypesModel`` for mutable engine/report/result payloads.
     """
 
+    class RefactorCentralizeInput(
+        FlextInfraModelsMixins.WriteMixin,
+        m.ContractModel,
+    ):
+        """CLI/service request for pydantic centralization."""
+
+        normalize_remaining: Annotated[
+            bool,
+            Field(
+                default=False,
+                description="Remove remaining BaseModel/TypedDict bases in non-allowed files",
+            ),
+        ] = False
+
+    class RefactorMigrateMroInput(
+        FlextInfraModelsMixins.WriteMixin,
+        m.ContractModel,
+    ):
+        """CLI/service request for MRO migration."""
+
+        target: Annotated[
+            str,
+            Field(
+                default="all",
+                description="Migration target scope (constants/typings/protocols/models/utilities/all)",
+            ),
+        ] = "all"
+
+    class RefactorNamespaceEnforceInput(
+        FlextInfraModelsMixins.WriteMixin,
+        m.ContractModel,
+    ):
+        """CLI/service request for namespace enforcement."""
+
+    class RefactorMigrateRuntimeAliasImportsInput(
+        FlextInfraModelsMixins.AliasSelectionMixin,
+        m.ContractModel,
+    ):
+        """CLI/service request for runtime alias migration."""
+
+    class RefactorUltraworkModelsInput(
+        FlextInfraModelsMixins.WriteMixin,
+        m.ContractModel,
+    ):
+        """CLI/service request for full centralization workflow."""
+
+        normalize_remaining: Annotated[
+            bool,
+            Field(
+                default=False,
+                description="Remove remaining BaseModel/TypedDict bases in non-allowed files",
+            ),
+        ] = False
+
+    class RefactorCensusInput(
+        FlextInfraModelsMixins.ReadMixin,
+        m.ContractModel,
+    ):
+        """CLI/service request for rope-oriented census."""
+
+        family: Annotated[
+            str,
+            Field(default="u", description="MRO family to census (c/t/p/m/u)"),
+        ] = "u"
+
     class Result(m.ArbitraryTypesModel):
         """Result of applying refactor rules to a single file."""
 

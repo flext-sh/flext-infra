@@ -364,6 +364,112 @@ def test_runtime_alias_migrator_merges_local_imports_in_tests(tmp_path: Path) ->
     assert target.with_suffix(".py.bak").exists()
 
 
+def test_runtime_alias_migrator_rewrites_concrete_root_alias_import_in_src(
+    tmp_path: Path,
+) -> None:
+    project_root = _build_refactor_project(tmp_path)
+    target = project_root / "src" / "flext_demo" / "codegen" / "typed.py"
+    _write_file(
+        target,
+        (
+            "from __future__ import annotations\n\n"
+            "from flext_demo import FlextDemoTypes as t\n\n"
+            "VALUE = t\n"
+        ),
+    )
+
+    results = u.Infra.migrate_runtime_alias_imports(
+        workspace_root=tmp_path,
+        aliases=["t"],
+        apply=True,
+        project_names=["flext-demo"],
+    )
+
+    result = next(item for item in results if item.file_path == target)
+    rewritten = target.read_text(encoding="utf-8")
+    assert result.success is True
+    assert result.modified is True
+    assert "from flext_demo import FlextDemoTypes as t" not in rewritten
+    assert "from flext_demo import t" in rewritten
+
+
+def test_runtime_alias_migrator_rewrites_deep_concrete_alias_import_in_src(
+    tmp_path: Path,
+) -> None:
+    project_root = _build_refactor_project(tmp_path)
+    target = project_root / "src" / "flext_demo" / "codegen" / "typed.py"
+    _write_file(
+        target,
+        (
+            "from __future__ import annotations\n\n"
+            "from flext_demo.typings import FlextDemoTypes as t\n\n"
+            "VALUE = t\n"
+        ),
+    )
+
+    results = u.Infra.migrate_runtime_alias_imports(
+        workspace_root=tmp_path,
+        aliases=["t"],
+        apply=True,
+        project_names=["flext-demo"],
+    )
+
+    result = next(item for item in results if item.file_path == target)
+    rewritten = target.read_text(encoding="utf-8")
+    assert result.success is True
+    assert result.modified is True
+    assert "from flext_demo.typings import FlextDemoTypes as t" not in rewritten
+    assert "from flext_demo import t" in rewritten
+
+
+def test_runtime_alias_migrator_rewrites_foreign_package_alias_in_tests(
+    tmp_path: Path,
+) -> None:
+    project_root = _build_refactor_project(tmp_path, package_name="demo_pkg")
+    _write_file(
+        project_root / "tests" / "__init__.py",
+        (
+            "from __future__ import annotations\n\n"
+            "_LAZY_IMPORTS: dict[str, tuple[str, str]] = {\n"
+            '    "t": ("tests.typings", "t"),\n'
+            "}\n"
+            "t = object()\n"
+        ),
+    )
+    _write_file(
+        project_root / "tests" / "typings.py",
+        (
+            "from __future__ import annotations\n\n"
+            "class FlextTestsTypes:\n"
+            "    pass\n\n"
+            "t = FlextTestsTypes\n"
+        ),
+    )
+    target = project_root / "tests" / "unit" / "test_sample.py"
+    _write_file(
+        target,
+        (
+            "from __future__ import annotations\n\n"
+            "from demo_pkg import FlextDemoTypes as t\n\n"
+            "VALUE = t\n"
+        ),
+    )
+
+    results = u.Infra.migrate_runtime_alias_imports(
+        workspace_root=tmp_path,
+        aliases=["t"],
+        apply=True,
+        project_names=["flext-demo"],
+    )
+
+    result = next(item for item in results if item.file_path == target)
+    rewritten = target.read_text(encoding="utf-8")
+    assert result.success is True
+    assert result.modified is True
+    assert "from demo_pkg import FlextDemoTypes as t" not in rewritten
+    assert "from tests import t" in rewritten
+
+
 def test_runtime_alias_migrator_reports_protected_write_failure(
     tmp_path: Path,
     monkeypatch: MonkeyPatch,

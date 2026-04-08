@@ -72,7 +72,7 @@ class FlextInfraProtocolsRope(Protocol):
             """Rope's dynamic PyCore object."""
             ...
 
-        def get_resource(self, resource_name: str) -> t.OpaqueValue:
+        def get_resource(self, _resource_name: str) -> t.OpaqueValue:
             """Resolve one resource path inside the project."""
             ...
 
@@ -80,7 +80,7 @@ class FlextInfraProtocolsRope(Protocol):
             self,
             resource: t.Infra.RopeApiResource,
             *,
-            force_errors: bool = False,
+            _force_errors: bool = False,
         ) -> t.OpaqueValue:
             """Return the PyModule for one resource."""
             ...
@@ -88,7 +88,7 @@ class FlextInfraProtocolsRope(Protocol):
         def do(
             self,
             changes: t.Infra.RopeChanges,
-            task_handle: t.OpaqueValue | None = None,
+            _task_handle: t.OpaqueValue | None = None,
         ) -> None:
             """Apply one rope change set."""
             ...
@@ -147,7 +147,7 @@ class FlextInfraProtocolsRope(Protocol):
             self,
             resource: t.Infra.RopeResource,
             *,
-            force_errors: bool = False,
+            _force_errors: bool = False,
         ) -> t.Infra.RopePyModule:
             """Convert a resource to its PyModule representation."""
             ...
@@ -347,10 +347,10 @@ class FlextInfraProtocolsRope(Protocol):
             resource: t.Infra.RopeApiResource,
             offset: int,
             *,
-            unsure: bool = False,
-            resources: t.SequenceOf[t.Infra.RopeApiResource] | None = None,
+            _unsure: bool = False,
+            _resources: t.SequenceOf[t.Infra.RopeApiResource] | None = None,
             in_hierarchy: bool = False,
-            task_handle: t.OpaqueValue | None = None,
+            _task_handle: t.OpaqueValue | None = None,
         ) -> t.SequenceOf[t.Infra.RopeLocation]:
             """Return occurrences for the symbol at the given offset."""
             ...
@@ -375,10 +375,10 @@ class FlextInfraProtocolsRope(Protocol):
             resource: t.Infra.RopeApiResource,
             offset: int,
             *,
-            unsure: bool = False,
-            resources: t.SequenceOf[t.Infra.RopeApiResource] | None = None,
+            _unsure: bool = False,
+            _resources: t.SequenceOf[t.Infra.RopeApiResource] | None = None,
             in_hierarchy: bool = False,
-            task_handle: t.OpaqueValue | None = None,
+            _task_handle: t.OpaqueValue | None = None,
         ) -> t.SequenceOf[t.Infra.RopeLocation]:
             """Return occurrences for the symbol at the given offset."""
             ...

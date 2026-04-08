@@ -4,12 +4,12 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import u
-from tests.unit.check._shared_fixtures import (
+from tests import (
     create_checker_project,
     create_fake_run_raw,
     patch_gate_run_sequence,
     run_gate_check,
+    u,
 )
 
 from flext_core import r

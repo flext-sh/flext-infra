@@ -13,18 +13,36 @@ import fnmatch
 import re
 from collections.abc import Sequence
 from pathlib import Path
+from typing import Annotated, override
 
-from flext_infra import c, m, r, t
+from pydantic import Field
+
+from flext_infra import c, r, s, t
 
 
-class FlextInfraTextPatternScanner:
+class FlextInfraTextPatternScanner(s[bool]):
     """Scans files for regex pattern matches and reports violations.
 
     Supports include/exclude glob filtering and configurable match
     modes (present = matches are violations, absent = no matches is a violation).
     """
 
-    _ENCODING = c.Infra.Encoding.DEFAULT
+    pattern: Annotated[str, Field(description="Regex pattern")]
+    include: Annotated[
+        t.StrSequence,
+        Field(default_factory=list, description="Include glob"),
+    ] = Field(default_factory=list, description="Include glob")
+    exclude: Annotated[
+        t.StrSequence,
+        Field(default_factory=list, description="Exclude glob"),
+    ] = Field(default_factory=list, description="Exclude glob")
+    match: Annotated[
+        str,
+        Field(
+            default=c.Infra.MatchModes.PRESENT,
+            description="Violation mode (present or absent)",
+        ),
+    ] = c.Infra.MatchModes.PRESENT
 
     @staticmethod
     def _collect_files(
@@ -110,14 +128,15 @@ class FlextInfraTextPatternScanner:
         except (OSError, ValueError, TypeError) as exc:
             return r[t.ScalarMapping].fail(f"text pattern scan failed: {exc}")
 
-    def execute_command(self, params: m.Infra.ValidateScanInput) -> r[bool]:
-        """Execute the text-pattern scan CLI flow for the input model."""
+    @override
+    def execute(self) -> r[bool]:
+        """Execute the text-pattern scan CLI flow."""
         result = self.scan(
-            params.workspace_path,
-            params.pattern,
-            includes=params.include_patterns,
-            excludes=params.exclude_patterns,
-            match_mode=params.match,
+            self.workspace_root,
+            self.pattern,
+            includes=self.include,
+            excludes=self.exclude,
+            match_mode=self.match,
         )
         if result.is_failure:
             return r[bool].fail(result.error or "scan failed")

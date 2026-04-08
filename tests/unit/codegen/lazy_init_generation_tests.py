@@ -129,7 +129,7 @@ class TestGenerateFile:
             inline_constants,
             "flext_core",
         )
-        tm.that(content, contains="from flext_core.lazy import install_lazy_exports")
+        tm.that(content, contains="from flext_core import install_lazy_exports")
 
     def test_with_other_package(self) -> None:
         """Test uses correct lazy import for non-core packages."""
@@ -143,7 +143,7 @@ class TestGenerateFile:
             inline_constants,
             "other_pkg",
         )
-        tm.that(content, contains="from flext_core.lazy import install_lazy_exports")
+        tm.that(content, contains="from flext_core import install_lazy_exports")
 
     def test_with_inline_constants(self) -> None:
         """Test includes inline constants."""

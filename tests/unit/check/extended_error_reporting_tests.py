@@ -21,12 +21,12 @@ from tests import (
     t,
 )
 
-from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from flext_infra.gates import (
+from flext_infra import (
     FlextInfraGate,
     FlextInfraGoGate,
     FlextInfraMypyGate,
     FlextInfraRuffFormatGate,
+    FlextInfraWorkspaceChecker,
 )
 
 

@@ -79,8 +79,27 @@ def workspace_root(tmp_path: Path) -> Path:
 class TestReleaseOrchestratorExecute:
     """Tests for execute() and run_release() top-level."""
 
-    def test_execute_returns_ok(self) -> None:
-        tm.ok(FlextInfraReleaseOrchestrator().execute(), eq=True)
+    def test_execute_returns_ok(
+        self,
+        workspace_root: Path,
+        monkeypatch: MonkeyPatch,
+    ) -> None:
+        def _workspace_root(_hint: Path) -> r[Path]:
+            return r[Path].ok(workspace_root)
+
+        monkeypatch.setattr(
+            "flext_infra.release.orchestrator.u.Infra.workspace_root",
+            _workspace_root,
+        )
+        _stub_dispatch(monkeypatch)
+        tm.ok(
+            FlextInfraReleaseOrchestrator(
+                workspace=workspace_root,
+                phase="validate",
+                interactive=0,
+            ).execute(),
+            eq=True,
+        )
 
     def test_run_release_invalid_phase(self, workspace_root: Path) -> None:
         config = _make_config(workspace_root, phases=["invalid_phase"])

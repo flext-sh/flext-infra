@@ -10,10 +10,10 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import t
-from tests.unit.test_infra_workspace_migrator import (
+from tests import (
     _build_migrator,
     _project,
+    t,
 )
 
 from flext_infra import FlextInfraProjectMigrator

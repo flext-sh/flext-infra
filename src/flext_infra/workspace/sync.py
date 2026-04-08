@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import contextlib
 from pathlib import Path
-from typing import Annotated, Self, overload, override
+from typing import Annotated, override
 
 from pydantic import Field
 
@@ -47,10 +47,8 @@ class FlextInfraSyncService(FlextInfraCommandContext[m.Infra.SyncResult]):
     ] = None
 
     def _get_generator(self) -> FlextInfraBaseMkGenerator:
-        """Return the configured generator, including test-time private injection."""
-        private_generator = getattr(self, "_generator", None)
-        configured = self.generator or private_generator
-        return configured if configured is not None else FlextInfraBaseMkGenerator()
+        """Return the configured generator."""
+        return self.generator or FlextInfraBaseMkGenerator()
 
     def _resolved_workspace_root(self) -> Path:
         """Return the validated workspace root from the command context."""
@@ -84,37 +82,6 @@ class FlextInfraSyncService(FlextInfraCommandContext[m.Infra.SyncResult]):
                         fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
         except OSError as exc:
             return r[m.Infra.SyncResult].fail(f"Could not open lock file: {exc}")
-
-    @overload
-    @classmethod
-    def execute_command(cls, params: Self) -> r[m.Infra.SyncResult]: ...
-
-    @overload
-    @classmethod
-    def execute_command(
-        cls,
-        params: m.Infra.WorkspaceSyncInput,
-    ) -> r[m.Infra.SyncResult]: ...
-
-    @classmethod
-    @override
-    def execute_command(
-        cls,
-        params: t.OpaqueValue,
-    ) -> r[m.Infra.SyncResult]:
-        """Convert CLI input model to service instance and execute."""
-        if isinstance(params, cls):
-            return params.execute()
-        if not isinstance(params, m.Infra.WorkspaceSyncInput):
-            return r[m.Infra.SyncResult].fail(
-                "expected WorkspaceSyncInput or service instance"
-            )
-        service = cls.model_validate({
-            "workspace_root": params.workspace_path,
-            "apply_changes": params.apply,
-            "canonical_root": params.canonical_root_path,
-        })
-        return service.execute()
 
     def _sync_locked_content(
         self,

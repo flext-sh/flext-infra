@@ -16,12 +16,12 @@ from flext_infra import (
     FlextInfraRefactorRuleLoader,
     FlextInfraRefactorSafetyManager,
     FlextInfraRefactorViolationAnalyzer,
+    FlextInfraUtilitiesProtectedEdit,
     c,
     m,
     t,
     u,
 )
-from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
 
 _log = FlextLogger.create_module_logger(__name__)
 

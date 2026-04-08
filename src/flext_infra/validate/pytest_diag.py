@@ -12,11 +12,12 @@ from __future__ import annotations
 import re
 from collections.abc import Iterator, MutableSequence
 from pathlib import Path
-from typing import ClassVar, Protocol, runtime_checkable
+from typing import Annotated, ClassVar, Protocol, override, runtime_checkable
 
 from defusedxml import ElementTree as DefusedET
+from pydantic import Field
 
-from flext_infra import c, m, r, t, u
+from flext_infra import c, m, r, s, t, u
 
 
 @runtime_checkable
@@ -50,12 +51,35 @@ class _DiagResult:
         self.slow_entries: MutableSequence[str] = []
 
 
-class FlextInfraPytestDiagExtractor:
+class FlextInfraPytestDiagExtractor(s[bool]):
     """Extracts pytest diagnostics from JUnit XML and log files.
 
     Parses JUnit XML for structured failure/error/skip/timing data
     and uses regex-based log parsing when XML is unavailable.
     """
+
+    junit: Annotated[Path, Field(description="JUnit XML path")]
+    log: Annotated[Path, Field(description="Pytest log path")]
+    failed: Annotated[
+        Path | None,
+        Field(default=None, description="Path to write failed cases"),
+    ] = None
+    errors: Annotated[
+        Path | None,
+        Field(default=None, description="Path to write error traces"),
+    ] = None
+    warnings: Annotated[
+        Path | None,
+        Field(default=None, description="Path to write warnings"),
+    ] = None
+    slowest: Annotated[
+        Path | None,
+        Field(default=None, description="Path to write slowest entries"),
+    ] = None
+    skips: Annotated[
+        Path | None,
+        Field(default=None, description="Path to write skipped cases"),
+    ] = None
 
     @staticmethod
     def _extract_slow_from_log(lines: t.StrSequence, diag: _DiagResult) -> None:
@@ -238,20 +262,20 @@ class FlextInfraPytestDiagExtractor:
                 f"pytest diagnostics extraction failed: {exc}",
             )
 
-    def execute_command(self, params: m.Infra.ValidatePytestDiagInput) -> r[bool]:
-        """Execute the pytest diagnostics CLI flow for the input model."""
-        result = self.extract(params.junit_path, params.log_path)
+    @override
+    def execute(self) -> r[bool]:
+        """Execute the pytest diagnostics CLI flow."""
+        result = self.extract(self.junit, self.log)
         if result.is_failure:
             return r[bool].fail(result.error or "extraction failed")
-        for param_name, attr_name, separator in [
-            ("failed", "failed_cases", "\n\n"),
-            ("errors", "error_traces", "\n\n"),
-            ("warnings", "warning_lines", "\n"),
-            ("slowest", "slow_entries", "\n"),
-            ("skips", "skip_cases", "\n"),
+        for output_path, attr_name, separator in [
+            (self.failed, "failed_cases", "\n\n"),
+            (self.errors, "error_traces", "\n\n"),
+            (self.warnings, "warning_lines", "\n"),
+            (self.slowest, "slow_entries", "\n"),
+            (self.skips, "skip_cases", "\n"),
         ]:
-            path_str = getattr(params, param_name, None)
-            if not path_str:
+            if output_path is None:
                 continue
             items = [
                 value
@@ -259,7 +283,7 @@ class FlextInfraPytestDiagExtractor:
                 if isinstance(value, str)
             ]
             u.write_file(
-                Path(path_str),
+                output_path,
                 separator.join(items) + "\n",
                 encoding=c.Infra.Encoding.DEFAULT,
             )

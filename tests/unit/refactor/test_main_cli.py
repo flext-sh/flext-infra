@@ -6,7 +6,7 @@ import pytest
 from flext_tests import tm
 from tests import m, r, t
 
-from flext_infra import FlextInfraCliRefactor, main as infra_main
+from flext_infra import FlextInfra, main as infra_main
 
 
 def refactor_main(argv: list[str] | None = None) -> int:
@@ -21,6 +21,7 @@ def test_refactor_census_accepts_apply_before_subcommand(
     tmp_path: Path,
 ) -> None:
     def _mock_handler(
+        _self: FlextInfra,
         params: m.Infra.RefactorCensusInput,
     ) -> r[m.Infra.UtilitiesCensusReport]:
         return r[m.Infra.UtilitiesCensusReport].ok(
@@ -37,9 +38,9 @@ def test_refactor_census_accepts_apply_before_subcommand(
         )
 
     monkeypatch.setattr(
-        FlextInfraCliRefactor,
-        "_handle_refactor_census",
-        staticmethod(_mock_handler),
+        FlextInfra,
+        "run_refactor_census",
+        _mock_handler,
     )
     result = refactor_main([
         "census",
@@ -58,6 +59,7 @@ def test_refactor_centralize_accepts_apply_before_subcommand(
     captured_normalize_remaining = False
 
     def _mock_handler(
+        _self: FlextInfra,
         params: m.Infra.RefactorCentralizeInput,
     ) -> r[t.IntMapping]:
         nonlocal captured_apply, captured_workspace, captured_normalize_remaining
@@ -67,9 +69,9 @@ def test_refactor_centralize_accepts_apply_before_subcommand(
         return r[t.IntMapping].ok({"files": 0})
 
     monkeypatch.setattr(
-        FlextInfraCliRefactor,
-        "_handle_centralize_pydantic",
-        staticmethod(_mock_handler),
+        FlextInfra,
+        "centralize_pydantic",
+        _mock_handler,
     )
     result = refactor_main(
         [
@@ -95,6 +97,7 @@ def test_refactor_runtime_alias_imports_accepts_aliases_and_project(
     captured_workspace = Path()
 
     def _mock_handler(
+        _self: FlextInfra,
         params: m.Infra.RefactorMigrateRuntimeAliasImportsInput,
     ) -> r[t.IntMapping]:
         nonlocal captured_apply, captured_aliases, captured_projects, captured_workspace
@@ -105,9 +108,9 @@ def test_refactor_runtime_alias_imports_accepts_aliases_and_project(
         return r[t.IntMapping].ok({"files_changed": 1})
 
     monkeypatch.setattr(
-        FlextInfraCliRefactor,
-        "_handle_migrate_runtime_alias_imports",
-        staticmethod(_mock_handler),
+        FlextInfra,
+        "migrate_runtime_alias_imports",
+        _mock_handler,
     )
     result = refactor_main(
         [

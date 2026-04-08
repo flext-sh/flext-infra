@@ -7,12 +7,12 @@ from pathlib import Path
 
 from flext_infra import (
     FlextInfraRefactorMROSymbolPropagator,
+    FlextInfraUtilitiesProtectedEdit,
     c,
     m,
     t,
     u,
 )
-from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
 
 
 class FlextInfraRefactorMROImportRewriter:

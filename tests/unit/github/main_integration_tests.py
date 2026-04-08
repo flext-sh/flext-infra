@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from tests import m, r
 
-from flext_infra import FlextInfraGithubService, FlextInfraUtilities, main
+from flext_infra import FlextInfra, infra, main
 
 
 def _orch(
@@ -37,6 +37,7 @@ class TestMain:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         def _sync(
+            _self: FlextInfra,
             request: m.Infra.GithubWorkflowSyncRequest,
         ) -> r[m.Infra.GithubWorkflowSyncReport]:
             _ = request
@@ -48,11 +49,7 @@ class TestMain:
                 ),
             )
 
-        monkeypatch.setattr(
-            FlextInfraUtilities.Infra,
-            "github_sync_workflows",
-            staticmethod(_sync),
-        )
+        monkeypatch.setattr(type(infra), "sync_github_workflows", _sync)
         assert main(["github", "workflows", "--workspace", str(tmp_path)]) == 0
 
     def test_lint_subcommand(
@@ -61,6 +58,7 @@ class TestMain:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         def _lint(
+            _self: FlextInfra,
             request: m.Infra.GithubWorkflowLintRequest,
         ) -> r[m.Infra.GithubWorkflowLintOutcome]:
             _ = request
@@ -68,11 +66,7 @@ class TestMain:
                 m.Infra.GithubWorkflowLintOutcome(status="ok"),
             )
 
-        monkeypatch.setattr(
-            FlextInfraUtilities.Infra,
-            "github_lint_workflows",
-            staticmethod(_lint),
-        )
+        monkeypatch.setattr(type(infra), "lint_github_workflows", _lint)
         assert main(["github", "lint", "--workspace", str(tmp_path)]) == 0
 
     def test_pr_subcommand(
@@ -81,7 +75,7 @@ class TestMain:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         def _run_pr(
-            _self: FlextInfraGithubService,
+            _self: FlextInfra,
             _params: m.Infra.GithubPullRequestRequest,
         ) -> r[m.Infra.GithubPullRequestOutcome]:
             return r[m.Infra.GithubPullRequestOutcome].ok(
@@ -93,11 +87,7 @@ class TestMain:
                 ),
             )
 
-        monkeypatch.setattr(
-            FlextInfraGithubService,
-            "execute_pull_request",
-            _run_pr,
-        )
+        monkeypatch.setattr(type(infra), "run_github_pull_request", _run_pr)
         assert (
             main(["github", "pr", "--repo-root", str(tmp_path), "--action", "status"])
             == 0
@@ -109,15 +99,16 @@ class TestMain:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         def _orchestrate(
+            _self: FlextInfra,
             request: m.Infra.GithubPullRequestWorkspaceRequest,
         ) -> r[m.Infra.GithubPullRequestWorkspaceReport]:
             _ = request
             return r[m.Infra.GithubPullRequestWorkspaceReport].ok(_orch(fail=0))
 
         monkeypatch.setattr(
-            FlextInfraUtilities.Infra,
-            "github_run_workspace_pull_requests",
-            staticmethod(_orchestrate),
+            type(infra),
+            "run_github_workspace_pull_requests",
+            _orchestrate,
         )
         assert main(["github", "pr-workspace", "--workspace", str(tmp_path)]) == 0
 
@@ -132,6 +123,7 @@ class TestMain:
         called: MutableSequence[bool] = []
 
         def _lint(
+            _self: FlextInfra,
             request: m.Infra.GithubWorkflowLintRequest,
         ) -> r[m.Infra.GithubWorkflowLintOutcome]:
             _ = request
@@ -139,11 +131,7 @@ class TestMain:
                 m.Infra.GithubWorkflowLintOutcome(status="ok"),
             )
 
-        monkeypatch.setattr(
-            FlextInfraUtilities.Infra,
-            "github_lint_workflows",
-            staticmethod(_lint),
-        )
+        monkeypatch.setattr(type(infra), "lint_github_workflows", _lint)
         result = main(["github", "lint", "--workspace", str(tmp_path)])
         called.append(result == 0)
         assert called
@@ -169,6 +157,7 @@ class TestMain:
         ]
 
         def _sync(
+            _self: FlextInfra,
             request: m.Infra.GithubWorkflowSyncRequest,
         ) -> r[m.Infra.GithubWorkflowSyncReport]:
             _ = request
@@ -179,9 +168,5 @@ class TestMain:
                 ),
             )
 
-        monkeypatch.setattr(
-            FlextInfraUtilities.Infra,
-            "github_sync_workflows",
-            staticmethod(_sync),
-        )
+        monkeypatch.setattr(type(infra), "sync_github_workflows", _sync)
         assert main(["github", "workflows", "--workspace", str(tmp_path)]) == 0

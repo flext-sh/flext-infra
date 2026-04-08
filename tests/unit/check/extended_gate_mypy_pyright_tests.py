@@ -10,8 +10,12 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import create_checker_project, patch_gate_run, patch_python_dir_detection
-from tests.unit.check._shared_fixtures import run_gate_check
+from tests import (
+    create_checker_project,
+    patch_gate_run,
+    patch_python_dir_detection,
+    run_gate_check,
+)
 
 from flext_infra import FlextInfraMypyGate, FlextInfraPyrightGate
 

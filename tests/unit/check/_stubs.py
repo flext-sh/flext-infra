@@ -10,8 +10,7 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping, MutableSequence, Sequence
 
-from tests import m, t
-from tests.unit.check._shared_fixtures import create_gate_execution
+from tests import create_gate_execution, m, t
 
 
 class Spy:

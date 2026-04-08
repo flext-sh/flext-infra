@@ -10,8 +10,6 @@ from flext_infra import (
     FlextInfraUtilitiesCodegenImportCycles,
     FlextInfraUtilitiesCodegenLazyAliases,
     FlextInfraUtilitiesCodegenLazyScanning,
-)
-from flext_infra._utilities.codegen_namespace import (
     FlextInfraUtilitiesCodegenNamespace,
 )
 

@@ -32,10 +32,10 @@ class TestStubChainCore:
     )
 
     def test_init_creates_service(self) -> None:
-        """Service initializes with runner attribute."""
+        """Service initializes without requiring private runner state."""
         chain = FlextInfraStubSupplyChain()
         assert chain is not None
-        tm.that(hasattr(chain, "_runner"), eq=True)
+        tm.that(chain.runner is None, eq=True)
 
 
 class TestStubChainAnalyze:
@@ -83,13 +83,13 @@ class TestStubChainValidate:
     def test_validate_workspace(self, tmp_path: Path) -> None:
         """Workspace validation returns r."""
         chain = FlextInfraStubSupplyChain()
-        result = chain.validate(tmp_path)
+        result = chain.build_report(tmp_path)
         tm.ok(result)
 
     def test_validate_nonexistent_workspace(self, tmp_path: Path) -> None:
         """Nonexistent workspace returns failure."""
         chain = FlextInfraStubSupplyChain()
-        result = chain.validate(tmp_path / "nonexistent")
+        result = chain.build_report(tmp_path / "nonexistent")
         tm.fail(result)
 
     def test_validate_with_project_dirs(
@@ -105,7 +105,7 @@ class TestStubChainValidate:
         (proj / "src").mkdir()
         monkeypatch.setattr(chain, "_run_mypy_hints", _no_stub_messages)
         monkeypatch.setattr(chain, "_run_pyrefly_missing", _no_stub_messages)
-        result = chain.validate(tmp_path, project_dirs=[proj])
+        result = chain.build_report(tmp_path, project_dirs=[proj])
         tm.ok(result)
 
 

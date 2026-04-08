@@ -36,7 +36,7 @@ def _patch_main_deps(
     """Patch all main() dependencies via monkeypatch."""
     effective_root = root_result
 
-    def _workspace_root(hint: str) -> r[Path]:
+    def _workspace_root(_hint: str) -> r[Path]:
         return effective_root if effective_root is not None else r[Path].ok(tmp_path)
 
     monkeypatch.setattr(infra_u.Infra, "workspace_root", staticmethod(_workspace_root))

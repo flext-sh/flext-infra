@@ -11,8 +11,7 @@ from typing import Annotated
 from pydantic import Field, PrivateAttr
 
 from flext_core import FlextModels
-from flext_infra._models.mixins import FlextInfraModelsMixins
-from flext_infra._protocols.rope import FlextInfraProtocolsRope
+from flext_infra import FlextInfraModelsMixins, FlextInfraProtocolsRope
 
 
 class FlextInfraModelsRope:

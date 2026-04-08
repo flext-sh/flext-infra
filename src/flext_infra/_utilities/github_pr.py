@@ -15,7 +15,6 @@ from flext_core import r
 from flext_infra import (
     FlextInfraConstantsBase,
     FlextInfraGithubModels,
-    FlextInfraModelsCliInputsOps,
     FlextInfraSharedInfraConstants,
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesReporting,
@@ -33,7 +32,7 @@ class FlextInfraUtilitiesGithubPr(
     @classmethod
     def github_run_workspace_pull_requests(
         cls,
-        request: FlextInfraModelsCliInputsOps.GithubPullRequestWorkspaceRequest,
+        request: FlextInfraGithubModels.GithubPullRequestWorkspaceRequest,
     ) -> r[FlextInfraGithubModels.GithubPullRequestWorkspaceReport]:
         """Run pull-request commands across workspace repositories."""
         workspace_root = request.workspace_path
@@ -128,8 +127,8 @@ class FlextInfraUtilitiesGithubPr(
         repo_root: Path,
         workspace_root: Path,
         request: (
-            FlextInfraModelsCliInputsOps.GithubPullRequestRequest
-            | FlextInfraModelsCliInputsOps.GithubPullRequestWorkspaceRequest
+            FlextInfraGithubModels.GithubPullRequestRequest
+            | FlextInfraGithubModels.GithubPullRequestWorkspaceRequest
         ),
     ) -> r[FlextInfraGithubModels.GithubPullRequestOutcome]:
         """Execute one pull-request command for a single repository."""
@@ -176,8 +175,8 @@ class FlextInfraUtilitiesGithubPr(
         repo_root: Path,
         workspace_root: Path,
         request: (
-            FlextInfraModelsCliInputsOps.GithubPullRequestRequest
-            | FlextInfraModelsCliInputsOps.GithubPullRequestWorkspaceRequest
+            FlextInfraGithubModels.GithubPullRequestRequest
+            | FlextInfraGithubModels.GithubPullRequestWorkspaceRequest
         ),
     ) -> list[str]:
         """Build the CLI command list for a single pull-request operation."""

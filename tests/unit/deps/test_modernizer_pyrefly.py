@@ -121,14 +121,6 @@ def test_ensure_pyrefly_config_phase_apply_search_path_with_project_context(
     tm.that(pyrefly, is_=MutableMapping)
     search_path = u.Cli.toml_unwrap_item(pyrefly["search-path"])
     assert search_path == [".", "src"]
-    return
-    assert u.Cli.toml_unwrap_item(pyrefly["search-path"]) == [
-        ".",
-        "examples",
-        "scripts",
-        "src",
-        "tests",
-    ]
 
 
 def test_ensure_pyrefly_config_phase_apply_errors() -> None:

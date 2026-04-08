@@ -9,7 +9,7 @@ from flext_tests import tm
 from tests import m
 
 from flext_core import r
-from flext_infra import FlextInfraGithubService, main as infra_main
+from flext_infra import FlextInfra, infra, main as infra_main
 
 
 def test_main_returns_zero_on_help() -> None:
@@ -31,7 +31,7 @@ def test_pr_workspace_accepts_repeated_project_options(
     captured: list[m.Infra.GithubPullRequestWorkspaceRequest] = []
 
     def _capture(
-        _self: FlextInfraGithubService,
+        _self: FlextInfra,
         params: m.Infra.GithubPullRequestWorkspaceRequest,
     ) -> r[m.Infra.GithubPullRequestWorkspaceReport]:
         captured.append(params)
@@ -45,8 +45,8 @@ def test_pr_workspace_accepts_repeated_project_options(
         )
 
     monkeypatch.setattr(
-        FlextInfraGithubService,
-        "execute_workspace_pull_requests",
+        type(infra),
+        "run_github_workspace_pull_requests",
         _capture,
     )
 

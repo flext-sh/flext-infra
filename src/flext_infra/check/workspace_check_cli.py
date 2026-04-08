@@ -8,13 +8,13 @@ from pathlib import Path
 
 import flext_infra.check.workspace_check as workspace_check_module
 from flext_infra import (
+    FlextInfraConfigFixer,
     c,
     m,
     r,
     t,
     u,
 )
-from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
 
 
 class FlextInfraWorkspaceCheckerCli:

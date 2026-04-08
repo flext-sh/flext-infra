@@ -17,14 +17,18 @@ class FlextInfraDocBuilder(s[bool]):
 
     selected_projects: Annotated[
         t.StrSequence | None,
-        Field(default=None, description="Selected projects", exclude=True),
+        Field(
+            default=None,
+            alias="projects",
+            description="Selected projects",
+        ),
     ] = None
     docs_output_dir: Annotated[
         str,
         Field(
             default=c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
+            alias="output_dir",
             description="Docs output dir",
-            exclude=True,
         ),
     ] = c.Infra.DEFAULT_DOCS_OUTPUT_DIR
     _runner: p.Cli.CommandRunner = PrivateAttr(default_factory=u.Cli)
@@ -60,23 +64,6 @@ class FlextInfraDocBuilder(s[bool]):
         if failures:
             return r[bool].fail(f"Build had {failures} failure(s)")
         return r[bool].ok(True)
-
-    @classmethod
-    @override
-    def execute_command(
-        cls,
-        params: s[bool] | m.Infra.DocsBuildInput,
-    ) -> r[bool]:
-        """Normalize docs CLI input into the canonical builder service model."""
-        if isinstance(params, m.Infra.DocsBuildInput):
-            service = cls.model_validate({
-                "workspace_root": params.workspace_path,
-                "apply_changes": params.apply,
-                "selected_projects": params.project_names,
-                "docs_output_dir": params.output_dir,
-            })
-            return service.execute()
-        return params.execute()
 
     def _build_scope(self, scope: m.Infra.DocScope) -> m.Infra.DocsPhaseReport:
         """Build one scope via ``u.Infra`` and persist its reports."""

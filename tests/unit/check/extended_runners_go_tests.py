@@ -10,8 +10,7 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests.helpers import FlextInfraTestHelpers as h
-from tests.unit.check._shared_fixtures import patch_gate_run_sequence, run_gate_check
+from tests import FlextInfraTestHelpers as h, patch_gate_run_sequence, run_gate_check
 
 from flext_infra import FlextInfraGate, FlextInfraGoGate
 

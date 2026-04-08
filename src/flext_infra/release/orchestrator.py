@@ -12,7 +12,9 @@ from __future__ import annotations
 
 from collections.abc import Callable, MutableSequence, Sequence
 from pathlib import Path
-from typing import override
+from typing import Annotated, override
+
+from pydantic import Field
 
 from flext_core import FlextLogger
 from flext_infra import c, m, r, s, t, u
@@ -25,10 +27,113 @@ logger = FlextLogger.create_module_logger(__name__)
 class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]):
     """Service for release lifecycle orchestration."""
 
+    version: Annotated[str, Field(default="", description="Version string")] = ""
+    tag: Annotated[str, Field(default="", description="Git tag (e.g. v1.0.0)")] = ""
+    push: Annotated[bool, Field(default=False, description="Push to remote")] = False
+    dev_suffix: Annotated[
+        bool,
+        Field(default=False, description="Add dev suffix"),
+    ] = False
+    phase: Annotated[str, Field(default="all", description="Release phase")] = "all"
+    projects: Annotated[
+        t.StrSequence | None,
+        Field(
+            default=None,
+            description="Projects to process; repeat --projects NAME as needed",
+        ),
+    ] = None
+    bump: Annotated[
+        str,
+        Field(default="", description="Bump type (major/minor/patch)"),
+    ] = ""
+    interactive: Annotated[
+        int,
+        Field(default=1, description="Interactive mode (1=yes, 0=no)"),
+    ] = 1
+    next_dev: Annotated[
+        bool,
+        Field(default=False, description="Prepare next dev version"),
+    ] = False
+    next_bump: Annotated[
+        str,
+        Field(default="minor", description="Bump type for next dev version"),
+    ] = "minor"
+    create_branches: Annotated[
+        int,
+        Field(default=1, description="Create release branches (1=yes, 0=no)"),
+    ] = 1
+
+    @property
+    def phase_names(self) -> Sequence[str]:
+        """Return the normalized phase sequence for release execution."""
+        if self.phase == "all":
+            return [
+                c.Infra.Verbs.VALIDATE,
+                c.Infra.VERSION,
+                c.Infra.Directories.BUILD,
+                c.Infra.Verbs.PUBLISH,
+            ]
+        return [
+            item.strip()
+            for group in self.phase.split(",")
+            for item in group.split()
+            if item.strip()
+        ]
+
+    @property
+    def project_names(self) -> Sequence[str] | None:
+        """Return normalized project names from repeated selectors."""
+        names = [
+            item.strip()
+            for value in self.projects or ()
+            for group in value.split(",")
+            for item in group.split()
+            if item.strip()
+        ]
+        return names or None
+
     @override
     def execute(self) -> r[bool]:
-        """Not used directly; call run_release() or individual phase methods."""
-        return r[bool].ok(True)
+        """Execute the release CLI flow."""
+        root_result = u.Infra.workspace_root(self.workspace_root)
+        if root_result.is_failure:
+            return r[bool].fail(root_result.error or "workspace root not found")
+        root = Path(str(root_result.value))
+        phases = self.phase_names
+        needs_version = bool(
+            {c.Infra.VERSION, c.Infra.Directories.BUILD, c.Infra.Verbs.PUBLISH}
+            & set(phases),
+        )
+        if needs_version:
+            version_result = self._resolve_version(
+                self.version,
+                self.bump,
+                self.interactive,
+                root,
+            )
+            if version_result.is_failure:
+                return r[bool].fail(version_result.error or "version resolution failed")
+            resolved_version = str(version_result.value)
+        else:
+            resolved_version = self.version or "0.0.0"
+        tag_result = self._resolve_tag(self.tag, resolved_version)
+        if tag_result.is_failure:
+            return r[bool].fail(tag_result.error or "tag resolution failed")
+        return self.run_release(
+            m.Infra.ReleaseOrchestratorConfig(
+                workspace_root=root,
+                version=resolved_version,
+                tag=str(tag_result.value),
+                phases=phases,
+                project_names=self.project_names,
+                dry_run=self.dry_run or not self.apply_changes,
+                push=self.push,
+                dev_suffix=self.dev_suffix,
+                create_branches=self.create_branches == 1,
+                next_dev=self.next_dev,
+                next_bump=self.next_bump,
+            ),
+        )
 
     def _resolve_version(
         self,
@@ -72,50 +177,6 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
                 return r[str].fail("tag must start with v")
             return r[str].ok(requested)
         return r[str].ok(f"v{version}")
-
-    @classmethod
-    def execute_release_command(cls, params: m.Infra.ReleaseRunInput) -> r[bool]:
-        """Execute the release CLI flow for the input model."""
-        service = cls()
-        root_result = u.Infra.workspace_root(params.workspace_path)
-        if root_result.is_failure:
-            return r[bool].fail(root_result.error or "workspace root not found")
-        root = Path(str(root_result.value))
-        phases = params.phase_names
-        needs_version = bool(
-            {c.Infra.VERSION, c.Infra.Directories.BUILD, c.Infra.Verbs.PUBLISH}
-            & set(phases),
-        )
-        if needs_version:
-            version_result = service._resolve_version(
-                params.version,
-                params.bump,
-                params.interactive,
-                root,
-            )
-            if version_result.is_failure:
-                return r[bool].fail(version_result.error or "version resolution failed")
-            resolved_version = str(version_result.value)
-        else:
-            resolved_version = params.version or "0.0.0"
-        tag_result = service._resolve_tag(params.tag, resolved_version)
-        if tag_result.is_failure:
-            return r[bool].fail(tag_result.error or "tag resolution failed")
-        return service.run_release(
-            m.Infra.ReleaseOrchestratorConfig(
-                workspace_root=root,
-                version=resolved_version,
-                tag=str(tag_result.value),
-                phases=phases,
-                project_names=params.project_names,
-                dry_run=not params.apply,
-                push=params.push,
-                dev_suffix=params.dev_suffix,
-                create_branches=params.create_branches == 1,
-                next_dev=params.next_dev,
-                next_bump=params.next_bump,
-            ),
-        )
 
     def run_release(
         self,

@@ -59,7 +59,7 @@ class FlextInfraServiceBase(
 
     @property
     @override
-    def settings(self) -> FlextProtocols.Settings:
+    def settings(self) -> FlextCliSettings:
         """Return the typed CLI settings namespace."""
         return FlextSettings.get_global().get_namespace("cli", FlextCliSettings)
 
@@ -175,6 +175,20 @@ class FlextInfraCommandContext(
             return None
         path = value if isinstance(value, Path) else Path(value)
         return path.resolve()
+
+    def command_payload(self) -> FlextInfraTypesBase.ContainerOverrides:
+        """Return the normalized shared command payload once."""
+        return {
+            "workspace_root": self.workspace_root,
+            "apply_changes": self.apply_changes,
+            "check_only": self.check_only,
+            "dry_run": self.dry_run,
+            "fail_fast": self.fail_fast,
+            "output_format": self.output_format,
+            "project_filter": self.project_filter,
+            "report_path": self.report_path,
+            "output_dir": self.output_dir,
+        }
 
     @classmethod
     def execute_command(

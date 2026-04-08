@@ -11,11 +11,12 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import m, t
-from tests.unit.check._shared_fixtures import (
+from tests import (
     create_checker_project,
+    m,
     patch_gate_run,
     run_gate_check,
+    t,
 )
 
 from flext_infra import (

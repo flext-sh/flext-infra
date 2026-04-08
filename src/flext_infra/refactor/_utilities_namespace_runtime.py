@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
+from collections.abc import MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_infra import (
@@ -11,13 +11,13 @@ from flext_infra import (
     FlextInfraUtilitiesImportNormalizer,
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesParsing,
+    FlextInfraUtilitiesProtectedEdit,
     FlextInfraUtilitiesRefactorNamespaceCommon,
     FlextInfraUtilitiesRope,
     c,
     m,
     t,
 )
-from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
 
 
 class FlextInfraUtilitiesRefactorNamespaceRuntime(
@@ -156,12 +156,10 @@ class FlextInfraUtilitiesRefactorNamespaceRuntime(
                 changes=[],
                 refactored_code=None,
             )
-        if "from flext_core import" not in source:
-            return None
         package_dir, package_name = FlextInfraUtilitiesDiscovery.package_context(
             file_path,
         )
-        if not package_name or package_name == c.Infra.Packages.CORE_UNDERSCORE:
+        if not package_name:
             return None
         current_module = cls._module_name_for_file(
             file_path=file_path,
@@ -173,110 +171,171 @@ class FlextInfraUtilitiesRefactorNamespaceRuntime(
         local_targets = FlextInfraUtilitiesDiscovery.extract_lazy_import_targets(
             package_dir / c.Infra.Files.INIT_PY,
         )
+        requested_aliases = {
+            alias_name for alias_name in aliases if alias_name in local_targets
+        }
+        if not requested_aliases:
+            return None
         reachability = FlextInfraUtilitiesImportNormalizer.build_reachability(
             package_dir=package_dir,
             package_name=package_name,
         )
-        rope_project = FlextInfraUtilitiesRope.init_rope_project(workspace_root)
-        try:
-            resource = FlextInfraUtilitiesRope.get_resource_from_path(
-                rope_project,
-                file_path.resolve(),
-            )
-            if resource is None:
-                return None
-            imported_core_aliases = (
-                FlextInfraUtilitiesRope.get_plain_from_imported_names(
-                    rope_project,
-                    resource,
-                    module_name=c.Infra.Packages.CORE_UNDERSCORE,
+        safe_aliases: t.Infra.StrSet = set()
+        changes: MutableSequence[str] = []
+        action = "migrated" if apply else "planned"
+        for alias_name in sorted(requested_aliases):
+            target_module = local_targets.get(alias_name, "")
+            if not target_module:
+                changes.append(
+                    f"skipped missing export runtime alias import: {alias_name}",
                 )
-            )
-            requested_aliases = imported_core_aliases & aliases
-            if not requested_aliases:
-                return None
-            imported_local_aliases = (
-                FlextInfraUtilitiesRope.get_plain_from_imported_names(
-                    rope_project,
-                    resource,
-                    module_name=package_name,
+                continue
+            if not cls._safe_runtime_alias_target(
+                alias_name=alias_name,
+                package_name=package_name,
+                current_module=current_module,
+                target_module=target_module,
+                reachability=reachability,
+            ):
+                changes.append(
+                    f"skipped unsafe runtime alias import: {alias_name}",
                 )
-            )
-            safe_aliases: t.Infra.StrSet = set()
-            changes: MutableSequence[str] = []
-            action = "migrated" if apply else "planned"
-            for alias_name in sorted(requested_aliases):
-                if alias_name in imported_local_aliases:
-                    continue
-                target_module = local_targets.get(alias_name, "")
-                if not target_module:
-                    changes.append(
-                        f"skipped missing export runtime alias import: {alias_name}",
-                    )
-                    continue
-                if not cls._safe_runtime_alias_target(
-                    alias_name=alias_name,
-                    package_name=package_name,
-                    current_module=current_module,
-                    target_module=target_module,
-                    reachability=reachability,
-                ):
-                    changes.append(
-                        f"skipped unsafe runtime alias import: {alias_name}",
-                    )
-                    continue
-                safe_aliases.add(alias_name)
-                changes.append(f"{action} runtime alias import: {alias_name}")
-            if not safe_aliases:
-                return (
-                    m.Infra.Result(
-                        file_path=file_path,
-                        success=True,
-                        modified=False,
-                        error=None,
-                        changes=list(changes),
-                        refactored_code=None,
-                    )
-                    if changes
-                    else None
+                continue
+            safe_aliases.add(alias_name)
+        if not safe_aliases:
+            return (
+                m.Infra.Result(
+                    file_path=file_path,
+                    success=True,
+                    modified=False,
+                    error=None,
+                    changes=list(changes),
+                    refactored_code=None,
                 )
-            refactored_code = FlextInfraUtilitiesRope.relocate_from_import_aliases(
+                if changes
+                else None
+            )
+        workspace_package_roots = cls._workspace_package_roots(workspace_root)
+
+        def _transform(
+            rope_project: t.Infra.RopeProject,
+            resource: t.Infra.RopeResource,
+        ) -> t.Infra.TransformResult:
+            alias_moves: MutableMapping[str, t.Infra.StrSet] = {}
+            class_alias_moves: MutableMapping[str, t.MutableStrMapping] = {}
+            changed_aliases: t.Infra.StrSet = set()
+            for from_import in FlextInfraUtilitiesRope.get_absolute_from_imports(
                 rope_project,
                 resource,
-                source_module=c.Infra.Packages.CORE_UNDERSCORE,
-                target_module=package_name,
-                aliases=tuple(sorted(safe_aliases)),
-                apply=False,
-            )
-            if refactored_code is None:
-                return None
-            if apply:
-                ok, report = FlextInfraUtilitiesProtectedEdit.protected_source_write(
-                    file_path,
-                    workspace=workspace_root,
-                    updated_source=refactored_code,
-                    keep_backup=True,
+            ):
+                current_source = from_import.module_name
+                if not cls._is_runtime_alias_source_candidate(
+                    current_source=current_source,
+                    target_module=package_name,
+                    workspace_package_roots=workspace_package_roots,
+                ):
+                    continue
+                for imported_name, alias_name in from_import.names_and_aliases:
+                    bound_name = alias_name or imported_name
+                    if bound_name not in safe_aliases:
+                        continue
+                    if alias_name is None and current_source != package_name:
+                        alias_moves.setdefault(current_source, set()).add(bound_name)
+                        continue
+                    if alias_name == bound_name and imported_name != bound_name:
+                        class_alias_moves.setdefault(current_source, {})[
+                            imported_name
+                        ] = bound_name
+            for source_module in sorted(alias_moves):
+                moved_aliases = tuple(sorted(alias_moves[source_module]))
+                rewritten = FlextInfraUtilitiesRope.relocate_from_import_aliases(
+                    rope_project,
+                    resource,
+                    source_module=source_module,
+                    target_module=package_name,
+                    aliases=moved_aliases,
+                    apply=True,
                 )
-                if not ok:
-                    return m.Infra.Result(
-                        file_path=file_path,
-                        success=False,
-                        modified=False,
-                        error="Protected refactor validation failed",
-                        changes=[*changes, *report],
-                        refactored_code=source,
-                    )
-                changes.extend(report)
-            return m.Infra.Result(
-                file_path=file_path,
-                success=True,
-                modified=apply,
-                error=None,
-                changes=list(changes),
-                refactored_code=(None if apply else refactored_code),
+                if rewritten is not None:
+                    changed_aliases.update(moved_aliases)
+            for source_module in sorted(class_alias_moves):
+                alias_map = class_alias_moves[source_module]
+                removed = FlextInfraUtilitiesRope.remove_import_names(
+                    rope_project,
+                    resource,
+                    source_module,
+                    tuple(sorted(alias_map)),
+                    apply=True,
+                )
+                if removed is None:
+                    continue
+                normalized_aliases = tuple(sorted(set(alias_map.values())))
+                _ = FlextInfraUtilitiesRope.add_import(
+                    rope_project,
+                    resource,
+                    package_name,
+                    normalized_aliases,
+                    apply=True,
+                )
+                changed_aliases.update(normalized_aliases)
+            if not changed_aliases:
+                return resource.read(), []
+            _ = FlextInfraUtilitiesRope.organize_imports(
+                rope_project,
+                resource,
+                apply=True,
             )
-        finally:
-            rope_project.close()
+            return resource.read(), [
+                f"{action} runtime alias import: {alias_name}"
+                for alias_name in sorted(changed_aliases)
+            ]
+
+        refactored_code, transformer_changes = (
+            FlextInfraUtilitiesRope.apply_transformer_to_source(
+                source,
+                file_path,
+                _transform,
+            )
+        )
+        changes.extend(transformer_changes)
+        if refactored_code == source:
+            return (
+                m.Infra.Result(
+                    file_path=file_path,
+                    success=True,
+                    modified=False,
+                    error=None,
+                    changes=list(changes),
+                    refactored_code=None,
+                )
+                if changes
+                else None
+            )
+        if apply:
+            ok, report = FlextInfraUtilitiesProtectedEdit.protected_source_write(
+                file_path,
+                workspace=workspace_root,
+                updated_source=refactored_code,
+                keep_backup=True,
+            )
+            if not ok:
+                return m.Infra.Result(
+                    file_path=file_path,
+                    success=False,
+                    modified=False,
+                    error="Protected refactor validation failed",
+                    changes=[*changes, *report],
+                    refactored_code=source,
+                )
+            changes.extend(report)
+        return m.Infra.Result(
+            file_path=file_path,
+            success=True,
+            modified=apply,
+            error=None,
+            changes=list(changes),
+            refactored_code=(None if apply else refactored_code),
+        )
 
     @classmethod
     def _module_name_for_file(
@@ -316,6 +375,43 @@ class FlextInfraUtilitiesRefactorNamespaceRuntime(
         ):
             return False
         return current_module not in reachability.get(target_module, frozenset())
+
+    @classmethod
+    def _workspace_package_roots(cls, workspace_root: Path) -> t.Infra.StrSet:
+        return {
+            package_name
+            for project_root in FlextInfraUtilitiesIteration.discover_project_roots(
+                workspace_root.resolve()
+            )
+            if (
+                package_name
+                := FlextInfraUtilitiesDiscovery.discover_project_package_name(
+                    project_root=project_root,
+                )
+            )
+        }
+
+    @staticmethod
+    def _is_runtime_alias_source_candidate(
+        *,
+        current_source: str,
+        target_module: str,
+        workspace_package_roots: t.Infra.StrSet,
+    ) -> bool:
+        if current_source == target_module or current_source.startswith(
+            f"{target_module}.",
+        ):
+            return True
+        source_root = current_source.split(".", maxsplit=1)[0]
+        return source_root in (
+            workspace_package_roots
+            | {
+                c.Infra.Packages.CORE_UNDERSCORE,
+                c.Infra.Directories.TESTS,
+                c.Infra.Directories.EXAMPLES,
+                c.Infra.Directories.SCRIPTS,
+            }
+        )
 
     @staticmethod
     def rewrite_runtime_alias_violations(*, py_files: Sequence[Path]) -> None:

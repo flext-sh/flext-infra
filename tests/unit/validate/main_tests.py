@@ -11,7 +11,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_tests import tm
-from tests import m, t
+from tests import t
 
 from flext_infra import (
     FlextInfraBaseMkValidator,
@@ -32,9 +32,9 @@ class TestMainBaseMkValidate:
     def test_success(self, tmp_path: Path) -> None:
         """basemk-validate returns r[bool] based on base.mk match."""
         (tmp_path / "base.mk").write_text("# root")
-        result = FlextInfraBaseMkValidator().execute_command(
-            m.Infra.ValidateBaseMkInput(workspace=str(tmp_path)),
-        )
+        result = FlextInfraBaseMkValidator(
+            workspace=tmp_path,
+        ).execute()
         assert isinstance(result.is_success, bool)
 
     def test_with_violations(self, tmp_path: Path) -> None:
@@ -44,16 +44,14 @@ class TestMainBaseMkValidate:
         proj.mkdir()
         (proj / "pyproject.toml").write_text("")
         (proj / "base.mk").write_text("# different")
-        result = FlextInfraBaseMkValidator().execute_command(
-            m.Infra.ValidateBaseMkInput(workspace=str(tmp_path)),
-        )
+        result = FlextInfraBaseMkValidator(
+            workspace=tmp_path,
+        ).execute()
         tm.that(result.is_failure, eq=True)
 
     def test_missing_root_basemk(self, tmp_path: Path) -> None:
         """basemk-validate returns failure when root base.mk missing."""
-        result = FlextInfraBaseMkValidator().execute_command(
-            m.Infra.ValidateBaseMkInput(workspace=str(tmp_path)),
-        )
+        result = FlextInfraBaseMkValidator(workspace=tmp_path).execute()
         tm.that(result.is_failure, eq=True)
 
 
@@ -62,21 +60,18 @@ class TestMainInventory:
 
     def test_success(self, tmp_path: Path) -> None:
         """Inventory succeeds with empty workspace."""
-        result = FlextInfraInventoryService().execute_command(
-            m.Infra.ValidateInventoryInput(workspace=str(tmp_path)),
-        )
+        result = FlextInfraInventoryService(workspace=tmp_path).execute()
         tm.that(result.is_success, eq=True)
 
     def test_with_output_dir(self, tmp_path: Path) -> None:
         """Inventory succeeds with output directory."""
         output = tmp_path / "output"
         output.mkdir()
-        result = FlextInfraInventoryService().execute_command(
-            m.Infra.ValidateInventoryInput(
-                workspace=str(tmp_path),
-                output_dir=str(output),
-            ),
+        result = FlextInfraInventoryService(
+            workspace=tmp_path,
+            output_dir=output,
         )
+        result = result.execute()
         tm.that(result.is_success, eq=True)
 
 
@@ -86,29 +81,27 @@ class TestMainScan:
     def test_no_violations(self, tmp_path: Path) -> None:
         """Scan returns success when no violations found."""
         (tmp_path / "test.txt").write_text("hello world")
-        result = FlextInfraTextPatternScanner().execute_command(
-            m.Infra.ValidateScanInput(
-                workspace=str(tmp_path),
-                pattern="NONEXISTENT_PATTERN",
-                include=["*.txt"],
-                exclude=[],
-                match="present",
-            ),
+        result = FlextInfraTextPatternScanner(
+            workspace=tmp_path,
+            pattern="NONEXISTENT_PATTERN",
+            include=["*.txt"],
+            exclude=[],
+            match="present",
         )
+        result = result.execute()
         tm.that(result.is_success, eq=True)
 
     def test_with_violations(self, tmp_path: Path) -> None:
         """Scan returns failure when violations found."""
         (tmp_path / "test.txt").write_text("TODO fix this")
-        result = FlextInfraTextPatternScanner().execute_command(
-            m.Infra.ValidateScanInput(
-                workspace=str(tmp_path),
-                pattern="TODO",
-                include=["*.txt"],
-                exclude=[],
-                match="present",
-            ),
+        result = FlextInfraTextPatternScanner(
+            workspace=tmp_path,
+            pattern="TODO",
+            include=["*.txt"],
+            exclude=[],
+            match="present",
         )
+        result = result.execute()
         tm.that(result.is_failure, eq=True)
 
 

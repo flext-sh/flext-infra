@@ -1,0 +1,28 @@
+"""Public basemk service mixin for the infra API facade."""
+
+from __future__ import annotations
+
+from collections.abc import Sequence
+from typing import TYPE_CHECKING
+
+from flext_core import r
+from flext_infra import FlextInfraBaseMkGenerator, m, t
+
+if TYPE_CHECKING:
+    from flext_infra import FlextInfraCommandContext
+
+
+class FlextInfraServiceBasemkMixin:
+    """Expose canonical base.mk operations through the public infra facade."""
+
+    def generate_basemk(
+        self: FlextInfraCommandContext[t.MutableContainerMapping],
+        config: m.Infra.BaseMkConfig | t.ScalarMapping | None = None,
+    ) -> r[str]:
+        """Generate base.mk content using the current facade context."""
+        return FlextInfraBaseMkGenerator.model_validate(
+            self.command_payload(),
+        ).generate_basemk(config)
+
+
+__all__: Sequence[str] = ("FlextInfraServiceBasemkMixin",)

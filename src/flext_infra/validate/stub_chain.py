@@ -11,20 +11,55 @@ from __future__ import annotations
 
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
+from typing import Annotated, override
 
-from flext_infra import c, m, p, r, t, u
+from pydantic import Field
+
+from flext_infra import c, m, p, r, s, t, u
 
 
-class FlextInfraStubSupplyChain:
+class FlextInfraStubSupplyChain(s[bool]):
     """Manages typing stub supply chain for workspace projects.
 
     Coordinates mypy stub hints, pyrefly missing imports, stubgen
     generation, and types-package installation.
     """
 
-    def __init__(self) -> None:
-        """Initialize the stub supply chain."""
-        self._runner: p.Cli.CommandRunner = u.Cli()
+    projects: Annotated[
+        t.StrSequence | None,
+        Field(
+            default=None,
+            description="Projects to validate; repeat --projects NAME as needed",
+        ),
+    ] = None
+    all_projects: Annotated[
+        bool,
+        Field(default=False, alias="all", description="Validate all projects"),
+    ] = False
+    runner: Annotated[
+        p.Cli.CommandRunner | None,
+        Field(default=None, exclude=True, description="Optional command runner"),
+    ] = None
+
+    @property
+    def project_names(self) -> t.StrSequence | None:
+        """Return normalized project names from repeated selectors."""
+        names = [
+            item.strip()
+            for value in self.projects or ()
+            for group in value.split(",")
+            for item in group.split()
+            if item.strip()
+        ]
+        return names or None
+
+    @property
+    def project_dirs(self) -> Sequence[Path] | None:
+        """Return resolved project directories for targeted validation."""
+        names = self.project_names
+        if self.all_projects or names is None:
+            return None
+        return [self.workspace_root / name for name in names]
 
     def _discover_stub_projects(self, workspace_root: Path) -> Sequence[Path]:
         """Discover projects that should participate in stub checks."""
@@ -101,7 +136,7 @@ class FlextInfraStubSupplyChain:
                 f"stub analysis failed for {project_dir.name}: {exc}",
             )
 
-    def validate(
+    def build_report(
         self,
         workspace_root: Path,
         project_dirs: Sequence[Path] | None = None,
@@ -150,11 +185,12 @@ class FlextInfraStubSupplyChain:
                 f"stub validation failed: {exc}",
             )
 
-    def execute_command(self, params: m.Infra.ValidateStubValidateInput) -> r[bool]:
-        """Execute the stub-validation CLI flow for the input model."""
-        return self.validate(
-            params.workspace_path,
-            project_dirs=params.project_dirs,
+    @override
+    def execute(self) -> r[bool]:
+        """Execute the stub-validation CLI flow."""
+        return self.build_report(
+            self.workspace_root,
+            project_dirs=self.project_dirs,
         ).flat_map(
             lambda report: (
                 r[bool].ok(True) if report.passed else r[bool].fail(report.summary)
@@ -163,7 +199,8 @@ class FlextInfraStubSupplyChain:
 
     def _run_mypy_hints(self, project_dir: Path) -> t.StrSequence:
         """Run mypy and extract types-package hints."""
-        result = self._runner.run(
+        runner = self.runner or u.Cli()
+        result = runner.run(
             [
                 c.Infra.POETRY,
                 c.Infra.Verbs.RUN,
@@ -187,7 +224,8 @@ class FlextInfraStubSupplyChain:
 
     def _run_pyrefly_missing(self, project_dir: Path) -> t.StrSequence:
         """Run pyrefly check and extract missing imports."""
-        result = self._runner.run(
+        runner = self.runner or u.Cli()
+        result = runner.run(
             [
                 c.Infra.POETRY,
                 c.Infra.Verbs.RUN,

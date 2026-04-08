@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 from flext_tests import tm
-from tests import m, r, t
+from tests import r, t
 
 from flext_infra import FlextInfraStubSupplyChain, main as infra_main
 
@@ -14,17 +14,14 @@ def test_stub_validate_uses_all_flag(
 ) -> None:
     captured: t.MutableSequenceOf[bool] = []
 
-    def _mock_handler(
-        _self: FlextInfraStubSupplyChain,
-        params: m.Infra.ValidateStubValidateInput,
-    ) -> r[bool]:
-        captured.append(params.all_projects)
+    def _mock_execute(self: FlextInfraStubSupplyChain) -> r[bool]:
+        captured.append(self.all_projects)
         return r[bool].ok(True)
 
     monkeypatch.setattr(
         FlextInfraStubSupplyChain,
-        "execute_command",
-        _mock_handler,
+        "execute",
+        _mock_execute,
     )
     infra_main(["validate", "stub-validate", "--all"])
     # The call captured whether --all was passed

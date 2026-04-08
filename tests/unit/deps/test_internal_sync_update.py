@@ -68,6 +68,9 @@ class TestEnsureSymlinkEdgeCases:
             target_path: Path,
             target_is_directory: bool = False,
         ) -> None:
+            _ = self
+            _ = target_path
+            _ = target_is_directory
             msg = "Permission denied"
             raise OSError(msg)
 

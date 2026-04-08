@@ -12,16 +12,24 @@ from __future__ import annotations
 from collections.abc import MutableSequence
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Annotated, override
 
-from flext_infra import c, m, r, t, u
+from pydantic import Field
+
+from flext_infra import c, m, r, s, t, u
 
 
-class FlextInfraInventoryService:
+class FlextInfraInventoryService(s[bool]):
     """Generates and manages scripts inventory for workspace governance.
 
     Scans the workspace for Python and Bash scripts and produces
     structured inventory, wiring, and external-candidate reports.
     """
+
+    output_dir: Annotated[
+        Path | None,
+        Field(default=None, description="Output directory for reports"),
+    ] = None
 
     def generate(
         self,
@@ -103,11 +111,12 @@ class FlextInfraInventoryService:
                 f"inventory generation failed: {exc}",
             )
 
-    def execute_command(self, params: m.Infra.ValidateInventoryInput) -> r[bool]:
-        """Execute the inventory CLI flow for the input model."""
+    @override
+    def execute(self) -> r[bool]:
+        """Execute the inventory CLI flow."""
         return self.generate(
-            params.workspace_path,
-            output_dir=params.output_dir_path,
+            self.workspace_root,
+            output_dir=self.output_dir,
         ).map(lambda _: True)
 
 

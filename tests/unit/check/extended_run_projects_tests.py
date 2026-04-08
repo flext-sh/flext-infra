@@ -10,15 +10,16 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import m, t
-from tests.helpers import FlextInfraTestHelpers as h
-from tests.unit.check._shared_fixtures import (
+from tests import (
+    FlextInfraTestHelpers as h,
     create_check_project_iter_stub,
     create_check_project_stub,
     create_gate_execution,
+    m,
+    t,
 )
 
-from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
+from flext_infra import FlextInfraWorkspaceChecker
 
 
 class TestRunProjectsValidation:

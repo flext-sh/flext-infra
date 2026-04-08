@@ -41,7 +41,7 @@ class TestBaseMkValidatorCore:
         tmp_path: Path,
         v: FlextInfraBaseMkValidator,
     ) -> None:
-        report = tm.ok(v.validate(tmp_path))
+        report = tm.ok(v.build_report(tmp_path))
         tm.that(not report.passed, eq=True)
         tm.that(report.summary, has="missing root base.mk")
 
@@ -54,7 +54,7 @@ class TestBaseMkValidatorCore:
             _generated_content(),
             encoding="utf-8",
         )
-        report = tm.ok(v.validate(tmp_path))
+        report = tm.ok(v.build_report(tmp_path))
         assert isinstance(report, m.Infra.ValidationReport)
         tm.that(report.passed, eq=True)
 
@@ -64,7 +64,7 @@ class TestBaseMkValidatorCore:
         v: FlextInfraBaseMkValidator,
     ) -> None:
         tf.create_in("# stale content", "base.mk", tmp_path)
-        report = tm.ok(v.validate(tmp_path))
+        report = tm.ok(v.build_report(tmp_path))
         tm.that(not report.passed, eq=True)
         tm.that(report.summary, has="out of sync")
 
@@ -77,7 +77,7 @@ class TestBaseMkValidatorCore:
             _generated_content(),
             encoding="utf-8",
         )
-        report = tm.ok(v.validate(tmp_path))
+        report = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=True)
         tm.that(report.summary, has="matches generated template")
 
@@ -86,7 +86,7 @@ class TestBaseMkValidatorCore:
         tmp_path: Path,
         v: FlextInfraBaseMkValidator,
     ) -> None:
-        report = tm.ok(v.validate(tmp_path))
+        report = tm.ok(v.build_report(tmp_path))
         tm.that(not report.passed, eq=True)
 
 
@@ -99,7 +99,7 @@ class TestBaseMkValidatorEdgeCases:
         v: FlextInfraBaseMkValidator,
     ) -> None:
         tf.create_in("# different", "base.mk", tmp_path)
-        report = tm.ok(v.validate(tmp_path))
+        report = tm.ok(v.build_report(tmp_path))
         tm.that(not report.passed, eq=True)
         tm.that(report.violations[0], has="stale")
 
@@ -109,7 +109,7 @@ class TestBaseMkValidatorEdgeCases:
         v: FlextInfraBaseMkValidator,
     ) -> None:
         tf.create_in("# mismatch", "base.mk", tmp_path)
-        report = tm.ok(v.validate(tmp_path))
+        report = tm.ok(v.build_report(tmp_path))
         tm.that(not report.passed, eq=True)
         tm.that(report.violations, length=1)
 
@@ -121,7 +121,7 @@ class TestBaseMkValidatorEdgeCases:
         basemk = tf.create_in("# content", "base.mk", tmp_path)
         basemk.chmod(0)
         try:
-            result = v.validate(tmp_path)
+            result = v.build_report(tmp_path)
             tm.that(result.is_failure, eq=True)
         finally:
             basemk.chmod(0o644)

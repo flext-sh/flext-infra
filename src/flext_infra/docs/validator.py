@@ -17,14 +17,18 @@ class FlextInfraDocValidator(s[bool]):
 
     selected_projects: Annotated[
         t.StrSequence | None,
-        Field(default=None, description="Selected projects", exclude=True),
+        Field(
+            default=None,
+            alias="projects",
+            description="Selected projects",
+        ),
     ] = None
     docs_output_dir: Annotated[
         str,
         Field(
             default=c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
+            alias="output_dir",
             description="Docs output dir",
-            exclude=True,
         ),
     ] = c.Infra.DEFAULT_DOCS_OUTPUT_DIR
 
@@ -67,24 +71,6 @@ class FlextInfraDocValidator(s[bool]):
         if failures:
             return r[bool].fail(f"Validate found {failures} failure(s)")
         return r[bool].ok(True)
-
-    @classmethod
-    @override
-    def execute_command(
-        cls,
-        params: s[bool] | m.Infra.DocsValidateInput,
-    ) -> r[bool]:
-        """Normalize docs CLI input into the canonical validator service model."""
-        if isinstance(params, m.Infra.DocsValidateInput):
-            service = cls.model_validate({
-                "workspace_root": params.workspace_path,
-                "apply_changes": params.apply,
-                "check_only": params.check,
-                "selected_projects": params.project_names,
-                "docs_output_dir": params.output_dir,
-            })
-            return service.execute()
-        return params.execute()
 
     def _run_adr_skill_check(
         self,

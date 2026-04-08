@@ -25,20 +25,8 @@ if _t.TYPE_CHECKING:
     from flext_infra._models.census import FlextInfraModelsCensus
 
     check = _flext_infra__models_check
-    import flext_infra._models.cli_inputs as _flext_infra__models_cli_inputs
-    from flext_infra._models.check import FlextInfraCheckModels
-
-    cli_inputs = _flext_infra__models_cli_inputs
-    import flext_infra._models.cli_inputs_codegen as _flext_infra__models_cli_inputs_codegen
-    from flext_infra._models.cli_inputs import FlextInfraModelsCliInputs
-
-    cli_inputs_codegen = _flext_infra__models_cli_inputs_codegen
-    import flext_infra._models.cli_inputs_ops as _flext_infra__models_cli_inputs_ops
-    from flext_infra._models.cli_inputs_codegen import FlextInfraModelsCliInputsCodegen
-
-    cli_inputs_ops = _flext_infra__models_cli_inputs_ops
     import flext_infra._models.codegen as _flext_infra__models_codegen
-    from flext_infra._models.cli_inputs_ops import FlextInfraModelsCliInputsOps
+    from flext_infra._models.check import FlextInfraCheckModels
 
     codegen = _flext_infra__models_codegen
     import flext_infra._models.codegen_deduplication as _flext_infra__models_codegen_deduplication
@@ -171,18 +159,6 @@ _LAZY_IMPORTS = {
     "FlextInfraGithubModels": ("flext_infra._models.github", "FlextInfraGithubModels"),
     "FlextInfraModelsBase": ("flext_infra._models.base", "FlextInfraModelsBase"),
     "FlextInfraModelsCensus": ("flext_infra._models.census", "FlextInfraModelsCensus"),
-    "FlextInfraModelsCliInputs": (
-        "flext_infra._models.cli_inputs",
-        "FlextInfraModelsCliInputs",
-    ),
-    "FlextInfraModelsCliInputsCodegen": (
-        "flext_infra._models.cli_inputs_codegen",
-        "FlextInfraModelsCliInputsCodegen",
-    ),
-    "FlextInfraModelsCliInputsOps": (
-        "flext_infra._models.cli_inputs_ops",
-        "FlextInfraModelsCliInputsOps",
-    ),
     "FlextInfraModelsMixins": ("flext_infra._models.mixins", "FlextInfraModelsMixins"),
     "FlextInfraModelsRope": ("flext_infra._models.rope", "FlextInfraModelsRope"),
     "FlextInfraModelsScan": ("flext_infra._models.scan", "FlextInfraModelsScan"),
@@ -218,9 +194,6 @@ _LAZY_IMPORTS = {
     "basemk": "flext_infra._models.basemk",
     "census": "flext_infra._models.census",
     "check": "flext_infra._models.check",
-    "cli_inputs": "flext_infra._models.cli_inputs",
-    "cli_inputs_codegen": "flext_infra._models.cli_inputs_codegen",
-    "cli_inputs_ops": "flext_infra._models.cli_inputs_ops",
     "codegen": "flext_infra._models.codegen",
     "codegen_deduplication": "flext_infra._models.codegen_deduplication",
     "deps": "flext_infra._models.deps",
@@ -262,9 +235,6 @@ __all__ = [
     "FlextInfraGithubModels",
     "FlextInfraModelsBase",
     "FlextInfraModelsCensus",
-    "FlextInfraModelsCliInputs",
-    "FlextInfraModelsCliInputsCodegen",
-    "FlextInfraModelsCliInputsOps",
     "FlextInfraModelsMixins",
     "FlextInfraModelsRope",
     "FlextInfraModelsScan",
@@ -279,9 +249,6 @@ __all__ = [
     "basemk",
     "census",
     "check",
-    "cli_inputs",
-    "cli_inputs_codegen",
-    "cli_inputs_ops",
     "codegen",
     "codegen_deduplication",
     "deps",

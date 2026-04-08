@@ -31,13 +31,13 @@ from flext_cli import (
 from flext_core import u
 from flext_infra import (
     FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesProtectedEdit,
     FlextInfraUtilitiesRope,
     c,
     m,
     r,
     t,
 )
-from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
 
 # =====================================================================
 # Governance — canonical values and rule configuration

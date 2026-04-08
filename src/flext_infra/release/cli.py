@@ -2,24 +2,28 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from flext_cli import cli as cli_service
 from flext_infra import FlextInfraReleaseOrchestrator, m, t
+
+if TYPE_CHECKING:
+    from flext_infra import FlextInfra
 
 
 class FlextInfraCliRelease:
     """Release CLI group — composed into the centralized infra CLI."""
 
-    def register_release(self, app: t.Cli.CliApp) -> None:
+    def register_release(self: FlextInfra, app: t.Cli.CliApp) -> None:
         """Register release commands on the given application."""
-        orchestrator = FlextInfraReleaseOrchestrator()
         cli_service.register_result_routes(
             app,
             [
                 m.Cli.ResultCommandRoute(
                     name="run",
                     help_text="Run release orchestration CLI flow",
-                    model_cls=m.Infra.ReleaseRunInput,
-                    handler=orchestrator.execute_release_command,
+                    model_cls=FlextInfraReleaseOrchestrator,
+                    handler=self.run_release,
                     failure_message="Release failed",
                     success_message="Release completed successfully",
                 ),

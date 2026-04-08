@@ -14,13 +14,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import (
-    FlextInfraCodegenCensus,
-    FlextInfraCodegenFixer,
-    FlextInfraCodegenLazyInit,
-    FlextInfraCodegenScaffolder,
-    t,
-)
+from flext_infra import infra, t
 
 _SRC_MODULES = (
     "constants.py",
@@ -138,26 +132,25 @@ def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
     )
     flexcore_package = flexcore / "src" / "flexcore"
     tm.that(not flexcore_package.joinpath("constants.py").exists(), eq=True)
-    census_service = FlextInfraCodegenCensus(workspace=tmp_path)
-    scaffolder = FlextInfraCodegenScaffolder(workspace=tmp_path)
-    fixer = FlextInfraCodegenFixer(workspace=tmp_path)
-    lazy_init = FlextInfraCodegenLazyInit(workspace=tmp_path)
-    census_before = census_service.run()
-    scaffold_results_first = scaffolder.run()
+    service = infra.model_copy(
+        update={"workspace_root": tmp_path, "apply_changes": True},
+    )
+    census_before = service.run_codegen_census()
+    scaffold_results_first = service.run_codegen_scaffold()
     scaffold_by_project_first = {
         result.project: result for result in scaffold_results_first
     }
     tm.that(scaffold_by_project_first, has="project-a")
     tm.that(scaffold_by_project_first, has="project-b")
     tm.that(scaffold_by_project_first, has="project-c")
-    scaffold_results_second = scaffolder.run()
+    scaffold_results_second = service.run_codegen_scaffold()
     scaffold_by_project_second = {
         result.project: result for result in scaffold_results_second
     }
     tm.that(len(scaffold_by_project_second["project-a"].files_created), eq=0)
     tm.that(len(scaffold_by_project_second["project-b"].files_created), eq=0)
     tm.that(len(scaffold_by_project_second["project-c"].files_created), eq=0)
-    fix_results = fixer.fix_workspace()
+    fix_results = service.fix_codegen_workspace()
     fix_by_project = {result.project: result for result in fix_results}
     tm.that(fix_by_project, has="project-a")
     tm.that(fix_by_project, has="project-b")
@@ -170,9 +163,9 @@ def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
         any(v.rule.startswith("NS-002") for v in all_violations),
         eq=True,
     )
-    unmapped_count = lazy_init.generate_inits()
+    unmapped_count = service.generate_lazy_inits()
     tm.that(unmapped_count, gte=0)
-    census_after = census_service.run()
+    census_after = service.run_codegen_census()
     before_total = sum(report.total for report in census_before)
     after_total = sum(report.total for report in census_after)
     tm.that(after_total, lte=before_total)

@@ -12,19 +12,28 @@ from __future__ import annotations
 import sys
 from collections.abc import Mapping, MutableSequence
 from pathlib import Path
+from typing import Annotated, override
 
-from flext_infra import c, m, p, r, t, u
+from pydantic import Field
+
+from flext_infra import c, m, p, r, s, t, u
 
 
-class FlextInfraSkillValidator:
+class FlextInfraSkillValidator(s[bool]):
     """Validates workspace skills using rules.yml policy gates.
 
     Supports AST-grep rules, custom validator scripts, and baseline
     comparison with per-group and total strategies.
     """
 
-    def __init__(self) -> None:
-        """Initialize the skill validator."""
+    skill: Annotated[str, Field(description="Skill folder name")]
+    mode: Annotated[
+        str,
+        Field(
+            default=c.Infra.Modes.BASELINE,
+            description="Validation mode (baseline or strict)",
+        ),
+    ] = c.Infra.Modes.BASELINE
 
     @staticmethod
     def _render_template(workspace_root: Path, template: str, skill: str) -> Path:
@@ -105,7 +114,7 @@ class FlextInfraSkillValidator:
             for g in set(counts) | set(bl_counts)
         )
 
-    def validate(
+    def build_report(
         self,
         workspace_root: Path,
         skill_name: str,
@@ -197,15 +206,13 @@ class FlextInfraSkillValidator:
                 f"skill validation failed: {exc}",
             )
 
-    def execute_command(
-        self,
-        params: m.Infra.ValidateSkillValidateInput,
-    ) -> r[bool]:
-        """Execute the skill-validation CLI flow for the input model."""
-        return self.validate(
-            params.workspace_path,
-            params.skill,
-            mode=params.mode,
+    @override
+    def execute(self) -> r[bool]:
+        """Execute the skill-validation CLI flow."""
+        return self.build_report(
+            self.workspace_root,
+            self.skill,
+            mode=self.mode,
         ).flat_map(
             lambda report: (
                 r[bool].ok(True) if report.passed else r[bool].fail(report.summary)

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from flext_cli import cli as cli_service
+from typing import TYPE_CHECKING
+
+from flext_cli import cli
 from flext_infra import (
     FlextInfraCodegenCensus,
     FlextInfraCodegenConsolidator,
@@ -17,13 +19,16 @@ from flext_infra import (
     t,
 )
 
+if TYPE_CHECKING:
+    from flext_infra import FlextInfra
+
 
 class FlextInfraCliCodegen:
     """Codegen CLI group — composed into FlextInfraCli via MRO."""
 
-    def register_codegen(self, app: t.Cli.CliApp) -> None:
+    def register_codegen(self: FlextInfra, app: t.Cli.CliApp) -> None:
         """Register codegen commands on the given Typer app."""
-        cli_service.register_result_routes(
+        cli.register_result_routes(
             app,
             [
                 m.Cli.ResultCommandRoute(

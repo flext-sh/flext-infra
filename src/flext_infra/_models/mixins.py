@@ -163,13 +163,13 @@ class FlextInfraModelsMixins:
     # ── Specialized mixins that extend WriteMixin ──
 
     class AliasSelectionMixin(WriteMixin):
-        """Comma-separated runtime alias selector."""
+        """Comma-separated canonical alias selector."""
 
         aliases: Annotated[
             str,
             Field(
                 default="r,s",
-                description="Comma-separated runtime aliases to migrate to local MRO imports",
+                description="Comma-separated canonical aliases to normalize to local MRO imports",
             ),
         ] = "r,s"
 

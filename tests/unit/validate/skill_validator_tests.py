@@ -74,47 +74,50 @@ class TestSkillValidatorCore:
 
     def test_validate_missing_rules_yml(self, tmp_path: Path) -> None:
         """Missing rules.yml returns not-passed report."""
-        validator = FlextInfraSkillValidator()
+        validator = FlextInfraSkillValidator(skill="test-skill")
         skills = tmp_path / ".claude" / "skills" / "test-skill"
         skills.mkdir(parents=True)
-        report = tm.ok(validator.validate(tmp_path, "test-skill"))
+        report = tm.ok(validator.build_report(tmp_path, "test-skill"))
         tm.that(not report.passed, eq=True)
         tm.that(report.summary, contains="no rules.yml")
 
     def test_validate_invalid_scan_targets(self, tmp_path: Path) -> None:
         """Non-dict scan_targets returns failure."""
-        validator = FlextInfraSkillValidator()
+        validator = FlextInfraSkillValidator(skill="test-skill")
         skill = tmp_path / ".claude" / "skills" / "test-skill"
         skill.mkdir(parents=True)
         (skill / "rules.yml").write_text("scan_targets: [item1, item2]")
-        tm.fail(validator.validate(tmp_path, "test-skill"), has="scan_targets")
+        tm.fail(validator.build_report(tmp_path, "test-skill"), has="scan_targets")
 
     def test_validate_invalid_rules_not_list(self, tmp_path: Path) -> None:
         """Non-list rules returns failure."""
-        validator = FlextInfraSkillValidator()
+        validator = FlextInfraSkillValidator(skill="test-skill")
         skill = tmp_path / ".claude" / "skills" / "test-skill"
         skill.mkdir(parents=True)
         (skill / "rules.yml").write_text("rules: {not: a_list}")
-        tm.fail(validator.validate(tmp_path, "test-skill"), has="rules must be a list")
+        tm.fail(
+            validator.build_report(tmp_path, "test-skill"),
+            has="rules must be a list",
+        )
 
     def test_validate_non_dict_rule_skipped(self, tmp_path: Path) -> None:
         """Non-dict rule objects are skipped."""
-        validator = FlextInfraSkillValidator()
+        validator = FlextInfraSkillValidator(skill="test-skill")
         skill = tmp_path / ".claude" / "skills" / "test-skill"
         skill.mkdir(parents=True)
         (skill / "rules.yml").write_text("rules:\n  - not_a_dict\n  - another_string")
-        report = tm.ok(validator.validate(tmp_path, "test-skill"))
+        report = tm.ok(validator.build_report(tmp_path, "test-skill"))
         tm.that(report.passed, eq=True)
 
     def test_validate_scalar_rules_yml_yields_empty_success(
         self, tmp_path: Path
     ) -> None:
         """Scalar rules.yml content yields an empty successful report."""
-        validator = FlextInfraSkillValidator()
+        validator = FlextInfraSkillValidator(skill="test-skill")
         skill = tmp_path / ".claude" / "skills" / "test-skill"
         skill.mkdir(parents=True)
         (skill / "rules.yml").write_text("just a plain string")
-        report = tm.ok(validator.validate(tmp_path, "test-skill"))
+        report = tm.ok(validator.build_report(tmp_path, "test-skill"))
         tm.that(report.passed, eq=True)
         tm.that(report.violations, eq=[])
 
@@ -147,7 +150,7 @@ class TestSkillValidatorAstGrepCount:
 
     def test_empty_or_missing_rule_file(self, tmp_path: Path) -> None:
         """Empty/nonexistent rule file returns 0."""
-        v = FlextInfraSkillValidator()
+        v = FlextInfraSkillValidator(skill="test-skill")
         skill = tmp_path / "skill"
         skill.mkdir()
         empty = {"id": "t", "type": "ast-grep", "file": ""}
@@ -157,7 +160,7 @@ class TestSkillValidatorAstGrepCount:
 
     def test_with_include_globs(self, tmp_path: Path) -> None:
         """Include globs are passed to runner."""
-        v = FlextInfraSkillValidator()
+        v = FlextInfraSkillValidator(skill="test-skill")
         skill = tmp_path / "skill"
         skill.mkdir()
         rule_file = skill / "rule.yaml"
@@ -173,7 +176,7 @@ class TestSkillValidatorAstGrepCount:
 
     def test_custom_count_empty_or_missing(self, tmp_path: Path) -> None:
         """Empty/nonexistent custom script returns 0."""
-        v = FlextInfraSkillValidator()
+        v = FlextInfraSkillValidator(skill="test-skill")
         skill = tmp_path / "skill"
         skill.mkdir()
         empty = {"id": "t", "type": "custom", "script": ""}
