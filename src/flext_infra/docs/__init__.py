@@ -5,49 +5,15 @@
 
 from __future__ import annotations
 
-import typing as _t
-
 from flext_core.lazy import install_lazy_exports
 
-if _t.TYPE_CHECKING:
-    import flext_infra.docs.auditor as _flext_infra_docs_auditor
-
-    auditor = _flext_infra_docs_auditor
-    import flext_infra.docs.builder as _flext_infra_docs_builder
-    from flext_infra.docs.auditor import FlextInfraDocAuditor
-
-    builder = _flext_infra_docs_builder
-    import flext_infra.docs.cli as _flext_infra_docs_cli
-    from flext_infra.docs.builder import FlextInfraDocBuilder
-
-    cli = _flext_infra_docs_cli
-    import flext_infra.docs.fixer as _flext_infra_docs_fixer
-    from flext_infra.docs.cli import FlextInfraCliDocs
-
-    fixer = _flext_infra_docs_fixer
-    import flext_infra.docs.generator as _flext_infra_docs_generator
-    from flext_infra.docs.fixer import FlextInfraDocFixer
-
-    generator = _flext_infra_docs_generator
-    import flext_infra.docs.validator as _flext_infra_docs_validator
-    from flext_infra.docs.generator import FlextInfraDocGenerator
-
-    validator = _flext_infra_docs_validator
-    from flext_core.constants import FlextConstants as c
-    from flext_core.decorators import FlextDecorators as d
-    from flext_core.exceptions import FlextExceptions as e
-    from flext_core.handlers import FlextHandlers as h
-    from flext_core.mixins import FlextMixins as x
-    from flext_core.models import FlextModels as m
-    from flext_core.protocols import FlextProtocols as p
-    from flext_core.result import FlextResult as r
-    from flext_core.service import FlextService as s
-    from flext_core.typings import FlextTypes as t
-    from flext_core.utilities import FlextUtilities as u
-    from flext_infra.docs.validator import FlextInfraDocValidator
 _LAZY_IMPORTS = {
     "FlextInfraCliDocs": ("flext_infra.docs.cli", "FlextInfraCliDocs"),
     "FlextInfraDocAuditor": ("flext_infra.docs.auditor", "FlextInfraDocAuditor"),
+    "FlextInfraDocAuditorMixin": (
+        "flext_infra.docs._auditor_mixin",
+        "FlextInfraDocAuditorMixin",
+    ),
     "FlextInfraDocBuilder": ("flext_infra.docs.builder", "FlextInfraDocBuilder"),
     "FlextInfraDocFixer": ("flext_infra.docs.fixer", "FlextInfraDocFixer"),
     "FlextInfraDocGenerator": ("flext_infra.docs.generator", "FlextInfraDocGenerator"),
@@ -71,31 +37,5 @@ _LAZY_IMPORTS = {
     "x": ("flext_core.mixins", "FlextMixins"),
 }
 
-__all__ = [
-    "FlextInfraCliDocs",
-    "FlextInfraDocAuditor",
-    "FlextInfraDocBuilder",
-    "FlextInfraDocFixer",
-    "FlextInfraDocGenerator",
-    "FlextInfraDocValidator",
-    "auditor",
-    "builder",
-    "c",
-    "cli",
-    "d",
-    "e",
-    "fixer",
-    "generator",
-    "h",
-    "m",
-    "p",
-    "r",
-    "s",
-    "t",
-    "u",
-    "validator",
-    "x",
-]
 
-
-install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, publish_all=False)

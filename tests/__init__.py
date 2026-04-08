@@ -10,66 +10,33 @@ import typing as _t
 from flext_core.lazy import install_lazy_exports, merge_lazy_imports
 
 if _t.TYPE_CHECKING:
-    import tests.conftest as _tests_conftest
-
-    conftest = _tests_conftest
-    import tests.constants as _tests_constants
-
-    constants = _tests_constants
-    import tests.fixtures as _tests_fixtures
+    from tests import (
+        conftest,
+        constants,
+        fixtures,
+        fixtures_git,
+        git_service,
+        helpers,
+        integration,
+        models,
+        protocols,
+        refactor,
+        runner_service,
+        scenarios,
+        test_infra_refactor_rope_migrations,
+        typings,
+        unit,
+        utilities,
+        workspace_factory,
+        workspace_scenarios,
+    )
     from tests.constants import TestsFlextInfraConstants, TestsFlextInfraConstants as c
-
-    fixtures = _tests_fixtures
-    import tests.fixtures_git as _tests_fixtures_git
-
-    fixtures_git = _tests_fixtures_git
-    import tests.git_service as _tests_git_service
-
-    git_service = _tests_git_service
-    import tests.helpers as _tests_helpers
-
-    helpers = _tests_helpers
-    import tests.integration as _tests_integration
     from tests.helpers import TestsFlextInfraHelpers
-
-    integration = _tests_integration
-    import tests.models as _tests_models
-
-    models = _tests_models
-    import tests.protocols as _tests_protocols
     from tests.models import TestsFlextInfraModels, TestsFlextInfraModels as m
-
-    protocols = _tests_protocols
-    import tests.refactor as _tests_refactor
     from tests.protocols import TestsFlextInfraProtocols, TestsFlextInfraProtocols as p
-
-    refactor = _tests_refactor
-    import tests.runner_service as _tests_runner_service
-
-    runner_service = _tests_runner_service
-    import tests.scenarios as _tests_scenarios
-
-    scenarios = _tests_scenarios
-    import tests.test_infra_refactor_rope_migrations as _tests_test_infra_refactor_rope_migrations
-
-    test_infra_refactor_rope_migrations = _tests_test_infra_refactor_rope_migrations
-    import tests.typings as _tests_typings
-
-    typings = _tests_typings
-    import tests.unit as _tests_unit
     from tests.typings import TestsFlextInfraTypes, TestsFlextInfraTypes as t
-
-    unit = _tests_unit
-    import tests.utilities as _tests_utilities
-
-    utilities = _tests_utilities
-    import tests.workspace_factory as _tests_workspace_factory
     from tests.utilities import TestsFlextInfraUtilities, TestsFlextInfraUtilities as u
 
-    workspace_factory = _tests_workspace_factory
-    import tests.workspace_scenarios as _tests_workspace_scenarios
-
-    workspace_scenarios = _tests_workspace_scenarios
     from flext_core.decorators import FlextDecorators as d
     from flext_core.exceptions import FlextExceptions as e
     from flext_core.handlers import FlextHandlers as h

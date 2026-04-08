@@ -289,6 +289,49 @@ class TestGenerateFile:
             content, contains="install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)"
         )
 
+    def test_root_namespace_type_checking_uses_source_modules(self) -> None:
+        """Root namespace TYPE_CHECKING imports must target real source modules."""
+        exports = ["Alpha", "Beta"]
+        filtered = {
+            "Alpha": ("test_pkg._constants.base", "Alpha"),
+            "Beta": ("test_pkg._models.base", "Beta"),
+        }
+        inline_constants: t.StrMapping = {}
+        content = FlextInfraCodegenGeneration.generate_file(
+            "",
+            exports,
+            filtered,
+            inline_constants,
+            "test_pkg",
+            child_packages_for_tc=("test_pkg._constants", "test_pkg._models"),
+        )
+        tm.that(content, contains="from test_pkg._constants.base import Alpha")
+        tm.that(content, contains="from test_pkg._models.base import Beta")
+        tm.that(content, lacks="from test_pkg._constants import Alpha")
+        tm.that(content, lacks="from test_pkg._models import Beta")
+
+    def test_root_namespace_type_checking_skips_module_reexport_names(self) -> None:
+        """Root namespace TYPE_CHECKING must omit module/package compatibility names."""
+        exports = ["_constants", "api", "constants"]
+        filtered = {
+            "_constants": ("test_pkg", "_constants"),
+            "api": ("test_pkg.api", ""),
+            "constants": ("test_pkg.constants", ""),
+        }
+        inline_constants: t.StrMapping = {}
+        content = FlextInfraCodegenGeneration.generate_file(
+            "",
+            exports,
+            filtered,
+            inline_constants,
+            "test_pkg",
+        )
+        tm.that(content, lacks="import test_pkg.api as api")
+        tm.that(content, lacks="import test_pkg.constants as constants")
+        tm.that(content, lacks="from test_pkg import _constants")
+        tm.that(content, lacks="from test_pkg import api")
+        tm.that(content, lacks="from test_pkg import constants")
+
     def test_subpackage_omits_static_analysis_hints(self) -> None:
         """Non-root package __init__.py keeps only _LAZY_IMPORTS + lazy loader."""
         exports = ["Alpha", "Beta"]

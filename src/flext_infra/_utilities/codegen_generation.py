@@ -62,14 +62,7 @@ class FlextInfraUtilitiesCodegenGeneration:
         mod: str,
         export_name: str,
     ) -> t.StrSequence:
-        """Format TYPE_CHECKING module imports in a ruff-stable form."""
-        module_basename = mod.rsplit(".", maxsplit=1)[-1]
-        if "." in mod and export_name == module_basename:
-            private_alias = f"_{mod.replace('.', '_')}"
-            return (
-                f"{indent}import {mod} as {private_alias}",
-                f"{indent}{export_name} = {private_alias}",
-            )
+        """Format TYPE_CHECKING module imports without compatibility rebinds."""
         return (
             FlextInfraUtilitiesCodegenGeneration.format_module_alias_import(
                 indent,
@@ -126,6 +119,25 @@ class FlextInfraUtilitiesCodegenGeneration:
         )
 
     @staticmethod
+    def should_skip_type_checking_module_export(
+        mod: str,
+        export_name: str,
+        attr_name: str,
+        root_name: str,
+    ) -> bool:
+        """Skip root re-exported module/package names in TYPE_CHECKING."""
+        if export_name in c.Infra.ALIAS_NAMES:
+            return False
+        if not export_name or export_name in {"cli", "main", "infra"}:
+            return False
+        module_style_name = export_name == export_name.lower()
+        if not module_style_name:
+            return False
+        if not attr_name:
+            return export_name == mod.rsplit(".", maxsplit=1)[-1]
+        return mod == root_name and attr_name == export_name
+
+    @staticmethod
     def emit_type_checking_module(
         mod: str,
         items: Sequence[t.Infra.StrPair],
@@ -145,6 +157,13 @@ class FlextInfraUtilitiesCodegenGeneration:
                 item[0] != (item[1] or item[0]),
             ),
         ):
+            if FlextInfraUtilitiesCodegenGeneration.should_skip_type_checking_module_export(
+                mod,
+                export_name,
+                attr_name,
+                root_name,
+            ):
+                continue
             if not attr_name:
                 if export_name == module_basename:
                     alias_exports.append(export_name)

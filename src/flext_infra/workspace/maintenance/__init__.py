@@ -16,13 +16,18 @@ _LAZY_IMPORTS = {
         "flext_infra.workspace.maintenance.python_version",
         "FlextInfraPythonVersionEnforcer",
     ),
+    "c": ("flext_core.constants", "FlextConstants"),
     "cli": "flext_infra.workspace.maintenance.cli",
     "d": ("flext_core.decorators", "FlextDecorators"),
     "e": ("flext_core.exceptions", "FlextExceptions"),
     "h": ("flext_core.handlers", "FlextHandlers"),
+    "m": ("flext_core.models", "FlextModels"),
+    "p": ("flext_core.protocols", "FlextProtocols"),
     "python_version": "flext_infra.workspace.maintenance.python_version",
     "r": ("flext_core.result", "FlextResult"),
     "s": ("flext_core.service", "FlextService"),
+    "t": ("flext_core.typings", "FlextTypes"),
+    "u": ("flext_core.utilities", "FlextUtilities"),
     "x": ("flext_core.mixins", "FlextMixins"),
 }
 

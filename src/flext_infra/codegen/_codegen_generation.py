@@ -269,7 +269,13 @@ class FlextInfraCodegenGeneration:
                     type_checking_filtered
                 ),
                 include_flext_types=False,
-                child_packages=child_packages_for_tc or (),
+                child_packages=(
+                    ()
+                    if FlextInfraUtilitiesCodegenGeneration.is_root_namespace_package(
+                        current_pkg
+                    )
+                    else child_packages_for_tc or ()
+                ),
                 local_package_root=current_pkg,
             )
             if publish_all
