@@ -42,15 +42,15 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
         msg = "_resolve_project_roots must be provided by the concrete enforcer"
         raise NotImplementedError(msg)
 
-    @staticmethod
     def _detect_and_apply[V](
+        self,
         *,
         py_files: Sequence[Path],
         detect_fn: Callable[[Path], Sequence[V]],
         rewrite_fn: Callable[[MutableSequence[V]], None] | None,
         apply: bool,
     ) -> MutableSequence[V]:
-        _ = py_files, detect_fn, rewrite_fn, apply
+        _ = self, py_files, detect_fn, rewrite_fn, apply
         msg = "_detect_and_apply must be provided by the concrete enforcer"
         raise NotImplementedError(msg)
 

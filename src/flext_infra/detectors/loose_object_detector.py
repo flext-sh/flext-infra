@@ -106,6 +106,11 @@ class FlextInfraLooseObjectDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
             ):
                 _add(hit, name, "constant", "Constants")
 
+        for hit in c.Infra.LOGGER_ASSIGN_RE.finditer(source):
+            name = hit.group(1)
+            if name not in c.Infra.Scan.ALLOWED_TOP_LEVEL:
+                _add(hit, name, "logger", "Utilities")
+
         for hit in c.Infra.PEP695_RE.finditer(source):
             name = hit.group(1)
             if name not in c.Infra.Scan.ALLOWED_TOP_LEVEL:

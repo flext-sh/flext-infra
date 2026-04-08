@@ -5,8 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_tests import tm
+from tests import t
 
 from flext_infra import (
+    DetectorContext,
+    FlextInfraLooseObjectDetector,
     FlextInfraNamespaceEnforcer,
 )
 
@@ -129,6 +132,33 @@ def test_namespace_enforcer_detects_internal_private_imports(tmp_path: Path) -> 
     tm.that(rendered, has="Internal imports:")
 
 
+def test_loose_object_detector_detects_module_logger_assignment(
+    tmp_path: Path,
+    rope_project: t.Infra.RopeProject,
+) -> None:
+    target = tmp_path / "target.py"
+    target.write_text(
+        "from __future__ import annotations\n"
+        "from flext_core import FlextLogger\n\n"
+        "logger = FlextLogger(__name__)\n\n"
+        "class DemoTarget:\n"
+        "    pass\n",
+        encoding="utf-8",
+    )
+
+    violations = FlextInfraLooseObjectDetector.detect_file(
+        DetectorContext(
+            file_path=target,
+            project_name="sample-proj",
+            rope_project=rope_project,
+        ),
+    )
+
+    tm.that(len(violations), eq=1)
+    tm.that(violations[0].kind, eq="logger")
+    tm.that(violations[0].name, eq="logger")
+
+
 def test_namespace_enforcer_apply_moves_manual_protocol_to_protocols_file(
     tmp_path: Path,
 ) -> None:
@@ -148,12 +178,11 @@ def test_namespace_enforcer_apply_moves_manual_protocol_to_protocols_file(
         encoding="utf-8",
     )
 
-    _ = FlextInfraNamespaceEnforcer(workspace_root=workspace).enforce(
+    report = FlextInfraNamespaceEnforcer(workspace_root=workspace).enforce(
         apply=True,
     )
 
-    # Post-apply violation count may be non-zero due to stale rope cache;
-    # verify actual file contents instead.
+    tm.that(report.total_manual_protocol_violations, eq=0)
     protocols_file = pkg / "protocols.py"
     tm.that(protocols_file.exists(), eq=True)
 
@@ -161,6 +190,49 @@ def test_namespace_enforcer_apply_moves_manual_protocol_to_protocols_file(
     tm.that(protocols_source, has="class ServiceContract(Protocol):")
     tm.that(protocols_source, has="from __future__ import annotations")
     tm.that(protocols_source, has="from typing import Protocol")
+
+
+def test_namespace_enforcer_apply_keeps_autofixes_when_other_violations_remain(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "workspace"
+    project = workspace / "sample-proj"
+    pkg = project / "src" / "sample_pkg"
+    pkg.mkdir(parents=True)
+    _ = (project / "pyproject.toml").write_text(
+        "[project]\nname='sample'\n",
+        encoding="utf-8",
+    )
+    _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
+    _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
+    service_file = pkg / "service.py"
+    _ = service_file.write_text(
+        "from __future__ import annotations\n"
+        "from flext_core import FlextLogger\n"
+        "from typing import Protocol\n\n"
+        "logger = FlextLogger(__name__)\n\n"
+        "class ServiceContract(Protocol):\n"
+        "    def run(self) -> str:\n"
+        "        ...\n",
+        encoding="utf-8",
+    )
+
+    report = FlextInfraNamespaceEnforcer(workspace_root=workspace).enforce(
+        apply=True,
+    )
+
+    tm.that(report.has_violations, eq=True)
+    tm.that(report.total_manual_protocol_violations, eq=0)
+    tm.that(report.total_loose_objects, gt=0)
+    tm.that((pkg / "protocols.py").exists(), eq=True)
+    tm.that(
+        (pkg / "protocols.py").read_text(encoding="utf-8"),
+        has="class ServiceContract(Protocol):",
+    )
+    tm.that(
+        service_file.read_text(encoding="utf-8"),
+        lacks="class ServiceContract(Protocol):",
+    )
 
 
 def test_namespace_enforcer_detects_cyclic_imports_in_tests_directory(

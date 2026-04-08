@@ -152,6 +152,31 @@ class TestSymbolPropagatorRopeMigration:
         assert text_result == rope_result
         assert text_changes == rope_changes
 
+    def test_apply_transformer_to_source_restores_disk_state(
+        self, tmp_path: Path
+    ) -> None:
+        """Temporary rope sync must not leak source updates to the real file."""
+        file_path = tmp_path / "src" / "demo.py"
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        original_source = "from mylib import OldName\nOldName()\n"
+        staged_source = "from mylib import OldName\nvalue = OldName()\nOldName()\n"
+        file_path.write_text(original_source, encoding="utf-8")
+        transformer = FlextInfraRefactorSymbolPropagator(
+            target_modules={"mylib"},
+            module_renames={},
+            import_symbol_renames={"OldName": "NewName"},
+        )
+
+        updated, changes = u.Infra.apply_transformer_to_source(
+            staged_source,
+            file_path,
+            transformer.transform,
+        )
+
+        assert "NewName" in updated
+        assert changes
+        assert file_path.read_text(encoding="utf-8") == original_source
+
 
 class TestNestedClassPropagationRopeMigration:
     """Verify nested_class_propagation stays rope-oriented."""

@@ -8,7 +8,6 @@ from typing import override
 
 from flext_infra import (
     FlextInfraNamespaceEnforcerPhasesMixin,
-    c,
     m,
     t,
     u,
@@ -25,6 +24,11 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerPhasesMixin):
         self._rope_project: t.Infra.RopeProject = u.Infra.init_rope_project(
             self._workspace_root,
         )
+
+    def _reload_rope_project(self) -> None:
+        """Refresh rope state after on-disk rewrites."""
+        self._rope_project.close()
+        self._rope_project = u.Infra.init_rope_project(self._workspace_root)
 
     @override
     def enforce(
@@ -43,19 +47,11 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerPhasesMixin):
         project_roots = self._resolve_project_roots(project_names=project_names)
         project_reports: list[m.Infra.ProjectEnforcementReport] = []
         for project_root in project_roots:
-            py_files = list(
-                project_root.rglob(c.Infra.Extensions.PYTHON_GLOB),
-            )
-            bak_paths: Sequence[Path] = u.Infra.backup_files(py_files) if apply else []
             report = self._enforce_project(
                 project_root=project_root,
                 project_name=project_root.name,
                 apply=apply,
             )
-            if apply and report.has_violations:
-                u.Infra.restore_files(bak_paths)
-            elif apply:
-                u.Infra.cleanup_backups(bak_paths)
             project_reports.append(report)
         return m.Infra.WorkspaceEnforcementReport.from_projects(
             workspace=str(self._workspace_root),
@@ -82,9 +78,9 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerPhasesMixin):
             project_roots = [r for r in project_roots if r.name in name_set]
         return project_roots
 
-    @staticmethod
     @override
     def _detect_and_apply[V](
+        self,
         *,
         py_files: Sequence[Path],
         detect_fn: Callable[[Path], Sequence[V]],
@@ -101,6 +97,7 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerPhasesMixin):
         if not (apply and violations and rewrite_fn is not None):
             return violations
         rewrite_fn(violations)
+        self._reload_rope_project()
         post_violations: MutableSequence[V] = []
         for py_file in py_files:
             post_violations.extend(detect_fn(py_file))

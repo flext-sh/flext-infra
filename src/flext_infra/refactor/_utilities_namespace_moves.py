@@ -14,6 +14,7 @@ from flext_infra import (
     m,
     t,
 )
+from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
 
 
 class FlextInfraUtilitiesRefactorNamespaceMoves(
@@ -106,7 +107,12 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
             alias_map=alias_map,
         )
         if rewritten != source:
-            _ = file_path.write_text(rewritten, encoding=c.Infra.Encoding.DEFAULT)
+            _ = FlextInfraUtilitiesProtectedEdit.protected_source_write(
+                file_path,
+                workspace=file_path.parent,
+                updated_source=rewritten,
+                keep_backup=True,
+            )
 
     @staticmethod
     def _move_named_blocks(
@@ -160,17 +166,25 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
         for block in blocks:
             if block.splitlines()[0] not in updated_target:
                 updated_target += f"\n\n{block}"
-        _ = target_file.write_text(
-            updated_target.rstrip() + "\n",
-            encoding=c.Infra.Encoding.DEFAULT,
-        )
         filtered_lines = list(lines)
         for start, end in sorted(ranges, reverse=True):
             del filtered_lines[start:end]
-        _ = source_file.write_text(
-            "\n".join(filtered_lines).rstrip() + "\n",
-            encoding=c.Infra.Encoding.DEFAULT,
+
+        def _post_write() -> None:
+            FlextInfraUtilitiesFormatting.run_ruff_fix(source_file, quiet=True)
+            FlextInfraUtilitiesFormatting.run_ruff_fix(target_file, quiet=True)
+
+        ok, _ = FlextInfraUtilitiesProtectedEdit.protected_source_writes(
+            {
+                target_file: updated_target.rstrip() + "\n",
+                source_file: "\n".join(filtered_lines).rstrip() + "\n",
+            },
+            workspace=project_root,
+            keep_backup=True,
+            post_write=_post_write,
         )
+        if not ok:
+            return None
         return (source_file, target_file, tuple(moved))
 
     @staticmethod
@@ -267,14 +281,21 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
         for moved_line in moved_lines:
             if moved_line not in target_lines:
                 updated_target += f"\n\n{moved_line}"
-        updated_target += "\n"
-        _ = target_file.write_text(updated_target, encoding=c.Infra.Encoding.DEFAULT)
-        _ = source_file.write_text(
-            "\n".join(kept_lines).rstrip() + "\n",
-            encoding=c.Infra.Encoding.DEFAULT,
+
+        def _post_write() -> None:
+            FlextInfraUtilitiesFormatting.run_ruff_fix(source_file, quiet=True)
+            FlextInfraUtilitiesFormatting.run_ruff_fix(target_file, quiet=True)
+
+        ok, _ = FlextInfraUtilitiesProtectedEdit.protected_source_writes(
+            {
+                target_file: updated_target + "\n",
+                source_file: "\n".join(kept_lines).rstrip() + "\n",
+            },
+            workspace=project_root,
+            keep_backup=True,
+            post_write=_post_write,
         )
-        FlextInfraUtilitiesFormatting.run_ruff_fix(source_file, quiet=True)
-        FlextInfraUtilitiesFormatting.run_ruff_fix(target_file, quiet=True)
+        _ = ok
 
     @staticmethod
     def _rewrite_moved_imports(
@@ -310,7 +331,12 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
                         f"from {target_module} import {name}",
                     )
             if updated != source:
-                _ = py_file.write_text(updated, encoding=c.Infra.Encoding.DEFAULT)
+                _ = FlextInfraUtilitiesProtectedEdit.protected_source_write(
+                    py_file,
+                    workspace=project_root,
+                    updated_source=updated,
+                    keep_backup=True,
+                )
 
 
 __all__ = ["FlextInfraUtilitiesRefactorNamespaceMoves"]

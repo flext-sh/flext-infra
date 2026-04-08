@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import overload, override
 
@@ -27,6 +27,7 @@ class EngineSafetyStub(FlextInfraRefactorSafetyManager):
         """Initialize call capture state for assertions."""
         super().__init__()
         self.calls: MutableSequence[str] = []
+        self.kept_paths: Sequence[Path] = []
 
     @override
     def create_pre_transformation_stash(
@@ -63,7 +64,8 @@ class EngineSafetyStub(FlextInfraRefactorSafetyManager):
         return r[bool].ok(True)
 
     @override
-    def clear_checkpoint(self) -> r[bool]:
+    def clear_checkpoint(self, *, keep: Sequence[Path] = ()) -> r[bool]:
+        self.kept_paths = list(keep)
         self.calls.append("clear")
         return r[bool].ok(True)
 
@@ -118,3 +120,20 @@ def test_refactor_project_integrates_safety_manager(tmp_path: Path) -> None:
     assert results
     assert all(item.success for item in results)
     assert stub.calls == ["stash", "checkpoint", "validate", "clear"]
+    assert stub.kept_paths == [src_dir / "sample.py"]
+
+
+def test_clear_checkpoint_preserves_requested_backups(tmp_path: Path) -> None:
+    keep_file = tmp_path / "keep.py"
+    drop_file = tmp_path / "drop.py"
+    keep_file.write_text("value = 1\n", encoding="utf-8")
+    drop_file.write_text("value = 2\n", encoding="utf-8")
+    manager = FlextInfraRefactorSafetyManager()
+    created = manager.create_pre_transformation_stash(tmp_path)
+    assert created.is_success
+
+    cleared = manager.clear_checkpoint(keep=[keep_file])
+
+    assert cleared.is_success
+    assert keep_file.with_suffix(".py.bak").exists()
+    assert not drop_file.with_suffix(".py.bak").exists()

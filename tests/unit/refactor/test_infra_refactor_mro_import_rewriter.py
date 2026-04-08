@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from _pytest.monkeypatch import MonkeyPatch
 from tests import m
 
 from flext_infra import FlextInfraRefactorMROImportRewriter
@@ -81,6 +82,8 @@ def test_migrate_workspace_applies_consumer_rewrites(tmp_path: Path) -> None:
     assert "from demo_pkg.constants import FOO" not in consumer_text
     assert "from demo_pkg.constants import c" in consumer_text
     assert "value = c.FOO" in consumer_text
+    assert constants_path.with_suffix(".py.bak").exists()
+    assert consumer_path.with_suffix(".py.bak").exists()
 
 
 def test_migrate_workspace_dry_run_preserves_files(tmp_path: Path) -> None:
@@ -101,3 +104,33 @@ def test_migrate_workspace_dry_run_preserves_files(tmp_path: Path) -> None:
     assert any(item.file.endswith("consumer.py") for item in rewrites)
     assert constants_path.read_text(encoding="utf-8") == original_constants
     assert consumer_path.read_text(encoding="utf-8") == original_consumer
+
+
+def test_migrate_workspace_reports_protected_write_failure(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    workspace_root, constants_path, consumer_path = _build_workspace(tmp_path)
+
+    def _fail_write(*args: object, **kwargs: object) -> tuple[bool, tuple[str, ...]]:
+        del args, kwargs
+        return (False, ("  REVERTED src/demo_pkg/constants.py:",))
+
+    _ = monkeypatch.setattr(
+        "flext_infra.refactor.mro_import_rewriter.FlextInfraUtilitiesProtectedEdit.protected_file_edit",
+        _fail_write,
+    )
+
+    migrations, rewrites, errors = (
+        FlextInfraRefactorMROImportRewriter.migrate_workspace(
+            workspace_root=workspace_root,
+            scan_results=[_scan_report(constants_path)],
+            apply=True,
+        )
+    )
+
+    assert migrations == ()
+    assert rewrites == ()
+    assert errors
+    assert 'FOO = "value"' in constants_path.read_text(encoding="utf-8")
+    assert "value = FOO" in consumer_path.read_text(encoding="utf-8")

@@ -56,7 +56,9 @@ if _t.TYPE_CHECKING:
     test_infra_refactor_engine = _tests_unit_refactor_test_infra_refactor_engine
     import tests.unit.refactor.test_infra_refactor_import_modernizer as _tests_unit_refactor_test_infra_refactor_import_modernizer
     from tests.unit.refactor.test_infra_refactor_engine import (
+        BrokenRule,
         test_engine_always_enables_class_nesting_file_rule,
+        test_refactor_file_rolls_back_invalid_output_and_preserves_backup,
         test_refactor_files_skips_non_python_inputs,
         test_refactor_project_scans_tests_and_scripts_dirs,
         test_rule_dispatch_fails_on_invalid_pattern_rule_config,
@@ -132,6 +134,7 @@ if _t.TYPE_CHECKING:
     from tests.unit.refactor.test_infra_refactor_mro_import_rewriter import (
         test_migrate_workspace_applies_consumer_rewrites,
         test_migrate_workspace_dry_run_preserves_files,
+        test_migrate_workspace_reports_protected_write_failure,
     )
 
     test_infra_refactor_namespace_aliases = (
@@ -148,14 +151,16 @@ if _t.TYPE_CHECKING:
         test_namespace_rewriter_skips_nested_private_as_rename_and_duplicates,
         test_runtime_alias_migrator_merges_local_imports_in_src,
         test_runtime_alias_migrator_merges_local_imports_in_tests,
+        test_runtime_alias_migrator_reports_protected_write_failure,
         test_runtime_alias_migrator_skips_unsafe_local_cycle,
     )
 
     test_infra_refactor_namespace_enforcer = (
         _tests_unit_refactor_test_infra_refactor_namespace_enforcer
     )
-    import tests.unit.refactor.test_infra_refactor_namespace_source as _tests_unit_refactor_test_infra_refactor_namespace_source
+    import tests.unit.refactor.test_infra_refactor_namespace_moves as _tests_unit_refactor_test_infra_refactor_namespace_moves
     from tests.unit.refactor.test_infra_refactor_namespace_enforcer import (
+        test_loose_object_detector_detects_module_logger_assignment,
         test_namespace_enforcer_apply_inserts_future_after_single_line_module_docstring,
         test_namespace_enforcer_apply_keeps_script_shebang_when_adding_future,
         test_namespace_enforcer_apply_moves_manual_protocol_to_protocols_file,
@@ -169,6 +174,16 @@ if _t.TYPE_CHECKING:
         test_namespace_enforcer_does_not_rewrite_multiline_import_alias_blocks,
         test_namespace_enforcer_respects_tool_flext_namespace_scan_dirs,
         test_namespace_enforcer_skips_dynamic_dirs_by_default,
+    )
+
+    test_infra_refactor_namespace_moves = (
+        _tests_unit_refactor_test_infra_refactor_namespace_moves
+    )
+    import tests.unit.refactor.test_infra_refactor_namespace_source as _tests_unit_refactor_test_infra_refactor_namespace_source
+    from tests.unit.refactor.test_infra_refactor_namespace_moves import (
+        test_rewrite_compatibility_alias_violations_uses_public_runtime_api,
+        test_rewrite_manual_protocol_violations_uses_public_runtime_api,
+        test_rewrite_manual_typing_alias_violations_uses_public_runtime_api,
     )
 
     test_infra_refactor_namespace_source = (
@@ -238,6 +253,7 @@ if _t.TYPE_CHECKING:
     import tests.unit.refactor.test_infra_refactor_typing_unifier as _tests_unit_refactor_test_infra_refactor_typing_unifier
     from tests.unit.refactor.test_infra_refactor_safety import (
         EngineSafetyStub,
+        test_clear_checkpoint_preserves_requested_backups,
         test_refactor_project_integrates_safety_manager,
     )
 
@@ -294,6 +310,7 @@ if _t.TYPE_CHECKING:
     from flext_core.typings import FlextTypes as t
     from flext_core.utilities import FlextUtilities as u
 _LAZY_IMPORTS = {
+    "BrokenRule": ("tests.unit.refactor.test_infra_refactor_engine", "BrokenRule"),
     "EngineSafetyStub": (
         "tests.unit.refactor.test_infra_refactor_safety",
         "EngineSafetyStub",
@@ -339,6 +356,10 @@ _LAZY_IMPORTS = {
     "test_class_reconstructor_skips_interleaved_non_method_members": (
         "tests.unit.refactor.test_infra_refactor_class_and_propagation",
         "test_class_reconstructor_skips_interleaved_non_method_members",
+    ),
+    "test_clear_checkpoint_preserves_requested_backups": (
+        "tests.unit.refactor.test_infra_refactor_safety",
+        "test_clear_checkpoint_preserves_requested_backups",
     ),
     "test_converts_multiple_aliases": (
         "tests.unit.refactor.test_infra_refactor_typing_unifier",
@@ -467,6 +488,7 @@ _LAZY_IMPORTS = {
     "test_infra_refactor_mro_import_rewriter": "tests.unit.refactor.test_infra_refactor_mro_import_rewriter",
     "test_infra_refactor_namespace_aliases": "tests.unit.refactor.test_infra_refactor_namespace_aliases",
     "test_infra_refactor_namespace_enforcer": "tests.unit.refactor.test_infra_refactor_namespace_enforcer",
+    "test_infra_refactor_namespace_moves": "tests.unit.refactor.test_infra_refactor_namespace_moves",
     "test_infra_refactor_namespace_source": "tests.unit.refactor.test_infra_refactor_namespace_source",
     "test_infra_refactor_pattern_corrections": "tests.unit.refactor.test_infra_refactor_pattern_corrections",
     "test_infra_refactor_policy_family_rules": "tests.unit.refactor.test_infra_refactor_policy_family_rules",
@@ -509,6 +531,10 @@ _LAZY_IMPORTS = {
         "tests.unit.refactor.test_infra_refactor_legacy_and_annotations",
         "test_legacy_wrapper_non_passthrough_is_not_inlined",
     ),
+    "test_loose_object_detector_detects_module_logger_assignment": (
+        "tests.unit.refactor.test_infra_refactor_namespace_enforcer",
+        "test_loose_object_detector_detects_module_logger_assignment",
+    ),
     "test_main_cli": "tests.unit.refactor.test_main_cli",
     "test_migrate_protocols_rewrites_references_with_p_alias": (
         "tests.unit.refactor.test_infra_refactor_migrate_to_class_mro",
@@ -545,6 +571,10 @@ _LAZY_IMPORTS = {
     "test_migrate_workspace_dry_run_preserves_files": (
         "tests.unit.refactor.test_infra_refactor_mro_import_rewriter",
         "test_migrate_workspace_dry_run_preserves_files",
+    ),
+    "test_migrate_workspace_reports_protected_write_failure": (
+        "tests.unit.refactor.test_infra_refactor_mro_import_rewriter",
+        "test_migrate_workspace_reports_protected_write_failure",
     ),
     "test_models_family_blocks_utilities_target": (
         "tests.unit.refactor.test_infra_refactor_policy_family_rules",
@@ -718,6 +748,10 @@ _LAZY_IMPORTS = {
         "tests.unit.refactor.test_main_cli",
         "test_refactor_centralize_accepts_apply_before_subcommand",
     ),
+    "test_refactor_file_rolls_back_invalid_output_and_preserves_backup": (
+        "tests.unit.refactor.test_infra_refactor_engine",
+        "test_refactor_file_rolls_back_invalid_output_and_preserves_backup",
+    ),
     "test_refactor_files_skips_non_python_inputs": (
         "tests.unit.refactor.test_infra_refactor_engine",
         "test_refactor_files_skips_non_python_inputs",
@@ -778,6 +812,18 @@ _LAZY_IMPORTS = {
         "tests.unit.refactor.test_infra_refactor_typing_unifier",
         "test_replaces_subset_union_with_none",
     ),
+    "test_rewrite_compatibility_alias_violations_uses_public_runtime_api": (
+        "tests.unit.refactor.test_infra_refactor_namespace_moves",
+        "test_rewrite_compatibility_alias_violations_uses_public_runtime_api",
+    ),
+    "test_rewrite_manual_protocol_violations_uses_public_runtime_api": (
+        "tests.unit.refactor.test_infra_refactor_namespace_moves",
+        "test_rewrite_manual_protocol_violations_uses_public_runtime_api",
+    ),
+    "test_rewrite_manual_typing_alias_violations_uses_public_runtime_api": (
+        "tests.unit.refactor.test_infra_refactor_namespace_moves",
+        "test_rewrite_manual_typing_alias_violations_uses_public_runtime_api",
+    ),
     "test_rewriter_adds_missing_base_and_formats": (
         "tests.unit.refactor.test_infra_refactor_mro_completeness",
         "test_rewriter_adds_missing_base_and_formats",
@@ -817,6 +863,10 @@ _LAZY_IMPORTS = {
     "test_runtime_alias_migrator_merges_local_imports_in_tests": (
         "tests.unit.refactor.test_infra_refactor_namespace_aliases",
         "test_runtime_alias_migrator_merges_local_imports_in_tests",
+    ),
+    "test_runtime_alias_migrator_reports_protected_write_failure": (
+        "tests.unit.refactor.test_infra_refactor_namespace_aliases",
+        "test_runtime_alias_migrator_reports_protected_write_failure",
     ),
     "test_runtime_alias_migrator_skips_unsafe_local_cycle": (
         "tests.unit.refactor.test_infra_refactor_namespace_aliases",
@@ -929,6 +979,7 @@ _LAZY_IMPORTS = {
 __all__ = [
     "FAMILY_FILE_MAP",
     "FAMILY_SUFFIX_MAP",
+    "BrokenRule",
     "EngineSafetyStub",
     "c",
     "d",
@@ -946,6 +997,7 @@ __all__ = [
     "test_class_reconstructor_reorders_each_contiguous_method_block",
     "test_class_reconstructor_reorders_methods_by_config",
     "test_class_reconstructor_skips_interleaved_non_method_members",
+    "test_clear_checkpoint_preserves_requested_backups",
     "test_converts_multiple_aliases",
     "test_converts_typealias_to_pep695",
     "test_decorators_family_blocks_dispatcher_target",
@@ -986,6 +1038,7 @@ __all__ = [
     "test_infra_refactor_mro_import_rewriter",
     "test_infra_refactor_namespace_aliases",
     "test_infra_refactor_namespace_enforcer",
+    "test_infra_refactor_namespace_moves",
     "test_infra_refactor_namespace_source",
     "test_infra_refactor_pattern_corrections",
     "test_infra_refactor_policy_family_rules",
@@ -1001,6 +1054,7 @@ __all__ = [
     "test_legacy_wrapper_forwarding_varargs_is_inlined_as_alias",
     "test_legacy_wrapper_function_is_inlined_as_alias",
     "test_legacy_wrapper_non_passthrough_is_not_inlined",
+    "test_loose_object_detector_detects_module_logger_assignment",
     "test_main_cli",
     "test_migrate_protocols_rewrites_references_with_p_alias",
     "test_migrate_to_mro_inlines_alias_constant_into_constants_class",
@@ -1011,6 +1065,7 @@ __all__ = [
     "test_migrate_typings_rewrites_references_with_t_alias",
     "test_migrate_workspace_applies_consumer_rewrites",
     "test_migrate_workspace_dry_run_preserves_files",
+    "test_migrate_workspace_reports_protected_write_failure",
     "test_models_family_blocks_utilities_target",
     "test_namespace_enforce_cli_fails_on_manual_protocol_violation",
     "test_namespace_enforcer_apply_inserts_future_after_single_line_module_docstring",
@@ -1054,6 +1109,7 @@ __all__ = [
     "test_read_project_metadata_preserves_poetry_dependency_order",
     "test_refactor_census_accepts_apply_before_subcommand",
     "test_refactor_centralize_accepts_apply_before_subcommand",
+    "test_refactor_file_rolls_back_invalid_output_and_preserves_backup",
     "test_refactor_files_skips_non_python_inputs",
     "test_refactor_project_integrates_safety_manager",
     "test_refactor_project_scans_tests_and_scripts_dirs",
@@ -1069,6 +1125,9 @@ __all__ = [
     "test_replaces_primitives_union",
     "test_replaces_scalar_union",
     "test_replaces_subset_union_with_none",
+    "test_rewrite_compatibility_alias_violations_uses_public_runtime_api",
+    "test_rewrite_manual_protocol_violations_uses_public_runtime_api",
+    "test_rewrite_manual_typing_alias_violations_uses_public_runtime_api",
     "test_rewriter_adds_missing_base_and_formats",
     "test_rewriter_namespace_source_is_idempotent_with_ruff",
     "test_rewriter_preserves_non_alias_symbols",
@@ -1079,6 +1138,7 @@ __all__ = [
     "test_rule_dispatch_prefers_fix_action_metadata",
     "test_runtime_alias_migrator_merges_local_imports_in_src",
     "test_runtime_alias_migrator_merges_local_imports_in_tests",
+    "test_runtime_alias_migrator_reports_protected_write_failure",
     "test_runtime_alias_migrator_skips_unsafe_local_cycle",
     "test_runtime_family_blocks_non_runtime_target",
     "test_signature_propagation_removes_and_adds_keywords",

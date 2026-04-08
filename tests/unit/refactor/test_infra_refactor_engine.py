@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import override
 
 from flext_tests import tm
 
@@ -14,9 +15,23 @@ from flext_infra import (
     FlextInfraRefactorLegacyRemovalTextRule,
     FlextInfraRefactorMROClassMigrationTextRule,
     FlextInfraRefactorPatternCorrectionsTextRule,
+    FlextInfraRefactorRule,
     FlextInfraRefactorSignaturePropagationRule,
     FlextInfraRefactorSymbolPropagationRule,
 )
+
+
+class BrokenRule(FlextInfraRefactorRule):
+    """Return invalid syntax so protected file validation must roll back."""
+
+    @override
+    def apply(
+        self,
+        source: str,
+        _file_path: Path | None = None,
+    ) -> tuple[str, list[str]]:
+        del source, _file_path
+        return ("def broken(:\n", ["broke syntax"])
 
 
 def test_rule_dispatch_prefers_fix_action_metadata(tmp_path: Path) -> None:
@@ -163,3 +178,21 @@ def test_refactor_files_skips_non_python_inputs(tmp_path: Path) -> None:
     assert md_result.success
     assert not md_result.modified
     assert "Skipped non-Python file" in md_result.changes
+
+
+def test_refactor_file_rolls_back_invalid_output_and_preserves_backup(
+    tmp_path: Path,
+) -> None:
+    file_path = tmp_path / "sample.py"
+    original = "value = 1\n"
+    file_path.write_text(original, encoding="utf-8")
+    engine = FlextInfraRefactorEngine(config_path=tmp_path / "missing.yml")
+    engine.rules = [BrokenRule({"id": "broken"})]
+    engine.file_rules = []
+
+    result = engine.refactor_file(file_path, dry_run=False)
+
+    assert not result.success
+    assert not result.modified
+    assert file_path.read_text(encoding="utf-8") == original
+    assert file_path.with_suffix(".py.bak").exists()

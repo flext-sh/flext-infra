@@ -12,6 +12,7 @@ from flext_infra import (
     t,
     u,
 )
+from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
 
 
 class FlextInfraRefactorMROImportRewriter:
@@ -33,6 +34,7 @@ class FlextInfraRefactorMROImportRewriter:
         errors: list[str] = []
         migrations: list[m.Infra.MROFileMigration] = []
         module_moves: MutableMapping[str, t.Infra.Pair[str, t.StrMapping]] = {}
+        module_source_paths: MutableMapping[str, Path] = {}
         pending_sources: MutableMapping[Path, str] = {}
         for scan_result in scan_results:
             try:
@@ -45,17 +47,38 @@ class FlextInfraRefactorMROImportRewriter:
             if not migration.moved_symbols:
                 continue
             migrations.append(migration)
-            pending_sources[Path(scan_result.file).resolve()] = updated_source
+            source_path = Path(scan_result.file).resolve()
+            pending_sources[source_path] = updated_source
             module_moves[scan_result.module] = (
                 scan_result.facade_alias or "c",
                 symbol_map,
             )
-        rewrites = cls.rewrite_workspace(
+            module_source_paths[scan_result.module] = source_path
+        if apply:
+            write_errors, failed_paths = cls._write_pending_sources(
+                workspace_root=workspace_root,
+                pending_sources=pending_sources,
+            )
+            errors.extend(write_errors)
+            if failed_paths:
+                failed_set = frozenset(failed_paths)
+                migrations = [
+                    migration
+                    for migration in migrations
+                    if Path(migration.file).resolve() not in failed_set
+                ]
+                module_moves = {
+                    module_name: move
+                    for module_name, move in module_moves.items()
+                    if module_source_paths.get(module_name) not in failed_set
+                }
+        rewrites, rewrite_errors = cls.rewrite_workspace(
             workspace_root=workspace_root,
             module_moves=module_moves,
             pending_sources=pending_sources,
             apply=apply,
         )
+        errors.extend(rewrite_errors)
         return (tuple(migrations), tuple(rewrites), tuple(errors))
 
     @classmethod
@@ -66,19 +89,16 @@ class FlextInfraRefactorMROImportRewriter:
         module_moves: Mapping[str, t.Infra.Pair[str, t.StrMapping]],
         pending_sources: Mapping[Path, str],
         apply: bool,
-    ) -> Sequence[m.Infra.MRORewriteResult]:
+    ) -> t.Infra.Pair[Sequence[m.Infra.MRORewriteResult], t.StrSequence]:
         """Rewrite consumer imports/usages using rope occurrence discovery + source transforms."""
         if not module_moves:
-            if apply:
-                cls._write_pending_sources(pending_sources)
-            return []
+            return ((), ())
         file_moves = cls._collect_file_moves(
             workspace_root=workspace_root,
             module_moves=module_moves,
         )
-        if apply:
-            cls._write_pending_sources(pending_sources)
         return cls._rewrite_files(
+            workspace_root=workspace_root,
             file_moves=file_moves,
             pending_sources=pending_sources,
             apply=apply,
@@ -210,11 +230,13 @@ class FlextInfraRefactorMROImportRewriter:
     def _rewrite_files(
         cls,
         *,
+        workspace_root: Path,
         file_moves: Mapping[Path, Mapping[str, t.Infra.Pair[str, t.StrMapping]]],
         pending_sources: Mapping[Path, str],
         apply: bool,
-    ) -> Sequence[m.Infra.MRORewriteResult]:
+    ) -> t.Infra.Pair[Sequence[m.Infra.MRORewriteResult], t.StrSequence]:
         rewrites: list[m.Infra.MRORewriteResult] = []
+        errors: list[str] = []
         for file_path in sorted(file_moves):
             source = pending_sources.get(file_path)
             if source is None:
@@ -229,19 +251,58 @@ class FlextInfraRefactorMROImportRewriter:
             if updated_source == source:
                 continue
             if apply:
-                file_path.write_text(updated_source, encoding=c.Infra.Encoding.DEFAULT)
+                ok, report = cls._protected_source_write(
+                    workspace_root=workspace_root,
+                    file_path=file_path,
+                    updated_source=updated_source,
+                )
+                if not ok:
+                    errors.extend(
+                        f"{file_path}: {line.strip()}" for line in report[:10]
+                    )
+                    continue
             rewrites.append(
                 m.Infra.MRORewriteResult(
                     file=str(file_path),
                     replacements=len(changes),
                 ),
             )
-        return rewrites
+        return (tuple(rewrites), tuple(errors))
 
     @staticmethod
-    def _write_pending_sources(pending_sources: Mapping[Path, str]) -> None:
+    def _protected_source_write(
+        *,
+        workspace_root: Path,
+        file_path: Path,
+        updated_source: str,
+    ) -> t.Infra.EditResult:
+        return FlextInfraUtilitiesProtectedEdit.protected_source_write(
+            file_path,
+            workspace=workspace_root,
+            updated_source=updated_source,
+            keep_backup=True,
+        )
+
+    @classmethod
+    def _write_pending_sources(
+        cls,
+        *,
+        workspace_root: Path,
+        pending_sources: Mapping[Path, str],
+    ) -> t.Infra.Pair[t.StrSequence, Sequence[Path]]:
+        errors: list[str] = []
+        failed_paths: list[Path] = []
         for file_path, source in pending_sources.items():
-            file_path.write_text(source, encoding=c.Infra.Encoding.DEFAULT)
+            ok, report = cls._protected_source_write(
+                workspace_root=workspace_root,
+                file_path=file_path,
+                updated_source=source,
+            )
+            if ok:
+                continue
+            failed_paths.append(file_path)
+            errors.extend(f"{file_path}: {line.strip()}" for line in report[:10])
+        return (tuple(errors), tuple(failed_paths))
 
 
 __all__ = ["FlextInfraRefactorMROImportRewriter"]

@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import difflib
 import importlib
 import operator
 import re
@@ -38,6 +37,7 @@ from flext_infra import (
     r,
     t,
 )
+from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
 
 # =====================================================================
 # Governance — canonical values and rule configuration
@@ -699,6 +699,10 @@ class FlextInfraUtilitiesCodegenConstantAnalysis:
 class FlextInfraUtilitiesCodegenConstantTransformation(_CliBase):
     """Consolidation: inline values → ``c.*`` references with rollback."""
 
+    _ALL_LINT_GATES: ClassVar[t.StrSequence] = tuple(
+        tool for tool, _ in c.Infra.LINT_TOOLS
+    )
+
     @staticmethod
     def resolve_constants_facade(pkg_name: str) -> type | None:
         """Import ``{pkg_name}.constants`` and return the facade class."""
@@ -780,18 +784,11 @@ class FlextInfraUtilitiesCodegenConstantTransformation(_CliBase):
     @staticmethod
     def lint_snapshot(py_file: Path, workspace: Path) -> t.Infra.LintSnapshot:
         """Run all lint tools on *py_file* → ``{tool: [error_lines]}``."""
-        errors: MutableMapping[str, Sequence[str]] = {}
-        for tool, tmpl in c.Infra.LINT_TOOLS:
-            cmd = [a.replace("{file}", str(py_file)) for a in tmpl]
-            res = FlextInfraUtilitiesCodegenConstantTransformation.run_raw(
-                cmd,
-                cwd=workspace,
-                timeout=c.Infra.Timeouts.SHORT,
-            )
-            if res.is_success and res.value.exit_code != 0:
-                out = (res.value.stdout + res.value.stderr).strip()
-                errors[tool] = [ln for ln in out.splitlines() if ln.strip()]
-        return errors
+        return FlextInfraUtilitiesProtectedEdit.lint_snapshot(
+            py_file,
+            workspace,
+            gates=FlextInfraUtilitiesCodegenConstantTransformation._ALL_LINT_GATES,
+        )
 
     @staticmethod
     def lint_new_errors(
@@ -799,15 +796,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation(_CliBase):
         after: t.Infra.LintSnapshot,
     ) -> t.Infra.LintSnapshot:
         """Return only errors in *after* not present in *before*."""
-        return {
-            tool: added
-            for tool, lines in after.items()
-            if (
-                added := [
-                    ln for ln in lines if ln not in frozenset(before.get(tool, []))
-                ]
-            )
-        }
+        return FlextInfraUtilitiesProtectedEdit.lint_new_errors(before, after)
 
     @staticmethod
     def validated_rope_edit(
@@ -823,53 +812,26 @@ class FlextInfraUtilitiesCodegenConstantTransformation(_CliBase):
         *edit_fn* is a zero-arg closure that performs the rope operations.
         Returns ``(success, report_lines)``.
         """
-        cls = FlextInfraUtilitiesCodegenConstantTransformation
-        rel = py_file.relative_to(workspace)
-        before = cls.lint_snapshot(py_file, workspace)
-
-        edit_fn()
-
-        # Check for new lint errors
-        new_errors = cls.lint_new_errors(before, cls.lint_snapshot(py_file, workspace))
-
-        # Pytest for test files
-        test_fail: str | None = None
-        if not new_errors and (
-            "tests" in py_file.parts or py_file.name.startswith("test_")
-        ):
-            tr = FlextInfraUtilitiesCodegenConstantTransformation.run_raw(
-                ["pytest", str(py_file), "-x", "--tb=short", "-q"],
-                cwd=workspace,
-                timeout=c.Infra.Timeouts.MEDIUM,
-            )
-            if tr.is_success and tr.value.exit_code != 0:
-                test_fail = (tr.value.stdout + tr.value.stderr)[:300]
-
-        if not new_errors and not test_fail:
-            return (True, [])
-
-        # Rollback + diff report
-        modified = FlextInfraUtilitiesRope.read_source(resource)
-        diff = list(
-            difflib.unified_diff(
-                backup.splitlines(keepends=True),
-                modified.splitlines(keepends=True),
-                fromfile=f"a/{rel}",
-                tofile=f"b/{rel}",
-                n=3,
-            )
+        all_lint_gates = (
+            FlextInfraUtilitiesCodegenConstantTransformation._ALL_LINT_GATES
         )
-        FlextInfraUtilitiesRope.write_source(rope_project, resource, backup)
-        report: MutableSequence[str] = [f"  REVERTED {rel}:"]
-        report.extend(f"    {dl.rstrip()}" for dl in diff[:30])
-        for tool, msgs in new_errors.items():
-            report.extend((
-                f"    NEW {tool} errors:",
-                *(f"      {m}" for m in msgs[:5]),
-            ))
-        if test_fail:
-            report.append(f"    pytest failure: {test_fail}")
-        return (False, report)
+
+        def _restore() -> None:
+            FlextInfraUtilitiesRope.write_source(
+                rope_project,
+                resource,
+                backup,
+            )
+
+        return FlextInfraUtilitiesProtectedEdit.protected_file_edit(
+            py_file,
+            workspace=workspace,
+            before_source=backup,
+            edit_fn=edit_fn,
+            restore_fn=_restore,
+            keep_backup=True,
+            gates=all_lint_gates,
+        )
 
     @staticmethod
     def apply_and_validate(

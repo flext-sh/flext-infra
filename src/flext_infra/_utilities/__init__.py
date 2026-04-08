@@ -164,8 +164,12 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.paths import FlextInfraUtilitiesPaths
 
     patterns = _flext_infra__utilities_patterns
-    import flext_infra._utilities.release as _flext_infra__utilities_release
+    import flext_infra._utilities.protected_edit as _flext_infra__utilities_protected_edit
     from flext_infra._utilities.patterns import FlextInfraUtilitiesPatterns
+
+    protected_edit = _flext_infra__utilities_protected_edit
+    import flext_infra._utilities.release as _flext_infra__utilities_release
+    from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
 
     release = _flext_infra__utilities_release
     import flext_infra._utilities.reporting as _flext_infra__utilities_reporting
@@ -382,6 +386,10 @@ _LAZY_IMPORTS = {
         "flext_infra._utilities.patterns",
         "FlextInfraUtilitiesPatterns",
     ),
+    "FlextInfraUtilitiesProtectedEdit": (
+        "flext_infra._utilities.protected_edit",
+        "FlextInfraUtilitiesProtectedEdit",
+    ),
     "FlextInfraUtilitiesRelease": (
         "flext_infra._utilities.release",
         "FlextInfraUtilitiesRelease",
@@ -480,6 +488,7 @@ _LAZY_IMPORTS = {
     "parsing": "flext_infra._utilities.parsing",
     "paths": "flext_infra._utilities.paths",
     "patterns": "flext_infra._utilities.patterns",
+    "protected_edit": "flext_infra._utilities.protected_edit",
     "release": "flext_infra._utilities.release",
     "reporting": "flext_infra._utilities.reporting",
     "rope": "flext_infra._utilities.rope",
@@ -538,6 +547,7 @@ __all__ = [
     "FlextInfraUtilitiesParsing",
     "FlextInfraUtilitiesPaths",
     "FlextInfraUtilitiesPatterns",
+    "FlextInfraUtilitiesProtectedEdit",
     "FlextInfraUtilitiesRelease",
     "FlextInfraUtilitiesReporting",
     "FlextInfraUtilitiesRope",
@@ -588,6 +598,7 @@ __all__ = [
     "parsing",
     "paths",
     "patterns",
+    "protected_edit",
     "release",
     "reporting",
     "rope",

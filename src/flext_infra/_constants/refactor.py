@@ -289,6 +289,12 @@ class FlextInfraRefactorConstants:
         re.MULTILINE,
     )
     "Matches top-level UPPER_CASE assignments for loose constant detection."
+    LOGGER_ASSIGN_RE: ClassVar[re.Pattern[str]] = re.compile(
+        r"^([A-Za-z_]\w*)\s*[:=]\s*(?:(?:\w+\.)*)?"
+        r"(?:FlextLogger|get_logger|logging\.getLogger)\s*\(",
+        re.IGNORECASE | re.MULTILINE,
+    )
+    "Matches top-level logger assignments created outside namespace classes."
     PEP695_RE: ClassVar[re.Pattern[str]] = re.compile(
         r"^type\s+(\w+)\s*=",
         re.MULTILINE,

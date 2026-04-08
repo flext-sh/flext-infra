@@ -17,6 +17,7 @@ from flext_infra import (
     m,
     t,
 )
+from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
 
 
 class FlextInfraUtilitiesRefactorNamespaceRuntime(
@@ -244,10 +245,27 @@ class FlextInfraUtilitiesRefactorNamespaceRuntime(
                 source_module=c.Infra.Packages.CORE_UNDERSCORE,
                 target_module=package_name,
                 aliases=tuple(sorted(safe_aliases)),
-                apply=apply,
+                apply=False,
             )
             if refactored_code is None:
                 return None
+            if apply:
+                ok, report = FlextInfraUtilitiesProtectedEdit.protected_source_write(
+                    file_path,
+                    workspace=workspace_root,
+                    updated_source=refactored_code,
+                    keep_backup=True,
+                )
+                if not ok:
+                    return m.Infra.Result(
+                        file_path=file_path,
+                        success=False,
+                        modified=False,
+                        error="Protected refactor validation failed",
+                        changes=[*changes, *report],
+                        refactored_code=source,
+                    )
+                changes.extend(report)
             return m.Infra.Result(
                 file_path=file_path,
                 success=True,
@@ -342,9 +360,17 @@ class FlextInfraUtilitiesRefactorNamespaceRuntime(
                 rewritten = (
                     "\n".join(kept).rstrip() + f"\n\n{alias_name} = {target_class}\n"
                 )
-                _ = file_path.write_text(
-                    rewritten,
+
+                original_source = file_path.read_text(
                     encoding=c.Infra.Encoding.DEFAULT,
+                )
+                if rewritten == original_source:
+                    continue
+                _ = FlextInfraUtilitiesProtectedEdit.protected_source_write(
+                    file_path,
+                    workspace=workspace_root,
+                    updated_source=rewritten,
+                    keep_backup=True,
                 )
         finally:
             rope_project.close()

@@ -21,6 +21,7 @@ from flext_infra import (
     t,
     u,
 )
+from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
 
 _log = FlextLogger.create_module_logger(__name__)
 
@@ -68,13 +69,12 @@ class FlextInfraRefactorEngineHelpersMixin:
         try:
             if file_path.suffix != c.Infra.Extensions.PYTHON:
                 return self._skip_result(file_path)
+            workspace_root = (
+                u.Infra.discover_project_root_from_file(file_path) or file_path.parent
+            )
             original = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
             current, all_changes = original, list[str]()
             if self.file_rules:
-                workspace_root = (
-                    u.Infra.discover_project_root_from_file(file_path)
-                    or file_path.parent
-                )
                 rope_project = u.Infra.init_rope_project(workspace_root)
                 try:
                     resource = u.Infra.get_resource_from_path(rope_project, file_path)
@@ -105,7 +105,22 @@ class FlextInfraRefactorEngineHelpersMixin:
                     all_changes.extend(changes)
             modified = current != original
             if not dry_run and modified:
-                u.write_file(file_path, current, encoding=c.Infra.Encoding.DEFAULT)
+                ok, report = FlextInfraUtilitiesProtectedEdit.protected_source_write(
+                    file_path,
+                    workspace=workspace_root,
+                    updated_source=current,
+                    keep_backup=True,
+                )
+                all_changes.extend(report)
+                if not ok:
+                    return m.Infra.Result(
+                        file_path=file_path,
+                        success=False,
+                        modified=False,
+                        error="Protected refactor validation failed",
+                        changes=all_changes,
+                        refactored_code=original,
+                    )
             return m.Infra.Result(
                 file_path=file_path,
                 success=True,
@@ -271,7 +286,13 @@ class FlextInfraRefactorEngineHelpersMixin:
                 u.Infra.refactor_error(rb.error or "rollback failed")
             results.append(self._error_result(target, msg))
             return
-        cl = self.safety_manager.clear_checkpoint()
+        cl = self.safety_manager.clear_checkpoint(
+            keep=[
+                result.file_path
+                for result in results
+                if result.success and result.modified
+            ],
+        )
         if cl.is_failure:
             u.Infra.refactor_error(cl.error or "checkpoint clear failed")
 

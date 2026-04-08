@@ -97,10 +97,15 @@ class FlextInfraRefactorSafetyManager:
             return r[bool].fail(tc.error or "test validation failed")
         return r[bool].ok(True)
 
-    def clear_checkpoint(self) -> r[bool]:
-        """Clean up backup files after successful validation."""
-        u.Infra.cleanup_backups(self._bak_paths)
-        self._bak_paths = []
+    def clear_checkpoint(self, *, keep: Sequence[Path] = ()) -> r[bool]:
+        """Clean up transient backups while preserving requested .bak files."""
+        keep_paths = {
+            path.with_suffix(path.suffix + c.Infra.SafeExecution.BAK_SUFFIX)
+            for path in keep
+        }
+        cleanup = [bak for bak in self._bak_paths if bak not in keep_paths]
+        u.Infra.cleanup_backups(cleanup)
+        self._bak_paths = [bak for bak in self._bak_paths if bak in keep_paths]
         return r[bool].ok(True)
 
 
