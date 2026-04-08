@@ -21,12 +21,12 @@ class FlextInfraModelsBase:
     class SummaryStats(FlextModels.ContractModel):
         """Bundled stats for summary output."""
 
-        verb: Annotated[str, Field(description="Verb label for the summary block")]
-        total: Annotated[int, Field(description="Total processed items")]
-        success: Annotated[int, Field(description="Successful items")]
-        failed: Annotated[int, Field(description="Failed items")]
-        skipped: Annotated[int, Field(description="Skipped items")]
-        elapsed: Annotated[float, Field(description="Elapsed time in seconds")]
+        verb: str = Field(description="Verb label for the summary block")
+        total: int = Field(description="Total processed items")
+        success: int = Field(description="Successful items")
+        failed: int = Field(description="Failed items")
+        skipped: int = Field(description="Skipped items")
+        elapsed: float = Field(description="Elapsed time in seconds")
 
     class ProjectFailureInfo(
         FlextInfraModelsMixins.ProjectNameMixin,

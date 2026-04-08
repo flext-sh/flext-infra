@@ -143,7 +143,6 @@ class TestGenerateFile:
         filtered = {"Test": ("module", "Test")}
         inline_constants: t.StrMapping = {}
         content = FlextInfraCodegenGeneration.generate_file(
-            "",
             exports,
             filtered,
             inline_constants,
@@ -157,7 +156,6 @@ class TestGenerateFile:
         filtered = {"Test": ("module", "Test")}
         inline_constants: t.StrMapping = {}
         content = FlextInfraCodegenGeneration.generate_file(
-            "",
             exports,
             filtered,
             inline_constants,
@@ -171,7 +169,6 @@ class TestGenerateFile:
         filtered = {"Test": ("module", "Test")}
         inline_constants = {"__version__": "1.0.0"}
         content = FlextInfraCodegenGeneration.generate_file(
-            "",
             exports,
             filtered,
             inline_constants,
@@ -189,7 +186,6 @@ class TestGenerateFile:
             "__version__": ("test_pkg.__version__", "__version__"),
         }
         content = FlextInfraCodegenGeneration.generate_file(
-            "",
             exports,
             filtered,
             inline_constants,
@@ -212,7 +208,6 @@ class TestGenerateFile:
         }
         inline_constants: t.StrMapping = {}
         content = FlextInfraCodegenGeneration.generate_file(
-            "",
             exports,
             filtered,
             inline_constants,
@@ -223,20 +218,18 @@ class TestGenerateFile:
         tm.that(content, lacks="from test_pkg.__version__ import VERSION")
         tm.that(content, lacks="from test_pkg.__version__ import __version__")
 
-    def test_with_docstring(self) -> None:
-        """Test preserves docstring."""
-        docstring = '"""Test module."""'
+    def test_ignores_docstring_source(self) -> None:
+        """Generated __init__.py files should not preserve package docstrings."""
         exports = ["Test"]
         filtered = {"Test": ("module", "Test")}
         inline_constants: t.StrMapping = {}
         content = FlextInfraCodegenGeneration.generate_file(
-            docstring,
             exports,
             filtered,
             inline_constants,
             "test_pkg",
         )
-        tm.that(content, contains=docstring)
+        tm.that(content, lacks='"""Test module."""')
 
     def test_has_autogen_header(self) -> None:
         """Test generated file starts with autogen header."""
@@ -244,7 +237,6 @@ class TestGenerateFile:
         filtered = {"Test": ("module", "Test")}
         inline_constants: t.StrMapping = {}
         content = FlextInfraCodegenGeneration.generate_file(
-            "",
             exports,
             filtered,
             inline_constants,
@@ -258,7 +250,6 @@ class TestGenerateFile:
         filtered = {"Alpha": ("mod", "Alpha"), "Beta": ("mod", "Beta")}
         inline_constants: t.StrMapping = {}
         content = FlextInfraCodegenGeneration.generate_file(
-            "",
             exports,
             filtered,
             inline_constants,
@@ -278,7 +269,6 @@ class TestGenerateFile:
         }
         inline_constants: t.StrMapping = {}
         content = FlextInfraCodegenGeneration.generate_file(
-            "",
             exports,
             filtered,
             inline_constants,
@@ -294,7 +284,6 @@ class TestGenerateFile:
         filtered = {"Alpha": ("mod", "Alpha"), "Beta": ("mod", "Beta")}
         inline_constants: t.StrMapping = {}
         content = FlextInfraCodegenGeneration.generate_file(
-            "",
             exports,
             filtered,
             inline_constants,
@@ -308,7 +297,7 @@ class TestGenerateFile:
         )
 
     def test_root_namespace_type_checking_uses_source_modules(self) -> None:
-        """Root namespace TYPE_CHECKING imports must target real source modules."""
+        """Root namespace TYPE_CHECKING must target real source modules."""
         exports = ["Alpha", "Beta"]
         filtered = {
             "Alpha": ("test_pkg._constants.base", "Alpha"),
@@ -316,7 +305,6 @@ class TestGenerateFile:
         }
         inline_constants: t.StrMapping = {}
         content = FlextInfraCodegenGeneration.generate_file(
-            "",
             exports,
             filtered,
             inline_constants,
@@ -328,6 +316,16 @@ class TestGenerateFile:
         tm.that(content, lacks="from test_pkg._constants import Alpha")
         tm.that(content, lacks="from test_pkg._models import Beta")
 
+    def test_subpackage_generated_init_omits_package_docstrings(self) -> None:
+        """Generated subpackage __init__.py files should omit package docstrings."""
+        content = FlextInfraCodegenGeneration.generate_file(
+            ["Alpha"],
+            {"Alpha": ("test_pkg.tools.alpha", "Alpha")},
+            {},
+            "test_pkg.tools",
+        )
+        tm.that(content, lacks='"""')
+
     def test_root_namespace_type_checking_skips_module_reexport_names(self) -> None:
         """Root namespace TYPE_CHECKING must omit module/package compatibility names."""
         exports = ["_constants", "api", "constants"]
@@ -338,7 +336,6 @@ class TestGenerateFile:
         }
         inline_constants: t.StrMapping = {}
         content = FlextInfraCodegenGeneration.generate_file(
-            "",
             exports,
             filtered,
             inline_constants,
@@ -362,7 +359,6 @@ class TestGenerateFile:
         }
         inline_constants: t.StrMapping = {}
         content = FlextInfraCodegenGeneration.generate_file(
-            "",
             exports,
             filtered,
             inline_constants,
@@ -387,7 +383,6 @@ class TestGenerateFile:
         filtered = {"Alpha": ("test_pkg.models", "Alpha")}
         inline_constants: t.StrMapping = {}
         content = FlextInfraCodegenGeneration.generate_file(
-            "",
             exports,
             filtered,
             inline_constants,
@@ -396,11 +391,11 @@ class TestGenerateFile:
         )
         tm.that(content, contains='"._constants"')
         tm.that(content, contains='".services"')
-        tm.that(content, contains='exclude_names=(')
+        tm.that(content, contains="exclude_names=(")
         tm.that(content, contains="module_name=__name__")
         tm.that(content, lacks='"test_pkg._constants"')
         tm.that(content, lacks='"test_pkg.services"')
-        tm.that(content, lacks='_LAZY_IMPORTS.pop(')
+        tm.that(content, lacks="_LAZY_IMPORTS.pop(")
 
     def test_subpackage_omits_static_analysis_hints(self) -> None:
         """Non-root package __init__.py keeps only _LAZY_IMPORTS + lazy loader."""
@@ -408,7 +403,6 @@ class TestGenerateFile:
         filtered = {"Alpha": ("mod", "Alpha"), "Beta": ("mod", "Beta")}
         inline_constants: t.StrMapping = {}
         content = FlextInfraCodegenGeneration.generate_file(
-            "",
             exports,
             filtered,
             inline_constants,

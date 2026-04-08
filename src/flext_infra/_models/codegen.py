@@ -25,19 +25,12 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenDeduplication):
     ):
         """A single namespace violation detected by the census service."""
 
-        module: Annotated[t.NonEmptyStr, Field(description="Module file path")]
-        rule: Annotated[
-            t.NonEmptyStr,
-            Field(description="Violated rule identifier (e.g. NS-001)"),
-        ]
-        message: Annotated[
-            t.NonEmptyStr,
-            Field(description="Human-readable violation message"),
-        ]
-        fixable: Annotated[
-            bool,
-            Field(description="Whether this violation can be auto-fixed"),
-        ]
+        module: t.NonEmptyStr = Field(description="Module file path")
+        rule: t.NonEmptyStr = Field(
+            description="Violated rule identifier (e.g. NS-001)"
+        )
+        message: t.NonEmptyStr = Field(description="Human-readable violation message")
+        fixable: bool = Field(description="Whether this violation can be auto-fixed")
 
     class CensusReport(
         FlextInfraModelsMixins.ProjectNameMixin,

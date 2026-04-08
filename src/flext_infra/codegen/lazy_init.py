@@ -133,11 +133,9 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
         init_path = pkg_dir / c.Infra.Files.INIT_PY
         current_pkg = u.Infra.discover_package_from_file(init_path)
         if not current_pkg:
-            return (None, {})
+            empty_lazy_map: t.Infra.MutableLazyImportMap = {}
+            return (None, empty_lazy_map)
         try:
-            docstring = u.Infra.read_existing_docstring(init_path)
-            if not docstring:
-                docstring = u.Infra.default_docstring(pkg_dir.name)
             lazy_map = u.Infra.build_sibling_export_index(pkg_dir, current_pkg)
             child_packages_for_lazy = u.Infra.collect_child_packages(
                 pkg_dir,
@@ -176,7 +174,6 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
                 return (0, dict(lazy_map))
             return self._write_init(
                 init_path,
-                docstring,
                 exports,
                 lazy_map,
                 inline_constants,
@@ -194,12 +191,12 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
                 f"export collision in {pkg_dir}: {exc}; "
                 "correct the source exports before regenerating __init__.py",
             )
-            return (-1, {})
+            failed_lazy_map: t.Infra.MutableLazyImportMap = {}
+            return (-1, failed_lazy_map)
 
     def _write_init(
         self,
         init_path: Path,
-        docstring: str,
         exports: t.StrSequence,
         lazy_map: t.Infra.LazyImportMap,
         inline_constants: t.StrMapping,
@@ -211,7 +208,6 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
     ) -> t.Infra.LazyInitWriteResult:
         try:
             generated = FlextInfraCodegenGeneration.generate_file(
-                docstring,
                 exports,
                 lazy_map,
                 inline_constants,

@@ -183,7 +183,6 @@ class FlextInfraCodegenGeneration:
 
     @staticmethod
     def generate_file(
-        docstring_source: str,
         exports: t.StrSequence,
         filtered: t.Infra.LazyImportMap,
         inline_constants: t.StrMapping,
@@ -196,7 +195,6 @@ class FlextInfraCodegenGeneration:
         """Generate complete module file with lazy imports and type hints.
 
         Args:
-            docstring_source: Module docstring text (empty string for none).
             exports: List of all exported names.
             filtered: Mapping of export names to (module_path, attr_name) tuples.
             inline_constants: Mapping of constant names to their string values.
@@ -237,18 +235,20 @@ class FlextInfraCodegenGeneration:
         eager_export_names = [
             name for name in published_exports if name not in lazy_filtered
         ]
-        is_core_pkg = current_pkg == c.Infra.Packages.CORE_UNDERSCORE
-
         out: MutableSequence[str] = [c.Infra.AUTOGEN_HEADER]
-        if docstring_source:
-            out.extend([docstring_source, ""])
+        if publish_all:
+            out.extend([
+                FlextInfraUtilitiesCodegenGeneration.format_root_package_docstring(
+                    current_pkg
+                ),
+                "",
+            ])
 
         preamble_template = FlextInfraCodegenGeneration._get_template(
             c.Infra.Templates.PREAMBLE_STANDARD
         )
         preamble: str = preamble_template.render(
             include_merge_helper=bool(children_lazy),
-            use_root_helpers=not is_core_pkg,
         )
         out.extend(preamble.splitlines())
 

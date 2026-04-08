@@ -21,7 +21,7 @@ class FlextInfraConstantsDeps:
         r"^(?:git@github\.com:[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?:\.git)?|https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?:\.git)?)$",
     )
     PEP621_PATH_RE: Final[re.Pattern[str]] = re.compile(r"@\s*(?:file:)?(?P<path>.+)$")
-    SKIP_DIRS: Final[frozenset[str]] = frozenset({
+    SKIP_DIRS: Final[frozenset[str]] = frozenset([
         ".archive",
         ".claude.disabled",
         ".flext-deps",
@@ -38,7 +38,7 @@ class FlextInfraConstantsDeps:
         "node_modules",
         "site",
         "vendor",
-    })
+    ])
     DEP_NAME_RE: Final[re.Pattern[str]] = re.compile(r"^\s*([A-Za-z0-9_.-]+)")
     FLEXT_DEPS_DIR: Final[str] = ".flext-deps"
     PEP621_PATH_DEP_RE: Final[re.Pattern[str]] = re.compile(

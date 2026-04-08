@@ -16,18 +16,19 @@ class FlextInfraCliRelease(FlextInfraServiceReleaseMixin):
 
     def register_release(self, app: t.Cli.CliApp) -> None:
         """Register release commands on the given application."""
+        routes = (
+            m.Cli.ResultCommandRoute(
+                name="run",
+                help_text="Run release orchestration CLI flow",
+                model_cls=FlextInfraReleaseOrchestrator,
+                handler=self.run_release,
+                failure_message="Release failed",
+                success_message="Release completed successfully",
+            ),
+        )
         cli_service.register_result_routes(
             app,
-            [
-                m.Cli.ResultCommandRoute(
-                    name="run",
-                    help_text="Run release orchestration CLI flow",
-                    model_cls=FlextInfraReleaseOrchestrator,
-                    handler=self.run_release,
-                    failure_message="Release failed",
-                    success_message="Release completed successfully",
-                ),
-            ],
+            routes,
         )
 
 

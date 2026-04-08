@@ -57,9 +57,7 @@ class FlextInfraConstantsCodegen:
     "Single-letter alias → class suffix mapping for lazy-init generation."
     MAX_LINE_LENGTH: Final[int] = 88
     "Maximum line length for generated import lines."
-    AUTOGEN_HEADER: Final[str] = (
-        "# AUTO-GENERATED FILE — DO NOT EDIT MANUALLY.\n# Regenerate with: make gen\n#"
-    )
+    AUTOGEN_HEADER: Final[str] = "# AUTO-GENERATED FILE — Regenerate with: make gen"
     "Header prepended to every auto-generated ``__init__.py`` file."
     ALL_SCAN_PATTERNS: Final[t.StrSequence] = (
         "src/**/__init__.py",
