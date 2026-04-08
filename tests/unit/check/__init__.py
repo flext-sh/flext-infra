@@ -10,28 +10,7 @@ import typing as _t
 from flext_core.lazy import install_lazy_exports
 
 if _t.TYPE_CHECKING:
-    import tests.unit.check._shared_fixtures as _tests_unit_check__shared_fixtures
-
-    _shared_fixtures = _tests_unit_check__shared_fixtures
-    import tests.unit.check._stubs as _tests_unit_check__stubs
-    from tests.unit.check._shared_fixtures import (
-        RunProjectsMock,
-        create_check_project_iter_stub,
-        create_check_project_stub,
-        create_checker_project,
-        create_fake_run_projects,
-        create_fake_run_raw,
-        create_gate_context,
-        create_gate_execution,
-        patch_gate_run,
-        patch_gate_run_sequence,
-        patch_python_dir_detection,
-        run_gate_check,
-    )
-
-    _stubs = _tests_unit_check__stubs
     import tests.unit.check.cli_tests as _tests_unit_check_cli_tests
-    from tests.unit.check._stubs import Spy, make_issue, make_project
 
     cli_tests = _tests_unit_check_cli_tests
     import tests.unit.check.extended_cli_entry_tests as _tests_unit_check_extended_cli_entry_tests
@@ -57,7 +36,6 @@ if _t.TYPE_CHECKING:
 
     extended_gate_go_cmd_tests = _tests_unit_check_extended_gate_go_cmd_tests
     import tests.unit.check.extended_gate_mypy_pyright_tests as _tests_unit_check_extended_gate_mypy_pyright_tests
-    from tests.unit.check.extended_gate_go_cmd_tests import run_command_failure_check
 
     extended_gate_mypy_pyright_tests = (
         _tests_unit_check_extended_gate_mypy_pyright_tests
@@ -110,40 +88,20 @@ if _t.TYPE_CHECKING:
     import tests.unit.check.workspace_tests as _tests_unit_check_workspace_tests
 
     workspace_tests = _tests_unit_check_workspace_tests
+    from flext_core.constants import FlextConstants as c
     from flext_core.decorators import FlextDecorators as d
     from flext_core.exceptions import FlextExceptions as e
     from flext_core.handlers import FlextHandlers as h
     from flext_core.mixins import FlextMixins as x
+    from flext_core.models import FlextModels as m
+    from flext_core.protocols import FlextProtocols as p
     from flext_core.result import FlextResult as r
     from flext_core.service import FlextService as s
+    from flext_core.typings import FlextTypes as t
+    from flext_core.utilities import FlextUtilities as u
 _LAZY_IMPORTS = {
-    "RunProjectsMock": ("tests.unit.check._shared_fixtures", "RunProjectsMock"),
-    "Spy": ("tests.unit.check._stubs", "Spy"),
-    "_shared_fixtures": "tests.unit.check._shared_fixtures",
-    "_stubs": "tests.unit.check._stubs",
+    "c": ("flext_core.constants", "FlextConstants"),
     "cli_tests": "tests.unit.check.cli_tests",
-    "create_check_project_iter_stub": (
-        "tests.unit.check._shared_fixtures",
-        "create_check_project_iter_stub",
-    ),
-    "create_check_project_stub": (
-        "tests.unit.check._shared_fixtures",
-        "create_check_project_stub",
-    ),
-    "create_checker_project": (
-        "tests.unit.check._shared_fixtures",
-        "create_checker_project",
-    ),
-    "create_fake_run_projects": (
-        "tests.unit.check._shared_fixtures",
-        "create_fake_run_projects",
-    ),
-    "create_fake_run_raw": ("tests.unit.check._shared_fixtures", "create_fake_run_raw"),
-    "create_gate_context": ("tests.unit.check._shared_fixtures", "create_gate_context"),
-    "create_gate_execution": (
-        "tests.unit.check._shared_fixtures",
-        "create_gate_execution",
-    ),
     "d": ("flext_core.decorators", "FlextDecorators"),
     "e": ("flext_core.exceptions", "FlextExceptions"),
     "extended_cli_entry_tests": "tests.unit.check.extended_cli_entry_tests",
@@ -166,44 +124,22 @@ _LAZY_IMPORTS = {
     "fix_pyrefly_config_tests": "tests.unit.check.fix_pyrefly_config_tests",
     "h": ("flext_core.handlers", "FlextHandlers"),
     "init_tests": "tests.unit.check.init_tests",
+    "m": ("flext_core.models", "FlextModels"),
     "main_tests": "tests.unit.check.main_tests",
-    "make_issue": ("tests.unit.check._stubs", "make_issue"),
-    "make_project": ("tests.unit.check._stubs", "make_project"),
-    "patch_gate_run": ("tests.unit.check._shared_fixtures", "patch_gate_run"),
-    "patch_gate_run_sequence": (
-        "tests.unit.check._shared_fixtures",
-        "patch_gate_run_sequence",
-    ),
-    "patch_python_dir_detection": (
-        "tests.unit.check._shared_fixtures",
-        "patch_python_dir_detection",
-    ),
+    "p": ("flext_core.protocols", "FlextProtocols"),
     "pyrefly_tests": "tests.unit.check.pyrefly_tests",
     "r": ("flext_core.result", "FlextResult"),
-    "run_command_failure_check": (
-        "tests.unit.check.extended_gate_go_cmd_tests",
-        "run_command_failure_check",
-    ),
-    "run_gate_check": ("tests.unit.check._shared_fixtures", "run_gate_check"),
     "s": ("flext_core.service", "FlextService"),
+    "t": ("flext_core.typings", "FlextTypes"),
+    "u": ("flext_core.utilities", "FlextUtilities"),
     "workspace_check_tests": "tests.unit.check.workspace_check_tests",
     "workspace_tests": "tests.unit.check.workspace_tests",
     "x": ("flext_core.mixins", "FlextMixins"),
 }
 
 __all__ = [
-    "RunProjectsMock",
-    "Spy",
-    "_shared_fixtures",
-    "_stubs",
+    "c",
     "cli_tests",
-    "create_check_project_iter_stub",
-    "create_check_project_stub",
-    "create_checker_project",
-    "create_fake_run_projects",
-    "create_fake_run_raw",
-    "create_gate_context",
-    "create_gate_execution",
     "d",
     "e",
     "extended_cli_entry_tests",
@@ -226,17 +162,14 @@ __all__ = [
     "fix_pyrefly_config_tests",
     "h",
     "init_tests",
+    "m",
     "main_tests",
-    "make_issue",
-    "make_project",
-    "patch_gate_run",
-    "patch_gate_run_sequence",
-    "patch_python_dir_detection",
+    "p",
     "pyrefly_tests",
     "r",
-    "run_command_failure_check",
-    "run_gate_check",
     "s",
+    "t",
+    "u",
     "workspace_check_tests",
     "workspace_tests",
     "x",

@@ -323,18 +323,18 @@ def test_runtime_alias_migrator_merges_local_imports_in_tests(tmp_path: Path) ->
         project_root / "tests" / "typings.py",
         (
             "from __future__ import annotations\n\n"
-            "class FlextTestsTypes:\n"
+            "class TestsFlextTypes:\n"
             "    pass\n\n"
-            "t = FlextTestsTypes\n"
+            "t = TestsFlextTypes\n"
         ),
     )
     _write_file(
         project_root / "tests" / "utilities.py",
         (
             "from __future__ import annotations\n\n"
-            "class FlextTestsUtilities:\n"
+            "class TestsFlextUtilities:\n"
             "    pass\n\n"
-            "u = FlextTestsUtilities\n"
+            "u = TestsFlextUtilities\n"
         ),
     )
     target = project_root / "tests" / "unit" / "test_sample.py"
@@ -440,9 +440,9 @@ def test_runtime_alias_migrator_rewrites_foreign_package_alias_in_tests(
         project_root / "tests" / "typings.py",
         (
             "from __future__ import annotations\n\n"
-            "class FlextTestsTypes:\n"
+            "class TestsFlextTypes:\n"
             "    pass\n\n"
-            "t = FlextTestsTypes\n"
+            "t = TestsFlextTypes\n"
         ),
     )
     target = project_root / "tests" / "unit" / "test_sample.py"

@@ -92,6 +92,3 @@ class FlextInfraNamespaceFacadeScanner:
         return FlextInfraUtilitiesCodegenNamespace.project_class_stem(
             project_name=project_name,
         )
-
-
-__all__ = ["FlextInfraNamespaceFacadeScanner"]

@@ -119,12 +119,41 @@ class TestFlextInfraCodegenLazyInit:
         """Conflicting exports must fail instead of generating a broken __init__.py."""
         src_dir = tmp_path / "src" / "test_pkg"
         src_dir.mkdir(parents=True)
-        (src_dir / "alpha.py").write_text("def main() -> None:\n    pass\n")
-        (src_dir / "beta.py").write_text("def main() -> None:\n    pass\n")
+        (src_dir / "alpha.py").write_text("def run() -> None:\n    pass\n")
+        (src_dir / "beta.py").write_text("def run() -> None:\n    pass\n")
         generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
         result = generator.generate_inits(check_only=False)
         tm.that(result, eq=1)
         tm.that((src_dir / "__init__.py").exists(), eq=False)
+
+    def test_accepts_service_base_in_services_package(self, tmp_path: Path) -> None:
+        """services/base.py must accept the canonical ServiceBase exception."""
+        src_dir = tmp_path / "src" / "test_pkg" / "services"
+        src_dir.mkdir(parents=True)
+        (tmp_path / "src" / "test_pkg" / "__init__.py").write_text("")
+        (src_dir / "base.py").write_text(
+            "class TestPkgServiceBase:\n    pass\n",
+        )
+        generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
+        result = generator.generate_inits(check_only=False)
+        tm.that(result, eq=0)
+        tm.that((src_dir / "__init__.py").exists(), eq=True)
+
+    def test_nested_private_base_module_does_not_trigger_root_contract(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Nested packages like transports/base.py must not be treated as root facades."""
+        pkg_dir = tmp_path / "src" / "test_pkg" / "transports"
+        pkg_dir.mkdir(parents=True)
+        (tmp_path / "src" / "test_pkg" / "__init__.py").write_text("")
+        (pkg_dir / "base.py").write_text(
+            '"""Transport base."""\n\nfrom __future__ import annotations\n',
+        )
+        generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
+        result = generator.generate_inits(check_only=False)
+        tm.that(result, eq=0)
+        tm.that((pkg_dir / "__init__.py").exists(), eq=True)
 
     def test_fails_when_namespace_module_shape_is_invalid(self, tmp_path: Path) -> None:
         """Namespace enforcement must abort generation on invalid module shape."""

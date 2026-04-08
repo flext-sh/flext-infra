@@ -3,7 +3,7 @@
 Auto-discovers exports from sibling ``.py`` files and generates clean
 lazy-loading ``__init__.py`` files using ``flext_core.lazy``.
 
-Scanning, merge, and alias logic live in ``flext_infra._utilities.codegen_lazy``.
+Scanning, merge, and alias logic live in ``flext_infra._utilities.lazy``.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -19,7 +19,7 @@ from pydantic import PrivateAttr
 
 from flext_infra import (
     FlextInfraCodegenGeneration,
-    FlextInfraCommandContext,
+    FlextInfraServiceBase,
     c,
     r,
     t,
@@ -27,7 +27,7 @@ from flext_infra import (
 )
 
 
-class FlextInfraCodegenLazyInit(FlextInfraCommandContext[bool]):
+class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
     """Generates ``__init__.py`` with PEP 562 lazy imports.
 
     Scans sibling ``.py`` files in each package directory, discovers their
@@ -173,9 +173,7 @@ class FlextInfraCodegenLazyInit(FlextInfraCommandContext[bool]):
                 self._ensure_public_facade_aliases(lazy_map, current_pkg)
             for infra_name in ("cleanup_submodule_namespace", "lazy_getattr"):
                 lazy_map.pop(infra_name, None)
-            eager_tvars = frozenset(
-                u.Infra.detect_eager_typevar_names(pkg_dir) & set(lazy_map),
-            )
+            eager_tvars: frozenset[str] = frozenset()
             for k in inline_constants:
                 lazy_map.pop(k, None)
             exports = sorted(set(lazy_map) | set(inline_constants) | eager_tvars)

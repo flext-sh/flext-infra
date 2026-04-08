@@ -17,32 +17,12 @@ if _t.TYPE_CHECKING:
 
     basemk = _tests_unit_basemk
     import tests.unit.check as _tests_unit_check
-    from tests.unit.basemk import basemk_main
 
     check = _tests_unit_check
     import tests.unit.codegen as _tests_unit_codegen
-    from tests.unit.check import (
-        RunProjectsMock,
-        Spy,
-        create_check_project_iter_stub,
-        create_check_project_stub,
-        create_checker_project,
-        create_fake_run_projects,
-        create_fake_run_raw,
-        create_gate_context,
-        create_gate_execution,
-        make_issue,
-        make_project,
-        patch_gate_run,
-        patch_gate_run_sequence,
-        patch_python_dir_detection,
-        run_command_failure_check,
-        run_gate_check,
-    )
 
     codegen = _tests_unit_codegen
     import tests.unit.container as _tests_unit_container
-    from tests.unit.codegen import FlextInfraCodegenTestProjectFactory
 
     container = _tests_unit_container
     import tests.unit.deps as _tests_unit_deps
@@ -58,44 +38,15 @@ if _t.TYPE_CHECKING:
 
     github = _tests_unit_github
     import tests.unit.io as _tests_unit_io
-    from tests.unit.github import (
-        StubCommandOutput,
-        StubJsonIo,
-        StubLinter,
-        StubPrManager,
-        StubProjectInfo,
-        StubReporting,
-        StubRunner,
-        StubSelector,
-        StubSyncer,
-        StubUtilities,
-        StubVersioning,
-        StubWorkspaceManager,
-    )
 
     io = _tests_unit_io
     import tests.unit.refactor as _tests_unit_refactor
 
     refactor = _tests_unit_refactor
     import tests.unit.release as _tests_unit_release
-    from tests.unit.refactor import (
-        FAMILY_FILE_MAP,
-        FAMILY_SUFFIX_MAP,
-        BrokenRule,
-        EngineSafetyStub,
-        refactor_main,
-    )
 
     release = _tests_unit_release
     import tests.unit.test_infra_constants_core as _tests_unit_test_infra_constants_core
-    from tests.unit.release import (
-        FakeReporting,
-        FakeSelection,
-        FakeSubprocess,
-        FakeUtilsNamespace,
-        FakeVersioning,
-        workspace_root,
-    )
 
     test_infra_constants_core = _tests_unit_test_infra_constants_core
     import tests.unit.test_infra_constants_extra as _tests_unit_test_infra_constants_extra
@@ -176,7 +127,6 @@ if _t.TYPE_CHECKING:
 
     test_infra_workspace_main = _tests_unit_test_infra_workspace_main
     import tests.unit.test_infra_workspace_migrator as _tests_unit_test_infra_workspace_migrator
-    from tests.unit.test_infra_workspace_main import workspace_main
 
     test_infra_workspace_migrator = _tests_unit_test_infra_workspace_migrator
     import tests.unit.test_infra_workspace_migrator_deps as _tests_unit_test_infra_workspace_migrator_deps
@@ -209,11 +159,9 @@ if _t.TYPE_CHECKING:
 
     test_infra_workspace_sync = _tests_unit_test_infra_workspace_sync
     import tests.unit.test_ssot_enforcement as _tests_unit_test_ssot_enforcement
-    from tests.unit.test_infra_workspace_sync import SetupFn
 
     test_ssot_enforcement = _tests_unit_test_ssot_enforcement
     import tests.unit.transformers as _tests_unit_transformers
-    from tests.unit.test_ssot_enforcement import SSOT_METHODS, WORKSPACE
 
     transformers = _tests_unit_transformers
     import tests.unit.validate as _tests_unit_validate
@@ -222,12 +170,17 @@ if _t.TYPE_CHECKING:
     import tests.unit.workspace as _tests_unit_workspace
 
     workspace = _tests_unit_workspace
+    from flext_core.constants import FlextConstants as c
     from flext_core.decorators import FlextDecorators as d
     from flext_core.exceptions import FlextExceptions as e
     from flext_core.handlers import FlextHandlers as h
     from flext_core.mixins import FlextMixins as x
+    from flext_core.models import FlextModels as m
+    from flext_core.protocols import FlextProtocols as p
     from flext_core.result import FlextResult as r
     from flext_core.service import FlextService as s
+    from flext_core.typings import FlextTypes as t
+    from flext_core.utilities import FlextUtilities as u
 _LAZY_IMPORTS = merge_lazy_imports(
     (
         "tests.unit._utilities",
@@ -247,11 +200,9 @@ _LAZY_IMPORTS = merge_lazy_imports(
         "tests.unit.workspace",
     ),
     {
-        "SSOT_METHODS": ("tests.unit.test_ssot_enforcement", "SSOT_METHODS"),
-        "SetupFn": ("tests.unit.test_infra_workspace_sync", "SetupFn"),
-        "WORKSPACE": ("tests.unit.test_ssot_enforcement", "WORKSPACE"),
         "_utilities": "tests.unit._utilities",
         "basemk": "tests.unit.basemk",
+        "c": ("flext_core.constants", "FlextConstants"),
         "check": "tests.unit.check",
         "codegen": "tests.unit.codegen",
         "container": "tests.unit.container",
@@ -263,10 +214,13 @@ _LAZY_IMPORTS = merge_lazy_imports(
         "github": "tests.unit.github",
         "h": ("flext_core.handlers", "FlextHandlers"),
         "io": "tests.unit.io",
+        "m": ("flext_core.models", "FlextModels"),
+        "p": ("flext_core.protocols", "FlextProtocols"),
         "r": ("flext_core.result", "FlextResult"),
         "refactor": "tests.unit.refactor",
         "release": "tests.unit.release",
         "s": ("flext_core.service", "FlextService"),
+        "t": ("flext_core.typings", "FlextTypes"),
         "test_infra_constants_core": "tests.unit.test_infra_constants_core",
         "test_infra_constants_extra": "tests.unit.test_infra_constants_extra",
         "test_infra_git": "tests.unit.test_infra_git",
@@ -303,60 +257,27 @@ _LAZY_IMPORTS = merge_lazy_imports(
         "test_infra_workspace_sync": "tests.unit.test_infra_workspace_sync",
         "test_ssot_enforcement": "tests.unit.test_ssot_enforcement",
         "transformers": "tests.unit.transformers",
+        "u": ("flext_core.utilities", "FlextUtilities"),
         "validate": "tests.unit.validate",
         "workspace": "tests.unit.workspace",
-        "workspace_main": ("tests.unit.test_infra_workspace_main", "workspace_main"),
         "x": ("flext_core.mixins", "FlextMixins"),
     },
 )
 _ = _LAZY_IMPORTS.pop("cleanup_submodule_namespace", None)
 _ = _LAZY_IMPORTS.pop("install_lazy_exports", None)
 _ = _LAZY_IMPORTS.pop("lazy_getattr", None)
+_ = _LAZY_IMPORTS.pop("logger", None)
 _ = _LAZY_IMPORTS.pop("merge_lazy_imports", None)
 _ = _LAZY_IMPORTS.pop("output", None)
 _ = _LAZY_IMPORTS.pop("output_reporting", None)
 
 __all__ = [
-    "FAMILY_FILE_MAP",
-    "FAMILY_SUFFIX_MAP",
-    "SSOT_METHODS",
-    "WORKSPACE",
-    "BrokenRule",
-    "EngineSafetyStub",
-    "FakeReporting",
-    "FakeSelection",
-    "FakeSubprocess",
-    "FakeUtilsNamespace",
-    "FakeVersioning",
-    "FlextInfraCodegenTestProjectFactory",
-    "RunProjectsMock",
-    "SetupFn",
-    "Spy",
-    "StubCommandOutput",
-    "StubJsonIo",
-    "StubLinter",
-    "StubPrManager",
-    "StubProjectInfo",
-    "StubReporting",
-    "StubRunner",
-    "StubSelector",
-    "StubSyncer",
-    "StubUtilities",
-    "StubVersioning",
-    "StubWorkspaceManager",
     "_utilities",
     "basemk",
-    "basemk_main",
+    "c",
     "check",
     "codegen",
     "container",
-    "create_check_project_iter_stub",
-    "create_check_project_stub",
-    "create_checker_project",
-    "create_fake_run_projects",
-    "create_fake_run_raw",
-    "create_gate_context",
-    "create_gate_execution",
     "d",
     "deps",
     "discovery",
@@ -365,18 +286,13 @@ __all__ = [
     "github",
     "h",
     "io",
-    "make_issue",
-    "make_project",
-    "patch_gate_run",
-    "patch_gate_run_sequence",
-    "patch_python_dir_detection",
+    "m",
+    "p",
     "r",
     "refactor",
-    "refactor_main",
     "release",
-    "run_command_failure_check",
-    "run_gate_check",
     "s",
+    "t",
     "test_infra_constants_core",
     "test_infra_constants_extra",
     "test_infra_git",
@@ -413,10 +329,9 @@ __all__ = [
     "test_infra_workspace_sync",
     "test_ssot_enforcement",
     "transformers",
+    "u",
     "validate",
     "workspace",
-    "workspace_main",
-    "workspace_root",
     "x",
 ]
 

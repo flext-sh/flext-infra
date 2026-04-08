@@ -1,18 +1,4 @@
-"""Shared service base for flext-infra command services.
-
-Two-class design mirroring flext-cli's base.py pattern:
-
-- ``FlextInfraServiceBase`` (~40 LOC) -- thin foundation with settings
-  access and bootstrap options only.  Suitable for services that need
-  no shared command-context fields (e.g. the API facade).
-
-- ``FlextInfraCommandContext`` (~90 LOC) -- mixin inheriting the thin
-  base and carrying domain fields used by every CLI command service
-  (workspace_root, apply_changes, dry_run, etc.).
-
-The module-level ``s`` alias points to ``FlextInfraCommandContext`` so
-that existing ``s[T]`` consumers keep working without import changes.
-"""
+"""Shared service foundation for flext-infra command services."""
 
 from __future__ import annotations
 
@@ -22,7 +8,6 @@ from pathlib import Path
 from typing import Annotated, Self, TypeVar, override
 
 from pydantic import ConfigDict, Field, field_validator
-from pydantic.config import JsonDict
 
 from flext_cli import FlextCliSettings
 from flext_core import (
@@ -37,25 +22,17 @@ from flext_infra import FlextInfraConstantsBase, FlextInfraTypesBase
 TDomainResult = TypeVar("TDomainResult", bound=FlextInfraTypesBase.DomainOutput)
 
 
-def _apply_option_json_schema_extra(schema: JsonDict) -> None:
-    """Inject Typer dual-flag metadata without importing the facade root."""
-    schema["typer_param_decls"] = list(FlextInfraConstantsBase.Cli.APPLY_OPTION_DECLS)
-
-
-# ---------------------------------------------------------------------------
-# Thin service base (~40 LOC) -- mirrors FlextCliServiceBase
-# ---------------------------------------------------------------------------
-
-
 class FlextInfraServiceBase(
     core_service_base[TDomainResult],
     ABC,
 ):
-    """Thin base class for flext-infra services.
+    """Domain command context shared by all flext-infra CLI services.
 
-    Provides settings access and runtime bootstrap only.
-    Domain command fields live in :class:`FlextInfraCommandContext`.
+    Provides settings/bootstrap and normalized fields for workspace location,
+    apply/dry-run toggles, output formatting, and project filtering.
     """
+
+    model_config = ConfigDict(populate_by_name=True)
 
     @property
     @override
@@ -68,24 +45,6 @@ class FlextInfraServiceBase(
     def _runtime_bootstrap_options(cls) -> FlextProtocols.RuntimeBootstrapOptions:
         """Bootstrap service runtime using the shared CLI settings namespace."""
         return FlextModels.RuntimeBootstrapOptions(config_type=FlextCliSettings)
-
-
-# ---------------------------------------------------------------------------
-# Command context mixin (~90 LOC) -- carries all domain fields
-# ---------------------------------------------------------------------------
-
-
-class FlextInfraCommandContext(
-    FlextInfraServiceBase[TDomainResult],
-):
-    """Domain command context shared by all flext-infra CLI services.
-
-    Inherits settings + bootstrap from :class:`FlextInfraServiceBase`
-    and adds fields for workspace location, apply/dry-run toggles,
-    output formatting, and project filtering.
-    """
-
-    model_config = ConfigDict(populate_by_name=True)
 
     workspace_root: Annotated[
         Path,
@@ -101,7 +60,11 @@ class FlextInfraCommandContext(
             default=False,
             alias="apply",
             description="Apply changes",
-            json_schema_extra=_apply_option_json_schema_extra,
+            json_schema_extra={
+                "typer_param_decls": list(
+                    FlextInfraConstantsBase.Cli.APPLY_OPTION_DECLS
+                )
+            },
         ),
     ]
     check_only: Annotated[
@@ -200,16 +163,9 @@ class FlextInfraCommandContext(
         return params.execute()
 
 
-# ---------------------------------------------------------------------------
-# Aliases & exports
-# ---------------------------------------------------------------------------
-
-# ``s`` points to FlextInfraCommandContext for backward compatibility.
-# All existing ``s[T]`` consumers access domain fields and need them.
-s = FlextInfraCommandContext
+s = FlextInfraServiceBase
 
 __all__ = [
-    "FlextInfraCommandContext",
     "FlextInfraServiceBase",
     "s",
 ]

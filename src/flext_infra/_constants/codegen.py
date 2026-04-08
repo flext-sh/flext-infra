@@ -31,10 +31,10 @@ class FlextInfraConstantsCodegen:
     "Base module definitions for src/: (filename, class_suffix, base_class, docstring)."
     TESTS_MODULES: Final[t.Infra.VariadicTuple[t.Infra.Quad[str, str, str, str]]] = (
         ("constants.py", "Constants", "FlextTestsConstants", "Test constants"),
-        ("typings.py", "Types", "FlextTestsTypes", "Test type aliases"),
-        ("protocols.py", "Protocols", "FlextTestsProtocols", "Test protocols"),
-        ("models.py", "Models", "FlextTestsModels", "Test models"),
-        ("utilities.py", "Utilities", "FlextTestsUtilities", "Test utilities"),
+        ("typings.py", "Types", "TestsFlextTypes", "Test type aliases"),
+        ("protocols.py", "Protocols", "TestsFlextProtocols", "Test protocols"),
+        ("models.py", "Models", "TestsFlextModels", "Test models"),
+        ("utilities.py", "Utilities", "TestsFlextUtilities", "Test utilities"),
     )
     "Base module definitions for tests/: (filename, class_suffix, base_class, docstring)."
     VIOLATION_PATTERN: Final[re.Pattern[str]] = re.compile(
@@ -91,6 +91,7 @@ class FlextInfraConstantsCodegen:
         "cleanup_submodule_namespace",
         "install_lazy_exports",
         "lazy_getattr",
+        "logger",
         "merge_lazy_imports",
         "output",
         "output_reporting",

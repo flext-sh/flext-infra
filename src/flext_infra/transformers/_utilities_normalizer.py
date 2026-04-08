@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from flext_infra._utilities.import_normalizer import (
+from flext_infra import (
     FlextInfraNormalizerContext,
     FlextInfraUtilitiesImportNormalizer,
 )

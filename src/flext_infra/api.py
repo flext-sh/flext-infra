@@ -15,7 +15,7 @@ from flext_infra import (
     FlextInfraCliRelease,
     FlextInfraCliValidate,
     FlextInfraCliWorkspace,
-    FlextInfraCommandContext,
+    FlextInfraServiceBase,
     FlextInfraServiceBasemkMixin,
     FlextInfraServiceCheckMixin,
     FlextInfraServiceCodegenMixin,
@@ -50,7 +50,7 @@ class FlextInfra(
     FlextInfraServiceReleaseMixin,
     FlextInfraServiceValidateMixin,
     FlextInfraServiceWorkspaceMixin,
-    FlextInfraCommandContext[t.MutableContainerMapping],
+    FlextInfraServiceBase[t.MutableContainerMapping],
 ):
     """Thin public MRO facade over infra services and CLI groups."""
 
@@ -76,5 +76,6 @@ class FlextInfra(
 
 
 infra = FlextInfra.get_instance()
+
 
 __all__ = ["FlextInfra", "infra"]

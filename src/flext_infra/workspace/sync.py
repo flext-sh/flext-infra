@@ -17,7 +17,7 @@ from pydantic import Field
 
 from flext_infra import (
     FlextInfraBaseMkGenerator,
-    FlextInfraCommandContext,
+    FlextInfraServiceBase,
     c,
     m,
     r,
@@ -26,7 +26,7 @@ from flext_infra import (
 )
 
 
-class FlextInfraSyncService(FlextInfraCommandContext[m.Infra.SyncResult]):
+class FlextInfraSyncService(FlextInfraServiceBase[m.Infra.SyncResult]):
     """Infrastructure service for workspace base.mk synchronization.
 
     Generates a fresh base.mk via ``FlextInfraBaseMkGenerator``, compares its SHA256

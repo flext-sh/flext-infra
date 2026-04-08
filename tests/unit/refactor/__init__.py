@@ -29,7 +29,6 @@ if _t.TYPE_CHECKING:
 
     test_infra_refactor_engine = _tests_unit_refactor_test_infra_refactor_engine
     import tests.unit.refactor.test_infra_refactor_import_modernizer as _tests_unit_refactor_test_infra_refactor_import_modernizer
-    from tests.unit.refactor.test_infra_refactor_engine import BrokenRule
 
     test_infra_refactor_import_modernizer = (
         _tests_unit_refactor_test_infra_refactor_import_modernizer
@@ -75,10 +74,6 @@ if _t.TYPE_CHECKING:
         _tests_unit_refactor_test_infra_refactor_namespace_source
     )
     import tests.unit.refactor.test_infra_refactor_pattern_corrections as _tests_unit_refactor_test_infra_refactor_pattern_corrections
-    from tests.unit.refactor.test_infra_refactor_namespace_source import (
-        FAMILY_FILE_MAP,
-        FAMILY_SUFFIX_MAP,
-    )
 
     test_infra_refactor_pattern_corrections = (
         _tests_unit_refactor_test_infra_refactor_pattern_corrections
@@ -97,7 +92,6 @@ if _t.TYPE_CHECKING:
 
     test_infra_refactor_safety = _tests_unit_refactor_test_infra_refactor_safety
     import tests.unit.refactor.test_infra_refactor_typing_unifier as _tests_unit_refactor_test_infra_refactor_typing_unifier
-    from tests.unit.refactor.test_infra_refactor_safety import EngineSafetyStub
 
     test_infra_refactor_typing_unifier = (
         _tests_unit_refactor_test_infra_refactor_typing_unifier
@@ -105,34 +99,27 @@ if _t.TYPE_CHECKING:
     import tests.unit.refactor.test_main_cli as _tests_unit_refactor_test_main_cli
 
     test_main_cli = _tests_unit_refactor_test_main_cli
-    from tests.unit.refactor.test_main_cli import refactor_main
-
+    from flext_core.constants import FlextConstants as c
     from flext_core.decorators import FlextDecorators as d
     from flext_core.exceptions import FlextExceptions as e
     from flext_core.handlers import FlextHandlers as h
     from flext_core.mixins import FlextMixins as x
+    from flext_core.models import FlextModels as m
+    from flext_core.protocols import FlextProtocols as p
     from flext_core.result import FlextResult as r
     from flext_core.service import FlextService as s
+    from flext_core.typings import FlextTypes as t
+    from flext_core.utilities import FlextUtilities as u
 _LAZY_IMPORTS = {
-    "BrokenRule": ("tests.unit.refactor.test_infra_refactor_engine", "BrokenRule"),
-    "EngineSafetyStub": (
-        "tests.unit.refactor.test_infra_refactor_safety",
-        "EngineSafetyStub",
-    ),
-    "FAMILY_FILE_MAP": (
-        "tests.unit.refactor.test_infra_refactor_namespace_source",
-        "FAMILY_FILE_MAP",
-    ),
-    "FAMILY_SUFFIX_MAP": (
-        "tests.unit.refactor.test_infra_refactor_namespace_source",
-        "FAMILY_SUFFIX_MAP",
-    ),
+    "c": ("flext_core.constants", "FlextConstants"),
     "d": ("flext_core.decorators", "FlextDecorators"),
     "e": ("flext_core.exceptions", "FlextExceptions"),
     "h": ("flext_core.handlers", "FlextHandlers"),
+    "m": ("flext_core.models", "FlextModels"),
+    "p": ("flext_core.protocols", "FlextProtocols"),
     "r": ("flext_core.result", "FlextResult"),
-    "refactor_main": ("tests.unit.refactor.test_main_cli", "refactor_main"),
     "s": ("flext_core.service", "FlextService"),
+    "t": ("flext_core.typings", "FlextTypes"),
     "test_infra_refactor_class_and_propagation": "tests.unit.refactor.test_infra_refactor_class_and_propagation",
     "test_infra_refactor_class_placement": "tests.unit.refactor.test_infra_refactor_class_placement",
     "test_infra_refactor_cli_models_workflow": "tests.unit.refactor.test_infra_refactor_cli_models_workflow",
@@ -152,20 +139,20 @@ _LAZY_IMPORTS = {
     "test_infra_refactor_safety": "tests.unit.refactor.test_infra_refactor_safety",
     "test_infra_refactor_typing_unifier": "tests.unit.refactor.test_infra_refactor_typing_unifier",
     "test_main_cli": "tests.unit.refactor.test_main_cli",
+    "u": ("flext_core.utilities", "FlextUtilities"),
     "x": ("flext_core.mixins", "FlextMixins"),
 }
 
 __all__ = [
-    "FAMILY_FILE_MAP",
-    "FAMILY_SUFFIX_MAP",
-    "BrokenRule",
-    "EngineSafetyStub",
+    "c",
     "d",
     "e",
     "h",
+    "m",
+    "p",
     "r",
-    "refactor_main",
     "s",
+    "t",
     "test_infra_refactor_class_and_propagation",
     "test_infra_refactor_class_placement",
     "test_infra_refactor_cli_models_workflow",
@@ -185,6 +172,7 @@ __all__ = [
     "test_infra_refactor_safety",
     "test_infra_refactor_typing_unifier",
     "test_main_cli",
+    "u",
     "x",
 ]
 

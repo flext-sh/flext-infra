@@ -11,7 +11,6 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 from flext_infra import (
-    FlextInfraConstantsCore,
     FlextInfraConstantsSharedInfra,
 )
 
@@ -182,13 +181,13 @@ class FlextInfraNamespaceRules:
         if not (isinstance(node, ast.Assign) and isinstance(node.value, ast.Call)):
             return seq, violations
         func_name = self._get_call_name(node.value.func)
-        if func_name not in FlextInfraConstantsCore.COLLECTION_CALLS:
+        if func_name not in FlextInfraConstantsSharedInfra.COLLECTION_CALLS:
             return seq, violations
         target_name = self._get_assign_target_name(node)
         if (
             target_name
-            and target_name not in FlextInfraConstantsCore.DUNDER_ALLOWED
-            and target_name not in FlextInfraConstantsCore.ALIAS_NAMES
+            and target_name not in FlextInfraConstantsSharedInfra.DUNDER_ALLOWED
+            and target_name not in FlextInfraConstantsSharedInfra.ALIAS_NAMES
         ):
             seq += 1
             violations.append(
@@ -207,7 +206,7 @@ class FlextInfraNamespaceRules:
             if isinstance(inner, ast.ClassDef) and any(
                 self._base_contains(b, base)
                 for b in inner.bases
-                for base in FlextInfraConstantsCore.ENUM_BASES
+                for base in FlextInfraConstantsSharedInfra.ENUM_BASES
             ):
                 seq += 1
                 violations.append(
@@ -298,7 +297,7 @@ class FlextInfraNamespaceRules:
         if not (isinstance(node, ast.Assign) and isinstance(node.value, ast.Call)):
             return seq, violations
         func_name = self._get_call_name(node.value.func)
-        if func_name not in FlextInfraConstantsCore.TYPEVAR_CALLABLES:
+        if func_name not in FlextInfraConstantsSharedInfra.TYPEVAR_CALLABLES:
             return seq, violations
         target_name = self._get_assign_target_name(node)
         seq += 1
@@ -385,19 +384,19 @@ class FlextInfraNamespaceRules:
         for target in node.targets:
             if (
                 isinstance(target, ast.Name)
-                and target.id in FlextInfraConstantsCore.DUNDER_ALLOWED
+                and target.id in FlextInfraConstantsSharedInfra.DUNDER_ALLOWED
             ):
                 return True
         if len(node.targets) == 1:
             target = node.targets[0]
             if (
                 isinstance(target, ast.Name)
-                and target.id in FlextInfraConstantsCore.ALIAS_NAMES
+                and target.id in FlextInfraConstantsSharedInfra.ALIAS_NAMES
             ):
                 return True
         if isinstance(node.value, ast.Call):
             func_name = self._get_call_name(node.value.func)
-            if func_name in FlextInfraConstantsCore.TYPEVAR_CALLABLES:
+            if func_name in FlextInfraConstantsSharedInfra.TYPEVAR_CALLABLES:
                 return filepath.name == FlextInfraConstantsSharedInfra.Files.TYPINGS_PY
         return False
 

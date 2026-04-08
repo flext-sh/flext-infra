@@ -70,12 +70,17 @@ if _t.TYPE_CHECKING:
     import tests.unit.docs.validator_tests as _tests_unit_docs_validator_tests
 
     validator_tests = _tests_unit_docs_validator_tests
+    from flext_core.constants import FlextConstants as c
     from flext_core.decorators import FlextDecorators as d
     from flext_core.exceptions import FlextExceptions as e
     from flext_core.handlers import FlextHandlers as h
     from flext_core.mixins import FlextMixins as x
+    from flext_core.models import FlextModels as m
+    from flext_core.protocols import FlextProtocols as p
     from flext_core.result import FlextResult as r
     from flext_core.service import FlextService as s
+    from flext_core.typings import FlextTypes as t
+    from flext_core.utilities import FlextUtilities as u
 _LAZY_IMPORTS = {
     "auditor_budgets_tests": "tests.unit.docs.auditor_budgets_tests",
     "auditor_cli_tests": "tests.unit.docs.auditor_cli_tests",
@@ -84,6 +89,7 @@ _LAZY_IMPORTS = {
     "auditor_tests": "tests.unit.docs.auditor_tests",
     "builder_scope_tests": "tests.unit.docs.builder_scope_tests",
     "builder_tests": "tests.unit.docs.builder_tests",
+    "c": ("flext_core.constants", "FlextConstants"),
     "d": ("flext_core.decorators", "FlextDecorators"),
     "e": ("flext_core.exceptions", "FlextExceptions"),
     "fixer_internals_tests": "tests.unit.docs.fixer_internals_tests",
@@ -92,14 +98,18 @@ _LAZY_IMPORTS = {
     "generator_tests": "tests.unit.docs.generator_tests",
     "h": ("flext_core.handlers", "FlextHandlers"),
     "init_tests": "tests.unit.docs.init_tests",
+    "m": ("flext_core.models", "FlextModels"),
     "main_commands_tests": "tests.unit.docs.main_commands_tests",
     "main_entry_tests": "tests.unit.docs.main_entry_tests",
     "main_tests": "tests.unit.docs.main_tests",
+    "p": ("flext_core.protocols", "FlextProtocols"),
     "r": ("flext_core.result", "FlextResult"),
     "s": ("flext_core.service", "FlextService"),
     "shared_iter_tests": "tests.unit.docs.shared_iter_tests",
     "shared_tests": "tests.unit.docs.shared_tests",
     "shared_write_tests": "tests.unit.docs.shared_write_tests",
+    "t": ("flext_core.typings", "FlextTypes"),
+    "u": ("flext_core.utilities", "FlextUtilities"),
     "validator_internals_tests": "tests.unit.docs.validator_internals_tests",
     "validator_tests": "tests.unit.docs.validator_tests",
     "x": ("flext_core.mixins", "FlextMixins"),
@@ -113,6 +123,7 @@ __all__ = [
     "auditor_tests",
     "builder_scope_tests",
     "builder_tests",
+    "c",
     "d",
     "e",
     "fixer_internals_tests",
@@ -121,14 +132,18 @@ __all__ = [
     "generator_tests",
     "h",
     "init_tests",
+    "m",
     "main_commands_tests",
     "main_entry_tests",
     "main_tests",
+    "p",
     "r",
     "s",
     "shared_iter_tests",
     "shared_tests",
     "shared_write_tests",
+    "t",
+    "u",
     "validator_internals_tests",
     "validator_tests",
     "x",

@@ -65,12 +65,17 @@ if _t.TYPE_CHECKING:
     from flext_infra.services.validate import FlextInfraServiceValidateMixin
 
     workspace = _flext_infra_services_workspace
+    from flext_core.constants import FlextConstants as c
     from flext_core.decorators import FlextDecorators as d
     from flext_core.exceptions import FlextExceptions as e
     from flext_core.handlers import FlextHandlers as h
     from flext_core.mixins import FlextMixins as x
+    from flext_core.models import FlextModels as m
+    from flext_core.protocols import FlextProtocols as p
     from flext_core.result import FlextResult as r
     from flext_core.service import FlextService as s
+    from flext_core.typings import FlextTypes as t
+    from flext_core.utilities import FlextUtilities as u
     from flext_infra.services.workspace import FlextInfraServiceWorkspaceMixin
 _LAZY_IMPORTS = {
     "FlextInfraCodegenConsolidator": (
@@ -127,6 +132,7 @@ _LAZY_IMPORTS = {
     ),
     "FlextInfraToml": ("flext_infra.services.toml_engine", "FlextInfraToml"),
     "basemk": "flext_infra.services.basemk",
+    "c": ("flext_core.constants", "FlextConstants"),
     "check": "flext_infra.services.check",
     "codegen": "flext_infra.services.codegen",
     "consolidator": "flext_infra.services.consolidator",
@@ -137,12 +143,16 @@ _LAZY_IMPORTS = {
     "e": ("flext_core.exceptions", "FlextExceptions"),
     "github": "flext_infra.services.github",
     "h": ("flext_core.handlers", "FlextHandlers"),
+    "m": ("flext_core.models", "FlextModels"),
+    "p": ("flext_core.protocols", "FlextProtocols"),
     "pipeline": "flext_infra.services.pipeline",
     "r": ("flext_core.result", "FlextResult"),
     "refactor": "flext_infra.services.refactor",
     "release": "flext_infra.services.release",
     "s": ("flext_core.service", "FlextService"),
+    "t": ("flext_core.typings", "FlextTypes"),
     "toml_engine": "flext_infra.services.toml_engine",
+    "u": ("flext_core.utilities", "FlextUtilities"),
     "validate": "flext_infra.services.validate",
     "workspace": "flext_infra.services.workspace",
     "x": ("flext_core.mixins", "FlextMixins"),
@@ -164,6 +174,7 @@ __all__ = [
     "FlextInfraServiceWorkspaceMixin",
     "FlextInfraToml",
     "basemk",
+    "c",
     "check",
     "codegen",
     "consolidator",
@@ -174,12 +185,16 @@ __all__ = [
     "e",
     "github",
     "h",
+    "m",
+    "p",
     "pipeline",
     "r",
     "refactor",
     "release",
     "s",
+    "t",
     "toml_engine",
+    "u",
     "validate",
     "workspace",
     "x",

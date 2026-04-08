@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from flext_cli import cli as cli_service
 from flext_infra import (
     FlextInfraBaseMkValidator,
     FlextInfraInventoryService,
     FlextInfraPytestDiagExtractor,
+    FlextInfraServiceValidateMixin,
     FlextInfraSkillValidator,
     FlextInfraStubSupplyChain,
     FlextInfraTextPatternScanner,
@@ -16,15 +15,12 @@ from flext_infra import (
     t,
 )
 
-if TYPE_CHECKING:
-    from flext_infra import FlextInfra
 
-
-class FlextInfraCliValidate:
+class FlextInfraCliValidate(FlextInfraServiceValidateMixin):
     """Validate CLI group — composed into FlextInfraCli via MRO."""
 
     def register_validate(
-        self: FlextInfra,
+        self,
         app: t.Cli.CliApp,
     ) -> None:
         """Register validate commands on the given Typer app."""

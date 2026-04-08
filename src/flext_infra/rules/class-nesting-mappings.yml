@@ -1043,22 +1043,22 @@ class_nesting:
     target_name: FlextInfraSyncService
     confidence: medium
     reason: top_level_class_without_namespace_prefix
-  - loose_name: FlextTestsServiceBase
+  - loose_name: TestsFlextServiceBase
     current_file: flext-core/src/flext_tests/base.py
     target_namespace: FlextBase
-    target_name: FlextTestsServiceBase
+    target_name: TestsFlextServiceBase
     confidence: low
     reason: top_level_class_without_namespace_prefix
-  - loose_name: FlextTestsUtilityBase
+  - loose_name: TestsFlextUtilityBase
     current_file: flext-core/src/flext_tests/base.py
     target_namespace: FlextBase
-    target_name: FlextTestsUtilityBase
+    target_name: TestsFlextUtilityBase
     confidence: low
     reason: top_level_class_without_namespace_prefix
-  - loose_name: FlextTestsBuilders
+  - loose_name: TestsFlextBuilders
     current_file: flext-core/src/flext_tests/builders.py
     target_namespace: FlextBuilders
-    target_name: FlextTestsBuilders
+    target_name: TestsFlextBuilders
     confidence: low
     reason: top_level_class_without_namespace_prefix
   - loose_name: FlextTestsConstants
@@ -1085,52 +1085,52 @@ class_nesting:
     target_name: _WhalesDockerClient
     confidence: low
     reason: top_level_class_without_namespace_prefix
-  - loose_name: FlextTestsDocker
+  - loose_name: TestsFlextDocker
     current_file: flext-core/src/flext_tests/docker.py
     target_namespace: FlextDocker
-    target_name: FlextTestsDocker
+    target_name: TestsFlextDocker
     confidence: low
     reason: top_level_class_without_namespace_prefix
-  - loose_name: FlextTestsDomains
+  - loose_name: TestsFlextDomains
     current_file: flext-core/src/flext_tests/domains.py
     target_namespace: FlextDomains
-    target_name: FlextTestsDomains
+    target_name: TestsFlextDomains
     confidence: low
     reason: top_level_class_without_namespace_prefix
-  - loose_name: FlextTestsFactories
+  - loose_name: TestsFlextFactories
     current_file: flext-core/src/flext_tests/factories.py
     target_namespace: FlextFactories
-    target_name: FlextTestsFactories
+    target_name: TestsFlextFactories
     confidence: low
     reason: top_level_class_without_namespace_prefix
-  - loose_name: FlextTestsFiles
+  - loose_name: TestsFlextFiles
     current_file: flext-core/src/flext_tests/files.py
     target_namespace: FlextFiles
-    target_name: FlextTestsFiles
+    target_name: TestsFlextFiles
     confidence: low
     reason: top_level_class_without_namespace_prefix
-  - loose_name: FlextTestsMatchers
+  - loose_name: TestsFlextMatchers
     current_file: flext-core/src/flext_tests/matchers.py
     target_namespace: FlextMatchers
-    target_name: FlextTestsMatchers
+    target_name: TestsFlextMatchers
     confidence: low
     reason: top_level_class_without_namespace_prefix
-  - loose_name: FlextTestsModels
+  - loose_name: TestsFlextModels
     current_file: flext-core/src/flext_tests/models.py
     target_namespace: FlextModels
-    target_name: FlextTestsModels
+    target_name: TestsFlextModels
     confidence: low
     reason: top_level_class_without_namespace_prefix
-  - loose_name: FlextTestsProtocols
+  - loose_name: TestsFlextProtocols
     current_file: flext-core/src/flext_tests/protocols.py
     target_namespace: FlextProtocols
-    target_name: FlextTestsProtocols
+    target_name: TestsFlextProtocols
     confidence: low
     reason: top_level_class_without_namespace_prefix
-  - loose_name: FlextTestsTypes
+  - loose_name: TestsFlextTypes
     current_file: flext-core/src/flext_tests/typings.py
     target_namespace: FlextTypings
-    target_name: FlextTestsTypes
+    target_name: TestsFlextTypes
     confidence: low
     reason: top_level_class_without_namespace_prefix
   - loose_name: _EntityFactory
@@ -1145,15 +1145,15 @@ class_nesting:
     target_name: _ValueFactory
     confidence: low
     reason: top_level_class_without_namespace_prefix
-  - loose_name: FlextTestsUtilities
+  - loose_name: TestsFlextUtilities
     current_file: flext-core/src/flext_tests/utilities.py
     target_namespace: FlextUtilities
-    target_name: FlextTestsUtilities
+    target_name: TestsFlextUtilities
     confidence: low
     reason: top_level_class_without_namespace_prefix
-  - loose_name: FlextTestsValidator
+  - loose_name: TestsFlextValidator
     current_file: flext-core/src/flext_tests/validator.py
     target_namespace: FlextValidator
-    target_name: FlextTestsValidator
+    target_name: TestsFlextValidator
     confidence: low
     reason: top_level_class_without_namespace_prefix

@@ -2,6 +2,6 @@
 
 from __future__ import annotations
 
-from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen
+from flext_infra import FlextInfraUtilitiesCodegen
 
 __all__ = ["FlextInfraUtilitiesCodegen"]

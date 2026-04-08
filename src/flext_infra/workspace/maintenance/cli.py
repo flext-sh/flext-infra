@@ -2,20 +2,20 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from flext_cli import cli
-from flext_infra import FlextInfraPythonVersionEnforcer, m, t
+from flext_infra import (
+    FlextInfraPythonVersionEnforcer,
+    FlextInfraServiceWorkspaceMixin,
+    m,
+    t,
+)
 
-if TYPE_CHECKING:
-    from flext_infra import FlextInfra
 
-
-class FlextInfraCliMaintenance:
+class FlextInfraCliMaintenance(FlextInfraServiceWorkspaceMixin):
     """Maintenance CLI group — composed into FlextInfraCli via MRO."""
 
     def register_maintenance(
-        self: FlextInfra,
+        self,
         app: t.Cli.CliApp,
     ) -> None:
         """Register maintenance commands on the given Typer app."""

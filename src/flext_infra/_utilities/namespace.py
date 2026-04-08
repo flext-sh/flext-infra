@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping, MutableSequence, Sequence
 from pathlib import Path
+from typing import ClassVar
 
 from flext_cli import r, u
 from flext_infra import (
@@ -22,7 +23,7 @@ from flext_infra import (
 class FlextInfraUtilitiesCodegenNamespace:
     """Canonical namespace helpers for codegen discovery, parsing, and fixes."""
 
-    _GENINIT_SURFACE_PREFIXES: t.StrMapping = {
+    _GENINIT_SURFACE_PREFIXES: ClassVar[t.StrMapping] = {
         c.Infra.Directories.TESTS: "Tests",
         c.Infra.Directories.EXAMPLES: "Examples",
         c.Infra.Directories.SCRIPTS: "Scripts",
@@ -42,15 +43,16 @@ class FlextInfraUtilitiesCodegenNamespace:
         c.Infra.Files.TYPINGS_PY,
         c.Infra.Files.UTILITIES_PY,
     )
-    _GENINIT_PUBLIC_FILE_ALIASES: t.StrMapping = {
+    _GENINIT_PUBLIC_FILE_ALIASES: ClassVar[t.StrMapping] = {
         c.Infra.Files.CONSTANTS_PY: "c",
         "helpers.py": "h",
         c.Infra.Files.MODELS_PY: "m",
         c.Infra.Files.PROTOCOLS_PY: "p",
+        "service.py": "s",
         c.Infra.Files.TYPINGS_PY: "t",
         c.Infra.Files.UTILITIES_PY: "u",
     }
-    _GENINIT_PUBLIC_FILE_SUFFIXES: t.StrMapping = {
+    _GENINIT_PUBLIC_FILE_SUFFIXES: ClassVar[t.StrMapping] = {
         c.Infra.Files.CONSTANTS_PY: "Constants",
         "helpers.py": "Helpers",
         c.Infra.Files.MODELS_PY: "Models",
@@ -58,6 +60,18 @@ class FlextInfraUtilitiesCodegenNamespace:
         c.Infra.Files.TYPINGS_PY: "Types",
         c.Infra.Files.UTILITIES_PY: "Utilities",
     }
+    _GENINIT_PRIVATE_FAMILY_TOKENS: ClassVar[dict[str, tuple[str, ...]]] = {
+        "c": ("Constants",),
+        "m": ("Models",),
+        "p": ("Protocols",),
+        "t": ("Types", "Typing"),
+        "u": ("Utilities",),
+    }
+
+    @classmethod
+    def is_root_namespace_file(cls, file_name: str) -> bool:
+        """Return whether *file_name* is a governed root-namespace facade file."""
+        return file_name in cls._GENINIT_ROOT_NAMESPACE_FILES
 
     @staticmethod
     def discover_project_root(path: Path) -> Path | None:
@@ -94,6 +108,8 @@ class FlextInfraUtilitiesCodegenNamespace:
             return ""
         for child in sorted(src_dir.iterdir()):
             if child.is_dir() and (child / c.Infra.Files.INIT_PY).exists():
+                if child.name == c.Infra.Packages.CORE_UNDERSCORE:
+                    return "Flext"
                 return "".join(part.title() for part in child.name.split("_"))
         return ""
 
@@ -140,6 +156,20 @@ class FlextInfraUtilitiesCodegenNamespace:
             )
         return cls._GENINIT_PUBLIC_FILE_ALIASES.get(file_path.name)
 
+    @staticmethod
+    def geninit_expected_api_singleton_alias(file_path: Path) -> str | None:
+        """Return the canonical singleton alias allowed in a root ``api.py``."""
+        if file_path.name != "api.py":
+            return None
+        package_name = FlextInfraUtilitiesDiscovery.discover_package_from_file(
+            file_path
+        )
+        if not package_name or "." in package_name:
+            return None
+        if package_name.startswith(c.Infra.Packages.PREFIX_UNDERSCORE):
+            return package_name.removeprefix(c.Infra.Packages.PREFIX_UNDERSCORE)
+        return None
+
     @classmethod
     def geninit_expected_family(cls, file_path: Path) -> str | None:
         """Return the canonical namespace family suffix for *file_path*."""
@@ -147,19 +177,40 @@ class FlextInfraUtilitiesCodegenNamespace:
             if file_path.parent.name == directory:
                 return c.Infra.FAMILY_SUFFIXES[alias]
         if file_path.parent.name == "services":
+            if file_path.name == "base.py":
+                return "ServiceBase"
             return "Mixin"
-        if file_path.name in {"service.py", "services.py"}:
+        if file_path.name == "service.py":
+            return "Service"
+        if file_path.name == "services.py":
             return "Services"
         return cls._GENINIT_PUBLIC_FILE_SUFFIXES.get(file_path.name)
 
     @classmethod
-    def should_enforce_geninit_contract(cls, rel_path: Path) -> bool:
+    def geninit_expected_family_tokens(cls, file_path: Path) -> tuple[str, ...]:
+        """Return accepted family markers for private namespace modules."""
+        for alias, directory in c.Infra.FAMILY_DIRECTORIES.items():
+            if file_path.parent.name == directory:
+                return cls._GENINIT_PRIVATE_FAMILY_TOKENS.get(alias, ())
+        family = cls.geninit_expected_family(file_path)
+        return (family,) if family else ()
+
+    @classmethod
+    def should_enforce_geninit_contract(
+        cls,
+        rel_path: Path,
+        *,
+        current_pkg: str = "",
+    ) -> bool:
         """Return True when ``gen-init`` must enforce strict namespace shape."""
         if any(part in c.Infra.FAMILY_DIRECTORIES.values() for part in rel_path.parts):
             return True
         if "services" in rel_path.parts:
             return True
-        return rel_path.name in cls._GENINIT_ROOT_NAMESPACE_FILES
+        if rel_path.name not in cls._GENINIT_ROOT_NAMESPACE_FILES:
+            return False
+        package_depth = len([part for part in current_pkg.split(".") if part])
+        return package_depth <= 1
 
     @classmethod
     def discover_codegen_projects(
@@ -271,11 +322,15 @@ class FlextInfraUtilitiesCodegenNamespace:
     ) -> None:
         if not file_path.is_file():
             return
-        rope_project = FlextInfraUtilitiesRopeSource.init_rope_project(file_path.parent)
+        rope_project: t.Infra.RopeProject = (
+            FlextInfraUtilitiesRopeSource.init_rope_project(file_path.parent)
+        )
         try:
-            resource = FlextInfraUtilitiesRopeSource.get_resource_from_path(
-                rope_project,
-                file_path,
+            resource: t.Infra.RopeResource | None = (
+                FlextInfraUtilitiesRopeSource.get_resource_from_path(
+                    rope_project,
+                    file_path,
+                )
             )
             if resource is None:
                 return

@@ -17,8 +17,8 @@ from pydantic import Field
 
 from flext_core import r
 from flext_infra import (
-    FlextInfraCommandContext,
     FlextInfraNamespaceValidator,
+    FlextInfraServiceBase,
     c,
     m,
     p,
@@ -27,7 +27,7 @@ from flext_infra import (
 )
 
 
-class FlextInfraCodegenCensus(FlextInfraCommandContext[str]):
+class FlextInfraCodegenCensus(FlextInfraServiceBase[str]):
     """Read-only census service for namespace violation counting."""
 
     class_to_analyze: Annotated[

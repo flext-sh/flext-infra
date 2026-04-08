@@ -2,20 +2,14 @@
 
 from __future__ import annotations
 
-from flext_infra._utilities.codegen_constants import (
+from flext_infra import (
     FlextInfraUtilitiesCodegenConstantAnalysis,
     FlextInfraUtilitiesCodegenConstantDetection,
     FlextInfraUtilitiesCodegenConstantTransformation,
-)
-from flext_infra._utilities.codegen_execution import FlextInfraUtilitiesCodegenExecution
-from flext_infra._utilities.codegen_import_cycles import (
+    FlextInfraUtilitiesCodegenExecution,
     FlextInfraUtilitiesCodegenImportCycles,
-)
-from flext_infra._utilities.codegen_lazy import (
     FlextInfraUtilitiesCodegenLazyAliases,
     FlextInfraUtilitiesCodegenLazyScanning,
-)
-from flext_infra._utilities.codegen_namespace import (
     FlextInfraUtilitiesCodegenNamespace,
 )
 

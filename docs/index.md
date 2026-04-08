@@ -18,7 +18,7 @@ This project portal is generated from `pyproject.toml`, package exports, and rea
 
 ## Public Surface Summary
 
-- Primary facades: `FlextInfra`, `FlextInfraCli`, `FlextInfraCommandContext`, `FlextInfraConstants`, `FlextInfraModels`, `FlextInfraProtocols` (+4 more)
+- Primary facades: `FlextInfra`, `FlextInfraCli`, `FlextInfraServiceBase`, `FlextInfraConstants`, `FlextInfraModels`, `FlextInfraProtocols` (+4 more)
 - Alias namespaces: `c`, `d`, `e`, `h`, `m`, `p`, `r`, `s`, `t`, `u`, `x`
 - Public symbol exports: `12`
 - Exported module shortcuts: `api`, `base`, `cli`, `constants`, `detectors`, `models` (+5 more)

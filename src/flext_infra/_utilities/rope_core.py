@@ -21,12 +21,7 @@ from rope.base.resources import File, Resource
 from rope.refactor.importutils.importinfo import FromImport
 from rope.refactor.importutils.module_imports import ModuleImports
 
-from flext_infra import (
-    FlextInfraUtilitiesIteration,
-    c,
-    m,
-    t,
-)
+from flext_infra import FlextInfraUtilitiesIteration, c, m, t
 
 
 class FlextInfraUtilitiesRopeCore:

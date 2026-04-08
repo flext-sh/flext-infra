@@ -4421,16 +4421,16 @@ rules:
   - project_kind: core
     facade_family: u
     module_family: other_private
-    source_symbol: FlextTestsServiceBase
+    source_symbol: TestsFlextServiceBase
     target_facade_class: FlextBase
-    target_namespace_path: FlextBase.FlextTestsServiceBase
+    target_namespace_path: FlextBase.TestsFlextServiceBase
     expected_base_chain: *id006
     forbidden_targets: []
     confidence: 0.5
     pre_checks:
       - type: source_symbol_is_class
         params:
-          symbol: FlextTestsServiceBase
+          symbol: TestsFlextServiceBase
       - type: target_facade_exists
         params:
           facade: FlextBase
@@ -4445,16 +4445,16 @@ rules:
   - project_kind: core
     facade_family: u
     module_family: other_private
-    source_symbol: FlextTestsUtilityBase
+    source_symbol: TestsFlextUtilityBase
     target_facade_class: FlextBase
-    target_namespace_path: FlextBase.FlextTestsUtilityBase
+    target_namespace_path: FlextBase.TestsFlextUtilityBase
     expected_base_chain: *id006
     forbidden_targets: []
     confidence: 0.5
     pre_checks:
       - type: source_symbol_is_class
         params:
-          symbol: FlextTestsUtilityBase
+          symbol: TestsFlextUtilityBase
       - type: target_facade_exists
         params:
           facade: FlextBase
@@ -4469,16 +4469,16 @@ rules:
   - project_kind: core
     facade_family: u
     module_family: other_private
-    source_symbol: FlextTestsBuilders
+    source_symbol: TestsFlextBuilders
     target_facade_class: FlextBuilders
-    target_namespace_path: FlextBuilders.FlextTestsBuilders
+    target_namespace_path: FlextBuilders.TestsFlextBuilders
     expected_base_chain: *id006
     forbidden_targets: []
     confidence: 0.5
     pre_checks:
       - type: source_symbol_is_class
         params:
-          symbol: FlextTestsBuilders
+          symbol: TestsFlextBuilders
       - type: target_facade_exists
         params:
           facade: FlextBuilders
@@ -4589,16 +4589,16 @@ rules:
   - project_kind: core
     facade_family: u
     module_family: other_private
-    source_symbol: FlextTestsDocker
+    source_symbol: TestsFlextDocker
     target_facade_class: FlextDocker
-    target_namespace_path: FlextDocker.FlextTestsDocker
+    target_namespace_path: FlextDocker.TestsFlextDocker
     expected_base_chain: *id006
     forbidden_targets: []
     confidence: 0.5
     pre_checks:
       - type: source_symbol_is_class
         params:
-          symbol: FlextTestsDocker
+          symbol: TestsFlextDocker
       - type: target_facade_exists
         params:
           facade: FlextDocker
@@ -4613,16 +4613,16 @@ rules:
   - project_kind: core
     facade_family: u
     module_family: other_private
-    source_symbol: FlextTestsDomains
+    source_symbol: TestsFlextDomains
     target_facade_class: FlextDomains
-    target_namespace_path: FlextDomains.FlextTestsDomains
+    target_namespace_path: FlextDomains.TestsFlextDomains
     expected_base_chain: *id006
     forbidden_targets: []
     confidence: 0.5
     pre_checks:
       - type: source_symbol_is_class
         params:
-          symbol: FlextTestsDomains
+          symbol: TestsFlextDomains
       - type: target_facade_exists
         params:
           facade: FlextDomains
@@ -4637,16 +4637,16 @@ rules:
   - project_kind: core
     facade_family: u
     module_family: other_private
-    source_symbol: FlextTestsFactories
+    source_symbol: TestsFlextFactories
     target_facade_class: FlextFactories
-    target_namespace_path: FlextFactories.FlextTestsFactories
+    target_namespace_path: FlextFactories.TestsFlextFactories
     expected_base_chain: *id006
     forbidden_targets: []
     confidence: 0.5
     pre_checks:
       - type: source_symbol_is_class
         params:
-          symbol: FlextTestsFactories
+          symbol: TestsFlextFactories
       - type: target_facade_exists
         params:
           facade: FlextFactories
@@ -4661,16 +4661,16 @@ rules:
   - project_kind: core
     facade_family: u
     module_family: other_private
-    source_symbol: FlextTestsFiles
+    source_symbol: TestsFlextFiles
     target_facade_class: FlextFiles
-    target_namespace_path: FlextFiles.FlextTestsFiles
+    target_namespace_path: FlextFiles.TestsFlextFiles
     expected_base_chain: *id006
     forbidden_targets: []
     confidence: 0.5
     pre_checks:
       - type: source_symbol_is_class
         params:
-          symbol: FlextTestsFiles
+          symbol: TestsFlextFiles
       - type: target_facade_exists
         params:
           facade: FlextFiles
@@ -4685,16 +4685,16 @@ rules:
   - project_kind: core
     facade_family: u
     module_family: other_private
-    source_symbol: FlextTestsMatchers
+    source_symbol: TestsFlextMatchers
     target_facade_class: FlextMatchers
-    target_namespace_path: FlextMatchers.FlextTestsMatchers
+    target_namespace_path: FlextMatchers.TestsFlextMatchers
     expected_base_chain: *id006
     forbidden_targets: []
     confidence: 0.5
     pre_checks:
       - type: source_symbol_is_class
         params:
-          symbol: FlextTestsMatchers
+          symbol: TestsFlextMatchers
       - type: target_facade_exists
         params:
           facade: FlextMatchers
@@ -4709,16 +4709,16 @@ rules:
   - project_kind: core
     facade_family: u
     module_family: other_private
-    source_symbol: FlextTestsModels
+    source_symbol: TestsFlextModels
     target_facade_class: FlextModels
-    target_namespace_path: FlextModels.FlextTestsModels
+    target_namespace_path: FlextModels.TestsFlextModels
     expected_base_chain: *id006
     forbidden_targets: []
     confidence: 0.5
     pre_checks:
       - type: source_symbol_is_class
         params:
-          symbol: FlextTestsModels
+          symbol: TestsFlextModels
       - type: target_facade_exists
         params:
           facade: FlextModels
@@ -4733,16 +4733,16 @@ rules:
   - project_kind: core
     facade_family: u
     module_family: other_private
-    source_symbol: FlextTestsProtocols
+    source_symbol: TestsFlextProtocols
     target_facade_class: FlextProtocols
-    target_namespace_path: FlextProtocols.FlextTestsProtocols
+    target_namespace_path: FlextProtocols.TestsFlextProtocols
     expected_base_chain: *id006
     forbidden_targets: []
     confidence: 0.5
     pre_checks:
       - type: source_symbol_is_class
         params:
-          symbol: FlextTestsProtocols
+          symbol: TestsFlextProtocols
       - type: target_facade_exists
         params:
           facade: FlextProtocols
@@ -4757,16 +4757,16 @@ rules:
   - project_kind: core
     facade_family: u
     module_family: other_private
-    source_symbol: FlextTestsTypes
+    source_symbol: TestsFlextTypes
     target_facade_class: FlextTypings
-    target_namespace_path: FlextTypings.FlextTestsTypes
+    target_namespace_path: FlextTypings.TestsFlextTypes
     expected_base_chain: *id006
     forbidden_targets: []
     confidence: 0.5
     pre_checks:
       - type: source_symbol_is_class
         params:
-          symbol: FlextTestsTypes
+          symbol: TestsFlextTypes
       - type: target_facade_exists
         params:
           facade: FlextTypings
@@ -4829,16 +4829,16 @@ rules:
   - project_kind: core
     facade_family: u
     module_family: other_private
-    source_symbol: FlextTestsUtilities
+    source_symbol: TestsFlextUtilities
     target_facade_class: FlextUtilities
-    target_namespace_path: FlextUtilities.FlextTestsUtilities
+    target_namespace_path: FlextUtilities.TestsFlextUtilities
     expected_base_chain: *id006
     forbidden_targets: []
     confidence: 0.5
     pre_checks:
       - type: source_symbol_is_class
         params:
-          symbol: FlextTestsUtilities
+          symbol: TestsFlextUtilities
       - type: target_facade_exists
         params:
           facade: FlextUtilities
@@ -4853,16 +4853,16 @@ rules:
   - project_kind: core
     facade_family: u
     module_family: other_private
-    source_symbol: FlextTestsValidator
+    source_symbol: TestsFlextValidator
     target_facade_class: FlextValidator
-    target_namespace_path: FlextValidator.FlextTestsValidator
+    target_namespace_path: FlextValidator.TestsFlextValidator
     expected_base_chain: *id006
     forbidden_targets: []
     confidence: 0.5
     pre_checks:
       - type: source_symbol_is_class
         params:
-          symbol: FlextTestsValidator
+          symbol: TestsFlextValidator
       - type: target_facade_exists
         params:
           facade: FlextValidator

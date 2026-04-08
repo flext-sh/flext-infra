@@ -7,8 +7,8 @@ from pathlib import Path
 from typing import Final
 
 
-class FlextInfraConstantsCore:
-    """Core infrastructure constants."""
+class FlextInfraConstantsSharedInfra:
+    """Shared infrastructure constants consumed by flext_infra.constants."""
 
     EXEMPT_FILENAMES: Final[frozenset[str]] = frozenset({
         "__init__.py",
@@ -57,10 +57,6 @@ class FlextInfraConstantsCore:
         r"Library stubs not installed for ['\"](\S+?)['\"]",
     )
     INTERNAL_PREFIXES: Final[tuple[str, ...]] = ("flext_", "flext-")
-
-
-class FlextInfraConstantsSharedInfra:
-    """Shared infrastructure constants consumed by flext_infra.constants."""
 
     class Files:
         PYPROJECT_FILENAME: Final[str] = "pyproject.toml"
@@ -136,4 +132,4 @@ class FlextInfraConstantsSharedInfra:
         DEFAULT_SRC_DIR: Final[str] = "src"
 
 
-__all__ = ["FlextInfraConstantsCore", "FlextInfraConstantsSharedInfra"]
+__all__ = ["FlextInfraConstantsSharedInfra"]

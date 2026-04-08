@@ -83,6 +83,8 @@ class FlextInfraUtilitiesCodegenLazyMerging:
         """Check if an export should bubble up to the parent package."""
         if name.startswith("_") or name in {c.Infra.Dunders.INIT, "main"}:
             return False
+        if name in c.Infra.ALIAS_NAMES:
+            return False
         if name in c.Infra.INFRA_ONLY_EXPORTS:
             return False
         return not name.isupper()
@@ -187,7 +189,7 @@ class FlextInfraUtilitiesCodegenLazyMerging:
                 (submodule, ""),
             )
         for name, (mod, attr) in sub_exports.items():
-            if attr == "":
+            if not attr:
                 continue
             if FlextInfraUtilitiesCodegenLazyMerging.should_bubble_up(name):
                 FlextInfraUtilitiesCodegenLazyMerging.register_export(
@@ -316,6 +318,11 @@ class FlextInfraUtilitiesCodegenLazyScanning(
             return
         if py_file.name in {c.Infra.Files.INIT_PY, "__main__.py", "__version__.py"}:
             return
+        if FlextInfraUtilitiesCodegenLazyScanning._belongs_to_nested_package(
+            py_file=py_file,
+            pkg_dir=pkg_dir,
+        ):
+            return
         sibling_package_init = py_file.parent / py_file.stem / c.Infra.Files.INIT_PY
         if sibling_package_init.exists():
             return
@@ -327,9 +334,17 @@ class FlextInfraUtilitiesCodegenLazyScanning(
         ):
             return
         if (
-            len(rel_path.parts) == 1
-            and py_file.name.startswith("_")
-            and "." not in current_pkg
+            py_file.stem.startswith("_")
+            and py_file.name
+            not in {
+                c.Infra.Files.INIT_PY,
+                "__main__.py",
+                "__version__.py",
+            }
+            and not any(
+                part in c.Infra.FAMILY_DIRECTORIES.values()
+                for part in current_pkg.split(".")
+            )
         ):
             return
         if py_file.stem[0:1].isdigit():
@@ -352,6 +367,7 @@ class FlextInfraUtilitiesCodegenLazyScanning(
             source=source,
             py_file=py_file,
             rel_path=rel_path,
+            current_pkg=current_pkg,
         )
 
         has_all = False
@@ -365,16 +381,31 @@ class FlextInfraUtilitiesCodegenLazyScanning(
                 words = re.findall(r'["\']([^"\']+)["\']', value_str)
                 all_exports.extend(words)
 
-        if has_all:
-            for name in all_exports:
-                if name in c.Infra.INFRA_ONLY_EXPORTS:
-                    continue
-                FlextInfraUtilitiesCodegenLazyScanning.register_export(
-                    index,
-                    name,
-                    (mod_path, name),
-                )
-        else:
+        should_export_symbols = (
+            FlextInfraUtilitiesCodegenLazyScanning._should_export_module_symbols(
+                mod_path=mod_path,
+                py_file=py_file,
+            )
+        )
+
+        if has_all and should_export_symbols:
+            if not FlextInfraUtilitiesCodegenLazyScanning._is_test_fixture_namespace(
+                current_pkg,
+            ):
+                for name in all_exports:
+                    if name in c.Infra.INFRA_ONLY_EXPORTS or name == "main":
+                        continue
+                    FlextInfraUtilitiesCodegenLazyScanning.register_export(
+                        index,
+                        name,
+                        (mod_path, name),
+                    )
+        elif (
+            should_export_symbols
+            and not FlextInfraUtilitiesCodegenLazyScanning._is_test_fixture_namespace(
+                current_pkg,
+            )
+        ):
             FlextInfraUtilitiesCodegenLazyScanning._scan_public_defs(
                 source,
                 mod_path,
@@ -386,6 +417,20 @@ class FlextInfraUtilitiesCodegenLazyScanning(
                 py_file.stem,
                 (mod_path, ""),
             )
+
+    @staticmethod
+    def _belongs_to_nested_package(
+        *,
+        py_file: Path,
+        pkg_dir: Path,
+    ) -> bool:
+        """Return True when a file belongs to a child package with its own __init__."""
+        current = py_file.parent
+        while current != pkg_dir:
+            if (current / c.Infra.Files.INIT_PY).exists():
+                return True
+            current = current.parent
+        return False
 
     @staticmethod
     def _skip_wrapper_root_file(
@@ -400,6 +445,10 @@ class FlextInfraUtilitiesCodegenLazyScanning(
         current_pkg_path = Path(*current_pkg.split("."))
         namespaced_src_dir = pkg_dir / c.Infra.Paths.DEFAULT_SRC_DIR / current_pkg_path
         return namespaced_src_dir.exists()
+
+    @staticmethod
+    def _is_test_fixture_namespace(current_pkg: str) -> bool:
+        return current_pkg.startswith("tests.fixtures")
 
     @staticmethod
     def _module_path_from_rel_path(
@@ -440,6 +489,27 @@ class FlextInfraUtilitiesCodegenLazyScanning(
             return ".".join(part for part in module_parts if part)
         module_parts = (root_segment, *remaining_parts)
         return ".".join(part for part in module_parts if part)
+
+    @staticmethod
+    def _should_export_module_symbols(
+        *,
+        mod_path: str,
+        py_file: Path,
+    ) -> bool:
+        parts = tuple(part for part in mod_path.split(".") if part)
+        if not parts:
+            return True
+        if parts[0] not in {
+            c.Infra.Directories.TESTS,
+            c.Infra.Directories.EXAMPLES,
+            c.Infra.Directories.SCRIPTS,
+        }:
+            return True
+        if any(part in c.Infra.FAMILY_DIRECTORIES.values() for part in parts):
+            return True
+        if "services" in parts:
+            return True
+        return FlextInfraUtilitiesCodegenNamespace.is_root_namespace_file(py_file.name)
 
     @staticmethod
     def package_name_from_rel_parts(
@@ -485,6 +555,14 @@ class FlextInfraUtilitiesCodegenLazyScanning(
                 names.append(node.name)
                 continue
             if isinstance(node, ast.Assign):
+                if (
+                    isinstance(node.value, ast.Call)
+                    and FlextInfraUtilitiesCodegenLazyScanning._call_name(
+                        node.value.func,
+                    )
+                    in c.Infra.TYPEVAR_CALLABLES
+                ):
+                    continue
                 names.extend(
                     target.id for target in node.targets if isinstance(target, ast.Name)
                 )
@@ -495,7 +573,11 @@ class FlextInfraUtilitiesCodegenLazyScanning(
         for name in names:
             if mod_path.startswith("tests.") and name == "pytestmark":
                 continue
-            if name.startswith("_") or name in c.Infra.INFRA_ONLY_EXPORTS:
+            if (
+                name.startswith("_")
+                or name == "main"
+                or name in c.Infra.INFRA_ONLY_EXPORTS
+            ):
                 continue
             FlextInfraUtilitiesCodegenLazyScanning.register_export(
                 index,
@@ -509,6 +591,7 @@ class FlextInfraUtilitiesCodegenLazyScanning(
         source: str,
         py_file: Path,
         rel_path: Path,
+        current_pkg: str,
     ) -> None:
         try:
             module = ast.parse(source)
@@ -518,6 +601,7 @@ class FlextInfraUtilitiesCodegenLazyScanning(
             module=module,
             py_file=py_file,
             rel_path=rel_path,
+            current_pkg=current_pkg,
         )
 
     @classmethod
@@ -527,10 +611,15 @@ class FlextInfraUtilitiesCodegenLazyScanning(
         module: ast.Module,
         py_file: Path,
         rel_path: Path,
+        current_pkg: str,
     ) -> None:
         if not FlextInfraUtilitiesCodegenNamespace.should_enforce_geninit_contract(
             rel_path,
+            current_pkg=current_pkg,
         ):
+            return
+        if cls._is_private_fixture_module(py_file):
+            cls._validate_fixture_module(module=module, py_file=py_file)
             return
         outer_classes = [node for node in module.body if isinstance(node, ast.ClassDef)]
         if len(outer_classes) != 1:
@@ -553,6 +642,7 @@ class FlextInfraUtilitiesCodegenLazyScanning(
                 node=node,
                 py_file=py_file,
                 expected_alias=expected_alias,
+                outer_class_name=class_node.name,
             ):
                 continue
             alias_error = cls._unexpected_alias_error(
@@ -571,6 +661,52 @@ class FlextInfraUtilitiesCodegenLazyScanning(
             raise ValueError(
                 msg,
             )
+
+    @classmethod
+    def _validate_fixture_module(
+        cls,
+        *,
+        module: ast.Module,
+        py_file: Path,
+    ) -> None:
+        for node in module.body:
+            if cls._is_allowed_fixture_module_level(node=node, py_file=py_file):
+                continue
+            lineno = getattr(node, "lineno", 1)
+            statement_name = cls._describe_top_level_statement(node)
+            msg = (
+                f"{py_file}:{lineno}: disallowed top-level {statement_name}; "
+                "fixture modules may only define imports, typevars, and pytest fixtures"
+            )
+            raise ValueError(msg)
+
+    @staticmethod
+    def _is_private_fixture_module(py_file: Path) -> bool:
+        return py_file.parent.name == "_fixtures"
+
+    @classmethod
+    def _is_allowed_fixture_module_level(
+        cls,
+        *,
+        node: ast.stmt,
+        py_file: Path,
+    ) -> bool:
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            return True
+        if cls._is_module_docstring(node):
+            return True
+        if isinstance(node, ast.Assign):
+            return cls._is_allowed_namespace_assign(
+                node=node,
+                py_file=py_file,
+                expected_alias=None,
+                outer_class_name=None,
+            )
+        if isinstance(node, ast.AnnAssign):
+            return cls._is_allowed_namespace_ann_assign(node=node, py_file=py_file)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            return cls._is_pytest_fixture(node)
+        return False
 
     @classmethod
     def _validate_outer_class_name(
@@ -593,29 +729,16 @@ class FlextInfraUtilitiesCodegenLazyScanning(
         if not family:
             return
         if py_file.parent.name in c.Infra.FAMILY_DIRECTORIES.values():
-            if py_file.parent.name == c.Infra.FAMILY_DIRECTORIES["c"]:
-                if prefix and not class_name.startswith(prefix):
-                    msg = (
-                        f"{py_file}:{class_node.lineno}: class {class_name!r} must "
-                        f"start with {prefix!r}"
-                    )
-                    raise ValueError(
-                        msg,
-                    )
-                if not class_name.endswith(family):
-                    msg = (
-                        f"{py_file}:{class_node.lineno}: class {class_name!r} must "
-                        f"end with {family!r}"
-                    )
-                    raise ValueError(
-                        msg,
-                    )
-                return
-            expected_prefix = f"{prefix}{family}" if prefix else family
-            if not class_name.startswith(expected_prefix):
+            family_tokens = (
+                FlextInfraUtilitiesCodegenNamespace.geninit_expected_family_tokens(
+                    py_file,
+                )
+            )
+            relative_name = class_name[len(prefix) :] if prefix else class_name
+            if not any(token in relative_name for token in family_tokens):
                 msg = (
                     f"{py_file}:{class_node.lineno}: class {class_name!r} must "
-                    f"start with {expected_prefix!r}"
+                    f"contain one of {family_tokens!r} after prefix {prefix!r}"
                 )
                 raise ValueError(
                     msg,
@@ -637,18 +760,24 @@ class FlextInfraUtilitiesCodegenLazyScanning(
         node: ast.stmt,
         py_file: Path,
         expected_alias: str | None,
+        outer_class_name: str | None,
     ) -> bool:
         if isinstance(node, (ast.Import, ast.ImportFrom)):
             return True
         if cls._is_module_docstring(node):
             return True
-        if cls._is_type_checking_block(node):
+        if cls._is_allowed_root_cli_main(node=node, py_file=py_file):
+            return True
+        if cls._is_allowed_root_cli_main_guard(node=node, py_file=py_file):
+            return True
+        if cls._is_type_checking_block(node=node, py_file=py_file):
             return True
         if isinstance(node, ast.Assign):
             return cls._is_allowed_namespace_assign(
                 node=node,
                 py_file=py_file,
                 expected_alias=expected_alias,
+                outer_class_name=outer_class_name,
             )
         if isinstance(node, ast.AnnAssign):
             return cls._is_allowed_namespace_ann_assign(node=node, py_file=py_file)
@@ -664,17 +793,127 @@ class FlextInfraUtilitiesCodegenLazyScanning(
             and isinstance(node.value.value, str)
         )
 
+    @staticmethod
+    def _is_root_cli_module(py_file: Path) -> bool:
+        return py_file.name == "cli.py"
+
     @classmethod
-    def _is_type_checking_block(cls, node: ast.stmt) -> bool:
+    def _is_allowed_root_cli_main(
+        cls,
+        *,
+        node: ast.stmt,
+        py_file: Path,
+    ) -> bool:
+        return (
+            cls._is_root_cli_module(py_file)
+            and isinstance(node, ast.FunctionDef)
+            and node.name == "main"
+        )
+
+    @classmethod
+    def _is_allowed_root_cli_main_guard(
+        cls,
+        *,
+        node: ast.stmt,
+        py_file: Path,
+    ) -> bool:
+        if not cls._is_root_cli_module(py_file):
+            return False
+        if not isinstance(node, ast.If) or node.orelse:
+            return False
+        if not cls._is_main_guard_test(node.test):
+            return False
+        return all(cls._is_main_guard_stmt(stmt) for stmt in node.body)
+
+    @staticmethod
+    def _is_main_guard_test(test: ast.expr) -> bool:
+        if not isinstance(test, ast.Compare) or len(test.ops) != 1:
+            return False
+        if not isinstance(test.ops[0], ast.Eq) or len(test.comparators) != 1:
+            return False
+        left = test.left
+        right = test.comparators[0]
+        return (
+            isinstance(left, ast.Name)
+            and left.id == "__name__"
+            and isinstance(right, ast.Constant)
+            and right.value == "__main__"
+        )
+
+    @classmethod
+    def _is_main_guard_stmt(cls, stmt: ast.stmt) -> bool:
+        if isinstance(stmt, ast.Expr):
+            return cls._is_main_call(stmt.value)
+        if isinstance(stmt, ast.Raise) and stmt.exc is not None:
+            return cls._is_main_call(stmt.exc)
+        return False
+
+    @classmethod
+    def _is_main_call(cls, expr: ast.expr) -> bool:
+        if isinstance(expr, ast.Call):
+            if isinstance(expr.func, ast.Name) and expr.func.id == "main":
+                return True
+            if isinstance(expr.func, ast.Name) and expr.func.id == "SystemExit":
+                return (
+                    len(expr.args) == 1
+                    and not expr.keywords
+                    and cls._is_main_call(expr.args[0])
+                )
+            if isinstance(expr.func, ast.Attribute) and expr.func.attr == "exit":
+                return (
+                    len(expr.args) == 1
+                    and not expr.keywords
+                    and cls._is_main_call(expr.args[0])
+                )
+        return False
+
+    @classmethod
+    def _is_type_checking_block(
+        cls,
+        *,
+        node: ast.stmt,
+        py_file: Path,
+    ) -> bool:
         if not isinstance(node, ast.If) or node.orelse:
             return False
         test = node.test
         is_type_checking = isinstance(test, ast.Name) and test.id == "TYPE_CHECKING"
         if not is_type_checking:
             return False
+        project_namespace = cls._type_checking_namespace(py_file)
+        if not project_namespace:
+            return False
         return all(
-            isinstance(item, (ast.Import, ast.ImportFrom, ast.Pass))
+            cls._is_allowed_type_checking_import(
+                node=item,
+                project_namespace=project_namespace,
+            )
             for item in node.body
+        )
+
+    @staticmethod
+    def _type_checking_namespace(py_file: Path) -> str:
+        module_path = FlextInfraUtilitiesDiscovery.discover_package_from_file(py_file)
+        if not module_path:
+            return ""
+        return module_path.split(".", 1)[0]
+
+    @staticmethod
+    def _is_allowed_type_checking_import(
+        *,
+        node: ast.stmt,
+        project_namespace: str,
+    ) -> bool:
+        if not isinstance(node, ast.ImportFrom):
+            return False
+        if node.level != 0 or node.module != project_namespace:
+            return False
+        if not node.names:
+            return False
+        allowed_aliases = {"c", "m", "t", "p", "u"}
+        return all(
+            imported.asname is None and imported.name in allowed_aliases
+            for imported in node.names
         )
 
     @classmethod
@@ -684,6 +923,7 @@ class FlextInfraUtilitiesCodegenLazyScanning(
         node: ast.Assign,
         py_file: Path,
         expected_alias: str | None,
+        outer_class_name: str | None,
     ) -> bool:
         target_names = [
             target.id for target in node.targets if isinstance(target, ast.Name)
@@ -698,11 +938,61 @@ class FlextInfraUtilitiesCodegenLazyScanning(
             and isinstance(node.value, (ast.Name, ast.Attribute))
         ):
             return True
+        if cls._is_allowed_base_service_alias(
+            target_names=target_names,
+            value=node.value,
+            py_file=py_file,
+            outer_class_name=outer_class_name,
+        ):
+            return True
+        singleton_alias = (
+            FlextInfraUtilitiesCodegenNamespace.geninit_expected_api_singleton_alias(
+                py_file,
+            )
+        )
+        if (
+            singleton_alias is not None
+            and outer_class_name is not None
+            and target_names == [singleton_alias]
+            and cls._is_allowed_api_singleton_assign(
+                node.value,
+                outer_class_name=outer_class_name,
+            )
+        ):
+            return True
         if not isinstance(node.value, ast.Call):
             return False
         func_name = cls._call_name(node.value.func)
-        return func_name in c.Infra.TYPEVAR_CALLABLES and cls._is_typings_namespace(
-            py_file,
+        return func_name in c.Infra.TYPEVAR_CALLABLES
+
+    @staticmethod
+    def _is_allowed_base_service_alias(
+        *,
+        target_names: Sequence[str],
+        value: ast.expr,
+        py_file: Path,
+        outer_class_name: str | None,
+    ) -> bool:
+        if py_file.name != "base.py" or target_names != ["s"]:
+            return False
+        if outer_class_name is None or not outer_class_name.endswith("ServiceBase"):
+            return False
+        return isinstance(value, ast.Name) and value.id == outer_class_name
+
+    @staticmethod
+    def _is_allowed_api_singleton_assign(
+        value: ast.expr,
+        *,
+        outer_class_name: str,
+    ) -> bool:
+        if not isinstance(value, ast.Call) or value.args or value.keywords:
+            return False
+        if not isinstance(value.func, ast.Attribute):
+            return False
+        return (
+            value.func.attr == "get_instance"
+            and isinstance(value.func.value, ast.Name)
+            and value.func.value.id == outer_class_name
         )
 
     @classmethod

@@ -15,12 +15,11 @@ from pathlib import Path
 
 from flext_core import r
 from flext_infra import (
-    FlextInfraConstantsCore,
     FlextInfraConstantsSharedInfra,
     FlextInfraModelsCore,
     FlextInfraNamespaceRules,
-    FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesParsing,
+    u,
 )
 
 
@@ -43,6 +42,11 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
                 child.is_dir()
                 and (child / FlextInfraConstantsSharedInfra.Files.INIT_PY).exists()
             ):
+                if (
+                    child.name
+                    == FlextInfraConstantsSharedInfra.Packages.CORE_UNDERSCORE
+                ):
+                    return "Flext"
                 return "".join(part.title() for part in child.name.split("_"))
         return ""
 
@@ -108,7 +112,7 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
                 continue
             result.extend(
                 py_file
-                for py_file in FlextInfraUtilitiesIteration.iter_directory_python_files(
+                for py_file in u.Infra.iter_directory_python_files(
                     base_dir,
                 )
                 if not self._is_exempt_file(py_file)
@@ -118,11 +122,11 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
     def _is_exempt_file(self, filepath: Path) -> bool:
         """Check whether a file should be skipped from validation."""
         name = filepath.name
-        if name in FlextInfraConstantsCore.EXEMPT_FILENAMES:
+        if name in FlextInfraConstantsSharedInfra.EXEMPT_FILENAMES:
             return True
         return any(
             name.startswith(prefix)
-            for prefix in FlextInfraConstantsCore.EXEMPT_PREFIXES
+            for prefix in FlextInfraConstantsSharedInfra.EXEMPT_PREFIXES
         )
 
     def _parse_file(self, path: Path) -> ast.Module | None:

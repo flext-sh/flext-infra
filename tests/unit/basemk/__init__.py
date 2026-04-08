@@ -14,7 +14,6 @@ if _t.TYPE_CHECKING:
 
     test_engine = _tests_unit_basemk_test_engine
     import tests.unit.basemk.test_generator as _tests_unit_basemk_test_generator
-    from tests.unit.basemk.test_engine import basemk_main
 
     test_generator = _tests_unit_basemk_test_generator
     import tests.unit.basemk.test_generator_edge_cases as _tests_unit_basemk_test_generator_edge_cases
@@ -29,41 +28,54 @@ if _t.TYPE_CHECKING:
     import tests.unit.basemk.test_make_contract as _tests_unit_basemk_test_make_contract
 
     test_make_contract = _tests_unit_basemk_test_make_contract
+    from flext_core.constants import FlextConstants as c
     from flext_core.decorators import FlextDecorators as d
     from flext_core.exceptions import FlextExceptions as e
     from flext_core.handlers import FlextHandlers as h
     from flext_core.mixins import FlextMixins as x
+    from flext_core.models import FlextModels as m
+    from flext_core.protocols import FlextProtocols as p
     from flext_core.result import FlextResult as r
     from flext_core.service import FlextService as s
+    from flext_core.typings import FlextTypes as t
+    from flext_core.utilities import FlextUtilities as u
 _LAZY_IMPORTS = {
-    "basemk_main": ("tests.unit.basemk.test_engine", "basemk_main"),
+    "c": ("flext_core.constants", "FlextConstants"),
     "d": ("flext_core.decorators", "FlextDecorators"),
     "e": ("flext_core.exceptions", "FlextExceptions"),
     "h": ("flext_core.handlers", "FlextHandlers"),
+    "m": ("flext_core.models", "FlextModels"),
+    "p": ("flext_core.protocols", "FlextProtocols"),
     "r": ("flext_core.result", "FlextResult"),
     "s": ("flext_core.service", "FlextService"),
+    "t": ("flext_core.typings", "FlextTypes"),
     "test_engine": "tests.unit.basemk.test_engine",
     "test_generator": "tests.unit.basemk.test_generator",
     "test_generator_edge_cases": "tests.unit.basemk.test_generator_edge_cases",
     "test_init": "tests.unit.basemk.test_init",
     "test_main": "tests.unit.basemk.test_main",
     "test_make_contract": "tests.unit.basemk.test_make_contract",
+    "u": ("flext_core.utilities", "FlextUtilities"),
     "x": ("flext_core.mixins", "FlextMixins"),
 }
 
 __all__ = [
-    "basemk_main",
+    "c",
     "d",
     "e",
     "h",
+    "m",
+    "p",
     "r",
     "s",
+    "t",
     "test_engine",
     "test_generator",
     "test_generator_edge_cases",
     "test_init",
     "test_main",
     "test_make_contract",
+    "u",
     "x",
 ]
 

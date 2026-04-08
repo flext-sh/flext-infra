@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING
 
-from flext_core import r
 from flext_infra import (
     FlextInfraCodegenCensus,
     FlextInfraCodegenConsolidator,
@@ -16,20 +14,19 @@ from flext_infra import (
     FlextInfraCodegenPyTyped,
     FlextInfraCodegenScaffolder,
     FlextInfraConstantsCodegenQualityGate,
+    FlextInfraServiceBase,
     m,
     p,
+    r,
     t,
 )
 
-if TYPE_CHECKING:
-    from flext_infra import FlextInfraCommandContext
 
-
-class FlextInfraServiceCodegenMixin:
+class FlextInfraServiceCodegenMixin(FlextInfraServiceBase[t.MutableContainerMapping]):
     """Expose codegen operations through the public infra facade."""
 
     def run_codegen_census(
-        self: FlextInfraCommandContext[t.MutableContainerMapping],
+        self,
         *,
         class_to_analyze: str | None = None,
         projects: Sequence[p.Infra.ProjectInfo] | None = None,
@@ -42,7 +39,7 @@ class FlextInfraServiceCodegenMixin:
         return service.run(projects=projects)
 
     def run_codegen_scaffold(
-        self: FlextInfraCommandContext[t.MutableContainerMapping],
+        self,
         *,
         projects: Sequence[p.Infra.ProjectInfo] | None = None,
     ) -> Sequence[m.Infra.ScaffoldResult]:
@@ -53,7 +50,7 @@ class FlextInfraServiceCodegenMixin:
         )
 
     def fix_codegen_workspace(
-        self: FlextInfraCommandContext[t.MutableContainerMapping],
+        self,
     ) -> Sequence[m.Infra.AutoFixResult]:
         """Run namespace/codegen fixes across the current workspace."""
         return FlextInfraCodegenFixer.model_validate(
@@ -61,7 +58,7 @@ class FlextInfraServiceCodegenMixin:
         ).fix_workspace()
 
     def generate_lazy_inits(
-        self: FlextInfraCommandContext[t.MutableContainerMapping],
+        self,
         *,
         check_only: bool | None = None,
     ) -> int:
@@ -73,7 +70,7 @@ class FlextInfraServiceCodegenMixin:
         return service.generate_inits(check_only=service.check_only)
 
     def update_py_typed(
-        self: FlextInfraCommandContext[t.MutableContainerMapping],
+        self,
         *,
         check_only: bool | None = None,
     ) -> int:
@@ -85,7 +82,7 @@ class FlextInfraServiceCodegenMixin:
         return service.run(check_only=service.check_only)
 
     def run_codegen_pipeline(
-        self: FlextInfraCommandContext[t.MutableContainerMapping],
+        self,
     ) -> r[str]:
         """Execute the full codegen pipeline through the public facade."""
         return FlextInfraCodegenPipeline.model_validate(
@@ -93,7 +90,7 @@ class FlextInfraServiceCodegenMixin:
         ).execute()
 
     def run_constants_quality_gate(
-        self: FlextInfraCommandContext[t.MutableContainerMapping],
+        self,
     ) -> r[bool]:
         """Execute the constants quality gate through the public facade."""
         return FlextInfraConstantsCodegenQualityGate.model_validate(
@@ -101,7 +98,7 @@ class FlextInfraServiceCodegenMixin:
         ).execute()
 
     def consolidate_codegen(
-        self: FlextInfraCommandContext[t.MutableContainerMapping],
+        self,
     ) -> r[str]:
         """Consolidate constants through the public facade."""
         return FlextInfraCodegenConsolidator.model_validate(
@@ -109,7 +106,7 @@ class FlextInfraServiceCodegenMixin:
         ).execute()
 
     def deduplicate_codegen(
-        self: FlextInfraCommandContext[t.MutableContainerMapping],
+        self,
     ) -> r[str]:
         """Deduplicate constants through the public facade."""
         return FlextInfraCodegenDeduplicator.model_validate(

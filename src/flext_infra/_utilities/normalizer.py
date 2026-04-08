@@ -57,7 +57,8 @@ class FlextInfraUtilitiesImportNormalizer(_CliYaml):
             "alias_tiers",
         )
         if not isinstance(config, Mapping):
-            return {}
+            empty_tiers: t.IntMapping = {}
+            return empty_tiers
         tiers: t.MutableIntMapping = {}
         for alias_name, tier_value in config.items():
             if len(alias_name) != 1 or not alias_name.islower():

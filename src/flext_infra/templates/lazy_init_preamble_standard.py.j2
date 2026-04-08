@@ -2,14 +2,14 @@ from __future__ import annotations
 
 {%- if use_root_helpers %}
 {%- if include_merge_helper %}
-from flext_core.lazy import install_lazy_exports, merge_lazy_imports
+from flext_core.lazy import  install_lazy_exports, merge_lazy_imports
 {%- else %}
-from flext_core.lazy import install_lazy_exports
+from flext_core.lazy import  install_lazy_exports
 {%- endif %}
 {%- else %}
 {%- if include_merge_helper %}
-from flext_core.lazy import install_lazy_exports, merge_lazy_imports
+from flext_core.lazy import  install_lazy_exports, merge_lazy_imports
 {%- else %}
-from flext_core.lazy import install_lazy_exports
+from flext_core.lazy import  install_lazy_exports
 {%- endif %}
 {%- endif %}

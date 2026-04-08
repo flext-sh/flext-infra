@@ -10,7 +10,7 @@ from pydantic import Field
 
 from flext_infra import (
     FlextInfraBaseMkGenerator,
-    FlextInfraCommandContext,
+    FlextInfraServiceBase,
     c,
     m,
     p,
@@ -21,7 +21,7 @@ from flext_infra import (
 
 
 class FlextInfraProjectMigrator(
-    FlextInfraCommandContext[Sequence[m.Infra.MigrationResult]]
+    FlextInfraServiceBase[Sequence[m.Infra.MigrationResult]]
 ):
     """Migrate projects to standardized base.mk, Makefile, and pyproject structure."""
 

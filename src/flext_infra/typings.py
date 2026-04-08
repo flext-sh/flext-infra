@@ -23,7 +23,7 @@ from flext_infra import (
 )
 
 if TYPE_CHECKING:
-    from flext_infra import FlextInfraModelsEngine
+    from flext_infra import m
 
 
 class FlextInfraTypes(t):
@@ -47,7 +47,7 @@ class FlextInfraTypes(t):
         """
 
         if TYPE_CHECKING:
-            type TomlOperation = FlextInfraModelsEngine.TomlOperation
+            type TomlOperation = m.Infra.TomlOperation
 
 
 t = FlextInfraTypes

@@ -129,7 +129,7 @@ class TestGenerateFile:
             inline_constants,
             "flext_core",
         )
-        tm.that(content, contains="from flext_core.lazy import install_lazy_exports")
+        tm.that(content, contains="from flext_core.lazy import  install_lazy_exports")
 
     def test_with_other_package(self) -> None:
         """Test uses correct lazy import for non-core packages."""
@@ -143,7 +143,7 @@ class TestGenerateFile:
             inline_constants,
             "other_pkg",
         )
-        tm.that(content, contains="from flext_core.lazy import install_lazy_exports")
+        tm.that(content, contains="from flext_core.lazy import  install_lazy_exports")
 
     def test_with_inline_constants(self) -> None:
         """Test includes inline constants."""
@@ -247,6 +247,27 @@ class TestGenerateFile:
         tm.that(content, contains="install_lazy_exports")
         tm.that(content, contains='"Alpha"')
         tm.that(content, contains='"Beta"')
+
+    def test_typevars_stay_lazy_exports(self) -> None:
+        """TypeVar-like exports from typings stay lazy and avoid runtime import cycles."""
+        exports = ["FlextTypes", "T", "U"]
+        filtered = {
+            "FlextTypes": ("test_pkg.typings", "FlextTypes"),
+            "T": ("test_pkg.typings", "T"),
+            "U": ("test_pkg.typings", "U"),
+        }
+        inline_constants: t.StrMapping = {}
+        content = mod.FlextInfraCodegenGeneration.generate_file(
+            "",
+            exports,
+            filtered,
+            inline_constants,
+            "test_pkg",
+            eager_typevar_names=frozenset({"T", "U"}),
+        )
+        tm.that(content, lacks="from test_pkg.typings import T, U")
+        tm.that(content, contains='"T": ("test_pkg.typings", "T")')
+        tm.that(content, contains='"U": ("test_pkg.typings", "U")')
 
     def test_always_emits_static_analysis_hints(self) -> None:
         """Test generated file always emits the canonical static hints."""

@@ -9,14 +9,14 @@ from flext_core import r
 from flext_infra import FlextInfraBaseMkGenerator, m, t
 
 if TYPE_CHECKING:
-    from flext_infra import FlextInfraCommandContext
+    from flext_infra import FlextInfraServiceBase
 
 
 class FlextInfraServiceBasemkMixin:
     """Expose canonical base.mk operations through the public infra facade."""
 
     def generate_basemk(
-        self: FlextInfraCommandContext[t.MutableContainerMapping],
+        self: FlextInfraServiceBase[t.MutableContainerMapping],
         config: m.Infra.BaseMkConfig | t.ScalarMapping | None = None,
     ) -> r[str]:
         """Generate base.mk content using the current facade context."""

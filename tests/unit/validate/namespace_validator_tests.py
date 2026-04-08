@@ -35,6 +35,14 @@ def _make_project_with_module(
 class TestFlextInfraNamespaceValidator:
     """Test suite for namespace validator rules 0-2."""
 
+    def test_derive_prefix_uses_flext_for_core_exception(self, tmp_path: Path) -> None:
+        validator = FlextInfraNamespaceValidator()
+        project_root = tmp_path / "flext-core"
+        package_dir = project_root / "src" / "flext_core"
+        package_dir.mkdir(parents=True)
+        _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
+        tm.that(validator.derive_prefix(project_root), eq="Flext")
+
     def test_rule0_valid_module_passes(self, tmp_path: Path) -> None:
         validator = FlextInfraNamespaceValidator()
         root = _make_project_with_module(

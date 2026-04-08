@@ -2,19 +2,14 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from flext_cli import cli as cli_service
-from flext_infra import m, t
-
-if TYPE_CHECKING:
-    from flext_infra import FlextInfra
+from flext_infra import FlextInfraServiceRefactorMixin, m, t
 
 
-class FlextInfraCliRefactor:
+class FlextInfraCliRefactor(FlextInfraServiceRefactorMixin):
     """Refactor CLI group — composed into FlextInfraCli via MRO."""
 
-    def register_refactor(self: FlextInfra, app: t.Cli.CliApp) -> None:
+    def register_refactor(self, app: t.Cli.CliApp) -> None:
         """Register refactor commands on the given Typer app."""
         cli_service.register_result_routes(
             app,

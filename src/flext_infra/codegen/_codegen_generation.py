@@ -202,7 +202,7 @@ class FlextInfraCodegenGeneration:
             filtered: Mapping of export names to (module_path, attr_name) tuples.
             inline_constants: Mapping of constant names to their string values.
             current_pkg: Current package name for import strategy selection.
-            eager_typevar_names: Type variable names to import eagerly (not lazily).
+            eager_typevar_names: Legacy parameter kept for compatibility.
             eager_imports: Runtime imports that must exist eagerly in module globals.
             child_packages_for_lazy: Child packages for lazy import collapsing.
             child_packages_for_tc: Child packages for TYPE_CHECKING collapsing.
@@ -211,12 +211,9 @@ class FlextInfraCodegenGeneration:
             Complete Python module file as a single string.
 
         """
+        _ = eager_typevar_names
         runtime_imports: t.Infra.LazyImportMap = eager_imports or {}
-        lazy_filtered: t.Infra.LazyImportMap = {
-            name: val
-            for name, val in filtered.items()
-            if name not in eager_typevar_names
-        }
+        lazy_filtered: t.Infra.LazyImportMap = dict(filtered)
         wildcard_runtime_module_set = frozenset(wildcard_runtime_modules or ())
         type_checking_filtered: t.Infra.LazyImportMap = {
             name: val
@@ -242,14 +239,6 @@ class FlextInfraCodegenGeneration:
         )
         out.extend(preamble.splitlines())
 
-        if eager_typevar_names:
-            typings_mod = f"{current_pkg}.typings"
-            sorted_tvars = sorted(eager_typevar_names)
-            out.extend(
-                FlextInfraUtilitiesCodegenGeneration.format_import(
-                    "", typings_mod, sorted_tvars
-                )
-            )
         out.append("")
 
         runtime_groups = FlextInfraUtilitiesCodegenGeneration.group_imports(

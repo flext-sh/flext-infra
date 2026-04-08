@@ -174,11 +174,3 @@ class FlextInfraCli:
 def main(args: t.StrSequence | None = None) -> int:
     """Run the canonical flext-infra CLI."""
     return FlextInfraCli().main(args)
-
-
-_package = sys.modules.get("flext_infra")
-if _package is not None:
-    setattr(_package, "main", main)
-
-
-__all__ = ["FlextInfraCli", "main"]

@@ -11,11 +11,6 @@ import re
 from collections.abc import Sequence
 from pathlib import Path
 
-from rope.base.exceptions import ResourceNotFoundError
-from rope.base.project import Project
-from rope.base.pyobjects import AbstractClass
-from rope.base.resources import File
-
 from flext_infra import (
     FlextInfraModelsRefactorGrep,
     FlextInfraTypesRope,
@@ -99,8 +94,7 @@ class FlextInfraUtilitiesRefactorMroScan:
         candidates: list[FlextInfraModelsRefactorGrep.MROSymbolCandidate] = []
         rope_proj = FlextInfraUtilitiesRefactorMroScan._init_rope_project(project_root)
         try:
-            pycore = FlextInfraUtilitiesRopeCore.get_pycore(rope_proj)
-            pymodule = pycore.resource_to_pyobject(resource)
+            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_proj, resource)
             lines = source.splitlines()
 
             for name, pyname in pymodule.get_attributes().items():
@@ -317,7 +311,7 @@ class FlextInfraUtilitiesRefactorMroScan:
         obj: object,
         class_header: str,
     ) -> bool:
-        if isinstance(obj, AbstractClass):
+        if FlextInfraUtilitiesRopeCore.is_rope_abstract_class_like(obj):
             try:
                 bases = tuple(obj.get_superclasses())
                 if any("Protocol" in str(b.get_name()) for b in bases):
@@ -361,25 +355,18 @@ class FlextInfraUtilitiesRefactorMroScan:
         return sorted(cands)
 
     @staticmethod
-    def _init_rope_project(project_root: Path) -> Project:
-        return Project(
-            str(project_root.resolve()),
-            ropefolder="",
-            save_objectdb=False,
-        )
+    def _init_rope_project(project_root: Path) -> FlextInfraTypesRope.RopeProject:
+        return FlextInfraUtilitiesRopeCore.init_rope_project(project_root)
 
     @staticmethod
     def _get_resource_from_path(
-        rope_project: Project,
+        rope_project: FlextInfraTypesRope.RopeProject,
         file_path: Path,
     ) -> FlextInfraTypesRope.RopeResource | None:
-        try:
-            project_root = Path(rope_project.root.real_path)
-            relative_path = str(file_path.resolve().relative_to(project_root))
-            resource = rope_project.get_resource(relative_path)
-            return resource if isinstance(resource, File) else None
-        except (ResourceNotFoundError, ValueError):
-            return None
+        return FlextInfraUtilitiesRopeCore.get_resource_from_path(
+            rope_project,
+            file_path,
+        )
 
 
 __all__ = ["FlextInfraUtilitiesRefactorMroScan"]

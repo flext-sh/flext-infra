@@ -2,19 +2,14 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from flext_cli import cli as cli_service
 from flext_infra import c, m, t
-
-if TYPE_CHECKING:
-    from flext_infra import FlextInfra
 
 
 class FlextInfraCliGithub:
     """GitHub CLI group — composed into FlextInfraCli via MRO."""
 
-    def register_github(self: FlextInfra, app: t.Cli.CliApp) -> None:
+    def register_github(self, app: t.Cli.CliApp) -> None:
         """Register github commands on the given Typer app."""
         cli_service.register_result_routes(
             app,

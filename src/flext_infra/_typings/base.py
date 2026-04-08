@@ -12,18 +12,15 @@ import re as _re
 from collections.abc import Callable, Mapping, MutableMapping, MutableSequence, Sequence
 from io import TextIOBase as _TextIOBase
 from pathlib import Path as _Path
-from typing import TYPE_CHECKING
 
+from jinja2 import Environment as _JinjaEnvironment, Template as _JinjaTemplate
 from pydantic import BaseModel
 from pydantic.config import JsonDict as _JsonDict
+from tomlkit import TOMLDocument as _TOMLDocument
+from tomlkit.container import Container as _TOMLContainer
+from tomlkit.items import Item as _TOMLItem, Table as _TOMLTable
 
 from flext_core import FlextTypes
-
-if TYPE_CHECKING:
-    from jinja2 import Environment as _JinjaEnvironment, Template as _JinjaTemplate
-    from tomlkit import TOMLDocument as _TOMLDocument
-    from tomlkit.container import Container as _TOMLContainer
-    from tomlkit.items import Item as _TOMLItem, Table as _TOMLTable
 
 
 class FlextInfraTypesBase:

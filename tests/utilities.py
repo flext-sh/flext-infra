@@ -1,6 +1,6 @@
 """Test utilities for FLEXT infra tests.
 
-Provides TestsFlextInfraUtilities, extending FlextTestsUtilities with
+Provides TestsFlextInfraUtilities, extending TestsFlextUtilities with
 infra-specific helper functions for infrastructure testing.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
@@ -17,10 +17,10 @@ from flext_infra import FlextInfraUtilities
 
 
 class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
-    """Infra test utilities extending FlextTestsUtilities with infra-specific helpers.
+    """Infra test utilities extending TestsFlextUtilities with infra-specific helpers.
 
-    Architecture: Extends FlextTestsUtilities with infra-specific utility functions.
-    All base utilities from FlextTestsUtilities are available through inheritance.
+    Architecture: Extends TestsFlextUtilities with infra-specific utility functions.
+    All base utilities from TestsFlextUtilities are available through inheritance.
     """
 
     class Infra(FlextInfraUtilities.Infra):

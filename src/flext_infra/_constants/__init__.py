@@ -66,17 +66,22 @@ if _t.TYPE_CHECKING:
 
     validate = _flext_infra__constants_validate
     import flext_infra._constants.workspace as _flext_infra__constants_workspace
-    from flext_infra._constants.validate import (
-        FlextInfraConstantsCore,
-        FlextInfraConstantsSharedInfra,
-    )
+    from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
 
     workspace = _flext_infra__constants_workspace
     from flext_infra._constants.workspace import FlextInfraConstantsWorkspace
 _LAZY_IMPORTS = {
+    "FlextInfraConstantsBase": (
+        "flext_infra._constants.base",
+        "FlextInfraConstantsBase",
+    ),
     "FlextInfraConstantsBasemk": (
         "flext_infra._constants.basemk",
         "FlextInfraConstantsBasemk",
+    ),
+    "FlextInfraConstantsCensus": (
+        "flext_infra._constants.census",
+        "FlextInfraConstantsCensus",
     ),
     "FlextInfraConstantsCheck": (
         "flext_infra._constants.check",
@@ -85,30 +90,6 @@ _LAZY_IMPORTS = {
     "FlextInfraConstantsCodegen": (
         "flext_infra._constants.codegen",
         "FlextInfraConstantsCodegen",
-    ),
-    "FlextInfraConstantsBase": (
-        "flext_infra._constants.base",
-        "FlextInfraConstantsBase",
-    ),
-    "FlextInfraConstantsCensus": (
-        "flext_infra._constants.census",
-        "FlextInfraConstantsCensus",
-    ),
-    "FlextInfraConstantsMake": (
-        "flext_infra._constants.make",
-        "FlextInfraConstantsMake",
-    ),
-    "FlextInfraConstantsRope": (
-        "flext_infra._constants.rope",
-        "FlextInfraConstantsRope",
-    ),
-    "FlextInfraConstantsSourceCode": (
-        "flext_infra._constants.source_code",
-        "FlextInfraConstantsSourceCode",
-    ),
-    "FlextInfraConstantsCore": (
-        "flext_infra._constants.validate",
-        "FlextInfraConstantsCore",
     ),
     "FlextInfraConstantsDeps": (
         "flext_infra._constants.deps",
@@ -122,6 +103,10 @@ _LAZY_IMPORTS = {
         "flext_infra._constants.github",
         "FlextInfraConstantsGithub",
     ),
+    "FlextInfraConstantsMake": (
+        "flext_infra._constants.make",
+        "FlextInfraConstantsMake",
+    ),
     "FlextInfraConstantsRefactor": (
         "flext_infra._constants.refactor",
         "FlextInfraConstantsRefactor",
@@ -130,9 +115,17 @@ _LAZY_IMPORTS = {
         "flext_infra._constants.release",
         "FlextInfraConstantsRelease",
     ),
+    "FlextInfraConstantsRope": (
+        "flext_infra._constants.rope",
+        "FlextInfraConstantsRope",
+    ),
     "FlextInfraConstantsSharedInfra": (
         "flext_infra._constants.validate",
         "FlextInfraConstantsSharedInfra",
+    ),
+    "FlextInfraConstantsSourceCode": (
+        "flext_infra._constants.source_code",
+        "FlextInfraConstantsSourceCode",
     ),
     "FlextInfraConstantsWorkspace": (
         "flext_infra._constants.workspace",
@@ -161,7 +154,6 @@ __all__ = [
     "FlextInfraConstantsCensus",
     "FlextInfraConstantsCheck",
     "FlextInfraConstantsCodegen",
-    "FlextInfraConstantsCore",
     "FlextInfraConstantsDeps",
     "FlextInfraConstantsDocs",
     "FlextInfraConstantsGithub",

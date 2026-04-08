@@ -10,21 +10,7 @@ import typing as _t
 from flext_core.lazy import install_lazy_exports
 
 if _t.TYPE_CHECKING:
-    import flext_infra.transformers._base as _flext_infra_transformers__base
-
-    _base = _flext_infra_transformers__base
-    import flext_infra._utilities.import_normalizer as _flext_infra__utilities_import_normalizer
-    from flext_infra.transformers._base import (
-        FlextInfraChangeTrackingTransformer,
-        FlextInfraRopeTransformer,
-    )
-
-    _utilities_normalizer = _flext_infra__utilities_import_normalizer
     import flext_infra.transformers.alias_remover as _flext_infra_transformers_alias_remover
-    from flext_infra._utilities.import_normalizer import (
-        FlextInfraNormalizerContext,
-        FlextInfraUtilitiesImportNormalizer,
-    )
 
     alias_remover = _flext_infra_transformers_alias_remover
     import flext_infra.transformers.census_visitors as _flext_infra_transformers_census_visitors
@@ -90,14 +76,14 @@ if _t.TYPE_CHECKING:
     )
 
     nested_class_propagation = _flext_infra_transformers_nested_class_propagation
-    import flext_infra._utilities.transformer_policy as _flext_infra__utilities_transformer_policy
+    import flext_infra.transformers.policy as _flext_infra_transformers_policy
     from flext_infra.transformers.nested_class_propagation import (
         FlextInfraNestedClassPropagationTransformer,
     )
 
-    policy = _flext_infra__utilities_transformer_policy
+    policy = _flext_infra_transformers_policy
     import flext_infra.transformers.signature_propagator as _flext_infra_transformers_signature_propagator
-    from flext_infra._utilities.transformer_policy import (
+    from flext_infra.transformers.policy import (
         FlextInfraUtilitiesRefactorTransformerPolicy,
     )
 
@@ -130,12 +116,17 @@ if _t.TYPE_CHECKING:
     from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
 
     violation_census_visitor = _flext_infra_transformers_violation_census_visitor
+    from flext_core.constants import FlextConstants as c
     from flext_core.decorators import FlextDecorators as d
     from flext_core.exceptions import FlextExceptions as e
     from flext_core.handlers import FlextHandlers as h
     from flext_core.mixins import FlextMixins as x
+    from flext_core.models import FlextModels as m
+    from flext_core.protocols import FlextProtocols as p
     from flext_core.result import FlextResult as r
     from flext_core.service import FlextService as s
+    from flext_core.typings import FlextTypes as t
+    from flext_core.utilities import FlextUtilities as u
     from flext_infra.transformers.violation_census_visitor import (
         FlextInfraViolationCensusVisitor,
     )
@@ -148,10 +139,6 @@ _LAZY_IMPORTS = {
         "flext_infra.transformers.census_visitors",
         "FlextInfraCensusUsageCollector",
     ),
-    "FlextInfraChangeTrackingTransformer": (
-        "flext_infra.transformers._base",
-        "FlextInfraChangeTrackingTransformer",
-    ),
     "FlextInfraHelperConsolidationTransformer": (
         "flext_infra.transformers.helper_consolidation",
         "FlextInfraHelperConsolidationTransformer",
@@ -159,10 +146,6 @@ _LAZY_IMPORTS = {
     "FlextInfraNestedClassPropagationTransformer": (
         "flext_infra.transformers.nested_class_propagation",
         "FlextInfraNestedClassPropagationTransformer",
-    ),
-    "FlextInfraNormalizerContext": (
-        "flext_infra._utilities.import_normalizer",
-        "FlextInfraNormalizerContext",
     ),
     "FlextInfraRefactorAliasRemover": (
         "flext_infra.transformers.alias_remover",
@@ -208,17 +191,9 @@ _LAZY_IMPORTS = {
         "flext_infra.transformers.symbol_propagator",
         "FlextInfraRefactorSymbolPropagator",
     ),
-    "FlextInfraUtilitiesRefactorTransformerPolicy": (
-        "flext_infra._utilities.transformer_policy",
-        "FlextInfraUtilitiesRefactorTransformerPolicy",
-    ),
     "FlextInfraRefactorTypingUnifier": (
         "flext_infra.transformers.typing_unifier",
         "FlextInfraRefactorTypingUnifier",
-    ),
-    "FlextInfraRopeTransformer": (
-        "flext_infra.transformers._base",
-        "FlextInfraRopeTransformer",
     ),
     "FlextInfraTransformerTier0ImportFixer": (
         "flext_infra.transformers.tier0_import_fixer",
@@ -228,17 +203,16 @@ _LAZY_IMPORTS = {
         "flext_infra.transformers.typing_annotation_replacer",
         "FlextInfraTypingAnnotationReplacer",
     ),
-    "FlextInfraUtilitiesImportNormalizer": (
-        "flext_infra._utilities.import_normalizer",
-        "FlextInfraUtilitiesImportNormalizer",
+    "FlextInfraUtilitiesRefactorTransformerPolicy": (
+        "flext_infra.transformers.policy",
+        "FlextInfraUtilitiesRefactorTransformerPolicy",
     ),
     "FlextInfraViolationCensusVisitor": (
         "flext_infra.transformers.violation_census_visitor",
         "FlextInfraViolationCensusVisitor",
     ),
-    "_base": "flext_infra.transformers._base",
-    "_utilities_normalizer": "flext_infra._utilities.import_normalizer",
     "alias_remover": "flext_infra.transformers.alias_remover",
+    "c": ("flext_core.constants", "FlextConstants"),
     "census_visitors": "flext_infra.transformers.census_visitors",
     "class_nesting": "flext_infra.transformers.class_nesting",
     "class_reconstructor": "flext_infra.transformers.class_reconstructor",
@@ -250,17 +224,21 @@ _LAZY_IMPORTS = {
     "import_bypass_remover": "flext_infra.transformers.import_bypass_remover",
     "import_modernizer": "flext_infra.transformers.import_modernizer",
     "lazy_import_fixer": "flext_infra.transformers.lazy_import_fixer",
+    "m": ("flext_core.models", "FlextModels"),
     "mro_remover": "flext_infra.transformers.mro_remover",
     "mro_symbol_propagator": "flext_infra.transformers.mro_symbol_propagator",
     "nested_class_propagation": "flext_infra.transformers.nested_class_propagation",
-    "policy": "flext_infra._utilities.transformer_policy",
+    "p": ("flext_core.protocols", "FlextProtocols"),
+    "policy": "flext_infra.transformers.policy",
     "r": ("flext_core.result", "FlextResult"),
     "s": ("flext_core.service", "FlextService"),
     "signature_propagator": "flext_infra.transformers.signature_propagator",
     "symbol_propagator": "flext_infra.transformers.symbol_propagator",
+    "t": ("flext_core.typings", "FlextTypes"),
     "tier0_import_fixer": "flext_infra.transformers.tier0_import_fixer",
     "typing_annotation_replacer": "flext_infra.transformers.typing_annotation_replacer",
     "typing_unifier": "flext_infra.transformers.typing_unifier",
+    "u": ("flext_core.utilities", "FlextUtilities"),
     "violation_census_visitor": "flext_infra.transformers.violation_census_visitor",
     "x": ("flext_core.mixins", "FlextMixins"),
 }
@@ -268,10 +246,8 @@ _LAZY_IMPORTS = {
 __all__ = [
     "FlextInfraCensusImportDiscoveryVisitor",
     "FlextInfraCensusUsageCollector",
-    "FlextInfraChangeTrackingTransformer",
     "FlextInfraHelperConsolidationTransformer",
     "FlextInfraNestedClassPropagationTransformer",
-    "FlextInfraNormalizerContext",
     "FlextInfraRefactorAliasRemover",
     "FlextInfraRefactorClassNestingTransformer",
     "FlextInfraRefactorClassReconstructor",
@@ -284,15 +260,12 @@ __all__ = [
     "FlextInfraRefactorSignaturePropagator",
     "FlextInfraRefactorSymbolPropagator",
     "FlextInfraRefactorTypingUnifier",
-    "FlextInfraRopeTransformer",
     "FlextInfraTransformerTier0ImportFixer",
     "FlextInfraTypingAnnotationReplacer",
-    "FlextInfraUtilitiesImportNormalizer",
     "FlextInfraUtilitiesRefactorTransformerPolicy",
     "FlextInfraViolationCensusVisitor",
-    "_base",
-    "_utilities_normalizer",
     "alias_remover",
+    "c",
     "census_visitors",
     "class_nesting",
     "class_reconstructor",
@@ -304,17 +277,21 @@ __all__ = [
     "import_bypass_remover",
     "import_modernizer",
     "lazy_import_fixer",
+    "m",
     "mro_remover",
     "mro_symbol_propagator",
     "nested_class_propagation",
+    "p",
     "policy",
     "r",
     "s",
     "signature_propagator",
     "symbol_propagator",
+    "t",
     "tier0_import_fixer",
     "typing_annotation_replacer",
     "typing_unifier",
+    "u",
     "violation_census_visitor",
     "x",
 ]
