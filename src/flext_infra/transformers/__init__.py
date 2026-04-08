@@ -10,7 +10,14 @@ import typing as _t
 from flext_core.lazy import install_lazy_exports
 
 if _t.TYPE_CHECKING:
+    import flext_infra.transformers._base as _flext_infra_transformers__base
+
+    _base = _flext_infra_transformers__base
     import flext_infra.transformers.alias_remover as _flext_infra_transformers_alias_remover
+    from flext_infra.transformers._base import (
+        FlextInfraChangeTrackingTransformer,
+        FlextInfraRopeTransformer,
+    )
 
     alias_remover = _flext_infra_transformers_alias_remover
     import flext_infra.transformers.census_visitors as _flext_infra_transformers_census_visitors
@@ -83,9 +90,6 @@ if _t.TYPE_CHECKING:
 
     policy = _flext_infra_transformers_policy
     import flext_infra.transformers.signature_propagator as _flext_infra_transformers_signature_propagator
-    from flext_infra.transformers.policy import (
-        FlextInfraUtilitiesRefactorTransformerPolicy,
-    )
 
     signature_propagator = _flext_infra_transformers_signature_propagator
     import flext_infra.transformers.symbol_propagator as _flext_infra_transformers_symbol_propagator
@@ -131,6 +135,10 @@ if _t.TYPE_CHECKING:
         FlextInfraViolationCensusVisitor,
     )
 _LAZY_IMPORTS = {
+    "FlextInfraChangeTrackingTransformer": (
+        "flext_infra.transformers._base",
+        "FlextInfraChangeTrackingTransformer",
+    ),
     "FlextInfraCensusImportDiscoveryVisitor": (
         "flext_infra.transformers.census_visitors",
         "FlextInfraCensusImportDiscoveryVisitor",
@@ -179,6 +187,10 @@ _LAZY_IMPORTS = {
         "flext_infra.transformers.mro_remover",
         "FlextInfraRefactorMRORemover",
     ),
+    "FlextInfraRopeTransformer": (
+        "flext_infra.transformers._base",
+        "FlextInfraRopeTransformer",
+    ),
     "FlextInfraRefactorMROSymbolPropagator": (
         "flext_infra.transformers.mro_symbol_propagator",
         "FlextInfraRefactorMROSymbolPropagator",
@@ -203,14 +215,11 @@ _LAZY_IMPORTS = {
         "flext_infra.transformers.typing_annotation_replacer",
         "FlextInfraTypingAnnotationReplacer",
     ),
-    "FlextInfraUtilitiesRefactorTransformerPolicy": (
-        "flext_infra.transformers.policy",
-        "FlextInfraUtilitiesRefactorTransformerPolicy",
-    ),
     "FlextInfraViolationCensusVisitor": (
         "flext_infra.transformers.violation_census_visitor",
         "FlextInfraViolationCensusVisitor",
     ),
+    "_base": "flext_infra.transformers._base",
     "alias_remover": "flext_infra.transformers.alias_remover",
     "c": ("flext_core.constants", "FlextConstants"),
     "census_visitors": "flext_infra.transformers.census_visitors",
@@ -246,6 +255,7 @@ _LAZY_IMPORTS = {
 __all__ = [
     "FlextInfraCensusImportDiscoveryVisitor",
     "FlextInfraCensusUsageCollector",
+    "FlextInfraChangeTrackingTransformer",
     "FlextInfraHelperConsolidationTransformer",
     "FlextInfraNestedClassPropagationTransformer",
     "FlextInfraRefactorAliasRemover",
@@ -260,10 +270,11 @@ __all__ = [
     "FlextInfraRefactorSignaturePropagator",
     "FlextInfraRefactorSymbolPropagator",
     "FlextInfraRefactorTypingUnifier",
+    "FlextInfraRopeTransformer",
     "FlextInfraTransformerTier0ImportFixer",
     "FlextInfraTypingAnnotationReplacer",
-    "FlextInfraUtilitiesRefactorTransformerPolicy",
     "FlextInfraViolationCensusVisitor",
+    "_base",
     "alias_remover",
     "c",
     "census_visitors",

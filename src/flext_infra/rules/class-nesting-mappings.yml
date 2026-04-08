@@ -1085,10 +1085,10 @@ class_nesting:
     target_name: _WhalesDockerClient
     confidence: low
     reason: top_level_class_without_namespace_prefix
-  - loose_name: TestsFlextDocker
+  - loose_name: tk
     current_file: flext-core/src/flext_tests/docker.py
     target_namespace: FlextDocker
-    target_name: TestsFlextDocker
+    target_name: tk
     confidence: low
     reason: top_level_class_without_namespace_prefix
   - loose_name: TestsFlextDomains

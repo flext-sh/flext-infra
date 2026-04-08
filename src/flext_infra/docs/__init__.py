@@ -10,7 +10,11 @@ import typing as _t
 from flext_core.lazy import install_lazy_exports
 
 if _t.TYPE_CHECKING:
+    import flext_infra.docs._auditor_mixin as _flext_infra_docs__auditor_mixin
+
+    _auditor_mixin = _flext_infra_docs__auditor_mixin
     import flext_infra.docs.auditor as _flext_infra_docs_auditor
+    from flext_infra.docs._auditor_mixin import FlextInfraDocAuditorMixin
 
     auditor = _flext_infra_docs_auditor
     import flext_infra.docs.builder as _flext_infra_docs_builder
@@ -48,9 +52,14 @@ if _t.TYPE_CHECKING:
 _LAZY_IMPORTS = {
     "FlextInfraCliDocs": ("flext_infra.docs.cli", "FlextInfraCliDocs"),
     "FlextInfraDocAuditor": ("flext_infra.docs.auditor", "FlextInfraDocAuditor"),
+    "FlextInfraDocAuditorMixin": (
+        "flext_infra.docs._auditor_mixin",
+        "FlextInfraDocAuditorMixin",
+    ),
     "FlextInfraDocBuilder": ("flext_infra.docs.builder", "FlextInfraDocBuilder"),
     "FlextInfraDocFixer": ("flext_infra.docs.fixer", "FlextInfraDocFixer"),
     "FlextInfraDocGenerator": ("flext_infra.docs.generator", "FlextInfraDocGenerator"),
+    "_auditor_mixin": "flext_infra.docs._auditor_mixin",
     "FlextInfraDocValidator": ("flext_infra.docs.validator", "FlextInfraDocValidator"),
     "auditor": "flext_infra.docs.auditor",
     "builder": "flext_infra.docs.builder",
@@ -74,10 +83,12 @@ _LAZY_IMPORTS = {
 __all__ = [
     "FlextInfraCliDocs",
     "FlextInfraDocAuditor",
+    "FlextInfraDocAuditorMixin",
     "FlextInfraDocBuilder",
     "FlextInfraDocFixer",
     "FlextInfraDocGenerator",
     "FlextInfraDocValidator",
+    "_auditor_mixin",
     "auditor",
     "builder",
     "c",

@@ -10,7 +10,11 @@ import typing as _t
 from flext_core.lazy import install_lazy_exports, merge_lazy_imports
 
 if _t.TYPE_CHECKING:
+    import flext_infra.deps._detector_runtime as _flext_infra_deps__detector_runtime
+
+    _detector_runtime = _flext_infra_deps__detector_runtime
     import flext_infra.deps._phases as _flext_infra_deps__phases
+    from flext_infra.deps._detector_runtime import FlextInfraDependencyDetectorRuntime
 
     _phases = _flext_infra_deps__phases
     import flext_infra.deps.cli as _flext_infra_deps_cli
@@ -93,6 +97,10 @@ _LAZY_IMPORTS = merge_lazy_imports(
             "flext_infra.deps.fix_pyrefly_config",
             "FlextInfraConfigFixer",
         ),
+        "FlextInfraDependencyDetectorRuntime": (
+            "flext_infra.deps._detector_runtime",
+            "FlextInfraDependencyDetectorRuntime",
+        ),
         "FlextInfraDependencyDetectionAnalysis": (
             "flext_infra.deps.detection_analysis",
             "FlextInfraDependencyDetectionAnalysis",
@@ -129,6 +137,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             "flext_infra.deps.detector",
             "FlextInfraRuntimeDevDependencyDetector",
         ),
+        "_detector_runtime": "flext_infra.deps._detector_runtime",
         "_phases": "flext_infra.deps._phases",
         "c": ("flext_core.constants", "FlextConstants"),
         "cli": "flext_infra.deps.cli",
@@ -168,6 +177,7 @@ __all__ = [
     "FlextInfraConsolidateGroupsPhase",
     "FlextInfraDependencyDetectionAnalysis",
     "FlextInfraDependencyDetectionService",
+    "FlextInfraDependencyDetectorRuntime",
     "FlextInfraDependencyPathSync",
     "FlextInfraDependencyPathSyncRewrite",
     "FlextInfraEnsureCoverageConfigPhase",
@@ -187,6 +197,7 @@ __all__ = [
     "FlextInfraInternalDependencySyncService",
     "FlextInfraPyprojectModernizer",
     "FlextInfraRuntimeDevDependencyDetector",
+    "_detector_runtime",
     "_phases",
     "c",
     "cli",

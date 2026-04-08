@@ -4589,16 +4589,16 @@ rules:
   - project_kind: core
     facade_family: u
     module_family: other_private
-    source_symbol: TestsFlextDocker
+    source_symbol: tk
     target_facade_class: FlextDocker
-    target_namespace_path: FlextDocker.TestsFlextDocker
+    target_namespace_path: FlextDocker.tk
     expected_base_chain: *id006
     forbidden_targets: []
     confidence: 0.5
     pre_checks:
       - type: source_symbol_is_class
         params:
-          symbol: TestsFlextDocker
+          symbol: tk
       - type: target_facade_exists
         params:
           facade: FlextDocker

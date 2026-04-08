@@ -374,7 +374,6 @@ if _t.TYPE_CHECKING:
         FlextInfraRefactorTypingUnifier,
         FlextInfraTransformerTier0ImportFixer,
         FlextInfraTypingAnnotationReplacer,
-        FlextInfraUtilitiesRefactorTransformerPolicy,
         FlextInfraViolationCensusVisitor,
     )
 
