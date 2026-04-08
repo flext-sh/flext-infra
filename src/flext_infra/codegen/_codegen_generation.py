@@ -188,7 +188,6 @@ class FlextInfraCodegenGeneration:
         filtered: t.Infra.LazyImportMap,
         inline_constants: t.StrMapping,
         current_pkg: str,
-        eager_typevar_names: frozenset[str] = frozenset(),
         eager_imports: t.Infra.LazyImportMap | None = None,
         wildcard_runtime_modules: t.StrSequence | None = None,
         child_packages_for_lazy: t.StrSequence | None = None,
@@ -202,7 +201,6 @@ class FlextInfraCodegenGeneration:
             filtered: Mapping of export names to (module_path, attr_name) tuples.
             inline_constants: Mapping of constant names to their string values.
             current_pkg: Current package name for import strategy selection.
-            eager_typevar_names: Legacy parameter kept for compatibility.
             eager_imports: Runtime imports that must exist eagerly in module globals.
             child_packages_for_lazy: Child packages for lazy import collapsing.
             child_packages_for_tc: Child packages for TYPE_CHECKING collapsing.
@@ -211,7 +209,6 @@ class FlextInfraCodegenGeneration:
             Complete Python module file as a single string.
 
         """
-        _ = eager_typevar_names
         runtime_imports: t.Infra.LazyImportMap = eager_imports or {}
         lazy_filtered: t.Infra.LazyImportMap = dict(filtered)
         wildcard_runtime_module_set = frozenset(wildcard_runtime_modules or ())

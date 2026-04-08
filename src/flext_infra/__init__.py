@@ -398,6 +398,7 @@ if _t.TYPE_CHECKING:
     from flext_infra.rules.pattern_corrections import (
         FlextInfraRefactorPatternCorrectionsRule,
     )
+    from flext_infra.services._cli_base import FlextInfraServiceCliRunnerMixin
     from flext_infra.services.basemk import FlextInfraServiceBasemkMixin
     from flext_infra.services.check import FlextInfraServiceCheckMixin
     from flext_infra.services.codegen import FlextInfraServiceCodegenMixin
@@ -751,6 +752,7 @@ __all__ = [
     "FlextInfraServiceBase",
     "FlextInfraServiceBasemkMixin",
     "FlextInfraServiceCheckMixin",
+    "FlextInfraServiceCliRunnerMixin",
     "FlextInfraServiceCodegenMixin",
     "FlextInfraServiceDepsMixin",
     "FlextInfraServiceDocsMixin",

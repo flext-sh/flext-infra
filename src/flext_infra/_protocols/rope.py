@@ -325,36 +325,6 @@ class FlextInfraProtocolsRope(Protocol):
             """Return one change set that rewrites imports."""
             ...
 
-    @runtime_checkable
-    class RopeImportUtilsModuleLike(Protocol):
-        """Structural contract for the rope.refactor.importutils module."""
-
-        def get_module_imports(
-            self,
-            project: t.Infra.RopeProject,
-            pymodule: t.Infra.RopePyModule,
-        ) -> t.Infra.RopeModuleImports:
-            """Build one module-import helper for the given module."""
-            ...
-
-    @runtime_checkable
-    class RopeFindItModuleLike(Protocol):
-        """Structural contract for the rope.contrib.findit module."""
-
-        def find_occurrences(
-            self,
-            project: t.Infra.RopeProject,
-            resource: t.Infra.RopeApiResource,
-            offset: int,
-            *,
-            _unsure: bool = False,
-            _resources: t.SequenceOf[t.Infra.RopeApiResource] | None = None,
-            in_hierarchy: bool = False,
-            _task_handle: t.OpaqueValue | None = None,
-        ) -> t.SequenceOf[t.Infra.RopeLocation]:
-            """Return occurrences for the symbol at the given offset."""
-            ...
-
     class RopeGetModuleImportsFn(Protocol):
         """Callable signature for ``rope.refactor.importutils.get_module_imports``."""
 
@@ -382,6 +352,20 @@ class FlextInfraProtocolsRope(Protocol):
         ) -> t.SequenceOf[t.Infra.RopeLocation]:
             """Return occurrences for the symbol at the given offset."""
             ...
+
+    @runtime_checkable
+    class RopeImportUtilsModuleLike(Protocol):
+        """Structural contract for the rope.refactor.importutils module."""
+
+        get_module_imports: RopeGetModuleImportsFn
+        """Build one module-import helper for the given module."""
+
+    @runtime_checkable
+    class RopeFindItModuleLike(Protocol):
+        """Structural contract for the rope.contrib.findit module."""
+
+        find_occurrences: RopeFindOccurrencesFn
+        """Return occurrences for the symbol at the given offset."""
 
     @runtime_checkable
     class RopePostHook(Protocol):

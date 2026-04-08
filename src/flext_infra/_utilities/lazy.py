@@ -63,23 +63,6 @@ class FlextInfraUtilitiesCodegenLazyMerging:
         )
 
     @staticmethod
-    def detect_eager_typevar_names(pkg_dir: Path) -> t.Infra.StrSet:
-        """Detect module-level TypeVar/ParamSpec names in typings.py."""
-        typings_file = pkg_dir / c.Infra.Files.TYPINGS_PY
-        if not typings_file.exists():
-            return set()
-        try:
-            source = typings_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
-        except OSError:
-            return set()
-        names: t.Infra.StrSet = set()
-        for match in c.Infra.Detection.TYPEVAR_ASSIGN_RE.finditer(source):
-            name = match.group(1)
-            if not name.startswith("_"):
-                names.add(name)
-        return names
-
-    @staticmethod
     def should_bubble_up(name: str) -> bool:
         """Check if an export should bubble up to the parent package."""
         if name.startswith("_") or name in {c.Infra.Dunders.INIT, "main"}:

@@ -28,6 +28,10 @@ _LAZY_IMPORTS = {
         "flext_infra.services.check",
         "FlextInfraServiceCheckMixin",
     ),
+    "FlextInfraServiceCliRunnerMixin": (
+        "flext_infra.services._cli_base",
+        "FlextInfraServiceCliRunnerMixin",
+    ),
     "FlextInfraServiceCodegenMixin": (
         "flext_infra.services.codegen",
         "FlextInfraServiceCodegenMixin",

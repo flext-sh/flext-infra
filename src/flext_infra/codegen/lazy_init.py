@@ -173,10 +173,9 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
                 self._ensure_public_facade_aliases(lazy_map, current_pkg)
             for infra_name in ("cleanup_submodule_namespace", "lazy_getattr"):
                 lazy_map.pop(infra_name, None)
-            eager_tvars: frozenset[str] = frozenset()
             for k in inline_constants:
                 lazy_map.pop(k, None)
-            exports = sorted(set(lazy_map) | set(inline_constants) | eager_tvars)
+            exports = sorted(set(lazy_map) | set(inline_constants))
             if not exports:
                 return (None, dict(lazy_map))
             if check_only:
@@ -188,7 +187,6 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
                 lazy_map,
                 inline_constants,
                 current_pkg,
-                eager_tvars,
                 wildcard_runtime_imports=tuple(sorted(version_runtime_modules)),
                 child_packages_for_lazy=child_packages_for_lazy,
                 child_packages_for_tc=child_packages_for_tc,
@@ -208,7 +206,6 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
         lazy_map: t.Infra.LazyImportMap,
         inline_constants: t.StrMapping,
         current_pkg: str,
-        eager_typevar_names: frozenset[str] = frozenset(),
         eager_imports: t.Infra.LazyImportMap | None = None,
         wildcard_runtime_imports: t.StrSequence | None = None,
         child_packages_for_lazy: t.StrSequence | None = None,
@@ -221,7 +218,6 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
                 lazy_map,
                 inline_constants,
                 current_pkg,
-                eager_typevar_names,
                 eager_imports,
                 wildcard_runtime_imports,
                 child_packages_for_lazy=child_packages_for_lazy or [],

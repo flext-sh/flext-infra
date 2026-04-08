@@ -283,7 +283,6 @@ class TestGenerateFile:
             filtered,
             inline_constants,
             "test_pkg",
-            eager_typevar_names=frozenset({"T", "U"}),
         )
         tm.that(content, lacks="from test_pkg.typings import T, U")
         tm.that(content, contains='"T": ("test_pkg.typings", "T")')
