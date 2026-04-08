@@ -15,6 +15,7 @@ from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_infra import (
+    FlextInfraUtilitiesCodegenGeneration,
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesIteration,
@@ -333,18 +334,9 @@ class FlextInfraUtilitiesCodegenLazyScanning(
             current_pkg=current_pkg,
         ):
             return
-        if (
-            py_file.stem.startswith("_")
-            and py_file.name
-            not in {
-                c.Infra.Files.INIT_PY,
-                "__main__.py",
-                "__version__.py",
-            }
-            and not any(
-                part in c.Infra.FAMILY_DIRECTORIES.values()
-                for part in current_pkg.split(".")
-            )
+        if FlextInfraUtilitiesCodegenLazyScanning._should_skip_private_module(
+            py_file=py_file,
+            current_pkg=current_pkg,
         ):
             return
         if py_file.stem[0:1].isdigit():
@@ -411,12 +403,40 @@ class FlextInfraUtilitiesCodegenLazyScanning(
                 mod_path,
                 index,
             )
-        if len(rel_path.parts) == 1 and py_file.stem not in index:
+        if (
+            len(rel_path.parts) == 1
+            and not py_file.stem.startswith("_")
+            and py_file.stem not in index
+        ):
             FlextInfraUtilitiesCodegenLazyScanning.register_export(
                 index,
                 py_file.stem,
                 (mod_path, ""),
             )
+
+    @staticmethod
+    def _should_skip_private_module(
+        *,
+        py_file: Path,
+        current_pkg: str,
+    ) -> bool:
+        """Skip private underscore modules only at the root namespace layer."""
+        if not py_file.stem.startswith("_"):
+            return False
+        if py_file.name in {
+            c.Infra.Files.INIT_PY,
+            "__main__.py",
+            "__version__.py",
+        }:
+            return False
+        if any(
+            part in c.Infra.FAMILY_DIRECTORIES.values()
+            for part in current_pkg.split(".")
+        ):
+            return False
+        return FlextInfraUtilitiesCodegenGeneration.is_root_namespace_package(
+            current_pkg
+        )
 
     @staticmethod
     def _belongs_to_nested_package(

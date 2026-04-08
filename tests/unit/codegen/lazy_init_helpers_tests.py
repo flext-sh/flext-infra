@@ -530,6 +530,23 @@ class TestBuildSiblingExportIndex:
         tm.that(index, contains="FlextDemoServiceBase")
         tm.that(index, contains="s")
 
+    def test_public_subpackage_exports_public_classes_from_private_modules(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Nested public packages keep public class exports from `_*.py` files."""
+        pkg_dir = tmp_path / "codegen"
+        pkg_dir.mkdir(parents=True)
+        (pkg_dir / "__init__.py").write_text("")
+        (pkg_dir / "_codegen_generation.py").write_text(
+            "class TestPkgCodegenGeneration:\n    pass\n",
+        )
+
+        index = u.Infra.build_sibling_export_index(pkg_dir, "test_pkg.codegen")
+
+        tm.that(index, contains="TestPkgCodegenGeneration")
+        tm.that(index, excludes="_codegen_generation")
+
 
 class TestExtractExports:
     """Test extract_exports function."""
