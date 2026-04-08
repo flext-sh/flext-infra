@@ -325,10 +325,11 @@ class FlextInfraProtocolsRope(Protocol):
             """Return one change set that rewrites imports."""
             ...
 
-    class RopeGetModuleImportsFn(Protocol):
-        """Callable signature for ``rope.refactor.importutils.get_module_imports``."""
+    @runtime_checkable
+    class RopeImportUtilsModuleLike(Protocol):
+        """Structural contract for the rope.refactor.importutils module."""
 
-        def __call__(
+        def get_module_imports(
             self,
             project: t.Infra.RopeProject,
             pymodule: t.Infra.RopePyModule,
@@ -336,10 +337,11 @@ class FlextInfraProtocolsRope(Protocol):
             """Build one module-import helper for the given module."""
             ...
 
-    class RopeFindOccurrencesFn(Protocol):
-        """Callable signature for ``rope.contrib.findit.find_occurrences``."""
+    @runtime_checkable
+    class RopeFindItModuleLike(Protocol):
+        """Structural contract for the rope.contrib.findit module."""
 
-        def __call__(
+        def find_occurrences(
             self,
             project: t.Infra.RopeProject,
             resource: t.Infra.RopeApiResource,
@@ -352,20 +354,6 @@ class FlextInfraProtocolsRope(Protocol):
         ) -> t.SequenceOf[t.Infra.RopeLocation]:
             """Return occurrences for the symbol at the given offset."""
             ...
-
-    @runtime_checkable
-    class RopeImportUtilsModuleLike(Protocol):
-        """Structural contract for the rope.refactor.importutils module."""
-
-        get_module_imports: RopeGetModuleImportsFn
-        """Build one module-import helper for the given module."""
-
-    @runtime_checkable
-    class RopeFindItModuleLike(Protocol):
-        """Structural contract for the rope.contrib.findit module."""
-
-        find_occurrences: RopeFindOccurrencesFn
-        """Return occurrences for the symbol at the given offset."""
 
     @runtime_checkable
     class RopePostHook(Protocol):

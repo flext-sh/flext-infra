@@ -1,4 +1,6 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
+"""Services package."""
+
 from __future__ import annotations
 
 from flext_core.lazy import install_lazy_exports
@@ -9,7 +11,6 @@ _LAZY_IMPORTS = {
     "FlextInfraCodegenPipeline": ".pipeline",
     "FlextInfraServiceBasemkMixin": ".basemk",
     "FlextInfraServiceCheckMixin": ".check",
-    "FlextInfraServiceCliRunnerMixin": "._cli_base",
     "FlextInfraServiceCodegenMixin": ".codegen",
     "FlextInfraServiceDepsMixin": ".deps",
     "FlextInfraServiceDocsMixin": ".docs",

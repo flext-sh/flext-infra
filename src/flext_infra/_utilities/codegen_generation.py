@@ -45,7 +45,8 @@ class FlextInfraUtilitiesCodegenGeneration:
     @staticmethod
     def format_root_package_docstring(current_pkg: str) -> str:
         """Build a compact root-package docstring for generated __init__.py files."""
-        package_name = " ".join(part.capitalize() for part in current_pkg.split("_"))
+        label = current_pkg.replace("_", " ").replace("-", " ").strip()
+        package_name = " ".join(word.capitalize() for word in label.split())
         return f'"""{package_name} package."""'
 
     @staticmethod

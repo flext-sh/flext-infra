@@ -9,6 +9,8 @@ from flext_infra.services._cli_base import FlextInfraServiceCliRunnerMixin
 
 
 class FlextInfraServiceDepsMixin(FlextInfraServiceCliRunnerMixin):
+    """Expose dependency CLI execution through the public infra facade."""
+
     run_deps_cli = partialmethod(
         FlextInfraServiceCliRunnerMixin._run_cli, FlextInfraCliDeps.run
     )

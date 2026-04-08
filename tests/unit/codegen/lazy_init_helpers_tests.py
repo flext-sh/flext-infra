@@ -105,17 +105,17 @@ class TestBuildSiblingExportIndex:
 
     def test_with_all_exports(self, tmp_path: Path) -> None:
         """Test scanning sibling files with __all__."""
-        (tmp_path / "models.py").write_text(
+        (tmp_path / "public_api.py").write_text(
             '"""Models."""\n\n__all__ = ["Foo", "Bar"]\n\nclass Foo: pass\nclass Bar: pass\n',
         )
         index = u.Infra.build_sibling_export_index(tmp_path, "test_pkg")
         tm.that(index, contains="Foo")
         tm.that(index, contains="Bar")
-        tm.that(index["Foo"], eq=("test_pkg.models", "Foo"))
+        tm.that(index["Foo"], eq=("test_pkg.public_api", "Foo"))
 
     def test_without_all_falls_back_to_ast(self, tmp_path: Path) -> None:
         """Test scanning sibling files without __all__ uses AST."""
-        (tmp_path / "service.py").write_text(
+        (tmp_path / "public_api.py").write_text(
             "class PublicService:\n    pass\n\ndef public_func():\n    pass\n",
         )
         index = u.Infra.build_sibling_export_index(tmp_path, "test_pkg")
@@ -126,7 +126,7 @@ class TestBuildSiblingExportIndex:
         """Test that __init__.py and __main__.py are skipped."""
         (tmp_path / "__init__.py").write_text('__all__ = ["Init"]\n')
         (tmp_path / "__main__.py").write_text("def main(): pass\n")
-        (tmp_path / "models.py").write_text(
+        (tmp_path / "public_api.py").write_text(
             '__all__ = ["Model"]\nclass Model: pass\n',
         )
         index = u.Infra.build_sibling_export_index(tmp_path, "test_pkg")
@@ -156,7 +156,7 @@ class TestBuildSiblingExportIndex:
     def test_skips_version_file(self, tmp_path: Path) -> None:
         """Test that __version__.py is skipped (handled separately)."""
         (tmp_path / "__version__.py").write_text('__version__ = "1.0.0"\n')
-        (tmp_path / "models.py").write_text(
+        (tmp_path / "public_api.py").write_text(
             '__all__ = ["Model"]\nclass Model: pass\n',
         )
         index = u.Infra.build_sibling_export_index(tmp_path, "test_pkg")
@@ -196,7 +196,7 @@ class TestBuildSiblingExportIndex:
             u.Infra.build_sibling_export_index(tmp_path, "test_pkg")
 
     def test_main_is_never_indexed_as_public_export(self, tmp_path: Path) -> None:
-        """Package scanners must never bubble CLI-style main functions."""
+        """Package scanners must exclude main() from non-entrypoint modules."""
         (tmp_path / "audit.py").write_text(
             '__all__ = ["main", "AuditRunner"]\n\n'
             "def main() -> None:\n    pass\n\n"
@@ -206,16 +206,42 @@ class TestBuildSiblingExportIndex:
         tm.that(index, excludes="main")
         tm.that(index, contains="AuditRunner")
 
-    def test_typings_allows_typevar_and_canonical_alias(self, tmp_path: Path) -> None:
-        """Type variables stay allowed only inside typings namespace modules."""
-        (tmp_path / "typings.py").write_text(
-            "from typing import TypeVar\n\n"
-            'TValue = TypeVar("TValue")\n\n'
-            "class ProjectTypes:\n    pass\n\n"
-            "t = ProjectTypes\n",
+    def test_main_is_indexed_from_cli_module(self, tmp_path: Path) -> None:
+        """Canonical cli.py modules may export main()."""
+        (tmp_path / "cli.py").write_text(
+            '__all__ = ["main", "CliRunner"]\n\n'
+            "def main() -> int:\n    return 0\n\n"
+            "class CliRunner:\n    pass\n",
         )
         index = u.Infra.build_sibling_export_index(tmp_path, "test_pkg")
-        tm.that(index, contains="ProjectTypes")
+        tm.that(index, contains="main")
+        tm.that(index["main"], eq=("test_pkg.cli", "main"))
+        tm.that(index, contains="CliRunner")
+
+    def test_main_is_indexed_from_main_module(self, tmp_path: Path) -> None:
+        """Canonical main.py modules may export main()."""
+        (tmp_path / "main.py").write_text(
+            "def main() -> int:\n    return 0\n\nclass CliRunner:\n    pass\n",
+        )
+        index = u.Infra.build_sibling_export_index(tmp_path, "test_pkg")
+        tm.that(index, contains="main")
+        tm.that(index["main"], eq=("test_pkg.main", "main"))
+        tm.that(index, contains="CliRunner")
+
+    def test_typings_allows_typevar_and_canonical_alias(self, tmp_path: Path) -> None:
+        """Type variables stay allowed only inside typings namespace modules."""
+        (tmp_path / "pyproject.toml").write_text('[project]\nname = "test-pkg"\n')
+        pkg_dir = tmp_path / "src" / "test_pkg"
+        pkg_dir.mkdir(parents=True)
+        (pkg_dir / "__init__.py").write_text("")
+        (pkg_dir / "typings.py").write_text(
+            "from typing import TypeVar\n\n"
+            'TValue = TypeVar("TValue")\n\n'
+            "class TestPkgTypes:\n    pass\n\n"
+            "t = TestPkgTypes\n",
+        )
+        index = u.Infra.build_sibling_export_index(pkg_dir, "test_pkg")
+        tm.that(index, contains="TestPkgTypes")
         tm.that(index, contains="t")
         tm.that(index, contains="TValue")
 
@@ -246,14 +272,30 @@ class TestBuildSiblingExportIndex:
             "from typing import TypeVar\n\n"
             "import pytest\n\n"
             "T = TypeVar('T')\n\n"
+            "@pytest.fixture(autouse=True)\n"
+            "def reset_settings() -> Iterator[None]:\n"
+            "    yield\n\n"
             "@pytest.fixture\n"
             "def settings() -> Iterator[None]:\n"
+            "    yield\n\n"
+            "@pytest.fixture\n"
+            "def settings_factory() -> Iterator[None]:\n"
             "    yield\n",
         )
         index = u.Infra.build_sibling_export_index(fixtures_dir, "test_pkg._fixtures")
         tm.that(index, contains="settings")
+        tm.that(index, contains="reset_settings")
+        tm.that(index, contains="settings_factory")
         tm.that(index, excludes="T")
-        tm.that(index["settings"], eq=("test_pkg._fixtures.settings", ""))
+        tm.that(
+            index["reset_settings"],
+            eq=("test_pkg._fixtures.settings", "reset_settings"),
+        )
+        tm.that(index["settings"], eq=("test_pkg._fixtures.settings", "settings"))
+        tm.that(
+            index["settings_factory"],
+            eq=("test_pkg._fixtures.settings", "settings_factory"),
+        )
 
     def test_logger_is_never_bubbled_as_public_export(self) -> None:
         """Logger must stay internal even when generation scans package exports."""
@@ -286,8 +328,7 @@ class TestBuildSiblingExportIndex:
             tmp_path,
             "tests.fixtures.namespace_validator",
         )
-        tm.that(index, contains="rule0_a")
-        tm.that(index, contains="rule0_b")
+        tm.that(index, eq={})
         tm.that(index, excludes="DuplicateFixture")
 
     def test_generic_test_modules_export_only_module_names(
@@ -303,7 +344,7 @@ class TestBuildSiblingExportIndex:
 
         index = u.Infra.build_sibling_export_index(tmp_path, "tests.unit")
 
-        tm.that(index, contains="test_factory")
+        tm.that(index, eq={})
         tm.that(index, excludes="get_global_factory")
         tm.that(index, excludes="TestFactory")
 
@@ -347,6 +388,7 @@ class TestBuildSiblingExportIndex:
         (tmp_path / "pyproject.toml").write_text('[project]\nname = "test-pkg"\n')
         pkg_dir = tmp_path / "src" / "test_pkg"
         pkg_dir.mkdir(parents=True)
+        (pkg_dir / "__init__.py").write_text("")
         family_specs = (
             ("_constants", "base.py", "TestPkgConstantsBase"),
             ("_protocols", "base.py", "TestPkgProtocolsBase"),
@@ -373,6 +415,7 @@ class TestBuildSiblingExportIndex:
         pkg_dir = tmp_path / "src" / "test_pkg"
         typings_dir = pkg_dir / "_typings"
         typings_dir.mkdir(parents=True)
+        (pkg_dir / "__init__.py").write_text("")
         (typings_dir / "services.py").write_text(
             "from __future__ import annotations\n\n"
             "from typing import TYPE_CHECKING\n\n"
@@ -395,6 +438,7 @@ class TestBuildSiblingExportIndex:
         pkg_dir = tmp_path / "src" / "test_pkg"
         typings_dir = pkg_dir / "_typings"
         typings_dir.mkdir(parents=True)
+        (pkg_dir / "__init__.py").write_text("")
         (typings_dir / "services.py").write_text(
             "from __future__ import annotations\n\n"
             "from typing import TYPE_CHECKING\n\n"
@@ -418,6 +462,7 @@ class TestBuildSiblingExportIndex:
         pkg_dir = tmp_path / "src" / "test_pkg"
         typings_dir = pkg_dir / "_typings"
         typings_dir.mkdir(parents=True)
+        (pkg_dir / "__init__.py").write_text("")
         (typings_dir / "services.py").write_text(
             "from __future__ import annotations\n\n"
             "from typing import TYPE_CHECKING\n\n"
@@ -439,6 +484,7 @@ class TestBuildSiblingExportIndex:
         pkg_dir = tmp_path / "src" / "test_pkg"
         typings_dir = pkg_dir / "_typings"
         typings_dir.mkdir(parents=True)
+        (pkg_dir / "__init__.py").write_text("")
         (typings_dir / "services.py").write_text(
             "from __future__ import annotations\n\n"
             "from typing import TYPE_CHECKING\n\n"

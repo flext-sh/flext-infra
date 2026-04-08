@@ -62,10 +62,15 @@ class FlextInfraTypesRope:
     "Typed rope.refactor.importutils module facade backed by the public structural protocol."
     type RopeFindItModule = FlextInfraProtocolsRope.RopeFindItModuleLike
     "Typed rope.contrib.findit module facade backed by the public structural protocol."
-    type RopeGetModuleImportsFn = FlextInfraProtocolsRope.RopeGetModuleImportsFn
-    "Typed Rope get_module_imports callable backed by the public structural protocol."
-    type RopeFindOccurrencesFn = FlextInfraProtocolsRope.RopeFindOccurrencesFn
-    "Typed Rope find_occurrences callable backed by the public structural protocol."
+    type RopeGetModuleImportsFn = Callable[
+        [RopeProject, RopePyModule], RopeModuleImports
+    ]
+    "Typed Rope get_module_imports callable."
+    type RopeFindOccurrencesFn = Callable[
+        [RopeProject, RopeApiResource, int],
+        FlextTypes.SequenceOf[RopeLocation],
+    ]
+    "Typed Rope find_occurrences callable."
 
     type ImportMap = FlextTypes.StrMapping
     "Mapping of local name → fully qualified import path."

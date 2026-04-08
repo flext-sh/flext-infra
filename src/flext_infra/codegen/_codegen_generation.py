@@ -236,13 +236,15 @@ class FlextInfraCodegenGeneration:
             name for name in published_exports if name not in lazy_filtered
         ]
         out: MutableSequence[str] = [c.Infra.AUTOGEN_HEADER]
-        if publish_all:
-            out.extend([
-                FlextInfraUtilitiesCodegenGeneration.format_root_package_docstring(
-                    current_pkg
-                ),
-                "",
-            ])
+        docstring_pkg = (
+            current_pkg if publish_all else current_pkg.rsplit(".", maxsplit=1)[-1]
+        )
+        out.extend([
+            FlextInfraUtilitiesCodegenGeneration.format_root_package_docstring(
+                docstring_pkg
+            ),
+            "",
+        ])
 
         preamble_template = FlextInfraCodegenGeneration._get_template(
             c.Infra.Templates.PREAMBLE_STANDARD

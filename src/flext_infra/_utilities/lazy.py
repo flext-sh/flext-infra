@@ -13,6 +13,7 @@ import ast
 import re
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
+from typing import ClassVar
 
 from flext_infra import (
     FlextInfraUtilitiesCodegenGeneration,
@@ -215,6 +216,20 @@ class FlextInfraUtilitiesCodegenLazyScanning(
 ):
     """Export scanning and package discovery helpers."""
 
+    _MAIN_EXPORT_MODULE_SUFFIXES: ClassVar[tuple[str, ...]] = (".cli", ".main")
+
+    @staticmethod
+    def _should_export_main_from_module(mod_path: str) -> bool:
+        """Return True when a module-level `main` should be exported.
+
+        `main` is intentionally excluded by default to avoid collisions in
+        documentation/script packages that define many `main()` helpers.
+        Only canonical entrypoint modules are allowed to export it.
+        """
+        return mod_path.endswith(
+            FlextInfraUtilitiesCodegenLazyScanning._MAIN_EXPORT_MODULE_SUFFIXES
+        )
+
     @staticmethod
     def dir_has_py_files(pkg_dir: Path) -> bool:
         """Return True if directory has .py files besides __init__.py."""
@@ -344,7 +359,14 @@ class FlextInfraUtilitiesCodegenLazyScanning(
                 current_pkg,
             ):
                 for name in all_exports:
-                    if name in c.Infra.INFRA_ONLY_EXPORTS or name == "main":
+                    if name in c.Infra.INFRA_ONLY_EXPORTS:
+                        continue
+                    if (
+                        name == "main"
+                        and not FlextInfraUtilitiesCodegenLazyScanning._should_export_main_from_module(
+                            mod_path
+                        )
+                    ):
                         continue
                     FlextInfraUtilitiesCodegenLazyScanning.register_export(
                         index,
@@ -369,7 +391,7 @@ class FlextInfraUtilitiesCodegenLazyScanning(
         py_file: Path,
         current_pkg: str,
     ) -> bool:
-        """Skip private underscore modules only at the root namespace layer."""
+        """Skip private modules except sanctioned family/implementation packages."""
         if not py_file.stem.startswith("_"):
             return False
         if py_file.name in {
@@ -378,11 +400,17 @@ class FlextInfraUtilitiesCodegenLazyScanning(
             "__version__.py",
         }:
             return False
-        if any(
-            part in c.Infra.FAMILY_DIRECTORIES.values()
-            for part in current_pkg.split(".")
-        ):
+        parts = tuple(part for part in current_pkg.split(".") if part)
+        if any(part in c.Infra.FAMILY_DIRECTORIES.values() for part in parts):
             return False
+        if "services" in parts:
+            return True
+        if parts and parts[0] in {
+            c.Infra.Directories.TESTS,
+            c.Infra.Directories.EXAMPLES,
+            c.Infra.Directories.SCRIPTS,
+        }:
+            return True
         return FlextInfraUtilitiesCodegenGeneration.is_root_namespace_package(
             current_pkg
         )
@@ -524,14 +552,20 @@ class FlextInfraUtilitiesCodegenLazyScanning(
                 names.append(node.name)
                 continue
             if isinstance(node, ast.Assign):
-                if (
-                    isinstance(node.value, ast.Call)
-                    and FlextInfraUtilitiesCodegenLazyScanning._call_name(
+                if isinstance(node.value, ast.Call):
+                    func_name = FlextInfraUtilitiesCodegenLazyScanning._call_name(
                         node.value.func,
                     )
-                    in c.Infra.TYPEVAR_CALLABLES
-                ):
-                    continue
+                    if func_name in c.Infra.TYPEVAR_CALLABLES:
+                        if FlextInfraUtilitiesCodegenLazyScanning._is_typings_mod_path(
+                            mod_path
+                        ):
+                            names.extend(
+                                target.id
+                                for target in node.targets
+                                if isinstance(target, ast.Name)
+                            )
+                        continue
                 names.extend(
                     target.id for target in node.targets if isinstance(target, ast.Name)
                 )
@@ -542,10 +576,13 @@ class FlextInfraUtilitiesCodegenLazyScanning(
         for name in names:
             if mod_path.startswith("tests.") and name == "pytestmark":
                 continue
+            if name.startswith("_") or name in c.Infra.INFRA_ONLY_EXPORTS:
+                continue
             if (
-                name.startswith("_")
-                or name == "main"
-                or name in c.Infra.INFRA_ONLY_EXPORTS
+                name == "main"
+                and not FlextInfraUtilitiesCodegenLazyScanning._should_export_main_from_module(
+                    mod_path
+                )
             ):
                 continue
             FlextInfraUtilitiesCodegenLazyScanning.register_export(
@@ -1003,6 +1040,11 @@ class FlextInfraUtilitiesCodegenLazyScanning(
         return False
 
     @staticmethod
+    def _is_typings_mod_path(mod_path: str) -> bool:
+        parts = tuple(part for part in mod_path.split(".") if part)
+        return bool(parts) and (parts[-1] == "typings" or "_typings" in parts)
+
+    @staticmethod
     def _call_name(func: ast.expr) -> str:
         if isinstance(func, ast.Name):
             return func.id
@@ -1063,6 +1105,8 @@ class FlextInfraUtilitiesCodegenLazyScanning(
         ):
             return True
         if isinstance(node, ast.ClassDef):
+            return False
+        if "._fixtures." in mod_path or mod_path.endswith("._fixtures"):
             return False
         return FlextInfraUtilitiesCodegenLazyScanning._is_pytest_fixture(node)
 

@@ -21,41 +21,53 @@ from flext_infra import FlextInfraCodegenGeneration
 class TestResolveAliases:
     """Test public alias resolution utility behavior."""
 
-    def test_resolves_c_alias(self) -> None:
+    def test_resolves_c_alias(self, tmp_path: Path) -> None:
         """Test resolving 'c' alias to Constants class."""
+        pkg_dir = tmp_path / "src" / "pkg"
+        pkg_dir.mkdir(parents=True)
+        (pkg_dir / "__init__.py").write_text("", encoding="utf-8")
         lazy_map: MutableMapping[str, tuple[str, str]] = {
             "FlextConstants": ("pkg.constants", "FlextConstants"),
         }
-        u.Infra().resolve_aliases(lazy_map, pkg_dir=Path("/workspace/pkg"))
+        u.Infra().resolve_aliases(lazy_map, pkg_dir=pkg_dir)
         tm.that(lazy_map, contains="c")
         tm.that(lazy_map["c"], eq=("pkg.constants", "FlextConstants"))
 
-    def test_does_not_overwrite_canonical_existing(self) -> None:
+    def test_does_not_overwrite_canonical_existing(self, tmp_path: Path) -> None:
         """Test that canonical alias pointing to correct facade is preserved."""
+        pkg_dir = tmp_path / "src" / "pkg"
+        pkg_dir.mkdir(parents=True)
+        (pkg_dir / "__init__.py").write_text("", encoding="utf-8")
         lazy_map: MutableMapping[str, tuple[str, str]] = {
             "c": ("pkg.constants", "FlextConstants"),
             "FlextConstants": ("pkg.constants", "FlextConstants"),
         }
-        u.Infra().resolve_aliases(lazy_map, pkg_dir=Path("/workspace/pkg"))
+        u.Infra().resolve_aliases(lazy_map, pkg_dir=pkg_dir)
         tm.that(lazy_map["c"], eq=("pkg.constants", "FlextConstants"))
 
-    def test_overwrites_non_canonical_existing(self) -> None:
+    def test_overwrites_non_canonical_existing(self, tmp_path: Path) -> None:
         """Test that non-canonical alias is replaced with canonical facade."""
+        pkg_dir = tmp_path / "src" / "pkg"
+        pkg_dir.mkdir(parents=True)
+        (pkg_dir / "__init__.py").write_text("", encoding="utf-8")
         lazy_map: MutableMapping[str, tuple[str, str]] = {
             "c": ("pkg.custom", "CustomConst"),
             "FlextConstants": ("pkg.constants", "FlextConstants"),
         }
-        u.Infra().resolve_aliases(lazy_map, pkg_dir=Path("/workspace/pkg"))
+        u.Infra().resolve_aliases(lazy_map, pkg_dir=pkg_dir)
         tm.that(lazy_map["c"], eq=("pkg.constants", "FlextConstants"))
 
-    def test_resolves_multiple_aliases(self) -> None:
+    def test_resolves_multiple_aliases(self, tmp_path: Path) -> None:
         """Test resolving multiple aliases at once."""
+        pkg_dir = tmp_path / "src" / "pkg"
+        pkg_dir.mkdir(parents=True)
+        (pkg_dir / "__init__.py").write_text("", encoding="utf-8")
         lazy_map: MutableMapping[str, tuple[str, str]] = {
             "FlextConstants": ("pkg.constants", "FlextConstants"),
             "FlextModels": ("pkg.models", "FlextModels"),
             "FlextTypes": ("pkg.typings", "FlextTypes"),
         }
-        u.Infra().resolve_aliases(lazy_map, pkg_dir=Path("/workspace/pkg"))
+        u.Infra().resolve_aliases(lazy_map, pkg_dir=pkg_dir)
         tm.that(lazy_map, contains="c")
         tm.that(lazy_map, contains="m")
         tm.that(lazy_map, contains="t")
@@ -148,7 +160,7 @@ class TestGenerateFile:
             inline_constants,
             "flext_core",
         )
-        tm.that(content, contains="from flext_core.lazy import  install_lazy_exports")
+        tm.that(content, contains="from flext_core.lazy import install_lazy_exports")
 
     def test_with_other_package(self) -> None:
         """Test uses correct lazy import for non-core packages."""
@@ -161,7 +173,7 @@ class TestGenerateFile:
             inline_constants,
             "other_pkg",
         )
-        tm.that(content, contains="from flext_core.lazy import  install_lazy_exports")
+        tm.that(content, contains="from flext_core.lazy import install_lazy_exports")
 
     def test_with_inline_constants(self) -> None:
         """Test includes inline constants."""

@@ -16,7 +16,7 @@ class FlextInfraUtilitiesRopeHelpers:
     _post_hooks: ClassVar[list[p.Infra.RopePostHook]] = []
 
     @staticmethod
-    def get_rope_get_module_imports_fn() -> p.Infra.RopeGetModuleImportsFn:
+    def get_rope_get_module_imports_fn() -> t.Infra.RopeGetModuleImportsFn:
         """Expose ``get_module_imports`` through the public Rope protocol boundary."""
 
         def _get_module_imports(

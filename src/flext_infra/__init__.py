@@ -214,7 +214,7 @@ if _t.TYPE_CHECKING:
         run_cli,
     )
     from flext_infra.check.workspace_check_cli import FlextInfraWorkspaceCheckerCli
-    from flext_infra.cli import FlextInfraCli
+    from flext_infra.cli import FlextInfraCli, main
     from flext_infra.codegen._codegen_generation import FlextInfraCodegenGeneration
     from flext_infra.codegen.census import FlextInfraCodegenCensus
     from flext_infra.codegen.cli import FlextInfraCliCodegen
@@ -399,7 +399,6 @@ if _t.TYPE_CHECKING:
     from flext_infra.rules.pattern_corrections import (
         FlextInfraRefactorPatternCorrectionsRule,
     )
-    from flext_infra.services._cli_base import FlextInfraServiceCliRunnerMixin
     from flext_infra.services.basemk import FlextInfraServiceBasemkMixin
     from flext_infra.services.check import FlextInfraServiceCheckMixin
     from flext_infra.services.codegen import FlextInfraServiceCodegenMixin
@@ -538,6 +537,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
         "h": ("flext_core.handlers", "FlextHandlers"),
         "infra": ".api",
         "m": (".models", "FlextInfraModels"),
+        "main": ".cli",
         "p": (".protocols", "FlextInfraProtocols"),
         "r": ("flext_core.result", "FlextResult"),
         "s": ".base",
@@ -756,7 +756,6 @@ __all__ = [
     "FlextInfraServiceBase",
     "FlextInfraServiceBasemkMixin",
     "FlextInfraServiceCheckMixin",
-    "FlextInfraServiceCliRunnerMixin",
     "FlextInfraServiceCodegenMixin",
     "FlextInfraServiceDepsMixin",
     "FlextInfraServiceDocsMixin",
@@ -874,6 +873,7 @@ __all__ = [
     "h",
     "infra",
     "m",
+    "main",
     "p",
     "r",
     "run_cli",

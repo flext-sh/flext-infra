@@ -4,12 +4,17 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
+from typing import ClassVar
 
 from flext_infra import c, t
 
 
 class FlextInfraUtilitiesOutputFailureSummary:
     """Mixin that renders the standard failed-projects summary block."""
+
+    _use_unicode: ClassVar[bool]
+    _use_color: ClassVar[bool]
+    _stream: ClassVar[t.Infra.TextStream]
 
     @classmethod
     def failure_summary(
