@@ -12,13 +12,13 @@ from typing import override
 from flext_core import r, s
 from flext_infra import (
     FlextInfraGateRegistry,
+    FlextInfraWorkspaceCheckerCli,
     FlextInfraWorkspaceCheckGatesMixin,
     WorkspaceLoopOutcome,
     c,
     m,
     t,
     u,
-    workspace_check_cli,
 )
 
 
@@ -97,12 +97,12 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
     @staticmethod
     def build_parser() -> t.Infra.CliArgumentParser:
         """Build the workspace check CLI parser."""
-        return workspace_check_cli.FlextInfraWorkspaceCheckerCli.build_parser()
+        return FlextInfraWorkspaceCheckerCli.build_parser()
 
     @staticmethod
     def run_cli(argv: Sequence[str] | None = None) -> int:
         """Run the subcommand-based workspace check CLI."""
-        return workspace_check_cli.FlextInfraWorkspaceCheckerCli.run_cli(argv)
+        return FlextInfraWorkspaceCheckerCli.run_cli(argv)
 
     @staticmethod
     def main(argv: Sequence[str] | None = None) -> int:
@@ -112,7 +112,7 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
             cli_module = importlib.import_module("flext_infra.cli")
             if raw_argv[0] in cli_module.FlextInfraCli.GROUPS:
                 return cli_module.main(raw_argv)
-        return workspace_check_cli.FlextInfraWorkspaceCheckerCli.main(argv)
+        return FlextInfraWorkspaceCheckerCli.main(argv)
 
     def run_project(
         self,

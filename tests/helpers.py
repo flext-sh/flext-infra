@@ -12,16 +12,19 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 import argparse
 import shutil
 import sys
 import tomllib
 from pathlib import Path
+from typing import override
 
 from flext_tests import tm
 from tests import m, t
 
 from flext_core import r
+from flext_infra import FlextInfraBaseMkGenerator, FlextInfraProjectMigrator
 
 
 class FlextInfraTestHelpers:
@@ -386,6 +389,97 @@ class FlextInfraTestHelpers:
             encoding="utf-8",
         )
         return root
+
+    # ── Workspace migrator helpers ───────────────────────────────────
+
+    class _MigratorStubDiscovery:
+        """Typed stub for migrator discovery service."""
+
+        def __init__(
+            self,
+            projects: Sequence[m.Infra.ProjectInfo] | None = None,
+            *,
+            error: str = "",
+        ) -> None:
+            self._projects = projects or []
+            self._error = error
+
+        def discover_projects(
+            self,
+            workspace_root: Path,
+        ) -> r[Sequence[m.Infra.ProjectInfo]]:
+            _ = workspace_root
+            if self._error:
+                return r[Sequence[m.Infra.ProjectInfo]].fail(self._error)
+            return r[Sequence[m.Infra.ProjectInfo]].ok(self._projects)
+
+    class _MigratorStubGenerator(FlextInfraBaseMkGenerator):
+        """Typed stub for base.mk generator."""
+
+        def __init__(self, content: str = "", *, fail: str = "") -> None:
+            super().__init__()
+            self._content = content
+            self._fail = fail
+
+        @override
+        def generate_basemk(
+            self,
+            config: m.Infra.BaseMkConfig | t.ScalarMapping | None = None,
+        ) -> r[str]:
+            _ = config
+            if self._fail:
+                return r[str].fail(self._fail)
+            return r[str].ok(self._content)
+
+    @staticmethod
+    def project_info(
+        project_root: Path,
+        name: str = "project-a",
+        *,
+        stack: str = "python/external",
+        has_tests: bool = False,
+        has_src: bool = True,
+    ) -> m.Infra.ProjectInfo:
+        """Build a ProjectInfo model for workspace migrator tests."""
+        return m.Infra.ProjectInfo.model_validate(
+            obj={
+                "name": name,
+                "path": project_root,
+                "stack": stack,
+                "has_tests": has_tests,
+                "has_src": has_src,
+            },
+        )
+
+    @classmethod
+    def build_migrator(
+        cls,
+        project: m.Infra.ProjectInfo | None,
+        base_mk: str,
+        *,
+        workspace_root: Path,
+        dry_run: bool = False,
+        discovery_projects: Sequence[m.Infra.ProjectInfo] | None = None,
+        discovery_error: str = "",
+        generator_fail: str = "",
+    ) -> FlextInfraProjectMigrator:
+        """Create a migrator with stubbed discovery + base.mk generator."""
+        migrator = FlextInfraProjectMigrator(
+            workspace=workspace_root,
+            apply=not dry_run,
+            dry_run=dry_run,
+        )
+        projects: Sequence[m.Infra.ProjectInfo] = (
+            discovery_projects
+            if discovery_projects is not None
+            else ([project] if project is not None else [])
+        )
+        migrator.discovery = cls._MigratorStubDiscovery(
+            projects,
+            error=discovery_error,
+        )
+        migrator.generator = cls._MigratorStubGenerator(base_mk, fail=generator_fail)
+        return migrator
 
 
 # Canonical alias for infra test helpers
