@@ -167,6 +167,8 @@ if _t.TYPE_CHECKING:
         test_namespace_enforcer_detects_missing_runtime_alias_outside_src,
         test_namespace_enforcer_does_not_rewrite_indented_import_aliases,
         test_namespace_enforcer_does_not_rewrite_multiline_import_alias_blocks,
+        test_namespace_enforcer_respects_tool_flext_namespace_scan_dirs,
+        test_namespace_enforcer_skips_dynamic_dirs_by_default,
     )
 
     test_infra_refactor_namespace_source = (
@@ -176,7 +178,9 @@ if _t.TYPE_CHECKING:
     from tests.unit.refactor.test_infra_refactor_namespace_source import (
         FAMILY_FILE_MAP,
         FAMILY_SUFFIX_MAP,
+        test_allows_parent_u_import_in_private_utilities_module,
         test_detects_only_wrong_alias_in_mixed_import,
+        test_detects_parent_u_import_outside_private_utilities_module,
         test_detects_same_project_submodule_alias_import,
         test_detects_wrong_source_m_import,
         test_detects_wrong_source_u_import,
@@ -316,6 +320,10 @@ _LAZY_IMPORTS = {
         "tests.unit.refactor.test_infra_refactor_typing_unifier",
         "test_all_three_capabilities_in_one_pass",
     ),
+    "test_allows_parent_u_import_in_private_utilities_module": (
+        "tests.unit.refactor.test_infra_refactor_namespace_source",
+        "test_allows_parent_u_import_in_private_utilities_module",
+    ),
     "test_centralize_pydantic_cli_outputs_extended_metrics": (
         "tests.unit.refactor.test_infra_refactor_cli_models_workflow",
         "test_centralize_pydantic_cli_outputs_extended_metrics",
@@ -363,6 +371,10 @@ _LAZY_IMPORTS = {
     "test_detects_only_wrong_alias_in_mixed_import": (
         "tests.unit.refactor.test_infra_refactor_namespace_source",
         "test_detects_only_wrong_alias_in_mixed_import",
+    ),
+    "test_detects_parent_u_import_outside_private_utilities_module": (
+        "tests.unit.refactor.test_infra_refactor_namespace_source",
+        "test_detects_parent_u_import_outside_private_utilities_module",
     ),
     "test_detects_same_project_submodule_alias_import": (
         "tests.unit.refactor.test_infra_refactor_namespace_source",
@@ -585,6 +597,14 @@ _LAZY_IMPORTS = {
     "test_namespace_enforcer_does_not_rewrite_multiline_import_alias_blocks": (
         "tests.unit.refactor.test_infra_refactor_namespace_enforcer",
         "test_namespace_enforcer_does_not_rewrite_multiline_import_alias_blocks",
+    ),
+    "test_namespace_enforcer_respects_tool_flext_namespace_scan_dirs": (
+        "tests.unit.refactor.test_infra_refactor_namespace_enforcer",
+        "test_namespace_enforcer_respects_tool_flext_namespace_scan_dirs",
+    ),
+    "test_namespace_enforcer_skips_dynamic_dirs_by_default": (
+        "tests.unit.refactor.test_infra_refactor_namespace_enforcer",
+        "test_namespace_enforcer_skips_dynamic_dirs_by_default",
     ),
     "test_namespace_rewriter_keeps_contextual_alias_subset": (
         "tests.unit.refactor.test_infra_refactor_namespace_aliases",
@@ -921,6 +941,7 @@ __all__ = [
     "s",
     "t",
     "test_all_three_capabilities_in_one_pass",
+    "test_allows_parent_u_import_in_private_utilities_module",
     "test_centralize_pydantic_cli_outputs_extended_metrics",
     "test_class_reconstructor_reorders_each_contiguous_method_block",
     "test_class_reconstructor_reorders_methods_by_config",
@@ -933,6 +954,7 @@ __all__ = [
     "test_detects_missing_local_composition_base",
     "test_detects_multiple_models",
     "test_detects_only_wrong_alias_in_mixed_import",
+    "test_detects_parent_u_import_outside_private_utilities_module",
     "test_detects_same_project_submodule_alias_import",
     "test_detects_wrong_source_m_import",
     "test_detects_wrong_source_u_import",
@@ -1002,6 +1024,8 @@ __all__ = [
     "test_namespace_enforcer_detects_missing_runtime_alias_outside_src",
     "test_namespace_enforcer_does_not_rewrite_indented_import_aliases",
     "test_namespace_enforcer_does_not_rewrite_multiline_import_alias_blocks",
+    "test_namespace_enforcer_respects_tool_flext_namespace_scan_dirs",
+    "test_namespace_enforcer_skips_dynamic_dirs_by_default",
     "test_namespace_rewriter_keeps_contextual_alias_subset",
     "test_namespace_rewriter_only_rewrites_runtime_alias_imports",
     "test_namespace_rewriter_skips_facade_and_subclass_files",

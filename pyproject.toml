@@ -514,6 +514,7 @@ known-first-party = [ "flext_cli", "flext_core", "flext_infra" ]
 split-on-trailing-comma = true
 
 [tool.ruff.lint.per-file-ignores]
+
 "**/.vulture_whitelist.py" = [ "ALL" ]
 "**/*_pb2*.py" = [ "ALL" ]
 "**/*dispatcher*" = [  ]
