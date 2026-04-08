@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 import operator
 from collections.abc import Sequence
 from pathlib import Path
@@ -39,18 +40,6 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
     )
 
     @staticmethod
-    def _get_ast_tree(source: str, file_path: Path) -> object | None:
-        try:
-            rope_proj = FlextInfraUtilitiesRope.init_rope_project(file_path.parent)
-            try:
-                pycore = FlextInfraUtilitiesRope.get_pycore(rope_proj)
-                return getattr(pycore, "get_string_module")(source).get_ast()
-            finally:
-                rope_proj.close()
-        except Exception:
-            return None
-
-    @staticmethod
     def _is_dict_like_alias_regex(
         name: str,
         source: str,
@@ -70,12 +59,15 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         expr = "\n".join(lines[start - 1 : end])
         if not any(marker in expr for marker in ("Mapping[", "MutableMapping[")):
             return None
+        alias_expr = expr.partition("=")[2].strip()
+        if not alias_expr:
+            return None
 
         return m.Infra.AliasMove(
             name=name,
             start=start,
             end=end,
-            alias_expr=expr,
+            alias_expr=alias_expr,
         )
 
     @staticmethod
@@ -164,6 +156,47 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
             return (0, 0)
 
     @staticmethod
+    def insert_import_statements(
+        source: str,
+        import_statements: Sequence[str],
+    ) -> str:
+        """Insert missing imports after the top import block."""
+        pending = [
+            statement
+            for statement in import_statements
+            if statement and statement not in source
+        ]
+        if not pending:
+            return source
+        lines = source.splitlines()
+        try:
+            module = ast.parse(source)
+        except SyntaxError:
+            module = None
+        body: list[ast.stmt] = list(module.body) if module is not None else []
+        insertion_line = 0
+        body_index = 0
+        if body and isinstance(body[0], ast.Expr):
+            value = getattr(body[0], "value", None)
+            if isinstance(value, ast.Constant) and isinstance(value.value, str):
+                insertion_line = body[0].end_lineno or 0
+                body_index = 1
+        while body_index < len(body):
+            node = body[body_index]
+            if not isinstance(node, (ast.Import, ast.ImportFrom)):
+                break
+            insertion_line = node.end_lineno or node.lineno
+            body_index += 1
+        before = lines[:insertion_line]
+        after = lines[insertion_line:]
+        block = list(pending)
+        if before and before[-1].strip():
+            block.insert(0, "")
+        if after and after[0].strip():
+            block.append("")
+        return "\n".join([*before, *block, *after])
+
+    @staticmethod
     def rewrite_source(
         file_path: Path,
         class_moves: Sequence[m.Infra.ClassMove],
@@ -185,7 +218,12 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
 
         updated = "\n".join(lines)
         if class_moves or alias_moves:
-            updated = import_statement + "\n" + updated
+            updated = (
+                FlextInfraUtilitiesRefactorPydanticAnalysis.insert_import_statements(
+                    updated,
+                    [import_statement],
+                )
+            )
 
         if source.endswith("\n") and (not updated.endswith("\n")):
             updated += "\n"

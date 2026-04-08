@@ -46,7 +46,8 @@ class FlextInfraUtilitiesRefactorNamespaceRuntime(
                 except OSError:
                     continue
                 if FlextInfraUtilitiesParsing.looks_like_facade_file(
-                    file_path=file_path, source=source
+                    file_path=file_path,
+                    source=source,
                 ):
                     continue
                 resource = FlextInfraUtilitiesRope.get_resource_from_path(

@@ -116,6 +116,11 @@ class FlextInfraUtilitiesRefactorMroTransform:
             )
             created_classes = (class_name,)
 
+        lines = FlextInfraUtilitiesRefactorMroTransform._drop_redundant_class_aliases(
+            lines=lines,
+            class_name=class_name,
+            symbol_map=symbol_map,
+        )
         new_source = "\n".join(lines) + "\n"
         new_source = FlextInfraUtilitiesRefactorMroTransform._qualify_local_references(
             source=new_source,
@@ -157,6 +162,35 @@ class FlextInfraUtilitiesRefactorMroTransform:
     @staticmethod
     def _indent_block(block_lines: Sequence[str]) -> list[str]:
         return [("    " + line) if line else "" for line in block_lines]
+
+    @staticmethod
+    def _drop_redundant_class_aliases(
+        *,
+        lines: Sequence[str],
+        class_name: str,
+        symbol_map: t.StrMapping,
+    ) -> list[str]:
+        alias_lines = {
+            f"{target} = {symbol}"
+            for symbol, target in symbol_map.items()
+            if symbol != target
+        }
+        if not alias_lines:
+            return list(lines)
+        updated: list[str] = []
+        in_class = False
+        for line in lines:
+            stripped = line.strip()
+            if line.startswith(f"class {class_name}"):
+                in_class = True
+                updated.append(line)
+                continue
+            if in_class and stripped and not line.startswith((" ", "\t")):
+                in_class = False
+            if in_class and stripped in alias_lines:
+                continue
+            updated.append(line)
+        return updated
 
     @staticmethod
     def _qualify_local_references(

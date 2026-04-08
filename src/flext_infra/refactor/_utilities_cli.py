@@ -53,24 +53,12 @@ class FlextInfraUtilitiesRefactorCli:
         _ = sys.stdout.write(f"DEBUG: {message}\n")
 
     @staticmethod
-    def build_impact_map(
-        results: Sequence[m.Infra.Result],
-    ) -> Sequence[t.ContainerMapping]:
-        """Build a serializable list of impact records from refactor results."""
-        return [
-            result.model_dump()
-            if hasattr(result, "model_dump")
-            else {"value": str(result)}
-            for result in results
-        ]
-
-    @staticmethod
     def write_impact_map(
         results: Sequence[m.Infra.Result],
         output_path: Path,
     ) -> bool:
         """Persist impact-map JSON report to disk."""
-        impact_map = FlextInfraUtilitiesRefactorCli.build_impact_map(results)
+        impact_map = [result.model_dump() for result in results]
         try:
             output_path.parent.mkdir(parents=True, exist_ok=True)
             payload = t.Cli.JSON_LIST_ADAPTER.validate_python(impact_map)

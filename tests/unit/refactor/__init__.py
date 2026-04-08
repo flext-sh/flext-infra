@@ -48,6 +48,7 @@ if _t.TYPE_CHECKING:
     )
     import tests.unit.refactor.test_infra_refactor_engine as _tests_unit_refactor_test_infra_refactor_engine
     from tests.unit.refactor.test_infra_refactor_cli_models_workflow import (
+        test_centralize_pydantic_cli_apply_uses_local_private_module_imports,
         test_centralize_pydantic_cli_outputs_extended_metrics,
         test_namespace_enforce_cli_fails_on_manual_protocol_violation,
         test_ultrawork_models_cli_runs_dry_run_copy,
@@ -162,6 +163,7 @@ if _t.TYPE_CHECKING:
     from tests.unit.refactor.test_infra_refactor_namespace_enforcer import (
         test_loose_object_detector_detects_module_logger_assignment,
         test_namespace_enforcer_apply_inserts_future_after_single_line_module_docstring,
+        test_namespace_enforcer_apply_keeps_autofixes_when_other_violations_remain,
         test_namespace_enforcer_apply_keeps_script_shebang_when_adding_future,
         test_namespace_enforcer_apply_moves_manual_protocol_to_protocols_file,
         test_namespace_enforcer_creates_missing_facades_and_rewrites_imports,
@@ -340,6 +342,10 @@ _LAZY_IMPORTS = {
     "test_allows_parent_u_import_in_private_utilities_module": (
         "tests.unit.refactor.test_infra_refactor_namespace_source",
         "test_allows_parent_u_import_in_private_utilities_module",
+    ),
+    "test_centralize_pydantic_cli_apply_uses_local_private_module_imports": (
+        "tests.unit.refactor.test_infra_refactor_cli_models_workflow",
+        "test_centralize_pydantic_cli_apply_uses_local_private_module_imports",
     ),
     "test_centralize_pydantic_cli_outputs_extended_metrics": (
         "tests.unit.refactor.test_infra_refactor_cli_models_workflow",
@@ -587,6 +593,10 @@ _LAZY_IMPORTS = {
     "test_namespace_enforcer_apply_inserts_future_after_single_line_module_docstring": (
         "tests.unit.refactor.test_infra_refactor_namespace_enforcer",
         "test_namespace_enforcer_apply_inserts_future_after_single_line_module_docstring",
+    ),
+    "test_namespace_enforcer_apply_keeps_autofixes_when_other_violations_remain": (
+        "tests.unit.refactor.test_infra_refactor_namespace_enforcer",
+        "test_namespace_enforcer_apply_keeps_autofixes_when_other_violations_remain",
     ),
     "test_namespace_enforcer_apply_keeps_script_shebang_when_adding_future": (
         "tests.unit.refactor.test_infra_refactor_namespace_enforcer",
@@ -993,6 +1003,7 @@ __all__ = [
     "t",
     "test_all_three_capabilities_in_one_pass",
     "test_allows_parent_u_import_in_private_utilities_module",
+    "test_centralize_pydantic_cli_apply_uses_local_private_module_imports",
     "test_centralize_pydantic_cli_outputs_extended_metrics",
     "test_class_reconstructor_reorders_each_contiguous_method_block",
     "test_class_reconstructor_reorders_methods_by_config",
@@ -1069,6 +1080,7 @@ __all__ = [
     "test_models_family_blocks_utilities_target",
     "test_namespace_enforce_cli_fails_on_manual_protocol_violation",
     "test_namespace_enforcer_apply_inserts_future_after_single_line_module_docstring",
+    "test_namespace_enforcer_apply_keeps_autofixes_when_other_violations_remain",
     "test_namespace_enforcer_apply_keeps_script_shebang_when_adding_future",
     "test_namespace_enforcer_apply_moves_manual_protocol_to_protocols_file",
     "test_namespace_enforcer_creates_missing_facades_and_rewrites_imports",
