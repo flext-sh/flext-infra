@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from flext_core import FlextModels
+from flext_core import m
 from flext_infra import FlextInfraModelsMixins, c, t
 
 
@@ -14,7 +14,7 @@ class FlextInfraModelsRefactorGrep:
     """Mixin containing migration/reporting contracts for refactor orchestration."""
 
     class MROSymbolCandidate(
-        FlextModels.ArbitraryTypesModel,
+        m.ArbitraryTypesModel,
     ):
         """Unified symbol candidate used by MRO scan and rewrites."""
 
@@ -43,7 +43,7 @@ class FlextInfraModelsRefactorGrep:
         ] = ""
 
     class MROImportRewrite(
-        FlextModels.ArbitraryTypesModel,
+        m.ArbitraryTypesModel,
     ):
         """Unified import rewrite payload for MRO reference updates."""
 
@@ -67,7 +67,7 @@ class FlextInfraModelsRefactorGrep:
             Field(default="", description="Resolved symbol in facade"),
         ] = ""
 
-    class MROScanReport(FlextModels.ArbitraryTypesModel):
+    class MROScanReport(m.ArbitraryTypesModel):
         """Scan result for one constants module candidate file."""
 
         model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
@@ -89,7 +89,7 @@ class FlextInfraModelsRefactorGrep:
             FlextInfraModelsRefactorGrep.MROSymbolCandidate
         ] = Field(default_factory=tuple, description="Module-level symbol candidates")
 
-    class MROFileMigration(FlextModels.ArbitraryTypesModel):
+    class MROFileMigration(m.ArbitraryTypesModel):
         """Migration summary for one transformed file."""
 
         file: Annotated[t.NonEmptyStr, Field(description="Absolute file path")]
@@ -101,7 +101,7 @@ class FlextInfraModelsRefactorGrep:
             default_factory=tuple, description="Facade classes created during migration"
         )
 
-    class MRORewriteResult(FlextModels.ArbitraryTypesModel):
+    class MRORewriteResult(m.ArbitraryTypesModel):
         """Reference rewrite summary for one file."""
 
         file: Annotated[t.NonEmptyStr, Field(description="Absolute file path")]
@@ -112,7 +112,7 @@ class FlextInfraModelsRefactorGrep:
 
     class MROMigrationReport(
         FlextInfraModelsMixins.StashRefMixin,
-        FlextModels.ArbitraryTypesModel,
+        m.ArbitraryTypesModel,
     ):
         """End-to-end report for migrate-to-mro command execution."""
 
@@ -157,7 +157,7 @@ class FlextInfraModelsRefactorGrep:
             default_factory=tuple, description="Errors"
         )
 
-    class EngineConfig(FlextModels.ContractModel):
+    class EngineConfig(m.ContractModel):
         model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
         project_scan_dirs: t.StrSequence = Field(
@@ -177,7 +177,7 @@ class FlextInfraModelsRefactorGrep:
             description="Allowed file extensions (empty = all by pattern)",
         )
 
-    class MethodOrderRule(FlextModels.ContractModel):
+    class MethodOrderRule(m.ContractModel):
         """A declarative method ordering rule for class reconstruction."""
 
         model_config: ClassVar[ConfigDict] = ConfigDict()
@@ -206,7 +206,7 @@ class FlextInfraModelsRefactorGrep:
             default_factory=list, description="Explicit method order"
         )
 
-    class SignatureMigration(FlextModels.ContractModel):
+    class SignatureMigration(m.ContractModel):
         """Declarative signature migration rule for callsite propagation."""
 
         id: Annotated[
@@ -236,7 +236,7 @@ class FlextInfraModelsRefactorGrep:
             default_factory=dict, description="Keywords to add"
         )
 
-    class ImportModernizerRuleConfig(FlextModels.ContractModel):
+    class ImportModernizerRuleConfig(m.ContractModel):
         """Configuration for a single import modernizer rule."""
 
         module: Annotated[

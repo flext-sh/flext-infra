@@ -35,7 +35,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".mro_resolver": ("FlextInfraRefactorMROResolver",),
         ".namespace_enforcer": ("FlextInfraNamespaceEnforcer",),
         ".project_classifier": ("FlextInfraProjectClassifier",),
-        ".rule": ("FlextInfraRefactorRuleLoader",),
+        ".rule": ("FlextInfraUtilitiesRefactorRuleLoader",),
         ".rule_definition_validator": ("FlextInfraRefactorRuleDefinitionValidator",),
         ".safety": ("FlextInfraRefactorSafetyManager",),
         ".scanner": ("FlextInfraRefactorLooseClassScanner",),

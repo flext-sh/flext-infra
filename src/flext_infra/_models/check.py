@@ -7,14 +7,14 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, computed_field, model_serializer
 
-from flext_core import FlextModels
+from flext_core import m
 from flext_infra import FlextInfraModelsMixins, c, t
 
 
 class FlextInfraModelsCheck:
     """Quality-gate check domain models."""
 
-    class Issue(FlextModels.ContractModel):
+    class Issue(m.ContractModel):
         """Single issue reported by a quality gate tool."""
 
         file: Annotated[str, Field(description="Source file path")]
@@ -41,7 +41,7 @@ class FlextInfraModelsCheck:
 
     class GateResult(
         FlextInfraModelsMixins.ProjectNameMixin,
-        FlextModels.ArbitraryTypesModel,
+        m.ArbitraryTypesModel,
     ):
         """Result summary for a single quality gate execution."""
 
@@ -53,7 +53,7 @@ class FlextInfraModelsCheck:
         )
         duration: float = Field(default=0.0, description="Duration in seconds")
 
-    class GateExecution(FlextModels.ArbitraryTypesModel):
+    class GateExecution(m.ArbitraryTypesModel):
         """Execution result for a single quality gate."""
 
         result: FlextInfraModelsCheck.GateResult = Field(
@@ -66,7 +66,7 @@ class FlextInfraModelsCheck:
 
     class ProjectResult(
         FlextInfraModelsMixins.ProjectNameMixin,
-        FlextModels.ArbitraryTypesModel,
+        m.ArbitraryTypesModel,
     ):
         """Aggregated gate results for a single project."""
 
@@ -89,7 +89,7 @@ class FlextInfraModelsCheck:
 
     # -- SARIF 2.1.0 report models -----------------------------------------
 
-    class SarifRule(FlextModels.ContractModel):
+    class SarifRule(m.ContractModel):
         """Compact SARIF rule descriptor."""
 
         id: Annotated[str, Field(description="Rule identifier")]
@@ -105,7 +105,7 @@ class FlextInfraModelsCheck:
                 "shortDescription": {"text": self.short_description},
             }
 
-    class SarifLocation(FlextModels.ContractModel):
+    class SarifLocation(m.ContractModel):
         """Compact SARIF location source span."""
 
         uri: Annotated[str, Field(description="Artifact URI")]
@@ -131,7 +131,7 @@ class FlextInfraModelsCheck:
                 },
             }
 
-    class SarifResult(FlextModels.ContractModel):
+    class SarifResult(m.ContractModel):
         """SARIF result entry."""
 
         rule_id: Annotated[str, Field(description="Rule identifier")]
@@ -152,7 +152,7 @@ class FlextInfraModelsCheck:
                 ],
             }
 
-    class SarifRun(FlextModels.ContractModel):
+    class SarifRun(m.ContractModel):
         """SARIF run entry."""
 
         tool_name: Annotated[str, Field(description="Tool name")]
@@ -184,7 +184,7 @@ class FlextInfraModelsCheck:
                 ],
             }
 
-    class SarifReport(FlextModels.ArbitraryTypesModel):
+    class SarifReport(m.ArbitraryTypesModel):
         """Complete SARIF 2.1.0 report."""
 
         model_config: ClassVar[ConfigDict] = ConfigDict(populate_by_name=True)

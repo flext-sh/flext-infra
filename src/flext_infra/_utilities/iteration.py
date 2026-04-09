@@ -11,12 +11,11 @@ from functools import cache
 from pathlib import Path
 
 from flext_cli import u
-from flext_core import r
 from flext_infra import (
-    FlextInfraConstantsBase,
-    FlextInfraConstantsRefactor,
-    FlextInfraTypesBase,
     FlextInfraUtilitiesParsing,
+    c,
+    r,
+    t,
 )
 
 
@@ -29,21 +28,19 @@ class FlextInfraUtilitiesIteration:
     Used by: build orchestration, validation, and code generation tools.
     """
 
-    _ITERATION_EXCLUDED_PARTS = (
-        FlextInfraConstantsBase.Excluded.ITERATION_EXCLUDED_PARTS
-    )
+    _ITERATION_EXCLUDED_PARTS = c.Infra.Excluded.ITERATION_EXCLUDED_PARTS
     _ITERATION_KNOWN_DIRS = frozenset({
-        FlextInfraConstantsBase.Paths.DEFAULT_SRC_DIR,
-        FlextInfraConstantsBase.Directories.TESTS,
-        FlextInfraConstantsBase.Directories.EXAMPLES,
-        FlextInfraConstantsBase.Directories.SCRIPTS,
+        c.Infra.Paths.DEFAULT_SRC_DIR,
+        c.Infra.Directories.TESTS,
+        c.Infra.Directories.EXAMPLES,
+        c.Infra.Directories.SCRIPTS,
     })
 
     @staticmethod
     @cache
     def _pyproject_payload(
         pyproject_path: str,
-    ) -> FlextInfraTypesBase.ContainerDict:
+    ) -> t.Infra.ContainerDict:
         """Return one parsed ``pyproject.toml`` payload cached by absolute path."""
         path = Path(pyproject_path)
         if not path.is_file():
@@ -57,12 +54,12 @@ class FlextInfraUtilitiesIteration:
     @staticmethod
     def _tool_flext_meta(
         project_root: Path,
-    ) -> FlextInfraTypesBase.ContainerDict:
+    ) -> t.Infra.ContainerDict:
         """Return the normalized ``tool.flext`` table from a project root."""
         payload = FlextInfraUtilitiesIteration._pyproject_payload(
-            str(project_root / FlextInfraConstantsBase.Files.PYPROJECT_FILENAME),
+            str(project_root / c.Infra.Files.PYPROJECT_FILENAME),
         )
-        tool = payload.get(FlextInfraConstantsBase.TOOL)
+        tool = payload.get(c.Infra.TOOL)
         if not isinstance(tool, dict):
             return {}
         flext = tool.get("flext")
@@ -83,9 +80,9 @@ class FlextInfraUtilitiesIteration:
                     return normalized
 
         payload = FlextInfraUtilitiesIteration._pyproject_payload(
-            str(workspace_root / FlextInfraConstantsBase.Files.PYPROJECT_FILENAME),
+            str(workspace_root / c.Infra.Files.PYPROJECT_FILENAME),
         )
-        tool = payload.get(FlextInfraConstantsBase.TOOL)
+        tool = payload.get(c.Infra.TOOL)
         if not isinstance(tool, dict):
             return []
         uv = tool.get("uv")
@@ -105,7 +102,7 @@ class FlextInfraUtilitiesIteration:
         return FlextInfraUtilitiesIteration._workspace_member_names(workspace_root)
 
     @staticmethod
-    def namespace_meta(project_root: Path) -> FlextInfraTypesBase.ContainerDict:
+    def namespace_meta(project_root: Path) -> t.Infra.ContainerDict:
         """Return optional ``tool.flext.namespace`` metadata for one project."""
         flext_meta = FlextInfraUtilitiesIteration._tool_flext_meta(project_root)
         namespace = flext_meta.get("namespace")
@@ -132,7 +129,7 @@ class FlextInfraUtilitiesIteration:
             )
             if normalized:
                 return normalized
-        return frozenset(FlextInfraConstantsRefactor.MRO_SCAN_DIRECTORIES)
+        return frozenset(c.Infra.MRO_SCAN_DIRECTORIES)
 
     @staticmethod
     def namespace_include_dynamic_dirs(project_root: Path) -> bool:
@@ -170,9 +167,7 @@ class FlextInfraUtilitiesIteration:
 
         """
         roots: MutableSequence[Path] = []
-        effective_scan_dirs = scan_dirs or frozenset(
-            FlextInfraConstantsRefactor.MRO_SCAN_DIRECTORIES
-        )
+        effective_scan_dirs = scan_dirs or frozenset(c.Infra.MRO_SCAN_DIRECTORIES)
         configured_members = FlextInfraUtilitiesIteration._workspace_member_names(
             workspace_root,
         )
@@ -181,8 +176,8 @@ class FlextInfraUtilitiesIteration:
         def _looks_like_project(path: Path) -> bool:
             if not path.is_dir():
                 return False
-            pyproject_path = path / FlextInfraConstantsBase.Files.PYPROJECT_FILENAME
-            go_mod_path = path / FlextInfraConstantsBase.Files.GO_MOD
+            pyproject_path = path / c.Infra.Files.PYPROJECT_FILENAME
+            go_mod_path = path / c.Infra.Files.GO_MOD
             if not pyproject_path.exists() and not go_mod_path.exists():
                 return False
             if go_mod_path.exists():
@@ -191,7 +186,7 @@ class FlextInfraUtilitiesIteration:
                 )
             if path.name in configured_member_set:
                 return True
-            if (path / FlextInfraConstantsBase.Files.MAKEFILE_FILENAME).exists():
+            if (path / c.Infra.Files.MAKEFILE_FILENAME).exists():
                 return True
             document_result = FlextInfraUtilitiesParsing.toml_read_document(
                 pyproject_path,
@@ -201,7 +196,7 @@ class FlextInfraUtilitiesIteration:
             dependency_names = FlextInfraUtilitiesParsing.declared_dependency_names(
                 document_result.value,
             )
-            if FlextInfraConstantsBase.Packages.CORE in dependency_names:
+            if c.Infra.Packages.CORE in dependency_names:
                 return True
             return any((path / dir_name).is_dir() for dir_name in effective_scan_dirs)
 
@@ -228,12 +223,7 @@ class FlextInfraUtilitiesIteration:
                 and _looks_like_project(entry)
             ],
         )
-        if (
-            not roots
-            and (
-                workspace_root / FlextInfraConstantsBase.Paths.DEFAULT_SRC_DIR
-            ).is_dir()
-        ):
+        if not roots and (workspace_root / c.Infra.Paths.DEFAULT_SRC_DIR).is_dir():
             return [workspace_root]
         return roots
 
@@ -261,13 +251,13 @@ class FlextInfraUtilitiesIteration:
         """
         if not directory.is_dir():
             return []
-        effective_pattern = pattern or FlextInfraConstantsBase.Extensions.PYTHON_GLOB
+        effective_pattern = pattern or c.Infra.Extensions.PYTHON_GLOB
         files = sorted(directory.rglob(effective_pattern))
         ignored_parts = (
             FlextInfraUtilitiesIteration._ITERATION_EXCLUDED_PARTS
             if skip_pycache
             else FlextInfraUtilitiesIteration._ITERATION_EXCLUDED_PARTS
-            - {FlextInfraConstantsBase.Dunders.PYCACHE}
+            - {c.Infra.Dunders.PYCACHE}
         )
         return [
             file_path
@@ -284,8 +274,8 @@ class FlextInfraUtilitiesIteration:
         """Return True only for real ``.py`` source files."""
         return (
             path.is_file()
-            and path.suffix == FlextInfraConstantsBase.Extensions.PYTHON
-            and path.suffixes == [FlextInfraConstantsBase.Extensions.PYTHON]
+            and path.suffix == c.Infra.Extensions.PYTHON
+            and path.suffixes == [c.Infra.Extensions.PYTHON]
         )
 
     @staticmethod
@@ -341,17 +331,17 @@ class FlextInfraUtilitiesIteration:
             )
             selected_dirs = src_dirs or frozenset(
                 {
-                    FlextInfraConstantsBase.Paths.DEFAULT_SRC_DIR,
-                    FlextInfraConstantsBase.Directories.TESTS,
-                    FlextInfraConstantsBase.Directories.EXAMPLES,
-                    FlextInfraConstantsBase.Directories.SCRIPTS,
+                    c.Infra.Paths.DEFAULT_SRC_DIR,
+                    c.Infra.Directories.TESTS,
+                    c.Infra.Directories.EXAMPLES,
+                    c.Infra.Directories.SCRIPTS,
                 },
             )
             include_flags = {
-                FlextInfraConstantsBase.Paths.DEFAULT_SRC_DIR: True,
-                FlextInfraConstantsBase.Directories.TESTS: include_tests,
-                FlextInfraConstantsBase.Directories.EXAMPLES: include_examples,
-                FlextInfraConstantsBase.Directories.SCRIPTS: include_scripts,
+                c.Infra.Paths.DEFAULT_SRC_DIR: True,
+                c.Infra.Directories.TESTS: include_tests,
+                c.Infra.Directories.EXAMPLES: include_examples,
+                c.Infra.Directories.SCRIPTS: include_scripts,
             }
             files: MutableSequence[Path] = []
             for project_root in roots:
@@ -415,7 +405,7 @@ class FlextInfraUtilitiesIteration:
         *,
         exclude_packages: frozenset[str] | None = None,
         include_tests: bool = True,
-    ) -> r[Sequence[FlextInfraTypesBase.Pair[Path, Path]]]:
+    ) -> r[Sequence[t.Infra.Pair[Path, Path]]]:
         """Discover all Python modules across workspace projects.
 
         Returns tuples of (project_root, file_path) for every Python file
@@ -436,7 +426,7 @@ class FlextInfraUtilitiesIteration:
                 workspace_root=workspace_root,
             )
             effective_exclude = exclude_packages or frozenset()
-            result: MutableSequence[FlextInfraTypesBase.Pair[Path, Path]] = []
+            result: MutableSequence[t.Infra.Pair[Path, Path]] = []
             for project_root in roots:
                 if project_root.name in effective_exclude:
                     continue
@@ -450,9 +440,9 @@ class FlextInfraUtilitiesIteration:
                 result.extend(
                     (project_root, file_path) for file_path in files_result.value
                 )
-            return r[Sequence[FlextInfraTypesBase.Pair[Path, Path]]].ok(result)
+            return r[Sequence[t.Infra.Pair[Path, Path]]].ok(result)
         except OSError as exc:
-            return r[Sequence[FlextInfraTypesBase.Pair[Path, Path]]].fail(
+            return r[Sequence[t.Infra.Pair[Path, Path]]].fail(
                 f"workspace python module iteration failed: {exc}",
             )
 
@@ -461,7 +451,7 @@ class FlextInfraUtilitiesIteration:
         """Walk up from file_path to find the project root containing pyproject.toml."""
         current = file_path.parent
         for _ in range(10):
-            if (current / FlextInfraConstantsBase.Files.PYPROJECT_FILENAME).is_file():
+            if (current / c.Infra.Files.PYPROJECT_FILENAME).is_file():
                 return current
             parent = current.parent
             if parent == current:

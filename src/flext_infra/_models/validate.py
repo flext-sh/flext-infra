@@ -6,7 +6,7 @@ from typing import Annotated
 
 from pydantic import Field
 
-from flext_core import FlextModels
+from flext_core import m
 from flext_infra import FlextInfraModelsMixins, t
 
 
@@ -18,7 +18,7 @@ class FlextInfraModelsCore:
     - ``ContractModel`` reserved for immutable settings/config contracts.
     """
 
-    class ValidationReport(FlextModels.ArbitraryTypesModel):
+    class ValidationReport(m.ArbitraryTypesModel):
         """Validation report model with violations and summary."""
 
         passed: Annotated[bool, Field(description="Validation status")]
@@ -38,7 +38,7 @@ class FlextInfraModelsCore:
 
     class StubAnalysisReport(
         FlextInfraModelsMixins.ProjectNameMixin,
-        FlextModels.ArbitraryTypesModel,
+        m.ArbitraryTypesModel,
     ):
         """Structured stub-chain analysis result for a project."""
 
@@ -65,7 +65,7 @@ class FlextInfraModelsCore:
             Field(description="Total missing imports"),
         ]
 
-    class PytestDiagnostics(FlextModels.ArbitraryTypesModel):
+    class PytestDiagnostics(m.ArbitraryTypesModel):
         """Extracted diagnostics summary from junit XML and pytest logs."""
 
         failed_count: Annotated[
@@ -112,7 +112,7 @@ class FlextInfraModelsCore:
             ),
         ] = Field(default_factory=list)
 
-    class DiagResult(FlextModels.ArbitraryTypesModel):
+    class DiagResult(m.ArbitraryTypesModel):
         """Internal container for extracted diagnostics."""
 
         failed_cases: t.StrSequence = Field(
@@ -131,7 +131,7 @@ class FlextInfraModelsCore:
             default_factory=list, description="Slow entries records"
         )
 
-    class InventoryReport(FlextModels.ArbitraryTypesModel):
+    class InventoryReport(m.ArbitraryTypesModel):
         """Summary of written inventory report artifacts."""
 
         total_scripts: Annotated[

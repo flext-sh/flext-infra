@@ -11,7 +11,10 @@ from tests import TestsFlextInfraHelpers as h, m
 from tomlkit.toml_document import TOMLDocument
 
 from flext_core import r
-from flext_infra import FlextInfraDependencyPathSync, path_sync as path_sync_module
+from flext_infra import (
+    FlextInfraUtilitiesDependencyPathSync,
+    path_sync as path_sync_module,
+)
 
 
 def _project(path: Path) -> m.Infra.ProjectInfo:
@@ -58,8 +61,8 @@ def test_main_project_obj_not_dict_first_loop(
         staticmethod(_read_document),
     )
 
-    monkeypatch.setattr(FlextInfraDependencyPathSync, "_log", _SilentLogger())
-    tm.that(FlextInfraDependencyPathSync.main(), eq=0)
+    monkeypatch.setattr(FlextInfraUtilitiesDependencyPathSync, "_log", _SilentLogger())
+    tm.that(FlextInfraUtilitiesDependencyPathSync.main(), eq=0)
 
 
 def test_main_project_obj_not_dict_second_loop(
@@ -88,8 +91,8 @@ def test_main_project_obj_not_dict_second_loop(
         staticmethod(_read_document),
     )
 
-    monkeypatch.setattr(FlextInfraDependencyPathSync, "_log", _SilentLogger())
-    tm.that(FlextInfraDependencyPathSync.main(), eq=0)
+    monkeypatch.setattr(FlextInfraUtilitiesDependencyPathSync, "_log", _SilentLogger())
+    tm.that(FlextInfraUtilitiesDependencyPathSync.main(), eq=0)
 
 
 def test_helpers_alias_is_reachable_project_obj() -> None:

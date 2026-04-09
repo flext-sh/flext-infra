@@ -15,10 +15,13 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from flext_cli import u
-from flext_infra import c, m, t
-
-from .base import FlextInfraUtilitiesBase
-from .codegen_constants import FlextInfraUtilitiesCodegenConstantDetection
+from flext_infra import (
+    FlextInfraUtilitiesBase,
+    FlextInfraUtilitiesCodegenConstantDetection,
+    c,
+    m,
+    t,
+)
 
 
 class FlextInfraUtilitiesCodegenExecution:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from flext_cli import cli as cli_service
+from flext_cli import cli
 from flext_infra import (
     FlextInfraDocAuditor,
     FlextInfraDocBuilder,
@@ -20,7 +20,7 @@ class FlextInfraCliDocs(FlextInfraServiceDocsMixin):
 
     def register_docs(self, app: t.Cli.CliApp) -> None:
         """Register documentation commands on the given Typer app."""
-        cli_service.register_result_routes(
+        cli.register_result_routes(
             app,
             [
                 m.Cli.ResultCommandRoute(

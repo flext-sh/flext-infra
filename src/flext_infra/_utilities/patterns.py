@@ -20,13 +20,6 @@ class FlextInfraUtilitiesPatterns:
 
     Consolidates tooling patterns (mypy, stubs) and documentation
     patterns (markdown links, headings, TOC) into a single class.
-
-    Usage via namespace::
-
-        from flext_infra import u
-
-        if u.Infra.matches_pattern("MYPY_HINT_RE", text):
-            ...
     """
 
     MYPY_HINT_RE: ClassVar[t.Infra.RegexPattern] = re.compile(

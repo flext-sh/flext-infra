@@ -15,14 +15,14 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import (
-    FlextInfraConstantsBase,
-    FlextInfraTypesBase,
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesRefactorCli,
+    c,
+    t,
 )
 
 if TYPE_CHECKING:
-    from flext_infra import FlextInfraRefactorRuleLoader
+    from flext_infra import FlextInfraUtilitiesRefactorRuleLoader
 
 
 class FlextInfraUtilitiesRefactorEngine:
@@ -33,13 +33,13 @@ class FlextInfraUtilitiesRefactorEngine:
         files: Sequence[Path],
         *,
         base_path: Path,
-        pattern: str = FlextInfraConstantsBase.Extensions.PYTHON_GLOB,
+        pattern: str = c.Infra.Extensions.PYTHON_GLOB,
         ignore_patterns: set[str] | None = None,
         allowed_extensions: set[str] | None = None,
     ) -> Iterator[Path]:
         """Filter candidate files by glob pattern, ignore list, and extension."""
         ign = ignore_patterns or set()
-        ext = allowed_extensions or {FlextInfraConstantsBase.Extensions.PYTHON}
+        ext = allowed_extensions or {c.Infra.Extensions.PYTHON}
         for f in files:
             if not fnmatch.fnmatch(f.name, pattern):
                 continue
@@ -55,11 +55,11 @@ class FlextInfraUtilitiesRefactorEngine:
 
     @staticmethod
     def collect_engine_project_files(
-        rule_loader: FlextInfraRefactorRuleLoader,
-        config: FlextInfraTypesBase.InfraValue,
+        rule_loader: FlextInfraUtilitiesRefactorRuleLoader,
+        config: t.Infra.InfraValue,
         project: Path,
         *,
-        pattern: str = FlextInfraConstantsBase.Extensions.PYTHON_GLOB,
+        pattern: str = c.Infra.Extensions.PYTHON_GLOB,
     ) -> MutableSequence[Path] | None:
         """Iterate and filter Python files under a project.
 
@@ -70,9 +70,9 @@ class FlextInfraUtilitiesRefactorEngine:
         ir = FlextInfraUtilitiesIteration.iter_python_files(
             workspace_root=project,
             project_roots=[project],
-            include_tests=FlextInfraConstantsBase.Directories.TESTS in scan_dirs,
-            include_examples=FlextInfraConstantsBase.Directories.EXAMPLES in scan_dirs,
-            include_scripts=FlextInfraConstantsBase.Directories.SCRIPTS in scan_dirs,
+            include_tests=c.Infra.Directories.TESTS in scan_dirs,
+            include_examples=c.Infra.Directories.EXAMPLES in scan_dirs,
+            include_scripts=c.Infra.Directories.SCRIPTS in scan_dirs,
             src_dirs=scan_dirs or None,
         )
         if ir.is_failure:
@@ -93,11 +93,11 @@ class FlextInfraUtilitiesRefactorEngine:
 
     @staticmethod
     def collect_engine_workspace_files(
-        rule_loader: FlextInfraRefactorRuleLoader,
-        config: FlextInfraTypesBase.InfraValue,
+        rule_loader: FlextInfraUtilitiesRefactorRuleLoader,
+        config: t.Infra.InfraValue,
         workspace_root: Path,
         *,
-        pattern: str = FlextInfraConstantsBase.Extensions.PYTHON_GLOB,
+        pattern: str = c.Infra.Extensions.PYTHON_GLOB,
     ) -> Sequence[Path]:
         """Collect all candidate files under workspace projects."""
         loader = rule_loader
@@ -115,11 +115,9 @@ class FlextInfraUtilitiesRefactorEngine:
             ir = FlextInfraUtilitiesIteration.iter_python_files(
                 workspace_root=root,
                 project_roots=[proj],
-                include_tests=FlextInfraConstantsBase.Directories.TESTS in scan_dirs,
-                include_examples=FlextInfraConstantsBase.Directories.EXAMPLES
-                in scan_dirs,
-                include_scripts=FlextInfraConstantsBase.Directories.SCRIPTS
-                in scan_dirs,
+                include_tests=c.Infra.Directories.TESTS in scan_dirs,
+                include_examples=c.Infra.Directories.EXAMPLES in scan_dirs,
+                include_scripts=c.Infra.Directories.SCRIPTS in scan_dirs,
                 src_dirs=scan_dirs or None,
             )
             if ir.is_failure:

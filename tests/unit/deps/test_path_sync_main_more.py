@@ -9,12 +9,12 @@ from flext_tests import tm
 from tests import c, m, r, t, u
 
 from flext_infra import (
-    FlextInfraDependencyPathSync,
+    FlextInfraUtilitiesDependencyPathSync,
 )
 
 
 def _workspace_root() -> Path:
-    return FlextInfraDependencyPathSync.ROOT
+    return FlextInfraUtilitiesDependencyPathSync.ROOT
 
 
 def _project(
@@ -56,10 +56,10 @@ def test_main_project_invalid_toml(
     ) -> r[Sequence[m.Infra.ProjectInfo]]:
         return r[Sequence[m.Infra.ProjectInfo]].ok([_project(project_dir)])
 
-    monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
+    monkeypatch.setattr(FlextInfraUtilitiesDependencyPathSync, "ROOT", tmp_path)
     monkeypatch.setattr(u.Infra, "discover_projects", _discover_project)
     monkeypatch.setattr(sys, "argv", ["prog", "--workspace", str(tmp_path)])
-    tm.that(FlextInfraDependencyPathSync.main(), eq=1)
+    tm.that(FlextInfraUtilitiesDependencyPathSync.main(), eq=1)
 
 
 def test_main_project_no_name(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -73,10 +73,10 @@ def test_main_project_no_name(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     ) -> r[Sequence[m.Infra.ProjectInfo]]:
         return r[Sequence[m.Infra.ProjectInfo]].ok([_project(project_dir)])
 
-    monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
+    monkeypatch.setattr(FlextInfraUtilitiesDependencyPathSync, "ROOT", tmp_path)
     monkeypatch.setattr(u.Infra, "discover_projects", _discover_project)
     monkeypatch.setattr(sys, "argv", ["prog", "--workspace", str(tmp_path)])
-    tm.that(FlextInfraDependencyPathSync.main(), eq=0)
+    tm.that(FlextInfraUtilitiesDependencyPathSync.main(), eq=0)
 
 
 def test_main_project_non_string_name(
@@ -93,10 +93,10 @@ def test_main_project_non_string_name(
     ) -> r[Sequence[m.Infra.ProjectInfo]]:
         return r[Sequence[m.Infra.ProjectInfo]].ok([_project(project_dir)])
 
-    monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
+    monkeypatch.setattr(FlextInfraUtilitiesDependencyPathSync, "ROOT", tmp_path)
     monkeypatch.setattr(u.Infra, "discover_projects", _discover_project)
     monkeypatch.setattr(sys, "argv", ["prog", "--workspace", str(tmp_path)])
-    tm.that(FlextInfraDependencyPathSync.main(), eq=0)
+    tm.that(FlextInfraUtilitiesDependencyPathSync.main(), eq=0)
 
 
 def test_main_discovery_failure(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -107,7 +107,7 @@ def test_main_discovery_failure(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(u.Infra, "discover_projects", _discover_fail)
     monkeypatch.setattr(sys, "argv", ["sync-paths"])
-    tm.that(FlextInfraDependencyPathSync.main(), eq=1)
+    tm.that(FlextInfraUtilitiesDependencyPathSync.main(), eq=1)
 
 
 def test_main_no_changes_needed(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -117,7 +117,7 @@ def test_main_no_changes_needed(monkeypatch: pytest.MonkeyPatch) -> None:
         return r[Sequence[m.Infra.ProjectInfo]].ok([])
 
     def _rewrite_ok(
-        _self: FlextInfraDependencyPathSync,
+        _self: FlextInfraUtilitiesDependencyPathSync,
         _pyproject_path: Path,
         *,
         mode: str,
@@ -139,8 +139,10 @@ def test_main_no_changes_needed(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(sys, "argv", ["sync-paths"])
     monkeypatch.setattr(u.Infra, "discover_projects", _discover_none)
-    monkeypatch.setattr(FlextInfraDependencyPathSync, "rewrite_dep_paths", _rewrite_ok)
-    tm.that(FlextInfraDependencyPathSync.main(), eq=0)
+    monkeypatch.setattr(
+        FlextInfraUtilitiesDependencyPathSync, "rewrite_dep_paths", _rewrite_ok
+    )
+    tm.that(FlextInfraUtilitiesDependencyPathSync.main(), eq=0)
 
 
 def test_workspace_root_fallback(
@@ -166,7 +168,7 @@ def test_main_with_changes_and_dry_run(monkeypatch: pytest.MonkeyPatch) -> None:
         return r[Sequence[m.Infra.ProjectInfo]].ok([])
 
     def _rewrite_changes(
-        _self: FlextInfraDependencyPathSync,
+        _self: FlextInfraUtilitiesDependencyPathSync,
         _pyproject_path: Path,
         *,
         mode: str,
@@ -189,12 +191,12 @@ def test_main_with_changes_and_dry_run(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(sys, "argv", ["sync-paths", "--dry-run"])
     monkeypatch.setattr(u.Infra, "discover_projects", _discover_none)
     monkeypatch.setattr(
-        FlextInfraDependencyPathSync,
+        FlextInfraUtilitiesDependencyPathSync,
         "rewrite_dep_paths",
         _rewrite_changes,
     )
-    monkeypatch.setattr(FlextInfraDependencyPathSync, "_log", recorder)
-    tm.that(FlextInfraDependencyPathSync.main(), eq=0)
+    monkeypatch.setattr(FlextInfraUtilitiesDependencyPathSync, "_log", recorder)
+    tm.that(FlextInfraUtilitiesDependencyPathSync.main(), eq=0)
     tm.that(any("[DRY-RUN]" in call for call in recorder.calls), eq=True)
 
 
@@ -207,7 +209,7 @@ def test_main_with_changes_no_dry_run(monkeypatch: pytest.MonkeyPatch) -> None:
         return r[Sequence[m.Infra.ProjectInfo]].ok([])
 
     def _rewrite_changes(
-        _self: FlextInfraDependencyPathSync,
+        _self: FlextInfraUtilitiesDependencyPathSync,
         _pyproject_path: Path,
         *,
         mode: str,
@@ -230,12 +232,12 @@ def test_main_with_changes_no_dry_run(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(sys, "argv", ["sync-paths"])
     monkeypatch.setattr(u.Infra, "discover_projects", _discover_none)
     monkeypatch.setattr(
-        FlextInfraDependencyPathSync,
+        FlextInfraUtilitiesDependencyPathSync,
         "rewrite_dep_paths",
         _rewrite_changes,
     )
-    monkeypatch.setattr(FlextInfraDependencyPathSync, "_log", recorder)
-    tm.that(FlextInfraDependencyPathSync.main(), eq=0)
+    monkeypatch.setattr(FlextInfraUtilitiesDependencyPathSync, "_log", recorder)
+    tm.that(FlextInfraUtilitiesDependencyPathSync.main(), eq=0)
     assert len(recorder.calls) > 0
 
 
@@ -269,7 +271,7 @@ def test_workspace_members_only_include_flext_projects(
         ])
 
     def _rewrite_ok(
-        _self: FlextInfraDependencyPathSync,
+        _self: FlextInfraUtilitiesDependencyPathSync,
         _pyproject_path: Path,
         *,
         mode: str,
@@ -282,10 +284,12 @@ def test_workspace_members_only_include_flext_projects(
         seen.append(tuple(workspace_members))
         return r[t.StrSequence].ok([])
 
-    monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
+    monkeypatch.setattr(FlextInfraUtilitiesDependencyPathSync, "ROOT", tmp_path)
     monkeypatch.setattr(u.Infra, "discover_projects", _discover)
-    monkeypatch.setattr(FlextInfraDependencyPathSync, "rewrite_dep_paths", _rewrite_ok)
+    monkeypatch.setattr(
+        FlextInfraUtilitiesDependencyPathSync, "rewrite_dep_paths", _rewrite_ok
+    )
     monkeypatch.setattr(sys, "argv", ["sync-paths", "--workspace", str(tmp_path)])
 
-    tm.that(FlextInfraDependencyPathSync.main(), eq=0)
+    tm.that(FlextInfraUtilitiesDependencyPathSync.main(), eq=0)
     assert {tuple(item) for item in seen} == {("flext-core",)}

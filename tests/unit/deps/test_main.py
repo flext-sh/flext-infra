@@ -48,7 +48,7 @@ class TestSubcommandMapping:
         "extra-paths": "FlextInfraExtraPathsManager",
         "internal-sync": "FlextInfraInternalDependencySyncService",
         "modernize": "FlextInfraPyprojectModernizer",
-        "path-sync": "FlextInfraDependencyPathSync",
+        "path-sync": "FlextInfraUtilitiesDependencyPathSync",
     }
 
     def test_subcommands_count(self) -> None:

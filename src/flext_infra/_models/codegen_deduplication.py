@@ -8,14 +8,14 @@ from typing import Annotated
 
 from pydantic import Field
 
-from flext_core import FlextModels
+from flext_core import m
 from flext_infra import t
 
 
 class FlextInfraModelsCodegenDeduplication:
     """Typed contracts for constant deduplication workflows."""
 
-    class DeduplicationCandidate(FlextModels.ArbitraryTypesModel):
+    class DeduplicationCandidate(m.ArbitraryTypesModel):
         """One constant candidate grouped by shared value."""
 
         name: Annotated[t.NonEmptyStr, Field(description="Constant name")]
@@ -32,7 +32,7 @@ class FlextInfraModelsCodegenDeduplication:
             """Render a compact CLI-facing summary line."""
             return f"{self.name} ({self.usages} uses)"
 
-    class DeduplicationFixProposal(FlextModels.ArbitraryTypesModel):
+    class DeduplicationFixProposal(m.ArbitraryTypesModel):
         """One deduplication plan for a duplicated constant value."""
 
         value_repr: Annotated[
@@ -75,7 +75,7 @@ class FlextInfraModelsCodegenDeduplication:
                 f"   - {duplicate.render_text()}" for duplicate in self.duplicates
             )
 
-    class DeduplicationReplacement(FlextModels.ArbitraryTypesModel):
+    class DeduplicationReplacement(m.ArbitraryTypesModel):
         """One concrete replacement emitted while applying a proposal."""
 
         file_path: Annotated[
@@ -92,7 +92,7 @@ class FlextInfraModelsCodegenDeduplication:
         ]
 
     class DeduplicationApplyResult(
-        FlextModels.ArbitraryTypesModel,
+        m.ArbitraryTypesModel,
     ):
         """Effect of applying one deduplication proposal."""
 
@@ -124,7 +124,7 @@ class FlextInfraModelsCodegenDeduplication:
             )
 
     class DeduplicationRunOptions(
-        FlextModels.ArbitraryTypesModel,
+        m.ArbitraryTypesModel,
     ):
         """Validated options for the deduplication workflow."""
 
@@ -150,7 +150,7 @@ class FlextInfraModelsCodegenDeduplication:
         )
 
     class DeduplicationRunReport(
-        FlextModels.ArbitraryTypesModel,
+        m.ArbitraryTypesModel,
     ):
         """Typed report emitted by the deduplication workflow."""
 

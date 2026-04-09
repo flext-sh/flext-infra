@@ -14,7 +14,7 @@ from flext_core import FlextLogger
 from flext_infra import FlextInfraDependencyPathSyncRewrite, c, m, t, u
 
 
-class FlextInfraDependencyPathSync(FlextInfraDependencyPathSyncRewrite):
+class FlextInfraUtilitiesDependencyPathSync(FlextInfraDependencyPathSyncRewrite):
     """Rewrite internal FLEXT dependency paths for workspace or standalone mode."""
 
     ROOT = u.Infra.resolve_workspace_root(__file__)
@@ -187,11 +187,11 @@ class FlextInfraDependencyPathSync(FlextInfraDependencyPathSyncRewrite):
         )
         args = parser.parse_args(argv)
         cli = u.Infra.resolve(args)
-        return FlextInfraDependencyPathSync().run(cli=cli, mode=args.mode)
+        return FlextInfraUtilitiesDependencyPathSync().run(cli=cli, mode=args.mode)
 
 
 if __name__ == "__main__":
-    sys.exit(FlextInfraDependencyPathSync.main())
+    sys.exit(FlextInfraUtilitiesDependencyPathSync.main())
 
 
-__all__ = ["FlextInfraDependencyPathSync"]
+__all__ = ["FlextInfraUtilitiesDependencyPathSync"]

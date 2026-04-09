@@ -18,7 +18,7 @@ from flext_infra import (
 )
 
 
-class FlextInfraNamespaceFacadeScanner:
+class FlextInfraUtilitiesFacadeScanner:
     """Scan projects for namespace facade classes via rope."""
 
     @classmethod

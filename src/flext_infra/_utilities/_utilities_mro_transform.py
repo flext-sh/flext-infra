@@ -12,11 +12,10 @@ import re
 from collections.abc import Sequence
 from pathlib import Path
 
-from flext_core import t
 from flext_infra import (
-    FlextInfraConstantsBase,
-    FlextInfraConstantsRefactor,
-    FlextInfraModelsRefactorGrep,
+    c,
+    m,
+    t,
 )
 
 
@@ -35,15 +34,13 @@ class FlextInfraUtilitiesRefactorMroTransform:
     @staticmethod
     def migrate_file(
         *,
-        scan_result: FlextInfraModelsRefactorGrep.MROScanReport,
-    ) -> tuple[str, FlextInfraModelsRefactorGrep.MROFileMigration, t.StrMapping]:
+        scan_result: m.Infra.MROScanReport,
+    ) -> tuple[str, m.Infra.MROFileMigration, t.StrMapping]:
         """Transform a candidate file and return code plus symbol map."""
-        source = Path(scan_result.file).read_text(
-            encoding=FlextInfraConstantsBase.Encoding.DEFAULT
-        )
+        source = Path(scan_result.file).read_text(encoding=c.Infra.Encoding.DEFAULT)
         lines = source.splitlines()
 
-        empty_migration = FlextInfraModelsRefactorGrep.MROFileMigration(
+        empty_migration = m.Infra.MROFileMigration(
             file=scan_result.file,
             module=scan_result.module,
             moved_symbols=(),
@@ -52,10 +49,7 @@ class FlextInfraUtilitiesRefactorMroTransform:
         if not scan_result.candidates:
             return (source, empty_migration, {})
 
-        class_name = (
-            scan_result.constants_class
-            or FlextInfraConstantsRefactor.DEFAULT_CONSTANTS_CLASS
-        )
+        class_name = scan_result.constants_class or c.Infra.DEFAULT_CONSTANTS_CLASS
         facade_alias = scan_result.facade_alias or class_name
 
         # Process from bottom to top to preserve line indices when deleting
@@ -138,7 +132,7 @@ class FlextInfraUtilitiesRefactorMroTransform:
             symbol_map=symbol_map,
         )
 
-        migration = FlextInfraModelsRefactorGrep.MROFileMigration(
+        migration = m.Infra.MROFileMigration(
             file=scan_result.file,
             module=scan_result.module,
             moved_symbols=tuple(reversed(moved_symbols)),

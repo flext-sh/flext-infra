@@ -7,7 +7,7 @@ from typing import Annotated, Self
 
 from pydantic import Field
 
-from flext_core import FlextModels
+from flext_core import m
 from flext_infra import FlextInfraModelsMixins, t
 
 
@@ -16,7 +16,7 @@ class FlextInfraModelsNamespaceEnforcer:
 
     class FileLineViolation(
         FlextInfraModelsMixins.FileLineViolationMixin,
-        FlextModels.ContractModel,
+        m.ContractModel,
     ):
         """Shared base: file + line for all violation models."""
 
@@ -26,7 +26,7 @@ class FlextInfraModelsNamespaceEnforcer:
     ):
         """Shared base: file + line + current_import."""
 
-    class FacadeStatus(FlextModels.ContractModel):
+    class FacadeStatus(m.ContractModel):
         family: Annotated[t.NonEmptyStr, Field(description="Facade family name")]
         exists: Annotated[bool, Field(description="Whether facade exists")]
         class_name: Annotated[str, Field(default="", description="Facade class name")]
@@ -90,7 +90,7 @@ class FlextInfraModelsNamespaceEnforcer:
             ),
         ] = "Move to protocols.py/protocols/*.py/_protocols.py"
 
-    class CyclicImportViolation(FlextModels.ContractModel):
+    class CyclicImportViolation(m.ContractModel):
         cycle: Annotated[
             t.Infra.VariadicTuple[str], Field(description="Import cycle chain")
         ]
@@ -103,14 +103,14 @@ class FlextInfraModelsNamespaceEnforcer:
         FlextInfraModelsMixins.FilePathMixin,
         FlextInfraModelsMixins.NonNegativeLineMixin,
         FlextInfraModelsMixins.ViolationDetailMixin,
-        FlextModels.ContractModel,
+        m.ContractModel,
     ):
         kind: Annotated[str, Field(description="Violation kind")]
         alias: Annotated[str, Field(description="Alias involved")]
 
     class FutureAnnotationsViolation(
         FlextInfraModelsMixins.FilePathMixin,
-        FlextModels.ContractModel,
+        m.ContractModel,
     ):
         pass
 
@@ -127,14 +127,14 @@ class FlextInfraModelsNamespaceEnforcer:
     class ParseFailureViolation(
         FlextInfraModelsMixins.FilePathMixin,
         FlextInfraModelsMixins.ErrorDetailMixin,
-        FlextModels.ContractModel,
+        m.ContractModel,
     ):
         stage: Annotated[t.NonEmptyStr, Field(description="Parse stage")]
         error_type: Annotated[t.NonEmptyStr, Field(description="Error type")]
 
     class ProjectEnforcementReport(
         FlextInfraModelsMixins.ProjectNameMixin,
-        FlextModels.ArbitraryTypesModel,
+        m.ArbitraryTypesModel,
     ):
         project_root: Annotated[str, Field(description="Project root path")]
         facade_statuses: Annotated[
@@ -219,7 +219,7 @@ class FlextInfraModelsNamespaceEnforcer:
             )
             return missing_facades or any(v for v in violation_fields)
 
-    class WorkspaceEnforcementReport(FlextModels.ArbitraryTypesModel):
+    class WorkspaceEnforcementReport(m.ArbitraryTypesModel):
         workspace: Annotated[t.NonEmptyStr, Field(description="Workspace root path")]
         projects: Annotated[
             Sequence[FlextInfraModelsNamespaceEnforcer.ProjectEnforcementReport],

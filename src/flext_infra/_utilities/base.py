@@ -12,20 +12,17 @@ from pathlib import Path
 
 from pydantic import TypeAdapter, ValidationError
 
-from flext_cli import FlextCliUtilitiesYaml as _CliYaml
-from flext_core import r, u
+from flext_cli import u
 from flext_infra import (
-    FlextInfraConstantsBase,
-    FlextInfraModelsDepsToolSettings,
-    FlextInfraModelsScan,
-    FlextInfraProtocolsBase,
-    FlextInfraTypes,
-    FlextInfraTypesAdapters,
-    FlextInfraTypesBase,
+    c,
+    m,
+    p,
+    r,
+    t,
 )
 
 
-class FlextInfraUtilitiesBase(_CliYaml):
+class FlextInfraUtilitiesBase:
     """Base utilities for flext-infra project.
 
     Provides primitive helpers used across all infra utility subclasses.
@@ -33,9 +30,7 @@ class FlextInfraUtilitiesBase(_CliYaml):
     so callers can validate ANY shape with a single SSOT helper.
     """
 
-    _tool_config_cache: (
-        r[FlextInfraModelsDepsToolSettings.ToolConfigDocument] | None
-    ) = None
+    _tool_config_cache: r[m.Infra.ToolConfigDocument] | None = None
 
     # ------------------------------------------------------------------
     # Generic validation (SSOT for TypeAdapter-based coercion)
@@ -44,7 +39,7 @@ class FlextInfraUtilitiesBase(_CliYaml):
     @staticmethod
     def validate[T](
         adapter: TypeAdapter[T],
-        value: FlextInfraTypes.ValueOrModel,
+        value: t.Infra.ValueOrModel,
         *,
         default: T,
     ) -> T:
@@ -56,12 +51,12 @@ class FlextInfraUtilitiesBase(_CliYaml):
         Example::
 
             mapping = u.Infra.validate(
-                FlextInfraTypesAdapters.INFRA_MAPPING_ADAPTER,
+                t.Infra.INFRA_MAPPING_ADAPTER,
                 raw,
                 default={},
             )
             items = u.Infra.validate(
-                FlextInfraTypesAdapters.INFRA_SEQ_ADAPTER,
+                t.Infra.INFRA_SEQ_ADAPTER,
                 raw,
                 default=[],
             )
@@ -77,31 +72,31 @@ class FlextInfraUtilitiesBase(_CliYaml):
 
     @staticmethod
     def normalize_str_mapping(
-        value: FlextInfraTypes.ValueOrModel | None,
-    ) -> Mapping[str, FlextInfraTypesBase.InfraValue]:
+        value: t.Infra.ValueOrModel | None,
+    ) -> Mapping[str, t.Infra.InfraValue]:
         """Normalize a value to a string-keyed mapping, or ``{}`` on failure."""
         return FlextInfraUtilitiesBase.validate(
-            FlextInfraTypesAdapters.INFRA_MAPPING_ADAPTER,
+            t.Infra.INFRA_MAPPING_ADAPTER,
             value,
             default={},
         )
 
     @staticmethod
     def normalize_mapping_list(
-        value: FlextInfraTypesBase.InfraValue | None,
-    ) -> Sequence[Mapping[str, FlextInfraTypesBase.InfraValue]]:
+        value: t.Infra.InfraValue | None,
+    ) -> Sequence[Mapping[str, t.Infra.InfraValue]]:
         """Normalize a value to a list of string-keyed mappings."""
         if value is None or not isinstance(value, list):
             return []
         items = FlextInfraUtilitiesBase.validate(
-            FlextInfraTypesAdapters.INFRA_SEQ_ADAPTER,
+            t.Infra.INFRA_SEQ_ADAPTER,
             value,
             default=[],
         )
-        result: list[Mapping[str, FlextInfraTypesBase.InfraValue]] = []
+        result: list[Mapping[str, t.Infra.InfraValue]] = []
         for item in items:
             validated = FlextInfraUtilitiesBase.validate(
-                FlextInfraTypesAdapters.INFRA_MAPPING_ADAPTER,
+                t.Infra.INFRA_MAPPING_ADAPTER,
                 item,
                 default={},
             )
@@ -115,26 +110,24 @@ class FlextInfraUtilitiesBase(_CliYaml):
 
     @staticmethod
     def _walk_path(
-        data: Mapping[str, FlextInfraTypesBase.InfraValue],
+        data: Mapping[str, t.Infra.InfraValue],
         keys: tuple[str, ...],
-    ) -> FlextInfraTypesBase.InfraValue | None:
+    ) -> t.Infra.InfraValue | None:
         """Walk a key path through nested mappings, returning the leaf value."""
-        current: Mapping[str, FlextInfraTypesBase.InfraValue] = data
+        current: Mapping[str, t.Infra.InfraValue] = data
         for key in keys[:-1]:
             raw = current.get(key)
             if raw is None:
                 return None
             try:
-                current = FlextInfraTypesAdapters.INFRA_MAPPING_ADAPTER.validate_python(
-                    raw
-                )
+                current = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(raw)
             except ValidationError:
                 return None
         return current.get(keys[-1]) if keys else None
 
     @staticmethod
     def nested_int(
-        data: Mapping[str, FlextInfraTypesBase.InfraValue],
+        data: Mapping[str, t.Infra.InfraValue],
         *keys: str,
         default: int = 0,
     ) -> int:
@@ -144,9 +137,9 @@ class FlextInfraUtilitiesBase(_CliYaml):
 
     @staticmethod
     def deep_mapping(
-        data: Mapping[str, FlextInfraTypesBase.InfraValue],
+        data: Mapping[str, t.Infra.InfraValue],
         *keys: str,
-    ) -> Mapping[str, FlextInfraTypesBase.InfraValue]:
+    ) -> Mapping[str, t.Infra.InfraValue]:
         """Navigate nested dicts by key path → normalized mapping.
 
         Replaces chains of ``normalize_str_mapping(x.get("key"))``.
@@ -158,9 +151,9 @@ class FlextInfraUtilitiesBase(_CliYaml):
 
     @staticmethod
     def deep_list(
-        data: Mapping[str, FlextInfraTypesBase.InfraValue],
+        data: Mapping[str, t.Infra.InfraValue],
         *keys: str,
-    ) -> Sequence[Mapping[str, FlextInfraTypesBase.InfraValue]]:
+    ) -> Sequence[Mapping[str, t.Infra.InfraValue]]:
         """Navigate nested dicts by key path → list of mappings."""
         raw = FlextInfraUtilitiesBase._walk_path(data, keys)
         return FlextInfraUtilitiesBase.normalize_mapping_list(raw)
@@ -171,7 +164,7 @@ class FlextInfraUtilitiesBase(_CliYaml):
 
     @staticmethod
     def pick_str(
-        data: Mapping[str, FlextInfraTypesBase.InfraValue],
+        data: Mapping[str, t.Infra.InfraValue],
         key: str,
         default: str = "",
     ) -> str:
@@ -181,7 +174,7 @@ class FlextInfraUtilitiesBase(_CliYaml):
 
     @staticmethod
     def pick_int(
-        data: Mapping[str, FlextInfraTypesBase.InfraValue],
+        data: Mapping[str, t.Infra.InfraValue],
         key: str,
         default: int = 0,
     ) -> int:
@@ -197,7 +190,7 @@ class FlextInfraUtilitiesBase(_CliYaml):
 
     @staticmethod
     def pick_bool(
-        data: Mapping[str, FlextInfraTypesBase.InfraValue],
+        data: Mapping[str, t.Infra.InfraValue],
         key: str,
         *,
         default: bool = False,
@@ -218,7 +211,7 @@ class FlextInfraUtilitiesBase(_CliYaml):
 
     @staticmethod
     def get_str_key(
-        mapping: Mapping[str, FlextInfraTypesBase.InfraValue],
+        mapping: Mapping[str, t.Infra.InfraValue],
         key: str,
         *,
         default: str = "",
@@ -229,9 +222,7 @@ class FlextInfraUtilitiesBase(_CliYaml):
         return u.normalize(raw, case=case)
 
     @staticmethod
-    def _load_tool_config_cached() -> r[
-        FlextInfraModelsDepsToolSettings.ToolConfigDocument
-    ]:
+    def _load_tool_config_cached() -> r[m.Infra.ToolConfigDocument]:
         """Load, validate, and cache ``tool_config.yml`` for dependency tooling."""
         cached = FlextInfraUtilitiesBase._tool_config_cache
         if cached is not None:
@@ -240,23 +231,17 @@ class FlextInfraUtilitiesBase(_CliYaml):
             raw_text = (
                 files("flext_infra.deps")
                 .joinpath("tool_config.yml")
-                .read_text(encoding=FlextInfraConstantsBase.Encoding.DEFAULT)
+                .read_text(encoding=c.Infra.Encoding.DEFAULT)
             )
             parsed = FlextInfraUtilitiesBase.yaml_parse(raw_text)
             if parsed.is_failure:
-                result = r[FlextInfraModelsDepsToolSettings.ToolConfigDocument].fail(
+                result = r[m.Infra.ToolConfigDocument].fail(
                     parsed.error or "tool_config.yml parse failed",
                 )
                 FlextInfraUtilitiesBase._tool_config_cache = result
                 return result
-            validated = (
-                FlextInfraModelsDepsToolSettings.ToolConfigDocument.model_validate(
-                    parsed.value
-                )
-            )
-            result = r[FlextInfraModelsDepsToolSettings.ToolConfigDocument].ok(
-                validated
-            )
+            validated = m.Infra.ToolConfigDocument.model_validate(parsed.value)
+            result = r[m.Infra.ToolConfigDocument].ok(validated)
             FlextInfraUtilitiesBase._tool_config_cache = result
             return result
         except (
@@ -266,14 +251,14 @@ class FlextInfraUtilitiesBase(_CliYaml):
             ValidationError,
             ValueError,
         ) as exc:
-            result = r[FlextInfraModelsDepsToolSettings.ToolConfigDocument].fail(
+            result = r[m.Infra.ToolConfigDocument].fail(
                 f"failed to load tool_config.yml: {exc}",
             )
             FlextInfraUtilitiesBase._tool_config_cache = result
             return result
 
     @staticmethod
-    def load_tool_config() -> r[FlextInfraModelsDepsToolSettings.ToolConfigDocument]:
+    def load_tool_config() -> r[m.Infra.ToolConfigDocument]:
         """Return cached dependency tool configuration."""
         return FlextInfraUtilitiesBase._load_tool_config_cached()
 
@@ -282,7 +267,7 @@ class FlextInfraUtilitiesBase(_CliYaml):
     # ------------------------------------------------------------------
 
     @classmethod
-    def build_scan_result[V: FlextInfraProtocolsBase.ViolationWithLine](
+    def build_scan_result[V: p.Infra.ViolationWithLine](
         cls,
         *,
         file_path: Path,
@@ -290,12 +275,12 @@ class FlextInfraUtilitiesBase(_CliYaml):
         rule_id: str,
         violations: Sequence[V],
         message_builder: Callable[[V], str],
-    ) -> FlextInfraModelsScan.ScanResult:
+    ) -> m.Infra.ScanResult:
         """Build a standardized scan result from typed violations."""
-        return FlextInfraModelsScan.ScanResult(
+        return m.Infra.ScanResult(
             file_path=file_path,
             violations=[
-                FlextInfraModelsScan.ScanViolation(
+                m.Infra.ScanViolation(
                     line=FlextInfraUtilitiesBase.pick_int(
                         violation.model_dump(), "line"
                     ),

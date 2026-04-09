@@ -9,11 +9,11 @@ import mkdocs.commands.build
 import mkdocs.config
 import mkdocs.exceptions
 
-from flext_cli import FlextCliUtilitiesJson as _CliJson
+from flext_cli import u
 from flext_infra import FlextInfraUtilitiesDocs, c, m, p
 
 
-class FlextInfraUtilitiesDocsBuild(_CliJson):
+class FlextInfraUtilitiesDocsBuild(u.Cli):
     """Reusable build helpers exposed through ``u.Infra``."""
 
     @staticmethod

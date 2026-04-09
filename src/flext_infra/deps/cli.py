@@ -25,7 +25,7 @@ class FlextInfraCliDeps:
         "extra-paths": "FlextInfraExtraPathsManager",
         "internal-sync": "FlextInfraInternalDependencySyncService",
         "modernize": "FlextInfraPyprojectModernizer",
-        "path-sync": "FlextInfraDependencyPathSync",
+        "path-sync": "FlextInfraUtilitiesDependencyPathSync",
     })
     _VALUE_FLAGS: ClassVar[frozenset[str]] = frozenset({
         "--workspace",

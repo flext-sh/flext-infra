@@ -9,7 +9,7 @@ from flext_tests import tm
 from tests import t
 from tomlkit.toml_document import TOMLDocument
 
-from flext_infra import FlextInfraDependencyPathSync, r
+from flext_infra import FlextInfraUtilitiesDependencyPathSync, r
 
 
 def _is_str_object_dict(value: object) -> TypeGuard[dict[str, object]]:
@@ -25,7 +25,7 @@ def _rewrite_dep_paths(
     is_root: bool = False,
     dry_run: bool = False,
 ) -> r[t.StrSequence]:
-    return FlextInfraDependencyPathSync().rewrite_dep_paths(
+    return FlextInfraUtilitiesDependencyPathSync().rewrite_dep_paths(
         pyproject_path,
         mode=mode,
         internal_names=internal_names,

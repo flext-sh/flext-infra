@@ -14,24 +14,24 @@ from typing import Annotated
 
 from pydantic import Field
 
-from flext_core import FlextModels
+from flext_core import m
 from flext_infra import (
     FlextInfraModelsMixins,
     FlextInfraModelsNamespaceEnforcer,
-    FlextInfraTypesRope,
+    t,
 )
 
 
 class FlextInfraModelsScan:
     """Shared utility domain models for scanning and analysis."""
 
-    class DetectorContext(FlextModels.ArbitraryTypesModel):
+    class DetectorContext(m.ArbitraryTypesModel):
         """Bundles common parameters passed to every detect_file classmethod."""
 
         file_path: Path = Field(
             description="Filesystem path of the file being scanned.",
         )
-        rope_project: FlextInfraTypesRope.RopeProject = Field(
+        rope_project: t.Infra.RopeProject = Field(
             description="Initialized Rope project for semantic metadata.",
         )
         parse_failures: (
@@ -52,7 +52,7 @@ class FlextInfraModelsScan:
 
     class ScanViolation(
         FlextInfraModelsMixins.PositiveLineMixin,
-        FlextModels.ContractModel,
+        m.ContractModel,
     ):
         """A single violation found during file scanning."""
 
@@ -66,7 +66,7 @@ class FlextInfraModelsScan:
             Field(default=None, description="Optional rule identifier"),
         ]
 
-    class ScanResult(FlextModels.ArbitraryTypesModel):
+    class ScanResult(m.ArbitraryTypesModel):
         """Result of scanning a single file."""
 
         @staticmethod

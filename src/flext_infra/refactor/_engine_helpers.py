@@ -13,10 +13,10 @@ from flext_core import FlextLogger
 from flext_infra import (
     FlextInfraClassNestingRefactorRule,
     FlextInfraRefactorRule,
-    FlextInfraRefactorRuleLoader,
     FlextInfraRefactorSafetyManager,
     FlextInfraRefactorViolationAnalyzer,
     FlextInfraUtilitiesProtectedEdit,
+    FlextInfraUtilitiesRefactorRuleLoader,
     c,
     m,
     t,
@@ -32,7 +32,7 @@ class FlextInfraRefactorEngineHelpersMixin:
     config: t.Infra.InfraValue
     rules: MutableSequence[FlextInfraRefactorRule]
     file_rules: MutableSequence[FlextInfraClassNestingRefactorRule]
-    rule_loader: FlextInfraRefactorRuleLoader
+    rule_loader: FlextInfraUtilitiesRefactorRuleLoader
     safety_manager: FlextInfraRefactorSafetyManager
 
     # ── Result helpers ─────────────────────────────────────────────

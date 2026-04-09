@@ -11,14 +11,13 @@ import time
 from collections.abc import MutableSequence
 from pathlib import Path
 
-from flext_core import r
 from flext_infra import (
-    FlextInfraConstantsBase,
-    FlextInfraConstantsSharedInfra,
-    FlextInfraModelsGithub,
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesReporting,
     FlextInfraUtilitiesSelection,
+    c,
+    m,
+    r,
 )
 
 
@@ -28,8 +27,8 @@ class FlextInfraUtilitiesGithubPr:
     @classmethod
     def github_run_workspace_pull_requests(
         cls,
-        request: FlextInfraModelsGithub.GithubPullRequestWorkspaceRequest,
-    ) -> r[FlextInfraModelsGithub.GithubPullRequestWorkspaceReport]:
+        request: m.Infra.GithubPullRequestWorkspaceRequest,
+    ) -> r[m.Infra.GithubPullRequestWorkspaceReport]:
         """Run pull-request commands across workspace repositories."""
         workspace_root = request.workspace_path
         projects_result = FlextInfraUtilitiesSelection.resolve_projects(
@@ -37,14 +36,14 @@ class FlextInfraUtilitiesGithubPr:
             list(request.project_names or []),
         )
         if projects_result.is_failure:
-            return r[FlextInfraModelsGithub.GithubPullRequestWorkspaceReport].fail(
+            return r[m.Infra.GithubPullRequestWorkspaceReport].fail(
                 projects_result.error or "project resolution failed",
             )
         repos = [project.path for project in projects_result.value]
         if request.include_root:
             repos.append(workspace_root)
-        outcomes: MutableSequence[FlextInfraModelsGithub.GithubPullRequestOutcome] = []
-        context = FlextInfraModelsGithub.GithubPullRequestWorkspaceContext(
+        outcomes: MutableSequence[m.Infra.GithubPullRequestOutcome] = []
+        context = m.Infra.GithubPullRequestWorkspaceContext(
             workspace_root=workspace_root,
             request=request,
             outcomes=outcomes,
@@ -57,8 +56,8 @@ class FlextInfraUtilitiesGithubPr:
                 if request.fail_fast:
                     break
         total = len(repos)
-        return r[FlextInfraModelsGithub.GithubPullRequestWorkspaceReport].ok(
-            FlextInfraModelsGithub.GithubPullRequestWorkspaceReport(
+        return r[m.Infra.GithubPullRequestWorkspaceReport].ok(
+            m.Infra.GithubPullRequestWorkspaceReport(
                 total=total,
                 success=total - failures,
                 fail=failures,
@@ -70,19 +69,17 @@ class FlextInfraUtilitiesGithubPr:
     def _github_pr_process_repo(
         cls,
         repo_root: Path,
-        context: FlextInfraModelsGithub.GithubPullRequestWorkspaceContext,
+        context: m.Infra.GithubPullRequestWorkspaceContext,
     ) -> bool:
         """Process one repository during workspace pull-request execution."""
         if context.request.branch:
             FlextInfraUtilitiesGit.git_checkout(repo_root, context.request.branch)
         if context.request.checkpoint:
             cls._github_pr_checkpoint(repo_root, context.request.branch)
-        run_result: r[FlextInfraModelsGithub.GithubPullRequestOutcome] = (
-            cls.github_run_pull_request(
-                repo_root=repo_root,
-                workspace_root=context.workspace_root,
-                request=context.request,
-            )
+        run_result: r[m.Infra.GithubPullRequestOutcome] = cls.github_run_pull_request(
+            repo_root=repo_root,
+            workspace_root=context.workspace_root,
+            request=context.request,
         )
         if run_result.is_success:
             outcome = run_result.value
@@ -111,7 +108,7 @@ class FlextInfraUtilitiesGithubPr:
             return r[bool].fail(commit_result.error or "git commit failed")
         return FlextInfraUtilitiesGit.git_push(
             repo_root,
-            remote=FlextInfraConstantsSharedInfra.Git.ORIGIN if branch else "",
+            remote=c.Infra.Git.ORIGIN if branch else "",
             branch=branch,
             upstream=bool(branch),
         )
@@ -123,16 +120,15 @@ class FlextInfraUtilitiesGithubPr:
         repo_root: Path,
         workspace_root: Path,
         request: (
-            FlextInfraModelsGithub.GithubPullRequestRequest
-            | FlextInfraModelsGithub.GithubPullRequestWorkspaceRequest
+            m.Infra.GithubPullRequestRequest | m.Infra.GithubPullRequestWorkspaceRequest
         ),
-    ) -> r[FlextInfraModelsGithub.GithubPullRequestOutcome]:
+    ) -> r[m.Infra.GithubPullRequestOutcome]:
         """Execute one pull-request command for a single repository."""
         display = workspace_root.name if repo_root == workspace_root else repo_root.name
         report_dir = FlextInfraUtilitiesReporting.get_report_dir(
             workspace_root,
-            FlextInfraConstantsBase.ReportKeys.WORKSPACE,
-            FlextInfraConstantsBase.PR,
+            c.Infra.ReportKeys.WORKSPACE,
+            c.Infra.PR,
         )
         with contextlib.suppress(OSError):
             report_dir.mkdir(parents=True, exist_ok=True)
@@ -145,18 +141,14 @@ class FlextInfraUtilitiesGithubPr:
         started = time.monotonic()
         to_file_result = FlextInfraUtilitiesGit.run_to_file(command, log_path)
         if to_file_result.is_failure:
-            return r[FlextInfraModelsGithub.GithubPullRequestOutcome].fail(
+            return r[m.Infra.GithubPullRequestOutcome].fail(
                 to_file_result.error or "command execution error",
             )
         exit_code = to_file_result.value
         elapsed = int(time.monotonic() - started)
-        status = (
-            FlextInfraConstantsBase.Status.OK
-            if exit_code == 0
-            else FlextInfraConstantsBase.Status.FAIL
-        )
-        return r[FlextInfraModelsGithub.GithubPullRequestOutcome].ok(
-            FlextInfraModelsGithub.GithubPullRequestOutcome(
+        status = c.Infra.Status.OK if exit_code == 0 else c.Infra.Status.FAIL
+        return r[m.Infra.GithubPullRequestOutcome].ok(
+            m.Infra.GithubPullRequestOutcome(
                 display=display,
                 status=status,
                 elapsed=elapsed,
@@ -171,15 +163,14 @@ class FlextInfraUtilitiesGithubPr:
         repo_root: Path,
         workspace_root: Path,
         request: (
-            FlextInfraModelsGithub.GithubPullRequestRequest
-            | FlextInfraModelsGithub.GithubPullRequestWorkspaceRequest
+            m.Infra.GithubPullRequestRequest | m.Infra.GithubPullRequestWorkspaceRequest
         ),
     ) -> list[str]:
         """Build the CLI command list for a single pull-request operation."""
         is_root = repo_root == workspace_root
         if is_root:
             command = [
-                FlextInfraConstantsBase.PYTHON,
+                c.Infra.PYTHON,
                 "-m",
                 "flext_infra.github.pr",
                 "--repo-root",
@@ -203,10 +194,10 @@ class FlextInfraUtilitiesGithubPr:
             ]
         else:
             command = [
-                FlextInfraConstantsBase.MAKE,
+                c.Infra.MAKE,
                 "-C",
                 str(repo_root),
-                FlextInfraConstantsBase.PR,
+                c.Infra.PR,
                 f"PR_ACTION={request.action}",
                 f"PR_BASE={request.base}",
                 f"PR_DRAFT={1 if request.draft else 0}",

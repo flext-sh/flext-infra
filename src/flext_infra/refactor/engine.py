@@ -22,13 +22,13 @@ from flext_infra import (
     FlextInfraRefactorPatternCorrectionsTextRule,
     FlextInfraRefactorRule,
     FlextInfraRefactorRuleDefinitionValidator,
-    FlextInfraRefactorRuleLoader,
     FlextInfraRefactorSafetyManager,
     FlextInfraRefactorSignaturePropagationRule,
     FlextInfraRefactorSymbolPropagationRule,
     FlextInfraRefactorTier0ImportFixRule,
     FlextInfraRefactorTypingAnnotationFixRule,
     FlextInfraRefactorTypingUnificationRule,
+    FlextInfraUtilitiesRefactorRuleLoader,
     c,
     r,
     t,
@@ -105,7 +105,7 @@ class FlextInfraRefactorEngine(
         self.rules: MutableSequence[FlextInfraRefactorRule] = []
         self.file_rules: MutableSequence[FlextInfraClassNestingRefactorRule] = []
         self.rule_filters: MutableSequence[str] = []
-        self.rule_loader = FlextInfraRefactorRuleLoader(self.config_path)
+        self.rule_loader = FlextInfraUtilitiesRefactorRuleLoader(self.config_path)
         self.rule_validator = FlextInfraRefactorRuleDefinitionValidator()
         self.safety_manager = FlextInfraRefactorSafetyManager()
 

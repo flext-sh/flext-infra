@@ -4,13 +4,13 @@ import tomlkit
 from flext_tests import tm
 from tomlkit.toml_document import TOMLDocument
 
-from flext_infra import FlextInfraDependencyPathSync
+from flext_infra import FlextInfraUtilitiesDependencyPathSync
 
 
 class TestRewritePep621:
     def test_rewrite_pep621_no_project(self) -> None:
         doc = TOMLDocument()
-        changes, _ = FlextInfraDependencyPathSync()._rewrite_pep621(
+        changes, _ = FlextInfraUtilitiesDependencyPathSync()._rewrite_pep621(
             doc,
             internal_names=set(),
         )
@@ -19,7 +19,7 @@ class TestRewritePep621:
     def test_rewrite_pep621_no_dependencies(self) -> None:
         doc = TOMLDocument()
         doc["project"] = tomlkit.table()
-        changes, _ = FlextInfraDependencyPathSync()._rewrite_pep621(
+        changes, _ = FlextInfraUtilitiesDependencyPathSync()._rewrite_pep621(
             doc,
             internal_names=set(),
         )
@@ -28,7 +28,7 @@ class TestRewritePep621:
     def test_rewrite_pep621_non_list_dependencies(self) -> None:
         doc = TOMLDocument()
         doc["project"] = {"dependencies": "not-a-list"}
-        changes, _ = FlextInfraDependencyPathSync()._rewrite_pep621(
+        changes, _ = FlextInfraUtilitiesDependencyPathSync()._rewrite_pep621(
             doc,
             internal_names=set(),
         )
@@ -39,7 +39,7 @@ class TestRewritePep621:
         doc["project"] = {
             "dependencies": ["flext-core @ file://.flext-deps/flext-core"],
         }
-        changes, deps = FlextInfraDependencyPathSync()._rewrite_pep621(
+        changes, deps = FlextInfraUtilitiesDependencyPathSync()._rewrite_pep621(
             doc,
             internal_names={"flext-core"},
         )
@@ -52,7 +52,7 @@ class TestRewritePep621:
     def test_rewrite_pep621_skip_external_dep(self) -> None:
         doc = TOMLDocument()
         doc["project"] = {"dependencies": ["requests>=2.0.0"]}
-        changes, _ = FlextInfraDependencyPathSync()._rewrite_pep621(
+        changes, _ = FlextInfraUtilitiesDependencyPathSync()._rewrite_pep621(
             doc,
             internal_names={"flext-core"},
         )
@@ -65,7 +65,7 @@ class TestRewritePep621:
                 'flext-core @ file://.flext-deps/flext-core ; python_version >= "3.8"',
             ],
         }
-        changes, _ = FlextInfraDependencyPathSync()._rewrite_pep621(
+        changes, _ = FlextInfraUtilitiesDependencyPathSync()._rewrite_pep621(
             doc,
             internal_names={"flext-core"},
         )
@@ -78,7 +78,7 @@ class TestRewritePep621:
         doc["project"] = {
             "dependencies": [123, "flext-core @ file://.flext-deps/flext-core"],
         }
-        changes, _ = FlextInfraDependencyPathSync()._rewrite_pep621(
+        changes, _ = FlextInfraUtilitiesDependencyPathSync()._rewrite_pep621(
             doc,
             internal_names={"flext-core"},
         )
@@ -94,7 +94,7 @@ class TestRewritePep621:
         doc["project"] = {
             "dependencies": ["flext-core @ file://.flext-deps/flext-core"],
         }
-        changes, _ = FlextInfraDependencyPathSync()._rewrite_pep621(
+        changes, _ = FlextInfraUtilitiesDependencyPathSync()._rewrite_pep621(
             doc,
             internal_names={"flext-core"},
         )
@@ -109,7 +109,7 @@ def test_rewrite_pep621_non_string_item() -> None:
     project = tomlkit.table()
     project["dependencies"] = [123]
     doc["project"] = project
-    changes, _ = FlextInfraDependencyPathSync()._rewrite_pep621(
+    changes, _ = FlextInfraUtilitiesDependencyPathSync()._rewrite_pep621(
         doc,
         internal_names={"flext-core"},
     )
@@ -118,7 +118,7 @@ def test_rewrite_pep621_non_string_item() -> None:
 
 def test_rewrite_pep621_no_project_table() -> None:
     doc = tomlkit.document()
-    changes, _ = FlextInfraDependencyPathSync()._rewrite_pep621(
+    changes, _ = FlextInfraUtilitiesDependencyPathSync()._rewrite_pep621(
         doc,
         internal_names={"flext-core"},
     )
@@ -130,7 +130,7 @@ def test_rewrite_pep621_invalid_path_dep_regex() -> None:
     project = tomlkit.table()
     project["dependencies"] = ["  flext-core @ file://.flext-deps/flext-core"]
     doc["project"] = project
-    changes, _ = FlextInfraDependencyPathSync()._rewrite_pep621(
+    changes, _ = FlextInfraUtilitiesDependencyPathSync()._rewrite_pep621(
         doc,
         internal_names={"flext-core"},
     )

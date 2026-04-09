@@ -11,14 +11,14 @@ from typing import Annotated
 
 from pydantic import Field
 
-from flext_core import FlextModels
+from flext_cli import m
 from flext_infra import FlextInfraModelsMixins, c, t
 
 
 class FlextInfraModelsBase:
     """Base models for flext-infra project."""
 
-    class SummaryStats(FlextModels.ContractModel):
+    class SummaryStats(m.ContractModel):
         """Bundled stats for summary output."""
 
         verb: str = Field(description="Verb label for the summary block")
@@ -30,7 +30,7 @@ class FlextInfraModelsBase:
 
     class ProjectFailureInfo(
         FlextInfraModelsMixins.ProjectNameMixin,
-        FlextModels.ContractModel,
+        m.ContractModel,
     ):
         """Bundled info for project failure output."""
 
@@ -43,7 +43,7 @@ class FlextInfraModelsBase:
         ]
         max_show: Annotated[int, Field(description="Maximum errors to render")] = 3
 
-    class SafeExecutionResult(FlextModels.ContractModel):
+    class SafeExecutionResult(m.ContractModel):
         """Result of a safe execution pipeline run."""
 
         mode: Annotated[
@@ -63,7 +63,7 @@ class FlextInfraModelsBase:
             Field(description="Whether rollback was performed"),
         ]
 
-    class TransformStep(FlextModels.ContractModel):
+    class TransformStep(m.ContractModel):
         """Declarative step for enforcement pipeline."""
 
         detector: Annotated[

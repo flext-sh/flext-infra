@@ -271,7 +271,7 @@ if _t.TYPE_CHECKING:
     from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
     from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
     from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
-    from flext_infra.deps.path_sync import FlextInfraDependencyPathSync
+    from flext_infra.deps.path_sync import FlextInfraUtilitiesDependencyPathSync
     from flext_infra.deps.path_sync_rewrite import FlextInfraDependencyPathSyncRewrite
     from flext_infra.detectors._base_detector import (
         DetectorContext,
@@ -286,6 +286,7 @@ if _t.TYPE_CHECKING:
     from flext_infra.detectors.cyclic_import_detector import (
         FlextInfraCyclicImportDetector,
     )
+    from flext_infra.detectors.facade_scanner import FlextInfraUtilitiesFacadeScanner
     from flext_infra.detectors.future_annotations_detector import (
         FlextInfraFutureAnnotationsDetector,
     )
@@ -307,17 +308,14 @@ if _t.TYPE_CHECKING:
     from flext_infra.detectors.mro_completeness_detector import (
         FlextInfraMROCompletenessDetector,
     )
-    from flext_infra.detectors.namespace_facade_scanner import (
-        FlextInfraNamespaceFacadeScanner,
-    )
     from flext_infra.detectors.namespace_source_detector import (
         FlextInfraNamespaceSourceDetector,
     )
     from flext_infra.detectors.runtime_alias_detector import (
         FlextInfraRuntimeAliasDetector,
     )
-    from flext_infra.docs._auditor_mixin import FlextInfraDocAuditorMixin
     from flext_infra.docs.auditor import FlextInfraDocAuditor
+    from flext_infra.docs.auditor_mixin import FlextInfraDocAuditorMixin
     from flext_infra.docs.builder import FlextInfraDocBuilder
     from flext_infra.docs.cli import FlextInfraCliDocs
     from flext_infra.docs.fixer import FlextInfraDocFixer
@@ -375,7 +373,7 @@ if _t.TYPE_CHECKING:
     from flext_infra.refactor.mro_resolver import FlextInfraRefactorMROResolver
     from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
     from flext_infra.refactor.project_classifier import FlextInfraProjectClassifier
-    from flext_infra.refactor.rule import FlextInfraRefactorRuleLoader
+    from flext_infra.refactor.rule import FlextInfraUtilitiesRefactorRuleLoader
     from flext_infra.refactor.rule_definition_validator import (
         FlextInfraRefactorRuleDefinitionValidator,
     )
@@ -631,7 +629,6 @@ __all__ = [
     "FlextInfraDependencyDetectionAnalysis",
     "FlextInfraDependencyDetectionService",
     "FlextInfraDependencyDetectorRuntime",
-    "FlextInfraDependencyPathSync",
     "FlextInfraDependencyPathSyncRewrite",
     "FlextInfraDocAuditor",
     "FlextInfraDocAuditorMixin",
@@ -700,7 +697,6 @@ __all__ = [
     "FlextInfraMypyGate",
     "FlextInfraNamespaceEnforcer",
     "FlextInfraNamespaceEnforcerPhasesMixin",
-    "FlextInfraNamespaceFacadeScanner",
     "FlextInfraNamespaceRules",
     "FlextInfraNamespaceSourceDetector",
     "FlextInfraNamespaceValidator",
@@ -750,7 +746,6 @@ __all__ = [
     "FlextInfraRefactorPatternCorrectionsTextRule",
     "FlextInfraRefactorRule",
     "FlextInfraRefactorRuleDefinitionValidator",
-    "FlextInfraRefactorRuleLoader",
     "FlextInfraRefactorSafetyManager",
     "FlextInfraRefactorSignaturePropagationRule",
     "FlextInfraRefactorSignaturePropagator",
@@ -808,6 +803,7 @@ __all__ = [
     "FlextInfraUtilitiesCodegenLazyMerging",
     "FlextInfraUtilitiesCodegenLazyScanning",
     "FlextInfraUtilitiesCodegenNamespace",
+    "FlextInfraUtilitiesDependencyPathSync",
     "FlextInfraUtilitiesDiscovery",
     "FlextInfraUtilitiesDiscoveryScanning",
     "FlextInfraUtilitiesDocs",
@@ -820,6 +816,7 @@ __all__ = [
     "FlextInfraUtilitiesDocsRender",
     "FlextInfraUtilitiesDocsScope",
     "FlextInfraUtilitiesDocsValidate",
+    "FlextInfraUtilitiesFacadeScanner",
     "FlextInfraUtilitiesFormatting",
     "FlextInfraUtilitiesGit",
     "FlextInfraUtilitiesGithub",
@@ -849,6 +846,7 @@ __all__ = [
     "FlextInfraUtilitiesRefactorPolicy",
     "FlextInfraUtilitiesRefactorPydantic",
     "FlextInfraUtilitiesRefactorPydanticAnalysis",
+    "FlextInfraUtilitiesRefactorRuleLoader",
     "FlextInfraUtilitiesRefactorTransformerPolicy",
     "FlextInfraUtilitiesRelease",
     "FlextInfraUtilitiesReporting",

@@ -15,33 +15,29 @@ from pathlib import Path
 
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
-from flext_cli import FlextCliUtilitiesToml as _CliToml, u
+from flext_cli import u
 from flext_infra import (
-    FlextInfraConstantsRefactor,
-    FlextInfraModelsRefactorGrep,
-    FlextInfraModelsRope,
-    FlextInfraProtocols,
-    FlextInfraTypes,
-    FlextInfraTypesAdapters,
-    FlextInfraTypesBase,
     c,
+    m,
+    p,
     r,
+    t,
 )
 
 
-class FlextInfraUtilitiesParsing(_CliToml):
+class FlextInfraUtilitiesParsing(u.Cli):
     """Static parsing utilities for Python source and import analysis."""
 
     _DOCSTRING_QUOTES = ('"""', "'''")
     _SINGLE_LINE_DOCSTRING_QUOTE_COUNT = 2
     _RULE_CONFIG_SEQ_ADAPTER: TypeAdapter[
-        Sequence[FlextInfraModelsRefactorGrep.ImportModernizerRuleConfig]
+        Sequence[m.Infra.ImportModernizerRuleConfig]
     ] = TypeAdapter(
-        Sequence[FlextInfraModelsRefactorGrep.ImportModernizerRuleConfig],
+        Sequence[m.Infra.ImportModernizerRuleConfig],
     )
 
     @staticmethod
-    def parse_module_ast(file_path: Path) -> FlextInfraTypesBase.AstModule | None:
+    def parse_module_ast(file_path: Path) -> t.Infra.AstModule | None:
         """Parse a Python file into an AST module."""
         try:
             return ast.parse(
@@ -152,8 +148,8 @@ class FlextInfraUtilitiesParsing(_CliToml):
 
     @staticmethod
     def dedupe_specs(
-        specs: FlextInfraTypes.StrSequence,
-    ) -> FlextInfraTypes.StrSequence:
+        specs: t.Infra.StrSequence,
+    ) -> t.Infra.StrSequence:
         """Deduplicate requirement specs by normalized dependency name."""
         seen: dict[str, str] = {}
         for spec in specs:
@@ -164,21 +160,18 @@ class FlextInfraUtilitiesParsing(_CliToml):
 
     @staticmethod
     def ensure_pyright_execution_envs(
-        pyright: FlextInfraTypes.Cli.TomlTable,
-        expected: Sequence[FlextInfraTypesBase.ContainerDict]
-        | Sequence[FlextInfraProtocols.HasModelDump],
+        pyright: t.Infra.Cli.TomlTable,
+        expected: Sequence[t.Infra.ContainerDict] | Sequence[p.Infra.HasModelDump],
         changes: MutableSequence[str],
     ) -> None:
         """Ensure pyright ``executionEnvironments`` matches one expected payload."""
         raw = FlextInfraUtilitiesParsing.toml_unwrap_item(
             FlextInfraUtilitiesParsing.toml_get_item(pyright, "executionEnvironments")
         )
-        current: Sequence[FlextInfraTypes.StrMapping] = []
+        current: Sequence[t.Infra.StrMapping] = []
         if isinstance(raw, list):
             with contextlib.suppress(ValidationError):
-                current = TypeAdapter(
-                    Sequence[FlextInfraTypes.StrMapping]
-                ).validate_python(raw)
+                current = TypeAdapter(Sequence[t.Infra.StrMapping]).validate_python(raw)
         normalized = [
             entry.model_dump(by_alias=True) if isinstance(entry, BaseModel) else entry
             for entry in expected
@@ -192,7 +185,7 @@ class FlextInfraUtilitiesParsing(_CliToml):
     @staticmethod
     def discover_first_party_namespaces(
         project_dir: Path,
-    ) -> FlextInfraTypes.StrSequence:
+    ) -> t.Infra.StrSequence:
         """Discover first-party namespaces directly under ``src/``."""
         src_dir = project_dir / c.Infra.Paths.DEFAULT_SRC_DIR
         if not src_dir.is_dir():
@@ -208,8 +201,8 @@ class FlextInfraUtilitiesParsing(_CliToml):
 
     @staticmethod
     def workspace_dep_namespaces(
-        doc: FlextInfraTypes.Cli.TomlDocument,
-    ) -> FlextInfraTypes.StrSequence:
+        doc: t.Infra.Cli.TomlDocument,
+    ) -> t.Infra.StrSequence:
         """Return workspace dependency namespaces normalized for Python imports."""
         all_deps = FlextInfraUtilitiesParsing.declared_dependency_names(doc)
         return sorted(
@@ -220,8 +213,8 @@ class FlextInfraUtilitiesParsing(_CliToml):
 
     @staticmethod
     def project_dev_groups(
-        doc: FlextInfraTypes.Cli.TomlDocument,
-    ) -> dict[str, FlextInfraTypes.StrSequence]:
+        doc: t.Infra.Cli.TomlDocument,
+    ) -> dict[str, t.Infra.StrSequence]:
         """Extract optional dependency groups from the ``project`` table."""
         project_raw = FlextInfraUtilitiesParsing.toml_get_table(
             doc,
@@ -236,7 +229,7 @@ class FlextInfraUtilitiesParsing(_CliToml):
         if optional_raw is None:
             return {}
 
-        def _group_values(group_key: str) -> FlextInfraTypes.StrSequence:
+        def _group_values(group_key: str) -> t.Infra.StrSequence:
             value = FlextInfraUtilitiesParsing.toml_get_item(optional_raw, group_key)
             return FlextInfraUtilitiesParsing.toml_as_string_list(value)
 
@@ -250,13 +243,13 @@ class FlextInfraUtilitiesParsing(_CliToml):
 
     @staticmethod
     def declared_dependency_names(
-        doc: FlextInfraTypes.Cli.TomlDocument,
-    ) -> FlextInfraTypes.StrSequence:
+        doc: t.Infra.Cli.TomlDocument,
+    ) -> t.Infra.StrSequence:
         """Extract normalized dependency names from supported dependency groups."""
-        raw: FlextInfraTypesBase.TomlData = doc.unwrap()
+        raw: t.Infra.TomlData = doc.unwrap()
         names: set[str] = set()
 
-        def _collect(items: FlextInfraTypesBase.InfraValue) -> None:
+        def _collect(items: t.Infra.InfraValue) -> None:
             if not isinstance(items, Sequence) or isinstance(items, str):
                 return
             for item in items:
@@ -296,8 +289,8 @@ class FlextInfraUtilitiesParsing(_CliToml):
 
     @staticmethod
     def canonical_dev_dependencies(
-        root_doc: FlextInfraTypes.Cli.TomlDocument,
-    ) -> FlextInfraTypes.StrSequence:
+        root_doc: t.Infra.Cli.TomlDocument,
+    ) -> t.Infra.StrSequence:
         """Merge and deduplicate all canonical dev dependency groups."""
         groups = FlextInfraUtilitiesParsing.project_dev_groups(root_doc)
         merged = [
@@ -310,27 +303,25 @@ class FlextInfraUtilitiesParsing(_CliToml):
         return FlextInfraUtilitiesParsing.dedupe_specs(merged)
 
     @staticmethod
-    def read_plain(path: Path) -> r[FlextInfraTypesBase.ContainerDict]:
+    def read_plain(path: Path) -> r[t.Infra.ContainerDict]:
         """Read one TOML file as a plain infra mapping."""
         result = FlextInfraUtilitiesParsing.toml_read_json(path)
         if result.is_failure:
             if not path.exists():
-                return r[FlextInfraTypesBase.ContainerDict].ok({})
-            return r[FlextInfraTypesBase.ContainerDict].fail(
+                return r[t.Infra.ContainerDict].ok({})
+            return r[t.Infra.ContainerDict].fail(
                 result.error or f"TOML read error: {path}",
             )
         try:
-            data = FlextInfraTypesAdapters.INFRA_MAPPING_ADAPTER.validate_python(
-                result.value
-            )
+            data = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(result.value)
         except ValidationError as exc:
-            return r[FlextInfraTypesBase.ContainerDict].fail(f"TOML read error: {exc}")
-        return r[FlextInfraTypesBase.ContainerDict].ok(data)
+            return r[t.Infra.ContainerDict].fail(f"TOML read error: {exc}")
+        return r[t.Infra.ContainerDict].ok(data)
 
     # ── Generic AST helpers (shared across validate/refactor/codegen) ──
 
     @staticmethod
-    def ast_expr_name(node: FlextInfraTypesBase.AstExpr) -> str:
+    def ast_expr_name(node: t.Infra.AstExpr) -> str:
         """Extract the simple name from any AST expression node."""
         if isinstance(node, ast.Name):
             return node.id
@@ -342,7 +333,7 @@ class FlextInfraUtilitiesParsing(_CliToml):
 
     @staticmethod
     def ast_expr_contains(
-        node: FlextInfraTypesBase.AstExpr | None,
+        node: t.Infra.AstExpr | None,
         name: str,
     ) -> bool:
         """Check if an AST expression tree references a given name."""
@@ -376,9 +367,9 @@ class FlextInfraUtilitiesParsing(_CliToml):
         return 1
 
     @staticmethod
-    def parse_import_names(names_str: str) -> Sequence[FlextInfraTypesBase.StrPair]:
+    def parse_import_names(names_str: str) -> Sequence[t.Infra.StrPair]:
         """Parse 'A, B as C, D' into [(name, bound), ...]."""
-        result: MutableSequence[FlextInfraTypesBase.StrPair] = []
+        result: MutableSequence[t.Infra.StrPair] = []
         for part in names_str.split(","):
             part = part.strip().rstrip("\\").strip()
             if not part or part.startswith(("(", ")")):
@@ -391,9 +382,9 @@ class FlextInfraUtilitiesParsing(_CliToml):
         return result
 
     @staticmethod
-    def parse_param_names(params_str: str) -> FlextInfraTypesBase.StrSet:
+    def parse_param_names(params_str: str) -> t.Infra.StrSet:
         """Parse parameter names from a function signature string."""
-        names: FlextInfraTypesBase.StrSet = set()
+        names: t.Infra.StrSet = set()
         for part in params_str.split(","):
             item = part.strip()
             if not item or item == "/":
@@ -408,10 +399,10 @@ class FlextInfraUtilitiesParsing(_CliToml):
         source: str,
         *,
         module_name: str,
-    ) -> FlextInfraTypesBase.StrSet:
+    ) -> t.Infra.StrSet:
         """Collect bound names imported from a target module."""
         rh = FlextInfraUtilitiesParsing
-        bound_names: FlextInfraTypesBase.StrSet = set()
+        bound_names: t.Infra.StrSet = set()
         for match in c.Infra.SourceCode.FROM_IMPORT_RE.finditer(source):
             if match.group(1) != module_name:
                 continue
@@ -428,18 +419,16 @@ class FlextInfraUtilitiesParsing(_CliToml):
 
     @staticmethod
     def parse_forbidden_rules(
-        value: FlextInfraTypesBase.InfraValue,
-    ) -> Sequence[FlextInfraModelsRefactorGrep.ImportModernizerRuleConfig]:
+        value: t.Infra.InfraValue,
+    ) -> Sequence[m.Infra.ImportModernizerRuleConfig]:
         """Parse and validate forbidden import rule configs."""
         try:
-            raw_items: Sequence[FlextInfraTypesBase.ContainerDict] = (
-                FlextInfraTypesAdapters.CONTAINER_DICT_SEQ_ADAPTER.validate_python(
-                    value
-                )
+            raw_items: Sequence[t.Infra.ContainerDict] = (
+                t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(value)
             )
         except ValidationError:
             return []
-        normalized: Sequence[FlextInfraTypesBase.ContainerDict] = [
+        normalized: Sequence[t.Infra.ContainerDict] = [
             {
                 "module": item.get("module", ""),
                 "symbol_mapping": item.get("symbol_mapping", {}),
@@ -456,11 +445,11 @@ class FlextInfraUtilitiesParsing(_CliToml):
     @staticmethod
     def collect_blocked_aliases(
         source: str,
-        runtime_aliases: FlextInfraTypesBase.StrSet,
-    ) -> FlextInfraTypesBase.StrSet:
+        runtime_aliases: t.Infra.StrSet,
+    ) -> t.Infra.StrSet:
         """Collect aliases blocked by definitions, non-core imports, and assignments."""
         rh = FlextInfraUtilitiesParsing
-        blocked: FlextInfraTypesBase.StrSet = set()
+        blocked: t.Infra.StrSet = set()
         for match in c.Infra.SourceCode.DEF_CLASS_RE.finditer(source):
             name = match.group(1)
             if name in runtime_aliases:
@@ -485,10 +474,10 @@ class FlextInfraUtilitiesParsing(_CliToml):
     @staticmethod
     def collect_shadowed_aliases(
         source: str,
-        runtime_aliases: FlextInfraTypesBase.StrSet,
-    ) -> FlextInfraTypesBase.StrSet:
+        runtime_aliases: t.Infra.StrSet,
+    ) -> t.Infra.StrSet:
         """Collect runtime-alias names shadowed inside function bodies."""
-        shadowed: FlextInfraTypesBase.StrSet = set()
+        shadowed: t.Infra.StrSet = set()
         for match in c.Infra.SourceCode.FUNC_PARAM_RE.finditer(source):
             params = match.group(1)
             for param in params.split(","):
@@ -502,11 +491,9 @@ class FlextInfraUtilitiesParsing(_CliToml):
     @staticmethod
     def find_final_candidates(
         source: str,
-    ) -> Sequence[FlextInfraModelsRefactorGrep.MROSymbolCandidate]:
+    ) -> Sequence[m.Infra.MROSymbolCandidate]:
         """Find module-level Final-annotated constants via regex."""
-        candidates: MutableSequence[
-            FlextInfraModelsRefactorGrep.MROSymbolCandidate
-        ] = []
+        candidates: MutableSequence[m.Infra.MROSymbolCandidate] = []
         for i, line in enumerate(source.splitlines(), start=1):
             stripped = line.lstrip()
             if line != stripped and stripped:
@@ -518,7 +505,7 @@ class FlextInfraUtilitiesParsing(_CliToml):
                 is not None
             ):
                 candidates.append(
-                    FlextInfraModelsRefactorGrep.MROSymbolCandidate(
+                    m.Infra.MROSymbolCandidate(
                         symbol=match.group(1),
                         line=i,
                     ),
@@ -530,7 +517,7 @@ class FlextInfraUtilitiesParsing(_CliToml):
         """Find the first class ending with Constants suffix."""
         for match in c.Infra.SourceCode.CLASS_NAME_RE.finditer(source):
             name = match.group(1)
-            if name.endswith(FlextInfraConstantsRefactor.CONSTANTS_CLASS_SUFFIX):
+            if name.endswith(c.Infra.CONSTANTS_CLASS_SUFFIX):
                 return name
         return ""
 
@@ -560,12 +547,12 @@ class FlextInfraUtilitiesParsing(_CliToml):
         return []
 
     @staticmethod
-    def parse_all_class_bases(source: str) -> Sequence[FlextInfraModelsRope.ClassInfo]:
+    def parse_all_class_bases(source: str) -> Sequence[m.Infra.ClassInfo]:
         """Extract class info (name, line, bases) for every class in *source*.
 
         Line-by-line regex scan — useful when rope cannot resolve imported bases.
         """
-        result: MutableSequence[FlextInfraModelsRope.ClassInfo] = []
+        result: MutableSequence[m.Infra.ClassInfo] = []
         for lineno, line in enumerate(source.splitlines(), start=1):
             match = c.Infra.SourceCode.CLASS_WITH_BASES_RE.match(line)
             if not match:
@@ -583,7 +570,7 @@ class FlextInfraUtilitiesParsing(_CliToml):
                 )
             ]
             result.append(
-                FlextInfraModelsRope.ClassInfo(
+                m.Infra.ClassInfo(
                     name=name,
                     line=lineno,
                     bases=tuple(bases),

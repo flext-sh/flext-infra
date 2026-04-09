@@ -7,8 +7,8 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 _LAZY_IMPORTS = build_lazy_import_map(
     {
-        "._auditor_mixin": ("FlextInfraDocAuditorMixin",),
         ".auditor": ("FlextInfraDocAuditor",),
+        ".auditor_mixin": ("FlextInfraDocAuditorMixin",),
         ".builder": ("FlextInfraDocBuilder",),
         ".cli": ("FlextInfraCliDocs",),
         ".fixer": ("FlextInfraDocFixer",),

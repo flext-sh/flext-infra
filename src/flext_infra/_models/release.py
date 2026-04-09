@@ -6,7 +6,7 @@ from typing import Annotated
 
 from pydantic import Field
 
-from flext_core import FlextModels
+from flext_core import m
 from flext_infra import FlextInfraModelsMixins, t
 
 
@@ -15,7 +15,7 @@ class FlextInfraModelsRelease:
 
     class BuildRecord(
         FlextInfraModelsMixins.ProjectNameMixin,
-        FlextModels.ArbitraryTypesModel,
+        m.ArbitraryTypesModel,
     ):
         """Base model for build result data."""
 
@@ -27,13 +27,13 @@ class FlextInfraModelsRelease:
 
     class ReleaseSpec(
         FlextInfraModelsMixins.ReleaseVersionTagMixin,
-        FlextModels.ArbitraryTypesModel,
+        m.ArbitraryTypesModel,
     ):
         """Release descriptor with version, tag, and bump metadata."""
 
         bump_type: Annotated[t.NonEmptyStr, Field(description="Release bump type")]
 
-    class BuildReport(FlextModels.ArbitraryTypesModel):
+    class BuildReport(m.ArbitraryTypesModel):
         """Aggregated build report payload written to JSON."""
 
         @staticmethod
@@ -62,7 +62,7 @@ class FlextInfraModelsRelease:
         FlextInfraModelsMixins.WorkspaceRootPathMixin,
         FlextInfraModelsMixins.ReleaseVersionTagMixin,
         FlextInfraModelsMixins.ReleaseAutomationMixin,
-        FlextModels.ArbitraryTypesModel,
+        m.ArbitraryTypesModel,
     ):
         """Configuration for release workflow execution."""
 
@@ -81,7 +81,7 @@ class FlextInfraModelsRelease:
         FlextInfraModelsMixins.WorkspaceRootPathMixin,
         FlextInfraModelsMixins.ReleaseVersionTagMixin,
         FlextInfraModelsMixins.ReleaseAutomationMixin,
-        FlextModels.ArbitraryTypesModel,
+        m.ArbitraryTypesModel,
     ):
         """Configuration for single release phase dispatch."""
 

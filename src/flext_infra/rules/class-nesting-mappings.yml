@@ -545,10 +545,10 @@ class_nesting:
     target_name: FlextInfraPyprojectModernizer
     confidence: medium
     reason: top_level_class_without_namespace_prefix
-  - loose_name: FlextInfraDependencyPathSync
+  - loose_name: FlextInfraUtilitiesDependencyPathSync
     current_file: flext-core/src/flext_infra/deps/path_sync.py
     target_namespace: FlextDepsPathSync
-    target_name: FlextInfraDependencyPathSync
+    target_name: FlextInfraUtilitiesDependencyPathSync
     confidence: medium
     reason: top_level_class_without_namespace_prefix
   - loose_name: FlextInfraDiscoveryService

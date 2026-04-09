@@ -20,15 +20,19 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import os
 import sys
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
-from flext_infra import FlextInfraUtilitiesOutputReporting, c, m, p, t
-from flext_infra._utilities.output_failure_summary import (
+from flext_infra import (
     FlextInfraUtilitiesOutputFailureSummary,
+    FlextInfraUtilitiesOutputReporting,
+    c,
+    m,
+    p,
+    t,
 )
+from flext_infra._utilities.terminal import FlextInfraUtilitiesTerminal
 
 
 class FlextInfraUtilitiesReporting(
@@ -93,29 +97,12 @@ class FlextInfraUtilitiesReporting(
     @staticmethod
     def terminal_should_use_color(stream: p.Infra.OutputStream | None = None) -> bool:
         """Return whether ANSI color should be emitted for one target stream."""
-        target = stream if stream is not None else sys.stderr
-        if os.environ.get("NO_COLOR") is not None:
-            return False
-        if os.environ.get("FORCE_COLOR") is not None:
-            return True
-        if any(
-            os.environ.get(var) is not None
-            for var in ("CI", "GITHUB_ACTIONS", "GITLAB_CI")
-        ):
-            return False
-        if hasattr(target, "isatty") and target.isatty():
-            term = os.environ.get("TERM", "")
-            return term not in {"", "dumb"}
-        return False
+        return FlextInfraUtilitiesTerminal.terminal_should_use_color(stream)
 
     @staticmethod
     def terminal_should_use_unicode() -> bool:
         """Return whether the current locale safely supports Unicode symbols."""
-        for var in ("LC_ALL", "LANG"):
-            value = os.environ.get(var, "")
-            if value and "utf" in value.lower():
-                return True
-        return False
+        return FlextInfraUtilitiesTerminal.terminal_should_use_unicode()
 
     @classmethod
     def setup(

@@ -2426,16 +2426,16 @@ rules:
   - project_kind: core
     facade_family: u
     module_family: other_private
-    source_symbol: FlextInfraDependencyPathSync
+    source_symbol: FlextInfraUtilitiesDependencyPathSync
     target_facade_class: FlextDepsPathSync
-    target_namespace_path: FlextDepsPathSync.FlextInfraDependencyPathSync
+    target_namespace_path: FlextDepsPathSync.FlextInfraUtilitiesDependencyPathSync
     expected_base_chain: *id006
     forbidden_targets: []
     confidence: 0.7
     pre_checks:
       - type: source_symbol_is_class
         params:
-          symbol: FlextInfraDependencyPathSync
+          symbol: FlextInfraUtilitiesDependencyPathSync
       - type: target_facade_exists
         params:
           facade: FlextDepsPathSync

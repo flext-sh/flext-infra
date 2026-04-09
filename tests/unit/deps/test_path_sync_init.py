@@ -6,7 +6,7 @@ from flext_tests import tm
 from tests import t
 
 from flext_core import r
-from flext_infra import FlextInfraDependencyPathSync
+from flext_infra import FlextInfraUtilitiesDependencyPathSync
 
 
 def _rewrite_dep_paths(
@@ -18,7 +18,7 @@ def _rewrite_dep_paths(
     is_root: bool = False,
     dry_run: bool = False,
 ) -> r[t.StrSequence]:
-    return FlextInfraDependencyPathSync().rewrite_dep_paths(
+    return FlextInfraUtilitiesDependencyPathSync().rewrite_dep_paths(
         pyproject_path,
         mode=mode,
         internal_names=internal_names,
@@ -30,14 +30,16 @@ def _rewrite_dep_paths(
 
 class TestFlextInfraDependencyPathSync:
     def test_path_sync_initialization(self) -> None:
-        path_sync = FlextInfraDependencyPathSync()
-        tm.that(type(path_sync).__name__, eq="FlextInfraDependencyPathSync")
+        path_sync = FlextInfraUtilitiesDependencyPathSync()
+        tm.that(type(path_sync).__name__, eq="FlextInfraUtilitiesDependencyPathSync")
 
 
 class TestDetectMode:
     def test_detect_mode_workspace(self, tmp_path: Path) -> None:
         (tmp_path / ".gitmodules").touch()
-        tm.that(FlextInfraDependencyPathSync.detect_mode(tmp_path), eq="workspace")
+        tm.that(
+            FlextInfraUtilitiesDependencyPathSync.detect_mode(tmp_path), eq="workspace"
+        )
 
     def test_detect_mode_workspace_parent(self, tmp_path: Path) -> None:
         workspace = tmp_path / "workspace"
@@ -45,23 +47,27 @@ class TestDetectMode:
         (workspace / ".gitmodules").touch()
         project = workspace / "project"
         project.mkdir()
-        tm.that(FlextInfraDependencyPathSync.detect_mode(project), eq="workspace")
+        tm.that(
+            FlextInfraUtilitiesDependencyPathSync.detect_mode(project), eq="workspace"
+        )
 
     def test_detect_mode_standalone(self, tmp_path: Path) -> None:
-        tm.that(FlextInfraDependencyPathSync.detect_mode(tmp_path), eq="standalone")
+        tm.that(
+            FlextInfraUtilitiesDependencyPathSync.detect_mode(tmp_path), eq="standalone"
+        )
 
 
 def test_detect_mode_with_nonexistent_path(tmp_path: Path) -> None:
     tm.that(
         {"workspace", "standalone"},
-        has=FlextInfraDependencyPathSync.detect_mode(tmp_path),
+        has=FlextInfraUtilitiesDependencyPathSync.detect_mode(tmp_path),
     )
 
 
 def test_detect_mode_with_path_object() -> None:
     tm.that(
         {"workspace", "standalone"},
-        has=FlextInfraDependencyPathSync.detect_mode(Path("/tmp")),
+        has=FlextInfraUtilitiesDependencyPathSync.detect_mode(Path("/tmp")),
     )
 
 
@@ -69,11 +75,11 @@ class TestPathSyncEdgeCases:
     def test_detect_mode_with_nonexistent_path(self, tmp_path: Path) -> None:
         tm.that(
             {"workspace", "standalone"},
-            has=FlextInfraDependencyPathSync.detect_mode(tmp_path),
+            has=FlextInfraUtilitiesDependencyPathSync.detect_mode(tmp_path),
         )
 
     def test_extract_dep_name_with_empty_string(self) -> None:
-        tm.that(FlextInfraDependencyPathSync.extract_dep_name(""), eq="")
+        tm.that(FlextInfraUtilitiesDependencyPathSync.extract_dep_name(""), eq="")
 
     def test_rewrite_dep_paths_with_no_deps(self, tmp_path: Path) -> None:
         pyproject = tmp_path / "pyproject.toml"

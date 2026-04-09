@@ -8,7 +8,7 @@ from typing import Annotated
 
 from pydantic import Field
 
-from flext_core import FlextModels
+from flext_core import m
 from flext_infra import FlextInfraModelsMixins, t
 
 
@@ -17,7 +17,7 @@ class FlextInfraModelsGithub:
 
     class GithubWorkflowSyncRequest(
         FlextInfraModelsMixins.WriteMixin,
-        FlextModels.ContractModel,
+        m.ContractModel,
     ):
         """CLI/service request for workflow synchronization."""
 
@@ -37,7 +37,7 @@ class FlextInfraModelsGithub:
 
     class GithubWorkflowLintRequest(
         FlextInfraModelsMixins.ReadMixin,
-        FlextModels.ContractModel,
+        m.ContractModel,
     ):
         """CLI/service request for workflow lint."""
 
@@ -49,7 +49,7 @@ class FlextInfraModelsGithub:
     class GithubPullRequestRequest(
         FlextInfraModelsMixins.GithubPullRequestFieldsMixin,
         FlextInfraModelsMixins.WriteMixin,
-        FlextModels.ContractModel,
+        m.ContractModel,
     ):
         """CLI/service request for a single-repository PR action."""
 
@@ -64,11 +64,11 @@ class FlextInfraModelsGithub:
         FlextInfraModelsMixins.GithubWorkspaceCliRequestMixin,
         FlextInfraModelsMixins.GithubPullRequestFieldsMixin,
         FlextInfraModelsMixins.WriteMixin,
-        FlextModels.ContractModel,
+        m.ContractModel,
     ):
         """CLI/service request for workspace-wide PR automation."""
 
-    class GithubPullRequestOutcome(FlextModels.ArbitraryTypesModel):
+    class GithubPullRequestOutcome(m.ArbitraryTypesModel):
         """Outcome of a single pull-request command on one repository."""
 
         display: Annotated[
@@ -91,7 +91,7 @@ class FlextInfraModelsGithub:
             """Return the CLI-facing success or failure summary."""
             return f"{self.display}: {self.status} (exit={self.exit_code})"
 
-    class GithubPullRequestWorkspaceReport(FlextModels.ArbitraryTypesModel):
+    class GithubPullRequestWorkspaceReport(m.ArbitraryTypesModel):
         """Aggregated report for workspace-wide pull-request execution."""
 
         total: Annotated[
@@ -109,13 +109,13 @@ class FlextInfraModelsGithub:
             """Return the CLI-facing workspace summary."""
             return f"workspace PR run: {self.success}/{self.total} successful"
 
-    class RepoUrls(FlextModels.ArbitraryTypesModel):
+    class RepoUrls(m.ArbitraryTypesModel):
         """Repository URL pair with SSH and HTTPS variants."""
 
         ssh_url: Annotated[str, Field(default="", description="SSH clone URL")]
         https_url: Annotated[str, Field(default="", description="HTTPS clone URL")]
 
-    class GithubWorkflowLintOutcome(FlextModels.ArbitraryTypesModel):
+    class GithubWorkflowLintOutcome(m.ArbitraryTypesModel):
         """Outcome payload for workflow lint execution."""
 
         status: Annotated[t.NonEmptyStr, Field(description="Lint status")]
@@ -155,7 +155,7 @@ class FlextInfraModelsGithub:
 
     class GithubWorkflowSyncOperation(
         FlextInfraModelsMixins.ProjectNameMixin,
-        FlextModels.ArbitraryTypesModel,
+        m.ArbitraryTypesModel,
     ):
         """Describe one workflow synchronization operation."""
 
@@ -172,7 +172,7 @@ class FlextInfraModelsGithub:
         ]
         reason: Annotated[str, Field(..., description="Reason for the action.")]
 
-    class GithubWorkflowSyncReport(FlextModels.ArbitraryTypesModel):
+    class GithubWorkflowSyncReport(m.ArbitraryTypesModel):
         """Structured report for a workflow synchronization request."""
 
         mode: Annotated[str, Field(description="Execution mode")]
@@ -210,7 +210,7 @@ class FlextInfraModelsGithub:
 
     class GithubWorkflowSyncContext(
         FlextInfraModelsMixins.ProjectNameFieldMixin,
-        FlextModels.ArbitraryTypesModel,
+        m.ArbitraryTypesModel,
     ):
         """Resolved context for syncing workflows in one project."""
 
@@ -239,7 +239,7 @@ class FlextInfraModelsGithub:
 
     class GithubPullRequestWorkspaceContext(
         FlextInfraModelsMixins.WorkspaceRootPathMixin,
-        FlextModels.ArbitraryTypesModel,
+        m.ArbitraryTypesModel,
     ):
         """Resolved context for workspace-wide pull-request execution."""
 

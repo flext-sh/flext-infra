@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from flext_infra import (
     FlextInfraUtilitiesRopeAnalysis,
+    FlextInfraUtilitiesRopeAnalysisIntrospection,
+    FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeHelpers,
     FlextInfraUtilitiesRopeImports,
     FlextInfraUtilitiesRopeSource,
@@ -11,9 +13,11 @@ from flext_infra import (
 
 
 class FlextInfraUtilitiesRope(
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeAnalysis,
+    FlextInfraUtilitiesRopeAnalysisIntrospection,
     FlextInfraUtilitiesRopeHelpers,
     FlextInfraUtilitiesRopeImports,
-    FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeSource,
 ):
     """Public Rope facade exposed via ``u.Infra.*``."""

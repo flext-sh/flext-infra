@@ -9,8 +9,6 @@ from typing import TYPE_CHECKING
 from rope.base.exceptions import RefactoringError, ResourceNotFoundError
 
 from flext_infra import (
-    FlextInfraUtilitiesRopeAnalysisIntrospection,
-    FlextInfraUtilitiesRopeCore,
     c,
     m,
 )
@@ -19,10 +17,7 @@ if TYPE_CHECKING:
     from flext_infra import t
 
 
-class FlextInfraUtilitiesRopeAnalysis(
-    FlextInfraUtilitiesRopeAnalysisIntrospection,
-    FlextInfraUtilitiesRopeCore,
-):
+class FlextInfraUtilitiesRopeAnalysis:
     """Rope-backed semantic analysis helpers."""
 
     @staticmethod

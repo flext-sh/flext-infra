@@ -17,9 +17,9 @@ from flext_infra import (
     FlextInfraManualProtocolDetector,
     FlextInfraManualTypingAliasDetector,
     FlextInfraMROCompletenessDetector,
-    FlextInfraNamespaceFacadeScanner,
     FlextInfraNamespaceSourceDetector,
     FlextInfraRuntimeAliasDetector,
+    FlextInfraUtilitiesFacadeScanner,
     c,
     m,
     t,
@@ -274,7 +274,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
         workspace_root: Path,
     ) -> Sequence[m.Infra.FacadeStatus]:
         """Scan facades and optionally create missing ones."""
-        facade_statuses = FlextInfraNamespaceFacadeScanner.scan_project(
+        facade_statuses = FlextInfraUtilitiesFacadeScanner.scan_project(
             project_root=project_root,
             project_name=project_name,
             rope_project=rope_project,
@@ -288,7 +288,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
             facade_statuses=facade_statuses,
             workspace_root=workspace_root,
         )
-        return FlextInfraNamespaceFacadeScanner.scan_project(
+        return FlextInfraUtilitiesFacadeScanner.scan_project(
             project_root=project_root,
             project_name=project_name,
             rope_project=rope_project,

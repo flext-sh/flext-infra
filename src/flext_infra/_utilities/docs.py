@@ -6,16 +6,15 @@ import re
 from collections.abc import Callable, MutableSequence, Sequence
 from pathlib import Path
 
-from flext_core import r, u
+from flext_cli import u
 from flext_infra import (
-    FlextInfraConstantsBase,
-    FlextInfraConstantsSourceCode,
-    FlextInfraModelsDocs,
-    FlextInfraModelsWorkspace,
-    FlextInfraTypesBase,
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesDocsScope,
     FlextInfraUtilitiesPatterns,
+    c,
+    m,
+    r,
+    t,
 )
 
 
@@ -30,10 +29,10 @@ class FlextInfraUtilitiesDocs:
         output_dir: str,
         project_class: str,
         package_name: str,
-    ) -> FlextInfraModelsDocs.DocScope:
+    ) -> m.Infra.DocScope:
         """Build one canonical docs scope model."""
         resolved = path.resolve()
-        return FlextInfraModelsDocs.DocScope(
+        return m.Infra.DocScope(
             name=name,
             path=resolved,
             report_dir=(resolved / output_dir).resolve(),
@@ -49,7 +48,7 @@ class FlextInfraUtilitiesDocs:
         """Resolve CLI project flags to a concrete name list."""
         if projects:
             return [name.strip() for name in projects if name.strip()]
-        result: r[Sequence[FlextInfraModelsWorkspace.ProjectInfo]] = (
+        result: r[Sequence[m.Infra.ProjectInfo]] = (
             FlextInfraUtilitiesDiscovery.discover_projects(workspace_root)
         )
         return result.fold(
@@ -60,7 +59,7 @@ class FlextInfraUtilitiesDocs:
     @staticmethod
     def discovered_projects(
         workspace_root: Path,
-    ) -> r[Sequence[FlextInfraModelsWorkspace.ProjectInfo]]:
+    ) -> r[Sequence[m.Infra.ProjectInfo]]:
         """Return the discovered FLEXT project metadata for docs workflows."""
         return FlextInfraUtilitiesDiscovery.discover_projects(workspace_root)
 
@@ -69,7 +68,7 @@ class FlextInfraUtilitiesDocs:
         workspace_root: Path,
         projects: Sequence[str] | None,
         output_dir: str,
-    ) -> r[Sequence[FlextInfraModelsDocs.DocScope]]:
+    ) -> r[Sequence[m.Infra.DocScope]]:
         """Build DocScope objects for workspace root and each selected project."""
         try:
             resolved_root = workspace_root.resolve()
@@ -77,7 +76,7 @@ class FlextInfraUtilitiesDocs:
                 resolved_root.name,
                 resolved_root.parent,
             ):
-                return r[Sequence[FlextInfraModelsDocs.DocScope]].ok(
+                return r[Sequence[m.Infra.DocScope]].ok(
                     [
                         FlextInfraUtilitiesDocs._doc_scope(
                             name=resolved_root.name,
@@ -93,9 +92,9 @@ class FlextInfraUtilitiesDocs:
                         )
                     ],
                 )
-            scopes: MutableSequence[FlextInfraModelsDocs.DocScope] = [
+            scopes: MutableSequence[m.Infra.DocScope] = [
                 FlextInfraUtilitiesDocs._doc_scope(
-                    name=FlextInfraConstantsBase.ReportKeys.ROOT,
+                    name=c.Infra.ReportKeys.ROOT,
                     path=resolved_root,
                     output_dir=output_dir,
                     project_class="root",
@@ -111,9 +110,7 @@ class FlextInfraUtilitiesDocs:
                     project_root = (resolved_root / project_name).resolve()
                     if not project_root.is_dir():
                         continue
-                    if not (
-                        project_root / FlextInfraConstantsBase.Files.PYPROJECT_FILENAME
-                    ).is_file():
+                    if not (project_root / c.Infra.Files.PYPROJECT_FILENAME).is_file():
                         continue
                     scopes.append(
                         FlextInfraUtilitiesDocs._doc_scope(
@@ -129,12 +126,12 @@ class FlextInfraUtilitiesDocs:
                             ),
                         )
                     )
-                return r[Sequence[FlextInfraModelsDocs.DocScope]].ok(scopes)
+                return r[Sequence[m.Infra.DocScope]].ok(scopes)
             discovered_result = FlextInfraUtilitiesDocs.discovered_projects(
                 resolved_root,
             )
             if discovered_result.is_failure:
-                return r[Sequence[FlextInfraModelsDocs.DocScope]].fail(
+                return r[Sequence[m.Infra.DocScope]].fail(
                     discovered_result.error or "project discovery failed",
                 )
             for project in discovered_result.value:
@@ -147,50 +144,45 @@ class FlextInfraUtilitiesDocs:
                         package_name=project.package_name,
                     )
                 )
-            return r[Sequence[FlextInfraModelsDocs.DocScope]].ok(scopes)
+            return r[Sequence[m.Infra.DocScope]].ok(scopes)
         except (OSError, TypeError, ValueError) as exc:
-            return r[Sequence[FlextInfraModelsDocs.DocScope]].fail(
+            return r[Sequence[m.Infra.DocScope]].fail(
                 f"scope resolution failed: {exc}",
             )
 
     @staticmethod
     def iter_markdown_files(workspace_root: Path) -> Sequence[Path]:
         """Recursively collect markdown files under the docs scope."""
-        docs_root = workspace_root / FlextInfraConstantsBase.Directories.DOCS
+        docs_root = workspace_root / c.Infra.Directories.DOCS
         search_root = docs_root if docs_root.is_dir() else workspace_root
         return sorted(
             path
             for path in search_root.rglob("*.md")
             if not any(
-                part in FlextInfraConstantsBase.Excluded.DOC_EXCLUDED_DIRS
-                or part.startswith(".")
+                part in c.Infra.Excluded.DOC_EXCLUDED_DIRS or part.startswith(".")
                 for part in path.parts
             )
         )
 
     @staticmethod
     def iter_scope_markdown_files(
-        scope: FlextInfraModelsDocs.DocScope,
+        scope: m.Infra.DocScope,
     ) -> Sequence[Path]:
         """Collect markdown files governed by one docs scope."""
         scope_root = scope.path
         files = FlextInfraUtilitiesDocs.iter_markdown_files(scope_root)
-        if scope.name == FlextInfraConstantsBase.ReportKeys.ROOT:
+        if scope.name == c.Infra.ReportKeys.ROOT:
             return [
                 path
                 for path in files
                 if not FlextInfraUtilitiesDocsScope.is_excluded_doc_path(
                     scope_root,
-                    path.relative_to(
-                        scope_root / FlextInfraConstantsBase.Directories.DOCS
-                    )
-                    if path.is_relative_to(
-                        scope_root / FlextInfraConstantsBase.Directories.DOCS
-                    )
+                    path.relative_to(scope_root / c.Infra.Directories.DOCS)
+                    if path.is_relative_to(scope_root / c.Infra.Directories.DOCS)
                     else path.relative_to(scope_root),
                 )
             ]
-        docs_root = scope_root / FlextInfraConstantsBase.Directories.DOCS
+        docs_root = scope_root / c.Infra.Directories.DOCS
         return [
             path
             for path in files
@@ -210,7 +202,7 @@ class FlextInfraUtilitiesDocs:
             path.parent.mkdir(parents=True, exist_ok=True)
             _ = path.write_text(
                 "\n".join(lines).rstrip() + "\n",
-                encoding=FlextInfraConstantsBase.Encoding.DEFAULT,
+                encoding=c.Infra.Encoding.DEFAULT,
             )
             return r[bool].ok(True)
         except OSError as exc:
@@ -239,18 +231,18 @@ class FlextInfraUtilitiesDocs:
         if not items:
             items = ["- No sections found"]
         return (
-            f"{FlextInfraConstantsSourceCode.SourceCode.TOC_START}\n"
+            f"{c.Infra.SourceCode.TOC_START}\n"
             + "\n".join(items)
-            + f"\n{FlextInfraConstantsSourceCode.SourceCode.TOC_END}"
+            + f"\n{c.Infra.SourceCode.TOC_END}"
         )
 
     @staticmethod
-    def update_toc(content: str) -> FlextInfraTypesBase.StrIntPair:
+    def update_toc(content: str) -> t.Infra.StrIntPair:
         """Insert or replace the TOC in content, returning (updated, changed)."""
         toc = FlextInfraUtilitiesDocs.build_toc(content)
         if (
-            FlextInfraConstantsSourceCode.SourceCode.TOC_START in content
-            and FlextInfraConstantsSourceCode.SourceCode.TOC_END in content
+            c.Infra.SourceCode.TOC_START in content
+            and c.Infra.SourceCode.TOC_END in content
         ):
             updated = re.sub(
                 r"<!-- TOC START -->.*?<!-- TOC END -->",
@@ -278,10 +270,10 @@ class FlextInfraUtilitiesDocs:
         projects: Sequence[str] | None,
         output_dir: str,
         handler: Callable[
-            [FlextInfraModelsDocs.DocScope],
-            FlextInfraModelsDocs.DocsPhaseReport,
+            [m.Infra.DocScope],
+            m.Infra.DocsPhaseReport,
         ],
-    ) -> r[Sequence[FlextInfraModelsDocs.DocsPhaseReport]]:
+    ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
         """Build scopes and run handler on each, collecting reports."""
         scopes_result = FlextInfraUtilitiesDocs.build_scopes(
             workspace_root=workspace_root,
@@ -289,10 +281,10 @@ class FlextInfraUtilitiesDocs:
             output_dir=output_dir,
         )
         if scopes_result.is_failure:
-            return r[Sequence[FlextInfraModelsDocs.DocsPhaseReport]].fail(
+            return r[Sequence[m.Infra.DocsPhaseReport]].fail(
                 scopes_result.error or "scope error",
             )
-        return r[Sequence[FlextInfraModelsDocs.DocsPhaseReport]].ok(
+        return r[Sequence[m.Infra.DocsPhaseReport]].ok(
             [handler(scope) for scope in scopes_result.value],
         )
 

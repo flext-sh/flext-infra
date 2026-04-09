@@ -8,28 +8,24 @@ from operator import itemgetter
 from pathlib import Path
 
 from flext_infra import (
-    FlextInfraConstantsBase,
-    FlextInfraConstantsSharedInfra,
-    FlextInfraTypesBase,
-    FlextInfraTypesRope,
     FlextInfraUtilitiesDiscovery,
-    FlextInfraUtilitiesRopeCore,
+    c,
     t,
 )
 
 
-class FlextInfraUtilitiesRopeSource(FlextInfraUtilitiesRopeCore):
+class FlextInfraUtilitiesRopeSource:
     """Text-oriented helpers shared by Rope-backed refactors."""
 
     @staticmethod
-    def read_source(resource: FlextInfraTypesRope.RopeResource) -> str:
+    def read_source(resource: t.Infra.RopeResource) -> str:
         """Read source from a rope resource."""
         return resource.read()
 
     @staticmethod
     def write_source(
-        rope_project: FlextInfraTypesRope.RopeProject,
-        resource: FlextInfraTypesRope.RopeResource,
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
         content: str,
         *,
         description: str = "rope transform",
@@ -47,13 +43,13 @@ class FlextInfraUtilitiesRopeSource(FlextInfraUtilitiesRopeCore):
 
     @staticmethod
     def replace_in_source(
-        rope_project: FlextInfraTypesRope.RopeProject,
-        resource: FlextInfraTypesRope.RopeResource,
-        pattern: str | FlextInfraTypesBase.RegexPattern,
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+        pattern: str | t.Infra.RegexPattern,
         replacement: str,
         *,
         apply: bool = True,
-    ) -> FlextInfraTypesBase.StrIntPair:
+    ) -> t.Infra.StrIntPair:
         """Regex replace in source. Returns (new_source, count)."""
         source = resource.read()
         compiled = re.compile(pattern) if isinstance(pattern, str) else pattern
@@ -69,10 +65,10 @@ class FlextInfraUtilitiesRopeSource(FlextInfraUtilitiesRopeCore):
 
     @staticmethod
     def remove_module_level_aliases(
-        rope_project: FlextInfraTypesRope.RopeProject,
-        resource: FlextInfraTypesRope.RopeResource,
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
         *,
-        allow: FlextInfraTypesBase.StrSet | None = None,
+        allow: t.Infra.StrSet | None = None,
         apply: bool = True,
     ) -> tuple[str, Sequence[str]]:
         """Remove module-level ``X = Y`` identity aliases."""
@@ -99,8 +95,8 @@ class FlextInfraUtilitiesRopeSource(FlextInfraUtilitiesRopeCore):
                 or target in allow_set
                 or target
                 in {
-                    FlextInfraConstantsSharedInfra.Dunders.VERSION,
-                    FlextInfraConstantsSharedInfra.Dunders.ALL,
+                    c.Infra.Dunders.VERSION,
+                    c.Infra.Dunders.ALL,
                 }
             ):
                 kept.append(line)
@@ -120,12 +116,12 @@ class FlextInfraUtilitiesRopeSource(FlextInfraUtilitiesRopeCore):
 
     @staticmethod
     def batch_replace_annotations(
-        rope_project: FlextInfraTypesRope.RopeProject,
-        resource: FlextInfraTypesRope.RopeResource,
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
         replacements: t.StrMapping,
         *,
         apply: bool = True,
-    ) -> FlextInfraTypesBase.StrIntPair:
+    ) -> t.Infra.StrIntPair:
         """Apply multiple annotation replacements in one pass."""
         source = resource.read()
         total = 0
@@ -144,11 +140,11 @@ class FlextInfraUtilitiesRopeSource(FlextInfraUtilitiesRopeCore):
 
     @staticmethod
     def remove_redundant_cast(
-        rope_project: FlextInfraTypesRope.RopeProject,
-        resource: FlextInfraTypesRope.RopeResource,
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
         *,
         apply: bool = True,
-    ) -> FlextInfraTypesBase.StrIntPair:
+    ) -> t.Infra.StrIntPair:
         """Remove ``cast(Type, value)`` calls, replacing with just ``value``."""
         pattern = re.compile(r"\bcast\s*\(\s*[^,]+\s*,\s*([^)]+)\s*\)")
         return FlextInfraUtilitiesRopeSource.replace_in_source(
@@ -161,8 +157,8 @@ class FlextInfraUtilitiesRopeSource(FlextInfraUtilitiesRopeCore):
 
     @staticmethod
     def rewrite_source_at_offsets(
-        rope_project: FlextInfraTypesRope.RopeProject,
-        resource: FlextInfraTypesRope.RopeResource,
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
         changes: Sequence[tuple[int, int, str]],
         *,
         apply: bool = True,
@@ -189,7 +185,7 @@ class FlextInfraUtilitiesRopeSource(FlextInfraUtilitiesRopeCore):
         cls,
         source: str,
         file_path: Path,
-        transformer_fn: FlextInfraTypesRope.RopeTransformFn,
+        transformer_fn: t.Infra.RopeTransformFn,
     ) -> tuple[str, Sequence[str]]:
         """Run a rope transformer against source text via a temporary context."""
         workspace_root = FlextInfraUtilitiesDiscovery.discover_project_root_from_file(
@@ -197,9 +193,7 @@ class FlextInfraUtilitiesRopeSource(FlextInfraUtilitiesRopeCore):
         )
         if workspace_root is None:
             return (source, [])
-        original_disk_source = file_path.read_text(
-            encoding=FlextInfraConstantsBase.Encoding.DEFAULT
-        )
+        original_disk_source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
         rope_project = cls.init_rope_project(workspace_root)
         try:
             resource = cls.get_resource_from_path(rope_project, file_path)
@@ -216,12 +210,12 @@ class FlextInfraUtilitiesRopeSource(FlextInfraUtilitiesRopeCore):
             return (new_source, list(changes))
         finally:
             if (
-                file_path.read_text(encoding=FlextInfraConstantsBase.Encoding.DEFAULT)
+                file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
                 != original_disk_source
             ):
                 file_path.write_text(
                     original_disk_source,
-                    encoding=FlextInfraConstantsBase.Encoding.DEFAULT,
+                    encoding=c.Infra.Encoding.DEFAULT,
                 )
             rope_project.close()
 

@@ -11,7 +11,7 @@ from typing import ClassVar
 from flext_cli import FlextCliUtilitiesToml as _CliToml
 from flext_core import FlextUtilities
 from flext_infra import (
-    FlextInfraNamespaceFacadeScanner,
+    FlextInfraUtilitiesFacadeScanner,
     FlextInfraUtilitiesFormatting,
     c,
     m,
@@ -69,7 +69,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades(_CliToml):
                 c.Infra.Packages.PREFIX_HYPHEN
             ):
                 continue
-            stem = FlextInfraNamespaceFacadeScanner.project_class_stem(
+            stem = FlextInfraUtilitiesFacadeScanner.project_class_stem(
                 project_name=dep_name,
             )
             if not stem:
@@ -205,7 +205,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades(_CliToml):
         if not package_dirs:
             return
         package_dir = package_dirs[0]
-        stem = FlextInfraNamespaceFacadeScanner.project_class_stem(
+        stem = FlextInfraUtilitiesFacadeScanner.project_class_stem(
             project_name=project_name,
         )
         base_chains = (

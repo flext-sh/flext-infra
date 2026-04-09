@@ -17,7 +17,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from flext_core import FlextUtilities
+from flext_core import u
 from flext_infra import c, m, t
 
 
@@ -142,11 +142,9 @@ class FlextInfraUtilitiesRefactorCli:
     @staticmethod
     def print_summary(results: Sequence[m.Infra.Result], *, dry_run: bool) -> None:
         """Print execution summary for processed files."""
-        modified = FlextUtilities.count(results, lambda item: item.modified)
-        failed = FlextUtilities.count(results, lambda item: not item.success)
-        unchanged = FlextUtilities.count(
-            results, lambda item: item.success and not item.modified
-        )
+        modified = u.count(results, lambda item: item.modified)
+        failed = u.count(results, lambda item: not item.success)
+        unchanged = u.count(results, lambda item: item.success and not item.modified)
         FlextInfraUtilitiesRefactorCli.refactor_header("Summary")
         FlextInfraUtilitiesRefactorCli.refactor_info(f"Total files: {len(results)}")
         FlextInfraUtilitiesRefactorCli.refactor_info(f"Modified: {modified}")

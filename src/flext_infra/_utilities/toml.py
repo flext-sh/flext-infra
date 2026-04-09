@@ -14,12 +14,11 @@ from pathlib import Path
 
 from pydantic import BaseModel, ValidationError
 
-from flext_cli import FlextCliUtilitiesToml as _CliToml
-from flext_core import u
+from flext_cli import u
 from flext_infra import t
 
 
-class FlextInfraUtilitiesToml(_CliToml):
+class FlextInfraUtilitiesToml(u.Cli):
     """Infra-specific TOML helpers — validation via INFRA adapters.
 
     For pure TOML operations use ``u.Cli.toml_*`` directly::

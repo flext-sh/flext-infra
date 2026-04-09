@@ -20,7 +20,7 @@ from flext_infra import (
 )
 
 
-class FlextInfraRefactorRuleLoader:
+class FlextInfraUtilitiesRefactorRuleLoader:
     """Load and resolve refactor rules from YAML configuration files."""
 
     _ENGINE_CONFIG_KEYS: tuple[str, ...] = (
@@ -198,4 +198,4 @@ class FlextInfraRefactorRuleLoader:
         return definitions
 
 
-__all__ = ["FlextInfraRefactorRuleLoader"]
+__all__ = ["FlextInfraUtilitiesRefactorRuleLoader"]

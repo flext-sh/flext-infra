@@ -17,18 +17,19 @@ from typing import Annotated
 
 from pydantic import Field
 
-from flext_cli import FlextCliUtilitiesConfiguration as _CliConfig
-from flext_core import m, t
+from flext_cli import u
 from flext_infra import (
-    FlextInfraConstantsBase,
     FlextInfraUtilitiesCliShared,
     FlextInfraUtilitiesCliSubcommand,
+    c,
+    m,
+    t,
 )
 
 
 class FlextInfraUtilitiesCli(
     FlextInfraUtilitiesCliShared,
-    _CliConfig,
+    u.Cli,
 ):
     """Static facade for CLI argument parsing and resolution.
 
@@ -40,9 +41,7 @@ class FlextInfraUtilitiesCli(
     @staticmethod
     def apply_option_json_schema_extra(schema: dict[str, object]) -> None:
         """Inject Typer dual-flag metadata using a Pydantic-supported hook."""
-        schema["typer_param_decls"] = list(
-            FlextInfraConstantsBase.Cli.APPLY_OPTION_DECLS
-        )
+        schema["typer_param_decls"] = list(c.Infra.Cli.APPLY_OPTION_DECLS)
 
     class CliArgs(m.ContractModel):
         """Parsed CLI arguments with strict validation.

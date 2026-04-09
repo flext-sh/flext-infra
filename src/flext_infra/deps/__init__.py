@@ -23,7 +23,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".fix_pyrefly_config": ("FlextInfraConfigFixer",),
             ".internal_sync": ("FlextInfraInternalDependencySyncService",),
             ".modernizer": ("FlextInfraPyprojectModernizer",),
-            ".path_sync": ("FlextInfraDependencyPathSync",),
+            ".path_sync": ("FlextInfraUtilitiesDependencyPathSync",),
             ".path_sync_rewrite": ("FlextInfraDependencyPathSyncRewrite",),
         },
     ),

@@ -5,7 +5,7 @@ from __future__ import annotations
 from enum import StrEnum, unique
 from typing import Final
 
-from flext_infra import FlextInfraTypesBase, t
+from flext_infra import t
 
 
 class FlextInfraConstantsWorkspace:
@@ -25,9 +25,7 @@ class FlextInfraConstantsWorkspace:
         WORKSPACE_MEMBER = "member"
         ATTACHED = "attached"
 
-    MAKEFILE_REPLACEMENTS: Final[
-        FlextInfraTypesBase.Infra.VariadicTuple[FlextInfraTypesBase.Infra.StrPair]
-    ] = (
+    MAKEFILE_REPLACEMENTS: Final[t.Infra.Infra.VariadicTuple[t.Infra.Infra.StrPair]] = (
         (
             'python3 "$(BASE_MK_DIR)/scripts/mode.py"',
             "python -m flext_infra workspace detect",

@@ -20,7 +20,7 @@ from tomlkit import TOMLDocument as _TOMLDocument
 from tomlkit.container import Container as _TOMLContainer
 from tomlkit.items import Item as _TOMLItem, Table as _TOMLTable
 
-from flext_core import FlextTypes
+from flext_core import t
 
 
 class FlextInfraTypesBase:
@@ -111,7 +111,7 @@ class FlextInfraTypesBase:
     "Expected MRO base: a class or its qualified name."
     type PolicyContext = Mapping[str, ContainerDict]
     "Class-nesting policy matrix keyed by module family."
-    type MetricValue = FlextTypes.Scalar | _Path | None
+    type MetricValue = t.Scalar | _Path | None
     "Output metric value: scalar (str/int/float/bool/datetime), path, or null."
     type MetricRecord = BaseModel | Mapping[str, MetricValue]
     "A single metric record: a Pydantic model or a string-keyed mapping of metric values."
@@ -133,7 +133,7 @@ class FlextInfraTypesBase:
     "Result for per-directory lazy init processing."
     type LazyInitWriteResult = tuple[int, LazyImportMap]
     "Result for writing generated __init__.py."
-    type VersionExportsResult = tuple[FlextTypes.StrMapping, LazyImportMap]
+    type VersionExportsResult = tuple[t.StrMapping, LazyImportMap]
     "Result for __version__.py export extraction (inline constants, eager import map)."
     type StrSet = set[str]
     "Mutable string set (supports .update/.intersection/etc)."
@@ -154,7 +154,7 @@ class FlextInfraTypesBase:
     type TomlData = dict[str, InfraValue]
     "Unwrapped TOML table data — nested dicts of primitives from tomlkit unwrap()."
 
-    type CensusRecord = FlextTypes.HeaderMapping
+    type CensusRecord = t.HeaderMapping
     "Single census record: string keys with str|int values (name, type, usages)."
     type MutableCensusRecordList = MutableSequence[CensusRecord]
     "Mutable list of census records."
@@ -167,15 +167,15 @@ class FlextInfraTypesBase:
     "Read-only infra value sequence."
     type MutableInfraSequence = MutableSequence[InfraValue]
     "Mutable infra value sequence."
-    type DomainResult = BaseModel | FlextTypes.RecursiveContainer
+    type DomainResult = BaseModel | t.RecursiveContainer
     "Typed service result payload: model or recursive container."
     type DomainResultSequence = Sequence[DomainResult]
     "Read-only sequence of typed service result payloads."
     type DomainOutput = DomainResult | DomainResultSequence
     "Single or batched service result payload for infra services."
-    type ContainerOverrides = FlextTypes.ContainerMapping
+    type ContainerOverrides = t.ContainerMapping
     "Container-shaped config overrides passed to service bootstrap."
-    type RuntimeScalarOverrides = FlextTypes.ScalarMapping
+    type RuntimeScalarOverrides = t.ScalarMapping
     "Scalar-only runtime/container override mapping."
 
     # ── Transformer / edit result types ──────────────────────────────

@@ -7,7 +7,7 @@ from pathlib import Path
 
 from flext_cli import u
 from flext_infra import (
-    FlextInfraDependencyPathSync,
+    FlextInfraUtilitiesDependencyPathSync,
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesDiscoveryScanning,
     FlextInfraUtilitiesParsing,
@@ -108,7 +108,7 @@ class FlextInfraExtraPathsResolutionMixin:
         )
         project_dep_names: t.Infra.StrSet = set()
         for dep_entry in project_deps:
-            dep_name: str = FlextInfraDependencyPathSync.extract_dep_name(
+            dep_name: str = FlextInfraUtilitiesDependencyPathSync.extract_dep_name(
                 dep_entry.split(" ", 1)[0]
             )
             if dep_name:
@@ -183,7 +183,7 @@ class FlextInfraExtraPathsResolutionMixin:
         resolved_visited: set[str] = visited if visited is not None else set()
         all_paths: set[str] = set(direct_paths)
         for path_value in direct_paths:
-            name = FlextInfraDependencyPathSync.extract_dep_name(path_value)
+            name = FlextInfraUtilitiesDependencyPathSync.extract_dep_name(path_value)
             if name in resolved_visited:
                 continue
             resolved_visited.add(name)
@@ -230,7 +230,7 @@ class FlextInfraExtraPathsResolutionMixin:
         for path_value in raw_paths:
             if not path_value:
                 continue
-            name = FlextInfraDependencyPathSync.extract_dep_name(path_value)
+            name = FlextInfraUtilitiesDependencyPathSync.extract_dep_name(path_value)
             if isinstance(current_project_name, str) and name == current_project_name:
                 continue
             prefix = f"{name}" if is_root else f"../{name}"

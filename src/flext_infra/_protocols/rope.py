@@ -347,10 +347,7 @@ class FlextInfraProtocolsRope(Protocol):
             resource: t.Infra.RopeApiResource,
             offset: int,
             *,
-            _unsure: bool = False,
-            _resources: t.SequenceOf[t.Infra.RopeApiResource] | None = None,
             in_hierarchy: bool = False,
-            _task_handle: t.OpaqueValue | None = None,
         ) -> t.SequenceOf[t.Infra.RopeLocation]:
             """Return occurrences for the symbol at the given offset."""
             ...

@@ -10,14 +10,14 @@ from typing import Annotated
 
 from pydantic import Field, PrivateAttr
 
-from flext_core import FlextModels
+from flext_core import m
 from flext_infra import FlextInfraModelsMixins, FlextInfraProtocolsRope
 
 
 class FlextInfraModelsRope:
     """Rope operation result models — accessed via m.Infra.Rope.*."""
 
-    class RopeModuleImports(FlextModels.ArbitraryTypesModel):
+    class RopeModuleImports(m.ArbitraryTypesModel):
         """Typed wrapper around rope's ModuleImports helper."""
 
         imports: Annotated[
@@ -74,7 +74,7 @@ class FlextInfraModelsRope:
 
     class ClassInfo(
         FlextInfraModelsMixins.PositiveLineMixin,
-        FlextModels.ContractModel,
+        m.ContractModel,
     ):
         """Semantic class info from rope — name, line, bases in one shot."""
 
@@ -86,7 +86,7 @@ class FlextInfraModelsRope:
     class ConstantInfo(
         FlextInfraModelsMixins.NonNegativeLineMixin,
         FlextInfraModelsMixins.NestedClassPathMixin,
-        FlextModels.ContractModel,
+        m.ContractModel,
     ):
         """Final-annotated constant definition from rope semantic analysis."""
 
@@ -98,7 +98,7 @@ class FlextInfraModelsRope:
 
     class SymbolInfo(
         FlextInfraModelsMixins.NonNegativeLineMixin,
-        FlextModels.ContractModel,
+        m.ContractModel,
     ):
         """Top-level symbol metadata from rope semantic analysis."""
 

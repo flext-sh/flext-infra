@@ -12,12 +12,11 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import (
-    FlextInfraModelsRefactorGrep,
-    FlextInfraTypesRope,
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesRopeCore,
     c,
     m,
+    t,
 )
 
 logger = logging.getLogger(__name__)
@@ -35,13 +34,13 @@ class FlextInfraUtilitiesRefactorMroScan:
         *,
         workspace_root: Path,
         target: str,
-    ) -> tuple[Sequence[FlextInfraModelsRefactorGrep.MROScanReport], int]:
+    ) -> tuple[Sequence[m.Infra.MROScanReport], int]:
         """Scan workspace and collect migration reports for a target family."""
         if target not in c.Infra.MRO_TARGETS:
-            empty_list: list[FlextInfraModelsRefactorGrep.MROScanReport] = []
+            empty_list: list[m.Infra.MROScanReport] = []
             return (empty_list, 0)
 
-        results: list[FlextInfraModelsRefactorGrep.MROScanReport] = []
+        results: list[m.Infra.MROScanReport] = []
         scanned = 0
         target_specs = FlextInfraUtilitiesRefactorMroScan._target_specs(target=target)
         for project_root in FlextInfraUtilitiesIteration.discover_project_roots(
@@ -76,10 +75,10 @@ class FlextInfraUtilitiesRefactorMroScan:
     @staticmethod
     def scan_file(
         *,
-        resource: FlextInfraTypesRope.RopeResource,
+        resource: t.Infra.RopeResource,
         project_root: Path,
         target_spec: m.Infra.MROTargetSpec,
-    ) -> FlextInfraModelsRefactorGrep.MROScanReport | None:
+    ) -> m.Infra.MROScanReport | None:
         """Scan one file using rope and return migration candidates."""
         source = resource.read()
         facade = FlextInfraUtilitiesRefactorMroScan._find_facade(source, target_spec)
@@ -91,7 +90,7 @@ class FlextInfraUtilitiesRefactorMroScan:
             p for p in rel.with_suffix("").parts if p != c.Infra.Paths.DEFAULT_SRC_DIR
         ])
 
-        candidates: list[FlextInfraModelsRefactorGrep.MROSymbolCandidate] = []
+        candidates: list[m.Infra.MROSymbolCandidate] = []
         rope_proj = FlextInfraUtilitiesRefactorMroScan._init_rope_project(project_root)
         try:
             pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_proj, resource)
@@ -141,7 +140,7 @@ class FlextInfraUtilitiesRefactorMroScan:
         finally:
             rope_proj.close()
 
-        return FlextInfraModelsRefactorGrep.MROScanReport(
+        return m.Infra.MROScanReport(
             file=resource.real_path,
             module=module,
             constants_class=facade,
@@ -159,7 +158,7 @@ class FlextInfraUtilitiesRefactorMroScan:
         class_header: str,
         target_spec: m.Infra.MROTargetSpec,
         obj: object,
-    ) -> FlextInfraModelsRefactorGrep.MROSymbolCandidate | None:
+    ) -> m.Infra.MROSymbolCandidate | None:
         alias = target_spec.family_alias
         kind = ""
 
@@ -186,7 +185,7 @@ class FlextInfraUtilitiesRefactorMroScan:
         if not kind:
             return None
 
-        return FlextInfraModelsRefactorGrep.MROSymbolCandidate(
+        return m.Infra.MROSymbolCandidate(
             symbol=name,
             line=line,
             end_line=(end_line if end_line > line else None),
@@ -355,14 +354,14 @@ class FlextInfraUtilitiesRefactorMroScan:
         return sorted(cands)
 
     @staticmethod
-    def _init_rope_project(project_root: Path) -> FlextInfraTypesRope.RopeProject:
+    def _init_rope_project(project_root: Path) -> t.Infra.RopeProject:
         return FlextInfraUtilitiesRopeCore.init_rope_project(project_root)
 
     @staticmethod
     def _get_resource_from_path(
-        rope_project: FlextInfraTypesRope.RopeProject,
+        rope_project: t.Infra.RopeProject,
         file_path: Path,
-    ) -> FlextInfraTypesRope.RopeResource | None:
+    ) -> t.Infra.RopeResource | None:
         return FlextInfraUtilitiesRopeCore.get_resource_from_path(
             rope_project,
             file_path,

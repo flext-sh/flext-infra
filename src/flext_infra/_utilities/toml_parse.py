@@ -15,12 +15,11 @@ from pathlib import Path
 
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
-from flext_cli import FlextCliUtilitiesToml as _CliToml
-from flext_core import r, u
-from flext_infra import FlextInfraUtilitiesToml, c, t
+from flext_cli import u
+from flext_infra import FlextInfraUtilitiesToml, c, r, t
 
 
-class FlextInfraUtilitiesTomlParse(_CliToml):
+class FlextInfraUtilitiesTomlParse(u.Cli):
     """TOML parsing helpers — dependency extraction and project configuration.
 
     Usage::

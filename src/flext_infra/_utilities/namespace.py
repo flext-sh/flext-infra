@@ -6,7 +6,7 @@ from collections.abc import MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar
 
-from flext_cli import r, u
+from flext_cli import u
 from flext_infra import (
     FlextInfraUtilitiesCodegenGovernance,
     FlextInfraUtilitiesDiscovery,
@@ -16,6 +16,7 @@ from flext_infra import (
     c,
     m,
     p,
+    r,
     t,
 )
 

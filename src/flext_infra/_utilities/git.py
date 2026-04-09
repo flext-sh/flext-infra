@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_cli import FlextCliUtilitiesBase as _CliBase
+from flext_cli import u
 from flext_infra import c, r, t
 
 
-class FlextInfraUtilitiesGit(_CliBase):
+class FlextInfraUtilitiesGit(u.Cli):
     """Static Git operations utilities."""
 
     @staticmethod

@@ -11,8 +11,8 @@ from pathlib import Path
 from typing import ClassVar, override
 
 from flext_infra import (
-    FlextInfraNamespaceFacadeScanner,
     FlextInfraScanFileMixin,
+    FlextInfraUtilitiesFacadeScanner,
     c,
     m,
     p,
@@ -70,7 +70,7 @@ class FlextInfraLooseObjectDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
         if res is None:
             return []
         source: str = res.read()
-        class_stem = FlextInfraNamespaceFacadeScanner.project_class_stem(
+        class_stem = FlextInfraUtilitiesFacadeScanner.project_class_stem(
             project_name=project_name,
         )
         # Get all classes defined in module (these are NOT loose)

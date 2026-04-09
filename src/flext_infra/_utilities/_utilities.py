@@ -14,7 +14,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from flext_core import FlextUtilities
+from flext_core import u
 from flext_infra import (
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesRefactorCensus,
@@ -113,7 +113,7 @@ class FlextInfraUtilitiesRefactor(
         entry: t.Infra.InfraValue,
         required_fields: t.StrSequence,
     ) -> bool:
-        if not FlextUtilities.is_mapping(entry):
+        if not u.is_mapping(entry):
             return False
         return all(key in entry for key in required_fields)
 
@@ -130,7 +130,7 @@ class FlextInfraUtilitiesRefactor(
     @staticmethod
     def rewrite_scope(entry: t.StrMapping) -> str:
         raw_scope = entry.get(c.Infra.ReportKeys.REWRITE_SCOPE, c.Infra.ReportKeys.FILE)
-        scope = FlextUtilities.norm_str(raw_scope, case="lower")
+        scope = u.norm_str(raw_scope, case="lower")
         if scope in {
             c.Infra.ReportKeys.FILE,
             c.Infra.PROJECT,

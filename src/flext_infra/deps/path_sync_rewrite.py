@@ -16,7 +16,7 @@ class FlextInfraDependencyPathSyncRewrite:
     """TOML rewrite operations for PEP 621, uv sources/workspace, and Poetry.
 
     Static helpers (extract_dep_name, target_path) are resolved via MRO
-    from the main FlextInfraDependencyPathSync class.
+    from the main FlextInfraUtilitiesDependencyPathSync class.
     """
 
     @staticmethod

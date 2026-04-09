@@ -5,13 +5,11 @@ from __future__ import annotations
 import sys
 
 from flext_infra import (
+    FlextInfraUtilitiesOutputFailureSummary,
     FlextInfraUtilitiesTerminal,
     c,
     m,
     p,
-)
-from flext_infra._utilities.output_failure_summary import (
-    FlextInfraUtilitiesOutputFailureSummary,
 )
 
 

@@ -9,7 +9,6 @@ from rope.base.exceptions import RefactoringError, ResourceNotFoundError
 
 from flext_infra import (
     FlextInfraUtilitiesDiscovery,
-    FlextInfraUtilitiesRopeCore,
     c,
     m,
     p,
@@ -17,9 +16,7 @@ from flext_infra import (
 )
 
 
-class FlextInfraUtilitiesRopeAnalysisIntrospection(
-    FlextInfraUtilitiesRopeCore,
-):
+class FlextInfraUtilitiesRopeAnalysisIntrospection:
     """Rope-backed class and module introspection helpers.
 
     Extracted mixin providing: get_class_nested_classes,

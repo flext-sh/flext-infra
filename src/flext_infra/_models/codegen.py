@@ -8,11 +8,11 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from flext_cli import u
-from flext_core import FlextModels
+from flext_core import m
 from flext_infra import (
     FlextInfraModelsCodegenDeduplication,
     FlextInfraModelsMixins,
-    FlextInfraTypes as t,
+    t,
 )
 
 
@@ -21,7 +21,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenDeduplication):
 
     class CensusViolation(
         FlextInfraModelsMixins.RequiredNonNegativeLineMixin,
-        FlextModels.ArbitraryTypesModel,
+        m.ArbitraryTypesModel,
     ):
         """A single namespace violation detected by the census service."""
 
@@ -34,7 +34,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenDeduplication):
 
     class CensusReport(
         FlextInfraModelsMixins.ProjectNameMixin,
-        FlextModels.ArbitraryTypesModel,
+        m.ArbitraryTypesModel,
     ):
         """Aggregated census report for a single project."""
 
@@ -57,7 +57,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenDeduplication):
 
     class ScaffoldResult(
         FlextInfraModelsMixins.ProjectNameMixin,
-        FlextModels.ArbitraryTypesModel,
+        m.ArbitraryTypesModel,
     ):
         """Result of scaffolding base modules for a project."""
 
@@ -72,7 +72,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenDeduplication):
 
     class AutoFixResult(
         FlextInfraModelsMixins.ProjectNameMixin,
-        FlextModels.ArbitraryTypesModel,
+        m.ArbitraryTypesModel,
     ):
         """Result of auto-fixing namespace violations for a project."""
 
@@ -99,7 +99,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenDeduplication):
             description="Modified file paths",
         )
 
-    class QualityGateCheck(FlextModels.ArbitraryTypesModel):
+    class QualityGateCheck(m.ArbitraryTypesModel):
         """A single quality gate check result entry."""
 
         name: Annotated[t.NonEmptyStr, Field(description="Check identifier")]
@@ -112,7 +112,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenDeduplication):
 
     class QualityGateProjectFinding(
         FlextInfraModelsMixins.ProjectNameMixin,
-        FlextModels.ArbitraryTypesModel,
+        m.ArbitraryTypesModel,
     ):
         """Per-project quality gate findings."""
 
@@ -141,7 +141,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenDeduplication):
     class BulkFixItem(
         FlextInfraModelsMixins.AbsoluteFilePathTextMixin,
         FlextInfraModelsMixins.PositiveLineMixin,
-        FlextModels.ArbitraryTypesModel,
+        m.ArbitraryTypesModel,
     ):
         """Shared line-addressable item used by bulk codegen fixes."""
 
@@ -163,7 +163,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenDeduplication):
             Field(default="", description="Type annotation string"),
         ]
 
-    class DuplicateConstantGroup(FlextModels.ArbitraryTypesModel):
+    class DuplicateConstantGroup(m.ArbitraryTypesModel):
         """Cross-project duplicate group with consolidation metadata."""
 
         constant_name: t.NonEmptyStr = Field(description="Constant identifier")
@@ -182,7 +182,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenDeduplication):
 
     class DirectConstantRef(
         FlextInfraModelsMixins.ProjectNameMixin,
-        FlextModels.ArbitraryTypesModel,
+        m.ArbitraryTypesModel,
     ):
         """Direct FlextXConstants.Y.Z reference that should use c.* alias."""
 
@@ -200,7 +200,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenDeduplication):
         ]
         line: Annotated[t.PositiveInt, Field(description="Line number")]
 
-    class CanonicalValueRule(FlextModels.ArbitraryTypesModel):
+    class CanonicalValueRule(m.ArbitraryTypesModel):
         value: t.Infra.CanonicalValue = Field(description="Canonical value")
         type: str = Field(description="Canonical type")
         canonical_ref: str = Field(description="Canonical reference")
@@ -208,7 +208,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenDeduplication):
             default_factory=list, description="semantic_names"
         )
 
-    class NsRule(FlextModels.ArbitraryTypesModel):
+    class NsRule(m.ArbitraryTypesModel):
         id: str = Field(description="Rule ID")
         description: str = Field(description="Rule description")
         fixable: bool = Field(description="Whether the rule is fixable")
@@ -216,7 +216,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenDeduplication):
             default=None, description="Fixable exclusion reason"
         )
 
-    class ConstantsGovernanceConfig(FlextModels.ArbitraryTypesModel):
+    class ConstantsGovernanceConfig(m.ArbitraryTypesModel):
         version: str = Field(description="Config version")
         rules: list[FlextInfraModelsCodegen.NsRule] = Field(
             description="Governance rules"
@@ -228,7 +228,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenDeduplication):
             description="Constants class pattern regex"
         )
 
-    class FixContext(FlextModels.ArbitraryTypesModel):
+    class FixContext(m.ArbitraryTypesModel):
         """Mutable accumulation context for fix operations."""
 
         @staticmethod
@@ -271,7 +271,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenDeduplication):
                 ),
             )
 
-    class ViolationKey(FlextModels.ContractModel):
+    class ViolationKey(m.ContractModel):
         """Content-stable violation identifier — resilient to line shifts."""
 
         model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True, extra="forbid")
