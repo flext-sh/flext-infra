@@ -13,10 +13,10 @@ from collections.abc import Callable, MutableSequence, Sequence
 from typing import TYPE_CHECKING
 
 from flext_tests import tm
-from tests import c, m, p, t
 
 from flext_core import r
-from flext_infra import FlextInfraCodegenPipeline, pipeline
+from flext_infra import FlextInfraCodegenPipeline, u
+from tests import c, m, p, t
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -99,7 +99,7 @@ class TestCodegenPipelineDag:
             return r[Sequence[p.Infra.ProjectInfo]].ok(())
 
         monkeypatch.setattr(
-            pipeline.u.Infra,
+            u.Infra,
             "discover_codegen_projects",
             staticmethod(_counting_discover),
         )

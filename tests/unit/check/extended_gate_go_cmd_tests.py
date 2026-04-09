@@ -4,47 +4,41 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import (
-    create_checker_project,
-    create_fake_run_raw,
-    patch_gate_run_sequence,
-    run_gate_check,
-    u,
-)
 
 from flext_core import r
 from flext_infra import (
-    FlextInfraGate,
     FlextInfraGoGate,
     FlextInfraMarkdownGate,
-    FlextInfraRuffLintGate,
     m,
 )
-
-from ...helpers import h
-
-_GateClass = type[FlextInfraGoGate] | type[FlextInfraRuffLintGate]
+from tests import t, u
 
 
 def run_command_failure_check(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
-    gate_class: _GateClass,
+    gate_class: t.Infra.Tests.GateClass,
 ) -> tuple[bool, str]:
     """Test _run failure by patching run_raw to return r.fail()."""
-    monkeypatch.setattr(u.Cli, "run_raw", create_fake_run_raw("execution failed"))
+    monkeypatch.setattr(
+        u.Cli,
+        "run_raw",
+        u.Infra.Tests.create_fake_run_raw("execution failed"),
+    )
     gate = gate_class(tmp_path)
     result = gate._run(["echo"], tmp_path)
     return result.exit_code == 0, result.stderr
 
 
-class TestWorkspaceCheckerRunGo:
+class TestsExtendedGateGoCmd:
     """Test FlextInfraWorkspaceChecker._run_go method."""
 
     def test_run_go_no_go_mod(self, tmp_path: Path) -> None:
-        _, proj_dir = create_checker_project(tmp_path)
+        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path)
         workspace_root = tmp_path
-        result = run_gate_check(FlextInfraGoGate, workspace_root, proj_dir)
+        result = u.Infra.Tests.run_gate_check(
+            FlextInfraGoGate, workspace_root, proj_dir
+        )
         tm.that(result.result.passed, eq=True)
         tm.that(len(result.issues), eq=0)
 
@@ -53,18 +47,22 @@ class TestWorkspaceCheckerRunGo:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        _, proj_dir = create_checker_project(tmp_path)
+        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path)
         workspace_root = tmp_path
         (proj_dir / "go.mod").write_text("module test")
-        patch_gate_run_sequence(
+        u.Infra.Tests.patch_gate_run_sequence(
             monkeypatch,
-            FlextInfraGate,
-            outputs=[
-                h.stub_run(stdout="main.go:10:5: error message", returncode=1),
-                h.stub_run(),
+            FlextInfraGoGate,
+            [
+                u.Infra.Tests.stub_run(
+                    stdout="main.go:10:5: error message", returncode=1
+                ),
+                u.Infra.Tests.stub_run(),
             ],
         )
-        result = run_gate_check(FlextInfraGoGate, workspace_root, proj_dir)
+        result = u.Infra.Tests.run_gate_check(
+            FlextInfraGoGate, workspace_root, proj_dir
+        )
         tm.that(not result.result.passed, eq=True)
 
     def test_run_go_with_format_errors(
@@ -72,19 +70,21 @@ class TestWorkspaceCheckerRunGo:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        _, proj_dir = create_checker_project(tmp_path)
+        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path)
         workspace_root = tmp_path
         (proj_dir / "go.mod").write_text("module test")
         (proj_dir / "main.go").write_text("package main")
-        patch_gate_run_sequence(
+        u.Infra.Tests.patch_gate_run_sequence(
             monkeypatch,
-            FlextInfraGate,
-            outputs=[
-                h.stub_run(),
-                h.stub_run(stdout="main.go", returncode=1),
+            FlextInfraGoGate,
+            [
+                u.Infra.Tests.stub_run(),
+                u.Infra.Tests.stub_run(stdout="main.go", returncode=1),
             ],
         )
-        result = run_gate_check(FlextInfraGoGate, workspace_root, proj_dir)
+        result = u.Infra.Tests.run_gate_check(
+            FlextInfraGoGate, workspace_root, proj_dir
+        )
         tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
 
@@ -93,18 +93,20 @@ class TestWorkspaceCheckerRunGo:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        _, proj_dir = create_checker_project(tmp_path)
+        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path)
         workspace_root = tmp_path
         (proj_dir / "go.mod").write_text("module test")
-        patch_gate_run_sequence(
+        u.Infra.Tests.patch_gate_run_sequence(
             monkeypatch,
-            FlextInfraGate,
-            outputs=[
-                h.stub_run(stderr="go vet failed", returncode=1),
-                h.stub_run(),
+            FlextInfraGoGate,
+            [
+                u.Infra.Tests.stub_run(stderr="go vet failed", returncode=1),
+                u.Infra.Tests.stub_run(),
             ],
         )
-        result = run_gate_check(FlextInfraGoGate, workspace_root, proj_dir)
+        result = u.Infra.Tests.run_gate_check(
+            FlextInfraGoGate, workspace_root, proj_dir
+        )
         tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=0)
 
@@ -121,7 +123,9 @@ class TestWorkspaceCheckerRunCommand:
         monkeypatch.setattr(
             u.Cli,
             "run_raw",
-            create_fake_run_raw(r[m.Cli.CommandOutput].ok(h.stub_run())),
+            u.Infra.Tests.create_fake_run_raw(
+                r[m.Cli.CommandOutput].ok(u.Infra.Tests.stub_run()),
+            ),
         )
         gate = FlextInfraGoGate(tmp_path)
         result = gate.check(
@@ -149,7 +153,7 @@ class TestWorkspaceCheckerCollectMarkdownFiles:
     """Test FlextInfraWorkspaceChecker._collect_markdown_files method."""
 
     def test_collect_markdown_files_finds_files(self, tmp_path: Path) -> None:
-        proj_dir = h.mk_project(tmp_path, "p1")
+        proj_dir = u.Infra.Tests.mk_project(tmp_path, "p1")
         (proj_dir / "README.md").write_text("# Test")
         (proj_dir / "docs").mkdir()
         (proj_dir / "docs" / "guide.md").write_text("# Guide")
@@ -157,7 +161,7 @@ class TestWorkspaceCheckerCollectMarkdownFiles:
         tm.that(len(files), eq=2)
 
     def test_collect_markdown_files_excludes_dirs(self, tmp_path: Path) -> None:
-        proj_dir = h.mk_project(tmp_path, "p1", with_git=True)
+        proj_dir = u.Infra.Tests.mk_project(tmp_path, "p1", with_git=True)
         (proj_dir / "README.md").write_text("# Test")
         (proj_dir / ".git" / "README.md").write_text("# Git")
         files = FlextInfraMarkdownGate(tmp_path)._collect_markdown_files(proj_dir)

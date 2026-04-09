@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import ClassVar, override
 
 from flext_infra import FlextInfraGate, c, m, t, u
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra.detectors.silent_failure_detector import (
     FlextInfraSilentFailureDetector,
 )
@@ -66,7 +65,7 @@ class FlextInfraSilentFailureGate(FlextInfraGate):
                 duration=time.monotonic() - started,
                 raw_output=issue.message,
             )
-        rope_project = FlextInfraUtilitiesRopeCore.init_rope_project(project_dir)
+        rope_project = u.Infra.init_rope_project(project_dir)
         try:
             issues = [
                 issue

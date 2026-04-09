@@ -16,7 +16,7 @@ from flext_infra import (
     FlextInfraRefactorMROMigrationValidator,
     FlextInfraTypes,
     FlextInfraUtilitiesRefactorMroScan,
-    FlextInfraUtilitiesRopeHelpers,
+    FlextInfraUtilitiesRope,
 )
 
 
@@ -163,6 +163,6 @@ class FlextInfraRefactorMigrateToClassMRO:
 
 __all__ = ["FlextInfraRefactorMigrateToClassMRO"]
 
-FlextInfraUtilitiesRopeHelpers.register_rope_post_hook(
+FlextInfraUtilitiesRope.register_rope_post_hook(
     FlextInfraRefactorMigrateToClassMRO.run_as_hook,
 )

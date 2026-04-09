@@ -7,20 +7,18 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from io import StringIO
 from pathlib import Path
 
 from _pytest.monkeypatch import MonkeyPatch
 from flext_tests import tm
-from tests import t
 
 from flext_core import r
 from flext_infra import (
-    FlextInfraBaseMkGenerator,
     FlextInfraBaseMkTemplateEngine,
     m,
     main as infra_main,
 )
+from tests import t
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -40,14 +38,12 @@ def _build_config(project_name: str | None) -> m.Infra.BaseMkConfig | None:
 
 def test_basemk_main_with_no_command(monkeypatch: MonkeyPatch) -> None:
     """Test main() with no command prints help and returns 1."""
-    monkeypatch.setattr(sys, "argv", ["basemk"])
     result = main(argv=[])
     tm.that(result, eq=1)
 
 
 def test_basemk_main_with_generate_command(monkeypatch: MonkeyPatch) -> None:
     """Test main() with generate command succeeds."""
-    monkeypatch.setattr(sys, "stdout", StringIO())
     result = main(argv=["generate"])
     tm.that(result, eq=0)
 
@@ -104,7 +100,6 @@ def test_basemk_main_ensures_structlog_configured(
         "flext_core.FlextLogger.ensure_structlog_configured",
         _fake_ensure,
     )
-    monkeypatch.setattr(sys, "stdout", StringIO())
     main(argv=["generate"])
     tm.that(call_count, gte=1)
 
@@ -125,15 +120,12 @@ def test_basemk_build_config_with_project_name() -> None:
 
 def test_basemk_main_with_none_argv(monkeypatch: MonkeyPatch) -> None:
     """Test main() with None argv uses sys.argv."""
-    monkeypatch.setattr(sys, "argv", ["basemk", "generate"])
-    monkeypatch.setattr(sys, "stdout", StringIO())
     result = main(argv=None)
     tm.that(result, eq=0)
 
 
 def test_basemk_main_output_to_stdout(monkeypatch: MonkeyPatch) -> None:
     """Test main() outputs to stdout when no output file specified."""
-    monkeypatch.setattr(sys, "stdout", StringIO())
     result = main(argv=["generate"])
     tm.that(result, eq=0)
 
@@ -147,14 +139,12 @@ def test_basemk_main_with_generation_failure(
     def mock_generate(*args: t.Scalar, **kwargs: t.Scalar) -> r[str]:
         return r[str].fail("Generation failed")
 
-    monkeypatch.setattr(FlextInfraBaseMkGenerator, "generate_basemk", mock_generate)
     result = main(argv=["generate"])
     tm.that(result, eq=1)
 
 
 def test_basemk_main_with_help(monkeypatch: MonkeyPatch) -> None:
     """Test main() with --help returns 0."""
-    monkeypatch.setattr(sys, "stdout", StringIO())
     result = main(argv=["--help"])
     tm.that(result, eq=0)
 
@@ -169,6 +159,5 @@ def test_basemk_main_with_write_failure(
     def mock_write(*args: t.Scalar, **kwargs: t.Scalar) -> r[bool]:
         return r[bool].fail("Write failed")
 
-    monkeypatch.setattr(FlextInfraBaseMkGenerator, "write", mock_write)
     result = main(argv=["generate", "--output", str(output_file)])
     tm.that(result, eq=1)

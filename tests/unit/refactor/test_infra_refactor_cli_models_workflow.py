@@ -6,7 +6,7 @@ from contextlib import redirect_stdout
 from io import StringIO
 from pathlib import Path
 
-from flext_infra import FlextInfraCli
+from flext_infra.cli import main as infra_main
 
 
 def test_centralize_pydantic_cli_outputs_extended_metrics(tmp_path: Path) -> None:
@@ -30,7 +30,7 @@ def test_centralize_pydantic_cli_outputs_extended_metrics(tmp_path: Path) -> Non
         "--normalize-remaining",
     ]
     with redirect_stdout(buffer):
-        result = FlextInfraCli().main(["refactor"] + cli_args)
+        result = infra_main(["refactor"] + cli_args)
     assert result == 0
 
 
@@ -62,7 +62,7 @@ def test_centralize_pydantic_cli_apply_uses_local_private_module_imports(
         "--apply",
     ]
     with redirect_stdout(buffer):
-        result = FlextInfraCli().main(["refactor"] + cli_args)
+        result = infra_main(["refactor"] + cli_args)
 
     assert result == 0
     rewritten = service_file.read_text(encoding="utf-8")
@@ -101,7 +101,7 @@ def test_ultrawork_models_cli_runs_dry_run_copy(tmp_path: Path) -> None:
         "--normalize-remaining",
     ]
     with redirect_stdout(buffer):
-        result = FlextInfraCli().main(["refactor"] + cli_args)
+        result = infra_main(["refactor"] + cli_args)
     assert result == 0
 
 
@@ -132,5 +132,5 @@ def test_namespace_enforce_cli_fails_on_manual_protocol_violation(
         "--dry-run",
     ]
     with redirect_stdout(buffer):
-        result = FlextInfraCli().main(["refactor"] + cli_args)
+        result = infra_main(["refactor"] + cli_args)
     assert result != 0

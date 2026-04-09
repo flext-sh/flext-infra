@@ -58,7 +58,6 @@ def _apply_vs(
             _ = version
             return parse_result
 
-        monkeypatch.setattr(u.Infra, "parse_semver", staticmethod(_parse_semver))
     if current is not None:
         current_result = current
 
@@ -77,8 +76,6 @@ def _apply_vs(
         def _bump_version(cur: str, kind: str) -> r[str]:
             _ = cur, kind
             return bump_result
-
-        monkeypatch.setattr(u.Infra, "bump_version", staticmethod(_bump_version))
 
 
 class TestReleaseMainVersionResolution:
@@ -204,7 +201,6 @@ class TestReleaseMainVersionResolution:
             current=r[str].ok("1.0.0"),
             bump=r[str].ok("1.1.0"),
         )
-        monkeypatch.setattr("builtins.input", _input_minor)
         args = _args(version="", bump="", interactive=1)
         result = FlextInfraReleaseOrchestrator()._resolve_version(
             version_arg=args.version or "",
@@ -223,7 +219,6 @@ class TestReleaseMainVersionResolution:
             monkeypatch,
             current=r[str].ok("1.0.0"),
         )
-        monkeypatch.setattr("builtins.input", _input_invalid)
         args = _args(version="", bump="", interactive=1)
         result = FlextInfraReleaseOrchestrator()._resolve_version(
             version_arg=args.version or "",
@@ -264,7 +259,6 @@ class TestResolveVersionInteractive:
             monkeypatch,
             current=r[str].ok("1.0.0"),
         )
-        monkeypatch.setattr("builtins.input", _input_invalid)
         args = _args(version=None, bump=None, interactive=1)
         result = FlextInfraReleaseOrchestrator()._resolve_version(
             version_arg=args.version or "",
@@ -284,7 +278,6 @@ class TestResolveVersionInteractive:
             current=r[str].ok("1.0.0"),
             bump=r[str].fail("bump failed"),
         )
-        monkeypatch.setattr("builtins.input", _input_major)
         args = _args(version=None, bump=None, interactive=1)
         result = FlextInfraReleaseOrchestrator()._resolve_version(
             version_arg=args.version or "",

@@ -7,7 +7,7 @@ from collections.abc import MutableSequence
 
 from flext_infra import (
     FlextInfraTypes,
-    FlextInfraUtilitiesRopeSource,
+    u,
 )
 
 
@@ -54,10 +54,10 @@ class FlextInfraRopeTransformer(FlextInfraChangeTrackingTransformer):
         resource: FlextInfraTypes.Infra.RopeResource,
     ) -> FlextInfraTypes.Infra.TransformResult:
         """Read → apply_to_source → write if changed. Override for custom logic."""
-        source = FlextInfraUtilitiesRopeSource.read_source(resource)
+        source = u.Infra.read_source(resource)
         updated, changes = self.apply_to_source(source)
         if updated != source and changes:
-            FlextInfraUtilitiesRopeSource.write_source(
+            u.Infra.write_source(
                 rope_project,
                 resource,
                 updated,

@@ -43,7 +43,10 @@ class FlextInfraCyclicImportDetector:
         if resource is None:
             return set()
         imports: t.Infra.StrSet = set()
-        for fqn in u.Infra.get_module_imports(rope_project, resource).values():
+        for fqn in u.Infra.get_semantic_module_imports(
+            rope_project,
+            resource,
+        ).values():
             if fqn.split(".", maxsplit=1)[0] in package_roots:
                 imports.add(fqn)
         return imports

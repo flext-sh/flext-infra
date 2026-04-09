@@ -10,9 +10,9 @@ from pathlib import Path
 
 import tomlkit
 from flext_tests import tm
-from tests import u
 
 from flext_infra import FlextInfraConfigFixer
+from tests import u
 
 
 class TestConfigFixerProcessFile:

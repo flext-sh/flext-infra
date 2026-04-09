@@ -14,9 +14,9 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from tests import m, t
 
 from flext_core import r
+from tests import m, t
 
 
 @pytest.fixture

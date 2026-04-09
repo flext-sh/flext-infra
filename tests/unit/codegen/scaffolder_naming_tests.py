@@ -13,12 +13,9 @@ import ast
 from pathlib import Path
 
 from flext_tests import tm
-from tests import (
-    FlextInfraCodegenTestProjectFactory,
-    t,
-)
 
 from flext_infra import FlextInfraCodegenScaffolder
+from tests import t, u
 
 
 def _parse_class_names(source: str) -> t.StrSequence:
@@ -64,7 +61,7 @@ class TestGeneratedFilesAreValidPython:
         self,
         tmp_path: Path,
     ) -> None:
-        project = FlextInfraCodegenTestProjectFactory.create_scaffolder_test_project(
+        project = u.Infra.Tests.create_scaffolder_test_project(
             tmp_path=tmp_path,
             with_all_modules=False,
         )
@@ -73,14 +70,14 @@ class TestGeneratedFilesAreValidPython:
         pkg = project / "src" / "test_project"
         _validate_modules_parse(
             pkg,
-            FlextInfraCodegenTestProjectFactory.SRC_MODULE_FILES,
+            u.Infra.Tests.src_module_files(),
         )
 
     def test_generated_tests_modules_parse_successfully(
         self,
         tmp_path: Path,
     ) -> None:
-        project = FlextInfraCodegenTestProjectFactory.create_scaffolder_test_project(
+        project = u.Infra.Tests.create_scaffolder_test_project(
             tmp_path=tmp_path,
             with_all_modules=True,
         )
@@ -90,13 +87,13 @@ class TestGeneratedFilesAreValidPython:
         scaffolder.scaffold_project(project)
         _validate_modules_parse(
             tests_dir,
-            FlextInfraCodegenTestProjectFactory.SRC_MODULE_FILES,
+            u.Infra.Tests.src_module_files(),
         )
 
 
 class TestGeneratedClassNamingConvention:
     def test_src_class_names_use_prefix_suffix(self, tmp_path: Path) -> None:
-        project = FlextInfraCodegenTestProjectFactory.create_scaffolder_test_project(
+        project = u.Infra.Tests.create_scaffolder_test_project(
             tmp_path=tmp_path,
             with_all_modules=False,
         )
@@ -118,7 +115,7 @@ class TestGeneratedClassNamingConvention:
         self,
         tmp_path: Path,
     ) -> None:
-        project = FlextInfraCodegenTestProjectFactory.create_scaffolder_test_project(
+        project = u.Infra.Tests.create_scaffolder_test_project(
             tmp_path=tmp_path,
             with_all_modules=True,
         )

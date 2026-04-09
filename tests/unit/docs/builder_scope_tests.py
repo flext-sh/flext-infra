@@ -11,10 +11,10 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import m, t
 
 from flext_core import r
-from flext_infra import FlextInfraDocBuilder, FlextInfraUtilitiesDocs
+from flext_infra import FlextInfraDocBuilder
+from tests import m, t
 
 
 class TestBuilderScope:
@@ -68,7 +68,6 @@ class TestBuilderScope:
         ) -> r[Sequence[m.Infra.DocScope]]:
             return r[Sequence[m.Infra.DocScope]].fail("Scope error")
 
-        monkeypatch.setattr(FlextInfraUtilitiesDocs, "build_scopes", mock_build_scopes)
         result = builder.build(tmp_path)
         tm.fail(result, has="Scope error")
 

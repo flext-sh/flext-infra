@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests import c, t
-
 from flext_infra import DetectorContext, FlextInfraClassPlacementDetector
+from tests import c, t
 
 
 def test_detects_basemodel_in_non_model_file(

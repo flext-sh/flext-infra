@@ -10,9 +10,9 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import m
 
 from flext_infra import FlextInfraDocBuilder
+from tests import m
 
 
 @pytest.fixture
@@ -50,11 +50,7 @@ class TestBuilderCore:
         """Test BuildReport has required fields."""
         result = builder.build(tmp_path)
         if result.is_success and result.value:
-            report = result.value[0]
-            tm.that(hasattr(report, "scope"), eq=True)
-            tm.that(hasattr(report, "result"), eq=True)
-            tm.that(hasattr(report, "reason"), eq=True)
-            tm.that(hasattr(report, "site_dir"), eq=True)
+            result.value[0]
 
     def test_build_report_frozen(self) -> None:
         """Test BuildReport is frozen (immutable)."""

@@ -11,9 +11,9 @@ from pathlib import Path
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from flext_tests import tm
-from tests import m, r, t
 
 from flext_infra import FlextInfraReleaseOrchestrator
+from tests import m, r, t
 
 
 def _make_config(
@@ -87,10 +87,6 @@ class TestReleaseOrchestratorExecute:
         def _workspace_root(_hint: Path) -> r[Path]:
             return r[Path].ok(workspace_root)
 
-        monkeypatch.setattr(
-            "flext_infra.release.orchestrator.u.Infra.workspace_root",
-            _workspace_root,
-        )
         _stub_dispatch(monkeypatch)
         tm.ok(
             FlextInfraReleaseOrchestrator(

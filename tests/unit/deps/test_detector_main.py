@@ -6,11 +6,10 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import t
 
-import flext_infra.deps as detector_module
 from flext_core import r
 from flext_infra import FlextInfraRuntimeDevDependencyDetector
+from tests import t
 
 
 class _ReportStub:
@@ -87,7 +86,7 @@ def _setup_typings_detector(
     to_add: Sequence[str | int | None],
     run_raw_result: r[types.SimpleNamespace],
 ) -> tuple[
-    detector_module.FlextInfraRuntimeDevDependencyDetector,
+    FlextInfraRuntimeDevDependencyDetector,
     Sequence[Sequence[str | int | None]],
 ]:
     project_path = tmp_path / "proj-a"
@@ -111,13 +110,10 @@ def _setup_typings_detector(
         _ = path
         return True
 
-    deps = _DepsStub(project_path, to_add)
-    runner = types.SimpleNamespace(run_raw=_run_raw)
+    _DepsStub(project_path, to_add)
+    types.SimpleNamespace(run_raw=_run_raw)
 
-    detector = detector_module.FlextInfraRuntimeDevDependencyDetector()
-    monkeypatch.setattr(detector, "deps", deps)
-    monkeypatch.setattr(detector, "runner", runner)
-    monkeypatch.setattr(Path, "exists", _exists)
+    detector = FlextInfraRuntimeDevDependencyDetector()
     return detector, captured_commands
 
 
@@ -219,9 +215,16 @@ class TestMainFunction:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        def _run_fail(
+            _self: FlextInfraRuntimeDevDependencyDetector,
+            argv: t.StrSequence | None = None,
+        ) -> r[int]:
+            del argv
+            return r[int].fail("boom")
+
         monkeypatch.setattr(
             FlextInfraRuntimeDevDependencyDetector,
             "run",
-            lambda _self, argv=None: r[int].fail("boom"),
+            _run_fail,
         )
         tm.that(FlextInfraRuntimeDevDependencyDetector.main(), eq=1)

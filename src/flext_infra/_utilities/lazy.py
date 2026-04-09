@@ -21,7 +21,7 @@ from flext_infra import (
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesReporting,
-    FlextInfraUtilitiesRopeHelpers,
+    FlextInfraUtilitiesRope,
     c,
     t,
 )
@@ -173,9 +173,7 @@ class FlextInfraUtilitiesCodegenLazyMerging:
         except OSError:
             return ({}, {})
 
-        assignments = FlextInfraUtilitiesRopeHelpers.get_module_level_assignments(
-            source
-        )
+        assignments = FlextInfraUtilitiesRope.get_module_level_assignments(source)
         inline = {
             name: re.sub(r"""^['"]|['"]$""", "", val)
             for name, val in assignments
@@ -341,7 +339,7 @@ class FlextInfraUtilitiesCodegenLazyScanning(
         for (
             name,
             value_str,
-        ) in FlextInfraUtilitiesRopeHelpers.get_module_level_assignments(source):
+        ) in FlextInfraUtilitiesRope.get_module_level_assignments(source):
             if name == c.Infra.Dunders.ALL:
                 has_all = True
                 words = re.findall(r'["\']([^"\']+)["\']', value_str)

@@ -12,7 +12,6 @@ from tomlkit.toml_document import TOMLDocument
 from flext_core import r
 from flext_infra import (
     FlextInfraExtraPathsManager,
-    extra_paths,
     t,
 )
 
@@ -35,15 +34,6 @@ def _manager(
     return FlextInfraExtraPathsManager(
         workspace_root=workspace_root or _TEST_WORKSPACE_ROOT
     )
-
-
-class _ManagerAdapter(FlextInfraExtraPathsManager):
-    def __init__(
-        self,
-        root: Path | None = None,
-        workspace_root: Path | None = None,
-    ) -> None:
-        super().__init__(workspace_root=workspace_root or root)
 
 
 @pytest.mark.parametrize(
@@ -152,8 +142,6 @@ def test_main_success_modes(
     argv: t.StrSequence,
     expected_exit: int,
 ) -> None:
-    monkeypatch.setattr(extra_paths, "FlextInfraExtraPathsManager", _ManagerAdapter)
-    monkeypatch.setattr(FlextInfraExtraPathsManager, "ROOT", tmp_path)
     if mode == "root":
         _ = _create_pyproject(tmp_path, pyright_content)
     if mode == "project":
@@ -171,8 +159,7 @@ def test_main_success_modes(
         _ = _create_pyproject(project, pyright_content)
         argv = ["prog", "--projects", str(project), "--dry-run"]
     argv = [argv[0], "--workspace", str(tmp_path), *argv[1:]]
-    monkeypatch.setattr(sys, "argv", argv)
-    tm.that(FlextInfraExtraPathsManager.main(), eq=expected_exit)
+    tm.that(FlextInfraExtraPathsManager.main(argv[1:]), eq=expected_exit)
 
 
 def test_main_sync_failure(
@@ -184,7 +171,6 @@ def test_main_sync_failure(
         "argv",
         ["extra_paths.py", "--workspace", str(tmp_path)],
     )
-    monkeypatch.setattr(extra_paths, "FlextInfraExtraPathsManager", _ManagerAdapter)
 
     def _fail_sync(
         _self: FlextInfraExtraPathsManager,
@@ -196,7 +182,7 @@ def test_main_sync_failure(
         return r[int].fail("sync error")
 
     monkeypatch.setattr(FlextInfraExtraPathsManager, "sync_extra_paths", _fail_sync)
-    tm.that(FlextInfraExtraPathsManager.main(), eq=1)
+    tm.that(FlextInfraExtraPathsManager.main(sys.argv[1:]), eq=1)
 
 
 @pytest.mark.parametrize(
@@ -246,10 +232,4 @@ def test_sync_one_edge_cases(
     def _write_document(_path: Path, _doc: TOMLDocument) -> r[bool]:
         return r[bool].ok(True)
 
-    monkeypatch.setattr(
-        extra_paths.u.Cli, "toml_read_document", staticmethod(_read_document)
-    )
-    monkeypatch.setattr(
-        extra_paths.u.Cli, "toml_write_document", staticmethod(_write_document)
-    )
     tm.ok(_manager(tmp_path).sync_one(pyproject, is_root=True, dry_run=dry_run))

@@ -1,93 +1,21 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
-from typing import override
 
 from flext_tests import tm
-from tests import TestsFlextInfraHelpers as h, m as im, t
 
-from flext_core import r
-from flext_infra import FlextInfraBaseMkGenerator, FlextInfraProjectMigrator
-
-
-class _StubDiscovery:
-    """Typed stub for discovery service."""
-
-    def __init__(
-        self,
-        projects: Sequence[im.Infra.ProjectInfo] | None = None,
-        *,
-        error: str = "",
-    ) -> None:
-        self._projects = projects or []
-        self._error = error
-
-    def discover_projects(
-        self,
-        workspace_root: Path,
-    ) -> r[Sequence[im.Infra.ProjectInfo]]:
-        _ = workspace_root
-        if self._error:
-            return r[Sequence[im.Infra.ProjectInfo]].fail(self._error)
-        return r[Sequence[im.Infra.ProjectInfo]].ok(self._projects)
-
-
-class _StubGenerator(FlextInfraBaseMkGenerator):
-    """Typed stub for base.mk generator."""
-
-    def __init__(self, content: str = "", *, fail: str = "") -> None:
-        super().__init__()
-        self._content = content
-        self._fail = fail
-
-    @override
-    def generate_basemk(
-        self,
-        config: im.Infra.BaseMkConfig | t.ScalarMapping | None = None,
-    ) -> r[str]:
-        if self._fail:
-            return r[str].fail(self._fail)
-        return r[str].ok(self._content)
-
-
-def _project(
-    project_root: Path,
-    name: str = "project-a",
-) -> im.Infra.ProjectInfo:
-    return im.Infra.ProjectInfo.model_validate(
-        obj={
-            "name": name,
-            "path": project_root,
-            "stack": "python/external",
-            "has_tests": False,
-            "has_src": True,
-        },
-    )
-
-
-def _build_migrator(
-    project: im.Infra.ProjectInfo,
-    base_mk: str,
-    workspace_root: Path | None = None,
-    dry_run: bool = False,
-) -> FlextInfraProjectMigrator:
-    migrator = FlextInfraProjectMigrator(
-        workspace=workspace_root or Path("/dummy"),
-        apply=not dry_run,
-        dry_run=dry_run,
-    )
-    migrator.discovery = _StubDiscovery([project])
-    migrator.generator = _StubGenerator(base_mk)
-    return migrator
+from flext_infra import FlextInfraProjectMigrator
+from tests import u
 
 
 def test_migrator_dry_run_reports_changes_without_writes(tmp_path: Path) -> None:
     project_root = tmp_path / "project-a"
-    project_root.mkdir(parents=True)
-    h.write_project(project_root)
-    migrator = _build_migrator(
-        _project(project_root), "NEW_BASE\n", workspace_root=tmp_path, dry_run=True
+    u.Infra.Tests.write_migrator_project(project_root)
+    migrator = u.Infra.Tests.build_project_migrator(
+        u.Infra.Tests.create_migrator_project(project_root),
+        "NEW_BASE\n",
+        workspace_root=tmp_path,
+        dry_run=True,
     )
     result = migrator.execute()
     migrations = tm.ok(result)
@@ -97,10 +25,12 @@ def test_migrator_dry_run_reports_changes_without_writes(tmp_path: Path) -> None
 
 def test_migrator_apply_updates_project_files(tmp_path: Path) -> None:
     project_root = tmp_path / "project-a"
-    project_root.mkdir(parents=True)
-    h.write_project(project_root)
-    migrator = _build_migrator(
-        _project(project_root), "NEW_BASE\n", workspace_root=tmp_path, dry_run=False
+    u.Infra.Tests.write_migrator_project(project_root)
+    migrator = u.Infra.Tests.build_project_migrator(
+        u.Infra.Tests.create_migrator_project(project_root),
+        "NEW_BASE\n",
+        workspace_root=tmp_path,
+        dry_run=False,
     )
     result = migrator.execute()
     migrations = tm.ok(result)
@@ -118,8 +48,11 @@ def test_migrator_handles_missing_pyproject_gracefully(tmp_path: Path) -> None:
     (project_root / ".git").mkdir(parents=True, exist_ok=True)
     (project_root / "base.mk").write_text("OLD_BASE\n", encoding="utf-8")
     (project_root / "Makefile").write_text("", encoding="utf-8")
-    migrator = _build_migrator(
-        _project(project_root), "NEW_BASE\n", workspace_root=tmp_path, dry_run=False
+    migrator = u.Infra.Tests.build_project_migrator(
+        u.Infra.Tests.create_migrator_project(project_root),
+        "NEW_BASE\n",
+        workspace_root=tmp_path,
+        dry_run=False,
     )
     result = migrator.execute()
     tm.ok(result)
@@ -128,12 +61,14 @@ def test_migrator_handles_missing_pyproject_gracefully(tmp_path: Path) -> None:
 
 def test_migrator_preserves_custom_makefile_content(tmp_path: Path) -> None:
     project_root = tmp_path / "project-a"
-    project_root.mkdir(parents=True)
-    h.write_project(project_root)
+    u.Infra.Tests.write_migrator_project(project_root)
     custom = "# Custom rule\ncustom-target:\n\t@echo 'custom'\n"
     (project_root / "Makefile").write_text(custom, encoding="utf-8")
-    migrator = _build_migrator(
-        _project(project_root), "NEW_BASE\n", workspace_root=tmp_path, dry_run=False
+    migrator = u.Infra.Tests.build_project_migrator(
+        u.Infra.Tests.create_migrator_project(project_root),
+        "NEW_BASE\n",
+        workspace_root=tmp_path,
+        dry_run=False,
     )
     result = migrator.execute()
     tm.ok(result)
@@ -152,14 +87,18 @@ def test_migrator_workspace_root_not_exists(tmp_path: Path) -> None:
 
 def test_migrator_discovery_failure(tmp_path: Path) -> None:
     migrator = FlextInfraProjectMigrator(workspace=tmp_path, dry_run=False, apply=True)
-    migrator.discovery = _StubDiscovery(error="Discovery failed")
+    migrator.discovery = u.Infra.Tests.create_migrator_discovery(
+        error="Discovery failed"
+    )
     result = migrator.execute()
     tm.fail(result, has="Discovery failed")
 
 
 def test_migrator_execute_returns_failure(tmp_path: Path) -> None:
     migrator = FlextInfraProjectMigrator(workspace=tmp_path, dry_run=False, apply=True)
-    migrator.discovery = _StubDiscovery(error="Execution failed")
+    migrator.discovery = u.Infra.Tests.create_migrator_discovery(
+        error="Execution failed"
+    )
     result = migrator.execute()
     tm.fail(result, has="Execution failed")
 
@@ -171,8 +110,8 @@ def test_migrator_workspace_root_project_detection(tmp_path: Path) -> None:
     (tmp_path / "tests").mkdir()
     (tmp_path / "src").mkdir()
     migrator = FlextInfraProjectMigrator(workspace=tmp_path, dry_run=True, apply=False)
-    migrator.discovery = _StubDiscovery([])
-    migrator.generator = _StubGenerator("base.mk")
+    migrator.discovery = u.Infra.Tests.create_migrator_discovery([])
+    migrator.generator = u.Infra.Tests.create_migrator_generator("base.mk")
     result = migrator.execute()
     migrations = tm.ok(result)
     tm.that(len(migrations), gte=1)
@@ -192,8 +131,11 @@ def test_migrator_no_changes_needed(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     (project_root / "base.mk").write_text("base.mk", encoding="utf-8")
-    migrator = _build_migrator(
-        _project(project_root), "base.mk", workspace_root=tmp_path, dry_run=False
+    migrator = u.Infra.Tests.build_project_migrator(
+        u.Infra.Tests.create_migrator_project(project_root),
+        "base.mk",
+        workspace_root=tmp_path,
+        dry_run=False,
     )
     result = migrator.execute()
     migrations = tm.ok(result)

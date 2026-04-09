@@ -1,4 +1,4 @@
-"""Canonical centralized CLI dispatcher for flext-infra."""
+"""CLI entrypoint for the canonical flext-infra command surface."""
 
 from __future__ import annotations
 
@@ -9,7 +9,11 @@ from typing import ClassVar
 
 from flext_cli import cli as cli_service
 from flext_core import FlextLogger
-from flext_infra import c, infra, t
+from flext_infra import t
+from flext_infra.api import infra
+from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
+from flext_infra.constants import c
+from flext_infra.deps.cli import FlextInfraCliDeps
 
 
 class FlextInfraCli:
@@ -70,8 +74,8 @@ class FlextInfraCli:
             str,
             Callable[[t.StrSequence | None], int],
         ] = MappingProxyType({
-            c.Infra.Verbs.CHECK: self._service.run_check_cli,
-            "deps": self._service.run_deps_cli,
+            c.Infra.Verbs.CHECK: FlextInfraWorkspaceChecker.run_cli,
+            "deps": FlextInfraCliDeps.run,
         })
 
     def main(self, args: t.StrSequence | None = None) -> int:
@@ -174,3 +178,6 @@ class FlextInfraCli:
 def main(args: t.StrSequence | None = None) -> int:
     """Run the canonical flext-infra CLI."""
     return FlextInfraCli().main(args)
+
+
+__all__ = ["FlextInfraCli", "main"]

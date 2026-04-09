@@ -4,10 +4,10 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import m, t
 
 from flext_core import r
 from flext_infra import FlextInfraDependencyDetectionService
+from tests import m, t
 
 
 class _StubRunner:

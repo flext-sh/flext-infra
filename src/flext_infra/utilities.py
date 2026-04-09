@@ -47,6 +47,7 @@ from flext_infra import (
     FlextInfraUtilitiesVersioning,
     FlextInfraUtilitiesYaml,
 )
+from flext_infra._utilities.deps_path_sync import FlextInfraUtilitiesDependencyPathSync
 
 
 class FlextInfraUtilities(u):
@@ -84,6 +85,8 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesFormatting,
         FlextInfraUtilitiesGit,
         FlextInfraUtilitiesLogParser,
+        FlextInfraUtilitiesDependencyPathSync,
+        FlextInfraUtilitiesDiscovery,
         FlextInfraUtilitiesParsing,
         FlextInfraUtilitiesPaths,
         FlextInfraUtilitiesPatterns,
@@ -97,7 +100,6 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesTomlParse,
         FlextInfraUtilitiesVersioning,
         FlextInfraUtilitiesYaml,
-        FlextInfraUtilitiesDiscovery,
     ):
         """Infrastructure-domain utilities - all methods exposed directly."""
 

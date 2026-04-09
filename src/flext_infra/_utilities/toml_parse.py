@@ -15,11 +15,11 @@ from pathlib import Path
 
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
-from flext_cli import u
-from flext_infra import FlextInfraUtilitiesToml, c, r, t
+from flext_cli import FlextCliUtilities
+from flext_infra import c, r, t
 
 
-class FlextInfraUtilitiesTomlParse(u.Cli):
+class FlextInfraUtilitiesTomlParse(FlextCliUtilities.Cli):
     """TOML parsing helpers — dependency extraction and project configuration.
 
     Usage::
@@ -55,8 +55,8 @@ class FlextInfraUtilitiesTomlParse(u.Cli):
         changes: MutableSequence[str],
     ) -> None:
         """Ensure pyright executionEnvironments matches expected; append to changes if updated."""
-        raw = FlextInfraUtilitiesToml.unwrap_item(
-            FlextInfraUtilitiesToml.get(pyright, "executionEnvironments"),
+        raw = FlextCliUtilities.Cli.toml_unwrap_item(
+            FlextCliUtilities.Cli.toml_get(pyright, "executionEnvironments"),
         )
         current: Sequence[t.StrMapping] = []
         if isinstance(raw, list):
@@ -106,10 +106,10 @@ class FlextInfraUtilitiesTomlParse(u.Cli):
     @staticmethod
     def project_dev_groups(doc: t.Cli.TomlDocument) -> Mapping[str, t.StrSequence]:
         """Extract optional-dependencies groups from project table."""
-        project_raw = FlextInfraUtilitiesTomlParse.toml_get_table(doc, c.Infra.PROJECT)
+        project_raw = FlextCliUtilities.Cli.toml_get_table(doc, c.Infra.PROJECT)
         if project_raw is None:
             return {}
-        optional_raw = FlextInfraUtilitiesTomlParse.toml_get_table(
+        optional_raw = FlextCliUtilities.Cli.toml_get_table(
             project_raw,
             c.Infra.OPTIONAL_DEPENDENCIES,
         )
@@ -118,8 +118,8 @@ class FlextInfraUtilitiesTomlParse(u.Cli):
         opt_deps: t.Cli.TomlTable = optional_raw
 
         def _group_values(group_key: str) -> t.StrSequence:
-            value = FlextInfraUtilitiesTomlParse.toml_get_item(opt_deps, group_key)
-            return FlextInfraUtilitiesTomlParse.toml_as_string_list(value)
+            value = FlextCliUtilities.Cli.toml_get_item(opt_deps, group_key)
+            return FlextCliUtilities.Cli.toml_as_string_list(value)
 
         return {
             c.Infra.DEV: _group_values(c.Infra.DEV),
@@ -145,31 +145,67 @@ class FlextInfraUtilitiesTomlParse(u.Cli):
                 if dep_name:
                     names.add(dep_name)
 
-        project_val: t.Infra.InfraValue = raw.get(c.Infra.PROJECT)
-        if u.is_mapping(project_val):
-            _collect(project_val.get(c.Infra.DEPENDENCIES))
-            optional_val: t.Infra.InfraValue = project_val.get(
-                c.Infra.OPTIONAL_DEPENDENCIES,
+        project_raw = FlextCliUtilities.Cli.toml_as_mapping(raw.get(c.Infra.PROJECT))
+        project_map = (
+            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(project_raw)
+            if project_raw is not None
+            else None
+        )
+        if project_map is not None:
+            _collect(project_map.get(c.Infra.DEPENDENCIES))
+            optional_raw = FlextCliUtilities.Cli.toml_as_mapping(
+                project_map.get(c.Infra.OPTIONAL_DEPENDENCIES),
             )
-            if u.is_mapping(optional_val):
-                for specs in optional_val.values():
+            optional_map = (
+                t.Infra.INFRA_MAPPING_ADAPTER.validate_python(optional_raw)
+                if optional_raw is not None
+                else None
+            )
+            if optional_map is not None:
+                for specs in optional_map.values():
                     _collect(specs)
 
-        groups_val: t.Infra.InfraValue = raw.get("dependency-groups")
-        if u.is_mapping(groups_val):
-            for specs in groups_val.values():
+        groups_raw = FlextCliUtilities.Cli.toml_as_mapping(
+            raw.get("dependency-groups"),
+        )
+        groups_map = (
+            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(groups_raw)
+            if groups_raw is not None
+            else None
+        )
+        if groups_map is not None:
+            for specs in groups_map.values():
                 _collect(specs)
 
-        tool_val: t.Infra.InfraValue = raw.get(c.Infra.TOOL)
-        if not u.is_mapping(tool_val):
+        tool_raw = FlextCliUtilities.Cli.toml_as_mapping(raw.get(c.Infra.TOOL))
+        tool_map = (
+            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(tool_raw)
+            if tool_raw is not None
+            else None
+        )
+        if tool_map is None:
             return sorted(names)
-        poetry_val: t.Infra.InfraValue = tool_val.get(c.Infra.POETRY)
-        if not u.is_mapping(poetry_val):
+        poetry_raw = FlextCliUtilities.Cli.toml_as_mapping(
+            tool_map.get(c.Infra.POETRY),
+        )
+        poetry_map = (
+            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(poetry_raw)
+            if poetry_raw is not None
+            else None
+        )
+        if poetry_map is None:
             return sorted(names)
-        deps_val: t.Infra.InfraValue = poetry_val.get(c.Infra.DEPENDENCIES)
-        if not u.is_mapping(deps_val):
+        deps_raw = FlextCliUtilities.Cli.toml_as_mapping(
+            poetry_map.get(c.Infra.DEPENDENCIES),
+        )
+        deps_map = (
+            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(deps_raw)
+            if deps_raw is not None
+            else None
+        )
+        if deps_map is None:
             return sorted(names)
-        for dep_key in deps_val:
+        for dep_key in deps_map:
             dep_name = FlextInfraUtilitiesTomlParse.dep_name(str(dep_key))
             if dep_name and dep_name != "python":
                 names.add(dep_name)

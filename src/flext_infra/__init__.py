@@ -210,8 +210,6 @@ if _t.TYPE_CHECKING:
         FlextInfraGateRegistry,
         FlextInfraWorkspaceCheckGatesMixin,
     )
-    from flext_infra.check.cli import FlextInfraCliCheck
-    from flext_infra.check.services import FlextInfraCheckServices
     from flext_infra.check.workspace_check import (
         FlextInfraWorkspaceChecker,
         build_parser,
@@ -314,10 +312,12 @@ if _t.TYPE_CHECKING:
     from flext_infra.detectors.runtime_alias_detector import (
         FlextInfraRuntimeAliasDetector,
     )
+    from flext_infra.detectors.silent_failure_detector import (
+        FlextInfraSilentFailureDetector,
+    )
     from flext_infra.docs.auditor import FlextInfraDocAuditor
     from flext_infra.docs.auditor_mixin import FlextInfraDocAuditorMixin
     from flext_infra.docs.builder import FlextInfraDocBuilder
-    from flext_infra.docs.cli import FlextInfraCliDocs
     from flext_infra.docs.fixer import FlextInfraDocFixer
     from flext_infra.docs.generator import FlextInfraDocGenerator
     from flext_infra.docs.validator import FlextInfraDocValidator
@@ -330,11 +330,10 @@ if _t.TYPE_CHECKING:
     from flext_infra.gates.pyright import FlextInfraPyrightGate
     from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
     from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
+    from flext_infra.gates.silent_failure import FlextInfraSilentFailureGate
     from flext_infra.github.cli import FlextInfraCliGithub
     from flext_infra.maintenance.cli import FlextInfraCliMaintenance
-    from flext_infra.maintenance.python_version import (
-        FlextInfraPythonVersionEnforcer,
-    )
+    from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
     from flext_infra.models import FlextInfraModels, FlextInfraModels as m
     from flext_infra.protocols import FlextInfraProtocols, FlextInfraProtocols as p
     from flext_infra.refactor._base_rule import (
@@ -406,12 +405,9 @@ if _t.TYPE_CHECKING:
         FlextInfraRefactorPatternCorrectionsRule,
     )
     from flext_infra.services.basemk import FlextInfraServiceBasemkMixin
-    from flext_infra.services.check import FlextInfraServiceCheckMixin
     from flext_infra.services.codegen import FlextInfraServiceCodegenMixin
     from flext_infra.services.consolidator import FlextInfraCodegenConsolidator
     from flext_infra.services.deduplicator import FlextInfraCodegenDeduplicator
-    from flext_infra.services.deps import FlextInfraServiceDepsMixin
-    from flext_infra.services.docs import FlextInfraServiceDocsMixin
     from flext_infra.services.github import FlextInfraServiceGithubMixin
     from flext_infra.services.pipeline import FlextInfraCodegenPipeline
     from flext_infra.services.refactor import FlextInfraServiceRefactorMixin
@@ -481,6 +477,7 @@ if _t.TYPE_CHECKING:
     from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
     from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
     from flext_infra.validate.scanner import FlextInfraTextPatternScanner
+    from flext_infra.validate.silent_failure import FlextInfraSilentFailureValidator
     from flext_infra.validate.skill_validator import FlextInfraSkillValidator
     from flext_infra.validate.stub_chain import FlextInfraStubSupplyChain
     from flext_infra.workspace.cli import FlextInfraCliWorkspace
@@ -542,7 +539,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "main",
             ),
             ".constants": ("FlextInfraConstants",),
-            ".maintenance": ("maintenance",),
             ".models": ("FlextInfraModels",),
             ".protocols": ("FlextInfraProtocols",),
             ".typings": ("FlextInfraTypes",),
@@ -583,15 +579,12 @@ __all__ = [
     "FlextInfraCensusUsageCollector",
     "FlextInfraChangeTracker",
     "FlextInfraChangeTrackingTransformer",
-    "FlextInfraCheckServices",
     "FlextInfraClassNestingRefactorRule",
     "FlextInfraClassPlacementDetector",
     "FlextInfraCli",
     "FlextInfraCliBasemk",
-    "FlextInfraCliCheck",
     "FlextInfraCliCodegen",
     "FlextInfraCliDeps",
-    "FlextInfraCliDocs",
     "FlextInfraCliGithub",
     "FlextInfraCliMaintenance",
     "FlextInfraCliRefactor",
@@ -768,15 +761,15 @@ __all__ = [
     "FlextInfraScanFileMixin",
     "FlextInfraServiceBase",
     "FlextInfraServiceBasemkMixin",
-    "FlextInfraServiceCheckMixin",
     "FlextInfraServiceCodegenMixin",
-    "FlextInfraServiceDepsMixin",
-    "FlextInfraServiceDocsMixin",
     "FlextInfraServiceGithubMixin",
     "FlextInfraServiceRefactorMixin",
     "FlextInfraServiceReleaseMixin",
     "FlextInfraServiceValidateMixin",
     "FlextInfraServiceWorkspaceMixin",
+    "FlextInfraSilentFailureDetector",
+    "FlextInfraSilentFailureGate",
+    "FlextInfraSilentFailureValidator",
     "FlextInfraSkillValidator",
     "FlextInfraStubSupplyChain",
     "FlextInfraSyncService",

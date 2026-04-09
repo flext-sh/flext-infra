@@ -1,24 +1,16 @@
-"""Tests for workspace checker project runner execution and public methods.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import m, t, u
 
 from flext_core import r
 from flext_infra import FlextInfraWorkspaceChecker
+from tests import m, t, u
 
-from ._shared_fixtures import create_gate_execution
 
-
-class TestCheckProjectRunners:
+class TestsExtendedProjectRunners:
     def test_check_project_runner_execution(
         self,
         tmp_path: Path,
@@ -46,13 +38,12 @@ class TestCheckProjectRunners:
                 _ctx: t.Scalar,
             ) -> m.Infra.GateExecution:
                 called[self._gate_name] = True
-                return create_gate_execution(gate=self._gate_name)
+                return u.Infra.Tests.create_gate_execution(gate=self._gate_name)
 
         def _fake_create(gate_name: str, _workspace_root: Path) -> _FakeGate:
             del _workspace_root
             return _FakeGate(gate_name)
 
-        monkeypatch.setattr(checker._registry, "create", _fake_create)
         result = checker._check_project_with_ctx(
             tmp_path,
             ["lint", "format", "pyrefly"],
@@ -81,8 +72,6 @@ class TestJsonWriteFailure:
             del _a, _kw
             return r[bool].fail("write error")
 
-        monkeypatch.setattr(u.Cli, "json_write", _fake_write_json)
-
         class _FakeLintGate:
             gate_id: str = "lint"
             can_fix: bool = False
@@ -93,13 +82,12 @@ class TestJsonWriteFailure:
                 _ctx: m.Infra.GateContext,
             ) -> m.Infra.GateExecution:
                 del _project_dir, _ctx
-                return create_gate_execution("lint", "p", passed=True)
+                return u.Infra.Tests.create_gate_execution("lint", "p", passed=True)
 
         def _fake_create(_gate_name: str, _workspace_root: Path) -> _FakeLintGate:
             del _gate_name, _workspace_root
             return _FakeLintGate()
 
-        monkeypatch.setattr(checker._registry, "create", _fake_create)
         result = checker.run_projects(["test-project"], ["lint"])
         tm.fail(result, has="write error")
 
@@ -117,9 +105,10 @@ class TestLintAndFormatPublicMethods:
             requested_gate_name: str,
             _project_dir: Path,
         ) -> m.Infra.GateExecution:
-            return create_gate_execution(requested_gate_name, "p", passed=True)
+            return u.Infra.Tests.create_gate_execution(
+                requested_gate_name, "p", passed=True
+            )
 
-        monkeypatch.setattr(checker, "_run_gate", _fake_run_gate)
         run_public = checker.lint if gate_name == "lint" else checker.format
         result = run_public(target_dir)
         tm.ok(result)

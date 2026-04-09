@@ -4,10 +4,10 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from flext_tests import tm
-from tests import t
 
 from flext_core import r
 from flext_infra import FlextInfraInternalDependencySyncService
+from tests import t
 
 
 class _TomlReaderStub:

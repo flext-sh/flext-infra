@@ -11,11 +11,9 @@ from pathlib import Path
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from flext_tests import tm
-from tests import m, r, t
 
 from flext_infra import FlextInfraWorkspaceChecker
-
-from ._shared_fixtures import create_fake_run_projects
+from tests import m, r, t, u
 
 
 def test_resolve_gates_maps_type_alias() -> None:
@@ -28,7 +26,7 @@ def test_run_cli_run_returns_zero_for_pass(monkeypatch: MonkeyPatch) -> None:
     _ = monkeypatch.setattr(
         FlextInfraWorkspaceChecker,
         "run_projects",
-        create_fake_run_projects(),
+        u.Infra.Tests.create_fake_run_projects(),
     )
     exit_code = FlextInfraWorkspaceChecker.run_cli([
         "run",
@@ -45,7 +43,7 @@ def test_run_cli_run_returns_one_for_fail(monkeypatch: MonkeyPatch) -> None:
     _ = monkeypatch.setattr(
         FlextInfraWorkspaceChecker,
         "run_projects",
-        create_fake_run_projects(passed=False),
+        u.Infra.Tests.create_fake_run_projects(passed=False),
     )
     exit_code = FlextInfraWorkspaceChecker.run_cli([
         "run",
@@ -62,7 +60,7 @@ def test_run_cli_run_returns_two_for_error(monkeypatch: MonkeyPatch) -> None:
     _ = monkeypatch.setattr(
         FlextInfraWorkspaceChecker,
         "run_projects",
-        create_fake_run_projects(error_msg="test error"),
+        u.Infra.Tests.create_fake_run_projects(error_msg="test error"),
     )
     exit_code = FlextInfraWorkspaceChecker.run_cli([
         "run",
@@ -76,7 +74,7 @@ def test_run_cli_run_returns_two_for_error(monkeypatch: MonkeyPatch) -> None:
 
 def test_run_cli_with_multiple_projects(monkeypatch: MonkeyPatch) -> None:
     """Test that run_cli handles multiple projects."""
-    mock = create_fake_run_projects()
+    mock = u.Infra.Tests.create_fake_run_projects()
     _ = monkeypatch.setattr(
         FlextInfraWorkspaceChecker,
         "run_projects",
@@ -98,7 +96,7 @@ def test_run_cli_with_multiple_projects(monkeypatch: MonkeyPatch) -> None:
 
 def test_run_cli_with_fail_fast_flag(monkeypatch: MonkeyPatch) -> None:
     """Test that run_cli passes fail_fast flag to run_projects."""
-    mock = create_fake_run_projects()
+    mock = u.Infra.Tests.create_fake_run_projects()
     _ = monkeypatch.setattr(
         FlextInfraWorkspaceChecker,
         "run_projects",

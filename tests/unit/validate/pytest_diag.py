@@ -5,9 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_tests import tm
-from tests import m, t
 
 from flext_infra import FlextInfraPytestDiagExtractor
+from tests import m, t
 
 
 def _extractor(

@@ -13,17 +13,16 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import m, t
 
 import flext_infra.check.workspace_check as ws_mod
 import flext_infra.check.workspace_check_cli as ws_cli_mod
 import flext_infra.deps.fix_pyrefly_config as fix_pyrefly_mod
 from flext_core import r
 from flext_infra import (
-    FlextInfraCliCheck,
     FlextInfraWorkspaceChecker,
-    main as infra_main,
+    main,
 )
+from tests import m, t
 
 
 def _fake_checker_cls(
@@ -164,12 +163,20 @@ _fake_run_cli_42 = _const_cli_result(42)
 
 class TestCheckMainEntryPoint:
     def test_calls_run_cli(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(FlextInfraCliCheck, "run", staticmethod(_fake_run_cli_zero))
-        tm.that(infra_main(["check", "run"]), eq=0)
+        monkeypatch.setattr(
+            FlextInfraWorkspaceChecker,
+            "run_cli",
+            staticmethod(_fake_run_cli_zero),
+        )
+        tm.that(main(["check", "run"]), eq=0)
 
     def test_returns_exit_code(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(FlextInfraCliCheck, "run", staticmethod(_fake_run_cli_42))
-        tm.that(infra_main(["check", "run"]), eq=42)
+        monkeypatch.setattr(
+            FlextInfraWorkspaceChecker,
+            "run_cli",
+            staticmethod(_fake_run_cli_42),
+        )
+        tm.that(main(["check", "run"]), eq=42)
 
 
 class TestRunCLIExtended:
@@ -223,13 +230,11 @@ class TestRunCLIExtended:
             _ = projects, gates, kw
             return ok_result
 
-        monkeypatch.setattr(FlextInfraWorkspaceChecker, "__init__", _fake_init)
         monkeypatch.setattr(
             FlextInfraWorkspaceChecker,
             "run_projects",
             _fake_run_projects,
         )
-        monkeypatch.setattr("pathlib.Path.cwd", lambda: tmp_path)
         exit_code = FlextInfraWorkspaceChecker.run_cli([
             "run",
             "--gates",

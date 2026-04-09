@@ -7,9 +7,9 @@ import stat
 from pathlib import Path
 
 from flext_tests import tm
-from tests import m, u
 
 from flext_infra import FlextInfraBaseMkGenerator
+from tests import m, u
 
 
 def _render_base_mk() -> str:

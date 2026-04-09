@@ -10,10 +10,10 @@ import io
 from pathlib import Path
 
 from flext_tests import tm
-from tests import m as im
 
 from flext_core import r
 from flext_infra import FlextInfraBaseMkGenerator
+from tests import m as im
 
 
 class _SuccessRenderer:

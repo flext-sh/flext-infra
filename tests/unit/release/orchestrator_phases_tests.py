@@ -14,13 +14,10 @@ from typing import TYPE_CHECKING
 
 import pytest
 from flext_tests import tm
-from tests import c, m, t, u
 
 from flext_core import r
-from flext_infra import (
-    FlextInfraReleaseOrchestrator,
-    orchestrator as release_orchestrator_module,
-)
+from flext_infra import FlextInfraReleaseOrchestrator, u
+from tests import c, m, t
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -97,7 +94,7 @@ class TestPhaseValidate:
             return r[bool].ok(True)
 
         monkeypatch.setattr(
-            release_orchestrator_module.u.Cli,
+            u.Cli,
             "run_checked",
             staticmethod(_fake_run_checked),
         )
@@ -120,7 +117,6 @@ class TestPhaseVersion:
         def _replace_version(path: Path, version: str) -> None:
             _ = path, version
 
-        monkeypatch.setattr(u.Infra, "parse_semver", staticmethod(_parse_semver))
         monkeypatch.setattr(
             u.Infra,
             "replace_project_version",
@@ -138,7 +134,6 @@ class TestPhaseVersion:
             _ = version
             return r[str].fail("invalid version")
 
-        monkeypatch.setattr(u.Infra, "parse_semver", staticmethod(_parse_semver_fail))
         orchestrator = FlextInfraReleaseOrchestrator()
         tm.fail(
             orchestrator.phase_version(_version_ctx(workspace_root, version="invalid"))
@@ -155,7 +150,6 @@ class TestPhaseVersion:
         def _replace_version(path: Path, version: str) -> None:
             _ = path, version
 
-        monkeypatch.setattr(u.Infra, "parse_semver", staticmethod(_parse_semver))
         monkeypatch.setattr(
             u.Infra,
             "replace_project_version",
@@ -168,7 +162,6 @@ class TestPhaseVersion:
         def _parse_semver(version: str) -> r[str]:
             return r[str].ok(version)
 
-        monkeypatch.setattr(u.Infra, "parse_semver", staticmethod(_parse_semver))
         orchestrator = FlextInfraReleaseOrchestrator()
         tm.ok(orchestrator.phase_version(_version_ctx(workspace_root, dry_run=True)))
 
@@ -183,12 +176,9 @@ class TestPhaseVersion:
             del a, kw
             return [workspace_root / "nonexistent.toml"]
 
-        monkeypatch.setattr(orchestrator, "_version_files", _fake_version_files)
-
         def _parse_semver(version: str) -> r[str]:
             return r[str].ok(version)
 
-        monkeypatch.setattr(u.Infra, "parse_semver", staticmethod(_parse_semver))
         tm.ok(orchestrator.phase_version(_version_ctx(workspace_root)))
 
 
@@ -205,8 +195,6 @@ class TestPhaseBuild:
         def _get_report_dir(ws: Path | str, scope: str, verb: str) -> Path:
             _ = ws, scope, verb
             return ws_root / "reports"
-
-        monkeypatch.setattr(u.Infra, "get_report_dir", staticmethod(_get_report_dir))
 
         def _fake_run_make(*a: t.Scalar, **kw: t.Scalar) -> r[tuple[int, str]]:
             del a, kw
@@ -231,14 +219,11 @@ class TestPhaseBuild:
             _ = ws, scope, verb
             return ws_root / "reports"
 
-        monkeypatch.setattr(u.Infra, "get_report_dir", staticmethod(_get_report_dir))
-
         def _raise_mkdir(*a: t.Scalar, **kw: t.Scalar) -> None:
             del a, kw
             msg = "permission denied"
             raise OSError(msg)
 
-        monkeypatch.setattr("pathlib.Path.mkdir", _raise_mkdir)
         orchestrator = FlextInfraReleaseOrchestrator()
         tm.fail(orchestrator.phase_build(_build_ctx(workspace_root)))
 

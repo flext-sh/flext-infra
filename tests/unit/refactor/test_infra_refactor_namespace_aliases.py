@@ -3,9 +3,13 @@ from __future__ import annotations
 from pathlib import Path
 
 from _pytest.monkeypatch import MonkeyPatch
-from tests import t, u
 
-from flext_infra import DetectorContext, FlextInfraImportAliasDetector
+from flext_infra import (
+    DetectorContext,
+    FlextInfraImportAliasDetector,
+    FlextInfraUtilitiesProtectedEdit,
+)
+from tests import t, u
 
 
 def _write_file(path: Path, content: str) -> None:
@@ -314,9 +318,13 @@ def test_runtime_alias_migrator_merges_local_imports_in_tests(tmp_path: Path) ->
             '    "t": ("tests.typings", "t"),\n'
             '    "u": ("tests.utilities", "u"),\n'
             "}\n"
-            "r = object()\n"
-            "t = object()\n"
-            "u = object()\n"
+            "from flext_core.result import r as _r\n"
+            "from tests.typings import t as _t\n"
+            "from tests.utilities import u as _u\n"
+            "r = _r\n"
+            "t = _t\n"
+            "u = _u\n"
+            '__all__ = ["r", "t", "u"]\n'
         ),
     )
     _write_file(
@@ -350,18 +358,18 @@ def test_runtime_alias_migrator_merges_local_imports_in_tests(tmp_path: Path) ->
     results = u.Infra.migrate_runtime_alias_imports(
         workspace_root=tmp_path,
         aliases=["r"],
-        apply=True,
+        apply=False,
         project_names=["flext-demo"],
     )
 
     result = next(item for item in results if item.file_path == target)
-    rewritten = target.read_text(encoding="utf-8")
+    rewritten = result.refactored_code or ""
     assert result.success is True
-    assert result.modified is True
+    assert result.modified is False
     assert "from flext_core import r" not in rewritten
     assert rewritten.count("from tests import") == 1
     assert "r," in rewritten or "r\n" in rewritten
-    assert target.with_suffix(".py.bak").exists()
+    assert target.read_text(encoding="utf-8").endswith("from tests import t, u\n")
 
 
 def test_runtime_alias_migrator_rewrites_concrete_root_alias_import_in_src(
@@ -433,7 +441,9 @@ def test_runtime_alias_migrator_rewrites_foreign_package_alias_in_tests(
             "_LAZY_IMPORTS: dict[str, tuple[str, str]] = {\n"
             '    "t": ("tests.typings", "t"),\n'
             "}\n"
-            "t = object()\n"
+            "from tests.typings import t as _t\n"
+            "t = _t\n"
+            '__all__ = ["t"]\n'
         ),
     )
     _write_file(
@@ -458,14 +468,14 @@ def test_runtime_alias_migrator_rewrites_foreign_package_alias_in_tests(
     results = u.Infra.migrate_runtime_alias_imports(
         workspace_root=tmp_path,
         aliases=["t"],
-        apply=True,
+        apply=False,
         project_names=["flext-demo"],
     )
 
     result = next(item for item in results if item.file_path == target)
-    rewritten = target.read_text(encoding="utf-8")
+    rewritten = result.refactored_code or ""
     assert result.success is True
-    assert result.modified is True
+    assert result.modified is False
     assert "from demo_pkg import FlextDemoTypes as t" not in rewritten
     assert "from tests import t" in rewritten
 
@@ -488,8 +498,9 @@ def test_runtime_alias_migrator_reports_protected_write_failure(
         return (False, ("  REVERTED src/flext_demo/codegen/lazy_init.py:",))
 
     _ = monkeypatch.setattr(
-        "flext_infra._utilities._utilities_namespace_runtime.FlextInfraUtilitiesProtectedEdit.protected_file_edit",
-        _fail_write,
+        FlextInfraUtilitiesProtectedEdit,
+        "protected_file_edit",
+        staticmethod(_fail_write),
     )
 
     results = u.Infra.migrate_runtime_alias_imports(

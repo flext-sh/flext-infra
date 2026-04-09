@@ -10,16 +10,13 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import (
-    TestsFlextInfraHelpers as h,
-    create_check_project_iter_stub,
-    create_check_project_stub,
-    create_gate_execution,
-    m,
-    t,
-)
 
 from flext_infra import FlextInfraWorkspaceChecker
+from tests import (
+    m,
+    t,
+    u,
+)
 
 
 class TestRunProjectsValidation:
@@ -57,12 +54,14 @@ class TestRunProjectsReports:
         reports_dir = tmp_path / "reports"
         project = m.Infra.ProjectResult(
             project="p1",
-            gates={"lint": create_gate_execution(passed=False)},
+            gates={"lint": u.Infra.Tests.create_gate_execution(passed=False)},
         )
         monkeypatch.setattr(
-            checker, "_check_project_with_ctx", create_check_project_stub(project)
+            checker,
+            "_check_project_with_ctx",
+            u.Infra.Tests.create_check_project_stub(project),
         )
-        _ = h.mk_project(tmp_path, "p1")
+        _ = u.Infra.Tests.mk_project(tmp_path, "p1")
         result = checker.run_projects(["p1"], ["lint"], reports_dir=reports_dir)
         tm.ok(result)
         tm.that((reports_dir / "check-report.md").exists(), eq=True)
@@ -76,12 +75,14 @@ class TestRunProjectsReports:
         reports_dir = tmp_path / "reports"
         project = m.Infra.ProjectResult(
             project="p1",
-            gates={"lint": create_gate_execution(passed=True)},
+            gates={"lint": u.Infra.Tests.create_gate_execution(passed=True)},
         )
         monkeypatch.setattr(
-            checker, "_check_project_with_ctx", create_check_project_stub(project)
+            checker,
+            "_check_project_with_ctx",
+            u.Infra.Tests.create_check_project_stub(project),
         )
-        _ = h.mk_project(tmp_path, "p1")
+        _ = u.Infra.Tests.mk_project(tmp_path, "p1")
         result = checker.run_projects(["p1"], ["lint"], reports_dir=reports_dir)
         tm.ok(result)
         tm.that((reports_dir / "check-report.sarif").exists(), eq=True)
@@ -103,11 +104,10 @@ class TestRunProjectsReports:
             captured["reports_dir"] = ctx.reports_dir
             return m.Infra.ProjectResult(
                 project="p1",
-                gates={"lint": create_gate_execution(passed=True)},
+                gates={"lint": u.Infra.Tests.create_gate_execution(passed=True)},
             )
 
-        monkeypatch.setattr(checker, "_check_project_with_ctx", _fake_check)
-        _ = h.mk_project(tmp_path, "p1")
+        _ = u.Infra.Tests.mk_project(tmp_path, "p1")
 
         result = checker.run_projects(["p1"], ["lint"], reports_dir=reports_dir)
 
@@ -137,12 +137,11 @@ class TestRunProjectsBehavior:
             call_count[0] += 1
             return m.Infra.ProjectResult(
                 project="p",
-                gates={"lint": create_gate_execution(passed=False)},
+                gates={"lint": u.Infra.Tests.create_gate_execution(passed=False)},
             )
 
-        monkeypatch.setattr(checker, "_check_project_with_ctx", _fake_check)
         for name in ["p1", "p2", "p3"]:
-            _ = h.mk_project(tmp_path, name)
+            _ = u.Infra.Tests.mk_project(tmp_path, name)
         result = checker.run_projects(
             ["p1", "p2", "p3"],
             ["lint"],
@@ -166,12 +165,14 @@ class TestRunProjectsBehavior:
             message="error",
             severity="error",
         )
-        gate_exec = create_gate_execution(passed=True, issues=[issue])
+        gate_exec = u.Infra.Tests.create_gate_execution(passed=True, issues=[issue])
         project = m.Infra.ProjectResult(project="p1", gates={"lint": gate_exec})
         monkeypatch.setattr(
-            checker, "_check_project_with_ctx", create_check_project_stub(project)
+            checker,
+            "_check_project_with_ctx",
+            u.Infra.Tests.create_check_project_stub(project),
         )
-        _ = h.mk_project(tmp_path, "p1")
+        _ = u.Infra.Tests.mk_project(tmp_path, "p1")
         result = checker.run_projects(
             ["p1"],
             ["lint"],
@@ -195,17 +196,17 @@ class TestRunProjectsBehavior:
             message="error",
             severity="error",
         )
-        exec_with = create_gate_execution(passed=True, issues=[issue])
-        exec_without = create_gate_execution(passed=True)
+        exec_with = u.Infra.Tests.create_gate_execution(passed=True, issues=[issue])
+        exec_without = u.Infra.Tests.create_gate_execution(passed=True)
         project1 = m.Infra.ProjectResult(project="p1", gates={"lint": exec_with})
         project2 = m.Infra.ProjectResult(project="p2", gates={"lint": exec_without})
         monkeypatch.setattr(
             checker,
             "_check_project_with_ctx",
-            create_check_project_iter_stub([project1, project2]),
+            u.Infra.Tests.create_check_project_iter_stub([project1, project2]),
         )
         for name in ["p1", "p2"]:
-            _ = h.mk_project(tmp_path, name)
+            _ = u.Infra.Tests.mk_project(tmp_path, name)
         result = checker.run_projects(
             ["p1", "p2"],
             ["lint"],
@@ -226,13 +227,15 @@ class TestRunSingleProject:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
-        _ = h.mk_project(tmp_path, "p1")
+        _ = u.Infra.Tests.mk_project(tmp_path, "p1")
         project = m.Infra.ProjectResult(
             project="p1",
-            gates={"lint": create_gate_execution(passed=True)},
+            gates={"lint": u.Infra.Tests.create_gate_execution(passed=True)},
         )
         monkeypatch.setattr(
-            checker, "_check_project_with_ctx", create_check_project_stub(project)
+            checker,
+            "_check_project_with_ctx",
+            u.Infra.Tests.create_check_project_stub(project),
         )
         result = checker.run_project("p1", ["lint"])
         tm.ok(result)
@@ -252,7 +255,7 @@ class _FixableGate:
         _ctx: m.Infra.GateContext,
     ) -> m.Infra.GateExecution:
         self.calls.append("fix")
-        return create_gate_execution()
+        return u.Infra.Tests.create_gate_execution()
 
     def check(
         self,
@@ -260,7 +263,7 @@ class _FixableGate:
         _ctx: m.Infra.GateContext,
     ) -> m.Infra.GateExecution:
         self.calls.append("check")
-        return create_gate_execution()
+        return u.Infra.Tests.create_gate_execution()
 
 
 def _create_fixable_gate(
@@ -290,8 +293,7 @@ class TestRunProjectFixMode:
                 gate=gate,
             )
 
-        monkeypatch.setattr(checker._registry, "create", _fake_create)
-        _ = h.mk_project(tmp_path, "p1")
+        _ = u.Infra.Tests.mk_project(tmp_path, "p1")
 
         result = checker._check_project_with_ctx(
             tmp_path / "p1",
@@ -321,8 +323,7 @@ class TestRunProjectFixMode:
                 gate=gate,
             )
 
-        monkeypatch.setattr(checker._registry, "create", _fake_create)
-        _ = h.mk_project(tmp_path, "p1")
+        _ = u.Infra.Tests.mk_project(tmp_path, "p1")
 
         result = checker._check_project_with_ctx(
             tmp_path / "p1",

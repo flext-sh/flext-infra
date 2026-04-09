@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping, MutableSequence, Sequence
 
-from tests import create_gate_execution, m, t
+from tests import m, t, u
 
 
 class Spy:
@@ -86,7 +86,7 @@ def make_project(
 ) -> m.Infra.ProjectResult:
     """Create a _ProjectResult with defaults."""
     resolved_gates: MutableMapping[str, m.Infra.GateExecution] = (
-        gates if gates is not None else {"lint": create_gate_execution()}
+        gates if gates is not None else {"lint": u.Infra.Tests.create_gate_execution()}
     )
     return m.Infra.ProjectResult.model_validate({
         "project": name,

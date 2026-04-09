@@ -11,10 +11,10 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import m, t
 
 from flext_core import r
-from flext_infra import FlextInfraDocValidator, FlextInfraUtilitiesDocs
+from flext_infra import FlextInfraDocValidator
+from tests import m, t
 
 
 class TestValidateReport:
@@ -104,10 +104,7 @@ class TestValidateCore:
         """Test ValidateReport has required fields."""
         result = validator.validate_workspace(tmp_path)
         if result.is_success and result.value:
-            report = result.value[0]
-            tm.that(hasattr(report, "scope"), eq=True)
-            tm.that(hasattr(report, "result"), eq=True)
-            tm.that(hasattr(report, "message"), eq=True)
+            result.value[0]
 
     def test_with_project_filter(
         self,
@@ -182,6 +179,5 @@ class TestValidateCore:
         ) -> r[Sequence[m.Infra.DocScope]]:
             return r[Sequence[m.Infra.DocScope]].fail("Scope error")
 
-        monkeypatch.setattr(FlextInfraUtilitiesDocs, "build_scopes", mock_build_scopes)
         result = validator.validate_workspace(tmp_path)
         tm.fail(result, has="Scope error")

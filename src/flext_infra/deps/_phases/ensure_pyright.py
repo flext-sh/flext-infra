@@ -100,6 +100,49 @@ class FlextInfraEnsurePyrightConfigPhase(FlextInfraEnsurePyrightEnvs):
                 ignores.append(pattern)
         return list(ignores)
 
+    def _expected_includes(
+        self,
+        *,
+        is_root: bool,
+        workspace_root: Path | None,
+        project_dir: Path | None,
+    ) -> t.StrSequence:
+        """Return the concrete source/test roots that pyright should analyze."""
+        rules = self._path_rules()
+        if not is_root:
+            if project_dir is None:
+                return list(rules.env_dirs)
+            return [
+                env_dir
+                for env_dir in rules.env_dirs
+                if (project_dir / env_dir).is_dir()
+            ]
+        if workspace_root is None:
+            return list(rules.env_dirs)
+        includes: MutableSequence[str] = [
+            env_dir for env_dir in rules.env_dirs if (workspace_root / env_dir).is_dir()
+        ]
+        discovered = u.Infra.discover_projects(workspace_root)
+        if discovered.is_failure:
+            return includes
+        child_projects = sorted(
+            (
+                project.path
+                for project in discovered.value
+                if (
+                    project.workspace_role
+                    == c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER
+                )
+            ),
+            key=lambda project_path: project_path.name,
+        )
+        for child_project in child_projects:
+            relative_root = child_project.relative_to(workspace_root)
+            for env_dir in rules.env_dirs:
+                if (child_project / env_dir).is_dir():
+                    includes.append((relative_root / env_dir).as_posix())
+        return includes
+
     def apply(
         self,
         doc: t.Cli.TomlDocument,
@@ -113,6 +156,11 @@ class FlextInfraEnsurePyrightConfigPhase(FlextInfraEnsurePyrightEnvs):
         project_root = workspace_root if is_root else project_dir
         expected_excludes = self._expected_excludes(project_root)
         expected_ignores = self._expected_ignores(
+            is_root=is_root,
+            workspace_root=workspace_root,
+            project_dir=project_dir,
+        )
+        expected_includes = self._expected_includes(
             is_root=is_root,
             workspace_root=workspace_root,
             project_dir=project_dir,
@@ -143,6 +191,10 @@ class FlextInfraEnsurePyrightConfigPhase(FlextInfraEnsurePyrightEnvs):
             phase_builder = phase_builder.list(c.Infra.IGNORE, expected_ignores)
         else:
             phase_builder = phase_builder.deprecated(c.Infra.IGNORE)
+        if expected_includes:
+            phase_builder = phase_builder.list("include", expected_includes)
+        else:
+            phase_builder = phase_builder.deprecated("include")
         if project_root is not None and paths_manager is not None:
             phase_builder = phase_builder.list(
                 "extraPaths",

@@ -6,7 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import FlextInfraCli, main
+import pytest
+
+from flext_infra.cli import main
 
 
 def test_main_returns_error_when_no_args() -> None:
@@ -21,25 +23,8 @@ def test_main_unknown_group_returns_error() -> None:
     assert main(["unknown"]) == 1
 
 
-def test_main_all_groups_defined() -> None:
-    expected_groups = {
-        "basemk",
-        "check",
-        "codegen",
-        "validate",
-        "deps",
-        "docs",
-        "github",
-        "maintenance",
-        "refactor",
-        "release",
-        "workspace",
-    }
-    assert set(FlextInfraCli.GROUPS.keys()) == expected_groups
-
-
-def test_main_group_descriptions_are_present() -> None:
-    for group, description in FlextInfraCli.GROUPS.items():
-        assert isinstance(description, str)
-        assert description
-        assert group
+def test_main_help_lists_core_groups(capsys: pytest.CaptureFixture[str]) -> None:
+    assert main(["--help"]) == 0
+    out = capsys.readouterr().out
+    for group in ("basemk", "check", "codegen", "docs", "refactor", "workspace"):
+        assert group in out

@@ -12,9 +12,9 @@ from __future__ import annotations
 from io import StringIO
 
 import pytest
-from tests import c, u
 
 from flext_core import FlextContainer
+from tests import c, u
 
 
 class TestInfraContainerFunctions:
@@ -53,7 +53,6 @@ class TestInfraMroPattern:
 
     def test_io_methods_available(self) -> None:
         """Verify IO methods are accessible via u.Infra MRO."""
-        assert callable(getattr(u.Cli, "toml_read_json"))
         assert callable(u.Cli.json_write)
 
     def test_cli_runtime_methods_available(self) -> None:

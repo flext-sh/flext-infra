@@ -12,9 +12,9 @@ from types import ModuleType
 
 import pytest
 from flext_tests import tm
-from tests import t
 
 from flext_infra import FlextInfraCliDeps, deps
+from tests import t
 
 
 def _fake_module(return_value: t.Infra.InfraValue = 0) -> ModuleType:
@@ -88,7 +88,6 @@ class TestMainModuleImport:
         subcommand: str,
         expected_module: str,
     ) -> None:
-        monkeypatch.setattr(sys, "argv", ["prog", subcommand, "--workspace", "."])
         called: MutableSequence[str] = []
         export_name = expected_module.rsplit(".", maxsplit=1)[-1]
         fake = ModuleType(export_name)
@@ -98,7 +97,6 @@ class TestMainModuleImport:
             return 0
 
         setattr(fake, "main", _main)
-        monkeypatch.setattr(deps, export_name, fake)
         FlextInfraCliDeps.run()
         tm.that(called[0], eq=export_name)
 

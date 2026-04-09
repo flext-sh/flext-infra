@@ -1,23 +1,15 @@
-"""Tests for workspace checker public methods and runner execution.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import m, t
 
 from flext_infra import FlextInfraWorkspaceChecker
+from tests import m, t, u
 
-from ._shared_fixtures import create_gate_execution
 
-
-class TestLintAndFormatPublicMethods:
+class TestsExtendedProjects:
     @staticmethod
     def _assert_gate_public_method(
         *,
@@ -31,9 +23,10 @@ class TestLintAndFormatPublicMethods:
             _project_dir: Path,
         ) -> m.Infra.GateExecution:
             del _project_dir
-            return create_gate_execution(gate=requested_gate_name, passed=True)
+            return u.Infra.Tests.create_gate_execution(
+                gate=requested_gate_name, passed=True
+            )
 
-        monkeypatch.setattr(checker, "_run_gate", _fake_run_gate)
         run_public = checker.lint if gate_name == "lint" else checker.format
         result = run_public(target_dir)
         tm.ok(result)
@@ -97,13 +90,14 @@ class TestCheckProjectRunners:
             ) -> m.Infra.GateExecution:
                 del _project_dir, _ctx
                 called[self._gate_name] = True
-                return create_gate_execution(gate=self._gate_name, passed=True)
+                return u.Infra.Tests.create_gate_execution(
+                    gate=self._gate_name, passed=True
+                )
 
         def _fake_create(gate_name: str, _workspace_root: Path) -> _FakeGate:
             del _workspace_root
             return _FakeGate(gate_name)
 
-        monkeypatch.setattr(checker._registry, "create", _fake_create)
         result = checker._check_project_with_ctx(
             tmp_path,
             ["lint", "format", "pyrefly"],

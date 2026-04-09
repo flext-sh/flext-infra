@@ -11,20 +11,16 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import (
-    create_checker_project,
-    m,
-    patch_gate_run,
-    run_gate_check,
-    t,
-)
 
 from flext_infra import (
     FlextInfraBanditGate,
     FlextInfraMarkdownGate,
 )
-
-_GateClass = type[FlextInfraBanditGate] | type[FlextInfraMarkdownGate]
+from tests import (
+    m,
+    t,
+    u,
+)
 
 
 def _run_failed_gate_check(
@@ -32,19 +28,19 @@ def _run_failed_gate_check(
     project_dir: Path,
     monkeypatch: pytest.MonkeyPatch,
     *,
-    gate_class: _GateClass,
+    gate_class: t.Infra.Tests.GateClass,
     stdout: str = "",
     stderr: str = "",
 ) -> m.Infra.GateExecution:
     """Helper to run gate check with failure setup."""
-    patch_gate_run(
+    u.Infra.Tests.patch_gate_run(
         monkeypatch,
         gate_class,
         stdout=stdout,
         stderr=stderr,
         returncode=1,
     )
-    return run_gate_check(gate_class, workspace_root, project_dir)
+    return u.Infra.Tests.run_gate_check(gate_class, workspace_root, project_dir)
 
 
 def _assert_failed_single_issue(result: m.Infra.GateExecution) -> None:
@@ -54,8 +50,12 @@ def _assert_failed_single_issue(result: m.Infra.GateExecution) -> None:
 
 class TestWorkspaceCheckerRunBandit:
     def test_run_bandit_no_src_dir(self, tmp_path: Path) -> None:
-        _, proj_dir = create_checker_project(tmp_path)
-        result = run_gate_check(FlextInfraBanditGate, tmp_path, proj_dir)
+        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path)
+        result = u.Infra.Tests.run_gate_check(
+            FlextInfraBanditGate,
+            tmp_path,
+            proj_dir,
+        )
         tm.that(result.result.passed, eq=True)
         tm.that(len(result.issues), eq=0)
 
@@ -64,19 +64,23 @@ class TestWorkspaceCheckerRunBandit:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        _, proj_dir = create_checker_project(tmp_path, with_src=True)
+        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path, with_src=True)
         json_output = (
             '{"results": [{"filename": "a.py", "line_number": 1,'
             ' "test_id": "B101", "issue_text": "Assert used",'
             ' "issue_severity": "MEDIUM"}]}'
         )
-        patch_gate_run(
+        u.Infra.Tests.patch_gate_run(
             monkeypatch,
             FlextInfraBanditGate,
             stdout=json_output,
             returncode=1,
         )
-        result = run_gate_check(FlextInfraBanditGate, tmp_path, proj_dir)
+        result = u.Infra.Tests.run_gate_check(
+            FlextInfraBanditGate,
+            tmp_path,
+            proj_dir,
+        )
         tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
 
@@ -85,7 +89,7 @@ class TestWorkspaceCheckerRunBandit:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        _, proj_dir = create_checker_project(tmp_path, with_src=True)
+        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path, with_src=True)
         result = _run_failed_gate_check(
             tmp_path,
             proj_dir,
@@ -98,8 +102,12 @@ class TestWorkspaceCheckerRunBandit:
 
 class TestWorkspaceCheckerRunMarkdown:
     def test_run_markdown_no_files(self, tmp_path: Path) -> None:
-        _, proj_dir = create_checker_project(tmp_path)
-        result = run_gate_check(FlextInfraMarkdownGate, tmp_path, proj_dir)
+        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path)
+        result = u.Infra.Tests.run_gate_check(
+            FlextInfraMarkdownGate,
+            tmp_path,
+            proj_dir,
+        )
         tm.that(result.result.passed, eq=True)
         tm.that(len(result.issues), eq=0)
 
@@ -108,7 +116,7 @@ class TestWorkspaceCheckerRunMarkdown:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        _, proj_dir = create_checker_project(tmp_path)
+        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path)
         (proj_dir / "README.md").write_text("# Test")
         result = _run_failed_gate_check(
             tmp_path,
@@ -124,7 +132,7 @@ class TestWorkspaceCheckerRunMarkdown:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        _, proj_dir = create_checker_project(tmp_path)
+        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path)
         (proj_dir / "README.md").write_text("# Test")
         (proj_dir / ".markdownlint.json").write_text("{}")
         captured_args: MutableSequence[t.StrSequence] = []
@@ -141,7 +149,7 @@ class TestWorkspaceCheckerRunMarkdown:
             return m.Cli.CommandOutput(stdout="", stderr="", exit_code=0)
 
         monkeypatch.setattr(FlextInfraMarkdownGate, "_run", _fake_run)
-        _ = run_gate_check(FlextInfraMarkdownGate, tmp_path, proj_dir)
+        _ = u.Infra.Tests.run_gate_check(FlextInfraMarkdownGate, tmp_path, proj_dir)
         tm.that(captured_args[0], has="--config")
 
     def test_run_markdown_without_parseable_output(
@@ -149,7 +157,7 @@ class TestWorkspaceCheckerRunMarkdown:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        _, proj_dir = create_checker_project(tmp_path)
+        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path)
         (proj_dir / "README.md").write_text("# Test")
         result = _run_failed_gate_check(
             tmp_path,
@@ -160,3 +168,4 @@ class TestWorkspaceCheckerRunMarkdown:
         )
         tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=0)
+        tm.that(result.raw_output, contains="markdownlint failed")

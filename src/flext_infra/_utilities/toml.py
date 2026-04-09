@@ -10,15 +10,14 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping, MutableSequence
-from pathlib import Path
 
-from pydantic import BaseModel, ValidationError
+from pydantic import ValidationError
 
-from flext_cli import u
+from flext_cli import FlextCliUtilities
 from flext_infra import t
 
 
-class FlextInfraUtilitiesToml(u.Cli):
+class FlextInfraUtilitiesToml(FlextCliUtilities.Cli):
     """Infra-specific TOML helpers — validation via INFRA adapters.
 
     For pure TOML operations use ``u.Cli.toml_*`` directly::
@@ -30,7 +29,7 @@ class FlextInfraUtilitiesToml(u.Cli):
     @staticmethod
     def as_toml_mapping(value: t.Infra.InfraValue) -> t.Infra.ContainerDict | None:
         """Check if value is a MutableMapping and return it typed, otherwise None."""
-        normalized_value = FlextInfraUtilitiesToml.toml_as_mapping(value)
+        normalized_value = FlextCliUtilities.Cli.toml_as_mapping(value)
         if normalized_value is None:
             return None
         try:
@@ -54,10 +53,10 @@ class FlextInfraUtilitiesToml(u.Cli):
 
         SSOT for TOML value normalization — replaces ``normalize_container_value``.
         """
-        normalized = FlextInfraUtilitiesToml.toml_unwrap_item(value)
+        normalized = FlextCliUtilities.Cli.toml_unwrap_item(value)
         if normalized is None or isinstance(normalized, (str, int, float, bool)):
             return normalized
-        if u.is_mapping(normalized):
+        if isinstance(normalized, Mapping):
             try:
                 return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(normalized)
             except ValidationError:
@@ -77,27 +76,9 @@ class FlextInfraUtilitiesToml(u.Cli):
         """Retrieve and normalize a value from a TOML container by key."""
         if not isinstance(key, str):
             return None
-        raw_value = FlextInfraUtilitiesToml.toml_get(container, key)
-        if raw_value is None:
-            return None
-        if isinstance(
-            raw_value,
-            (str, int, float, bool, type(None), BaseModel, Path),
-        ):
-            return raw_value
-        if u.is_mapping(raw_value):
-            try:
-                return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
-                    raw_value,
-                )
-            except ValidationError:
-                return None
-        try:
-            return t.Cli.JSON_LIST_ADAPTER.validate_python(
-                raw_value,
-            )
-        except ValidationError:
-            return None
+        return FlextInfraUtilitiesToml.unwrap_item(
+            FlextCliUtilities.Cli.toml_get(container, key),
+        )
 
     @staticmethod
     def sync_value(
@@ -109,7 +90,7 @@ class FlextInfraUtilitiesToml(u.Cli):
     ) -> bool:
         """Synchronize a scalar TOML value when it differs."""
         current = FlextInfraUtilitiesToml.unwrap_item(
-            FlextInfraUtilitiesToml.toml_get(container, key)
+            FlextCliUtilities.Cli.toml_get(container, key)
         )
         if current == expected:
             return False

@@ -6,11 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import pathlib
 from pathlib import Path
 
 import pytest
 from flext_tests import tm
+
 from tests import m, t, u
 
 
@@ -163,6 +163,5 @@ class TestWriteMarkdown:
             msg = "Permission denied"
             raise OSError(msg)
 
-        monkeypatch.setattr(pathlib.Path, "write_text", mock_write_text)
         result = u.Infra.write_markdown(md_file, ["test"])
         tm.fail(result, has="markdown write error")

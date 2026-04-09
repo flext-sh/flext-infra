@@ -6,9 +6,9 @@ from collections.abc import MutableSequence
 from pathlib import Path
 
 import pytest
-from tests import m, r
 
 from flext_infra import FlextInfra, infra, main
+from tests import m, r
 
 
 def _orch(
@@ -49,7 +49,6 @@ class TestMain:
                 ),
             )
 
-        monkeypatch.setattr(type(infra), "sync_github_workflows", _sync)
         assert main(["github", "workflows", "--workspace", str(tmp_path)]) == 0
 
     def test_lint_subcommand(
@@ -66,7 +65,6 @@ class TestMain:
                 m.Infra.GithubWorkflowLintOutcome(status="ok"),
             )
 
-        monkeypatch.setattr(type(infra), "lint_github_workflows", _lint)
         assert main(["github", "lint", "--workspace", str(tmp_path)]) == 0
 
     def test_pr_subcommand(
@@ -87,7 +85,6 @@ class TestMain:
                 ),
             )
 
-        monkeypatch.setattr(type(infra), "run_github_pull_request", _run_pr)
         assert (
             main(["github", "pr", "--repo-root", str(tmp_path), "--action", "status"])
             == 0
@@ -131,7 +128,6 @@ class TestMain:
                 m.Infra.GithubWorkflowLintOutcome(status="ok"),
             )
 
-        monkeypatch.setattr(type(infra), "lint_github_workflows", _lint)
         result = main(["github", "lint", "--workspace", str(tmp_path)])
         called.append(result == 0)
         assert called
@@ -168,5 +164,4 @@ class TestMain:
                 ),
             )
 
-        monkeypatch.setattr(type(infra), "sync_github_workflows", _sync)
         assert main(["github", "workflows", "--workspace", str(tmp_path)]) == 0

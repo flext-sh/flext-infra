@@ -1,4 +1,4 @@
-"""Tests for rope semantic analysis utilities (get_module_imports, get_module_classes, etc.)."""
+"""Tests for rope semantic analysis utilities."""
 
 from __future__ import annotations
 
@@ -6,9 +6,9 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
-from tests import t
 
-from flext_infra import FlextInfraUtilitiesRopeAnalysis
+from flext_infra import FlextInfraUtilitiesRope
+from tests import t
 
 type RopeWorkspace = t.Pair[t.Infra.RopeProject, Path]
 
@@ -57,7 +57,7 @@ active_dog = Dog()
 """,
     )
 
-    project = FlextInfraUtilitiesRopeAnalysis.init_rope_project(
+    project = FlextInfraUtilitiesRope.init_rope_project(
         tmp_path,
         project_prefix="__never__",
     )
@@ -70,7 +70,7 @@ def models_resource(
     rope_workspace: RopeWorkspace,
 ) -> t.Infra.RopeResource:
     proj, workspace = rope_workspace
-    res = FlextInfraUtilitiesRopeAnalysis.get_resource_from_path(
+    res = FlextInfraUtilitiesRope.get_resource_from_path(
         proj,
         workspace / "example" / "models.py",
     )
@@ -83,7 +83,7 @@ def services_resource(
     rope_workspace: RopeWorkspace,
 ) -> t.Infra.RopeResource:
     proj, workspace = rope_workspace
-    res = FlextInfraUtilitiesRopeAnalysis.get_resource_from_path(
+    res = FlextInfraUtilitiesRope.get_resource_from_path(
         proj,
         workspace / "example" / "services.py",
     )
@@ -98,7 +98,7 @@ class TestGetModuleImports:
         services_resource: t.Infra.RopeResource,
     ) -> None:
         proj, _ = rope_workspace
-        imports = FlextInfraUtilitiesRopeAnalysis.get_module_imports(
+        imports = FlextInfraUtilitiesRope.get_semantic_module_imports(
             proj,
             services_resource,
         )
@@ -110,7 +110,7 @@ class TestGetModuleImports:
         models_resource: t.Infra.RopeResource,
     ) -> None:
         proj, _ = rope_workspace
-        imports = FlextInfraUtilitiesRopeAnalysis.get_module_imports(
+        imports = FlextInfraUtilitiesRope.get_semantic_module_imports(
             proj,
             models_resource,
         )
@@ -127,7 +127,7 @@ class TestGetModuleClasses:
         models_resource: t.Infra.RopeResource,
     ) -> None:
         proj, _ = rope_workspace
-        classes = FlextInfraUtilitiesRopeAnalysis.get_module_classes(
+        classes = FlextInfraUtilitiesRope.get_module_classes(
             proj,
             models_resource,
         )
@@ -140,7 +140,7 @@ class TestGetModuleClasses:
         services_resource: t.Infra.RopeResource,
     ) -> None:
         proj, _ = rope_workspace
-        classes = FlextInfraUtilitiesRopeAnalysis.get_module_classes(
+        classes = FlextInfraUtilitiesRope.get_module_classes(
             proj,
             services_resource,
         )
@@ -155,7 +155,7 @@ class TestGetClassBases:
         models_resource: t.Infra.RopeResource,
     ) -> None:
         proj, _ = rope_workspace
-        bases = FlextInfraUtilitiesRopeAnalysis.get_class_bases(
+        bases = FlextInfraUtilitiesRope.get_class_bases(
             proj,
             models_resource,
             "Dog",
@@ -168,7 +168,7 @@ class TestGetClassBases:
         models_resource: t.Infra.RopeResource,
     ) -> None:
         proj, _ = rope_workspace
-        bases = FlextInfraUtilitiesRopeAnalysis.get_class_bases(
+        bases = FlextInfraUtilitiesRope.get_class_bases(
             proj,
             models_resource,
             "Animal",
@@ -182,12 +182,12 @@ class TestGetClassBases:
         models_resource: t.Infra.RopeResource,
     ) -> None:
         proj, _ = rope_workspace
-        bases = FlextInfraUtilitiesRopeAnalysis.get_class_bases(
+        bases = FlextInfraUtilitiesRope.get_class_bases(
             proj,
             models_resource,
             "DoesNotExist",
         )
-        assert bases == []
+        assert not bases
 
 
 class TestGetClassMethods:
@@ -197,7 +197,7 @@ class TestGetClassMethods:
         models_resource: t.Infra.RopeResource,
     ) -> None:
         proj, _ = rope_workspace
-        methods = FlextInfraUtilitiesRopeAnalysis.get_class_methods(
+        methods = FlextInfraUtilitiesRope.get_class_methods(
             proj,
             models_resource,
             "Dog",
@@ -213,7 +213,7 @@ class TestGetClassMethods:
         models_resource: t.Infra.RopeResource,
     ) -> None:
         proj, _ = rope_workspace
-        methods = FlextInfraUtilitiesRopeAnalysis.get_class_methods(
+        methods = FlextInfraUtilitiesRope.get_class_methods(
             proj,
             models_resource,
             "Dog",
@@ -226,7 +226,7 @@ class TestGetClassMethods:
         models_resource: t.Infra.RopeResource,
     ) -> None:
         proj, _ = rope_workspace
-        methods = FlextInfraUtilitiesRopeAnalysis.get_class_methods(
+        methods = FlextInfraUtilitiesRope.get_class_methods(
             proj, models_resource, "Dog", include_private=True
         )
         assert "_wag" in methods
@@ -238,7 +238,7 @@ class TestGetClassMethods:
         models_resource: t.Infra.RopeResource,
     ) -> None:
         proj, _ = rope_workspace
-        methods = FlextInfraUtilitiesRopeAnalysis.get_class_methods(
+        methods = FlextInfraUtilitiesRope.get_class_methods(
             proj,
             models_resource,
             "DoesNotExist",
@@ -253,7 +253,7 @@ class TestFindDefinitionOffset:
         models_resource: t.Infra.RopeResource,
     ) -> None:
         proj, _ = rope_workspace
-        offset = FlextInfraUtilitiesRopeAnalysis.find_definition_offset(
+        offset = FlextInfraUtilitiesRope.find_definition_offset(
             proj,
             models_resource,
             "Dog",

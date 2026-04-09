@@ -14,6 +14,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".namespace_validator": ("FlextInfraNamespaceValidator",),
         ".pytest_diag": ("FlextInfraPytestDiagExtractor",),
         ".scanner": ("FlextInfraTextPatternScanner",),
+        ".silent_failure": ("FlextInfraSilentFailureValidator",),
         ".skill_validator": ("FlextInfraSkillValidator",),
         ".stub_chain": ("FlextInfraStubSupplyChain",),
     },

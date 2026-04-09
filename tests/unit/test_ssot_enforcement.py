@@ -6,6 +6,7 @@ import ast
 from pathlib import Path
 
 import pytest
+
 from tests import t
 
 WORKSPACE = Path(__file__).resolve().parents[3]  # flext/ root

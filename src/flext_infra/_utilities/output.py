@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from typing import ClassVar
 
 from flext_infra import (
     FlextInfraUtilitiesOutputFailureSummary,
@@ -16,9 +17,9 @@ from flext_infra import (
 class FlextInfraUtilitiesOutput(FlextInfraUtilitiesOutputFailureSummary):
     """Terminal output formatter with color and unicode support."""
 
-    _stream: p.Infra.OutputStream = sys.stderr
-    _use_color: bool = False
-    _use_unicode: bool = False
+    _stream: ClassVar[p.Infra.OutputStream] = sys.stderr
+    _use_color: ClassVar[bool] = False
+    _use_unicode: ClassVar[bool] = False
 
     @classmethod
     def setup(

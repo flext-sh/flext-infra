@@ -5,10 +5,10 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import t
 
 import flext_infra as detector_module
 from flext_core import r
+from tests import t
 
 
 class _ReportStub:
@@ -68,11 +68,7 @@ def _setup(
         del path
         return True
 
-    monkeypatch.setattr(Path, "exists", _exists)
-
-    detector = detector_module.FlextInfraRuntimeDevDependencyDetector()
-    monkeypatch.setattr(detector, "deps", deps)
-    return detector
+    return detector_module.FlextInfraRuntimeDevDependencyDetector()
 
 
 class TestDetectorReportFlags:

@@ -5,10 +5,10 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import t, u
 
 from flext_core import r
-from flext_infra import FlextInfraInternalDependencySyncService, internal_sync
+from flext_infra import FlextInfraInternalDependencySyncService, u
+from tests import t
 
 
 class TestMain:
@@ -35,10 +35,8 @@ class TestMain:
         ) -> r[int]:
             return r[int].ok(0)
 
-        monkeypatch.setattr(argparse.ArgumentParser, "parse_args", _parse_args)
-        monkeypatch.setattr(u.Infra, "resolve", staticmethod(_resolve))
         monkeypatch.setattr(
-            internal_sync.FlextInfraInternalDependencySyncService,
+            FlextInfraInternalDependencySyncService,
             "sync",
             _sync,
         )
@@ -67,10 +65,8 @@ class TestMain:
         ) -> r[int]:
             return r[int].fail("sync failed")
 
-        monkeypatch.setattr(argparse.ArgumentParser, "parse_args", _parse_args)
-        monkeypatch.setattr(u.Infra, "resolve", staticmethod(_resolve))
         monkeypatch.setattr(
-            internal_sync.FlextInfraInternalDependencySyncService,
+            FlextInfraInternalDependencySyncService,
             "sync",
             _sync,
         )

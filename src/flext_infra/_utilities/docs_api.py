@@ -12,8 +12,7 @@ from flext_cli import u
 from flext_infra import (
     FlextInfraUtilitiesDiscoveryScanning,
     FlextInfraUtilitiesDocsScope,
-    FlextInfraUtilitiesRopeCore,
-    FlextInfraUtilitiesRopeHelpers,
+    FlextInfraUtilitiesRope,
     c,
     m,
     t,
@@ -73,7 +72,7 @@ class FlextInfraUtilitiesDocsApi(u.Cli):
         for (
             assignment_name,
             value,
-        ) in FlextInfraUtilitiesRopeHelpers.get_module_level_assignments(source):
+        ) in FlextInfraUtilitiesRope.get_module_level_assignments(source):
             if assignment_name == name:
                 return cls._STRING_RE.findall(value)
         return []
@@ -92,7 +91,7 @@ class FlextInfraUtilitiesDocsApi(u.Cli):
     def _has_symbol_docstring(source: str, symbol_name: str) -> bool:
         """Return whether one exported class/function starts with a docstring."""
         for kind in ("class", "function"):
-            block = FlextInfraUtilitiesRopeHelpers.extract_definition(
+            block = FlextInfraUtilitiesRope.extract_definition(
                 source,
                 symbol_name,
                 kind=kind,
@@ -123,7 +122,7 @@ class FlextInfraUtilitiesDocsApi(u.Cli):
         target_map: Mapping[str, str],
     ) -> Sequence[str]:
         """Use Rope to verify which exported symbols resolve in real modules."""
-        rope_project = FlextInfraUtilitiesRopeCore.init_rope_project(project_root)
+        rope_project = FlextInfraUtilitiesRope.init_rope_project(project_root)
         try:
             symbols: MutableSequence[str] = []
             for export_name, module_name in target_map.items():
@@ -132,15 +131,16 @@ class FlextInfraUtilitiesDocsApi(u.Cli):
                 )
                 if not module_file.exists():
                     continue
-                resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
+                resource = FlextInfraUtilitiesRope.get_resource_from_path(
                     rope_project,
                     module_file,
                 )
                 if resource is None:
                     continue
-                pymodule = FlextInfraUtilitiesRopeCore.get_pycore(
+                pymodule = FlextInfraUtilitiesRope.get_pymodule(
                     rope_project,
-                ).resource_to_pyobject(resource)
+                    resource,
+                )
                 if export_name in pymodule.get_attributes():
                     symbols.append(export_name)
             return tuple(dict.fromkeys(symbols))

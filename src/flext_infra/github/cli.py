@@ -2,14 +2,41 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Protocol
+
 from flext_cli import cli as cli_service
 from flext_infra import c, m, t
+
+if TYPE_CHECKING:
+    from flext_core import r
+
+
+class _GithubCliHandlers(Protocol):
+    def sync_github_workflows(
+        self,
+        params: m.Infra.GithubWorkflowSyncRequest,
+    ) -> r[m.Infra.GithubWorkflowSyncReport]: ...
+
+    def lint_github_workflows(
+        self,
+        params: m.Infra.GithubWorkflowLintRequest,
+    ) -> r[m.Infra.GithubWorkflowLintOutcome]: ...
+
+    def run_github_pull_request(
+        self,
+        params: m.Infra.GithubPullRequestRequest,
+    ) -> r[m.Infra.GithubPullRequestOutcome]: ...
+
+    def run_github_workspace_pull_requests(
+        self,
+        params: m.Infra.GithubPullRequestWorkspaceRequest,
+    ) -> r[m.Infra.GithubPullRequestWorkspaceReport]: ...
 
 
 class FlextInfraCliGithub:
     """GitHub CLI group — composed into FlextInfraCli via MRO."""
 
-    def register_github(self, app: t.Cli.CliApp) -> None:
+    def register_github(self: _GithubCliHandlers, app: t.Cli.CliApp) -> None:
         """Register github commands on the given Typer app."""
         cli_service.register_result_routes(
             app,

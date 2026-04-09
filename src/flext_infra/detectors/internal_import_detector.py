@@ -34,7 +34,7 @@ class FlextInfraInternalImportDetector(FlextInfraScanFileMixin, p.Infra.Scanner)
         res = u.Infra.get_resource_from_path(rope_project, file_path)
         if res is None:
             return []
-        imports = u.Infra.get_module_imports(rope_project, res)
+        imports = u.Infra.get_semantic_module_imports(rope_project, res)
         return [
             m.Infra.InternalImportViolation(
                 file=str(file_path),

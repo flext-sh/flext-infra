@@ -10,16 +10,6 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import (
-    TestsFlextInfraHelpers,
-    create_check_project_iter_stub,
-    create_check_project_stub,
-    create_gate_execution,
-    m,
-    make_issue,
-    run_gate_check,
-    t,
-)
 
 from flext_infra import (
     FlextInfraGate,
@@ -27,6 +17,11 @@ from flext_infra import (
     FlextInfraMypyGate,
     FlextInfraRuffFormatGate,
     FlextInfraWorkspaceChecker,
+)
+from tests import (
+    m,
+    t,
+    u,
 )
 
 
@@ -40,16 +35,16 @@ class TestErrorReporting:
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         reports_dir = tmp_path / "reports"
-        issue = make_issue(file="test.py")
-        gate_exec = create_gate_execution(issues=[issue])
+        issue = u.Infra.Tests.make_issue(file="test.py")
+        gate_exec = u.Infra.Tests.create_gate_execution(issues=[issue])
         project = m.Infra.ProjectResult(project="p1", gates={"lint": gate_exec})
 
         monkeypatch.setattr(
             checker,
             "_check_project_with_ctx",
-            create_check_project_stub(project),
+            u.Infra.Tests.create_check_project_stub(project),
         )
-        TestsFlextInfraHelpers.mk_project(tmp_path, "p1")
+        u.Infra.Tests.mk_project(tmp_path, "p1")
 
         result = checker.run_projects(["p1"], ["lint"], reports_dir=reports_dir)
         tm.ok(result)
@@ -63,18 +58,18 @@ class TestErrorReporting:
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         reports_dir = tmp_path / "reports"
-        issue = make_issue(file="test.py")
-        exec_with = create_gate_execution(issues=[issue])
-        exec_without = create_gate_execution(issues=[])
+        issue = u.Infra.Tests.make_issue(file="test.py")
+        exec_with = u.Infra.Tests.create_gate_execution(issues=[issue])
+        exec_without = u.Infra.Tests.create_gate_execution(issues=[])
         project1 = m.Infra.ProjectResult(project="p1", gates={"lint": exec_with})
         project2 = m.Infra.ProjectResult(project="p2", gates={"lint": exec_without})
         monkeypatch.setattr(
             checker,
             "_check_project_with_ctx",
-            create_check_project_iter_stub([project1, project2]),
+            u.Infra.Tests.create_check_project_iter_stub([project1, project2]),
         )
-        TestsFlextInfraHelpers.mk_project(tmp_path, "p1")
-        TestsFlextInfraHelpers.mk_project(tmp_path, "p2")
+        u.Infra.Tests.mk_project(tmp_path, "p1")
+        u.Infra.Tests.mk_project(tmp_path, "p2")
         result = checker.run_projects(["p1", "p2"], ["lint"], reports_dir=reports_dir)
         tm.ok(result)
         tm.that(len(result.value), eq=2)
@@ -92,9 +87,9 @@ class TestMarkdownReportEmptyGates:
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         reports_dir = tmp_path / "reports"
-        issue = make_issue(file="test.py")
-        exec_with = create_gate_execution(issues=[issue])
-        exec_without = create_gate_execution(issues=[])
+        issue = u.Infra.Tests.make_issue(file="test.py")
+        exec_with = u.Infra.Tests.create_gate_execution(issues=[issue])
+        exec_without = u.Infra.Tests.create_gate_execution(issues=[])
         project = m.Infra.ProjectResult(
             project="p1",
             gates={"lint": exec_with, "format": exec_without},
@@ -102,9 +97,9 @@ class TestMarkdownReportEmptyGates:
         monkeypatch.setattr(
             checker,
             "_check_project_with_ctx",
-            create_check_project_stub(project),
+            u.Infra.Tests.create_check_project_stub(project),
         )
-        TestsFlextInfraHelpers.mk_project(tmp_path, "p1")
+        u.Infra.Tests.mk_project(tmp_path, "p1")
         result = checker.run_projects(
             ["p1"],
             ["lint", "format"],
@@ -124,7 +119,7 @@ class TestMypyEmptyLinesInOutput:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        proj_dir = TestsFlextInfraHelpers.mk_project(tmp_path, "p1")
+        proj_dir = u.Infra.Tests.mk_project(tmp_path, "p1")
         (proj_dir / "src").mkdir()
         (proj_dir / "src" / "main.py").write_text("# code")
         line1 = '{"file": "a.py", "line": 1, "column": 0, "code": "E001", "message": "Error", "severity": "error"}'
@@ -158,7 +153,6 @@ class TestMypyEmptyLinesInOutput:
             del _project_dir, _dirs
             return ["src"]
 
-        monkeypatch.setattr(FlextInfraGate, "_run", _fake_run)
         monkeypatch.setattr(
             FlextInfraMypyGate,
             "_existing_check_dirs",
@@ -169,7 +163,7 @@ class TestMypyEmptyLinesInOutput:
             "_dirs_with_py",
             staticmethod(_fake_dirs_with_py),
         )
-        result = run_gate_check(FlextInfraMypyGate, tmp_path, proj_dir)
+        result = u.Infra.Tests.run_gate_check(FlextInfraMypyGate, tmp_path, proj_dir)
         tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=2)
 
@@ -182,7 +176,7 @@ class TestGoFmtEmptyLinesInOutput:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        proj_dir = TestsFlextInfraHelpers.mk_project(tmp_path, "p1")
+        proj_dir = u.Infra.Tests.mk_project(tmp_path, "p1")
         (proj_dir / "go.mod").write_text("module test\n")
         (proj_dir / "main.go").write_text("package main\n")
         call_idx = [0]
@@ -207,8 +201,7 @@ class TestGoFmtEmptyLinesInOutput:
             call_idx[0] += 1
             return results[index]
 
-        monkeypatch.setattr(FlextInfraGate, "_run", _fake_run)
-        result = run_gate_check(FlextInfraGoGate, tmp_path, proj_dir)
+        result = u.Infra.Tests.run_gate_check(FlextInfraGoGate, tmp_path, proj_dir)
         tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=2)
 
@@ -221,7 +214,7 @@ class TestRuffFormatDuplicateFiles:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        proj_dir = TestsFlextInfraHelpers.mk_project(tmp_path, "p1")
+        proj_dir = u.Infra.Tests.mk_project(tmp_path, "p1")
         (proj_dir / "src").mkdir()
         (proj_dir / "src" / "main.py").write_text("# code")
 
@@ -239,7 +232,10 @@ class TestRuffFormatDuplicateFiles:
                 exit_code=1,
             )
 
-        monkeypatch.setattr(FlextInfraGate, "_run", _fake_run)
-        result = run_gate_check(FlextInfraRuffFormatGate, tmp_path, proj_dir)
+        result = u.Infra.Tests.run_gate_check(
+            FlextInfraRuffFormatGate,
+            tmp_path,
+            proj_dir,
+        )
         tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=2)

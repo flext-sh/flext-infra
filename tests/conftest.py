@@ -6,9 +6,13 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
+
 from tests import t, u
 
-pytest_plugins = ["flext_tests.conftest_plugin"]
+pytest_plugins = [
+    "flext_tests.conftest_plugin",
+    "tests.fixtures",
+]
 
 
 @pytest.fixture

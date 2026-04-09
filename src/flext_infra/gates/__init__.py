@@ -16,6 +16,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".pyright": ("FlextInfraPyrightGate",),
         ".ruff_format": ("FlextInfraRuffFormatGate",),
         ".ruff_lint": ("FlextInfraRuffLintGate",),
+        ".silent_failure": ("FlextInfraSilentFailureGate",),
     },
 )
 

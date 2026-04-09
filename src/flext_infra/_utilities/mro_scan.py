@@ -13,7 +13,7 @@ from pathlib import Path
 
 from flext_infra import (
     FlextInfraUtilitiesIteration,
-    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRope,
     c,
     m,
     t,
@@ -51,14 +51,11 @@ class FlextInfraUtilitiesRefactorMroScan:
                     project_root=project_root, target_spec=target_spec
                 ):
                     scanned += 1
-                    rope_proj = FlextInfraUtilitiesRefactorMroScan._init_rope_project(
-                        project_root
-                    )
+                    rope_proj = FlextInfraUtilitiesRope.init_rope_project(project_root)
                     try:
-                        res = (
-                            FlextInfraUtilitiesRefactorMroScan._get_resource_from_path(
-                                rope_proj, file_path
-                            )
+                        res = FlextInfraUtilitiesRope.get_resource_from_path(
+                            rope_proj,
+                            file_path,
                         )
                         if res:
                             report = FlextInfraUtilitiesRefactorMroScan.scan_file(
@@ -91,9 +88,9 @@ class FlextInfraUtilitiesRefactorMroScan:
         ])
 
         candidates: list[m.Infra.MROSymbolCandidate] = []
-        rope_proj = FlextInfraUtilitiesRefactorMroScan._init_rope_project(project_root)
+        rope_proj = FlextInfraUtilitiesRope.init_rope_project(project_root)
         try:
-            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_proj, resource)
+            pymodule = FlextInfraUtilitiesRope.get_pymodule(rope_proj, resource)
             lines = source.splitlines()
 
             for name, pyname in pymodule.get_attributes().items():
@@ -310,7 +307,7 @@ class FlextInfraUtilitiesRefactorMroScan:
         obj: object,
         class_header: str,
     ) -> bool:
-        if FlextInfraUtilitiesRopeCore.is_rope_abstract_class_like(obj):
+        if FlextInfraUtilitiesRope.is_rope_abstract_class_like(obj):
             try:
                 bases = tuple(obj.get_superclasses())
                 if any("Protocol" in str(b.get_name()) for b in bases):
@@ -352,20 +349,6 @@ class FlextInfraUtilitiesRefactorMroScan:
                 ):
                     cands.add(file_path)
         return sorted(cands)
-
-    @staticmethod
-    def _init_rope_project(project_root: Path) -> t.Infra.RopeProject:
-        return FlextInfraUtilitiesRopeCore.init_rope_project(project_root)
-
-    @staticmethod
-    def _get_resource_from_path(
-        rope_project: t.Infra.RopeProject,
-        file_path: Path,
-    ) -> t.Infra.RopeResource | None:
-        return FlextInfraUtilitiesRopeCore.get_resource_from_path(
-            rope_project,
-            file_path,
-        )
 
 
 __all__ = ["FlextInfraUtilitiesRefactorMroScan"]

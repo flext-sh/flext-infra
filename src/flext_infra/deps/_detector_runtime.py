@@ -71,11 +71,16 @@ class FlextInfraDependencyDetectorRuntime:
             typing_deps = deps_service  # narrowed by isinstance above
             limits_data = typing_deps.load_dependency_limits(limits_path)
             if limits_data:
-                python_cfg = limits_data.get(c.Infra.PYTHON)
+                python_cfg: t.Infra.ContainerDict = (
+                    t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
+                        limits_data.get(c.Infra.PYTHON),
+                    )
+                    if u.is_mapping(limits_data.get(c.Infra.PYTHON))
+                    else {}
+                )
                 python_version = (
                     str(python_cfg.get(c.Infra.VERSION))
-                    if u.is_mapping(python_cfg)
-                    and python_cfg.get(c.Infra.VERSION) is not None
+                    if python_cfg.get(c.Infra.VERSION) is not None
                     else None
                 )
                 report_model.dependency_limits = self._dependency_limits_factory(

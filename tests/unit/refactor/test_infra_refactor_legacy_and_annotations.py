@@ -5,12 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import cast
 
-from tests import t
-
 from flext_infra import (
     FlextInfraRefactorEnsureFutureAnnotationsRule,
     FlextInfraRefactorLegacyRemovalRule,
 )
+from tests import t
 
 
 def _create_resource(

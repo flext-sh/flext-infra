@@ -2,19 +2,36 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
+from typing import TYPE_CHECKING
+
 from flext_cli import cli as cli_service
 from flext_infra import (
     FlextInfraOrchestratorService,
     FlextInfraProjectMigrator,
     FlextInfraSyncService,
     FlextInfraWorkspaceDetector,
+    c,
     m,
+    r,
     t,
 )
 
 
 class FlextInfraCliWorkspace:
     """Workspace CLI group — composed into FlextInfraCli via MRO."""
+
+    if TYPE_CHECKING:
+        detect_workspace: Callable[
+            [FlextInfraWorkspaceDetector],
+            r[c.Infra.WorkspaceMode],
+        ]
+        sync_workspace: Callable[[FlextInfraSyncService], r[m.Infra.SyncResult]]
+        orchestrate_workspace: Callable[[FlextInfraOrchestratorService], r[bool]]
+        migrate_workspace: Callable[
+            [FlextInfraProjectMigrator],
+            r[Sequence[m.Infra.MigrationResult]],
+        ]
 
     def register_workspace(self, app: t.Cli.CliApp) -> None:
         """Register workspace commands on the given Typer app."""

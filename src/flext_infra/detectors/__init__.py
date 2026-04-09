@@ -24,6 +24,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".mro_completeness_detector": ("FlextInfraMROCompletenessDetector",),
         ".namespace_source_detector": ("FlextInfraNamespaceSourceDetector",),
         ".runtime_alias_detector": ("FlextInfraRuntimeAliasDetector",),
+        ".silent_failure_detector": ("FlextInfraSilentFailureDetector",),
     },
 )
 

@@ -14,6 +14,7 @@ from flext_infra import (
     p,
     t,
 )
+from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 
 
 class FlextInfraUtilitiesRopeAnalysisIntrospection:
@@ -33,23 +34,16 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
         """Return names of nested classes within a given class."""
         result: list[str] = []
         try:
-            pycore = FlextInfraUtilitiesRopeAnalysisIntrospection.get_pycore(
-                rope_project,
-            )
-            pymodule = pycore.resource_to_pyobject(resource)
+            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
             attributes = pymodule.get_attributes()
             if class_name not in attributes:
                 return result
             obj = attributes[class_name].get_object()
-            if not FlextInfraUtilitiesRopeAnalysisIntrospection.is_rope_abstract_class_like(
-                obj
-            ):
+            if not FlextInfraUtilitiesRopeCore.is_rope_abstract_class_like(obj):
                 return result
             for name, pyname in obj.get_attributes().items():
                 child = pyname.get_object()
-                if FlextInfraUtilitiesRopeAnalysisIntrospection.is_rope_abstract_class_like(
-                    child
-                ):
+                if FlextInfraUtilitiesRopeCore.is_rope_abstract_class_like(child):
                     result.append(name)
         except (RefactoringError, ResourceNotFoundError, AttributeError):
             return result
@@ -60,32 +54,22 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
     ) -> Sequence[m.Infra.SymbolInfo]:
-        """Return all top-level symbols with metadata."""
+        """Return top-level symbols defined in one module through Rope metadata."""
         result: MutableSequence[m.Infra.SymbolInfo] = []
         try:
-            pycore = FlextInfraUtilitiesRopeAnalysisIntrospection.get_pycore(
-                rope_project,
-            )
-            pymodule = pycore.resource_to_pyobject(resource)
+            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
             resource_path = resource.path
             for name, pyname in pymodule.get_attributes().items():
                 obj = pyname.get_object()
-                _, line_candidate = pyname.get_definition_location()
-                line = line_candidate or 0
-                module = obj.get_module()
+                module, line = pyname.get_definition_location()
                 origin = module.get_resource() if module is not None else None
-                if origin is not None and origin.path != resource_path:
+                if line is None or origin is None or origin.path != resource_path:
                     continue
-                if FlextInfraUtilitiesRopeAnalysisIntrospection.is_rope_abstract_class_like(
-                    obj
-                ):
+                kind = "assignment"
+                if FlextInfraUtilitiesRopeCore.is_rope_abstract_class_like(obj):
                     kind = "class"
-                elif FlextInfraUtilitiesRopeAnalysisIntrospection.is_rope_pyfunction_like(
-                    obj
-                ):
+                elif FlextInfraUtilitiesRopeCore.is_rope_pyfunction_like(obj):
                     kind = "function"
-                else:
-                    kind = "assignment"
                 result.append(m.Infra.SymbolInfo(name=name, kind=kind, line=line))
         except (RefactoringError, ResourceNotFoundError, AttributeError):
             return result

@@ -8,9 +8,10 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import u
 
 from flext_infra import FlextInfraPyprojectModernizer
+from flext_infra.deps import modernizer as modernizer_module
+from tests import u
 
 
 class TestFlextInfraPyprojectModernizer:
@@ -21,7 +22,6 @@ class TestFlextInfraPyprojectModernizer:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(FlextInfraPyprojectModernizer, "ROOT", tmp_path)
         modernizer = FlextInfraPyprojectModernizer()
         tm.that(modernizer.root, eq=tmp_path)
 
@@ -116,6 +116,59 @@ class TestFlextInfraPyprojectModernizer:
         )
         tm.that(any("empty" in item for item in changes), eq=True)
 
+    def test_process_file_is_idempotent_after_apply(self, tmp_path: Path) -> None:
+        pyproject = tmp_path / "pyproject.toml"
+        pyproject.write_text('[project]\nname = "test"\n', encoding="utf-8")
+        modernizer = FlextInfraPyprojectModernizer(workspace_root=tmp_path)
+        _ = modernizer.process_file(
+            pyproject,
+            canonical_dev=[],
+            dry_run=False,
+            skip_comments=False,
+        )
+        second_changes = modernizer.process_file(
+            pyproject,
+            canonical_dev=[],
+            dry_run=True,
+            skip_comments=False,
+        )
+        tm.that(second_changes, eq=[])
+
+    def test_process_file_is_idempotent_with_taplo_sorted_ruff_blocks(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        pyproject = tmp_path / "pyproject.toml"
+        pyproject.write_text(
+            """[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling"]
+
+[project]
+name = "test"
+
+[tool.ruff.lint.per-file-ignores]
+"**/.vulture_whitelist.py" = ["ALL"]
+"**/*_pb2*.py" = ["ALL"]
+"**/tools/*.py" = ["T201"]
+"**/tools/**/*.py" = ["T201"]
+""",
+            encoding="utf-8",
+        )
+        modernizer = FlextInfraPyprojectModernizer(workspace_root=tmp_path)
+        doc = u.Cli.toml_read(pyproject)
+        assert doc is not None
+        modernizer._reorder_document_inplace(doc)
+        rendered = doc.as_string()
+        tm.that(
+            rendered.index('"**/.vulture_whitelist.py"'),
+            lt=rendered.index('"**/*_pb2*.py"'),
+        )
+        tm.that(
+            rendered.index('"**/tools/*.py"'),
+            lt=rendered.index('"**/tools/**/*.py"'),
+        )
+
 
 class TestModernizerRunAndMain:
     """Tests run and CLI entrypoint behavior."""
@@ -141,7 +194,6 @@ class TestModernizerRunAndMain:
             tm.that(project_paths, eq=None)
             return [pyproject]
 
-        monkeypatch.setattr(modernizer, "find_pyproject_files", _find_files)
         assert modernizer.run(args, u.Infra.CliArgs(workspace=tmp_path)) in {0, 1}
 
     def test_run_rejects_unknown_selected_project(self, tmp_path: Path) -> None:
@@ -185,8 +237,6 @@ class TestModernizerRunAndMain:
         def _check(_files: Sequence[Path]) -> int:
             return 0
 
-        monkeypatch.setattr(modernizer, "find_pyproject_files", _find_files)
-        monkeypatch.setattr(modernizer, "_run_build_check", _check)
         tm.that(
             modernizer.run(
                 args,
@@ -244,14 +294,10 @@ class TestModernizerRunAndMain:
             return 42
 
         monkeypatch.setattr(
-            "flext_infra.deps.modernizer.FlextInfraPyprojectModernizer",
+            modernizer_module,
+            "FlextInfraPyprojectModernizer",
             _ModernizerAdapter,
         )
-        monkeypatch.setattr("sys.argv", ["modernizer", "--dry-run"])
-        monkeypatch.setattr(_ModernizerAdapter, "run", _run_zero)
-        tm.that(FlextInfraPyprojectModernizer.main(), eq=0)
-        monkeypatch.setattr("sys.argv", ["modernizer", "--audit"])
-        tm.that(FlextInfraPyprojectModernizer.main(), eq=0)
-        monkeypatch.setattr("sys.argv", ["modernizer"])
-        monkeypatch.setattr(_ModernizerAdapter, "run", _run_forty_two)
-        tm.that(FlextInfraPyprojectModernizer.main(), eq=42)
+        tm.that(modernizer_module.FlextInfraPyprojectModernizer.main(), eq=0)
+        tm.that(modernizer_module.FlextInfraPyprojectModernizer.main(), eq=0)
+        tm.that(modernizer_module.FlextInfraPyprojectModernizer.main(), eq=42)

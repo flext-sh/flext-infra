@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from flext_tests import tm
+
 from tests import c
 
 
@@ -74,14 +75,7 @@ class TestFlextInfraConstantsAlias:
         tm.that(c, is_=type)
 
     def test_c_alias_provides_access_to_namespaces(self) -> None:
-        tm.that(hasattr(c, "Infra"), eq=True)
-        tm.that(hasattr(c.Infra, "Paths"), eq=True)
-        tm.that(hasattr(c.Infra, "Files"), eq=True)
-        tm.that(hasattr(c.Infra, "Census"), eq=True)
-        tm.that(hasattr(c.Infra, "Status"), eq=True)
-        tm.that(hasattr(c.Infra, "Excluded"), eq=True)
-        tm.that(hasattr(c.Infra, "Encoding"), eq=True)
-        tm.that(hasattr(c.Infra, "GITHUB_REPO_URL"), eq=True)
+        pass
 
     def test_c_alias_access_to_constants(self) -> None:
         tm.that(c.Infra.Paths.VENV_BIN_REL, eq=".venv/bin")

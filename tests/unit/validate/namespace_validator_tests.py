@@ -6,9 +6,9 @@ import re
 from pathlib import Path
 
 from flext_tests import tm
-from tests import m
 
 from flext_infra import FlextInfraNamespaceValidator
+from tests import m
 
 _FIXTURES_DIR = Path(__file__).parent.parent.parent / "fixtures" / "namespace_validator"
 

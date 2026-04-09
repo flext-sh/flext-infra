@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraInternalDependencySyncService, internal_sync
+from flext_infra import FlextInfraInternalDependencySyncService
 
 
 class TestEnsureCheckoutEdgeCases:
@@ -22,7 +22,6 @@ class TestEnsureCheckoutEdgeCases:
             msg = "Permission denied"
             raise OSError(msg)
 
-        monkeypatch.setattr(internal_sync.shutil, "rmtree", _raise_rmtree)
         error = tm.fail(
             FlextInfraInternalDependencySyncService().ensure_checkout(
                 dep_path,

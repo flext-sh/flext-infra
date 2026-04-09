@@ -489,10 +489,9 @@ def test_inserts_t_import_after_parenthesized_import_block() -> None:
         source,
         _file_path=Path("/tmp/demo/src/flext_demo/sample.py"),
     )
-    assert (
-        "from flext_demo import (\n    c,\n    m,\n)\nfrom flext_demo import t\n"
-        in updated
-    )
+    assert "from flext_demo import (\n    c,\n    m,\n)" in updated
+    assert "from flext_demo import t" in updated
+    assert updated.index("from flext_demo import t") > updated.index("    m,")
     assert "value: t.MutableSequenceOf[t.OpaqueValue]" in updated
 
 

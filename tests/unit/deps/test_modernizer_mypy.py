@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import tomlkit
 from flext_tests import tm
-from tests import m, t, u
 
 from flext_infra import (
     FlextInfraEnsureMypyConfigPhase,
     FlextInfraEnsurePydanticMypyConfigPhase,
 )
+from tests import m, t, u
 
 
 def _test_tool_config() -> m.Infra.ToolConfigDocument:
@@ -67,24 +67,38 @@ class TestEnsureMypyConfigPhase:
         for key, value in tool_config.tools.mypy.boolean_settings.items():
             assert mypy_mapping[key] == value
 
-    def test_apply_includes_alias_override(self) -> None:
+    def test_apply_uses_misc_in_global_disable_codes(self) -> None:
         tool_config = _test_tool_config()
         doc = tomlkit.document()
 
         _ = FlextInfraEnsureMypyConfigPhase(tool_config).apply(doc)
 
         mypy_mapping = _mapping(_mapping(_doc_mapping(doc)["tool"])["mypy"])
-        overrides = list(_override_list(mypy_mapping["overrides"]))
-        assert {
-            "module": [
-                "*.constants",
-                "*.models",
-                "*.protocols",
-                "*.typings",
-                "*.utilities",
-            ],
-            "disable_error_code": ["misc"],
-        } in overrides
+        assert "misc" in _strings(mypy_mapping["disable_error_code"])
+
+    def test_apply_excludes_removed_test_and_namespace_overrides(self) -> None:
+        tool_config = _test_tool_config()
+        doc = tomlkit.document()
+
+        _ = FlextInfraEnsureMypyConfigPhase(tool_config).apply(doc)
+
+        mypy_mapping = _mapping(_mapping(_doc_mapping(doc)["tool"])["mypy"])
+        override_modules = {
+            tuple(_strings(_mapping(entry)["module"]))
+            for entry in _override_list(mypy_mapping["overrides"])
+        }
+        assert (
+            "*.constants",
+            "*.models",
+            "*.protocols",
+            "*.typings",
+            "*.utilities",
+        ) not in override_modules
+        assert ("tests", "tests.*", "tests.integration.*", "tests.unit.*") not in (
+            override_modules
+        )
+        assert ("tests.helpers.*",) not in override_modules
+        assert ("tests.integration.patterns.*",) not in override_modules
 
     def test_apply_replaces_managed_lists_and_overrides(self) -> None:
         tool_config = _test_tool_config()

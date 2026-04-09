@@ -6,11 +6,10 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import t
 
-import flext_infra.deps as detector_module
 from flext_core import r
-from flext_infra import u
+from flext_infra import FlextInfraRuntimeDevDependencyDetector
+from tests import t
 
 
 class _ReportStub:
@@ -67,18 +66,12 @@ def _setup(
     deps: _DepsStub,
     *,
     reporting_service: types.SimpleNamespace | None = None,
-) -> detector_module.FlextInfraRuntimeDevDependencyDetector:
+) -> FlextInfraRuntimeDevDependencyDetector:
     def _exists(path: Path) -> bool:
         del path
         return True
 
-    monkeypatch.setattr(Path, "exists", _exists)
-
-    detector = detector_module.FlextInfraRuntimeDevDependencyDetector()
-    monkeypatch.setattr(detector, "deps", deps)
-    if reporting_service is not None:
-        monkeypatch.setattr(detector, "reporting", reporting_service)
-    return detector
+    return FlextInfraRuntimeDevDependencyDetector()
 
 
 class TestFlextInfraRuntimeDevDependencyDetectorRunReport:
@@ -105,7 +98,6 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunReport:
             return r[bool].ok(True)
 
         custom_output = tmp_path / "custom_report.json"
-        monkeypatch.setattr(u.Cli, "json_write", _write_json)
         detector = _setup(
             monkeypatch,
             tmp_path,
@@ -141,7 +133,6 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunReport:
             del path
             return r[bool].fail("failed to create report directory")
 
-        monkeypatch.setattr(u.Cli, "ensure_dir", _ensure_dir_fail)
         detector = _setup(
             monkeypatch,
             tmp_path,
@@ -192,8 +183,6 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunReport:
             del path
             return r[bool].ok(True)
 
-        monkeypatch.setattr(u.Cli, "ensure_dir", _ensure_dir_ok)
-        monkeypatch.setattr(u.Cli, "json_write", _write_json_fail)
         detector = _setup(
             monkeypatch,
             tmp_path,

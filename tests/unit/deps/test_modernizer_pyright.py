@@ -8,9 +8,9 @@ from pathlib import Path
 
 import tomlkit
 from flext_tests import tm
-from tests import m, u
 
 from flext_infra import FlextInfraEnsurePyrightConfigPhase
+from tests import m, u
 
 
 def _test_tool_config() -> m.Infra.ToolConfigDocument:
@@ -89,6 +89,15 @@ class TestEnsurePyrightConfigPhase:
             sorted(typing.cast("list[str]", ignore)),
             eq=sorted([*rules.root_typings_paths, *rules.ignored_diagnostic_globs]),
         )
+        include = u.Cli.toml_unwrap_item(pyright["include"])
+        tm.that(
+            sorted(typing.cast("list[str]", include)),
+            eq=sorted([
+                f"flext-api/{rules.source_dir}",
+                f"flext-core/{rules.source_dir}",
+                f"flext-core/{rules.test_like_dirs[0]}",
+            ]),
+        )
         envs = u.Cli.toml_unwrap_item(pyright["executionEnvironments"])
         tm.that(envs, is_=list)
         tm.that(
@@ -130,6 +139,11 @@ class TestEnsurePyrightConfigPhase:
             return
         tm.that(u.Cli.toml_unwrap_item(pyright["venv"]), eq=rules.venv_name)
         tm.that(u.Cli.toml_unwrap_item(pyright["venvPath"]), eq=rules.project_venv_path)
+        include = u.Cli.toml_unwrap_item(pyright["include"])
+        tm.that(
+            sorted(typing.cast("list[str]", include)),
+            eq=sorted(rules.env_dirs),
+        )
         envs = u.Cli.toml_unwrap_item(pyright["executionEnvironments"])
         tm.that(envs, is_=list)
         expected_envs = [
@@ -188,6 +202,11 @@ class TestEnsurePyrightConfigPhase:
                 rules.project_typings_paths[0],
                 *rules.ignored_diagnostic_globs,
             ]),
+        )
+        include = u.Cli.toml_unwrap_item(pyright["include"])
+        tm.that(
+            sorted(typing.cast("list[str]", include)),
+            eq=sorted([rules.source_dir, rules.test_like_dirs[0]]),
         )
 
     def test_apply_is_idempotent(self, tmp_path: Path) -> None:

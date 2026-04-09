@@ -12,9 +12,9 @@ from pathlib import Path
 from typing import override
 
 from flext_tests import s
-from tests import u
 
 from flext_core import r
+from tests import u
 
 
 class RealGitService(s[bool]):

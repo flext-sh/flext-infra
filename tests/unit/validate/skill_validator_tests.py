@@ -10,9 +10,9 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import t, u
 
 from flext_infra import FlextInfraSkillValidator
+from tests import t, u
 
 _yaml_load_infra_mapping = u.Cli.yaml_load_mapping
 _string_list = u.Infra.string_list

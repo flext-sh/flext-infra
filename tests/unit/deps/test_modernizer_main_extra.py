@@ -12,7 +12,6 @@ from flext_tests import tm
 
 from flext_infra import (
     FlextInfraPyprojectModernizer,
-    FlextInfraUtilitiesCli,
     t,
     u,
 )
@@ -32,8 +31,8 @@ def _modernizer_args(**overrides: t.Infra.InfraValue) -> argparse.Namespace:
     return argparse.Namespace(**defaults)
 
 
-def _default_cli(workspace: Path | None = None) -> FlextInfraUtilitiesCli.CliArgs:
-    return FlextInfraUtilitiesCli.CliArgs(workspace=workspace or Path.cwd())
+def _default_cli(workspace: Path | None = None) -> u.Infra.CliArgs:
+    return u.Infra.CliArgs(workspace=workspace or Path.cwd())
 
 
 class TestModernizerEdgeCases:
@@ -95,9 +94,6 @@ class TestModernizerUncoveredLines:
             _ = (_path, canonical_dev, dry_run, skip_comments)
             return []
 
-        monkeypatch.setattr(modernizer, "find_pyproject_files", _find_files)
-        monkeypatch.setattr(u.Cli, "toml_read", _read_doc)
-        monkeypatch.setattr(modernizer, "process_file", _process_file)
         tm.that(modernizer.run(args, _default_cli(tmp_path)), eq=0)
 
 

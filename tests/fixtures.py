@@ -12,6 +12,22 @@ from pathlib import Path
 
 import pytest
 
+from tests import t, u
+
+_FIXTURES_DIR = Path(__file__).with_name("fixtures")
+
+
+def _read_fixture(*parts: str) -> str:
+    return _FIXTURES_DIR.joinpath(*parts).read_text(encoding="utf-8")
+
+
+@pytest.fixture
+def deptry_report_payload() -> t.Cli.JsonPayload:
+    parsed = u.Cli.json_parse(_read_fixture("deps", "deptry_report.json"))
+    assert parsed is not None
+    assert parsed.is_success
+    return parsed.value
+
 
 @pytest.fixture
 def real_toml_project(tmp_path: Path) -> Path:
@@ -111,6 +127,7 @@ def real_docs_project(tmp_path: Path) -> Path:
 
 
 __all__ = [
+    "deptry_report_payload",
     "real_docs_project",
     "real_makefile_project",
     "real_python_package",

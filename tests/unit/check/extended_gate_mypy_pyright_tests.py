@@ -10,14 +10,9 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import (
-    create_checker_project,
-    patch_gate_run,
-    patch_python_dir_detection,
-    run_gate_check,
-)
 
 from flext_infra import FlextInfraMypyGate, FlextInfraPyrightGate
+from tests import u
 
 
 class TestWorkspaceCheckerRunMypy:
@@ -28,14 +23,18 @@ class TestWorkspaceCheckerRunMypy:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        _, proj_dir = create_checker_project(tmp_path)
+        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path)
         workspace_root = tmp_path
-        patch_python_dir_detection(
+        u.Infra.Tests.patch_python_dir_detection(
             monkeypatch,
             FlextInfraMypyGate,
             has_python_dirs=False,
         )
-        result = run_gate_check(FlextInfraMypyGate, workspace_root, proj_dir)
+        result = u.Infra.Tests.run_gate_check(
+            FlextInfraMypyGate,
+            workspace_root,
+            proj_dir,
+        )
         tm.that(result.result.passed, eq=True)
         tm.that(len(result.issues), eq=0)
 
@@ -44,24 +43,28 @@ class TestWorkspaceCheckerRunMypy:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        _, proj_dir = create_checker_project(tmp_path, with_src=True)
+        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path, with_src=True)
         workspace_root = tmp_path
         json_line = (
             '{"file": "a.py", "line": 1, "column": 0,'
             ' "code": "E001", "message": "Error", "severity": "error"}'
         )
-        patch_python_dir_detection(
+        u.Infra.Tests.patch_python_dir_detection(
             monkeypatch,
             FlextInfraMypyGate,
             has_python_dirs=True,
         )
-        patch_gate_run(
+        u.Infra.Tests.patch_gate_run(
             monkeypatch,
             FlextInfraMypyGate,
             stdout=json_line,
             returncode=1,
         )
-        result = run_gate_check(FlextInfraMypyGate, workspace_root, proj_dir)
+        result = u.Infra.Tests.run_gate_check(
+            FlextInfraMypyGate,
+            workspace_root,
+            proj_dir,
+        )
         tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
 
@@ -74,14 +77,18 @@ class TestWorkspaceCheckerRunPyright:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        _, proj_dir = create_checker_project(tmp_path)
+        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path)
         workspace_root = tmp_path
-        patch_python_dir_detection(
+        u.Infra.Tests.patch_python_dir_detection(
             monkeypatch,
             FlextInfraPyrightGate,
             has_python_dirs=False,
         )
-        result = run_gate_check(FlextInfraPyrightGate, workspace_root, proj_dir)
+        result = u.Infra.Tests.run_gate_check(
+            FlextInfraPyrightGate,
+            workspace_root,
+            proj_dir,
+        )
         tm.that(result.result.passed, eq=True)
         tm.that(len(result.issues), eq=0)
 
@@ -90,25 +97,29 @@ class TestWorkspaceCheckerRunPyright:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        _, proj_dir = create_checker_project(tmp_path, with_src=True)
+        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path, with_src=True)
         workspace_root = tmp_path
         json_output = (
             '{"generalDiagnostics": [{"file": "a.py",'
             ' "range": {"start": {"line": 0, "character": 0}},'
             ' "rule": "E001", "message": "Error", "severity": "error"}]}'
         )
-        patch_python_dir_detection(
+        u.Infra.Tests.patch_python_dir_detection(
             monkeypatch,
             FlextInfraPyrightGate,
             has_python_dirs=True,
         )
-        patch_gate_run(
+        u.Infra.Tests.patch_gate_run(
             monkeypatch,
             FlextInfraPyrightGate,
             stdout=json_output,
             returncode=1,
         )
-        result = run_gate_check(FlextInfraPyrightGate, workspace_root, proj_dir)
+        result = u.Infra.Tests.run_gate_check(
+            FlextInfraPyrightGate,
+            workspace_root,
+            proj_dir,
+        )
         tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
 
@@ -117,18 +128,22 @@ class TestWorkspaceCheckerRunPyright:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        _, proj_dir = create_checker_project(tmp_path, with_src=True)
+        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path, with_src=True)
         workspace_root = tmp_path
-        patch_python_dir_detection(
+        u.Infra.Tests.patch_python_dir_detection(
             monkeypatch,
             FlextInfraPyrightGate,
             has_python_dirs=True,
         )
-        patch_gate_run(
+        u.Infra.Tests.patch_gate_run(
             monkeypatch,
             FlextInfraPyrightGate,
             stdout="invalid json",
             returncode=1,
         )
-        result = run_gate_check(FlextInfraPyrightGate, workspace_root, proj_dir)
+        result = u.Infra.Tests.run_gate_check(
+            FlextInfraPyrightGate,
+            workspace_root,
+            proj_dir,
+        )
         tm.that(not result.result.passed, eq=True)

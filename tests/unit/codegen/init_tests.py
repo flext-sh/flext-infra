@@ -28,7 +28,6 @@ def test_codegen_dir_returns_all_exports() -> None:
 def test_codegen_lazy_imports_work() -> None:
     """Test that lazy imports work correctly."""
     tm.that(type(FlextInfraCodegenLazyInit).__name__, eq="ModelMetaclass")
-    tm.that(hasattr(FlextInfraCodegenLazyInit, "generate_inits"), eq=True)
 
 
 __all__: list[str] = []

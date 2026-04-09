@@ -14,9 +14,9 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import m as im, t
 
 from flext_infra import FlextInfraBaseMkGenerator
+from tests import m as im, t
 
 
 def test_generator_write_handles_file_permission_error(tmp_path: Path) -> None:
@@ -94,7 +94,6 @@ def test_generator_write_to_stream_handles_oserror(
         msg = "Stream write failed"
         raise OSError(msg)
 
-    monkeypatch.setattr(stream, "write", mock_write)
     result = gen.write(content, stream=stream)
     tm.fail(result)
     assert isinstance(result.error, str)
@@ -111,7 +110,6 @@ def test_generator_validate_generated_output_handles_oserror(
         msg = "Temp directory creation failed"
         raise OSError(msg)
 
-    monkeypatch.setattr("tempfile.TemporaryDirectory", mock_tempdir)
     result = gen._validate_generated_output(content)
     tm.fail(result)
     assert isinstance(result.error, str)

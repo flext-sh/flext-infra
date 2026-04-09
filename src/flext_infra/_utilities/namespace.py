@@ -11,8 +11,7 @@ from flext_infra import (
     FlextInfraUtilitiesCodegenGovernance,
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesParsing,
-    FlextInfraUtilitiesRopeAnalysis,
-    FlextInfraUtilitiesRopeSource,
+    FlextInfraUtilitiesRope,
     c,
     m,
     p,
@@ -143,6 +142,16 @@ class FlextInfraUtilitiesCodegenNamespace:
     @classmethod
     def geninit_expected_alias(cls, file_path: Path) -> str | None:
         """Return the canonical alias allowed at module level for *file_path*."""
+        if file_path.name == "api.py":
+            package_name = FlextInfraUtilitiesDiscovery.discover_package_from_file(
+                file_path
+            )
+            if (
+                package_name
+                and "." not in package_name
+                and not package_name.startswith(c.Infra.Packages.PREFIX_UNDERSCORE)
+            ):
+                return package_name
         if file_path.parent.name in c.Infra.FAMILY_DIRECTORIES.values():
             family = cls.geninit_expected_family(file_path)
             if family is None:
@@ -323,19 +332,19 @@ class FlextInfraUtilitiesCodegenNamespace:
     ) -> None:
         if not file_path.is_file():
             return
-        rope_project: t.Infra.RopeProject = (
-            FlextInfraUtilitiesRopeSource.init_rope_project(file_path.parent)
+        rope_project: t.Infra.RopeProject = FlextInfraUtilitiesRope.init_rope_project(
+            file_path.parent
         )
         try:
             resource: t.Infra.RopeResource | None = (
-                FlextInfraUtilitiesRopeSource.get_resource_from_path(
+                FlextInfraUtilitiesRope.get_resource_from_path(
                     rope_project,
                     file_path,
                 )
             )
             if resource is None:
                 return
-            source = FlextInfraUtilitiesRopeSource.read_source(resource)
+            source = FlextInfraUtilitiesRope.read_source(resource)
             updated, class_name = cls._normalize_facade_base_source(
                 rope_project=rope_project,
                 resource=resource,
@@ -345,7 +354,7 @@ class FlextInfraUtilitiesCodegenNamespace:
             )
             if updated == source or not class_name:
                 return
-            FlextInfraUtilitiesRopeSource.write_source(
+            FlextInfraUtilitiesRope.write_source(
                 rope_project,
                 resource,
                 updated,
@@ -372,7 +381,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         base_name: str,
     ) -> tuple[str, str]:
         class_infos = sorted(
-            FlextInfraUtilitiesRopeAnalysis.get_class_info(rope_project, resource),
+            FlextInfraUtilitiesRope.get_class_info(rope_project, resource),
             key=lambda item: item.line,
         )
         if not class_infos:

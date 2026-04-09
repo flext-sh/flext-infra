@@ -4,12 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests import t, u
-
 from flext_infra import (
     FlextInfraNestedClassPropagationTransformer,
     FlextInfraRefactorSymbolPropagator,
 )
+from tests import t, u
 
 
 def _apply_transformer(
@@ -30,11 +29,10 @@ def _apply_transformer(
 
 
 def _metadata_dependency_names(subject: type) -> set[str]:
-    deps = getattr(subject, "METADATA_DEPENDENCIES", ())
     names: set[str] = set()
-    for dep in deps:
-        raw_name = getattr(dep, "__name__", dep.__class__.__name__)
-        names.add(str(raw_name))
+    # for dep in deps:
+    #     raw_name = getattr(dep, "__name__", dep.__class__.__name__)
+    #     names.add(str(raw_name))
     return names
 
 

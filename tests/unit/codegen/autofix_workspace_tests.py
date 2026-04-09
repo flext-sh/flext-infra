@@ -11,12 +11,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_tests import tm
-from tests import (
-    FlextInfraCodegenTestProjectFactory,
-    t,
-)
 
 from flext_infra import FlextInfraCodegenFixer
+from tests import t, u
 
 
 def test_flexcore_excluded_from_run(tmp_path: Path) -> None:
@@ -31,7 +28,7 @@ def test_flexcore_excluded_from_run(tmp_path: Path) -> None:
     (pkg / "typings.py").write_text("pass\n")
     (pkg / "constants.py").write_text("pass\n")
     (pkg / "base.py").write_text("import typing\nT = typing.TypeVar('T')\n")
-    FlextInfraCodegenTestProjectFactory.create_project(
+    u.Infra.Tests.create_codegen_project(
         tmp_path=tmp_path,
         name="test-proj",
         pkg_name="test_proj",
@@ -62,7 +59,7 @@ def test_project_without_src_returns_empty(tmp_path: Path) -> None:
 
 
 def test_files_modified_tracks_affected_files(tmp_path: Path) -> None:
-    project = FlextInfraCodegenTestProjectFactory.create_project(
+    project = u.Infra.Tests.create_codegen_project(
         tmp_path=tmp_path,
         name="test-proj",
         pkg_name="test_proj",

@@ -3,8 +3,7 @@ from __future__ import annotations
 import pytest
 from flext_tests import tm
 
-from flext_core import r
-from flext_infra import FlextInfraUtilitiesDependencyPathSync
+from tests import r, u
 
 
 @pytest.mark.parametrize(
@@ -31,7 +30,7 @@ from flext_infra import FlextInfraUtilitiesDependencyPathSync
     ],
 )
 def test_extract_dep_name(source: str, expected: str) -> None:
-    tm.that(FlextInfraUtilitiesDependencyPathSync.extract_dep_name(source), eq=expected)
+    tm.that(u.Infra.extract_dep_name(source), eq=expected)
 
 
 @pytest.mark.parametrize(
@@ -51,7 +50,7 @@ def test_extract_dep_name(source: str, expected: str) -> None:
 )
 def test_target_path(dep_name: str, is_root: bool, mode: str, expected: str) -> None:
     tm.that(
-        FlextInfraUtilitiesDependencyPathSync.target_path(
+        u.Infra.target_path(
             dep_name,
             is_root=is_root,
             mode=mode,
@@ -88,7 +87,7 @@ def test_target_path(dep_name: str, is_root: bool, mode: str, expected: str) -> 
 )
 def test_extract_requirement_name(requirement: str, expected: str | None) -> None:
     tm.that(
-        FlextInfraUtilitiesDependencyPathSync._extract_requirement_name(requirement),
+        u.Infra._extract_requirement_name(requirement),
         eq=expected,
     )
 

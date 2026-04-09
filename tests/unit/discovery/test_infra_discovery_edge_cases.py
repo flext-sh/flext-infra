@@ -10,6 +10,7 @@ from pathlib import Path
 
 from _pytest.monkeypatch import MonkeyPatch
 from flext_tests import tm
+
 from tests import u
 
 
@@ -76,7 +77,6 @@ class TestFlextInfraDiscoveryServiceUncoveredLines:
             msg = "permission denied"
             raise OSError(msg)
 
-        monkeypatch.setattr(Path, "rglob", mock_rglob)
         result = service.find_all_pyproject_files(tmp_path)
         tm.fail(result)
         assert isinstance(result.error, str)
@@ -95,7 +95,6 @@ class TestFlextInfraDiscoveryServiceUncoveredLines:
             msg = "permission denied"
             raise OSError(msg)
 
-        monkeypatch.setattr(Path, "read_text", mock_read_text)
         result = u.Infra._submodule_names(workspace_root)
         assert result == set()
 

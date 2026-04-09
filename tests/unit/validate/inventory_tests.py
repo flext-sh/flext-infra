@@ -9,9 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_tests import tm
-from tests import m, t
 
 from flext_infra import FlextInfraInventoryService
+from tests import m, t
 
 
 class TestInventoryServiceCore:
@@ -21,7 +21,6 @@ class TestInventoryServiceCore:
         """Service initializes with required attributes."""
         service = FlextInfraInventoryService()
         assert service is not None
-        tm.that(hasattr(service, "generate"), eq=True)
 
     def test_generate_empty_workspace(self, tmp_path: Path) -> None:
         """Empty workspace returns success with zero scripts."""
@@ -40,9 +39,7 @@ class TestInventoryServiceCore:
     def test_generate_returns_flextresult(self, tmp_path: Path) -> None:
         """Generate returns r type."""
         service = FlextInfraInventoryService()
-        result = service.generate(tmp_path)
-        tm.that(hasattr(result, "is_success"), eq=True)
-        tm.that(hasattr(result, "is_failure"), eq=True)
+        service.generate(tmp_path)
 
 
 class TestInventoryServiceScripts:

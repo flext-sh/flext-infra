@@ -15,9 +15,9 @@ from flext_tests import tm
 
 from flext_infra import (
     FlextInfraConstantsCodegenQualityGate,
-    main as infra_main,
-    t,
+    main,
 )
+from tests import t
 
 
 class TestConstantsQualityGateCLIDispatch:
@@ -25,7 +25,7 @@ class TestConstantsQualityGateCLIDispatch:
 
     def test_dispatch_returns_int(self, tmp_path: Path) -> None:
         """main() dispatches constants-quality-gate command to handler."""
-        result = infra_main([
+        result = main([
             "codegen",
             "constants-quality-gate",
             "--workspace",
@@ -36,7 +36,7 @@ class TestConstantsQualityGateCLIDispatch:
     def test_parses_before_report_flag(self, tmp_path: Path) -> None:
         """main() parses baseline comparison flags for quality gate."""
         baseline = tmp_path / "before.json"
-        result = infra_main([
+        result = main([
             "codegen",
             "constants-quality-gate",
             "--workspace",
@@ -50,7 +50,7 @@ class TestConstantsQualityGateCLIDispatch:
 
     def test_json_format_exits_with_int(self, tmp_path: Path) -> None:
         """JSON mode returns an integer exit code."""
-        result = infra_main([
+        result = main([
             "codegen",
             "constants-quality-gate",
             "--workspace",
@@ -62,7 +62,7 @@ class TestConstantsQualityGateCLIDispatch:
 
     def test_text_format_exits_with_int(self, tmp_path: Path) -> None:
         """Text mode returns an integer exit code."""
-        result = infra_main([
+        result = main([
             "codegen",
             "constants-quality-gate",
             "--workspace",

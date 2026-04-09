@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
+from collections.abc import MutableSequence
 from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import m, p, r, t
 
-from flext_infra import FlextInfraCodegenConsolidator, u as infra_u
+from tests import c, t, u
 
 
 def test_execute_uses_codegen_project_discovery_and_project_filter(
@@ -18,29 +17,29 @@ def test_execute_uses_codegen_project_discovery_and_project_filter(
 ) -> None:
     discover_called = 0
     requested_roots: MutableSequence[Path] = []
-    project_a = m.Infra.ProjectInfo(
-        name="project-a",
-        path=tmp_path / "nested" / "project-a",
-        stack="python/flext",
+    project_a = u.Infra.Tests.create_project_info(
+        tmp_path / "nested" / c.Infra.Tests.Fixtures.Codegen.PROJECT_A_NAME,
+        name=c.Infra.Tests.Fixtures.Codegen.PROJECT_A_NAME,
+        stack=c.Infra.Tests.Fixtures.Codegen.PROJECT_STACK,
     )
-    project_b = m.Infra.ProjectInfo(
-        name="project-b",
-        path=tmp_path / "nested" / "project-b",
-        stack="python/flext",
+    project_b = u.Infra.Tests.create_project_info(
+        tmp_path / "nested" / c.Infra.Tests.Fixtures.Codegen.PROJECT_B_NAME,
+        name=c.Infra.Tests.Fixtures.Codegen.PROJECT_B_NAME,
+        stack=c.Infra.Tests.Fixtures.Codegen.PROJECT_STACK,
     )
 
     def _discover_codegen_projects(
         *_args: t.Scalar,
         **_kwargs: t.Scalar,
-    ) -> r[Sequence[p.Infra.ProjectInfo]]:
+    ):
         nonlocal discover_called
         discover_called += 1
-        return r[Sequence[p.Infra.ProjectInfo]].ok((project_a, project_b))
+        return u.Infra.Tests.ok_result((project_a, project_b))
 
     def _discover_projects(
         *_args: t.Scalar,
         **_kwargs: t.Scalar,
-    ) -> r[Sequence[p.Infra.ProjectInfo]]:
+    ):
         message = "execute() must use discover_codegen_projects()"
         raise AssertionError(message)
 
@@ -48,27 +47,27 @@ def test_execute_uses_codegen_project_discovery_and_project_filter(
         requested_roots.append(project_root)
         return None
 
-    monkeypatch.setattr(
-        infra_u.Infra,
+    u.Infra.Tests.patch_public_infra(
+        monkeypatch,
         "discover_codegen_projects",
-        staticmethod(_discover_codegen_projects),
+        _discover_codegen_projects,
     )
-    monkeypatch.setattr(
-        infra_u.Infra,
+    u.Infra.Tests.patch_public_infra(
+        monkeypatch,
         "discover_projects",
-        staticmethod(_discover_projects),
+        _discover_projects,
     )
-    monkeypatch.setattr(
-        infra_u.Infra,
+    u.Infra.Tests.patch_public_infra(
+        monkeypatch,
         "find_package_dir",
-        staticmethod(_find_package_dir),
+        _find_package_dir,
     )
 
-    result = FlextInfraCodegenConsolidator.model_validate({
-        "workspace_root": tmp_path,
-        "project": "project-b",
-        "dry_run": True,
-    }).execute()
+    result = u.Infra.Tests.consolidate_codegen(
+        workspace_root=tmp_path,
+        project=c.Infra.Tests.Fixtures.Codegen.PROJECT_B_NAME,
+        dry_run=True,
+    )
 
     tm.ok(result)
     tm.that(discover_called, eq=1)
@@ -83,11 +82,11 @@ def test_execute_uses_project_path_and_closes_rope_project(
     project_root = tmp_path / "projects" / "demo"
     package_dir = project_root / "src" / "demo_pkg"
     package_dir.mkdir(parents=True)
-    project = m.Infra.ProjectInfo(
-        name="demo",
-        path=project_root,
-        stack="python/flext",
-        package_name="demo_pkg",
+    project = u.Infra.Tests.create_project_info(
+        project_root,
+        name=c.Infra.Tests.Fixtures.Codegen.DEMO_PROJECT_NAME,
+        stack=c.Infra.Tests.Fixtures.Codegen.PROJECT_STACK,
+        package_name=c.Infra.Tests.Fixtures.Codegen.PACKAGE_NAME,
     )
     rope_roots: MutableSequence[Path] = []
 
@@ -102,54 +101,54 @@ def test_execute_uses_project_path_and_closes_rope_project(
     def _discover_codegen_projects(
         *_args: t.Scalar,
         **_kwargs: t.Scalar,
-    ) -> r[Sequence[p.Infra.ProjectInfo]]:
-        return r[Sequence[p.Infra.ProjectInfo]].ok((project,))
+    ):
+        return u.Infra.Tests.ok_result((project,))
 
-    monkeypatch.setattr(
-        infra_u.Infra,
+    u.Infra.Tests.patch_public_infra(
+        monkeypatch,
         "discover_codegen_projects",
-        staticmethod(_discover_codegen_projects),
+        _discover_codegen_projects,
     )
-    monkeypatch.setattr(
-        infra_u.Infra,
+    u.Infra.Tests.patch_public_infra(
+        monkeypatch,
         "find_package_dir",
-        staticmethod(lambda _project_root: package_dir),
+        lambda _project_root: package_dir,
     )
-    monkeypatch.setattr(
-        infra_u.Infra,
+    u.Infra.Tests.patch_public_infra(
+        monkeypatch,
         "discover_project_package_name",
-        staticmethod(lambda **_kwargs: "demo_pkg"),
+        lambda **_kwargs: c.Infra.Tests.Fixtures.Codegen.PACKAGE_NAME,
     )
-    monkeypatch.setattr(
-        infra_u.Infra,
+    u.Infra.Tests.patch_public_infra(
+        monkeypatch,
         "discover_project_aliases",
-        staticmethod(lambda _project_root: {"c": "c"}),
+        lambda _project_root: {"c": "c"},
     )
-    monkeypatch.setattr(
-        infra_u.Infra,
+    u.Infra.Tests.patch_public_infra(
+        monkeypatch,
         "resolve_constants_facade",
-        staticmethod(lambda _package_name: "facade"),
+        lambda _package_name: "facade",
     )
-    monkeypatch.setattr(
-        infra_u.Infra,
+    u.Infra.Tests.patch_public_infra(
+        monkeypatch,
         "build_value_map",
-        staticmethod(lambda _facade: {}),
+        lambda _facade: {},
     )
-    monkeypatch.setattr(
-        infra_u.Infra,
+    u.Infra.Tests.patch_public_infra(
+        monkeypatch,
         "init_rope_project",
-        staticmethod(lambda root: rope_roots.append(root) or rope),
+        lambda root: rope_roots.append(root) or rope,
     )
-    monkeypatch.setattr(
-        infra_u.Infra,
+    u.Infra.Tests.patch_public_infra(
+        monkeypatch,
         "iter_directory_python_files",
-        staticmethod(lambda _package_dir: ()),
+        lambda _package_dir: (),
     )
 
-    result = FlextInfraCodegenConsolidator.model_validate({
-        "workspace_root": tmp_path,
-        "dry_run": True,
-    }).execute()
+    result = u.Infra.Tests.consolidate_codegen(
+        workspace_root=tmp_path,
+        dry_run=True,
+    )
 
     tm.ok(result)
     tm.that(tuple(rope_roots), eq=(project_root,))

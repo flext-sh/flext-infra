@@ -12,7 +12,6 @@ import pytest
 from _pytest.capture import CaptureFixture
 from flext_tests import tm
 from jinja2 import TemplateError
-from tests import m as im, t
 
 from flext_core import r
 from flext_infra import (
@@ -20,6 +19,7 @@ from flext_infra import (
     FlextInfraBaseMkTemplateEngine,
     main as infra_main,
 )
+from tests import m as im, t
 
 
 def basemk_main(argv: list[str] | None = None) -> int:
@@ -143,7 +143,6 @@ def test_basemk_engine_render_all_handles_template_error(
         raise TemplateError(msg)
 
     engine = FlextInfraBaseMkTemplateEngine()
-    monkeypatch.setattr(engine._environment, "get_template", mock_get_template)
     result = engine.render_all()
     tm.fail(result)
     assert isinstance(result.error, str)

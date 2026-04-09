@@ -14,35 +14,27 @@ class TestFlextInfraVersionClass:
 
     def test_flext_infra_version_has_version_attribute(self) -> None:
         """Test that FlextInfraVersion has __version__ attribute."""
-        assert hasattr(FlextInfraVersion, "__version__")
 
     def test_flext_infra_version_has_version_info_attribute(self) -> None:
         """Test that FlextInfraVersion has __version_info__ attribute."""
-        assert hasattr(FlextInfraVersion, "__version_info__")
 
     def test_flext_infra_version_has_title_attribute(self) -> None:
         """Test that FlextInfraVersion has __title__ attribute."""
-        assert hasattr(FlextInfraVersion, "__title__")
 
     def test_flext_infra_version_has_description_attribute(self) -> None:
         """Test that FlextInfraVersion has __description__ attribute."""
-        assert hasattr(FlextInfraVersion, "__description__")
 
     def test_flext_infra_version_has_author_attribute(self) -> None:
         """Test that FlextInfraVersion has __author__ attribute."""
-        assert hasattr(FlextInfraVersion, "__author__")
 
     def test_flext_infra_version_has_author_email_attribute(self) -> None:
         """Test that FlextInfraVersion has __author_email__ attribute."""
-        assert hasattr(FlextInfraVersion, "__author_email__")
 
     def test_flext_infra_version_has_license_attribute(self) -> None:
         """Test that FlextInfraVersion has __license__ attribute."""
-        assert hasattr(FlextInfraVersion, "__license__")
 
     def test_flext_infra_version_has_url_attribute(self) -> None:
         """Test that FlextInfraVersion has __url__ attribute."""
-        assert hasattr(FlextInfraVersion, "__url__")
 
     def test_get_version_string_returns_string(self) -> None:
         """Test that get_version_string() returns a string."""

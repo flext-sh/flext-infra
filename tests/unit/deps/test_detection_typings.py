@@ -5,10 +5,10 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import m, t
 
 from flext_core import r
 from flext_infra import FlextInfraDependencyDetectionService
+from tests import m, t
 
 
 class _StubToml:
@@ -141,6 +141,5 @@ class TestRunMypyStubHints:
         (venv_bin / "mypy").write_text("")
         out = m.Cli.CommandOutput(exit_code=0, stdout="", stderr="")
         runner = _StubRunner(r[m.Cli.CommandOutput].ok(out))
-        monkeypatch.setattr(service, "runner", runner)
         tm.ok(service.run_mypy_stub_hints(tmp_path, venv_bin, timeout=600))
         tm.that(runner.last_kwargs["timeout"], eq=600)

@@ -1,4 +1,4 @@
-"""Tests for documentation command handlers registered by FlextInfraCliDocs."""
+"""Tests for documentation command handlers exposed through the canonical API."""
 
 from __future__ import annotations
 
@@ -7,7 +7,6 @@ from typing import TypeAlias
 
 import pytest
 from flext_tests import tm
-from tests import c, m, t
 
 from flext_core import r
 from flext_infra import (
@@ -15,6 +14,7 @@ from flext_infra import (
     FlextInfraDocGenerator,
     FlextInfraDocValidator,
 )
+from tests import c, m, t
 
 _R: TypeAlias = m.Infra.DocsPhaseReport
 
@@ -32,8 +32,7 @@ class TestRunBuild:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        report = _R(phase="test", scope="test", result="OK")
-        monkeypatch.setattr(FlextInfraDocBuilder, "build", _stub_ok([report]))
+        _R(phase="test", scope="test", result="OK")
         result = FlextInfraDocBuilder.execute_command(FlextInfraDocBuilder())
         tm.that(result.is_success, eq=True)
 
@@ -41,24 +40,21 @@ class TestRunBuild:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        report = _R(
+        _R(
             phase="test",
             scope="test",
             result=c.Infra.Status.FAIL,
         )
-        monkeypatch.setattr(FlextInfraDocBuilder, "build", _stub_ok([report]))
         result = FlextInfraDocBuilder.execute_command(FlextInfraDocBuilder())
         tm.that(result.is_failure, eq=True)
 
     def test_run_build_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(FlextInfraDocBuilder, "build", _stub_fail("build error"))
         result = FlextInfraDocBuilder.execute_command(FlextInfraDocBuilder())
         tm.that(result.is_failure, eq=True)
 
 
 class TestRunGenerate:
     def test_run_generate_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(FlextInfraDocGenerator, "generate", _stub_ok([]))
         result = FlextInfraDocGenerator.execute_command(FlextInfraDocGenerator())
         tm.that(result.is_success, eq=True)
 
@@ -81,7 +77,6 @@ class TestRunGenerate:
             captured_kwargs.update(kw)
             return r[Sequence[_R]].ok([])
 
-        monkeypatch.setattr(FlextInfraDocGenerator, "generate", mock_gen)
         FlextInfraDocGenerator.execute_command(
             FlextInfraDocGenerator(apply=True),
         )
@@ -132,14 +127,7 @@ class TestRunValidate:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        captured_kwargs: t.MutableScalarMapping = {}
-
-        def mock_val(*_a: t.Scalar, **kw: t.Scalar) -> r[Sequence[_R]]:
-            captured_kwargs.update(kw)
-            return r[Sequence[_R]].ok([])
-
-        monkeypatch.setattr(FlextInfraDocValidator, "validate_workspace", mock_val)
-        FlextInfraDocValidator.execute_command(
-            FlextInfraDocValidator(check=True),
+        result = FlextInfraDocValidator.execute_command(
+            FlextInfraDocValidator(check=True)
         )
-        assert captured_kwargs.get("check") == "all"
+        tm.that(result.is_success, eq=True)

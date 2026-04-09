@@ -5,13 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_tests import tm
-from tests import t
 
 from flext_infra import (
     DetectorContext,
     FlextInfraLooseObjectDetector,
     FlextInfraNamespaceEnforcer,
 )
+from tests import t
 
 
 def test_namespace_enforcer_creates_missing_facades_and_rewrites_imports(

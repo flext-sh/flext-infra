@@ -20,6 +20,7 @@ from flext_infra import (
     p,
     t,
 )
+from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 
 
 class FlextInfraUtilitiesRopeImports:
@@ -76,26 +77,24 @@ class FlextInfraUtilitiesRopeImports:
         """Rename symbol at offset across the whole project."""
         changed_files: t.MutableIntMapping = {}
         try:
-            project_impl = FlextInfraUtilitiesRopeImports._ensure_rope_project(
+            project_impl = FlextInfraUtilitiesRopeCore.ensure_rope_project(
                 rope_project,
             )
-            resource_impl = FlextInfraUtilitiesRopeImports._ensure_rope_api_resource(
+            resource_impl = FlextInfraUtilitiesRopeCore.ensure_rope_api_resource(
                 resource,
             )
             rename = rope_rename.Rename(project_impl, resource_impl, offset)
             if not FlextInfraUtilitiesRopeImports._is_rope_rename_like(rename):
-                return []
+                return ()
             changes = rename.get_changes(new_name)
         except (RefactoringError, TypeError):
-            return []
+            return ()
         if not FlextInfraUtilitiesRopeImports._is_rope_changes_like(changes):
-            return []
+            return ()
         for change in changes.changes:
             changed_files[change.resource.path] = 1
         if apply:
-            project_impl.do(
-                FlextInfraUtilitiesRopeImports._ensure_rope_change_set(changes)
-            )
+            project_impl.do(FlextInfraUtilitiesRopeCore.ensure_rope_change_set(changes))
         return list(changed_files)
 
     @staticmethod
@@ -108,10 +107,10 @@ class FlextInfraUtilitiesRopeImports:
     ) -> Sequence[t.Infra.RopeLocation]:
         """Find all occurrences of the symbol at offset across the project."""
         try:
-            project_impl = FlextInfraUtilitiesRopeImports._ensure_rope_project(
+            project_impl = FlextInfraUtilitiesRopeCore.ensure_rope_project(
                 rope_project,
             )
-            resource_impl = FlextInfraUtilitiesRopeImports._ensure_rope_api_resource(
+            resource_impl = FlextInfraUtilitiesRopeCore.ensure_rope_api_resource(
                 resource,
             )
             findit_module = FlextInfraUtilitiesRopeImports._ensure_rope_findit_module(
@@ -126,7 +125,7 @@ class FlextInfraUtilitiesRopeImports:
                 )
             )
         except (RefactoringError, ResourceNotFoundError, AttributeError, TypeError):
-            return []
+            return ()
 
     @staticmethod
     def organize_imports(
@@ -137,10 +136,10 @@ class FlextInfraUtilitiesRopeImports:
     ) -> bool:
         """Organize imports for one rope resource using rope's import engine."""
         try:
-            project_impl = FlextInfraUtilitiesRopeImports._ensure_rope_project(
+            project_impl = FlextInfraUtilitiesRopeCore.ensure_rope_project(
                 rope_project,
             )
-            resource_impl = FlextInfraUtilitiesRopeImports._ensure_rope_resource(
+            resource_impl = FlextInfraUtilitiesRopeCore.ensure_rope_resource(
                 resource,
             )
             original_source = resource_impl.read()
@@ -162,9 +161,7 @@ class FlextInfraUtilitiesRopeImports:
             for change in change_list
         )
         if changed and apply:
-            project_impl.do(
-                FlextInfraUtilitiesRopeImports._ensure_rope_change_set(changes)
-            )
+            project_impl.do(FlextInfraUtilitiesRopeCore.ensure_rope_change_set(changes))
         return changed
 
     @staticmethod
@@ -176,16 +173,16 @@ class FlextInfraUtilitiesRopeImports:
     ) -> t.Infra.StrSet:
         """Return unaliased names imported from one absolute `from x import ...`."""
         imported: t.Infra.StrSet = set()
-        module_imports = FlextInfraUtilitiesRopeImports._get_module_imports(
+        module_imports = FlextInfraUtilitiesRopeCore.get_module_imports(
             rope_project,
             resource,
         )
         if module_imports is None:
             return imported
-        for import_stmt in FlextInfraUtilitiesRopeImports.get_import_statements(
+        for import_stmt in FlextInfraUtilitiesRopeCore.get_import_statements(
             module_imports,
         ):
-            from_import = FlextInfraUtilitiesRopeImports._absolute_from_import(
+            from_import = FlextInfraUtilitiesRopeCore.absolute_from_import(
                 import_stmt.import_info,
                 module_name=module_name,
             )
@@ -202,7 +199,7 @@ class FlextInfraUtilitiesRopeImports:
         resource: t.Infra.RopeResource,
     ) -> Sequence[t.Infra.RopeFromImport]:
         """Return all absolute ``from x import ...`` descriptors in a module."""
-        module_imports = FlextInfraUtilitiesRopeImports._get_module_imports(
+        module_imports = FlextInfraUtilitiesRopeCore.get_module_imports(
             rope_project,
             resource,
         )
@@ -210,11 +207,11 @@ class FlextInfraUtilitiesRopeImports:
             return ()
         return tuple(
             from_import
-            for import_stmt in FlextInfraUtilitiesRopeImports.get_import_statements(
+            for import_stmt in FlextInfraUtilitiesRopeCore.get_import_statements(
                 module_imports
             )
             if (
-                from_import := FlextInfraUtilitiesRopeImports._absolute_from_import_any(
+                from_import := FlextInfraUtilitiesRopeCore.absolute_from_import_any(
                     import_stmt.import_info
                 )
             )
@@ -236,7 +233,7 @@ class FlextInfraUtilitiesRopeImports:
         if not aliases_to_move:
             return None
         original_source = resource.read()
-        module_imports = FlextInfraUtilitiesRopeImports._get_module_imports(
+        module_imports = FlextInfraUtilitiesRopeCore.get_module_imports(
             rope_project,
             resource,
         )
@@ -245,16 +242,16 @@ class FlextInfraUtilitiesRopeImports:
         moved_aliases: t.Infra.StrSet = set()
         target_import_stmt: t.Infra.RopeImportStatement | None = None
         merged_target_pairs: Sequence[tuple[str, str | None]] = ()
-        for import_stmt in FlextInfraUtilitiesRopeImports.get_import_statements(
+        for import_stmt in FlextInfraUtilitiesRopeCore.get_import_statements(
             module_imports,
         ):
-            target_from_import = FlextInfraUtilitiesRopeImports._absolute_from_import(
+            target_from_import = FlextInfraUtilitiesRopeCore.absolute_from_import(
                 import_stmt.import_info,
                 module_name=target_module,
             )
             if target_from_import is not None:
                 target_import_stmt = import_stmt
-            from_import = FlextInfraUtilitiesRopeImports._absolute_from_import(
+            from_import = FlextInfraUtilitiesRopeCore.absolute_from_import(
                 import_stmt.import_info,
                 module_name=source_module,
             )
@@ -272,7 +269,7 @@ class FlextInfraUtilitiesRopeImports:
         if not moved_aliases:
             return None
         if target_import_stmt is not None:
-            target_from_import = FlextInfraUtilitiesRopeImports._absolute_from_import(
+            target_from_import = FlextInfraUtilitiesRopeCore.absolute_from_import(
                 target_import_stmt.import_info,
                 module_name=target_module,
             )
@@ -320,7 +317,7 @@ class FlextInfraUtilitiesRopeImports:
         if updated_source == original_source:
             return None
         if apply:
-            FlextInfraUtilitiesRopeImports.apply_source_change(
+            FlextInfraUtilitiesRopeCore.apply_source_change(
                 rope_project,
                 resource,
                 updated_source,
@@ -371,15 +368,20 @@ class FlextInfraUtilitiesRopeImports:
         )
         if not requested_aliases:
             return None
-        module_imports = cls._get_module_imports(rope_project, resource)
+        module_imports = FlextInfraUtilitiesRopeCore.get_module_imports(
+            rope_project,
+            resource,
+        )
         if module_imports is None:
             return None
         moved_aliases: t.Infra.StrSet = set()
         package_prefix = f"{package_name}."
-        for import_stmt in FlextInfraUtilitiesRopeImports.get_import_statements(
+        for import_stmt in FlextInfraUtilitiesRopeCore.get_import_statements(
             module_imports,
         ):
-            from_import = cls._absolute_from_import_any(import_stmt.import_info)
+            from_import = FlextInfraUtilitiesRopeCore.absolute_from_import_any(
+                import_stmt.import_info
+            )
             if from_import is None or not from_import.module_name.startswith(
                 package_prefix
             ):
@@ -412,7 +414,7 @@ class FlextInfraUtilitiesRopeImports:
         if updated_source == resource.read():
             return None
         if apply:
-            FlextInfraUtilitiesRopeImports.apply_source_change(
+            FlextInfraUtilitiesRopeCore.apply_source_change(
                 rope_project,
                 resource,
                 updated_source,
@@ -430,7 +432,7 @@ class FlextInfraUtilitiesRopeImports:
         apply: bool = True,
     ) -> str | None:
         """Add ``from <module> import <names>`` using rope's ImportOrganizer."""
-        module_imports = FlextInfraUtilitiesRopeImports._get_module_imports(
+        module_imports = FlextInfraUtilitiesRopeCore.get_module_imports(
             rope_project,
             resource,
         )
@@ -445,7 +447,7 @@ class FlextInfraUtilitiesRopeImports:
         if updated == resource.read():
             return None
         if apply:
-            FlextInfraUtilitiesRopeImports.apply_source_change(
+            FlextInfraUtilitiesRopeCore.apply_source_change(
                 rope_project,
                 resource,
                 updated,
@@ -464,17 +466,17 @@ class FlextInfraUtilitiesRopeImports:
     ) -> str | None:
         """Remove specific names from ``from <module> import ...``."""
         names_to_remove = frozenset(names)
-        module_imports = FlextInfraUtilitiesRopeImports._get_module_imports(
+        module_imports = FlextInfraUtilitiesRopeCore.get_module_imports(
             rope_project,
             resource,
         )
         if module_imports is None:
             return None
         changed = False
-        for import_stmt in FlextInfraUtilitiesRopeImports.get_import_statements(
+        for import_stmt in FlextInfraUtilitiesRopeCore.get_import_statements(
             module_imports,
         ):
-            from_import = FlextInfraUtilitiesRopeImports._absolute_from_import(
+            from_import = FlextInfraUtilitiesRopeCore.absolute_from_import(
                 import_stmt.import_info,
                 module_name=from_module,
             )
@@ -496,7 +498,7 @@ class FlextInfraUtilitiesRopeImports:
         if updated == resource.read():
             return None
         if apply:
-            FlextInfraUtilitiesRopeImports.apply_source_change(
+            FlextInfraUtilitiesRopeCore.apply_source_change(
                 rope_project,
                 resource,
                 updated,
@@ -528,7 +530,7 @@ class FlextInfraUtilitiesRopeImports:
         lines.insert(insert_idx, "from __future__ import annotations\n")
         new_source = "".join(lines)
         if apply:
-            FlextInfraUtilitiesRopeImports.apply_source_change(
+            FlextInfraUtilitiesRopeCore.apply_source_change(
                 rope_project,
                 resource,
                 new_source,

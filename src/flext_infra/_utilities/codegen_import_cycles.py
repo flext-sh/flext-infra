@@ -39,7 +39,6 @@ class FlextInfraUtilitiesCodegenImportCycles:
         graph: MutableMapping[str, t.Infra.StrSet] = {}
 
         rope_project = FlextInfraUtilitiesRope.init_rope_project(pkg_dir)
-        get_imports = FlextInfraUtilitiesRope.get_rope_get_module_imports_fn()
 
         for py_file in pkg_dir.glob(c.Infra.Extensions.PYTHON_GLOB):
             if py_file.name == c.Infra.Files.INIT_PY:
@@ -52,7 +51,10 @@ class FlextInfraUtilitiesCodegenImportCycles:
 
             try:
                 pymodule = FlextInfraUtilitiesRope.get_pymodule(rope_project, res)
-                mod_imports = get_imports(rope_project, pymodule)
+                mod_imports = FlextInfraUtilitiesRope.get_module_imports_for_pymodule(
+                    rope_project,
+                    pymodule,
+                )
             except Exception:
                 _logger.debug("Failed to parse imports for %s", py_file.name)
                 continue

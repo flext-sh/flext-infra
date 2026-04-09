@@ -11,8 +11,6 @@ _LAZY_IMPORTS = build_lazy_import_map(
             "FlextInfraGateRegistry",
             "FlextInfraWorkspaceCheckGatesMixin",
         ),
-        ".cli": ("FlextInfraCliCheck",),
-        ".services": ("FlextInfraCheckServices",),
         ".workspace_check": (
             "FlextInfraWorkspaceChecker",
             "build_parser",

@@ -68,7 +68,7 @@ class FlextInfraProjectClassifier:
         raw_value: t.Infra.InfraValue,
     ) -> Mapping[str, t.Infra.InfraValue]:
         if u.is_mapping(raw_value):
-            return raw_value
+            return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(raw_value)
         return {}
 
     def _normalized_name_from_mapping(

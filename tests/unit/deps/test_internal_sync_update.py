@@ -4,10 +4,10 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import t
 
 from flext_core import r
-from flext_infra import FlextInfraInternalDependencySyncService, internal_sync
+from flext_infra import FlextInfraInternalDependencySyncService, u
+from tests import t
 
 
 class TestEnsureSymlink:
@@ -74,7 +74,6 @@ class TestEnsureSymlinkEdgeCases:
             msg = "Permission denied"
             raise OSError(msg)
 
-        monkeypatch.setattr(Path, "symlink_to", _raise_symlink_to)
         error = tm.fail(
             FlextInfraInternalDependencySyncService.ensure_symlink(target, source),
         )
@@ -91,9 +90,9 @@ class TestEnsureCheckout:
             return r[bool].ok(True)
 
         monkeypatch.setattr(
-            internal_sync.u.Infra,
+            u.Infra,
             "git_run_checked",
-            _git_run_checked,
+            staticmethod(_git_run_checked),
         )
         result = FlextInfraInternalDependencySyncService().ensure_checkout(
             tmp_path / "dep",
@@ -111,9 +110,9 @@ class TestEnsureCheckout:
             return r[bool].fail("fatal: repo not found")
 
         monkeypatch.setattr(
-            internal_sync.u.Infra,
+            u.Infra,
             "git_run_checked",
-            _git_run_checked,
+            staticmethod(_git_run_checked),
         )
         result = FlextInfraInternalDependencySyncService().ensure_checkout(
             tmp_path / "dep",
@@ -143,19 +142,19 @@ class TestEnsureCheckout:
             return r[bool].ok(True)
 
         monkeypatch.setattr(
-            internal_sync.u.Infra,
+            u.Infra,
             "git_fetch",
-            _git_fetch,
+            staticmethod(_git_fetch),
         )
         monkeypatch.setattr(
-            internal_sync.u.Infra,
+            u.Infra,
             "git_checkout",
-            _git_checkout,
+            staticmethod(_git_checkout),
         )
         monkeypatch.setattr(
-            internal_sync.u.Infra,
+            u.Infra,
             "git_pull",
-            _git_pull,
+            staticmethod(_git_pull),
         )
         tm.ok(
             FlextInfraInternalDependencySyncService().ensure_checkout(
@@ -189,7 +188,7 @@ class TestEnsureCheckout:
             return r[bool].fail("fetch failed")
 
         monkeypatch.setattr(
-            internal_sync.u.Infra,
+            u.Infra,
             "git_fetch",
             _git_fetch,
         )
@@ -217,12 +216,12 @@ class TestEnsureCheckout:
             return r[bool].fail("checkout error")
 
         monkeypatch.setattr(
-            internal_sync.u.Infra,
+            u.Infra,
             "git_fetch",
             _git_fetch,
         )
         monkeypatch.setattr(
-            internal_sync.u.Infra,
+            u.Infra,
             "git_checkout",
             _git_checkout,
         )
@@ -243,7 +242,7 @@ class TestEnsureCheckout:
             return r[bool].ok(True)
 
         monkeypatch.setattr(
-            internal_sync.u.Infra,
+            u.Infra,
             "git_run_checked",
             _git_run_checked,
         )

@@ -6,24 +6,19 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from flext_tests import tm
-from tests import m
-from tests.unit.codegen._project_factory import (
-    FlextInfraCodegenTestProjectFactory,
-)
 
-from flext_infra import main as infra_main
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
+from flext_infra import FlextInfraUtilitiesRope, main as infra_main
 from flext_infra.detectors.silent_failure_detector import (
     FlextInfraSilentFailureDetector,
 )
 from flext_infra.validate.silent_failure import FlextInfraSilentFailureValidator
+from tests import m, u
 
 
 def _create_silent_failure_project(
     tmp_path: Path, *, name: str = "flext-infra"
 ) -> Path:
-    project = FlextInfraCodegenTestProjectFactory.create_project(
+    project = u.Infra.Tests.create_codegen_project(
         tmp_path=tmp_path,
         name=name,
         pkg_name=name.replace("-", "_"),
@@ -57,7 +52,7 @@ class TestSilentFailureDetector:
     def test_detect_file_reports_guard_except_and_unwrap(self, tmp_path: Path) -> None:
         project = _create_silent_failure_project(tmp_path)
         file_path = project / "src" / "flext_infra" / "utilities.py"
-        rope_project = FlextInfraUtilitiesRopeCore.init_rope_project(project)
+        rope_project = FlextInfraUtilitiesRope.init_rope_project(project)
         try:
             issues = FlextInfraSilentFailureDetector.detect_file(
                 m.Infra.DetectorContext(
@@ -81,19 +76,17 @@ class TestSilentFailureDetector:
     ) -> None:
         project = _create_silent_failure_project(tmp_path)
         file_path = project / "src" / "flext_infra" / "utilities.py"
-        rope_project = FlextInfraUtilitiesRopeCore.init_rope_project(project)
+        rope_project = FlextInfraUtilitiesRope.init_rope_project(project)
         try:
-            resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
+            resource = FlextInfraUtilitiesRope.get_resource_from_path(
                 rope_project,
                 file_path,
             )
             assert resource is not None
-            updated, changes = (
-                FlextInfraUtilitiesRopeSource.fix_silent_failure_sentinels(
-                    rope_project,
-                    resource,
-                    apply=False,
-                )
+            updated, changes = FlextInfraUtilitiesRope.fix_silent_failure_sentinels(
+                rope_project,
+                resource,
+                apply=False,
             )
         finally:
             rope_project.close()

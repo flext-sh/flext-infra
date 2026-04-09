@@ -67,7 +67,7 @@ def _make_project(
     project.mkdir()
     (project / "Makefile").touch()
     _ = (project / "pyproject.toml").write_text(
-        f"[project]\nname='{name}'\n",
+        f"[project]\nname='{name}'\ndependencies=['flext-core>=0.1.0']\n",
         encoding="utf-8",
     )
     (project / ".git").mkdir()
@@ -80,18 +80,8 @@ def _make_project(
     if with_tests_dir:
         tests_dir = project / "tests"
         tests_dir.mkdir()
-        prefix = _project_prefix(package_name)
         _ = (tests_dir / "__init__.py").write_text(
-            "\n".join([
-                '"""Tests init for pipeline test."""',
-                "",
-                f"from tests import Tests{prefix}Constants",
-                "",
-                "__all__ = [",
-                f'    "Tests{prefix}Constants",',
-                "]",
-                "",
-            ]),
+            '"""Tests init for pipeline test."""\n\n__all__ = []\n',
             encoding="utf-8",
         )
     return project

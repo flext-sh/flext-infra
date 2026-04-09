@@ -6,10 +6,9 @@ from typing import TypeGuard
 import pytest
 import tomlkit
 from flext_tests import tm
-from tests import t
 from tomlkit.toml_document import TOMLDocument
 
-from flext_infra import FlextInfraUtilitiesDependencyPathSync, r
+from tests import r, t, u
 
 
 def _is_str_object_dict(value: object) -> TypeGuard[dict[str, object]]:
@@ -25,7 +24,7 @@ def _rewrite_dep_paths(
     is_root: bool = False,
     dry_run: bool = False,
 ) -> r[t.StrSequence]:
-    return FlextInfraUtilitiesDependencyPathSync().rewrite_dep_paths(
+    return u.Infra().rewrite_dep_paths(
         pyproject_path,
         mode=mode,
         internal_names=internal_names,
@@ -103,10 +102,6 @@ class TestRewriteDepPaths:
             _ = _path, _doc
             return r[bool].fail("write failed")
 
-        monkeypatch.setattr(
-            "flext_infra.deps.path_sync_rewrite.u.Cli.toml_write_document",
-            fail_write,
-        )
         tm.fail(
             _rewrite_dep_paths(
                 pyproject,

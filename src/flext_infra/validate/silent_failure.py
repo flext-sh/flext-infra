@@ -8,7 +8,6 @@ from typing import Annotated, override
 from pydantic import Field
 
 from flext_infra import m, p, r, s, u
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra.detectors.silent_failure_detector import (
     FlextInfraSilentFailureDetector,
 )
@@ -58,7 +57,7 @@ class FlextInfraSilentFailureValidator(s[bool]):
                     iter_result.error
                     or f"python file iteration failed for {project.name}",
                 )
-            rope_project = FlextInfraUtilitiesRopeCore.init_rope_project(project.path)
+            rope_project = u.Infra.init_rope_project(project.path)
             try:
                 for file_path in iter_result.value:
                     issues.extend(

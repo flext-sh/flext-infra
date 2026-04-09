@@ -8,17 +8,14 @@ from pathlib import Path
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from flext_tests import tm
+
+from flext_infra import FlextInfraReleaseOrchestrator, u as infra_u
 from tests import (
-    FakeSelection,
-    FakeUtilsNamespace,
     m,
     r,
     t,
-    u,
+    u as tests_u,
 )
-
-import flext_infra.release.orchestrator as _orch_mod
-from flext_infra import FlextInfraReleaseOrchestrator
 
 
 @pytest.fixture
@@ -31,16 +28,6 @@ def workspace_root(tmp_path: Path) -> Path:
     return root
 
 
-def _patch_sel(mp: MonkeyPatch, sel: FakeSelection) -> None:
-    def _resolve_projects(
-        workspace_root: Path,
-        names: t.StrSequence,
-    ) -> r[Sequence[m.Infra.ProjectInfo]]:
-        return sel.resolve_projects(workspace_root, names)
-
-    mp.setattr(u.Infra, "resolve_projects", staticmethod(_resolve_projects))
-
-
 class TestVersionFiles:
     def test_includes_workspace_root(self, workspace_root: Path) -> None:
         files = FlextInfraReleaseOrchestrator()._version_files(workspace_root, [])
@@ -50,11 +37,12 @@ class TestVersionFiles:
         proj_dir = workspace_root / "proj1"
         proj_dir.mkdir()
         (proj_dir / "pyproject.toml").touch()
-        fake_sel = FakeSelection()
-        fake_sel._resolve_result = r[Sequence[m.Infra.ProjectInfo]].ok([
-            m.Infra.ProjectInfo(name="proj1", path=proj_dir, stack="python"),
-        ])
-        _patch_sel(monkeypatch, fake_sel)
+        tests_u.Infra.Tests.patch_release_projects(
+            monkeypatch,
+            result=r[Sequence[m.Infra.ProjectInfo]].ok([
+                m.Infra.ProjectInfo(name="proj1", path=proj_dir, stack="python"),
+            ]),
+        )
         tm.that(
             len(
                 FlextInfraReleaseOrchestrator()._version_files(
@@ -74,7 +62,7 @@ class TestBuildTargets:
         workspace_root: Path,
         monkeypatch: MonkeyPatch,
     ) -> None:
-        _patch_sel(monkeypatch, FakeSelection())
+        tests_u.Infra.Tests.patch_release_projects(monkeypatch)
         targets = FlextInfraReleaseOrchestrator()._build_targets(workspace_root, [])
         name, path = targets[0]
         tm.that(name, eq="root")
@@ -85,15 +73,16 @@ class TestBuildTargets:
         workspace_root: Path,
         monkeypatch: MonkeyPatch,
     ) -> None:
-        fake_sel = FakeSelection()
-        fake_sel._resolve_result = r[Sequence[m.Infra.ProjectInfo]].ok([
-            m.Infra.ProjectInfo(
-                name="proj1",
-                path=workspace_root / "proj1",
-                stack="python",
-            ),
-        ])
-        _patch_sel(monkeypatch, fake_sel)
+        tests_u.Infra.Tests.patch_release_projects(
+            monkeypatch,
+            result=r[Sequence[m.Infra.ProjectInfo]].ok([
+                m.Infra.ProjectInfo(
+                    name="proj1",
+                    path=workspace_root / "proj1",
+                    stack="python",
+                ),
+            ]),
+        )
         names = [
             name
             for name, _ in FlextInfraReleaseOrchestrator()._build_targets(
@@ -116,7 +105,6 @@ class TestRunMake:
         ) -> r[m.Cli.CommandOutput]:
             return r[m.Cli.CommandOutput].ok(output)
 
-        monkeypatch.setattr(u.Cli, "run_raw", staticmethod(_fake_run_raw))
         result = FlextInfraReleaseOrchestrator._run_make(workspace_root, "build")
         tm.ok(result)
         code, _out = result.value
@@ -129,7 +117,6 @@ class TestRunMake:
         ) -> r[m.Cli.CommandOutput]:
             return r[m.Cli.CommandOutput].fail("failed")
 
-        monkeypatch.setattr(u.Cli, "run_raw", staticmethod(_fake_run_raw))
         tm.fail(FlextInfraReleaseOrchestrator._run_make(workspace_root, "build"))
 
 
@@ -137,8 +124,24 @@ class TestGenerateNotes:
     """Tests for _generate_notes."""
 
     def test_writes_file(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
-        FakeUtilsNamespace.Infra.reset()
-        monkeypatch.setattr(_orch_mod, "u", FakeUtilsNamespace)
+        def _generate_notes(
+            version: str,
+            tag: str,
+            projects: Sequence[object],
+            changes: str,
+            output_path: Path,
+        ) -> r[bool]:
+            del version, projects
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(f"# Release {tag}\n{changes}\n", encoding="utf-8")
+            return r[bool].ok(True)
+
+        tests_u.Infra.Tests.patch_release_projects(monkeypatch)
+        monkeypatch.setattr(
+            infra_u.Infra,
+            "generate_notes",
+            staticmethod(_generate_notes),
+        )
 
         def _previous_tag(*a: t.Scalar, **kw: t.Scalar) -> r[str]:
             del a, kw
@@ -183,7 +186,7 @@ class TestUpdateChangelog:
     def test_creates_files(self, workspace_root: Path) -> None:
         notes = workspace_root / "notes.md"
         notes.write_text("# Release v1.0.0\n")
-        result = u.Infra.update_changelog(
+        result = infra_u.Infra.update_changelog(
             workspace_root,
             "1.0.0",
             "v1.0.0",
@@ -199,7 +202,7 @@ class TestUpdateChangelog:
         notes = workspace_root / "notes.md"
         notes.write_text("# Release v1.0.0\n")
         tm.ok(
-            u.Infra.update_changelog(
+            infra_u.Infra.update_changelog(
                 workspace_root,
                 "1.0.0",
                 "v1.0.0",
@@ -220,8 +223,6 @@ class TestBumpNextDev:
         def _bump_ok(cur: str, kind: str) -> r[str]:
             _ = cur, kind
             return r[str].ok("1.1.0")
-
-        monkeypatch.setattr(u.Infra, "bump_version", staticmethod(_bump_ok))
 
         def _phase_version(*a: t.Scalar, **kw: t.Scalar) -> r[bool]:
             del a, kw
@@ -246,7 +247,6 @@ class TestBumpNextDev:
             _ = cur, kind
             return r[str].fail("invalid bump")
 
-        monkeypatch.setattr(u.Infra, "bump_version", staticmethod(_bump_fail))
         tm.fail(
             FlextInfraReleaseOrchestrator()._bump_next_dev(
                 workspace_root,

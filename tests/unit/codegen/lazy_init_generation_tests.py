@@ -12,10 +12,10 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import r, t, u
 
 import flext_infra as mod
 from flext_infra import FlextInfraCodegenGeneration
+from tests import r, t, u
 
 
 class TestResolveAliases:
@@ -460,7 +460,6 @@ class TestRunRuffFix:
             commands.append(tuple(cmd))
             return r[bool].ok(True)
 
-        monkeypatch.setattr(u.Cli, "run_checked", _run_checked)
         u.Infra.run_ruff_fix(generated)
         tm.that(len(commands), eq=2)
         tm.that(
@@ -495,7 +494,6 @@ class TestRunRuffFix:
                 return r[bool].ok(True)
             return r[bool].fail("ruff format failed")
 
-        monkeypatch.setattr(u.Cli, "run_checked", _run_checked)
         with pytest.raises(ValueError, match="ruff format failed"):
             u.Infra.run_ruff_fix(generated)
 

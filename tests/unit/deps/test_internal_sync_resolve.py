@@ -4,10 +4,10 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import t
 
 from flext_core import r
-from flext_infra import FlextInfraInternalDependencySyncService, internal_sync
+from flext_infra import FlextInfraInternalDependencySyncService, u
+from tests import t
 
 
 class TestResolveRef:
@@ -38,7 +38,7 @@ class TestResolveRef:
             return r[str].ok("develop")
 
         monkeypatch.setattr(
-            internal_sync.u.Infra,
+            u.Infra,
             "git_current_branch",
             _git_current_branch,
         )
@@ -56,11 +56,10 @@ class TestResolveRef:
             return r[str].ok("v1.0.0")
 
         monkeypatch.setattr(
-            internal_sync.u.Infra,
+            u.Infra,
             "git_current_branch",
             _git_current_branch,
         )
-        monkeypatch.setattr(internal_sync.u.Infra, "git_run", _git_run)
         tm.that(service.resolve_ref(Path("/fake")), eq="v1.0.0")
 
     def test_resolve_ref_fallback_main(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -75,12 +74,12 @@ class TestResolveRef:
             return r[str].fail("not a git repo")
 
         monkeypatch.setattr(
-            internal_sync.u.Infra,
+            u.Infra,
             "git_current_branch",
             _git_current_branch,
         )
         monkeypatch.setattr(
-            internal_sync.u.Infra,
+            u.Infra,
             "git_run",
             _git_run,
         )
@@ -96,7 +95,7 @@ class TestInferOwnerFromOrigin:
             return r[str].ok("git@github.com:flext-sh/flext-core.git")
 
         monkeypatch.setattr(
-            internal_sync.u.Infra,
+            u.Infra,
             "git_run",
             _git_run,
         )
@@ -110,7 +109,7 @@ class TestInferOwnerFromOrigin:
             return r[str].fail("no remote")
 
         monkeypatch.setattr(
-            internal_sync.u.Infra,
+            u.Infra,
             "git_run",
             _git_run,
         )
@@ -124,7 +123,7 @@ class TestInferOwnerFromOrigin:
             return r[str].ok("")
 
         monkeypatch.setattr(
-            internal_sync.u.Infra,
+            u.Infra,
             "git_run",
             _git_run,
         )

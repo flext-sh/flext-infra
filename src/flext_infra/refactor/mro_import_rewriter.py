@@ -16,9 +16,7 @@ from flext_infra import (
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesProtectedEdit,
     FlextInfraUtilitiesRefactorMroTransform,
-    FlextInfraUtilitiesRopeAnalysis,
-    FlextInfraUtilitiesRopeCore,
-    FlextInfraUtilitiesRopeImports,
+    FlextInfraUtilitiesRope,
 )
 
 
@@ -132,7 +130,7 @@ class FlextInfraRefactorMROImportRewriter:
         Path,
         Mapping[str, FlextInfraTypesBase.Pair[str, FlextInfraTypes.StrMapping]],
     ]:
-        rope_project = FlextInfraUtilitiesRopeCore.init_rope_project(workspace_root)
+        rope_project = FlextInfraUtilitiesRope.init_rope_project(workspace_root)
         module_file_moves: MutableMapping[
             Path,
             MutableMapping[
@@ -168,7 +166,7 @@ class FlextInfraRefactorMROImportRewriter:
         ],
     ) -> None:
         """Find rope occurrences for one module's symbols and merge into file_moves."""
-        resource = FlextInfraUtilitiesRopeCore.get_file_resource(
+        resource = FlextInfraUtilitiesRope.get_file_resource(
             rope_project,
             module_name,
         )
@@ -176,14 +174,14 @@ class FlextInfraRefactorMROImportRewriter:
             return
         facade_alias, symbol_paths = module_move
         for symbol_name, target_path in symbol_paths.items():
-            offset = FlextInfraUtilitiesRopeAnalysis.find_definition_offset(
+            offset = FlextInfraUtilitiesRope.find_definition_offset(
                 rope_project,
                 resource,
                 symbol_name,
             )
             if offset is None:
                 continue
-            for occurrence in FlextInfraUtilitiesRopeImports.find_occurrences(
+            for occurrence in FlextInfraUtilitiesRope.find_occurrences(
                 rope_project,
                 resource,
                 offset,

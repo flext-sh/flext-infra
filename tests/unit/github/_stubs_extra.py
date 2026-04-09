@@ -12,9 +12,8 @@ from __future__ import annotations
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
-from tests import m, t
-
 from flext_core import r
+from tests import m, t
 
 
 class StubPrManager:

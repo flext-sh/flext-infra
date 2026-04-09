@@ -9,7 +9,8 @@ from __future__ import annotations
 from collections.abc import MutableSequence
 from pathlib import Path
 
-from flext_infra import c, r, t, u
+from flext_cli import u
+from flext_infra import c, r, t
 
 
 class FlextInfraDependencyPathSyncRewrite:

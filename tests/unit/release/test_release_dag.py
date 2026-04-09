@@ -12,9 +12,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_tests import tm
-from tests import c, m, r, t
 
 from flext_infra import FlextInfraReleaseOrchestrator
+from tests import c, m, r, t
 
 if TYPE_CHECKING:
     from pathlib import Path

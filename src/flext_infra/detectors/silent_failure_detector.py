@@ -7,8 +7,7 @@ from typing import ClassVar, override
 
 from pydantic import BaseModel
 
-from flext_infra import FlextInfraScanFileMixin, c, m, p
-from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
+from flext_infra import FlextInfraScanFileMixin, c, m, p, u
 
 
 class FlextInfraSilentFailureDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
@@ -44,7 +43,7 @@ class FlextInfraSilentFailureDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
                 message=message,
             )
             for line, column, code, message, _change in (
-                FlextInfraUtilitiesRopeSource.collect_silent_failure_findings(source)
+                u.Infra.collect_silent_failure_findings(source)
             )
         ]
 

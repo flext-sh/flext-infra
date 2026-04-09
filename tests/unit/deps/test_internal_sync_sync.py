@@ -5,10 +5,10 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import t
 
 from flext_core import r
-from flext_infra import FlextInfraInternalDependencySyncService, internal_sync
+from flext_infra import FlextInfraInternalDependencySyncService, u
+from tests import t
 
 
 def _set_toml_stub(
@@ -86,7 +86,7 @@ class TestSync:
             return r[str].ok("")
 
         monkeypatch.setattr(
-            internal_sync.u.Infra,
+            u.Infra,
             "git_run",
             _git_run,
         )
@@ -126,7 +126,7 @@ class TestSync:
             return r[str].ok("")
 
         monkeypatch.setattr(
-            internal_sync.u.Infra,
+            u.Infra,
             "git_run",
             _git_run,
         )

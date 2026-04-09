@@ -5,9 +5,9 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import m, r, t, u
 
 from flext_infra import FlextInfraDependencyDetectionService
+from tests import m, r, t, u
 
 
 class _StubTomlReadJson:

@@ -12,10 +12,13 @@ from types import SimpleNamespace
 
 from _pytest.monkeypatch import MonkeyPatch
 from flext_tests import tm
-from tests import m
 
 from flext_core import r
-from flext_infra import main as infra_main, u as infra_u
+from flext_infra import (
+    main as infra_main,
+    u as infra_u,
+)
+from tests import m
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -39,12 +42,8 @@ def _patch_main_deps(
     def _workspace_root(_hint: str) -> r[Path]:
         return effective_root if effective_root is not None else r[Path].ok(tmp_path)
 
-    monkeypatch.setattr(infra_u.Infra, "workspace_root", staticmethod(_workspace_root))
-
     def _parse_semver(version: str) -> r[str]:
         return r[str].ok(version)
-
-    monkeypatch.setattr(infra_u.Infra, "parse_semver", staticmethod(_parse_semver))
 
     def _current_workspace_version(root: Path) -> r[str]:
         return r[str].ok("1.0.0")
@@ -57,8 +56,6 @@ def _patch_main_deps(
 
     def _bump_version(cur: str, kind: str) -> r[str]:
         return r[str].ok("1.1.0")
-
-    monkeypatch.setattr(infra_u.Infra, "bump_version", staticmethod(_bump_version))
 
     effective_release = release_result
     effective_capture = capture
@@ -77,11 +74,6 @@ def _patch_main_deps(
                 ),
             )
         return effective_release if effective_release is not None else r[bool].ok(True)
-
-    monkeypatch.setattr(
-        "flext_infra.release.orchestrator.FlextInfraReleaseOrchestrator.run_release",
-        mock_run_release,
-    )
 
 
 def _argv(tmp_path: Path, *extra: str) -> list[str]:

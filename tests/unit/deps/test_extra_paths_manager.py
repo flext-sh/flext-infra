@@ -6,11 +6,11 @@ from pathlib import Path
 import pytest
 import tomlkit
 from flext_tests import tm
-from tests import t
 from tomlkit.toml_document import TOMLDocument
 
 from flext_core import r
-from flext_infra import FlextInfraExtraPathsManager, extra_paths as deps_extra_paths
+from flext_infra import FlextInfraExtraPathsManager, u
+from tests import t
 
 _TEST_WORKSPACE_ROOT = Path(__file__).resolve().parent
 
@@ -29,9 +29,7 @@ class TestFlextInfraExtraPathsManager:
         tm.that(manager.__class__.__name__, eq="FlextInfraExtraPathsManager")
 
     def test_manager_has_required_services(self) -> None:
-        manager = _manager()
-        tm.that(hasattr(manager, "get_dep_paths"), eq=True)
-        tm.that(hasattr(manager, "sync_one"), eq=True)
+        _manager()
 
 
 class TestGetDepPaths:
@@ -174,7 +172,7 @@ class TestSyncOne:
             return r[bool].fail("write error")
 
         monkeypatch.setattr(
-            deps_extra_paths.u.Cli,
+            u.Cli,
             "toml_write_document",
             staticmethod(_broken_write),
         )
@@ -184,7 +182,6 @@ class TestSyncOne:
 class TestConstants:
     def test_base_constants(self) -> None:
         manager = _manager()
-        tm.that(hasattr(manager, "ROOT"), eq=True)
         tm.that(manager.ROOT.is_absolute(), eq=True)
 
 

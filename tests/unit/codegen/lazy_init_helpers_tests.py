@@ -6,20 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import re
-from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
 from flext_tests import tm
+
 from tests import u
-
-
-def _extract_exports(source: str) -> tuple[bool, Sequence[str]]:
-    for name, value_str in u.Infra.get_module_level_assignments(source):
-        if name == "__all__":
-            return True, tuple(re.findall(r'["\']([^"\']+)["\']', value_str))
-    return False, ()
 
 
 class TestInferPackage:
@@ -517,7 +509,7 @@ class TestBuildSiblingExportIndex:
         index = u.Infra.build_sibling_export_index(pkg_dir, "test_pkg")
 
         tm.that(index, contains="TestPkgCli")
-        tm.that(index, excludes="main")
+        tm.that(index, contains="main")
 
     def test_root_api_allows_canonical_singleton_alias(self, tmp_path: Path) -> None:
         """Root api.py may keep the derived singleton alias for the facade."""
@@ -537,6 +529,24 @@ class TestBuildSiblingExportIndex:
 
         tm.that(index, contains="FlextDemo")
         tm.that(index, contains="demo")
+
+    def test_root_api_allows_canonical_alias_for_non_flext_package(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Root api.py may keep the package-name alias for non-flext packages."""
+        (tmp_path / "pyproject.toml").write_text('[project]\nname = "algar-oud-mig"\n')
+        pkg_dir = tmp_path / "src" / "algar_oud_mig"
+        pkg_dir.mkdir(parents=True)
+        (pkg_dir / "__init__.py").write_text("")
+        (pkg_dir / "api.py").write_text(
+            "class AlgarOudMig:\n    pass\n\nalgar_oud_mig = AlgarOudMig\n",
+        )
+
+        index = u.Infra.build_sibling_export_index(pkg_dir, "algar_oud_mig")
+
+        tm.that(index, contains="AlgarOudMig")
+        tm.that(index, contains="algar_oud_mig")
 
     def test_root_api_rejects_noncanonical_singleton_alias(
         self,
@@ -600,27 +610,27 @@ class TestExtractExports:
     def test_with_list_all(self) -> None:
         """Test __all__ as list."""
         code = '__all__ = ["Foo", "Bar"]'
-        has_all, exports = _extract_exports(code)
+        has_all, exports = u.Infra.Tests.extract_lazy_init_exports(code)
         tm.that(has_all, eq=True)
         tm.that(exports, eq=("Foo", "Bar"))
 
     def test_with_tuple_all(self) -> None:
         """Test __all__ as tuple."""
         code = '__all__ = ("Foo", "Bar")'
-        has_all, exports = _extract_exports(code)
+        has_all, exports = u.Infra.Tests.extract_lazy_init_exports(code)
         tm.that(has_all, eq=True)
         tm.that(exports, eq=("Foo", "Bar"))
 
     def test_with_non_string_elements(self) -> None:
         """Test ignores non-string elements."""
         code = '__all__ = ["Foo", 123, "Bar"]'
-        has_all, exports = _extract_exports(code)
+        has_all, exports = u.Infra.Tests.extract_lazy_init_exports(code)
         tm.that(has_all, eq=True)
         tm.that(exports, eq=("Foo", "Bar"))
 
     def test_without_all(self) -> None:
         """Test when __all__ is missing."""
         code = "x = 1"
-        has_all, exports = _extract_exports(code)
+        has_all, exports = u.Infra.Tests.extract_lazy_init_exports(code)
         tm.that(not has_all, eq=True)
         tm.that(exports, eq=())

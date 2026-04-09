@@ -13,9 +13,9 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import m, t, u
 
 from flext_infra import FlextInfraCodegenCensus
+from tests import m, t, u
 
 
 class TestParseViolationValid:

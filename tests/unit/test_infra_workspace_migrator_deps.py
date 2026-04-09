@@ -10,9 +10,9 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import _build_migrator, _project
 
 from flext_infra import FlextInfraProjectMigrator
+from tests import u
 
 
 def test_migrator_has_flext_core_dependency_in_poetry(tmp_path: Path) -> None:
@@ -26,8 +26,11 @@ def test_migrator_has_flext_core_dependency_in_poetry(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     (project_root / ".gitignore").write_text("", encoding="utf-8")
-    migrator = _build_migrator(
-        _project(project_root), "base.mk", workspace_root=tmp_path, dry_run=True
+    migrator = u.Infra.Tests.build_project_migrator(
+        u.Infra.Tests.create_migrator_project(project_root),
+        "base.mk",
+        workspace_root=tmp_path,
+        dry_run=True,
     )
     result = migrator.execute()
     migrations = tm.ok(result)
@@ -44,8 +47,11 @@ def test_migrator_has_flext_core_dependency_poetry_table_missing(
     (project_root / "Makefile").write_text("content", encoding="utf-8")
     (project_root / "pyproject.toml").write_text("[tool]\n", encoding="utf-8")
     (project_root / ".gitignore").write_text("", encoding="utf-8")
-    migrator = _build_migrator(
-        _project(project_root), "base", workspace_root=tmp_path, dry_run=True
+    migrator = u.Infra.Tests.build_project_migrator(
+        u.Infra.Tests.create_migrator_project(project_root),
+        "base",
+        workspace_root=tmp_path,
+        dry_run=True,
     )
     result = migrator.execute()
     migrations = tm.ok(result)
@@ -65,8 +71,11 @@ def test_migrator_has_flext_core_dependency_poetry_deps_not_table(
         encoding="utf-8",
     )
     (project_root / ".gitignore").write_text("", encoding="utf-8")
-    migrator = _build_migrator(
-        _project(project_root), "base", workspace_root=tmp_path, dry_run=True
+    migrator = u.Infra.Tests.build_project_migrator(
+        u.Infra.Tests.create_migrator_project(project_root),
+        "base",
+        workspace_root=tmp_path,
+        dry_run=True,
     )
     result = migrator.execute()
     migrations = tm.ok(result)
@@ -88,8 +97,8 @@ def test_workspace_migrator_makefile_not_found_dry_run(tmp_path: Path) -> None:
     (project_root / "base.mk").write_text("base", encoding="utf-8")
     (project_root / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
     (project_root / ".gitignore").write_text("", encoding="utf-8")
-    migrator = _build_migrator(
-        _project(project_root, name="test-proj"),
+    migrator = u.Infra.Tests.build_project_migrator(
+        u.Infra.Tests.create_migrator_project(project_root, name="test-proj"),
         "base",
         workspace_root=tmp_path,
         dry_run=True,
@@ -112,8 +121,8 @@ def test_workspace_migrator_makefile_read_error(
     (project_root / "Makefile").write_text("test", encoding="utf-8")
     (project_root / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
     (project_root / ".gitignore").write_text("", encoding="utf-8")
-    migrator = _build_migrator(
-        _project(project_root, name="test-proj"),
+    migrator = u.Infra.Tests.build_project_migrator(
+        u.Infra.Tests.create_migrator_project(project_root, name="test-proj"),
         "base",
         workspace_root=tmp_path,
     )
@@ -135,7 +144,6 @@ def test_workspace_migrator_makefile_read_error(
             newline=newline,
         )
 
-    monkeypatch.setattr(Path, "read_text", _selective_read)
     migration = tm.ok(migrator.execute())[0]
     tm.that(any("Read failed" in err for err in migration.errors), eq=True)
 
@@ -154,8 +162,8 @@ def test_workspace_migrator_pyproject_write_error(
         ".reports/\n.venv/\n__pycache__/\nbase.mk\n",
         encoding="utf-8",
     )
-    migrator = _build_migrator(
-        _project(project_root, name="test-proj"),
+    migrator = u.Infra.Tests.build_project_migrator(
+        u.Infra.Tests.create_migrator_project(project_root, name="test-proj"),
         "base",
         workspace_root=tmp_path,
         dry_run=False,
@@ -168,7 +176,6 @@ def test_workspace_migrator_pyproject_write_error(
             raise OSError(msg)
         return original_write(self, data, **kwargs)
 
-    monkeypatch.setattr(Path, "write_text", _selective_write)
     migration = tm.ok(migrator.execute())[0]
     tm.that(any("Write failed" in err for err in migration.errors), eq=True)
 
@@ -186,8 +193,8 @@ def test_migrate_makefile_not_found_non_dry_run(tmp_path: Path) -> None:
         ".reports/\n.venv/\n__pycache__/\nbase.mk\n",
         encoding="utf-8",
     )
-    migrator = _build_migrator(
-        _project(project_root),
+    migrator = u.Infra.Tests.build_project_migrator(
+        u.Infra.Tests.create_migrator_project(project_root),
         "base",
         workspace_root=tmp_path,
         dry_run=False,
@@ -211,8 +218,8 @@ def test_migrate_pyproject_flext_core_non_dry_run(tmp_path: Path) -> None:
         ".reports/\n.venv/\n__pycache__/\nbase.mk\n",
         encoding="utf-8",
     )
-    migrator = _build_migrator(
-        _project(project_root, name="flext-core"),
+    migrator = u.Infra.Tests.build_project_migrator(
+        u.Infra.Tests.create_migrator_project(project_root, name="flext-core"),
         "base",
         workspace_root=tmp_path,
         dry_run=False,

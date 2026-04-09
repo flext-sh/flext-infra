@@ -11,10 +11,10 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import t
 
 from flext_core import r
 from flext_infra import FlextInfraConfigFixer
+from tests import t
 
 
 def _fake_process(
@@ -53,8 +53,6 @@ class TestConfigFixerRunMethods:
             del dry_run
             return r[t.StrSequence].ok(["fix1", "fix2"])
 
-        monkeypatch.setattr(FlextInfraConfigFixer, "find_pyproject_files", _find)
-        monkeypatch.setattr(FlextInfraConfigFixer, "process_file", _proc)
         fixer = FlextInfraConfigFixer(workspace=tmp_path)
         result = fixer.run(["project1"], verbose=True)
         tm.ok(result)
@@ -74,8 +72,6 @@ class TestConfigFixerRunMethods:
         ) -> r[Sequence[Path]]:
             return r[Sequence[Path]].ok([pyproject])
 
-        monkeypatch.setattr(FlextInfraConfigFixer, "find_pyproject_files", _find)
-        monkeypatch.setattr(FlextInfraConfigFixer, "process_file", _fake_process)
         fixer = FlextInfraConfigFixer(workspace=tmp_path)
         tm.ok(fixer.run(["project1"], dry_run=True))
 
@@ -97,7 +93,6 @@ class TestProcessFileReadError:
             msg = "read error"
             raise OSError(msg)
 
-        monkeypatch.setattr(Path, "read_text", _raise)
         tm.fail(fixer.process_file(pyproject), has="TOML parse failed")
 
     def test_parse_error(self, tmp_path: Path) -> None:
@@ -138,8 +133,6 @@ class TestProcessFileReadError:
                 raise OSError(msg)
             original_write(self_path, data, **kw)
 
-        monkeypatch.setattr(FlextInfraConfigFixer, "_fix_search_paths_tk", _fake_fix)
-        monkeypatch.setattr(Path, "write_text", _raise_on_write)
         tm.fail(fixer.process_file(pyproject), has="write error")
 
 

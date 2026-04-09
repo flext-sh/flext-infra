@@ -348,9 +348,10 @@ class FlextInfraUtilitiesRefactorNamespaceRuntime(
                 else None
             )
         if apply:
+            validation_root = project_root or workspace_root
             ok, report = FlextInfraUtilitiesProtectedEdit.protected_source_write(
                 file_path,
-                workspace=workspace_root,
+                workspace=validation_root,
                 updated_source=refactored_code,
                 keep_backup=True,
             )

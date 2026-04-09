@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
+
 from tests import u
 
 
@@ -26,7 +27,9 @@ class TestFlextInfraUtilitiesSelection:
             proj.mkdir()
             (proj / ".git").mkdir()
             (proj / "Makefile").touch()
-            (proj / "pyproject.toml").touch()
+            (proj / "pyproject.toml").write_text(
+                f'[project]\nname = "{name}"\ndependencies = ["flext-core"]\n',
+            )
             (proj / "src").mkdir()
         return tmp_path
 
@@ -34,6 +37,23 @@ class TestFlextInfraUtilitiesSelection:
     def selector(self) -> type[u.Infra]:
         """Provide project selector utilities class."""
         return u.Infra
+
+    @pytest.fixture
+    def workspace_with_declared_names(self, tmp_path: Path) -> Path:
+        """Create projects whose declared names differ from directory names."""
+        for directory_name, project_name in [
+            ("flexcore", "flext-core"),
+            ("legacy-cli", "flext-cli"),
+        ]:
+            proj = tmp_path / directory_name
+            proj.mkdir()
+            (proj / ".git").mkdir()
+            (proj / "Makefile").touch()
+            (proj / "src").mkdir()
+            (proj / "pyproject.toml").write_text(
+                f'[project]\nname = "{project_name}"\ndependencies = ["flext-core"]\n',
+            )
+        return tmp_path
 
     def test_resolve_projects_all_projects(
         self,
@@ -121,6 +141,32 @@ class TestFlextInfraUtilitiesSelection:
         projects = result.value
         tm.that(len(projects), eq=3)
         tm.that([p.name for p in projects], eq=["alpha", "beta", "gamma"])
+
+    def test_resolve_projects_accepts_directory_aliases(
+        self,
+        selector: type[u.Infra],
+        workspace_with_declared_names: Path,
+    ) -> None:
+        """Test resolving projects by directory name alias."""
+        result = selector.resolve_projects(
+            workspace_with_declared_names,
+            ["flexcore", "legacy-cli"],
+        )
+        projects = tm.ok(result)
+        tm.that([p.name for p in projects], eq=["flext-cli", "flext-core"])
+
+    def test_resolve_projects_accepts_declared_names(
+        self,
+        selector: type[u.Infra],
+        workspace_with_declared_names: Path,
+    ) -> None:
+        """Test resolving projects by declared project.name."""
+        result = selector.resolve_projects(
+            workspace_with_declared_names,
+            ["flext-core", "flext-cli"],
+        )
+        projects = tm.ok(result)
+        tm.that([p.path.name for p in projects], eq=["legacy-cli", "flexcore"])
 
     def test_selector_with_default_discovery(
         self,

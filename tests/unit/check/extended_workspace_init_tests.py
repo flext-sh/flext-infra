@@ -10,9 +10,9 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import c, m, t, u
 
 from flext_infra import FlextInfraRuffLintGate, FlextInfraWorkspaceChecker
+from tests import c, m, t, u
 
 
 class TestWorkspaceCheckerInitialization:
@@ -102,7 +102,6 @@ class TestWorkspaceCheckerInitOSError:
             msg = "Permission denied"
             raise OSError(msg)
 
-        monkeypatch.setattr(Path, "mkdir", _raise_oserror)
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         tm.that(checker._default_reports_dir.is_absolute(), eq=True)
 

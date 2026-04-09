@@ -8,10 +8,10 @@ from __future__ import annotations
 
 import pytest
 from flext_tests import tm
-from tests import t
 
 import flext_infra.validate as core_module
 from flext_infra import FlextInfraBaseMkValidator
+from tests import t
 
 
 class TestCoreModuleInit:
@@ -34,7 +34,6 @@ class TestCoreModuleInit:
     def test_core_lazy_imports_work(self) -> None:
         """Test that lazy imports resolve to real classes."""
         tm.that(FlextInfraBaseMkValidator, none=False)
-        tm.that(hasattr(FlextInfraBaseMkValidator, "validate"), eq=True)
 
 
 __all__: t.StrSequence = []

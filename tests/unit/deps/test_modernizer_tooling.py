@@ -6,13 +6,13 @@ from pathlib import Path
 
 import tomlkit
 from flext_tests import tm
-from tests import m, t, u
 
 from flext_infra import (
     FlextInfraEnsureFormattingToolingPhase,
     FlextInfraEnsureNamespaceToolingPhase,
     FlextInfraEnsureRuffConfigPhase,
 )
+from tests import m, t, u
 
 
 def _test_tool_config() -> m.Infra.ToolConfigDocument:

@@ -140,7 +140,7 @@ class FlextInfraUtilitiesRopeCore:
         return isinstance(value, ChangeContents)
 
     @staticmethod
-    def _is_get_module_imports_fn(
+    def _isget_module_imports_fn(
         value: object,
     ) -> TypeGuard[t.Infra.RopeGetModuleImportsFn]:
         """Narrow one callable to Rope's get_module_imports contract."""
@@ -225,6 +225,13 @@ class FlextInfraUtilitiesRopeCore:
         return value
 
     @staticmethod
+    def ensure_rope_project(
+        value: object,
+    ) -> t.Infra.RopeProject:
+        """Validate one rope Project through the public core boundary."""
+        return FlextInfraUtilitiesRopeCore._ensure_rope_project(value)
+
+    @staticmethod
     def _ensure_rope_resource(
         value: object,
     ) -> t.Infra.RopeResource:
@@ -235,6 +242,13 @@ class FlextInfraUtilitiesRopeCore:
         return value
 
     @staticmethod
+    def ensure_rope_resource(
+        value: object,
+    ) -> t.Infra.RopeResource:
+        """Validate one rope resource through the public core boundary."""
+        return FlextInfraUtilitiesRopeCore._ensure_rope_resource(value)
+
+    @staticmethod
     def _ensure_rope_api_resource(
         value: object,
     ) -> t.Infra.RopeApiResource:
@@ -243,6 +257,13 @@ class FlextInfraUtilitiesRopeCore:
             msg = "rope resource does not satisfy Rope API resource contract"
             raise TypeError(msg)
         return value
+
+    @staticmethod
+    def ensure_rope_api_resource(
+        value: object,
+    ) -> t.Infra.RopeApiResource:
+        """Validate one rope API resource through the public core boundary."""
+        return FlextInfraUtilitiesRopeCore._ensure_rope_api_resource(value)
 
     @staticmethod
     def _ensure_pymodule(value: object) -> t.Infra.RopePyModule:
@@ -263,11 +284,18 @@ class FlextInfraUtilitiesRopeCore:
         return value
 
     @staticmethod
-    def _ensure_get_module_imports_fn(
+    def ensure_rope_change_set(
+        value: object,
+    ) -> t.Infra.RopeChanges:
+        """Validate one rope change set through the public core boundary."""
+        return FlextInfraUtilitiesRopeCore._ensure_rope_change_set(value)
+
+    @staticmethod
+    def _ensureget_module_imports_fn(
         value: object,
     ) -> t.Infra.RopeGetModuleImportsFn:
         """Validate Rope's get_module_imports callable against the local contract."""
-        if not FlextInfraUtilitiesRopeCore._is_get_module_imports_fn(value):
+        if not FlextInfraUtilitiesRopeCore._isget_module_imports_fn(value):
             msg = "rope get_module_imports helper is not callable"
             raise TypeError(msg)
         return value
@@ -314,7 +342,7 @@ class FlextInfraUtilitiesRopeCore:
         )
 
     @staticmethod
-    def _get_module_imports(
+    def get_module_imports(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
     ) -> t.Infra.RopeModuleImports | None:
@@ -361,6 +389,18 @@ class FlextInfraUtilitiesRopeCore:
     ) -> t.Infra.RopeFromImport | None:
         """Expose absolute from-import narrowing through the public Rope boundary."""
         return FlextInfraUtilitiesRopeCore._absolute_from_import_any(import_info)
+
+    @staticmethod
+    def absolute_from_import(
+        import_info: object,
+        *,
+        module_name: str,
+    ) -> t.Infra.RopeFromImport | None:
+        """Expose absolute from-import matching through the public Rope boundary."""
+        return FlextInfraUtilitiesRopeCore._absolute_from_import(
+            import_info,
+            module_name=module_name,
+        )
 
     @staticmethod
     def _absolute_from_import(
@@ -430,6 +470,20 @@ class FlextInfraUtilitiesRopeCore:
         if column < 0:
             return None
         return sum(len(item) for item in lines[: line_number - 1]) + column
+
+    @staticmethod
+    def line_offset_for_symbol(
+        *,
+        source: str,
+        line_number: int,
+        symbol: str,
+    ) -> int | None:
+        """Convert Rope line metadata into a character offset via the public core API."""
+        return FlextInfraUtilitiesRopeCore._line_offset_for_symbol(
+            source=source,
+            line_number=line_number,
+            symbol=symbol,
+        )
 
 
 __all__ = ["FlextInfraUtilitiesRopeCore"]

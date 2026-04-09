@@ -1,108 +1,70 @@
-"""Tests for FlextInfraTypes facade.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Behavior tests for the public ``t`` typing facade."""
 
 from __future__ import annotations
 
-from flext_core import FlextTypes
-from flext_infra import FlextInfraTypes, t
+from pathlib import Path
+
+from flext_tests import tm
+
+from tests import t, u
 
 
-class TestFlextInfraTypesImport:
-    """Test FlextInfraTypes class import and structure."""
+class TestInfraTypingAdapters:
+    """Validate public adapters exposed by ``t``."""
 
-    def test_flext_infra_types_is_importable(self) -> None:
-        """Test that FlextInfraTypes can be imported."""
-        assert FlextInfraTypes is not None
+    def test_json_mapping_adapter_validates_nested_cli_payload(self) -> None:
+        payload = t.Cli.JSON_MAPPING_ADAPTER.validate_python({
+            "tool": {"name": "infra"},
+            "enabled": True,
+        })
 
-    def test_flext_infra_types_inherits_from_flext_types(self) -> None:
-        """Test that FlextInfraTypes extends FlextTypes."""
-        assert issubclass(FlextInfraTypes, FlextTypes)
+        tm.that(payload["enabled"], eq=True)
+        tm.that(payload["tool"], eq={"name": "infra"})
 
-    def test_runtime_alias_t_is_flext_infra_types(self) -> None:
-        """Test that t is an alias for FlextInfraTypes."""
-        assert t is FlextInfraTypes
+    def test_json_list_adapter_validates_mixed_cli_values(self) -> None:
+        items = t.Cli.JSON_LIST_ADAPTER.validate_python(["infra", 1, True])
 
-    def test_flext_infra_types_has_scalar_type(self) -> None:
-        """Test that FlextInfraTypes has Scalar type."""
-        assert hasattr(FlextTypes, "Scalar") or hasattr(FlextInfraTypes, "Scalar")
+        tm.that(list(items), eq=["infra", 1, True])
 
-    def test_flext_infra_types_has_general_value_type(self) -> None:
-        """Test that FlextInfraTypes has GeneralValueType."""
-        assert hasattr(FlextTypes, "GeneralValueType") or hasattr(
-            FlextInfraTypes,
-            "GeneralValueType",
+    def test_infra_mapping_adapter_validates_real_workspace_payload(self) -> None:
+        payload = t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
+            "python": {"version": "3.13"},
+            "paths": ["src", "tests"],
+            "enabled": True,
+        })
+
+        tm.that(payload["python"], eq={"version": "3.13"})
+        tm.that(payload["paths"], eq=["src", "tests"])
+        tm.that(payload["enabled"], eq=True)
+
+    def test_str_seq_adapter_validates_project_name_sequences(self) -> None:
+        values = t.Infra.STR_SEQ_ADAPTER.validate_python(
+            ("flext-core", "flext-infra"),
         )
 
-    def test_flext_infra_types_has_dict_type(self) -> None:
-        """Test that FlextInfraTypes has Dict type."""
-        assert hasattr(FlextTypes, "Dict") or hasattr(FlextInfraTypes, "Dict")
+        tm.that(list(values), eq=["flext-core", "flext-infra"])
 
-    def test_flext_infra_types_has_json_value_type(self) -> None:
-        """Test that FlextInfraTypes has Serializable type."""
-        assert hasattr(FlextTypes, "Serializable") or hasattr(
-            FlextInfraTypes,
-            "Serializable",
-        )
+    def test_container_mapping_adapter_accepts_paths_and_nested_scalars(self) -> None:
+        payload = t.Infra.CONTAINER_MAPPING_ADAPTER.validate_python({
+            "root": Path("/tmp/flext"),
+            "settings": {"enabled": True},
+        })
 
-    def test_flext_infra_types_has_json_dict_type(self) -> None:
-        """Test that FlextInfraTypes has ConfigMap or ContainerDict type."""
-        assert hasattr(FlextTypes, "ConfigMap") or hasattr(
-            FlextInfraTypes.Infra,
-            "ContainerDict",
-        )
+        tm.that(payload["root"], eq=Path("/tmp/flext"))
+        tm.that(payload["settings"], eq={"enabled": True})
 
-    def test_flext_infra_types_has_metadata_value_type(self) -> None:
-        """Test that FlextInfraTypes has MetadataValue type."""
-        assert hasattr(FlextTypes, "MetadataValue") or hasattr(
-            FlextInfraTypes,
-            "MetadataValue",
-        )
 
-    def test_flext_infra_types_has_configuration_mapping_type(self) -> None:
-        """Test that FlextInfraTypes has ConfigurationMapping type."""
-        assert hasattr(FlextTypes, "ConfigurationMapping") or hasattr(
-            FlextInfraTypes,
-            "ConfigurationMapping",
-        )
+class TestInfraTypingGuards:
+    """Validate public guard helpers that consume typing contracts."""
 
-    def test_flext_infra_types_has_serializable_type(self) -> None:
-        """Test that FlextInfraTypes has Serializable type."""
-        assert hasattr(FlextTypes, "Serializable") or hasattr(
-            FlextInfraTypes,
-            "Serializable",
-        )
+    def test_registerable_service_guard_accepts_real_public_values(self) -> None:
+        tm.that(u.is_registerable_service({"service": "infra"}), eq=True)
+        tm.that(u.is_registerable_service(["a", "b"]), eq=True)
+        tm.that(u.is_registerable_service(Path("/tmp/flext")), eq=True)
 
-    def test_flext_infra_types_has_registerable_service_type(self) -> None:
-        """Test that FlextInfraTypes has RegisterableService type."""
-        assert hasattr(FlextTypes, "RegisterableService") or hasattr(
-            FlextInfraTypes,
-            "RegisterableService",
-        )
+    def test_factory_and_resource_guards_accept_callables(self) -> None:
+        def build_service() -> str:
+            return "ok"
 
-    def test_flext_infra_types_has_container_type(self) -> None:
-        """Test that FlextInfraTypes has Container type."""
-        assert hasattr(FlextTypes, "Container") or hasattr(FlextInfraTypes, "Container")
-
-    def test_flext_infra_types_has_factory_callable_type(self) -> None:
-        """Test that FlextInfraTypes has FactoryCallable type."""
-        assert hasattr(FlextTypes, "FactoryCallable") or hasattr(
-            FlextInfraTypes,
-            "FactoryCallable",
-        )
-
-    def test_flext_infra_types_has_resource_callable_type(self) -> None:
-        """Test that FlextInfraTypes has ResourceCallable type."""
-        assert hasattr(FlextTypes, "ResourceCallable") or hasattr(
-            FlextInfraTypes,
-            "ResourceCallable",
-        )
-
-    def test_flext_infra_types_has_validation_types(self) -> None:
-        """Test that FlextInfraTypes has validation types."""
-        assert hasattr(FlextTypes, "PositiveInt") or hasattr(
-            FlextInfraTypes,
-            "PositiveInt",
-        )
+        tm.that(u.is_factory(build_service), eq=True)
+        tm.that(u.is_resource(build_service), eq=True)

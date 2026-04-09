@@ -5,10 +5,10 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import t
 
 from flext_core import r
 from flext_infra import FlextInfraInternalDependencySyncService
+from tests import t
 
 
 def _set_toml_stub(
@@ -100,7 +100,6 @@ class TestSyncMethodEdgeCases:
         def _ensure_checkout(_dep: Path, _url: str, _ref: str) -> r[bool]:
             return r[bool].ok(True)
 
-        monkeypatch.setattr(service, "resolve_ref", _resolve_ref)
         monkeypatch.setattr(
             service,
             "ensure_checkout",
@@ -145,8 +144,6 @@ class TestSyncMethodEdgeCases:
             "infer_owner_from_origin",
             _infer_owner,
         )
-        monkeypatch.setattr(service, "resolve_ref", _resolve_ref)
-        monkeypatch.setattr(service, "ensure_checkout", _ensure_checkout)
         tm.that(service.sync(tmp_path).is_success, eq=True)
 
     def test_sync_missing_repo_mapping(
@@ -175,7 +172,6 @@ class TestSyncMethodEdgeCases:
         def _infer_owner(_root: Path) -> None:
             return None
 
-        monkeypatch.setattr(service, "infer_owner_from_origin", _infer_owner)
         tm.fail(service.sync(tmp_path))
 
     def test_sync_symlink_failure(

@@ -4,36 +4,36 @@ from __future__ import annotations
 
 from typing import ClassVar, Self, override
 
+from flext_cli import cli as cli_service
 from flext_core import r
-from flext_infra import (
-    FlextInfraCliBasemk,
-    FlextInfraCliCodegen,
-    FlextInfraCliDocs,
-    FlextInfraCliGithub,
-    FlextInfraCliMaintenance,
-    FlextInfraCliRefactor,
-    FlextInfraCliRelease,
-    FlextInfraCliValidate,
-    FlextInfraCliWorkspace,
-    FlextInfraServiceBase,
-    FlextInfraServiceBasemkMixin,
-    FlextInfraServiceCheckMixin,
-    FlextInfraServiceCodegenMixin,
-    FlextInfraServiceDepsMixin,
-    FlextInfraServiceDocsMixin,
-    FlextInfraServiceGithubMixin,
-    FlextInfraServiceRefactorMixin,
-    FlextInfraServiceReleaseMixin,
-    FlextInfraServiceValidateMixin,
-    FlextInfraServiceWorkspaceMixin,
-    t,
-)
+from flext_infra import t
+from flext_infra.base import FlextInfraServiceBase
+from flext_infra.basemk.cli import FlextInfraCliBasemk
+from flext_infra.codegen.cli import FlextInfraCliCodegen
+from flext_infra.docs.auditor import FlextInfraDocAuditor
+from flext_infra.docs.builder import FlextInfraDocBuilder
+from flext_infra.docs.fixer import FlextInfraDocFixer
+from flext_infra.docs.generator import FlextInfraDocGenerator
+from flext_infra.docs.validator import FlextInfraDocValidator
+from flext_infra.github.cli import FlextInfraCliGithub
+from flext_infra.maintenance.cli import FlextInfraCliMaintenance
+from flext_infra.models import m
+from flext_infra.refactor.cli import FlextInfraCliRefactor
+from flext_infra.release.cli import FlextInfraCliRelease
+from flext_infra.services.basemk import FlextInfraServiceBasemkMixin
+from flext_infra.services.codegen import FlextInfraServiceCodegenMixin
+from flext_infra.services.github import FlextInfraServiceGithubMixin
+from flext_infra.services.refactor import FlextInfraServiceRefactorMixin
+from flext_infra.services.release import FlextInfraServiceReleaseMixin
+from flext_infra.services.validate import FlextInfraServiceValidateMixin
+from flext_infra.services.workspace import FlextInfraServiceWorkspaceMixin
+from flext_infra.validate.cli import FlextInfraCliValidate
+from flext_infra.workspace.cli import FlextInfraCliWorkspace
 
 
 class FlextInfra(
     FlextInfraCliBasemk,
     FlextInfraCliCodegen,
-    FlextInfraCliDocs,
     FlextInfraCliGithub,
     FlextInfraCliMaintenance,
     FlextInfraCliRefactor,
@@ -41,10 +41,7 @@ class FlextInfra(
     FlextInfraCliValidate,
     FlextInfraCliWorkspace,
     FlextInfraServiceBasemkMixin,
-    FlextInfraServiceCheckMixin,
     FlextInfraServiceCodegenMixin,
-    FlextInfraServiceDepsMixin,
-    FlextInfraServiceDocsMixin,
     FlextInfraServiceGithubMixin,
     FlextInfraServiceRefactorMixin,
     FlextInfraServiceReleaseMixin,
@@ -54,6 +51,7 @@ class FlextInfra(
 ):
     """Thin public MRO facade over infra services and CLI groups."""
 
+    app_name: ClassVar[str] = "flext-infra"
     _instance: ClassVar[Self | None] = None
 
     @classmethod
@@ -73,6 +71,54 @@ class FlextInfra(
             "apply_changes": self.apply_changes,
         }
         return r[t.MutableContainerMapping].ok(report)
+
+    def register_docs(self, app: t.Cli.CliApp) -> None:
+        """Register docs commands directly on the concrete service classes."""
+        cli_service.register_result_routes(
+            app,
+            [
+                m.Cli.ResultCommandRoute(
+                    name="audit",
+                    help_text="Audit documentation for broken links and forbidden terms",
+                    model_cls=FlextInfraDocAuditor,
+                    handler=FlextInfraDocAuditor.execute_command,
+                    failure_message="Audit failed",
+                    success_message="Audit completed successfully",
+                ),
+                m.Cli.ResultCommandRoute(
+                    name="fix",
+                    help_text="Fix documentation issues",
+                    model_cls=FlextInfraDocFixer,
+                    handler=FlextInfraDocFixer.execute_command,
+                    failure_message="Fix failed",
+                    success_message="Fix completed successfully",
+                ),
+                m.Cli.ResultCommandRoute(
+                    name="build",
+                    help_text="Build MkDocs sites",
+                    model_cls=FlextInfraDocBuilder,
+                    handler=FlextInfraDocBuilder.execute_command,
+                    failure_message="Build failed",
+                    success_message="Build completed successfully",
+                ),
+                m.Cli.ResultCommandRoute(
+                    name="generate",
+                    help_text="Generate project docs",
+                    model_cls=FlextInfraDocGenerator,
+                    handler=FlextInfraDocGenerator.execute_command,
+                    failure_message="Generate failed",
+                    success_message="Generate completed successfully",
+                ),
+                m.Cli.ResultCommandRoute(
+                    name="validate",
+                    help_text="Validate documentation",
+                    model_cls=FlextInfraDocValidator,
+                    handler=FlextInfraDocValidator.execute_command,
+                    failure_message="Validate failed",
+                    success_message="Validate completed successfully",
+                ),
+            ],
+        )
 
 
 infra = FlextInfra.get_instance()

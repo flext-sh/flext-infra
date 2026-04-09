@@ -42,6 +42,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".codegen_execution": ("FlextInfraUtilitiesCodegenExecution",),
         ".codegen_generation": ("FlextInfraUtilitiesCodegenGeneration",),
         ".codegen_import_cycles": ("FlextInfraUtilitiesCodegenImportCycles",),
+        ".deps_path_sync": ("FlextInfraUtilitiesDependencyPathSync",),
         ".deps_paths": ("FlextInfraExtraPathsResolutionMixin",),
         ".deps_repos": ("FlextInfraInternalSyncRepoMixin",),
         ".discovery": ("FlextInfraUtilitiesDiscovery",),

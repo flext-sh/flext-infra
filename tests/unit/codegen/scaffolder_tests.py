@@ -12,16 +12,13 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_tests import tm
-from tests import (
-    FlextInfraCodegenTestProjectFactory,
-    t,
-)
 
 from flext_infra import FlextInfraCodegenScaffolder
+from tests import t, u
 
 
 def _create_test_project(tmp_path: Path, *, with_all_modules: bool = True) -> Path:
-    return FlextInfraCodegenTestProjectFactory.create_scaffolder_test_project(
+    return u.Infra.Tests.create_scaffolder_test_project(
         tmp_path=tmp_path,
         with_all_modules=with_all_modules,
     )
@@ -44,7 +41,7 @@ class TestScaffoldProjectCreatesSrcModules:
         result = scaffolder.scaffold_project(project)
         tm.that(len(result.files_created), eq=5)
         pkg = project / "src" / "test_project"
-        for mod in FlextInfraCodegenTestProjectFactory.SRC_MODULE_FILES:
+        for mod in u.Infra.Tests.src_module_files():
             tm.that((pkg / mod).exists(), eq=True)
 
     def test_creates_only_missing_modules(self, tmp_path: Path) -> None:
@@ -74,7 +71,7 @@ class TestScaffoldProjectCreatesTestsModules:
         result = scaffolder.scaffold_project(project)
         tests_created = [f for f in result.files_created if "tests" in f]
         tm.that(len(tests_created), eq=5)
-        for mod in FlextInfraCodegenTestProjectFactory.SRC_MODULE_FILES:
+        for mod in u.Infra.Tests.src_module_files():
             tm.that((tests_dir / mod).exists(), eq=True)
 
     def test_skips_tests_modules_when_no_tests_dir(

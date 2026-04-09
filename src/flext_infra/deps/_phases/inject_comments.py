@@ -76,6 +76,19 @@ class FlextInfraInjectCommentsPhase:
             changes.append("marker injected for optional-dependencies.dev")
             emitted_markers.add(managed_marker)
 
+    @staticmethod
+    def _collapse_blank_lines(lines: t.StrSequence) -> t.StrSequence:
+        """Collapse repeated blank lines into a single canonical separator."""
+        normalized: MutableSequence[str] = []
+        previous_blank = False
+        for line in lines:
+            is_blank = not line.strip()
+            if is_blank and previous_blank:
+                continue
+            normalized.append(line)
+            previous_blank = is_blank
+        return normalized
+
     def apply(self, rendered: str) -> t.Infra.Pair[str, t.StrSequence]:
         changes: MutableSequence[str] = []
         lines = rendered.splitlines()
@@ -98,7 +111,11 @@ class FlextInfraInjectCommentsPhase:
             ):
                 self._inject_dev_markers(out, changes, emitted_markers)
             out.append(line)
-        return ("\n".join(out).rstrip() + "\n", changes)
+        updated = "\n".join(self._collapse_blank_lines(out)).rstrip() + "\n"
+        original = rendered.rstrip() + "\n"
+        if updated == original:
+            return (updated, [])
+        return (updated, changes)
 
 
 __all__ = ["FlextInfraInjectCommentsPhase"]

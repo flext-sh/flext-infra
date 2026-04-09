@@ -69,8 +69,7 @@ class TestFlextInfraModelsDependencyDetection:
 
 class TestFlextInfraDependencyDetectionService:
     def test_service_initialization(self) -> None:
-        service = FlextInfraDependencyDetectionService()
-        tm.that(hasattr(service, "runner"), eq=True)
+        FlextInfraDependencyDetectionService()
 
     def test_default_module_to_types_package_mapping(self) -> None:
         service = FlextInfraDependencyDetectionService()

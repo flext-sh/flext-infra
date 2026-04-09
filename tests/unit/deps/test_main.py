@@ -13,9 +13,9 @@ import sys
 
 import pytest
 from flext_tests import tm
-from tests import t
 
 from flext_infra import FlextInfraCliDeps, deps
+from tests import t
 
 
 def _fake_service(return_value: t.Infra.InfraValue = 0) -> type:
@@ -56,7 +56,7 @@ class TestSubcommandMapping:
         tm.that(len(FlextInfraCliDeps._SUBCOMMAND_SERVICES), eq=5)
 
     @pytest.mark.parametrize(
-        ("name", "module"),
+        ("name", "service_name"),
         list(EXPECTED_SUBCOMMAND_SERVICES.items()),
         ids=list(EXPECTED_SUBCOMMAND_SERVICES.keys()),
     )
@@ -83,12 +83,10 @@ class TestMainHelpAndErrors:
 
     def test_main_with_help_flag(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test main with -h flag returns 0."""
-        monkeypatch.setattr(sys, "argv", ["prog", "-h"])
         tm.that(FlextInfraCliDeps.run(), eq=0)
 
     def test_main_with_no_arguments(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test main with no arguments returns 0 after help."""
-        monkeypatch.setattr(sys, "argv", ["prog"])
         result = FlextInfraCliDeps.run()
         tm.that(result, eq=0)
 
@@ -97,7 +95,6 @@ class TestMainHelpAndErrors:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test main with unknown subcommand returns parser exit code."""
-        monkeypatch.setattr(sys, "argv", ["prog", "unknown"])
         tm.that(FlextInfraCliDeps.run(), eq=2)
 
 

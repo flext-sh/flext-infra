@@ -9,7 +9,6 @@ from flext_infra import (
     t,
     u,
 )
-from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
 
 
 class FlextInfraRefactorPatternCorrectionsRule:
@@ -27,7 +26,7 @@ class FlextInfraRefactorPatternCorrectionsRule:
         dry_run: bool = False,
     ) -> t.Infra.TransformResult:
         """Apply configured pattern corrections to resource."""
-        source = FlextInfraUtilitiesRopeSource.read_source(resource)
+        source = u.Infra.read_source(resource)
         fix_action = u.Infra.get_str_key(
             self.config,
             c.Infra.ReportKeys.FIX_ACTION,
@@ -43,7 +42,7 @@ class FlextInfraRefactorPatternCorrectionsRule:
             }
             if include_returns:
                 replacements = dict(replacements)
-            new_source, count = FlextInfraUtilitiesRopeSource.batch_replace_annotations(
+            new_source, count = u.Infra.batch_replace_annotations(
                 rope_project,
                 resource,
                 replacements,
@@ -58,7 +57,7 @@ class FlextInfraRefactorPatternCorrectionsRule:
         if fix_action == "remove_redundant_casts":
             raw_types = self.config.get("redundant_type_targets", [])
             removable_types = set(u.Infra.string_list(raw_types))
-            new_source, count = FlextInfraUtilitiesRopeSource.remove_redundant_cast(
+            new_source, count = u.Infra.remove_redundant_cast(
                 rope_project,
                 resource,
                 apply=not dry_run,
@@ -70,12 +69,10 @@ class FlextInfraRefactorPatternCorrectionsRule:
                 )
             return (source, [])
         if fix_action == "fix_silent_failure_sentinels":
-            new_source, changes = (
-                FlextInfraUtilitiesRopeSource.fix_silent_failure_sentinels(
-                    rope_project,
-                    resource,
-                    apply=not dry_run,
-                )
+            new_source, changes = u.Infra.fix_silent_failure_sentinels(
+                rope_project,
+                resource,
+                apply=not dry_run,
             )
             return new_source, list(changes)
         return (source, [])

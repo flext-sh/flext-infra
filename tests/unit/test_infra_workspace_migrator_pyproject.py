@@ -9,7 +9,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_tests import tm
-from tests import _build_migrator, _project, t
+
+from tests import t, u
 
 
 class TestMigratorFlextCore:
@@ -21,8 +22,8 @@ class TestMigratorFlextCore:
         (root / "Makefile").write_text("content", encoding="utf-8")
         (root / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
         (root / ".gitignore").write_text("", encoding="utf-8")
-        migrator = _build_migrator(
-            _project(root, "flext-core"),
+        migrator = u.Infra.Tests.build_project_migrator(
+            u.Infra.Tests.create_migrator_project(root, "flext-core"),
             "base.mk",
             workspace_root=tmp_path,
             dry_run=True,
@@ -42,8 +43,11 @@ class TestMigratorFlextCore:
         (root / "Makefile").write_text("content", encoding="utf-8")
         (root / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
         (root / ".gitignore").write_text("", encoding="utf-8")
-        migrator = _build_migrator(
-            _project(root, "flext-core"), "base", workspace_root=tmp_path, dry_run=True
+        migrator = u.Infra.Tests.build_project_migrator(
+            u.Infra.Tests.create_migrator_project(root, "flext-core"),
+            "base",
+            workspace_root=tmp_path,
+            dry_run=True,
         )
         result = migrator.execute()
         migration = tm.ok(result)
@@ -68,8 +72,11 @@ class TestMigratorPoetryDeps:
             encoding="utf-8",
         )
         (root / ".gitignore").write_text("", encoding="utf-8")
-        migrator = _build_migrator(
-            _project(root), "base.mk", workspace_root=tmp_path, dry_run=True
+        migrator = u.Infra.Tests.build_project_migrator(
+            u.Infra.Tests.create_migrator_project(root),
+            "base.mk",
+            workspace_root=tmp_path,
+            dry_run=True,
         )
         result = migrator.execute()
         migration = tm.ok(result)
@@ -86,8 +93,11 @@ class TestMigratorPoetryDeps:
         (root / "Makefile").write_text("content", encoding="utf-8")
         (root / "pyproject.toml").write_text("[tool]\n", encoding="utf-8")
         (root / ".gitignore").write_text("", encoding="utf-8")
-        migrator = _build_migrator(
-            _project(root), "base", workspace_root=tmp_path, dry_run=True
+        migrator = u.Infra.Tests.build_project_migrator(
+            u.Infra.Tests.create_migrator_project(root),
+            "base",
+            workspace_root=tmp_path,
+            dry_run=True,
         )
         result = migrator.execute()
         migration = tm.ok(result)
@@ -107,8 +117,11 @@ class TestMigratorPoetryDeps:
             encoding="utf-8",
         )
         (root / ".gitignore").write_text("", encoding="utf-8")
-        migrator = _build_migrator(
-            _project(root), "base", workspace_root=tmp_path, dry_run=True
+        migrator = u.Infra.Tests.build_project_migrator(
+            u.Infra.Tests.create_migrator_project(root),
+            "base",
+            workspace_root=tmp_path,
+            dry_run=True,
         )
         result = migrator.execute()
         migration = tm.ok(result)
@@ -126,8 +139,11 @@ class TestMigratorDryRun:
         (root / "base.mk").write_text("base", encoding="utf-8")
         (root / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
         (root / ".gitignore").write_text("", encoding="utf-8")
-        migrator = _build_migrator(
-            _project(root), "base", workspace_root=tmp_path, dry_run=True
+        migrator = u.Infra.Tests.build_project_migrator(
+            u.Infra.Tests.create_migrator_project(root),
+            "base",
+            workspace_root=tmp_path,
+            dry_run=True,
         )
         result = migrator.execute()
         migration = tm.ok(result)
@@ -146,8 +162,11 @@ class TestMigratorDryRun:
         (root / "base.mk").write_text("base", encoding="utf-8")
         (root / "Makefile").write_text("content", encoding="utf-8")
         (root / ".gitignore").write_text("", encoding="utf-8")
-        migrator = _build_migrator(
-            _project(root), "base", workspace_root=tmp_path, dry_run=True
+        migrator = u.Infra.Tests.build_project_migrator(
+            u.Infra.Tests.create_migrator_project(root),
+            "base",
+            workspace_root=tmp_path,
+            dry_run=True,
         )
         result = migrator.execute()
         migration = tm.ok(result)
@@ -170,8 +189,11 @@ class TestMigratorDryRun:
             ".reports/\n.venv/\n__pycache__/\nbase.mk\n",
             encoding="utf-8",
         )
-        migrator = _build_migrator(
-            _project(root), "base", workspace_root=tmp_path, dry_run=True
+        migrator = u.Infra.Tests.build_project_migrator(
+            u.Infra.Tests.create_migrator_project(root),
+            "base",
+            workspace_root=tmp_path,
+            dry_run=True,
         )
         result = migrator.execute()
         migration = tm.ok(result)
@@ -191,8 +213,11 @@ class TestMigratorDryRun:
         (root / "Makefile").write_text("content", encoding="utf-8")
         (root / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
         (root / ".gitignore").write_text("", encoding="utf-8")
-        migrator = _build_migrator(
-            _project(root), "base.mk", workspace_root=tmp_path, dry_run=False
+        migrator = u.Infra.Tests.build_project_migrator(
+            u.Infra.Tests.create_migrator_project(root),
+            "base.mk",
+            workspace_root=tmp_path,
+            dry_run=False,
         )
         tm.ok(migrator.execute())
 

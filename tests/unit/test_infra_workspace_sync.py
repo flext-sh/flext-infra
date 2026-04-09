@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import fcntl
 import subprocess
 import sys
 import tempfile
@@ -10,14 +9,13 @@ from typing import override
 
 import pytest
 from flext_tests import tf, tm
-from tests import c, m, r, t, u
 
-import flext_infra.workspace.sync as workspace_sync
 from flext_infra import (
     FlextInfraBaseMkGenerator,
     FlextInfraSyncService,
     FlextInfraWorkspaceMakefileGenerator,
 )
+from tests import c, m, r, t, u
 
 SetupFn = Callable[[FlextInfraSyncService, pytest.MonkeyPatch], None]
 
@@ -47,8 +45,6 @@ def _setup_lock_fail(
         msg = "Lock failed"
         raise OSError(msg)
 
-    monkeypatch.setattr(fcntl, "flock", _flock)
-
 
 def _setup_gen_fail(
     svc: FlextInfraSyncService,
@@ -64,8 +60,6 @@ def _setup_gitignore_fail(
     def _open(*_args: t.Scalar, **_kwargs: t.Scalar) -> None:
         msg = "Write failed"
         raise OSError(msg)
-
-    monkeypatch.setattr(Path, "open", _open)
 
 
 @pytest.fixture
@@ -147,7 +141,6 @@ def test_cli_forwards_canonical_root(
             ),
         )
 
-    monkeypatch.setattr(FlextInfraSyncService, "execute", _execute)
     monkeypatch.setattr(
         sys,
         "argv",
@@ -225,8 +218,6 @@ def test_sync_updates_workspace_makefile_for_workspace_root(
     ) -> r[int]:
         return r[int].ok(0)
 
-    monkeypatch.setattr(service, "_sync_workspace_makefile", _workspace_makefile)
-    monkeypatch.setattr(service, "_sync_project_makefile", _project_makefile)
     monkeypatch.setattr(
         service,
         "_sync_workspace_children",
@@ -284,8 +275,6 @@ def test_sync_workspace_root_also_syncs_discovered_children(
                 workspace_role=c.Infra.WorkspaceProjectRole.ATTACHED,
             ),
         ])
-
-    monkeypatch.setattr(workspace_sync.u.Infra, "discover_projects", _discover_projects)
 
     result = service._sync_workspace_children(tmp_path, canonical_root=tmp_path)
 
@@ -352,7 +341,6 @@ def test_sync_workspace_children_skips_workspace_root_entry(
         "_sync_locked_content",
         _sync_locked_content,
     )
-    monkeypatch.setattr(workspace_sync.u.Infra, "discover_projects", _discover_projects)
 
     result = service._sync_workspace_children(tmp_path, canonical_root=tmp_path)
 
@@ -492,6 +480,223 @@ def test_workspace_makefile_generator_emits_parseable_discovery_commands(
     tm.that(process.returncode, eq=0)
 
 
+def test_workspace_makefile_generator_uses_check_only_for_maintenance_validation(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        "[project]\nversion='0.1.0'\n",
+        encoding="utf-8",
+    )
+    generator = FlextInfraWorkspaceMakefileGenerator()
+    tm.ok(generator.generate(tmp_path))
+
+    makefile_text = (tmp_path / "Makefile").read_text(encoding="utf-8")
+
+    tm.that(
+        makefile_text,
+        has=["$(WORKSPACE_INFRA_MAINTENANCE) --check-only || exit 1"],
+    )
+
+
+def test_workspace_makefile_generator_limits_absolute_path_scan_to_sources(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        "[project]\nversion='0.1.0'\n",
+        encoding="utf-8",
+    )
+    generator = FlextInfraWorkspaceMakefileGenerator()
+    tm.ok(generator.generate(tmp_path))
+
+    makefile_text = (tmp_path / "Makefile").read_text(encoding="utf-8")
+
+    tm.that(
+        makefile_text,
+        has=[
+            "git grep -nE '/home/.*/flext|file:///home/.*/flext' -- '*.py' '**/*.py' '*.toml' '**/*.toml' '*.yml' '**/*.yml' '*.yaml' '**/*.yaml' '*.json' '**/*.json' '.gitignore' 'base.mk' '**/base.mk' ':!.planning/**' ':!.reports/**' ':!.sisyphus/**' ':!docs/**'",
+        ],
+    )
+
+
+def _write_workspace_makefile_fixture(tmp_path: Path) -> Path:
+    workspace_root = tmp_path / "workspace"
+    workspace_root.mkdir()
+    (workspace_root / "pyproject.toml").write_text(
+        (
+            "[project]\n"
+            "name = 'workspace-root'\n"
+            "version = '0.1.0'\n"
+            "\n"
+            "[tool.flext.workspace]\n"
+            "members = ['demo-a', 'demo-b']\n"
+        ),
+        encoding="utf-8",
+    )
+    (workspace_root / ".taplo.toml").write_text("", encoding="utf-8")
+    for project_name in ("demo-a", "demo-b"):
+        project_root = workspace_root / project_name
+        project_root.mkdir()
+        (project_root / "pyproject.toml").write_text(
+            (f"[project]\nname = '{project_name}'\nversion = '0.1.0'\n"),
+            encoding="utf-8",
+        )
+    tm.ok(FlextInfraWorkspaceMakefileGenerator().generate(workspace_root))
+    return workspace_root
+
+
+def _run_workspace_make_dry_run(
+    workspace_root: Path,
+    *args: str,
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["make", "-C", str(workspace_root), "--dry-run", *args],
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+
+
+def test_workspace_makefile_dry_run_mod_respects_project_selection(
+    tmp_path: Path,
+) -> None:
+    workspace_root = _write_workspace_makefile_fixture(tmp_path)
+
+    process = _run_workspace_make_dry_run(
+        workspace_root,
+        "mod",
+        "PROJECT=demo-a",
+    )
+
+    tm.that(process.returncode, eq=0)
+    output = process.stdout + process.stderr
+    tm.that(
+        output,
+        has=[
+            "--projects demo-a",
+            f'taplo format --config "{workspace_root}/.taplo.toml" demo-a/pyproject.toml',
+            "ruff format demo-a --quiet",
+        ],
+    )
+    tm.that("pyproject.toml */pyproject.toml" in output, eq=False)
+    tm.that("ruff format . --quiet" in output, eq=False)
+
+
+def test_workspace_makefile_dry_run_mod_without_selection_uses_workspace_scope(
+    tmp_path: Path,
+) -> None:
+    workspace_root = _write_workspace_makefile_fixture(tmp_path)
+
+    process = _run_workspace_make_dry_run(
+        workspace_root,
+        "mod",
+    )
+
+    tm.that(process.returncode, eq=0)
+    output = process.stdout + process.stderr
+    tm.that(
+        output,
+        has=[
+            "modernize --apply",
+            "path-sync --mode auto --apply",
+            f'taplo format --config "{workspace_root}/.taplo.toml" pyproject.toml demo-a/pyproject.toml demo-b/pyproject.toml',
+            "ruff format . --quiet",
+        ],
+    )
+    tm.that("--projects demo-a" in output, eq=False)
+    tm.that("--projects demo-b" in output, eq=False)
+
+
+def test_workspace_makefile_dry_run_fmt_respects_project_selection(
+    tmp_path: Path,
+) -> None:
+    workspace_root = _write_workspace_makefile_fixture(tmp_path)
+
+    process = _run_workspace_make_dry_run(
+        workspace_root,
+        "fmt",
+        "PROJECT=demo-b",
+    )
+
+    tm.that(process.returncode, eq=0)
+    output = process.stdout + process.stderr
+    tm.that(
+        output,
+        has=[
+            '_fmt_target="demo-b"',
+            "ruff format $_fmt_target --quiet",
+            "find demo-b -type f -name '*.go'",
+            "find demo-b -type f -name '*.md'",
+        ],
+    )
+    tm.that('_fmt_target="."' in output, eq=False)
+
+
+def test_workspace_makefile_dry_run_up_forwards_selection_to_mod(
+    tmp_path: Path,
+) -> None:
+    workspace_root = _write_workspace_makefile_fixture(tmp_path)
+
+    process = _run_workspace_make_dry_run(
+        workspace_root,
+        "up",
+        "PROJECT=demo-a",
+    )
+
+    tm.that(process.returncode, eq=0)
+    tm.that(process.stdout + process.stderr, has='make mod PROJECT="demo-a"')
+
+
+def test_workspace_makefile_dry_run_gen_forwards_selection(
+    tmp_path: Path,
+) -> None:
+    workspace_root = _write_workspace_makefile_fixture(tmp_path)
+
+    process = _run_workspace_make_dry_run(
+        workspace_root,
+        "gen",
+        "PROJECT=demo-b",
+    )
+
+    tm.that(process.returncode, eq=0)
+    output = process.stdout + process.stderr
+    tm.that(
+        output,
+        has=[
+            '--no-print-directory mod PROJECT="demo-b"',
+            '--no-print-directory sync PROJECT="demo-b"',
+        ],
+    )
+
+
+def test_workspace_makefile_dry_run_sync_respects_project_selection(
+    tmp_path: Path,
+) -> None:
+    workspace_root = _write_workspace_makefile_fixture(tmp_path)
+
+    process = _run_workspace_make_dry_run(
+        workspace_root,
+        "sync",
+        "PROJECT=demo-a",
+    )
+
+    tm.that(process.returncode, eq=0)
+    output = process.stdout + process.stderr
+    tm.that(
+        output,
+        has=[
+            "workspace sync \\",
+            f'--workspace "{workspace_root}/$proj"',
+            f'--canonical-root "{workspace_root}"',
+            "for proj in demo-a; do",
+            f'lazy-init --workspace "{workspace_root}/$proj" --apply',
+        ],
+    )
+    tm.that(
+        (f'workspace sync --workspace "{workspace_root}" --apply') in output,
+        eq=False,
+    )
+
+
 def test_sync_updates_project_makefile_for_standalone_project(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -516,8 +721,6 @@ def test_sync_updates_project_makefile_for_standalone_project(
         calls.append("project")
         return r[bool].ok(True)
 
-    monkeypatch.setattr(service, "_sync_workspace_makefile", _workspace_makefile)
-    monkeypatch.setattr(service, "_sync_project_makefile", _project_makefile)
     tm.ok(service.execute())
     tm.that(calls, eq=["project"])
 

@@ -4,6 +4,7 @@ from collections.abc import MutableSequence
 from pathlib import Path
 
 import pytest
+
 from tests import c, r, t, u
 
 
@@ -22,8 +23,6 @@ class TestFormattingRunRuffFix:
         ) -> r[bool]:
             calls.append(cmd)
             return r[bool].ok(True)
-
-        monkeypatch.setattr(u.Cli, "run_checked", _fake_run_checked)
 
         u.Infra.run_ruff_fix(target)
 
@@ -53,8 +52,6 @@ class TestFormattingRunRuffFix:
         ) -> r[bool]:
             calls.append(cmd)
             return r[bool].fail("ruff not found")
-
-        monkeypatch.setattr(u.Cli, "run_checked", _raise_missing)
 
         u.Infra.run_ruff_fix(target, include_format=False, quiet=True)
 

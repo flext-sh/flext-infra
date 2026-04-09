@@ -6,16 +6,13 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from flext_tests import tm
-from tests.unit.check._shared_fixtures import run_gate_check
-from tests.unit.codegen._project_factory import (
-    FlextInfraCodegenTestProjectFactory,
-)
 
 from flext_infra.gates.silent_failure import FlextInfraSilentFailureGate
+from tests import u
 
 
 def _create_gate_project(tmp_path: Path, *, name: str) -> Path:
-    return FlextInfraCodegenTestProjectFactory.create_project(
+    return u.Infra.Tests.create_codegen_project(
         tmp_path=tmp_path,
         name=name,
         pkg_name=name.replace("-", "_"),
@@ -37,7 +34,9 @@ class TestSilentFailureGate:
     def test_first_wave_project_fails_on_silent_failure(self, tmp_path: Path) -> None:
         project = _create_gate_project(tmp_path, name="flext-cli")
 
-        result = run_gate_check(FlextInfraSilentFailureGate, tmp_path, project)
+        result = u.Infra.Tests.run_gate_check(
+            FlextInfraSilentFailureGate, tmp_path, project
+        )
 
         tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
@@ -46,7 +45,9 @@ class TestSilentFailureGate:
     def test_non_first_wave_project_is_not_enforced(self, tmp_path: Path) -> None:
         project = _create_gate_project(tmp_path, name="demo-project")
 
-        result = run_gate_check(FlextInfraSilentFailureGate, tmp_path, project)
+        result = u.Infra.Tests.run_gate_check(
+            FlextInfraSilentFailureGate, tmp_path, project
+        )
 
         tm.that(result.result.passed, eq=True)
         tm.that(result.raw_output, has="not enforced")

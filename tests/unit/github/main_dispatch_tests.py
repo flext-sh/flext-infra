@@ -6,9 +6,9 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import m, r
 
 from flext_infra import FlextInfraUtilities, infra
+from tests import m, r
 
 
 def _workspace_report(

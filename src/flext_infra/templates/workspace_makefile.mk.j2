@@ -67,6 +67,11 @@ DOCS_DEFAULT_PROJECTS := $(strip $(filter flext-%,$(ALL_PROJECTS)))
 DOCS_SELECTED_PROJECTS := $(strip $(if $(PROJECT),$(PROJECT),$(if $(PROJECTS),$(PROJECTS),$(DOCS_DEFAULT_PROJECTS))))
 GIT_SELECTED_PROJECTS := $(strip $(if $(SELECTED_PROJECTS),$(SELECTED_PROJECTS),$(ALL_PROJECTS)))
 SELECTED_PROJECT_FLAGS := $(strip $(foreach proj,$(SELECTED_PROJECTS),--projects $(proj)))
+HAS_EXPLICIT_PROJECT_SELECTION := $(strip $(if $(PROJECT),1,$(if $(PROJECTS),1,)))
+MAKE_SELECTION_ARGS := $(strip $(if $(PROJECT),PROJECT="$(PROJECT)") $(if $(PROJECTS),PROJECTS="$(PROJECTS)"))
+MODERNIZE_SELECTION_FLAGS := $(strip $(if $(HAS_EXPLICIT_PROJECT_SELECTION),$(SELECTED_PROJECT_FLAGS),))
+WORKSPACE_SELECTED_ROOTS := $(strip $(if $(HAS_EXPLICIT_PROJECT_SELECTION),$(SELECTED_PROJECTS),.))
+WORKSPACE_MODERNIZE_PYPROJECTS := $(strip $(if $(HAS_EXPLICIT_PROJECT_SELECTION),$(foreach proj,$(SELECTED_PROJECTS),$(proj)/pyproject.toml),pyproject.toml $(foreach proj,$(ALL_PROJECTS),$(proj)/pyproject.toml)))
 
 # Auto-detect PYTHONPATH from all project src/ directories (no hardcoded names)
 # Priority: flext-infra and flext-tests BEFORE flext-core (they split from flext-core
@@ -433,7 +438,7 @@ up: ## Upgrade Python dependencies to latest via Poetry
 	$(Q)$(AUTO_SYNC_ALL_PROJECTS)
 	$(Q)echo "Enforcing Python version guards..."; $(WORKSPACE_INFRA_MAINTENANCE) || exit 1
 	$(Q)echo "Standardizing project metadata (make mod)..."
-	$(Q)$(MAKE) mod
+	$(Q)$(MAKE) mod $(MAKE_SELECTION_ARGS)
 	$(Q)echo "Upgrading workspace dependencies (uv workspace mode)..."; \
 	log_file="/tmp/flext-upgrade-workspace.log"; \
 	start_ts=$$(date +%s); \
@@ -478,16 +483,16 @@ mod: ## Modernize pyproject.toml files (standardize configs without lock/install
 	$(Q)$(ENSURE_SELECTED_PROJECTS)
 	$(Q)$(ENSURE_PROJECTS_EXIST)
 	$(Q)echo "Modernizing pyproject.toml files..."; \
-	$(WORKSPACE_INFRA_DEPS) modernize --apply $(SELECTED_PROJECT_FLAGS); \
+	$(WORKSPACE_INFRA_DEPS) modernize --apply $(MODERNIZE_SELECTION_FLAGS); \
 	echo ""
 	$(Q)echo "Syncing dependency paths to workspace mode..."; \
-	$(WORKSPACE_INFRA_DEPS) path-sync --mode auto --apply $(SELECTED_PROJECT_FLAGS); \
+	$(WORKSPACE_INFRA_DEPS) path-sync --mode auto --apply $(MODERNIZE_SELECTION_FLAGS); \
 	echo ""
 	$(Q)echo "Formatting pyproject.toml files with taplo..."; \
-	taplo format --config "$(CURDIR)/.taplo.toml" pyproject.toml */pyproject.toml; \
+	taplo format --config "$(CURDIR)/.taplo.toml" $(WORKSPACE_MODERNIZE_PYPROJECTS); \
 	echo ""
 	$(Q)echo "Formatting Python files (ruff)..."
-	$(Q)ruff format . --quiet
+	$(Q)ruff format $(WORKSPACE_SELECTED_ROOTS) --quiet
 	$(Q)echo "Modernization complete."
 
 check: ## Run lint gates in all projects (CHECK_GATES={{ make.PROJECT_CHECK_GATES_ALLOWED }})
@@ -551,7 +556,7 @@ fmt: ## Run code formatting across all workspace projects (ruff/gofmt + markdown
 	$(Q)$(REQUIRE_VENV)
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
 	$(Q)echo "Formatting Python files (ruff)..."
-	$(Q)_fmt_target="."; \
+	$(Q)_fmt_target="$(WORKSPACE_SELECTED_ROOTS)"; \
 	_fmt_files=""; \
 	if [ -n "$(FILES)" ]; then _fmt_files="$(FILES)"; fi; \
 	if [ -n "$(FILE)" ]; then \
@@ -564,7 +569,7 @@ fmt: ## Run code formatting across all workspace projects (ruff/gofmt + markdown
 	else \
 		ruff format $$_fmt_target --quiet; \
 	fi
-	$(Q)go_files=$$(find . -type f -name '*.go' ! -path '*/.git/*' ! -path '*/vendor/*' ! -path '*/.venv/*'); \
+	$(Q)go_files=$$(find $(WORKSPACE_SELECTED_ROOTS) -type f -name '*.go' ! -path '*/.git/*' ! -path '*/vendor/*' ! -path '*/.venv/*'); \
 	if [ -n "$$go_files" ]; then \
 		echo "Formatting Go files (gofmt)..."; \
 		printf '%s\n' "$$go_files" | xargs gofmt -w; \
@@ -572,7 +577,11 @@ fmt: ## Run code formatting across all workspace projects (ruff/gofmt + markdown
 			printf '%s\n' "$$go_files" | xargs goimports -w; \
 		fi; \
 	fi
-	$(Q)md_files=$$(git ls-files -- '*.md' ':!vendor/' && git ls-files --others --exclude-standard -- '*.md' ':!vendor/'); \
+	$(Q)if [ "$(HAS_EXPLICIT_PROJECT_SELECTION)" = "1" ]; then \
+		md_files=$$(find $(WORKSPACE_SELECTED_ROOTS) -type f -name '*.md' ! -path '*/.git/*' ! -path '*/.reports/*' ! -path '*/.venv/*' ! -path '*/vendor/*' ! -path '*/node_modules/*' ! -path '*/dist/*' ! -path '*/build/*'); \
+	else \
+		md_files=$$(git ls-files -- '*.md' ':!vendor/' && git ls-files --others --exclude-standard -- '*.md' ':!vendor/'); \
+	fi; \
 	if [ -n "$$md_files" ]; then \
 		echo "Formatting Markdown files (markdownlint)..."; \
 		md_config=""; \
@@ -605,7 +614,7 @@ ifeq ($(VALIDATE_SCOPE),workspace)
 	$(Q)$(AUTO_SYNC_ALL_PROJECTS)
 	$(Q)mkdir -p .reports
 	$(Q)echo "Running workspace validation (inventory + strict anti-drift gates)..."
-	$(Q)$(WORKSPACE_INFRA_MAINTENANCE) --check || exit 1
+	$(Q)$(WORKSPACE_INFRA_MAINTENANCE) --check-only || exit 1
 	$(Q)$(WORKSPACE_INFRA_VALIDATE) inventory --workspace .
 	$(Q)$(WORKSPACE_INFRA_VALIDATE) basemk-validate
 	$(Q)$(WORKSPACE_INFRA_GITHUB) lint --workspace . --report .reports/workflows/actionlint.json
@@ -613,7 +622,7 @@ ifeq ($(VALIDATE_SCOPE),workspace)
 	$(Q)$(WORKSPACE_INFRA_VALIDATE) skill-validate --skill rules-github --mode strict
 	$(Q)$(WORKSPACE_INFRA_VALIDATE) skill-validate --skill rules-docker --mode strict
 	$(Q)$(WORKSPACE_INFRA_DEPS) modernize --audit
-	$(Q)if git grep -nE '/home/.*/flext|file:///home/.*/flext' -- . ':!Makefile'; then \
+	$(Q)if git grep -nE '/home/.*/flext|file:///home/.*/flext' -- '*.py' '**/*.py' '*.toml' '**/*.toml' '*.yml' '**/*.yml' '*.yaml' '**/*.yaml' '*.json' '**/*.json' '.gitignore' 'base.mk' '**/base.mk' ':!.planning/**' ':!.reports/**' ':!.sisyphus/**' ':!docs/**'; then \
 		echo "ERROR: absolute workspace paths detected in tracked sources/config"; \
 		exit 1; \
 	fi
@@ -923,20 +932,37 @@ gen: ## Recreate standardized pyproject.toml, base.mk, Makefile and __init__.py
 	$(Q)$(REQUIRE_VENV)
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
 	$(Q)echo "Recreating standardized pyproject.toml..."
-	$(Q)$(MAKE) --no-print-directory mod
+	$(Q)$(MAKE) --no-print-directory mod $(MAKE_SELECTION_ARGS)
 	$(Q)echo "Recreating standardized base.mk/Makefile/__init__.py..."
-	$(Q)$(MAKE) --no-print-directory sync
+	$(Q)$(MAKE) --no-print-directory sync $(MAKE_SELECTION_ARGS)
 	$(Q)echo "Generation complete."
 
 sync: ## Sync project Makefiles from pyproject.toml + refresh __init__.py lazy imports
 	$(Q)$(REQUIRE_VENV)
+	$(Q)$(ENSURE_NO_PROJECT_CONFLICT)
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
+ifneq ($(HAS_EXPLICIT_PROJECT_SELECTION),)
+	$(Q)$(ENSURE_SELECTED_PROJECTS)
+	$(Q)$(ENSURE_PROJECTS_EXIST)
+	$(Q)echo "==> Syncing selected projects..."
+	$(Q)for proj in $(SELECTED_PROJECTS); do \
+		$(WORKSPACE_INFRA_WORKSPACE) sync \
+			--workspace "$(CURDIR)/$$proj" \
+			--canonical-root "$(CURDIR)" \
+			--apply || exit 1; \
+	done
+	$(Q)echo "==> Regenerating __init__.py lazy imports for selected projects..."
+	$(Q)for proj in $(SELECTED_PROJECTS); do \
+		$(WORKSPACE_INFRA_CODEGEN) lazy-init --workspace "$(CURDIR)/$$proj" --apply || exit 1; \
+	done
+else
 	$(Q)echo "==> Syncing workspace and discovered projects..."
 	$(Q)$(WORKSPACE_INFRA_WORKSPACE) sync \
 		--workspace "$(CURDIR)" \
 		--apply
 	$(Q)echo "==> Regenerating __init__.py lazy imports..."
 	$(Q)$(WORKSPACE_INFRA_CODEGEN) lazy-init --workspace "$(CURDIR)"
+endif
 	$(Q)echo "==> Sync complete."
 
 imp: ## Detect and fix import violations across workspace (CST-based)

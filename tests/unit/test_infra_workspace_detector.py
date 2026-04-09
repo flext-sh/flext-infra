@@ -13,10 +13,10 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import t
 
 from flext_core import r
-from flext_infra import FlextInfraWorkspaceDetector, c
+from flext_infra import FlextInfraUtilitiesGit, FlextInfraWorkspaceDetector, c
+from tests import t
 
 
 @pytest.fixture
@@ -128,10 +128,6 @@ class TestDetectorGitRunScenarios:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         project_root = _setup_project_with_git(tmp_path)
-        monkeypatch.setattr(
-            "flext_infra._utilities.git.FlextInfraUtilitiesGit.git_run",
-            _git_run_ok(""),
-        )
         tm.ok(detector.detect(project_root), eq=c.Infra.WorkspaceMode.STANDALONE)
 
     def test_git_command_failure(
@@ -142,8 +138,7 @@ class TestDetectorGitRunScenarios:
     ) -> None:
         project_root = _setup_project_with_git(tmp_path)
         monkeypatch.setattr(
-            "flext_infra._utilities.git.FlextInfraUtilitiesGit.git_run",
-            _git_run_fail("git config failed"),
+            FlextInfraUtilitiesGit, "git_run", _git_run_fail("git config failed")
         )
         tm.ok(detector.detect(project_root), eq=c.Infra.WorkspaceMode.STANDALONE)
 
@@ -155,7 +150,8 @@ class TestDetectorGitRunScenarios:
     ) -> None:
         project_root = _setup_project_with_git(tmp_path)
         monkeypatch.setattr(
-            "flext_infra._utilities.git.FlextInfraUtilitiesGit.git_run",
+            FlextInfraUtilitiesGit,
+            "git_run",
             _git_run_ok("https://github.com/flext-sh/flext.git"),
         )
         tm.ok(detector.detect(project_root), eq=c.Infra.WorkspaceMode.WORKSPACE)
@@ -168,7 +164,8 @@ class TestDetectorGitRunScenarios:
     ) -> None:
         project_root = _setup_project_with_git(tmp_path)
         monkeypatch.setattr(
-            "flext_infra._utilities.git.FlextInfraUtilitiesGit.git_run",
+            FlextInfraUtilitiesGit,
+            "git_run",
             _git_run_ok("https://github.com/other-org/other-repo.git"),
         )
         tm.ok(detector.detect(project_root), eq=c.Infra.WorkspaceMode.STANDALONE)
@@ -181,8 +178,7 @@ class TestDetectorGitRunScenarios:
     ) -> None:
         project_root = _setup_project_with_git(tmp_path)
         monkeypatch.setattr(
-            "flext_infra._utilities.git.FlextInfraUtilitiesGit.git_run",
-            _git_run_fail("no remote"),
+            FlextInfraUtilitiesGit, "git_run", _git_run_fail("no remote")
         )
         tm.ok(detector.detect(project_root), eq=c.Infra.WorkspaceMode.STANDALONE)
 
@@ -198,8 +194,4 @@ class TestDetectorGitRunScenarios:
             msg = "Command failed"
             raise RuntimeError(msg)
 
-        monkeypatch.setattr(
-            "flext_infra._utilities.git.FlextInfraUtilitiesGit.git_run",
-            _raise,
-        )
         tm.fail(detector.detect(project_root), has="Detection failed")

@@ -36,23 +36,18 @@ def _ok_command(
 
 class TestMainRouting:
     def test_main_with_audit_command(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(FlextInfraDocAuditor, "execute_command", _ok_command)
         tm.that(infra_main(["docs", "audit", "--workspace", "."]), eq=0)
 
     def test_main_with_fix_command(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(FlextInfraDocFixer, "execute_command", _ok_command)
         tm.that(infra_main(["docs", "fix", "--workspace", "."]), eq=0)
 
     def test_main_with_build_command(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(FlextInfraDocBuilder, "execute_command", _ok_command)
         tm.that(infra_main(["docs", "build", "--workspace", "."]), eq=0)
 
     def test_main_with_generate_command(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(FlextInfraDocGenerator, "execute_command", _ok_command)
         tm.that(infra_main(["docs", "generate", "--workspace", "."]), eq=0)
 
     def test_main_with_validate_command(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(FlextInfraDocValidator, "execute_command", _ok_command)
         tm.that(infra_main(["docs", "validate", "--workspace", "."]), eq=0)
 
     def test_main_with_no_command_prints_help(
@@ -215,5 +210,4 @@ class TestMainWithFlags:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(FlextInfraDocBuilder, "execute_command", _ok_command)
         tm.that(infra_main(["docs", "build", "--apply"]), eq=0)

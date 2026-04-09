@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import ClassVar
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 
 
 class FlextInfraUtilitiesOutputFailureSummary:
@@ -14,7 +14,7 @@ class FlextInfraUtilitiesOutputFailureSummary:
 
     _use_unicode: ClassVar[bool]
     _use_color: ClassVar[bool]
-    _stream: ClassVar[t.Infra.TextStream]
+    _stream: ClassVar[p.Infra.OutputStream]
 
     @classmethod
     def failure_summary(

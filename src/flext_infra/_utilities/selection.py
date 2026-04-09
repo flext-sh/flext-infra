@@ -49,7 +49,10 @@ class FlextInfraUtilitiesSelection:
             return r[Sequence[m.Infra.ProjectInfo]].ok(
                 sorted(projects, key=lambda proj: proj.name),
             )
-        by_name = {proj.name: proj for proj in projects}
+        by_name: dict[str, m.Infra.ProjectInfo] = {}
+        for project in projects:
+            by_name.setdefault(project.name, project)
+            by_name.setdefault(project.path.name, project)
         missing = [name for name in names if name not in by_name]
         if missing:
             missing_text = ", ".join(sorted(missing))

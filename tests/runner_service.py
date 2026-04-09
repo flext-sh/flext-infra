@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import override
 
 from flext_tests import s
+
 from tests import r, t, u
 
 

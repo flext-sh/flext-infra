@@ -304,13 +304,12 @@ class FlextInfraUtilitiesDocsScope:
         workspace_members = FlextInfraUtilitiesDocsScope._workspace_member_name_set(
             workspace_root,
         )
+        root_project: m.Infra.ProjectInfo | None = None
         if workspace_root.name not in excluded:
             root_project = FlextInfraUtilitiesDocsScope._project_info_for_entry(
                 workspace_root,
                 workspace_members=workspace_members,
             )
-            if root_project is not None:
-                return r[Sequence[m.Infra.ProjectInfo]].ok([root_project])
         projects: list[m.Infra.ProjectInfo] = []
         try:
             for entry in sorted(workspace_root.iterdir(), key=lambda item: item.name):
@@ -332,6 +331,8 @@ class FlextInfraUtilitiesDocsScope:
             return r[Sequence[m.Infra.ProjectInfo]].fail(
                 f"discovery failed: {exc}",
             )
+        if not projects and root_project is not None:
+            return r[Sequence[m.Infra.ProjectInfo]].ok([root_project])
         return r[Sequence[m.Infra.ProjectInfo]].ok(projects)
 
     @staticmethod

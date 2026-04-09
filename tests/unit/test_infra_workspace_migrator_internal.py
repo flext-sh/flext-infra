@@ -6,9 +6,9 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import _build_migrator, _project
 
 from flext_infra import FlextInfraProjectMigrator
+from tests import u
 
 
 def _write_project_files(
@@ -32,8 +32,8 @@ class TestMigratorPublicBehavior:
     def test_execute_reports_missing_makefile_in_dry_run(self, tmp_path: Path) -> None:
         project_root = tmp_path / "project-a"
         _write_project_files(project_root, makefile=None)
-        migrator = _build_migrator(
-            _project(project_root, "test-proj"),
+        migrator = u.Infra.Tests.build_project_migrator(
+            u.Infra.Tests.create_migrator_project(project_root, "test-proj"),
             "base",
             workspace_root=tmp_path,
             dry_run=True,
@@ -55,8 +55,8 @@ class TestMigratorPublicBehavior:
     ) -> None:
         project_root = tmp_path / "project-a"
         _write_project_files(project_root, makefile="content")
-        migrator = _build_migrator(
-            _project(project_root, "test-proj"),
+        migrator = u.Infra.Tests.build_project_migrator(
+            u.Infra.Tests.create_migrator_project(project_root, "test-proj"),
             "base",
             workspace_root=tmp_path,
         )
@@ -78,8 +78,6 @@ class TestMigratorPublicBehavior:
                 newline=newline,
             )
 
-        monkeypatch.setattr(Path, "read_text", _selective_read)
-
         migration = tm.ok(migrator.execute())[0]
 
         tm.that(any("Read failed" in err for err in migration.errors), eq=True)
@@ -95,8 +93,8 @@ class TestMigratorPublicBehavior:
             pyproject='[project]\ndependencies = ["flext-core"]\n',
             gitignore=".reports/\n.venv/\n__pycache__/\nbase.mk\n",
         )
-        migrator = _build_migrator(
-            _project(project_root),
+        migrator = u.Infra.Tests.build_project_migrator(
+            u.Infra.Tests.create_migrator_project(project_root),
             "base",
             workspace_root=tmp_path,
             dry_run=False,
@@ -118,8 +116,8 @@ class TestMigratorPublicBehavior:
             pyproject="[tool.poetry]\n",
             gitignore=".reports/\n.venv/\n__pycache__/\nbase.mk\n",
         )
-        migrator = _build_migrator(
-            _project(project_root, "test-proj"),
+        migrator = u.Infra.Tests.build_project_migrator(
+            u.Infra.Tests.create_migrator_project(project_root, "test-proj"),
             "base",
             workspace_root=tmp_path,
             dry_run=False,
@@ -132,8 +130,6 @@ class TestMigratorPublicBehavior:
                 raise OSError(msg)
             return original_write(self, data, **kwargs)
 
-        monkeypatch.setattr(Path, "write_text", _selective_write)
-
         migration = tm.ok(migrator.execute())[0]
 
         tm.that(any("Write failed" in err for err in migration.errors), eq=True)
@@ -145,8 +141,8 @@ class TestMigratorPublicBehavior:
             pyproject='[project]\nname = "flext-core"\nversion = "0.1.0"\n',
             gitignore=".reports/\n.venv/\n__pycache__/\nbase.mk\n",
         )
-        migrator = _build_migrator(
-            _project(project_root, "flext-core"),
+        migrator = u.Infra.Tests.build_project_migrator(
+            u.Infra.Tests.create_migrator_project(project_root, "flext-core"),
             "base",
             workspace_root=tmp_path,
             dry_run=False,

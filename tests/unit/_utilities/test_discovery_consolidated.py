@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
+
 from tests import c, m, t, u
 
 
@@ -197,8 +198,6 @@ class TestDiscoveryConsolidated:
             msg = "scan failed"
             raise OSError(msg)
 
-        monkeypatch.setattr(Path, "rglob", _raise_oserror)
-
         result = u.Infra.find_all_pyproject_files(tmp_path)
 
         assert result.is_failure
@@ -282,8 +281,6 @@ class TestDiscoveryConsolidated:
         def _raise_oserror(_: Path) -> Sequence[Path]:
             msg = "no permission"
             raise OSError(msg)
-
-        monkeypatch.setattr(Path, "iterdir", _raise_oserror)
 
         result = u.Infra.discover_projects(tmp_path)
 

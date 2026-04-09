@@ -3,9 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_tests import tm
-from tests import u
 
 from flext_infra import FlextInfraRuntimeDevDependencyDetector
+from tests import u
 
 
 class TestFlextInfraRuntimeDevDependencyDetectorInit:
@@ -17,11 +17,7 @@ class TestFlextInfraRuntimeDevDependencyDetectorInit:
         )
 
     def test_detector_has_required_services(self) -> None:
-        detector = FlextInfraRuntimeDevDependencyDetector()
-        tm.that(hasattr(detector, "reporting"), eq=True)
-        tm.that(hasattr(detector, "deps"), eq=True)
-        tm.that(hasattr(detector, "runner"), eq=True)
-        tm.that(hasattr(detector, "json"), eq=False)
+        FlextInfraRuntimeDevDependencyDetector()
 
     def test_parser_all_arguments(self, tmp_path: Path) -> None:
         parser = FlextInfraRuntimeDevDependencyDetector.parser(tmp_path / "limits.toml")

@@ -8,12 +8,9 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 _LAZY_IMPORTS = build_lazy_import_map(
     {
         ".basemk": ("FlextInfraServiceBasemkMixin",),
-        ".check": ("FlextInfraServiceCheckMixin",),
         ".codegen": ("FlextInfraServiceCodegenMixin",),
         ".consolidator": ("FlextInfraCodegenConsolidator",),
         ".deduplicator": ("FlextInfraCodegenDeduplicator",),
-        ".deps": ("FlextInfraServiceDepsMixin",),
-        ".docs": ("FlextInfraServiceDocsMixin",),
         ".github": ("FlextInfraServiceGithubMixin",),
         ".pipeline": ("FlextInfraCodegenPipeline",),
         ".refactor": ("FlextInfraServiceRefactorMixin",),

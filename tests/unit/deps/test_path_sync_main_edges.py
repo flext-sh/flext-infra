@@ -1,15 +1,14 @@
 from __future__ import annotations
 
-import sys
 from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import m, t
 
 from flext_core import r
 from flext_infra import FlextInfraUtilitiesDependencyPathSync
+from tests import m, t
 
 
 def _project(path: Path, name: str = "flext-core") -> m.Infra.ProjectInfo:
@@ -37,12 +36,10 @@ class TestMainEdgeCases:
         ) -> r[Sequence[m.Infra.ProjectInfo]]:
             return r[Sequence[m.Infra.ProjectInfo]].ok([])
 
-        monkeypatch.setattr(FlextInfraUtilitiesDependencyPathSync, "ROOT", tmp_path)
         monkeypatch.setattr(
             "flext_infra.FlextInfraUtilitiesDiscovery.discover_projects",
             _discover_none,
         )
-        monkeypatch.setattr(sys, "argv", ["prog", "--workspace", str(tmp_path)])
         tm.that(FlextInfraUtilitiesDependencyPathSync.main(), eq=0)
 
     def test_main_with_changes(
@@ -62,7 +59,6 @@ class TestMainEdgeCases:
         ) -> r[Sequence[m.Infra.ProjectInfo]]:
             return r[Sequence[m.Infra.ProjectInfo]].ok([_project(project_dir)])
 
-        monkeypatch.setattr(FlextInfraUtilitiesDependencyPathSync, "ROOT", tmp_path)
         monkeypatch.setattr(
             "flext_infra.FlextInfraUtilitiesDiscovery.discover_projects",
             _discover_project,
@@ -98,7 +94,6 @@ class TestMainEdgeCases:
             "rewrite_dep_paths",
             rewrite_stub,
         )
-        monkeypatch.setattr(sys, "argv", ["prog", "--workspace", str(tmp_path)])
         tm.that(FlextInfraUtilitiesDependencyPathSync.main(), eq=0)
 
     def test_main_root_project_name_extraction(
@@ -115,12 +110,10 @@ class TestMainEdgeCases:
         ) -> r[Sequence[m.Infra.ProjectInfo]]:
             return r[Sequence[m.Infra.ProjectInfo]].ok([])
 
-        monkeypatch.setattr(FlextInfraUtilitiesDependencyPathSync, "ROOT", tmp_path)
         monkeypatch.setattr(
             "flext_infra.FlextInfraUtilitiesDiscovery.discover_projects",
             _discover_none,
         )
-        monkeypatch.setattr(sys, "argv", ["prog", "--workspace", str(tmp_path)])
         tm.that(FlextInfraUtilitiesDependencyPathSync.main(), eq=0)
 
     def test_main_project_name_extraction(
@@ -140,7 +133,6 @@ class TestMainEdgeCases:
         ) -> r[Sequence[m.Infra.ProjectInfo]]:
             return r[Sequence[m.Infra.ProjectInfo]].ok([_project(project_dir)])
 
-        monkeypatch.setattr(FlextInfraUtilitiesDependencyPathSync, "ROOT", tmp_path)
         monkeypatch.setattr(
             "flext_infra.FlextInfraUtilitiesDiscovery.discover_projects",
             _discover_project,
@@ -172,7 +164,6 @@ class TestMainEdgeCases:
             "rewrite_dep_paths",
             _rewrite_ok,
         )
-        monkeypatch.setattr(sys, "argv", ["prog", "--workspace", str(tmp_path)])
         tm.that(FlextInfraUtilitiesDependencyPathSync.main(), eq=0)
 
     def test_main_invalid_project_toml(
@@ -181,8 +172,6 @@ class TestMainEdgeCases:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         (tmp_path / "pyproject.toml").write_text("invalid toml [[[")
-        monkeypatch.setattr(FlextInfraUtilitiesDependencyPathSync, "ROOT", tmp_path)
-        monkeypatch.setattr(sys, "argv", ["prog", "--workspace", str(tmp_path)])
         tm.that(FlextInfraUtilitiesDependencyPathSync.main(), eq=1)
 
     def test_main_missing_root_pyproject(
@@ -190,7 +179,6 @@ class TestMainEdgeCases:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(FlextInfraUtilitiesDependencyPathSync, "ROOT", tmp_path)
 
         def _discover_none(
             _root: Path,
@@ -201,7 +189,6 @@ class TestMainEdgeCases:
             "flext_infra.FlextInfraUtilitiesDiscovery.discover_projects",
             _discover_none,
         )
-        monkeypatch.setattr(sys, "argv", ["prog", "--workspace", str(tmp_path)])
         tm.that(FlextInfraUtilitiesDependencyPathSync.main(), eq=0)
 
     def test_main_project_without_pyproject(
@@ -214,7 +201,6 @@ class TestMainEdgeCases:
         )
         project_dir = tmp_path / "flext-core"
         project_dir.mkdir()
-        monkeypatch.setattr(FlextInfraUtilitiesDependencyPathSync, "ROOT", tmp_path)
 
         def _discover_project(
             _root: Path,
@@ -225,5 +211,4 @@ class TestMainEdgeCases:
             "flext_infra.FlextInfraUtilitiesDiscovery.discover_projects",
             _discover_project,
         )
-        monkeypatch.setattr(sys, "argv", ["prog", "--workspace", str(tmp_path)])
         tm.that(FlextInfraUtilitiesDependencyPathSync.main(), eq=0)

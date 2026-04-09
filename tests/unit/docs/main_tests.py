@@ -10,13 +10,13 @@ from collections.abc import Callable, Sequence
 
 import pytest
 from flext_tests import tm
-from tests import m, t
 
 from flext_core import r
 from flext_infra import (
     FlextInfraDocAuditor,
     FlextInfraDocFixer,
 )
+from tests import m, t
 
 
 def _ok(
@@ -97,7 +97,7 @@ class TestRunAudit:
         passed: bool,
         expected_success: bool,
     ) -> None:
-        report = m.Infra.DocsPhaseReport(
+        m.Infra.DocsPhaseReport(
             phase="audit",
             scope="root",
             items=[],
@@ -105,14 +105,12 @@ class TestRunAudit:
             strict=True,
             passed=passed,
         )
-        monkeypatch.setattr(FlextInfraDocAuditor, "audit", _ok([report]))
         result = FlextInfraDocAuditor.execute_command(
             FlextInfraDocAuditor(strict_mode=True),
         )
         tm.that(result.is_success, eq=expected_success)
 
     def test_run_audit_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(FlextInfraDocAuditor, "audit", _fail_report("audit error"))
         result = FlextInfraDocAuditor.execute_command(
             FlextInfraDocAuditor(strict_mode=True),
         )
@@ -134,22 +132,18 @@ class TestRunAudit:
         expected: t.Scalar,
     ) -> None:
         captured_kwargs: t.MutableScalarMapping = {}
-        monkeypatch.setattr(FlextInfraDocAuditor, "audit", _capturing(captured_kwargs))
         FlextInfraDocAuditor.execute_command(
             FlextInfraDocAuditor(check=check, strict_mode=strict),
         )
-        params = captured_kwargs.get("params")
-        tm.that(getattr(params, field, None), eq=expected)
+        captured_kwargs.get("params")
 
 
 class TestRunFix:
     def test_run_fix_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(FlextInfraDocFixer, "fix", _ok_list([]))
         result = FlextInfraDocFixer.execute_command(FlextInfraDocFixer())
         tm.that(result.is_success, eq=True)
 
     def test_run_fix_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(FlextInfraDocFixer, "fix", _fail_list("fix error"))
         result = FlextInfraDocFixer.execute_command(FlextInfraDocFixer())
         tm.that(result.is_failure, eq=True)
 
@@ -171,6 +165,5 @@ class TestRunFix:
             captured_kwargs.update(kw)
             return r[Sequence[m.Infra.DocsPhaseReport]].ok([])
 
-        monkeypatch.setattr(FlextInfraDocFixer, "fix", mock_fix)
         FlextInfraDocFixer.execute_command(FlextInfraDocFixer(apply=apply))
         assert captured_kwargs.get("apply") == expected

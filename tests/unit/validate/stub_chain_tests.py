@@ -10,9 +10,9 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import t
 
 from flext_infra import FlextInfraStubSupplyChain
+from tests import t
 
 
 def _no_stub_messages(_project_dir: Path) -> list[str]:
@@ -51,8 +51,6 @@ class TestStubChainAnalyze:
         proj = tmp_path / "project"
         proj.mkdir()
         (proj / "pyproject.toml").write_text("[project]\nname = 'test'")
-        monkeypatch.setattr(chain, "_run_mypy_hints", _no_stub_messages)
-        monkeypatch.setattr(chain, "_run_pyrefly_missing", _no_stub_messages)
         result = chain.analyze(proj, tmp_path)
         tm.ok(result)
 
@@ -65,8 +63,6 @@ class TestStubChainAnalyze:
         chain = FlextInfraStubSupplyChain()
         proj = tmp_path / "project"
         proj.mkdir()
-        monkeypatch.setattr(chain, "_run_mypy_hints", _no_stub_messages)
-        monkeypatch.setattr(chain, "_run_pyrefly_missing", _no_stub_messages)
         result = chain.analyze(proj, tmp_path)
         tm.ok(result)
 
@@ -103,8 +99,6 @@ class TestStubChainValidate:
         proj.mkdir()
         (proj / "pyproject.toml").write_text("")
         (proj / "src").mkdir()
-        monkeypatch.setattr(chain, "_run_mypy_hints", _no_stub_messages)
-        monkeypatch.setattr(chain, "_run_pyrefly_missing", _no_stub_messages)
         result = chain.build_report(tmp_path, project_dirs=[proj])
         tm.ok(result)
 

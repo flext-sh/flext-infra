@@ -23,6 +23,7 @@ from __future__ import annotations
 import sys
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
+from typing import ClassVar
 
 from flext_infra import (
     FlextInfraUtilitiesOutputFailureSummary,
@@ -45,9 +46,9 @@ class FlextInfraUtilitiesReporting(
     Exposed via ``u.Infra.get_report_dir()`` etc. through MRO.
     """
 
-    _stream: p.Infra.OutputStream = sys.stderr
-    _use_color: bool = False
-    _use_unicode: bool = False
+    _stream: ClassVar[p.Infra.OutputStream] = sys.stderr
+    _use_color: ClassVar[bool] = False
+    _use_unicode: ClassVar[bool] = False
 
     @staticmethod
     def get_report_dir(workspace_root: Path | str, scope: str, verb: str) -> Path:

@@ -12,23 +12,18 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import (
-    TestsFlextInfraHelpers,
-    create_checker_project,
-    create_fake_run_raw,
-    m,
-    patch_gate_run,
-    r,
-    run_gate_check,
-    t,
-    u,
-)
 
 from flext_infra import (
     FlextInfraMarkdownGate,
     FlextInfraPyrightGate,
     FlextInfraRuffFormatGate,
     FlextInfraRuffLintGate,
+)
+from tests import (
+    m,
+    r,
+    t,
+    u,
 )
 
 
@@ -40,15 +35,19 @@ class TestRunRuffLint:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        _, proj_dir = create_checker_project(tmp_path)
+        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path)
         json_output = '[{"filename": "a.py", "location": {"row": 1, "column": 0}, "code": "E001", "message": "Error"}]'
-        patch_gate_run(
+        u.Infra.Tests.patch_gate_run(
             monkeypatch,
             FlextInfraRuffLintGate,
             stdout=json_output,
             returncode=1,
         )
-        result = run_gate_check(FlextInfraRuffLintGate, tmp_path, proj_dir)
+        result = u.Infra.Tests.run_gate_check(
+            FlextInfraRuffLintGate,
+            tmp_path,
+            proj_dir,
+        )
         tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
 
@@ -57,14 +56,18 @@ class TestRunRuffLint:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        _, proj_dir = create_checker_project(tmp_path)
-        patch_gate_run(
+        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path)
+        u.Infra.Tests.patch_gate_run(
             monkeypatch,
             FlextInfraRuffLintGate,
             stdout="invalid json",
             returncode=1,
         )
-        result = run_gate_check(FlextInfraRuffLintGate, tmp_path, proj_dir)
+        result = u.Infra.Tests.run_gate_check(
+            FlextInfraRuffLintGate,
+            tmp_path,
+            proj_dir,
+        )
         tm.that(not result.result.passed, eq=True)
 
     def test_run_ruff_lint_forwards_ctx_ruff_args(
@@ -85,9 +88,9 @@ class TestRunRuffLint:
             captured_cmd.extend(cmd)
             return m.Cli.CommandOutput(stdout="[]", stderr="", exit_code=0)
 
-        monkeypatch.setattr(FlextInfraRuffLintGate, "_run", _fake_run)
         gate = FlextInfraRuffLintGate(tmp_path)
-        proj_dir = create_checker_project(tmp_path)[1]
+        monkeypatch.setattr(FlextInfraRuffLintGate, "_run", _fake_run)
+        proj_dir = u.Infra.Tests.create_checker_project(tmp_path)[1]
         _ = gate.check(
             proj_dir,
             m.Infra.GateContext(
@@ -107,14 +110,18 @@ class TestRunRuffFormat:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        _, proj_dir = create_checker_project(tmp_path)
-        patch_gate_run(
+        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path)
+        u.Infra.Tests.patch_gate_run(
             monkeypatch,
             FlextInfraRuffFormatGate,
             stdout="  --> a.py:1:1",
             returncode=1,
         )
-        result = run_gate_check(FlextInfraRuffFormatGate, tmp_path, proj_dir)
+        result = u.Infra.Tests.run_gate_check(
+            FlextInfraRuffFormatGate,
+            tmp_path,
+            proj_dir,
+        )
         tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
 
@@ -123,14 +130,18 @@ class TestRunRuffFormat:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        _, proj_dir = create_checker_project(tmp_path)
-        patch_gate_run(
+        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path)
+        u.Infra.Tests.patch_gate_run(
             monkeypatch,
             FlextInfraRuffFormatGate,
             stdout="a.py",
             returncode=1,
         )
-        result = run_gate_check(FlextInfraRuffFormatGate, tmp_path, proj_dir)
+        result = u.Infra.Tests.run_gate_check(
+            FlextInfraRuffFormatGate,
+            tmp_path,
+            proj_dir,
+        )
         tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
 
@@ -139,14 +150,18 @@ class TestRunRuffFormat:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        _, proj_dir = create_checker_project(tmp_path)
-        patch_gate_run(
+        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path)
+        u.Infra.Tests.patch_gate_run(
             monkeypatch,
             FlextInfraRuffFormatGate,
             stdout="--> src/file.py:1:1\n--> src/file.py:1:1\n--> src/other.py:1:1\n",
             returncode=1,
         )
-        result = run_gate_check(FlextInfraRuffFormatGate, tmp_path, proj_dir)
+        result = u.Infra.Tests.run_gate_check(
+            FlextInfraRuffFormatGate,
+            tmp_path,
+            proj_dir,
+        )
         tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=2)
 
@@ -156,13 +171,17 @@ class TestRunRuffFormat:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         (tmp_path / "pyproject.toml").touch()
-        patch_gate_run(
+        u.Infra.Tests.patch_gate_run(
             monkeypatch,
             FlextInfraRuffFormatGate,
             stdout="file1.py\n\nfile2.py\n",
             returncode=1,
         )
-        result = run_gate_check(FlextInfraRuffFormatGate, tmp_path, tmp_path)
+        result = u.Infra.Tests.run_gate_check(
+            FlextInfraRuffFormatGate,
+            tmp_path,
+            tmp_path,
+        )
         tm.that(len(result.issues), gte=1)
 
 
@@ -191,9 +210,9 @@ class TestRunPyrightArgs:
                 exit_code=0,
             )
 
-        monkeypatch.setattr(FlextInfraPyrightGate, "_run", _fake_run)
         gate = FlextInfraPyrightGate(tmp_path)
-        proj_dir = create_checker_project(tmp_path, with_src=True)[1]
+        monkeypatch.setattr(FlextInfraPyrightGate, "_run", _fake_run)
+        proj_dir = u.Infra.Tests.create_checker_project(tmp_path, with_src=True)[1]
         (proj_dir / "src" / "demo.py").write_text("value = 1\n", encoding="utf-8")
         _ = gate.check(
             proj_dir,
@@ -217,7 +236,7 @@ class TestRunCommand:
         monkeypatch.setattr(
             u.Cli,
             "run_raw",
-            create_fake_run_raw(
+            u.Infra.Tests.create_fake_run_raw(
                 r[m.Cli.CommandOutput].ok(
                     m.Cli.CommandOutput(stdout="[]", stderr="", exit_code=0),
                 ),
@@ -236,7 +255,11 @@ class TestRunCommand:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(u.Cli, "run_raw", create_fake_run_raw("execution failed"))
+        monkeypatch.setattr(
+            u.Cli,
+            "run_raw",
+            u.Infra.Tests.create_fake_run_raw("execution failed"),
+        )
         gate = FlextInfraRuffLintGate(tmp_path)
         result = gate._run(["echo"], tmp_path)
         tm.that(result.exit_code, eq=1)
@@ -247,7 +270,7 @@ class TestCollectMarkdownFiles:
     """Test FlextInfraWorkspaceChecker._collect_markdown_files method."""
 
     def test_collect_markdown_files_finds_files(self, tmp_path: Path) -> None:
-        proj_dir = TestsFlextInfraHelpers.mk_project(tmp_path, "p1")
+        proj_dir = u.Infra.Tests.mk_project(tmp_path, "p1")
         (proj_dir / "README.md").write_text("# Test")
         (proj_dir / "docs").mkdir()
         (proj_dir / "docs" / "guide.md").write_text("# Guide")
@@ -255,7 +278,7 @@ class TestCollectMarkdownFiles:
         tm.that(len(files), eq=2)
 
     def test_collect_markdown_files_excludes_dirs(self, tmp_path: Path) -> None:
-        proj_dir = TestsFlextInfraHelpers.mk_project(tmp_path, "p1", with_git=True)
+        proj_dir = u.Infra.Tests.mk_project(tmp_path, "p1", with_git=True)
         (proj_dir / "README.md").write_text("# Test")
         (proj_dir / ".git" / "README.md").write_text("# Git")
         files = FlextInfraMarkdownGate(tmp_path)._collect_markdown_files(proj_dir)

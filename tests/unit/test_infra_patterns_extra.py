@@ -31,7 +31,6 @@ class TestFlextInfraTypesPatternsPattern:
             u.Infra.MARKDOWN_LINK_RE,
         ]
         for pattern in patterns:
-            assert hasattr(pattern, "pattern")
             assert isinstance(pattern.pattern, str)
 
 

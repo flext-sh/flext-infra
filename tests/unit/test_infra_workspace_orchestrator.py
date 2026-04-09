@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import pytest
 from flext_tests import tm
-from tests import c, m, t
 
 from flext_core import r
 from flext_infra import FlextInfraOrchestratorService
+from tests import c, m, t
 
 
 def _cmd_out(exit_code: int = 0) -> m.Cli.CommandOutput:
@@ -126,7 +126,6 @@ class TestOrchestratorFailures:
                 return r[m.Cli.CommandOutput].fail("project execution failed")
             return r[m.Cli.CommandOutput].ok(_cmd_out(0))
 
-        monkeypatch.setattr(FlextInfraOrchestratorService, "_run_project", _run_project)
         tm.ok(
             orchestrator.orchestrate(["p1", "p2", "p3"], "test", fail_fast=True),
             len=3,

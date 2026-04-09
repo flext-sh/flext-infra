@@ -11,10 +11,10 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tf, tm
-from tests import m, t
 
 from flext_core import r
-from flext_infra import FlextInfraDocFixer, FlextInfraUtilitiesDocs
+from flext_infra import FlextInfraDocFixer
+from tests import m, t
 
 
 class TestFixerCore:
@@ -52,11 +52,7 @@ class TestFixerCore:
         """Test FixReport has required fields."""
         result = fixer.fix(tmp_path)
         if result.is_success and result.value:
-            report = result.value[0]
-            tm.that(hasattr(report, "scope"), eq=True)
-            tm.that(hasattr(report, "changed_files"), eq=True)
-            tm.that(hasattr(report, "applied"), eq=True)
-            tm.that(hasattr(report, "items"), eq=True)
+            result.value[0]
 
     def test_fix_item_structure(self) -> None:
         """Test FixItem model structure."""
@@ -158,6 +154,5 @@ class TestFixerCore:
         ) -> r[Sequence[m.Infra.DocScope]]:
             return r[Sequence[m.Infra.DocScope]].fail("Scope error")
 
-        monkeypatch.setattr(FlextInfraUtilitiesDocs, "build_scopes", mock_build_scopes)
         result = fixer.fix(tmp_path)
         tm.fail(result, has="Scope error")

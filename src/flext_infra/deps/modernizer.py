@@ -22,6 +22,7 @@ from flext_infra import (
     FlextInfraExtraPathsManager,
     FlextInfraInjectCommentsPhase,
     FlextInfraProjectClassifier,
+    FlextInfraUtilitiesTomlParse,
     c,
     r,
     t,
@@ -89,8 +90,9 @@ class FlextInfraPyprojectModernizer:
         tool_table = u.Cli.toml_ensure_table(doc, c.Infra.TOOL)
         hatch_table = u.Cli.toml_ensure_table(tool_table, "hatch")
         metadata_table = u.Cli.toml_ensure_table(hatch_table, "metadata")
-        allow_item = u.Cli.toml_get_item(metadata_table, "allow-direct-references")
-        if allow_item is None or u.norm_str(str(allow_item), case="lower") != "true":
+        allow_value = u.Infra.get(metadata_table, "allow-direct-references")
+        current_allow = u.norm_str(str(allow_value), case="lower") == "true"
+        if not current_allow:
             metadata_table["allow-direct-references"] = True
             changes.append("tool.hatch.metadata.allow-direct-references set to true")
         return changes
@@ -115,8 +117,11 @@ class FlextInfraPyprojectModernizer:
         table: t.Infra.TomlTable,
         *,
         preferred_first: t.StrSequence | None = None,
+        table_key: str | None = None,
     ) -> None:
         """Reorder table keys in-place recursively (tables/AoT items)."""
+        if table_key == "per-file-ignores":
+            return
         original_keys = [str(key) for key in table]
         ordered_keys = cls._ordered_keys(
             original_keys,
@@ -126,10 +131,10 @@ class FlextInfraPyprojectModernizer:
             for key in ordered_keys:
                 value = table[key]
                 if isinstance(value, Table):
-                    cls._reorder_table_inplace(value)
+                    cls._reorder_table_inplace(value, table_key=key)
                 elif isinstance(value, AoT):
                     for entry in value.body:
-                        cls._reorder_table_inplace(entry)
+                        cls._reorder_table_inplace(entry, table_key=key)
             return
         items: MutableMapping[str, t.Infra.TomlItem] = {
             key: table[key] for key in original_keys
@@ -139,10 +144,10 @@ class FlextInfraPyprojectModernizer:
         for key in ordered_keys:
             value = items[key]
             if isinstance(value, Table):
-                cls._reorder_table_inplace(value)
+                cls._reorder_table_inplace(value, table_key=key)
             elif isinstance(value, AoT):
                 for entry in value.body:
-                    cls._reorder_table_inplace(entry)
+                    cls._reorder_table_inplace(entry, table_key=key)
             table[key] = value
 
     @classmethod
@@ -163,16 +168,16 @@ class FlextInfraPyprojectModernizer:
                 doc[key] = root_items[key]
         tool_child = u.Cli.toml_get_table(doc, "tool")
         if tool_child is not None:
-            cls._reorder_table_inplace(tool_child)
+            cls._reorder_table_inplace(tool_child, table_key="tool")
         for key in ordered_root:
             if key == "tool":
                 continue
             value = doc[key]
             if isinstance(value, Table):
-                cls._reorder_table_inplace(value)
+                cls._reorder_table_inplace(value, table_key=key)
             elif isinstance(value, AoT):
                 for entry in value.body:
-                    cls._reorder_table_inplace(entry)
+                    cls._reorder_table_inplace(entry, table_key=key)
 
     def find_pyproject_files(
         self,
@@ -199,6 +204,10 @@ class FlextInfraPyprojectModernizer:
         skip_comments: bool,
     ) -> t.StrSequence:
         """Process one pyproject.toml file and collect changes."""
+        try:
+            original_rendered = path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+        except OSError:
+            return ["invalid TOML"]
         doc = u.Cli.toml_read(path)
         if doc is None:
             return ["invalid TOML"]
@@ -288,7 +297,11 @@ class FlextInfraPyprojectModernizer:
         if not skip_comments:
             rendered, comment_changes = FlextInfraInjectCommentsPhase().apply(rendered)
             changes.extend(comment_changes)
-        if changes and (not dry_run):
+        normalized_original = original_rendered.rstrip() + "\n"
+        normalized_rendered = rendered.rstrip() + "\n"
+        if normalized_rendered == normalized_original:
+            return []
+        if not dry_run:
             u.write_file(path, rendered, encoding=c.Infra.Encoding.DEFAULT)
         return changes
 
@@ -307,10 +320,14 @@ class FlextInfraPyprojectModernizer:
                 return 2
             project_paths = [project.path for project in selected_projects.value]
         files = self.find_pyproject_files(project_paths=project_paths)
-        root_doc = u.Cli.toml_read(self.root / c.Infra.Files.PYPROJECT_FILENAME)
+        root_doc: t.Cli.TomlDocument | None = u.Cli.toml_read(
+            self.root / c.Infra.Files.PYPROJECT_FILENAME
+        )
         if root_doc is None:
             return 2
-        canonical_dev = u.Infra.canonical_dev_dependencies(root_doc)
+        canonical_dev: t.StrSequence = t.Infra.STR_SEQ_ADAPTER.validate_python(
+            FlextInfraUtilitiesTomlParse.canonical_dev_dependencies(root_doc),
+        )
         violations: MutableMapping[str, t.StrSequence] = {}
         total = 0
         for file_path in files:

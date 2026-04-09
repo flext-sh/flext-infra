@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
+
 from tests import c, m, r, t, u
 
 
@@ -166,6 +167,35 @@ class TestFlextInfraDiscoveryService:
         result = service.discover_projects(tmp_path)
         tm.ok(result)
         assert result.value == []
+
+    def test_discover_projects_prefers_workspace_children_over_root_project(
+        self,
+        service: u.Infra,
+        tmp_path: Path,
+    ) -> None:
+        (tmp_path / "pyproject.toml").write_text(
+            "[project]\nname='workspace-root'\ndependencies=['flext-core>=0.1.0']\n\n"
+            "[tool.uv.workspace]\n"
+            "members = ['project2']\n",
+            encoding="utf-8",
+        )
+        project1 = tmp_path / "project1"
+        project1.mkdir()
+        (project1 / "pyproject.toml").write_text(
+            "[project]\nname='project1'\ndependencies=['flext-core>=0.1.0']\n",
+            encoding="utf-8",
+        )
+        project2 = tmp_path / "project2"
+        project2.mkdir()
+        (project2 / "pyproject.toml").write_text(
+            "[project]\nname='project2'\n",
+            encoding="utf-8",
+        )
+
+        result = service.discover_projects(tmp_path)
+
+        tm.ok(result)
+        tm.that([project.name for project in result.value], eq=["project1", "project2"])
 
 
 __all__: t.StrSequence = []

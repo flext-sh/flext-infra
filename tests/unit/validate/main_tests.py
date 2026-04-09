@@ -11,7 +11,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_tests import tm
-from tests import t
 
 from flext_infra import (
     FlextInfraBaseMkValidator,
@@ -19,6 +18,7 @@ from flext_infra import (
     FlextInfraTextPatternScanner,
     main as infra_main,
 )
+from tests import t
 
 
 def _cli(*args: str) -> int:

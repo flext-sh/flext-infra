@@ -95,3 +95,14 @@ def test_inject_comments_phase_deduplicates_family_markers() -> None:
     )
     result, _changes = FlextInfraInjectCommentsPhase().apply(rendered)
     tm.that(result.count("# [MANAGED] coverage"), eq=1)
+
+
+def test_inject_comments_phase_is_idempotent_on_managed_content() -> None:
+    rendered = (
+        '[project]\nname = "test"\n[tool.pytest.ini_options]\nminversion = "8.0"\n'
+    )
+    first_result, first_changes = FlextInfraInjectCommentsPhase().apply(rendered)
+    second_result, second_changes = FlextInfraInjectCommentsPhase().apply(first_result)
+    tm.that(first_changes, len=(1, 20))
+    tm.that(second_result, eq=first_result)
+    tm.that(second_changes, eq=[])

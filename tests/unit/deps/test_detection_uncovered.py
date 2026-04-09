@@ -5,9 +5,9 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import m, r, t, u
 
 from flext_infra import FlextInfraDependencyDetectionService
+from tests import m, r, t, u
 
 
 class _StubRunner:
@@ -95,6 +95,5 @@ class TestDetectionUncoveredLines:
                     return r[t.Infra.ContainerDict].ok({"python": {"version": "3.13"}})
                 return r[t.Infra.ContainerDict].ok({})
 
-        monkeypatch.setattr(service, "toml", _Toml())
         report = tm.ok(service.get_required_typings(tmp_path, venv_bin))
         tm.that(report.limits_applied, eq=True)

@@ -19,7 +19,7 @@ This section is generated from public exports and real docstrings.
 
 ## Surface Summary
 
-- Primary facades: `FlextInfra`, `FlextInfraCli`, `FlextInfraServiceBase`, `FlextInfraConstants`, `FlextInfraModels`, `FlextInfraProtocols` (+4 more)
-- Generated module pages: `11`
+- Primary facades: `FlextInfra`, `FlextInfraBanditGate`, `FlextInfraBaseMkGenerator`, `FlextInfraBaseMkTemplateEngine`, `FlextInfraBaseMkValidator`, `FlextInfraCensusImportDiscoveryVisitor` (+290 more)
+- Generated module pages: `0`
 
 - [Back to project docs](../index.md)

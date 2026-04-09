@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 from flext_tests import tm
-from tests import r, t
 
 from flext_infra import FlextInfraStubSupplyChain, main as infra_main
+from tests import r, t
 
 
 def test_stub_validate_uses_all_flag(

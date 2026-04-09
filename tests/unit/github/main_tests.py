@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import m, r, t
 
 from flext_infra import FlextInfraUtilities, infra
+from tests import m, r, t
 
 
 def _sync_report() -> m.Infra.GithubWorkflowSyncReport:

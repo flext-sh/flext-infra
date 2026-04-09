@@ -10,9 +10,9 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import m, t
 
 from flext_infra import FlextInfraDocValidator, u
+from tests import m, t
 
 
 @pytest.fixture
@@ -36,7 +36,6 @@ class TestValidateScope:
     ) -> None:
         report = validator._validate_scope(
             _scope(tmp_path, "root"),
-            check="adr-skill",
             apply_mode=False,
         )
         tm.that(report.scope, eq="root")
@@ -48,7 +47,6 @@ class TestValidateScope:
     ) -> None:
         report = validator._validate_scope(
             _scope(tmp_path),
-            check="all",
             apply_mode=False,
         )
         tm.that(report.scope, eq="test")
@@ -60,7 +58,6 @@ class TestValidateScope:
     ) -> None:
         report = validator._validate_scope(
             _scope(tmp_path),
-            check="all",
             apply_mode=False,
         )
         tm.that(report.scope, eq="test")
@@ -74,10 +71,8 @@ class TestValidateScope:
         def mock_adr_check(path: Path | str) -> tuple[int, t.StrSequence]:
             return (1, ["missing_skill"])
 
-        monkeypatch.setattr(validator, "_run_adr_skill_check", mock_adr_check)
         report = validator._validate_scope(
             _scope(tmp_path),
-            check="adr",
             apply_mode=False,
         )
         tm.that(report.scope, eq="test")
@@ -95,10 +90,8 @@ class TestValidateScope:
         def mock_adr_check(path: Path | str) -> tuple[int, t.StrSequence]:
             return (1, ["missing_skill_1", "missing_skill_2"])
 
-        monkeypatch.setattr(validator, "_run_adr_skill_check", mock_adr_check)
         report = validator._validate_scope(
             _scope(tmp_path, "root"),
-            check="adr-skill",
             apply_mode=False,
         )
         tm.that(report.scope, eq="root")

@@ -7,30 +7,13 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import ClassVar
 
-from flext_infra import FlextInfraUtilitiesRopeCore, c, m, p, t
+from flext_infra import c, m, p, t
 
 
 class FlextInfraUtilitiesRopeHelpers:
     """Generic text, import-placement, and method-order helpers."""
 
     _post_hooks: ClassVar[list[p.Infra.RopePostHook]] = []
-
-    @staticmethod
-    def get_rope_get_module_imports_fn() -> t.Infra.RopeGetModuleImportsFn:
-        """Expose ``get_module_imports`` through the public Rope protocol boundary."""
-
-        def _get_module_imports(
-            project: t.Infra.RopeProject,
-            pymodule: t.Infra.RopePyModule,
-        ) -> t.Infra.RopeModuleImports:
-            return FlextInfraUtilitiesRopeCore.ensure_module_imports(
-                FlextInfraUtilitiesRopeCore.get_module_imports_for_pymodule(
-                    project,
-                    pymodule,
-                )
-            )
-
-        return _get_module_imports
 
     @classmethod
     def run_rope_pre_hooks(
