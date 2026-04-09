@@ -143,9 +143,13 @@ class FlextInfraSyncService(FlextInfraServiceBase[m.Infra.SyncResult]):
         if discovered.is_failure:
             return r[int].fail(discovered.error or "workspace discovery failed")
         changed = 0
+        resolved_root = workspace_root.resolve()
         for project in discovered.value:
+            project_path = project.path.resolve()
+            if project_path == resolved_root:
+                continue
             sync_result = self._sync_locked_content(
-                project.path.resolve(),
+                project_path,
                 config=None,
                 canonical_root=canonical_root,
             )
