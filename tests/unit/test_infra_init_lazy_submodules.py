@@ -14,10 +14,10 @@ import flext_infra.codegen
 import flext_infra.deps
 import flext_infra.docs
 import flext_infra.github
+import flext_infra.maintenance
 import flext_infra.release
 import flext_infra.validate
 import flext_infra.workspace
-import flext_infra.workspace.maintenance
 
 
 class TestFlextInfraSubmoduleInitLazyLoading:
@@ -61,7 +61,7 @@ class TestFlextInfraSubmoduleInitLazyLoading:
     def test_maintenance_getattr_nonexistent_raises_attribute_error(self) -> None:
         """Test that accessing nonexistent attribute in maintenance raises AttributeError."""
         with pytest.raises(AttributeError):
-            _ = getattr(flext_infra.workspace.maintenance, "NonexistentAttribute")
+            _ = getattr(flext_infra.maintenance, "NonexistentAttribute")
 
     def test_release_getattr_nonexistent_raises_attribute_error(self) -> None:
         """Test that accessing nonexistent attribute in release raises AttributeError."""

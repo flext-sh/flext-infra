@@ -19,6 +19,7 @@ class FlextInfraConstantsCheck:
         "pyrefly",
         "mypy",
         "pyright",
+        "silent-failure",
         "security",
         "markdown",
         "go",
@@ -29,6 +30,10 @@ class FlextInfraConstantsCheck:
         "pyrefly": ("Pyrefly", "https://github.com/facebook/pyrefly"),
         "mypy": ("Mypy", "https://mypy.readthedocs.io/"),
         "pyright": ("Pyright", "https://github.com/microsoft/pyright"),
+        "silent-failure": (
+            "Flext Silent Failure Detector",
+            "internal://flext-infra/silent-failure",
+        ),
         "security": ("Bandit", "https://bandit.readthedocs.io/"),
         "markdown": (
             "MarkdownLint",

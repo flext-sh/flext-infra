@@ -53,6 +53,7 @@ class FlextInfraConstantsRefactor:
     PATTERN_FIX_ACTIONS: ClassVar[frozenset[str]] = frozenset({
         "convert_dict_to_mapping_annotations",
         "remove_redundant_casts",
+        "fix_silent_failure_sentinels",
     })
     TYPE_ALIAS_FIX_ACTIONS: ClassVar[frozenset[str]] = frozenset({"unify_typings"})
     TYPING_FIX_ACTIONS: ClassVar[frozenset[str]] = frozenset({

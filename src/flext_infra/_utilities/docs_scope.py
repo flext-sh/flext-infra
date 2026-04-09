@@ -8,20 +8,33 @@ from pathlib import Path
 
 from flext_cli import u
 from flext_infra import (
-    FlextInfraTypesBase,
     FlextInfraUtilitiesIteration,
-    FlextInfraUtilitiesParsing,
     c,
     m,
     r,
+    t,
 )
+from flext_infra._utilities.toml_parse import FlextInfraUtilitiesTomlParse
 
 
 class FlextInfraUtilitiesDocsScope:
     """Utility helpers for docs scope policy and project classification."""
 
     @staticmethod
-    def _workspace_member_name_set(workspace_root: Path) -> FlextInfraTypesBase.StrSet:
+    def _project_name_from_payload(
+        entry: Path,
+        payload: t.Infra.ContainerDict,
+    ) -> str:
+        """Return the declared project name, falling back to the directory name."""
+        project_section = payload.get("project")
+        if isinstance(project_section, dict):
+            raw_name = project_section.get("name")
+            if isinstance(raw_name, str) and raw_name.strip():
+                return raw_name.strip()
+        return entry.name
+
+    @staticmethod
+    def _workspace_member_name_set(workspace_root: Path) -> t.Infra.StrSet:
         """Return configured uv workspace members for the current workspace root."""
         return set(FlextInfraUtilitiesIteration.workspace_member_names(workspace_root))
 
@@ -31,8 +44,10 @@ class FlextInfraUtilitiesDocsScope:
         document_result = u.Cli.toml_read_document(pyproject)
         if document_result.is_failure:
             return False
-        dependency_names = FlextInfraUtilitiesParsing.declared_dependency_names(
-            document_result.value,
+        dependency_names: t.Infra.StrSet = set(
+            FlextInfraUtilitiesTomlParse.declared_dependency_names(
+                document_result.value,
+            )
         )
         return c.Infra.Packages.CORE in dependency_names
 
@@ -40,7 +55,7 @@ class FlextInfraUtilitiesDocsScope:
     def _project_info_for_entry(
         entry: Path,
         *,
-        workspace_members: FlextInfraTypesBase.StrSet,
+        workspace_members: t.Infra.StrSet,
     ) -> m.Infra.ProjectInfo | None:
         """Build one canonical project descriptor when a child qualifies."""
         pyproject = entry / c.Infra.Files.PYPROJECT_FILENAME
@@ -53,6 +68,10 @@ class FlextInfraUtilitiesDocsScope:
             return None
         payload = FlextInfraUtilitiesDocsScope.pyproject_payload(entry)
         docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(payload)
+        project_name = FlextInfraUtilitiesDocsScope._project_name_from_payload(
+            entry,
+            payload,
+        )
         enabled = docs_meta.get("enabled", True)
         if isinstance(enabled, bool) and not enabled:
             return None
@@ -63,13 +82,13 @@ class FlextInfraUtilitiesDocsScope:
         )
         return m.Infra.ProjectInfo.model_construct(
             path=entry,
-            name=entry.name,
+            name=project_name,
             stack="python/flext",
             has_tests=(entry / c.Infra.Directories.TESTS).is_dir(),
             has_src=(entry / c.Infra.Paths.DEFAULT_SRC_DIR).is_dir(),
             project_class=(
                 FlextInfraUtilitiesDocsScope.classify_project_from_meta(
-                    entry.name,
+                    project_name,
                     docs_meta,
                 )
             ),
@@ -89,7 +108,7 @@ class FlextInfraUtilitiesDocsScope:
         return workspace_root / c.Infra.Directories.DOCS / c.Infra.DOCS_CONFIG_FILENAME
 
     @staticmethod
-    def pyproject_payload(project_root: Path) -> FlextInfraTypesBase.ContainerDict:
+    def pyproject_payload(project_root: Path) -> t.Infra.ContainerDict:
         """Return a project's ``pyproject.toml`` payload as a plain mapping."""
         pyproject = project_root / c.Infra.Files.PYPROJECT_FILENAME
         if not pyproject.exists():
@@ -100,7 +119,7 @@ class FlextInfraUtilitiesDocsScope:
     @staticmethod
     def load_config(
         workspace_root: Path,
-    ) -> FlextInfraTypesBase.ContainerDict:
+    ) -> t.Infra.ContainerDict:
         """Load the minimal docs policy config if present."""
         path = FlextInfraUtilitiesDocsScope.config_path(workspace_root)
         if not path.exists():
@@ -109,7 +128,7 @@ class FlextInfraUtilitiesDocsScope:
         return result.value if result.is_success else {}
 
     @staticmethod
-    def excluded_roots(workspace_root: Path) -> FlextInfraTypesBase.StrSet:
+    def excluded_roots(workspace_root: Path) -> t.Infra.StrSet:
         """Return explicitly excluded root directories from docs scope."""
         payload = FlextInfraUtilitiesDocsScope.load_config(workspace_root)
         scope = payload.get("scope")
@@ -121,7 +140,7 @@ class FlextInfraUtilitiesDocsScope:
         return {str(item).strip() for item in excluded if str(item).strip()}
 
     @staticmethod
-    def project_docs_meta(project_root: Path) -> FlextInfraTypesBase.ContainerDict:
+    def project_docs_meta(project_root: Path) -> t.Infra.ContainerDict:
         """Return optional ``tool.flext.docs`` metadata from a project pyproject."""
         payload = FlextInfraUtilitiesDocsScope.pyproject_payload(project_root)
         tool = payload.get(c.Infra.TOOL)
@@ -136,7 +155,7 @@ class FlextInfraUtilitiesDocsScope:
     @staticmethod
     def workspace_docs_meta(
         workspace_root: Path,
-    ) -> FlextInfraTypesBase.ContainerDict:
+    ) -> t.Infra.ContainerDict:
         """Return optional root ``tool.flext.docs`` metadata."""
         return FlextInfraUtilitiesDocsScope.project_docs_meta(workspace_root)
 
@@ -186,8 +205,8 @@ class FlextInfraUtilitiesDocsScope:
 
     @staticmethod
     def docs_meta_from_payload(
-        payload: FlextInfraTypesBase.ContainerDict,
-    ) -> FlextInfraTypesBase.ContainerDict:
+        payload: t.Infra.ContainerDict,
+    ) -> t.Infra.ContainerDict:
         """Extract ``tool.flext.docs`` metadata from an already-parsed payload."""
         tool = payload.get(c.Infra.TOOL)
         if not isinstance(tool, dict):
@@ -201,7 +220,7 @@ class FlextInfraUtilitiesDocsScope:
     @staticmethod
     def classify_project_from_meta(
         project_name: str,
-        docs_meta: FlextInfraTypesBase.ContainerDict,
+        docs_meta: t.Infra.ContainerDict,
     ) -> str:
         """Classify a project using pre-loaded docs metadata (avoids re-parsing)."""
         configured = docs_meta.get("project_class")
@@ -230,8 +249,8 @@ class FlextInfraUtilitiesDocsScope:
     @staticmethod
     def package_name_from_payload(
         project_root: Path,
-        payload: FlextInfraTypesBase.ContainerDict,
-        docs_meta: FlextInfraTypesBase.ContainerDict,
+        payload: t.Infra.ContainerDict,
+        docs_meta: t.Infra.ContainerDict,
     ) -> str:
         """Return the primary package name using pre-loaded payload (avoids re-parsing)."""
         configured = docs_meta.get("package_name")
@@ -285,6 +304,13 @@ class FlextInfraUtilitiesDocsScope:
         workspace_members = FlextInfraUtilitiesDocsScope._workspace_member_name_set(
             workspace_root,
         )
+        if workspace_root.name not in excluded:
+            root_project = FlextInfraUtilitiesDocsScope._project_info_for_entry(
+                workspace_root,
+                workspace_members=workspace_members,
+            )
+            if root_project is not None:
+                return r[Sequence[m.Infra.ProjectInfo]].ok([root_project])
         projects: list[m.Infra.ProjectInfo] = []
         try:
             for entry in sorted(workspace_root.iterdir(), key=lambda item: item.name):

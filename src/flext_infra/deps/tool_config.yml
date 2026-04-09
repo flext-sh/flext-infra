@@ -357,6 +357,7 @@ tools:
       - assignment
       - attr-defined
       - call-arg
+      - misc
       - name-defined
       - prop-decorator
     boolean-settings:
@@ -364,12 +365,6 @@ tools:
       namespace_packages: true
       explicit_package_bases: true
     overrides:
-      - modules: ["tests", "tests.*", "tests.integration.*", "tests.unit.*"]
-        disable-error-codes: ["arg-type", "assignment", "attr-defined", "call-arg", "has-type", "misc", "no-redef", "return-value", "valid-type", "var-annotated"]
-      - modules: ["tests.helpers.*"]
-        disable-error-codes: ["attr-defined", "call-arg", "return-value"]
-      - modules: ["tests.integration.patterns.*"]
-        disable-error-codes: ["assignment", "attr-defined"]
       - modules: ["tests.fixtures.*"]
         disable-error-codes: ["assignment"]
   pydantic-mypy:

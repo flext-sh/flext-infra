@@ -41,7 +41,14 @@ class FlextInfraCodegenCensus(FlextInfraServiceBase[str]):
     @override
     def execute(self) -> r[str]:
         """Execute the census directly from the validated CLI service model."""
-        reports = self.run()
+        if self.apply_changes:
+            return r[str].fail(
+                "census is read-only; use flext-infra codegen auto-fix --apply",
+            )
+        try:
+            reports = self.run()
+        except (OSError, RuntimeError, TypeError, ValueError) as exc:
+            return r[str].fail(f"census failed: {exc}", exception=exc)
         total_violations = sum(report.total for report in reports)
         total_fixable = sum(report.fixable for report in reports)
         if self.output_format == "json":
@@ -173,7 +180,8 @@ class FlextInfraCodegenCensus(FlextInfraServiceBase[str]):
             projects=projects,
         )
         if not projects_result.is_success:
-            return []
+            msg = projects_result.error or "project discovery failed"
+            raise RuntimeError(msg)
         return [self._census_project(project) for project in projects_result.unwrap()]
 
     def _census_project(

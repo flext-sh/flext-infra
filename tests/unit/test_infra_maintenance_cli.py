@@ -1,4 +1,4 @@
-"""CLI contract tests for workspace maintenance entry point."""
+"""CLI contract tests for maintenance entry point."""
 
 from __future__ import annotations
 

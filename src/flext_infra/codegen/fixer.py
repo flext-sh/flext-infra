@@ -49,7 +49,10 @@ class FlextInfraCodegenFixer(s[str]):
     def execute(self) -> r[str]:
         """Execute auto-fix directly from the validated CLI service model."""
         dry_run = self.dry_run or not self.apply_changes
-        results = self.fix_workspace()
+        try:
+            results = self.fix_workspace()
+        except (OSError, RuntimeError, TypeError, ValueError) as exc:
+            return r[str].fail(f"auto-fix failed: {exc}", exception=exc)
         total_fixed = sum(len(result.violations_fixed) for result in results)
         total_skipped = sum(len(result.violations_skipped) for result in results)
         lines: MutableSequence[str] = []
@@ -271,7 +274,8 @@ class FlextInfraCodegenFixer(s[str]):
             projects=projects,
         )
         if not projects_result.is_success:
-            return []
+            msg = projects_result.error or "project discovery failed"
+            raise RuntimeError(msg)
         return [self.fix_project(project.path) for project in projects_result.unwrap()]
 
 

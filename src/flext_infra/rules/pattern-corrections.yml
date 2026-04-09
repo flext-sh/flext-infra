@@ -19,3 +19,10 @@ rules:
       - "t.ConfigMap"
       - "type"
       - "FlextRegistry.Summary"
+
+  - id: replace-silent-failure-sentinels
+    name: "Replace silent failure sentinels"
+    description: "Convert deterministic sentinel fallbacks inside r[...] functions into r.fail(...)"
+    enabled: true
+    severity: error
+    fix_action: fix_silent_failure_sentinels

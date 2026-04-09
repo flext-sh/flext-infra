@@ -45,6 +45,7 @@ class TestWorkspaceCheckerResolveGates:
             "type",
             "mypy",
             "pyright",
+            "silent-failure",
             "security",
             "markdown",
             "go",
@@ -52,6 +53,11 @@ class TestWorkspaceCheckerResolveGates:
         result = FlextInfraWorkspaceChecker.resolve_gates(gates)
         tm.ok(result)
         assert len(result.value) > 0
+
+    def test_resolve_gates_accepts_silent_failure(self) -> None:
+        result = FlextInfraWorkspaceChecker.resolve_gates(["silent-failure"])
+        tm.ok(result)
+        tm.that(result.value, eq=["silent-failure"])
 
 
 class TestWorkspaceCheckerParseGateCSV:

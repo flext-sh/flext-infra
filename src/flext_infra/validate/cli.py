@@ -14,6 +14,7 @@ from flext_infra import (
     m,
     t,
 )
+from flext_infra.validate.silent_failure import FlextInfraSilentFailureValidator
 
 
 class FlextInfraCliValidate(FlextInfraServiceValidateMixin):
@@ -61,6 +62,13 @@ class FlextInfraCliValidate(FlextInfraServiceValidateMixin):
                     model_cls=FlextInfraSkillValidator,
                     handler=self.validate_skill,
                     failure_message="skill validation failed",
+                ),
+                m.Cli.ResultCommandRoute(
+                    name="silent-failure",
+                    help_text="Validate silent failure sentinel returns",
+                    model_cls=FlextInfraSilentFailureValidator,
+                    handler=self.validate_silent_failure,
+                    failure_message="silent failure validation failed",
                 ),
                 m.Cli.ResultCommandRoute(
                     name="stub-validate",

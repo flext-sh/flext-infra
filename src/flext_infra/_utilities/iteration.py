@@ -17,6 +17,7 @@ from flext_infra import (
     r,
     t,
 )
+from flext_infra._utilities.toml_parse import FlextInfraUtilitiesTomlParse
 
 
 class FlextInfraUtilitiesIteration:
@@ -193,8 +194,10 @@ class FlextInfraUtilitiesIteration:
             )
             if document_result.is_failure:
                 return False
-            dependency_names = FlextInfraUtilitiesParsing.declared_dependency_names(
-                document_result.value,
+            dependency_names: set[str] = set(
+                FlextInfraUtilitiesTomlParse.declared_dependency_names(
+                    document_result.value,
+                )
             )
             if c.Infra.Packages.CORE in dependency_names:
                 return True
@@ -294,8 +297,9 @@ class FlextInfraUtilitiesIteration:
             for part in path.parts
         )
 
-    @staticmethod
+    @classmethod
     def iter_python_files(
+        cls,
         workspace_root: Path,
         *,
         project_roots: Sequence[Path] | None = None,
@@ -323,11 +327,8 @@ class FlextInfraUtilitiesIteration:
 
         """
         try:
-            roots = (
-                project_roots
-                or FlextInfraUtilitiesIteration.discover_project_roots(
-                    workspace_root=workspace_root,
-                )
+            roots = project_roots or cls.discover_project_roots(
+                workspace_root=workspace_root,
             )
             selected_dirs = src_dirs or frozenset(
                 {
@@ -345,14 +346,14 @@ class FlextInfraUtilitiesIteration:
             }
             files: MutableSequence[Path] = []
             for project_root in roots:
-                FlextInfraUtilitiesIteration._iter_known_dirs(
+                cls._iter_known_dirs(
                     project_root,
                     include_flags,
                     selected_dirs,
                     files,
                 )
                 if include_dynamic_dirs:
-                    FlextInfraUtilitiesIteration._iter_dynamic_dirs(
+                    cls._iter_dynamic_dirs(
                         project_root,
                         files,
                     )

@@ -1,0 +1,55 @@
+"""Tests for the silent-failure quality gate."""
+
+from __future__ import annotations
+
+from collections.abc import Sequence
+from pathlib import Path
+
+from flext_tests import tm
+from tests.unit.check._shared_fixtures import run_gate_check
+from tests.unit.codegen._project_factory import (
+    FlextInfraCodegenTestProjectFactory,
+)
+
+from flext_infra.gates.silent_failure import FlextInfraSilentFailureGate
+
+
+def _create_gate_project(tmp_path: Path, *, name: str) -> Path:
+    return FlextInfraCodegenTestProjectFactory.create_project(
+        tmp_path=tmp_path,
+        name=name,
+        pkg_name=name.replace("-", "_"),
+        files={
+            "utilities.py": (
+                "from __future__ import annotations\n\n"
+                "from collections.abc import Mapping, Sequence\n\n"
+                "from flext_core import r\n\n"
+                "def run(validation_result: r[bool]) -> r[bool]:\n"
+                "    if validation_result.is_failure:\n"
+                "        return False\n"
+                "    return r[bool].ok(True)\n"
+            ),
+        },
+    )
+
+
+class TestSilentFailureGate:
+    def test_first_wave_project_fails_on_silent_failure(self, tmp_path: Path) -> None:
+        project = _create_gate_project(tmp_path, name="flext-cli")
+
+        result = run_gate_check(FlextInfraSilentFailureGate, tmp_path, project)
+
+        tm.that(not result.result.passed, eq=True)
+        tm.that(len(result.issues), eq=1)
+        tm.that(result.issues[0].code, eq="silent-failure-guard")
+
+    def test_non_first_wave_project_is_not_enforced(self, tmp_path: Path) -> None:
+        project = _create_gate_project(tmp_path, name="demo-project")
+
+        result = run_gate_check(FlextInfraSilentFailureGate, tmp_path, project)
+
+        tm.that(result.result.passed, eq=True)
+        tm.that(result.raw_output, has="not enforced")
+
+
+__all__: Sequence[str] = []

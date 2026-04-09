@@ -13,6 +13,7 @@ from flext_infra import (
     FlextInfraStubSupplyChain,
     FlextInfraTextPatternScanner,
 )
+from flext_infra.validate.silent_failure import FlextInfraSilentFailureValidator
 
 
 class FlextInfraServiceValidateMixin:
@@ -39,6 +40,13 @@ class FlextInfraServiceValidateMixin:
 
     def validate_skill(self, params: FlextInfraSkillValidator) -> r[bool]:
         """Validate skills through the public facade."""
+        return params.execute()
+
+    def validate_silent_failure(
+        self,
+        params: FlextInfraSilentFailureValidator,
+    ) -> r[bool]:
+        """Validate silent failure sentinels through the public facade."""
         return params.execute()
 
     def validate_stub_supply_chain(

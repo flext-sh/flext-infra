@@ -11,29 +11,15 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from importlib.resources import files
-from pathlib import Path
 
 from pydantic import ValidationError
 
 from flext_cli import u
-from flext_infra import c, m, r, t
+from flext_infra import c, m, r
 
 
-class FlextInfraUtilitiesYaml(u.Cli):
-    """Infra-specific YAML helpers — typed wrappers + tool_config.yml caching."""
-
-    @staticmethod
-    def yaml_load_infra_mapping(path: Path) -> t.Infra.ContainerDict:
-        """Load YAML → ``Mapping[str, InfraValue]`` (infra-typed).
-
-        Delegates to ``u.Cli.yaml_load_mapping`` and normalizes the result
-        to the infra type system via ``normalize_str_mapping``.
-        """
-        raw = FlextInfraUtilitiesYaml.yaml_load_mapping(path)
-        try:
-            return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(raw)
-        except ValidationError:
-            return {}
+class FlextInfraUtilitiesYaml:
+    """Infra-specific YAML helpers — tool_config.yml caching only."""
 
     _tool_config_cache: r[m.Infra.ToolConfigDocument] | None = None
 
@@ -48,7 +34,7 @@ class FlextInfraUtilitiesYaml(u.Cli):
                 .joinpath("tool_config.yml")
                 .read_text(encoding=c.Infra.Encoding.DEFAULT)
             )
-            parsed = FlextInfraUtilitiesYaml.yaml_parse(raw_text)
+            parsed = u.Cli.yaml_parse(raw_text)
             if parsed.is_failure:
                 result = r[m.Infra.ToolConfigDocument].fail(
                     parsed.error or "tool_config.yml parse failed",

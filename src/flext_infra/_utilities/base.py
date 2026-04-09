@@ -39,7 +39,7 @@ class FlextInfraUtilitiesBase:
     @staticmethod
     def validate[T](
         adapter: TypeAdapter[T],
-        value: t.Infra.ValueOrModel,
+        value: t.ValueOrModel,
         *,
         default: T,
     ) -> T:
@@ -72,7 +72,7 @@ class FlextInfraUtilitiesBase:
 
     @staticmethod
     def normalize_str_mapping(
-        value: t.Infra.ValueOrModel | None,
+        value: t.ValueOrModel | None,
     ) -> Mapping[str, t.Infra.InfraValue]:
         """Normalize a value to a string-keyed mapping, or ``{}`` on failure."""
         return FlextInfraUtilitiesBase.validate(
@@ -233,7 +233,7 @@ class FlextInfraUtilitiesBase:
                 .joinpath("tool_config.yml")
                 .read_text(encoding=c.Infra.Encoding.DEFAULT)
             )
-            parsed = FlextInfraUtilitiesBase.yaml_parse(raw_text)
+            parsed = u.Cli.yaml_parse(raw_text)
             if parsed.is_failure:
                 result = r[m.Infra.ToolConfigDocument].fail(
                     parsed.error or "tool_config.yml parse failed",

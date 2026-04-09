@@ -10,7 +10,7 @@ from flext_core.lazy import (
 )
 
 _LAZY_IMPORTS = merge_lazy_imports(
-    (".maintenance",),
+    (),
     build_lazy_import_map(
         {
             ".cli": ("FlextInfraCliWorkspace",),

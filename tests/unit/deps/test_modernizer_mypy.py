@@ -67,7 +67,26 @@ class TestEnsureMypyConfigPhase:
         for key, value in tool_config.tools.mypy.boolean_settings.items():
             assert mypy_mapping[key] == value
 
-    def test_apply_merges_lists_and_replaces_overrides(self) -> None:
+    def test_apply_includes_alias_override(self) -> None:
+        tool_config = _test_tool_config()
+        doc = tomlkit.document()
+
+        _ = FlextInfraEnsureMypyConfigPhase(tool_config).apply(doc)
+
+        mypy_mapping = _mapping(_mapping(_doc_mapping(doc)["tool"])["mypy"])
+        overrides = list(_override_list(mypy_mapping["overrides"]))
+        assert {
+            "module": [
+                "*.constants",
+                "*.models",
+                "*.protocols",
+                "*.typings",
+                "*.utilities",
+            ],
+            "disable_error_code": ["misc"],
+        } in overrides
+
+    def test_apply_replaces_managed_lists_and_overrides(self) -> None:
         tool_config = _test_tool_config()
         doc = tomlkit.parse(
             """
@@ -81,14 +100,12 @@ overrides = [{ module = ["legacy.*"], disable_error_code = ["misc"] }]
         _ = FlextInfraEnsureMypyConfigPhase(tool_config).apply(doc)
 
         mypy_mapping = _mapping(_mapping(_doc_mapping(doc)["tool"])["mypy"])
-        assert set(_strings(mypy_mapping["plugins"])) == {
-            "custom.plugin",
-            *tool_config.tools.mypy.plugins,
-        }
-        assert set(_strings(mypy_mapping["disable_error_code"])) == {
-            "misc",
-            *tool_config.tools.mypy.disabled_error_codes,
-        }
+        assert list(_strings(mypy_mapping["plugins"])) == list(
+            tool_config.tools.mypy.plugins,
+        )
+        assert list(_strings(mypy_mapping["disable_error_code"])) == list(
+            tool_config.tools.mypy.disabled_error_codes,
+        )
         assert list(_override_list(mypy_mapping["overrides"])) == [
             {
                 "module": list(entry.modules),

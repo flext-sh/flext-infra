@@ -9,9 +9,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from flext_tests import tm
 from tests import m, t, u
+
+from flext_infra import FlextInfraCodegenCensus
 
 
 class TestParseViolationValid:
@@ -132,6 +136,19 @@ class TestFixabilityClassification:
             tm.that(result, none=False)
             assert result is not None
             tm.that(not result.fixable, eq=True)
+
+
+class TestCensusExecute:
+    def test_execute_fails_when_apply_changes_requested(self, tmp_path: Path) -> None:
+        result = FlextInfraCodegenCensus(
+            workspace=tmp_path,
+            apply=True,
+        ).execute()
+
+        tm.fail(
+            result,
+            has="census is read-only; use flext-infra codegen auto-fix --apply",
+        )
 
 
 __all__: t.StrSequence = []

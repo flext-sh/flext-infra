@@ -25,6 +25,7 @@ from flext_infra import (
     t,
     u,
 )
+from flext_infra.gates.silent_failure import FlextInfraSilentFailureGate
 
 
 class FlextInfraGateRegistry:
@@ -36,6 +37,7 @@ class FlextInfraGateRegistry:
         FlextInfraPyreflyGate,
         FlextInfraMypyGate,
         FlextInfraPyrightGate,
+        FlextInfraSilentFailureGate,
         FlextInfraBanditGate,
         FlextInfraMarkdownGate,
         FlextInfraGoGate,

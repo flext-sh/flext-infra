@@ -23,7 +23,7 @@ from flext_infra import (
 )
 
 
-class FlextInfraUtilitiesRefactorPolicy(u.Cli):
+class FlextInfraUtilitiesRefactorPolicy:
     """Policy document loading and class-nesting policy enforcement."""
 
     _MODULE_FAMILY_KEYS: t.StrSequence = (
@@ -44,7 +44,7 @@ class FlextInfraUtilitiesRefactorPolicy(u.Cli):
         policy_path: Path,
     ) -> r[Mapping[str, t.Infra.InfraValue]]:
         """Load and validate a YAML policy document."""
-        raw = FlextInfraUtilitiesRefactorPolicy.yaml_load_mapping(policy_path)
+        raw = u.Cli.yaml_load_mapping(policy_path)
         if not raw:
             return r[Mapping[str, t.Infra.InfraValue]].fail(
                 f"Failed to load policy {policy_path}",

@@ -249,6 +249,31 @@ class TestDiscoveryConsolidated:
             == c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER
         )
 
+    def test_discover_projects_accepts_project_root_as_workspace(
+        self, tmp_path: Path
+    ) -> None:
+        (tmp_path / c.Infra.Paths.DEFAULT_SRC_DIR / "demo_pkg").mkdir(parents=True)
+        (
+            tmp_path
+            / c.Infra.Paths.DEFAULT_SRC_DIR
+            / "demo_pkg"
+            / c.Infra.Files.INIT_PY
+        ).write_text("", encoding="utf-8")
+        (tmp_path / c.Infra.Directories.TESTS).mkdir()
+        (tmp_path / c.Infra.Files.PYPROJECT_FILENAME).write_text(
+            "[project]\nname='demo-project'\ndependencies=['flext-core>=0.1.0']\n",
+            encoding="utf-8",
+        )
+
+        result = u.Infra.discover_projects(tmp_path)
+
+        assert result.is_success
+        assert len(result.value) == 1
+        assert result.value[0].path == tmp_path
+        assert result.value[0].name == "demo-project"
+        assert result.value[0].has_src is True
+        assert result.value[0].has_tests is True
+
     def test_discover_projects_returns_failure_on_oserror(
         self,
         tmp_path: Path,

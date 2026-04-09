@@ -40,7 +40,7 @@ from flext_infra import (
 # =====================================================================
 
 
-class FlextInfraUtilitiesCodegenGovernance(u.Cli):
+class FlextInfraUtilitiesCodegenGovernance:
     """Loads and caches constants-governance YAML config."""
 
     _config_cache: ClassVar[MutableMapping[str, m.Infra.ConstantsGovernanceConfig]] = {}
@@ -53,7 +53,7 @@ class FlextInfraUtilitiesCodegenGovernance(u.Cli):
         cached = FlextInfraUtilitiesCodegenGovernance._config_cache.get("config")
         if cached is not None:
             return cached
-        raw = FlextInfraUtilitiesCodegenGovernance.yaml_load_mapping(
+        raw = u.Cli.yaml_load_mapping(
             FlextInfraUtilitiesCodegenGovernance.GOVERNANCE_FILE
         )
         config = m.Infra.ConstantsGovernanceConfig.model_validate(raw)

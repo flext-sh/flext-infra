@@ -32,12 +32,12 @@ class FlextInfraEnsureMypyConfigPhase:
             .list(
                 c.Infra.PLUGINS,
                 self._tool_config.tools.mypy.plugins,
-                strategy=c.Infra.TomlMerge.MERGE,
+                strategy=c.Infra.TomlMerge.REPLACE,
             )
             .list(
                 c.Infra.DISABLE_ERROR_CODE,
                 self._tool_config.tools.mypy.disabled_error_codes,
-                strategy=c.Infra.TomlMerge.MERGE,
+                strategy=c.Infra.TomlMerge.REPLACE,
             )
             .value("overrides", list(expected_overrides))
         )

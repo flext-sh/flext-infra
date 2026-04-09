@@ -186,8 +186,11 @@ class FlextInfraConstantsBase(
     FORMAT: Final[str] = "format"
     MARKDOWN: Final[str] = "markdown"
     GO: Final[str] = "go"
+    SILENT_FAILURE: Final[str] = "silent-failure"
     TYPE_ALIAS: Final[str] = "type"
-    DEFAULT_CSV: Final[str] = "lint,format,pyrefly,mypy,pyright,security,markdown,go"
+    DEFAULT_CSV: Final[str] = (
+        "lint,format,pyrefly,mypy,pyright,silent-failure,security,markdown,go"
+    )
 
     class TomlMerge:
         """Merge strategies for TOML list synchronization."""

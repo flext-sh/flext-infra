@@ -331,6 +331,10 @@ if _t.TYPE_CHECKING:
     from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
     from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
     from flext_infra.github.cli import FlextInfraCliGithub
+    from flext_infra.maintenance.cli import FlextInfraCliMaintenance
+    from flext_infra.maintenance.python_version import (
+        FlextInfraPythonVersionEnforcer,
+    )
     from flext_infra.models import FlextInfraModels, FlextInfraModels as m
     from flext_infra.protocols import FlextInfraProtocols, FlextInfraProtocols as p
     from flext_infra.refactor._base_rule import (
@@ -481,10 +485,6 @@ if _t.TYPE_CHECKING:
     from flext_infra.validate.stub_chain import FlextInfraStubSupplyChain
     from flext_infra.workspace.cli import FlextInfraCliWorkspace
     from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
-    from flext_infra.workspace.maintenance.cli import FlextInfraCliMaintenance
-    from flext_infra.workspace.maintenance.python_version import (
-        FlextInfraPythonVersionEnforcer,
-    )
     from flext_infra.workspace.migrator import FlextInfraProjectMigrator
     from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
     from flext_infra.workspace.project_makefile import FlextInfraProjectMakefileUpdater
@@ -507,6 +507,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
         ".docs",
         ".gates",
         ".github",
+        ".maintenance",
         ".refactor",
         ".release",
         ".rules",
@@ -541,6 +542,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "main",
             ),
             ".constants": ("FlextInfraConstants",),
+            ".maintenance": ("maintenance",),
             ".models": ("FlextInfraModels",),
             ".protocols": ("FlextInfraProtocols",),
             ".typings": ("FlextInfraTypes",),

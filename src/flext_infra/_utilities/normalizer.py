@@ -33,14 +33,14 @@ def _load_import_normalization_config() -> Mapping[str, t.Infra.InfraValue]:
     rules_path = (
         Path(__file__).resolve().parent.parent / "rules" / "import-normalization.yml"
     )
-    loaded = FlextInfraUtilitiesImportNormalizer.yaml_load_mapping(rules_path)
+    loaded = u.Cli.yaml_load_mapping(rules_path)
     root = loaded.get("import_normalization")
     if u.is_mapping(root):
         return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(root)
     return {}
 
 
-class FlextInfraUtilitiesImportNormalizer(u.Cli):
+class FlextInfraUtilitiesImportNormalizer:
     """Import normalization helpers for alias resolution and tier inference."""
 
     @staticmethod
