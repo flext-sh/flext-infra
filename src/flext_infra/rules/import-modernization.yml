@@ -29,9 +29,9 @@ rules:
     fix_action: replace_with_alias
     replacement: "from flext_core import m"
     symbol_mapping:
-      User: "m.Core.User"
-      Config: "m.Core.Config"
-      Result: "m.Core.Result"
+      User: "m.Core.Tests.User"
+      Config: "m.Core.Tests.Config"
+      Result: "m.Core.Tests.Result"
       BaseModel: "m.BaseModel"
 
   - id: modernize-result-import

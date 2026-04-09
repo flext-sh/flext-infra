@@ -108,9 +108,9 @@ refactor_engine:
     TIMEOUT: "c.Limits.TIMEOUT"
     
     # Models
-    User: "m.Core.User"
-    Config: "m.Core.Config"
-    Result: "m.Core.Result"
+    User: "m.Core.Tests.User"
+    Config: "m.Core.Tests.Config"
+    Result: "m.Core.Tests.Result"
 
   # Arquivos e diretórios a ignorar
   ignore_patterns:
