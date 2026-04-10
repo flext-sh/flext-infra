@@ -8,13 +8,13 @@ from flext_infra import (
     FlextInfraInventoryService,
     FlextInfraPytestDiagExtractor,
     FlextInfraServiceValidateMixin,
+    FlextInfraSilentFailureValidator,
     FlextInfraSkillValidator,
     FlextInfraStubSupplyChain,
     FlextInfraTextPatternScanner,
     m,
     t,
 )
-from flext_infra.validate.silent_failure import FlextInfraSilentFailureValidator
 
 
 class FlextInfraCliValidate(FlextInfraServiceValidateMixin):

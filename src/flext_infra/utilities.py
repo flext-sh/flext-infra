@@ -14,6 +14,7 @@ from flext_infra import (
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesCli,
     FlextInfraUtilitiesCodegen,
+    FlextInfraUtilitiesDependencyPathSync,
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesDocs,
     FlextInfraUtilitiesDocsApi,
@@ -47,7 +48,6 @@ from flext_infra import (
     FlextInfraUtilitiesVersioning,
     FlextInfraUtilitiesYaml,
 )
-from flext_infra._utilities.deps_path_sync import FlextInfraUtilitiesDependencyPathSync
 
 
 class FlextInfraUtilities(u):

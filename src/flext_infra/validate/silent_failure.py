@@ -7,9 +7,13 @@ from typing import Annotated, override
 
 from pydantic import Field
 
-from flext_infra import m, p, r, s, u
-from flext_infra.detectors.silent_failure_detector import (
+from flext_infra import (
     FlextInfraSilentFailureDetector,
+    m,
+    p,
+    r,
+    s,
+    u,
 )
 
 

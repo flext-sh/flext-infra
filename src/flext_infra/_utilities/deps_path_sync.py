@@ -7,11 +7,16 @@ from pathlib import Path
 
 from flext_cli import u
 from flext_core import FlextLogger
-from flext_infra import c, m, t
-from flext_infra._utilities.cli import FlextInfraUtilitiesCli
-from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
-from flext_infra._utilities.paths import FlextInfraUtilitiesPaths
-from flext_infra.deps.path_sync_rewrite import FlextInfraDependencyPathSyncRewrite
+from flext_infra import (
+    FlextInfraDependencyPathSyncRewrite,
+    FlextInfraUtilitiesCli,
+    FlextInfraUtilitiesCliDispatch,
+    FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesPaths,
+    c,
+    m,
+    t,
+)
 
 
 class FlextInfraUtilitiesDependencyPathSync(
@@ -181,8 +186,8 @@ class FlextInfraUtilitiesDependencyPathSync(
         return 0
 
     @classmethod
-    def main(cls, argv: t.StrSequence | None = None) -> int:
-        """Entry point for path sync CLI."""
+    def run_cli(cls, argv: t.StrSequence | None = None) -> int:
+        """Execute path synchronization for the canonical deps CLI."""
         parser = FlextInfraUtilitiesCli.create_parser(
             "flext-infra deps path-sync",
             "Rewrite internal FLEXT dependency paths for workspace/standalone mode.",
@@ -197,11 +202,20 @@ class FlextInfraUtilitiesDependencyPathSync(
             default="auto",
             help="Target mode (default: auto-detect)",
         )
-        args = parser.parse_args(argv)
+        args = parser.parse_args([] if argv is None else list(argv))
         cli = FlextInfraUtilitiesCli.resolve(args)
         return cls().execute(
             cli=cli,
             mode=args.mode,
+        )
+
+    @classmethod
+    def main(cls, argv: t.StrSequence | None = None) -> int:
+        """Legacy entrypoint routed through the canonical deps CLI."""
+        return FlextInfraUtilitiesCliDispatch.run_command(
+            "deps",
+            "path-sync",
+            argv,
         )
 
 

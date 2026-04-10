@@ -6,7 +6,7 @@ from contextlib import redirect_stdout
 from io import StringIO
 from pathlib import Path
 
-from flext_infra.cli import main as infra_main
+from flext_infra import main as infra_main
 
 
 def test_centralize_pydantic_cli_outputs_extended_metrics(tmp_path: Path) -> None:

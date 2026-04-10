@@ -1,15 +1,13 @@
 from __future__ import annotations
 
-import types
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
+from typing import override
 
-import pytest
 from flext_tests import tm
 
-from flext_core import r
 from flext_infra import FlextInfraRuntimeDevDependencyDetector
-from tests import t
+from tests import p, r, t, u
 
 
 class _ReportStub:
@@ -20,22 +18,24 @@ class _ReportStub:
         return {"deptry": {"raw_count": self._raw_count}}
 
 
-class _DepsStub:
+class _DepsStub(p.Infra.DepsService, p.Infra.PipCheckDepsService):
     def __init__(self, project: Path, raw_count: int, pip_exit: int) -> None:
         self._project = project
         self._raw_count = raw_count
         self._pip_exit = pip_exit
 
+    @override
     def discover_project_paths(
         self,
-        root: Path,
+        workspace_root: Path,
         *,
         projects_filter: t.StrSequence | None = None,
     ) -> r[Sequence[Path]]:
-        _ = root
+        _ = workspace_root
         _ = projects_filter
         return r[Sequence[Path]].ok([self._project])
 
+    @override
     def run_deptry(
         self,
         project_path: Path,
@@ -45,151 +45,126 @@ class _DepsStub:
         _ = venv_bin
         return r[tuple[Sequence[t.StrMapping], int]].ok(([], 0))
 
+    @override
     def build_project_report(
         self,
         project_name: str,
-        issues: Sequence[t.StrMapping],
+        deptry_issues: Sequence[t.StrMapping],
     ) -> _ReportStub:
         _ = project_name
-        _ = issues
+        _ = deptry_issues
         return _ReportStub(self._raw_count)
 
-    def run_pip_check(self, root: Path, venv_bin: Path) -> r[tuple[t.StrSequence, int]]:
-        _ = root
+    @override
+    def run_pip_check(
+        self,
+        workspace_root: Path,
+        venv_bin: Path,
+    ) -> r[tuple[t.StrSequence, int]]:
+        _ = workspace_root
         _ = venv_bin
         return r[tuple[t.StrSequence, int]].ok(([], self._pip_exit))
 
 
+class _ReportingStub(p.Infra.ReportingService):
+    def __init__(self, report_dir: Path) -> None:
+        self._report_dir = report_dir
+
+    @override
+    def get_report_dir(self, workspace_root: Path, scope: str, verb: str) -> Path:
+        del workspace_root
+        del scope
+        del verb
+        return self._report_dir
+
+
 def _setup(
-    monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     deps: _DepsStub,
     *,
-    reporting_service: types.SimpleNamespace | None = None,
+    reporting_service: p.Infra.ReportingService | None = None,
 ) -> FlextInfraRuntimeDevDependencyDetector:
-    def _exists(path: Path) -> bool:
-        del path
-        return True
-
-    return FlextInfraRuntimeDevDependencyDetector()
+    return u.Infra.Tests.setup_detector_runtime(
+        tmp_path,
+        deps,
+        reporting=reporting_service,
+    )
 
 
 class TestFlextInfraRuntimeDevDependencyDetectorRunReport:
     def test_run_with_output_flag(
         self,
-        monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,
     ) -> None:
-        call_paths: MutableSequence[str] = []
-
-        def _write_json(
-            path: Path,
-            payload: t.Cli.JsonPayload,
-            *,
-            sort_keys: bool = False,
-            ensure_ascii: bool = False,
-            indent: int = 2,
-        ) -> r[bool]:
-            del sort_keys
-            del ensure_ascii
-            del indent
-            _ = payload
-            call_paths.append(str(path))
-            return r[bool].ok(True)
-
         custom_output = tmp_path / "custom_report.json"
         detector = _setup(
-            monkeypatch,
             tmp_path,
             _DepsStub(tmp_path / "proj-a", 0, 0),
         )
-        tm.ok(
-            detector.run([
-                "--output",
-                str(custom_output),
-                "--no-pip-check",
-                "--apply",
-                "--workspace",
-                str(tmp_path),
-            ]),
+        tm.that(
+            tm.ok(
+                detector.run(
+                    u.Infra.Tests.detect_command(
+                        tmp_path,
+                        output=str(custom_output),
+                        no_pip_check=True,
+                        apply=True,
+                    ),
+                ),
+            ),
+            eq=True,
         )
-        tm.that(len(call_paths), eq=1)
-        tm.that(call_paths[0], eq=str(custom_output))
+        tm.that(custom_output.exists(), eq=True)
+        payload = tm.ok(u.Cli.json_read(custom_output))
+        tm.that("projects" in payload, eq=True)
 
     def test_run_with_report_directory_creation_failure(
         self,
-        monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,
     ) -> None:
-        def _report_dir(root: Path, category: str, name: str) -> Path:
-            del root
-            del category
-            del name
-            return tmp_path / "readonly"
+        blocked_dir = tmp_path / "readonly"
+        blocked_dir.write_text("not-a-directory", encoding="utf-8")
 
-        reporting = types.SimpleNamespace(get_report_dir=_report_dir)
-
-        def _ensure_dir_fail(path: Path) -> r[bool]:
-            del path
-            return r[bool].fail("failed to create report directory")
+        reporting = _ReportingStub(blocked_dir)
 
         detector = _setup(
-            monkeypatch,
             tmp_path,
             _DepsStub(tmp_path / "proj-a", 0, 0),
             reporting_service=reporting,
         )
         tm.that(
             tm.fail(
-                detector.run([
-                    "--no-pip-check",
-                    "--apply",
-                    "--workspace",
-                    str(tmp_path),
-                ]),
+                detector.run(
+                    u.Infra.Tests.detect_command(
+                        tmp_path,
+                        no_pip_check=True,
+                        apply=True,
+                    ),
+                ),
             ),
-            has="failed to create report directory",
+            has="ensure_dir:",
         )
 
     def test_run_with_json_write_failure(
         self,
-        monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,
     ) -> None:
-        def _write_json_fail(
-            path: Path,
-            payload: t.Cli.JsonPayload,
-            *,
-            sort_keys: bool = False,
-            ensure_ascii: bool = False,
-            indent: int = 2,
-        ) -> r[bool]:
-            del path
-            del payload
-            del sort_keys
-            del ensure_ascii
-            del indent
-            return r[bool].fail("write failed")
-
-        def _report_dir(root: Path, category: str, name: str) -> Path:
-            del root
-            del category
-            del name
-            return tmp_path / "reports"
-
-        reporting = types.SimpleNamespace(get_report_dir=_report_dir)
-
-        def _ensure_dir_ok(path: Path) -> r[bool]:
-            del path
-            return r[bool].ok(True)
+        blocked_parent = tmp_path / "blocked-parent"
+        blocked_parent.write_text("not-a-directory", encoding="utf-8")
+        blocked_output = blocked_parent / "report.json"
 
         detector = _setup(
-            monkeypatch,
             tmp_path,
             _DepsStub(tmp_path / "proj-a", 0, 0),
-            reporting_service=reporting,
         )
         error = tm.fail(
-            detector.run(["--no-pip-check", "--apply", "--workspace", str(tmp_path)]),
+            detector.run(
+                u.Infra.Tests.detect_command(
+                    tmp_path,
+                    output=str(blocked_output),
+                    no_pip_check=True,
+                    apply=True,
+                ),
+            ),
         )
-        tm.that("write failed" in error or "failed to write report" in error, eq=True)
+        tm.that("json_write:" in error or "failed to write report" in error, eq=True)

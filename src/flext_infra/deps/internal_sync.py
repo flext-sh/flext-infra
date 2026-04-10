@@ -9,7 +9,16 @@ from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
 from flext_core import FlextLogger
-from flext_infra import FlextInfraInternalSyncRepoMixin, c, m, p, r, t, u
+from flext_infra import (
+    FlextInfraInternalSyncRepoMixin,
+    FlextInfraUtilitiesCliDispatch,
+    c,
+    m,
+    p,
+    r,
+    t,
+    u,
+)
 
 
 class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
@@ -261,14 +270,14 @@ class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
         return r[bool].ok(True)
 
     @staticmethod
-    def main() -> int:
-        """Entry point for internal dependency synchronization CLI."""
+    def run_cli(argv: t.StrSequence | None = None) -> int:
+        """Execute internal dependency synchronization for the deps CLI."""
         parser = u.Infra.create_parser(
             prog="flext-infra deps internal-sync",
             description="Synchronize internal FLEXT dependencies via git clone or workspace symlinks",
             flags=u.Infra.SharedFlags(include_apply=False),
         )
-        args = parser.parse_args()
+        args = parser.parse_args([] if argv is None else list(argv))
         cli_args = u.Infra.resolve(args)
         service = FlextInfraInternalDependencySyncService()
         result = service.sync(cli_args.workspace)
@@ -278,6 +287,15 @@ class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
         service.log.error("sync_internal_deps_failed", error_detail=sync_error)
         u.Infra.error(f"[sync-deps] {sync_error}")
         return 1
+
+    @staticmethod
+    def main(argv: t.StrSequence | None = None) -> int:
+        """Legacy entrypoint routed through the canonical deps CLI."""
+        return FlextInfraUtilitiesCliDispatch.run_command(
+            "deps",
+            "internal-sync",
+            argv,
+        )
 
 
 if __name__ == "__main__":

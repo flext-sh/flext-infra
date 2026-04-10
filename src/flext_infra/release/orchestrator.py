@@ -341,11 +341,14 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
         if projects_result.is_success:
             targets.extend((p.name, p.path) for p in projects_result.value)
         seen: t.Infra.StrSet = set()
+        seen_paths: set[Path] = set()
         unique: MutableSequence[t.Infra.Pair[str, Path]] = []
         for name, path in targets:
-            if name in seen or not path.exists():
+            resolved_path = path.resolve()
+            if name in seen or resolved_path in seen_paths or not path.exists():
                 continue
             seen.add(name)
+            seen_paths.add(resolved_path)
             unique.append((name, path))
         return unique
 

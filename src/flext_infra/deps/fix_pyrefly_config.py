@@ -14,7 +14,16 @@ from typing import override
 from pydantic import ValidationError
 
 from flext_core import FlextLogger
-from flext_infra import FlextInfraExtraPathsManager, c, m, r, s, t, u
+from flext_infra import (
+    FlextInfraExtraPathsManager,
+    FlextInfraUtilitiesCliDispatch,
+    c,
+    m,
+    r,
+    s,
+    t,
+    u,
+)
 
 _logger = FlextLogger.create_module_logger(__name__)
 
@@ -225,29 +234,12 @@ class FlextInfraConfigFixer(s[bool]):
 
     @staticmethod
     def main(argv: t.StrSequence | None = None) -> int:
-        """Run the pyrefly configuration fixer CLI."""
-        parser = u.Infra.create_parser(
-            "flext-infra check fix-pyrefly-config",
-            "Repair [tool.pyrefly] blocks",
-            flags=u.Infra.SharedFlags(
-                include_apply=True,
-                include_diff=False,
-                include_project=True,
-            ),
+        """Legacy entrypoint routed through the canonical check CLI."""
+        return FlextInfraUtilitiesCliDispatch.run_command(
+            c.Infra.Verbs.CHECK,
+            "fix-pyrefly-config",
+            argv,
         )
-        _ = parser.add_argument("--verbose", action="store_true")
-        args = parser.parse_args(argv)
-        cli = u.Infra.resolve(args)
-        fixer = FlextInfraConfigFixer()
-        result = fixer.run(
-            projects=cli.project_names() or [],
-            dry_run=args.dry_run,
-            verbose=args.verbose,
-        )
-        if result.is_failure:
-            u.Infra.error(result.error or "pyrefly config fix failed")
-            return 1
-        return 0
 
 
 if __name__ == "__main__":

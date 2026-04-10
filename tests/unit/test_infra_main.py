@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from flext_infra.cli import main
+from flext_infra import main
 
 
 def test_main_returns_error_when_no_args() -> None:

@@ -59,6 +59,8 @@ class TestFlextInfraPathResolver:
             msg = "invalid path type"
             raise TypeError(msg)
 
+        monkeypatch.setattr(Path, "resolve", _raise_type_error)
+
         result = resolver.workspace_root(".")
         tm.fail(result)
         assert isinstance(result.error, str)

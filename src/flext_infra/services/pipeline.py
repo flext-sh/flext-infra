@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, MutableSequence, Sequence
-from typing import Annotated, ClassVar, override
+from typing import override
 
-from pydantic import ConfigDict, Field
-
-from flext_core import FlextLogger, FlextModels, r
+from flext_core import FlextLogger, r
 from flext_infra import (
     FlextInfraCodegenCensus,
     FlextInfraCodegenFixer,
@@ -16,56 +14,10 @@ from flext_infra import (
     FlextInfraCodegenScaffolder,
     c,
     m,
-    p,
     s,
     t,
     u,
 )
-
-
-class _CodegenPipelineState(FlextModels.ArbitraryTypesModel):
-    """Typed inter-stage state for the codegen pipeline — Pydantic v2 model."""
-
-    _flext_enforcement_exempt: ClassVar[bool] = True
-
-    model_config: ClassVar[ConfigDict] = ConfigDict(
-        extra="forbid",
-        arbitrary_types_allowed=True,
-    )
-
-    discovered_projects: Annotated[
-        Sequence[p.Infra.ProjectInfo],
-        Field(
-            default_factory=tuple, description="Projects discovered at pipeline start"
-        ),
-    ]
-    census_service: Annotated[
-        FlextInfraCodegenCensus | None,
-        Field(
-            default=None, description="Cached census service for reuse across stages"
-        ),
-    ]
-    reports_before: Annotated[
-        Sequence[m.Infra.CensusReport],
-        Field(
-            default_factory=tuple, description="Census reports collected before fixes"
-        ),
-    ]
-    reports_after: Annotated[
-        Sequence[m.Infra.CensusReport],
-        Field(
-            default_factory=tuple, description="Census reports collected after fixes"
-        ),
-    ]
-    scaffold_results: Annotated[
-        Sequence[m.Infra.ScaffoldResult],
-        Field(default_factory=tuple, description="Scaffolding stage results"),
-    ]
-    fix_results: Annotated[
-        Sequence[m.Infra.AutoFixResult],
-        Field(default_factory=tuple, description="Auto-fix stage results"),
-    ]
-
 
 _log = FlextLogger.create_module_logger(__name__)
 
@@ -73,12 +25,12 @@ _log = FlextLogger.create_module_logger(__name__)
 class FlextInfraCodegenPipeline(s[str]):
     """Run the full codegen pipeline directly from the validated CLI model."""
 
-    _state: _CodegenPipelineState
+    _state: m.Infra.CodegenPipelineState
 
     @override
     def execute(self) -> r[str]:
         """Execute the end-to-end codegen pipeline via DAG engine."""
-        self._state = _CodegenPipelineState()
+        self._state = m.Infra.CodegenPipelineState()
         ctx = m.Cli.PipelineStageContext(
             workspace_root=self.workspace_root,
             shared={},

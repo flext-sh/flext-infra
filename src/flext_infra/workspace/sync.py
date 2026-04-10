@@ -18,6 +18,7 @@ from pydantic import Field
 from flext_infra import (
     FlextInfraBaseMkGenerator,
     FlextInfraServiceBase,
+    FlextInfraUtilitiesCliDispatch,
     c,
     m,
     r,
@@ -290,30 +291,13 @@ class FlextInfraSyncService(FlextInfraServiceBase[m.Infra.SyncResult]):
         return u.Cli.atomic_write_text_file(target_path, content)
 
     @staticmethod
-    def main() -> int:
-        """CLI entry point for workspace sync."""
-        parser = u.Infra.create_parser(
-            "flext-infra workspace sync",
-            "Workspace base.mk sync",
-            flags=u.Infra.SharedFlags(),
+    def main(argv: t.StrSequence | None = None) -> int:
+        """Legacy entrypoint routed through the canonical workspace CLI."""
+        return FlextInfraUtilitiesCliDispatch.run_command(
+            c.Infra.ReportKeys.WORKSPACE,
+            "sync",
+            argv,
         )
-        _ = parser.add_argument(
-            "--canonical-root",
-            type=Path,
-            default=None,
-            help="Canonical workspace root",
-        )
-        args = parser.parse_args()
-        service = FlextInfraSyncService.model_validate({
-            "workspace_root": args.workspace,
-            "apply_changes": args.apply,
-            "canonical_root": args.canonical_root,
-        })
-        result = service.execute()
-        if result.is_success:
-            return 0
-        u.Infra.error(result.error or "sync failed")
-        return 1
 
 
 if __name__ == "__main__":

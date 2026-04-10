@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import MutableMapping
+from pathlib import Path
 from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, computed_field, model_serializer
@@ -13,6 +14,84 @@ from flext_infra import FlextInfraModelsMixins, c, t
 
 class FlextInfraModelsCheck:
     """Quality-gate check domain models."""
+
+    class RunCommand(FlextInfraModelsMixins.ProjectMixin, m.ContractModel):
+        """Canonical CLI payload for ``flext-infra check run``."""
+
+        gates: Annotated[
+            str,
+            Field(
+                default=c.Infra.DEFAULT_CSV,
+                description="Comma-separated quality gates to execute",
+            ),
+        ] = c.Infra.DEFAULT_CSV
+        reports_dir: Annotated[
+            str,
+            Field(
+                default=f"{c.Infra.Reporting.REPORTS_DIR_NAME}/check",
+                alias="reports-dir",
+                description="Directory used to write check reports",
+            ),
+        ] = f"{c.Infra.Reporting.REPORTS_DIR_NAME}/check"
+        fix: Annotated[
+            bool,
+            Field(default=False, description="Apply supported gate fixes before run"),
+        ] = False
+        check_only: Annotated[
+            bool,
+            Field(
+                default=False,
+                alias="check-only",
+                description="Enable check-only mode for supported tools",
+            ),
+        ] = False
+        ruff_args: Annotated[
+            str | None,
+            Field(
+                default=None,
+                alias="ruff-args",
+                description="Extra arguments forwarded to Ruff",
+            ),
+        ] = None
+        pyright_args: Annotated[
+            str | None,
+            Field(
+                default=None,
+                alias="pyright-args",
+                description="Extra arguments forwarded to Pyright",
+            ),
+        ] = None
+
+        @property
+        def reports_dir_path(self) -> Path:
+            """Return the resolved reports directory path."""
+            reports_dir = Path(self.reports_dir).expanduser()
+            if reports_dir.is_absolute():
+                return reports_dir.resolve()
+            return (Path.cwd() / reports_dir).resolve()
+
+    class FixPyreflyConfigCommand(
+        FlextInfraModelsMixins.ProjectMixin,
+        m.ContractModel,
+    ):
+        """Canonical CLI payload for ``flext-infra check fix-pyrefly-config``."""
+
+        apply: Annotated[
+            bool,
+            Field(
+                default=False,
+                description="Apply fixes in-place instead of dry-run mode",
+                json_schema_extra={
+                    "typer_param_decls": list(c.Infra.Cli.APPLY_OPTION_DECLS),
+                },
+            ),
+        ] = False
+
+        @computed_field  # type: ignore[prop-decorator]
+        @property
+        def dry_run(self) -> bool:
+            """Whether pyrefly fixes should avoid writing to disk."""
+            return not self.apply
 
     class Issue(m.ContractModel):
         """Single issue reported by a quality gate tool."""

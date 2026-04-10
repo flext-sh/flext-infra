@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from flext_tests import tm
 
@@ -55,8 +54,8 @@ def test_run_cli_run_returns_one_for_fail(monkeypatch: MonkeyPatch) -> None:
     assert exit_code == 1
 
 
-def test_run_cli_run_returns_two_for_error(monkeypatch: MonkeyPatch) -> None:
-    """Test that run_cli returns 2 when run_projects fails."""
+def test_run_cli_run_returns_one_for_error(monkeypatch: MonkeyPatch) -> None:
+    """Canonical check CLI normalizes execution failures to exit code 1."""
     _ = monkeypatch.setattr(
         FlextInfraWorkspaceChecker,
         "run_projects",
@@ -69,7 +68,7 @@ def test_run_cli_run_returns_two_for_error(monkeypatch: MonkeyPatch) -> None:
         "--projects",
         "flext-core",
     ])
-    assert exit_code == 2
+    assert exit_code == 1
 
 
 def test_run_cli_with_multiple_projects(monkeypatch: MonkeyPatch) -> None:
@@ -165,12 +164,10 @@ def test_run_cli_run_forwards_fix_and_tool_args(monkeypatch: MonkeyPatch) -> Non
 
 
 def test_run_cli_rejects_shared_dry_run_flag() -> None:
-    with pytest.raises(SystemExit) as exc_info:
-        FlextInfraWorkspaceChecker.run_cli([
-            "--dry-run",
-            "run",
-            "--projects",
-            "flext-core",
-        ])
-
-    assert exc_info.value.code == 2
+    exit_code = FlextInfraWorkspaceChecker.run_cli([
+        "--dry-run",
+        "run",
+        "--projects",
+        "flext-core",
+    ])
+    assert exit_code == 2

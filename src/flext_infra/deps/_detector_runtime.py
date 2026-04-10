@@ -6,8 +6,9 @@ import os
 from collections.abc import Callable, MutableMapping, Sequence
 from pathlib import Path
 
+from flext_cli import m as cli_models
 from flext_core import r
-from flext_infra import c, m, p, t, u
+from flext_infra import FlextInfraModelsDeps, c, p, t, u
 
 
 class FlextInfraDependencyDetectorRuntime:
@@ -17,42 +18,41 @@ class FlextInfraDependencyDetectorRuntime:
         self,
         detector: p.Infra.DetectorRuntime,
         workspace_report_factory: Callable[..., p.Infra.WorkspaceReport],
-        dependency_limits_factory: Callable[..., m.Infra.DependencyLimitsInfo],
-        pip_check_factory: Callable[..., m.Infra.PipCheckReport],
+        dependency_limits_factory: Callable[
+            ..., FlextInfraModelsDeps.DependencyLimitsInfo
+        ],
+        pip_check_factory: Callable[..., FlextInfraModelsDeps.PipCheckReport],
     ) -> None:
         self._detector = detector
         self._workspace_report_factory = workspace_report_factory
         self._dependency_limits_factory = dependency_limits_factory
         self._pip_check_factory = pip_check_factory
 
-    def run(self, argv: t.StrSequence | None = None) -> r[int]:
+    def run(self, params: FlextInfraModelsDeps.DetectCommand) -> r[bool]:
         """Execute dependency detection and generate workspace report."""
         detector = self._detector
         limits_default = Path(__file__).resolve().parent / "dependency_limits.toml"
-        parser = detector.parser(limits_default)
-        args = parser.parse_args(argv)
-        cli = u.Infra.resolve(args)
-        root: Path = cli.workspace
+        root = params.workspace_path
         venv_bin = root / c.Infra.Paths.VENV_BIN_REL
         projects_result = detector.deps.discover_project_paths(
             root,
-            projects_filter=detector.project_filter(cli),
+            projects_filter=params.project_names,
         )
         if projects_result.is_failure:
-            return r[int].fail(projects_result.error or "project discovery failed")
+            return r[bool].fail(projects_result.error or "project discovery failed")
         projects: Sequence[Path] = projects_result.value
         if not projects:
             detector.log.error("deps_no_projects_found")
-            return r[int].ok(2)
+            return r[bool].fail("no projects found")
         if not (venv_bin / c.Infra.DEPTRY).exists():
             detector.log.error(
                 "deps_deptry_missing",
                 path=str(venv_bin / c.Infra.DEPTRY),
             )
-            return r[int].ok(3)
-        apply_typings = bool(args.apply_typings)
-        do_typings = bool(args.typings) or apply_typings
-        limits_path = Path(args.limits) if args.limits else limits_default
+            return r[bool].fail("deptry executable not found")
+        apply_typings = bool(params.apply_typings)
+        do_typings = bool(params.typings) or apply_typings
+        limits_path = params.limits_path or limits_default
         projects_report: MutableMapping[
             str,
             MutableMapping[str, t.Infra.InfraValue],
@@ -67,7 +67,7 @@ class FlextInfraDependencyDetectorRuntime:
         typing_deps: p.Infra.TypingsDepsService | None = None
         if do_typings:
             if not isinstance(deps_service, p.Infra.TypingsDepsService):
-                return r[int].fail("typing dependency detection service unavailable")
+                return r[bool].fail("typing dependency detection service unavailable")
             typing_deps = deps_service  # narrowed by isinstance above
             limits_data = typing_deps.load_dependency_limits(limits_path)
             if limits_data:
@@ -89,11 +89,11 @@ class FlextInfraDependencyDetectorRuntime:
                 )
         for project_path in projects:
             project_name = project_path.name
-            if not args.quiet:
+            if not params.quiet:
                 detector.log.info("deps_deptry_running", project=project_name)
             deptry_result = deps_service.run_deptry(project_path, venv_bin)
             if deptry_result.is_failure:
-                return r[int].fail(deptry_result.error or "deptry run failed")
+                return r[bool].fail(deptry_result.error or "deptry run failed")
             issues, _ = deptry_result.value
             project_payload = deps_service.build_project_report(project_name, issues)
             dumped: MutableMapping[str, t.Infra.InfraValue] = dict(
@@ -102,10 +102,10 @@ class FlextInfraDependencyDetectorRuntime:
             projects_report[project_name] = dumped
             if do_typings and (project_path / c.Infra.Paths.DEFAULT_SRC_DIR).is_dir():
                 if typing_deps is None:
-                    return r[int].fail(
+                    return r[bool].fail(
                         "typing dependency detection service unavailable",
                     )
-                if not args.quiet:
+                if not params.quiet:
                     detector.log.info(
                         "deps_typings_detect_running",
                         project=project_name,
@@ -116,7 +116,7 @@ class FlextInfraDependencyDetectorRuntime:
                     limits_path=limits_path,
                 )
                 if typings_result.is_failure:
-                    return r[int].fail(
+                    return r[bool].fail(
                         typings_result.error or "typing dependency detection failed",
                     )
                 typings_report = typings_result.value
@@ -124,7 +124,7 @@ class FlextInfraDependencyDetectorRuntime:
                     typings_report.model_dump()
                 )
                 to_add: t.StrSequence = typings_report.to_add
-                if apply_typings and to_add and cli.apply:
+                if apply_typings and to_add and params.apply:
                     env = {
                         **os.environ,
                         "VIRTUAL_ENV": str(venv_bin.parent),
@@ -150,7 +150,7 @@ class FlextInfraDependencyDetectorRuntime:
                                 package=package,
                             )
                         else:
-                            run_output: m.Cli.CommandOutput = run.value
+                            run_output: cli_models.Cli.CommandOutput = run.value
                             if run_output.exit_code != 0:
                                 detector.log.warning(
                                     "deps_typings_add_failed",
@@ -158,23 +158,25 @@ class FlextInfraDependencyDetectorRuntime:
                                     package=package,
                                 )
         pip_ok = True
-        if not args.no_pip_check:
+        if not params.no_pip_check:
             if not isinstance(deps_service, p.Infra.PipCheckDepsService):
-                return r[int].fail("pip-check dependency detection service unavailable")
-            if not args.quiet:
+                return r[bool].fail(
+                    "pip-check dependency detection service unavailable",
+                )
+            if not params.quiet:
                 detector.log.info("deps_pip_check_running")
             pip_result = deps_service.run_pip_check(root, venv_bin)
             if pip_result.is_failure:
-                return r[int].fail(pip_result.error or "pip check failed")
+                return r[bool].fail(pip_result.error or "pip check failed")
             pip_lines, pip_exit = pip_result.value
             pip_ok = pip_exit == 0
             report_model.pip_check = self._pip_check_factory(ok=pip_ok, lines=pip_lines)
-        if cli.output_format == "json":
-            return r[int].ok(0)
+        if params.output_format == "json":
+            return r[bool].ok(True)
         out_path: Path | None = None
-        if args.output:
-            out_path = Path(args.output)
-        elif cli.apply:
+        if params.output_path is not None:
+            out_path = params.output_path
+        elif params.apply:
             report_dir = detector.reporting.get_report_dir(
                 root,
                 c.Infra.PROJECT,
@@ -182,19 +184,19 @@ class FlextInfraDependencyDetectorRuntime:
             )
             dir_result = u.Cli.ensure_dir(report_dir)
             if dir_result.is_failure:
-                return r[int].fail(
+                return r[bool].fail(
                     dir_result.error or "failed to create report directory",
                 )
             out_path = report_dir / "detect-runtime-dev-latest.json"
-        if out_path is not None and not cli.dry_run:
+        if out_path is not None and not params.dry_run:
             report_payload: dict[str, t.Cli.JsonValue] = {
                 key: u.Cli.normalize_json_value(value)
                 for key, value in report_model.model_dump().items()
             }
             write_result = u.Cli.json_write(out_path, report_payload)
             if write_result.is_failure:
-                return r[int].fail(write_result.error or "failed to write report")
-            if not args.quiet:
+                return r[bool].fail(write_result.error or "failed to write report")
+            if not params.quiet:
                 detector.log.info("deps_report_written", path=str(out_path))
         total_issues = 0
         for payload in projects_report.values():
@@ -210,16 +212,16 @@ class FlextInfraDependencyDetectorRuntime:
                 raw_count_obj: t.Infra.InfraValue = deptry_payload.get("raw_count", 0)
                 if isinstance(raw_count_obj, int):
                     total_issues += raw_count_obj
-        if not args.quiet:
+        if not params.quiet:
             detector.log.info(
                 "deps_summary",
                 projects=len(projects),
                 deptry_issues=total_issues,
                 pip_check=c.Infra.ReportKeys.OK if pip_ok else "FAIL",
             )
-        if args.no_fail:
-            return r[int].ok(0)
-        return r[int].ok(0 if total_issues == 0 and pip_ok else 1)
+        if params.no_fail or (total_issues == 0 and pip_ok):
+            return r[bool].ok(True)
+        return r[bool].fail("dependency issues detected")
 
 
 __all__ = ["FlextInfraDependencyDetectorRuntime"]

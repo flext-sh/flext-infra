@@ -28,12 +28,12 @@ from typing import ClassVar
 from flext_infra import (
     FlextInfraUtilitiesOutputFailureSummary,
     FlextInfraUtilitiesOutputReporting,
+    FlextInfraUtilitiesTerminal,
     c,
     m,
     p,
     t,
 )
-from flext_infra._utilities.terminal import FlextInfraUtilitiesTerminal
 
 
 class FlextInfraUtilitiesReporting(

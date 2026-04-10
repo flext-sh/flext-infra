@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from flext_core import FlextLogger
 from flext_infra import (
     FlextInfraDependencyDetectionService,
     FlextInfraDependencyDetectorRuntime,
-    m,
+    FlextInfraModelsDeps,
+    FlextInfraUtilitiesCliDispatch,
     p,
     r,
     t,
@@ -24,96 +23,46 @@ class FlextInfraRuntimeDevDependencyDetector:
     deps: p.Infra.DepsService
     runner: p.Infra.RunnerService
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        reporting: p.Infra.ReportingService | None = None,
+        deps: p.Infra.DepsService | None = None,
+        runner: p.Infra.RunnerService | None = None,
+    ) -> None:
         """Initialize detector runtime services."""
         super().__init__()
         infra_instance = u.Infra()
-        self.reporting = infra_instance
-        self.deps = FlextInfraDependencyDetectionService()
-        self.runner = infra_instance
-
-    @staticmethod
-    def parser(default_limits_path: Path) -> t.Infra.CliArgumentParser:
-        """Create argument parser for CLI with deptry, pip-check, and typing options."""
-        parser = u.Infra.create_parser(
-            prog="flext-infra deps detect",
-            description="Detect runtime vs dev dependencies (deptry + pip check).",
-            flags=u.Infra.SharedFlags(
-                include_apply=True,
-                include_project=True,
-                include_format=True,
-            ),
-        )
-        _ = parser.add_argument(
-            "--no-pip-check",
-            action="store_true",
-            help="Skip pip check (workspace-level).",
-        )
-        _ = parser.add_argument(
-            "-o",
-            "--output",
-            metavar="FILE",
-            help="Write report to this path (default: .reports/dependencies/detect-runtime-dev-latest.json).",
-        )
-        _ = parser.add_argument(
-            "-q",
-            "--quiet",
-            action="store_true",
-            help="Minimal output (summary only).",
-        )
-        _ = parser.add_argument(
-            "--no-fail",
-            action="store_true",
-            help="Always exit 0 (report only).",
-        )
-        _ = parser.add_argument(
-            "--typings",
-            action="store_true",
-            help="Detect required typing libraries (types-*).",
-        )
-        _ = parser.add_argument(
-            "--apply-typings",
-            action="store_true",
-            help="Add missing typings with poetry add --group typings.",
-        )
-        _ = parser.add_argument(
-            "--limits",
-            metavar="FILE",
-            default=str(default_limits_path),
-            help="Path to dependency_limits.toml.",
-        )
-        return parser
-
-    @staticmethod
-    def project_filter(cli: u.Infra.CliArgs) -> t.StrSequence | None:
-        """Extract project filter list from parsed CLI arguments."""
-        return cli.project_names()
+        self.reporting = reporting or infra_instance
+        self.deps = deps or FlextInfraDependencyDetectionService()
+        self.runner = runner or infra_instance
 
     def run(
         self: FlextInfraRuntimeDevDependencyDetector,
-        argv: t.StrSequence | None = None,
-    ) -> r[int]:
+        params: FlextInfraModelsDeps.DetectCommand,
+    ) -> r[bool]:
         """Execute dependency detection and generate workspace report."""
         runtime = FlextInfraDependencyDetectorRuntime(
             detector=self,
-            workspace_report_factory=m.Infra.WorkspaceDependencyReport,
-            dependency_limits_factory=m.Infra.DependencyLimitsInfo,
-            pip_check_factory=m.Infra.PipCheckReport,
+            workspace_report_factory=FlextInfraModelsDeps.WorkspaceDependencyReport,
+            dependency_limits_factory=FlextInfraModelsDeps.DependencyLimitsInfo,
+            pip_check_factory=FlextInfraModelsDeps.PipCheckReport,
         )
-        return runtime.run(argv=argv)
+        return runtime.run(params)
 
     @staticmethod
-    def main() -> int:
-        """Entry point for dependency detector CLI."""
-        detector = FlextInfraRuntimeDevDependencyDetector()
-        result = detector.run()
-        if result.is_failure:
-            detector.log.error(
-                "deps_detector_failed",
-                error=result.error or "unknown error",
-            )
-            return 1
-        return result.value
+    def run_cli(argv: t.StrSequence | None = None) -> int:
+        """Run ``deps detect`` through the canonical CLI."""
+        return FlextInfraUtilitiesCliDispatch.run_command("deps", "detect", argv)
+
+    @staticmethod
+    def main(argv: t.StrSequence | None = None) -> int:
+        """Legacy entrypoint routed through the canonical deps CLI."""
+        return FlextInfraUtilitiesCliDispatch.run_command(
+            "deps",
+            "detect",
+            argv,
+        )
 
 
 if __name__ == "__main__":

@@ -12,6 +12,7 @@ import re as _re
 from collections.abc import Callable, Mapping, MutableMapping, MutableSequence, Sequence
 from io import TextIOBase as _TextIOBase
 from pathlib import Path as _Path
+from typing import Literal as _Literal
 
 from jinja2 import Environment as _JinjaEnvironment, Template as _JinjaTemplate
 from pydantic import BaseModel
@@ -135,6 +136,8 @@ class FlextInfraTypesBase:
     "Result for writing generated __init__.py."
     type VersionExportsResult = tuple[t.StrMapping, LazyImportMap]
     "Result for __version__.py export extraction (inline constants, eager import map)."
+    type PathSyncMode = _Literal["workspace", "standalone", "auto"]
+    "Dependency path rewrite mode for canonical path-sync CLI flows."
     type StrSet = set[str]
     "Mutable string set (supports .update/.intersection/etc)."
     type PathSet = set[_Path]

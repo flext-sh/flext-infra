@@ -7,11 +7,12 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraUtilitiesRope, main as infra_main
-from flext_infra.detectors.silent_failure_detector import (
+from flext_infra import (
     FlextInfraSilentFailureDetector,
+    FlextInfraSilentFailureValidator,
+    FlextInfraUtilitiesRope,
+    main as infra_main,
 )
-from flext_infra.validate.silent_failure import FlextInfraSilentFailureValidator
 from tests import m, u
 
 

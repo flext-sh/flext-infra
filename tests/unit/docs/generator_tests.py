@@ -1,196 +1,80 @@
-"""Tests for FlextInfraDocGenerator — core generate and model tests.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Public generation-workflow tests for docs services."""
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
 
-import pytest
-from flext_tests import tm
-
-from flext_core import r
 from flext_infra import FlextInfraDocGenerator
-from tests import m, t
+from tests import m, u
 
 
-class TestGeneratorCore:
-    """Core generate invocation tests."""
+def test_generate_returns_reports_for_root_and_selected_project(tmp_path: Path) -> None:
+    workspace = u.Infra.Tests.create_docs_workspace(
+        tmp_path,
+        project_names=("flext-a", "flext-b"),
+    )
 
-    @pytest.fixture
-    def gen(self) -> FlextInfraDocGenerator:
-        """Create generator instance."""
-        return FlextInfraDocGenerator()
+    result = FlextInfraDocGenerator().generate(
+        workspace,
+        projects=["flext-a"],
+        apply=False,
+    )
 
-    def test_generate_returns_flext_result(
-        self,
-        gen: FlextInfraDocGenerator,
-        tmp_path: Path,
-    ) -> None:
-        """Test that generate returns r."""
-        result = gen.generate(tmp_path)
-        tm.that(result.is_success or result.is_failure, eq=True)
+    assert result.is_success
+    assert [report.scope for report in result.value] == ["root", "flext-a"]
 
-    def test_generate_with_valid_scope_returns_success(
-        self,
-        gen: FlextInfraDocGenerator,
-        tmp_path: Path,
-    ) -> None:
-        """Test generate with valid scope returns success."""
-        result = gen.generate(tmp_path)
-        tm.ok(result)
-        tm.that(len(result.value), gte=0)
 
-    def test_generate_report_structure(
-        self,
-        gen: FlextInfraDocGenerator,
-        tmp_path: Path,
-    ) -> None:
-        """Test GenerateReport has required fields."""
-        result = gen.generate(tmp_path)
-        if result.is_success and result.value:
-            result.value[0]
+def test_generate_apply_writes_summary_and_report(tmp_path: Path) -> None:
+    workspace = u.Infra.Tests.create_docs_workspace(
+        tmp_path,
+        project_names=("flext-a",),
+    )
 
-    def test_generated_file_structure(self) -> None:
-        """Test GeneratedFile model structure."""
-        file = m.Infra.GeneratedFile(path="README.md", written=True)
-        tm.that(file.path, eq="README.md")
-        tm.that(file.written, eq=True)
+    result = FlextInfraDocGenerator().generate(
+        workspace,
+        projects=["flext-a"],
+        apply=True,
+    )
 
-    def test_generate_report_frozen(self) -> None:
-        """Test GenerateReport is frozen (immutable)."""
-        tm.that(m.Infra.DocsPhaseReport.model_config.get("frozen"), eq=True)
+    assert result.is_success
+    assert (workspace / ".reports/docs/generate-summary.json").exists()
+    assert (workspace / ".reports/docs/generate-report.md").exists()
+    assert (workspace / "flext-a/.reports/docs/generate-report.md").exists()
 
-    def test_generated_file_frozen(self) -> None:
-        """Test GeneratedFile is frozen (immutable)."""
-        tm.that(m.Infra.GeneratedFile.model_config.get("frozen"), eq=True)
 
-    def test_generate_with_project_filter(
-        self,
-        gen: FlextInfraDocGenerator,
-        tmp_path: Path,
-    ) -> None:
-        """Test generate with single project filter."""
-        result = gen.generate(tmp_path, projects=["test-project"])
-        tm.that(result.is_success or result.is_failure, eq=True)
+def test_generate_dry_run_marks_report_as_warn(tmp_path: Path) -> None:
+    workspace = u.Infra.Tests.create_docs_workspace(tmp_path)
 
-    def test_generate_with_projects_filter(
-        self,
-        gen: FlextInfraDocGenerator,
-        tmp_path: Path,
-    ) -> None:
-        """Test generate with multiple projects filter."""
-        result = gen.generate(tmp_path, projects=["proj1", "proj2"])
-        tm.that(result.is_success or result.is_failure, eq=True)
+    result = FlextInfraDocGenerator().generate(workspace, apply=False)
 
-    def test_generate_with_apply_false_dry_run(
-        self,
-        gen: FlextInfraDocGenerator,
-        tmp_path: Path,
-    ) -> None:
-        """Test generate with apply=False (dry-run mode)."""
-        result = gen.generate(tmp_path, apply=False)
-        tm.that(result.is_success or result.is_failure, eq=True)
+    assert result.is_success
+    assert result.value[0].result == "WARN"
 
-    def test_generate_with_apply_true_writes_files(
-        self,
-        gen: FlextInfraDocGenerator,
-        tmp_path: Path,
-    ) -> None:
-        """Test generate with apply=True writes files."""
-        result = gen.generate(tmp_path, apply=True)
-        tm.that(result.is_success or result.is_failure, eq=True)
 
-    def test_generate_with_custom_output_dir(
-        self,
-        gen: FlextInfraDocGenerator,
-        tmp_path: Path,
-    ) -> None:
-        """Test generate with custom output directory."""
-        result = gen.generate(tmp_path, output_dir=str(tmp_path / "custom_output"))
-        tm.that(result.is_success or result.is_failure, eq=True)
+def test_generated_file_model_is_frozen() -> None:
+    assert m.Infra.GeneratedFile.model_config.get("frozen") is True
 
-    def test_generate_report_generated_count(self) -> None:
-        """Test GenerateReport generated field."""
-        report = m.Infra.DocsPhaseReport(
-            phase="generate",
-            scope="test",
-            generated=5,
-            applied=True,
-            source="test-source",
-        )
-        tm.that(report.generated, eq=5)
 
-    def test_generate_report_applied_field(self) -> None:
-        """Test GenerateReport applied field."""
-        report = m.Infra.DocsPhaseReport(
-            phase="generate",
-            scope="test",
-            generated=0,
-            applied=False,
-            source="test-source",
-        )
-        tm.that(not report.applied, eq=True)
-
-    def test_generate_report_source_field(self) -> None:
-        """Test GenerateReport source field."""
-        report = m.Infra.DocsPhaseReport(
-            phase="generate",
-            scope="test",
-            generated=0,
-            applied=False,
-            source="workspace-ssot",
-        )
-        tm.that(report.source, eq="workspace-ssot")
-
-    def test_generate_report_files_list(self) -> None:
-        """Test GenerateReport files list."""
-        items = [
-            m.Infra.DocsPhaseItemModel(phase="generate", path="file1.md", written=True),
+def test_generate_report_tracks_written_files() -> None:
+    report = m.Infra.DocsPhaseReport(
+        phase="generate",
+        scope="root",
+        generated=2,
+        applied=True,
+        source="code-docstring-ssot",
+        items=[
             m.Infra.DocsPhaseItemModel(
                 phase="generate",
-                path="file2.md",
+                path="docs/a.md",
+                written=True,
+            ),
+            m.Infra.DocsPhaseItemModel(
+                phase="generate",
+                path="docs/b.md",
                 written=False,
             ),
-        ]
-        report = m.Infra.DocsPhaseReport(
-            phase="generate",
-            scope="test",
-            generated=2,
-            applied=True,
-            source="test-source",
-            items=items,
-        )
-        tm.that(len(report.items), eq=2)
-        tm.that(report.items[0].model_dump().get("path"), eq="file1.md")
+        ],
+    )
 
-    def test_generated_file_written_field(self) -> None:
-        """Test GeneratedFile written field."""
-        tm.that(
-            m.Infra.GeneratedFile(path="test.md", written=True).written,
-            eq=True,
-        )
-        tm.that(
-            not m.Infra.GeneratedFile(path="test2.md", written=False).written,
-            eq=True,
-        )
-
-    def test_generate_with_scope_failure_returns_failure(
-        self,
-        gen: FlextInfraDocGenerator,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test generate returns failure when scope building fails."""
-
-        def mock_build_scopes(
-            *args: t.Scalar,
-            **kwargs: t.Scalar,
-        ) -> r[Sequence[m.Infra.DocScope]]:
-            return r[Sequence[m.Infra.DocScope]].fail("Scope error")
-
-        result = gen.generate(tmp_path)
-        tm.fail(result, has="Scope error")
+    assert report.generated == 2
+    assert len(report.items) == 2

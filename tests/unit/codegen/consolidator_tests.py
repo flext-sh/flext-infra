@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from tests import c, t, u
+from tests import c, m, r, t, u
 
 
 def test_execute_uses_codegen_project_discovery_and_project_filter(
@@ -31,7 +31,7 @@ def test_execute_uses_codegen_project_discovery_and_project_filter(
     def _discover_codegen_projects(
         *_args: t.Scalar,
         **_kwargs: t.Scalar,
-    ):
+    ) -> r[tuple[m.Infra.ProjectInfo, ...]]:
         nonlocal discover_called
         discover_called += 1
         return u.Infra.Tests.ok_result((project_a, project_b))
@@ -39,7 +39,7 @@ def test_execute_uses_codegen_project_discovery_and_project_filter(
     def _discover_projects(
         *_args: t.Scalar,
         **_kwargs: t.Scalar,
-    ):
+    ) -> r[tuple[m.Infra.ProjectInfo, ...]]:
         message = "execute() must use discover_codegen_projects()"
         raise AssertionError(message)
 
@@ -101,7 +101,7 @@ def test_execute_uses_project_path_and_closes_rope_project(
     def _discover_codegen_projects(
         *_args: t.Scalar,
         **_kwargs: t.Scalar,
-    ):
+    ) -> r[tuple[m.Infra.ProjectInfo, ...]]:
         return u.Infra.Tests.ok_result((project,))
 
     u.Infra.Tests.patch_public_infra(

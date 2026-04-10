@@ -9,12 +9,12 @@ from pathlib import Path
 from flext_cli import u
 from flext_infra import (
     FlextInfraUtilitiesIteration,
+    FlextInfraUtilitiesTomlParse,
     c,
     m,
     r,
     t,
 )
-from flext_infra._utilities.toml_parse import FlextInfraUtilitiesTomlParse
 
 
 class FlextInfraUtilitiesDocsScope:

@@ -12,6 +12,7 @@ from flext_core import m
 from flext_infra import (
     FlextInfraModelsCodegenDeduplication,
     FlextInfraModelsMixins,
+    p,
     t,
 )
 
@@ -301,6 +302,53 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenDeduplication):
                 rule=violation.rule,
                 content_hash=content_hash,
             )
+
+    class CodegenPipelineState(m.ArbitraryTypesModel):
+        """Typed inter-stage state for the codegen pipeline — Pydantic v2 model."""
+
+        _flext_enforcement_exempt: ClassVar[bool] = True
+
+        model_config: ClassVar[ConfigDict] = ConfigDict(
+            extra="forbid",
+            arbitrary_types_allowed=True,
+        )
+
+        discovered_projects: Annotated[
+            Sequence[p.Infra.ProjectInfo],
+            Field(
+                default_factory=tuple,
+                description="Projects discovered at pipeline start",
+            ),
+        ]
+        census_service: Annotated[
+            p.Infra.CodegenCensusService | None,
+            Field(
+                default=None,
+                description="Cached census service for reuse across stages",
+            ),
+        ]
+        reports_before: Annotated[
+            Sequence[FlextInfraModelsCodegen.CensusReport],
+            Field(
+                default_factory=tuple,
+                description="Census reports collected before fixes",
+            ),
+        ]
+        reports_after: Annotated[
+            Sequence[FlextInfraModelsCodegen.CensusReport],
+            Field(
+                default_factory=tuple,
+                description="Census reports collected after fixes",
+            ),
+        ]
+        scaffold_results: Annotated[
+            Sequence[FlextInfraModelsCodegen.ScaffoldResult],
+            Field(default_factory=tuple, description="Scaffolding stage results"),
+        ]
+        fix_results: Annotated[
+            Sequence[FlextInfraModelsCodegen.AutoFixResult],
+            Field(default_factory=tuple, description="Auto-fix stage results"),
+        ]
 
 
 __all__ = ["FlextInfraModelsCodegen"]

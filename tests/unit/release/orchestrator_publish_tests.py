@@ -1,237 +1,101 @@
-"""Tests for FlextInfraReleaseOrchestrator phase_publish."""
+"""Public tests for the publish phase."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-from _pytest.monkeypatch import MonkeyPatch
-from flext_tests import tm
-
 from flext_infra import FlextInfraReleaseOrchestrator
-from tests import m, r, t, u
+from tests import c, m, u
 
 
-def _publish_ctx(
+def publish_ctx(
     workspace_root: Path,
     *,
+    project_names: list[str] | None = None,
     dry_run: bool = False,
     push: bool = False,
 ) -> m.Infra.ReleasePhaseDispatchConfig:
-    """Build a ReleasePhaseDispatchConfig for publish phase tests."""
     return m.Infra.ReleasePhaseDispatchConfig(
-        phase="publish",
+        phase=c.Infra.Verbs.PUBLISH,
         workspace_root=workspace_root,
         version="1.0.0",
         tag="v1.0.0",
-        project_names=[],
+        project_names=project_names or [],
         dry_run=dry_run,
         push=push,
+        dev_suffix=False,
     )
 
 
-@pytest.fixture
-def workspace_root(tmp_path: Path) -> Path:
-    root = tmp_path / "workspace"
-    root.mkdir()
-    (root / ".git").mkdir()
-    (root / "Makefile").touch()
-    (root / "pyproject.toml").write_text('version = "0.1.0"\n', encoding="utf-8")
-    return root
-
-
-def _stub_publish(mp: MonkeyPatch, root: Path) -> None:
-    """Stub reporting + notes for publish tests."""
-    root_ = root
-
-    def _get_report_dir(ws: Path | str, scope: str, verb: str) -> Path:
-        _ = ws, scope, verb
-        return root_ / "reports"
-
-    mp.setattr(
-        u.Infra,
-        "get_report_dir",
-        staticmethod(_get_report_dir),
+def test_phase_publish_dry_run_writes_notes_only(tmp_path: Path) -> None:
+    workspace = u.Infra.Tests.create_release_workspace(
+        tmp_path,
+        initialize_root_git=True,
     )
 
-    def _generate_notes(
-        _self: object,
-        _ctx: object,
-        output_path: Path,
-    ) -> r[bool]:
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text("# Release v1.0.0\n", encoding="utf-8")
-        return r[bool].ok(True)
-
-    mp.setattr(FlextInfraReleaseOrchestrator, "_generate_notes", _generate_notes)
-
-
-def _stub_full_publish(mp: MonkeyPatch, root: Path) -> None:
-    """Stub reporting + notes + changelog + tag for full publish."""
-    _stub_publish(mp, root)
-
-    def _update_changelog(*a: t.Scalar, **kw: t.Scalar) -> r[bool]:
-        _ = a, kw
-        return r[bool].ok(True)
-
-    mp.setattr(
-        u.Infra,
-        "update_changelog",
-        staticmethod(_update_changelog),
+    result = FlextInfraReleaseOrchestrator().phase_publish(
+        publish_ctx(workspace, dry_run=True),
     )
 
-    def _create_tag(*a: t.Scalar, **kw: t.Scalar) -> r[bool]:
-        del a, kw
-        return r[bool].ok(True)
+    assert result.is_success
+    assert (
+        workspace / ".reports" / "release" / "v1.0.0" / "RELEASE_NOTES.md"
+    ).is_file()
+    assert not (workspace / "docs" / "CHANGELOG.md").exists()
+    assert u.Infra.git_tag_exists(workspace, "v1.0.0").unwrap() is False
 
-    mp.setattr(FlextInfraReleaseOrchestrator, "_create_tag", _create_tag)
+
+def test_phase_publish_apply_updates_docs_and_creates_tag(tmp_path: Path) -> None:
+    workspace = u.Infra.Tests.create_release_workspace(
+        tmp_path,
+        initialize_root_git=True,
+    )
+
+    result = FlextInfraReleaseOrchestrator().phase_publish(publish_ctx(workspace))
+
+    assert result.is_success
+    assert (workspace / "docs" / "CHANGELOG.md").is_file()
+    assert (workspace / "docs" / "releases" / "latest.md").is_file()
+    assert (workspace / "docs" / "releases" / "v1.0.0.md").is_file()
+    assert u.Infra.git_tag_exists(workspace, "v1.0.0").unwrap() is True
 
 
-class TestPhasePublish:
-    def test_generates_notes(
-        self,
-        workspace_root: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        _stub_publish(monkeypatch, workspace_root)
-        tm.ok(
-            FlextInfraReleaseOrchestrator().phase_publish(
-                _publish_ctx(workspace_root, dry_run=True),
-            ),
-        )
+def test_phase_publish_push_without_origin_fails_after_local_tagging(
+    tmp_path: Path,
+) -> None:
+    workspace = u.Infra.Tests.create_release_workspace(
+        tmp_path,
+        initialize_root_git=True,
+    )
 
-    def test_dry_run_skips_changelog(
-        self,
-        workspace_root: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        changelog_called = False
+    result = FlextInfraReleaseOrchestrator().phase_publish(
+        publish_ctx(workspace, push=True),
+    )
 
-        def fake_changelog(*args: str, **kwargs: str) -> r[bool]:
-            nonlocal changelog_called
-            changelog_called = True
-            return r[bool].ok(True)
+    assert result.is_failure
+    assert (workspace / "docs" / "CHANGELOG.md").is_file()
+    assert u.Infra.git_tag_exists(workspace, "v1.0.0").unwrap() is True
 
-        _stub_publish(monkeypatch, workspace_root)
-        monkeypatch.setattr(
-            u.Infra,
-            "update_changelog",
-            staticmethod(fake_changelog),
-        )
-        tm.ok(
-            FlextInfraReleaseOrchestrator().phase_publish(
-                _publish_ctx(workspace_root, dry_run=True),
-            ),
-        )
-        tm.that(not changelog_called, eq=True)
 
-    def test_updates_changelog(
-        self,
-        workspace_root: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        _stub_full_publish(monkeypatch, workspace_root)
-        tm.ok(
-            FlextInfraReleaseOrchestrator().phase_publish(
-                _publish_ctx(workspace_root),
-            ),
-        )
+def test_phase_publish_notes_include_only_selected_projects(tmp_path: Path) -> None:
+    workspace = u.Infra.Tests.create_release_workspace(
+        tmp_path,
+        project_names=("flext-a", "flext-b"),
+        initialize_root_git=True,
+    )
 
-    def test_with_push(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
-        push_called = False
+    result = FlextInfraReleaseOrchestrator().phase_publish(
+        publish_ctx(
+            workspace,
+            project_names=["flext-a"],
+            dry_run=True,
+        ),
+    )
 
-        def fake_push(*args: str, **kwargs: str) -> r[bool]:
-            nonlocal push_called
-            push_called = True
-            return r[bool].ok(True)
+    notes_path = workspace / ".reports" / "release" / "v1.0.0" / "RELEASE_NOTES.md"
+    notes = notes_path.read_text(encoding="utf-8")
 
-        _stub_full_publish(monkeypatch, workspace_root)
-        monkeypatch.setattr(
-            FlextInfraReleaseOrchestrator,
-            "_push_release",
-            fake_push,
-        )
-        tm.ok(
-            FlextInfraReleaseOrchestrator().phase_publish(
-                _publish_ctx(workspace_root, push=True),
-            ),
-        )
-        tm.that(push_called, eq=True)
-
-    def test_notes_generation_failure(
-        self,
-        workspace_root: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        ws_root = workspace_root
-
-        def _get_report_dir_2(ws: Path | str, scope: str, verb: str) -> Path:
-            _ = ws, scope, verb
-            return ws_root / "reports"
-
-        monkeypatch.setattr(
-            u.Infra,
-            "get_report_dir",
-            staticmethod(_get_report_dir_2),
-        )
-
-        def _generate_notes(*a: t.Scalar, **kw: t.Scalar) -> r[bool]:
-            del a, kw
-            return r[bool].fail("notes failed")
-
-        monkeypatch.setattr(
-            FlextInfraReleaseOrchestrator,
-            "_generate_notes",
-            _generate_notes,
-        )
-        tm.fail(
-            FlextInfraReleaseOrchestrator().phase_publish(
-                _publish_ctx(workspace_root),
-            ),
-        )
-
-    def test_changelog_update_failure(
-        self,
-        workspace_root: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        _stub_publish(monkeypatch, workspace_root)
-
-        monkeypatch.setattr(
-            u.Infra,
-            "update_changelog",
-            staticmethod(lambda *a, **kw: r[bool].fail("changelog failed")),
-        )
-        tm.fail(
-            FlextInfraReleaseOrchestrator().phase_publish(
-                _publish_ctx(workspace_root),
-            ),
-        )
-
-    def test_tag_creation_failure(
-        self,
-        workspace_root: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        _stub_publish(monkeypatch, workspace_root)
-
-        monkeypatch.setattr(
-            u.Infra,
-            "update_changelog",
-            staticmethod(lambda *a, **kw: r[bool].ok(True)),
-        )
-
-        def _create_tag(*a: t.Scalar, **kw: t.Scalar) -> r[bool]:
-            del a, kw
-            return r[bool].fail("tag failed")
-
-        monkeypatch.setattr(
-            FlextInfraReleaseOrchestrator,
-            "_create_tag",
-            _create_tag,
-        )
-        tm.fail(
-            FlextInfraReleaseOrchestrator().phase_publish(
-                _publish_ctx(workspace_root),
-            ),
-        )
+    assert result.is_success
+    assert "- root" in notes
+    assert "- flext-a" in notes
+    assert "- flext-b" not in notes

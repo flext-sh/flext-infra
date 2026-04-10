@@ -9,6 +9,8 @@ from __future__ import annotations
 from collections.abc import MutableSequence
 from pathlib import Path
 
+from tomlkit.items import InlineTable, Table as TomlTable
+
 from flext_cli import u
 from flext_infra import c, r, t
 
@@ -192,10 +194,11 @@ class FlextInfraDependencyPathSyncRewrite:
         for dep_key_raw in deps:
             dep_key = dep_key_raw
             value = deps[dep_key_raw]
-            if not u.Cli.toml_is_table(value) or c.Infra.PATH not in value:
+            if not isinstance(value, TomlTable | InlineTable):
                 continue
-            value_map: t.Cli.TomlTable = value
-            raw_path = value_map[c.Infra.PATH]
+            if c.Infra.PATH not in value:
+                continue
+            raw_path = value[c.Infra.PATH]
             if not isinstance(raw_path, str) or not raw_path.strip():
                 continue
             dep_name = FlextInfraDependencyPathSyncRewrite.extract_dep_name(raw_path)
@@ -208,7 +211,7 @@ class FlextInfraDependencyPathSyncRewrite:
                 changes.append(
                     f"  Poetry: {dep_key}.path = {raw_path!r} -> {new_path!r}",
                 )
-                value_map[c.Infra.PATH] = new_path
+                value[c.Infra.PATH] = new_path
         return changes
 
     def rewrite_dep_paths(

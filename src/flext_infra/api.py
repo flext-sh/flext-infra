@@ -6,34 +6,42 @@ from typing import ClassVar, Self, override
 
 from flext_cli import cli as cli_service
 from flext_core import r
-from flext_infra import t
-from flext_infra.base import FlextInfraServiceBase
-from flext_infra.basemk.cli import FlextInfraCliBasemk
-from flext_infra.codegen.cli import FlextInfraCliCodegen
-from flext_infra.docs.auditor import FlextInfraDocAuditor
-from flext_infra.docs.builder import FlextInfraDocBuilder
-from flext_infra.docs.fixer import FlextInfraDocFixer
-from flext_infra.docs.generator import FlextInfraDocGenerator
-from flext_infra.docs.validator import FlextInfraDocValidator
-from flext_infra.github.cli import FlextInfraCliGithub
-from flext_infra.maintenance.cli import FlextInfraCliMaintenance
-from flext_infra.models import m
-from flext_infra.refactor.cli import FlextInfraCliRefactor
-from flext_infra.release.cli import FlextInfraCliRelease
-from flext_infra.services.basemk import FlextInfraServiceBasemkMixin
-from flext_infra.services.codegen import FlextInfraServiceCodegenMixin
-from flext_infra.services.github import FlextInfraServiceGithubMixin
-from flext_infra.services.refactor import FlextInfraServiceRefactorMixin
-from flext_infra.services.release import FlextInfraServiceReleaseMixin
-from flext_infra.services.validate import FlextInfraServiceValidateMixin
-from flext_infra.services.workspace import FlextInfraServiceWorkspaceMixin
-from flext_infra.validate.cli import FlextInfraCliValidate
-from flext_infra.workspace.cli import FlextInfraCliWorkspace
+from flext_infra import (
+    FlextInfraCliBasemk,
+    FlextInfraCliCheck,
+    FlextInfraCliCodegen,
+    FlextInfraCliDeps,
+    FlextInfraCliGithub,
+    FlextInfraCliMaintenance,
+    FlextInfraCliRefactor,
+    FlextInfraCliRelease,
+    FlextInfraCliValidate,
+    FlextInfraCliWorkspace,
+    FlextInfraDocAuditor,
+    FlextInfraDocBuilder,
+    FlextInfraDocFixer,
+    FlextInfraDocGenerator,
+    FlextInfraDocValidator,
+    FlextInfraServiceBase,
+    FlextInfraServiceBasemkMixin,
+    FlextInfraServiceCheckMixin,
+    FlextInfraServiceCodegenMixin,
+    FlextInfraServiceDepsMixin,
+    FlextInfraServiceGithubMixin,
+    FlextInfraServiceRefactorMixin,
+    FlextInfraServiceReleaseMixin,
+    FlextInfraServiceValidateMixin,
+    FlextInfraServiceWorkspaceMixin,
+    m,
+    t,
+)
 
 
 class FlextInfra(
     FlextInfraCliBasemk,
+    FlextInfraCliCheck,
     FlextInfraCliCodegen,
+    FlextInfraCliDeps,
     FlextInfraCliGithub,
     FlextInfraCliMaintenance,
     FlextInfraCliRefactor,
@@ -41,7 +49,9 @@ class FlextInfra(
     FlextInfraCliValidate,
     FlextInfraCliWorkspace,
     FlextInfraServiceBasemkMixin,
+    FlextInfraServiceCheckMixin,
     FlextInfraServiceCodegenMixin,
+    FlextInfraServiceDepsMixin,
     FlextInfraServiceGithubMixin,
     FlextInfraServiceRefactorMixin,
     FlextInfraServiceReleaseMixin,

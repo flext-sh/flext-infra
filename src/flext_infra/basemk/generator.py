@@ -96,7 +96,7 @@ class FlextInfraBaseMkGenerator(s[str]):
             try:
                 _ = target_stream.write(content)
                 return r[bool].ok(True)
-            except OSError as exc:
+            except (OSError, ValueError) as exc:
                 return r[bool].fail(f"base.mk stdout write failed: {exc}")
         try:
             output.parent.mkdir(parents=True, exist_ok=True)

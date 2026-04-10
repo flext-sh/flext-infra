@@ -9,9 +9,8 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraPyprojectModernizer
-from flext_infra.deps import modernizer as modernizer_module
-from tests import u
+from flext_infra import FlextInfraPyprojectModernizer, modernizer as modernizer_module
+from tests import t, u
 
 
 class TestFlextInfraPyprojectModernizer:
@@ -271,33 +270,37 @@ class TestModernizerRunAndMain:
         tm.that(modernizer._run_build_check([wrong_backend]), eq=1)
 
     def test_main_cli_paths(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        class _ModernizerAdapter(FlextInfraPyprojectModernizer):
-            def __init__(
-                self,
-                root: Path | None = None,
-                workspace_root: Path | None = None,
-            ) -> None:
-                super().__init__(workspace_root=workspace_root or root)
+        calls: list[tuple[str, str, list[str] | None]] = []
+        results = iter((0, 0, 42))
 
-        def _run_zero(
-            _self: FlextInfraPyprojectModernizer,
-            _args: argparse.Namespace,
-            _cli: u.Infra.CliArgs,
+        def _run_command(
+            group: str,
+            command: str,
+            argv: t.StrSequence | None = None,
         ) -> int:
-            return 0
-
-        def _run_forty_two(
-            _self: FlextInfraPyprojectModernizer,
-            _args: argparse.Namespace,
-            _cli: u.Infra.CliArgs,
-        ) -> int:
-            return 42
+            calls.append((group, command, list(argv) if argv is not None else None))
+            return next(results)
 
         monkeypatch.setattr(
-            modernizer_module,
-            "FlextInfraPyprojectModernizer",
-            _ModernizerAdapter,
+            modernizer_module.FlextInfraUtilitiesCliDispatch,
+            "run_command",
+            staticmethod(_run_command),
         )
-        tm.that(modernizer_module.FlextInfraPyprojectModernizer.main(), eq=0)
-        tm.that(modernizer_module.FlextInfraPyprojectModernizer.main(), eq=0)
-        tm.that(modernizer_module.FlextInfraPyprojectModernizer.main(), eq=42)
+
+        tm.that(modernizer_module.FlextInfraPyprojectModernizer.main([]), eq=0)
+        tm.that(
+            modernizer_module.FlextInfraPyprojectModernizer.main(["--audit"]),
+            eq=0,
+        )
+        tm.that(
+            modernizer_module.FlextInfraPyprojectModernizer.main(["--skip-comments"]),
+            eq=42,
+        )
+        tm.that(
+            calls,
+            eq=[
+                ("deps", "modernize", []),
+                ("deps", "modernize", ["--audit"]),
+                ("deps", "modernize", ["--skip-comments"]),
+            ],
+        )

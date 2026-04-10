@@ -1,257 +1,134 @@
-"""Tests for FlextInfraReleaseOrchestrator phase methods.
-
-Tests phase_validate, phase_version, and phase_build using monkeypatch
-and tmp_path fixtures for isolated test environments.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Public tests for release phase methods."""
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from typing import TYPE_CHECKING
+import json
+from pathlib import Path
 
-import pytest
-from flext_tests import tm
-
-from flext_core import r
-from flext_infra import FlextInfraReleaseOrchestrator, u
-from tests import c, m, t
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from _pytest.monkeypatch import MonkeyPatch
+from flext_infra import FlextInfraReleaseOrchestrator
+from tests import c, m, u
 
 
-def _version_ctx(
+def version_ctx(
     workspace_root: Path,
-    version: str = "1.0.0",
-    project_names: t.StrSequence = (),
     *,
+    version: str = "1.0.0",
+    project_names: list[str] | None = None,
     dry_run: bool = False,
     dev_suffix: bool = False,
 ) -> m.Infra.ReleasePhaseDispatchConfig:
-    """Build a ReleasePhaseDispatchConfig for version phase tests."""
     return m.Infra.ReleasePhaseDispatchConfig(
         phase=c.Infra.VERSION,
         workspace_root=workspace_root,
         version=version,
         tag=f"v{version}",
-        project_names=list(project_names),
+        project_names=project_names or [],
         dry_run=dry_run,
+        push=False,
         dev_suffix=dev_suffix,
     )
 
 
-def _build_ctx(
+def build_ctx(
     workspace_root: Path,
+    *,
     version: str = "1.0.0",
-    project_names: t.StrSequence = (),
+    project_names: list[str] | None = None,
 ) -> m.Infra.ReleasePhaseDispatchConfig:
-    """Build a ReleasePhaseDispatchConfig for build phase tests."""
     return m.Infra.ReleasePhaseDispatchConfig(
         phase=c.Infra.Directories.BUILD,
         workspace_root=workspace_root,
         version=version,
         tag=f"v{version}",
-        project_names=list(project_names),
+        project_names=project_names or [],
+        dry_run=False,
+        push=False,
+        dev_suffix=False,
     )
 
 
-@pytest.fixture
-def workspace_root(tmp_path: Path) -> Path:
-    """Create workspace root with pyproject.toml."""
-    root = tmp_path / "workspace"
-    root.mkdir()
-    (root / ".git").mkdir()
-    (root / "Makefile").touch()
-    (root / "pyproject.toml").write_text('version = "0.1.0"\n', encoding="utf-8")
-    return root
+def test_phase_validate_dry_run_succeeds(tmp_path: Path) -> None:
+    workspace = u.Infra.Tests.create_release_workspace(tmp_path)
+
+    result = FlextInfraReleaseOrchestrator().phase_validate(workspace, dry_run=True)
+
+    assert result.is_success
 
 
-class TestPhaseValidate:
-    """Tests for phase_validate."""
+def test_phase_validate_apply_propagates_make_failure(tmp_path: Path) -> None:
+    workspace = u.Infra.Tests.create_release_workspace(
+        tmp_path,
+        root_validate_exit_code="1",
+    )
 
-    def test_dry_run(self, workspace_root: Path) -> None:
-        orchestrator = FlextInfraReleaseOrchestrator()
-        tm.ok(orchestrator.phase_validate(workspace_root, dry_run=True))
+    result = FlextInfraReleaseOrchestrator().phase_validate(workspace, dry_run=False)
 
-    def test_executes_make(
-        self,
-        workspace_root: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        called = False
-
-        def _fake_run_checked(
-            cmd: t.StrSequence,
-            **kw: t.Scalar,
-        ) -> r[bool]:
-            nonlocal called
-            called = True
-            return r[bool].ok(True)
-
-        monkeypatch.setattr(
-            u.Cli,
-            "run_checked",
-            staticmethod(_fake_run_checked),
-        )
-        orchestrator = FlextInfraReleaseOrchestrator()
-        tm.ok(orchestrator.phase_validate(workspace_root, dry_run=False))
-        tm.that(called, eq=True)
+    assert result.is_failure
 
 
-class TestPhaseVersion:
-    """Tests for phase_version."""
+def test_phase_version_updates_root_and_selected_project(tmp_path: Path) -> None:
+    workspace = u.Infra.Tests.create_release_workspace(
+        tmp_path,
+        project_names=("flext-a", "flext-b"),
+    )
 
-    def test_updates_files(
-        self,
-        workspace_root: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        def _parse_semver(version: str) -> r[str]:
-            return r[str].ok(version)
+    result = FlextInfraReleaseOrchestrator().phase_version(
+        version_ctx(workspace, project_names=["flext-a"]),
+    )
 
-        def _replace_version(path: Path, version: str) -> None:
-            _ = path, version
-
-        monkeypatch.setattr(
-            u.Infra,
-            "replace_project_version",
-            staticmethod(_replace_version),
-        )
-        orchestrator = FlextInfraReleaseOrchestrator()
-        tm.ok(orchestrator.phase_version(_version_ctx(workspace_root)))
-
-    def test_invalid_semver(
-        self,
-        workspace_root: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        def _parse_semver_fail(version: str) -> r[str]:
-            _ = version
-            return r[str].fail("invalid version")
-
-        orchestrator = FlextInfraReleaseOrchestrator()
-        tm.fail(
-            orchestrator.phase_version(_version_ctx(workspace_root, version="invalid"))
-        )
-
-    def test_with_dev_suffix(
-        self,
-        workspace_root: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        def _parse_semver(version: str) -> r[str]:
-            return r[str].ok(version)
-
-        def _replace_version(path: Path, version: str) -> None:
-            _ = path, version
-
-        monkeypatch.setattr(
-            u.Infra,
-            "replace_project_version",
-            staticmethod(_replace_version),
-        )
-        orchestrator = FlextInfraReleaseOrchestrator()
-        tm.ok(orchestrator.phase_version(_version_ctx(workspace_root, dev_suffix=True)))
-
-    def test_dry_run(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
-        def _parse_semver(version: str) -> r[str]:
-            return r[str].ok(version)
-
-        orchestrator = FlextInfraReleaseOrchestrator()
-        tm.ok(orchestrator.phase_version(_version_ctx(workspace_root, dry_run=True)))
-
-    def test_skips_missing_files(
-        self,
-        workspace_root: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        orchestrator = FlextInfraReleaseOrchestrator()
-
-        def _fake_version_files(*a: t.Scalar, **kw: t.Scalar) -> Sequence[Path]:
-            del a, kw
-            return [workspace_root / "nonexistent.toml"]
-
-        def _parse_semver(version: str) -> r[str]:
-            return r[str].ok(version)
-
-        tm.ok(orchestrator.phase_version(_version_ctx(workspace_root)))
+    assert result.is_success
+    assert 'version = "1.0.0"' in (workspace / "pyproject.toml").read_text()
+    assert 'version = "1.0.0"' in (workspace / "flext-a" / "pyproject.toml").read_text()
+    assert 'version = "0.1.0"' in (workspace / "flext-b" / "pyproject.toml").read_text()
 
 
-class TestPhaseBuild:
-    """Tests for phase_build."""
+def test_phase_version_dry_run_leaves_files_unchanged(tmp_path: Path) -> None:
+    workspace = u.Infra.Tests.create_release_workspace(tmp_path)
 
-    def test_creates_report_dir(
-        self,
-        workspace_root: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        ws_root = workspace_root
+    result = FlextInfraReleaseOrchestrator().phase_version(
+        version_ctx(workspace, dry_run=True),
+    )
 
-        def _get_report_dir(ws: Path | str, scope: str, verb: str) -> Path:
-            _ = ws, scope, verb
-            return ws_root / "reports"
+    assert result.is_success
+    assert 'version = "0.1.0"' in (workspace / "pyproject.toml").read_text()
 
-        def _fake_run_make(*a: t.Scalar, **kw: t.Scalar) -> r[tuple[int, str]]:
-            del a, kw
-            return r[tuple[int, str]].ok((0, "ok"))
 
-        monkeypatch.setattr(
-            FlextInfraReleaseOrchestrator,
-            "_run_make",
-            _fake_run_make,
-        )
-        orchestrator = FlextInfraReleaseOrchestrator()
-        tm.ok(orchestrator.phase_build(_build_ctx(workspace_root)))
+def test_phase_build_writes_report_and_logs_for_root_and_project(
+    tmp_path: Path,
+) -> None:
+    workspace = u.Infra.Tests.create_release_workspace(
+        tmp_path,
+        project_names=("flext-a", "flext-b"),
+    )
 
-    def test_report_dir_creation_fails(
-        self,
-        workspace_root: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        ws_root = workspace_root
+    result = FlextInfraReleaseOrchestrator().phase_build(
+        build_ctx(workspace, project_names=["flext-a"]),
+    )
 
-        def _get_report_dir(ws: Path | str, scope: str, verb: str) -> Path:
-            _ = ws, scope, verb
-            return ws_root / "reports"
+    assert result.is_success
+    report_path = workspace / ".reports" / "release" / "v1.0.0" / "build-report.json"
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["total"] == 2
+    assert report["failures"] == 0
+    assert (workspace / ".reports" / "release" / "v1.0.0" / "build-root.log").is_file()
+    assert (
+        workspace / ".reports" / "release" / "v1.0.0" / "build-flext-a.log"
+    ).is_file()
+    assert not (
+        workspace / ".reports" / "release" / "v1.0.0" / "build-flext-b.log"
+    ).exists()
 
-        def _raise_mkdir(*a: t.Scalar, **kw: t.Scalar) -> None:
-            del a, kw
-            msg = "permission denied"
-            raise OSError(msg)
 
-        orchestrator = FlextInfraReleaseOrchestrator()
-        tm.fail(orchestrator.phase_build(_build_ctx(workspace_root)))
+def test_phase_build_failure_still_writes_report(tmp_path: Path) -> None:
+    workspace = u.Infra.Tests.create_release_workspace(
+        tmp_path,
+        root_build_exit_code="1",
+    )
 
-    def test_with_make_failure(
-        self,
-        workspace_root: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        def _fake_build_targets(
-            *a: t.Scalar,
-            **kw: t.Scalar,
-        ) -> Sequence[tuple[str, Path]]:
-            del a, kw
-            return [("root", workspace_root)]
+    result = FlextInfraReleaseOrchestrator().phase_build(build_ctx(workspace))
 
-        def _fake_run_make_failure(*a: t.Scalar, **kw: t.Scalar) -> r[tuple[int, str]]:
-            del a, kw
-            return r[tuple[int, str]].fail("make failed")
-
-        monkeypatch.setattr(
-            FlextInfraReleaseOrchestrator,
-            "_build_targets",
-            _fake_build_targets,
-        )
-        monkeypatch.setattr(
-            FlextInfraReleaseOrchestrator,
-            "_run_make",
-            _fake_run_make_failure,
-        )
-        orchestrator = FlextInfraReleaseOrchestrator()
-        tm.fail(orchestrator.phase_build(_build_ctx(workspace_root)))
+    assert result.is_failure
+    report_path = workspace / ".reports" / "release" / "v1.0.0" / "build-report.json"
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["failures"] == 1
+    assert (workspace / ".reports" / "release" / "v1.0.0" / "build-root.log").is_file()

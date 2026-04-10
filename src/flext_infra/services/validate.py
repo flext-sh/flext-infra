@@ -9,12 +9,12 @@ from flext_infra import (
     FlextInfraBaseMkValidator,
     FlextInfraInventoryService,
     FlextInfraPytestDiagExtractor,
+    FlextInfraSilentFailureValidator,
     FlextInfraSkillValidator,
     FlextInfraStubSupplyChain,
     FlextInfraTextPatternScanner,
 )
 from flext_infra.services._cli_base import FlextInfraServiceCliRunnerMixin
-from flext_infra.validate.silent_failure import FlextInfraSilentFailureValidator
 
 
 class FlextInfraServiceValidateMixin(FlextInfraServiceCliRunnerMixin):

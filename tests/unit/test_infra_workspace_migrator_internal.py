@@ -78,6 +78,8 @@ class TestMigratorPublicBehavior:
                 newline=newline,
             )
 
+        monkeypatch.setattr(Path, "read_text", _selective_read)
+
         migration = tm.ok(migrator.execute())[0]
 
         tm.that(any("Read failed" in err for err in migration.errors), eq=True)
@@ -129,6 +131,8 @@ class TestMigratorPublicBehavior:
                 msg = "Write failed"
                 raise OSError(msg)
             return original_write(self, data, **kwargs)
+
+        monkeypatch.setattr(Path, "write_text", _selective_write)
 
         migration = tm.ok(migrator.execute())[0]
 

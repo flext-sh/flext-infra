@@ -1,72 +1,48 @@
-"""Tests for FlextInfraDocGenerator — internal methods.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Public utility tests used by docs generation flows."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-from flext_tests import tm
-
 from flext_infra import FlextInfraDocGenerator
-from tests import m, u
+from tests import u
 
 
-@pytest.fixture
-def gen() -> FlextInfraDocGenerator:
-    return FlextInfraDocGenerator()
+def test_anchorize_normalizes_headings() -> None:
+    assert u.Infra.anchorize("Hello World") == "hello-world"
+    assert u.Infra.anchorize("Test-Case") == "test-case"
+    assert u.Infra.anchorize("") == ""
 
 
-class TestGeneratorScope:
-    def test_generate_scope_root_scope(
-        self,
-        gen: FlextInfraDocGenerator,
-        tmp_path: Path,
-    ) -> None:
-        scope = m.Infra.DocScope(
-            name="root",
-            path=tmp_path,
-            report_dir=tmp_path / "reports",
-        )
-        report = gen._generate_scope(scope, apply=False, workspace_root=tmp_path)
-        tm.that(report.scope, eq="root")
+def test_build_toc_lists_h2_and_h3_sections() -> None:
+    toc = u.Infra.build_toc("# Main\n\n## Section 1\n\n### Subsection\n")
 
-    def test_generate_scope_project_scope(
-        self,
-        gen: FlextInfraDocGenerator,
-        tmp_path: Path,
-    ) -> None:
-        scope = m.Infra.DocScope(
-            name="test-project",
-            path=tmp_path,
-            report_dir=tmp_path / "reports",
-        )
-        report = gen._generate_scope(scope, apply=False, workspace_root=tmp_path)
-        tm.that(report.scope, eq="test-project")
+    assert "<!-- TOC START -->" in toc
+    assert "Section 1" in toc
+    assert "Subsection" in toc
 
 
-class TestGeneratorHelpers:
-    def test_normalize_anchor_converts_to_slug(
-        self,
-        gen: FlextInfraDocGenerator,
-    ) -> None:
-        _ = gen
-        tm.that(u.Infra.anchorize("Hello World"), eq="hello-world")
-        tm.that(u.Infra.anchorize("Test-Case"), eq="test-case")
+def test_update_toc_replaces_existing_block() -> None:
+    updated, changed = u.Infra.update_toc(
+        "# Main\n\n<!-- TOC START -->\n- stale\n<!-- TOC END -->\n\n## Section\n",
+    )
 
-    def test_normalize_anchor_empty_string(self, gen: FlextInfraDocGenerator) -> None:
-        _ = gen
-        tm.that(u.Infra.anchorize(""), eq="")
+    assert changed == 1
+    assert "stale" not in updated
+    assert "Section" in updated
 
-    def test_build_toc_from_headings(self, gen: FlextInfraDocGenerator) -> None:
-        _ = gen
-        toc = u.Infra.build_toc("# Main\n\n## Section 1\n\n### Subsection\n")
-        tm.that(toc, has="<!-- TOC START -->")
-        tm.that(toc, has="Section 1")
 
-    def test_build_toc_with_no_headings(self, gen: FlextInfraDocGenerator) -> None:
-        _ = gen
-        tm.that(u.Infra.build_toc("# Main\n\nNo sections.\n"), has="No sections found")
+def test_generate_creates_selected_project_reports(tmp_path: Path) -> None:
+    workspace = u.Infra.Tests.create_docs_workspace(
+        tmp_path,
+        project_names=("flext-a", "flext-b"),
+    )
+
+    result = FlextInfraDocGenerator().generate(
+        workspace,
+        projects=["flext-a"],
+        apply=True,
+    )
+
+    assert result.is_success
+    assert [report.scope for report in result.value] == ["root", "flext-a"]

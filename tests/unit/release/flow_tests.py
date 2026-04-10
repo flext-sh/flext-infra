@@ -1,200 +1,129 @@
-"""Tests for release main() orchestration flow.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Public release CLI flow tests."""
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence
 from pathlib import Path
-from types import SimpleNamespace
 
-from _pytest.monkeypatch import MonkeyPatch
-from flext_tests import tm
-
-from flext_core import r
-from flext_infra import (
-    main as infra_main,
-    u as infra_u,
-)
-from tests import m
+from flext_infra import main as infra_main
+from tests import u
 
 
-def main(argv: list[str] | None = None) -> int:
-    args = ["release"]
-    if argv is not None:
-        args.extend(argv)
-    return infra_main(args)
+def run_release_main(workspace: Path, *extra: str) -> int:
+    return infra_main([
+        "release",
+        "run",
+        "--workspace",
+        str(workspace),
+        *extra,
+    ])
 
 
-def _patch_main_deps(
-    monkeypatch: MonkeyPatch,
-    tmp_path: Path,
-    *,
-    root_result: r[Path] | None = None,
-    release_result: r[bool] | None = None,
-    capture: MutableSequence[SimpleNamespace] | None = None,
-) -> None:
-    """Patch all main() dependencies via monkeypatch."""
-    effective_root = root_result
+def test_main_validate_apply_succeeds(tmp_path: Path) -> None:
+    workspace = u.Infra.Tests.create_release_workspace(tmp_path)
 
-    def _workspace_root(_hint: str) -> r[Path]:
-        return effective_root if effective_root is not None else r[Path].ok(tmp_path)
-
-    def _parse_semver(version: str) -> r[str]:
-        return r[str].ok(version)
-
-    def _current_workspace_version(root: Path) -> r[str]:
-        return r[str].ok("1.0.0")
-
-    monkeypatch.setattr(
-        infra_u.Infra,
-        "current_workspace_version",
-        staticmethod(_current_workspace_version),
+    result = run_release_main(
+        workspace,
+        "--phase",
+        "validate",
+        "--interactive",
+        "0",
+        "--create-branches",
+        "0",
+        "--apply",
     )
 
-    def _bump_version(cur: str, kind: str) -> r[str]:
-        return r[str].ok("1.1.0")
-
-    effective_release = release_result
-    effective_capture = capture
-
-    def mock_run_release(
-        self: object,
-        release_config: m.Infra.ReleaseOrchestratorConfig,
-    ) -> r[bool]:
-        if effective_capture is not None:
-            effective_capture.append(
-                SimpleNamespace(
-                    phases=release_config.phases,
-                    push=release_config.push,
-                    dry_run=release_config.dry_run,
-                    project_names=release_config.project_names,
-                ),
-            )
-        return effective_release if effective_release is not None else r[bool].ok(True)
+    assert result == 0
 
 
-def _argv(tmp_path: Path, *extra: str) -> list[str]:
-    return ["run", "--workspace", str(tmp_path), *extra]
+def test_main_version_apply_updates_root_and_selected_project(tmp_path: Path) -> None:
+    workspace = u.Infra.Tests.create_release_workspace(
+        tmp_path,
+        project_names=("flext-a", "flext-b"),
+    )
+
+    result = run_release_main(
+        workspace,
+        "--phase",
+        "version",
+        "--version",
+        "1.2.0",
+        "--projects",
+        "flext-a",
+        "--interactive",
+        "0",
+        "--create-branches",
+        "0",
+        "--apply",
+    )
+
+    assert result == 0
+    assert 'version = "1.2.0"' in (workspace / "pyproject.toml").read_text()
+    assert 'version = "1.2.0"' in (workspace / "flext-a" / "pyproject.toml").read_text()
+    assert 'version = "0.1.0"' in (workspace / "flext-b" / "pyproject.toml").read_text()
 
 
-class TestReleaseMainFlow:
-    """Test main() orchestration."""
+def test_main_build_with_bump_uses_resolved_version_in_report_dir(
+    tmp_path: Path,
+) -> None:
+    workspace = u.Infra.Tests.create_release_workspace(tmp_path)
 
-    def test_main_success(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
-        _patch_main_deps(monkeypatch, tmp_path)
-        tm.that(
-            main(argv=_argv(tmp_path, "--phase", "validate", "--interactive", "0")),
-            eq=0,
-        )
+    result = run_release_main(
+        workspace,
+        "--phase",
+        "build",
+        "--bump",
+        "minor",
+        "--interactive",
+        "0",
+        "--create-branches",
+        "0",
+        "--apply",
+    )
 
-    def test_main_workspace_root_failure(
-        self,
-        tmp_path: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        _patch_main_deps(
-            monkeypatch,
-            tmp_path,
-            root_result=r[Path].fail("not found"),
-        )
-        tm.that(
-            main(argv=_argv(tmp_path, "--phase", "validate", "--interactive", "0")),
-            eq=1,
-        )
+    assert result == 0
+    assert (
+        workspace / ".reports" / "release" / "v0.2.0" / "build-report.json"
+    ).is_file()
 
-    def test_main_version_resolution_failure(
-        self,
-        tmp_path: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        _patch_main_deps(monkeypatch, tmp_path)
 
-        def _parse_semver_fail(version: str) -> r[str]:
-            return r[str].fail("invalid")
+def test_main_all_dry_run_writes_release_artifacts(tmp_path: Path) -> None:
+    workspace = u.Infra.Tests.create_release_workspace(
+        tmp_path,
+        project_names=("flext-a",),
+    )
 
-        monkeypatch.setattr(
-            infra_u.Infra,
-            "parse_semver",
-            staticmethod(_parse_semver_fail),
-        )
-        tm.that(
-            main(argv=_argv(tmp_path, "--phase", "version", "--version", "invalid")),
-            eq=1,
-        )
+    result = run_release_main(
+        workspace,
+        "--phase",
+        "all",
+        "--interactive",
+        "0",
+        "--dry-run",
+    )
 
-    def test_main_release_failure(
-        self,
-        tmp_path: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        _patch_main_deps(
-            monkeypatch,
-            tmp_path,
-            release_result=r[bool].fail("release failed"),
-        )
-        tm.that(
-            main(argv=_argv(tmp_path, "--phase", "validate", "--interactive", "0")),
-            eq=1,
-        )
+    assert result == 0
+    assert (
+        workspace / ".reports" / "release" / "v0.1.0" / "build-report.json"
+    ).is_file()
+    assert (
+        workspace / ".reports" / "release" / "v0.1.0" / "RELEASE_NOTES.md"
+    ).is_file()
 
-    def test_main_all_phases(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
-        calls: MutableSequence[SimpleNamespace] = []
-        _patch_main_deps(monkeypatch, tmp_path, capture=calls)
-        tm.that(
-            main(argv=_argv(tmp_path, "--phase", "all", "--interactive", "0")),
-            eq=0,
-        )
-        tm.that(calls[0].phases, eq=["validate", "version", "build", "publish"])
 
-    def test_main_with_push(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
-        calls: MutableSequence[SimpleNamespace] = []
-        _patch_main_deps(monkeypatch, tmp_path, capture=calls)
-        tm.that(
-            main(
-                argv=_argv(
-                    tmp_path, "--phase", "validate", "--push", "--interactive", "0"
-                ),
-            ),
-            eq=0,
-        )
-        tm.that(calls[0].push, eq=True)
+def test_main_invalid_version_returns_failure(tmp_path: Path) -> None:
+    workspace = u.Infra.Tests.create_release_workspace(tmp_path)
 
-    def test_main_with_dry_run(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
-        calls: MutableSequence[SimpleNamespace] = []
-        _patch_main_deps(monkeypatch, tmp_path, capture=calls)
-        tm.that(
-            main(
-                argv=_argv(
-                    tmp_path,
-                    "--phase",
-                    "validate",
-                    "--dry-run",
-                    "--interactive",
-                    "0",
-                ),
-            ),
-            eq=0,
-        )
-        tm.that(calls[0].dry_run, eq=True)
+    result = run_release_main(
+        workspace,
+        "--phase",
+        "version",
+        "--version",
+        "invalid",
+        "--interactive",
+        "0",
+        "--create-branches",
+        "0",
+        "--apply",
+    )
 
-    def test_main_with_projects(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
-        calls: MutableSequence[SimpleNamespace] = []
-        _patch_main_deps(monkeypatch, tmp_path, capture=calls)
-        tm.that(
-            main(
-                argv=_argv(
-                    tmp_path,
-                    "--phase",
-                    "validate",
-                    "--projects",
-                    "proj1",
-                    "--projects",
-                    "proj2",
-                ),
-            ),
-            eq=0,
-        )
-        tm.that(calls[0].project_names, eq=["proj1", "proj2"])
+    assert result == 1

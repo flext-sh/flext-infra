@@ -16,11 +16,11 @@ from rope.refactor.importutils.importinfo import FromImport
 from rope.refactor.rename import Rename
 
 from flext_infra import (
+    FlextInfraUtilitiesRopeCore,
     c,
     p,
     t,
 )
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 
 
 class FlextInfraUtilitiesRopeImports:

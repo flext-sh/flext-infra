@@ -20,12 +20,12 @@ from flext_infra import (
     FlextInfraPyrightGate,
     FlextInfraRuffFormatGate,
     FlextInfraRuffLintGate,
+    FlextInfraSilentFailureGate,
     c,
     m,
     t,
     u,
 )
-from flext_infra.gates.silent_failure import FlextInfraSilentFailureGate
 
 
 class FlextInfraGateRegistry:

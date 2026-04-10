@@ -9,6 +9,7 @@ from pathlib import Path
 from flext_infra import (
     FlextInfraExtraPathsPyrefly,
     FlextInfraExtraPathsResolutionMixin,
+    FlextInfraUtilitiesCliDispatch,
     c,
     m,
     r,
@@ -188,14 +189,14 @@ class FlextInfraExtraPathsManager(
         return r[int].ok(0)
 
     @staticmethod
-    def main(argv: t.StrSequence | None = None) -> int:
-        """Execute extra paths synchronization from command line."""
+    def run_cli(argv: t.StrSequence | None = None) -> int:
+        """Execute extra paths synchronization for the canonical deps CLI."""
         parser = u.Infra.create_parser(
             "flext-infra deps extra-paths",
             "Synchronize pyright and mypy extraPaths from path dependencies",
             flags=u.Infra.SharedFlags(include_apply=True, include_project=True),
         )
-        args = parser.parse_args(argv)
+        args = parser.parse_args([] if argv is None else list(argv))
         cli = u.Infra.resolve(args)
         manager = FlextInfraExtraPathsManager(workspace_root=cli.workspace)
         result = manager.sync_extra_paths(
@@ -206,6 +207,15 @@ class FlextInfraExtraPathsManager(
             return result.value
         u.Infra.error(result.error or "sync failed")
         return 1
+
+    @staticmethod
+    def main(argv: t.StrSequence | None = None) -> int:
+        """Legacy entrypoint routed through the canonical deps CLI."""
+        return FlextInfraUtilitiesCliDispatch.run_command(
+            "deps",
+            "extra-paths",
+            argv,
+        )
 
 
 if __name__ == "__main__":

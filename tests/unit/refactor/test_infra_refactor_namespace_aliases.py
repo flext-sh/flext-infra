@@ -318,9 +318,9 @@ def test_runtime_alias_migrator_merges_local_imports_in_tests(tmp_path: Path) ->
             '    "t": ("tests.typings", "t"),\n'
             '    "u": ("tests.utilities", "u"),\n'
             "}\n"
-            "from flext_core.result import r as _r\n"
-            "from tests.typings import t as _t\n"
-            "from tests.utilities import u as _u\n"
+            "from flext_core import r as _r\n"
+            "from tests import t as _t\n"
+            "from tests import u as _u\n"
             "r = _r\n"
             "t = _t\n"
             "u = _u\n"
@@ -441,7 +441,7 @@ def test_runtime_alias_migrator_rewrites_foreign_package_alias_in_tests(
             "_LAZY_IMPORTS: dict[str, tuple[str, str]] = {\n"
             '    "t": ("tests.typings", "t"),\n'
             "}\n"
-            "from tests.typings import t as _t\n"
+            "from tests import t as _t\n"
             "t = _t\n"
             '__all__ = ["t"]\n'
         ),

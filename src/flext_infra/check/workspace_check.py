@@ -95,13 +95,8 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
         )
 
     @staticmethod
-    def build_parser() -> t.Infra.CliArgumentParser:
-        """Build the workspace check CLI parser."""
-        return FlextInfraWorkspaceCheckerCli.build_parser()
-
-    @staticmethod
     def run_cli(argv: Sequence[str] | None = None) -> int:
-        """Run the subcommand-based workspace check CLI."""
+        """Run the canonical workspace check group."""
         return FlextInfraWorkspaceCheckerCli.run_cli(argv)
 
     @staticmethod
@@ -222,7 +217,6 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
         )
 
 
-build_parser = FlextInfraWorkspaceChecker.build_parser
 run_cli = FlextInfraWorkspaceChecker.run_cli
 
-__all__ = ["FlextInfraWorkspaceChecker", "build_parser", "run_cli"]
+__all__ = ["FlextInfraWorkspaceChecker", "run_cli"]

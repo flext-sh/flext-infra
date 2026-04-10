@@ -1,209 +1,82 @@
-"""Tests for github pr-workspace dispatch in the centralized CLI."""
+"""Workspace github PR service tests using real repositories."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-from flext_tests import tm
-
-from flext_infra import FlextInfraUtilities, infra
-from tests import m, r
+from flext_infra import infra
+from tests import m, u
 
 
-def _workspace_report(
-    *,
-    fail: int = 0,
-    total: int = 1,
-) -> m.Infra.GithubPullRequestWorkspaceReport:
-    return m.Infra.GithubPullRequestWorkspaceReport(
-        total=total,
-        success=max(total - fail, 0),
-        fail=fail,
-        outcomes=(),
+def test_run_github_workspace_pull_requests_aggregates_results(
+    tmp_path: Path,
+) -> None:
+    workspace = u.Infra.Tests.create_github_workspace(
+        tmp_path,
+        project_names=("flext-a", "flext-b"),
+        pr_exit_codes={"flext-a": "0", "flext-b": "1"},
     )
 
+    result = infra.run_github_workspace_pull_requests(
+        m.Infra.GithubPullRequestWorkspaceRequest(
+            workspace=str(workspace),
+            action="status",
+            fail_fast=False,
+        ),
+    )
 
-class TestRunPrWorkspace:
-    def test_success(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        def _ok(
-            request: m.Infra.GithubPullRequestWorkspaceRequest,
-        ) -> r[m.Infra.GithubPullRequestWorkspaceReport]:
-            _ = request
-            return r[m.Infra.GithubPullRequestWorkspaceReport].ok(
-                _workspace_report(fail=0),
-            )
+    assert result.is_success
+    report = result.unwrap()
+    assert report.total == 2
+    assert report.success == 1
+    assert report.fail == 1
 
-        monkeypatch.setattr(
-            FlextInfraUtilities.Infra,
-            "github_run_workspace_pull_requests",
-            staticmethod(_ok),
-        )
-        result = infra.run_github_workspace_pull_requests(
-            m.Infra.GithubPullRequestWorkspaceRequest(workspace=str(tmp_path)),
-        )
-        tm.that(result.is_success, eq=True)
 
-    def test_failure(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        def _fail(
-            request: m.Infra.GithubPullRequestWorkspaceRequest,
-        ) -> r[m.Infra.GithubPullRequestWorkspaceReport]:
-            _ = request
-            return r[m.Infra.GithubPullRequestWorkspaceReport].fail(
-                "orchestration failed",
-            )
+def test_run_github_workspace_pull_requests_respects_project_selection(
+    tmp_path: Path,
+) -> None:
+    workspace = u.Infra.Tests.create_github_workspace(
+        tmp_path,
+        project_names=("flext-a", "flext-b", "flext-c"),
+        pr_exit_codes={"flext-a": "0", "flext-b": "0", "flext-c": "1"},
+    )
 
-        monkeypatch.setattr(
-            FlextInfraUtilities.Infra,
-            "github_run_workspace_pull_requests",
-            staticmethod(_fail),
-        )
-        result = infra.run_github_workspace_pull_requests(
-            m.Infra.GithubPullRequestWorkspaceRequest(workspace=str(tmp_path)),
-        )
-        tm.that(result.is_failure, eq=True)
+    result = infra.run_github_workspace_pull_requests(
+        m.Infra.GithubPullRequestWorkspaceRequest(
+            workspace=str(workspace),
+            projects=["flext-a", "flext-b"],
+            fail_fast=False,
+        ),
+    )
 
-    def test_with_pr_args(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        captured_requests: list[m.Infra.GithubPullRequestWorkspaceRequest] = []
+    assert result.is_success
+    report = result.unwrap()
+    report_dir = workspace / ".reports/workspace/pr"
+    assert report.total == 2
+    assert report.fail == 0
+    assert (report_dir / "flext-a.log").is_file()
+    assert (report_dir / "flext-b.log").is_file()
+    assert not (report_dir / "flext-c.log").exists()
 
-        def _fake_orchestrate(
-            request: m.Infra.GithubPullRequestWorkspaceRequest,
-        ) -> r[m.Infra.GithubPullRequestWorkspaceReport]:
-            captured_requests.append(request)
-            return r[m.Infra.GithubPullRequestWorkspaceReport].ok(
-                _workspace_report(fail=0),
-            )
 
-        monkeypatch.setattr(
-            FlextInfraUtilities.Infra,
-            "github_run_workspace_pull_requests",
-            staticmethod(_fake_orchestrate),
-        )
-        result = infra.run_github_workspace_pull_requests(
-            m.Infra.GithubPullRequestWorkspaceRequest(
-                workspace=str(tmp_path),
-                action="merge",
-                base="main",
-                head="feature/test",
-            ),
-        )
-        tm.that(result.is_success, eq=True)
-        assert captured_requests[0].action == "merge"
-        assert captured_requests[0].base == "main"
-        assert captured_requests[0].head == "feature/test"
+def test_run_github_workspace_pull_requests_honors_fail_fast(
+    tmp_path: Path,
+) -> None:
+    workspace = u.Infra.Tests.create_github_workspace(
+        tmp_path,
+        project_names=("flext-a", "flext-b"),
+        pr_exit_codes={"flext-a": "1", "flext-b": "0"},
+    )
 
-    def test_with_branch(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        captured_requests: list[m.Infra.GithubPullRequestWorkspaceRequest] = []
+    result = infra.run_github_workspace_pull_requests(
+        m.Infra.GithubPullRequestWorkspaceRequest(
+            workspace=str(workspace),
+            fail_fast=True,
+        ),
+    )
 
-        def _fake_orchestrate(
-            request: m.Infra.GithubPullRequestWorkspaceRequest,
-        ) -> r[m.Infra.GithubPullRequestWorkspaceReport]:
-            captured_requests.append(request)
-            return r[m.Infra.GithubPullRequestWorkspaceReport].ok(
-                _workspace_report(fail=0),
-            )
-
-        monkeypatch.setattr(
-            FlextInfraUtilities.Infra,
-            "github_run_workspace_pull_requests",
-            staticmethod(_fake_orchestrate),
-        )
-        infra.run_github_workspace_pull_requests(
-            m.Infra.GithubPullRequestWorkspaceRequest(
-                workspace=str(tmp_path),
-                branch="feature/test",
-            ),
-        )
-        assert captured_requests[0].branch == "feature/test"
-
-    def test_with_checkpoint(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        captured_requests: list[m.Infra.GithubPullRequestWorkspaceRequest] = []
-
-        def _fake_orchestrate(
-            request: m.Infra.GithubPullRequestWorkspaceRequest,
-        ) -> r[m.Infra.GithubPullRequestWorkspaceReport]:
-            captured_requests.append(request)
-            return r[m.Infra.GithubPullRequestWorkspaceReport].ok(
-                _workspace_report(fail=0),
-            )
-
-        monkeypatch.setattr(
-            FlextInfraUtilities.Infra,
-            "github_run_workspace_pull_requests",
-            staticmethod(_fake_orchestrate),
-        )
-        infra.run_github_workspace_pull_requests(
-            m.Infra.GithubPullRequestWorkspaceRequest(
-                workspace=str(tmp_path),
-                checkpoint=True,
-            ),
-        )
-        assert captured_requests[0].checkpoint is True
-
-    def test_with_fail_fast(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        captured_requests: list[m.Infra.GithubPullRequestWorkspaceRequest] = []
-
-        def _fake_orchestrate(
-            request: m.Infra.GithubPullRequestWorkspaceRequest,
-        ) -> r[m.Infra.GithubPullRequestWorkspaceReport]:
-            captured_requests.append(request)
-            return r[m.Infra.GithubPullRequestWorkspaceReport].ok(
-                _workspace_report(fail=0),
-            )
-
-        monkeypatch.setattr(
-            FlextInfraUtilities.Infra,
-            "github_run_workspace_pull_requests",
-            staticmethod(_fake_orchestrate),
-        )
-        infra.run_github_workspace_pull_requests(
-            m.Infra.GithubPullRequestWorkspaceRequest(
-                workspace=str(tmp_path),
-                fail_fast=True,
-            ),
-        )
-        assert captured_requests[0].fail_fast is True
-
-    def test_with_selected_projects(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        captured_requests: list[m.Infra.GithubPullRequestWorkspaceRequest] = []
-
-        def _fake_orchestrate(
-            request: m.Infra.GithubPullRequestWorkspaceRequest,
-        ) -> r[m.Infra.GithubPullRequestWorkspaceReport]:
-            captured_requests.append(request)
-            return r[m.Infra.GithubPullRequestWorkspaceReport].ok(
-                _workspace_report(fail=0),
-            )
-
-        monkeypatch.setattr(
-            FlextInfraUtilities.Infra,
-            "github_run_workspace_pull_requests",
-            staticmethod(_fake_orchestrate),
-        )
-        infra.run_github_workspace_pull_requests(
-            m.Infra.GithubPullRequestWorkspaceRequest(
-                workspace=str(tmp_path),
-                projects=["flext-core", "flext-api"],
-            ),
-        )
-        assert captured_requests[0].project_names == ["flext-core", "flext-api"]
+    assert result.is_success
+    report_dir = workspace / ".reports/workspace/pr"
+    assert result.unwrap().fail == 1
+    assert (report_dir / "flext-a.log").is_file()
+    assert not (report_dir / "flext-b.log").exists()

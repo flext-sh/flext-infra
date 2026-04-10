@@ -1,252 +1,126 @@
-"""Tests for github CLI handlers registered by the centralized dispatcher."""
+"""Public github service tests using real workspaces."""
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
+import shutil
 from pathlib import Path
 
-import pytest
-from flext_tests import tm
-
-from flext_infra import FlextInfraUtilities, infra
-from tests import m, r, t
+from flext_infra import infra
+from tests import m, u
 
 
-def _sync_report() -> m.Infra.GithubWorkflowSyncReport:
-    return m.Infra.GithubWorkflowSyncReport(
-        mode="dry-run",
-        summary={},
-        operations=(),
+def test_sync_github_workflows_reports_create_operations(
+    tmp_path: Path,
+) -> None:
+    workspace = u.Infra.Tests.create_github_workspace(
+        tmp_path,
+        project_names=("flext-a", "flext-b"),
     )
 
-
-def _lint_outcome() -> m.Infra.GithubWorkflowLintOutcome:
-    return m.Infra.GithubWorkflowLintOutcome(status="ok")
-
-
-def _pull_request_outcome(*, exit_code: int = 0) -> m.Infra.GithubPullRequestOutcome:
-    return m.Infra.GithubPullRequestOutcome(
-        display="test-repo",
-        status="ok" if exit_code == 0 else "fail",
-        elapsed=0,
-        exit_code=exit_code,
+    result = infra.sync_github_workflows(
+        m.Infra.GithubWorkflowSyncRequest(workspace=str(workspace)),
     )
 
-
-class TestRunWorkflows:
-    def test_success(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        def _sync(
-            request: m.Infra.GithubWorkflowSyncRequest,
-        ) -> r[m.Infra.GithubWorkflowSyncReport]:
-            _ = request
-            return r[m.Infra.GithubWorkflowSyncReport].ok(_sync_report())
-
-        monkeypatch.setattr(
-            FlextInfraUtilities.Infra, "github_sync_workflows", staticmethod(_sync)
-        )
-        result = infra.sync_github_workflows(
-            m.Infra.GithubWorkflowSyncRequest(workspace=str(tmp_path)),
-        )
-        tm.that(result.is_success, eq=True)
-
-    def test_failure(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        def _sync(
-            request: m.Infra.GithubWorkflowSyncRequest,
-        ) -> r[m.Infra.GithubWorkflowSyncReport]:
-            _ = request
-            return r[m.Infra.GithubWorkflowSyncReport].fail("sync failed")
-
-        monkeypatch.setattr(
-            FlextInfraUtilities.Infra, "github_sync_workflows", staticmethod(_sync)
-        )
-        result = infra.sync_github_workflows(
-            m.Infra.GithubWorkflowSyncRequest(workspace=str(tmp_path)),
-        )
-        tm.that(result.is_failure, eq=True)
-
-    def test_with_apply_flag(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        captured: MutableMapping[str, m.Infra.GithubWorkflowSyncRequest] = {}
-
-        def _fake_sync(
-            request: m.Infra.GithubWorkflowSyncRequest,
-        ) -> r[m.Infra.GithubWorkflowSyncReport]:
-            captured["request"] = request
-            return r[m.Infra.GithubWorkflowSyncReport].ok(_sync_report())
-
-        monkeypatch.setattr(
-            FlextInfraUtilities.Infra,
-            "github_sync_workflows",
-            staticmethod(_fake_sync),
-        )
-        infra.sync_github_workflows(
-            m.Infra.GithubWorkflowSyncRequest(workspace=str(tmp_path), apply=True),
-        )
-        assert captured["request"].apply is True
-
-    def test_with_prune_flag(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        captured: MutableMapping[str, m.Infra.GithubWorkflowSyncRequest] = {}
-
-        def _fake_sync(
-            request: m.Infra.GithubWorkflowSyncRequest,
-        ) -> r[m.Infra.GithubWorkflowSyncReport]:
-            captured["request"] = request
-            return r[m.Infra.GithubWorkflowSyncReport].ok(_sync_report())
-
-        monkeypatch.setattr(
-            FlextInfraUtilities.Infra,
-            "github_sync_workflows",
-            staticmethod(_fake_sync),
-        )
-        infra.sync_github_workflows(
-            m.Infra.GithubWorkflowSyncRequest(workspace=str(tmp_path), prune=True),
-        )
-        assert captured["request"].prune is True
-
-    def test_with_report(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        captured: MutableMapping[str, m.Infra.GithubWorkflowSyncRequest] = {}
-
-        def _fake_sync(
-            request: m.Infra.GithubWorkflowSyncRequest,
-        ) -> r[m.Infra.GithubWorkflowSyncReport]:
-            captured["request"] = request
-            return r[m.Infra.GithubWorkflowSyncReport].ok(_sync_report())
-
-        monkeypatch.setattr(
-            FlextInfraUtilities.Infra,
-            "github_sync_workflows",
-            staticmethod(_fake_sync),
-        )
-        report = tmp_path / "report.json"
-        infra.sync_github_workflows(
-            m.Infra.GithubWorkflowSyncRequest(
-                workspace=str(tmp_path),
-                report=str(report),
-            ),
-        )
-        assert captured["request"].report_path == report
+    assert result.is_success
+    report = result.unwrap()
+    assert report.mode == "dry-run"
+    assert report.summary == {"create": 2}
+    assert [operation.project for operation in report.operations] == [
+        "flext-a",
+        "flext-b",
+    ]
 
 
-class TestRunLint:
-    def test_success(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        def _lint(
-            request: m.Infra.GithubWorkflowLintRequest,
-        ) -> r[m.Infra.GithubWorkflowLintOutcome]:
-            _ = request
-            return r[m.Infra.GithubWorkflowLintOutcome].ok(_lint_outcome())
+def test_sync_github_workflows_apply_writes_ci_files_and_report(
+    tmp_path: Path,
+) -> None:
+    workspace = u.Infra.Tests.create_github_workspace(
+        tmp_path,
+        project_names=("flext-a", "flext-b"),
+    )
+    report_path = tmp_path / "sync-report.json"
 
-        monkeypatch.setattr(
-            FlextInfraUtilities.Infra,
-            "github_lint_workflows",
-            staticmethod(_lint),
-        )
-        result = infra.lint_github_workflows(
-            m.Infra.GithubWorkflowLintRequest(workspace=str(tmp_path)),
-        )
-        tm.that(result.is_success, eq=True)
+    result = infra.sync_github_workflows(
+        m.Infra.GithubWorkflowSyncRequest(
+            workspace=str(workspace),
+            apply=True,
+            report=str(report_path),
+        ),
+    )
 
-    def test_failure(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        def _lint(
-            request: m.Infra.GithubWorkflowLintRequest,
-        ) -> r[m.Infra.GithubWorkflowLintOutcome]:
-            _ = request
-            return r[m.Infra.GithubWorkflowLintOutcome].fail("lint failed")
-
-        monkeypatch.setattr(
-            FlextInfraUtilities.Infra,
-            "github_lint_workflows",
-            staticmethod(_lint),
-        )
-        result = infra.lint_github_workflows(
-            m.Infra.GithubWorkflowLintRequest(workspace=str(tmp_path)),
-        )
-        tm.that(result.is_failure, eq=True)
-
-    def test_with_report(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        captured: MutableMapping[str, m.Infra.GithubWorkflowLintRequest] = {}
-
-        def _fake_lint(
-            request: m.Infra.GithubWorkflowLintRequest,
-        ) -> r[m.Infra.GithubWorkflowLintOutcome]:
-            captured["request"] = request
-            return r[m.Infra.GithubWorkflowLintOutcome].ok(_lint_outcome())
-
-        monkeypatch.setattr(
-            FlextInfraUtilities.Infra,
-            "github_lint_workflows",
-            staticmethod(_fake_lint),
-        )
-        report = tmp_path / "report.json"
-        infra.lint_github_workflows(
-            m.Infra.GithubWorkflowLintRequest(
-                workspace=str(tmp_path), report=str(report)
-            ),
-        )
-        assert captured["request"].report_path == report
-
-    def test_with_strict_flag(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        captured: t.MutableBoolMapping = {}
-
-        def _fake_lint(
-            request: m.Infra.GithubWorkflowLintRequest,
-        ) -> r[m.Infra.GithubWorkflowLintOutcome]:
-            captured["strict"] = request.strict
-            return r[m.Infra.GithubWorkflowLintOutcome].ok(_lint_outcome())
-
-        monkeypatch.setattr(
-            FlextInfraUtilities.Infra,
-            "github_lint_workflows",
-            staticmethod(_fake_lint),
-        )
-        infra.lint_github_workflows(
-            m.Infra.GithubWorkflowLintRequest(workspace=str(tmp_path), strict=True),
-        )
-        assert captured["strict"] is True
+    assert result.is_success
+    assert report_path.is_file()
+    for project_name in ("flext-a", "flext-b"):
+        destination = workspace / project_name / ".github/workflows/ci.yml"
+        assert destination.is_file()
+        assert "name: CI" in destination.read_text(encoding="utf-8")
 
 
-class TestRunPr:
-    def test_delegates_to_pr(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        def _pr(**kw: object) -> r[m.Infra.GithubPullRequestOutcome]:
-            _ = kw
-            return r[m.Infra.GithubPullRequestOutcome].ok(_pull_request_outcome())
+def test_sync_github_workflows_prunes_noncanonical_files(
+    tmp_path: Path,
+) -> None:
+    workspace = u.Infra.Tests.create_github_workspace(
+        tmp_path,
+        project_names=("flext-a",),
+    )
+    extra_workflow = workspace / "flext-a/.github/workflows/extra.yml"
+    extra_workflow.parent.mkdir(parents=True, exist_ok=True)
+    extra_workflow.write_text("name: Extra\n", encoding="utf-8")
 
-        monkeypatch.setattr(
-            FlextInfraUtilities.Infra,
-            "github_run_pull_request",
-            staticmethod(_pr),
-        )
-        result = infra.run_github_pull_request(
-            m.Infra.GithubPullRequestRequest(repo_root="/tmp", action="status"),
-        )
-        tm.that(result.is_success, eq=True)
+    result = infra.sync_github_workflows(
+        m.Infra.GithubWorkflowSyncRequest(
+            workspace=str(workspace),
+            apply=True,
+            prune=True,
+        ),
+    )
 
-    def test_nonzero_exit_becomes_failure(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        def _pr(**kw: object) -> r[m.Infra.GithubPullRequestOutcome]:
-            _ = kw
-            return r[m.Infra.GithubPullRequestOutcome].ok(
-                _pull_request_outcome(exit_code=1),
-            )
+    assert result.is_success
+    report = result.unwrap()
+    assert report.summary == {"create": 1, "prune": 1}
+    assert not extra_workflow.exists()
 
-        monkeypatch.setattr(
-            FlextInfraUtilities.Infra,
-            "github_run_pull_request",
-            staticmethod(_pr),
-        )
-        result = infra.run_github_pull_request(
-            m.Infra.GithubPullRequestRequest(repo_root="/tmp", action="status"),
-        )
-        tm.that(result.is_failure, eq=True)
+
+def test_lint_github_workflows_writes_report(
+    tmp_path: Path,
+) -> None:
+    workspace = u.Infra.Tests.create_github_workspace(
+        tmp_path,
+        project_names=("flext-a",),
+    )
+    report_path = tmp_path / "lint-report.json"
+
+    result = infra.lint_github_workflows(
+        m.Infra.GithubWorkflowLintRequest(
+            workspace=str(workspace),
+            report=str(report_path),
+            strict=True,
+        ),
+    )
+
+    assert result.is_success
+    outcome = result.unwrap()
+    assert report_path.is_file()
+    if shutil.which("actionlint") is None:
+        assert outcome.status == "skipped"
+    else:
+        assert outcome.status == "ok"
+
+
+def test_run_github_pull_request_fails_for_minimal_repo(
+    tmp_path: Path,
+) -> None:
+    workspace = u.Infra.Tests.create_github_workspace(
+        tmp_path,
+        project_names=("flext-a",),
+    )
+
+    result = infra.run_github_pull_request(
+        m.Infra.GithubPullRequestRequest(
+            repo_root=str(workspace / "flext-a"),
+            action="status",
+        ),
+    )
+
+    assert result.is_failure
+    assert "PR operation exited with code" in (result.error or "")

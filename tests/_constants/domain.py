@@ -1,0 +1,84 @@
+"""Domain test constants mixin for flext-infra.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
+from __future__ import annotations
+
+from typing import Final
+
+
+class TestsFlextInfraConstantsProjects:
+    """Constants mixin for projects."""
+
+    class Infra:
+        class Tests:
+            class Projects:
+                """Project names and identifiers for infra testing."""
+
+                FLEXT_CORE: Final[str] = "flext-core"
+                FLEXT_API: Final[str] = "flext-api"
+                FLEXT_CLI: Final[str] = "flext-cli"
+                FLEXT_MELTANO: Final[str] = "flext-meltano"
+                FLEXT_LDAP: Final[str] = "flext-ldap"
+                FLEXT_LDIF: Final[str] = "flext-ldif"
+                FLEXT_OBSERVABILITY: Final[str] = "flext-observability"
+                FLEXT_QUALITY: Final[str] = "flext-quality"
+
+                ALL_PROJECTS: Final[tuple[str, ...]] = (
+                    FLEXT_CORE,
+                    FLEXT_API,
+                    FLEXT_CLI,
+                    FLEXT_MELTANO,
+                    FLEXT_LDAP,
+                    FLEXT_LDIF,
+                    FLEXT_OBSERVABILITY,
+                    FLEXT_QUALITY,
+                )
+
+
+class TestsFlextInfraConstantsMarkers:
+    """Constants mixin for markers."""
+
+    class Infra:
+        class Tests:
+            class Markers:
+                """Test markers for infra test categorization."""
+
+                INFRA: Final[str] = "infra"
+                INTEGRATION: Final[str] = "integration"
+                DOCKER: Final[str] = "docker"
+                SLOW: Final[str] = "slow"
+                REQUIRES_NETWORK: Final[str] = "requires_network"
+                REQUIRES_DOCKER: Final[str] = "requires_docker"
+
+
+class TestsFlextInfraConstantsVersions:
+    """Constants mixin for versions."""
+
+    class Infra:
+        class Tests:
+            class Versions:
+                """Version strings for infra components."""
+
+                PYTHON_MIN: Final[str] = "3.13"
+                PYTHON_RECOMMENDED: Final[str] = "3.13"
+                POETRY_MIN: Final[str] = "1.8"
+                RUFF_MIN: Final[str] = "0.1"
+                MYPY_MIN: Final[str] = "1.0"
+
+
+class TestsFlextInfraConstantsPaths:
+    """Constants mixin for paths."""
+
+    class Infra:
+        class Tests:
+            class Paths:
+                """Path constants for infra testing."""
+
+                DOCKER_COMPOSE_DIR: Final[str] = "docker"
+                TESTS_DIR: Final[str] = "tests"
+                INFRA_TESTS_DIR: Final[str] = "tests/infra"
+                FIXTURES_DIR: Final[str] = "tests/fixtures"
+                INTEGRATION_DIR: Final[str] = "tests/integration"

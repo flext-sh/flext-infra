@@ -9,7 +9,16 @@ from typing import Annotated, override
 
 from pydantic import Field
 
-from flext_infra import FlextInfraDocAuditorMixin, c, m, r, s, t, u
+from flext_infra import (
+    FlextInfraDocAuditorMixin,
+    FlextInfraUtilitiesCliDispatch,
+    c,
+    m,
+    r,
+    s,
+    t,
+    u,
+)
 
 
 class FlextInfraDocAuditor(s[bool], FlextInfraDocAuditorMixin):
@@ -178,41 +187,12 @@ class FlextInfraDocAuditor(s[bool], FlextInfraDocAuditorMixin):
 
     @classmethod
     def main(cls, argv: t.StrSequence | None = None) -> int:
-        """CLI entrypoint retained for compatibility with the existing tests."""
-        parser = u.Infra.create_parser(
-            "flext-infra docs audit",
-            "Audit generated and curated FLEXT documentation.",
-            flags=u.Infra.SharedFlags(
-                include_apply=False,
-                include_check=True,
-                include_project=True,
-            ),
+        """Legacy entrypoint routed through the canonical docs CLI."""
+        return FlextInfraUtilitiesCliDispatch.run_command(
+            c.Infra.Directories.DOCS,
+            "audit",
+            argv,
         )
-        _ = parser.add_argument(
-            "--output-dir",
-            default=c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
-            help="Report output directory",
-        )
-        _ = parser.add_argument(
-            "--strict",
-            action="store_true",
-            default=False,
-            help="Fail when issues exceed the allowed budget",
-        )
-        args = parser.parse_args(argv)
-        cli = u.Infra.resolve(args)
-        result = cls().audit(
-            cli.workspace,
-            projects=cli.projects,
-            output_dir=str(args.output_dir),
-            params=m.Infra.AuditScopeParams(
-                check="all",
-                strict=bool(args.strict),
-            ),
-        )
-        if result.is_failure:
-            return 1
-        return 0 if all(report.passed for report in result.value) else 1
 
     def _audit_params(
         self,

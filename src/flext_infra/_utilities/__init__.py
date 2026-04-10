@@ -30,6 +30,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".base": ("FlextInfraUtilitiesBase",),
         ".census": ("FlextInfraUtilitiesRefactorCensus",),
         ".cli": ("FlextInfraUtilitiesCli",),
+        ".cli_dispatch": ("FlextInfraUtilitiesCliDispatch",),
         ".cli_shared": ("FlextInfraUtilitiesCliShared",),
         ".cli_subcommand": ("FlextInfraUtilitiesCliSubcommand",),
         ".codegen": ("FlextInfraUtilitiesCodegen",),

@@ -2,18 +2,15 @@
 
 from __future__ import annotations
 
+import importlib
 import sys
 from collections.abc import Callable
 from types import MappingProxyType
 from typing import ClassVar
 
-from flext_cli import cli as cli_service
-from flext_core import FlextLogger
-from flext_infra import t
-from flext_infra.api import infra
-from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from flext_infra.constants import c
-from flext_infra.deps.cli import FlextInfraCliDeps
+from flext_cli import FlextCliSettings, cli as cli_service
+from flext_core import FlextLogger, FlextSettings
+from flext_infra import c, t
 
 
 class FlextInfraCli:
@@ -55,28 +52,27 @@ class FlextInfraCli:
 
     def __init__(self) -> None:
         """Initialize the thin CLI router over the public infra facade."""
-        self._service = infra
         self._group_registrars: t.MappingKV[
             str,
             Callable[[t.Cli.CliApp], None],
         ] = MappingProxyType({
-            "basemk": self._service.register_basemk,
-            "codegen": self._service.register_codegen,
-            "validate": self._service.register_validate,
-            c.Infra.Directories.DOCS: self._service.register_docs,
-            "github": self._service.register_github,
-            "maintenance": self._service.register_maintenance,
-            "refactor": self._service.register_refactor,
-            c.Infra.ReportKeys.RELEASE: self._service.register_release,
-            c.Infra.ReportKeys.WORKSPACE: self._service.register_workspace,
+            "basemk": self._register_basemk,
+            c.Infra.Verbs.CHECK: self._register_check,
+            "codegen": self._register_codegen,
+            "deps": self._register_deps,
+            "validate": self._register_validate,
+            c.Infra.Directories.DOCS: self._register_docs,
+            "github": self._register_github,
+            "maintenance": self._register_maintenance,
+            "refactor": self._register_refactor,
+            c.Infra.ReportKeys.RELEASE: self._register_release,
+            c.Infra.ReportKeys.WORKSPACE: self._register_workspace,
         })
-        self._group_runners: t.MappingKV[
-            str,
-            Callable[[t.StrSequence | None], int],
-        ] = MappingProxyType({
-            c.Infra.Verbs.CHECK: FlextInfraWorkspaceChecker.run_cli,
-            "deps": FlextInfraCliDeps.run,
-        })
+
+    @staticmethod
+    def _cli_settings() -> FlextCliSettings:
+        """Return the shared CLI settings namespace without importing the API facade."""
+        return FlextSettings.get_global().get_namespace("cli", FlextCliSettings)
 
     def main(self, args: t.StrSequence | None = None) -> int:
         """Run the centralized dispatcher."""
@@ -89,9 +85,6 @@ class FlextInfraCli:
             self.print_help()
             return 0
         group, group_args = cli_args[0], cli_args[1:]
-        runner = self._group_runners.get(group)
-        if runner is not None:
-            return runner(group_args)
         if group not in self.GROUPS:
             cli_service.display_message(
                 f"unknown group '{group}'",
@@ -149,7 +142,7 @@ class FlextInfraCli:
         app = cli_service.create_app_with_common_params(
             name=f"{self.app_name} {group}",
             help_text=self.GROUPS[group],
-            config=self._service.settings,
+            config=self._cli_settings(),
         )
         self._group_registrars[group](app)
         normalized_args = self._normalize_group_args(args)
@@ -173,6 +166,77 @@ class FlextInfraCli:
     def _is_usage_error(cls, message: str) -> bool:
         """Return True when the normalized error looks like a usage failure."""
         return any(marker in message for marker in cls._USAGE_ERROR_MARKERS)
+
+    @staticmethod
+    def _register_basemk(app: t.Cli.CliApp) -> None:
+        cli_module = importlib.import_module("flext_infra.basemk.cli")
+        cli_module.FlextInfraCliBasemk().register_basemk(app)
+
+    @staticmethod
+    def _register_check(app: t.Cli.CliApp) -> None:
+        cli_module = importlib.import_module("flext_infra.check.workspace_check_cli")
+        cli_module.FlextInfraCliCheck().register_check(app)
+
+    @staticmethod
+    def _register_codegen(app: t.Cli.CliApp) -> None:
+        cli_module = importlib.import_module("flext_infra.codegen.cli")
+        cli_module.FlextInfraCliCodegen().register_codegen(app)
+
+    @staticmethod
+    def _register_deps(app: t.Cli.CliApp) -> None:
+        cli_module = importlib.import_module("flext_infra.deps.cli")
+        cli_module.FlextInfraCliDeps().register_deps(app)
+
+    @staticmethod
+    def _register_docs(app: t.Cli.CliApp) -> None:
+        api_module = importlib.import_module("flext_infra.api")
+        api_module.infra.register_docs(app)
+
+    @staticmethod
+    def _register_github(app: t.Cli.CliApp) -> None:
+        cli_module = importlib.import_module("flext_infra.github.cli")
+        service_module = importlib.import_module("flext_infra.services.github")
+
+        class _GithubCli(
+            cli_module.FlextInfraCliGithub,
+            service_module.FlextInfraServiceGithubMixin,
+        ):
+            pass
+
+        _GithubCli().register_github(app)
+
+    @staticmethod
+    def _register_maintenance(app: t.Cli.CliApp) -> None:
+        cli_module = importlib.import_module("flext_infra.maintenance.cli")
+        cli_module.FlextInfraCliMaintenance().register_maintenance(app)
+
+    @staticmethod
+    def _register_refactor(app: t.Cli.CliApp) -> None:
+        cli_module = importlib.import_module("flext_infra.refactor.cli")
+        cli_module.FlextInfraCliRefactor().register_refactor(app)
+
+    @staticmethod
+    def _register_release(app: t.Cli.CliApp) -> None:
+        cli_module = importlib.import_module("flext_infra.release.cli")
+        cli_module.FlextInfraCliRelease().register_release(app)
+
+    @staticmethod
+    def _register_validate(app: t.Cli.CliApp) -> None:
+        cli_module = importlib.import_module("flext_infra.validate.cli")
+        cli_module.FlextInfraCliValidate().register_validate(app)
+
+    @staticmethod
+    def _register_workspace(app: t.Cli.CliApp) -> None:
+        cli_module = importlib.import_module("flext_infra.workspace.cli")
+        service_module = importlib.import_module("flext_infra.services.workspace")
+
+        class _WorkspaceCli(
+            cli_module.FlextInfraCliWorkspace,
+            service_module.FlextInfraServiceWorkspaceMixin,
+        ):
+            pass
+
+        _WorkspaceCli().register_workspace(app)
 
 
 def main(args: t.StrSequence | None = None) -> int:

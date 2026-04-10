@@ -1,133 +1,112 @@
-"""Tests for documentation command handlers exposed through the canonical API."""
+"""Public service execution tests for docs commands."""
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
-from typing import TypeAlias
+from pathlib import Path
 
-import pytest
-from flext_tests import tm
-
-from flext_core import r
 from flext_infra import (
+    FlextInfraDocAuditor,
     FlextInfraDocBuilder,
+    FlextInfraDocFixer,
     FlextInfraDocGenerator,
     FlextInfraDocValidator,
 )
-from tests import c, m, t
-
-_R: TypeAlias = m.Infra.DocsPhaseReport
+from tests import u
 
 
-def _stub_ok(val: Sequence[_R]) -> Callable[..., r[Sequence[_R]]]:
-    return lambda *_a, **_kw: r[Sequence[_R]].ok(val)
+def test_auditor_execute_fails_in_strict_mode_on_broken_links(tmp_path: Path) -> None:
+    workspace = u.Infra.Tests.create_docs_workspace(tmp_path)
+    (workspace / "docs/README.md").write_text(
+        "# Docs\n\n[Broken](missing.md)\n",
+        encoding="utf-8",
+    )
+
+    result = FlextInfraDocAuditor(
+        workspace=workspace,
+        strict_mode=True,
+    ).execute()
+
+    assert result.is_failure
 
 
-def _stub_fail(err: str) -> Callable[..., r[Sequence[_R]]]:
-    return lambda *_a, **_kw: r[Sequence[_R]].fail(err)
+def test_fixer_execute_applies_link_and_toc_updates(tmp_path: Path) -> None:
+    workspace = u.Infra.Tests.create_docs_workspace(
+        tmp_path,
+        include_fixable_link=True,
+    )
+
+    result = FlextInfraDocFixer(
+        workspace=workspace,
+        apply=True,
+    ).execute()
+
+    assert result.is_success
+    content = (workspace / "docs/README.md").read_text(encoding="utf-8")
+    assert "guides/setup.md" in content
+    assert "<!-- TOC START -->" in content
 
 
-class TestRunBuild:
-    def test_run_build_success_no_failures(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        _R(phase="test", scope="test", result="OK")
-        result = FlextInfraDocBuilder.execute_command(FlextInfraDocBuilder())
-        tm.that(result.is_success, eq=True)
+def test_generator_execute_writes_reports_for_root_and_selected_project(
+    tmp_path: Path,
+) -> None:
+    workspace = u.Infra.Tests.create_docs_workspace(
+        tmp_path,
+        project_names=("flext-a", "flext-b"),
+    )
 
-    def test_run_build_success_with_failures(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        _R(
-            phase="test",
-            scope="test",
-            result=c.Infra.Status.FAIL,
-        )
-        result = FlextInfraDocBuilder.execute_command(FlextInfraDocBuilder())
-        tm.that(result.is_failure, eq=True)
+    result = FlextInfraDocGenerator(
+        workspace=workspace,
+        selected_projects=["flext-a"],
+        apply=True,
+    ).execute()
 
-    def test_run_build_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        result = FlextInfraDocBuilder.execute_command(FlextInfraDocBuilder())
-        tm.that(result.is_failure, eq=True)
+    assert result.is_success
+    assert (workspace / ".reports/docs/generate-report.md").exists()
+    assert (workspace / "flext-a/.reports/docs/generate-report.md").exists()
+    assert not (workspace / "flext-b/.reports/docs/generate-report.md").exists()
 
 
-class TestRunGenerate:
-    def test_run_generate_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        result = FlextInfraDocGenerator.execute_command(FlextInfraDocGenerator())
-        tm.that(result.is_success, eq=True)
+def test_validator_execute_fails_before_generation_and_succeeds_after(
+    tmp_path: Path,
+) -> None:
+    workspace = u.Infra.Tests.create_docs_workspace(
+        tmp_path,
+        project_names=("flext-a",),
+    )
 
-    def test_run_generate_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            FlextInfraDocGenerator,
-            "generate",
-            _stub_fail("generate error"),
-        )
-        result = FlextInfraDocGenerator.execute_command(FlextInfraDocGenerator())
-        tm.that(result.is_failure, eq=True)
-
-    def test_run_generate_with_apply_flag(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        captured_kwargs: t.MutableScalarMapping = {}
-
-        def mock_gen(*_a: t.Scalar, **kw: t.Scalar) -> r[Sequence[_R]]:
-            captured_kwargs.update(kw)
-            return r[Sequence[_R]].ok([])
-
-        FlextInfraDocGenerator.execute_command(
-            FlextInfraDocGenerator(apply=True),
-        )
-        assert captured_kwargs.get("apply") is True
+    before = FlextInfraDocValidator(
+        workspace=workspace,
+        selected_projects=["flext-a"],
+    ).execute()
+    assert before.is_failure
+    generated = FlextInfraDocGenerator(
+        workspace=workspace,
+        selected_projects=["flext-a"],
+        apply=True,
+    ).execute()
+    assert generated.is_success
+    after = FlextInfraDocValidator(
+        workspace=workspace,
+        selected_projects=["flext-a"],
+        apply=True,
+    ).execute()
+    assert after.is_success
+    assert (workspace / "flext-a/TODOS.md").exists()
 
 
-class TestRunValidate:
-    def test_run_validate_success_no_failures(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        report = _R(phase="test", scope="test", result="OK")
-        monkeypatch.setattr(
-            FlextInfraDocValidator,
-            "validate_workspace",
-            _stub_ok([report]),
-        )
-        result = FlextInfraDocValidator.execute_command(FlextInfraDocValidator())
-        tm.that(result.is_success, eq=True)
+def test_builder_execute_skips_when_mkdocs_is_missing(tmp_path: Path) -> None:
+    workspace = u.Infra.Tests.create_docs_workspace(tmp_path)
 
-    def test_run_validate_success_with_failures(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        report = _R(
-            phase="test",
-            scope="test",
-            result=c.Infra.Status.FAIL,
-        )
-        monkeypatch.setattr(
-            FlextInfraDocValidator,
-            "validate_workspace",
-            _stub_ok([report]),
-        )
-        result = FlextInfraDocValidator.execute_command(FlextInfraDocValidator())
-        tm.that(result.is_failure, eq=True)
+    result = FlextInfraDocBuilder(workspace=workspace).execute()
 
-    def test_run_validate_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            FlextInfraDocValidator,
-            "validate_workspace",
-            _stub_fail("validate error"),
-        )
-        result = FlextInfraDocValidator.execute_command(FlextInfraDocValidator())
-        tm.that(result.is_failure, eq=True)
+    assert result.is_success
+    assert (workspace / ".reports/docs/build-report.md").exists()
 
-    def test_run_validate_with_check_parameter(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        result = FlextInfraDocValidator.execute_command(
-            FlextInfraDocValidator(check=True)
-        )
-        tm.that(result.is_success, eq=True)
+
+def test_builder_execute_fails_with_invalid_mkdocs_config(tmp_path: Path) -> None:
+    workspace = u.Infra.Tests.create_docs_workspace(tmp_path)
+    (workspace / "mkdocs.yml").write_text("site_name: [", encoding="utf-8")
+
+    result = FlextInfraDocBuilder(workspace=workspace).execute()
+
+    assert result.is_failure

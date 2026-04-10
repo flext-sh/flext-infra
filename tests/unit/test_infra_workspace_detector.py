@@ -194,4 +194,6 @@ class TestDetectorGitRunScenarios:
             msg = "Command failed"
             raise RuntimeError(msg)
 
+        monkeypatch.setattr(FlextInfraUtilitiesGit, "git_run", _raise)
+
         tm.fail(detector.detect(project_root), has="Detection failed")

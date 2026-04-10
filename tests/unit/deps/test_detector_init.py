@@ -17,56 +17,49 @@ class TestFlextInfraRuntimeDevDependencyDetectorInit:
         )
 
     def test_detector_has_required_services(self) -> None:
-        FlextInfraRuntimeDevDependencyDetector()
+        detector = FlextInfraRuntimeDevDependencyDetector()
+        tm.that(detector.reporting is not None, eq=True)
+        tm.that(detector.deps is not None, eq=True)
+        tm.that(detector.runner is not None, eq=True)
 
-    def test_parser_all_arguments(self, tmp_path: Path) -> None:
-        parser = FlextInfraRuntimeDevDependencyDetector.parser(tmp_path / "limits.toml")
-        args = parser.parse_args([
-            "--projects",
-            "test",
-            "--no-pip-check",
-            "--dry-run",
-            "--format",
-            "json",
-            "-o",
-            "/tmp/out.json",
-            "-q",
-            "--no-fail",
-            "--typings",
-            "--apply-typings",
-            "--limits",
-            "/custom/limits.toml",
-        ])
-        tm.that(args.projects, eq=["test"])
-        tm.that(args.no_pip_check, eq=True)
-        tm.that(args.dry_run, eq=True)
-        tm.that(args.output_format, eq="json")
-        tm.that(args.output, eq="/tmp/out.json")
-        tm.that(args.quiet, eq=True)
-        tm.that(args.no_fail, eq=True)
-        tm.that(args.typings, eq=True)
-        tm.that(args.apply_typings, eq=True)
-        tm.that(args.limits, eq="/custom/limits.toml")
-
-    def test_project_filter_with_single_project(self, tmp_path: Path) -> None:
-        parser = FlextInfraRuntimeDevDependencyDetector.parser(tmp_path / "limits.toml")
-        args = u.Infra.resolve(parser.parse_args(["--projects", "test-proj"]))
-        tm.that(
-            FlextInfraRuntimeDevDependencyDetector.project_filter(args),
-            eq=["test-proj"],
+    def test_detect_command_normalizes_public_fields(self, tmp_path: Path) -> None:
+        params = u.Infra.Tests.detect_command(
+            tmp_path,
+            projects=["test"],
+            no_pip_check=True,
+            output_format="json",
+            output="/tmp/out.json",
+            quiet=True,
+            no_fail=True,
+            typings=True,
+            apply_typings=True,
+            limits="/custom/limits.toml",
         )
+        tm.that(params.project_names, eq=["test"])
+        tm.that(params.no_pip_check, eq=True)
+        tm.that(params.dry_run, eq=True)
+        tm.that(params.output_format, eq="json")
+        tm.that(str(params.output_path), eq=str(Path("/tmp/out.json").resolve()))
+        tm.that(params.quiet, eq=True)
+        tm.that(params.no_fail, eq=True)
+        tm.that(params.typings, eq=True)
+        tm.that(params.apply_typings, eq=True)
+        tm.that(str(params.limits_path), eq=str(Path("/custom/limits.toml").resolve()))
 
-    def test_project_filter_with_multiple_projects(self, tmp_path: Path) -> None:
-        parser = FlextInfraRuntimeDevDependencyDetector.parser(tmp_path / "limits.toml")
-        args = u.Infra.resolve(
-            parser.parse_args(["--projects", "proj-a,proj-b,proj-c"]),
-        )
-        tm.that(
-            FlextInfraRuntimeDevDependencyDetector.project_filter(args),
-            eq=["proj-a", "proj-b", "proj-c"],
-        )
+    def test_detect_command_project_names_with_single_project(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        params = u.Infra.Tests.detect_command(tmp_path, projects=["test-proj"])
+        tm.that(params.project_names, eq=["test-proj"])
 
-    def test_project_filter_with_no_filter(self, tmp_path: Path) -> None:
-        parser = FlextInfraRuntimeDevDependencyDetector.parser(tmp_path / "limits.toml")
-        args = u.Infra.resolve(parser.parse_args([]))
-        tm.that(FlextInfraRuntimeDevDependencyDetector.project_filter(args), eq=None)
+    def test_detect_command_project_names_split_csv(self, tmp_path: Path) -> None:
+        params = u.Infra.Tests.detect_command(
+            tmp_path,
+            projects=["proj-a,proj-b", "proj-c"],
+        )
+        tm.that(params.project_names, eq=["proj-a", "proj-b", "proj-c"])
+
+    def test_detect_command_without_project_filter(self, tmp_path: Path) -> None:
+        params = u.Infra.Tests.detect_command(tmp_path)
+        tm.that(params.project_names, eq=None)

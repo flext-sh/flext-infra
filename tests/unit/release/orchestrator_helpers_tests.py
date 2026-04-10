@@ -1,310 +1,121 @@
-"""Tests for FlextInfraReleaseOrchestrator helper methods."""
+"""Public tests for release utilities and filtered release behavior."""
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+import json
 from pathlib import Path
 
-import pytest
-from _pytest.monkeypatch import MonkeyPatch
-from flext_tests import tm
-
-from flext_infra import FlextInfraReleaseOrchestrator, u as infra_u
-from tests import (
-    m,
-    r,
-    t,
-    u as tests_u,
-)
+from flext_infra import FlextInfraReleaseOrchestrator
+from tests import c, m, u
 
 
-@pytest.fixture
-def workspace_root(tmp_path: Path) -> Path:
-    root = tmp_path / "workspace"
-    root.mkdir(exist_ok=True)
-    (root / ".git").mkdir()
-    (root / "Makefile").touch()
-    (root / "pyproject.toml").write_text('version = "0.1.0"\n', encoding="utf-8")
-    return root
+def make_config(
+    workspace_root: Path,
+    *,
+    project_names: list[str] | None = None,
+) -> m.Infra.ReleaseOrchestratorConfig:
+    return m.Infra.ReleaseOrchestratorConfig(
+        workspace_root=workspace_root,
+        version="1.0.0",
+        tag="v1.0.0",
+        phases=[c.Infra.Directories.BUILD],
+        project_names=project_names,
+        dry_run=False,
+        push=False,
+        dev_suffix=False,
+        create_branches=False,
+        next_dev=False,
+        next_bump="minor",
+    )
 
 
-class TestVersionFiles:
-    def test_includes_workspace_root(self, workspace_root: Path) -> None:
-        files = FlextInfraReleaseOrchestrator()._version_files(workspace_root, [])
-        tm.that(any(f.name == "pyproject.toml" for f in files), eq=True)
+def test_generate_notes_writes_release_document(tmp_path: Path) -> None:
+    notes_path = tmp_path / "release" / "RELEASE_NOTES.md"
+    project = u.Infra.Tests.create_project_info(
+        tmp_path / "flext-a",
+        name="flext-a",
+    )
 
-    def test_discovery(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
-        proj_dir = workspace_root / "proj1"
-        proj_dir.mkdir()
-        (proj_dir / "pyproject.toml").touch()
-        tests_u.Infra.Tests.patch_release_projects(
-            monkeypatch,
-            result=r[Sequence[m.Infra.ProjectInfo]].ok([
-                m.Infra.ProjectInfo(name="proj1", path=proj_dir, stack="python"),
-            ]),
-        )
-        tm.that(
-            len(
-                FlextInfraReleaseOrchestrator()._version_files(
-                    workspace_root,
-                    ["proj1"],
-                ),
-            ),
-            gt=0,
-        )
+    result = u.Infra.generate_notes(
+        "1.0.0",
+        "v1.0.0",
+        [project],
+        "- abc123 fix release flow",
+        notes_path,
+    )
+
+    notes = notes_path.read_text(encoding="utf-8")
+    assert result.is_success
+    assert "# Release v1.0.0" in notes
+    assert "- root" in notes
+    assert "- flext-a" in notes
+    assert "- abc123 fix release flow" in notes
 
 
-class TestBuildTargets:
-    """Tests for _build_targets."""
+def test_update_changelog_creates_expected_release_files(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    notes_path = workspace / "notes.md"
+    notes_path.parent.mkdir(parents=True, exist_ok=True)
+    notes_path.write_text("# Release v1.0.0\n", encoding="utf-8")
 
-    def test_includes_root(
-        self,
-        workspace_root: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        tests_u.Infra.Tests.patch_release_projects(monkeypatch)
-        targets = FlextInfraReleaseOrchestrator()._build_targets(workspace_root, [])
-        name, path = targets[0]
-        tm.that(name, eq="root")
-        tm.that(str(path), eq=str(workspace_root))
+    result = u.Infra.update_changelog(
+        workspace,
+        "1.0.0",
+        "v1.0.0",
+        notes_path,
+    )
 
-    def test_deduplication(
-        self,
-        workspace_root: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        tests_u.Infra.Tests.patch_release_projects(
-            monkeypatch,
-            result=r[Sequence[m.Infra.ProjectInfo]].ok([
-                m.Infra.ProjectInfo(
-                    name="proj1",
-                    path=workspace_root / "proj1",
-                    stack="python",
-                ),
-            ]),
-        )
-        names = [
-            name
-            for name, _ in FlextInfraReleaseOrchestrator()._build_targets(
-                workspace_root,
-                ["proj1"],
-            )
-        ]
-        tm.that(len(names), eq=len(set(names)))
+    assert result.is_success
+    assert (workspace / "docs" / "CHANGELOG.md").is_file()
+    assert (workspace / "docs" / "releases" / "latest.md").is_file()
+    assert (workspace / "docs" / "releases" / "v1.0.0.md").is_file()
 
 
-class TestRunMake:
-    """Tests for _run_make."""
+def test_update_changelog_is_idempotent_for_existing_release_heading(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "workspace"
+    notes_path = workspace / "notes.md"
+    notes_path.parent.mkdir(parents=True, exist_ok=True)
+    notes_path.write_text("# Release v1.0.0\n", encoding="utf-8")
 
-    def test_success(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
-        output = m.Cli.CommandOutput(exit_code=0, stdout="ok", stderr="")
+    first_result = u.Infra.update_changelog(
+        workspace,
+        "1.0.0",
+        "v1.0.0",
+        notes_path,
+    )
+    second_result = u.Infra.update_changelog(
+        workspace,
+        "1.0.0",
+        "v1.0.0",
+        notes_path,
+    )
 
-        def _fake_run_raw(
-            cmd: t.StrSequence,
-            **kw: t.Scalar,
-        ) -> r[m.Cli.CommandOutput]:
-            return r[m.Cli.CommandOutput].ok(output)
-
-        result = FlextInfraReleaseOrchestrator._run_make(workspace_root, "build")
-        tm.ok(result)
-        code, _out = result.value
-        tm.that(code, eq=0)
-
-    def test_failure(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
-        def _fake_run_raw(
-            cmd: t.StrSequence,
-            **kw: t.Scalar,
-        ) -> r[m.Cli.CommandOutput]:
-            return r[m.Cli.CommandOutput].fail("failed")
-
-        tm.fail(FlextInfraReleaseOrchestrator._run_make(workspace_root, "build"))
-
-
-class TestGenerateNotes:
-    """Tests for _generate_notes."""
-
-    def test_writes_file(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
-        def _generate_notes(
-            version: str,
-            tag: str,
-            projects: Sequence[object],
-            changes: str,
-            output_path: Path,
-        ) -> r[bool]:
-            del version, projects
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            output_path.write_text(f"# Release {tag}\n{changes}\n", encoding="utf-8")
-            return r[bool].ok(True)
-
-        tests_u.Infra.Tests.patch_release_projects(monkeypatch)
-        monkeypatch.setattr(
-            infra_u.Infra,
-            "generate_notes",
-            staticmethod(_generate_notes),
-        )
-
-        def _previous_tag(*a: t.Scalar, **kw: t.Scalar) -> r[str]:
-            del a, kw
-            return r[str].ok("")
-
-        def _collect_changes(*a: t.Scalar, **kw: t.Scalar) -> r[str]:
-            del a, kw
-            return r[str].ok("")
-
-        monkeypatch.setattr(
-            FlextInfraReleaseOrchestrator,
-            "_previous_tag",
-            _previous_tag,
-        )
-        monkeypatch.setattr(
-            FlextInfraReleaseOrchestrator,
-            "_collect_changes",
-            _collect_changes,
-        )
-        notes_path = workspace_root / "notes.md"
-        config = m.Infra.ReleasePhaseDispatchConfig(
-            phase="publish",
-            workspace_root=workspace_root,
-            version="1.0.0",
-            tag="v1.0.0",
-            project_names=[],
-            dry_run=False,
-            push=False,
-            dev_suffix=False,
-        )
-        result = FlextInfraReleaseOrchestrator()._generate_notes(
-            config,
-            notes_path,
-        )
-        tm.ok(result)
-        tm.that(notes_path.exists(), eq=True)
+    changelog = (workspace / "docs" / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert first_result.is_success
+    assert second_result.is_success
+    assert changelog.count("## 1.0.0 - ") == 1
 
 
-class TestUpdateChangelog:
-    """Tests for _update_changelog."""
+def test_run_release_build_deduplicates_duplicate_project_selectors(
+    tmp_path: Path,
+) -> None:
+    workspace = u.Infra.Tests.create_release_workspace(
+        tmp_path,
+        project_names=("flext-a",),
+    )
 
-    def test_creates_files(self, workspace_root: Path) -> None:
-        notes = workspace_root / "notes.md"
-        notes.write_text("# Release v1.0.0\n")
-        result = infra_u.Infra.update_changelog(
-            workspace_root,
-            "1.0.0",
-            "v1.0.0",
-            notes,
-        )
-        tm.ok(result)
-        tm.that((workspace_root / "docs" / "CHANGELOG.md").exists(), eq=True)
+    result = FlextInfraReleaseOrchestrator().run_release(
+        make_config(
+            workspace,
+            project_names=["flext-a", "flext-a"],
+        ),
+    )
 
-    def test_appends_to_existing(self, workspace_root: Path) -> None:
-        changelog = workspace_root / "docs" / "CHANGELOG.md"
-        changelog.parent.mkdir(parents=True)
-        changelog.write_text("# Changelog\n\n## 0.9.0 - 2025-01-01\n")
-        notes = workspace_root / "notes.md"
-        notes.write_text("# Release v1.0.0\n")
-        tm.ok(
-            infra_u.Infra.update_changelog(
-                workspace_root,
-                "1.0.0",
-                "v1.0.0",
-                notes,
-            ),
-        )
-        tm.that(changelog.read_text(), contains="1.0.0")
+    report_path = workspace / ".reports" / "release" / "v1.0.0" / "build-report.json"
+    report = json.loads(report_path.read_text(encoding="utf-8"))
 
-
-class TestBumpNextDev:
-    """Tests for _bump_next_dev."""
-
-    def test_bumps_version(
-        self,
-        workspace_root: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        def _bump_ok(cur: str, kind: str) -> r[str]:
-            _ = cur, kind
-            return r[str].ok("1.1.0")
-
-        def _phase_version(*a: t.Scalar, **kw: t.Scalar) -> r[bool]:
-            del a, kw
-            return r[bool].ok(True)
-
-        monkeypatch.setattr(
-            FlextInfraReleaseOrchestrator,
-            "phase_version",
-            _phase_version,
-        )
-        tm.ok(
-            FlextInfraReleaseOrchestrator()._bump_next_dev(
-                workspace_root,
-                "1.0.0",
-                [],
-                "minor",
-            ),
-        )
-
-    def test_bump_failure(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
-        def _bump_fail(cur: str, kind: str) -> r[str]:
-            _ = cur, kind
-            return r[str].fail("invalid bump")
-
-        tm.fail(
-            FlextInfraReleaseOrchestrator()._bump_next_dev(
-                workspace_root,
-                "1.0.0",
-                [],
-                "invalid",
-            ),
-        )
-
-
-class TestDispatchPhase:
-    """Tests for _dispatch_phase."""
-
-    @staticmethod
-    def _dispatch(
-        orch: FlextInfraReleaseOrchestrator,
-        phase: str,
-        root: Path,
-    ) -> r[bool]:
-        config = m.Infra.ReleasePhaseDispatchConfig(
-            phase=phase,
-            workspace_root=root,
-            version="1.0.0",
-            tag="v1.0.0",
-            project_names=[],
-            dry_run=False,
-            push=False,
-            dev_suffix=False,
-        )
-        return orch._dispatch_phase(config)
-
-    def test_unknown_phase(self, workspace_root: Path) -> None:
-        result = self._dispatch(
-            FlextInfraReleaseOrchestrator(),
-            "unknown",
-            workspace_root,
-        )
-        tm.fail(result)
-        tm.that(result.error, contains="unknown phase")
-
-    def test_routes_validate(
-        self,
-        workspace_root: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        def _phase_validate(*a: t.Scalar, **kw: t.Scalar) -> r[bool]:
-            del a, kw
-            return r[bool].ok(True)
-
-        monkeypatch.setattr(
-            FlextInfraReleaseOrchestrator,
-            "phase_validate",
-            _phase_validate,
-        )
-        tm.ok(
-            self._dispatch(
-                FlextInfraReleaseOrchestrator(),
-                "validate",
-                workspace_root,
-            ),
-        )
+    assert result.is_success
+    assert report["total"] == 2
+    assert [record["project"] for record in report["records"]] == ["root", "flext-a"]

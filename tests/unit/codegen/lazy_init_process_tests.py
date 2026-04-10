@@ -47,10 +47,9 @@ class TestProcessDirectory:
         result = u.Infra.Tests.run_lazy_init(workspace_root, check_only=True)
 
         assert result == 0
-        assert (
-            (package_root / "__init__.py").read_text(encoding="utf-8")
-            == original_init
-        )
+        assert (package_root / "__init__.py").read_text(
+            encoding="utf-8"
+        ) == original_init
 
     def test_skips_directory_without_package(self, tmp_path: Path) -> None:
         """Directories outside canonical package roots are skipped."""

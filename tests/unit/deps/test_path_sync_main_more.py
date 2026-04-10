@@ -1,295 +1,174 @@
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
+import tomllib
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
-import pytest
 from flext_tests import tm
 
-from flext_infra import (
-    FlextInfraUtilitiesDependencyPathSync,
-)
-from tests import c, m, r, t
+from tests import u
 
 
-def _workspace_root() -> Path:
-    return FlextInfraUtilitiesDependencyPathSync.ROOT
+def _nested_value(pyproject_path: Path, *keys: str) -> object:
+    current: object = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
+    for key in keys:
+        assert isinstance(current, dict)
+        current = current[key]
+    return current
 
 
-def _project(
-    path: Path,
-    name: str = "flext-core",
-    *,
-    workspace_role: c.Infra.WorkspaceProjectRole = c.Infra.WorkspaceProjectRole.ATTACHED,
-) -> m.Infra.ProjectInfo:
-    return m.Infra.ProjectInfo(
-        path=path,
-        name=name,
-        stack="python",
-        has_tests=False,
-        has_src=False,
-        workspace_role=workspace_role,
-    )
+def _string_value(pyproject_path: Path, *keys: str) -> str:
+    value = _nested_value(pyproject_path, *keys)
+    assert isinstance(value, str)
+    return value
 
 
-class _OutputRecorder:
-    def __init__(self) -> None:
-        self.calls: MutableSequence[str] = []
-
-    def info(self, message: str) -> r[bool]:
-        self.calls.append(message)
-        return r[bool].ok(True)
+def _string_list_value(pyproject_path: Path, *keys: str) -> list[str]:
+    value = _nested_value(pyproject_path, *keys)
+    assert isinstance(value, Sequence)
+    assert all(isinstance(item, str) for item in value)
+    return list(value)
 
 
-def test_main_project_invalid_toml(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    (tmp_path / "pyproject.toml").write_text('[project]\nname = "flext-workspace"\n')
-    project_dir = tmp_path / "flext-core"
-    project_dir.mkdir()
-    (project_dir / "pyproject.toml").write_text("invalid toml [[[")
-
-    def _discover_project(
-        _root: Path,
-    ) -> r[Sequence[m.Infra.ProjectInfo]]:
-        return r[Sequence[m.Infra.ProjectInfo]].ok([_project(project_dir)])
-
-    monkeypatch.setattr(
-        FlextInfraUtilitiesDependencyPathSync, "discover_projects", _discover_project
-    )
-    tm.that(FlextInfraUtilitiesDependencyPathSync.main(), eq=1)
+def _mapping_value(pyproject_path: Path, *keys: str) -> Mapping[str, object]:
+    value = _nested_value(pyproject_path, *keys)
+    assert isinstance(value, Mapping)
+    return value
 
 
-def test_main_project_no_name(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    (tmp_path / "pyproject.toml").write_text('[project]\nname = "flext-workspace"\n')
-    project_dir = tmp_path / "flext-core"
-    project_dir.mkdir()
-    (project_dir / "pyproject.toml").write_text("[project]\n")
-
-    def _discover_project(
-        _root: Path,
-    ) -> r[Sequence[m.Infra.ProjectInfo]]:
-        return r[Sequence[m.Infra.ProjectInfo]].ok([_project(project_dir)])
-
-    monkeypatch.setattr(
-        FlextInfraUtilitiesDependencyPathSync, "discover_projects", _discover_project
-    )
-    tm.that(FlextInfraUtilitiesDependencyPathSync.main(), eq=0)
-
-
-def test_main_project_non_string_name(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    (tmp_path / "pyproject.toml").write_text('[project]\nname = "flext-workspace"\n')
-    project_dir = tmp_path / "flext-core"
-    project_dir.mkdir()
-    (project_dir / "pyproject.toml").write_text("[project]\nname = 123\n")
-
-    def _discover_project(
-        _root: Path,
-    ) -> r[Sequence[m.Infra.ProjectInfo]]:
-        return r[Sequence[m.Infra.ProjectInfo]].ok([_project(project_dir)])
-
-    monkeypatch.setattr(
-        FlextInfraUtilitiesDependencyPathSync, "discover_projects", _discover_project
-    )
-    tm.that(FlextInfraUtilitiesDependencyPathSync.main(), eq=0)
-
-
-def test_main_discovery_failure(monkeypatch: pytest.MonkeyPatch) -> None:
-    def _discover_fail(
-        _root: Path,
-    ) -> r[Sequence[m.Infra.ProjectInfo]]:
-        return r[Sequence[m.Infra.ProjectInfo]].fail("discovery failed")
-
-    monkeypatch.setattr(
-        FlextInfraUtilitiesDependencyPathSync, "discover_projects", _discover_fail
-    )
-    tm.that(FlextInfraUtilitiesDependencyPathSync.main(), eq=1)
-
-
-def test_main_no_changes_needed(monkeypatch: pytest.MonkeyPatch) -> None:
-    def _discover_none(
-        _root: Path,
-    ) -> r[Sequence[m.Infra.ProjectInfo]]:
-        return r[Sequence[m.Infra.ProjectInfo]].ok([])
-
-    def _rewrite_ok(
-        _self: FlextInfraUtilitiesDependencyPathSync,
-        _pyproject_path: Path,
-        *,
-        mode: str,
-        internal_names: set[str],
-        workspace_members: t.StrSequence = (),
-        is_root: bool = False,
-        dry_run: bool = False,
-    ) -> r[t.StrSequence]:
-        _ = (
-            _self,
-            _pyproject_path,
-            mode,
-            internal_names,
-            workspace_members,
-            is_root,
-            dry_run,
-        )
-        return r[t.StrSequence].ok([])
-
-    monkeypatch.setattr(
-        FlextInfraUtilitiesDependencyPathSync, "discover_projects", _discover_none
-    )
-    monkeypatch.setattr(
-        FlextInfraUtilitiesDependencyPathSync, "rewrite_dep_paths", _rewrite_ok
-    )
-    tm.that(FlextInfraUtilitiesDependencyPathSync.main(), eq=0)
-
-
-def test_workspace_root_fallback(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    deep = tmp_path / "a" / "b" / "c" / "d" / "e" / "f"
-    deep.mkdir(parents=True)
-
-    def _resolve(_self: Path) -> Path:
-        return deep / "test.py"
-
-    tm.that(_workspace_root().is_absolute(), eq=True)
-
-
-def test_main_with_changes_and_dry_run(monkeypatch: pytest.MonkeyPatch) -> None:
-    recorder = _OutputRecorder()
-
-    def _discover_none(
-        _root: Path,
-    ) -> r[Sequence[m.Infra.ProjectInfo]]:
-        return r[Sequence[m.Infra.ProjectInfo]].ok([])
-
-    def _rewrite_changes(
-        _self: FlextInfraUtilitiesDependencyPathSync,
-        _pyproject_path: Path,
-        *,
-        mode: str,
-        internal_names: set[str],
-        workspace_members: t.StrSequence = (),
-        is_root: bool = False,
-        dry_run: bool = False,
-    ) -> r[t.StrSequence]:
-        _ = (
-            _self,
-            _pyproject_path,
-            mode,
-            internal_names,
-            workspace_members,
-            is_root,
-            dry_run,
-        )
-        return r[t.StrSequence].ok(["  PEP621: old -> new"])
-
-    monkeypatch.setattr(
-        FlextInfraUtilitiesDependencyPathSync, "discover_projects", _discover_none
-    )
-    monkeypatch.setattr(
-        FlextInfraUtilitiesDependencyPathSync,
-        "rewrite_dep_paths",
-        _rewrite_changes,
-    )
-    tm.that(FlextInfraUtilitiesDependencyPathSync.main(), eq=0)
-    tm.that(any("[DRY-RUN]" in call for call in recorder.calls), eq=True)
-
-
-def test_main_with_changes_no_dry_run(monkeypatch: pytest.MonkeyPatch) -> None:
-    recorder = _OutputRecorder()
-
-    def _discover_none(
-        _root: Path,
-    ) -> r[Sequence[m.Infra.ProjectInfo]]:
-        return r[Sequence[m.Infra.ProjectInfo]].ok([])
-
-    def _rewrite_changes(
-        _self: FlextInfraUtilitiesDependencyPathSync,
-        _pyproject_path: Path,
-        *,
-        mode: str,
-        internal_names: set[str],
-        workspace_members: t.StrSequence = (),
-        is_root: bool = False,
-        dry_run: bool = False,
-    ) -> r[t.StrSequence]:
-        _ = (
-            _self,
-            _pyproject_path,
-            mode,
-            internal_names,
-            workspace_members,
-            is_root,
-            dry_run,
-        )
-        return r[t.StrSequence].ok(["  PEP621: old -> new"])
-
-    monkeypatch.setattr(
-        FlextInfraUtilitiesDependencyPathSync, "discover_projects", _discover_none
-    )
-    monkeypatch.setattr(
-        FlextInfraUtilitiesDependencyPathSync,
-        "rewrite_dep_paths",
-        _rewrite_changes,
-    )
-    tm.that(FlextInfraUtilitiesDependencyPathSync.main(), eq=0)
-    assert len(recorder.calls) > 0
-
-
-def test_workspace_members_only_include_flext_projects(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    (tmp_path / "pyproject.toml").write_text('[project]\nname = "flext-workspace"\n')
-    flext_core = tmp_path / "flext-core"
-    flext_core.mkdir()
-    (flext_core / "pyproject.toml").write_text('[project]\nname = "flext-core"\n')
-    flexcore = tmp_path / "flexcore"
-    flexcore.mkdir()
-    (flexcore / "pyproject.toml").write_text('[project]\nname = "flexcore"\n')
-    algar = tmp_path / "algar-oud-mig"
-    algar.mkdir()
-    (algar / "pyproject.toml").write_text('[project]\nname = "algar-oud-mig"\n')
-    seen: list[t.StrSequence] = []
-
-    def _discover(
-        _root: Path,
-    ) -> r[Sequence[m.Infra.ProjectInfo]]:
-        return r[Sequence[m.Infra.ProjectInfo]].ok([
-            _project(
-                flext_core,
-                "flext-core",
-                workspace_role=c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER,
+def test_run_cli_dry_run_preserves_pyproject_files(tmp_path: Path) -> None:
+    workspace = u.Infra.Tests.create_path_sync_workspace(
+        tmp_path,
+        root_pyproject=u.Infra.Tests.create_path_sync_pyproject(
+            name="flext-workspace",
+            dependency_path=".flext-deps/flext-core",
+            workspace_members=("flext-core", "flext-cli"),
+        ),
+        projects={
+            "flext-core": u.Infra.Tests.create_path_sync_pyproject(name="flext-core"),
+            "flext-cli": u.Infra.Tests.create_path_sync_pyproject(
+                name="flext-cli",
+                dependency_path=".flext-deps/flext-core",
             ),
-            _project(flexcore, "flexcore"),
-            _project(algar, "algar-oud-mig"),
-        ])
-
-    def _rewrite_ok(
-        _self: FlextInfraUtilitiesDependencyPathSync,
-        _pyproject_path: Path,
-        *,
-        mode: str,
-        internal_names: set[str],
-        workspace_members: t.StrSequence = (),
-        is_root: bool = False,
-        dry_run: bool = False,
-    ) -> r[t.StrSequence]:
-        _ = (_self, _pyproject_path, mode, internal_names, is_root, dry_run)
-        seen.append(tuple(workspace_members))
-        return r[t.StrSequence].ok([])
-
-    monkeypatch.setattr(
-        FlextInfraUtilitiesDependencyPathSync, "discover_projects", _discover
+        },
+        gitmodules_members=("flext-core", "flext-cli"),
     )
-    monkeypatch.setattr(
-        FlextInfraUtilitiesDependencyPathSync, "rewrite_dep_paths", _rewrite_ok
+    before_root = (workspace / "pyproject.toml").read_text(encoding="utf-8")
+    before_cli = (workspace / "flext-cli" / "pyproject.toml").read_text(
+        encoding="utf-8",
     )
 
-    tm.that(FlextInfraUtilitiesDependencyPathSync.main(), eq=0)
-    assert {tuple(item) for item in seen} == {("flext-core",)}
+    exit_code = u.Infra.run_cli(["--workspace", str(workspace), "--mode", "workspace"])
+
+    tm.that(exit_code, eq=0)
+    tm.that(
+        (workspace / "pyproject.toml").read_text(encoding="utf-8"),
+        eq=before_root,
+    )
+    tm.that(
+        (workspace / "flext-cli" / "pyproject.toml").read_text(encoding="utf-8"),
+        eq=before_cli,
+    )
+
+
+def test_execute_only_rewrites_selected_projects(tmp_path: Path) -> None:
+    workspace = u.Infra.Tests.create_path_sync_workspace(
+        tmp_path,
+        root_pyproject=u.Infra.Tests.create_path_sync_pyproject(
+            name="flext-workspace",
+            dependency_path=".flext-deps/flext-core",
+            workspace_members=("flext-core", "flext-api", "flext-cli"),
+        ),
+        projects={
+            "flext-core": u.Infra.Tests.create_path_sync_pyproject(name="flext-core"),
+            "flext-cli": u.Infra.Tests.create_path_sync_pyproject(
+                name="flext-cli",
+                dependency_path=".flext-deps/flext-core",
+            ),
+            "flext-api": u.Infra.Tests.create_path_sync_pyproject(
+                name="flext-api",
+                dependency_path=".flext-deps/flext-core",
+            ),
+        },
+    )
+    before_root = (workspace / "pyproject.toml").read_text(encoding="utf-8")
+    before_api = (workspace / "flext-api" / "pyproject.toml").read_text(
+        encoding="utf-8",
+    )
+    cli = u.Infra.CliArgs(
+        workspace=workspace,
+        apply=True,
+        projects=["flext-cli"],
+    )
+
+    exit_code = u.Infra().execute(cli=cli, mode="workspace")
+
+    tm.that(exit_code, eq=0)
+    tm.that(
+        (workspace / "pyproject.toml").read_text(encoding="utf-8"),
+        eq=before_root,
+    )
+    tm.that(
+        (workspace / "flext-api" / "pyproject.toml").read_text(encoding="utf-8"),
+        eq=before_api,
+    )
+    tm.that(
+        _string_list_value(
+            workspace / "flext-cli" / "pyproject.toml",
+            "project",
+            "dependencies",
+        ),
+        eq=["flext-core"],
+    )
+    tm.that(
+        _string_value(
+            workspace / "flext-cli" / "pyproject.toml",
+            "tool",
+            "poetry",
+            "dependencies",
+            "flext-core",
+            "path",
+        ),
+        eq="../flext-core",
+    )
+
+
+def test_main_keeps_uv_workspace_members_limited_to_real_members(
+    tmp_path: Path,
+) -> None:
+    workspace = u.Infra.Tests.create_path_sync_workspace(
+        tmp_path,
+        root_pyproject=u.Infra.Tests.create_path_sync_pyproject(
+            name="flext-workspace",
+            dependency_path=".flext-deps/flext-core",
+            workspace_members=("flext-core",),
+        ),
+        projects={
+            "flext-core": u.Infra.Tests.create_path_sync_pyproject(name="flext-core"),
+            "algar-oud-mig": u.Infra.Tests.create_path_sync_pyproject(
+                name="algar-oud-mig",
+                dependency_path=".flext-deps/flext-core",
+            ),
+        },
+        gitmodules_members=("flext-core",),
+    )
+
+    exit_code = u.Infra.main(["--workspace", str(workspace), "--apply"])
+
+    tm.that(exit_code, eq=0)
+    tm.that(
+        _string_list_value(
+            workspace / "pyproject.toml",
+            "tool",
+            "uv",
+            "workspace",
+            "members",
+        ),
+        eq=["flext-core"],
+    )
+    assert "algar-oud-mig" not in _mapping_value(
+        workspace / "pyproject.toml",
+        "tool",
+        "uv",
+        "sources",
+    )

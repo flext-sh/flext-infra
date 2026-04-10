@@ -117,6 +117,7 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.base import FlextInfraUtilitiesBase
     from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
     from flext_infra._utilities.cli import FlextInfraUtilitiesCli
+    from flext_infra._utilities.cli_dispatch import FlextInfraUtilitiesCliDispatch
     from flext_infra._utilities.cli_shared import FlextInfraUtilitiesCliShared
     from flext_infra._utilities.cli_subcommand import FlextInfraUtilitiesCliSubcommand
     from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen
@@ -134,6 +135,9 @@ if _t.TYPE_CHECKING:
     )
     from flext_infra._utilities.codegen_import_cycles import (
         FlextInfraUtilitiesCodegenImportCycles,
+    )
+    from flext_infra._utilities.deps_path_sync import (
+        FlextInfraUtilitiesDependencyPathSync,
     )
     from flext_infra._utilities.deps_paths import FlextInfraExtraPathsResolutionMixin
     from flext_infra._utilities.deps_repos import FlextInfraInternalSyncRepoMixin
@@ -210,12 +214,11 @@ if _t.TYPE_CHECKING:
         FlextInfraGateRegistry,
         FlextInfraWorkspaceCheckGatesMixin,
     )
-    from flext_infra.check.workspace_check import (
-        FlextInfraWorkspaceChecker,
-        build_parser,
-        run_cli,
+    from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker, run_cli
+    from flext_infra.check.workspace_check_cli import (
+        FlextInfraCliCheck,
+        FlextInfraWorkspaceCheckerCli,
     )
-    from flext_infra.check.workspace_check_cli import FlextInfraWorkspaceCheckerCli
     from flext_infra.cli import FlextInfraCli, main
     from flext_infra.codegen._codegen_generation import FlextInfraCodegenGeneration
     from flext_infra.codegen.census import FlextInfraCodegenCensus
@@ -269,7 +272,6 @@ if _t.TYPE_CHECKING:
     from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
     from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
     from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
-    from flext_infra.deps.path_sync import FlextInfraUtilitiesDependencyPathSync
     from flext_infra.deps.path_sync_rewrite import FlextInfraDependencyPathSyncRewrite
     from flext_infra.detectors._base_detector import (
         DetectorContext,
@@ -405,9 +407,11 @@ if _t.TYPE_CHECKING:
         FlextInfraRefactorPatternCorrectionsRule,
     )
     from flext_infra.services.basemk import FlextInfraServiceBasemkMixin
+    from flext_infra.services.check import FlextInfraServiceCheckMixin
     from flext_infra.services.codegen import FlextInfraServiceCodegenMixin
     from flext_infra.services.consolidator import FlextInfraCodegenConsolidator
     from flext_infra.services.deduplicator import FlextInfraCodegenDeduplicator
+    from flext_infra.services.deps import FlextInfraServiceDepsMixin
     from flext_infra.services.github import FlextInfraServiceGithubMixin
     from flext_infra.services.pipeline import FlextInfraCodegenPipeline
     from flext_infra.services.refactor import FlextInfraServiceRefactorMixin
@@ -583,6 +587,7 @@ __all__ = [
     "FlextInfraClassPlacementDetector",
     "FlextInfraCli",
     "FlextInfraCliBasemk",
+    "FlextInfraCliCheck",
     "FlextInfraCliCodegen",
     "FlextInfraCliDeps",
     "FlextInfraCliGithub",
@@ -761,7 +766,9 @@ __all__ = [
     "FlextInfraScanFileMixin",
     "FlextInfraServiceBase",
     "FlextInfraServiceBasemkMixin",
+    "FlextInfraServiceCheckMixin",
     "FlextInfraServiceCodegenMixin",
+    "FlextInfraServiceDepsMixin",
     "FlextInfraServiceGithubMixin",
     "FlextInfraServiceRefactorMixin",
     "FlextInfraServiceReleaseMixin",
@@ -784,6 +791,7 @@ __all__ = [
     "FlextInfraUtilities",
     "FlextInfraUtilitiesBase",
     "FlextInfraUtilitiesCli",
+    "FlextInfraUtilitiesCliDispatch",
     "FlextInfraUtilitiesCliShared",
     "FlextInfraUtilitiesCliSubcommand",
     "FlextInfraUtilitiesCodegen",
@@ -875,7 +883,6 @@ __all__ = [
     "__url__",
     "__version__",
     "__version_info__",
-    "build_parser",
     "c",
     "d",
     "e",

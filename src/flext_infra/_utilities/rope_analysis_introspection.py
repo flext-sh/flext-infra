@@ -9,12 +9,12 @@ from rope.base.exceptions import RefactoringError, ResourceNotFoundError
 
 from flext_infra import (
     FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesRopeCore,
     c,
     m,
     p,
     t,
 )
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 
 
 class FlextInfraUtilitiesRopeAnalysisIntrospection:

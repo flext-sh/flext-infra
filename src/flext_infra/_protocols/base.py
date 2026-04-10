@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import argparse
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
@@ -14,7 +13,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 from flext_core import FlextProtocols, r
 
 if TYPE_CHECKING:
-    from flext_infra import m, t, u
+    from flext_infra import m, t
 
 
 class FlextInfraProtocolsBase(Protocol):
@@ -286,16 +285,6 @@ class FlextInfraProtocolsBase(Protocol):
         runner: FlextInfraProtocolsBase.RunnerService
         log: FlextProtocols.Logger
 
-        @staticmethod
-        def parser(default_limits_path: Path) -> argparse.ArgumentParser:
-            """Create argument parser for detector CLI."""
-            ...
-
-        @staticmethod
-        def project_filter(cli: u.Infra.CliArgs) -> t.StrSequence | None:
-            """Resolve project filter list from parsed args."""
-            ...
-
     @runtime_checkable
     class TemplateRenderer(Protocol):
         """Protocol for template rendering engines."""
@@ -374,6 +363,20 @@ class FlextInfraProtocolsBase(Protocol):
 
         def execute(self) -> r[bool]:
             """Execute codegen fix pass."""
+            ...
+
+    @runtime_checkable
+    class CodegenCensusService(Protocol):
+        """Protocol for codegen census services reused across pipeline stages."""
+
+        def run(
+            self,
+            workspace_root: Path | None = None,
+            *,
+            output_format: str = "json",
+            projects: Sequence[FlextInfraProtocolsBase.ProjectInfo] | None = None,
+        ) -> Sequence[m.Infra.CensusReport]:
+            """Run census and return typed reports."""
             ...
 
     class PyprojectModernizer(Protocol):

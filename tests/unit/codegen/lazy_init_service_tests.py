@@ -166,9 +166,9 @@ class TestFlextInfraCodegenLazyInit:
         result = u.Infra.Tests.run_lazy_init(workspace_root)
 
         assert result == 0
-        assert "TestPkgServices" in (
-            package_root / "__init__.py"
-        ).read_text(encoding="utf-8")
+        assert "TestPkgServices" in (package_root / "__init__.py").read_text(
+            encoding="utf-8"
+        )
 
     def test_nested_private_base_module_does_not_trigger_root_contract(
         self,
@@ -206,7 +206,9 @@ class TestFlextInfraCodegenLazyInit:
         result = u.Infra.Tests.run_lazy_init(workspace_root)
 
         assert result == 1
-        assert (package_root / "__init__.py").read_text(encoding="utf-8") == original_init
+        assert (package_root / "__init__.py").read_text(
+            encoding="utf-8"
+        ) == original_init
 
 
 __all__: t.StrSequence = []

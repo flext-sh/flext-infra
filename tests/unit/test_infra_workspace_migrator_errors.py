@@ -47,6 +47,8 @@ class TestMigratorWriteFailures:
                 raise OSError(msg)
             return original_write(self, data, **kwargs)
 
+        monkeypatch.setattr(Path, "write_text", _selective_write)
+
         result = migrator.execute()
         migration = tm.ok(result)
         tm.that(
@@ -72,10 +74,15 @@ class TestMigratorWriteFailures:
             workspace_root=tmp_path,
             dry_run=False,
         )
+        original_write = Path.write_text
 
-        def _write_fail(_self: Path, _data: str, **_kw: t.Scalar) -> int:
-            msg = "Write failed"
-            raise OSError(msg)
+        def _write_fail(self: Path, data: str, **kwargs: str | None) -> int:
+            if self.name == "base.mk":
+                msg = "Write failed"
+                raise OSError(msg)
+            return original_write(self, data, **kwargs)
+
+        monkeypatch.setattr(Path, "write_text", _write_fail)
 
         result = migrator.execute()
         migration = tm.ok(result)
@@ -106,6 +113,8 @@ class TestMigratorWriteFailures:
                 raise OSError(msg)
             return original_write(self, data, **kwargs)
 
+        monkeypatch.setattr(Path, "write_text", _selective_write)
+
         result = migrator.execute()
         migration = tm.ok(result)
         tm.that(
@@ -132,6 +141,8 @@ class TestMigratorWriteFailures:
                 msg = "pyproject write failed"
                 raise OSError(msg)
             return original_write(self, data, **kwargs)
+
+        monkeypatch.setattr(Path, "write_text", _selective_write)
 
         result = migrator.execute()
         migration = tm.ok(result)
@@ -167,6 +178,8 @@ class TestMigratorReadFailures:
                 msg = ".gitignore read failed"
                 raise OSError(msg)
             return original_read(self, **kwargs)
+
+        monkeypatch.setattr(Path, "read_text", _selective_read)
 
         result = migrator.execute()
         migration = tm.ok(result)

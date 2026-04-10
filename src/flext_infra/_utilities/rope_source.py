@@ -10,10 +10,10 @@ from typing import ClassVar
 
 from flext_infra import (
     FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesRopeCore,
     c,
     t,
 )
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 
 
 class FlextInfraUtilitiesRopeSource:

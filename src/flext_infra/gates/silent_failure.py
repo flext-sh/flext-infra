@@ -7,9 +7,13 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import FlextInfraGate, c, m, t, u
-from flext_infra.detectors.silent_failure_detector import (
+from flext_infra import (
+    FlextInfraGate,
     FlextInfraSilentFailureDetector,
+    c,
+    m,
+    t,
+    u,
 )
 
 

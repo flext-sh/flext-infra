@@ -1,163 +1,64 @@
-"""Tests for the centralized basemk CLI group.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Public CLI tests for the basemk command group."""
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
-from _pytest.monkeypatch import MonkeyPatch
-from flext_tests import tm
-
-from flext_core import r
-from flext_infra import (
-    FlextInfraBaseMkTemplateEngine,
-    m,
-    main as infra_main,
-)
-from tests import t
+from flext_infra import main as infra_main
 
 
-def main(argv: list[str] | None = None) -> int:
-    args = ["basemk"]
-    args.extend(list(argv) if argv is not None else sys.argv[1:])
-    return infra_main(args)
+def basemk_main(argv: list[str]) -> int:
+    return infra_main(["basemk", *argv])
 
 
-def _build_config(project_name: str | None) -> m.Infra.BaseMkConfig | None:
-    """Build a basemk config using the canonical template defaults."""
-    if project_name is None:
-        return None
-    return FlextInfraBaseMkTemplateEngine.default_config().model_copy(
-        update={"project_name": project_name},
-    )
+def test_basemk_main_without_command_returns_failure() -> None:
+    assert basemk_main([]) == 1
 
 
-def test_basemk_main_with_no_command(monkeypatch: MonkeyPatch) -> None:
-    """Test main() with no command prints help and returns 1."""
-    result = main(argv=[])
-    tm.that(result, eq=1)
+def test_basemk_main_with_generate_command_succeeds() -> None:
+    assert basemk_main(["generate"]) == 0
 
 
-def test_basemk_main_with_generate_command(monkeypatch: MonkeyPatch) -> None:
-    """Test main() with generate command succeeds."""
-    result = main(argv=["generate"])
-    tm.that(result, eq=0)
-
-
-def test_basemk_main_with_output_file(tmp_path: Path) -> None:
-    """Test main() writes to output file when specified."""
-    output_file = tmp_path / "base.mk"
-    result = main(argv=["generate", "--output", str(output_file)])
-    tm.that(result, eq=0)
-    tm.that(output_file.exists(), eq=True)
-    content = output_file.read_text(encoding="utf-8")
-    assert content
-
-
-def test_basemk_main_with_project_name(tmp_path: Path) -> None:
-    """Test main() accepts project name override."""
-    output_file = tmp_path / "base.mk"
-    result = main(
-        argv=[
-            "generate",
-            "--project-name",
-            "my-project",
-            "--output",
-            str(output_file),
-        ],
-    )
-    tm.that(result, eq=0)
-    tm.that(output_file.exists(), eq=True)
-
-
-def test_basemk_main_with_invalid_command() -> None:
-    """Test main() with invalid command returns 2."""
-    result = main(argv=["invalid"])
-    tm.that(result, eq=2)
-
-
-def test_basemk_main_rejects_apply_flag() -> None:
-    """Test main() accepts the shared apply flag exposed by the dispatcher."""
-    result = main(argv=["--apply", "generate"])
-    tm.that(result, eq=0)
-
-
-def test_basemk_main_ensures_structlog_configured(
-    monkeypatch: MonkeyPatch,
-) -> None:
-    """Test main() ensures structlog is configured."""
-    call_count = 0
-
-    def _fake_ensure() -> None:
-        nonlocal call_count
-        call_count += 1
-
-    monkeypatch.setattr(
-        "flext_core.FlextLogger.ensure_structlog_configured",
-        _fake_ensure,
-    )
-    main(argv=["generate"])
-    tm.that(call_count, gte=1)
-
-
-def test_basemk_build_config_with_none() -> None:
-    """Test _build_config returns None when project_name is None."""
-    result = _build_config(None)
-    tm.that(result, none=True)
-
-
-def test_basemk_build_config_with_project_name() -> None:
-    """Test _build_config returns config with project name."""
-    result = _build_config("my-project")
-    tm.that(result, none=False)
-    assert result is not None
-    tm.that(result.project_name, eq="my-project")
-
-
-def test_basemk_main_with_none_argv(monkeypatch: MonkeyPatch) -> None:
-    """Test main() with None argv uses sys.argv."""
-    result = main(argv=None)
-    tm.that(result, eq=0)
-
-
-def test_basemk_main_output_to_stdout(monkeypatch: MonkeyPatch) -> None:
-    """Test main() outputs to stdout when no output file specified."""
-    result = main(argv=["generate"])
-    tm.that(result, eq=0)
-
-
-def test_basemk_main_with_generation_failure(
-    tmp_path: Path,
-    monkeypatch: MonkeyPatch,
-) -> None:
-    """Test main() handles generation failure."""
-
-    def mock_generate(*args: t.Scalar, **kwargs: t.Scalar) -> r[str]:
-        return r[str].fail("Generation failed")
-
-    result = main(argv=["generate"])
-    tm.that(result, eq=1)
-
-
-def test_basemk_main_with_help(monkeypatch: MonkeyPatch) -> None:
-    """Test main() with --help returns 0."""
-    result = main(argv=["--help"])
-    tm.that(result, eq=0)
-
-
-def test_basemk_main_with_write_failure(
-    tmp_path: Path,
-    monkeypatch: MonkeyPatch,
-) -> None:
-    """Test main() handles write failure gracefully."""
+def test_basemk_main_with_output_file_writes_content(tmp_path: Path) -> None:
     output_file = tmp_path / "base.mk"
 
-    def mock_write(*args: t.Scalar, **kwargs: t.Scalar) -> r[bool]:
-        return r[bool].fail("Write failed")
+    assert basemk_main(["generate", "--output", str(output_file)]) == 0
+    assert output_file.exists()
+    assert output_file.read_text(encoding="utf-8")
 
-    result = main(argv=["generate", "--output", str(output_file)])
-    tm.that(result, eq=1)
+
+def test_basemk_main_with_project_name_overrides_output(tmp_path: Path) -> None:
+    output_file = tmp_path / "base.mk"
+
+    assert (
+        basemk_main(
+            [
+                "generate",
+                "--project-name",
+                "my-project",
+                "--output",
+                str(output_file),
+            ],
+        )
+        == 0
+    )
+    assert "PROJECT_NAME ?= my-project" in output_file.read_text(encoding="utf-8")
+
+
+def test_basemk_main_with_invalid_command_returns_usage_error() -> None:
+    assert basemk_main(["invalid"]) == 2
+
+
+def test_basemk_main_accepts_shared_apply_flag() -> None:
+    assert basemk_main(["--apply", "generate"]) == 0
+
+
+def test_basemk_main_help_returns_success() -> None:
+    assert basemk_main(["--help"]) == 0
+
+
+def test_basemk_main_with_blocked_output_path_fails(tmp_path: Path) -> None:
+    blocked_parent = tmp_path / "blocked"
+    blocked_parent.write_text("occupied", encoding="utf-8")
+
+    assert basemk_main(["generate", "--output", str(blocked_parent / "base.mk")]) == 1

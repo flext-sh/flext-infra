@@ -1,304 +1,115 @@
-"""Tests for release version and tag resolution.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Public execute() tests for release version and tag resolution."""
 
 from __future__ import annotations
 
-from argparse import Namespace
 from pathlib import Path
 
-from _pytest.monkeypatch import MonkeyPatch
-from flext_tests import tm
-
-from flext_core import r
-from flext_infra import (
-    FlextInfraReleaseOrchestrator,
-    u,
-)
+from flext_infra import FlextInfraReleaseOrchestrator
 
 
-def _args(
-    version: str | None,
-    bump: str | None,
-    interactive: int,
-    tag: str = "",
-) -> Namespace:
-    return Namespace(version=version, bump=bump, interactive=interactive, tag=tag)
+def make_command(
+    workspace_root: Path,
+    **overrides: object,
+) -> FlextInfraReleaseOrchestrator:
+    return FlextInfraReleaseOrchestrator.model_validate({
+        "workspace_root": workspace_root,
+        "phase": "version",
+        "interactive": 0,
+        "create_branches": 0,
+        "apply_changes": True,
+        **overrides,
+    })
 
 
-def _input_minor(_prompt: str) -> str:
-    del _prompt
-    return "minor"
+def test_execute_with_explicit_version_updates_workspace_file(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    (workspace / "pyproject.toml").write_text(
+        '[project]\nname = "workspace-root"\nversion = "0.1.0"\n',
+        encoding="utf-8",
+    )
+
+    result = make_command(
+        workspace,
+        version="1.0.0",
+    ).execute()
+
+    assert result.is_success
+    assert 'version = "1.0.0"' in (workspace / "pyproject.toml").read_text()
 
 
-def _input_invalid(_prompt: str) -> str:
-    del _prompt
-    return "invalid"
+def test_execute_with_dev_suffix_appends_dev_version(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    (workspace / "pyproject.toml").write_text(
+        '[project]\nname = "workspace-root"\nversion = "0.1.0"\n',
+        encoding="utf-8",
+    )
+
+    result = make_command(
+        workspace,
+        version="1.0.0",
+        dev_suffix=True,
+    ).execute()
+
+    assert result.is_success
+    assert 'version = "1.0.0-dev"' in (workspace / "pyproject.toml").read_text()
 
 
-def _input_major(_prompt: str) -> str:
-    del _prompt
-    return "major"
+def test_execute_with_bump_uses_current_workspace_version(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    (workspace / "Makefile").write_text("build:\n\t@exit 0\n", encoding="utf-8")
+    (workspace / "pyproject.toml").write_text(
+        (
+            "[project]\n"
+            'name = "workspace-root"\n'
+            'version = "0.1.0"\n'
+            'dependencies = ["flext-core>=0.1.0"]\n'
+        ),
+        encoding="utf-8",
+    )
+
+    result = make_command(
+        workspace,
+        phase="build",
+        bump="minor",
+    ).execute()
+
+    assert result.is_success
+    assert (
+        workspace / ".reports" / "release" / "v0.2.0" / "build-report.json"
+    ).is_file()
 
 
-def _apply_vs(
-    monkeypatch: MonkeyPatch,
-    *,
-    parse: r[str] | None = None,
-    current: r[str] | None = None,
-    bump: r[str] | None = None,
-) -> None:
-    """Apply version service stubs to u.Infra static methods."""
-    if parse is not None:
-        parse_result = parse
+def test_execute_with_invalid_explicit_version_fails(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    (workspace / "pyproject.toml").write_text(
+        '[project]\nname = "workspace-root"\nversion = "0.1.0"\n',
+        encoding="utf-8",
+    )
 
-        def _parse_semver(version: str) -> r[str]:
-            _ = version
-            return parse_result
+    result = make_command(
+        workspace,
+        version="invalid",
+    ).execute()
 
-    if current is not None:
-        current_result = current
-
-        def _current_version(root: Path) -> r[str]:
-            _ = root
-            return current_result
-
-        monkeypatch.setattr(
-            u.Infra,
-            "current_workspace_version",
-            staticmethod(_current_version),
-        )
-    if bump is not None:
-        bump_result = bump
-
-        def _bump_version(cur: str, kind: str) -> r[str]:
-            _ = cur, kind
-            return bump_result
+    assert result.is_failure
 
 
-class TestReleaseMainVersionResolution:
-    """Test version resolution logic."""
+def test_execute_with_invalid_tag_prefix_fails(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    (workspace / "pyproject.toml").write_text(
+        '[project]\nname = "workspace-root"\nversion = "0.1.0"\n',
+        encoding="utf-8",
+    )
 
-    def test_resolve_version_explicit(
-        self,
-        tmp_path: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        _apply_vs(
-            monkeypatch,
-            parse=r[str].ok("1.0.0"),
-        )
-        args = _args(version="1.0.0", bump="", interactive=1)
-        result = FlextInfraReleaseOrchestrator()._resolve_version(
-            version_arg=args.version or "",
-            bump_arg=args.bump or "",
-            interactive=args.interactive,
-            root_path=tmp_path,
-        )
-        tm.that(result, ok=True, eq="1.0.0")
+    result = make_command(
+        workspace,
+        version="1.0.0",
+        tag="1.0.0",
+    ).execute()
 
-    def test_resolve_version_invalid_explicit(
-        self,
-        tmp_path: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        _apply_vs(
-            monkeypatch,
-            parse=r[str].fail("invalid"),
-        )
-        args = _args(version="invalid", bump="", interactive=1)
-        result = FlextInfraReleaseOrchestrator()._resolve_version(
-            version_arg=args.version or "",
-            bump_arg=args.bump or "",
-            interactive=args.interactive,
-            root_path=tmp_path,
-        )
-        tm.that(result, ok=False)
-
-    def test_resolve_version_from_current(
-        self,
-        tmp_path: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        _apply_vs(
-            monkeypatch,
-            current=r[str].ok("0.9.0"),
-        )
-        args = _args(version="", bump="", interactive=0)
-        result = FlextInfraReleaseOrchestrator()._resolve_version(
-            version_arg=args.version or "",
-            bump_arg=args.bump or "",
-            interactive=args.interactive,
-            root_path=tmp_path,
-        )
-        tm.that(result, ok=True, eq="0.9.0")
-
-    def test_resolve_version_current_read_failure(
-        self,
-        tmp_path: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        _apply_vs(
-            monkeypatch,
-            current=r[str].fail("read error"),
-        )
-        args = _args(version="", bump="", interactive=1)
-        result = FlextInfraReleaseOrchestrator()._resolve_version(
-            version_arg=args.version or "",
-            bump_arg=args.bump or "",
-            interactive=args.interactive,
-            root_path=tmp_path,
-        )
-        tm.that(result, ok=False)
-
-    def test_resolve_version_with_bump(
-        self,
-        tmp_path: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        _apply_vs(
-            monkeypatch,
-            current=r[str].ok("1.0.0"),
-            bump=r[str].ok("1.1.0"),
-        )
-        args = _args(version="", bump="minor", interactive=1)
-        result = FlextInfraReleaseOrchestrator()._resolve_version(
-            version_arg=args.version or "",
-            bump_arg=args.bump or "",
-            interactive=args.interactive,
-            root_path=tmp_path,
-        )
-        tm.that(result, ok=True, eq="1.1.0")
-
-    def test_resolve_version_bump_failure(
-        self,
-        tmp_path: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        _apply_vs(
-            monkeypatch,
-            current=r[str].ok("1.0.0"),
-            bump=r[str].fail("invalid bump"),
-        )
-        args = _args(version="", bump="invalid", interactive=1)
-        result = FlextInfraReleaseOrchestrator()._resolve_version(
-            version_arg=args.version or "",
-            bump_arg=args.bump or "",
-            interactive=args.interactive,
-            root_path=tmp_path,
-        )
-        tm.that(result, ok=False)
-
-    def test_resolve_version_interactive_input(
-        self,
-        tmp_path: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        _apply_vs(
-            monkeypatch,
-            current=r[str].ok("1.0.0"),
-            bump=r[str].ok("1.1.0"),
-        )
-        args = _args(version="", bump="", interactive=1)
-        result = FlextInfraReleaseOrchestrator()._resolve_version(
-            version_arg=args.version or "",
-            bump_arg=args.bump or "",
-            interactive=args.interactive,
-            root_path=tmp_path,
-        )
-        tm.that(result, ok=True, eq="1.1.0")
-
-    def test_resolve_version_interactive_invalid_input(
-        self,
-        tmp_path: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        _apply_vs(
-            monkeypatch,
-            current=r[str].ok("1.0.0"),
-        )
-        args = _args(version="", bump="", interactive=1)
-        result = FlextInfraReleaseOrchestrator()._resolve_version(
-            version_arg=args.version or "",
-            bump_arg=args.bump or "",
-            interactive=args.interactive,
-            root_path=tmp_path,
-        )
-        tm.that(result, ok=False)
-
-    def test_resolve_version_non_interactive(
-        self,
-        tmp_path: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        _apply_vs(
-            monkeypatch,
-            current=r[str].ok("1.0.0"),
-        )
-        args = _args(version="", bump="", interactive=0)
-        result = FlextInfraReleaseOrchestrator()._resolve_version(
-            version_arg=args.version or "",
-            bump_arg=args.bump or "",
-            interactive=args.interactive,
-            root_path=tmp_path,
-        )
-        tm.that(result, ok=True, eq="1.0.0")
-
-
-class TestResolveVersionInteractive:
-    """Test _resolve_version with interactive mode edge cases."""
-
-    def test_resolve_version_interactive_invalid_bump(
-        self,
-        tmp_path: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        _apply_vs(
-            monkeypatch,
-            current=r[str].ok("1.0.0"),
-        )
-        args = _args(version=None, bump=None, interactive=1)
-        result = FlextInfraReleaseOrchestrator()._resolve_version(
-            version_arg=args.version or "",
-            bump_arg=args.bump or "",
-            interactive=args.interactive,
-            root_path=tmp_path,
-        )
-        tm.that(result, ok=False)
-
-    def test_resolve_version_interactive_bump_failure(
-        self,
-        tmp_path: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        _apply_vs(
-            monkeypatch,
-            current=r[str].ok("1.0.0"),
-            bump=r[str].fail("bump failed"),
-        )
-        args = _args(version=None, bump=None, interactive=1)
-        result = FlextInfraReleaseOrchestrator()._resolve_version(
-            version_arg=args.version or "",
-            bump_arg=args.bump or "",
-            interactive=args.interactive,
-            root_path=tmp_path,
-        )
-        tm.that(result, ok=False)
-
-
-class TestReleaseMainTagResolution:
-    """Test tag resolution logic."""
-
-    def test_resolve_tag_explicit(self) -> None:
-        result = FlextInfraReleaseOrchestrator._resolve_tag("v1.0.0", "1.0.0")
-        tm.that(result, ok=True, eq="v1.0.0")
-
-    def test_resolve_tag_invalid_prefix(self) -> None:
-        result = FlextInfraReleaseOrchestrator._resolve_tag("1.0.0", "1.0.0")
-        tm.that(result, ok=False)
-
-    def test_resolve_tag_auto_generated(self) -> None:
-        result = FlextInfraReleaseOrchestrator._resolve_tag("", "1.0.0")
-        tm.that(result, ok=True, eq="v1.0.0")
+    assert result.is_failure

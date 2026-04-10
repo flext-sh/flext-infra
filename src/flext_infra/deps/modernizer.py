@@ -22,6 +22,7 @@ from flext_infra import (
     FlextInfraExtraPathsManager,
     FlextInfraInjectCommentsPhase,
     FlextInfraProjectClassifier,
+    FlextInfraUtilitiesCliDispatch,
     FlextInfraUtilitiesTomlParse,
     c,
     r,
@@ -379,8 +380,8 @@ class FlextInfraPyprojectModernizer:
         return 1 if has_warning else 0
 
     @staticmethod
-    def main(argv: t.StrSequence | None = None) -> int:
-        """Run the pyproject modernizer CLI."""
+    def run_cli(argv: t.StrSequence | None = None) -> int:
+        """Execute pyproject modernization for the canonical deps CLI."""
         parser = u.Infra.create_parser(
             "flext-infra deps modernize",
             "Modernize workspace pyproject files",
@@ -397,13 +398,22 @@ class FlextInfraPyprojectModernizer:
             help="Skip post-write build-system validation",
         )
         _ = parser.add_argument("--skip-comments", action="store_true")
-        args = parser.parse_args(argv)
+        args = parser.parse_args([] if argv is None else list(argv))
         if bool(args.dry_run or args.audit or args.check):
             args.skip_check = True
         cli = u.Infra.resolve(args)
         return FlextInfraPyprojectModernizer(workspace_root=cli.workspace).run(
             args,
             cli,
+        )
+
+    @staticmethod
+    def main(argv: t.StrSequence | None = None) -> int:
+        """Legacy entrypoint routed through the canonical deps CLI."""
+        return FlextInfraUtilitiesCliDispatch.run_command(
+            "deps",
+            "modernize",
+            argv,
         )
 
 

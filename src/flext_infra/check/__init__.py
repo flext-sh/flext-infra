@@ -13,10 +13,12 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ),
         ".workspace_check": (
             "FlextInfraWorkspaceChecker",
-            "build_parser",
             "run_cli",
         ),
-        ".workspace_check_cli": ("FlextInfraWorkspaceCheckerCli",),
+        ".workspace_check_cli": (
+            "FlextInfraCliCheck",
+            "FlextInfraWorkspaceCheckerCli",
+        ),
     },
 )
 

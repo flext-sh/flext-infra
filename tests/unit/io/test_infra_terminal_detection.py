@@ -1,124 +1,112 @@
-"""Tests for flext_infra terminal detection — color and unicode support.
-
-Tests terminal_should_use_color and terminal_should_use_unicode detection
-based on environment variables and terminal capabilities.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Public tests for terminal capability detection."""
 
 from __future__ import annotations
 
-import io
 import os
-
-from _pytest.monkeypatch import MonkeyPatch
-from flext_tests import tm
+from collections.abc import Generator
+from contextlib import contextmanager
 
 from flext_infra import FlextInfraUtilitiesReporting
 
 
-class TestShouldUseColor:
-    """Tests for terminal_should_use_color detection."""
+class _Stream:
+    def __init__(self, *, tty: bool) -> None:
+        self._tty = tty
 
-    def test_no_color_env_disables(self, monkeypatch: MonkeyPatch) -> None:
-        monkeypatch.setenv("NO_COLOR", "1")
-        tm.that(not FlextInfraUtilitiesReporting.terminal_should_use_color(), eq=True)
+    def isatty(self) -> bool:
+        return self._tty
 
-    def test_no_color_empty_string_disables(self, monkeypatch: MonkeyPatch) -> None:
-        monkeypatch.setenv("NO_COLOR", "")
-        tm.that(not FlextInfraUtilitiesReporting.terminal_should_use_color(), eq=True)
+    def write(self, msg: str, /) -> int:
+        return len(msg)
 
-    def test_force_color_enables(self, monkeypatch: MonkeyPatch) -> None:
-        for key in list(os.environ):
-            monkeypatch.delenv(key, raising=False)
-        monkeypatch.setenv("FORCE_COLOR", "1")
-        tm.that(FlextInfraUtilitiesReporting.terminal_should_use_color(), eq=True)
+    def flush(self) -> None:
+        return None
 
-    def test_no_color_beats_force_color(self, monkeypatch: MonkeyPatch) -> None:
-        for key in list(os.environ):
-            monkeypatch.delenv(key, raising=False)
-        monkeypatch.setenv("NO_COLOR", "1")
-        monkeypatch.setenv("FORCE_COLOR", "1")
-        tm.that(not FlextInfraUtilitiesReporting.terminal_should_use_color(), eq=True)
 
-    def test_ci_env_disables(self, monkeypatch: MonkeyPatch) -> None:
-        for var in ("CI", "GITHUB_ACTIONS", "GITLAB_CI"):
-            for key in list(os.environ):
-                monkeypatch.delenv(key, raising=False)
-            monkeypatch.setenv(var, "true")
-            tm.that(
-                FlextInfraUtilitiesReporting.terminal_should_use_color(),
-                eq=False,
-                msg=f"{var} should disable color",
+@contextmanager
+def _env(**updates: str | None) -> Generator[None]:
+    original = os.environ.copy()
+    try:
+        os.environ.clear()
+        for key, value in updates.items():
+            if value is not None:
+                os.environ[key] = value
+        yield
+    finally:
+        os.environ.clear()
+        os.environ.update(original)
+
+
+def test_no_color_env_disables_color() -> None:
+    with _env(NO_COLOR="1"):
+        assert FlextInfraUtilitiesReporting.terminal_should_use_color() is False
+
+
+def test_no_color_beats_force_color() -> None:
+    with _env(NO_COLOR="1", FORCE_COLOR="1"):
+        assert FlextInfraUtilitiesReporting.terminal_should_use_color() is False
+
+
+def test_force_color_enables_color() -> None:
+    with _env(FORCE_COLOR="1"):
+        assert FlextInfraUtilitiesReporting.terminal_should_use_color() is True
+
+
+def test_ci_variables_disable_color() -> None:
+    for var in ("CI", "GITHUB_ACTIONS", "GITLAB_CI"):
+        with _env(**{var: "true"}):
+            assert FlextInfraUtilitiesReporting.terminal_should_use_color() is False
+
+
+def test_tty_with_xterm_enables_color() -> None:
+    with _env(TERM="xterm-256color"):
+        assert (
+            FlextInfraUtilitiesReporting.terminal_should_use_color(
+                _Stream(tty=True),
             )
-
-    def test_tty_with_xterm_enables(self, monkeypatch: MonkeyPatch) -> None:
-        stream = io.StringIO()
-        object.__setattr__(stream, "isatty", lambda: True)
-        for key in list(os.environ):
-            monkeypatch.delenv(key, raising=False)
-        monkeypatch.setenv("TERM", "xterm-256color")
-        tm.that(FlextInfraUtilitiesReporting.terminal_should_use_color(stream), eq=True)
-
-    def test_tty_with_dumb_term_disables(self, monkeypatch: MonkeyPatch) -> None:
-        stream = io.StringIO()
-        object.__setattr__(stream, "isatty", lambda: True)
-        for key in list(os.environ):
-            monkeypatch.delenv(key, raising=False)
-        monkeypatch.setenv("TERM", "dumb")
-        tm.that(
-            not FlextInfraUtilitiesReporting.terminal_should_use_color(stream), eq=True
-        )
-
-    def test_tty_with_empty_term_disables(self, monkeypatch: MonkeyPatch) -> None:
-        stream = io.StringIO()
-        object.__setattr__(stream, "isatty", lambda: True)
-        for key in list(os.environ):
-            monkeypatch.delenv(key, raising=False)
-        monkeypatch.setenv("TERM", "")
-        tm.that(
-            not FlextInfraUtilitiesReporting.terminal_should_use_color(stream), eq=True
-        )
-
-    def test_non_tty_disables(self, monkeypatch: MonkeyPatch) -> None:
-        stream = io.StringIO()
-        for key in list(os.environ):
-            monkeypatch.delenv(key, raising=False)
-        tm.that(
-            not FlextInfraUtilitiesReporting.terminal_should_use_color(stream), eq=True
+            is True
         )
 
 
-class TestShouldUseUnicode:
-    """Tests for terminal_should_use_unicode detection."""
+def test_tty_with_dumb_or_empty_term_disables_color() -> None:
+    with _env(TERM="dumb"):
+        assert (
+            FlextInfraUtilitiesReporting.terminal_should_use_color(
+                _Stream(tty=True),
+            )
+            is False
+        )
+    with _env(TERM=""):
+        assert (
+            FlextInfraUtilitiesReporting.terminal_should_use_color(
+                _Stream(tty=True),
+            )
+            is False
+        )
 
-    def test_utf8_lang_enables(self, monkeypatch: MonkeyPatch) -> None:
-        for key in list(os.environ):
-            monkeypatch.delenv(key, raising=False)
-        monkeypatch.setenv("LANG", "en_US.UTF-8")
-        tm.that(FlextInfraUtilitiesReporting.terminal_should_use_unicode(), eq=True)
 
-    def test_lc_all_utf8_enables(self, monkeypatch: MonkeyPatch) -> None:
-        for key in list(os.environ):
-            monkeypatch.delenv(key, raising=False)
-        monkeypatch.setenv("LC_ALL", "en_US.utf8")
-        tm.that(FlextInfraUtilitiesReporting.terminal_should_use_unicode(), eq=True)
+def test_non_tty_disables_color() -> None:
+    with _env():
+        assert (
+            FlextInfraUtilitiesReporting.terminal_should_use_color(_Stream(tty=False))
+            is False
+        )
 
-    def test_c_locale_disables(self, monkeypatch: MonkeyPatch) -> None:
-        for key in list(os.environ):
-            monkeypatch.delenv(key, raising=False)
-        monkeypatch.setenv("LANG", "C")
-        tm.that(not FlextInfraUtilitiesReporting.terminal_should_use_unicode(), eq=True)
 
-    def test_empty_env_disables(self, monkeypatch: MonkeyPatch) -> None:
-        for key in list(os.environ):
-            monkeypatch.delenv(key, raising=False)
-        tm.that(not FlextInfraUtilitiesReporting.terminal_should_use_unicode(), eq=True)
+def test_utf8_locale_enables_unicode() -> None:
+    with _env(LANG="en_US.UTF-8"):
+        assert FlextInfraUtilitiesReporting.terminal_should_use_unicode() is True
+    with _env(LC_ALL="en_US.utf8"):
+        assert FlextInfraUtilitiesReporting.terminal_should_use_unicode() is True
 
-    def test_lc_all_takes_priority(self, monkeypatch: MonkeyPatch) -> None:
-        for key in list(os.environ):
-            monkeypatch.delenv(key, raising=False)
-        monkeypatch.setenv("LC_ALL", "en_US.UTF-8")
-        monkeypatch.setenv("LANG", "C")
-        tm.that(FlextInfraUtilitiesReporting.terminal_should_use_unicode(), eq=True)
+
+def test_non_utf8_locale_disables_unicode() -> None:
+    with _env(LANG="C"):
+        assert FlextInfraUtilitiesReporting.terminal_should_use_unicode() is False
+    with _env():
+        assert FlextInfraUtilitiesReporting.terminal_should_use_unicode() is False
+
+
+def test_lc_all_takes_priority_over_lang() -> None:
+    with _env(LC_ALL="en_US.UTF-8", LANG="C"):
+        assert FlextInfraUtilitiesReporting.terminal_should_use_unicode() is True
