@@ -9,13 +9,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import Mapping
 from pathlib import Path
 
 from pydantic import ValidationError
 
-from flext_cli import u
+from flext_cli import u as _cli_u
 from flext_infra import (
+    FlextInfraUtilitiesBase,
     c,
     m,
     r,
@@ -44,7 +45,7 @@ class FlextInfraUtilitiesRefactorPolicy:
         policy_path: Path,
     ) -> r[Mapping[str, t.Infra.InfraValue]]:
         """Load and validate a YAML policy document."""
-        raw = u.Cli.yaml_load_mapping(policy_path)
+        raw = _cli_u.Cli.yaml_load_mapping(policy_path)
         if not raw:
             return r[Mapping[str, t.Infra.InfraValue]].fail(
                 f"Failed to load policy {policy_path}",
@@ -68,7 +69,7 @@ class FlextInfraUtilitiesRefactorPolicy:
         if loaded.is_failure:
             return {}
         by_family: dict[str, m.Infra.ClassNestingPolicy] = {}
-        for raw in FlextInfraUtilitiesRefactorPolicy._mapping_list_for_policy(
+        for raw in FlextInfraUtilitiesBase.normalize_mapping_list(
             loaded.value.get("policy_matrix"),
         ):
             try:
@@ -79,44 +80,17 @@ class FlextInfraUtilitiesRefactorPolicy:
         return by_family
 
     @staticmethod
-    def _mapping_list_for_policy(
-        value: t.Infra.InfraValue | None,
-    ) -> list[Mapping[str, t.Infra.InfraValue]]:
-        """Normalize policy fields that should contain mapping collections."""
-        return list(FlextInfraUtilitiesRefactorPolicy.mapping_list(value))
-
-    @staticmethod
     def module_family_from_path(path: str) -> str:
         """Resolve module family key from a source file path."""
         normalized = path.replace("\\", "/")
-        for key in FlextInfraUtilitiesRefactorPolicy._MODULE_FAMILY_KEYS:
-            if key in normalized:
-                return key
-        return "other_private"
-
-    @staticmethod
-    def mapping_list(
-        value: t.Infra.InfraValue | None,
-    ) -> Sequence[Mapping[str, t.Infra.InfraValue]]:
-        """Normalize policy fields that should contain mapping collections."""
-        if value is None:
-            return []
-        if not isinstance(value, list):
-            msg = "expected Sequence[Mapping[str, t.Infra.InfraValue]] value"
-            raise TypeError(msg)
-        try:
-            value_items: Sequence[t.Infra.InfraValue] = (
-                t.Infra.INFRA_SEQ_ADAPTER.validate_python(value)
-            )
-        except ValidationError as exc:
-            msg = "expected Sequence[Mapping[str, t.Infra.InfraValue]] value"
-            raise ValueError(msg) from exc
-        normalized: MutableSequence[Mapping[str, t.Infra.InfraValue]] = []
-        for item in value_items:
-            if not u.is_mapping(item):
-                continue
-            normalized.append(t.Infra.INFRA_MAPPING_ADAPTER.validate_python(item))
-        return normalized
+        return next(
+            (
+                key
+                for key in FlextInfraUtilitiesRefactorPolicy._MODULE_FAMILY_KEYS
+                if key in normalized
+            ),
+            "other_private",
+        )
 
     @staticmethod
     def _class_nesting_target_matches(target_namespace: str, pattern: str) -> bool:

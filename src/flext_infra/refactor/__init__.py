@@ -7,12 +7,12 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 _LAZY_IMPORTS = build_lazy_import_map(
     {
-        "._base_rule": (
+        ".base_rule": (
             "FlextInfraGenericTransformerRule",
             "FlextInfraRefactorRule",
         ),
-        "._engine_helpers": ("FlextInfraRefactorEngineHelpersMixin",),
-        "._engine_rules": (
+        ".engine_helpers": ("FlextInfraRefactorEngineHelpersMixin",),
+        ".engine_rules": (
             "FlextInfraRefactorClassReconstructorRule",
             "FlextInfraRefactorLegacyRemovalTextRule",
             "FlextInfraRefactorMROClassMigrationTextRule",
@@ -24,7 +24,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
             "FlextInfraRefactorTypingAnnotationFixRule",
             "FlextInfraRefactorTypingUnificationRule",
         ),
-        "._namespace_enforcer_phases": ("FlextInfraNamespaceEnforcerPhasesMixin",),
+        ".namespace_enforcer_phases": ("FlextInfraNamespaceEnforcerPhasesMixin",),
         ".census": ("FlextInfraRefactorCensus",),
         ".class_nesting_analyzer": ("FlextInfraRefactorClassNestingAnalyzer",),
         ".cli": ("FlextInfraCliRefactor",),

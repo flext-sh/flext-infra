@@ -396,23 +396,25 @@ class FlextInfraUtilitiesRopeSource:
         if workspace_root is None:
             return (source, [])
         original_disk_source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
-        rope_project = FlextInfraUtilitiesRopeCore.init_rope_project(workspace_root)
         try:
-            resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
-                rope_project,
-                file_path,
-            )
-            if resource is None:
-                return (source, [])
-            if resource.read() != source:
-                FlextInfraUtilitiesRopeCore.apply_source_change(
+            with FlextInfraUtilitiesRopeCore.open_project(
+                workspace_root,
+            ) as rope_project:
+                resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
                     rope_project,
-                    resource,
-                    source,
-                    description="sync source",
+                    file_path,
                 )
-            new_source, changes = transformer_fn(rope_project, resource)
-            return (new_source, list(changes))
+                if resource is None:
+                    return (source, [])
+                if resource.read() != source:
+                    FlextInfraUtilitiesRopeCore.apply_source_change(
+                        rope_project,
+                        resource,
+                        source,
+                        description="sync source",
+                    )
+                new_source, changes = transformer_fn(rope_project, resource)
+                return (new_source, list(changes))
         finally:
             if (
                 file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
@@ -422,7 +424,6 @@ class FlextInfraUtilitiesRopeSource:
                     original_disk_source,
                     encoding=c.Infra.Encoding.DEFAULT,
                 )
-            rope_project.close()
 
 
 __all__ = ["FlextInfraUtilitiesRopeSource"]

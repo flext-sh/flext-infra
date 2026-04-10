@@ -64,7 +64,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
             except ValidationError:
                 continue
             for parsed_violation in parsed_violations:
-                normalized_file = cls._normalize_module_path(parsed_violation.file)
+                normalized_file = u.Infra.normalize_module_path(parsed_violation.file)
                 if target_files and normalized_file not in target_files:
                     continue
                 line = parsed_violation.line if parsed_violation.line > 0 else 1
@@ -155,7 +155,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
         index: MutableMapping[t.Infra.StrPair, m.Infra.ClassNestingMapping] = {}
         for entry in entries:
             scope = cls._normalize_rewrite_scope(entry.rewrite_scope)
-            norm = cls._normalize_module_path(entry.current_file)
+            norm = u.Infra.normalize_module_path(entry.current_file)
             index[norm, entry.loose_name] = m.Infra.ClassNestingMapping(
                 loose_name=entry.loose_name,
                 current_file=entry.current_file,
@@ -166,18 +166,6 @@ class FlextInfraRefactorClassNestingAnalyzer:
                 reason=entry.reason,
             )
         return r[Mapping[t.Infra.Pair[str, str], m.Infra.ClassNestingMapping]].ok(index)
-
-    @classmethod
-    def _normalize_module_path(cls, raw_path: str) -> str:
-        normalized = raw_path.replace("\\", "/")
-        path = Path(normalized)
-        parts = path.parts
-        if c.Infra.Paths.DEFAULT_SRC_DIR in parts:
-            src_index = parts.index(c.Infra.Paths.DEFAULT_SRC_DIR)
-            suffix = parts[src_index + 1 :]
-            if suffix:
-                return Path(*suffix).as_posix()
-        return path.as_posix().lstrip("./")
 
     @classmethod
     def _normalize_rewrite_scope(cls, raw_scope: str | None) -> str:

@@ -165,9 +165,6 @@ class FlextInfraUtilitiesRefactorPydantic:
         Returns None if the file has no moves, or a result with move details.
         """
         cls = FlextInfraUtilitiesRefactorPydantic
-        found_models, found_aliases = (
-            FlextInfraUtilitiesRefactorPydanticAnalysis.scan_file_violations(file_path)
-        )
         collected_moves = (
             FlextInfraUtilitiesRefactorPydanticAnalysis.collect_moves_safe(
                 file_path,
@@ -176,10 +173,12 @@ class FlextInfraUtilitiesRefactorPydantic:
         )
         if collected_moves is None:
             return m.Infra.CentralizerFileResult(
-                found_models=found_models,
-                found_aliases=found_aliases,
+                found_models=0,
+                found_aliases=0,
             )
         class_moves, alias_moves = collected_moves
+        found_models = len(class_moves)
+        found_aliases = len(alias_moves)
         if not class_moves and not alias_moves:
             return m.Infra.CentralizerFileResult(
                 found_models=found_models,
@@ -320,36 +319,27 @@ class FlextInfraUtilitiesRefactorPydantic:
     ) -> t.IntMapping:
         """Centralize model contracts and normalize namespace scaffolds."""
         cls = FlextInfraUtilitiesRefactorPydantic
-        moved_classes = 0
-        moved_aliases = 0
-        normalized_files = 0
-        touched_files = 0
-        scanned_files = 0
-        detected_model_violations = 0
-        detected_alias_violations = 0
-        failed_apply_writes = 0
-        created_model_files = 0
-        created_typings_files = 0
-        skipped_nonpackage_apply = 0
-        skipped_non_necessary_apply = 0
+        stats: dict[str, int] = {
+            "scanned_files": 0,
+            "touched_files": 0,
+            "moved_classes": 0,
+            "moved_aliases": 0,
+            "normalized_files": 0,
+            "detected_model_violations": 0,
+            "detected_alias_violations": 0,
+            "failed_apply_writes": 0,
+            "created_model_files": 0,
+            "created_typings_files": 0,
+            "skipped_nonpackage_apply": 0,
+            "skipped_non_necessary_apply": 0,
+        }
         failure_stats = m.Infra.CentralizerFailureStats()
         files_result = FlextInfraUtilitiesIteration.iter_python_files(
             workspace_root=workspace_root,
         )
         if files_result.is_failure:
             return {
-                "scanned_files": scanned_files,
-                "touched_files": touched_files,
-                "moved_classes": moved_classes,
-                "moved_aliases": moved_aliases,
-                "normalized_files": normalized_files,
-                "detected_model_violations": detected_model_violations,
-                "detected_alias_violations": detected_alias_violations,
-                "failed_apply_writes": failed_apply_writes,
-                "created_model_files": created_model_files,
-                "created_typings_files": created_typings_files,
-                "skipped_nonpackage_apply": skipped_nonpackage_apply,
-                "skipped_non_necessary_apply": skipped_non_necessary_apply,
+                **stats,
                 "parse_syntax_errors": failure_stats.parse_syntax_errors,
                 "parse_encoding_errors": failure_stats.parse_encoding_errors,
                 "parse_io_errors": failure_stats.parse_io_errors + 1,
@@ -360,7 +350,7 @@ class FlextInfraUtilitiesRefactorPydantic:
                 continue
             if cls._is_allowed_model_path(file_path):
                 continue
-            scanned_files += 1
+            stats["scanned_files"] += 1
             result = cls._process_single_file(
                 file_path,
                 apply=apply,
@@ -368,10 +358,10 @@ class FlextInfraUtilitiesRefactorPydantic:
             )
             if result is None:
                 continue
-            detected_model_violations += result.found_models
-            detected_alias_violations += result.found_aliases
+            stats["detected_model_violations"] += result.found_models
+            stats["detected_alias_violations"] += result.found_aliases
             if result.skipped_non_necessary:
-                skipped_non_necessary_apply += 1
+                stats["skipped_non_necessary_apply"] += 1
                 continue
             if not result.apply_class_moves and not result.apply_alias_moves:
                 continue
@@ -382,7 +372,7 @@ class FlextInfraUtilitiesRefactorPydantic:
             )
             if apply:
                 if not (file_path.parent / c.Infra.Files.INIT_PY).exists():
-                    skipped_nonpackage_apply += 1
+                    stats["skipped_nonpackage_apply"] += 1
                     continue
                 if not cls._apply_protected_updates(
                     workspace_root=workspace_root,
@@ -391,28 +381,20 @@ class FlextInfraUtilitiesRefactorPydantic:
                     updated_dest=updated_dest,
                     updated_source=updated_source,
                 ):
-                    failed_apply_writes += 1
+                    stats["failed_apply_writes"] += 1
                     continue
             if not dest_exists:
-                created_model_files += 1
-            moved_classes += len(result.apply_class_moves)
-            moved_aliases += len(result.apply_alias_moves)
-            touched_files += 1
+                stats["created_model_files"] += 1
+            stats["moved_classes"] += len(result.apply_class_moves)
+            stats["moved_aliases"] += len(result.apply_alias_moves)
+            stats["touched_files"] += 1
         if normalize_remaining:
-            normalized_files = cls._normalize_pass(python_files, apply=apply)
+            stats["normalized_files"] = cls._normalize_pass(
+                python_files,
+                apply=apply,
+            )
         return {
-            "scanned_files": scanned_files,
-            "touched_files": touched_files,
-            "moved_classes": moved_classes,
-            "moved_aliases": moved_aliases,
-            "normalized_files": normalized_files,
-            "detected_model_violations": detected_model_violations,
-            "detected_alias_violations": detected_alias_violations,
-            "failed_apply_writes": failed_apply_writes,
-            "created_model_files": created_model_files,
-            "created_typings_files": created_typings_files,
-            "skipped_nonpackage_apply": skipped_nonpackage_apply,
-            "skipped_non_necessary_apply": skipped_non_necessary_apply,
+            **stats,
             "parse_syntax_errors": failure_stats.parse_syntax_errors,
             "parse_encoding_errors": failure_stats.parse_encoding_errors,
             "parse_io_errors": failure_stats.parse_io_errors,

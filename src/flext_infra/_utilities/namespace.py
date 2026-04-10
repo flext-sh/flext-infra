@@ -76,11 +76,7 @@ class FlextInfraUtilitiesCodegenNamespace:
     @staticmethod
     def discover_project_root(path: Path) -> Path | None:
         """Return the nearest project root containing ``pyproject.toml``."""
-        start = path.parent if path.is_file() else path
-        for candidate in (start, *start.parents):
-            if (candidate / c.Infra.Files.PYPROJECT_FILENAME).is_file():
-                return candidate
-        return None
+        return FlextInfraUtilitiesDiscovery.discover_project_root_from_file(path)
 
     @classmethod
     def derive_project_prefix(cls, path: Path) -> str:
@@ -122,6 +118,23 @@ class FlextInfraUtilitiesCodegenNamespace:
             rel_parts[0],
             "",
         )
+
+    @classmethod
+    def is_surface_root_package(cls, package_name: str) -> bool:
+        """Return whether *package_name* belongs to a governed wrapper surface."""
+        root_name = package_name.split(".", maxsplit=1)[0]
+        return root_name in cls._GENINIT_SURFACE_PREFIXES
+
+    @staticmethod
+    def is_fixture_package(package_name: str) -> bool:
+        """Return whether *package_name* is the canonical tests fixtures surface."""
+        parts = tuple(part for part in package_name.split(".") if part)
+        return parts[:2] == (c.Infra.Directories.TESTS, "fixtures")
+
+    @staticmethod
+    def is_main_export_file(file_path: Path) -> bool:
+        """Return whether *file_path* is allowed to export module-level ``main``."""
+        return file_path.name in {"cli.py", "main.py"}
 
     @staticmethod
     def project_class_stem(*, project_name: str) -> str:
@@ -332,10 +345,7 @@ class FlextInfraUtilitiesCodegenNamespace:
     ) -> None:
         if not file_path.is_file():
             return
-        rope_project: t.Infra.RopeProject = FlextInfraUtilitiesRope.init_rope_project(
-            file_path.parent
-        )
-        try:
+        with FlextInfraUtilitiesRope.open_project(file_path.parent) as rope_project:
             resource: t.Infra.RopeResource | None = (
                 FlextInfraUtilitiesRope.get_resource_from_path(
                     rope_project,
@@ -360,8 +370,6 @@ class FlextInfraUtilitiesCodegenNamespace:
                 updated,
                 description=f"normalize facade base in <{resource.path}>",
             )
-        finally:
-            rope_project.close()
         ctx.files_modified.add(str(file_path))
         ctx.fix(
             module=str(file_path),

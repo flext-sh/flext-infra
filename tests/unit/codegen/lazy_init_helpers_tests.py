@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from tests import u
+from tests import c, u
 
 
 class TestInferPackage:
@@ -403,6 +403,82 @@ class TestBuildSiblingExportIndex:
         for _, _, class_name in family_specs:
             tm.that(index, contains=class_name)
 
+    @pytest.mark.parametrize(
+        ("surface", "family_dir", "file_name", "class_name"),
+        [
+            ("tests", "_models", "mixins.py", "TestsFlextDemoModelsMixins"),
+            (
+                "examples",
+                "_utilities",
+                "helpers.py",
+                "ExamplesFlextDemoUtilitiesHelpers",
+            ),
+            ("scripts", "_protocols", "base.py", "ScriptsFlextDemoProtocolsBase"),
+        ],
+    )
+    def test_surface_private_family_packages_export_canonical_classes(
+        self,
+        tmp_path: Path,
+        surface: str,
+        family_dir: str,
+        file_name: str,
+        class_name: str,
+    ) -> None:
+        """Governed surface family packages must expose canonical namespace classes."""
+        project_root = tmp_path / "flext-demo"
+        family_root = project_root / surface / family_dir
+        family_root.mkdir(parents=True)
+        (project_root / c.Infra.Files.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "flext-demo"\n',
+        )
+        (project_root / surface / c.Infra.Files.INIT_PY).write_text("")
+        (family_root / c.Infra.Files.INIT_PY).write_text("")
+        (family_root / file_name).write_text(f"class {class_name}:\n    pass\n")
+
+        index = u.Infra.build_sibling_export_index(
+            family_root,
+            f"{surface}.{family_dir}",
+        )
+
+        tm.that(index, contains=class_name)
+
+    def test_tests_root_namespace_class_is_not_filtered_by_test_prefix(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Governed tests root files must export canonical TestsFlext* classes."""
+        project_root = tmp_path / "flext-demo"
+        tests_dir = project_root / "tests"
+        tests_dir.mkdir(parents=True)
+        (project_root / c.Infra.Files.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "flext-demo"\n',
+        )
+        (tests_dir / c.Infra.Files.INIT_PY).write_text("")
+        (tests_dir / "models.py").write_text("class TestsFlextDemoModels:\n    pass\n")
+
+        index = u.Infra.build_sibling_export_index(tests_dir, "tests")
+
+        tm.that(index, contains="TestsFlextDemoModels")
+
+    def test_test_modules_still_do_not_export_pytest_local_classes(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Pytest-local test classes remain excluded from tests.unit exports."""
+        project_root = tmp_path / "flext-demo"
+        unit_dir = project_root / "tests" / "unit"
+        unit_dir.mkdir(parents=True)
+        (project_root / c.Infra.Files.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "flext-demo"\n',
+        )
+        (project_root / "tests" / c.Infra.Files.INIT_PY).write_text("")
+        (unit_dir / c.Infra.Files.INIT_PY).write_text("")
+        (unit_dir / "test_api.py").write_text("class TestsFlextDemoApi:\n    pass\n")
+
+        index = u.Infra.build_sibling_export_index(unit_dir, "tests.unit")
+
+        tm.that(index, eq={})
+
     def test_private_typings_allows_local_type_checking_alias_imports(
         self,
         tmp_path: Path,
@@ -599,14 +675,14 @@ class TestBuildSiblingExportIndex:
         pkg_dir = tmp_path / "codegen"
         pkg_dir.mkdir(parents=True)
         (pkg_dir / "__init__.py").write_text("")
-        (pkg_dir / "_codegen_generation.py").write_text(
+        (pkg_dir / "codegen_generation.py").write_text(
             "class TestPkgCodegenGeneration:\n    pass\n",
         )
 
         index = u.Infra.build_sibling_export_index(pkg_dir, "test_pkg.codegen")
 
         tm.that(index, contains="TestPkgCodegenGeneration")
-        tm.that(index, excludes="_codegen_generation")
+        tm.that(index, excludes="codegen_generation")
 
 
 class TestExtractExports:

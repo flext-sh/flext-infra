@@ -120,6 +120,7 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
             py_file.parent
             for py_file in files_result.unwrap_or(())
             if u.Infra.dir_has_py_files(py_file.parent)
+            or (py_file.parent / c.Infra.Files.INIT_PY).is_file()
         }
         return sorted(pkg_dirs, key=lambda p: len(p.parts), reverse=True)
 
@@ -162,7 +163,6 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
                 lazy_map.setdefault(export_name, entry)
             if not pkg_dir.name.startswith("_"):
                 self._aliases.resolve_aliases(lazy_map, pkg_dir=pkg_dir)
-                self._ensure_public_facade_aliases(lazy_map, current_pkg)
             for infra_name in ("cleanup_submodule_namespace", "lazy_getattr"):
                 lazy_map.pop(infra_name, None)
             for k in inline_constants:
@@ -239,27 +239,6 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
         )
         u.Infra.info(f"  OK: {rel_path} — {len(exports)} exports")
         return (0, dict(lazy_map))
-
-    @staticmethod
-    def _ensure_public_facade_aliases(
-        lazy_map: t.Infra.MutableLazyImportMap,
-        current_pkg: str,
-    ) -> None:
-        """Backfill canonical aliases from same-package public facade modules."""
-        for alias, suffix in c.Infra.ALIAS_TO_SUFFIX.items():
-            if alias in lazy_map:
-                continue
-            expected_module = "typings" if suffix == "Types" else suffix.lower()
-            module_path = (
-                f"{current_pkg}.{expected_module}" if current_pkg else expected_module
-            )
-            candidates = sorted(
-                name
-                for name, (mod, _attr) in lazy_map.items()
-                if mod == module_path and name.endswith(suffix)
-            )
-            if candidates:
-                lazy_map[alias] = (module_path, candidates[0])
 
 
 __all__ = ["FlextInfraCodegenLazyInit"]

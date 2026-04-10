@@ -122,8 +122,7 @@ class FlextInfraUtilitiesDocsApi(u.Cli):
         target_map: Mapping[str, str],
     ) -> Sequence[str]:
         """Use Rope to verify which exported symbols resolve in real modules."""
-        rope_project = FlextInfraUtilitiesRope.init_rope_project(project_root)
-        try:
+        with FlextInfraUtilitiesRope.open_project(project_root) as rope_project:
             symbols: MutableSequence[str] = []
             for export_name, module_name in target_map.items():
                 module_file = FlextInfraUtilitiesDocsApi._module_file(
@@ -144,8 +143,6 @@ class FlextInfraUtilitiesDocsApi(u.Cli):
                 if export_name in pymodule.get_attributes():
                     symbols.append(export_name)
             return tuple(dict.fromkeys(symbols))
-        finally:
-            rope_project.close()
 
     @staticmethod
     def public_contract(

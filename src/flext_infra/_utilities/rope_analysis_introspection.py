@@ -87,8 +87,7 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
         )
         if project_root is None:
             return result
-        rope_proj = cls.init_rope_project(project_root.parent)
-        try:
+        with FlextInfraUtilitiesRopeCore.open_project(project_root.parent) as rope_proj:
             for py_file in sorted(package_dir.glob(c.Infra.Extensions.PYTHON_GLOB)):
                 if py_file.name == c.Infra.Files.INIT_PY:
                     continue
@@ -110,8 +109,6 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
                             cls.method_kind_label(method_kind),
                             py_file.name,
                         ))
-        finally:
-            rope_proj.close()
         return result
 
     @classmethod
@@ -128,8 +125,7 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
         )
         if project_root is None:
             return result
-        rope_proj = cls.init_rope_project(project_root.parent)
-        try:
+        with FlextInfraUtilitiesRopeCore.open_project(project_root.parent) as rope_proj:
             resource = cls.get_resource_from_path(rope_proj, file_path)
             if resource is None:
                 return {}
@@ -148,8 +144,6 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
                         cls.method_kind_label(method_kind),
                         file_path.name,
                     ))
-        finally:
-            rope_proj.close()
         return result
 
     @staticmethod

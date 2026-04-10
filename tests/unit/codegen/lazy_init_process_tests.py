@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from tests import c, t, u
 
 
@@ -90,6 +92,48 @@ class TestProcessDirectory:
         assert (
             c.Infra.Tests.Fixtures.Codegen.LazyInit.CHILD_SERVICE_CLASS in parent_init
         )
+
+    @pytest.mark.parametrize(
+        ("surface", "family_dir", "file_name", "class_name"),
+        [
+            ("tests", "_models", "mixins.py", "TestsFlextDemoModelsMixins"),
+            (
+                "examples",
+                "_utilities",
+                "helpers.py",
+                "ExamplesFlextDemoUtilitiesHelpers",
+            ),
+            ("scripts", "_protocols", "base.py", "ScriptsFlextDemoProtocolsBase"),
+        ],
+    )
+    def test_surface_root_includes_private_family_exports(
+        self,
+        tmp_path: Path,
+        surface: str,
+        family_dir: str,
+        file_name: str,
+        class_name: str,
+    ) -> None:
+        """Governed surface roots merge canonical exports from private family packages."""
+        workspace_root, _package_root = u.Infra.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-demo",
+            package_name="flext_demo",
+        )
+        surface_dir = workspace_root / surface
+        family_root = surface_dir / family_dir
+        family_root.mkdir(parents=True)
+        (surface_dir / c.Infra.Files.INIT_PY).write_text("")
+        (family_root / c.Infra.Files.INIT_PY).write_text("")
+        (family_root / file_name).write_text(f"class {class_name}:\n    pass\n")
+
+        result = u.Infra.Tests.run_lazy_init(workspace_root)
+
+        assert result == 0
+        init_content = (surface_dir / c.Infra.Files.INIT_PY).read_text(
+            encoding="utf-8",
+        )
+        assert class_name in init_content
 
     def test_generates_examples_tests_module_paths(self, tmp_path: Path) -> None:
         """Test nested examples/tests packages keep the examples prefix."""

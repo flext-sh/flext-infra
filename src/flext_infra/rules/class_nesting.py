@@ -298,11 +298,8 @@ class FlextInfraClassNestingRefactorRule:
         for key in c.Infra.ClassNesting.SECTION_KEYS:
             raw = loaded.get(key)
             if isinstance(raw, list):
-                try:
-                    mappings = u.Infra.mapping_list(raw)
-                    config[key] = [dict(e) for e in self._coerce(mappings)]
-                except ValueError:
-                    config[key] = list[t.Infra.InfraValue]()
+                mappings = u.Infra.normalize_mapping_list(raw)
+                config[key] = [dict(e) for e in self._coerce(mappings)]
         self._cached_config = config
         return config
 

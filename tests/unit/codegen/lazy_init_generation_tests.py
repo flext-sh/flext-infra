@@ -15,81 +15,178 @@ from flext_tests import tm
 
 import flext_infra as mod
 from flext_infra import FlextInfraCodegenGeneration
-from tests import t, u
+from tests import c, t, u
 
 
 class TestResolveAliases:
-    """Test public alias resolution utility behavior."""
+    """Test declarative alias inheritance from public package exports."""
 
-    def test_resolves_c_alias(self, tmp_path: Path) -> None:
-        """Test resolving 'c' alias to Constants class."""
-        pkg_dir = tmp_path / "src" / "pkg"
-        pkg_dir.mkdir(parents=True)
-        (pkg_dir / "__init__.py").write_text("", encoding="utf-8")
-        lazy_map: MutableMapping[str, tuple[str, str]] = {
-            "FlextConstants": ("pkg.constants", "FlextConstants"),
-        }
-        u.Infra().resolve_aliases(lazy_map, pkg_dir=pkg_dir)
-        tm.that(lazy_map, contains="c")
-        tm.that(lazy_map["c"], eq=("pkg.constants", "FlextConstants"))
+    @staticmethod
+    def _write_parent_package(tmp_path: Path) -> None:
+        package_dir = tmp_path / "flext-tests" / "src" / "flext_tests"
+        utilities_dir = package_dir / "_utilities"
+        package_dir.mkdir(parents=True)
+        utilities_dir.mkdir(parents=True)
+        (package_dir / "__init__.py").write_text(
+            "",
+            encoding=c.Infra.Encoding.DEFAULT,
+        )
+        (package_dir / "constants.py").write_text(
+            "from __future__ import annotations\n\n"
+            "class FlextTestsConstants:\n    pass\n\n"
+            "c = FlextTestsConstants\n"
+            '__all__ = ["FlextTestsConstants", "c"]\n',
+            encoding=c.Infra.Encoding.DEFAULT,
+        )
+        (package_dir / "docker.py").write_text(
+            "from __future__ import annotations\n\n"
+            "class FlextTestsDocker:\n    pass\n\n"
+            "tk = FlextTestsDocker\n"
+            '__all__ = ["FlextTestsDocker", "tk"]\n',
+            encoding=c.Infra.Encoding.DEFAULT,
+        )
+        (utilities_dir / "__init__.py").write_text(
+            "",
+            encoding=c.Infra.Encoding.DEFAULT,
+        )
+        (utilities_dir / "matchers.py").write_text(
+            'from __future__ import annotations\n\ntm = "matcher"\n__all__ = ["tm"]\n',
+            encoding=c.Infra.Encoding.DEFAULT,
+        )
 
-    def test_does_not_overwrite_canonical_existing(self, tmp_path: Path) -> None:
-        """Test that canonical alias pointing to correct facade is preserved."""
-        pkg_dir = tmp_path / "src" / "pkg"
-        pkg_dir.mkdir(parents=True)
-        (pkg_dir / "__init__.py").write_text("", encoding="utf-8")
-        lazy_map: MutableMapping[str, tuple[str, str]] = {
-            "c": ("pkg.constants", "FlextConstants"),
-            "FlextConstants": ("pkg.constants", "FlextConstants"),
-        }
-        u.Infra().resolve_aliases(lazy_map, pkg_dir=pkg_dir)
-        tm.that(lazy_map["c"], eq=("pkg.constants", "FlextConstants"))
+    @staticmethod
+    def _write_surface_package(tmp_path: Path, surface: str) -> Path:
+        surface_dir = tmp_path / "child" / surface
+        surface_dir.mkdir(parents=True)
+        (surface_dir / "__init__.py").write_text(
+            "",
+            encoding=c.Infra.Encoding.DEFAULT,
+        )
+        (surface_dir / "constants.py").write_text(
+            "from __future__ import annotations\n\n"
+            "from flext_tests import FlextTestsConstants\n\n"
+            "class TestsFlextDemoConstants(FlextTestsConstants):\n    pass\n\n"
+            "c = TestsFlextDemoConstants\n"
+            '__all__ = ["TestsFlextDemoConstants", "c"]\n',
+            encoding=c.Infra.Encoding.DEFAULT,
+        )
+        return surface_dir
 
-    def test_overwrites_non_canonical_existing(self, tmp_path: Path) -> None:
-        """Test that non-canonical alias is replaced with canonical facade."""
-        pkg_dir = tmp_path / "src" / "pkg"
-        pkg_dir.mkdir(parents=True)
-        (pkg_dir / "__init__.py").write_text("", encoding="utf-8")
-        lazy_map: MutableMapping[str, tuple[str, str]] = {
-            "c": ("pkg.custom", "CustomConst"),
-            "FlextConstants": ("pkg.constants", "FlextConstants"),
-        }
-        u.Infra().resolve_aliases(lazy_map, pkg_dir=pkg_dir)
-        tm.that(lazy_map["c"], eq=("pkg.constants", "FlextConstants"))
+    @pytest.mark.parametrize("surface", ["tests", "examples", "scripts"])
+    def test_inherits_public_lowercase_aliases_from_parent(
+        self,
+        tmp_path: Path,
+        surface: str,
+    ) -> None:
+        """Root wrappers inherit lowercase exports declared by the parent package."""
+        self._write_parent_package(tmp_path)
+        pkg_dir = self._write_surface_package(tmp_path, surface)
+        lazy_map: MutableMapping[str, tuple[str, str]] = {}
+        mod.FlextInfraUtilitiesCodegenLazyAliases(
+            workspace_root=tmp_path,
+        ).resolve_aliases(
+            lazy_map,
+            pkg_dir=pkg_dir,
+        )
+        tm.that(lazy_map["c"], eq=("flext_tests.constants", "c"))
+        tm.that(lazy_map["tk"], eq=("flext_tests.docker", "tk"))
+        tm.that(lazy_map["tm"], eq=("flext_tests._utilities.matchers", "tm"))
 
-    def test_resolves_multiple_aliases(self, tmp_path: Path) -> None:
-        """Test resolving multiple aliases at once."""
-        pkg_dir = tmp_path / "src" / "pkg"
-        pkg_dir.mkdir(parents=True)
-        (pkg_dir / "__init__.py").write_text("", encoding="utf-8")
+    @pytest.mark.parametrize("surface", ["tests", "examples", "scripts"])
+    def test_does_not_synthesize_alias_from_local_suffix_match(
+        self,
+        tmp_path: Path,
+        surface: str,
+    ) -> None:
+        """Local Result-like classes must not manufacture runtime aliases."""
+        pkg_dir = self._write_surface_package(tmp_path, surface)
         lazy_map: MutableMapping[str, tuple[str, str]] = {
-            "FlextConstants": ("pkg.constants", "FlextConstants"),
-            "FlextModels": ("pkg.models", "FlextModels"),
-            "FlextTypes": ("pkg.typings", "FlextTypes"),
+            "TestsFlextCoreConstantsResult": (
+                f"{surface}._constants.result",
+                "TestsFlextCoreConstantsResult",
+            ),
         }
-        u.Infra().resolve_aliases(lazy_map, pkg_dir=pkg_dir)
-        tm.that(lazy_map, contains="c")
-        tm.that(lazy_map, contains="m")
-        tm.that(lazy_map, contains="t")
+        mod.FlextInfraUtilitiesCodegenLazyAliases(
+            workspace_root=tmp_path,
+        ).resolve_aliases(
+            lazy_map,
+            pkg_dir=pkg_dir,
+        )
+        tm.that(lazy_map, excludes="r")
 
     def test_subpackage_does_not_add_runtime_aliases(self, tmp_path: Path) -> None:
-        """Subpackages keep _LAZY_IMPORTS free of runtime aliases."""
+        """Nested packages do not inherit parent aliases."""
         pkg_dir = tmp_path / "src" / "pkg" / "tools"
         pkg_dir.mkdir(parents=True)
         _ = (tmp_path / "src" / "pkg" / "__init__.py").write_text(
             "",
-            encoding="utf-8",
+            encoding=c.Infra.Encoding.DEFAULT,
         )
-        _ = (pkg_dir / "__init__.py").write_text("", encoding="utf-8")
+        _ = (pkg_dir / "__init__.py").write_text(
+            "",
+            encoding=c.Infra.Encoding.DEFAULT,
+        )
         lazy_map: MutableMapping[str, tuple[str, str]] = {
             "FlextConstants": ("pkg.constants", "FlextConstants"),
             "FlextModels": ("pkg.models", "FlextModels"),
             "FlextTypes": ("pkg.typings", "FlextTypes"),
         }
-        u.Infra().resolve_aliases(lazy_map, pkg_dir=pkg_dir)
+        mod.FlextInfraUtilitiesCodegenLazyAliases(
+            workspace_root=tmp_path,
+        ).resolve_aliases(
+            lazy_map,
+            pkg_dir=pkg_dir,
+        )
         tm.that(lazy_map, lacks="c")
-        tm.that(lazy_map, lacks="m")
-        tm.that(lazy_map, lacks="t")
+        tm.that(lazy_map, lacks="tk")
+        tm.that(lazy_map, lacks="tm")
+
+    def test_local_alias_beats_parent_reexport_in_root_package(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Root package keeps its local facade alias and only inherits missing ones."""
+        parent_dir = tmp_path / "flext-cli" / "src" / "flext_cli"
+        parent_dir.mkdir(parents=True)
+        (parent_dir / "__init__.py").write_text("", encoding=c.Infra.Encoding.DEFAULT)
+        (parent_dir / "constants.py").write_text(
+            "from __future__ import annotations\n\n"
+            "class FlextCliConstants:\n    pass\n\n"
+            "c = FlextCliConstants\n"
+            '__all__ = ["FlextCliConstants", "c"]\n',
+            encoding=c.Infra.Encoding.DEFAULT,
+        )
+        (parent_dir / "result.py").write_text(
+            "from __future__ import annotations\n\n"
+            'r = "runtime-result"\n'
+            '__all__ = ["r"]\n',
+            encoding=c.Infra.Encoding.DEFAULT,
+        )
+        pkg_dir = tmp_path / "flext-infra" / "src" / "flext_infra"
+        pkg_dir.mkdir(parents=True)
+        (pkg_dir / "__init__.py").write_text("", encoding=c.Infra.Encoding.DEFAULT)
+        (pkg_dir / "constants.py").write_text(
+            "from __future__ import annotations\n\n"
+            "from flext_cli import c\n\n"
+            "class FlextInfraConstants:\n    pass\n\n"
+            "c = FlextInfraConstants\n"
+            '__all__ = ["FlextInfraConstants", "c"]\n',
+            encoding=c.Infra.Encoding.DEFAULT,
+        )
+        lazy_map = (
+            mod.FlextInfraUtilitiesCodegenLazyScanning.build_sibling_export_index(
+                pkg_dir,
+                "flext_infra",
+            )
+        )
+        mod.FlextInfraUtilitiesCodegenLazyAliases(
+            workspace_root=tmp_path,
+        ).resolve_aliases(
+            lazy_map,
+            pkg_dir=pkg_dir,
+        )
+        tm.that(lazy_map["c"], eq=("flext_infra.constants", "c"))
+        tm.that(lazy_map["r"], eq=("flext_cli.result", "r"))
 
 
 class TestGenerateTypeChecking:

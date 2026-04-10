@@ -51,4 +51,5 @@ class FlextInfraTypes(t):
 
 
 t = FlextInfraTypes
+
 __all__ = ["FlextInfraTypes", "t"]

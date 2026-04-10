@@ -77,16 +77,13 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         """Scan a Python file for Pydantic model classes and dict-like aliases to centralize."""
         source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
         lines = source.splitlines()
-        rope_proj = FlextInfraUtilitiesRope.init_rope_project(file_path.parent)
-        try:
+        with FlextInfraUtilitiesRope.open_project(file_path.parent) as rope_proj:
             resource = FlextInfraUtilitiesRope.get_resource_from_path(
                 rope_proj, file_path
             )
             if resource is None:
                 return ([], [])
             symbols = FlextInfraUtilitiesRope.get_module_symbols(rope_proj, resource)
-        finally:
-            rope_proj.close()
 
         is_typings = file_path.name == "typings.py" or "_typings" in file_path.parts
         class_moves: list[m.Infra.ClassMove] = []
@@ -143,17 +140,6 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
             else:
                 failure_stats.parse_io_errors += 1
             return None
-
-    @staticmethod
-    def scan_file_violations(file_path: Path) -> t.Infra.IntPair:
-        """Return counts of model and dict-alias violations in one file."""
-        try:
-            class_moves, alias_moves = (
-                FlextInfraUtilitiesRefactorPydanticAnalysis.collect_moves(file_path)
-            )
-            return (len(class_moves), len(alias_moves))
-        except Exception:
-            return (0, 0)
 
     @staticmethod
     def insert_import_statements(

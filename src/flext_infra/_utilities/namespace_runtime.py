@@ -34,10 +34,9 @@ class FlextInfraUtilitiesRefactorNamespaceRuntime(
     ) -> None:
         if not py_files:
             return
-        rope_project = FlextInfraUtilitiesRope.init_rope_project(
+        with FlextInfraUtilitiesRope.open_project(
             cls._shared_workspace_root(py_files=py_files),
-        )
-        try:
+        ) as rope_project:
             for file_path in py_files:
                 if file_path.name == c.Infra.Files.INIT_PY:
                     continue
@@ -83,8 +82,6 @@ class FlextInfraUtilitiesRefactorNamespaceRuntime(
                     apply=True,
                 )
                 FlextInfraUtilitiesFormatting.run_ruff_fix(file_path)
-        finally:
-            rope_project.close()
 
     @classmethod
     def migrate_runtime_alias_imports(
@@ -459,8 +456,7 @@ class FlextInfraUtilitiesRefactorNamespaceRuntime(
                 py_files=py_files,
             )
         )
-        rope_project = FlextInfraUtilitiesRope.init_rope_project(workspace_root)
-        try:
+        with FlextInfraUtilitiesRope.open_project(workspace_root) as rope_project:
             for file_path in py_files:
                 expected = c.Infra.NAMESPACE_FAMILY_EXPECTED_ALIAS.get(file_path.name)
                 if expected is None:
@@ -506,8 +502,6 @@ class FlextInfraUtilitiesRefactorNamespaceRuntime(
                     updated_source=rewritten,
                     keep_backup=True,
                 )
-        finally:
-            rope_project.close()
 
 
 __all__ = ["FlextInfraUtilitiesRefactorNamespaceRuntime"]

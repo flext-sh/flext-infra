@@ -37,49 +37,52 @@ class FlextInfraUtilitiesCodegenImportCycles:
     ) -> Mapping[str, t.Infra.StrSet]:
         """Build a dependency graph among modules within the same package."""
         graph: MutableMapping[str, t.Infra.StrSet] = {}
+        with FlextInfraUtilitiesRope.open_project(pkg_dir) as rope_project:
+            for py_file in pkg_dir.glob(c.Infra.Extensions.PYTHON_GLOB):
+                if py_file.name == c.Infra.Files.INIT_PY:
+                    continue
+                stem = py_file.stem
 
-        rope_project = FlextInfraUtilitiesRope.init_rope_project(pkg_dir)
-
-        for py_file in pkg_dir.glob(c.Infra.Extensions.PYTHON_GLOB):
-            if py_file.name == c.Infra.Files.INIT_PY:
-                continue
-            stem = py_file.stem
-
-            res = FlextInfraUtilitiesRope.get_file_resource(rope_project, py_file.name)
-            if not res:
-                continue
-
-            try:
-                pymodule = FlextInfraUtilitiesRope.get_pymodule(rope_project, res)
-                mod_imports = FlextInfraUtilitiesRope.get_module_imports_for_pymodule(
+                res = FlextInfraUtilitiesRope.get_file_resource(
                     rope_project,
-                    pymodule,
+                    py_file.name,
                 )
-            except Exception:
-                _logger.debug("Failed to parse imports for %s", py_file.name)
-                continue
-
-            deps: t.Infra.StrSet = set()
-            for import_stmt in FlextInfraUtilitiesRope.get_import_statements(
-                mod_imports,
-            ):
-                from_import = FlextInfraUtilitiesRope.absolute_from_import_any(
-                    import_stmt.import_info,
-                )
-                if from_import is None:
-                    continue
-                if from_import.module_name != package_name:
+                if not res:
                     continue
 
-                for name, _ in from_import.names_and_aliases:
-                    if name == "*":
+                try:
+                    pymodule = FlextInfraUtilitiesRope.get_pymodule(rope_project, res)
+                    mod_imports = (
+                        FlextInfraUtilitiesRope.get_module_imports_for_pymodule(
+                            rope_project,
+                            pymodule,
+                        )
+                    )
+                except Exception:
+                    _logger.debug("Failed to parse imports for %s", py_file.name)
+                    continue
+
+                deps: t.Infra.StrSet = set()
+                for import_stmt in FlextInfraUtilitiesRope.get_import_statements(
+                    mod_imports,
+                ):
+                    from_import = FlextInfraUtilitiesRope.absolute_from_import_any(
+                        import_stmt.import_info,
+                    )
+                    if from_import is None:
                         continue
-                    target = lazy_map.get(name)
-                    if target and target != stem:
-                        deps.add(target)
+                    if from_import.module_name != package_name:
+                        continue
 
-            if deps:
-                graph[stem] = deps
+                    for name, _ in from_import.names_and_aliases:
+                        if name == "*":
+                            continue
+                        target = lazy_map.get(name)
+                        if target and target != stem:
+                            deps.add(target)
+
+                if deps:
+                    graph[stem] = deps
         return graph
 
     @staticmethod

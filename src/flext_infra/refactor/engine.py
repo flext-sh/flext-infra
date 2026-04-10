@@ -1,7 +1,7 @@
 """Rope-based refactor engine for flext_infra.refactor.
 
 Orchestrates declarative rules, safety stash, and violation analysis.
-File collection via ``u.Infra`` utilities, rule subclasses in ``_engine_rules``.
+File collection via ``u.Infra`` utilities, rule subclasses in ``engine_rules``.
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ from flext_infra import (
     u,
 )
 
-from ._engine_helpers import FlextInfraRefactorEngineHelpersMixin
+from .engine_helpers import FlextInfraRefactorEngineHelpersMixin
 
 type _RuleEntry = tuple[frozenset[str], type[FlextInfraRefactorRule]]
 

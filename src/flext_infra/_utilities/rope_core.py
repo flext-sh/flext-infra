@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import warnings
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
+from contextlib import contextmanager
 from pathlib import Path
 from typing import TypeGuard
 
@@ -59,6 +60,18 @@ class FlextInfraUtilitiesRopeCore:
                 source_folders=source_folders,
             )
         )
+
+    @staticmethod
+    @contextmanager
+    def open_project(
+        workspace_root: Path,
+    ) -> Iterator[t.Infra.RopeProject]:
+        """Open one Rope project and always close it through the core boundary."""
+        rope_project = FlextInfraUtilitiesRopeCore.init_rope_project(workspace_root)
+        try:
+            yield rope_project
+        finally:
+            rope_project.close()
 
     @staticmethod
     def get_file_resource(

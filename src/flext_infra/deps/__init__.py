@@ -10,10 +10,10 @@ from flext_core.lazy import (
 )
 
 _LAZY_IMPORTS = merge_lazy_imports(
-    ("._phases",),
+    (".phases",),
     build_lazy_import_map(
         {
-            "._detector_runtime": ("FlextInfraDependencyDetectorRuntime",),
+            ".detector_runtime": ("FlextInfraDependencyDetectorRuntime",),
             ".cli": ("FlextInfraCliDeps",),
             ".detection": ("FlextInfraDependencyDetectionService",),
             ".detection_analysis": ("FlextInfraDependencyDetectionAnalysis",),

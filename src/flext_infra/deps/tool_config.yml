@@ -377,28 +377,29 @@ tools:
       pythonPlatform: Linux
       typeCheckingMode: strict
     extended-settings:
-      reportMissingImports: error
-      reportMissingModuleSource: error
-      reportMissingTypeStubs: warning
-      reportUnusedImport: error
-      reportUnusedVariable: error
-      reportUnusedClass: error
-      reportUnusedFunction: error
+      reportCallIssue: none
       reportConstantRedefinition: error
       reportIncompatibleMethodOverride: error
       reportIncompatibleVariableOverride: error
       reportInconsistentConstructor: error
-      reportUnnecessaryIsInstance: warning
+      reportMissingImports: error
+      reportMissingModuleSource: error
+      reportMissingTypeStubs: warning
+      reportPrivateUsage: warning
       reportUnnecessaryCast: error
       reportUnnecessaryComparison: warning
-      reportPrivateUsage: warning
-      reportCallIssue: none
+      reportUnnecessaryIsInstance: warning
+      reportUnusedClass: error
+      reportUnusedFunction: error
+      reportUnusedImport: error
+      reportUnusedVariable: error
     lazy-import-suppressions:
       reportAttributeAccessIssue: "none"
+      reportInvalidTypeForm: none
       reportPrivateImportUsage: "none"
       reportUnknownArgumentType: "none"
       reportUnknownLambdaType: "none"
-      reportUnknownMemberType: "none"
+      reportUnknownMemberType: none
       reportUnknownParameterType: "none"
       reportUnknownVariableType: "none"
       reportUnusedImport: "none"

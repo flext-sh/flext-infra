@@ -14,7 +14,7 @@ from flext_infra import (
     c,
     m,
 )
-from flext_infra.services._cli_base import FlextInfraServiceCliRunnerMixin
+from flext_infra.services.cli_base import FlextInfraServiceCliRunnerMixin
 
 
 class FlextInfraServiceWorkspaceMixin(FlextInfraServiceCliRunnerMixin):

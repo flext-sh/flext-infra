@@ -84,34 +84,34 @@ if _t.TYPE_CHECKING:
     from flext_infra._typings.adapters import FlextInfraTypesAdapters
     from flext_infra._typings.base import FlextInfraTypesBase
     from flext_infra._typings.rope import FlextInfraTypesRope
-    from flext_infra._utilities._utilities import FlextInfraUtilitiesRefactor
-    from flext_infra._utilities._utilities_cli import FlextInfraUtilitiesRefactorCli
-    from flext_infra._utilities._utilities_mro_transform import (
+    from flext_infra._utilities.refactor import FlextInfraUtilitiesRefactor
+    from flext_infra._utilities.utilities_cli import FlextInfraUtilitiesRefactorCli
+    from flext_infra._utilities.mro_transform import (
         FlextInfraUtilitiesRefactorMroTransform,
     )
-    from flext_infra._utilities._utilities_namespace import (
+    from flext_infra._utilities.namespaces import (
         FlextInfraUtilitiesRefactorNamespace,
     )
-    from flext_infra._utilities._utilities_namespace_analysis import (
+    from flext_infra._utilities.namespace_analysis import (
         FlextInfraUtilitiesRefactorNamespaceCommon,
         FlextInfraUtilitiesRefactorNamespaceMro,
     )
-    from flext_infra._utilities._utilities_namespace_facades import (
+    from flext_infra._utilities.namespace_facades import (
         FlextInfraUtilitiesRefactorNamespaceFacades,
     )
-    from flext_infra._utilities._utilities_namespace_moves import (
+    from flext_infra._utilities.namespace_moves import (
         FlextInfraUtilitiesRefactorNamespaceMoves,
     )
-    from flext_infra._utilities._utilities_namespace_runtime import (
+    from flext_infra._utilities.namespace_runtime import (
         FlextInfraUtilitiesRefactorNamespaceRuntime,
     )
-    from flext_infra._utilities._utilities_policy import (
+    from flext_infra._utilities.policy import (
         FlextInfraUtilitiesRefactorPolicy,
     )
-    from flext_infra._utilities._utilities_pydantic import (
+    from flext_infra._utilities.pydantic import (
         FlextInfraUtilitiesRefactorPydantic,
     )
-    from flext_infra._utilities._utilities_pydantic_analysis import (
+    from flext_infra._utilities.pydantic_analysis import (
         FlextInfraUtilitiesRefactorPydanticAnalysis,
     )
     from flext_infra._utilities.base import FlextInfraUtilitiesBase
@@ -210,7 +210,7 @@ if _t.TYPE_CHECKING:
     from flext_infra.basemk.cli import FlextInfraCliBasemk
     from flext_infra.basemk.engine import FlextInfraBaseMkTemplateEngine
     from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
-    from flext_infra.check._workspace_check_gates import (
+    from flext_infra.check.workspace_check_gates import (
         FlextInfraGateRegistry,
         FlextInfraWorkspaceCheckGatesMixin,
     )
@@ -220,7 +220,7 @@ if _t.TYPE_CHECKING:
         FlextInfraWorkspaceCheckerCli,
     )
     from flext_infra.cli import FlextInfraCli, main
-    from flext_infra.codegen._codegen_generation import FlextInfraCodegenGeneration
+    from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
     from flext_infra.codegen.census import FlextInfraCodegenCensus
     from flext_infra.codegen.cli import FlextInfraCliCodegen
     from flext_infra.codegen.constants_quality_gate import (
@@ -231,36 +231,36 @@ if _t.TYPE_CHECKING:
     from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
     from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
     from flext_infra.constants import FlextInfraConstants, FlextInfraConstants as c
-    from flext_infra.deps._detector_runtime import FlextInfraDependencyDetectorRuntime
-    from flext_infra.deps._phases.consolidate_groups import (
+    from flext_infra.deps.detector_runtime import FlextInfraDependencyDetectorRuntime
+    from flext_infra.deps.phases.consolidate_groups import (
         FlextInfraConsolidateGroupsPhase,
     )
-    from flext_infra.deps._phases.ensure_coverage import (
+    from flext_infra.deps.phases.ensure_coverage import (
         FlextInfraEnsureCoverageConfigPhase,
     )
-    from flext_infra.deps._phases.ensure_extra_paths import (
+    from flext_infra.deps.phases.ensure_extra_paths import (
         FlextInfraEnsureExtraPathsPhase,
     )
-    from flext_infra.deps._phases.ensure_formatting import (
+    from flext_infra.deps.phases.ensure_formatting import (
         FlextInfraEnsureFormattingToolingPhase,
     )
-    from flext_infra.deps._phases.ensure_mypy import FlextInfraEnsureMypyConfigPhase
-    from flext_infra.deps._phases.ensure_namespace import (
+    from flext_infra.deps.phases.ensure_mypy import FlextInfraEnsureMypyConfigPhase
+    from flext_infra.deps.phases.ensure_namespace import (
         FlextInfraEnsureNamespaceToolingPhase,
     )
-    from flext_infra.deps._phases.ensure_pydantic_mypy import (
+    from flext_infra.deps.phases.ensure_pydantic_mypy import (
         FlextInfraEnsurePydanticMypyConfigPhase,
     )
-    from flext_infra.deps._phases.ensure_pyrefly import (
+    from flext_infra.deps.phases.ensure_pyrefly import (
         FlextInfraEnsurePyreflyConfigPhase,
     )
-    from flext_infra.deps._phases.ensure_pyright import (
+    from flext_infra.deps.phases.ensure_pyright import (
         FlextInfraEnsurePyrightConfigPhase,
     )
-    from flext_infra.deps._phases.ensure_pyright_envs import FlextInfraEnsurePyrightEnvs
-    from flext_infra.deps._phases.ensure_pytest import FlextInfraEnsurePytestConfigPhase
-    from flext_infra.deps._phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
-    from flext_infra.deps._phases.inject_comments import FlextInfraInjectCommentsPhase
+    from flext_infra.deps.phases.ensure_pyright_envs import FlextInfraEnsurePyrightEnvs
+    from flext_infra.deps.phases.ensure_pytest import FlextInfraEnsurePytestConfigPhase
+    from flext_infra.deps.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
+    from flext_infra.deps.phases.inject_comments import FlextInfraInjectCommentsPhase
     from flext_infra.deps.cli import FlextInfraCliDeps
     from flext_infra.deps.detection import FlextInfraDependencyDetectionService
     from flext_infra.deps.detection_analysis import (
@@ -273,7 +273,7 @@ if _t.TYPE_CHECKING:
     from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
     from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
     from flext_infra.deps.path_sync_rewrite import FlextInfraDependencyPathSyncRewrite
-    from flext_infra.detectors._base_detector import (
+    from flext_infra.detectors.base_detector import (
         DetectorContext,
         FlextInfraScanFileMixin,
     )
@@ -323,7 +323,7 @@ if _t.TYPE_CHECKING:
     from flext_infra.docs.fixer import FlextInfraDocFixer
     from flext_infra.docs.generator import FlextInfraDocGenerator
     from flext_infra.docs.validator import FlextInfraDocValidator
-    from flext_infra.gates._base_gate import FlextInfraGate
+    from flext_infra.gates.base_gate import FlextInfraGate
     from flext_infra.gates.bandit import FlextInfraBanditGate
     from flext_infra.gates.go import FlextInfraGoGate
     from flext_infra.gates.markdown import FlextInfraMarkdownGate
@@ -338,14 +338,14 @@ if _t.TYPE_CHECKING:
     from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
     from flext_infra.models import FlextInfraModels, FlextInfraModels as m
     from flext_infra.protocols import FlextInfraProtocols, FlextInfraProtocols as p
-    from flext_infra.refactor._base_rule import (
+    from flext_infra.refactor.base_rule import (
         FlextInfraGenericTransformerRule,
         FlextInfraRefactorRule,
     )
-    from flext_infra.refactor._engine_helpers import (
+    from flext_infra.refactor.engine_helpers import (
         FlextInfraRefactorEngineHelpersMixin,
     )
-    from flext_infra.refactor._engine_rules import (
+    from flext_infra.refactor.engine_rules import (
         FlextInfraRefactorClassReconstructorRule,
         FlextInfraRefactorLegacyRemovalTextRule,
         FlextInfraRefactorMROClassMigrationTextRule,
@@ -357,7 +357,7 @@ if _t.TYPE_CHECKING:
         FlextInfraRefactorTypingAnnotationFixRule,
         FlextInfraRefactorTypingUnificationRule,
     )
-    from flext_infra.refactor._namespace_enforcer_phases import (
+    from flext_infra.refactor.namespace_enforcer_phases import (
         FlextInfraNamespaceEnforcerPhasesMixin,
     )
     from flext_infra.refactor.census import FlextInfraRefactorCensus
@@ -419,7 +419,7 @@ if _t.TYPE_CHECKING:
     from flext_infra.services.toml_engine import FlextInfraToml
     from flext_infra.services.validate import FlextInfraServiceValidateMixin
     from flext_infra.services.workspace import FlextInfraServiceWorkspaceMixin
-    from flext_infra.transformers._base import (
+    from flext_infra.transformers.base import (
         FlextInfraChangeTrackingTransformer,
         FlextInfraRopeTransformer,
     )

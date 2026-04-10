@@ -7,26 +7,20 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 _LAZY_IMPORTS = build_lazy_import_map(
     {
-        "._utilities": ("FlextInfraUtilitiesRefactor",),
-        "._utilities_cli": ("FlextInfraUtilitiesRefactorCli",),
-        "._utilities_mro_transform": ("FlextInfraUtilitiesRefactorMroTransform",),
-        "._utilities_namespace": ("FlextInfraUtilitiesRefactorNamespace",),
-        "._utilities_namespace_analysis": (
+        ".refactor": ("FlextInfraUtilitiesRefactor",),
+        ".utilities_cli": ("FlextInfraUtilitiesRefactorCli",),
+        ".mro_transform": ("FlextInfraUtilitiesRefactorMroTransform",),
+        ".namespaces": ("FlextInfraUtilitiesRefactorNamespace",),
+        ".namespace_analysis": (
             "FlextInfraUtilitiesRefactorNamespaceCommon",
             "FlextInfraUtilitiesRefactorNamespaceMro",
         ),
-        "._utilities_namespace_facades": (
-            "FlextInfraUtilitiesRefactorNamespaceFacades",
-        ),
-        "._utilities_namespace_moves": ("FlextInfraUtilitiesRefactorNamespaceMoves",),
-        "._utilities_namespace_runtime": (
-            "FlextInfraUtilitiesRefactorNamespaceRuntime",
-        ),
-        "._utilities_policy": ("FlextInfraUtilitiesRefactorPolicy",),
-        "._utilities_pydantic": ("FlextInfraUtilitiesRefactorPydantic",),
-        "._utilities_pydantic_analysis": (
-            "FlextInfraUtilitiesRefactorPydanticAnalysis",
-        ),
+        ".namespace_facades": ("FlextInfraUtilitiesRefactorNamespaceFacades",),
+        ".namespace_moves": ("FlextInfraUtilitiesRefactorNamespaceMoves",),
+        ".namespace_runtime": ("FlextInfraUtilitiesRefactorNamespaceRuntime",),
+        ".policy": ("FlextInfraUtilitiesRefactorPolicy",),
+        ".pydantic": ("FlextInfraUtilitiesRefactorPydantic",),
+        ".pydantic_analysis": ("FlextInfraUtilitiesRefactorPydanticAnalysis",),
         ".base": ("FlextInfraUtilitiesBase",),
         ".census": ("FlextInfraUtilitiesRefactorCensus",),
         ".cli": ("FlextInfraUtilitiesCli",),

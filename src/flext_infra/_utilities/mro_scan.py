@@ -46,34 +46,33 @@ class FlextInfraUtilitiesRefactorMroScan:
         for project_root in FlextInfraUtilitiesIteration.discover_project_roots(
             workspace_root=workspace_root
         ):
-            for target_spec in target_specs:
-                for file_path in FlextInfraUtilitiesRefactorMroScan._iter_target_files(
-                    project_root=project_root, target_spec=target_spec
-                ):
-                    scanned += 1
-                    rope_proj = FlextInfraUtilitiesRope.init_rope_project(project_root)
-                    try:
+            with FlextInfraUtilitiesRope.open_project(project_root) as rope_proj:
+                for target_spec in target_specs:
+                    for (
+                        file_path
+                    ) in FlextInfraUtilitiesRefactorMroScan._iter_target_files(
+                        project_root=project_root, target_spec=target_spec
+                    ):
+                        scanned += 1
                         res = FlextInfraUtilitiesRope.get_resource_from_path(
                             rope_proj,
                             file_path,
                         )
                         if res:
                             report = FlextInfraUtilitiesRefactorMroScan.scan_file(
+                                rope_project=rope_proj,
                                 resource=res,
-                                project_root=project_root,
                                 target_spec=target_spec,
                             )
                             if report and report.candidates:
                                 results.append(report)
-                    finally:
-                        rope_proj.close()
         return (results, scanned)
 
     @staticmethod
     def scan_file(
         *,
+        rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-        project_root: Path,
         target_spec: m.Infra.MROTargetSpec,
     ) -> m.Infra.MROScanReport | None:
         """Scan one file using rope and return migration candidates."""
@@ -88,9 +87,8 @@ class FlextInfraUtilitiesRefactorMroScan:
         ])
 
         candidates: list[m.Infra.MROSymbolCandidate] = []
-        rope_proj = FlextInfraUtilitiesRope.init_rope_project(project_root)
         try:
-            pymodule = FlextInfraUtilitiesRope.get_pymodule(rope_proj, resource)
+            pymodule = FlextInfraUtilitiesRope.get_pymodule(rope_project, resource)
             lines = source.splitlines()
 
             for name, pyname in pymodule.get_attributes().items():
@@ -134,8 +132,6 @@ class FlextInfraUtilitiesRefactorMroScan:
                     candidates.append(cand)
         except Exception as exc:
             logger.info("MRO scan skipped for %s: %s", resource.real_path, exc)
-        finally:
-            rope_proj.close()
 
         return m.Infra.MROScanReport(
             file=resource.real_path,

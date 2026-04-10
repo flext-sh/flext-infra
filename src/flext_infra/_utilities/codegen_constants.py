@@ -513,58 +513,59 @@ class FlextInfraUtilitiesCodegenConstantAnalysis:
             return r[m.Infra.DeduplicationApplyResult].fail("Invalid class path")
 
         module_name = class_path.rsplit(".", 1)[0]
-        rope_project = FlextInfraUtilitiesRope.init_rope_project(root_path)
-        resource = FlextInfraUtilitiesRope.get_file_resource(
-            rope_project, module_name
-        ) or FlextInfraUtilitiesRope.get_file_resource(
-            rope_project,
-            f"{module_name}.constants",
-        )
-        if not resource:
-            return r[m.Infra.DeduplicationApplyResult].fail(
-                f"No resource for {module_name}"
-            )
-
-        files_modified = 0
-        replaced_names: MutableSequence[str] = []
-        replacements: MutableSequence[m.Infra.DeduplicationReplacement] = []
-
-        for duplicate in fix_proposal.duplicates:
-            dup_name = duplicate.name
-            offset = FlextInfraUtilitiesRope.find_definition_offset(
+        with FlextInfraUtilitiesRope.open_project(root_path) as rope_project:
+            resource = FlextInfraUtilitiesRope.get_file_resource(
                 rope_project,
-                resource,
-                dup_name,
-            )
-            if offset is None:
-                continue
-            replaced_names.append(dup_name)
-            changed = FlextInfraUtilitiesRope.rename_symbol_workspace(
+                module_name,
+            ) or FlextInfraUtilitiesRope.get_file_resource(
                 rope_project,
-                resource,
-                offset,
-                fix_proposal.canonical.name,
-                apply=not dry_run,
+                f"{module_name}.constants",
             )
-            files_modified += len(changed)
-            replacements.extend(
-                m.Infra.DeduplicationReplacement(
-                    file_path=changed_file,
-                    line=0,
-                    old_name=dup_name,
+            if not resource:
+                return r[m.Infra.DeduplicationApplyResult].fail(
+                    f"No resource for {module_name}"
                 )
-                for changed_file in changed
-            )
 
-        return r[m.Infra.DeduplicationApplyResult].ok(
-            m.Infra.DeduplicationApplyResult(
-                canonical_name=fix_proposal.canonical.name,
-                replaced_names=tuple(replaced_names),
-                replacements=tuple(replacements),
-                files_modified=files_modified,
-                dry_run=dry_run,
+            files_modified = 0
+            replaced_names: MutableSequence[str] = []
+            replacements: MutableSequence[m.Infra.DeduplicationReplacement] = []
+
+            for duplicate in fix_proposal.duplicates:
+                dup_name = duplicate.name
+                offset = FlextInfraUtilitiesRope.find_definition_offset(
+                    rope_project,
+                    resource,
+                    dup_name,
+                )
+                if offset is None:
+                    continue
+                replaced_names.append(dup_name)
+                changed = FlextInfraUtilitiesRope.rename_symbol_workspace(
+                    rope_project,
+                    resource,
+                    offset,
+                    fix_proposal.canonical.name,
+                    apply=not dry_run,
+                )
+                files_modified += len(changed)
+                replacements.extend(
+                    m.Infra.DeduplicationReplacement(
+                        file_path=changed_file,
+                        line=0,
+                        old_name=dup_name,
+                    )
+                    for changed_file in changed
+                )
+
+            return r[m.Infra.DeduplicationApplyResult].ok(
+                m.Infra.DeduplicationApplyResult(
+                    canonical_name=fix_proposal.canonical.name,
+                    replaced_names=tuple(replaced_names),
+                    replacements=tuple(replacements),
+                    files_modified=files_modified,
+                    dry_run=dry_run,
+                )
             )
-        )
 
     @staticmethod
     def deduplicate_constants(
