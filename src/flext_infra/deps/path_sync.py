@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 
-from flext_infra import FlextInfraUtilitiesDependencyPathSync
+from flext_infra._utilities.deps_path_sync import FlextInfraUtilitiesDependencyPathSync
 
 
 def main() -> int:
@@ -16,4 +16,4 @@ if __name__ == "__main__":
     sys.exit(main())
 
 
-__all__ = ["main"]
+__all__ = ["FlextInfraUtilitiesDependencyPathSync", "main"]

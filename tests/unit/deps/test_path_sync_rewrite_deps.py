@@ -3,10 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TypeGuard
 
-import pytest
 import tomlkit
 from flext_tests import tm
-from tomlkit.toml_document import TOMLDocument
 
 from tests import r, t, u
 
@@ -88,19 +86,13 @@ class TestRewriteDepPaths:
     def test_rewrite_dep_paths_write_failure(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text(
             '[project]\ndependencies = ["flext-core @ file://.flext-deps/flext-core"]\n',
+            encoding="utf-8",
         )
-
-        def fail_write(
-            _path: Path,
-            _doc: TOMLDocument,
-        ) -> r[bool]:
-            _ = _path, _doc
-            return r[bool].fail("write failed")
+        pyproject.chmod(0o400)
 
         tm.fail(
             _rewrite_dep_paths(
@@ -109,6 +101,7 @@ class TestRewriteDepPaths:
                 internal_names={"flext-core"},
                 is_root=True,
             ),
+            has="TOML write error",
         )
 
 

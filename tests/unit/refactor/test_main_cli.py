@@ -2,130 +2,156 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-from flext_tests import tm
-
-from flext_infra import FlextInfra, main as infra_main
-from tests import m, r, t
+from flext_infra import main as infra_main
 
 
-def refactor_main(argv: list[str] | None = None) -> int:
-    args = ["refactor"]
-    if argv is not None:
-        args.extend(argv)
-    return infra_main(args)
+class TestFlextInfraRefactorMainCli:
+    @staticmethod
+    def _refactor_main(*args: str) -> int:
+        return infra_main(["refactor", *args])
 
+    @staticmethod
+    def _write(path: Path, content: str) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
 
-def test_refactor_census_accepts_apply_before_subcommand(
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
-) -> None:
-    def _mock_handler(
-        _self: FlextInfra,
-        params: m.Infra.RefactorCensusInput,
-    ) -> r[m.Infra.UtilitiesCensusReport]:
-        return r[m.Infra.UtilitiesCensusReport].ok(
-            m.Infra.UtilitiesCensusReport(
-                classes=(),
-                projects=(),
-                total_classes=0,
-                total_methods=0,
-                files_scanned=0,
-                total_usages=0,
-                total_unused=0,
-                parse_errors=0,
-            )
+    @staticmethod
+    def _build_centralize_workspace(tmp_path: Path) -> tuple[Path, Path]:
+        workspace = tmp_path / "workspace"
+        TestFlextInfraRefactorMainCli._write(
+            workspace / "src" / "sample_pkg" / "__init__.py",
+            "from __future__ import annotations\n",
         )
+        service_file = workspace / "src" / "sample_pkg" / "service.py"
+        TestFlextInfraRefactorMainCli._write(
+            service_file,
+            "from __future__ import annotations\n"
+            "from collections.abc import Mapping\n"
+            "from typing import TypeAlias\n\n"
+            "PayloadMap: TypeAlias = Mapping[str, str]\n"
+            "def consume(payload: PayloadMap) -> PayloadMap:\n"
+            "    return payload\n",
+        )
+        return workspace, service_file
 
-    monkeypatch.setattr(
-        FlextInfra,
-        "run_refactor_census",
-        _mock_handler,
-    )
-    result = refactor_main([
-        "census",
-        "--workspace",
-        str(tmp_path),
-    ])
-    tm.that(result, eq=0)
+    @staticmethod
+    def _build_runtime_alias_workspace(tmp_path: Path) -> tuple[Path, Path]:
+        workspace = tmp_path / "workspace"
+        project_root = workspace / "flext-demo"
+        TestFlextInfraRefactorMainCli._write(
+            project_root / "Makefile",
+            "check:\n\t@true\n",
+        )
+        TestFlextInfraRefactorMainCli._write(
+            project_root / "pyproject.toml",
+            '[project]\nname = "flext-demo"\nversion = "0.1.0"\n',
+        )
+        TestFlextInfraRefactorMainCli._write(
+            project_root / "src" / "flext_demo" / "__init__.py",
+            "from __future__ import annotations\n\n"
+            "_LAZY_IMPORTS: dict[str, tuple[str, str]] = {\n"
+            '    "FlextDemoCodegenGeneration": (\n'
+            '        "flext_demo.codegen.generation",\n'
+            '        "FlextDemoCodegenGeneration",\n'
+            "    ),\n"
+            '    "c": ("flext_demo.constants", "c"),\n'
+            '    "r": ("flext_core.result", "r"),\n'
+            '    "s": ("flext_core.service", "s"),\n'
+            '    "t": ("flext_demo.typings", "t"),\n'
+            '    "u": ("flext_demo.utilities", "u"),\n'
+            "}\n"
+            "FlextDemoCodegenGeneration = object()\n"
+            "c = object()\n"
+            "r = object()\n"
+            "s = object()\n"
+            "t = object()\n"
+            "u = object()\n",
+        )
+        TestFlextInfraRefactorMainCli._write(
+            project_root / "src" / "flext_demo" / "constants.py",
+            "from __future__ import annotations\n\n"
+            "class FlextDemoConstants:\n"
+            "    pass\n\n"
+            "c = FlextDemoConstants\n",
+        )
+        TestFlextInfraRefactorMainCli._write(
+            project_root / "src" / "flext_demo" / "typings.py",
+            "from __future__ import annotations\n\n"
+            "class FlextDemoTypes:\n"
+            "    pass\n\n"
+            "t = FlextDemoTypes\n",
+        )
+        TestFlextInfraRefactorMainCli._write(
+            project_root / "src" / "flext_demo" / "utilities.py",
+            "from __future__ import annotations\n\n"
+            "class FlextDemoUtilities:\n"
+            "    pass\n\n"
+            "u = FlextDemoUtilities\n",
+        )
+        TestFlextInfraRefactorMainCli._write(
+            project_root / "src" / "flext_demo" / "codegen" / "generation.py",
+            "from __future__ import annotations\n\n"
+            "class FlextDemoCodegenGeneration:\n"
+            "    pass\n",
+        )
+        target = project_root / "src" / "flext_demo" / "codegen" / "lazy_init.py"
+        TestFlextInfraRefactorMainCli._write(
+            target,
+            "from __future__ import annotations\n\n"
+            "from flext_core import r, s\n"
+            "from flext_demo import (\n"
+            "    FlextDemoCodegenGeneration,\n"
+            "    c,\n"
+            "    t,\n"
+            "    u,\n"
+            ")\n",
+        )
+        return workspace, target
 
+    def test_refactor_census_accepts_workspace_before_subcommand(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace, _service_file = self._build_centralize_workspace(tmp_path)
+        result = self._refactor_main(
+            "--workspace",
+            str(workspace),
+            "census",
+        )
+        assert result == 0
 
-def test_refactor_centralize_accepts_apply_before_subcommand(
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
-) -> None:
-    captured_apply = False
-    captured_workspace = Path()
-    captured_normalize_remaining = False
-
-    def _mock_handler(
-        _self: FlextInfra,
-        params: m.Infra.RefactorCentralizeInput,
-    ) -> r[t.IntMapping]:
-        nonlocal captured_apply, captured_workspace, captured_normalize_remaining
-        captured_apply = params.apply
-        captured_workspace = Path(params.workspace).resolve()
-        captured_normalize_remaining = params.normalize_remaining
-        return r[t.IntMapping].ok({"files": 0})
-
-    monkeypatch.setattr(
-        FlextInfra,
-        "centralize_pydantic",
-        _mock_handler,
-    )
-    result = refactor_main(
-        [
+    def test_refactor_centralize_accepts_shared_flags_before_subcommand(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace, service_file = self._build_centralize_workspace(tmp_path)
+        result = self._refactor_main(
+            "--workspace",
+            str(workspace),
+            "--apply",
             "centralize-pydantic",
+        )
+        assert result == 0
+        assert service_file.with_name("_models.py").exists()
+        assert service_file.with_suffix(".py.bak").exists()
+
+    def test_refactor_runtime_alias_imports_accepts_shared_flags_before_subcommand(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace, target = self._build_runtime_alias_workspace(tmp_path)
+        result = self._refactor_main(
             "--workspace",
-            str(tmp_path),
-            "--apply",
-        ],
-    )
-    tm.that(result, eq=0)
-    tm.that(captured_apply, eq=True)
-    tm.that(captured_workspace, eq=tmp_path.resolve())
-    tm.that(captured_normalize_remaining, eq=False)
-
-
-def test_refactor_runtime_alias_imports_accepts_aliases_and_project(
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
-) -> None:
-    captured_apply = False
-    captured_aliases = ""
-    captured_projects: list[str] | None = None
-    captured_workspace = Path()
-
-    def _mock_handler(
-        _self: FlextInfra,
-        params: m.Infra.RefactorMigrateRuntimeAliasImportsInput,
-    ) -> r[t.IntMapping]:
-        nonlocal captured_apply, captured_aliases, captured_projects, captured_workspace
-        captured_apply = params.apply
-        captured_aliases = params.aliases
-        captured_projects = list(params.projects or [])
-        captured_workspace = Path(params.workspace).resolve()
-        return r[t.IntMapping].ok({"files_changed": 1})
-
-    monkeypatch.setattr(
-        FlextInfra,
-        "migrate_runtime_alias_imports",
-        _mock_handler,
-    )
-    result = refactor_main(
-        [
-            "migrate-runtime-alias-imports",
-            "--workspace",
-            str(tmp_path),
+            str(workspace),
             "--projects",
-            "flext-infra",
-            "--aliases",
-            "r,s,u",
+            "flext-demo",
             "--apply",
-        ],
-    )
-    tm.that(result, eq=0)
-    tm.that(captured_apply, eq=True)
-    tm.that(captured_aliases, eq="r,s,u")
-    tm.that(captured_projects, eq=["flext-infra"])
-    tm.that(captured_workspace, eq=tmp_path.resolve())
+            "migrate-runtime-alias-imports",
+            "--aliases",
+            "r,s",
+        )
+        assert result == 0
+        rewritten = target.read_text(encoding="utf-8")
+        assert "from flext_core import r, s" not in rewritten
+        assert rewritten.count("from flext_demo import") == 1
+        assert target.with_suffix(".py.bak").exists()

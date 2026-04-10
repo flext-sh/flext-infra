@@ -72,10 +72,10 @@ class TestShouldBubbleUp:
         """Legacy output wrappers must not bubble to package root exports."""
         tm.that(not u.Infra.should_bubble_up("output"), eq=True)
 
-    def test_single_letter_alias_passes(self) -> None:
-        """Test that single-letter aliases pass."""
-        tm.that(u.Infra.should_bubble_up("c"), eq=True)
-        tm.that(u.Infra.should_bubble_up("e"), eq=True)
+    def test_single_letter_aliases_are_filtered(self) -> None:
+        """Single-letter runtime aliases must not bubble to package roots."""
+        tm.that(u.Infra.should_bubble_up("c"), eq=False)
+        tm.that(u.Infra.should_bubble_up("e"), eq=False)
 
 
 class TestMergeChildExports:

@@ -41,7 +41,7 @@ class TestEnsurePyrightConfigPhase:
         (tmp_path / "typings" / "generated").mkdir(parents=True, exist_ok=True)
         (flext_core / "pyproject.toml").parent.mkdir(parents=True, exist_ok=True)
         (flext_api / "pyproject.toml").parent.mkdir(parents=True, exist_ok=True)
-        _ = (algar / "pyproject.toml").parent.mkdir(parents=True, exist_ok=True)
+        (algar / "pyproject.toml").parent.mkdir(parents=True, exist_ok=True)
         _ = (flext_core / "pyproject.toml").write_text(
             "[project]\nname='flext-core'\n",
             encoding="utf-8",

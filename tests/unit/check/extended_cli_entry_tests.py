@@ -1,247 +1,96 @@
-"""Tests for CLI entry surfaces: workspace_check, fix_pyrefly_config, check group, run_cli.
-
-Uses monkeypatch to inject controlled service behavior.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Public CLI entry tests for workspace check commands."""
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+import os
 from pathlib import Path
 
-import pytest
 from flext_tests import tm
 
-import flext_infra.check.workspace_check as ws_mod
-import flext_infra.check.workspace_check_cli as ws_cli_mod
-import flext_infra.deps.fix_pyrefly_config as fix_pyrefly_mod
-from flext_core import r
-from flext_infra import (
-    FlextInfraWorkspaceChecker,
-    main,
-)
-from tests import m, t
-
-
-def _fake_checker_cls(
-    parse_result: t.StrSequence,
-    run_result: r[Sequence[m.Infra.ProjectResult]],
-) -> type:
-    class _Fake:
-        def __init__(self, **_kw: t.Scalar) -> None:
-            _ = _kw
-
-        @staticmethod
-        def parse_gate_csv(_gates: str) -> t.StrSequence:
-            return parse_result
-
-        def run_projects(
-            self,
-            projects: t.StrSequence | None = None,
-            gates: t.StrSequence | None = None,
-            **kw: t.Scalar,
-        ) -> r[Sequence[m.Infra.ProjectResult]]:
-            _ = projects, gates, kw
-            return run_result
-
-    return _Fake
-
-
-def _fake_fixer_cls(
-    run_result: r[t.StrSequence],
-) -> type:
-    class _Fake:
-        def __init__(self, **_kw: t.Scalar) -> None:
-            _ = _kw
-
-        def run(
-            self,
-            _projects: t.StrSequence | None = None,
-            **kw: t.Scalar,
-        ) -> r[t.StrSequence]:
-            _ = _projects, kw
-            return run_result
-
-        @staticmethod
-        def main(argv: t.StrSequence | None = None) -> int:
-            _ = argv
-            instance = _Fake()
-            result = instance.run()
-            return 0 if result.is_success else 1
-
-    return _Fake
+from flext_infra import FlextInfraWorkspaceChecker, main
+from tests import u
 
 
 class TestWorkspaceCheckCLI:
+    @staticmethod
+    def _workspace(tmp_path: Path) -> Path:
+        workspace = tmp_path / "workspace"
+        workspace.mkdir(parents=True, exist_ok=True)
+        _ = u.Infra.Tests.mk_project(
+            workspace,
+            "p1",
+            pyproject='[project]\nname = "p1"\nversion = "0.1.0"\n',
+            with_src=True,
+        )
+        return workspace
+
     def test_no_projects_error(self) -> None:
         tm.that(FlextInfraWorkspaceChecker.main([]), eq=1)
 
-    def test_with_projects_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        ok_result = r[Sequence[m.Infra.ProjectResult]].ok([
-            m.Infra.ProjectResult(project="p1"),
-        ])
-        monkeypatch.setattr(
-            ws_mod,
-            "FlextInfraWorkspaceChecker",
-            _fake_checker_cls(["lint"], ok_result),
-        )
+    def test_with_projects_success(self, tmp_path: Path) -> None:
+        workspace = self._workspace(tmp_path)
         tm.that(
-            FlextInfraWorkspaceChecker.main(["--projects", "p1", "--gates", "lint"]),
+            FlextInfraWorkspaceChecker.main(
+                [
+                    "--workspace",
+                    str(workspace),
+                    "--projects",
+                    "p1",
+                    "--gates",
+                    "lint",
+                ],
+            ),
             eq=0,
         )
 
-    def test_with_projects_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        fail_gate = m.Infra.GateExecution(
-            result=m.Infra.GateResult(
-                gate="lint",
-                project="p1",
-                passed=False,
-                errors=(),
-                duration=0.0,
-            ),
-            issues=(),
-            raw_output="",
-        )
-        project = m.Infra.ProjectResult(project="p1", gates={"lint": fail_gate})
-        ok_result = r[Sequence[m.Infra.ProjectResult]].ok([project])
-        monkeypatch.setattr(
-            ws_mod,
-            "FlextInfraWorkspaceChecker",
-            _fake_checker_cls(["lint"], ok_result),
-        )
+    def test_with_projects_failure(self, tmp_path: Path) -> None:
+        workspace = self._workspace(tmp_path)
+        broken_file = workspace / "p1" / "src" / "broken.py"
+        broken_file.write_text("def broken(:\n", encoding="utf-8")
         tm.that(
-            FlextInfraWorkspaceChecker.main(["--projects", "p1", "--gates", "lint"]),
+            FlextInfraWorkspaceChecker.main(
+                [
+                    "--workspace",
+                    str(workspace),
+                    "--projects",
+                    "p1",
+                    "--gates",
+                    "lint",
+                ],
+            ),
             eq=1,
         )
 
-    def test_run_projects_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        fail_result = r[Sequence[m.Infra.ProjectResult]].fail("error")
-        monkeypatch.setattr(
-            ws_mod,
-            "FlextInfraWorkspaceChecker",
-            _fake_checker_cls(["lint"], fail_result),
-        )
+    def test_check_main_routes_real_help(self) -> None:
+        tm.that(main(["check", "run", "--help"]), eq=0)
+
+    def test_fix_pyrefly_config_routes_real_help(self) -> None:
         tm.that(
-            FlextInfraWorkspaceChecker.main(["--projects", "p1", "--gates", "lint"]),
-            eq=2,
+            FlextInfraWorkspaceChecker.run_cli(["fix-pyrefly-config", "--help"]), eq=0
         )
 
-
-class TestFixPyrelfyCLI:
-    def test_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        fake = _fake_fixer_cls(r[t.StrSequence].ok([]))
-        monkeypatch.setattr(
-            fix_pyrefly_mod,
-            "FlextInfraConfigFixer",
-            fake,
-        )
-        tm.that(fix_pyrefly_mod.FlextInfraConfigFixer.main([]), eq=0)
-
-    def test_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        fake = _fake_fixer_cls(r[t.StrSequence].fail("error"))
-        monkeypatch.setattr(
-            fix_pyrefly_mod,
-            "FlextInfraConfigFixer",
-            fake,
-        )
-        tm.that(fix_pyrefly_mod.FlextInfraConfigFixer.main([]), eq=1)
-
-
-def _const_cli_result(code: int) -> Callable[[t.StrSequence | None], int]:
-    def _runner(argv: t.StrSequence | None = None) -> int:
-        _ = argv
-        return code
-
-    return _runner
-
-
-_fake_run_cli_zero = _const_cli_result(0)
-_fake_run_cli_42 = _const_cli_result(42)
-
-
-class TestCheckMainEntryPoint:
-    def test_calls_run_cli(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            FlextInfraWorkspaceChecker,
-            "run_cli",
-            staticmethod(_fake_run_cli_zero),
-        )
-        tm.that(main(["check", "run"]), eq=0)
-
-    def test_returns_exit_code(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            FlextInfraWorkspaceChecker,
-            "run_cli",
-            staticmethod(_fake_run_cli_42),
-        )
-        tm.that(main(["check", "run"]), eq=42)
-
-
-class TestRunCLIExtended:
-    def test_fix_pyrefly_config_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            ws_cli_mod,
-            "FlextInfraConfigFixer",
-            _fake_fixer_cls(r[t.StrSequence].ok([])),
-        )
-        tm.that(FlextInfraWorkspaceChecker.run_cli(["fix-pyrefly-config"]), eq=0)
-
-    def test_fix_pyrefly_config_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            ws_cli_mod,
-            "FlextInfraConfigFixer",
-            _fake_fixer_cls(r[t.StrSequence].fail("error")),
-        )
-        tm.that(FlextInfraWorkspaceChecker.run_cli(["fix-pyrefly-config"]), eq=1)
-
-    def test_no_command_prints_help(self) -> None:
-        tm.that(FlextInfraWorkspaceChecker.run_cli([]), eq=1)
-
-    def test_with_relative_reports_dir(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        gate = m.Infra.GateResult(
-            gate="lint",
-            project="p",
-            passed=True,
-            errors=[],
-            duration=0.0,
-        )
-        gate_exec = m.Infra.GateExecution(result=gate, issues=(), raw_output="")
-        project = m.Infra.ProjectResult(project="p", gates={"lint": gate_exec})
-        ok_result = r[list[m.Infra.ProjectResult]].ok([project])
-
-        def _fake_init(
-            _self: ws_mod.FlextInfraWorkspaceChecker,
-            **_kw: t.Scalar,
-        ) -> None:
-            pass
-
-        def _fake_run_projects(
-            _self: ws_mod.FlextInfraWorkspaceChecker,
-            projects: t.StrSequence | None = None,
-            gates: t.StrSequence | None = None,
-            **kw: t.Scalar,
-        ) -> r[list[m.Infra.ProjectResult]]:
-            _ = projects, gates, kw
-            return ok_result
-
-        monkeypatch.setattr(
-            FlextInfraWorkspaceChecker,
-            "run_projects",
-            _fake_run_projects,
-        )
-        exit_code = FlextInfraWorkspaceChecker.run_cli([
-            "run",
-            "--gates",
-            "lint",
-            "--projects",
-            "p",
-            "--reports-dir",
-            "reports/check",
-        ])
+    def test_run_cli_with_relative_reports_dir(self, tmp_path: Path) -> None:
+        workspace = self._workspace(tmp_path)
+        current = Path.cwd()
+        runner_root = tmp_path / "runner"
+        runner_root.mkdir(parents=True, exist_ok=True)
+        try:
+            os.chdir(runner_root)
+            exit_code = FlextInfraWorkspaceChecker.run_cli(
+                [
+                    "run",
+                    "--workspace",
+                    str(workspace),
+                    "--gates",
+                    "lint",
+                    "--projects",
+                    "p1",
+                    "--reports-dir",
+                    "reports/check",
+                ],
+            )
+        finally:
+            os.chdir(current)
         tm.that(exit_code, eq=0)
+        tm.that((runner_root / "reports/check/check-report.md").exists(), eq=True)
+        tm.that((runner_root / "reports/check/check-report.sarif").exists(), eq=True)

@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from pathlib import Path
+from typing import override
 
-import pytest
 from flext_tests import tm
 
 from flext_core import r
 from flext_infra import FlextInfraDependencyDetectionService
-from tests import m, t
+from tests import m, p, r as tr, t
 
 
 class _StubToml:
@@ -24,63 +24,119 @@ class _StubToml:
         return value
 
 
-class _StubRunner:
+class _StubRunner(p.Cli.CommandRunner):
     def __init__(self, result: r[m.Cli.CommandOutput]) -> None:
         self._result = result
         self.last_kwargs: Mapping[str, str | int | Path | t.StrMapping] = {}
 
+    @override
     def run_raw(
         self,
-        *args: t.Infra.InfraValue,
-        **kwargs: str | int | Path | t.StrMapping,
+        cmd: t.StrSequence,
+        cwd: t.Cli.PathLike | None = None,
+        timeout: int | None = None,
+        env: t.Cli.StrEnvMapping | None = None,
+        input_data: bytes | None = None,
     ) -> r[m.Cli.CommandOutput]:
-        _ = args
-        self.last_kwargs = kwargs
+        del cmd, input_data
+        self.last_kwargs = {
+            "cwd": cwd or Path.cwd(),
+            "timeout": timeout or 0,
+            "env": env or {},
+        }
         return self._result
+
+    @override
+    def run(
+        self,
+        cmd: t.StrSequence,
+        cwd: t.Cli.PathLike | None = None,
+        timeout: int | None = None,
+        env: t.Cli.StrEnvMapping | None = None,
+    ) -> r[m.Cli.CommandOutput]:
+        del cmd, cwd, timeout, env
+        if self._result.is_failure:
+            return self._result
+        output = self._result.value
+        if output.exit_code != 0:
+            return tr[m.Cli.CommandOutput].fail(
+                output.stderr or output.stdout or "Command failed",
+            )
+        return self._result
+
+    @override
+    def capture(
+        self,
+        cmd: t.StrSequence,
+        cwd: t.Cli.PathLike | None = None,
+        timeout: int | None = None,
+        env: t.Cli.StrEnvMapping | None = None,
+    ) -> r[str]:
+        return self.run(cmd, cwd=cwd, timeout=timeout, env=env).map(
+            lambda output: output.stdout.strip(),
+        )
+
+    @override
+    def run_checked(
+        self,
+        cmd: t.StrSequence,
+        cwd: t.Cli.PathLike | None = None,
+        timeout: int | None = None,
+        env: t.Cli.StrEnvMapping | None = None,
+    ) -> r[bool]:
+        return self.run(cmd, cwd=cwd, timeout=timeout, env=env).map(
+            lambda _output: True,
+        )
+
+    @override
+    def run_to_file(
+        self,
+        cmd: t.StrSequence,
+        output_file: t.Cli.PathLike,
+        cwd: t.Cli.PathLike | None = None,
+        timeout: int | None = None,
+        env: t.Cli.StrEnvMapping | None = None,
+    ) -> r[int]:
+        result = self.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
+        if result.is_failure:
+            return tr[int].fail(result.error or "Command failed")
+        output_path = (
+            output_file if isinstance(output_file, Path) else Path(output_file)
+        )
+        output_path.write_text(
+            f"{result.value.stdout}{result.value.stderr}",
+            encoding="utf-8",
+        )
+        return tr[int].ok(result.value.exit_code)
 
 
 class TestLoadDependencyLimits:
-    def test_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_success(self) -> None:
         service = FlextInfraDependencyDetectionService()
-        monkeypatch.setattr(
-            service,
-            "toml",
-            _StubToml([r[t.Infra.ContainerDict].ok({"key": "value", "num": 42})]),
-        )
+        service.toml = _StubToml([
+            r[t.Infra.ContainerDict].ok({"key": "value", "num": 42})
+        ])
         result = service.load_dependency_limits(Path("/fake/limits.toml"))
         assert result.get("key") == "value"
         assert result.get("num") == 42
 
-    def test_failure_returns_empty(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_failure_returns_empty(self) -> None:
         service = FlextInfraDependencyDetectionService()
-        monkeypatch.setattr(
-            service,
-            "toml",
-            _StubToml([r[t.Infra.ContainerDict].fail("not found")]),
-        )
+        service.toml = _StubToml([r[t.Infra.ContainerDict].fail("not found")])
         tm.that(service.load_dependency_limits(Path("/fake/limits.toml")), eq={})
 
-    def test_unconvertible_values_skipped(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
+    def test_unconvertible_values_skipped(self) -> None:
         service = FlextInfraDependencyDetectionService()
-        monkeypatch.setattr(
-            service,
-            "toml",
-            _StubToml([r[t.Infra.ContainerDict].ok({"good": "val", "bad": ["x"]})]),
-        )
+        service.toml = _StubToml([
+            r[t.Infra.ContainerDict].ok({"good": "val", "bad": ["x"]})
+        ])
         result = service.load_dependency_limits(Path("/fake/limits.toml"))
         assert "good" in result
         assert "bad" in result
 
-    def test_none_value_preserved(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_none_value_preserved(self) -> None:
         service = FlextInfraDependencyDetectionService()
-        monkeypatch.setattr(
-            service,
-            "toml",
-            _StubToml([r[t.Infra.ContainerDict].ok({"key": None})]),
-        )
+        service.toml = _StubToml([r[t.Infra.ContainerDict].ok({"key": None})])
         result = service.load_dependency_limits(Path("/fake/limits.toml"))
         assert "key" in result
         tm.that(result["key"], eq=None)
@@ -96,50 +152,40 @@ class TestRunMypyStubHints:
     def test_runner_failure(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         service = FlextInfraDependencyDetectionService()
         venv_bin = tmp_path / "venv" / "bin"
         venv_bin.mkdir(parents=True)
-        (venv_bin / "mypy").write_text("")
-        monkeypatch.setattr(
-            service,
-            "runner",
-            _StubRunner(r[m.Cli.CommandOutput].fail("mypy crash")),
-        )
+        (venv_bin / "mypy").write_text("", encoding="utf-8")
+        service.runner = _StubRunner(r[m.Cli.CommandOutput].fail("mypy crash"))
         tm.fail(service.run_mypy_stub_hints(tmp_path, venv_bin))
 
     def test_parses_hints(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         service = FlextInfraDependencyDetectionService()
         venv_bin = tmp_path / "venv" / "bin"
         venv_bin.mkdir(parents=True)
-        (venv_bin / "mypy").write_text("")
+        (venv_bin / "mypy").write_text("", encoding="utf-8")
         out = m.Cli.CommandOutput(
             exit_code=0,
             stdout='note: hint: "pip install types-pyyaml"',
             stderr='error: Library stubs not installed for "requests"',
         )
-        monkeypatch.setattr(
-            service,
-            "runner",
-            _StubRunner(r[m.Cli.CommandOutput].ok(out)),
-        )
+        service.runner = _StubRunner(r[m.Cli.CommandOutput].ok(out))
         tm.ok(service.run_mypy_stub_hints(tmp_path, venv_bin))
 
     def test_run_mypy_stub_hints_with_timeout(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         service = FlextInfraDependencyDetectionService()
         venv_bin = tmp_path / "venv" / "bin"
         venv_bin.mkdir(parents=True)
-        (venv_bin / "mypy").write_text("")
+        (venv_bin / "mypy").write_text("", encoding="utf-8")
         out = m.Cli.CommandOutput(exit_code=0, stdout="", stderr="")
         runner = _StubRunner(r[m.Cli.CommandOutput].ok(out))
+        service.runner = runner
         tm.ok(service.run_mypy_stub_hints(tmp_path, venv_bin, timeout=600))
         tm.that(runner.last_kwargs["timeout"], eq=600)

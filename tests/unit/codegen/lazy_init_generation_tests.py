@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 
 import pytest
@@ -15,7 +15,7 @@ from flext_tests import tm
 
 import flext_infra as mod
 from flext_infra import FlextInfraCodegenGeneration
-from tests import r, t, u
+from tests import t, u
 
 
 class TestResolveAliases:
@@ -160,7 +160,10 @@ class TestGenerateFile:
             inline_constants,
             "flext_core",
         )
-        tm.that(content, contains="from flext_core import install_lazy_exports")
+        tm.that(
+            content,
+            contains="from flext_core.lazy import build_lazy_import_map, install_lazy_exports",
+        )
 
     def test_with_other_package(self) -> None:
         """Test uses correct lazy import for non-core packages."""
@@ -173,7 +176,10 @@ class TestGenerateFile:
             inline_constants,
             "other_pkg",
         )
-        tm.that(content, contains="from flext_core import install_lazy_exports")
+        tm.that(
+            content,
+            contains="from flext_core.lazy import build_lazy_import_map, install_lazy_exports",
+        )
 
     def test_with_inline_constants(self) -> None:
         """Test includes inline constants."""
@@ -208,7 +214,9 @@ class TestGenerateFile:
             content,
             contains="from test_pkg.__version__ import FlextVersion, __version__",
         )
-        tm.that(content, contains="_LAZY_IMPORTS = {")
+        tm.that(content, contains="_LAZY_IMPORTS = build_lazy_import_map(")
+        tm.that(content, contains='        "FlextVersion",')
+        tm.that(content, contains='        "__version__",')
 
     def test_skips_wildcard_runtime_modules_in_type_checking(self) -> None:
         """Test wildcard runtime imports are not duplicated in TYPE_CHECKING."""
@@ -272,7 +280,7 @@ class TestGenerateFile:
         tm.that(content, contains='"Beta"')
 
     def test_typevars_stay_lazy_exports(self) -> None:
-        """TypeVar-like exports from typings stay lazy and avoid runtime import cycles."""
+        """TypeVar-like exports stay lazy while remaining visible to static analysis."""
         exports = ["FlextTypes", "T", "U"]
         filtered = {
             "FlextTypes": ("test_pkg.typings", "FlextTypes"),
@@ -286,9 +294,14 @@ class TestGenerateFile:
             inline_constants,
             "test_pkg",
         )
-        tm.that(content, lacks="from test_pkg.typings import T, U")
-        tm.that(content, contains='"T": ".typings"')
-        tm.that(content, contains='"U": ".typings"')
+        tm.that(content, contains="if _t.TYPE_CHECKING:")
+        tm.that(
+            content,
+            contains="from test_pkg.typings import FlextTypes, T, U",
+        )
+        tm.that(content, contains='        ".typings": (')
+        tm.that(content, contains='            "T",')
+        tm.that(content, contains='            "U",')
 
     def test_root_namespace_emits_static_analysis_hints(self) -> None:
         """Root namespace __init__.py keeps TYPE_CHECKING and __all__."""
@@ -328,15 +341,15 @@ class TestGenerateFile:
         tm.that(content, lacks="from test_pkg._constants import Alpha")
         tm.that(content, lacks="from test_pkg._models import Beta")
 
-    def test_subpackage_generated_init_omits_package_docstrings(self) -> None:
-        """Generated subpackage __init__.py files should omit package docstrings."""
+    def test_subpackage_generated_init_includes_package_docstring(self) -> None:
+        """Generated subpackage __init__.py files include the package docstring."""
         content = FlextInfraCodegenGeneration.generate_file(
             ["Alpha"],
             {"Alpha": ("test_pkg.tools.alpha", "Alpha")},
             {},
             "test_pkg.tools",
         )
-        tm.that(content, lacks='"""')
+        tm.that(content, contains='"""Tools package."""')
 
     def test_root_namespace_type_checking_skips_module_reexport_names(self) -> None:
         """Root namespace TYPE_CHECKING must omit module/package compatibility names."""
@@ -378,7 +391,7 @@ class TestGenerateFile:
             child_packages_for_lazy=("test_pkg._constants", "test_pkg.tools"),
             child_packages_for_tc=("test_pkg._constants", "test_pkg.tools"),
         )
-        tm.that(content, contains='"Alpha": "._utilities.alpha"')
+        tm.that(content, contains='"._utilities.alpha": ("Alpha",)')
         tm.that(content, lacks='"_constants": "test_pkg._constants"')
         tm.that(content, lacks='"api": "test_pkg.api"')
         tm.that(content, lacks='"constants": "test_pkg.constants"')
@@ -443,58 +456,21 @@ class TestRunRuffFix:
     def test_runs_ruff_check_and_format(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test generated files are lint-fixed and formatted."""
         generated = tmp_path / "__init__.py"
         generated.write_text("__all__=[]\n", encoding="utf-8")
-        commands: MutableSequence[t.StrSequence] = []
-
-        def _run_checked(
-            cmd: t.StrSequence,
-            cwd: Path | None = None,
-            timeout: int | None = None,
-            env: t.StrMapping | None = None,
-        ) -> r[bool]:
-            _ = (cwd, timeout, env)
-            commands.append(tuple(cmd))
-            return r[bool].ok(True)
-
         u.Infra.run_ruff_fix(generated)
-        tm.that(len(commands), eq=2)
-        tm.that(
-            commands[0],
-            eq=("ruff", "check", "--fix", "--quiet", str(generated)),
-        )
-        tm.that(
-            commands[1],
-            eq=("ruff", "format", "--quiet", str(generated)),
-        )
+        tm.that(generated.read_text(encoding="utf-8"), eq="__all__ = []\n")
 
     def test_raises_when_ruff_postprocess_fails(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test generator fails when ruff post-processing fails."""
         generated = tmp_path / "__init__.py"
-        generated.write_text("__all__=[]\n", encoding="utf-8")
-        call_count = 0
-
-        def _run_checked(
-            cmd: t.StrSequence,
-            cwd: Path | None = None,
-            timeout: int | None = None,
-            env: t.StrMapping | None = None,
-        ) -> r[bool]:
-            nonlocal call_count
-            _ = (cmd, cwd, timeout, env)
-            call_count += 1
-            if call_count == 1:
-                return r[bool].ok(True)
-            return r[bool].fail("ruff format failed")
-
-        with pytest.raises(ValueError, match="ruff format failed"):
+        generated.write_text("def broken(:\n", encoding="utf-8")
+        with pytest.raises(ValueError, match="ruff"):
             u.Infra.run_ruff_fix(generated)
 
 

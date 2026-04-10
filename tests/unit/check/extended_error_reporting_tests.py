@@ -1,4 +1,4 @@
-"""Tests for workspace checker error reporting and integration scenarios.
+"""Public error-reporting tests for workspace gates.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -6,236 +6,116 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
-import pytest
-from flext_tests import tm
-
 from flext_infra import (
-    FlextInfraGate,
     FlextInfraGoGate,
     FlextInfraMypyGate,
     FlextInfraRuffFormatGate,
-    FlextInfraWorkspaceChecker,
 )
-from tests import (
-    m,
-    t,
-    u,
-)
+from tests import u
 
 
-class TestErrorReporting:
-    """Test error reporting in run_projects."""
+class TestGateErrorReportingPublicBehavior:
+    """Verify gate issue parsing through the public ``check()`` contract."""
 
-    def test_reports_errors_by_project(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
-        reports_dir = tmp_path / "reports"
-        issue = u.Infra.Tests.make_issue(file="test.py")
-        gate_exec = u.Infra.Tests.create_gate_execution(issues=[issue])
-        project = m.Infra.ProjectResult(project="p1", gates={"lint": gate_exec})
-
-        monkeypatch.setattr(
-            checker,
-            "_check_project_with_ctx",
-            u.Infra.Tests.create_check_project_stub(project),
-        )
-        u.Infra.Tests.mk_project(tmp_path, "p1")
-
-        result = checker.run_projects(["p1"], ["lint"], reports_dir=reports_dir)
-        tm.ok(result)
-        tm.that(len(result.value), eq=1)
-        tm.that(result.value[0].total_errors, eq=1)
-
-    def test_skips_projects_with_no_errors(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
-        reports_dir = tmp_path / "reports"
-        issue = u.Infra.Tests.make_issue(file="test.py")
-        exec_with = u.Infra.Tests.create_gate_execution(issues=[issue])
-        exec_without = u.Infra.Tests.create_gate_execution(issues=[])
-        project1 = m.Infra.ProjectResult(project="p1", gates={"lint": exec_with})
-        project2 = m.Infra.ProjectResult(project="p2", gates={"lint": exec_without})
-        monkeypatch.setattr(
-            checker,
-            "_check_project_with_ctx",
-            u.Infra.Tests.create_check_project_iter_stub([project1, project2]),
-        )
-        u.Infra.Tests.mk_project(tmp_path, "p1")
-        u.Infra.Tests.mk_project(tmp_path, "p2")
-        result = checker.run_projects(["p1", "p2"], ["lint"], reports_dir=reports_dir)
-        tm.ok(result)
-        tm.that(len(result.value), eq=2)
-        tm.that(result.value[0].total_errors, eq=1)
-        tm.that(result.value[1].total_errors, eq=0)
-
-
-class TestMarkdownReportEmptyGates:
-    """Test markdown report skips empty gates in run_projects."""
-
-    def test_skips_empty_gates(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
-        reports_dir = tmp_path / "reports"
-        issue = u.Infra.Tests.make_issue(file="test.py")
-        exec_with = u.Infra.Tests.create_gate_execution(issues=[issue])
-        exec_without = u.Infra.Tests.create_gate_execution(issues=[])
-        project = m.Infra.ProjectResult(
-            project="p1",
-            gates={"lint": exec_with, "format": exec_without},
-        )
-        monkeypatch.setattr(
-            checker,
-            "_check_project_with_ctx",
-            u.Infra.Tests.create_check_project_stub(project),
-        )
-        u.Infra.Tests.mk_project(tmp_path, "p1")
-        result = checker.run_projects(
-            ["p1"],
-            ["lint", "format"],
-            reports_dir=reports_dir,
-        )
-        tm.ok(result)
-        md_path = reports_dir / "check-report.md"
-        tm.that(md_path.exists(), eq=True)
-        tm.that(md_path.read_text(), contains="lint")
-
-
-class TestMypyEmptyLinesInOutput:
-    """Test _run_mypy with empty lines in output."""
-
-    def test_skips_empty_lines(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        proj_dir = u.Infra.Tests.mk_project(tmp_path, "p1")
-        (proj_dir / "src").mkdir()
-        (proj_dir / "src" / "main.py").write_text("# code")
-        line1 = '{"file": "a.py", "line": 1, "column": 0, "code": "E001", "message": "Error", "severity": "error"}'
-        line2 = '{"file": "b.py", "line": 2, "column": 0, "code": "E002", "message": "Error", "severity": "error"}'
-
-        def _fake_run(
-            _self: FlextInfraGate,
-            _cmd: t.StrSequence,
-            _cwd: Path,
-            timeout: int = 120,
-            env: t.StrMapping | None = None,
-        ) -> m.Cli.CommandOutput:
-            del _self, _cmd, _cwd, timeout, env
-            return m.Cli.CommandOutput(
-                stdout=f"{line1}\n\n{line2}\n",
-                stderr="",
-                exit_code=1,
-            )
-
-        def _fake_existing_dirs(
-            _self: FlextInfraGate,
-            _project_dir: Path,
-        ) -> t.StrSequence:
-            del _self, _project_dir
-            return ["src"]
-
-        def _fake_dirs_with_py(
-            _project_dir: Path,
-            _dirs: t.StrSequence,
-        ) -> t.StrSequence:
-            del _project_dir, _dirs
-            return ["src"]
-
-        monkeypatch.setattr(
-            FlextInfraMypyGate,
-            "_existing_check_dirs",
-            _fake_existing_dirs,
-        )
-        monkeypatch.setattr(
-            FlextInfraMypyGate,
-            "_dirs_with_py",
-            staticmethod(_fake_dirs_with_py),
-        )
-        result = u.Infra.Tests.run_gate_check(FlextInfraMypyGate, tmp_path, proj_dir)
-        tm.that(not result.result.passed, eq=True)
-        tm.that(len(result.issues), eq=2)
-
-
-class TestGoFmtEmptyLinesInOutput:
-    """Test _run_go with empty lines in output."""
-
-    def test_skips_empty_lines(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        proj_dir = u.Infra.Tests.mk_project(tmp_path, "p1")
-        (proj_dir / "go.mod").write_text("module test\n")
-        (proj_dir / "main.go").write_text("package main\n")
-        call_idx = [0]
-        results = [
-            m.Cli.CommandOutput(stdout="", stderr="", exit_code=0),
-            m.Cli.CommandOutput(
-                stdout="src/file.go\n\nsrc/other.go\n",
-                stderr="",
-                exit_code=1,
+    def test_mypy_ignores_empty_lines_in_json_output(self, tmp_path: Path) -> None:
+        proj_dir = u.Infra.Tests.mk_project(tmp_path, "p1", with_src=True)
+        (proj_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
+        fake_modules = tmp_path / "fake_modules" / "mypy"
+        fake_modules.mkdir(parents=True, exist_ok=True)
+        (fake_modules / "__init__.py").write_text("", encoding="utf-8")
+        (fake_modules / "__main__.py").write_text(
+            (
+                "import sys\n"
+                'print(\'{"file":"a.py","line":1,"column":0,"code":"E001","message":"Error","severity":"error"}\')\n'
+                "print()\n"
+                'print(\'{"file":"b.py","line":2,"column":0,"code":"E002","message":"Error","severity":"error"}\')\n'
+                "raise SystemExit(1)\n"
             ),
-        ]
-
-        def _fake_run(
-            _self: FlextInfraGate,
-            _cmd: t.StrSequence,
-            _cwd: Path,
-            timeout: int = 120,
-            env: t.StrMapping | None = None,
-        ) -> m.Cli.CommandOutput:
-            del _self, _cmd, _cwd, timeout, env
-            index = min(call_idx[0], len(results) - 1)
-            call_idx[0] += 1
-            return results[index]
-
-        result = u.Infra.Tests.run_gate_check(FlextInfraGoGate, tmp_path, proj_dir)
-        tm.that(not result.result.passed, eq=True)
-        tm.that(len(result.issues), eq=2)
-
-
-class TestRuffFormatDuplicateFiles:
-    """Test _run_ruff_format with duplicate files."""
-
-    def test_deduplicates_files(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        proj_dir = u.Infra.Tests.mk_project(tmp_path, "p1")
-        (proj_dir / "src").mkdir()
-        (proj_dir / "src" / "main.py").write_text("# code")
-
-        def _fake_run(
-            _self: FlextInfraGate,
-            _cmd: t.StrSequence,
-            _cwd: Path,
-            timeout: int = 120,
-            env: t.StrMapping | None = None,
-        ) -> m.Cli.CommandOutput:
-            del _self, _cmd, _cwd, timeout, env
-            return m.Cli.CommandOutput(
-                stdout="--> src/file.py:1:1\n--> src/file.py:1:1\n--> src/other.py:1:1\n",
-                stderr="",
-                exit_code=1,
-            )
-
-        result = u.Infra.Tests.run_gate_check(
-            FlextInfraRuffFormatGate,
-            tmp_path,
-            proj_dir,
+            encoding="utf-8",
         )
-        tm.that(not result.result.passed, eq=True)
-        tm.that(len(result.issues), eq=2)
+        original_pythonpath = os.environ.get("PYTHONPATH")
+        fake_pythonpath = str(fake_modules.parent)
+        os.environ["PYTHONPATH"] = (
+            f"{fake_pythonpath}:{original_pythonpath}"
+            if original_pythonpath
+            else fake_pythonpath
+        )
+        try:
+            result = u.Infra.Tests.run_gate_check(
+                FlextInfraMypyGate,
+                tmp_path,
+                proj_dir,
+            )
+        finally:
+            if original_pythonpath is None:
+                os.environ.pop("PYTHONPATH", None)
+            else:
+                os.environ["PYTHONPATH"] = original_pythonpath
+
+        assert not result.result.passed
+        assert len(result.issues) == 2
+
+    def test_go_gate_ignores_empty_lines_in_gofmt_output(self, tmp_path: Path) -> None:
+        proj_dir = u.Infra.Tests.mk_project(tmp_path, "p1")
+        (proj_dir / "go.mod").write_text("module test\n", encoding="utf-8")
+        (proj_dir / "main.go").write_text("package main\n", encoding="utf-8")
+        fake_bin = tmp_path / "fake_bin"
+        fake_bin.mkdir(parents=True, exist_ok=True)
+        (fake_bin / "go").write_text(
+            "#!/usr/bin/env bash\nexit 0\n",
+            encoding="utf-8",
+        )
+        (fake_bin / "gofmt").write_text(
+            (
+                "#!/usr/bin/env bash\n"
+                "printf 'src/file.go\\n\\nsrc/other.go\\n'\n"
+                "exit 1\n"
+            ),
+            encoding="utf-8",
+        )
+        (fake_bin / "go").chmod(0o755)
+        (fake_bin / "gofmt").chmod(0o755)
+        original_path = os.environ.get("PATH", "")
+        os.environ["PATH"] = f"{fake_bin}:{original_path}"
+        try:
+            result = u.Infra.Tests.run_gate_check(FlextInfraGoGate, tmp_path, proj_dir)
+        finally:
+            os.environ["PATH"] = original_path
+
+        assert not result.result.passed
+        assert len(result.issues) == 2
+
+    def test_ruff_format_deduplicates_reported_files(self, tmp_path: Path) -> None:
+        proj_dir = u.Infra.Tests.mk_project(tmp_path, "p1", with_src=True)
+        (proj_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
+        fake_bin = tmp_path / "fake_bin"
+        fake_bin.mkdir(parents=True, exist_ok=True)
+        (fake_bin / "ruff").write_text(
+            (
+                "#!/usr/bin/env bash\n"
+                "cat <<'EOF'\n"
+                "--> src/file.py:1:1\n"
+                "--> src/file.py:1:1\n"
+                "--> src/other.py:1:1\n"
+                "EOF\n"
+                "exit 1\n"
+            ),
+            encoding="utf-8",
+        )
+        (fake_bin / "ruff").chmod(0o755)
+        original_path = os.environ.get("PATH", "")
+        os.environ["PATH"] = f"{fake_bin}:{original_path}"
+        try:
+            result = u.Infra.Tests.run_gate_check(
+                FlextInfraRuffFormatGate,
+                tmp_path,
+                proj_dir,
+            )
+        finally:
+            os.environ["PATH"] = original_path
+
+        assert not result.result.passed
+        assert len(result.issues) == 2

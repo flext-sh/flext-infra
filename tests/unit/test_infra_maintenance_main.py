@@ -148,7 +148,12 @@ class TestMaintenanceMainEnforcer:
         (project / "src").mkdir()
         mismatched = sys.version_info.minor + 1
         (project / "pyproject.toml").write_text(
-            f'requires-python = ">=3.{mismatched}"\n',
+            (
+                "[project]\n"
+                "name = 'project-a'\n"
+                "dependencies = ['flext-core>=0.1.0']\n"
+                f'requires-python = ">=3.{mismatched}"\n'
+            ),
             encoding="utf-8",
         )
         enforcer = _make_enforcer(workspace)

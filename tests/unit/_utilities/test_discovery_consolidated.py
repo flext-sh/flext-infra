@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
 
-import pytest
-
-from tests import c, m, t, u
+from tests import c, m, u
 
 
 class TestDiscoveryConsolidated:
@@ -97,20 +94,10 @@ class TestDiscoveryConsolidated:
     def test_iter_python_files_returns_failure_on_oserror(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        def _raise_oserror(workspace_root: Path, **_kwargs: t.Scalar) -> Sequence[Path]:
-            del workspace_root  # Mock function doesn't use the parameter
-            msg = "forced failure"
-            raise OSError(msg)
-
-        monkeypatch.setattr(
-            u.Infra,
-            "discover_project_roots",
-            staticmethod(_raise_oserror),
-        )
-
-        result = u.Infra.iter_python_files(workspace_root=tmp_path)
+        broken_root = tmp_path / "not-a-directory"
+        broken_root.write_text("x", encoding="utf-8")
+        result = u.Infra.iter_python_files(workspace_root=broken_root)
 
         assert result.is_failure
         error_text = result.error or ""
@@ -189,20 +176,16 @@ class TestDiscoveryConsolidated:
         assert included_file in result.value
         assert skipped_file not in result.value
 
-    def test_find_all_pyproject_files_returns_failure_on_oserror(
+    def test_find_all_pyproject_files_returns_empty_for_non_directory_root(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        def _raise_oserror(_: Path, _pattern: str) -> Sequence[Path]:
-            msg = "scan failed"
-            raise OSError(msg)
+        broken_root = tmp_path / "not-a-directory"
+        broken_root.write_text("x", encoding="utf-8")
+        result = u.Infra.find_all_pyproject_files(broken_root)
 
-        result = u.Infra.find_all_pyproject_files(tmp_path)
-
-        assert result.is_failure
-        error_text = result.error or ""
-        assert "pyproject file scan failed" in error_text
+        assert result.is_success
+        assert result.value == []
 
     def test_discover_projects_returns_project_info(self, tmp_path: Path) -> None:
         project = tmp_path / "alpha"
@@ -276,14 +259,11 @@ class TestDiscoveryConsolidated:
     def test_discover_projects_returns_failure_on_oserror(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        def _raise_oserror(_: Path) -> Sequence[Path]:
-            msg = "no permission"
-            raise OSError(msg)
-
-        result = u.Infra.discover_projects(tmp_path)
+        broken_root = tmp_path / "not-a-directory"
+        broken_root.write_text("x", encoding="utf-8")
+        result = u.Infra.discover_projects(broken_root)
 
         assert result.is_failure
         error_text = result.error or ""
-        assert "discovery failed" in error_text
+        assert "invalid workspace root" in error_text

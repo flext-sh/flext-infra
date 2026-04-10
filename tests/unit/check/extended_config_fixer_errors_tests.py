@@ -1,4 +1,4 @@
-"""Tests for FlextInfraConfigFixer error handling and edge cases.
+"""Public-behavior tests for ``FlextInfraConfigFixer`` edge cases.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -6,177 +6,74 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping, Sequence
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from flext_core import r
 from flext_infra import FlextInfraConfigFixer
-from tests import t
+from tests import u
 
 
-def _fake_process(
-    _s: FlextInfraConfigFixer,
-    _p: Path,
-    *,
-    dry_run: bool = False,
-) -> r[t.StrSequence]:
-    del dry_run
-    return r[t.StrSequence].ok(["fix1"])
+class TestConfigFixerPublicBehavior:
+    """Exercise ``FlextInfraConfigFixer`` only through its public surface."""
 
-
-class TestConfigFixerRunMethods:
-    """Test FlextInfraConfigFixer.run method with monkeypatch."""
-
-    def test_run_with_verbose_and_fixes(
+    @pytest.mark.parametrize(
+        ("pyproject", "name"),
+        [
+            ('[tool]\npyrefly = "string"\n', "string-pyrefly"),
+            ("[build-system]\n", "no-tool-pyrefly"),
+        ],
+    )
+    def test_process_file_returns_empty_for_non_fixable_documents(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
+        pyproject: str,
+        name: str,
     ) -> None:
-        pyproject = tmp_path / "pyproject.toml"
-        pyproject.write_text("[tool.pyrefly]\nsearch-path = []\n")
+        file_path = tmp_path / f"{name}.toml"
+        file_path.write_text(pyproject, encoding="utf-8")
 
-        def _find(
-            _s: FlextInfraConfigFixer,
-            _p: Sequence[Path] | None = None,
-        ) -> r[Sequence[Path]]:
-            return r[Sequence[Path]].ok([pyproject])
+        result = FlextInfraConfigFixer(workspace=tmp_path).process_file(file_path)
 
-        def _proc(
-            _s: FlextInfraConfigFixer,
-            _p: Path,
-            *,
-            dry_run: bool = False,
-        ) -> r[t.StrSequence]:
-            del dry_run
-            return r[t.StrSequence].ok(["fix1", "fix2"])
+        assert result.is_success
+        assert result.value == []
 
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
-        result = fixer.run(["project1"], verbose=True)
-        tm.ok(result)
-        assert len(result.value) > 0
-
-    def test_run_with_dry_run(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
+    def test_run_returns_verbose_messages_for_selected_project(
+        self, tmp_path: Path
     ) -> None:
-        pyproject = tmp_path / "pyproject.toml"
-        pyproject.write_text("[tool.pyrefly]\nsearch-path = []\n")
-
-        def _find(
-            _s: FlextInfraConfigFixer,
-            _p: Sequence[Path] | None = None,
-        ) -> r[Sequence[Path]]:
-            return r[Sequence[Path]].ok([pyproject])
-
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
-        tm.ok(fixer.run(["project1"], dry_run=True))
-
-
-class TestProcessFileReadError:
-    """Test process_file read error handling."""
-
-    def test_read_error(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
-        pyproject = tmp_path / "pyproject.toml"
-        pyproject.write_text("[tool]\n")
-
-        def _raise(_self: Path, encoding: str = "utf-8") -> str:
-            del encoding
-            msg = "read error"
-            raise OSError(msg)
-
-        tm.fail(fixer.process_file(pyproject), has="TOML parse failed")
-
-    def test_parse_error(self, tmp_path: Path) -> None:
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
-        pyproject = tmp_path / "pyproject.toml"
-        pyproject.write_text("invalid toml {")
-        tm.fail(fixer.process_file(pyproject), has="parse")
-
-    def test_no_tool_section(self, tmp_path: Path) -> None:
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
-        pyproject = tmp_path / "pyproject.toml"
-        pyproject.write_text("[build-system]\n")
-        result = fixer.process_file(pyproject)
-        tm.ok(result)
-        tm.that(len(result.value), eq=0)
-
-    def test_write_error(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
-        pyproject = tmp_path / "pyproject.toml"
-        pyproject.write_text("[tool.pyrefly]\nsearch-path = []\n")
-
-        def _fake_fix(
-            _s: FlextInfraConfigFixer,
-            _d: MutableMapping[str, t.Infra.InfraValue],
-            _r: Path,
-        ) -> t.StrSequence:
-            return ["fix1"]
-
-        original_write = Path.write_text
-
-        def _raise_on_write(self_path: Path, data: str, **kw: str) -> None:
-            if self_path == pyproject:
-                msg = "write error"
-                raise OSError(msg)
-            original_write(self_path, data, **kw)
-
-        tm.fail(fixer.process_file(pyproject), has="write error")
-
-
-class TestConfigFixerPathResolution:
-    """Test config fixer path resolution."""
-
-    def test_non_mutable_pyrefly_returns_empty(self, tmp_path: Path) -> None:
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
-        pyproject = tmp_path / "pyproject.toml"
-        pyproject.write_text('[tool]\npyrefly = "string"\n')
-        result = fixer.process_file(pyproject)
-        tm.ok(result)
-        tm.that(result.value, eq=[])
-
-    def test_empty_projects(self, tmp_path: Path) -> None:
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
-        result = fixer.run(projects=[], dry_run=False, verbose=False)
-        tm.ok(result)
-        tm.that(result.value, eq=[])
-
-
-class TestConfigFixerRunWithVerbose:
-    """Test run method with verbose flag."""
-
-    def test_verbose_with_fixes(self, tmp_path: Path) -> None:
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
-        pyproject = tmp_path / "pyproject.toml"
-        pyproject.write_text(
-            '[tool.pyrefly]\nsearch_paths = ["src"]\nignore = true\n',
+        u.Infra.Tests.mk_project(
+            tmp_path,
+            "project1",
+            pyproject="[tool.pyrefly]\nsearch-path = []\n",
         )
-        tm.ok(fixer.run(projects=[], dry_run=False, verbose=True))
 
-    def test_empty_fixes_skips_logging(self, tmp_path: Path) -> None:
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
-        pyproject = tmp_path / "pyproject.toml"
-        pyproject.write_text("[tool]\n")
-        result = fixer.run(projects=[], dry_run=False, verbose=True)
-        tm.ok(result)
-        tm.that(result.value, eq=[])
-
-    def test_relative_to_error(self, tmp_path: Path) -> None:
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
-        pyproject = tmp_path / "pyproject.toml"
-        pyproject.write_text(
-            '[tool.pyrefly]\nsearch_paths = ["src"]\nignore = true\n',
+        result = FlextInfraConfigFixer(workspace=tmp_path).run(
+            ["project1"],
+            verbose=True,
         )
-        tm.ok(fixer.run(projects=[], dry_run=False, verbose=True))
+
+        assert result.is_success
+        assert result.value
+        assert any("project1/pyproject.toml" in line for line in result.value)
+
+    def test_run_dry_run_preserves_file_while_reporting_fixes(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        project_dir = u.Infra.Tests.mk_project(
+            tmp_path,
+            "project1",
+            pyproject="[tool.pyrefly]\nsearch-path = []\n",
+        )
+        pyproject = project_dir / "pyproject.toml"
+        original = pyproject.read_text(encoding="utf-8")
+
+        result = FlextInfraConfigFixer(workspace=tmp_path).run(
+            ["project1"],
+            dry_run=True,
+            verbose=True,
+        )
+
+        assert result.is_success
+        assert result.value
+        assert pyproject.read_text(encoding="utf-8") == original

@@ -29,7 +29,12 @@ def _ws(root: Path, *, minor: int = _MINOR) -> Path:
     (root / ".git").mkdir(exist_ok=True)
     (root / "Makefile").touch()
     (root / "pyproject.toml").write_text(
-        f'requires-python = ">=3.{minor}"\n',
+        (
+            "[project]\n"
+            'name = "workspace"\n'
+            'version = "0.1.0"\n'
+            f'requires-python = ">=3.{minor}"\n'
+        ),
         encoding="utf-8",
     )
     return root
@@ -43,7 +48,13 @@ def _proj(root: Path, name: str, *, minor: int = _MINOR) -> Path:
     (proj / "Makefile").touch()
     (proj / "src").mkdir(exist_ok=True)
     (proj / "pyproject.toml").write_text(
-        f'requires-python = ">=3.{minor}"\n',
+        (
+            "[project]\n"
+            f'name = "{name}"\n'
+            'version = "0.1.0"\n'
+            f'requires-python = ">=3.{minor}"\n'
+            'dependencies = ["flext-core>=0"]\n'
+        ),
         encoding="utf-8",
     )
     return proj

@@ -2,12 +2,11 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
+from typing import override
 
-import pytest
-import tomlkit
 from flext_tests import tm
-from tomlkit.toml_document import TOMLDocument
 
+from flext_infra import FlextInfraUtilitiesDependencyPathSync
 from tests import m, r, u
 
 
@@ -21,65 +20,50 @@ def _project(path: Path) -> m.Infra.ProjectInfo:
     )
 
 
-class _SilentLogger:
-    """No-op logger mock for path_sync_module tests."""
+def _service(
+    projects: Sequence[m.Infra.ProjectInfo],
+) -> FlextInfraUtilitiesDependencyPathSync:
+    class _TestPathSync(FlextInfraUtilitiesDependencyPathSync):
+        @staticmethod
+        @override
+        def discover_projects(
+            workspace_root: Path,
+        ) -> r[Sequence[m.Infra.ProjectInfo]]:
+            _ = workspace_root
+            return r[Sequence[m.Infra.ProjectInfo]].ok(projects)
 
-    def info(self, _message: str) -> None:
-        pass
+    return _TestPathSync()
 
 
-def test_main_project_obj_not_dict_first_loop(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_main_project_obj_not_dict_first_loop(tmp_path: Path) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        'project = "not-a-dict"\n',
+        encoding="utf-8",
+    )
+    tm.that(
+        _service([]).execute(
+            cli=u.Infra.CliArgs(workspace=tmp_path),
+            mode="standalone",
+        ),
+        eq=0,
+    )
+
+
+def test_main_project_obj_not_dict_second_loop(tmp_path: Path) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname = "workspace"\n',
+        encoding="utf-8",
+    )
     project_dir = tmp_path / "test-project"
     project_dir.mkdir()
-    (project_dir / "pyproject.toml").touch()
-
-    def _discover_projects(
-        _root: Path,
-    ) -> r[Sequence[m.Infra.ProjectInfo]]:
-        return r[Sequence[m.Infra.ProjectInfo]].ok([_project(project_dir)])
-
-    def _read_document(_path: Path) -> r[TOMLDocument]:
-        return r[TOMLDocument].ok(tomlkit.parse('[project]\nvalue = "not-a-dict"\n'))
-
-    monkeypatch.setattr(
-        "flext_infra.FlextInfraUtilitiesDiscovery.discover_projects",
-        _discover_projects,
+    (project_dir / "pyproject.toml").write_text(
+        'project = "not-a-dict"\n',
+        encoding="utf-8",
     )
-    monkeypatch.setattr(
-        u.Cli,
-        "toml_read_document",
-        staticmethod(_read_document),
+    tm.that(
+        _service([_project(project_dir)]).execute(
+            cli=u.Infra.CliArgs(workspace=tmp_path),
+            mode="standalone",
+        ),
+        eq=0,
     )
-
-    tm.that(u.Infra.main(), eq=0)
-
-
-def test_main_project_obj_not_dict_second_loop(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    project_dir = tmp_path / "test-project"
-    project_dir.mkdir()
-
-    def _discover_projects(
-        _root: Path,
-    ) -> r[Sequence[m.Infra.ProjectInfo]]:
-        return r[Sequence[m.Infra.ProjectInfo]].ok([_project(project_dir)])
-
-    def _read_document(_path: Path) -> r[TOMLDocument]:
-        return r[TOMLDocument].ok(tomlkit.parse('[project]\nvalue = "not-a-dict"\n'))
-
-    monkeypatch.setattr(
-        "flext_infra.FlextInfraUtilitiesDiscovery.discover_projects",
-        _discover_projects,
-    )
-    monkeypatch.setattr(
-        u.Cli,
-        "toml_read_document",
-        staticmethod(_read_document),
-    )
-
-    tm.that(u.Infra.main(), eq=0)

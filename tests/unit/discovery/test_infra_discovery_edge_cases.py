@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from _pytest.monkeypatch import MonkeyPatch
 from flext_tests import tm
 
 from tests import u
@@ -66,36 +65,40 @@ class TestFlextInfraDiscoveryServiceUncoveredLines:
         tm.ok(result)
         assert not result.value
 
-    def test_find_all_pyproject_files_oserror_on_rglob(
+    def test_find_all_pyproject_files_skips_unreadable_subdir(
         self,
         tmp_path: Path,
-        monkeypatch: MonkeyPatch,
     ) -> None:
         service = u.Infra()
+        blocked_dir = tmp_path / "blocked"
+        blocked_dir.mkdir()
+        (blocked_dir / "pyproject.toml").write_text(
+            "[project]\nname='blocked'\n",
+            encoding="utf-8",
+        )
+        blocked_dir.chmod(0)
+        try:
+            result = service.find_all_pyproject_files(tmp_path)
+        finally:
+            blocked_dir.chmod(0o755)
+        tm.ok(result)
+        assert result.value == []
 
-        def mock_rglob(self: Path, pattern: str) -> None:
-            msg = "permission denied"
-            raise OSError(msg)
-
-        result = service.find_all_pyproject_files(tmp_path)
-        tm.fail(result)
-        assert isinstance(result.error, str)
-        assert "pyproject file scan failed" in result.error
-
-    def test_submodule_names_with_gitmodules_oserror(
+    def test_submodule_names_with_unreadable_gitmodules(
         self,
         tmp_path: Path,
-        monkeypatch: MonkeyPatch,
     ) -> None:
         workspace_root = tmp_path
         gitmodules = workspace_root / ".gitmodules"
-        gitmodules.touch()
-
-        def mock_read_text(self: Path, encoding: str | None = None) -> None:
-            msg = "permission denied"
-            raise OSError(msg)
-
-        result = u.Infra._submodule_names(workspace_root)
+        gitmodules.write_text(
+            '[submodule "sub1"]\n    path = submodule-one\n',
+            encoding="utf-8",
+        )
+        gitmodules.chmod(0)
+        try:
+            result = u.Infra._submodule_names(workspace_root)
+        finally:
+            gitmodules.chmod(0o644)
         assert result == set()
 
     def test_submodule_names_with_valid_gitmodules(self, tmp_path: Path) -> None:

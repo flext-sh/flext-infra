@@ -1,66 +1,30 @@
 from __future__ import annotations
 
-from collections.abc import MutableSequence
 from pathlib import Path
 
-import pytest
-
-from tests import c, r, t, u
+from tests import c, u
 
 
 class TestFormattingRunRuffFix:
-    def test_run_ruff_fix_runs_check_and_format(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
+    def test_run_ruff_fix_runs_check_and_format(self, tmp_path: Path) -> None:
         target = tmp_path / "sample.py"
         target.write_text("x=1\n", encoding="utf-8")
-        calls: MutableSequence[t.StrSequence] = []
-
-        def _fake_run_checked(
-            cmd: t.StrSequence,
-        ) -> r[bool]:
-            calls.append(cmd)
-            return r[bool].ok(True)
 
         u.Infra.run_ruff_fix(target)
 
-        assert calls[0] == [
-            c.Infra.RUFF,
-            c.Infra.CHECK,
-            "--fix",
-            str(target),
-        ]
-        assert calls[1] == [
-            c.Infra.RUFF,
-            c.Infra.FORMAT,
-            str(target),
-        ]
+        assert target.read_text(encoding="utf-8") == "x = 1\n"
 
-    def test_run_ruff_fix_quiet_adds_flag_and_suppresses_missing_binary(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        target = tmp_path / "sample.py"
+    def test_run_ruff_fix_handles_init_file_quietly(self, tmp_path: Path) -> None:
+        target = tmp_path / c.Infra.Files.INIT_PY
         target.write_text("x=1\n", encoding="utf-8")
-        calls: MutableSequence[t.StrSequence] = []
-
-        def _raise_missing(
-            cmd: t.StrSequence,
-        ) -> r[bool]:
-            calls.append(cmd)
-            return r[bool].fail("ruff not found")
 
         u.Infra.run_ruff_fix(target, include_format=False, quiet=True)
 
-        assert calls == [
-            [
-                c.Infra.RUFF,
-                c.Infra.CHECK,
-                "--fix",
-                "--quiet",
-                str(target),
-            ],
-        ]
+        assert target.read_text(encoding="utf-8") == "x = 1\n"
+
+    def test_run_ruff_fix_skips_missing_file(self, tmp_path: Path) -> None:
+        target = tmp_path / "missing.py"
+
+        u.Infra.run_ruff_fix(target)
+
+        assert target.exists() is False

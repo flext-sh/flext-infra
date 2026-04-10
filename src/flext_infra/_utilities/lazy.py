@@ -353,6 +353,23 @@ class FlextInfraUtilitiesCodegenLazyScanning(
         )
 
         if has_all and should_export_symbols:
+            explicit_targets: dict[str, t.Infra.StrPair] = {}
+            try:
+                module = ast.parse(source)
+            except SyntaxError:
+                module = None
+            if module is not None:
+                explicit_reexports = frozenset(all_exports)
+                for node in module.body:
+                    if not isinstance(node, (ast.Import, ast.ImportFrom)):
+                        continue
+                    explicit_targets.update(
+                        FlextInfraUtilitiesCodegenLazyScanning._public_import_reexports(
+                            node,
+                            explicit_reexports=explicit_reexports,
+                            mod_path=mod_path,
+                        )
+                    )
             if not FlextInfraUtilitiesCodegenLazyScanning._is_test_fixture_namespace(
                 current_pkg,
             ):
@@ -369,7 +386,7 @@ class FlextInfraUtilitiesCodegenLazyScanning(
                     FlextInfraUtilitiesCodegenLazyScanning.register_export(
                         index,
                         name,
-                        (mod_path, name),
+                        explicit_targets.get(name, (mod_path, name)),
                     )
         elif (
             should_export_symbols
@@ -540,6 +557,10 @@ class FlextInfraUtilitiesCodegenLazyScanning(
             return
 
         names: list[str] = []
+        imported_exports: list[tuple[str, t.Infra.StrPair]] = []
+        explicit_reexports = (
+            FlextInfraUtilitiesCodegenLazyScanning._explicit_reexport_names(module)
+        )
         for node in module.body:
             if isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
                 if FlextInfraUtilitiesCodegenLazyScanning._skip_test_only_node(
@@ -570,6 +591,15 @@ class FlextInfraUtilitiesCodegenLazyScanning(
                 continue
             if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
                 names.append(node.target.id)
+                continue
+            if isinstance(node, (ast.Import, ast.ImportFrom)):
+                imported_exports.extend(
+                    FlextInfraUtilitiesCodegenLazyScanning._public_import_reexports(
+                        node,
+                        explicit_reexports=explicit_reexports,
+                        mod_path=mod_path,
+                    )
+                )
 
         for name in names:
             if mod_path.startswith("tests.") and name == "pytestmark":
@@ -588,6 +618,77 @@ class FlextInfraUtilitiesCodegenLazyScanning(
                 name,
                 (mod_path, name),
             )
+        for name, target in imported_exports:
+            if name.startswith("_") or name in c.Infra.INFRA_ONLY_EXPORTS:
+                continue
+            FlextInfraUtilitiesCodegenLazyScanning.register_export(
+                index,
+                name,
+                target,
+            )
+
+    @staticmethod
+    def _explicit_reexport_names(module: ast.Module) -> frozenset[str]:
+        for node in module.body:
+            if not isinstance(node, ast.Assign):
+                continue
+            if not any(
+                isinstance(target, ast.Name) and target.id == "__all__"
+                for target in node.targets
+            ):
+                continue
+            if not isinstance(node.value, (ast.List, ast.Tuple)):
+                return frozenset()
+            exported = [
+                element.value
+                for element in node.value.elts
+                if isinstance(element, ast.Constant) and isinstance(element.value, str)
+            ]
+            return frozenset(exported)
+        return frozenset()
+
+    @staticmethod
+    def _public_import_reexports(
+        node: ast.Import | ast.ImportFrom,
+        *,
+        explicit_reexports: frozenset[str],
+        mod_path: str,
+    ) -> tuple[tuple[str, t.Infra.StrPair], ...]:
+        if not explicit_reexports:
+            return ()
+        exported: list[tuple[str, t.Infra.StrPair]] = []
+        if isinstance(node, ast.ImportFrom):
+            module_name = (
+                FlextInfraUtilitiesCodegenLazyScanning._resolve_import_module_path(
+                    node,
+                    mod_path=mod_path,
+                )
+            )
+            if not module_name:
+                return ()
+            for alias in node.names:
+                if alias.name == "*":
+                    continue
+                public_name = alias.asname or alias.name
+                if public_name in explicit_reexports:
+                    exported.append((public_name, (module_name, alias.name)))
+            return tuple(exported)
+        for alias in node.names:
+            public_name = alias.asname or alias.name.rsplit(".", maxsplit=1)[-1]
+            if public_name in explicit_reexports:
+                exported.append((public_name, (alias.name, "")))
+        return tuple(exported)
+
+    @staticmethod
+    def _resolve_import_module_path(node: ast.ImportFrom, *, mod_path: str) -> str:
+        if node.level == 0:
+            return node.module or ""
+        package_parts = mod_path.split(".")[:-1]
+        prefix_length = max(len(package_parts) - (node.level - 1), 0)
+        prefix = package_parts[:prefix_length]
+        if node.module:
+            prefix.extend(node.module.split("."))
+        return ".".join(prefix)
 
     @staticmethod
     def _validate_namespace_source(
@@ -994,6 +1095,10 @@ class FlextInfraUtilitiesCodegenLazyScanning(
         *,
         outer_class_name: str,
     ) -> bool:
+        if isinstance(value, ast.Name):
+            return value.id == outer_class_name
+        if isinstance(value, ast.Attribute):
+            return value.attr == outer_class_name
         if not isinstance(value, ast.Call) or value.args or value.keywords:
             return False
         if not isinstance(value.func, ast.Attribute):

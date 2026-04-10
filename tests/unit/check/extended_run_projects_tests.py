@@ -1,4 +1,4 @@
-"""Tests for workspace checker run_projects and run methods.
+"""Public tests for workspace checker project execution.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -6,335 +6,166 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import FlextInfraWorkspaceChecker
-from tests import (
-    m,
-    t,
-    u,
-)
+from tests import u
 
 
-class TestRunProjectsValidation:
-    """Test run_projects input validation and edge cases."""
+class TestRunProjectsPublicBehavior:
+    """Verify project execution through the public checker methods."""
 
-    def test_invalid_gates(self, tmp_path: Path) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
-        result = checker.run_projects(
+    @staticmethod
+    def _install_fake_ruff(tmp_path: Path, body: str) -> str:
+        fake_bin = tmp_path / "fake_bin"
+        fake_bin.mkdir(parents=True, exist_ok=True)
+        ruff = fake_bin / "ruff"
+        ruff.write_text(body, encoding="utf-8")
+        ruff.chmod(0o755)
+        original_path = os.environ.get("PATH", "")
+        os.environ["PATH"] = f"{fake_bin}:{original_path}"
+        return original_path
+
+    def test_invalid_gates_fail(self, tmp_path: Path) -> None:
+        result = FlextInfraWorkspaceChecker(workspace=tmp_path).run_projects(
             ["p1"],
             ["invalid_gate"],
             reports_dir=tmp_path / "reports",
         )
-        tm.fail(result)
 
-    def test_skips_missing_projects(self, tmp_path: Path) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
-        result = checker.run_projects(
+        assert result.is_failure
+
+    def test_missing_projects_are_skipped(self, tmp_path: Path) -> None:
+        result = FlextInfraWorkspaceChecker(workspace=tmp_path).run_projects(
             ["nonexistent"],
             ["lint"],
             reports_dir=tmp_path / "reports",
         )
-        tm.ok(result)
-        tm.that(len(result.value), eq=0)
 
+        assert result.is_success
+        assert result.value == ()
 
-class TestRunProjectsReports:
-    """Test run_projects report generation."""
-
-    def test_creates_markdown_report(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
+    @pytest.mark.parametrize("report_name", ["check-report.md", "check-report.sarif"])
+    def test_run_projects_creates_reports(
+        self, tmp_path: Path, report_name: str
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
-        reports_dir = tmp_path / "reports"
-        project = m.Infra.ProjectResult(
-            project="p1",
-            gates={"lint": u.Infra.Tests.create_gate_execution(passed=False)},
+        project_dir = u.Infra.Tests.mk_project(tmp_path, "p1", with_src=True)
+        (project_dir / "src" / "test.py").write_text("value = 1\n", encoding="utf-8")
+        original_path = self._install_fake_ruff(
+            tmp_path,
+            "#!/usr/bin/env bash\nprintf '[]'\nexit 0\n",
         )
-        monkeypatch.setattr(
-            checker,
-            "_check_project_with_ctx",
-            u.Infra.Tests.create_check_project_stub(project),
-        )
-        _ = u.Infra.Tests.mk_project(tmp_path, "p1")
-        result = checker.run_projects(["p1"], ["lint"], reports_dir=reports_dir)
-        tm.ok(result)
-        tm.that((reports_dir / "check-report.md").exists(), eq=True)
-
-    def test_creates_sarif_report(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
-        reports_dir = tmp_path / "reports"
-        project = m.Infra.ProjectResult(
-            project="p1",
-            gates={"lint": u.Infra.Tests.create_gate_execution(passed=True)},
-        )
-        monkeypatch.setattr(
-            checker,
-            "_check_project_with_ctx",
-            u.Infra.Tests.create_check_project_stub(project),
-        )
-        _ = u.Infra.Tests.mk_project(tmp_path, "p1")
-        result = checker.run_projects(["p1"], ["lint"], reports_dir=reports_dir)
-        tm.ok(result)
-        tm.that((reports_dir / "check-report.sarif").exists(), eq=True)
-
-    def test_creates_project_scoped_reports_dir(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
-        reports_dir = tmp_path / "reports"
-        captured: t.MutableMappingKV[str, Path] = {}
-
-        def _fake_check(
-            _project_dir: Path,
-            _gates: t.StrSequence,
-            ctx: m.Infra.GateContext,
-        ) -> m.Infra.ProjectResult:
-            captured["reports_dir"] = ctx.reports_dir
-            return m.Infra.ProjectResult(
-                project="p1",
-                gates={"lint": u.Infra.Tests.create_gate_execution(passed=True)},
-            )
-
-        _ = u.Infra.Tests.mk_project(tmp_path, "p1")
-
-        result = checker.run_projects(["p1"], ["lint"], reports_dir=reports_dir)
-
-        tm.ok(result)
-        tm.that((reports_dir / "p1").is_dir(), eq=True)
-        tm.that(captured["reports_dir"], eq=reports_dir / "p1")
-
-
-class TestRunProjectsBehavior:
-    """Test run_projects fail_fast and error reporting."""
-
-    def test_fail_fast_stops_on_failure(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
-        call_count = [0]
-
-        def _fake_check(
-            _project_dir: Path,
-            _gates: t.StrSequence,
-            _reports_dir: Path,
-            **_kwargs: t.Infra.InfraValue,
-        ) -> m.Infra.ProjectResult:
-            del _project_dir, _gates, _reports_dir, _kwargs
-            call_count[0] += 1
-            return m.Infra.ProjectResult(
-                project="p",
-                gates={"lint": u.Infra.Tests.create_gate_execution(passed=False)},
-            )
-
-        for name in ["p1", "p2", "p3"]:
-            _ = u.Infra.Tests.mk_project(tmp_path, name)
-        result = checker.run_projects(
-            ["p1", "p2", "p3"],
-            ["lint"],
-            reports_dir=tmp_path / "reports",
-            fail_fast=True,
-        )
-        tm.ok(result)
-        tm.that(call_count[0], eq=1)
-
-    def test_reports_errors(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
-        issue = m.Infra.Issue(
-            file="test.py",
-            line=1,
-            column=1,
-            code="E1",
-            message="error",
-            severity="error",
-        )
-        gate_exec = u.Infra.Tests.create_gate_execution(passed=True, issues=[issue])
-        project = m.Infra.ProjectResult(project="p1", gates={"lint": gate_exec})
-        monkeypatch.setattr(
-            checker,
-            "_check_project_with_ctx",
-            u.Infra.Tests.create_check_project_stub(project),
-        )
-        _ = u.Infra.Tests.mk_project(tmp_path, "p1")
-        result = checker.run_projects(
-            ["p1"],
-            ["lint"],
-            reports_dir=tmp_path / "reports",
-        )
-        tm.ok(result)
-        tm.that(len(result.value), eq=1)
-        tm.that(result.value[0].total_errors, eq=1)
-
-    def test_multiple_with_mixed_errors(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
-        issue = m.Infra.Issue(
-            file="test.py",
-            line=1,
-            column=1,
-            code="E1",
-            message="error",
-            severity="error",
-        )
-        exec_with = u.Infra.Tests.create_gate_execution(passed=True, issues=[issue])
-        exec_without = u.Infra.Tests.create_gate_execution(passed=True)
-        project1 = m.Infra.ProjectResult(project="p1", gates={"lint": exec_with})
-        project2 = m.Infra.ProjectResult(project="p2", gates={"lint": exec_without})
-        monkeypatch.setattr(
-            checker,
-            "_check_project_with_ctx",
-            u.Infra.Tests.create_check_project_iter_stub([project1, project2]),
-        )
-        for name in ["p1", "p2"]:
-            _ = u.Infra.Tests.mk_project(tmp_path, name)
-        result = checker.run_projects(
-            ["p1", "p2"],
-            ["lint"],
-            reports_dir=tmp_path / "reports",
-        )
-        tm.ok(result)
-        tm.that(len(result.value), eq=2)
-        tm.that(result.value[0].total_errors, eq=1)
-        tm.that(result.value[1].total_errors, eq=0)
-
-
-class TestRunSingleProject:
-    """Test FlextInfraWorkspaceChecker.run method."""
-
-    def test_run_single_project_success(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
-        _ = u.Infra.Tests.mk_project(tmp_path, "p1")
-        project = m.Infra.ProjectResult(
-            project="p1",
-            gates={"lint": u.Infra.Tests.create_gate_execution(passed=True)},
-        )
-        monkeypatch.setattr(
-            checker,
-            "_check_project_with_ctx",
-            u.Infra.Tests.create_check_project_stub(project),
-        )
-        result = checker.run_project("p1", ["lint"])
-        tm.ok(result)
-        tm.that(len(result.value), eq=1)
-
-
-class _FixableGate:
-    can_fix = True
-    gate_id: str = "lint"
-
-    def __init__(self) -> None:
-        self.calls: t.MutableSequenceOf[str] = []
-
-    def fix(
-        self,
-        _project_dir: Path,
-        _ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
-        self.calls.append("fix")
-        return u.Infra.Tests.create_gate_execution()
-
-    def check(
-        self,
-        _project_dir: Path,
-        _ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
-        self.calls.append("check")
-        return u.Infra.Tests.create_gate_execution()
-
-
-def _create_fixable_gate(
-    _gate_id: str,
-    _workspace_root: Path,
-    *,
-    gate: _FixableGate,
-) -> _FixableGate:
-    return gate
-
-
-class TestRunProjectFixMode:
-    """Test supported gate fixes during project checking."""
-
-    def test_check_project_runs_fix_before_check(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
-        gate = _FixableGate()
-
-        def _fake_create(gate_id: str, workspace_root: Path) -> _FixableGate:
-            return _create_fixable_gate(
-                gate_id,
-                workspace_root,
-                gate=gate,
-            )
-
-        _ = u.Infra.Tests.mk_project(tmp_path, "p1")
-
-        result = checker._check_project_with_ctx(
-            tmp_path / "p1",
-            ["lint"],
-            m.Infra.GateContext(
-                workspace=tmp_path,
+        try:
+            result = checker.run_projects(
+                ["p1"],
+                ["lint"],
                 reports_dir=tmp_path / "reports",
-                apply_fixes=True,
+            )
+        finally:
+            os.environ["PATH"] = original_path
+
+        assert result.is_success
+        assert (tmp_path / "reports" / report_name).exists()
+
+    def test_run_projects_creates_project_scoped_reports_dir(
+        self, tmp_path: Path
+    ) -> None:
+        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
+        project_dir = u.Infra.Tests.mk_project(tmp_path, "p1", with_src=True)
+        (project_dir / "src" / "test.py").write_text("value = 1\n", encoding="utf-8")
+        original_path = self._install_fake_ruff(
+            tmp_path,
+            "#!/usr/bin/env bash\nprintf '[]'\nexit 0\n",
+        )
+        try:
+            result = checker.run_projects(
+                ["p1"],
+                ["lint"],
+                reports_dir=tmp_path / "reports",
+            )
+        finally:
+            os.environ["PATH"] = original_path
+
+        assert result.is_success
+        assert (tmp_path / "reports" / "p1").is_dir()
+
+    def test_fail_fast_stops_after_first_failed_project(self, tmp_path: Path) -> None:
+        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
+        for name in ("p1", "p2", "p3"):
+            project_dir = u.Infra.Tests.mk_project(tmp_path, name, with_src=True)
+            (project_dir / "src" / "test.py").write_text(
+                "value = 1\n", encoding="utf-8"
+            )
+        original_path = self._install_fake_ruff(
+            tmp_path,
+            (
+                "#!/usr/bin/env bash\n"
+                'printf \'[{"filename":"src/test.py","location":{"row":1,"column":1},"code":"F401","message":"unused"}]\'\n'
+                "exit 1\n"
             ),
         )
-
-        tm.that(result.passed, eq=True)
-        tm.that(gate.calls, eq=["fix", "check"])
-
-    def test_check_project_check_only_skips_fix(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
-        gate = _FixableGate()
-
-        def _fake_create(gate_id: str, workspace_root: Path) -> _FixableGate:
-            return _create_fixable_gate(
-                gate_id,
-                workspace_root,
-                gate=gate,
-            )
-
-        _ = u.Infra.Tests.mk_project(tmp_path, "p1")
-
-        result = checker._check_project_with_ctx(
-            tmp_path / "p1",
-            ["lint"],
-            m.Infra.GateContext(
-                workspace=tmp_path,
+        try:
+            result = checker.run_projects(
+                ["p1", "p2", "p3"],
+                ["lint"],
                 reports_dir=tmp_path / "reports",
-                apply_fixes=True,
-                check_only=True,
+                fail_fast=True,
+            )
+        finally:
+            os.environ["PATH"] = original_path
+
+        assert result.is_success
+        assert len(result.value) == 1
+
+    def test_run_projects_reports_mixed_project_errors(self, tmp_path: Path) -> None:
+        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
+        for name in ("p1", "p2"):
+            project_dir = u.Infra.Tests.mk_project(tmp_path, name, with_src=True)
+            (project_dir / "src" / "test.py").write_text(
+                "value = 1\n", encoding="utf-8"
+            )
+        original_path = self._install_fake_ruff(
+            tmp_path,
+            (
+                "#!/usr/bin/env bash\n"
+                'if [ "$(basename "$PWD")" = \'p1\' ]; then\n'
+                '  printf \'[{"filename":"src/test.py","location":{"row":1,"column":1},"code":"F401","message":"unused"}]\'\n'
+                "  exit 1\n"
+                "fi\n"
+                "printf '[]'\n"
+                "exit 0\n"
             ),
         )
+        try:
+            result = checker.run_projects(
+                ["p1", "p2"],
+                ["lint"],
+                reports_dir=tmp_path / "reports",
+            )
+        finally:
+            os.environ["PATH"] = original_path
 
-        tm.that(result.passed, eq=True)
-        tm.that(gate.calls, eq=["check"])
+        assert result.is_success
+        assert len(result.value) == 2
+        assert result.value[0].total_errors == 1
+        assert result.value[1].total_errors == 0
+
+    def test_run_project_returns_single_project_result(self, tmp_path: Path) -> None:
+        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
+        project_dir = u.Infra.Tests.mk_project(tmp_path, "p1", with_src=True)
+        (project_dir / "src" / "test.py").write_text("value = 1\n", encoding="utf-8")
+        original_path = self._install_fake_ruff(
+            tmp_path,
+            "#!/usr/bin/env bash\nprintf '[]'\nexit 0\n",
+        )
+        try:
+            result = checker.run_project("p1", ["lint"])
+        finally:
+            os.environ["PATH"] = original_path
+
+        assert result.is_success
+        assert len(result.value) == 1

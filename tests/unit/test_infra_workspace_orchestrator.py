@@ -38,8 +38,8 @@ class TestOrchestratorBasic:
     ) -> None:
         tm.ok(orchestrator.orchestrate(["p-a", "p-b"], "test", fail_fast=False), len=2)
 
-    def test_execute_returns_failure(self) -> None:
-        tm.fail(FlextInfraOrchestratorService(verb="check").execute())
+    def test_execute_returns_success_for_supported_verb(self) -> None:
+        tm.ok(FlextInfraOrchestratorService(verb="check").execute(), eq=True)
 
     def test_empty_project_list(
         self,

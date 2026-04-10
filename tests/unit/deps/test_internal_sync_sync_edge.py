@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from pathlib import Path
+from typing import override
 
 import pytest
 from flext_tests import tm
@@ -110,12 +111,28 @@ class TestSyncMethodEdgeCases:
     def test_sync_with_synthesized_repo_map(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         (tmp_path / "pyproject.toml").write_text(
             '[tool.poetry.dependencies]\nflext-core = { path = "../flext-core" }\n',
         )
-        service = FlextInfraInternalDependencySyncService()
+
+        class _TestService(FlextInfraInternalDependencySyncService):
+            @override
+            def infer_owner_from_origin(self, project_root: Path) -> str | None:
+                _ = project_root
+                return "flext-sh"
+
+            @override
+            def ensure_checkout(
+                self,
+                dep_path: Path,
+                repo_url: str,
+                ref_name: str,
+            ) -> r[bool]:
+                _ = (dep_path, repo_url, ref_name)
+                return r[bool].ok(True)
+
+        service = _TestService()
         _set_toml_stub(
             service,
             [
@@ -128,21 +145,6 @@ class TestSyncMethodEdgeCases:
                     "project": {},
                 }),
             ],
-        )
-
-        def _infer_owner(_root: Path) -> str:
-            return "flext-sh"
-
-        def _resolve_ref(_root: Path) -> str:
-            return "main"
-
-        def _ensure_checkout(_dep: Path, _url: str, _ref: str) -> r[bool]:
-            return r[bool].ok(True)
-
-        monkeypatch.setattr(
-            service,
-            "infer_owner_from_origin",
-            _infer_owner,
         )
         tm.that(service.sync(tmp_path).is_success, eq=True)
 

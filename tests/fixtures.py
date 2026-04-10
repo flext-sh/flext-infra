@@ -12,13 +12,25 @@ from pathlib import Path
 
 import pytest
 
-from tests import t, u
+from tests import c, t, u
 
 _FIXTURES_DIR = Path(__file__).with_name("fixtures")
 
 
 def _read_fixture(*parts: str) -> str:
     return _FIXTURES_DIR.joinpath(*parts).read_text(encoding="utf-8")
+
+
+def _modernizer_pyproject(name: str) -> str:
+    return f'[project]\nname = "{name}"\nversion = "0.1.0"\n'
+
+
+def _modernizer_workspace_pyproject(*members: str) -> str:
+    base = _modernizer_pyproject("workspace")
+    if not members:
+        return base
+    members_text = ", ".join(f'"{member}"' for member in members)
+    return f"{base}\n[tool.uv.workspace]\nmembers = [{members_text}]\n"
 
 
 @pytest.fixture
@@ -111,6 +123,36 @@ def real_workspace(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
+def modernizer_workspace(tmp_path: Path) -> Path:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir(parents=True, exist_ok=True)
+    (workspace / c.Infra.Files.PYPROJECT_FILENAME).write_text(
+        _modernizer_workspace_pyproject(),
+        encoding="utf-8",
+    )
+    return workspace
+
+
+@pytest.fixture
+def modernizer_workspace_with_projects(modernizer_workspace: Path) -> Path:
+    (modernizer_workspace / c.Infra.Files.PYPROJECT_FILENAME).write_text(
+        _modernizer_workspace_pyproject("selected", "ignored"),
+        encoding="utf-8",
+    )
+    _ = u.Infra.Tests.mk_project(
+        modernizer_workspace,
+        "selected",
+        pyproject=_modernizer_pyproject("selected"),
+    )
+    _ = u.Infra.Tests.mk_project(
+        modernizer_workspace,
+        "ignored",
+        pyproject=_modernizer_pyproject("ignored"),
+    )
+    return modernizer_workspace
+
+
+@pytest.fixture
 def real_docs_project(tmp_path: Path) -> Path:
     """Create a real project with documentation."""
     project_root = tmp_path / "docs_project"
@@ -128,6 +170,8 @@ def real_docs_project(tmp_path: Path) -> Path:
 
 __all__ = [
     "deptry_report_payload",
+    "modernizer_workspace",
+    "modernizer_workspace_with_projects",
     "real_docs_project",
     "real_makefile_project",
     "real_python_package",

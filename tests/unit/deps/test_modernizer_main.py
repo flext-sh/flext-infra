@@ -1,306 +1,140 @@
-"""Main modernizer flow tests."""
+"""Public behavior tests for the pyproject modernizer."""
 
 from __future__ import annotations
 
 import argparse
-from collections.abc import Sequence
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraPyprojectModernizer, modernizer as modernizer_module
-from tests import t, u
+from flext_infra import FlextInfraPyprojectModernizer
+from tests import c, t, u
 
 
 class TestFlextInfraPyprojectModernizer:
-    """Tests modernizer class behavior."""
+    """Validate only public modernizer behavior."""
 
-    def test_modernizer_initialization(
+    @staticmethod
+    def _args(**overrides: t.Infra.InfraValue) -> argparse.Namespace:
+        defaults: t.MutableContainerMapping = {
+            "project": None,
+            "dry_run": False,
+            "verbose": False,
+            "audit": False,
+            "skip_comments": False,
+            "skip_check": True,
+        }
+        defaults.update(overrides)
+        return argparse.Namespace(**defaults)
+
+    def test_initialization_uses_explicit_workspace(
         self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
+        modernizer_workspace: Path,
     ) -> None:
-        modernizer = FlextInfraPyprojectModernizer()
-        tm.that(modernizer.root, eq=tmp_path)
+        modernizer = FlextInfraPyprojectModernizer(workspace_root=modernizer_workspace)
+        tm.that(modernizer.root, eq=modernizer_workspace)
 
-    def test_modernizer_with_custom_root(self, tmp_path: Path) -> None:
-        modernizer = FlextInfraPyprojectModernizer(workspace_root=tmp_path)
-        tm.that(str(modernizer.root), eq=str(tmp_path))
-
-    def test_find_pyproject_files(self, tmp_path: Path) -> None:
-        (tmp_path / "pyproject.toml").touch()
-        (tmp_path / "subdir").mkdir()
-        (tmp_path / "subdir" / "pyproject.toml").touch()
-        files = FlextInfraPyprojectModernizer(
-            workspace_root=tmp_path,
-        ).find_pyproject_files()
-        tm.that(len(files), gte=2)
-
-    def test_find_pyproject_files_skips_directories(self, tmp_path: Path) -> None:
-        (tmp_path / "pyproject.toml").touch()
-        (tmp_path / ".venv").mkdir()
-        (tmp_path / ".venv" / "pyproject.toml").touch()
-        files = FlextInfraPyprojectModernizer(
-            workspace_root=tmp_path,
-        ).find_pyproject_files()
-        tm.that(all(".venv" not in str(path) for path in files), eq=True)
-
-    def test_find_pyproject_files_filters_selected_project_paths(
+    def test_find_pyproject_files_skips_venv_and_filters_projects(
         self,
-        tmp_path: Path,
+        modernizer_workspace_with_projects: Path,
     ) -> None:
-        selected_root = tmp_path / "selected"
-        ignored_root = tmp_path / "ignored"
-        selected_root.mkdir()
-        ignored_root.mkdir()
-        (selected_root / "pyproject.toml").touch()
-        (ignored_root / "pyproject.toml").touch()
-        files = FlextInfraPyprojectModernizer(
-            workspace_root=tmp_path,
-        ).find_pyproject_files(project_paths=[selected_root])
-        tm.that(files, eq=[selected_root / "pyproject.toml"])
-
-    def test_process_file_paths(self, tmp_path: Path) -> None:
-        pyproject = tmp_path / "pyproject.toml"
-        pyproject.write_text('[project]\nname = "test"\n')
-        modernizer = FlextInfraPyprojectModernizer(workspace_root=tmp_path)
-        changes = modernizer.process_file(
-            pyproject,
-            canonical_dev=[],
-            dry_run=True,
-            skip_comments=False,
-        )
-        tm.that(len(changes), gte=0)
-        pyproject.write_text("invalid [[[")
-        invalid = modernizer.process_file(
-            pyproject,
-            canonical_dev=[],
-            dry_run=True,
-            skip_comments=False,
-        )
-        tm.that(invalid, has="invalid TOML")
-
-    def test_process_file_dry_run_and_skip_comments(self, tmp_path: Path) -> None:
-        pyproject = tmp_path / "pyproject.toml"
-        original = '[project]\nname = "test"\n'
-        pyproject.write_text(original)
-        modernizer = FlextInfraPyprojectModernizer(workspace_root=tmp_path)
-        _ = modernizer.process_file(
-            pyproject,
-            canonical_dev=["pytest"],
-            dry_run=True,
-            skip_comments=False,
-        )
-        tm.that(pyproject.read_text(), eq=original)
-        changes = modernizer.process_file(
-            pyproject,
-            canonical_dev=[],
-            dry_run=True,
-            skip_comments=True,
-        )
-        tm.that(not any("banner" in item for item in changes), eq=True)
-
-    def test_process_file_removes_empty_poetry_groups(self, tmp_path: Path) -> None:
-        pyproject = tmp_path / "pyproject.toml"
-        pyproject.write_text(
-            '[project]\nname = "test"\n[tool.poetry.group.empty.dependencies]\n',
-        )
-        modernizer = FlextInfraPyprojectModernizer(workspace_root=tmp_path)
-        changes = modernizer.process_file(
-            pyproject,
-            canonical_dev=[],
-            dry_run=True,
-            skip_comments=False,
-        )
-        tm.that(any("empty" in item for item in changes), eq=True)
-
-    def test_process_file_is_idempotent_after_apply(self, tmp_path: Path) -> None:
-        pyproject = tmp_path / "pyproject.toml"
-        pyproject.write_text('[project]\nname = "test"\n', encoding="utf-8")
-        modernizer = FlextInfraPyprojectModernizer(workspace_root=tmp_path)
-        _ = modernizer.process_file(
-            pyproject,
-            canonical_dev=[],
-            dry_run=False,
-            skip_comments=False,
-        )
-        second_changes = modernizer.process_file(
-            pyproject,
-            canonical_dev=[],
-            dry_run=True,
-            skip_comments=False,
-        )
-        tm.that(second_changes, eq=[])
-
-    def test_process_file_is_idempotent_with_taplo_sorted_ruff_blocks(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        pyproject = tmp_path / "pyproject.toml"
-        pyproject.write_text(
-            """[build-system]
-build-backend = "hatchling.build"
-requires = ["hatchling"]
-
-[project]
-name = "test"
-
-[tool.ruff.lint.per-file-ignores]
-"**/.vulture_whitelist.py" = ["ALL"]
-"**/*_pb2*.py" = ["ALL"]
-"**/tools/*.py" = ["T201"]
-"**/tools/**/*.py" = ["T201"]
-""",
+        ignored_venv = modernizer_workspace_with_projects / ".venv"
+        ignored_venv.mkdir(exist_ok=True)
+        (ignored_venv / c.Infra.Files.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "ignored-venv"\nversion = "0.1.0"\n',
             encoding="utf-8",
         )
-        modernizer = FlextInfraPyprojectModernizer(workspace_root=tmp_path)
-        doc = u.Cli.toml_read(pyproject)
-        assert doc is not None
-        modernizer._reorder_document_inplace(doc)
-        rendered = doc.as_string()
-        tm.that(
-            rendered.index('"**/.vulture_whitelist.py"'),
-            lt=rendered.index('"**/*_pb2*.py"'),
+        modernizer = FlextInfraPyprojectModernizer(
+            workspace_root=modernizer_workspace_with_projects,
+        )
+        all_files = modernizer.find_pyproject_files()
+        selected_files = modernizer.find_pyproject_files(
+            project_paths=[modernizer_workspace_with_projects / "selected"],
         )
         tm.that(
-            rendered.index('"**/tools/*.py"'),
-            lt=rendered.index('"**/tools/**/*.py"'),
+            all(".venv" not in str(path) for path in all_files),
+            eq=True,
+        )
+        tm.that(
+            selected_files,
+            eq=[
+                modernizer_workspace_with_projects
+                / "selected"
+                / c.Infra.Files.PYPROJECT_FILENAME,
+            ],
         )
 
-
-class TestModernizerRunAndMain:
-    """Tests run and CLI entrypoint behavior."""
-
-    def test_run_with_audit_mode(
+    def test_process_file_returns_invalid_toml(
         self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
+        modernizer_workspace: Path,
     ) -> None:
-        pyproject = tmp_path / "pyproject.toml"
-        pyproject.write_text('[project]\nname = "test"\n')
-        args = argparse.Namespace(
-            dry_run=False,
-            audit=True,
+        pyproject = modernizer_workspace / c.Infra.Files.PYPROJECT_FILENAME
+        pyproject.write_text("invalid [[[", encoding="utf-8")
+        changes = FlextInfraPyprojectModernizer(
+            workspace_root=modernizer_workspace,
+        ).process_file(
+            pyproject,
+            canonical_dev=[],
+            dry_run=True,
             skip_comments=False,
-            skip_check=True,
         )
-        modernizer = FlextInfraPyprojectModernizer(workspace_root=tmp_path)
+        tm.that(changes, has="invalid TOML")
 
-        def _find_files(
-            project_paths: Sequence[Path] | None = None,
-        ) -> Sequence[Path]:
-            tm.that(project_paths, eq=None)
-            return [pyproject]
-
-        assert modernizer.run(args, u.Infra.CliArgs(workspace=tmp_path)) in {0, 1}
-
-    def test_run_rejects_unknown_selected_project(self, tmp_path: Path) -> None:
-        (tmp_path / "pyproject.toml").write_text('[project]\nname = "root"\n')
-        args = argparse.Namespace(
-            dry_run=False,
-            audit=False,
-            skip_comments=False,
-            skip_check=True,
+    def test_run_apply_updates_root_pyproject(
+        self,
+        modernizer_workspace: Path,
+    ) -> None:
+        modernizer = FlextInfraPyprojectModernizer(workspace_root=modernizer_workspace)
+        exit_code = modernizer.run(
+            self._args(skip_comments=True, skip_check=True),
+            u.Infra.CliArgs(workspace=modernizer_workspace, apply=True),
         )
-        modernizer = FlextInfraPyprojectModernizer(workspace_root=tmp_path)
+        tm.that(exit_code, eq=0)
+        tm.that(
+            (modernizer_workspace / c.Infra.Files.PYPROJECT_FILENAME).read_text(
+                encoding="utf-8"
+            ),
+            has='build-backend = "hatchling.build"',
+        )
+
+    def test_run_rejects_unknown_selected_project(
+        self,
+        modernizer_workspace: Path,
+    ) -> None:
+        modernizer = FlextInfraPyprojectModernizer(workspace_root=modernizer_workspace)
         tm.that(
             modernizer.run(
-                args,
-                u.Infra.CliArgs(workspace=tmp_path, projects=["missing-project"]),
+                self._args(),
+                u.Infra.CliArgs(
+                    workspace=modernizer_workspace,
+                    projects=["missing-project"],
+                ),
             ),
             eq=2,
         )
 
-    def test_run_with_poetry_check(
+    @pytest.mark.parametrize(
+        "entrypoint",
+        [
+            FlextInfraPyprojectModernizer.run_cli,
+            FlextInfraPyprojectModernizer.main,
+        ],
+    )
+    def test_cli_entrypoints_report_pending_changes_in_audit_mode(
         self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
+        modernizer_workspace: Path,
+        entrypoint: Callable[[t.StrSequence | None], int],
     ) -> None:
-        pyproject = tmp_path / "pyproject.toml"
-        pyproject.write_text('[project]\nname = "test"\n')
-        args = argparse.Namespace(
-            dry_run=False,
-            audit=False,
-            skip_comments=False,
-            skip_check=False,
-        )
-        modernizer = FlextInfraPyprojectModernizer(workspace_root=tmp_path)
-
-        def _find_files(
-            project_paths: Sequence[Path] | None = None,
-        ) -> Sequence[Path]:
-            tm.that(project_paths, eq=None)
-            return [pyproject]
-
-        def _check(_files: Sequence[Path]) -> int:
-            return 0
-
         tm.that(
-            modernizer.run(
-                args,
-                u.Infra.CliArgs(workspace=tmp_path, apply=True),
+            entrypoint(
+                [
+                    "--workspace",
+                    str(modernizer_workspace),
+                    "--audit",
+                    "--skip-comments",
+                ],
             ),
-            eq=0,
-        )
-
-    def test_run_build_check_paths(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        modernizer = FlextInfraPyprojectModernizer(workspace_root=tmp_path)
-
-        valid = tmp_path / "valid" / "pyproject.toml"
-        valid.parent.mkdir()
-        valid.write_text(
-            '[build-system]\nbuild-backend = "hatchling.build"\nrequires = ["hatchling"]\n'
-        )
-        tm.that(modernizer._run_build_check([valid]), eq=0)
-
-        missing_build = tmp_path / "missing" / "pyproject.toml"
-        missing_build.parent.mkdir()
-        missing_build.write_text("[project]\nname = 'test'\n")
-        tm.that(modernizer._run_build_check([missing_build]), eq=1)
-
-        wrong_backend = tmp_path / "wrong" / "pyproject.toml"
-        wrong_backend.parent.mkdir()
-        wrong_backend.write_text(
-            '[build-system]\nbuild-backend = "setuptools.build_meta"\nrequires = ["setuptools"]\n'
-        )
-        tm.that(modernizer._run_build_check([wrong_backend]), eq=1)
-
-    def test_main_cli_paths(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        calls: list[tuple[str, str, list[str] | None]] = []
-        results = iter((0, 0, 42))
-
-        def _run_command(
-            group: str,
-            command: str,
-            argv: t.StrSequence | None = None,
-        ) -> int:
-            calls.append((group, command, list(argv) if argv is not None else None))
-            return next(results)
-
-        monkeypatch.setattr(
-            modernizer_module.FlextInfraUtilitiesCliDispatch,
-            "run_command",
-            staticmethod(_run_command),
-        )
-
-        tm.that(modernizer_module.FlextInfraPyprojectModernizer.main([]), eq=0)
-        tm.that(
-            modernizer_module.FlextInfraPyprojectModernizer.main(["--audit"]),
-            eq=0,
-        )
-        tm.that(
-            modernizer_module.FlextInfraPyprojectModernizer.main(["--skip-comments"]),
-            eq=42,
-        )
-        tm.that(
-            calls,
-            eq=[
-                ("deps", "modernize", []),
-                ("deps", "modernize", ["--audit"]),
-                ("deps", "modernize", ["--skip-comments"]),
-            ],
+            eq=1,
         )

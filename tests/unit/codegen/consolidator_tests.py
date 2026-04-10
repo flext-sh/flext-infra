@@ -134,10 +134,15 @@ def test_execute_uses_project_path_and_closes_rope_project(
         "build_value_map",
         lambda _facade: {},
     )
+
+    def _init_rope_project(root: Path) -> object:
+        rope_roots.append(root)
+        return rope
+
     u.Infra.Tests.patch_public_infra(
         monkeypatch,
         "init_rope_project",
-        lambda root: rope_roots.append(root) or rope,
+        _init_rope_project,
     )
     u.Infra.Tests.patch_public_infra(
         monkeypatch,

@@ -5,10 +5,9 @@ from __future__ import annotations
 import re
 import shutil
 import subprocess
-import types
 from collections.abc import MutableMapping, Sequence
 from pathlib import Path
-from typing import override
+from typing import ClassVar, override
 
 import pytest
 from flext_tests import FlextTestsUtilities
@@ -41,20 +40,27 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             class DeptrySelector(FlextInfraUtilities.Infra):
                 """Protocol-compatible selector backed by a real Result."""
 
+                _result: ClassVar[r[Sequence[m.Infra.ProjectInfo]] | None] = None
+
                 def __init__(
                     self,
                     result: r[Sequence[m.Infra.ProjectInfo]],
                 ) -> None:
-                    self._result = result
+                    type(self)._result = result
 
+                @staticmethod
                 @override
                 def resolve_projects(
-                    self,
                     workspace_root: Path,
                     names: t.StrSequence,
                 ) -> r[Sequence[m.Infra.ProjectInfo]]:
                     del workspace_root, names
-                    return self._result
+                    result = TestsFlextInfraUtilities.Infra.Tests.DeptrySelector._result
+                    if result is None:
+                        return r[Sequence[m.Infra.ProjectInfo]].fail(
+                            "selector result not configured",
+                        )
+                    return result
 
             class DeptryRunner(p.Cli.CommandRunner):
                 """Protocol-compatible runner backed by a real Result."""
@@ -1226,19 +1232,21 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                     self,
                     project_path: Path,
                     venv_bin: Path,
-                ) -> r[tuple[Sequence[t.StrMapping], int]]:
+                ) -> r[t.Infra.Pair[Sequence[t.Infra.ContainerDict], int]]:
                     del project_path, venv_bin
                     if self.deptry_failure is not None:
-                        return r[tuple[Sequence[t.StrMapping], int]].fail(
-                            self.deptry_failure
-                        )
-                    return r[tuple[Sequence[t.StrMapping], int]].ok(([], 0))
+                        return r[
+                            t.Infra.Pair[Sequence[t.Infra.ContainerDict], int]
+                        ].fail(self.deptry_failure)
+                    return r[t.Infra.Pair[Sequence[t.Infra.ContainerDict], int]].ok(
+                        ([], 0),
+                    )
 
                 @override
                 def build_project_report(
                     self,
                     project_name: str,
-                    deptry_issues: Sequence[t.StrMapping],
+                    deptry_issues: Sequence[t.Infra.ContainerDict],
                 ) -> TestsFlextInfraUtilities.Infra.Tests.DetectorReportStub:
                     del project_name, deptry_issues
                     return TestsFlextInfraUtilities.Infra.Tests.DetectorReportStub(0)
@@ -1248,19 +1256,17 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                     self,
                     project_path: Path,
                     venv_bin: Path,
+                    limits_path: Path | None = None,
                     *,
-                    limits_path: Path,
-                ) -> r[types.SimpleNamespace]:
+                    include_mypy: bool = True,
+                ) -> r[m.Infra.TypingsReport]:
                     del project_path, venv_bin, limits_path
+                    del include_mypy
                     if self.typings_failure is not None:
-                        return r[types.SimpleNamespace].fail(self.typings_failure)
-                    typings = types.SimpleNamespace(to_add=[])
-
-                    def _model_dump() -> MutableMapping[str, t.StrSequence]:
-                        return {"to_add": []}
-
-                    setattr(typings, "model_dump", _model_dump)
-                    return r[types.SimpleNamespace].ok(typings)
+                        return r[m.Infra.TypingsReport].fail(self.typings_failure)
+                    return r[m.Infra.TypingsReport].ok(
+                        m.Infra.TypingsReport(to_add=[]),
+                    )
 
                 @override
                 def load_dependency_limits(

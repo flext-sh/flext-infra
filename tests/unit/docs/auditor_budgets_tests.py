@@ -11,7 +11,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import FlextInfraDocAuditor
-from tests import u
+from tests import t, u
 
 
 class TestLoadAuditBudgets:
@@ -23,7 +23,7 @@ class TestLoadAuditBudgets:
     def test_with_config(self, tmp_path: Path) -> None:
         arch_dir = tmp_path / "docs/architecture"
         arch_dir.mkdir(parents=True, exist_ok=True)
-        config_data = {
+        config_data: t.Cli.JsonMapping = {
             "docs_validation": {
                 "audit_gate": {
                     "max_issues_default": 5,
@@ -47,7 +47,7 @@ class TestLoadAuditBudgets:
     def test_float_values(self, tmp_path: Path) -> None:
         arch_dir = tmp_path / "docs/architecture"
         arch_dir.mkdir(parents=True, exist_ok=True)
-        config_data = {
+        config_data: t.Cli.JsonMapping = {
             "docs_validation": {
                 "audit_gate": {
                     "max_issues_default": 5.5,
@@ -63,7 +63,7 @@ class TestLoadAuditBudgets:
     def test_no_default_budget(self, tmp_path: Path) -> None:
         arch_dir = tmp_path / "docs/architecture"
         arch_dir.mkdir(parents=True, exist_ok=True)
-        config_data = {
+        config_data: t.Cli.JsonMapping = {
             "docs_validation": {
                 "audit_gate": {"max_issues_by_scope": {"test-project": 3}},
             },

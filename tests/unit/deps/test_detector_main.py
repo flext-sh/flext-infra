@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, MutableSequence, Sequence
+from collections.abc import Callable, MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
@@ -8,14 +8,6 @@ from flext_tests import tm
 
 from flext_infra import FlextInfraModelsDeps, FlextInfraRuntimeDevDependencyDetector
 from tests import m, p, r, t
-
-
-class _TypingsStub:
-    def __init__(self, to_add: Sequence[str]) -> None:
-        self.to_add = to_add
-
-    def model_dump(self) -> Mapping[str, Sequence[str]]:
-        return {"to_add": self.to_add}
 
 
 class _DepsStub(
@@ -42,15 +34,15 @@ class _DepsStub(
         self,
         project_path: Path,
         venv_bin: Path,
-    ) -> r[tuple[Sequence[t.Infra.InfraMapping], int]]:
+    ) -> r[t.Infra.Pair[Sequence[t.Infra.ContainerDict], int]]:
         del project_path, venv_bin
-        return r[tuple[Sequence[t.Infra.InfraMapping], int]].ok(([], 0))
+        return r[t.Infra.Pair[Sequence[t.Infra.ContainerDict], int]].ok(([], 0))
 
     @override
     def build_project_report(
         self,
         project_name: str,
-        deptry_issues: Sequence[t.Infra.InfraMapping],
+        deptry_issues: Sequence[t.Infra.ContainerDict],
     ) -> m.Infra.ProjectRuntimeReport:
         del project_name, deptry_issues
         return m.Infra.ProjectRuntimeReport(
@@ -68,14 +60,21 @@ class _DepsStub(
         self,
         project_path: Path,
         venv_bin: Path,
+        limits_path: Path | None = None,
         *,
-        limits_path: Path,
-    ) -> r[_TypingsStub]:
+        include_mypy: bool = True,
+    ) -> r[m.Infra.TypingsReport]:
         del project_path, venv_bin, limits_path
-        return r[_TypingsStub].ok(_TypingsStub(self._to_add))
+        del include_mypy
+        return r[m.Infra.TypingsReport].ok(
+            m.Infra.TypingsReport(to_add=list(self._to_add)),
+        )
 
     @override
-    def load_dependency_limits(self, limits_path: Path) -> Mapping[str, t.StrMapping]:
+    def load_dependency_limits(
+        self,
+        limits_path: Path | None = None,
+    ) -> t.StrMapping:
         del limits_path
         return {}
 

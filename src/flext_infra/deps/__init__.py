@@ -24,6 +24,9 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".internal_sync": ("FlextInfraInternalDependencySyncService",),
             ".modernizer": ("FlextInfraPyprojectModernizer",),
             ".path_sync_rewrite": ("FlextInfraDependencyPathSyncRewrite",),
+            "flext_infra._utilities.deps_path_sync": (
+                "FlextInfraUtilitiesDependencyPathSync",
+            ),
         },
     ),
     exclude_names=(

@@ -1,143 +1,82 @@
+"""Public runner tests for ``FlextInfraWorkspaceChecker``.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
-import pytest
-from flext_tests import tm
-
-from flext_core import r
 from flext_infra import FlextInfraWorkspaceChecker
-from tests import m, t, u
+from tests import u
 
 
 class TestsExtendedProjectRunners:
-    def test_check_project_runner_execution(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
+    """Exercise runner behavior through the public checker API only."""
+
+    def test_run_projects_records_requested_gates(self, tmp_path: Path) -> None:
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
-        (tmp_path / "src").mkdir()
-        (tmp_path / "src" / "test.py").touch()
-        called: t.MutableBoolMapping = {
-            "lint": False,
-            "format": False,
-            "pyrefly": False,
-        }
-
-        class _FakeGate:
-            can_fix: bool = False
-
-            def __init__(self, gate_name: str) -> None:
-                self._gate_name = gate_name
-                self.gate_id = gate_name
-
-            def check(
-                self,
-                _project_dir: Path,
-                _ctx: t.Scalar,
-            ) -> m.Infra.GateExecution:
-                called[self._gate_name] = True
-                return u.Infra.Tests.create_gate_execution(gate=self._gate_name)
-
-        def _fake_create(gate_name: str, _workspace_root: Path) -> _FakeGate:
-            del _workspace_root
-            return _FakeGate(gate_name)
-
-        result = checker._check_project_with_ctx(
-            tmp_path,
-            ["lint", "format", "pyrefly"],
-            m.Infra.GateContext(workspace=tmp_path, reports_dir=tmp_path),
-        )
-        tm.that(called["lint"], eq=True)
-        tm.that(called["format"], eq=True)
-        tm.that(called["pyrefly"], eq=True)
-        tm.that(result.gates, has="lint")
-        tm.that(result.gates, has="format")
-        tm.that(result.gates, has="pyrefly")
-
-
-class TestJsonWriteFailure:
-    def test_run_projects_with_json_write_failure(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
-        proj_dir = tmp_path / "test-project"
-        proj_dir.mkdir()
-        (proj_dir / "pyproject.toml").write_text("[tool.poetry]\n")
-
-        def _fake_write_json(*_a: t.Scalar, **_kw: t.Scalar) -> r[bool]:
-            del _a, _kw
-            return r[bool].fail("write error")
-
-        class _FakeLintGate:
-            gate_id: str = "lint"
-            can_fix: bool = False
-
-            def check(
-                self,
-                _project_dir: Path,
-                _ctx: m.Infra.GateContext,
-            ) -> m.Infra.GateExecution:
-                del _project_dir, _ctx
-                return u.Infra.Tests.create_gate_execution("lint", "p", passed=True)
-
-        def _fake_create(_gate_name: str, _workspace_root: Path) -> _FakeLintGate:
-            del _gate_name, _workspace_root
-            return _FakeLintGate()
-
-        result = checker.run_projects(["test-project"], ["lint"])
-        tm.fail(result, has="write error")
-
-
-class TestLintAndFormatPublicMethods:
-    @staticmethod
-    def _assert_gate_public_method(
-        *,
-        checker: FlextInfraWorkspaceChecker,
-        target_dir: Path,
-        monkeypatch: pytest.MonkeyPatch,
-        gate_name: str,
-    ) -> None:
-        def _fake_run_gate(
-            requested_gate_name: str,
-            _project_dir: Path,
-        ) -> m.Infra.GateExecution:
-            return u.Infra.Tests.create_gate_execution(
-                requested_gate_name, "p", passed=True
+        project_dir = u.Infra.Tests.mk_project(tmp_path, "p1", with_src=True)
+        (project_dir / "src" / "test.py").write_text("value = 1\n", encoding="utf-8")
+        fake_bin = tmp_path / "fake_bin"
+        fake_bin.mkdir(parents=True, exist_ok=True)
+        for command in ("ruff", "pyrefly"):
+            script = fake_bin / command
+            script.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+            script.chmod(0o755)
+        original_path = os.environ.get("PATH", "")
+        os.environ["PATH"] = f"{fake_bin}:{original_path}"
+        try:
+            result = checker.run_projects(
+                ["p1"],
+                ["lint", "format", "pyrefly"],
+                reports_dir=tmp_path / "reports",
             )
+        finally:
+            os.environ["PATH"] = original_path
 
-        run_public = checker.lint if gate_name == "lint" else checker.format
-        result = run_public(target_dir)
-        tm.ok(result)
-        tm.that(result.value.gate, eq=gate_name)
+        assert result.is_success
+        assert {"lint", "format", "pyrefly"} <= set(result.value[0].gates)
 
-    def test_lint_public_method(
+    def test_lint_public_method_returns_lint_gate_result(self, tmp_path: Path) -> None:
+        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
+        project_dir = u.Infra.Tests.mk_project(tmp_path, "p1", with_src=True)
+        (project_dir / "src" / "test.py").write_text("value = 1\n", encoding="utf-8")
+        fake_bin = tmp_path / "fake_bin"
+        fake_bin.mkdir(parents=True, exist_ok=True)
+        ruff = fake_bin / "ruff"
+        ruff.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+        ruff.chmod(0o755)
+        original_path = os.environ.get("PATH", "")
+        os.environ["PATH"] = f"{fake_bin}:{original_path}"
+        try:
+            result = checker.lint(project_dir)
+        finally:
+            os.environ["PATH"] = original_path
+
+        assert result.is_success
+        assert result.value.gate == "lint"
+
+    def test_format_public_method_returns_format_gate_result(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
-        (tmp_path / "pyproject.toml").touch()
-        self._assert_gate_public_method(
-            checker=checker,
-            target_dir=tmp_path,
-            monkeypatch=monkeypatch,
-            gate_name="lint",
-        )
+        project_dir = u.Infra.Tests.mk_project(tmp_path, "p1", with_src=True)
+        (project_dir / "src" / "test.py").write_text("value = 1\n", encoding="utf-8")
+        fake_bin = tmp_path / "fake_bin"
+        fake_bin.mkdir(parents=True, exist_ok=True)
+        ruff = fake_bin / "ruff"
+        ruff.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+        ruff.chmod(0o755)
+        original_path = os.environ.get("PATH", "")
+        os.environ["PATH"] = f"{fake_bin}:{original_path}"
+        try:
+            result = checker.format(project_dir)
+        finally:
+            os.environ["PATH"] = original_path
 
-    def test_format_public_method(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
-        (tmp_path / "pyproject.toml").touch()
-        self._assert_gate_public_method(
-            checker=checker,
-            target_dir=tmp_path,
-            monkeypatch=monkeypatch,
-            gate_name="format",
-        )
+        assert result.is_success
+        assert result.value.gate == "format"
