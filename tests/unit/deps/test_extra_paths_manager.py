@@ -6,10 +6,8 @@ from pathlib import Path
 import pytest
 import tomlkit
 from flext_tests import tm
-from tomlkit.toml_document import TOMLDocument
 
-from flext_core import r
-from flext_infra import FlextInfraExtraPathsManager, u
+from flext_infra import FlextInfraExtraPathsManager
 from tests import t
 
 _TEST_WORKSPACE_ROOT = Path(__file__).resolve().parent
@@ -156,27 +154,12 @@ class TestSyncOne:
         tm.ok(_manager().sync_one(pyproject, dry_run=True, is_root=True))
         tm.that(pyproject.read_text(encoding="utf-8"), contains="old")
 
-    def test_sync_one_write_failure(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
+    def test_sync_one_write_failure(self, tmp_path: Path) -> None:
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text('[tool.pyright]\nextraPaths = ["old"]\n', encoding="utf-8")
+        pyproject.chmod(0o444)
 
-        def _broken_write(
-            _path: Path,
-            _doc: TOMLDocument,
-        ) -> r[bool]:
-            _ = _path, _doc
-            return r[bool].fail("write error")
-
-        monkeypatch.setattr(
-            u.Cli,
-            "toml_write_document",
-            staticmethod(_broken_write),
-        )
-        tm.fail(_manager().sync_one(pyproject, is_root=True), has="write error")
+        tm.fail(_manager().sync_one(pyproject, is_root=True), has="TOML write error")
 
 
 class TestConstants:
@@ -244,3 +227,71 @@ def test_pyrefly_search_paths_include_project_root_for_tests_package(
     result = manager.pyrefly_search_paths(project_dir=consumer, is_root=False)
 
     tm.that(result, eq=[".", "src"])
+
+
+def test_pyrefly_search_paths_ignore_non_path_dependencies_at_root(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / ".git").mkdir()
+    (tmp_path / "src").mkdir()
+    (tmp_path / "pyproject.toml").write_text(
+        ("[project]\nname = 'flext'\ndependencies = ['flext-core']\n"),
+        encoding="utf-8",
+    )
+    dep_root = tmp_path / "flext-core"
+    dep_root.mkdir()
+    (dep_root / ".git").mkdir()
+    (dep_root / "Makefile").write_text("", encoding="utf-8")
+    (dep_root / "pyproject.toml").write_text(
+        "[project]\nname = 'flext-core'\n",
+        encoding="utf-8",
+    )
+    (dep_root / "src" / "flext_core").mkdir(parents=True)
+    (dep_root / "src" / "flext_core" / "__init__.py").write_text(
+        "",
+        encoding="utf-8",
+    )
+
+    manager = FlextInfraExtraPathsManager(workspace_root=tmp_path)
+    result = manager.pyrefly_search_paths(project_dir=tmp_path, is_root=True)
+
+    tm.that(result, eq=["src"])
+
+
+def test_pyrefly_search_paths_include_workspace_dependency_src_dirs_at_root(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / ".git").mkdir()
+    (tmp_path / "src").mkdir()
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests" / "__init__.py").write_text("", encoding="utf-8")
+    (tmp_path / "pyproject.toml").write_text(
+        (
+            "[project]\n"
+            "name = 'flext'\n"
+            "dependencies = ['flext-core', 'flext-tests']\n"
+            "[tool.uv.workspace]\n"
+            "members = ['flext-core', 'flext-tests']\n"
+        ),
+        encoding="utf-8",
+    )
+    for dep_name, package_name in (
+        ("flext-core", "flext_core"),
+        ("flext-tests", "flext_tests"),
+    ):
+        dep_root = tmp_path / dep_name
+        dep_root.mkdir()
+        (dep_root / ".git").mkdir()
+        (dep_root / "Makefile").write_text("", encoding="utf-8")
+        (dep_root / "pyproject.toml").write_text(
+            f"[project]\nname = '{dep_name}'\n",
+            encoding="utf-8",
+        )
+        dep_src = dep_root / "src" / package_name
+        dep_src.mkdir(parents=True)
+        (dep_src / "__init__.py").write_text("", encoding="utf-8")
+
+    manager = FlextInfraExtraPathsManager(workspace_root=tmp_path)
+    result = manager.pyrefly_search_paths(project_dir=tmp_path, is_root=True)
+
+    tm.that(result, eq=[".", "flext-core/src", "flext-tests/src", "src"])

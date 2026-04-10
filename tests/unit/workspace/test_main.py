@@ -4,14 +4,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from flext_core import r
 from flext_infra import (
     FlextInfraOrchestratorService,
     FlextInfraSyncService,
     FlextInfraWorkspaceDetector,
-    c,
     infra,
     main as infra_main,
 )
+from tests import c, m, t
 
 
 def _write_project(project_root: Path, name: str) -> None:
@@ -46,6 +47,66 @@ def _write_workspace(workspace_root: Path) -> None:
         encoding="utf-8",
     )
     _write_project(workspace_root / "demo-a", "demo-a")
+
+
+def _cmd_out(exit_code: int = 0) -> m.Cli.CommandOutput:
+    return m.Cli.CommandOutput(
+        stdout="",
+        stderr="",
+        exit_code=exit_code,
+        duration=0.0,
+    )
+
+
+def _install_successful_orchestration(
+    orchestrator: FlextInfraOrchestratorService,
+    *,
+    project_root: Path,
+) -> None:
+    project = m.Infra.ProjectInfo(
+        name="flext-demo",
+        path=project_root,
+        stack="python",
+    )
+
+    def _resolved_projects(
+        self: FlextInfraOrchestratorService,
+    ) -> r[t.SequenceOf[m.Infra.ProjectInfo]]:
+        del self
+        return r[t.SequenceOf[m.Infra.ProjectInfo]].ok([project])
+
+    def _prepare_projects(
+        self: FlextInfraOrchestratorService,
+        projects: t.SequenceOf[m.Infra.ProjectInfo],
+        *,
+        workspace_root: Path,
+    ) -> r[bool]:
+        _ = (self, projects, workspace_root)
+        return r[bool].ok(True)
+
+    def _run_project(
+        self: FlextInfraOrchestratorService,
+        project_name: str,
+        verb: str,
+        _index: int,
+        *,
+        make_args: t.StrSequence,
+    ) -> r[m.Cli.CommandOutput]:
+        _ = (self, project_name, verb, _index, make_args)
+        return r[m.Cli.CommandOutput].ok(_cmd_out())
+
+    orchestrator._resolved_projects = _resolved_projects.__get__(
+        orchestrator,
+        FlextInfraOrchestratorService,
+    )
+    orchestrator._prepare_projects = _prepare_projects.__get__(
+        orchestrator,
+        FlextInfraOrchestratorService,
+    )
+    orchestrator._run_project = _run_project.__get__(
+        orchestrator,
+        FlextInfraOrchestratorService,
+    )
 
 
 def workspace_main(argv: list[str] | None = None) -> int:
@@ -94,9 +155,9 @@ def test_orchestrate_workspace_rejects_unknown_verb() -> None:
 
 
 def test_orchestrate_workspace_defaults_to_current_project() -> None:
-    result = infra.orchestrate_workspace(
-        FlextInfraOrchestratorService(verb="check", projects=[]),
-    )
+    orchestrator = FlextInfraOrchestratorService(verb="check", projects=[])
+    _install_successful_orchestration(orchestrator, project_root=Path.cwd())
+    result = infra.orchestrate_workspace(orchestrator)
 
     assert result.is_success, result.error
 

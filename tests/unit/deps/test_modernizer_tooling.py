@@ -12,69 +12,57 @@ from flext_infra import (
     FlextInfraEnsureNamespaceToolingPhase,
     FlextInfraEnsureRuffConfigPhase,
 )
-from tests import m, t, u
+from tests import m, u
 
 
-def _test_tool_config() -> m.Infra.ToolConfigDocument:
-    result = u.Infra.load_tool_config()
-    tm.that(not result.is_failure, eq=True)
-    if result.is_failure:
-        msg = "failed to load tool config"
-        raise ValueError(msg)
-    return result.value
+class TestDepsModernizerTooling:
+    """Declarative tests for formatting, namespace, and Ruff phases."""
 
-
-def _doc_mapping(doc: t.Cli.TomlDocument) -> t.Cli.JsonMapping:
-    return t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-        u.Cli.normalize_json_value(doc.unwrap()),
-    )
-
-
-def _mapping(value: t.Cli.JsonValue) -> t.Cli.JsonMapping:
-    return t.Cli.JSON_MAPPING_ADAPTER.validate_python(value)
-
-
-def _strings(value: t.Cli.JsonValue) -> t.StrSequence:
-    return t.Infra.STR_SEQ_ADAPTER.validate_python(value)
-
-
-class TestEnsureFormattingToolingPhase:
-    """Tests formatting tooling phase behavior."""
-
-    def test_apply_sets_expected_tomlsort_and_yamlfix_state(self) -> None:
-        tool_config = _test_tool_config()
+    def test_formatting_phase_sets_expected_state(
+        self,
+        tool_config_document: m.Infra.ToolConfigDocument,
+    ) -> None:
         doc = tomlkit.document()
 
-        _ = FlextInfraEnsureFormattingToolingPhase(tool_config).apply(doc)
+        _ = FlextInfraEnsureFormattingToolingPhase(tool_config_document).apply(doc)
 
-        tool = _mapping(_doc_mapping(doc)["tool"])
-        codespell = _mapping(tool["codespell"])
-        tomlsort = _mapping(tool["tomlsort"])
-        yamlfix = _mapping(tool["yamlfix"])
+        tool = u.Infra.Tests.toml_mapping(u.Infra.Tests.toml_doc_mapping(doc)["tool"])
+        codespell = u.Infra.Tests.toml_mapping(tool["codespell"])
+        tomlsort = u.Infra.Tests.toml_mapping(tool["tomlsort"])
+        yamlfix = u.Infra.Tests.toml_mapping(tool["yamlfix"])
         assert (
-            codespell["check-filenames"] == tool_config.tools.codespell.check_filenames
+            codespell["check-filenames"]
+            == tool_config_document.tools.codespell.check_filenames
         )
         assert (
             codespell["ignore-words-list"]
-            == tool_config.tools.codespell.ignore_words_list
+            == tool_config_document.tools.codespell.ignore_words_list
         )
-        assert tomlsort["all"] == tool_config.tools.tomlsort.all
-        assert tomlsort["in_place"] == tool_config.tools.tomlsort.in_place
-        assert list(_strings(tomlsort["sort_first"])) == sorted(
-            tool_config.tools.tomlsort.sort_first,
+        assert tomlsort["all"] == tool_config_document.tools.tomlsort.all
+        assert tomlsort["in_place"] == tool_config_document.tools.tomlsort.in_place
+        assert list(u.Infra.Tests.toml_strings(tomlsort["sort_first"])) == sorted(
+            tool_config_document.tools.tomlsort.sort_first,
         )
-        assert yamlfix["line_length"] == tool_config.tools.yamlfix.line_length
-        assert yamlfix["preserve_quotes"] == tool_config.tools.yamlfix.preserve_quotes
-        assert yamlfix["whitelines"] == tool_config.tools.yamlfix.whitelines
+        assert yamlfix["line_length"] == tool_config_document.tools.yamlfix.line_length
+        assert (
+            yamlfix["preserve_quotes"]
+            == tool_config_document.tools.yamlfix.preserve_quotes
+        )
+        assert yamlfix["whitelines"] == tool_config_document.tools.yamlfix.whitelines
         assert (
             yamlfix["section_whitelines"]
-            == tool_config.tools.yamlfix.section_whitelines
+            == tool_config_document.tools.yamlfix.section_whitelines
         )
-        assert yamlfix["explicit_start"] == tool_config.tools.yamlfix.explicit_start
+        assert (
+            yamlfix["explicit_start"]
+            == tool_config_document.tools.yamlfix.explicit_start
+        )
 
-    def test_apply_is_idempotent(self) -> None:
-        tool_config = _test_tool_config()
-        phase = FlextInfraEnsureFormattingToolingPhase(tool_config)
+    def test_formatting_phase_is_idempotent(
+        self,
+        tool_config_document: m.Infra.ToolConfigDocument,
+    ) -> None:
+        phase = FlextInfraEnsureFormattingToolingPhase(tool_config_document)
         doc = tomlkit.document()
 
         _ = phase.apply(doc)
@@ -82,9 +70,11 @@ class TestEnsureFormattingToolingPhase:
 
         tm.that(second_changes, eq=[])
 
-    def test_apply_removes_codespell_skip(self) -> None:
-        tool_config = _test_tool_config()
-        phase = FlextInfraEnsureFormattingToolingPhase(tool_config)
+    def test_formatting_phase_removes_codespell_skip(
+        self,
+        tool_config_document: m.Infra.ToolConfigDocument,
+    ) -> None:
+        phase = FlextInfraEnsureFormattingToolingPhase(tool_config_document)
         doc = tomlkit.parse(
             """
 [tool.codespell]
@@ -96,22 +86,16 @@ skip = ".git,poetry.lock"
 
         changes = phase.apply(doc)
 
-        tool = _mapping(_doc_mapping(doc)["tool"])
-        codespell = _mapping(tool["codespell"])
+        tool = u.Infra.Tests.toml_mapping(u.Infra.Tests.toml_doc_mapping(doc)["tool"])
+        codespell = u.Infra.Tests.toml_mapping(tool["codespell"])
         assert "skip" not in codespell
         tm.that(changes, has="removed codespell.skip hardcode")
 
-
-class TestEnsureNamespaceToolingPhase:
-    """Tests namespace tooling phase behavior."""
-
-    def test_apply_sets_detected_known_first_party(self, tmp_path: Path) -> None:
+    def test_namespace_phase_sets_detected_first_party(self, tmp_path: Path) -> None:
         project_dir = tmp_path / "flext-sample"
-        (project_dir / "src" / "flext_sample").mkdir(parents=True, exist_ok=True)
-        _ = (project_dir / "src" / "flext_sample" / "__init__.py").write_text(
-            "",
-            encoding="utf-8",
-        )
+        package_dir = project_dir / "src" / "flext_sample"
+        package_dir.mkdir(parents=True, exist_ok=True)
+        _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
         doc = tomlkit.document()
 
         _ = FlextInfraEnsureNamespaceToolingPhase().apply(
@@ -119,23 +103,29 @@ class TestEnsureNamespaceToolingPhase:
             path=project_dir / "pyproject.toml",
         )
 
-        deptry_mapping = _mapping(_mapping(_doc_mapping(doc)["tool"])["deptry"])
-        assert list(_strings(deptry_mapping["known_first_party"])) == ["flext_sample"]
-
-
-class TestEnsureRuffConfigPhase:
-    """Tests Ruff config phase behavior."""
-
-    def test_apply_sets_expected_ruff_state(self, tmp_path: Path) -> None:
-        tool_config = _test_tool_config()
-        project_dir = tmp_path / "flext-sample"
-        (project_dir / "src" / "flext_sample").mkdir(parents=True, exist_ok=True)
-        (project_dir / "tests").mkdir(parents=True, exist_ok=True)
-        _ = (project_dir / "src" / "flext_sample" / "__init__.py").write_text(
-            "",
-            encoding="utf-8",
+        deptry = u.Infra.Tests.toml_mapping(
+            u.Infra.Tests.toml_mapping(u.Infra.Tests.toml_doc_mapping(doc)["tool"])[
+                "deptry"
+            ],
         )
-        _ = (project_dir / "tests" / "test_dummy.py").write_text(
+        assert list(u.Infra.Tests.toml_strings(deptry["known_first_party"])) == [
+            "flext_sample",
+        ]
+
+    def test_ruff_phase_sets_expected_state(
+        self,
+        tmp_path: Path,
+        tool_config_document: m.Infra.ToolConfigDocument,
+    ) -> None:
+        project_dir = tmp_path / "flext-sample"
+        package_dir = project_dir / "src" / "flext_sample"
+        test_dir = project_dir / "tests"
+        fixture_dir = test_dir / "fixtures"
+        package_dir.mkdir(parents=True, exist_ok=True)
+        fixture_dir.mkdir(parents=True, exist_ok=True)
+        _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
+        _ = (fixture_dir / "sample.py").write_text("VALUE = 1\n", encoding="utf-8")
+        _ = (test_dir / "test_dummy.py").write_text(
             "def test_dummy() -> None:\n    assert True\n",
             encoding="utf-8",
         )
@@ -149,53 +139,64 @@ select = ["E501"]
 """,
         )
 
-        _ = FlextInfraEnsureRuffConfigPhase(tool_config).apply(
+        _ = FlextInfraEnsureRuffConfigPhase(tool_config_document).apply(
             doc,
             path=project_dir / "pyproject.toml",
         )
 
-        root = _doc_mapping(doc)
+        root = u.Infra.Tests.toml_doc_mapping(doc)
         assert "lint" not in root
-        ruff = _mapping(_mapping(root["tool"])["ruff"])
-        assert ruff["fix"] == tool_config.tools.ruff.fix
-        assert ruff["line-length"] == tool_config.tools.ruff.line_length
-        assert ruff["preview"] == tool_config.tools.ruff.preview
-        assert ruff["respect-gitignore"] == tool_config.tools.ruff.respect_gitignore
-        assert ruff["show-fixes"] == tool_config.tools.ruff.show_fixes
-        assert ruff["target-version"] == tool_config.tools.ruff.target_version
-        assert set(_strings(ruff["src"])) == {"src", "tests"}
-        format_section = _mapping(ruff["format"])
+        ruff = u.Infra.Tests.toml_mapping(
+            u.Infra.Tests.toml_mapping(root["tool"])["ruff"],
+        )
+        assert set(u.Infra.Tests.toml_strings(ruff["exclude"])) == set(
+            tool_config_document.tools.ruff.exclude,
+        )
+        assert ruff["fix"] == tool_config_document.tools.ruff.fix
+        assert ruff["line-length"] == tool_config_document.tools.ruff.line_length
+        assert ruff["preview"] == tool_config_document.tools.ruff.preview
+        assert (
+            ruff["respect-gitignore"]
+            == tool_config_document.tools.ruff.respect_gitignore
+        )
+        assert ruff["show-fixes"] == tool_config_document.tools.ruff.show_fixes
+        assert ruff["target-version"] == tool_config_document.tools.ruff.target_version
+        assert set(u.Infra.Tests.toml_strings(ruff["src"])) == {"src", "tests"}
+        format_section = u.Infra.Tests.toml_mapping(ruff["format"])
         assert (
             format_section["docstring-code-format"]
-            == tool_config.tools.ruff.format.docstring_code_format
+            == tool_config_document.tools.ruff.format.docstring_code_format
         )
-        lint_section = _mapping(ruff["lint"])
-        assert set(_strings(lint_section["select"])) == set(
-            tool_config.tools.ruff.lint.select
+        lint_section = u.Infra.Tests.toml_mapping(ruff["lint"])
+        assert set(u.Infra.Tests.toml_strings(lint_section["select"])) == set(
+            tool_config_document.tools.ruff.lint.select,
         )
-        assert set(_strings(lint_section["ignore"])) == set(
-            tool_config.tools.ruff.lint.ignore
+        assert set(u.Infra.Tests.toml_strings(lint_section["ignore"])) == set(
+            tool_config_document.tools.ruff.lint.ignore,
         )
-        isort = _mapping(lint_section["isort"])
+        isort = u.Infra.Tests.toml_mapping(lint_section["isort"])
         assert (
             isort["combine-as-imports"]
-            == tool_config.tools.ruff.lint.isort.combine_as_imports
+            == tool_config_document.tools.ruff.lint.isort.combine_as_imports
         )
-        assert list(_strings(isort["known-first-party"])) == ["flext_sample"]
-        assert _mapping(lint_section["per-file-ignores"]) == {
+        assert list(u.Infra.Tests.toml_strings(isort["known-first-party"])) == [
+            "flext_sample",
+        ]
+        assert u.Infra.Tests.toml_mapping(lint_section["per-file-ignores"]) == {
             pattern: sorted(rules)
-            for pattern, rules in tool_config.tools.ruff.lint.per_file_ignores.items()
+            for pattern, rules in tool_config_document.tools.ruff.lint.per_file_ignores.items()
         }
 
-    def test_apply_is_idempotent(self, tmp_path: Path) -> None:
-        tool_config = _test_tool_config()
+    def test_ruff_phase_is_idempotent(
+        self,
+        tmp_path: Path,
+        tool_config_document: m.Infra.ToolConfigDocument,
+    ) -> None:
         project_dir = tmp_path / "flext-sample"
-        (project_dir / "src" / "flext_sample").mkdir(parents=True, exist_ok=True)
-        _ = (project_dir / "src" / "flext_sample" / "__init__.py").write_text(
-            "",
-            encoding="utf-8",
-        )
-        phase = FlextInfraEnsureRuffConfigPhase(tool_config)
+        package_dir = project_dir / "src" / "flext_sample"
+        package_dir.mkdir(parents=True, exist_ok=True)
+        _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
+        phase = FlextInfraEnsureRuffConfigPhase(tool_config_document)
         doc = tomlkit.document()
 
         _ = phase.apply(doc, path=project_dir / "pyproject.toml")
@@ -203,48 +204,55 @@ select = ["E501"]
 
         tm.that(second_changes, eq=[])
 
-    def test_apply_excludes_attached_workspace_project_namespaces(
+    def test_ruff_phase_skips_attached_workspace_namespaces(
         self,
         tmp_path: Path,
+        tool_config_document: m.Infra.ToolConfigDocument,
     ) -> None:
-        tool_config = _test_tool_config()
         workspace_root = tmp_path / "workspace"
         project_dir = workspace_root / "algar-oud-mig"
-        (project_dir / "src" / "algar_oud_mig").mkdir(parents=True, exist_ok=True)
-        _ = (project_dir / "src" / "algar_oud_mig" / "__init__.py").write_text(
+        internal_project = workspace_root / "flext-core"
+        project_dir.joinpath("src", "algar_oud_mig").mkdir(parents=True, exist_ok=True)
+        internal_project.joinpath("src", "flext_core").mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+        _ = project_dir.joinpath("src", "algar_oud_mig", "__init__.py").write_text(
             "",
             encoding="utf-8",
         )
-        _ = (project_dir / "pyproject.toml").write_text(
+        _ = internal_project.joinpath("src", "flext_core", "__init__.py").write_text(
+            "",
+            encoding="utf-8",
+        )
+        _ = project_dir.joinpath("pyproject.toml").write_text(
             '[project]\nname = "algar-oud-mig"\nversion = "0.1.0"\ndependencies = ["flext-core>=0.1.0"]\n',
             encoding="utf-8",
         )
-        _ = (workspace_root / "pyproject.toml").write_text(
+        _ = workspace_root.joinpath("pyproject.toml").write_text(
             "[project]\nname = 'workspace'\n\n"
             "[tool.uv.workspace]\n"
             "members = ['flext-core']\n",
             encoding="utf-8",
         )
-        internal_project = workspace_root / "flext-core"
-        (internal_project / "src" / "flext_core").mkdir(parents=True, exist_ok=True)
-        _ = (internal_project / "src" / "flext_core" / "__init__.py").write_text(
-            "",
-            encoding="utf-8",
-        )
-        _ = (internal_project / "pyproject.toml").write_text(
+        _ = internal_project.joinpath("pyproject.toml").write_text(
             '[project]\nname = "flext-core"\nversion = "0.1.0"\n',
             encoding="utf-8",
         )
         doc = tomlkit.document()
 
-        _ = FlextInfraEnsureRuffConfigPhase(tool_config).apply(
+        _ = FlextInfraEnsureRuffConfigPhase(tool_config_document).apply(
             doc,
             path=workspace_root / "pyproject.toml",
         )
 
-        root = _doc_mapping(doc)
-        ruff = _mapping(_mapping(root["tool"])["ruff"])
-        lint_section = _mapping(ruff["lint"])
-        isort = _mapping(lint_section["isort"])
-        tm.that(list(_strings(isort["known-first-party"])), has="flext_core")
-        tm.that("algar_oud_mig" in list(_strings(isort["known-first-party"])), eq=False)
+        ruff = u.Infra.Tests.toml_mapping(
+            u.Infra.Tests.toml_mapping(u.Infra.Tests.toml_doc_mapping(doc)["tool"])[
+                "ruff"
+            ],
+        )
+        lint_section = u.Infra.Tests.toml_mapping(ruff["lint"])
+        isort = u.Infra.Tests.toml_mapping(lint_section["isort"])
+        known_first_party = list(u.Infra.Tests.toml_strings(isort["known-first-party"]))
+        tm.that(known_first_party, has="flext_core")
+        tm.that("algar_oud_mig" in known_first_party, eq=False)

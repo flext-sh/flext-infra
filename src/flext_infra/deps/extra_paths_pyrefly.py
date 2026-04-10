@@ -83,6 +83,16 @@ class FlextInfraExtraPathsPyrefly:
             rules.env_dirs,
         )
         paths: t.Infra.StrSet = {*typings_paths}
+        if is_root and rules.include_path_dependencies_in_search_path:
+            pyproject = project_dir / c.Infra.Files.PYPROJECT_FILENAME
+            doc_result = u.Cli.toml_read_document(pyproject)
+            if doc_result.is_success:
+                paths.update(
+                    resolver.get_dep_paths(
+                        doc_result.value,
+                        is_root=True,
+                    ),
+                )
         if (project_dir / source_root).is_dir():
             paths.add(source_root)
         if self._needs_project_root(

@@ -1,171 +1,165 @@
-"""Tests for gate runners — bandit and markdown.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Public Bandit and Markdown gate behavior tests using protocol runners."""
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence
 from pathlib import Path
 
 import pytest
 from flext_tests import tm
 
-from flext_infra import (
-    FlextInfraBanditGate,
-    FlextInfraMarkdownGate,
-)
-from tests import (
-    m,
-    t,
-    u,
-)
+from flext_core import r
+from flext_infra import FlextInfraBanditGate, FlextInfraMarkdownGate, m
+from tests import t, u
 
 
-def _run_failed_gate_check(
-    workspace_root: Path,
-    project_dir: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    *,
-    gate_class: t.Infra.Tests.GateClass,
-    stdout: str = "",
-    stderr: str = "",
-) -> m.Infra.GateExecution:
-    """Helper to run gate check with failure setup."""
-    u.Infra.Tests.patch_gate_run(
-        monkeypatch,
-        gate_class,
-        stdout=stdout,
-        stderr=stderr,
-        returncode=1,
+class TestBanditAndMarkdownGates:
+    """Declarative public-contract tests for Bandit and Markdown gates."""
+
+    @staticmethod
+    def make_ctx(root: Path) -> m.Infra.GateContext:
+        return m.Infra.GateContext(workspace=root, reports_dir=root)
+
+    @staticmethod
+    def make_runner(
+        *results: r[m.Cli.CommandOutput],
+    ) -> u.Infra.Tests.SequenceRunner:
+        return u.Infra.Tests.SequenceRunner(list(results))
+
+    @pytest.mark.parametrize(
+        ("with_src", "runner_results", "passed", "issues_len"),
+        [
+            (False, (), True, 0),
+            (
+                True,
+                (
+                    u.Infra.Tests.ok_result(
+                        u.Infra.Tests.stub_run(
+                            stdout='{"results": [{"filename": "a.py", "line_number": 1, "test_id": "B101", "issue_text": "Assert used", "issue_severity": "MEDIUM"}]}',
+                            returncode=1,
+                        ),
+                    ),
+                ),
+                False,
+                1,
+            ),
+            (
+                True,
+                (
+                    u.Infra.Tests.ok_result(
+                        u.Infra.Tests.stub_run(stdout="invalid json", returncode=1),
+                    ),
+                ),
+                False,
+                0,
+            ),
+        ],
     )
-    return u.Infra.Tests.run_gate_check(gate_class, workspace_root, project_dir)
-
-
-def _assert_failed_single_issue(result: m.Infra.GateExecution) -> None:
-    tm.that(not result.result.passed, eq=True)
-    tm.that(len(result.issues), eq=1)
-
-
-class TestWorkspaceCheckerRunBandit:
-    def test_run_bandit_no_src_dir(self, tmp_path: Path) -> None:
-        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path)
-        result = u.Infra.Tests.run_gate_check(
-            FlextInfraBanditGate,
-            tmp_path,
-            proj_dir,
-        )
-        tm.that(result.result.passed, eq=True)
-        tm.that(len(result.issues), eq=0)
-
-    def test_run_bandit_with_json_output(
+    def test_bandit_check(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
+        with_src: bool,
+        runner_results: tuple[r[m.Cli.CommandOutput], ...],
+        passed: bool,
+        issues_len: int,
     ) -> None:
-        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path, with_src=True)
-        json_output = (
-            '{"results": [{"filename": "a.py", "line_number": 1,'
-            ' "test_id": "B101", "issue_text": "Assert used",'
-            ' "issue_severity": "MEDIUM"}]}'
-        )
-        u.Infra.Tests.patch_gate_run(
-            monkeypatch,
-            FlextInfraBanditGate,
-            stdout=json_output,
-            returncode=1,
-        )
-        result = u.Infra.Tests.run_gate_check(
-            FlextInfraBanditGate,
-            tmp_path,
-            proj_dir,
-        )
-        tm.that(not result.result.passed, eq=True)
-        tm.that(len(result.issues), eq=1)
+        project_dir = u.Infra.Tests.mk_project(tmp_path, "bandit-project")
+        if with_src:
+            (project_dir / "src").mkdir()
+            (project_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
 
-    def test_run_bandit_with_invalid_json(
+        gate = FlextInfraBanditGate(
+            tmp_path,
+            runner=self.make_runner(*runner_results) if runner_results else None,
+        )
+        result = gate.check(project_dir, self.make_ctx(tmp_path))
+
+        tm.that(result.result.passed, eq=passed)
+        tm.that(len(result.issues), eq=issues_len)
+
+    @pytest.mark.parametrize(
+        (
+            "markdown_text",
+            "config_text",
+            "runner_result",
+            "passed",
+            "issues_len",
+            "raw_output",
+        ),
+        [
+            ("", None, None, True, 0, ""),
+            (
+                "# Test\n",
+                None,
+                u.Infra.Tests.ok_result(
+                    u.Infra.Tests.stub_run(
+                        stdout="README.md:1:1 error MD001 Heading level",
+                        returncode=1,
+                    ),
+                ),
+                False,
+                1,
+                "",
+            ),
+            (
+                "# Test\n",
+                None,
+                u.Infra.Tests.ok_result(
+                    u.Infra.Tests.stub_run(
+                        stderr="markdownlint failed",
+                        returncode=1,
+                    ),
+                ),
+                False,
+                0,
+                "markdownlint failed",
+            ),
+        ],
+    )
+    def test_markdown_check(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
+        markdown_text: str,
+        config_text: str | None,
+        runner_result: r[m.Cli.CommandOutput] | None,
+        passed: bool,
+        issues_len: int,
+        raw_output: str,
     ) -> None:
-        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path, with_src=True)
-        result = _run_failed_gate_check(
+        project_dir = u.Infra.Tests.mk_project(tmp_path, "markdown-project")
+        if markdown_text:
+            (project_dir / "README.md").write_text(markdown_text, encoding="utf-8")
+        if config_text is not None:
+            (project_dir / ".markdownlint.json").write_text(
+                config_text,
+                encoding="utf-8",
+            )
+
+        gate = FlextInfraMarkdownGate(
             tmp_path,
-            proj_dir,
-            monkeypatch,
-            gate_class=FlextInfraBanditGate,
-            stdout="invalid json",
+            runner=self.make_runner(runner_result)
+            if runner_result is not None
+            else None,
         )
-        tm.that(not result.result.passed, eq=True)
+        result = gate.check(project_dir, self.make_ctx(tmp_path))
 
+        tm.that(result.result.passed, eq=passed)
+        tm.that(len(result.issues), eq=issues_len)
+        if raw_output:
+            tm.that(result.raw_output, contains=raw_output)
 
-class TestWorkspaceCheckerRunMarkdown:
-    def test_run_markdown_no_files(self, tmp_path: Path) -> None:
-        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path)
-        result = u.Infra.Tests.run_gate_check(
-            FlextInfraMarkdownGate,
-            tmp_path,
-            proj_dir,
-        )
-        tm.that(result.result.passed, eq=True)
-        tm.that(len(result.issues), eq=0)
-
-    def test_run_markdown_with_errors(
+    def test_markdown_prefers_local_config_when_root_is_missing(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path)
-        (proj_dir / "README.md").write_text("# Test")
-        result = _run_failed_gate_check(
-            tmp_path,
-            proj_dir,
-            monkeypatch,
-            gate_class=FlextInfraMarkdownGate,
-            stdout="README.md:1:1 error MD001 Heading level",
-        )
-        _assert_failed_single_issue(result)
+        project_dir = u.Infra.Tests.mk_project(tmp_path, "markdown-config-project")
+        (project_dir / "README.md").write_text("# Test\n", encoding="utf-8")
+        (project_dir / ".markdownlint.json").write_text("{}", encoding="utf-8")
+        runner = self.make_runner(u.Infra.Tests.ok_result(u.Infra.Tests.stub_run()))
 
-    def test_run_markdown_with_config(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path)
-        (proj_dir / "README.md").write_text("# Test")
-        (proj_dir / ".markdownlint.json").write_text("{}")
-        captured_args: MutableSequence[t.StrSequence] = []
+        gate = FlextInfraMarkdownGate(tmp_path, runner=runner)
+        _ = gate.check(project_dir, self.make_ctx(tmp_path))
 
-        def _fake_run(
-            _self: FlextInfraMarkdownGate,
-            cmd: t.StrSequence,
-            cwd: Path,
-            timeout: int = 120,
-            env: t.StrMapping | None = None,
-        ) -> m.Cli.CommandOutput:
-            del _self, cwd, timeout, env
-            captured_args.append(cmd)
-            return m.Cli.CommandOutput(stdout="", stderr="", exit_code=0)
+        tm.that(runner.commands[0], has="--config")
 
-        monkeypatch.setattr(FlextInfraMarkdownGate, "_run", _fake_run)
-        _ = u.Infra.Tests.run_gate_check(FlextInfraMarkdownGate, tmp_path, proj_dir)
-        tm.that(captured_args[0], has="--config")
 
-    def test_run_markdown_without_parseable_output(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path)
-        (proj_dir / "README.md").write_text("# Test")
-        result = _run_failed_gate_check(
-            tmp_path,
-            proj_dir,
-            monkeypatch,
-            gate_class=FlextInfraMarkdownGate,
-            stderr="markdownlint failed",
-        )
-        tm.that(not result.result.passed, eq=True)
-        tm.that(len(result.issues), eq=0)
-        tm.that(result.raw_output, contains="markdownlint failed")
+__all__: t.StrSequence = []

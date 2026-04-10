@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from tests import c, t, u
+from tests import c, m, t, u
 
 _FIXTURES_DIR = Path(__file__).with_name("fixtures")
 
@@ -39,6 +39,11 @@ def deptry_report_payload() -> t.Cli.JsonPayload:
     assert parsed is not None
     assert parsed.is_success
     return parsed.value
+
+
+@pytest.fixture
+def tool_config_document() -> m.Infra.ToolConfigDocument:
+    return u.Infra.Tests.tool_config_document()
 
 
 @pytest.fixture
@@ -177,4 +182,5 @@ __all__ = [
     "real_python_package",
     "real_toml_project",
     "real_workspace",
+    "tool_config_document",
 ]

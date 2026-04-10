@@ -1,8 +1,4 @@
-"""Tests for FlextInfraStubSupplyChain.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Public behavior tests for FlextInfraStubSupplyChain."""
 
 from __future__ import annotations
 
@@ -12,188 +8,173 @@ import pytest
 from flext_tests import tm
 
 from flext_infra import FlextInfraStubSupplyChain
-from tests import t
+from tests import c, m, t, u
 
 
-def _no_stub_messages(_project_dir: Path) -> list[str]:
-    return []
+class TestStubChain:
+    """Declarative public-contract tests for stub-chain validation."""
 
+    @staticmethod
+    def make_chain(
+        *,
+        workspace_root: Path,
+        stdout: str = "",
+        projects: t.StrSequence | None = None,
+        all_projects: bool = False,
+    ) -> FlextInfraStubSupplyChain:
+        return FlextInfraStubSupplyChain(
+            workspace=workspace_root,
+            projects=projects,
+            all_projects=all_projects,
+            runner=u.Infra.Tests.DeptryRunner(
+                u.Infra.Tests.ok_result(
+                    u.Infra.Tests.stub_run(stdout=stdout),
+                ),
+            ),
+        )
 
-class TestStubChainCore:
-    """Core tests for FlextInfraStubSupplyChain."""
+    @staticmethod
+    def _stub_output(*lines: str) -> str:
+        return "\n".join(lines)
 
-    run_mypy_hints = getattr(FlextInfraStubSupplyChain, "_run_mypy_hints")
-    run_pyrefly_missing = getattr(FlextInfraStubSupplyChain, "_run_pyrefly_missing")
-    is_internal = getattr(FlextInfraStubSupplyChain, "_is_internal")
-    stub_exists = getattr(FlextInfraStubSupplyChain, "_stub_exists")
-    discover_stub_projects = getattr(
-        FlextInfraStubSupplyChain,
-        "_discover_stub_projects",
-    )
-
-    def test_init_creates_service(self) -> None:
-        """Service initializes without requiring private runner state."""
-        chain = FlextInfraStubSupplyChain()
-        assert chain is not None
+    def test_init_defaults(self, tmp_path: Path) -> None:
+        chain = FlextInfraStubSupplyChain(workspace=tmp_path)
         tm.that(chain.runner is None, eq=True)
+        tm.that(chain.project_names is None, eq=True)
+        tm.that(chain.project_dirs is None, eq=True)
 
+    def test_project_names_and_dirs_are_normalized(self, tmp_path: Path) -> None:
+        chain = FlextInfraStubSupplyChain(
+            workspace=tmp_path,
+            projects=[" alpha, beta ", "gamma delta"],
+        )
+        tm.that(chain.project_names, eq=["alpha", "beta", "gamma", "delta"])
+        tm.that(
+            chain.project_dirs,
+            eq=[
+                tmp_path / "alpha",
+                tmp_path / "beta",
+                tmp_path / "gamma",
+                tmp_path / "delta",
+            ],
+        )
 
-class TestStubChainAnalyze:
-    """Analyze method tests for FlextInfraStubSupplyChain."""
+    def test_project_dirs_are_disabled_for_all_projects(self, tmp_path: Path) -> None:
+        chain = FlextInfraStubSupplyChain(
+            workspace=tmp_path,
+            projects=["alpha"],
+            all_projects=True,
+        )
+        tm.that(chain.project_dirs is None, eq=True)
 
-    def test_analyze_valid_project(
+    @pytest.mark.parametrize(
+        ("stub_path", "expected_unresolved"),
+        [
+            (None, ["requests"]),
+            ("typings/requests.pyi", []),
+        ],
+    )
+    def test_analyze_classifies_public_results(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
+        stub_path: str | None,
+        expected_unresolved: t.StrSequence,
     ) -> None:
-        """Valid project returns success."""
-        chain = FlextInfraStubSupplyChain()
-        proj = tmp_path / "project"
-        proj.mkdir()
-        (proj / "pyproject.toml").write_text("[project]\nname = 'test'")
-        result = chain.analyze(proj, tmp_path)
+        project_dir = u.Infra.Tests.mk_project(
+            tmp_path,
+            "project",
+            pyproject="[project]\nname = 'project'\n",
+            with_src=True,
+        )
+        if stub_path is not None:
+            stub_file = tmp_path / stub_path
+            stub_file.parent.mkdir(parents=True, exist_ok=True)
+            stub_file.write_text("", encoding="utf-8")
+        chain = self.make_chain(
+            workspace_root=tmp_path,
+            stdout=self._stub_output(
+                "note: hint: install stub package `types-requests`",
+                "src/project.py:1: error: Cannot find module `requests` [missing-import]",
+                "src/project.py:2: error: Cannot find module `flext_core` [missing-import]",
+            ),
+        )
+
+        result = chain.analyze(project_dir, tmp_path)
+
         tm.ok(result)
+        tm.that(
+            result.value,
+            eq=m.Infra.StubAnalysisReport(
+                project="project",
+                mypy_hints=["types-requests"],
+                internal_missing=["flext_core"],
+                unresolved_missing=list(expected_unresolved),
+                total_missing=2,
+            ),
+        )
 
-    def test_analyze_returns_flextresult(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Analyze returns r type."""
-        chain = FlextInfraStubSupplyChain()
-        proj = tmp_path / "project"
-        proj.mkdir()
-        result = chain.analyze(proj, tmp_path)
+    def test_build_report_discovers_only_valid_projects(self, tmp_path: Path) -> None:
+        u.Infra.Tests.mk_project(tmp_path, "project-a", with_src=True)
+        hidden_dir = tmp_path / ".hidden"
+        hidden_dir.mkdir()
+        (hidden_dir / c.Infra.Files.PYPROJECT_FILENAME).write_text(
+            "",
+            encoding="utf-8",
+        )
+        (hidden_dir / c.Infra.Paths.DEFAULT_SRC_DIR).mkdir()
+        u.Infra.Tests.mk_project(tmp_path, "project-b", with_src=False)
+
+        result = self.make_chain(workspace_root=tmp_path).build_report(tmp_path)
+
         tm.ok(result)
+        tm.that(result.value.summary, eq="stub chain: 1 projects, 0 issues")
+        tm.that(result.value.violations, eq=[])
 
-    def test_analyze_nonexistent_project(self, tmp_path: Path) -> None:
-        """Nonexistent project still returns success."""
-        chain = FlextInfraStubSupplyChain()
-        result = chain.analyze(tmp_path / "nonexistent", tmp_path)
+    def test_build_report_uses_explicit_project_dirs(self, tmp_path: Path) -> None:
+        project_a = u.Infra.Tests.mk_project(tmp_path, "project-a", with_src=True)
+        _project_b = u.Infra.Tests.mk_project(tmp_path, "project-b", with_src=True)
+
+        result = self.make_chain(workspace_root=tmp_path).build_report(
+            tmp_path,
+            project_dirs=[project_a],
+        )
+
         tm.ok(result)
+        tm.that(result.value.summary, eq="stub chain: 1 projects, 0 issues")
 
-
-class TestStubChainValidate:
-    """Validate method tests for FlextInfraStubSupplyChain."""
-
-    def test_validate_workspace(self, tmp_path: Path) -> None:
-        """Workspace validation returns r."""
-        chain = FlextInfraStubSupplyChain()
-        result = chain.build_report(tmp_path)
-        tm.ok(result)
-
-    def test_validate_nonexistent_workspace(self, tmp_path: Path) -> None:
-        """Nonexistent workspace returns failure."""
-        chain = FlextInfraStubSupplyChain()
-        result = chain.build_report(tmp_path / "nonexistent")
+    def test_build_report_fails_for_missing_workspace(self, tmp_path: Path) -> None:
+        result = self.make_chain(
+            workspace_root=tmp_path,
+        ).build_report(tmp_path / "missing")
         tm.fail(result)
 
-    def test_validate_with_project_dirs(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Validate respects project_dirs filter."""
-        chain = FlextInfraStubSupplyChain()
-        proj = tmp_path / "project1"
-        proj.mkdir()
-        (proj / "pyproject.toml").write_text("")
-        (proj / "src").mkdir()
-        result = chain.build_report(tmp_path, project_dirs=[proj])
+    def test_execute_fails_when_report_has_violations(self, tmp_path: Path) -> None:
+        u.Infra.Tests.mk_project(tmp_path, "project-a", with_src=True)
+        chain = self.make_chain(
+            workspace_root=tmp_path,
+            stdout=self._stub_output(
+                "src/project.py:1: error: Cannot find module `requests` [missing-import]",
+            ),
+            all_projects=True,
+        )
+
+        result = chain.execute()
+
+        tm.fail(result)
+        tm.that(result.error, has="stub chain: 1 projects, 1 issues")
+
+    def test_execute_passes_for_selected_projects(self, tmp_path: Path) -> None:
+        u.Infra.Tests.mk_project(tmp_path, "project-a", with_src=True)
+        u.Infra.Tests.mk_project(tmp_path, "project-b", with_src=True)
+        chain = self.make_chain(
+            workspace_root=tmp_path,
+            projects=["project-a"],
+        )
+
+        result = chain.execute()
+
         tm.ok(result)
-
-
-class TestStubChainIsInternal:
-    """Tests for _is_internal static method."""
-
-    is_internal = getattr(FlextInfraStubSupplyChain, "_is_internal")
-
-    def test_flext_underscore_prefix(self) -> None:
-        """flext_ prefix is internal."""
-        tm.that(self.is_internal("flext_core", "project"), eq=True)
-        tm.that(self.is_internal("flext_api", "project"), eq=True)
-
-    def test_flext_dash_prefix(self) -> None:
-        """flext- prefix is internal."""
-        tm.that(self.is_internal("flext-core", "project"), eq=True)
-
-    def test_project_name(self) -> None:
-        """Project name is internal."""
-        tm.that(self.is_internal("my_project", "my_project"), eq=True)
-        tm.that(self.is_internal("my_project.sub", "my_project"), eq=True)
-
-    def test_external_module(self) -> None:
-        """External module is not internal."""
-        tm.that(not self.is_internal("requests", "my_project"), eq=True)
-
-
-class TestStubChainStubExists:
-    """Tests for _stub_exists static method."""
-
-    stub_exists = getattr(FlextInfraStubSupplyChain, "_stub_exists")
-
-    def test_pyi_file(self, tmp_path: Path) -> None:
-        """Finds .pyi files."""
-        typings = tmp_path / "typings"
-        typings.mkdir()
-        (typings / "requests.pyi").write_text("")
-        tm.that(self.stub_exists("requests", tmp_path), eq=True)
-
-    def test_package_init(self, tmp_path: Path) -> None:
-        """Finds package __init__.pyi."""
-        pkg = tmp_path / "typings" / "requests"
-        pkg.mkdir(parents=True)
-        (pkg / "__init__.pyi").write_text("")
-        tm.that(self.stub_exists("requests", tmp_path), eq=True)
-
-    def test_generated_stubs(self, tmp_path: Path) -> None:
-        """Finds generated stubs."""
-        gen = tmp_path / "typings" / "generated"
-        gen.mkdir(parents=True)
-        (gen / "requests.pyi").write_text("")
-        tm.that(self.stub_exists("requests", tmp_path), eq=True)
-
-    def test_missing_returns_false(self, tmp_path: Path) -> None:
-        """Missing stubs return False."""
-        tm.that(not self.stub_exists("requests", tmp_path), eq=True)
-
-
-class TestStubChainDiscoverProjects:
-    """Tests for _discover_stub_projects static method."""
-
-    discover = getattr(FlextInfraStubSupplyChain, "_discover_stub_projects")
-
-    def test_finds_projects(self, tmp_path: Path) -> None:
-        """Discovers projects with pyproject.toml and src/."""
-        for name in ("project1", "project2"):
-            proj = tmp_path / name
-            proj.mkdir()
-            (proj / "pyproject.toml").write_text("")
-            (proj / "src").mkdir()
-        projects = self.discover(tmp_path)
-        tm.that(len(projects), eq=2)
-
-    def test_skips_hidden_dirs(self, tmp_path: Path) -> None:
-        """Hidden directories are skipped."""
-        hidden = tmp_path / ".hidden"
-        hidden.mkdir()
-        (hidden / "pyproject.toml").write_text("")
-        (hidden / "src").mkdir()
-        tm.that(len(self.discover(tmp_path)), eq=0)
-
-    def test_requires_src_dir(self, tmp_path: Path) -> None:
-        """Projects without src/ are skipped."""
-        proj = tmp_path / "project"
-        proj.mkdir()
-        (proj / "pyproject.toml").write_text("")
-        tm.that(len(self.discover(tmp_path)), eq=0)
-
-    def test_requires_pyproject(self, tmp_path: Path) -> None:
-        """Projects without pyproject.toml are skipped."""
-        proj = tmp_path / "project"
-        proj.mkdir()
-        (proj / "src").mkdir()
-        tm.that(len(self.discover(tmp_path)), eq=0)
+        tm.that(result.value, eq=True)
 
 
 __all__: t.StrSequence = []

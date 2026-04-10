@@ -16,6 +16,8 @@ tools:
       - dist
       - htmlcov
       - temp-backup
+      - tests/fixtures
+      - tests/fixtures/**
       - typings
       - vendor
       - venv
@@ -353,6 +355,7 @@ tools:
   mypy:
     plugins:
       - pydantic.mypy
+    exclude: ^tests/fixtures(?:/|$)
     disabled-error-codes:
       - assignment
       - attr-defined
@@ -364,9 +367,6 @@ tools:
       ignore_missing_imports: true
       namespace_packages: true
       explicit_package_bases: true
-    overrides:
-      - modules: ["tests.fixtures.*"]
-        disable-error-codes: ["assignment"]
   pydantic-mypy:
     init_forbid_extra: true
     init_typed: true
@@ -428,6 +428,8 @@ tools:
         - '**/.ruff_cache'
         - '**/.pytest_cache'
         - '**/.*'
+        - '**/tests/fixtures'
+        - '**/tests/fixtures/**'
         - .venv
         - '**/.venv'
         - '**/.venv/**'
@@ -584,7 +586,7 @@ tools:
       project-typings-paths: []
       workspace-include-children: false
       workspace-include-child-env-dirs: []
-      include-path-dependencies-in-search-path: false
+      include-path-dependencies-in-search-path: true
       project-shared-search-paths: []
   pytest:
     standard-markers:

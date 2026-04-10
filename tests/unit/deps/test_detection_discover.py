@@ -1,32 +1,15 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
 
-import pytest
 from flext_tests import tm
 
-from flext_core import r
 from flext_infra import FlextInfraDependencyDetectionService
-from tests import m, t
-
-
-class _StubSelector:
-    def __init__(self, result: r[Sequence[m.Infra.ProjectInfo]]) -> None:
-        self._result = result
-
-    def resolve_projects(
-        self,
-        workspace_root: Path,
-        names: t.StrSequence,
-    ) -> r[Sequence[m.Infra.ProjectInfo]]:
-        _ = workspace_root
-        _ = names
-        return self._result
+from tests import m, u
 
 
 class TestDiscoverProjectPathsSelection:
-    def test_success(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_success(self, tmp_path: Path) -> None:
         service = FlextInfraDependencyDetectionService()
         proj = m.Infra.ProjectInfo(
             name="proj",
@@ -35,29 +18,24 @@ class TestDiscoverProjectPathsSelection:
         )
         proj.path.mkdir()
         (proj.path / "pyproject.toml").write_text("")
-        monkeypatch.setattr(
-            service,
-            "selector",
-            _StubSelector(r[Sequence[m.Infra.ProjectInfo]].ok([proj])),
+        service.selector = u.Infra.Tests.DeptrySelector(
+            u.Infra.Tests.ok_result([proj]),
         )
         result = service.discover_project_paths(tmp_path)
         tm.that(result.is_success, eq=True)
         if result.is_success:
             tm.that(len(result.value), eq=1)
 
-    def test_failure(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_failure(self, tmp_path: Path) -> None:
         service = FlextInfraDependencyDetectionService()
-        monkeypatch.setattr(
-            service,
-            "selector",
-            _StubSelector(r[Sequence[m.Infra.ProjectInfo]].fail("failed")),
+        service.selector = u.Infra.Tests.DeptrySelector(
+            u.Infra.Tests.fail_result("failed"),
         )
         tm.fail(service.discover_project_paths(tmp_path))
 
     def test_filters_without_pyproject(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         service = FlextInfraDependencyDetectionService()
         proj = m.Infra.ProjectInfo(
@@ -66,10 +44,8 @@ class TestDiscoverProjectPathsSelection:
             stack="py",
         )
         proj.path.mkdir()
-        monkeypatch.setattr(
-            service,
-            "selector",
-            _StubSelector(r[Sequence[m.Infra.ProjectInfo]].ok([proj])),
+        service.selector = u.Infra.Tests.DeptrySelector(
+            u.Infra.Tests.ok_result([proj]),
         )
         result = service.discover_project_paths(tmp_path)
         tm.that(result.is_success, eq=True)

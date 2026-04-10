@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
 from pathlib import Path
 
@@ -39,10 +40,29 @@ def _run_workspace_make_dry_run(
     workspace_root: Path,
     *args: str,
 ) -> subprocess.CompletedProcess[str]:
+    env = os.environ.copy()
+    for key in (
+        "CHANGED_ONLY",
+        "CHECK_GATES",
+        "FAIL_FAST",
+        "FILE",
+        "FILES",
+        "MAKEFLAGS",
+        "MATCH",
+        "PROJECT",
+        "PROJECTS",
+        "PYRIGHT_ARGS",
+        "PYTEST_ARGS",
+        "RUFF_ARGS",
+        "VALIDATE_GATES",
+        "VERBOSE",
+    ):
+        env.pop(key, None)
     return subprocess.run(
         ["make", "-C", str(workspace_root), "--dry-run", *args],
         capture_output=True,
         check=False,
+        env=env,
         text=True,
     )
 

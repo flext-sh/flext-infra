@@ -123,6 +123,57 @@ def test_ensure_pyrefly_config_phase_apply_search_path_with_project_context(
     assert search_path == [".", "src"]
 
 
+def test_ensure_pyrefly_config_phase_apply_search_path_with_root_context(
+    tmp_path: Path,
+) -> None:
+    for directory in ("src", "tests"):
+        (tmp_path / directory).mkdir()
+    (tmp_path / "tests" / "__init__.py").write_text("", encoding="utf-8")
+    (tmp_path / "pyproject.toml").write_text(
+        (
+            "[project]\n"
+            "name = 'flext'\n"
+            "dependencies = ['flext-core']\n"
+            "[tool.uv.workspace]\n"
+            "members = ['flext-core']\n"
+        ),
+        encoding="utf-8",
+    )
+    dep_root = tmp_path / "flext-core"
+    dep_root.mkdir()
+    (dep_root / ".git").mkdir()
+    (dep_root / "Makefile").write_text("", encoding="utf-8")
+    (dep_root / "pyproject.toml").write_text(
+        "[project]\nname = 'flext-core'\n",
+        encoding="utf-8",
+    )
+    (dep_root / "src" / "flext_core").mkdir(parents=True)
+    (dep_root / "src" / "flext_core" / "__init__.py").write_text(
+        "",
+        encoding="utf-8",
+    )
+
+    doc = tomlkit.document()
+    doc["tool"] = tomlkit.table()
+    tool = doc["tool"]
+    assert isinstance(tool, MutableMapping)
+    tm.that(tool, is_=MutableMapping)
+    tool["pyrefly"] = tomlkit.table()
+
+    _ = FlextInfraEnsurePyreflyConfigPhase(_test_tool_config()).apply(
+        doc,
+        is_root=True,
+        project_dir=tmp_path,
+        paths_manager=FlextInfraExtraPathsManager(workspace_root=tmp_path),
+    )
+
+    pyrefly = tool["pyrefly"]
+    assert isinstance(pyrefly, MutableMapping)
+    tm.that(pyrefly, is_=MutableMapping)
+    search_path = u.Cli.toml_unwrap_item(pyrefly["search-path"])
+    assert search_path == [".", "flext-core/src", "src"]
+
+
 def test_ensure_pyrefly_config_phase_apply_errors() -> None:
     doc = tomlkit.document()
     doc["tool"] = tomlkit.table()

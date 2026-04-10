@@ -1,93 +1,77 @@
-"""Tests for FlextInfraWorkspaceDetector.
-
-Uses real detector instances with monkeypatch for git_run control.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Tests for public workspace mode detection."""
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
 
-import pytest
 from flext_tests import tm
 
-from flext_core import r
-from flext_infra import FlextInfraUtilitiesGit, FlextInfraWorkspaceDetector, c
-from tests import t
+from flext_infra import FlextInfraWorkspaceDetector, c
+from tests import u
 
 
-@pytest.fixture
-def detector() -> FlextInfraWorkspaceDetector:
-    """Create a detector instance."""
-    return FlextInfraWorkspaceDetector()
+class TestWorkspaceDetector:
+    """Exercise workspace detection through public repo state and inputs."""
 
+    @staticmethod
+    def _setup_parent_repo(tmp_path: Path, origin_url: str | None = None) -> Path:
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        tm.ok(u.Infra.git_run_checked(["init", "-q"], cwd=repo_root))
+        if origin_url is not None:
+            tm.ok(
+                u.Infra.git_run_checked(
+                    ["remote", "add", "origin", origin_url],
+                    cwd=repo_root,
+                )
+            )
+        project_root = repo_root / "project"
+        project_root.mkdir()
+        return project_root
 
-def _setup_project_with_git(tmp_path: Path) -> Path:
-    """Create project dir with parent .git."""
-    project_root = tmp_path / "project"
-    project_root.mkdir()
-    (tmp_path / ".git").mkdir()
-    return project_root
-
-
-def _git_run_ok(value: str) -> Callable[[t.StrSequence, Path | None], r[str]]:
-    """Return a git_run replacement that returns ok(value)."""
-
-    def _fn(_cmd: t.StrSequence, cwd: Path | None = None) -> r[str]:
-        return r[str].ok(value)
-
-    return _fn
-
-
-def _git_run_fail(error: str) -> Callable[[t.StrSequence, Path | None], r[str]]:
-    """Return a git_run replacement that returns fail(error)."""
-
-    def _fn(_cmd: t.StrSequence, cwd: Path | None = None) -> r[str]:
-        return r[str].fail(error)
-
-    return _fn
-
-
-class TestDetectorBasicDetection:
-    """Tests for basic workspace detection scenarios."""
-
-    def test_detects_with_parent_git(
-        self,
-        detector: FlextInfraWorkspaceDetector,
-        tmp_path: Path,
-    ) -> None:
-        project_root = _setup_project_with_git(tmp_path)
-        tm.ok(detector.detect(project_root))
-
-    def test_standalone_without_parent_git(
-        self,
-        detector: FlextInfraWorkspaceDetector,
-        tmp_path: Path,
-    ) -> None:
+    def test_detects_standalone_without_parent_git(self, tmp_path: Path) -> None:
         project_root = tmp_path / "project"
         project_root.mkdir()
-        tm.ok(detector.detect(project_root), eq=c.Infra.WorkspaceMode.STANDALONE)
+        tm.ok(
+            FlextInfraWorkspaceDetector().detect(project_root),
+            eq=c.Infra.WorkspaceMode.STANDALONE,
+        )
 
-    def test_handles_git_command_errors(
-        self,
-        detector: FlextInfraWorkspaceDetector,
-        tmp_path: Path,
-    ) -> None:
-        project_root = _setup_project_with_git(tmp_path)
-        tm.ok(detector.detect(project_root))
-
-    def test_detects_workspace_from_gitmodules(
-        self,
-        detector: FlextInfraWorkspaceDetector,
-        tmp_path: Path,
-    ) -> None:
+    def test_detects_workspace_from_gitmodules(self, tmp_path: Path) -> None:
         project_root = tmp_path / "project"
         project_root.mkdir()
         (tmp_path / ".gitmodules").write_text("", encoding="utf-8")
-        tm.ok(detector.detect(project_root), eq=c.Infra.WorkspaceMode.WORKSPACE)
+        tm.ok(
+            FlextInfraWorkspaceDetector().detect(project_root),
+            eq=c.Infra.WorkspaceMode.WORKSPACE,
+        )
+
+    def test_detects_standalone_without_origin(self, tmp_path: Path) -> None:
+        project_root = self._setup_parent_repo(tmp_path)
+        tm.ok(
+            FlextInfraWorkspaceDetector().detect(project_root),
+            eq=c.Infra.WorkspaceMode.STANDALONE,
+        )
+
+    def test_detects_workspace_for_flext_origin(self, tmp_path: Path) -> None:
+        project_root = self._setup_parent_repo(
+            tmp_path,
+            "https://github.com/flext-sh/flext.git",
+        )
+        tm.ok(
+            FlextInfraWorkspaceDetector().detect(project_root),
+            eq=c.Infra.WorkspaceMode.WORKSPACE,
+        )
+
+    def test_detects_standalone_for_non_flext_origin(self, tmp_path: Path) -> None:
+        project_root = self._setup_parent_repo(
+            tmp_path,
+            "https://github.com/other-org/other-repo.git",
+        )
+        tm.ok(
+            FlextInfraWorkspaceDetector().detect(project_root),
+            eq=c.Infra.WorkspaceMode.STANDALONE,
+        )
 
     def test_execute_uses_workspace_root(self, tmp_path: Path) -> None:
         tm.ok(
@@ -95,105 +79,32 @@ class TestDetectorBasicDetection:
             eq=c.Infra.WorkspaceMode.STANDALONE,
         )
 
-
-class TestDetectorRepoNameExtraction:
-    """Tests for URL-based repo name extraction."""
-
-    def test_https_url(self) -> None:
-        name = FlextInfraWorkspaceDetector._repo_name_from_url(
-            "https://github.com/flext-sh/flext.git",
+    def test_repo_name_from_https_url(self) -> None:
+        tm.that(
+            FlextInfraWorkspaceDetector._repo_name_from_url(
+                "https://github.com/flext-sh/flext.git",
+            ),
+            eq="flext",
         )
-        tm.that(name, eq="flext")
 
-    def test_ssh_url(self) -> None:
-        name = FlextInfraWorkspaceDetector._repo_name_from_url(
-            "git@github.com:flext-sh/flext.git",
+    def test_repo_name_from_ssh_url(self) -> None:
+        tm.that(
+            FlextInfraWorkspaceDetector._repo_name_from_url(
+                "git@github.com:flext-sh/flext.git",
+            ),
+            eq="flext",
         )
-        tm.that(name, eq="flext")
 
-    def test_without_git_suffix(self) -> None:
-        name = FlextInfraWorkspaceDetector._repo_name_from_url(
-            "https://github.com/flext-sh/flext",
+    def test_repo_name_without_git_suffix(self) -> None:
+        tm.that(
+            FlextInfraWorkspaceDetector._repo_name_from_url(
+                "https://github.com/flext-sh/flext",
+            ),
+            eq="flext",
         )
-        tm.that(name, eq="flext")
 
-
-class TestDetectorGitRunScenarios:
-    """Tests for detection with controlled git_run responses."""
-
-    def test_empty_origin_url(
-        self,
-        detector: FlextInfraWorkspaceDetector,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        project_root = _setup_project_with_git(tmp_path)
-        tm.ok(detector.detect(project_root), eq=c.Infra.WorkspaceMode.STANDALONE)
-
-    def test_git_command_failure(
-        self,
-        detector: FlextInfraWorkspaceDetector,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        project_root = _setup_project_with_git(tmp_path)
-        monkeypatch.setattr(
-            FlextInfraUtilitiesGit, "git_run", _git_run_fail("git config failed")
+    def test_detection_failure_returns_failure_result(self) -> None:
+        tm.fail(
+            FlextInfraWorkspaceDetector().detect(Path("\0")),
+            has="Detection failed",
         )
-        tm.ok(detector.detect(project_root), eq=c.Infra.WorkspaceMode.STANDALONE)
-
-    def test_flext_repo_detected(
-        self,
-        detector: FlextInfraWorkspaceDetector,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        project_root = _setup_project_with_git(tmp_path)
-        monkeypatch.setattr(
-            FlextInfraUtilitiesGit,
-            "git_run",
-            _git_run_ok("https://github.com/flext-sh/flext.git"),
-        )
-        tm.ok(detector.detect(project_root), eq=c.Infra.WorkspaceMode.WORKSPACE)
-
-    def test_non_flext_repo(
-        self,
-        detector: FlextInfraWorkspaceDetector,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        project_root = _setup_project_with_git(tmp_path)
-        monkeypatch.setattr(
-            FlextInfraUtilitiesGit,
-            "git_run",
-            _git_run_ok("https://github.com/other-org/other-repo.git"),
-        )
-        tm.ok(detector.detect(project_root), eq=c.Infra.WorkspaceMode.STANDALONE)
-
-    def test_runner_failure(
-        self,
-        detector: FlextInfraWorkspaceDetector,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        project_root = _setup_project_with_git(tmp_path)
-        monkeypatch.setattr(
-            FlextInfraUtilitiesGit, "git_run", _git_run_fail("no remote")
-        )
-        tm.ok(detector.detect(project_root), eq=c.Infra.WorkspaceMode.STANDALONE)
-
-    def test_exception_during_detection(
-        self,
-        detector: FlextInfraWorkspaceDetector,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        project_root = _setup_project_with_git(tmp_path)
-
-        def _raise(_cmd: t.StrSequence, cwd: Path | None = None) -> r[str]:
-            msg = "Command failed"
-            raise RuntimeError(msg)
-
-        monkeypatch.setattr(FlextInfraUtilitiesGit, "git_run", _raise)
-
-        tm.fail(detector.detect(project_root), has="Detection failed")

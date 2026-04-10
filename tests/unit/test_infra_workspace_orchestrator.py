@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from flext_tests import tm
 
@@ -39,7 +41,53 @@ class TestOrchestratorBasic:
         tm.ok(orchestrator.orchestrate(["p-a", "p-b"], "test", fail_fast=False), len=2)
 
     def test_execute_returns_success_for_supported_verb(self) -> None:
-        tm.ok(FlextInfraOrchestratorService(verb="check").execute(), eq=True)
+        orchestrator = FlextInfraOrchestratorService(verb="check")
+        project = m.Infra.ProjectInfo(
+            name="flext-demo",
+            path=Path.cwd(),
+            stack="python",
+        )
+
+        def _resolved_projects(
+            self: FlextInfraOrchestratorService,
+        ) -> r[t.SequenceOf[m.Infra.ProjectInfo]]:
+            del self
+            return r[t.SequenceOf[m.Infra.ProjectInfo]].ok([project])
+
+        def _prepare_projects(
+            self: FlextInfraOrchestratorService,
+            projects: t.SequenceOf[m.Infra.ProjectInfo],
+            *,
+            workspace_root: Path,
+        ) -> r[bool]:
+            _ = (self, projects, workspace_root)
+            return r[bool].ok(True)
+
+        def _run_project(
+            self: FlextInfraOrchestratorService,
+            project: str,
+            verb: str,
+            _index: int,
+            *,
+            make_args: t.StrSequence,
+        ) -> r[m.Cli.CommandOutput]:
+            _ = (self, project, verb, _index, make_args)
+            return r[m.Cli.CommandOutput].ok(_cmd_out(0))
+
+        orchestrator._resolved_projects = _resolved_projects.__get__(
+            orchestrator,
+            FlextInfraOrchestratorService,
+        )
+        orchestrator._prepare_projects = _prepare_projects.__get__(
+            orchestrator,
+            FlextInfraOrchestratorService,
+        )
+        orchestrator._run_project = _run_project.__get__(
+            orchestrator,
+            FlextInfraOrchestratorService,
+        )
+
+        tm.ok(orchestrator.execute(), eq=True)
 
     def test_empty_project_list(
         self,
@@ -126,6 +174,7 @@ class TestOrchestratorFailures:
                 return r[m.Cli.CommandOutput].fail("project execution failed")
             return r[m.Cli.CommandOutput].ok(_cmd_out(0))
 
+        monkeypatch.setattr(FlextInfraOrchestratorService, "_run_project", _run_project)
         tm.ok(
             orchestrator.orchestrate(["p1", "p2", "p3"], "test", fail_fast=True),
             len=3,

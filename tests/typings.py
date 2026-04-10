@@ -10,7 +10,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Callable
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_tests import FlextTestsTypes
@@ -42,7 +41,7 @@ class TestsFlextInfraTypes(FlextTestsTypes, FlextInfraTypes):
             type TestMarker = str
             "Type for test markers (infra, integration, docker, etc.)."
 
-            type GateClass = Callable[[Path], FlextInfraGate]
+            type GateClass = type[FlextInfraGate]
             type ProjectCheckStub = Callable[..., m.Infra.ProjectResult]
             type RawRunStub = Callable[..., r[m.Cli.CommandOutput]]
 

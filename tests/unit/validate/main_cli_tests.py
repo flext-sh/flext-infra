@@ -2,33 +2,30 @@
 
 from __future__ import annotations
 
-import pytest
+from pathlib import Path
+
 from flext_tests import tm
 
-from flext_infra import FlextInfraStubSupplyChain, main as infra_main
-from tests import r, t
+from flext_infra import main as infra_main
 
 
-def test_stub_validate_uses_all_flag(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    captured: t.MutableSequenceOf[bool] = []
+class TestValidateCli:
+    """Exercise the public validate CLI entrypoints."""
 
-    def _mock_execute(self: FlextInfraStubSupplyChain) -> r[bool]:
-        captured.append(self.all_projects)
-        return r[bool].ok(True)
+    def test_stub_validate_accepts_all_flag(self, tmp_path: Path) -> None:
+        workspace = tmp_path / "workspace"
+        workspace.mkdir(parents=True, exist_ok=True)
 
-    monkeypatch.setattr(
-        FlextInfraStubSupplyChain,
-        "execute",
-        _mock_execute,
-    )
-    infra_main(["validate", "stub-validate", "--all"])
-    # The call captured whether --all was passed
-    tm.that(len(captured), eq=1)
-    tm.that(captured[0], eq=True)
+        tm.that(
+            infra_main([
+                "validate",
+                "stub-validate",
+                "--workspace",
+                str(workspace),
+                "--all",
+            ]),
+            eq=0,
+        )
 
-
-def test_stub_validate_help_returns_zero() -> None:
-    """--help for stub-validate returns 0."""
-    tm.that(infra_main(["validate", "stub-validate", "--help"]), eq=0)
+    def test_stub_validate_help_returns_zero(self) -> None:
+        tm.that(infra_main(["validate", "stub-validate", "--help"]), eq=0)

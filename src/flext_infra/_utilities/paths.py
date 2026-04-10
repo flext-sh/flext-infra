@@ -46,7 +46,7 @@ class FlextInfraUtilitiesPaths:
                     return r[Path].ok(candidate)
             resolved = requested.expanduser().resolve()
             return r[Path].ok(resolved)
-        except (OSError, RuntimeError, TypeError) as exc:
+        except (OSError, RuntimeError, TypeError, ValueError) as exc:
             return r[Path].fail(f"failed to resolve workspace root: {exc}")
 
     @staticmethod

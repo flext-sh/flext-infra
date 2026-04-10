@@ -6,7 +6,7 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 
 
 class FlextInfraGate(ABC):
@@ -16,8 +16,14 @@ class FlextInfraGate(ABC):
     tool_name: ClassVar[str] = ""
     tool_url: ClassVar[str] = ""
 
-    def __init__(self, workspace_root: Path) -> None:
+    def __init__(
+        self,
+        workspace_root: Path,
+        *,
+        runner: p.Cli.CommandRunner | None = None,
+    ) -> None:
         self._workspace_root = workspace_root
+        self._runner = runner
 
     # ------------------------------------------------------------------
     # Template method: check
@@ -199,7 +205,8 @@ class FlextInfraGate(ABC):
         timeout: int = c.Infra.Timeouts.DEFAULT,
         env: t.StrMapping | None = None,
     ) -> m.Cli.CommandOutput:
-        result = u.Cli.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
+        runner = self._runner or u.Cli
+        result = runner.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
         if result.is_failure:
             return m.Cli.CommandOutput(
                 stdout="",

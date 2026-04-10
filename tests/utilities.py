@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 import shutil
 import subprocess
-from collections.abc import MutableMapping, Sequence
+from collections.abc import MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
@@ -148,6 +148,135 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                     )
                     return r[int].ok(result.value.exit_code)
 
+            class TomlReaderSequence(p.Infra.TomlReader):
+                """Protocol-compatible TOML reader that replays typed results."""
+
+                def __init__(
+                    self,
+                    values: Sequence[r[t.Infra.ContainerDict]],
+                ) -> None:
+                    self._values = list(values)
+                    self._index = 0
+
+                @override
+                def read_plain(self, path: Path) -> r[t.Infra.ContainerDict]:
+                    del path
+                    current = self._index
+                    self._index = current + 1
+                    if not self._values:
+                        return r[t.Infra.ContainerDict].fail(
+                            "toml reader sequence is empty",
+                        )
+                    return (
+                        self._values[current]
+                        if current < len(self._values)
+                        else self._values[-1]
+                    )
+
+            class SequenceRunner(p.Cli.CommandRunner):
+                """Protocol-compatible runner that replays command results in order."""
+
+                def __init__(
+                    self,
+                    results: Sequence[r[m.Cli.CommandOutput]],
+                ) -> None:
+                    self._results = list(results)
+                    self._index = 0
+                    self.commands: MutableSequence[tuple[str, ...]] = []
+
+                def _next_result(self) -> r[m.Cli.CommandOutput]:
+                    current = self._index
+                    self._index = current + 1
+                    if not self._results:
+                        return r[m.Cli.CommandOutput].fail(
+                            "runner result sequence is empty",
+                        )
+                    return (
+                        self._results[current]
+                        if current < len(self._results)
+                        else self._results[-1]
+                    )
+
+                @override
+                def run_raw(
+                    self,
+                    cmd: t.StrSequence,
+                    cwd: t.Cli.PathLike | None = None,
+                    timeout: int | None = None,
+                    env: t.Cli.StrEnvMapping | None = None,
+                    input_data: bytes | None = None,
+                ) -> r[m.Cli.CommandOutput]:
+                    self.commands.append(tuple(cmd))
+                    del cmd, cwd, timeout, env, input_data
+                    return self._next_result()
+
+                @override
+                def run(
+                    self,
+                    cmd: t.StrSequence,
+                    cwd: t.Cli.PathLike | None = None,
+                    timeout: int | None = None,
+                    env: t.Cli.StrEnvMapping | None = None,
+                ) -> r[m.Cli.CommandOutput]:
+                    self.commands.append(tuple(cmd))
+                    del cmd, cwd, timeout, env
+                    result = self._next_result()
+                    if result.is_failure:
+                        return result
+                    output = result.value
+                    if output.exit_code != 0:
+                        return r[m.Cli.CommandOutput].fail(
+                            output.stderr or output.stdout or "Command failed",
+                        )
+                    return result
+
+                @override
+                def capture(
+                    self,
+                    cmd: t.StrSequence,
+                    cwd: t.Cli.PathLike | None = None,
+                    timeout: int | None = None,
+                    env: t.Cli.StrEnvMapping | None = None,
+                ) -> r[str]:
+                    return self.run(cmd, cwd=cwd, timeout=timeout, env=env).map(
+                        lambda output: output.stdout.strip(),
+                    )
+
+                @override
+                def run_checked(
+                    self,
+                    cmd: t.StrSequence,
+                    cwd: t.Cli.PathLike | None = None,
+                    timeout: int | None = None,
+                    env: t.Cli.StrEnvMapping | None = None,
+                ) -> r[bool]:
+                    return self.run(cmd, cwd=cwd, timeout=timeout, env=env).map(
+                        lambda _output: True,
+                    )
+
+                @override
+                def run_to_file(
+                    self,
+                    cmd: t.StrSequence,
+                    output_file: t.Cli.PathLike,
+                    cwd: t.Cli.PathLike | None = None,
+                    timeout: int | None = None,
+                    env: t.Cli.StrEnvMapping | None = None,
+                ) -> r[int]:
+                    result = self.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
+                    if result.is_failure:
+                        return r[int].fail(result.error or "Command failed")
+                    output_path = (
+                        output_file
+                        if isinstance(output_file, Path)
+                        else Path(output_file)
+                    )
+                    output_path.write_text(
+                        f"{result.value.stdout}{result.value.stderr}",
+                        encoding="utf-8",
+                    )
+                    return r[int].ok(result.value.exit_code)
+
             @staticmethod
             def ok_result[ValueT](value: ValueT) -> r[ValueT]:
                 return r[ValueT].ok(value)
@@ -155,6 +284,67 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             @staticmethod
             def fail_result[ValueT](message: str) -> r[ValueT]:
                 return r[ValueT].fail(message)
+
+            @staticmethod
+            def infra_mapping(
+                value: t.Infra.InfraMapping,
+            ) -> t.Infra.ContainerDict:
+                return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)
+
+            @staticmethod
+            def infra_mapping_result(
+                value: t.Infra.InfraMapping,
+            ) -> r[t.Infra.ContainerDict]:
+                return r[t.Infra.ContainerDict].ok(
+                    TestsFlextInfraUtilities.Infra.Tests.infra_mapping(value),
+                )
+
+            @staticmethod
+            def tool_config_document() -> m.Infra.ToolConfigDocument:
+                result = FlextInfraUtilities.Infra.load_tool_config()
+                assert result.is_success
+                return result.value
+
+            @staticmethod
+            def toml_doc_mapping(doc: t.Cli.TomlDocument) -> t.Cli.JsonMapping:
+                return t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+                    FlextInfraUtilities.Cli.normalize_json_value(doc.unwrap()),
+                )
+
+            @staticmethod
+            def toml_mapping(value: t.RecursiveContainer | None) -> t.Cli.JsonMapping:
+                return t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+                    FlextInfraUtilities.Cli.normalize_json_value(value),
+                )
+
+            @staticmethod
+            def toml_list(value: t.RecursiveContainer | None) -> t.Cli.JsonList:
+                return t.Cli.JSON_LIST_ADAPTER.validate_python(
+                    FlextInfraUtilities.Cli.normalize_json_value(value),
+                )
+
+            @staticmethod
+            def toml_strings(value: t.RecursiveContainer | None) -> t.StrSequence:
+                return t.Infra.STR_SEQ_ADAPTER.validate_python(
+                    FlextInfraUtilities.Cli.normalize_json_value(value),
+                )
+
+            @staticmethod
+            def command_runner(
+                *,
+                stdout: str = "",
+                stderr: str = "",
+                returncode: int = 0,
+            ) -> p.Cli.CommandRunner:
+                return TestsFlextInfraUtilities.Infra.Tests.DeptryRunner(
+                    TestsFlextInfraUtilities.Infra.Tests.ok_result(
+                        TestsFlextInfraUtilities.Infra.Tests.stub_run(
+                            stdout=stdout,
+                            stderr=stderr,
+                            returncode=returncode,
+                        ),
+                    ),
+                )
 
             class MigratorDiscovery:
                 """Typed discovery stub for migrator behavior tests."""
@@ -1147,8 +1337,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                 *,
                 ctx: m.Infra.GateContext | None = None,
                 reports_dir: Path | None = None,
+                runner: p.Cli.CommandRunner | None = None,
             ) -> m.Infra.GateExecution:
-                gate = gate_class(workspace_root)
+                gate = gate_class(workspace_root, runner=runner)
                 return gate.check(
                     project_dir,
                     ctx
@@ -1174,13 +1365,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                     )
 
                 return _fake_run_raw
-
-            @staticmethod
-            def create_fake_run_projects(
-                passed: bool | None = None,
-                error_msg: str | None = None,
-            ) -> m.Infra.Tests.RunProjectsMock:
-                return m.Infra.Tests.RunProjectsMock(passed=passed, error_msg=error_msg)
 
             @staticmethod
             def create_check_project_stub(

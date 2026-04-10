@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import typing
 from collections.abc import MutableMapping
 from pathlib import Path
 
@@ -13,22 +12,16 @@ from flext_infra import FlextInfraEnsurePyrightConfigPhase
 from tests import m, u
 
 
-def _test_tool_config() -> m.Infra.ToolConfigDocument:
-    result = u.Infra.load_tool_config()
-    tm.that(not result.is_failure, eq=True)
-    if result.is_failure:
-        msg = "failed to load tool config"
-        raise ValueError(msg)
-    return result.value
+class TestDepsModernizerPyright:
+    """Declarative tests for generated Pyright configuration."""
 
-
-class TestEnsurePyrightConfigPhase:
-    """Tests pyright config phase behavior."""
-
-    def test_apply_root_sets_execution_environments(self, tmp_path: Path) -> None:
-        tool_config = _test_tool_config()
-        rules = tool_config.tools.pyright.path_rules
-        (tmp_path / "pyproject.toml").write_text(
+    def test_root_config_sets_expected_execution_environments(
+        self,
+        tmp_path: Path,
+        tool_config_document: m.Infra.ToolConfigDocument,
+    ) -> None:
+        rules = tool_config_document.tools.pyright.path_rules
+        _ = (tmp_path / "pyproject.toml").write_text(
             "[project]\nname='workspace'\n\n"
             "[tool.uv.workspace]\n"
             "members = ['flext-core', 'flext-api']\n",
@@ -39,9 +32,9 @@ class TestEnsurePyrightConfigPhase:
         algar = tmp_path / "algar-oud-mig"
         (tmp_path / "vendor").mkdir(parents=True, exist_ok=True)
         (tmp_path / "typings" / "generated").mkdir(parents=True, exist_ok=True)
-        (flext_core / "pyproject.toml").parent.mkdir(parents=True, exist_ok=True)
-        (flext_api / "pyproject.toml").parent.mkdir(parents=True, exist_ok=True)
-        (algar / "pyproject.toml").parent.mkdir(parents=True, exist_ok=True)
+        flext_core.mkdir(parents=True, exist_ok=True)
+        flext_api.mkdir(parents=True, exist_ok=True)
+        algar.mkdir(parents=True, exist_ok=True)
         _ = (flext_core / "pyproject.toml").write_text(
             "[project]\nname='flext-core'\n",
             encoding="utf-8",
@@ -59,11 +52,13 @@ class TestEnsurePyrightConfigPhase:
         (flext_api / "src").mkdir(parents=True, exist_ok=True)
         (algar / "src").mkdir(parents=True, exist_ok=True)
         doc = tomlkit.document()
-        _ = FlextInfraEnsurePyrightConfigPhase(tool_config).apply(
+
+        _ = FlextInfraEnsurePyrightConfigPhase(tool_config_document).apply(
             doc,
             is_root=True,
             workspace_root=tmp_path,
         )
+
         tool = u.Cli.toml_unwrap_item(doc["tool"])
         tm.that(tool, is_=MutableMapping)
         if not isinstance(tool, MutableMapping):
@@ -74,34 +69,37 @@ class TestEnsurePyrightConfigPhase:
             return
         tm.that(u.Cli.toml_unwrap_item(pyright["venv"]), eq=rules.venv_name)
         tm.that(u.Cli.toml_unwrap_item(pyright["venvPath"]), eq=rules.root_venv_path)
-        exclude = u.Cli.toml_unwrap_item(pyright["exclude"])
-        expected_exclude = sorted(
-            set(rules.default_excludes)
-            | {
-                directory
-                for directory in rules.dynamic_exclude_dirs
-                if (tmp_path / directory).is_dir()
-            },
-        )
-        tm.that(exclude, eq=expected_exclude)
-        ignore = u.Cli.toml_unwrap_item(pyright["ignore"])
         tm.that(
-            sorted(typing.cast("list[str]", ignore)),
+            sorted(
+                u.Infra.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["exclude"]))
+            ),
+            eq=sorted(
+                set(rules.default_excludes)
+                | {
+                    directory
+                    for directory in rules.dynamic_exclude_dirs
+                    if (tmp_path / directory).is_dir()
+                },
+            ),
+        )
+        tm.that(
+            sorted(
+                u.Infra.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["ignore"]))
+            ),
             eq=sorted([*rules.root_typings_paths, *rules.ignored_diagnostic_globs]),
         )
-        include = u.Cli.toml_unwrap_item(pyright["include"])
         tm.that(
-            sorted(typing.cast("list[str]", include)),
+            sorted(
+                u.Infra.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["include"]))
+            ),
             eq=sorted([
                 f"flext-api/{rules.source_dir}",
                 f"flext-core/{rules.source_dir}",
                 f"flext-core/{rules.test_like_dirs[0]}",
             ]),
         )
-        envs = u.Cli.toml_unwrap_item(pyright["executionEnvironments"])
-        tm.that(envs, is_=list)
         tm.that(
-            envs,
+            u.Cli.toml_unwrap_item(pyright["executionEnvironments"]),
             eq=[
                 {
                     "root": f"flext-api/{rules.source_dir}",
@@ -121,14 +119,18 @@ class TestEnsurePyrightConfigPhase:
             ],
         )
 
-    def test_apply_subproject_sets_execution_environments(self) -> None:
-        tool_config = _test_tool_config()
-        rules = tool_config.tools.pyright.path_rules
+    def test_subproject_config_sets_expected_execution_environments(
+        self,
+        tool_config_document: m.Infra.ToolConfigDocument,
+    ) -> None:
+        rules = tool_config_document.tools.pyright.path_rules
         doc = tomlkit.document()
-        _ = FlextInfraEnsurePyrightConfigPhase(tool_config).apply(
+
+        _ = FlextInfraEnsurePyrightConfigPhase(tool_config_document).apply(
             doc,
             is_root=False,
         )
+
         tool = u.Cli.toml_unwrap_item(doc["tool"])
         tm.that(tool, is_=MutableMapping)
         if not isinstance(tool, MutableMapping):
@@ -138,14 +140,16 @@ class TestEnsurePyrightConfigPhase:
         if not isinstance(pyright, MutableMapping):
             return
         tm.that(u.Cli.toml_unwrap_item(pyright["venv"]), eq=rules.venv_name)
-        tm.that(u.Cli.toml_unwrap_item(pyright["venvPath"]), eq=rules.project_venv_path)
-        include = u.Cli.toml_unwrap_item(pyright["include"])
         tm.that(
-            sorted(typing.cast("list[str]", include)),
+            u.Cli.toml_unwrap_item(pyright["venvPath"]),
+            eq=rules.project_venv_path,
+        )
+        tm.that(
+            sorted(
+                u.Infra.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["include"]))
+            ),
             eq=sorted(rules.env_dirs),
         )
-        envs = u.Cli.toml_unwrap_item(pyright["executionEnvironments"])
-        tm.that(envs, is_=list)
         expected_envs = [
             {
                 "root": env_dir,
@@ -167,26 +171,28 @@ class TestEnsurePyrightConfigPhase:
             for env_dir in rules.env_dirs
         ]
         tm.that(
-            envs,
+            u.Cli.toml_unwrap_item(pyright["executionEnvironments"]),
             eq=expected_envs,
         )
 
-    def test_apply_subproject_sets_ignore_from_workspace_typings(
+    def test_subproject_config_uses_workspace_typings_and_fixture_excludes(
         self,
         tmp_path: Path,
+        tool_config_document: m.Infra.ToolConfigDocument,
     ) -> None:
-        tool_config = _test_tool_config()
-        rules = tool_config.tools.pyright.path_rules
+        rules = tool_config_document.tools.pyright.path_rules
         project_dir = tmp_path / "flext-sample"
         (project_dir / "src").mkdir(parents=True, exist_ok=True)
-        (project_dir / "tests").mkdir(parents=True, exist_ok=True)
+        (project_dir / "tests" / "fixtures").mkdir(parents=True, exist_ok=True)
         (tmp_path / "typings").mkdir(parents=True, exist_ok=True)
         doc = tomlkit.document()
-        _ = FlextInfraEnsurePyrightConfigPhase(tool_config).apply(
+
+        _ = FlextInfraEnsurePyrightConfigPhase(tool_config_document).apply(
             doc,
             is_root=False,
             project_dir=project_dir,
         )
+
         tool = u.Cli.toml_unwrap_item(doc["tool"])
         tm.that(tool, is_=MutableMapping)
         if not isinstance(tool, MutableMapping):
@@ -195,25 +201,35 @@ class TestEnsurePyrightConfigPhase:
         tm.that(pyright, is_=MutableMapping)
         if not isinstance(pyright, MutableMapping):
             return
-        ignore = u.Cli.toml_unwrap_item(pyright["ignore"])
         tm.that(
-            sorted(typing.cast("list[str]", ignore)),
+            sorted(
+                u.Infra.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["ignore"]))
+            ),
             eq=sorted([
                 rules.project_typings_paths[0],
                 *rules.ignored_diagnostic_globs,
             ]),
         )
-        include = u.Cli.toml_unwrap_item(pyright["include"])
         tm.that(
-            sorted(typing.cast("list[str]", include)),
+            sorted(
+                u.Infra.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["include"]))
+            ),
             eq=sorted([rules.source_dir, rules.test_like_dirs[0]]),
         )
+        exclude = list(
+            u.Infra.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["exclude"]))
+        )
+        tm.that(exclude, has="**/tests/fixtures")
+        tm.that(exclude, has="**/tests/fixtures/**")
 
-    def test_apply_is_idempotent(self, tmp_path: Path) -> None:
-        tool_config = _test_tool_config()
+    def test_pyright_phase_is_idempotent(
+        self,
+        tmp_path: Path,
+        tool_config_document: m.Infra.ToolConfigDocument,
+    ) -> None:
         project_dir = tmp_path / "flext-sample"
         (project_dir / "src").mkdir(parents=True, exist_ok=True)
-        phase = FlextInfraEnsurePyrightConfigPhase(tool_config)
+        phase = FlextInfraEnsurePyrightConfigPhase(tool_config_document)
         doc = tomlkit.document()
 
         _ = phase.apply(doc, is_root=False, project_dir=project_dir)

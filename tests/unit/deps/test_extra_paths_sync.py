@@ -1,19 +1,12 @@
 from __future__ import annotations
 
-import sys
 from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
-import tomlkit
 from flext_tests import tf, tm
-from tomlkit.toml_document import TOMLDocument
 
-from flext_core import r
-from flext_infra import (
-    FlextInfraExtraPathsManager,
-    t,
-)
+from flext_infra import FlextInfraExtraPathsManager, t
 
 
 @pytest.fixture
@@ -48,7 +41,6 @@ def _manager(
 )
 def test_sync_extra_paths_success_modes(
     tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
     pyright_content: str,
     mode: str,
     dry_run: bool,
@@ -90,33 +82,18 @@ def test_sync_extra_paths_success_modes(
 
 def test_sync_extra_paths_missing_root_pyproject(
     tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    _ = monkeypatch
     tm.fail(_manager(tmp_path).sync_extra_paths(), has="Missing")
 
 
 def test_sync_extra_paths_sync_failure(
     tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     project = tmp_path / "proj"
     project.mkdir()
-
-    def _fail_sync(
-        _self: FlextInfraExtraPathsManager,
-        _pyproject_path: Path,
-        *,
-        dry_run: bool = False,
-        is_root: bool = False,
-    ) -> r[bool]:
-        _ = _self, _pyproject_path, dry_run, is_root
-        return r[bool].fail("sync error")
-
-    monkeypatch.setattr(FlextInfraExtraPathsManager, "sync_one", _fail_sync)
     tm.fail(
         _manager(tmp_path).sync_extra_paths(project_dirs=[project]),
-        has="sync error",
+        has="pyproject not found",
     )
 
 
@@ -136,7 +113,6 @@ def test_sync_extra_paths_sync_failure(
 )
 def test_main_success_modes(
     tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
     pyright_content: str,
     mode: str,
     argv: t.StrSequence,
@@ -163,26 +139,9 @@ def test_main_success_modes(
 
 
 def test_main_sync_failure(
-    monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        ["extra_paths.py", "--workspace", str(tmp_path)],
-    )
-
-    def _fail_sync(
-        _self: FlextInfraExtraPathsManager,
-        *,
-        dry_run: bool = False,
-        project_dirs: Sequence[Path] | None = None,
-    ) -> r[int]:
-        _ = _self, dry_run, project_dirs
-        return r[int].fail("sync error")
-
-    monkeypatch.setattr(FlextInfraExtraPathsManager, "sync_extra_paths", _fail_sync)
-    tm.that(FlextInfraExtraPathsManager.main(sys.argv[1:]), eq=1)
+    tm.that(FlextInfraExtraPathsManager.main(["--workspace", str(tmp_path)]), eq=1)
 
 
 @pytest.mark.parametrize(
@@ -195,7 +154,6 @@ def test_main_sync_failure(
 )
 def test_sync_one_edge_cases(
     tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
     pyright_content: str,
     mode: str,
     dry_run: bool,
@@ -219,17 +177,4 @@ def test_sync_one_edge_cases(
         tm.that(result.is_success, eq=expected_ok)
         return
     pyproject = _create_pyproject(tmp_path, pyright_content)
-    doc = tomlkit.document()
-    tool = tomlkit.table()
-    pyright = tomlkit.table()
-    pyright["extraPaths"] = tomlkit.array()
-    tool["pyright"] = pyright
-    doc["tool"] = tool
-
-    def _read_document(_path: Path) -> r[TOMLDocument]:
-        return r[TOMLDocument].ok(doc)
-
-    def _write_document(_path: Path, _doc: TOMLDocument) -> r[bool]:
-        return r[bool].ok(True)
-
     tm.ok(_manager(tmp_path).sync_one(pyproject, is_root=True, dry_run=dry_run))

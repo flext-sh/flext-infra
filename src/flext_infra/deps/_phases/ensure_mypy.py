@@ -39,8 +39,15 @@ class FlextInfraEnsureMypyConfigPhase:
                 self._tool_config.tools.mypy.disabled_error_codes,
                 strategy=c.Infra.TomlMerge.REPLACE,
             )
-            .value("overrides", list(expected_overrides))
         )
+        if self._tool_config.tools.mypy.exclude:
+            phase_builder = phase_builder.value(
+                c.Infra.EXCLUDE,
+                self._tool_config.tools.mypy.exclude,
+            )
+        else:
+            phase_builder = phase_builder.deprecated(c.Infra.EXCLUDE)
+        phase_builder = phase_builder.value("overrides", list(expected_overrides))
         for key, value in self._tool_config.tools.mypy.boolean_settings.items():
             phase_builder = phase_builder.value(key, value)
         return FlextInfraToml.apply_phases(doc, phase_builder.build())

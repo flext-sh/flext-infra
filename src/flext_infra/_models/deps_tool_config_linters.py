@@ -173,6 +173,12 @@ class FlextInfraModelsDepsToolConfigLinters:
         plugins: Annotated[t.StrSequence, Field(description="Mypy plugins list.")] = (
             Field(default_factory=list)
         )
+        exclude: Annotated[
+            str,
+            Field(
+                description="Regex used to exclude generated or fixture-like paths from mypy.",
+            ),
+        ] = ""
         disabled_error_codes: Annotated[
             t.StrSequence,
             Field(

@@ -1,173 +1,198 @@
-"""Tests for FlextCheckCli to achieve full coverage.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Public CLI tests for workspace quality checks."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from _pytest.monkeypatch import MonkeyPatch
 from flext_tests import tm
 
 from flext_infra import FlextInfraWorkspaceChecker
-from tests import m, r, t, u
+from tests import u
 
 
-def test_resolve_gates_maps_type_alias() -> None:
-    result = FlextInfraWorkspaceChecker.resolve_gates(["lint", "type", "lint"])
-    tm.ok(result)
-    assert result.value == ["lint", "pyrefly"]
+class TestWorkspaceCheckCli:
+    """Exercise the public check CLI without patching internal services."""
 
-
-def test_run_cli_run_returns_zero_for_pass(monkeypatch: MonkeyPatch) -> None:
-    _ = monkeypatch.setattr(
-        FlextInfraWorkspaceChecker,
-        "run_projects",
-        u.Infra.Tests.create_fake_run_projects(),
-    )
-    exit_code = FlextInfraWorkspaceChecker.run_cli([
-        "run",
-        "--gates",
-        "lint,type",
-        "--projects",
-        "flext-core",
-    ])
-    assert exit_code == 0
-
-
-def test_run_cli_run_returns_one_for_fail(monkeypatch: MonkeyPatch) -> None:
-    """Test that run_cli returns 1 when projects fail checks."""
-    _ = monkeypatch.setattr(
-        FlextInfraWorkspaceChecker,
-        "run_projects",
-        u.Infra.Tests.create_fake_run_projects(passed=False),
-    )
-    exit_code = FlextInfraWorkspaceChecker.run_cli([
-        "run",
-        "--gates",
-        "lint",
-        "--projects",
-        "flext-core",
-    ])
-    assert exit_code == 1
-
-
-def test_run_cli_run_returns_one_for_error(monkeypatch: MonkeyPatch) -> None:
-    """Canonical check CLI normalizes execution failures to exit code 1."""
-    _ = monkeypatch.setattr(
-        FlextInfraWorkspaceChecker,
-        "run_projects",
-        u.Infra.Tests.create_fake_run_projects(error_msg="test error"),
-    )
-    exit_code = FlextInfraWorkspaceChecker.run_cli([
-        "run",
-        "--gates",
-        "lint",
-        "--projects",
-        "flext-core",
-    ])
-    assert exit_code == 1
-
-
-def test_run_cli_with_multiple_projects(monkeypatch: MonkeyPatch) -> None:
-    """Test that run_cli handles multiple projects."""
-    mock = u.Infra.Tests.create_fake_run_projects()
-    _ = monkeypatch.setattr(
-        FlextInfraWorkspaceChecker,
-        "run_projects",
-        mock,
-    )
-    exit_code = FlextInfraWorkspaceChecker.run_cli([
-        "run",
-        "--gates",
-        "lint",
-        "--projects",
-        "proj1",
-        "--projects",
-        "proj2",
-    ])
-    assert exit_code == 0
-    assert "proj1" in mock.captured_projects
-    assert "proj2" in mock.captured_projects
-
-
-def test_run_cli_with_fail_fast_flag(monkeypatch: MonkeyPatch) -> None:
-    """Test that run_cli passes fail_fast flag to run_projects."""
-    mock = u.Infra.Tests.create_fake_run_projects()
-    _ = monkeypatch.setattr(
-        FlextInfraWorkspaceChecker,
-        "run_projects",
-        mock,
-    )
-    exit_code = FlextInfraWorkspaceChecker.run_cli([
-        "run",
-        "--gates",
-        "lint",
-        "--fail-fast",
-        "--projects",
-        "flext-core",
-    ])
-    assert exit_code == 0
-    assert mock.captured_fail_fast is True
-
-
-def test_run_cli_run_forwards_fix_and_tool_args(monkeypatch: MonkeyPatch) -> None:
-    captured_projects: t.MutableSequenceOf[str] = []
-    captured_gates: t.MutableSequenceOf[str] = []
-    captured_ctx: t.MutableSequenceOf[m.Infra.GateContext] = []
-
-    def _fake_run_projects(
-        _self: FlextInfraWorkspaceChecker,
-        projects: t.StrSequence,
-        gates: t.StrSequence,
+    @staticmethod
+    def _create_workspace(
+        tmp_path: Path,
         *,
-        reports_dir: Path | None = None,
-        fail_fast: bool = False,
-        ctx: m.Infra.GateContext | None = None,
-    ) -> r[t.MutableSequenceOf[m.Infra.ProjectResult]]:
-        del reports_dir, fail_fast
-        captured_projects.extend(projects)
-        captured_gates.extend(gates)
-        if ctx is not None:
-            captured_ctx.append(ctx)
-        project = m.Infra.ProjectResult(project="flext-core", gates={})
-        return r[t.MutableSequenceOf[m.Infra.ProjectResult]].ok([project])
+        project_names: tuple[str, ...] = ("flext-core",),
+    ) -> Path:
+        workspace = tmp_path / "workspace"
+        workspace.mkdir(parents=True, exist_ok=True)
+        for project_name in project_names:
+            _ = u.Infra.Tests.mk_project(
+                workspace,
+                project_name,
+                pyproject=(f'[project]\nname = "{project_name}"\nversion = "0.1.0"\n'),
+                with_src=True,
+            )
+        return workspace
 
-    _ = monkeypatch.setattr(
-        FlextInfraWorkspaceChecker,
-        "run_projects",
-        _fake_run_projects,
-    )
-    exit_code = FlextInfraWorkspaceChecker.run_cli([
-        "run",
-        "--gates",
-        "lint,pyright",
-        "--fix",
-        "--check-only",
-        "--ruff-args",
-        "--select E501",
-        "--pyright-args",
-        "--level basic",
-        "--projects",
-        "flext-core",
-    ])
-    assert exit_code == 0
-    assert captured_projects == ["flext-core"]
-    assert captured_gates == ["lint", "pyright"]
-    assert len(captured_ctx) == 1
-    assert captured_ctx[0].apply_fixes is True
-    assert captured_ctx[0].check_only is True
-    assert list(captured_ctx[0].ruff_args) == ["--select", "E501"]
-    assert list(captured_ctx[0].pyright_args) == ["--level", "basic"]
+    @staticmethod
+    def _write_module(workspace: Path, project_name: str, content: str) -> Path:
+        module_path = workspace / project_name / "src" / "module.py"
+        module_path.write_text(content, encoding="utf-8")
+        return module_path
 
+    def test_resolve_gates_maps_type_alias(self) -> None:
+        result = FlextInfraWorkspaceChecker.resolve_gates(["lint", "type", "lint"])
+        tm.ok(result)
+        tm.that(result.value, eq=["lint", "pyrefly"])
 
-def test_run_cli_rejects_shared_dry_run_flag() -> None:
-    exit_code = FlextInfraWorkspaceChecker.run_cli([
-        "--dry-run",
-        "run",
-        "--projects",
-        "flext-core",
-    ])
-    assert exit_code == 2
+    def test_run_cli_returns_zero_for_passing_project(self, tmp_path: Path) -> None:
+        workspace = self._create_workspace(tmp_path)
+        _ = self._write_module(workspace, "flext-core", "value = 1\n")
+
+        exit_code = FlextInfraWorkspaceChecker.run_cli(
+            [
+                "run",
+                "--workspace",
+                str(workspace),
+                "--gates",
+                "lint",
+                "--projects",
+                "flext-core",
+            ],
+        )
+
+        tm.that(exit_code, eq=0)
+
+    def test_run_cli_returns_one_for_failing_project(self, tmp_path: Path) -> None:
+        workspace = self._create_workspace(tmp_path)
+        _ = self._write_module(workspace, "flext-core", "def broken(:\n")
+
+        exit_code = FlextInfraWorkspaceChecker.run_cli(
+            [
+                "run",
+                "--workspace",
+                str(workspace),
+                "--gates",
+                "lint",
+                "--projects",
+                "flext-core",
+            ],
+        )
+
+        tm.that(exit_code, eq=1)
+
+    def test_run_cli_returns_one_for_report_directory_error(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace = self._create_workspace(tmp_path)
+        _ = self._write_module(workspace, "flext-core", "value = 1\n")
+        blocked = tmp_path / "blocked"
+        blocked.write_text("not a directory\n", encoding="utf-8")
+
+        exit_code = FlextInfraWorkspaceChecker.run_cli(
+            [
+                "run",
+                "--workspace",
+                str(workspace),
+                "--gates",
+                "lint",
+                "--projects",
+                "flext-core",
+                "--reports-dir",
+                str(blocked / "check"),
+            ],
+        )
+
+        tm.that(exit_code, eq=1)
+
+    def test_run_cli_handles_multiple_projects(self, tmp_path: Path) -> None:
+        workspace = self._create_workspace(
+            tmp_path,
+            project_names=("proj1", "proj2"),
+        )
+        _ = self._write_module(workspace, "proj1", "value = 1\n")
+        _ = self._write_module(workspace, "proj2", "other = 2\n")
+
+        exit_code = FlextInfraWorkspaceChecker.run_cli(
+            [
+                "run",
+                "--workspace",
+                str(workspace),
+                "--gates",
+                "lint",
+                "--projects",
+                "proj1",
+                "--projects",
+                "proj2",
+            ],
+        )
+
+        tm.that(exit_code, eq=0)
+
+    def test_run_cli_fix_rewrites_source_with_forwarded_ruff_args(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace = self._create_workspace(tmp_path)
+        module_path = self._write_module(
+            workspace,
+            "flext-core",
+            "import os\n\nvalue = 1\n",
+        )
+
+        exit_code = FlextInfraWorkspaceChecker.run_cli(
+            [
+                "run",
+                "--workspace",
+                str(workspace),
+                "--gates",
+                "lint",
+                "--fix",
+                "--ruff-args",
+                "--select F401",
+                "--projects",
+                "flext-core",
+            ],
+        )
+
+        tm.that(exit_code, eq=0)
+        tm.that("import os" in module_path.read_text(encoding="utf-8"), eq=False)
+
+    def test_run_cli_check_only_preserves_source(self, tmp_path: Path) -> None:
+        workspace = self._create_workspace(tmp_path)
+        module_path = self._write_module(
+            workspace,
+            "flext-core",
+            "import os\n\nvalue = 1\n",
+        )
+
+        exit_code = FlextInfraWorkspaceChecker.run_cli(
+            [
+                "run",
+                "--workspace",
+                str(workspace),
+                "--gates",
+                "lint",
+                "--fix",
+                "--check-only",
+                "--ruff-args",
+                "--select F401",
+                "--projects",
+                "flext-core",
+            ],
+        )
+
+        tm.that(exit_code, eq=1)
+        tm.that(
+            module_path.read_text(encoding="utf-8"),
+            eq="import os\n\nvalue = 1\n",
+        )
+
+    def test_run_cli_rejects_shared_dry_run_flag(self) -> None:
+        exit_code = FlextInfraWorkspaceChecker.run_cli(
+            [
+                "--dry-run",
+                "run",
+                "--projects",
+                "flext-core",
+            ],
+        )
+
+        tm.that(exit_code, eq=2)

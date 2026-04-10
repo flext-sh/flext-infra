@@ -1,16 +1,9 @@
-"""Tests for workspace checker runners — pyright, bandit, markdown, go, ruff.
-
-Uses monkeypatch to inject controlled subprocess output.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Tests for extra workspace checker gates."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 from flext_tests import tm
 
 from flext_infra import (
@@ -21,157 +14,117 @@ from flext_infra import (
 from tests import u
 
 
-class TestRunPyright:
-    """Test FlextInfraWorkspaceChecker._run_pyright method."""
+class TestExtendedRunnerExtras:
+    """Declarative public-gate tests."""
 
-    def test_run_pyright_no_python_dirs(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
+    def test_pyright_skips_when_project_has_no_python_files(
+        self, tmp_path: Path
     ) -> None:
-        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path)
-        workspace_root = tmp_path
-        u.Infra.Tests.patch_python_dir_detection(
-            monkeypatch,
-            FlextInfraPyrightGate,
-            has_python_dirs=False,
-        )
+        _, project_dir = u.Infra.Tests.create_checker_project(tmp_path)
+
         result = u.Infra.Tests.run_gate_check(
-            FlextInfraPyrightGate, workspace_root, proj_dir
+            FlextInfraPyrightGate, tmp_path, project_dir
         )
+
         tm.that(result.result.passed, eq=True)
         tm.that(len(result.issues), eq=0)
 
-    def test_run_pyright_with_json_output(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path, with_src=True)
-        workspace_root = tmp_path
-        (proj_dir / "src" / "main.py").write_text("# code")
-        json_output = '{"generalDiagnostics": [{"file": "a.py", "range": {"start": {"line": 0, "character": 0}}, "rule": "E001", "message": "Error", "severity": "error"}]}'
-        u.Infra.Tests.patch_gate_run(
-            monkeypatch,
-            FlextInfraPyrightGate,
-            stdout=json_output,
+    def test_pyright_parses_json_diagnostics(self, tmp_path: Path) -> None:
+        _, project_dir = u.Infra.Tests.create_checker_project(tmp_path, with_src=True)
+        _ = (project_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
+        runner = u.Infra.Tests.command_runner(
+            stdout='{"generalDiagnostics": [{"file": "a.py", "range": {"start": {"line": 0, "character": 0}}, "rule": "E001", "message": "Error", "severity": "error"}]}',
             returncode=1,
         )
-        u.Infra.Tests.patch_python_dir_detection(
-            monkeypatch,
-            FlextInfraPyrightGate,
-            has_python_dirs=True,
-        )
+
         result = u.Infra.Tests.run_gate_check(
-            FlextInfraPyrightGate, workspace_root, proj_dir
+            FlextInfraPyrightGate,
+            tmp_path,
+            project_dir,
+            runner=runner,
         )
+
         tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
 
-    def test_run_pyright_with_invalid_json(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path, with_src=True)
-        workspace_root = tmp_path
-        (proj_dir / "src" / "main.py").write_text("# code")
-        u.Infra.Tests.patch_gate_run(
-            monkeypatch,
-            FlextInfraPyrightGate,
-            stdout="invalid json",
-            returncode=1,
-        )
-        u.Infra.Tests.patch_python_dir_detection(
-            monkeypatch,
-            FlextInfraPyrightGate,
-            has_python_dirs=True,
-        )
+    def test_pyright_handles_invalid_json(self, tmp_path: Path) -> None:
+        _, project_dir = u.Infra.Tests.create_checker_project(tmp_path, with_src=True)
+        _ = (project_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
+        runner = u.Infra.Tests.command_runner(stdout="invalid json", returncode=1)
+
         result = u.Infra.Tests.run_gate_check(
-            FlextInfraPyrightGate, workspace_root, proj_dir
+            FlextInfraPyrightGate,
+            tmp_path,
+            project_dir,
+            runner=runner,
         )
+
         tm.that(not result.result.passed, eq=True)
 
+    def test_bandit_skips_without_src_dir(self, tmp_path: Path) -> None:
+        _, project_dir = u.Infra.Tests.create_checker_project(tmp_path)
 
-class TestRunBandit:
-    """Test FlextInfraWorkspaceChecker._run_bandit method."""
-
-    def test_run_bandit_no_src_dir(self, tmp_path: Path) -> None:
-        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path)
-        workspace_root = tmp_path
         result = u.Infra.Tests.run_gate_check(
-            FlextInfraBanditGate, workspace_root, proj_dir
+            FlextInfraBanditGate, tmp_path, project_dir
         )
+
         tm.that(result.result.passed, eq=True)
         tm.that(len(result.issues), eq=0)
 
-    def test_run_bandit_with_json_output(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path, with_src=True)
-        workspace_root = tmp_path
-        json_output = '{"results": [{"filename": "a.py", "line_number": 1, "test_id": "B101", "issue_text": "Assert used", "issue_severity": "MEDIUM"}]}'
-        u.Infra.Tests.patch_gate_run(
-            monkeypatch,
-            FlextInfraBanditGate,
-            stdout=json_output,
+    def test_bandit_parses_json_output(self, tmp_path: Path) -> None:
+        _, project_dir = u.Infra.Tests.create_checker_project(tmp_path, with_src=True)
+        runner = u.Infra.Tests.command_runner(
+            stdout='{"results": [{"filename": "a.py", "line_number": 1, "test_id": "B101", "issue_text": "Assert used", "issue_severity": "MEDIUM"}]}',
             returncode=1,
         )
+
         result = u.Infra.Tests.run_gate_check(
-            FlextInfraBanditGate, workspace_root, proj_dir
+            FlextInfraBanditGate,
+            tmp_path,
+            project_dir,
+            runner=runner,
         )
+
         tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
 
-    def test_run_bandit_with_invalid_json(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path, with_src=True)
-        workspace_root = tmp_path
-        u.Infra.Tests.patch_gate_run(
-            monkeypatch,
-            FlextInfraBanditGate,
-            stdout="invalid json",
-            returncode=1,
-        )
+    def test_bandit_handles_invalid_json(self, tmp_path: Path) -> None:
+        _, project_dir = u.Infra.Tests.create_checker_project(tmp_path, with_src=True)
+        runner = u.Infra.Tests.command_runner(stdout="invalid json", returncode=1)
+
         result = u.Infra.Tests.run_gate_check(
-            FlextInfraBanditGate, workspace_root, proj_dir
+            FlextInfraBanditGate,
+            tmp_path,
+            project_dir,
+            runner=runner,
         )
+
         tm.that(not result.result.passed, eq=True)
 
+    def test_markdown_skips_without_markdown_files(self, tmp_path: Path) -> None:
+        _, project_dir = u.Infra.Tests.create_checker_project(tmp_path)
 
-class TestRunMarkdown:
-    """Test FlextInfraWorkspaceChecker._run_markdown method."""
-
-    def test_run_markdown_no_files(self, tmp_path: Path) -> None:
-        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path)
-        workspace_root = tmp_path
         result = u.Infra.Tests.run_gate_check(
-            FlextInfraMarkdownGate, workspace_root, proj_dir
+            FlextInfraMarkdownGate, tmp_path, project_dir
         )
+
         tm.that(result.result.passed, eq=True)
         tm.that(len(result.issues), eq=0)
 
-    def test_run_markdown_with_errors(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path)
-        workspace_root = tmp_path
-        (proj_dir / "README.md").write_text("# Test")
-        u.Infra.Tests.patch_gate_run(
-            monkeypatch,
-            FlextInfraMarkdownGate,
+    def test_markdown_parses_cli_errors(self, tmp_path: Path) -> None:
+        _, project_dir = u.Infra.Tests.create_checker_project(tmp_path)
+        _ = (project_dir / "README.md").write_text("# Test\n", encoding="utf-8")
+        runner = u.Infra.Tests.command_runner(
             stdout="README.md:1:1 error MD001 Heading level",
             returncode=1,
         )
+
         result = u.Infra.Tests.run_gate_check(
-            FlextInfraMarkdownGate, workspace_root, proj_dir
+            FlextInfraMarkdownGate,
+            tmp_path,
+            project_dir,
+            runner=runner,
         )
+
         tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
