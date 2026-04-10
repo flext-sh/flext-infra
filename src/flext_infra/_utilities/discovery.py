@@ -127,6 +127,7 @@ class FlextInfraUtilitiesDiscovery(FlextInfraUtilitiesDiscoveryScanning):
         root_markers = {
             c.Infra.Directories.DOCS,
             c.Infra.Directories.EXAMPLES,
+            "libs",
             c.Infra.Directories.SCRIPTS,
             c.Infra.Paths.DEFAULT_SRC_DIR,
             c.Infra.Directories.TESTS,

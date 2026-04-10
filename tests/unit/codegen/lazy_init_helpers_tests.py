@@ -48,6 +48,11 @@ class TestInferPackage:
             eq="docs.architecture.tools",
         )
 
+    def test_root_libs_path(self) -> None:
+        """Test inference preserves the root libs namespace package."""
+        path = Path("/workspace/libs/__init__.py")
+        tm.that(u.Infra.discover_package_from_file(path), eq="libs")
+
     def test_without_src_directory(self) -> None:
         """Test when path doesn't contain /src/."""
         path = Path("/workspace/lib/test/__init__.py")

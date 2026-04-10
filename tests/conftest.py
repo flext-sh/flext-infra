@@ -11,7 +11,7 @@ from tests import t, u
 
 pytest_plugins = [
     "flext_tests.conftest_plugin",
-    "tests.fixtures",
+    "tests.unit.fixtures",
 ]
 
 
