@@ -73,10 +73,10 @@ class FlextInfraRefactorMROSymbolPropagator(FlextInfraRopeTransformer):
         resource: FlextInfraTypes.Infra.RopeResource,
     ) -> FlextInfraTypes.Infra.TransformResult:
         """Apply import and reference rewrites. Returns (new_source, changes)."""
-        source = u.Infra.read_source(resource)
+        source = resource.read()
         rewritten_source, changes = self.rewrite_source(source)
         if rewritten_source != source and changes:
-            u.Infra.write_source(
+            u.Infra.apply_source_change(
                 rope_project,
                 resource,
                 rewritten_source,

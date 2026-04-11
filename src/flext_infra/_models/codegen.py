@@ -10,14 +10,13 @@ from pydantic import ConfigDict, Field
 from flext_cli import u
 from flext_core import m
 from flext_infra import (
-    FlextInfraModelsCodegenDeduplication,
     FlextInfraModelsMixins,
     p,
     t,
 )
 
 
-class FlextInfraModelsCodegen(FlextInfraModelsCodegenDeduplication):
+class FlextInfraModelsCodegen:
     """Models for codegen census, scaffold, and auto-fix pipelines."""
 
     class CensusViolation(
@@ -100,6 +99,54 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenDeduplication):
             description="Modified file paths",
         )
 
+    class NamespaceModulePolicy(m.ArbitraryTypesModel):
+        """Derived gen-init policy for one governed module."""
+
+        enforce_contract: bool = Field(
+            default=False,
+            description="Whether gen-init must enforce namespace shape.",
+        )
+        export_symbols: bool = Field(
+            default=False,
+            description="Whether gen-init should discover public symbols.",
+        )
+        project_prefix: str = Field(
+            default="",
+            description="Canonical class prefix expected for the module.",
+        )
+        expected_alias: str | None = Field(
+            default=None,
+            description="Canonical module-level alias allowed for the file.",
+        )
+        expected_family: str | None = Field(
+            default=None,
+            description="Canonical namespace family suffix for the file.",
+        )
+        family_tokens: t.StrSequence = Field(
+            default_factory=tuple,
+            description="Accepted family markers for private namespace modules.",
+        )
+        accepted_suffixes: t.StrSequence = Field(
+            default_factory=tuple,
+            description="Accepted class suffixes for governed facade classes.",
+        )
+        allow_main_export: bool = Field(
+            default=False,
+            description="Whether the file may export a module-level main().",
+        )
+        allow_type_alias: bool = Field(
+            default=False,
+            description="Whether the module may keep TypeAlias declarations.",
+        )
+        is_fixture_module: bool = Field(
+            default=False,
+            description="Whether the module belongs to a private fixtures package.",
+        )
+        type_checking_imports: t.StrSequence = Field(
+            default_factory=tuple,
+            description="Canonical root names allowed inside TYPE_CHECKING imports.",
+        )
+
     class QualityGateCheck(m.ArbitraryTypesModel):
         """A single quality gate check result entry."""
 
@@ -173,13 +220,6 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenDeduplication):
         )
         is_value_identical: bool = Field(description="Whether all values match")
         canonical_ref: str = Field(default="", description="Canonical parent reference")
-
-    class UnusedConstant(
-        FlextInfraModelsMixins.ProjectNameMixin,
-        FlextInfraModelsMixins.NestedClassPathMixin,
-        BulkFixItem,
-    ):
-        """Constant declared but never referenced in workspace."""
 
     class DirectConstantRef(
         FlextInfraModelsMixins.ProjectNameMixin,

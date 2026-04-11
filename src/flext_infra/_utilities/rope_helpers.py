@@ -16,17 +16,6 @@ class FlextInfraUtilitiesRopeHelpers:
     _post_hooks: ClassVar[list[p.Infra.RopePostHook]] = []
 
     @classmethod
-    def run_rope_pre_hooks(
-        cls,
-        path: Path,
-        *,
-        dry_run: bool,
-    ) -> Sequence[m.Infra.Result]:
-        """Run declarative semantic pre-hooks before local refactors."""
-        _ = cls, path, dry_run
-        return []
-
-    @classmethod
     def run_rope_post_hooks(
         cls,
         path: Path,
@@ -34,7 +23,6 @@ class FlextInfraUtilitiesRopeHelpers:
         dry_run: bool,
     ) -> Sequence[m.Infra.Result]:
         """Run workspace-scale semantic passes after local refactors."""
-        cls._ensure_default_post_hooks()
         results: list[m.Infra.Result] = []
         for hook in cls._post_hooks:
             results.extend(hook(path, dry_run=dry_run))
@@ -48,10 +36,6 @@ class FlextInfraUtilitiesRopeHelpers:
         """Register a post-processing hook for rope refactoring pipelines."""
         if hook not in cls._post_hooks:
             cls._post_hooks.append(hook)
-
-    @classmethod
-    def _ensure_default_post_hooks(cls) -> None:
-        _ = cls
 
     @staticmethod
     def get_module_level_assignments(
@@ -212,78 +196,6 @@ class FlextInfraUtilitiesRopeHelpers:
         lines.insert(insert_idx, block.rstrip("\n") + "\n\n")
         return "".join(lines)
 
-    @staticmethod
-    def indent_block(text: str, spaces: int = 4) -> str:
-        """Add indentation to each line of a block."""
-        prefix = " " * spaces
-        return "".join(
-            f"{prefix}{line}" if line.strip() else line
-            for line in text.splitlines(keepends=True)
-        )
-
-    @staticmethod
-    def ensure_decorator(
-        source: str,
-        decorator: str = "@staticmethod",
-    ) -> str:
-        """Ensure a function/block has a specific decorator."""
-        return source if decorator in source else f"{decorator}\n{source}"
-
-    @staticmethod
-    def has_toplevel_definition(
-        source: str,
-        name: str,
-        *,
-        kind: str = "function",
-    ) -> bool:
-        """Check if a top-level function or class exists by name."""
-        if kind == "function":
-            return (
-                re.search(
-                    rf"^(?:@\w[\w.]*(?:\([^)]*\))?\n)*def\s+{re.escape(name)}\s*\(",
-                    source,
-                    re.MULTILINE,
-                )
-                is not None
-            )
-        if kind == "class":
-            return (
-                re.search(rf"^class\s+{re.escape(name)}\b", source, re.MULTILINE)
-                is not None
-            )
-        return False
-
-    @staticmethod
-    def check_visibility(name: str, visibility: str | None) -> bool:
-        """Check if a method name matches the given visibility filter."""
-        if visibility is None:
-            return True
-        if visibility == "public":
-            return not name.startswith("_")
-        if visibility == "protected":
-            return name.startswith("_") and not name.startswith("__")
-        if visibility == "private":
-            return name.startswith("__") and not name.endswith("__")
-        return True
-
-    _WORD_BOUNDARY_RE_CACHE: ClassVar[dict[str, t.Infra.RegexPattern]] = {}
-
-    @staticmethod
-    def bound_name(name_part: str) -> str:
-        """Extract the bound name from 'X' or 'X as Y'."""
-        item = name_part.strip()
-        if " as " in item:
-            return item.split(" as ", 1)[1].strip()
-        return item
-
-    @staticmethod
-    def word_boundary_re(name: str) -> t.Infra.RegexPattern:
-        """Get compiled word-boundary regex for a name."""
-        cache = FlextInfraUtilitiesRopeHelpers._WORD_BOUNDARY_RE_CACHE
-        if name not in cache:
-            cache[name] = re.compile(rf"\b{re.escape(name)}\b")
-        return cache[name]
-
     _PROPERTY_DECORATORS: ClassVar[frozenset[str]] = frozenset(
         {"property", "cached_property", "computed_field"},
     )
@@ -302,8 +214,14 @@ class FlextInfraUtilitiesRopeHelpers:
         excludes = set(rule.exclude_decorators)
         if excludes and decorators.intersection(excludes):
             return False
-        if not FlextInfraUtilitiesRopeHelpers.check_visibility(
-            method.name, rule.visibility
+        if rule.visibility == "public" and method.name.startswith("_"):
+            return False
+        if rule.visibility == "protected" and (
+            not method.name.startswith("_") or method.name.startswith("__")
+        ):
+            return False
+        if rule.visibility == "private" and (
+            not method.name.startswith("__") or method.name.endswith("__")
         ):
             return False
         if rule.decorators and not decorators.intersection(rule.decorators):

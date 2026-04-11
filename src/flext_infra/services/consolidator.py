@@ -114,12 +114,10 @@ class FlextInfraCodegenConsolidator(s[str]):
         self,
         project: p.Infra.ProjectInfo,
     ) -> tuple[Path, str, t.StrMapping] | None:
-        package_dir = u.Infra.find_package_dir(project.path)
-        package_name = u.Infra.discover_project_package_name(
-            project_root=project.path,
-        )
-        if package_dir is None or not package_name:
+        package_info = u.Infra.discover_src_package_dir(project.path)
+        if package_info is None:
             return None
+        package_name, package_dir = package_info
         if "c" not in u.Infra.discover_project_aliases(project.path):
             return None
         constants_facade = u.Infra.resolve_constants_facade(package_name)
@@ -147,7 +145,7 @@ class FlextInfraCodegenConsolidator(s[str]):
         assignments = [symbol for symbol in symbols if symbol.kind == "assignment"]
         if not assignments:
             return None
-        source = u.Infra.read_source(resource)
+        source = resource.read()
         matches = u.Infra.match_assignments(
             assignments,
             source.splitlines(),

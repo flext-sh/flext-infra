@@ -26,7 +26,7 @@ class FlextInfraRefactorPatternCorrectionsRule:
         dry_run: bool = False,
     ) -> t.Infra.TransformResult:
         """Apply configured pattern corrections to resource."""
-        source = u.Infra.read_source(resource)
+        source = resource.read()
         fix_action = u.Infra.get_str_key(
             self.config,
             c.Infra.ReportKeys.FIX_ACTION,

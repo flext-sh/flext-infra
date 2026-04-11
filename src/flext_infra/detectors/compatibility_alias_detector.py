@@ -7,23 +7,15 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import ClassVar, override
 
-from flext_infra import FlextInfraScanFileMixin, c, m, p
+from flext_infra import c, m, u
 
 
-class FlextInfraCompatibilityAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
+class FlextInfraCompatibilityAliasDetector:
     """Detect compatibility alias assignments (CapName = CapName)."""
 
-    _rule_id: ClassVar[str] = "namespace.compatibility_alias"
-    _MESSAGE_TEMPLATE: ClassVar[str] = (
-        "Compatibility alias '{alias_name}' -> '{target_name}'"
-    )
-
-    @classmethod
-    @override
+    @staticmethod
     def detect_file(
-        cls,
         ctx: m.Infra.DetectorContext,
     ) -> Sequence[m.Infra.CompatibilityAliasViolation]:
         """Detect compatibility aliases in a single file."""
@@ -31,21 +23,26 @@ class FlextInfraCompatibilityAliasDetector(FlextInfraScanFileMixin, p.Infra.Scan
         rope_project = ctx.rope_project
         if file_path.suffix != c.Infra.Extensions.PYTHON:
             return []
-        source = cls._get_source_or_empty(rope_project, file_path)
-        if source is None:
+        resource = u.Infra.get_resource_from_path(rope_project, file_path)
+        if resource is None:
             return []
+        lines = resource.read().splitlines()
         violations: list[m.Infra.CompatibilityAliasViolation] = []
-        for hit in c.Infra.COMPAT_ALIAS_RE.finditer(source):
-            alias_name, target_name = hit.group(1), hit.group(2)
+        for symbol in u.Infra.get_module_symbols(rope_project, resource):
+            if symbol.kind != "assignment" or not 0 < symbol.line <= len(lines):
+                continue
+            match = c.Infra.COMPAT_ALIAS_RE.match(lines[symbol.line - 1])
+            if match is None:
+                continue
+            alias_name, target_name = match.group(1), match.group(2)
             if alias_name in c.Infra.COMPAT_SKIP_NAMES or alias_name == target_name:
                 continue
             if alias_name.isupper() and target_name.isupper():
                 continue
-            line = source[: hit.start()].count("\n") + 1
             violations.append(
                 m.Infra.CompatibilityAliasViolation(
                     file=str(file_path),
-                    line=line,
+                    line=symbol.line,
                     alias_name=alias_name,
                     target_name=target_name,
                 )

@@ -12,60 +12,12 @@ from flext_infra import (
     FlextInfraRefactorCensus,
     FlextInfraRefactorMigrateToClassMRO,
     m,
-    t,
     u,
 )
 
 
 class FlextInfraServiceRefactorMixin:
     """Expose refactor operations through the public infra facade."""
-
-    @staticmethod
-    def _runtime_alias_import_summary(
-        results: Sequence[m.Infra.Result],
-    ) -> t.MutableIntMapping:
-        successful = [result for result in results if result.success]
-        alias_changes = [
-            change
-            for result in successful
-            for change in result.changes
-            if "runtime alias import" in change
-        ]
-        return {
-            "files_changed": sum(1 for result in successful if result.modified),
-            "files_failed": len(results) - len(successful),
-            "files_planned": sum(
-                1
-                for result in successful
-                if (not result.modified)
-                and any(
-                    change.startswith("planned runtime alias import")
-                    for change in result.changes
-                )
-            ),
-            "aliases_migrated": sum(
-                1 for change in alias_changes if change.startswith("migrated")
-            ),
-            "aliases_skipped_unsafe": sum(
-                1 for change in alias_changes if "unsafe" in change
-            ),
-            "aliases_skipped_missing_export": sum(
-                1 for change in alias_changes if "missing export" in change
-            ),
-        }
-
-    def centralize_pydantic(
-        self,
-        params: m.Infra.RefactorCentralizeInput,
-    ) -> r[t.IntMapping]:
-        """Run pydantic centralization through the public facade."""
-        return r[t.IntMapping].ok(
-            u.Infra.centralize_workspace(
-                params.workspace_path,
-                apply=params.apply,
-                normalize_remaining=params.normalize_remaining,
-            )
-        )
 
     def migrate_mro(
         self,
@@ -107,75 +59,6 @@ class FlextInfraServiceRefactorMixin:
                 "Namespace violations found"
             )
         return r[m.Infra.WorkspaceEnforcementReport].ok(report)
-
-    def migrate_runtime_alias_imports(
-        self,
-        params: m.Infra.RefactorMigrateRuntimeAliasImportsInput,
-    ) -> r[t.IntMapping]:
-        """Normalize canonical alias imports through the public facade."""
-        aliases = [item.strip() for item in params.aliases.split(",") if item.strip()]
-        results = u.Infra.migrate_runtime_alias_imports(
-            workspace_root=params.workspace_path,
-            aliases=aliases,
-            apply=params.apply,
-            project_names=params.project_names,
-        )
-        summary = self._runtime_alias_import_summary(results)
-        cli_service.display_text(
-            "\n".join([
-                f"Files changed: {summary['files_changed']}",
-                f"Files planned: {summary['files_planned']}",
-                f"Files failed: {summary['files_failed']}",
-                f"Aliases migrated: {summary['aliases_migrated']}",
-                f"Unsafe aliases skipped: {summary['aliases_skipped_unsafe']}",
-                (
-                    "Missing local exports skipped: "
-                    f"{summary['aliases_skipped_missing_export']}"
-                ),
-            ])
-            + "\n"
-        )
-        if summary["files_failed"] > 0:
-            return r[t.IntMapping].fail("Runtime alias import migration had errors")
-        return r[t.IntMapping].ok(summary)
-
-    def ultrawork_models(
-        self,
-        params: m.Infra.RefactorUltraworkModelsInput,
-    ) -> r[t.IntMapping]:
-        """Run the full centralization/MRO/namespace workflow."""
-        centralize_summary = u.Infra.centralize_workspace(
-            params.workspace_path,
-            apply=params.apply,
-            normalize_remaining=params.normalize_remaining,
-        )
-        mro_report = FlextInfraRefactorMigrateToClassMRO(
-            workspace_root=params.workspace_path,
-        ).run(target="all", apply=params.apply)
-        namespace_report = FlextInfraNamespaceEnforcer(
-            workspace_root=params.workspace_path,
-        ).enforce(apply=params.apply)
-        combined: t.IntMapping = {
-            **centralize_summary,
-            "mro_remaining_violations": mro_report.remaining_violations,
-            "mro_files_scanned": mro_report.files_scanned,
-            "mro_files_with_candidates": mro_report.files_with_candidates,
-            "mro_failures": mro_report.mro_failures,
-            "namespace_loose_objects": namespace_report.total_loose_objects,
-            "namespace_import_violations": namespace_report.total_import_violations,
-            "namespace_cyclic_imports": namespace_report.total_cyclic_imports,
-            "namespace_runtime_alias_violations": namespace_report.total_runtime_alias_violations,
-            "namespace_manual_protocols": namespace_report.total_manual_protocol_violations,
-            "namespace_manual_typing_aliases": namespace_report.total_manual_typing_violations,
-            "namespace_compatibility_aliases": namespace_report.total_compatibility_alias_violations,
-            "namespace_parse_failures": namespace_report.total_parse_failures,
-            "namespace_files_scanned": namespace_report.total_files_scanned,
-        }
-        if mro_report.errors:
-            for error in mro_report.errors:
-                cli_service.display_message(error, message_type="error")
-            return r[t.IntMapping].fail("MRO migration had errors")
-        return r[t.IntMapping].ok(combined)
 
     def run_refactor_census(
         self,

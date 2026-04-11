@@ -25,7 +25,6 @@ from flext_infra import (
     FlextInfraRefactorSymbolPropagator,
     FlextInfraRefactorTypingUnifier,
     FlextInfraTransformerTier0ImportFixer,
-    FlextInfraTypingAnnotationReplacer,
     c,
     m,
     t,
@@ -115,9 +114,36 @@ class FlextInfraRefactorTypingAnnotationFixRule(FlextInfraRefactorRule):
             case="lower",
         )
         if fix_action == "replace_object_annotations":
-            return self._apply_text_transformer(
-                FlextInfraTypingAnnotationReplacer(),
+            if _file_path is None:
+                return (source, list[str]())
+
+            def _transform(
+                rope_project: t.Infra.RopeProject,
+                resource: t.Infra.RopeResource,
+            ) -> t.Infra.TransformResult:
+                replacements: t.StrMapping = {
+                    "t.NormalizedValue": "t.ContainerValue",
+                }
+                updated_source, count = u.Infra.batch_replace_annotations(
+                    rope_project,
+                    resource,
+                    replacements,
+                    apply=True,
+                )
+                if count == 0:
+                    return (updated_source, list[str]())
+                return (
+                    updated_source,
+                    [
+                        f"Replaced annotation: {old} -> {new}"
+                        for old, new in replacements.items()
+                    ],
+                )
+
+            return u.Infra.apply_transformer_to_source(
                 source,
+                _file_path,
+                _transform,
             )
         return (source, list[str]())
 
@@ -141,16 +167,10 @@ class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
         analysis = analyzer.build_analysis()
         if not analysis.has_violations:
             return (source, list[str]())
-        project_root = u.Infra.discover_project_root_from_file(_file_path)
-        core_package = (
-            u.Infra.discover_core_package(project_root)
-            if project_root
-            else self._core_package()
-        )
         transformer = FlextInfraTransformerTier0ImportFixer.Transformer(
             analysis=analysis,
             alias_to_submodule=self._alias_to_submodule(),
-            core_package=core_package,
+            core_package=self._core_package(),
         )
         return u.Infra.apply_transformer_to_source(
             source,

@@ -30,7 +30,7 @@ class FlextInfraRefactorLegacyRemovalRule:
         dry_run: bool = False,
     ) -> t.Infra.TransformResult:
         """Apply configured legacy-removal transforms to resource."""
-        source = u.Infra.read_source(resource)
+        source = resource.read()
         changes: MutableSequence[str] = []
         fix_action = u.Infra.get_str_key(
             self.config,
@@ -59,7 +59,7 @@ class FlextInfraRefactorLegacyRemovalRule:
             )
             changes.extend(bypass_changes)
         if new_source != source and not dry_run:
-            u.Infra.write_source(
+            u.Infra.apply_source_change(
                 rope_project,
                 resource,
                 new_source,

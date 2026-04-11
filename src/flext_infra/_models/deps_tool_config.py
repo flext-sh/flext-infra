@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Annotated
 
 from pydantic import Field
@@ -176,6 +177,59 @@ class FlextInfraModelsDepsToolSettings(
             description="App overrides"
         )
 
+    class LazyInitConfig(m.ArbitraryTypesModel):
+        """Declarative policy for ``__init__.py`` lazy export generation."""
+
+        root_namespace_files: Annotated[
+            t.StrSequence,
+            Field(
+                alias="root-namespace-files",
+                description="Governed root facade filenames enforced by gen-init.",
+            ),
+        ]
+        public_file_aliases: Annotated[
+            t.StrMapping,
+            Field(
+                alias="public-file-aliases",
+                description="Canonical alias by governed root facade filename.",
+            ),
+        ]
+        public_file_suffixes: Annotated[
+            t.StrMapping,
+            Field(
+                alias="public-file-suffixes",
+                description="Canonical class suffix by governed root facade filename.",
+            ),
+        ]
+        private_family_tokens: Annotated[
+            Mapping[str, t.StrSequence],
+            Field(
+                alias="private-family-tokens",
+                description="Accepted family markers for private namespace packages.",
+            ),
+        ]
+        surface_prefixes: Annotated[
+            t.StrMapping,
+            Field(
+                alias="surface-prefixes",
+                description="Class prefixes by wrapper surface such as tests/examples/scripts.",
+            ),
+        ]
+        inherited_exports: Annotated[
+            Mapping[str, t.StrSequence],
+            Field(
+                alias="inherited-exports",
+                description="Allowed inherited exports from parent package by root surface.",
+            ),
+        ]
+        main_export_files: Annotated[
+            t.StrSequence,
+            Field(
+                alias="main-export-files",
+                description="Root files allowed to export module-level main().",
+            ),
+        ]
+
     class ToolConfigDocument(m.ArbitraryTypesModel):
         """Root schema for tool_config.yml."""
 
@@ -185,6 +239,10 @@ class FlextInfraModelsDepsToolSettings(
         project_type_overrides: FlextInfraModelsDepsToolSettings.ProjectTypeOverridesConfig = Field(
             alias="project-type-overrides",
             description="Per-project-type configuration overrides.",
+        )
+        lazy_init: FlextInfraModelsDepsToolSettings.LazyInitConfig = Field(
+            alias="lazy-init",
+            description="Declarative lazy-init generation policy.",
         )
 
 

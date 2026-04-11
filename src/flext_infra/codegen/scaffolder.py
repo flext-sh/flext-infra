@@ -102,8 +102,9 @@ class FlextInfraCodegenScaffolder(FlextInfraServiceBase[str]):
             )
         files_created: MutableSequence[str] = []
         files_skipped: MutableSequence[str] = []
-        pkg_dir = u.Infra.find_package_dir(project_path)
-        if pkg_dir is not None:
+        package_info = u.Infra.discover_src_package_dir(project_path)
+        if package_info is not None:
+            _package_name, pkg_dir = package_info
             self._scaffold_dir(
                 target_dir=pkg_dir,
                 prefix=prefix,

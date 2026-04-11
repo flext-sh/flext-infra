@@ -2,43 +2,16 @@
 
 from __future__ import annotations
 
-import re
-from collections.abc import Sequence
 from pathlib import Path
 
-from flext_core import r
 from flext_infra import (
     FlextInfraUtilitiesDiscoveryScanning,
-    FlextInfraUtilitiesDocsScope,
     c,
-    m,
 )
 
 
 class FlextInfraUtilitiesDiscovery(FlextInfraUtilitiesDiscoveryScanning):
     """Static project discovery utilities."""
-
-    @staticmethod
-    def discover_projects(
-        workspace_root: Path,
-    ) -> r[Sequence[m.Infra.ProjectInfo]]:
-        """Find valid projects in the workspace."""
-        return FlextInfraUtilitiesDocsScope.discover_projects(workspace_root)
-
-    @staticmethod
-    def _submodule_names(
-        workspace_root: Path,
-    ) -> set[str]:
-        gitmodules = workspace_root / ".gitmodules"
-        if not gitmodules.exists():
-            return set()
-        try:
-            content = gitmodules.read_text(
-                encoding=c.Infra.Encoding.DEFAULT,
-            )
-        except OSError:
-            return set()
-        return set(re.findall(r"^\s*path\s*=\s*(.+?)\s*$", content, re.MULTILINE))
 
     @staticmethod
     def discover_project_root_from_file(file_path: Path) -> Path | None:
@@ -147,34 +120,6 @@ class FlextInfraUtilitiesDiscovery(FlextInfraUtilitiesDiscoveryScanning):
         """Discover the workspace root."""
         root = FlextInfraUtilitiesDiscovery.discover_project_root_from_file(file_path)
         return root.parent if root else file_path.resolve().parent
-
-    @staticmethod
-    def package_context(
-        file_path: Path,
-    ) -> tuple[Path, str]:
-        """Return (package_dir, package_name) for any project type."""
-        parts = file_path.resolve().parts
-        if c.Infra.Paths.DEFAULT_SRC_DIR in parts:
-            src_idx = parts.index(c.Infra.Paths.DEFAULT_SRC_DIR)
-            if src_idx + 1 < len(parts):
-                package_name = parts[src_idx + 1]
-                package_dir = Path(*parts[: src_idx + 2])
-                return package_dir, package_name
-
-        current = file_path.resolve().parent
-        best_dir, best_name = current, ""
-        while current.parent != current:
-            if (current / c.Infra.Files.INIT_PY).is_file():
-                best_dir, best_name = current, current.name
-            elif best_name:
-                break
-            current = current.parent
-        return best_dir, best_name
-
-    @staticmethod
-    def discover_core_package(_project_root: Path) -> str:
-        """Discover the core package name for a project."""
-        return c.Infra.Packages.CORE_UNDERSCORE
 
 
 __all__ = ["FlextInfraUtilitiesDiscovery"]

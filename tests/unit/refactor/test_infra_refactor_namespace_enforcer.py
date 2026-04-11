@@ -7,11 +7,10 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import (
-    DetectorContext,
     FlextInfraLooseObjectDetector,
     FlextInfraNamespaceEnforcer,
 )
-from tests import t
+from tests import m, t
 
 
 def test_namespace_enforcer_creates_missing_facades_and_rewrites_imports(
@@ -147,7 +146,7 @@ def test_loose_object_detector_detects_module_logger_assignment(
     )
 
     violations = FlextInfraLooseObjectDetector.detect_file(
-        DetectorContext(
+        m.Infra.DetectorContext(
             file_path=target,
             project_name="sample-proj",
             rope_project=rope_project,

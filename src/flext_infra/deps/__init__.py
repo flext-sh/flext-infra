@@ -13,11 +13,11 @@ _LAZY_IMPORTS = merge_lazy_imports(
     (".phases",),
     build_lazy_import_map(
         {
-            ".detector_runtime": ("FlextInfraDependencyDetectorRuntime",),
             ".cli": ("FlextInfraCliDeps",),
             ".detection": ("FlextInfraDependencyDetectionService",),
             ".detection_analysis": ("FlextInfraDependencyDetectionAnalysis",),
             ".detector": ("FlextInfraRuntimeDevDependencyDetector",),
+            ".detector_runtime": ("FlextInfraDependencyDetectorRuntime",),
             ".extra_paths": ("FlextInfraExtraPathsManager",),
             ".extra_paths_pyrefly": ("FlextInfraExtraPathsPyrefly",),
             ".fix_pyrefly_config": ("FlextInfraConfigFixer",),

@@ -97,9 +97,10 @@ class FlextInfraCodegenFixer(s[str]):
         prefix = FlextInfraNamespaceValidator.derive_prefix(project_path)
         if not prefix:
             return self._empty_result(project_path.name)
-        pkg_dir = u.Infra.find_package_dir(project_path)
-        if pkg_dir is None:
+        package_info = u.Infra.discover_src_package_dir(project_path)
+        if package_info is None:
             return self._empty_result(project_path.name)
+        _package_name, pkg_dir = package_info
         ctx = m.Infra.FixContext()
         src_dir = pkg_dir.parent
         if not src_dir.is_dir():

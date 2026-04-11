@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import DetectorContext, FlextInfraClassPlacementDetector
-from tests import c, t
+from flext_infra import FlextInfraClassPlacementDetector
+from tests import c, m, t
 
 
 def test_detects_basemodel_in_non_model_file(
@@ -17,7 +17,7 @@ def test_detects_basemodel_in_non_model_file(
     )
 
     violations = FlextInfraClassPlacementDetector.detect_file(
-        DetectorContext(
+        m.Infra.DetectorContext(
             file_path=target,
             rope_project=rope_project,
         ),
@@ -41,7 +41,7 @@ def test_detects_attribute_base_class(
     )
 
     violations = FlextInfraClassPlacementDetector.detect_file(
-        DetectorContext(
+        m.Infra.DetectorContext(
             file_path=target,
             rope_project=rope_project,
         ),
@@ -63,7 +63,7 @@ def test_skips_models_file(
     )
 
     violations = FlextInfraClassPlacementDetector.detect_file(
-        DetectorContext(
+        m.Infra.DetectorContext(
             file_path=target,
             rope_project=rope_project,
         ),
@@ -85,7 +85,7 @@ def test_skips_models_directory(
     )
 
     violations = FlextInfraClassPlacementDetector.detect_file(
-        DetectorContext(
+        m.Infra.DetectorContext(
             file_path=target,
             rope_project=rope_project,
         ),
@@ -106,7 +106,7 @@ def test_skips_settings_file(
     )
 
     violations = FlextInfraClassPlacementDetector.detect_file(
-        DetectorContext(
+        m.Infra.DetectorContext(
             file_path=target,
             rope_project=rope_project,
         ),
@@ -127,7 +127,7 @@ def test_skips_protected_files(
     )
 
     violations = FlextInfraClassPlacementDetector.detect_file(
-        DetectorContext(
+        m.Infra.DetectorContext(
             file_path=target,
             rope_project=rope_project,
         ),
@@ -147,7 +147,7 @@ def test_skips_private_class(
     )
 
     violations = FlextInfraClassPlacementDetector.detect_file(
-        DetectorContext(
+        m.Infra.DetectorContext(
             file_path=target,
             rope_project=rope_project,
         ),
@@ -172,7 +172,7 @@ def test_detects_multiple_models(
     )
 
     violations = FlextInfraClassPlacementDetector.detect_file(
-        DetectorContext(
+        m.Infra.DetectorContext(
             file_path=target,
             rope_project=rope_project,
         ),
@@ -193,7 +193,7 @@ def test_non_pydantic_class_not_flagged(
     )
 
     violations = FlextInfraClassPlacementDetector.detect_file(
-        DetectorContext(
+        m.Infra.DetectorContext(
             file_path=target,
             rope_project=rope_project,
         ),

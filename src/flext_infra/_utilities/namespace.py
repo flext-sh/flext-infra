@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping, MutableSequence, Sequence
 from pathlib import Path
-from typing import ClassVar
 
 from flext_cli import u
 from flext_infra import (
     FlextInfraUtilitiesCodegenGovernance,
     FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesDocsScope,
     FlextInfraUtilitiesParsing,
     FlextInfraUtilitiesRope,
     c,
@@ -18,70 +18,32 @@ from flext_infra import (
     r,
     t,
 )
+from flext_infra._utilities.base import FlextInfraUtilitiesBase
 
 
 class FlextInfraUtilitiesCodegenNamespace:
     """Canonical namespace helpers for codegen discovery, parsing, and fixes."""
 
-    _GENINIT_SURFACE_PREFIXES: ClassVar[t.StrMapping] = {
-        c.Infra.Directories.TESTS: "Tests",
-        c.Infra.Directories.EXAMPLES: "Examples",
-        c.Infra.Directories.SCRIPTS: "Scripts",
-    }
-
-    _GENINIT_ROOT_NAMESPACE_FILES: tuple[str, ...] = (
-        "api.py",
-        "base.py",
-        "cli.py",
-        c.Infra.Files.CONSTANTS_PY,
-        "helpers.py",
-        c.Infra.Files.MODELS_PY,
-        c.Infra.Files.PROTOCOLS_PY,
-        "service.py",
-        "services.py",
-        "settings.py",
-        c.Infra.Files.TYPINGS_PY,
-        c.Infra.Files.UTILITIES_PY,
-    )
-    _GENINIT_PUBLIC_FILE_ALIASES: ClassVar[t.StrMapping] = {
-        c.Infra.Files.CONSTANTS_PY: "c",
-        "helpers.py": "h",
-        c.Infra.Files.MODELS_PY: "m",
-        c.Infra.Files.PROTOCOLS_PY: "p",
-        "service.py": "s",
-        c.Infra.Files.TYPINGS_PY: "t",
-        c.Infra.Files.UTILITIES_PY: "u",
-    }
-    _GENINIT_PUBLIC_FILE_SUFFIXES: ClassVar[t.StrMapping] = {
-        c.Infra.Files.CONSTANTS_PY: "Constants",
-        "helpers.py": "Helpers",
-        c.Infra.Files.MODELS_PY: "Models",
-        c.Infra.Files.PROTOCOLS_PY: "Protocols",
-        c.Infra.Files.TYPINGS_PY: "Types",
-        c.Infra.Files.UTILITIES_PY: "Utilities",
-    }
-    _GENINIT_PRIVATE_FAMILY_TOKENS: ClassVar[dict[str, tuple[str, ...]]] = {
-        "c": ("Constants",),
-        "m": ("Models",),
-        "p": ("Protocols",),
-        "t": ("Types", "Typing"),
-        "u": ("Utilities",),
-    }
+    @staticmethod
+    def _lazy_init_config() -> m.Infra.LazyInitConfig:
+        """Return the validated lazy-init policy document."""
+        config = FlextInfraUtilitiesBase.load_tool_config()
+        if config.is_failure:
+            msg = config.error or "lazy-init configuration is unavailable"
+            raise RuntimeError(msg)
+        return config.unwrap().lazy_init
 
     @classmethod
     def is_root_namespace_file(cls, file_name: str) -> bool:
         """Return whether *file_name* is a governed root-namespace facade file."""
-        return file_name in cls._GENINIT_ROOT_NAMESPACE_FILES
-
-    @staticmethod
-    def discover_project_root(path: Path) -> Path | None:
-        """Return the nearest project root containing ``pyproject.toml``."""
-        return FlextInfraUtilitiesDiscovery.discover_project_root_from_file(path)
+        return file_name in cls._lazy_init_config().root_namespace_files
 
     @classmethod
     def derive_project_prefix(cls, path: Path) -> str:
         """Return the canonical project class prefix for *path*."""
-        project_root = cls.discover_project_root(path)
+        project_root = FlextInfraUtilitiesDiscovery.discover_project_root_from_file(
+            path,
+        )
         if project_root is None:
             return ""
         prefix = cls._derive_prefix(project_root) or cls.project_class_stem(
@@ -114,27 +76,26 @@ class FlextInfraUtilitiesCodegenNamespace:
         """Return the facade surface prefix for top-level tests/examples/scripts."""
         if not rel_parts:
             return ""
-        return FlextInfraUtilitiesCodegenNamespace._GENINIT_SURFACE_PREFIXES.get(
-            rel_parts[0],
-            "",
+        return FlextInfraUtilitiesCodegenNamespace._lazy_init_config().surface_prefixes.get(
+            rel_parts[0], ""
         )
 
     @classmethod
-    def is_surface_root_package(cls, package_name: str) -> bool:
-        """Return whether *package_name* belongs to a governed wrapper surface."""
-        root_name = package_name.split(".", maxsplit=1)[0]
-        return root_name in cls._GENINIT_SURFACE_PREFIXES
+    def surface_name(cls, package_name: str) -> str:
+        """Return the lazy-init surface name for one package."""
+        root_name = package_name.split(".", maxsplit=1)[0] if package_name else ""
+        if root_name in cls._lazy_init_config().surface_prefixes:
+            return root_name
+        return "src"
 
-    @staticmethod
-    def is_fixture_package(package_name: str) -> bool:
-        """Return whether *package_name* is the canonical tests fixtures surface."""
-        parts = tuple(part for part in package_name.split(".") if part)
-        return parts[:2] == (c.Infra.Directories.TESTS, "fixtures")
-
-    @staticmethod
-    def is_main_export_file(file_path: Path) -> bool:
-        """Return whether *file_path* is allowed to export module-level ``main``."""
-        return file_path.name in {"cli.py", "main.py"}
+    @classmethod
+    def inherited_exports_for_package(cls, package_name: str) -> tuple[str, ...]:
+        """Return allowed parent exports for the package surface."""
+        exports = cls._lazy_init_config().inherited_exports.get(
+            cls.surface_name(package_name),
+            (),
+        )
+        return tuple(exports)
 
     @staticmethod
     def project_class_stem(*, project_name: str) -> str:
@@ -153,87 +114,108 @@ class FlextInfraUtilitiesCodegenNamespace:
         return "".join(part.capitalize() for part in parts) if parts else ""
 
     @classmethod
-    def geninit_expected_alias(cls, file_path: Path) -> str | None:
-        """Return the canonical alias allowed at module level for *file_path*."""
-        if file_path.name == "api.py":
-            package_name = FlextInfraUtilitiesDiscovery.discover_package_from_file(
-                file_path
-            )
-            if (
-                package_name
-                and "." not in package_name
-                and not package_name.startswith(c.Infra.Packages.PREFIX_UNDERSCORE)
-            ):
-                return package_name
-        if file_path.parent.name in c.Infra.FAMILY_DIRECTORIES.values():
-            family = cls.geninit_expected_family(file_path)
-            if family is None:
-                return None
-            return next(
-                (
-                    alias
-                    for alias, suffix in c.Infra.FAMILY_SUFFIXES.items()
-                    if suffix == family
-                ),
-                None,
-            )
-        return cls._GENINIT_PUBLIC_FILE_ALIASES.get(file_path.name)
-
-    @staticmethod
-    def geninit_expected_api_singleton_alias(file_path: Path) -> str | None:
-        """Return the canonical singleton alias allowed in a root ``api.py``."""
-        if file_path.name != "api.py":
-            return None
-        package_name = FlextInfraUtilitiesDiscovery.discover_package_from_file(
-            file_path
-        )
-        if not package_name or "." in package_name:
-            return None
-        if package_name.startswith(c.Infra.Packages.PREFIX_UNDERSCORE):
-            return package_name.removeprefix(c.Infra.Packages.PREFIX_UNDERSCORE)
-        return None
-
-    @classmethod
-    def geninit_expected_family(cls, file_path: Path) -> str | None:
-        """Return the canonical namespace family suffix for *file_path*."""
-        for alias, directory in c.Infra.FAMILY_DIRECTORIES.items():
-            if file_path.parent.name == directory:
-                return c.Infra.FAMILY_SUFFIXES[alias]
-        if file_path.parent.name == "services":
-            if file_path.name == "base.py":
-                return "ServiceBase"
-            return "Mixin"
-        if file_path.name == "service.py":
-            return "Service"
-        if file_path.name == "services.py":
-            return "Services"
-        return cls._GENINIT_PUBLIC_FILE_SUFFIXES.get(file_path.name)
-
-    @classmethod
-    def geninit_expected_family_tokens(cls, file_path: Path) -> tuple[str, ...]:
-        """Return accepted family markers for private namespace modules."""
-        for alias, directory in c.Infra.FAMILY_DIRECTORIES.items():
-            if file_path.parent.name == directory:
-                return cls._GENINIT_PRIVATE_FAMILY_TOKENS.get(alias, ())
-        family = cls.geninit_expected_family(file_path)
-        return (family,) if family else ()
-
-    @classmethod
-    def should_enforce_geninit_contract(
+    def module_policy(
         cls,
-        rel_path: Path,
+        file_path: Path,
         *,
+        rel_path: Path | None = None,
         current_pkg: str = "",
-    ) -> bool:
-        """Return True when ``gen-init`` must enforce strict namespace shape."""
-        if any(part in c.Infra.FAMILY_DIRECTORIES.values() for part in rel_path.parts):
-            return True
-        if "services" in rel_path.parts:
-            return True
-        if rel_path.name not in cls._GENINIT_ROOT_NAMESPACE_FILES:
-            return False
-        package_depth = len([part for part in current_pkg.split(".") if part])
-        return package_depth <= 1
+    ) -> m.Infra.NamespaceModulePolicy:
+        """Return the derived Pydantic policy for one governed module."""
+        config = cls._lazy_init_config()
+        package_name = (
+            current_pkg
+            or FlextInfraUtilitiesDiscovery.discover_package_from_file(
+                file_path,
+            )
+        )
+        resolved_rel_path = rel_path or Path(file_path.name)
+        family_alias = next(
+            (
+                alias
+                for alias, directory in c.Infra.FAMILY_DIRECTORIES.items()
+                if file_path.parent.name == directory
+            ),
+            None,
+        )
+        expected_family = (
+            c.Infra.FAMILY_SUFFIXES[family_alias]
+            if family_alias is not None
+            else config.public_file_suffixes.get(file_path.name)
+        )
+        expected_alias = (
+            family_alias
+            if family_alias is not None
+            else config.public_file_aliases.get(file_path.name)
+        )
+        family_tokens = (
+            tuple(config.private_family_tokens.get(family_alias, ()))
+            if family_alias is not None
+            else (expected_family,)
+            if expected_family
+            else ()
+        )
+        package_parts = tuple(part for part in package_name.split(".") if part)
+        package_depth = len(package_parts)
+        is_fixture_module = file_path.parent.name == "_fixtures"
+        is_family_module = any(
+            part in c.Infra.FAMILY_DIRECTORIES.values()
+            for part in resolved_rel_path.parts
+        )
+        is_family_package = family_alias is not None or any(
+            part in c.Infra.FAMILY_DIRECTORIES.values() for part in package_parts
+        )
+        is_services_module = "services" in resolved_rel_path.parts
+        is_services_package = "services" in package_parts
+        is_namespace_file = resolved_rel_path.name in config.root_namespace_files
+        is_governed_namespace = expected_alias is not None or expected_family is not None
+        is_root_namespace = (
+            is_namespace_file
+            and len(resolved_rel_path.parts) == 1
+            and package_depth <= 1
+        )
+        is_src_surface = cls.surface_name(package_name) == "src"
+        enforce_contract = (
+            is_fixture_module
+            or is_family_module
+            or is_services_module
+            or is_governed_namespace
+            or is_root_namespace
+        )
+        export_symbols = (
+            is_src_surface
+            or is_fixture_module
+            or is_family_module
+            or is_family_package
+            or is_services_module
+            or is_services_package
+            or is_namespace_file
+            or is_root_namespace
+        )
+        type_checking_imports = tuple(
+            name
+            for name in dict.fromkeys((
+                *config.public_file_aliases.values(),
+                *cls.inherited_exports_for_package(package_name),
+            ))
+            if name.isidentifier()
+        )
+        return m.Infra.NamespaceModulePolicy(
+            enforce_contract=enforce_contract,
+            export_symbols=export_symbols,
+            project_prefix=cls.derive_project_prefix(file_path),
+            expected_alias=expected_alias,
+            expected_family=expected_family,
+            family_tokens=family_tokens,
+            accepted_suffixes=((expected_family,) if expected_family else ()),
+            allow_main_export=file_path.name in config.main_export_files,
+            allow_type_alias=(
+                file_path.name == c.Infra.Files.TYPINGS_PY
+                or file_path.parent.name == "_typings"
+            ),
+            is_fixture_module=is_fixture_module,
+            type_checking_imports=type_checking_imports,
+        )
 
     @classmethod
     def discover_codegen_projects(
@@ -244,7 +226,7 @@ class FlextInfraUtilitiesCodegenNamespace:
     ) -> r[Sequence[p.Infra.ProjectInfo]]:
         """Discover only projects that participate in codegen automation."""
         if projects is None:
-            projects_result = FlextInfraUtilitiesDiscovery.discover_projects(
+            projects_result = FlextInfraUtilitiesDocsScope.discover_projects(
                 workspace_root,
             )
             if not projects_result.is_success:
@@ -273,39 +255,26 @@ class FlextInfraUtilitiesCodegenNamespace:
                 validation.error or "namespace validation failed",
             )
         report = validation.unwrap()
-        return r[tuple[m.Infra.CensusViolation, ...]].ok(
-            cls.parse_census_violations(report.violations),
-        )
-
-    @classmethod
-    def parse_census_violations(
-        cls,
-        violations: Sequence[str],
-    ) -> tuple[m.Infra.CensusViolation, ...]:
-        """Parse raw validator lines into typed violations."""
-        return tuple(
-            parsed
-            for violation in violations
-            if (parsed := cls.parse_census_violation(violation)) is not None
-        )
-
-    @staticmethod
-    def parse_census_violation(
-        violation: str,
-    ) -> m.Infra.CensusViolation | None:
-        """Parse a single namespace violation string into a typed model."""
-        match = c.Infra.VIOLATION_PATTERN.match(violation)
-        if match is None:
-            return None
-        rule = match.group("rule")
-        module = match.group("module")
-        return m.Infra.CensusViolation(
-            module=module,
-            rule=rule,
-            line=int(match.group("line")),
-            message=match.group("message"),
-            fixable=FlextInfraUtilitiesCodegenGovernance.is_rule_fixable(rule, module),
-        )
+        parsed: list[m.Infra.CensusViolation] = []
+        for violation in report.violations:
+            match = c.Infra.VIOLATION_PATTERN.match(violation)
+            if match is None:
+                continue
+            rule = match.group("rule")
+            module = match.group("module")
+            parsed.append(
+                m.Infra.CensusViolation(
+                    module=module,
+                    rule=rule,
+                    line=int(match.group("line")),
+                    message=match.group("message"),
+                    fixable=FlextInfraUtilitiesCodegenGovernance.is_rule_fixable(
+                        rule,
+                        module,
+                    ),
+                )
+            )
+        return r[tuple[m.Infra.CensusViolation, ...]].ok(tuple(parsed))
 
     @classmethod
     def normalize_canonical_facades(
@@ -354,7 +323,7 @@ class FlextInfraUtilitiesCodegenNamespace:
             )
             if resource is None:
                 return
-            source = FlextInfraUtilitiesRope.read_source(resource)
+            source = resource.read()
             updated, class_name = cls._normalize_facade_base_source(
                 rope_project=rope_project,
                 resource=resource,
@@ -364,7 +333,7 @@ class FlextInfraUtilitiesCodegenNamespace:
             )
             if updated == source or not class_name:
                 return
-            FlextInfraUtilitiesRope.write_source(
+            FlextInfraUtilitiesRope.apply_source_change(
                 rope_project,
                 resource,
                 updated,

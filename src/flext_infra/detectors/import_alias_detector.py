@@ -7,29 +7,19 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import ClassVar, override
 
 from flext_infra import (
-    FlextInfraScanFileMixin,
     c,
     m,
-    p,
     u,
 )
 
 
-class FlextInfraImportAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
+class FlextInfraImportAliasDetector:
     """Detect deep import paths that should use top-level aliases."""
 
-    _rule_id: ClassVar[str] = "namespace.import_alias"
-    _MESSAGE_TEMPLATE: ClassVar[str] = (
-        "Deep import '{current_import}' should use '{suggested_import}'"
-    )
-
-    @classmethod
-    @override
+    @staticmethod
     def detect_file(
-        cls,
         ctx: m.Infra.DetectorContext,
     ) -> Sequence[m.Infra.ImportAliasViolation]:
         """Detect deep alias imports directly from Rope import descriptors."""
@@ -51,7 +41,16 @@ class FlextInfraImportAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
             ctx.rope_project,
             resource,
         ):
-            if not cls._is_deep_flext_module(from_import.module_name):
+            if not (
+                from_import.module_name.startswith(
+                    c.Infra.Packages.PREFIX_UNDERSCORE
+                )
+                and "." in from_import.module_name
+                and all(
+                    not part.startswith("_")
+                    for part in from_import.module_name.split(".")[1:]
+                )
+            ):
                 continue
             alias_names = sorted(
                 name
@@ -78,15 +77,6 @@ class FlextInfraImportAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
                 )
             )
         return violations
-
-    @staticmethod
-    def _is_deep_flext_module(module_name: str) -> bool:
-        if (
-            not module_name.startswith(c.Infra.Packages.PREFIX_UNDERSCORE)
-            or "." not in module_name
-        ):
-            return False
-        return all(not part.startswith("_") for part in module_name.split(".")[1:])
 
 
 __all__ = ["FlextInfraImportAliasDetector"]

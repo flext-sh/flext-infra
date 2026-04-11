@@ -8,9 +8,12 @@ from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_infra import (
+    FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesFormatting,
+    FlextInfraUtilitiesParsing,
     FlextInfraUtilitiesProtectedEdit,
     FlextInfraUtilitiesRefactorNamespaceCommon,
+    FlextInfraUtilitiesRope,
     c,
     m,
     t,
@@ -21,6 +24,121 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
     FlextInfraUtilitiesRefactorNamespaceCommon
 ):
     """Helpers for block moves and compatibility-alias rewrites."""
+
+    @classmethod
+    def rewrite_import_violations(
+        cls,
+        *,
+        py_files: Sequence[Path],
+        project_package: str,
+    ) -> None:
+        if not py_files:
+            return
+        with FlextInfraUtilitiesRope.open_project(
+            cls._shared_workspace_root(py_files=py_files),
+        ) as rope_project:
+            for file_path in py_files:
+                if file_path.name == c.Infra.Files.INIT_PY:
+                    continue
+                project_root = (
+                    FlextInfraUtilitiesDiscovery.discover_project_root_from_file(
+                        file_path,
+                    )
+                )
+                if project_root is not None and (
+                    FlextInfraUtilitiesDiscovery.contextual_runtime_alias_sources(
+                        project_root=project_root,
+                        file_path=file_path,
+                    )
+                ):
+                    continue
+                try:
+                    source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+                except OSError:
+                    continue
+                if FlextInfraUtilitiesParsing.looks_like_facade_file(
+                    file_path=file_path,
+                    source=source,
+                ):
+                    continue
+                resource = FlextInfraUtilitiesRope.get_resource_from_path(
+                    rope_project,
+                    file_path,
+                )
+                if resource is None:
+                    continue
+                rewritten = FlextInfraUtilitiesRope.collapse_submodule_alias_imports(
+                    rope_project,
+                    resource,
+                    package_name=project_package,
+                    aliases=tuple(sorted(c.Infra.RUNTIME_ALIAS_NAMES)),
+                    apply=True,
+                )
+                if rewritten is None:
+                    continue
+                _ = FlextInfraUtilitiesRope.organize_imports(
+                    rope_project,
+                    resource,
+                    apply=True,
+                )
+                FlextInfraUtilitiesFormatting.run_ruff_fix(file_path)
+
+    @classmethod
+    def rewrite_runtime_alias_violations(
+        cls,
+        *,
+        py_files: Sequence[Path],
+    ) -> None:
+        if not py_files:
+            return
+        workspace_root = cls._shared_workspace_root(py_files=py_files)
+        with FlextInfraUtilitiesRope.open_project(
+            workspace_root,
+        ) as rope_project:
+            for file_path in py_files:
+                expected = c.Infra.NAMESPACE_FAMILY_EXPECTED_ALIAS.get(file_path.name)
+                if expected is None:
+                    continue
+                alias_name, expected_suffix = expected
+                resource = FlextInfraUtilitiesRope.get_resource_from_path(
+                    rope_project,
+                    file_path,
+                )
+                if resource is None:
+                    continue
+                class_candidates = [
+                    info.name
+                    for info in FlextInfraUtilitiesRope.get_class_info(
+                        rope_project,
+                        resource,
+                    )
+                    if info.name.endswith(expected_suffix)
+                ]
+                if len(class_candidates) != 1:
+                    continue
+                target_class = class_candidates[0]
+                lines = file_path.read_text(
+                    encoding=c.Infra.Encoding.DEFAULT,
+                ).splitlines()
+                kept = [
+                    line
+                    for line in lines
+                    if not line.strip().startswith(f"{alias_name} = ")
+                ]
+                rewritten = (
+                    "\n".join(kept).rstrip() + f"\n\n{alias_name} = {target_class}\n"
+                )
+                original_source = file_path.read_text(
+                    encoding=c.Infra.Encoding.DEFAULT,
+                )
+                if rewritten == original_source:
+                    continue
+                _ = FlextInfraUtilitiesProtectedEdit.protected_source_write(
+                    file_path,
+                    workspace=workspace_root,
+                    updated_source=rewritten,
+                    keep_backup=True,
+                )
 
     @staticmethod
     def rewrite_manual_protocol_violations(
@@ -304,39 +422,68 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
         py_files: Sequence[Path],
         moves: Sequence[t.Infra.Triple[Path, Path, t.Infra.VariadicTuple[str]]],
     ) -> None:
-        src_dir = project_root / c.Infra.Paths.DEFAULT_SRC_DIR
-
-        def _module_path(file_path: Path) -> str:
-            try:
-                relative = file_path.relative_to(src_dir)
-            except ValueError:
-                return ""
-            parts = list(relative.with_suffix("").parts)
-            if parts and parts[-1] == c.Infra.Dunders.INIT:
-                parts = parts[:-1]
-            return ".".join(parts)
-
-        mappings = [
-            (_module_path(source), _module_path(target), set(names))
-            for source, target, names in moves
-            if _module_path(source) and _module_path(target)
-        ]
-        for py_file in py_files:
-            source = py_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
-            updated = source
-            for source_module, target_module, names in mappings:
-                for name in names:
-                    updated = updated.replace(
-                        f"from {source_module} import {name}",
-                        f"from {target_module} import {name}",
-                    )
-            if updated != source:
-                _ = FlextInfraUtilitiesProtectedEdit.protected_source_write(
-                    py_file,
-                    workspace=project_root,
-                    updated_source=updated,
-                    keep_backup=True,
+        with FlextInfraUtilitiesRope.open_project(project_root) as rope_project:
+            mappings: MutableSequence[
+                t.Infra.Triple[str, str, t.Infra.VariadicTuple[str]]
+            ] = []
+            for source, target, names in moves:
+                source_resource = FlextInfraUtilitiesRope.get_resource_from_path(
+                    rope_project, source
                 )
+                target_resource = FlextInfraUtilitiesRope.get_resource_from_path(
+                    rope_project, target
+                )
+                if source_resource is None or target_resource is None:
+                    continue
+                try:
+                    source_module = FlextInfraUtilitiesRope.get_pymodule(
+                        rope_project, source_resource
+                    ).get_name()
+                    target_module = FlextInfraUtilitiesRope.get_pymodule(
+                        rope_project, target_resource
+                    ).get_name()
+                except (
+                    *FlextInfraUtilitiesRope.RUNTIME_ERRORS,
+                    *FlextInfraUtilitiesRope.SYNTAX_ERRORS,
+                    TypeError,
+                ):
+                    continue
+                if source_module and target_module:
+                    mappings.append((source_module, target_module, names))
+            for py_file in py_files:
+                resource = FlextInfraUtilitiesRope.get_resource_from_path(
+                    rope_project, py_file
+                )
+                if resource is None:
+                    continue
+                original_source = py_file.read_text(
+                    encoding=c.Infra.Encoding.DEFAULT,
+                )
+                changed = False
+                for source_module, target_module, names in mappings:
+                    updated = FlextInfraUtilitiesRope.relocate_from_import_aliases(
+                        rope_project,
+                        resource,
+                        source_module=source_module,
+                        target_module=target_module,
+                        aliases=names,
+                        apply=True,
+                    )
+                    changed = changed or updated is not None
+                if changed:
+                    _ = FlextInfraUtilitiesRope.organize_imports(
+                        rope_project,
+                        resource,
+                        apply=True,
+                    )
+                    backup_path = py_file.with_suffix(
+                        py_file.suffix + c.Infra.SafeExecution.BAK_SUFFIX,
+                    )
+                    if not backup_path.exists():
+                        backup_path.write_text(
+                            original_source,
+                            encoding=c.Infra.Encoding.DEFAULT,
+                        )
 
 
 __all__ = ["FlextInfraUtilitiesRefactorNamespaceMoves"]

@@ -6,51 +6,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
-from pathlib import Path
-from typing import ClassVar, override
+from collections.abc import Sequence
 
-from flext_infra import FlextInfraScanFileMixin, c, m, p, t, u
+from flext_infra import c, m, u
 
 
-class FlextInfraClassPlacementDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
+class FlextInfraClassPlacementDetector:
     """Detect Pydantic models outside canonical model files via rope."""
 
-    _rule_id: ClassVar[str] = "namespace.class_placement"
-    _MESSAGE_TEMPLATE: ClassVar[str] = (
-        "Model class '{name}' must be in canonical model files ({suggestion})"
-    )
-
     @staticmethod
-    def _normalize_base_name(base_name: str) -> str:
-        """Normalize semantic/AST base names to their terminal class name."""
-        return base_name.rsplit(".", maxsplit=1)[-1]
-
-    @classmethod
-    def _matching_base_class(cls, base_names: t.StrSequence) -> str | None:
-        """Return the first supported Pydantic base class found in base_names."""
-        for base_name in base_names:
-            normalized = cls._normalize_base_name(base_name)
-            if normalized in c.Infra.ClassPlacement.PYDANTIC_BASE_NAMES:
-                return normalized
-        return None
-
-    @classmethod
-    def _ast_class_info(
-        cls,
-        rope_project: t.Infra.RopeProject,
-        file_path: Path,
-    ) -> Mapping[str, m.Infra.ClassInfo]:
-        """Parse class declarations when rope cannot resolve imported base classes."""
-        source = cls._get_source_or_empty(rope_project, file_path)
-        if source is None:
-            return {}
-        return {ci.name: ci for ci in u.Infra.parse_all_class_bases(source)}
-
-    @classmethod
-    @override
     def detect_file(
-        cls,
         ctx: m.Infra.DetectorContext,
     ) -> Sequence[m.Infra.ClassPlacementViolation]:
         """Detect misplaced Pydantic model classes."""
@@ -66,29 +31,21 @@ class FlextInfraClassPlacementDetector(FlextInfraScanFileMixin, p.Infra.Scanner)
         res = u.Infra.get_resource_from_path(rope_project, file_path)
         if res is None:
             return []
-        ast_class_info = cls._ast_class_info(rope_project, file_path)
-        rope_class_info = list(u.Infra.get_class_info(rope_project, res))
-        processed_names = {ci.name for ci in rope_class_info}
-        class_info = [
-            *rope_class_info,
-            *[
-                info
-                for name, info in ast_class_info.items()
-                if name not in processed_names
-            ],
-        ]
         violations: list[m.Infra.ClassPlacementViolation] = []
-        for ci in class_info:
+        for ci in u.Infra.get_class_info(rope_project, res):
             if ci.name.startswith("_"):
                 continue
-            base_class = cls._matching_base_class(ci.bases)
+            base_class = next(
+                (
+                    base_name.rsplit(".", maxsplit=1)[-1]
+                    for base_name in ci.bases
+                    if base_name.rsplit(".", maxsplit=1)[-1]
+                    in c.Infra.ClassPlacement.PYDANTIC_BASE_NAMES
+                ),
+                None,
+            )
             if base_class is None:
-                ast_info = ast_class_info.get(ci.name)
-                if ast_info is None:
-                    continue
-                base_class = cls._matching_base_class(ast_info.bases)
-                if base_class is None:
-                    continue
+                continue
             violations.append(
                 m.Infra.ClassPlacementViolation(
                     file=str(file_path),

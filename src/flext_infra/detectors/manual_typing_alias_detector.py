@@ -7,21 +7,15 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import MutableSequence, Sequence
-from typing import ClassVar, override
 
-from flext_infra import FlextInfraScanFileMixin, c, m, p
+from flext_infra import c, m, u
 
 
-class FlextInfraManualTypingAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
+class FlextInfraManualTypingAliasDetector:
     """Detect typing declarations outside canonical typings files via rope."""
 
-    _rule_id: ClassVar[str] = "namespace.manual_typing_alias"
-    _MESSAGE_TEMPLATE: ClassVar[str] = "Typing alias '{name}': {detail}"
-
-    @classmethod
-    @override
+    @staticmethod
     def detect_file(
-        cls,
         ctx: m.Infra.DetectorContext,
     ) -> Sequence[m.Infra.ManualTypingAliasViolation]:
         """Detect typing declaration placement violations in a single file."""
@@ -33,39 +27,31 @@ class FlextInfraManualTypingAliasDetector(FlextInfraScanFileMixin, p.Infra.Scann
             or c.Infra.MRO_TYPINGS_DIRECTORY in file_path.parts
         ):
             return []
-        source = cls._get_source_or_empty(rope_project, file_path)
-        if source is None:
+        resource = u.Infra.get_resource_from_path(rope_project, file_path)
+        if resource is None:
             return []
+        lines = resource.read().splitlines()
         violations: MutableSequence[m.Infra.ManualTypingAliasViolation] = []
-        # PEP 695: type Foo = ...
-        for hit in c.Infra.PEP695_RE.finditer(source):
-            violations.append(
-                m.Infra.ManualTypingAliasViolation(
-                    file=str(file_path),
-                    line=source[: hit.start()].count("\n") + 1,
-                    name=hit.group(1),
-                    detail="PEP695 alias must be centralized under typings scope",
+        for symbol in u.Infra.get_module_symbols(rope_project, resource):
+            if symbol.kind != "assignment" or not 0 < symbol.line <= len(lines):
+                continue
+            line = lines[symbol.line - 1]
+            detail = ""
+            if line.lstrip().startswith("type "):
+                detail = "PEP695 alias must be centralized under typings scope"
+            elif c.Infra.TYPEALIAS_ANNOT_RE.match(line):
+                detail = "TypeAlias assignment must be centralized under typings scope"
+            elif c.Infra.TYPING_FACTORY_ASSIGN_RE.match(line):
+                detail = "Typing factory assignment must be centralized under typings scope"
+            if detail:
+                violations.append(
+                    m.Infra.ManualTypingAliasViolation(
+                        file=str(file_path),
+                        line=symbol.line,
+                        name=symbol.name,
+                        detail=detail,
+                    )
                 )
-            )
-        # TypeAlias annotation: Foo: TypeAlias = ...
-        for hit in c.Infra.TYPEALIAS_ANNOT_RE.finditer(source):
-            violations.append(
-                m.Infra.ManualTypingAliasViolation(
-                    file=str(file_path),
-                    line=source[: hit.start()].count("\n") + 1,
-                    name=hit.group(1),
-                    detail="TypeAlias assignment must be centralized under typings scope",
-                )
-            )
-        for hit in c.Infra.TYPING_FACTORY_ASSIGN_RE.finditer(source):
-            violations.append(
-                m.Infra.ManualTypingAliasViolation(
-                    file=str(file_path),
-                    line=source[: hit.start()].count("\n") + 1,
-                    name=hit.group(1),
-                    detail="Typing factory assignment must be centralized under typings scope",
-                )
-            )
         return violations
 
 

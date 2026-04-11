@@ -323,9 +323,7 @@ class FlextInfraRefactorEngineHelpersMixin:
                 )
             ]
         u.Infra.refactor_info(f"Found {len(collected)} files to process")
-        results: MutableSequence[m.Infra.Result] = list(
-            u.Infra.run_rope_pre_hooks(project_path, dry_run=dry_run)
-        )
+        results: MutableSequence[m.Infra.Result] = []
         results.extend(self.refactor_files(collected, dry_run=dry_run))
         results.extend(u.Infra.run_rope_post_hooks(project_path, dry_run=dry_run))
         if apply_safety and not dry_run:
@@ -367,7 +365,6 @@ class FlextInfraRefactorEngineHelpersMixin:
             return err
         results: MutableSequence[m.Infra.Result] = []
         processed: MutableSequence[str] = []
-        results.extend(u.Infra.run_rope_pre_hooks(root, dry_run=dry_run))
         for proj in projects:
             if apply_safety and self.safety_manager.is_emergency_stop_requested():
                 break

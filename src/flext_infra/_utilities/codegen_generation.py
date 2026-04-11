@@ -236,6 +236,8 @@ class FlextInfraUtilitiesCodegenGeneration:
         lazy_filtered: t.Infra.LazyImportMap,
         current_pkg: str,
         children_lazy: tuple[str, ...],
+        *,
+        include_module_exports: bool = False,
     ) -> Sequence[tuple[str, str, str]]:
         """Build lazy import entries, excluding child-package sub-modules."""
         child_prefixes = tuple(f"{cp}." for cp in children_lazy)
@@ -245,7 +247,10 @@ class FlextInfraUtilitiesCodegenGeneration:
             if exp not in lazy_filtered:
                 continue
             mod, attr = lazy_filtered[exp]
-            if FlextInfraUtilitiesCodegenGeneration.is_module_or_package_export(attr):
+            if (
+                FlextInfraUtilitiesCodegenGeneration.is_module_or_package_export(attr)
+                and not include_module_exports
+            ):
                 continue
             compact_mod = FlextInfraUtilitiesCodegenGeneration.compact_lazy_module_path(
                 current_pkg,

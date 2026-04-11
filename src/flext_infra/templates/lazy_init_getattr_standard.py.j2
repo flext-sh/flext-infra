@@ -30,3 +30,11 @@ install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)
 install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, publish_all=False)
 {%- endif %}
 {%- endif %}
+{%- if publish_all and exports %}
+
+__all__ = [
+{%- for export in exports %}
+    "{{ export }}",
+{%- endfor %}
+]
+{%- endif %}

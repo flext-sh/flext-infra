@@ -13,12 +13,7 @@ from __future__ import annotations
 from flext_tests import FlextTestsConstants
 
 from flext_infra import FlextInfraConstants
-from tests._constants.domain import (
-    TestsFlextInfraConstantsMarkers,
-    TestsFlextInfraConstantsPaths,
-    TestsFlextInfraConstantsProjects,
-    TestsFlextInfraConstantsVersions,
-)
+from tests._constants.domain import TestsFlextInfraConstantsDomain
 from tests._constants.fixtures import (
     TestsFlextInfraConstantsFixtures,
 )
@@ -28,10 +23,7 @@ class TestsFlextInfraConstants(
     FlextTestsConstants,
     FlextInfraConstants,
     TestsFlextInfraConstantsFixtures,
-    TestsFlextInfraConstantsProjects,
-    TestsFlextInfraConstantsMarkers,
-    TestsFlextInfraConstantsVersions,
-    TestsFlextInfraConstantsPaths,
+    TestsFlextInfraConstantsDomain,
 ):
     """Constants for FLEXT infra tests - extends FlextTestsConstants.
 
@@ -43,10 +35,7 @@ class TestsFlextInfraConstants(
     class Infra(
         FlextInfraConstants.Infra,
         TestsFlextInfraConstantsFixtures.Infra,
-        TestsFlextInfraConstantsProjects.Infra,
-        TestsFlextInfraConstantsMarkers.Infra,
-        TestsFlextInfraConstantsVersions.Infra,
-        TestsFlextInfraConstantsPaths.Infra,
+        TestsFlextInfraConstantsDomain.Infra,
     ):
         """Infra-specific test constants namespace.
 
@@ -56,10 +45,7 @@ class TestsFlextInfraConstants(
 
         class Tests(
             TestsFlextInfraConstantsFixtures.Infra.Tests,
-            TestsFlextInfraConstantsProjects.Infra.Tests,
-            TestsFlextInfraConstantsMarkers.Infra.Tests,
-            TestsFlextInfraConstantsVersions.Infra.Tests,
-            TestsFlextInfraConstantsPaths.Infra.Tests,
+            TestsFlextInfraConstantsDomain.Infra.Tests,
         ):
             """Test-specific constants namespace with infra extensions.
 

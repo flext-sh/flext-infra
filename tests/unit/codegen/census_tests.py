@@ -15,7 +15,22 @@ import pytest
 from flext_tests import tm
 
 from flext_infra import FlextInfraCodegenCensus
-from tests import m, t, u
+from tests import m, r, t, u
+
+
+def _parse_violation(violation: str) -> m.Infra.CensusViolation | None:
+    parsed = u.Infra.parse_namespace_validation(
+        r[m.Infra.ValidationReport].ok(
+            m.Infra.ValidationReport(
+                passed=True,
+                violations=[violation],
+            )
+        )
+    )
+    if parsed.is_failure:
+        return None
+    violations = parsed.unwrap()
+    return violations[0] if violations else None
 
 
 class TestParseViolationValid:
@@ -67,7 +82,7 @@ class TestParseViolationValid:
         expected_line: int,
         expected_msg: str,
     ) -> None:
-        result = u.Infra.parse_census_violation(violation_str)
+        result = _parse_violation(violation_str)
         tm.that(result, none=False)
         tm.that(result, is_=m.Infra.CensusViolation)
         assert result is not None
@@ -100,12 +115,12 @@ class TestParseViolationInvalid:
         ],
     )
     def test_returns_none(self, violation_str: str) -> None:
-        tm.that(u.Infra.parse_census_violation(violation_str), none=True)
+        tm.that(_parse_violation(violation_str), none=True)
 
 
 class TestFixabilityClassification:
     def test_ns000_not_fixable(self) -> None:
-        result = u.Infra.parse_census_violation(
+        result = _parse_violation(
             "[NS-000-001] src/file.py:1 — Structure violation",
         )
         tm.that(result, none=False)
@@ -113,7 +128,7 @@ class TestFixabilityClassification:
         tm.that(not result.fixable, eq=True)
 
     def test_ns001_fixable(self) -> None:
-        result = u.Infra.parse_census_violation(
+        result = _parse_violation(
             "[NS-001-001] src/file.py:1 — Constant violation",
         )
         tm.that(result, none=False)
@@ -121,7 +136,7 @@ class TestFixabilityClassification:
         tm.that(result.fixable, eq=True)
 
     def test_ns002_fixable(self) -> None:
-        result = u.Infra.parse_census_violation(
+        result = _parse_violation(
             "[NS-002-001] src/file.py:1 — TypeVar violation",
         )
         tm.that(result, none=False)
@@ -130,7 +145,7 @@ class TestFixabilityClassification:
 
     def test_ns000_multiple_sub_rules_not_fixable(self) -> None:
         for sub in ("001", "002", "099"):
-            result = u.Infra.parse_census_violation(
+            result = _parse_violation(
                 f"[NS-000-{sub}] src/x.py:1 — msg",
             )
             tm.that(result, none=False)

@@ -631,3 +631,98 @@ project-type-overrides:
       reportMissingTypeStubs: "none"
   app:
     pyright: {}
+
+lazy-init:
+  root-namespace-files:
+    - api.py
+    - base.py
+    - cli.py
+    - constants.py
+    - helpers.py
+    - models.py
+    - protocols.py
+    - service.py
+    - services.py
+    - settings.py
+    - typings.py
+    - utilities.py
+  public-file-aliases:
+    constants.py: c
+    helpers.py: h
+    models.py: m
+    protocols.py: p
+    service.py: s
+    typings.py: t
+    utilities.py: u
+  public-file-suffixes:
+    constants.py: Constants
+    helpers.py: Helpers
+    models.py: Models
+    protocols.py: Protocols
+    typings.py: Types
+    utilities.py: Utilities
+  private-family-tokens:
+    c:
+      - Constants
+    m:
+      - Models
+    p:
+      - Protocols
+    t:
+      - Types
+      - Typing
+    u:
+      - Utilities
+  surface-prefixes:
+    tests: Tests
+    examples: Examples
+    scripts: Scripts
+  inherited-exports:
+    src:
+      - c
+      - d
+      - e
+      - h
+      - m
+      - p
+      - r
+      - s
+      - t
+      - u
+      - x
+    tests:
+      - reset_settings
+      - settings
+      - settings_factory
+      - td
+      - tf
+      - tk
+      - tm
+      - tv
+    examples:
+      - c
+      - d
+      - e
+      - h
+      - m
+      - p
+      - r
+      - s
+      - t
+      - u
+      - x
+    scripts:
+      - c
+      - d
+      - e
+      - h
+      - m
+      - p
+      - r
+      - s
+      - t
+      - u
+      - x
+  main-export-files:
+    - cli.py
+    - main.py

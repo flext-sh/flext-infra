@@ -6,6 +6,7 @@ aliases to their correct sources (core, submodule, or TYPE_CHECKING block).
 
 from __future__ import annotations
 
+import re
 from collections.abc import MutableMapping, MutableSequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -108,14 +109,18 @@ class FlextInfraTransformerTier0ImportFixer:
                     name_part = name_part.strip()
                     if not name_part:
                         continue
-                    bound = u.Infra.bound_name(name_part)
+                    bound = (
+                        name_part.split(" as ", maxsplit=1)[1].strip()
+                        if " as " in name_part
+                        else name_part
+                    )
                     if len(bound) == 1 and bound.islower():
                         self._self_import_aliases.add(bound)
 
         def _scan_runtime_usage(self, source: str) -> None:
             """Detect aliases used at runtime (not just in annotations)."""
             for alias in self._self_import_aliases:
-                pattern = u.Infra.word_boundary_re(alias)
+                pattern = re.compile(rf"\b{re.escape(alias)}\b")
                 # Check for usage outside import lines and annotations
                 for line in source.splitlines():
                     stripped = line.strip()
@@ -182,7 +187,7 @@ class FlextInfraTransformerTier0ImportFixer:
             resource: t.Infra.RopeResource,
         ) -> t.Infra.TransformResult:
             """Apply tier 0 import fixes via rope."""
-            source = u.Infra.read_source(resource)
+            source = resource.read()
             self._detect_missing_classes(source)
             if self._root_remove:
                 u.Infra.remove_import_names(
@@ -221,7 +226,7 @@ class FlextInfraTransformerTier0ImportFixer:
                 )
             if self._type_checking_pending:
                 self._add_type_checking_block(rope_project, resource)
-            final = u.Infra.read_source(resource)
+            final = resource.read()
             return final, list(self._changes)
 
         def _detect_missing_classes(self, source: str) -> None:
@@ -237,7 +242,7 @@ class FlextInfraTransformerTier0ImportFixer:
             resource: t.Infra.RopeResource,
         ) -> None:
             """Add TYPE_CHECKING block with pending type-only imports."""
-            source = u.Infra.read_source(resource)
+            source = resource.read()
             names = ", ".join(sorted(self._type_checking_pending))
             tc_import = f"from {self._package_name} import {names}"
             if "from typing import TYPE_CHECKING" not in source:
@@ -249,14 +254,14 @@ class FlextInfraTransformerTier0ImportFixer:
                     apply=True,
                 )
                 self._changes.append("Added 'from typing import TYPE_CHECKING'")
-                source = u.Infra.read_source(resource)
+                source = resource.read()
             if "if TYPE_CHECKING:" not in source:
                 block = f"\nif TYPE_CHECKING:\n    {tc_import}\n"
                 lines = source.splitlines(keepends=True)
                 idx = u.Infra.find_import_insert_position(lines)
                 lines.insert(idx, block)
                 new_source = "".join(lines)
-                u.Infra.write_source(
+                u.Infra.apply_source_change(
                     rope_project,
                     resource,
                     new_source,

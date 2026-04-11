@@ -4,98 +4,22 @@ from __future__ import annotations
 
 import re
 from collections.abc import Sequence
-from typing import TypeGuard
 
 import rope.contrib.findit as rope_findit
 import rope.refactor.importutils as rope_importutils
-import rope.refactor.rename as rope_rename
 from rope.base.change import ChangeSet
 from rope.base.exceptions import RefactoringError, ResourceNotFoundError
-from rope.refactor.importutils import ImportOrganizer
 from rope.refactor.importutils.importinfo import FromImport
-from rope.refactor.rename import Rename
 
 from flext_infra import (
     FlextInfraUtilitiesRopeCore,
     c,
-    p,
     t,
 )
 
 
 class FlextInfraUtilitiesRopeImports:
     """Rope-backed import organization and rename helpers."""
-
-    @staticmethod
-    def _is_rope_rename_like(value: object) -> TypeGuard[t.Infra.RopeRename]:
-        """Return True when one object exposes Rope's rename contract."""
-        return isinstance(value, Rename)
-
-    @staticmethod
-    def _is_rope_find_occurrences_fn(
-        value: object,
-    ) -> TypeGuard[t.Infra.RopeFindOccurrencesFn]:
-        """Return True when one object is callable as Rope's occurrence finder."""
-        return callable(value)
-
-    @staticmethod
-    def _is_rope_findit_module(
-        value: object,
-    ) -> TypeGuard[t.Infra.RopeFindItModule]:
-        """Return True when one module exposes Rope's occurrence finder contract."""
-        return isinstance(value, p.Infra.RopeFindItModuleLike)
-
-    @staticmethod
-    def _is_rope_import_organizer_like(
-        value: object,
-    ) -> TypeGuard[t.Infra.RopeImportOrganizer]:
-        """Return True when one object exposes Rope's import organizer contract."""
-        return isinstance(value, ImportOrganizer)
-
-    @staticmethod
-    def _is_rope_changes_like(value: object) -> TypeGuard[t.Infra.RopeChanges]:
-        """Return True when one object exposes Rope's change-set contract."""
-        return isinstance(value, ChangeSet)
-
-    @staticmethod
-    def _ensure_rope_findit_module(value: object) -> t.Infra.RopeFindItModule:
-        """Validate rope.contrib.findit against the local module contract."""
-        if not FlextInfraUtilitiesRopeImports._is_rope_findit_module(value):
-            msg = "rope findit module does not satisfy RopeFindItModuleLike"
-            raise TypeError(msg)
-        return value
-
-    @staticmethod
-    def rename_symbol_workspace(
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
-        offset: int,
-        new_name: str,
-        *,
-        apply: bool,
-    ) -> t.StrSequence:
-        """Rename symbol at offset across the whole project."""
-        changed_files: t.MutableIntMapping = {}
-        try:
-            project_impl = FlextInfraUtilitiesRopeCore.ensure_rope_project(
-                rope_project,
-            )
-            resource_impl = FlextInfraUtilitiesRopeCore.ensure_rope_api_resource(
-                resource,
-            )
-            rename = rope_rename.Rename(project_impl, resource_impl, offset)
-            if not FlextInfraUtilitiesRopeImports._is_rope_rename_like(rename):
-                return ()
-            changes = rename.get_changes(new_name)
-        except (RefactoringError, TypeError):
-            return ()
-        if not FlextInfraUtilitiesRopeImports._is_rope_changes_like(changes):
-            return ()
-        for change in changes.changes:
-            changed_files[change.resource.path] = 1
-        if apply:
-            project_impl.do(FlextInfraUtilitiesRopeCore.ensure_rope_change_set(changes))
-        return list(changed_files)
 
     @staticmethod
     def find_occurrences(
@@ -107,19 +31,10 @@ class FlextInfraUtilitiesRopeImports:
     ) -> Sequence[t.Infra.RopeLocation]:
         """Find all occurrences of the symbol at offset across the project."""
         try:
-            project_impl = FlextInfraUtilitiesRopeCore.ensure_rope_project(
-                rope_project,
-            )
-            resource_impl = FlextInfraUtilitiesRopeCore.ensure_rope_api_resource(
-                resource,
-            )
-            findit_module = FlextInfraUtilitiesRopeImports._ensure_rope_findit_module(
-                rope_findit,
-            )
             return list(
-                findit_module.find_occurrences(
-                    project_impl,
-                    resource_impl,
+                rope_findit.find_occurrences(
+                    rope_project,
+                    resource,
                     offset,
                     in_hierarchy=in_hierarchy,
                 )
@@ -136,22 +51,12 @@ class FlextInfraUtilitiesRopeImports:
     ) -> bool:
         """Organize imports for one rope resource using rope's import engine."""
         try:
-            project_impl = FlextInfraUtilitiesRopeCore.ensure_rope_project(
-                rope_project,
-            )
-            resource_impl = FlextInfraUtilitiesRopeCore.ensure_rope_resource(
-                resource,
-            )
-            original_source = resource_impl.read()
-            organizer = rope_importutils.ImportOrganizer(project_impl)
-            if not FlextInfraUtilitiesRopeImports._is_rope_import_organizer_like(
-                organizer,
-            ):
-                return False
-            changes = organizer.organize_imports(resource_impl)
+            original_source = resource.read()
+            organizer = rope_importutils.ImportOrganizer(rope_project)
+            changes = organizer.organize_imports(resource)
         except (RefactoringError, ResourceNotFoundError, AttributeError, TypeError):
             return False
-        if not FlextInfraUtilitiesRopeImports._is_rope_changes_like(changes):
+        if not isinstance(changes, ChangeSet):
             return False
         change_list = tuple(changes.changes)
         if not change_list:
@@ -161,39 +66,9 @@ class FlextInfraUtilitiesRopeImports:
             for change in change_list
         )
         if changed and apply:
-            project_impl.do(FlextInfraUtilitiesRopeCore.ensure_rope_change_set(changes))
+            rope_project.do(changes)
         return changed
 
-    @staticmethod
-    def get_plain_from_imported_names(
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
-        *,
-        module_name: str,
-    ) -> t.Infra.StrSet:
-        """Return unaliased names imported from one absolute `from x import ...`."""
-        imported: t.Infra.StrSet = set()
-        module_imports = FlextInfraUtilitiesRopeCore.get_module_imports(
-            rope_project,
-            resource,
-        )
-        if module_imports is None:
-            return imported
-        for import_stmt in FlextInfraUtilitiesRopeCore.get_import_statements(
-            module_imports,
-        ):
-            from_import = FlextInfraUtilitiesRopeCore.absolute_from_import(
-                import_stmt.import_info,
-                module_name=module_name,
-            )
-            if from_import is None:
-                continue
-            for name, alias in from_import.names_and_aliases:
-                if alias is None:
-                    imported.add(name)
-        return imported
-
-    @staticmethod
     def get_absolute_from_imports(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
@@ -205,11 +80,12 @@ class FlextInfraUtilitiesRopeImports:
         )
         if module_imports is None:
             return ()
+        import_statements = module_imports.imports
+        if not isinstance(import_statements, list):
+            return ()
         return tuple(
             from_import
-            for import_stmt in FlextInfraUtilitiesRopeCore.get_import_statements(
-                module_imports
-            )
+            for import_stmt in import_statements
             if (
                 from_import := FlextInfraUtilitiesRopeCore.absolute_from_import_any(
                     import_stmt.import_info
@@ -242,9 +118,10 @@ class FlextInfraUtilitiesRopeImports:
         moved_aliases: t.Infra.StrSet = set()
         target_import_stmt: t.Infra.RopeImportStatement | None = None
         merged_target_pairs: Sequence[tuple[str, str | None]] = ()
-        for import_stmt in FlextInfraUtilitiesRopeCore.get_import_statements(
-            module_imports,
-        ):
+        import_statements = module_imports.imports
+        if not isinstance(import_statements, list):
+            return None
+        for import_stmt in import_statements:
             target_from_import = FlextInfraUtilitiesRopeCore.absolute_from_import(
                 import_stmt.import_info,
                 module_name=target_module,
@@ -376,9 +253,10 @@ class FlextInfraUtilitiesRopeImports:
             return None
         moved_aliases: t.Infra.StrSet = set()
         package_prefix = f"{package_name}."
-        for import_stmt in FlextInfraUtilitiesRopeCore.get_import_statements(
-            module_imports,
-        ):
+        import_statements = module_imports.imports
+        if not isinstance(import_statements, list):
+            return None
+        for import_stmt in import_statements:
             from_import = FlextInfraUtilitiesRopeCore.absolute_from_import_any(
                 import_stmt.import_info
             )
@@ -473,9 +351,10 @@ class FlextInfraUtilitiesRopeImports:
         if module_imports is None:
             return None
         changed = False
-        for import_stmt in FlextInfraUtilitiesRopeCore.get_import_statements(
-            module_imports,
-        ):
+        import_statements = module_imports.imports
+        if not isinstance(import_statements, list):
+            return None
+        for import_stmt in import_statements:
             from_import = FlextInfraUtilitiesRopeCore.absolute_from_import(
                 import_stmt.import_info,
                 module_name=from_module,
@@ -505,38 +384,6 @@ class FlextInfraUtilitiesRopeImports:
                 description=f"remove imports in <{resource.path}>",
             )
         return updated
-
-    @staticmethod
-    def ensure_future_annotations(
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
-        *,
-        apply: bool = True,
-    ) -> bool:
-        """Ensure ``from __future__ import annotations`` is present."""
-        source = resource.read()
-        if c.Infra.SourceCode.FUTURE_ANNOTATIONS in source:
-            return False
-        lines = source.splitlines(keepends=True)
-        insert_idx = 0
-        for i, line in enumerate(lines):
-            stripped = line.strip()
-            if stripped.startswith(("#", '"""', "'''")) or not stripped:
-                insert_idx = i + 1
-                continue
-            if stripped.startswith(("from __future__", "import __future__")):
-                return False
-            break
-        lines.insert(insert_idx, "from __future__ import annotations\n")
-        new_source = "".join(lines)
-        if apply:
-            FlextInfraUtilitiesRopeCore.apply_source_change(
-                rope_project,
-                resource,
-                new_source,
-                description=f"add future annotations in <{resource.path}>",
-            )
-        return True
 
 
 __all__ = ["FlextInfraUtilitiesRopeImports"]

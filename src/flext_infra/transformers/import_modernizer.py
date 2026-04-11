@@ -47,14 +47,15 @@ class FlextInfraRefactorImportModernizer(FlextInfraRopeTransformer):
         resource: t.Infra.RopeResource,
     ) -> t.Infra.TransformResult:
         """Apply import modernization via rope utilities."""
-        source = u.Infra.read_source(resource)
+        source = resource.read()
         updated, changes = self.apply_to_source(source)
-        u.Infra.write_source(
-            rope_project,
-            resource,
-            updated,
-            description="modernize imports",
-        )
+        if updated != source and changes:
+            u.Infra.apply_source_change(
+                rope_project,
+                resource,
+                updated,
+                description="modernize imports",
+            )
         return updated, changes
 
     @override

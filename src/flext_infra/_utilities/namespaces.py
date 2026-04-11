@@ -6,13 +6,11 @@ from flext_infra import (
     FlextInfraUtilitiesRefactorNamespaceFacades,
     FlextInfraUtilitiesRefactorNamespaceMoves,
     FlextInfraUtilitiesRefactorNamespaceMro,
-    FlextInfraUtilitiesRefactorNamespaceRuntime,
 )
 
 
 class FlextInfraUtilitiesRefactorNamespace(
     FlextInfraUtilitiesRefactorNamespaceFacades,
-    FlextInfraUtilitiesRefactorNamespaceRuntime,
     FlextInfraUtilitiesRefactorNamespaceMro,
     FlextInfraUtilitiesRefactorNamespaceMoves,
 ):

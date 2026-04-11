@@ -170,11 +170,11 @@ class TestFlextInfraCodegenLazyInit:
             encoding="utf-8"
         )
 
-    def test_nested_private_base_module_does_not_trigger_root_contract(
+    def test_nested_private_base_module_keeps_module_entry_without_root_contract(
         self,
         tmp_path: Path,
     ) -> None:
-        """Nested packages like transports/base.py must not be treated as root facades."""
+        """Nested packages like transports/base.py stay importable without facade checks."""
         workspace_root, package_root = u.Infra.Tests.create_lazy_init_workspace(
             tmp_path,
         )
@@ -188,14 +188,17 @@ class TestFlextInfraCodegenLazyInit:
         result = u.Infra.Tests.run_lazy_init(workspace_root)
 
         assert result == 0
-        assert not (pkg_dir / "__init__.py").exists()
+        init_content = (pkg_dir / "__init__.py").read_text(encoding="utf-8")
+        assert '".base": ("base",)' in init_content
+        assert "TestPkgServiceBase" not in init_content
 
-    def test_fails_when_namespace_module_shape_is_invalid(self, tmp_path: Path) -> None:
-        """Namespace enforcement must abort generation on invalid module shape."""
+    def test_generates_when_namespace_module_shape_is_invalid(
+        self, tmp_path: Path
+    ) -> None:
+        """Namespace enforcement is not part of lazy-init generation."""
         workspace_root, package_root = u.Infra.Tests.create_lazy_init_workspace(
             tmp_path,
         )
-        original_init = (package_root / "__init__.py").read_text(encoding="utf-8")
         (package_root / "base.py").write_text(
             "def helper() -> None:\n    pass\n\n"
             "class TestPkgServiceBase:\n    pass\n\n"
@@ -205,10 +208,10 @@ class TestFlextInfraCodegenLazyInit:
 
         result = u.Infra.Tests.run_lazy_init(workspace_root)
 
-        assert result == 1
-        assert (package_root / "__init__.py").read_text(
-            encoding="utf-8"
-        ) == original_init
+        assert result == 0
+        init_content = (package_root / "__init__.py").read_text(encoding="utf-8")
+        assert "TestPkgServiceBase" in init_content
+        assert "TestPkgCommandContext" in init_content
 
 
 __all__: t.StrSequence = []

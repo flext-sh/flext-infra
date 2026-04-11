@@ -5,7 +5,7 @@ from pathlib import Path
 from tests import c, m, u
 
 
-class TestDiscoveryConsolidated:
+class TestsFlextInfraUtilitiesDiscoveryConsolidated:
     def test_discover_project_roots_with_real_workspace_root(self) -> None:
         # Walk up from the test file to find the workspace root (contains flext-core)
         candidate = Path(__file__).resolve()

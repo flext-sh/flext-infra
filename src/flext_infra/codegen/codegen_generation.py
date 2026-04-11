@@ -218,6 +218,8 @@ class FlextInfraCodegenGeneration:
                 exports,
                 lazy_filtered,
             )
+            if publish_all
+            else tuple(sorted(exports))
         )
         type_checking_filtered: t.Infra.LazyImportMap = {
             name: val
@@ -232,6 +234,7 @@ class FlextInfraCodegenGeneration:
             )
             for child_module_path in children_lazy
         )
+        use_merge_lazy_imports = bool(rendered_child_module_paths)
         eager_export_names = [
             name for name in published_exports if name not in lazy_filtered
         ]
@@ -250,7 +253,7 @@ class FlextInfraCodegenGeneration:
             c.Infra.Templates.PREAMBLE_STANDARD
         )
         preamble: str = preamble_template.render(
-            include_merge_helper=bool(children_lazy),
+            use_merge_lazy_imports=use_merge_lazy_imports,
         )
         out.extend(preamble.splitlines())
 
@@ -275,6 +278,7 @@ class FlextInfraCodegenGeneration:
             lazy_filtered,
             current_pkg,
             children_lazy,
+            include_module_exports=not publish_all,
         )
         lazy_module_groups, lazy_alias_groups = (
             FlextInfraUtilitiesCodegenGeneration.group_lazy_entries(lazy_entries)
@@ -307,6 +311,7 @@ class FlextInfraCodegenGeneration:
             excluded_lazy_names=sorted(
                 c.Infra.INFRA_ONLY_EXPORTS,
             ),
+            use_merge_lazy_imports=use_merge_lazy_imports,
             inline_constants=sorted(inline_constants.items()),
             eager_export_names=eager_export_names,
             lazy_module_groups=lazy_module_groups,
@@ -323,6 +328,7 @@ class FlextInfraCodegenGeneration:
         )
         getattr_rendered: str = getattr_template.render(
             eager_export_names=eager_export_names,
+            exports=published_exports,
             publish_all=publish_all,
         )
         out.extend(getattr_rendered.splitlines())

@@ -13,7 +13,6 @@ import ast
 import re
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
-from typing import ClassVar
 
 from flext_infra import (
     FlextInfraUtilitiesCodegenGeneration,
@@ -34,14 +33,8 @@ from flext_infra import (
 class FlextInfraUtilitiesCodegenLazyMerging:
     """Child/descendant package collection and export merging helpers."""
 
-    @staticmethod
-    def _format_export_target(target: t.Infra.StrPair) -> str:
-        """Render one lazy-export target for collision diagnostics."""
-        module_path, attr_name = target
-        return f"{module_path}.{attr_name}" if attr_name else module_path
-
     @classmethod
-    def register_export(
+    def _register_export(
         cls,
         index: t.Infra.MutableLazyImportMap,
         name: str,
@@ -54,25 +47,12 @@ class FlextInfraUtilitiesCodegenLazyMerging:
             return
         if existing == target:
             return
-        msg = (
-            f"export collision for {name!r}: "
-            f"{cls._format_export_target(existing)} != "
-            f"{cls._format_export_target(target)}"
-        )
+        existing_target = f"{existing[0]}.{existing[1]}".rstrip(".")
+        target_value = f"{target[0]}.{target[1]}".rstrip(".")
+        msg = f"export collision for {name!r}: {existing_target} != {target_value}"
         raise ValueError(
             msg,
         )
-
-    @staticmethod
-    def should_bubble_up(name: str) -> bool:
-        """Check if an export should bubble up to the parent package."""
-        if name.startswith("_") or name in {c.Infra.Dunders.INIT, "main"}:
-            return False
-        if name in c.Infra.ALIAS_NAMES:
-            return False
-        if name in c.Infra.INFRA_ONLY_EXPORTS:
-            return False
-        return not name.isupper()
 
     @staticmethod
     def collect_child_packages(
@@ -87,14 +67,10 @@ class FlextInfraUtilitiesCodegenLazyMerging:
                 continue
             if str(subdir) not in dir_exports:
                 continue
-            child_pkg = (
-                FlextInfraUtilitiesCodegenLazyScanning.package_name_from_rel_parts(
-                    rel_parts=(subdir.name,),
-                    current_pkg=current_pkg,
-                    is_project_root=(
-                        pkg_dir / c.Infra.Files.PYPROJECT_FILENAME
-                    ).exists(),
-                )
+            child_pkg = FlextInfraUtilitiesCodegenLazyScanning.import_path_from_rel_parts(
+                rel_parts=(subdir.name,),
+                current_pkg=current_pkg,
+                is_project_root=(pkg_dir / c.Infra.Files.PYPROJECT_FILENAME).exists(),
             )
             children.append(child_pkg)
         return children
@@ -115,7 +91,7 @@ class FlextInfraUtilitiesCodegenLazyMerging:
             if not rel_parts:
                 continue
             descendant_pkg = (
-                FlextInfraUtilitiesCodegenLazyScanning.package_name_from_rel_parts(
+                FlextInfraUtilitiesCodegenLazyScanning.import_path_from_rel_parts(
                     rel_parts=rel_parts,
                     current_pkg=current_pkg,
                     is_project_root=(
@@ -152,8 +128,14 @@ class FlextInfraUtilitiesCodegenLazyMerging:
         for name, (mod, attr) in sub_exports.items():
             if not attr:
                 continue
-            if FlextInfraUtilitiesCodegenLazyMerging.should_bubble_up(name):
-                FlextInfraUtilitiesCodegenLazyMerging.register_export(
+            if (
+                not name.startswith("_")
+                and name not in {c.Infra.Dunders.INIT, "main"}
+                and name not in c.Infra.ALIAS_NAMES
+                and name not in c.Infra.INFRA_ONLY_EXPORTS
+                and not name.isupper()
+            ):
+                FlextInfraUtilitiesCodegenLazyMerging._register_export(
                     lazy_map,
                     name,
                     (mod, attr),
@@ -209,24 +191,8 @@ class FlextInfraUtilitiesCodegenLazyMerging:
 # =====================================================================
 
 
-class FlextInfraUtilitiesCodegenLazyScanning(
-    FlextInfraUtilitiesCodegenLazyMerging,
-):
+class FlextInfraUtilitiesCodegenLazyScanning(FlextInfraUtilitiesCodegenLazyMerging):
     """Export scanning and package discovery helpers."""
-
-    _MAIN_EXPORT_MODULE_SUFFIXES: ClassVar[tuple[str, ...]] = (".cli", ".main")
-
-    @staticmethod
-    def _should_export_main_from_module(mod_path: str) -> bool:
-        """Return True when a module-level `main` should be exported.
-
-        `main` is intentionally excluded by default to avoid collisions in
-        documentation/script packages that define many `main()` helpers.
-        Only canonical entrypoint modules are allowed to export it.
-        """
-        return mod_path.endswith(
-            FlextInfraUtilitiesCodegenLazyScanning._MAIN_EXPORT_MODULE_SUFFIXES
-        )
 
     @staticmethod
     def dir_has_py_files(pkg_dir: Path) -> bool:
@@ -238,53 +204,39 @@ class FlextInfraUtilitiesCodegenLazyScanning(
             if f.is_file()
         )
 
-    @staticmethod
-    def default_docstring(dir_name: str) -> str:
-        label = dir_name.replace("_", " ").replace("-", " ").strip()
-        return f'"""{label.capitalize()} package."""'
-
-    _DOCSTRING_RE: t.Infra.RegexPattern = re.compile(
-        r'\A\s*("""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\'|"[^"]*"|\'[^\']*\')',
-    )
-
-    @staticmethod
-    def read_existing_docstring(init_path: Path) -> str:
-        """Read ONLY the docstring from an existing __init__.py."""
-        if not init_path.exists():
-            return ""
-        try:
-            content = init_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
-        except OSError:
-            return ""
-        match = FlextInfraUtilitiesCodegenLazyScanning._DOCSTRING_RE.match(content)
-        if match:
-            return match.group(1)
-        return ""
-
-    @staticmethod
+    @classmethod
     def build_sibling_export_index(
+        cls,
         pkg_dir: Path,
         current_pkg: str,
     ) -> t.Infra.MutableLazyImportMap:
-        """Scan sibling .py files for exports (including nested submodules)."""
+        """Scan sibling .py files for exports through one shared Rope project."""
         index: t.Infra.MutableLazyImportMap = {}
-        for py_file in sorted(pkg_dir.rglob(c.Infra.Extensions.PYTHON_GLOB)):
-            if not FlextInfraUtilitiesIteration.is_canonical_python_file(py_file):
-                continue
-            FlextInfraUtilitiesCodegenLazyScanning._index_single_file(
-                py_file,
-                pkg_dir,
-                current_pkg,
-                index,
-            )
+        project_root = FlextInfraUtilitiesDiscovery.discover_project_root_from_file(
+            pkg_dir / c.Infra.Files.INIT_PY,
+        )
+        rope_root = project_root.parent if project_root is not None else pkg_dir
+        with FlextInfraUtilitiesRope.open_project(rope_root) as rope_project:
+            for py_file in sorted(pkg_dir.rglob(c.Infra.Extensions.PYTHON_GLOB)):
+                if not FlextInfraUtilitiesIteration.is_canonical_python_file(py_file):
+                    continue
+                cls._index_single_file(
+                    py_file,
+                    pkg_dir,
+                    current_pkg,
+                    index,
+                    rope_project,
+                )
         return index
 
-    @staticmethod
+    @classmethod
     def _index_single_file(
+        cls,
         py_file: Path,
         pkg_dir: Path,
         current_pkg: str,
         index: t.Infra.MutableLazyImportMap,
+        rope_project: t.Infra.RopeProject,
     ) -> None:
         """Index exports from a single .py file into the lazy map."""
         if not FlextInfraUtilitiesIteration.is_canonical_python_file(py_file):
@@ -313,102 +265,217 @@ class FlextInfraUtilitiesCodegenLazyScanning(
             return
         if py_file.stem[0:1].isdigit():
             return
-        mod_path = FlextInfraUtilitiesCodegenLazyScanning._module_path_from_rel_path(
-            rel_path=rel_path,
+        mod_path = FlextInfraUtilitiesCodegenLazyScanning.import_path_from_rel_parts(
+            rel_parts=rel_path.with_suffix("").parts,
             current_pkg=current_pkg,
             is_project_root=(pkg_dir / c.Infra.Files.PYPROJECT_FILENAME).exists(),
         )
         if not mod_path:
             return
-        try:
-            source = py_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
-        except OSError:
+        resource = FlextInfraUtilitiesRope.get_resource_from_path(rope_project, py_file)
+        if resource is None:
             FlextInfraUtilitiesReporting.warning(
-                f"skipping {py_file.name}: read failed",
+                f"skipping {py_file.name}: rope resource unavailable",
             )
             return
-        FlextInfraUtilitiesCodegenLazyScanning._validate_namespace_source(
-            source=source,
-            py_file=py_file,
+        source = resource.read()
+        all_exports = cls._all_exports_from_source(source)
+        policy = FlextInfraUtilitiesCodegenNamespace.module_policy(
+            py_file,
             rel_path=rel_path,
             current_pkg=current_pkg,
         )
-
-        has_all = False
-        all_exports: MutableSequence[str] = []
-        for (
-            name,
-            value_str,
-        ) in FlextInfraUtilitiesRope.get_module_level_assignments(source):
-            if name == c.Infra.Dunders.ALL:
-                has_all = True
-                words = re.findall(r'["\']([^"\']+)["\']', value_str)
-                all_exports.extend(words)
-
-        should_export_symbols = (
-            FlextInfraUtilitiesCodegenLazyScanning._should_export_module_symbols(
+        if not policy.export_symbols:
+            cls._register_export(index, py_file.stem, (mod_path, ""))
+            return
+        is_root_package = (
+            FlextInfraUtilitiesCodegenGeneration.is_root_namespace_package(current_pkg)
+        )
+        try:
+            local_targets = cls._public_defined_targets(
+                rope_project=rope_project,
+                resource=resource,
+                source=source,
                 mod_path=mod_path,
                 py_file=py_file,
             )
-        )
-
-        if has_all and should_export_symbols:
-            explicit_targets: dict[str, t.Infra.StrPair] = {}
-            locally_defined_names = frozenset[str]()
-            try:
-                module = ast.parse(source)
-            except SyntaxError:
-                module = None
-            if module is not None:
-                locally_defined_names = frozenset(
-                    FlextInfraUtilitiesCodegenLazyScanning._collect_public_defined_names(
-                        module=module,
-                        mod_path=mod_path,
-                        py_file=py_file,
-                    )
-                )
-                explicit_reexports = frozenset(all_exports)
-                for node in module.body:
-                    if not isinstance(node, (ast.Import, ast.ImportFrom)):
-                        continue
-                    explicit_targets.update(
-                        FlextInfraUtilitiesCodegenLazyScanning._public_import_reexports(
-                            node,
-                            explicit_reexports=explicit_reexports,
-                            mod_path=mod_path,
-                            locally_defined_names=locally_defined_names,
-                        )
-                    )
-            if not FlextInfraUtilitiesCodegenLazyScanning._is_test_fixture_namespace(
-                current_pkg,
-            ):
-                for name in all_exports:
-                    if name in c.Infra.INFRA_ONLY_EXPORTS:
-                        continue
-                    if (
-                        name == "main"
-                        and not FlextInfraUtilitiesCodegenLazyScanning._should_export_main_from_module(
-                            mod_path
-                        )
-                    ):
-                        continue
-                    FlextInfraUtilitiesCodegenLazyScanning.register_export(
-                        index,
-                        name,
-                        explicit_targets.get(name, (mod_path, name)),
-                    )
-        elif (
-            should_export_symbols
-            and not FlextInfraUtilitiesCodegenLazyScanning._is_test_fixture_namespace(
-                current_pkg,
+        except FlextInfraUtilitiesRope.SYNTAX_ERRORS:
+            FlextInfraUtilitiesReporting.warning(
+                f"skipping {py_file.name}: syntax error",
             )
+            return
+        if all_exports:
+            explicit_targets = cls._explicit_reexport_targets(
+                rope_project=rope_project,
+                resource=resource,
+                all_exports=all_exports,
+                local_targets=local_targets,
+            )
+            for export_name in all_exports:
+                if not cls._should_publish_symbol(
+                    export_name,
+                    mod_path=mod_path,
+                    py_file=py_file,
+                ):
+                    continue
+                cls._register_export(
+                    index,
+                    export_name,
+                    explicit_targets.get(
+                        export_name,
+                        local_targets.get(export_name, (mod_path, export_name)),
+                    ),
+            )
+            return
+        if not local_targets and not policy.enforce_contract and not is_root_package:
+            cls._register_export(index, py_file.stem, (mod_path, ""))
+            return
+        for export_name, target in local_targets.items():
+            cls._register_export(index, export_name, target)
+
+    @staticmethod
+    def _all_exports_from_source(source: str) -> tuple[str, ...]:
+        """Return ordered names declared in ``__all__``."""
+        for name, value_str in FlextInfraUtilitiesRope.get_module_level_assignments(
+            source,
         ):
-            FlextInfraUtilitiesCodegenLazyScanning._scan_public_defs(
-                source,
-                mod_path,
-                index,
+            if name != c.Infra.Dunders.ALL:
+                continue
+            return tuple(
+                dict.fromkeys(re.findall(r'["\']([^"\']+)["\']', value_str)),
+            )
+        return ()
+
+    @classmethod
+    def _public_defined_targets(
+        cls,
+        *,
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+        source: str,
+        mod_path: str,
+        py_file: Path,
+    ) -> t.Infra.MutableLazyImportMap:
+        """Return public module-local export targets discovered through Rope."""
+        assignments = dict(FlextInfraUtilitiesRope.get_module_level_assignments(source))
+        targets: t.Infra.MutableLazyImportMap = {
+            symbol.name: (mod_path, symbol.name)
+            for symbol in FlextInfraUtilitiesRope.get_module_symbols(
+                rope_project,
+                resource,
+            )
+            if cls._should_publish_local_symbol(
+                symbol.name,
+                symbol.kind,
+                assignments=assignments,
+                mod_path=mod_path,
                 py_file=py_file,
             )
+        }
+        for name, value_str in assignments.items():
+            if not cls._should_publish_symbol(name, mod_path=mod_path, py_file=py_file):
+                continue
+            root_name = cls._assignment_root_name(value_str)
+            if root_name in targets:
+                targets.setdefault(name, (mod_path, name))
+        return targets
+
+    @classmethod
+    def _should_publish_local_symbol(
+        cls,
+        name: str,
+        kind: str,
+        *,
+        assignments: Mapping[str, str],
+        mod_path: str,
+        py_file: Path,
+    ) -> bool:
+        if not cls._should_publish_symbol(name, mod_path=mod_path, py_file=py_file):
+            return False
+        if kind != "assignment":
+            return True
+        callable_name = cls._assignment_callable_name(assignments.get(name, ""))
+        parts = tuple(part for part in mod_path.split(".") if part)
+        return (
+            callable_name not in c.Infra.TYPEVAR_CALLABLES
+            or (bool(parts)
+            and (parts[-1] == "typings" or "_typings" in parts))
+        )
+
+    @staticmethod
+    def _assignment_callable_name(value_str: str) -> str:
+        """Return the callable name for a simple assignment expression."""
+        match = re.match(r"([A-Za-z_][\w.]*)\s*\(", value_str)
+        return match.group(1).rsplit(".", maxsplit=1)[-1] if match else ""
+
+    @classmethod
+    def _assignment_root_name(cls, value_str: str) -> str:
+        """Return the root local symbol referenced by a module-level assignment."""
+        try:
+            node = ast.parse(value_str, mode="eval").body
+        except SyntaxError:
+            return ""
+        while isinstance(node, ast.Call):
+            node = node.func
+        while isinstance(node, ast.Attribute):
+            node = node.value
+        return node.id if isinstance(node, ast.Name) else ""
+
+    @classmethod
+    def _should_publish_symbol(
+        cls,
+        name: str,
+        *,
+        mod_path: str,
+        py_file: Path,
+    ) -> bool:
+        """Apply the canonical export filters shared by Rope discovery paths."""
+        if name.startswith("_") or name in c.Infra.INFRA_ONLY_EXPORTS:
+            return False
+        if mod_path.startswith("tests.") and name == "pytestmark":
+            return False
+        return (
+            name != "main"
+            or FlextInfraUtilitiesCodegenNamespace.module_policy(
+                py_file,
+            ).allow_main_export
+        )
+
+    @classmethod
+    def _explicit_reexport_targets(
+        cls,
+        *,
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+        all_exports: Sequence[str],
+        local_targets: Mapping[str, t.Infra.StrPair],
+    ) -> dict[str, t.Infra.StrPair]:
+        """Resolve imported names in ``__all__`` back to their semantic targets."""
+        imported = FlextInfraUtilitiesRope.get_semantic_module_imports(
+            rope_project,
+            resource,
+        )
+        local_names = frozenset(local_targets)
+        return {
+            export_name: cls._semantic_target_to_lazy_target(
+                rope_project,
+                semantic_target,
+            )
+            for export_name in all_exports
+            if export_name not in local_names
+            and (semantic_target := imported.get(export_name))
+        }
+
+    @staticmethod
+    def _semantic_target_to_lazy_target(
+        rope_project: t.Infra.RopeProject,
+        semantic_target: str,
+    ) -> t.Infra.StrPair:
+        """Normalize one Rope semantic target to a lazy import target tuple."""
+        if rope_project.find_module(semantic_target):
+            return (semantic_target, "")
+        module_name, _, attr_name = semantic_target.rpartition(".")
+        return (module_name, attr_name) if module_name else (semantic_target, "")
 
     @staticmethod
     def _should_skip_private_module(
@@ -469,20 +536,15 @@ class FlextInfraUtilitiesCodegenLazyScanning(
         return namespaced_src_dir.exists()
 
     @staticmethod
-    def _is_test_fixture_namespace(current_pkg: str) -> bool:
-        return current_pkg.startswith("tests.fixtures")
-
-    @staticmethod
-    def _module_path_from_rel_path(
-        rel_path: Path,
+    def import_path_from_rel_parts(
+        rel_parts: tuple[str, ...],
         current_pkg: str,
         *,
         is_project_root: bool = False,
     ) -> str:
-        """Normalize a scanned file path into the importable module path."""
-        rel_parts = rel_path.with_suffix("").parts
+        """Normalize a scanned relative path into an importable package/module path."""
         if not rel_parts:
-            return ""
+            return current_pkg
 
         root_segment = rel_parts[0]
         if is_project_root and root_segment in c.Infra.ROOT_WRAPPER_SEGMENTS:
@@ -491,8 +553,12 @@ class FlextInfraUtilitiesCodegenLazyScanning(
                 current_pkg=current_pkg,
             )
 
-        mod_stem = ".".join(rel_parts)
-        return f"{current_pkg}.{mod_stem}" if current_pkg else mod_stem
+        return ".".join(
+            (
+                *tuple(part for part in current_pkg.split(".") if part),
+                *rel_parts,
+            ),
+        )
 
     @staticmethod
     def _rooted_module_path(
@@ -512,799 +578,6 @@ class FlextInfraUtilitiesCodegenLazyScanning(
         module_parts = (root_segment, *remaining_parts)
         return ".".join(part for part in module_parts if part)
 
-    @staticmethod
-    def _should_export_module_symbols(
-        *,
-        mod_path: str,
-        py_file: Path,
-    ) -> bool:
-        parts = tuple(part for part in mod_path.split(".") if part)
-        if not parts:
-            return True
-        if parts[0] not in {
-            c.Infra.Directories.TESTS,
-            c.Infra.Directories.EXAMPLES,
-            c.Infra.Directories.SCRIPTS,
-        }:
-            return True
-        if any(part in c.Infra.FAMILY_DIRECTORIES.values() for part in parts):
-            return True
-        if "services" in parts:
-            return True
-        return FlextInfraUtilitiesCodegenNamespace.is_root_namespace_file(py_file.name)
-
-    @staticmethod
-    def package_name_from_rel_parts(
-        *,
-        rel_parts: tuple[str, ...],
-        current_pkg: str,
-        is_project_root: bool = False,
-    ) -> str:
-        """Normalize a descendant package path relative to the current package dir."""
-        if not rel_parts:
-            return current_pkg
-        root_segment = rel_parts[0]
-        if is_project_root and root_segment in c.Infra.ROOT_WRAPPER_SEGMENTS:
-            return FlextInfraUtilitiesCodegenLazyScanning._rooted_module_path(
-                rel_parts=rel_parts,
-                current_pkg=current_pkg,
-            )
-        package_parts = (
-            *tuple(part for part in current_pkg.split(".") if part),
-            *rel_parts,
-        )
-        return ".".join(part for part in package_parts if part)
-
-    @staticmethod
-    def _scan_public_defs(
-        source: str,
-        mod_path: str,
-        index: t.Infra.MutableLazyImportMap,
-        *,
-        py_file: Path,
-    ) -> None:
-        try:
-            module = ast.parse(source)
-        except SyntaxError:
-            return
-
-        names = FlextInfraUtilitiesCodegenLazyScanning._collect_public_defined_names(
-            module=module,
-            mod_path=mod_path,
-            py_file=py_file,
-        )
-        imported_exports: list[tuple[str, t.Infra.StrPair]] = []
-        explicit_reexports = (
-            FlextInfraUtilitiesCodegenLazyScanning._explicit_reexport_names(module)
-        )
-        for node in module.body:
-            if isinstance(node, (ast.Import, ast.ImportFrom)):
-                imported_exports.extend(
-                    FlextInfraUtilitiesCodegenLazyScanning._public_import_reexports(
-                        node,
-                        explicit_reexports=explicit_reexports,
-                        mod_path=mod_path,
-                        locally_defined_names=frozenset(names),
-                    )
-                )
-
-        for name in names:
-            FlextInfraUtilitiesCodegenLazyScanning.register_export(
-                index,
-                name,
-                (mod_path, name),
-            )
-        for name, target in imported_exports:
-            if name.startswith("_") or name in c.Infra.INFRA_ONLY_EXPORTS:
-                continue
-            FlextInfraUtilitiesCodegenLazyScanning.register_export(
-                index,
-                name,
-                target,
-            )
-
-    @staticmethod
-    def _explicit_reexport_names(module: ast.Module) -> frozenset[str]:
-        for node in module.body:
-            if not isinstance(node, ast.Assign):
-                continue
-            if not any(
-                isinstance(target, ast.Name) and target.id == "__all__"
-                for target in node.targets
-            ):
-                continue
-            if not isinstance(node.value, (ast.List, ast.Tuple)):
-                return frozenset()
-            exported = [
-                element.value
-                for element in node.value.elts
-                if isinstance(element, ast.Constant) and isinstance(element.value, str)
-            ]
-            return frozenset(exported)
-        return frozenset()
-
-    @staticmethod
-    def _collect_public_defined_names(
-        *,
-        module: ast.Module,
-        mod_path: str,
-        py_file: Path,
-    ) -> list[str]:
-        names: list[str] = []
-        for node in module.body:
-            if isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
-                if FlextInfraUtilitiesCodegenLazyScanning._skip_test_only_node(
-                    node,
-                    mod_path=mod_path,
-                    py_file=py_file,
-                ):
-                    continue
-                names.append(node.name)
-                continue
-            if isinstance(node, ast.Assign):
-                if isinstance(node.value, ast.Call):
-                    func_name = FlextInfraUtilitiesCodegenLazyScanning._call_name(
-                        node.value.func,
-                    )
-                    if func_name in c.Infra.TYPEVAR_CALLABLES:
-                        if FlextInfraUtilitiesCodegenLazyScanning._is_typings_mod_path(
-                            mod_path
-                        ):
-                            names.extend(
-                                target.id
-                                for target in node.targets
-                                if isinstance(target, ast.Name)
-                            )
-                        continue
-                names.extend(
-                    target.id for target in node.targets if isinstance(target, ast.Name)
-                )
-                continue
-            if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
-                names.append(node.target.id)
-        return [
-            name
-            for name in names
-            if not (
-                (mod_path.startswith("tests.") and name == "pytestmark")
-                or name.startswith("_")
-                or name in c.Infra.INFRA_ONLY_EXPORTS
-                or (
-                    name == "main"
-                    and not FlextInfraUtilitiesCodegenLazyScanning._should_export_main_from_module(
-                        mod_path
-                    )
-                )
-            )
-        ]
-
-    @staticmethod
-    def _public_import_reexports(
-        node: ast.Import | ast.ImportFrom,
-        *,
-        explicit_reexports: frozenset[str],
-        mod_path: str,
-        locally_defined_names: frozenset[str] = frozenset(),
-    ) -> tuple[tuple[str, t.Infra.StrPair], ...]:
-        if not explicit_reexports:
-            return ()
-        exported: list[tuple[str, t.Infra.StrPair]] = []
-        if isinstance(node, ast.ImportFrom):
-            module_name = (
-                FlextInfraUtilitiesCodegenLazyScanning._resolve_import_module_path(
-                    node,
-                    mod_path=mod_path,
-                )
-            )
-            if not module_name:
-                return ()
-            for alias in node.names:
-                if alias.name == "*":
-                    continue
-                public_name = alias.asname or alias.name
-                if (
-                    public_name in explicit_reexports
-                    and public_name not in locally_defined_names
-                ):
-                    exported.append((public_name, (module_name, alias.name)))
-            return tuple(exported)
-        for alias in node.names:
-            public_name = alias.asname or alias.name.rsplit(".", maxsplit=1)[-1]
-            if (
-                public_name in explicit_reexports
-                and public_name not in locally_defined_names
-            ):
-                exported.append((public_name, (alias.name, "")))
-        return tuple(exported)
-
-    @staticmethod
-    def _resolve_import_module_path(node: ast.ImportFrom, *, mod_path: str) -> str:
-        if node.level == 0:
-            return node.module or ""
-        package_parts = mod_path.split(".")[:-1]
-        prefix_length = max(len(package_parts) - (node.level - 1), 0)
-        prefix = package_parts[:prefix_length]
-        if node.module:
-            prefix.extend(node.module.split("."))
-        return ".".join(prefix)
-
-    @staticmethod
-    def _validate_namespace_source(
-        *,
-        source: str,
-        py_file: Path,
-        rel_path: Path,
-        current_pkg: str,
-    ) -> None:
-        try:
-            module = ast.parse(source)
-        except SyntaxError:
-            return
-        FlextInfraUtilitiesCodegenLazyScanning._validate_namespace_contract(
-            module=module,
-            py_file=py_file,
-            rel_path=rel_path,
-            current_pkg=current_pkg,
-        )
-
-    @classmethod
-    def _validate_namespace_contract(
-        cls,
-        *,
-        module: ast.Module,
-        py_file: Path,
-        rel_path: Path,
-        current_pkg: str,
-    ) -> None:
-        if not FlextInfraUtilitiesCodegenNamespace.should_enforce_geninit_contract(
-            rel_path,
-            current_pkg=current_pkg,
-        ):
-            return
-        if cls._is_private_fixture_module(py_file):
-            cls._validate_fixture_module(module=module, py_file=py_file)
-            return
-        outer_classes = [node for node in module.body if isinstance(node, ast.ClassDef)]
-        if len(outer_classes) != 1:
-            count = len(outer_classes)
-            msg = (
-                f"{py_file}: gen-init requires exactly one outer class (found {count})"
-            )
-            raise ValueError(
-                msg,
-            )
-        class_node = outer_classes[0]
-        cls._validate_outer_class_name(class_node=class_node, py_file=py_file)
-        expected_alias = FlextInfraUtilitiesCodegenNamespace.geninit_expected_alias(
-            py_file,
-        )
-        for node in module.body:
-            if isinstance(node, ast.ClassDef):
-                continue
-            if cls._is_allowed_namespace_module_level(
-                node=node,
-                py_file=py_file,
-                expected_alias=expected_alias,
-                outer_class_name=class_node.name,
-            ):
-                continue
-            alias_error = cls._unexpected_alias_error(
-                node=node,
-                py_file=py_file,
-                expected_alias=expected_alias,
-            )
-            if alias_error:
-                raise ValueError(alias_error)
-            lineno = getattr(node, "lineno", 1)
-            statement_name = cls._describe_top_level_statement(node)
-            msg = (
-                f"{py_file}:{lineno}: disallowed top-level {statement_name}; "
-                "move it into the single namespace class"
-            )
-            raise ValueError(
-                msg,
-            )
-
-    @classmethod
-    def _validate_fixture_module(
-        cls,
-        *,
-        module: ast.Module,
-        py_file: Path,
-    ) -> None:
-        for node in module.body:
-            if cls._is_allowed_fixture_module_level(node=node, py_file=py_file):
-                continue
-            lineno = getattr(node, "lineno", 1)
-            statement_name = cls._describe_top_level_statement(node)
-            msg = (
-                f"{py_file}:{lineno}: disallowed top-level {statement_name}; "
-                "fixture modules may only define imports, typevars, and pytest fixtures"
-            )
-            raise ValueError(msg)
-
-    @staticmethod
-    def _is_private_fixture_module(py_file: Path) -> bool:
-        return py_file.parent.name == "_fixtures"
-
-    @classmethod
-    def _is_allowed_fixture_module_level(
-        cls,
-        *,
-        node: ast.stmt,
-        py_file: Path,
-    ) -> bool:
-        if isinstance(node, (ast.Import, ast.ImportFrom)):
-            return True
-        if cls._is_module_docstring(node):
-            return True
-        if isinstance(node, ast.Assign):
-            return cls._is_allowed_namespace_assign(
-                node=node,
-                py_file=py_file,
-                expected_alias=None,
-                outer_class_name=None,
-            )
-        if isinstance(node, ast.AnnAssign):
-            return cls._is_allowed_namespace_ann_assign(node=node, py_file=py_file)
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            return cls._is_pytest_fixture(node)
-        return False
-
-    @classmethod
-    def _validate_outer_class_name(
-        cls,
-        *,
-        class_node: ast.ClassDef,
-        py_file: Path,
-    ) -> None:
-        class_name = class_node.name
-        prefix = FlextInfraUtilitiesCodegenNamespace.derive_project_prefix(py_file)
-        family = FlextInfraUtilitiesCodegenNamespace.geninit_expected_family(py_file)
-        if prefix and not class_name.startswith(prefix):
-            msg = (
-                f"{py_file}:{class_node.lineno}: class {class_name!r} must start "
-                f"with {prefix!r}"
-            )
-            raise ValueError(
-                msg,
-            )
-        if not family:
-            return
-        if py_file.parent.name in c.Infra.FAMILY_DIRECTORIES.values():
-            family_tokens = (
-                FlextInfraUtilitiesCodegenNamespace.geninit_expected_family_tokens(
-                    py_file,
-                )
-            )
-            relative_name = class_name[len(prefix) :] if prefix else class_name
-            if not any(token in relative_name for token in family_tokens):
-                msg = (
-                    f"{py_file}:{class_node.lineno}: class {class_name!r} must "
-                    f"contain one of {family_tokens!r} after prefix {prefix!r}"
-                )
-                raise ValueError(
-                    msg,
-                )
-            return
-        accepted_suffixes = (
-            ("Service", "Services")
-            if py_file.name == "service.py" and family == "Service"
-            else (family,)
-        )
-        if not any(class_name.endswith(suffix) for suffix in accepted_suffixes):
-            msg = (
-                f"{py_file}:{class_node.lineno}: class {class_name!r} must end "
-                f"with one of {accepted_suffixes!r}"
-            )
-            raise ValueError(
-                msg,
-            )
-
-    @classmethod
-    def _is_allowed_namespace_module_level(
-        cls,
-        *,
-        node: ast.stmt,
-        py_file: Path,
-        expected_alias: str | None,
-        outer_class_name: str | None,
-    ) -> bool:
-        if isinstance(node, (ast.Import, ast.ImportFrom)):
-            return True
-        if cls._is_module_docstring(node):
-            return True
-        if cls._is_allowed_root_cli_main(node=node, py_file=py_file):
-            return True
-        if cls._is_allowed_root_cli_main_guard(node=node, py_file=py_file):
-            return True
-        if cls._is_type_checking_block(node=node, py_file=py_file):
-            return True
-        if isinstance(node, ast.Assign):
-            return cls._is_allowed_namespace_assign(
-                node=node,
-                py_file=py_file,
-                expected_alias=expected_alias,
-                outer_class_name=outer_class_name,
-            )
-        if isinstance(node, ast.AnnAssign):
-            return cls._is_allowed_namespace_ann_assign(node=node, py_file=py_file)
-        if isinstance(node, ast.TypeAlias):
-            return cls._is_typings_namespace(py_file)
-        return False
-
-    @staticmethod
-    def _is_module_docstring(node: ast.stmt) -> bool:
-        return (
-            isinstance(node, ast.Expr)
-            and isinstance(node.value, ast.Constant)
-            and isinstance(node.value.value, str)
-        )
-
-    @staticmethod
-    def _is_root_cli_module(py_file: Path) -> bool:
-        return py_file.name == "cli.py"
-
-    @classmethod
-    def _is_allowed_root_cli_main(
-        cls,
-        *,
-        node: ast.stmt,
-        py_file: Path,
-    ) -> bool:
-        return (
-            cls._is_root_cli_module(py_file)
-            and isinstance(node, ast.FunctionDef)
-            and node.name == "main"
-        )
-
-    @classmethod
-    def _is_allowed_root_cli_main_guard(
-        cls,
-        *,
-        node: ast.stmt,
-        py_file: Path,
-    ) -> bool:
-        if not cls._is_root_cli_module(py_file):
-            return False
-        if not isinstance(node, ast.If) or node.orelse:
-            return False
-        if not cls._is_main_guard_test(node.test):
-            return False
-        return all(cls._is_main_guard_stmt(stmt) for stmt in node.body)
-
-    @staticmethod
-    def _is_main_guard_test(test: ast.expr) -> bool:
-        if not isinstance(test, ast.Compare) or len(test.ops) != 1:
-            return False
-        if not isinstance(test.ops[0], ast.Eq) or len(test.comparators) != 1:
-            return False
-        left = test.left
-        right = test.comparators[0]
-        return (
-            isinstance(left, ast.Name)
-            and left.id == "__name__"
-            and isinstance(right, ast.Constant)
-            and right.value == "__main__"
-        )
-
-    @classmethod
-    def _is_main_guard_stmt(cls, stmt: ast.stmt) -> bool:
-        if isinstance(stmt, ast.Expr):
-            return cls._is_main_call(stmt.value)
-        if isinstance(stmt, ast.Raise) and stmt.exc is not None:
-            return cls._is_main_call(stmt.exc)
-        return False
-
-    @classmethod
-    def _is_main_call(cls, expr: ast.expr) -> bool:
-        if isinstance(expr, ast.Call):
-            if isinstance(expr.func, ast.Name) and expr.func.id == "main":
-                return True
-            if isinstance(expr.func, ast.Name) and expr.func.id == "SystemExit":
-                return (
-                    len(expr.args) == 1
-                    and not expr.keywords
-                    and cls._is_main_call(expr.args[0])
-                )
-            if isinstance(expr.func, ast.Attribute) and expr.func.attr == "exit":
-                return (
-                    len(expr.args) == 1
-                    and not expr.keywords
-                    and cls._is_main_call(expr.args[0])
-                )
-        return False
-
-    @classmethod
-    def _is_type_checking_block(
-        cls,
-        *,
-        node: ast.stmt,
-        py_file: Path,
-    ) -> bool:
-        if not isinstance(node, ast.If) or node.orelse:
-            return False
-        test = node.test
-        is_type_checking = isinstance(test, ast.Name) and test.id == "TYPE_CHECKING"
-        if not is_type_checking:
-            return False
-        project_namespace = cls._type_checking_namespace(py_file)
-        if not project_namespace:
-            return False
-        return all(
-            cls._is_allowed_type_checking_import(
-                node=item,
-                project_namespace=project_namespace,
-            )
-            for item in node.body
-        )
-
-    @staticmethod
-    def _type_checking_namespace(py_file: Path) -> str:
-        module_path = FlextInfraUtilitiesDiscovery.discover_package_from_file(py_file)
-        if not module_path:
-            return ""
-        return module_path.split(".", 1)[0]
-
-    @staticmethod
-    def _is_allowed_type_checking_import(
-        *,
-        node: ast.stmt,
-        project_namespace: str,
-    ) -> bool:
-        if not isinstance(node, ast.ImportFrom):
-            return False
-        if node.level != 0 or node.module != project_namespace:
-            return False
-        if not node.names:
-            return False
-        allowed_aliases = {"c", "m", "t", "p", "u"}
-        return all(
-            imported.asname is None and imported.name in allowed_aliases
-            for imported in node.names
-        )
-
-    @classmethod
-    def _is_allowed_namespace_assign(
-        cls,
-        *,
-        node: ast.Assign,
-        py_file: Path,
-        expected_alias: str | None,
-        outer_class_name: str | None,
-    ) -> bool:
-        target_names = [
-            target.id for target in node.targets if isinstance(target, ast.Name)
-        ]
-        if not target_names:
-            return False
-        if all(name in c.Infra.DUNDER_ALLOWED for name in target_names):
-            return True
-        if (
-            expected_alias is not None
-            and target_names == [expected_alias]
-            and isinstance(node.value, (ast.Name, ast.Attribute))
-        ):
-            return True
-        if cls._is_allowed_base_service_alias(
-            target_names=target_names,
-            value=node.value,
-            py_file=py_file,
-            outer_class_name=outer_class_name,
-        ):
-            return True
-        singleton_alias = (
-            FlextInfraUtilitiesCodegenNamespace.geninit_expected_api_singleton_alias(
-                py_file,
-            )
-        )
-        if (
-            singleton_alias is not None
-            and outer_class_name is not None
-            and target_names == [singleton_alias]
-            and cls._is_allowed_api_singleton_assign(
-                node.value,
-                outer_class_name=outer_class_name,
-            )
-        ):
-            return True
-        if not isinstance(node.value, ast.Call):
-            return False
-        func_name = cls._call_name(node.value.func)
-        return func_name in c.Infra.TYPEVAR_CALLABLES
-
-    @staticmethod
-    def _is_allowed_base_service_alias(
-        *,
-        target_names: Sequence[str],
-        value: ast.expr,
-        py_file: Path,
-        outer_class_name: str | None,
-    ) -> bool:
-        if py_file.name != "base.py" or target_names != ["s"]:
-            return False
-        if outer_class_name is None or not outer_class_name.endswith("ServiceBase"):
-            return False
-        return isinstance(value, ast.Name) and value.id == outer_class_name
-
-    @staticmethod
-    def _is_allowed_api_singleton_assign(
-        value: ast.expr,
-        *,
-        outer_class_name: str,
-    ) -> bool:
-        if isinstance(value, ast.Name):
-            return value.id == outer_class_name
-        if isinstance(value, ast.Attribute):
-            return value.attr == outer_class_name
-        if not isinstance(value, ast.Call) or value.args or value.keywords:
-            return False
-        if not isinstance(value.func, ast.Attribute):
-            return False
-        return (
-            value.func.attr == "get_instance"
-            and isinstance(value.func.value, ast.Name)
-            and value.func.value.id == outer_class_name
-        )
-
-    @classmethod
-    def _is_allowed_namespace_ann_assign(
-        cls,
-        *,
-        node: ast.AnnAssign,
-        py_file: Path,
-    ) -> bool:
-        if cls._annotation_contains(node.annotation, "TypeAlias"):
-            return cls._is_typings_namespace(py_file)
-        return False
-
-    @staticmethod
-    def _is_typings_namespace(py_file: Path) -> bool:
-        return (
-            py_file.name == c.Infra.Files.TYPINGS_PY
-            or py_file.parent.name == "_typings"
-        )
-
-    @staticmethod
-    def _annotation_contains(annotation: ast.expr | None, name: str) -> bool:
-        if annotation is None:
-            return False
-        if isinstance(annotation, ast.Name):
-            return annotation.id == name
-        if isinstance(annotation, ast.Attribute):
-            return annotation.attr == name
-        if isinstance(annotation, ast.Subscript):
-            return FlextInfraUtilitiesCodegenLazyScanning._annotation_contains(
-                annotation.value,
-                name,
-            )
-        return False
-
-    @staticmethod
-    def _is_typings_mod_path(mod_path: str) -> bool:
-        parts = tuple(part for part in mod_path.split(".") if part)
-        return bool(parts) and (parts[-1] == "typings" or "_typings" in parts)
-
-    @staticmethod
-    def _call_name(func: ast.expr) -> str:
-        if isinstance(func, ast.Name):
-            return func.id
-        if isinstance(func, ast.Attribute):
-            return func.attr
-        return ""
-
-    @staticmethod
-    def _describe_top_level_statement(node: ast.stmt) -> str:
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            return f"function {node.name!r}"
-        if isinstance(node, ast.Assign):
-            names = [
-                target.id for target in node.targets if isinstance(target, ast.Name)
-            ]
-            if names:
-                return f"assignment {', '.join(repr(name) for name in names)}"
-        if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
-            return f"assignment {node.target.id!r}"
-        return type(node).__name__
-
-    @staticmethod
-    def _unexpected_alias_error(
-        *,
-        node: ast.stmt,
-        py_file: Path,
-        expected_alias: str | None,
-    ) -> str:
-        if not isinstance(node, ast.Assign):
-            return ""
-        names = [target.id for target in node.targets if isinstance(target, ast.Name)]
-        if len(names) != 1:
-            return ""
-        alias = names[0]
-        if alias not in c.Infra.ALIAS_NAMES:
-            return ""
-        if expected_alias == alias:
-            return ""
-        if expected_alias is None:
-            return (
-                f"{py_file}:{node.lineno}: canonical alias {alias!r} is not allowed "
-                "in this module"
-            )
-        return (
-            f"{py_file}:{node.lineno}: canonical alias for {py_file.name} must be "
-            f"{expected_alias!r}, found {alias!r}"
-        )
-
-    @classmethod
-    def _skip_test_only_node(
-        cls,
-        node: ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef,
-        *,
-        mod_path: str,
-        py_file: Path,
-    ) -> bool:
-        """Skip pytest-local symbols that must never become package exports."""
-        if mod_path.startswith("tests.") and node.name.startswith(
-            ("Test", "test_", "main"),
-        ):
-            return not cls._is_canonical_surface_namespace_node(
-                node,
-                mod_path=mod_path,
-                py_file=py_file,
-            )
-        if isinstance(node, ast.ClassDef):
-            return False
-        if "._fixtures." in mod_path or mod_path.endswith("._fixtures"):
-            return False
-        return FlextInfraUtilitiesCodegenLazyScanning._is_pytest_fixture(node)
-
-    @classmethod
-    def _is_canonical_surface_namespace_node(
-        cls,
-        node: ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef,
-        *,
-        mod_path: str,
-        py_file: Path,
-    ) -> bool:
-        """Return True for canonical tests/examples/scripts namespace classes."""
-        if not isinstance(node, ast.ClassDef):
-            return False
-        surface = mod_path.split(".", maxsplit=1)[0]
-        if surface not in {
-            c.Infra.Directories.TESTS,
-            c.Infra.Directories.EXAMPLES,
-            c.Infra.Directories.SCRIPTS,
-        }:
-            return False
-        project_root = FlextInfraUtilitiesCodegenNamespace.discover_project_root(
-            py_file,
-        )
-        if project_root is None:
-            return False
-        try:
-            rel_path = py_file.relative_to(project_root)
-        except ValueError:
-            return False
-        current_pkg, _sep, _module_name = mod_path.rpartition(".")
-        resolved_pkg = current_pkg or mod_path
-        if not FlextInfraUtilitiesCodegenNamespace.should_enforce_geninit_contract(
-            rel_path,
-            current_pkg=resolved_pkg,
-        ):
-            return False
-        prefix = FlextInfraUtilitiesCodegenNamespace.derive_project_prefix(py_file)
-        return bool(prefix) and node.name.startswith(prefix)
-
-    @staticmethod
-    def _is_pytest_fixture(node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
-        """Return True when a function is decorated as a pytest fixture."""
-        for decorator in node.decorator_list:
-            target = decorator.func if isinstance(decorator, ast.Call) else decorator
-            if isinstance(target, ast.Name) and target.id == "fixture":
-                return True
-            if isinstance(target, ast.Attribute) and target.attr == "fixture":
-                return True
-        return False
-
 
 # =====================================================================
 # Aliases — single-letter alias resolution
@@ -1312,7 +585,7 @@ class FlextInfraUtilitiesCodegenLazyScanning(
 
 
 class FlextInfraUtilitiesCodegenLazyAliases:
-    """Resolve inherited public aliases from declared package exports."""
+    """Resolve inherited public aliases across the package ancestry chain."""
 
     def __init__(self, workspace_root: Path | None = None) -> None:
         self._root = (
@@ -1342,48 +615,28 @@ class FlextInfraUtilitiesCodegenLazyAliases:
             current_pkg
         ):
             return
-        parent_pkg = self._discover_parent_package(pkg_dir)
-        if not parent_pkg:
-            return
-        parent_dir = self._find_package_directory(pkg_dir, parent_pkg)
-        if parent_dir is None:
-            return
-        for alias_name, target in self._collect_package_aliases(
-            parent_dir,
-            seen=frozenset(),
-        ).items():
-            lazy_map.setdefault(alias_name, target)
-
-    @staticmethod
-    def _discover_parent_package(pkg_dir: Path) -> str | None:
-        """Discover the parent flext package by inspecting constants.py MRO."""
-        constants_file = pkg_dir / c.Infra.Files.CONSTANTS_PY
-        if not constants_file.is_file():
-            return None
-        try:
-            source = constants_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
-        except OSError:
-            return None
-        match = c.Infra.Detection.IMPORT_CONSTANTS_RE.search(source)
-        if match is None:
-            return None
-        return match.group(1).split(".", maxsplit=1)[0]
-
-    @classmethod
-    def _should_inherit_public_alias(cls, export_name: str) -> bool:
-        if export_name.startswith("_") or export_name == "main":
-            return False
-        if export_name in c.Infra.INFRA_ONLY_EXPORTS:
-            return False
-        return export_name.islower()
+        for parent_pkg in FlextInfraUtilitiesDiscovery.resolve_parent_constants_mro(
+            pkg_dir,
+            return_module=True,
+        ):
+            parent_dir = self._find_package_directory(pkg_dir, parent_pkg)
+            if parent_dir is None or parent_dir.resolve() == pkg_dir.resolve():
+                continue
+            for alias_name, target in self._collect_package_aliases(
+                parent_dir,
+                surface=FlextInfraUtilitiesCodegenNamespace.surface_name(current_pkg),
+                seen=frozenset(),
+            ).items():
+                lazy_map.setdefault(alias_name, target)
 
     def _collect_package_aliases(
         self,
         pkg_dir: Path,
         *,
+        surface: str,
         seen: frozenset[str],
     ) -> t.Infra.LazyImportMap:
-        package_key = str(pkg_dir.resolve())
+        package_key = f"{pkg_dir.resolve()}::{surface}"
         cached = self._package_alias_cache.get(package_key)
         if cached is not None:
             return cached
@@ -1407,6 +660,7 @@ class FlextInfraUtilitiesCodegenLazyAliases:
                 continue
             child_aliases = self._collect_package_aliases(
                 subdir,
+                surface=surface,
                 seen=seen | {package_key},
             )
             if child_aliases:
@@ -1417,83 +671,93 @@ class FlextInfraUtilitiesCodegenLazyAliases:
                 exports,
                 child_exports,
             )
+        for parent_pkg in FlextInfraUtilitiesDiscovery.resolve_parent_constants_mro(
+            pkg_dir,
+            return_module=True,
+        ):
+            parent_dir = self._find_package_directory(pkg_dir, parent_pkg)
+            if parent_dir is None or parent_dir.resolve() == pkg_dir.resolve():
+                continue
+            for alias_name, target in self._collect_package_aliases(
+                parent_dir,
+                surface=surface,
+                seen=seen | {package_key},
+            ).items():
+                exports.setdefault(alias_name, target)
+        allowed_exports = (
+            FlextInfraUtilitiesCodegenNamespace.inherited_exports_for_package(
+                surface,
+            )
+        )
         resolved_aliases = {
             export_name: target
             for export_name, target in exports.items()
-            if self._should_inherit_public_alias(export_name)
+            if export_name in allowed_exports
         }
         self._package_alias_cache[package_key] = resolved_aliases
         return resolved_aliases
 
     def _find_package_directory(self, pkg_dir: Path, package_name: str) -> Path | None:
-        project_root = self._discover_project_root(pkg_dir)
+        project_root = FlextInfraUtilitiesDiscovery.discover_project_root_from_file(
+            pkg_dir,
+        )
         cache_key = (str(project_root) if project_root else "", package_name)
         if cache_key in self._package_dir_cache:
             return self._package_dir_cache[cache_key]
-        candidates: MutableSequence[Path] = []
-        if project_root is not None:
-            candidates.extend(
-                self._build_package_candidates(project_root, package_name)
-            )
-        candidates.extend(self._build_package_candidates(self._root, package_name))
-        candidates.extend(self._build_workspace_package_candidates(package_name))
-        resolved: Path | None = None
-        seen_candidates: MutableSequence[Path] = []
-        for candidate in candidates:
-            candidate_resolved = candidate.resolve()
-            if candidate_resolved in seen_candidates:
-                continue
-            seen_candidates.append(candidate_resolved)
-            if candidate.is_dir():
-                resolved = candidate
-                break
+        resolved = next(
+            (
+                candidate
+                for candidate in self._package_candidates(
+                    package_name,
+                    project_root=project_root,
+                )
+                if candidate.is_dir()
+            ),
+            None,
+        )
         self._package_dir_cache[cache_key] = resolved
         return resolved
 
-    @staticmethod
-    def _discover_project_root(pkg_dir: Path) -> Path | None:
-        for candidate in (pkg_dir, *pkg_dir.parents):
-            if (candidate / c.Infra.Files.PYPROJECT_FILENAME).is_file():
-                return candidate
-        return None
-
-    @staticmethod
-    def _build_package_candidates(base_dir: Path, package_name: str) -> Sequence[Path]:
+    def _package_candidates(
+        self,
+        package_name: str,
+        *,
+        project_root: Path | None,
+    ) -> Sequence[Path]:
         package_path = Path(*package_name.split("."))
         root_segment = package_path.parts[0] if package_path.parts else ""
-        candidates: MutableSequence[Path] = []
-        if root_segment in c.Infra.ROOT_WRAPPER_SEGMENTS:
-            candidates.append(base_dir / package_path)
-        candidates.append(base_dir / c.Infra.Paths.DEFAULT_SRC_DIR / package_path)
-        if root_segment not in c.Infra.ROOT_WRAPPER_SEGMENTS:
-            candidates.extend([
-                base_dir / c.Infra.Directories.DOCS / package_path,
-                base_dir / c.Infra.Directories.TESTS / package_path,
-                base_dir / c.Infra.Directories.EXAMPLES / package_path,
-                base_dir / c.Infra.Directories.SCRIPTS / package_path,
-            ])
-        return tuple(candidates)
-
-    def _build_workspace_package_candidates(self, package_name: str) -> Sequence[Path]:
-        package_path = Path(*package_name.split("."))
-        root_segment = package_path.parts[0] if package_path.parts else ""
-        patterns: MutableSequence[str] = []
-        if root_segment in c.Infra.ROOT_WRAPPER_SEGMENTS:
-            patterns.append(str(Path("*") / package_path))
-        else:
-            patterns.append(
-                str(Path("*") / c.Infra.Paths.DEFAULT_SRC_DIR / package_path)
+        relative_roots = (
+            (Path(),)
+            if root_segment in c.Infra.ROOT_WRAPPER_SEGMENTS
+            else (
+                Path(c.Infra.Paths.DEFAULT_SRC_DIR),
+                Path(c.Infra.Directories.DOCS),
+                Path(c.Infra.Directories.TESTS),
+                Path(c.Infra.Directories.EXAMPLES),
+                Path(c.Infra.Directories.SCRIPTS),
             )
-        if root_segment not in c.Infra.ROOT_WRAPPER_SEGMENTS:
-            patterns.extend([
-                str(Path("*") / c.Infra.Directories.DOCS / package_path),
-                str(Path("*") / c.Infra.Directories.TESTS / package_path),
-                str(Path("*") / c.Infra.Directories.EXAMPLES / package_path),
-                str(Path("*") / c.Infra.Directories.SCRIPTS / package_path),
-            ])
+        )
         candidates: MutableSequence[Path] = []
-        for pattern in patterns:
-            candidates.extend(sorted(self._root.glob(pattern)))
+        seen: set[Path] = set()
+        search_roots = tuple(
+            dict.fromkeys(
+                root
+                for root in (
+                    project_root,
+                    self._root,
+                    *sorted(path for path in self._root.iterdir() if path.is_dir()),
+                )
+                if root is not None and root.is_dir()
+            ),
+        )
+        for base_dir in search_roots:
+            for relative_root in relative_roots:
+                candidate = base_dir / relative_root / package_path
+                resolved = candidate.resolve()
+                if resolved in seen:
+                    continue
+                seen.add(resolved)
+                candidates.append(candidate)
         return tuple(candidates)
 
 

@@ -8,7 +8,6 @@ from pathlib import Path
 
 from flext_cli import u
 from flext_infra import (
-    FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesDocsScope,
     FlextInfraUtilitiesPatterns,
     c,
@@ -49,19 +48,12 @@ class FlextInfraUtilitiesDocs:
         if projects:
             return [name.strip() for name in projects if name.strip()]
         result: r[Sequence[m.Infra.ProjectInfo]] = (
-            FlextInfraUtilitiesDiscovery.discover_projects(workspace_root)
+            FlextInfraUtilitiesDocsScope.discover_projects(workspace_root)
         )
         return result.fold(
             on_failure=lambda _: [],
             on_success=lambda v: [p.name for p in v],
         )
-
-    @staticmethod
-    def discovered_projects(
-        workspace_root: Path,
-    ) -> r[Sequence[m.Infra.ProjectInfo]]:
-        """Return the discovered FLEXT project metadata for docs workflows."""
-        return FlextInfraUtilitiesDiscovery.discover_projects(workspace_root)
 
     @staticmethod
     def build_scopes(
@@ -127,7 +119,7 @@ class FlextInfraUtilitiesDocs:
                         )
                     )
                 return r[Sequence[m.Infra.DocScope]].ok(scopes)
-            discovered_result = FlextInfraUtilitiesDocs.discovered_projects(
+            discovered_result = FlextInfraUtilitiesDocsScope.discover_projects(
                 resolved_root,
             )
             if discovered_result.is_failure:

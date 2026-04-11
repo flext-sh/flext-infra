@@ -7,9 +7,9 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 _LAZY_IMPORTS = build_lazy_import_map(
     {
-        ".codegen_generation": ("FlextInfraCodegenGeneration",),
         ".census": ("FlextInfraCodegenCensus",),
         ".cli": ("FlextInfraCliCodegen",),
+        ".codegen_generation": ("FlextInfraCodegenGeneration",),
         ".constants_quality_gate": ("FlextInfraConstantsCodegenQualityGate",),
         ".fixer": ("FlextInfraCodegenFixer",),
         ".lazy_init": ("FlextInfraCodegenLazyInit",),

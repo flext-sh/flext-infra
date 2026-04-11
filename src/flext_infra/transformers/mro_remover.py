@@ -22,7 +22,7 @@ class FlextInfraRefactorMRORemover(FlextInfraRopeTransformer):
         resource: t.Infra.RopeResource,
     ) -> t.Infra.TransformResult:
         """Apply MRO redeclaration removal. Returns (new_source, changes)."""
-        source = u.Infra.read_source(resource)
+        source = resource.read()
         class_infos = u.Infra.get_class_info(rope_project, resource)
         if not class_infos:
             return source, []
@@ -43,8 +43,8 @@ class FlextInfraRefactorMRORemover(FlextInfraRopeTransformer):
                     nested_class=nested_name,
                 )
 
-        if source != u.Infra.read_source(resource) and self.changes:
-            u.Infra.write_source(
+        if source != resource.read() and self.changes:
+            u.Infra.apply_source_change(
                 rope_project,
                 resource,
                 source,

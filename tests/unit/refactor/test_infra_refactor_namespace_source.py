@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import DetectorContext, FlextInfraNamespaceSourceDetector
-from tests import t, u
+from flext_infra import FlextInfraNamespaceSourceDetector
+from tests import m, t, u
 
 FAMILY_FILE_MAP = {
     "c": "constants.py",
@@ -84,7 +84,7 @@ def test_detects_wrong_source_m_import(tmp_path: Path) -> None:
     )
 
     violations = FlextInfraNamespaceSourceDetector.detect_file(
-        DetectorContext(
+        m.Infra.DetectorContext(
             file_path=target,
             project_name=project_name,
             project_root=project_root,
@@ -110,7 +110,7 @@ def test_detects_wrong_source_u_import(tmp_path: Path) -> None:
     )
 
     violations = FlextInfraNamespaceSourceDetector.detect_file(
-        DetectorContext(
+        m.Infra.DetectorContext(
             file_path=target,
             project_name=project_name,
             project_root=project_root,
@@ -136,7 +136,7 @@ def test_skips_r_alias_universal_exception(tmp_path: Path) -> None:
     )
 
     violations = FlextInfraNamespaceSourceDetector.detect_file(
-        DetectorContext(
+        m.Infra.DetectorContext(
             file_path=target,
             project_name=project_name,
             project_root=project_root,
@@ -164,7 +164,7 @@ def test_skips_facade_declaration_files(tmp_path: Path) -> None:
     )
 
     violations = FlextInfraNamespaceSourceDetector.detect_file(
-        DetectorContext(
+        m.Infra.DetectorContext(
             file_path=target,
             project_name=project_name,
             project_root=project_root,
@@ -186,7 +186,7 @@ def test_skips_init_file(tmp_path: Path) -> None:
     target.write_text("from flext_core import m\n")
 
     violations = FlextInfraNamespaceSourceDetector.detect_file(
-        DetectorContext(
+        m.Infra.DetectorContext(
             file_path=target,
             project_name=project_name,
             project_root=project_root,
@@ -210,7 +210,7 @@ def test_skips_import_as_rename(tmp_path: Path) -> None:
     )
 
     violations = FlextInfraNamespaceSourceDetector.detect_file(
-        DetectorContext(
+        m.Infra.DetectorContext(
             file_path=target,
             project_name=project_name,
             project_root=project_root,
@@ -234,7 +234,7 @@ def test_skips_non_alias_symbols(tmp_path: Path) -> None:
     )
 
     violations = FlextInfraNamespaceSourceDetector.detect_file(
-        DetectorContext(
+        m.Infra.DetectorContext(
             file_path=target,
             project_name=project_name,
             project_root=project_root,
@@ -258,7 +258,7 @@ def test_detects_only_wrong_alias_in_mixed_import(tmp_path: Path) -> None:
     )
 
     violations = FlextInfraNamespaceSourceDetector.detect_file(
-        DetectorContext(
+        m.Infra.DetectorContext(
             file_path=target,
             project_name=project_name,
             project_root=project_root,
@@ -282,7 +282,7 @@ def test_project_without_alias_facade_has_no_violation(tmp_path: Path) -> None:
     )
 
     violations = FlextInfraNamespaceSourceDetector.detect_file(
-        DetectorContext(
+        m.Infra.DetectorContext(
             file_path=target,
             project_name=project_name,
             project_root=project_root,
@@ -293,7 +293,7 @@ def test_project_without_alias_facade_has_no_violation(tmp_path: Path) -> None:
     assert violations == []
 
 
-def test_allows_parent_u_import_in_private_utilities_module(tmp_path: Path) -> None:
+def test_detects_parent_u_import_in_private_utilities_module(tmp_path: Path) -> None:
     project_root, package_dir, _package_name, project_name, rope_project = (
         _create_project_with_facades(
             tmp_path=tmp_path,
@@ -311,7 +311,7 @@ def test_allows_parent_u_import_in_private_utilities_module(tmp_path: Path) -> N
     )
 
     violations = FlextInfraNamespaceSourceDetector.detect_file(
-        DetectorContext(
+        m.Infra.DetectorContext(
             file_path=target,
             project_name=project_name,
             project_root=project_root,
@@ -319,7 +319,9 @@ def test_allows_parent_u_import_in_private_utilities_module(tmp_path: Path) -> N
         ),
     )
 
-    assert violations == []
+    assert len(violations) == 1
+    assert violations[0].current_source == "flext_cli"
+    assert violations[0].correct_source == "flext_xyz"
 
 
 def test_detects_parent_u_import_outside_private_utilities_module(
@@ -340,7 +342,7 @@ def test_detects_parent_u_import_outside_private_utilities_module(
     )
 
     violations = FlextInfraNamespaceSourceDetector.detect_file(
-        DetectorContext(
+        m.Infra.DetectorContext(
             file_path=target,
             project_name=project_name,
             project_root=project_root,
@@ -445,7 +447,7 @@ def test_detects_same_project_submodule_alias_import(tmp_path: Path) -> None:
     )
 
     violations = FlextInfraNamespaceSourceDetector.detect_file(
-        DetectorContext(
+        m.Infra.DetectorContext(
             file_path=target,
             project_name=project_name,
             project_root=project_root,
@@ -470,7 +472,7 @@ def test_skips_same_project_submodule_class_import(tmp_path: Path) -> None:
     )
 
     violations = FlextInfraNamespaceSourceDetector.detect_file(
-        DetectorContext(
+        m.Infra.DetectorContext(
             file_path=target,
             project_name=project_name,
             project_root=project_root,
@@ -495,7 +497,7 @@ def test_skips_same_project_private_submodule(tmp_path: Path) -> None:
     )
 
     violations = FlextInfraNamespaceSourceDetector.detect_file(
-        DetectorContext(
+        m.Infra.DetectorContext(
             file_path=target,
             project_name=project_name,
             project_root=project_root,

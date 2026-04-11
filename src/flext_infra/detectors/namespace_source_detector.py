@@ -6,59 +6,21 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
+from collections.abc import Sequence
 from pathlib import Path
-from typing import ClassVar, override
 
 from flext_infra import (
-    FlextInfraScanFileMixin,
     c,
     m,
-    p,
-    t,
     u,
 )
 
 
-class FlextInfraNamespaceSourceDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
+class FlextInfraNamespaceSourceDetector:
     """Detect alias imports from wrong source packages."""
 
-    _rule_id: ClassVar[str] = "namespace.source_alias"
-    _MESSAGE_TEMPLATE: ClassVar[str] = (
-        "Wrong source for alias '{alias}': '{current_source}' -> '{correct_source}'"
-    )
-
-    def __init__(
-        self,
-        *,
-        project_name: str,
-        project_root: Path,
-        rope_project: t.Infra.RopeProject,
-        parse_failures: MutableSequence[m.Infra.ParseFailureViolation] | None = None,
-    ) -> None:
-        """Initialize with project context and mandatory rope project."""
-        super().__init__(rope_project=rope_project, parse_failures=parse_failures)
-        self._project_name = project_name
-        self._project_root = project_root
-
-    @override
-    def _collect_violations(
-        self, file_path: Path
-    ) -> Sequence[m.Infra.NamespaceSourceViolation]:
-        return self.detect_file(
-            m.Infra.DetectorContext(
-                file_path=file_path,
-                project_name=self._project_name,
-                project_root=self._project_root,
-                rope_project=self._rope,
-                parse_failures=self._pf,
-            ),
-        )
-
-    @classmethod
-    @override
+    @staticmethod
     def detect_file(
-        cls,
         ctx: m.Infra.DetectorContext,
     ) -> Sequence[m.Infra.NamespaceSourceViolation]:
         """Detect runtime aliases imported from a different flext package root."""
@@ -66,12 +28,12 @@ class FlextInfraNamespaceSourceDetector(FlextInfraScanFileMixin, p.Infra.Scanner
         project_root = ctx.project_root
         if project_root is None or file_path.name == c.Infra.Files.INIT_PY:
             return []
-        package_name = u.Infra.discover_project_package_name(project_root=project_root)
-        if not package_name:
+        package_info = u.Infra.discover_src_package_dir(project_root)
+        if package_info is None:
             return []
-        local_aliases = cls._discover_local_runtime_aliases(
-            project_root=project_root,
-            package_name=package_name,
+        package_name, _package_dir = package_info
+        local_aliases = FlextInfraNamespaceSourceDetector._discover_local_runtime_aliases(
+            project_root=project_root, package_name=package_name
         )
         if not local_aliases:
             return []
@@ -95,9 +57,13 @@ class FlextInfraNamespaceSourceDetector(FlextInfraScanFileMixin, p.Infra.Scanner
             resource,
         ):
             current_source = from_import.module_name
-            if not cls._is_candidate_wrong_source(
-                current_source=current_source,
-                package_name=package_name,
+            if current_source == package_name or current_source.startswith(
+                f"{package_name}."
+            ):
+                continue
+            if not (
+                current_source.startswith(c.Infra.Packages.PREFIX_UNDERSCORE)
+                and "." not in current_source
             ):
                 continue
             wrong_aliases = sorted(
@@ -148,21 +114,6 @@ class FlextInfraNamespaceSourceDetector(FlextInfraScanFileMixin, p.Infra.Scanner
             for alias_name in u.Infra.extract_lazy_import_targets(init_path)
             if alias_name in c.Infra.RUNTIME_ALIAS_NAMES
         }
-
-    @staticmethod
-    def _is_candidate_wrong_source(
-        *,
-        current_source: str,
-        package_name: str,
-    ) -> bool:
-        if current_source == package_name or current_source.startswith(
-            f"{package_name}."
-        ):
-            return False
-        return (
-            current_source.startswith(c.Infra.Packages.PREFIX_UNDERSCORE)
-            and "." not in current_source
-        )
 
 
 __all__ = ["FlextInfraNamespaceSourceDetector"]

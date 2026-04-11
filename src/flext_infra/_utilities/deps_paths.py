@@ -8,8 +8,8 @@ from pathlib import Path
 from flext_cli import u
 from flext_infra import (
     FlextInfraUtilitiesDependencyPathSync,
-    FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesDiscoveryScanning,
+    FlextInfraUtilitiesDocsScope,
     FlextInfraUtilitiesParsing,
     c,
     t,
@@ -147,7 +147,7 @@ class FlextInfraExtraPathsResolutionMixin:
         )
 
     def _discover_workspace_project_names(self) -> t.Infra.StrSet:
-        projects_result = FlextInfraUtilitiesDiscovery.discover_projects(self.root)
+        projects_result = FlextInfraUtilitiesDocsScope.discover_projects(self.root)
         if projects_result.is_failure:
             return set()
         return {project.name for project in projects_result.value}

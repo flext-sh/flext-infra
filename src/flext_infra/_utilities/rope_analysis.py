@@ -5,8 +5,6 @@ from __future__ import annotations
 from collections.abc import MutableSequence, Sequence
 from typing import TYPE_CHECKING
 
-from rope.base.exceptions import RefactoringError, ResourceNotFoundError
-
 from flext_infra import (
     FlextInfraUtilitiesRopeCore,
     c,
@@ -49,7 +47,7 @@ class FlextInfraUtilitiesRopeAnalysis:
                 line_number=definition_line,
                 symbol=symbol,
             )
-        except (RefactoringError, ResourceNotFoundError, AttributeError):
+        except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
             return None
 
     @staticmethod
@@ -71,10 +69,9 @@ class FlextInfraUtilitiesRopeAnalysis:
                 if module is None:
                     continue
                 module_name = module.get_name()
+                object_name_getter = getattr(obj, "get_name", None)
                 object_name = (
-                    obj.get_name()
-                    if FlextInfraUtilitiesRopeCore.is_rope_named_object_like(obj)
-                    else None
+                    object_name_getter() if callable(object_name_getter) else None
                 )
                 if not module_name or module_name == current_module_name:
                     continue
@@ -83,7 +80,7 @@ class FlextInfraUtilitiesRopeAnalysis:
                     if object_name is None or module_name.endswith(f".{object_name}")
                     else f"{module_name}.{object_name}"
                 )
-        except (RefactoringError, ResourceNotFoundError, AttributeError):
+        except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
             return result
         return result
 
@@ -102,14 +99,14 @@ class FlextInfraUtilitiesRopeAnalysis:
             resource_path = resource.path
             for name, pyname in pymodule.get_attributes().items():
                 obj = pyname.get_object()
-                if not FlextInfraUtilitiesRopeCore.is_rope_abstract_class_like(obj):
+                if not isinstance(obj, FlextInfraUtilitiesRopeCore.ABSTRACT_CLASS_TYPES):
                     continue
                 module = obj.get_module()
                 origin = module.get_resource() if module is not None else None
                 if origin is None or origin.path != resource_path:
                     continue
                 classes.append(name)
-        except (RefactoringError, ResourceNotFoundError, AttributeError):
+        except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
             return classes
         return classes
 
@@ -139,7 +136,7 @@ class FlextInfraUtilitiesRopeAnalysis:
             resource_path = resource.path
             for name, pyname in pymodule.get_attributes().items():
                 obj = pyname.get_object()
-                if not FlextInfraUtilitiesRopeCore.is_rope_abstract_class_like(obj):
+                if not isinstance(obj, FlextInfraUtilitiesRopeCore.ABSTRACT_CLASS_TYPES):
                     continue
                 module = obj.get_module()
                 origin = module.get_resource() if module is not None else None
@@ -160,7 +157,7 @@ class FlextInfraUtilitiesRopeAnalysis:
                         bases=tuple(bases),
                     )
                 )
-        except (RefactoringError, ResourceNotFoundError, AttributeError):
+        except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
             return result
         return result
 
@@ -180,10 +177,10 @@ class FlextInfraUtilitiesRopeAnalysis:
             if class_name not in attributes:
                 return 0
             obj = attributes[class_name].get_object()
-            if not FlextInfraUtilitiesRopeCore.is_rope_abstract_class_like(obj):
+            if not isinstance(obj, FlextInfraUtilitiesRopeCore.ABSTRACT_CLASS_TYPES):
                 return 0
             return len(obj.get_attributes())
-        except (RefactoringError, ResourceNotFoundError, AttributeError):
+        except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
             return 0
 
     @staticmethod
@@ -219,19 +216,17 @@ class FlextInfraUtilitiesRopeAnalysis:
             if class_name not in attributes:
                 return result
             obj = attributes[class_name].get_object()
-            if not FlextInfraUtilitiesRopeCore.is_rope_abstract_class_like(obj):
+            if not isinstance(obj, FlextInfraUtilitiesRopeCore.ABSTRACT_CLASS_TYPES):
                 return result
             for name, pyname in obj.get_attributes().items():
                 if not include_private and name.startswith("_"):
                     continue
                 child = pyname.get_object()
-                kind = "method"
-                if FlextInfraUtilitiesRopeCore.is_rope_pyfunction_like(child):
-                    raw_kind = child.get_kind()
-                    if raw_kind in {"staticmethod", "classmethod"}:
-                        kind = raw_kind
+                if not isinstance(child, FlextInfraUtilitiesRopeCore.PY_FUNCTION_TYPES):
+                    continue
+                kind = child.get_kind()
                 result[name] = kind
-        except (RefactoringError, ResourceNotFoundError, AttributeError):
+        except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
             return result
         return result
 

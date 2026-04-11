@@ -51,31 +51,49 @@ class TestScanPublicDefs:
 class TestShouldBubbleUp:
     """Test bubble-up filtering for child exports."""
 
-    def test_public_class_name(self) -> None:
+    @staticmethod
+    def _merge_single_export(tmp_path: Path, name: str) -> dict[str, tuple[str, str]]:
+        sub_dir = tmp_path / "sub"
+        sub_dir.mkdir(exist_ok=True)
+        lazy_map: dict[str, tuple[str, str]] = {}
+        u.Infra.merge_child_exports(
+            tmp_path,
+            lazy_map,
+            {str(sub_dir): {name: ("pkg.sub.module", name)}},
+        )
+        return lazy_map
+
+    def test_public_class_name(self, tmp_path: Path) -> None:
         """Test that public class names bubble up."""
-        tm.that(u.Infra.should_bubble_up("FlextInfraModels"), eq=True)
+        tm.that(
+            self._merge_single_export(tmp_path, "FlextInfraModels"),
+            contains="FlextInfraModels",
+        )
 
-    def test_private_name_filtered(self) -> None:
+    def test_private_name_filtered(self, tmp_path: Path) -> None:
         """Test that private names are filtered."""
-        tm.that(not u.Infra.should_bubble_up("_internal"), eq=True)
+        tm.that(self._merge_single_export(tmp_path, "_internal"), excludes="_internal")
 
-    def test_main_filtered(self) -> None:
+    def test_main_filtered(self, tmp_path: Path) -> None:
         """Test that 'main' entry point is filtered."""
-        tm.that(not u.Infra.should_bubble_up("main"), eq=True)
+        tm.that(self._merge_single_export(tmp_path, "main"), excludes="main")
 
-    def test_all_caps_filtered(self) -> None:
+    def test_all_caps_filtered(self, tmp_path: Path) -> None:
         """Test that ALL_CAPS constants are filtered."""
-        tm.that(not u.Infra.should_bubble_up("BLUE"), eq=True)
-        tm.that(not u.Infra.should_bubble_up("SYM_ARROW"), eq=True)
+        tm.that(self._merge_single_export(tmp_path, "BLUE"), excludes="BLUE")
+        tm.that(
+            self._merge_single_export(tmp_path, "SYM_ARROW"),
+            excludes="SYM_ARROW",
+        )
 
-    def test_legacy_output_wrapper_is_filtered(self) -> None:
+    def test_legacy_output_wrapper_is_filtered(self, tmp_path: Path) -> None:
         """Legacy output wrappers must not bubble to package root exports."""
-        tm.that(not u.Infra.should_bubble_up("output"), eq=True)
+        tm.that(self._merge_single_export(tmp_path, "output"), excludes="output")
 
-    def test_single_letter_aliases_are_filtered(self) -> None:
+    def test_single_letter_aliases_are_filtered(self, tmp_path: Path) -> None:
         """Single-letter runtime aliases must not bubble to package roots."""
-        tm.that(u.Infra.should_bubble_up("c"), eq=False)
-        tm.that(u.Infra.should_bubble_up("e"), eq=False)
+        tm.that(self._merge_single_export(tmp_path, "c"), excludes="c")
+        tm.that(self._merge_single_export(tmp_path, "e"), excludes="e")
 
 
 class TestMergeChildExports:

@@ -64,9 +64,6 @@ class FlextInfraUtilitiesCli(
             list[str] | None,
             Field(description="Selected project names"),
         ] = None
-        class_to_analyze: Annotated[
-            str | None, Field(description="Class to analyze")
-        ] = None
 
         @property
         def dry_run(self) -> bool:
@@ -180,11 +177,6 @@ class FlextInfraUtilitiesCli(
         raw_projects = getattr(args, "projects", None)
         projects = FlextInfraUtilitiesCli.project_names_from_values(raw_projects)
 
-        raw_class_to_analyze = getattr(args, "class_to_analyze", None)
-        class_to_analyze = (
-            raw_class_to_analyze if isinstance(raw_class_to_analyze, str) else None
-        )
-
         # Resolve workspace path
         raw_workspace = getattr(args, "workspace", Path.cwd())
         workspace_path: Path = (
@@ -200,7 +192,6 @@ class FlextInfraUtilitiesCli(
             output_format=output_format,
             check=check_flag,
             projects=projects,
-            class_to_analyze=class_to_analyze,
         )
 
 

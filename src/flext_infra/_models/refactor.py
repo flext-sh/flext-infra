@@ -33,20 +33,6 @@ class FlextInfraModelsRefactor(
     - ``ArbitraryTypesModel`` for mutable engine/report/result payloads.
     """
 
-    class RefactorCentralizeInput(
-        FlextInfraModelsMixins.WriteMixin,
-        m.ContractModel,
-    ):
-        """CLI/service request for pydantic centralization."""
-
-        normalize_remaining: Annotated[
-            bool,
-            Field(
-                default=False,
-                description="Remove remaining BaseModel/TypedDict bases in non-allowed files",
-            ),
-        ] = False
-
     class RefactorMigrateMroInput(
         FlextInfraModelsMixins.WriteMixin,
         m.ContractModel,
@@ -66,26 +52,6 @@ class FlextInfraModelsRefactor(
         m.ContractModel,
     ):
         """CLI/service request for namespace enforcement."""
-
-    class RefactorMigrateRuntimeAliasImportsInput(
-        FlextInfraModelsMixins.AliasSelectionMixin,
-        m.ContractModel,
-    ):
-        """CLI/service request for runtime alias migration."""
-
-    class RefactorUltraworkModelsInput(
-        FlextInfraModelsMixins.WriteMixin,
-        m.ContractModel,
-    ):
-        """CLI/service request for full centralization workflow."""
-
-        normalize_remaining: Annotated[
-            bool,
-            Field(
-                default=False,
-                description="Remove remaining BaseModel/TypedDict bases in non-allowed files",
-            ),
-        ] = False
 
     class RefactorCensusInput(
         FlextInfraModelsMixins.ReadMixin,
@@ -264,82 +230,6 @@ class FlextInfraModelsRefactor(
             Field(description="Package directory name"),
         ]
         class_suffix: Annotated[t.NonEmptyStr, Field(description="Class suffix")]
-
-    # -- Pydantic Centralizer Models -------------------------------------------
-
-    class ClassMove(m.ContractModel):
-        """Tracks a class definition being moved during centralization."""
-
-        name: Annotated[t.NonEmptyStr, Field(description="Class name")]
-        start: Annotated[t.NonNegativeInt, Field(description="Start line number")]
-        end: Annotated[t.NonNegativeInt, Field(description="End line number")]
-        source: Annotated[str, Field(description="Source code text")]
-        kind: Annotated[t.NonEmptyStr, Field(description="Model kind classification")]
-
-    class AliasMove(m.ContractModel):
-        """Tracks a type alias being moved during centralization."""
-
-        name: Annotated[t.NonEmptyStr, Field(description="Alias name")]
-        start: Annotated[t.NonNegativeInt, Field(description="Start line number")]
-        end: Annotated[t.NonNegativeInt, Field(description="End line number")]
-        alias_expr: Annotated[str, Field(description="Alias expression text")]
-
-    class CentralizerFailureStats(m.ArbitraryTypesModel):
-        """Mutable statistics for centralizer parse failures."""
-
-        parse_syntax_errors: Annotated[
-            t.NonNegativeInt,
-            Field(default=0, description="Syntax error count"),
-        ] = 0
-        parse_encoding_errors: Annotated[
-            t.NonNegativeInt,
-            Field(default=0, description="Encoding error count"),
-        ] = 0
-        parse_io_errors: Annotated[
-            t.NonNegativeInt,
-            Field(default=0, description="I/O error count"),
-        ] = 0
-
-    class CentralizerFileResult(m.ArbitraryTypesModel):
-        """Result of processing a single file for model centralization."""
-
-        @staticmethod
-        def _class_moves_default() -> list[FlextInfraModelsRefactor.ClassMove]:
-            return []
-
-        @staticmethod
-        def _alias_moves_default() -> list[FlextInfraModelsRefactor.AliasMove]:
-            return []
-
-        found_models: Annotated[
-            t.NonNegativeInt,
-            Field(default=0, description="Detected model violations"),
-        ] = 0
-        found_aliases: Annotated[
-            t.NonNegativeInt,
-            Field(default=0, description="Detected alias violations"),
-        ] = 0
-        skipped_non_necessary: Annotated[
-            bool,
-            Field(
-                default=False,
-                description="Whether the file was skipped as non-necessary",
-            ),
-        ] = False
-        apply_class_moves: Annotated[
-            list[FlextInfraModelsRefactor.ClassMove],
-            Field(
-                default_factory=_class_moves_default,
-                description="Class moves to apply",
-            ),
-        ]
-        apply_alias_moves: Annotated[
-            list[FlextInfraModelsRefactor.AliasMove],
-            Field(
-                default_factory=_alias_moves_default,
-                description="Alias moves to apply",
-            ),
-        ]
 
     # -- Namespace Enforcer Models ---------------------------------------------
 

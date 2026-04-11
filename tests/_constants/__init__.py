@@ -1,23 +1,16 @@
-"""Domain tests constants.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+# AUTO-GENERATED FILE — Regenerate with: make gen
+"""Constants package."""
 
 from __future__ import annotations
 
-from tests._constants.domain import (
-    TestsFlextInfraConstantsMarkers,
-    TestsFlextInfraConstantsPaths,
-    TestsFlextInfraConstantsProjects,
-    TestsFlextInfraConstantsVersions,
-)
-from tests._constants.fixtures import TestsFlextInfraConstantsFixtures
+from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
-__all__ = [
-    "TestsFlextInfraConstantsFixtures",
-    "TestsFlextInfraConstantsMarkers",
-    "TestsFlextInfraConstantsPaths",
-    "TestsFlextInfraConstantsProjects",
-    "TestsFlextInfraConstantsVersions",
-]
+_LAZY_IMPORTS = build_lazy_import_map(
+    {
+        ".domain": ("TestsFlextInfraConstantsDomain",),
+        ".fixtures": ("TestsFlextInfraConstantsFixtures",),
+    },
+)
+
+
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, publish_all=False)

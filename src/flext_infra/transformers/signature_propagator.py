@@ -1,8 +1,4 @@
-"""Signature propagation transformer — declarative signature migrations via rope.
-
-Replaces CST-based call site rewriting with regex-based pattern matching
-and rope's replace_in_source for keyword argument transformations.
-"""
+"""Signature propagation transformer."""
 
 from __future__ import annotations
 

@@ -16,11 +16,6 @@ def test_rope_project_wrapper(tmp_path: Path) -> None:
         project.close()
 
 
-def test_rope_module_syntax_error_wrapper() -> None:
-    """Confirm the Rope exception wrapper resolves a concrete exception type."""
-    assert u.Infra.module_syntax_error_type() is not None
-
-
 def test_rope_find_occurrences_wrapper(tmp_path: Path) -> None:
     """Confirm occurrence search works through the utility wrapper."""
     package_dir = tmp_path / "demo"

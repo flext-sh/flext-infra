@@ -24,6 +24,7 @@ class FlextInfraChangeTrackingTransformer:
         *,
         on_change: FlextInfraTypes.Infra.ChangeCallback = None,
     ) -> None:
+        """Initialize change tracking with an optional callback."""
         self._on_change = on_change
         self.changes: MutableSequence[str] = []
 
@@ -54,10 +55,10 @@ class FlextInfraRopeTransformer(FlextInfraChangeTrackingTransformer):
         resource: FlextInfraTypes.Infra.RopeResource,
     ) -> FlextInfraTypes.Infra.TransformResult:
         """Read → apply_to_source → write if changed. Override for custom logic."""
-        source = u.Infra.read_source(resource)
+        source = resource.read()
         updated, changes = self.apply_to_source(source)
         if updated != source and changes:
-            u.Infra.write_source(
+            u.Infra.apply_source_change(
                 rope_project,
                 resource,
                 updated,

@@ -59,6 +59,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
         apply: bool = False,
         project_names: t.StrSequence | None = None,
     ) -> m.Infra.WorkspaceEnforcementReport:
+        """Enforce namespace rules across the workspace."""
         _ = apply, project_names
         msg = "enforce must be provided by the concrete enforcer"
         raise NotImplementedError(msg)
@@ -80,7 +81,8 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
             workspace_root=self._workspace_root,
         )
         py_files = self._collect_py_files(project_root=project_root)
-        package_name = u.Infra.discover_project_package_name(project_root=project_root)
+        package_info = u.Infra.discover_src_package_dir(project_root)
+        package_name = package_info[0] if package_info is not None else ""
         loose_objects = self._detect_and_apply(
             py_files=py_files,
             detect_fn=lambda f: FlextInfraLooseObjectDetector.detect_file(

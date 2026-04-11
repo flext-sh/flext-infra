@@ -12,14 +12,14 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from flext_core import r
-from flext_infra import FlextInfraUtilitiesDiscovery, m
+from flext_infra import FlextInfraUtilitiesDocsScope, m
 
 
 class FlextInfraUtilitiesSelection:
     """Static project selection and filtering utilities.
 
     All methods are ``@staticmethod`` — no instantiation required.
-    Delegates discovery to ``FlextInfraUtilitiesDiscovery`` directly.
+    Delegates discovery to the docs-scope SSOT directly.
     """
 
     @staticmethod
@@ -37,7 +37,7 @@ class FlextInfraUtilitiesSelection:
             r with sorted list of resolved projects.
 
         """
-        discover_result = FlextInfraUtilitiesDiscovery.discover_projects(
+        discover_result = FlextInfraUtilitiesDocsScope.discover_projects(
             workspace_root,
         )
         if discover_result.is_failure:

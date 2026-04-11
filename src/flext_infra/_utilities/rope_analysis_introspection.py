@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
-
-from rope.base.exceptions import RefactoringError, ResourceNotFoundError
+from typing import ClassVar
 
 from flext_infra import (
     FlextInfraUtilitiesDiscovery,
@@ -25,6 +24,11 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
     extract_public_methods_from_file.
     """
 
+    _METHOD_KIND_LABELS: ClassVar[t.StrMapping] = {
+        "staticmethod": "static",
+        "classmethod": "class",
+    }
+
     @staticmethod
     def get_class_nested_classes(
         rope_project: t.Infra.RopeProject,
@@ -39,13 +43,13 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
             if class_name not in attributes:
                 return result
             obj = attributes[class_name].get_object()
-            if not FlextInfraUtilitiesRopeCore.is_rope_abstract_class_like(obj):
+            if not isinstance(obj, FlextInfraUtilitiesRopeCore.ABSTRACT_CLASS_TYPES):
                 return result
             for name, pyname in obj.get_attributes().items():
                 child = pyname.get_object()
-                if FlextInfraUtilitiesRopeCore.is_rope_abstract_class_like(child):
+                if isinstance(child, FlextInfraUtilitiesRopeCore.ABSTRACT_CLASS_TYPES):
                     result.append(name)
-        except (RefactoringError, ResourceNotFoundError, AttributeError):
+        except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
             return result
         return result
 
@@ -66,12 +70,12 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
                 if line is None or origin is None or origin.path != resource_path:
                     continue
                 kind = "assignment"
-                if FlextInfraUtilitiesRopeCore.is_rope_abstract_class_like(obj):
+                if isinstance(obj, FlextInfraUtilitiesRopeCore.ABSTRACT_CLASS_TYPES):
                     kind = "class"
-                elif FlextInfraUtilitiesRopeCore.is_rope_pyfunction_like(obj):
+                elif isinstance(obj, FlextInfraUtilitiesRopeCore.PY_FUNCTION_TYPES):
                     kind = "function"
                 result.append(m.Infra.SymbolInfo(name=name, kind=kind, line=line))
-        except (RefactoringError, ResourceNotFoundError, AttributeError):
+        except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
             return result
         return sorted(result, key=lambda symbol: symbol.line)
 
@@ -106,7 +110,9 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
                     for method_name, method_kind in class_methods.items():
                         methods.append((
                             method_name,
-                            cls.method_kind_label(method_kind),
+                            FlextInfraUtilitiesRopeAnalysisIntrospection._METHOD_KIND_LABELS.get(
+                                method_kind, "instance"
+                            ),
                             py_file.name,
                         ))
         return result
@@ -141,19 +147,12 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
                 for method_name, method_kind in class_methods.items():
                     methods.append((
                         method_name,
-                        cls.method_kind_label(method_kind),
+                        FlextInfraUtilitiesRopeAnalysisIntrospection._METHOD_KIND_LABELS.get(
+                            method_kind, "instance"
+                        ),
                         file_path.name,
                     ))
         return result
-
-    @staticmethod
-    def method_kind_label(method_kind: str) -> str:
-        """Normalize Rope method kinds to census labels."""
-        if method_kind == "staticmethod":
-            return "static"
-        if method_kind == "classmethod":
-            return "class"
-        return "instance"
 
 
 __all__ = ["FlextInfraUtilitiesRopeAnalysisIntrospection"]

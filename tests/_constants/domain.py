@@ -9,8 +9,8 @@ from __future__ import annotations
 from typing import Final
 
 
-class TestsFlextInfraConstantsProjects:
-    """Constants mixin for projects."""
+class TestsFlextInfraConstantsDomain:
+    """Domain constants mixin for infra tests."""
 
     class Infra:
         class Tests:
@@ -37,12 +37,6 @@ class TestsFlextInfraConstantsProjects:
                     FLEXT_QUALITY,
                 )
 
-
-class TestsFlextInfraConstantsMarkers:
-    """Constants mixin for markers."""
-
-    class Infra:
-        class Tests:
             class Markers:
                 """Test markers for infra test categorization."""
 
@@ -53,12 +47,6 @@ class TestsFlextInfraConstantsMarkers:
                 REQUIRES_NETWORK: Final[str] = "requires_network"
                 REQUIRES_DOCKER: Final[str] = "requires_docker"
 
-
-class TestsFlextInfraConstantsVersions:
-    """Constants mixin for versions."""
-
-    class Infra:
-        class Tests:
             class Versions:
                 """Version strings for infra components."""
 
@@ -68,12 +56,6 @@ class TestsFlextInfraConstantsVersions:
                 RUFF_MIN: Final[str] = "0.1"
                 MYPY_MIN: Final[str] = "1.0"
 
-
-class TestsFlextInfraConstantsPaths:
-    """Constants mixin for paths."""
-
-    class Infra:
-        class Tests:
             class Paths:
                 """Path constants for infra testing."""
 

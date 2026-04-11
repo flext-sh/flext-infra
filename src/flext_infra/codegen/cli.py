@@ -6,7 +6,6 @@ from flext_cli import cli
 from flext_infra import (
     FlextInfraCodegenCensus,
     FlextInfraCodegenConsolidator,
-    FlextInfraCodegenDeduplicator,
     FlextInfraCodegenFixer,
     FlextInfraCodegenLazyInit,
     FlextInfraCodegenPipeline,
@@ -40,13 +39,6 @@ class FlextInfraCliCodegen:
                     model_cls=FlextInfraCodegenCensus,
                     handler=FlextInfraCodegenCensus.execute_command,
                     failure_message="census failed",
-                ),
-                m.Cli.ResultCommandRoute(
-                    name="deduplicate",
-                    help_text="Auto-fix duplicated constants (keep most-used)",
-                    model_cls=FlextInfraCodegenDeduplicator,
-                    handler=FlextInfraCodegenDeduplicator.execute_command,
-                    failure_message="deduplicate failed",
                 ),
                 m.Cli.ResultCommandRoute(
                     name="scaffold",

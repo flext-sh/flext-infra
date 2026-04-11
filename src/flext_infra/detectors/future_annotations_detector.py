@@ -7,21 +7,15 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import ClassVar, override
 
-from flext_infra import FlextInfraScanFileMixin, c, m, p
+from flext_infra import c, m, u
 
 
-class FlextInfraFutureAnnotationsDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
+class FlextInfraFutureAnnotationsDetector:
     """Detect missing future annotations import via rope resource read."""
 
-    _rule_id: ClassVar[str] = "namespace.future_annotations"
-    _MESSAGE_TEMPLATE: ClassVar[str] = "Missing 'from __future__ import annotations'"
-
-    @classmethod
-    @override
+    @staticmethod
     def detect_file(
-        cls,
         ctx: m.Infra.DetectorContext,
     ) -> Sequence[m.Infra.FutureAnnotationsViolation]:
         """Detect missing future annotations in a single file."""
@@ -29,9 +23,10 @@ class FlextInfraFutureAnnotationsDetector(FlextInfraScanFileMixin, p.Infra.Scann
         rope_project = ctx.rope_project
         if file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES:
             return []
-        source = cls._get_source_or_empty(rope_project, file_path)
-        if source is None:
+        resource = u.Infra.get_resource_from_path(rope_project, file_path)
+        if resource is None:
             return []
+        source = resource.read()
         if not source.strip():
             return []
         if c.Infra.ONLY_DOCSTRING_RE.match(source.strip()):

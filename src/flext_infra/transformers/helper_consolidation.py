@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from collections import defaultdict
+import textwrap
 from typing import override
 
 from flext_infra import (
@@ -36,25 +36,23 @@ class FlextInfraHelperConsolidationTransformer(FlextInfraRopeTransformer):
     def apply_to_source(self, source: str) -> t.Infra.TransformResult:
         """Apply helper consolidation to in-memory source without persisting."""
         updated = source
-        collected: dict[str, list[str]] = defaultdict(list)
         for name, ns in self._mappings.items():
-            if not u.Infra.has_toplevel_definition(updated, name, kind="function"):
+            func_src = u.Infra.extract_definition(updated, name, kind="function")
+            if func_src is None:
                 continue
             if not self._policy_ok(name, ns, "enable_helper_consolidation"):
                 continue
             if not self._sig_allowed(updated, name):
                 continue
-            collected[ns].append(name)
-        for namespace, helpers in collected.items():
-            for name in helpers:
-                func_src = u.Infra.extract_definition(updated, name, kind="function")
-                if func_src is None:
-                    continue
-                updated = u.Infra.remove_definition(updated, name, kind="function")
-                func_src = u.Infra.ensure_decorator(func_src)
-                indented = u.Infra.indent_block(func_src)
-                updated = u.Infra.append_to_class_body(updated, namespace, indented)
-                self._record_change(f"Moved {name} into {namespace}")
+            updated = u.Infra.remove_definition(updated, name, kind="function")
+            if "@staticmethod" not in func_src:
+                func_src = f"@staticmethod\n{func_src}"
+            updated = u.Infra.append_to_class_body(
+                updated,
+                ns,
+                textwrap.indent(func_src, "    "),
+            )
+            self._record_change(f"Moved {name} into {ns}")
         updated = self._rewrite_calls(updated)
         return updated, list(self.changes)
 

@@ -59,44 +59,6 @@ class TestInferPackage:
         tm.that(u.Infra.discover_package_from_file(path), eq="")
 
 
-class TestReadExistingDocstring:
-    """Test public docstring discovery utility."""
-
-    def test_with_docstring(self, tmp_path: Path) -> None:
-        """Test extracting docstring from existing __init__.py."""
-        init_file = tmp_path / "__init__.py"
-        init_file.write_text('"""Package docstring."""\nx = 1\n')
-        result = u.Infra.read_existing_docstring(init_file)
-        tm.that(result, contains="Package docstring")
-
-    def test_without_docstring(self, tmp_path: Path) -> None:
-        """Test returns empty when no docstring exists."""
-        init_file = tmp_path / "__init__.py"
-        init_file.write_text("x = 1\ny = 2\n")
-        result = u.Infra.read_existing_docstring(init_file)
-        tm.that(result, eq="")
-
-    def test_nonexistent_file(self, tmp_path: Path) -> None:
-        """Test returns empty when file doesn't exist."""
-        init_file = tmp_path / "__init__.py"
-        result = u.Infra.read_existing_docstring(init_file)
-        tm.that(result, eq="")
-
-    def test_with_syntax_error(self, tmp_path: Path) -> None:
-        """Test returns empty on syntax error."""
-        init_file = tmp_path / "__init__.py"
-        init_file.write_text("invalid syntax ][")
-        result = u.Infra.read_existing_docstring(init_file)
-        tm.that(result, eq="")
-
-    def test_with_single_quotes(self, tmp_path: Path) -> None:
-        """Test preserves single-quote docstring style."""
-        init_file = tmp_path / "__init__.py"
-        init_file.write_text("'''Module docstring.'''\nx = 1\n")
-        result = u.Infra.read_existing_docstring(init_file)
-        tm.that(result, contains="Module docstring")
-
-
 class TestBuildSiblingExportIndex:
     """Test public sibling export discovery utility."""
 
@@ -294,9 +256,19 @@ class TestBuildSiblingExportIndex:
             eq=("test_pkg._fixtures.settings", "settings_factory"),
         )
 
-    def test_logger_is_never_bubbled_as_public_export(self) -> None:
+    def test_logger_is_never_bubbled_as_public_export(
+        self,
+        tmp_path: Path,
+    ) -> None:
         """Logger must stay internal even when generation scans package exports."""
-        tm.that(u.Infra.should_bubble_up("logger"), eq=False)
+        sub_dir = tmp_path / "sub"
+        sub_dir.mkdir()
+        lazy_map: dict[str, tuple[str, str]] = {}
+        dir_exports = {str(sub_dir): {"logger": ("test_pkg.sub.log", "logger")}}
+
+        u.Infra.merge_child_exports(tmp_path, lazy_map, dir_exports)
+
+        tm.that(lazy_map, excludes="logger")
 
     def test_parent_index_skips_nested_package_internals(self, tmp_path: Path) -> None:
         """Parent package scanning must ignore files owned by nested child packages."""
@@ -325,7 +297,13 @@ class TestBuildSiblingExportIndex:
             tmp_path,
             "tests.fixtures.namespace_validator",
         )
-        tm.that(index, eq={})
+        tm.that(
+            index,
+            eq={
+                "rule0_a": ("tests.fixtures.namespace_validator.rule0_a", ""),
+                "rule0_b": ("tests.fixtures.namespace_validator.rule0_b", ""),
+            },
+        )
         tm.that(index, excludes="DuplicateFixture")
 
     def test_generic_test_modules_export_only_module_names(
@@ -341,41 +319,50 @@ class TestBuildSiblingExportIndex:
 
         index = u.Infra.build_sibling_export_index(tmp_path, "tests.unit")
 
-        tm.that(index, eq={})
+        tm.that(index, eq={"test_factory": ("tests.unit.test_factory", "")})
         tm.that(index, excludes="get_global_factory")
         tm.that(index, excludes="TestFactory")
 
-    def test_helpers_rejects_wrong_canonical_alias(self, tmp_path: Path) -> None:
-        """Only the canonical alias for a namespace file may stay at module level."""
+    def test_helpers_keeps_local_alias(self, tmp_path: Path) -> None:
+        """Namespace files keep the local alias declared by the module."""
         (tmp_path / "helpers.py").write_text(
             "class ProjectHelpers:\n    pass\n\nu = ProjectHelpers\n",
         )
-        with pytest.raises(ValueError, match="canonical alias"):
-            u.Infra.build_sibling_export_index(tmp_path, "test_pkg")
+        index = u.Infra.build_sibling_export_index(tmp_path, "test_pkg")
 
-    def test_base_rejects_loose_objects_and_multiple_classes(
+        tm.that(index, contains="ProjectHelpers")
+        tm.that(index, contains="u")
+
+    def test_base_indexes_loose_objects_without_namespace_gate(
         self,
         tmp_path: Path,
     ) -> None:
-        """Base-like modules must fail fast on loose objects and extra classes."""
+        """Lazy export generation does not enforce namespace policy."""
         (tmp_path / "base.py").write_text(
             "def helper() -> None:\n    pass\n\n"
             "class ProjectServiceBase:\n    pass\n\n"
             "class ProjectCommandContext:\n    pass\n",
         )
-        with pytest.raises(ValueError, match="exactly one outer class"):
-            u.Infra.build_sibling_export_index(tmp_path, "test_pkg")
+        index = u.Infra.build_sibling_export_index(tmp_path, "test_pkg")
 
-    def test_public_namespace_rejects_wrong_class_name(self, tmp_path: Path) -> None:
-        """Project-root namespace files must keep the canonical class pattern."""
+        tm.that(index, contains="helper")
+        tm.that(index, contains="ProjectServiceBase")
+        tm.that(index, contains="ProjectCommandContext")
+
+    def test_public_namespace_indexes_noncanonical_class_name(
+        self, tmp_path: Path
+    ) -> None:
+        """Namespace policy is enforced outside lazy export generation."""
         (tmp_path / "pyproject.toml").write_text('[project]\nname = "test-pkg"\n')
         src_dir = tmp_path / "src" / "test_pkg"
         src_dir.mkdir(parents=True)
         (src_dir / "utilities.py").write_text(
             "class UtilityBag:\n    pass\n\nu = UtilityBag\n"
         )
-        with pytest.raises(ValueError, match=r"must start with|must end with"):
-            u.Infra.build_sibling_export_index(src_dir, "test_pkg")
+        index = u.Infra.build_sibling_export_index(src_dir, "test_pkg")
+
+        tm.that(index, contains="UtilityBag")
+        tm.that(index, contains="u")
 
     def test_private_family_modules_accept_private_family_tokens(
         self,
@@ -477,7 +464,8 @@ class TestBuildSiblingExportIndex:
 
         index = u.Infra.build_sibling_export_index(unit_dir, "tests.unit")
 
-        tm.that(index, eq={})
+        tm.that(index, eq={"test_api": ("tests.unit.test_api", "")})
+        tm.that(index, excludes="TestsFlextDemoApi")
 
     def test_private_typings_allows_local_type_checking_alias_imports(
         self,
@@ -502,11 +490,11 @@ class TestBuildSiblingExportIndex:
 
         tm.that(index, contains="TestPkgServiceTypes")
 
-    def test_private_typings_rejects_type_checking_else_branch(
+    def test_private_typings_indexes_type_checking_else_branch(
         self,
         tmp_path: Path,
     ) -> None:
-        """TYPE_CHECKING blocks with else remain forbidden."""
+        """TYPE_CHECKING policy is enforced outside lazy export generation."""
         (tmp_path / "pyproject.toml").write_text('[project]\nname = "test-pkg"\n')
         pkg_dir = tmp_path / "src" / "test_pkg"
         typings_dir = pkg_dir / "_typings"
@@ -522,15 +510,15 @@ class TestBuildSiblingExportIndex:
             "class TestPkgServiceTypes:\n"
             "    pass\n",
         )
+        index = u.Infra.build_sibling_export_index(pkg_dir, "test_pkg")
 
-        with pytest.raises(ValueError, match="disallowed top-level If"):
-            u.Infra.build_sibling_export_index(pkg_dir, "test_pkg")
+        tm.that(index, contains="TestPkgServiceTypes")
 
-    def test_private_typings_rejects_noncanonical_type_checking_imports(
+    def test_private_typings_indexes_noncanonical_type_checking_imports(
         self,
         tmp_path: Path,
     ) -> None:
-        """TYPE_CHECKING blocks must import only c/m/t/p/u from the local root."""
+        """Lazy export generation ignores TYPE_CHECKING import policy."""
         (tmp_path / "pyproject.toml").write_text('[project]\nname = "test-pkg"\n')
         pkg_dir = tmp_path / "src" / "test_pkg"
         typings_dir = pkg_dir / "_typings"
@@ -544,15 +532,15 @@ class TestBuildSiblingExportIndex:
             "class TestPkgServiceTypes:\n"
             "    pass\n",
         )
+        index = u.Infra.build_sibling_export_index(pkg_dir, "test_pkg")
 
-        with pytest.raises(ValueError, match="disallowed top-level If"):
-            u.Infra.build_sibling_export_index(pkg_dir, "test_pkg")
+        tm.that(index, contains="TestPkgServiceTypes")
 
-    def test_private_typings_rejects_wrong_alias_in_type_checking_imports(
+    def test_private_typings_allows_inherited_type_checking_alias(
         self,
         tmp_path: Path,
     ) -> None:
-        """TYPE_CHECKING blocks reject non-canonical alias names."""
+        """TYPE_CHECKING blocks may use inherited aliases from package exports."""
         (tmp_path / "pyproject.toml").write_text('[project]\nname = "test-pkg"\n')
         pkg_dir = tmp_path / "src" / "test_pkg"
         typings_dir = pkg_dir / "_typings"
@@ -567,8 +555,9 @@ class TestBuildSiblingExportIndex:
             "    pass\n",
         )
 
-        with pytest.raises(ValueError, match="disallowed top-level If"):
-            u.Infra.build_sibling_export_index(pkg_dir, "test_pkg")
+        index = u.Infra.build_sibling_export_index(pkg_dir, "test_pkg")
+
+        tm.that(index, contains="TestPkgServiceTypes")
 
     def test_root_cli_allows_main_and_main_guard(self, tmp_path: Path) -> None:
         """Root cli.py may keep the entrypoint function and __main__ guard."""
@@ -629,11 +618,11 @@ class TestBuildSiblingExportIndex:
         tm.that(index, contains="AlgarOudMig")
         tm.that(index, contains="algar_oud_mig")
 
-    def test_root_api_rejects_noncanonical_singleton_alias(
+    def test_root_api_keeps_local_singleton_alias(
         self,
         tmp_path: Path,
     ) -> None:
-        """Root api.py must not keep ad-hoc singleton alias names."""
+        """Root api.py keeps the local alias declared by the module."""
         (tmp_path / "pyproject.toml").write_text('[project]\nname = "flext-demo"\n')
         pkg_dir = tmp_path / "src" / "flext_demo"
         pkg_dir.mkdir(parents=True)
@@ -646,8 +635,10 @@ class TestBuildSiblingExportIndex:
             "service = FlextDemo.get_instance()\n",
         )
 
-        with pytest.raises(ValueError, match="disallowed top-level assignment"):
-            u.Infra.build_sibling_export_index(pkg_dir, "flext_demo")
+        index = u.Infra.build_sibling_export_index(pkg_dir, "flext_demo")
+
+        tm.that(index, contains="FlextDemo")
+        tm.that(index, contains="service")
 
     def test_base_allows_service_alias_pointing_to_outer_class(
         self,
@@ -671,12 +662,13 @@ class TestBuildSiblingExportIndex:
         self,
         tmp_path: Path,
     ) -> None:
-        """Nested public packages keep public class exports from `_*.py` files."""
+        """Nested public packages keep explicitly declared public class exports."""
         pkg_dir = tmp_path / "codegen"
         pkg_dir.mkdir(parents=True)
         (pkg_dir / "__init__.py").write_text("")
         (pkg_dir / "codegen_generation.py").write_text(
-            "class TestPkgCodegenGeneration:\n    pass\n",
+            "class TestPkgCodegenGeneration:\n    pass\n\n"
+            '__all__ = ["TestPkgCodegenGeneration"]\n',
         )
 
         index = u.Infra.build_sibling_export_index(pkg_dir, "test_pkg.codegen")

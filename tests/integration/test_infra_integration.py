@@ -1,7 +1,7 @@
 """Integration tests for flext_infra cross-module flows.
 
 Tests exercise cross-module flows using u.Infra MRO pattern, validating:
-- Output singleton consistency
+- Output/reporting methods via u.Infra
 - Service r chaining
 - Git operations via u.Infra.git_*
 - Command runtime operations via u.Cli.run_checked/capture
@@ -22,7 +22,6 @@ from flext_infra import (
     FlextInfraBaseMkGenerator,
     FlextInfraBaseMkTemplateEngine,
     FlextInfraOrchestratorService,
-    FlextInfraUtilitiesOutput,
     FlextInfraWorkspaceDetector,
     u,
 )
@@ -94,19 +93,8 @@ class TestInfraIntegration:
         assert "check" in generated.value
 
     @pytest.mark.integration
-    def test_output_singleton_is_same_instance_everywhere(self) -> None:
-        """Test that FlextInfraUtilitiesOutput is same instance everywhere.
-
-        Validates:
-        - output singleton is consistent
-        - output has expected u.Infra methods via MRO
-        - Singleton pattern is maintained
-        """
-        assert FlextInfraUtilitiesOutput is not None
-
-    @pytest.mark.integration
     def test_output_singleton_has_expected_methods(self) -> None:
-        """Test that output singleton has all expected methods.
+        """Test that reporting/output methods are exposed through u.Infra.
 
         Validates u.Infra MRO output methods are available:
         - status, summary, error, warning, info, header, progress
@@ -120,20 +108,19 @@ class TestInfraIntegration:
         assert callable(u.Infra.progress)
 
     @pytest.mark.integration
-    def test_output_singleton_methods_are_callable(self) -> None:
-        """Test that output singleton methods are callable.
+    def test_output_methods_are_callable_via_u_infra(self) -> None:
+        """Test that reporting methods are callable through the real facade.
 
         Validates:
-        - All methods are callable
-        - Methods can be invoked without error
+        - All methods are callable through u.Infra
         """
-        assert callable(FlextInfraUtilitiesOutput.status)
-        assert callable(FlextInfraUtilitiesOutput.summary)
-        assert callable(FlextInfraUtilitiesOutput.error)
-        assert callable(FlextInfraUtilitiesOutput.warning)
-        assert callable(FlextInfraUtilitiesOutput.info)
-        assert callable(FlextInfraUtilitiesOutput.header)
-        assert callable(FlextInfraUtilitiesOutput.progress)
+        assert callable(u.Infra.status)
+        assert callable(u.Infra.summary)
+        assert callable(u.Infra.error)
+        assert callable(u.Infra.warning)
+        assert callable(u.Infra.info)
+        assert callable(u.Infra.header)
+        assert callable(u.Infra.progress)
 
     @pytest.mark.integration
     def test_service_result_chaining_with_map(self) -> None:

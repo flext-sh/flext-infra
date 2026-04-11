@@ -36,52 +36,6 @@ class FlextInfraUtilitiesRopeSource:
     )
 
     @staticmethod
-    def read_source(resource: t.Infra.RopeResource) -> str:
-        """Read source from a rope resource."""
-        return resource.read()
-
-    @staticmethod
-    def write_source(
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
-        content: str,
-        *,
-        description: str = "rope transform",
-    ) -> bool:
-        """Write content to resource via ChangeSet. Returns True if changed."""
-        if content == resource.read():
-            return False
-        FlextInfraUtilitiesRopeCore.apply_source_change(
-            rope_project,
-            resource,
-            content,
-            description=description,
-        )
-        return True
-
-    @staticmethod
-    def replace_in_source(
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
-        pattern: str | t.Infra.RegexPattern,
-        replacement: str,
-        *,
-        apply: bool = True,
-    ) -> t.Infra.StrIntPair:
-        """Regex replace in source. Returns (new_source, count)."""
-        source = resource.read()
-        compiled = re.compile(pattern) if isinstance(pattern, str) else pattern
-        new_source, count = compiled.subn(replacement, source)
-        if count > 0 and apply and new_source != source:
-            FlextInfraUtilitiesRopeCore.apply_source_change(
-                rope_project,
-                resource,
-                new_source,
-                description=f"replace pattern in <{resource.path}>",
-            )
-        return new_source, count
-
-    @staticmethod
     def remove_module_level_aliases(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
@@ -164,14 +118,20 @@ class FlextInfraUtilitiesRopeSource:
         apply: bool = True,
     ) -> t.Infra.StrIntPair:
         """Remove ``cast(Type, value)`` calls, replacing with just ``value``."""
-        pattern = re.compile(r"\bcast\s*\(\s*[^,]+\s*,\s*([^)]+)\s*\)")
-        return FlextInfraUtilitiesRopeSource.replace_in_source(
-            rope_project,
-            resource,
-            pattern,
+        source = resource.read()
+        new_source, count = re.subn(
+            r"\bcast\s*\(\s*[^,]+\s*,\s*([^)]+)\s*\)",
             r"\1",
-            apply=apply,
+            source,
         )
+        if count > 0 and apply and new_source != source:
+            FlextInfraUtilitiesRopeCore.apply_source_change(
+                rope_project,
+                resource,
+                new_source,
+                description=f"remove {count} redundant cast calls in <{resource.path}>",
+            )
+        return new_source, count
 
     @staticmethod
     def rewrite_source_at_offsets(

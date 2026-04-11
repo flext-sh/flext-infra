@@ -11,6 +11,8 @@ from flext_infra import (
     r,
     t,
 )
+from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
+from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 
 
 class FlextInfraUtilitiesDiscoveryScanning:
@@ -182,66 +184,84 @@ class FlextInfraUtilitiesDiscoveryScanning:
         return r[Sequence[Path]].ok(all_files)
 
     @staticmethod
-    def resolve_parent_constants(
+    def resolve_parent_constants_mro(
         pkg_dir_or_file: Path,
         *,
         return_module: bool = False,
-    ) -> str:
-        """Find the parent constants class or module from constants.py imports.
-
-        Unified helper replacing 3 near-identical implementations.
-        If return_module=True returns the dotted module (e.g. "flext_core").
-        Otherwise returns the class name (e.g. "FlextCoreConstants").
-        Falls back to "flext_core" (module) or "" (class) if not found.
-        """
+    ) -> tuple[str, ...]:
+        """Resolve imported parent constants through Rope-backed class MRO."""
         constants_file = (
             pkg_dir_or_file
             if pkg_dir_or_file.name == c.Infra.Files.CONSTANTS_PY
             else pkg_dir_or_file / c.Infra.Files.CONSTANTS_PY
         )
         if not constants_file.is_file():
-            return c.Infra.Packages.CORE_UNDERSCORE if return_module else ""
-        try:
-            source = constants_file.read_text(c.Infra.Encoding.DEFAULT)
-        except (OSError, UnicodeDecodeError):
-            return c.Infra.Packages.CORE_UNDERSCORE if return_module else ""
-        match = c.Infra.Detection.IMPORT_CONSTANTS_RE.search(source)
-        if not match:
-            return c.Infra.Packages.CORE_UNDERSCORE if return_module else ""
-        module = match.group(1)
-        class_name = match.group(2)
-        if return_module:
-            return module
-        return class_name
-
-    @staticmethod
-    def discover_project_package_name(*, project_root: Path) -> str:
-        """Discover the Python package name under ``src/`` for a project root."""
-        result = FlextInfraUtilitiesDiscoveryScanning.discover_src_package_dir(
-            project_root,
+            return ()
+        project_root: Path | None = None
+        for current in (constants_file.parent, *constants_file.parent.parents):
+            if (current / c.Infra.Files.PYPROJECT_FILENAME).is_file():
+                project_root = current
+                break
+            if current.name == c.Infra.Paths.DEFAULT_SRC_DIR:
+                project_root = current.parent
+                break
+        if project_root is None:
+            return ()
+        current_module = ""
+        abs_parts = constants_file.resolve().parts
+        for root_name in (
+            c.Infra.Paths.DEFAULT_SRC_DIR,
+            c.Infra.Directories.TESTS,
+            c.Infra.Directories.EXAMPLES,
+            c.Infra.Directories.SCRIPTS,
+        ):
+            if root_name not in abs_parts:
+                continue
+            root_idx = abs_parts.index(root_name)
+            rel_parts = abs_parts[root_idx + 1 :]
+            if not rel_parts:
+                break
+            module_parts = rel_parts[:-1] + (Path(rel_parts[-1]).stem,)
+            if module_parts[-1] == c.Infra.Dunders.INIT:
+                module_parts = module_parts[:-1]
+            current_module = ".".join(module_parts)
+            if root_name != c.Infra.Paths.DEFAULT_SRC_DIR:
+                current_module = f"{root_name}.{current_module}"
+            break
+        with FlextInfraUtilitiesRopeCore.open_project(project_root.parent) as rope_proj:
+            resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
+                rope_proj,
+                constants_file,
+            )
+            if resource is None:
+                return ()
+            class_infos = FlextInfraUtilitiesRopeAnalysis.get_class_info(
+                rope_proj,
+                resource,
+            )
+            imported = FlextInfraUtilitiesRopeAnalysis.get_semantic_module_imports(
+                rope_proj,
+                resource,
+            )
+        current_root = (
+            current_module.split(".", maxsplit=1)[0] if current_module else ""
         )
-        return result[0] if result is not None else ""
-
-    @staticmethod
-    def find_package_dir(project_root: Path) -> Path | None:
-        """Find the first package directory under ``src/`` for a project root."""
-        result = FlextInfraUtilitiesDiscoveryScanning.discover_src_package_dir(
-            project_root,
-        )
-        return result[1] if result is not None else None
-
-    @staticmethod
-    def discover_parent_package(project_root: Path) -> str:
-        """Resolve the direct parent FLEXT package for a project."""
-        package_dir = FlextInfraUtilitiesDiscoveryScanning.find_package_dir(
-            project_root
-        )
-        if package_dir is None:
-            return c.Infra.Packages.CORE_UNDERSCORE
-        return FlextInfraUtilitiesDiscoveryScanning.resolve_parent_constants(
-            package_dir,
-            return_module=True,
-        )
+        resolved: list[str] = []
+        for class_info in class_infos:
+            if "Constants" not in class_info.name:
+                continue
+            for base_name in class_info.bases:
+                for local_name, semantic_target in imported.items():
+                    imported_name = semantic_target.rsplit(".", maxsplit=1)[-1]
+                    if base_name not in {local_name, imported_name}:
+                        continue
+                    package_root = semantic_target.split(".", maxsplit=1)[0]
+                    if package_root == current_root:
+                        continue
+                    target = package_root if return_module else imported_name
+                    if target and target not in resolved:
+                        resolved.append(target)
+        return tuple(resolved)
 
     @staticmethod
     def contextual_runtime_alias_sources(
@@ -250,17 +270,23 @@ class FlextInfraUtilitiesDiscoveryScanning:
         file_path: Path,
     ) -> Mapping[str, frozenset[str]]:
         """Return allowed foreign-package runtime alias sources for a file."""
-        package_dir = FlextInfraUtilitiesDiscoveryScanning.find_package_dir(
+        package_info = FlextInfraUtilitiesDiscoveryScanning.discover_src_package_dir(
             project_root
         )
-        if package_dir is None:
+        if package_info is None:
             return {}
-        parent_package = FlextInfraUtilitiesDiscoveryScanning.discover_parent_package(
-            project_root,
+        _package_name, package_dir = package_info
+        parent_packages = (
+            FlextInfraUtilitiesDiscoveryScanning.resolve_parent_constants_mro(
+                package_dir,
+                return_module=True,
+            )
         )
-        if not parent_package:
+        if not parent_packages:
             return {}
-        allowed_sources = frozenset({parent_package.split(".", maxsplit=1)[0]})
+        allowed_sources = frozenset(
+            package.split(".", maxsplit=1)[0] for package in parent_packages
+        )
         for family_dir in c.Infra.FAMILY_DIRECTORIES.values():
             if file_path.is_relative_to(package_dir / family_dir):
                 return dict.fromkeys(c.Infra.MRO_FAMILIES, allowed_sources)

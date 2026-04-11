@@ -33,21 +33,6 @@ class TestConstantsQualityGateCLIDispatch:
         ])
         tm.that(result, is_=int)
 
-    def test_parses_before_report_flag(self, tmp_path: Path) -> None:
-        """main() parses baseline comparison flags for quality gate."""
-        baseline = tmp_path / "before.json"
-        result = main([
-            "codegen",
-            "constants-quality-gate",
-            "--workspace",
-            str(tmp_path),
-            "--before-report",
-            str(baseline),
-            "--format",
-            "json",
-        ])
-        tm.that(result, is_=int)
-
     def test_json_format_exits_with_int(self, tmp_path: Path) -> None:
         """JSON mode returns an integer exit code."""
         result = main([
@@ -83,11 +68,11 @@ class TestConstantsQualityGateVerdict:
             eq=True,
         )
 
-    def test_success_verdict_accepts_conditional_pass(self) -> None:
-        """is_success_verdict returns True for CONDITIONAL_PASS."""
+    def test_success_verdict_rejects_conditional_pass(self) -> None:
+        """is_success_verdict returns False for removed conditional verdicts."""
         tm.that(
-            FlextInfraConstantsCodegenQualityGate.is_success_verdict(
-                "CONDITIONAL_PASS",
+            not FlextInfraConstantsCodegenQualityGate.is_success_verdict(
+                "CONDITIONAL_PASS"
             ),
             eq=True,
         )

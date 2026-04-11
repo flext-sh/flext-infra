@@ -7,38 +7,15 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Sequence
-from pathlib import Path
-from typing import ClassVar, override
 
-from flext_infra import FlextInfraScanFileMixin, c, m, p, t, u
+from flext_infra import c, m, u
 
 
-class FlextInfraMROCompletenessDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
+class FlextInfraMROCompletenessDetector:
     """Detect facade classes missing MRO bases via rope."""
 
-    _rule_id: ClassVar[str] = "namespace.mro_completeness"
-    _MESSAGE_TEMPLATE: ClassVar[str] = (
-        "Facade '{facade_class}' missing base '{missing_base}' for family '{family}'"
-    )
-
-    @classmethod
-    def _declared_bases_from_source(
-        cls,
-        *,
-        rope_project: t.Infra.RopeProject,
-        file_path: Path,
-        facade: str,
-    ) -> set[str]:
-        """Parse declared facade bases directly from source to complement Rope results."""
-        source = cls._get_source_or_empty(rope_project, file_path)
-        if source is None:
-            return set()
-        return set(u.Infra.parse_class_bases(source, facade))
-
-    @classmethod
-    @override
+    @staticmethod
     def detect_file(
-        cls,
         ctx: m.Infra.DetectorContext,
     ) -> Sequence[m.Infra.MROCompletenessViolation]:
         """Detect missing MRO bases: expected - declared = violations."""
@@ -79,7 +56,7 @@ class FlextInfraMROCompletenessDetector(FlextInfraScanFileMixin, p.Infra.Scanner
         # get_class_info returns ClassInfo(name, line, bases) — reuse for declared bases
         expected: dict[str, int] = {}
         declared: set[str] = set()
-        scan_paths: list[Path] = [file_path]
+        scan_paths = [file_path]
         dn = c.Infra.FAMILY_DIRECTORIES.get(family, "")
         if dn:
             d = file_path.parent / dn
@@ -97,13 +74,7 @@ class FlextInfraMROCompletenessDetector(FlextInfraScanFileMixin, p.Infra.Scanner
                     declared = set(ci.bases)
                 elif not ci.name.startswith("_") and ci.name.startswith(facade):
                     expected[ci.name] = ci.line
-        declared.update(
-            cls._declared_bases_from_source(
-                rope_project=rope_project,
-                file_path=file_path,
-                facade=facade,
-            )
-        )
+        declared.update(u.Infra.parse_class_bases(res.read(), facade))
         root = u.Infra.resolve_project_root(file_path)
         if root is not None:
             for base in u.Infra.build_expected_base_chains(project_root=root).get(

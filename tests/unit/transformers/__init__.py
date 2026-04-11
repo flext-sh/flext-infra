@@ -1,17 +1,23 @@
-# AUTO-GENERATED FILE — DO NOT EDIT MANUALLY.
-# Regenerate with: make gen
-#
+# AUTO-GENERATED FILE — Regenerate with: make gen
 """Transformers package."""
 
 from __future__ import annotations
 
-from flext_core.lazy import install_lazy_exports
+from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
-_LAZY_IMPORTS = {
-    "test_infra_transformer_class_nesting": "tests.unit.transformers.test_infra_transformer_class_nesting",
-    "test_infra_transformer_helper_consolidation": "tests.unit.transformers.test_infra_transformer_helper_consolidation",
-    "test_infra_transformer_nested_class_propagation": "tests.unit.transformers.test_infra_transformer_nested_class_propagation",
-}
+_LAZY_IMPORTS = build_lazy_import_map(
+    {
+        ".test_infra_transformer_class_nesting": (
+            "test_infra_transformer_class_nesting",
+        ),
+        ".test_infra_transformer_helper_consolidation": (
+            "test_infra_transformer_helper_consolidation",
+        ),
+        ".test_infra_transformer_nested_class_propagation": (
+            "test_infra_transformer_nested_class_propagation",
+        ),
+    },
+)
 
 
 install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, publish_all=False)

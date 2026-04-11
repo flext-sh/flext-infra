@@ -7,54 +7,20 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import MutableSequence, Sequence
-from pathlib import Path
-from typing import ClassVar, override
 
 from flext_infra import (
-    FlextInfraScanFileMixin,
     FlextInfraUtilitiesFacadeScanner,
     c,
     m,
-    p,
-    t,
     u,
 )
 
 
-class FlextInfraLooseObjectDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
+class FlextInfraLooseObjectDetector:
     """Detect loose top-level objects outside namespace classes via rope."""
 
-    _rule_id: ClassVar[str] = "namespace.loose_object"
-    _MESSAGE_TEMPLATE: ClassVar[str] = "Loose {kind} '{name}' outside namespace"
-
-    def __init__(
-        self,
-        *,
-        project_name: str,
-        rope_project: t.Infra.RopeProject,
-        parse_failures: MutableSequence[m.Infra.ParseFailureViolation] | None = None,
-    ) -> None:
-        """Initialize with project name and mandatory rope project."""
-        super().__init__(rope_project=rope_project, parse_failures=parse_failures)
-        self._project_name = project_name
-
-    @override
-    def _collect_violations(
-        self, file_path: Path
-    ) -> Sequence[m.Infra.LooseObjectViolation]:
-        return self.detect_file(
-            m.Infra.DetectorContext(
-                file_path=file_path,
-                project_name=self._project_name,
-                rope_project=self._rope,
-                parse_failures=self._pf,
-            ),
-        )
-
-    @classmethod
-    @override
+    @staticmethod
     def detect_file(
-        cls,
         ctx: m.Infra.DetectorContext,
     ) -> Sequence[m.Infra.LooseObjectViolation]:
         """Detect loose top-level objects in a single file."""
@@ -69,51 +35,45 @@ class FlextInfraLooseObjectDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
         res = u.Infra.get_resource_from_path(rope_project, file_path)
         if res is None:
             return []
-        source: str = res.read()
+        lines = res.read().splitlines()
         class_stem = FlextInfraUtilitiesFacadeScanner.project_class_stem(
             project_name=project_name,
         )
-        # Get all classes defined in module (these are NOT loose)
-        known_classes = set(u.Infra.get_module_classes(rope_project, res))
-
         file_str = str(file_path)
         violations: MutableSequence[m.Infra.LooseObjectViolation] = []
 
-        def _add(hit: t.Infra.RegexMatch, name: str, kind: str, suffix: str) -> None:
+        def _add(symbol: m.Infra.SymbolInfo, kind: str, suffix: str) -> None:
             violations.append(
                 m.Infra.LooseObjectViolation(
                     file=file_str,
-                    line=source.count("\n", 0, hit.start()) + 1,
-                    name=name,
+                    line=symbol.line,
+                    name=symbol.name,
                     kind=kind,
                     suggestion=f"{class_stem}{suffix}",
                 )
             )
 
-        for hit in c.Infra.FUNC_DEF_RE.finditer(source):
-            name = hit.group(2)
-            if not name.startswith("_"):
-                _add(hit, name, "function", "Utilities")
-
-        for hit in c.Infra.ASSIGN_RE.finditer(source):
-            name = hit.group(1)
-            if name in c.Infra.Scan.ALLOWED_TOP_LEVEL or name in known_classes:
+        for symbol in u.Infra.get_module_symbols(rope_project, res):
+            if symbol.kind == "class" or symbol.name in c.Infra.Scan.ALLOWED_TOP_LEVEL:
                 continue
-            if len(name) <= c.Infra.NAMESPACE_MIN_ALIAS_LENGTH or name.startswith("_"):
+            if symbol.kind == "function":
+                if not symbol.name.startswith("_"):
+                    _add(symbol, "function", "Utilities")
                 continue
-            if not c.Infra.NAMESPACE_CONSTANT_PATTERN.match(name):
+            line = lines[symbol.line - 1] if 0 < symbol.line <= len(lines) else ""
+            if line.lstrip().startswith("type "):
+                _add(symbol, "typealias", "Types")
                 continue
-            _add(hit, name, "constant", "Constants")
-
-        for hit in c.Infra.LOGGER_ASSIGN_RE.finditer(source):
-            name = hit.group(1)
-            if name not in c.Infra.Scan.ALLOWED_TOP_LEVEL:
-                _add(hit, name, "logger", "Utilities")
-
-        for hit in c.Infra.PEP695_RE.finditer(source):
-            name = hit.group(1)
-            if name not in c.Infra.Scan.ALLOWED_TOP_LEVEL:
-                _add(hit, name, "typealias", "Types")
+            if c.Infra.LOGGER_ASSIGN_RE.match(line):
+                _add(symbol, "logger", "Utilities")
+                continue
+            if (
+                symbol.kind == "assignment"
+                and len(symbol.name) > c.Infra.NAMESPACE_MIN_ALIAS_LENGTH
+                and not symbol.name.startswith("_")
+                and c.Infra.NAMESPACE_CONSTANT_PATTERN.match(symbol.name)
+            ):
+                _add(symbol, "constant", "Constants")
 
         return violations
 

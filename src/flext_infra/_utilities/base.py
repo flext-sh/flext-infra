@@ -292,3 +292,6 @@ class FlextInfraUtilitiesBase:
             ],
             detector_name=detector_name,
         )
+
+
+__all__ = ["FlextInfraUtilitiesBase"]

@@ -1,20 +1,28 @@
-# AUTO-GENERATED FILE — DO NOT EDIT MANUALLY.
-# Regenerate with: make gen
-#
+# AUTO-GENERATED FILE — Regenerate with: make gen
 """Utilities package."""
 
 from __future__ import annotations
 
-from flext_core.lazy import install_lazy_exports
+from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
-_LAZY_IMPORTS = {
-    "test_discovery_consolidated": "tests.unit._utilities.test_discovery_consolidated",
-    "test_formatting": "tests.unit._utilities.test_formatting",
-    "test_iteration": "tests.unit._utilities.test_iteration",
-    "test_rope_hooks": "tests.unit._utilities.test_rope_hooks",
-    "test_safety": "tests.unit._utilities.test_safety",
-    "test_scanning": "tests.unit._utilities.test_scanning",
-}
+_LAZY_IMPORTS = build_lazy_import_map(
+    {
+        ".test_discovery_consolidated": (
+            "TestsFlextInfraUtilitiesDiscoveryConsolidated",
+        ),
+        ".test_formatting": ("TestsFlextInfraUtilitiesFormattingRunRuffFix",),
+        ".test_iteration": ("TestIterWorkspacePythonModules",),
+        ".test_rope_hooks": (
+            "test_run_rope_post_hooks_applies_mro_migration",
+            "test_run_rope_post_hooks_dry_run_is_non_mutating",
+        ),
+        ".test_safety": (
+            "TestSafetyCheckpoint",
+            "TestSafetyRollback",
+        ),
+        ".test_scanning": ("TestScanModels",),
+    },
+)
 
 
 install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, publish_all=False)

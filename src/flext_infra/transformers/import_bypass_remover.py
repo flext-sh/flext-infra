@@ -29,14 +29,14 @@ class FlextInfraRefactorImportBypassRemover(FlextInfraRopeTransformer):
         resource: t.Infra.RopeResource,
     ) -> t.Infra.TransformResult:
         """Remove try/except ImportError fallback blocks, keep the primary import."""
-        source = u.Infra.read_source(resource)
+        source = resource.read()
         new_source, count = self._BYPASS_RE.subn(r"\1", source)
         if count == 0:
             return source, []
         changes = [f"Removed {count} import bypass fallback(s)"]
         for msg in changes:
             self._record_change(msg)
-        u.Infra.write_source(
+        u.Infra.apply_source_change(
             rope_project,
             resource,
             new_source,

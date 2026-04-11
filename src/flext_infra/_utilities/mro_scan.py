@@ -303,7 +303,7 @@ class FlextInfraUtilitiesRefactorMroScan:
         obj: object,
         class_header: str,
     ) -> bool:
-        if FlextInfraUtilitiesRope.is_rope_abstract_class_like(obj):
+        if isinstance(obj, FlextInfraUtilitiesRope.ABSTRACT_CLASS_TYPES):
             try:
                 bases = tuple(obj.get_superclasses())
                 if any("Protocol" in str(b.get_name()) for b in bases):

@@ -172,6 +172,7 @@ class FlextInfraRefactorEngine(
             self.rule_validator,
             self._build_rule,
             self._build_file_rules,
+            self._skip_rule_definition,
         )
         if rr.is_failure:
             return r[Sequence[FlextInfraRefactorRule]].fail(rr.error or "")
@@ -205,6 +206,19 @@ class FlextInfraRefactorEngine(
 
     def _build_file_rules(self) -> Sequence[FlextInfraClassNestingRefactorRule]:
         return [FlextInfraClassNestingRefactorRule()]
+
+    @staticmethod
+    def _skip_rule_definition(
+        rule_def: Mapping[str, t.Infra.InfraValue],
+    ) -> bool:
+        """Skip definitions handled by the dedicated file-rule pipeline."""
+        fix_action = u.Infra.get_str_key(
+            rule_def,
+            c.Infra.ReportKeys.FIX_ACTION,
+            default=u.Infra.get_str_key(rule_def, c.Infra.ReportKeys.ACTION),
+            case="lower",
+        )
+        return fix_action == "nest_classes"
 
     def _build_rule(
         self, rule_def: Mapping[str, t.Infra.InfraValue]

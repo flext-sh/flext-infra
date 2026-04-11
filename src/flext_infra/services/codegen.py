@@ -7,7 +7,6 @@ from collections.abc import Sequence
 from flext_infra import (
     FlextInfraCodegenCensus,
     FlextInfraCodegenConsolidator,
-    FlextInfraCodegenDeduplicator,
     FlextInfraCodegenFixer,
     FlextInfraCodegenLazyInit,
     FlextInfraCodegenPipeline,
@@ -28,14 +27,10 @@ class FlextInfraServiceCodegenMixin(FlextInfraServiceBase[t.MutableContainerMapp
     def run_codegen_census(
         self,
         *,
-        class_to_analyze: str | None = None,
         projects: Sequence[p.Infra.ProjectInfo] | None = None,
     ) -> Sequence[m.Infra.CensusReport]:
         """Run the public census API using the current facade context."""
-        payload = dict(self.command_payload())
-        if class_to_analyze is not None:
-            payload["class_to_analyze"] = class_to_analyze
-        service = FlextInfraCodegenCensus.model_validate(payload)
+        service = FlextInfraCodegenCensus.model_validate(self.command_payload())
         return service.run(projects=projects)
 
     def run_codegen_scaffold(
@@ -102,14 +97,6 @@ class FlextInfraServiceCodegenMixin(FlextInfraServiceBase[t.MutableContainerMapp
     ) -> r[str]:
         """Consolidate constants through the public facade."""
         return FlextInfraCodegenConsolidator.model_validate(
-            self.command_payload(),
-        ).execute()
-
-    def deduplicate_codegen(
-        self,
-    ) -> r[str]:
-        """Deduplicate constants through the public facade."""
-        return FlextInfraCodegenDeduplicator.model_validate(
             self.command_payload(),
         ).execute()
 

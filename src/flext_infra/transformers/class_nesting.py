@@ -40,14 +40,14 @@ class FlextInfraRefactorClassNestingTransformer(FlextInfraRopeTransformer):
         resource: t.Infra.RopeResource,
     ) -> t.Infra.TransformResult:
         """Apply class nesting. Returns (new_source, changes)."""
-        source = u.Infra.read_source(resource)
+        source = resource.read()
         class_infos = u.Infra.get_class_info(rope_project, resource)
         updated, changes = self.apply_to_source(
             source,
             existing_names={info.name for info in class_infos},
         )
         if updated != source and changes:
-            u.Infra.write_source(
+            u.Infra.apply_source_change(
                 rope_project,
                 resource,
                 updated,

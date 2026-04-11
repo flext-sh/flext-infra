@@ -168,7 +168,7 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
             for k in inline_constants:
                 lazy_map.pop(k, None)
             exports = sorted(set(lazy_map) | set(inline_constants))
-            if not exports:
+            if not exports and not init_path.exists():
                 return (None, dict(lazy_map))
             if check_only:
                 return (0, dict(lazy_map))

@@ -7,21 +7,15 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import ClassVar, override
 
-from flext_infra import FlextInfraScanFileMixin, c, m, p, u
+from flext_infra import c, m, u
 
 
-class FlextInfraInternalImportDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
+class FlextInfraInternalImportDetector:
     """Detect private module/symbol imports via rope semantic resolution."""
 
-    _rule_id: ClassVar[str] = "namespace.internal_import"
-    _MESSAGE_TEMPLATE: ClassVar[str] = "Internal import '{current_import}': {detail}"
-
-    @classmethod
-    @override
+    @staticmethod
     def detect_file(
-        cls,
         ctx: m.Infra.DetectorContext,
     ) -> Sequence[m.Infra.InternalImportViolation]:
         """Detect private module/symbol imports in a single file."""
@@ -48,25 +42,18 @@ class FlextInfraInternalImportDetector(FlextInfraScanFileMixin, p.Infra.Scanner)
             if local.startswith("_")
             or (
                 "._" in fqn
-                and cls._is_first_party_private_import(
-                    fqn=fqn,
-                    current_root=current_root,
+                and (
+                    fqn.split(".", 1)[0].startswith("flext_")
+                    or (current_root and fqn.split(".", 1)[0] == current_root)
+                    or fqn.split(".", 1)[0]
+                    in {
+                        c.Infra.Directories.TESTS,
+                        c.Infra.Directories.EXAMPLES,
+                        c.Infra.Directories.SCRIPTS,
+                    }
                 )
             )
         ]
-
-    @staticmethod
-    def _is_first_party_private_import(*, fqn: str, current_root: str) -> bool:
-        root = fqn.split(".", 1)[0]
-        if root.startswith("flext_"):
-            return True
-        if current_root and root == current_root:
-            return True
-        return root in {
-            c.Infra.Directories.TESTS,
-            c.Infra.Directories.EXAMPLES,
-            c.Infra.Directories.SCRIPTS,
-        }
 
 
 __all__ = ["FlextInfraInternalImportDetector"]

@@ -166,10 +166,7 @@ class FlextInfraRefactorMROImportRewriter:
         ],
     ) -> None:
         """Find rope occurrences for one module's symbols and merge into file_moves."""
-        resource = FlextInfraUtilitiesRope.get_file_resource(
-            rope_project,
-            module_name,
-        )
+        resource = rope_project.find_module(module_name)
         if resource is None:
             return
         facade_alias, symbol_paths = module_move

@@ -10,11 +10,8 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import importlib
-import operator
-import re
 from collections import defaultdict
 from collections.abc import (
-    Callable,
     Iterator,
     Mapping,
     MutableMapping,
@@ -26,12 +23,10 @@ from typing import ClassVar, Final
 
 from flext_cli import u
 from flext_infra import (
-    FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesProtectedEdit,
     FlextInfraUtilitiesRope,
     c,
     m,
-    r,
     t,
 )
 
@@ -83,23 +78,6 @@ class FlextInfraUtilitiesCodegenConstantDetection:
     """Regex-based detection of constant declarations and usages."""
 
     @staticmethod
-    def iter_py_files(
-        root: Path,
-        exclude: frozenset[str] = frozenset(),
-        *,
-        max_files: int = 0,
-    ) -> Iterator[Path]:
-        """Yield ``*.py`` files under *root*, skipping excluded dirs."""
-        count = 0
-        for py_file in root.rglob(c.Infra.Extensions.PYTHON_GLOB):
-            if max_files and count >= max_files:
-                return
-            if any(excl in py_file.parts for excl in exclude):
-                continue
-            count += 1
-            yield py_file
-
-    @staticmethod
     def read_source_safe(path: Path) -> str | None:
         """Read a file, returning ``None`` on error."""
         try:
@@ -115,26 +93,6 @@ class FlextInfraUtilitiesCodegenConstantDetection:
             and value[0] == value[-1]
             and value[0] in {"'", '"'}
         )
-
-    @staticmethod
-    def unquote(value: str) -> str:
-        """Remove surrounding quotes from a string value."""
-        det = FlextInfraUtilitiesCodegenConstantDetection
-        return value[1:-1] if det.is_quoted(value) else value
-
-    @staticmethod
-    def infer_project(py_file: Path, root: Path) -> str:
-        """Infer the project name from a Python file path."""
-        try:
-            parts = py_file.relative_to(root).parts
-            src = c.Infra.Paths.DEFAULT_SRC_DIR
-            if src in parts:
-                idx = parts.index(src)
-                if idx + 1 < len(parts):
-                    return parts[idx + 1].replace("_", "-")
-        except ValueError:
-            pass
-        return "unknown"
 
     @staticmethod
     def walk_mro_attrs(
@@ -157,30 +115,6 @@ class FlextInfraUtilitiesCodegenConstantDetection:
                     klass.__qualname__,
                     getattr(klass, "__module__", ""),
                 )
-
-    @staticmethod
-    def scan_patterns(
-        source: str,
-        patterns: Sequence[t.Infra.RegexPattern],
-    ) -> tuple[Sequence[t.Infra.StrIntPair], ...]:
-        """Scan *source* for multiple regex patterns."""
-        results: list[MutableSequence[t.Infra.StrIntPair]] = [[] for _ in patterns]
-        for line_num, line in enumerate(source.splitlines(), 1):
-            for i, pat in enumerate(patterns):
-                for match in pat.finditer(line):
-                    results[i].append((match.group(1), line_num))
-        return tuple(results)
-
-    @staticmethod
-    def semantic_name_matches(symbol_name: str, canonical_name: str) -> bool:
-        """Return True when *symbol_name* semantically matches *canonical_name*."""
-        if not canonical_name:
-            return False
-        cn = canonical_name.lower().replace("_", "")
-        sn = symbol_name.lower().replace("_", "")
-        return cn == sn or sn in cn
-
-    # ── Definitions ──────────────────────────────────────────────────
 
     @staticmethod
     def extract_constant_definitions(
@@ -223,99 +157,6 @@ class FlextInfraUtilitiesCodegenConstantDetection:
                 )
         return definitions
 
-    @staticmethod
-    def extract_all_constant_definitions(
-        root_path: Path,
-        exclude_packages: frozenset[str] | None = None,
-    ) -> Mapping[str, Sequence[m.Infra.ConstantDefinition]]:
-        """Extract all constant definitions across workspace."""
-        all_defs: defaultdict[str, MutableSequence[m.Infra.ConstantDefinition]] = (
-            defaultdict(list)
-        )
-        for py_file in FlextInfraUtilitiesCodegenConstantDetection.iter_py_files(
-            root_path, exclude_packages or frozenset()
-        ):
-            proj = FlextInfraUtilitiesCodegenConstantDetection.infer_project(
-                py_file, root_path
-            )
-            defs = FlextInfraUtilitiesCodegenConstantDetection.extract_constant_definitions(
-                py_file,
-                proj,
-            )
-            if defs:
-                all_defs[proj].extend(defs)
-        return dict(all_defs)
-
-    # ── Usages ───────────────────────────────────────────────────────
-
-    @staticmethod
-    def scan_constant_usages(
-        py_file: Path,
-        *,
-        collect_all_refs: bool = False,
-    ) -> tuple[
-        Sequence[t.Infra.StrIntPair],
-        Sequence[t.Infra.StrIntPair],
-        Sequence[t.Infra.StrIntPair],
-    ]:
-        """Scan one file → ``(direct_refs, alias_refs, all_refs)``."""
-        source = FlextInfraUtilitiesCodegenConstantDetection.read_source_safe(py_file)
-        if source is None:
-            return ([], [], [])
-        direct, alias = FlextInfraUtilitiesCodegenConstantDetection.scan_patterns(
-            source,
-            [c.Infra.Detection.DIRECT_USAGE_RE, c.Infra.Detection.ALIAS_USAGE_RE],
-        )
-        all_refs = [*direct, *alias] if collect_all_refs else []
-        return (direct, alias, all_refs)
-
-    @staticmethod
-    def scan_all_constant_usages(
-        root_path: Path,
-        exclude_packages: frozenset[str] | None = None,
-    ) -> Mapping[str, Sequence[t.Infra.StrIntPair]]:
-        """Scan all constant usages across workspace."""
-        usage_map: defaultdict[str, MutableSequence[t.Infra.StrIntPair]] = defaultdict(
-            list
-        )
-        for py_file in FlextInfraUtilitiesCodegenConstantDetection.iter_py_files(
-            root_path, exclude_packages or frozenset()
-        ):
-            _, _, all_refs = (
-                FlextInfraUtilitiesCodegenConstantDetection.scan_constant_usages(
-                    py_file,
-                    collect_all_refs=True,
-                )
-            )
-            for name, line_num in all_refs:
-                usage_map[name].append((str(py_file), line_num))
-        return dict(usage_map)
-
-    @staticmethod
-    def detect_unused_constants(
-        definitions: Sequence[m.Infra.ConstantDefinition],
-        all_used_names: t.Infra.StrSet,
-    ) -> Sequence[m.Infra.UnusedConstant]:
-        return [
-            m.Infra.UnusedConstant(
-                name=d.name,
-                file_path=d.file_path,
-                class_path=d.class_path,
-                project=d.project,
-                line=d.line,
-            )
-            for d in definitions
-            if d.name not in all_used_names
-            and not re.match(r"Flext\w*Constants\.", d.value_repr)
-        ]
-
-    @staticmethod
-    def resolve_parent_package(pkg_dir: Path) -> str:
-        return FlextInfraUtilitiesDiscovery.resolve_parent_constants(
-            pkg_dir,
-            return_module=True,
-        )
-
 
 # =====================================================================
 # Analysis — census, deduplication, MRO attribute extraction
@@ -324,334 +165,6 @@ class FlextInfraUtilitiesCodegenConstantDetection:
 
 class FlextInfraUtilitiesCodegenConstantAnalysis:
     """Census, deduplication, and MRO attribute analysis for constants."""
-
-    @staticmethod
-    def extract_class_attributes_with_mro(
-        class_path: str,
-    ) -> Mapping[str, m.Infra.ConstantDefinition]:
-        """Extract class attributes following MRO chain via importlib."""
-        if "." not in class_path:
-            return {}
-        module_path, class_name = class_path.rsplit(".", 1)
-        try:
-            module = importlib.import_module(module_path)
-        except (ImportError, ModuleNotFoundError):
-            return {}
-        cls_obj = getattr(module, class_name, None)
-        if cls_obj is None or not isinstance(cls_obj, type):
-            return {}
-
-        attrs: MutableMapping[str, m.Infra.ConstantDefinition] = {}
-        for (
-            attr_name,
-            attr_value,
-            klass_qualname,
-            klass_module,
-        ) in FlextInfraUtilitiesCodegenConstantDetection.walk_mro_attrs(cls_obj):
-            annotations = getattr(
-                next(
-                    (k for k in cls_obj.__mro__ if attr_name in dict(vars(k))),
-                    cls_obj,
-                ),
-                "__annotations__",
-                {},
-            )
-            attrs[attr_name] = m.Infra.ConstantDefinition(
-                name=attr_name,
-                value_repr=repr(attr_value)[:200],
-                type_annotation=str(annotations.get(attr_name, "")),
-                file_path=f"{klass_module}.{klass_qualname}",
-                class_path=klass_qualname,
-                project=(klass_module or module_path).split(".")[0].replace("_", "-"),
-                line=1,
-            )
-        return attrs
-
-    @staticmethod
-    def scan_class_attribute_usages(
-        root_path: Path,
-        class_name: str,
-        exclude_patterns: frozenset[str] = c.Infra.DEFAULT_EXCLUDE,
-        max_files: int = 5000,
-    ) -> tuple[t.Infra.StrSet, Mapping[str, Sequence[t.Infra.StrIntPair]]]:
-        """Scan for usages of class attributes across Python files."""
-        used_attrs: t.Infra.StrSet = set()
-        usage_map: defaultdict[str, MutableSequence[t.Infra.StrIntPair]] = defaultdict(
-            list
-        )
-        prefix = class_name.replace("Constants", "").removeprefix("Flext")
-        direct_pat = re.compile(rf"\b{re.escape(class_name)}\.([A-Za-z_]\w*)")
-        alias_pat = re.compile(
-            rf"\bc\.{re.escape(prefix)}\.([A-Za-z_]\w*)"
-            if prefix
-            else r"\bc\.([A-Za-z_]\w*)",
-        )
-        for py_file in FlextInfraUtilitiesCodegenConstantDetection.iter_py_files(
-            root_path, exclude_patterns, max_files=max_files
-        ):
-            source = FlextInfraUtilitiesCodegenConstantDetection.read_source_safe(
-                py_file
-            )
-            if source is None:
-                continue
-            direct, alias = FlextInfraUtilitiesCodegenConstantDetection.scan_patterns(
-                source, [direct_pat, alias_pat]
-            )
-            for refs in (direct, alias):
-                for attr_name, line_num in refs:
-                    used_attrs.add(attr_name)
-                    usage_map[attr_name].append((str(py_file), line_num))
-        return used_attrs, dict(usage_map)
-
-    @staticmethod
-    def analyze_class_object_census(
-        class_path: str,
-        root_path: Path,
-        exclude_patterns: frozenset[str] = c.Infra.DEFAULT_EXCLUDE,
-        max_files: int = 5000,
-    ) -> Mapping[
-        str,
-        int
-        | Mapping[str, int | t.IntMapping]
-        | Mapping[str, t.IntMapping]
-        | Mapping[str, Sequence[t.Infra.StrIntPair]],
-    ]:
-        """Comprehensive census of all objects in a class."""
-        cls = FlextInfraUtilitiesCodegenConstantAnalysis
-        attrs = cls.extract_class_attributes_with_mro(class_path)
-        if not attrs:
-            return {}
-        simple_name = class_path.rsplit(".", 1)[-1]
-        used_attrs, usage_map = cls.scan_class_attribute_usages(
-            root_path,
-            simple_name,
-            exclude_patterns,
-            max_files,
-        )
-
-        by_type: MutableMapping[str, t.MutableIntMapping] = {}
-        for attr_name, attr_def in attrs.items():
-            tp = attr_def.type_annotation
-            if tp not in by_type:
-                by_type[tp] = {"total": 0, "used": 0, "unused": 0}
-            by_type[tp]["total"] += 1
-            by_type[tp]["used" if attr_name in used_attrs else "unused"] += 1
-
-        return {
-            "total_objects": len(attrs),
-            "total_used": len(used_attrs),
-            "total_unused": len(attrs) - len(used_attrs),
-            "by_type": by_type,
-            "usage_map": usage_map,
-        }
-
-    @staticmethod
-    def propose_deduplication_fixes(
-        class_path: str,
-        root_path: Path,
-        exclude_patterns: frozenset[str] = c.Infra.DEFAULT_EXCLUDE,
-        max_files: int = 2000,
-    ) -> r[Sequence[m.Infra.DeduplicationFixProposal]]:
-        """Propose fixes to deduplicate constant values across a class."""
-        cls = FlextInfraUtilitiesCodegenConstantAnalysis
-        attrs = cls.extract_class_attributes_with_mro(class_path)
-        if not attrs:
-            return r[Sequence[m.Infra.DeduplicationFixProposal]].ok(())
-        simple_name = class_path.rsplit(".", 1)[-1]
-        _, usage_map = cls.scan_class_attribute_usages(
-            root_path,
-            simple_name,
-            exclude_patterns,
-            max_files,
-        )
-
-        by_value: defaultdict[str, list[m.Infra.DeduplicationCandidate]] = defaultdict(
-            list
-        )
-        for name, defn in attrs.items():
-            by_value[defn.value_repr[:100]].append(
-                m.Infra.DeduplicationCandidate(
-                    name=name,
-                    type_annotation=defn.type_annotation,
-                    usages=len(usage_map.get(name, [])),
-                )
-            )
-
-        fixes: MutableSequence[m.Infra.DeduplicationFixProposal] = []
-        for value, candidates in by_value.items():
-            if len(candidates) <= 1:
-                continue
-            canonical = max(candidates, key=operator.attrgetter("usages"))
-            duplicates = tuple(
-                candidate
-                for candidate in candidates
-                if candidate.name != canonical.name
-            )
-            fixes.append(
-                m.Infra.DeduplicationFixProposal(
-                    value_repr=value,
-                    canonical=canonical,
-                    duplicates=duplicates,
-                    total_occurrences=len(candidates),
-                )
-            )
-        ordered = tuple(
-            sorted(fixes, key=operator.methodcaller("impact_score"), reverse=True)
-        )
-        return r[Sequence[m.Infra.DeduplicationFixProposal]].ok(ordered)
-
-    @staticmethod
-    def apply_deduplication_fix(
-        fix_proposal: m.Infra.DeduplicationFixProposal,
-        root_path: Path,
-        class_path: str,
-        *,
-        dry_run: bool = True,
-    ) -> r[m.Infra.DeduplicationApplyResult]:
-        """Apply a single deduplication fix using rope."""
-        if "." not in class_path:
-            return r[m.Infra.DeduplicationApplyResult].fail("Invalid class path")
-
-        module_name = class_path.rsplit(".", 1)[0]
-        with FlextInfraUtilitiesRope.open_project(root_path) as rope_project:
-            resource = FlextInfraUtilitiesRope.get_file_resource(
-                rope_project,
-                module_name,
-            ) or FlextInfraUtilitiesRope.get_file_resource(
-                rope_project,
-                f"{module_name}.constants",
-            )
-            if not resource:
-                return r[m.Infra.DeduplicationApplyResult].fail(
-                    f"No resource for {module_name}"
-                )
-
-            files_modified = 0
-            replaced_names: MutableSequence[str] = []
-            replacements: MutableSequence[m.Infra.DeduplicationReplacement] = []
-
-            for duplicate in fix_proposal.duplicates:
-                dup_name = duplicate.name
-                offset = FlextInfraUtilitiesRope.find_definition_offset(
-                    rope_project,
-                    resource,
-                    dup_name,
-                )
-                if offset is None:
-                    continue
-                replaced_names.append(dup_name)
-                changed = FlextInfraUtilitiesRope.rename_symbol_workspace(
-                    rope_project,
-                    resource,
-                    offset,
-                    fix_proposal.canonical.name,
-                    apply=not dry_run,
-                )
-                files_modified += len(changed)
-                replacements.extend(
-                    m.Infra.DeduplicationReplacement(
-                        file_path=changed_file,
-                        line=0,
-                        old_name=dup_name,
-                    )
-                    for changed_file in changed
-                )
-
-            return r[m.Infra.DeduplicationApplyResult].ok(
-                m.Infra.DeduplicationApplyResult(
-                    canonical_name=fix_proposal.canonical.name,
-                    replaced_names=tuple(replaced_names),
-                    replacements=tuple(replacements),
-                    files_modified=files_modified,
-                    dry_run=dry_run,
-                )
-            )
-
-    @staticmethod
-    def deduplicate_constants(
-        options: m.Infra.DeduplicationRunOptions | None = None,
-        *,
-        class_path: str = "",
-        root_path: Path | None = None,
-        dry_run: bool = True,
-        max_files: int = 2000,
-        exclude_patterns: frozenset[str] | None = None,
-    ) -> r[m.Infra.DeduplicationRunReport]:
-        """Run typed constant deduplication end-to-end with validated options."""
-        resolved_patterns: frozenset[str] = exclude_patterns or frozenset()
-        payload: Mapping[str, t.ValueOrModel] = {
-            "class_path": class_path,
-            "root_path": root_path,
-            "dry_run": dry_run,
-            "max_files": max_files,
-            "exclude_patterns": tuple(resolved_patterns),
-        }
-        return u.resolve_options(
-            options,
-            payload,
-            m.Infra.DeduplicationRunOptions,
-        ).flat_map(FlextInfraUtilitiesCodegenConstantAnalysis._run_deduplication)
-
-    @staticmethod
-    def _run_deduplication(
-        options: m.Infra.DeduplicationRunOptions,
-    ) -> r[m.Infra.DeduplicationRunReport]:
-        effective_excludes = options.exclude_patterns or c.Infra.DEFAULT_EXCLUDE
-        return FlextInfraUtilitiesCodegenConstantAnalysis.propose_deduplication_fixes(
-            options.class_path,
-            options.root_path,
-            effective_excludes,
-            options.max_files,
-        ).flat_map(
-            lambda proposals: (
-                FlextInfraUtilitiesCodegenConstantAnalysis._build_deduplication_report(
-                    options,
-                    proposals,
-                )
-            )
-        )
-
-    @staticmethod
-    def _build_deduplication_report(
-        options: m.Infra.DeduplicationRunOptions,
-        proposals: Sequence[m.Infra.DeduplicationFixProposal],
-    ) -> r[m.Infra.DeduplicationRunReport]:
-        if not proposals:
-            return r[m.Infra.DeduplicationRunReport].ok(
-                m.Infra.DeduplicationRunReport(
-                    class_path=options.class_path,
-                    dry_run=options.dry_run,
-                    proposals=(),
-                    applied=(),
-                    total_files_modified=0,
-                )
-            )
-        return (
-            r[m.Infra.DeduplicationApplyResult]
-            .traverse(
-                proposals,
-                lambda proposal: (
-                    FlextInfraUtilitiesCodegenConstantAnalysis.apply_deduplication_fix(
-                        proposal,
-                        options.root_path,
-                        options.class_path,
-                        dry_run=options.dry_run,
-                    )
-                ),
-                fail_fast=False,
-            )
-            .map(
-                lambda applied: m.Infra.DeduplicationRunReport(
-                    class_path=options.class_path,
-                    dry_run=options.dry_run,
-                    proposals=tuple(proposals),
-                    applied=tuple(applied),
-                    total_files_modified=sum(
-                        result.files_modified for result in applied
-                    ),
-                )
-            )
-        )
 
     @staticmethod
     def detect_duplicate_constants(
@@ -745,7 +258,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation(u.Cli):
                 canon = f"{prefix}.{name}" if prefix else name
                 vmap[raw] = canon
                 if FlextInfraUtilitiesCodegenConstantDetection.is_quoted(raw):
-                    inner = FlextInfraUtilitiesCodegenConstantDetection.unquote(raw)
+                    inner = raw[1:-1]
                     vmap[f"'{inner}'"] = vmap[f'"{inner}"'] = canon
         return vmap
 
@@ -769,66 +282,13 @@ class FlextInfraUtilitiesCodegenConstantTransformation(u.Cli):
             canon = value_to_ref.get(raw)
             if canon is None or canon == sym.name:
                 continue
-            if FlextInfraUtilitiesCodegenConstantDetection.semantic_name_matches(
-                sym.name,
-                canon,
-            ):
+            canon_key = canon.lower().replace("_", "")
+            symbol_key = sym.name.lower().replace("_", "")
+            if canon_key == symbol_key or symbol_key in canon_key:
                 matches.append((sym, f"c.{canon}", raw))
         return matches
 
     # ── Validated editing (reusable) ─────────────────────────────────
-
-    @staticmethod
-    def lint_snapshot(py_file: Path, workspace: Path) -> t.Infra.LintSnapshot:
-        """Run all lint tools on *py_file* → ``{tool: [error_lines]}``."""
-        return FlextInfraUtilitiesProtectedEdit.lint_snapshot(
-            py_file,
-            workspace,
-            gates=FlextInfraUtilitiesCodegenConstantTransformation._ALL_LINT_GATES,
-        )
-
-    @staticmethod
-    def lint_new_errors(
-        before: t.Infra.LintSnapshot,
-        after: t.Infra.LintSnapshot,
-    ) -> t.Infra.LintSnapshot:
-        """Return only errors in *after* not present in *before*."""
-        return FlextInfraUtilitiesProtectedEdit.lint_new_errors(before, after)
-
-    @staticmethod
-    def validated_rope_edit(
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
-        py_file: Path,
-        workspace: Path,
-        backup: str,
-        edit_fn: Callable[[], None],
-    ) -> t.Infra.EditResult:
-        """Snapshot lint → call *edit_fn* → diff lint → rollback if new errors.
-
-        *edit_fn* is a zero-arg closure that performs the rope operations.
-        Returns ``(success, report_lines)``.
-        """
-        all_lint_gates = (
-            FlextInfraUtilitiesCodegenConstantTransformation._ALL_LINT_GATES
-        )
-
-        def _restore() -> None:
-            FlextInfraUtilitiesRope.write_source(
-                rope_project,
-                resource,
-                backup,
-            )
-
-        return FlextInfraUtilitiesProtectedEdit.protected_file_edit(
-            py_file,
-            workspace=workspace,
-            before_source=backup,
-            edit_fn=edit_fn,
-            restore_fn=_restore,
-            keep_backup=True,
-            gates=all_lint_gates,
-        )
 
     @staticmethod
     def apply_and_validate(
@@ -880,13 +340,22 @@ class FlextInfraUtilitiesCodegenConstantTransformation(u.Cli):
                 apply=True,
             )
 
-        ok, report = cls.validated_rope_edit(
-            rope_project,
-            resource,
+        def _restore_edit() -> None:
+            FlextInfraUtilitiesRope.apply_source_change(
+                rope_project,
+                resource,
+                backup,
+                description="Restore source after protected constant transformation",
+            )
+
+        ok, report = FlextInfraUtilitiesProtectedEdit.protected_file_edit(
             py_file,
-            workspace,
-            backup,
-            _do_edit,
+            workspace=workspace,
+            before_source=backup,
+            edit_fn=_do_edit,
+            restore_fn=_restore_edit,
+            keep_backup=True,
+            gates=cls._ALL_LINT_GATES,
         )
         if ok:
             return (True, list(descs), [f"  APPLIED {rel}: {d}" for d in descs])

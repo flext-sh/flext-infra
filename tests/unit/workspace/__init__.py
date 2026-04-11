@@ -1,15 +1,18 @@
-# AUTO-GENERATED FILE — DO NOT EDIT MANUALLY.
-# Regenerate with: make gen
-#
+# AUTO-GENERATED FILE — Regenerate with: make gen
 """Workspace package."""
 
 from __future__ import annotations
 
-from flext_core.lazy import install_lazy_exports
+from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
-_LAZY_IMPORTS = {
-    "test_sync": "tests.unit.workspace.test_sync",
-}
+_LAZY_IMPORTS = build_lazy_import_map(
+    {
+        ".test_main": ("test_main",),
+        ".test_makefile_dry_run": ("test_makefile_dry_run",),
+        ".test_makefile_generator": ("test_makefile_generator",),
+        ".test_sync": ("test_sync",),
+    },
+)
 
 
 install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, publish_all=False)

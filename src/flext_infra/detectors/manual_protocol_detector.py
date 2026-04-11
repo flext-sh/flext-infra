@@ -7,23 +7,15 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import ClassVar, override
 
-from flext_infra import FlextInfraScanFileMixin, c, m, p, u
+from flext_infra import c, m, u
 
 
-class FlextInfraManualProtocolDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
+class FlextInfraManualProtocolDetector:
     """Detect Protocol classes outside canonical protocol files via rope."""
 
-    _rule_id: ClassVar[str] = "namespace.manual_protocol"
-    _MESSAGE_TEMPLATE: ClassVar[str] = (
-        "Protocol class '{name}' must be centralized ({suggestion})"
-    )
-
-    @classmethod
-    @override
+    @staticmethod
     def detect_file(
-        cls,
         ctx: m.Infra.DetectorContext,
     ) -> Sequence[m.Infra.ManualProtocolViolation]:
         """Detect Protocol classes outside canonical locations."""

@@ -169,11 +169,6 @@ class FlextInfraConstantsCodegen:
             r"\b(Flext\w*Constants(?:\.[A-Za-z_]\w*)+)",
         )
         "Regex: FlextXxxConstants.ATTR.SUBATTR... (captures full dotted chain)."
-        IMPORT_CONSTANTS_RE: Final[re.Pattern[str]] = re.compile(
-            r"^\s*from\s+([\w.]+)\s+import\s+.*?\b(Flext\w*Constants)\b",
-            re.MULTILINE,
-        )
-        "Regex: ``from <pkg> import FlextXxxConstants`` in import lines."
         CANONICAL_ALIASES: Final[frozenset[str]] = frozenset({
             "c",
             "m",
@@ -239,7 +234,6 @@ class FlextInfraConstantsCodegen:
         """Constants used by constants quality gate analysis/reporting."""
 
         REPORT_DIR: Final[str] = ".reports/codegen/constants-quality-gate"
-        PASS_VERDICTS: Final[t.StrSequence] = ("PASS", "CONDITIONAL_PASS")
         RULE_KEYS: Final[t.StrSequence] = (
             "NS-000",
             "NS-001",
@@ -255,7 +249,6 @@ class FlextInfraConstantsCodegen:
         CHECK_DUPLICATION_REDUCTION: Final[str] = "duplication_reduction"
         CHECK_TYPE_SAFETY: Final[str] = "type_safety"
         CHECK_LINT_CLEAN: Final[str] = "lint_clean"
-        CHECK_BASELINE_LOAD: Final[str] = "baseline_load"
 
 
 __all__ = ["FlextInfraConstantsCodegen"]

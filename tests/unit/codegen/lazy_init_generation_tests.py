@@ -23,7 +23,13 @@ class TestResolveAliases:
 
     @staticmethod
     def _write_parent_package(tmp_path: Path) -> None:
-        package_dir = tmp_path / "flext-tests" / "src" / "flext_tests"
+        project_dir = tmp_path / "flext-tests"
+        project_dir.mkdir(parents=True)
+        _ = (project_dir / "pyproject.toml").write_text(
+            "[project]\nname = 'flext-tests'\nversion = '0.0.0'\n",
+            encoding=c.Infra.Encoding.DEFAULT,
+        )
+        package_dir = project_dir / "src" / "flext_tests"
         utilities_dir = package_dir / "_utilities"
         package_dir.mkdir(parents=True)
         utilities_dir.mkdir(parents=True)
@@ -56,7 +62,13 @@ class TestResolveAliases:
 
     @staticmethod
     def _write_surface_package(tmp_path: Path, surface: str) -> Path:
-        surface_dir = tmp_path / "child" / surface
+        project_dir = tmp_path / "child"
+        project_dir.mkdir(parents=True)
+        _ = (project_dir / "pyproject.toml").write_text(
+            "[project]\nname = 'child'\nversion = '0.0.0'\n",
+            encoding=c.Infra.Encoding.DEFAULT,
+        )
+        surface_dir = project_dir / surface
         surface_dir.mkdir(parents=True)
         (surface_dir / "__init__.py").write_text(
             "",
@@ -64,7 +76,7 @@ class TestResolveAliases:
         )
         (surface_dir / "constants.py").write_text(
             "from __future__ import annotations\n\n"
-            "from flext_tests import FlextTestsConstants\n\n"
+            "from flext_tests.constants import FlextTestsConstants\n\n"
             "class TestsFlextDemoConstants(FlextTestsConstants):\n    pass\n\n"
             "c = TestsFlextDemoConstants\n"
             '__all__ = ["TestsFlextDemoConstants", "c"]\n',
@@ -72,13 +84,27 @@ class TestResolveAliases:
         )
         return surface_dir
 
-    @pytest.mark.parametrize("surface", ["tests", "examples", "scripts"])
-    def test_inherits_public_lowercase_aliases_from_parent(
+    @pytest.mark.parametrize(
+        ("surface", "expected"),
+        [
+            (
+                "tests",
+                {
+                    "tk": ("flext_tests.docker", "tk"),
+                    "tm": ("flext_tests._utilities.matchers", "tm"),
+                },
+            ),
+            ("examples", {"c": ("flext_tests.constants", "c")}),
+            ("scripts", {"c": ("flext_tests.constants", "c")}),
+        ],
+    )
+    def test_inherits_only_declared_parent_aliases_by_surface(
         self,
         tmp_path: Path,
         surface: str,
+        expected: Mapping[str, tuple[str, str]],
     ) -> None:
-        """Root wrappers inherit lowercase exports declared by the parent package."""
+        """Root wrappers inherit only the aliases declared for their surface."""
         self._write_parent_package(tmp_path)
         pkg_dir = self._write_surface_package(tmp_path, surface)
         lazy_map: MutableMapping[str, tuple[str, str]] = {}
@@ -88,9 +114,28 @@ class TestResolveAliases:
             lazy_map,
             pkg_dir=pkg_dir,
         )
-        tm.that(lazy_map["c"], eq=("flext_tests.constants", "c"))
-        tm.that(lazy_map["tk"], eq=("flext_tests.docker", "tk"))
-        tm.that(lazy_map["tm"], eq=("flext_tests._utilities.matchers", "tm"))
+        tm.that(lazy_map, eq=expected)
+
+    def test_parent_alias_filter_blocks_noncanonical_lowercase_exports(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Lowercase helpers outside the declared allowlist must not leak."""
+        self._write_parent_package(tmp_path)
+        package_dir = tmp_path / "flext-tests" / "src" / "flext_tests"
+        (package_dir / "lazy.py").write_text(
+            'build_lazy_import_map = "nope"\n__all__ = ["build_lazy_import_map"]\n',
+            encoding=c.Infra.Encoding.DEFAULT,
+        )
+        pkg_dir = self._write_surface_package(tmp_path, "examples")
+        lazy_map: MutableMapping[str, tuple[str, str]] = {}
+        mod.FlextInfraUtilitiesCodegenLazyAliases(
+            workspace_root=tmp_path,
+        ).resolve_aliases(
+            lazy_map,
+            pkg_dir=pkg_dir,
+        )
+        tm.that(lazy_map, lacks="build_lazy_import_map")
 
     @pytest.mark.parametrize("surface", ["tests", "examples", "scripts"])
     def test_does_not_synthesize_alias_from_local_suffix_match(
@@ -141,34 +186,63 @@ class TestResolveAliases:
         tm.that(lazy_map, lacks="tk")
         tm.that(lazy_map, lacks="tm")
 
-    def test_local_alias_beats_parent_reexport_in_root_package(
+    def test_root_package_keeps_local_alias_and_inherits_from_ancestor_chain(
         self,
         tmp_path: Path,
     ) -> None:
-        """Root package keeps its local facade alias and only inherits missing ones."""
-        parent_dir = tmp_path / "flext-cli" / "src" / "flext_cli"
-        parent_dir.mkdir(parents=True)
-        (parent_dir / "__init__.py").write_text("", encoding=c.Infra.Encoding.DEFAULT)
-        (parent_dir / "constants.py").write_text(
-            "from __future__ import annotations\n\n"
-            "class FlextCliConstants:\n    pass\n\n"
-            "c = FlextCliConstants\n"
-            '__all__ = ["FlextCliConstants", "c"]\n',
+        """Root package keeps local aliases while inheriting runtime ones transitively."""
+        core_project_dir = tmp_path / "flext-core"
+        core_project_dir.mkdir(parents=True)
+        _ = (core_project_dir / "pyproject.toml").write_text(
+            "[project]\nname = 'flext-core'\nversion = '0.0.0'\n",
             encoding=c.Infra.Encoding.DEFAULT,
         )
-        (parent_dir / "result.py").write_text(
+        core_dir = core_project_dir / "src" / "flext_core"
+        core_dir.mkdir(parents=True)
+        (core_dir / "__init__.py").write_text("", encoding=c.Infra.Encoding.DEFAULT)
+        (core_dir / "constants.py").write_text(
+            "from __future__ import annotations\n\n"
+            "class FlextConstants:\n    pass\n\n"
+            "c = FlextConstants\n"
+            '__all__ = ["FlextConstants", "c"]\n',
+            encoding=c.Infra.Encoding.DEFAULT,
+        )
+        (core_dir / "result.py").write_text(
             "from __future__ import annotations\n\n"
             'r = "runtime-result"\n'
             '__all__ = ["r"]\n',
             encoding=c.Infra.Encoding.DEFAULT,
         )
-        pkg_dir = tmp_path / "flext-infra" / "src" / "flext_infra"
+        parent_project_dir = tmp_path / "flext-cli"
+        parent_project_dir.mkdir(parents=True)
+        _ = (parent_project_dir / "pyproject.toml").write_text(
+            "[project]\nname = 'flext-cli'\nversion = '0.0.0'\n",
+            encoding=c.Infra.Encoding.DEFAULT,
+        )
+        parent_dir = parent_project_dir / "src" / "flext_cli"
+        parent_dir.mkdir(parents=True)
+        (parent_dir / "__init__.py").write_text("", encoding=c.Infra.Encoding.DEFAULT)
+        (parent_dir / "constants.py").write_text(
+            "from __future__ import annotations\n\n"
+            "from flext_core.constants import FlextConstants\n\n"
+            "class FlextCliConstants(FlextConstants):\n    pass\n\n"
+            "c = FlextCliConstants\n"
+            '__all__ = ["FlextCliConstants", "c"]\n',
+            encoding=c.Infra.Encoding.DEFAULT,
+        )
+        project_dir = tmp_path / "flext-infra"
+        project_dir.mkdir(parents=True)
+        _ = (project_dir / "pyproject.toml").write_text(
+            "[project]\nname = 'flext-infra'\nversion = '0.0.0'\n",
+            encoding=c.Infra.Encoding.DEFAULT,
+        )
+        pkg_dir = project_dir / "src" / "flext_infra"
         pkg_dir.mkdir(parents=True)
         (pkg_dir / "__init__.py").write_text("", encoding=c.Infra.Encoding.DEFAULT)
         (pkg_dir / "constants.py").write_text(
             "from __future__ import annotations\n\n"
-            "from flext_cli import c\n\n"
-            "class FlextInfraConstants:\n    pass\n\n"
+            "from flext_cli.constants import FlextCliConstants\n\n"
+            "class FlextInfraConstants(FlextCliConstants):\n    pass\n\n"
             "c = FlextInfraConstants\n"
             '__all__ = ["FlextInfraConstants", "c"]\n',
             encoding=c.Infra.Encoding.DEFAULT,
@@ -186,7 +260,7 @@ class TestResolveAliases:
             pkg_dir=pkg_dir,
         )
         tm.that(lazy_map["c"], eq=("flext_infra.constants", "c"))
-        tm.that(lazy_map["r"], eq=("flext_cli.result", "r"))
+        tm.that(lazy_map["r"], eq=("flext_core.result", "r"))
 
 
 class TestGenerateTypeChecking:
@@ -312,6 +386,8 @@ class TestGenerateFile:
             contains="from test_pkg.__version__ import FlextVersion, __version__",
         )
         tm.that(content, contains="_LAZY_IMPORTS = build_lazy_import_map(")
+        tm.that(content, lacks="merge_lazy_imports(")
+        tm.that(content, contains="build_lazy_import_map(")
         tm.that(content, contains='        "FlextVersion",')
         tm.that(content, contains='        "__version__",')
 
@@ -418,6 +494,23 @@ class TestGenerateFile:
             content, contains="install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)"
         )
 
+    def test_root_namespace_writes___all___after_lazy_loader(self) -> None:
+        """Root namespace places ``__all__`` after ``install_lazy_exports``."""
+        exports = ["Alpha", "Beta"]
+        filtered = {"Alpha": ("mod", "Alpha"), "Beta": ("mod", "Beta")}
+        inline_constants: t.StrMapping = {}
+        content = FlextInfraCodegenGeneration.generate_file(
+            exports,
+            filtered,
+            inline_constants,
+            "test_pkg",
+        )
+        tm.that(
+            content.rfind("__all__ = [")
+            > content.rfind("install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)"),
+            eq=True,
+        )
+
     def test_root_namespace_type_checking_uses_source_modules(self) -> None:
         """Root namespace TYPE_CHECKING must target real source modules."""
         exports = ["Alpha", "Beta"]
@@ -447,6 +540,18 @@ class TestGenerateFile:
             "test_pkg.tools",
         )
         tm.that(content, contains='"""Tools package."""')
+
+    def test_subpackage_keeps_module_entries_in_lazy_imports(self) -> None:
+        """Subpackage module entries remain importable through _LAZY_IMPORTS."""
+        content = FlextInfraCodegenGeneration.generate_file(
+            ["test_base"],
+            {"test_base": ("tests.unit._models.test_base", "")},
+            {},
+            "tests.unit._models",
+        )
+        tm.that(content, contains='".test_base": ("test_base",)')
+        tm.that(content, contains="publish_all=False")
+        tm.that(content, lacks="__all__ = [")
 
     def test_root_namespace_type_checking_skips_module_reexport_names(self) -> None:
         """Root namespace TYPE_CHECKING must omit module/package compatibility names."""
