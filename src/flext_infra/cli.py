@@ -8,7 +8,7 @@ from types import MappingProxyType
 from typing import ClassVar
 
 from flext_cli import FlextCliSettings, cli as cli_service, u
-from flext_core import FlextLogger, FlextSettings
+from flext_core import FlextSettings
 from flext_infra import c
 from flext_infra.api import infra
 
@@ -57,11 +57,11 @@ class FlextInfraCli:
     @staticmethod
     def _cli_settings() -> FlextCliSettings:
         """Return the shared CLI settings namespace without importing the API facade."""
-        return FlextSettings.get_global().get_namespace("cli", FlextCliSettings)
+        return FlextSettings.fetch_global().fetch_namespace("cli", FlextCliSettings)
 
     def main(self, args: Sequence[str] | None = None) -> int:
         """Run the centralized dispatcher."""
-        FlextLogger.ensure_structlog_configured()
+        u.ensure_structlog_configured()
         cli_args = list(args) if args is not None else sys.argv[1:]
         if not cli_args:
             self.print_help()

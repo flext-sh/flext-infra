@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from flext_core import FlextLogger
 from flext_infra import (
     FlextInfraDependencyDetectionService,
     FlextInfraDependencyDetectorRuntime,
@@ -16,7 +15,7 @@ from flext_infra import (
 class FlextInfraRuntimeDevDependencyDetector:
     """CLI tool for detecting runtime vs dev dependencies across workspace."""
 
-    log: p.Logger = FlextLogger.create_module_logger(__name__)
+    log: p.Logger = u.fetch_logger(__name__)
     reporting: p.Infra.ReportingService
     deps: p.Infra.DepsService
     runner: p.Infra.RunnerService

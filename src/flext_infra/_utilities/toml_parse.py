@@ -91,14 +91,13 @@ class FlextInfraUtilitiesTomlParse:
     ) -> t.StrSequence:
         """Extract normalized local/workspace dependency names across supported TOML sections."""
         names: t.Infra.StrSet = set()
-        project_table = FlextCliUtilities.Cli.toml_get_table(doc, c.Infra.PROJECT)
+        project_table = FlextCliUtilities.Cli.toml_table_child(doc, c.Infra.PROJECT)
         declared_project_names = (
             {
                 dep_name
                 for dep_entry in FlextCliUtilities.Cli.toml_as_string_list(
-                    FlextCliUtilities.Cli.toml_get_item(
-                        project_table,
-                        c.Infra.DEPENDENCIES,
+                    FlextCliUtilities.Cli.toml_item_child(
+                        project_table, c.Infra.DEPENDENCIES
                     )
                 )
                 if (dep_name := FlextInfraUtilitiesTomlParse.dep_name(dep_entry))
@@ -111,9 +110,8 @@ class FlextInfraUtilitiesTomlParse:
                 names.add(dep_entry)
         if project_table is not None:
             for dep_entry in FlextCliUtilities.Cli.toml_as_string_list(
-                FlextCliUtilities.Cli.toml_get_item(
-                    project_table,
-                    c.Infra.DEPENDENCIES,
+                FlextCliUtilities.Cli.toml_item_child(
+                    project_table, c.Infra.DEPENDENCIES
                 )
             ):
                 if " @ " not in dep_entry:
@@ -126,30 +124,31 @@ class FlextInfraUtilitiesTomlParse:
                 )
                 if normalized_path:
                     names.add(FlextInfraUtilitiesTomlParse.dep_name(normalized_path))
-        tool_table = FlextCliUtilities.Cli.toml_get_table(doc, c.Infra.TOOL)
+        tool_table = FlextCliUtilities.Cli.toml_table_child(doc, c.Infra.TOOL)
         if tool_table is None:
             return sorted(names)
-        poetry_table = FlextCliUtilities.Cli.toml_get_table(tool_table, c.Infra.POETRY)
+        poetry_table = FlextCliUtilities.Cli.toml_table_child(
+            tool_table, c.Infra.POETRY
+        )
         if poetry_table is not None:
-            deps_table = FlextCliUtilities.Cli.toml_get_table(
-                poetry_table,
-                c.Infra.DEPENDENCIES,
+            deps_table = FlextCliUtilities.Cli.toml_table_child(
+                poetry_table, c.Infra.DEPENDENCIES
             )
             if deps_table is not None:
                 for dep_key in deps_table:
-                    dep_table = FlextCliUtilities.Cli.toml_get_table(
+                    dep_table = FlextCliUtilities.Cli.toml_table_child(
                         deps_table, dep_key
                     )
                     if dep_table is None:
                         continue
                     dep_path = FlextCliUtilities.Cli.toml_unwrap_item(
-                        FlextCliUtilities.Cli.toml_get_item(dep_table, c.Infra.PATH),
+                        FlextCliUtilities.Cli.toml_item_child(dep_table, c.Infra.PATH),
                     )
                     if isinstance(dep_path, str) and dep_path.strip():
                         names.add(FlextInfraUtilitiesTomlParse.dep_name(dep_path))
-        uv_table = FlextCliUtilities.Cli.toml_get_table(tool_table, "uv")
+        uv_table = FlextCliUtilities.Cli.toml_table_child(tool_table, "uv")
         sources_table = (
-            FlextCliUtilities.Cli.toml_get_table(uv_table, "sources")
+            FlextCliUtilities.Cli.toml_table_child(uv_table, "sources")
             if uv_table is not None
             else None
         )
@@ -159,17 +158,19 @@ class FlextInfraUtilitiesTomlParse:
             dep_name = str(source_key)
             if declared_project_names and dep_name not in declared_project_names:
                 continue
-            source_table = FlextCliUtilities.Cli.toml_get_table(sources_table, dep_name)
+            source_table = FlextCliUtilities.Cli.toml_table_child(
+                sources_table, dep_name
+            )
             if source_table is None:
                 continue
             workspace_val = FlextCliUtilities.Cli.toml_unwrap_item(
-                FlextCliUtilities.Cli.toml_get_item(source_table, "workspace"),
+                FlextCliUtilities.Cli.toml_item_child(source_table, "workspace"),
             )
             if workspace_val is True:
                 names.add(dep_name)
                 continue
             source_path = FlextCliUtilities.Cli.toml_unwrap_item(
-                FlextCliUtilities.Cli.toml_get_item(source_table, c.Infra.PATH),
+                FlextCliUtilities.Cli.toml_item_child(source_table, c.Infra.PATH),
             )
             if isinstance(source_path, str) and source_path.strip():
                 names.add(FlextInfraUtilitiesTomlParse.dep_name(source_path))
@@ -178,19 +179,18 @@ class FlextInfraUtilitiesTomlParse:
     @staticmethod
     def project_dev_groups(doc: t.Cli.TomlDocument) -> Mapping[str, t.StrSequence]:
         """Extract optional-dependencies groups from project table."""
-        project_raw = FlextCliUtilities.Cli.toml_get_table(doc, c.Infra.PROJECT)
+        project_raw = FlextCliUtilities.Cli.toml_table_child(doc, c.Infra.PROJECT)
         if project_raw is None:
             return {}
-        optional_raw = FlextCliUtilities.Cli.toml_get_table(
-            project_raw,
-            c.Infra.OPTIONAL_DEPENDENCIES,
+        optional_raw = FlextCliUtilities.Cli.toml_table_child(
+            project_raw, c.Infra.OPTIONAL_DEPENDENCIES
         )
         if optional_raw is None:
             return {}
         opt_deps: t.Cli.TomlTable = optional_raw
 
         def _group_values(group_key: str) -> t.StrSequence:
-            value = FlextCliUtilities.Cli.toml_get_item(opt_deps, group_key)
+            value = FlextCliUtilities.Cli.toml_item_child(opt_deps, group_key)
             return FlextCliUtilities.Cli.toml_as_string_list(value)
 
         return {

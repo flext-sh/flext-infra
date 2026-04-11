@@ -249,6 +249,31 @@ class FlextInfraModelsRefactorGrep:
             default_factory=dict, description="Symbol-to-alias mapping"
         )
 
+    class AccessorMigrationRule(m.ContractModel):
+        """Declarative symbol-rename rule for accessor migration."""
+
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+
+        source_name: Annotated[
+            t.NonEmptyStr,
+            Field(description="Canonical symbol name to replace"),
+        ]
+        replacement_name: Annotated[
+            t.NonEmptyStr,
+            Field(description="Canonical symbol name used as replacement"),
+        ]
+        reason: Annotated[
+            t.NonEmptyStr,
+            Field(description="Human-readable explanation for the rename"),
+        ]
+        origin: Annotated[
+            str,
+            Field(
+                default="",
+                description="Canonical API origin this rewrite is tied to",
+            ),
+        ] = ""
+
     class AccessorMigrationChange(m.ArbitraryTypesModel):
         """Single automated rename or manual warning emitted by accessor migration."""
 
@@ -335,6 +360,22 @@ class FlextInfraModelsRefactorGrep:
             t.NonNegativeInt,
             Field(description="Total manual follow-up warnings detected"),
         ]
+        lint_tools: t.Infra.VariadicTuple[str] = Field(
+            default_factory=tuple,
+            description="Canonical lint tool list used by this run",
+        )
+        lint_before_totals: Annotated[
+            Mapping[str, int],
+            Field(description="Per-tool count of lint lines before rewrites"),
+        ] = Field(default_factory=dict)
+        lint_after_totals: Annotated[
+            Mapping[str, int],
+            Field(description="Per-tool count of lint lines after rewrites"),
+        ] = Field(default_factory=dict)
+        new_lint_error_totals: Annotated[
+            Mapping[str, int],
+            Field(description="Per-tool count of newly introduced lint lines"),
+        ] = Field(default_factory=dict)
         files: t.Infra.VariadicTuple[
             FlextInfraModelsRefactorGrep.AccessorMigrationFile
         ] = Field(

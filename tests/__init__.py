@@ -12,15 +12,12 @@ from flext_core.lazy import (
 )
 
 if _t.TYPE_CHECKING:
-    from flext_infra import (
+    from flext_tests import (
         d,
         e,
         h,
         r,
-        reset_settings,
         s,
-        settings,
-        settings_factory,
         td,
         tf,
         tk,
@@ -28,6 +25,12 @@ if _t.TYPE_CHECKING:
         tv,
         x,
     )
+    from flext_tests._fixtures.settings import (
+        reset_settings,
+        settings,
+        settings_factory,
+    )
+
     from tests._constants.domain import TestsFlextInfraConstantsDomain
     from tests._constants.fixtures import TestsFlextInfraConstantsFixtures
     from tests.constants import TestsFlextInfraConstants, c
@@ -40,7 +43,6 @@ if _t.TYPE_CHECKING:
     from tests.unit._utilities.test_formatting import (
         TestsFlextInfraUtilitiesFormattingRunRuffFix,
     )
-    from tests.unit._utilities.test_iteration import TestIterWorkspacePythonModules
     from tests.unit._utilities.test_safety import (
         TestSafetyCheckpoint,
         TestSafetyRollback,
@@ -76,21 +78,23 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "TestsFlextInfraUtilities",
                 "u",
             ),
-            "flext_infra": (
+            "flext_tests": (
                 "d",
                 "e",
                 "h",
                 "r",
-                "reset_settings",
                 "s",
-                "settings",
-                "settings_factory",
                 "td",
                 "tf",
                 "tk",
                 "tm",
                 "tv",
                 "x",
+            ),
+            "flext_tests._fixtures.settings": (
+                "reset_settings",
+                "settings",
+                "settings_factory",
             ),
         },
     ),
@@ -110,7 +114,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
 install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)
 
 __all__ = [
-    "TestIterWorkspacePythonModules",
     "TestSafetyCheckpoint",
     "TestSafetyRollback",
     "TestScanModels",

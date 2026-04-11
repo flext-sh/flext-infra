@@ -373,7 +373,7 @@ class FlextInfraProjectMigrator(
         project_table = u.Cli.toml_ensure_table(document, c.Infra.PROJECT)
         dependencies = list(
             u.Cli.toml_as_string_list(
-                u.Cli.toml_get_item(project_table, c.Infra.DEPENDENCIES),
+                u.Cli.toml_item_child(project_table, c.Infra.DEPENDENCIES),
             ),
         )
         dependency_spec = c.Infra.PKG_CORE

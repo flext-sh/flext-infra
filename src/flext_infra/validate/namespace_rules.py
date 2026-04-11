@@ -334,7 +334,7 @@ class FlextInfraNamespaceRules:
     ) -> tuple[int, MutableSequence[str]]:
         if not isinstance(node, ast.TypeAlias):
             return seq, violations
-        name = getattr(node, FlextInfraConstantsSharedInfra.Dunders.NAME, None)
+        name = getattr(node, FlextInfraConstantsSharedInfra.DUNDER_NAME, None)
         name_str = getattr(name, "id", str(name)) if name else "unknown"
         seq += 1
         violations.append(

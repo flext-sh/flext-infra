@@ -35,7 +35,7 @@ def _ok_stage(
     return r[m.Cli.PipelineStageResult].ok(
         m.Cli.PipelineStageResult(
             stage_id=stage_id,
-            status=c.Cli.PIPELINE_STATUS_OK,
+            status=c.Cli.PipelineStageStatus.OK,
         ),
     )
 

@@ -7,14 +7,14 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_core import FlextLogger, r, u
+from flext_core import r, u
 from flext_infra import c
 
 if TYPE_CHECKING:
     from flext_infra import m
 
 
-logger = FlextLogger.create_module_logger(__name__)
+logger = u.fetch_logger(__name__)
 
 
 class FlextInfraUtilitiesRelease:

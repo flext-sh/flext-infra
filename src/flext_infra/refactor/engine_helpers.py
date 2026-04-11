@@ -9,7 +9,6 @@ from __future__ import annotations
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
-from flext_core import FlextLogger
 from flext_infra import (
     FlextInfraClassNestingRefactorRule,
     FlextInfraRefactorRule,
@@ -23,7 +22,7 @@ from flext_infra import (
     u,
 )
 
-_log = FlextLogger.create_module_logger(__name__)
+_log = u.fetch_logger(__name__)
 
 
 class FlextInfraRefactorEngineHelpersMixin:

@@ -16,12 +16,11 @@ from typing import Annotated, override
 
 from pydantic import Field
 
-from flext_core import FlextLogger
 from flext_infra import c, m, r, s, t, u
 
 from .orchestrator_phases import FlextInfraReleaseOrchestratorPhases
 
-logger = FlextLogger.create_module_logger(__name__)
+logger = u.fetch_logger(__name__)
 
 
 class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]):
@@ -307,7 +306,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
             return r[m.Cli.PipelineStageResult].ok(
                 m.Cli.PipelineStageResult(
                     stage_id=phase_name,
-                    status=c.Cli.PIPELINE_STATUS_OK,
+                    status=c.Cli.PipelineStageStatus.OK,
                 ),
             )
 
@@ -319,7 +318,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
             self.logger.info(
                 "release_phase_validate",
                 action="dry-run",
-                status=c.Cli.PIPELINE_STATUS_OK,
+                status=c.Cli.PipelineStageStatus.OK,
             )
             return r[bool].ok(True)
         return u.Cli.run_checked(

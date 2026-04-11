@@ -67,19 +67,19 @@ class FlextInfraPyprojectModernizer:
     def _ensure_build_system(self, doc: t.Infra.TomlDocument) -> t.StrSequence:
         """Ensure canonical build-system backend/requirements."""
         changes: MutableSequence[str] = []
-        build_system = u.Cli.toml_get_table(doc, "build-system")
+        build_system = u.Cli.toml_table_child(doc, "build-system")
         if build_system is None:
             build_system = u.Cli.toml_table()
             doc["build-system"] = build_system
             changes.append("created [build-system]")
         expected_backend = "hatchling.build"
-        backend_item = u.Cli.toml_get_item(build_system, "build-backend")
+        backend_item = u.Cli.toml_item_child(build_system, "build-backend")
         current_backend = u.norm_str(u.Cli.toml_unwrap_item(backend_item))
         if current_backend != expected_backend:
             build_system["build-backend"] = expected_backend
             changes.append("build-system.build-backend set to hatchling.build")
         expected_requires = ["hatchling"]
-        requires_item = u.Cli.toml_get_item(build_system, "requires")
+        requires_item = u.Cli.toml_item_child(build_system, "requires")
         current_requires = sorted(
             u.Cli.toml_as_string_list(requires_item),
         )
@@ -166,7 +166,7 @@ class FlextInfraPyprojectModernizer:
                 del doc[key]
             for key in ordered_root:
                 doc[key] = root_items[key]
-        tool_child = u.Cli.toml_get_table(doc, "tool")
+        tool_child = u.Cli.toml_table_child(doc, "tool")
         if tool_child is not None:
             cls._reorder_table_inplace(tool_child, table_key="tool")
         for key in ordered_root:
@@ -203,20 +203,20 @@ class FlextInfraPyprojectModernizer:
                 project_kind = kind_result.value
         changes: MutableSequence[str] = []
         changes.extend(self._ensure_build_system(doc))
-        tool_item = u.Cli.toml_get_table(doc, c.Infra.TOOL)
+        tool_item = u.Cli.toml_table_child(doc, c.Infra.TOOL)
         if tool_item is None:
             tool_item = u.Cli.toml_table()
             doc[c.Infra.TOOL] = tool_item
-        poetry_item = u.Cli.toml_get_table(tool_item, c.Infra.POETRY)
+        poetry_item = u.Cli.toml_table_child(tool_item, c.Infra.POETRY)
         if poetry_item is not None:
-            group_item = u.Cli.toml_get_table(poetry_item, c.Infra.GROUP)
+            group_item = u.Cli.toml_table_child(poetry_item, c.Infra.GROUP)
             if group_item is not None:
                 empty_groups: MutableSequence[str] = []
                 for name in u.Cli.toml_table_string_keys(group_item):
-                    group_dep_item = u.Cli.toml_get_table(group_item, name)
+                    group_dep_item = u.Cli.toml_table_child(group_item, name)
                     if group_dep_item is None:
                         continue
-                    deps_item = u.Cli.toml_get_table(
+                    deps_item = u.Cli.toml_table_child(
                         group_dep_item, c.Infra.DEPENDENCIES
                     )
                     if deps_item is not None and not deps_item:
@@ -355,12 +355,12 @@ class FlextInfraPyprojectModernizer:
             if doc is None:
                 has_warning = True
                 continue
-            build_sys = u.Cli.toml_get_table(doc, "build-system")
+            build_sys = u.Cli.toml_table_child(doc, "build-system")
             if build_sys is None:
                 u.Infra.info(f"{path}: missing [build-system]")
                 has_warning = True
                 continue
-            backend_item = u.Cli.toml_get_item(build_sys, "build-backend")
+            backend_item = u.Cli.toml_item_child(build_sys, "build-backend")
             backend = u.norm_str(u.Cli.toml_unwrap_item(backend_item))
             if backend != "hatchling.build":
                 u.Infra.info(f"{path}: expected hatchling.build, got {backend}")

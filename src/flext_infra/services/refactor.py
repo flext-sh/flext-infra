@@ -39,7 +39,7 @@ class FlextInfraServiceRefactorMixin:
             for error in report.errors:
                 cli_service.display_message(
                     error,
-                    message_type=c.Cli.MESSAGE_TYPE_ERROR,
+                    message_type=c.Cli.MessageTypes.ERROR,
                 )
             return r[m.Infra.MROMigrationReport].fail("MRO migration had errors")
         return r[m.Infra.MROMigrationReport].ok(report)
@@ -86,7 +86,7 @@ class FlextInfraServiceRefactorMixin:
             u.Infra.export_pydantic_json(report, json_path)
             cli_service.display_message(
                 f"JSON report exported to: {json_path}",
-                message_type=c.Cli.MESSAGE_TYPE_INFO,
+                message_type=c.Cli.MessageTypes.INFO,
             )
         return result
 
@@ -101,7 +101,7 @@ class FlextInfraServiceRefactorMixin:
             dry_run=params.dry_run,
             projects=list(params.project_names or []),
             preview_limit=params.preview_limit,
-            gates=params.lint_gates,
+            gates=params.gates,
         )
         result = service.execute()
         if result.failure:

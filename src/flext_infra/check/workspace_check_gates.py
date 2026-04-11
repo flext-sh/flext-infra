@@ -9,7 +9,7 @@ from typing import ClassVar
 
 from pydantic import Field
 
-from flext_core import FlextLogger, r
+from flext_core import FlextProtocols, r
 from flext_infra import (
     FlextInfraBanditGate,
     FlextInfraGate,
@@ -85,7 +85,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
     _workspace_root: Path
     _registry: FlextInfraGateRegistry
     _default_reports_dir: Path
-    _gate_logger: ClassVar[FlextLogger] = FlextLogger(__name__)
+    _gate_logger: ClassVar[FlextProtocols.Logger] = u.fetch_logger(__name__)
 
     def _isolate_context(
         self,
@@ -282,9 +282,9 @@ class FlextInfraWorkspaceCheckGatesMixin:
                 elapsed=execution.result.duration,
             )
             status: t.Cli.PipelineStageStatus = (
-                c.Cli.PIPELINE_STATUS_OK
+                c.Cli.PipelineStageStatus.OK
                 if execution.result.passed
-                else c.Cli.PIPELINE_STATUS_FAILED
+                else c.Cli.PipelineStageStatus.FAILED
             )
             return r[m.Cli.PipelineStageResult].ok(
                 m.Cli.PipelineStageResult(

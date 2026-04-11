@@ -66,10 +66,10 @@ class FlextInfraEnsureFormattingToolingPhase:
                 yamlfix_phase,
             ),
         ]
-        tool_table = u.Cli.toml_get_table(doc, "tool")
+        tool_table = u.Cli.toml_table_child(doc, "tool")
         if tool_table is None:
             return changes
-        codespell_table = u.Cli.toml_get_table(tool_table, "codespell")
+        codespell_table = u.Cli.toml_table_child(tool_table, "codespell")
         if codespell_table is None or "skip" not in codespell_table:
             return changes
         del codespell_table["skip"]

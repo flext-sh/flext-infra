@@ -18,7 +18,7 @@ from typing import override
 
 from pydantic import Field
 
-from flext_core import FlextLogger, r
+from flext_core import r
 from flext_infra import (
     FlextInfraCodegenLazyInit,
     FlextInfraNamespaceEnforcer,
@@ -32,7 +32,7 @@ from flext_infra import (
     u,
 )
 
-_log = FlextLogger.create_module_logger(__name__)
+_log = u.fetch_logger(__name__)
 
 
 class FlextInfraCodegenFixer(s[str]):

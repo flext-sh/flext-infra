@@ -26,6 +26,7 @@ def _build_workspace(tmp_path: Path) -> tuple[Path, Path]:
     source_file = package_dir / "service.py"
     source_file.write_text(
         "from __future__ import annotations\n"
+        "from flext_core import FlextLogger, FlextVersion, u\n"
         "from flext_core import is_success_result\n\n"
         "class Demo:\n"
         "    def get_value(self) -> str:\n"
@@ -33,8 +34,18 @@ def _build_workspace(tmp_path: Path) -> tuple[Path, Path]:
         "    def is_ready(self) -> bool:\n"
         "        return True\n\n"
         "def run(result: object) -> object:\n"
+        "    logger = FlextLogger.get_logger('demo')\n"
+        "    configured = u.is_structlog_configured()\n"
+        "    level = u.get_log_level_from_config()\n"
+        "    version = FlextVersion.get_version_string()\n"
+        "    info = FlextVersion.get_version_info()\n"
+        "    package = FlextVersion.get_package_info()\n"
+        "    ready = FlextVersion.is_version_at_least('1.0.0')\n"
         "    if result.is_success:\n"
-        "        return is_success_result(result)\n"
+        "        return (\n"
+        "            logger, configured, level, version, info, package, ready,\n"
+        "            is_success_result(result),\n"
+        "        )\n"
         "    return result\n",
         encoding="utf-8",
     )
@@ -78,13 +89,41 @@ def _preview_lints(
     return (
         {
             "ruff": ("ruff-before",),
-            "pyrefly": tuple(),
+            "pyrefly": (),
         },
         {
-            "ruff": tuple(),
+            "ruff": (),
             "pyrefly": ("pyrefly-after",),
         },
     )
+
+
+def _snapshot_lints(
+    _cls: type[FlextInfraUtilitiesProtectedEdit],
+    py_file: Path,
+    workspace: Path,
+    *,
+    gates: list[str] | None = None,
+) -> dict[str, tuple[str, ...]]:
+    _ = (py_file, workspace, gates)
+    return {
+        "ruff": (),
+        "pyrefly": (),
+    }
+
+
+def _protected_write(
+    _cls: type[FlextInfraUtilitiesProtectedEdit],
+    py_file: Path,
+    *,
+    workspace: Path,
+    updated_source: str,
+    keep_backup: bool = False,
+    gates: list[str] | None = None,
+) -> tuple[bool, list[str]]:
+    _ = (workspace, keep_backup, gates)
+    py_file.write_text(updated_source, encoding="utf-8")
+    return (True, [])
 
 
 def test_accessor_migration_service_reports_preview_and_keeps_file_unchanged(
@@ -100,7 +139,7 @@ def test_accessor_migration_service_reports_preview_and_keeps_file_unchanged(
     original_source = source_file.read_text(encoding="utf-8")
 
     result = FlextInfraAccessorMigrationOrchestrator(
-        workspace_root=workspace,
+        workspace=workspace,
         dry_run=True,
         projects=["sample-project"],
         preview_limit=5,
@@ -110,11 +149,16 @@ def test_accessor_migration_service_reports_preview_and_keeps_file_unchanged(
     report = result.value
     tm.that(report.files_scanned, eq=1)
     tm.that(report.files_with_changes, eq=1)
-    tm.that(report.automated_change_count >= 2, eq=True)
+    tm.that(report.automated_change_count >= 9, eq=True)
     tm.that(report.warning_count >= 2, eq=True)
     tm.that(report.files[0].diff, has="successful_result")
     tm.that(report.files[0].diff, has=".success")
-    tm.that(report.files[0].lint_tools, eq=("ruff", "pyrefly"))
+    tm.that(report.files[0].diff, has="fetch_logger")
+    tm.that(report.files[0].diff, has="structlog_configured")
+    tm.that(report.files[0].diff, has="resolve_log_level_from_config")
+    tm.that(report.files[0].diff, has="resolve_version_string")
+    tm.that(report.files[0].diff, has="version_at_least")
+    tm.that(report.files[0].lint_tools, eq=("ruff", "pyright", "mypy", "pyrefly"))
     tm.that(report.files[0].lint_after["pyrefly"], eq=("pyrefly-after",))
     tm.that(source_file.read_text(encoding="utf-8"), eq=original_source)
 
@@ -169,7 +213,7 @@ def test_accessor_migration_dry_run_lints_only_previewed_files(
     )
 
     result = FlextInfraAccessorMigrationOrchestrator(
-        workspace_root=workspace,
+        workspace=workspace,
         dry_run=True,
         projects=["sample-project"],
         preview_limit=1,
@@ -180,3 +224,40 @@ def test_accessor_migration_dry_run_lints_only_previewed_files(
     tm.that(result.value.files_with_changes, eq=2)
     tm.that(len(result.value.files), eq=1)
     tm.that(linted, eq=[result.value.files[0].file.rsplit("/", maxsplit=1)[-1]])
+
+
+def test_accessor_migration_apply_writes_updated_source(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    workspace, source_file = _build_workspace(tmp_path)
+    monkeypatch.setattr(
+        FlextInfraUtilitiesProtectedEdit,
+        "lint_snapshot",
+        classmethod(_snapshot_lints),
+    )
+    monkeypatch.setattr(
+        FlextInfraUtilitiesProtectedEdit,
+        "protected_source_write",
+        classmethod(_protected_write),
+    )
+
+    result = FlextInfraAccessorMigrationOrchestrator(
+        workspace=workspace,
+        apply=True,
+        dry_run=False,
+        projects=["sample-project"],
+        preview_limit=5,
+    ).execute()
+
+    tm.ok(result)
+    updated_source = source_file.read_text(encoding="utf-8")
+    tm.that(updated_source, has="successful_result")
+    tm.that(updated_source, has="result.success")
+    tm.that(updated_source, has="FlextLogger.fetch_logger")
+    tm.that(updated_source, has="u.structlog_configured")
+    tm.that(updated_source, has="u.resolve_log_level_from_config")
+    tm.that(updated_source, has="FlextVersion.resolve_version_string")
+    tm.that(updated_source, has="FlextVersion.resolve_version_info")
+    tm.that(updated_source, has="FlextVersion.resolve_package_info")
+    tm.that(updated_source, has="FlextVersion.version_at_least")

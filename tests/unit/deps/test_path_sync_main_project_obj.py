@@ -7,7 +7,7 @@ from typing import override
 from flext_tests import tm
 
 from flext_infra import FlextInfraUtilitiesDependencyPathSync
-from tests import m, r, u
+from tests import m, r
 
 
 def _project(path: Path) -> m.Infra.ProjectInfo:
@@ -42,8 +42,10 @@ def test_main_project_obj_not_dict_first_loop(tmp_path: Path) -> None:
     )
     tm.that(
         _service([]).execute(
-            cli=u.Infra.CliArgs(workspace=tmp_path),
-            mode="standalone",
+            m.Infra.PathSyncCommand.model_validate({
+                "workspace": str(tmp_path),
+                "mode": "standalone",
+            })
         ),
         eq=0,
     )
@@ -62,8 +64,10 @@ def test_main_project_obj_not_dict_second_loop(tmp_path: Path) -> None:
     )
     tm.that(
         _service([_project(project_dir)]).execute(
-            cli=u.Infra.CliArgs(workspace=tmp_path),
-            mode="standalone",
+            m.Infra.PathSyncCommand.model_validate({
+                "workspace": str(tmp_path),
+                "mode": "standalone",
+            })
         ),
         eq=0,
     )

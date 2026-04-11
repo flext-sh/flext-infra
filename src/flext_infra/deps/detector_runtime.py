@@ -172,7 +172,7 @@ class FlextInfraDependencyDetectorRuntime:
             pip_lines, pip_exit = pip_result.value
             pip_ok = pip_exit == 0
             report_model.pip_check = self._pip_check_factory(ok=pip_ok, lines=pip_lines)
-        if params.output_format == "json":
+        if params.output_format == c.Cli.OutputFormats.JSON:
             return r[bool].ok(True)
         out_path: Path | None = None
         if params.output_path is not None:

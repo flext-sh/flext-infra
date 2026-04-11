@@ -59,8 +59,8 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
             python_version="3.13",
             core_stack=FlextInfraConstantsBase.PYTHON,
             package_manager=FlextInfraConstantsBase.POETRY,
-            source_dir=FlextInfraConstantsBase.Paths.DEFAULT_SRC_DIR,
-            tests_dir=FlextInfraConstantsBase.Directories.TESTS,
+            source_dir=FlextInfraConstantsBase.DEFAULT_SRC_DIR,
+            tests_dir=FlextInfraConstantsBase.DIR_TESTS,
             lint_gates=[
                 FlextInfraConstantsBase.LINT,
                 FlextInfraConstantsBase.FORMAT,
@@ -103,7 +103,7 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
                     template,
                     config=active_config,
                     lint_gates_csv=lint_gates_csv,
-                    make=FlextInfraConstantsBase.Make,
+                    make=FlextInfraConstantsBase,
                 )
                 sections.append(rendered.rstrip("\n"))
             content = "\n\n".join(sections).rstrip("\n") + "\n"

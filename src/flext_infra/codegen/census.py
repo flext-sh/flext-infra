@@ -41,7 +41,7 @@ class FlextInfraCodegenCensus(FlextInfraServiceBase[str]):
             return r[str].fail(f"census failed: {exc}", exception=exc)
         total_violations = sum(report.total for report in reports)
         total_fixable = sum(report.fixable for report in reports)
-        if self.output_format == "json":
+        if self.output_format == c.Cli.OutputFormats.JSON:
             payload: t.Infra.MutableInfraMapping = {
                 c.Infra.RK_PROJECTS: [report.model_dump() for report in reports],
                 "total_violations": total_violations,
@@ -68,7 +68,7 @@ class FlextInfraCodegenCensus(FlextInfraServiceBase[str]):
         self,
         workspace_root: Path | None = None,
         *,
-        output_format: str = "json",
+        output_format: str = c.Cli.OutputFormats.JSON,
         projects: Sequence[p.Infra.ProjectInfo] | None = None,
     ) -> Sequence[m.Infra.CensusReport]:
         """Run census on all projects in workspace.

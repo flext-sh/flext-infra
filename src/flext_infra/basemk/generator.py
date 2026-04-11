@@ -102,7 +102,7 @@ class FlextInfraBaseMkGenerator(s[str]):
             output.parent.mkdir(parents=True, exist_ok=True)
             _ = output.write_text(
                 content,
-                encoding=FlextInfraConstantsBase.Encoding.DEFAULT,
+                encoding=FlextInfraConstantsBase.ENCODING_DEFAULT,
             )
             return r[bool].ok(True)
         except OSError as exc:
@@ -133,17 +133,15 @@ class FlextInfraBaseMkGenerator(s[str]):
         try:
             with tempfile.TemporaryDirectory(prefix="flext-basemk-") as temp_dir_name:
                 temp_dir = Path(temp_dir_name)
-                base_mk_path = temp_dir / FlextInfraConstantsBase.Files.BASE_MK
-                makefile_path = (
-                    temp_dir / FlextInfraConstantsBase.Files.MAKEFILE_FILENAME
-                )
+                base_mk_path = temp_dir / FlextInfraConstantsBase.BASE_MK
+                makefile_path = temp_dir / FlextInfraConstantsBase.MAKEFILE_FILENAME
                 _ = base_mk_path.write_text(
                     content,
-                    encoding=FlextInfraConstantsBase.Encoding.DEFAULT,
+                    encoding=FlextInfraConstantsBase.ENCODING_DEFAULT,
                 )
                 _ = makefile_path.write_text(
                     "include base.mk\n",
-                    encoding=FlextInfraConstantsBase.Encoding.DEFAULT,
+                    encoding=FlextInfraConstantsBase.ENCODING_DEFAULT,
                 )
                 process_result = self._get_runner.run([
                     FlextInfraConstantsBase.MAKE,
@@ -166,7 +164,7 @@ class FlextInfraBaseMkGenerator(s[str]):
         """Render the Makefile bootstrap include block from template."""
         return FlextInfraBaseMkTemplateEngine().render_single(
             c.Infra.MAKEFILE_BOOTSTRAP_TEMPLATE,
-            make=FlextInfraConstantsBase.Make,
+            make=FlextInfraConstantsBase,
         )
 
 

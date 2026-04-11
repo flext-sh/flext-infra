@@ -15,6 +15,7 @@ from rope.base.change import ChangeContents, ChangeSet
 from rope.base.project import Project
 from rope.base.pycore import PyCore
 from rope.base.pynames import PyName
+from rope.base.pynamesdef import AssignedName
 from rope.base.pyobjects import AbstractClass, PyObject
 from rope.base.pyobjectsdef import PyFunction, PyModule
 from rope.base.resources import File, Resource
@@ -54,6 +55,8 @@ class FlextInfraTypesRope:
     "Typed Rope PyModule alias backed by Rope's concrete PyModule."
     type RopePyName = PyName
     "Typed Rope PyName alias backed by Rope's concrete PyName."
+    type RopeAssignedName = AssignedName
+    "Typed Rope assigned-name alias for names with assignment metadata."
     type RopePyObject = PyObject
     "Typed Rope PyObject alias backed by Rope's concrete PyObject."
     type RopeAbstractClass = AbstractClass

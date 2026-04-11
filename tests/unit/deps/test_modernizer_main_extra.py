@@ -2,31 +2,35 @@
 
 from __future__ import annotations
 
-import argparse
 from pathlib import Path
 
 import pytest
 from flext_tests import tm
 
 from flext_infra import FlextInfraPyprojectModernizer
-from tests import c, t, u
+from tests import c, m, t
 
 
 class TestFlextInfraPyprojectModernizerEdgeCases:
     """Validate edge cases through the public modernizer API."""
 
     @staticmethod
-    def _args(**overrides: t.Infra.InfraValue) -> argparse.Namespace:
+    def _args(
+        **overrides: t.Infra.InfraValue,
+    ) -> m.Infra.ModernizeCommand:
         defaults: t.MutableContainerMapping = {
-            "project": None,
-            "dry_run": False,
+            "workspace": ".",
             "verbose": False,
+            "projects": None,
+            "fail_fast": True,
+            "apply": False,
+            "check": False,
             "audit": False,
             "skip_comments": False,
             "skip_check": True,
         }
         defaults.update(overrides)
-        return argparse.Namespace(**defaults)
+        return m.Infra.ModernizeCommand.model_validate(defaults)
 
     @pytest.mark.parametrize(
         ("content", "expected"),
@@ -51,10 +55,7 @@ class TestFlextInfraPyprojectModernizerEdgeCases:
             )
         modernizer = FlextInfraPyprojectModernizer(workspace)
         tm.that(
-            modernizer.run(
-                self._args(),
-                u.Infra.CliArgs(workspace=workspace),
-            ),
+            modernizer.run(self._args(workspace=str(workspace))),
             eq=expected,
         )
 
@@ -64,12 +65,19 @@ class TestFlextInfraPyprojectModernizerEdgeCases:
     ) -> None:
         modernizer = FlextInfraPyprojectModernizer(modernizer_workspace)
         apply_exit = modernizer.run(
-            self._args(skip_comments=True, skip_check=True),
-            u.Infra.CliArgs(workspace=modernizer_workspace, apply=True),
+            self._args(
+                workspace=str(modernizer_workspace),
+                apply=True,
+                skip_comments=True,
+                skip_check=True,
+            ),
         )
         audit_exit = modernizer.run(
-            self._args(audit=True, skip_comments=True),
-            u.Infra.CliArgs(workspace=modernizer_workspace),
+            self._args(
+                workspace=str(modernizer_workspace),
+                audit=True,
+                skip_comments=True,
+            ),
         )
         tm.that(apply_exit, eq=0)
         tm.that(audit_exit, eq=0)

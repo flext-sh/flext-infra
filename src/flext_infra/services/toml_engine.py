@@ -157,7 +157,7 @@ class FlextInfraToml(s[Sequence[t.StrSequence]]):
             )
             return
 
-        target = u.Cli.toml_get_table_path(tbl, operation.table_path)
+        target = u.Cli.toml_table_path(tbl, operation.table_path)
         if target is None:
             return
         u.Cli.toml_remove_key_if_present(

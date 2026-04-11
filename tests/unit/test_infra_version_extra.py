@@ -20,51 +20,51 @@ from flext_infra import (
 
 
 class TestFlextInfraVersionPackageInfo:
-    """Test FlextInfraVersion.get_package_info() method."""
+    """Test FlextInfraVersion.resolve_package_info() method."""
 
-    def test_get_package_info_returns_mapping(self) -> None:
-        """Test that get_package_info() returns a mapping."""
-        result = FlextInfraVersion.get_package_info()
+    def test_resolve_package_info_returns_mapping(self) -> None:
+        """Test that resolve_package_info() returns a mapping."""
+        result = FlextInfraVersion.resolve_package_info()
         assert isinstance(result, dict)
 
-    def test_get_package_info_has_name_key(self) -> None:
-        """Test that get_package_info() has 'name' key."""
-        result = FlextInfraVersion.get_package_info()
+    def test_resolve_package_info_has_name_key(self) -> None:
+        """Test that resolve_package_info() has 'name' key."""
+        result = FlextInfraVersion.resolve_package_info()
         assert "name" in result
 
-    def test_get_package_info_has_version_key(self) -> None:
-        """Test that get_package_info() has 'version' key."""
-        result = FlextInfraVersion.get_package_info()
+    def test_resolve_package_info_has_version_key(self) -> None:
+        """Test that resolve_package_info() has 'version' key."""
+        result = FlextInfraVersion.resolve_package_info()
         assert "version" in result
 
-    def test_get_package_info_has_description_key(self) -> None:
-        """Test that get_package_info() has 'description' key."""
-        result = FlextInfraVersion.get_package_info()
+    def test_resolve_package_info_has_description_key(self) -> None:
+        """Test that resolve_package_info() has 'description' key."""
+        result = FlextInfraVersion.resolve_package_info()
         assert "description" in result
 
-    def test_get_package_info_has_author_key(self) -> None:
-        """Test that get_package_info() has 'author' key."""
-        result = FlextInfraVersion.get_package_info()
+    def test_resolve_package_info_has_author_key(self) -> None:
+        """Test that resolve_package_info() has 'author' key."""
+        result = FlextInfraVersion.resolve_package_info()
         assert "author" in result
 
-    def test_get_package_info_has_author_email_key(self) -> None:
-        """Test that get_package_info() has 'author_email' key."""
-        result = FlextInfraVersion.get_package_info()
+    def test_resolve_package_info_has_author_email_key(self) -> None:
+        """Test that resolve_package_info() has 'author_email' key."""
+        result = FlextInfraVersion.resolve_package_info()
         assert "author_email" in result
 
-    def test_get_package_info_has_license_key(self) -> None:
-        """Test that get_package_info() has 'license' key."""
-        result = FlextInfraVersion.get_package_info()
+    def test_resolve_package_info_has_license_key(self) -> None:
+        """Test that resolve_package_info() has 'license' key."""
+        result = FlextInfraVersion.resolve_package_info()
         assert "license" in result
 
-    def test_get_package_info_has_url_key(self) -> None:
-        """Test that get_package_info() has 'url' key."""
-        result = FlextInfraVersion.get_package_info()
+    def test_resolve_package_info_has_url_key(self) -> None:
+        """Test that resolve_package_info() has 'url' key."""
+        result = FlextInfraVersion.resolve_package_info()
         assert "url" in result
 
-    def test_get_package_info_all_values_are_strings(self) -> None:
-        """Test that get_package_info() all values are strings."""
-        result = FlextInfraVersion.get_package_info()
+    def test_resolve_package_info_all_values_are_strings(self) -> None:
+        """Test that resolve_package_info() values are strings."""
+        result = FlextInfraVersion.resolve_package_info()
         for value in result.values():
             assert isinstance(value, str)
 

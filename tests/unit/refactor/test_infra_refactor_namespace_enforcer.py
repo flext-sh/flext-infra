@@ -139,7 +139,7 @@ def test_loose_object_detector_detects_module_logger_assignment(
     target.write_text(
         "from __future__ import annotations\n"
         "from flext_core import FlextLogger\n\n"
-        "logger = FlextLogger(__name__)\n\n"
+        "logger = u.fetch_logger(__name__)\n\n"
         "class DemoTarget:\n"
         "    pass\n",
         encoding="utf-8",
@@ -209,7 +209,7 @@ def test_namespace_enforcer_apply_keeps_autofixes_when_other_violations_remain(
         "from __future__ import annotations\n"
         "from flext_core import FlextLogger\n"
         "from typing import Protocol\n\n"
-        "logger = FlextLogger(__name__)\n\n"
+        "logger = u.fetch_logger(__name__)\n\n"
         "class ServiceContract(Protocol):\n"
         "    def run(self) -> str:\n"
         "        ...\n",

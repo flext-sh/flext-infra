@@ -8,7 +8,6 @@ import shutil
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
-from flext_core import FlextLogger
 from flext_infra import (
     FlextInfraInternalSyncRepoMixin,
     c,
@@ -23,7 +22,7 @@ from flext_infra import (
 class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
     """Synchronize internal FLEXT dependencies via git clone or workspace symlinks."""
 
-    log = FlextLogger.create_module_logger(__name__)
+    log = u.fetch_logger(__name__)
 
     _OWNER_PATTERNS: tuple[t.Infra.RegexPattern, ...] = (
         re.compile(r"^git@github\.com:(?P<owner>[^/]+)/[^/]+(?:\.git)?$"),

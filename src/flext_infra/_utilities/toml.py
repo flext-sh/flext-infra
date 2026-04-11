@@ -77,7 +77,7 @@ class FlextInfraUtilitiesToml:
         if not isinstance(key, str):
             return None
         return FlextInfraUtilitiesToml.unwrap_item(
-            FlextCliUtilities.Cli.toml_get(container, key),
+            FlextCliUtilities.Cli.toml_value(container, key),
         )
 
     @staticmethod
@@ -90,7 +90,7 @@ class FlextInfraUtilitiesToml:
     ) -> bool:
         """Synchronize a scalar TOML value when it differs."""
         current = FlextInfraUtilitiesToml.unwrap_item(
-            FlextCliUtilities.Cli.toml_get(container, key)
+            FlextCliUtilities.Cli.toml_value(container, key)
         )
         if current == expected:
             return False

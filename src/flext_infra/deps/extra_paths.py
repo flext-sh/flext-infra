@@ -81,9 +81,9 @@ class FlextInfraExtraPathsManager:
     ) -> t.StrSequence:
         """Resolve dependency source roots to relative search paths."""
         dep_skip = c.Infra.COMMON_EXCLUDED_DIRS | frozenset({c.Infra.DIR_TESTS})
-        project_table = u.Cli.toml_get_table(doc, c.Infra.PROJECT)
+        project_table = u.Cli.toml_table_child(doc, c.Infra.PROJECT)
         current_project_name = (
-            u.Cli.toml_unwrap_item(u.Cli.toml_get_item(project_table, c.Infra.NAME))
+            u.Cli.toml_unwrap_item(u.Cli.toml_item_child(project_table, c.Infra.NAME))
             if project_table is not None
             else None
         )
@@ -140,23 +140,23 @@ class FlextInfraExtraPathsManager:
             project_dir=project_dir,
             is_root=is_root,
         )
-        tool_table = u.Cli.toml_get_table(doc, c.Infra.TOOL)
+        tool_table = u.Cli.toml_table_child(doc, c.Infra.TOOL)
         if tool_table is None:
             return list[str]()
-        pyright_table = u.Cli.toml_get_table(tool_table, c.Infra.PYRIGHT)
+        pyright_table = u.Cli.toml_table_child(tool_table, c.Infra.PYRIGHT)
         if pyright_table is None:
             return list[str]()
-        mypy_table = u.Cli.toml_get_table(tool_table, c.Infra.MYPY)
+        mypy_table = u.Cli.toml_table_child(tool_table, c.Infra.MYPY)
         changes: MutableSequence[str] = []
         current_pyright = u.Cli.toml_as_string_list(
-            u.Cli.toml_get_item(pyright_table, "extraPaths")
+            u.Cli.toml_item_child(pyright_table, "extraPaths")
         )
         if current_pyright != expected:
             pyright_table["extraPaths"] = expected
             changes.append("synchronized pyright extraPaths")
         if mypy_table is not None:
             current_mypy = u.Cli.toml_as_string_list(
-                u.Cli.toml_get_item(mypy_table, "mypy_path")
+                u.Cli.toml_item_child(mypy_table, "mypy_path")
             )
             if current_mypy != expected:
                 mypy_table["mypy_path"] = expected

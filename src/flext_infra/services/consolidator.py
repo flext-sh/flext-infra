@@ -9,6 +9,7 @@ from typing import Annotated, ClassVar, override
 from pydantic import Field
 
 from flext_core import r
+from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
 from flext_infra.base import s
 from flext_infra.constants import c
 from flext_infra.models import m
@@ -113,7 +114,7 @@ class FlextInfraCodegenConsolidator(s[str]):
             else f"Applied {applied} replacements, {failed} files reverted"
         )
         output_lines.extend(("", summary))
-        if self.output_format == "json":
+        if self.output_format == c.Cli.OutputFormats.JSON:
             payload = {
                 "total_found": found,
                 "total_applied": applied,
@@ -145,7 +146,7 @@ class FlextInfraCodegenConsolidator(s[str]):
         tuple[
             t.Infra.RopeResource,
             str,
-            Sequence[tuple[m.Infra.Rope.SymbolInfo, str, str]],
+            Sequence[tuple[m.Infra.SymbolInfo, str, str]],
         ]
         | None
     ):
@@ -168,11 +169,11 @@ class FlextInfraCodegenConsolidator(s[str]):
 
     @staticmethod
     def _match_assignments(
-        symbols: Sequence[m.Infra.Rope.SymbolInfo],
+        symbols: Sequence[m.Infra.SymbolInfo],
         source_lines: Sequence[str],
         value_to_ref: Mapping[str, str],
-    ) -> Sequence[tuple[m.Infra.Rope.SymbolInfo, str, str]]:
-        matches: MutableSequence[tuple[m.Infra.Rope.SymbolInfo, str, str]] = []
+    ) -> Sequence[tuple[m.Infra.SymbolInfo, str, str]]:
+        matches: MutableSequence[tuple[m.Infra.SymbolInfo, str, str]] = []
         for symbol in symbols:
             line_number = symbol.line
             if line_number < 1 or line_number > len(source_lines):
@@ -202,7 +203,7 @@ class FlextInfraCodegenConsolidator(s[str]):
         workspace: Path,
         pkg_name: str,
         backup: str,
-        matches: Sequence[tuple[m.Infra.Rope.SymbolInfo, str, str]],
+        matches: Sequence[tuple[m.Infra.SymbolInfo, str, str]],
     ) -> t.Infra.EditResultWithDescs:
         src_lines = backup.splitlines(keepends=True)
         rel = py_file.relative_to(workspace)
@@ -246,7 +247,7 @@ class FlextInfraCodegenConsolidator(s[str]):
         def _restore_edit() -> None:
             resource.write(backup)
 
-        ok, report = u.Infra.protected_file_edit(
+        ok, report = FlextInfraUtilitiesProtectedEdit.protected_file_edit(
             py_file,
             workspace=workspace,
             before_source=backup,

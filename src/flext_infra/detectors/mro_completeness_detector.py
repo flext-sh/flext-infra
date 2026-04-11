@@ -37,19 +37,20 @@ class FlextInfraMROCompletenessDetector:
                     )
                 )
             return []
-        # Resolve facade class
-        facade = u.Infra.find_facade_alias(res, family)
+        # Resolve facade class from declared module classes.
+        module_classes = tuple(u.Infra.get_module_classes(rope_project, res))
+        facade = None
+        suffix = c.Infra.FAMILY_SUFFIXES.get(family, "")
+        if suffix:
+            facade = next(
+                (name for name in module_classes if name.endswith(suffix)),
+                None,
+            )
         if facade is None:
-            suffix = c.Infra.FAMILY_SUFFIXES.get(family, "")
-            if suffix:
-                facade = next(
-                    (
-                        n
-                        for n in u.Infra.get_module_classes(rope_project, res)
-                        if n.endswith(suffix)
-                    ),
-                    None,
-                )
+            facade = next(
+                (name for name in module_classes if name.startswith("Flext")),
+                None,
+            )
         if facade is None:
             return []
         # Expected: local family classes + dep-graph parents

@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from pydantic import AliasChoices, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from flext_core import m
 from flext_infra import (
@@ -78,15 +78,6 @@ class FlextInfraModelsRefactor(
                 description="Maximum number of file previews to include in the report",
             ),
         ] = 10
-        lint_gates: Annotated[
-            str,
-            Field(
-                default="lint,pyrefly",
-                alias="gates",
-                validation_alias=AliasChoices("gates", "lint_gates"),
-                description="Comma-separated lint gates for preview/apply validation",
-            ),
-        ] = "lint,pyrefly"
 
     class Result(m.ArbitraryTypesModel):
         """Result of applying refactor rules to a single file."""

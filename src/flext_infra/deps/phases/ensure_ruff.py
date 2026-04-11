@@ -61,9 +61,8 @@ class FlextInfraEnsureRuffConfigPhase:
                 *self._workspace_project_namespaces(path.parent),
             },
         )
-        per_file_ignores = u.Cli.toml_get_table_path(
-            doc,
-            (c.Infra.TOOL, c.Infra.RUFF, c.Infra.LINT_SECTION, "per-file-ignores"),
+        per_file_ignores = u.Cli.toml_table_path(
+            doc, (c.Infra.TOOL, c.Infra.RUFF, c.Infra.LINT_SECTION, "per-file-ignores")
         )
         stale_patterns = (
             [

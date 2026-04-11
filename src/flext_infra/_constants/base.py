@@ -336,7 +336,7 @@ class FlextInfraConstantsBase(
         M = "m"
         U = "u"
 
-    SAFE_EXECUTION_DEFAULT_GATES: Final[str] = "lint,pyrefly"
+    SAFE_EXECUTION_DEFAULT_GATES: Final[str] = "lint,mypy,pyright,pyrefly"
     "Default quality gates for post-transform validation."
     SAFE_EXECUTION_BAK_SUFFIX: Final[str] = ".bak"
     "File backup suffix for copy-on-write safety."

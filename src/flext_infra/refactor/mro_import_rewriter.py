@@ -282,7 +282,7 @@ class FlextInfraRefactorMROImportRewriter:
             if source is None:
                 try:
                     source = file_path.read_text(
-                        encoding=FlextInfraConstantsBase.Encoding.DEFAULT
+                        encoding=FlextInfraConstantsBase.ENCODING_DEFAULT
                     )
                 except OSError:
                     continue

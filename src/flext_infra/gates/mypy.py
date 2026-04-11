@@ -31,10 +31,10 @@ class FlextInfraMypyGate(FlextInfraGate):
         proj_py = project_dir / c.Infra.PYPROJECT_FILENAME
         doc = u.Cli.toml_read(proj_py)
         if doc is not None:
-            tool_table = u.Cli.toml_get_table(doc, c.Infra.TOOL)
+            tool_table = u.Cli.toml_table_child(doc, c.Infra.TOOL)
             if (
                 tool_table is not None
-                and u.Cli.toml_get_table(tool_table, c.Infra.MYPY) is not None
+                and u.Cli.toml_table_child(tool_table, c.Infra.MYPY) is not None
             ):
                 return proj_py
         return ctx.workspace_root / c.Infra.PYPROJECT_FILENAME

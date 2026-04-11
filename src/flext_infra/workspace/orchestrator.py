@@ -17,10 +17,9 @@ from typing import Annotated, override
 
 from pydantic import Field
 
-from flext_core import FlextLogger
 from flext_infra import FlextInfraSyncService, c, m, r, s, t, u
 
-logger = FlextLogger.create_module_logger(__name__)
+logger = u.fetch_logger(__name__)
 
 
 class FlextInfraOrchestratorService(s[bool]):

@@ -2,18 +2,13 @@
 
 from __future__ import annotations
 
-from typing import override
-
-from flext_tests import s
-
 from tests import r, t, u
 
 
-class RealSubprocessRunner(s[str]):
+class RealSubprocessRunner:
     subprocess_utility: type[u.Cli] = u.Cli
     allowed_commands: frozenset[str] = frozenset({"echo", "pwd", "ls", "git"})
 
-    @override
     def execute(self) -> r[str]:
         return r[str].ok("")
 

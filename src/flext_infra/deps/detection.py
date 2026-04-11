@@ -6,14 +6,13 @@ from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
-from flext_core import FlextLogger
 from flext_infra import FlextInfraDependencyDetectionAnalysis, c, m, p, r, t, u
 
 
 class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis):
     """Runtime vs dev dependency detector using deptry, pip-check, and mypy stub analysis."""
 
-    _log = FlextLogger.create_module_logger(__name__)
+    _log = u.fetch_logger(__name__)
 
     DEFAULT_MODULE_TO_TYPES_PACKAGE: t.StrMapping = (
         c.Infra.DEFAULT_MODULE_TO_TYPES_PACKAGE

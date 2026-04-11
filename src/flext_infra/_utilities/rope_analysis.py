@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import ast as _ast
 from collections.abc import MutableSequence, Sequence
 from typing import TYPE_CHECKING
+
+from rope.base.pynamesdef import AssignedName as _RopeAssignedName
 
 from flext_infra import (
     FlextInfraUtilitiesRopeCore,
@@ -139,13 +142,23 @@ class FlextInfraUtilitiesRopeAnalysis:
                     and name.startswith("__")
                     and name.endswith("__")
                 )
+            has_explicit_all = c.Infra.DUNDER_ALL in attributes
+            if has_explicit_all:
+                dunder_all = attributes[c.Infra.DUNDER_ALL]
+                if isinstance(dunder_all, _RopeAssignedName):
+                    explicit_names = (
+                        FlextInfraUtilitiesRopeAnalysis._explicit_all_names(dunder_all)
+                    )
+                    if explicit_names is not None:
+                        return tuple(
+                            name for name in explicit_names if name in attributes
+                        )
             names: MutableSequence[str] = list(
                 FlextInfraUtilitiesRopeAnalysis.get_module_classes(
                     rope_project,
                     resource,
                 ),
             )
-            has_explicit_all = c.Infra.DUNDER_ALL in attributes
             for name, pyname in attributes.items():
                 if name in names or name == c.Infra.DUNDER_ALL:
                     continue
@@ -176,24 +189,22 @@ class FlextInfraUtilitiesRopeAnalysis:
         return tuple(dict.fromkeys(names))
 
     @staticmethod
-    def has_module_local_name(
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
-        name: str,
-    ) -> bool:
-        """Return whether a module defines ``name`` locally through Rope metadata."""
-        try:
-            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(
-                rope_project,
-                resource,
+    def _explicit_all_names(
+        pyname: t.Infra.RopeAssignedName,
+    ) -> t.StrSequence | None:
+        """Return literal string names assigned to ``__all__`` via Rope metadata."""
+        names: MutableSequence[str] = []
+        for assignment in pyname.assignments:
+            node = assignment.ast_node
+            if not isinstance(node, _ast.List | _ast.Tuple):
+                continue
+            names.extend(
+                item.value
+                for item in node.elts
+                if isinstance(item, _ast.Constant) and isinstance(item.value, str)
             )
-            pyname = pymodule.get_attributes().get(name)
-            return pyname is not None and FlextInfraUtilitiesRopeAnalysis._is_local_name(
-                pyname,
-                resource,
-            )
-        except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
-            return False
+            return tuple(dict.fromkeys(names))
+        return None
 
     @staticmethod
     def _is_local_name(

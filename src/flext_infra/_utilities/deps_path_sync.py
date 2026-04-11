@@ -8,7 +8,6 @@ from pathlib import Path
 from tomlkit.items import InlineTable, Table as TomlTable
 
 from flext_cli import u
-from flext_core import FlextLogger
 from flext_infra import (
     FlextInfraModelsDeps,
     FlextInfraUtilitiesDocsScope,
@@ -24,7 +23,7 @@ class FlextInfraUtilitiesDependencyPathSync(
 ):
     """Rewrite internal FLEXT dependency paths for workspace or standalone mode."""
 
-    _log = FlextLogger.create_module_logger(__name__)
+    _log = u.fetch_logger(__name__)
     discover_projects = staticmethod(FlextInfraUtilitiesDocsScope.discover_projects)
 
     def _rewrite_pep621(
@@ -33,11 +32,11 @@ class FlextInfraUtilitiesDependencyPathSync(
         *,
         internal_names: t.Infra.StrSet,
     ) -> t.Infra.Pair[t.StrSequence, t.Infra.StrSet]:
-        project_section = u.Cli.toml_get_table(doc, c.Infra.PROJECT)
+        project_section = u.Cli.toml_table_child(doc, c.Infra.PROJECT)
         if project_section is None:
             return ([], set())
         deps: t.StrSequence = u.Cli.toml_as_string_list(
-            u.Cli.toml_get_item(project_section, c.Infra.DEPENDENCIES)
+            u.Cli.toml_item_child(project_section, c.Infra.DEPENDENCIES)
         )
         if not deps:
             return ([], set())
@@ -101,7 +100,7 @@ class FlextInfraUtilitiesDependencyPathSync(
                     "editable": True,
                 }
             )
-            current_table = u.Cli.toml_get_table(sources, dep_name)
+            current_table = u.Cli.toml_table_child(sources, dep_name)
             current_map: t.Infra.ContainerDict = (
                 dict(current_table.unwrap()) if current_table is not None else {}
             )
@@ -129,7 +128,7 @@ class FlextInfraUtilitiesDependencyPathSync(
         workspace_section = u.Cli.toml_ensure_table(uv_section, "workspace")
         expected_members = sorted(set(members))
         current_members = u.Cli.toml_as_string_list(
-            u.Cli.toml_get_item(workspace_section, "members")
+            u.Cli.toml_item_child(workspace_section, "members")
         )
         if current_members != expected_members:
             workspace_section["members"] = u.Cli.toml_array(expected_members)
@@ -144,13 +143,13 @@ class FlextInfraUtilitiesDependencyPathSync(
         is_root: bool,
         mode: str,
     ) -> t.StrSequence:
-        tool_section = u.Cli.toml_get_table(doc, c.Infra.TOOL)
+        tool_section = u.Cli.toml_table_child(doc, c.Infra.TOOL)
         if tool_section is None:
             return []
-        poetry_section = u.Cli.toml_get_table(tool_section, c.Infra.POETRY)
+        poetry_section = u.Cli.toml_table_child(tool_section, c.Infra.POETRY)
         if poetry_section is None:
             return []
-        deps = u.Cli.toml_get_table(poetry_section, c.Infra.DEPENDENCIES)
+        deps = u.Cli.toml_table_child(poetry_section, c.Infra.DEPENDENCIES)
         if deps is None:
             return []
         changes: MutableSequence[str] = []
@@ -255,7 +254,7 @@ class FlextInfraUtilitiesDependencyPathSync(
             root_data_result = u.Cli.toml_read_document(root_pyproject)
             if root_data_result.success:
                 root_data: t.Cli.TomlDocument = root_data_result.value
-                root_project = u.Cli.toml_get_item(root_data, c.Infra.PROJECT)
+                root_project = u.Cli.toml_item_child(root_data, c.Infra.PROJECT)
                 root_mapping = u.Cli.toml_as_mapping(
                     u.Cli.toml_unwrap_item(root_project),
                 )
@@ -303,7 +302,7 @@ class FlextInfraUtilitiesDependencyPathSync(
                 )
                 return 1
             project_data: t.Cli.TomlDocument = data_result.value
-            project_obj = u.Cli.toml_get_item(project_data, c.Infra.PROJECT)
+            project_obj = u.Cli.toml_item_child(project_data, c.Infra.PROJECT)
             project_mapping = u.Cli.toml_as_mapping(
                 u.Cli.toml_unwrap_item(project_obj),
             )

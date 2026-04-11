@@ -13,7 +13,6 @@ from typing import override
 
 from pydantic import ValidationError
 
-from flext_core import FlextLogger
 from flext_infra import (
     FlextInfraExtraPathsManager,
     c,
@@ -24,7 +23,7 @@ from flext_infra import (
     u,
 )
 
-_logger = FlextLogger.create_module_logger(__name__)
+_logger = u.fetch_logger(__name__)
 
 
 class FlextInfraConfigFixer(s[bool]):

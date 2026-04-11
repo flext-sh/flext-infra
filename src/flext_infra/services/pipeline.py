@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, MutableSequence, Sequence
 from typing import override
 
-from flext_core import FlextLogger, r
+from flext_core import r
 from flext_infra import (
     FlextInfraCodegenCensus,
     FlextInfraCodegenFixer,
@@ -19,7 +19,7 @@ from flext_infra import (
     u,
 )
 
-_log = FlextLogger.create_module_logger(__name__)
+_log = u.fetch_logger(__name__)
 
 
 class FlextInfraCodegenPipeline(s[str]):
@@ -117,7 +117,7 @@ class FlextInfraCodegenPipeline(s[str]):
         return r[m.Cli.PipelineStageResult].ok(
             m.Cli.PipelineStageResult(
                 stage_id=c.Infra.PipelineStage.DISCOVER,
-                status=c.Cli.PIPELINE_STATUS_OK,
+                status=c.Cli.PipelineStageStatus.OK,
                 output={"projects_discovered": len(discovered)},
             ),
         )
@@ -136,7 +136,7 @@ class FlextInfraCodegenPipeline(s[str]):
         return r[m.Cli.PipelineStageResult].ok(
             m.Cli.PipelineStageResult(
                 stage_id=c.Infra.PipelineStage.PY_TYPED,
-                status=c.Cli.PIPELINE_STATUS_OK,
+                status=c.Cli.PipelineStageStatus.OK,
                 output={"markers_updated": count},
             ),
         )
@@ -161,7 +161,7 @@ class FlextInfraCodegenPipeline(s[str]):
         return r[m.Cli.PipelineStageResult].ok(
             m.Cli.PipelineStageResult(
                 stage_id=c.Infra.PipelineStage.CENSUS_BEFORE,
-                status=c.Cli.PIPELINE_STATUS_OK,
+                status=c.Cli.PipelineStageStatus.OK,
                 output={"total_violations": total, "total_fixable": fixable},
             ),
         )
@@ -185,7 +185,7 @@ class FlextInfraCodegenPipeline(s[str]):
         return r[m.Cli.PipelineStageResult].ok(
             m.Cli.PipelineStageResult(
                 stage_id=c.Infra.PipelineStage.SCAFFOLD,
-                status=c.Cli.PIPELINE_STATUS_OK,
+                status=c.Cli.PipelineStageStatus.OK,
                 output={"total_created": created, "total_skipped": skipped},
             ),
         )
@@ -210,7 +210,7 @@ class FlextInfraCodegenPipeline(s[str]):
         return r[m.Cli.PipelineStageResult].ok(
             m.Cli.PipelineStageResult(
                 stage_id=c.Infra.PipelineStage.AUTO_FIX,
-                status=c.Cli.PIPELINE_STATUS_OK,
+                status=c.Cli.PipelineStageStatus.OK,
                 output={"total_fixed": fixed, "total_skipped": skipped},
             ),
         )
@@ -230,7 +230,7 @@ class FlextInfraCodegenPipeline(s[str]):
         return r[m.Cli.PipelineStageResult].ok(
             m.Cli.PipelineStageResult(
                 stage_id=c.Infra.PipelineStage.LAZY_INIT,
-                status=c.Cli.PIPELINE_STATUS_OK,
+                status=c.Cli.PipelineStageStatus.OK,
                 output={"unmapped_count": count},
             ),
         )
@@ -256,7 +256,7 @@ class FlextInfraCodegenPipeline(s[str]):
         return r[m.Cli.PipelineStageResult].ok(
             m.Cli.PipelineStageResult(
                 stage_id=c.Infra.PipelineStage.CENSUS_AFTER,
-                status=c.Cli.PIPELINE_STATUS_OK,
+                status=c.Cli.PipelineStageStatus.OK,
                 output={"total_violations": total, "total_fixable": fixable},
             ),
         )
@@ -281,7 +281,7 @@ class FlextInfraCodegenPipeline(s[str]):
         fixed = sum(len(result.violations_fixed) for result in fix_results)
         skipped = sum(len(result.violations_skipped) for result in fix_results)
 
-        if self.output_format == "json":
+        if self.output_format == c.Cli.OutputFormats.JSON:
             payload: t.Infra.MutableInfraMapping = {
                 "census_before": {
                     "total_violations": before_violations,
