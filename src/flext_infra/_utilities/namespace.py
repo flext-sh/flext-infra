@@ -78,6 +78,14 @@ class FlextInfraUtilitiesCodegenNamespace:
         parts = [part for part in normalized.split("-") if part]
         return "".join(part.capitalize() for part in parts) if parts else ""
 
+    @staticmethod
+    def package_alias(*, package_name: str) -> str:
+        """Derive the canonical root API alias from the import package."""
+        root = package_name.split(".", maxsplit=1)[0]
+        if root.startswith(c.Infra.PKG_PREFIX_UNDERSCORE):
+            return root.removeprefix(c.Infra.PKG_PREFIX_UNDERSCORE)
+        return root
+
     @classmethod
     def module_policy(
         cls,
@@ -141,6 +149,12 @@ class FlextInfraUtilitiesCodegenNamespace:
             and len(resolved_rel_path.parts) == 1
             and package_depth <= 1
         )
+        if (
+            expected_alias is None
+            and is_root_namespace
+            and resolved_rel_path.name == c.Infra.API_PY
+        ):
+            expected_alias = cls.package_alias(package_name=package_name)
         surface_name = package_parts[0] if package_parts else ""
         if surface_name not in config.surface_prefixes:
             surface_name = "src"

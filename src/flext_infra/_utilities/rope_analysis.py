@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import ast
 from collections.abc import MutableSequence, Sequence
 from typing import TYPE_CHECKING
-
-from rope.base.pynamesdef import AssignedName
 
 from flext_infra import (
     FlextInfraUtilitiesRopeCore,
@@ -125,6 +122,7 @@ class FlextInfraUtilitiesRopeAnalysis:
         *,
         include_dunder: bool = False,
         allow_main: bool = False,
+        allow_assignments: bool = False,
     ) -> t.StrSequence:
         """Return module-local export names from Rope metadata."""
         try:
@@ -147,59 +145,62 @@ class FlextInfraUtilitiesRopeAnalysis:
                     resource,
                 ),
             )
-            for name in FlextInfraUtilitiesRopeAnalysis.get_module_dunder_all_names(
-                rope_project,
-                resource,
-            ):
-                if name == "main" and not allow_main:
+            has_explicit_all = c.Infra.DUNDER_ALL in attributes
+            for name, pyname in attributes.items():
+                if name in names or name == c.Infra.DUNDER_ALL:
                     continue
-                pyname = attributes.get(name)
-                if pyname is not None and (
-                    name == "main"
-                    or FlextInfraUtilitiesRopeAnalysis._is_local_name(
-                        pyname,
-                        resource,
-                    )
+                obj = pyname.get_object()
+                is_function = isinstance(
+                    obj,
+                    FlextInfraUtilitiesRopeCore.PY_FUNCTION_TYPES,
+                )
+                if not (
+                    (has_explicit_all and is_function)
+                    or (allow_assignments and not is_function)
                 ):
+                    continue
+                if FlextInfraUtilitiesRopeAnalysis._is_local_name(pyname, resource):
                     names.append(name)
+            main_pyname = attributes.get("main")
+            if (
+                allow_main
+                and main_pyname is not None
+                and FlextInfraUtilitiesRopeAnalysis._is_local_name(
+                    main_pyname,
+                    resource,
+                )
+            ):
+                names.append("main")
         except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
             return ()
         return tuple(dict.fromkeys(names))
 
     @staticmethod
-    def get_module_dunder_all_names(
+    def has_module_local_name(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-    ) -> t.StrSequence:
-        """Return literal string names declared in module ``__all__``."""
+        name: str,
+    ) -> bool:
+        """Return whether a module defines ``name`` locally through Rope metadata."""
         try:
             pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(
                 rope_project,
                 resource,
             )
-            pyname = pymodule.get_attributes().get(c.Infra.DUNDER_ALL)
-            if not isinstance(pyname, AssignedName):
-                return ()
-            names: MutableSequence[str] = []
-            for assignment in pyname.assignments:
-                node = assignment.ast_node
-                if not isinstance(node, (ast.List, ast.Tuple)):
-                    continue
-                names.extend(
-                    value.value
-                    for value in node.elts
-                    if isinstance(value, ast.Constant)
-                    and isinstance(value.value, str)
-                )
-            return tuple(dict.fromkeys(names))
+            pyname = pymodule.get_attributes().get(name)
+            return pyname is not None and FlextInfraUtilitiesRopeAnalysis._is_local_name(
+                pyname,
+                resource,
+            )
         except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
-            return ()
+            return False
 
     @staticmethod
     def _is_local_name(
         pyname: t.Infra.RopePyName,
         resource: t.Infra.RopeResource,
     ) -> bool:
+        """Return whether one Rope name is defined in ``resource``."""
         location = pyname.get_definition_location()
         if location is None:
             return False

@@ -66,6 +66,7 @@ class FlextInfraConstantsSharedInfra:
     GITMODULES: Final[str] = ".gitmodules"
     GITIGNORE: Final[str] = ".gitignore"
     INIT_PY: Final[str] = "__init__.py"
+    API_PY: Final[str] = "api.py"
     CONSTANTS_PY: Final[str] = "constants.py"
     MODELS_PY: Final[str] = "models.py"
     UTILITIES_PY: Final[str] = "utilities.py"

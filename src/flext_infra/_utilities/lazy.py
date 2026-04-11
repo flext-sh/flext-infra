@@ -118,18 +118,16 @@ class FlextInfraUtilitiesCodegenLazyAliases:
                 py_file,
                 module_path,
                 allow_main=policy.allow_main_export,
+                allow_assignments=policy.allow_type_alias,
             )
-            if (
-                policy.expected_alias
-                and targets
-                and "." not in current_pkg
-                and FlextInfraUtilitiesCodegenNamespace.is_root_namespace_file(
-                    py_file.name,
-                )
-            ):
-                targets.setdefault(
-                    policy.expected_alias, (module_path, policy.expected_alias)
-                )
+            cls._add_expected_alias(
+                project,
+                py_file,
+                policy,
+                targets,
+                module_path,
+                current_pkg,
+            )
             if not policy.export_symbols or (
                 not targets and not policy.enforce_contract and "." in current_pkg
             ):
@@ -138,6 +136,29 @@ class FlextInfraUtilitiesCodegenLazyAliases:
             for name, target in targets.items():
                 cls._add(index, name, target)
         return index
+
+    @staticmethod
+    def _add_expected_alias(
+        project: t.Infra.RopeProject,
+        py_file: Path,
+        policy: m.Infra.NamespaceModulePolicy,
+        targets: t.Infra.MutableLazyImportMap,
+        module_path: str,
+        current_pkg: str,
+    ) -> None:
+        alias = policy.expected_alias
+        if not alias or not targets or "." in current_pkg:
+            return
+        if not FlextInfraUtilitiesCodegenNamespace.is_root_namespace_file(
+            py_file.name,
+        ):
+            return
+        resource = FlextInfraUtilitiesRope.get_resource_from_path(project, py_file)
+        if resource is None:
+            return
+        if not FlextInfraUtilitiesRope.has_module_local_name(project, resource, alias):
+            return
+        targets.setdefault(alias, (module_path, alias))
 
     @classmethod
     def _rope_exports(
@@ -148,6 +169,7 @@ class FlextInfraUtilitiesCodegenLazyAliases:
         *,
         include_dunder: bool = False,
         allow_main: bool = False,
+        allow_assignments: bool = False,
     ) -> t.Infra.MutableLazyImportMap:
         if not py_file.is_file():
             return {}
@@ -160,6 +182,7 @@ class FlextInfraUtilitiesCodegenLazyAliases:
                 resource,
                 include_dunder=include_dunder,
                 allow_main=allow_main,
+                allow_assignments=allow_assignments,
             )
         except FlextInfraUtilitiesRope.RUNTIME_ERRORS:
             return {}
