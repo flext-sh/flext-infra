@@ -702,9 +702,6 @@ lazy-init:
       - t
       - u
       - x
-      - reset_settings
-      - settings
-      - settings_factory
       - td
       - tf
       - tk

@@ -29,7 +29,7 @@ def _create_silent_failure_project(
                 "from collections.abc import Mapping, Sequence\n\n"
                 "from flext_core import r\n\n"
                 "def run_guard(validation_result: r[bool]) -> r[bool]:\n"
-                "    if validation_result.is_failure:\n"
+                "    if validation_result.failure:\n"
                 "        return False\n"
                 "    return r[bool].ok(True)\n\n"
                 "def run_except() -> r[bool]:\n"

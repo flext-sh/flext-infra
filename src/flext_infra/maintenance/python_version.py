@@ -17,7 +17,7 @@ Usage::
 
     service = FlextInfraPythonVersionEnforcer()
     result = service.execute(check_only=True, verbose=True)
-    if result.is_success:
+    if result.success:
         logger.info("Python version check passed")
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.

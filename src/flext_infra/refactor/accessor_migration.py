@@ -83,13 +83,13 @@ class FlextInfraAccessorMigrationOrchestrator(s[m.Infra.AccessorMigrationReport]
             origin="flext_core.result",
         ),
         m.Infra.AccessorMigrationRule(
-            source_name="is_success",
+            source_name="success",
             replacement_name="success",
             reason="Rename boolean result predicate to the canonical success field",
             origin="flext_core.result",
         ),
         m.Infra.AccessorMigrationRule(
-            source_name="is_failure",
+            source_name="failure",
             replacement_name="failure",
             reason="Rename boolean result predicate to the canonical failure field",
             origin="flext_core.result",

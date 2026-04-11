@@ -26,7 +26,7 @@ class FlextInfraUtilitiesRopeSource:
         r"^(?P<indent>\s*)return\s+.+?\.unwrap_or\((?P<sentinel>False|None|\[\]|\{\})\)\s*(?:#.*)?$",
     )
     _SILENT_FAILURE_IF_RE: ClassVar[re.Pattern[str]] = re.compile(
-        r"^(?P<indent>\s*)if\s+(?:(?P<failure_name>[A-Za-z_]\w*)\.is_failure|not\s+(?P<success_name>[A-Za-z_]\w*)\.is_success)\s*:\s*(?P<inline>.*)$",
+        r"^(?P<indent>\s*)if\s+(?:(?P<failure_name>[A-Za-z_]\w*)\.failure|not\s+(?P<success_name>[A-Za-z_]\w*)\.success)\s*:\s*(?P<inline>.*)$",
     )
     _SILENT_FAILURE_EXCEPT_RE: ClassVar[re.Pattern[str]] = re.compile(
         r"^(?P<indent>\s*)except(?:\s+.+?)?(?:\s+as\s+(?P<exception_name>[A-Za-z_]\w*))?\s*:\s*(?P<inline>.*)$",

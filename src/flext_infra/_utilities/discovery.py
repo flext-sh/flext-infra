@@ -175,6 +175,10 @@ class FlextInfraUtilitiesDiscovery:
                 rope_proj,
                 resource,
             )
+            declared = FlextInfraUtilitiesRopeAnalysis.get_declared_module_imports(
+                rope_proj,
+                resource,
+            )
             imported = FlextInfraUtilitiesRopeAnalysis.get_semantic_module_imports(
                 rope_proj,
                 resource,
@@ -191,7 +195,8 @@ class FlextInfraUtilitiesDiscovery:
                     imported_name = semantic_target.rsplit(".", maxsplit=1)[-1]
                     if base_name not in {local_name, imported_name}:
                         continue
-                    package_root = semantic_target.split(".", maxsplit=1)[0]
+                    target_name = declared.get(local_name, semantic_target)
+                    package_root = target_name.split(".", maxsplit=1)[0]
                     if package_root == current_root:
                         continue
                     target = package_root if return_module else imported_name

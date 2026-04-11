@@ -41,7 +41,7 @@ def _build_workspace(tmp_path: Path) -> tuple[Path, Path]:
         "    info = FlextVersion.get_version_info()\n"
         "    package = FlextVersion.get_package_info()\n"
         "    ready = FlextVersion.is_version_at_least('1.0.0')\n"
-        "    if result.is_success:\n"
+        "    if result.success:\n"
         "        return (\n"
         "            logger, configured, level, version, info, package, ready,\n"
         "            is_success_result(result),\n"
@@ -68,7 +68,7 @@ def _build_workspace_many(tmp_path: Path, count: int) -> tuple[Path, tuple[Path,
             "from __future__ import annotations\n"
             "from flext_core import is_success_result\n\n"
             "def run(result: object) -> object:\n"
-            "    if result.is_success:\n"
+            "    if result.success:\n"
             "        return is_success_result(result)\n"
             "    return result\n",
             encoding="utf-8",

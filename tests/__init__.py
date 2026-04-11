@@ -12,24 +12,7 @@ from flext_core.lazy import (
 )
 
 if _t.TYPE_CHECKING:
-    from flext_tests import (
-        d,
-        e,
-        h,
-        r,
-        s,
-        td,
-        tf,
-        tk,
-        tm,
-        tv,
-        x,
-    )
-    from flext_tests._fixtures.settings import (
-        reset_settings,
-        settings,
-        settings_factory,
-    )
+    from flext_tests import d, e, h, r, s, td, tf, tk, tm, tv, x
 
     from tests._constants.domain import TestsFlextInfraConstantsDomain
     from tests._constants.fixtures import TestsFlextInfraConstantsFixtures
@@ -91,11 +74,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "tv",
                 "x",
             ),
-            "flext_tests._fixtures.settings": (
-                "reset_settings",
-                "settings",
-                "settings_factory",
-            ),
         },
     ),
     exclude_names=(
@@ -133,10 +111,7 @@ __all__ = [
     "m",
     "p",
     "r",
-    "reset_settings",
     "s",
-    "settings",
-    "settings_factory",
     "t",
     "td",
     "tf",

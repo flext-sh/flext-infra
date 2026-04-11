@@ -7,6 +7,7 @@ from collections.abc import MutableSequence, Sequence
 from typing import TYPE_CHECKING
 
 from rope.base.pynamesdef import AssignedName as _RopeAssignedName
+from rope.refactor import importutils as _rope_importutils
 
 from flext_infra import (
     FlextInfraUtilitiesRopeCore,
@@ -86,6 +87,39 @@ class FlextInfraUtilitiesRopeAnalysis:
                     if object_name is None or module_name.endswith(f".{object_name}")
                     else f"{module_name}.{object_name}"
                 )
+        except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
+            return result
+        return result
+
+    @staticmethod
+    def get_declared_module_imports(
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+    ) -> t.StrMapping:
+        """Return {local_name: declared import path} without resolving re-exports."""
+        result: t.MutableStrMapping = {}
+        try:
+            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(
+                rope_project,
+                resource,
+            )
+            module_imports = _rope_importutils.get_module_imports(
+                rope_project.pycore,
+                pymodule,
+            )
+            if TYPE_CHECKING:
+                import_statements: Sequence[t.Infra.RopeImportStatement] = ()
+            else:
+                import_statements = module_imports.imports
+            for import_statement in import_statements:
+                import_info = import_statement.import_info
+                module_name = import_info.module_name
+                if not module_name:
+                    continue
+                for imported_name, alias in import_info.names_and_aliases:
+                    local_name = alias or imported_name
+                    if local_name:
+                        result[local_name] = f"{module_name}.{imported_name}"
         except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
             return result
         return result
