@@ -29,7 +29,7 @@ class FlextInfraAccessorMigrationOrchestrator(s[m.Infra.AccessorMigrationReport]
         description="Maximum number of file previews to include in the report",
     )
     gates: str = Field(
-        default="lint,pyrefly,mypy,pyright",
+        default="lint,pyrefly",
         description="Comma-separated lint gates for preview/apply validation",
     )
 
@@ -98,6 +98,12 @@ class FlextInfraAccessorMigrationOrchestrator(s[m.Infra.AccessorMigrationReport]
     def gate_names(self) -> t.StrSequence:
         return [gate.strip() for gate in self.gates.split(",") if gate.strip()]
 
+    @property
+    def lint_tool_names(self) -> t.StrSequence:
+        return FlextInfraUtilitiesProtectedEdit.selected_lint_tool_names(
+            self.gate_names,
+        )
+
     @override
     def execute(self) -> r[m.Infra.AccessorMigrationReport]:
         resolved = u.Infra.resolve_projects(self.workspace_root, self.project_names)
@@ -118,7 +124,21 @@ class FlextInfraAccessorMigrationOrchestrator(s[m.Infra.AccessorMigrationReport]
         automated_change_count = 0
         warning_count = 0
         for py_file in iter_result.value:
-            file_report = self._process_file(py_file)
+            source = py_file.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+            updated_source, automated_changes = self._apply_automated_rewrites(
+                py_file,
+                source,
+            )
+            warnings = list(self._collect_manual_warnings(py_file, source))
+            file_report = self._process_file(
+                py_file,
+                source=source,
+                updated_source=updated_source,
+                automated_changes=automated_changes,
+                warnings=warnings,
+                include_preview=(bool(automated_changes or warnings))
+                and len(previews) < self.preview_limit,
+            )
             automated_change_count += len(file_report.automated_changes)
             warning_count += len(file_report.warnings)
             if file_report.automated_changes:
@@ -139,28 +159,37 @@ class FlextInfraAccessorMigrationOrchestrator(s[m.Infra.AccessorMigrationReport]
             )
         )
 
-    def _process_file(self, py_file: Path) -> m.Infra.AccessorMigrationFile:
-        source = py_file.read_text(encoding=c.Infra.ENCODING_DEFAULT)
-        updated_source, automated_changes = self._apply_automated_rewrites(
-            py_file, source
-        )
-        warnings = self._collect_manual_warnings(py_file, source)
+    def _process_file(
+        self,
+        py_file: Path,
+        *,
+        source: str,
+        updated_source: str,
+        automated_changes: Sequence[m.Infra.AccessorMigrationChange],
+        warnings: MutableSequence[m.Infra.AccessorMigrationChange],
+        include_preview: bool,
+    ) -> m.Infra.AccessorMigrationFile:
         lint_before: dict[str, tuple[str, ...]] = {}
         lint_after: dict[str, tuple[str, ...]] = {}
         new_lint_errors: dict[str, tuple[str, ...]] = {}
         if automated_changes:
-            if self.dry_run:
+            if self.dry_run and include_preview:
                 before, after = FlextInfraUtilitiesProtectedEdit.preview_source_lint(
                     py_file,
                     self.workspace_root,
                     updated_source=updated_source,
                     gates=self.gate_names,
                 )
-            else:
-                before = FlextInfraUtilitiesProtectedEdit.lint_snapshot(
-                    py_file,
-                    self.workspace_root,
-                    gates=self.gate_names,
+            elif not self.dry_run:
+                before: t.Infra.LintSnapshot = {}
+                before = (
+                    FlextInfraUtilitiesProtectedEdit.lint_snapshot(
+                        py_file,
+                        self.workspace_root,
+                        gates=self.gate_names,
+                    )
+                    if include_preview
+                    else {}
                 )
                 ok, report = FlextInfraUtilitiesProtectedEdit.protected_source_write(
                     py_file,
@@ -179,22 +208,34 @@ class FlextInfraAccessorMigrationOrchestrator(s[m.Infra.AccessorMigrationReport]
                             reason=" ; ".join(report[:3]) or "protected write failed",
                         )
                     )
-                after = FlextInfraUtilitiesProtectedEdit.lint_snapshot(
-                    py_file,
-                    self.workspace_root,
-                    gates=self.gate_names,
+                after: t.Infra.LintSnapshot = {}
+                after = (
+                    FlextInfraUtilitiesProtectedEdit.lint_snapshot(
+                        py_file,
+                        self.workspace_root,
+                        gates=self.gate_names,
+                    )
+                    if include_preview
+                    else {}
                 )
-            lint_before = self._freeze_lints(before)
-            lint_after = self._freeze_lints(after)
-            new_lint_errors = self._freeze_lints(
-                FlextInfraUtilitiesProtectedEdit.lint_new_errors(before, after)
-            )
+            else:
+                before = {}
+                after = {}
+            if include_preview:
+                lint_before = self._freeze_lints(before)
+                lint_after = self._freeze_lints(after)
+                new_lint_errors = self._freeze_lints(
+                    FlextInfraUtilitiesProtectedEdit.lint_new_errors(before, after)
+                )
         return m.Infra.AccessorMigrationFile(
             file=str(py_file),
+            lint_tools=tuple(self.lint_tool_names)
+            if automated_changes and include_preview
+            else (),
             automated_changes=tuple(automated_changes),
             warnings=tuple(warnings),
             diff=self._diff(py_file, source, updated_source)
-            if automated_changes
+            if automated_changes and include_preview
             else "",
             lint_before=lint_before,
             lint_after=lint_after,
@@ -384,13 +425,17 @@ class FlextInfraAccessorMigrationOrchestrator(s[m.Infra.AccessorMigrationReport]
                 )
                 lines.append(f"  warn:{warning.line} {warning.original_name}{target}")
                 lines.append(f"    {warning.reason}")
-            for tool, issues in file_report.lint_after.items():
+            for tool in file_report.lint_tools:
+                issues = tuple(file_report.lint_after.get(tool, ()))
                 lines.append(f"  lint-after:{tool}")
                 if not issues:
                     lines.append("    ok")
                     continue
                 lines.extend(f"    {issue}" for issue in issues[:4])
-            for tool, issues in file_report.new_lint_errors.items():
+            for tool in file_report.lint_tools:
+                issues = tuple(file_report.new_lint_errors.get(tool, ()))
+                if not issues:
+                    continue
                 lines.append(f"  new-lint:{tool}")
                 lines.extend(f"    {issue}" for issue in issues[:4])
             if file_report.diff:

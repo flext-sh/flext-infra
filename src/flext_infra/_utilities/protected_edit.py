@@ -55,6 +55,14 @@ class FlextInfraUtilitiesProtectedEdit:
         ]
         return tuple(selected) or c.Infra.LINT_TOOLS
 
+    @classmethod
+    def selected_lint_tool_names(
+        cls,
+        gates: Sequence[str] | None = None,
+    ) -> t.StrSequence:
+        """Return the canonical lint tool names selected for a gate set."""
+        return tuple(tool for tool, _ in cls._selected_lint_tools(gates))
+
     @staticmethod
     def _relative_path(py_file: Path, workspace: Path) -> Path:
         try:

@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import ast
 from collections.abc import MutableSequence, Sequence
 from typing import TYPE_CHECKING
+
+from rope.base.pynamesdef import AssignedName
 
 from flext_infra import (
     FlextInfraUtilitiesRopeCore,
@@ -116,15 +119,93 @@ class FlextInfraUtilitiesRopeAnalysis:
         return classes
 
     @staticmethod
-    def find_facade_alias(
+    def get_module_export_names(
+        rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-        family: str,
-    ) -> str | None:
-        """Find facade alias assignment in a module."""
-        for hit in c.Infra.FACADE_ALIAS_RE.finditer(resource.read()):
-            if hit.group(1) == family:
-                return hit.group(2)
-        return None
+        *,
+        include_dunder: bool = False,
+        allow_main: bool = False,
+    ) -> t.StrSequence:
+        """Return module-local export names from Rope metadata."""
+        try:
+            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(
+                rope_project,
+                resource,
+            )
+            attributes = pymodule.get_attributes()
+            if include_dunder:
+                return tuple(
+                    name
+                    for name in attributes
+                    if name != c.Infra.DUNDER_ALL
+                    and name.startswith("__")
+                    and name.endswith("__")
+                )
+            names: MutableSequence[str] = list(
+                FlextInfraUtilitiesRopeAnalysis.get_module_classes(
+                    rope_project,
+                    resource,
+                ),
+            )
+            for name in FlextInfraUtilitiesRopeAnalysis.get_module_dunder_all_names(
+                rope_project,
+                resource,
+            ):
+                if name == "main" and not allow_main:
+                    continue
+                pyname = attributes.get(name)
+                if pyname is not None and (
+                    name == "main"
+                    or FlextInfraUtilitiesRopeAnalysis._is_local_name(
+                        pyname,
+                        resource,
+                    )
+                ):
+                    names.append(name)
+        except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
+            return ()
+        return tuple(dict.fromkeys(names))
+
+    @staticmethod
+    def get_module_dunder_all_names(
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+    ) -> t.StrSequence:
+        """Return literal string names declared in module ``__all__``."""
+        try:
+            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(
+                rope_project,
+                resource,
+            )
+            pyname = pymodule.get_attributes().get(c.Infra.DUNDER_ALL)
+            if not isinstance(pyname, AssignedName):
+                return ()
+            names: MutableSequence[str] = []
+            for assignment in pyname.assignments:
+                node = assignment.ast_node
+                if not isinstance(node, (ast.List, ast.Tuple)):
+                    continue
+                names.extend(
+                    value.value
+                    for value in node.elts
+                    if isinstance(value, ast.Constant)
+                    and isinstance(value.value, str)
+                )
+            return tuple(dict.fromkeys(names))
+        except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
+            return ()
+
+    @staticmethod
+    def _is_local_name(
+        pyname: t.Infra.RopePyName,
+        resource: t.Infra.RopeResource,
+    ) -> bool:
+        location = pyname.get_definition_location()
+        if location is None:
+            return False
+        module, line = location
+        origin = module.get_resource() if module is not None else None
+        return line is not None and origin is not None and origin.path == resource.path
 
     @staticmethod
     def get_class_info(

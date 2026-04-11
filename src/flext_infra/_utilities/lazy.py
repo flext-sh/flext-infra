@@ -155,33 +155,12 @@ class FlextInfraUtilitiesCodegenLazyAliases:
         if resource is None:
             return {}
         try:
-            pymodule = FlextInfraUtilitiesRope.get_pymodule(project, resource)
-            if include_dunder:
-                names = tuple(
-                    name
-                    for name in pymodule.get_attributes()
-                    if name != c.Infra.DUNDER_ALL
-                    and name.startswith("__")
-                    and name.endswith("__")
-                )
-            else:
-                local_names = list(
-                    FlextInfraUtilitiesRope.get_module_classes(project, resource),
-                )
-                main_pyname = pymodule.get_attributes().get("main")
-                if allow_main and main_pyname is not None:
-                    main_obj = main_pyname.get_object()
-                    main_module = main_obj.get_module()
-                    main_origin = (
-                        main_module.get_resource() if main_module is not None else None
-                    )
-                    if (
-                        isinstance(main_obj, FlextInfraUtilitiesRope.PY_FUNCTION_TYPES)
-                        and main_origin is not None
-                        and main_origin.path == resource.path
-                    ):
-                        local_names.append("main")
-                names = tuple(local_names)
+            names = FlextInfraUtilitiesRope.get_module_export_names(
+                project,
+                resource,
+                include_dunder=include_dunder,
+                allow_main=allow_main,
+            )
         except FlextInfraUtilitiesRope.RUNTIME_ERRORS:
             return {}
         return {

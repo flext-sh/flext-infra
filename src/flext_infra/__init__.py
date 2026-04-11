@@ -148,7 +148,7 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.toml_parse import FlextInfraUtilitiesTomlParse
     from flext_infra._utilities.utilities_cli import FlextInfraUtilitiesRefactorCli
     from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
-    from flext_infra.api import FlextInfra
+    from flext_infra.api import FlextInfra, infra
     from flext_infra.base import FlextInfraServiceBase, s
     from flext_infra.basemk.cli import FlextInfraCliBasemk
     from flext_infra.basemk.engine import FlextInfraBaseMkTemplateEngine
@@ -268,6 +268,9 @@ if _t.TYPE_CHECKING:
     from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
     from flext_infra.models import FlextInfraModels, m
     from flext_infra.protocols import FlextInfraProtocols, p
+    from flext_infra.refactor.accessor_migration import (
+        FlextInfraAccessorMigrationOrchestrator,
+    )
     from flext_infra.refactor.base_rule import (
         FlextInfraGenericTransformerRule,
         FlextInfraRefactorRule,
@@ -452,7 +455,10 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "__version__",
                 "__version_info__",
             ),
-            ".api": ("FlextInfra",),
+            ".api": (
+                "FlextInfra",
+                "infra",
+            ),
             ".base": (
                 "FlextInfraServiceBase",
                 "s",
@@ -507,6 +513,7 @@ install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)
 
 __all__ = [
     "FlextInfra",
+    "FlextInfraAccessorMigrationOrchestrator",
     "FlextInfraBanditGate",
     "FlextInfraBaseMkGenerator",
     "FlextInfraBaseMkTemplateEngine",
@@ -784,6 +791,7 @@ __all__ = [
     "d",
     "e",
     "h",
+    "infra",
     "m",
     "main",
     "p",

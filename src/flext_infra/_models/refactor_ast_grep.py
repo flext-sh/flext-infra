@@ -279,6 +279,10 @@ class FlextInfraModelsRefactorGrep:
         model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
         file: Annotated[t.NonEmptyStr, Field(description="Absolute file path")]
+        lint_tools: t.Infra.VariadicTuple[str] = Field(
+            default_factory=tuple,
+            description="Selected lint tools used for preview rendering",
+        )
         automated_changes: t.Infra.VariadicTuple[
             FlextInfraModelsRefactorGrep.AccessorMigrationChange
         ] = Field(

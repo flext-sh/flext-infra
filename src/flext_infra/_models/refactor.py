@@ -81,12 +81,12 @@ class FlextInfraModelsRefactor(
         lint_gates: Annotated[
             str,
             Field(
-                default="lint,pyrefly,mypy,pyright",
+                default="lint,pyrefly",
                 alias="gates",
                 validation_alias=AliasChoices("gates", "lint_gates"),
                 description="Comma-separated lint gates for preview/apply validation",
             ),
-        ] = "lint,pyrefly,mypy,pyright"
+        ] = "lint,pyrefly"
 
     class Result(m.ArbitraryTypesModel):
         """Result of applying refactor rules to a single file."""

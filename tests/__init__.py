@@ -12,7 +12,7 @@ from flext_core.lazy import (
 )
 
 if _t.TYPE_CHECKING:
-    from flext_tests import (
+    from flext_infra import (
         d,
         e,
         h,
@@ -28,7 +28,6 @@ if _t.TYPE_CHECKING:
         tv,
         x,
     )
-
     from tests._constants.domain import TestsFlextInfraConstantsDomain
     from tests._constants.fixtures import TestsFlextInfraConstantsFixtures
     from tests.constants import TestsFlextInfraConstants, c
@@ -77,7 +76,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "TestsFlextInfraUtilities",
                 "u",
             ),
-            "flext_tests": (
+            "flext_infra": (
                 "d",
                 "e",
                 "h",

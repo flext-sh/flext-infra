@@ -7,6 +7,7 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 _LAZY_IMPORTS = build_lazy_import_map(
     {
+        ".test_accessor_migration": ("test_accessor_migration",),
         ".test_infra_refactor_class_and_propagation": (
             "test_infra_refactor_class_and_propagation",
         ),

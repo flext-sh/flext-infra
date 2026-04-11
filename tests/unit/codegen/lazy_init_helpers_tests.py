@@ -75,6 +75,30 @@ class TestsFlextInfraLazyInitHelpers:
 
         assert "FlextDemoInternal" not in plan.lazy_map
 
+    def test_explicit_all_exports_local_alias_without_leaking_assignments(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace_root, package_root = self._workspace(tmp_path)
+        (package_root / "api.py").write_text(
+            "from __future__ import annotations\n\n"
+            "class FlextDemo:\n"
+            "    pass\n\n"
+            "demo = FlextDemo()\n"
+            "hidden = FlextDemo()\n\n"
+            '__all__ = ["FlextDemo", "demo"]\n',
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+
+        plan = u.Infra(workspace_root).build_lazy_init_plan(
+            package_root,
+            dir_exports={},
+        )
+
+        assert plan.lazy_map["FlextDemo"] == ("flext_demo.api", "FlextDemo")
+        assert plan.lazy_map["demo"] == ("flext_demo.api", "demo")
+        assert "hidden" not in plan.lazy_map
+
     def test_child_exports_bubble_real_symbols_only(self, tmp_path: Path) -> None:
         workspace_root, package_root = self._workspace(tmp_path)
         child_dir = package_root / "services"
