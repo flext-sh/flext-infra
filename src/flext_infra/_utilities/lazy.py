@@ -24,6 +24,7 @@ class FlextInfraUtilitiesCodegenLazyAliases:
     def __init__(self, workspace_root: Path | None = None) -> None:
         self._workspace_root = workspace_root or Path.cwd()
         self._lazy_init = FlextInfraUtilitiesBase.load_tool_config().unwrap().lazy_init
+        self._package_exports_cache: dict[str, frozenset[str]] = {}
 
     def build_lazy_init_plan(
         self,
@@ -232,10 +233,40 @@ class FlextInfraUtilitiesCodegenLazyAliases:
             if inherited_key != "src" and project_root
             else ""
         )
-        for package_name in (*parent_packages, source_name):
-            for alias_name in allowed:
-                if package_name:
-                    lazy_map.setdefault(alias_name, (package_name, alias_name))
+        inherited_packages = FlextInfraUtilitiesDiscovery.package_source_priority(
+            (*parent_packages, source_name),
+        )
+        for alias_name in allowed:
+            existing = lazy_map.get(alias_name)
+            if existing is not None and existing[0].startswith(current_pkg):
+                continue
+            package_name = self._resolve_inherited_alias_source(
+                inherited_packages,
+                alias_name,
+            )
+            if package_name:
+                lazy_map[alias_name] = (package_name, alias_name)
+
+    def _resolve_inherited_alias_source(
+        self,
+        package_names: t.StrSequence,
+        alias_name: str,
+    ) -> str:
+        for package_name in reversed(tuple(name for name in package_names if name)):
+            if alias_name in self._export_names_for_package(package_name):
+                return package_name
+        return ""
+
+    def _export_names_for_package(self, package_name: str) -> frozenset[str]:
+        cached = self._package_exports_cache.get(package_name)
+        if cached is not None:
+            return cached
+        exports = FlextInfraUtilitiesDiscovery.package_export_names(
+            self._workspace_root,
+            package_name,
+        )
+        self._package_exports_cache[package_name] = exports
+        return exports
 
     @staticmethod
     def _publish(name: str, *, allow_main: bool) -> bool:

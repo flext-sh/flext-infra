@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
@@ -109,6 +110,73 @@ class FlextInfraUtilitiesDiscovery:
             and subdir.name not in effective_skip
             and any(subdir.rglob(c.Infra.EXT_PYTHON_GLOB))
         ]
+
+    @staticmethod
+    def package_init_path(workspace_root: Path, package_name: str) -> Path | None:
+        """Resolve the public package ``__init__.py`` within a project or workspace."""
+        package_parts = Path(*package_name.split("."))
+        project_dir = package_name.split(".", maxsplit=1)[0].replace("_", "-")
+        candidates = (
+            workspace_root / c.Infra.DEFAULT_SRC_DIR / package_parts / c.Infra.INIT_PY,
+            workspace_root
+            / project_dir
+            / c.Infra.DEFAULT_SRC_DIR
+            / package_parts
+            / c.Infra.INIT_PY,
+            workspace_root.parent
+            / project_dir
+            / c.Infra.DEFAULT_SRC_DIR
+            / package_parts
+            / c.Infra.INIT_PY,
+        )
+        for candidate in candidates:
+            if candidate.is_file():
+                return candidate
+        return None
+
+    @staticmethod
+    def package_export_names(
+        workspace_root: Path,
+        package_name: str,
+    ) -> frozenset[str]:
+        """Return literal ``__all__`` names for a resolved public package."""
+        init_path = FlextInfraUtilitiesDiscovery.package_init_path(
+            workspace_root,
+            package_name,
+        )
+        if init_path is None:
+            return frozenset()
+        try:
+            module = ast.parse(init_path.read_text(encoding=c.Infra.ENCODING_DEFAULT))
+        except (OSError, SyntaxError):
+            return frozenset()
+        for node in module.body:
+            if not isinstance(node, ast.Assign):
+                continue
+            if not any(
+                isinstance(target, ast.Name) and target.id == c.Infra.DUNDER_ALL
+                for target in node.targets
+            ):
+                continue
+            try:
+                value = ast.literal_eval(node.value)
+            except (TypeError, ValueError, SyntaxError):
+                return frozenset()
+            if isinstance(value, (list, tuple)):
+                return frozenset(item for item in value if isinstance(item, str))
+        return frozenset()
+
+    @staticmethod
+    def package_source_priority(package_names: Sequence[str]) -> t.StrSequence:
+        """Return package sources ordered so later duplicates keep priority."""
+        ordered: list[str] = []
+        for package_name in package_names:
+            if not package_name:
+                continue
+            if package_name in ordered:
+                ordered.remove(package_name)
+            ordered.append(package_name)
+        return tuple(ordered)
 
     @staticmethod
     def find_all_pyproject_files(

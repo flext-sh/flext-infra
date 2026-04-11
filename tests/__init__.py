@@ -62,13 +62,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "TestsFlextInfraUtilities",
                 "u",
             ),
-            "flext_tests": (
-                "td",
-                "tf",
-                "tk",
-                "tm",
-                "tv",
-            ),
             "flext_infra": (
                 "d",
                 "e",
@@ -76,6 +69,13 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "r",
                 "s",
                 "x",
+            ),
+            "flext_tests": (
+                "td",
+                "tf",
+                "tk",
+                "tm",
+                "tv",
             ),
         },
     ),
