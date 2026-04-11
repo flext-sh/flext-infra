@@ -29,7 +29,7 @@ def test_workspace_makefile_generator_sanitizes_orchestrator_env(
     workspace_root = _write_workspace_root(tmp_path)
 
     result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
-    assert result.is_success, result.error
+    assert result.success, result.error
     makefile_text = (workspace_root / "Makefile").read_text(encoding="utf-8")
 
     _assert_contains_all(
@@ -51,7 +51,7 @@ def test_workspace_makefile_generator_declares_canonical_workspace_variables(
     workspace_root = _write_workspace_root(tmp_path)
 
     result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
-    assert result.is_success, result.error
+    assert result.success, result.error
     makefile_text = (workspace_root / "Makefile").read_text(encoding="utf-8")
 
     _assert_contains_all(
@@ -76,7 +76,7 @@ def test_workspace_makefile_generator_reuses_mod_and_boot_feedback(
     workspace_root = _write_workspace_root(tmp_path)
 
     result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
-    assert result.is_success, result.error
+    assert result.success, result.error
     makefile_text = (workspace_root / "Makefile").read_text(encoding="utf-8")
 
     assert makefile_text.count("$(MAKE) mod") == 1
@@ -96,7 +96,7 @@ def test_workspace_makefile_generator_declares_workspace_boot_separation(
     workspace_root = _write_workspace_root(tmp_path)
 
     result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
-    assert result.is_success, result.error
+    assert result.success, result.error
     makefile_text = (workspace_root / "Makefile").read_text(encoding="utf-8")
 
     _assert_contains_all(
@@ -123,7 +123,7 @@ def test_workspace_makefile_generator_does_not_persist_external_project_names(
     workspace_root = _write_workspace_root(tmp_path)
 
     result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
-    assert result.is_success, result.error
+    assert result.success, result.error
     makefile_text = (workspace_root / "Makefile").read_text(encoding="utf-8")
 
     assert "algar-oud-mig" not in makefile_text
@@ -136,7 +136,7 @@ def test_workspace_makefile_generator_emits_parseable_discovery_commands(
     workspace_root = _write_workspace_root(tmp_path)
 
     result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
-    assert result.is_success, result.error
+    assert result.success, result.error
     process = subprocess.run(
         ["make", "-C", str(workspace_root), "--dry-run", "help"],
         capture_output=True,
@@ -153,7 +153,7 @@ def test_workspace_makefile_generator_uses_check_only_for_maintenance_validation
     workspace_root = _write_workspace_root(tmp_path)
 
     result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
-    assert result.is_success, result.error
+    assert result.success, result.error
     makefile_text = (workspace_root / "Makefile").read_text(encoding="utf-8")
 
     _assert_contains_all(
@@ -168,7 +168,7 @@ def test_workspace_makefile_generator_limits_absolute_path_scan_to_sources(
     workspace_root = _write_workspace_root(tmp_path)
 
     result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
-    assert result.is_success, result.error
+    assert result.success, result.error
     makefile_text = (workspace_root / "Makefile").read_text(encoding="utf-8")
 
     _assert_contains_all(

@@ -45,7 +45,7 @@ class FlextInfraPyrightGate(FlextInfraGate):
         ctx: m.Infra.GateContext,
     ) -> int:
         _ = project_dir, ctx
-        return c.Infra.Timeouts.LONG
+        return c.Infra.TIMEOUT_LONG
 
     @override
     def _parse_check_output(
@@ -62,7 +62,7 @@ class FlextInfraPyrightGate(FlextInfraGate):
         try:
             diagnostics = u.Infra.deep_list(
                 data,
-                c.Infra.GateJsonKeys.PYRIGHT_DIAGNOSTICS,
+                c.Infra.PYRIGHT_DIAGNOSTICS_KEY,
             )
             issues.extend(
                 m.Infra.Issue(

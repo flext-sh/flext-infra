@@ -110,7 +110,7 @@ class FlextInfraRefactorTypingAnnotationFixRule(FlextInfraRefactorRule):
     ) -> t.Infra.TransformResult:
         fix_action = u.Infra.get_str_key(
             self.config,
-            c.Infra.ReportKeys.FIX_ACTION,
+            c.Infra.RK_FIX_ACTION,
             case="lower",
         )
         if fix_action == "replace_object_annotations":
@@ -182,9 +182,9 @@ class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
         value = self.config.get("tier0_modules", [])
         if not isinstance(value, list):
             return (
-                c.Infra.Files.CONSTANTS_PY,
-                c.Infra.Files.TYPINGS_PY,
-                c.Infra.Files.PROTOCOLS_PY,
+                c.Infra.CONSTANTS_PY,
+                c.Infra.TYPINGS_PY,
+                c.Infra.PROTOCOLS_PY,
             )
         return tuple(str(item) for item in value)
 
@@ -195,7 +195,7 @@ class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
         return tuple(str(item) for item in value)
 
     def _core_package(self) -> str:
-        return str(self.config.get("core_package", c.Infra.Packages.CORE_UNDERSCORE))
+        return str(self.config.get("core_package", c.Infra.PKG_CORE_UNDERSCORE))
 
     def _alias_to_submodule(self) -> t.StrMapping:
         value = self.config.get("alias_to_submodule", {})

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sys
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Annotated, override
@@ -11,7 +10,6 @@ from pydantic import Field
 
 from flext_infra import (
     FlextInfraDocAuditorMixin,
-    FlextInfraUtilitiesCliDispatch,
     c,
     m,
     r,
@@ -116,11 +114,11 @@ class FlextInfraDocAuditor(s[bool], FlextInfraDocAuditorMixin):
                 else issue_count <= scope_budget
             )
         result = (
-            c.Infra.Status.OK
+            c.Infra.STATUS_OK
             if passed and issue_count == 0
-            else c.Infra.Status.WARN
+            else c.Infra.STATUS_WARN
             if passed
-            else c.Infra.Status.FAIL
+            else c.Infra.STATUS_FAIL
         )
         reason = (
             f"issues:{issue_count}"
@@ -178,21 +176,12 @@ class FlextInfraDocAuditor(s[bool], FlextInfraDocAuditorMixin):
                 strict=self.strict_mode,
             ),
         )
-        if result.is_failure:
+        if result.failure:
             return r[bool].fail(result.error or "audit failed")
         failures = sum(1 for report in result.value if not report.passed)
         if failures:
             return r[bool].fail(f"Audit found {failures} failing scope(s)")
         return r[bool].ok(True)
-
-    @classmethod
-    def main(cls, argv: t.StrSequence | None = None) -> int:
-        """Legacy entrypoint routed through the canonical docs CLI."""
-        return FlextInfraUtilitiesCliDispatch.run_command(
-            c.Infra.Directories.DOCS,
-            "audit",
-            argv,
-        )
 
     def _audit_params(
         self,
@@ -240,7 +229,7 @@ class FlextInfraDocAuditor(s[bool], FlextInfraDocAuditorMixin):
 
 
 if __name__ == "__main__":
-    sys.exit(FlextInfraDocAuditor.main())
+    raise SystemExit(0)
 
 
 __all__ = ["FlextInfraDocAuditor"]

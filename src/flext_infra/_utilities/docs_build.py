@@ -34,13 +34,13 @@ class FlextInfraUtilitiesDocsBuild:
                 passed=True,
             )
         site_dir = (
-            scope.path / c.Infra.DEFAULT_DOCS_OUTPUT_DIR / c.Infra.Directories.SITE
+            scope.path / c.Infra.DEFAULT_DOCS_OUTPUT_DIR / c.Infra.DIR_SITE
         ).resolve()
         if not isinstance(runner, type):
             completed = runner.run_raw(
                 [
                     "mkdocs",
-                    c.Infra.Directories.BUILD,
+                    c.Infra.DIR_BUILD,
                     "--strict",
                     "-f",
                     str(config),
@@ -49,11 +49,11 @@ class FlextInfraUtilitiesDocsBuild:
                 ],
                 cwd=scope.path,
             )
-            if completed.is_failure:
+            if completed.failure:
                 return m.Infra.DocsPhaseReport(
                     phase="build",
                     scope=scope.name,
-                    result=c.Infra.Status.FAIL,
+                    result=c.Infra.STATUS_FAIL,
                     reason=completed.error or "mkdocs build failed",
                     site_dir=site_dir.as_posix(),
                     passed=False,
@@ -63,7 +63,7 @@ class FlextInfraUtilitiesDocsBuild:
                 return m.Infra.DocsPhaseReport(
                     phase="build",
                     scope=scope.name,
-                    result=c.Infra.Status.OK,
+                    result=c.Infra.STATUS_OK,
                     reason="build succeeded",
                     site_dir=site_dir.as_posix(),
                     passed=True,
@@ -72,7 +72,7 @@ class FlextInfraUtilitiesDocsBuild:
             return m.Infra.DocsPhaseReport(
                 phase="build",
                 scope=scope.name,
-                result=c.Infra.Status.FAIL,
+                result=c.Infra.STATUS_FAIL,
                 reason=reason_lines[-1]
                 if reason_lines
                 else f"mkdocs exited {output.exit_code}",
@@ -85,7 +85,7 @@ class FlextInfraUtilitiesDocsBuild:
             return m.Infra.DocsPhaseReport(
                 phase="build",
                 scope=scope.name,
-                result=c.Infra.Status.FAIL,
+                result=c.Infra.STATUS_FAIL,
                 reason=str(exc) or "mkdocs build failed",
                 site_dir=site_dir.as_posix(),
                 passed=False,
@@ -93,7 +93,7 @@ class FlextInfraUtilitiesDocsBuild:
         return m.Infra.DocsPhaseReport(
             phase="build",
             scope=scope.name,
-            result=c.Infra.Status.OK,
+            result=c.Infra.STATUS_OK,
             reason="build succeeded",
             site_dir=site_dir.as_posix(),
             passed=True,
@@ -136,7 +136,7 @@ class FlextInfraUtilitiesDocsBuild:
         """Persist the standard build summary and markdown report."""
         _ = u.Cli.json_write(
             scope.report_dir / "build-summary.json",
-            {c.Infra.ReportKeys.SUMMARY: report.model_dump()},
+            {c.Infra.RK_SUMMARY: report.model_dump()},
         )
         _ = FlextInfraUtilitiesDocs.write_markdown(
             scope.report_dir / "build-report.md",

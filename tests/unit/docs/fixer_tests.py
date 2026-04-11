@@ -21,7 +21,7 @@ def test_fix_returns_reports_for_root_and_selected_project(tmp_path: Path) -> No
         apply=False,
     )
 
-    assert result.is_success
+    assert result.success
     assert [report.scope for report in result.value] == ["root", "flext-a"]
 
 
@@ -33,7 +33,7 @@ def test_fix_apply_updates_docs_file_and_writes_reports(tmp_path: Path) -> None:
 
     result = FlextInfraDocFixer().fix(workspace, apply=True)
 
-    assert result.is_success
+    assert result.success
     assert "guides/setup.md" in (workspace / "docs/README.md").read_text()
     assert (workspace / ".reports/docs/fix-report.md").exists()
 
@@ -46,7 +46,7 @@ def test_fix_report_warns_without_apply_when_changes_exist(tmp_path: Path) -> No
 
     result = FlextInfraDocFixer().fix(workspace, apply=False)
 
-    assert result.is_success
+    assert result.success
     assert result.value[0].result == "WARN"
 
 

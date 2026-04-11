@@ -255,7 +255,7 @@ class FlextInfraRefactorMROImportRewriter:
                 project_roots=[project_root],
                 src_dirs=frozenset(FlextInfraConstantsRefactor.MRO_SCAN_DIRECTORIES),
             )
-            if iter_result.is_failure:
+            if iter_result.failure:
                 continue
             paths.extend(iter_result.value)
         return paths

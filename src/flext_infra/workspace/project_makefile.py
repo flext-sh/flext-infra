@@ -40,28 +40,28 @@ class FlextInfraProjectMakefileUpdater:
 
         """
         _ = canonical_root  # reserved for future cross-project dependency resolution
-        pyproject = project_root / c.Infra.Files.PYPROJECT_FILENAME
+        pyproject = project_root / c.Infra.PYPROJECT_FILENAME
         if not pyproject.exists():
             return r[bool].ok(False)
 
         meta_result = self._read_pyproject(pyproject)
-        if meta_result.is_failure:
+        if meta_result.failure:
             return r[bool].fail(meta_result.error or "pyproject.toml parse failed")
         meta = meta_result.value
 
         bootstrap_result = FlextInfraBaseMkGenerator.render_bootstrap_include()
-        if bootstrap_result.is_failure:
+        if bootstrap_result.failure:
             return r[bool].fail(
                 bootstrap_result.error or "bootstrap template read failed",
             )
         bootstrap = bootstrap_result.value
 
         new_content = self._build_makefile(meta, bootstrap)
-        makefile_path = project_root / c.Infra.Files.MAKEFILE_FILENAME
+        makefile_path = project_root / c.Infra.MAKEFILE_FILENAME
 
         if makefile_path.exists():
             try:
-                existing = makefile_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+                existing = makefile_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
             except OSError as exc:
                 return r[bool].fail(f"Makefile read failed: {exc}")
 
@@ -74,7 +74,7 @@ class FlextInfraProjectMakefileUpdater:
     def _read_pyproject(pyproject: Path) -> r[m.Infra.ProjectMeta]:
         """Parse pyproject.toml and extract name, python_version, description."""
         data_result = u.Infra.read_plain(pyproject)
-        if data_result.is_failure:
+        if data_result.failure:
             return r[m.Infra.ProjectMeta].fail(
                 f"pyproject.toml read failed: {data_result.error}",
             )
@@ -134,8 +134,8 @@ class FlextInfraProjectMakefileUpdater:
             "",
             f"PROJECT_NAME := {meta.name}",
             f"PYTHON_VERSION ?= {meta.python_version}",
-            f"SRC_DIR ?= {c.Infra.Paths.DEFAULT_SRC_DIR}",
-            f"TESTS_DIR ?= {c.Infra.Directories.TESTS}",
+            f"SRC_DIR ?= {c.Infra.DEFAULT_SRC_DIR}",
+            f"TESTS_DIR ?= {c.Infra.DIR_TESTS}",
             bootstrap,
             "",
             "# Project-specific targets (optional, never overwritten by sync)",

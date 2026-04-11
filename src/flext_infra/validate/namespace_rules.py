@@ -105,7 +105,7 @@ class FlextInfraNamespaceRules:
         filepath: Path,
     ) -> Sequence[str]:
         """Rule 1 -- Constants centralization."""
-        if filepath.name == FlextInfraConstantsSharedInfra.Files.CONSTANTS_PY:
+        if filepath.name == FlextInfraConstantsSharedInfra.CONSTANTS_PY:
             return self._check_rule_1_canonical(tree, filepath)
         return self._check_rule_1_non_canonical(tree, filepath)
 
@@ -220,7 +220,7 @@ class FlextInfraNamespaceRules:
         filepath: Path,
     ) -> Sequence[str]:
         """Rule 2 -- Types centralization."""
-        if filepath.name == FlextInfraConstantsSharedInfra.Files.TYPINGS_PY:
+        if filepath.name == FlextInfraConstantsSharedInfra.TYPINGS_PY:
             return self._check_rule_2_canonical(tree, filepath)
         return self._check_rule_2_non_canonical(tree, filepath)
 
@@ -365,7 +365,7 @@ class FlextInfraNamespaceRules:
         if isinstance(node, ast.Assign):
             return self._is_allowed_assign(node, filepath)
         if isinstance(node, ast.TypeAlias):
-            return filepath.name == FlextInfraConstantsSharedInfra.Files.TYPINGS_PY
+            return filepath.name == FlextInfraConstantsSharedInfra.TYPINGS_PY
         return self._is_allowed_ann_assign(node, filepath)
 
     @staticmethod
@@ -397,7 +397,7 @@ class FlextInfraNamespaceRules:
         if isinstance(node.value, ast.Call):
             func_name = self._get_call_name(node.value.func)
             if func_name in FlextInfraConstantsSharedInfra.TYPEVAR_CALLABLES:
-                return filepath.name == FlextInfraConstantsSharedInfra.Files.TYPINGS_PY
+                return filepath.name == FlextInfraConstantsSharedInfra.TYPINGS_PY
         return False
 
     def _is_allowed_ann_assign(
@@ -406,13 +406,13 @@ class FlextInfraNamespaceRules:
         filepath: Path,
     ) -> bool:
         if self._annotation_contains(node.annotation, "TypeAlias"):
-            return filepath.name == FlextInfraConstantsSharedInfra.Files.TYPINGS_PY
+            return filepath.name == FlextInfraConstantsSharedInfra.TYPINGS_PY
         if (
             isinstance(node.target, ast.Name)
             and node.target.id.startswith("_")
             and self._annotation_contains(node.annotation, "Final")
         ):
-            return filepath.name == FlextInfraConstantsSharedInfra.Files.CONSTANTS_PY
+            return filepath.name == FlextInfraConstantsSharedInfra.CONSTANTS_PY
         return False
 
 

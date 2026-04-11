@@ -44,19 +44,23 @@ class FlextInfraGateRegistry:
     )
 
     def __init__(self) -> None:
+        """Build the gate-id to gate-class mapping used by check execution."""
         self._gates: Mapping[str, type[FlextInfraGate]] = {
             g.gate_id: g for g in self.GATE_CLASSES
         }
 
     def get(self, gate_id: str) -> type[FlextInfraGate] | None:
+        """Return the registered gate class for one gate id, when present."""
         return self._gates.get(gate_id)
 
     def create(self, gate_id: str, workspace_root: Path) -> FlextInfraGate | None:
+        """Instantiate one registered gate for ``workspace_root`` when available."""
         gate_cls = self._gates.get(gate_id)
         return gate_cls(workspace_root) if gate_cls else None
 
     @classmethod
     def default(cls) -> FlextInfraGateRegistry:
+        """Return the default registry instance for workspace checks."""
         return cls()
 
 
@@ -109,11 +113,11 @@ class FlextInfraWorkspaceCheckGatesMixin:
     ) -> m.Infra.ProjectResult | None:
         """Check one project, returning None when the project should be skipped."""
         project_dir = self._workspace_root / project_name
-        pyproject_path = project_dir / c.Infra.Files.PYPROJECT_FILENAME
+        pyproject_path = project_dir / c.Infra.PYPROJECT_FILENAME
         if not project_dir.is_dir() or not pyproject_path.exists():
-            u.Infra.progress(index, total, project_name, c.Infra.Severity.SKIP)
+            u.Infra.progress(index, total, project_name, c.Infra.SEVERITY_SKIP)
             return None
-        u.Infra.progress(index, total, project_name, c.Infra.Verbs.CHECK)
+        u.Infra.progress(index, total, project_name, c.Infra.VERB_CHECK)
         project_ctx = self._isolate_context(ctx, project_name)
         _ = u.Cli.ensure_dir(project_ctx.reports_dir)
         start = time.monotonic()
@@ -124,7 +128,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
         )
         elapsed = time.monotonic() - start
         u.Infra.status(
-            c.Infra.Verbs.CHECK,
+            c.Infra.VERB_CHECK,
             project_name,
             result=project_result.passed,
             elapsed=elapsed,
@@ -278,9 +282,9 @@ class FlextInfraWorkspaceCheckGatesMixin:
                 elapsed=execution.result.duration,
             )
             status: t.Cli.PipelineStageStatus = (
-                c.Cli.Pipeline.STATUS_OK
+                c.Cli.PIPELINE_STATUS_OK
                 if execution.result.passed
-                else c.Cli.Pipeline.STATUS_FAILED
+                else c.Cli.PIPELINE_STATUS_FAILED
             )
             return r[m.Cli.PipelineStageResult].ok(
                 m.Cli.PipelineStageResult(

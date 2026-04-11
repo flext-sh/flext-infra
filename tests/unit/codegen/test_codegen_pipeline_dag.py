@@ -35,7 +35,7 @@ def _ok_stage(
     return r[m.Cli.PipelineStageResult].ok(
         m.Cli.PipelineStageResult(
             stage_id=stage_id,
-            status=c.Cli.Pipeline.STATUS_OK,
+            status=c.Cli.PIPELINE_STATUS_OK,
         ),
     )
 
@@ -45,7 +45,7 @@ def _stub_all_stages(
     call_order: MutableSequence[str],
 ) -> None:
     """Replace every stage handler with a lightweight tracker."""
-    for stage_id in c.Infra.Pipeline.STAGE_ORDER:
+    for stage_id in c.Infra.PIPELINE_STAGE_ORDER:
 
         def _make_handler(sid: str) -> StageHandler:
             def _handler(
@@ -81,7 +81,7 @@ class TestCodegenPipelineDag:
         })
         result = svc.execute()
         tm.ok(result)
-        tm.that(tuple(call_order), eq=tuple(c.Infra.Pipeline.STAGE_ORDER))
+        tm.that(tuple(call_order), eq=tuple(c.Infra.PIPELINE_STAGE_ORDER))
 
     def test_pipeline_project_discovery_cached(
         self,
@@ -105,8 +105,8 @@ class TestCodegenPipelineDag:
         )
 
         # Stub remaining stages to not call real services.
-        for stage_id in c.Infra.Pipeline.STAGE_ORDER:
-            if stage_id == c.Infra.Pipeline.STAGE_DISCOVER:
+        for stage_id in c.Infra.PIPELINE_STAGE_ORDER:
+            if stage_id == c.Infra.PipelineStage.DISCOVER:
                 continue
 
             def _make_noop(sid: str) -> StageHandler:
@@ -139,7 +139,7 @@ class TestCodegenPipelineDag:
         """If census_before fails, scaffold/fix/etc don't run."""
         executed: MutableSequence[str] = []
 
-        for stage_id in c.Infra.Pipeline.STAGE_ORDER:
+        for stage_id in c.Infra.PIPELINE_STAGE_ORDER:
 
             def _make_handler(sid: str) -> StageHandler:
                 def _handler(
@@ -147,7 +147,7 @@ class TestCodegenPipelineDag:
                     _ctx: m.Cli.PipelineStageContext,
                 ) -> r[m.Cli.PipelineStageResult]:
                     executed.append(sid)
-                    if sid == c.Infra.Pipeline.STAGE_CENSUS_BEFORE:
+                    if sid == c.Infra.PipelineStage.CENSUS_BEFORE:
                         return r[m.Cli.PipelineStageResult].fail("census exploded")
                     return _ok_stage(sid)
 
@@ -166,12 +166,12 @@ class TestCodegenPipelineDag:
         tm.fail(result)
 
         # Stages before census_before should have run.
-        tm.that(c.Infra.Pipeline.STAGE_DISCOVER in executed, eq=True)
-        tm.that(c.Infra.Pipeline.STAGE_PY_TYPED in executed, eq=True)
-        tm.that(c.Infra.Pipeline.STAGE_CENSUS_BEFORE in executed, eq=True)
+        tm.that(c.Infra.PipelineStage.DISCOVER in executed, eq=True)
+        tm.that(c.Infra.PipelineStage.PY_TYPED in executed, eq=True)
+        tm.that(c.Infra.PipelineStage.CENSUS_BEFORE in executed, eq=True)
         # Stages after census_before should NOT have run.
-        tm.that(c.Infra.Pipeline.STAGE_SCAFFOLD not in executed, eq=True)
-        tm.that(c.Infra.Pipeline.STAGE_AUTO_FIX not in executed, eq=True)
+        tm.that(c.Infra.PipelineStage.SCAFFOLD not in executed, eq=True)
+        tm.that(c.Infra.PipelineStage.AUTO_FIX not in executed, eq=True)
 
     def test_pipeline_state_propagated(
         self,
@@ -187,7 +187,7 @@ class TestCodegenPipelineDag:
         })
         result = svc.execute()
         tm.ok(result)
-        tm.that(len(call_order), eq=len(c.Infra.Pipeline.STAGE_ORDER))
+        tm.that(len(call_order), eq=len(c.Infra.PIPELINE_STAGE_ORDER))
 
 
 __all__: t.StrSequence = []

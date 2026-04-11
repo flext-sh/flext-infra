@@ -11,9 +11,11 @@ class FlextInfraEnsureMypyConfigPhase:
     """Ensure standard mypy configuration with pydantic plugin across all projects."""
 
     def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:
+        """Store tool configuration used to generate the canonical mypy section."""
         self._tool_config = tool_config
 
     def apply(self, doc: t.Cli.TomlDocument) -> t.StrSequence:
+        """Apply mypy defaults, overrides, and toggles from tool configuration."""
         configured = self._tool_config.tools.mypy.overrides
         expected_overrides: Sequence[dict[str, t.Cli.JsonValue]] = [
             {
@@ -32,12 +34,12 @@ class FlextInfraEnsureMypyConfigPhase:
             .list(
                 c.Infra.PLUGINS,
                 self._tool_config.tools.mypy.plugins,
-                strategy=c.Infra.TomlMerge.REPLACE,
+                strategy=c.Infra.TOML_MERGE_REPLACE,
             )
             .list(
                 c.Infra.DISABLE_ERROR_CODE,
                 self._tool_config.tools.mypy.disabled_error_codes,
-                strategy=c.Infra.TomlMerge.REPLACE,
+                strategy=c.Infra.TOML_MERGE_REPLACE,
             )
         )
         if self._tool_config.tools.mypy.exclude:

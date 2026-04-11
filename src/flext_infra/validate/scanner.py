@@ -39,10 +39,10 @@ class FlextInfraTextPatternScanner(s[bool]):
     match: Annotated[
         str,
         Field(
-            default=c.Infra.MatchModes.PRESENT,
+            default=c.Infra.MATCH_MODE_PRESENT,
             description="Violation mode (present or absent)",
         ),
-    ] = c.Infra.MatchModes.PRESENT
+    ] = c.Infra.MATCH_MODE_PRESENT
 
     @staticmethod
     def _collect_files(
@@ -72,7 +72,7 @@ class FlextInfraTextPatternScanner(s[bool]):
         for file_path in files:
             try:
                 text = file_path.read_text(
-                    encoding=c.Infra.Encoding.DEFAULT,
+                    encoding=c.Infra.ENCODING_DEFAULT,
                     errors=c.Infra.IGNORE,
                 )
             except OSError:
@@ -87,7 +87,7 @@ class FlextInfraTextPatternScanner(s[bool]):
         *,
         includes: t.StrSequence,
         excludes: t.StrSequence | None = None,
-        match_mode: str = c.Infra.MatchModes.PRESENT,
+        match_mode: str = c.Infra.MATCH_MODE_PRESENT,
     ) -> r[t.ConfigurationMapping]:
         """Scan files under scan_root for regex matches.
 
@@ -112,7 +112,7 @@ class FlextInfraTextPatternScanner(s[bool]):
             matches = self._count_matches(files, regex)
             violation_count = (
                 matches
-                if match_mode == c.Infra.MatchModes.PRESENT
+                if match_mode == c.Infra.MATCH_MODE_PRESENT
                 else 0
                 if matches > 0
                 else 1
@@ -138,7 +138,7 @@ class FlextInfraTextPatternScanner(s[bool]):
             excludes=self.exclude,
             match_mode=self.match,
         )
-        if result.is_failure:
+        if result.failure:
             return r[bool].fail(result.error or "scan failed")
         count = result.value.get("violation_count", 0)
         if isinstance(count, int) and count > 0:
@@ -156,7 +156,7 @@ class FlextInfraTextPatternScanner(s[bool]):
             return f"scan_root directory does not exist: {scan_root}"
         if not includes:
             return "at least one include glob required"
-        if match_mode not in {c.Infra.MatchModes.PRESENT, c.Infra.MatchModes.ABSENT}:
+        if match_mode not in {c.Infra.MATCH_MODE_PRESENT, c.Infra.MATCH_MODE_ABSENT}:
             return f"invalid match_mode: {match_mode}"
         return None
 

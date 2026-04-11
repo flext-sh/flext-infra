@@ -42,7 +42,7 @@ class FlextInfraRefactorSafetyManager:
     ) -> r[str]:
         """Back up files in workspace root and return label as reference."""
         _ = label
-        py_files = list(workspace_root.rglob(c.Infra.Extensions.PYTHON_GLOB))
+        py_files = list(workspace_root.rglob(c.Infra.EXT_PYTHON_GLOB))
         self._bak_paths = u.Infra.backup_files(py_files)
         return r[str].ok(str(workspace_root))
 
@@ -90,17 +90,17 @@ class FlextInfraRefactorSafetyManager:
             [c.Infra.PYTHON, "-m", c.Infra.PYTEST, "--collect-only", "-q"],
             cwd=workspace_root,
         )
-        if ic.is_failure and not self._is_no_tests_collected_error(ic.error):
+        if ic.failure and not self._is_no_tests_collected_error(ic.error):
             return r[bool].fail(ic.error or "import validation failed")
         tc = u.Cli.run_checked(self._test_command, cwd=workspace_root)
-        if tc.is_failure and not self._is_no_tests_collected_error(tc.error):
+        if tc.failure and not self._is_no_tests_collected_error(tc.error):
             return r[bool].fail(tc.error or "test validation failed")
         return r[bool].ok(True)
 
     def clear_checkpoint(self, *, keep: Sequence[Path] = ()) -> r[bool]:
         """Clean up transient backups while preserving requested .bak files."""
         keep_paths = {
-            path.with_suffix(path.suffix + c.Infra.SafeExecution.BAK_SUFFIX)
+            path.with_suffix(path.suffix + c.Infra.SAFE_EXECUTION_BAK_SUFFIX)
             for path in keep
         }
         cleanup = [bak for bak in self._bak_paths if bak not in keep_paths]

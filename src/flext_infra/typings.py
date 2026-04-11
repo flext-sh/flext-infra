@@ -23,7 +23,7 @@ from flext_infra import (
 )
 
 if TYPE_CHECKING:
-    from flext_infra import m
+    from flext_infra import c, m
 
 
 class FlextInfraTypes(t):
@@ -48,6 +48,13 @@ class FlextInfraTypes(t):
 
         if TYPE_CHECKING:
             type TomlOperation = m.Infra.TomlOperation
+            type TomlMergeMode = c.Infra.TomlMergeMode
+            type ResultStatus = c.Infra.ResultStatus
+            type MatchMode = c.Infra.MatchMode
+            type OperationMode = c.Infra.OperationMode
+            type SeverityLevel = c.Infra.SeverityLevel
+            type FacadeFamily = c.Infra.FacadeFamily
+            type ExecutionMode = c.Infra.ExecutionMode
 
 
 t = FlextInfraTypes

@@ -18,6 +18,7 @@ class FlextInfraConsolidateGroupsPhase:
         doc: t.Infra.TomlDocument,
         canonical_dev: t.StrSequence,
     ) -> t.StrSequence:
+        """Merge all legacy optional groups into canonical ``project.optional-dependencies.dev``."""
         changes: MutableSequence[str] = []
         project: t.Infra.TomlItem | t.Infra.TomlContainer | None = None
         if c.Infra.PROJECT in doc:
@@ -36,10 +37,10 @@ class FlextInfraConsolidateGroupsPhase:
         merged_dev = u.Infra.dedupe_specs([
             *canonical_dev,
             *existing.get(c.Infra.DEV, []),
-            *existing.get(c.Infra.Directories.DOCS, []),
+            *existing.get(c.Infra.DIR_DOCS, []),
             *existing.get(c.Infra.SECURITY, []),
             *existing.get(c.Infra.TEST, []),
-            *existing.get(c.Infra.Directories.TYPINGS, []),
+            *existing.get(c.Infra.DIR_TYPINGS, []),
         ])
         current_dev = u.Cli.toml_as_string_list(u.Infra.get(optional, c.Infra.DEV))
         if sorted(current_dev) != sorted(merged_dev):
@@ -49,7 +50,7 @@ class FlextInfraConsolidateGroupsPhase:
             c.Infra.DOCS,
             c.Infra.SECURITY,
             c.Infra.TEST,
-            c.Infra.Directories.TYPINGS,
+            c.Infra.DIR_TYPINGS,
         ):
             if old_key in optional:
                 del optional[old_key]
@@ -70,7 +71,7 @@ class FlextInfraConsolidateGroupsPhase:
             c.Infra.DOCS,
             c.Infra.SECURITY,
             c.Infra.TEST,
-            c.Infra.Directories.TYPINGS,
+            c.Infra.DIR_TYPINGS,
         ):
             if poetry_group is None:
                 continue

@@ -23,6 +23,7 @@ class FlextInfraDependencyDetectorRuntime:
         ],
         pip_check_factory: Callable[..., FlextInfraModelsDeps.PipCheckReport],
     ) -> None:
+        """Store runtime collaborators used by dependency detection orchestration."""
         self._detector = detector
         self._workspace_report_factory = workspace_report_factory
         self._dependency_limits_factory = dependency_limits_factory
@@ -33,12 +34,12 @@ class FlextInfraDependencyDetectorRuntime:
         detector = self._detector
         limits_default = Path(__file__).resolve().parent / "dependency_limits.toml"
         root = params.workspace_path
-        venv_bin = root / c.Infra.Paths.VENV_BIN_REL
+        venv_bin = root / c.Infra.VENV_BIN_REL
         projects_result = detector.deps.discover_project_paths(
             root,
             projects_filter=params.project_names,
         )
-        if projects_result.is_failure:
+        if projects_result.failure:
             return r[bool].fail(projects_result.error or "project discovery failed")
         projects: Sequence[Path] = projects_result.value
         if not projects:
@@ -92,7 +93,7 @@ class FlextInfraDependencyDetectorRuntime:
             if not params.quiet:
                 detector.log.info("deps_deptry_running", project=project_name)
             deptry_result = deps_service.run_deptry(project_path, venv_bin)
-            if deptry_result.is_failure:
+            if deptry_result.failure:
                 return r[bool].fail(deptry_result.error or "deptry run failed")
             issues, _ = deptry_result.value
             project_payload = deps_service.build_project_report(project_name, issues)
@@ -100,7 +101,7 @@ class FlextInfraDependencyDetectorRuntime:
                 project_payload.model_dump(),
             )
             projects_report[project_name] = dumped
-            if do_typings and (project_path / c.Infra.Paths.DEFAULT_SRC_DIR).is_dir():
+            if do_typings and (project_path / c.Infra.DEFAULT_SRC_DIR).is_dir():
                 if typing_deps is None:
                     return r[bool].fail(
                         "typing dependency detection service unavailable",
@@ -115,12 +116,12 @@ class FlextInfraDependencyDetectorRuntime:
                     venv_bin,
                     limits_path=limits_path,
                 )
-                if typings_result.is_failure:
+                if typings_result.failure:
                     return r[bool].fail(
                         typings_result.error or "typing dependency detection failed",
                     )
                 typings_report = typings_result.value
-                projects_report[project_name][c.Infra.Directories.TYPINGS] = (
+                projects_report[project_name][c.Infra.DIR_TYPINGS] = (
                     typings_report.model_dump()
                 )
                 to_add: t.StrSequence = typings_report.to_add
@@ -136,14 +137,14 @@ class FlextInfraDependencyDetectorRuntime:
                                 c.Infra.POETRY,
                                 "add",
                                 "--group",
-                                c.Infra.Directories.TYPINGS,
+                                c.Infra.DIR_TYPINGS,
                                 package,
                             ],
                             cwd=project_path,
-                            timeout=c.Infra.Timeouts.MEDIUM,
+                            timeout=c.Infra.TIMEOUT_MEDIUM,
                             env=env,
                         )
-                        if run.is_failure:
+                        if run.failure:
                             detector.log.warning(
                                 "deps_typings_add_failed",
                                 project=project_name,
@@ -166,7 +167,7 @@ class FlextInfraDependencyDetectorRuntime:
             if not params.quiet:
                 detector.log.info("deps_pip_check_running")
             pip_result = deps_service.run_pip_check(root, venv_bin)
-            if pip_result.is_failure:
+            if pip_result.failure:
                 return r[bool].fail(pip_result.error or "pip check failed")
             pip_lines, pip_exit = pip_result.value
             pip_ok = pip_exit == 0
@@ -183,7 +184,7 @@ class FlextInfraDependencyDetectorRuntime:
                 c.Infra.DEPENDENCIES,
             )
             dir_result = u.Cli.ensure_dir(report_dir)
-            if dir_result.is_failure:
+            if dir_result.failure:
                 return r[bool].fail(
                     dir_result.error or "failed to create report directory",
                 )
@@ -194,7 +195,7 @@ class FlextInfraDependencyDetectorRuntime:
                 for key, value in report_model.model_dump().items()
             }
             write_result = u.Cli.json_write(out_path, report_payload)
-            if write_result.is_failure:
+            if write_result.failure:
                 return r[bool].fail(write_result.error or "failed to write report")
             if not params.quiet:
                 detector.log.info("deps_report_written", path=str(out_path))
@@ -217,7 +218,7 @@ class FlextInfraDependencyDetectorRuntime:
                 "deps_summary",
                 projects=len(projects),
                 deptry_issues=total_issues,
-                pip_check=c.Infra.ReportKeys.OK if pip_ok else "FAIL",
+                pip_check=c.Infra.RK_OK if pip_ok else "FAIL",
             )
         if params.no_fail or (total_issues == 0 and pip_ok):
             return r[bool].ok(True)

@@ -74,7 +74,7 @@ class FlextInfraUtilitiesDocs:
                 )
             scopes: MutableSequence[m.Infra.DocScope] = [
                 FlextInfraUtilitiesDocs._doc_scope(
-                    name=c.Infra.ReportKeys.ROOT,
+                    name=c.Infra.RK_ROOT,
                     path=resolved_root,
                     output_dir=output_dir,
                     project_class="root",
@@ -84,7 +84,7 @@ class FlextInfraUtilitiesDocs:
             discovered_result = FlextInfraUtilitiesDocsScope.discover_projects(
                 resolved_root,
             )
-            if discovered_result.is_failure:
+            if discovered_result.failure:
                 return r[Sequence[m.Infra.DocScope]].fail(
                     discovered_result.error or "project discovery failed",
                 )
@@ -111,7 +111,7 @@ class FlextInfraUtilitiesDocs:
                     project_root = (resolved_root / name).resolve()
                     if not project_root.is_dir():
                         continue
-                    if not (project_root / c.Infra.Files.PYPROJECT_FILENAME).is_file():
+                    if not (project_root / c.Infra.PYPROJECT_FILENAME).is_file():
                         continue
                     payload = FlextInfraUtilitiesDocsScope.pyproject_payload(
                         project_root,
@@ -155,13 +155,13 @@ class FlextInfraUtilitiesDocs:
     @staticmethod
     def iter_markdown_files(workspace_root: Path) -> Sequence[Path]:
         """Recursively collect markdown files under the docs scope."""
-        docs_root = workspace_root / c.Infra.Directories.DOCS
+        docs_root = workspace_root / c.Infra.DIR_DOCS
         search_root = docs_root if docs_root.is_dir() else workspace_root
         return sorted(
             path
             for path in search_root.rglob("*.md")
             if not any(
-                part in c.Infra.Excluded.DOC_EXCLUDED_DIRS or part.startswith(".")
+                part in c.Infra.DOC_EXCLUDED_DIRS or part.startswith(".")
                 for part in path.parts
             )
         )
@@ -173,18 +173,18 @@ class FlextInfraUtilitiesDocs:
         """Collect markdown files governed by one docs scope."""
         scope_root = scope.path
         files = FlextInfraUtilitiesDocs.iter_markdown_files(scope_root)
-        if scope.name == c.Infra.ReportKeys.ROOT:
+        if scope.name == c.Infra.RK_ROOT:
             return [
                 path
                 for path in files
                 if not FlextInfraUtilitiesDocsScope.is_excluded_doc_path(
                     scope_root,
-                    path.relative_to(scope_root / c.Infra.Directories.DOCS)
-                    if path.is_relative_to(scope_root / c.Infra.Directories.DOCS)
+                    path.relative_to(scope_root / c.Infra.DIR_DOCS)
+                    if path.is_relative_to(scope_root / c.Infra.DIR_DOCS)
                     else path.relative_to(scope_root),
                 )
             ]
-        docs_root = scope_root / c.Infra.Directories.DOCS
+        docs_root = scope_root / c.Infra.DIR_DOCS
         return [
             path
             for path in files
@@ -204,7 +204,7 @@ class FlextInfraUtilitiesDocs:
             path.parent.mkdir(parents=True, exist_ok=True)
             _ = path.write_text(
                 "\n".join(lines).rstrip() + "\n",
-                encoding=c.Infra.Encoding.DEFAULT,
+                encoding=c.Infra.ENCODING_DEFAULT,
             )
             return r[bool].ok(True)
         except OSError as exc:
@@ -232,20 +232,13 @@ class FlextInfraUtilitiesDocs:
             items.append(f"{indent}- [{title}](#{anchor})")
         if not items:
             items = ["- No sections found"]
-        return (
-            f"{c.Infra.SourceCode.TOC_START}\n"
-            + "\n".join(items)
-            + f"\n{c.Infra.SourceCode.TOC_END}"
-        )
+        return f"{c.Infra.TOC_START}\n" + "\n".join(items) + f"\n{c.Infra.TOC_END}"
 
     @staticmethod
     def update_toc(content: str) -> t.Infra.StrIntPair:
         """Insert or replace the TOC in content, returning (updated, changed)."""
         toc = FlextInfraUtilitiesDocs.build_toc(content)
-        if (
-            c.Infra.SourceCode.TOC_START in content
-            and c.Infra.SourceCode.TOC_END in content
-        ):
+        if c.Infra.TOC_START in content and c.Infra.TOC_END in content:
             updated = re.sub(
                 r"<!-- TOC START -->.*?<!-- TOC END -->",
                 toc,
@@ -282,7 +275,7 @@ class FlextInfraUtilitiesDocs:
             projects=projects,
             output_dir=output_dir,
         )
-        if scopes_result.is_failure:
+        if scopes_result.failure:
             return r[Sequence[m.Infra.DocsPhaseReport]].fail(
                 scopes_result.error or "scope error",
             )

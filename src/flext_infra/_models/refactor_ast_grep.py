@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
 from flext_core import m
-from flext_infra import FlextInfraModelsMixins, c, t
+from flext_infra import c, t
+from flext_infra._models.mixins import FlextInfraModelsMixins
 
 
 class FlextInfraModelsRefactorGrep:
@@ -162,10 +164,10 @@ class FlextInfraModelsRefactorGrep:
 
         project_scan_dirs: t.StrSequence = Field(
             default_factory=lambda: [
-                c.Infra.Paths.DEFAULT_SRC_DIR,
-                c.Infra.Directories.TESTS,
-                c.Infra.Directories.SCRIPTS,
-                c.Infra.Directories.EXAMPLES,
+                c.Infra.DEFAULT_SRC_DIR,
+                c.Infra.DIR_TESTS,
+                c.Infra.DIR_SCRIPTS,
+                c.Infra.DIR_EXAMPLES,
             ],
             description="Relative directories scanned for candidate files",
         )
@@ -245,6 +247,95 @@ class FlextInfraModelsRefactorGrep:
         ]
         symbol_mapping: t.StrMapping = Field(
             default_factory=dict, description="Symbol-to-alias mapping"
+        )
+
+    class AccessorMigrationChange(m.ArbitraryTypesModel):
+        """Single automated rename or manual warning emitted by accessor migration."""
+
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+
+        file: Annotated[t.NonEmptyStr, Field(description="Absolute file path")]
+        line: Annotated[
+            t.NonNegativeInt,
+            Field(description="1-based source line number when available"),
+        ]
+        original_name: Annotated[
+            t.NonEmptyStr,
+            Field(description="Original accessor or helper name"),
+        ]
+        replacement_name: Annotated[
+            str,
+            Field(default="", description="Suggested or applied replacement name"),
+        ] = ""
+        automated: Annotated[
+            bool,
+            Field(description="Whether the migration was performed automatically"),
+        ]
+        reason: Annotated[str, Field(description="Human-readable migration rationale")]
+
+    class AccessorMigrationFile(m.ArbitraryTypesModel):
+        """Per-file preview for accessor migration dry-runs and applies."""
+
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+
+        file: Annotated[t.NonEmptyStr, Field(description="Absolute file path")]
+        automated_changes: t.Infra.VariadicTuple[
+            FlextInfraModelsRefactorGrep.AccessorMigrationChange
+        ] = Field(
+            default_factory=tuple,
+            description="Automated rewrites captured for this file",
+        )
+        warnings: t.Infra.VariadicTuple[
+            FlextInfraModelsRefactorGrep.AccessorMigrationChange
+        ] = Field(
+            default_factory=tuple,
+            description="Manual follow-up warnings for this file",
+        )
+        diff: Annotated[
+            str,
+            Field(default="", description="Unified diff preview for the file"),
+        ] = ""
+        lint_before: Annotated[
+            Mapping[str, t.StrSequence],
+            Field(description="Lint output before the proposed rewrite"),
+        ] = Field(default_factory=dict)
+        lint_after: Annotated[
+            Mapping[str, t.StrSequence],
+            Field(description="Lint output after the proposed rewrite"),
+        ] = Field(default_factory=dict)
+        new_lint_errors: Annotated[
+            Mapping[str, t.StrSequence],
+            Field(description="Lint errors introduced by the proposed rewrite"),
+        ] = Field(default_factory=dict)
+
+    class AccessorMigrationReport(m.ArbitraryTypesModel):
+        """Workspace-scale report for accessor migration orchestration."""
+
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+
+        workspace: Annotated[t.NonEmptyStr, Field(description="Workspace root path")]
+        dry_run: Annotated[bool, Field(description="Dry-run indicator")]
+        files_scanned: Annotated[
+            t.NonNegativeInt,
+            Field(description="Total Python files scanned"),
+        ]
+        files_with_changes: Annotated[
+            t.NonNegativeInt,
+            Field(description="Files with automated rewrites"),
+        ]
+        automated_change_count: Annotated[
+            t.NonNegativeInt,
+            Field(description="Total automated rewrites detected"),
+        ]
+        warning_count: Annotated[
+            t.NonNegativeInt,
+            Field(description="Total manual follow-up warnings detected"),
+        ]
+        files: t.Infra.VariadicTuple[
+            FlextInfraModelsRefactorGrep.AccessorMigrationFile
+        ] = Field(
+            default_factory=tuple,
+            description="Preview entries included in this report",
         )
 
 

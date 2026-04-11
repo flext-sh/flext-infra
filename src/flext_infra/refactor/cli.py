@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from flext_cli import cli as cli_service
+from flext_cli.api import cli as cli_service
 from flext_infra import FlextInfraServiceRefactorMixin, m, t
 
 
@@ -34,6 +34,13 @@ class FlextInfraCliRefactor(FlextInfraServiceRefactorMixin):
                     model_cls=m.Infra.RefactorCensusInput,
                     handler=self.run_refactor_census,
                     failure_message="Census failed",
+                ),
+                m.Cli.ResultCommandRoute(
+                    name="accessor-migrate",
+                    help_text="Preview or apply automated get_/set_/is_ migration",
+                    model_cls=m.Infra.AccessorMigrationInput,
+                    handler=self.run_accessor_migration,
+                    failure_message="Accessor migration failed",
                 ),
             ],
         )

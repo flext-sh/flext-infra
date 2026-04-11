@@ -65,7 +65,7 @@ class FlextInfraUtilitiesPaths:
         """
         here = Path(file).resolve()
         for candidate in here.parents:
-            if (candidate / c.Infra.Files.GITMODULES).exists():
+            if (candidate / c.Infra.GITMODULES).exists():
                 return candidate
         return here.parents[4]
 

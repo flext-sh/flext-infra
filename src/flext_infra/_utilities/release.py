@@ -64,7 +64,7 @@ class FlextInfraUtilitiesRelease:
             u.write_file(
                 output_path,
                 "\n".join(lines).rstrip() + "\n",
-                encoding=c.Infra.Encoding.DEFAULT,
+                encoding=c.Infra.ENCODING_DEFAULT,
             )
             logger.info("release_notes_written", path=str(output_path))
             return r[bool].ok(True)
@@ -79,14 +79,14 @@ class FlextInfraUtilitiesRelease:
         notes_path: Path,
     ) -> r[bool]:
         """Update docs/changelog and docs/releases entries."""
-        docs = workspace_root / c.Infra.Directories.DOCS
+        docs = workspace_root / c.Infra.DIR_DOCS
         changelog_path = docs / "CHANGELOG.md"
         latest_path = docs / "releases" / "latest.md"
         tagged_path = docs / "releases" / f"{tag}.md"
         try:
-            notes_text = notes_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+            notes_text = notes_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
             existing = (
-                changelog_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+                changelog_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
                 if changelog_path.exists()
                 else "# Changelog\n\n"
             )
@@ -105,18 +105,18 @@ class FlextInfraUtilitiesRelease:
             u.write_file(
                 changelog_path,
                 updated,
-                encoding=c.Infra.Encoding.DEFAULT,
+                encoding=c.Infra.ENCODING_DEFAULT,
             )
             latest_path.parent.mkdir(parents=True, exist_ok=True)
             u.write_file(
                 latest_path,
                 notes_text,
-                encoding=c.Infra.Encoding.DEFAULT,
+                encoding=c.Infra.ENCODING_DEFAULT,
             )
             u.write_file(
                 tagged_path,
                 notes_text,
-                encoding=c.Infra.Encoding.DEFAULT,
+                encoding=c.Infra.ENCODING_DEFAULT,
             )
             logger.info("release_changelog_written", path=str(changelog_path))
             logger.info("release_tagged_notes_written", path=str(tagged_path))

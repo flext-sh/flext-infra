@@ -34,12 +34,14 @@ class FlextInfraRefactorMROClassMigrationRule:
             if project_root is not None
             else Path(resource.real_path)
         )
-        if file_path.name != c.Infra.Files.CONSTANTS_PY:
-            return (resource.read(), [])
+        if file_path.name != c.Infra.CONSTANTS_PY:
+            no_changes: list[str] = []
+            return (resource.read(), no_changes)
         source = resource.read()
         candidates = u.Infra.find_final_candidates(source)
         if not candidates:
-            return (source, [])
+            no_changes: list[str] = []
+            return (source, no_changes)
         constants_class = u.Infra.first_constants_class_name(source)
         scan_result = m.Infra.MROScanReport(
             file=str(file_path),
@@ -51,7 +53,8 @@ class FlextInfraRefactorMROClassMigrationRule:
             scan_result=scan_result,
         )
         if not migration.moved_symbols or updated_source == source:
-            return (source, [])
+            no_changes: list[str] = []
+            return (source, no_changes)
         if not dry_run:
             resource.write(updated_source)
         syms = ", ".join(migration.moved_symbols)

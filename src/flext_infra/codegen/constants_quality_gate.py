@@ -2,14 +2,19 @@
 
 from __future__ import annotations
 
+import shutil
+import sys
+from collections import defaultdict
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import override
 
 from flext_core import r
 from flext_infra import (
     FlextInfraCodegenCensus,
     FlextInfraCodegenLazyInit,
+    FlextInfraUtilitiesRope,
     c,
     m,
     s,
@@ -38,37 +43,37 @@ class FlextInfraConstantsCodegenQualityGate(s[bool]):
         census_reports = FlextInfraCodegenCensus.model_validate(
             {"workspace_root": self.workspace_root},
         ).run()
-        duplicate_groups = u.Infra.detect_duplicate_constant_groups(
+        duplicate_groups = self.detect_duplicate_constant_groups(
             self.workspace_root,
             census_reports,
         )
-        modified_files = u.Infra.modified_python_files(
+        modified_files = self.modified_python_files(
             self.workspace_root,
         )
-        pyrefly_check = u.Infra.run_static_check(
+        pyrefly_check = self.run_static_check(
             self.workspace_root,
             modified_files,
             c.Infra.PYREFLY,
         )
-        ruff_check = u.Infra.run_static_check(
+        ruff_check = self.run_static_check(
             self.workspace_root,
             modified_files,
             c.Infra.RUFF,
         )
-        after_metrics = u.Infra.after_metrics(
+        after_metrics = self.after_metrics(
             census_reports=census_reports,
             duplicate_groups=len(duplicate_groups),
             modified_files=modified_files,
         )
-        checks = u.Infra.build_checks(
+        checks = self.build_checks(
             after_metrics=after_metrics,
             pyrefly_check=pyrefly_check,
             ruff_check=ruff_check,
         )
-        verdict = u.Infra.compute_verdict(checks)
+        verdict = self.compute_verdict(checks)
         checks_infra: Sequence[t.Infra.InfraValue] = tuple(checks)
         projects_infra: Sequence[t.Infra.InfraValue] = tuple(
-            u.Infra.project_findings(census_reports),
+            self.project_findings(census_reports),
         )
         report: MutableMapping[str, t.Infra.InfraValue] = {
             "workspace": str(self.workspace_root),
@@ -81,12 +86,320 @@ class FlextInfraConstantsCodegenQualityGate(s[bool]):
             ),
             "projects": projects_infra,
         }
-        report["artifacts"] = u.Infra.write_artifacts(
+        report["artifacts"] = self.write_artifacts(
             workspace_root=self.workspace_root,
             report=report,
             render_text=self.render_text(report),
         )
         return report
+
+    @staticmethod
+    def modified_python_files(workspace_root: Path) -> t.StrSequence:
+        """Return modified Python files detected by git porcelain status."""
+        modified: MutableSequence[str] = []
+        git_bin = shutil.which(c.Infra.GIT)
+        if git_bin is None:
+            return []
+        result = u.Cli.run_raw([
+            git_bin,
+            "-C",
+            str(workspace_root),
+            "status",
+            "--porcelain",
+        ])
+        if result.failure or result.value.exit_code != 0:
+            return []
+        for line in (
+            entry.strip() for entry in result.value.stdout.splitlines() if entry.strip()
+        ):
+            if any(status in line[:2] for status in ("M", "A", "R", "C", "U")):
+                path = line[3:].strip()
+                if " -> " in path:
+                    path = path.split(" -> ")[-1]
+                if path.endswith(c.Infra.EXT_PYTHON):
+                    modified.append(path)
+        return list(modified)
+
+    @staticmethod
+    def run_static_check(
+        workspace_root: Path,
+        modified_files: t.StrSequence,
+        tool: str,
+    ) -> Mapping[str, t.Infra.InfraValue]:
+        """Run a targeted static tool on modified files and normalize result."""
+        if not modified_files:
+            return {
+                "passed": True,
+                "detail": "no modified python files detected",
+                "exit_code": 0,
+            }
+        if tool == c.Infra.PYREFLY:
+            cmd = [
+                sys.executable,
+                "-m",
+                c.Infra.PYREFLY,
+                c.Infra.CHECK,
+                *modified_files,
+                "--config",
+                c.Infra.PYPROJECT_FILENAME,
+                "--summary=none",
+            ]
+        elif tool == c.Infra.RUFF:
+            cmd = [
+                sys.executable,
+                "-m",
+                c.Infra.RUFF,
+                c.Infra.VERB_CHECK,
+                *modified_files,
+                "--output-format",
+                c.Infra.OUTPUT_JSON,
+                "--quiet",
+            ]
+        else:
+            return {
+                "passed": False,
+                "detail": f"unsupported tool: {tool}",
+                "exit_code": 2,
+            }
+        run = u.Cli.run_raw(cmd, cwd=workspace_root)
+        if run.failure:
+            return {
+                "passed": False,
+                "detail": run.error or "execution error",
+                "exit_code": 127,
+            }
+        output = (run.value.stderr or run.value.stdout or "").strip()
+        lines = [line for line in output.splitlines() if line.strip()]
+        return {
+            "passed": run.value.exit_code == 0,
+            "detail": " | ".join(lines[:5]) if lines else "ok",
+            "exit_code": run.value.exit_code,
+        }
+
+    @staticmethod
+    def after_metrics(
+        *,
+        census_reports: Sequence[m.Infra.CensusReport],
+        duplicate_groups: int,
+        modified_files: t.StrSequence,
+    ) -> Mapping[str, t.Infra.InfraValue]:
+        """Build post-run metrics summary used by quality checks."""
+        by_rule: t.MutableIntMapping = dict.fromkeys(c.Infra.QG_RULE_KEYS, 0)
+        total_violations = 0
+        for report in census_reports:
+            violations = tuple(report.violations)
+            total_violations += len(violations)
+            for raw in violations:
+                parsed = m.Infra.CensusViolation.model_validate(raw)
+                if parsed.rule in by_rule:
+                    by_rule[parsed.rule] += 1
+        total = len(census_reports)
+        passed = u.count(census_reports, lambda report: int(report.total) == 0)
+        return {
+            "total_violations": total_violations,
+            "violations_by_rule": dict(by_rule),
+            "duplicate_groups": duplicate_groups,
+            "projects_total": total,
+            "projects_passed": passed,
+            "projects_failed": total - passed,
+            "mro_failures": 0,
+            "layer_violations": 0,
+            "cross_project_reference_violations": 0,
+            "modified_python_files": list(modified_files),
+        }
+
+    @staticmethod
+    def build_checks(
+        *,
+        after_metrics: Mapping[str, t.Infra.InfraValue],
+        pyrefly_check: Mapping[str, t.Infra.InfraValue],
+        ruff_check: Mapping[str, t.Infra.InfraValue],
+    ) -> Sequence[Mapping[str, t.Infra.InfraValue]]:
+        """Build quality gate check entries from metrics and tool results."""
+        violations_total = u.Infra.nested_int(after_metrics, "total_violations")
+        mro_failures = u.Infra.nested_int(after_metrics, "mro_failures")
+        cross_reference = u.Infra.nested_int(
+            after_metrics, "cross_project_reference_violations"
+        )
+        layer_violations = u.Infra.nested_int(after_metrics, "layer_violations")
+        duplicate_groups = u.Infra.nested_int(after_metrics, "duplicate_groups")
+        checks: Sequence[m.Infra.QualityGateCheck] = (
+            m.Infra.QualityGateCheck(
+                name=c.Infra.QG_CHECK_NAMESPACE_COMPLIANCE,
+                passed=violations_total == 0,
+                detail=f"total={violations_total}",
+                critical=True,
+            ),
+            m.Infra.QualityGateCheck(
+                name=c.Infra.QG_CHECK_MRO_VALIDITY,
+                passed=mro_failures == 0,
+                detail=f"mro_failures={mro_failures}",
+                critical=True,
+            ),
+            m.Infra.QualityGateCheck(
+                name=c.Infra.QG_CHECK_IMPORT_RESOLUTION,
+                passed=cross_reference == 0,
+                detail=f"cross_project_reference_violations={cross_reference}",
+                critical=True,
+            ),
+            m.Infra.QualityGateCheck(
+                name=c.Infra.QG_CHECK_LAYER_COMPLIANCE,
+                passed=layer_violations == 0,
+                detail=f"layer_violations={layer_violations}",
+                critical=True,
+            ),
+            m.Infra.QualityGateCheck(
+                name=c.Infra.QG_CHECK_DUPLICATION_REDUCTION,
+                passed=duplicate_groups == 0,
+                detail=f"duplicate_groups={duplicate_groups}",
+                critical=True,
+            ),
+            m.Infra.QualityGateCheck(
+                name=c.Infra.QG_CHECK_TYPE_SAFETY,
+                passed=bool(pyrefly_check.get("passed")),
+                detail=str(pyrefly_check.get("detail", "")),
+                critical=True,
+            ),
+            m.Infra.QualityGateCheck(
+                name=c.Infra.QG_CHECK_LINT_CLEAN,
+                passed=bool(ruff_check.get("passed")),
+                detail=str(ruff_check.get("detail", "")),
+                critical=True,
+            ),
+        )
+        return [check.model_dump() for check in checks]
+
+    @staticmethod
+    def compute_verdict(checks: Sequence[Mapping[str, t.Infra.InfraValue]]) -> str:
+        """Return PASS only when all checks passed."""
+        return (
+            "PASS"
+            if all(bool(check.get("passed", False)) for check in checks)
+            else "FAIL"
+        )
+
+    @staticmethod
+    def detect_duplicate_constant_groups(
+        workspace_root: Path,
+        census_reports: Sequence[m.Infra.CensusReport],
+    ) -> Sequence[m.Infra.DuplicateConstantGroup]:
+        """Collect duplicate constants across projects using Rope resource reads."""
+        definitions: MutableSequence[m.Infra.ConstantDefinition] = []
+        with FlextInfraUtilitiesRope.open_project(workspace_root) as rope_project:
+            for report in census_reports:
+                constants_file = (
+                    workspace_root
+                    / report.project
+                    / c.Infra.DEFAULT_SRC_DIR
+                    / report.project.replace("-", "_")
+                    / c.Infra.CONSTANTS_PY
+                )
+                resource = u.Infra.get_resource_from_path(rope_project, constants_file)
+                if resource is None:
+                    continue
+                class_stack: MutableSequence[tuple[str, int]] = []
+                for line_number, line in enumerate(resource.read().splitlines(), 1):
+                    stripped = line.lstrip()
+                    indent = len(line) - len(stripped)
+                    if stripped.startswith("class ") and stripped.endswith(":"):
+                        class_match = c.Infra.DETECTION_CLASS_DECL_RE.match(stripped)
+                        if class_match is not None:
+                            while class_stack and class_stack[-1][1] >= indent:
+                                class_stack.pop()
+                            class_stack.append((class_match.group(1), indent))
+                    elif class_stack:
+                        while class_stack and indent <= class_stack[-1][1]:
+                            class_stack.pop()
+                    match = c.Infra.DETECTION_FINAL_DECL_RE.match(line)
+                    if match is None:
+                        continue
+                    definitions.append(
+                        m.Infra.ConstantDefinition(
+                            name=match.group("name"),
+                            value_repr=match.group("value").strip(),
+                            type_annotation=match.group("ann"),
+                            file_path=str(constants_file),
+                            class_path=".".join(name for name, _ in class_stack),
+                            project=report.project,
+                            line=line_number,
+                        )
+                    )
+        by_name: defaultdict[str, list[m.Infra.ConstantDefinition]] = defaultdict(list)
+        by_value: defaultdict[str, list[m.Infra.ConstantDefinition]] = defaultdict(list)
+        for definition in definitions:
+            by_name[definition.name].append(definition)
+            by_value[definition.value_repr].append(definition)
+        duplicates: MutableSequence[m.Infra.DuplicateConstantGroup] = []
+        for name, defs in by_name.items():
+            if len(defs) > 1:
+                duplicates.append(
+                    m.Infra.DuplicateConstantGroup(
+                        constant_name=name,
+                        definitions=defs,
+                        is_value_identical=len({item.value_repr for item in defs}) == 1,
+                        canonical_ref="",
+                    )
+                )
+        for value_key, defs in by_value.items():
+            if len(defs) > 1 and len({item.name for item in defs}) > 1:
+                duplicates.append(
+                    m.Infra.DuplicateConstantGroup(
+                        constant_name=f"[value: {value_key}]",
+                        definitions=defs,
+                        is_value_identical=True,
+                        canonical_ref="",
+                    )
+                )
+        return [
+            group
+            for group in duplicates
+            if len({definition.project for definition in group.definitions})
+            >= c.Infra.MIN_DUPLICATE_PROJECT_COUNT
+        ]
+
+    @staticmethod
+    def project_findings(
+        census_reports: Sequence[m.Infra.CensusReport],
+    ) -> Sequence[Mapping[str, t.Infra.InfraValue]]:
+        """Convert census reports into sorted per-project findings."""
+        return [
+            item.model_dump()
+            for item in sorted(
+                (
+                    m.Infra.QualityGateProjectFinding(
+                        project=report.project,
+                        violations_total=len(tuple(report.violations)),
+                        fixable_violations=int(report.fixable),
+                        validator_passed=int(report.total) == 0,
+                        mro_failures=0,
+                        layer_violations=0,
+                        cross_project_reference_violations=0,
+                    )
+                    for report in census_reports
+                ),
+                key=lambda entry: entry.project,
+            )
+        ]
+
+    @staticmethod
+    def write_artifacts(
+        workspace_root: Path,
+        report: Mapping[str, t.Infra.InfraValue],
+        render_text: str,
+    ) -> Mapping[str, t.Infra.InfraValue]:
+        """Persist quality gate artifacts to the report directory."""
+        report_dir = workspace_root / c.Infra.QG_REPORT_DIR
+        report_dir.mkdir(parents=True, exist_ok=True)
+        report_json = report_dir / "latest.json"
+        report_txt = report_dir / "latest.txt"
+        report_json.write_text(
+            t.Infra.INFRA_MAPPING_ADAPTER.dump_json(report, by_alias=True).decode(
+                c.Infra.ENCODING_DEFAULT,
+            ),
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+        report_txt.write_text(render_text, encoding=c.Infra.ENCODING_DEFAULT)
+        return {"report_json": str(report_json), "report_text": str(report_txt)}
 
     @classmethod
     def render_text(cls, report: Mapping[str, t.Infra.InfraValue]) -> str:

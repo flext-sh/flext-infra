@@ -12,7 +12,6 @@ from __future__ import annotations
 from flext_cli import u
 from flext_infra import (
     FlextInfraUtilitiesBase,
-    FlextInfraUtilitiesCli,
     FlextInfraUtilitiesCodegen,
     FlextInfraUtilitiesDependencyPathSync,
     FlextInfraUtilitiesDiscovery,
@@ -61,7 +60,6 @@ class FlextInfraUtilities(u):
     class Infra(
         FlextInfraUtilitiesReporting,
         FlextInfraUtilitiesOutputReporting,
-        FlextInfraUtilitiesCli,
         FlextInfraUtilitiesCodegen,
         FlextInfraUtilitiesBase,
         FlextInfraUtilitiesGithub,

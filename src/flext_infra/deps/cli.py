@@ -1,14 +1,12 @@
-"""CLI registration and compatibility entry points for ``flext-infra deps``."""
+"""CLI group registration for ``flext-infra deps``."""
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-
-from flext_cli import cli as cli_service, m as cli_models
+from flext_cli import m as cli_models
+from flext_cli.api import cli as cli_service
 from flext_infra import (
     FlextInfraModelsDeps,
     FlextInfraServiceDepsMixin,
-    FlextInfraUtilitiesCliDispatch,
     t,
 )
 
@@ -58,8 +56,3 @@ class FlextInfraCliDeps(FlextInfraServiceDepsMixin):
                 ),
             ],
         )
-
-    @staticmethod
-    def run(args: Sequence[str] | None = None) -> int:
-        """Run the canonical ``deps`` group."""
-        return FlextInfraUtilitiesCliDispatch.run_group("deps", args)

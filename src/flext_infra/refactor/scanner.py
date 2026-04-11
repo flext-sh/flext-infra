@@ -14,7 +14,7 @@ class FlextInfraRefactorLooseClassScanner:
 
     def scan(self, project_root: Path) -> r[t.Infra.ContainerDict]:
         """Scan *project_root*/src and return a violation report dict."""
-        src_root = project_root / c.Infra.Paths.DEFAULT_SRC_DIR
+        src_root = project_root / c.Infra.DEFAULT_SRC_DIR
         if not src_root.is_dir():
             out: r[t.Infra.ContainerDict] = r[t.Infra.ContainerDict].fail(
                 f"src not found: {src_root}",
@@ -46,7 +46,7 @@ class FlextInfraRefactorLooseClassScanner:
         )
         classes_scanned = 0
         files_scanned = 0
-        src_root = (project_root / c.Infra.Paths.DEFAULT_SRC_DIR).resolve()
+        src_root = (project_root / c.Infra.DEFAULT_SRC_DIR).resolve()
         with u.Infra.open_project(project_root) as rope_project:
             for resource in rope_project.get_python_files():
                 file_path = Path(resource.real_path).resolve()
@@ -54,7 +54,7 @@ class FlextInfraRefactorLooseClassScanner:
                     continue
                 if (
                     file_path.name.startswith("__")
-                    and file_path.name != c.Infra.Files.INIT_PY
+                    and file_path.name != c.Infra.INIT_PY
                 ):
                     continue
                 files_scanned += 1
@@ -92,13 +92,13 @@ class FlextInfraRefactorLooseClassScanner:
         confidence_counts: Mapping[str, t.Infra.InfraValue] = dict(counters)
         required_targets_infra: Mapping[str, t.Infra.InfraValue] = dict(targets_found)
         return {
-            "rule": c.Infra.ReportKeys.CLASS_NESTING,
+            "rule": c.Infra.RK_CLASS_NESTING,
             "files_scanned": files_scanned,
             "classes_scanned": classes_scanned,
-            c.Infra.ReportKeys.VIOLATIONS_COUNT: len(violations),
+            c.Infra.RK_VIOLATIONS_COUNT: len(violations),
             "confidence_counts": confidence_counts,
             "required_targets": required_targets_infra,
-            c.Infra.ReportKeys.VIOLATIONS: violations_infra,
+            c.Infra.RK_VIOLATIONS: violations_infra,
         }
 
     def _build_violation(
@@ -118,7 +118,7 @@ class FlextInfraRefactorLooseClassScanner:
             line=max(occ.line, 1),
             class_name=occ.name,
             expected_prefix=prefix,
-            rule=c.Infra.ReportKeys.CLASS_NESTING,
+            rule=c.Infra.RK_CLASS_NESTING,
             reason="top_level_class_in_private_directory"
             if self._has_private_directory(rel_path)
             else "top_level_class_without_namespace_prefix",
@@ -130,7 +130,7 @@ class FlextInfraRefactorLooseClassScanner:
         parts = rel_path.parent.parts[1:]
         if any(p.startswith("_") for p in parts):
             return "high"
-        return "medium" if parts else c.Infra.Severity.LOW
+        return "medium" if parts else c.Infra.SEVERITY_LOW
 
     def _expected_prefix_for_module(self, rel_path: Path) -> str:
         parts = rel_path.parts

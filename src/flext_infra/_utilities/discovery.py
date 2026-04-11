@@ -19,19 +19,17 @@ class FlextInfraUtilitiesDiscovery:
         """Discover the enclosing project root for one file or directory path."""
         resolved = file_path.resolve()
         candidate = (
-            resolved.parent
-            if resolved.suffix == c.Infra.Extensions.PYTHON
-            else resolved
+            resolved.parent if resolved.suffix == c.Infra.EXT_PYTHON else resolved
         )
         wrapper_root: Path | None = None
         for current in (candidate, *candidate.parents):
-            if current.name == c.Infra.Paths.DEFAULT_SRC_DIR:
+            if current.name == c.Infra.DEFAULT_SRC_DIR:
                 wrapper_root = current.parent
                 continue
             if current.name in c.Infra.ROOT_WRAPPER_SEGMENTS:
                 wrapper_root = current.parent
                 continue
-            if (current / c.Infra.Paths.DEFAULT_SRC_DIR).is_dir():
+            if (current / c.Infra.DEFAULT_SRC_DIR).is_dir():
                 return current
         return wrapper_root
 
@@ -50,9 +48,9 @@ class FlextInfraUtilitiesDiscovery:
                 relative_parts = ()
         normalized_parts = (
             relative_parts[:-1]
-            if relative_parts and relative_parts[-1] == c.Infra.Files.INIT_PY
+            if relative_parts and relative_parts[-1] == c.Infra.INIT_PY
             else relative_parts[:-1] + (resolved.stem,)
-            if resolved.suffix == c.Infra.Extensions.PYTHON and relative_parts
+            if resolved.suffix == c.Infra.EXT_PYTHON and relative_parts
             else relative_parts
         )
         if normalized_parts:
@@ -60,15 +58,15 @@ class FlextInfraUtilitiesDiscovery:
             if root_name in c.Infra.ROOT_WRAPPER_SEGMENTS:
                 package_parts = (
                     normalized_parts[1:]
-                    if root_name == c.Infra.Paths.DEFAULT_SRC_DIR
+                    if root_name == c.Infra.DEFAULT_SRC_DIR
                     else normalized_parts
                 )
                 return ".".join(package_parts)
         absolute_parts = (
             resolved.parts[:-1]
-            if resolved.name == c.Infra.Files.INIT_PY
+            if resolved.name == c.Infra.INIT_PY
             else resolved.parts[:-1] + (resolved.stem,)
-            if resolved.suffix == c.Infra.Extensions.PYTHON
+            if resolved.suffix == c.Infra.EXT_PYTHON
             else resolved.parts
         )
         for index, part in enumerate(absolute_parts):
@@ -76,11 +74,11 @@ class FlextInfraUtilitiesDiscovery:
                 continue
             package_parts = (
                 absolute_parts[index + 1 :]
-                if part == c.Infra.Paths.DEFAULT_SRC_DIR
+                if part == c.Infra.DEFAULT_SRC_DIR
                 else absolute_parts[index:]
             )
             return ".".join(package_parts)
-        if resolved.name == c.Infra.Files.INIT_PY:
+        if resolved.name == c.Infra.INIT_PY:
             top_level_parts = tuple(
                 part for part in absolute_parts if part and part != resolved.anchor
             )
@@ -109,7 +107,7 @@ class FlextInfraUtilitiesDiscovery:
             if subdir.is_dir()
             and not subdir.name.startswith(".")
             and subdir.name not in effective_skip
-            and any(subdir.rglob(c.Infra.Extensions.PYTHON_GLOB))
+            and any(subdir.rglob(c.Infra.EXT_PYTHON_GLOB))
         ]
 
     @staticmethod
@@ -126,7 +124,7 @@ class FlextInfraUtilitiesDiscovery:
         try:
             all_files = [
                 path
-                for path in workspace_root.rglob(c.Infra.Files.PYPROJECT_FILENAME)
+                for path in workspace_root.rglob(c.Infra.PYPROJECT_FILENAME)
                 if not any(
                     part in effective_skip
                     for part in path.relative_to(workspace_root).parts[:-1]
@@ -153,8 +151,8 @@ class FlextInfraUtilitiesDiscovery:
         """Resolve imported parent constants through Rope-backed class MRO."""
         constants_file = (
             pkg_dir_or_file
-            if pkg_dir_or_file.name == c.Infra.Files.CONSTANTS_PY
-            else pkg_dir_or_file / c.Infra.Files.CONSTANTS_PY
+            if pkg_dir_or_file.name == c.Infra.CONSTANTS_PY
+            else pkg_dir_or_file / c.Infra.CONSTANTS_PY
         )
         if not constants_file.is_file():
             return ()
@@ -213,12 +211,12 @@ class FlextInfraUtilitiesDiscovery:
             return {}
         package_dir = (
             project_root
-            / c.Infra.Paths.DEFAULT_SRC_DIR
+            / c.Infra.DEFAULT_SRC_DIR
             / Path(
                 *package_name.split("."),
             )
         )
-        if not (package_dir / c.Infra.Files.INIT_PY).is_file():
+        if not (package_dir / c.Infra.INIT_PY).is_file():
             return {}
         parent_packages = FlextInfraUtilitiesDiscovery.resolve_parent_constants_mro(
             package_dir,

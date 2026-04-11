@@ -68,10 +68,10 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
         """Return the normalized phase sequence for release execution."""
         if self.phase == "all":
             return [
-                c.Infra.Verbs.VALIDATE,
+                c.Infra.VERB_VALIDATE,
                 c.Infra.VERSION,
-                c.Infra.Directories.BUILD,
-                c.Infra.Verbs.PUBLISH,
+                c.Infra.DIR_BUILD,
+                c.Infra.VERB_PUBLISH,
             ]
         return [
             item.strip()
@@ -96,13 +96,12 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
     def execute(self) -> r[bool]:
         """Execute the release CLI flow."""
         root_result = u.Infra.workspace_root(self.workspace_root)
-        if root_result.is_failure:
+        if root_result.failure:
             return r[bool].fail(root_result.error or "workspace root not found")
         root = Path(str(root_result.value))
         phases = self.phase_names
         needs_version = bool(
-            {c.Infra.VERSION, c.Infra.Directories.BUILD, c.Infra.Verbs.PUBLISH}
-            & set(phases),
+            {c.Infra.VERSION, c.Infra.DIR_BUILD, c.Infra.VERB_PUBLISH} & set(phases),
         )
         if needs_version:
             version_result = self._resolve_version(
@@ -111,13 +110,13 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
                 self.interactive,
                 root,
             )
-            if version_result.is_failure:
+            if version_result.failure:
                 return r[bool].fail(version_result.error or "version resolution failed")
             resolved_version = str(version_result.value)
         else:
             resolved_version = self.version or "0.0.0"
         tag_result = self._resolve_tag(self.tag, resolved_version)
-        if tag_result.is_failure:
+        if tag_result.failure:
             return r[bool].fail(tag_result.error or "tag resolution failed")
         return self.run_release(
             m.Infra.ReleaseOrchestratorConfig(
@@ -146,16 +145,16 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
         if version_arg:
             requested = str(version_arg)
             parse_result = u.Infra.parse_semver(requested)
-            if parse_result.is_failure:
+            if parse_result.failure:
                 return r[str].fail(parse_result.error or "invalid version")
             return r[str].ok(requested)
         current_result = u.Infra.current_workspace_version(root_path)
-        if current_result.is_failure:
+        if current_result.failure:
             return r[str].fail(current_result.error or "cannot read current version")
         current = str(current_result.value)
         if bump_arg:
             bump_result = u.Infra.bump_version(current, bump_arg)
-            if bump_result.is_failure:
+            if bump_result.failure:
                 return r[str].fail(bump_result.error or "bump failed")
             return r[str].ok(str(bump_result.value))
         if interactive != 1:
@@ -164,7 +163,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
         if bump not in {"major", "minor", "patch"}:
             return r[str].fail("invalid bump type")
         bump_result = u.Infra.bump_version(current, bump)
-        if bump_result.is_failure:
+        if bump_result.failure:
             return r[str].fail(bump_result.error or "bump failed")
         return r[str].ok(str(bump_result.value))
 
@@ -211,11 +210,11 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
         )
         if create_branches and (not dry_run):
             branch_result = self._create_branches(workspace_root, version, names)
-            if branch_result.is_failure:
+            if branch_result.failure:
                 return branch_result
 
         dispatch_cfg = m.Infra.ReleasePhaseDispatchConfig(
-            phase=c.Infra.Verbs.VALIDATE,  # placeholder — overridden per stage
+            phase=c.Infra.VERB_VALIDATE,  # placeholder — overridden per stage
             workspace_root=workspace_root,
             version=spec.version,
             tag=spec.tag,
@@ -242,18 +241,18 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
             pipeline_ctx,
             fail_fast=True,
         )
-        if pipeline_result.is_failure:
+        if pipeline_result.failure:
             return r[bool].fail(pipeline_result.error or "pipeline execution failed")
 
         result = pipeline_result.value
-        if not result.ok:
+        if not result.success:
             failed = result.failed_stages
             error_msg = failed[0].error if failed else "pipeline failed"
             return r[bool].fail(error_msg or "pipeline failed")
 
         if next_dev and (not dry_run):
             return self._bump_next_dev(workspace_root, version, names, next_bump)
-        self.logger.info("release_run_completed", status=c.Infra.ReportKeys.OK)
+        self.logger.info("release_run_completed", status=c.Infra.RK_OK)
         return r[bool].ok(True)
 
     def _build_release_stages(
@@ -268,10 +267,10 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
         """
         active: set[str] = set(phases)
         phase_order: Sequence[str] = [
-            c.Infra.Verbs.VALIDATE,
+            c.Infra.VERB_VALIDATE,
             c.Infra.VERSION,
-            c.Infra.Directories.BUILD,
-            c.Infra.Verbs.PUBLISH,
+            c.Infra.DIR_BUILD,
+            c.Infra.VERB_PUBLISH,
         ]
         stage_list: MutableSequence[m.Cli.PipelineStageSpec] = []
         prev: str | None = None
@@ -301,14 +300,14 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
         def handler(_ctx: m.Cli.PipelineStageContext) -> r[m.Cli.PipelineStageResult]:
             phase_cfg = dispatch_cfg.model_copy(update={"phase": phase_name})
             phase_result = self._dispatch_phase(phase_cfg)
-            if phase_result.is_failure:
+            if phase_result.failure:
                 return r[m.Cli.PipelineStageResult].fail(
                     phase_result.error or f"{phase_name} failed",
                 )
             return r[m.Cli.PipelineStageResult].ok(
                 m.Cli.PipelineStageResult(
                     stage_id=phase_name,
-                    status=c.Cli.Pipeline.STATUS_OK,
+                    status=c.Cli.PIPELINE_STATUS_OK,
                 ),
             )
 
@@ -320,7 +319,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
             self.logger.info(
                 "release_phase_validate",
                 action="dry-run",
-                status=c.Cli.Pipeline.STATUS_OK,
+                status=c.Cli.PIPELINE_STATUS_OK,
             )
             return r[bool].ok(True)
         return u.Cli.run_checked(
@@ -335,10 +334,10 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
     ) -> Sequence[t.Infra.Pair[str, Path]]:
         """Resolve unique build targets from project names."""
         targets: MutableSequence[t.Infra.Pair[str, Path]] = [
-            (c.Infra.ReportKeys.ROOT, workspace_root),
+            (c.Infra.RK_ROOT, workspace_root),
         ]
         projects_result = u.Infra.resolve_projects(workspace_root, project_names)
-        if projects_result.is_success:
+        if projects_result.success:
             targets.extend((p.name, p.path) for p in projects_result.value)
         seen: t.Infra.StrSet = set()
         seen_paths: set[Path] = set()
@@ -361,7 +360,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
     ) -> r[bool]:
         """Bump to the next development version."""
         bump_result = u.Infra.bump_version(version, bump)
-        if bump_result.is_failure:
+        if bump_result.failure:
             return r[bool].fail(bump_result.error or "bump failed")
         next_version = bump_result.value
         ctx = m.Infra.ReleasePhaseDispatchConfig(
@@ -373,7 +372,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
             dev_suffix=True,
         )
         result = self.phase_version(ctx)
-        if result.is_success:
+        if result.success:
             self.logger.info("release_next_dev_version", version=f"{next_version}-dev")
         return result
 
@@ -394,16 +393,16 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
             [c.Infra.GIT, "checkout", "-B", branch],
             cwd=workspace_root,
         )
-        if result.is_failure:
+        if result.failure:
             return result
         projects_result = u.Infra.resolve_projects(workspace_root, project_names)
-        if projects_result.is_success:
+        if projects_result.success:
             for project in projects_result.value:
                 proj_result = u.Cli.run_checked(
                     [c.Infra.GIT, "checkout", "-B", branch],
                     cwd=project.path,
                 )
-                if proj_result.is_failure:
+                if proj_result.failure:
                     return proj_result
         return r[bool].ok(True)
 
@@ -414,7 +413,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
             [c.Infra.GIT, "tag", "-l", tag],
             cwd=workspace_root,
         ).map(lambda value: value.strip() == tag)
-        if exists_result.is_failure:
+        if exists_result.failure:
             return r[bool].fail(exists_result.error or "tag check failed")
         if exists_result.value:
             return r[bool].ok(True)
@@ -429,13 +428,13 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
     ) -> r[bool]:
         """Route to the correct phase method."""
         phase = ctx.phase
-        if phase == c.Infra.Verbs.VALIDATE:
+        if phase == c.Infra.VERB_VALIDATE:
             return self.phase_validate(ctx.workspace_root, dry_run=ctx.dry_run)
         if phase == c.Infra.VERSION:
             return self.phase_version(ctx)
-        if phase == c.Infra.Directories.BUILD:
+        if phase == c.Infra.DIR_BUILD:
             return self.phase_build(ctx)
-        if phase == c.Infra.Verbs.PUBLISH:
+        if phase == c.Infra.VERB_PUBLISH:
             return self.phase_publish(ctx)
         return r[bool].fail(f"unknown phase: {phase}")
 
@@ -449,9 +448,9 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
         workspace_root = ctx.workspace_root
         tag = ctx.tag
         previous_result = self._previous_tag(workspace_root, tag)
-        previous: str = str(previous_result.value) if previous_result.is_success else ""
+        previous: str = str(previous_result.value) if previous_result.success else ""
         changes_result = self._collect_changes(workspace_root, previous, tag)
-        changes: str = str(changes_result.value) if changes_result.is_success else ""
+        changes: str = str(changes_result.value) if changes_result.success else ""
         projects_result = u.Infra.resolve_projects(workspace_root, ctx.project_names)
         project_list: Sequence[m.Infra.ProjectInfo] = projects_result.unwrap_or([])
         return u.Infra.generate_notes(
@@ -473,7 +472,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
     def _push_release(self, workspace_root: Path, tag: str) -> r[bool]:
         """Push branch and tag to remote origin."""
         return u.Cli.run_checked(
-            [c.Infra.GIT, "push", c.Infra.Git.ORIGIN, c.Infra.Git.HEAD, tag],
+            [c.Infra.GIT, "push", c.Infra.GIT_ORIGIN, c.Infra.GIT_HEAD, tag],
             cwd=workspace_root,
         )
 
@@ -485,13 +484,13 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
     ) -> Sequence[Path]:
         """Discover pyproject.toml files that need version updates."""
         files: MutableSequence[Path] = [
-            workspace_root / c.Infra.Files.PYPROJECT_FILENAME,
+            workspace_root / c.Infra.PYPROJECT_FILENAME,
         ]
         projects_result = u.Infra.resolve_projects(workspace_root, project_names)
-        if projects_result.is_success:
+        if projects_result.success:
             projects: Sequence[m.Infra.ProjectInfo] = projects_result.value
             for project in projects:
-                pyproject = project.path / c.Infra.Files.PYPROJECT_FILENAME
+                pyproject = project.path / c.Infra.PYPROJECT_FILENAME
                 if pyproject.exists():
                     files.append(pyproject)
         return sorted({path.resolve() for path in files if path.exists()})

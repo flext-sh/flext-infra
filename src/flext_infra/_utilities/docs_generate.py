@@ -211,12 +211,8 @@ class FlextInfraUtilitiesDocsGenerate:
             c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
         )
         scopes = (
-            [
-                scope
-                for scope in scopes_result.value
-                if scope.name != c.Infra.ReportKeys.ROOT
-            ]
-            if scopes_result.is_success
+            [scope for scope in scopes_result.value if scope.name != c.Infra.RK_ROOT]
+            if scopes_result.success
             else []
         )
         catalog_entries: MutableSequence[dict[str, str]] = []
@@ -312,7 +308,7 @@ class FlextInfraUtilitiesDocsGenerate:
                 apply=apply,
                 projects=projects,
             )
-            if scope.name == c.Infra.ReportKeys.ROOT
+            if scope.name == c.Infra.RK_ROOT
             else FlextInfraUtilitiesDocsGenerate.docs_project_generated_files(
                 scope,
                 apply=apply,
@@ -322,8 +318,8 @@ class FlextInfraUtilitiesDocsGenerate:
         _ = u.Cli.json_write(
             scope.report_dir / "generate-summary.json",
             {
-                c.Infra.ReportKeys.SUMMARY: {
-                    c.Infra.ReportKeys.SCOPE: scope.name,
+                c.Infra.RK_SUMMARY: {
+                    c.Infra.RK_SCOPE: scope.name,
                     "generated": generated,
                     "apply": apply,
                 },
@@ -355,7 +351,7 @@ class FlextInfraUtilitiesDocsGenerate:
                 )
                 for item in files
             ],
-            result=c.Infra.Status.OK if apply else c.Infra.Status.WARN,
+            result=c.Infra.STATUS_OK if apply else c.Infra.STATUS_WARN,
             reason="generated" if apply else "dry-run",
             passed=apply,
         )

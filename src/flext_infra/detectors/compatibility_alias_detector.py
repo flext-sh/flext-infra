@@ -21,7 +21,7 @@ class FlextInfraCompatibilityAliasDetector:
         """Detect compatibility aliases in a single file."""
         file_path = ctx.file_path
         rope_project = ctx.rope_project
-        if file_path.suffix != c.Infra.Extensions.PYTHON:
+        if file_path.suffix != c.Infra.EXT_PYTHON:
             return []
         resource = u.Infra.get_resource_from_path(rope_project, file_path)
         if resource is None:

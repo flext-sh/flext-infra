@@ -192,7 +192,7 @@ class TestOrchestratorGateNormalization:
 
         normalized = orchestrator._normalize_make_args_for_project(
             project=str(go_project),
-            verb=c.Infra.Verbs.CHECK,
+            verb=c.Infra.VERB_CHECK,
             make_args=["CHECK_GATES=lint,pyrefly,mypy,pyright,security"],
         )
 
@@ -214,7 +214,7 @@ class TestOrchestratorGateNormalization:
         make_args = ["CHECK_GATES=pyrefly"]
         normalized = orchestrator._normalize_make_args_for_project(
             project=str(python_project),
-            verb=c.Infra.Verbs.CHECK,
+            verb=c.Infra.VERB_CHECK,
             make_args=make_args,
         )
 

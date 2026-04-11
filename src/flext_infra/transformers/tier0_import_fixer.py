@@ -50,7 +50,7 @@ class FlextInfraTransformerTier0ImportFixer:
             """Initialize analyzer state for Tier 0 import scanning."""
             self._file_path = file_path
             self._tier0_modules = {
-                n.removesuffix(c.Infra.Extensions.PYTHON) for n in tier0_modules
+                n.removesuffix(c.Infra.EXT_PYTHON) for n in tier0_modules
             }
             self._core_aliases = set(core_aliases)
             self._self_import_aliases: t.Infra.StrSet = set()
@@ -62,7 +62,7 @@ class FlextInfraTransformerTier0ImportFixer:
             project_root = u.Infra.discover_project_root_from_file(self._file_path)
             package_root = pkg_name.split(".", maxsplit=1)[0]
             pkg_dir = (
-                project_root / c.Infra.Paths.DEFAULT_SRC_DIR / package_root
+                project_root / c.Infra.DEFAULT_SRC_DIR / package_root
                 if project_root is not None and package_root
                 else Path()
             )
@@ -71,23 +71,12 @@ class FlextInfraTransformerTier0ImportFixer:
                     package_name="",
                     file_path=self._file_path,
                 )
-            source = self._file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+            source = self._file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
             self._scan_self_imports(source, pkg_name)
             self._scan_runtime_usage(source)
-            alias_map: t.MutableStrMapping = dict(
-                u.Infra.discover_project_aliases(
-                    project_root,
-                ),
-            )
-            alias_map.update(
-                {
-                    alias_name: module_name.split(".")[-1]
-                    for alias_name, module_name in u.Infra.extract_lazy_import_targets(
-                        pkg_dir / c.Infra.Files.INIT_PY,
-                    ).items()
-                    if len(alias_name) == 1 and alias_name.islower()
-                },
-            )
+            alias_map: t.MutableStrMapping = {
+                alias_name: alias_name for alias_name in c.Infra.RUNTIME_ALIAS_NAMES
+            }
             analysis = FlextInfraTransformerTier0ImportFixer.Analysis(
                 package_name=pkg_name,
                 file_path=self._file_path,
@@ -107,7 +96,7 @@ class FlextInfraTransformerTier0ImportFixer:
 
         def _scan_self_imports(self, source: str, pkg_name: str) -> None:
             """Collect single-letter aliases from self-package imports."""
-            for match in c.Infra.SourceCode.FROM_IMPORT_RE.finditer(source):
+            for match in c.Infra.FROM_IMPORT_RE.finditer(source):
                 module = match.group(1)
                 if module != pkg_name:
                     continue

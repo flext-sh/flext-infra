@@ -11,7 +11,7 @@ from typing import Annotated
 from pydantic import Field
 
 from flext_core import m
-from flext_infra import FlextInfraModelsMixins
+from flext_infra._models.mixins import FlextInfraModelsMixins
 
 
 class FlextInfraModelsRope:

@@ -9,6 +9,7 @@ class FlextInfraEnsureCoverageConfigPhase:
     """Ensure coverage report configuration with per-project-type thresholds."""
 
     def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:
+        """Capture tool configuration used to build canonical coverage settings."""
         self._tool_config = tool_config
 
     def apply(
@@ -17,6 +18,7 @@ class FlextInfraEnsureCoverageConfigPhase:
         *,
         project_kind: str = "core",
     ) -> t.StrSequence:
+        """Apply canonical coverage report/run tables for the selected project kind."""
         cov_config = self._tool_config.tools.coverage
         fail_under_map: t.IntMapping = {
             "core": cov_config.fail_under.core,

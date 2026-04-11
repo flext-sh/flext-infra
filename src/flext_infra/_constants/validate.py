@@ -58,78 +58,78 @@ class FlextInfraConstantsSharedInfra:
     )
     INTERNAL_PREFIXES: Final[tuple[str, ...]] = ("flext_", "flext-")
 
-    class Files:
-        PYPROJECT_FILENAME: Final[str] = "pyproject.toml"
-        MAKEFILE_FILENAME: Final[str] = "Makefile"
-        BASE_MK: Final[str] = "base.mk"
-        GO_MOD: Final[str] = "go.mod"
-        GITMODULES: Final[str] = ".gitmodules"
-        GITIGNORE: Final[str] = ".gitignore"
-        INIT_PY: Final[str] = "__init__.py"
-        CONSTANTS_PY: Final[str] = "constants.py"
-        MODELS_PY: Final[str] = "models.py"
-        UTILITIES_PY: Final[str] = "utilities.py"
-        TYPINGS_PY: Final[str] = "typings.py"
-        PROTOCOLS_PY: Final[str] = "protocols.py"
-        CONFTEST_PY: Final[str] = "conftest.py"
-        PY_TYPED: Final[str] = "py.typed"
+    # --- File names (was: class Files) ---
+    PYPROJECT_FILENAME: Final[str] = "pyproject.toml"
+    MAKEFILE_FILENAME: Final[str] = "Makefile"
+    BASE_MK: Final[str] = "base.mk"
+    GO_MOD: Final[str] = "go.mod"
+    GITMODULES: Final[str] = ".gitmodules"
+    GITIGNORE: Final[str] = ".gitignore"
+    INIT_PY: Final[str] = "__init__.py"
+    CONSTANTS_PY: Final[str] = "constants.py"
+    MODELS_PY: Final[str] = "models.py"
+    UTILITIES_PY: Final[str] = "utilities.py"
+    TYPINGS_PY: Final[str] = "typings.py"
+    PROTOCOLS_PY: Final[str] = "protocols.py"
+    CONFTEST_PY: Final[str] = "conftest.py"
+    PY_TYPED: Final[str] = "py.typed"
 
-    class Git:
-        DIR: Final[str] = ".git"
-        ORIGIN: Final[str] = "origin"
-        MAIN: Final[str] = "main"
-        HEAD: Final[str] = "HEAD"
+    # --- Git constants (was: class Git) ---
+    GIT_DIR: Final[str] = ".git"
+    GIT_ORIGIN: Final[str] = "origin"
+    GIT_MAIN: Final[str] = "main"
+    GIT_HEAD: Final[str] = "HEAD"
 
-    class Packages:
-        CORE: Final[str] = "flext-core"
-        CORE_UNDERSCORE: Final[str] = "flext_core"
-        ROOT: Final[str] = "flext"
-        PREFIX_HYPHEN: Final[str] = "flext-"
-        PREFIX_UNDERSCORE: Final[str] = "flext_"
+    # --- Package name prefixes (was: class Packages) ---
+    PKG_CORE: Final[str] = "flext-core"
+    PKG_CORE_UNDERSCORE: Final[str] = "flext_core"
+    PKG_ROOT: Final[str] = "flext"
+    PKG_PREFIX_HYPHEN: Final[str] = "flext-"
+    PKG_PREFIX_UNDERSCORE: Final[str] = "flext_"
 
-    class Dunders:
-        ALL: Final[str] = "__all__"
-        VERSION: Final[str] = "__version__"
-        INIT: Final[str] = "__init__"
-        FUTURE: Final[str] = "__future__"
-        NAME: Final[str] = "__name__"
-        FILE: Final[str] = "__file__"
-        PYCACHE: Final[str] = "__pycache__"
+    # --- Dunder names (was: class Dunders) ---
+    DUNDER_ALL: Final[str] = "__all__"
+    DUNDER_VERSION: Final[str] = "__version__"
+    DUNDER_INIT: Final[str] = "__init__"
+    DUNDER_FUTURE: Final[str] = "__future__"
+    DUNDER_NAME: Final[str] = "__name__"
+    DUNDER_FILE: Final[str] = "__file__"
+    DUNDER_PYCACHE: Final[str] = "__pycache__"
 
-    class Extensions:
-        PYTHON: Final[str] = ".py"
-        PYTHON_GLOB: Final[str] = "*.py"
-        STUB: Final[str] = ".pyi"
-        STUB_GLOB: Final[str] = "*.pyi"
-        TOML: Final[str] = ".toml"
-        YAML: Final[str] = ".yml"
-        MARKDOWN: Final[str] = ".md"
+    # --- File extensions (was: class Extensions) ---
+    EXT_PYTHON: Final[str] = ".py"
+    EXT_PYTHON_GLOB: Final[str] = "*.py"
+    EXT_STUB: Final[str] = ".pyi"
+    EXT_STUB_GLOB: Final[str] = "*.pyi"
+    EXT_TOML: Final[str] = ".toml"
+    EXT_YAML: Final[str] = ".yml"
+    EXT_MARKDOWN: Final[str] = ".md"
 
-    class Directories:
-        TESTS: Final[str] = "tests"
-        EXAMPLES: Final[str] = "examples"
-        SCRIPTS: Final[str] = "scripts"
-        TYPINGS: Final[str] = "typings"
-        DOCS: Final[str] = "docs"
-        BUILD: Final[str] = "build"
-        DIST: Final[str] = "dist"
-        SITE: Final[str] = "site"
+    # --- Directory names (was: class Directories) ---
+    DIR_TESTS: Final[str] = "tests"
+    DIR_EXAMPLES: Final[str] = "examples"
+    DIR_SCRIPTS: Final[str] = "scripts"
+    DIR_TYPINGS: Final[str] = "typings"
+    DIR_DOCS: Final[str] = "docs"
+    DIR_BUILD: Final[str] = "build"
+    DIR_DIST: Final[str] = "dist"
+    DIR_SITE: Final[str] = "site"
 
-    class Timeouts:
-        DEFAULT: Final[int] = 300
-        SHORT: Final[int] = 60
-        MEDIUM: Final[int] = 120
-        LONG: Final[int] = 600
-        CI: Final[int] = 900
+    # --- Timeout values in seconds (was: class Timeouts) ---
+    TIMEOUT_DEFAULT: Final[int] = 300
+    TIMEOUT_SHORT: Final[int] = 60
+    TIMEOUT_MEDIUM: Final[int] = 120
+    TIMEOUT_LONG: Final[int] = 600
+    TIMEOUT_CI: Final[int] = 900
 
-    class Paths:
-        WORKSPACE_MARKERS: Final[frozenset[str]] = frozenset({
-            ".git",
-            "Makefile",
-            "pyproject.toml",
-        })
-        VENV_BIN_REL: Final[str] = ".venv/bin"
-        DEFAULT_SRC_DIR: Final[str] = "src"
+    # --- Path constants (was: class Paths) ---
+    WORKSPACE_MARKERS: Final[frozenset[str]] = frozenset({
+        ".git",
+        "Makefile",
+        "pyproject.toml",
+    })
+    VENV_BIN_REL: Final[str] = ".venv/bin"
+    DEFAULT_SRC_DIR: Final[str] = "src"
 
 
 __all__ = ["FlextInfraConstantsSharedInfra"]

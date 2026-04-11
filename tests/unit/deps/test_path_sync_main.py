@@ -6,6 +6,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
+from flext_infra import main
 from tests import u
 
 
@@ -56,7 +57,7 @@ def test_main_auto_detects_workspace_and_rewrites_internal_paths(
         gitmodules_members=("flext-core", "flext-cli"),
     )
 
-    exit_code = u.Infra.main(["--workspace", str(workspace), "--apply"])
+    exit_code = main(["deps", "path-sync", "--workspace", str(workspace), "--apply"])
 
     tm.that(exit_code, eq=0)
     tm.that(
@@ -157,9 +158,15 @@ def test_run_cli_rewrites_root_and_projects_for_standalone_mode(
         },
     )
 
-    exit_code = u.Infra.run_cli(
-        ["--workspace", str(workspace), "--mode", "standalone", "--apply"],
-    )
+    exit_code = main([
+        "deps",
+        "path-sync",
+        "--workspace",
+        str(workspace),
+        "--mode",
+        "standalone",
+        "--apply",
+    ])
 
     tm.that(exit_code, eq=0)
     tm.that(

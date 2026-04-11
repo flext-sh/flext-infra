@@ -21,7 +21,7 @@ def test_sync_github_workflows_reports_create_operations(
         m.Infra.GithubWorkflowSyncRequest(workspace=str(workspace)),
     )
 
-    assert result.is_success
+    assert result.success
     report = result.unwrap()
     assert report.mode == "dry-run"
     assert report.summary == {"create": 2}
@@ -48,7 +48,7 @@ def test_sync_github_workflows_apply_writes_ci_files_and_report(
         ),
     )
 
-    assert result.is_success
+    assert result.success
     assert report_path.is_file()
     for project_name in ("flext-a", "flext-b"):
         destination = workspace / project_name / ".github/workflows/ci.yml"
@@ -75,7 +75,7 @@ def test_sync_github_workflows_prunes_noncanonical_files(
         ),
     )
 
-    assert result.is_success
+    assert result.success
     report = result.unwrap()
     assert report.summary == {"create": 1, "prune": 1}
     assert not extra_workflow.exists()
@@ -98,7 +98,7 @@ def test_lint_github_workflows_writes_report(
         ),
     )
 
-    assert result.is_success
+    assert result.success
     outcome = result.unwrap()
     assert report_path.is_file()
     if shutil.which("actionlint") is None:
@@ -122,5 +122,5 @@ def test_run_github_pull_request_fails_for_minimal_repo(
         ),
     )
 
-    assert result.is_failure
+    assert result.failure
     assert "PR operation exited with code" in (result.error or "")

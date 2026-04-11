@@ -92,8 +92,8 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
         if project_root is None:
             return result
         with FlextInfraUtilitiesRopeCore.open_project(project_root.parent) as rope_proj:
-            for py_file in sorted(package_dir.glob(c.Infra.Extensions.PYTHON_GLOB)):
-                if py_file.name == c.Infra.Files.INIT_PY:
+            for py_file in sorted(package_dir.glob(c.Infra.EXT_PYTHON_GLOB)):
+                if py_file.name == c.Infra.INIT_PY:
                     continue
                 resource = cls.get_resource_from_path(rope_proj, py_file)
                 if resource is None:

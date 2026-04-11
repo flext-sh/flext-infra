@@ -20,10 +20,10 @@ def test_release_orchestrator_defaults_are_public_and_typed() -> None:
     params = FlextInfraReleaseOrchestrator.model_validate({})
 
     assert params.phase_names == [
-        c.Infra.Verbs.VALIDATE,
+        c.Infra.VERB_VALIDATE,
         c.Infra.VERSION,
-        c.Infra.Directories.BUILD,
-        c.Infra.Verbs.PUBLISH,
+        c.Infra.DIR_BUILD,
+        c.Infra.VERB_PUBLISH,
     ]
     assert params.project_names is None
     assert params.push is False
@@ -41,8 +41,8 @@ def test_release_orchestrator_normalizes_phase_and_projects() -> None:
     )
 
     assert list(params.phase_names) == [
-        c.Infra.Verbs.VALIDATE,
-        c.Infra.Directories.BUILD,
+        c.Infra.VERB_VALIDATE,
+        c.Infra.DIR_BUILD,
     ]
     assert list(params.project_names or ()) == ["flext-core", "flext-api"]
     assert params.interactive == 0

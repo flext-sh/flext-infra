@@ -35,7 +35,7 @@ class FlextInfraUtilitiesGithubPr:
             workspace_root,
             list(request.project_names or []),
         )
-        if projects_result.is_failure:
+        if projects_result.failure:
             return r[m.Infra.GithubPullRequestWorkspaceReport].fail(
                 projects_result.error or "project resolution failed",
             )
@@ -84,7 +84,7 @@ class FlextInfraUtilitiesGithubPr:
             workspace_root=context.workspace_root,
             request=context.request,
         )
-        if run_result.is_success:
+        if run_result.success:
             outcome = run_result.value
             context.outcomes.append(outcome)
             return outcome.exit_code != 0
@@ -96,28 +96,28 @@ class FlextInfraUtilitiesGithubPr:
             [c.Infra.GIT, "status", "--porcelain"],
             cwd=repo_root,
         ).map(lambda value: bool(value.strip()))
-        if changes_result.is_failure:
+        if changes_result.failure:
             return r[bool].fail(changes_result.error or "changes check failed")
         if not changes_result.value:
             return r[bool].ok(True)
         add_result = u.Cli.run_checked([c.Infra.GIT, "add", "-A"], cwd=repo_root)
-        if add_result.is_failure:
+        if add_result.failure:
             return r[bool].fail(add_result.error or "git add failed")
         staged_result = u.Cli.capture(
             [c.Infra.GIT, "diff", "--cached", "--name-only"],
             cwd=repo_root,
         )
-        if staged_result.is_success and (not staged_result.value.strip()):
+        if staged_result.success and (not staged_result.value.strip()):
             return r[bool].ok(True)
         commit_result = u.Cli.run_checked(
             [c.Infra.GIT, "commit", "-m", "chore: checkpoint pending changes"],
             cwd=repo_root,
         )
-        if commit_result.is_failure:
+        if commit_result.failure:
             return r[bool].fail(commit_result.error or "git commit failed")
         command = [c.Infra.GIT, "push"]
         if branch:
-            command.extend(["-u", c.Infra.Git.ORIGIN, branch])
+            command.extend(["-u", c.Infra.GIT_ORIGIN, branch])
         return u.Cli.run_checked(
             command,
             cwd=repo_root,
@@ -137,7 +137,7 @@ class FlextInfraUtilitiesGithubPr:
         display = workspace_root.name if repo_root == workspace_root else repo_root.name
         report_dir = FlextInfraUtilitiesReporting.get_report_dir(
             workspace_root,
-            c.Infra.ReportKeys.WORKSPACE,
+            c.Infra.RK_WORKSPACE,
             c.Infra.PR,
         )
         with contextlib.suppress(OSError):
@@ -150,13 +150,13 @@ class FlextInfraUtilitiesGithubPr:
         )
         started = time.monotonic()
         to_file_result = u.Cli.run_to_file(command, log_path)
-        if to_file_result.is_failure:
+        if to_file_result.failure:
             return r[m.Infra.GithubPullRequestOutcome].fail(
                 to_file_result.error or "command execution error",
             )
         exit_code = to_file_result.value
         elapsed = int(time.monotonic() - started)
-        status = c.Infra.Status.OK if exit_code == 0 else c.Infra.Status.FAIL
+        status = c.Infra.STATUS_OK if exit_code == 0 else c.Infra.STATUS_FAIL
         return r[m.Infra.GithubPullRequestOutcome].ok(
             m.Infra.GithubPullRequestOutcome(
                 display=display,

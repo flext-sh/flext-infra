@@ -37,7 +37,7 @@ class TestsExtendedProjectRunners:
         finally:
             os.environ["PATH"] = original_path
 
-        assert result.is_success
+        assert result.success
         assert {"lint", "format", "pyrefly"} <= set(result.value[0].gates)
 
     def test_lint_public_method_returns_lint_gate_result(self, tmp_path: Path) -> None:
@@ -56,7 +56,7 @@ class TestsExtendedProjectRunners:
         finally:
             os.environ["PATH"] = original_path
 
-        assert result.is_success
+        assert result.success
         assert result.value.gate == "lint"
 
     def test_format_public_method_returns_format_gate_result(
@@ -78,5 +78,5 @@ class TestsExtendedProjectRunners:
         finally:
             os.environ["PATH"] = original_path
 
-        assert result.is_success
+        assert result.success
         assert result.value.gate == "format"

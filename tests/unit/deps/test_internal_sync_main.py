@@ -4,7 +4,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraInternalDependencySyncService
+from flext_infra import main
 
 
 class TestMain:
@@ -14,9 +14,7 @@ class TestMain:
             encoding="utf-8",
         )
         tm.that(
-            FlextInfraInternalDependencySyncService.main(
-                ["--workspace", str(tmp_path)],
-            ),
+            main(["deps", "internal-sync", "--workspace", str(tmp_path)]),
             eq=0,
         )
 
@@ -26,8 +24,6 @@ class TestMain:
             encoding="utf-8",
         )
         tm.that(
-            FlextInfraInternalDependencySyncService.main(
-                ["--workspace", str(tmp_path)],
-            ),
+            main(["deps", "internal-sync", "--workspace", str(tmp_path)]),
             eq=1,
         )

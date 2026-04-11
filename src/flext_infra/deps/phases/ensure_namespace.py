@@ -11,6 +11,7 @@ class FlextInfraEnsureNamespaceToolingPhase:
     """Ensure namespace discovery is reflected across project tooling tables."""
 
     def apply(self, doc: t.Cli.TomlDocument, *, path: Path) -> t.StrSequence:
+        """Apply detected first-party namespaces to dependency tooling tables."""
         detected = sorted(
             {
                 *u.Infra.discover_first_party_namespaces(path.parent),

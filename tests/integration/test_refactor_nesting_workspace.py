@@ -26,7 +26,7 @@ class TestWorkspaceLevelRefactor:
         violations_count = 0
         for proj in projects:
             result = scanner.scan(tmp_path / proj)
-            assert result.is_success
+            assert result.success
             raw_files = result.value.get("files_scanned", 0)
             files_scanned += (
                 int(raw_files) if isinstance(raw_files, (int, float)) else 0
@@ -51,8 +51,8 @@ class TestWorkspaceLevelRefactor:
         scanner = FlextInfraRefactorLooseClassScanner()
         result_a = scanner.scan(tmp_path / "project-a")
         result_b = scanner.scan(tmp_path / "project-b")
-        assert result_a.is_success
-        assert result_b.is_success
+        assert result_a.success
+        assert result_b.success
         total_files = 0
         for result in (result_a, result_b):
             raw = result.value.get("files_scanned", 0)
@@ -73,7 +73,7 @@ class TestWorkspaceLevelRefactor:
         all_violations: MutableSequence[FlextInfraModels.Infra.LooseClassViolation] = []
         for proj in projects:
             result = scanner.scan(tmp_path / proj)
-            assert result.is_success
+            assert result.success
             violations_raw = result.value.get("violations", [])
             if isinstance(violations_raw, list):
                 for v_item in violations_raw:

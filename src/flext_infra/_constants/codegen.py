@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping, Sequence
+from enum import StrEnum, unique
 from typing import ClassVar, Final
 
 from flext_infra import t
@@ -113,142 +114,132 @@ class FlextInfraConstantsCodegen:
     }
     "Mapping of single-letter aliases to flext-core runtime targets."
 
-    class Detection:
-        """Constants for constant detection and analysis."""
+    # --- Constant detection constants (was: class Detection) ---
+    DETECTION_MIN_QUOTED_LITERAL_LEN: Final[int] = 2
+    "Minimum length for a quoted string to be considered a literal."
+    DETECTION_TYPEVAR_ASSIGN_RE: Final[re.Pattern[str]] = re.compile(
+        r"^(\w+)\s*=\s*(?:TypeVar|ParamSpec|TypeVarTuple)\s*\(",
+        re.MULTILINE,
+    )
+    "Regex: TypeVar/ParamSpec/TypeVarTuple assignments."
+    DETECTION_MIN_ATTRIBUTE_CHAIN: Final[int] = 2
+    "Minimum dotted-chain length for direct constant references."
+    DETECTION_MIN_DIRECT_REFERENCE_CHAIN: Final[int] = 2
+    "Minimum chain length for FlextXxxConstants.ATTR references."
+    DETECTION_TRIVIAL_VALUES: Final[frozenset[str]] = frozenset({
+        "True",
+        "False",
+        "None",
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "-1",
+        '""',
+        "''",
+        "[]",
+        "{}",
+        "()",
+    })
+    "Literal values considered trivial for constant detection heuristics."
+    DETECTION_FINAL_DECL_RE: Final[re.Pattern[str]] = re.compile(
+        r"^(?P<indent>\s*)(?P<name>[A-Z_][A-Z0-9_]*)"
+        r"\s*:\s*(?P<ann>Final\[.*?\])\s*=\s*(?P<value>.+?)\s*(?:#.*)?$",
+        re.MULTILINE,
+    )
+    "Regex: NAME: Final[TYPE] = VALUE (with optional inline comment)."
+    DETECTION_CLASS_DECL_RE: Final[re.Pattern[str]] = re.compile(
+        r"class\s+(\w+)",
+    )
+    "Regex: class ClassName (captures class name)."
+    DETECTION_DIRECT_USAGE_RE: Final[re.Pattern[str]] = re.compile(
+        r"\bFlext\w*Constants\.([A-Z_][A-Z0-9_]*)",
+    )
+    "Regex: FlextXxxConstants.CONSTANT_NAME (captures constant name)."
+    DETECTION_ALIAS_USAGE_RE: Final[re.Pattern[str]] = re.compile(
+        r"\bc\.\w*\.([A-Z_][A-Z0-9_]*)",
+    )
+    "Regex: c.Namespace.CONSTANT_NAME (captures constant name)."
+    DETECTION_C_ALIAS_RE: Final[re.Pattern[str]] = re.compile(r"\bc\.([A-Za-z_]\w*)")
+    "Regex: c.ATTR (captures ATTR after literal ``c.``)."
+    DETECTION_DIRECT_REF_RE: Final[re.Pattern[str]] = re.compile(
+        r"\b(Flext\w*Constants(?:\.[A-Za-z_]\w*)+)",
+    )
+    "Regex: FlextXxxConstants.ATTR.SUBATTR... (captures full dotted chain)."
+    DETECTION_CANONICAL_ALIASES: Final[frozenset[str]] = frozenset({
+        "c",
+        "m",
+        "p",
+        "t",
+        "u",
+        "r",
+        "e",
+        "s",
+        "d",
+        "h",
+        "x",
+    })
+    "Canonical single-letter runtime aliases."
 
-        MIN_QUOTED_LITERAL_LEN: Final[int] = 2
-        "Minimum length for a quoted string to be considered a literal."
-        TYPEVAR_ASSIGN_RE: Final[re.Pattern[str]] = re.compile(
-            r"^(\w+)\s*=\s*(?:TypeVar|ParamSpec|TypeVarTuple)\s*\(",
-            re.MULTILINE,
-        )
-        "Regex: TypeVar/ParamSpec/TypeVarTuple assignments."
-        MIN_ATTRIBUTE_CHAIN: Final[int] = 2
-        "Minimum dotted-chain length for direct constant references."
-        MIN_DIRECT_REFERENCE_CHAIN: Final[int] = 2
-        "Minimum chain length for FlextXxxConstants.ATTR references."
-        TRIVIAL_VALUES: Final[frozenset[str]] = frozenset({
-            "True",
-            "False",
-            "None",
-            "0",
-            "1",
-            "2",
-            "3",
-            "4",
-            "5",
-            "-1",
-            '""',
-            "''",
-            "[]",
-            "{}",
-            "()",
-        })
-        "Literal values considered trivial for constant detection heuristics."
-        FINAL_DECL_RE: Final[re.Pattern[str]] = re.compile(
-            r"^(?P<indent>\s*)(?P<name>[A-Z_][A-Z0-9_]*)"
-            r"\s*:\s*(?P<ann>Final\[.*?\])\s*=\s*(?P<value>.+?)\s*(?:#.*)?$",
-            re.MULTILINE,
-        )
-        "Regex: NAME: Final[TYPE] = VALUE (with optional inline comment)."
-        CLASS_DECL_RE: Final[re.Pattern[str]] = re.compile(
-            r"class\s+(\w+)",
-        )
-        "Regex: class ClassName (captures class name)."
-        DIRECT_USAGE_RE: Final[re.Pattern[str]] = re.compile(
-            r"\bFlext\w*Constants\.([A-Z_][A-Z0-9_]*)",
-        )
-        "Regex: FlextXxxConstants.CONSTANT_NAME (captures constant name)."
-        ALIAS_USAGE_RE: Final[re.Pattern[str]] = re.compile(
-            r"\bc\.\w*\.([A-Z_][A-Z0-9_]*)",
-        )
-        "Regex: c.Namespace.CONSTANT_NAME (captures constant name)."
-        C_ALIAS_RE: Final[re.Pattern[str]] = re.compile(r"\bc\.([A-Za-z_]\w*)")
-        "Regex: c.ATTR (captures ATTR after literal ``c.``)."
-        DIRECT_REF_RE: Final[re.Pattern[str]] = re.compile(
-            r"\b(Flext\w*Constants(?:\.[A-Za-z_]\w*)+)",
-        )
-        "Regex: FlextXxxConstants.ATTR.SUBATTR... (captures full dotted chain)."
-        CANONICAL_ALIASES: Final[frozenset[str]] = frozenset({
-            "c",
-            "m",
-            "p",
-            "t",
-            "u",
-            "r",
-            "e",
-            "s",
-            "d",
-            "h",
-            "x",
-        })
-        "Canonical single-letter runtime aliases."
+    # --- Template file names (was: class Templates) ---
+    TEMPLATE_PREAMBLE_STANDARD: Final[str] = "lazy_init_preamble_standard.py.j2"
+    "Standard module preamble (future annotations + TYPE_CHECKING + lazy helpers)."
+    TEMPLATE_PREAMBLE_L0: Final[str] = "lazy_init_preamble_l0.py.j2"
+    "L0 typings preamble (inline lazy to break circular import chain)."
+    TEMPLATE_BODY: Final[str] = "lazy_init_body.py.j2"
+    "Middle section: TYPE_CHECKING block, _LAZY_IMPORTS dict, __all__ list."
+    TEMPLATE_GETATTR_STANDARD: Final[str] = "lazy_init_getattr_standard.py.j2"
+    "Standard PEP 562 __getattr__ + __dir__ + cleanup (with _LAZY_CACHE)."
+    TEMPLATE_GETATTR_L0: Final[str] = "lazy_init_getattr_l0.py.j2"
+    "L0-typings __getattr__ + __dir__ + namespace-cleanup."
 
-    class Templates:
-        """Jinja2 template file names for the lazy-init file generator.
+    # --- Pipeline stage StrEnum (was: class Pipeline plain strings) ---
+    @unique
+    class PipelineStage(StrEnum):
+        """Canonical codegen pipeline stage identifiers."""
 
-        All templates live in ``flext_infra/templates/`` and are rendered
-        via the shared Jinja2 ``Environment`` in
-        ``FlextInfraCodegenGeneration``.
-        """
+        DISCOVER = "discover"
+        PY_TYPED = "py_typed"
+        CENSUS_BEFORE = "census_before"
+        SCAFFOLD = "scaffold"
+        AUTO_FIX = "auto_fix"
+        LAZY_INIT = "lazy_init"
+        CENSUS_AFTER = "census_after"
 
-        PREAMBLE_STANDARD: Final[str] = "lazy_init_preamble_standard.py.j2"
-        "Standard module preamble (future annotations + TYPE_CHECKING + lazy helpers)."
+    PIPELINE_STAGE_ORDER: ClassVar[Sequence[str]] = (
+        PipelineStage.DISCOVER,
+        PipelineStage.PY_TYPED,
+        PipelineStage.CENSUS_BEFORE,
+        PipelineStage.SCAFFOLD,
+        PipelineStage.AUTO_FIX,
+        PipelineStage.LAZY_INIT,
+        PipelineStage.CENSUS_AFTER,
+    )
+    "Ordered sequence of pipeline stage identifiers."
+    PIPELINE_KEY_DRY_RUN: Final[str] = "dry_run"
+    "Config key for pipeline dry-run mode."
 
-        PREAMBLE_L0: Final[str] = "lazy_init_preamble_l0.py.j2"
-        "L0 typings preamble (inline lazy to break circular import chain)."
-
-        BODY: Final[str] = "lazy_init_body.py.j2"
-        "Middle section: TYPE_CHECKING block, _LAZY_IMPORTS dict, __all__ list."
-
-        GETATTR_STANDARD: Final[str] = "lazy_init_getattr_standard.py.j2"
-        "Standard PEP 562 __getattr__ + __dir__ + cleanup (with _LAZY_CACHE)."
-
-        GETATTR_L0: Final[str] = "lazy_init_getattr_l0.py.j2"
-        "L0-typings __getattr__ + __dir__ + namespace-cleanup."
-
-    class Pipeline:
-        """Codegen pipeline stage and configuration constants."""
-
-        STAGE_DISCOVER: Final[str] = "discover"
-        STAGE_PY_TYPED: Final[str] = "py_typed"
-        STAGE_CENSUS_BEFORE: Final[str] = "census_before"
-        STAGE_SCAFFOLD: Final[str] = "scaffold"
-        STAGE_AUTO_FIX: Final[str] = "auto_fix"
-        STAGE_LAZY_INIT: Final[str] = "lazy_init"
-        STAGE_CENSUS_AFTER: Final[str] = "census_after"
-
-        STAGE_ORDER: ClassVar[Sequence[str]] = (
-            STAGE_DISCOVER,
-            STAGE_PY_TYPED,
-            STAGE_CENSUS_BEFORE,
-            STAGE_SCAFFOLD,
-            STAGE_AUTO_FIX,
-            STAGE_LAZY_INIT,
-            STAGE_CENSUS_AFTER,
-        )
-
-        KEY_DRY_RUN: Final[str] = "dry_run"
-
-    class QualityGate:
-        """Constants used by constants quality gate analysis/reporting."""
-
-        REPORT_DIR: Final[str] = ".reports/codegen/constants-quality-gate"
-        RULE_KEYS: Final[t.StrSequence] = (
-            "NS-000",
-            "NS-001",
-            "NS-002",
-            "NS-003",
-            "NS-004",
-            "NS-005",
-        )
-        CHECK_NAMESPACE_COMPLIANCE: Final[str] = "namespace_compliance"
-        CHECK_MRO_VALIDITY: Final[str] = "mro_validity"
-        CHECK_IMPORT_RESOLUTION: Final[str] = "import_resolution"
-        CHECK_LAYER_COMPLIANCE: Final[str] = "layer_compliance"
-        CHECK_DUPLICATION_REDUCTION: Final[str] = "duplication_reduction"
-        CHECK_TYPE_SAFETY: Final[str] = "type_safety"
-        CHECK_LINT_CLEAN: Final[str] = "lint_clean"
+    # --- Quality gate constants (was: class QualityGate) ---
+    QG_REPORT_DIR: Final[str] = ".reports/codegen/constants-quality-gate"
+    "Report directory for constants quality gate."
+    QG_RULE_KEYS: Final[t.StrSequence] = (
+        "NS-000",
+        "NS-001",
+        "NS-002",
+        "NS-003",
+        "NS-004",
+        "NS-005",
+    )
+    "Canonical rule key identifiers for quality gate reporting."
+    QG_CHECK_NAMESPACE_COMPLIANCE: Final[str] = "namespace_compliance"
+    QG_CHECK_MRO_VALIDITY: Final[str] = "mro_validity"
+    QG_CHECK_IMPORT_RESOLUTION: Final[str] = "import_resolution"
+    QG_CHECK_LAYER_COMPLIANCE: Final[str] = "layer_compliance"
+    QG_CHECK_DUPLICATION_REDUCTION: Final[str] = "duplication_reduction"
+    QG_CHECK_TYPE_SAFETY: Final[str] = "type_safety"
+    QG_CHECK_LINT_CLEAN: Final[str] = "lint_clean"
 
 
 __all__ = ["FlextInfraConstantsCodegen"]

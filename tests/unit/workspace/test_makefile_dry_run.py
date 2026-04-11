@@ -32,7 +32,7 @@ def _write_workspace_makefile_fixture(tmp_path: Path) -> Path:
             encoding="utf-8",
         )
     result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
-    assert result.is_success, result.error
+    assert result.success, result.error
     return workspace_root
 
 

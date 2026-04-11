@@ -38,7 +38,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
             cls._shared_workspace_root(py_files=py_files),
         ) as rope_project:
             for file_path in py_files:
-                if file_path.name == c.Infra.Files.INIT_PY:
+                if file_path.name == c.Infra.INIT_PY:
                     continue
                 project_root = (
                     FlextInfraUtilitiesDiscovery.discover_project_root_from_file(
@@ -53,7 +53,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
                 ):
                     continue
                 try:
-                    source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+                    source = file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
                 except OSError:
                     continue
                 if FlextInfraUtilitiesParsing.looks_like_facade_file(
@@ -118,7 +118,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
                     continue
                 target_class = class_candidates[0]
                 lines = file_path.read_text(
-                    encoding=c.Infra.Encoding.DEFAULT,
+                    encoding=c.Infra.ENCODING_DEFAULT,
                 ).splitlines()
                 kept = [
                     line
@@ -129,7 +129,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
                     "\n".join(kept).rstrip() + f"\n\n{alias_name} = {target_class}\n"
                 )
                 original_source = file_path.read_text(
-                    encoding=c.Infra.Encoding.DEFAULT,
+                    encoding=c.Infra.ENCODING_DEFAULT,
                 )
                 if rewritten == original_source:
                     continue
@@ -157,7 +157,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
             move = FlextInfraUtilitiesRefactorNamespaceMoves._move_named_blocks(
                 project_root=project_root,
                 source_file=source_file,
-                target_filename=c.Infra.Files.PROTOCOLS_PY,
+                target_filename=c.Infra.PROTOCOLS_PY,
                 names=protocol_names,
                 header_prefix="class ",
             )
@@ -210,7 +210,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
         file_path: Path,
         alias_map: t.StrMapping,
     ) -> None:
-        source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+        source = file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
         kept_source = "\n".join(
             line
             for line in source.splitlines()
@@ -241,7 +241,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
         names: t.Infra.StrSet,
         header_prefix: str,
     ) -> t.Infra.Triple[Path, Path, t.Infra.VariadicTuple[str]] | None:
-        source = source_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
+        source = source_file.read_text(encoding=c.Infra.ENCODING_DEFAULT)
         lines = source.splitlines()
         blocks: MutableSequence[str] = []
         ranges: MutableSequence[t.Infra.IntPair] = []
@@ -271,9 +271,9 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
             )
         )
         target_source = (
-            target_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
+            target_file.read_text(encoding=c.Infra.ENCODING_DEFAULT)
             if target_file.exists()
-            else f"{c.Infra.SourceCode.FUTURE_ANNOTATIONS}\n"
+            else f"{c.Infra.FUTURE_ANNOTATIONS}\n"
         )
         target_lines = target_source.splitlines()
         target_lines = FlextInfraUtilitiesRefactorNamespaceMoves._insert_import_lines(
@@ -350,7 +350,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
         source_file: Path,
         alias_names: t.Infra.StrSet,
     ) -> None:
-        source = source_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
+        source = source_file.read_text(encoding=c.Infra.ENCODING_DEFAULT)
         lines = source.splitlines()
         moved_lines: MutableSequence[str] = []
         kept_lines: MutableSequence[str] = []
@@ -378,12 +378,12 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
         target_file = FlextInfraUtilitiesRefactorNamespaceMoves._canonical_target_file(
             project_root=project_root,
             source_file=source_file,
-            filename=c.Infra.Files.TYPINGS_PY,
+            filename=c.Infra.TYPINGS_PY,
         )
         target_source = (
-            target_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
+            target_file.read_text(encoding=c.Infra.ENCODING_DEFAULT)
             if target_file.exists()
-            else f"{c.Infra.SourceCode.FUTURE_ANNOTATIONS}\n"
+            else f"{c.Infra.FUTURE_ANNOTATIONS}\n"
         )
         target_lines = target_source.splitlines()
         missing_imports = [
@@ -457,7 +457,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
                 if resource is None:
                     continue
                 original_source = py_file.read_text(
-                    encoding=c.Infra.Encoding.DEFAULT,
+                    encoding=c.Infra.ENCODING_DEFAULT,
                 )
                 changed = False
                 for source_module, target_module, names in mappings:
@@ -477,12 +477,12 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
                         apply=True,
                     )
                     backup_path = py_file.with_suffix(
-                        py_file.suffix + c.Infra.SafeExecution.BAK_SUFFIX,
+                        py_file.suffix + c.Infra.SAFE_EXECUTION_BAK_SUFFIX,
                     )
                     if not backup_path.exists():
                         backup_path.write_text(
                             original_source,
-                            encoding=c.Infra.Encoding.DEFAULT,
+                            encoding=c.Infra.ENCODING_DEFAULT,
                         )
 
 

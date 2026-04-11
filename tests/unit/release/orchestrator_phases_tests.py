@@ -36,7 +36,7 @@ def build_ctx(
     project_names: list[str] | None = None,
 ) -> m.Infra.ReleasePhaseDispatchConfig:
     return m.Infra.ReleasePhaseDispatchConfig(
-        phase=c.Infra.Directories.BUILD,
+        phase=c.Infra.DIR_BUILD,
         workspace_root=workspace_root,
         version=version,
         tag=f"v{version}",
@@ -52,7 +52,7 @@ def test_phase_validate_dry_run_succeeds(tmp_path: Path) -> None:
 
     result = FlextInfraReleaseOrchestrator().phase_validate(workspace, dry_run=True)
 
-    assert result.is_success
+    assert result.success
 
 
 def test_phase_validate_apply_propagates_make_failure(tmp_path: Path) -> None:
@@ -63,7 +63,7 @@ def test_phase_validate_apply_propagates_make_failure(tmp_path: Path) -> None:
 
     result = FlextInfraReleaseOrchestrator().phase_validate(workspace, dry_run=False)
 
-    assert result.is_failure
+    assert result.failure
 
 
 def test_phase_version_updates_root_and_selected_project(tmp_path: Path) -> None:
@@ -76,7 +76,7 @@ def test_phase_version_updates_root_and_selected_project(tmp_path: Path) -> None
         version_ctx(workspace, project_names=["flext-a"]),
     )
 
-    assert result.is_success
+    assert result.success
     assert 'version = "1.0.0"' in (workspace / "pyproject.toml").read_text()
     assert 'version = "1.0.0"' in (workspace / "flext-a" / "pyproject.toml").read_text()
     assert 'version = "0.1.0"' in (workspace / "flext-b" / "pyproject.toml").read_text()
@@ -89,7 +89,7 @@ def test_phase_version_dry_run_leaves_files_unchanged(tmp_path: Path) -> None:
         version_ctx(workspace, dry_run=True),
     )
 
-    assert result.is_success
+    assert result.success
     assert 'version = "0.1.0"' in (workspace / "pyproject.toml").read_text()
 
 
@@ -105,7 +105,7 @@ def test_phase_build_writes_report_and_logs_for_root_and_project(
         build_ctx(workspace, project_names=["flext-a"]),
     )
 
-    assert result.is_success
+    assert result.success
     report_path = workspace / ".reports" / "release" / "v1.0.0" / "build-report.json"
     report = json.loads(report_path.read_text(encoding="utf-8"))
     assert report["total"] == 2
@@ -127,7 +127,7 @@ def test_phase_build_failure_still_writes_report(tmp_path: Path) -> None:
 
     result = FlextInfraReleaseOrchestrator().phase_build(build_ctx(workspace))
 
-    assert result.is_failure
+    assert result.failure
     report_path = workspace / ".reports" / "release" / "v1.0.0" / "build-report.json"
     report = json.loads(report_path.read_text(encoding="utf-8"))
     assert report["failures"] == 1

@@ -5,9 +5,9 @@ Tests the real entry-point behavior.
 
 from __future__ import annotations
 
-from flext_infra import FlextInfraWorkspaceChecker
+from flext_infra import main
 
 
 def test_workspace_check_main_returns_error_without_projects() -> None:
-    exit_code = FlextInfraWorkspaceChecker.main([])
+    exit_code = main(["check", "run"])
     assert exit_code == 1

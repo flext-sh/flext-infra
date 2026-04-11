@@ -51,7 +51,7 @@ class TestFlextInfraNamespaceValidator:
             module_name="models.py",
         )
         result = validator.validate(root)
-        tm.that(result.is_success, eq=True)
+        tm.that(result.success, eq=True)
         tm.that(result.value.passed, eq=True)
         tm.that(result.value.violations, eq=[])
 
@@ -63,7 +63,7 @@ class TestFlextInfraNamespaceValidator:
             module_name="models.py",
         )
         result = validator.validate(root)
-        tm.that(result.is_success, eq=True)
+        tm.that(result.success, eq=True)
         tm.that(not result.value.passed, eq=True)
         tm.that(
             any("Multiple outer classes found" in v for v in result.value.violations),
@@ -78,7 +78,7 @@ class TestFlextInfraNamespaceValidator:
             module_name="models.py",
         )
         result = validator.validate(root)
-        tm.that(result.is_success, eq=True)
+        tm.that(result.success, eq=True)
         tm.that(not result.value.passed, eq=True)
         tm.that(
             any("No outer class found" in v for v in result.value.violations),
@@ -93,7 +93,7 @@ class TestFlextInfraNamespaceValidator:
             module_name="constants.py",
         )
         result = validator.validate(root)
-        tm.that(result.is_success, eq=True)
+        tm.that(result.success, eq=True)
         tm.that(not result.value.passed, eq=True)
         tm.that(
             any(
@@ -111,7 +111,7 @@ class TestFlextInfraNamespaceValidator:
             module_name="models.py",
         )
         result = validator.validate(root)
-        tm.that(result.is_success, eq=True)
+        tm.that(result.success, eq=True)
         tm.that(not result.value.passed, eq=True)
         tm.that(
             any(
@@ -130,7 +130,7 @@ class TestFlextInfraNamespaceValidator:
             module_name="constants.py",
         )
         result = validator.validate(root)
-        tm.that(result.is_success, eq=True)
+        tm.that(result.success, eq=True)
         tm.that(result.value.passed, eq=True)
 
     def test_rule1_loose_constant_detected(self, tmp_path: Path) -> None:
@@ -141,7 +141,7 @@ class TestFlextInfraNamespaceValidator:
             module_name="models.py",
         )
         result = validator.validate(root)
-        tm.that(result.is_success, eq=True)
+        tm.that(result.success, eq=True)
         tm.that(not result.value.passed, eq=True)
         tm.that(
             any("Loose Final constant" in v for v in result.value.violations),
@@ -156,7 +156,7 @@ class TestFlextInfraNamespaceValidator:
             module_name="models.py",
         )
         result = validator.validate(root)
-        tm.that(result.is_success, eq=True)
+        tm.that(result.success, eq=True)
         tm.that(not result.value.passed, eq=True)
         tm.that(
             any("Multiple outer classes found" in v for v in result.value.violations),
@@ -171,7 +171,7 @@ class TestFlextInfraNamespaceValidator:
             module_name="constants.py",
         )
         result = validator.validate(root)
-        tm.that(result.is_success, eq=True)
+        tm.that(result.success, eq=True)
         tm.that(not result.value.passed, eq=True)
         tm.that(
             any(
@@ -189,7 +189,7 @@ class TestFlextInfraNamespaceValidator:
             module_name="models.py",
         )
         result = validator.validate(root)
-        tm.that(result.is_success, eq=True)
+        tm.that(result.success, eq=True)
         tm.that(not result.value.passed, eq=True)
         tm.that(
             any("Loose collection constant" in v for v in result.value.violations),
@@ -205,7 +205,7 @@ class TestFlextInfraNamespaceValidator:
             module_name="typings.py",
         )
         result = validator.validate(root)
-        tm.that(result.is_success, eq=True)
+        tm.that(result.success, eq=True)
         tm.that(result.value.passed, eq=True)
 
     def test_rule2_typevar_in_class_detected(self, tmp_path: Path) -> None:
@@ -216,7 +216,7 @@ class TestFlextInfraNamespaceValidator:
             module_name="typings.py",
         )
         result = validator.validate(root)
-        tm.that(result.is_success, eq=True)
+        tm.that(result.success, eq=True)
         tm.that(not result.value.passed, eq=True)
         tm.that(
             any("must inherit from a Types base" in v for v in result.value.violations),
@@ -231,7 +231,7 @@ class TestFlextInfraNamespaceValidator:
             module_name="models.py",
         )
         result = validator.validate(root)
-        tm.that(result.is_success, eq=True)
+        tm.that(result.success, eq=True)
         tm.that(not result.value.passed, eq=True)
         tm.that(
             any(
@@ -249,7 +249,7 @@ class TestFlextInfraNamespaceValidator:
             module_name="models.py",
         )
         result = validator.validate(root)
-        tm.that(result.is_success, eq=True)
+        tm.that(result.success, eq=True)
         tm.that(not result.value.passed, eq=True)
         tm.that(
             any(
@@ -267,7 +267,7 @@ class TestFlextInfraNamespaceValidator:
             module_name="typings.py",
         )
         result = validator.validate(root)
-        tm.that(result.is_success, eq=True)
+        tm.that(result.success, eq=True)
         tm.that(not result.value.passed, eq=True)
         tm.that(
             any(
@@ -295,7 +295,7 @@ class TestFlextInfraNamespaceValidator:
             encoding="utf-8",
         )
         result = validator.validate(project_root)
-        tm.that(result.is_success, eq=True)
+        tm.that(result.success, eq=True)
         tm.that(result.value.passed, eq=True)
         tm.that(result.value.violations, eq=[])
         tm.that(result.value.summary, has="0 files checked")
@@ -308,7 +308,7 @@ class TestFlextInfraNamespaceValidator:
             module_name="constants.py",
         )
         result = validator.validate(root)
-        tm.that(result.is_success, eq=True)
+        tm.that(result.success, eq=True)
         tm.that(result.value, is_=m.Infra.ValidationReport)
         tm.that(result.value.summary, has="files checked")
 
@@ -320,7 +320,7 @@ class TestFlextInfraNamespaceValidator:
             module_name="models.py",
         )
         result = validator.validate(root)
-        tm.that(result.is_success, eq=True)
+        tm.that(result.success, eq=True)
         tm.that(len(result.value.violations), gt=0)
         first = result.value.violations[0]
         tm.that(re.search(r"^\[NS-\d{3}-\d{3}\] .+\.py:\d+ — .+$", first), none=False)

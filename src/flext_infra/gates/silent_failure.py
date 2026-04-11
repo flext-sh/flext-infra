@@ -54,9 +54,9 @@ class FlextInfraSilentFailureGate(FlextInfraGate):
             project_dir,
             project_roots=[project_dir],
         )
-        if files_result.is_failure:
+        if files_result.failure:
             issue = m.Infra.Issue(
-                file=c.Infra.Files.PYPROJECT_FILENAME,
+                file=c.Infra.PYPROJECT_FILENAME,
                 line=1,
                 column=1,
                 code=self.gate_id,

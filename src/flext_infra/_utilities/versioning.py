@@ -28,7 +28,7 @@ class FlextInfraUtilitiesVersioning:
         for raw_line in content.splitlines():
             line = raw_line.strip()
             if line.startswith("[") and line.endswith("]"):
-                in_project_section = line == c.Infra.Versioning.PROJECT_SECTION
+                in_project_section = line == c.Infra.SEMVER_PROJECT_SECTION
                 continue
             if not in_project_section or not line.startswith(c.Infra.VERSION):
                 continue
@@ -40,7 +40,7 @@ class FlextInfraUtilitiesVersioning:
     @staticmethod
     def _has_project_table(content: str) -> bool:
         return any(
-            raw_line.strip() == c.Infra.Versioning.PROJECT_SECTION
+            raw_line.strip() == c.Infra.SEMVER_PROJECT_SECTION
             for raw_line in content.splitlines()
         )
 
@@ -53,7 +53,7 @@ class FlextInfraUtilitiesVersioning:
         for raw_line in lines:
             line = raw_line.strip()
             if line.startswith("[") and line.endswith("]"):
-                in_project_section = line == c.Infra.Versioning.PROJECT_SECTION
+                in_project_section = line == c.Infra.SEMVER_PROJECT_SECTION
                 updated_lines.append(raw_line)
                 continue
             if (
@@ -82,10 +82,10 @@ class FlextInfraUtilitiesVersioning:
             r[str] with the bumped version.
 
         """
-        if bump_type not in c.Infra.Versioning.VALID_BUMP_TYPES:
+        if bump_type not in c.Infra.VALID_BUMP_TYPES:
             return r[str].fail(f"invalid bump type: {bump_type}")
         result = FlextInfraUtilitiesVersioning.parse_semver(version)
-        if result.is_failure:
+        if result.failure:
             return r[str].fail(result.error or "parse failed")
         major, minor, patch = result.value
         if bump_type == "major":
@@ -110,9 +110,9 @@ class FlextInfraUtilitiesVersioning:
             r[str] with the version string.
 
         """
-        pyproject = workspace_root / c.Infra.Files.PYPROJECT_FILENAME
+        pyproject = workspace_root / c.Infra.PYPROJECT_FILENAME
         try:
-            content = pyproject.read_text(encoding=c.Infra.Encoding.DEFAULT)
+            content = pyproject.read_text(encoding=c.Infra.ENCODING_DEFAULT)
         except OSError as exc:
             return r[str].fail(f"read failed: {exc}")
         version = FlextInfraUtilitiesVersioning._extract_project_version_from_text(
@@ -133,7 +133,7 @@ class FlextInfraUtilitiesVersioning:
             r with version tuple.
 
         """
-        match = c.Infra.Versioning.SEMVER_RE.match(version)
+        match = c.Infra.SEMVER_RE.match(version)
         if not match:
             return r[t.Infra.Triple[int, int, int]].fail(f"invalid semver: {version}")
         return r[t.Infra.Triple[int, int, int]].ok((
@@ -154,9 +154,9 @@ class FlextInfraUtilitiesVersioning:
             r[bool] with True on success.
 
         """
-        pyproject = project_path / c.Infra.Files.PYPROJECT_FILENAME
+        pyproject = project_path / c.Infra.PYPROJECT_FILENAME
         try:
-            content = pyproject.read_text(encoding=c.Infra.Encoding.DEFAULT)
+            content = pyproject.read_text(encoding=c.Infra.ENCODING_DEFAULT)
         except OSError as exc:
             return r[bool].fail(f"read failed: {exc}")
         if not FlextInfraUtilitiesVersioning._has_project_table(content):
@@ -168,7 +168,7 @@ class FlextInfraUtilitiesVersioning:
         if updated is None:
             return r[bool].fail(f"missing [project] version in {pyproject}")
         try:
-            _ = pyproject.write_text(updated, encoding=c.Infra.Encoding.DEFAULT)
+            _ = pyproject.write_text(updated, encoding=c.Infra.ENCODING_DEFAULT)
         except OSError as exc:
             return r[bool].fail(f"write failed: {exc}")
         return r[bool].ok(True)

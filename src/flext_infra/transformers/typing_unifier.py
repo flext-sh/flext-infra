@@ -275,7 +275,7 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
     @staticmethod
     def _union_pattern(members: frozenset[str]) -> t.Infra.RegexPattern | None:
         """Build regex matching any permutation of a ``A | B | C`` union."""
-        if len(members) < c.Infra.Thresholds.MIN_UNION_MEMBERS:
+        if len(members) < c.Infra.MIN_UNION_MEMBERS:
             return None
         escaped = [re.escape(m) for m in sorted(members)]
         part = rf"(?:{'|'.join(escaped)})"

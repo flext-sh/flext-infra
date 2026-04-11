@@ -23,12 +23,12 @@ class FlextInfraUtilitiesIteration:
     Used by: build orchestration, validation, and code generation tools.
     """
 
-    _ITERATION_EXCLUDED_PARTS = c.Infra.Excluded.ITERATION_EXCLUDED_PARTS
+    _ITERATION_EXCLUDED_PARTS = c.Infra.ITERATION_EXCLUDED_PARTS
     _ITERATION_KNOWN_DIRS = frozenset({
-        c.Infra.Paths.DEFAULT_SRC_DIR,
-        c.Infra.Directories.TESTS,
-        c.Infra.Directories.EXAMPLES,
-        c.Infra.Directories.SCRIPTS,
+        c.Infra.DEFAULT_SRC_DIR,
+        c.Infra.DIR_TESTS,
+        c.Infra.DIR_EXAMPLES,
+        c.Infra.DIR_SCRIPTS,
     })
 
     @staticmethod
@@ -41,7 +41,7 @@ class FlextInfraUtilitiesIteration:
         if not path.is_file():
             return {}
         result = u.Cli.toml_read_json(path)
-        if result.is_failure:
+        if result.failure:
             return {}
         payload = result.value
         return payload if isinstance(payload, dict) else {}
@@ -52,7 +52,7 @@ class FlextInfraUtilitiesIteration:
     ) -> t.Infra.ContainerDict:
         """Return the normalized ``tool.flext`` table from a project root."""
         payload = FlextInfraUtilitiesIteration._pyproject_payload(
-            str(project_root / c.Infra.Files.PYPROJECT_FILENAME),
+            str(project_root / c.Infra.PYPROJECT_FILENAME),
         )
         tool = payload.get(c.Infra.TOOL)
         if not isinstance(tool, dict):
@@ -75,7 +75,7 @@ class FlextInfraUtilitiesIteration:
                     return normalized
 
         payload = FlextInfraUtilitiesIteration._pyproject_payload(
-            str(workspace_root / c.Infra.Files.PYPROJECT_FILENAME),
+            str(workspace_root / c.Infra.PYPROJECT_FILENAME),
         )
         tool = payload.get(c.Infra.TOOL)
         if not isinstance(tool, dict):
@@ -171,8 +171,8 @@ class FlextInfraUtilitiesIteration:
         def _looks_like_project(path: Path) -> bool:
             if not path.is_dir():
                 return False
-            pyproject_path = path / c.Infra.Files.PYPROJECT_FILENAME
-            go_mod_path = path / c.Infra.Files.GO_MOD
+            pyproject_path = path / c.Infra.PYPROJECT_FILENAME
+            go_mod_path = path / c.Infra.GO_MOD
             if not pyproject_path.exists() and not go_mod_path.exists():
                 return False
             if go_mod_path.exists():
@@ -181,19 +181,19 @@ class FlextInfraUtilitiesIteration:
                 )
             if path.name in configured_member_set:
                 return True
-            if (path / c.Infra.Files.MAKEFILE_FILENAME).exists():
+            if (path / c.Infra.MAKEFILE_FILENAME).exists():
                 return True
             document_result = u.Cli.toml_read_document(
                 pyproject_path,
             )
-            if document_result.is_failure:
+            if document_result.failure:
                 return False
             dependency_names: set[str] = set(
                 FlextInfraUtilitiesTomlParse.declared_dependency_names(
                     document_result.value,
                 )
             )
-            if c.Infra.Packages.CORE in dependency_names:
+            if c.Infra.PKG_CORE in dependency_names:
                 return True
             return any((path / dir_name).is_dir() for dir_name in effective_scan_dirs)
 
@@ -220,7 +220,7 @@ class FlextInfraUtilitiesIteration:
                 and _looks_like_project(entry)
             ],
         )
-        if not roots and (workspace_root / c.Infra.Paths.DEFAULT_SRC_DIR).is_dir():
+        if not roots and (workspace_root / c.Infra.DEFAULT_SRC_DIR).is_dir():
             return [workspace_root]
         return roots
 
@@ -248,13 +248,13 @@ class FlextInfraUtilitiesIteration:
         """
         if not directory.is_dir():
             return []
-        effective_pattern = pattern or c.Infra.Extensions.PYTHON_GLOB
+        effective_pattern = pattern or c.Infra.EXT_PYTHON_GLOB
         files = sorted(directory.rglob(effective_pattern))
         ignored_parts = (
             FlextInfraUtilitiesIteration._ITERATION_EXCLUDED_PARTS
             if skip_pycache
             else FlextInfraUtilitiesIteration._ITERATION_EXCLUDED_PARTS
-            - {c.Infra.Dunders.PYCACHE}
+            - {c.Infra.DUNDER_PYCACHE}
         )
         return [
             file_path
@@ -271,8 +271,8 @@ class FlextInfraUtilitiesIteration:
         """Return True only for real ``.py`` source files."""
         return (
             path.is_file()
-            and path.suffix == c.Infra.Extensions.PYTHON
-            and path.suffixes == [c.Infra.Extensions.PYTHON]
+            and path.suffix == c.Infra.EXT_PYTHON
+            and path.suffixes == [c.Infra.EXT_PYTHON]
         )
 
     @staticmethod
@@ -326,17 +326,17 @@ class FlextInfraUtilitiesIteration:
             )
             selected_dirs = src_dirs or frozenset(
                 {
-                    c.Infra.Paths.DEFAULT_SRC_DIR,
-                    c.Infra.Directories.TESTS,
-                    c.Infra.Directories.EXAMPLES,
-                    c.Infra.Directories.SCRIPTS,
+                    c.Infra.DEFAULT_SRC_DIR,
+                    c.Infra.DIR_TESTS,
+                    c.Infra.DIR_EXAMPLES,
+                    c.Infra.DIR_SCRIPTS,
                 },
             )
             include_flags = {
-                c.Infra.Paths.DEFAULT_SRC_DIR: True,
-                c.Infra.Directories.TESTS: include_tests,
-                c.Infra.Directories.EXAMPLES: include_examples,
-                c.Infra.Directories.SCRIPTS: include_scripts,
+                c.Infra.DEFAULT_SRC_DIR: True,
+                c.Infra.DIR_TESTS: include_tests,
+                c.Infra.DIR_EXAMPLES: include_examples,
+                c.Infra.DIR_SCRIPTS: include_scripts,
             }
             files: MutableSequence[Path] = []
             for project_root in roots:
@@ -430,7 +430,7 @@ class FlextInfraUtilitiesIteration:
                     project_roots=[project_root],
                     include_tests=include_tests,
                 )
-                if files_result.is_failure:
+                if files_result.failure:
                     continue
                 result.extend(
                     (project_root, file_path) for file_path in files_result.value
@@ -446,7 +446,7 @@ class FlextInfraUtilitiesIteration:
         """Walk up from file_path to find the project root containing pyproject.toml."""
         current = file_path.parent
         for _ in range(10):
-            if (current / c.Infra.Files.PYPROJECT_FILENAME).is_file():
+            if (current / c.Infra.PYPROJECT_FILENAME).is_file():
                 return current
             parent = current.parent
             if parent == current:

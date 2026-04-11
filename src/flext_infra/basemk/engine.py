@@ -55,7 +55,7 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
     def default_config() -> FlextInfraModelsBasemk.BaseMkConfig:
         """Return default base.mk generation configuration."""
         return FlextInfraModelsBasemk.BaseMkConfig(
-            project_name=FlextInfraConstantsBase.Defaults.UNNAMED,
+            project_name=FlextInfraConstantsBase.DEFAULT_UNNAMED,
             python_version="3.13",
             core_stack=FlextInfraConstantsBase.PYTHON,
             package_manager=FlextInfraConstantsBase.POETRY,

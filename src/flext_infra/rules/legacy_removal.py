@@ -19,7 +19,7 @@ class FlextInfraRefactorLegacyRemovalRule:
     def __init__(self, config: Mapping[str, t.Infra.InfraValue]) -> None:
         """Initialize rule metadata from rule config."""
         self.config = dict(config)
-        rule_id = self.config.get(c.Infra.ReportKeys.ID, c.Infra.Defaults.UNKNOWN)
+        rule_id = self.config.get(c.Infra.RK_ID, c.Infra.DEFAULT_UNKNOWN)
         self.rule_id = str(rule_id)
 
     def apply(
@@ -34,7 +34,7 @@ class FlextInfraRefactorLegacyRemovalRule:
         changes: MutableSequence[str] = []
         fix_action = u.Infra.get_str_key(
             self.config,
-            c.Infra.ReportKeys.FIX_ACTION,
+            c.Infra.RK_FIX_ACTION,
             case="lower",
         )
         new_source = source
@@ -93,14 +93,15 @@ class FlextInfraRefactorLegacyRemovalRule:
             target, value = match.groups()
             if (
                 target in allow_aliases
-                or target in {c.Infra.Dunders.VERSION, c.Infra.Dunders.ALL}
+                or target in {c.Infra.DUNDER_VERSION, c.Infra.DUNDER_ALL}
                 or (allow_target_suffixes and target.endswith(allow_target_suffixes))
             ):
                 kept.append(line)
                 continue
             changes.append(f"Removed alias: {target} = {value}")
         if not changes:
-            return (source, [])
+            no_changes: list[str] = []
+            return (source, no_changes)
         return ("".join(kept), changes)
 
     @staticmethod
@@ -150,8 +151,11 @@ class FlextInfraRefactorLegacyRemovalRule:
             changes.append(f"Inlined wrapper: {node.name} -> {returned.func.id}")
         for start, end, replacement in reversed(replacements):
             lines[start:end] = [replacement]
+        no_changes: list[str] = []
         return (
-            ("".join(lines).rstrip("\n") + "\n", changes) if changes else (source, [])
+            ("".join(lines).rstrip("\n") + "\n", changes)
+            if changes
+            else (source, no_changes)
         )
 
     @staticmethod

@@ -35,7 +35,7 @@ class TestConfigFixerPublicBehavior:
 
         result = FlextInfraConfigFixer(workspace=tmp_path).process_file(file_path)
 
-        assert result.is_success
+        assert result.success
         assert result.value == []
 
     def test_run_returns_verbose_messages_for_selected_project(
@@ -52,7 +52,7 @@ class TestConfigFixerPublicBehavior:
             verbose=True,
         )
 
-        assert result.is_success
+        assert result.success
         assert result.value
         assert any("project1/pyproject.toml" in line for line in result.value)
 
@@ -74,6 +74,6 @@ class TestConfigFixerPublicBehavior:
             verbose=True,
         )
 
-        assert result.is_success
+        assert result.success
         assert result.value
         assert pyproject.read_text(encoding="utf-8") == original

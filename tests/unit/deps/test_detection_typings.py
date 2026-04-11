@@ -55,7 +55,7 @@ class _StubRunner(p.Cli.CommandRunner):
         env: t.Cli.StrEnvMapping | None = None,
     ) -> r[m.Cli.CommandOutput]:
         del cmd, cwd, timeout, env
-        if self._result.is_failure:
+        if self._result.failure:
             return self._result
         output = self._result.value
         if output.exit_code != 0:
@@ -98,7 +98,7 @@ class _StubRunner(p.Cli.CommandRunner):
         env: t.Cli.StrEnvMapping | None = None,
     ) -> r[int]:
         result = self.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
-        if result.is_failure:
+        if result.failure:
             return tr[int].fail(result.error or "Command failed")
         output_path = (
             output_file if isinstance(output_file, Path) else Path(output_file)

@@ -141,7 +141,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                 ),
                 key=lambda project_path: project_path.name,
             )
-            if discovered.is_success
+            if discovered.success
             else []
         )
         for child_project in child_projects:
@@ -290,7 +290,7 @@ class FlextInfraEnsurePyrightConfigPhase:
             env_dir for env_dir in rules.env_dirs if (workspace_root / env_dir).is_dir()
         ]
         discovered = u.Infra.discover_projects(workspace_root)
-        if discovered.is_failure:
+        if discovered.failure:
             return includes
         child_projects = sorted(
             (

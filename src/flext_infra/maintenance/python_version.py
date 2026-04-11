@@ -137,7 +137,7 @@ class FlextInfraPythonVersionEnforcer(s[int]):
             on_success=lambda v: [
                 project.path
                 for project in v
-                if (project.path / c.Infra.Files.PYPROJECT_FILENAME).exists()
+                if (project.path / c.Infra.PYPROJECT_FILENAME).exists()
             ],
         )
 
@@ -202,10 +202,10 @@ class FlextInfraPythonVersionEnforcer(s[int]):
             int: Required Python minor version.
 
         """
-        pyproject = workspace_root / c.Infra.Files.PYPROJECT_FILENAME
+        pyproject = workspace_root / c.Infra.PYPROJECT_FILENAME
         if not pyproject.is_file():
             return 13
-        content = pyproject.read_text(encoding=c.Infra.Encoding.DEFAULT)
+        content = pyproject.read_text(encoding=c.Infra.ENCODING_DEFAULT)
         match = re.search(r'requires-python\s*=\s*"[>!=]*(\d+)\.(\d+)', content)
         if match is None:
             return 13
@@ -231,9 +231,9 @@ class FlextInfraPythonVersionEnforcer(s[int]):
             current = current.parent
         for parent in [current] + list(current.parents):
             markers = {
-                c.Infra.Git.DIR,
-                c.Infra.Files.MAKEFILE_FILENAME,
-                c.Infra.Files.PYPROJECT_FILENAME,
+                c.Infra.GIT_DIR,
+                c.Infra.MAKEFILE_FILENAME,
+                c.Infra.PYPROJECT_FILENAME,
             }
             if all((parent / marker).exists() for marker in markers):
                 return parent

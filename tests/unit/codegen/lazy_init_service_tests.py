@@ -42,7 +42,7 @@ class TestFlextInfraCodegenLazyInit:
         generator = u.Infra.Tests.create_lazy_init_service(tmp_path)
         result = generator.execute()
 
-        assert result.is_success
+        assert result.success
         assert result.value is True
 
     def test_generate_from_sibling_files(self, tmp_path: Path) -> None:
@@ -128,8 +128,8 @@ class TestFlextInfraCodegenLazyInit:
         """Conflicting exports must fail instead of generating a broken __init__.py."""
         src_dir = tmp_path / "src" / "test_pkg"
         src_dir.mkdir(parents=True)
-        (src_dir / "alpha.py").write_text("def run() -> None:\n    pass\n")
-        (src_dir / "beta.py").write_text("def run() -> None:\n    pass\n")
+        (src_dir / "alpha.py").write_text("class Shared:\n    pass\n")
+        (src_dir / "beta.py").write_text("class Shared:\n    pass\n")
 
         result = u.Infra.Tests.run_lazy_init(tmp_path)
 

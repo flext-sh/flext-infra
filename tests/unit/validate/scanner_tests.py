@@ -149,7 +149,7 @@ class TestScannerMultiFile:
                 pattern="hello",
                 includes=["*.txt"],
             )
-            tm.that(result.is_success, eq=True)
+            tm.that(result.success, eq=True)
         finally:
             f.chmod(0o644)
 

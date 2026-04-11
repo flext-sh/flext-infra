@@ -21,6 +21,7 @@ from flext_infra import (
     FlextInfraCodegenGeneration,
     FlextInfraServiceBase,
     c,
+    m,
     r,
     t,
     u,
@@ -66,8 +67,6 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
             pkg_dirs,
             check_only=check_only,
         )
-        if not check_only:
-            self._fix_import_cycles(pkg_dirs)
         u.Infra.info(
             f"Lazy-init summary: {ok} generated, {errors} errors"
             f" ({total} dirs scanned)",
@@ -99,28 +98,10 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
                 ok += 1
         return total, ok, errors, dir_exports
 
-    @staticmethod
-    def _fix_import_cycles(pkg_dirs: Sequence[Path]) -> None:
-        cycle_fixes = 0
-        for pkg_dir in pkg_dirs:
-            init_file = pkg_dir / c.Infra.Files.INIT_PY
-            if not init_file.is_file():
-                continue
-            modified, changes = u.Infra.break_import_cycles(pkg_dir)
-            if modified:
-                for change in changes:
-                    u.Infra.info(f"  CYCLE-FIX: {change}")
-                cycle_fixes += len(changes)
-        if cycle_fixes:
-            u.Infra.info(f"Cycle-fix: {cycle_fixes} circular imports resolved")
-
     def _find_package_dirs(self) -> Sequence[Path]:
         files_result = u.Infra.iter_python_files(workspace_root=self.workspace_root)
         pkg_dirs: t.Infra.PathSet = {
-            py_file.parent
-            for py_file in files_result.unwrap_or(())
-            if u.Infra.dir_has_py_files(py_file.parent)
-            or (py_file.parent / c.Infra.Files.INIT_PY).is_file()
+            py_file.parent for py_file in files_result.unwrap_or(())
         }
         return sorted(pkg_dirs, key=lambda p: len(p.parts), reverse=True)
 
@@ -131,60 +112,26 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
         check_only: bool,
         dir_exports: Mapping[str, t.Infra.LazyImportMap],
     ) -> t.Infra.LazyInitProcessResult:
-        init_path = pkg_dir / c.Infra.Files.INIT_PY
-        current_pkg = u.Infra.discover_package_from_file(init_path)
-        if not current_pkg:
-            empty_lazy_map: t.Infra.MutableLazyImportMap = {}
-            return (None, empty_lazy_map)
         try:
-            lazy_map = u.Infra.build_sibling_export_index(pkg_dir, current_pkg)
-            child_packages_for_lazy = u.Infra.collect_child_packages(
+            plan = self._aliases.build_lazy_init_plan(
                 pkg_dir,
-                current_pkg,
-                dir_exports,
+                dir_exports=dir_exports,
             )
-            u.Infra.merge_child_exports(pkg_dir, lazy_map, dir_exports)
-            inline_constants, version_entries = u.Infra.extract_version_exports(
-                pkg_dir,
-                current_pkg,
-            )
-            version_runtime_modules: t.Infra.StrSet = {
-                module_path for module_path, _attr_name in version_entries.values()
-            }
-            if not version_runtime_modules and (
-                inline_constants and (pkg_dir / "__version__.py").exists()
-            ):
-                version_runtime_modules.add(
-                    f"{current_pkg}.{c.Infra.Dunders.VERSION}"
-                    if current_pkg
-                    else c.Infra.Dunders.VERSION,
-                )
-            for export_name, entry in version_entries.items():
-                lazy_map.setdefault(export_name, entry)
-            if not pkg_dir.name.startswith("_"):
-                self._aliases.resolve_aliases(lazy_map, pkg_dir=pkg_dir)
-            for infra_name in ("cleanup_submodule_namespace", "lazy_getattr"):
-                lazy_map.pop(infra_name, None)
-            for k in inline_constants:
-                lazy_map.pop(k, None)
-            exports = sorted(set(lazy_map) | set(inline_constants))
-            if not exports and not init_path.exists():
-                return (None, dict(lazy_map))
+            if plan.action == "skip":
+                return (None, dict(plan.lazy_map))
             if check_only:
-                return (0, dict(lazy_map))
+                return (0, dict(plan.lazy_map))
+            if plan.action == "remove":
+                return self._remove_init(plan)
             return self._write_init(
-                init_path,
-                exports,
-                lazy_map,
-                inline_constants,
-                current_pkg,
-                wildcard_runtime_imports=tuple(sorted(version_runtime_modules)),
-                child_packages_for_lazy=child_packages_for_lazy,
-                child_packages_for_tc=u.Infra.collect_descendant_packages(
-                    pkg_dir,
-                    current_pkg,
-                    dir_exports,
-                ),
+                plan.context.init_path,
+                plan.exports,
+                plan.lazy_map,
+                plan.inline_constants,
+                plan.context.current_pkg,
+                wildcard_runtime_imports=plan.wildcard_runtime_modules,
+                child_packages_for_lazy=plan.child_packages_for_lazy,
+                child_packages_for_tc=plan.child_packages_for_tc,
             )
         except ValueError as exc:
             u.Infra.error(
@@ -193,6 +140,27 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
             )
             failed_lazy_map: t.Infra.MutableLazyImportMap = {}
             return (-1, failed_lazy_map)
+
+    def _remove_init(
+        self,
+        plan: m.Infra.LazyInitPlan,
+    ) -> t.Infra.LazyInitWriteResult:
+        init_path = plan.context.init_path
+        if not init_path.is_file():
+            return (0, dict(plan.lazy_map))
+        try:
+            init_path.unlink()
+        except OSError as exc:
+            u.Infra.error(f"removing generated init {init_path}: {exc}")
+            return (-1, dict(plan.lazy_map))
+        self._modified_files.add(str(init_path))
+        rel_path = (
+            init_path.relative_to(self.workspace_root)
+            if self.workspace_root in init_path.parents
+            else init_path
+        )
+        u.Infra.info(f"  CLEAN: {rel_path} — removed generated init")
+        return (0, dict(plan.lazy_map))
 
     def _write_init(
         self,
@@ -218,13 +186,13 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
                 child_packages_for_tc=child_packages_for_tc or [],
             )
             previous = (
-                init_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+                init_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
                 if init_path.exists()
                 else None
             )
             if previous != generated:
                 write_result = u.Cli.atomic_write_text_file(init_path, generated)
-                if write_result.is_failure:
+                if write_result.failure:
                     u.Infra.error(f"writing {init_path}: {write_result.error}")
                     return (-1, dict(lazy_map))
                 self._modified_files.add(str(init_path))

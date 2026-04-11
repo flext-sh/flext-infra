@@ -34,7 +34,7 @@ class FlextInfraUtilitiesParsing:
         """Parse a Python file into an AST module."""
         try:
             return ast.parse(
-                file_path.read_text(encoding=c.Infra.Encoding.DEFAULT),
+                file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT),
             )
         except (OSError, SyntaxError):
             return None
@@ -44,11 +44,11 @@ class FlextInfraUtilitiesParsing:
         """Determine if a file is at the package root level (Facade level)."""
         parts = file_path.resolve().parts
         try:
-            src_idx = parts.index(c.Infra.Paths.DEFAULT_SRC_DIR)
+            src_idx = parts.index(c.Infra.DEFAULT_SRC_DIR)
             return len(parts) == src_idx + 3
         except ValueError:
-            return (file_path.parent / c.Infra.Files.INIT_PY).is_file() and not (
-                file_path.parent.parent / c.Infra.Files.INIT_PY
+            return (file_path.parent / c.Infra.INIT_PY).is_file() and not (
+                file_path.parent.parent / c.Infra.INIT_PY
             ).is_file()
 
     @staticmethod
@@ -83,7 +83,7 @@ class FlextInfraUtilitiesParsing:
                 if stripped.endswith(FlextInfraUtilitiesParsing._DOCSTRING_QUOTES):
                     in_docstring = False
                 continue
-            if i == 0 and c.Infra.SourceCode.DOCSTRING_RE.match(stripped):
+            if i == 0 and c.Infra.DOCSTRING_RE.match(stripped):
                 insert_idx = i + 1
                 if not (
                     stripped.count('"""')
@@ -93,7 +93,7 @@ class FlextInfraUtilitiesParsing:
                 ):
                     in_docstring = True
                 continue
-            if c.Infra.SourceCode.FUTURE_IMPORT_RE.match(stripped):
+            if c.Infra.FUTURE_IMPORT_RE.match(stripped):
                 insert_idx = i + 1
                 continue
             if stripped and not stripped.startswith("#"):
@@ -120,7 +120,7 @@ class FlextInfraUtilitiesParsing:
             if stripped.startswith("from __future__"):
                 idx = i + 1
                 continue
-            if past_existing and c.Infra.SourceCode.IMPORT_LINE_RE.match(line):
+            if past_existing and c.Infra.IMPORT_LINE_RE.match(line):
                 idx = i + 1
                 continue
             break
@@ -132,14 +132,14 @@ class FlextInfraUtilitiesParsing:
         project_dir: Path,
     ) -> t.StrSequence:
         """Discover first-party namespaces directly under ``src/``."""
-        src_dir = project_dir / c.Infra.Paths.DEFAULT_SRC_DIR
+        src_dir = project_dir / c.Infra.DEFAULT_SRC_DIR
         if not src_dir.is_dir():
             return list[str]()
         return [
             entry.name
             for entry in sorted(src_dir.iterdir())
             if entry.is_dir()
-            and entry.name != c.Infra.Dunders.PYCACHE
+            and entry.name != c.Infra.DUNDER_PYCACHE
             and entry.name.isidentifier()
             and "-" not in entry.name
         ]
@@ -229,13 +229,13 @@ class FlextInfraUtilitiesParsing:
         """Collect bound names imported from a target module."""
         rh = FlextInfraUtilitiesParsing
         bound_names: t.Infra.StrSet = set()
-        for match in c.Infra.SourceCode.FROM_IMPORT_RE.finditer(source):
+        for match in c.Infra.FROM_IMPORT_RE.finditer(source):
             if match.group(1) != module_name:
                 continue
             bound_names.update(
                 bound for _name, bound in rh.parse_import_names(match.group(2))
             )
-        for match in c.Infra.SourceCode.FROM_IMPORT_BLOCK_RE.finditer(source):
+        for match in c.Infra.FROM_IMPORT_BLOCK_RE.finditer(source):
             if match.group(1) != module_name:
                 continue
             bound_names.update(
@@ -276,22 +276,22 @@ class FlextInfraUtilitiesParsing:
         """Collect aliases blocked by definitions, non-core imports, and assignments."""
         rh = FlextInfraUtilitiesParsing
         blocked: t.Infra.StrSet = set()
-        for match in c.Infra.SourceCode.DEF_CLASS_RE.finditer(source):
+        for match in c.Infra.DEF_CLASS_RE.finditer(source):
             name = match.group(1)
             if name in runtime_aliases:
                 blocked.add(name)
-        for match in c.Infra.SourceCode.FROM_IMPORT_RE.finditer(source):
+        for match in c.Infra.FROM_IMPORT_RE.finditer(source):
             module = match.group(1)
-            if module == c.Infra.Packages.CORE_UNDERSCORE:
+            if module == c.Infra.PKG_CORE_UNDERSCORE:
                 continue
             for _name, bound in rh.parse_import_names(match.group(2)):
                 if bound in runtime_aliases:
                     blocked.add(bound)
-        for match in c.Infra.SourceCode.IMPORT_RE.finditer(source):
+        for match in c.Infra.IMPORT_RE.finditer(source):
             for _name, bound in rh.parse_import_names(match.group(1)):
                 if bound in runtime_aliases:
                     blocked.add(bound)
-        for match in c.Infra.SourceCode.ASSIGN_RE.finditer(source):
+        for match in c.Infra.ASSIGN_RE.finditer(source):
             name = match.group(1)
             if name in runtime_aliases:
                 blocked.add(name)
@@ -304,7 +304,7 @@ class FlextInfraUtilitiesParsing:
     ) -> t.Infra.StrSet:
         """Collect runtime-alias names shadowed inside function bodies."""
         shadowed: t.Infra.StrSet = set()
-        for match in c.Infra.SourceCode.FUNC_PARAM_RE.finditer(source):
+        for match in c.Infra.FUNC_PARAM_RE.finditer(source):
             params = match.group(1)
             for param in params.split(","):
                 param_name = param.strip().split(":")[0].split("=")[0].strip()
@@ -324,12 +324,8 @@ class FlextInfraUtilitiesParsing:
             stripped = line.lstrip()
             if line != stripped and stripped:
                 continue
-            match = c.Infra.SourceCode.FINAL_ASSIGN_RE.match(stripped)
-            if (
-                match
-                and c.Infra.SourceCode.CONSTANT_NAME_RE.match(match.group(1))
-                is not None
-            ):
+            match = c.Infra.FINAL_ASSIGN_RE.match(stripped)
+            if match and c.Infra.CONSTANT_NAME_RE.match(match.group(1)) is not None:
                 candidates.append(
                     m.Infra.MROSymbolCandidate(
                         symbol=match.group(1),
@@ -341,7 +337,7 @@ class FlextInfraUtilitiesParsing:
     @staticmethod
     def first_constants_class_name(source: str) -> str:
         """Find the first class ending with Constants suffix."""
-        for match in c.Infra.SourceCode.CLASS_NAME_RE.finditer(source):
+        for match in c.Infra.CLASS_NAME_RE.finditer(source):
             name = match.group(1)
             if name.endswith(c.Infra.CONSTANTS_CLASS_SUFFIX):
                 return name
@@ -355,7 +351,7 @@ class FlextInfraUtilitiesParsing:
         and returns the terminal (unqualified, unsubscripted) names in declaration order.
         Returns an empty sequence when the class is not found.
         """
-        for match in c.Infra.SourceCode.CLASS_WITH_BASES_RE.finditer(source):
+        for match in c.Infra.CLASS_WITH_BASES_RE.finditer(source):
             if match.group(1) != class_name:
                 continue
             bases_str = match.group(2)
@@ -380,7 +376,7 @@ class FlextInfraUtilitiesParsing:
         """
         result: MutableSequence[m.Infra.ClassInfo] = []
         for lineno, line in enumerate(source.splitlines(), start=1):
-            match = c.Infra.SourceCode.CLASS_WITH_BASES_RE.match(line)
+            match = c.Infra.CLASS_WITH_BASES_RE.match(line)
             if not match:
                 continue
             name = match.group(1)

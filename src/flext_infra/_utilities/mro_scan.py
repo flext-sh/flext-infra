@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 class FlextInfraUtilitiesRefactorMroScan:
-    _MRO_SCAN_CONSTANT_PATTERN: re.Pattern[str] = c.Infra.SourceCode.CONSTANT_NAME_RE
+    _MRO_SCAN_CONSTANT_PATTERN: re.Pattern[str] = c.Infra.CONSTANT_NAME_RE
     _MRO_SCAN_TYPE_PATTERN: re.Pattern[str] = re.compile(r"^_?[A-Za-z][A-Za-z0-9_]*$")
     _MRO_SCAN_PROTOCOL_BASE_PATTERN: re.Pattern[str] = re.compile(
         r"(^|[\s,(])(?:[A-Za-z_]\w*\.)?Protocol(?:\[[^\]]+\])?(?=$|[\s,)])",
@@ -83,7 +83,7 @@ class FlextInfraUtilitiesRefactorMroScan:
 
         rel = Path(resource.path)
         module = ".".join([
-            p for p in rel.with_suffix("").parts if p != c.Infra.Paths.DEFAULT_SRC_DIR
+            p for p in rel.with_suffix("").parts if p != c.Infra.DEFAULT_SRC_DIR
         ])
 
         candidates: list[m.Infra.MROSymbolCandidate] = []

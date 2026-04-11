@@ -131,14 +131,14 @@ class FlextInfraUtilitiesRefactorRuleLoader:
                 except (OSError, TypeError):
                     continue
                 typed_rules = self._coerce_rule_definitions(
-                    rule_config.get(c.Infra.ReportKeys.RULES),
+                    rule_config.get(c.Infra.RK_RULES),
                 )
                 for typed_rule_def in typed_rules:
-                    if c.Infra.ReportKeys.ID not in typed_rule_def:
+                    if c.Infra.RK_ID not in typed_rule_def:
                         continue
-                    if not typed_rule_def.get(c.Infra.ReportKeys.ENABLED, True):
+                    if not typed_rule_def.get(c.Infra.RK_ENABLED, True):
                         continue
-                    rule_id = str(typed_rule_def[c.Infra.ReportKeys.ID]).strip()
+                    rule_id = str(typed_rule_def[c.Infra.RK_ID]).strip()
                     rule_id_lower = rule_id.lower()
                     matches_active_filters = not rule_filters or any(
                         fnmatch.fnmatch(rule_id_lower, active_filter.lower())
@@ -158,8 +158,8 @@ class FlextInfraUtilitiesRefactorRuleLoader:
                         unknown_rules.append(
                             str(
                                 typed_rule_def.get(
-                                    c.Infra.ReportKeys.ID,
-                                    c.Infra.Defaults.UNKNOWN,
+                                    c.Infra.RK_ID,
+                                    c.Infra.DEFAULT_UNKNOWN,
                                 ),
                             ),
                         )
@@ -188,14 +188,14 @@ class FlextInfraUtilitiesRefactorRuleLoader:
             ].fail(f"Failed to load rules: {exc}")
 
     def _resolve_rules_dir(self) -> Path:
-        local_rules_dir = self.config_path.parent / c.Infra.ReportKeys.RULES
+        local_rules_dir = self.config_path.parent / c.Infra.RK_RULES
         if local_rules_dir.is_dir():
             return local_rules_dir
         return self._package_rules_dir()
 
     @staticmethod
     def _package_rules_dir() -> Path:
-        return Path(__file__).resolve().parent.parent / c.Infra.ReportKeys.RULES
+        return Path(__file__).resolve().parent.parent / c.Infra.RK_RULES
 
     def _resolve_engine_config(
         self,

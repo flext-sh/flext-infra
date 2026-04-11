@@ -71,13 +71,13 @@ class FlextInfraUtilitiesDocsContract:
         if path.exists() and not overwrite:
             return m.Infra.GeneratedFile(path=path.as_posix(), written=False)
         current = (
-            path.read_text(encoding=c.Infra.Encoding.DEFAULT) if path.exists() else ""
+            path.read_text(encoding=c.Infra.ENCODING_DEFAULT) if path.exists() else ""
         )
         if current == content:
             return m.Infra.GeneratedFile(path=path.as_posix(), written=False)
         if apply:
             path.parent.mkdir(parents=True, exist_ok=True)
-            _ = path.write_text(content, encoding=c.Infra.Encoding.DEFAULT)
+            _ = path.write_text(content, encoding=c.Infra.ENCODING_DEFAULT)
         return m.Infra.GeneratedFile(path=path.as_posix(), written=apply)
 
 

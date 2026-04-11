@@ -90,6 +90,7 @@ class FlextInfraInjectCommentsPhase:
         return normalized
 
     def apply(self, rendered: str) -> t.Infra.Pair[str, t.StrSequence]:
+        """Inject managed banner/markers and return updated TOML plus change messages."""
         changes: MutableSequence[str] = []
         lines = rendered.splitlines()
         cleaned_lines, cleanup_changes = self._strip_managed_lines(lines)

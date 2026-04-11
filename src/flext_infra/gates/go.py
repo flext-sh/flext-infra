@@ -25,7 +25,7 @@ class FlextInfraGoGate(FlextInfraGate):
         ctx: m.Infra.GateContext,
     ) -> t.StrSequence:
         _ = ctx
-        if not (project_dir / c.Infra.Files.GO_MOD).exists():
+        if not (project_dir / c.Infra.GO_MOD).exists():
             return []
         return ["."]
 
@@ -46,7 +46,7 @@ class FlextInfraGoGate(FlextInfraGate):
         ctx: m.Infra.GateContext,
     ) -> int:
         _ = project_dir, ctx
-        return c.Infra.Timeouts.CI
+        return c.Infra.TIMEOUT_CI
 
     @override
     def _parse_check_output(
@@ -80,7 +80,7 @@ class FlextInfraGoGate(FlextInfraGate):
                     *[str(path.relative_to(project_dir)) for path in go_files],
                 ],
                 project_dir,
-                timeout=c.Infra.Timeouts.CI,
+                timeout=c.Infra.TIMEOUT_CI,
             )
             passed = passed and fmt_result.exit_code == 0
             for file_name in fmt_result.stdout.splitlines():

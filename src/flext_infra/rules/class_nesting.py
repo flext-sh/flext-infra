@@ -24,7 +24,7 @@ class _PostCheckGate:
     def _read_source_safe(file_path: Path) -> str | None:
         """Read source text from disk, returning None on I/O or encoding errors."""
         try:
-            return file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+            return file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
         except (OSError, UnicodeDecodeError):
             return None
 
@@ -39,15 +39,16 @@ class _PostCheckGate:
                 return (False, [result.error])
             return (False, ["transform_failed"])
         if not result.modified:
-            return (True, [])
+            no_errors: list[str] = []
+            return (True, no_errors)
         file_path = result.file_path
         post_checks = u.Infra.string_list(
-            expected.get(c.Infra.ReportKeys.POST_CHECKS),
+            expected.get(c.Infra.RK_POST_CHECKS),
         )
         quality_gates = u.Infra.string_list(expected.get("quality_gates"))
         if self._check_enabled("imports_resolve", post_checks):
             errors.extend(self._validate_imports(file_path))
-        source_symbol_raw = expected.get(c.Infra.ReportKeys.SOURCE_SYMBOL, "")
+        source_symbol_raw = expected.get(c.Infra.RK_SOURCE_SYMBOL, "")
         source_symbol = source_symbol_raw if isinstance(source_symbol_raw, str) else ""
         expected_chain = u.Infra.string_list(expected.get("expected_base_chain"))
         if (
@@ -69,7 +70,7 @@ class _PostCheckGate:
             return [f"parse_error:{file_path}:parse_failed"]
         unresolved: MutableSequence[str] = []
         for lineno, line in enumerate(source.splitlines(), start=1):
-            if c.Infra.SourceCode.BARE_IMPORT_FROM_RE.match(line):
+            if c.Infra.BARE_IMPORT_FROM_RE.match(line):
                 unresolved.append(f"line_{lineno}:invalid_import_from")
         return unresolved
 
@@ -90,14 +91,14 @@ class _PostCheckGate:
             return [
                 f"mro_mismatch:{class_name}:expected={expected_prefix}:actual={actual_clean}",
             ]
-        return []
+        return list[str]()
 
     def _validate_types(self, file_path: Path) -> t.StrSequence:
         cmd = [sys.executable, "-m", "py_compile", str(file_path)]
         result = u.Cli.capture(cmd)
         return result.fold(
             on_failure=lambda e: [f"lsp_diagnostics_clean_failed:{e or ''}"],
-            on_success=lambda _: [],
+            on_success=lambda _: list[str](),
         )
 
 
@@ -143,11 +144,11 @@ class FlextInfraClassNestingRefactorRule:
                 cfg,
                 fp,
                 thr,
-                c.Infra.ReportKeys.CLASS_NESTING,
-                c.Infra.ReportKeys.LOOSE_NAME,
+                c.Infra.RK_CLASS_NESTING,
+                c.Infra.RK_LOOSE_NAME,
             )
             hm = self._symbol_mappings(
-                cfg, fp, thr, c.Infra.ReportKeys.HELPER_CONSOLIDATION, "helper_name"
+                cfg, fp, thr, c.Infra.RK_HELPER_CONSOLIDATION, "helper_name"
             )
             violations = self._run_precheck(cfg, fp, thr)
             if violations:
@@ -237,7 +238,7 @@ class FlextInfraClassNestingRefactorRule:
             u.Infra.entry_list(cfg.get(section)), fp, thr
         ):
             name = entry.get(name_key)
-            target = entry.get(c.Infra.ReportKeys.TARGET_NAMESPACE)
+            target = entry.get(c.Infra.RK_TARGET_NAMESPACE)
             if isinstance(name, str) and isinstance(target, str):
                 result[name] = target
         return result
@@ -248,7 +249,7 @@ class FlextInfraClassNestingRefactorRule:
         violations: MutableSequence[str] = []
         policy_by_family = self._policy_by_family()
         entries: MutableSequence[t.StrMapping] = []
-        for key in c.Infra.ClassNesting.SECTION_KEYS:
+        for key in c.Infra.NESTING_SECTION_KEYS:
             entries.extend(
                 self._filter_entries(u.Infra.entry_list(cfg.get(key)), fp, thr)
             )
@@ -260,10 +261,10 @@ class FlextInfraClassNestingRefactorRule:
             if not ok and v is not None:
                 violations.append(
                     "|".join([
-                        v[c.Infra.ReportKeys.RULE_ID],
-                        v[c.Infra.ReportKeys.SOURCE_SYMBOL],
-                        v[c.Infra.ReportKeys.VIOLATION_TYPE],
-                        v[c.Infra.ReportKeys.SUGGESTED_FIX],
+                        v[c.Infra.RK_RULE_ID],
+                        v[c.Infra.RK_SOURCE_SYMBOL],
+                        v[c.Infra.RK_VIOLATION_TYPE],
+                        v[c.Infra.RK_SUGGESTED_FIX],
                     ])
                 )
         return violations
@@ -279,13 +280,13 @@ class FlextInfraClassNestingRefactorRule:
         mod = u.Infra.normalize_module_path(fp)
         accepted: MutableSequence[t.StrMapping] = []
         for entry in raw:
-            cf = entry.get(c.Infra.ReportKeys.CURRENT_FILE)
+            cf = entry.get(c.Infra.RK_CURRENT_FILE)
             if cf is None:
                 continue
             cm = u.Infra.normalize_module_path(Path(cf))
             if cm != mod and not mod.endswith(f"/{cm}"):
                 continue
-            conf = entry.get(c.Infra.ReportKeys.CONFIDENCE, c.Infra.Severity.LOW)
+            conf = entry.get(c.Infra.RK_CONFIDENCE, c.Infra.SEVERITY_LOW)
             if not self._confidence_ok(conf, thr):
                 continue
             accepted.append(entry)
@@ -303,7 +304,7 @@ class FlextInfraClassNestingRefactorRule:
         ct = loaded.get("confidence_threshold")
         if isinstance(ct, str):
             config["confidence_threshold"] = ct
-        for key in c.Infra.ClassNesting.SECTION_KEYS:
+        for key in c.Infra.NESTING_SECTION_KEYS:
             raw = loaded.get(key)
             if isinstance(raw, list):
                 mappings = u.Infra.normalize_mapping_list(raw)
@@ -325,11 +326,11 @@ class FlextInfraClassNestingRefactorRule:
     ) -> Sequence[t.StrMapping]:
         result: MutableSequence[t.StrMapping] = []
         for typed in entries:
-            cf = typed.get(c.Infra.ReportKeys.CURRENT_FILE)
+            cf = typed.get(c.Infra.RK_CURRENT_FILE)
             if not isinstance(cf, str):
                 continue
-            entry: t.MutableStrMapping = {c.Infra.ReportKeys.CURRENT_FILE: cf}
-            for k in c.Infra.ClassNesting.COERCE_KEYS:
+            entry: t.MutableStrMapping = {c.Infra.RK_CURRENT_FILE: cf}
+            for k in c.Infra.NESTING_COERCE_KEYS:
                 v = typed.get(k)
                 if isinstance(v, str):
                     entry[k] = v
@@ -337,7 +338,7 @@ class FlextInfraClassNestingRefactorRule:
         return result
 
     def _confidence_threshold(self, config: t.Infra.ContainerDict) -> str:
-        raw = config.get("confidence_threshold", c.Infra.Severity.LOW)
+        raw = config.get("confidence_threshold", c.Infra.SEVERITY_LOW)
         if not isinstance(raw, str):
             msg = "confidence_threshold must be a string"
             raise TypeError(msg)
@@ -358,9 +359,9 @@ class FlextInfraClassNestingRefactorRule:
     ) -> t.Infra.ContainerDict:
         _ = (cfg, fp, thr)
         return {
-            c.Infra.ReportKeys.SOURCE_SYMBOL: "",
+            c.Infra.RK_SOURCE_SYMBOL: "",
             "expected_base_chain": list[str](),
-            c.Infra.ReportKeys.POST_CHECKS: ["imports_resolve"],
+            c.Infra.RK_POST_CHECKS: ["imports_resolve"],
             "quality_gates": ["lsp_diagnostics_clean"],
         }
 

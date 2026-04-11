@@ -62,7 +62,7 @@ class FlextInfraServiceBase(
             description="Apply changes",
             json_schema_extra={
                 "typer_param_decls": list(
-                    FlextInfraConstantsBase.Cli.APPLY_OPTION_DECLS
+                    FlextInfraConstantsBase.CLI_APPLY_OPTION_DECLS
                 )
             },
         ),

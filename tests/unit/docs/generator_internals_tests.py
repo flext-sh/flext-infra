@@ -44,5 +44,5 @@ def test_generate_creates_selected_project_reports(tmp_path: Path) -> None:
         apply=True,
     )
 
-    assert result.is_success
+    assert result.success
     assert [report.scope for report in result.value] == ["root", "flext-a"]

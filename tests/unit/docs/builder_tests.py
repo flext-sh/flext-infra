@@ -30,7 +30,7 @@ class TestBuilderCore:
     ) -> None:
         """Test that build returns r."""
         result = builder.build(tmp_path)
-        tm.that(result.is_success or result.is_failure, eq=True)
+        tm.that(result.success or result.failure, eq=True)
 
     def test_build_with_valid_scope_returns_success(
         self,
@@ -49,7 +49,7 @@ class TestBuilderCore:
     ) -> None:
         """Test BuildReport has required fields."""
         result = builder.build(tmp_path)
-        if result.is_success and result.value:
+        if result.success and result.value:
             result.value[0]
 
     def test_build_report_frozen(self) -> None:
@@ -81,7 +81,7 @@ class TestBuilderCore:
             projects = kwargs.get("projects")
             assert isinstance(projects, list)
             result = builder.build(tmp_path, projects=projects)
-        tm.that(result.is_success or result.is_failure, eq=True)
+        tm.that(result.success or result.failure, eq=True)
 
     @pytest.mark.parametrize("status", ["OK", "FAIL", "SKIP"])
     def test_build_report_result_field_values(self, status: str) -> None:
@@ -113,5 +113,5 @@ class TestBuilderCore:
     ) -> None:
         """Test build with multiple projects returns list of reports."""
         result = builder.build(tmp_path, projects=["proj1", "proj2"])
-        if result.is_success:
+        if result.success:
             tm.that(len(result.value), gte=0)

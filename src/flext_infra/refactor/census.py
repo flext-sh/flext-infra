@@ -38,7 +38,7 @@ class FlextInfraRefactorCensus:
     ) -> r[m.Infra.UtilitiesCensusReport]:
         """Execute the workspace census."""
         target = target or u.Infra.build_mro_target(
-            c.Infra.Census.DEFAULT_FAMILY,
+            c.Infra.CENSUS_DEFAULT_FAMILY,
         )
         t0 = time.monotonic()
         u.Infra.header(f"Usage Census — family={target.family} ({target.class_suffix})")
@@ -46,13 +46,13 @@ class FlextInfraRefactorCensus:
         pkg = (
             workspace_root
             / target.core_project
-            / c.Infra.Paths.DEFAULT_SRC_DIR
+            / c.Infra.DEFAULT_SRC_DIR
             / target.package_dir
         )
         facade = (
             workspace_root
             / target.core_project
-            / c.Infra.Paths.DEFAULT_SRC_DIR
+            / c.Infra.DEFAULT_SRC_DIR
             / target.facade_module
         )
 
@@ -81,7 +81,7 @@ class FlextInfraRefactorCensus:
             workspace_root,
             exclude_packages=frozenset({target.core_project}),
         )
-        if files_result.is_failure:
+        if files_result.failure:
             return r[m.Infra.UtilitiesCensusReport].fail(
                 f"Failed to discover files: {files_result.error}",
             )
@@ -97,7 +97,7 @@ class FlextInfraRefactorCensus:
 
             project = u.Infra.identify_project_by_roots(fp, roots)
             try:
-                source = fp.read_text(encoding=c.Infra.Encoding.DEFAULT)
+                source = fp.read_text(encoding=c.Infra.ENCODING_DEFAULT)
             except (OSError, UnicodeDecodeError):
                 errs += 1
                 continue

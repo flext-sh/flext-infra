@@ -35,7 +35,7 @@ class FlextInfraServiceGithubMixin:
             workspace_root=params.repo_root_path,
             request=params,
         )
-        if result.is_failure:
+        if result.failure:
             return result
         if result.value.exit_code != 0:
             return r[m.Infra.GithubPullRequestOutcome].fail(

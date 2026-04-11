@@ -24,7 +24,7 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
             str(project_path),
             verb,
         ])
-        if result.is_failure:
+        if result.failure:
             return r[t.Infra.Pair[int, str]].fail(
                 result.error or "make execution failed"
             )
@@ -44,7 +44,7 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
             u.Infra.get_report_dir(
                 workspace_root,
                 c.Infra.PROJECT,
-                c.Infra.ReportKeys.RELEASE,
+                c.Infra.RK_RELEASE,
             )
             / f"v{version}"
         )
@@ -56,8 +56,8 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
         records: MutableSequence[m.Infra.BuildRecord] = []
         failures = 0
         for name, path in targets:
-            make_result = self._run_make(path, c.Infra.Directories.BUILD)
-            if make_result.is_failure:
+            make_result = self._run_make(path, c.Infra.DIR_BUILD)
+            if make_result.failure:
                 code = 1
                 output = make_result.error or "make execution failed"
             else:
@@ -65,7 +65,7 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
             if code != 0:
                 failures += 1
             log = output_dir / f"build-{name}.log"
-            u.write_file(log, output + "\n", encoding=c.Infra.Encoding.DEFAULT)
+            u.write_file(log, output + "\n", encoding=c.Infra.ENCODING_DEFAULT)
             records.append(
                 m.Infra.BuildRecord(
                     project=name,
@@ -109,7 +109,7 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
             u.Infra.get_report_dir(
                 workspace_root,
                 c.Infra.PROJECT,
-                c.Infra.ReportKeys.RELEASE,
+                c.Infra.RK_RELEASE,
             )
             / tag
         )
@@ -119,7 +119,7 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
             return r[bool].fail(f"report dir creation failed: {exc}")
         notes_path = notes_dir / "RELEASE_NOTES.md"
         notes_result = self._generate_notes(ctx, notes_path)
-        if notes_result.is_failure:
+        if notes_result.failure:
             return notes_result
         if not notes_path.exists():
             return r[bool].fail(
@@ -133,7 +133,7 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
                 notes_path=notes_path,
                 push=ctx.push,
             )
-            if apply_result.is_failure:
+            if apply_result.failure:
                 return apply_result
         self.logger.info("release_phase_publish", tag=tag, dry_run=ctx.dry_run)
         return r[bool].ok(True)
@@ -154,14 +154,14 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
             tag,
             notes_path,
         )
-        if changelog_result.is_failure:
+        if changelog_result.failure:
             return changelog_result
         tag_result = self._create_tag(workspace_root, tag)
-        if tag_result.is_failure:
+        if tag_result.failure:
             return tag_result
         if push:
             push_result = self._push_release(workspace_root, tag)
-            if push_result.is_failure:
+            if push_result.failure:
                 return push_result
         return r[bool].ok(True)
 
@@ -172,7 +172,7 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
         """Execute versioning phase across workspace and selected projects."""
         target = f"{ctx.version}-dev" if ctx.dev_suffix else ctx.version
         parse_result = u.Infra.parse_semver(ctx.version)
-        if parse_result.is_failure:
+        if parse_result.failure:
             return r[bool].fail(parse_result.error or "invalid version")
         files = self._version_files(ctx.workspace_root, ctx.project_names)
         changed = self._version_update_files(files, target, dry_run=ctx.dry_run)
@@ -193,7 +193,7 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
         for path in files:
             if not path.exists():
                 continue
-            content = path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+            content = path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
             match = c.Infra.VERSION_RE.search(content)
             if match and match.group(1) == target:
                 continue

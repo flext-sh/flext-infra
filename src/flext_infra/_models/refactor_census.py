@@ -8,7 +8,8 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from flext_core import m
-from flext_infra import FlextInfraModelsMixins, c, t
+from flext_infra import c, t
+from flext_infra._models.mixins import FlextInfraModelsMixins
 
 
 class FlextInfraModelsRefactorCensus:
@@ -51,10 +52,10 @@ class FlextInfraModelsRefactorCensus:
         core_project: Annotated[
             str,
             Field(
-                default=c.Infra.Packages.CORE,
+                default=c.Infra.PKG_CORE,
                 description="Core project directory name",
             ),
-        ] = c.Infra.Packages.CORE
+        ] = c.Infra.PKG_CORE
 
     # -- Census Models ---------------------------------------------------------
 

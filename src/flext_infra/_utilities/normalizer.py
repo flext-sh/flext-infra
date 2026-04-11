@@ -100,7 +100,7 @@ class FlextInfraUtilitiesImportNormalizer:
         """Convert a file path to its absolute Python module path."""
         relative = file_path.resolve().relative_to(package_dir.parent.resolve())
         module_parts = list(relative.with_suffix("").parts)
-        if module_parts[-1] == c.Infra.Dunders.INIT:
+        if module_parts[-1] == c.Infra.DUNDER_INIT:
             module_parts = module_parts[:-1]
         if not module_parts or module_parts[0] != package_name:
             msg = f"{file_path} is outside package {package_name}"
@@ -145,9 +145,9 @@ class FlextInfraUtilitiesImportNormalizer:
     ) -> t.FrozensetMapping:
         """Build direct intra-package import graph from source files."""
         graph: MutableMapping[str, t.Infra.StrSet] = {}
-        for py_file in package_dir.rglob(c.Infra.Extensions.PYTHON_GLOB):
+        for py_file in package_dir.rglob(c.Infra.EXT_PYTHON_GLOB):
             try:
-                source = py_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
+                source = py_file.read_text(encoding=c.Infra.ENCODING_DEFAULT)
             except (OSError, UnicodeDecodeError):
                 continue
             try:

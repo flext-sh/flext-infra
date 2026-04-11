@@ -61,7 +61,7 @@ class FlextInfraMROCompletenessDetector:
         if dn:
             d = file_path.parent / dn
             if d.is_dir():
-                scan_paths.extend(sorted(d.glob(c.Infra.Extensions.PYTHON_GLOB)))
+                scan_paths.extend(sorted(d.glob(c.Infra.EXT_PYTHON_GLOB)))
             f = file_path.parent / f"{dn}.py"
             if f.is_file():
                 scan_paths.append(f)

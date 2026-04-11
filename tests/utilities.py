@@ -92,7 +92,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                     env: t.Cli.StrEnvMapping | None = None,
                 ) -> r[m.Cli.CommandOutput]:
                     del cmd, cwd, timeout, env
-                    if self._result.is_failure:
+                    if self._result.failure:
                         return self._result
                     output = self._result.value
                     if output.exit_code != 0:
@@ -135,7 +135,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                     env: t.Cli.StrEnvMapping | None = None,
                 ) -> r[int]:
                     result = self.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
-                    if result.is_failure:
+                    if result.failure:
                         return r[int].fail(result.error or "Command failed")
                     output_path = (
                         output_file
@@ -221,7 +221,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                     self.commands.append(tuple(cmd))
                     del cmd, cwd, timeout, env
                     result = self._next_result()
-                    if result.is_failure:
+                    if result.failure:
                         return result
                     output = result.value
                     if output.exit_code != 0:
@@ -264,7 +264,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                     env: t.Cli.StrEnvMapping | None = None,
                 ) -> r[int]:
                     result = self.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
-                    if result.is_failure:
+                    if result.failure:
                         return r[int].fail(result.error or "Command failed")
                     output_path = (
                         output_file
@@ -302,7 +302,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             @staticmethod
             def tool_config_document() -> m.Infra.ToolConfigDocument:
                 result = FlextInfraUtilities.Infra.load_tool_config()
-                assert result.is_success
+                assert result.success
                 return result.value
 
             @staticmethod
@@ -856,21 +856,19 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                 package_name: str = c.Infra.Tests.Fixtures.Codegen.LazyInit.PACKAGE_NAME,
             ) -> tuple[Path, Path]:
                 workspace_root = tmp_path / project_name
-                package_root = (
-                    workspace_root / c.Infra.Paths.DEFAULT_SRC_DIR / package_name
-                )
+                package_root = workspace_root / c.Infra.DEFAULT_SRC_DIR / package_name
                 package_root.mkdir(parents=True)
                 (workspace_root / "Makefile").write_text(
                     "check:\n\t@true\n",
-                    encoding=c.Infra.Encoding.DEFAULT,
+                    encoding=c.Infra.ENCODING_DEFAULT,
                 )
-                (workspace_root / c.Infra.Files.PYPROJECT_FILENAME).write_text(
+                (workspace_root / c.Infra.PYPROJECT_FILENAME).write_text(
                     (f'[project]\nname = "{project_name}"\nversion = "0.1.0"\n'),
-                    encoding=c.Infra.Encoding.DEFAULT,
+                    encoding=c.Infra.ENCODING_DEFAULT,
                 )
-                (package_root / c.Infra.Files.INIT_PY).write_text(
+                (package_root / c.Infra.INIT_PY).write_text(
                     "",
-                    encoding=c.Infra.Encoding.DEFAULT,
+                    encoding=c.Infra.ENCODING_DEFAULT,
                 )
                 return (workspace_root, package_root)
 
@@ -892,7 +890,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                         "    pass\n\n"
                         f"{alias} = {class_name}\n"
                     ),
-                    encoding=c.Infra.Encoding.DEFAULT,
+                    encoding=c.Infra.ENCODING_DEFAULT,
                 )
 
             @staticmethod
@@ -903,7 +901,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                         "__version_info__ = "
                         f"{c.Infra.Tests.Fixtures.Codegen.LazyInit.VERSION_INFO}\n"
                     ),
-                    encoding=c.Infra.Encoding.DEFAULT,
+                    encoding=c.Infra.ENCODING_DEFAULT,
                 )
 
             @staticmethod
@@ -925,7 +923,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             @staticmethod
             def extract_lazy_init_exports(source: str) -> tuple[bool, t.StrSequence]:
                 for name, value_str in u.Infra.get_module_level_assignments(source):
-                    if name == c.Infra.Dunders.ALL:
+                    if name == c.Infra.DUNDER_ALL:
                         return (
                             True,
                             tuple(re.findall(r'["\']([^"\']+)["\']', value_str)),
@@ -960,22 +958,22 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                 )
                 package_root = (
                     project_root
-                    / c.Infra.Paths.DEFAULT_SRC_DIR
+                    / c.Infra.DEFAULT_SRC_DIR
                     / c.Infra.Tests.Fixtures.Refactor.PACKAGE_NAME
                 )
                 package_root.mkdir(parents=True)
                 (project_root / ".git").mkdir()
                 (project_root / "Makefile").write_text(
                     "test:\n\t@true\n",
-                    encoding=c.Infra.Encoding.DEFAULT,
+                    encoding=c.Infra.ENCODING_DEFAULT,
                 )
-                (project_root / c.Infra.Files.PYPROJECT_FILENAME).write_text(
+                (project_root / c.Infra.PYPROJECT_FILENAME).write_text(
                     "[project]\nname = 'flext-demo'\nversion = '0.1.0'\n",
-                    encoding=c.Infra.Encoding.DEFAULT,
+                    encoding=c.Infra.ENCODING_DEFAULT,
                 )
-                (package_root / c.Infra.Files.INIT_PY).write_text(
+                (package_root / c.Infra.INIT_PY).write_text(
                     "",
-                    encoding=c.Infra.Encoding.DEFAULT,
+                    encoding=c.Infra.ENCODING_DEFAULT,
                 )
                 constants_path = package_root / "constants.py"
                 constants_path.write_text(
@@ -984,14 +982,14 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                     f"class {c.Infra.Tests.Fixtures.Refactor.CONSTANTS_CLASS}:\n"
                     "    pass\n\n"
                     f"{c.Infra.Tests.Fixtures.Refactor.FACADE_ALIAS} = {c.Infra.Tests.Fixtures.Refactor.CONSTANTS_CLASS}\n",
-                    encoding=c.Infra.Encoding.DEFAULT,
+                    encoding=c.Infra.ENCODING_DEFAULT,
                 )
                 consumer_path = package_root / "consumer.py"
                 consumer_path.write_text(
                     "from __future__ import annotations\n\n"
                     f"from demo_pkg.constants import {c.Infra.Tests.Fixtures.Refactor.SYMBOL_NAME}\n\n"
                     f"value = {c.Infra.Tests.Fixtures.Refactor.SYMBOL_NAME}\n",
-                    encoding=c.Infra.Encoding.DEFAULT,
+                    encoding=c.Infra.ENCODING_DEFAULT,
                 )
                 return (workspace_root, constants_path, consumer_path)
 
@@ -1125,7 +1123,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                 reporting: p.Infra.ReportingService | None = None,
                 runner: p.Infra.RunnerService | None = None,
             ) -> FlextInfraRuntimeDevDependencyDetector:
-                deptry_path = tmp_path / c.Infra.Paths.VENV_BIN_REL / c.Infra.DEPTRY
+                deptry_path = tmp_path / c.Infra.VENV_BIN_REL / c.Infra.DEPTRY
                 deptry_path.parent.mkdir(parents=True, exist_ok=True)
                 if deptry_exists:
                     deptry_path.write_text("", encoding="utf-8")

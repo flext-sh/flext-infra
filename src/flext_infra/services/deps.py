@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import argparse
 from collections.abc import Sequence
 
 from flext_core import r
@@ -13,7 +12,6 @@ from flext_infra import (
     FlextInfraModelsDeps,
     FlextInfraPyprojectModernizer,
     FlextInfraRuntimeDevDependencyDetector,
-    FlextInfraUtilitiesCli,
     FlextInfraUtilitiesDependencyPathSync,
 )
 
@@ -49,7 +47,7 @@ class FlextInfraServiceDepsMixin:
             ]
             or None,
         )
-        if result.is_failure:
+        if result.failure:
             return r[bool].fail(result.error or "sync failed")
         return r[bool].ok(True)
 
@@ -60,7 +58,7 @@ class FlextInfraServiceDepsMixin:
         """Synchronize internal FLEXT dependencies."""
         service = FlextInfraInternalDependencySyncService()
         result = service.sync(params.workspace_path)
-        if result.is_failure:
+        if result.failure:
             return r[bool].fail(result.error or "internal dependency sync failed")
         return r[bool].ok(True)
 
@@ -70,23 +68,7 @@ class FlextInfraServiceDepsMixin:
     ) -> r[bool]:
         """Modernize workspace pyproject files."""
         service = FlextInfraPyprojectModernizer(workspace_root=params.workspace_path)
-        namespace = argparse.Namespace(
-            audit=params.audit,
-            check=params.check,
-            dry_run=params.dry_run,
-            skip_check=params.skip_check,
-            skip_comments=params.skip_comments,
-        )
-        cli_payload = FlextInfraUtilitiesCli.CliArgs(
-            workspace=params.workspace_path,
-            apply=params.apply,
-            check=params.check,
-            projects=list(params.project_names or []),
-        )
-        exit_code = service.run(
-            namespace,
-            cli_payload,
-        )
+        exit_code = service.run(params)
         if exit_code != 0:
             return r[bool].fail("pyproject modernization failed")
         return r[bool].ok(True)
@@ -97,15 +79,7 @@ class FlextInfraServiceDepsMixin:
     ) -> r[bool]:
         """Rewrite internal dependency paths."""
         service = FlextInfraUtilitiesDependencyPathSync()
-        cli_payload = FlextInfraUtilitiesCli.CliArgs(
-            workspace=params.workspace_path,
-            apply=params.apply,
-            projects=list(params.project_names or []),
-        )
-        exit_code = service.execute(
-            cli=cli_payload,
-            mode=params.mode,
-        )
+        exit_code = service.execute(params)
         if exit_code != 0:
             return r[bool].fail("dependency path sync failed")
         return r[bool].ok(True)

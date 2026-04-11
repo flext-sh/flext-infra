@@ -21,7 +21,7 @@ class FlextInfraViolationCensusVisitor:
     def __init__(self, *, file_path: Path) -> None:
         """Initialize visitor state for one file violation census."""
         self._file_path = file_path
-        self.records: t.Infra.MutableCensusRecordList = []
+        self.records: list[t.Infra.CensusRecord] = []
 
     def scan_source(self, source: str) -> None:
         """Scan source text for governance violations."""
@@ -73,7 +73,7 @@ class FlextInfraViolationCensusVisitor:
         for match in c.Infra.CensusPatterns.FLEXT_CORE_IMPORT_RE.finditer(source):
             imported_names = [n.strip() for n in match.group(1).split(",")]
             if not any(
-                name in c.Infra.Detection.CANONICAL_ALIASES for name in imported_names
+                name in c.Infra.DETECTION_CANONICAL_ALIASES for name in imported_names
             ):
                 self._add_record(
                     kind="runtime_alias_violation",

@@ -5,14 +5,18 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-from flext_cli import cli as cli_service
+from flext_cli.api import cli as cli_service
 from flext_core import r
 from flext_infra import (
     FlextInfraNamespaceEnforcer,
     FlextInfraRefactorCensus,
     FlextInfraRefactorMigrateToClassMRO,
+    c,
     m,
     u,
+)
+from flext_infra.refactor.accessor_migration import (
+    FlextInfraAccessorMigrationOrchestrator,
 )
 
 
@@ -33,7 +37,10 @@ class FlextInfraServiceRefactorMixin:
         )
         if report.errors:
             for error in report.errors:
-                cli_service.display_message(error, message_type="error")
+                cli_service.display_message(
+                    error,
+                    message_type=c.Cli.MESSAGE_TYPE_ERROR,
+                )
             return r[m.Infra.MROMigrationReport].fail("MRO migration had errors")
         return r[m.Infra.MROMigrationReport].ok(report)
 
@@ -70,7 +77,7 @@ class FlextInfraServiceRefactorMixin:
             workspace_root=params.workspace_path,
             target=u.Infra.build_mro_target(params.family),
         )
-        if result.is_failure:
+        if result.failure:
             return result
         report = result.value
         cli_service.display_text(FlextInfraRefactorCensus.render_text(report))
@@ -79,8 +86,29 @@ class FlextInfraServiceRefactorMixin:
             u.Infra.export_pydantic_json(report, json_path)
             cli_service.display_message(
                 f"JSON report exported to: {json_path}",
-                message_type="info",
+                message_type=c.Cli.MESSAGE_TYPE_INFO,
             )
+        return result
+
+    def run_accessor_migration(
+        self,
+        params: m.Infra.AccessorMigrationInput,
+    ) -> r[m.Infra.AccessorMigrationReport]:
+        """Run accessor migration preview/apply through the public facade."""
+        service = FlextInfraAccessorMigrationOrchestrator(
+            workspace=params.workspace_path,
+            apply=params.apply,
+            dry_run=params.dry_run,
+            projects=list(params.project_names or []),
+            preview_limit=params.preview_limit,
+            gates=params.lint_gates,
+        )
+        result = service.execute()
+        if result.failure:
+            return result
+        cli_service.display_text(
+            FlextInfraAccessorMigrationOrchestrator.render_text(result.value)
+        )
         return result
 
 

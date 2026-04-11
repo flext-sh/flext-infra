@@ -50,14 +50,13 @@ class FlextInfraInventoryService(s[bool]):
         """
         try:
             root = workspace_root.resolve()
-            scripts_dir = root / c.Infra.Directories.SCRIPTS
+            scripts_dir = root / c.Infra.DIR_SCRIPTS
             scripts: t.StrSequence = []
             if scripts_dir.exists():
                 scripts = sorted(
                     path.relative_to(root).as_posix()
                     for path in scripts_dir.rglob("*")
-                    if path.is_file()
-                    and path.suffix in {c.Infra.Extensions.PYTHON, ".sh"}
+                    if path.is_file() and path.suffix in {c.Infra.EXT_PYTHON, ".sh"}
                 )
             now = datetime.now(UTC).isoformat()
             scripts_infra: list[t.Cli.JsonValue] = list(scripts)
@@ -69,14 +68,14 @@ class FlextInfraInventoryService(s[bool]):
             }
             wiring: t.Cli.JsonMapping = {
                 "generated_at": now,
-                "root_makefile": [c.Infra.Files.MAKEFILE_FILENAME],
+                "root_makefile": [c.Infra.MAKEFILE_FILENAME],
                 "unwired_scripts": list[t.Cli.JsonValue](),
             }
             external: t.Cli.JsonMapping = {
                 "generated_at": now,
                 "candidates": list[t.Cli.JsonValue](),
             }
-            reports_dir = output_dir or root / c.Infra.Reporting.REPORTS_DIR_NAME
+            reports_dir = output_dir or root / c.Infra.REPORTS_DIR_NAME
             written: MutableSequence[str] = []
             inventory_path = reports_dir / "scripts-infra--json--scripts-inventory.json"
             wiring_path = reports_dir / "scripts-infra--json--scripts-wiring.json"
@@ -84,19 +83,19 @@ class FlextInfraInventoryService(s[bool]):
                 reports_dir / "scripts-infra--json--external-scripts-candidates.json"
             )
             write_result = u.Cli.json_write(inventory_path, inventory, sort_keys=True)
-            if write_result.is_failure:
+            if write_result.failure:
                 return r[m.Infra.InventoryReport].fail(
                     write_result.error or "write failed",
                 )
             written.append(str(inventory_path))
             write_result = u.Cli.json_write(wiring_path, wiring, sort_keys=True)
-            if write_result.is_failure:
+            if write_result.failure:
                 return r[m.Infra.InventoryReport].fail(
                     write_result.error or "write failed",
                 )
             written.append(str(wiring_path))
             write_result = u.Cli.json_write(external_path, external, sort_keys=True)
-            if write_result.is_failure:
+            if write_result.failure:
                 return r[m.Infra.InventoryReport].fail(
                     write_result.error or "write failed",
                 )

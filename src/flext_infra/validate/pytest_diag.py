@@ -146,7 +146,7 @@ class FlextInfraPytestDiagExtractor(s[bool]):
     @staticmethod
     def _build_trace_chunk(heading: str, label: str, element: _XmlElementLike) -> str:
         """Build an error/failure trace chunk from a JUnit XML element."""
-        msg = (element.attrib.get(c.Infra.ReportKeys.MESSAGE) or "").strip()
+        msg = (element.attrib.get(c.Infra.RK_MESSAGE) or "").strip()
         trace = (element.text or "").strip()
         chunk: MutableSequence[str] = [f"=== {heading}: {label} ==="]
         if msg:
@@ -184,7 +184,7 @@ class FlextInfraPytestDiagExtractor(s[bool]):
             )
         if skipped is not None:
             reason = (
-                skipped.attrib.get(c.Infra.ReportKeys.MESSAGE) or skipped.text or ""
+                skipped.attrib.get(c.Infra.RK_MESSAGE) or skipped.text or ""
             ).strip()
             diag.skip_cases.append(f"{label} | {reason}" if reason else label)
         return secs, label
@@ -233,7 +233,7 @@ class FlextInfraPytestDiagExtractor(s[bool]):
         """
         try:
             log_text = (
-                log_path.read_text(encoding=c.Infra.Encoding.DEFAULT, errors="replace")
+                log_path.read_text(encoding=c.Infra.ENCODING_DEFAULT, errors="replace")
                 if log_path.exists()
                 else ""
             )
@@ -266,7 +266,7 @@ class FlextInfraPytestDiagExtractor(s[bool]):
     def execute(self) -> r[bool]:
         """Execute the pytest diagnostics CLI flow."""
         result = self.extract(self.junit, self.log)
-        if result.is_failure:
+        if result.failure:
             return r[bool].fail(result.error or "extraction failed")
         for output_path, attr_name, separator in [
             (self.failed, "failed_cases", "\n\n"),
@@ -285,7 +285,7 @@ class FlextInfraPytestDiagExtractor(s[bool]):
             u.write_file(
                 output_path,
                 separator.join(items) + "\n",
-                encoding=c.Infra.Encoding.DEFAULT,
+                encoding=c.Infra.ENCODING_DEFAULT,
             )
         return r[bool].ok(True)
 

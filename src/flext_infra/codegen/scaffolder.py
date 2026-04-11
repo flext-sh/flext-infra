@@ -71,7 +71,7 @@ class FlextInfraCodegenScaffolder(FlextInfraServiceBase[str]):
             self.workspace_root,
             projects=projects,
         )
-        if not projects_result.is_success:
+        if not projects_result.success:
             return []
         return [
             self._scaffold_project(project, dry_run=dry_run)
@@ -107,12 +107,12 @@ class FlextInfraCodegenScaffolder(FlextInfraServiceBase[str]):
         if package_name:
             pkg_dir = (
                 project_path
-                / c.Infra.Paths.DEFAULT_SRC_DIR
+                / c.Infra.DEFAULT_SRC_DIR
                 / Path(
                     *package_name.split("."),
                 )
             )
-            if (pkg_dir / c.Infra.Files.INIT_PY).is_file():
+            if (pkg_dir / c.Infra.INIT_PY).is_file():
                 self._scaffold_dir(
                     target_dir=pkg_dir,
                     prefix=prefix,
@@ -123,7 +123,7 @@ class FlextInfraCodegenScaffolder(FlextInfraServiceBase[str]):
                     files_created=files_created,
                     files_skipped=files_skipped,
                 )
-        tests_dir = project_path / c.Infra.Directories.TESTS
+        tests_dir = project_path / c.Infra.DIR_TESTS
         if tests_dir.is_dir():
             self._scaffold_dir(
                 target_dir=tests_dir,
@@ -135,7 +135,7 @@ class FlextInfraCodegenScaffolder(FlextInfraServiceBase[str]):
                 files_created=files_created,
                 files_skipped=files_skipped,
             )
-        examples_dir = project_path / c.Infra.Directories.EXAMPLES
+        examples_dir = project_path / c.Infra.DIR_EXAMPLES
         if examples_dir.is_dir():
             self._scaffold_dir(
                 target_dir=examples_dir,
@@ -147,7 +147,7 @@ class FlextInfraCodegenScaffolder(FlextInfraServiceBase[str]):
                 files_created=files_created,
                 files_skipped=files_skipped,
             )
-        scripts_dir = project_path / c.Infra.Directories.SCRIPTS
+        scripts_dir = project_path / c.Infra.DIR_SCRIPTS
         if scripts_dir.is_dir():
             self._scaffold_dir(
                 target_dir=scripts_dir,
@@ -196,7 +196,7 @@ class FlextInfraCodegenScaffolder(FlextInfraServiceBase[str]):
             if dry_run:
                 files_created.append(str(filepath))
                 continue
-            u.write_file(filepath, content, encoding=c.Infra.Encoding.DEFAULT)
+            u.write_file(filepath, content, encoding=c.Infra.ENCODING_DEFAULT)
             u.Infra.run_ruff_fix(filepath)
             files_created.append(str(filepath))
 

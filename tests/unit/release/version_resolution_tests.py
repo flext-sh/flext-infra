@@ -34,7 +34,7 @@ def test_execute_with_explicit_version_updates_workspace_file(tmp_path: Path) ->
         version="1.0.0",
     ).execute()
 
-    assert result.is_success
+    assert result.success
     assert 'version = "1.0.0"' in (workspace / "pyproject.toml").read_text()
 
 
@@ -52,7 +52,7 @@ def test_execute_with_dev_suffix_appends_dev_version(tmp_path: Path) -> None:
         dev_suffix=True,
     ).execute()
 
-    assert result.is_success
+    assert result.success
     assert 'version = "1.0.0-dev"' in (workspace / "pyproject.toml").read_text()
 
 
@@ -76,7 +76,7 @@ def test_execute_with_bump_uses_current_workspace_version(tmp_path: Path) -> Non
         bump="minor",
     ).execute()
 
-    assert result.is_success
+    assert result.success
     assert (
         workspace / ".reports" / "release" / "v0.2.0" / "build-report.json"
     ).is_file()
@@ -95,7 +95,7 @@ def test_execute_with_invalid_explicit_version_fails(tmp_path: Path) -> None:
         version="invalid",
     ).execute()
 
-    assert result.is_failure
+    assert result.failure
 
 
 def test_execute_with_invalid_tag_prefix_fails(tmp_path: Path) -> None:
@@ -112,4 +112,4 @@ def test_execute_with_invalid_tag_prefix_fails(tmp_path: Path) -> None:
         tag="1.0.0",
     ).execute()
 
-    assert result.is_failure
+    assert result.failure

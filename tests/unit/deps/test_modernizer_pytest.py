@@ -11,8 +11,8 @@ from tests import m, t, u
 
 def _test_tool_config() -> m.Infra.ToolConfigDocument:
     result = u.Infra.load_tool_config()
-    tm.that(not result.is_failure, eq=True)
-    if result.is_failure:
+    tm.that(not result.failure, eq=True)
+    if result.failure:
         msg = "failed to load tool config"
         raise ValueError(msg)
     return result.value

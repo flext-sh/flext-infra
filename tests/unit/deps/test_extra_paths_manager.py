@@ -33,7 +33,7 @@ class TestFlextInfraExtraPathsManager:
 class TestSyncOne:
     def test_sync_one_missing_file(self, tmp_path: Path) -> None:
         tm.that(
-            not _manager().sync_one(tmp_path / "nonexistent.toml").is_success,
+            not _manager().sync_one(tmp_path / "nonexistent.toml").success,
             eq=True,
         )
 
@@ -43,7 +43,7 @@ class TestSyncOne:
         doc["project"] = {"name": "test"}
         pyproject.write_text(doc.as_string(), encoding="utf-8")
         result = _manager().sync_one(pyproject)
-        tm.that(result.is_success, eq=True)
+        tm.that(result.success, eq=True)
         tm.that(result.value, eq=False)
 
     def test_sync_one_no_pyright_section(self, tmp_path: Path) -> None:
@@ -54,7 +54,7 @@ class TestSyncOne:
         doc["tool"] = tool
         pyproject.write_text(doc.as_string(), encoding="utf-8")
         result = _manager().sync_one(pyproject)
-        tm.that(result.is_success, eq=True)
+        tm.that(result.success, eq=True)
         tm.that(result.value, eq=False)
 
     @pytest.mark.parametrize(
@@ -75,7 +75,7 @@ class TestSyncOne:
         doc["tool"] = tool_doc
         pyproject.write_text(doc.as_string(), encoding="utf-8")
         result = _manager().sync_one(pyproject, is_root="pyrefly" not in tool_doc)
-        tm.that(result.is_success, eq=True)
+        tm.that(result.success, eq=True)
 
     def test_sync_one_dry_run(self, tmp_path: Path) -> None:
         pyproject = tmp_path / "pyproject.toml"

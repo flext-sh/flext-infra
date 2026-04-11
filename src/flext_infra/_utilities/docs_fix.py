@@ -42,7 +42,7 @@ class FlextInfraUtilitiesDocsFix:
     ) -> m.Infra.DocsPhaseItemModel:
         """Fix one markdown file and return the phase item summary."""
         original = md_file.read_text(
-            encoding=c.Infra.Encoding.DEFAULT, errors=c.Infra.IGNORE
+            encoding=c.Infra.ENCODING_DEFAULT, errors=c.Infra.IGNORE
         )
         link_count = 0
 
@@ -61,7 +61,7 @@ class FlextInfraUtilitiesDocsFix:
         )
         updated, toc_changed = FlextInfraUtilitiesDocsFix.docs_update_toc(updated)
         if apply and (link_count > 0 or toc_changed > 0) and updated != original:
-            _ = md_file.write_text(updated, encoding=c.Infra.Encoding.DEFAULT)
+            _ = md_file.write_text(updated, encoding=c.Infra.ENCODING_DEFAULT)
         return m.Infra.DocsPhaseItemModel(
             phase="fix",
             file=md_file.as_posix(),
@@ -80,14 +80,14 @@ class FlextInfraUtilitiesDocsFix:
         _ = u.Cli.json_write(
             scope.report_dir / "fix-summary.json",
             {
-                c.Infra.ReportKeys.SUMMARY: {
-                    c.Infra.ReportKeys.SCOPE: scope.name,
+                c.Infra.RK_SUMMARY: {
+                    c.Infra.RK_SCOPE: scope.name,
                     "changed_files": len(items),
                     "apply": apply,
                 },
                 "changes": [
                     {
-                        c.Infra.ReportKeys.FILE: item.file,
+                        c.Infra.RK_FILE: item.file,
                         "links": item.links,
                         "toc": item.toc,
                     }

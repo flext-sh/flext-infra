@@ -137,7 +137,7 @@ class TestFlextInfraUtilitiesSelection:
     ) -> None:
         """Test that result contains properly typed ProjectInfo items."""
         result = selector.resolve_projects(workspace_with_projects, [])
-        assert result.is_success
+        assert result.success
         projects = result.value
         tm.that(len(projects), eq=3)
         tm.that([p.name for p in projects], eq=["alpha", "beta", "gamma"])

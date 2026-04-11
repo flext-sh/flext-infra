@@ -12,7 +12,7 @@ def test_json_write_round_trips_dict_payload(tmp_path: Path) -> None:
 
     result = u.Cli.json_write(json_file, {"key": "value", "number": 42})
 
-    assert result.is_success
+    assert result.success
     assert u.Cli.json_read(json_file).unwrap_or({}) == {"key": "value", "number": 42}
 
 
@@ -29,7 +29,7 @@ def test_json_write_accepts_pydantic_model(tmp_path: Path) -> None:
 
     result = u.Cli.json_write(json_file, report)
 
-    assert result.is_success
+    assert result.success
     assert json_file.exists()
 
 
@@ -39,7 +39,7 @@ def test_write_markdown_writes_exact_content(tmp_path: Path) -> None:
 
     result = u.Infra.write_markdown(md_file, lines)
 
-    assert result.is_success
+    assert result.success
     assert md_file.read_text() == "Line 1\nLine 2\nLine 3\n"
 
 
@@ -48,12 +48,12 @@ def test_write_markdown_preserves_empty_lines(tmp_path: Path) -> None:
 
     result = u.Infra.write_markdown(md_file, ["# Title", "", "", "Content"])
 
-    assert result.is_success
+    assert result.success
     assert md_file.read_text().count("\n") >= 3
 
 
 def test_write_markdown_fails_for_non_directory_parent() -> None:
     result = u.Infra.write_markdown(Path("/dev/null/test.md"), ["test"])
 
-    assert result.is_failure
+    assert result.failure
     assert "markdown write error" in (result.error or "")

@@ -43,9 +43,7 @@ class FlextInfraCodegenCensus(FlextInfraServiceBase[str]):
         total_fixable = sum(report.fixable for report in reports)
         if self.output_format == "json":
             payload: t.Infra.MutableInfraMapping = {
-                c.Infra.ReportKeys.PROJECTS: [
-                    report.model_dump() for report in reports
-                ],
+                c.Infra.RK_PROJECTS: [report.model_dump() for report in reports],
                 "total_violations": total_violations,
                 "total_fixable": total_fixable,
             }
@@ -99,7 +97,7 @@ class FlextInfraCodegenCensus(FlextInfraServiceBase[str]):
             workspace,
             projects=projects,
         )
-        if not projects_result.is_success:
+        if not projects_result.success:
             msg = projects_result.error or "project discovery failed"
             raise RuntimeError(msg)
         return [self._census_project(project) for project in projects_result.unwrap()]

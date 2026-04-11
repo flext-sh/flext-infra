@@ -44,7 +44,7 @@ class FlextInfraSilentFailureValidator(s[bool]):
     def build_report(self) -> r[m.Infra.ValidationReport]:
         """Build one validation report for the selected workspace projects."""
         projects_result = u.Infra.discover_codegen_projects(self.workspace_root)
-        if projects_result.is_failure:
+        if projects_result.failure:
             return r[m.Infra.ValidationReport].fail(
                 projects_result.error or "project discovery failed",
             )
@@ -56,7 +56,7 @@ class FlextInfraSilentFailureValidator(s[bool]):
                 project_roots=[project.path],
                 include_tests=self.include_tests,
             )
-            if iter_result.is_failure:
+            if iter_result.failure:
                 return r[m.Infra.ValidationReport].fail(
                     iter_result.error
                     or f"python file iteration failed for {project.name}",
@@ -94,7 +94,7 @@ class FlextInfraSilentFailureValidator(s[bool]):
     def execute(self) -> r[bool]:
         """Execute silent-failure validation and collapse the report to `r[bool]`."""
         report_result = self.build_report()
-        if report_result.is_failure:
+        if report_result.failure:
             return r[bool].fail(
                 report_result.error or "silent failure validation failed"
             )

@@ -50,7 +50,7 @@ class FlextInfraUtilitiesDocsAudit:
     ) -> t.StrSequence:
         """Read one list of policy tokens from the minimal root docs config."""
         workspace_root = (
-            scope.path if scope.name == c.Infra.ReportKeys.ROOT else scope.path.parent
+            scope.path if scope.name == c.Infra.RK_ROOT else scope.path.parent
         )
         payload = FlextInfraUtilitiesDocsScope.load_config(workspace_root)
         container = payload.get(section)
@@ -70,7 +70,7 @@ class FlextInfraUtilitiesDocsAudit:
         for md_file in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
             rel = md_file.relative_to(scope.path).as_posix()
             content = md_file.read_text(
-                encoding=c.Infra.Encoding.DEFAULT, errors=c.Infra.IGNORE
+                encoding=c.Infra.ENCODING_DEFAULT, errors=c.Infra.IGNORE
             )
             in_fenced_code = False
             for number, line in enumerate(content.splitlines(), start=1):
@@ -119,7 +119,7 @@ class FlextInfraUtilitiesDocsAudit:
         for md_file in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
             rel = md_file.relative_to(scope.path).as_posix()
             text = md_file.read_text(
-                encoding=c.Infra.Encoding.DEFAULT, errors=c.Infra.IGNORE
+                encoding=c.Infra.ENCODING_DEFAULT, errors=c.Infra.IGNORE
             )
             for token in tokens:
                 if token in text:
@@ -138,7 +138,7 @@ class FlextInfraUtilitiesDocsAudit:
         scope: m.Infra.DocScope,
     ) -> Sequence[m.Infra.AuditIssue]:
         """Collect mentions of excluded non-FLEXT roots in root docs."""
-        if scope.name != c.Infra.ReportKeys.ROOT:
+        if scope.name != c.Infra.RK_ROOT:
             return []
         issues: MutableSequence[m.Infra.AuditIssue] = []
         excluded = sorted(FlextInfraUtilitiesDocsScope.excluded_roots(scope.path))
@@ -149,7 +149,7 @@ class FlextInfraUtilitiesDocsAudit:
             if not md_file.exists():
                 continue
             text = md_file.read_text(
-                encoding=c.Infra.Encoding.DEFAULT, errors=c.Infra.IGNORE
+                encoding=c.Infra.ENCODING_DEFAULT, errors=c.Infra.IGNORE
             )
             for token in excluded:
                 if token in text:
@@ -177,10 +177,10 @@ class FlextInfraUtilitiesDocsAudit:
             if not path.exists():
                 continue
             rel = path.relative_to(scope.path).as_posix()
-            if path.is_relative_to(scope.path / c.Infra.Directories.DOCS) and (
+            if path.is_relative_to(scope.path / c.Infra.DIR_DOCS) and (
                 FlextInfraUtilitiesDocsScope.is_excluded_doc_path(
                     scope.path,
-                    path.relative_to(scope.path / c.Infra.Directories.DOCS),
+                    path.relative_to(scope.path / c.Infra.DIR_DOCS),
                 )
             ):
                 continue
@@ -203,7 +203,7 @@ class FlextInfraUtilitiesDocsAudit:
         scope: m.Infra.DocScope,
     ) -> Sequence[m.Infra.AuditIssue]:
         """Collect missing docstring issues for public exports and modules."""
-        if scope.name == c.Infra.ReportKeys.ROOT or not scope.package_name:
+        if scope.name == c.Infra.RK_ROOT or not scope.package_name:
             return []
         contract = FlextInfraUtilitiesDocsApi.public_contract(
             scope.path, scope.package_name
@@ -231,11 +231,11 @@ class FlextInfraUtilitiesDocsAudit:
         if not tokens:
             return issues
         for md_file in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
-            rel = md_file.relative_to(scope.path / c.Infra.Directories.DOCS).as_posix()
+            rel = md_file.relative_to(scope.path / c.Infra.DIR_DOCS).as_posix()
             if rel in exempt_paths:
                 continue
             text = md_file.read_text(
-                encoding=c.Infra.Encoding.DEFAULT,
+                encoding=c.Infra.ENCODING_DEFAULT,
                 errors=c.Infra.IGNORE,
             )
             for token in tokens:

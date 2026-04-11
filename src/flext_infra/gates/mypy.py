@@ -28,7 +28,7 @@ class FlextInfraMypyGate(FlextInfraGate):
         ctx: m.Infra.GateContext,
     ) -> Path:
         """Resolve mypy config: project-local if it has [tool.mypy], else workspace."""
-        proj_py = project_dir / c.Infra.Files.PYPROJECT_FILENAME
+        proj_py = project_dir / c.Infra.PYPROJECT_FILENAME
         doc = u.Cli.toml_read(proj_py)
         if doc is not None:
             tool_table = u.Cli.toml_get_table(doc, c.Infra.TOOL)
@@ -37,7 +37,7 @@ class FlextInfraMypyGate(FlextInfraGate):
                 and u.Cli.toml_get_table(tool_table, c.Infra.MYPY) is not None
             ):
                 return proj_py
-        return ctx.workspace_root / c.Infra.Files.PYPROJECT_FILENAME
+        return ctx.workspace_root / c.Infra.PYPROJECT_FILENAME
 
     @override
     def _build_check_command(
@@ -65,9 +65,7 @@ class FlextInfraMypyGate(FlextInfraGate):
         ctx: m.Infra.GateContext,
     ) -> t.StrMapping | None:
         _ = project_dir
-        typings_generated = (
-            ctx.workspace_root / c.Infra.Directories.TYPINGS / "generated"
-        )
+        typings_generated = ctx.workspace_root / c.Infra.DIR_TYPINGS / "generated"
         mypy_env = os.environ.copy()
         if typings_generated.is_dir():
             existing = mypy_env.get("MYPYPATH", "")

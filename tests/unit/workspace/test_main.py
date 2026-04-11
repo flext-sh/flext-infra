@@ -125,7 +125,7 @@ def test_detect_workspace_returns_workspace_mode(tmp_path: Path) -> None:
         FlextInfraWorkspaceDetector(workspace=member_root, apply=False),
     )
 
-    assert result.is_success, result.error
+    assert result.success, result.error
     assert result.value == c.Infra.WorkspaceMode.WORKSPACE
 
 
@@ -141,7 +141,7 @@ def test_sync_workspace_returns_sync_result(tmp_path: Path) -> None:
         ),
     )
 
-    assert result.is_success, result.error
+    assert result.success, result.error
     assert result.value.files_changed >= 1
 
 
@@ -150,7 +150,7 @@ def test_orchestrate_workspace_rejects_unknown_verb() -> None:
         FlextInfraOrchestratorService(verb="legacy-check", projects=["p-a"]),
     )
 
-    assert result.is_failure
+    assert result.failure
     assert "unsupported orchestrate verb" in (result.error or "")
 
 
@@ -159,7 +159,7 @@ def test_orchestrate_workspace_defaults_to_current_project() -> None:
     _install_successful_orchestration(orchestrator, project_root=Path.cwd())
     result = infra.orchestrate_workspace(orchestrator)
 
-    assert result.is_success, result.error
+    assert result.success, result.error
 
 
 def test_workspace_main_detect_accepts_explicit_workspace_root(

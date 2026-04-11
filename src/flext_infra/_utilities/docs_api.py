@@ -9,14 +9,7 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from flext_cli import u
-from flext_infra import (
-    FlextInfraUtilitiesCodegenLazyScanning,
-    FlextInfraUtilitiesDocsScope,
-    FlextInfraUtilitiesRope,
-    c,
-    m,
-    t,
-)
+from flext_infra import FlextInfraUtilitiesDocsScope, FlextInfraUtilitiesRope, c, m, t
 
 
 class FlextInfraUtilitiesDocsApi:
@@ -59,11 +52,11 @@ class FlextInfraUtilitiesDocsApi:
     def _module_file(project_root: Path, module_name: str) -> Path:
         """Resolve a Python module path to its file path."""
         parts = module_name.split(".")
-        base = project_root / c.Infra.Paths.DEFAULT_SRC_DIR / parts[0]
+        base = project_root / c.Infra.DEFAULT_SRC_DIR / parts[0]
         return (
-            base / c.Infra.Files.INIT_PY
+            base / c.Infra.INIT_PY
             if len(parts) == 1
-            else base.joinpath(*parts[1:]).with_suffix(c.Infra.Extensions.PYTHON)
+            else base.joinpath(*parts[1:]).with_suffix(c.Infra.EXT_PYTHON)
         )
 
     @classmethod
@@ -187,20 +180,15 @@ class FlextInfraUtilitiesDocsApi:
                 "exclude_docs": exclude_docs,
             }
         init_path = (
-            project_root
-            / c.Infra.Paths.DEFAULT_SRC_DIR
-            / package_name
-            / c.Infra.Files.INIT_PY
+            project_root / c.Infra.DEFAULT_SRC_DIR / package_name / c.Infra.INIT_PY
         )
         if not init_path.exists():
             return FlextInfraUtilitiesDocsApi.public_contract(project_root, "")
-        source = init_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+        source = init_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
         all_exports = list(
             FlextInfraUtilitiesDocsApi._assignment_strings(source, "__all__")
         )
-        target_map = FlextInfraUtilitiesCodegenLazyScanning.extract_lazy_import_targets(
-            init_path
-        )
+        target_map = dict.fromkeys(all_exports, package_name)
         modules = sorted(
             {
                 module
@@ -300,7 +288,7 @@ class FlextInfraUtilitiesDocsApi:
                 project_root, package_name
             )
             if root_module.exists():
-                source = root_module.read_text(encoding=c.Infra.Encoding.DEFAULT)
+                source = root_module.read_text(encoding=c.Infra.ENCODING_DEFAULT)
                 if not FlextInfraUtilitiesDocsApi._has_module_docstring(source):
                     issues.append(
                         m.Infra.AuditIssue(
@@ -316,7 +304,7 @@ class FlextInfraUtilitiesDocsApi:
             )
             if not module_file.exists():
                 continue
-            source = module_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
+            source = module_file.read_text(encoding=c.Infra.ENCODING_DEFAULT)
             if not FlextInfraUtilitiesDocsApi._has_module_docstring(source):
                 issues.append(
                     m.Infra.AuditIssue(
@@ -337,7 +325,7 @@ class FlextInfraUtilitiesDocsApi:
             )
             if not module_file.exists():
                 continue
-            source = module_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
+            source = module_file.read_text(encoding=c.Infra.ENCODING_DEFAULT)
             if FlextInfraUtilitiesDocsApi._has_symbol_docstring(source, export_name):
                 continue
             issues.append(

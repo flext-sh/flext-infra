@@ -84,8 +84,8 @@ class FlextInfraUtilitiesRefactor(
     def normalize_module_path(path_value: str | Path) -> str:
         path = Path(str(path_value).replace("\\", "/"))
         parts = path.parts
-        if c.Infra.Paths.DEFAULT_SRC_DIR in parts:
-            src_index = parts.index(c.Infra.Paths.DEFAULT_SRC_DIR)
+        if c.Infra.DEFAULT_SRC_DIR in parts:
+            src_index = parts.index(c.Infra.DEFAULT_SRC_DIR)
             suffix = parts[src_index + 1 :]
             if suffix:
                 return Path(*suffix).as_posix()

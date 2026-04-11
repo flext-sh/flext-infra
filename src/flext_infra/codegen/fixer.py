@@ -106,12 +106,12 @@ class FlextInfraCodegenFixer(s[str]):
             return self._empty_result(project_path.name)
         pkg_dir = (
             project_path
-            / c.Infra.Paths.DEFAULT_SRC_DIR
+            / c.Infra.DEFAULT_SRC_DIR
             / Path(
                 *package_name.split("."),
             )
         )
-        if not (pkg_dir / c.Infra.Files.INIT_PY).is_file():
+        if not (pkg_dir / c.Infra.INIT_PY).is_file():
             return self._empty_result(project_path.name)
         ctx = m.Infra.FixContext()
         src_dir = pkg_dir.parent
@@ -121,7 +121,7 @@ class FlextInfraCodegenFixer(s[str]):
             FlextInfraNamespaceValidator().validate(project_path),
         )
         initial_violations = initial_violations_result.unwrap_or(())
-        if initial_violations_result.is_failure:
+        if initial_violations_result.failure:
             _log.warning(
                 "namespace_validation_failed",
                 project=project_path.name,
@@ -134,7 +134,7 @@ class FlextInfraCodegenFixer(s[str]):
                 message=initial_violations_result.error
                 or "namespace validation failed",
             )
-        py_files = tuple(project_path.rglob(c.Infra.Extensions.PYTHON_GLOB))
+        py_files = tuple(project_path.rglob(c.Infra.EXT_PYTHON_GLOB))
         bak_paths = u.Infra.backup_files(py_files)
         if self.dry_run or self.rules_only:
             ctx.violations_skipped.extend(initial_violations)
@@ -174,15 +174,15 @@ class FlextInfraCodegenFixer(s[str]):
             )
         engine = FlextInfraRefactorEngine()
         config_result = engine.load_config()
-        rules_result = engine.load_rules() if config_result.is_success else None
-        if config_result.is_failure:
+        rules_result = engine.load_rules() if config_result.success else None
+        if config_result.failure:
             ctx.skip(
                 module=project_path.name,
                 rule="REFACTOR",
                 line=0,
                 message=config_result.error or "refactor config load failed",
             )
-        elif rules_result is not None and rules_result.is_failure:
+        elif rules_result is not None and rules_result.failure:
             ctx.skip(
                 module=project_path.name,
                 rule="REFACTOR",
@@ -253,7 +253,7 @@ class FlextInfraCodegenFixer(s[str]):
         remaining_violations_result = u.Infra.parse_namespace_validation(
             FlextInfraNamespaceValidator().validate(project_path),
         )
-        if remaining_violations_result.is_failure:
+        if remaining_violations_result.failure:
             ctx.skip(
                 module=project_path.name,
                 rule="NAMESPACE",
@@ -286,7 +286,7 @@ class FlextInfraCodegenFixer(s[str]):
             self.workspace_root,
             projects=projects,
         )
-        if not projects_result.is_success:
+        if not projects_result.success:
             msg = projects_result.error or "project discovery failed"
             raise RuntimeError(msg)
         return [self._fix_project(project) for project in projects_result.unwrap()]

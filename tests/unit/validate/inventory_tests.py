@@ -135,7 +135,7 @@ class TestInventoryServiceReports:
         """Nonexistent workspace still returns success."""
         service = FlextInfraInventoryService()
         result = service.generate(tmp_path / "nonexistent")
-        tm.that(result.is_success, eq=True)
+        tm.that(result.success, eq=True)
 
     def test_generate_write_to_readonly_dir_fails(self, tmp_path: Path) -> None:
         """Writing to read-only output directory fails."""
@@ -145,7 +145,7 @@ class TestInventoryServiceReports:
         output_dir.chmod(0o444)
         try:
             result = service.generate(tmp_path, output_dir=output_dir)
-            tm.that(result.is_failure, eq=True)
+            tm.that(result.failure, eq=True)
         finally:
             output_dir.chmod(0o755)
 

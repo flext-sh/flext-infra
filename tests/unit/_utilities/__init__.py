@@ -12,10 +12,6 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ),
         ".test_formatting": ("TestsFlextInfraUtilitiesFormattingRunRuffFix",),
         ".test_iteration": ("TestIterWorkspacePythonModules",),
-        ".test_rope_hooks": (
-            "test_run_rope_post_hooks_applies_mro_migration",
-            "test_run_rope_post_hooks_dry_run_is_non_mutating",
-        ),
         ".test_safety": (
             "TestSafetyCheckpoint",
             "TestSafetyRollback",

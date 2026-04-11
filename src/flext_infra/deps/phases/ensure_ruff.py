@@ -12,13 +12,14 @@ class FlextInfraEnsureRuffConfigPhase:
     """Ensure standard Ruff configuration inline with known-first-party overlay."""
 
     def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:
+        """Store tool configuration used to build canonical Ruff settings."""
         self._tool_config = tool_config
 
     @staticmethod
     def _workspace_project_namespaces(project_dir: Path) -> t.StrSequence:
         """Discover child project packages when generating workspace root config."""
         discovered = u.Infra.discover_projects(project_dir)
-        if discovered.is_failure:
+        if discovered.failure:
             return []
         return sorted(
             {
@@ -49,6 +50,7 @@ class FlextInfraEnsureRuffConfigPhase:
         *,
         path: Path,
     ) -> t.StrSequence:
+        """Apply canonical Ruff tables with namespace-aware first-party detection."""
         ruff_cfg = self._tool_config.tools.ruff
         discovered_src = sorted(u.Infra.discover_python_dirs(path.parent))
         effective_src = discovered_src or sorted(ruff_cfg.src)

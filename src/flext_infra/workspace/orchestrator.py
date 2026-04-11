@@ -97,8 +97,8 @@ class FlextInfraOrchestratorService(s[bool]):
             needs_sync = any(
                 not (project_root / filename).is_file()
                 for filename in (
-                    c.Infra.Files.BASE_MK,
-                    c.Infra.Files.MAKEFILE_FILENAME,
+                    c.Infra.BASE_MK,
+                    c.Infra.MAKEFILE_FILENAME,
                 )
             )
             if not needs_sync:
@@ -108,7 +108,7 @@ class FlextInfraOrchestratorService(s[bool]):
                 canonical_root=workspace_root,
                 apply=True,
             ).execute()
-            if sync_result.is_failure:
+            if sync_result.failure:
                 sync_error = sync_result.error or "workspace sync failed"
                 return r[bool].fail(f"{project.name}: {sync_error}")
         return r[bool].ok(True)
@@ -116,21 +116,21 @@ class FlextInfraOrchestratorService(s[bool]):
     @override
     def execute(self) -> r[bool]:
         """Execute the workspace-orchestrate CLI flow."""
-        allowed_verbs = c.Infra.Make.ORCHESTRATED_PROJECT_VERBS
+        allowed_verbs = c.Infra.ORCHESTRATED_PROJECT_VERBS
         if self.verb not in allowed_verbs:
             allowed = ", ".join(allowed_verbs)
             return r[bool].fail(
                 f"unsupported orchestrate verb '{self.verb}' (allowed: {allowed})",
             )
         resolved_projects = self._resolved_projects()
-        if resolved_projects.is_failure:
+        if resolved_projects.failure:
             return r[bool].fail(resolved_projects.error or "project resolution failed")
         projects = resolved_projects.value
         if not projects:
             return r[bool].fail("no projects discovered")
         workspace_root = self._workspace_root()
         prepare_result = self._prepare_projects(projects, workspace_root=workspace_root)
-        if prepare_result.is_failure:
+        if prepare_result.failure:
             return prepare_result
         result = self.orchestrate(
             projects=[
@@ -141,7 +141,7 @@ class FlextInfraOrchestratorService(s[bool]):
             fail_fast=self.fail_fast,
             make_args=self.make_args,
         )
-        if result.is_failure:
+        if result.failure:
             return r[bool].fail(result.error or "orchestration completed with failures")
         failures = sum(1 for item in result.value if item.exit_code != 0)
         if failures:
@@ -158,7 +158,7 @@ class FlextInfraOrchestratorService(s[bool]):
     ) -> t.Infra.Pair[m.Cli.CommandOutput, bool]:
         """Run one project and return (output, succeeded)."""
         output_result = self._run_project(project, verb, idx, make_args=list(make_args))
-        if output_result.is_failure:
+        if output_result.failure:
             return (
                 m.Cli.CommandOutput(
                     stdout="",
@@ -211,7 +211,7 @@ class FlextInfraOrchestratorService(s[bool]):
         """
         u.Infra.header("Workspace Orchestration")
         try:
-            allowed_verbs = c.Infra.Make.ORCHESTRATED_PROJECT_VERBS
+            allowed_verbs = c.Infra.ORCHESTRATED_PROJECT_VERBS
             if verb not in allowed_verbs:
                 allowed = ", ".join(allowed_verbs)
                 return r[Sequence[m.Cli.CommandOutput]].fail(
@@ -290,7 +290,7 @@ class FlextInfraOrchestratorService(s[bool]):
         """
         log_path = u.Infra.get_report_path(
             Path.cwd(),
-            c.Infra.ReportKeys.WORKSPACE,
+            c.Infra.RK_WORKSPACE,
             verb,
             f"{project}.log",
         )
@@ -307,7 +307,7 @@ class FlextInfraOrchestratorService(s[bool]):
             env={"NO_COLOR": "1", **os.environ},
         )
         return_code: int = proc_result.unwrap_or(1)
-        stderr = "" if proc_result.is_success else proc_result.error or ""
+        stderr = "" if proc_result.success else proc_result.error or ""
         elapsed = time.monotonic() - started
         if return_code == 0:
             u.Infra.info(
@@ -342,7 +342,7 @@ class FlextInfraOrchestratorService(s[bool]):
         verb: str,
         make_args: t.StrSequence,
     ) -> t.StrSequence:
-        if (verb != c.Infra.Verbs.CHECK) or (not self._is_go_project(project)):
+        if (verb != c.Infra.VERB_CHECK) or (not self._is_go_project(project)):
             return make_args
         normalized_args: MutableSequence[str] = []
         for make_arg in make_args:
@@ -355,7 +355,7 @@ class FlextInfraOrchestratorService(s[bool]):
         return normalized_args
 
     def _is_go_project(self, project: str) -> bool:
-        return (Path(project) / c.Infra.Files.GO_MOD).exists()
+        return (Path(project) / c.Infra.GO_MOD).exists()
 
     def _normalize_check_gates_for_go(self, gates_value: str) -> str:
         raw_gates = [gate.strip() for gate in gates_value.split(",") if gate.strip()]

@@ -53,12 +53,12 @@ class FlextInfraRefactorClassNestingAnalyzer:
         violations: MutableSequence[m.Infra.ClassNestingViolation] = []
         for project_root, target_files in grouped_targets.items():
             scan_result = scanner.scan(project_root)
-            if scan_result.is_failure:
+            if scan_result.failure:
                 continue
             try:
                 parsed_violations: Sequence[m.Infra.LooseClassViolation] = (
                     cls._LOOSE_CLASS_SEQ_ADAPTER.validate_python(
-                        scan_result.value.get(c.Infra.ReportKeys.VIOLATIONS, []),
+                        scan_result.value.get(c.Infra.RK_VIOLATIONS, []),
                     )
                 )
             except ValidationError:
@@ -68,9 +68,9 @@ class FlextInfraRefactorClassNestingAnalyzer:
                 if target_files and normalized_file not in target_files:
                     continue
                 line = parsed_violation.line if parsed_violation.line > 0 else 1
-                confidence = parsed_violation.confidence or c.Infra.Severity.LOW
+                confidence = parsed_violation.confidence or c.Infra.SEVERITY_LOW
                 target_namespace = ""
-                rewrite_scope = c.Infra.ReportKeys.FILE
+                rewrite_scope = c.Infra.RK_FILE
                 mapped_entry = mapping_index.get((
                     normalized_file,
                     parsed_violation.class_name,
@@ -120,7 +120,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
 
     @classmethod
     def _module_path_for_file(cls, file_path: Path, project_root: Path) -> str | None:
-        src_dir = (project_root / c.Infra.Paths.DEFAULT_SRC_DIR).resolve()
+        src_dir = (project_root / c.Infra.DEFAULT_SRC_DIR).resolve()
         resolved = file_path.resolve()
         try:
             relative = resolved.relative_to(src_dir)
@@ -139,7 +139,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
             return r[Mapping[t.Infra.Pair[str, str], m.Infra.ClassNestingMapping]].fail(
                 str(exc),
             )
-        raw_nesting = typed_doc.get(c.Infra.ReportKeys.CLASS_NESTING)
+        raw_nesting = typed_doc.get(c.Infra.RK_CLASS_NESTING)
         if not isinstance(raw_nesting, list):
             return r[
                 Mapping[t.Infra.Pair[str, str], m.Infra.ClassNestingMapping]
@@ -170,15 +170,15 @@ class FlextInfraRefactorClassNestingAnalyzer:
     @classmethod
     def _normalize_rewrite_scope(cls, raw_scope: str | None) -> str:
         if not isinstance(raw_scope, str):
-            return c.Infra.ReportKeys.FILE
+            return c.Infra.RK_FILE
         candidate = u.norm_str(raw_scope, case="lower")
         if candidate in {
-            c.Infra.ReportKeys.FILE,
+            c.Infra.RK_FILE,
             c.Infra.PROJECT,
-            c.Infra.ReportKeys.WORKSPACE,
+            c.Infra.RK_WORKSPACE,
         }:
             return candidate
-        return c.Infra.ReportKeys.FILE
+        return c.Infra.RK_FILE
 
 
 __all__ = ["FlextInfraRefactorClassNestingAnalyzer"]

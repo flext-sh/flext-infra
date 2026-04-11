@@ -35,7 +35,7 @@ class FlextInfraCodegenPipeline(s[str]):
             workspace_root=self.workspace_root,
             shared={},
             config={
-                c.Infra.Pipeline.KEY_DRY_RUN: self.dry_run or not self.apply_changes,
+                c.Infra.PIPELINE_KEY_DRY_RUN: self.dry_run or not self.apply_changes,
             },
         )
 
@@ -47,11 +47,11 @@ class FlextInfraCodegenPipeline(s[str]):
             fail_fast=True,
             logger=_log,
         )
-        if pipeline_result.is_failure:
+        if pipeline_result.failure:
             return r[str].fail(pipeline_result.error or "pipeline execution failed")
 
         result = pipeline_result.value
-        if not result.ok:
+        if not result.success:
             failed = result.failed_stages
             error_msg = failed[0].error if failed else "pipeline failed"
             return r[str].fail(error_msg or "pipeline failed")
@@ -68,22 +68,22 @@ class FlextInfraCodegenPipeline(s[str]):
             str,
             Callable[[m.Cli.PipelineStageContext], r[m.Cli.PipelineStageResult]],
         ] = {
-            c.Infra.Pipeline.STAGE_DISCOVER: self._stage_discover,
-            c.Infra.Pipeline.STAGE_PY_TYPED: self._stage_py_typed,
-            c.Infra.Pipeline.STAGE_CENSUS_BEFORE: self._stage_census_before,
-            c.Infra.Pipeline.STAGE_SCAFFOLD: self._stage_scaffold,
-            c.Infra.Pipeline.STAGE_AUTO_FIX: self._stage_auto_fix,
-            c.Infra.Pipeline.STAGE_LAZY_INIT: self._stage_lazy_init,
-            c.Infra.Pipeline.STAGE_CENSUS_AFTER: self._stage_census_after,
+            c.Infra.PipelineStage.DISCOVER: self._stage_discover,
+            c.Infra.PipelineStage.PY_TYPED: self._stage_py_typed,
+            c.Infra.PipelineStage.CENSUS_BEFORE: self._stage_census_before,
+            c.Infra.PipelineStage.SCAFFOLD: self._stage_scaffold,
+            c.Infra.PipelineStage.AUTO_FIX: self._stage_auto_fix,
+            c.Infra.PipelineStage.LAZY_INIT: self._stage_lazy_init,
+            c.Infra.PipelineStage.CENSUS_AFTER: self._stage_census_after,
         }
         stage_list: MutableSequence[m.Cli.PipelineStageSpec] = []
         prev: str | None = None
-        for stage_id in c.Infra.Pipeline.STAGE_ORDER:
+        for stage_id in c.Infra.PIPELINE_STAGE_ORDER:
             handler = handlers[stage_id]
             deps: frozenset[str] = (
                 frozenset((prev,)) if prev is not None else frozenset()
             )
-            retry = 1 if stage_id == c.Infra.Pipeline.STAGE_AUTO_FIX else 0
+            retry = 1 if stage_id == c.Infra.PipelineStage.AUTO_FIX else 0
             stage_list.append(
                 m.Cli.PipelineStageSpec(
                     stage_id=stage_id,
@@ -106,7 +106,7 @@ class FlextInfraCodegenPipeline(s[str]):
         """Discover workspace projects once for reuse across all stages."""
         try:
             projects_result = u.Infra.discover_codegen_projects(ctx.workspace_root)
-            if not projects_result.is_success:
+            if not projects_result.success:
                 return r[m.Cli.PipelineStageResult].fail(
                     f"project discovery failed: {projects_result.error}",
                 )
@@ -116,8 +116,8 @@ class FlextInfraCodegenPipeline(s[str]):
         self._state.discovered_projects = discovered
         return r[m.Cli.PipelineStageResult].ok(
             m.Cli.PipelineStageResult(
-                stage_id=c.Infra.Pipeline.STAGE_DISCOVER,
-                status=c.Cli.Pipeline.STATUS_OK,
+                stage_id=c.Infra.PipelineStage.DISCOVER,
+                status=c.Cli.PIPELINE_STATUS_OK,
                 output={"projects_discovered": len(discovered)},
             ),
         )
@@ -135,8 +135,8 @@ class FlextInfraCodegenPipeline(s[str]):
             return r[m.Cli.PipelineStageResult].fail(f"py_typed failed: {exc}")
         return r[m.Cli.PipelineStageResult].ok(
             m.Cli.PipelineStageResult(
-                stage_id=c.Infra.Pipeline.STAGE_PY_TYPED,
-                status=c.Cli.Pipeline.STATUS_OK,
+                stage_id=c.Infra.PipelineStage.PY_TYPED,
+                status=c.Cli.PIPELINE_STATUS_OK,
                 output={"markers_updated": count},
             ),
         )
@@ -160,8 +160,8 @@ class FlextInfraCodegenPipeline(s[str]):
         fixable = sum(report.fixable for report in reports)
         return r[m.Cli.PipelineStageResult].ok(
             m.Cli.PipelineStageResult(
-                stage_id=c.Infra.Pipeline.STAGE_CENSUS_BEFORE,
-                status=c.Cli.Pipeline.STATUS_OK,
+                stage_id=c.Infra.PipelineStage.CENSUS_BEFORE,
+                status=c.Cli.PIPELINE_STATUS_OK,
                 output={"total_violations": total, "total_fixable": fixable},
             ),
         )
@@ -172,7 +172,7 @@ class FlextInfraCodegenPipeline(s[str]):
     ) -> r[m.Cli.PipelineStageResult]:
         """Run scaffold stage and cache results."""
         try:
-            dry_run = bool(ctx.config.get(c.Infra.Pipeline.KEY_DRY_RUN, False))
+            dry_run = bool(ctx.config.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
             projects = self._state.discovered_projects or None
             results = FlextInfraCodegenScaffolder.model_validate({
                 "workspace_root": ctx.workspace_root,
@@ -184,8 +184,8 @@ class FlextInfraCodegenPipeline(s[str]):
         skipped = sum(len(result.files_skipped) for result in results)
         return r[m.Cli.PipelineStageResult].ok(
             m.Cli.PipelineStageResult(
-                stage_id=c.Infra.Pipeline.STAGE_SCAFFOLD,
-                status=c.Cli.Pipeline.STATUS_OK,
+                stage_id=c.Infra.PipelineStage.SCAFFOLD,
+                status=c.Cli.PIPELINE_STATUS_OK,
                 output={"total_created": created, "total_skipped": skipped},
             ),
         )
@@ -196,7 +196,7 @@ class FlextInfraCodegenPipeline(s[str]):
     ) -> r[m.Cli.PipelineStageResult]:
         """Run auto-fix stage and cache results."""
         try:
-            dry_run = bool(ctx.config.get(c.Infra.Pipeline.KEY_DRY_RUN, False))
+            dry_run = bool(ctx.config.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
             projects = self._state.discovered_projects or None
             results = FlextInfraCodegenFixer.model_validate({
                 "workspace_root": ctx.workspace_root,
@@ -209,8 +209,8 @@ class FlextInfraCodegenPipeline(s[str]):
         skipped = sum(len(result.violations_skipped) for result in results)
         return r[m.Cli.PipelineStageResult].ok(
             m.Cli.PipelineStageResult(
-                stage_id=c.Infra.Pipeline.STAGE_AUTO_FIX,
-                status=c.Cli.Pipeline.STATUS_OK,
+                stage_id=c.Infra.PipelineStage.AUTO_FIX,
+                status=c.Cli.PIPELINE_STATUS_OK,
                 output={"total_fixed": fixed, "total_skipped": skipped},
             ),
         )
@@ -221,7 +221,7 @@ class FlextInfraCodegenPipeline(s[str]):
     ) -> r[m.Cli.PipelineStageResult]:
         """Run lazy-init __init__.py generation."""
         try:
-            dry_run = bool(ctx.config.get(c.Infra.Pipeline.KEY_DRY_RUN, False))
+            dry_run = bool(ctx.config.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
             count = FlextInfraCodegenLazyInit.model_validate({
                 "workspace_root": ctx.workspace_root,
             }).generate_inits(check_only=dry_run)
@@ -229,8 +229,8 @@ class FlextInfraCodegenPipeline(s[str]):
             return r[m.Cli.PipelineStageResult].fail(f"lazy_init failed: {exc}")
         return r[m.Cli.PipelineStageResult].ok(
             m.Cli.PipelineStageResult(
-                stage_id=c.Infra.Pipeline.STAGE_LAZY_INIT,
-                status=c.Cli.Pipeline.STATUS_OK,
+                stage_id=c.Infra.PipelineStage.LAZY_INIT,
+                status=c.Cli.PIPELINE_STATUS_OK,
                 output={"unmapped_count": count},
             ),
         )
@@ -255,8 +255,8 @@ class FlextInfraCodegenPipeline(s[str]):
         fixable = sum(report.fixable for report in reports)
         return r[m.Cli.PipelineStageResult].ok(
             m.Cli.PipelineStageResult(
-                stage_id=c.Infra.Pipeline.STAGE_CENSUS_AFTER,
-                status=c.Cli.Pipeline.STATUS_OK,
+                stage_id=c.Infra.PipelineStage.CENSUS_AFTER,
+                status=c.Cli.PIPELINE_STATUS_OK,
                 output={"total_violations": total, "total_fixable": fixable},
             ),
         )

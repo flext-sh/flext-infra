@@ -12,12 +12,23 @@ from flext_core.lazy import (
 )
 
 if _t.TYPE_CHECKING:
-    from flext_core.decorators import d
-    from flext_core.exceptions import e
-    from flext_core.handlers import h
-    from flext_core.mixins import x
-    from flext_core.result import r
-    from flext_infra.base import s
+    from flext_tests import (
+        d,
+        e,
+        h,
+        r,
+        reset_settings,
+        s,
+        settings,
+        settings_factory,
+        td,
+        tf,
+        tk,
+        tm,
+        tv,
+        x,
+    )
+
     from tests._constants.domain import TestsFlextInfraConstantsDomain
     from tests._constants.fixtures import TestsFlextInfraConstantsFixtures
     from tests.constants import TestsFlextInfraConstants, c
@@ -31,10 +42,6 @@ if _t.TYPE_CHECKING:
         TestsFlextInfraUtilitiesFormattingRunRuffFix,
     )
     from tests.unit._utilities.test_iteration import TestIterWorkspacePythonModules
-    from tests.unit._utilities.test_rope_hooks import (
-        test_run_rope_post_hooks_applies_mro_migration,
-        test_run_rope_post_hooks_dry_run_is_non_mutating,
-    )
     from tests.unit._utilities.test_safety import (
         TestSafetyCheckpoint,
         TestSafetyRollback,
@@ -70,12 +77,22 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "TestsFlextInfraUtilities",
                 "u",
             ),
-            "flext_core.decorators": ("d",),
-            "flext_core.exceptions": ("e",),
-            "flext_core.handlers": ("h",),
-            "flext_core.mixins": ("x",),
-            "flext_core.result": ("r",),
-            "flext_infra.base": ("s",),
+            "flext_tests": (
+                "d",
+                "e",
+                "h",
+                "r",
+                "reset_settings",
+                "s",
+                "settings",
+                "settings_factory",
+                "td",
+                "tf",
+                "tk",
+                "tm",
+                "tv",
+                "x",
+            ),
         },
     ),
     exclude_names=(
@@ -114,10 +131,16 @@ __all__ = [
     "m",
     "p",
     "r",
+    "reset_settings",
     "s",
+    "settings",
+    "settings_factory",
     "t",
-    "test_run_rope_post_hooks_applies_mro_migration",
-    "test_run_rope_post_hooks_dry_run_is_non_mutating",
+    "td",
+    "tf",
+    "tk",
+    "tm",
+    "tv",
     "u",
     "x",
 ]

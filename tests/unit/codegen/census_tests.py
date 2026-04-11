@@ -27,7 +27,7 @@ def _parse_violation(violation: str) -> m.Infra.CensusViolation | None:
             )
         )
     )
-    if parsed.is_failure:
+    if parsed.failure:
         return None
     violations = parsed.unwrap()
     return violations[0] if violations else None

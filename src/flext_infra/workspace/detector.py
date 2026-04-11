@@ -38,7 +38,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
         parsed = urlparse(url)
         path = parsed.path or url
         name = path.rsplit("/", 1)[-1]
-        return name.removesuffix(c.Infra.Git.DIR)
+        return name.removesuffix(c.Infra.GIT_DIR)
 
     def detect(self, project_root: Path) -> r[c.Infra.WorkspaceMode]:
         """Detect workspace mode by inspecting parent repository origin URL.
@@ -54,12 +54,12 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
         try:
             resolved_project_root = project_root.resolve()
             for candidate in (resolved_project_root, *resolved_project_root.parents):
-                if (candidate / c.Infra.Files.GITMODULES).exists():
+                if (candidate / c.Infra.GITMODULES).exists():
                     return r[c.Infra.WorkspaceMode].ok(
                         c.Infra.WorkspaceMode.WORKSPACE,
                     )
             parent = resolved_project_root.parent
-            git_marker = parent / c.Infra.Git.DIR
+            git_marker = parent / c.Infra.GIT_DIR
             if not git_marker.exists():
                 u.Infra.info(
                     "Running in standalone mode (no parent workspace detected)"
@@ -69,7 +69,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
                 [c.Infra.GIT, "config", "--get", "remote.origin.url"],
                 cwd=parent,
             )
-            if result.is_failure:
+            if result.failure:
                 u.Infra.info("Running in standalone mode (unable to detect workspace)")
                 return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.STANDALONE)
             origin = result.value.strip()
@@ -79,7 +79,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             repo_name = self._repo_name_from_url(origin)
             mode = (
                 c.Infra.WorkspaceMode.WORKSPACE
-                if repo_name == c.Infra.Packages.ROOT
+                if repo_name == c.Infra.PKG_ROOT
                 else c.Infra.WorkspaceMode.STANDALONE
             )
             if mode == c.Infra.WorkspaceMode.STANDALONE:

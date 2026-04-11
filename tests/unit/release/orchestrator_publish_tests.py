@@ -16,7 +16,7 @@ def publish_ctx(
     push: bool = False,
 ) -> m.Infra.ReleasePhaseDispatchConfig:
     return m.Infra.ReleasePhaseDispatchConfig(
-        phase=c.Infra.Verbs.PUBLISH,
+        phase=c.Infra.VERB_PUBLISH,
         workspace_root=workspace_root,
         version="1.0.0",
         tag="v1.0.0",
@@ -37,7 +37,7 @@ def test_phase_publish_dry_run_writes_notes_only(tmp_path: Path) -> None:
         publish_ctx(workspace, dry_run=True),
     )
 
-    assert result.is_success
+    assert result.success
     assert (
         workspace / ".reports" / "release" / "v1.0.0" / "RELEASE_NOTES.md"
     ).is_file()
@@ -53,7 +53,7 @@ def test_phase_publish_apply_updates_docs_and_creates_tag(tmp_path: Path) -> Non
 
     result = FlextInfraReleaseOrchestrator().phase_publish(publish_ctx(workspace))
 
-    assert result.is_success
+    assert result.success
     assert (workspace / "docs" / "CHANGELOG.md").is_file()
     assert (workspace / "docs" / "releases" / "latest.md").is_file()
     assert (workspace / "docs" / "releases" / "v1.0.0.md").is_file()
@@ -75,7 +75,7 @@ def test_phase_publish_push_without_origin_fails_after_local_tagging(
         publish_ctx(workspace, push=True),
     )
 
-    assert result.is_failure
+    assert result.failure
     assert (workspace / "docs" / "CHANGELOG.md").is_file()
     assert (
         u.Cli.capture(["git", "tag", "-l", "v1.0.0"], cwd=workspace).unwrap()
@@ -101,7 +101,7 @@ def test_phase_publish_notes_include_only_selected_projects(tmp_path: Path) -> N
     notes_path = workspace / ".reports" / "release" / "v1.0.0" / "RELEASE_NOTES.md"
     notes = notes_path.read_text(encoding="utf-8")
 
-    assert result.is_success
+    assert result.success
     assert "- root" in notes
     assert "- flext-a" in notes
     assert "- flext-b" not in notes

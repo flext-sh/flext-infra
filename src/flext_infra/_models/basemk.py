@@ -7,7 +7,8 @@ from typing import Annotated
 from pydantic import Field
 
 from flext_cli import m
-from flext_infra import FlextInfraModelsMixins, c, t
+from flext_infra import c, t
+from flext_infra._models.mixins import FlextInfraModelsMixins
 
 
 class FlextInfraModelsBasemk:
@@ -37,14 +38,14 @@ class FlextInfraModelsBasemk:
         source_dir: Annotated[
             str,
             Field(
-                default=c.Infra.Paths.DEFAULT_SRC_DIR,
+                default=c.Infra.DEFAULT_SRC_DIR,
                 description="Source directory path",
             ),
         ]
         tests_dir: Annotated[
             str,
             Field(
-                default=c.Infra.Directories.TESTS,
+                default=c.Infra.DIR_TESTS,
                 description="Tests directory path",
             ),
         ]

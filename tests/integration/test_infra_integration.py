@@ -87,7 +87,7 @@ class TestInfraIntegration:
         _ = tmp_path
         generator = FlextInfraBaseMkGenerator()
         generated = generator.execute()
-        assert generated.is_success
+        assert generated.success
         assert isinstance(generated.value, str)
         assert "check" in generated.value
 
@@ -132,7 +132,7 @@ class TestInfraIntegration:
         """
         initial_value = 10
         result = r[int].ok(initial_value).map(lambda x: x * 2).map(lambda x: x + 5)
-        assert result.is_success
+        assert result.success
         assert result.value == 25
 
     @pytest.mark.integration
@@ -151,7 +151,7 @@ class TestInfraIntegration:
             .flat_map(lambda x: r[int].ok(x * 2))
             .flat_map(lambda x: r[int].ok(x + 5))
         )
-        assert result.is_success
+        assert result.success
         assert result.value == 25
 
     @pytest.mark.integration
@@ -171,7 +171,7 @@ class TestInfraIntegration:
             .flat_map(lambda x: r[int].fail("intentional error"))
             .flat_map(lambda x: r[int].ok(x + 5))
         )
-        assert result.is_failure
+        assert result.failure
         assert isinstance(result.error, str)
         assert "intentional error" in result.error
 
@@ -192,7 +192,7 @@ class TestInfraIntegration:
             .flat_map(lambda x: r[int].ok(x + 3))
             .map(lambda x: x * 2)
         )
-        assert result.is_success
+        assert result.success
         assert result.value == 26
 
     @pytest.mark.integration
@@ -217,33 +217,33 @@ class TestInfraIntegration:
         repo_root = tmp_path / "repo"
         repo_root.mkdir()
         init_result = u.Cli.run_checked(["git", "init"], cwd=repo_root)
-        assert init_result.is_success
+        assert init_result.success
         email_result = u.Cli.run_checked(
             ["git", "config", "user.email", "infra@example.com"], cwd=repo_root
         )
-        assert email_result.is_success
+        assert email_result.success
         name_result = u.Cli.run_checked(
             ["git", "config", "user.name", "Infra Test"], cwd=repo_root
         )
-        assert name_result.is_success
+        assert name_result.success
         sample_file = repo_root / "README.md"
         _ = sample_file.write_text("infra test\n", encoding="utf-8")
         add_result = u.Cli.run_checked(["git", "add", "README.md"], cwd=repo_root)
-        assert add_result.is_success
+        assert add_result.success
         commit_result = u.Cli.run_checked(
             ["git", "commit", "-m", "initial"], cwd=repo_root
         )
-        assert commit_result.is_success
+        assert commit_result.success
         branch_result = u.Cli.capture(
             ["git", "rev-parse", "--abbrev-ref", "HEAD"],
             cwd=repo_root,
         )
-        assert branch_result.is_success
+        assert branch_result.success
         assert branch_result.value != ""
 
     @pytest.mark.integration
     def test_command_runner_capture_executes_real_command(self) -> None:
         """Test u.Cli.capture with a real external command."""
         capture_result = u.Cli.capture(["python3", "-c", "print('infra-ok')"])
-        assert capture_result.is_success
+        assert capture_result.success
         assert capture_result.value == "infra-ok"

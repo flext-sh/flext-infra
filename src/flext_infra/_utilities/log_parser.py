@@ -40,23 +40,19 @@ class FlextInfraUtilitiesLogParser:
             return (0, [])
         try:
             text = log_path.read_text(
-                encoding=c.Infra.Encoding.DEFAULT, errors="replace"
+                encoding=c.Infra.ENCODING_DEFAULT, errors="replace"
             )
         except OSError:
             return (0, [])
-        tail = text.splitlines()[-c.Infra.LogParser.TAIL_LINES :]
+        tail = text.splitlines()[-c.Infra.LOG_TAIL_LINES :]
         error_lines: MutableSequence[str] = []
         for line in tail:
             stripped = line.strip()
             if not stripped:
                 continue
-            if any(
-                pattern.search(stripped) for pattern in c.Infra.LogParser.NOISE_PATTERNS
-            ):
+            if any(pattern.search(stripped) for pattern in c.Infra.LOG_NOISE_PATTERNS):
                 continue
-            if any(
-                pattern.search(stripped) for pattern in c.Infra.LogParser.ERROR_PATTERNS
-            ):
+            if any(pattern.search(stripped) for pattern in c.Infra.LOG_ERROR_PATTERNS):
                 error_lines.append(stripped)
         total = len(error_lines)
         return (total, error_lines[:max_lines])

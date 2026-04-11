@@ -6,6 +6,11 @@ from pathlib import Path
 
 from flext_tests import tm
 
+from flext_infra import (
+    FlextInfraModelsDeps,
+    FlextInfraUtilitiesDependencyPathSync,
+    main,
+)
 from tests import u
 
 
@@ -58,7 +63,14 @@ def test_run_cli_dry_run_preserves_pyproject_files(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    exit_code = u.Infra.run_cli(["--workspace", str(workspace), "--mode", "workspace"])
+    exit_code = main([
+        "deps",
+        "path-sync",
+        "--workspace",
+        str(workspace),
+        "--mode",
+        "workspace",
+    ])
 
     tm.that(exit_code, eq=0)
     tm.that(
@@ -95,13 +107,14 @@ def test_execute_only_rewrites_selected_projects(tmp_path: Path) -> None:
     before_api = (workspace / "flext-api" / "pyproject.toml").read_text(
         encoding="utf-8",
     )
-    cli = u.Infra.CliArgs(
-        workspace=workspace,
-        apply=True,
-        projects=["flext-cli"],
+    exit_code = FlextInfraUtilitiesDependencyPathSync().execute(
+        FlextInfraModelsDeps.PathSyncCommand(
+            workspace=str(workspace),
+            apply=True,
+            projects=["flext-cli"],
+            mode="workspace",
+        )
     )
-
-    exit_code = u.Infra().execute(cli=cli, mode="workspace")
 
     tm.that(exit_code, eq=0)
     tm.that(
@@ -153,7 +166,7 @@ def test_main_keeps_uv_workspace_members_limited_to_real_members(
         gitmodules_members=("flext-core",),
     )
 
-    exit_code = u.Infra.main(["--workspace", str(workspace), "--apply"])
+    exit_code = main(["deps", "path-sync", "--workspace", str(workspace), "--apply"])
 
     tm.that(exit_code, eq=0)
     tm.that(

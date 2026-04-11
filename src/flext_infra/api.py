@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import ClassVar, Self, override
 
-from flext_cli import cli as cli_service
+from flext_cli.api import cli as cli_service
 from flext_core import r
 from flext_infra import (
     FlextInfraCliBasemk,

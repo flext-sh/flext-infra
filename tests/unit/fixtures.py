@@ -37,7 +37,7 @@ def _modernizer_workspace_pyproject(*members: str) -> str:
 def deptry_report_payload() -> t.Cli.JsonPayload:
     parsed = u.Cli.json_parse(_read_fixture("deps", "deptry_report.json"))
     assert parsed is not None
-    assert parsed.is_success
+    assert parsed.success
     return parsed.value
 
 
@@ -131,7 +131,7 @@ def real_workspace(tmp_path: Path) -> Path:
 def modernizer_workspace(tmp_path: Path) -> Path:
     workspace = tmp_path / "workspace"
     workspace.mkdir(parents=True, exist_ok=True)
-    (workspace / c.Infra.Files.PYPROJECT_FILENAME).write_text(
+    (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
         _modernizer_workspace_pyproject(),
         encoding="utf-8",
     )
@@ -140,7 +140,7 @@ def modernizer_workspace(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def modernizer_workspace_with_projects(modernizer_workspace: Path) -> Path:
-    (modernizer_workspace / c.Infra.Files.PYPROJECT_FILENAME).write_text(
+    (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).write_text(
         _modernizer_workspace_pyproject("selected", "ignored"),
         encoding="utf-8",
     )

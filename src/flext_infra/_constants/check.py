@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Final
 
 if TYPE_CHECKING:
@@ -24,7 +25,7 @@ class FlextInfraConstantsCheck:
         "markdown",
         "go",
     })
-    SARIF_TOOL_INFO: Final[Mapping[str, t.Infra.StrPair]] = {
+    SARIF_TOOL_INFO: Final[Mapping[str, t.Infra.StrPair]] = MappingProxyType({
         "lint": ("Ruff Linter", "https://docs.astral.sh/ruff/"),
         "format": ("Ruff Formatter", "https://docs.astral.sh/ruff/formatter/"),
         "pyrefly": ("Pyrefly", "https://github.com/facebook/pyrefly"),
@@ -40,7 +41,7 @@ class FlextInfraConstantsCheck:
             "https://github.com/DavidAnson/markdownlint",
         ),
         "go": ("Go Vet", "https://pkg.go.dev/cmd/vet"),
-    }
+    })
     REQUIRED_EXCLUDES: Final[t.StrSequence] = ["**/*_pb2*.py", "**/*_pb2_grpc*.py"]
     RUFF_FORMAT_FILE_RE: Final[re.Pattern[str]] = re.compile(
         r"^\s*-->\s*(.+?):\d+:\d+\s*$",
@@ -60,12 +61,9 @@ class FlextInfraConstantsCheck:
     })
     "Severity levels accepted by gate output parsers."
 
-    class GateJsonKeys:
-        """Tool-specific JSON field names used by gate output parsers."""
-
-        PYRIGHT_DIAGNOSTICS: Final[str] = "generalDiagnostics"
-        BANDIT_RESULTS: Final[str] = "results"
-        PYREFLY_ERRORS: Final[str] = "errors"
+    PYRIGHT_DIAGNOSTICS_KEY: Final[str] = "generalDiagnostics"
+    BANDIT_RESULTS_KEY: Final[str] = "results"
+    PYREFLY_ERRORS_KEY: Final[str] = "errors"
 
 
 __all__ = ["FlextInfraConstantsCheck"]

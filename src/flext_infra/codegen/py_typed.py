@@ -22,7 +22,7 @@ from flext_infra import c, s, u
 class FlextInfraCodegenPyTyped(s[bool]):
     """Creates and removes PEP 561 ``py.typed`` markers across workspace packages."""
 
-    _PY_TYPED_FILENAME: str = c.Infra.Files.PY_TYPED
+    _PY_TYPED_FILENAME: str = c.Infra.PY_TYPED
 
     @override
     def execute(self) -> r[bool]:

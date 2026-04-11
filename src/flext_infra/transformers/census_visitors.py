@@ -30,7 +30,7 @@ class FlextInfraCensusImportDiscoveryVisitor:
         self.family_alias = family_alias
         self.facade_class_prefix = facade_class_prefix
         self.alias_locals: t.Infra.StrSet = set()
-        self.direct_imports: t.MutableStrMapping = {}
+        self.direct_imports: dict[str, str] = {}
 
     def scan_source(self, source: str) -> None:
         """Scan source text to discover imports matching family/facade patterns."""
@@ -41,8 +41,8 @@ class FlextInfraCensusImportDiscoveryVisitor:
         for match in import_re.finditer(source):
             module_str = match.group(1)
             if (
-                c.Infra.Packages.CORE_UNDERSCORE not in module_str
-                and c.Infra.Packages.PREFIX_UNDERSCORE not in module_str
+                c.Infra.PKG_CORE_UNDERSCORE not in module_str
+                and c.Infra.PKG_PREFIX_UNDERSCORE not in module_str
             ):
                 continue
             names_part = match.group(2).strip().rstrip("\\")
@@ -56,7 +56,7 @@ class FlextInfraCensusImportDiscoveryVisitor:
                 if imported_name in {self.family_alias, self.facade_class_prefix}:
                     self.alias_locals.add(local_name)
                 if imported_name.startswith(self.facade_class_prefix) and (
-                    c.Infra.Packages.CORE_UNDERSCORE in module_str
+                    c.Infra.PKG_CORE_UNDERSCORE in module_str
                 ):
                     self.direct_imports[local_name] = imported_name
 
@@ -105,7 +105,7 @@ class FlextInfraCensusUsageCollector:
             method_name = match.group(1)
             if method_name in self.flat_aliases:
                 cls, orig = self.flat_aliases[method_name]
-                self._record(cls, orig, c.Infra.Census.MODE_ALIAS_FLAT)
+                self._record(cls, orig, c.Infra.CensusMode.ALIAS_FLAT)
 
     def _scan_namespaced_aliases(self, source: str, alias: str) -> None:
         """Detect alias.ClassName.method_name patterns."""
@@ -118,7 +118,7 @@ class FlextInfraCensusUsageCollector:
                 base_class in self.method_index
                 and method_name in self.method_index[base_class]
             ):
-                self._record(base_class, method_name, c.Infra.Census.MODE_ALIAS_NS)
+                self._record(base_class, method_name, c.Infra.CensusMode.ALIAS_NS)
 
     def _scan_direct_references(self, source: str) -> None:
         """Detect DirectClass.method_name patterns."""
@@ -130,7 +130,7 @@ class FlextInfraCensusUsageCollector:
                     actual in self.method_index
                     and method_name in self.method_index[actual]
                 ):
-                    self._record(actual, method_name, c.Infra.Census.MODE_DIRECT)
+                    self._record(actual, method_name, c.Infra.CensusMode.DIRECT)
 
     def _record(self, class_name: str, method_name: str, mode: str) -> None:
         self.records.append(

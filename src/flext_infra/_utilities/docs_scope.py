@@ -29,7 +29,7 @@ class FlextInfraUtilitiesDocsScope:
         discover_result = FlextInfraUtilitiesDocsScope.discover_projects(
             workspace_root,
         )
-        if discover_result.is_failure:
+        if discover_result.failure:
             return r[Sequence[m.Infra.ProjectInfo]].fail(
                 discover_result.error or "discovery failed",
             )
@@ -74,14 +74,14 @@ class FlextInfraUtilitiesDocsScope:
     def _declares_flext_core_dependency(pyproject: Path) -> bool:
         """Return whether one pyproject declares a direct dependency on flext-core."""
         document_result = u.Cli.toml_read_document(pyproject)
-        if document_result.is_failure:
+        if document_result.failure:
             return False
         dependency_names: t.Infra.StrSet = set(
             FlextInfraUtilitiesTomlParse.declared_dependency_names(
                 document_result.value,
             )
         )
-        return c.Infra.Packages.CORE in dependency_names
+        return c.Infra.PKG_CORE in dependency_names
 
     @staticmethod
     def _project_info_for_entry(
@@ -90,7 +90,7 @@ class FlextInfraUtilitiesDocsScope:
         workspace_members: t.Infra.StrSet,
     ) -> m.Infra.ProjectInfo | None:
         """Build one canonical project descriptor when a child qualifies."""
-        pyproject = entry / c.Infra.Files.PYPROJECT_FILENAME
+        pyproject = entry / c.Infra.PYPROJECT_FILENAME
         if not pyproject.is_file():
             return None
         is_workspace_member = entry.name in workspace_members
@@ -116,8 +116,8 @@ class FlextInfraUtilitiesDocsScope:
             path=entry,
             name=project_name,
             stack="python/flext",
-            has_tests=(entry / c.Infra.Directories.TESTS).is_dir(),
-            has_src=(entry / c.Infra.Paths.DEFAULT_SRC_DIR).is_dir(),
+            has_tests=(entry / c.Infra.DIR_TESTS).is_dir(),
+            has_src=(entry / c.Infra.DEFAULT_SRC_DIR).is_dir(),
             project_class=(
                 FlextInfraUtilitiesDocsScope.classify_project_from_meta(
                     project_name,
@@ -137,16 +137,16 @@ class FlextInfraUtilitiesDocsScope:
     @staticmethod
     def config_path(workspace_root: Path) -> Path:
         """Return the minimal docs policy config path."""
-        return workspace_root / c.Infra.Directories.DOCS / c.Infra.DOCS_CONFIG_FILENAME
+        return workspace_root / c.Infra.DIR_DOCS / c.Infra.DOCS_CONFIG_FILENAME
 
     @staticmethod
     def pyproject_payload(project_root: Path) -> t.Infra.ContainerDict:
         """Return a project's ``pyproject.toml`` payload as a plain mapping."""
-        pyproject = project_root / c.Infra.Files.PYPROJECT_FILENAME
+        pyproject = project_root / c.Infra.PYPROJECT_FILENAME
         if not pyproject.exists():
             return {}
         result = u.Cli.toml_read_json(pyproject)
-        return result.value if result.is_success else {}
+        return result.value if result.success else {}
 
     @staticmethod
     def load_config(
@@ -157,7 +157,7 @@ class FlextInfraUtilitiesDocsScope:
         if not path.exists():
             return {}
         result = u.Cli.json_read(path)
-        return result.value if result.is_success else {}
+        return result.value if result.success else {}
 
     @staticmethod
     def excluded_roots(workspace_root: Path) -> t.Infra.StrSet:
@@ -285,11 +285,11 @@ class FlextInfraUtilitiesDocsScope:
                                     package_path = Path(str(item).strip())
                                     if package_path.parts:
                                         return package_path.parts[-1]
-        src_dir = project_root / c.Infra.Paths.DEFAULT_SRC_DIR
+        src_dir = project_root / c.Infra.DEFAULT_SRC_DIR
         if not src_dir.is_dir():
             return ""
         for child in sorted(src_dir.iterdir()):
-            if child.is_dir() and (child / c.Infra.Files.INIT_PY).is_file():
+            if child.is_dir() and (child / c.Infra.INIT_PY).is_file():
                 return child.name
         return ""
 

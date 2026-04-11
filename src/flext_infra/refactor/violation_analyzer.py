@@ -46,7 +46,7 @@ class FlextInfraRefactorViolationAnalyzer:
         helper_manual_review: MutableSequence[m.Infra.HelperClassification] = []
         for file_path in files:
             try:
-                content = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+                content = file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
             except (OSError, UnicodeDecodeError):
                 continue
             helper_analysis = cls._analyze_file_helpers(
@@ -69,10 +69,10 @@ class FlextInfraRefactorViolationAnalyzer:
         class_nesting = FlextInfraRefactorClassNestingAnalyzer.analyze_files(files)
         class_nesting_count = class_nesting.violations_count
         if class_nesting_count > 0:
-            totals[c.Infra.ReportKeys.CLASS_NESTING] += class_nesting_count
+            totals[c.Infra.RK_CLASS_NESTING] += class_nesting_count
         for raw_file, raw_count in class_nesting.per_file_counts.items():
             counts = per_file.setdefault(raw_file, {})
-            counts[c.Infra.ReportKeys.CLASS_NESTING] = raw_count
+            counts[c.Infra.RK_CLASS_NESTING] = raw_count
         ranked_files: Sequence[t.Infra.Triple[str, int, t.IntMapping]] = [
             (file_name, sum(counts.values()), counts)
             for file_name, counts in per_file.items()

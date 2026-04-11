@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping, MutableSequence, Sequence
 from pathlib import Path
+from typing import ClassVar, Final
 
 from flext_cli import u
 from flext_infra import (
-    FlextInfraUtilitiesCodegenGovernance,
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesDocsScope,
     FlextInfraUtilitiesParsing,
@@ -24,11 +24,35 @@ from flext_infra._utilities.base import FlextInfraUtilitiesBase
 class FlextInfraUtilitiesCodegenNamespace:
     """Canonical namespace helpers for codegen discovery, parsing, and fixes."""
 
+    _governance_cache: ClassVar[
+        MutableMapping[str, m.Infra.ConstantsGovernanceConfig]
+    ] = {}
+    _governance_file: Final[Path] = (
+        Path(__file__).parent.parent / "rules" / "constants-governance.yml"
+    )
+
+    @classmethod
+    def _is_rule_fixable(cls, rule_id: str, module: str) -> bool:
+        cached = cls._governance_cache.get("config")
+        if cached is None:
+            raw = u.Cli.yaml_load_mapping(cls._governance_file)
+            cached = m.Infra.ConstantsGovernanceConfig.model_validate(raw)
+            cls._governance_cache["config"] = cached
+        for rule in cached.rules:
+            if rule.id != rule_id:
+                continue
+            if not rule.fixable:
+                return False
+            if rule.fixable_exclusion is None:
+                return True
+            return not module.endswith(rule.fixable_exclusion)
+        return False
+
     @staticmethod
     def _lazy_init_config() -> m.Infra.LazyInitConfig:
         """Return the validated lazy-init policy document."""
         config = FlextInfraUtilitiesBase.load_tool_config()
-        if config.is_failure:
+        if config.failure:
             msg = config.error or "lazy-init configuration is unavailable"
             raise RuntimeError(msg)
         return config.unwrap().lazy_init
@@ -45,10 +69,10 @@ class FlextInfraUtilitiesCodegenNamespace:
             "_",
             "-",
         )
-        if normalized == c.Infra.Packages.CORE:
+        if normalized == c.Infra.PKG_CORE:
             return "Flext"
-        if normalized.startswith(c.Infra.Packages.PREFIX_HYPHEN):
-            tail = normalized.removeprefix(c.Infra.Packages.PREFIX_HYPHEN)
+        if normalized.startswith(c.Infra.PKG_PREFIX_HYPHEN):
+            tail = normalized.removeprefix(c.Infra.PKG_PREFIX_HYPHEN)
             parts = [part for part in tail.split("-") if part]
             return "Flext" + "".join(part.capitalize() for part in parts)
         parts = [part for part in normalized.split("-") if part]
@@ -138,6 +162,10 @@ class FlextInfraUtilitiesCodegenNamespace:
             or is_namespace_file
             or is_root_namespace
         )
+        is_private_module = file_path.stem.startswith("_")
+        include_in_lazy_init = not file_path.stem[:1].isdigit() and (
+            not is_private_module or is_fixture_module or is_family_package
+        )
         type_checking_imports = tuple(
             name
             for name in dict.fromkeys((
@@ -174,6 +202,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         return m.Infra.NamespaceModulePolicy(
             enforce_contract=enforce_contract,
             export_symbols=export_symbols,
+            include_in_lazy_init=include_in_lazy_init,
             project_prefix=project_prefix,
             expected_alias=expected_alias,
             expected_family=expected_family,
@@ -181,7 +210,7 @@ class FlextInfraUtilitiesCodegenNamespace:
             accepted_suffixes=((expected_family,) if expected_family else ()),
             allow_main_export=file_path.name in config.main_export_files,
             allow_type_alias=(
-                file_path.name == c.Infra.Files.TYPINGS_PY
+                file_path.name == c.Infra.TYPINGS_PY
                 or file_path.parent.name == "_typings"
             ),
             is_fixture_module=is_fixture_module,
@@ -200,7 +229,7 @@ class FlextInfraUtilitiesCodegenNamespace:
             projects_result = FlextInfraUtilitiesDocsScope.discover_projects(
                 workspace_root,
             )
-            if not projects_result.is_success:
+            if not projects_result.success:
                 return r[Sequence[p.Infra.ProjectInfo]].fail(
                     projects_result.error or "project discovery failed",
                 )
@@ -211,7 +240,7 @@ class FlextInfraUtilitiesCodegenNamespace:
             project
             for project in discovered
             if project.name not in c.Infra.EXCLUDED_PROJECTS
-            and not (project.path / c.Infra.Files.GO_MOD).exists()
+            and not (project.path / c.Infra.GO_MOD).exists()
         )
         return r[Sequence[p.Infra.ProjectInfo]].ok(selected)
 
@@ -221,7 +250,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         validation: r[m.Infra.ValidationReport],
     ) -> r[tuple[m.Infra.CensusViolation, ...]]:
         """Convert validator output into typed census violations."""
-        if validation.is_failure:
+        if validation.failure:
             return r[tuple[m.Infra.CensusViolation, ...]].fail(
                 validation.error or "namespace validation failed",
             )
@@ -239,7 +268,7 @@ class FlextInfraUtilitiesCodegenNamespace:
                     rule=rule,
                     line=int(match.group("line")),
                     message=match.group("message"),
-                    fixable=FlextInfraUtilitiesCodegenGovernance.is_rule_fixable(
+                    fixable=cls._is_rule_fixable(
                         rule,
                         module,
                     ),
@@ -257,12 +286,12 @@ class FlextInfraUtilitiesCodegenNamespace:
         """Normalize canonical facade base classes for codegen auto-fix."""
         for file_name, base_import, base_name in (
             (
-                c.Infra.Files.CONSTANTS_PY,
+                c.Infra.CONSTANTS_PY,
                 "from flext_core import FlextConstants as Constants",
                 "Constants",
             ),
             (
-                c.Infra.Files.TYPINGS_PY,
+                c.Infra.TYPINGS_PY,
                 "from flext_core import FlextTypes as Types",
                 "Types",
             ),
@@ -420,7 +449,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         module_path = project_path / module
         if not module_path.is_file():
             return ()
-        return module_path.read_text(encoding=c.Infra.Encoding.DEFAULT).splitlines()
+        return module_path.read_text(encoding=c.Infra.ENCODING_DEFAULT).splitlines()
 
     @classmethod
     def _build_violation_key(

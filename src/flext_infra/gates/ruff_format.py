@@ -63,7 +63,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
                 if not resolved or resolved in seen:
                     continue
                 if match or (
-                    resolved.endswith(c.Infra.Extensions.PYTHON) and " " not in resolved
+                    resolved.endswith(c.Infra.EXT_PYTHON) and " " not in resolved
                 ):
                     seen.add(resolved)
                     issues.append(

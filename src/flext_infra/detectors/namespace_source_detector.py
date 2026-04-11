@@ -26,7 +26,7 @@ class FlextInfraNamespaceSourceDetector:
         """Detect runtime aliases imported from a different flext package root."""
         file_path = ctx.file_path
         project_root = ctx.project_root
-        if project_root is None or file_path.name == c.Infra.Files.INIT_PY:
+        if project_root is None or file_path.name == c.Infra.INIT_PY:
             return []
         package_name = u.Infra.package_name(project_root)
         if not package_name:
@@ -63,7 +63,7 @@ class FlextInfraNamespaceSourceDetector:
             ):
                 continue
             if not (
-                current_source.startswith(c.Infra.Packages.PREFIX_UNDERSCORE)
+                current_source.startswith(c.Infra.PKG_PREFIX_UNDERSCORE)
                 and "." not in current_source
             ):
                 continue
@@ -105,16 +105,9 @@ class FlextInfraNamespaceSourceDetector:
         package_name: str,
     ) -> set[str]:
         init_path = (
-            project_root
-            / c.Infra.Paths.DEFAULT_SRC_DIR
-            / package_name
-            / c.Infra.Files.INIT_PY
+            project_root / c.Infra.DEFAULT_SRC_DIR / package_name / c.Infra.INIT_PY
         )
-        return {
-            alias_name
-            for alias_name in u.Infra.extract_lazy_import_targets(init_path)
-            if alias_name in c.Infra.RUNTIME_ALIAS_NAMES
-        }
+        return set(c.Infra.RUNTIME_ALIAS_NAMES) if init_path.is_file() else set()
 
 
 __all__ = ["FlextInfraNamespaceSourceDetector"]

@@ -45,7 +45,7 @@ class TestFlextInfraPyprojectModernizerEdgeCases:
         workspace = tmp_path / "workspace"
         workspace.mkdir(parents=True, exist_ok=True)
         if content is not None:
-            (workspace / c.Infra.Files.PYPROJECT_FILENAME).write_text(
+            (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
                 content,
                 encoding="utf-8",
             )

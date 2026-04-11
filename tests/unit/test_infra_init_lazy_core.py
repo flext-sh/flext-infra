@@ -172,5 +172,5 @@ class TestFlextInfraInitLazyLoading:
 
     def test_reports_dir_name_via_constants(self) -> None:
         """Test REPORTS_DIR_NAME access via c.Infra.Reporting."""
-        dir_name = c.Infra.Reporting.REPORTS_DIR_NAME
+        dir_name = c.Infra.REPORTS_DIR_NAME
         assert isinstance(dir_name, str)

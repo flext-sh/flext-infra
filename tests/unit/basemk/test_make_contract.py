@@ -100,7 +100,7 @@ def _run_make(
         cwd=project_root,
         env=active_env,
     )
-    if result.is_success:
+    if result.success:
         return result.value
     return m.Cli.CommandOutput(
         stdout="",

@@ -66,7 +66,7 @@ class FlextInfraUtilitiesRefactorPolicy:
         loaded = FlextInfraUtilitiesRefactorPolicy.load_validated_policy_document(
             resolved_path,
         )
-        if loaded.is_failure:
+        if loaded.failure:
             return {}
         by_family: dict[str, m.Infra.ClassNestingPolicy] = {}
         for raw in FlextInfraUtilitiesBase.normalize_mapping_list(
@@ -145,33 +145,27 @@ class FlextInfraUtilitiesRefactorPolicy:
         policy = policy_by_family.get(family)
         if policy is None:
             return {
-                c.Infra.ReportKeys.RULE_ID: f"precheck:{symbol}",
-                c.Infra.ReportKeys.SOURCE_SYMBOL: symbol,
-                c.Infra.ReportKeys.VIOLATION_TYPE: "unknown_module_family",
-                c.Infra.ReportKeys.SUGGESTED_FIX: (
-                    f"declare explicit policy for {family}"
-                ),
+                c.Infra.RK_RULE_ID: f"precheck:{symbol}",
+                c.Infra.RK_SOURCE_SYMBOL: symbol,
+                c.Infra.RK_VIOLATION_TYPE: "unknown_module_family",
+                c.Infra.RK_SUGGESTED_FIX: (f"declare explicit policy for {family}"),
             }
         operation = (
-            c.Infra.ReportKeys.HELPER_CONSOLIDATION
-            if is_helper
-            else c.Infra.ReportKeys.CLASS_NESTING
+            c.Infra.RK_HELPER_CONSOLIDATION if is_helper else c.Infra.RK_CLASS_NESTING
         )
         if operation not in policy.allowed_operations:
             return {
-                c.Infra.ReportKeys.RULE_ID: f"precheck:{symbol}",
-                c.Infra.ReportKeys.SOURCE_SYMBOL: symbol,
-                c.Infra.ReportKeys.VIOLATION_TYPE: "operation_not_allowed",
-                c.Infra.ReportKeys.SUGGESTED_FIX: (
-                    f"allow {operation} in policy for {family}"
-                ),
+                c.Infra.RK_RULE_ID: f"precheck:{symbol}",
+                c.Infra.RK_SOURCE_SYMBOL: symbol,
+                c.Infra.RK_VIOLATION_TYPE: "operation_not_allowed",
+                c.Infra.RK_SUGGESTED_FIX: (f"allow {operation} in policy for {family}"),
             }
         if operation in policy.forbidden_operations:
             return {
-                c.Infra.ReportKeys.RULE_ID: f"precheck:{symbol}",
-                c.Infra.ReportKeys.SOURCE_SYMBOL: symbol,
-                c.Infra.ReportKeys.VIOLATION_TYPE: "operation_forbidden",
-                c.Infra.ReportKeys.SUGGESTED_FIX: (
+                c.Infra.RK_RULE_ID: f"precheck:{symbol}",
+                c.Infra.RK_SOURCE_SYMBOL: symbol,
+                c.Infra.RK_VIOLATION_TYPE: "operation_forbidden",
+                c.Infra.RK_SUGGESTED_FIX: (
                     f"remove {operation} from forbidden_operations for {family}"
                 ),
             }
@@ -183,10 +177,10 @@ class FlextInfraUtilitiesRefactorPolicy:
             for pattern in policy.forbidden_targets
         ):
             return {
-                c.Infra.ReportKeys.RULE_ID: f"precheck:{symbol}",
-                c.Infra.ReportKeys.SOURCE_SYMBOL: symbol,
-                c.Infra.ReportKeys.VIOLATION_TYPE: "forbidden_target",
-                c.Infra.ReportKeys.SUGGESTED_FIX: (
+                c.Infra.RK_RULE_ID: f"precheck:{symbol}",
+                c.Infra.RK_SOURCE_SYMBOL: symbol,
+                c.Infra.RK_VIOLATION_TYPE: "forbidden_target",
+                c.Infra.RK_SUGGESTED_FIX: (
                     f"choose allowed target for family {family}"
                 ),
             }
@@ -200,12 +194,12 @@ class FlextInfraUtilitiesRefactorPolicy:
         policy_path: Path | None = None,
     ) -> t.Infra.Pair[bool, t.StrMapping | None]:
         """Validate one class/helper nesting entry against the family policy."""
-        symbol = entry.get(c.Infra.ReportKeys.LOOSE_NAME, "") or entry.get(
+        symbol = entry.get(c.Infra.RK_LOOSE_NAME, "") or entry.get(
             "helper_name",
             "",
         )
-        target_namespace = entry.get(c.Infra.ReportKeys.TARGET_NAMESPACE, "")
-        current_file = entry.get(c.Infra.ReportKeys.CURRENT_FILE, "")
+        target_namespace = entry.get(c.Infra.RK_TARGET_NAMESPACE, "")
+        current_file = entry.get(c.Infra.RK_CURRENT_FILE, "")
         if not symbol or not target_namespace or not current_file:
             return (True, None)
         family = FlextInfraUtilitiesRefactorPolicy.module_family_from_path(current_file)

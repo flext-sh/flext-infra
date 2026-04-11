@@ -23,7 +23,7 @@ def _generated_content() -> str:
     """Get the canonical generated base.mk content for hash-matching tests."""
     gen = FlextInfraBaseMkGenerator()
     result = gen.generate_basemk()
-    assert result.is_success
+    assert result.success
     return result.value
 
 
@@ -122,7 +122,7 @@ class TestBaseMkValidatorEdgeCases:
         basemk.chmod(0)
         try:
             result = v.build_report(tmp_path)
-            tm.that(result.is_failure, eq=True)
+            tm.that(result.failure, eq=True)
         finally:
             basemk.chmod(0o644)
 

@@ -125,7 +125,7 @@ class FlextInfraRefactorEngine(
         _ = mode.add_argument("--files", nargs="+", type=Path)
         _ = mode.add_argument("--list-rules", "-l", action="store_true")
         _ = parser.add_argument("--rules", "-r", type=str)
-        _ = parser.add_argument("--pattern", default=c.Infra.Extensions.PYTHON_GLOB)
+        _ = parser.add_argument("--pattern", default=c.Infra.EXT_PYTHON_GLOB)
         _ = parser.add_argument("--dry-run", "-n", action="store_true")
         _ = parser.add_argument("--show-diff", "-d", action="store_true")
         _ = parser.add_argument("--impact-map-output", type=Path)
@@ -135,7 +135,7 @@ class FlextInfraRefactorEngine(
         args = parser.parse_args()
         engine = FlextInfraRefactorEngine(config_path=args.config)
         cfg = engine.load_config()
-        if not cfg.is_success:
+        if not cfg.success:
             u.Infra.refactor_error(f"Config error: {cfg.error}")
             return 1
         if args.rules:
@@ -143,7 +143,7 @@ class FlextInfraRefactorEngine(
                 s.strip() for s in args.rules.split(",") if s.strip()
             ])
         rules_r = engine.load_rules()
-        if not rules_r.is_success:
+        if not rules_r.success:
             u.Infra.refactor_error(f"Rules error: {rules_r.error}")
             return 1
         if args.list_rules:
@@ -158,7 +158,7 @@ class FlextInfraRefactorEngine(
     def load_config(self) -> r[Mapping[str, t.Infra.InfraValue]]:
         """Load YAML configuration for this engine instance."""
         result = self.rule_loader.load_config()
-        if result.is_success:
+        if result.success:
             self.config = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
                 dict(result.value)
             )
@@ -174,7 +174,7 @@ class FlextInfraRefactorEngine(
             self._build_file_rules,
             self._skip_rule_definition,
         )
-        if rr.is_failure:
+        if rr.failure:
             return r[Sequence[FlextInfraRefactorRule]].fail(rr.error or "")
         loaded_rules, loaded_file_rules = rr.value
         self.rules, self.file_rules = list(loaded_rules), list(loaded_file_rules)
@@ -193,10 +193,10 @@ class FlextInfraRefactorEngine(
         """Return loaded rules metadata for listing."""
         return [
             {
-                c.Infra.ReportKeys.ID: rl.rule_id,
+                c.Infra.RK_ID: rl.rule_id,
                 c.Infra.NAME: rl.name,
                 "description": rl.description,
-                c.Infra.ReportKeys.ENABLED: rl.enabled,
+                c.Infra.RK_ENABLED: rl.enabled,
                 "severity": rl.severity,
             }
             for rl in self.rules
@@ -214,8 +214,8 @@ class FlextInfraRefactorEngine(
         """Skip definitions handled by the dedicated file-rule pipeline."""
         fix_action = u.Infra.get_str_key(
             rule_def,
-            c.Infra.ReportKeys.FIX_ACTION,
-            default=u.Infra.get_str_key(rule_def, c.Infra.ReportKeys.ACTION),
+            c.Infra.RK_FIX_ACTION,
+            default=u.Infra.get_str_key(rule_def, c.Infra.RK_ACTION),
             case="lower",
         )
         return fix_action == "nest_classes"
@@ -225,17 +225,15 @@ class FlextInfraRefactorEngine(
     ) -> FlextInfraRefactorRule | None:
         fix_action = u.Infra.get_str_key(
             rule_def,
-            c.Infra.ReportKeys.FIX_ACTION,
-            default=u.Infra.get_str_key(rule_def, c.Infra.ReportKeys.ACTION),
+            c.Infra.RK_FIX_ACTION,
+            default=u.Infra.get_str_key(rule_def, c.Infra.RK_ACTION),
             case="lower",
         )
-        check = u.Infra.get_str_key(rule_def, c.Infra.Verbs.CHECK, case="lower")
+        check = u.Infra.get_str_key(rule_def, c.Infra.VERB_CHECK, case="lower")
         for action_set, rule_class in self._RULE_ACTION_REGISTRY:
             if fix_action in action_set or check in action_set:
                 return rule_class(rule_def)
-        rule_id = str(
-            rule_def.get(c.Infra.ReportKeys.ID, c.Infra.Defaults.UNKNOWN)
-        ).lower()
+        rule_id = str(rule_def.get(c.Infra.RK_ID, c.Infra.DEFAULT_UNKNOWN)).lower()
         if "signature" in rule_id and any(
             kw in rule_id for kw in ("propagate", "rename")
         ):

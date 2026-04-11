@@ -122,7 +122,7 @@ class FlextInfraModelsMixins:
                 default=False,
                 description="Apply changes",
                 json_schema_extra={
-                    "typer_param_decls": list(c.Infra.Cli.APPLY_OPTION_DECLS),
+                    "typer_param_decls": list(c.Infra.CLI_APPLY_OPTION_DECLS),
                 },
             ),
         ] = False
@@ -139,10 +139,10 @@ class FlextInfraModelsMixins:
         gates: Annotated[
             str,
             Field(
-                default=c.Infra.SafeExecution.DEFAULT_GATES,
+                default=c.Infra.SAFE_EXECUTION_DEFAULT_GATES,
                 description="Comma-separated gate names for post-transform validation",
             ),
-        ] = c.Infra.SafeExecution.DEFAULT_GATES
+        ] = c.Infra.SAFE_EXECUTION_DEFAULT_GATES
 
         @computed_field  # type: ignore[prop-decorator]
         @property
@@ -191,10 +191,10 @@ class FlextInfraModelsMixins:
             """Return the normalized phase sequence for release execution."""
             if self.phase == "all":
                 return [
-                    c.Infra.Verbs.VALIDATE,
+                    c.Infra.VERB_VALIDATE,
                     c.Infra.VERSION,
-                    c.Infra.Directories.BUILD,
-                    c.Infra.Verbs.PUBLISH,
+                    c.Infra.DIR_BUILD,
+                    c.Infra.VERB_PUBLISH,
                 ]
             return self.split_csv_values(self.phase)
 

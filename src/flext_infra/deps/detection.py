@@ -128,13 +128,13 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
             if self.selector is not None
             else u.Infra.resolve_projects(workspace_root, names)
         )
-        if result.is_failure:
+        if result.failure:
             return r[Sequence[Path]].fail(result.error or "project resolution failed")
         projects_info: Sequence[m.Infra.ProjectInfo] = result.value
         projects = [
             project.path
             for project in projects_info
-            if (project.path / c.Infra.Files.PYPROJECT_FILENAME).exists()
+            if (project.path / c.Infra.PYPROJECT_FILENAME).exists()
         ]
         return r[Sequence[Path]].ok(sorted(projects))
 

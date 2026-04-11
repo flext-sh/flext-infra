@@ -12,7 +12,8 @@ from typing import Annotated
 from pydantic import Field
 
 from flext_cli import m
-from flext_infra import FlextInfraModelsMixins, c, t
+from flext_infra import c, t
+from flext_infra._models.mixins import FlextInfraModelsMixins
 
 
 class FlextInfraModelsBase:
@@ -77,4 +78,4 @@ class FlextInfraModelsBase:
         gates: Annotated[
             str,
             Field(description="Comma-separated gate names for post-validation"),
-        ] = c.Infra.SafeExecution.DEFAULT_GATES
+        ] = c.Infra.SAFE_EXECUTION_DEFAULT_GATES

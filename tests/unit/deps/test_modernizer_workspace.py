@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraPyprojectModernizer
+from flext_infra import main
 from tests import c, u
 
 
@@ -57,18 +57,16 @@ class TestFlextInfraPyprojectModernizerWorkspace:
         modernizer_workspace_with_projects: Path,
     ) -> None:
         selected_pyproject = (
-            modernizer_workspace_with_projects
-            / "selected"
-            / c.Infra.Files.PYPROJECT_FILENAME
+            modernizer_workspace_with_projects / "selected" / c.Infra.PYPROJECT_FILENAME
         )
         ignored_pyproject = (
-            modernizer_workspace_with_projects
-            / "ignored"
-            / c.Infra.Files.PYPROJECT_FILENAME
+            modernizer_workspace_with_projects / "ignored" / c.Infra.PYPROJECT_FILENAME
         )
         tm.that(
-            FlextInfraPyprojectModernizer.main(
+            main(
                 [
+                    "deps",
+                    "modernize",
                     "--workspace",
                     str(modernizer_workspace_with_projects),
                     "--apply",

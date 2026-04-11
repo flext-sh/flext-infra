@@ -13,11 +13,7 @@ from flext_core.lazy import (
 from flext_infra.__version__ import *
 
 if _t.TYPE_CHECKING:
-    from flext_core.decorators import d
-    from flext_core.exceptions import e
-    from flext_core.handlers import h
-    from flext_core.mixins import x
-    from flext_core.result import r
+    from flext_cli import d, e, h, r, x
     from flext_infra._constants.base import FlextInfraConstantsBase
     from flext_infra._constants.basemk import FlextInfraConstantsBasemk
     from flext_infra._constants.census import FlextInfraConstantsCensus
@@ -81,26 +77,7 @@ if _t.TYPE_CHECKING:
     from flext_infra._typings.rope import FlextInfraTypesRope
     from flext_infra._utilities.base import FlextInfraUtilitiesBase
     from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
-    from flext_infra._utilities.cli import FlextInfraUtilitiesCli
-    from flext_infra._utilities.cli_dispatch import FlextInfraUtilitiesCliDispatch
-    from flext_infra._utilities.cli_shared import FlextInfraUtilitiesCliShared
-    from flext_infra._utilities.cli_subcommand import FlextInfraUtilitiesCliSubcommand
     from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen
-    from flext_infra._utilities.codegen_constants import (
-        FlextInfraUtilitiesCodegenConstantAnalysis,
-        FlextInfraUtilitiesCodegenConstantDetection,
-        FlextInfraUtilitiesCodegenConstantTransformation,
-        FlextInfraUtilitiesCodegenGovernance,
-    )
-    from flext_infra._utilities.codegen_execution import (
-        FlextInfraUtilitiesCodegenExecution,
-    )
-    from flext_infra._utilities.codegen_generation import (
-        FlextInfraUtilitiesCodegenGeneration,
-    )
-    from flext_infra._utilities.codegen_import_cycles import (
-        FlextInfraUtilitiesCodegenImportCycles,
-    )
     from flext_infra._utilities.deps_path_sync import (
         FlextInfraUtilitiesDependencyPathSync,
     )
@@ -121,11 +98,7 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.github import FlextInfraUtilitiesGithub
     from flext_infra._utilities.github_pr import FlextInfraUtilitiesGithubPr
     from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
-    from flext_infra._utilities.lazy import (
-        FlextInfraUtilitiesCodegenLazyAliases,
-        FlextInfraUtilitiesCodegenLazyMerging,
-        FlextInfraUtilitiesCodegenLazyScanning,
-    )
+    from flext_infra._utilities.lazy import FlextInfraUtilitiesCodegenLazyAliases
     from flext_infra._utilities.log_parser import FlextInfraUtilitiesLogParser
     from flext_infra._utilities.mro_scan import FlextInfraUtilitiesRefactorMroScan
     from flext_infra._utilities.mro_transform import (
@@ -175,16 +148,13 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.toml_parse import FlextInfraUtilitiesTomlParse
     from flext_infra._utilities.utilities_cli import FlextInfraUtilitiesRefactorCli
     from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
-    from flext_infra.api import FlextInfra, infra
+    from flext_infra.api import FlextInfra
     from flext_infra.base import FlextInfraServiceBase, s
     from flext_infra.basemk.cli import FlextInfraCliBasemk
     from flext_infra.basemk.engine import FlextInfraBaseMkTemplateEngine
     from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
-    from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker, run_cli
-    from flext_infra.check.workspace_check_cli import (
-        FlextInfraCliCheck,
-        FlextInfraWorkspaceCheckerCli,
-    )
+    from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
+    from flext_infra.check.workspace_check_cli import FlextInfraCliCheck
     from flext_infra.check.workspace_check_gates import (
         FlextInfraGateRegistry,
         FlextInfraWorkspaceCheckGatesMixin,
@@ -473,7 +443,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
     build_lazy_import_map(
         {
             ".__version__": (
-                "FlextInfraVersion",
                 "__author__",
                 "__author_email__",
                 "__description__",
@@ -483,10 +452,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "__version__",
                 "__version_info__",
             ),
-            ".api": (
-                "FlextInfra",
-                "infra",
-            ),
+            ".api": ("FlextInfra",),
             ".base": (
                 "FlextInfraServiceBase",
                 "s",
@@ -515,11 +481,13 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "FlextInfraUtilities",
                 "u",
             ),
-            "flext_core.decorators": ("d",),
-            "flext_core.exceptions": ("e",),
-            "flext_core.handlers": ("h",),
-            "flext_core.mixins": ("x",),
-            "flext_core.result": ("r",),
+            "flext_cli": (
+                "d",
+                "e",
+                "h",
+                "r",
+                "x",
+            ),
         },
     ),
     exclude_names=(
@@ -744,21 +712,8 @@ __all__ = [
     "FlextInfraTypesRope",
     "FlextInfraUtilities",
     "FlextInfraUtilitiesBase",
-    "FlextInfraUtilitiesCli",
-    "FlextInfraUtilitiesCliDispatch",
-    "FlextInfraUtilitiesCliShared",
-    "FlextInfraUtilitiesCliSubcommand",
     "FlextInfraUtilitiesCodegen",
-    "FlextInfraUtilitiesCodegenConstantAnalysis",
-    "FlextInfraUtilitiesCodegenConstantDetection",
-    "FlextInfraUtilitiesCodegenConstantTransformation",
-    "FlextInfraUtilitiesCodegenExecution",
-    "FlextInfraUtilitiesCodegenGeneration",
-    "FlextInfraUtilitiesCodegenGovernance",
-    "FlextInfraUtilitiesCodegenImportCycles",
     "FlextInfraUtilitiesCodegenLazyAliases",
-    "FlextInfraUtilitiesCodegenLazyMerging",
-    "FlextInfraUtilitiesCodegenLazyScanning",
     "FlextInfraUtilitiesCodegenNamespace",
     "FlextInfraUtilitiesDependencyPathSync",
     "FlextInfraUtilitiesDiscovery",
@@ -811,11 +766,9 @@ __all__ = [
     "FlextInfraUtilitiesToml",
     "FlextInfraUtilitiesTomlParse",
     "FlextInfraUtilitiesVersioning",
-    "FlextInfraVersion",
     "FlextInfraViolationCensusVisitor",
     "FlextInfraWorkspaceCheckGatesMixin",
     "FlextInfraWorkspaceChecker",
-    "FlextInfraWorkspaceCheckerCli",
     "FlextInfraWorkspaceDetector",
     "FlextInfraWorkspaceMakefileGenerator",
     "WorkspaceLoopOutcome",
@@ -831,12 +784,10 @@ __all__ = [
     "d",
     "e",
     "h",
-    "infra",
     "m",
     "main",
     "p",
     "r",
-    "run_cli",
     "s",
     "t",
     "u",

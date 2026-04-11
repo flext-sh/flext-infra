@@ -18,7 +18,7 @@ def make_config(
         workspace_root=workspace_root,
         version="1.0.0",
         tag="v1.0.0",
-        phases=[c.Infra.Directories.BUILD],
+        phases=[c.Infra.DIR_BUILD],
         project_names=project_names,
         dry_run=False,
         push=False,
@@ -45,7 +45,7 @@ def test_generate_notes_writes_release_document(tmp_path: Path) -> None:
     )
 
     notes = notes_path.read_text(encoding="utf-8")
-    assert result.is_success
+    assert result.success
     assert "# Release v1.0.0" in notes
     assert "- root" in notes
     assert "- flext-a" in notes
@@ -65,7 +65,7 @@ def test_update_changelog_creates_expected_release_files(tmp_path: Path) -> None
         notes_path,
     )
 
-    assert result.is_success
+    assert result.success
     assert (workspace / "docs" / "CHANGELOG.md").is_file()
     assert (workspace / "docs" / "releases" / "latest.md").is_file()
     assert (workspace / "docs" / "releases" / "v1.0.0.md").is_file()
@@ -93,8 +93,8 @@ def test_update_changelog_is_idempotent_for_existing_release_heading(
     )
 
     changelog = (workspace / "docs" / "CHANGELOG.md").read_text(encoding="utf-8")
-    assert first_result.is_success
-    assert second_result.is_success
+    assert first_result.success
+    assert second_result.success
     assert changelog.count("## 1.0.0 - ") == 1
 
 
@@ -116,6 +116,6 @@ def test_run_release_build_deduplicates_duplicate_project_selectors(
     report_path = workspace / ".reports" / "release" / "v1.0.0" / "build-report.json"
     report = json.loads(report_path.read_text(encoding="utf-8"))
 
-    assert result.is_success
+    assert result.success
     assert report["total"] == 2
     assert [record["project"] for record in report["records"]] == ["root", "flext-a"]

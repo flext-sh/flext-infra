@@ -80,7 +80,7 @@ class FlextInfraUtilitiesTomlParse:
         return sorted(
             dep.replace("-", "_")
             for dep in all_deps
-            if dep.startswith(c.Infra.Packages.PREFIX_HYPHEN)
+            if dep.startswith(c.Infra.PKG_PREFIX_HYPHEN)
         )
 
     @staticmethod
@@ -195,10 +195,10 @@ class FlextInfraUtilitiesTomlParse:
 
         return {
             c.Infra.DEV: _group_values(c.Infra.DEV),
-            c.Infra.Directories.DOCS: _group_values(c.Infra.DOCS),
+            c.Infra.DIR_DOCS: _group_values(c.Infra.DOCS),
             c.Infra.SECURITY: _group_values(c.Infra.SECURITY),
             c.Infra.TEST: _group_values(c.Infra.TEST),
-            c.Infra.Directories.TYPINGS: _group_values(c.Infra.Directories.TYPINGS),
+            c.Infra.DIR_TYPINGS: _group_values(c.Infra.DIR_TYPINGS),
         }
 
     @staticmethod
@@ -289,10 +289,10 @@ class FlextInfraUtilitiesTomlParse:
         groups = FlextInfraUtilitiesTomlParse.project_dev_groups(root_doc)
         merged = [
             *groups.get(c.Infra.DEV, []),
-            *groups.get(c.Infra.Directories.DOCS, []),
+            *groups.get(c.Infra.DIR_DOCS, []),
             *groups.get(c.Infra.SECURITY, []),
             *groups.get(c.Infra.TEST, []),
-            *groups.get(c.Infra.Directories.TYPINGS, []),
+            *groups.get(c.Infra.DIR_TYPINGS, []),
         ]
         return FlextInfraUtilitiesTomlParse.dedupe_specs(merged)
 
@@ -300,7 +300,7 @@ class FlextInfraUtilitiesTomlParse:
     def read_plain(path: Path) -> r[t.Infra.ContainerDict]:
         """Read and parse a TOML file as a plain dict with r error handling."""
         result = FlextCliUtilities.Cli.toml_read_json(path)
-        if result.is_failure:
+        if result.failure:
             if not path.exists():
                 return r[t.Infra.ContainerDict].ok({})
             return r[t.Infra.ContainerDict].fail(

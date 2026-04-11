@@ -36,7 +36,7 @@ class FlextInfraUtilitiesFacadeScanner:
         stem = FlextInfraUtilitiesCodegenNamespace.project_class_stem(
             project_name=project_name,
         )
-        src_dir = project_root / c.Infra.Paths.DEFAULT_SRC_DIR
+        src_dir = project_root / c.Infra.DEFAULT_SRC_DIR
         if not src_dir.is_dir():
             return [
                 m.Infra.FacadeStatus(

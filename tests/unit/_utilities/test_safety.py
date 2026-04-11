@@ -10,7 +10,7 @@ def _run_git(repo: Path, *args: str) -> None:
         [c.Infra.GIT, *args],
         cwd=repo,
     )
-    assert result.is_success
+    assert result.success
     assert result.value.exit_code == 0
 
 
@@ -32,7 +32,7 @@ class TestSafetyCheckpoint:
 
         result = u.Infra.create_checkpoint(tmp_path)
 
-        assert result.is_success
+        assert result.success
         assert result.value == ""
 
     def test_create_checkpoint_creates_stash_for_dirty_repo(
@@ -44,7 +44,7 @@ class TestSafetyCheckpoint:
 
         result = u.Infra.create_checkpoint(tmp_path, label="test-checkpoint")
 
-        assert result.is_success
+        assert result.success
         assert "stash@{0}" in result.value
         assert "test-checkpoint:" in result.value
 
@@ -54,7 +54,7 @@ class TestSafetyCheckpoint:
     ) -> None:
         result = u.Infra.create_checkpoint(tmp_path)
 
-        assert result.is_success
+        assert result.success
         assert result.value == ""
 
 
@@ -67,10 +67,10 @@ class TestSafetyRollback:
 
         result = u.Infra.rollback_to_checkpoint(tmp_path, "stash@{999}")
 
-        assert result.is_failure
+        assert result.failure
 
     def test_rollback_to_checkpoint_succeeds_for_non_repo(self, tmp_path: Path) -> None:
         result = u.Infra.rollback_to_checkpoint(tmp_path)
 
-        assert result.is_success
+        assert result.success
         assert result.value is True

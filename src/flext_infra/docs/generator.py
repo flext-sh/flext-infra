@@ -61,7 +61,7 @@ class FlextInfraDocGenerator(s[bool]):
             output_dir=self.docs_output_dir,
             apply=self.apply_changes,
         )
-        if result.is_failure:
+        if result.failure:
             return r[bool].fail(result.error or "generate failed")
         return r[bool].ok(True)
 

@@ -27,7 +27,7 @@ class FlextInfraUtilitiesRefactorCensus:
         if not facade_path.exists():
             return {}
         alias_map: MutableMapping[str, t.Infra.StrPair] = {}
-        lines = facade_path.read_text(encoding=c.Infra.Encoding.DEFAULT).splitlines()
+        lines = facade_path.read_text(encoding=c.Infra.ENCODING_DEFAULT).splitlines()
         in_target = False
         for line in lines:
             trimmed = line.strip()
@@ -54,7 +54,7 @@ class FlextInfraUtilitiesRefactorCensus:
         if not facade_path.exists():
             return {}
         name_map: t.MutableStrMapping = {}
-        lines = facade_path.read_text(encoding=c.Infra.Encoding.DEFAULT).splitlines()
+        lines = facade_path.read_text(encoding=c.Infra.ENCODING_DEFAULT).splitlines()
         in_target = False
         for line in lines:
             trimmed = line.strip()
@@ -81,14 +81,14 @@ class FlextInfraUtilitiesRefactorCensus:
             root for root in project_roots if file_path.is_relative_to(root)
         ]
         if not matching_roots:
-            return c.Infra.Defaults.UNKNOWN
+            return c.Infra.DEFAULT_UNKNOWN
         best = max(matching_roots, key=lambda root: len(root.parts))
         return best.name
 
     @staticmethod
     def build_mro_target(
         family: str,
-        core_project: str = c.Infra.Packages.CORE,
+        core_project: str = c.Infra.PKG_CORE,
     ) -> m.Infra.MROFamilyTarget:
         """Create a generic target config from a family code."""
         if family not in c.Infra.MRO_FAMILIES:
@@ -125,14 +125,14 @@ class FlextInfraUtilitiesRefactorCensus:
             m_list: MutableSequence[m.Infra.CensusMethodSummary] = []
             for m_info in items:
                 af = cnt.get(
-                    (cls, m_info.name, c.Infra.Census.MODE_ALIAS_FLAT),
+                    (cls, m_info.name, c.Infra.CensusMode.ALIAS_FLAT),
                     0,
                 )
                 an = cnt.get(
-                    (cls, m_info.name, c.Infra.Census.MODE_ALIAS_NS),
+                    (cls, m_info.name, c.Infra.CensusMode.ALIAS_NS),
                     0,
                 )
-                dr = cnt.get((cls, m_info.name, c.Infra.Census.MODE_DIRECT), 0)
+                dr = cnt.get((cls, m_info.name, c.Infra.CensusMode.DIRECT), 0)
                 tot = af + an + dr
                 if tot == 0:
                     unused += 1
@@ -191,7 +191,7 @@ class FlextInfraUtilitiesRefactorCensus:
         """Serialize any Pydantic model payload to a JSON file."""
         export_path.write_text(
             model_payload.model_dump_json(indent=2),
-            encoding=c.Infra.Encoding.DEFAULT,
+            encoding=c.Infra.ENCODING_DEFAULT,
         )
 
 

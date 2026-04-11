@@ -41,7 +41,7 @@ class FlextInfraUtilitiesFormatting:
         if not path.exists():
             return
 
-        use_quiet = quiet or path.name == c.Infra.Files.INIT_PY
+        use_quiet = quiet or path.name == c.Infra.INIT_PY
         check_cmd = [
             c.Infra.RUFF,
             c.Infra.CHECK,
@@ -52,7 +52,7 @@ class FlextInfraUtilitiesFormatting:
         check_cmd.append(str(path))
 
         def _require_success(result: r[bool]) -> None:
-            if result.is_failure:
+            if result.failure:
                 raise ValueError(result.error or "ruff post-process failed")
 
         if use_quiet:
@@ -85,7 +85,7 @@ class FlextInfraUtilitiesFormatting:
         else:
             stem = class_name
         if stem == "Flext":
-            return c.Infra.Packages.CORE_UNDERSCORE
+            return c.Infra.PKG_CORE_UNDERSCORE
         chars: MutableSequence[str] = []
         for i, ch in enumerate(stem):
             if ch.isupper() and i > 0:

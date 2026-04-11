@@ -78,9 +78,9 @@ def infra_safe_command_output(
         ["echo", "infra-ok"],
         cwd=infra_test_workspace,
     )
-    assert echo_result.is_success
+    assert echo_result.success
     pwd_result = infra_subprocess.capture(["pwd"], cwd=infra_test_workspace)
-    assert pwd_result.is_success
+    assert pwd_result.success
     return f"{echo_result.value.strip()}|{pwd_result.value.strip()}"
 
 
@@ -91,15 +91,15 @@ def infra_git_repo(
 ) -> Path:
     repo = infra_test_workspace / "repo"
     repo.mkdir(parents=True, exist_ok=True)
-    assert infra_subprocess.run_checked(["git", "init"], cwd=repo).is_success
+    assert infra_subprocess.run_checked(["git", "init"], cwd=repo).success
     assert infra_subprocess.run_checked(
         ["git", "config", "user.email", "infra@example.com"],
         cwd=repo,
-    ).is_success
+    ).success
     assert infra_subprocess.run_checked(
         ["git", "config", "user.name", "Infra Fixtures"],
         cwd=repo,
-    ).is_success
+    ).success
     return repo
 
 

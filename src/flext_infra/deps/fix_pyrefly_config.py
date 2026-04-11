@@ -16,7 +16,6 @@ from pydantic import ValidationError
 from flext_core import FlextLogger
 from flext_infra import (
     FlextInfraExtraPathsManager,
-    FlextInfraUtilitiesCliDispatch,
     c,
     m,
     r,
@@ -42,7 +41,7 @@ class FlextInfraConfigFixer(s[bool]):
             workspace_root or workspace,
         )
         config_result = u.Infra.load_tool_config()
-        if config_result.is_failure:
+        if config_result.failure:
             msg = config_result.error or "failed to load deps tool config"
             raise ValueError(msg)
         self._tool_config: m.Infra.ToolConfigDocument = config_result.value
@@ -54,7 +53,7 @@ class FlextInfraConfigFixer(s[bool]):
     def process_file(self, path: Path, *, dry_run: bool = False) -> r[t.StrSequence]:
         """Process one pyproject.toml file and apply fixes."""
         document_result = u.Cli.toml_read_document(path)
-        if document_result.is_failure:
+        if document_result.failure:
             return r[t.StrSequence].fail(
                 document_result.error or f"failed to read {path}",
             )
@@ -117,7 +116,7 @@ class FlextInfraConfigFixer(s[bool]):
                         conf_map = {}
                 if conf_map.get(c.Infra.IGNORE) is True:
                     removed_ignore = True
-                    matches = conf_map.get("matches", c.Infra.Defaults.UNKNOWN)
+                    matches = conf_map.get("matches", c.Infra.DEFAULT_UNKNOWN)
                     all_fixes.append(f"removed ignore=true sub-config for '{matches}'")
                     continue
                 new_configs.append(conf_out)
@@ -144,7 +143,7 @@ class FlextInfraConfigFixer(s[bool]):
             for key, value in doc_data.items():
                 new_doc[str(key)] = value
             write_result = u.Cli.toml_write_document(path, new_doc)
-            if write_result.is_failure:
+            if write_result.failure:
                 return r[t.StrSequence].fail(
                     write_result.error or f"failed to write {path}",
                 )
@@ -171,7 +170,7 @@ class FlextInfraConfigFixer(s[bool]):
             self._workspace_root,
             project_paths=project_paths or None,
         )
-        if files_result.is_failure:
+        if files_result.failure:
             return r[t.StrSequence].fail(
                 files_result.error or "failed to find pyproject files",
             )
@@ -180,7 +179,7 @@ class FlextInfraConfigFixer(s[bool]):
         pyproject_files: Sequence[Path] = files_result.value
         for path in pyproject_files:
             fixes_result = self.process_file(path, dry_run=dry_run)
-            if fixes_result.is_failure:
+            if fixes_result.failure:
                 return r[t.StrSequence].fail(
                     fixes_result.error or f"failed to process {path}",
                 )
@@ -201,18 +200,9 @@ class FlextInfraConfigFixer(s[bool]):
             _logger.info("pyrefly_configs_clean")
         return r[t.StrSequence].ok(messages)
 
-    @staticmethod
-    def main(argv: t.StrSequence | None = None) -> int:
-        """Legacy entrypoint routed through the canonical check CLI."""
-        return FlextInfraUtilitiesCliDispatch.run_command(
-            c.Infra.Verbs.CHECK,
-            "fix-pyrefly-config",
-            argv,
-        )
-
 
 if __name__ == "__main__":
-    raise SystemExit(FlextInfraConfigFixer.main())
+    raise SystemExit(0)
 
 
 __all__ = ["FlextInfraConfigFixer"]

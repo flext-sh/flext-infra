@@ -7,17 +7,17 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import AliasChoices, ConfigDict, Field
 
 from flext_core import m
 from flext_infra import (
-    FlextInfraModelsMixins,
     FlextInfraModelsNamespaceEnforcer,
     FlextInfraModelsRefactorCensus,
     FlextInfraModelsRefactorGrep,
     FlextInfraModelsRefactorViolations,
     t,
 )
+from flext_infra._models.mixins import FlextInfraModelsMixins
 
 
 class FlextInfraModelsRefactor(
@@ -63,6 +63,30 @@ class FlextInfraModelsRefactor(
             str,
             Field(default="u", description="MRO family to census (c/t/p/m/u)"),
         ] = "u"
+
+    class AccessorMigrationInput(
+        FlextInfraModelsMixins.WriteMixin,
+        m.ContractModel,
+    ):
+        """CLI/service request for accessor migration dry-runs and applies."""
+
+        preview_limit: Annotated[
+            t.PositiveInt,
+            Field(
+                default=10,
+                alias="preview-limit",
+                description="Maximum number of file previews to include in the report",
+            ),
+        ] = 10
+        lint_gates: Annotated[
+            str,
+            Field(
+                default="lint,pyrefly,mypy,pyright",
+                alias="gates",
+                validation_alias=AliasChoices("gates", "lint_gates"),
+                description="Comma-separated lint gates for preview/apply validation",
+            ),
+        ] = "lint,pyrefly,mypy,pyright"
 
     class Result(m.ArbitraryTypesModel):
         """Result of applying refactor rules to a single file."""

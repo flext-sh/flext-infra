@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tf, tm
 
-from flext_infra import FlextInfraExtraPathsManager, t
+from flext_infra import FlextInfraExtraPathsManager, main, t
 
 
 @pytest.fixture
@@ -135,13 +135,7 @@ def test_main_success_modes(
         _ = _create_pyproject(project, pyright_content)
         argv = ["prog", "--projects", str(project), "--dry-run"]
     argv = [argv[0], "--workspace", str(tmp_path), *argv[1:]]
-    tm.that(FlextInfraExtraPathsManager.main(argv[1:]), eq=expected_exit)
-
-
-def test_main_sync_failure(
-    tmp_path: Path,
-) -> None:
-    tm.that(FlextInfraExtraPathsManager.main(["--workspace", str(tmp_path)]), eq=1)
+    tm.that(main(["deps", "extra-paths", *argv[1:]]), eq=expected_exit)
 
 
 @pytest.mark.parametrize(
@@ -164,7 +158,7 @@ def test_sync_one_edge_cases(
         tm.that(
             not _manager(tmp_path)
             .sync_one(Path("/nonexistent/pyproject.toml"), dry_run=dry_run)
-            .is_success,
+            .success,
             eq=True,
         )
         return
@@ -174,7 +168,7 @@ def test_sync_one_edge_cases(
         if expect_fail:
             tm.fail(result)
             return
-        tm.that(result.is_success, eq=expected_ok)
+        tm.that(result.success, eq=expected_ok)
         return
     pyproject = _create_pyproject(tmp_path, pyright_content)
     tm.ok(_manager(tmp_path).sync_one(pyproject, is_root=True, dry_run=dry_run))

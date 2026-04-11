@@ -22,9 +22,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
         return [
             path
             for path in project_dir.rglob("*.md")
-            if not any(
-                part in c.Infra.Excluded.CHECK_EXCLUDED_DIRS for part in path.parts
-            )
+            if not any(part in c.Infra.CHECK_EXCLUDED_DIRS for part in path.parts)
         ]
 
     def _resolve_config_args(self, project_dir: Path) -> t.StrSequence:

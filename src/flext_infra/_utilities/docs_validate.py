@@ -25,7 +25,7 @@ class FlextInfraUtilitiesDocsValidate:
     def docs_has_adr_reference(skill_path: Path) -> bool:
         """Return whether a skill file contains an ADR reference."""
         text = skill_path.read_text(
-            encoding=c.Infra.Encoding.DEFAULT, errors=c.Infra.IGNORE
+            encoding=c.Infra.ENCODING_DEFAULT, errors=c.Infra.IGNORE
         )
         return "adr" in text.lower()
 
@@ -49,7 +49,7 @@ class FlextInfraUtilitiesDocsValidate:
         if not config.exists():
             return []
         payload_result = u.Cli.json_read(config)
-        if payload_result.is_failure:
+        if payload_result.failure:
             return None
         configured = FlextInfraUtilitiesDocsValidate.docs_extract_required_skills(
             payload_result.value,
@@ -65,7 +65,7 @@ class FlextInfraUtilitiesDocsValidate:
     @staticmethod
     def docs_missing_required_paths(scope: m.Infra.DocScope) -> t.StrSequence:
         """Return required docs paths that are still missing from one scope."""
-        if scope.name == c.Infra.ReportKeys.ROOT:
+        if scope.name == c.Infra.RK_ROOT:
             required = [
                 "README.md",
                 "docs/README.md",
@@ -89,14 +89,11 @@ class FlextInfraUtilitiesDocsValidate:
     @staticmethod
     def docs_contract_messages(scope: m.Infra.DocScope) -> t.StrSequence:
         """Return public API contract problems for one governed project scope."""
-        if scope.name == c.Infra.ReportKeys.ROOT or not scope.package_name:
+        if scope.name == c.Infra.RK_ROOT or not scope.package_name:
             return []
         messages: MutableSequence[str] = []
         init_path = (
-            scope.path
-            / c.Infra.Paths.DEFAULT_SRC_DIR
-            / scope.package_name
-            / c.Infra.Files.INIT_PY
+            scope.path / c.Infra.DEFAULT_SRC_DIR / scope.package_name / c.Infra.INIT_PY
         )
         if not init_path.exists():
             messages.append(
@@ -119,7 +116,7 @@ class FlextInfraUtilitiesDocsValidate:
         apply_mode: bool,
     ) -> bool:
         """Write the standard ``TODOS.md`` helper file when requested."""
-        if scope.name == c.Infra.ReportKeys.ROOT or not apply_mode:
+        if scope.name == c.Infra.RK_ROOT or not apply_mode:
             return False
         path = scope.path / "TODOS.md"
         content = (
@@ -127,7 +124,7 @@ class FlextInfraUtilitiesDocsValidate:
             "- [ ] Resolve documentation validation findings from "
             "`.reports/docs/validate-report.md`.\n"
         )
-        _ = path.write_text(content, encoding=c.Infra.Encoding.DEFAULT)
+        _ = path.write_text(content, encoding=c.Infra.ENCODING_DEFAULT)
         return True
 
     @staticmethod
@@ -138,7 +135,7 @@ class FlextInfraUtilitiesDocsValidate:
         """Persist the standard validate summary and markdown report."""
         _ = u.Cli.json_write(
             scope.report_dir / "validate-summary.json",
-            {c.Infra.ReportKeys.SUMMARY: report.model_dump(mode="json")},
+            {c.Infra.RK_SUMMARY: report.model_dump(mode="json")},
         )
         _ = FlextInfraUtilitiesDocs.write_markdown(
             scope.report_dir / "validate-report.md",

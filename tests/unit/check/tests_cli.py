@@ -6,7 +6,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraWorkspaceChecker
+from flext_infra import FlextInfraWorkspaceChecker, main
 from tests import u
 
 
@@ -45,8 +45,9 @@ class TestWorkspaceCheckCli:
         workspace = self._create_workspace(tmp_path)
         _ = self._write_module(workspace, "flext-core", "value = 1\n")
 
-        exit_code = FlextInfraWorkspaceChecker.run_cli(
+        exit_code = main(
             [
+                "check",
                 "run",
                 "--workspace",
                 str(workspace),
@@ -63,8 +64,9 @@ class TestWorkspaceCheckCli:
         workspace = self._create_workspace(tmp_path)
         _ = self._write_module(workspace, "flext-core", "def broken(:\n")
 
-        exit_code = FlextInfraWorkspaceChecker.run_cli(
+        exit_code = main(
             [
+                "check",
                 "run",
                 "--workspace",
                 str(workspace),
@@ -86,8 +88,9 @@ class TestWorkspaceCheckCli:
         blocked = tmp_path / "blocked"
         blocked.write_text("not a directory\n", encoding="utf-8")
 
-        exit_code = FlextInfraWorkspaceChecker.run_cli(
+        exit_code = main(
             [
+                "check",
                 "run",
                 "--workspace",
                 str(workspace),
@@ -110,8 +113,9 @@ class TestWorkspaceCheckCli:
         _ = self._write_module(workspace, "proj1", "value = 1\n")
         _ = self._write_module(workspace, "proj2", "other = 2\n")
 
-        exit_code = FlextInfraWorkspaceChecker.run_cli(
+        exit_code = main(
             [
+                "check",
                 "run",
                 "--workspace",
                 str(workspace),
@@ -137,8 +141,9 @@ class TestWorkspaceCheckCli:
             "import os\n\nvalue = 1\n",
         )
 
-        exit_code = FlextInfraWorkspaceChecker.run_cli(
+        exit_code = main(
             [
+                "check",
                 "run",
                 "--workspace",
                 str(workspace),
@@ -163,8 +168,9 @@ class TestWorkspaceCheckCli:
             "import os\n\nvalue = 1\n",
         )
 
-        exit_code = FlextInfraWorkspaceChecker.run_cli(
+        exit_code = main(
             [
+                "check",
                 "run",
                 "--workspace",
                 str(workspace),
@@ -186,8 +192,9 @@ class TestWorkspaceCheckCli:
         )
 
     def test_run_cli_rejects_shared_dry_run_flag(self) -> None:
-        exit_code = FlextInfraWorkspaceChecker.run_cli(
+        exit_code = main(
             [
+                "check",
                 "--dry-run",
                 "run",
                 "--projects",

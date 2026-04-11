@@ -11,7 +11,6 @@ from pathlib import Path
 from flext_core import FlextLogger
 from flext_infra import (
     FlextInfraInternalSyncRepoMixin,
-    FlextInfraUtilitiesCliDispatch,
     c,
     m,
     p,
@@ -41,7 +40,7 @@ class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
         """Ensure target points to source via directory symlink."""
         try:
             dir_result = u.Cli.ensure_dir(target.parent)
-            if dir_result.is_failure:
+            if dir_result.failure:
                 return r[bool].fail(
                     dir_result.error or f"failed to create parent dir for {target}",
                 )
@@ -88,7 +87,7 @@ class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
     def sync(self, project_root: Path) -> r[int]:
         """Synchronize internal dependencies via git clone or workspace symlinks."""
         deps_result = self.collect_internal_deps(project_root)
-        if deps_result.is_failure:
+        if deps_result.failure:
             return r[int].fail(deps_result.error or "dependency collection failed")
         deps = deps_result.value
         if not deps:
@@ -99,12 +98,12 @@ class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
         if (
             workspace_mode
             and workspace_root
-            and (workspace_root / c.Infra.Files.GITMODULES).exists()
+            and (workspace_root / c.Infra.GITMODULES).exists()
         ):
-            repo_map = self.parse_gitmodules(workspace_root / c.Infra.Files.GITMODULES)
+            repo_map = self.parse_gitmodules(workspace_root / c.Infra.GITMODULES)
             if map_file.exists():
                 parsed_map_result = self.parse_repo_map(map_file)
-                if parsed_map_result.is_failure:
+                if parsed_map_result.failure:
                     return r[int].fail(
                         parsed_map_result.error or "failed to parse standalone map",
                     )
@@ -122,7 +121,7 @@ class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
             self.log.warning("sync_deps_synthesized_repo_map", owner=owner)
         else:
             parsed_map_result = self.parse_repo_map(map_file)
-            if parsed_map_result.is_failure:
+            if parsed_map_result.failure:
                 return r[int].fail(
                     parsed_map_result.error or "failed to parse repo map",
                 )
@@ -139,7 +138,7 @@ class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
                 sibling = workspace_root / repo_name
                 if sibling.exists():
                     symlink_result = self.ensure_symlink(dep_path, sibling)
-                    if symlink_result.is_failure:
+                    if symlink_result.failure:
                         return r[int].fail(
                             symlink_result.error or f"failed symlink for {repo_name}",
                         )
@@ -147,7 +146,7 @@ class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
             urls = repo_map[repo_name]
             selected_url = urls.https_url if force_https else urls.ssh_url
             checkout_result = self.ensure_checkout(dep_path, selected_url, ref_name)
-            if checkout_result.is_failure:
+            if checkout_result.failure:
                 return r[int].fail(
                     checkout_result.error or f"checkout failed for {repo_name}",
                 )
@@ -155,11 +154,11 @@ class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
 
     def collect_internal_deps(self, project_root: Path) -> r[Mapping[str, Path]]:
         """Collect internal path dependencies from pyproject metadata."""
-        pyproject = project_root / c.Infra.Files.PYPROJECT_FILENAME
+        pyproject = project_root / c.Infra.PYPROJECT_FILENAME
         if not pyproject.exists():
             return r[Mapping[str, Path]].ok({})
         data_result = self._read_plain(pyproject)
-        if data_result.is_failure:
+        if data_result.failure:
             return r[Mapping[str, Path]].fail(
                 data_result.error or f"failed to read {pyproject}",
             )
@@ -187,7 +186,7 @@ class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
             dep_name_match = c.Infra.DEP_NAME_RE.match(dep)
             if dep_name_match is not None:
                 dep_name = dep_name_match.group(1)
-                if dep_name.startswith(c.Infra.Packages.PREFIX_HYPHEN) or dep_name in {
+                if dep_name.startswith(c.Infra.PKG_PREFIX_HYPHEN) or dep_name in {
                     "flext",
                     "flexcore",
                 }:
@@ -224,20 +223,20 @@ class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
     def ensure_checkout(self, dep_path: Path, repo_url: str, ref_name: str) -> r[bool]:
         """Ensure dependency checkout exists and matches requested ref."""
         safe_repo_url_result = self.validate_repo_url(repo_url)
-        if safe_repo_url_result.is_failure:
+        if safe_repo_url_result.failure:
             return r[bool].fail(safe_repo_url_result.error or "invalid repository URL")
         safe_ref_name_result = self.validate_git_ref(ref_name)
-        if safe_ref_name_result.is_failure:
+        if safe_ref_name_result.failure:
             return r[bool].fail(safe_ref_name_result.error or "invalid git ref")
         safe_repo_url = safe_repo_url_result.value
         safe_ref_name = safe_ref_name_result.value
         parent_dir_result = u.Cli.ensure_dir(dep_path.parent)
-        if parent_dir_result.is_failure:
+        if parent_dir_result.failure:
             return r[bool].fail(
                 parent_dir_result.error
                 or f"failed to create parent dir for {dep_path}",
             )
-        if not (dep_path / c.Infra.Git.DIR).exists():
+        if not (dep_path / c.Infra.GIT_DIR).exists():
             try:
                 if dep_path.exists() or dep_path.is_symlink():
                     if dep_path.is_dir() and (not dep_path.is_symlink()):
@@ -256,58 +255,30 @@ class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
                 safe_repo_url,
                 str(dep_path),
             ])
-            if cloned.is_failure:
+            if cloned.failure:
                 return r[bool].fail(f"clone failed for {dep_path.name}: {cloned.error}")
             return r[bool].ok(True)
         fetch = u.Cli.run_checked(
-            [c.Infra.GIT, "fetch", c.Infra.Git.ORIGIN],
+            [c.Infra.GIT, "fetch", c.Infra.GIT_ORIGIN],
             cwd=dep_path,
         )
-        if fetch.is_failure:
+        if fetch.failure:
             return r[bool].fail(f"fetch failed for {dep_path.name}: {fetch.error}")
         checkout = u.Cli.run_checked(
             [c.Infra.GIT, "checkout", safe_ref_name],
             cwd=dep_path,
         )
-        if checkout.is_failure:
+        if checkout.failure:
             return r[bool].fail(
                 f"checkout failed for {dep_path.name}: {checkout.error}",
             )
         _ = u.Cli.run_checked(
-            [c.Infra.GIT, "pull", c.Infra.Git.ORIGIN, safe_ref_name],
+            [c.Infra.GIT, "pull", c.Infra.GIT_ORIGIN, safe_ref_name],
             cwd=dep_path,
         )
         return r[bool].ok(True)
 
-    @staticmethod
-    def run_cli(argv: t.StrSequence | None = None) -> int:
-        """Execute internal dependency synchronization for the deps CLI."""
-        parser = u.Infra.create_parser(
-            prog="flext-infra deps internal-sync",
-            description="Synchronize internal FLEXT dependencies via git clone or workspace symlinks",
-            flags=u.Infra.SharedFlags(include_apply=False),
-        )
-        args = parser.parse_args([] if argv is None else list(argv))
-        cli_args = u.Infra.resolve(args)
-        service = FlextInfraInternalDependencySyncService()
-        result = service.sync(cli_args.workspace)
-        if result.is_success:
-            return result.value
-        sync_error = result.error or "sync_internal_deps_failed"
-        service.log.error("sync_internal_deps_failed", error_detail=sync_error)
-        u.Infra.error(f"[sync-deps] {sync_error}")
-        return 1
-
-    @staticmethod
-    def main(argv: t.StrSequence | None = None) -> int:
-        """Legacy entrypoint routed through the canonical deps CLI."""
-        return FlextInfraUtilitiesCliDispatch.run_command(
-            "deps",
-            "internal-sync",
-            argv,
-        )
-
 
 if __name__ == "__main__":
-    raise SystemExit(FlextInfraInternalDependencySyncService.main())
+    raise SystemExit(0)
 __all__ = ["FlextInfraInternalDependencySyncService"]

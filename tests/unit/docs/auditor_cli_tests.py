@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import FlextInfraDocAuditor
+from flext_infra import main
 from tests import u
 
 
 def test_auditor_main_help_exits_zero() -> None:
-    assert FlextInfraDocAuditor.main(["--help"]) == 0
+    assert main(["docs", "audit", "--help"]) == 0
 
 
 def test_auditor_main_writes_reports_for_selected_project(tmp_path: Path) -> None:
@@ -19,7 +19,9 @@ def test_auditor_main_writes_reports_for_selected_project(tmp_path: Path) -> Non
     )
 
     assert (
-        FlextInfraDocAuditor.main([
+        main([
+            "docs",
+            "audit",
             "--workspace",
             str(workspace),
             "--projects",
@@ -39,4 +41,4 @@ def test_auditor_main_strict_failure_returns_one(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    assert FlextInfraDocAuditor.main(["--workspace", str(workspace), "--strict"]) == 1
+    assert main(["docs", "audit", "--workspace", str(workspace), "--strict"]) == 1

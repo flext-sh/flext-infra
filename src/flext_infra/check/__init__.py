@@ -7,14 +7,8 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 _LAZY_IMPORTS = build_lazy_import_map(
     {
-        ".workspace_check": (
-            "FlextInfraWorkspaceChecker",
-            "run_cli",
-        ),
-        ".workspace_check_cli": (
-            "FlextInfraCliCheck",
-            "FlextInfraWorkspaceCheckerCli",
-        ),
+        ".workspace_check": ("FlextInfraWorkspaceChecker",),
+        ".workspace_check_cli": ("FlextInfraCliCheck",),
         ".workspace_check_gates": (
             "FlextInfraGateRegistry",
             "FlextInfraWorkspaceCheckGatesMixin",

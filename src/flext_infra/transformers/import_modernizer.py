@@ -38,7 +38,7 @@ class FlextInfraRefactorImportModernizer(FlextInfraRopeTransformer):
         self.modified_imports = False
         self.aliases_needed: t.Infra.StrSet = set()
         self.aliases_present: t.Infra.StrSet = set()
-        self.active_symbol_replacements: t.MutableStrMapping = {}
+        self.active_symbol_replacements: dict[str, str] = {}
 
     @override
     def transform(
@@ -70,7 +70,7 @@ class FlextInfraRefactorImportModernizer(FlextInfraRopeTransformer):
 
     def _scan_core_aliases(self, source: str) -> None:
         """Scan source for existing core alias imports."""
-        core_pkg = c.Infra.Packages.CORE_UNDERSCORE
+        core_pkg = c.Infra.PKG_CORE_UNDERSCORE
         self.aliases_present.update(
             u.Infra.collect_from_import_bound_names(
                 source,
@@ -175,7 +175,7 @@ class FlextInfraRefactorImportModernizer(FlextInfraRopeTransformer):
         missing = sorted(self.aliases_needed - self.aliases_present)
         if not (self.modified_imports and missing):
             return source
-        pkg = c.Infra.Packages.CORE_UNDERSCORE
+        pkg = c.Infra.PKG_CORE_UNDERSCORE
         import_line = f"from {pkg} import {', '.join(missing)}\n"
         self._record_change(f"Added: from flext_core import {', '.join(missing)}")
         lines = source.splitlines(keepends=True)

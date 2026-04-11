@@ -8,10 +8,10 @@ from flext_infra import FlextInfraReleaseOrchestrator
 from tests import c, m, u
 
 _ALL_PHASES: list[str] = [
-    c.Infra.Verbs.VALIDATE,
+    c.Infra.VERB_VALIDATE,
     c.Infra.VERSION,
-    c.Infra.Directories.BUILD,
-    c.Infra.Verbs.PUBLISH,
+    c.Infra.DIR_BUILD,
+    c.Infra.VERB_PUBLISH,
 ]
 
 
@@ -47,7 +47,7 @@ def test_release_all_phases_succeed_in_dry_run_mode(
         _make_config(workspace, dry_run=True),
     )
 
-    assert result.is_success
+    assert result.success
     report_dir = workspace / ".reports/release/v1.0.0"
     assert (report_dir / "build-report.json").is_file()
     assert (report_dir / "RELEASE_NOTES.md").is_file()
@@ -60,12 +60,12 @@ def test_release_selected_validate_phase_skips_release_artifacts(
     result = FlextInfraReleaseOrchestrator().run_release(
         _make_config(
             workspace,
-            phases=[c.Infra.Verbs.VALIDATE],
+            phases=[c.Infra.VERB_VALIDATE],
             dry_run=True,
         ),
     )
 
-    assert result.is_success
+    assert result.success
     assert not (workspace / ".reports/release").exists()
 
 
@@ -79,10 +79,10 @@ def test_release_build_failure_propagates_from_real_make(
     result = FlextInfraReleaseOrchestrator().run_release(
         _make_config(
             workspace,
-            phases=[c.Infra.Directories.BUILD],
+            phases=[c.Infra.DIR_BUILD],
             dry_run=False,
         ),
     )
 
-    assert result.is_failure
+    assert result.failure
     assert "build failed" in (result.error or "")

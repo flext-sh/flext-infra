@@ -35,7 +35,7 @@ class TestMainBaseMkValidate:
         result = FlextInfraBaseMkValidator(
             workspace=tmp_path,
         ).execute()
-        assert isinstance(result.is_success, bool)
+        assert isinstance(result.success, bool)
 
     def test_with_violations(self, tmp_path: Path) -> None:
         """basemk-validate returns failure with mismatched base.mk."""
@@ -47,12 +47,12 @@ class TestMainBaseMkValidate:
         result = FlextInfraBaseMkValidator(
             workspace=tmp_path,
         ).execute()
-        tm.that(result.is_failure, eq=True)
+        tm.that(result.failure, eq=True)
 
     def test_missing_root_basemk(self, tmp_path: Path) -> None:
         """basemk-validate returns failure when root base.mk missing."""
         result = FlextInfraBaseMkValidator(workspace=tmp_path).execute()
-        tm.that(result.is_failure, eq=True)
+        tm.that(result.failure, eq=True)
 
 
 class TestMainInventory:
@@ -61,7 +61,7 @@ class TestMainInventory:
     def test_success(self, tmp_path: Path) -> None:
         """Inventory succeeds with empty workspace."""
         result = FlextInfraInventoryService(workspace=tmp_path).execute()
-        tm.that(result.is_success, eq=True)
+        tm.that(result.success, eq=True)
 
     def test_with_output_dir(self, tmp_path: Path) -> None:
         """Inventory succeeds with output directory."""
@@ -72,7 +72,7 @@ class TestMainInventory:
             output_dir=output,
         )
         result = result.execute()
-        tm.that(result.is_success, eq=True)
+        tm.that(result.success, eq=True)
 
 
 class TestMainScan:
@@ -89,7 +89,7 @@ class TestMainScan:
             match="present",
         )
         result = result.execute()
-        tm.that(result.is_success, eq=True)
+        tm.that(result.success, eq=True)
 
     def test_with_violations(self, tmp_path: Path) -> None:
         """Scan returns failure when violations found."""
@@ -102,7 +102,7 @@ class TestMainScan:
             match="present",
         )
         result = result.execute()
-        tm.that(result.is_failure, eq=True)
+        tm.that(result.failure, eq=True)
 
 
 class TestMainCliRouting:

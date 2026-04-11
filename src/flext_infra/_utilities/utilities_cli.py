@@ -67,8 +67,8 @@ class FlextInfraUtilitiesRefactorCli:
                 indent=2,
             )
             _ = output_path.write_text(
-                json_bytes.decode(c.Infra.Encoding.DEFAULT) + "\n",
-                encoding=c.Infra.Encoding.DEFAULT,
+                json_bytes.decode(c.Infra.ENCODING_DEFAULT) + "\n",
+                encoding=c.Infra.ENCODING_DEFAULT,
             )
             FlextInfraUtilitiesRefactorCli.refactor_info(
                 f"Impact map written: {output_path}",
@@ -109,14 +109,14 @@ class FlextInfraUtilitiesRefactorCli:
             return
         id_width = (
             max(
-                len(str(item.get(c.Infra.ReportKeys.ID, c.Infra.Defaults.UNKNOWN)))
+                len(str(item.get(c.Infra.RK_ID, c.Infra.DEFAULT_UNKNOWN)))
                 for item in rules
             )
             + 2
         )
         name_width = (
             max(
-                len(str(item.get(c.Infra.NAME, c.Infra.Defaults.UNKNOWN)))
+                len(str(item.get(c.Infra.NAME, c.Infra.DEFAULT_UNKNOWN)))
                 for item in rules
             )
             + 2
@@ -127,7 +127,7 @@ class FlextInfraUtilitiesRefactorCli:
         FlextInfraUtilitiesRefactorCli.refactor_info(header)
         FlextInfraUtilitiesRefactorCli.refactor_info("-" * len(header))
         for rule in rules:
-            status = "\u2713" if rule[c.Infra.ReportKeys.ENABLED] else "\u2717"
+            status = "\u2713" if rule[c.Infra.RK_ENABLED] else "\u2717"
             rid = f"{rule['id']:<{id_width}}"
             rname = f"{rule['name']:<{name_width}}"
             rsev = f"{rule['severity']:<10}"

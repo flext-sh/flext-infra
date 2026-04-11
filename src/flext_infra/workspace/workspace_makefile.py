@@ -45,7 +45,7 @@ class FlextInfraWorkspaceMakefileGenerator:
     def template_path(self) -> Path:
         """Path to the Makefile Jinja2 template used for workspace generation."""
         return (
-            Path(__file__).parent.parent / "templates" / c.Infra.Makefile.TEMPLATE_NAME
+            Path(__file__).parent.parent / "templates" / c.Infra.MAKEFILE_TEMPLATE_NAME
         )
 
     def generate(self, workspace_root: Path) -> r[bool]:
@@ -59,20 +59,20 @@ class FlextInfraWorkspaceMakefileGenerator:
             failure on I/O error.
 
         """
-        makefile = workspace_root / c.Infra.Files.MAKEFILE_FILENAME
+        makefile = workspace_root / c.Infra.MAKEFILE_FILENAME
 
         if not self.template_path.exists():
             return self._bootstrap_template(makefile)
 
         pr_branch = self._current_branch(workspace_root)
         render_result = self._render_template(pr_branch=pr_branch)
-        if render_result.is_failure:
+        if render_result.failure:
             return r[bool].fail(render_result.error or "template render failed")
         content = render_result.value
 
         if makefile.exists():
             try:
-                existing = makefile.read_text(encoding=c.Infra.Encoding.DEFAULT)
+                existing = makefile.read_text(encoding=c.Infra.ENCODING_DEFAULT)
             except OSError as exc:
                 return r[bool].fail(f"Makefile read failed: {exc}")
             if u.Cli.sha256_content(existing) == u.Cli.sha256_content(content):
@@ -92,7 +92,7 @@ class FlextInfraWorkspaceMakefileGenerator:
                     "# =============================================================================\n",
                     "# FLEXT Workspace Makefile\n",
                     "# =============================================================================\n",
-                    f"{c.Infra.Makefile.GENERATED_MARKER}\n",
+                    f"{c.Infra.MAKEFILE_GENERATED_MARKER}\n",
                     "# Run 'make sync' from workspace root to regenerate this file.\n",
                     "# DO NOT EDIT — put custom targets in workspace_custom.mk instead.\n",
                     "# =============================================================================\n",
@@ -106,10 +106,10 @@ class FlextInfraWorkspaceMakefileGenerator:
                 continue
             out.append(line)
         template_content = "".join(out)
-        if c.Infra.Makefile.CUSTOM_INCLUDE not in content:
+        if c.Infra.MAKEFILE_CUSTOM_INCLUDE not in content:
             if not template_content.endswith("\n"):
                 template_content += "\n"
-            template_content += f"\n# Workspace-specific custom targets (optional, never overwritten by sync)\n{c.Infra.Makefile.CUSTOM_INCLUDE}\n"
+            template_content += f"\n# Workspace-specific custom targets (optional, never overwritten by sync)\n{c.Infra.MAKEFILE_CUSTOM_INCLUDE}\n"
         return template_content
 
     def _bootstrap_template(self, makefile: Path) -> r[bool]:
@@ -117,10 +117,10 @@ class FlextInfraWorkspaceMakefileGenerator:
         if not makefile.exists():
             return r[bool].ok(False)
         try:
-            content = makefile.read_text(encoding=c.Infra.Encoding.DEFAULT)
+            content = makefile.read_text(encoding=c.Infra.ENCODING_DEFAULT)
         except OSError as exc:
             return r[bool].fail(f"Makefile read failed: {exc}")
-        if c.Infra.Makefile.GENERATED_MARKER in content:
+        if c.Infra.MAKEFILE_GENERATED_MARKER in content:
             return r[bool].ok(False)
 
         pr_branch = self._current_branch(makefile.parent)
@@ -131,7 +131,7 @@ class FlextInfraWorkspaceMakefileGenerator:
             template_write = u.Cli.atomic_write_text_file(
                 self.template_path, template_content
             )
-            if template_write.is_failure:
+            if template_write.failure:
                 return template_write
         except OSError as exc:
             return r[bool].fail(f"template bootstrap failed: {exc}")
@@ -140,7 +140,7 @@ class FlextInfraWorkspaceMakefileGenerator:
             pr_branch=pr_branch,
             template_text=template_content,
         )
-        if render_result.is_failure:
+        if render_result.failure:
             return r[bool].fail(render_result.error or "template render failed")
         return u.Cli.atomic_write_text_file(makefile, render_result.value)
 
@@ -164,7 +164,7 @@ class FlextInfraWorkspaceMakefileGenerator:
             )
             if template_text is None:
                 template_obj: t.Infra.JinjaTemplate = environment.get_template(
-                    c.Infra.Makefile.TEMPLATE_NAME
+                    c.Infra.MAKEFILE_TEMPLATE_NAME
                 )
             else:
                 template_obj = environment.from_string(template_text)
@@ -195,22 +195,22 @@ class FlextInfraWorkspaceMakefileGenerator:
             ["git", "-C", str(workspace_root), "rev-parse", "--abbrev-ref", "HEAD"],
             timeout=5,
         )
-        if capture_result.is_success:
+        if capture_result.success:
             branch = capture_result.value
-            if branch and branch != c.Infra.Git.HEAD:
+            if branch and branch != c.Infra.GIT_HEAD:
                 return branch
 
         # Fallback: read version from pyproject.toml
-        pyproject = workspace_root / c.Infra.Files.PYPROJECT_FILENAME
+        pyproject = workspace_root / c.Infra.PYPROJECT_FILENAME
         data_result = u.Infra.read_plain(pyproject)
-        if data_result.is_success:
+        if data_result.success:
             data = data_result.value
             project_raw = data.get("project")
             if isinstance(project_raw, dict):
-                version_raw = project_raw.get("version", c.Infra.Git.MAIN)
+                version_raw = project_raw.get("version", c.Infra.GIT_MAIN)
                 if isinstance(version_raw, str):
                     return version_raw
-        return c.Infra.Git.MAIN
+        return c.Infra.GIT_MAIN
 
 
 __all__ = ["FlextInfraWorkspaceMakefileGenerator"]

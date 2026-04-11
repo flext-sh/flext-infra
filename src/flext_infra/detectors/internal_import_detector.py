@@ -21,7 +21,7 @@ class FlextInfraInternalImportDetector:
         """Detect private module/symbol imports in a single file."""
         file_path = ctx.file_path
         rope_project = ctx.rope_project
-        if file_path.name == c.Infra.Files.INIT_PY:
+        if file_path.name == c.Infra.INIT_PY:
             return []
         current_package = u.Infra.discover_package_from_file(file_path)
         current_root = current_package.split(".", 1)[0] if current_package else ""
@@ -47,9 +47,9 @@ class FlextInfraInternalImportDetector:
                     or (current_root and fqn.split(".", 1)[0] == current_root)
                     or fqn.split(".", 1)[0]
                     in {
-                        c.Infra.Directories.TESTS,
-                        c.Infra.Directories.EXAMPLES,
-                        c.Infra.Directories.SCRIPTS,
+                        c.Infra.DIR_TESTS,
+                        c.Infra.DIR_EXAMPLES,
+                        c.Infra.DIR_SCRIPTS,
                     }
                 )
             )

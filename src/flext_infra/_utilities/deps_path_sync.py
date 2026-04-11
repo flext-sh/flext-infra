@@ -10,8 +10,7 @@ from tomlkit.items import InlineTable, Table as TomlTable
 from flext_cli import u
 from flext_core import FlextLogger
 from flext_infra import (
-    FlextInfraUtilitiesCli,
-    FlextInfraUtilitiesCliDispatch,
+    FlextInfraModelsDeps,
     FlextInfraUtilitiesDocsScope,
     FlextInfraUtilitiesTomlParse,
     c,
@@ -80,7 +79,7 @@ class FlextInfraUtilitiesDependencyPathSync(
     ) -> t.StrSequence:
         expected_names: t.Infra.StrSet = (
             set(workspace_members)
-            if is_root and mode == c.Infra.ReportKeys.WORKSPACE
+            if is_root and mode == c.Infra.RK_WORKSPACE
             else set(internal_deps)
         )
         if not expected_names:
@@ -96,7 +95,7 @@ class FlextInfraUtilitiesDependencyPathSync(
         for dep_name in sorted(expected_names):
             expected = (
                 {"workspace": True}
-                if mode == c.Infra.ReportKeys.WORKSPACE
+                if mode == c.Infra.RK_WORKSPACE
                 else {
                     "path": f"{c.Infra.FLEXT_DEPS_DIR}/{dep_name}",
                     "editable": True,
@@ -167,10 +166,10 @@ class FlextInfraUtilitiesDependencyPathSync(
                 continue
             new_path = (
                 dep_name
-                if mode == c.Infra.ReportKeys.WORKSPACE and is_root
+                if mode == c.Infra.RK_WORKSPACE and is_root
                 else (
                     f"../{dep_name}"
-                    if mode == c.Infra.ReportKeys.WORKSPACE
+                    if mode == c.Infra.RK_WORKSPACE
                     else f"{c.Infra.FLEXT_DEPS_DIR}/{dep_name}"
                 )
             )
@@ -194,7 +193,7 @@ class FlextInfraUtilitiesDependencyPathSync(
     ) -> r[t.StrSequence]:
         """Rewrite PEP 621 and Poetry dependency paths."""
         doc_result = u.Cli.toml_read_document(pyproject_path)
-        if doc_result.is_failure:
+        if doc_result.failure:
             return r[t.StrSequence].fail(
                 doc_result.error or "failed to read TOML document",
             )
@@ -224,7 +223,7 @@ class FlextInfraUtilitiesDependencyPathSync(
         changes += list(self._rewrite_poetry(doc, is_root=is_root, mode=mode))
         if changes and (not dry_run):
             write_result = u.Cli.toml_write_document(pyproject_path, doc)
-            if write_result.is_failure:
+            if write_result.failure:
                 return r[t.StrSequence].fail(
                     write_result.error or "failed to write TOML",
                 )
@@ -234,26 +233,27 @@ class FlextInfraUtilitiesDependencyPathSync(
     def detect_mode(project_root: Path) -> str:
         """Detect workspace or standalone mode from project structure."""
         for candidate in (project_root, *project_root.parents):
-            if (candidate / c.Infra.Files.GITMODULES).exists():
-                return c.Infra.ReportKeys.WORKSPACE
+            if (candidate / c.Infra.GITMODULES).exists():
+                return c.Infra.RK_WORKSPACE
         return "standalone"
 
-    def execute(self, *, cli: FlextInfraUtilitiesCli.CliArgs, mode: str) -> int:
-        """Execute path synchronization for the given CLI arguments."""
-        workspace_root = cli.workspace
-        dry_run = cli.dry_run
-        selected_projects: t.StrSequence = cli.project_names() or []
+    def execute(self, params: FlextInfraModelsDeps.PathSyncCommand) -> int:
+        """Execute dependency path synchronization for one canonical command payload."""
+        workspace_root = params.workspace_path
+        dry_run = params.dry_run
+        selected_projects: t.StrSequence = list(params.project_names or [])
+        mode = params.mode
 
         if mode == "auto":
             mode = self.detect_mode(workspace_root)
 
         total_changes = 0
         internal_names: t.Infra.StrSet = set()
-        root_pyproject = workspace_root / c.Infra.Files.PYPROJECT_FILENAME
+        root_pyproject = workspace_root / c.Infra.PYPROJECT_FILENAME
 
         if root_pyproject.exists():
             root_data_result = u.Cli.toml_read_document(root_pyproject)
-            if root_data_result.is_success:
+            if root_data_result.success:
                 root_data: t.Cli.TomlDocument = root_data_result.value
                 root_project = u.Cli.toml_get_item(root_data, c.Infra.PROJECT)
                 root_mapping = u.Cli.toml_as_mapping(
@@ -268,7 +268,7 @@ class FlextInfraUtilitiesDependencyPathSync(
         discover_result = FlextInfraUtilitiesDocsScope.discover_projects(
             workspace_root,
         )
-        if discover_result.is_failure:
+        if discover_result.failure:
             discovery_error = discover_result.error or "sync_dep_paths_discovery_failed"
             self._log.error(
                 "sync_dep_paths_discovery_failed",
@@ -290,11 +290,11 @@ class FlextInfraUtilitiesDependencyPathSync(
             project_dirs = all_project_dirs
 
         for project_dir in all_project_dirs:
-            pyproject = project_dir / c.Infra.Files.PYPROJECT_FILENAME
+            pyproject = project_dir / c.Infra.PYPROJECT_FILENAME
             if not pyproject.exists():
                 continue
             data_result = u.Cli.toml_read_document(pyproject)
-            if data_result.is_failure:
+            if data_result.failure:
                 project_error = data_result.error or "sync_dep_paths_project_invalid"
                 self._log.error(
                     "sync_dep_paths_project_invalid",
@@ -322,7 +322,7 @@ class FlextInfraUtilitiesDependencyPathSync(
                 is_root=True,
                 dry_run=dry_run,
             )
-            if changes_result.is_failure:
+            if changes_result.failure:
                 root_error = changes_result.error or "sync_dep_paths_root_failed"
                 self._log.error(
                     "sync_dep_paths_root_failed",
@@ -339,7 +339,7 @@ class FlextInfraUtilitiesDependencyPathSync(
                 total_changes += len(changes)
 
         for project_dir in sorted(project_dirs):
-            pyproject = project_dir / c.Infra.Files.PYPROJECT_FILENAME
+            pyproject = project_dir / c.Infra.PYPROJECT_FILENAME
             if not pyproject.exists():
                 continue
             changes_result = self.rewrite_dep_paths(
@@ -350,7 +350,7 @@ class FlextInfraUtilitiesDependencyPathSync(
                 is_root=False,
                 dry_run=dry_run,
             )
-            if changes_result.is_failure:
+            if changes_result.failure:
                 project_error = changes_result.error or "sync_dep_paths_project_failed"
                 self._log.error(
                     "sync_dep_paths_project_failed",
@@ -370,39 +370,6 @@ class FlextInfraUtilitiesDependencyPathSync(
             action = "would change" if dry_run else "changed"
             _ = self._log.info(f"[sync-dep-paths] {action} {total_changes} path(s).")
         return 0
-
-    @classmethod
-    def run_cli(cls, argv: t.StrSequence | None = None) -> int:
-        """Execute path synchronization for the canonical deps CLI."""
-        parser = FlextInfraUtilitiesCli.create_parser(
-            "flext-infra deps path-sync",
-            "Rewrite internal FLEXT dependency paths for workspace/standalone mode.",
-            flags=FlextInfraUtilitiesCli.SharedFlags(
-                include_apply=True,
-                include_project=True,
-            ),
-        )
-        _ = parser.add_argument(
-            "--mode",
-            choices=["workspace", "standalone", "auto"],
-            default="auto",
-            help="Target mode (default: auto-detect)",
-        )
-        args = parser.parse_args([] if argv is None else list(argv))
-        cli = FlextInfraUtilitiesCli.resolve(args)
-        return cls().execute(
-            cli=cli,
-            mode=args.mode,
-        )
-
-    @classmethod
-    def main(cls, argv: t.StrSequence | None = None) -> int:
-        """Legacy entrypoint routed through the canonical deps CLI."""
-        return FlextInfraUtilitiesCliDispatch.run_command(
-            "deps",
-            "path-sync",
-            argv,
-        )
 
 
 __all__ = ["FlextInfraUtilitiesDependencyPathSync"]

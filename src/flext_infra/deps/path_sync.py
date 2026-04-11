@@ -5,11 +5,12 @@ from __future__ import annotations
 import sys
 
 from flext_infra._utilities.deps_path_sync import FlextInfraUtilitiesDependencyPathSync
+from flext_infra.cli import main as cli_main
 
 
 def main() -> int:
-    """Run dependency path sync through the canonical implementation."""
-    return FlextInfraUtilitiesDependencyPathSync.main()
+    """Run dependency path sync through canonical CLI routing."""
+    return cli_main(["deps", "path-sync", *sys.argv[1:]])
 
 
 if __name__ == "__main__":

@@ -18,7 +18,6 @@ from pydantic import Field
 from flext_infra import (
     FlextInfraBaseMkGenerator,
     FlextInfraServiceBase,
-    FlextInfraUtilitiesCliDispatch,
     c,
     m,
     r,
@@ -68,7 +67,7 @@ class FlextInfraSyncService(FlextInfraServiceBase[m.Infra.SyncResult]):
 
         lock_file = resolved / ".flext-sync.lock"
         try:
-            with lock_file.open("w", encoding=c.Infra.Encoding.DEFAULT) as handle:
+            with lock_file.open("w", encoding=c.Infra.ENCODING_DEFAULT) as handle:
                 try:
                     fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
                     return self._sync_locked_content(
@@ -99,7 +98,7 @@ class FlextInfraSyncService(FlextInfraServiceBase[m.Infra.SyncResult]):
             config,
             canonical_root=effective_root,
         )
-        if basemk_result.is_failure:
+        if basemk_result.failure:
             return r[m.Infra.SyncResult].fail(
                 basemk_result.error or "base.mk sync failed",
             )
@@ -108,7 +107,7 @@ class FlextInfraSyncService(FlextInfraServiceBase[m.Infra.SyncResult]):
             resolved,
             c.Infra.REQUIRED_GITIGNORE_ENTRIES,
         )
-        if gitignore_result.is_failure:
+        if gitignore_result.failure:
             return r[m.Infra.SyncResult].fail(
                 gitignore_result.error or ".gitignore sync failed",
             )
@@ -120,7 +119,7 @@ class FlextInfraSyncService(FlextInfraServiceBase[m.Infra.SyncResult]):
                 resolved,
                 canonical_root=effective_root or resolved,
             )
-            if child_sync_result.is_failure:
+            if child_sync_result.failure:
                 return r[m.Infra.SyncResult].fail(
                     child_sync_result.error or "workspace child sync failed",
                 )
@@ -141,7 +140,7 @@ class FlextInfraSyncService(FlextInfraServiceBase[m.Infra.SyncResult]):
     ) -> r[int]:
         """Synchronize all discovered child projects under the workspace root."""
         discovered = u.Infra.discover_projects(workspace_root)
-        if discovered.is_failure:
+        if discovered.failure:
             return r[int].fail(discovered.error or "workspace discovery failed")
         changed = 0
         resolved_root = workspace_root.resolve()
@@ -154,7 +153,7 @@ class FlextInfraSyncService(FlextInfraServiceBase[m.Infra.SyncResult]):
                 config=None,
                 canonical_root=canonical_root,
             )
-            if sync_result.is_failure:
+            if sync_result.failure:
                 project_error = sync_result.error or "project sync failed"
                 return r[int].fail(f"{project.name}: {project_error}")
             changed += sync_result.value.files_changed
@@ -169,14 +168,14 @@ class FlextInfraSyncService(FlextInfraServiceBase[m.Infra.SyncResult]):
         is_workspace_root = self._is_workspace_root(resolved, effective_root)
         if is_workspace_root:
             workspace_makefile_result = self._sync_workspace_makefile(resolved)
-            if workspace_makefile_result.is_success and workspace_makefile_result.value:
+            if workspace_makefile_result.success and workspace_makefile_result.value:
                 return 1
-        elif (resolved / c.Infra.Files.PYPROJECT_FILENAME).exists():
+        elif (resolved / c.Infra.PYPROJECT_FILENAME).exists():
             makefile_result = self._sync_project_makefile(
                 resolved,
                 effective_root or resolved,
             )
-            if makefile_result.is_success and makefile_result.value:
+            if makefile_result.success and makefile_result.value:
                 return 1
         return 0
 
@@ -213,10 +212,10 @@ class FlextInfraSyncService(FlextInfraServiceBase[m.Infra.SyncResult]):
         resolved_root = workspace_root.resolve()
         if canonical_root is not None:
             return resolved_root == canonical_root.resolve()
-        if (resolved_root / c.Infra.Files.GITMODULES).exists():
+        if (resolved_root / c.Infra.GITMODULES).exists():
             return True
         discovered = u.Infra.discover_projects(resolved_root)
-        if discovered.is_failure:
+        if discovered.failure:
             return False
         return any(
             project.path.resolve() != resolved_root for project in discovered.value
@@ -240,12 +239,12 @@ class FlextInfraSyncService(FlextInfraServiceBase[m.Infra.SyncResult]):
             r with True if file was changed, False otherwise.
 
         """
-        gitignore = workspace_root / c.Infra.Files.GITIGNORE
+        gitignore = workspace_root / c.Infra.GITIGNORE
         try:
             existing_lines: t.StrSequence = []
             if gitignore.exists():
                 existing_lines = gitignore.read_text(
-                    encoding=c.Infra.Encoding.DEFAULT,
+                    encoding=c.Infra.ENCODING_DEFAULT,
                 ).splitlines()
             existing_patterns = {
                 line.strip() for line in existing_lines if line.strip()
@@ -253,7 +252,7 @@ class FlextInfraSyncService(FlextInfraServiceBase[m.Infra.SyncResult]):
             missing = [p for p in required if p not in existing_patterns]
             if not missing:
                 return r[bool].ok(False)
-            with gitignore.open("a", encoding=c.Infra.Encoding.DEFAULT) as handle:
+            with gitignore.open("a", encoding=c.Infra.ENCODING_DEFAULT) as handle:
                 _ = handle.write(
                     "\n# --- workspace-sync: required ignores (auto-managed) ---\n",
                 )
@@ -279,10 +278,10 @@ class FlextInfraSyncService(FlextInfraServiceBase[m.Infra.SyncResult]):
         _ = canonical_root
         generator = self._get_generator()
         gen_result = generator.generate_basemk(config)
-        if gen_result.is_failure:
+        if gen_result.failure:
             return r[bool].fail(gen_result.error or "base.mk generation failed")
         content: str = gen_result.value
-        target_path = workspace_root / c.Infra.Files.BASE_MK
+        target_path = workspace_root / c.Infra.BASE_MK
         content_hash = u.Cli.sha256_content(content)
         if target_path.exists():
             existing_hash = u.Cli.sha256_file(target_path)
@@ -290,18 +289,9 @@ class FlextInfraSyncService(FlextInfraServiceBase[m.Infra.SyncResult]):
                 return r[bool].ok(False)
         return u.Cli.atomic_write_text_file(target_path, content)
 
-    @staticmethod
-    def main(argv: t.StrSequence | None = None) -> int:
-        """Legacy entrypoint routed through the canonical workspace CLI."""
-        return FlextInfraUtilitiesCliDispatch.run_command(
-            c.Infra.ReportKeys.WORKSPACE,
-            "sync",
-            argv,
-        )
-
 
 if __name__ == "__main__":
-    raise SystemExit(FlextInfraSyncService.main())
+    raise SystemExit(0)
 
 
 __all__ = ["FlextInfraSyncService"]

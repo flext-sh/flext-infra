@@ -86,11 +86,11 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
         """Walk ``src/`` (and optionally ``tests/``) for non-exempt .py files."""
         result: MutableSequence[Path] = []
         dirs_to_scan = [
-            workspace_root / FlextInfraConstantsSharedInfra.Paths.DEFAULT_SRC_DIR,
+            workspace_root / FlextInfraConstantsSharedInfra.DEFAULT_SRC_DIR,
         ]
         if scan_tests:
             dirs_to_scan.append(
-                workspace_root / FlextInfraConstantsSharedInfra.Directories.TESTS,
+                workspace_root / FlextInfraConstantsSharedInfra.DIR_TESTS,
             )
         for base_dir in dirs_to_scan:
             if not base_dir.is_dir():

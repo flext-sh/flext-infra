@@ -85,7 +85,7 @@ def test_ensure_symlink_creates_and_replaces_targets(tmp_path: Path) -> None:
     assert FlextInfraInternalDependencySyncService.ensure_symlink(
         new_target,
         source,
-    ).is_success
+    ).success
     assert new_target.is_symlink()
 
     existing_dir = tmp_path / "existing-dir"
@@ -94,7 +94,7 @@ def test_ensure_symlink_creates_and_replaces_targets(tmp_path: Path) -> None:
     assert FlextInfraInternalDependencySyncService.ensure_symlink(
         existing_dir,
         source,
-    ).is_success
+    ).success
     assert existing_dir.is_symlink()
 
     other = tmp_path / "other"
@@ -104,7 +104,7 @@ def test_ensure_symlink_creates_and_replaces_targets(tmp_path: Path) -> None:
     assert FlextInfraInternalDependencySyncService.ensure_symlink(
         wrong_link,
         source,
-    ).is_success
+    ).success
     assert wrong_link.resolve() == source.resolve()
 
 
@@ -119,7 +119,7 @@ def test_ensure_symlink_fails_when_parent_path_is_a_file(tmp_path: Path) -> None
         source,
     )
 
-    assert result.is_failure
+    assert result.failure
 
 
 def test_ensure_checkout_clones_with_local_github_rewrite(tmp_path: Path) -> None:
@@ -137,7 +137,7 @@ def test_ensure_checkout_clones_with_local_github_rewrite(tmp_path: Path) -> Non
             "main",
         )
 
-    assert result.is_success
+    assert result.success
     assert (dep_path / ".git").exists()
 
 
@@ -153,7 +153,7 @@ def test_ensure_checkout_existing_repo_fetches_and_checks_out(tmp_path: Path) ->
         "main",
     )
 
-    assert result.is_success
+    assert result.success
 
 
 def test_ensure_checkout_rejects_invalid_repo_url_and_ref(tmp_path: Path) -> None:
@@ -162,8 +162,8 @@ def test_ensure_checkout_rejects_invalid_repo_url_and_ref(tmp_path: Path) -> Non
     invalid_repo = service.ensure_checkout(tmp_path / "dep-a", "not-a-url", "main")
     invalid_ref = service.ensure_checkout(tmp_path / "dep-b", _REPO_URL, "invalid@ref!")
 
-    assert invalid_repo.is_failure
-    assert invalid_ref.is_failure
+    assert invalid_repo.failure
+    assert invalid_ref.failure
 
 
 def test_ensure_checkout_fails_when_fetch_cannot_reach_origin(tmp_path: Path) -> None:
@@ -175,7 +175,7 @@ def test_ensure_checkout_fails_when_fetch_cannot_reach_origin(tmp_path: Path) ->
         "main",
     )
 
-    assert result.is_failure
+    assert result.failure
 
 
 def test_ensure_checkout_fails_when_requested_ref_is_missing(tmp_path: Path) -> None:
@@ -190,7 +190,7 @@ def test_ensure_checkout_fails_when_requested_ref_is_missing(tmp_path: Path) -> 
         "release/does-not-exist",
     )
 
-    assert result.is_failure
+    assert result.failure
 
 
 def test_ensure_checkout_replaces_existing_symlink_and_directory(
@@ -222,7 +222,7 @@ def test_ensure_checkout_replaces_existing_symlink_and_directory(
             "main",
         )
 
-    assert symlink_result.is_success
-    assert dir_result.is_success
+    assert symlink_result.success
+    assert dir_result.success
     assert (dep_symlink / ".git").exists()
     assert (dep_dir / ".git").exists()

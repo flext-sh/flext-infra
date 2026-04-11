@@ -67,12 +67,12 @@ class FlextInfraRefactorEngineHelpersMixin:
     ) -> m.Infra.Result:
         """Refactor one file with currently loaded rules."""
         try:
-            if file_path.suffix != c.Infra.Extensions.PYTHON:
+            if file_path.suffix != c.Infra.EXT_PYTHON:
                 return self._skip_result(file_path)
             workspace_root = (
                 u.Infra.discover_project_root_from_file(file_path) or file_path.parent
             )
-            original = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+            original = file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
             current, all_changes = original, list[str]()
             if self.file_rules:
                 rope_project = u.Infra.init_rope_project(workspace_root)
@@ -219,7 +219,7 @@ class FlextInfraRefactorEngineHelpersMixin:
             if not args.file.exists():
                 u.Infra.refactor_error(f"File not found: {args.file}")
                 return 1
-            original = args.file.read_text(encoding=c.Infra.Encoding.DEFAULT)
+            original = args.file.read_text(encoding=c.Infra.ENCODING_DEFAULT)
             result = self.refactor_file(args.file, dry_run=args.dry_run)
             if args.show_diff and result.modified:
                 u.Infra.print_diff(
@@ -247,7 +247,7 @@ class FlextInfraRefactorEngineHelpersMixin:
         if not apply_safety or dry_run:
             return "", None
         stash = self.safety_manager.create_pre_transformation_stash(target)
-        if stash.is_failure:
+        if stash.failure:
             msg = stash.error or "pre-transformation stash failed"
             u.Infra.refactor_error(msg)
             return "", [self._error_result(target, msg)]
@@ -267,22 +267,22 @@ class FlextInfraRefactorEngineHelpersMixin:
             stash_ref=stash_ref,
             processed_targets=processed_targets,
         )
-        if checkpoint.is_failure:
+        if checkpoint.failure:
             msg = checkpoint.error or "checkpoint save failed"
             self.safety_manager.request_emergency_stop(msg)
             u.Infra.refactor_error(msg)
             rb = self.safety_manager.rollback(target, stash_ref)
-            if rb.is_failure:
+            if rb.failure:
                 u.Infra.refactor_error(rb.error or "rollback failed")
             results.append(self._error_result(target, msg))
             return
         val = self.safety_manager.run_semantic_validation(target)
-        if val.is_failure:
+        if val.failure:
             msg = val.error or "semantic validation failed"
             self.safety_manager.request_emergency_stop(msg)
             u.Infra.refactor_error(msg)
             rb = self.safety_manager.rollback(target, stash_ref)
-            if rb.is_failure:
+            if rb.failure:
                 u.Infra.refactor_error(rb.error or "rollback failed")
             results.append(self._error_result(target, msg))
             return
@@ -293,7 +293,7 @@ class FlextInfraRefactorEngineHelpersMixin:
                 if result.success and result.modified
             ],
         )
-        if cl.is_failure:
+        if cl.failure:
             u.Infra.refactor_error(cl.error or "checkpoint clear failed")
 
     # ── Project refactoring ────────────────────────────────────────
@@ -303,7 +303,7 @@ class FlextInfraRefactorEngineHelpersMixin:
         project_path: Path,
         *,
         dry_run: bool = False,
-        pattern: str = c.Infra.Extensions.PYTHON_GLOB,
+        pattern: str = c.Infra.EXT_PYTHON_GLOB,
         apply_safety: bool = True,
     ) -> Sequence[m.Infra.Result]:
         """Refactor files under configured project directories."""
@@ -342,7 +342,7 @@ class FlextInfraRefactorEngineHelpersMixin:
         workspace_root: Path,
         *,
         dry_run: bool = False,
-        pattern: str = c.Infra.Extensions.PYTHON_GLOB,
+        pattern: str = c.Infra.EXT_PYTHON_GLOB,
         apply_safety: bool = True,
     ) -> Sequence[m.Infra.Result]:
         """Refactor all discoverable workspace projects."""

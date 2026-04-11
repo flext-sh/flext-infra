@@ -25,7 +25,8 @@ class FlextInfraRefactorMRORemover(FlextInfraRopeTransformer):
         source = resource.read()
         class_infos = u.Infra.get_class_info(rope_project, resource)
         if not class_infos:
-            return source, []
+            no_changes: list[str] = []
+            return source, no_changes
 
         for parent_info in class_infos:
             parent_name = parent_info.name

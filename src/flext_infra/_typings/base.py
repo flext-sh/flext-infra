@@ -134,6 +134,8 @@ class FlextInfraTypesBase:
     "Result for per-directory lazy init processing."
     type LazyInitWriteResult = tuple[int, LazyImportMap]
     "Result for writing generated __init__.py."
+    type LazyInitAction = _Literal["write", "remove", "skip"]
+    "Per-directory lazy-init action selected by the declarative plan."
     type VersionExportsResult = tuple[t.StrMapping, LazyImportMap]
     "Result for __version__.py export extraction (inline constants, eager import map)."
     type PathSyncMode = _Literal["workspace", "standalone", "auto"]

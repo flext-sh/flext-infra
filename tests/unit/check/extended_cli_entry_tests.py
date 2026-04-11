@@ -7,7 +7,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraWorkspaceChecker, main
+from flext_infra import main
 from tests import u
 
 
@@ -25,13 +25,15 @@ class TestWorkspaceCheckCLI:
         return workspace
 
     def test_no_projects_error(self) -> None:
-        tm.that(FlextInfraWorkspaceChecker.main([]), eq=1)
+        tm.that(main(["check", "run"]), eq=1)
 
     def test_with_projects_success(self, tmp_path: Path) -> None:
         workspace = self._workspace(tmp_path)
         tm.that(
-            FlextInfraWorkspaceChecker.main(
+            main(
                 [
+                    "check",
+                    "run",
                     "--workspace",
                     str(workspace),
                     "--projects",
@@ -48,8 +50,10 @@ class TestWorkspaceCheckCLI:
         broken_file = workspace / "p1" / "src" / "broken.py"
         broken_file.write_text("def broken(:\n", encoding="utf-8")
         tm.that(
-            FlextInfraWorkspaceChecker.main(
+            main(
                 [
+                    "check",
+                    "run",
                     "--workspace",
                     str(workspace),
                     "--projects",
@@ -65,9 +69,7 @@ class TestWorkspaceCheckCLI:
         tm.that(main(["check", "run", "--help"]), eq=0)
 
     def test_fix_pyrefly_config_routes_real_help(self) -> None:
-        tm.that(
-            FlextInfraWorkspaceChecker.run_cli(["fix-pyrefly-config", "--help"]), eq=0
-        )
+        tm.that(main(["check", "fix-pyrefly-config", "--help"]), eq=0)
 
     def test_run_cli_with_relative_reports_dir(self, tmp_path: Path) -> None:
         workspace = self._workspace(tmp_path)
@@ -76,8 +78,9 @@ class TestWorkspaceCheckCLI:
         runner_root.mkdir(parents=True, exist_ok=True)
         try:
             os.chdir(runner_root)
-            exit_code = FlextInfraWorkspaceChecker.run_cli(
+            exit_code = main(
                 [
+                    "check",
                     "run",
                     "--workspace",
                     str(workspace),

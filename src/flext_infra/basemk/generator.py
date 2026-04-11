@@ -54,14 +54,14 @@ class FlextInfraBaseMkGenerator(s[str]):
             else None
         )
         result = self.generate_basemk(config)
-        if result.is_failure:
+        if result.failure:
             return result
         write_result = self.write(
             result.value,
             output=self.output,
             stream=sys.stdout,
         )
-        if write_result.is_failure:
+        if write_result.failure:
             return r[str].fail(write_result.error or "write failed")
         return result
 
@@ -71,13 +71,13 @@ class FlextInfraBaseMkGenerator(s[str]):
     ) -> r[str]:
         """Generate base.mk content from configuration."""
         config_result = self._normalize_config(config)
-        if config_result.is_failure:
+        if config_result.failure:
             return r[str].fail(config_result.error or "invalid base.mk configuration")
         config_value = config_result.value
         render_result = (
             self.template_engine or FlextInfraBaseMkTemplateEngine()
         ).render_all(config_value)
-        if render_result.is_failure:
+        if render_result.failure:
             return r[str].fail(render_result.error or "base.mk render failed")
         return self._validate_generated_output(render_result.value)
 
@@ -152,7 +152,7 @@ class FlextInfraBaseMkGenerator(s[str]):
                     "--dry-run",
                     "help",
                 ])
-                if process_result.is_failure:
+                if process_result.failure:
                     error_text = process_result.error or "make validation failed"
                     return r[str].fail(
                         f"generated base.mk validation failed: {error_text}",

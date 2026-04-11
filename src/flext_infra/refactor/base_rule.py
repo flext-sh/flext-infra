@@ -25,15 +25,15 @@ class FlextInfraRefactorRule:
     def __init__(self, config: Mapping[str, t.Infra.InfraValue]) -> None:
         """Initialize rule metadata from rule config."""
         self.config = dict(config)
-        rule_id = self.config.get(c.Infra.ReportKeys.ID, c.Infra.Defaults.UNKNOWN)
+        rule_id = self.config.get(c.Infra.RK_ID, c.Infra.DEFAULT_UNKNOWN)
         self.rule_id = str(rule_id)
         name_raw = self.config.get(c.Infra.NAME, self.rule_id)
         self.name = str(name_raw)
         description_raw = self.config.get("description", "")
         self.description = description_raw if isinstance(description_raw, str) else ""
-        enabled_raw = self.config.get(c.Infra.ReportKeys.ENABLED, True)
+        enabled_raw = self.config.get(c.Infra.RK_ENABLED, True)
         self.enabled = bool(enabled_raw)
-        severity_raw = self.config.get("severity", c.Infra.Severity.WARNING)
+        severity_raw = self.config.get("severity", c.Infra.SEVERITY_WARNING)
         self.severity = str(severity_raw)
 
     def apply(

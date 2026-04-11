@@ -35,7 +35,7 @@ def test_validate_workspace_fails_before_generated_files_exist(tmp_path: Path) -
         apply=False,
     )
 
-    assert result.is_success
+    assert result.success
     assert any(report.result == "FAIL" for report in result.value)
 
 
@@ -50,14 +50,14 @@ def test_validate_workspace_passes_after_generate_apply(tmp_path: Path) -> None:
         projects=["flext-a"],
         apply=True,
     )
-    assert generated.is_success
+    assert generated.success
     result = FlextInfraDocValidator().validate_workspace(
         workspace,
         projects=["flext-a"],
         apply=True,
     )
 
-    assert result.is_success
+    assert result.success
     assert all(report.result == "OK" for report in result.value)
 
 
@@ -78,5 +78,5 @@ def test_validate_workspace_apply_writes_project_todo(tmp_path: Path) -> None:
         apply=True,
     )
 
-    assert result.is_success
+    assert result.success
     assert (workspace / "flext-a/TODOS.md").exists()

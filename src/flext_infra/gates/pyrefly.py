@@ -32,7 +32,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
         discovered_dirs = u.Infra.discover_python_dirs(project_dir)
         if discovered_dirs:
             return discovered_dirs
-        if any(project_dir.glob(c.Infra.Extensions.PYTHON_GLOB)) or any(
+        if any(project_dir.glob(c.Infra.EXT_PYTHON_GLOB)) or any(
             project_dir.glob("*.pyi")
         ):
             return ["."]
@@ -51,7 +51,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
             c.Infra.CHECK,
             *check_dirs,
             "--config",
-            c.Infra.Files.PYPROJECT_FILENAME,
+            c.Infra.PYPROJECT_FILENAME,
             "--python-interpreter-path",
             sys.executable,
             "--output-format",
@@ -72,13 +72,13 @@ class FlextInfraPyreflyGate(FlextInfraGate):
         issues: MutableSequence[m.Infra.Issue] = []
         if json_file.exists():
             try:
-                raw_text = json_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
+                raw_text = json_file.read_text(encoding=c.Infra.ENCODING_DEFAULT)
                 parsed_value = u.Cli.json_parse(raw_text).unwrap_or(None)
                 error_items: Sequence[Mapping[str, t.Infra.InfraValue]] = []
                 if u.is_mapping(parsed_value):
                     error_items = u.Infra.deep_list(
                         u.Infra.normalize_str_mapping(parsed_value),
-                        c.Infra.GateJsonKeys.PYREFLY_ERRORS,
+                        c.Infra.PYREFLY_ERRORS_KEY,
                     )
                 elif isinstance(parsed_value, list):
                     error_items = u.Infra.normalize_mapping_list(parsed_value)
@@ -104,7 +104,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                 )
             issues.append(
                 m.Infra.Issue(
-                    file=c.Infra.Files.PYPROJECT_FILENAME,
+                    file=c.Infra.PYPROJECT_FILENAME,
                     line=1,
                     column=1,
                     code="pyrefly-exec",

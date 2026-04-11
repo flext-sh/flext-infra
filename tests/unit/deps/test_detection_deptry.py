@@ -13,9 +13,9 @@ class TestDiscoverProjectPathsDeptry:
             tmp_path / c.Infra.Tests.Fixtures.Deps.PROJECT_NAME,
         )
         project.path.mkdir()
-        (project.path / c.Infra.Files.PYPROJECT_FILENAME).write_text(
+        (project.path / c.Infra.PYPROJECT_FILENAME).write_text(
             "",
-            encoding=c.Infra.Encoding.DEFAULT,
+            encoding=c.Infra.ENCODING_DEFAULT,
         )
         service = u.Infra.Tests.create_deptry_service(projects=[project])
 
@@ -55,9 +55,9 @@ class TestRunDeptry:
         venv_bin.mkdir(parents=True)
         project = tmp_path / c.Infra.Tests.Fixtures.Deps.PROJECT_DIRNAME
         project.mkdir()
-        (project / c.Infra.Files.PYPROJECT_FILENAME).write_text(
+        (project / c.Infra.PYPROJECT_FILENAME).write_text(
             "",
-            encoding=c.Infra.Encoding.DEFAULT,
+            encoding=c.Infra.ENCODING_DEFAULT,
         )
         out_file = project / c.Infra.Tests.Fixtures.Deps.REPORT_FILENAME
         write_result = u.Cli.json_write(out_file, deptry_report_payload)
@@ -93,9 +93,9 @@ class TestRunDeptry:
         venv_bin.mkdir(parents=True)
         project = tmp_path / c.Infra.Tests.Fixtures.Deps.PROJECT_DIRNAME
         project.mkdir()
-        (project / c.Infra.Files.PYPROJECT_FILENAME).write_text(
+        (project / c.Infra.PYPROJECT_FILENAME).write_text(
             "",
-            encoding=c.Infra.Encoding.DEFAULT,
+            encoding=c.Infra.ENCODING_DEFAULT,
         )
 
         tm.fail(service.run_deptry(project, venv_bin))
@@ -108,13 +108,13 @@ class TestRunDeptry:
         venv_bin.mkdir(parents=True)
         project = tmp_path / c.Infra.Tests.Fixtures.Deps.PROJECT_DIRNAME
         project.mkdir()
-        (project / c.Infra.Files.PYPROJECT_FILENAME).write_text(
+        (project / c.Infra.PYPROJECT_FILENAME).write_text(
             "",
-            encoding=c.Infra.Encoding.DEFAULT,
+            encoding=c.Infra.ENCODING_DEFAULT,
         )
         for payload in (c.Infra.Tests.Fixtures.Deps.INVALID_JSON, ""):
             out_file = project / c.Infra.Tests.Fixtures.Deps.REPORT_FILENAME
-            out_file.write_text(payload, encoding=c.Infra.Encoding.DEFAULT)
+            out_file.write_text(payload, encoding=c.Infra.ENCODING_DEFAULT)
 
             result = service.run_deptry(project, venv_bin, json_output_path=out_file)
 
@@ -129,12 +129,12 @@ class TestRunDeptry:
         venv_bin.mkdir(parents=True)
         project = tmp_path / c.Infra.Tests.Fixtures.Deps.PROJECT_DIRNAME
         project.mkdir()
-        (project / c.Infra.Files.PYPROJECT_FILENAME).write_text(
+        (project / c.Infra.PYPROJECT_FILENAME).write_text(
             "",
-            encoding=c.Infra.Encoding.DEFAULT,
+            encoding=c.Infra.ENCODING_DEFAULT,
         )
         default_out = project / c.Infra.Tests.Fixtures.Deps.REPORT_FILENAME
-        default_out.write_text("[]", encoding=c.Infra.Encoding.DEFAULT)
+        default_out.write_text("[]", encoding=c.Infra.ENCODING_DEFAULT)
 
         extend_result = service.run_deptry(
             project,

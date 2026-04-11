@@ -45,7 +45,7 @@ class FlextInfraInternalSyncRepoMixin:
             [c.Infra.GIT, "config", "--get", "remote.origin.url"],
             cwd=project_root,
         )
-        if remote.is_failure:
+        if remote.failure:
             return None
         remote_val = remote.value
         return self.owner_from_remote_url(remote_val.strip())
@@ -62,7 +62,7 @@ class FlextInfraInternalSyncRepoMixin:
             [c.Infra.GIT, "rev-parse", "--show-superproject-working-tree"],
             cwd=project_root,
         )
-        if superproject.is_success:
+        if superproject.success:
             sp_val = superproject.value
             value = sp_val.strip()
             if value:
@@ -81,7 +81,7 @@ class FlextInfraInternalSyncRepoMixin:
             if not section.startswith("submodule "):
                 continue
             repo_name = section.split('"')[1]
-            repo_url = parser.get(section, c.Infra.ReportKeys.URL, fallback="").strip()
+            repo_url = parser.get(section, c.Infra.RK_URL, fallback="").strip()
             if not repo_url:
                 continue
             mapping[repo_name] = m.Infra.RepoUrls(
@@ -93,7 +93,7 @@ class FlextInfraInternalSyncRepoMixin:
     def parse_repo_map(self, path: Path) -> r[Mapping[str, m.Infra.RepoUrls]]:
         """Parse flext-repo-map TOML into repository URL entries."""
         data_result = self._read_plain(path)
-        if data_result.is_failure:
+        if data_result.failure:
             return r[Mapping[str, m.Infra.RepoUrls]].fail(
                 data_result.error or "failed to read repository map",
             )
@@ -126,19 +126,19 @@ class FlextInfraInternalSyncRepoMixin:
             [c.Infra.GIT, "rev-parse", "--abbrev-ref", "HEAD"],
             cwd=project_root,
         )
-        if branch.is_success:
+        if branch.success:
             branch_val = branch.value
             current = branch_val.strip()
-            if current and current != c.Infra.Git.HEAD:
+            if current and current != c.Infra.GIT_HEAD:
                 return current
         tag = u.Cli.capture(
             [c.Infra.GIT, "describe", "--tags", "--exact-match"],
             cwd=project_root,
         )
-        if tag.is_success:
+        if tag.success:
             tag_val = tag.value
             return tag_val.strip()
-        return c.Infra.Git.MAIN
+        return c.Infra.GIT_MAIN
 
     def synthesized_repo_map(
         self,
@@ -171,7 +171,7 @@ class FlextInfraInternalSyncRepoMixin:
     def workspace_root_from_parents(project_root: Path) -> Path | None:
         """Locate workspace root by scanning parent directories for .gitmodules."""
         for candidate in (project_root, *project_root.parents):
-            if (candidate / c.Infra.Files.GITMODULES).exists():
+            if (candidate / c.Infra.GITMODULES).exists():
                 return candidate
         return None
 

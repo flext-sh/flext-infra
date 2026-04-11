@@ -31,7 +31,7 @@ class FlextInfraModelsEngineOperation:
         key: str = Field(description="TOML key name")
         values: t.StrSequence = Field(description="Expected values")
         strategy: str = Field(
-            default=c.Infra.TomlMerge.REPLACE,
+            default=c.Infra.TOML_MERGE_REPLACE,
             description="Merge strategy",
         )
         sort: bool = Field(default=True, description="Sort values before sync")

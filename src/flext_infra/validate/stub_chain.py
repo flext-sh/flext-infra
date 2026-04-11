@@ -69,8 +69,8 @@ class FlextInfraStubSupplyChain(s[bool]):
             for entry in sorted(workspace_root.iterdir(), key=lambda v: v.name)
             if entry.is_dir()
             and not entry.name.startswith(".")
-            and (entry / c.Infra.Files.PYPROJECT_FILENAME).exists()
-            and (entry / c.Infra.Paths.DEFAULT_SRC_DIR).is_dir()
+            and (entry / c.Infra.PYPROJECT_FILENAME).exists()
+            and (entry / c.Infra.DEFAULT_SRC_DIR).is_dir()
         ]
 
     def _is_internal(self, module_name: str, project_name: str) -> bool:
@@ -87,8 +87,8 @@ class FlextInfraStubSupplyChain(s[bool]):
         _ = self
         rel = module_name.replace(".", "/")
         for base in (
-            workspace_root / c.Infra.Directories.TYPINGS,
-            workspace_root / c.Infra.Directories.TYPINGS / "generated",
+            workspace_root / c.Infra.DIR_TYPINGS,
+            workspace_root / c.Infra.DIR_TYPINGS / "generated",
         ):
             candidates = [base / f"{rel}.pyi", base / rel / "__init__.pyi"]
             if any(c.exists() for c in candidates):
@@ -157,7 +157,7 @@ class FlextInfraStubSupplyChain(s[bool]):
             violations: MutableSequence[str] = []
             for proj in projects:
                 result = self.analyze(proj, root)
-                if result.is_failure:
+                if result.failure:
                     violations.append(f"{proj.name}: {result.error}")
                     continue
                 data = result.value
@@ -203,17 +203,17 @@ class FlextInfraStubSupplyChain(s[bool]):
         result = runner.run(
             [
                 c.Infra.POETRY,
-                c.Infra.Verbs.RUN,
+                c.Infra.VERB_RUN,
                 c.Infra.MYPY,
-                c.Infra.Paths.DEFAULT_SRC_DIR,
+                c.Infra.DEFAULT_SRC_DIR,
                 "--config-file",
-                c.Infra.Files.PYPROJECT_FILENAME,
+                c.Infra.PYPROJECT_FILENAME,
                 "--no-error-summary",
             ],
             cwd=project_dir,
         )
         output = ""
-        if result.is_success:
+        if result.success:
             cmd_output: p.Cli.CommandOutput = result.value
             output = cmd_output.stdout
         return sorted({
@@ -228,17 +228,17 @@ class FlextInfraStubSupplyChain(s[bool]):
         result = runner.run(
             [
                 c.Infra.POETRY,
-                c.Infra.Verbs.RUN,
+                c.Infra.VERB_RUN,
                 c.Infra.PYREFLY,
                 c.Infra.CHECK,
-                c.Infra.Paths.DEFAULT_SRC_DIR,
+                c.Infra.DEFAULT_SRC_DIR,
                 "--config",
-                c.Infra.Files.PYPROJECT_FILENAME,
+                c.Infra.PYPROJECT_FILENAME,
             ],
             cwd=project_dir,
         )
         output = ""
-        if result.is_success:
+        if result.success:
             cmd_output: p.Cli.CommandOutput = result.value
             output = cmd_output.stdout
         seen: t.Infra.StrSet = set()

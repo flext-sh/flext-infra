@@ -26,7 +26,7 @@ def test_generator_write_handles_file_path_failure(tmp_path: Path) -> None:
         output=blocked_parent / "test.mk",
     )
 
-    assert result.is_failure
+    assert result.failure
     assert "base.mk write failed" in (result.error or "")
 
 
@@ -36,7 +36,7 @@ def test_generator_write_to_stream_handles_oserror() -> None:
         stream=_FailingStream(),
     )
 
-    assert result.is_failure
+    assert result.failure
     assert "stdout write failed" in (result.error or "")
 
 
@@ -49,5 +49,5 @@ def test_generator_write_to_closed_stream_fails() -> None:
         stream=stream,
     )
 
-    assert result.is_failure
+    assert result.failure
     assert "stdout write failed" in (result.error or "")

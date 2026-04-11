@@ -1,14 +1,12 @@
-"""CLI registration and compatibility entry points for ``flext-infra check``."""
+"""CLI group registration for ``flext-infra check``."""
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-
-from flext_cli import cli as cli_service, m as cli_models
+from flext_cli import m as cli_models
+from flext_cli.api import cli as cli_service
 from flext_infra import (
     FlextInfraModelsCheck,
     FlextInfraServiceCheckMixin,
-    FlextInfraUtilitiesCliDispatch,
     c,
     t,
 )
@@ -23,7 +21,7 @@ class FlextInfraCliCheck(FlextInfraServiceCheckMixin):
             app,
             [
                 cli_models.Cli.ResultCommandRoute(
-                    name=c.Infra.Verbs.RUN,
+                    name=c.Infra.VERB_RUN,
                     help_text="Run quality gates",
                     model_cls=FlextInfraModelsCheck.RunCommand,
                     handler=self.run_workspace_checks,
@@ -40,25 +38,4 @@ class FlextInfraCliCheck(FlextInfraServiceCheckMixin):
         )
 
 
-class FlextInfraWorkspaceCheckerCli:
-    """Compatibility helpers routed through the canonical check CLI."""
-
-    @staticmethod
-    def run_cli(argv: Sequence[str] | None = None) -> int:
-        """Run the canonical ``check`` group."""
-        return FlextInfraUtilitiesCliDispatch.run_group(
-            c.Infra.Verbs.CHECK,
-            argv,
-        )
-
-    @staticmethod
-    def main(argv: Sequence[str] | None = None) -> int:
-        """Legacy entrypoint routed through ``flext-infra check run``."""
-        return FlextInfraUtilitiesCliDispatch.run_command(
-            c.Infra.Verbs.CHECK,
-            c.Infra.Verbs.RUN,
-            argv,
-        )
-
-
-__all__ = ["FlextInfraCliCheck", "FlextInfraWorkspaceCheckerCli"]
+__all__ = ["FlextInfraCliCheck"]

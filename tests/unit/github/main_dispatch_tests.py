@@ -25,7 +25,7 @@ def test_run_github_workspace_pull_requests_aggregates_results(
         ),
     )
 
-    assert result.is_success
+    assert result.success
     report = result.unwrap()
     assert report.total == 2
     assert report.success == 1
@@ -49,7 +49,7 @@ def test_run_github_workspace_pull_requests_respects_project_selection(
         ),
     )
 
-    assert result.is_success
+    assert result.success
     report = result.unwrap()
     report_dir = workspace / ".reports/workspace/pr"
     assert report.total == 2
@@ -75,7 +75,7 @@ def test_run_github_workspace_pull_requests_honors_fail_fast(
         ),
     )
 
-    assert result.is_success
+    assert result.success
     report_dir = workspace / ".reports/workspace/pr"
     assert result.unwrap().fail == 1
     assert (report_dir / "flext-a.log").is_file()

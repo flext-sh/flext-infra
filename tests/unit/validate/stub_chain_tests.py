@@ -117,11 +117,11 @@ class TestStubChain:
         u.Infra.Tests.mk_project(tmp_path, "project-a", with_src=True)
         hidden_dir = tmp_path / ".hidden"
         hidden_dir.mkdir()
-        (hidden_dir / c.Infra.Files.PYPROJECT_FILENAME).write_text(
+        (hidden_dir / c.Infra.PYPROJECT_FILENAME).write_text(
             "",
             encoding="utf-8",
         )
-        (hidden_dir / c.Infra.Paths.DEFAULT_SRC_DIR).mkdir()
+        (hidden_dir / c.Infra.DEFAULT_SRC_DIR).mkdir()
         u.Infra.Tests.mk_project(tmp_path, "project-b", with_src=False)
 
         result = self.make_chain(workspace_root=tmp_path).build_report(tmp_path)

@@ -54,7 +54,7 @@ class FlextInfraLooseObjectDetector:
             )
 
         for symbol in u.Infra.get_module_symbols(rope_project, res):
-            if symbol.kind == "class" or symbol.name in c.Infra.Scan.ALLOWED_TOP_LEVEL:
+            if symbol.kind == "class" or symbol.name in c.Infra.SCAN_ALLOWED_TOP_LEVEL:
                 continue
             if symbol.kind == "function":
                 if not symbol.name.startswith("_"):

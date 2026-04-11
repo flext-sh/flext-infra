@@ -20,7 +20,7 @@ def test_build_returns_root_and_selected_project_reports(tmp_path: Path) -> None
         output_dir=c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
     )
 
-    assert result.is_success
+    assert result.success
     assert [report.scope for report in result.value] == ["root", "flext-a"]
     assert all(report.result == "SKIP" for report in result.value)
 
@@ -37,7 +37,7 @@ def test_build_uses_custom_output_dir(tmp_path: Path) -> None:
         output_dir=".custom-docs",
     )
 
-    assert result.is_success
+    assert result.success
     assert (workspace / ".custom-docs/build-report.md").exists()
     assert (workspace / "flext-a/.custom-docs/build-report.md").exists()
 
@@ -47,5 +47,5 @@ def test_build_skip_report_has_empty_site_dir(tmp_path: Path) -> None:
 
     result = FlextInfraDocBuilder().build(workspace)
 
-    assert result.is_success
+    assert result.success
     assert result.value[0].site_dir == ""

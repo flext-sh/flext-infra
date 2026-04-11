@@ -36,7 +36,7 @@ class TestRunProjectsPublicBehavior:
             reports_dir=tmp_path / "reports",
         )
 
-        assert result.is_failure
+        assert result.failure
 
     def test_missing_projects_are_skipped(self, tmp_path: Path) -> None:
         result = FlextInfraWorkspaceChecker(workspace=tmp_path).run_projects(
@@ -45,7 +45,7 @@ class TestRunProjectsPublicBehavior:
             reports_dir=tmp_path / "reports",
         )
 
-        assert result.is_success
+        assert result.success
         assert result.value == ()
 
     @pytest.mark.parametrize("report_name", ["check-report.md", "check-report.sarif"])
@@ -68,7 +68,7 @@ class TestRunProjectsPublicBehavior:
         finally:
             os.environ["PATH"] = original_path
 
-        assert result.is_success
+        assert result.success
         assert (tmp_path / "reports" / report_name).exists()
 
     def test_run_projects_creates_project_scoped_reports_dir(
@@ -90,7 +90,7 @@ class TestRunProjectsPublicBehavior:
         finally:
             os.environ["PATH"] = original_path
 
-        assert result.is_success
+        assert result.success
         assert (tmp_path / "reports" / "p1").is_dir()
 
     def test_fail_fast_stops_after_first_failed_project(self, tmp_path: Path) -> None:
@@ -118,7 +118,7 @@ class TestRunProjectsPublicBehavior:
         finally:
             os.environ["PATH"] = original_path
 
-        assert result.is_success
+        assert result.success
         assert len(result.value) == 1
 
     def test_run_projects_reports_mixed_project_errors(self, tmp_path: Path) -> None:
@@ -149,7 +149,7 @@ class TestRunProjectsPublicBehavior:
         finally:
             os.environ["PATH"] = original_path
 
-        assert result.is_success
+        assert result.success
         assert len(result.value) == 2
         assert result.value[0].total_errors == 1
         assert result.value[1].total_errors == 0
@@ -167,5 +167,5 @@ class TestRunProjectsPublicBehavior:
         finally:
             os.environ["PATH"] = original_path
 
-        assert result.is_success
+        assert result.success
         assert len(result.value) == 1

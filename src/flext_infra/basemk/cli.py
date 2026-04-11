@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from flext_cli import cli as cli_service, m, t
+from flext_cli import m, t
+from flext_cli.api import cli as cli_service
 from flext_infra import FlextInfraBaseMkGenerator
 
 

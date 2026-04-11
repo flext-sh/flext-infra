@@ -49,7 +49,7 @@ class FlextInfraUtilitiesGithub(
                 payload_skipped,
             )
         result = u.Cli.run_raw([actionlint], cwd=workspace_root)
-        if result.is_success:
+        if result.success:
             output = result.value
             payload = m.Infra.GithubWorkflowLintOutcome(
                 status="ok",
@@ -82,12 +82,12 @@ class FlextInfraUtilitiesGithub(
             workspace_root,
             None,
         )
-        if source_result.is_failure:
+        if source_result.failure:
             return r[m.Infra.GithubWorkflowSyncReport].fail(
                 source_result.error or "source resolution failed",
             )
         template_result = cls._github_render_template(source_result.value)
-        if template_result.is_failure:
+        if template_result.failure:
             return r[m.Infra.GithubWorkflowSyncReport].fail(
                 template_result.error or "template render failed",
             )
@@ -95,7 +95,7 @@ class FlextInfraUtilitiesGithub(
             workspace_root,
             [],
         )
-        if projects_result.is_failure:
+        if projects_result.failure:
             return r[m.Infra.GithubWorkflowSyncReport].fail(
                 projects_result.error or "project discovery failed",
             )
@@ -108,7 +108,7 @@ class FlextInfraUtilitiesGithub(
                 request=request,
             )
             ops_result = cls._github_sync_project(ctx)
-            if ops_result.is_success:
+            if ops_result.success:
                 all_operations.extend(ops_result.value)
         report = m.Infra.GithubWorkflowSyncReport.from_operations(
             apply=request.apply,
@@ -122,11 +122,11 @@ class FlextInfraUtilitiesGithub(
     def _github_render_template(cls, template_path: Path) -> r[str]:
         try:
             body = template_path.read_text(
-                encoding=c.Infra.Encoding.DEFAULT,
+                encoding=c.Infra.ENCODING_DEFAULT,
             )
         except OSError as exc:
             return r[str].fail(f"failed to read template: {exc}")
-        header_template = c.Infra.SourceCode.GENERATED_SHELL_HEADER
+        header_template = c.Infra.GENERATED_SHELL_HEADER
         header = header_template.format(source="flext_infra.github.workflows")
         if body.startswith(header):
             return r[str].ok(body)
@@ -181,13 +181,13 @@ class FlextInfraUtilitiesGithub(
         rel_path = str(destination.relative_to(ctx.project_root))
         if destination.exists():
             current = destination.read_text(
-                encoding=c.Infra.Encoding.DEFAULT,
+                encoding=c.Infra.ENCODING_DEFAULT,
             )
             if current != ctx.rendered_template:
                 if ctx.apply:
                     _ = destination.write_text(
                         ctx.rendered_template,
-                        encoding=c.Infra.Encoding.DEFAULT,
+                        encoding=c.Infra.ENCODING_DEFAULT,
                     )
                 operations.append(
                     m.Infra.GithubWorkflowSyncOperation.model_validate(
@@ -215,7 +215,7 @@ class FlextInfraUtilitiesGithub(
                 ctx.workflows_dir.mkdir(parents=True, exist_ok=True)
                 _ = destination.write_text(
                     ctx.rendered_template,
-                    encoding=c.Infra.Encoding.DEFAULT,
+                    encoding=c.Infra.ENCODING_DEFAULT,
                 )
             operations.append(
                 m.Infra.GithubWorkflowSyncOperation.model_validate(

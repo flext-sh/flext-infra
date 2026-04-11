@@ -48,11 +48,11 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
         *,
         project_root: Path,
     ) -> t.StrSequenceMapping:
-        pyproject_path = project_root / c.Infra.Files.PYPROJECT_FILENAME
+        pyproject_path = project_root / c.Infra.PYPROJECT_FILENAME
         if not pyproject_path.exists():
             return {}
         try:
-            raw = pyproject_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+            raw = pyproject_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
         except OSError:
             return {}
         doc = _CliToml.toml_parse_text(raw)
@@ -61,8 +61,8 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
         dep_names = FlextInfraUtilitiesTomlParse.local_dependency_names(doc)
         chains: t.MutableStrSequenceMapping = defaultdict(list)
         for dep_name in dep_names:
-            if dep_name == c.Infra.Packages.CORE or not dep_name.startswith(
-                c.Infra.Packages.PREFIX_HYPHEN
+            if dep_name == c.Infra.PKG_CORE or not dep_name.startswith(
+                c.Infra.PKG_PREFIX_HYPHEN
             ):
                 continue
             stem = FlextInfraUtilitiesCodegenNamespace.project_class_stem(
@@ -120,7 +120,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
             f"{family} = {class_name}\n"
         )
         file_path.parent.mkdir(parents=True, exist_ok=True)
-        _ = file_path.write_text(content, encoding=c.Infra.Encoding.DEFAULT)
+        _ = file_path.write_text(content, encoding=c.Infra.ENCODING_DEFAULT)
 
     @staticmethod
     def ensure_missing_facades(
@@ -130,13 +130,13 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
         facade_statuses: Sequence[m.Infra.FacadeStatus],
         workspace_root: Path | None = None,
     ) -> None:
-        src_dir = project_root / c.Infra.Paths.DEFAULT_SRC_DIR
+        src_dir = project_root / c.Infra.DEFAULT_SRC_DIR
         if not src_dir.is_dir():
             return
         package_dirs = [
             entry
             for entry in sorted(src_dir.iterdir(), key=lambda item: item.name)
-            if entry.is_dir() and (entry / c.Infra.Files.INIT_PY).is_file()
+            if entry.is_dir() and (entry / c.Infra.INIT_PY).is_file()
         ]
         if not package_dirs:
             return
@@ -157,7 +157,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
             suffix = c.Infra.FAMILY_SUFFIXES[status.family]
             class_name = f"{stem}{suffix}"
             file_name = c.Infra.FAMILY_FILES.get(
-                status.family, c.Infra.Files.UTILITIES_PY
+                status.family, c.Infra.UTILITIES_PY
             ).lstrip("*")
             target_path = package_dir / file_name
             if target_path.exists():
@@ -183,7 +183,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
         class_name: str,
         base_chains: t.StrSequenceMapping | None = None,
     ) -> None:
-        lines = target_path.read_text(encoding=c.Infra.Encoding.DEFAULT).splitlines()
+        lines = target_path.read_text(encoding=c.Infra.ENCODING_DEFAULT).splitlines()
         base_class = FlextInfraUtilitiesRefactorNamespaceFacades._base_class_for_family(
             family=family,
             base_chains=base_chains,
@@ -198,8 +198,8 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
         mutated = False
         if base_import not in lines:
             insert_idx = 0
-            if c.Infra.SourceCode.FUTURE_ANNOTATIONS in lines:
-                insert_idx = lines.index(c.Infra.SourceCode.FUTURE_ANNOTATIONS) + 1
+            if c.Infra.FUTURE_ANNOTATIONS in lines:
+                insert_idx = lines.index(c.Infra.FUTURE_ANNOTATIONS) + 1
                 while insert_idx < len(lines) and not lines[insert_idx].strip():
                     insert_idx += 1
             lines.insert(insert_idx, "")
@@ -248,7 +248,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
         if mutated:
             _ = target_path.write_text(
                 "\n".join(lines).rstrip() + "\n",
-                encoding=c.Infra.Encoding.DEFAULT,
+                encoding=c.Infra.ENCODING_DEFAULT,
             )
 
 

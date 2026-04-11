@@ -9,9 +9,11 @@ class FlextInfraEnsureFormattingToolingPhase:
     """Ensure safe default config for TOML/YAML formatting tools."""
 
     def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:
+        """Store tool settings used when enforcing formatting-related tables."""
         self._tool_config = tool_config
 
     def apply(self, doc: t.Cli.TomlDocument) -> t.StrSequence:
+        """Apply canonical codespell, tomlsort, and yamlfix configuration."""
         codespell_builder = (
             m.Infra.TomlPhaseConfig
             .Builder("codespell")

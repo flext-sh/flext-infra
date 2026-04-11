@@ -39,7 +39,7 @@ def test_docs_write_todo_writes_only_for_project_scopes(tmp_path: Path) -> None:
         output_dir=c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
     )
 
-    assert scopes.is_success
+    assert scopes.success
     root_scope, project_scope = scopes.value
     assert u.Infra.docs_write_todo(root_scope, apply_mode=True) is False
     assert u.Infra.docs_write_todo(project_scope, apply_mode=True) is True
@@ -57,12 +57,12 @@ def test_validate_workspace_passes_after_generate_apply(tmp_path: Path) -> None:
         projects=["flext-a"],
         apply=True,
     )
-    assert generated.is_success
+    assert generated.success
     result = FlextInfraDocValidator().validate_workspace(
         workspace,
         projects=["flext-a"],
         apply=True,
     )
 
-    assert result.is_success
+    assert result.success
     assert all(report.result == "OK" for report in result.value)

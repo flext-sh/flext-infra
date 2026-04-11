@@ -6,7 +6,11 @@ from typing import override
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraModelsDeps, FlextInfraRuntimeDevDependencyDetector
+from flext_infra import (
+    FlextInfraModelsDeps,
+    FlextInfraRuntimeDevDependencyDetector,
+    main,
+)
 from tests import m, p, r, t
 
 
@@ -239,7 +243,9 @@ class TestMainFunction:
         self,
     ) -> None:
         tm.that(
-            FlextInfraRuntimeDevDependencyDetector.main([
+            main([
+                "deps",
+                "detect",
                 "--workspace",
                 "/nonexistent/path",
                 "--no-pip-check",

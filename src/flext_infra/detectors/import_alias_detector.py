@@ -24,7 +24,7 @@ class FlextInfraImportAliasDetector:
     ) -> Sequence[m.Infra.ImportAliasViolation]:
         """Detect deep alias imports directly from Rope import descriptors."""
         file_path = ctx.file_path
-        if file_path.name == c.Infra.Files.INIT_PY:
+        if file_path.name == c.Infra.INIT_PY:
             return []
         resource = u.Infra.get_resource_from_path(
             ctx.rope_project,
@@ -42,7 +42,7 @@ class FlextInfraImportAliasDetector:
             resource,
         ):
             if not (
-                from_import.module_name.startswith(c.Infra.Packages.PREFIX_UNDERSCORE)
+                from_import.module_name.startswith(c.Infra.PKG_PREFIX_UNDERSCORE)
                 and "." in from_import.module_name
                 and all(
                     not part.startswith("_")

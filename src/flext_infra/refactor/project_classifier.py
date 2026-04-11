@@ -15,8 +15,8 @@ class FlextInfraProjectClassifier:
     def __init__(self, project_root: Path) -> None:
         """Initialize classifier for the given project root."""
         self._project_root = project_root.resolve()
-        self._pyproject_path = self._project_root / c.Infra.Files.PYPROJECT_FILENAME
-        self._src_path = self._project_root / c.Infra.Paths.DEFAULT_SRC_DIR
+        self._pyproject_path = self._project_root / c.Infra.PYPROJECT_FILENAME
+        self._src_path = self._project_root / c.Infra.DEFAULT_SRC_DIR
 
     def classify(self) -> m.Infra.ProjectClassification:
         """Return classification and family chains for this project."""
@@ -41,10 +41,12 @@ class FlextInfraProjectClassifier:
 
     def _read_project_metadata(self) -> t.Infra.TransformResult:
         if not self._pyproject_path.is_file():
-            return ("", [])
+            empty_dependencies: list[str] = []
+            return ("", empty_dependencies)
         data_result = u.Infra.read_plain(self._pyproject_path)
-        if data_result.is_failure:
-            return ("", [])
+        if data_result.failure:
+            empty_dependencies: list[str] = []
+            return ("", empty_dependencies)
         parsed: t.Infra.ContainerDict = data_result.value
         raw_project = self._as_mapping(parsed.get(c.Infra.PROJECT))
         project_name = self._normalized_name_from_mapping(raw_project)
@@ -165,7 +167,7 @@ class FlextInfraProjectClassifier:
         return [
             dependency
             for dependency in dependencies
-            if dependency.startswith(c.Infra.Packages.PREFIX_HYPHEN)
+            if dependency.startswith(c.Infra.PKG_PREFIX_HYPHEN)
             and dependency != project_name
         ]
 
@@ -203,7 +205,7 @@ class FlextInfraProjectClassifier:
                 local_facade_classes.update(class_names)
         return (family_bases, local_facade_classes)
 
-    _CLASS_DEF_RE: t.Infra.RegexPattern = c.Infra.SourceCode.CLASS_WITH_BASES_RE
+    _CLASS_DEF_RE: t.Infra.RegexPattern = c.Infra.CLASS_WITH_BASES_RE
 
     def _parse_family_file(
         self,
@@ -211,7 +213,7 @@ class FlextInfraProjectClassifier:
         suffix: str,
     ) -> t.Infra.Pair[t.Infra.StrSet, t.Infra.StrSet]:
         try:
-            source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+            source = file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
         except (OSError, UnicodeDecodeError):
             return (set(), set())
         base_names: t.Infra.StrSet = set()
@@ -271,10 +273,10 @@ class FlextInfraProjectClassifier:
 
     def _dependency_to_class_stem(self, dependency: str) -> str:
         normalized = self._normalize_dependency_name(dependency)
-        if normalized == c.Infra.Packages.CORE:
+        if normalized == c.Infra.PKG_CORE:
             return "Flext"
-        if normalized.startswith(c.Infra.Packages.PREFIX_HYPHEN):
-            tail = normalized.removeprefix(c.Infra.Packages.PREFIX_HYPHEN)
+        if normalized.startswith(c.Infra.PKG_PREFIX_HYPHEN):
+            tail = normalized.removeprefix(c.Infra.PKG_PREFIX_HYPHEN)
             parts = [part for part in tail.split("-") if part]
             if not parts:
                 return ""

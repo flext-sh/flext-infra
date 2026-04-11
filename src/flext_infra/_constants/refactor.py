@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping
+from enum import StrEnum, unique
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
@@ -343,54 +344,57 @@ class FlextInfraConstantsRefactor:
     MIN_METHODS_FOR_REORDER: ClassVar[int] = 2
     "Minimum method count before class method reordering is attempted."
 
-    class ClassNesting:
-        """Constants for class nesting refactor rules."""
+    # --- Class nesting refactor constants (was: class ClassNesting) ---
+    NESTING_COERCE_KEYS: ClassVar[tuple[str, ...]] = (
+        "loose_name",
+        "helper_name",
+        "target_namespace",
+        "target_name",
+        "rewrite_scope",
+        "confidence",
+    )
+    "Keys to coerce from string to typed values in nesting mappings."
+    NESTING_SECTION_KEYS: ClassVar[tuple[str, ...]] = (
+        "class_nesting",
+        "helper_consolidation",
+    )
+    "Top-level section keys in class nesting YAML configs."
 
-        COERCE_KEYS: ClassVar[tuple[str, ...]] = (
-            "loose_name",
-            "helper_name",
-            "target_namespace",
-            "target_name",
-            "rewrite_scope",
-            "confidence",
-        )
-        "Keys to coerce from string to typed values in nesting mappings."
-        SECTION_KEYS: ClassVar[tuple[str, ...]] = (
-            "class_nesting",
-            "helper_consolidation",
-        )
-        "Top-level section keys in class nesting YAML configs."
+    # --- Method category StrEnum (was: plain class MethodCategory) ---
+    @unique
+    class MethodCategory(StrEnum):
+        """Canonical method category identifiers for MRO reordering."""
 
-    class MethodCategory:
-        MAGIC: ClassVar[str] = "magic"
-        PROPERTY: ClassVar[str] = "property"
-        STATIC: ClassVar[str] = "static"
-        CLASS: ClassVar[str] = "class"
-        PUBLIC: ClassVar[str] = "public"
-        PROTECTED: ClassVar[str] = "protected"
-        PRIVATE: ClassVar[str] = "private"
+        MAGIC = "magic"
+        PROPERTY = "property"
+        STATIC = "static"
+        CLASS = "class"
+        PUBLIC = "public"
+        PROTECTED = "protected"
+        PRIVATE = "private"
 
-    class Scan:
-        """Constants for file scanning and loose object detection."""
+    # --- Scan constants (was: class Scan) ---
+    SCAN_ALLOWED_TOP_LEVEL: ClassVar[frozenset[str]] = frozenset({
+        "__all__",
+        "__version__",
+        "__version_info__",
+    })
+    "Top-level names allowed without namespace classification."
 
-        ALLOWED_TOP_LEVEL: ClassVar[frozenset[str]] = frozenset({
-            "__all__",
-            "__version__",
-            "__version_info__",
-        })
-        "Top-level names allowed without namespace classification."
+    # --- Census mode StrEnum (was: class Census plain strings) ---
+    @unique
+    class CensusMode(StrEnum):
+        """Canonical census usage mode identifiers."""
 
-    class Census:
-        """Constants for the usage census module."""
-
-        MODE_ALIAS_FLAT: ClassVar[str] = "alias_flat"
+        ALIAS_FLAT = "alias_flat"
         "Usage via u.method_name (flat alias)."
-        MODE_ALIAS_NS: ClassVar[str] = "alias_namespaced"
+        ALIAS_NS = "alias_namespaced"
         "Usage via u.ClassName.method_name (namespaced)."
-        MODE_DIRECT: ClassVar[str] = "direct"
+        DIRECT = "direct"
         "Usage via FlextUtilitiesXxx.method_name (direct)."
-        DEFAULT_FAMILY: ClassVar[str] = "u"
-        "Default census family."
+
+    CENSUS_DEFAULT_FAMILY: ClassVar[str] = "u"
+    "Default census family."
 
 
 __all__ = ["FlextInfraConstantsRefactor"]

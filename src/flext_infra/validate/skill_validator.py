@@ -30,10 +30,10 @@ class FlextInfraSkillValidator(s[bool]):
     mode: Annotated[
         str,
         Field(
-            default=c.Infra.Modes.BASELINE,
+            default=c.Infra.MODE_BASELINE,
             description="Validation mode (baseline or strict)",
         ),
-    ] = c.Infra.Modes.BASELINE
+    ] = c.Infra.MODE_BASELINE
 
     @staticmethod
     def _render_template(workspace_root: Path, template: str, skill: str) -> Path:
@@ -56,7 +56,7 @@ class FlextInfraSkillValidator(s[bool]):
         violations: MutableSequence[str],
     ) -> None:
         """Evaluate one rule entry and accumulate counts/violations."""
-        rule_id = u.Infra.get_str_key(rule_obj, c.Infra.ReportKeys.ID)
+        rule_id = u.Infra.get_str_key(rule_obj, c.Infra.RK_ID)
         rule_type = u.Infra.get_str_key(rule_obj, "type")
         group = u.Infra.get_str_key(rule_obj, c.Infra.GROUP, default=rule_id) or rule_id
         if rule_type == "ast-grep":
@@ -87,19 +87,19 @@ class FlextInfraSkillValidator(s[bool]):
         total: int,
     ) -> bool:
         """Compare counts against the baseline file and return pass/fail."""
-        baseline_obj = u.Infra.deep_mapping(rules, c.Infra.Modes.BASELINE)
+        baseline_obj = u.Infra.deep_mapping(rules, c.Infra.MODE_BASELINE)
         if not baseline_obj:
             return True
-        strategy = str(baseline_obj.get("strategy", c.Infra.ReportKeys.TOTAL))
+        strategy = str(baseline_obj.get("strategy", c.Infra.RK_TOTAL))
         baseline_path = self._render_template(
             root,
-            str(baseline_obj.get(c.Infra.ReportKeys.FILE, c.Infra.BASELINE_DEFAULT)),
+            str(baseline_obj.get(c.Infra.RK_FILE, c.Infra.BASELINE_DEFAULT)),
             skill_name,
         )
         if not baseline_path.exists():
             return True
         bl_data_result = u.Cli.json_read(baseline_path)
-        if bl_data_result.is_failure:
+        if bl_data_result.failure:
             return True
         bl_data = u.Infra.normalize_str_mapping(bl_data_result.value)
         bl_counts_raw_map = u.Infra.deep_mapping(bl_data, "counts")
@@ -107,7 +107,7 @@ class FlextInfraSkillValidator(s[bool]):
         for key_obj, val_obj in bl_counts_raw_map.items():
             if isinstance(val_obj, int):
                 bl_counts[str(key_obj)] = int(val_obj)
-        if strategy == c.Infra.ReportKeys.TOTAL:
+        if strategy == c.Infra.RK_TOTAL:
             return total <= sum(bl_counts.values())
         return all(
             counts.get(g, 0) <= bl_counts.get(g, 0)
@@ -119,7 +119,7 @@ class FlextInfraSkillValidator(s[bool]):
         workspace_root: Path,
         skill_name: str,
         *,
-        mode: str = c.Infra.Modes.BASELINE,
+        mode: str = c.Infra.MODE_BASELINE,
         _project_filter: t.StrSequence | None = None,
     ) -> r[m.Infra.ValidationReport]:
         """Validate a single skill across workspace projects.
@@ -158,7 +158,7 @@ class FlextInfraSkillValidator(s[bool]):
             exclude_globs = u.Infra.string_list(
                 scan_targets.get(c.Infra.EXCLUDE, []),
             )
-            rules_list_obj = rules.get(c.Infra.ReportKeys.RULES, [])
+            rules_list_obj = rules.get(c.Infra.RK_RULES, [])
             if not isinstance(rules_list_obj, list):
                 return r[m.Infra.ValidationReport].fail("rules must be a list")
             rules_list: t.Cli.JsonList = t.Cli.JSON_LIST_ADAPTER.validate_python(
@@ -182,8 +182,8 @@ class FlextInfraSkillValidator(s[bool]):
                     violations,
                 )
             total = sum(counts.values())
-            passed = total == 0 if mode == c.Infra.Modes.STRICT else True
-            if mode != c.Infra.Modes.STRICT:
+            passed = total == 0 if mode == c.Infra.MODE_STRICT else True
+            if mode != c.Infra.MODE_STRICT:
                 passed = self._apply_baseline_comparison(
                     rules,
                     root,
@@ -228,7 +228,7 @@ class FlextInfraSkillValidator(s[bool]):
         exclude_globs: t.StrSequence,
     ) -> int:
         """Run an ast-grep rule and return match count."""
-        rule_file_raw = u.Infra.get_str_key(rule, c.Infra.ReportKeys.FILE)
+        rule_file_raw = u.Infra.get_str_key(rule, c.Infra.RK_FILE)
         if not rule_file_raw:
             return 0
         rule_file = Path(rule_file_raw)
@@ -249,9 +249,9 @@ class FlextInfraSkillValidator(s[bool]):
             cmd.extend(["--globs", f"!{pat}"])
         cmd.append(str(project_path))
         result_wrapper = u.Cli.run_raw(
-            cmd, cwd=project_path, timeout=c.Infra.Timeouts.DEFAULT
+            cmd, cwd=project_path, timeout=c.Infra.TIMEOUT_DEFAULT
         )
-        if result_wrapper.is_failure:
+        if result_wrapper.failure:
             return 0
         result: p.Cli.CommandOutput = result_wrapper.value
         if result.exit_code not in {0, 1}:
@@ -262,7 +262,7 @@ class FlextInfraSkillValidator(s[bool]):
             if not line:
                 continue
             parsed_line_result = u.Cli.json_parse(line)
-            if parsed_line_result.is_success:
+            if parsed_line_result.success:
                 count += 1
         return count
 
@@ -275,7 +275,7 @@ class FlextInfraSkillValidator(s[bool]):
             if not line:
                 continue
             payload_result = u.Cli.json_parse(line)
-            if payload_result.is_success and u.is_mapping(payload_result.value):
+            if payload_result.success and u.is_mapping(payload_result.value):
                 payload = payload_result.value
                 maybe = payload.get("violation_count", payload.get("count", 0))
                 if isinstance(maybe, int):
@@ -300,16 +300,16 @@ class FlextInfraSkillValidator(s[bool]):
             return 0
         cmd: MutableSequence[str] = (
             [sys.executable, str(script)]
-            if script.suffix == c.Infra.Extensions.PYTHON
+            if script.suffix == c.Infra.EXT_PYTHON
             else [str(script)]
         )
         cmd.extend(["--workspace", str(project_path)])
         if bool(rule.get("pass_mode")):
             cmd.extend(["--mode", mode])
         result_wrapper = u.Cli.run_raw(
-            cmd, cwd=project_path, timeout=c.Infra.Timeouts.DEFAULT
+            cmd, cwd=project_path, timeout=c.Infra.TIMEOUT_DEFAULT
         )
-        if result_wrapper.is_failure:
+        if result_wrapper.failure:
             return 0
         result: p.Cli.CommandOutput = result_wrapper.value
         count = self._parse_violation_count(result.stdout or "")

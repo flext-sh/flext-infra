@@ -55,10 +55,10 @@ class FlextInfraDocBuilder(s[bool]):
             projects=self.selected_projects,
             output_dir=self.docs_output_dir,
         )
-        if result.is_failure:
+        if result.failure:
             return r[bool].fail(result.error or "build failed")
         failures = sum(
-            1 for report in result.value if report.result == c.Infra.Status.FAIL
+            1 for report in result.value if report.result == c.Infra.STATUS_FAIL
         )
         if failures:
             return r[bool].fail(f"Build had {failures} failure(s)")
@@ -71,7 +71,7 @@ class FlextInfraDocBuilder(s[bool]):
         self.logger.info(
             "docs_build_scope_completed",
             project=scope.name,
-            phase=c.Infra.Directories.BUILD,
+            phase=c.Infra.DIR_BUILD,
             result=report.result,
             reason=report.reason,
         )

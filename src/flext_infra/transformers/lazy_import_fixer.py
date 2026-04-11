@@ -53,7 +53,8 @@ class FlextInfraRefactorLazyImportFixer(FlextInfraRopeTransformer):
                 existing_imports.add(stripped.strip())
             kept_lines.append(line)
         if not hoisted:
-            return source, []
+            no_changes: list[str] = []
+            return source, no_changes
         insert_idx = u.Infra.find_import_insert_position(kept_lines)
         new_lines = kept_lines[:insert_idx] + hoisted + kept_lines[insert_idx:]
         new_source = "".join(new_lines)

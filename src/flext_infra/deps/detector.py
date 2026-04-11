@@ -7,10 +7,8 @@ from flext_infra import (
     FlextInfraDependencyDetectionService,
     FlextInfraDependencyDetectorRuntime,
     FlextInfraModelsDeps,
-    FlextInfraUtilitiesCliDispatch,
     p,
     r,
-    t,
     u,
 )
 
@@ -35,7 +33,7 @@ class FlextInfraRuntimeDevDependencyDetector:
         infra_instance = u.Infra()
         self.reporting = reporting or infra_instance
         self.deps = deps or FlextInfraDependencyDetectionService()
-        self.runner = runner or infra_instance
+        self.runner = runner or u.Cli
 
     def run(
         self: FlextInfraRuntimeDevDependencyDetector,
@@ -50,23 +48,9 @@ class FlextInfraRuntimeDevDependencyDetector:
         )
         return runtime.run(params)
 
-    @staticmethod
-    def run_cli(argv: t.StrSequence | None = None) -> int:
-        """Run ``deps detect`` through the canonical CLI."""
-        return FlextInfraUtilitiesCliDispatch.run_command("deps", "detect", argv)
-
-    @staticmethod
-    def main(argv: t.StrSequence | None = None) -> int:
-        """Legacy entrypoint routed through the canonical deps CLI."""
-        return FlextInfraUtilitiesCliDispatch.run_command(
-            "deps",
-            "detect",
-            argv,
-        )
-
 
 if __name__ == "__main__":
-    raise SystemExit(FlextInfraRuntimeDevDependencyDetector.main())
+    raise SystemExit(0)
 
 
 __all__ = [

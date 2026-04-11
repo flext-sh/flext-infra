@@ -9,7 +9,8 @@ from typing import Annotated
 from pydantic import Field, computed_field
 
 from flext_core import m
-from flext_infra import FlextInfraModelsDepsToolSettings, FlextInfraModelsMixins, c, t
+from flext_infra import FlextInfraModelsDepsToolSettings, c, t
+from flext_infra._models.mixins import FlextInfraModelsMixins
 
 
 class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
@@ -24,7 +25,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
                 default=False,
                 description="Apply follow-up typing dependency installs",
                 json_schema_extra={
-                    "typer_param_decls": list(c.Infra.Cli.APPLY_OPTION_DECLS),
+                    "typer_param_decls": list(c.Infra.CLI_APPLY_OPTION_DECLS),
                 },
             ),
         ] = False
@@ -106,7 +107,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
                 default=False,
                 description="Apply synchronized path changes",
                 json_schema_extra={
-                    "typer_param_decls": list(c.Infra.Cli.APPLY_OPTION_DECLS),
+                    "typer_param_decls": list(c.Infra.CLI_APPLY_OPTION_DECLS),
                 },
             ),
         ] = False
@@ -129,7 +130,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
                 default=False,
                 description="Apply pyproject modernization changes",
                 json_schema_extra={
-                    "typer_param_decls": list(c.Infra.Cli.APPLY_OPTION_DECLS),
+                    "typer_param_decls": list(c.Infra.CLI_APPLY_OPTION_DECLS),
                 },
             ),
         ] = False
@@ -173,7 +174,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
                 default=False,
                 description="Apply dependency path rewrites",
                 json_schema_extra={
-                    "typer_param_decls": list(c.Infra.Cli.APPLY_OPTION_DECLS),
+                    "typer_param_decls": list(c.Infra.CLI_APPLY_OPTION_DECLS),
                 },
             ),
         ] = False

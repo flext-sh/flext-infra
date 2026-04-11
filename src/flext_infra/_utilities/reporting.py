@@ -93,9 +93,9 @@ class FlextInfraUtilitiesReporting(
         root_path = (
             Path(workspace_root) if isinstance(workspace_root, str) else workspace_root
         )
-        base = root_path / c.Infra.Reporting.REPORTS_DIR_NAME
-        if scope == c.Infra.ReportKeys.WORKSPACE:
-            return (base / c.Infra.ReportKeys.WORKSPACE / verb).resolve()
+        base = root_path / c.Infra.REPORTS_DIR_NAME
+        if scope == c.Infra.RK_WORKSPACE:
+            return (base / c.Infra.RK_WORKSPACE / verb).resolve()
         return (base / verb).resolve()
 
     @staticmethod
@@ -253,11 +253,11 @@ class FlextInfraUtilitiesReporting(
     @staticmethod
     def _issue_to_sarif_result(issue: m.Infra.Issue) -> m.Infra.SarifResult:
         """Convert a single gate issue to a SARIF result entry."""
-        rule_id = issue.code or c.Infra.Defaults.UNKNOWN
+        rule_id = issue.code or c.Infra.DEFAULT_UNKNOWN
         level = (
             c.Infra.ERROR
             if issue.severity == c.Infra.ERROR
-            else c.Infra.Severity.WARNING
+            else c.Infra.SEVERITY_WARNING
         )
         return m.Infra.SarifResult(
             rule_id=rule_id,
@@ -287,7 +287,7 @@ class FlextInfraUtilitiesReporting(
             if not gate_result:
                 continue
             for issue in gate_result.issues:
-                rule_id = issue.code or c.Infra.Defaults.UNKNOWN
+                rule_id = issue.code or c.Infra.DEFAULT_UNKNOWN
                 if rule_id not in rules_seen:
                     rules_seen.add(rule_id)
                     rules.append(
@@ -340,9 +340,9 @@ class FlextInfraUtilitiesReporting(
                 gate_result = project.gates.get(gate)
                 row += f" {(len(gate_result.issues) if gate_result else 0)} |"
             status = (
-                c.Infra.Status.PASSED
+                c.Infra.STATUS_PASSED
                 if project.passed
-                else f"**{c.Infra.Status.FAIL}**"
+                else f"**{c.Infra.STATUS_FAIL}**"
             )
             if not project.passed:
                 failed_count += 1

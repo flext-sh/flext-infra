@@ -33,5 +33,5 @@ def test_fix_updates_docs_readme_when_apply_is_enabled(tmp_path: Path) -> None:
 
     result = FlextInfraDocFixer().fix(workspace, apply=True)
 
-    assert result.is_success
+    assert result.success
     assert "guides/setup.md" in (workspace / "docs/README.md").read_text()

@@ -71,9 +71,9 @@ class TestInfraMroPattern:
 
     def test_template_methods_available(self) -> None:
         """Verify template constants are accessible via c.Infra MRO."""
-        assert isinstance(c.Infra.SourceCode.TOC_START, str)
-        assert isinstance(c.Infra.SourceCode.TOC_END, str)
-        assert isinstance(c.Infra.SourceCode.GENERATED_HEADER, str)
+        assert isinstance(c.Infra.TOC_START, str)
+        assert isinstance(c.Infra.TOC_END, str)
+        assert isinstance(c.Infra.GENERATED_HEADER, str)
 
     def test_versioning_methods_available(self) -> None:
         """Verify versioning methods are accessible via u.Infra MRO."""

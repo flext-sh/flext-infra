@@ -41,7 +41,7 @@ class FlextInfraBaseMkValidator(s[bool]):
 
         """
         try:
-            source = workspace_root / c.Infra.Files.BASE_MK
+            source = workspace_root / c.Infra.BASE_MK
             if not source.exists():
                 return r[m.Infra.ValidationReport].ok(
                     m.Infra.ValidationReport(
@@ -52,7 +52,7 @@ class FlextInfraBaseMkValidator(s[bool]):
                 )
             generator = self.generator or FlextInfraBaseMkGenerator()
             gen_result = generator.generate_basemk()
-            if gen_result.is_failure:
+            if gen_result.failure:
                 return r[m.Infra.ValidationReport].ok(
                     m.Infra.ValidationReport(
                         passed=False,

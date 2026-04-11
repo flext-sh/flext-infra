@@ -106,7 +106,7 @@ class TestSyncMethodEdgeCases:
             "ensure_checkout",
             _ensure_checkout,
         )
-        tm.that(service.sync(project).is_success, eq=True)
+        tm.that(service.sync(project).success, eq=True)
 
     def test_sync_with_synthesized_repo_map(
         self,
@@ -146,7 +146,7 @@ class TestSyncMethodEdgeCases:
                 }),
             ],
         )
-        tm.that(service.sync(tmp_path).is_success, eq=True)
+        tm.that(service.sync(tmp_path).success, eq=True)
 
     def test_sync_missing_repo_mapping(
         self,

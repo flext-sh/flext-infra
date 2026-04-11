@@ -210,12 +210,12 @@ class FlextInfraUtilitiesOutputReporting:
             alias_total = sum(
                 pu.count
                 for pu in ps.usages
-                if pu.access_mode != c.Infra.Census.MODE_DIRECT
+                if pu.access_mode != c.Infra.CensusMode.DIRECT
             )
             direct_total = sum(
                 pu.count
                 for pu in ps.usages
-                if pu.access_mode == c.Infra.Census.MODE_DIRECT
+                if pu.access_mode == c.Infra.CensusMode.DIRECT
             )
             lines.append(
                 f"\n\U0001f4e6 {ps.project_name}"

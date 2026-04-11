@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import importlib
 import shlex
 from collections.abc import MutableSequence, Sequence
 from datetime import UTC, datetime
@@ -12,7 +11,6 @@ from typing import override
 from flext_core import r, s
 from flext_infra import (
     FlextInfraGateRegistry,
-    FlextInfraWorkspaceCheckerCli,
     FlextInfraWorkspaceCheckGatesMixin,
     WorkspaceLoopOutcome,
     c,
@@ -39,14 +37,12 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
         report_dir = u.Infra.get_report_dir(
             self._workspace_root,
             c.Infra.PROJECT,
-            c.Infra.Verbs.CHECK,
+            c.Infra.VERB_CHECK,
         )
         dir_result = u.Cli.ensure_dir(report_dir)
-        if dir_result.is_failure:
+        if dir_result.failure:
             self._default_reports_dir = (
-                self._workspace_root
-                / c.Infra.Reporting.REPORTS_DIR_NAME
-                / c.Infra.Verbs.CHECK
+                self._workspace_root / c.Infra.REPORTS_DIR_NAME / c.Infra.VERB_CHECK
             )
         else:
             self._default_reports_dir = report_dir
@@ -94,21 +90,6 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
             self._run_gate(c.Infra.LINT, project_dir).result,
         )
 
-    @staticmethod
-    def run_cli(argv: Sequence[str] | None = None) -> int:
-        """Run the canonical workspace check group."""
-        return FlextInfraWorkspaceCheckerCli.run_cli(argv)
-
-    @staticmethod
-    def main(argv: Sequence[str] | None = None) -> int:
-        """Run the legacy workspace check CLI entrypoint."""
-        raw_argv = list(argv) if argv is not None else None
-        if raw_argv:
-            cli_module = importlib.import_module("flext_infra.cli")
-            if raw_argv[0] in cli_module.FlextInfraCli.GROUPS:
-                return cli_module.main(raw_argv)
-        return FlextInfraWorkspaceCheckerCli.main(argv)
-
     def run_project(
         self,
         project: str,
@@ -131,14 +112,14 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
             md_path,
             u.Infra.generate_markdown(results, resolved_gates, timestamp),
         )
-        if md_write_result.is_failure:
+        if md_write_result.failure:
             return r[Sequence[m.Infra.ProjectResult]].fail(
                 md_write_result.error or "failed to write markdown report",
             )
         sarif_path = report_base / "check-report.sarif"
         sarif_payload = u.Infra.generate_sarif(results, resolved_gates)
         json_write_result = u.Cli.json_write(sarif_path, sarif_payload)
-        if json_write_result.is_failure:
+        if json_write_result.failure:
             return r[Sequence[m.Infra.ProjectResult]].fail(
                 json_write_result.error or "failed to write sarif report",
             )
@@ -146,7 +127,7 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
         success = len(results) - outcome.failed
         u.Infra.summary(
             m.Infra.SummaryStats(
-                verb=c.Infra.Verbs.CHECK,
+                verb=c.Infra.VERB_CHECK,
                 total=len(results),
                 success=success,
                 failed=outcome.failed,
@@ -189,14 +170,14 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
         Pass ``ctx`` to supply a pre-built GateContext.
         """
         resolved_gates_result = self.resolve_gates(gates)
-        if resolved_gates_result.is_failure:
+        if resolved_gates_result.failure:
             return r[Sequence[m.Infra.ProjectResult]].fail(
                 resolved_gates_result.error or "invalid gates",
             )
         resolved_gates = resolved_gates_result.value
         report_base = reports_dir or self._default_reports_dir
         dir_ensure = u.Cli.ensure_dir(report_base)
-        if dir_ensure.is_failure:
+        if dir_ensure.failure:
             return r[Sequence[m.Infra.ProjectResult]].fail(
                 dir_ensure.error or "failed to create report directory",
             )
@@ -217,6 +198,4 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
         )
 
 
-run_cli = FlextInfraWorkspaceChecker.run_cli
-
-__all__ = ["FlextInfraWorkspaceChecker", "run_cli"]
+__all__ = ["FlextInfraWorkspaceChecker"]

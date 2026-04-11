@@ -51,7 +51,7 @@ class FlextInfraToml(s[Sequence[t.StrSequence]]):
     def apply(self) -> t.StrSequence:
         """Apply phases and return one flat change list."""
         result = self.execute()
-        if result.is_failure:
+        if result.failure:
             msg = result.error or "failed to apply TOML phases"
             raise ValueError(msg)
         return [change for batch in result.value for change in batch]
@@ -118,8 +118,8 @@ class FlextInfraToml(s[Sequence[t.StrSequence]]):
                 )
             case "list":
                 if operation.strategy in {
-                    c.Infra.TomlMerge.ADDITIVE,
-                    c.Infra.TomlMerge.MERGE,
+                    c.Infra.TOML_MERGE_ADDITIVE,
+                    c.Infra.TOML_MERGE_MERGE,
                 }:
                     u.Cli.toml_merge_string_list(
                         tbl,

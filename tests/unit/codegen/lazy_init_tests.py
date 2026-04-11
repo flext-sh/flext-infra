@@ -170,7 +170,7 @@ class TestEdgeCases:
         _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
         generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
         result = generator.execute()
-        tm.that(result.is_success, eq=True)
+        tm.that(result.success, eq=True)
         tm.that(type(result.value).__name__, eq="bool")
 
     def test_src_content_consistent_across_runs(

@@ -16,7 +16,7 @@ class FlextInfraSilentFailureDetector:
     ) -> Sequence[m.Infra.Issue]:
         """Detect silent-failure findings in one Python file."""
         file_path = ctx.file_path
-        if file_path.suffix != c.Infra.Extensions.PYTHON:
+        if file_path.suffix != c.Infra.EXT_PYTHON:
             return []
         resource = u.Infra.get_resource_from_path(ctx.rope_project, file_path)
         if resource is None:

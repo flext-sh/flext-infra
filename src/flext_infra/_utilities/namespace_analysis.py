@@ -78,16 +78,11 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
         filename: str,
     ) -> Path:
         parts = source_file.parts
-        if c.Infra.Paths.DEFAULT_SRC_DIR in parts:
-            src_index = parts.index(c.Infra.Paths.DEFAULT_SRC_DIR)
+        if c.Infra.DEFAULT_SRC_DIR in parts:
+            src_index = parts.index(c.Infra.DEFAULT_SRC_DIR)
             if src_index + 1 < len(parts):
                 package_name = parts[src_index + 1]
-                return (
-                    project_root
-                    / c.Infra.Paths.DEFAULT_SRC_DIR
-                    / package_name
-                    / filename
-                )
+                return project_root / c.Infra.DEFAULT_SRC_DIR / package_name / filename
         return source_file.parent / filename
 
     @staticmethod
@@ -186,7 +181,7 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
             f"Flext{suffix}" for suffix in c.Infra.FAMILY_SUFFIXES.values()
         )
         for file_path, grouped in violations_by_file.items():
-            source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+            source = file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
             lines = source.splitlines()
             missing_by_facade: Mapping[str, t.Infra.StrSet] = defaultdict(set)
             for violation in grouped:
@@ -224,7 +219,7 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
             )
             _ = file_path.write_text(
                 "\n".join(rewritten_lines).rstrip() + "\n",
-                encoding=c.Infra.Encoding.DEFAULT,
+                encoding=c.Infra.ENCODING_DEFAULT,
             )
             FlextInfraUtilitiesFormatting.run_ruff_fix(
                 file_path,
@@ -299,13 +294,13 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
         py_files: Sequence[Path],
     ) -> None:
         for file_path in py_files:
-            if file_path.name == c.Infra.Files.PY_TYPED:
+            if file_path.name == c.Infra.PY_TYPED:
                 continue
             try:
-                source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+                source = file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
             except (OSError, UnicodeDecodeError):
                 continue
-            if c.Infra.SourceCode.FUTURE_ANNOTATIONS in source:
+            if c.Infra.FUTURE_ANNOTATIONS in source:
                 continue
             lines = source.splitlines()
             if not lines:
@@ -317,12 +312,12 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
             )
             rewritten = (
                 lines[:insert_idx]
-                + ["", c.Infra.SourceCode.FUTURE_ANNOTATIONS, ""]
+                + ["", c.Infra.FUTURE_ANNOTATIONS, ""]
                 + lines[insert_idx:]
             )
             _ = file_path.write_text(
                 "\n".join(rewritten).rstrip() + "\n",
-                encoding=c.Infra.Encoding.DEFAULT,
+                encoding=c.Infra.ENCODING_DEFAULT,
             )
 
 

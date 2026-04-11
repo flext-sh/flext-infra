@@ -34,8 +34,8 @@ class FlextInfraConstants(c):
 
     Usage:
         >>> from flext_infra import c
-        >>> c.Infra.Status.PASSED
-        >>> c.Infra.Paths.VENV_BIN_REL
+        >>> c.Infra.STATUS_PASSED
+        >>> c.Infra.VENV_BIN_REL
         >>> c.Infra.EXCLUDED_PROJECTS
     """
 

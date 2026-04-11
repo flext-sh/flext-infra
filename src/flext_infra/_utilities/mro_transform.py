@@ -37,7 +37,7 @@ class FlextInfraUtilitiesRefactorMroTransform:
         scan_result: m.Infra.MROScanReport,
     ) -> tuple[str, m.Infra.MROFileMigration, t.StrMapping]:
         """Transform a candidate file and return code plus symbol map."""
-        source = Path(scan_result.file).read_text(encoding=c.Infra.Encoding.DEFAULT)
+        source = Path(scan_result.file).read_text(encoding=c.Infra.ENCODING_DEFAULT)
         lines = source.splitlines()
 
         empty_migration = m.Infra.MROFileMigration(

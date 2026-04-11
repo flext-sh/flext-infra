@@ -62,10 +62,10 @@ class TestFlextInfraConstantsEncodingNamespace:
     """Tests for Encoding namespace constants."""
 
     def test_default_encoding_constant(self) -> None:
-        tm.that(c.Infra.Encoding.DEFAULT, eq="utf-8")
+        tm.that(c.Infra.ENCODING_DEFAULT, eq="utf-8")
 
     def test_encoding_constant_is_string(self) -> None:
-        tm.that(c.Infra.Encoding.DEFAULT, is_=str)
+        tm.that(c.Infra.ENCODING_DEFAULT, is_=str)
 
 
 class TestFlextInfraConstantsAlias:
@@ -78,16 +78,16 @@ class TestFlextInfraConstantsAlias:
         pass
 
     def test_c_alias_access_to_constants(self) -> None:
-        tm.that(c.Infra.Paths.VENV_BIN_REL, eq=".venv/bin")
-        tm.that(c.Infra.Status.PASSED, eq="PASS")
-        tm.that(c.Infra.Files.PYPROJECT_FILENAME, eq="pyproject.toml")
+        tm.that(c.Infra.VENV_BIN_REL, eq=".venv/bin")
+        tm.that(c.Infra.STATUS_PASSED, eq="PASS")
+        tm.that(c.Infra.PYPROJECT_FILENAME, eq="pyproject.toml")
 
 
 class TestFlextInfraConstantsImmutability:
     """Tests for constant immutability."""
 
     def test_excluded_dirs_are_immutable(self) -> None:
-        excluded = c.Infra.Excluded.COMMON_EXCLUDED_DIRS
+        excluded = c.Infra.COMMON_EXCLUDED_DIRS
         tm.that(not hasattr(excluded, "add"), eq=True)
 
     def test_check_dirs_are_immutable(self) -> None:
@@ -99,10 +99,10 @@ class TestFlextInfraConstantsConsistency:
     """Tests for consistency across namespaces."""
 
     def test_all_status_values_are_uppercase(self) -> None:
-        tm.that(c.Infra.Status.PASSED.isupper(), eq=True)
-        tm.that(c.Infra.Status.FAIL.isupper(), eq=True)
-        tm.that(c.Infra.Status.OK.isupper(), eq=True)
-        tm.that(c.Infra.Status.WARN.isupper(), eq=True)
+        tm.that(c.Infra.STATUS_PASSED.isupper(), eq=True)
+        tm.that(c.Infra.STATUS_FAIL.isupper(), eq=True)
+        tm.that(c.Infra.STATUS_OK.isupper(), eq=True)
+        tm.that(c.Infra.STATUS_WARN.isupper(), eq=True)
 
     def test_all_gate_values_are_lowercase(self) -> None:
         gates = [
@@ -119,7 +119,7 @@ class TestFlextInfraConstantsConsistency:
             tm.that(gate.islower(), eq=True, msg=f"Gate {gate} should be lowercase")
 
     def test_excluded_dirs_no_duplicates(self) -> None:
-        common = c.Infra.Excluded.COMMON_EXCLUDED_DIRS
-        doc = c.Infra.Excluded.DOC_EXCLUDED_DIRS
+        common = c.Infra.COMMON_EXCLUDED_DIRS
+        doc = c.Infra.DOC_EXCLUDED_DIRS
         tm.that(len(common), eq=len(set(common)))
         tm.that(len(doc), eq=len(set(doc)))

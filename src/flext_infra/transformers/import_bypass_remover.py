@@ -32,7 +32,8 @@ class FlextInfraRefactorImportBypassRemover(FlextInfraRopeTransformer):
         source = resource.read()
         new_source, count = self._BYPASS_RE.subn(r"\1", source)
         if count == 0:
-            return source, []
+            no_changes: list[str] = []
+            return source, no_changes
         changes = [f"Removed {count} import bypass fallback(s)"]
         for msg in changes:
             self._record_change(msg)

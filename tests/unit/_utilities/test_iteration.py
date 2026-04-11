@@ -30,7 +30,7 @@ class TestIterWorkspacePythonModules:
 
         result = u.Infra.iter_workspace_python_modules(workspace_root=tmp_path)
 
-        assert result.is_success
+        assert result.success
         expected = {
             (alpha_root, alpha_root / "src" / "alpha" / "core.py"),
             (alpha_root, alpha_root / "tests" / "test_core.py"),
@@ -53,7 +53,7 @@ class TestIterWorkspacePythonModules:
 
         result = u.Infra.iter_workspace_python_modules(workspace_root=tmp_path)
 
-        assert result.is_success
+        assert result.success
         assert (project_root, project_root / ".venv" / "lib" / "ignored.py") not in set(
             result.value,
         )
@@ -67,7 +67,7 @@ class TestIterWorkspacePythonModules:
             exclude_packages=frozenset({"beta"}),
         )
 
-        assert result.is_success
+        assert result.success
         assert result.value
         assert all(project_root == alpha_root for project_root, _ in result.value)
 
@@ -79,7 +79,7 @@ class TestIterWorkspacePythonModules:
             include_tests=False,
         )
 
-        assert result.is_success
+        assert result.success
         expected = {(project_root, project_root / "src" / "delta" / "core.py")}
         assert set(result.value) == expected
 
@@ -88,7 +88,7 @@ class TestIterWorkspacePythonModules:
 
         result = u.Infra.iter_workspace_python_modules(workspace_root=tmp_path)
 
-        assert result.is_success
+        assert result.success
         assert result.value == []
 
     def test_non_existent_workspace_root_raises(self) -> None:
@@ -96,7 +96,7 @@ class TestIterWorkspacePythonModules:
 
         try:
             result = u.Infra.iter_workspace_python_modules(workspace_root=missing_root)
-            assert result.is_failure
+            assert result.failure
             assert result.error is not None
             assert "failed" in result.error
         except FileNotFoundError:

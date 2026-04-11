@@ -28,7 +28,7 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
         """Apply import modernizer or lazy-import hoisting based on fix action."""
         fix_action = u.Infra.get_str_key(
             self.config,
-            c.Infra.ReportKeys.FIX_ACTION,
+            c.Infra.RK_FIX_ACTION,
             case="lower",
         )
         if "lazy-import" in self.rule_id or fix_action == "hoist_to_module_top":
@@ -41,7 +41,8 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
         if forbidden is None:
             forbidden = [self.config]
         if not forbidden:
-            return (source, [])
+            no_changes: list[str] = []
+            return (source, no_changes)
         imports_to_remove: MutableSequence[str] = []
         seen_modules: t.Infra.StrSet = set()
         symbols_to_replace: t.MutableStrMapping = {}

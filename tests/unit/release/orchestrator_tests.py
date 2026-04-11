@@ -21,7 +21,7 @@ def make_config(
         workspace_root=workspace_root,
         version="1.0.0",
         tag="v1.0.0",
-        phases=phases or [c.Infra.Verbs.VALIDATE],
+        phases=phases or [c.Infra.VERB_VALIDATE],
         project_names=project_names,
         dry_run=dry_run,
         push=False,
@@ -41,7 +41,7 @@ def test_execute_validate_dry_run_succeeds(tmp_path: Path) -> None:
         "interactive": 0,
     }).execute()
 
-    assert result.is_success
+    assert result.success
 
 
 def test_run_release_invalid_phase_fails(tmp_path: Path) -> None:
@@ -51,7 +51,7 @@ def test_run_release_invalid_phase_fails(tmp_path: Path) -> None:
         make_config(workspace, phases=["invalid"]),
     )
 
-    assert result.is_failure
+    assert result.failure
     assert "invalid phase" in (result.error or "")
 
 
@@ -62,7 +62,7 @@ def test_run_release_empty_phase_list_is_a_noop_success(tmp_path: Path) -> None:
         make_config(workspace, phases=[]),
     )
 
-    assert result.is_success
+    assert result.success
 
 
 def test_run_release_stops_on_validate_failure_before_version_update(
@@ -76,11 +76,11 @@ def test_run_release_stops_on_validate_failure_before_version_update(
     result = FlextInfraReleaseOrchestrator().run_release(
         make_config(
             workspace,
-            phases=[c.Infra.Verbs.VALIDATE, c.Infra.VERSION],
+            phases=[c.Infra.VERB_VALIDATE, c.Infra.VERSION],
         ),
     )
 
-    assert result.is_failure
+    assert result.failure
     assert 'version = "0.1.0"' in (workspace / "pyproject.toml").read_text()
 
 
@@ -100,7 +100,7 @@ def test_run_release_project_filter_updates_only_selected_project(
         ),
     )
 
-    assert result.is_success
+    assert result.success
     assert 'version = "1.0.0"' in (workspace / "pyproject.toml").read_text()
     assert 'version = "1.0.0"' in (workspace / "flext-a" / "pyproject.toml").read_text()
     assert 'version = "0.1.0"' in (workspace / "flext-b" / "pyproject.toml").read_text()
@@ -119,5 +119,5 @@ def test_run_release_next_dev_updates_workspace_to_next_dev_version(
         ),
     )
 
-    assert result.is_success
+    assert result.success
     assert 'version = "1.1.0-dev"' in (workspace / "pyproject.toml").read_text()

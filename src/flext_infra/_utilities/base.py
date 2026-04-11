@@ -20,6 +20,7 @@ from flext_infra import (
     r,
     t,
 )
+from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 
 
 class FlextInfraUtilitiesBase:
@@ -31,6 +32,48 @@ class FlextInfraUtilitiesBase:
     """
 
     _tool_config_cache: r[m.Infra.ToolConfigDocument] | None = None
+
+    @staticmethod
+    def cli_args(**kwargs: t.Infra.InfraValue) -> t.Infra.CliNamespace:
+        """Build a CLI-like namespace for command helpers and tests."""
+        namespace_factory = t.Infra.CliNamespace.__value__
+        return namespace_factory(**kwargs)
+
+    CliArgs = staticmethod(cli_args)
+
+    @staticmethod
+    def matches(message: str, *patterns: str) -> bool:
+        """Return whether ``message`` matches at least one provided pattern."""
+        return u.Cli.matches(message, *patterns)
+
+    @staticmethod
+    def git_run(cmd: t.StrSequence, cwd: Path) -> r[str]:
+        """Run a git command and return stdout as ``r[str]``."""
+        run_result = u.Cli.run_raw(cmd, cwd=cwd)
+        if run_result.failure:
+            return r[str].fail(run_result.error or "git command failed")
+        output = run_result.value
+        if output.exit_code != 0:
+            return r[str].fail(output.stderr or output.stdout or "git command failed")
+        return r[str].ok(output.stdout)
+
+    @staticmethod
+    def _selected_project_names(
+        workspace_root: Path,
+        projects: Sequence[str] | None,
+    ) -> t.StrSequence:
+        """Resolve selected project names or discover all when filter is empty."""
+        selected = [name.strip() for name in (projects or []) if name.strip()]
+        if selected:
+            return selected
+        discovered = FlextInfraUtilitiesDocsScope.discover_projects(workspace_root)
+        if discovered.failure:
+            return []
+        return sorted(
+            project.name
+            for project in discovered.value
+            if project.name and project.name.strip()
+        )
 
     # ------------------------------------------------------------------
     # Generic validation (SSOT for TypeAdapter-based coercion)
@@ -231,10 +274,10 @@ class FlextInfraUtilitiesBase:
             raw_text = (
                 files("flext_infra.deps")
                 .joinpath("tool_config.yml")
-                .read_text(encoding=c.Infra.Encoding.DEFAULT)
+                .read_text(encoding=c.Infra.ENCODING_DEFAULT)
             )
             parsed = u.Cli.yaml_parse(raw_text)
-            if parsed.is_failure:
+            if parsed.failure:
                 result = r[m.Infra.ToolConfigDocument].fail(
                     parsed.error or "tool_config.yml parse failed",
                 )

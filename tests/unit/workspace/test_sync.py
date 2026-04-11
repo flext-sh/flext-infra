@@ -70,7 +70,7 @@ def test_sync_generates_basemk_gitignore_and_makefile(tmp_path: Path) -> None:
         workspace=project_root,
     ).execute()
 
-    assert result.is_success, _error_text(result)
+    assert result.success, _error_text(result)
     assert result.value.files_changed >= 1
     assert (project_root / "base.mk").exists()
     assert (project_root / ".gitignore").exists()
@@ -86,10 +86,10 @@ def test_sync_is_idempotent_on_second_run(tmp_path: Path) -> None:
     )
 
     first_result = service.execute()
-    assert first_result.is_success, _error_text(first_result)
+    assert first_result.success, _error_text(first_result)
     second_result = service.execute()
 
-    assert second_result.is_success, _error_text(second_result)
+    assert second_result.success, _error_text(second_result)
     assert second_result.value.files_changed == 0
 
 
@@ -98,7 +98,7 @@ def test_sync_fails_when_workspace_root_is_missing() -> None:
 
     result = FlextInfraSyncService(workspace=missing_root).execute()
 
-    assert result.is_failure
+    assert result.failure
     assert "does not exist" in _error_text(result)
 
 
@@ -112,7 +112,7 @@ def test_sync_fails_when_generator_fails(tmp_path: Path) -> None:
         workspace=project_root,
     ).execute()
 
-    assert result.is_failure
+    assert result.failure
     assert "Generation failed" in _error_text(result)
 
 
@@ -126,7 +126,7 @@ def test_sync_fails_when_gitignore_path_is_directory(tmp_path: Path) -> None:
         workspace=project_root,
     ).execute()
 
-    assert result.is_failure
+    assert result.failure
     assert ".gitignore update failed" in _error_text(result)
 
 
@@ -139,7 +139,7 @@ def test_sync_workspace_root_also_syncs_child_projects(tmp_path: Path) -> None:
         workspace=workspace_root,
     ).execute()
 
-    assert result.is_success, _error_text(result)
+    assert result.success, _error_text(result)
     assert (workspace_root / "base.mk").exists()
     assert (workspace_root / "Makefile").exists()
     for project_root in (demo_a, demo_b):
@@ -162,7 +162,7 @@ def test_sync_regenerates_project_makefile_without_legacy_passthrough(
         workspace=project_root,
     ).execute()
 
-    assert result.is_success, _error_text(result)
+    assert result.success, _error_text(result)
     makefile_text = (project_root / "Makefile").read_text(encoding="utf-8")
     assert "custom-target" not in makefile_text
     assert "-include custom.mk" in makefile_text
@@ -174,7 +174,7 @@ def test_atomic_write_ok(tmp_path: Path) -> None:
 
     result = u.Cli.atomic_write_text_file(target, "test content")
 
-    assert result.is_success, _error_text(result)
+    assert result.success, _error_text(result)
     assert result.value is True
     assert target.read_text(encoding="utf-8") == "test content"
 
@@ -185,5 +185,5 @@ def test_atomic_write_fails_when_parent_is_a_file(tmp_path: Path) -> None:
 
     result = u.Cli.atomic_write_text_file(blocked_parent / "test.txt", "content")
 
-    assert result.is_failure
+    assert result.failure
     assert "ensure_dir" in _error_text(result)

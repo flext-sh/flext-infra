@@ -68,8 +68,8 @@ class FlextInfraUtilitiesRopeSource:
                 or target in allow_set
                 or target
                 in {
-                    c.Infra.Dunders.VERSION,
-                    c.Infra.Dunders.ALL,
+                    c.Infra.DUNDER_VERSION,
+                    c.Infra.DUNDER_ALL,
                 }
             ):
                 kept.append(line)
@@ -339,7 +339,7 @@ class FlextInfraUtilitiesRopeSource:
         )
         if workspace_root is None:
             return (source, [])
-        original_disk_source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+        original_disk_source = file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
         try:
             with FlextInfraUtilitiesRopeCore.open_project(
                 workspace_root,
@@ -356,12 +356,12 @@ class FlextInfraUtilitiesRopeSource:
                 return (new_source, list(changes))
         finally:
             if (
-                file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+                file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
                 != original_disk_source
             ):
                 file_path.write_text(
                     original_disk_source,
-                    encoding=c.Infra.Encoding.DEFAULT,
+                    encoding=c.Infra.ENCODING_DEFAULT,
                 )
 
 

@@ -40,7 +40,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         _ = project_dir
         return [
             c.Infra.RUFF,
-            c.Infra.Verbs.CHECK,
+            c.Infra.VERB_CHECK,
             *check_dirs,
             *ctx.ruff_args,
             "--output-format",
@@ -85,7 +85,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         _ = project_dir
         return [
             c.Infra.RUFF,
-            c.Infra.Verbs.CHECK,
+            c.Infra.VERB_CHECK,
             *targets,
             *ctx.ruff_args,
             "--fix",

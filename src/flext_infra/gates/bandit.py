@@ -27,9 +27,9 @@ class FlextInfraBanditGate(FlextInfraGate):
         ctx: m.Infra.GateContext,
     ) -> t.StrSequence:
         _ = ctx
-        if not (project_dir / c.Infra.Paths.DEFAULT_SRC_DIR).exists():
+        if not (project_dir / c.Infra.DEFAULT_SRC_DIR).exists():
             return []
-        return [c.Infra.Paths.DEFAULT_SRC_DIR]
+        return [c.Infra.DEFAULT_SRC_DIR]
 
     @override
     def _build_check_command(
@@ -79,7 +79,7 @@ class FlextInfraBanditGate(FlextInfraGate):
                     ).lower(),
                 )
                 for raw_item in u.Infra.normalize_mapping_list(
-                    bandit_data.get(c.Infra.GateJsonKeys.BANDIT_RESULTS, []),
+                    bandit_data.get(c.Infra.BANDIT_RESULTS_KEY, []),
                 )
             )
         except (TypeError, ValidationError):

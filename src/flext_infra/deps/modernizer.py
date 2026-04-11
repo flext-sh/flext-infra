@@ -20,8 +20,8 @@ from flext_infra import (
     FlextInfraEnsureRuffConfigPhase,
     FlextInfraExtraPathsManager,
     FlextInfraInjectCommentsPhase,
+    FlextInfraModelsDeps,
     FlextInfraProjectClassifier,
-    FlextInfraUtilitiesCliDispatch,
     FlextInfraUtilitiesTomlParse,
     c,
     r,
@@ -44,7 +44,7 @@ class FlextInfraPyprojectModernizer:
         """Initialize pyproject modernizer."""
         self.root = workspace_root or workspace or self.ROOT
         tool_config_result = u.Infra.load_tool_config()
-        if tool_config_result.is_failure:
+        if tool_config_result.failure:
             msg = tool_config_result.error or "failed to load deps tool config"
             raise ValueError(msg)
         self._tool_config = tool_config_result.value
@@ -189,7 +189,7 @@ class FlextInfraPyprojectModernizer:
     ) -> t.StrSequence:
         """Process one pyproject.toml file and collect changes."""
         try:
-            original_rendered = path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+            original_rendered = path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
         except OSError:
             return ["invalid TOML"]
         doc = u.Cli.toml_read(path)
@@ -199,7 +199,7 @@ class FlextInfraPyprojectModernizer:
         project_kind = "core"
         if not is_root:
             kind_result = self._classify_project(path.parent)
-            if kind_result.is_success:
+            if kind_result.success:
                 project_kind = kind_result.value
         changes: MutableSequence[str] = []
         changes.extend(self._ensure_build_system(doc))
@@ -284,18 +284,18 @@ class FlextInfraPyprojectModernizer:
         if normalized_rendered == normalized_original:
             return []
         if not dry_run:
-            u.write_file(path, rendered, encoding=c.Infra.Encoding.DEFAULT)
+            u.write_file(path, rendered, encoding=c.Infra.ENCODING_DEFAULT)
         return changes
 
-    def run(self, args: t.Infra.CliNamespace, cli: u.Infra.CliArgs) -> int:
+    def run(self, params: FlextInfraModelsDeps.ModernizeCommand) -> int:
         """Run pyproject modernization for the workspace."""
-        check_mode = bool(args.audit or cli.check)
-        dry_run = bool(cli.dry_run or check_mode)
-        project_names = cli.project_names() or []
+        check_mode = bool(params.audit or params.check)
+        dry_run = bool(params.dry_run or check_mode)
+        project_names = list(params.project_names or [])
         project_paths: Sequence[Path] | None = None
         if project_names:
             selected_projects = u.Infra.resolve_projects(self.root, project_names)
-            if selected_projects.is_failure:
+            if selected_projects.failure:
                 u.Infra.error(
                     selected_projects.error or "failed to resolve selected projects",
                 )
@@ -310,7 +310,7 @@ class FlextInfraPyprojectModernizer:
             on_success=lambda value: sorted(value),
         )
         root_doc: t.Cli.TomlDocument | None = u.Cli.toml_read(
-            self.root / c.Infra.Files.PYPROJECT_FILENAME
+            self.root / c.Infra.PYPROJECT_FILENAME
         )
         if root_doc is None:
             return 2
@@ -324,7 +324,7 @@ class FlextInfraPyprojectModernizer:
                 file_path,
                 canonical_dev=canonical_dev,
                 dry_run=dry_run,
-                skip_comments=bool(args.skip_comments),
+                skip_comments=params.skip_comments,
             )
             if not changes:
                 continue
@@ -343,7 +343,7 @@ class FlextInfraPyprojectModernizer:
                 u.Infra.info("(dry-run — no files modified)")
         if check_mode and total > 0:
             return 1
-        if not dry_run and (not bool(getattr(args, "skip_check", False))):
+        if not dry_run and (not params.skip_check):
             return self._run_build_check(files)
         return 0
 
@@ -367,46 +367,9 @@ class FlextInfraPyprojectModernizer:
                 has_warning = True
         return 1 if has_warning else 0
 
-    @staticmethod
-    def run_cli(argv: t.StrSequence | None = None) -> int:
-        """Execute pyproject modernization for the canonical deps CLI."""
-        parser = u.Infra.create_parser(
-            "flext-infra deps modernize",
-            "Modernize workspace pyproject files",
-            flags=u.Infra.SharedFlags(
-                include_apply=True,
-                include_check=True,
-                include_project=True,
-            ),
-        )
-        _ = parser.add_argument("--audit", action="store_true")
-        _ = parser.add_argument(
-            "--skip-check",
-            action="store_true",
-            help="Skip post-write build-system validation",
-        )
-        _ = parser.add_argument("--skip-comments", action="store_true")
-        args = parser.parse_args([] if argv is None else list(argv))
-        if bool(args.dry_run or args.audit or args.check):
-            args.skip_check = True
-        cli = u.Infra.resolve(args)
-        return FlextInfraPyprojectModernizer(workspace_root=cli.workspace).run(
-            args,
-            cli,
-        )
-
-    @staticmethod
-    def main(argv: t.StrSequence | None = None) -> int:
-        """Legacy entrypoint routed through the canonical deps CLI."""
-        return FlextInfraUtilitiesCliDispatch.run_command(
-            "deps",
-            "modernize",
-            argv,
-        )
-
 
 if __name__ == "__main__":
-    raise SystemExit(FlextInfraPyprojectModernizer.main())
+    raise SystemExit(0)
 
 
 __all__ = ["FlextInfraPyprojectModernizer"]

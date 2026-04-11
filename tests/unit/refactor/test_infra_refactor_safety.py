@@ -115,7 +115,7 @@ def test_refactor_project_integrates_safety_manager(tmp_path: Path) -> None:
     stub = EngineSafetyStub()
     engine.safety_manager = stub
     loaded = engine.load_rules()
-    assert loaded.is_success
+    assert loaded.success
     results = engine.refactor_project(tmp_path, dry_run=False, apply_safety=True)
     assert results
     assert all(item.success for item in results)
@@ -130,10 +130,10 @@ def test_clear_checkpoint_preserves_requested_backups(tmp_path: Path) -> None:
     drop_file.write_text("value = 2\n", encoding="utf-8")
     manager = FlextInfraRefactorSafetyManager()
     created = manager.create_pre_transformation_stash(tmp_path)
-    assert created.is_success
+    assert created.success
 
     cleared = manager.clear_checkpoint(keep=[keep_file])
 
-    assert cleared.is_success
+    assert cleared.success
     assert keep_file.with_suffix(".py.bak").exists()
     assert not drop_file.with_suffix(".py.bak").exists()

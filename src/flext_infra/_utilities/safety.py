@@ -27,13 +27,13 @@ class FlextInfraUtilitiesSafety:
             [c.Infra.GIT, "rev-parse", "--is-inside-work-tree"],
             cwd=repo,
         )
-        if repo_check.is_failure or repo_check.value.exit_code != 0:
+        if repo_check.failure or repo_check.value.exit_code != 0:
             return r[str].ok("")
         status_result = u.Cli.run_raw(
             [c.Infra.GIT, "status", "--porcelain"],
             cwd=repo,
         )
-        if status_result.is_failure or status_result.value.exit_code != 0:
+        if status_result.failure or status_result.value.exit_code != 0:
             return r[str].fail(status_result.error or "git status failed")
         if not status_result.value.stdout.strip():
             return r[str].ok("")
@@ -41,13 +41,13 @@ class FlextInfraUtilitiesSafety:
             [c.Infra.GIT, "stash", "push", "--include-untracked", "-m", label],
             cwd=repo,
         )
-        if stash_result.is_failure or stash_result.value.exit_code != 0:
+        if stash_result.failure or stash_result.value.exit_code != 0:
             return r[str].fail(stash_result.error or "git stash push failed")
         list_result = u.Cli.run_raw(
             [c.Infra.GIT, "stash", "list", "-1", "--format=%gd"],
             cwd=repo,
         )
-        if list_result.is_failure or list_result.value.exit_code != 0:
+        if list_result.failure or list_result.value.exit_code != 0:
             return r[str].fail(list_result.error or "git stash list failed")
         stash_ref = list_result.value.stdout.strip()
         if not stash_ref:
@@ -66,20 +66,20 @@ class FlextInfraUtilitiesSafety:
             [c.Infra.GIT, "rev-parse", "--is-inside-work-tree"],
             cwd=repo,
         )
-        if repo_check.is_failure or repo_check.value.exit_code != 0:
+        if repo_check.failure or repo_check.value.exit_code != 0:
             return r[bool].ok(True)
         checkpoint_ref = checkpoint.split(":", 1)[-1].strip()
         apply_result = u.Cli.run_raw(
             [c.Infra.GIT, "stash", "apply", checkpoint_ref],
             cwd=repo,
         )
-        if apply_result.is_failure or apply_result.value.exit_code != 0:
+        if apply_result.failure or apply_result.value.exit_code != 0:
             return r[bool].fail(apply_result.error or "git stash apply failed")
         drop_result = u.Cli.run_raw(
             [c.Infra.GIT, "stash", "drop", checkpoint_ref],
             cwd=repo,
         )
-        if drop_result.is_failure or drop_result.value.exit_code != 0:
+        if drop_result.failure or drop_result.value.exit_code != 0:
             return r[bool].fail(drop_result.error or "git stash drop failed")
         return r[bool].ok(True)
 
@@ -91,7 +91,7 @@ class FlextInfraUtilitiesSafety:
             if not file_path.exists():
                 continue
             bak = file_path.with_suffix(
-                file_path.suffix + c.Infra.SafeExecution.BAK_SUFFIX,
+                file_path.suffix + c.Infra.SAFE_EXECUTION_BAK_SUFFIX,
             )
             shutil.copy2(file_path, bak)
             bak_paths.append(bak)
@@ -101,7 +101,7 @@ class FlextInfraUtilitiesSafety:
     def restore_files(bak_paths: Sequence[Path]) -> None:
         """Move .bak files back to originals. Fail fast."""
         for bak in bak_paths:
-            original = Path(str(bak).removesuffix(c.Infra.SafeExecution.BAK_SUFFIX))
+            original = Path(str(bak).removesuffix(c.Infra.SAFE_EXECUTION_BAK_SUFFIX))
             shutil.move(str(bak), str(original))
 
     @staticmethod
@@ -136,7 +136,7 @@ class FlextInfraUtilitiesSafety:
         bak_paths = FlextInfraUtilitiesSafety.backup_files(files)
 
         transform_result = transform(files)
-        if transform_result.is_failure:
+        if transform_result.failure:
             FlextInfraUtilitiesSafety.restore_files(bak_paths)
             return m.Infra.SafeExecutionResult(
                 mode=mode,
@@ -155,7 +155,7 @@ class FlextInfraUtilitiesSafety:
             )
 
         validate_result = validate(files)
-        if validate_result.is_failure:
+        if validate_result.failure:
             FlextInfraUtilitiesSafety.restore_files(bak_paths)
             return m.Infra.SafeExecutionResult(
                 mode=mode,

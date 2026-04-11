@@ -23,12 +23,12 @@ class TestsFlextInfraUtilitiesDiscoveryConsolidated:
 
     def test_discover_project_roots_from_tmp_workspace(self, tmp_path: Path) -> None:
         project = tmp_path / "demo-project"
-        (project / c.Infra.Paths.DEFAULT_SRC_DIR).mkdir(parents=True)
-        (project / c.Infra.Files.MAKEFILE_FILENAME).write_text(
+        (project / c.Infra.DEFAULT_SRC_DIR).mkdir(parents=True)
+        (project / c.Infra.MAKEFILE_FILENAME).write_text(
             "all:\n",
             encoding="utf-8",
         )
-        (project / c.Infra.Files.PYPROJECT_FILENAME).write_text(
+        (project / c.Infra.PYPROJECT_FILENAME).write_text(
             "[tool.poetry]\nname='demo'\n",
             encoding="utf-8",
         )
@@ -41,13 +41,13 @@ class TestsFlextInfraUtilitiesDiscoveryConsolidated:
         self,
         tmp_path: Path,
     ) -> None:
-        workspace_src = tmp_path / c.Infra.Paths.DEFAULT_SRC_DIR
+        workspace_src = tmp_path / c.Infra.DEFAULT_SRC_DIR
         workspace_src.mkdir(parents=True)
-        (tmp_path / c.Infra.Files.MAKEFILE_FILENAME).write_text(
+        (tmp_path / c.Infra.MAKEFILE_FILENAME).write_text(
             "all:\n",
             encoding="utf-8",
         )
-        (tmp_path / c.Infra.Files.PYPROJECT_FILENAME).write_text(
+        (tmp_path / c.Infra.PYPROJECT_FILENAME).write_text(
             "[project]\nname='workspace'\n\n"
             "[tool.flext.workspace]\n"
             "members = ['beta', 'alpha']\n",
@@ -55,12 +55,12 @@ class TestsFlextInfraUtilitiesDiscoveryConsolidated:
         )
         for project_name in ("alpha", "beta"):
             project_root = tmp_path / project_name
-            (project_root / c.Infra.Paths.DEFAULT_SRC_DIR).mkdir(parents=True)
-            (project_root / c.Infra.Files.MAKEFILE_FILENAME).write_text(
+            (project_root / c.Infra.DEFAULT_SRC_DIR).mkdir(parents=True)
+            (project_root / c.Infra.MAKEFILE_FILENAME).write_text(
                 "all:\n",
                 encoding="utf-8",
             )
-            (project_root / c.Infra.Files.PYPROJECT_FILENAME).write_text(
+            (project_root / c.Infra.PYPROJECT_FILENAME).write_text(
                 f"[project]\nname='{project_name}'\n",
                 encoding="utf-8",
             )
@@ -71,8 +71,8 @@ class TestsFlextInfraUtilitiesDiscoveryConsolidated:
 
     def test_iter_python_files_returns_result_with_paths(self, tmp_path: Path) -> None:
         project = tmp_path / "pkg"
-        src_dir = project / c.Infra.Paths.DEFAULT_SRC_DIR
-        test_dir = project / c.Infra.Directories.TESTS
+        src_dir = project / c.Infra.DEFAULT_SRC_DIR
+        test_dir = project / c.Infra.DIR_TESTS
         src_dir.mkdir(parents=True)
         test_dir.mkdir(parents=True)
         module_file = src_dir / "mod.py"
@@ -87,7 +87,7 @@ class TestsFlextInfraUtilitiesDiscoveryConsolidated:
             include_scripts=False,
         )
 
-        assert result.is_success
+        assert result.success
         assert module_file in result.value
         assert test_file in result.value
 
@@ -99,7 +99,7 @@ class TestsFlextInfraUtilitiesDiscoveryConsolidated:
         broken_root.write_text("x", encoding="utf-8")
         result = u.Infra.iter_python_files(workspace_root=broken_root)
 
-        assert result.is_failure
+        assert result.failure
         error_text = result.error or ""
         assert "python file iteration failed" in error_text
 
@@ -108,19 +108,19 @@ class TestsFlextInfraUtilitiesDiscoveryConsolidated:
         tmp_path: Path,
     ) -> None:
         project = tmp_path
-        (project / c.Infra.Paths.DEFAULT_SRC_DIR).mkdir(parents=True)
+        (project / c.Infra.DEFAULT_SRC_DIR).mkdir(parents=True)
         (project / "pkg" / "container" / "venv" / "lib" / "site-packages").mkdir(
             parents=True,
         )
-        (project / c.Infra.Files.MAKEFILE_FILENAME).write_text(
+        (project / c.Infra.MAKEFILE_FILENAME).write_text(
             "all:\n",
             encoding="utf-8",
         )
-        (project / c.Infra.Files.PYPROJECT_FILENAME).write_text(
+        (project / c.Infra.PYPROJECT_FILENAME).write_text(
             "[project]\nname='workspace'\n",
             encoding="utf-8",
         )
-        legit_file = project / c.Infra.Paths.DEFAULT_SRC_DIR / "mod.py"
+        legit_file = project / c.Infra.DEFAULT_SRC_DIR / "mod.py"
         nested_venv_file = (
             project
             / "pkg"
@@ -138,7 +138,7 @@ class TestsFlextInfraUtilitiesDiscoveryConsolidated:
             project_roots=[project],
         )
 
-        assert result.is_success
+        assert result.success
         assert legit_file in result.value
         assert nested_venv_file not in result.value
 
@@ -147,8 +147,8 @@ class TestsFlextInfraUtilitiesDiscoveryConsolidated:
         second = tmp_path / "second"
         first.mkdir()
         second.mkdir()
-        first_pyproject = first / c.Infra.Files.PYPROJECT_FILENAME
-        second_pyproject = second / c.Infra.Files.PYPROJECT_FILENAME
+        first_pyproject = first / c.Infra.PYPROJECT_FILENAME
+        second_pyproject = second / c.Infra.PYPROJECT_FILENAME
         first_pyproject.write_text("[project]\nname='first'\n", encoding="utf-8")
         second_pyproject.write_text("[project]\nname='second'\n", encoding="utf-8")
 
@@ -157,7 +157,7 @@ class TestsFlextInfraUtilitiesDiscoveryConsolidated:
             project_paths=[first, second_pyproject],
         )
 
-        assert result.is_success
+        assert result.success
         assert result.value == [first_pyproject, second_pyproject]
 
     def test_find_all_pyproject_files_skips_excluded_dirs(self, tmp_path: Path) -> None:
@@ -165,14 +165,14 @@ class TestsFlextInfraUtilitiesDiscoveryConsolidated:
         skipped = tmp_path / ".sisyphus"
         included.mkdir()
         skipped.mkdir()
-        included_file = included / c.Infra.Files.PYPROJECT_FILENAME
-        skipped_file = skipped / c.Infra.Files.PYPROJECT_FILENAME
+        included_file = included / c.Infra.PYPROJECT_FILENAME
+        skipped_file = skipped / c.Infra.PYPROJECT_FILENAME
         included_file.write_text("[project]\nname='ok'\n", encoding="utf-8")
         skipped_file.write_text("[project]\nname='skip'\n", encoding="utf-8")
 
         result = u.Infra.find_all_pyproject_files(tmp_path)
 
-        assert result.is_success
+        assert result.success
         assert included_file in result.value
         assert skipped_file not in result.value
 
@@ -184,21 +184,21 @@ class TestsFlextInfraUtilitiesDiscoveryConsolidated:
         broken_root.write_text("x", encoding="utf-8")
         result = u.Infra.find_all_pyproject_files(broken_root)
 
-        assert result.is_success
+        assert result.success
         assert result.value == []
 
     def test_discover_projects_returns_project_info(self, tmp_path: Path) -> None:
         project = tmp_path / "alpha"
-        (project / c.Infra.Paths.DEFAULT_SRC_DIR).mkdir(parents=True)
-        (project / c.Infra.Directories.TESTS).mkdir(parents=True)
-        (project / c.Infra.Files.PYPROJECT_FILENAME).write_text(
+        (project / c.Infra.DEFAULT_SRC_DIR).mkdir(parents=True)
+        (project / c.Infra.DIR_TESTS).mkdir(parents=True)
+        (project / c.Infra.PYPROJECT_FILENAME).write_text(
             "[project]\nname='alpha'\ndependencies=['flext-core>=0.1.0']\n",
             encoding="utf-8",
         )
 
         result = u.Infra.discover_projects(tmp_path)
 
-        assert result.is_success
+        assert result.success
         assert len(result.value) == 1
         info = result.value[0]
         assert isinstance(info, m.Infra.ProjectInfo)
@@ -211,20 +211,20 @@ class TestsFlextInfraUtilitiesDiscoveryConsolidated:
         self,
         tmp_path: Path,
     ) -> None:
-        (tmp_path / c.Infra.Files.PYPROJECT_FILENAME).write_text(
+        (tmp_path / c.Infra.PYPROJECT_FILENAME).write_text(
             "[project]\nname='workspace'\n\n[tool.uv.workspace]\nmembers = ['alpha']\n",
             encoding="utf-8",
         )
         project = tmp_path / "alpha"
-        (project / c.Infra.Paths.DEFAULT_SRC_DIR).mkdir(parents=True)
-        (project / c.Infra.Files.PYPROJECT_FILENAME).write_text(
+        (project / c.Infra.DEFAULT_SRC_DIR).mkdir(parents=True)
+        (project / c.Infra.PYPROJECT_FILENAME).write_text(
             "[project]\nname='alpha'\n",
             encoding="utf-8",
         )
 
         result = u.Infra.discover_projects(tmp_path)
 
-        assert result.is_success
+        assert result.success
         assert len(result.value) == 1
         assert (
             result.value[0].workspace_role
@@ -234,22 +234,19 @@ class TestsFlextInfraUtilitiesDiscoveryConsolidated:
     def test_discover_projects_accepts_project_root_as_workspace(
         self, tmp_path: Path
     ) -> None:
-        (tmp_path / c.Infra.Paths.DEFAULT_SRC_DIR / "demo_pkg").mkdir(parents=True)
-        (
-            tmp_path
-            / c.Infra.Paths.DEFAULT_SRC_DIR
-            / "demo_pkg"
-            / c.Infra.Files.INIT_PY
-        ).write_text("", encoding="utf-8")
-        (tmp_path / c.Infra.Directories.TESTS).mkdir()
-        (tmp_path / c.Infra.Files.PYPROJECT_FILENAME).write_text(
+        (tmp_path / c.Infra.DEFAULT_SRC_DIR / "demo_pkg").mkdir(parents=True)
+        (tmp_path / c.Infra.DEFAULT_SRC_DIR / "demo_pkg" / c.Infra.INIT_PY).write_text(
+            "", encoding="utf-8"
+        )
+        (tmp_path / c.Infra.DIR_TESTS).mkdir()
+        (tmp_path / c.Infra.PYPROJECT_FILENAME).write_text(
             "[project]\nname='demo-project'\ndependencies=['flext-core>=0.1.0']\n",
             encoding="utf-8",
         )
 
         result = u.Infra.discover_projects(tmp_path)
 
-        assert result.is_success
+        assert result.success
         assert len(result.value) == 1
         assert result.value[0].path == tmp_path
         assert result.value[0].name == "demo-project"
@@ -264,6 +261,6 @@ class TestsFlextInfraUtilitiesDiscoveryConsolidated:
         broken_root.write_text("x", encoding="utf-8")
         result = u.Infra.discover_projects(broken_root)
 
-        assert result.is_failure
+        assert result.failure
         error_text = result.error or ""
         assert "invalid workspace root" in error_text

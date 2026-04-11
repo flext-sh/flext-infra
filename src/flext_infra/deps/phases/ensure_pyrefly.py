@@ -16,6 +16,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
     """Ensure standard Pyrefly configuration for max-strict typing."""
 
     def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:
+        """Store tool configuration used when enforcing pyrefly project settings."""
         self._tool_config = tool_config
 
     def apply(
@@ -26,6 +27,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
         project_dir: Path | None = None,
         paths_manager: FlextInfraExtraPathsManager | None = None,
     ) -> t.StrSequence:
+        """Apply canonical pyrefly table values, paths, and strict error toggles."""
         pyrefly_rules = self._tool_config.tools.pyrefly
         if project_dir is not None and paths_manager is not None:
             expected_search = paths_manager.pyrefly_search_paths(
@@ -37,8 +39,8 @@ class FlextInfraEnsurePyreflyConfigPhase:
                 is_root=is_root,
             )
         else:
-            expected_search = [c.Infra.Paths.DEFAULT_SRC_DIR]
-            expected_includes = [f"{c.Infra.Paths.DEFAULT_SRC_DIR}/**/*.py*"]
+            expected_search = [c.Infra.DEFAULT_SRC_DIR]
+            expected_includes = [f"{c.Infra.DEFAULT_SRC_DIR}/**/*.py*"]
         error_values: Sequence[tuple[str, t.Cli.JsonValue]] = (
             *(
                 (error_rule, True)

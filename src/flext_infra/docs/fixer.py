@@ -56,7 +56,7 @@ class FlextInfraDocFixer(s[bool]):
             output_dir=self.docs_output_dir,
             apply=self.apply_changes,
         )
-        if result.is_failure:
+        if result.failure:
             return r[bool].fail(result.error or "fix failed")
         return r[bool].ok(True)
 
@@ -87,7 +87,7 @@ class FlextInfraDocFixer(s[bool]):
             changed_files=len(items),
             applied=apply,
             items=items,
-            result=c.Infra.Status.OK if apply or not items else c.Infra.Status.WARN,
+            result=c.Infra.STATUS_OK if apply or not items else c.Infra.STATUS_WARN,
             reason=f"changes:{len(items)}",
             passed=apply or not items,
         )

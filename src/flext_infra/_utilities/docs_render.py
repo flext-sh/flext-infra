@@ -80,7 +80,7 @@ class FlextInfraUtilitiesDocsRender:
     def docs_directive_page(title: str, dotted_path: str) -> str:
         """Return a mkdocstrings page for a module path."""
         return "\n".join([
-            c.Infra.SourceCode.GENERATED_HEADER,
+            c.Infra.GENERATED_HEADER,
             "",
             f"# {title}",
             "",
@@ -110,7 +110,7 @@ class FlextInfraUtilitiesDocsRender:
             "public_symbols",
         )
         return "\n".join([
-            c.Infra.SourceCode.GENERATED_HEADER,
+            c.Infra.GENERATED_HEADER,
             "",
             f"# {scope.name} Documentation",
             "",
@@ -141,7 +141,7 @@ class FlextInfraUtilitiesDocsRender:
     def docs_guides_index(scope: m.Infra.DocScope) -> str:
         """Return a minimal guides index for projects missing one."""
         return "\n".join([
-            c.Infra.SourceCode.GENERATED_HEADER,
+            c.Infra.GENERATED_HEADER,
             "",
             f"# {scope.name} Guides",
             "",
@@ -162,7 +162,7 @@ class FlextInfraUtilitiesDocsRender:
         facades = FlextInfraUtilitiesDocsRender._string_list(data, "facades")
         modules = FlextInfraUtilitiesDocsRender._string_list(data, "modules")
         return "\n".join([
-            c.Infra.SourceCode.GENERATED_HEADER,
+            c.Infra.GENERATED_HEADER,
             "",
             f"# {scope.name} API Reference",
             "",
@@ -278,7 +278,7 @@ class FlextInfraUtilitiesDocsRender:
             limit=8,
         )
         return "\n".join([
-            c.Infra.SourceCode.GENERATED_HEADER,
+            c.Infra.GENERATED_HEADER,
             "",
             f"# {(data.get('site_title', '') or scope.name)} API Overview",
             "",
@@ -307,7 +307,7 @@ class FlextInfraUtilitiesDocsRender:
     ) -> str:
         """Return the generated module index page for one project."""
         lines: t.MutableSequenceOf[str] = [
-            c.Infra.SourceCode.GENERATED_HEADER,
+            c.Infra.GENERATED_HEADER,
             "",
             f"# {scope.name} Module Index",
             "",
@@ -397,7 +397,7 @@ class FlextInfraUtilitiesDocsRender:
             or "_none_"
         )
         return "\n".join([
-            c.Infra.SourceCode.GENERATED_HEADER,
+            c.Infra.GENERATED_HEADER,
             "",
             f"# {str(data.get('site_title', '')).strip() or 'FLEXT Workspace'} API Overview",
             "",
@@ -429,7 +429,7 @@ class FlextInfraUtilitiesDocsRender:
             for entry in entries
         ]
         return "\n".join([
-            c.Infra.SourceCode.GENERATED_HEADER,
+            c.Infra.GENERATED_HEADER,
             "",
             "# FLEXT Project Catalog",
             "",

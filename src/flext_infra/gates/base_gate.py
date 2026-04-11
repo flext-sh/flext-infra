@@ -1,3 +1,5 @@
+"""Shared gate template abstraction for workspace quality checks."""
+
 from __future__ import annotations
 
 import time
@@ -10,6 +12,8 @@ from flext_infra import c, m, p, t, u
 
 
 class FlextInfraGate(ABC):
+    """Abstract template implementing common check/fix execution flow for gates."""
+
     gate_id: ClassVar[str] = ""
     gate_name: ClassVar[str] = ""
     can_fix: ClassVar[bool] = False
@@ -22,6 +26,7 @@ class FlextInfraGate(ABC):
         *,
         runner: p.Cli.CommandRunner | None = None,
     ) -> None:
+        """Bind workspace root and optional command runner override."""
         self._workspace_root = workspace_root
         self._runner = runner
 
@@ -128,7 +133,7 @@ class FlextInfraGate(ABC):
     ) -> int:
         """Timeout for the check command. Override for long-running tools."""
         _ = project_dir, ctx
-        return c.Infra.Timeouts.DEFAULT
+        return c.Infra.TIMEOUT_DEFAULT
 
     def _check_env(
         self,
@@ -202,12 +207,12 @@ class FlextInfraGate(ABC):
         self,
         cmd: t.StrSequence,
         cwd: Path,
-        timeout: int = c.Infra.Timeouts.DEFAULT,
+        timeout: int = c.Infra.TIMEOUT_DEFAULT,
         env: t.StrMapping | None = None,
     ) -> m.Cli.CommandOutput:
         runner = self._runner or u.Cli
         result = runner.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
-        if result.is_failure:
+        if result.failure:
             return m.Cli.CommandOutput(
                 stdout="",
                 stderr=result.error or "command execution failed",
@@ -238,7 +243,7 @@ class FlextInfraGate(ABC):
         )
 
     def _existing_check_dirs(self, project_dir: Path) -> t.StrSequence:
-        has_root_python = any(project_dir.glob(c.Infra.Extensions.PYTHON_GLOB)) or any(
+        has_root_python = any(project_dir.glob(c.Infra.EXT_PYTHON_GLOB)) or any(
             project_dir.glob("*.pyi"),
         )
         discovered_dirs = u.Infra.discover_python_dirs(project_dir)
@@ -253,7 +258,7 @@ class FlextInfraGate(ABC):
             path = project_dir / directory
             if not path.is_dir():
                 continue
-            if next(path.rglob(c.Infra.Extensions.PYTHON_GLOB), None) or next(
+            if next(path.rglob(c.Infra.EXT_PYTHON_GLOB), None) or next(
                 path.rglob("*.pyi"),
                 None,
             ):

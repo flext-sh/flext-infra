@@ -9,7 +9,8 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field, computed_field, model_serializer
 
 from flext_cli import m
-from flext_infra import FlextInfraModelsMixins, c, t
+from flext_infra import c, t
+from flext_infra._models.mixins import FlextInfraModelsMixins
 
 
 class FlextInfraModelsCheck:
@@ -28,11 +29,11 @@ class FlextInfraModelsCheck:
         reports_dir: Annotated[
             str,
             Field(
-                default=f"{c.Infra.Reporting.REPORTS_DIR_NAME}/check",
+                default=f"{c.Infra.REPORTS_DIR_NAME}/check",
                 alias="reports-dir",
                 description="Directory used to write check reports",
             ),
-        ] = f"{c.Infra.Reporting.REPORTS_DIR_NAME}/check"
+        ] = f"{c.Infra.REPORTS_DIR_NAME}/check"
         fix: Annotated[
             bool,
             Field(default=False, description="Apply supported gate fixes before run"),
@@ -82,7 +83,7 @@ class FlextInfraModelsCheck:
                 default=False,
                 description="Apply fixes in-place instead of dry-run mode",
                 json_schema_extra={
-                    "typer_param_decls": list(c.Infra.Cli.APPLY_OPTION_DECLS),
+                    "typer_param_decls": list(c.Infra.CLI_APPLY_OPTION_DECLS),
                 },
             ),
         ] = False

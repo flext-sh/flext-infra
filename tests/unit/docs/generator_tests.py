@@ -20,7 +20,7 @@ def test_generate_returns_reports_for_root_and_selected_project(tmp_path: Path) 
         apply=False,
     )
 
-    assert result.is_success
+    assert result.success
     assert [report.scope for report in result.value] == ["root", "flext-a"]
 
 
@@ -36,7 +36,7 @@ def test_generate_apply_writes_summary_and_report(tmp_path: Path) -> None:
         apply=True,
     )
 
-    assert result.is_success
+    assert result.success
     assert (workspace / ".reports/docs/generate-summary.json").exists()
     assert (workspace / ".reports/docs/generate-report.md").exists()
     assert (workspace / "flext-a/.reports/docs/generate-report.md").exists()
@@ -47,7 +47,7 @@ def test_generate_dry_run_marks_report_as_warn(tmp_path: Path) -> None:
 
     result = FlextInfraDocGenerator().generate(workspace, apply=False)
 
-    assert result.is_success
+    assert result.success
     assert result.value[0].result == "WARN"
 
 

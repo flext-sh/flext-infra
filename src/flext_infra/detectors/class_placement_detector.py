@@ -22,7 +22,7 @@ class FlextInfraClassPlacementDetector:
         file_path = ctx.file_path
         rope_project = ctx.rope_project
         if (
-            file_path.name in c.Infra.ClassPlacement.CANONICAL_MODEL_FILES
+            file_path.name in c.Infra.PLACEMENT_CANONICAL_MODEL_FILES
             or "_models" in file_path.parts
             or file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES
             or file_path.name in c.Infra.NAMESPACE_SETTINGS_FILE_NAMES
@@ -40,7 +40,7 @@ class FlextInfraClassPlacementDetector:
                     base_name.rsplit(".", maxsplit=1)[-1]
                     for base_name in ci.bases
                     if base_name.rsplit(".", maxsplit=1)[-1]
-                    in c.Infra.ClassPlacement.PYDANTIC_BASE_NAMES
+                    in c.Infra.PLACEMENT_PYDANTIC_BASE_NAMES
                 ),
                 None,
             )

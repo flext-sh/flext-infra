@@ -29,7 +29,7 @@ class FlextInfraRefactorPatternCorrectionsRule:
         source = resource.read()
         fix_action = u.Infra.get_str_key(
             self.config,
-            c.Infra.ReportKeys.FIX_ACTION,
+            c.Infra.RK_FIX_ACTION,
             case="lower",
         )
         if fix_action == "convert_dict_to_mapping_annotations":
@@ -53,7 +53,8 @@ class FlextInfraRefactorPatternCorrectionsRule:
                     new_source,
                     [f"Converted {count} dict annotations to Mapping"],
                 )
-            return (source, [])
+            no_changes: list[str] = []
+            return (source, no_changes)
         if fix_action == "remove_redundant_casts":
             raw_types = self.config.get("redundant_type_targets", [])
             removable_types = set(u.Infra.string_list(raw_types))
@@ -67,7 +68,8 @@ class FlextInfraRefactorPatternCorrectionsRule:
                     new_source,
                     [f"Removed {count} redundant cast() calls"],
                 )
-            return (source, [])
+            no_changes: list[str] = []
+            return (source, no_changes)
         if fix_action == "fix_silent_failure_sentinels":
             new_source, changes = u.Infra.fix_silent_failure_sentinels(
                 rope_project,
@@ -75,7 +77,8 @@ class FlextInfraRefactorPatternCorrectionsRule:
                 apply=not dry_run,
             )
             return new_source, list(changes)
-        return (source, [])
+        no_changes: list[str] = []
+        return (source, no_changes)
 
 
 __all__ = ["FlextInfraRefactorPatternCorrectionsRule"]

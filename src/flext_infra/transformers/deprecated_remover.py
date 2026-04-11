@@ -45,7 +45,7 @@ class FlextInfraRefactorDeprecatedRemover:
         """Check if a class is deprecated by name or __init__ warning."""
         if "deprecated" in class_name.lower():
             return True
-        return c.Infra.Dunders.INIT in class_body and bool(
+        return c.Infra.DUNDER_INIT in class_body and bool(
             self._DEPRECATION_WARN_RE.search(class_body)
         )
 

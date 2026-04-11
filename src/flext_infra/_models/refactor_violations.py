@@ -8,7 +8,8 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from flext_core import m
-from flext_infra import FlextInfraModelsMixins, t
+from flext_infra import t
+from flext_infra._models.mixins import FlextInfraModelsMixins
 
 
 class FlextInfraModelsRefactorViolations:

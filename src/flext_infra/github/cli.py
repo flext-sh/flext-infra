@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol
 
-from flext_cli import cli as cli_service
+from flext_cli.api import cli as cli_service
 from flext_infra import c, m, t
 
 if TYPE_CHECKING:

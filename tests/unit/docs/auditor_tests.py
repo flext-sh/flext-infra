@@ -43,7 +43,7 @@ class TestAuditorCore:
         tmp_path: Path,
     ) -> None:
         result = auditor.audit(tmp_path)
-        tm.that(result.is_success or result.is_failure, eq=True)
+        tm.that(result.success or result.failure, eq=True)
 
     def test_valid_scope_returns_success(
         self,
@@ -59,7 +59,7 @@ class TestAuditorCore:
         tmp_path: Path,
     ) -> None:
         result = auditor.audit(tmp_path)
-        if result.is_success and result.value:
+        if result.success and result.value:
             result.value[0]
 
     def test_issue_structure(self) -> None:
@@ -102,7 +102,7 @@ class TestAuditorCore:
             output_dir=output_dir_value,
             params=m.Infra.AuditScopeParams(check=check, strict=strict),
         )
-        tm.that(result.is_success or result.is_failure, eq=True)
+        tm.that(result.success or result.failure, eq=True)
 
     def test_report_frozen(self) -> None:
         tm.that(m.Infra.DocsPhaseReport.model_config.get("frozen"), eq=True)

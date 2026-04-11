@@ -192,88 +192,139 @@ class FlextInfraConstantsBase(
         "lint,format,pyrefly,mypy,pyright,silent-failure,security,markdown,go"
     )
 
-    class TomlMerge:
-        """Merge strategies for TOML list synchronization."""
+    @unique
+    class TomlMergeMode(StrEnum):
+        """SSOT merge strategies for TOML list synchronization."""
 
-        REPLACE: Final[str] = "replace"
-        ADDITIVE: Final[str] = "additive"
-        MERGE: Final[str] = "merge"
+        REPLACE = "replace"
+        ADDITIVE = "additive"
+        MERGE = "merge"
 
-    class Status:
-        """Status strings for check results."""
+    TOML_MERGE_REPLACE: Final[str] = TomlMergeMode.REPLACE.value
+    TOML_MERGE_ADDITIVE: Final[str] = TomlMergeMode.ADDITIVE.value
+    TOML_MERGE_MERGE: Final[str] = TomlMergeMode.MERGE.value
 
-        PASSED: Final[str] = "PASS"
-        FAIL: Final[str] = "FAIL"
-        OK: Final[str] = "OK"
-        WARN: Final[str] = "WARN"
+    @unique
+    class ResultStatus(StrEnum):
+        """SSOT status values for reports and gate summaries."""
 
-    class Defaults:
-        """Default fallback values."""
+        PASSED = "PASS"
+        FAIL = "FAIL"
+        OK = "OK"
+        WARN = "WARN"
 
-        UNKNOWN: Final[str] = "unknown"
-        UNNAMED: Final[str] = "unnamed"
+    STATUS_PASSED: Final[str] = ResultStatus.PASSED.value
+    STATUS_FAIL: Final[str] = ResultStatus.FAIL.value
+    STATUS_OK: Final[str] = ResultStatus.OK.value
+    STATUS_WARN: Final[str] = ResultStatus.WARN.value
 
-    class MatchModes:
-        """Scanner match mode constants."""
+    @unique
+    class MatchMode(StrEnum):
+        """SSOT scanner match mode values."""
 
-        PRESENT: Final[str] = "present"
-        ABSENT: Final[str] = "absent"
+        PRESENT = "present"
+        ABSENT = "absent"
 
-    class Modes:
-        """Operation mode constants."""
+    MATCH_MODE_PRESENT: Final[str] = MatchMode.PRESENT.value
+    MATCH_MODE_ABSENT: Final[str] = MatchMode.ABSENT.value
 
-        BASELINE: Final[str] = "baseline"
-        STRICT: Final[str] = "strict"
+    @unique
+    class OperationMode(StrEnum):
+        """SSOT operation mode values."""
 
-    class Severity:
-        """Severity level constants for check/report results."""
+        BASELINE = "baseline"
+        STRICT = "strict"
 
-        ERROR: Final[str] = "error"
-        WARNING: Final[str] = "warning"
-        NOTE: Final[str] = "note"
-        LOW: Final[str] = "low"
-        SKIP: Final[str] = "skip"
+    MODE_BASELINE: Final[str] = OperationMode.BASELINE.value
+    MODE_STRICT: Final[str] = OperationMode.STRICT.value
 
-    class ReportKeys:
-        """Common dictionary key names for reports and results."""
+    @unique
+    class SeverityLevel(StrEnum):
+        """SSOT severity levels."""
 
-        STATUS: Final[str] = "status"
-        FILE: Final[str] = "file"
-        MESSAGE: Final[str] = "message"
-        SUMMARY: Final[str] = "summary"
-        TOTAL: Final[str] = "total"
-        RULES: Final[str] = "rules"
-        RELEASE: Final[str] = "release"
-        ACTION: Final[str] = "action"
-        SCOPE: Final[str] = "scope"
-        VIOLATIONS: Final[str] = "violations"
-        VIOLATIONS_COUNT: Final[str] = "violations_count"
-        RULE_ID: Final[str] = "rule_id"
-        OK: Final[str] = "ok"
-        ENABLED: Final[str] = "enabled"
-        PROJECTS: Final[str] = "projects"
-        WORKSPACE: Final[str] = "workspace"
-        ROOT: Final[str] = "root"
-        ID: Final[str] = "id"
-        URL: Final[str] = "url"
-        CLASS_NESTING: Final[str] = "class_nesting"
-        TARGET_NAMESPACE: Final[str] = "target_namespace"
-        SOURCE_SYMBOL: Final[str] = "source_symbol"
-        LOOSE_NAME: Final[str] = "loose_name"
-        REWRITE_SCOPE: Final[str] = "rewrite_scope"
-        CONFIDENCE: Final[str] = "confidence"
-        FIX_ACTION: Final[str] = "fix_action"
-        CURRENT_FILE: Final[str] = "current_file"
-        VIOLATION_TYPE: Final[str] = "violation_type"
-        SUGGESTED_FIX: Final[str] = "suggested_fix"
-        HELPER_CONSOLIDATION: Final[str] = "helper_consolidation"
-        POST_CHECKS: Final[str] = "post_checks"
+        ERROR = "error"
+        WARNING = "warning"
+        NOTE = "note"
+        LOW = "low"
+        SKIP = "skip"
 
-    class Cli:
-        """CLI integration constants."""
+    SEVERITY_ERROR: Final[str] = SeverityLevel.ERROR.value
+    SEVERITY_WARNING: Final[str] = SeverityLevel.WARNING.value
+    SEVERITY_NOTE: Final[str] = SeverityLevel.NOTE.value
+    SEVERITY_LOW: Final[str] = SeverityLevel.LOW.value
+    SEVERITY_SKIP: Final[str] = SeverityLevel.SKIP.value
 
-        APPLY_OPTION_DECLS: Final[tuple[str, ...]] = ("--apply/--dry-run",)
-        "Typer dual-flag declarations for --apply/--dry-run option."
+    DEFAULT_UNKNOWN: Final[str] = "unknown"
+    DEFAULT_UNNAMED: Final[str] = "unnamed"
+
+    RK_STATUS: Final[str] = "status"
+    RK_FILE: Final[str] = "file"
+    RK_MESSAGE: Final[str] = "message"
+    RK_SUMMARY: Final[str] = "summary"
+    RK_TOTAL: Final[str] = "total"
+    RK_RULES: Final[str] = "rules"
+    RK_RELEASE: Final[str] = "release"
+    RK_ACTION: Final[str] = "action"
+    RK_SCOPE: Final[str] = "scope"
+    RK_VIOLATIONS: Final[str] = "violations"
+    RK_VIOLATIONS_COUNT: Final[str] = "violations_count"
+    RK_RULE_ID: Final[str] = "rule_id"
+    RK_OK: Final[str] = "ok"
+    RK_ENABLED: Final[str] = "enabled"
+    RK_PROJECTS: Final[str] = "projects"
+    RK_WORKSPACE: Final[str] = "workspace"
+    RK_ROOT: Final[str] = "root"
+    RK_ID: Final[str] = "id"
+    RK_URL: Final[str] = "url"
+    RK_CLASS_NESTING: Final[str] = "class_nesting"
+    RK_TARGET_NAMESPACE: Final[str] = "target_namespace"
+    RK_SOURCE_SYMBOL: Final[str] = "source_symbol"
+    RK_LOOSE_NAME: Final[str] = "loose_name"
+    RK_REWRITE_SCOPE: Final[str] = "rewrite_scope"
+    RK_CONFIDENCE: Final[str] = "confidence"
+    RK_FIX_ACTION: Final[str] = "fix_action"
+    RK_CURRENT_FILE: Final[str] = "current_file"
+    RK_VIOLATION_TYPE: Final[str] = "violation_type"
+    RK_SUGGESTED_FIX: Final[str] = "suggested_fix"
+    RK_HELPER_CONSOLIDATION: Final[str] = "helper_consolidation"
+    RK_POST_CHECKS: Final[str] = "post_checks"
+
+    REPORT_KEYS: Final[frozenset[str]] = frozenset({
+        RK_STATUS,
+        RK_FILE,
+        RK_MESSAGE,
+        RK_SUMMARY,
+        RK_TOTAL,
+        RK_RULES,
+        RK_RELEASE,
+        RK_ACTION,
+        RK_SCOPE,
+        RK_VIOLATIONS,
+        RK_VIOLATIONS_COUNT,
+        RK_RULE_ID,
+        RK_OK,
+        RK_ENABLED,
+        RK_PROJECTS,
+        RK_WORKSPACE,
+        RK_ROOT,
+        RK_ID,
+        RK_URL,
+        RK_CLASS_NESTING,
+        RK_TARGET_NAMESPACE,
+        RK_SOURCE_SYMBOL,
+        RK_LOOSE_NAME,
+        RK_REWRITE_SCOPE,
+        RK_CONFIDENCE,
+        RK_FIX_ACTION,
+        RK_CURRENT_FILE,
+        RK_VIOLATION_TYPE,
+        RK_SUGGESTED_FIX,
+        RK_HELPER_CONSOLIDATION,
+        RK_POST_CHECKS,
+    })
+
+    CLI_APPLY_OPTION_DECLS: Final[tuple[str, ...]] = ("--apply/--dry-run",)
+    "Typer dual-flag declarations for --apply/--dry-run option."
 
     @unique
     class FacadeFamily(StrEnum):
@@ -285,13 +336,10 @@ class FlextInfraConstantsBase(
         M = "m"
         U = "u"
 
-    class SafeExecution:
-        """Constants for safe execution pipeline with automatic rollback."""
-
-        DEFAULT_GATES: Final[str] = "lint,pyrefly"
-        "Default quality gates for post-transform validation."
-        BAK_SUFFIX: Final[str] = ".bak"
-        "File backup suffix for copy-on-write safety."
+    SAFE_EXECUTION_DEFAULT_GATES: Final[str] = "lint,pyrefly"
+    "Default quality gates for post-transform validation."
+    SAFE_EXECUTION_BAK_SUFFIX: Final[str] = ".bak"
+    "File backup suffix for copy-on-write safety."
 
     @unique
     class ExecutionMode(StrEnum):

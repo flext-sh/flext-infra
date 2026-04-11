@@ -59,10 +59,10 @@ class FlextInfraDocValidator(s[bool]):
             output_dir=self.docs_output_dir,
             apply=self.apply_changes,
         )
-        if result.is_failure:
+        if result.failure:
             return r[bool].fail(result.error or "validate failed")
         failures = sum(
-            1 for report in result.value if report.result == c.Infra.Status.FAIL
+            1 for report in result.value if report.result == c.Infra.STATUS_FAIL
         )
         if failures:
             return r[bool].fail(f"Validate found {failures} failure(s)")
@@ -98,27 +98,27 @@ class FlextInfraDocValidator(s[bool]):
         apply_mode: bool,
     ) -> m.Infra.DocsPhaseReport:
         """Validate one docs scope and persist the standard reports."""
-        status = c.Infra.Status.OK
+        status = c.Infra.STATUS_OK
         messages: list[str] = []
         missing_adr_skills: t.StrSequence = []
         config_exists = (
             scope.path / "docs/architecture/architecture_config.json"
         ).exists()
-        if scope.name == c.Infra.ReportKeys.ROOT and config_exists:
+        if scope.name == c.Infra.RK_ROOT and config_exists:
             code, missing = self._run_adr_skill_check(scope.path)
             missing_adr_skills = missing
             if code != 0:
-                status = c.Infra.Status.FAIL
+                status = c.Infra.STATUS_FAIL
                 messages.append(
                     f"missing adr references in skills: {', '.join(missing)}"
                 )
         missing_paths = u.Infra.docs_missing_required_paths(scope)
         if missing_paths:
-            status = c.Infra.Status.FAIL
+            status = c.Infra.STATUS_FAIL
             messages.append(f"missing required docs files: {', '.join(missing_paths)}")
         contract_messages = u.Infra.docs_contract_messages(scope)
         if contract_messages:
-            status = c.Infra.Status.FAIL
+            status = c.Infra.STATUS_FAIL
             messages.extend(contract_messages)
         message = "; ".join(messages) if messages else "validation passed"
         wrote_todo = u.Infra.docs_write_todo(scope, apply_mode=apply_mode)
@@ -129,13 +129,13 @@ class FlextInfraDocValidator(s[bool]):
             message=message,
             missing_adr_skills=missing_adr_skills,
             todo_written=wrote_todo,
-            passed=status == c.Infra.Status.OK,
+            passed=status == c.Infra.STATUS_OK,
         )
         u.Infra.docs_write_validate_reports(scope, report)
         self.logger.info(
             "docs_validate_scope_completed",
             project=scope.name,
-            phase=c.Infra.Verbs.VALIDATE,
+            phase=c.Infra.VERB_VALIDATE,
             result=status,
             reason=message,
         )

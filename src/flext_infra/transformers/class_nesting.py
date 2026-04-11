@@ -58,7 +58,7 @@ class FlextInfraRefactorClassNestingTransformer(FlextInfraRopeTransformer):
     ) -> t.Infra.TransformResult:
         """Apply class nesting to in-memory source without persisting."""
         if existing_names is None:
-            existing_names = set(c.Infra.SourceCode.CLASS_NAME_RE.findall(source))
+            existing_names = set(c.Infra.CLASS_NAME_RE.findall(source))
         collected: dict[str, list[str]] = defaultdict(list)
         for class_name, target_namespace in self._mappings.items():
             if class_name not in existing_names:
@@ -67,7 +67,8 @@ class FlextInfraRefactorClassNestingTransformer(FlextInfraRopeTransformer):
                 continue
             collected[target_namespace].append(class_name)
         if not collected:
-            return source, []
+            no_changes: list[str] = []
+            return source, no_changes
         updated = source
         for namespace, class_names in collected.items():
             if not self._ns_op_allowed(class_names, namespace, "creation"):

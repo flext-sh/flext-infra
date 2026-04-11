@@ -17,36 +17,36 @@ class TestFlextInfraConstantsPathsNamespace:
     """Tests for Paths namespace constants."""
 
     def test_venv_bin_rel_constant(self) -> None:
-        tm.that(c.Infra.Paths.VENV_BIN_REL, eq=".venv/bin")
+        tm.that(c.Infra.VENV_BIN_REL, eq=".venv/bin")
 
     def test_default_src_dir_constant(self) -> None:
-        tm.that(c.Infra.Paths.DEFAULT_SRC_DIR, eq="src")
+        tm.that(c.Infra.DEFAULT_SRC_DIR, eq="src")
 
     def test_paths_constants_are_strings(self) -> None:
-        tm.that(c.Infra.Paths.VENV_BIN_REL, is_=str)
-        tm.that(c.Infra.Paths.DEFAULT_SRC_DIR, is_=str)
+        tm.that(c.Infra.VENV_BIN_REL, is_=str)
+        tm.that(c.Infra.DEFAULT_SRC_DIR, is_=str)
 
 
 class TestFlextInfraConstantsFilesNamespace:
     """Tests for Files namespace constants."""
 
     def test_pyproject_filename_constant(self) -> None:
-        tm.that(c.Infra.Files.PYPROJECT_FILENAME, eq="pyproject.toml")
+        tm.that(c.Infra.PYPROJECT_FILENAME, eq="pyproject.toml")
 
     def test_makefile_filename_constant(self) -> None:
-        tm.that(c.Infra.Files.MAKEFILE_FILENAME, eq="Makefile")
+        tm.that(c.Infra.MAKEFILE_FILENAME, eq="Makefile")
 
     def test_base_mk_constant(self) -> None:
-        tm.that(c.Infra.Files.BASE_MK, eq="base.mk")
+        tm.that(c.Infra.BASE_MK, eq="base.mk")
 
     def test_go_mod_constant(self) -> None:
-        tm.that(c.Infra.Files.GO_MOD, eq="go.mod")
+        tm.that(c.Infra.GO_MOD, eq="go.mod")
 
     def test_files_constants_are_strings(self) -> None:
-        tm.that(c.Infra.Files.PYPROJECT_FILENAME, is_=str)
-        tm.that(c.Infra.Files.MAKEFILE_FILENAME, is_=str)
-        tm.that(c.Infra.Files.BASE_MK, is_=str)
-        tm.that(c.Infra.Files.GO_MOD, is_=str)
+        tm.that(c.Infra.PYPROJECT_FILENAME, is_=str)
+        tm.that(c.Infra.MAKEFILE_FILENAME, is_=str)
+        tm.that(c.Infra.BASE_MK, is_=str)
+        tm.that(c.Infra.GO_MOD, is_=str)
 
 
 class TestFlextInfraConstantsGatesNamespace:
@@ -84,33 +84,33 @@ class TestFlextInfraConstantsStatusNamespace:
     """Tests for Status namespace constants."""
 
     def test_pass_status_constant(self) -> None:
-        tm.that(c.Infra.Status.PASSED, eq="PASS")
+        tm.that(c.Infra.STATUS_PASSED, eq="PASS")
 
     def test_fail_status_constant(self) -> None:
-        tm.that(c.Infra.Status.FAIL, eq="FAIL")
+        tm.that(c.Infra.STATUS_FAIL, eq="FAIL")
 
     def test_ok_status_constant(self) -> None:
-        tm.that(c.Infra.Status.OK, eq="OK")
+        tm.that(c.Infra.STATUS_OK, eq="OK")
 
     def test_warn_status_constant(self) -> None:
-        tm.that(c.Infra.Status.WARN, eq="WARN")
+        tm.that(c.Infra.STATUS_WARN, eq="WARN")
 
     def test_status_constants_are_strings(self) -> None:
-        tm.that(c.Infra.Status.PASSED, is_=str)
-        tm.that(c.Infra.Status.FAIL, is_=str)
-        tm.that(c.Infra.Status.OK, is_=str)
-        tm.that(c.Infra.Status.WARN, is_=str)
+        tm.that(c.Infra.STATUS_PASSED, is_=str)
+        tm.that(c.Infra.STATUS_FAIL, is_=str)
+        tm.that(c.Infra.STATUS_OK, is_=str)
+        tm.that(c.Infra.STATUS_WARN, is_=str)
 
 
 class TestFlextInfraConstantsExcludedNamespace:
     """Tests for Excluded namespace constants."""
 
     def test_common_excluded_dirs_is_string(self) -> None:
-        excluded = c.Infra.Excluded.COMMON_EXCLUDED_DIRS
+        excluded = c.Infra.COMMON_EXCLUDED_DIRS
         tm.that(excluded, is_=frozenset)
 
     def test_common_excluded_dirs_contains_standard_dirs(self) -> None:
-        excluded = c.Infra.Excluded.COMMON_EXCLUDED_DIRS
+        excluded = c.Infra.COMMON_EXCLUDED_DIRS
         assert ".git" in excluded
         assert ".venv" in excluded
         assert "__pycache__" in excluded
@@ -118,32 +118,32 @@ class TestFlextInfraConstantsExcludedNamespace:
         assert "build" in excluded
 
     def test_doc_excluded_dirs_includes_common(self) -> None:
-        doc_excluded = c.Infra.Excluded.DOC_EXCLUDED_DIRS
-        common = c.Infra.Excluded.COMMON_EXCLUDED_DIRS
+        doc_excluded = c.Infra.DOC_EXCLUDED_DIRS
+        common = c.Infra.COMMON_EXCLUDED_DIRS
         tm.that(doc_excluded.issuperset(common), eq=True)
 
     def test_doc_excluded_dirs_includes_site(self) -> None:
-        assert "site" in c.Infra.Excluded.DOC_EXCLUDED_DIRS
+        assert "site" in c.Infra.DOC_EXCLUDED_DIRS
 
     def test_pyproject_skip_dirs_includes_common(self) -> None:
-        skip_dirs = c.Infra.Excluded.PYPROJECT_SKIP_DIRS
-        common = c.Infra.Excluded.COMMON_EXCLUDED_DIRS
+        skip_dirs = c.Infra.PYPROJECT_SKIP_DIRS
+        common = c.Infra.COMMON_EXCLUDED_DIRS
         tm.that(skip_dirs.issuperset(common), eq=True)
 
     def test_pyproject_skip_dirs_includes_flext_dirs(self) -> None:
-        skip_dirs = c.Infra.Excluded.PYPROJECT_SKIP_DIRS
+        skip_dirs = c.Infra.PYPROJECT_SKIP_DIRS
         assert ".flext-deps" in skip_dirs
         assert ".sisyphus" in skip_dirs
 
     def test_check_excluded_dirs_includes_common(self) -> None:
-        check_excluded = c.Infra.Excluded.CHECK_EXCLUDED_DIRS
-        common = c.Infra.Excluded.COMMON_EXCLUDED_DIRS
+        check_excluded = c.Infra.CHECK_EXCLUDED_DIRS
+        common = c.Infra.COMMON_EXCLUDED_DIRS
         tm.that(check_excluded.issuperset(common), eq=True)
 
     def test_check_excluded_dirs_includes_flext_deps(self) -> None:
-        assert ".flext-deps" in c.Infra.Excluded.CHECK_EXCLUDED_DIRS
+        assert ".flext-deps" in c.Infra.CHECK_EXCLUDED_DIRS
 
     def test_excluded_dirs_are_strings(self) -> None:
-        tm.that(c.Infra.Excluded.DOC_EXCLUDED_DIRS, is_=frozenset)
-        tm.that(c.Infra.Excluded.PYPROJECT_SKIP_DIRS, is_=frozenset)
-        tm.that(c.Infra.Excluded.CHECK_EXCLUDED_DIRS, is_=frozenset)
+        tm.that(c.Infra.DOC_EXCLUDED_DIRS, is_=frozenset)
+        tm.that(c.Infra.PYPROJECT_SKIP_DIRS, is_=frozenset)
+        tm.that(c.Infra.CHECK_EXCLUDED_DIRS, is_=frozenset)

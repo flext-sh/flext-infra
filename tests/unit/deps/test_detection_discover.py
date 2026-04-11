@@ -22,8 +22,8 @@ class TestDiscoverProjectPathsSelection:
             u.Infra.Tests.ok_result([proj]),
         )
         result = service.discover_project_paths(tmp_path)
-        tm.that(result.is_success, eq=True)
-        if result.is_success:
+        tm.that(result.success, eq=True)
+        if result.success:
             tm.that(len(result.value), eq=1)
 
     def test_failure(self, tmp_path: Path) -> None:
@@ -48,6 +48,6 @@ class TestDiscoverProjectPathsSelection:
             u.Infra.Tests.ok_result([proj]),
         )
         result = service.discover_project_paths(tmp_path)
-        tm.that(result.is_success, eq=True)
-        if result.is_success:
+        tm.that(result.success, eq=True)
+        if result.success:
             tm.that(result.value, eq=[])
