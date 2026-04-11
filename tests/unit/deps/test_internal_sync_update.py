@@ -65,7 +65,7 @@ def configure_github_rewrite(home_root: Path, remote_parent: Path) -> None:
     subprocess.run(
         [
             "git",
-            "config",
+            "settings",
             "--global",
             f"url.file://{remote_parent}/.insteadOf",
             "https://github.com/flext-sh/",

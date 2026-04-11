@@ -4,7 +4,7 @@ VENV_PYTHON := $(ACTIVE_VENV)/bin/python
 VENV_ACTIVATE := source $(ACTIVE_VENV)/bin/activate
 export VIRTUAL_ENV := $(ACTIVE_VENV)
 
-# Go tooling/caches (zero-config defaults for make targets).
+# Go tooling/caches (zero-settings defaults for make targets).
 GO_TOOLS_BIN ?= $(WORKSPACE_ROOT)/.tools/bin
 GO_CACHE_ROOT ?= /tmp/flext-go-cache
 GO_BUILD_CACHE ?= $(GO_CACHE_ROOT)/build
@@ -20,7 +20,7 @@ export GOLANGCI_LINT_CACHE ?= $(GO_LINT_CACHE)
 export PATH := $(GO_TOOLS_BIN):$(ACTIVE_VENV)/bin:$(PATH)
 
 # Poetry command (uses workspace venv automatically)
-POETRY := {{ config.package_manager }}
+POETRY := {{ settings.package_manager }}
 
 # Quality tool (flext-quality with fallback)
 QUALITY_CMD ?= flext-quality

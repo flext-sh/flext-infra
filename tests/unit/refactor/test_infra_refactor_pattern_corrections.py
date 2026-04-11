@@ -14,12 +14,12 @@ from flext_infra import (
 def _apply_rule(
     tmp_path: Path,
     source: str,
-    config: t.Infra.InfraMapping,
+    settings: t.Infra.InfraMapping,
 ) -> tuple[str, list[str]]:
     file_path = tmp_path / "src" / "demo.py"
     file_path.parent.mkdir(parents=True, exist_ok=True)
     file_path.write_text(source, encoding="utf-8")
-    rule = FlextInfraRefactorPatternCorrectionsRule(config)
+    rule = FlextInfraRefactorPatternCorrectionsRule(settings)
     updated, changes = u.Infra.apply_transformer_to_source(
         source,
         file_path,

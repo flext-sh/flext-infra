@@ -34,7 +34,7 @@ class FlextInfraCodegenPipeline(s[str]):
         ctx = m.Cli.PipelineStageContext(
             workspace_root=self.workspace_root,
             shared={},
-            config={
+            settings={
                 c.Infra.PIPELINE_KEY_DRY_RUN: self.dry_run or not self.apply_changes,
             },
         )
@@ -172,7 +172,7 @@ class FlextInfraCodegenPipeline(s[str]):
     ) -> r[m.Cli.PipelineStageResult]:
         """Run scaffold stage and cache results."""
         try:
-            dry_run = bool(ctx.config.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
+            dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
             projects = self._state.discovered_projects or None
             results = FlextInfraCodegenScaffolder.model_validate({
                 "workspace_root": ctx.workspace_root,
@@ -196,7 +196,7 @@ class FlextInfraCodegenPipeline(s[str]):
     ) -> r[m.Cli.PipelineStageResult]:
         """Run auto-fix stage and cache results."""
         try:
-            dry_run = bool(ctx.config.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
+            dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
             projects = self._state.discovered_projects or None
             results = FlextInfraCodegenFixer.model_validate({
                 "workspace_root": ctx.workspace_root,
@@ -221,7 +221,7 @@ class FlextInfraCodegenPipeline(s[str]):
     ) -> r[m.Cli.PipelineStageResult]:
         """Run lazy-init __init__.py generation."""
         try:
-            dry_run = bool(ctx.config.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
+            dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
             count = FlextInfraCodegenLazyInit.model_validate({
                 "workspace_root": ctx.workspace_root,
             }).generate_inits(check_only=dry_run)

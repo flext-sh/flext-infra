@@ -30,7 +30,8 @@ from jinja2 import (
     select_autoescape,
 )
 
-from flext_infra import c, p, r, t, u
+from flext_core import r
+from flext_infra import c, p, t, u
 
 
 class FlextInfraWorkspaceMakefileGenerator:
@@ -185,7 +186,7 @@ class FlextInfraWorkspaceMakefileGenerator:
         """Render a validated template object into the final Makefile text."""
         return template.render(
             pr_branch=pr_branch,
-            make=c.Infra.Make,
+            make=c.Infra.MAKE,
         )
 
     @staticmethod

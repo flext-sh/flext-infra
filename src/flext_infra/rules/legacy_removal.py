@@ -16,10 +16,10 @@ from flext_infra import (
 class FlextInfraRefactorLegacyRemovalRule:
     """Remove aliases, deprecated classes, wrappers and import bypass blocks."""
 
-    def __init__(self, config: Mapping[str, t.Infra.InfraValue]) -> None:
-        """Initialize rule metadata from rule config."""
-        self.config = dict(config)
-        rule_id = self.config.get(c.Infra.RK_ID, c.Infra.DEFAULT_UNKNOWN)
+    def __init__(self, settings: Mapping[str, t.Infra.InfraValue]) -> None:
+        """Initialize rule metadata from rule settings."""
+        self.settings = dict(settings)
+        rule_id = self.settings.get(c.Infra.RK_ID, c.Infra.DEFAULT_UNKNOWN)
         self.rule_id = str(rule_id)
 
     def apply(
@@ -33,7 +33,7 @@ class FlextInfraRefactorLegacyRemovalRule:
         source = resource.read()
         changes: MutableSequence[str] = []
         fix_action = u.Infra.get_str_key(
-            self.config,
+            self.settings,
             c.Infra.RK_FIX_ACTION,
             case="lower",
         )
@@ -71,12 +71,12 @@ class FlextInfraRefactorLegacyRemovalRule:
         """Remove module-level alias assignments."""
         allow_aliases = set(
             u.Infra.string_list(
-                self.config.get("allow_aliases", []),
+                self.settings.get("allow_aliases", []),
             ),
         )
         allow_target_suffixes = tuple(
             u.Infra.string_list(
-                self.config.get("allow_target_suffixes", []),
+                self.settings.get("allow_target_suffixes", []),
             ),
         )
         alias_pattern = re.compile(r"^([A-Za-z_]\w*)\s*=\s*([A-Za-z_]\w*)\s*$")

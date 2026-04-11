@@ -140,7 +140,7 @@ class FlextInfraConstantsCodegenQualityGate(s[bool]):
                 c.Infra.PYREFLY,
                 c.Infra.CHECK,
                 *modified_files,
-                "--config",
+                "--settings",
                 c.Infra.PYPROJECT_FILENAME,
                 "--summary=none",
             ]

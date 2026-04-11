@@ -75,7 +75,7 @@ class FlextInfraModelsCheck:
         FlextInfraModelsMixins.ProjectMixin,
         m.ContractModel,
     ):
-        """Canonical CLI payload for ``flext-infra check fix-pyrefly-config``."""
+        """Canonical CLI payload for ``flext-infra check fix-pyrefly-settings``."""
 
         apply: Annotated[
             bool,

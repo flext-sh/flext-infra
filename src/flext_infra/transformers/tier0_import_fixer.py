@@ -150,7 +150,7 @@ class FlextInfraTransformerTier0ImportFixer:
             alias_to_submodule: t.StrMapping,
             core_package: str,
         ) -> None:
-            """Initialize transformer with analysis and insertion config."""
+            """Initialize transformer with analysis and insertion settings."""
             self.analysis = analysis
             self._package_name = analysis.package_name
             self._core_package = core_package

@@ -36,13 +36,13 @@ def real_git_repo(tmp_path: Path) -> Path:
 
     # Configure git user for commits
     email_result = u.Cli.run_raw(
-        ["git", "config", "user.email", "test@example.com"],
+        ["git", "settings", "user.email", "test@example.com"],
         cwd=repo_root,
     )
     assert email_result.success
     assert email_result.value.exit_code == 0
     name_result = u.Cli.run_raw(
-        ["git", "config", "user.name", "Test User"],
+        ["git", "settings", "user.name", "Test User"],
         cwd=repo_root,
     )
     assert name_result.success

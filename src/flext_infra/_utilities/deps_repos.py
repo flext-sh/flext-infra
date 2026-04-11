@@ -7,7 +7,8 @@ import os
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
-from flext_infra import c, m, p, r, t, u
+from flext_core import r
+from flext_infra import c, m, p, t, u
 
 
 class FlextInfraInternalSyncRepoMixin:
@@ -42,7 +43,7 @@ class FlextInfraInternalSyncRepoMixin:
     def infer_owner_from_origin(self, project_root: Path) -> str | None:
         """Infer GitHub owner from remote origin URL."""
         remote = u.Cli.capture(
-            [c.Infra.GIT, "config", "--get", "remote.origin.url"],
+            [c.Infra.GIT, "settings", "--get", "remote.origin.url"],
             cwd=project_root,
         )
         if remote.failure:

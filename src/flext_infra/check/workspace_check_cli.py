@@ -28,11 +28,11 @@ class FlextInfraCliCheck(FlextInfraServiceCheckMixin):
                     failure_message="check failed",
                 ),
                 cli_models.Cli.ResultCommandRoute(
-                    name="fix-pyrefly-config",
+                    name="fix-pyrefly-settings",
                     help_text="Repair [tool.pyrefly] blocks",
                     model_cls=FlextInfraModelsCheck.FixPyreflyConfigCommand,
                     handler=self.fix_pyrefly_config,
-                    failure_message="pyrefly config fix failed",
+                    failure_message="pyrefly settings fix failed",
                 ),
             ],
         )

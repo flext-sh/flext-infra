@@ -1,4 +1,4 @@
-"""Phase: Ensure safe default config for TOML/YAML formatting tools."""
+"""Phase: Ensure safe default settings for TOML/YAML formatting tools."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from flext_infra import FlextInfraToml, m, t, u
 
 
 class FlextInfraEnsureFormattingToolingPhase:
-    """Ensure safe default config for TOML/YAML formatting tools."""
+    """Ensure safe default settings for TOML/YAML formatting tools."""
 
     def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:
         """Store tool settings used when enforcing formatting-related tables."""

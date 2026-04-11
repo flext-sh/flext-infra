@@ -29,7 +29,7 @@ class FlextInfraCli:
     })
     GROUPS: ClassVar[Mapping[str, str]] = MappingProxyType({
         "basemk": "Base.mk template generation",
-        c.Infra.VERB_CHECK: "Lint gates and pyrefly config management",
+        c.Infra.VERB_CHECK: "Lint gates and pyrefly settings management",
         "codegen": "Code generation and workspace standardization",
         "validate": "Infrastructure validators and diagnostics",
         "deps": "Dependency detection, sync, and modernization",
@@ -107,7 +107,7 @@ class FlextInfraCli:
         app = cli_service.create_app_with_common_params(
             name=f"{self.app_name} {group}",
             help_text=self.GROUPS[group],
-            config=self._cli_settings(),
+            settings=self._cli_settings(),
         )
         self._register_group(group, app)
         normalized_args = self._normalize_group_args(args)

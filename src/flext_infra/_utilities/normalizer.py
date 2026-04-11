@@ -52,14 +52,14 @@ class FlextInfraUtilitiesImportNormalizer:
     @lru_cache(maxsize=1)
     def alias_tiers() -> t.IntMapping:
         """Return configured alias-to-tier mapping."""
-        config = FlextInfraUtilitiesImportNormalizer.load_import_config().get(
+        settings = FlextInfraUtilitiesImportNormalizer.load_import_config().get(
             "alias_tiers",
         )
-        if not isinstance(config, Mapping):
+        if not isinstance(settings, Mapping):
             empty_tiers: t.IntMapping = {}
             return empty_tiers
         tiers: t.MutableIntMapping = {}
-        for alias_name, tier_value in config.items():
+        for alias_name, tier_value in settings.items():
             if len(alias_name) != 1 or not alias_name.islower():
                 continue
             if isinstance(tier_value, int):

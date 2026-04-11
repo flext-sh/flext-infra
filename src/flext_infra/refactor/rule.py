@@ -8,13 +8,13 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
+from flext_core import r
 from flext_infra import (
     FlextInfraClassNestingRefactorRule,
     FlextInfraRefactorRule,
     FlextInfraRefactorRuleDefinitionValidator,
     c,
     m,
-    r,
     t,
     u,
 )
@@ -53,20 +53,20 @@ class FlextInfraUtilitiesRefactorRuleLoader:
             return r[Mapping[str, t.Infra.InfraValue]].ok(normalized)
         except (OSError, TypeError, ValueError) as exc:
             return r[Mapping[str, t.Infra.InfraValue]].fail(
-                f"Failed to load config: {exc}",
+                f"Failed to load settings: {exc}",
             )
 
     def extract_engine_file_filters(
         self,
-        config: t.Infra.InfraValue,
+        settings: t.Infra.InfraValue,
     ) -> t.Infra.Pair[t.StrSequence, t.StrSequence]:
-        """Extract ignore patterns and file extensions from engine config."""
-        scope = self._resolve_engine_config(config)
+        """Extract ignore patterns and file extensions from engine settings."""
+        scope = self._resolve_engine_config(settings)
         return (list(scope.ignore_patterns), list(scope.file_extensions))
 
-    def extract_project_scan_dirs(self, config: t.Infra.InfraValue) -> t.StrSequence:
-        """Extract project scan directories from engine config."""
-        scope = self._resolve_engine_config(config)
+    def extract_project_scan_dirs(self, settings: t.Infra.InfraValue) -> t.StrSequence:
+        """Extract project scan directories from engine settings."""
+        scope = self._resolve_engine_config(settings)
         return list(scope.project_scan_dirs)
 
     def load_engine_registry(self) -> r[Mapping[str, t.Infra.InfraValue]]:
@@ -199,9 +199,9 @@ class FlextInfraUtilitiesRefactorRuleLoader:
 
     def _resolve_engine_config(
         self,
-        config: t.Infra.InfraValue,
+        settings: t.Infra.InfraValue,
     ) -> m.Infra.EngineConfig:
-        config_map = u.Infra.normalize_str_mapping(config)
+        config_map = u.Infra.normalize_str_mapping(settings)
         scope_raw = config_map.get("refactor_engine")
         scope_map = u.Infra.normalize_str_mapping(scope_raw)
         scope_map = {

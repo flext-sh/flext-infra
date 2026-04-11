@@ -204,7 +204,7 @@ class TestRunnerPublicBehavior:
             "check",
             "src",
             "tests",
-            "--config",
+            "--settings",
         ]
 
     def test_run_pyrefly_reports_command_failures_without_json(

@@ -150,6 +150,17 @@ class FlextInfraCodegenGeneration:
         )
 
     @staticmethod
+    def _type_checking_sort_key(
+        mod: str,
+        local_package_root: str | None,
+    ) -> t.Infra.StrPair:
+        top = mod.split(".", maxsplit=1)[0]
+        if local_package_root == "tests":
+            test_order = {"flext_tests": "0", "flext_infra": "1", "tests": "2"}
+            return (test_order.get(top, "1"), mod.lower())
+        return ("0", mod.lower())
+
+    @staticmethod
     def _should_skip_type_checking_module_export(
         mod: str,
         export_name: str,
@@ -171,10 +182,8 @@ class FlextInfraCodegenGeneration:
     def _emit_type_checking_module(
         mod: str,
         items: t.Infra.StrPairSequence,
-        children: set[str],
         root_name: str,
         lines: MutableSequence[str],
-        external_imports: t.MutableStrSequenceMapping,
     ) -> None:
         alias_exports: MutableSequence[str] = []
         parts: MutableSequence[str] = []
@@ -210,29 +219,18 @@ class FlextInfraCodegenGeneration:
         if not deduped_aliases and not deduped_parts:
             return
 
-        if mod in children or (
-            FlextInfraCodegenGeneration._is_local_module(mod, root_name)
-            and ".fixtures." not in mod
-        ):
-            for export_name in deduped_aliases:
-                lines.extend(
-                    FlextInfraCodegenGeneration._format_type_checking_module_alias_import(
-                        "    ",
-                        mod,
-                        export_name,
-                    ),
-                )
-            if deduped_parts:
-                lines.extend(
-                    FlextInfraCodegenGeneration._format_import(
-                        "    ", mod, deduped_parts
-                    )
-                )
-            return
-
         for export_name in deduped_aliases:
-            external_imports[mod].append(f"import::{export_name}")
-        external_imports[mod].extend(deduped_parts)
+            lines.extend(
+                FlextInfraCodegenGeneration._format_type_checking_module_alias_import(
+                    "    ",
+                    mod,
+                    export_name,
+                ),
+            )
+        if deduped_parts:
+            lines.extend(
+                FlextInfraCodegenGeneration._format_import("    ", mod, deduped_parts)
+            )
 
     @staticmethod
     def _build_lazy_entries(
@@ -306,6 +304,18 @@ class FlextInfraCodegenGeneration:
                 lazy_filtered[export_name][1]
             )
         )
+
+    @staticmethod
+    def _collapse_blank_runs(lines: Sequence[str]) -> t.StrSequence:
+        normalized: MutableSequence[str] = []
+        previous_blank = False
+        for line in lines:
+            current_blank = not line
+            if current_blank and previous_blank:
+                continue
+            normalized.append(line)
+            previous_blank = current_blank
+        return tuple(normalized)
 
     @staticmethod
     def _build_env() -> t.Infra.JinjaEnvironment:
@@ -415,7 +425,6 @@ class FlextInfraCodegenGeneration:
         collapsed = FlextInfraCodegenGeneration._collapse_to_children(
             normalized_groups, child_packages
         )
-        children = set(child_packages or [])
         root_name = "" if not local_package_root else local_package_root.split(".")[0]
 
         lines: MutableSequence[str] = ["if _t.TYPE_CHECKING:"]
@@ -424,48 +433,29 @@ class FlextInfraCodegenGeneration:
         ):
             lines.append("    from flext_core import FlextTypes")
 
-        external_imports: t.MutableStrSequenceMapping = defaultdict(list)
-
-        sorted_mods = sorted(collapsed, key=str.lower)
+        sorted_mods = sorted(
+            collapsed,
+            key=lambda mod: FlextInfraCodegenGeneration._type_checking_sort_key(
+                mod,
+                local_package_root,
+            ),
+        )
         prev_top: str | None = None
         for mod in sorted_mods:
             top = mod.split(".")[0]
-            if prev_top is not None and top != prev_top:
+            if (
+                local_package_root == "tests"
+                and prev_top == "flext_tests"
+                and top != prev_top
+            ):
                 lines.append("")
             FlextInfraCodegenGeneration._emit_type_checking_module(
                 mod,
                 collapsed[mod],
-                children,
                 root_name,
                 lines,
-                external_imports,
             )
             prev_top = top
-
-        for mod in sorted(external_imports, key=str.lower):
-            parts = sorted(set(external_imports[mod]))
-            alias_exports = [
-                part.removeprefix("import::")
-                for part in parts
-                if part.startswith("import::")
-            ]
-            symbol_parts = tuple(
-                part for part in parts if not part.startswith("import::")
-            )
-            for export_name in alias_exports:
-                lines.extend(
-                    FlextInfraCodegenGeneration._format_type_checking_module_alias_import(
-                        "    ",
-                        mod,
-                        export_name,
-                    ),
-                )
-            if symbol_parts:
-                lines.extend(
-                    FlextInfraCodegenGeneration._format_import(
-                        "    ", mod, symbol_parts
-                    )
-                )
 
         return () if len(lines) == 1 else lines
 
@@ -526,25 +516,6 @@ class FlextInfraCodegenGeneration:
         eager_export_names = [
             name for name in published_exports if name not in lazy_filtered
         ]
-        out: MutableSequence[str] = [c.Infra.AUTOGEN_HEADER]
-        docstring_pkg = (
-            current_pkg if publish_all else current_pkg.rsplit(".", maxsplit=1)[-1]
-        )
-        out.extend([
-            FlextInfraCodegenGeneration._format_root_package_docstring(docstring_pkg),
-            "",
-        ])
-
-        preamble_template = FlextInfraCodegenGeneration._get_template(
-            c.Infra.TEMPLATE_PREAMBLE_STANDARD
-        )
-        preamble: str = preamble_template.render(
-            use_merge_lazy_imports=use_merge_lazy_imports,
-        )
-        out.extend(preamble.splitlines())
-
-        out.append("")
-
         runtime_groups = FlextInfraCodegenGeneration._group_imports(runtime_imports)
         runtime_import_lines = FlextInfraCodegenGeneration._generate_import_lines(
             runtime_groups,
@@ -584,6 +555,27 @@ class FlextInfraCodegenGeneration:
             else ()
         )
 
+        out: MutableSequence[str] = [c.Infra.AUTOGEN_HEADER]
+        docstring_pkg = (
+            current_pkg if publish_all else current_pkg.rsplit(".", maxsplit=1)[-1]
+        )
+        out.extend([
+            FlextInfraCodegenGeneration._format_root_package_docstring(docstring_pkg),
+            "",
+        ])
+
+        preamble_template = FlextInfraCodegenGeneration._get_template(
+            c.Infra.TEMPLATE_PREAMBLE_STANDARD
+        )
+        preamble: str = preamble_template.render(
+            type_checking_enabled=bool(type_checking_lines),
+            use_merge_lazy_imports=use_merge_lazy_imports,
+        )
+        out.extend(preamble.splitlines())
+
+        if not runtime_import_block:
+            out.append("")
+
         body_template = FlextInfraCodegenGeneration._get_template(c.Infra.TEMPLATE_BODY)
         body: str = body_template.render(
             runtime_import_lines="\n".join(runtime_import_block),
@@ -600,7 +592,10 @@ class FlextInfraCodegenGeneration:
             exports=published_exports,
             publish_all=publish_all,
         )
-        out.extend(body.splitlines())
+        body_lines = body.splitlines()
+        if body_lines and not body_lines[0]:
+            body_lines = body_lines[1:]
+        out.extend(FlextInfraCodegenGeneration._collapse_blank_runs(body_lines))
         out.append("")
 
         getattr_template = FlextInfraCodegenGeneration._get_template(

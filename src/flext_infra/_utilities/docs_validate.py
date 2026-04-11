@@ -33,7 +33,7 @@ class FlextInfraUtilitiesDocsValidate:
     def docs_extract_required_skills(
         payload: t.ValueOrModel,
     ) -> t.ContainerList | None:
-        """Extract the configured required skills list from architecture config."""
+        """Extract the configured required skills list from architecture settings."""
         if not isinstance(payload, Mapping):
             return None
         docs_validation = payload.get("docs_validation")
@@ -44,11 +44,11 @@ class FlextInfraUtilitiesDocsValidate:
 
     @staticmethod
     def docs_load_required_skills(workspace_root: Path) -> t.StrSequence | None:
-        """Load the required skills list from the architecture config."""
-        config = workspace_root / "docs/architecture/architecture_config.json"
-        if not config.exists():
+        """Load the required skills list from the architecture settings."""
+        settings = workspace_root / "docs/architecture/architecture_config.json"
+        if not settings.exists():
             return []
-        payload_result = u.Cli.json_read(config)
+        payload_result = u.Cli.json_read(settings)
         if payload_result.failure:
             return None
         configured = FlextInfraUtilitiesDocsValidate.docs_extract_required_skills(

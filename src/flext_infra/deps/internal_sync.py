@@ -8,12 +8,12 @@ import shutil
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
+from flext_core import r
 from flext_infra import (
     FlextInfraInternalSyncRepoMixin,
     c,
     m,
     p,
-    r,
     t,
     u,
 )

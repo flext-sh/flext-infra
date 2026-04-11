@@ -5,8 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import override
 
+from flext_core import r
 from flext_infra import FlextInfraBaseMkGenerator, FlextInfraSyncService
-from tests import m, r, t, u
+from tests import m, t, u
 
 
 def _stub_gen(content: str, *, fail: bool = False) -> FlextInfraBaseMkGenerator:
@@ -14,10 +15,10 @@ def _stub_gen(content: str, *, fail: bool = False) -> FlextInfraBaseMkGenerator:
         @override
         def generate_basemk(
             self,
-            config: m.Infra.BaseMkConfig | t.ScalarMapping | None = None,
+            settings: m.Infra.BaseMkConfig | t.ScalarMapping | None = None,
         ) -> r[str]:
             _ = self
-            _ = config
+            _ = settings
             return r[str].fail(content) if fail else r[str].ok(content)
 
     return _Gen()

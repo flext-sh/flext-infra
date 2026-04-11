@@ -378,9 +378,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                 @override
                 def generate_basemk(
                     self,
-                    config: m.Infra.BaseMkConfig | t.ScalarMapping | None = None,
+                    settings: m.Infra.BaseMkConfig | t.ScalarMapping | None = None,
                 ) -> r[str]:
-                    del config
+                    del settings
                     if self._fail:
                         return r[str].fail(self._fail)
                     return r[str].ok(self._content)
@@ -660,8 +660,8 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             def initialize_git_repo(repo_root: Path) -> None:
                 commands: Sequence[t.StrSequence] = (
                     (c.Infra.GIT, "init", "-b", "main"),
-                    (c.Infra.GIT, "config", "user.email", "tests@flext.local"),
-                    (c.Infra.GIT, "config", "user.name", "Flext Tests"),
+                    (c.Infra.GIT, "settings", "user.email", "tests@flext.local"),
+                    (c.Infra.GIT, "settings", "user.name", "Flext Tests"),
                     (c.Infra.GIT, "add", "-A"),
                     (c.Infra.GIT, "commit", "-m", "init"),
                 )

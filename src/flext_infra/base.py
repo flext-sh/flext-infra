@@ -44,7 +44,7 @@ class FlextInfraServiceBase(
     @override
     def _runtime_bootstrap_options(cls) -> FlextProtocols.RuntimeBootstrapOptions:
         """Bootstrap service runtime using the shared CLI settings namespace."""
-        return FlextModels.RuntimeBootstrapOptions(config_type=FlextCliSettings)
+        return FlextModels.RuntimeBootstrapOptions(settings_type=FlextCliSettings)
 
     workspace_root: Annotated[
         Path,

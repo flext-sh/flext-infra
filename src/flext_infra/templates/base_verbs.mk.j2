@@ -118,9 +118,9 @@ check: ## Run lint gates (CHECK_GATES={{ make.PROJECT_CHECK_GATES_ALLOWED }} to 
 			fi; \
 			md_config=""; \
 			if [ -f "$(WORKSPACE_ROOT)/.markdownlint.json" ]; then \
-				md_config="--config $(WORKSPACE_ROOT)/.markdownlint.json"; \
+				md_config="--settings $(WORKSPACE_ROOT)/.markdownlint.json"; \
 			elif [ -f ".markdownlint.json" ]; then \
-				md_config="--config .markdownlint.json"; \
+				md_config="--settings .markdownlint.json"; \
 			fi; \
 			if [ -n "$$md_files" ]; then echo "$$md_files" | xargs markdownlint $$md_config || { echo "FAIL: markdown"; exit 1; }; fi; \
 		fi; \
@@ -245,9 +245,9 @@ fmt: ## Run code formatting (ruff/gofmt + markdownlint on tracked files)
 	if [ -n "$$md_files" ]; then \
 		md_config=""; \
 		if [ -f "$(WORKSPACE_ROOT)/.markdownlint.json" ]; then \
-			md_config="--config $(WORKSPACE_ROOT)/.markdownlint.json"; \
+			md_config="--settings $(WORKSPACE_ROOT)/.markdownlint.json"; \
 		elif [ -f ".markdownlint.json" ]; then \
-			md_config="--config .markdownlint.json"; \
+			md_config="--settings .markdownlint.json"; \
 		fi; \
 		echo "$$md_files" | xargs markdownlint --fix $$md_config; \
 	fi

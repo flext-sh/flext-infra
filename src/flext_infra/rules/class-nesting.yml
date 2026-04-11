@@ -11,7 +11,7 @@ rules:
     fix_action: nest_classes
     
     # Configuration
-    config:
+    settings:
       mappings_file: "class-nesting-mappings.yml"
       schema_file: "class-nesting-schema.json"
       

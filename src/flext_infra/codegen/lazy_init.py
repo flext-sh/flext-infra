@@ -17,12 +17,14 @@ from typing import override
 
 from pydantic import PrivateAttr
 
+from flext_core import r
 from flext_infra import (
     FlextInfraCodegenGeneration,
     FlextInfraServiceBase,
+    FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesRope,
     c,
     m,
-    r,
     t,
     u,
 )
@@ -81,21 +83,26 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
     ) -> tuple[int, int, int, MutableMapping[str, t.Infra.LazyImportMap]]:
         total = ok = errors = 0
         dir_exports: MutableMapping[str, t.Infra.LazyImportMap] = {}
-        for pkg_dir in pkg_dirs:
-            total += 1
-            result, exports = self._process_directory(
-                pkg_dir,
-                check_only=check_only,
-                dir_exports=dir_exports,
-            )
-            if exports:
-                dir_exports[str(pkg_dir)] = exports
-            if result is None:
-                continue
-            if result < 0:
-                errors += 1
-            else:
-                ok += 1
+        rope_root = FlextInfraUtilitiesDiscovery.rope_workspace_root(
+            self.workspace_root,
+        )
+        with FlextInfraUtilitiesRope.open_project(rope_root) as rope_project:
+            for pkg_dir in pkg_dirs:
+                total += 1
+                result, exports = self._process_directory(
+                    pkg_dir,
+                    check_only=check_only,
+                    dir_exports=dir_exports,
+                    rope_project=rope_project,
+                )
+                if exports:
+                    dir_exports[str(pkg_dir)] = exports
+                if result is None:
+                    continue
+                if result < 0:
+                    errors += 1
+                else:
+                    ok += 1
         return total, ok, errors, dir_exports
 
     def _find_package_dirs(self) -> Sequence[Path]:
@@ -111,10 +118,12 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
         *,
         check_only: bool,
         dir_exports: Mapping[str, t.Infra.LazyImportMap],
+        rope_project: t.Infra.RopeProject,
     ) -> t.Infra.LazyInitProcessResult:
         try:
             plan = self._aliases.build_lazy_init_plan(
                 pkg_dir,
+                project=rope_project,
                 dir_exports=dir_exports,
             )
             if plan.action == "skip":

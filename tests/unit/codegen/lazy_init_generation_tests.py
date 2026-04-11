@@ -63,13 +63,15 @@ class TestGenerateTypeChecking:
         lines = FlextInfraCodegenGeneration.generate_type_checking(groups)
         tm.that(any("module" in line for line in lines), eq=True)
 
-    def test_with_multiple_modules_spacing(self) -> None:
-        """Test blank lines between different top-level package groups."""
+    def test_with_multiple_modules(self) -> None:
+        """Test multiple type-checking imports are emitted."""
         groups: MutableMapping[str, Sequence[tuple[str, str]]] = defaultdict(list)
         groups["alpha_pkg.module"] = [("Test1", "Test1")]
         groups["beta_pkg.module"] = [("Test2", "Test2")]
         lines = FlextInfraCodegenGeneration.generate_type_checking(groups)
-        tm.that(lines, contains="")
+        joined = "\n".join(lines)
+        tm.that(joined, contains="from alpha_pkg.module import Test1")
+        tm.that(joined, contains="from beta_pkg.module import Test2")
 
 
 class TestGenerateFile:

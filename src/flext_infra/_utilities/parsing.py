@@ -40,6 +40,108 @@ class FlextInfraUtilitiesParsing:
             return None
 
     @staticmethod
+    def _target_names(target: ast.expr) -> t.StrSequence:
+        match target:
+            case ast.Name(id=name):
+                return (name,)
+            case ast.Tuple(elts=elts) | ast.List(elts=elts):
+                return tuple(
+                    name
+                    for item in elts
+                    for name in FlextInfraUtilitiesParsing._target_names(item)
+                )
+            case _:
+                return ()
+
+    @staticmethod
+    def _literal_dunder_all(node: ast.Assign) -> t.StrSequence | None:
+        if c.Infra.DUNDER_ALL not in {
+            name
+            for target in node.targets
+            for name in FlextInfraUtilitiesParsing._target_names(target)
+        }:
+            return None
+        try:
+            value = ast.literal_eval(node.value)
+        except (TypeError, ValueError, SyntaxError):
+            return None
+        if not isinstance(value, (list, tuple)):
+            return None
+        return tuple(item for item in value if isinstance(item, str))
+
+    @staticmethod
+    def module_export_names(
+        file_path: Path,
+        *,
+        include_dunder: bool = False,
+        allow_main: bool = False,
+        allow_assignments: bool = False,
+    ) -> t.StrSequence:
+        """Return module-local lazy-init export names from AST."""
+        module = FlextInfraUtilitiesParsing.parse_module_ast(file_path)
+        if module is None:
+            return ()
+        classes: MutableSequence[str] = []
+        functions: MutableSequence[str] = []
+        assignments: MutableSequence[str] = []
+        imports: MutableSequence[str] = []
+        explicit_all: t.StrSequence | None = None
+        for node in module.body:
+            match node:
+                case ast.ClassDef(name=name):
+                    classes.append(name)
+                case ast.FunctionDef(name=name) | ast.AsyncFunctionDef(name=name):
+                    functions.append(name)
+                case ast.TypeAlias(name=ast.Name(id=name)):
+                    assignments.append(name)
+                case ast.Assign():
+                    explicit_all = (
+                        FlextInfraUtilitiesParsing._literal_dunder_all(node)
+                        if explicit_all is None
+                        else explicit_all
+                    )
+                    assignments.extend(
+                        name
+                        for target in node.targets
+                        for name in FlextInfraUtilitiesParsing._target_names(target)
+                        if name != c.Infra.DUNDER_ALL
+                    )
+                case ast.AnnAssign(target=target):
+                    assignments.extend(
+                        name
+                        for name in FlextInfraUtilitiesParsing._target_names(target)
+                        if name != c.Infra.DUNDER_ALL
+                    )
+                case ast.Import(names=aliases):
+                    imports.extend(
+                        alias.asname or alias.name.partition(".")[0]
+                        for alias in aliases
+                    )
+                case ast.ImportFrom(names=aliases):
+                    imports.extend(
+                        alias.asname or alias.name
+                        for alias in aliases
+                        if alias.name != "*"
+                    )
+        if include_dunder:
+            return tuple(
+                name
+                for name in dict.fromkeys(assignments)
+                if name.startswith("__")
+                and name.endswith("__")
+                and name != c.Infra.DUNDER_ALL
+            )
+        if explicit_all is not None:
+            defined = frozenset((*classes, *functions, *assignments, *imports))
+            return tuple(name for name in explicit_all if name in defined)
+        exports: MutableSequence[str] = list(classes)
+        if allow_assignments:
+            exports.extend(assignments)
+        if allow_main and "main" in functions:
+            exports.append("main")
+        return tuple(dict.fromkeys(exports))
+
+    @staticmethod
     def is_module_toplevel(file_path: Path) -> bool:
         """Determine if a file is at the package root level (Facade level)."""
         parts = file_path.resolve().parts

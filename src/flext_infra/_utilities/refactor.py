@@ -51,7 +51,7 @@ class FlextInfraUtilitiesRefactor(
 
     @staticmethod
     def entry_list(value: t.Infra.InfraValue | None) -> Sequence[t.StrMapping]:
-        """Normalize class-nesting config entries to a strict list."""
+        """Normalize class-nesting settings entries to a strict list."""
         if value is None:
             return []
         try:

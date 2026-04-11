@@ -1,11 +1,15 @@
 from __future__ import annotations
 
-{%- if use_merge_lazy_imports %}
+{% if type_checking_enabled -%}
+import typing as _t
+
+{% endif -%}
+{% if use_merge_lazy_imports -%}
 from flext_core.lazy import (
     build_lazy_import_map,
     install_lazy_exports,
     merge_lazy_imports,
 )
-{%- else %}
+{% else -%}
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
-{%- endif %}
+{% endif -%}

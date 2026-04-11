@@ -151,7 +151,7 @@ class TestBanditAndMarkdownGates:
         self,
         tmp_path: Path,
     ) -> None:
-        project_dir = u.Infra.Tests.mk_project(tmp_path, "markdown-config-project")
+        project_dir = u.Infra.Tests.mk_project(tmp_path, "markdown-settings-project")
         (project_dir / "README.md").write_text("# Test\n", encoding="utf-8")
         (project_dir / ".markdownlint.json").write_text("{}", encoding="utf-8")
         runner = self.make_runner(u.Infra.Tests.ok_result(u.Infra.Tests.stub_run()))
@@ -159,7 +159,7 @@ class TestBanditAndMarkdownGates:
         gate = FlextInfraMarkdownGate(tmp_path, runner=runner)
         _ = gate.check(project_dir, self.make_ctx(tmp_path))
 
-        tm.that(runner.commands[0], has="--config")
+        tm.that(runner.commands[0], has="--settings")
 
 
 __all__: t.StrSequence = []

@@ -172,7 +172,7 @@ class FlextInfraUtilitiesDocsGenerate:
         *,
         apply: bool,
     ) -> Sequence[m.Infra.GeneratedFile]:
-        """Return the managed mkdocs config file when it does not exist yet."""
+        """Return the managed mkdocs settings file when it does not exist yet."""
         path = scope.path / "mkdocs.yml"
         if path.exists():
             return []

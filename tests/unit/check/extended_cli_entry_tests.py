@@ -69,7 +69,7 @@ class TestWorkspaceCheckCLI:
         tm.that(main(["check", "run", "--help"]), eq=0)
 
     def test_fix_pyrefly_config_routes_real_help(self) -> None:
-        tm.that(main(["check", "fix-pyrefly-config", "--help"]), eq=0)
+        tm.that(main(["check", "fix-pyrefly-settings", "--help"]), eq=0)
 
     def test_run_cli_with_relative_reports_dir(self, tmp_path: Path) -> None:
         workspace = self._workspace(tmp_path)

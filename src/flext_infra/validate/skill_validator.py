@@ -16,7 +16,8 @@ from typing import Annotated, override
 
 from pydantic import Field
 
-from flext_infra import c, m, p, r, s, t, u
+from flext_core import r
+from flext_infra import c, m, p, s, t, u
 
 
 class FlextInfraSkillValidator(s[bool]):

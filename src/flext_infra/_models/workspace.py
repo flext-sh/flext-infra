@@ -18,7 +18,7 @@ class FlextInfraModelsWorkspace:
 
     Canonical base policy:
     - ``ArbitraryTypesModel`` for mutable discovery and migration payloads.
-    - ``ContractModel`` reserved for immutable workspace config contracts.
+    - ``ContractModel`` reserved for immutable workspace settings contracts.
     """
 
     class ProjectInfo(

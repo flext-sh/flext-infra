@@ -23,8 +23,8 @@ class FlextInfraUtilitiesDocsBuild:
         runner: p.Cli.CommandRunner,
     ) -> m.Infra.DocsPhaseReport:
         """Run MkDocs directly through the MkDocs Python API for one scope."""
-        config = scope.path / "mkdocs.yml"
-        if not config.exists():
+        settings = scope.path / "mkdocs.yml"
+        if not settings.exists():
             return m.Infra.DocsPhaseReport(
                 phase="build",
                 scope=scope.name,
@@ -43,7 +43,7 @@ class FlextInfraUtilitiesDocsBuild:
                     c.Infra.DIR_BUILD,
                     "--strict",
                     "-f",
-                    str(config),
+                    str(settings),
                     "-d",
                     str(site_dir),
                 ],
@@ -80,7 +80,7 @@ class FlextInfraUtilitiesDocsBuild:
                 passed=False,
             )
         try:
-            FlextInfraUtilitiesDocsBuild._run_mkdocs_api(config, site_dir)
+            FlextInfraUtilitiesDocsBuild._run_mkdocs_api(settings, site_dir)
         except (OSError, ValueError) as exc:
             return m.Infra.DocsPhaseReport(
                 phase="build",
@@ -100,7 +100,7 @@ class FlextInfraUtilitiesDocsBuild:
         )
 
     @staticmethod
-    def _run_mkdocs_api(config: Path, site_dir: Path) -> None:
+    def _run_mkdocs_api(settings: Path, site_dir: Path) -> None:
         """Run MkDocs build via the Python API with lazy imports.
 
         Converts mkdocs-specific exceptions to ``OSError`` so callers only
@@ -113,7 +113,7 @@ class FlextInfraUtilitiesDocsBuild:
         try:
             site_dir.parent.mkdir(parents=True, exist_ok=True)
             config_obj: MutableMapping[str, bool] = load(
-                config_file_path=str(config),
+                config_file_path=str(settings),
                 site_dir=str(site_dir),
             )
             config_obj["strict"] = True

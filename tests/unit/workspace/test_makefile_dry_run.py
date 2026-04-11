@@ -77,7 +77,7 @@ def test_workspace_makefile_dry_run_mod_respects_project_selection(
     assert process.returncode == 0
     assert "--projects demo-a" in output
     assert (
-        f'taplo format --config "{workspace_root}/.taplo.toml" demo-a/pyproject.toml'
+        f'taplo format --settings "{workspace_root}/.taplo.toml" demo-a/pyproject.toml'
         in output
     )
     assert "ruff format demo-a --quiet" in output
@@ -96,7 +96,7 @@ def test_workspace_makefile_dry_run_mod_without_selection_uses_workspace_scope(
     assert "modernize --apply" in output
     assert "path-sync --mode auto --apply" in output
     assert (
-        f'taplo format --config "{workspace_root}/.taplo.toml" pyproject.toml demo-a/pyproject.toml demo-b/pyproject.toml'
+        f'taplo format --settings "{workspace_root}/.taplo.toml" pyproject.toml demo-a/pyproject.toml demo-b/pyproject.toml'
         in output
     )
     assert "ruff format . --quiet" in output

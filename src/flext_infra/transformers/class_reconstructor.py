@@ -22,7 +22,7 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
         order_config: Sequence[t.Infra.ContainerDict],
         on_change: t.Infra.ChangeCallback = None,
     ) -> None:
-        """Initialize with rule order config and optional change callback."""
+        """Initialize with rule order settings and optional change callback."""
         super().__init__(on_change=on_change)
         try:
             self._order_config: Sequence[m.Infra.MethodOrderRule] = TypeAdapter(

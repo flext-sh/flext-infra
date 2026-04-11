@@ -13,7 +13,7 @@ from tests import m, u
 
 
 class TestDepsModernizerMypy:
-    """Declarative tests for generated mypy and pydantic-mypy config."""
+    """Declarative tests for generated mypy and pydantic-mypy settings."""
 
     def test_mypy_phase_sets_expected_state(
         self,

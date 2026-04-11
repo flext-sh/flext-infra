@@ -15,7 +15,8 @@ from typing import Annotated, override
 
 from pydantic import Field
 
-from flext_infra import c, m, p, r, s, t, u
+from flext_core import r
+from flext_infra import c, m, p, s, t, u
 
 
 class FlextInfraStubSupplyChain(s[bool]):
@@ -206,7 +207,7 @@ class FlextInfraStubSupplyChain(s[bool]):
                 c.Infra.VERB_RUN,
                 c.Infra.MYPY,
                 c.Infra.DEFAULT_SRC_DIR,
-                "--config-file",
+                "--settings-file",
                 c.Infra.PYPROJECT_FILENAME,
                 "--no-error-summary",
             ],
@@ -232,7 +233,7 @@ class FlextInfraStubSupplyChain(s[bool]):
                 c.Infra.PYREFLY,
                 c.Infra.CHECK,
                 c.Infra.DEFAULT_SRC_DIR,
-                "--config",
+                "--settings",
                 c.Infra.PYPROJECT_FILENAME,
             ],
             cwd=project_dir,

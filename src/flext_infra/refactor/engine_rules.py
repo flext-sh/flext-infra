@@ -54,7 +54,7 @@ class _RopeTextRuleBridge(FlextInfraRefactorRule):
         if _file_path is None or self._ROPE_RULE_CLS is None:
             return (source, list[str]())
         rule = (
-            self._ROPE_RULE_CLS(self.config)
+            self._ROPE_RULE_CLS(self.settings)
             if self._NEEDS_CONFIG
             else self._ROPE_RULE_CLS()
         )
@@ -110,7 +110,7 @@ class FlextInfraRefactorTypingAnnotationFixRule(FlextInfraRefactorRule):
         _file_path: Path | None = None,
     ) -> t.Infra.TransformResult:
         fix_action = u.Infra.get_str_key(
-            self.config,
+            self.settings,
             c.Infra.RK_FIX_ACTION,
             case="lower",
         )
@@ -180,7 +180,7 @@ class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
         )
 
     def _tier0_modules(self) -> tuple[str, ...]:
-        value = self.config.get("tier0_modules", [])
+        value = self.settings.get("tier0_modules", [])
         if not isinstance(value, list):
             return (
                 c.Infra.CONSTANTS_PY,
@@ -190,16 +190,16 @@ class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
         return tuple(str(item) for item in value)
 
     def _core_aliases(self) -> tuple[str, ...]:
-        value = self.config.get("core_aliases", [])
+        value = self.settings.get("core_aliases", [])
         if not isinstance(value, list):
             return tuple(c.Infra.NAMESPACE_SOURCE_UNIVERSAL_ALIASES)
         return tuple(str(item) for item in value)
 
     def _core_package(self) -> str:
-        return str(self.config.get("core_package", c.Infra.PKG_CORE_UNDERSCORE))
+        return str(self.settings.get("core_package", c.Infra.PKG_CORE_UNDERSCORE))
 
     def _alias_to_submodule(self) -> t.StrMapping:
-        value = self.config.get("alias_to_submodule", {})
+        value = self.settings.get("alias_to_submodule", {})
         mapping_value = u.Cli.toml_as_mapping(value)
         if mapping_value is None:
             return dict[str, str]()
@@ -216,7 +216,7 @@ class FlextInfraRefactorSymbolPropagationRule(FlextInfraRefactorRule):
         _file_path: Path | None = None,
     ) -> t.Infra.TransformResult:
         typed_cfg: Mapping[str, t.Infra.InfraValue] = (
-            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(self.config)
+            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(self.settings)
         )
         target_modules = set(u.Infra.string_list(typed_cfg.get("target_modules", [])))
         try:
@@ -256,7 +256,7 @@ class FlextInfraRefactorSignaturePropagationRule(FlextInfraRefactorRule):
         source: str,
         _file_path: Path | None = None,
     ) -> t.Infra.TransformResult:
-        migrations_raw = self.config.get("signature_migrations", [])
+        migrations_raw = self.settings.get("signature_migrations", [])
         try:
             parsed: Sequence[m.Infra.SignatureMigration] = (
                 self._SIG_MIGRATION_SEQ_ADAPTER.validate_python(migrations_raw)
@@ -280,8 +280,8 @@ class FlextInfraRefactorClassReconstructorRule(FlextInfraRefactorRule):
         source: str,
         _file_path: Path | None = None,
     ) -> t.Infra.TransformResult:
-        """Apply method reordering transformer when order config is available."""
-        order_config_raw = self.config.get("method_order") or self.config.get(
+        """Apply method reordering transformer when order settings is available."""
+        order_config_raw = self.settings.get("method_order") or self.settings.get(
             "order",
             [],
         )

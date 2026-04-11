@@ -106,7 +106,7 @@ class FlextInfraClassNestingRefactorRule:
     """Apply class-nesting transforms driven by YAML mapping files."""
 
     def __init__(self, config_path: Path | None = None) -> None:
-        """Initialize rule with an optional path to the YAML config."""
+        """Initialize rule with an optional path to the YAML settings."""
         self._config_path = config_path or Path(__file__).with_name(
             "class-nesting-mappings.yml",
         )
@@ -298,19 +298,19 @@ class FlextInfraClassNestingRefactorRule:
         try:
             loaded = u.Cli.yaml_load_mapping(self._config_path)
         except (OSError, TypeError) as exc:
-            msg = "invalid class nesting mapping config"
+            msg = "invalid class nesting mapping settings"
             raise ValueError(msg) from exc
-        config: MutableMapping[str, t.Infra.InfraValue] = {}
+        settings: MutableMapping[str, t.Infra.InfraValue] = {}
         ct = loaded.get("confidence_threshold")
         if isinstance(ct, str):
-            config["confidence_threshold"] = ct
+            settings["confidence_threshold"] = ct
         for key in c.Infra.NESTING_SECTION_KEYS:
             raw = loaded.get(key)
             if isinstance(raw, list):
                 mappings = u.Infra.normalize_mapping_list(raw)
-                config[key] = [dict(e) for e in self._coerce(mappings)]
-        self._cached_config = config
-        return config
+                settings[key] = [dict(e) for e in self._coerce(mappings)]
+        self._cached_config = settings
+        return settings
 
     def _policy_by_family(self) -> Mapping[str, m.Infra.ClassNestingPolicy]:
         """Load and cache the validated policy matrix once per rule instance."""
@@ -337,8 +337,8 @@ class FlextInfraClassNestingRefactorRule:
             result.append(entry)
         return result
 
-    def _confidence_threshold(self, config: t.Infra.ContainerDict) -> str:
-        raw = config.get("confidence_threshold", c.Infra.SEVERITY_LOW)
+    def _confidence_threshold(self, settings: t.Infra.ContainerDict) -> str:
+        raw = settings.get("confidence_threshold", c.Infra.SEVERITY_LOW)
         if not isinstance(raw, str):
             msg = "confidence_threshold must be a string"
             raise TypeError(msg)

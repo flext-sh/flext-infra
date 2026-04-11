@@ -276,7 +276,7 @@ tools:
         '**/_utilities/parser.py':
           - ARG004
           - FBT001
-        '**/config.py':
+        '**/settings.py':
           - ANN401
           - FBT001
           - SLF001

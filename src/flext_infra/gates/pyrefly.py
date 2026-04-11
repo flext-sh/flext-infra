@@ -50,7 +50,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
             c.Infra.PYREFLY,
             c.Infra.CHECK,
             *check_dirs,
-            "--config",
+            "--settings",
             c.Infra.PYPROJECT_FILENAME,
             "--python-interpreter-path",
             sys.executable,

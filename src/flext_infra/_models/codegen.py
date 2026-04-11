@@ -319,7 +319,7 @@ class FlextInfraModelsCodegen:
             description="Governance rules"
         )
         canonical_values: list[FlextInfraModelsCodegen.CanonicalValueRule] = Field(
-            description="Canonical values config"
+            description="Canonical values settings"
         )
         constants_class_pattern: str = Field(
             description="Constants class pattern regex"

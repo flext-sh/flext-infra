@@ -13,7 +13,8 @@ from pathlib import Path
 from typing import override
 from urllib.parse import urlparse
 
-from flext_infra import c, r, s, u
+from flext_core import r
+from flext_infra import c, s, u
 
 
 class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
@@ -66,7 +67,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
                 )
                 return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.STANDALONE)
             result = u.Cli.capture(
-                [c.Infra.GIT, "config", "--get", "remote.origin.url"],
+                [c.Infra.GIT, "settings", "--get", "remote.origin.url"],
                 cwd=parent,
             )
             if result.failure:

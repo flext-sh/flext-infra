@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+from flext_core import r
 from flext_infra import (
     FlextInfraDependencyDetectionService,
     FlextInfraDependencyDetectorRuntime,
     FlextInfraModelsDeps,
     p,
-    r,
     u,
 )
 

@@ -15,7 +15,8 @@ from typing import Annotated, override
 
 from pydantic import Field
 
-from flext_infra import FlextInfraBaseMkGenerator, c, m, r, s, u
+from flext_core import r
+from flext_infra import FlextInfraBaseMkGenerator, c, m, s, u
 
 
 class FlextInfraBaseMkValidator(s[bool]):

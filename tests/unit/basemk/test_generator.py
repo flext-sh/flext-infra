@@ -20,14 +20,14 @@ def test_generator_execute_returns_generated_content() -> None:
 
 
 def test_generator_generate_with_none_config_uses_default() -> None:
-    result = FlextInfraBaseMkGenerator().generate_basemk(config=None)
+    result = FlextInfraBaseMkGenerator().generate_basemk(settings=None)
 
     assert result.success, result.error
     assert "PROJECT_NAME ?=" in result.value
 
 
 def test_generator_generate_with_basemk_config_object() -> None:
-    config = m.Infra.BaseMkConfig(
+    settings = m.Infra.BaseMkConfig(
         project_name="test-proj",
         python_version="3.13",
         core_stack="python",
@@ -38,14 +38,14 @@ def test_generator_generate_with_basemk_config_object() -> None:
         test_command="pytest",
     )
 
-    result = FlextInfraBaseMkGenerator().generate_basemk(config=config)
+    result = FlextInfraBaseMkGenerator().generate_basemk(settings=settings)
 
     assert result.success, result.error
     assert "PROJECT_NAME ?= test-proj" in result.value
 
 
 def test_generator_generate_with_invalid_mapping_fails() -> None:
-    result = FlextInfraBaseMkGenerator().generate_basemk(config={"invalid_key": "x"})
+    result = FlextInfraBaseMkGenerator().generate_basemk(settings={"invalid_key": "x"})
 
     assert result.failure
     assert "validation failed" in (result.error or "")

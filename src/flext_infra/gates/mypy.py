@@ -27,7 +27,7 @@ class FlextInfraMypyGate(FlextInfraGate):
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> Path:
-        """Resolve mypy config: project-local if it has [tool.mypy], else workspace."""
+        """Resolve mypy settings: project-local if it has [tool.mypy], else workspace."""
         proj_py = project_dir / c.Infra.PYPROJECT_FILENAME
         doc = u.Cli.toml_read(proj_py)
         if doc is not None:
@@ -52,7 +52,7 @@ class FlextInfraMypyGate(FlextInfraGate):
             "-m",
             c.Infra.MYPY,
             *check_dirs,
-            "--config-file",
+            "--settings-file",
             str(cfg),
             "--output",
             c.Infra.OUTPUT_JSON,

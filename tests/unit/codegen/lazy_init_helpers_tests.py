@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
 
-from tests import c, u
+from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
+from tests import c, m, t, u
 
 
 class TestsFlextInfraLazyInitHelpers:
@@ -19,6 +21,20 @@ class TestsFlextInfraLazyInitHelpers:
             project_name="flext-demo",
             package_name="flext_demo",
         )
+
+    @staticmethod
+    def _plan(
+        workspace_root: Path,
+        package_root: Path,
+        dir_exports: Mapping[str, t.Infra.LazyImportMap],
+    ) -> m.Infra.LazyInitPlan:
+        rope_root = u.Infra.rope_workspace_root(workspace_root)
+        with u.Infra.open_project(rope_root) as project:
+            return u.Infra(workspace_root).build_lazy_init_plan(
+                package_root,
+                project=project,
+                dir_exports=dir_exports,
+            )
 
     def test_discover_package_from_standard_roots(self) -> None:
         assert (
@@ -49,9 +65,10 @@ class TestsFlextInfraLazyInitHelpers:
             docstring="Models.",
         )
 
-        plan = u.Infra(workspace_root).build_lazy_init_plan(
+        plan = self._plan(
+            workspace_root,
             package_root,
-            dir_exports={},
+            {},
         )
 
         assert plan.action == "write"
@@ -68,9 +85,10 @@ class TestsFlextInfraLazyInitHelpers:
             encoding=c.Infra.ENCODING_DEFAULT,
         )
 
-        plan = u.Infra(workspace_root).build_lazy_init_plan(
+        plan = self._plan(
+            workspace_root,
             package_root,
-            dir_exports={},
+            {},
         )
 
         assert "FlextDemoInternal" not in plan.lazy_map
@@ -90,9 +108,10 @@ class TestsFlextInfraLazyInitHelpers:
             encoding=c.Infra.ENCODING_DEFAULT,
         )
 
-        plan = u.Infra(workspace_root).build_lazy_init_plan(
+        plan = self._plan(
+            workspace_root,
             package_root,
-            dir_exports={},
+            {},
         )
 
         assert plan.lazy_map["FlextDemo"] == ("flext_demo.api", "FlextDemo")
@@ -108,9 +127,10 @@ class TestsFlextInfraLazyInitHelpers:
             encoding=c.Infra.ENCODING_DEFAULT,
         )
 
-        plan = u.Infra(workspace_root).build_lazy_init_plan(
+        plan = self._plan(
+            workspace_root,
             package_root,
-            dir_exports={
+            {
                 str(child_dir): {
                     "FlextDemoService": (
                         "flext_demo.services.service",
@@ -128,7 +148,7 @@ class TestsFlextInfraLazyInitHelpers:
             "FlextDemoService",
         )
         assert "main" not in plan.lazy_map
-        assert "BLUE" not in plan.lazy_map
+        assert plan.lazy_map["BLUE"] == ("flext_demo.services.colors", "BLUE")
         assert "m" not in plan.lazy_map
 
     def test_tests_root_aliases_follow_export_hierarchy(self, tmp_path: Path) -> None:
@@ -177,9 +197,10 @@ class TestsFlextInfraLazyInitHelpers:
         child_dir = tests_root / "unit"
         child_dir.mkdir()
 
-        plan = u.Infra(workspace_root).build_lazy_init_plan(
+        plan = self._plan(
+            workspace_root,
             tests_root,
-            dir_exports={
+            {
                 str(child_dir): {
                     "Child": ("tests.unit.child", "Child"),
                     "td": ("flext_demo", "td"),
@@ -190,6 +211,140 @@ class TestsFlextInfraLazyInitHelpers:
         assert plan.lazy_map["d"] == ("flext_demo", "d")
         assert plan.lazy_map["td"] == ("flext_tests", "td")
         assert plan.lazy_map["Child"] == ("tests.unit.child", "Child")
+
+    def test_root_aliases_follow_transitive_parent_exports_from_source(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace_root, package_root = u.Infra.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-meltano",
+            package_name="flext_meltano",
+        )
+        core_root = tmp_path / "flext-core" / c.Infra.DEFAULT_SRC_DIR / "flext_core"
+        core_root.mkdir(parents=True)
+        core_root.parent.parent.joinpath(c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "flext-core"\nversion = "0.1.0"\n',
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+        core_root.joinpath(c.Infra.INIT_PY).write_text(
+            "",
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+        u.Infra.Tests.write_lazy_init_namespace_module(
+            core_root / "result.py",
+            class_name="FlextCoreResult",
+            alias="r",
+            docstring="Result.",
+        )
+        core_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
+            "from __future__ import annotations\n\n"
+            "class FlextCoreConstants:\n"
+            "    pass\n",
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+        cli_root = tmp_path / "flext-cli" / c.Infra.DEFAULT_SRC_DIR / "flext_cli"
+        cli_root.mkdir(parents=True)
+        cli_root.parent.parent.joinpath(c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "flext-cli"\nversion = "0.1.0"\n',
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+        cli_root.joinpath(c.Infra.INIT_PY).write_text(
+            '__all__ = ["c"]\n',
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+        cli_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
+            "from __future__ import annotations\n\n"
+            "from flext_core.constants import FlextCoreConstants\n\n"
+            "class FlextCliConstants(FlextCoreConstants):\n"
+            "    pass\n",
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+        package_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
+            "from __future__ import annotations\n\n"
+            "from flext_cli import c\n\n"
+            "class FlextMeltanoConstants(c):\n"
+            "    pass\n",
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+
+        plan = self._plan(
+            workspace_root,
+            package_root,
+            {},
+        )
+
+        assert plan.lazy_map["r"] == ("flext_cli", "r")
+
+    def test_root_aliases_use_ast_fallback_when_rope_class_scan_is_empty(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(
+            FlextInfraUtilitiesRopeAnalysis,
+            "get_class_info",
+            staticmethod(lambda *_args, **_kwargs: []),
+        )
+        workspace_root, package_root = u.Infra.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-meltano",
+            package_name="flext_meltano",
+        )
+        core_root = tmp_path / "flext-core" / c.Infra.DEFAULT_SRC_DIR / "flext_core"
+        core_root.mkdir(parents=True)
+        core_root.parent.parent.joinpath(c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "flext-core"\nversion = "0.1.0"\n',
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+        core_root.joinpath(c.Infra.INIT_PY).write_text(
+            "",
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+        u.Infra.Tests.write_lazy_init_namespace_module(
+            core_root / "result.py",
+            class_name="FlextCoreResult",
+            alias="r",
+            docstring="Result.",
+        )
+        core_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
+            "from __future__ import annotations\n\n"
+            "class FlextCoreConstants:\n"
+            "    pass\n",
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+        cli_root = tmp_path / "flext-cli" / c.Infra.DEFAULT_SRC_DIR / "flext_cli"
+        cli_root.mkdir(parents=True)
+        cli_root.parent.parent.joinpath(c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "flext-cli"\nversion = "0.1.0"\n',
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+        cli_root.joinpath(c.Infra.INIT_PY).write_text(
+            '__all__ = ["c"]\n',
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+        cli_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
+            "from __future__ import annotations\n\n"
+            "from flext_core.constants import FlextCoreConstants\n\n"
+            "class FlextCliConstants(FlextCoreConstants):\n"
+            "    pass\n",
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+        package_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
+            "from __future__ import annotations\n\n"
+            "from flext_cli import c\n\n"
+            "class FlextMeltanoConstants(c):\n"
+            "    pass\n",
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+
+        plan = self._plan(
+            workspace_root,
+            package_root,
+            {},
+        )
+
+        assert plan.lazy_map["r"] == ("flext_cli", "r")
 
     def test_duplicate_public_export_raises(self, tmp_path: Path) -> None:
         workspace_root, package_root = self._workspace(tmp_path)
@@ -203,4 +358,4 @@ class TestsFlextInfraLazyInitHelpers:
         )
 
         with pytest.raises(ValueError, match="export collision"):
-            u.Infra(workspace_root).build_lazy_init_plan(package_root, dir_exports={})
+            self._plan(workspace_root, package_root, {})

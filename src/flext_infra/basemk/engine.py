@@ -86,10 +86,10 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
 
     def render_all(
         self,
-        config: FlextInfraModelsBasemk.BaseMkConfig | None = None,
+        settings: FlextInfraModelsBasemk.BaseMkConfig | None = None,
     ) -> r[str]:
         """Render all base.mk templates into a single output string."""
-        active_config = config or self.default_config()
+        active_config = settings or self.default_config()
         lint_gates_csv = ",".join(active_config.lint_gates)
         sections: MutableSequence[str] = []
         try:
@@ -101,7 +101,7 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
                 )
                 rendered = self._render_template(
                     template,
-                    config=active_config,
+                    settings=active_config,
                     lint_gates_csv=lint_gates_csv,
                     make=FlextInfraConstantsBase,
                 )

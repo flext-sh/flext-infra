@@ -48,7 +48,7 @@ class FlextInfraUtilitiesDocsAudit:
         section: str,
         key: str,
     ) -> t.StrSequence:
-        """Read one list of policy tokens from the minimal root docs config."""
+        """Read one list of policy tokens from the minimal root docs settings."""
         workspace_root = (
             scope.path if scope.name == c.Infra.RK_ROOT else scope.path.parent
         )

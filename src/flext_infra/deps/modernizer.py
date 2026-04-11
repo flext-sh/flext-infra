@@ -7,6 +7,7 @@ from pathlib import Path
 
 from tomlkit.items import AoT, Table
 
+from flext_core import r
 from flext_infra import (
     FlextInfraConsolidateGroupsPhase,
     FlextInfraEnsureCoverageConfigPhase,
@@ -24,7 +25,6 @@ from flext_infra import (
     FlextInfraProjectClassifier,
     FlextInfraUtilitiesTomlParse,
     c,
-    r,
     t,
     u,
 )
@@ -45,7 +45,7 @@ class FlextInfraPyprojectModernizer:
         self.root = workspace_root or workspace or self.ROOT
         tool_config_result = u.Infra.load_tool_config()
         if tool_config_result.failure:
-            msg = tool_config_result.error or "failed to load deps tool config"
+            msg = tool_config_result.error or "failed to load deps tool settings"
             raise ValueError(msg)
         self._tool_config = tool_config_result.value
         self._paths_manager: FlextInfraExtraPathsManager | None = None
@@ -60,7 +60,7 @@ class FlextInfraPyprojectModernizer:
         return self._paths_manager
 
     def _classify_project(self, project_dir: Path) -> r[str]:
-        """Classify project kind for pyright/coverage config selection."""
+        """Classify project kind for pyright/coverage settings selection."""
         kind = FlextInfraProjectClassifier(project_dir).classify().project_kind
         return r[str].ok(kind)
 

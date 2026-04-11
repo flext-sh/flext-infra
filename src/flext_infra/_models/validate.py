@@ -16,7 +16,7 @@ class FlextInfraModelsCore:
 
     Canonical base policy:
     - ``ArbitraryTypesModel`` for mutable report/result payloads.
-    - ``ContractModel`` reserved for immutable settings/config contracts.
+    - ``ContractModel`` reserved for immutable settings/settings contracts.
     """
 
     class ValidationReport(m.ArbitraryTypesModel):

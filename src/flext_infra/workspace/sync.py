@@ -15,12 +15,12 @@ from typing import Annotated, override
 
 from pydantic import Field
 
+from flext_core import r
 from flext_infra import (
     FlextInfraBaseMkGenerator,
     FlextInfraServiceBase,
     c,
     m,
-    r,
     t,
     u,
 )
@@ -72,7 +72,7 @@ class FlextInfraSyncService(FlextInfraServiceBase[m.Infra.SyncResult]):
                     fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
                     return self._sync_locked_content(
                         resolved,
-                        config=None,
+                        settings=None,
                         canonical_root=self.canonical_root,
                     )
                 except OSError as exc:
@@ -86,7 +86,7 @@ class FlextInfraSyncService(FlextInfraServiceBase[m.Infra.SyncResult]):
     def _sync_locked_content(
         self,
         resolved: Path,
-        config: m.Infra.BaseMkConfig | None,
+        settings: m.Infra.BaseMkConfig | None,
         *,
         canonical_root: Path | None = None,
     ) -> r[m.Infra.SyncResult]:
@@ -95,7 +95,7 @@ class FlextInfraSyncService(FlextInfraServiceBase[m.Infra.SyncResult]):
         effective_root = canonical_root or self.canonical_root
         basemk_result = self._sync_basemk(
             resolved,
-            config,
+            settings,
             canonical_root=effective_root,
         )
         if basemk_result.failure:
@@ -150,7 +150,7 @@ class FlextInfraSyncService(FlextInfraServiceBase[m.Infra.SyncResult]):
                 continue
             sync_result = self._sync_locked_content(
                 project_path,
-                config=None,
+                settings=None,
                 canonical_root=canonical_root,
             )
             if sync_result.failure:
@@ -265,7 +265,7 @@ class FlextInfraSyncService(FlextInfraServiceBase[m.Infra.SyncResult]):
     def _sync_basemk(
         self,
         workspace_root: Path,
-        config: m.Infra.BaseMkConfig | None,
+        settings: m.Infra.BaseMkConfig | None,
         *,
         canonical_root: Path | None = None,
     ) -> r[bool]:
@@ -277,7 +277,7 @@ class FlextInfraSyncService(FlextInfraServiceBase[m.Infra.SyncResult]):
         """
         _ = canonical_root
         generator = self._get_generator()
-        gen_result = generator.generate_basemk(config)
+        gen_result = generator.generate_basemk(settings)
         if gen_result.failure:
             return r[bool].fail(gen_result.error or "base.mk generation failed")
         content: str = gen_result.value

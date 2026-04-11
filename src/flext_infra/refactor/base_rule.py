@@ -22,18 +22,18 @@ class FlextInfraRefactorRule:
     The engine handles file I/O and rope project lifecycle.
     """
 
-    def __init__(self, config: Mapping[str, t.Infra.InfraValue]) -> None:
-        """Initialize rule metadata from rule config."""
-        self.config = dict(config)
-        rule_id = self.config.get(c.Infra.RK_ID, c.Infra.DEFAULT_UNKNOWN)
+    def __init__(self, settings: Mapping[str, t.Infra.InfraValue]) -> None:
+        """Initialize rule metadata from rule settings."""
+        self.settings = dict(settings)
+        rule_id = self.settings.get(c.Infra.RK_ID, c.Infra.DEFAULT_UNKNOWN)
         self.rule_id = str(rule_id)
-        name_raw = self.config.get(c.Infra.NAME, self.rule_id)
+        name_raw = self.settings.get(c.Infra.NAME, self.rule_id)
         self.name = str(name_raw)
-        description_raw = self.config.get("description", "")
+        description_raw = self.settings.get("description", "")
         self.description = description_raw if isinstance(description_raw, str) else ""
-        enabled_raw = self.config.get(c.Infra.RK_ENABLED, True)
+        enabled_raw = self.settings.get(c.Infra.RK_ENABLED, True)
         self.enabled = bool(enabled_raw)
-        severity_raw = self.config.get("severity", c.Infra.SEVERITY_WARNING)
+        severity_raw = self.settings.get("severity", c.Infra.SEVERITY_WARNING)
         self.severity = str(severity_raw)
 
     def apply(

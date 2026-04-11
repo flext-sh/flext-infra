@@ -37,7 +37,7 @@ class BrokenRule(FlextInfraRefactorRule):
 def test_rule_dispatch_prefers_fix_action_metadata(tmp_path: Path) -> None:
     rules_dir = tmp_path / "rules"
     rules_dir.mkdir(parents=True)
-    config_path = tmp_path / "config.yml"
+    config_path = tmp_path / "settings.yml"
     config_path.write_text("engine: test\n", encoding="utf-8")
     (rules_dir / "rules.yml").write_text(
         "\nrules:\n  - id: custom-rule-a\n    enabled: true\n    fix_action: remove\n  - id: custom-rule-b\n    enabled: true\n    fix_action: replace_with_alias\n  - id: custom-rule-c\n    enabled: true\n    fix_action: reorder_methods\n  - id: custom-rule-d2\n    enabled: true\n    fix_action: migrate_to_class_mro\n  - id: custom-rule-e\n    enabled: true\n    fix_action: ensure_future_annotations\n  - id: custom-rule-f\n    enabled: true\n    fix_action: propagate_symbol_renames\n    import_symbol_renames:\n      Old: New\n  - id: custom-rule-g\n    enabled: true\n    fix_action: propagate_signature_migrations\n    signature_migrations:\n      - id: migrate-keyword\n        enabled: true\n        target_simple_names:\n          - run\n        keyword_renames:\n          old: new\n  - id: custom-rule-h\n    enabled: true\n    fix_action: convert_dict_to_mapping_annotations\n".strip()
@@ -61,7 +61,7 @@ def test_rule_dispatch_prefers_fix_action_metadata(tmp_path: Path) -> None:
 def test_rule_dispatch_fails_on_invalid_pattern_rule_config(tmp_path: Path) -> None:
     rules_dir = tmp_path / "rules"
     rules_dir.mkdir(parents=True)
-    config_path = tmp_path / "config.yml"
+    config_path = tmp_path / "settings.yml"
     config_path.write_text("engine: test\n", encoding="utf-8")
     (rules_dir / "rules.yml").write_text(
         "\nrules:\n  - id: custom-pattern-rule\n    enabled: true\n    fix_action: remove_redundant_casts\n".strip()
@@ -78,7 +78,7 @@ def test_rule_dispatch_fails_on_invalid_pattern_rule_config(tmp_path: Path) -> N
 def test_rule_dispatch_fails_on_unknown_rule_mapping(tmp_path: Path) -> None:
     rules_dir = tmp_path / "rules"
     rules_dir.mkdir(parents=True)
-    config_path = tmp_path / "config.yml"
+    config_path = tmp_path / "settings.yml"
     config_path.write_text("engine: test\n", encoding="utf-8")
     (rules_dir / "rules.yml").write_text(
         "\nrules:\n  - id: custom-unknown-rule\n    enabled: true\n".strip() + "\n",
@@ -94,7 +94,7 @@ def test_rule_dispatch_fails_on_unknown_rule_mapping(tmp_path: Path) -> None:
 def test_engine_always_enables_class_nesting_file_rule(tmp_path: Path) -> None:
     rules_dir = tmp_path / "rules"
     rules_dir.mkdir(parents=True)
-    config_path = tmp_path / "config.yml"
+    config_path = tmp_path / "settings.yml"
     config_path.write_text("engine: test\n", encoding="utf-8")
     (rules_dir / "rules.yml").write_text(
         "\nrules:\n  - id: custom-import-rule\n    enabled: true\n    fix_action: replace_with_alias\n".strip()
@@ -111,7 +111,7 @@ def test_engine_always_enables_class_nesting_file_rule(tmp_path: Path) -> None:
 def test_rule_dispatch_keeps_legacy_id_fallback_mapping(tmp_path: Path) -> None:
     rules_dir = tmp_path / "rules"
     rules_dir.mkdir(parents=True)
-    config_path = tmp_path / "config.yml"
+    config_path = tmp_path / "settings.yml"
     config_path.write_text("engine: test\n", encoding="utf-8")
     (rules_dir / "rules.yml").write_text(
         "\nrules:\n  - id: modernize-import-fallback\n    enabled: true\n".strip()
@@ -133,7 +133,7 @@ def test_refactor_project_scans_tests_and_scripts_dirs(tmp_path: Path) -> None:
         + "\n",
         encoding="utf-8",
     )
-    config_path = tmp_path / "config.yml"
+    config_path = tmp_path / "settings.yml"
     config_path.write_text(
         "\nrefactor_engine:\n  project_scan_dirs:\n    - tests\n    - scripts\n".strip()
         + "\n",
@@ -163,7 +163,7 @@ def test_refactor_files_skips_non_python_inputs(tmp_path: Path) -> None:
         + "\n",
         encoding="utf-8",
     )
-    config_path = tmp_path / "config.yml"
+    config_path = tmp_path / "settings.yml"
     config_path.write_text('refactor_engine:\n  project_scan_dirs: ["src"]\n')
     py_file = tmp_path / "sample.py"
     py_file.write_text("import os\n", encoding="utf-8")

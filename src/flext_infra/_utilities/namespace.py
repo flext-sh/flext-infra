@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import ClassVar, Final
 
 from flext_cli import u
+from flext_core import r
 from flext_infra import (
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesDocsScope,
@@ -15,7 +16,6 @@ from flext_infra import (
     c,
     m,
     p,
-    r,
     t,
 )
 from flext_infra._utilities.base import FlextInfraUtilitiesBase
@@ -33,11 +33,11 @@ class FlextInfraUtilitiesCodegenNamespace:
 
     @classmethod
     def _is_rule_fixable(cls, rule_id: str, module: str) -> bool:
-        cached = cls._governance_cache.get("config")
+        cached = cls._governance_cache.get("settings")
         if cached is None:
             raw = u.Cli.yaml_load_mapping(cls._governance_file)
             cached = m.Infra.ConstantsGovernanceConfig.model_validate(raw)
-            cls._governance_cache["config"] = cached
+            cls._governance_cache["settings"] = cached
         for rule in cached.rules:
             if rule.id != rule_id:
                 continue
@@ -51,11 +51,11 @@ class FlextInfraUtilitiesCodegenNamespace:
     @staticmethod
     def _lazy_init_config() -> m.Infra.LazyInitConfig:
         """Return the validated lazy-init policy document."""
-        config = FlextInfraUtilitiesBase.load_tool_config()
-        if config.failure:
-            msg = config.error or "lazy-init configuration is unavailable"
+        settings = FlextInfraUtilitiesBase.load_tool_config()
+        if settings.failure:
+            msg = settings.error or "lazy-init configuration is unavailable"
             raise RuntimeError(msg)
-        return config.unwrap().lazy_init
+        return settings.unwrap().lazy_init
 
     @classmethod
     def is_root_namespace_file(cls, file_name: str) -> bool:
@@ -95,7 +95,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         current_pkg: str = "",
     ) -> m.Infra.NamespaceModulePolicy:
         """Return the derived Pydantic policy for one governed module."""
-        config = cls._lazy_init_config()
+        settings = cls._lazy_init_config()
         package_name = (
             current_pkg
             or FlextInfraUtilitiesDiscovery.discover_package_from_file(
@@ -114,15 +114,15 @@ class FlextInfraUtilitiesCodegenNamespace:
         expected_family = (
             c.Infra.FAMILY_SUFFIXES[family_alias]
             if family_alias is not None
-            else config.public_file_suffixes.get(file_path.name)
+            else settings.public_file_suffixes.get(file_path.name)
         )
         expected_alias = (
             family_alias
             if family_alias is not None
-            else config.public_file_aliases.get(file_path.name)
+            else settings.public_file_aliases.get(file_path.name)
         )
         family_tokens = (
-            tuple(config.private_family_tokens.get(family_alias, ()))
+            tuple(settings.private_family_tokens.get(family_alias, ()))
             if family_alias is not None
             else (expected_family,)
             if expected_family
@@ -140,7 +140,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         )
         is_services_module = "services" in resolved_rel_path.parts
         is_services_package = "services" in package_parts
-        is_namespace_file = resolved_rel_path.name in config.root_namespace_files
+        is_namespace_file = resolved_rel_path.name in settings.root_namespace_files
         is_governed_namespace = (
             expected_alias is not None or expected_family is not None
         )
@@ -156,7 +156,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         ):
             expected_alias = cls.package_alias(package_name=package_name)
         surface_name = package_parts[0] if package_parts else ""
-        if surface_name not in config.surface_prefixes:
+        if surface_name not in settings.surface_prefixes:
             surface_name = "src"
         is_src_surface = surface_name == "src"
         enforce_contract = (
@@ -183,8 +183,8 @@ class FlextInfraUtilitiesCodegenNamespace:
         type_checking_imports = tuple(
             name
             for name in dict.fromkeys((
-                *config.public_file_aliases.values(),
-                *config.inherited_exports.get(surface_name, ()),
+                *settings.public_file_aliases.values(),
+                *settings.inherited_exports.get(surface_name, ()),
             ))
             if name.isidentifier()
         )
@@ -206,7 +206,7 @@ class FlextInfraUtilitiesCodegenNamespace:
                     project_prefix = prefix
                 else:
                     surface_prefix = (
-                        config.surface_prefixes.get(rel_parts[0], "")
+                        settings.surface_prefixes.get(rel_parts[0], "")
                         if rel_parts
                         else ""
                     )
@@ -222,7 +222,7 @@ class FlextInfraUtilitiesCodegenNamespace:
             expected_family=expected_family,
             family_tokens=family_tokens,
             accepted_suffixes=((expected_family,) if expected_family else ()),
-            allow_main_export=file_path.name in config.main_export_files,
+            allow_main_export=file_path.name in settings.main_export_files,
             allow_type_alias=(
                 file_path.name == c.Infra.TYPINGS_PY
                 or file_path.parent.name == "_typings"

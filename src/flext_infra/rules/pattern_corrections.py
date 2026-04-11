@@ -14,9 +14,9 @@ from flext_infra import (
 class FlextInfraRefactorPatternCorrectionsRule:
     """Apply corrective refactors for high-volume pattern violations."""
 
-    def __init__(self, config: Mapping[str, t.Infra.InfraValue]) -> None:
-        """Initialize rule metadata from rule config."""
-        self.config = dict(config)
+    def __init__(self, settings: Mapping[str, t.Infra.InfraValue]) -> None:
+        """Initialize rule metadata from rule settings."""
+        self.settings = dict(settings)
 
     def apply(
         self,
@@ -28,13 +28,13 @@ class FlextInfraRefactorPatternCorrectionsRule:
         """Apply configured pattern corrections to resource."""
         source = resource.read()
         fix_action = u.Infra.get_str_key(
-            self.config,
+            self.settings,
             c.Infra.RK_FIX_ACTION,
             case="lower",
         )
         if fix_action == "convert_dict_to_mapping_annotations":
             include_returns = bool(
-                self.config.get("include_return_annotations", False),
+                self.settings.get("include_return_annotations", False),
             )
             replacements: t.StrMapping = {
                 "dict[": "Mapping[",
@@ -56,7 +56,7 @@ class FlextInfraRefactorPatternCorrectionsRule:
             no_changes: list[str] = []
             return (source, no_changes)
         if fix_action == "remove_redundant_casts":
-            raw_types = self.config.get("redundant_type_targets", [])
+            raw_types = self.settings.get("redundant_type_targets", [])
             removable_types = set(u.Infra.string_list(raw_types))
             new_source, count = u.Infra.remove_redundant_cast(
                 rope_project,

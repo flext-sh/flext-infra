@@ -180,7 +180,7 @@ class FlextInfraCodegenFixer(s[str]):
                 module=project_path.name,
                 rule="REFACTOR",
                 line=0,
-                message=config_result.error or "refactor config load failed",
+                message=config_result.error or "refactor settings load failed",
             )
         elif rules_result is not None and rules_result.failure:
             ctx.skip(

@@ -92,7 +92,7 @@ class FlextInfraProtocolsBase(Protocol):
             _target: str | None = None,
             *,
             workspace_root: Path | None = None,
-            config: m.Infra.BaseMkConfig | None = None,
+            settings: m.Infra.BaseMkConfig | None = None,
             canonical_root: Path | None = None,
         ) -> r[m.Infra.SyncResult]:
             """Synchronize generated workspace or project artifacts."""
@@ -296,7 +296,7 @@ class FlextInfraProtocolsBase(Protocol):
 
         def render_all(
             self,
-            config: m.Infra.BaseMkConfig | None = None,
+            settings: m.Infra.BaseMkConfig | None = None,
         ) -> r[str]:
             """Render all templates with given configuration."""
             ...

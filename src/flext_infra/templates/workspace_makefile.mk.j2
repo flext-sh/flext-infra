@@ -276,7 +276,7 @@ boot: ## Install all projects into workspace .venv
 	$(Q)$(PREFLIGHT_CHECK)
 	$(Q)$(ENSURE_NO_PROJECT_CONFLICT)
 	$(Q)if [ -f .gitmodules ]; then \
-		submodule_paths="$$(git config --file .gitmodules --get-regexp '^submodule\..*\.path$$' 2>/dev/null | awk '{print $$2}' | tr '\n' ' ')"; \
+		submodule_paths="$$(git settings --file .gitmodules --get-regexp '^submodule\..*\.path$$' 2>/dev/null | awk '{print $$2}' | tr '\n' ' ')"; \
 		if [ -z "$$submodule_paths" ]; then \
 			echo "No declared submodules found in .gitmodules."; \
 		else \
@@ -289,9 +289,9 @@ boot: ## Install all projects into workspace .venv
 				name="$${name%.url}"; \
 				if [[ "$$url" == git@github.com:* ]]; then \
 					https_url="https://github.com/$${url#git@github.com:}"; \
-					git config "submodule.$$name.url" "$$https_url"; \
+					git settings "submodule.$$name.url" "$$https_url"; \
 				fi; \
-			done < <(git config --file .gitmodules --get-regexp '^submodule\..*\.url$$'); \
+			done < <(git settings --file .gitmodules --get-regexp '^submodule\..*\.url$$'); \
 			git submodule sync --recursive -- $$submodule_paths; \
 			git submodule update --init --recursive --jobs $${JOBS:-8} -- $$submodule_paths || { \
 				echo "ERROR: failed to update submodules"; \
@@ -583,7 +583,7 @@ fmt: ## Run code formatting across all workspace projects (ruff/gofmt + markdown
 		echo "Formatting Markdown files (markdownlint)..."; \
 		md_config=""; \
 		if [ -f ".markdownlint.json" ]; then \
-			md_config="--config .markdownlint.json"; \
+			md_config="--settings .markdownlint.json"; \
 		fi; \
 		echo "$$md_files" | xargs markdownlint --fix $$md_config; \
 	fi
@@ -620,7 +620,7 @@ ifeq ($(VALIDATE_SCOPE),workspace)
 	$(Q)$(WORKSPACE_INFRA_VALIDATE) skill-validate --skill rules-docker --mode strict
 	$(Q)$(WORKSPACE_INFRA_DEPS) modernize --audit
 	$(Q)if git grep -nE '/home/.*/flext|file:///home/.*/flext' -- '*.py' '**/*.py' '*.toml' '**/*.toml' '*.yml' '**/*.yml' '*.yaml' '**/*.yaml' '*.json' '**/*.json' '.gitignore' 'base.mk' '**/base.mk' ':!.planning/**' ':!.reports/**' ':!.sisyphus/**' ':!docs/**'; then \
-		echo "ERROR: absolute workspace paths detected in tracked sources/config"; \
+		echo "ERROR: absolute workspace paths detected in tracked sources/settings"; \
 		exit 1; \
 	fi
 else

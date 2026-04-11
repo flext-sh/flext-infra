@@ -56,7 +56,7 @@ class FlextInfraUtilitiesRefactorEngine:
     @staticmethod
     def collect_engine_project_files(
         rule_loader: FlextInfraUtilitiesRefactorRuleLoader,
-        config: t.Infra.InfraValue,
+        settings: t.Infra.InfraValue,
         project: Path,
         *,
         pattern: str = c.Infra.EXT_PYTHON_GLOB,
@@ -66,7 +66,7 @@ class FlextInfraUtilitiesRefactorEngine:
         Returns None on error.
         """
         loader = rule_loader
-        scan_dirs = frozenset(loader.extract_project_scan_dirs(config))
+        scan_dirs = frozenset(loader.extract_project_scan_dirs(settings))
         ir = FlextInfraUtilitiesIteration.iter_python_files(
             workspace_root=project,
             project_roots=[project],
@@ -80,7 +80,7 @@ class FlextInfraUtilitiesRefactorEngine:
                 ir.error or f"File iteration failed for {project}",
             )
             return None
-        ign, ext = loader.extract_engine_file_filters(config)
+        ign, ext = loader.extract_engine_file_filters(settings)
         return list(
             FlextInfraUtilitiesRefactorEngine.filter_engine_files(
                 ir.value,
@@ -94,7 +94,7 @@ class FlextInfraUtilitiesRefactorEngine:
     @staticmethod
     def collect_engine_workspace_files(
         rule_loader: FlextInfraUtilitiesRefactorRuleLoader,
-        config: t.Infra.InfraValue,
+        settings: t.Infra.InfraValue,
         workspace_root: Path,
         *,
         pattern: str = c.Infra.EXT_PYTHON_GLOB,
@@ -102,12 +102,12 @@ class FlextInfraUtilitiesRefactorEngine:
         """Collect all candidate files under workspace projects."""
         loader = rule_loader
         root = workspace_root.resolve()
-        scan_dirs = frozenset(loader.extract_project_scan_dirs(config))
+        scan_dirs = frozenset(loader.extract_project_scan_dirs(settings))
         projects = FlextInfraUtilitiesIteration.discover_project_roots(
             workspace_root=root,
             scan_dirs=scan_dirs or None,
         )
-        ign, ext = loader.extract_engine_file_filters(config)
+        ign, ext = loader.extract_engine_file_filters(settings)
         ignore_patterns = {str(i) for i in ign}
         allowed_extensions = {str(i) for i in ext}
         all_files: MutableSequence[Path] = []

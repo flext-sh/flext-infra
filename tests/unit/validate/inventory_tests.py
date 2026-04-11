@@ -89,7 +89,7 @@ class TestInventoryServiceScripts:
         scripts.mkdir()
         (scripts / "script.py").write_text("")
         (scripts / "readme.txt").write_text("")
-        (scripts / "config.json").write_text("")
+        (scripts / "settings.json").write_text("")
         report = tm.ok(service.generate(tmp_path))
         tm.that(report.total_scripts, eq=1)
 

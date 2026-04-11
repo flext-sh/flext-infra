@@ -16,7 +16,8 @@ from typing import Annotated, override
 
 from pydantic import Field
 
-from flext_infra import c, m, r, s, t, u
+from flext_core import r
+from flext_infra import c, m, s, t, u
 
 from .orchestrator_phases import FlextInfraReleaseOrchestratorPhases
 
@@ -226,7 +227,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
         pipeline_ctx = m.Cli.PipelineStageContext(
             workspace_root=workspace_root,
             shared={},
-            config={
+            settings={
                 "dry_run": dry_run,
                 "push": push,
                 "dev_suffix": dev_suffix,

@@ -195,7 +195,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         self,
         project_kind: str,
     ) -> m.Infra.ProjectTypeOverrideConfig | None:
-        """Return the project-type override config for the given kind."""
+        """Return the project-type override settings for the given kind."""
         overrides = self._tool_config.project_type_overrides
         kind_map: Mapping[str, m.Infra.ProjectTypeOverrideConfig] = {
             "core": overrides.core,

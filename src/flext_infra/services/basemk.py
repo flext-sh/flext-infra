@@ -17,12 +17,12 @@ class FlextInfraServiceBasemkMixin:
 
     def generate_basemk(
         self: FlextInfraServiceBase[t.MutableContainerMapping],
-        config: m.Infra.BaseMkConfig | t.ScalarMapping | None = None,
+        settings: m.Infra.BaseMkConfig | t.ScalarMapping | None = None,
     ) -> r[str]:
         """Generate base.mk content using the current facade context."""
         return FlextInfraBaseMkGenerator.model_validate(
             self.command_payload(),
-        ).generate_basemk(config)
+        ).generate_basemk(settings)
 
 
 __all__: Sequence[str] = ("FlextInfraServiceBasemkMixin",)

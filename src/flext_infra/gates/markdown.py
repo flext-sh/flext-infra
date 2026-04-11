@@ -26,13 +26,13 @@ class FlextInfraMarkdownGate(FlextInfraGate):
         ]
 
     def _resolve_config_args(self, project_dir: Path) -> t.StrSequence:
-        """Resolve markdownlint config file args."""
+        """Resolve markdownlint settings file args."""
         root_config = self._workspace_root / ".markdownlint.json"
         local_config = project_dir / ".markdownlint.json"
         if root_config.exists():
-            return ["--config", str(root_config)]
+            return ["--settings", str(root_config)]
         if local_config.exists():
-            return ["--config", str(local_config)]
+            return ["--settings", str(local_config)]
         return []
 
     @override

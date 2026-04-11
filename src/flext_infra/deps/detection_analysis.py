@@ -9,7 +9,8 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from flext_infra import c, m, r, t, u
+from flext_core import r
+from flext_infra import c, m, t, u
 
 
 class FlextInfraDependencyDetectionAnalysis:
@@ -230,15 +231,15 @@ class FlextInfraDependencyDetectionAnalysis:
         extend_exclude: t.StrSequence | None = None,
     ) -> r[t.Infra.Pair[Sequence[t.Infra.ContainerDict], int]]:
         """Run deptry analysis on a project and parse JSON output."""
-        config = config_path or project_path / c.Infra.PYPROJECT_FILENAME
-        if not config.exists():
+        settings = config_path or project_path / c.Infra.PYPROJECT_FILENAME
+        if not settings.exists():
             return r[t.Infra.Pair[Sequence[t.Infra.ContainerDict], int]].ok(([], 0))
         out_file = json_output_path or project_path / ".deptry-report.json"
         cmd: MutableSequence[str] = [
             str(venv_bin / c.Infra.DEPTRY),
             ".",
-            "--config",
-            str(config),
+            "--settings",
+            str(settings),
             "--json-output",
             str(out_file),
             "--no-ansi",
@@ -299,7 +300,7 @@ class FlextInfraDependencyDetectionAnalysis:
         cmd: t.StrSequence = [
             str(mypy_bin),
             c.Infra.DEFAULT_SRC_DIR,
-            "--config-file",
+            "--settings-file",
             c.Infra.PYPROJECT_FILENAME,
             "--no-error-summary",
         ]

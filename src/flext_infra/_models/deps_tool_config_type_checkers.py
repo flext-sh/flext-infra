@@ -83,7 +83,7 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 t.StrSequence,
                 Field(
                     alias="root-typings-paths",
-                    description="Typings paths used in workspace-root config.",
+                    description="Typings paths used in workspace-root settings.",
                 ),
             ]
             project_typings_paths: Annotated[
@@ -125,14 +125,14 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 str,
                 Field(
                     alias="root-venv-path",
-                    description="venvPath to use in workspace-root pyright config.",
+                    description="venvPath to use in workspace-root pyright settings.",
                 ),
             ]
             project_venv_path: Annotated[
                 str,
                 Field(
                     alias="project-venv-path",
-                    description="venvPath to use in subproject pyright config.",
+                    description="venvPath to use in subproject pyright settings.",
                 ),
             ]
             venv_name: Annotated[
@@ -206,7 +206,7 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 t.StrSequence,
                 Field(
                     alias="root-typings-paths",
-                    description="Typings paths used in workspace-root config.",
+                    description="Typings paths used in workspace-root settings.",
                 ),
             ]
             project_typings_paths: Annotated[

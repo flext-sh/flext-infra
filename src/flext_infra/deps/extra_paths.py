@@ -5,15 +5,17 @@ Handlers are called by the canonical CLI via FlextInfraCliDeps.register_deps.
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
+from flext_core import r
 from flext_infra import (
     FlextInfraUtilitiesDocsScope,
+    FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesPaths,
+    FlextInfraUtilitiesTomlParse,
     c,
     m,
-    r,
     t,
     u,
 )
@@ -29,7 +31,7 @@ class FlextInfraExtraPathsManager:
         self.root = workspace_root or self.ROOT
         tool_config_result = u.Infra.load_tool_config()
         if tool_config_result.failure:
-            msg = tool_config_result.error or "failed to load deps tool config"
+            msg = tool_config_result.error or "failed to load deps tool settings"
             raise ValueError(msg)
         self._tool_config: m.Infra.ToolConfigDocument = tool_config_result.value
         projects_result = FlextInfraUtilitiesDocsScope.discover_projects(self.root)
@@ -55,12 +57,14 @@ class FlextInfraExtraPathsManager:
             dep_pyproject = self.root / name / c.Infra.PYPROJECT_FILENAME
             if not dep_pyproject.exists():
                 continue
-            dep_doc_result = u.Cli.toml_read_document(dep_pyproject)
-            if dep_doc_result.failure:
-                continue
-            transitive = u.Infra.local_dependency_names(
-                dep_doc_result.value,
-                workspace_project_names=tuple(self._workspace_project_names),
+            dep_payload = FlextInfraUtilitiesIteration.pyproject_payload(
+                dep_pyproject,
+            )
+            transitive = (
+                FlextInfraUtilitiesTomlParse.local_dependency_names_from_payload(
+                    dep_payload,
+                    workspace_project_names=tuple(self._workspace_project_names),
+                )
             )
             if not transitive:
                 continue
@@ -75,22 +79,22 @@ class FlextInfraExtraPathsManager:
 
     def _dep_paths(
         self,
-        doc: t.Cli.TomlDocument,
+        payload: t.Infra.ContainerDict,
         *,
         is_root: bool = False,
     ) -> t.StrSequence:
         """Resolve dependency source roots to relative search paths."""
         dep_skip = c.Infra.COMMON_EXCLUDED_DIRS | frozenset({c.Infra.DIR_TESTS})
-        project_table = u.Cli.toml_table_child(doc, c.Infra.PROJECT)
+        project_table = payload.get(c.Infra.PROJECT)
         current_project_name = (
-            u.Cli.toml_unwrap_item(u.Cli.toml_item_child(project_table, c.Infra.NAME))
-            if project_table is not None
+            project_table.get(c.Infra.NAME)
+            if isinstance(project_table, Mapping)
             else None
         )
         resolved: MutableSequence[str] = []
         for name in self._resolve_transitive_deps(
-            u.Infra.local_dependency_names(
-                doc,
+            FlextInfraUtilitiesTomlParse.local_dependency_names_from_payload(
+                payload,
                 workspace_project_names=tuple(self._workspace_project_names),
             )
         ):
@@ -222,9 +226,9 @@ class FlextInfraExtraPathsManager:
         paths: t.Infra.StrSet = {*typings_paths}
         if is_root and rules.include_path_dependencies_in_search_path:
             pyproject = project_dir / c.Infra.PYPROJECT_FILENAME
-            doc_result = u.Cli.toml_read_document(pyproject)
-            if doc_result.success:
-                paths.update(self._dep_paths(doc_result.value, is_root=True))
+            if pyproject.exists():
+                payload = FlextInfraUtilitiesIteration.pyproject_payload(pyproject)
+                paths.update(self._dep_paths(payload, is_root=True))
         if (project_dir / source_root).is_dir():
             paths.add(source_root)
         if (

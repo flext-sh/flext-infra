@@ -106,7 +106,7 @@ def test_refactor_project_integrates_safety_manager(tmp_path: Path) -> None:
         + "\n",
         encoding="utf-8",
     )
-    config_path = tmp_path / "config.yml"
+    config_path = tmp_path / "settings.yml"
     config_path.write_text('refactor_engine:\n  project_scan_dirs: ["src"]\n')
     src_dir = tmp_path / "src"
     src_dir.mkdir(parents=True)

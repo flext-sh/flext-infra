@@ -120,31 +120,31 @@ class FlextInfraModelsDepsToolSettings(
         """Tool map loaded from YAML."""
 
         codespell: FlextInfraModelsDepsToolSettings.CodespellConfig = Field(
-            description="Codespell config"
+            description="Codespell settings"
         )
         ruff: FlextInfraModelsDepsToolSettings.RuffConfig = Field(
-            description="Ruff config"
+            description="Ruff settings"
         )
         mypy: FlextInfraModelsDepsToolSettings.MypyConfig = Field(
-            description="Mypy config"
+            description="Mypy settings"
         )
         pydantic_mypy: FlextInfraModelsDepsToolSettings.PydanticMypyConfig = Field(
             alias="pydantic-mypy", description="Pydantic mypy plugin configuration."
         )
         pyright: FlextInfraModelsDepsToolSettings.PyrightConfig = Field(
-            description="Pyright config"
+            description="Pyright settings"
         )
         pyrefly: FlextInfraModelsDepsToolSettings.PyreflyConfig = Field(
-            description="Pyrefly config"
+            description="Pyrefly settings"
         )
         pytest: FlextInfraModelsDepsToolSettings.PytestConfig = Field(
-            description="Pytest config"
+            description="Pytest settings"
         )
         tomlsort: FlextInfraModelsDepsToolSettings.TomlsortConfig = Field(
-            description="Tomlsort config"
+            description="Tomlsort settings"
         )
         yamlfix: FlextInfraModelsDepsToolSettings.YamlfixConfig = Field(
-            description="Yamlfix config"
+            description="Yamlfix settings"
         )
         coverage: FlextInfraModelsDepsToolSettings.CoverageConfig = Field(
             description="Coverage configuration with per-project-type thresholds."

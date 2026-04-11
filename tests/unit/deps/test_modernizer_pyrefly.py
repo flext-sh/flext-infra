@@ -19,13 +19,13 @@ def _test_tool_config() -> m.Infra.ToolConfigDocument:
     result = u.Infra.load_tool_config()
     tm.that(not result.failure, eq=True)
     if result.failure:
-        msg = "failed to load tool config"
+        msg = "failed to load tool settings"
         raise ValueError(msg)
     return result.value
 
 
 class TestEnsurePyreflyConfigPhase:
-    """Tests pyrefly config phase behavior."""
+    """Tests pyrefly settings phase behavior."""
 
     def test_ensure_pyrefly_config_sets_fields_root(self) -> None:
         doc = tomlkit.document()

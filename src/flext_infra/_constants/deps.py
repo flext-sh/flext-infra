@@ -12,7 +12,7 @@ class FlextInfraConstantsDeps:
     """Deps infrastructure constants."""
 
     # NOTE: Hardcoded base path constants removed.
-    # All tool config phases now use dynamic discovery via
+    # All tool settings phases now use dynamic discovery via
     # u.Infra.discover_python_dirs() (SSOT in FlextInfraUtilitiesDiscovery).
     GIT_REF_RE: Final[re.Pattern[str]] = re.compile(
         r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$",

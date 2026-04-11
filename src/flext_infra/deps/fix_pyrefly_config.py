@@ -13,11 +13,11 @@ from typing import override
 
 from pydantic import ValidationError
 
+from flext_core import r
 from flext_infra import (
     FlextInfraExtraPathsManager,
     c,
     m,
-    r,
     s,
     t,
     u,
@@ -35,13 +35,13 @@ class FlextInfraConfigFixer(s[bool]):
         *,
         workspace: Path | None = None,
     ) -> None:
-        """Initialize pyrefly config fixer."""
+        """Initialize pyrefly settings fixer."""
         self._workspace_root = u.Infra.resolve_workspace_root_or_cwd(
             workspace_root or workspace,
         )
         config_result = u.Infra.load_tool_config()
         if config_result.failure:
-            msg = config_result.error or "failed to load deps tool config"
+            msg = config_result.error or "failed to load deps tool settings"
             raise ValueError(msg)
         self._tool_config: m.Infra.ToolConfigDocument = config_result.value
 
@@ -116,7 +116,9 @@ class FlextInfraConfigFixer(s[bool]):
                 if conf_map.get(c.Infra.IGNORE) is True:
                     removed_ignore = True
                     matches = conf_map.get("matches", c.Infra.DEFAULT_UNKNOWN)
-                    all_fixes.append(f"removed ignore=true sub-config for '{matches}'")
+                    all_fixes.append(
+                        f"removed ignore=true sub-settings for '{matches}'"
+                    )
                     continue
                 new_configs.append(conf_out)
             if len(new_configs) != len(configs):

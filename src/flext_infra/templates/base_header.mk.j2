@@ -6,13 +6,13 @@
 # =============================================================================
 
 # === CONFIGURATION (override before include) ===
-PROJECT_NAME ?= {{ config.project_name }}
-PYTHON_VERSION ?= {{ config.python_version }}
-SRC_DIR ?= {{ config.source_dir }}
-TESTS_DIR ?= {{ config.tests_dir }}
+PROJECT_NAME ?= {{ settings.project_name }}
+PYTHON_VERSION ?= {{ settings.python_version }}
+SRC_DIR ?= {{ settings.source_dir }}
+TESTS_DIR ?= {{ settings.tests_dir }}
 DOCSTRING_MIN ?= 80
 COMPLEXITY_MAX ?= 10
-CORE_STACK ?= {{ config.core_stack }}
+CORE_STACK ?= {{ settings.core_stack }}
 {% for variable_name, default_value in make.PROJECT_VARIABLE_DEFAULTS -%}
 {{ variable_name }} ?= {{ default_value }}
 {% endfor %}

@@ -15,7 +15,8 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from flext_cli import FlextCliUtilities
-from flext_infra import c, r, t
+from flext_core import r
+from flext_infra import c, t
 
 
 class FlextInfraUtilitiesTomlParse:
@@ -90,30 +91,48 @@ class FlextInfraUtilitiesTomlParse:
         workspace_project_names: Sequence[str] = (),
     ) -> t.StrSequence:
         """Extract normalized local/workspace dependency names across supported TOML sections."""
+        raw: t.Infra.TomlData = doc.unwrap()
+        return FlextInfraUtilitiesTomlParse.local_dependency_names_from_payload(
+            raw,
+            workspace_project_names=workspace_project_names,
+        )
+
+    @staticmethod
+    def local_dependency_names_from_payload(
+        raw: t.Infra.ContainerDict,
+        *,
+        workspace_project_names: Sequence[str] = (),
+    ) -> t.StrSequence:
+        """Extract normalized local/workspace dependency names from a TOML payload."""
         names: t.Infra.StrSet = set()
-        project_table = FlextCliUtilities.Cli.toml_table_child(doc, c.Infra.PROJECT)
+        workspace_names = set(workspace_project_names)
+        project_table = raw.get(c.Infra.PROJECT)
+        dependencies: t.StrSequence = []
+        if isinstance(project_table, Mapping):
+            raw_dependencies = project_table.get(c.Infra.DEPENDENCIES, [])
+            if isinstance(raw_dependencies, Sequence) and not isinstance(
+                raw_dependencies,
+                str,
+            ):
+                dependencies = [
+                    dep_entry
+                    for dep_entry in raw_dependencies
+                    if isinstance(dep_entry, str)
+                ]
         declared_project_names = (
             {
                 dep_name
-                for dep_entry in FlextCliUtilities.Cli.toml_as_string_list(
-                    FlextCliUtilities.Cli.toml_item_child(
-                        project_table, c.Infra.DEPENDENCIES
-                    )
-                )
+                for dep_entry in dependencies
                 if (dep_name := FlextInfraUtilitiesTomlParse.dep_name(dep_entry))
             }
-            if project_table is not None
+            if isinstance(project_table, Mapping)
             else set()
         )
         for dep_entry in declared_project_names:
-            if dep_entry in workspace_project_names:
+            if dep_entry in workspace_names:
                 names.add(dep_entry)
-        if project_table is not None:
-            for dep_entry in FlextCliUtilities.Cli.toml_as_string_list(
-                FlextCliUtilities.Cli.toml_item_child(
-                    project_table, c.Infra.DEPENDENCIES
-                )
-            ):
+        if isinstance(project_table, Mapping):
+            for dep_entry in dependencies:
                 if " @ " not in dep_entry:
                     continue
                 _name, path_part = dep_entry.split(" @ ", 1)
@@ -124,54 +143,36 @@ class FlextInfraUtilitiesTomlParse:
                 )
                 if normalized_path:
                     names.add(FlextInfraUtilitiesTomlParse.dep_name(normalized_path))
-        tool_table = FlextCliUtilities.Cli.toml_table_child(doc, c.Infra.TOOL)
-        if tool_table is None:
+        tool_table = raw.get(c.Infra.TOOL)
+        if not isinstance(tool_table, Mapping):
             return sorted(names)
-        poetry_table = FlextCliUtilities.Cli.toml_table_child(
-            tool_table, c.Infra.POETRY
-        )
-        if poetry_table is not None:
-            deps_table = FlextCliUtilities.Cli.toml_table_child(
-                poetry_table, c.Infra.DEPENDENCIES
-            )
-            if deps_table is not None:
-                for dep_key in deps_table:
-                    dep_table = FlextCliUtilities.Cli.toml_table_child(
-                        deps_table, dep_key
-                    )
-                    if dep_table is None:
+        poetry_table = tool_table.get(c.Infra.POETRY)
+        if isinstance(poetry_table, Mapping):
+            deps_table = poetry_table.get(c.Infra.DEPENDENCIES)
+            if isinstance(deps_table, Mapping):
+                for dep_table in deps_table.values():
+                    if not isinstance(dep_table, Mapping):
                         continue
-                    dep_path = FlextCliUtilities.Cli.toml_unwrap_item(
-                        FlextCliUtilities.Cli.toml_item_child(dep_table, c.Infra.PATH),
-                    )
+                    dep_path = dep_table.get(c.Infra.PATH)
                     if isinstance(dep_path, str) and dep_path.strip():
                         names.add(FlextInfraUtilitiesTomlParse.dep_name(dep_path))
-        uv_table = FlextCliUtilities.Cli.toml_table_child(tool_table, "uv")
-        sources_table = (
-            FlextCliUtilities.Cli.toml_table_child(uv_table, "sources")
-            if uv_table is not None
-            else None
-        )
-        if sources_table is None:
+        uv_table = tool_table.get("uv")
+        if not isinstance(uv_table, Mapping):
             return sorted(names)
-        for source_key in sources_table:
+        sources_table = uv_table.get("sources")
+        if not isinstance(sources_table, Mapping):
+            return sorted(names)
+        for source_key, source_table in sources_table.items():
             dep_name = str(source_key)
             if declared_project_names and dep_name not in declared_project_names:
                 continue
-            source_table = FlextCliUtilities.Cli.toml_table_child(
-                sources_table, dep_name
-            )
-            if source_table is None:
+            if not isinstance(source_table, Mapping):
                 continue
-            workspace_val = FlextCliUtilities.Cli.toml_unwrap_item(
-                FlextCliUtilities.Cli.toml_item_child(source_table, "workspace"),
-            )
+            workspace_val = source_table.get("workspace")
             if workspace_val is True:
                 names.add(dep_name)
                 continue
-            source_path = FlextCliUtilities.Cli.toml_unwrap_item(
-                FlextCliUtilities.Cli.toml_item_child(source_table, c.Infra.PATH),
-            )
+            source_path = source_table.get(c.Infra.PATH)
             if isinstance(source_path, str) and source_path.strip():
                 names.add(FlextInfraUtilitiesTomlParse.dep_name(source_path))
         return sorted(names)
@@ -205,6 +206,13 @@ class FlextInfraUtilitiesTomlParse:
     def declared_dependency_names(doc: t.Cli.TomlDocument) -> t.StrSequence:
         """Extract normalized dependency names from all declared project groups."""
         raw: t.Infra.TomlData = doc.unwrap()
+        return FlextInfraUtilitiesTomlParse.declared_dependency_names_from_payload(raw)
+
+    @staticmethod
+    def declared_dependency_names_from_payload(
+        raw: t.Infra.ContainerDict,
+    ) -> t.StrSequence:
+        """Extract normalized dependency names from a plain TOML payload."""
         names: set[str] = set()
 
         def _collect(items: t.Infra.InfraValue) -> None:
@@ -217,67 +225,29 @@ class FlextInfraUtilitiesTomlParse:
                 if dep_name:
                     names.add(dep_name)
 
-        project_raw = FlextCliUtilities.Cli.toml_as_mapping(raw.get(c.Infra.PROJECT))
-        project_map = (
-            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(project_raw)
-            if project_raw is not None
-            else None
-        )
-        if project_map is not None:
-            _collect(project_map.get(c.Infra.DEPENDENCIES))
-            optional_raw = FlextCliUtilities.Cli.toml_as_mapping(
-                project_map.get(c.Infra.OPTIONAL_DEPENDENCIES),
-            )
-            optional_map = (
-                t.Infra.INFRA_MAPPING_ADAPTER.validate_python(optional_raw)
-                if optional_raw is not None
-                else None
-            )
-            if optional_map is not None:
-                for specs in optional_map.values():
+        project_raw = raw.get(c.Infra.PROJECT)
+        if isinstance(project_raw, Mapping):
+            _collect(project_raw.get(c.Infra.DEPENDENCIES))
+            optional_raw = project_raw.get(c.Infra.OPTIONAL_DEPENDENCIES)
+            if isinstance(optional_raw, Mapping):
+                for specs in optional_raw.values():
                     _collect(specs)
 
-        groups_raw = FlextCliUtilities.Cli.toml_as_mapping(
-            raw.get("dependency-groups"),
-        )
-        groups_map = (
-            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(groups_raw)
-            if groups_raw is not None
-            else None
-        )
-        if groups_map is not None:
-            for specs in groups_map.values():
+        groups_raw = raw.get("dependency-groups")
+        if isinstance(groups_raw, Mapping):
+            for specs in groups_raw.values():
                 _collect(specs)
 
-        tool_raw = FlextCliUtilities.Cli.toml_as_mapping(raw.get(c.Infra.TOOL))
-        tool_map = (
-            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(tool_raw)
-            if tool_raw is not None
-            else None
-        )
-        if tool_map is None:
+        tool_raw = raw.get(c.Infra.TOOL)
+        if not isinstance(tool_raw, Mapping):
             return sorted(names)
-        poetry_raw = FlextCliUtilities.Cli.toml_as_mapping(
-            tool_map.get(c.Infra.POETRY),
-        )
-        poetry_map = (
-            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(poetry_raw)
-            if poetry_raw is not None
-            else None
-        )
-        if poetry_map is None:
+        poetry_raw = tool_raw.get(c.Infra.POETRY)
+        if not isinstance(poetry_raw, Mapping):
             return sorted(names)
-        deps_raw = FlextCliUtilities.Cli.toml_as_mapping(
-            poetry_map.get(c.Infra.DEPENDENCIES),
-        )
-        deps_map = (
-            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(deps_raw)
-            if deps_raw is not None
-            else None
-        )
-        if deps_map is None:
+        deps_raw = poetry_raw.get(c.Infra.DEPENDENCIES)
+        if not isinstance(deps_raw, Mapping):
             return sorted(names)
-        for dep_key in deps_map:
+        for dep_key in deps_raw:
             dep_name = FlextInfraUtilitiesTomlParse.dep_name(str(dep_key))
             if dep_name and dep_name != "python":
                 names.add(dep_name)

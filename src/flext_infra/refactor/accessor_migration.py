@@ -103,7 +103,7 @@ class FlextInfraAccessorMigrationOrchestrator(s[m.Infra.AccessorMigrationReport]
         m.Infra.AccessorMigrationRule(
             source_name="get_beartype_conf",
             replacement_name="build_beartype_conf",
-            reason="Rewrite beartype config accessor to the canonical build verb",
+            reason="Rewrite beartype settings accessor to the canonical build verb",
             origin="flext_core.beartype",
         ),
         m.Infra.AccessorMigrationRule(

@@ -11,6 +11,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
             "TestsFlextInfraUtilitiesDiscoveryConsolidated",
         ),
         ".test_formatting": ("TestsFlextInfraUtilitiesFormattingRunRuffFix",),
+        ".test_iteration": ("TestIterWorkspacePythonModules",),
         ".test_safety": (
             "TestSafetyCheckpoint",
             "TestSafetyRollback",

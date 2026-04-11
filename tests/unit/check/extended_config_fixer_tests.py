@@ -77,7 +77,7 @@ class TestConfigFixerProcessFile:
             (
                 "[tool.pyrefly]\n"
                 'search-path = ["src"]\n'
-                "sub-config = [\n"
+                "sub-settings = [\n"
                 '  { matches = "*.py", ignore = true },\n'
                 '  { matches = "*.pyi", ignore = false },\n'
                 "]\n"
@@ -88,10 +88,10 @@ class TestConfigFixerProcessFile:
         result = FlextInfraConfigFixer(workspace=tmp_path).process_file(pyproject)
 
         tm.ok(result)
-        tm.that(result.value, has="removed ignore=true sub-config for '*.py'")
+        tm.that(result.value, has="removed ignore=true sub-settings for '*.py'")
         payload = tomllib.loads(pyproject.read_text(encoding="utf-8"))
         tm.that(
-            payload["tool"]["pyrefly"]["sub-config"],
+            payload["tool"]["pyrefly"]["sub-settings"],
             eq=[{"matches": "*.pyi", "ignore": False}],
         )
 

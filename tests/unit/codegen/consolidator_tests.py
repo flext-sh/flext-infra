@@ -7,7 +7,8 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from tests import c, m, r, t, u
+from flext_core import r
+from tests import c, m, t, u
 
 
 def test_execute_uses_codegen_project_discovery_and_project_filter(

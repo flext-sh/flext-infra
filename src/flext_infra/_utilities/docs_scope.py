@@ -7,12 +7,12 @@ from fnmatch import fnmatch
 from pathlib import Path
 
 from flext_cli import u
+from flext_core import r
 from flext_infra import (
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesTomlParse,
     c,
     m,
-    r,
     t,
 )
 
@@ -53,7 +53,7 @@ class FlextInfraUtilitiesDocsScope:
         )
 
     @staticmethod
-    def _project_name_from_payload(
+    def project_name_from_payload(
         entry: Path,
         payload: t.Infra.ContainerDict,
     ) -> str:
@@ -71,15 +71,14 @@ class FlextInfraUtilitiesDocsScope:
         return set(FlextInfraUtilitiesIteration.workspace_member_names(workspace_root))
 
     @staticmethod
-    def _declares_flext_core_dependency(pyproject: Path) -> bool:
-        """Return whether one pyproject declares a direct dependency on flext-core."""
-        document_result = u.Cli.toml_read_document(pyproject)
-        if document_result.failure:
-            return False
+    def _declares_flext_core_dependency(
+        payload: t.Infra.ContainerDict,
+    ) -> bool:
+        """Return whether one pyproject payload declares a direct dependency on flext-core."""
         dependency_names: t.Infra.StrSet = set(
-            FlextInfraUtilitiesTomlParse.declared_dependency_names(
-                document_result.value,
-            )
+            FlextInfraUtilitiesTomlParse.declared_dependency_names_from_payload(
+                payload
+            ),
         )
         return c.Infra.PKG_CORE in dependency_names
 
@@ -93,14 +92,17 @@ class FlextInfraUtilitiesDocsScope:
         pyproject = entry / c.Infra.PYPROJECT_FILENAME
         if not pyproject.is_file():
             return None
+        payload = FlextInfraUtilitiesDocsScope.pyproject_payload(entry)
         is_workspace_member = entry.name in workspace_members
-        if (not is_workspace_member) and (
-            not FlextInfraUtilitiesDocsScope._declares_flext_core_dependency(pyproject)
+        if (
+            not is_workspace_member
+            and not FlextInfraUtilitiesDocsScope._declares_flext_core_dependency(
+                payload,
+            )
         ):
             return None
-        payload = FlextInfraUtilitiesDocsScope.pyproject_payload(entry)
         docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(payload)
-        project_name = FlextInfraUtilitiesDocsScope._project_name_from_payload(
+        project_name = FlextInfraUtilitiesDocsScope.project_name_from_payload(
             entry,
             payload,
         )
@@ -136,7 +138,7 @@ class FlextInfraUtilitiesDocsScope:
 
     @staticmethod
     def config_path(workspace_root: Path) -> Path:
-        """Return the minimal docs policy config path."""
+        """Return the minimal docs policy settings path."""
         return workspace_root / c.Infra.DIR_DOCS / c.Infra.DOCS_CONFIG_FILENAME
 
     @staticmethod
@@ -145,14 +147,13 @@ class FlextInfraUtilitiesDocsScope:
         pyproject = project_root / c.Infra.PYPROJECT_FILENAME
         if not pyproject.exists():
             return {}
-        result = u.Cli.toml_read_json(pyproject)
-        return result.value if result.success else {}
+        return FlextInfraUtilitiesIteration.pyproject_payload(pyproject)
 
     @staticmethod
     def load_config(
         workspace_root: Path,
     ) -> t.Infra.ContainerDict:
-        """Load the minimal docs policy config if present."""
+        """Load the minimal docs policy settings if present."""
         path = FlextInfraUtilitiesDocsScope.config_path(workspace_root)
         if not path.exists():
             return {}

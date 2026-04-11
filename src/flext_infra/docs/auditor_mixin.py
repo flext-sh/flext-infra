@@ -21,7 +21,7 @@ class FlextInfraDocAuditorMixin:
 
     @staticmethod
     def find_architecture_config(workspace_root: Path) -> Path | None:
-        """Walk up from workspace_root looking for the architecture config."""
+        """Walk up from workspace_root looking for the architecture settings."""
         for candidate in [workspace_root, *workspace_root.parents]:
             path = candidate / "docs/architecture/architecture_config.json"
             if path.exists():
@@ -58,11 +58,11 @@ class FlextInfraDocAuditorMixin:
         cls,
         workspace_root: Path,
     ) -> t.Infra.Pair[int | None, t.IntMapping]:
-        """Load audit budgets from the nearest architecture config."""
-        config = cls.find_architecture_config(workspace_root)
-        if config is None:
+        """Load audit budgets from the nearest architecture settings."""
+        settings = cls.find_architecture_config(workspace_root)
+        if settings is None:
             return (None, {})
-        payload_result = u.Cli.json_read(config)
+        payload_result = u.Cli.json_read(settings)
         if payload_result.failure or not isinstance(payload_result.value, Mapping):
             return (None, {})
         docs_validation = payload_result.value.get("docs_validation")

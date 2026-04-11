@@ -31,7 +31,7 @@ def test_render_all_has_no_scripts_path_references() -> None:
 
 
 def test_render_all_with_config_override() -> None:
-    config = m.Infra.BaseMkConfig(
+    settings = m.Infra.BaseMkConfig(
         project_name="sample-project",
         python_version="3.13",
         core_stack="python",
@@ -42,7 +42,7 @@ def test_render_all_with_config_override() -> None:
         test_command="pytest",
     )
 
-    result = FlextInfraBaseMkGenerator().generate_basemk(config)
+    result = FlextInfraBaseMkGenerator().generate_basemk(settings)
 
     assert result.success, result.error
     assert "PROJECT_NAME ?= sample-project" in result.value

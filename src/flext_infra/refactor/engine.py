@@ -11,6 +11,7 @@ from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar
 
+from flext_core import r
 from flext_infra import (
     FlextInfraClassNestingRefactorRule,
     FlextInfraRefactorClassReconstructorRule,
@@ -30,7 +31,6 @@ from flext_infra import (
     FlextInfraRefactorTypingUnificationRule,
     FlextInfraUtilitiesRefactorRuleLoader,
     c,
-    r,
     t,
     u,
 )
@@ -98,10 +98,10 @@ class FlextInfraRefactorEngine(
     ]
 
     def __init__(self, config_path: Path | None = None) -> None:
-        """Initialize engine state and config file path."""
-        self.config_path = config_path or Path(__file__).parent / "config.yml"
+        """Initialize engine state and settings file path."""
+        self.config_path = config_path or Path(__file__).parent / "settings.yml"
         config_map: Mapping[str, t.Infra.InfraValue] = {}
-        self.config: t.Infra.InfraValue = config_map
+        self.settings: t.Infra.InfraValue = config_map
         self.rules: MutableSequence[FlextInfraRefactorRule] = []
         self.file_rules: MutableSequence[FlextInfraClassNestingRefactorRule] = []
         self.rule_filters: MutableSequence[str] = []
@@ -131,9 +131,9 @@ class FlextInfraRefactorEngine(
         _ = parser.add_argument("--impact-map-output", type=Path)
         _ = parser.add_argument("--analyze-violations", action="store_true")
         _ = parser.add_argument("--analysis-output", type=Path)
-        _ = parser.add_argument("--config", "-c", type=Path)
+        _ = parser.add_argument("--settings", "-c", type=Path)
         args = parser.parse_args()
-        engine = FlextInfraRefactorEngine(config_path=args.config)
+        engine = FlextInfraRefactorEngine(config_path=args.settings)
         cfg = engine.load_config()
         if not cfg.success:
             u.Infra.refactor_error(f"Config error: {cfg.error}")
@@ -159,10 +159,10 @@ class FlextInfraRefactorEngine(
         """Load YAML configuration for this engine instance."""
         result = self.rule_loader.load_config()
         if result.success:
-            self.config = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
+            self.settings = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
                 dict(result.value)
             )
-            u.Infra.refactor_info(f"Loaded config from {self.config_path}")
+            u.Infra.refactor_info(f"Loaded settings from {self.config_path}")
         return result
 
     def load_rules(self) -> r[Sequence[FlextInfraRefactorRule]]:

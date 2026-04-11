@@ -16,8 +16,8 @@ def _run_git(repo: Path, *args: str) -> None:
 
 def _init_git_repo(repo: Path) -> None:
     _run_git(repo, "init")
-    _run_git(repo, "config", "user.email", "tests@flext.local")
-    _run_git(repo, "config", "user.name", "Flext Tests")
+    _run_git(repo, "settings", "user.email", "tests@flext.local")
+    _run_git(repo, "settings", "user.name", "Flext Tests")
     (repo / "README.md").write_text("# test repo\n", encoding="utf-8")
     _run_git(repo, "add", "README.md")
     _run_git(repo, "commit", "-m", "initial commit")

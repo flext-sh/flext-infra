@@ -16,9 +16,9 @@ def test_docs_has_adr_reference_detects_marker(tmp_path: Path) -> None:
 
 
 def test_docs_load_required_skills_reads_architecture_config(tmp_path: Path) -> None:
-    config = tmp_path / "docs/architecture/architecture_config.json"
-    config.parent.mkdir(parents=True, exist_ok=True)
-    config.write_text(
+    settings = tmp_path / "docs/architecture/architecture_config.json"
+    settings.parent.mkdir(parents=True, exist_ok=True)
+    settings.write_text(
         '{"docs_validation": {"required_skills": ["rules-docs", "readme-standardization"]}}',
         encoding="utf-8",
     )

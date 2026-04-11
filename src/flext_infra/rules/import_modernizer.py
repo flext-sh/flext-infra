@@ -27,7 +27,7 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
     ) -> t.Infra.TransformResult:
         """Apply import modernizer or lazy-import hoisting based on fix action."""
         fix_action = u.Infra.get_str_key(
-            self.config,
+            self.settings,
             c.Infra.RK_FIX_ACTION,
             case="lower",
         )
@@ -37,9 +37,9 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
         runtime_aliases = set(c.Infra.RUNTIME_ALIAS_NAMES)
         blocked = set(u.Infra.collect_blocked_aliases(source, runtime_aliases))
         blocked.update(u.Infra.collect_shadowed_aliases(source, runtime_aliases))
-        forbidden = self.config.get("forbidden_imports")
+        forbidden = self.settings.get("forbidden_imports")
         if forbidden is None:
-            forbidden = [self.config]
+            forbidden = [self.settings]
         if not forbidden:
             no_changes: list[str] = []
             return (source, no_changes)

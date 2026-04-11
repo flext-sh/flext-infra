@@ -53,7 +53,7 @@ class FlextInfraConstantsWorkspace:
         ),
         (
             'python "$(WORKSPACE_ROOT)/scripts/check/fix_pyrefly_config.py"',
-            "python -m flext_infra check fix-pyrefly-config",
+            "python -m flext_infra check fix-pyrefly-settings",
         ),
         (
             'python "$(WORKSPACE_ROOT)/scripts/check/workspace_check.py"',

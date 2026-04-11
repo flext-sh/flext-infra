@@ -6,17 +6,17 @@ from typing import override
 
 from flext_tests import tm
 
-from flext_core import r
+from flext_core import r as tr
 from flext_infra import FlextInfraDependencyDetectionService
-from tests import m, p, r as tr, t
+from tests import m, p, t
 
 
 class _StubToml:
-    def __init__(self, values: Sequence[r[t.Infra.ContainerDict]]) -> None:
+    def __init__(self, values: Sequence[tr[t.Infra.ContainerDict]]) -> None:
         self._values = values
         self._idx = 0
 
-    def read_plain(self, path: Path) -> r[t.Infra.ContainerDict]:
+    def read_plain(self, path: Path) -> tr[t.Infra.ContainerDict]:
         _ = path
         value = self._values[self._idx]
         if self._idx < len(self._values) - 1:
@@ -25,7 +25,7 @@ class _StubToml:
 
 
 class _StubRunner(p.Cli.CommandRunner):
-    def __init__(self, result: r[m.Cli.CommandOutput]) -> None:
+    def __init__(self, result: tr[m.Cli.CommandOutput]) -> None:
         self._result = result
         self.last_kwargs: Mapping[str, str | int | Path | t.StrMapping] = {}
 
@@ -37,7 +37,7 @@ class _StubRunner(p.Cli.CommandRunner):
         timeout: int | None = None,
         env: t.Cli.StrEnvMapping | None = None,
         input_data: bytes | None = None,
-    ) -> r[m.Cli.CommandOutput]:
+    ) -> tr[m.Cli.CommandOutput]:
         del cmd, input_data
         self.last_kwargs = {
             "cwd": cwd or Path.cwd(),
@@ -53,7 +53,7 @@ class _StubRunner(p.Cli.CommandRunner):
         cwd: t.Cli.PathLike | None = None,
         timeout: int | None = None,
         env: t.Cli.StrEnvMapping | None = None,
-    ) -> r[m.Cli.CommandOutput]:
+    ) -> tr[m.Cli.CommandOutput]:
         del cmd, cwd, timeout, env
         if self._result.failure:
             return self._result
@@ -71,7 +71,7 @@ class _StubRunner(p.Cli.CommandRunner):
         cwd: t.Cli.PathLike | None = None,
         timeout: int | None = None,
         env: t.Cli.StrEnvMapping | None = None,
-    ) -> r[str]:
+    ) -> tr[str]:
         return self.run(cmd, cwd=cwd, timeout=timeout, env=env).map(
             lambda output: output.stdout.strip(),
         )
@@ -83,7 +83,7 @@ class _StubRunner(p.Cli.CommandRunner):
         cwd: t.Cli.PathLike | None = None,
         timeout: int | None = None,
         env: t.Cli.StrEnvMapping | None = None,
-    ) -> r[bool]:
+    ) -> tr[bool]:
         return self.run(cmd, cwd=cwd, timeout=timeout, env=env).map(
             lambda _output: True,
         )
@@ -96,7 +96,7 @@ class _StubRunner(p.Cli.CommandRunner):
         cwd: t.Cli.PathLike | None = None,
         timeout: int | None = None,
         env: t.Cli.StrEnvMapping | None = None,
-    ) -> r[int]:
+    ) -> tr[int]:
         result = self.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
         if result.failure:
             return tr[int].fail(result.error or "Command failed")
@@ -114,7 +114,7 @@ class TestLoadDependencyLimits:
     def test_success(self) -> None:
         service = FlextInfraDependencyDetectionService()
         service.toml = _StubToml([
-            r[t.Infra.ContainerDict].ok({"key": "value", "num": 42})
+            tr[t.Infra.ContainerDict].ok({"key": "value", "num": 42})
         ])
         result = service.load_dependency_limits(Path("/fake/limits.toml"))
         assert result.get("key") == "value"
@@ -122,13 +122,13 @@ class TestLoadDependencyLimits:
 
     def test_failure_returns_empty(self) -> None:
         service = FlextInfraDependencyDetectionService()
-        service.toml = _StubToml([r[t.Infra.ContainerDict].fail("not found")])
+        service.toml = _StubToml([tr[t.Infra.ContainerDict].fail("not found")])
         tm.that(service.load_dependency_limits(Path("/fake/limits.toml")), eq={})
 
     def test_unconvertible_values_skipped(self) -> None:
         service = FlextInfraDependencyDetectionService()
         service.toml = _StubToml([
-            r[t.Infra.ContainerDict].ok({"good": "val", "bad": ["x"]})
+            tr[t.Infra.ContainerDict].ok({"good": "val", "bad": ["x"]})
         ])
         result = service.load_dependency_limits(Path("/fake/limits.toml"))
         assert "good" in result
@@ -136,7 +136,7 @@ class TestLoadDependencyLimits:
 
     def test_none_value_preserved(self) -> None:
         service = FlextInfraDependencyDetectionService()
-        service.toml = _StubToml([r[t.Infra.ContainerDict].ok({"key": None})])
+        service.toml = _StubToml([tr[t.Infra.ContainerDict].ok({"key": None})])
         result = service.load_dependency_limits(Path("/fake/limits.toml"))
         assert "key" in result
         tm.that(result["key"], eq=None)
@@ -157,7 +157,7 @@ class TestRunMypyStubHints:
         venv_bin = tmp_path / "venv" / "bin"
         venv_bin.mkdir(parents=True)
         (venv_bin / "mypy").write_text("", encoding="utf-8")
-        service.runner = _StubRunner(r[m.Cli.CommandOutput].fail("mypy crash"))
+        service.runner = _StubRunner(tr[m.Cli.CommandOutput].fail("mypy crash"))
         tm.fail(service.run_mypy_stub_hints(tmp_path, venv_bin))
 
     def test_parses_hints(
@@ -173,7 +173,7 @@ class TestRunMypyStubHints:
             stdout='note: hint: "pip install types-pyyaml"',
             stderr='error: Library stubs not installed for "requests"',
         )
-        service.runner = _StubRunner(r[m.Cli.CommandOutput].ok(out))
+        service.runner = _StubRunner(tr[m.Cli.CommandOutput].ok(out))
         tm.ok(service.run_mypy_stub_hints(tmp_path, venv_bin))
 
     def test_run_mypy_stub_hints_with_timeout(
@@ -185,7 +185,7 @@ class TestRunMypyStubHints:
         venv_bin.mkdir(parents=True)
         (venv_bin / "mypy").write_text("", encoding="utf-8")
         out = m.Cli.CommandOutput(exit_code=0, stdout="", stderr="")
-        runner = _StubRunner(r[m.Cli.CommandOutput].ok(out))
+        runner = _StubRunner(tr[m.Cli.CommandOutput].ok(out))
         service.runner = runner
         tm.ok(service.run_mypy_stub_hints(tmp_path, venv_bin, timeout=600))
         tm.that(runner.last_kwargs["timeout"], eq=600)

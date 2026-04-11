@@ -6,6 +6,7 @@ from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING
 
 from flext_cli.api import cli as cli_service
+from flext_core import r
 from flext_infra import (
     FlextInfraOrchestratorService,
     FlextInfraProjectMigrator,
@@ -13,7 +14,6 @@ from flext_infra import (
     FlextInfraWorkspaceDetector,
     c,
     m,
-    r,
     t,
 )
 

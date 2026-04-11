@@ -8,7 +8,8 @@ from pathlib import Path
 
 from pydantic import TypeAdapter, ValidationError
 
-from flext_infra import FlextInfraRefactorLooseClassScanner, c, m, r, t, u
+from flext_core import r
+from flext_infra import FlextInfraRefactorLooseClassScanner, c, m, t, u
 
 
 class FlextInfraRefactorClassNestingAnalyzer:

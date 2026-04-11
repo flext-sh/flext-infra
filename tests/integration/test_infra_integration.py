@@ -219,11 +219,11 @@ class TestInfraIntegration:
         init_result = u.Cli.run_checked(["git", "init"], cwd=repo_root)
         assert init_result.success
         email_result = u.Cli.run_checked(
-            ["git", "config", "user.email", "infra@example.com"], cwd=repo_root
+            ["git", "settings", "user.email", "infra@example.com"], cwd=repo_root
         )
         assert email_result.success
         name_result = u.Cli.run_checked(
-            ["git", "config", "user.name", "Infra Test"], cwd=repo_root
+            ["git", "settings", "user.name", "Infra Test"], cwd=repo_root
         )
         assert name_result.success
         sample_file = repo_root / "README.md"

@@ -6,12 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import tomllib
 from collections.abc import Mapping, MutableSequence, Sequence
 from functools import cache
 from pathlib import Path
 
 from flext_cli import u
-from flext_infra import FlextInfraUtilitiesTomlParse, c, r, t
+from flext_core import r
+from flext_infra import FlextInfraUtilitiesTomlParse, c, t
 
 
 class FlextInfraUtilitiesIteration:
@@ -47,6 +49,13 @@ class FlextInfraUtilitiesIteration:
         return payload if isinstance(payload, dict) else {}
 
     @staticmethod
+    def pyproject_payload(
+        pyproject_path: Path,
+    ) -> t.Infra.ContainerDict:
+        """Return one parsed ``pyproject.toml`` payload through the shared cache."""
+        return FlextInfraUtilitiesIteration._pyproject_payload(str(pyproject_path))
+
+    @staticmethod
     def _tool_flext_meta(
         project_root: Path,
     ) -> t.Infra.ContainerDict:
@@ -61,35 +70,44 @@ class FlextInfraUtilitiesIteration:
         return flext if isinstance(flext, dict) else {}
 
     @staticmethod
-    def _workspace_member_names(workspace_root: Path) -> Sequence[str]:
-        """Return configured workspace members from ``tool.flext`` or ``tool.uv``."""
-        flext_meta = FlextInfraUtilitiesIteration._tool_flext_meta(workspace_root)
-        flext_workspace = flext_meta.get("workspace")
-        if isinstance(flext_workspace, dict):
-            members = flext_workspace.get("members")
-            if isinstance(members, list):
-                normalized = [
-                    str(member).strip() for member in members if str(member).strip()
-                ]
-                if normalized:
-                    return normalized
-
-        payload = FlextInfraUtilitiesIteration._pyproject_payload(
-            str(workspace_root / c.Infra.PYPROJECT_FILENAME),
-        )
+    @cache
+    def _pyproject_workspace_member_names(pyproject_path: str) -> t.StrSequence:
+        """Return workspace member names through a lightweight TOML parse."""
+        path = Path(pyproject_path)
+        if not path.is_file():
+            return ()
+        try:
+            payload = tomllib.loads(
+                path.read_text(encoding=c.Infra.ENCODING_DEFAULT),
+            )
+        except (OSError, tomllib.TOMLDecodeError):
+            return ()
         tool = payload.get(c.Infra.TOOL)
         if not isinstance(tool, dict):
-            return []
-        uv = tool.get("uv")
-        if not isinstance(uv, dict):
-            return []
-        uv_workspace = uv.get("workspace")
-        if not isinstance(uv_workspace, dict):
-            return []
-        members = uv_workspace.get("members")
-        if not isinstance(members, list):
-            return []
-        return [str(member).strip() for member in members if str(member).strip()]
+            return ()
+        for tool_name in ("flext", "uv"):
+            tool_config = tool.get(tool_name)
+            if not isinstance(tool_config, dict):
+                continue
+            workspace_config = tool_config.get("workspace")
+            if not isinstance(workspace_config, dict):
+                continue
+            members = workspace_config.get("members")
+            if not isinstance(members, list):
+                continue
+            normalized = tuple(
+                member_name for item in members if (member_name := str(item).strip())
+            )
+            if normalized:
+                return normalized
+        return ()
+
+    @staticmethod
+    def _workspace_member_names(workspace_root: Path) -> Sequence[str]:
+        """Return configured workspace members from ``tool.flext`` or ``tool.uv``."""
+        return FlextInfraUtilitiesIteration._pyproject_workspace_member_names(
+            str(workspace_root / c.Infra.PYPROJECT_FILENAME),
+        )
 
     @staticmethod
     def workspace_member_names(workspace_root: Path) -> Sequence[str]:

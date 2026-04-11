@@ -179,7 +179,7 @@ class FlextInfraTypesBase:
     type DomainOutput = DomainResult | DomainResultSequence
     "Single or batched service result payload for infra services."
     type ContainerOverrides = t.ContainerMapping
-    "Container-shaped config overrides passed to service bootstrap."
+    "Container-shaped settings overrides passed to service bootstrap."
     type RuntimeScalarOverrides = t.ScalarMapping
     "Scalar-only runtime/container override mapping."
 

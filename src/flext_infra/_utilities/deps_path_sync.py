@@ -8,12 +8,12 @@ from pathlib import Path
 from tomlkit.items import InlineTable, Table as TomlTable
 
 from flext_cli import u
+from flext_core import r
 from flext_infra import (
     FlextInfraModelsDeps,
     FlextInfraUtilitiesDocsScope,
     FlextInfraUtilitiesTomlParse,
     c,
-    r,
     t,
 )
 
@@ -246,23 +246,7 @@ class FlextInfraUtilitiesDependencyPathSync(
         if mode == "auto":
             mode = self.detect_mode(workspace_root)
 
-        total_changes = 0
-        internal_names: t.Infra.StrSet = set()
         root_pyproject = workspace_root / c.Infra.PYPROJECT_FILENAME
-
-        if root_pyproject.exists():
-            root_data_result = u.Cli.toml_read_document(root_pyproject)
-            if root_data_result.success:
-                root_data: t.Cli.TomlDocument = root_data_result.value
-                root_project = u.Cli.toml_item_child(root_data, c.Infra.PROJECT)
-                root_mapping = u.Cli.toml_as_mapping(
-                    u.Cli.toml_unwrap_item(root_project),
-                )
-                root_name = (
-                    root_mapping.get(c.Infra.NAME) if root_mapping is not None else None
-                )
-                if isinstance(root_name, str) and root_name:
-                    internal_names.add(root_name)
 
         discover_result = FlextInfraUtilitiesDocsScope.discover_projects(
             workspace_root,
@@ -277,6 +261,20 @@ class FlextInfraUtilitiesDependencyPathSync(
             return 1
 
         projects_list = discover_result.value
+        total_changes = 0
+        internal_names: t.Infra.StrSet = {
+            project.name for project in projects_list if project.name
+        }
+        if root_pyproject.exists():
+            root_payload = FlextInfraUtilitiesDocsScope.pyproject_payload(
+                workspace_root,
+            )
+            root_name = FlextInfraUtilitiesDocsScope.project_name_from_payload(
+                workspace_root,
+                root_payload,
+            )
+            if root_name:
+                internal_names.add(root_name)
         all_project_dirs = [project.path for project in projects_list]
         workspace_members = sorted(
             str(project.path.relative_to(workspace_root))
@@ -287,30 +285,6 @@ class FlextInfraUtilitiesDependencyPathSync(
             project_dirs = [workspace_root / project for project in selected_projects]
         else:
             project_dirs = all_project_dirs
-
-        for project_dir in all_project_dirs:
-            pyproject = project_dir / c.Infra.PYPROJECT_FILENAME
-            if not pyproject.exists():
-                continue
-            data_result = u.Cli.toml_read_document(pyproject)
-            if data_result.failure:
-                project_error = data_result.error or "sync_dep_paths_project_invalid"
-                self._log.error(
-                    "sync_dep_paths_project_invalid",
-                    pyproject=str(pyproject),
-                    error_detail=project_error,
-                )
-                return 1
-            project_data: t.Cli.TomlDocument = data_result.value
-            project_obj = u.Cli.toml_item_child(project_data, c.Infra.PROJECT)
-            project_mapping = u.Cli.toml_as_mapping(
-                u.Cli.toml_unwrap_item(project_obj),
-            )
-            if project_mapping is None:
-                continue
-            project_name = project_mapping.get(c.Infra.NAME)
-            if isinstance(project_name, str) and project_name:
-                internal_names.add(project_name)
 
         if not selected_projects and root_pyproject.exists():
             changes_result = self.rewrite_dep_paths(

@@ -46,14 +46,14 @@ class FlextInfraBaseMkGenerator(s[str]):
 
     @override
     def execute(self) -> r[str]:
-        config = (
+        settings = (
             FlextInfraBaseMkTemplateEngine.default_config().model_copy(
                 update={"project_name": self.project_name},
             )
             if self.project_name
             else None
         )
-        result = self.generate_basemk(config)
+        result = self.generate_basemk(settings)
         if result.failure:
             return result
         write_result = self.write(
@@ -67,10 +67,10 @@ class FlextInfraBaseMkGenerator(s[str]):
 
     def generate_basemk(
         self,
-        config: FlextInfraModelsBasemk.BaseMkConfig | t.ScalarMapping | None = None,
+        settings: FlextInfraModelsBasemk.BaseMkConfig | t.ScalarMapping | None = None,
     ) -> r[str]:
         """Generate base.mk content from configuration."""
-        config_result = self._normalize_config(config)
+        config_result = self._normalize_config(settings)
         if config_result.failure:
             return r[str].fail(config_result.error or "invalid base.mk configuration")
         config_value = config_result.value
@@ -110,17 +110,17 @@ class FlextInfraBaseMkGenerator(s[str]):
 
     def _normalize_config(
         self,
-        config: FlextInfraModelsBasemk.BaseMkConfig | t.ScalarMapping | None,
+        settings: FlextInfraModelsBasemk.BaseMkConfig | t.ScalarMapping | None,
     ) -> r[FlextInfraModelsBasemk.BaseMkConfig]:
-        if config is None:
+        if settings is None:
             return r[FlextInfraModelsBasemk.BaseMkConfig].ok(
                 FlextInfraBaseMkTemplateEngine.default_config(),
             )
-        if isinstance(config, FlextInfraModelsBasemk.BaseMkConfig):
-            return r[FlextInfraModelsBasemk.BaseMkConfig].ok(config)
+        if isinstance(settings, FlextInfraModelsBasemk.BaseMkConfig):
+            return r[FlextInfraModelsBasemk.BaseMkConfig].ok(settings)
         try:
             normalized = FlextInfraModelsBasemk.BaseMkConfig.model_validate(
-                dict(config),
+                dict(settings),
             )
             return r[FlextInfraModelsBasemk.BaseMkConfig].ok(normalized)
         except (TypeError, ValueError) as exc:

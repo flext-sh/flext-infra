@@ -13,7 +13,7 @@ def _test_tool_config() -> m.Infra.ToolConfigDocument:
     result = u.Infra.load_tool_config()
     tm.that(not result.failure, eq=True)
     if result.failure:
-        msg = "failed to load tool config"
+        msg = "failed to load tool settings"
         raise ValueError(msg)
     return result.value
 
@@ -33,7 +33,7 @@ def _strings(value: t.Cli.JsonValue) -> t.StrSequence:
 
 
 class TestEnsurePytestConfigPhase:
-    """Tests pytest config phase behavior."""
+    """Tests pytest settings phase behavior."""
 
     def test_apply_sets_expected_ini_options(self) -> None:
         tool_config = _test_tool_config()

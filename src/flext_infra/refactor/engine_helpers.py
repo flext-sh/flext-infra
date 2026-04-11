@@ -28,7 +28,7 @@ _log = u.fetch_logger(__name__)
 class FlextInfraRefactorEngineHelpersMixin:
     """Mixin providing file-level pipeline and project/workspace orchestration."""
 
-    config: t.Infra.InfraValue
+    settings: t.Infra.InfraValue
     rules: MutableSequence[FlextInfraRefactorRule]
     file_rules: MutableSequence[FlextInfraClassNestingRefactorRule]
     rule_loader: FlextInfraUtilitiesRefactorRuleLoader
@@ -179,13 +179,13 @@ class FlextInfraRefactorEngineHelpersMixin:
     ) -> MutableSequence[Path] | None:
         if args.project:
             return u.Infra.collect_engine_project_files(
-                self.rule_loader, self.config, args.project, pattern=args.pattern
+                self.rule_loader, self.settings, args.project, pattern=args.pattern
             )
         if args.workspace:
             return list(
                 u.Infra.collect_engine_workspace_files(
                     self.rule_loader,
-                    self.config,
+                    self.settings,
                     args.workspace,
                     pattern=args.pattern,
                 )
@@ -312,7 +312,7 @@ class FlextInfraRefactorEngineHelpersMixin:
         if err is not None:
             return err
         collected = u.Infra.collect_engine_project_files(
-            self.rule_loader, self.config, project_path, pattern=pattern
+            self.rule_loader, self.settings, project_path, pattern=pattern
         )
         if collected is None:
             return [
@@ -349,7 +349,7 @@ class FlextInfraRefactorEngineHelpersMixin:
         if not root.exists() or not root.is_dir():
             u.Infra.refactor_error(f"Invalid workspace root: {workspace_root}")
             return []
-        scan_dirs = frozenset(self.rule_loader.extract_project_scan_dirs(self.config))
+        scan_dirs = frozenset(self.rule_loader.extract_project_scan_dirs(self.settings))
         projects = u.Infra.discover_project_roots(
             workspace_root=root, scan_dirs=scan_dirs or None
         )

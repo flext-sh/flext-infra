@@ -9,7 +9,7 @@ from flext_infra import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesDocsScope,
-    FlextInfraUtilitiesRope,
+    FlextInfraUtilitiesParsing,
     c,
     m,
     t,
@@ -25,11 +25,14 @@ class FlextInfraUtilitiesCodegenLazyAliases:
         self._workspace_root = workspace_root or Path.cwd()
         self._lazy_init = FlextInfraUtilitiesBase.load_tool_config().unwrap().lazy_init
         self._package_exports_cache: dict[str, frozenset[str]] = {}
+        self._source_exports_cache: dict[str, frozenset[str]] = {}
+        self._source_exports_visiting: set[str] = set()
 
     def build_lazy_init_plan(
         self,
         pkg_dir: Path,
         *,
+        project: t.Infra.RopeProject,
         dir_exports: Mapping[str, t.Infra.LazyImportMap],
     ) -> m.Infra.LazyInitPlan:
         init_path = pkg_dir / c.Infra.INIT_PY
@@ -50,14 +53,12 @@ class FlextInfraUtilitiesCodegenLazyAliases:
         )
         if not context.importable:
             return m.Infra.LazyInitPlan(context=context, action=empty_action)
-        with FlextInfraUtilitiesRope.open_project(self._workspace_root) as project:
-            lazy_map = self._package_exports(project, pkg_dir, context.current_pkg)
-            version_map = self._rope_exports(
-                project,
-                pkg_dir / "__version__.py",
-                f"{context.current_pkg}.{c.Infra.DUNDER_VERSION}",
-                include_dunder=True,
-            )
+        lazy_map = self._package_exports(pkg_dir, context.current_pkg)
+        version_map = self._module_exports(
+            pkg_dir / "__version__.py",
+            f"{context.current_pkg}.{c.Infra.DUNDER_VERSION}",
+            include_dunder=True,
+        )
         child_lazy, child_tc = self._merge_children(pkg_dir, lazy_map, dir_exports)
         for name, target in version_map.items():
             lazy_map.setdefault(name, target)
@@ -65,6 +66,7 @@ class FlextInfraUtilitiesCodegenLazyAliases:
             lazy_map,
             current_pkg=context.current_pkg,
             pkg_dir=pkg_dir,
+            project=project,
             surface=context.surface,
         )
         for name in c.Infra.INFRA_ONLY_EXPORTS:
@@ -86,7 +88,6 @@ class FlextInfraUtilitiesCodegenLazyAliases:
     @classmethod
     def _package_exports(
         cls,
-        project: t.Infra.RopeProject,
         pkg_dir: Path,
         current_pkg: str,
     ) -> t.Infra.MutableLazyImportMap:
@@ -114,8 +115,7 @@ class FlextInfraUtilitiesCodegenLazyAliases:
             )
             if not module_path:
                 continue
-            targets = cls._rope_exports(
-                project,
+            targets = cls._module_exports(
                 py_file,
                 module_path,
                 allow_main=policy.allow_main_export,
@@ -144,9 +144,8 @@ class FlextInfraUtilitiesCodegenLazyAliases:
         return index
 
     @classmethod
-    def _rope_exports(
+    def _module_exports(
         cls,
-        project: t.Infra.RopeProject,
         py_file: Path,
         module_path: str,
         *,
@@ -156,19 +155,12 @@ class FlextInfraUtilitiesCodegenLazyAliases:
     ) -> t.Infra.MutableLazyImportMap:
         if not py_file.is_file():
             return {}
-        resource = FlextInfraUtilitiesRope.get_resource_from_path(project, py_file)
-        if resource is None:
-            return {}
-        try:
-            names = FlextInfraUtilitiesRope.get_module_export_names(
-                project,
-                resource,
-                include_dunder=include_dunder,
-                allow_main=allow_main,
-                allow_assignments=allow_assignments,
-            )
-        except FlextInfraUtilitiesRope.RUNTIME_ERRORS:
-            return {}
+        names = FlextInfraUtilitiesParsing.module_export_names(
+            py_file,
+            include_dunder=include_dunder,
+            allow_main=allow_main,
+            allow_assignments=allow_assignments,
+        )
         return {
             name: (module_path, name)
             for name in names
@@ -213,6 +205,7 @@ class FlextInfraUtilitiesCodegenLazyAliases:
         *,
         current_pkg: str,
         pkg_dir: Path,
+        project: t.Infra.RopeProject,
         surface: str,
     ) -> None:
         if not current_pkg or "." in current_pkg:
@@ -223,6 +216,7 @@ class FlextInfraUtilitiesCodegenLazyAliases:
         allowed = self._lazy_init.inherited_exports.get(inherited_key, ())
         parent_packages = FlextInfraUtilitiesDiscovery.resolve_parent_constants_mro(
             pkg_dir,
+            rope_project=project,
             return_module=True,
         )
         project_root = FlextInfraUtilitiesDiscovery.discover_project_root_from_file(
@@ -233,8 +227,12 @@ class FlextInfraUtilitiesCodegenLazyAliases:
             if inherited_key != "src" and project_root
             else ""
         )
-        inherited_packages = FlextInfraUtilitiesDiscovery.package_source_priority(
-            (*parent_packages, source_name),
+        inherited_packages = (
+            FlextInfraUtilitiesDiscovery.resolve_transitive_parent_packages(
+                self._workspace_root,
+                (*parent_packages, source_name),
+                rope_project=project,
+            )
         )
         for alias_name in allowed:
             existing = lazy_map.get(alias_name)
@@ -243,6 +241,7 @@ class FlextInfraUtilitiesCodegenLazyAliases:
             package_name = self._resolve_inherited_alias_source(
                 inherited_packages,
                 alias_name,
+                project=project,
             )
             if package_name:
                 lazy_map[alias_name] = (package_name, alias_name)
@@ -251,21 +250,67 @@ class FlextInfraUtilitiesCodegenLazyAliases:
         self,
         package_names: t.StrSequence,
         alias_name: str,
+        *,
+        project: t.Infra.RopeProject,
     ) -> str:
         for package_name in reversed(tuple(name for name in package_names if name)):
-            if alias_name in self._export_names_for_package(package_name):
+            if alias_name in self._export_names_for_package(
+                package_name,
+                project=project,
+            ):
                 return package_name
         return ""
 
-    def _export_names_for_package(self, package_name: str) -> frozenset[str]:
+    def _export_names_for_package(
+        self,
+        package_name: str,
+        *,
+        project: t.Infra.RopeProject,
+    ) -> frozenset[str]:
         cached = self._package_exports_cache.get(package_name)
         if cached is not None:
             return cached
-        exports = FlextInfraUtilitiesDiscovery.package_export_names(
+        exports = frozenset((
+            *FlextInfraUtilitiesDiscovery.package_export_names(
+                self._workspace_root,
+                package_name,
+            ),
+            *self._source_export_names_for_package(
+                package_name,
+                project=project,
+            ),
+        ))
+        self._package_exports_cache[package_name] = exports
+        return exports
+
+    def _source_export_names_for_package(
+        self,
+        package_name: str,
+        *,
+        project: t.Infra.RopeProject,
+    ) -> frozenset[str]:
+        cached = self._source_exports_cache.get(package_name)
+        if cached is not None:
+            return cached
+        if package_name in self._source_exports_visiting:
+            return frozenset()
+        init_path = FlextInfraUtilitiesDiscovery.package_init_path(
             self._workspace_root,
             package_name,
         )
-        self._package_exports_cache[package_name] = exports
+        if init_path is None:
+            return frozenset()
+        self._source_exports_visiting.add(package_name)
+        try:
+            plan = self.build_lazy_init_plan(
+                init_path.parent,
+                project=project,
+                dir_exports={},
+            )
+        finally:
+            self._source_exports_visiting.remove(package_name)
+        exports = frozenset(plan.exports)
+        self._source_exports_cache[package_name] = exports
         return exports
 
     @staticmethod

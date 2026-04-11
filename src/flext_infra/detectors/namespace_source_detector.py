@@ -41,6 +41,7 @@ class FlextInfraNamespaceSourceDetector:
         contextual_sources = u.Infra.contextual_runtime_alias_sources(
             project_root=project_root,
             file_path=file_path,
+            rope_project=ctx.rope_project,
         )
         resource = u.Infra.get_resource_from_path(
             ctx.rope_project,
