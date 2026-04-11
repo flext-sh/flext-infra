@@ -28,10 +28,9 @@ class FlextInfraNamespaceSourceDetector:
         project_root = ctx.project_root
         if project_root is None or file_path.name == c.Infra.Files.INIT_PY:
             return []
-        package_info = u.Infra.discover_src_package_dir(project_root)
-        if package_info is None:
+        package_name = u.Infra.package_name(project_root)
+        if not package_name:
             return []
-        package_name, _package_dir = package_info
         local_aliases = FlextInfraNamespaceSourceDetector._discover_local_runtime_aliases(
             project_root=project_root, package_name=package_name
         )

@@ -27,7 +27,6 @@ from flext_infra import (
     FlextInfraUtilitiesDocsScope,
     FlextInfraUtilitiesDocsValidate,
     FlextInfraUtilitiesFormatting,
-    FlextInfraUtilitiesGit,
     FlextInfraUtilitiesGithub,
     FlextInfraUtilitiesImportNormalizer,
     FlextInfraUtilitiesLogParser,
@@ -57,7 +56,7 @@ class FlextInfraUtilities(u):
 
         from flext_infra import u
 
-        u.Infra.git_run_checked(["status"])
+        u.Cli.run_checked(["git", "status"])
         u.Cli.toml_read_json(path)
         u.Infra.discover_projects(workspace_root)
         u.Infra.parse_semver("1.2.3")
@@ -83,7 +82,6 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesDocsScope,
         FlextInfraUtilitiesDocsValidate,
         FlextInfraUtilitiesFormatting,
-        FlextInfraUtilitiesGit,
         FlextInfraUtilitiesLogParser,
         FlextInfraUtilitiesDependencyPathSync,
         FlextInfraUtilitiesDiscovery,

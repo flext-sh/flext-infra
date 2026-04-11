@@ -10,9 +10,8 @@ import shutil
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
-from flext_cli import FlextCliUtilitiesJson as _CliJson
+from flext_cli import FlextCliUtilitiesJson as _CliJson, u
 from flext_infra import (
-    FlextInfraUtilitiesGit,
     FlextInfraUtilitiesGithubPr,
     FlextInfraUtilitiesSelection,
     c,
@@ -49,7 +48,7 @@ class FlextInfraUtilitiesGithub(
             return r[m.Infra.GithubWorkflowLintOutcome].ok(
                 payload_skipped,
             )
-        result = FlextInfraUtilitiesGit.run_raw([actionlint], cwd=workspace_root)
+        result = u.Cli.run_raw([actionlint], cwd=workspace_root)
         if result.is_success:
             output = result.value
             payload = m.Infra.GithubWorkflowLintOutcome(

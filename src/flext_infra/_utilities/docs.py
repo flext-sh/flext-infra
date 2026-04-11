@@ -40,22 +40,6 @@ class FlextInfraUtilitiesDocs:
         )
 
     @staticmethod
-    def _selected_project_names(
-        workspace_root: Path,
-        projects: Sequence[str] | None,
-    ) -> Sequence[str]:
-        """Resolve CLI project flags to a concrete name list."""
-        if projects:
-            return [name.strip() for name in projects if name.strip()]
-        result: r[Sequence[m.Infra.ProjectInfo]] = (
-            FlextInfraUtilitiesDocsScope.discover_projects(workspace_root)
-        )
-        return result.fold(
-            on_failure=lambda _: [],
-            on_success=lambda v: [p.name for p in v],
-        )
-
-    @staticmethod
     def build_scopes(
         workspace_root: Path,
         projects: Sequence[str] | None,
@@ -93,24 +77,45 @@ class FlextInfraUtilitiesDocs:
                     package_name="",
                 )
             ]
-            selected_names = FlextInfraUtilitiesDocs._selected_project_names(
+            discovered_result = FlextInfraUtilitiesDocsScope.discover_projects(
                 resolved_root,
-                projects,
             )
-            if selected_names:
-                for project_name in selected_names:
-                    project_root = (resolved_root / project_name).resolve()
+            if discovered_result.is_failure:
+                return r[Sequence[m.Infra.DocScope]].fail(
+                    discovered_result.error or "project discovery failed",
+                )
+            discovered = discovered_result.value
+            if projects:
+                selected_names = [name.strip() for name in projects if name.strip()]
+                project_by_name: dict[str, m.Infra.ProjectInfo] = {}
+                for project in discovered:
+                    project_by_name.setdefault(project.name, project)
+                    project_by_name.setdefault(project.path.name, project)
+                for name in selected_names:
+                    selected = project_by_name.get(name)
+                    if selected is not None:
+                        scopes.append(
+                            FlextInfraUtilitiesDocs._doc_scope(
+                                name=selected.name,
+                                path=selected.path,
+                                output_dir=output_dir,
+                                project_class=selected.project_class,
+                                package_name=selected.package_name,
+                            )
+                        )
+                        continue
+                    project_root = (resolved_root / name).resolve()
                     if not project_root.is_dir():
                         continue
                     if not (project_root / c.Infra.Files.PYPROJECT_FILENAME).is_file():
                         continue
                     scopes.append(
                         FlextInfraUtilitiesDocs._doc_scope(
-                            name=project_name,
+                            name=name,
                             path=project_root,
                             output_dir=output_dir,
                             project_class=FlextInfraUtilitiesDocsScope.classify_project(
-                                project_name,
+                                name,
                                 project_root,
                             ),
                             package_name=FlextInfraUtilitiesDocsScope.package_name(
@@ -119,14 +124,7 @@ class FlextInfraUtilitiesDocs:
                         )
                     )
                 return r[Sequence[m.Infra.DocScope]].ok(scopes)
-            discovered_result = FlextInfraUtilitiesDocsScope.discover_projects(
-                resolved_root,
-            )
-            if discovered_result.is_failure:
-                return r[Sequence[m.Infra.DocScope]].fail(
-                    discovered_result.error or "project discovery failed",
-                )
-            for project in discovered_result.value:
+            for project in discovered:
                 scopes.append(
                     FlextInfraUtilitiesDocs._doc_scope(
                         name=project.name,

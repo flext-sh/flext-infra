@@ -9,7 +9,7 @@ from flext_cli import u
 from flext_infra import FlextInfraUtilitiesDocs, FlextInfraUtilitiesPatterns, c, m, t
 
 
-class FlextInfraUtilitiesDocsFix(u.Cli):
+class FlextInfraUtilitiesDocsFix:
     """Reusable fix helpers exposed through ``u.Infra``."""
 
     @staticmethod
@@ -77,7 +77,7 @@ class FlextInfraUtilitiesDocsFix(u.Cli):
         apply: bool,
     ) -> None:
         """Persist the standard fix summary and markdown report."""
-        _ = FlextInfraUtilitiesDocsFix.json_write(
+        _ = u.Cli.json_write(
             scope.report_dir / "fix-summary.json",
             {
                 c.Infra.ReportKeys.SUMMARY: {

@@ -42,7 +42,7 @@ def test_phase_publish_dry_run_writes_notes_only(tmp_path: Path) -> None:
         workspace / ".reports" / "release" / "v1.0.0" / "RELEASE_NOTES.md"
     ).is_file()
     assert not (workspace / "docs" / "CHANGELOG.md").exists()
-    assert u.Infra.git_tag_exists(workspace, "v1.0.0").unwrap() is False
+    assert u.Cli.capture(["git", "tag", "-l", "v1.0.0"], cwd=workspace).unwrap() == ""
 
 
 def test_phase_publish_apply_updates_docs_and_creates_tag(tmp_path: Path) -> None:
@@ -57,7 +57,7 @@ def test_phase_publish_apply_updates_docs_and_creates_tag(tmp_path: Path) -> Non
     assert (workspace / "docs" / "CHANGELOG.md").is_file()
     assert (workspace / "docs" / "releases" / "latest.md").is_file()
     assert (workspace / "docs" / "releases" / "v1.0.0.md").is_file()
-    assert u.Infra.git_tag_exists(workspace, "v1.0.0").unwrap() is True
+    assert u.Cli.capture(["git", "tag", "-l", "v1.0.0"], cwd=workspace).unwrap() == "v1.0.0"
 
 
 def test_phase_publish_push_without_origin_fails_after_local_tagging(
@@ -74,7 +74,7 @@ def test_phase_publish_push_without_origin_fails_after_local_tagging(
 
     assert result.is_failure
     assert (workspace / "docs" / "CHANGELOG.md").is_file()
-    assert u.Infra.git_tag_exists(workspace, "v1.0.0").unwrap() is True
+    assert u.Cli.capture(["git", "tag", "-l", "v1.0.0"], cwd=workspace).unwrap() == "v1.0.0"
 
 
 def test_phase_publish_notes_include_only_selected_projects(tmp_path: Path) -> None:

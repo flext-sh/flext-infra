@@ -467,6 +467,40 @@ class TestBuildSiblingExportIndex:
         tm.that(index, eq={"test_api": ("tests.unit.test_api", "")})
         tm.that(index, excludes="TestsFlextDemoApi")
 
+    def test_test_modules_inside_family_dirs_export_public_objects(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Pytest modules in family dirs must export their public namespace objects."""
+        project_root = tmp_path / "flext-demo"
+        utilities_dir = project_root / "tests" / "unit" / "_utilities"
+        utilities_dir.mkdir(parents=True)
+        (project_root / c.Infra.Files.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "flext-demo"\n',
+        )
+        (project_root / "tests" / c.Infra.Files.INIT_PY).write_text("")
+        (project_root / "tests" / "unit" / c.Infra.Files.INIT_PY).write_text("")
+        (utilities_dir / c.Infra.Files.INIT_PY).write_text("")
+        (utilities_dir / "test_helpers.py").write_text(
+            "class TestsFlextDemoUtilitiesHelpers:\n    pass\n",
+        )
+
+        index = u.Infra.build_sibling_export_index(
+            utilities_dir,
+            "tests.unit._utilities",
+        )
+
+        tm.that(
+            index,
+            eq={
+                "TestsFlextDemoUtilitiesHelpers": (
+                    "tests.unit._utilities.test_helpers",
+                    "TestsFlextDemoUtilitiesHelpers",
+                ),
+            },
+        )
+        tm.that(index, excludes="test_helpers")
+
     def test_private_typings_allows_local_type_checking_alias_imports(
         self,
         tmp_path: Path,

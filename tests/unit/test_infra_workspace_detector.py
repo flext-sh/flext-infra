@@ -17,11 +17,11 @@ class TestWorkspaceDetector:
     def _setup_parent_repo(tmp_path: Path, origin_url: str | None = None) -> Path:
         repo_root = tmp_path / "repo"
         repo_root.mkdir()
-        tm.ok(u.Infra.git_run_checked(["init", "-q"], cwd=repo_root))
+        tm.ok(u.Cli.run_checked(["git", "init", "-q"], cwd=repo_root))
         if origin_url is not None:
             tm.ok(
-                u.Infra.git_run_checked(
-                    ["remote", "add", "origin", origin_url],
+                u.Cli.run_checked(
+                    ["git", "remote", "add", "origin", origin_url],
                     cwd=repo_root,
                 )
             )

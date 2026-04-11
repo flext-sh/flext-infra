@@ -90,6 +90,7 @@ class TestResolveAliases:
             (
                 "tests",
                 {
+                    "c": ("flext_tests.constants", "c"),
                     "tk": ("flext_tests.docker", "tk"),
                     "tm": ("flext_tests._utilities.matchers", "tm"),
                 },
@@ -136,6 +137,62 @@ class TestResolveAliases:
             pkg_dir=pkg_dir,
         )
         tm.that(lazy_map, lacks="build_lazy_import_map")
+
+    @pytest.mark.parametrize("surface", ["tests", "examples", "scripts"])
+    def test_surface_root_inherits_aliases_from_project_source_package(
+        self,
+        tmp_path: Path,
+        surface: str,
+    ) -> None:
+        """Surface roots inherit source aliases without replacing local aliases."""
+        project_dir = tmp_path / "flext-demo"
+        src_dir = project_dir / c.Infra.Paths.DEFAULT_SRC_DIR / "flext_demo"
+        surface_dir = project_dir / surface
+        src_dir.mkdir(parents=True)
+        surface_dir.mkdir(parents=True)
+        (project_dir / c.Infra.Files.PYPROJECT_FILENAME).write_text(
+            "[project]\nname = 'flext-demo'\nversion = '0.0.0'\n",
+            encoding=c.Infra.Encoding.DEFAULT,
+        )
+        (src_dir / c.Infra.Files.INIT_PY).write_text(
+            "",
+            encoding=c.Infra.Encoding.DEFAULT,
+        )
+        (surface_dir / c.Infra.Files.INIT_PY).write_text(
+            "",
+            encoding=c.Infra.Encoding.DEFAULT,
+        )
+        for module_name, alias, class_name in (
+            ("constants.py", "c", "FlextDemoConstants"),
+            ("models.py", "m", "FlextDemoModels"),
+            ("protocols.py", "p", "FlextDemoProtocols"),
+            ("typings.py", "t", "FlextDemoTypes"),
+            ("utilities.py", "u", "FlextDemoUtilities"),
+        ):
+            (src_dir / module_name).write_text(
+                "from __future__ import annotations\n\n"
+                f"class {class_name}:\n"
+                "    pass\n\n"
+                f"{alias} = {class_name}\n"
+                f'__all__ = ["{class_name}", "{alias}"]\n',
+                encoding=c.Infra.Encoding.DEFAULT,
+            )
+        lazy_map: MutableMapping[str, tuple[str, str]] = {
+            "m": (f"{surface}.models", "m"),
+        }
+
+        mod.FlextInfraUtilitiesCodegenLazyAliases(
+            workspace_root=tmp_path,
+        ).resolve_aliases(
+            lazy_map,
+            pkg_dir=surface_dir,
+        )
+
+        tm.that(lazy_map["m"], eq=(f"{surface}.models", "m"))
+        tm.that(lazy_map["c"], eq=("flext_demo.constants", "c"))
+        tm.that(lazy_map["p"], eq=("flext_demo.protocols", "p"))
+        tm.that(lazy_map["t"], eq=("flext_demo.typings", "t"))
+        tm.that(lazy_map["u"], eq=("flext_demo.utilities", "u"))
 
     @pytest.mark.parametrize("surface", ["tests", "examples", "scripts"])
     def test_does_not_synthesize_alias_from_local_suffix_match(

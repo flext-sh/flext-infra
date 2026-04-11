@@ -81,8 +81,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
             workspace_root=self._workspace_root,
         )
         py_files = self._collect_py_files(project_root=project_root)
-        package_info = u.Infra.discover_src_package_dir(project_root)
-        package_name = package_info[0] if package_info is not None else ""
+        package_name = u.Infra.package_name(project_root)
         loose_objects = self._detect_and_apply(
             py_files=py_files,
             detect_fn=lambda f: FlextInfraLooseObjectDetector.detect_file(

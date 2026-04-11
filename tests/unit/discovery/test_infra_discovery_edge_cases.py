@@ -1,8 +1,4 @@
-"""Edge-case tests for FlextInfraDiscoveryService.
-
-Covers uncovered lines: non-git projects, permission errors,
-OSError handling, and submodule name extraction.
-"""
+"""Edge-case tests for public discovery behavior."""
 
 from __future__ import annotations
 
@@ -83,30 +79,3 @@ class TestFlextInfraDiscoveryServiceUncoveredLines:
             blocked_dir.chmod(0o755)
         tm.ok(result)
         assert result.value == []
-
-    def test_submodule_names_with_unreadable_gitmodules(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        workspace_root = tmp_path
-        gitmodules = workspace_root / ".gitmodules"
-        gitmodules.write_text(
-            '[submodule "sub1"]\n    path = submodule-one\n',
-            encoding="utf-8",
-        )
-        gitmodules.chmod(0)
-        try:
-            result = u.Infra._submodule_names(workspace_root)
-        finally:
-            gitmodules.chmod(0o644)
-        assert result == set()
-
-    def test_submodule_names_with_valid_gitmodules(self, tmp_path: Path) -> None:
-        workspace_root = tmp_path
-        gitmodules = workspace_root / ".gitmodules"
-        gitmodules.write_text(
-            '[submodule "sub1"]\n    path = submodule-one\n[submodule "sub2"]\n    path = submodule-two\n',
-            encoding="utf-8",
-        )
-        result = u.Infra._submodule_names(workspace_root)
-        assert result == {"submodule-one", "submodule-two"}

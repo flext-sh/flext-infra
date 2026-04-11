@@ -18,7 +18,7 @@ from flext_infra import (
 )
 
 
-class FlextInfraUtilitiesDocsValidate(u.Cli):
+class FlextInfraUtilitiesDocsValidate:
     """Reusable validation helpers exposed through ``u.Infra``."""
 
     @staticmethod
@@ -48,7 +48,7 @@ class FlextInfraUtilitiesDocsValidate(u.Cli):
         config = workspace_root / "docs/architecture/architecture_config.json"
         if not config.exists():
             return []
-        payload_result = FlextInfraUtilitiesDocsValidate.json_read(config)
+        payload_result = u.Cli.json_read(config)
         if payload_result.is_failure:
             return None
         configured = FlextInfraUtilitiesDocsValidate.docs_extract_required_skills(
@@ -136,7 +136,7 @@ class FlextInfraUtilitiesDocsValidate(u.Cli):
         report: m.Infra.DocsPhaseReport,
     ) -> None:
         """Persist the standard validate summary and markdown report."""
-        _ = FlextInfraUtilitiesDocsValidate.json_write(
+        _ = u.Cli.json_write(
             scope.report_dir / "validate-summary.json",
             {c.Infra.ReportKeys.SUMMARY: report.model_dump(mode="json")},
         )

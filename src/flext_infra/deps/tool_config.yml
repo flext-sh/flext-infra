@@ -691,6 +691,17 @@ lazy-init:
       - u
       - x
     tests:
+      - c
+      - d
+      - e
+      - h
+      - m
+      - p
+      - r
+      - s
+      - t
+      - u
+      - x
       - reset_settings
       - settings
       - settings_factory

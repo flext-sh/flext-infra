@@ -80,19 +80,29 @@ class FlextInfraCodegenScaffolder(FlextInfraServiceBase[str]):
 
     def scaffold_project(
         self,
-        project_path: Path,
+        project: p.Infra.ProjectInfo | Path,
         *,
         dry_run: bool = False,
     ) -> m.Infra.ScaffoldResult:
         """Scaffold missing base modules for a single project.
 
         Args:
-            project_path: Path to the project root directory.
+            project: Project descriptor or project root path.
 
         Returns:
             ScaffoldResult with lists of created and skipped files.
 
         """
+        if isinstance(project, Path):
+            project_path = project
+            package_name = u.Infra.package_name(project_path)
+        else:
+            project_path = project.path
+            package_name = (
+                project.package_name
+                if isinstance(project, m.Infra.ProjectInfo)
+                else u.Infra.package_name(project_path)
+            )
         prefix = FlextInfraNamespaceValidator.derive_prefix(project_path)
         if not prefix:
             return m.Infra.ScaffoldResult(
@@ -102,19 +112,21 @@ class FlextInfraCodegenScaffolder(FlextInfraServiceBase[str]):
             )
         files_created: MutableSequence[str] = []
         files_skipped: MutableSequence[str] = []
-        package_info = u.Infra.discover_src_package_dir(project_path)
-        if package_info is not None:
-            _package_name, pkg_dir = package_info
-            self._scaffold_dir(
-                target_dir=pkg_dir,
-                prefix=prefix,
-                modules=c.Infra.SRC_MODULES,
-                test_prefix="",
-                inherit_project_facade=False,
-                dry_run=dry_run,
-                files_created=files_created,
-                files_skipped=files_skipped,
+        if package_name:
+            pkg_dir = project_path / c.Infra.Paths.DEFAULT_SRC_DIR / Path(
+                *package_name.split("."),
             )
+            if (pkg_dir / c.Infra.Files.INIT_PY).is_file():
+                self._scaffold_dir(
+                    target_dir=pkg_dir,
+                    prefix=prefix,
+                    modules=c.Infra.SRC_MODULES,
+                    test_prefix="",
+                    inherit_project_facade=False,
+                    dry_run=dry_run,
+                    files_created=files_created,
+                    files_skipped=files_skipped,
+                )
         tests_dir = project_path / c.Infra.Directories.TESTS
         if tests_dir.is_dir():
             self._scaffold_dir(

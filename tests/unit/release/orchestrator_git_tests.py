@@ -49,8 +49,8 @@ def publish_ctx(
 
 
 def git_ref_exists(repo_root: Path, ref_name: str) -> bool:
-    return u.Infra.git_run(
-        ["show-ref", "--verify", ref_name],
+    return u.Cli.capture(
+        ["git", "show-ref", "--verify", ref_name],
         cwd=repo_root,
     ).is_success
 
@@ -108,13 +108,16 @@ def test_phase_publish_succeeds_when_tag_already_exists(tmp_path: Path) -> None:
         tmp_path,
         initialize_root_git=True,
     )
-    assert u.Infra.git_create_tag(workspace, "v1.0.0").is_success
+    assert u.Cli.run_checked(
+        ["git", "tag", "-a", "v1.0.0", "-m", "release: v1.0.0"],
+        cwd=workspace,
+    ).is_success
 
     result = FlextInfraReleaseOrchestrator().phase_publish(publish_ctx(workspace))
 
     assert result.is_success
     assert (workspace / "docs" / "CHANGELOG.md").is_file()
-    assert u.Infra.git_tag_exists(workspace, "v1.0.0").unwrap() is True
+    assert u.Cli.capture(["git", "tag", "-l", "v1.0.0"], cwd=workspace).unwrap() == "v1.0.0"
 
 
 def test_phase_publish_push_succeeds_with_local_origin(tmp_path: Path) -> None:
@@ -129,4 +132,4 @@ def test_phase_publish_push_succeeds_with_local_origin(tmp_path: Path) -> None:
     )
 
     assert result.is_success
-    assert u.Infra.git_tag_exists(workspace, "v1.0.0").unwrap() is True
+    assert u.Cli.capture(["git", "tag", "-l", "v1.0.0"], cwd=workspace).unwrap() == "v1.0.0"

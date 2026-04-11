@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
 
 from flext_cli import u
@@ -11,44 +10,19 @@ from flext_infra import (
     FlextInfraDependencyPathSyncRewrite,
     FlextInfraUtilitiesCli,
     FlextInfraUtilitiesCliDispatch,
-    FlextInfraUtilitiesDiscovery,
-    FlextInfraUtilitiesPaths,
+    FlextInfraUtilitiesDocsScope,
     c,
-    m,
     t,
 )
 
 
 class FlextInfraUtilitiesDependencyPathSync(
     FlextInfraDependencyPathSyncRewrite,
-    FlextInfraUtilitiesDiscovery,
-    FlextInfraUtilitiesPaths,
 ):
     """Rewrite internal FLEXT dependency paths for workspace or standalone mode."""
 
-    ROOT = FlextInfraUtilitiesPaths.resolve_workspace_root(__file__)
-    _root: Path | None = None
     _log = FlextLogger.create_module_logger(__name__)
-
-    def set_workspace_root(self, workspace_root: Path) -> None:
-        """Configure workspace root for path resolution."""
-        self._root = workspace_root
-
-    def _info(self, message: str) -> None:
-        """Emit informational progress through the module logger."""
-        _ = self._log.info(message)
-
-    def _workspace_members(
-        self,
-        projects_list: Sequence[m.Infra.ProjectInfo],
-    ) -> t.StrSequence:
-        """Return canonical uv workspace members for the root pyproject."""
-        workspace_root = self._root or self.ROOT
-        return sorted(
-            str(project.path.relative_to(workspace_root))
-            for project in projects_list
-            if (project.workspace_role == c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER)
-        )
+    discover_projects = staticmethod(FlextInfraUtilitiesDocsScope.discover_projects)
 
     @staticmethod
     def detect_mode(project_root: Path) -> str:
@@ -61,7 +35,6 @@ class FlextInfraUtilitiesDependencyPathSync(
     def execute(self, *, cli: FlextInfraUtilitiesCli.CliArgs, mode: str) -> int:
         """Execute path synchronization for the given CLI arguments."""
         workspace_root = cli.workspace
-        self.set_workspace_root(workspace_root)
         dry_run = cli.dry_run
         selected_projects: t.StrSequence = cli.project_names() or []
 
@@ -80,12 +53,17 @@ class FlextInfraUtilitiesDependencyPathSync(
                 root_mapping = u.Cli.toml_as_mapping(
                     u.Cli.toml_unwrap_item(root_project),
                 )
-                if root_mapping is not None:
-                    root_name = self._mapping_str_value(root_mapping, c.Infra.NAME)
-                    if root_name is not None:
-                        internal_names.add(root_name)
+                root_name = (
+                    root_mapping.get(c.Infra.NAME)
+                    if root_mapping is not None
+                    else None
+                )
+                if isinstance(root_name, str) and root_name:
+                    internal_names.add(root_name)
 
-        discover_result = type(self).discover_projects(workspace_root)
+        discover_result = FlextInfraUtilitiesDocsScope.discover_projects(
+            workspace_root,
+        )
         if discover_result.is_failure:
             discovery_error = discover_result.error or "sync_dep_paths_discovery_failed"
             self._log.error(
@@ -95,9 +73,13 @@ class FlextInfraUtilitiesDependencyPathSync(
             )
             return 1
 
-        projects_list: Sequence[m.Infra.ProjectInfo] = discover_result.value
+        projects_list = discover_result.value
         all_project_dirs = [project.path for project in projects_list]
-        workspace_members = self._workspace_members(projects_list)
+        workspace_members = sorted(
+            str(project.path.relative_to(workspace_root))
+            for project in projects_list
+            if project.workspace_role == c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER
+        )
         if selected_projects:
             project_dirs = [workspace_root / project for project in selected_projects]
         else:
@@ -123,8 +105,8 @@ class FlextInfraUtilitiesDependencyPathSync(
             )
             if project_mapping is None:
                 continue
-            project_name = self._mapping_str_value(project_mapping, c.Infra.NAME)
-            if project_name is not None:
+            project_name = project_mapping.get(c.Infra.NAME)
+            if isinstance(project_name, str) and project_name:
                 internal_names.add(project_name)
 
         if not selected_projects and root_pyproject.exists():
@@ -147,9 +129,9 @@ class FlextInfraUtilitiesDependencyPathSync(
             changes: t.StrSequence = changes_result.value
             if changes:
                 prefix = "[DRY-RUN] " if dry_run else ""
-                self._info(f"{prefix}{root_pyproject}:")
+                _ = self._log.info(f"{prefix}{root_pyproject}:")
                 for change in changes:
-                    self._info(change)
+                    _ = self._log.info(change)
                 total_changes += len(changes)
 
         for project_dir in sorted(project_dirs):
@@ -175,14 +157,14 @@ class FlextInfraUtilitiesDependencyPathSync(
             project_changes: t.StrSequence = changes_result.value
             if project_changes:
                 prefix = "[DRY-RUN] " if dry_run else ""
-                self._info(f"{prefix}{pyproject}:")
+                _ = self._log.info(f"{prefix}{pyproject}:")
                 for change in project_changes:
-                    self._info(change)
+                    _ = self._log.info(change)
                 total_changes += len(project_changes)
 
         if total_changes > 0:
             action = "would change" if dry_run else "changed"
-            self._info(f"[sync-dep-paths] {action} {total_changes} path(s).")
+            _ = self._log.info(f"[sync-dep-paths] {action} {total_changes} path(s).")
         return 0
 
     @classmethod

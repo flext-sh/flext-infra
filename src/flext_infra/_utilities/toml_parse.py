@@ -19,7 +19,7 @@ from flext_cli import FlextCliUtilities
 from flext_infra import c, r, t
 
 
-class FlextInfraUtilitiesTomlParse(FlextCliUtilities.Cli):
+class FlextInfraUtilitiesTomlParse:
     """TOML parsing helpers — dependency extraction and project configuration.
 
     Usage::
@@ -31,8 +31,11 @@ class FlextInfraUtilitiesTomlParse(FlextCliUtilities.Cli):
 
     @staticmethod
     def dep_name(spec: str) -> str:
-        """Extract normalized dependency name from requirement specification."""
-        base = spec.strip().split("@", 1)[0].strip()
+        """Extract normalized dependency name from one requirement or local path."""
+        base = spec.strip().split("@", 1)[0].strip().lstrip("/")
+        for prefix in (f"{c.Infra.FLEXT_DEPS_DIR}/", "../", "./"):
+            while base.startswith(prefix):
+                base = base.removeprefix(prefix)
         match = c.Infra.DEP_NAME_RE.match(base)
         if match:
             return match.group(1).lower().replace("_", "-")
@@ -71,22 +74,6 @@ class FlextInfraUtilitiesTomlParse(FlextCliUtilities.Cli):
             changes.append(
                 "tool.pyright.executionEnvironments set with tests reportPrivateUsage=none",
             )
-
-    @staticmethod
-    def discover_first_party_namespaces(project_dir: Path) -> t.StrSequence:
-        """Discover first-party namespace packages from src/ for tool configuration."""
-        src_dir = project_dir / c.Infra.Paths.DEFAULT_SRC_DIR
-        if not src_dir.is_dir():
-            return []
-        namespaces: t.StrSequence = [
-            entry.name
-            for entry in sorted(src_dir.iterdir())
-            if entry.is_dir()
-            and entry.name != c.Infra.Dunders.PYCACHE
-            and entry.name.isidentifier()
-            and "-" not in entry.name
-        ]
-        return namespaces
 
     @staticmethod
     def workspace_dep_namespaces(doc: t.Cli.TomlDocument) -> t.StrSequence:
@@ -227,7 +214,7 @@ class FlextInfraUtilitiesTomlParse(FlextCliUtilities.Cli):
     @staticmethod
     def read_plain(path: Path) -> r[t.Infra.ContainerDict]:
         """Read and parse a TOML file as a plain dict with r error handling."""
-        result = FlextInfraUtilitiesTomlParse.toml_read_json(path)
+        result = FlextCliUtilities.Cli.toml_read_json(path)
         if result.is_failure:
             if not path.exists():
                 return r[t.Infra.ContainerDict].ok({})

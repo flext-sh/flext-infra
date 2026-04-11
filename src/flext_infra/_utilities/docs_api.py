@@ -10,7 +10,7 @@ from pydantic import ValidationError
 
 from flext_cli import u
 from flext_infra import (
-    FlextInfraUtilitiesDiscoveryScanning,
+    FlextInfraUtilitiesCodegenLazyScanning,
     FlextInfraUtilitiesDocsScope,
     FlextInfraUtilitiesRope,
     c,
@@ -19,7 +19,7 @@ from flext_infra import (
 )
 
 
-class FlextInfraUtilitiesDocsApi(u.Cli):
+class FlextInfraUtilitiesDocsApi:
     """Extract public package metadata, exports, modules, and docstring issues."""
 
     _ALIAS_EXPORTS: tuple[str, ...] = (
@@ -158,11 +158,11 @@ class FlextInfraUtilitiesDocsApi(u.Cli):
         )
         project_meta_value = payload.get(c.Infra.PROJECT)
         project_meta = (
-            FlextInfraUtilitiesDocsApi.toml_as_mapping(project_meta_value) or {}
+            u.Cli.toml_as_mapping(project_meta_value) or {}
         )
         project_urls_value = project_meta.get("urls")
         project_urls = (
-            FlextInfraUtilitiesDocsApi.toml_as_mapping(project_urls_value) or {}
+            u.Cli.toml_as_mapping(project_urls_value) or {}
         )
         if not package_name:
             site_title = (
@@ -202,7 +202,7 @@ class FlextInfraUtilitiesDocsApi(u.Cli):
         all_exports = list(
             FlextInfraUtilitiesDocsApi._assignment_strings(source, "__all__")
         )
-        target_map = FlextInfraUtilitiesDiscoveryScanning.extract_lazy_import_targets(
+        target_map = FlextInfraUtilitiesCodegenLazyScanning.extract_lazy_import_targets(
             init_path
         )
         modules = sorted(

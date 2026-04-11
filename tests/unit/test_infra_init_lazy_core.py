@@ -134,11 +134,6 @@ class TestFlextInfraInitLazyLoading:
         service = flext_infra.FlextInfraUtilitiesDiscovery
         assert service is not None
 
-    def test_lazy_import_git_service(self) -> None:
-        """Test lazy loading of FlextInfraGitService."""
-        service = flext_infra.FlextInfraUtilitiesGit
-        assert service is not None
-
     def test_lazy_import_json_service(self) -> None:
         """Test CLI JSON helpers remain reachable through infra MRO."""
         service = flext_infra.u.Cli.json_write

@@ -72,7 +72,7 @@ def test_resolve_ref_uses_github_ref_name_when_head_ref_is_empty(
 
 def test_resolve_ref_uses_current_git_branch(tmp_path: Path) -> None:
     repo = create_git_repo(tmp_path, "repo")
-    assert u.Infra.git_checkout(repo, "develop", create=True).is_success
+    assert u.Cli.run_checked(["git", "checkout", "-B", "develop"], cwd=repo).is_success
 
     result = FlextInfraInternalDependencySyncService().resolve_ref(repo)
 
@@ -81,8 +81,11 @@ def test_resolve_ref_uses_current_git_branch(tmp_path: Path) -> None:
 
 def test_resolve_ref_uses_exact_tag_on_detached_head(tmp_path: Path) -> None:
     repo = create_git_repo(tmp_path, "repo")
-    assert u.Infra.git_create_tag(repo, "v1.0.0").is_success
-    assert u.Infra.git_checkout(repo, "v1.0.0").is_success
+    assert u.Cli.run_checked(
+        ["git", "tag", "-a", "v1.0.0", "-m", "release"],
+        cwd=repo,
+    ).is_success
+    assert u.Cli.run_checked(["git", "checkout", "v1.0.0"], cwd=repo).is_success
 
     result = FlextInfraInternalDependencySyncService().resolve_ref(repo)
 

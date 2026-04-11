@@ -11,8 +11,8 @@ import time
 from collections.abc import MutableSequence
 from pathlib import Path
 
+from flext_cli import u
 from flext_infra import (
-    FlextInfraUtilitiesGit,
     FlextInfraUtilitiesReporting,
     FlextInfraUtilitiesSelection,
     c,
@@ -73,7 +73,10 @@ class FlextInfraUtilitiesGithubPr:
     ) -> bool:
         """Process one repository during workspace pull-request execution."""
         if context.request.branch:
-            FlextInfraUtilitiesGit.git_checkout(repo_root, context.request.branch)
+            _ = u.Cli.run_checked(
+                [c.Infra.GIT, "checkout", context.request.branch],
+                cwd=repo_root,
+            )
         if context.request.checkpoint:
             cls._github_pr_checkpoint(repo_root, context.request.branch)
         run_result: r[m.Infra.GithubPullRequestOutcome] = cls.github_run_pull_request(
@@ -89,28 +92,35 @@ class FlextInfraUtilitiesGithubPr:
 
     @classmethod
     def _github_pr_checkpoint(cls, repo_root: Path, branch: str) -> r[bool]:
-        changes_result = FlextInfraUtilitiesGit.git_has_changes(repo_root)
+        changes_result = u.Cli.capture(
+            [c.Infra.GIT, "status", "--porcelain"],
+            cwd=repo_root,
+        ).map(lambda value: bool(value.strip()))
         if changes_result.is_failure:
             return r[bool].fail(changes_result.error or "changes check failed")
         if not changes_result.value:
             return r[bool].ok(True)
-        add_result = FlextInfraUtilitiesGit.git_add(repo_root)
+        add_result = u.Cli.run_checked([c.Infra.GIT, "add", "-A"], cwd=repo_root)
         if add_result.is_failure:
             return r[bool].fail(add_result.error or "git add failed")
-        staged_result = FlextInfraUtilitiesGit.git_diff_names(repo_root, cached=True)
+        staged_result = u.Cli.capture(
+            [c.Infra.GIT, "diff", "--cached", "--name-only"],
+            cwd=repo_root,
+        )
         if staged_result.is_success and (not staged_result.value.strip()):
             return r[bool].ok(True)
-        commit_result = FlextInfraUtilitiesGit.git_commit(
-            repo_root,
-            "chore: checkpoint pending changes",
+        commit_result = u.Cli.run_checked(
+            [c.Infra.GIT, "commit", "-m", "chore: checkpoint pending changes"],
+            cwd=repo_root,
         )
         if commit_result.is_failure:
             return r[bool].fail(commit_result.error or "git commit failed")
-        return FlextInfraUtilitiesGit.git_push(
-            repo_root,
-            remote=c.Infra.Git.ORIGIN if branch else "",
-            branch=branch,
-            upstream=bool(branch),
+        command = [c.Infra.GIT, "push"]
+        if branch:
+            command.extend(["-u", c.Infra.Git.ORIGIN, branch])
+        return u.Cli.run_checked(
+            command,
+            cwd=repo_root,
         )
 
     @classmethod
@@ -139,7 +149,7 @@ class FlextInfraUtilitiesGithubPr:
             request=request,
         )
         started = time.monotonic()
-        to_file_result = FlextInfraUtilitiesGit.run_to_file(command, log_path)
+        to_file_result = u.Cli.run_to_file(command, log_path)
         if to_file_result.is_failure:
             return r[m.Infra.GithubPullRequestOutcome].fail(
                 to_file_result.error or "command execution error",

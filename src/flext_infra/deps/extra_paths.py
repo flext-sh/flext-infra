@@ -10,6 +10,8 @@ from flext_infra import (
     FlextInfraExtraPathsPyrefly,
     FlextInfraExtraPathsResolutionMixin,
     FlextInfraUtilitiesCliDispatch,
+    FlextInfraUtilitiesDocsScope,
+    FlextInfraUtilitiesPaths,
     c,
     m,
     r,
@@ -24,7 +26,7 @@ class FlextInfraExtraPathsManager(
 ):
     """Manager for synchronizing pyright and mypy extraPaths from path dependencies."""
 
-    ROOT = u.Infra.resolve_workspace_root(__file__)
+    ROOT = FlextInfraUtilitiesPaths.resolve_workspace_root(__file__)
 
     def __init__(self, workspace_root: Path | None = None) -> None:
         """Initialize the extra paths manager with path resolver and TOML service."""
@@ -35,12 +37,12 @@ class FlextInfraExtraPathsManager(
             msg = tool_config_result.error or "failed to load deps tool config"
             raise ValueError(msg)
         self._tool_config: m.Infra.ToolConfigDocument = tool_config_result.value
-        self._workspace_project_names: t.Infra.StrSet = (
-            self._discover_workspace_project_names()
+        projects_result = FlextInfraUtilitiesDocsScope.discover_projects(self.root)
+        self._workspace_project_names = (
+            {project.name for project in projects_result.value}
+            if projects_result.is_success
+            else set()
         )
-
-    def _pyright_path_rules(self) -> m.Infra.PyrightConfig.PathRulesConfig:
-        return self._tool_config.tools.pyright.path_rules
 
     def pyrefly_path_rules(self) -> m.Infra.PyreflyConfig.PathRulesConfig:
         """Expose pyrefly path rules through the public resolver contract."""
@@ -53,16 +55,20 @@ class FlextInfraExtraPathsManager(
         is_root: bool,
     ) -> t.StrSequence:
         """Compute pyright extra paths for a project."""
-        rules = self._pyright_path_rules()
-        source_root = self._source_root(
-            project_dir,
-            source_dir=rules.source_dir,
-            project_root=rules.project_root,
+        rules = self._tool_config.tools.pyright.path_rules
+        source_root = (
+            rules.source_dir
+            if (project_dir / rules.source_dir).is_dir()
+            else rules.project_root
         )
         configured_typings = (
             rules.root_typings_paths if is_root else rules.project_typings_paths
         )
-        typings_paths = self._existing_relative_paths(project_dir, configured_typings)
+        typings_paths = [
+            relative_path
+            for relative_path in configured_typings
+            if (project_dir / relative_path).is_dir()
+        ]
         return sorted({rules.project_root, source_root, *typings_paths})
 
     def _apply_paths_to_doc(

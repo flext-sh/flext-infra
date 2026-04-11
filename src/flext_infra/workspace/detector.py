@@ -65,8 +65,8 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
                     "Running in standalone mode (no parent workspace detected)"
                 )
                 return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.STANDALONE)
-            result = u.Infra.git_run(
-                ["config", "--get", "remote.origin.url"],
+            result = u.Cli.capture(
+                [c.Infra.GIT, "config", "--get", "remote.origin.url"],
                 cwd=parent,
             )
             if result.is_failure:

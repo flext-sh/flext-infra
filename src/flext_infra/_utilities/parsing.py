@@ -15,15 +15,10 @@ from typing import override
 
 from pydantic import TypeAdapter, ValidationError
 
-from flext_infra import (
-    FlextInfraUtilitiesTomlParse,
-    c,
-    m,
-    t,
-)
+from flext_infra import c, m, t
 
 
-class FlextInfraUtilitiesParsing(FlextInfraUtilitiesTomlParse):
+class FlextInfraUtilitiesParsing:
     """Static parsing utilities for Python source and import analysis."""
 
     _DOCSTRING_QUOTES = ('"""', "'''")

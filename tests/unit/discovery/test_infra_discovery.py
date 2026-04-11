@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from tests import c, m, r, t, u
+from tests import c, m, t, u
 
 
 class TestFlextInfraDiscoveryService:
@@ -153,7 +153,6 @@ class TestFlextInfraDiscoveryService:
         workspace_with_projects: Path,
     ) -> None:
         result = service.discover_projects(workspace_with_projects)
-        assert isinstance(result, type(r[Sequence[m.Infra.ProjectInfo]].ok([])))
         tm.ok(result)
         projects: Sequence[m.Infra.ProjectInfo] = result.value
         for item in projects:

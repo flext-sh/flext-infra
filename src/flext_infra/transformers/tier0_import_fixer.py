@@ -58,10 +58,15 @@ class FlextInfraTransformerTier0ImportFixer:
 
         def build_analysis(self) -> FlextInfraTransformerTier0ImportFixer.Analysis:
             """Parse file and build violation analysis."""
-            pkg_dir, pkg_name = u.Infra.package_context(
-                self._file_path,
+            pkg_name = u.Infra.discover_package_from_file(self._file_path)
+            project_root = u.Infra.discover_project_root_from_file(self._file_path)
+            package_root = pkg_name.split(".", maxsplit=1)[0]
+            pkg_dir = (
+                project_root / c.Infra.Paths.DEFAULT_SRC_DIR / package_root
+                if project_root is not None and package_root
+                else Path()
             )
-            if not pkg_name:
+            if not pkg_name or project_root is None or not pkg_dir.is_dir():
                 return FlextInfraTransformerTier0ImportFixer.Analysis(
                     package_name="",
                     file_path=self._file_path,
@@ -71,15 +76,17 @@ class FlextInfraTransformerTier0ImportFixer:
             self._scan_runtime_usage(source)
             alias_map: t.MutableStrMapping = dict(
                 u.Infra.discover_project_aliases(
-                    pkg_dir.parent
-                    if pkg_dir.name == c.Infra.Paths.DEFAULT_SRC_DIR
-                    else pkg_dir,
+                    project_root,
                 ),
             )
             alias_map.update(
-                u.Infra.extract_lazy_import_map(
-                    pkg_dir / c.Infra.Files.INIT_PY,
-                ),
+                {
+                    alias_name: module_name.split(".")[-1]
+                    for alias_name, module_name in u.Infra.extract_lazy_import_targets(
+                        pkg_dir / c.Infra.Files.INIT_PY,
+                    ).items()
+                    if len(alias_name) == 1 and alias_name.islower()
+                },
             )
             analysis = FlextInfraTransformerTier0ImportFixer.Analysis(
                 package_name=pkg_name,

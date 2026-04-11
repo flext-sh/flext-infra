@@ -18,6 +18,7 @@ from flext_infra import (
     FlextInfraConstantsSharedInfra,
     FlextInfraModelsCore,
     FlextInfraNamespaceRules,
+    FlextInfraUtilitiesDocsScope,
     FlextInfraUtilitiesParsing,
     u,
 )
@@ -32,28 +33,12 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
     """
 
     @staticmethod
-    def _derive_prefix(project_root: Path) -> str:
-        """Derive the expected class name prefix from the package directory."""
-        src_dir = project_root / FlextInfraConstantsSharedInfra.Paths.DEFAULT_SRC_DIR
-        if not src_dir.is_dir():
-            return ""
-        for child in sorted(src_dir.iterdir()):
-            if (
-                child.is_dir()
-                and (child / FlextInfraConstantsSharedInfra.Files.INIT_PY).exists()
-            ):
-                if (
-                    child.name
-                    == FlextInfraConstantsSharedInfra.Packages.CORE_UNDERSCORE
-                ):
-                    return "Flext"
-                return "".join(part.title() for part in child.name.split("_"))
-        return ""
-
-    @staticmethod
     def derive_prefix(project_root: Path) -> str:
         """Public wrapper for deriving the class name prefix from a project."""
-        return FlextInfraNamespaceValidator._derive_prefix(project_root)
+        package_name = FlextInfraUtilitiesDocsScope.package_name(project_root)
+        if package_name == FlextInfraConstantsSharedInfra.Packages.CORE_UNDERSCORE:
+            return "Flext"
+        return "".join(part.title() for part in package_name.split("_"))
 
     def validate(
         self,
@@ -64,7 +49,7 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
         """Validate namespace rules 0-2 for all discovered Python files."""
         try:
             files = self._discover_files(project_root, scan_tests=scan_tests)
-            prefix = self._derive_prefix(project_root)
+            prefix = self.derive_prefix(project_root)
             violations: MutableSequence[str] = []
             for filepath in files:
                 tree = self._parse_file(filepath)

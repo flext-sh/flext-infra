@@ -1,9 +1,8 @@
 """Integration tests for flext_infra cross-module flows.
 
-Tests exercise cross-module flows using u.Infra MRO pattern, validating:
+Tests exercise cross-module flows using the public runtime surfaces, validating:
 - Output/reporting methods via u.Infra
 - Service r chaining
-- Git operations via u.Infra.git_*
 - Command runtime operations via u.Cli.run_checked/capture
 - BaseMk generation flow
 
@@ -210,11 +209,11 @@ class TestInfraIntegration:
     @pytest.mark.integration
     def test_path_utilities_via_mro(self, tmp_path: Path) -> None:
         """Test u.Infra path utility methods are available via MRO."""
-        assert callable(u.Infra.discover_workspace_root_from_file)
+        assert callable(u.Infra.discover_project_root_from_file)
 
     @pytest.mark.integration
-    def test_git_service_current_branch_in_real_repo(self, tmp_path: Path) -> None:
-        """Test u.Infra.git_current_branch against a real initialized git repository."""
+    def test_cli_capture_git_current_branch_in_real_repo(self, tmp_path: Path) -> None:
+        """Test git branch detection through the canonical CLI runtime surface."""
         repo_root = tmp_path / "repo"
         repo_root.mkdir()
         init_result = u.Cli.run_checked(["git", "init"], cwd=repo_root)
@@ -235,7 +234,10 @@ class TestInfraIntegration:
             ["git", "commit", "-m", "initial"], cwd=repo_root
         )
         assert commit_result.is_success
-        branch_result = u.Infra.git_current_branch(repo_root)
+        branch_result = u.Cli.capture(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=repo_root,
+        )
         assert branch_result.is_success
         assert branch_result.value != ""
 

@@ -19,7 +19,7 @@ from flext_infra import (
 )
 
 
-class FlextInfraUtilitiesRefactorNamespaceFacades(_CliToml):
+class FlextInfraUtilitiesRefactorNamespaceFacades:
     """Facade generation and dependency-chain helpers."""
 
     _base_chains_cache: ClassVar[MutableMapping[Path, t.StrSequenceMapping]] = {}
@@ -55,7 +55,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades(_CliToml):
             raw = pyproject_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
         except OSError:
             return {}
-        doc = FlextInfraUtilitiesRefactorNamespaceFacades.toml_parse_text(raw)
+        doc = _CliToml.toml_parse_text(raw)
         if doc is None:
             return {}
         dep_names = (

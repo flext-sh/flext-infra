@@ -18,25 +18,16 @@ class FlextInfraUtilitiesSafety:
     """Static safety helpers for copy-on-write file protection."""
 
     @staticmethod
-    def _git_ok(repo: Path, *args: str) -> bool:
-        result = u.Cli.run_raw([c.Infra.GIT, *args], cwd=repo)
-        return result.is_success and result.value.exit_code == 0
-
-    @staticmethod
-    def _is_git_repo(repo: Path) -> bool:
-        return FlextInfraUtilitiesSafety._git_ok(
-            repo,
-            "rev-parse",
-            "--is-inside-work-tree",
-        )
-
-    @staticmethod
     def create_checkpoint(repo: Path, *, label: str = "checkpoint") -> r[str]:
         """Create a git-stash checkpoint for dirty repositories.
 
         Returns an empty string for non-repositories or clean trees.
         """
-        if not FlextInfraUtilitiesSafety._is_git_repo(repo):
+        repo_check = u.Cli.run_raw(
+            [c.Infra.GIT, "rev-parse", "--is-inside-work-tree"],
+            cwd=repo,
+        )
+        if repo_check.is_failure or repo_check.value.exit_code != 0:
             return r[str].ok("")
         status_result = u.Cli.run_raw(
             [c.Infra.GIT, "status", "--porcelain"],
@@ -69,7 +60,13 @@ class FlextInfraUtilitiesSafety:
 
         Returns success for non-repositories or empty checkpoint strings.
         """
-        if (not checkpoint) or (not FlextInfraUtilitiesSafety._is_git_repo(repo)):
+        if not checkpoint:
+            return r[bool].ok(True)
+        repo_check = u.Cli.run_raw(
+            [c.Infra.GIT, "rev-parse", "--is-inside-work-tree"],
+            cwd=repo,
+        )
+        if repo_check.is_failure or repo_check.value.exit_code != 0:
             return r[bool].ok(True)
         checkpoint_ref = checkpoint.split(":", 1)[-1].strip()
         apply_result = u.Cli.run_raw(

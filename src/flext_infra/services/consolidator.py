@@ -9,7 +9,7 @@ from typing import Annotated, override
 from pydantic import Field
 
 from flext_core import r
-from flext_infra import m, p, s, t, u
+from flext_infra import c, m, p, s, t, u
 
 
 class FlextInfraCodegenConsolidator(s[str]):
@@ -37,10 +37,24 @@ class FlextInfraCodegenConsolidator(s[str]):
             return r[str].fail("Failed to discover projects")
         projects = projects_result.value
         for project in projects:
-            project_ctx = self._project_context(project)
-            if project_ctx is None:
+            package_name = (
+                project.package_name
+                if isinstance(project, m.Infra.ProjectInfo)
+                else u.Infra.package_name(project.path)
+            )
+            if not package_name:
                 continue
-            package_dir, package_name, value_map = project_ctx
+            package_dir = project.path / c.Infra.Paths.DEFAULT_SRC_DIR / Path(
+                *package_name.split("."),
+            )
+            if not (package_dir / c.Infra.Files.INIT_PY).is_file():
+                continue
+            if "c" not in u.Infra.discover_project_aliases(project.path):
+                continue
+            constants_facade = u.Infra.resolve_constants_facade(package_name)
+            if constants_facade is None:
+                continue
+            value_map = u.Infra.build_value_map(constants_facade)
             rope = u.Infra.init_rope_project(project.path)
             try:
                 for python_file in (
@@ -109,21 +123,6 @@ class FlextInfraCodegenConsolidator(s[str]):
             if self.project_name is None or project.name == self.project_name
         )
         return r[Sequence[p.Infra.ProjectInfo]].ok(selected)
-
-    def _project_context(
-        self,
-        project: p.Infra.ProjectInfo,
-    ) -> tuple[Path, str, t.StrMapping] | None:
-        package_info = u.Infra.discover_src_package_dir(project.path)
-        if package_info is None:
-            return None
-        package_name, package_dir = package_info
-        if "c" not in u.Infra.discover_project_aliases(project.path):
-            return None
-        constants_facade = u.Infra.resolve_constants_facade(package_name)
-        if constants_facade is None:
-            return None
-        return (package_dir, package_name, u.Infra.build_value_map(constants_facade))
 
     def _scan_file(
         self,

@@ -46,7 +46,14 @@ class FlextInfraUtilitiesCodegenNamespace:
         )
         if project_root is None:
             return ""
-        prefix = cls._derive_prefix(project_root) or cls.project_class_stem(
+        package_name = FlextInfraUtilitiesDocsScope.package_name(project_root)
+        prefix = (
+            "Flext"
+            if package_name == c.Infra.Packages.CORE_UNDERSCORE
+            else "".join(part.title() for part in package_name.split("_"))
+            if package_name
+            else ""
+        ) or cls.project_class_stem(
             project_name=project_root.name,
         )
         if not prefix:
@@ -55,47 +62,12 @@ class FlextInfraUtilitiesCodegenNamespace:
             rel_parts = path.relative_to(project_root).parts
         except ValueError:
             return prefix
-        surface_prefix = cls._surface_prefix(rel_parts)
+        surface_prefix = (
+            cls._lazy_init_config().surface_prefixes.get(rel_parts[0], "")
+            if rel_parts
+            else ""
+        )
         return f"{surface_prefix}{prefix}" if surface_prefix else prefix
-
-    @staticmethod
-    def _derive_prefix(project_root: Path) -> str:
-        """Derive the expected class prefix from the canonical ``src/`` package."""
-        src_dir = project_root / c.Infra.Paths.DEFAULT_SRC_DIR
-        if not src_dir.is_dir():
-            return ""
-        for child in sorted(src_dir.iterdir()):
-            if child.is_dir() and (child / c.Infra.Files.INIT_PY).exists():
-                if child.name == c.Infra.Packages.CORE_UNDERSCORE:
-                    return "Flext"
-                return "".join(part.title() for part in child.name.split("_"))
-        return ""
-
-    @staticmethod
-    def _surface_prefix(rel_parts: tuple[str, ...]) -> str:
-        """Return the facade surface prefix for top-level tests/examples/scripts."""
-        if not rel_parts:
-            return ""
-        return FlextInfraUtilitiesCodegenNamespace._lazy_init_config().surface_prefixes.get(
-            rel_parts[0], ""
-        )
-
-    @classmethod
-    def surface_name(cls, package_name: str) -> str:
-        """Return the lazy-init surface name for one package."""
-        root_name = package_name.split(".", maxsplit=1)[0] if package_name else ""
-        if root_name in cls._lazy_init_config().surface_prefixes:
-            return root_name
-        return "src"
-
-    @classmethod
-    def inherited_exports_for_package(cls, package_name: str) -> tuple[str, ...]:
-        """Return allowed parent exports for the package surface."""
-        exports = cls._lazy_init_config().inherited_exports.get(
-            cls.surface_name(package_name),
-            (),
-        )
-        return tuple(exports)
 
     @staticmethod
     def project_class_stem(*, project_name: str) -> str:
@@ -174,7 +146,10 @@ class FlextInfraUtilitiesCodegenNamespace:
             and len(resolved_rel_path.parts) == 1
             and package_depth <= 1
         )
-        is_src_surface = cls.surface_name(package_name) == "src"
+        surface_name = package_parts[0] if package_parts else ""
+        if surface_name not in config.surface_prefixes:
+            surface_name = "src"
+        is_src_surface = surface_name == "src"
         enforce_contract = (
             is_fixture_module
             or is_family_module
@@ -196,7 +171,7 @@ class FlextInfraUtilitiesCodegenNamespace:
             name
             for name in dict.fromkeys((
                 *config.public_file_aliases.values(),
-                *cls.inherited_exports_for_package(package_name),
+                *config.inherited_exports.get(surface_name, ()),
             ))
             if name.isidentifier()
         )

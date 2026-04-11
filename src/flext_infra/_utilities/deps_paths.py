@@ -7,10 +7,8 @@ from pathlib import Path
 
 from flext_cli import u
 from flext_infra import (
-    FlextInfraUtilitiesDependencyPathSync,
-    FlextInfraUtilitiesDiscoveryScanning,
-    FlextInfraUtilitiesDocsScope,
-    FlextInfraUtilitiesParsing,
+    FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesTomlParse,
     c,
     t,
 )
@@ -42,63 +40,44 @@ class FlextInfraExtraPathsResolutionMixin:
             normalized = normalized[2:].strip()
         return normalized or None
 
-    def path_dep_paths_pep621(self, doc: t.Cli.TomlDocument) -> t.StrSequence:
-        """Extract path dependency paths from PEP 621 project.dependencies."""
+    def _path_dependency_entries(self, doc: t.Cli.TomlDocument) -> t.StrSequence:
+        """Extract local dependency paths declared across supported TOML sections."""
+        paths: set[str] = set()
         project_table = u.Cli.toml_get_table(doc, c.Infra.PROJECT)
-        if project_table is None:
-            return list[str]()
-        deps_items = u.Cli.toml_as_string_list(
-            u.Cli.toml_get_item(project_table, c.Infra.DEPENDENCIES)
-        )
-        paths: MutableSequence[str] = []
-        for item in deps_items:
-            if " @ " not in item:
-                continue
-            _name, path_part = item.split(" @ ", 1)
-            normalized_path = self._normalize_pep621_path_dependency(path_part)
-            if normalized_path is not None:
-                paths.append(normalized_path)
-        return sorted(set(paths))
-
-    def path_dep_paths_poetry(self, doc: t.Cli.TomlDocument) -> t.StrSequence:
-        """Extract path dependency paths from Poetry tool.poetry.dependencies."""
+        if project_table is not None:
+            for item in u.Cli.toml_as_string_list(
+                u.Cli.toml_get_item(project_table, c.Infra.DEPENDENCIES)
+            ):
+                if " @ " not in item:
+                    continue
+                _name, path_part = item.split(" @ ", 1)
+                normalized_path = self._normalize_pep621_path_dependency(path_part)
+                if normalized_path is not None:
+                    paths.add(normalized_path)
         tool_table = u.Cli.toml_get_table(doc, c.Infra.TOOL)
         if tool_table is None:
-            return list[str]()
+            return sorted(paths)
         poetry_table = u.Cli.toml_get_table(tool_table, c.Infra.POETRY)
-        if poetry_table is None:
-            return list[str]()
-        deps_table = u.Cli.toml_get_table(poetry_table, c.Infra.DEPENDENCIES)
-        if deps_table is None:
-            return list[str]()
-        paths: MutableSequence[str] = []
-        for dep_key in deps_table:
-            dep_table = u.Cli.toml_get_table(deps_table, dep_key)
-            if dep_table is None:
-                continue
-            dep_path = u.Cli.toml_unwrap_item(
-                u.Cli.toml_get_item(dep_table, c.Infra.PATH),
-            )
-            if isinstance(dep_path, str) and dep_path:
-                dep_path = dep_path.strip()
-                if dep_path.startswith("./"):
-                    dep_path = dep_path[2:].strip()
-                if dep_path:
-                    paths.append(dep_path)
-        return sorted(set(paths))
-
-    def path_dep_paths_uv_sources(self, doc: t.Cli.TomlDocument) -> t.StrSequence:
-        """Extract internal dependency paths from tool.uv.sources."""
-        tool_table = u.Cli.toml_get_table(doc, c.Infra.TOOL)
-        if tool_table is None:
-            return list[str]()
+        if poetry_table is not None:
+            deps_table = u.Cli.toml_get_table(poetry_table, c.Infra.DEPENDENCIES)
+            if deps_table is not None:
+                for dep_key in deps_table:
+                    dep_table = u.Cli.toml_get_table(deps_table, dep_key)
+                    if dep_table is None:
+                        continue
+                    dep_path = u.Cli.toml_unwrap_item(
+                        u.Cli.toml_get_item(dep_table, c.Infra.PATH),
+                    )
+                    if isinstance(dep_path, str) and dep_path:
+                        normalized_path = dep_path.strip().removeprefix("./").strip()
+                        if normalized_path:
+                            paths.add(normalized_path)
         uv_table = u.Cli.toml_get_table(tool_table, "uv")
-        if uv_table is None:
-            return list[str]()
-        sources_table = u.Cli.toml_get_table(uv_table, "sources")
+        sources_table = (
+            u.Cli.toml_get_table(uv_table, "sources") if uv_table is not None else None
+        )
         if sources_table is None:
-            return list[str]()
-        project_table = u.Cli.toml_get_table(doc, c.Infra.PROJECT)
+            return sorted(paths)
         project_deps: t.StrSequence = (
             u.Cli.toml_as_string_list(
                 u.Cli.toml_get_item(project_table, c.Infra.DEPENDENCIES)
@@ -108,12 +87,9 @@ class FlextInfraExtraPathsResolutionMixin:
         )
         project_dep_names: t.Infra.StrSet = set()
         for dep_entry in project_deps:
-            dep_name: str = FlextInfraUtilitiesDependencyPathSync.extract_dep_name(
-                dep_entry.split(" ", 1)[0]
-            )
+            dep_name = FlextInfraUtilitiesTomlParse.dep_name(dep_entry)
             if dep_name:
                 project_dep_names.add(dep_name)
-        paths: MutableSequence[str] = []
         for source_key in sources_table:
             dep_name = str(source_key)
             if project_dep_names and dep_name not in project_dep_names:
@@ -125,7 +101,7 @@ class FlextInfraExtraPathsResolutionMixin:
                 u.Cli.toml_get_item(source_table, "workspace"),
             )
             if workspace_val is True:
-                paths.append(dep_name)
+                paths.add(dep_name)
                 continue
             source_path = u.Cli.toml_unwrap_item(
                 u.Cli.toml_get_item(source_table, c.Infra.PATH),
@@ -133,39 +109,19 @@ class FlextInfraExtraPathsResolutionMixin:
             if isinstance(source_path, str):
                 normalized_path = source_path.strip().removeprefix("./")
                 if normalized_path:
-                    paths.append(normalized_path)
-        return sorted(set(paths))
-
-    def path_dep_paths(self, doc: t.Cli.TomlDocument) -> t.StrSequence:
-        """Combine PEP 621 and Poetry path dependencies."""
-        return sorted(
-            {
-                *self.path_dep_paths_pep621(doc),
-                *self.path_dep_paths_poetry(doc),
-                *self.path_dep_paths_uv_sources(doc),
-            },
-        )
-
-    def _discover_workspace_project_names(self) -> t.Infra.StrSet:
-        projects_result = FlextInfraUtilitiesDocsScope.discover_projects(self.root)
-        if projects_result.is_failure:
-            return set()
-        return {project.name for project in projects_result.value}
-
-    def _workspace_dependency_entries(
-        self,
-        doc: t.Cli.TomlDocument,
-    ) -> t.StrSequence:
-        declared_names = FlextInfraUtilitiesParsing.declared_dependency_names(doc)
-        return sorted(
-            name for name in declared_names if name in self._workspace_project_names
-        )
+                    paths.add(normalized_path)
+        return sorted(paths)
 
     def _dependency_entries(self, doc: t.Cli.TomlDocument) -> t.StrSequence:
+        declared_names = FlextInfraUtilitiesTomlParse.declared_dependency_names(doc)
         return sorted(
             {
-                *self.path_dep_paths(doc),
-                *self._workspace_dependency_entries(doc),
+                *self._path_dependency_entries(doc),
+                *(
+                    name
+                    for name in declared_names
+                    if name in self._workspace_project_names
+                ),
             },
         )
 
@@ -183,7 +139,9 @@ class FlextInfraExtraPathsResolutionMixin:
         resolved_visited: set[str] = visited if visited is not None else set()
         all_paths: set[str] = set(direct_paths)
         for path_value in direct_paths:
-            name = FlextInfraUtilitiesDependencyPathSync.extract_dep_name(path_value)
+            name = FlextInfraUtilitiesTomlParse.dep_name(path_value)
+            if not name:
+                continue
             if name in resolved_visited:
                 continue
             resolved_visited.add(name)
@@ -230,13 +188,15 @@ class FlextInfraExtraPathsResolutionMixin:
         for path_value in raw_paths:
             if not path_value:
                 continue
-            name = FlextInfraUtilitiesDependencyPathSync.extract_dep_name(path_value)
+            name = FlextInfraUtilitiesTomlParse.dep_name(path_value)
+            if not name:
+                continue
             if isinstance(current_project_name, str) and name == current_project_name:
                 continue
             prefix = f"{name}" if is_root else f"../{name}"
             dep_dir = self.root / name
             if dep_dir.is_dir():
-                py_dirs = FlextInfraUtilitiesDiscoveryScanning.discover_python_dirs(
+                py_dirs = FlextInfraUtilitiesDiscovery.discover_python_dirs(
                     dep_dir, skip_dirs=dep_skip
                 )
                 for dir_name in py_dirs:

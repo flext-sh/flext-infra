@@ -11,13 +11,7 @@ from functools import cache
 from pathlib import Path
 
 from flext_cli import u
-from flext_infra import (
-    FlextInfraUtilitiesParsing,
-    FlextInfraUtilitiesTomlParse,
-    c,
-    r,
-    t,
-)
+from flext_infra import FlextInfraUtilitiesTomlParse, c, r, t
 
 
 class FlextInfraUtilitiesIteration:
@@ -189,7 +183,7 @@ class FlextInfraUtilitiesIteration:
                 return True
             if (path / c.Infra.Files.MAKEFILE_FILENAME).exists():
                 return True
-            document_result = FlextInfraUtilitiesParsing.toml_read_document(
+            document_result = u.Cli.toml_read_document(
                 pyproject_path,
             )
             if document_result.is_failure:

@@ -319,45 +319,6 @@ class FlextInfraProtocolsBase(Protocol):
             """Execute one make verb across multiple projects."""
             ...
 
-    @runtime_checkable
-    class ExtraPathsResolver(Protocol):
-        """Structural contract for dependency-backed extra-path resolvers."""
-
-        root: Path
-
-        def _source_root(
-            self,
-            project_dir: Path,
-            *,
-            source_dir: str,
-            project_root: str,
-        ) -> str:
-            """Resolve source root path for a project."""
-            ...
-
-        def _existing_relative_paths(
-            self,
-            project_dir: Path,
-            configured_paths: t.StrSequence,
-        ) -> t.StrSequence:
-            """Filter configured paths to only those that exist."""
-            ...
-
-        def pyrefly_path_rules(
-            self,
-        ) -> m.Infra.PyreflyConfig.PathRulesConfig:
-            """Get pyrefly path rules from tool config."""
-            ...
-
-        def get_dep_paths(
-            self,
-            doc: t.Cli.TomlDocument,
-            *,
-            is_root: bool = False,
-        ) -> t.StrSequence:
-            """Resolve dependency search paths for one TOML document."""
-            ...
-
     class CodegenFixer(Protocol):
         """Protocol for codegen namespace fixer services."""
 

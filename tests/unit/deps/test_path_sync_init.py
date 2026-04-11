@@ -78,8 +78,8 @@ class TestPathSyncEdgeCases:
             has=FlextInfraUtilitiesDependencyPathSync.detect_mode(tmp_path),
         )
 
-    def test_extract_dep_name_with_empty_string(self) -> None:
-        tm.that(FlextInfraUtilitiesDependencyPathSync.extract_dep_name(""), eq="")
+    def test_dep_name_normalizes_path_inputs(self) -> None:
+        tm.that(FlextInfraUtilitiesDependencyPathSync.dep_name("../flext-core"), eq="flext-core")
 
     def test_rewrite_dep_paths_with_no_deps(self, tmp_path: Path) -> None:
         pyproject = tmp_path / "pyproject.toml"

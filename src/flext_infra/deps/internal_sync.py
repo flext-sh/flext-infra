@@ -246,27 +246,39 @@ class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
                         dep_path.unlink()
             except OSError as exc:
                 return r[bool].fail(f"cleanup failed for {dep_path.name}: {exc}")
-            cloned = u.Infra.git_run_checked([
-                "clone",
-                "--depth",
-                "1",
-                "--branch",
-                safe_ref_name,
-                safe_repo_url,
-                str(dep_path),
-            ])
+            cloned = u.Cli.run_checked(
+                [
+                    c.Infra.GIT,
+                    "clone",
+                    "--depth",
+                    "1",
+                    "--branch",
+                    safe_ref_name,
+                    safe_repo_url,
+                    str(dep_path),
+                ]
+            )
             if cloned.is_failure:
                 return r[bool].fail(f"clone failed for {dep_path.name}: {cloned.error}")
             return r[bool].ok(True)
-        fetch = u.Infra.git_fetch(dep_path, c.Infra.Git.ORIGIN)
+        fetch = u.Cli.run_checked(
+            [c.Infra.GIT, "fetch", c.Infra.Git.ORIGIN],
+            cwd=dep_path,
+        )
         if fetch.is_failure:
             return r[bool].fail(f"fetch failed for {dep_path.name}: {fetch.error}")
-        checkout = u.Infra.git_checkout(dep_path, safe_ref_name)
+        checkout = u.Cli.run_checked(
+            [c.Infra.GIT, "checkout", safe_ref_name],
+            cwd=dep_path,
+        )
         if checkout.is_failure:
             return r[bool].fail(
                 f"checkout failed for {dep_path.name}: {checkout.error}",
             )
-        _ = u.Infra.git_pull(dep_path, remote=c.Infra.Git.ORIGIN, branch=safe_ref_name)
+        _ = u.Cli.run_checked(
+            [c.Infra.GIT, "pull", c.Infra.Git.ORIGIN, safe_ref_name],
+            cwd=dep_path,
+        )
         return r[bool].ok(True)
 
     @staticmethod

@@ -17,7 +17,7 @@ from flext_cli import FlextCliUtilities
 from flext_infra import t
 
 
-class FlextInfraUtilitiesToml(FlextCliUtilities.Cli):
+class FlextInfraUtilitiesToml:
     """Infra-specific TOML helpers — validation via INFRA adapters.
 
     For pure TOML operations use ``u.Cli.toml_*`` directly::

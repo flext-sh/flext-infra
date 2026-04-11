@@ -338,8 +338,10 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
         for package_name in ("tests", "examples", "scripts"):
             if package_name in parts:
                 return package_name
-        _package_dir, package_name = u.Infra.package_context(self._file_path)
-        return package_name
+        return u.Infra.discover_package_from_file(self._file_path).split(
+            ".",
+            maxsplit=1,
+        )[0]
 
     @staticmethod
     def _import_insertion_offset(source: str) -> int:

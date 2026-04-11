@@ -25,29 +25,11 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
         self.toml: p.Infra.TomlReader | None = None
         self.runner: p.Cli.CommandRunner | None = None
 
-    def _resolve_projects(
-        self,
-        workspace_root: Path,
-        names: t.StrSequence,
-    ) -> r[Sequence[m.Infra.ProjectInfo]]:
-        if self.selector is not None:
-            return self.selector.resolve_projects(workspace_root, names)
-        return u.Infra.resolve_projects(workspace_root, names)
-
     @override
     def _read_plain(self, path: Path) -> r[t.Infra.ContainerDict]:
         if self.toml is not None:
             return self.toml.read_plain(path)
-        read_result = u.Cli.toml_read_json(path)
-        if read_result.is_failure:
-            return r[t.Infra.ContainerDict].fail(
-                read_result.error or f"failed to read {path}",
-            )
-        try:
-            data = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(read_result.value)
-        except ValueError as exc:
-            return r[t.Infra.ContainerDict].fail(f"failed to validate {path}: {exc}")
-        return r[t.Infra.ContainerDict].ok(data)
+        return u.Infra.read_plain(path)
 
     @override
     def _run_raw(
@@ -141,7 +123,11 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
         For full ProjectInfo metadata, use u.Infra.discover_projects().
         """
         names = projects_filter or []
-        result = self._resolve_projects(workspace_root, names)
+        result = (
+            self.selector.resolve_projects(workspace_root, names)
+            if self.selector is not None
+            else u.Infra.resolve_projects(workspace_root, names)
+        )
         if result.is_failure:
             return r[Sequence[Path]].fail(result.error or "project resolution failed")
         projects_info: Sequence[m.Infra.ProjectInfo] = result.value

@@ -19,7 +19,7 @@ from flext_infra import (
 )
 
 
-class FlextInfraUtilitiesDocsGenerate(u.Cli):
+class FlextInfraUtilitiesDocsGenerate:
     """Reusable generation helpers exposed through ``u.Infra``."""
 
     @staticmethod
@@ -319,7 +319,7 @@ class FlextInfraUtilitiesDocsGenerate(u.Cli):
             )
         )
         generated = u.count(files, lambda item: item.written)
-        _ = FlextInfraUtilitiesDocsGenerate.json_write(
+        _ = u.Cli.json_write(
             scope.report_dir / "generate-summary.json",
             {
                 c.Infra.ReportKeys.SUMMARY: {

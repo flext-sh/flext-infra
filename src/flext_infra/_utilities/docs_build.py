@@ -13,7 +13,7 @@ from flext_cli import u
 from flext_infra import FlextInfraUtilitiesDocs, c, m, p
 
 
-class FlextInfraUtilitiesDocsBuild(u.Cli):
+class FlextInfraUtilitiesDocsBuild:
     """Reusable build helpers exposed through ``u.Infra``."""
 
     @staticmethod
@@ -134,7 +134,7 @@ class FlextInfraUtilitiesDocsBuild(u.Cli):
         report: m.Infra.DocsPhaseReport,
     ) -> None:
         """Persist the standard build summary and markdown report."""
-        _ = FlextInfraUtilitiesDocsBuild.json_write(
+        _ = u.Cli.json_write(
             scope.report_dir / "build-summary.json",
             {c.Infra.ReportKeys.SUMMARY: report.model_dump()},
         )

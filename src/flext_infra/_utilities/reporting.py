@@ -95,16 +95,6 @@ class FlextInfraUtilitiesReporting(
             / filename
         )
 
-    @staticmethod
-    def terminal_should_use_color(stream: p.Infra.OutputStream | None = None) -> bool:
-        """Return whether ANSI color should be emitted for one target stream."""
-        return FlextInfraUtilitiesTerminal.terminal_should_use_color(stream)
-
-    @staticmethod
-    def terminal_should_use_unicode() -> bool:
-        """Return whether the current locale safely supports Unicode symbols."""
-        return FlextInfraUtilitiesTerminal.terminal_should_use_unicode()
-
     @classmethod
     def setup(
         cls,
@@ -114,9 +104,15 @@ class FlextInfraUtilitiesReporting(
         stream: p.Infra.OutputStream | None = None,
     ) -> None:
         """Initialize reporting output capabilities."""
-        cls._use_color = cls.terminal_should_use_color() if color is None else color
+        cls._use_color = (
+            FlextInfraUtilitiesTerminal.terminal_should_use_color()
+            if color is None
+            else color
+        )
         cls._use_unicode = (
-            cls.terminal_should_use_unicode() if unicode is None else unicode
+            FlextInfraUtilitiesTerminal.terminal_should_use_unicode()
+            if unicode is None
+            else unicode
         )
         if stream is not None:
             cls._stream = stream

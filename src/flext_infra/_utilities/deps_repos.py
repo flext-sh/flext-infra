@@ -50,8 +50,8 @@ class FlextInfraInternalSyncRepoMixin:
 
     def infer_owner_from_origin(self, project_root: Path) -> str | None:
         """Infer GitHub owner from remote origin URL."""
-        remote = u.Infra.git_run(
-            ["config", "--get", "remote.origin.url"],
+        remote = u.Cli.capture(
+            [c.Infra.GIT, "config", "--get", "remote.origin.url"],
             cwd=project_root,
         )
         if remote.is_failure:
@@ -67,8 +67,8 @@ class FlextInfraInternalSyncRepoMixin:
         env_workspace_root = self.workspace_root_from_env(project_root)
         if env_workspace_root is not None:
             return (True, env_workspace_root)
-        superproject = u.Infra.git_run(
-            ["rev-parse", "--show-superproject-working-tree"],
+        superproject = u.Cli.capture(
+            [c.Infra.GIT, "rev-parse", "--show-superproject-working-tree"],
             cwd=project_root,
         )
         if superproject.is_success:
@@ -131,13 +131,19 @@ class FlextInfraInternalSyncRepoMixin:
                 value = os.getenv(key)
                 if value:
                     return value
-        branch = u.Infra.git_current_branch(project_root)
+        branch = u.Cli.capture(
+            [c.Infra.GIT, "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=project_root,
+        )
         if branch.is_success:
             branch_val = branch.value
             current = branch_val.strip()
             if current and current != c.Infra.Git.HEAD:
                 return current
-        tag = u.Infra.git_run(["describe", "--tags", "--exact-match"], cwd=project_root)
+        tag = u.Cli.capture(
+            [c.Infra.GIT, "describe", "--tags", "--exact-match"],
+            cwd=project_root,
+        )
         if tag.is_success:
             tag_val = tag.value
             return tag_val.strip()

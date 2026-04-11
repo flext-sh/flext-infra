@@ -206,7 +206,7 @@ class FlextInfraUtilitiesCodegenConstantAnalysis:
 # =====================================================================
 
 
-class FlextInfraUtilitiesCodegenConstantTransformation(u.Cli):
+class FlextInfraUtilitiesCodegenConstantTransformation:
     """Consolidation: inline values → ``c.*`` references with rollback."""
 
     _ALL_LINT_GATES: ClassVar[t.StrSequence] = tuple(

@@ -380,7 +380,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
     def _collect_changes(self, workspace_root: Path, previous: str, tag: str) -> r[str]:
         """Collect Git commit messages between two tags."""
         rev = f"{previous}..{tag}" if previous else tag
-        return u.Infra.git_run(["log", "--oneline", rev], cwd=workspace_root)
+        return u.Cli.capture([c.Infra.GIT, "log", "--oneline", rev], cwd=workspace_root)
 
     def _create_branches(
         self,
@@ -390,13 +390,19 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
     ) -> r[bool]:
         """Create local release branches for workspace and projects."""
         branch = f"release/{version}"
-        result = u.Infra.git_checkout(workspace_root, branch, create=True)
+        result = u.Cli.run_checked(
+            [c.Infra.GIT, "checkout", "-B", branch],
+            cwd=workspace_root,
+        )
         if result.is_failure:
             return result
         projects_result = u.Infra.resolve_projects(workspace_root, project_names)
         if projects_result.is_success:
             for project in projects_result.value:
-                proj_result = u.Infra.git_checkout(project.path, branch, create=True)
+                proj_result = u.Cli.run_checked(
+                    [c.Infra.GIT, "checkout", "-B", branch],
+                    cwd=project.path,
+                )
                 if proj_result.is_failure:
                     return proj_result
         return r[bool].ok(True)
@@ -404,12 +410,18 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
     @override
     def _create_tag(self, workspace_root: Path, tag: str) -> r[bool]:
         """Create an annotated Git tag if it does not already exist."""
-        exists_result = u.Infra.git_tag_exists(workspace_root, tag)
+        exists_result = u.Cli.capture(
+            [c.Infra.GIT, "tag", "-l", tag],
+            cwd=workspace_root,
+        ).map(lambda value: value.strip() == tag)
         if exists_result.is_failure:
             return r[bool].fail(exists_result.error or "tag check failed")
         if exists_result.value:
             return r[bool].ok(True)
-        return u.Infra.git_create_tag(workspace_root, tag, f"release: {tag}")
+        return u.Cli.run_checked(
+            [c.Infra.GIT, "tag", "-a", tag, "-m", f"release: {tag}"],
+            cwd=workspace_root,
+        )
 
     def _dispatch_phase(
         self,
@@ -452,16 +464,16 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
 
     def _previous_tag(self, workspace_root: Path, tag: str) -> r[str]:
         """Find the tag immediately preceding the given tag."""
-        return u.Infra.git_run(
-            ["describe", "--tags", "--abbrev=0", f"{tag}^"],
+        return u.Cli.capture(
+            [c.Infra.GIT, "describe", "--tags", "--abbrev=0", f"{tag}^"],
             cwd=workspace_root,
         )
 
     @override
     def _push_release(self, workspace_root: Path, tag: str) -> r[bool]:
         """Push branch and tag to remote origin."""
-        return u.Infra.git_run_checked(
-            ["push", c.Infra.Git.ORIGIN, c.Infra.Git.HEAD, tag],
+        return u.Cli.run_checked(
+            [c.Infra.GIT, "push", c.Infra.Git.ORIGIN, c.Infra.Git.HEAD, tag],
             cwd=workspace_root,
         )
 

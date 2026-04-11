@@ -15,6 +15,7 @@ from itertools import pairwise
 from pathlib import Path
 
 from flext_infra import (
+    FlextInfraUtilitiesCodegenLazyScanning,
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesRope,
     c,
@@ -28,7 +29,7 @@ class FlextInfraUtilitiesCodegenImportCycles:
     @staticmethod
     def break_import_cycles(pkg_dir: Path) -> t.Infra.Pair[bool, t.StrSequence]:
         """Detect and break intra-package import cycles by redirecting to parent."""
-        targets = FlextInfraUtilitiesDiscovery.extract_lazy_import_targets(
+        targets = FlextInfraUtilitiesCodegenLazyScanning.extract_lazy_import_targets(
             pkg_dir / c.Infra.Files.INIT_PY,
         )
         lazy_map: t.StrMapping = {

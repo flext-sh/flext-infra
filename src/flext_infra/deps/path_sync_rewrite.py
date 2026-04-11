@@ -12,54 +12,11 @@ from pathlib import Path
 from tomlkit.items import InlineTable, Table as TomlTable
 
 from flext_cli import u
-from flext_infra import c, r, t
+from flext_infra import FlextInfraUtilitiesTomlParse, c, r, t
 
 
-class FlextInfraDependencyPathSyncRewrite:
-    """TOML rewrite operations for PEP 621, uv sources/workspace, and Poetry.
-
-    Static helpers (extract_dep_name, target_path) are resolved via MRO
-    from the main FlextInfraUtilitiesDependencyPathSync class.
-    """
-
-    @staticmethod
-    def extract_dep_name(raw_path: str) -> str:
-        """Extract dependency name from path string."""
-        normalized = raw_path.strip().lstrip("/").removeprefix("./")
-        for prefix in (f"{c.Infra.FLEXT_DEPS_DIR}/", "../"):
-            normalized = normalized.removeprefix(prefix)
-        return normalized
-
-    @staticmethod
-    def target_path(dep_name: str, *, is_root: bool, mode: str) -> str:
-        """Compute target path for dependency based on mode and location."""
-        if mode == c.Infra.ReportKeys.WORKSPACE:
-            return dep_name if is_root else f"../{dep_name}"
-        return f"{c.Infra.FLEXT_DEPS_DIR}/{dep_name}"
-
-    @staticmethod
-    def _mapping_str_value(
-        mapping: t.Cli.TomlTable | t.Infra.ContainerDict,
-        key: str,
-    ) -> str | None:
-        if key not in mapping:
-            return None
-        value = mapping[key]
-        if isinstance(value, str) and value:
-            return value
-        return None
-
-    @staticmethod
-    def _extract_requirement_name(entry: str) -> str | None:
-        """Extract requirement name from PEP 621 dependency entry."""
-        if " @ " in entry:
-            match = c.Infra.PEP621_PATH_DEP_RE.match(entry)
-            if match:
-                return match.group("name")
-        match = c.Infra.PEP621_NAME_RE.match(entry)
-        if not match:
-            return None
-        return match.group("name")
+class FlextInfraDependencyPathSyncRewrite(FlextInfraUtilitiesTomlParse):
+    """TOML rewrite operations for PEP 621, uv sources/workspace, and Poetry."""
 
     def _rewrite_pep621(
         self,
@@ -85,7 +42,7 @@ class FlextInfraDependencyPathSyncRewrite:
             if ";" in item:
                 requirement_part, marker_part = item.split(";", 1)
                 marker = f" ;{marker_part}"
-            dep_name = self._extract_requirement_name(requirement_part)
+            dep_name = type(self).dep_name(requirement_part)
             if not dep_name or dep_name not in internal_names:
                 updated_deps.append(item)
                 continue
@@ -99,8 +56,6 @@ class FlextInfraDependencyPathSyncRewrite:
         if changes:
             project_section[c.Infra.DEPENDENCIES] = updated_deps
         return (changes, internal_deps)
-
-    _ensure_table = staticmethod(u.Cli.toml_ensure_table)
 
     def _rewrite_uv_sources(
         self,
@@ -120,9 +75,9 @@ class FlextInfraDependencyPathSyncRewrite:
         if not expected_names:
             return []
         changes: MutableSequence[str] = []
-        tool_section = self._ensure_table(doc, c.Infra.TOOL)
-        uv_section = self._ensure_table(tool_section, "uv")
-        sources = self._ensure_table(uv_section, "sources")
+        tool_section = u.Cli.toml_ensure_table(doc, c.Infra.TOOL)
+        uv_section = u.Cli.toml_ensure_table(tool_section, "uv")
+        sources = u.Cli.toml_ensure_table(uv_section, "sources")
         for source_key in [str(k) for k in sources]:
             if source_key in internal_names and source_key not in expected_names:
                 del sources[source_key]
@@ -132,12 +87,10 @@ class FlextInfraDependencyPathSyncRewrite:
             if mode == c.Infra.ReportKeys.WORKSPACE:
                 expected = {"workspace": True}
             else:
-                path_value = self.target_path(
-                    dep_name,
-                    is_root=is_root,
-                    mode=mode,
-                )
-                expected = {"path": path_value, "editable": True}
+                expected = {
+                    "path": f"{c.Infra.FLEXT_DEPS_DIR}/{dep_name}",
+                    "editable": True,
+                }
             current_table = u.Cli.toml_get_table(sources, dep_name)
             empty: t.Infra.ContainerDict = {}
             current_map: t.Infra.ContainerDict = (
@@ -162,9 +115,9 @@ class FlextInfraDependencyPathSyncRewrite:
         if not is_root:
             return []
         changes: MutableSequence[str] = []
-        tool_section = self._ensure_table(doc, c.Infra.TOOL)
-        uv_section = self._ensure_table(tool_section, "uv")
-        workspace_section = self._ensure_table(uv_section, "workspace")
+        tool_section = u.Cli.toml_ensure_table(doc, c.Infra.TOOL)
+        uv_section = u.Cli.toml_ensure_table(tool_section, "uv")
+        workspace_section = u.Cli.toml_ensure_table(uv_section, "workspace")
         expected_members = sorted(set(members))
         current_members = u.Cli.toml_as_string_list(
             u.Cli.toml_get_item(workspace_section, "members")
@@ -201,11 +154,15 @@ class FlextInfraDependencyPathSyncRewrite:
             raw_path = value[c.Infra.PATH]
             if not isinstance(raw_path, str) or not raw_path.strip():
                 continue
-            dep_name = FlextInfraDependencyPathSyncRewrite.extract_dep_name(raw_path)
-            new_path = FlextInfraDependencyPathSyncRewrite.target_path(
-                dep_name,
-                is_root=is_root,
-                mode=mode,
+            dep_name = FlextInfraDependencyPathSyncRewrite.dep_name(raw_path)
+            new_path = (
+                dep_name
+                if mode == c.Infra.ReportKeys.WORKSPACE and is_root
+                else (
+                    f"../{dep_name}"
+                    if mode == c.Infra.ReportKeys.WORKSPACE
+                    else f"{c.Infra.FLEXT_DEPS_DIR}/{dep_name}"
+                )
             )
             if raw_path != new_path:
                 changes.append(

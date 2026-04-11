@@ -39,18 +39,6 @@ class TestInfraContainerFunctions:
 class TestInfraMroPattern:
     """Test that u.Infra MRO exposes all utility methods."""
 
-    def test_git_methods_available(self) -> None:
-        """Verify git methods are accessible via u.Infra MRO."""
-        assert callable(u.Infra.git_current_branch)
-        assert callable(u.Infra.git_add)
-        assert callable(u.Infra.git_commit)
-        assert callable(u.Infra.git_push)
-        assert callable(u.Infra.git_pull)
-        assert callable(u.Infra.git_fetch)
-        assert callable(u.Infra.git_has_changes)
-        assert callable(u.Infra.git_is_repo)
-        assert callable(u.Infra.git_run)
-
     def test_io_methods_available(self) -> None:
         """Verify IO methods are accessible via u.Infra MRO."""
         assert callable(u.Cli.json_write)
@@ -60,6 +48,7 @@ class TestInfraMroPattern:
         assert callable(u.Cli.run_checked)
         assert callable(u.Cli.run_raw)
         assert callable(u.Cli.capture)
+        assert callable(u.Cli.run_to_file)
 
     def test_discovery_methods_available(self) -> None:
         """Verify discovery methods are accessible via u.Infra MRO."""
