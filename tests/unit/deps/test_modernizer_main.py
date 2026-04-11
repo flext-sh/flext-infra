@@ -36,36 +36,6 @@ class TestFlextInfraPyprojectModernizer:
         modernizer = FlextInfraPyprojectModernizer(workspace_root=modernizer_workspace)
         tm.that(modernizer.root, eq=modernizer_workspace)
 
-    def test_find_pyproject_files_skips_venv_and_filters_projects(
-        self,
-        modernizer_workspace_with_projects: Path,
-    ) -> None:
-        ignored_venv = modernizer_workspace_with_projects / ".venv"
-        ignored_venv.mkdir(exist_ok=True)
-        (ignored_venv / c.Infra.Files.PYPROJECT_FILENAME).write_text(
-            '[project]\nname = "ignored-venv"\nversion = "0.1.0"\n',
-            encoding="utf-8",
-        )
-        modernizer = FlextInfraPyprojectModernizer(
-            workspace_root=modernizer_workspace_with_projects,
-        )
-        all_files = modernizer.find_pyproject_files()
-        selected_files = modernizer.find_pyproject_files(
-            project_paths=[modernizer_workspace_with_projects / "selected"],
-        )
-        tm.that(
-            all(".venv" not in str(path) for path in all_files),
-            eq=True,
-        )
-        tm.that(
-            selected_files,
-            eq=[
-                modernizer_workspace_with_projects
-                / "selected"
-                / c.Infra.Files.PYPROJECT_FILENAME,
-            ],
-        )
-
     def test_process_file_returns_invalid_toml(
         self,
         modernizer_workspace: Path,

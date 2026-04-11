@@ -101,7 +101,7 @@ class FlextInfraUtilitiesDiscovery:
     ) -> t.StrSequence:
         """Return top-level directories that contain at least one Python file."""
         if not project_dir.is_dir():
-            return []
+            return list[str]()
         effective_skip = skip_dirs if skip_dirs is not None else c.Infra.SKIP_DIRS
         return [
             subdir.name
@@ -111,23 +111,6 @@ class FlextInfraUtilitiesDiscovery:
             and subdir.name not in effective_skip
             and any(subdir.rglob(c.Infra.Extensions.PYTHON_GLOB))
         ]
-
-    @staticmethod
-    def discover_src_package_dir(
-        project_root: Path,
-    ) -> t.Pair[str, Path] | None:
-        """Find the primary package directory inside ``src/``."""
-        package_name = FlextInfraUtilitiesDocsScope.package_name(project_root)
-        if not package_name:
-            return None
-        package_dir = project_root / c.Infra.Paths.DEFAULT_SRC_DIR / Path(
-            *package_name.split("."),
-        )
-        return (
-            (package_name, package_dir)
-            if (package_dir / c.Infra.Files.INIT_PY).is_file()
-            else None
-        )
 
     @staticmethod
     def find_all_pyproject_files(
@@ -155,7 +138,9 @@ class FlextInfraUtilitiesDiscovery:
             all_files = [
                 path
                 for path in all_files
-                if any(path.is_relative_to(project_path) for project_path in project_paths)
+                if any(
+                    path.is_relative_to(project_path) for project_path in project_paths
+                )
             ]
         return r[Sequence[Path]].ok(all_files)
 
@@ -223,12 +208,18 @@ class FlextInfraUtilitiesDiscovery:
         file_path: Path,
     ) -> Mapping[str, frozenset[str]]:
         """Return allowed foreign-package runtime alias sources for one file."""
-        package_info = FlextInfraUtilitiesDiscovery.discover_src_package_dir(
-            project_root,
-        )
-        if package_info is None:
+        package_name = FlextInfraUtilitiesDocsScope.package_name(project_root)
+        if not package_name:
             return {}
-        _package_name, package_dir = package_info
+        package_dir = (
+            project_root
+            / c.Infra.Paths.DEFAULT_SRC_DIR
+            / Path(
+                *package_name.split("."),
+            )
+        )
+        if not (package_dir / c.Infra.Files.INIT_PY).is_file():
+            return {}
         parent_packages = FlextInfraUtilitiesDiscovery.resolve_parent_constants_mro(
             package_dir,
             return_module=True,

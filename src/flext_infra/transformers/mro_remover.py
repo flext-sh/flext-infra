@@ -44,12 +44,7 @@ class FlextInfraRefactorMRORemover(FlextInfraRopeTransformer):
                 )
 
         if source != resource.read() and self.changes:
-            u.Infra.apply_source_change(
-                rope_project,
-                resource,
-                source,
-                description="mro remover",
-            )
+            resource.write(source)
         return source, list(self.changes)
 
     def _strip_parent_base(

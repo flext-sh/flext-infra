@@ -12,7 +12,12 @@ from flext_core.lazy import (
 )
 
 if _t.TYPE_CHECKING:
+    from flext_core.decorators import d
+    from flext_core.exceptions import e
+    from flext_core.handlers import h
+    from flext_core.mixins import x
     from flext_core.result import r
+    from flext_infra.base import s
     from tests._constants.domain import TestsFlextInfraConstantsDomain
     from tests._constants.fixtures import TestsFlextInfraConstantsFixtures
     from tests.constants import TestsFlextInfraConstants, c
@@ -49,7 +54,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "TestsFlextInfraConstants",
                 "c",
             ),
-            "flext_core.result": ("r",),
             ".models": (
                 "TestsFlextInfraModels",
                 "m",
@@ -66,6 +70,12 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "TestsFlextInfraUtilities",
                 "u",
             ),
+            "flext_core.decorators": ("d",),
+            "flext_core.exceptions": ("e",),
+            "flext_core.handlers": ("h",),
+            "flext_core.mixins": ("x",),
+            "flext_core.result": ("r",),
+            "flext_infra.base": ("s",),
         },
     ),
     exclude_names=(
@@ -98,11 +108,16 @@ __all__ = [
     "TestsFlextInfraUtilitiesDiscoveryConsolidated",
     "TestsFlextInfraUtilitiesFormattingRunRuffFix",
     "c",
+    "d",
+    "e",
+    "h",
     "m",
     "p",
     "r",
+    "s",
     "t",
     "test_run_rope_post_hooks_applies_mro_migration",
     "test_run_rope_post_hooks_dry_run_is_non_mutating",
     "u",
+    "x",
 ]

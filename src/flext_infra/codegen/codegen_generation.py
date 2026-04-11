@@ -123,8 +123,15 @@ class FlextInfraCodegenGeneration:
         if not groups and include_flext_types:
             return ("if _t.TYPE_CHECKING:", "    from flext_core import FlextTypes")
 
+        normalized_groups = {
+            FlextInfraUtilitiesCodegenGeneration.normalize_type_checking_module_path(
+                mod,
+                local_package_root,
+            ): items
+            for mod, items in groups.items()
+        }
         collapsed = FlextInfraUtilitiesCodegenGeneration.collapse_to_children(
-            groups, child_packages
+            normalized_groups, child_packages
         )
         children = set(child_packages or [])
         root_name = "" if not local_package_root else local_package_root.split(".")[0]

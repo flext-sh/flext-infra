@@ -14,7 +14,14 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import infra, t
+from flext_infra import (
+    FlextInfraCodegenCensus,
+    FlextInfraCodegenFixer,
+    FlextInfraCodegenLazyInit,
+    FlextInfraCodegenScaffolder,
+    infra,
+    t,
+)
 
 _SRC_MODULES = (
     "constants.py",
@@ -122,25 +129,29 @@ def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
     )
     flexcore_package = flexcore / "src" / "flexcore"
     tm.that(not flexcore_package.joinpath("constants.py").exists(), eq=True)
-    service = infra.model_copy(
+    payload = infra.model_copy(
         update={"workspace_root": tmp_path, "apply_changes": True},
+    ).command_payload()
+    census_before = FlextInfraCodegenCensus.model_validate(payload).run()
+    scaffold_results_first = FlextInfraCodegenScaffolder.model_validate(payload).run(
+        dry_run=False,
     )
-    census_before = service.run_codegen_census()
-    scaffold_results_first = service.run_codegen_scaffold()
     scaffold_by_project_first = {
         result.project: result for result in scaffold_results_first
     }
     tm.that(scaffold_by_project_first, has="project-a")
     tm.that(scaffold_by_project_first, has="project-b")
     tm.that(scaffold_by_project_first, has="project-c")
-    scaffold_results_second = service.run_codegen_scaffold()
+    scaffold_results_second = FlextInfraCodegenScaffolder.model_validate(payload).run(
+        dry_run=False,
+    )
     scaffold_by_project_second = {
         result.project: result for result in scaffold_results_second
     }
     tm.that(len(scaffold_by_project_second["project-a"].files_created), eq=0)
     tm.that(len(scaffold_by_project_second["project-b"].files_created), eq=0)
     tm.that(len(scaffold_by_project_second["project-c"].files_created), eq=0)
-    fix_results = service.fix_codegen_workspace()
+    fix_results = FlextInfraCodegenFixer.model_validate(payload).fix_workspace()
     fix_by_project = {result.project: result for result in fix_results}
     tm.that(fix_by_project, has="project-a")
     tm.that(fix_by_project, has="project-b")
@@ -153,9 +164,9 @@ def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
         any(v.rule.startswith("NS-002") for v in all_violations),
         eq=True,
     )
-    unmapped_count = service.generate_lazy_inits()
+    unmapped_count = FlextInfraCodegenLazyInit.model_validate(payload).generate_inits()
     tm.that(unmapped_count, gte=0)
-    census_after = service.run_codegen_census()
+    census_after = FlextInfraCodegenCensus.model_validate(payload).run()
     before_total = sum(report.total for report in census_before)
     after_total = sum(report.total for report in census_after)
     tm.that(after_total, lte=before_total)

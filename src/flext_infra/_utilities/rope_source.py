@@ -44,6 +44,7 @@ class FlextInfraUtilitiesRopeSource:
         apply: bool = True,
     ) -> tuple[str, Sequence[str]]:
         """Remove module-level ``X = Y`` identity aliases."""
+        _ = rope_project
         allow_set = allow or set()
         source = resource.read()
         kept: list[str] = []
@@ -78,12 +79,7 @@ class FlextInfraUtilitiesRopeSource:
             return source, []
         new_source = "".join(kept)
         if apply:
-            FlextInfraUtilitiesRopeCore.apply_source_change(
-                rope_project,
-                resource,
-                new_source,
-                description=f"remove {len(removed)} aliases in <{resource.path}>",
-            )
+            resource.write(new_source)
         return new_source, removed
 
     @staticmethod
@@ -95,6 +91,7 @@ class FlextInfraUtilitiesRopeSource:
         apply: bool = True,
     ) -> t.Infra.StrIntPair:
         """Apply multiple annotation replacements in one pass."""
+        _ = rope_project
         source = resource.read()
         total = 0
         for old_annotation, new_annotation in replacements.items():
@@ -102,12 +99,7 @@ class FlextInfraUtilitiesRopeSource:
             source, count = pattern.subn(new_annotation, source)
             total += count
         if total > 0 and apply and source != resource.read():
-            FlextInfraUtilitiesRopeCore.apply_source_change(
-                rope_project,
-                resource,
-                source,
-                description=f"batch replace {total} annotations in <{resource.path}>",
-            )
+            resource.write(source)
         return source, total
 
     @staticmethod
@@ -118,6 +110,7 @@ class FlextInfraUtilitiesRopeSource:
         apply: bool = True,
     ) -> t.Infra.StrIntPair:
         """Remove ``cast(Type, value)`` calls, replacing with just ``value``."""
+        _ = rope_project
         source = resource.read()
         new_source, count = re.subn(
             r"\bcast\s*\(\s*[^,]+\s*,\s*([^)]+)\s*\)",
@@ -125,12 +118,7 @@ class FlextInfraUtilitiesRopeSource:
             source,
         )
         if count > 0 and apply and new_source != source:
-            FlextInfraUtilitiesRopeCore.apply_source_change(
-                rope_project,
-                resource,
-                new_source,
-                description=f"remove {count} redundant cast calls in <{resource.path}>",
-            )
+            resource.write(new_source)
         return new_source, count
 
     @staticmethod
@@ -142,6 +130,7 @@ class FlextInfraUtilitiesRopeSource:
         apply: bool = True,
     ) -> str:
         """Apply offset-based edits (start, end, replacement) to source."""
+        _ = rope_project
         source = resource.read()
         for start, end, replacement in sorted(
             changes,
@@ -150,12 +139,7 @@ class FlextInfraUtilitiesRopeSource:
         ):
             source = source[:start] + replacement + source[end:]
         if apply and source != resource.read():
-            FlextInfraUtilitiesRopeCore.apply_source_change(
-                rope_project,
-                resource,
-                source,
-                description=f"rewrite {len(changes)} regions in <{resource.path}>",
-            )
+            resource.write(source)
         return source
 
     @staticmethod
@@ -367,12 +351,7 @@ class FlextInfraUtilitiesRopeSource:
                 if resource is None:
                     return (source, [])
                 if resource.read() != source:
-                    FlextInfraUtilitiesRopeCore.apply_source_change(
-                        rope_project,
-                        resource,
-                        source,
-                        description="sync source",
-                    )
+                    resource.write(source)
                 new_source, changes = transformer_fn(rope_project, resource)
                 return (new_source, list(changes))
         finally:

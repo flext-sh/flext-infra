@@ -74,13 +74,13 @@ class FlextInfraCodegenScaffolder(FlextInfraServiceBase[str]):
         if not projects_result.is_success:
             return []
         return [
-            self.scaffold_project(project.path, dry_run=dry_run)
+            self._scaffold_project(project, dry_run=dry_run)
             for project in projects_result.unwrap()
         ]
 
-    def scaffold_project(
+    def _scaffold_project(
         self,
-        project: p.Infra.ProjectInfo | Path,
+        project: p.Infra.ProjectInfo,
         *,
         dry_run: bool = False,
     ) -> m.Infra.ScaffoldResult:
@@ -93,16 +93,8 @@ class FlextInfraCodegenScaffolder(FlextInfraServiceBase[str]):
             ScaffoldResult with lists of created and skipped files.
 
         """
-        if isinstance(project, Path):
-            project_path = project
-            package_name = u.Infra.package_name(project_path)
-        else:
-            project_path = project.path
-            package_name = (
-                project.package_name
-                if isinstance(project, m.Infra.ProjectInfo)
-                else u.Infra.package_name(project_path)
-            )
+        project_path = project.path
+        package_name = project.package_name
         prefix = FlextInfraNamespaceValidator.derive_prefix(project_path)
         if not prefix:
             return m.Infra.ScaffoldResult(
@@ -113,8 +105,12 @@ class FlextInfraCodegenScaffolder(FlextInfraServiceBase[str]):
         files_created: MutableSequence[str] = []
         files_skipped: MutableSequence[str] = []
         if package_name:
-            pkg_dir = project_path / c.Infra.Paths.DEFAULT_SRC_DIR / Path(
-                *package_name.split("."),
+            pkg_dir = (
+                project_path
+                / c.Infra.Paths.DEFAULT_SRC_DIR
+                / Path(
+                    *package_name.split("."),
+                )
             )
             if (pkg_dir / c.Infra.Files.INIT_PY).is_file():
                 self._scaffold_dir(

@@ -30,7 +30,9 @@ class TestProcessDirectory:
         init_content = (package_root / "__init__.py").read_text(encoding="utf-8")
         assert '".models": (' in init_content
         assert c.Infra.Tests.Fixtures.Codegen.LazyInit.MODELS_CLASS in init_content
-        assert f'"{c.Infra.Tests.Fixtures.Codegen.LazyInit.MODELS_ALIAS}"' in init_content
+        assert (
+            f'"{c.Infra.Tests.Fixtures.Codegen.LazyInit.MODELS_ALIAS}"' in init_content
+        )
 
     def test_check_only_does_not_write(self, tmp_path: Path) -> None:
         """check_only mode reports without creating __init__.py."""
@@ -76,7 +78,9 @@ class TestProcessDirectory:
             alias="m",
             docstring="Models.",
         )
-        src_init = workspace_root / c.Infra.Paths.DEFAULT_SRC_DIR / c.Infra.Files.INIT_PY
+        src_init = (
+            workspace_root / c.Infra.Paths.DEFAULT_SRC_DIR / c.Infra.Files.INIT_PY
+        )
 
         result = u.Infra.Tests.run_lazy_init(workspace_root)
 

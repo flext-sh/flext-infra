@@ -157,13 +157,9 @@ class FlextInfraUtilitiesDocsApi:
             "exclude_docs",
         )
         project_meta_value = payload.get(c.Infra.PROJECT)
-        project_meta = (
-            u.Cli.toml_as_mapping(project_meta_value) or {}
-        )
+        project_meta = u.Cli.toml_as_mapping(project_meta_value) or {}
         project_urls_value = project_meta.get("urls")
-        project_urls = (
-            u.Cli.toml_as_mapping(project_urls_value) or {}
-        )
+        project_urls = u.Cli.toml_as_mapping(project_urls_value) or {}
         if not package_name:
             site_title = (
                 str(docs_meta.get("site_title", "")).strip()

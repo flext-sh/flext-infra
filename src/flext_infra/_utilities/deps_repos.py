@@ -21,16 +21,7 @@ class FlextInfraInternalSyncRepoMixin:
     def _read_plain(self, path: Path) -> r[t.Infra.ContainerDict]:
         if self.toml is not None:
             return self.toml.read_plain(path)
-        read_result = u.Cli.toml_read_json(path)
-        if read_result.is_failure:
-            return r[t.Infra.ContainerDict].fail(
-                read_result.error or f"failed to read {path}",
-            )
-        try:
-            data = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(read_result.value)
-        except ValueError as exc:
-            return r[t.Infra.ContainerDict].fail(f"failed to validate {path}: {exc}")
-        return r[t.Infra.ContainerDict].ok(data)
+        return u.Infra.read_plain(path)
 
     @classmethod
     def owner_from_remote_url(cls, remote_url: str) -> str | None:

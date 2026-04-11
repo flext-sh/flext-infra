@@ -57,6 +57,11 @@ class FlextInfraProtocolsBase(Protocol):
             """Return the project path."""
             ...
 
+        @property
+        def package_name(self) -> str:
+            """Return the primary Python package name."""
+            ...
+
     @runtime_checkable
     class Validator(Protocol):
         """Contract for validation services."""

@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import MutableSequence, Sequence
 
 from flext_infra import (
-    FlextInfraUtilitiesFacadeScanner,
+    FlextInfraUtilitiesCodegenNamespace,
     c,
     m,
     u,
@@ -36,7 +36,7 @@ class FlextInfraLooseObjectDetector:
         if res is None:
             return []
         lines = res.read().splitlines()
-        class_stem = FlextInfraUtilitiesFacadeScanner.project_class_stem(
+        class_stem = FlextInfraUtilitiesCodegenNamespace.project_class_stem(
             project_name=project_name,
         )
         file_str = str(file_path)

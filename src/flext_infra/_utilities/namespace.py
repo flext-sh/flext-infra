@@ -38,37 +38,6 @@ class FlextInfraUtilitiesCodegenNamespace:
         """Return whether *file_name* is a governed root-namespace facade file."""
         return file_name in cls._lazy_init_config().root_namespace_files
 
-    @classmethod
-    def derive_project_prefix(cls, path: Path) -> str:
-        """Return the canonical project class prefix for *path*."""
-        project_root = FlextInfraUtilitiesDiscovery.discover_project_root_from_file(
-            path,
-        )
-        if project_root is None:
-            return ""
-        package_name = FlextInfraUtilitiesDocsScope.package_name(project_root)
-        prefix = (
-            "Flext"
-            if package_name == c.Infra.Packages.CORE_UNDERSCORE
-            else "".join(part.title() for part in package_name.split("_"))
-            if package_name
-            else ""
-        ) or cls.project_class_stem(
-            project_name=project_root.name,
-        )
-        if not prefix:
-            return ""
-        try:
-            rel_parts = path.relative_to(project_root).parts
-        except ValueError:
-            return prefix
-        surface_prefix = (
-            cls._lazy_init_config().surface_prefixes.get(rel_parts[0], "")
-            if rel_parts
-            else ""
-        )
-        return f"{surface_prefix}{prefix}" if surface_prefix else prefix
-
     @staticmethod
     def project_class_stem(*, project_name: str) -> str:
         """Derive the canonical facade class stem from a project name."""
@@ -140,7 +109,9 @@ class FlextInfraUtilitiesCodegenNamespace:
         is_services_module = "services" in resolved_rel_path.parts
         is_services_package = "services" in package_parts
         is_namespace_file = resolved_rel_path.name in config.root_namespace_files
-        is_governed_namespace = expected_alias is not None or expected_family is not None
+        is_governed_namespace = (
+            expected_alias is not None or expected_family is not None
+        )
         is_root_namespace = (
             is_namespace_file
             and len(resolved_rel_path.parts) == 1
@@ -175,10 +146,35 @@ class FlextInfraUtilitiesCodegenNamespace:
             ))
             if name.isidentifier()
         )
+        project_root = FlextInfraUtilitiesDiscovery.discover_project_root_from_file(
+            file_path,
+        )
+        project_prefix = ""
+        if project_root is not None:
+            prefix = cls.project_class_stem(
+                project_name=(
+                    FlextInfraUtilitiesDocsScope.package_name(project_root)
+                    or project_root.name
+                ),
+            )
+            if prefix:
+                try:
+                    rel_parts = file_path.relative_to(project_root).parts
+                except ValueError:
+                    project_prefix = prefix
+                else:
+                    surface_prefix = (
+                        config.surface_prefixes.get(rel_parts[0], "")
+                        if rel_parts
+                        else ""
+                    )
+                    project_prefix = (
+                        f"{surface_prefix}{prefix}" if surface_prefix else prefix
+                    )
         return m.Infra.NamespaceModulePolicy(
             enforce_contract=enforce_contract,
             export_symbols=export_symbols,
-            project_prefix=cls.derive_project_prefix(file_path),
+            project_prefix=project_prefix,
             expected_alias=expected_alias,
             expected_family=expected_family,
             family_tokens=family_tokens,
@@ -308,12 +304,7 @@ class FlextInfraUtilitiesCodegenNamespace:
             )
             if updated == source or not class_name:
                 return
-            FlextInfraUtilitiesRope.apply_source_change(
-                rope_project,
-                resource,
-                updated,
-                description=f"normalize facade base in <{resource.path}>",
-            )
+            resource.write(updated)
         ctx.files_modified.add(str(file_path))
         ctx.fix(
             module=str(file_path),

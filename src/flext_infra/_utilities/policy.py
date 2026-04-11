@@ -93,6 +93,39 @@ class FlextInfraUtilitiesRefactorPolicy:
         )
 
     @staticmethod
+    def policy_for_symbol(
+        *,
+        policy_context: t.Infra.PolicyContext | None,
+        symbol_families: t.StrMapping | None,
+        symbol_name: str,
+    ) -> m.Infra.ClassNestingPolicy | None:
+        """Resolve one validated policy entry for the symbol family in context."""
+        if policy_context is None or symbol_families is None:
+            return None
+        family = symbol_families.get(symbol_name)
+        if family is None:
+            return None
+        raw = policy_context.get(family)
+        if raw is None:
+            return None
+        try:
+            return m.Infra.ClassNestingPolicy.model_validate(raw)
+        except ValidationError:
+            return None
+
+    @staticmethod
+    def target_allowed(
+        *,
+        policy: m.Infra.ClassNestingPolicy,
+        target_namespace: str,
+    ) -> bool:
+        """Check whether policy allows writing the symbol to target namespace."""
+        allowed_targets = tuple(policy.allowed_targets)
+        if allowed_targets and target_namespace not in allowed_targets:
+            return False
+        return target_namespace not in policy.forbidden_targets
+
+    @staticmethod
     def _class_nesting_target_matches(target_namespace: str, pattern: str) -> bool:
         """Check whether a target namespace matches a forbidden-target pattern."""
         if pattern.endswith(".*"):

@@ -33,7 +33,9 @@ class FlextInfraUtilitiesFacadeScanner:
         """Return FacadeStatus for each family (c, t, p, m, u) in a project."""
         del parse_failures
 
-        stem = cls.project_class_stem(project_name=project_name)
+        stem = FlextInfraUtilitiesCodegenNamespace.project_class_stem(
+            project_name=project_name,
+        )
         src_dir = project_root / c.Infra.Paths.DEFAULT_SRC_DIR
         if not src_dir.is_dir():
             return [
@@ -82,13 +84,3 @@ class FlextInfraUtilitiesFacadeScanner:
                 )
             )
         return results
-
-    @staticmethod
-    def project_class_stem(*, project_name: str) -> str:
-        """Derive facade class name stem from project name.
-
-        Examples: 'flext-core' → 'Flext', 'flext-db-oracle' → 'FlextDbOracle'.
-        """
-        return FlextInfraUtilitiesCodegenNamespace.project_class_stem(
-            project_name=project_name,
-        )

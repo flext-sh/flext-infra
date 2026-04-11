@@ -246,18 +246,16 @@ class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
                         dep_path.unlink()
             except OSError as exc:
                 return r[bool].fail(f"cleanup failed for {dep_path.name}: {exc}")
-            cloned = u.Cli.run_checked(
-                [
-                    c.Infra.GIT,
-                    "clone",
-                    "--depth",
-                    "1",
-                    "--branch",
-                    safe_ref_name,
-                    safe_repo_url,
-                    str(dep_path),
-                ]
-            )
+            cloned = u.Cli.run_checked([
+                c.Infra.GIT,
+                "clone",
+                "--depth",
+                "1",
+                "--branch",
+                safe_ref_name,
+                safe_repo_url,
+                str(dep_path),
+            ])
             if cloned.is_failure:
                 return r[bool].fail(f"clone failed for {dep_path.name}: {cloned.error}")
             return r[bool].ok(True)

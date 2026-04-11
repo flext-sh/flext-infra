@@ -35,12 +35,24 @@ class FlextInfraUtilitiesCodegenGeneration:
         """Compact same-package lazy targets to relative module paths."""
         if not current_pkg:
             return mod
+        if mod.startswith("_"):
+            return f".{mod}"
         if mod == current_pkg:
             return "."
         prefix = f"{current_pkg}."
         if mod.startswith(prefix):
             return f".{mod.removeprefix(prefix)}"
         return mod
+
+    @staticmethod
+    def normalize_type_checking_module_path(
+        mod: str,
+        local_package_root: str | None,
+    ) -> str:
+        """Normalize local private module targets for static-analysis imports."""
+        if not local_package_root or not mod.startswith("_"):
+            return mod
+        return f"{local_package_root.split('.', maxsplit=1)[0]}.{mod}"
 
     @staticmethod
     def format_root_package_docstring(current_pkg: str) -> str:

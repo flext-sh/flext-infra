@@ -52,18 +52,22 @@ class FlextInfraUtilitiesDocs:
                 resolved_root.name,
                 resolved_root.parent,
             ):
+                payload = FlextInfraUtilitiesDocsScope.pyproject_payload(resolved_root)
+                docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(payload)
                 return r[Sequence[m.Infra.DocScope]].ok(
                     [
                         FlextInfraUtilitiesDocs._doc_scope(
                             name=resolved_root.name,
                             path=resolved_root,
                             output_dir=output_dir,
-                            project_class=FlextInfraUtilitiesDocsScope.classify_project(
+                            project_class=FlextInfraUtilitiesDocsScope.classify_project_from_meta(
                                 resolved_root.name,
-                                resolved_root,
+                                docs_meta,
                             ),
-                            package_name=FlextInfraUtilitiesDocsScope.package_name(
+                            package_name=FlextInfraUtilitiesDocsScope.package_name_from_payload(
                                 resolved_root,
+                                payload,
+                                docs_meta,
                             ),
                         )
                     ],
@@ -109,17 +113,25 @@ class FlextInfraUtilitiesDocs:
                         continue
                     if not (project_root / c.Infra.Files.PYPROJECT_FILENAME).is_file():
                         continue
+                    payload = FlextInfraUtilitiesDocsScope.pyproject_payload(
+                        project_root,
+                    )
+                    docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(
+                        payload,
+                    )
                     scopes.append(
                         FlextInfraUtilitiesDocs._doc_scope(
                             name=name,
                             path=project_root,
                             output_dir=output_dir,
-                            project_class=FlextInfraUtilitiesDocsScope.classify_project(
+                            project_class=FlextInfraUtilitiesDocsScope.classify_project_from_meta(
                                 name,
-                                project_root,
+                                docs_meta,
                             ),
-                            package_name=FlextInfraUtilitiesDocsScope.package_name(
+                            package_name=FlextInfraUtilitiesDocsScope.package_name_from_payload(
                                 project_root,
+                                payload,
+                                docs_meta,
                             ),
                         )
                     )

@@ -117,7 +117,10 @@ def test_phase_publish_succeeds_when_tag_already_exists(tmp_path: Path) -> None:
 
     assert result.is_success
     assert (workspace / "docs" / "CHANGELOG.md").is_file()
-    assert u.Cli.capture(["git", "tag", "-l", "v1.0.0"], cwd=workspace).unwrap() == "v1.0.0"
+    assert (
+        u.Cli.capture(["git", "tag", "-l", "v1.0.0"], cwd=workspace).unwrap()
+        == "v1.0.0"
+    )
 
 
 def test_phase_publish_push_succeeds_with_local_origin(tmp_path: Path) -> None:
@@ -132,4 +135,7 @@ def test_phase_publish_push_succeeds_with_local_origin(tmp_path: Path) -> None:
     )
 
     assert result.is_success
-    assert u.Cli.capture(["git", "tag", "-l", "v1.0.0"], cwd=workspace).unwrap() == "v1.0.0"
+    assert (
+        u.Cli.capture(["git", "tag", "-l", "v1.0.0"], cwd=workspace).unwrap()
+        == "v1.0.0"
+    )

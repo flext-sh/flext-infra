@@ -9,7 +9,6 @@ from typing import override
 from flext_infra import (
     FlextInfraRopeTransformer,
     FlextInfraTypes,
-    u,
 )
 
 
@@ -76,12 +75,7 @@ class FlextInfraRefactorMROSymbolPropagator(FlextInfraRopeTransformer):
         source = resource.read()
         rewritten_source, changes = self.rewrite_source(source)
         if rewritten_source != source and changes:
-            u.Infra.apply_source_change(
-                rope_project,
-                resource,
-                rewritten_source,
-                description="mro symbol propagator",
-            )
+            resource.write(rewritten_source)
         return (rewritten_source, changes)
 
     def _apply_symbol_rewrites(

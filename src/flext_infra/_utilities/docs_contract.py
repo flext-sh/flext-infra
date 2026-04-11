@@ -31,19 +31,15 @@ class FlextInfraUtilitiesDocsContract:
     ) -> t.Infra.ContainerDict:
         """Return the root docs contract using root ``pyproject.toml`` metadata."""
         payload = FlextInfraUtilitiesDocsScope.pyproject_payload(workspace_root)
-        docs_meta = FlextInfraUtilitiesDocsScope.workspace_docs_meta(workspace_root)
+        docs_meta = FlextInfraUtilitiesDocsScope.project_docs_meta(workspace_root)
         exclude_docs = FlextInfraUtilitiesDocsScope.docs_meta_list(
             workspace_root,
             "exclude_docs",
         )
         project_meta_value = payload.get(c.Infra.PROJECT)
-        project_meta = (
-            u.Cli.toml_as_mapping(project_meta_value) or {}
-        )
+        project_meta = u.Cli.toml_as_mapping(project_meta_value) or {}
         project_urls_value = project_meta.get("urls")
-        project_urls = (
-            u.Cli.toml_as_mapping(project_urls_value) or {}
-        )
+        project_urls = u.Cli.toml_as_mapping(project_urls_value) or {}
         return {
             "name": str(project_meta.get("name", "flext")).strip() or "flext",
             "description": str(project_meta.get("description", "")).strip(),

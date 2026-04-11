@@ -74,14 +74,18 @@ class FlextInfraUtilitiesCliSubcommand:
         description: str,
         *,
         subcommands: t.StrMapping,
-        flags: t.BoolMapping | None = None,
+        flags: t.BoolMapping | FlextInfraUtilitiesCliShared.SharedFlags | None = None,
         subcommand_flags: Mapping[str, t.BoolMapping] | None = None,
     ) -> tuple[ArgumentParser, Mapping[str, ArgumentParser]]:
         """Create main parser with subcommands and shared flags."""
         resolved_flags = (
-            FlextInfraUtilitiesCliShared.SharedFlags.from_dict(flags)
-            if flags is not None
-            else FlextInfraUtilitiesCliShared.SharedFlags()
+            flags
+            if isinstance(flags, FlextInfraUtilitiesCliShared.SharedFlags)
+            else (
+                FlextInfraUtilitiesCliShared.SharedFlags.from_dict(flags)
+                if flags is not None
+                else FlextInfraUtilitiesCliShared.SharedFlags()
+            )
         )
         base_options = resolved_flags.to_dict()
         command_options: MutableMapping[str, t.MutableBoolMapping] = {}

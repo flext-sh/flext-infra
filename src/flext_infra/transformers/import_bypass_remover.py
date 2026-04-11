@@ -8,7 +8,7 @@ from __future__ import annotations
 import re
 from typing import override
 
-from flext_infra import FlextInfraRopeTransformer, t, u
+from flext_infra import FlextInfraRopeTransformer, t
 
 
 class FlextInfraRefactorImportBypassRemover(FlextInfraRopeTransformer):
@@ -36,12 +36,7 @@ class FlextInfraRefactorImportBypassRemover(FlextInfraRopeTransformer):
         changes = [f"Removed {count} import bypass fallback(s)"]
         for msg in changes:
             self._record_change(msg)
-        u.Infra.apply_source_change(
-            rope_project,
-            resource,
-            new_source,
-            description="remove import bypass",
-        )
+        resource.write(new_source)
         return new_source, list(self.changes)
 
 

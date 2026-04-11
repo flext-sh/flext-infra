@@ -35,17 +35,13 @@ from flext_infra import (
     FlextInfraUtilitiesPaths,
     FlextInfraUtilitiesPatterns,
     FlextInfraUtilitiesRefactor,
-    FlextInfraUtilitiesRefactorTransformerPolicy,
     FlextInfraUtilitiesRelease,
     FlextInfraUtilitiesReporting,
     FlextInfraUtilitiesRope,
     FlextInfraUtilitiesSafety,
-    FlextInfraUtilitiesSelection,
-    FlextInfraUtilitiesTerminal,
     FlextInfraUtilitiesToml,
     FlextInfraUtilitiesTomlParse,
     FlextInfraUtilitiesVersioning,
-    FlextInfraUtilitiesYaml,
 )
 
 
@@ -70,7 +66,6 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesBase,
         FlextInfraUtilitiesGithub,
         FlextInfraUtilitiesImportNormalizer,
-        FlextInfraUtilitiesRefactorTransformerPolicy,
         FlextInfraUtilitiesDocs,
         FlextInfraUtilitiesDocsApi,
         FlextInfraUtilitiesDocsAudit,
@@ -92,12 +87,9 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesRelease,
         FlextInfraUtilitiesRope,
         FlextInfraUtilitiesSafety,
-        FlextInfraUtilitiesSelection,
-        FlextInfraUtilitiesTerminal,
         FlextInfraUtilitiesToml,
         FlextInfraUtilitiesTomlParse,
         FlextInfraUtilitiesVersioning,
-        FlextInfraUtilitiesYaml,
     ):
         """Infrastructure-domain utilities - all methods exposed directly."""
 

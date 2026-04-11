@@ -19,11 +19,9 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".detector": ("FlextInfraRuntimeDevDependencyDetector",),
             ".detector_runtime": ("FlextInfraDependencyDetectorRuntime",),
             ".extra_paths": ("FlextInfraExtraPathsManager",),
-            ".extra_paths_pyrefly": ("FlextInfraExtraPathsPyrefly",),
             ".fix_pyrefly_config": ("FlextInfraConfigFixer",),
             ".internal_sync": ("FlextInfraInternalDependencySyncService",),
             ".modernizer": ("FlextInfraPyprojectModernizer",),
-            ".path_sync_rewrite": ("FlextInfraDependencyPathSyncRewrite",),
             "flext_infra._utilities.deps_path_sync": (
                 "FlextInfraUtilitiesDependencyPathSync",
             ),

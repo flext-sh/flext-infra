@@ -9,10 +9,10 @@ from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import FlextCliUtilitiesToml as _CliToml
-from flext_core import FlextUtilities
 from flext_infra import (
-    FlextInfraUtilitiesFacadeScanner,
+    FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesFormatting,
+    FlextInfraUtilitiesTomlParse,
     c,
     m,
     t,
@@ -58,18 +58,14 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
         doc = _CliToml.toml_parse_text(raw)
         if doc is None:
             return {}
-        dep_names = (
-            FlextInfraUtilitiesRefactorNamespaceFacades._extract_dep_names_from_doc(
-                doc=doc,
-            )
-        )
+        dep_names = FlextInfraUtilitiesTomlParse.local_dependency_names(doc)
         chains: t.MutableStrSequenceMapping = defaultdict(list)
         for dep_name in dep_names:
             if dep_name == c.Infra.Packages.CORE or not dep_name.startswith(
                 c.Infra.Packages.PREFIX_HYPHEN
             ):
                 continue
-            stem = FlextInfraUtilitiesFacadeScanner.project_class_stem(
+            stem = FlextInfraUtilitiesCodegenNamespace.project_class_stem(
                 project_name=dep_name,
             )
             if not stem:
@@ -77,66 +73,6 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
             for family, suffix in c.Infra.FAMILY_SUFFIXES.items():
                 chains[family].append(f"{stem}{suffix}")
         return chains
-
-    @staticmethod
-    def _extract_dep_names_from_doc(
-        *,
-        doc: t.Cli.TomlDocument,
-    ) -> t.StrSequence:
-        dep_names: t.Infra.StrSet = set()
-        raw: t.Infra.TomlData = doc.unwrap()
-        FlextInfraUtilitiesRefactorNamespaceFacades._collect_pep621_deps(
-            raw=raw,
-            dep_names=dep_names,
-        )
-        FlextInfraUtilitiesRefactorNamespaceFacades._collect_poetry_deps(
-            raw=raw,
-            dep_names=dep_names,
-        )
-        return sorted(dep_names)
-
-    @staticmethod
-    def _collect_pep621_deps(
-        *,
-        raw: t.Infra.TomlData,
-        dep_names: t.Infra.StrSet,
-    ) -> None:
-        project_val: t.Infra.InfraValue = raw.get("project")
-        if not FlextUtilities.is_mapping(project_val):
-            return
-        deps_val: t.Infra.InfraValue = project_val.get("dependencies")
-        if not isinstance(deps_val, Sequence) or isinstance(deps_val, str):
-            return
-        for item_val in deps_val:
-            if not isinstance(item_val, str) or " @ " not in item_val:
-                continue
-            _name, path_part = item_val.split(" @ ", 1)
-            cleaned = path_part.strip().removeprefix("file:").removeprefix("./").strip()
-            if cleaned:
-                dep_names.add(Path(cleaned).name)
-
-    @staticmethod
-    def _collect_poetry_deps(
-        *,
-        raw: t.Infra.TomlData,
-        dep_names: t.Infra.StrSet,
-    ) -> None:
-        tool_val: t.Infra.InfraValue = raw.get("tool")
-        if not FlextUtilities.is_mapping(tool_val):
-            return
-        poetry_val: t.Infra.InfraValue = tool_val.get("poetry")
-        if not FlextUtilities.is_mapping(poetry_val):
-            return
-        deps_val: t.Infra.InfraValue = poetry_val.get("dependencies")
-        if not FlextUtilities.is_mapping(deps_val):
-            return
-        for dep_entry in deps_val.values():
-            if not FlextUtilities.is_mapping(dep_entry):
-                continue
-            dep_path_val: t.Infra.InfraValue = dep_entry.get("path")
-            dep_path = dep_path_val.strip() if isinstance(dep_path_val, str) else ""
-            if dep_path:
-                dep_names.add(Path(dep_path.removeprefix("./")).name)
 
     @staticmethod
     def _base_import_for_family(
@@ -205,7 +141,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
         if not package_dirs:
             return
         package_dir = package_dirs[0]
-        stem = FlextInfraUtilitiesFacadeScanner.project_class_stem(
+        stem = FlextInfraUtilitiesCodegenNamespace.project_class_stem(
             project_name=project_name,
         )
         base_chains = (

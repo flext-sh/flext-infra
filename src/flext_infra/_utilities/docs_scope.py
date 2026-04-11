@@ -21,6 +21,38 @@ class FlextInfraUtilitiesDocsScope:
     """Utility helpers for docs scope policy and project classification."""
 
     @staticmethod
+    def resolve_projects(
+        workspace_root: Path,
+        names: Sequence[str],
+    ) -> r[Sequence[m.Infra.ProjectInfo]]:
+        """Resolve project names into canonical project descriptors."""
+        discover_result = FlextInfraUtilitiesDocsScope.discover_projects(
+            workspace_root,
+        )
+        if discover_result.is_failure:
+            return r[Sequence[m.Infra.ProjectInfo]].fail(
+                discover_result.error or "discovery failed",
+            )
+        projects = discover_result.value
+        if not names:
+            return r[Sequence[m.Infra.ProjectInfo]].ok(
+                sorted(projects, key=lambda proj: proj.name),
+            )
+        by_name: dict[str, m.Infra.ProjectInfo] = {}
+        for project in projects:
+            by_name.setdefault(project.name, project)
+            by_name.setdefault(project.path.name, project)
+        missing = [name for name in names if name not in by_name]
+        if missing:
+            missing_text = ", ".join(sorted(missing))
+            return r[Sequence[m.Infra.ProjectInfo]].fail(
+                f"unknown projects: {missing_text}",
+            )
+        return r[Sequence[m.Infra.ProjectInfo]].ok(
+            sorted((by_name[name] for name in names), key=lambda proj: proj.name),
+        )
+
+    @staticmethod
     def _project_name_from_payload(
         entry: Path,
         payload: t.Infra.ContainerDict,
@@ -153,13 +185,6 @@ class FlextInfraUtilitiesDocsScope:
         return docs if isinstance(docs, dict) else {}
 
     @staticmethod
-    def workspace_docs_meta(
-        workspace_root: Path,
-    ) -> t.Infra.ContainerDict:
-        """Return optional root ``tool.flext.docs`` metadata."""
-        return FlextInfraUtilitiesDocsScope.project_docs_meta(workspace_root)
-
-    @staticmethod
     def docs_meta_list(
         project_root: Path,
         key: str,
@@ -233,18 +258,6 @@ class FlextInfraUtilitiesDocsScope:
         if project_name == "flext-tests":
             return "test"
         return "domain"
-
-    @staticmethod
-    def classify_project(
-        project_name: str,
-        project_root: Path,
-    ) -> str:
-        """Classify a governed FLEXT project from its canonical naming pattern."""
-        docs_meta = FlextInfraUtilitiesDocsScope.project_docs_meta(project_root)
-        return FlextInfraUtilitiesDocsScope.classify_project_from_meta(
-            project_name,
-            docs_meta,
-        )
 
     @staticmethod
     def package_name_from_payload(

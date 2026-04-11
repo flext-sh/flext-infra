@@ -23,7 +23,12 @@ class FlextInfraRefactorMROClassMigrationRule:
         dry_run: bool = False,
     ) -> t.Infra.TransformResult:
         """Migrate module-level Final constants into the facade class."""
-        project_root = u.Infra.project_root_path(rope_project)
+        root_real_path = getattr(
+            getattr(rope_project, "root", None),
+            "real_path",
+            None,
+        )
+        project_root = Path(root_real_path) if isinstance(root_real_path, str) else None
         file_path = (
             project_root / resource.path
             if project_root is not None
@@ -48,12 +53,7 @@ class FlextInfraRefactorMROClassMigrationRule:
         if not migration.moved_symbols or updated_source == source:
             return (source, [])
         if not dry_run:
-            u.Infra.apply_source_change(
-                rope_project,
-                resource,
-                updated_source,
-                description="MRO constants migration",
-            )
+            resource.write(updated_source)
         syms = ", ".join(migration.moved_symbols)
         return (updated_source, [f"migrated constants into facade class: {syms}"])
 

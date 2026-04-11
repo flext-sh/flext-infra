@@ -18,6 +18,7 @@ from flext_infra import (
     FlextInfraConstantsSharedInfra,
     FlextInfraModelsCore,
     FlextInfraNamespaceRules,
+    FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesDocsScope,
     FlextInfraUtilitiesParsing,
     u,
@@ -35,10 +36,9 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
     @staticmethod
     def derive_prefix(project_root: Path) -> str:
         """Public wrapper for deriving the class name prefix from a project."""
-        package_name = FlextInfraUtilitiesDocsScope.package_name(project_root)
-        if package_name == FlextInfraConstantsSharedInfra.Packages.CORE_UNDERSCORE:
-            return "Flext"
-        return "".join(part.title() for part in package_name.split("_"))
+        return FlextInfraUtilitiesCodegenNamespace.project_class_stem(
+            project_name=FlextInfraUtilitiesDocsScope.package_name(project_root),
+        )
 
     def validate(
         self,

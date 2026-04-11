@@ -9,11 +9,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import contextlib
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
-from pydantic import BaseModel, TypeAdapter, ValidationError
+from pydantic import ValidationError
 
 from flext_cli import FlextCliUtilities
 from flext_infra import c, r, t
@@ -52,28 +51,22 @@ class FlextInfraUtilitiesTomlParse:
         return sorted(seen.values())
 
     @staticmethod
-    def ensure_pyright_execution_envs(
-        pyright: t.Cli.TomlTable,
-        expected: Sequence[Mapping[str, t.Infra.InfraValue]] | Sequence[BaseModel],
-        changes: MutableSequence[str],
-    ) -> None:
-        """Ensure pyright executionEnvironments matches expected; append to changes if updated."""
-        raw = FlextCliUtilities.Cli.toml_unwrap_item(
-            FlextCliUtilities.Cli.toml_get(pyright, "executionEnvironments"),
-        )
-        current: Sequence[t.StrMapping] = []
-        if isinstance(raw, list):
-            with contextlib.suppress(ValidationError):
-                current = TypeAdapter(Sequence[t.StrMapping]).validate_python(raw)
-        normalized: Sequence[Mapping[str, t.Infra.InfraValue]] = [
-            entry.model_dump(by_alias=True) if isinstance(entry, BaseModel) else entry
-            for entry in expected
-        ]
-        if list(current) != normalized:
-            pyright["executionEnvironments"] = normalized
-            changes.append(
-                "tool.pyright.executionEnvironments set with tests reportPrivateUsage=none",
-            )
+    def _normalize_pep621_local_path(path_part: str) -> str | None:
+        """Normalize one PEP 621 local path reference to a dep-name input."""
+        normalized = path_part.strip()
+        if not normalized:
+            return None
+        if normalized.startswith(("git+", "git@", "http://", "https://", "ssh://")):
+            return None
+        if "://" in normalized and not normalized.startswith("file://"):
+            return None
+        if normalized.startswith("file://"):
+            normalized = normalized.removeprefix("file://").strip()
+        elif normalized.startswith("file:"):
+            normalized = normalized.removeprefix("file:").strip()
+        elif not normalized.startswith(("./", "../", "/")):
+            return None
+        return normalized.removeprefix("./").strip() or None
 
     @staticmethod
     def workspace_dep_namespaces(doc: t.Cli.TomlDocument) -> t.StrSequence:
@@ -89,6 +82,98 @@ class FlextInfraUtilitiesTomlParse:
             for dep in all_deps
             if dep.startswith(c.Infra.Packages.PREFIX_HYPHEN)
         )
+
+    @staticmethod
+    def local_dependency_names(
+        doc: t.Cli.TomlDocument,
+        *,
+        workspace_project_names: Sequence[str] = (),
+    ) -> t.StrSequence:
+        """Extract normalized local/workspace dependency names across supported TOML sections."""
+        names: t.Infra.StrSet = set()
+        project_table = FlextCliUtilities.Cli.toml_get_table(doc, c.Infra.PROJECT)
+        declared_project_names = (
+            {
+                dep_name
+                for dep_entry in FlextCliUtilities.Cli.toml_as_string_list(
+                    FlextCliUtilities.Cli.toml_get_item(
+                        project_table,
+                        c.Infra.DEPENDENCIES,
+                    )
+                )
+                if (dep_name := FlextInfraUtilitiesTomlParse.dep_name(dep_entry))
+            }
+            if project_table is not None
+            else set()
+        )
+        for dep_entry in declared_project_names:
+            if dep_entry in workspace_project_names:
+                names.add(dep_entry)
+        if project_table is not None:
+            for dep_entry in FlextCliUtilities.Cli.toml_as_string_list(
+                FlextCliUtilities.Cli.toml_get_item(
+                    project_table,
+                    c.Infra.DEPENDENCIES,
+                )
+            ):
+                if " @ " not in dep_entry:
+                    continue
+                _name, path_part = dep_entry.split(" @ ", 1)
+                normalized_path = (
+                    FlextInfraUtilitiesTomlParse._normalize_pep621_local_path(
+                        path_part,
+                    )
+                )
+                if normalized_path:
+                    names.add(FlextInfraUtilitiesTomlParse.dep_name(normalized_path))
+        tool_table = FlextCliUtilities.Cli.toml_get_table(doc, c.Infra.TOOL)
+        if tool_table is None:
+            return sorted(names)
+        poetry_table = FlextCliUtilities.Cli.toml_get_table(tool_table, c.Infra.POETRY)
+        if poetry_table is not None:
+            deps_table = FlextCliUtilities.Cli.toml_get_table(
+                poetry_table,
+                c.Infra.DEPENDENCIES,
+            )
+            if deps_table is not None:
+                for dep_key in deps_table:
+                    dep_table = FlextCliUtilities.Cli.toml_get_table(
+                        deps_table, dep_key
+                    )
+                    if dep_table is None:
+                        continue
+                    dep_path = FlextCliUtilities.Cli.toml_unwrap_item(
+                        FlextCliUtilities.Cli.toml_get_item(dep_table, c.Infra.PATH),
+                    )
+                    if isinstance(dep_path, str) and dep_path.strip():
+                        names.add(FlextInfraUtilitiesTomlParse.dep_name(dep_path))
+        uv_table = FlextCliUtilities.Cli.toml_get_table(tool_table, "uv")
+        sources_table = (
+            FlextCliUtilities.Cli.toml_get_table(uv_table, "sources")
+            if uv_table is not None
+            else None
+        )
+        if sources_table is None:
+            return sorted(names)
+        for source_key in sources_table:
+            dep_name = str(source_key)
+            if declared_project_names and dep_name not in declared_project_names:
+                continue
+            source_table = FlextCliUtilities.Cli.toml_get_table(sources_table, dep_name)
+            if source_table is None:
+                continue
+            workspace_val = FlextCliUtilities.Cli.toml_unwrap_item(
+                FlextCliUtilities.Cli.toml_get_item(source_table, "workspace"),
+            )
+            if workspace_val is True:
+                names.add(dep_name)
+                continue
+            source_path = FlextCliUtilities.Cli.toml_unwrap_item(
+                FlextCliUtilities.Cli.toml_get_item(source_table, c.Infra.PATH),
+            )
+            if isinstance(source_path, str) and source_path.strip():
+                names.add(FlextInfraUtilitiesTomlParse.dep_name(source_path))
+        return sorted(names)
 
     @staticmethod
     def project_dev_groups(doc: t.Cli.TomlDocument) -> Mapping[str, t.StrSequence]:

@@ -341,12 +341,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
             )
 
         def _restore_edit() -> None:
-            FlextInfraUtilitiesRope.apply_source_change(
-                rope_project,
-                resource,
-                backup,
-                description="Restore source after protected constant transformation",
-            )
+            resource.write(backup)
 
         ok, report = FlextInfraUtilitiesProtectedEdit.protected_file_edit(
             py_file,

@@ -42,11 +42,14 @@ class FlextInfraUtilitiesRopeAnalysis:
                     source = definition_resource.read()
             if definition_line is None:
                 return None
-            return FlextInfraUtilitiesRopeCore.line_offset_for_symbol(
-                source=source,
-                line_number=definition_line,
-                symbol=symbol,
-            )
+            lines = source.splitlines(keepends=True)
+            if definition_line < 1 or definition_line > len(lines):
+                return None
+            line = lines[definition_line - 1]
+            column = line.find(symbol)
+            if column < 0:
+                return None
+            return sum(len(item) for item in lines[: definition_line - 1]) + column
         except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
             return None
 
@@ -99,7 +102,9 @@ class FlextInfraUtilitiesRopeAnalysis:
             resource_path = resource.path
             for name, pyname in pymodule.get_attributes().items():
                 obj = pyname.get_object()
-                if not isinstance(obj, FlextInfraUtilitiesRopeCore.ABSTRACT_CLASS_TYPES):
+                if not isinstance(
+                    obj, FlextInfraUtilitiesRopeCore.ABSTRACT_CLASS_TYPES
+                ):
                     continue
                 module = obj.get_module()
                 origin = module.get_resource() if module is not None else None
@@ -136,7 +141,9 @@ class FlextInfraUtilitiesRopeAnalysis:
             resource_path = resource.path
             for name, pyname in pymodule.get_attributes().items():
                 obj = pyname.get_object()
-                if not isinstance(obj, FlextInfraUtilitiesRopeCore.ABSTRACT_CLASS_TYPES):
+                if not isinstance(
+                    obj, FlextInfraUtilitiesRopeCore.ABSTRACT_CLASS_TYPES
+                ):
                     continue
                 module = obj.get_module()
                 origin = module.get_resource() if module is not None else None

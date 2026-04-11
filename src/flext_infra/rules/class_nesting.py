@@ -124,7 +124,12 @@ class FlextInfraClassNestingRefactorRule:
         dry_run: bool = False,
     ) -> m.Infra.Result:
         """Transform resource according to loaded mappings and policy."""
-        project_root = u.Infra.project_root_path(rope_project)
+        root_real_path = getattr(
+            getattr(rope_project, "root", None),
+            "real_path",
+            None,
+        )
+        project_root = Path(root_real_path) if isinstance(root_real_path, str) else None
         fp = (
             project_root / resource.path
             if project_root is not None
@@ -178,9 +183,7 @@ class FlextInfraClassNestingRefactorRule:
                         changes=errs,
                         refactored_code=None,
                     )
-                u.Infra.apply_source_change(
-                    rope_project, resource, ns, description="class nesting refactor"
-                )
+                resource.write(ns)
             return m.Infra.Result(
                 file_path=fp,
                 success=True,

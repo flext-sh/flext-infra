@@ -5,10 +5,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from collections.abc import MutableSequence
 
-from flext_infra import (
-    FlextInfraTypes,
-    u,
-)
+from flext_infra import FlextInfraTypes
 
 
 class FlextInfraChangeTrackingTransformer:
@@ -55,15 +52,11 @@ class FlextInfraRopeTransformer(FlextInfraChangeTrackingTransformer):
         resource: FlextInfraTypes.Infra.RopeResource,
     ) -> FlextInfraTypes.Infra.TransformResult:
         """Read → apply_to_source → write if changed. Override for custom logic."""
+        _ = rope_project
         source = resource.read()
         updated, changes = self.apply_to_source(source)
         if updated != source and changes:
-            u.Infra.apply_source_change(
-                rope_project,
-                resource,
-                updated,
-                description=self._description,
-            )
+            resource.write(updated)
         return updated, changes
 
 

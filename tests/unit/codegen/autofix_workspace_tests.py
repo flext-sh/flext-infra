@@ -13,7 +13,17 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import FlextInfraCodegenFixer
-from tests import t, u
+from tests import m, t, u
+
+
+def _project_info(
+    project: Path, *, package_name: str = "test_proj"
+) -> m.Infra.ProjectInfo:
+    return u.Infra.Tests.create_project_info(
+        project,
+        name=project.name,
+        package_name=package_name,
+    )
 
 
 def test_flexcore_excluded_from_run(tmp_path: Path) -> None:
@@ -51,7 +61,9 @@ def test_project_without_src_returns_empty(tmp_path: Path) -> None:
     (project / "pyproject.toml").write_text("[project]\nname='no-src-proj'\n")
     (project / ".git").mkdir()
     fixer = FlextInfraCodegenFixer(workspace=tmp_path)
-    result = fixer.fix_project(project)
+    [result] = fixer.fix_workspace(
+        projects=[_project_info(project, package_name="")],
+    )
     tm.that(result.project, eq="no-src-proj")
     tm.that(result.violations_fixed, eq=[])
     tm.that(result.violations_skipped, eq=[])
@@ -69,7 +81,7 @@ def test_files_modified_tracks_affected_files(tmp_path: Path) -> None:
         },
     )
     fixer = FlextInfraCodegenFixer(workspace=tmp_path)
-    result = fixer.fix_project(project)
+    [result] = fixer.fix_workspace(projects=[_project_info(project)])
     modified_str = " ".join(result.files_modified)
     tm.that(modified_str, contains="__init__.py")
     tm.that(len(result.files_modified) >= 1, eq=True)

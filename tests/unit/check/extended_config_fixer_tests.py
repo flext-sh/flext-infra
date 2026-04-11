@@ -6,12 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import tomllib
 from pathlib import Path
 
-import tomlkit
 from flext_tests import tm
 
-from flext_infra import FlextInfraConfigFixer
+from flext_infra import FlextInfraConfigFixer, FlextInfraExtraPathsManager
 from tests import u
 
 
@@ -45,6 +45,79 @@ class TestConfigFixerProcessFile:
         tm.ok(result)
         tm.that(pyproject.read_text(), eq=original)
 
+    def test_process_file_syncs_search_path_from_public_manager(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        (tmp_path / "typings" / "generated").mkdir(parents=True)
+        pyproject = tmp_path / "pyproject.toml"
+        pyproject.write_text("[tool.pyrefly]\nsearch-path = []\n", encoding="utf-8")
+
+        result = FlextInfraConfigFixer(workspace=tmp_path).process_file(pyproject)
+
+        tm.ok(result)
+        tm.that(result.value, has="synchronized search-path from YAML rules")
+        payload = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+        tm.that(
+            payload["tool"]["pyrefly"]["search-path"],
+            eq=FlextInfraExtraPathsManager(
+                workspace_root=tmp_path
+            ).pyrefly_search_paths(
+                project_dir=tmp_path,
+                is_root=True,
+            ),
+        )
+
+    def test_process_file_removes_ignored_sub_configs_via_public_api(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        pyproject = tmp_path / "pyproject.toml"
+        pyproject.write_text(
+            (
+                "[tool.pyrefly]\n"
+                'search-path = ["src"]\n'
+                "sub-config = [\n"
+                '  { matches = "*.py", ignore = true },\n'
+                '  { matches = "*.pyi", ignore = false },\n'
+                "]\n"
+            ),
+            encoding="utf-8",
+        )
+
+        result = FlextInfraConfigFixer(workspace=tmp_path).process_file(pyproject)
+
+        tm.ok(result)
+        tm.that(result.value, has="removed ignore=true sub-config for '*.py'")
+        payload = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+        tm.that(
+            payload["tool"]["pyrefly"]["sub-config"],
+            eq=[{"matches": "*.pyi", "ignore": False}],
+        )
+
+    def test_process_file_syncs_root_project_excludes_via_public_api(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        pyproject = tmp_path / "pyproject.toml"
+        pyproject.write_text(
+            ('[tool.pyrefly]\nsearch-path = ["src"]\nproject-excludes = []\n'),
+            encoding="utf-8",
+        )
+
+        fixer = FlextInfraConfigFixer(workspace=tmp_path)
+        result = fixer.process_file(pyproject)
+
+        tm.ok(result)
+        tm.that(result.value, has="synchronized project-excludes from YAML rules")
+        payload = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+        config_result = u.Infra.load_tool_config()
+        tm.ok(config_result)
+        tm.that(
+            payload["tool"]["pyrefly"]["project-excludes"],
+            eq=sorted(set(config_result.value.tools.pyrefly.project_exclude_globs)),
+        )
+
 
 class TestConfigFixerRun:
     """Test FlextInfraConfigFixer.run."""
@@ -68,108 +141,12 @@ class TestConfigFixerRun:
         tm.ok(fixer.run([], verbose=True))
 
 
-class TestConfigFixerFindPyprojectFiles:
-    """Test FlextInfraConfigFixer.find_pyproject_files."""
-
-    def test_find_pyproject_files_empty_workspace(self, tmp_path: Path) -> None:
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
-        result = fixer.find_pyproject_files()
-        tm.ok(result)
-        tm.that(len(result.value), gte=0)
-
-    def test_find_pyproject_files_with_specific_paths(self, tmp_path: Path) -> None:
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
-        result = fixer.find_pyproject_files(project_paths=[tmp_path / "p1"])
-        tm.ok(result)
-        tm.that(len(result.value), gte=0)
-
-    def test_find_pyproject_files_with_project_paths(self, tmp_path: Path) -> None:
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
-        proj1 = tmp_path / "proj1"
-        proj2 = tmp_path / "proj2"
-        proj1.mkdir()
-        proj2.mkdir()
-        (proj1 / "pyproject.toml").touch()
-        (proj2 / "pyproject.toml").touch()
-        tm.ok(fixer.find_pyproject_files([proj1, proj2]))
-
-
 class TestConfigFixerExecute:
     """Test FlextInfraConfigFixer.execute method."""
 
     def test_execute_returns_failure(self, tmp_path: Path) -> None:
         fixer = FlextInfraConfigFixer(workspace=tmp_path)
         tm.fail(fixer.execute(), has="Use run()")
-
-
-class TestConfigFixerFixSearchPaths:
-    """Test FlextInfraConfigFixer._fix_search_paths_tk method."""
-
-    def test_fix_search_paths_normalizes_root_paths(self, tmp_path: Path) -> None:
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
-        (tmp_path / "typings" / "generated").mkdir(parents=True)
-        pyrefly = tomlkit.document()
-        pyrefly["search-path"] = ["../typings/generated", "../typings"]
-        fixes = fixer._fix_search_paths_tk(pyrefly, tmp_path)
-        assert len(fixes) > 0
-
-    def test_fix_search_paths_removes_nonexistent(self, tmp_path: Path) -> None:
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
-        pyrefly = tomlkit.document()
-        pyrefly["search-path"] = ["nonexistent"]
-        fixes = fixer._fix_search_paths_tk(pyrefly, tmp_path)
-        assert len(fixes) > 0
-
-    def test_fix_search_paths_skips_non_list(self, tmp_path: Path) -> None:
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
-        pyrefly = tomlkit.document()
-        pyrefly["search-path"] = "not-a-list"
-        fixes = fixer._fix_search_paths_tk(pyrefly, tmp_path)
-        tm.that(len(fixes), eq=0)
-
-
-class TestConfigFixerRemoveIgnoreSubConfig:
-    """Test FlextInfraConfigFixer._remove_ignore_sub_config_tk method."""
-
-    def test_remove_ignore_sub_config_removes_ignored(self, tmp_path: Path) -> None:
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
-        pyrefly = tomlkit.document()
-        pyrefly["sub-config"] = [
-            {"matches": "*.py", "ignore": True},
-            {"matches": "*.pyi", "ignore": False},
-        ]
-        fixes = fixer._remove_ignore_sub_config_tk(pyrefly)
-        assert len(fixes) > 0
-        sub_config = pyrefly["sub-config"]
-        tm.that(str(sub_config), contains="*.pyi")
-
-    def test_remove_ignore_sub_config_skips_non_list(self, tmp_path: Path) -> None:
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
-        pyrefly = tomlkit.document()
-        pyrefly["sub-config"] = "not-a-list"
-        fixes = fixer._remove_ignore_sub_config_tk(pyrefly)
-        tm.that(len(fixes), eq=0)
-
-
-class TestConfigFixerEnsureProjectExcludes:
-    """Test FlextInfraConfigFixer._ensure_project_excludes_tk method."""
-
-    def test_ensure_project_excludes_adds_missing(self, tmp_path: Path) -> None:
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
-        pyrefly = tomlkit.document()
-        pyrefly["project-excludes"] = tomlkit.array()
-        fixes = fixer._ensure_project_excludes_tk(pyrefly)
-        assert len(fixes) > 0
-        project_excludes = pyrefly["project-excludes"]
-        assert str(project_excludes)
-
-    def test_ensure_project_excludes_syncs_from_rules(self, tmp_path: Path) -> None:
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
-        pyrefly = tomlkit.document()
-        pyrefly["project-excludes"] = ["**/*_pb2*.py", "**/*_pb2_grpc*.py"]
-        fixes = fixer._ensure_project_excludes_tk(pyrefly)
-        # YAML rules may add additional excludes beyond pb2 patterns
-        tm.that(len(fixes), gte=0)
 
 
 class TestConfigFixerToArray:

@@ -10,7 +10,6 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".basemk": ("FlextInfraServiceBasemkMixin",),
         ".check": ("FlextInfraServiceCheckMixin",),
         ".cli_base": ("FlextInfraServiceCliRunnerMixin",),
-        ".codegen": ("FlextInfraServiceCodegenMixin",),
         ".consolidator": ("FlextInfraCodegenConsolidator",),
         ".deps": ("FlextInfraServiceDepsMixin",),
         ".github": ("FlextInfraServiceGithubMixin",),

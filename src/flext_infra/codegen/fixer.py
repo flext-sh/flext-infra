@@ -92,28 +92,24 @@ class FlextInfraCodegenFixer(s[str]):
             files_modified=sorted(ctx.files_modified),
         )
 
-    def fix_project(
+    def _fix_project(
         self,
-        project: p.Infra.ProjectInfo | Path,
+        project: p.Infra.ProjectInfo,
     ) -> m.Infra.AutoFixResult:
         """Auto-fix namespace violations in a single project."""
-        if isinstance(project, Path):
-            project_path = project
-            package_name = u.Infra.package_name(project_path)
-        else:
-            project_path = project.path
-            package_name = (
-                project.package_name
-                if isinstance(project, m.Infra.ProjectInfo)
-                else u.Infra.package_name(project_path)
-            )
+        project_path = project.path
+        package_name = project.package_name
         prefix = FlextInfraNamespaceValidator.derive_prefix(project_path)
         if not prefix:
             return self._empty_result(project_path.name)
         if not package_name:
             return self._empty_result(project_path.name)
-        pkg_dir = project_path / c.Infra.Paths.DEFAULT_SRC_DIR / Path(
-            *package_name.split("."),
+        pkg_dir = (
+            project_path
+            / c.Infra.Paths.DEFAULT_SRC_DIR
+            / Path(
+                *package_name.split("."),
+            )
         )
         if not (pkg_dir / c.Infra.Files.INIT_PY).is_file():
             return self._empty_result(project_path.name)
@@ -293,7 +289,7 @@ class FlextInfraCodegenFixer(s[str]):
         if not projects_result.is_success:
             msg = projects_result.error or "project discovery failed"
             raise RuntimeError(msg)
-        return [self.fix_project(project) for project in projects_result.unwrap()]
+        return [self._fix_project(project) for project in projects_result.unwrap()]
 
 
 __all__ = ["FlextInfraCodegenFixer"]

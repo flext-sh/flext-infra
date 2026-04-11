@@ -59,12 +59,7 @@ class FlextInfraRefactorLegacyRemovalRule:
             )
             changes.extend(bypass_changes)
         if new_source != source and not dry_run:
-            u.Infra.apply_source_change(
-                rope_project,
-                resource,
-                new_source,
-                description="legacy removal",
-            )
+            resource.write(new_source)
         return (new_source, changes)
 
     def _remove_aliases(

@@ -31,8 +31,10 @@ class FlextInfraNamespaceSourceDetector:
         package_name = u.Infra.package_name(project_root)
         if not package_name:
             return []
-        local_aliases = FlextInfraNamespaceSourceDetector._discover_local_runtime_aliases(
-            project_root=project_root, package_name=package_name
+        local_aliases = (
+            FlextInfraNamespaceSourceDetector._discover_local_runtime_aliases(
+                project_root=project_root, package_name=package_name
+            )
         )
         if not local_aliases:
             return []

@@ -104,12 +104,8 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.deps_path_sync import (
         FlextInfraUtilitiesDependencyPathSync,
     )
-    from flext_infra._utilities.deps_paths import FlextInfraExtraPathsResolutionMixin
     from flext_infra._utilities.deps_repos import FlextInfraInternalSyncRepoMixin
     from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
-    from flext_infra._utilities.discovery_scanning import (
-        FlextInfraUtilitiesDiscoveryScanning,
-    )
     from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
     from flext_infra._utilities.docs_api import FlextInfraUtilitiesDocsApi
     from flext_infra._utilities.docs_audit import FlextInfraUtilitiesDocsAudit
@@ -122,7 +118,6 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.docs_validate import FlextInfraUtilitiesDocsValidate
     from flext_infra._utilities.engine import FlextInfraUtilitiesRefactorEngine
     from flext_infra._utilities.formatting import FlextInfraUtilitiesFormatting
-    from flext_infra._utilities.git import FlextInfraUtilitiesGit
     from flext_infra._utilities.github import FlextInfraUtilitiesGithub
     from flext_infra._utilities.github_pr import FlextInfraUtilitiesGithubPr
     from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
@@ -176,16 +171,10 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
     from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
     from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
-    from flext_infra._utilities.selection import FlextInfraUtilitiesSelection
-    from flext_infra._utilities.terminal import FlextInfraUtilitiesTerminal
     from flext_infra._utilities.toml import FlextInfraUtilitiesToml
     from flext_infra._utilities.toml_parse import FlextInfraUtilitiesTomlParse
-    from flext_infra._utilities.transformer_policy import (
-        FlextInfraUtilitiesRefactorTransformerPolicy,
-    )
     from flext_infra._utilities.utilities_cli import FlextInfraUtilitiesRefactorCli
     from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
-    from flext_infra._utilities.yaml import FlextInfraUtilitiesYaml
     from flext_infra.api import FlextInfra, infra
     from flext_infra.base import FlextInfraServiceBase, s
     from flext_infra.basemk.cli import FlextInfraCliBasemk
@@ -220,19 +209,14 @@ if _t.TYPE_CHECKING:
     from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
     from flext_infra.deps.detector_runtime import FlextInfraDependencyDetectorRuntime
     from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
-    from flext_infra.deps.extra_paths_pyrefly import FlextInfraExtraPathsPyrefly
     from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
     from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
     from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
-    from flext_infra.deps.path_sync_rewrite import FlextInfraDependencyPathSyncRewrite
     from flext_infra.deps.phases.consolidate_groups import (
         FlextInfraConsolidateGroupsPhase,
     )
     from flext_infra.deps.phases.ensure_coverage import (
         FlextInfraEnsureCoverageConfigPhase,
-    )
-    from flext_infra.deps.phases.ensure_extra_paths import (
-        FlextInfraEnsureExtraPathsPhase,
     )
     from flext_infra.deps.phases.ensure_formatting import (
         FlextInfraEnsureFormattingToolingPhase,
@@ -250,7 +234,6 @@ if _t.TYPE_CHECKING:
     from flext_infra.deps.phases.ensure_pyright import (
         FlextInfraEnsurePyrightConfigPhase,
     )
-    from flext_infra.deps.phases.ensure_pyright_envs import FlextInfraEnsurePyrightEnvs
     from flext_infra.deps.phases.ensure_pytest import FlextInfraEnsurePytestConfigPhase
     from flext_infra.deps.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
     from flext_infra.deps.phases.inject_comments import FlextInfraInjectCommentsPhase
@@ -384,7 +367,6 @@ if _t.TYPE_CHECKING:
     from flext_infra.services.basemk import FlextInfraServiceBasemkMixin
     from flext_infra.services.check import FlextInfraServiceCheckMixin
     from flext_infra.services.cli_base import FlextInfraServiceCliRunnerMixin
-    from flext_infra.services.codegen import FlextInfraServiceCodegenMixin
     from flext_infra.services.consolidator import FlextInfraCodegenConsolidator
     from flext_infra.services.deps import FlextInfraServiceDepsMixin
     from flext_infra.services.github import FlextInfraServiceGithubMixin
@@ -610,7 +592,6 @@ __all__ = [
     "FlextInfraDependencyDetectionAnalysis",
     "FlextInfraDependencyDetectionService",
     "FlextInfraDependencyDetectorRuntime",
-    "FlextInfraDependencyPathSyncRewrite",
     "FlextInfraDocAuditor",
     "FlextInfraDocAuditorMixin",
     "FlextInfraDocBuilder",
@@ -618,19 +599,15 @@ __all__ = [
     "FlextInfraDocGenerator",
     "FlextInfraDocValidator",
     "FlextInfraEnsureCoverageConfigPhase",
-    "FlextInfraEnsureExtraPathsPhase",
     "FlextInfraEnsureFormattingToolingPhase",
     "FlextInfraEnsureMypyConfigPhase",
     "FlextInfraEnsureNamespaceToolingPhase",
     "FlextInfraEnsurePydanticMypyConfigPhase",
     "FlextInfraEnsurePyreflyConfigPhase",
     "FlextInfraEnsurePyrightConfigPhase",
-    "FlextInfraEnsurePyrightEnvs",
     "FlextInfraEnsurePytestConfigPhase",
     "FlextInfraEnsureRuffConfigPhase",
     "FlextInfraExtraPathsManager",
-    "FlextInfraExtraPathsPyrefly",
-    "FlextInfraExtraPathsResolutionMixin",
     "FlextInfraFutureAnnotationsDetector",
     "FlextInfraGate",
     "FlextInfraGateRegistry",
@@ -746,7 +723,6 @@ __all__ = [
     "FlextInfraServiceBasemkMixin",
     "FlextInfraServiceCheckMixin",
     "FlextInfraServiceCliRunnerMixin",
-    "FlextInfraServiceCodegenMixin",
     "FlextInfraServiceDepsMixin",
     "FlextInfraServiceGithubMixin",
     "FlextInfraServiceRefactorMixin",
@@ -786,7 +762,6 @@ __all__ = [
     "FlextInfraUtilitiesCodegenNamespace",
     "FlextInfraUtilitiesDependencyPathSync",
     "FlextInfraUtilitiesDiscovery",
-    "FlextInfraUtilitiesDiscoveryScanning",
     "FlextInfraUtilitiesDocs",
     "FlextInfraUtilitiesDocsApi",
     "FlextInfraUtilitiesDocsAudit",
@@ -799,7 +774,6 @@ __all__ = [
     "FlextInfraUtilitiesDocsValidate",
     "FlextInfraUtilitiesFacadeScanner",
     "FlextInfraUtilitiesFormatting",
-    "FlextInfraUtilitiesGit",
     "FlextInfraUtilitiesGithub",
     "FlextInfraUtilitiesGithubPr",
     "FlextInfraUtilitiesImportNormalizer",
@@ -824,7 +798,6 @@ __all__ = [
     "FlextInfraUtilitiesRefactorNamespaceMro",
     "FlextInfraUtilitiesRefactorPolicy",
     "FlextInfraUtilitiesRefactorRuleLoader",
-    "FlextInfraUtilitiesRefactorTransformerPolicy",
     "FlextInfraUtilitiesRelease",
     "FlextInfraUtilitiesReporting",
     "FlextInfraUtilitiesRope",
@@ -835,12 +808,9 @@ __all__ = [
     "FlextInfraUtilitiesRopeImports",
     "FlextInfraUtilitiesRopeSource",
     "FlextInfraUtilitiesSafety",
-    "FlextInfraUtilitiesSelection",
-    "FlextInfraUtilitiesTerminal",
     "FlextInfraUtilitiesToml",
     "FlextInfraUtilitiesTomlParse",
     "FlextInfraUtilitiesVersioning",
-    "FlextInfraUtilitiesYaml",
     "FlextInfraVersion",
     "FlextInfraViolationCensusVisitor",
     "FlextInfraWorkspaceCheckGatesMixin",

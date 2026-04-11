@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from argparse import ArgumentParser, Namespace
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Annotated
 
@@ -28,6 +28,7 @@ from flext_infra import (
 
 
 class FlextInfraUtilitiesCli(
+    FlextInfraUtilitiesCliSubcommand,
     FlextInfraUtilitiesCliShared,
     u.Cli,
 ):
@@ -96,24 +97,6 @@ class FlextInfraUtilitiesCli(
             return [self.workspace / name for name in names]
 
     @staticmethod
-    def create_subcommand_parser(
-        prog: str,
-        description: str,
-        *,
-        subcommands: t.StrMapping,
-        flags: FlextInfraUtilitiesCli.SharedFlags | None = None,
-        subcommand_flags: Mapping[str, t.BoolMapping] | None = None,
-    ) -> tuple[ArgumentParser, Mapping[str, ArgumentParser]]:
-        """Create main parser with subcommands and shared flags."""
-        return FlextInfraUtilitiesCliSubcommand.create_subcommand_parser(
-            prog,
-            description,
-            subcommands=subcommands,
-            flags=flags.to_dict() if flags is not None else None,
-            subcommand_flags=subcommand_flags,
-        )
-
-    @staticmethod
     def create_parser(
         prog: str,
         description: str,
@@ -135,20 +118,6 @@ class FlextInfraUtilitiesCli(
         parser = ArgumentParser(prog=prog, description=description)
         FlextInfraUtilitiesCli._add_shared_flags(parser, resolved_flags)
         return parser
-
-    @staticmethod
-    def parse_subcommand_args(
-        parser: ArgumentParser,
-        argv: t.StrSequence | None = None,
-        *,
-        passthrough_subcommands: t.StrSequence | None = None,
-    ) -> Namespace:
-        """Parse and validate subcommand args against per-command shared flags."""
-        return FlextInfraUtilitiesCliSubcommand.parse_subcommand_args(
-            parser,
-            argv,
-            passthrough_subcommands=passthrough_subcommands,
-        )
 
     @staticmethod
     def resolve(args: Namespace) -> FlextInfraUtilitiesCli.CliArgs:

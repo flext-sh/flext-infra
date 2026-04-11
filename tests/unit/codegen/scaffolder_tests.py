@@ -14,7 +14,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import FlextInfraCodegenScaffolder
-from tests import t, u
+from tests import m, t, u
 
 
 def _create_test_project(tmp_path: Path, *, with_all_modules: bool = True) -> Path:
@@ -24,11 +24,21 @@ def _create_test_project(tmp_path: Path, *, with_all_modules: bool = True) -> Pa
     )
 
 
+def _project_info(
+    project: Path, *, package_name: str = "test_project"
+) -> m.Infra.ProjectInfo:
+    return u.Infra.Tests.create_project_info(
+        project,
+        name=project.name,
+        package_name=package_name,
+    )
+
+
 class TestScaffoldProjectNoop:
     def test_all_modules_present_creates_nothing(self, tmp_path: Path) -> None:
         project = _create_test_project(tmp_path, with_all_modules=True)
         scaffolder = FlextInfraCodegenScaffolder(workspace=tmp_path)
-        result = scaffolder.scaffold_project(project)
+        [result] = scaffolder.run(projects=[_project_info(project)])
         tm.that(result.files_created, eq=[])
         tm.that(len(result.files_skipped), eq=5)
         tm.that(result.project, eq="test-project")
@@ -38,7 +48,7 @@ class TestScaffoldProjectCreatesSrcModules:
     def test_creates_missing_src_modules(self, tmp_path: Path) -> None:
         project = _create_test_project(tmp_path, with_all_modules=False)
         scaffolder = FlextInfraCodegenScaffolder(workspace=tmp_path)
-        result = scaffolder.scaffold_project(project)
+        [result] = scaffolder.run(projects=[_project_info(project)])
         tm.that(len(result.files_created), eq=5)
         pkg = project / "src" / "test_project"
         for mod in u.Infra.Tests.src_module_files():
@@ -52,7 +62,7 @@ class TestScaffoldProjectCreatesSrcModules:
         )
         (pkg / "models.py").write_text("class TestProjectModels:\n    pass\n")
         scaffolder = FlextInfraCodegenScaffolder(workspace=tmp_path)
-        result = scaffolder.scaffold_project(project)
+        [result] = scaffolder.run(projects=[_project_info(project)])
         tm.that(len(result.files_created), eq=3)
         tm.that(len(result.files_skipped), eq=2)
         created_names = sorted(Path(f).name for f in result.files_created)
@@ -68,7 +78,7 @@ class TestScaffoldProjectCreatesTestsModules:
         tests_dir = project / "tests"
         tests_dir.mkdir()
         scaffolder = FlextInfraCodegenScaffolder(workspace=tmp_path)
-        result = scaffolder.scaffold_project(project)
+        [result] = scaffolder.run(projects=[_project_info(project)])
         tests_created = [f for f in result.files_created if "tests" in f]
         tm.that(len(tests_created), eq=5)
         for mod in u.Infra.Tests.src_module_files():
@@ -80,7 +90,7 @@ class TestScaffoldProjectCreatesTestsModules:
     ) -> None:
         project = _create_test_project(tmp_path, with_all_modules=True)
         scaffolder = FlextInfraCodegenScaffolder(workspace=tmp_path)
-        result = scaffolder.scaffold_project(project)
+        [result] = scaffolder.run(projects=[_project_info(project)])
         tests_created = [f for f in result.files_created if "tests" in f]
         tm.that(tests_created, eq=[])
 
@@ -89,8 +99,8 @@ class TestScaffoldProjectIdempotency:
     def test_second_run_is_noop(self, tmp_path: Path) -> None:
         project = _create_test_project(tmp_path, with_all_modules=False)
         scaffolder = FlextInfraCodegenScaffolder(workspace=tmp_path)
-        first_result = scaffolder.scaffold_project(project)
-        second_result = scaffolder.scaffold_project(project)
+        [first_result] = scaffolder.run(projects=[_project_info(project)])
+        [second_result] = scaffolder.run(projects=[_project_info(project)])
         tm.that(len(first_result.files_created), eq=5)
         tm.that(second_result.files_created, eq=[])
         tm.that(len(second_result.files_skipped), eq=5)

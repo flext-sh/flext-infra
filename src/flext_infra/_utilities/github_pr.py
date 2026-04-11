@@ -13,8 +13,8 @@ from pathlib import Path
 
 from flext_cli import u
 from flext_infra import (
+    FlextInfraUtilitiesDocsScope,
     FlextInfraUtilitiesReporting,
-    FlextInfraUtilitiesSelection,
     c,
     m,
     r,
@@ -31,7 +31,7 @@ class FlextInfraUtilitiesGithubPr:
     ) -> r[m.Infra.GithubPullRequestWorkspaceReport]:
         """Run pull-request commands across workspace repositories."""
         workspace_root = request.workspace_path
-        projects_result = FlextInfraUtilitiesSelection.resolve_projects(
+        projects_result = FlextInfraUtilitiesDocsScope.resolve_projects(
             workspace_root,
             list(request.project_names or []),
         )

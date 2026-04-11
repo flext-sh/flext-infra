@@ -44,8 +44,12 @@ class FlextInfraCodegenConsolidator(s[str]):
             )
             if not package_name:
                 continue
-            package_dir = project.path / c.Infra.Paths.DEFAULT_SRC_DIR / Path(
-                *package_name.split("."),
+            package_dir = (
+                project.path
+                / c.Infra.Paths.DEFAULT_SRC_DIR
+                / Path(
+                    *package_name.split("."),
+                )
             )
             if not (package_dir / c.Infra.Files.INIT_PY).is_file():
                 continue

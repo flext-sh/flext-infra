@@ -13,7 +13,7 @@ from collections.abc import MutableSequence
 from pathlib import Path
 
 from flext_cli import u
-from flext_infra import c, r, t
+from flext_infra import c, r
 
 
 class FlextInfraUtilitiesFormatting:
@@ -51,18 +51,15 @@ class FlextInfraUtilitiesFormatting:
             check_cmd.append("--quiet")
         check_cmd.append(str(path))
 
-        def _run_checked(cmd: t.StrSequence) -> r[bool]:
-            return u.Cli.run_checked(cmd)
-
         def _require_success(result: r[bool]) -> None:
             if result.is_failure:
                 raise ValueError(result.error or "ruff post-process failed")
 
         if use_quiet:
             with contextlib.suppress(FileNotFoundError):
-                _run_checked(check_cmd)
+                u.Cli.run_checked(check_cmd)
         else:
-            _run_checked(check_cmd)
+            u.Cli.run_checked(check_cmd)
 
         if include_format:
             format_cmd = [
@@ -72,7 +69,7 @@ class FlextInfraUtilitiesFormatting:
             if use_quiet:
                 format_cmd.append("--quiet")
             format_cmd.append(str(path))
-            _require_success(_run_checked(format_cmd))
+            _require_success(u.Cli.run_checked(format_cmd))
 
     @staticmethod
     def class_name_to_module(class_name: str) -> str:

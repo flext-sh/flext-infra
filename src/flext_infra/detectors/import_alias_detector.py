@@ -42,9 +42,7 @@ class FlextInfraImportAliasDetector:
             resource,
         ):
             if not (
-                from_import.module_name.startswith(
-                    c.Infra.Packages.PREFIX_UNDERSCORE
-                )
+                from_import.module_name.startswith(c.Infra.Packages.PREFIX_UNDERSCORE)
                 and "." in from_import.module_name
                 and all(
                     not part.startswith("_")

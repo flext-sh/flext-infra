@@ -42,7 +42,9 @@ class FlextInfraManualTypingAliasDetector:
             elif c.Infra.TYPEALIAS_ANNOT_RE.match(line):
                 detail = "TypeAlias assignment must be centralized under typings scope"
             elif c.Infra.TYPING_FACTORY_ASSIGN_RE.match(line):
-                detail = "Typing factory assignment must be centralized under typings scope"
+                detail = (
+                    "Typing factory assignment must be centralized under typings scope"
+                )
             if detail:
                 violations.append(
                     m.Infra.ManualTypingAliasViolation(

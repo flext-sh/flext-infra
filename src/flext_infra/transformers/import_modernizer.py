@@ -50,12 +50,7 @@ class FlextInfraRefactorImportModernizer(FlextInfraRopeTransformer):
         source = resource.read()
         updated, changes = self.apply_to_source(source)
         if updated != source and changes:
-            u.Infra.apply_source_change(
-                rope_project,
-                resource,
-                updated,
-                description="modernize imports",
-            )
+            resource.write(updated)
         return updated, changes
 
     @override

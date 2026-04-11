@@ -84,14 +84,10 @@ class FlextInfraUtilitiesRopeImports:
         if not isinstance(import_statements, list):
             return ()
         return tuple(
-            from_import
+            import_stmt.import_info
             for import_stmt in import_statements
-            if (
-                from_import := FlextInfraUtilitiesRopeCore.absolute_from_import_any(
-                    import_stmt.import_info
-                )
-            )
-            is not None
+            if isinstance(import_stmt.import_info, FromImport)
+            and import_stmt.import_info.level == 0
         )
 
     @staticmethod
@@ -122,15 +118,22 @@ class FlextInfraUtilitiesRopeImports:
         if not isinstance(import_statements, list):
             return None
         for import_stmt in import_statements:
-            target_from_import = FlextInfraUtilitiesRopeCore.absolute_from_import(
-                import_stmt.import_info,
-                module_name=target_module,
+            import_info = import_stmt.import_info
+            target_from_import = (
+                import_info
+                if isinstance(import_info, FromImport)
+                and import_info.level == 0
+                and import_info.module_name == target_module
+                else None
             )
             if target_from_import is not None:
                 target_import_stmt = import_stmt
-            from_import = FlextInfraUtilitiesRopeCore.absolute_from_import(
-                import_stmt.import_info,
-                module_name=source_module,
+            from_import = (
+                import_info
+                if isinstance(import_info, FromImport)
+                and import_info.level == 0
+                and import_info.module_name == source_module
+                else None
             )
             if from_import is None:
                 continue
@@ -146,12 +149,13 @@ class FlextInfraUtilitiesRopeImports:
         if not moved_aliases:
             return None
         if target_import_stmt is not None:
-            target_from_import = FlextInfraUtilitiesRopeCore.absolute_from_import(
-                target_import_stmt.import_info,
-                module_name=target_module,
-            )
-            if target_from_import is not None:
-                merged_pairs = list(target_from_import.names_and_aliases)
+            import_info = target_import_stmt.import_info
+            if (
+                isinstance(import_info, FromImport)
+                and import_info.level == 0
+                and import_info.module_name == target_module
+            ):
+                merged_pairs = list(import_info.names_and_aliases)
                 existing_plain_names = {
                     name for name, alias in merged_pairs if alias is None
                 }
@@ -194,12 +198,7 @@ class FlextInfraUtilitiesRopeImports:
         if updated_source == original_source:
             return None
         if apply:
-            FlextInfraUtilitiesRopeCore.apply_source_change(
-                rope_project,
-                resource,
-                updated_source,
-                description=f"relocate import aliases in <{resource.path}>",
-            )
+            resource.write(updated_source)
         return updated_source
 
     @staticmethod
@@ -257,8 +256,11 @@ class FlextInfraUtilitiesRopeImports:
         if not isinstance(import_statements, list):
             return None
         for import_stmt in import_statements:
-            from_import = FlextInfraUtilitiesRopeCore.absolute_from_import_any(
-                import_stmt.import_info
+            import_info = import_stmt.import_info
+            from_import = (
+                import_info
+                if isinstance(import_info, FromImport) and import_info.level == 0
+                else None
             )
             if from_import is None or not from_import.module_name.startswith(
                 package_prefix
@@ -292,12 +294,7 @@ class FlextInfraUtilitiesRopeImports:
         if updated_source == resource.read():
             return None
         if apply:
-            FlextInfraUtilitiesRopeCore.apply_source_change(
-                rope_project,
-                resource,
-                updated_source,
-                description=f"collapse import aliases in <{resource.path}>",
-            )
+            resource.write(updated_source)
         return updated_source
 
     @staticmethod
@@ -325,12 +322,7 @@ class FlextInfraUtilitiesRopeImports:
         if updated == resource.read():
             return None
         if apply:
-            FlextInfraUtilitiesRopeCore.apply_source_change(
-                rope_project,
-                resource,
-                updated,
-                description=f"add import from {from_module} in <{resource.path}>",
-            )
+            resource.write(updated)
         return updated
 
     @staticmethod
@@ -355,9 +347,13 @@ class FlextInfraUtilitiesRopeImports:
         if not isinstance(import_statements, list):
             return None
         for import_stmt in import_statements:
-            from_import = FlextInfraUtilitiesRopeCore.absolute_from_import(
-                import_stmt.import_info,
-                module_name=from_module,
+            import_info = import_stmt.import_info
+            from_import = (
+                import_info
+                if isinstance(import_info, FromImport)
+                and import_info.level == 0
+                and import_info.module_name == from_module
+                else None
             )
             if from_import is None:
                 continue
@@ -377,12 +373,7 @@ class FlextInfraUtilitiesRopeImports:
         if updated == resource.read():
             return None
         if apply:
-            FlextInfraUtilitiesRopeCore.apply_source_change(
-                rope_project,
-                resource,
-                updated,
-                description=f"remove imports in <{resource.path}>",
-            )
+            resource.write(updated)
         return updated
 
 

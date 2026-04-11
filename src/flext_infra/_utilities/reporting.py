@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import os
 import sys
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
@@ -28,7 +29,6 @@ from typing import ClassVar
 from flext_infra import (
     FlextInfraUtilitiesOutputFailureSummary,
     FlextInfraUtilitiesOutputReporting,
-    FlextInfraUtilitiesTerminal,
     c,
     m,
     p,
@@ -49,6 +49,33 @@ class FlextInfraUtilitiesReporting(
     _stream: ClassVar[p.Infra.OutputStream] = sys.stderr
     _use_color: ClassVar[bool] = False
     _use_unicode: ClassVar[bool] = False
+
+    @staticmethod
+    def terminal_should_use_color(stream: p.Infra.OutputStream | None = None) -> bool:
+        """Detect whether ANSI colors should be used on the given stream."""
+        target = stream if stream is not None else sys.stderr
+        if os.environ.get("NO_COLOR") is not None:
+            return False
+        if os.environ.get("FORCE_COLOR") is not None:
+            return True
+        if any(
+            os.environ.get(var) is not None
+            for var in ("CI", "GITHUB_ACTIONS", "GITLAB_CI")
+        ):
+            return False
+        return bool(
+            hasattr(target, "isatty")
+            and target.isatty()
+            and os.environ.get("TERM", "") not in {"dumb", ""}
+        )
+
+    @staticmethod
+    def terminal_should_use_unicode() -> bool:
+        """Detect whether Unicode symbols are safe to use."""
+        return any(
+            (value := os.environ.get(var, "")) and "utf" in value.lower()
+            for var in ("LC_ALL", "LANG")
+        )
 
     @staticmethod
     def get_report_dir(workspace_root: Path | str, scope: str, verb: str) -> Path:
@@ -104,15 +131,9 @@ class FlextInfraUtilitiesReporting(
         stream: p.Infra.OutputStream | None = None,
     ) -> None:
         """Initialize reporting output capabilities."""
-        cls._use_color = (
-            FlextInfraUtilitiesTerminal.terminal_should_use_color()
-            if color is None
-            else color
-        )
+        cls._use_color = cls.terminal_should_use_color() if color is None else color
         cls._use_unicode = (
-            FlextInfraUtilitiesTerminal.terminal_should_use_unicode()
-            if unicode is None
-            else unicode
+            cls.terminal_should_use_unicode() if unicode is None else unicode
         )
         if stream is not None:
             cls._stream = stream

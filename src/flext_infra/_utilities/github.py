@@ -12,8 +12,8 @@ from pathlib import Path
 
 from flext_cli import FlextCliUtilitiesJson as _CliJson, u
 from flext_infra import (
+    FlextInfraUtilitiesDocsScope,
     FlextInfraUtilitiesGithubPr,
-    FlextInfraUtilitiesSelection,
     c,
     m,
     r,
@@ -91,7 +91,7 @@ class FlextInfraUtilitiesGithub(
             return r[m.Infra.GithubWorkflowSyncReport].fail(
                 template_result.error or "template render failed",
             )
-        projects_result = FlextInfraUtilitiesSelection.resolve_projects(
+        projects_result = FlextInfraUtilitiesDocsScope.resolve_projects(
             workspace_root,
             [],
         )

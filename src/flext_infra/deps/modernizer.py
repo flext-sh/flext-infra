@@ -10,7 +10,6 @@ from tomlkit.items import AoT, Table
 from flext_infra import (
     FlextInfraConsolidateGroupsPhase,
     FlextInfraEnsureCoverageConfigPhase,
-    FlextInfraEnsureExtraPathsPhase,
     FlextInfraEnsureFormattingToolingPhase,
     FlextInfraEnsureMypyConfigPhase,
     FlextInfraEnsureNamespaceToolingPhase,
@@ -180,22 +179,6 @@ class FlextInfraPyprojectModernizer:
                 for entry in value.body:
                     cls._reorder_table_inplace(entry, table_key=key)
 
-    def find_pyproject_files(
-        self,
-        *,
-        project_paths: Sequence[Path] | None = None,
-    ) -> Sequence[Path]:
-        """Find all workspace pyproject.toml files."""
-        result = u.Infra.find_all_pyproject_files(
-            self.root,
-            skip_dirs=c.Infra.SKIP_DIRS,
-            project_paths=project_paths,
-        )
-        return result.fold(
-            on_failure=lambda _: [],
-            on_success=lambda v: sorted(v),
-        )
-
     def process_file(
         self,
         path: Path,
@@ -285,12 +268,10 @@ class FlextInfraPyprojectModernizer:
             ),
         )
         changes.extend(
-            FlextInfraEnsureExtraPathsPhase().apply(
+            self.paths_manager.sync_doc(
                 doc,
-                path=path,
+                project_dir=path.parent,
                 is_root=is_root,
-                dry_run=dry_run,
-                paths_manager=self.paths_manager,
             ),
         )
         self._reorder_document_inplace(doc)
@@ -320,7 +301,14 @@ class FlextInfraPyprojectModernizer:
                 )
                 return 2
             project_paths = [project.path for project in selected_projects.value]
-        files = self.find_pyproject_files(project_paths=project_paths)
+        files = u.Infra.find_all_pyproject_files(
+            self.root,
+            skip_dirs=c.Infra.SKIP_DIRS,
+            project_paths=project_paths,
+        ).fold(
+            on_failure=lambda _: [],
+            on_success=lambda value: sorted(value),
+        )
         root_doc: t.Cli.TomlDocument | None = u.Cli.toml_read(
             self.root / c.Infra.Files.PYPROJECT_FILENAME
         )

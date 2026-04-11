@@ -268,12 +268,7 @@ class FlextInfraTransformerTier0ImportFixer:
                 idx = u.Infra.find_import_insert_position(lines)
                 lines.insert(idx, block)
                 new_source = "".join(lines)
-                u.Infra.apply_source_change(
-                    rope_project,
-                    resource,
-                    new_source,
-                    description="add TYPE_CHECKING block",
-                )
+                resource.write(new_source)
                 self._changes.append(
                     f"Added TYPE_CHECKING block for {self._package_name}",
                 )
