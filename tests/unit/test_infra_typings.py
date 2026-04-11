@@ -58,13 +58,13 @@ class TestInfraTypingGuards:
     """Validate public guard helpers that consume typing contracts."""
 
     def test_registerable_service_guard_accepts_real_public_values(self) -> None:
-        tm.that(u.is_registerable_service({"service": "infra"}), eq=True)
-        tm.that(u.is_registerable_service(["a", "b"]), eq=True)
-        tm.that(u.is_registerable_service(Path("/tmp/flext")), eq=True)
+        tm.that(u.registerable_service({"service": "infra"}), eq=True)
+        tm.that(u.registerable_service(["a", "b"]), eq=True)
+        tm.that(u.registerable_service(Path("/tmp/flext")), eq=True)
 
     def test_factory_and_resource_guards_accept_callables(self) -> None:
         def build_service() -> str:
             return "ok"
 
-        tm.that(u.is_factory(build_service), eq=True)
-        tm.that(u.is_resource(build_service), eq=True)
+        tm.that(u.factory(build_service), eq=True)
+        tm.that(u.resource(build_service), eq=True)

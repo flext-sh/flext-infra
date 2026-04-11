@@ -69,7 +69,7 @@ class FlextInfraGenericTransformerRule(FlextInfraRefactorRule):
     instantiates the transformer and delegates to ``_apply_text_transformer``.
     """
 
-    TRANSFORMER_CLASS: type[object]
+    TRANSFORMER_CLASS: type[FlextInfraChangeTracker]
     """The transformer class to instantiate and apply."""
 
     @override

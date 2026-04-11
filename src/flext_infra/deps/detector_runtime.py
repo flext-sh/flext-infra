@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Callable, MutableMapping, Sequence
+from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from pathlib import Path
 
 from flext_cli import m as cli_models
@@ -76,7 +76,7 @@ class FlextInfraDependencyDetectorRuntime:
                     t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
                         limits_data.get(c.Infra.PYTHON),
                     )
-                    if u.is_mapping(limits_data.get(c.Infra.PYTHON))
+                    if isinstance(limits_data.get(c.Infra.PYTHON), Mapping)
                     else {}
                 )
                 python_version = (
@@ -202,7 +202,7 @@ class FlextInfraDependencyDetectorRuntime:
         total_issues = 0
         for payload in projects_report.values():
             deptry_obj = payload.get(c.Infra.DEPTRY)
-            if u.is_mapping(deptry_obj):
+            if isinstance(deptry_obj, Mapping):
                 deptry_payload = u.Infra.validate(
                     t.Infra.INFRA_MAPPING_ADAPTER,
                     deptry_obj,

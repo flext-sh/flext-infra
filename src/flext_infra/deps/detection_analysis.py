@@ -266,7 +266,7 @@ class FlextInfraDependencyDetectionAnalysis:
             ):
                 normalized_issues: MutableSequence[t.Infra.ContainerDict] = []
                 for item in loaded_result.value:
-                    if not u.is_mapping(item):
+                    if not isinstance(item, Mapping):
                         continue
                     try:
                         typed_item = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(item)

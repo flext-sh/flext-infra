@@ -21,7 +21,7 @@ class FlextInfraRefactorRuleDefinitionValidator:
             return None
         if fix_action in c.Infra.PROPAGATION_FIX_ACTIONS:
             if fix_action == "propagate_symbol_renames" and (
-                not u.is_mapping(rule_def.get("import_symbol_renames"))
+                not isinstance(rule_def.get("import_symbol_renames"), Mapping)
             ):
                 return f"{rule_id}: import_symbol_renames must be a mapping"
             if fix_action == "propagate_signature_migrations":

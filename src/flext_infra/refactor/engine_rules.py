@@ -14,6 +14,7 @@ from typing import override
 from pydantic import TypeAdapter, ValidationError
 
 from flext_infra import (
+    FlextInfraChangeTracker,
     FlextInfraGenericTransformerRule,
     FlextInfraRefactorClassReconstructor,
     FlextInfraRefactorLegacyRemovalRule,
@@ -35,7 +36,7 @@ from flext_infra import (
 class FlextInfraRefactorMRORedundancyChecker(FlextInfraGenericTransformerRule):
     """Detect and fix nested classes inheriting from their parent namespace."""
 
-    TRANSFORMER_CLASS: type[object] = FlextInfraRefactorMRORemover
+    TRANSFORMER_CLASS: type[FlextInfraChangeTracker] = FlextInfraRefactorMRORemover
 
 
 class _RopeTextRuleBridge(FlextInfraRefactorRule):

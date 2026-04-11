@@ -36,7 +36,7 @@ class FlextInfraDocAuditorMixin:
         default_budget = audit_gate.get("max_issues_default")
         by_scope_raw_value = audit_gate.get("max_issues_by_scope")
         by_scope_raw: Mapping[str, t.Infra.InfraValue] = {}
-        if u.is_mapping(by_scope_raw_value):
+        if isinstance(by_scope_raw_value, Mapping):
             try:
                 by_scope_raw = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
                     by_scope_raw_value,
@@ -63,7 +63,7 @@ class FlextInfraDocAuditorMixin:
         if config is None:
             return (None, {})
         payload_result = u.Cli.json_read(config)
-        if payload_result.failure or not u.is_mapping(payload_result.value):
+        if payload_result.failure or not isinstance(payload_result.value, Mapping):
             return (None, {})
         docs_validation = payload_result.value.get("docs_validation")
         if not isinstance(docs_validation, Mapping):

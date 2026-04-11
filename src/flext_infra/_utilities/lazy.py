@@ -199,7 +199,6 @@ class FlextInfraUtilitiesCodegenLazyAliases:
             for name, (module, attr) in exports.items():
                 if (
                     attr
-                    and not name.isupper()
                     and name not in c.Infra.ALIAS_NAMES
                     and name != "main"
                     and cls._publish(name, allow_main=False)

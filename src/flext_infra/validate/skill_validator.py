@@ -275,7 +275,7 @@ class FlextInfraSkillValidator(s[bool]):
             if not line:
                 continue
             payload_result = u.Cli.json_parse(line)
-            if payload_result.success and u.is_mapping(payload_result.value):
+            if payload_result.success and isinstance(payload_result.value, Mapping):
                 payload = payload_result.value
                 maybe = payload.get("violation_count", payload.get("count", 0))
                 if isinstance(maybe, int):

@@ -26,7 +26,7 @@ def _build_workspace(tmp_path: Path) -> tuple[Path, Path]:
     source_file = package_dir / "service.py"
     source_file.write_text(
         "from __future__ import annotations\n"
-        "from flext_core import FlextLogger, FlextVersion, u\n"
+        "from flext_core import FlextLogger, FlextUtilitiesBeartypeConf, FlextVersion, t, u\n"
         "from flext_core import is_success_result\n\n"
         "class Demo:\n"
         "    def get_value(self) -> str:\n"
@@ -35,15 +35,23 @@ def _build_workspace(tmp_path: Path) -> tuple[Path, Path]:
         "        return True\n\n"
         "def run(result: object) -> object:\n"
         "    logger = FlextLogger.get_logger('demo')\n"
+        "    conf = FlextUtilitiesBeartypeConf.get_beartype_conf()\n"
         "    configured = u.is_structlog_configured()\n"
         "    level = u.get_log_level_from_config()\n"
+        "    route = u.get_message_route('demo')\n"
+        "    container_adapter = t.set_container_adapter()\n"
+        "    string_adapter = t.set_str_adapter()\n"
+        "    scalar_adapter = t.set_scalar_adapter()\n"
         "    version = FlextVersion.get_version_string()\n"
         "    info = FlextVersion.get_version_info()\n"
         "    package = FlextVersion.get_package_info()\n"
         "    ready = FlextVersion.is_version_at_least('1.0.0')\n"
-        "    if result.success:\n"
+        "    result.set_attribute('status', ('ready',))\n"
+        "    if result.is_success:\n"
         "        return (\n"
-        "            logger, configured, level, version, info, package, ready,\n"
+        "            logger, conf, configured, level, route, container_adapter,\n"
+        "            string_adapter, scalar_adapter, version, info, package, ready,\n"
+        "            result.is_failure,\n"
         "            is_success_result(result),\n"
         "        )\n"
         "    return result\n",
@@ -149,13 +157,20 @@ def test_accessor_migration_service_reports_preview_and_keeps_file_unchanged(
     report = result.value
     tm.that(report.files_scanned, eq=1)
     tm.that(report.files_with_changes, eq=1)
-    tm.that(report.automated_change_count >= 9, eq=True)
+    tm.that(report.automated_change_count >= 16, eq=True)
     tm.that(report.warning_count >= 2, eq=True)
     tm.that(report.files[0].diff, has="successful_result")
     tm.that(report.files[0].diff, has=".success")
+    tm.that(report.files[0].diff, has=".failure")
     tm.that(report.files[0].diff, has="fetch_logger")
+    tm.that(report.files[0].diff, has="build_beartype_conf")
     tm.that(report.files[0].diff, has="structlog_configured")
     tm.that(report.files[0].diff, has="resolve_log_level_from_config")
+    tm.that(report.files[0].diff, has="resolve_message_route")
+    tm.that(report.files[0].diff, has="container_set_adapter")
+    tm.that(report.files[0].diff, has="string_set_adapter")
+    tm.that(report.files[0].diff, has="scalar_set_adapter")
+    tm.that(report.files[0].diff, has="update_attribute")
     tm.that(report.files[0].diff, has="resolve_version_string")
     tm.that(report.files[0].diff, has="version_at_least")
     tm.that(report.files[0].lint_tools, eq=("ruff", "pyright", "mypy", "pyrefly"))
@@ -254,9 +269,16 @@ def test_accessor_migration_apply_writes_updated_source(
     updated_source = source_file.read_text(encoding="utf-8")
     tm.that(updated_source, has="successful_result")
     tm.that(updated_source, has="result.success")
+    tm.that(updated_source, has="result.failure")
     tm.that(updated_source, has="FlextLogger.fetch_logger")
+    tm.that(updated_source, has="FlextUtilitiesBeartypeConf.build_beartype_conf")
     tm.that(updated_source, has="u.structlog_configured")
     tm.that(updated_source, has="u.resolve_log_level_from_config")
+    tm.that(updated_source, has="u.resolve_message_route")
+    tm.that(updated_source, has="t.container_set_adapter")
+    tm.that(updated_source, has="t.string_set_adapter")
+    tm.that(updated_source, has="t.scalar_set_adapter")
+    tm.that(updated_source, has="result.update_attribute")
     tm.that(updated_source, has="FlextVersion.resolve_version_string")
     tm.that(updated_source, has="FlextVersion.resolve_version_info")
     tm.that(updated_source, has="FlextVersion.resolve_package_info")

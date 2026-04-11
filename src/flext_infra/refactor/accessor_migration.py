@@ -83,16 +83,52 @@ class FlextInfraAccessorMigrationOrchestrator(s[m.Infra.AccessorMigrationReport]
             origin="flext_core.result",
         ),
         m.Infra.AccessorMigrationRule(
-            source_name="success",
+            source_name="is_success",
             replacement_name="success",
             reason="Rename boolean result predicate to the canonical success field",
             origin="flext_core.result",
         ),
         m.Infra.AccessorMigrationRule(
-            source_name="failure",
+            source_name="is_failure",
             replacement_name="failure",
             reason="Rename boolean result predicate to the canonical failure field",
             origin="flext_core.result",
+        ),
+        m.Infra.AccessorMigrationRule(
+            source_name="set_attribute",
+            replacement_name="update_attribute",
+            reason="Rewrite attribute mutator to the canonical update verb",
+            origin="flext_core.logging",
+        ),
+        m.Infra.AccessorMigrationRule(
+            source_name="get_beartype_conf",
+            replacement_name="build_beartype_conf",
+            reason="Rewrite beartype config accessor to the canonical build verb",
+            origin="flext_core.beartype",
+        ),
+        m.Infra.AccessorMigrationRule(
+            source_name="get_message_route",
+            replacement_name="resolve_message_route",
+            reason="Rewrite route accessor to the canonical resolve helper",
+            origin="flext_core.dispatcher",
+        ),
+        m.Infra.AccessorMigrationRule(
+            source_name="set_container_adapter",
+            replacement_name="container_set_adapter",
+            reason="Rewrite type adapter accessor to the canonical container_* name",
+            origin="flext_core.typings",
+        ),
+        m.Infra.AccessorMigrationRule(
+            source_name="set_str_adapter",
+            replacement_name="string_set_adapter",
+            reason="Rewrite type adapter accessor to the canonical string_* name",
+            origin="flext_core.typings",
+        ),
+        m.Infra.AccessorMigrationRule(
+            source_name="set_scalar_adapter",
+            replacement_name="scalar_set_adapter",
+            reason="Rewrite type adapter accessor to the canonical scalar_* name",
+            origin="flext_core.typings",
         ),
         m.Infra.AccessorMigrationRule(
             source_name="get_logger",
@@ -144,8 +180,16 @@ class FlextInfraAccessorMigrationOrchestrator(s[m.Infra.AccessorMigrationReport]
         ),
     )
     _AUTOMATED_NAMES: ClassVar[frozenset[str]] = frozenset({
+        "get_beartype_conf",
+        "get_message_route",
+        "is_failure",
+        "is_success",
         "is_success_result",
         "is_failure_result",
+        "set_attribute",
+        "set_container_adapter",
+        "set_scalar_adapter",
+        "set_str_adapter",
     })
 
     @property

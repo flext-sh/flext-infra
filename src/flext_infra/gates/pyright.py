@@ -58,7 +58,11 @@ class FlextInfraPyrightGate(FlextInfraGate):
         issues: MutableSequence[m.Infra.Issue] = []
         parsed = u.Cli.json_parse(result.stdout or "{}").unwrap_or({})
         empty: Mapping[str, t.Infra.InfraValue] = {}
-        data = u.Infra.normalize_str_mapping(parsed) if u.is_mapping(parsed) else empty
+        data = (
+            u.Infra.normalize_str_mapping(parsed)
+            if isinstance(parsed, Mapping)
+            else empty
+        )
         try:
             diagnostics = u.Infra.deep_list(
                 data,

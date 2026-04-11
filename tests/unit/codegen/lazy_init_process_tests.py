@@ -236,6 +236,12 @@ class TestProcessDirectory:
             alias=c.Infra.Tests.Fixtures.Codegen.LazyInit.CHILD_SERVICE_ALIAS,
             docstring="Service.",
         )
+        (sub_dir / "registry.py").write_text(
+            "from __future__ import annotations\n\n"
+            "ALL_STREAMS = {}\n\n"
+            '__all__ = ["ALL_STREAMS"]\n',
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
 
         result = u.Infra.Tests.run_lazy_init(workspace_root)
 
@@ -245,6 +251,7 @@ class TestProcessDirectory:
         assert (
             c.Infra.Tests.Fixtures.Codegen.LazyInit.CHILD_SERVICE_CLASS in parent_init
         )
+        assert "ALL_STREAMS" in parent_init
 
     @pytest.mark.parametrize(
         ("surface", "family_dir", "file_name", "class_name"),

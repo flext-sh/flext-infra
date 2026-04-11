@@ -34,7 +34,7 @@ class FlextInfraUtilitiesDocsValidate:
         payload: t.ValueOrModel,
     ) -> t.ContainerList | None:
         """Extract the configured required skills list from architecture config."""
-        if not u.is_mapping(payload):
+        if not isinstance(payload, Mapping):
             return None
         docs_validation = payload.get("docs_validation")
         if not isinstance(docs_validation, Mapping):

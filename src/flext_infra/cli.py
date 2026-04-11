@@ -9,7 +9,7 @@ from typing import ClassVar
 
 from flext_cli import FlextCliSettings, cli as cli_service, u
 from flext_core import FlextSettings
-from flext_infra import c
+from flext_infra import c, t
 from flext_infra.api import infra
 
 
@@ -128,7 +128,7 @@ class FlextInfraCli:
         return 2 if u.Cli.cli_usage_error(result.error or "") else 1
 
     @classmethod
-    def _register_group(cls, group: str, app: object) -> None:
+    def _register_group(cls, group: str, app: t.Cli.CliApp) -> None:
         """Register one group using the canonical declarative routing rules."""
         register_method = cls._GROUP_REGISTRATION_RULES[group]
         register = getattr(infra, register_method)

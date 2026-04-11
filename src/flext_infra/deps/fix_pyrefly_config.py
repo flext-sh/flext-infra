@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import contextlib
-from collections.abc import MutableMapping, MutableSequence, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
@@ -59,13 +59,13 @@ class FlextInfraConfigFixer(s[bool]):
         doc = document_result.value
         doc_data = doc.unwrap()
         tool_data = doc_data.get(c.Infra.TOOL)
-        if not u.is_mapping(tool_data):
+        if not isinstance(tool_data, Mapping):
             return r[t.StrSequence].ok([])
         typed_tool_data: MutableMapping[str, t.Infra.InfraValue] = (
             t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(tool_data)
         )
         pyrefly_data = typed_tool_data.get(c.Infra.PYREFLY)
-        if not u.is_mapping(pyrefly_data):
+        if not isinstance(pyrefly_data, Mapping):
             return r[t.StrSequence].ok([])
         try:
             pyrefly: MutableMapping[str, t.Infra.InfraValue] = (
@@ -107,7 +107,7 @@ class FlextInfraConfigFixer(s[bool]):
             for conf in configs:
                 conf_out: t.Infra.InfraValue = conf
                 conf_map: t.Infra.ContainerDict = {}
-                if u.is_mapping(conf):
+                if isinstance(conf, Mapping):
                     try:
                         conf_map = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(conf)
                         conf_out = dict(conf_map)
