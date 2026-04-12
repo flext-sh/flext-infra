@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
 from pathlib import Path
 
@@ -105,14 +106,14 @@ def test_workspace_makefile_generator_declares_workspace_boot_separation(
             "FLEXT_PROJECTS :=",
             "WORKSPACE_PROJECTS :=",
             "ATTACHABLE_PROJECTS :=",
+            "BOOT_VALIDATE_PROJECTS := $(strip $(filter $(WORKSPACE_PROJECTS),$(SELECTED_PROJECTS)))",
             "tool.flext.workspace or tool.uv.workspace",
-            'docs_path = root / "docs" / "docs_config.json"',
             'gitmodules = root / ".gitmodules"',
-            "path not in excluded",
             "independent project (no workspace writes)",
             "attach-only project (outside uv workspace)",
             'uv pip install --python "$(PY)" --editable "$$proj[dev]" --no-sources --no-deps',
-            '$(MAKE) val VALIDATE_SCOPE=workspace PROJECTS="$(WORKSPACE_PROJECTS)"',
+            '$(MAKE) val VALIDATE_SCOPE=workspace PROJECTS="$(BOOT_VALIDATE_PROJECTS)"',
+            "Skipping workspace validation (no managed workspace projects selected).",
         ],
     )
 
@@ -145,6 +146,75 @@ def test_workspace_makefile_generator_emits_parseable_discovery_commands(
     )
 
     assert process.returncode == 0
+
+
+def test_workspace_makefile_generator_discovers_external_projects_outside_docs_scope(
+    tmp_path: Path,
+) -> None:
+    workspace_root = _write_workspace_root(tmp_path)
+    (workspace_root / "pyproject.toml").write_text(
+        """
+[project]
+name='workspace-root'
+version='0.1.0'
+
+[tool.uv.workspace]
+members=['flext-core']
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    docs_dir = workspace_root / "docs"
+    docs_dir.mkdir()
+    (docs_dir / "docs_config.json").write_text(
+        json.dumps(
+            {
+                "scope": {
+                    "exclude_roots": [
+                        "algar-oud-mig",
+                        "gruponos-meltano-native",
+                    ],
+                },
+            },
+        ),
+        encoding="utf-8",
+    )
+    for project_name in ("flext-core", "algar-oud-mig", "gruponos-meltano-native"):
+        project_dir = workspace_root / project_name
+        project_dir.mkdir()
+        dependencies = "['flext-core']" if project_name != "flext-core" else "[]"
+        (project_dir / "pyproject.toml").write_text(
+            (
+                "[project]\n"
+                f"name='{project_name}'\n"
+                "version='0.1.0'\n"
+                f"dependencies={dependencies}\n"
+            ),
+            encoding="utf-8",
+        )
+
+    result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
+    assert result.success, result.error
+    process = subprocess.run(
+        [
+            "make",
+            "-C",
+            str(workspace_root),
+            "-pn",
+        ],
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+
+    assert process.returncode == 0
+    assert (
+        "INDEPENDENT_PROJECTS := algar-oud-mig gruponos-meltano-native"
+        in process.stdout
+    )
+    assert (
+        "ATTACHABLE_PROJECTS := algar-oud-mig gruponos-meltano-native" in process.stdout
+    )
 
 
 def test_workspace_makefile_generator_uses_check_only_for_maintenance_validation(
