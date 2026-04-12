@@ -56,4 +56,4 @@ class FlextInfraInternalImportDetector:
         ]
 
 
-__all__ = ["FlextInfraInternalImportDetector"]
+__all__: list[str] = ["FlextInfraInternalImportDetector"]

@@ -105,4 +105,4 @@ class FlextInfraSilentFailureValidator(s[bool]):
         return r[bool].fail(details)
 
 
-__all__ = ["FlextInfraSilentFailureValidator"]
+__all__: list[str] = ["FlextInfraSilentFailureValidator"]

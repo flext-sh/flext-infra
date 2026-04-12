@@ -309,4 +309,4 @@ class FlextInfraCodegenPipeline(s[str]):
         )
 
 
-__all__ = ["FlextInfraCodegenPipeline"]
+__all__: list[str] = ["FlextInfraCodegenPipeline"]

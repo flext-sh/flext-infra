@@ -355,4 +355,4 @@ class FlextInfraConstantsBase(
         "Apply without post-validation."
 
 
-__all__ = ["FlextInfraConstantsBase"]
+__all__: list[str] = ["FlextInfraConstantsBase"]

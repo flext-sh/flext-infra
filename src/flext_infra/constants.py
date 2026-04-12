@@ -57,4 +57,4 @@ class FlextInfraConstants(c):
 
 
 c = FlextInfraConstants
-__all__ = ["FlextInfraConstants", "c"]
+__all__: list[str] = ["FlextInfraConstants", "c"]

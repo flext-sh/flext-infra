@@ -365,4 +365,4 @@ class FlextInfraUtilitiesRopeSource:
                 )
 
 
-__all__ = ["FlextInfraUtilitiesRopeSource"]
+__all__: list[str] = ["FlextInfraUtilitiesRopeSource"]

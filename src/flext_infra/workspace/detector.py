@@ -96,4 +96,4 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
         return self.detect(self.workspace_root)
 
 
-__all__ = ["FlextInfraWorkspaceDetector"]
+__all__: list[str] = ["FlextInfraWorkspaceDetector"]

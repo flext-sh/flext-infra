@@ -306,6 +306,6 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
         ]
 
 
-__all__ = [
+__all__: list[str] = [
     "FlextInfraModelsDepsToolConfigTypeCheckers",
 ]

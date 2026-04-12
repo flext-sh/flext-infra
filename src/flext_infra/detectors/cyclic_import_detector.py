@@ -76,4 +76,4 @@ class FlextInfraCyclicImportDetector:
         return violations
 
 
-__all__ = ["FlextInfraCyclicImportDetector"]
+__all__: list[str] = ["FlextInfraCyclicImportDetector"]

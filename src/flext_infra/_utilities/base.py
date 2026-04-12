@@ -337,4 +337,4 @@ class FlextInfraUtilitiesBase:
         )
 
 
-__all__ = ["FlextInfraUtilitiesBase"]
+__all__: list[str] = ["FlextInfraUtilitiesBase"]

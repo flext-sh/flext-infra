@@ -77,4 +77,4 @@ class FlextInfraImportAliasDetector:
         return violations
 
 
-__all__ = ["FlextInfraImportAliasDetector"]
+__all__: list[str] = ["FlextInfraImportAliasDetector"]

@@ -36,4 +36,4 @@ class FlextInfraFutureAnnotationsDetector:
         return [m.Infra.FutureAnnotationsViolation(file=str(file_path))]
 
 
-__all__ = ["FlextInfraFutureAnnotationsDetector"]
+__all__: list[str] = ["FlextInfraFutureAnnotationsDetector"]

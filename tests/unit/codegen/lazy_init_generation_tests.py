@@ -246,7 +246,7 @@ class TestGenerateFile:
         )
         tm.that(content, contains="if _t.TYPE_CHECKING:")
         tm.that(content, contains="import typing as _t")
-        tm.that(content, contains="__all__ = [")
+        tm.that(content, contains="__all__: list[str] = [")
         tm.that(
             content, contains="install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)"
         )
@@ -263,7 +263,7 @@ class TestGenerateFile:
             "test_pkg",
         )
         tm.that(
-            content.rfind("__all__ = [")
+            content.rfind("__all__: list[str] = [")
             > content.rfind("install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)"),
             eq=True,
         )
@@ -328,7 +328,7 @@ class TestGenerateFile:
         )
         tm.that(content, contains='".test_base": ("test_base",)')
         tm.that(content, contains="publish_all=False")
-        tm.that(content, lacks="__all__ = [")
+        tm.that(content, lacks="__all__: list[str] = [")
 
     def test_subpackage_omits_type_checking_for_internal_exports(self) -> None:
         """Subpackage __init__.py does not emit static imports for internals."""
@@ -432,7 +432,7 @@ class TestGenerateFile:
         )
         tm.that(content, lacks="if _t.TYPE_CHECKING:")
         tm.that(content, lacks="import typing as _t")
-        tm.that(content, lacks="__all__ = [")
+        tm.that(content, lacks="__all__: list[str] = [")
         tm.that(
             content,
             contains=(
@@ -458,7 +458,7 @@ class TestRunRuffFix:
         generated = tmp_path / "__init__.py"
         generated.write_text("__all__=[]\n", encoding="utf-8")
         u.Infra.run_ruff_fix(generated)
-        tm.that(generated.read_text(encoding="utf-8"), eq="__all__ = []\n")
+        tm.that(generated.read_text(encoding="utf-8"), eq="__all__: list[str] = []\n")
 
     def test_raises_when_ruff_postprocess_fails(
         self,

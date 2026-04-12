@@ -238,4 +238,4 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
         raise NotImplementedError
 
 
-__all__ = ["FlextInfraReleaseOrchestratorPhases"]
+__all__: list[str] = ["FlextInfraReleaseOrchestratorPhases"]

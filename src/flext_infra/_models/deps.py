@@ -343,4 +343,4 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
         )
 
 
-__all__ = ["FlextInfraModelsDeps"]
+__all__: list[str] = ["FlextInfraModelsDeps"]

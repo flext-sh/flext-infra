@@ -44,4 +44,4 @@ class FlextInfraSilentFailureDetector:
         ]
 
 
-__all__ = ["FlextInfraSilentFailureDetector"]
+__all__: list[str] = ["FlextInfraSilentFailureDetector"]

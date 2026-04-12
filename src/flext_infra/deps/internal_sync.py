@@ -280,4 +280,4 @@ class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
 
 if __name__ == "__main__":
     raise SystemExit(0)
-__all__ = ["FlextInfraInternalDependencySyncService"]
+__all__: list[str] = ["FlextInfraInternalDependencySyncService"]

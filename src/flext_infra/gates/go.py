@@ -98,4 +98,4 @@ class FlextInfraGoGate(FlextInfraGate):
         return passed and not issues, issues
 
 
-__all__ = ["FlextInfraGoGate"]
+__all__: list[str] = ["FlextInfraGoGate"]

@@ -334,4 +334,4 @@ class FlextInfraConstantsMake:
     )
 
 
-__all__ = ["FlextInfraConstantsMake"]
+__all__: list[str] = ["FlextInfraConstantsMake"]

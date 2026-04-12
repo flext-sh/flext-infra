@@ -182,4 +182,4 @@ class FlextInfraModelsDocs:
         ]
 
 
-__all__ = ["FlextInfraModelsDocs"]
+__all__: list[str] = ["FlextInfraModelsDocs"]

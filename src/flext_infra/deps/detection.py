@@ -139,6 +139,6 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
         return r[Sequence[Path]].ok(sorted(projects))
 
 
-__all__ = [
+__all__: list[str] = [
     "FlextInfraDependencyDetectionService",
 ]

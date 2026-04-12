@@ -252,4 +252,4 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
             )
 
 
-__all__ = ["FlextInfraUtilitiesRefactorNamespaceFacades"]
+__all__: list[str] = ["FlextInfraUtilitiesRefactorNamespaceFacades"]

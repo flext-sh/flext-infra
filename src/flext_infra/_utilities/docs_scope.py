@@ -367,4 +367,4 @@ class FlextInfraUtilitiesDocsScope:
         ]
 
 
-__all__ = ["FlextInfraUtilitiesDocsScope"]
+__all__: list[str] = ["FlextInfraUtilitiesDocsScope"]

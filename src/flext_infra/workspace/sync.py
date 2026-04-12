@@ -309,4 +309,4 @@ if __name__ == "__main__":
     raise SystemExit(0)
 
 
-__all__ = ["FlextInfraSyncService"]
+__all__: list[str] = ["FlextInfraSyncService"]

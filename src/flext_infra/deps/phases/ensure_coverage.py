@@ -73,4 +73,4 @@ class FlextInfraEnsureCoverageConfigPhase:
         )
 
 
-__all__ = ["FlextInfraEnsureCoverageConfigPhase"]
+__all__: list[str] = ["FlextInfraEnsureCoverageConfigPhase"]

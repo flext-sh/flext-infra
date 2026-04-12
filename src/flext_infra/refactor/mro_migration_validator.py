@@ -23,4 +23,4 @@ class FlextInfraRefactorMROMigrationValidator:
         return (remaining, 0)
 
 
-__all__ = ["FlextInfraRefactorMROMigrationValidator"]
+__all__: list[str] = ["FlextInfraRefactorMROMigrationValidator"]

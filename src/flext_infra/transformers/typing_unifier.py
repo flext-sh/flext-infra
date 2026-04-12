@@ -367,4 +367,4 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
         return len(source) if line_end == -1 else line_end + 1
 
 
-__all__ = ["FlextInfraRefactorTypingUnifier"]
+__all__: list[str] = ["FlextInfraRefactorTypingUnifier"]

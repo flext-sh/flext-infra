@@ -56,4 +56,4 @@ class FlextInfraModels(m):
 
 m = FlextInfraModels
 
-__all__ = ["FlextInfraModels", "m"]
+__all__: list[str] = ["FlextInfraModels", "m"]

@@ -46,4 +46,4 @@ class FlextInfraCliRefactor(FlextInfraServiceRefactorMixin):
         )
 
 
-__all__ = ["FlextInfraCliRefactor"]
+__all__: list[str] = ["FlextInfraCliRefactor"]

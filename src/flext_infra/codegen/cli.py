@@ -88,4 +88,4 @@ class FlextInfraCliCodegen:
         )
 
 
-__all__ = ["FlextInfraCliCodegen"]
+__all__: list[str] = ["FlextInfraCliCodegen"]

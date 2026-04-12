@@ -91,4 +91,4 @@ class FlextInfraDocGenerator(s[bool]):
         return report
 
 
-__all__ = ["FlextInfraDocGenerator"]
+__all__: list[str] = ["FlextInfraDocGenerator"]

@@ -24,4 +24,4 @@ class FlextInfraUtilitiesCodegen(
         )
 
 
-__all__ = ["FlextInfraUtilitiesCodegen"]
+__all__: list[str] = ["FlextInfraUtilitiesCodegen"]

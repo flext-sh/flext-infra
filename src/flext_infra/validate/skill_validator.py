@@ -319,4 +319,4 @@ class FlextInfraSkillValidator(s[bool]):
         return count
 
 
-__all__ = ["FlextInfraSkillValidator"]
+__all__: list[str] = ["FlextInfraSkillValidator"]

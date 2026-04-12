@@ -174,4 +174,4 @@ class FlextInfraUtilitiesSafety:
         )
 
 
-__all__ = ["FlextInfraUtilitiesSafety"]
+__all__: list[str] = ["FlextInfraUtilitiesSafety"]

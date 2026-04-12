@@ -132,4 +132,4 @@ class FlextInfraViolationCensusVisitor:
         return any(character.islower() for character in name[1:])
 
 
-__all__ = ["FlextInfraViolationCensusVisitor"]
+__all__: list[str] = ["FlextInfraViolationCensusVisitor"]

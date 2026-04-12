@@ -503,4 +503,4 @@ class FlextInfraUtilitiesParsing:
         return result
 
 
-__all__ = ["FlextInfraUtilitiesParsing"]
+__all__: list[str] = ["FlextInfraUtilitiesParsing"]

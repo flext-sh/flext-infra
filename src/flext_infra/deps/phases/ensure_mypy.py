@@ -66,4 +66,4 @@ class FlextInfraEnsureMypyConfigPhase:
         return FlextInfraToml.apply_payload_phases(payload, self._phase())
 
 
-__all__ = ["FlextInfraEnsureMypyConfigPhase"]
+__all__: list[str] = ["FlextInfraEnsureMypyConfigPhase"]

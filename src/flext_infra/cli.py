@@ -140,4 +140,4 @@ def main(args: Sequence[str] | None = None) -> int:
     return FlextInfraCli().main(args)
 
 
-__all__ = ["FlextInfraCli", "main"]
+__all__: list[str] = ["FlextInfraCli", "main"]

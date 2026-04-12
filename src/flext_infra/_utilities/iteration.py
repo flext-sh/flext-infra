@@ -479,4 +479,4 @@ class FlextInfraUtilitiesIteration:
         return None
 
 
-__all__ = ["FlextInfraUtilitiesIteration"]
+__all__: list[str] = ["FlextInfraUtilitiesIteration"]

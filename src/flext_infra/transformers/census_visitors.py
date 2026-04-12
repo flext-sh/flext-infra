@@ -144,4 +144,7 @@ class FlextInfraCensusUsageCollector:
         )
 
 
-__all__ = ["FlextInfraCensusImportDiscoveryVisitor", "FlextInfraCensusUsageCollector"]
+__all__: list[str] = [
+    "FlextInfraCensusImportDiscoveryVisitor",
+    "FlextInfraCensusUsageCollector",
+]

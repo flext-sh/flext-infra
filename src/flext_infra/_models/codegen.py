@@ -447,4 +447,4 @@ class FlextInfraModelsCodegen:
         ]
 
 
-__all__ = ["FlextInfraModelsCodegen"]
+__all__: list[str] = ["FlextInfraModelsCodegen"]

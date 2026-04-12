@@ -138,4 +138,4 @@ class FlextInfraRefactorCensus:
         return r[m.Infra.UtilitiesCensusReport].ok(rep)
 
 
-__all__ = ["FlextInfraRefactorCensus"]
+__all__: list[str] = ["FlextInfraRefactorCensus"]

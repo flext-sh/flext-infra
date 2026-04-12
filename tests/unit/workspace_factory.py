@@ -133,4 +133,4 @@ class WorkspaceFactory(m.Config):
         )
 
 
-__all__ = ["WorkspaceFactory"]
+__all__: list[str] = ["WorkspaceFactory"]

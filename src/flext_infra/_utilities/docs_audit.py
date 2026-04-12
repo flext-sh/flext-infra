@@ -273,4 +273,4 @@ class FlextInfraUtilitiesDocsAudit:
         ]
 
 
-__all__ = ["FlextInfraUtilitiesDocsAudit"]
+__all__: list[str] = ["FlextInfraUtilitiesDocsAudit"]

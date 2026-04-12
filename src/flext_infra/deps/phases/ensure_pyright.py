@@ -452,4 +452,4 @@ class FlextInfraEnsurePyrightConfigPhase:
         )
 
 
-__all__ = ["FlextInfraEnsurePyrightConfigPhase"]
+__all__: list[str] = ["FlextInfraEnsurePyrightConfigPhase"]

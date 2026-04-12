@@ -42,6 +42,46 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
                 return workspace_root
         return None
 
+    @staticmethod
+    def _package_name_for_dir(
+        package_dir: Path,
+        *,
+        project_root: Path,
+    ) -> str:
+        try:
+            relative_parts = package_dir.relative_to(project_root).parts
+        except ValueError:
+            return ""
+        if not relative_parts:
+            return ""
+        root_name = relative_parts[0]
+        package_parts = (
+            relative_parts[1:]
+            if root_name == c.Infra.DEFAULT_SRC_DIR
+            else relative_parts
+            if root_name in c.Infra.ROOT_WRAPPER_SEGMENTS
+            else ()
+        )
+        return ".".join(package_parts)
+
+    @classmethod
+    def _module_name_for_file(
+        cls,
+        file_path: Path,
+        *,
+        project_root: Path,
+    ) -> str:
+        if file_path.name == c.Infra.INIT_PY:
+            return cls._package_name_for_dir(
+                file_path.parent,
+                project_root=project_root,
+            )
+        package_name = cls._package_name_for_dir(
+            file_path.parent,
+            project_root=project_root,
+        )
+        return f"{package_name}.{file_path.stem}" if package_name else ""
+
     @classmethod
     def index_rope_workspace(
         cls,
@@ -51,43 +91,53 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
         """Build a generic Rope workspace index for package-oriented planning."""
         resolved_root = workspace_root.resolve()
         modules_by_path: dict[str, m.Infra.RopeModuleIndexEntry] = {}
+        modules_by_dir: dict[Path, list[m.Infra.RopeModuleIndexEntry]] = {}
         package_dir_by_name: dict[str, Path] = {}
         project_package_by_root: dict[str, str] = {}
         package_dirs: set[Path] = set()
-        for resource in FlextInfraUtilitiesRopeCore.python_resources(rope_project):
-            file_path = FlextInfraUtilitiesRopeCore.resource_file_path(
-                rope_project,
-                resource,
-            )
-            if file_path is None:
-                continue
+        for file_path in FlextInfraUtilitiesRopeCore.python_file_paths(rope_project):
+            resolved_file_path = file_path.resolve()
             try:
-                module_name = FlextInfraUtilitiesRopeCore.get_pymodule(
-                    rope_project,
-                    resource,
-                ).get_name()
-            except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
-                module_name = ""
-            package_dir = file_path.parent.resolve()
-            is_package_init = file_path.name == c.Infra.INIT_PY
+                resource_path = resolved_file_path.relative_to(resolved_root).as_posix()
+            except ValueError:
+                continue
+            package_dir = resolved_file_path.parent
+            is_package_init = resolved_file_path.name == c.Infra.INIT_PY
+            project_root = cls._project_root_for_file(
+                resolved_root,
+                resolved_file_path,
+            )
+            module_name = (
+                cls._module_name_for_file(
+                    resolved_file_path,
+                    project_root=project_root,
+                )
+                if project_root is not None
+                else ""
+            )
             package_name = (
-                module_name
+                cls._package_name_for_dir(
+                    package_dir,
+                    project_root=project_root,
+                )
+                if project_root is not None
+                else module_name
                 if is_package_init
                 else module_name.rsplit(".", maxsplit=1)[0]
                 if "." in module_name
                 else ""
             )
-            project_root = cls._project_root_for_file(resolved_root, file_path)
             entry = m.Infra.RopeModuleIndexEntry(
-                file_path=file_path,
-                resource_path=resource.path,
+                file_path=resolved_file_path,
+                resource_path=resource_path,
                 module_name=module_name,
                 package_name=package_name,
                 package_dir=package_dir,
                 project_root=project_root,
                 is_package_init=is_package_init,
             )
-            modules_by_path[str(file_path)] = entry
+            modules_by_path[str(resolved_file_path)] = entry
+            modules_by_dir.setdefault(package_dir, []).append(entry)
             package_dirs.add(package_dir)
             if package_name:
                 package_dir_by_name[package_name] = package_dir
@@ -98,21 +148,32 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
                 ):
                     project_package_by_root[str(project_root)] = package_name
         sorted_package_dirs = tuple(sorted(package_dirs))
+        package_dir_set = frozenset(sorted_package_dirs)
+        direct_children_by_dir: dict[Path, list[Path]] = {
+            package_dir: [] for package_dir in sorted_package_dirs
+        }
+        descendants_by_dir: dict[Path, list[Path]] = {
+            package_dir: [] for package_dir in sorted_package_dirs
+        }
+        for package_dir in sorted_package_dirs:
+            parent_dir = package_dir.parent
+            if parent_dir in package_dir_set:
+                direct_children_by_dir[parent_dir].append(package_dir)
+            for ancestor_dir in package_dir.parents:
+                if ancestor_dir == package_dir:
+                    continue
+                if ancestor_dir in package_dir_set:
+                    descendants_by_dir[ancestor_dir].append(package_dir)
         packages_by_dir: dict[str, m.Infra.RopePackageIndexEntry] = {}
         for package_dir in sorted_package_dirs:
             dir_modules = tuple(
                 sorted(
-                    (
-                        entry
-                        for entry in modules_by_path.values()
-                        if entry.package_dir == package_dir
-                    ),
+                    modules_by_dir.get(package_dir, ()),
                     key=lambda entry: entry.file_path.name,
                 ),
             )
             init_path = (package_dir / c.Infra.INIT_PY).resolve()
             init_entry = modules_by_path.get(str(init_path))
-            package_name = init_entry.package_name if init_entry is not None else ""
             project_root = (
                 init_entry.project_root
                 if init_entry is not None
@@ -125,16 +186,27 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
                     None,
                 )
             )
-            direct_child_dirs = tuple(
-                child_dir
-                for child_dir in sorted_package_dirs
-                if child_dir.parent == package_dir
+            package_name = (
+                cls._package_name_for_dir(
+                    package_dir,
+                    project_root=project_root,
+                )
+                if project_root is not None
+                else init_entry.package_name
+                if init_entry is not None
+                else ""
             )
-            descendant_child_dirs = tuple(
-                child_dir
-                for child_dir in sorted_package_dirs
-                if child_dir != package_dir and package_dir in child_dir.parents
-            )
+            if package_name and package_name not in package_dir_by_name:
+                package_dir_by_name[package_name] = package_dir
+            if (
+                project_root is not None
+                and "." not in package_name
+                and package_dir.parent.name == c.Infra.DEFAULT_SRC_DIR
+                and str(project_root) not in project_package_by_root
+            ):
+                project_package_by_root[str(project_root)] = package_name
+            direct_child_dirs = tuple(direct_children_by_dir.get(package_dir, ()))
+            descendant_child_dirs = tuple(descendants_by_dir.get(package_dir, ()))
             packages_by_dir[str(package_dir)] = m.Infra.RopePackageIndexEntry(
                 package_dir=package_dir,
                 init_path=init_path,
@@ -279,4 +351,4 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
         return result
 
 
-__all__ = ["FlextInfraUtilitiesRopeAnalysisIntrospection"]
+__all__: list[str] = ["FlextInfraUtilitiesRopeAnalysisIntrospection"]

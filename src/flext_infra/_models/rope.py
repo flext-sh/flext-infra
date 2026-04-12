@@ -195,5 +195,33 @@ class FlextInfraModelsRope:
             ),
         ]
 
+    class RopeWorkspaceSession(m.ContractModel):
+        """Public Rope workspace snapshot used by the service DSL."""
 
-__all__ = ["FlextInfraModelsRope"]
+        workspace_root: Annotated[
+            Path,
+            Field(description="Resolved workspace root requested by the caller"),
+        ]
+        rope_workspace_root: Annotated[
+            Path,
+            Field(description="Canonical root used to open the shared Rope project"),
+        ]
+        project_prefix: Annotated[
+            str,
+            Field(description="Project prefix passed to the Rope bootstrap"),
+        ]
+        src_dir: Annotated[
+            str,
+            Field(description="Primary source directory hint for Rope bootstrap"),
+        ]
+        ignored_resources: Annotated[
+            tuple[str, ...],
+            Field(description="Ignored Rope resource patterns"),
+        ] = ()
+        workspace_index: Annotated[
+            FlextInfraModelsRope.RopeWorkspaceIndex,
+            Field(description="Materialized workspace index for the open session"),
+        ]
+
+
+__all__: list[str] = ["FlextInfraModelsRope"]

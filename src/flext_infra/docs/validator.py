@@ -143,4 +143,4 @@ class FlextInfraDocValidator(s[bool]):
         return report
 
 
-__all__ = ["FlextInfraDocValidator"]
+__all__: list[str] = ["FlextInfraDocValidator"]

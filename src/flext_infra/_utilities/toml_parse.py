@@ -309,4 +309,4 @@ class FlextInfraUtilitiesTomlParse:
         return r[t.Infra.ContainerDict].ok(data)
 
 
-__all__ = ["FlextInfraUtilitiesTomlParse"]
+__all__: list[str] = ["FlextInfraUtilitiesTomlParse"]

@@ -193,4 +193,4 @@ class FlextInfraRefactorMROSymbolPropagator(FlextInfraRopeTransformer):
         )
 
 
-__all__ = ["FlextInfraRefactorMROSymbolPropagator"]
+__all__: list[str] = ["FlextInfraRefactorMROSymbolPropagator"]

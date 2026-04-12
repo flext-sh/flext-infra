@@ -79,4 +79,4 @@ class FlextInfraDocBuilder(s[bool]):
         return report
 
 
-__all__ = ["FlextInfraDocBuilder"]
+__all__: list[str] = ["FlextInfraDocBuilder"]

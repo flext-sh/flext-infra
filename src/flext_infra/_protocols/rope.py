@@ -10,7 +10,8 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Protocol
+from types import TracebackType
+from typing import TYPE_CHECKING, Protocol, Self
 
 if TYPE_CHECKING:
     from flext_infra import m, t
@@ -18,6 +19,60 @@ if TYPE_CHECKING:
 
 class FlextInfraProtocolsRope(Protocol):
     """Application contracts layered around the concrete Rope boundary."""
+
+    class RopeWorkspaceDsl(Protocol):
+        """Public DSL contract for one shared Rope workspace session."""
+
+        workspace_root: Path
+
+        @property
+        def rope_workspace_root(self) -> Path: ...
+
+        @property
+        def rope_project(self) -> t.Infra.RopeProject: ...
+
+        @property
+        def workspace_index(self) -> m.Infra.RopeWorkspaceIndex: ...
+
+        def __enter__(self) -> Self: ...
+
+        def __exit__(
+            self,
+            _exc_type: type[BaseException] | None,
+            _exc: BaseException | None,
+            _tb: TracebackType | None,
+        ) -> None: ...
+
+        def close(self) -> None: ...
+
+        def resource(
+            self,
+            file_path: Path,
+        ) -> t.Infra.RopeResource | None: ...
+
+        def module_entry(
+            self,
+            file_path: Path,
+        ) -> m.Infra.RopeModuleIndexEntry | None: ...
+
+        def package_entry(
+            self,
+            package_dir: Path,
+        ) -> m.Infra.RopePackageIndexEntry | None: ...
+
+        def module_semantic_state(
+            self,
+            file_path: Path,
+        ) -> m.Infra.ModuleSemanticState: ...
+
+        def module_export_names(
+            self,
+            file_path: Path,
+            *,
+            include_dunder: bool = False,
+            allow_main: bool = False,
+            allow_assignments: bool = False,
+        ) -> t.StrSequence: ...
 
     class RopePostHook(Protocol):
         """Contract for post-processing hooks invoked after Rope refactoring."""
@@ -68,4 +123,4 @@ class FlextInfraProtocolsRope(Protocol):
         ) -> t.Infra.RopeResource | None: ...
 
 
-__all__ = ["FlextInfraProtocolsRope"]
+__all__: list[str] = ["FlextInfraProtocolsRope"]

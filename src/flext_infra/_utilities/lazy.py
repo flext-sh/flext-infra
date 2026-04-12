@@ -319,4 +319,4 @@ class FlextInfraUtilitiesCodegenLazyAliases:
         raise ValueError(message)
 
 
-__all__ = ["FlextInfraUtilitiesCodegenLazyAliases"]
+__all__: list[str] = ["FlextInfraUtilitiesCodegenLazyAliases"]

@@ -53,4 +53,4 @@ class FlextInfraModelsGates:
         ] = ()
 
 
-__all__ = ["FlextInfraModelsGates"]
+__all__: list[str] = ["FlextInfraModelsGates"]

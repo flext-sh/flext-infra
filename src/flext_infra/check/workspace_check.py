@@ -198,4 +198,4 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
         )
 
 
-__all__ = ["FlextInfraWorkspaceChecker"]
+__all__: list[str] = ["FlextInfraWorkspaceChecker"]

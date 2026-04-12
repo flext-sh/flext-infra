@@ -23,4 +23,4 @@ class FlextInfraConstantsRope:
     "Resources rope should ignore when scanning the project tree."
 
 
-__all__ = ["FlextInfraConstantsRope"]
+__all__: list[str] = ["FlextInfraConstantsRope"]

@@ -247,9 +247,29 @@ class FlextInfraUtilitiesDiscovery:
         )
 
     @staticmethod
+    def _child_project_roots(workspace_root: Path) -> tuple[Path, ...]:
+        if not workspace_root.is_dir():
+            return ()
+        return tuple(
+            child
+            for child in workspace_root.iterdir()
+            if child.is_dir()
+            and not child.name.startswith(".")
+            and any(
+                (child / dir_name).is_dir() for dir_name in c.Infra.MRO_SCAN_DIRECTORIES
+            )
+            and (
+                (child / c.Infra.PYPROJECT_FILENAME).is_file()
+                or (child / c.Infra.GO_MOD).is_file()
+            )
+        )
+
+    @staticmethod
     def rope_workspace_root(workspace_root: Path) -> Path:
         """Return the canonical root for a shared Rope project."""
         resolved_root = workspace_root.resolve()
+        if FlextInfraUtilitiesDiscovery._child_project_roots(resolved_root):
+            return resolved_root
         project_root = (
             FlextInfraUtilitiesDiscovery.discover_project_root_from_file(resolved_root)
             or resolved_root
@@ -453,4 +473,4 @@ class FlextInfraUtilitiesDiscovery:
         return {}
 
 
-__all__ = ["FlextInfraUtilitiesDiscovery"]
+__all__: list[str] = ["FlextInfraUtilitiesDiscovery"]

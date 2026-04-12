@@ -83,7 +83,7 @@ class TestsFlextInfraLazyInitHelpers:
             "    pass\n\n"
             "demo = FlextDemo()\n"
             "hidden = FlextDemo()\n\n"
-            '__all__ = ["FlextDemo", "demo"]\n',
+            '__all__: list[str] = ["FlextDemo", "demo"]\n',
             encoding=c.Infra.ENCODING_DEFAULT,
         )
 
@@ -103,7 +103,7 @@ class TestsFlextInfraLazyInitHelpers:
             "from __future__ import annotations\n\n"
             "class FlextDemoService:\n"
             "    pass\n\n"
-            '__all__ = ["FlextDemoService"]\n',
+            '__all__: list[str] = ["FlextDemoService"]\n',
             encoding=c.Infra.ENCODING_DEFAULT,
         )
         (child_dir / "colors.py").write_text(
@@ -132,7 +132,7 @@ class TestsFlextInfraLazyInitHelpers:
     def test_tests_root_aliases_follow_export_hierarchy(self, tmp_path: Path) -> None:
         workspace_root, package_root = self._workspace(tmp_path)
         package_root.joinpath(c.Infra.INIT_PY).write_text(
-            '__all__ = ["d"]\n',
+            '__all__: list[str] = ["d"]\n',
             encoding=c.Infra.ENCODING_DEFAULT,
         )
         package_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
@@ -152,7 +152,7 @@ class TestsFlextInfraLazyInitHelpers:
             encoding=c.Infra.ENCODING_DEFAULT,
         )
         tests_support_root.joinpath(c.Infra.INIT_PY).write_text(
-            '__all__ = ["d", "td"]\n',
+            '__all__: list[str] = ["d", "td"]\n',
             encoding=c.Infra.ENCODING_DEFAULT,
         )
         tests_support_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
@@ -184,7 +184,7 @@ class TestsFlextInfraLazyInitHelpers:
             "from __future__ import annotations\n\n"
             "class Child:\n"
             "    pass\n\n"
-            '__all__ = ["Child"]\n',
+            '__all__: list[str] = ["Child"]\n',
             encoding=c.Infra.ENCODING_DEFAULT,
         )
 
@@ -233,7 +233,7 @@ class TestsFlextInfraLazyInitHelpers:
             encoding=c.Infra.ENCODING_DEFAULT,
         )
         cli_root.joinpath(c.Infra.INIT_PY).write_text(
-            '__all__ = ["c"]\n',
+            '__all__: list[str] = ["c"]\n',
             encoding=c.Infra.ENCODING_DEFAULT,
         )
         cli_root.joinpath(c.Infra.CONSTANTS_PY).write_text(

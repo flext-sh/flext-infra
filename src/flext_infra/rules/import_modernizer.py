@@ -66,4 +66,4 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
         return (new_source, changes)
 
 
-__all__ = ["FlextInfraRefactorImportModernizerRule"]
+__all__: list[str] = ["FlextInfraRefactorImportModernizerRule"]

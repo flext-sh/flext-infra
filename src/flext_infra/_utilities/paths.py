@@ -87,4 +87,4 @@ class FlextInfraUtilitiesPaths:
         return result.unwrap_or(Path.cwd().resolve())
 
 
-__all__ = ["FlextInfraUtilitiesPaths"]
+__all__: list[str] = ["FlextInfraUtilitiesPaths"]

@@ -235,4 +235,4 @@ class FlextInfraUtilitiesGithubPr:
         return command
 
 
-__all__ = ["FlextInfraUtilitiesGithubPr"]
+__all__: list[str] = ["FlextInfraUtilitiesGithubPr"]

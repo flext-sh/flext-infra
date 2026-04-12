@@ -27,7 +27,6 @@ if _t.TYPE_CHECKING:
     from tests.unit._utilities.test_formatting import (
         TestsFlextInfraUtilitiesFormattingRunRuffFix,
     )
-    from tests.unit._utilities.test_iteration import TestIterWorkspacePythonModules
     from tests.unit._utilities.test_safety import (
         TestSafetyCheckpoint,
         TestSafetyRollback,
@@ -81,6 +80,10 @@ _LAZY_IMPORTS = merge_lazy_imports(
         },
     ),
     exclude_names=(
+        "FlextDispatcher",
+        "FlextLogger",
+        "FlextRegistry",
+        "FlextRuntime",
         "cleanup_submodule_namespace",
         "install_lazy_exports",
         "lazy_getattr",
@@ -95,8 +98,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
 
 install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)
 
-__all__ = [
-    "TestIterWorkspacePythonModules",
+__all__: list[str] = [
     "TestSafetyCheckpoint",
     "TestSafetyRollback",
     "TestScanModels",

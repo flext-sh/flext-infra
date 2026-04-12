@@ -92,4 +92,4 @@ class FlextInfraUtilitiesRefactor(
         return path.as_posix().lstrip("./")
 
 
-__all__ = ["FlextInfraUtilitiesRefactor"]
+__all__: list[str] = ["FlextInfraUtilitiesRefactor"]

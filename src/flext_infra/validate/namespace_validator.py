@@ -119,4 +119,4 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
         return FlextInfraUtilitiesParsing.parse_module_ast(path)
 
 
-__all__ = ["FlextInfraNamespaceValidator"]
+__all__: list[str] = ["FlextInfraNamespaceValidator"]

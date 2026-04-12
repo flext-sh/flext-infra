@@ -339,4 +339,4 @@ class FlextInfraUtilitiesDocsApi:
         return issues
 
 
-__all__ = ["FlextInfraUtilitiesDocsApi"]
+__all__: list[str] = ["FlextInfraUtilitiesDocsApi"]

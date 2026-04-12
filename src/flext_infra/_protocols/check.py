@@ -28,7 +28,7 @@ class FlextInfraProtocolsCheck(Protocol):
     """Check-domain protocol definitions."""
 
 
-__all__ = [
+__all__: list[str] = [
     "FlextInfraProtocolsCheck",
     "WorkspaceLoopOutcome",
 ]

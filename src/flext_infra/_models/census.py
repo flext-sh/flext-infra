@@ -232,4 +232,4 @@ class FlextInfraModelsCensus:
             ] = 0
 
 
-__all__ = ["FlextInfraModelsCensus"]
+__all__: list[str] = ["FlextInfraModelsCensus"]

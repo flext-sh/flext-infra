@@ -310,4 +310,4 @@ class FlextInfraWorkspaceCheckGatesMixin:
         return gate_instance.check(project_dir, ctx)
 
 
-__all__ = ["FlextInfraGateRegistry", "FlextInfraWorkspaceCheckGatesMixin"]
+__all__: list[str] = ["FlextInfraGateRegistry", "FlextInfraWorkspaceCheckGatesMixin"]

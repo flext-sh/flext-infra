@@ -50,4 +50,4 @@ class FlextInfraCompatibilityAliasDetector:
         return violations
 
 
-__all__ = ["FlextInfraCompatibilityAliasDetector"]
+__all__: list[str] = ["FlextInfraCompatibilityAliasDetector"]

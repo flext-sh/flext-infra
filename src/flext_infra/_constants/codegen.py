@@ -246,4 +246,4 @@ class FlextInfraConstantsCodegen:
     QG_CHECK_LINT_CLEAN: Final[str] = "lint_clean"
 
 
-__all__ = ["FlextInfraConstantsCodegen"]
+__all__: list[str] = ["FlextInfraConstantsCodegen"]

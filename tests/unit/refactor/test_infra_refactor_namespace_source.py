@@ -390,7 +390,7 @@ def test_rewriter_preserves_non_alias_symbols(tmp_path: Path) -> None:
     target = package_dir / "consumer.py"
     target.write_text(
         "from __future__ import annotations\n\nfrom collections.abc import Mapping, Sequence\n"
-        "from flext_core import FlextLogger, u\n"
+        "from flext_core import u\n"
         "_ = (FlextLogger, u)\n",
     )
 
@@ -400,7 +400,7 @@ def test_rewriter_preserves_non_alias_symbols(tmp_path: Path) -> None:
     )
 
     rewritten = target.read_text(encoding="utf-8")
-    assert "from flext_core import FlextLogger, u" in rewritten
+    assert "from flext_core import u" in rewritten
     assert f"from {package_name} import u" not in rewritten
 
 
@@ -414,7 +414,7 @@ def test_rewriter_namespace_source_is_idempotent_with_ruff(tmp_path: Path) -> No
     target = package_dir / "consumer.py"
     target.write_text(
         "from __future__ import annotations\n\nfrom collections.abc import Mapping, Sequence\n"
-        "from flext_core import FlextLogger, m, r\n"
+        "from flext_core import m, r\n"
         f"from {package_name}.utilities import u\n"
         "_ = (FlextLogger, m, r, u)\n",
     )

@@ -42,6 +42,6 @@ class FlextInfraUtilitiesOutputFailureSummary:
         cls._stream.flush()
 
 
-__all__ = [
+__all__: list[str] = [
     "FlextInfraUtilitiesOutputFailureSummary",
 ]

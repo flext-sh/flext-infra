@@ -347,4 +347,4 @@ class FlextInfraUtilitiesRefactorMroScan:
         return sorted(cands)
 
 
-__all__ = ["FlextInfraUtilitiesRefactorMroScan"]
+__all__: list[str] = ["FlextInfraUtilitiesRefactorMroScan"]

@@ -148,4 +148,4 @@ class FlextInfraProjectMakefileUpdater:
         return "\n".join(lines) + "\n"
 
 
-__all__ = ["FlextInfraProjectMakefileUpdater"]
+__all__: list[str] = ["FlextInfraProjectMakefileUpdater"]

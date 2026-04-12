@@ -207,4 +207,4 @@ class FlextInfraEnsureRuffConfigPhase:
         return changes
 
 
-__all__ = ["FlextInfraEnsureRuffConfigPhase"]
+__all__: list[str] = ["FlextInfraEnsureRuffConfigPhase"]

@@ -338,4 +338,4 @@ class FlextInfraProjectClassifier:
         return dependency_kind
 
 
-__all__ = ["FlextInfraProjectClassifier"]
+__all__: list[str] = ["FlextInfraProjectClassifier"]

@@ -311,4 +311,4 @@ class FlextInfraToml(s[Sequence[t.StrSequence]]):
         )
 
 
-__all__ = ["FlextInfraToml"]
+__all__: list[str] = ["FlextInfraToml"]

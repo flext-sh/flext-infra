@@ -52,6 +52,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ),
             ".test_infra_reporting_core": ("test_infra_reporting_core",),
             ".test_infra_reporting_extra": ("test_infra_reporting_extra",),
+            ".test_infra_rope_service": ("test_infra_rope_service",),
             ".test_infra_selection": ("test_infra_selection",),
             ".test_infra_typings": ("test_infra_typings",),
             ".test_infra_utilities": ("test_infra_utilities",),
@@ -85,6 +86,10 @@ _LAZY_IMPORTS = merge_lazy_imports(
         },
     ),
     exclude_names=(
+        "FlextDispatcher",
+        "FlextLogger",
+        "FlextRegistry",
+        "FlextRuntime",
         "cleanup_submodule_namespace",
         "install_lazy_exports",
         "lazy_getattr",

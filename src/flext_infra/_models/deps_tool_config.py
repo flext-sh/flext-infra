@@ -246,4 +246,4 @@ class FlextInfraModelsDepsToolSettings(
         )
 
 
-__all__ = ["FlextInfraModelsDepsToolSettings"]
+__all__: list[str] = ["FlextInfraModelsDepsToolSettings"]

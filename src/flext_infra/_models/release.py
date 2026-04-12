@@ -92,4 +92,4 @@ class FlextInfraModelsRelease:
         phase: Annotated[t.NonEmptyStr, Field(description="Release phase")]
 
 
-__all__ = ["FlextInfraModelsRelease"]
+__all__: list[str] = ["FlextInfraModelsRelease"]

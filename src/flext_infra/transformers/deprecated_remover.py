@@ -55,4 +55,4 @@ class FlextInfraRefactorDeprecatedRemover:
             self._on_change(message)
 
 
-__all__ = ["FlextInfraRefactorDeprecatedRemover"]
+__all__: list[str] = ["FlextInfraRefactorDeprecatedRemover"]

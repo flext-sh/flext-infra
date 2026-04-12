@@ -64,4 +64,4 @@ class FlextInfraModelsBasemk:
         ]
 
 
-__all__ = ["FlextInfraModelsBasemk"]
+__all__: list[str] = ["FlextInfraModelsBasemk"]

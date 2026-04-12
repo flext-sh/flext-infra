@@ -66,4 +66,4 @@ class FlextInfraConstantsCheck:
     PYREFLY_ERRORS_KEY: Final[str] = "errors"
 
 
-__all__ = ["FlextInfraConstantsCheck"]
+__all__: list[str] = ["FlextInfraConstantsCheck"]

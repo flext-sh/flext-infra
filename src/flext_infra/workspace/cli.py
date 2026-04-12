@@ -70,4 +70,4 @@ class FlextInfraCliWorkspace:
         )
 
 
-__all__ = ["FlextInfraCliWorkspace"]
+__all__: list[str] = ["FlextInfraCliWorkspace"]

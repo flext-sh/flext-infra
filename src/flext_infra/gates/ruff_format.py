@@ -88,4 +88,4 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
         return [c.Infra.RUFF, c.Infra.FORMAT, "."]
 
 
-__all__ = ["FlextInfraRuffFormatGate"]
+__all__: list[str] = ["FlextInfraRuffFormatGate"]

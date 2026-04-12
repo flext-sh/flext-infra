@@ -61,4 +61,4 @@ class FlextInfraRefactorMROClassMigrationRule:
         return (updated_source, [f"migrated constants into facade class: {syms}"])
 
 
-__all__ = ["FlextInfraRefactorMROClassMigrationRule"]
+__all__: list[str] = ["FlextInfraRefactorMROClassMigrationRule"]

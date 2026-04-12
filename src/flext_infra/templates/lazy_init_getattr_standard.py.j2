@@ -32,7 +32,7 @@ install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, publish_all=False)
 {%- endif %}
 {%- if publish_all and exports %}
 
-__all__ = [
+__all__: list[str] = [
 {%- for export in exports %}
     "{{ export }}",
 {%- endfor %}

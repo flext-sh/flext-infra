@@ -255,6 +255,6 @@ class FlextInfraUtilitiesOutputReporting:
         return "\n".join(lines)
 
 
-__all__ = [
+__all__: list[str] = [
     "FlextInfraUtilitiesOutputReporting",
 ]

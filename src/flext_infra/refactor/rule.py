@@ -230,4 +230,4 @@ class FlextInfraUtilitiesRefactorRuleLoader:
         return definitions
 
 
-__all__ = ["FlextInfraUtilitiesRefactorRuleLoader"]
+__all__: list[str] = ["FlextInfraUtilitiesRefactorRuleLoader"]

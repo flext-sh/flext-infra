@@ -173,7 +173,7 @@ def real_docs_project(tmp_path: Path) -> Path:
     return project_root
 
 
-__all__ = [
+__all__: list[str] = [
     "deptry_report_payload",
     "modernizer_workspace",
     "modernizer_workspace_with_projects",

@@ -113,4 +113,4 @@ class FlextInfraEnsureFormattingToolingPhase:
         return changes
 
 
-__all__ = ["FlextInfraEnsureFormattingToolingPhase"]
+__all__: list[str] = ["FlextInfraEnsureFormattingToolingPhase"]

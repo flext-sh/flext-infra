@@ -150,4 +150,4 @@ class FlextInfraRefactorLooseClassScanner:
         return "".join(w.capitalize() for w in norm.split())
 
 
-__all__ = ["FlextInfraRefactorLooseClassScanner"]
+__all__: list[str] = ["FlextInfraRefactorLooseClassScanner"]

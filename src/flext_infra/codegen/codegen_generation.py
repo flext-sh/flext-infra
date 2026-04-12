@@ -611,4 +611,4 @@ class FlextInfraCodegenGeneration:
         return "\n".join(out) + "\n"
 
 
-__all__ = ["FlextInfraCodegenGeneration"]
+__all__: list[str] = ["FlextInfraCodegenGeneration"]

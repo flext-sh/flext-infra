@@ -98,4 +98,4 @@ class FlextInfraUtilities(u):
 
 u = FlextInfraUtilities
 
-__all__ = ["FlextInfraUtilities", "u"]
+__all__: list[str] = ["FlextInfraUtilities", "u"]

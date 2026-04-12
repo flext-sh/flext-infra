@@ -57,4 +57,4 @@ class FlextInfraManualTypingAliasDetector:
         return violations
 
 
-__all__ = ["FlextInfraManualTypingAliasDetector"]
+__all__: list[str] = ["FlextInfraManualTypingAliasDetector"]

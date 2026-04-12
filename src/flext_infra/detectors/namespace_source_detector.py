@@ -110,4 +110,4 @@ class FlextInfraNamespaceSourceDetector:
         return set(c.Infra.RUNTIME_ALIAS_NAMES) if init_path.is_file() else set()
 
 
-__all__ = ["FlextInfraNamespaceSourceDetector"]
+__all__: list[str] = ["FlextInfraNamespaceSourceDetector"]

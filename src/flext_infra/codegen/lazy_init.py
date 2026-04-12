@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
+from time import perf_counter
 from typing import override
 
 from pydantic import PrivateAttr
@@ -25,6 +26,7 @@ from flext_infra import (
     u,
 )
 from flext_infra.codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
+from flext_infra.services.rope import FlextInfraRopeWorkspace
 
 
 class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
@@ -59,35 +61,40 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
     def generate_inits(self, *, check_only: bool = False) -> int:
         """Process all package directories bottom-up and generate PEP 562 inits."""
         self._modified_files.clear()
+        if not self.workspace_root.exists():
+            u.Infra.info("Lazy-init summary: 0 generated, 0 errors (0 dirs scanned)")
+            return 0
+        started_at = perf_counter()
+        u.Infra.info(
+            "lazy-init: starting "
+            f"({'check' if check_only else 'apply'}) for {self.workspace_root}",
+        )
         lazy_init = u.Infra.load_tool_config().unwrap().lazy_init
-        rope_workspace_root = u.Infra.rope_workspace_root(self.workspace_root)
-        with u.Infra.open_project(rope_workspace_root) as rope_project:
-            workspace_index = u.Infra.index_rope_workspace(
-                rope_project,
-                rope_workspace_root,
-            )
+        with FlextInfraRopeWorkspace.open_workspace(self.workspace_root) as rope:
             planner = FlextInfraCodegenLazyInitPlanner(
-                workspace_root=rope_workspace_root,
-                rope_project=rope_project,
-                workspace_index=workspace_index,
+                rope_workspace=rope,
                 lazy_init=lazy_init,
             )
-            total, ok, errors, _dir_exports = self._generate_all_inits(
-                sorted(
-                    (
-                        package_dir
-                        for package_dir in workspace_index.package_dirs
-                        if package_dir.is_relative_to(self.workspace_root.resolve())
-                    ),
-                    key=lambda path: len(path.parts),
-                    reverse=True,
+            package_dirs = sorted(
+                (
+                    package_dir
+                    for package_dir in rope.workspace_index.package_dirs
+                    if package_dir.is_relative_to(self.workspace_root.resolve())
                 ),
+                key=lambda path: len(path.parts),
+                reverse=True,
+            )
+            u.Infra.info(
+                f"lazy-init: planning {len(package_dirs)} package dirs",
+            )
+            total, ok, errors, _dir_exports = self._generate_all_inits(
+                package_dirs,
                 check_only=check_only,
                 planner=planner,
             )
         u.Infra.info(
             f"Lazy-init summary: {ok} generated, {errors} errors"
-            f" ({total} dirs scanned)",
+            f" ({total} dirs scanned, {perf_counter() - started_at:.2f}s)",
         )
         return errors
 
@@ -100,8 +107,18 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
     ) -> tuple[int, int, int, MutableMapping[str, t.Infra.LazyImportMap]]:
         total = ok = errors = 0
         dir_exports: MutableMapping[str, t.Infra.LazyImportMap] = {}
-        for pkg_dir in pkg_dirs:
+        progress_interval = max(1, len(pkg_dirs) // 20) if pkg_dirs else 1
+        for idx, pkg_dir in enumerate(pkg_dirs, start=1):
             total += 1
+            if idx == 1 or idx == len(pkg_dirs) or idx % progress_interval == 0:
+                rel_path = (
+                    pkg_dir.relative_to(self.workspace_root)
+                    if self.workspace_root in pkg_dir.parents
+                    else pkg_dir
+                )
+                u.Infra.info(
+                    f"lazy-init: progress {idx}/{len(pkg_dirs)} — {rel_path}",
+                )
             result, exports = self._process_directory(
                 pkg_dir,
                 check_only=check_only,
@@ -223,4 +240,4 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
         return (0, dict(lazy_map))
 
 
-__all__ = ["FlextInfraCodegenLazyInit"]
+__all__: list[str] = ["FlextInfraCodegenLazyInit"]

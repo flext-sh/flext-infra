@@ -109,7 +109,7 @@ __author__ = FlextInfraVersion.__author__
 __author_email__ = FlextInfraVersion.__author_email__
 __license__ = FlextInfraVersion.__license__
 __url__ = FlextInfraVersion.__url__
-__all__ = [
+__all__: list[str] = [
     "FlextInfraVersion",
     "__author__",
     "__author_email__",

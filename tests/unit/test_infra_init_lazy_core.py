@@ -159,6 +159,11 @@ class TestFlextInfraInitLazyLoading:
         service = flext_infra.FlextInfraUtilitiesReporting
         assert service is not None
 
+    def test_lazy_import_rope_workspace_service(self) -> None:
+        """Test lazy loading of the public Rope workspace DSL service."""
+        service = flext_infra.FlextInfraRopeWorkspace
+        assert service is not None
+
     def test_removed_legacy_output_export(self) -> None:
         """Legacy output wrapper is no longer exported."""
         with pytest.raises(AttributeError):

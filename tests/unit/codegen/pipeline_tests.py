@@ -54,7 +54,7 @@ def _write_package_init(pkg_dir: Path, package_name: str) -> None:
             "",
             f"from {package_name}.constants import {prefix}Constants",
             "",
-            "__all__ = [",
+            "__all__: list[str] = [",
             f'    "{prefix}Constants",',
             "]",
             "",

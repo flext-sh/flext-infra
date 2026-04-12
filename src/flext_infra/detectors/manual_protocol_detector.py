@@ -39,4 +39,4 @@ class FlextInfraManualProtocolDetector:
         ]
 
 
-__all__ = ["FlextInfraManualProtocolDetector"]
+__all__: list[str] = ["FlextInfraManualProtocolDetector"]

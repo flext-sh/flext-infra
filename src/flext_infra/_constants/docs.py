@@ -12,4 +12,4 @@ class FlextInfraConstantsDocs:
     DOCS_CONFIG_FILENAME: Final[str] = "docs_config.json"
 
 
-__all__ = ["FlextInfraConstantsDocs"]
+__all__: list[str] = ["FlextInfraConstantsDocs"]

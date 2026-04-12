@@ -58,4 +58,4 @@ class FlextInfraClassPlacementDetector:
         return violations
 
 
-__all__ = ["FlextInfraClassPlacementDetector"]
+__all__: list[str] = ["FlextInfraClassPlacementDetector"]

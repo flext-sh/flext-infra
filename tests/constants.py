@@ -55,4 +55,4 @@ class TestsFlextInfraConstants(
 
 
 c = TestsFlextInfraConstants
-__all__ = ["TestsFlextInfraConstants", "c"]
+__all__: list[str] = ["TestsFlextInfraConstants", "c"]

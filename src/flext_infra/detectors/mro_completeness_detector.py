@@ -96,4 +96,4 @@ class FlextInfraMROCompletenessDetector:
         ]
 
 
-__all__ = ["FlextInfraMROCompletenessDetector"]
+__all__: list[str] = ["FlextInfraMROCompletenessDetector"]

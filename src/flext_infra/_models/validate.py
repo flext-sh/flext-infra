@@ -147,4 +147,4 @@ class FlextInfraModelsCore:
         ] = Field(default_factory=list)
 
 
-__all__ = ["FlextInfraModelsCore"]
+__all__: list[str] = ["FlextInfraModelsCore"]

@@ -81,4 +81,4 @@ class FlextInfraCliValidate(FlextInfraServiceValidateMixin):
         )
 
 
-__all__ = ["FlextInfraCliValidate"]
+__all__: list[str] = ["FlextInfraCliValidate"]

@@ -35,4 +35,4 @@ class FlextInfraRefactorRuleDefinitionValidator:
         return None
 
 
-__all__ = ["FlextInfraRefactorRuleDefinitionValidator"]
+__all__: list[str] = ["FlextInfraRefactorRuleDefinitionValidator"]

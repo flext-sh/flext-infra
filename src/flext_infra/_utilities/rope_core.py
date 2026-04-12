@@ -103,13 +103,34 @@ class FlextInfraUtilitiesRopeCore:
     ) -> Sequence[t.Infra.RopeResource]:
         """Return stable Python file resources for one Rope project."""
         return tuple(
+            resource
+            for file_path in FlextInfraUtilitiesRopeCore.python_file_paths(rope_project)
+            if (
+                resource := FlextInfraUtilitiesRopeCore.get_resource_from_path(
+                    rope_project,
+                    file_path,
+                )
+            )
+            is not None
+        )
+
+    @staticmethod
+    def python_file_paths(
+        rope_project: t.Infra.RopeProject,
+    ) -> Sequence[Path]:
+        """Return stable Python file paths for one Rope project."""
+        root_real_path = getattr(getattr(rope_project, "root", None), "real_path", None)
+        if not isinstance(root_real_path, str):
+            return ()
+        file_paths = FlextInfraUtilitiesIteration.iter_python_files(
+            Path(root_real_path),
+        )
+        if file_paths.failure:
+            return ()
+        return tuple(
             sorted(
-                (
-                    resource
-                    for resource in rope_project.get_python_files()
-                    if isinstance(resource, File)
-                ),
-                key=lambda resource: resource.path,
+                file_paths.unwrap(),
+                key=lambda file_path: file_path.as_posix(),
             ),
         )
 
@@ -151,4 +172,4 @@ class FlextInfraUtilitiesRopeCore:
         return module_imports if isinstance(module_imports, ModuleImports) else None
 
 
-__all__ = ["FlextInfraUtilitiesRopeCore"]
+__all__: list[str] = ["FlextInfraUtilitiesRopeCore"]

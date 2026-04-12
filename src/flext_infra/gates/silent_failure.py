@@ -113,4 +113,4 @@ class FlextInfraSilentFailureGate(FlextInfraGate):
         return True, ()
 
 
-__all__ = ["FlextInfraSilentFailureGate"]
+__all__: list[str] = ["FlextInfraSilentFailureGate"]

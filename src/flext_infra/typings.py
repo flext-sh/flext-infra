@@ -59,4 +59,4 @@ class FlextInfraTypes(t):
 
 t = FlextInfraTypes
 
-__all__ = ["FlextInfraTypes", "t"]
+__all__: list[str] = ["FlextInfraTypes", "t"]

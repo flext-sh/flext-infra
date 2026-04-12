@@ -158,7 +158,7 @@ class FlextInfraRefactorMigrateToClassMRO:
         raise ValueError(msg)
 
 
-__all__ = ["FlextInfraRefactorMigrateToClassMRO"]
+__all__: list[str] = ["FlextInfraRefactorMigrateToClassMRO"]
 
 FlextInfraUtilitiesRope.register_rope_post_hook(
     FlextInfraRefactorMigrateToClassMRO.run_as_hook,

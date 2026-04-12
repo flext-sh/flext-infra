@@ -397,4 +397,4 @@ class FlextInfraConstantsRefactor:
     "Default census family."
 
 
-__all__ = ["FlextInfraConstantsRefactor"]
+__all__: list[str] = ["FlextInfraConstantsRefactor"]

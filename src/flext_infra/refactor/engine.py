@@ -244,6 +244,6 @@ class FlextInfraRefactorEngine(
         return None
 
 
-__all__ = [
+__all__: list[str] = [
     "FlextInfraRefactorEngine",
 ]

@@ -111,4 +111,4 @@ class FlextInfraTypesRope:
     "Callback signature for rope-based transformers: (project, resource) -> (source, changes)."
 
 
-__all__ = ["FlextInfraTypesRope"]
+__all__: list[str] = ["FlextInfraTypesRope"]

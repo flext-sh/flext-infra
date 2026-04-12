@@ -162,4 +162,4 @@ class FlextInfraTextPatternScanner(s[bool]):
         return None
 
 
-__all__ = ["FlextInfraTextPatternScanner"]
+__all__: list[str] = ["FlextInfraTextPatternScanner"]

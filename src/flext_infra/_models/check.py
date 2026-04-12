@@ -280,4 +280,4 @@ class FlextInfraModelsCheck:
         )
 
 
-__all__ = ["FlextInfraModelsCheck"]
+__all__: list[str] = ["FlextInfraModelsCheck"]

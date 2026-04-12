@@ -297,7 +297,7 @@ class FlextInfraRefactorClassReconstructorRule(FlextInfraRefactorRule):
         return self._apply_text_transformer(transformer, source)
 
 
-__all__ = [
+__all__: list[str] = [
     "FlextInfraRefactorClassReconstructorRule",
     "FlextInfraRefactorLegacyRemovalTextRule",
     "FlextInfraRefactorMROClassMigrationTextRule",

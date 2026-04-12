@@ -106,4 +106,4 @@ class FlextInfraMarkdownGate(FlextInfraGate):
         return "\n".join(part for part in (result.stdout, result.stderr) if part)
 
 
-__all__ = ["FlextInfraMarkdownGate"]
+__all__: list[str] = ["FlextInfraMarkdownGate"]

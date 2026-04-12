@@ -123,4 +123,4 @@ class FlextInfraCodegenCensus(FlextInfraServiceBase[str]):
         )
 
 
-__all__ = ["FlextInfraCodegenCensus"]
+__all__: list[str] = ["FlextInfraCodegenCensus"]

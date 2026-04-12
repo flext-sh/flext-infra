@@ -125,4 +125,4 @@ class FlextInfraUtilitiesRelease:
             return r[bool].fail(f"changelog update failed: {exc}")
 
 
-__all__ = ["FlextInfraUtilitiesRelease"]
+__all__: list[str] = ["FlextInfraUtilitiesRelease"]

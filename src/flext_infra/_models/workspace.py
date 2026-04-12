@@ -130,4 +130,4 @@ class FlextInfraModelsWorkspace:
         ] = Field(default_factory=list)
 
 
-__all__ = ["FlextInfraModelsWorkspace"]
+__all__: list[str] = ["FlextInfraModelsWorkspace"]

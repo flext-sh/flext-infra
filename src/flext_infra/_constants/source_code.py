@@ -247,4 +247,4 @@ class FlextInfraConstantsSourceCode:
     "Standard directory name for report output."
 
 
-__all__ = ["FlextInfraConstantsSourceCode"]
+__all__: list[str] = ["FlextInfraConstantsSourceCode"]

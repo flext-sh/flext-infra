@@ -177,4 +177,4 @@ class FlextInfraInternalSyncRepoMixin:
         return None
 
 
-__all__ = ["FlextInfraInternalSyncRepoMixin"]
+__all__: list[str] = ["FlextInfraInternalSyncRepoMixin"]

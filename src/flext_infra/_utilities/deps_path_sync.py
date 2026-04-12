@@ -370,4 +370,4 @@ class FlextInfraUtilitiesDependencyPathSync(
         return 0
 
 
-__all__ = ["FlextInfraUtilitiesDependencyPathSync"]
+__all__: list[str] = ["FlextInfraUtilitiesDependencyPathSync"]

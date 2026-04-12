@@ -38,4 +38,4 @@ class FlextInfraCliCheck(FlextInfraServiceCheckMixin):
         )
 
 
-__all__ = ["FlextInfraCliCheck"]
+__all__: list[str] = ["FlextInfraCliCheck"]

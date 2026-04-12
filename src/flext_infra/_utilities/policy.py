@@ -222,4 +222,4 @@ class FlextInfraUtilitiesRefactorPolicy:
         return (False, violation) if violation is not None else (True, None)
 
 
-__all__ = ["FlextInfraUtilitiesRefactorPolicy"]
+__all__: list[str] = ["FlextInfraUtilitiesRefactorPolicy"]

@@ -47,4 +47,4 @@ class FlextInfraModelsEngineOperation:
         )
 
 
-__all__ = ["FlextInfraModelsEngineOperation"]
+__all__: list[str] = ["FlextInfraModelsEngineOperation"]

@@ -32,4 +32,4 @@ class FlextInfraCliRelease(FlextInfraServiceReleaseMixin):
         )
 
 
-__all__ = ["FlextInfraCliRelease"]
+__all__: list[str] = ["FlextInfraCliRelease"]

@@ -137,4 +137,4 @@ class FlextInfraUtilitiesRefactorEngine:
         return all_files
 
 
-__all__ = ["FlextInfraUtilitiesRefactorEngine"]
+__all__: list[str] = ["FlextInfraUtilitiesRefactorEngine"]

@@ -177,4 +177,4 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
         return line_offsets[line - 1] + column
 
 
-__all__ = ["FlextInfraRefactorSignaturePropagator"]
+__all__: list[str] = ["FlextInfraRefactorSignaturePropagator"]

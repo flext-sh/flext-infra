@@ -24,7 +24,7 @@ class FlextInfraProtocolsRefactor(Protocol):
     """Refactor-domain protocol definitions."""
 
 
-__all__ = [
+__all__: list[str] = [
     "FlextInfraChangeTracker",
     "FlextInfraProtocolsRefactor",
 ]

@@ -431,4 +431,4 @@ class FlextInfraUtilitiesProtectedEdit:
         )
 
 
-__all__ = ["FlextInfraUtilitiesProtectedEdit"]
+__all__: list[str] = ["FlextInfraUtilitiesProtectedEdit"]

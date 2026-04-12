@@ -41,4 +41,4 @@ class FlextInfraRefactorImportBypassRemover(FlextInfraRopeTransformer):
         return new_source, list(self.changes)
 
 
-__all__ = ["FlextInfraRefactorImportBypassRemover"]
+__all__: list[str] = ["FlextInfraRefactorImportBypassRemover"]

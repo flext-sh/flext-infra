@@ -377,4 +377,4 @@ class FlextInfraUtilitiesRopeImports:
         return updated
 
 
-__all__ = ["FlextInfraUtilitiesRopeImports"]
+__all__: list[str] = ["FlextInfraUtilitiesRopeImports"]

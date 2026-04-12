@@ -225,4 +225,4 @@ class FlextInfraDependencyDetectorRuntime:
         return r[bool].fail("dependency issues detected")
 
 
-__all__ = ["FlextInfraDependencyDetectorRuntime"]
+__all__: list[str] = ["FlextInfraDependencyDetectorRuntime"]

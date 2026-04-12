@@ -162,7 +162,7 @@ class FakeSelection:
         return self._resolve_result
 
 
-__all__ = [
+__all__: list[str] = [
     "FakeReporting",
     "FakeSelection",
     "FakeSubprocess",

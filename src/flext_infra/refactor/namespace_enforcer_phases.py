@@ -366,4 +366,4 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
         return "".join(diff_lines)
 
 
-__all__ = ["FlextInfraNamespaceEnforcerPhasesMixin"]
+__all__: list[str] = ["FlextInfraNamespaceEnforcerPhasesMixin"]

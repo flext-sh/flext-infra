@@ -279,4 +279,4 @@ class FlextInfraGate(ABC):
         )
 
 
-__all__ = ["FlextInfraGate"]
+__all__: list[str] = ["FlextInfraGate"]

@@ -223,4 +223,4 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
         return isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
 
 
-__all__ = ["FlextInfraRefactorClassReconstructor"]
+__all__: list[str] = ["FlextInfraRefactorClassReconstructor"]

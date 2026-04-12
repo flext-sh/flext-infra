@@ -291,4 +291,4 @@ class FlextInfraPytestDiagExtractor(s[bool]):
         return r[bool].ok(True)
 
 
-__all__ = ["FlextInfraPytestDiagExtractor"]
+__all__: list[str] = ["FlextInfraPytestDiagExtractor"]

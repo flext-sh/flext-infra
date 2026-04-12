@@ -51,4 +51,4 @@ class FlextInfraEnsureNamespaceToolingPhase:
         return FlextInfraToml.apply_payload_phases(payload, self._phase(detected))
 
 
-__all__ = ["FlextInfraEnsureNamespaceToolingPhase"]
+__all__: list[str] = ["FlextInfraEnsureNamespaceToolingPhase"]

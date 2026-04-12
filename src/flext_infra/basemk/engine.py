@@ -131,4 +131,4 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
             return r[str].fail(f"template render failed: {exc}")
 
 
-__all__ = ["FlextInfraBaseMkTemplateEngine"]
+__all__: list[str] = ["FlextInfraBaseMkTemplateEngine"]

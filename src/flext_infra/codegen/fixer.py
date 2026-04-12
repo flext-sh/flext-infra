@@ -292,4 +292,4 @@ class FlextInfraCodegenFixer(s[str]):
         return [self._fix_project(project) for project in projects_result.unwrap()]
 
 
-__all__ = ["FlextInfraCodegenFixer"]
+__all__: list[str] = ["FlextInfraCodegenFixer"]

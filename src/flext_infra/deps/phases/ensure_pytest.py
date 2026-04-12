@@ -56,4 +56,4 @@ class FlextInfraEnsurePytestConfigPhase:
         return FlextInfraToml.apply_payload_phases(payload, self._phase())
 
 
-__all__ = ["FlextInfraEnsurePytestConfigPhase"]
+__all__: list[str] = ["FlextInfraEnsurePytestConfigPhase"]

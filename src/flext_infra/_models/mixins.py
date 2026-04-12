@@ -434,4 +434,4 @@ class FlextInfraModelsMixins:
         ] = Field(default_factory=list, description="Project names")
 
 
-__all__ = ["FlextInfraModelsMixins"]
+__all__: list[str] = ["FlextInfraModelsMixins"]

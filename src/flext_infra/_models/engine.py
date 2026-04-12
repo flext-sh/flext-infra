@@ -175,4 +175,4 @@ class FlextInfraModelsEngine:
                 return self._set(custom_handler=fn)
 
 
-__all__ = ["FlextInfraModelsEngine"]
+__all__: list[str] = ["FlextInfraModelsEngine"]

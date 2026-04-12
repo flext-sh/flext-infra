@@ -111,4 +111,4 @@ class FlextInfraDocFixer(s[bool]):
         return u.Infra.docs_process_markdown_file(md_file, apply=apply)
 
 
-__all__ = ["FlextInfraDocFixer"]
+__all__: list[str] = ["FlextInfraDocFixer"]

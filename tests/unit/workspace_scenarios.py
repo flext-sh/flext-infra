@@ -53,4 +53,9 @@ class BrokenScenario(BaseModel):
         return project_root
 
 
-__all__ = ["BrokenScenario", "EmptyScenario", "FullScenario", "MinimalScenario"]
+__all__: list[str] = [
+    "BrokenScenario",
+    "EmptyScenario",
+    "FullScenario",
+    "MinimalScenario",
+]

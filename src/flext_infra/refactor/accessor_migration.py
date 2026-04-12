@@ -607,4 +607,4 @@ class FlextInfraAccessorMigrationOrchestrator(s[m.Infra.AccessorMigrationReport]
         return "\n".join(lines)
 
 
-__all__ = ["FlextInfraAccessorMigrationOrchestrator"]
+__all__: list[str] = ["FlextInfraAccessorMigrationOrchestrator"]

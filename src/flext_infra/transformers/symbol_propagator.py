@@ -129,4 +129,4 @@ class FlextInfraRefactorSymbolPropagator(FlextInfraRopeTransformer):
         return source
 
 
-__all__ = ["FlextInfraRefactorSymbolPropagator"]
+__all__: list[str] = ["FlextInfraRefactorSymbolPropagator"]

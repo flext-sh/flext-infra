@@ -148,4 +148,4 @@ class FlextInfraRefactorClassNestingTransformer(FlextInfraRopeTransformer):
         )
 
 
-__all__ = ["FlextInfraRefactorClassNestingTransformer"]
+__all__: list[str] = ["FlextInfraRefactorClassNestingTransformer"]

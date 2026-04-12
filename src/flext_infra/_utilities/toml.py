@@ -99,4 +99,4 @@ class FlextInfraUtilitiesToml:
         return True
 
 
-__all__ = ["FlextInfraUtilitiesToml"]
+__all__: list[str] = ["FlextInfraUtilitiesToml"]

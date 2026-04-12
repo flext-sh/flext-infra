@@ -885,7 +885,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                     (
                         f'"""{docstring}"""\n\n'
                         "from __future__ import annotations\n\n"
-                        f"__all__ = [{export_list}]\n\n"
+                        f"__all__: list[str] = [{export_list}]\n\n"
                         f"class {class_name}:\n"
                         "    pass\n\n"
                         f"{alias} = {class_name}\n"
@@ -1462,4 +1462,4 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
 
 u = TestsFlextInfraUtilities
 
-__all__ = ["TestsFlextInfraUtilities", "u"]
+__all__: list[str] = ["TestsFlextInfraUtilities", "u"]

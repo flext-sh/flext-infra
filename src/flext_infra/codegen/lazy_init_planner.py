@@ -4,22 +4,21 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from pathlib import Path
+from typing import Annotated
 
 from pydantic import Field, PrivateAttr
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 
 
 class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
     """Resolve lazy-init plans using one shared Rope workspace index."""
 
-    workspace_root: Path = Field(description="Workspace root for this planner run")
-    rope_project: t.Infra.RopeProject = Field(
-        description="Shared Rope project used across the lazy-init execution",
-    )
-    workspace_index: m.Infra.RopeWorkspaceIndex = Field(
-        description="Generic Rope workspace index reused by the planner",
-    )
+    rope_workspace: Annotated[
+        p.Infra.RopeWorkspaceDsl,
+        t.SkipValidation,
+        Field(description="Shared Rope workspace DSL reused by the planner"),
+    ]
     lazy_init: m.Infra.LazyInitConfig = Field(
         description="Validated lazy-init policy document",
     )
@@ -32,6 +31,9 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         default_factory=dict
     )
     _source_exports_cache: dict[str, frozenset[str]] = PrivateAttr(default_factory=dict)
+    _source_plan_cache: dict[str, m.Infra.LazyInitPlan] = PrivateAttr(
+        default_factory=dict
+    )
     _source_exports_visiting: set[str] = PrivateAttr(default_factory=set)
     _parent_package_cache: dict[str, t.StrSequence] = PrivateAttr(default_factory=dict)
     _version_module_name: str = PrivateAttr(default=f"{c.Infra.DUNDER_VERSION}.py")
@@ -168,12 +170,10 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         cached = self._module_exports_cache.get(cache_key)
         if cached is not None:
             return dict(cached)
-        resource = u.Infra.get_resource_from_path(self.rope_project, py_file)
-        if resource is None:
+        if self.rope_workspace.resource(py_file) is None:
             return {}
-        names = u.Infra.get_module_export_names(
-            self.rope_project,
-            resource,
+        names = self.rope_workspace.module_export_names(
+            py_file,
             include_dunder=include_dunder,
             allow_main=allow_main,
             allow_assignments=allow_assignments,
@@ -253,7 +253,9 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         for package_name in package_names:
             if not package_name or package_name in ordered:
                 continue
-            package_dir = self.workspace_index.package_dir_by_name.get(package_name)
+            package_dir = self.rope_workspace.workspace_index.package_dir_by_name.get(
+                package_name
+            )
             if package_dir is not None:
                 ordered.extend(
                     self._resolve_transitive_parent_packages(
@@ -269,13 +271,13 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         cached = self._parent_package_cache.get(cache_key)
         if cached is not None:
             return cached
+        package_entry = self._package_entry(pkg_dir)
+        current_pkg = package_entry.package_name if package_entry is not None else ""
         constants_path = (pkg_dir / c.Infra.CONSTANTS_PY).resolve()
-        resource = u.Infra.get_resource_from_path(self.rope_project, constants_path)
-        if resource is None:
+        if self.rope_workspace.resource(constants_path) is None:
             self._parent_package_cache[cache_key] = ()
             return ()
-        state = u.Infra.get_module_semantic_state(self.rope_project, resource)
-        current_pkg = self._context(pkg_dir).current_pkg
+        state = self.rope_workspace.module_semantic_state(constants_path)
         base_packages = tuple(
             package_name
             for class_info in state.class_infos
@@ -325,19 +327,17 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         return exports
 
     def _package_init_exports(self, package_name: str) -> frozenset[str]:
-        package_dir = self.workspace_index.package_dir_by_name.get(package_name)
+        package_dir = self.rope_workspace.workspace_index.package_dir_by_name.get(
+            package_name
+        )
         if package_dir is None:
             return frozenset()
-        resource = u.Infra.get_resource_from_path(
-            self.rope_project,
-            package_dir / c.Infra.INIT_PY,
-        )
-        if resource is None:
+        init_path = package_dir / c.Infra.INIT_PY
+        if self.rope_workspace.resource(init_path) is None:
             return frozenset()
         return frozenset(
-            u.Infra.get_module_export_names(
-                self.rope_project,
-                resource,
+            self.rope_workspace.module_export_names(
+                init_path,
                 allow_assignments=True,
             ),
         )
@@ -348,12 +348,19 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
             return cached
         if package_name in self._source_exports_visiting:
             return frozenset()
-        package_dir = self.workspace_index.package_dir_by_name.get(package_name)
+        package_dir = self.rope_workspace.workspace_index.package_dir_by_name.get(
+            package_name
+        )
         if package_dir is None:
             return frozenset()
         self._source_exports_visiting.add(package_name)
         try:
-            exports = frozenset(self.build_plan(package_dir, dir_exports={}).exports)
+            cache_key = str(package_dir.resolve())
+            plan = self._source_plan_cache.get(cache_key)
+            if plan is None:
+                plan = self.build_plan(package_dir, dir_exports={})
+                self._source_plan_cache[cache_key] = plan
+            exports = frozenset(plan.exports)
         finally:
             self._source_exports_visiting.remove(package_name)
         self._source_exports_cache[package_name] = exports
@@ -365,7 +372,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         package_entry = self._package_entry(pkg_dir)
         if package_entry is None or package_entry.project_root is None:
             return ""
-        return self.workspace_index.project_package_by_root.get(
+        return self.rope_workspace.workspace_index.project_package_by_root.get(
             str(package_entry.project_root),
             "",
         )
@@ -374,7 +381,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         parts = tuple(part for part in target.split(".") if part)
         for size in range(len(parts), 0, -1):
             package_name = ".".join(parts[:size])
-            if package_name in self.workspace_index.package_dir_by_name:
+            if package_name in self.rope_workspace.workspace_index.package_dir_by_name:
                 return package_name
         return ""
 
@@ -382,7 +389,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         self,
         pkg_dir: Path,
     ) -> m.Infra.RopePackageIndexEntry | None:
-        return self.workspace_index.packages_by_dir.get(str(pkg_dir.resolve()))
+        return self.rope_workspace.package_entry(pkg_dir)
 
     @staticmethod
     def _publish(name: str, *, allow_main: bool) -> bool:
@@ -409,4 +416,4 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         raise ValueError(message)
 
 
-__all__ = ["FlextInfraCodegenLazyInitPlanner"]
+__all__: list[str] = ["FlextInfraCodegenLazyInitPlanner"]

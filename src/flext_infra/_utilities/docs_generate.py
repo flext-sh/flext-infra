@@ -390,4 +390,4 @@ class FlextInfraUtilitiesDocsGenerate:
         )
 
 
-__all__ = ["FlextInfraUtilitiesDocsGenerate"]
+__all__: list[str] = ["FlextInfraUtilitiesDocsGenerate"]

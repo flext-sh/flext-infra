@@ -120,4 +120,4 @@ class FlextInfraInventoryService(s[bool]):
         ).map(lambda _: True)
 
 
-__all__ = ["FlextInfraInventoryService"]
+__all__: list[str] = ["FlextInfraInventoryService"]

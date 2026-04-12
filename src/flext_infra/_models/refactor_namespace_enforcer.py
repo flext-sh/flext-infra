@@ -343,4 +343,4 @@ class FlextInfraModelsNamespaceEnforcer:
             )
 
 
-__all__ = ["FlextInfraModelsNamespaceEnforcer"]
+__all__: list[str] = ["FlextInfraModelsNamespaceEnforcer"]

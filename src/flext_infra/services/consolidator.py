@@ -306,4 +306,4 @@ class FlextInfraCodegenConsolidator(s[str]):
         return value_map
 
 
-__all__ = ["FlextInfraCodegenConsolidator"]
+__all__: list[str] = ["FlextInfraCodegenConsolidator"]

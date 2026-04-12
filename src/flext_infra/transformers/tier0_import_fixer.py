@@ -263,4 +263,4 @@ class FlextInfraTransformerTier0ImportFixer:
                 )
 
 
-__all__ = ["FlextInfraTransformerTier0ImportFixer"]
+__all__: list[str] = ["FlextInfraTransformerTier0ImportFixer"]

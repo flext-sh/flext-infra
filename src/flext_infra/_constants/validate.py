@@ -133,4 +133,4 @@ class FlextInfraConstantsSharedInfra:
     DEFAULT_SRC_DIR: Final[str] = "src"
 
 
-__all__ = ["FlextInfraConstantsSharedInfra"]
+__all__: list[str] = ["FlextInfraConstantsSharedInfra"]

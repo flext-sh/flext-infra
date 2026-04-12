@@ -93,4 +93,4 @@ class FlextInfraRefactorMRORemover(FlextInfraRopeTransformer):
         return source
 
 
-__all__ = ["FlextInfraRefactorMRORemover"]
+__all__: list[str] = ["FlextInfraRefactorMRORemover"]

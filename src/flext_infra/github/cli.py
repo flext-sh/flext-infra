@@ -73,4 +73,4 @@ class FlextInfraCliGithub:
         )
 
 
-__all__ = ["FlextInfraCliGithub"]
+__all__: list[str] = ["FlextInfraCliGithub"]

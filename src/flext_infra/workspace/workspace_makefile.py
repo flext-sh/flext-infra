@@ -214,4 +214,4 @@ class FlextInfraWorkspaceMakefileGenerator:
         return c.Infra.GIT_MAIN
 
 
-__all__ = ["FlextInfraWorkspaceMakefileGenerator"]
+__all__: list[str] = ["FlextInfraWorkspaceMakefileGenerator"]

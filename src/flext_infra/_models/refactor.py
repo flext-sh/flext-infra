@@ -260,4 +260,4 @@ class FlextInfraModelsRefactor(
         ]
 
 
-__all__ = ["FlextInfraModelsRefactor"]
+__all__: list[str] = ["FlextInfraModelsRefactor"]

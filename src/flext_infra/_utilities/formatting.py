@@ -117,4 +117,4 @@ class {class_name}({base_class}):
 '''
 
 
-__all__ = ["FlextInfraUtilitiesFormatting"]
+__all__: list[str] = ["FlextInfraUtilitiesFormatting"]

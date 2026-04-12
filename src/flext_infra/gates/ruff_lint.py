@@ -93,4 +93,4 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         ]
 
 
-__all__ = ["FlextInfraRuffLintGate"]
+__all__: list[str] = ["FlextInfraRuffLintGate"]

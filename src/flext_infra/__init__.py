@@ -168,6 +168,7 @@ if _t.TYPE_CHECKING:
     )
     from flext_infra.codegen.fixer import FlextInfraCodegenFixer
     from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
+    from flext_infra.codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
     from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
     from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
     from flext_infra.constants import FlextInfraConstants, c
@@ -346,6 +347,10 @@ if _t.TYPE_CHECKING:
     from flext_infra.services.pipeline import FlextInfraCodegenPipeline
     from flext_infra.services.refactor import FlextInfraServiceRefactorMixin
     from flext_infra.services.release import FlextInfraServiceReleaseMixin
+    from flext_infra.services.rope import (
+        FlextInfraRopeWorkspace,
+        FlextInfraServiceRopeMixin,
+    )
     from flext_infra.services.toml_engine import FlextInfraToml
     from flext_infra.services.validate import FlextInfraServiceValidateMixin
     from flext_infra.services.workspace import FlextInfraServiceWorkspaceMixin
@@ -497,6 +502,10 @@ _LAZY_IMPORTS = merge_lazy_imports(
         },
     ),
     exclude_names=(
+        "FlextDispatcher",
+        "FlextLogger",
+        "FlextRegistry",
+        "FlextRuntime",
         "cleanup_submodule_namespace",
         "install_lazy_exports",
         "lazy_getattr",
@@ -511,7 +520,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
 
 install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)
 
-__all__ = [
+__all__: list[str] = [
     "FlextInfra",
     "FlextInfraAccessorMigrationOrchestrator",
     "FlextInfraBanditGate",
@@ -540,6 +549,7 @@ __all__ = [
     "FlextInfraCodegenFixer",
     "FlextInfraCodegenGeneration",
     "FlextInfraCodegenLazyInit",
+    "FlextInfraCodegenLazyInitPlanner",
     "FlextInfraCodegenPipeline",
     "FlextInfraCodegenPyTyped",
     "FlextInfraCodegenScaffolder",
@@ -690,6 +700,7 @@ __all__ = [
     "FlextInfraReleaseOrchestrator",
     "FlextInfraReleaseOrchestratorPhases",
     "FlextInfraRopeTransformer",
+    "FlextInfraRopeWorkspace",
     "FlextInfraRuffFormatGate",
     "FlextInfraRuffLintGate",
     "FlextInfraRuntimeAliasDetector",
@@ -702,6 +713,7 @@ __all__ = [
     "FlextInfraServiceGithubMixin",
     "FlextInfraServiceRefactorMixin",
     "FlextInfraServiceReleaseMixin",
+    "FlextInfraServiceRopeMixin",
     "FlextInfraServiceValidateMixin",
     "FlextInfraServiceWorkspaceMixin",
     "FlextInfraSilentFailureDetector",

@@ -134,4 +134,4 @@ class FlextInfraConstantsWorkspace:
     "Makefile include for user customization overrides."
 
 
-__all__ = ["FlextInfraConstantsWorkspace"]
+__all__: list[str] = ["FlextInfraConstantsWorkspace"]

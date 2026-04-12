@@ -115,4 +115,4 @@ class FlextInfraPyreflyGate(FlextInfraGate):
         return result.exit_code == 0, issues
 
 
-__all__ = ["FlextInfraPyreflyGate"]
+__all__: list[str] = ["FlextInfraPyreflyGate"]

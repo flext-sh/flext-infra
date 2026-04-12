@@ -189,6 +189,6 @@ class FlextInfraRefactorMROResolver:
             namespaces.append(candidate)
 
 
-__all__ = [
+__all__: list[str] = [
     "FlextInfraRefactorMROResolver",
 ]

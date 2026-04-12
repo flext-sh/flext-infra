@@ -201,4 +201,4 @@ class FlextInfraCodegenScaffolder(FlextInfraServiceBase[str]):
             files_created.append(str(filepath))
 
 
-__all__ = ["FlextInfraCodegenScaffolder"]
+__all__: list[str] = ["FlextInfraCodegenScaffolder"]

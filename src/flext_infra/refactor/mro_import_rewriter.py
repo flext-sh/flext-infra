@@ -347,4 +347,4 @@ class FlextInfraRefactorMROImportRewriter:
         return (tuple(errors), tuple(failed_paths))
 
 
-__all__ = ["FlextInfraRefactorMROImportRewriter"]
+__all__: list[str] = ["FlextInfraRefactorMROImportRewriter"]

@@ -167,4 +167,7 @@ class FlextInfraUtilitiesImportNormalizer:
         return {name: frozenset(imports) for name, imports in graph.items()}
 
 
-__all__ = ["FlextInfraNormalizerContext", "FlextInfraUtilitiesImportNormalizer"]
+__all__: list[str] = [
+    "FlextInfraNormalizerContext",
+    "FlextInfraUtilitiesImportNormalizer",
+]

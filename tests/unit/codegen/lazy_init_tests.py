@@ -27,12 +27,12 @@ def _create_init_file(directory: Path, content: str) -> Path:
 _VALID_INIT = (
     '"""Test package."""\n'
     "from test_pkg.module import TestClass\n"
-    '__all__ = ["TestClass"]\n'
+    '__all__: list[str] = ["TestClass"]\n'
 )
 _VALID_TESTS_INIT = (
     '"""Test helpers."""\n'
     "from test_helpers.fixtures import SomeFixture\n"
-    '__all__ = ["SomeFixture"]\n'
+    '__all__: list[str] = ["SomeFixture"]\n'
 )
 
 
@@ -74,7 +74,7 @@ class TestAllDirectoriesScanned:
             tmp_path / "tests" / "unit" / "helpers",
             '"""Nested test helpers."""\n'
             "from test_helpers.deep import DeepFixture\n"
-            '__all__ = ["DeepFixture"]\n',
+            '__all__: list[str] = ["DeepFixture"]\n',
         )
         generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
         generator.generate_inits(check_only=False)

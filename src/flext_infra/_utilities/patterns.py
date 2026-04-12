@@ -146,4 +146,4 @@ class FlextInfraUtilitiesPatterns:
         return pattern_obj.search(text) is not None
 
 
-__all__ = ["FlextInfraUtilitiesPatterns"]
+__all__: list[str] = ["FlextInfraUtilitiesPatterns"]

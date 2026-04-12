@@ -153,7 +153,7 @@ class DependencyScenarios:
     ]
 
 
-__all__ = [
+__all__: list[str] = [
     "DependencyScenario",
     "DependencyScenarios",
     "GitScenario",

@@ -110,4 +110,4 @@ class FlextInfraRefactorSafetyManager:
         return r[bool].ok(True)
 
 
-__all__ = ["FlextInfraRefactorSafetyManager"]
+__all__: list[str] = ["FlextInfraRefactorSafetyManager"]

@@ -416,4 +416,4 @@ class FlextInfraNamespaceRules:
         return False
 
 
-__all__ = ["FlextInfraNamespaceRules"]
+__all__: list[str] = ["FlextInfraNamespaceRules"]

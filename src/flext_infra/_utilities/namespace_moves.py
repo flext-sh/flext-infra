@@ -486,4 +486,4 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
                         )
 
 
-__all__ = ["FlextInfraUtilitiesRefactorNamespaceMoves"]
+__all__: list[str] = ["FlextInfraUtilitiesRefactorNamespaceMoves"]

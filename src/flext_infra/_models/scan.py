@@ -87,4 +87,4 @@ class FlextInfraModelsScan:
         ]
 
 
-__all__ = ["FlextInfraModelsScan"]
+__all__: list[str] = ["FlextInfraModelsScan"]

@@ -221,4 +221,4 @@ class FlextInfraRefactorLegacyRemovalRule:
         return (new_source, changes)
 
 
-__all__ = ["FlextInfraRefactorLegacyRemovalRule"]
+__all__: list[str] = ["FlextInfraRefactorLegacyRemovalRule"]

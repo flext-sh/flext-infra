@@ -58,4 +58,4 @@ class FlextInfraUtilitiesLogParser:
         return (total, error_lines[:max_lines])
 
 
-__all__ = ["FlextInfraUtilitiesLogParser"]
+__all__: list[str] = ["FlextInfraUtilitiesLogParser"]

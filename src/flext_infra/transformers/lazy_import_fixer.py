@@ -65,4 +65,4 @@ class FlextInfraRefactorLazyImportFixer(FlextInfraRopeTransformer):
         return stripped.startswith(("from ", "import "))
 
 
-__all__ = ["FlextInfraRefactorLazyImportFixer"]
+__all__: list[str] = ["FlextInfraRefactorLazyImportFixer"]

@@ -21,4 +21,4 @@ class FlextInfraConstantsRelease:
     )
 
 
-__all__ = ["FlextInfraConstantsRelease"]
+__all__: list[str] = ["FlextInfraConstantsRelease"]

@@ -175,4 +175,4 @@ class FlextInfraUtilitiesVersioning:
         return r[bool].ok(True)
 
 
-__all__ = ["FlextInfraUtilitiesVersioning"]
+__all__: list[str] = ["FlextInfraUtilitiesVersioning"]

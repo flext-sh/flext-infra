@@ -484,4 +484,4 @@ class FlextInfraUtilitiesCodegenNamespace:
         )
 
 
-__all__ = ["FlextInfraUtilitiesCodegenNamespace"]
+__all__: list[str] = ["FlextInfraUtilitiesCodegenNamespace"]

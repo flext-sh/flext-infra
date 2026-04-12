@@ -150,4 +150,4 @@ class FlextInfraUtilitiesDocsValidate:
         )
 
 
-__all__ = ["FlextInfraUtilitiesDocsValidate"]
+__all__: list[str] = ["FlextInfraUtilitiesDocsValidate"]

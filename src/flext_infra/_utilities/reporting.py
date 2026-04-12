@@ -419,4 +419,4 @@ class FlextInfraUtilitiesReporting(
 
 FlextInfraUtilitiesReporting.setup()
 
-__all__ = ["FlextInfraUtilitiesReporting"]
+__all__: list[str] = ["FlextInfraUtilitiesReporting"]

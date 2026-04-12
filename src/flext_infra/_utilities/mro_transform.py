@@ -226,4 +226,4 @@ class FlextInfraUtilitiesRefactorMroTransform:
         return updated_source
 
 
-__all__ = ["FlextInfraUtilitiesRefactorMroTransform"]
+__all__: list[str] = ["FlextInfraUtilitiesRefactorMroTransform"]

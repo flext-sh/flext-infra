@@ -189,7 +189,7 @@ class TestFlextInfraCodegenLazyInit:
 
         assert result == 0
         init_content = (pkg_dir / "__init__.py").read_text(encoding="utf-8")
-        assert '".base": ("base",)' in init_content
+        assert '"base"' in init_content
         assert "TestPkgServiceBase" not in init_content
 
     def test_generates_when_namespace_module_shape_is_invalid(

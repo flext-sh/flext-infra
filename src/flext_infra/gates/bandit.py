@@ -87,4 +87,4 @@ class FlextInfraBanditGate(FlextInfraGate):
         return result.exit_code == 0, issues
 
 
-__all__ = ["FlextInfraBanditGate"]
+__all__: list[str] = ["FlextInfraBanditGate"]

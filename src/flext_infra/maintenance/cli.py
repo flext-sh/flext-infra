@@ -35,4 +35,4 @@ class FlextInfraCliMaintenance(FlextInfraServiceWorkspaceMixin):
         )
 
 
-__all__ = ["FlextInfraCliMaintenance"]
+__all__: list[str] = ["FlextInfraCliMaintenance"]

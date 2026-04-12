@@ -139,4 +139,4 @@ class FlextInfraDocAuditorMixin:
         )
 
 
-__all__ = ["FlextInfraDocAuditorMixin"]
+__all__: list[str] = ["FlextInfraDocAuditorMixin"]

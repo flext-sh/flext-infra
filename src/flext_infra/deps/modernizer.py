@@ -472,4 +472,4 @@ if __name__ == "__main__":
     raise SystemExit(0)
 
 
-__all__ = ["FlextInfraPyprojectModernizer"]
+__all__: list[str] = ["FlextInfraPyprojectModernizer"]

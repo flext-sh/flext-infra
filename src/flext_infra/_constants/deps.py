@@ -95,4 +95,4 @@ class FlextInfraConstantsDeps:
     """Default mapping from module name to ``types-*`` stub package."""
 
 
-__all__ = ["FlextInfraConstantsDeps"]
+__all__: list[str] = ["FlextInfraConstantsDeps"]

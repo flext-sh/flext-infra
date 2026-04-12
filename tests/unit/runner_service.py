@@ -43,4 +43,4 @@ class RealSubprocessRunner:
         return r[t.Pair[str, str]].ok((o.stdout.strip(), o.stderr.strip()))
 
 
-__all__ = ["RealSubprocessRunner"]
+__all__: list[str] = ["RealSubprocessRunner"]

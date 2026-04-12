@@ -60,4 +60,4 @@ class FlextInfraConstantsCensus:
         "Detect PEP 695 type alias statements."
 
 
-__all__ = ["FlextInfraConstantsCensus"]
+__all__: list[str] = ["FlextInfraConstantsCensus"]

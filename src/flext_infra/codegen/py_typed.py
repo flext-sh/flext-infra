@@ -72,4 +72,4 @@ class FlextInfraCodegenPyTyped(s[bool]):
         return created + removed
 
 
-__all__ = ["FlextInfraCodegenPyTyped"]
+__all__: list[str] = ["FlextInfraCodegenPyTyped"]

@@ -182,4 +182,4 @@ class FlextInfraRefactorClassNestingAnalyzer:
         return c.Infra.RK_FILE
 
 
-__all__ = ["FlextInfraRefactorClassNestingAnalyzer"]
+__all__: list[str] = ["FlextInfraRefactorClassNestingAnalyzer"]

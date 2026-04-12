@@ -184,4 +184,4 @@ class FlextInfraRefactorImportModernizer(FlextInfraRopeTransformer):
         return "".join(lines)
 
 
-__all__ = ["FlextInfraRefactorImportModernizer"]
+__all__: list[str] = ["FlextInfraRefactorImportModernizer"]

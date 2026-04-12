@@ -203,4 +203,4 @@ class FlextInfraConsolidateGroupsPhase:
         return changes
 
 
-__all__ = ["FlextInfraConsolidateGroupsPhase"]
+__all__: list[str] = ["FlextInfraConsolidateGroupsPhase"]

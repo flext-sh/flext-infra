@@ -111,4 +111,4 @@ class FlextInfraMypyGate(FlextInfraGate):
         return result.exit_code == 0, issues
 
 
-__all__ = ["FlextInfraMypyGate"]
+__all__: list[str] = ["FlextInfraMypyGate"]

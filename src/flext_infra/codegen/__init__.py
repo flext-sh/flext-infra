@@ -13,6 +13,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".constants_quality_gate": ("FlextInfraConstantsCodegenQualityGate",),
         ".fixer": ("FlextInfraCodegenFixer",),
         ".lazy_init": ("FlextInfraCodegenLazyInit",),
+        ".lazy_init_planner": ("FlextInfraCodegenLazyInitPlanner",),
         ".py_typed": ("FlextInfraCodegenPyTyped",),
         ".scaffolder": ("FlextInfraCodegenScaffolder",),
     },

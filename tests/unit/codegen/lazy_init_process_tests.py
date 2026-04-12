@@ -151,7 +151,7 @@ class TestProcessDirectory:
                 f"class {parent_class}:\n"
                 "    pass\n\n"
                 f"{alias} = {parent_class}\n"
-                f'__all__ = ["{parent_class}", "{alias}"]\n',
+                f'__all__: list[str] = ["{parent_class}", "{alias}"]\n',
                 encoding=c.Infra.ENCODING_DEFAULT,
             )
             (child_package / module_name).write_text(
@@ -160,7 +160,7 @@ class TestProcessDirectory:
                 f"class {child_class}({parent_class}):\n"
                 "    pass\n\n"
                 f"{alias} = {child_class}\n"
-                f'__all__ = ["{child_class}", "{alias}"]\n',
+                f'__all__: list[str] = ["{child_class}", "{alias}"]\n',
                 encoding=c.Infra.ENCODING_DEFAULT,
             )
 
@@ -202,7 +202,7 @@ class TestProcessDirectory:
             "from __future__ import annotations\n\n"
             "def quality_tool() -> str:\n"
             '    return "ok"\n\n'
-            '__all__ = ["quality_tool"]\n',
+            '__all__: list[str] = ["quality_tool"]\n',
             encoding=c.Infra.ENCODING_DEFAULT,
         )
 
@@ -239,7 +239,7 @@ class TestProcessDirectory:
         (sub_dir / "registry.py").write_text(
             "from __future__ import annotations\n\n"
             "ALL_STREAMS = {}\n\n"
-            '__all__ = ["ALL_STREAMS"]\n',
+            '__all__: list[str] = ["ALL_STREAMS"]\n',
             encoding=c.Infra.ENCODING_DEFAULT,
         )
 
@@ -316,9 +316,12 @@ class TestProcessDirectory:
 
         assert result == 0
         init_content = (examples_tests_dir / "__init__.py").read_text(encoding="utf-8")
-        assert '".utilities": (' in init_content
         assert (
             c.Infra.Tests.Fixtures.Codegen.LazyInit.EXAMPLES_UTILITIES_CLASS
+            in init_content
+        )
+        assert (
+            f'"{c.Infra.Tests.Fixtures.Codegen.LazyInit.EXAMPLES_UTILITIES_ALIAS}"'
             in init_content
         )
 
@@ -345,8 +348,7 @@ class TestProcessDirectory:
         assert result == 0
         init_content = (tests_dir / "__init__.py").read_text(encoding="utf-8")
         assert "if _t.TYPE_CHECKING:" in init_content
-        assert "__all__ = [" in init_content
-        assert '".typings": (' in init_content
+        assert "__all__: list[str] = [" in init_content
         assert c.Infra.Tests.Fixtures.Codegen.LazyInit.TESTS_TYPES_CLASS in init_content
         assert (
             f'"{c.Infra.Tests.Fixtures.Codegen.LazyInit.TESTS_TYPES_ALIAS}"'

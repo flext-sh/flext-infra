@@ -104,4 +104,4 @@ class FlextInfraHelperConsolidationTransformer(FlextInfraRopeTransformer):
         )
 
 
-__all__ = ["FlextInfraHelperConsolidationTransformer"]
+__all__: list[str] = ["FlextInfraHelperConsolidationTransformer"]

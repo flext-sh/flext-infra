@@ -81,4 +81,4 @@ class FlextInfraRefactorEnsureFutureAnnotationsRule(FlextInfraRefactorRule):
         return updated, ["Ensured: from __future__ import annotations"]
 
 
-__all__ = ["FlextInfraRefactorEnsureFutureAnnotationsRule"]
+__all__: list[str] = ["FlextInfraRefactorEnsureFutureAnnotationsRule"]

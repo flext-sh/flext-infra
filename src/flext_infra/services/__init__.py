@@ -16,6 +16,10 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".pipeline": ("FlextInfraCodegenPipeline",),
         ".refactor": ("FlextInfraServiceRefactorMixin",),
         ".release": ("FlextInfraServiceReleaseMixin",),
+        ".rope": (
+            "FlextInfraRopeWorkspace",
+            "FlextInfraServiceRopeMixin",
+        ),
         ".toml_engine": ("FlextInfraToml",),
         ".validate": ("FlextInfraServiceValidateMixin",),
         ".workspace": ("FlextInfraServiceWorkspaceMixin",),

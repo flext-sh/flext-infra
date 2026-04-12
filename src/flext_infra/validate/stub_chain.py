@@ -252,4 +252,4 @@ class FlextInfraStubSupplyChain(s[bool]):
         return ordered
 
 
-__all__ = ["FlextInfraStubSupplyChain"]
+__all__: list[str] = ["FlextInfraStubSupplyChain"]

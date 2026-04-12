@@ -81,4 +81,4 @@ class FlextInfraRefactorPatternCorrectionsRule:
         return (source, no_changes)
 
 
-__all__ = ["FlextInfraRefactorPatternCorrectionsRule"]
+__all__: list[str] = ["FlextInfraRefactorPatternCorrectionsRule"]

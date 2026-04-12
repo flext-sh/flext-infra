@@ -63,4 +63,4 @@ def real_git_repo(tmp_path: Path) -> Path:
     return repo_root
 
 
-__all__ = ["real_git_repo"]
+__all__: list[str] = ["real_git_repo"]

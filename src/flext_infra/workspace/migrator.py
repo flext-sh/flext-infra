@@ -394,4 +394,4 @@ class FlextInfraProjectMigrator(
         )
 
 
-__all__ = ["FlextInfraProjectMigrator"]
+__all__: list[str] = ["FlextInfraProjectMigrator"]

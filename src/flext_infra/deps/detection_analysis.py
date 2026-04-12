@@ -357,6 +357,6 @@ class FlextInfraDependencyDetectionAnalysis:
         return r[t.Infra.Pair[t.StrSequence, int]].ok((lines, cmd_result.exit_code))
 
 
-__all__ = [
+__all__: list[str] = [
     "FlextInfraDependencyDetectionAnalysis",
 ]

@@ -113,4 +113,4 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerPhasesMixin):
         )
 
 
-__all__ = ["FlextInfraNamespaceEnforcer"]
+__all__: list[str] = ["FlextInfraNamespaceEnforcer"]

@@ -78,4 +78,4 @@ class FlextInfraLooseObjectDetector:
         return violations
 
 
-__all__ = ["FlextInfraLooseObjectDetector"]
+__all__: list[str] = ["FlextInfraLooseObjectDetector"]

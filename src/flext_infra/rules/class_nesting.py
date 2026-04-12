@@ -366,4 +366,4 @@ class FlextInfraClassNestingRefactorRule:
         }
 
 
-__all__ = ["FlextInfraClassNestingRefactorRule"]
+__all__: list[str] = ["FlextInfraClassNestingRefactorRule"]

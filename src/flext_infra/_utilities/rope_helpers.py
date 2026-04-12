@@ -272,4 +272,4 @@ class FlextInfraUtilitiesRopeHelpers:
         return c.Infra.MethodCategory.PUBLIC
 
 
-__all__ = ["FlextInfraUtilitiesRopeHelpers"]
+__all__: list[str] = ["FlextInfraUtilitiesRopeHelpers"]

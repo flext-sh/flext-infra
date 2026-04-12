@@ -228,4 +228,4 @@ class FlextInfraNestedClassPropagationTransformer(FlextInfraRopeTransformer):
         return any(symbol_name.startswith(p) for p in policy.blocked_reference_prefixes)
 
 
-__all__ = ["FlextInfraNestedClassPropagationTransformer"]
+__all__: list[str] = ["FlextInfraNestedClassPropagationTransformer"]

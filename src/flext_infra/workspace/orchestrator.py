@@ -387,4 +387,4 @@ class FlextInfraOrchestratorService(s[bool]):
         return ",".join(normalized_gates)
 
 
-__all__ = ["FlextInfraOrchestratorService"]
+__all__: list[str] = ["FlextInfraOrchestratorService"]

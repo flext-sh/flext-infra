@@ -192,4 +192,4 @@ class FlextInfraUtilitiesRefactorCli:
             )
 
 
-__all__ = ["FlextInfraUtilitiesRefactorCli"]
+__all__: list[str] = ["FlextInfraUtilitiesRefactorCli"]

@@ -54,4 +54,4 @@ class FlextInfraRuntimeAliasDetector:
         return []
 
 
-__all__ = ["FlextInfraRuntimeAliasDetector"]
+__all__: list[str] = ["FlextInfraRuntimeAliasDetector"]

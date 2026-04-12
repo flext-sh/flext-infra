@@ -273,4 +273,4 @@ class FlextInfraRefactorViolationAnalyzer:
         return "\n".join(body_lines)
 
 
-__all__ = ["FlextInfraRefactorViolationAnalyzer"]
+__all__: list[str] = ["FlextInfraRefactorViolationAnalyzer"]

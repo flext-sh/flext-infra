@@ -22,4 +22,4 @@ class FlextInfraConstantsBasemk:
     )
 
 
-__all__ = ["FlextInfraConstantsBasemk"]
+__all__: list[str] = ["FlextInfraConstantsBasemk"]

@@ -119,4 +119,4 @@ class FlextInfraInjectCommentsPhase:
         return (updated, changes)
 
 
-__all__ = ["FlextInfraInjectCommentsPhase"]
+__all__: list[str] = ["FlextInfraInjectCommentsPhase"]

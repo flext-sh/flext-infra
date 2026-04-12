@@ -384,4 +384,4 @@ class FlextInfraModelsRefactorGrep:
         )
 
 
-__all__ = ["FlextInfraModelsRefactorGrep"]
+__all__: list[str] = ["FlextInfraModelsRefactorGrep"]

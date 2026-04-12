@@ -27,4 +27,4 @@ class FlextInfraCliBasemk:
         )
 
 
-__all__ = ["FlextInfraCliBasemk"]
+__all__: list[str] = ["FlextInfraCliBasemk"]

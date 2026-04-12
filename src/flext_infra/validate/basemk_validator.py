@@ -98,4 +98,4 @@ class FlextInfraBaseMkValidator(s[bool]):
         )
 
 
-__all__ = ["FlextInfraBaseMkValidator"]
+__all__: list[str] = ["FlextInfraBaseMkValidator"]

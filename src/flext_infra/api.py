@@ -34,6 +34,7 @@ from flext_infra import (
     m,
     t,
 )
+from flext_infra.services.rope import FlextInfraServiceRopeMixin
 
 
 class FlextInfra(
@@ -51,6 +52,7 @@ class FlextInfra(
     FlextInfraServiceCheckMixin,
     FlextInfraServiceDepsMixin,
     FlextInfraServiceGithubMixin,
+    FlextInfraServiceRopeMixin,
     FlextInfraServiceRefactorMixin,
     FlextInfraServiceReleaseMixin,
     FlextInfraServiceValidateMixin,
@@ -132,4 +134,4 @@ class FlextInfra(
 infra = FlextInfra.get_instance()
 
 
-__all__ = ["FlextInfra", "infra"]
+__all__: list[str] = ["FlextInfra", "infra"]

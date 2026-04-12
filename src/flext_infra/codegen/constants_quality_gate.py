@@ -450,4 +450,4 @@ class FlextInfraConstantsCodegenQualityGate(s[bool]):
         return verdict == "PASS"
 
 
-__all__ = ["FlextInfraConstantsCodegenQualityGate"]
+__all__: list[str] = ["FlextInfraConstantsCodegenQualityGate"]

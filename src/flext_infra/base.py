@@ -165,7 +165,7 @@ class FlextInfraServiceBase(
 
 s = FlextInfraServiceBase
 
-__all__ = [
+__all__: list[str] = [
     "FlextInfraServiceBase",
     "s",
 ]

@@ -81,4 +81,4 @@ class FlextInfraUtilitiesDocsContract:
         return m.Infra.GeneratedFile(path=path.as_posix(), written=apply)
 
 
-__all__ = ["FlextInfraUtilitiesDocsContract"]
+__all__: list[str] = ["FlextInfraUtilitiesDocsContract"]

@@ -254,4 +254,4 @@ class FlextInfraModelsGithub:
         ] = Field(description="Accumulated pull-request outcomes")
 
 
-__all__ = ["FlextInfraModelsGithub"]
+__all__: list[str] = ["FlextInfraModelsGithub"]

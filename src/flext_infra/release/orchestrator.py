@@ -496,4 +496,4 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
         return sorted({path.resolve() for path in files if path.exists()})
 
 
-__all__ = ["FlextInfraReleaseOrchestrator"]
+__all__: list[str] = ["FlextInfraReleaseOrchestrator"]

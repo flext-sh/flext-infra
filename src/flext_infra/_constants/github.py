@@ -12,4 +12,4 @@ class FlextInfraConstantsGithub:
     MIN_ARGV: Final[int] = 2
 
 
-__all__ = ["FlextInfraConstantsGithub"]
+__all__: list[str] = ["FlextInfraConstantsGithub"]

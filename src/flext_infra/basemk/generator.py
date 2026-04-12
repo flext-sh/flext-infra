@@ -168,4 +168,4 @@ class FlextInfraBaseMkGenerator(s[str]):
         )
 
 
-__all__ = ["FlextInfraBaseMkGenerator"]
+__all__: list[str] = ["FlextInfraBaseMkGenerator"]
