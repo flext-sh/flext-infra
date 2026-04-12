@@ -131,7 +131,7 @@ class FlextInfraRefactorEngine(
         _ = parser.add_argument("--impact-map-output", type=Path)
         _ = parser.add_argument("--analyze-violations", action="store_true")
         _ = parser.add_argument("--analysis-output", type=Path)
-        _ = parser.add_argument("--settings", "-c", type=Path)
+        _ = parser.add_argument("--config", "-c", type=Path)
         args = parser.parse_args()
         engine = FlextInfraRefactorEngine(config_path=args.settings)
         cfg = engine.load_config()

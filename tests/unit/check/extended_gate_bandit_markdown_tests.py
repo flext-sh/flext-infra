@@ -159,7 +159,7 @@ class TestBanditAndMarkdownGates:
         gate = FlextInfraMarkdownGate(tmp_path, runner=runner)
         _ = gate.check(project_dir, self.make_ctx(tmp_path))
 
-        tm.that(runner.commands[0], has="--settings")
+        tm.that(runner.commands[0], has="--config")
 
 
 __all__: t.StrSequence = []

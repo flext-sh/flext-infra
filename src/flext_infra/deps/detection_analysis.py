@@ -238,7 +238,7 @@ class FlextInfraDependencyDetectionAnalysis:
         cmd: MutableSequence[str] = [
             str(venv_bin / c.Infra.DEPTRY),
             ".",
-            "--settings",
+            "--config",
             str(settings),
             "--json-output",
             str(out_file),
@@ -300,7 +300,7 @@ class FlextInfraDependencyDetectionAnalysis:
         cmd: t.StrSequence = [
             str(mypy_bin),
             c.Infra.DEFAULT_SRC_DIR,
-            "--settings-file",
+            "--config-file",
             c.Infra.PYPROJECT_FILENAME,
             "--no-error-summary",
         ]

@@ -3,7 +3,7 @@ daemon-start-mypy: ## Start dmypy daemon for this project
 	$(Q)if $(VENV_PYTHON) -m mypy.dmypy --status-file "$(DMPY_SOCKET)" status >/dev/null 2>&1; then \
 		echo "dmypy already running for $(PROJECT_NAME) at $(DMPY_SOCKET)"; \
 	else \
-		$(VENV_PYTHON) -m mypy.dmypy --status-file "$(DMPY_SOCKET)" start -- --settings-file "$(WORKSPACE_ROOT)/pyproject.toml"; \
+		$(VENV_PYTHON) -m mypy.dmypy --status-file "$(DMPY_SOCKET)" start -- --config-file "$(WORKSPACE_ROOT)/pyproject.toml"; \
 	fi
 
 daemon-stop-mypy: ## Stop dmypy daemon for this project

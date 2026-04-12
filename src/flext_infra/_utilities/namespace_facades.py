@@ -8,7 +8,7 @@ from collections.abc import MutableMapping, Sequence
 from pathlib import Path
 from typing import ClassVar
 
-from flext_cli import FlextCliUtilitiesToml as _CliToml
+from flext_cli import u
 from flext_infra import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesFormatting,
@@ -55,7 +55,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
             raw = pyproject_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
         except OSError:
             return {}
-        doc = _CliToml.toml_parse_text(raw)
+        doc = u.Cli.toml_parse_text(raw)
         if doc is None:
             return {}
         dep_names = FlextInfraUtilitiesTomlParse.local_dependency_names(doc)

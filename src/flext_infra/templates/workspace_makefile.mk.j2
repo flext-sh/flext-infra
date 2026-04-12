@@ -583,7 +583,7 @@ fmt: ## Run code formatting across all workspace projects (ruff/gofmt + markdown
 		echo "Formatting Markdown files (markdownlint)..."; \
 		md_config=""; \
 		if [ -f ".markdownlint.json" ]; then \
-			md_config="--settings .markdownlint.json"; \
+			md_config="--config .markdownlint.json"; \
 		fi; \
 		echo "$$md_files" | xargs markdownlint --fix $$md_config; \
 	fi

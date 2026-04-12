@@ -52,7 +52,7 @@ class FlextInfraMypyGate(FlextInfraGate):
             "-m",
             c.Infra.MYPY,
             *check_dirs,
-            "--settings-file",
+            "--config-file",
             str(cfg),
             "--output",
             c.Infra.OUTPUT_JSON,

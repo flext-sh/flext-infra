@@ -30,9 +30,9 @@ class FlextInfraMarkdownGate(FlextInfraGate):
         root_config = self._workspace_root / ".markdownlint.json"
         local_config = project_dir / ".markdownlint.json"
         if root_config.exists():
-            return ["--settings", str(root_config)]
+            return ["--config", str(root_config)]
         if local_config.exists():
-            return ["--settings", str(local_config)]
+            return ["--config", str(local_config)]
         return []
 
     @override
