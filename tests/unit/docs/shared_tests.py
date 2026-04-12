@@ -89,3 +89,34 @@ def test_build_scopes_skips_missing_projects(tmp_path: Path) -> None:
 
     assert result.success
     assert [scope.name for scope in result.value] == ["root"]
+
+
+def test_build_scopes_preserves_discovered_package_name(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    project_root = workspace / "flext-demo"
+    package_root = project_root / "src" / "demo_pkg"
+    package_root.mkdir(parents=True)
+    workspace.mkdir(parents=True, exist_ok=True)
+    (workspace / "pyproject.toml").write_text(
+        "[project]\nname='workspace'\n",
+        encoding="utf-8",
+    )
+    (package_root / "__init__.py").write_text("", encoding="utf-8")
+    (project_root / "pyproject.toml").write_text(
+        "[project]\n"
+        "name='flext-demo'\n"
+        "dependencies=['flext-core>=0.1.0']\n\n"
+        "[tool.hatch.build.targets.wheel]\n"
+        "packages=['src/demo_pkg']\n",
+        encoding="utf-8",
+    )
+
+    result = u.Infra.build_scopes(
+        workspace,
+        projects=["flext-demo"],
+        output_dir=c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
+    )
+
+    assert result.success
+    assert len(result.value) == 2
+    assert result.value[1].package_name == "demo_pkg"

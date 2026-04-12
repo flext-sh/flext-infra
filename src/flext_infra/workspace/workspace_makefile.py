@@ -186,7 +186,7 @@ class FlextInfraWorkspaceMakefileGenerator:
         """Render a validated template object into the final Makefile text."""
         return template.render(
             pr_branch=pr_branch,
-            make=c.Infra.MAKE,
+            make=c.Infra,
         )
 
     @staticmethod

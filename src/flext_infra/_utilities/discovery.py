@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 from collections.abc import Mapping, Sequence
+from functools import cache
 from pathlib import Path
 
 from flext_core import r
@@ -30,9 +31,10 @@ class FlextInfraUtilitiesDiscovery:
                 return ""
 
     @staticmethod
-    def discover_project_root_from_file(file_path: Path) -> Path | None:
-        """Discover the enclosing project root for one file or directory path."""
-        resolved = file_path.resolve()
+    @cache
+    def _discover_project_root_from_path(file_path: str) -> str:
+        """Discover the enclosing project root path cached by file path."""
+        resolved = Path(file_path).resolve()
         candidate = (
             resolved.parent if resolved.suffix == c.Infra.EXT_PYTHON else resolved
         )
@@ -45,17 +47,27 @@ class FlextInfraUtilitiesDiscovery:
                 wrapper_root = current.parent
                 continue
             if (current / c.Infra.DEFAULT_SRC_DIR).is_dir():
-                return current
-        return wrapper_root
+                return str(current)
+        return str(wrapper_root) if wrapper_root is not None else ""
 
     @staticmethod
-    def discover_package_from_file(file_path: Path) -> str:
-        """Discover the module or package path for one Python file or package directory."""
-        resolved = file_path.resolve()
-        relative_parts: tuple[str, ...] = ()
-        project_root = FlextInfraUtilitiesDiscovery.discover_project_root_from_file(
-            file_path,
+    def discover_project_root_from_file(file_path: Path) -> Path | None:
+        """Discover the enclosing project root for one file or directory path."""
+        project_root = FlextInfraUtilitiesDiscovery._discover_project_root_from_path(
+            str(file_path),
         )
+        return Path(project_root) if project_root else None
+
+    @staticmethod
+    @cache
+    def _discover_package_from_path(file_path: str) -> str:
+        """Discover the package path cached by file path."""
+        resolved = Path(file_path).resolve()
+        relative_parts: tuple[str, ...] = ()
+        project_root_value = (
+            FlextInfraUtilitiesDiscovery._discover_project_root_from_path(file_path)
+        )
+        project_root = Path(project_root_value) if project_root_value else None
         if project_root is not None:
             try:
                 relative_parts = resolved.relative_to(project_root).parts
@@ -105,6 +117,11 @@ class FlextInfraUtilitiesDiscovery:
             if project_root is not None
             else ""
         )
+
+    @staticmethod
+    def discover_package_from_file(file_path: Path) -> str:
+        """Discover the module or package path for one Python file or package directory."""
+        return FlextInfraUtilitiesDiscovery._discover_package_from_path(str(file_path))
 
     @staticmethod
     def discover_python_dirs(

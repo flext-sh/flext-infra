@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from fnmatch import fnmatch
+from functools import cache
 from pathlib import Path
 
 from flext_cli import u
@@ -19,6 +20,41 @@ from flext_infra import (
 
 class FlextInfraUtilitiesDocsScope:
     """Utility helpers for docs scope policy and project classification."""
+
+    @staticmethod
+    @cache
+    def _project_state(project_root: str) -> m.Infra.ProjectPyprojectState:
+        """Return cached parsed pyproject state for one project root."""
+        root = Path(project_root)
+        pyproject_path = root / c.Infra.PYPROJECT_FILENAME
+        payload = FlextInfraUtilitiesIteration.pyproject_payload(pyproject_path)
+        docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(payload)
+        dependency_names = tuple(
+            FlextInfraUtilitiesTomlParse.declared_dependency_names_from_payload(
+                payload,
+            )
+        )
+        return m.Infra.ProjectPyprojectState.model_construct(
+            project_root=root,
+            pyproject_path=pyproject_path,
+            payload=payload,
+            docs_meta=docs_meta,
+            project_name=FlextInfraUtilitiesDocsScope.project_name_from_payload(
+                root,
+                payload,
+            ),
+            package_name=FlextInfraUtilitiesDocsScope.package_name_from_payload(
+                root,
+                payload,
+                docs_meta,
+            ),
+            dependency_names=dependency_names,
+        )
+
+    @staticmethod
+    def project_state(project_root: Path) -> m.Infra.ProjectPyprojectState:
+        """Return the centralized parsed state for one project root."""
+        return FlextInfraUtilitiesDocsScope._project_state(str(project_root.resolve()))
 
     @staticmethod
     def resolve_projects(
@@ -72,15 +108,10 @@ class FlextInfraUtilitiesDocsScope:
 
     @staticmethod
     def _declares_flext_core_dependency(
-        payload: t.Infra.ContainerDict,
+        project_state: m.Infra.ProjectPyprojectState,
     ) -> bool:
         """Return whether one pyproject payload declares a direct dependency on flext-core."""
-        dependency_names: t.Infra.StrSet = set(
-            FlextInfraUtilitiesTomlParse.declared_dependency_names_from_payload(
-                payload
-            ),
-        )
-        return c.Infra.PKG_CORE in dependency_names
+        return c.Infra.PKG_CORE in project_state.dependency_names
 
     @staticmethod
     def _project_info_for_entry(
@@ -92,21 +123,16 @@ class FlextInfraUtilitiesDocsScope:
         pyproject = entry / c.Infra.PYPROJECT_FILENAME
         if not pyproject.is_file():
             return None
-        payload = FlextInfraUtilitiesDocsScope.pyproject_payload(entry)
+        project_state = FlextInfraUtilitiesDocsScope.project_state(entry)
         is_workspace_member = entry.name in workspace_members
         if (
             not is_workspace_member
             and not FlextInfraUtilitiesDocsScope._declares_flext_core_dependency(
-                payload,
+                project_state,
             )
         ):
             return None
-        docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(payload)
-        project_name = FlextInfraUtilitiesDocsScope.project_name_from_payload(
-            entry,
-            payload,
-        )
-        enabled = docs_meta.get("enabled", True)
+        enabled = project_state.docs_meta.get("enabled", True)
         if isinstance(enabled, bool) and not enabled:
             return None
         workspace_role = (
@@ -116,23 +142,17 @@ class FlextInfraUtilitiesDocsScope:
         )
         return m.Infra.ProjectInfo.model_construct(
             path=entry,
-            name=project_name,
+            name=project_state.project_name,
             stack="python/flext",
             has_tests=(entry / c.Infra.DIR_TESTS).is_dir(),
             has_src=(entry / c.Infra.DEFAULT_SRC_DIR).is_dir(),
             project_class=(
                 FlextInfraUtilitiesDocsScope.classify_project_from_meta(
-                    project_name,
-                    docs_meta,
+                    project_state.project_name,
+                    project_state.docs_meta,
                 )
             ),
-            package_name=(
-                FlextInfraUtilitiesDocsScope.package_name_from_payload(
-                    entry,
-                    payload,
-                    docs_meta,
-                )
-            ),
+            package_name=project_state.package_name,
             workspace_role=workspace_role,
         )
 
@@ -144,10 +164,7 @@ class FlextInfraUtilitiesDocsScope:
     @staticmethod
     def pyproject_payload(project_root: Path) -> t.Infra.ContainerDict:
         """Return a project's ``pyproject.toml`` payload as a plain mapping."""
-        pyproject = project_root / c.Infra.PYPROJECT_FILENAME
-        if not pyproject.exists():
-            return {}
-        return FlextInfraUtilitiesIteration.pyproject_payload(pyproject)
+        return FlextInfraUtilitiesDocsScope.project_state(project_root).payload
 
     @staticmethod
     def load_config(
@@ -175,15 +192,7 @@ class FlextInfraUtilitiesDocsScope:
     @staticmethod
     def project_docs_meta(project_root: Path) -> t.Infra.ContainerDict:
         """Return optional ``tool.flext.docs`` metadata from a project pyproject."""
-        payload = FlextInfraUtilitiesDocsScope.pyproject_payload(project_root)
-        tool = payload.get(c.Infra.TOOL)
-        if not isinstance(tool, dict):
-            return {}
-        flext = tool.get("flext")
-        if not isinstance(flext, dict):
-            return {}
-        docs = flext.get("docs")
-        return docs if isinstance(docs, dict) else {}
+        return FlextInfraUtilitiesDocsScope.project_state(project_root).docs_meta
 
     @staticmethod
     def docs_meta_list(
@@ -297,13 +306,7 @@ class FlextInfraUtilitiesDocsScope:
     @staticmethod
     def package_name(project_root: Path) -> str:
         """Return the primary Python package name for a project."""
-        payload = FlextInfraUtilitiesDocsScope.pyproject_payload(project_root)
-        docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(payload)
-        return FlextInfraUtilitiesDocsScope.package_name_from_payload(
-            project_root,
-            payload,
-            docs_meta,
-        )
+        return FlextInfraUtilitiesDocsScope.project_state(project_root).package_name
 
     @staticmethod
     def discover_projects(

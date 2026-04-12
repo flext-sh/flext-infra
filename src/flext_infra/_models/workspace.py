@@ -70,6 +70,34 @@ class FlextInfraModelsWorkspace:
         python_version: Annotated[t.NonEmptyStr, Field(description="Python version")]
         description: Annotated[t.NonEmptyStr, Field(description="Project description")]
 
+    class ProjectPyprojectState(m.ArbitraryTypesModel):
+        """Centralized parsed pyproject state reused across discovery services."""
+
+        model_config = ConfigDict(frozen=True, validate_default=False)
+
+        project_root: Annotated[Path, Field(description="Project root path")]
+        pyproject_path: Annotated[Path, Field(description="Resolved pyproject path")]
+        payload: Annotated[
+            t.Infra.ContainerDict,
+            Field(description="Parsed pyproject payload"),
+        ] = Field(default_factory=dict)
+        docs_meta: Annotated[
+            t.Infra.ContainerDict,
+            Field(description="Parsed tool.flext.docs payload"),
+        ] = Field(default_factory=dict)
+        project_name: Annotated[
+            str,
+            Field(default="", description="Declared project name"),
+        ] = ""
+        package_name: Annotated[
+            str,
+            Field(default="", description="Primary package name"),
+        ] = ""
+        dependency_names: Annotated[
+            t.StrSequence,
+            Field(description="Declared dependency names"),
+        ] = Field(default_factory=tuple)
+
     class SyncResult(m.ArbitraryTypesModel):
         """Result payload for sync operations."""
 

@@ -112,7 +112,15 @@ class FlextInfraSyncService(FlextInfraServiceBase[m.Infra.SyncResult]):
                 gitignore_result.error or ".gitignore sync failed",
             )
         changed += 1 if gitignore_result.value else 0
-        changed += self._sync_makefile_if_needed(resolved, effective_root)
+        makefile_result = self._sync_makefile_if_needed(
+            resolved,
+            effective_root,
+        )
+        if makefile_result.failure:
+            return r[m.Infra.SyncResult].fail(
+                makefile_result.error or "Makefile sync failed",
+            )
+        changed += makefile_result.value
         is_workspace_root = self._is_workspace_root(resolved, effective_root)
         if is_workspace_root:
             child_sync_result = self._sync_workspace_children(
@@ -163,21 +171,28 @@ class FlextInfraSyncService(FlextInfraServiceBase[m.Infra.SyncResult]):
         self,
         resolved: Path,
         effective_root: Path | None,
-    ) -> int:
-        """Sync workspace or project Makefile as appropriate. Returns 1 if changed."""
+    ) -> r[int]:
+        """Sync workspace or project Makefile and surface generator failures."""
         is_workspace_root = self._is_workspace_root(resolved, effective_root)
         if is_workspace_root:
             workspace_makefile_result = self._sync_workspace_makefile(resolved)
-            if workspace_makefile_result.success and workspace_makefile_result.value:
-                return 1
-        elif (resolved / c.Infra.PYPROJECT_FILENAME).exists():
+            if workspace_makefile_result.failure:
+                return r[int].fail(
+                    workspace_makefile_result.error
+                    or "workspace Makefile generation failed",
+                )
+            return r[int].ok(1 if workspace_makefile_result.value else 0)
+        if (resolved / c.Infra.PYPROJECT_FILENAME).exists():
             makefile_result = self._sync_project_makefile(
                 resolved,
                 effective_root or resolved,
             )
-            if makefile_result.success and makefile_result.value:
-                return 1
-        return 0
+            if makefile_result.failure:
+                return r[int].fail(
+                    makefile_result.error or "project Makefile generation failed",
+                )
+            return r[int].ok(1 if makefile_result.value else 0)
+        return r[int].ok(0)
 
     @staticmethod
     def _sync_project_makefile(

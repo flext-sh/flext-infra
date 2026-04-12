@@ -11,7 +11,8 @@ from collections.abc import Mapping, MutableSequence, Sequence
 from functools import cache
 from pathlib import Path
 
-from flext_cli import u
+from pydantic import ValidationError
+
 from flext_core import r
 from flext_infra import FlextInfraUtilitiesTomlParse, c, t
 
@@ -42,11 +43,13 @@ class FlextInfraUtilitiesIteration:
         path = Path(pyproject_path)
         if not path.is_file():
             return {}
-        result = u.Cli.toml_read_json(path)
-        if result.failure:
+        try:
+            raw_payload = tomllib.loads(
+                path.read_text(encoding=c.Infra.ENCODING_DEFAULT),
+            )
+            return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(raw_payload)
+        except (OSError, tomllib.TOMLDecodeError, ValidationError):
             return {}
-        payload = result.value
-        return payload if isinstance(payload, dict) else {}
 
     @staticmethod
     def pyproject_payload(
@@ -201,14 +204,17 @@ class FlextInfraUtilitiesIteration:
                 return True
             if (path / c.Infra.MAKEFILE_FILENAME).exists():
                 return True
-            document_result = u.Cli.toml_read_document(
-                pyproject_path,
-            )
-            if document_result.failure:
+            try:
+                payload = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
+                    tomllib.loads(
+                        pyproject_path.read_text(encoding=c.Infra.ENCODING_DEFAULT),
+                    ),
+                )
+            except (OSError, tomllib.TOMLDecodeError, ValidationError):
                 return False
             dependency_names: set[str] = set(
-                FlextInfraUtilitiesTomlParse.declared_dependency_names(
-                    document_result.value,
+                FlextInfraUtilitiesTomlParse.declared_dependency_names_from_payload(
+                    payload,
                 )
             )
             if c.Infra.PKG_CORE in dependency_names:

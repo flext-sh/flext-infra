@@ -196,5 +196,29 @@ class TestFlextInfraDiscoveryService:
         tm.ok(result)
         tm.that([project.name for project in result.value], eq=["project1", "project2"])
 
+    def test_discover_projects_derives_package_name_from_hatch_packages(
+        self,
+        service: u.Infra,
+        tmp_path: Path,
+    ) -> None:
+        project = tmp_path / "project1"
+        package_dir = project / "src" / "custom_pkg"
+        package_dir.mkdir(parents=True)
+        (package_dir / "__init__.py").write_text("", encoding="utf-8")
+        (project / "pyproject.toml").write_text(
+            "[project]\n"
+            "name='project1'\n"
+            "dependencies=['flext-core>=0.1.0']\n\n"
+            "[tool.hatch.build.targets.wheel]\n"
+            "packages=['src/custom_pkg']\n",
+            encoding="utf-8",
+        )
+
+        result = service.discover_projects(tmp_path)
+
+        tm.ok(result)
+        assert len(result.value) == 1
+        assert result.value[0].package_name == "custom_pkg"
+
 
 __all__: t.StrSequence = []
