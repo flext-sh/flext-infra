@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import MutableMapping, Sequence
 from pathlib import Path
 
 from flext_infra import FlextInfraToml, c, m, t, u
@@ -44,34 +44,38 @@ class FlextInfraEnsureRuffConfigPhase:
         del doc[c.Infra.LINT_SECTION]
         return ["removed stale top-level [lint] section"]
 
-    def apply(
+    @staticmethod
+    def _remove_stale_lint_section_payload(
+        payload: MutableMapping[str, t.Cli.JsonValue],
+    ) -> t.StrSequence:
+        """Remove the stale top-level ``[lint]`` table from one plain payload."""
+        changes: list[str] = []
+        _ = u.Cli.toml_mapping_remove_key_if_present(
+            payload,
+            c.Infra.LINT_SECTION,
+            changes,
+            "removed stale top-level [lint] section",
+        )
+        return changes
+
+    def _phase(
         self,
-        doc: t.Cli.TomlDocument,
         *,
         path: Path,
-    ) -> t.StrSequence:
-        """Apply canonical Ruff tables with namespace-aware first-party detection."""
+        workspace_namespaces: t.StrSequence,
+        stale_patterns: t.StrSequence,
+        include_handler: bool,
+    ) -> m.Infra.TomlPhaseConfig:
+        """Build the canonical Ruff phase for one project path."""
         ruff_cfg = self._tool_config.tools.ruff
         discovered_src = sorted(u.Infra.discover_python_dirs(path.parent))
         effective_src = discovered_src or sorted(ruff_cfg.src)
         detected_packages = sorted(
             {
                 *u.Infra.discover_first_party_namespaces(path.parent),
-                *u.Infra.workspace_dep_namespaces(doc),
+                *workspace_namespaces,
                 *self._workspace_project_namespaces(path.parent),
             },
-        )
-        per_file_ignores = u.Cli.toml_table_path(
-            doc, (c.Infra.TOOL, c.Infra.RUFF, c.Infra.LINT_SECTION, "per-file-ignores")
-        )
-        stale_patterns = (
-            [
-                pattern
-                for pattern in u.Cli.toml_table_string_keys(per_file_ignores)
-                if pattern not in ruff_cfg.lint.per_file_ignores
-            ]
-            if per_file_ignores is not None
-            else []
         )
         lint_nested_values: Sequence[tuple[str, t.Cli.JsonValue]] = (
             ("select", u.Cli.normalize_json_value(sorted(ruff_cfg.lint.select))),
@@ -129,10 +133,78 @@ class FlextInfraEnsureRuffConfigPhase:
                 ),
                 deprecated_keys=stale_patterns,
             )
-            .handler(self._remove_stale_lint_section)
             .build()
         )
-        return FlextInfraToml.apply_phases(doc, phase)
+        if include_handler:
+            return phase.model_copy(
+                update={"custom_handler": self._remove_stale_lint_section},
+            )
+        return phase
+
+    def apply(
+        self,
+        doc: t.Cli.TomlDocument,
+        *,
+        path: Path,
+    ) -> t.StrSequence:
+        """Apply canonical Ruff tables with namespace-aware first-party detection."""
+        per_file_ignores = u.Cli.toml_table_path(
+            doc, (c.Infra.TOOL, c.Infra.RUFF, c.Infra.LINT_SECTION, "per-file-ignores")
+        )
+        stale_patterns = (
+            [
+                pattern
+                for pattern in u.Cli.toml_table_string_keys(per_file_ignores)
+                if pattern not in self._tool_config.tools.ruff.lint.per_file_ignores
+            ]
+            if per_file_ignores is not None
+            else []
+        )
+        return FlextInfraToml.apply_phases(
+            doc,
+            self._phase(
+                path=path,
+                workspace_namespaces=u.Infra.workspace_dep_namespaces(doc),
+                stale_patterns=stale_patterns,
+                include_handler=True,
+            ),
+        )
+
+    def apply_payload(
+        self,
+        payload: MutableMapping[str, t.Cli.JsonValue],
+        *,
+        path: Path,
+    ) -> t.StrSequence:
+        """Apply canonical Ruff settings directly to one normalized payload."""
+        per_file_ignores = u.Cli.toml_mapping_path(
+            payload,
+            (c.Infra.TOOL, c.Infra.RUFF, c.Infra.LINT_SECTION, "per-file-ignores"),
+        )
+        stale_patterns = (
+            [
+                pattern
+                for pattern in list(per_file_ignores)
+                if pattern not in self._tool_config.tools.ruff.lint.per_file_ignores
+            ]
+            if per_file_ignores is not None
+            else []
+        )
+        changes = list(
+            FlextInfraToml.apply_payload_phases(
+                payload,
+                self._phase(
+                    path=path,
+                    workspace_namespaces=u.Infra.workspace_dep_namespaces_from_payload(
+                        payload
+                    ),
+                    stale_patterns=stale_patterns,
+                    include_handler=False,
+                ),
+            )
+        )
+        changes.extend(self._remove_stale_lint_section_payload(payload))
+        return changes
 
 
 __all__ = ["FlextInfraEnsureRuffConfigPhase"]

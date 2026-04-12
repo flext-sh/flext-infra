@@ -81,3 +81,27 @@ class TestFlextInfraPyprojectModernizerEdgeCases:
         )
         tm.that(apply_exit, eq=0)
         tm.that(audit_exit, eq=0)
+
+    def test_run_fails_when_selected_project_has_invalid_toml(
+        self,
+        modernizer_workspace_with_projects: Path,
+    ) -> None:
+        selected_pyproject = (
+            modernizer_workspace_with_projects / "selected" / c.Infra.PYPROJECT_FILENAME
+        )
+        selected_pyproject.write_text("[invalid", encoding="utf-8")
+        modernizer = FlextInfraPyprojectModernizer(
+            modernizer_workspace_with_projects,
+        )
+
+        tm.that(
+            modernizer.run(
+                self._args(
+                    workspace=str(modernizer_workspace_with_projects),
+                    apply=True,
+                    skip_comments=True,
+                    skip_check=False,
+                ),
+            ),
+            eq=1,
+        )

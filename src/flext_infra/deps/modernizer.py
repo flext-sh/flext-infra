@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
+from pydantic import ValidationError
 from tomlkit.items import AoT, Table
 
 from flext_core import r
@@ -21,10 +22,10 @@ from flext_infra import (
     FlextInfraEnsureRuffConfigPhase,
     FlextInfraExtraPathsManager,
     FlextInfraInjectCommentsPhase,
-    FlextInfraModelsDeps,
     FlextInfraProjectClassifier,
     FlextInfraUtilitiesTomlParse,
     c,
+    m,
     t,
     u,
 )
@@ -59,42 +60,207 @@ class FlextInfraPyprojectModernizer:
             )
         return self._paths_manager
 
-    def _classify_project(self, project_dir: Path) -> r[str]:
+    def _classify_project(
+        self,
+        project_dir: Path,
+        *,
+        payload: t.Infra.ContainerDict | None = None,
+    ) -> r[str]:
         """Classify project kind for pyright/coverage settings selection."""
-        kind = FlextInfraProjectClassifier(project_dir).classify().project_kind
+        kind = (
+            FlextInfraProjectClassifier(
+                project_dir,
+                pyproject_payload=payload,
+            )
+            .classify()
+            .project_kind
+        )
         return r[str].ok(kind)
 
-    def _ensure_build_system(self, doc: t.Infra.TomlDocument) -> t.StrSequence:
-        """Ensure canonical build-system backend/requirements."""
+    def _read_document_state(self, path: Path) -> r[m.Infra.PyprojectDocumentState]:
+        """Read one pyproject once and keep one validated plain payload state."""
+        try:
+            original_rendered = path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+        except OSError:
+            return r[m.Infra.PyprojectDocumentState].fail(f"failed to read {path}")
+        payload_source = u.Cli.toml_mapping_from_text(original_rendered)
+        if payload_source is None:
+            return r[m.Infra.PyprojectDocumentState].fail(f"invalid TOML: {path}")
+        try:
+            payload = t.Cli.JSON_MAPPING_ADAPTER.validate_python(payload_source)
+        except ValidationError as exc:
+            return r[m.Infra.PyprojectDocumentState].fail(
+                f"TOML payload validation failed: {exc}",
+            )
+        return r[m.Infra.PyprojectDocumentState].ok(
+            m.Infra.PyprojectDocumentState(
+                pyproject_path=path,
+                original_rendered=original_rendered,
+                payload={str(key): value for key, value in payload.items()},
+            ),
+        )
+
+    def _process_document_state(
+        self,
+        state: m.Infra.PyprojectDocumentState,
+        *,
+        canonical_dev: t.StrSequence,
+        dry_run: bool,
+        skip_comments: bool,
+    ) -> t.StrSequence:
+        """Process one parsed pyproject state and collect changes."""
+        path = state.pyproject_path
+        original_rendered = state.original_rendered
+        payload = state.payload
+        is_root = path.parent.resolve() == self.root.resolve()
+        project_kind = "core"
+        if not is_root:
+            kind_result = self._classify_project(path.parent, payload=payload)
+            if kind_result.success:
+                project_kind = kind_result.value
         changes: MutableSequence[str] = []
-        build_system = u.Cli.toml_table_child(doc, "build-system")
-        if build_system is None:
-            build_system = u.Cli.toml_table()
-            doc["build-system"] = build_system
+        changes.extend(self._ensure_build_system_payload(payload))
+        changes.extend(self._remove_empty_poetry_groups_payload(payload))
+        changes.extend(
+            FlextInfraConsolidateGroupsPhase().apply_payload(payload, canonical_dev),
+        )
+        changes.extend(
+            FlextInfraEnsurePytestConfigPhase(self._tool_config).apply_payload(payload),
+        )
+        changes.extend(
+            FlextInfraEnsurePyreflyConfigPhase(self._tool_config).apply_payload(
+                payload,
+                is_root=is_root,
+                project_dir=path.parent,
+                paths_manager=self.paths_manager,
+            ),
+        )
+        changes.extend(
+            FlextInfraEnsureMypyConfigPhase(self._tool_config).apply_payload(payload),
+        )
+        changes.extend(
+            FlextInfraEnsurePydanticMypyConfigPhase(self._tool_config).apply_payload(
+                payload
+            ),
+        )
+        changes.extend(
+            FlextInfraEnsureFormattingToolingPhase(self._tool_config).apply_payload(
+                payload
+            ),
+        )
+        changes.extend(
+            FlextInfraEnsureNamespaceToolingPhase().apply_payload(payload, path=path),
+        )
+        changes.extend(
+            FlextInfraEnsureRuffConfigPhase(self._tool_config).apply_payload(
+                payload,
+                path=path,
+            ),
+        )
+        changes.extend(
+            FlextInfraEnsurePyrightConfigPhase(self._tool_config).apply_payload(
+                payload,
+                is_root=is_root,
+                workspace_root=self.root,
+                project_dir=path.parent,
+                project_kind=project_kind,
+                paths_manager=self.paths_manager,
+            ),
+        )
+        changes.extend(
+            FlextInfraEnsureCoverageConfigPhase(self._tool_config).apply_payload(
+                payload,
+                project_kind=project_kind,
+            ),
+        )
+        changes.extend(
+            self.paths_manager.sync_payload(
+                payload,
+                project_dir=path.parent,
+                is_root=is_root,
+            ),
+        )
+        doc = u.Cli.toml_document_from_mapping(payload)
+        self._reorder_document_inplace(doc)
+        state.payload = payload
+        rendered = doc.as_string()
+        if not skip_comments:
+            rendered, comment_changes = FlextInfraInjectCommentsPhase().apply(rendered)
+            changes.extend(comment_changes)
+        normalized_original = original_rendered.rstrip() + "\n"
+        normalized_rendered = rendered.rstrip() + "\n"
+        if normalized_rendered == normalized_original:
+            return []
+        if not dry_run:
+            u.write_file(path, rendered, encoding=c.Infra.ENCODING_DEFAULT)
+        return changes
+
+    def _ensure_build_system_payload(
+        self,
+        payload: MutableMapping[str, t.Cli.JsonValue],
+    ) -> t.StrSequence:
+        """Ensure canonical build-system backend/requirements in one plain payload."""
+        changes: MutableSequence[str] = []
+        build_system_existing = payload.get("build-system", None)
+        build_system = u.Cli.toml_mapping_ensure_table(payload, "build-system")
+        if not isinstance(build_system_existing, dict):
             changes.append("created [build-system]")
         expected_backend = "hatchling.build"
-        backend_item = u.Cli.toml_item_child(build_system, "build-backend")
-        current_backend = u.norm_str(u.Cli.toml_unwrap_item(backend_item))
+        current_backend = u.norm_str(str(build_system.get("build-backend", "")))
         if current_backend != expected_backend:
             build_system["build-backend"] = expected_backend
             changes.append("build-system.build-backend set to hatchling.build")
         expected_requires = ["hatchling"]
-        requires_item = u.Cli.toml_item_child(build_system, "requires")
         current_requires = sorted(
-            u.Cli.toml_as_string_list(requires_item),
+            u.Cli.toml_as_string_list(build_system.get("requires"))
         )
         if current_requires != expected_requires:
-            build_system["requires"] = u.Cli.toml_array(expected_requires)
+            build_system["requires"] = list(expected_requires)
             changes.append("build-system.requires set to ['hatchling']")
-        # Backend is now guaranteed to be hatchling.build (set above or already correct)
-        tool_table = u.Cli.toml_ensure_table(doc, c.Infra.TOOL)
-        hatch_table = u.Cli.toml_ensure_table(tool_table, "hatch")
-        metadata_table = u.Cli.toml_ensure_table(hatch_table, "metadata")
-        allow_value = u.Infra.get(metadata_table, "allow-direct-references")
-        current_allow = u.norm_str(str(allow_value), case="lower") == "true"
+        metadata_table = u.Cli.toml_mapping_ensure_path(
+            payload,
+            (c.Infra.TOOL, "hatch", "metadata"),
+        )
+        current_allow = metadata_table.get("allow-direct-references", None) is True
         if not current_allow:
             metadata_table["allow-direct-references"] = True
             changes.append("tool.hatch.metadata.allow-direct-references set to true")
+        return changes
+
+    @staticmethod
+    def _remove_empty_poetry_groups_payload(
+        payload: MutableMapping[str, t.Cli.JsonValue],
+    ) -> t.StrSequence:
+        """Remove empty Poetry group tables from one normalized payload."""
+        poetry_groups = u.Cli.toml_mapping_path(
+            payload,
+            (c.Infra.TOOL, c.Infra.POETRY, c.Infra.GROUP),
+        )
+        if poetry_groups is None:
+            return []
+        empty_groups: MutableSequence[str] = []
+        for name, group_value in poetry_groups.items():
+            group_table = (
+                group_value
+                if isinstance(group_value, dict)
+                else u.Cli.toml_mapping_child(poetry_groups, name)
+            )
+            if group_table is None:
+                continue
+            deps_item = u.Cli.toml_mapping_child(group_table, c.Infra.DEPENDENCIES)
+            if deps_item is not None and not deps_item:
+                empty_groups.append(name)
+        changes: MutableSequence[str] = []
+        for name in empty_groups:
+            del poetry_groups[name]
+            changes.append(f"removed empty poetry group '{name}'")
+        if poetry_groups:
+            return changes
+        poetry_table = u.Cli.toml_mapping_path(payload, (c.Infra.TOOL, c.Infra.POETRY))
+        if poetry_table is None or c.Infra.GROUP not in poetry_table:
+            return changes
+        del poetry_table[c.Infra.GROUP]
+        changes.append("removed empty poetry group container")
         return changes
 
     @staticmethod
@@ -188,106 +354,17 @@ class FlextInfraPyprojectModernizer:
         skip_comments: bool,
     ) -> t.StrSequence:
         """Process one pyproject.toml file and collect changes."""
-        try:
-            original_rendered = path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
-        except OSError:
+        document_state_result = self._read_document_state(path)
+        if document_state_result.failure:
             return ["invalid TOML"]
-        doc = u.Cli.toml_read(path)
-        if doc is None:
-            return ["invalid TOML"]
-        is_root = path.parent.resolve() == self.root.resolve()
-        project_kind = "core"
-        if not is_root:
-            kind_result = self._classify_project(path.parent)
-            if kind_result.success:
-                project_kind = kind_result.value
-        changes: MutableSequence[str] = []
-        changes.extend(self._ensure_build_system(doc))
-        tool_item = u.Cli.toml_table_child(doc, c.Infra.TOOL)
-        if tool_item is None:
-            tool_item = u.Cli.toml_table()
-            doc[c.Infra.TOOL] = tool_item
-        poetry_item = u.Cli.toml_table_child(tool_item, c.Infra.POETRY)
-        if poetry_item is not None:
-            group_item = u.Cli.toml_table_child(poetry_item, c.Infra.GROUP)
-            if group_item is not None:
-                empty_groups: MutableSequence[str] = []
-                for name in u.Cli.toml_table_string_keys(group_item):
-                    group_dep_item = u.Cli.toml_table_child(group_item, name)
-                    if group_dep_item is None:
-                        continue
-                    deps_item = u.Cli.toml_table_child(
-                        group_dep_item, c.Infra.DEPENDENCIES
-                    )
-                    if deps_item is not None and not deps_item:
-                        empty_groups.append(name)
-                for name in empty_groups:
-                    del group_item[name]
-                    changes.append(f"removed empty poetry group '{name}'")
-                if not group_item:
-                    del poetry_item[c.Infra.GROUP]
-                    changes.append("removed empty poetry group container")
-        changes.extend(FlextInfraConsolidateGroupsPhase().apply(doc, canonical_dev))
-        changes.extend(FlextInfraEnsurePytestConfigPhase(self._tool_config).apply(doc))
-        changes.extend(
-            FlextInfraEnsurePyreflyConfigPhase(self._tool_config).apply(
-                doc,
-                is_root=is_root,
-                project_dir=path.parent,
-                paths_manager=self.paths_manager,
-            ),
+        return self._process_document_state(
+            document_state_result.value,
+            canonical_dev=canonical_dev,
+            dry_run=dry_run,
+            skip_comments=skip_comments,
         )
-        changes.extend(FlextInfraEnsureMypyConfigPhase(self._tool_config).apply(doc))
-        changes.extend(
-            FlextInfraEnsurePydanticMypyConfigPhase(self._tool_config).apply(doc),
-        )
-        changes.extend(
-            FlextInfraEnsureFormattingToolingPhase(self._tool_config).apply(doc),
-        )
-        changes.extend(FlextInfraEnsureNamespaceToolingPhase().apply(doc, path=path))
-        changes.extend(
-            FlextInfraEnsureRuffConfigPhase(self._tool_config).apply(
-                doc,
-                path=path,
-            ),
-        )
-        changes.extend(
-            FlextInfraEnsurePyrightConfigPhase(self._tool_config).apply(
-                doc,
-                is_root=is_root,
-                workspace_root=self.root,
-                project_dir=path.parent,
-                project_kind=project_kind,
-                paths_manager=self.paths_manager,
-            ),
-        )
-        changes.extend(
-            FlextInfraEnsureCoverageConfigPhase(self._tool_config).apply(
-                doc,
-                project_kind=project_kind,
-            ),
-        )
-        changes.extend(
-            self.paths_manager.sync_doc(
-                doc,
-                project_dir=path.parent,
-                is_root=is_root,
-            ),
-        )
-        self._reorder_document_inplace(doc)
-        rendered = doc.as_string()
-        if not skip_comments:
-            rendered, comment_changes = FlextInfraInjectCommentsPhase().apply(rendered)
-            changes.extend(comment_changes)
-        normalized_original = original_rendered.rstrip() + "\n"
-        normalized_rendered = rendered.rstrip() + "\n"
-        if normalized_rendered == normalized_original:
-            return []
-        if not dry_run:
-            u.write_file(path, rendered, encoding=c.Infra.ENCODING_DEFAULT)
-        return changes
 
-    def run(self, params: FlextInfraModelsDeps.ModernizeCommand) -> int:
+    def run(self, params: m.Infra.ModernizeCommand) -> int:
         """Run pyproject modernization for the workspace."""
         check_mode = bool(params.audit or params.check)
         dry_run = bool(params.dry_run or check_mode)
@@ -309,23 +386,39 @@ class FlextInfraPyprojectModernizer:
             on_failure=lambda _: [],
             on_success=lambda value: sorted(value),
         )
-        root_doc: t.Cli.TomlDocument | None = u.Cli.toml_read(
+        root_state_result = self._read_document_state(
             self.root / c.Infra.PYPROJECT_FILENAME
         )
-        if root_doc is None:
+        if root_state_result.failure:
             return 2
+        root_state = root_state_result.value
         canonical_dev: t.StrSequence = t.Infra.STR_SEQ_ADAPTER.validate_python(
-            FlextInfraUtilitiesTomlParse.canonical_dev_dependencies(root_doc),
+            FlextInfraUtilitiesTomlParse.canonical_dev_dependencies_from_payload(
+                root_state.payload
+            ),
         )
         violations: MutableMapping[str, t.StrSequence] = {}
+        document_states: MutableSequence[m.Infra.PyprojectDocumentState] = []
+        invalid_paths: MutableSequence[Path] = []
         total = 0
         for file_path in files:
-            changes = self.process_file(
-                file_path,
-                canonical_dev=canonical_dev,
-                dry_run=dry_run,
-                skip_comments=params.skip_comments,
+            document_state_result = (
+                r[m.Infra.PyprojectDocumentState].ok(root_state)
+                if file_path.resolve() == root_state.pyproject_path.resolve()
+                else self._read_document_state(file_path)
             )
+            if document_state_result.failure:
+                invalid_paths.append(file_path)
+                changes = ["invalid TOML"]
+            else:
+                document_state = document_state_result.value
+                document_states.append(document_state)
+                changes = self._process_document_state(
+                    document_state,
+                    canonical_dev=canonical_dev,
+                    dry_run=dry_run,
+                    skip_comments=params.skip_comments,
+                )
             if not changes:
                 continue
             rel = str(file_path.relative_to(self.root))
@@ -344,24 +437,31 @@ class FlextInfraPyprojectModernizer:
         if check_mode and total > 0:
             return 1
         if not dry_run and (not params.skip_check):
-            return self._run_build_check(files)
+            return self._run_build_check(
+                document_states,
+                invalid_paths=invalid_paths,
+            )
         return 0
 
-    def _run_build_check(self, files: Sequence[Path]) -> int:
+    def _run_build_check(
+        self,
+        document_states: Sequence[m.Infra.PyprojectDocumentState],
+        *,
+        invalid_paths: Sequence[Path] = (),
+    ) -> int:
         """Validate pyproject.toml files have hatchling build backend."""
         has_warning = False
-        for path in files:
-            doc = u.Cli.toml_read(path)
-            if doc is None:
-                has_warning = True
-                continue
-            build_sys = u.Cli.toml_table_child(doc, "build-system")
+        for invalid_path in invalid_paths:
+            u.Infra.info(f"{invalid_path}: invalid TOML")
+            has_warning = True
+        for document_state in document_states:
+            path = document_state.pyproject_path
+            build_sys = u.Cli.toml_mapping_child(document_state.payload, "build-system")
             if build_sys is None:
                 u.Infra.info(f"{path}: missing [build-system]")
                 has_warning = True
                 continue
-            backend_item = u.Cli.toml_item_child(build_sys, "build-backend")
-            backend = u.norm_str(u.Cli.toml_unwrap_item(backend_item))
+            backend = u.norm_str(str(build_sys.get("build-backend", "")))
             if backend != "hatchling.build":
                 u.Infra.info(f"{path}: expected hatchling.build, got {backend}")
                 has_warning = True

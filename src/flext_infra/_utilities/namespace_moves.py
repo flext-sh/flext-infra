@@ -49,7 +49,6 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
                     FlextInfraUtilitiesDiscovery.contextual_runtime_alias_sources(
                         project_root=project_root,
                         file_path=file_path,
-                        rope_project=rope_project,
                     )
                 ):
                     continue

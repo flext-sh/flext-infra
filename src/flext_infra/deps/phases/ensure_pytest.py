@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
+
 from flext_infra import FlextInfraToml, c, m, t
 
 
@@ -12,9 +14,9 @@ class FlextInfraEnsurePytestConfigPhase:
         """Store tool configuration used to compose canonical pytest defaults."""
         self._tool_config = tool_config
 
-    def apply(self, doc: t.Cli.TomlDocument) -> t.StrSequence:
-        """Apply pytest defaults while preserving project-specific ini options."""
-        phase = (
+    def _phase(self) -> m.Infra.TomlPhaseConfig:
+        """Build the canonical pytest phase definition."""
+        return (
             m.Infra.TomlPhaseConfig
             .Builder("pytest")
             .table(c.Infra.PYTEST, c.Infra.INI_OPTIONS)
@@ -41,7 +43,17 @@ class FlextInfraEnsurePytestConfigPhase:
             )
             .build()
         )
-        return FlextInfraToml.apply_phases(doc, phase)
+
+    def apply(self, doc: t.Cli.TomlDocument) -> t.StrSequence:
+        """Apply pytest defaults while preserving project-specific ini options."""
+        return FlextInfraToml.apply_phases(doc, self._phase())
+
+    def apply_payload(
+        self,
+        payload: MutableMapping[str, t.Cli.JsonValue],
+    ) -> t.StrSequence:
+        """Apply pytest defaults directly to one normalized payload."""
+        return FlextInfraToml.apply_payload_phases(payload, self._phase())
 
 
 __all__ = ["FlextInfraEnsurePytestConfigPhase"]

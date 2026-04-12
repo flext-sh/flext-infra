@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
+
 from flext_infra import FlextInfraToml, m, t
 
 
@@ -12,13 +14,12 @@ class FlextInfraEnsureCoverageConfigPhase:
         """Capture tool configuration used to build canonical coverage settings."""
         self._tool_config = tool_config
 
-    def apply(
+    def _phases(
         self,
-        doc: t.Cli.TomlDocument,
         *,
         project_kind: str = "core",
-    ) -> t.StrSequence:
-        """Apply canonical coverage report/run tables for the selected project kind."""
+    ) -> tuple[m.Infra.TomlPhaseConfig, m.Infra.TomlPhaseConfig]:
+        """Build the canonical coverage phases for the selected project kind."""
         cov_config = self._tool_config.tools.coverage
         fail_under_map: t.IntMapping = {
             "core": cov_config.fail_under.core,
@@ -45,7 +46,31 @@ class FlextInfraEnsureCoverageConfigPhase:
             .list("omit", sorted(set(cov_config.omit)))
             .build()
         )
-        return FlextInfraToml.apply_phases(doc, report_phase, run_phase)
+        return (report_phase, run_phase)
+
+    def apply(
+        self,
+        doc: t.Cli.TomlDocument,
+        *,
+        project_kind: str = "core",
+    ) -> t.StrSequence:
+        """Apply canonical coverage report/run tables for the selected project kind."""
+        return FlextInfraToml.apply_phases(
+            doc,
+            *self._phases(project_kind=project_kind),
+        )
+
+    def apply_payload(
+        self,
+        payload: MutableMapping[str, t.Cli.JsonValue],
+        *,
+        project_kind: str = "core",
+    ) -> t.StrSequence:
+        """Apply canonical coverage settings to one normalized payload."""
+        return FlextInfraToml.apply_payload_phases(
+            payload,
+            *self._phases(project_kind=project_kind),
+        )
 
 
 __all__ = ["FlextInfraEnsureCoverageConfigPhase"]

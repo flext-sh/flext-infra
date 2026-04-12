@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSequence
+from collections.abc import Mapping, MutableMapping, MutableSequence
 from pathlib import Path
 from typing import Annotated
 
-from pydantic import Field, computed_field
+from pydantic import ConfigDict, Field, computed_field
 
 from flext_core import m
 from flext_infra import FlextInfraModelsDepsToolSettings, c, t
@@ -188,6 +188,42 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
         def dry_run(self) -> bool:
             """Whether dependency path rewrites should avoid writing."""
             return not self.apply
+
+    class PyprojectDocumentState(m.ArbitraryTypesModel):
+        """Centralized normalized TOML state reused across deps workflows."""
+
+        model_config = ConfigDict(validate_default=False)
+
+        pyproject_path: Annotated[
+            Path,
+            Field(description="Resolved pyproject path"),
+        ]
+        original_rendered: Annotated[
+            str,
+            Field(description="Original TOML source text"),
+        ] = ""
+        payload: Annotated[
+            MutableMapping[str, t.Cli.JsonValue],
+            Field(description="Validated plain TOML payload"),
+        ] = Field(default_factory=dict)
+
+    class PathSyncDocumentState(m.ArbitraryTypesModel):
+        """Centralized path-sync payload reused across dependency rewrite passes."""
+
+        model_config = ConfigDict(validate_default=False)
+
+        pyproject_path: Annotated[
+            Path,
+            Field(description="Resolved pyproject path"),
+        ]
+        original_rendered: Annotated[
+            str,
+            Field(description="Original TOML source text"),
+        ] = ""
+        payload: Annotated[
+            MutableMapping[str, t.Cli.JsonValue],
+            Field(description="Validated plain TOML payload"),
+        ] = Field(default_factory=dict)
 
     class DependencyLimitsInfo(m.ArbitraryTypesModel):
         """Dependency limits configuration metadata."""

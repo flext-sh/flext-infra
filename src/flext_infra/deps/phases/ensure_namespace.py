@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from pathlib import Path
 
 from flext_infra import FlextInfraToml, c, m, t, u
@@ -9,6 +10,16 @@ from flext_infra import FlextInfraToml, c, m, t, u
 
 class FlextInfraEnsureNamespaceToolingPhase:
     """Ensure namespace discovery is reflected across project tooling tables."""
+
+    def _phase(self, detected: t.StrSequence) -> m.Infra.TomlPhaseConfig:
+        """Build the deptry namespace phase for one detected namespace set."""
+        return (
+            m.Infra.TomlPhaseConfig
+            .Builder("namespace-tooling")
+            .table(c.Infra.DEPTRY)
+            .list(c.Infra.KNOWN_FIRST_PARTY_UNDERSCORE, detected)
+            .build()
+        )
 
     def apply(self, doc: t.Cli.TomlDocument, *, path: Path) -> t.StrSequence:
         """Apply detected first-party namespaces to dependency tooling tables."""
@@ -20,14 +31,24 @@ class FlextInfraEnsureNamespaceToolingPhase:
         )
         if not detected:
             return []
-        phase = (
-            m.Infra.TomlPhaseConfig
-            .Builder("namespace-tooling")
-            .table(c.Infra.DEPTRY)
-            .list(c.Infra.KNOWN_FIRST_PARTY_UNDERSCORE, detected)
-            .build()
+        return FlextInfraToml.apply_phases(doc, self._phase(detected))
+
+    def apply_payload(
+        self,
+        payload: MutableMapping[str, t.Cli.JsonValue],
+        *,
+        path: Path,
+    ) -> t.StrSequence:
+        """Apply detected first-party namespaces to one normalized payload."""
+        detected = sorted(
+            {
+                *u.Infra.discover_first_party_namespaces(path.parent),
+                *u.Infra.workspace_dep_namespaces_from_payload(payload),
+            },
         )
-        return FlextInfraToml.apply_phases(doc, phase)
+        if not detected:
+            return []
+        return FlextInfraToml.apply_payload_phases(payload, self._phase(detected))
 
 
 __all__ = ["FlextInfraEnsureNamespaceToolingPhase"]

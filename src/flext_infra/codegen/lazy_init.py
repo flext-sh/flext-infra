@@ -3,8 +3,6 @@
 Auto-discovers exports from sibling ``.py`` files and generates clean
 lazy-loading ``__init__.py`` files using ``flext_core.lazy``.
 
-Scanning, merge, and alias logic live in ``flext_infra._utilities.lazy``.
-
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
 """
@@ -21,13 +19,12 @@ from flext_core import r
 from flext_infra import (
     FlextInfraCodegenGeneration,
     FlextInfraServiceBase,
-    FlextInfraUtilitiesDiscovery,
-    FlextInfraUtilitiesRope,
     c,
     m,
     t,
     u,
 )
+from flext_infra.codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
 
 
 class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
@@ -38,14 +35,12 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
     Processes bottom-up so child packages are generated before parents.
     """
 
-    _aliases: u.Infra = PrivateAttr()
     _modified_files: t.Infra.StrSet = PrivateAttr()
 
     @override
     def model_post_init(self, __context: t.ScalarMapping | None, /) -> None:
         """Create private lazy-init state after model validation."""
         super().model_post_init(__context)
-        self._aliases = u.Infra(self.workspace_root)
         self._modified_files = set()
 
     @property
@@ -64,11 +59,32 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
     def generate_inits(self, *, check_only: bool = False) -> int:
         """Process all package directories bottom-up and generate PEP 562 inits."""
         self._modified_files.clear()
-        pkg_dirs = self._find_package_dirs()
-        total, ok, errors, _dir_exports = self._generate_all_inits(
-            pkg_dirs,
-            check_only=check_only,
-        )
+        lazy_init = u.Infra.load_tool_config().unwrap().lazy_init
+        rope_workspace_root = u.Infra.rope_workspace_root(self.workspace_root)
+        with u.Infra.open_project(rope_workspace_root) as rope_project:
+            workspace_index = u.Infra.index_rope_workspace(
+                rope_project,
+                rope_workspace_root,
+            )
+            planner = FlextInfraCodegenLazyInitPlanner(
+                workspace_root=rope_workspace_root,
+                rope_project=rope_project,
+                workspace_index=workspace_index,
+                lazy_init=lazy_init,
+            )
+            total, ok, errors, _dir_exports = self._generate_all_inits(
+                sorted(
+                    (
+                        package_dir
+                        for package_dir in workspace_index.package_dirs
+                        if package_dir.is_relative_to(self.workspace_root.resolve())
+                    ),
+                    key=lambda path: len(path.parts),
+                    reverse=True,
+                ),
+                check_only=check_only,
+                planner=planner,
+            )
         u.Infra.info(
             f"Lazy-init summary: {ok} generated, {errors} errors"
             f" ({total} dirs scanned)",
@@ -80,37 +96,27 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
         pkg_dirs: Sequence[Path],
         *,
         check_only: bool,
+        planner: FlextInfraCodegenLazyInitPlanner,
     ) -> tuple[int, int, int, MutableMapping[str, t.Infra.LazyImportMap]]:
         total = ok = errors = 0
         dir_exports: MutableMapping[str, t.Infra.LazyImportMap] = {}
-        rope_root = FlextInfraUtilitiesDiscovery.rope_workspace_root(
-            self.workspace_root,
-        )
-        with FlextInfraUtilitiesRope.open_project(rope_root) as rope_project:
-            for pkg_dir in pkg_dirs:
-                total += 1
-                result, exports = self._process_directory(
-                    pkg_dir,
-                    check_only=check_only,
-                    dir_exports=dir_exports,
-                    rope_project=rope_project,
-                )
-                if exports:
-                    dir_exports[str(pkg_dir)] = exports
-                if result is None:
-                    continue
-                if result < 0:
-                    errors += 1
-                else:
-                    ok += 1
+        for pkg_dir in pkg_dirs:
+            total += 1
+            result, exports = self._process_directory(
+                pkg_dir,
+                check_only=check_only,
+                dir_exports=dir_exports,
+                planner=planner,
+            )
+            if exports:
+                dir_exports[str(pkg_dir.resolve())] = exports
+            if result is None:
+                continue
+            if result < 0:
+                errors += 1
+            else:
+                ok += 1
         return total, ok, errors, dir_exports
-
-    def _find_package_dirs(self) -> Sequence[Path]:
-        files_result = u.Infra.iter_python_files(workspace_root=self.workspace_root)
-        pkg_dirs: t.Infra.PathSet = {
-            py_file.parent for py_file in files_result.unwrap_or(())
-        }
-        return sorted(pkg_dirs, key=lambda p: len(p.parts), reverse=True)
 
     def _process_directory(
         self,
@@ -118,12 +124,11 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
         *,
         check_only: bool,
         dir_exports: Mapping[str, t.Infra.LazyImportMap],
-        rope_project: t.Infra.RopeProject,
+        planner: FlextInfraCodegenLazyInitPlanner,
     ) -> t.Infra.LazyInitProcessResult:
         try:
-            plan = self._aliases.build_lazy_init_plan(
+            plan = planner.build_plan(
                 pkg_dir,
-                project=rope_project,
                 dir_exports=dir_exports,
             )
             if plan.action == "skip":

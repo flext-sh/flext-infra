@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence
+from collections.abc import MutableMapping, MutableSequence
 
 import tomlkit
 from tomlkit.items import Table
@@ -103,6 +103,103 @@ class FlextInfraConsolidateGroupsPhase:
         if current_groups != [c.Infra.DEV]:
             deptry["pep621_dev_dependency_groups"] = u.Cli.toml_array([c.Infra.DEV])
             changes.append("tool.deptry.pep621_dev_dependency_groups set to ['dev']")
+        return changes
+
+    def apply_payload(
+        self,
+        payload: MutableMapping[str, t.Cli.JsonValue],
+        canonical_dev: t.StrSequence,
+    ) -> t.StrSequence:
+        """Merge legacy groups into one canonical dev group in one plain payload."""
+        changes: MutableSequence[str] = []
+        project = u.Cli.toml_mapping_ensure_table(payload, c.Infra.PROJECT)
+        optional = u.Cli.toml_mapping_ensure_table(
+            project,
+            c.Infra.OPTIONAL_DEPENDENCIES,
+        )
+        existing = u.Infra.project_dev_groups_from_payload(payload)
+        merged_dev = u.Infra.dedupe_specs([
+            *canonical_dev,
+            *existing.get(c.Infra.DEV, []),
+            *existing.get(c.Infra.DIR_DOCS, []),
+            *existing.get(c.Infra.SECURITY, []),
+            *existing.get(c.Infra.TEST, []),
+            *existing.get(c.Infra.DIR_TYPINGS, []),
+        ])
+        _ = u.Cli.toml_mapping_sync_string_list(
+            optional,
+            c.Infra.DEV,
+            sorted(merged_dev),
+            changes,
+            "project.optional-dependencies.dev consolidated",
+        )
+        for old_key in (
+            c.Infra.DOCS,
+            c.Infra.SECURITY,
+            c.Infra.TEST,
+            c.Infra.DIR_TYPINGS,
+        ):
+            _ = u.Cli.toml_mapping_remove_key_if_present(
+                optional,
+                old_key,
+                changes,
+                f"project.optional-dependencies.{old_key} removed",
+            )
+        poetry_group = u.Cli.toml_mapping_path(
+            payload,
+            (c.Infra.TOOL, c.Infra.POETRY, c.Infra.GROUP),
+        )
+        poetry_dev_table: MutableMapping[str, t.Cli.JsonValue] | None = None
+        for old_group in (
+            c.Infra.DOCS,
+            c.Infra.SECURITY,
+            c.Infra.TEST,
+            c.Infra.DIR_TYPINGS,
+        ):
+            old_group_table = (
+                u.Cli.toml_mapping_child(poetry_group, old_group)
+                if poetry_group is not None
+                else None
+            )
+            old_deps = (
+                u.Cli.toml_mapping_child(old_group_table, c.Infra.DEPENDENCIES)
+                if old_group_table is not None
+                else None
+            )
+            if old_deps is not None:
+                if poetry_dev_table is None:
+                    poetry_dev_table = u.Cli.toml_mapping_ensure_path(
+                        payload,
+                        (
+                            c.Infra.TOOL,
+                            c.Infra.POETRY,
+                            c.Infra.GROUP,
+                            c.Infra.DEV,
+                            c.Infra.DEPENDENCIES,
+                        ),
+                    )
+                for dep_name, dep_value in old_deps.items():
+                    if dep_name not in poetry_dev_table:
+                        poetry_dev_table[dep_name] = dep_value
+            if poetry_group is None:
+                continue
+            _ = u.Cli.toml_mapping_remove_key_if_present(
+                poetry_group,
+                old_group,
+                changes,
+                f"tool.poetry.group.{old_group} removed",
+            )
+        deptry = u.Cli.toml_mapping_ensure_path(
+            payload,
+            (c.Infra.TOOL, c.Infra.DEPTRY),
+        )
+        _ = u.Cli.toml_mapping_sync_string_list(
+            deptry,
+            "pep621_dev_dependency_groups",
+            [c.Infra.DEV],
+            changes,
+            "tool.deptry.pep621_dev_dependency_groups set to ['dev']",
+        )
         return changes
 
 

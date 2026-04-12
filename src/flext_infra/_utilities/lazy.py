@@ -32,7 +32,6 @@ class FlextInfraUtilitiesCodegenLazyAliases:
         self,
         pkg_dir: Path,
         *,
-        project: t.Infra.RopeProject,
         dir_exports: Mapping[str, t.Infra.LazyImportMap],
     ) -> m.Infra.LazyInitPlan:
         init_path = pkg_dir / c.Infra.INIT_PY
@@ -66,7 +65,6 @@ class FlextInfraUtilitiesCodegenLazyAliases:
             lazy_map,
             current_pkg=context.current_pkg,
             pkg_dir=pkg_dir,
-            project=project,
             surface=context.surface,
         )
         for name in c.Infra.INFRA_ONLY_EXPORTS:
@@ -205,7 +203,6 @@ class FlextInfraUtilitiesCodegenLazyAliases:
         *,
         current_pkg: str,
         pkg_dir: Path,
-        project: t.Infra.RopeProject,
         surface: str,
     ) -> None:
         if not current_pkg or "." in current_pkg:
@@ -216,7 +213,6 @@ class FlextInfraUtilitiesCodegenLazyAliases:
         allowed = self._lazy_init.inherited_exports.get(inherited_key, ())
         parent_packages = FlextInfraUtilitiesDiscovery.resolve_parent_constants_mro(
             pkg_dir,
-            rope_project=project,
             return_module=True,
         )
         project_root = FlextInfraUtilitiesDiscovery.discover_project_root_from_file(
@@ -231,7 +227,6 @@ class FlextInfraUtilitiesCodegenLazyAliases:
             FlextInfraUtilitiesDiscovery.resolve_transitive_parent_packages(
                 self._workspace_root,
                 (*parent_packages, source_name),
-                rope_project=project,
             )
         )
         for alias_name in allowed:
@@ -241,7 +236,6 @@ class FlextInfraUtilitiesCodegenLazyAliases:
             package_name = self._resolve_inherited_alias_source(
                 inherited_packages,
                 alias_name,
-                project=project,
             )
             if package_name:
                 lazy_map[alias_name] = (package_name, alias_name)
@@ -250,22 +244,15 @@ class FlextInfraUtilitiesCodegenLazyAliases:
         self,
         package_names: t.StrSequence,
         alias_name: str,
-        *,
-        project: t.Infra.RopeProject,
     ) -> str:
         for package_name in reversed(tuple(name for name in package_names if name)):
-            if alias_name in self._export_names_for_package(
-                package_name,
-                project=project,
-            ):
+            if alias_name in self._export_names_for_package(package_name):
                 return package_name
         return ""
 
     def _export_names_for_package(
         self,
         package_name: str,
-        *,
-        project: t.Infra.RopeProject,
     ) -> frozenset[str]:
         cached = self._package_exports_cache.get(package_name)
         if cached is not None:
@@ -275,10 +262,7 @@ class FlextInfraUtilitiesCodegenLazyAliases:
                 self._workspace_root,
                 package_name,
             ),
-            *self._source_export_names_for_package(
-                package_name,
-                project=project,
-            ),
+            *self._source_export_names_for_package(package_name),
         ))
         self._package_exports_cache[package_name] = exports
         return exports
@@ -286,8 +270,6 @@ class FlextInfraUtilitiesCodegenLazyAliases:
     def _source_export_names_for_package(
         self,
         package_name: str,
-        *,
-        project: t.Infra.RopeProject,
     ) -> frozenset[str]:
         cached = self._source_exports_cache.get(package_name)
         if cached is not None:
@@ -304,7 +286,6 @@ class FlextInfraUtilitiesCodegenLazyAliases:
         try:
             plan = self.build_lazy_init_plan(
                 init_path.parent,
-                project=project,
                 dir_exports={},
             )
         finally:

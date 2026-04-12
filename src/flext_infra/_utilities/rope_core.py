@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Generator
+from collections.abc import Generator, Sequence
 from contextlib import contextmanager
 from pathlib import Path
 from typing import ClassVar
@@ -96,6 +96,33 @@ class FlextInfraUtilitiesRopeCore:
             return resource if isinstance(resource, File) else None
         except (ResourceNotFoundError, ValueError):
             return None
+
+    @staticmethod
+    def python_resources(
+        rope_project: t.Infra.RopeProject,
+    ) -> Sequence[t.Infra.RopeResource]:
+        """Return stable Python file resources for one Rope project."""
+        return tuple(
+            sorted(
+                (
+                    resource
+                    for resource in rope_project.get_python_files()
+                    if isinstance(resource, File)
+                ),
+                key=lambda resource: resource.path,
+            ),
+        )
+
+    @staticmethod
+    def resource_file_path(
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+    ) -> Path | None:
+        """Resolve one Rope resource back to an absolute filesystem path."""
+        root_real_path = getattr(getattr(rope_project, "root", None), "real_path", None)
+        if not isinstance(root_real_path, str):
+            return None
+        return Path(root_real_path, resource.path).resolve()
 
     @staticmethod
     def get_pymodule(

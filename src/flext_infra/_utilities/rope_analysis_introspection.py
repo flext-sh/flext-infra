@@ -30,6 +30,130 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
     }
 
     @staticmethod
+    def _project_root_for_file(
+        workspace_root: Path,
+        file_path: Path,
+    ) -> Path | None:
+        scan_dirs = frozenset(c.Infra.MRO_SCAN_DIRECTORIES)
+        for parent in file_path.parents:
+            if parent.name in scan_dirs:
+                return parent.parent.resolve()
+            if parent == workspace_root:
+                return workspace_root
+        return None
+
+    @classmethod
+    def index_rope_workspace(
+        cls,
+        rope_project: t.Infra.RopeProject,
+        workspace_root: Path,
+    ) -> m.Infra.RopeWorkspaceIndex:
+        """Build a generic Rope workspace index for package-oriented planning."""
+        resolved_root = workspace_root.resolve()
+        modules_by_path: dict[str, m.Infra.RopeModuleIndexEntry] = {}
+        package_dir_by_name: dict[str, Path] = {}
+        project_package_by_root: dict[str, str] = {}
+        package_dirs: set[Path] = set()
+        for resource in FlextInfraUtilitiesRopeCore.python_resources(rope_project):
+            file_path = FlextInfraUtilitiesRopeCore.resource_file_path(
+                rope_project,
+                resource,
+            )
+            if file_path is None:
+                continue
+            try:
+                module_name = FlextInfraUtilitiesRopeCore.get_pymodule(
+                    rope_project,
+                    resource,
+                ).get_name()
+            except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
+                module_name = ""
+            package_dir = file_path.parent.resolve()
+            is_package_init = file_path.name == c.Infra.INIT_PY
+            package_name = (
+                module_name
+                if is_package_init
+                else module_name.rsplit(".", maxsplit=1)[0]
+                if "." in module_name
+                else ""
+            )
+            project_root = cls._project_root_for_file(resolved_root, file_path)
+            entry = m.Infra.RopeModuleIndexEntry(
+                file_path=file_path,
+                resource_path=resource.path,
+                module_name=module_name,
+                package_name=package_name,
+                package_dir=package_dir,
+                project_root=project_root,
+                is_package_init=is_package_init,
+            )
+            modules_by_path[str(file_path)] = entry
+            package_dirs.add(package_dir)
+            if package_name:
+                package_dir_by_name[package_name] = package_dir
+                if (
+                    project_root is not None
+                    and "." not in package_name
+                    and package_dir.parent.name == c.Infra.DEFAULT_SRC_DIR
+                ):
+                    project_package_by_root[str(project_root)] = package_name
+        sorted_package_dirs = tuple(sorted(package_dirs))
+        packages_by_dir: dict[str, m.Infra.RopePackageIndexEntry] = {}
+        for package_dir in sorted_package_dirs:
+            dir_modules = tuple(
+                sorted(
+                    (
+                        entry
+                        for entry in modules_by_path.values()
+                        if entry.package_dir == package_dir
+                    ),
+                    key=lambda entry: entry.file_path.name,
+                ),
+            )
+            init_path = (package_dir / c.Infra.INIT_PY).resolve()
+            init_entry = modules_by_path.get(str(init_path))
+            package_name = init_entry.package_name if init_entry is not None else ""
+            project_root = (
+                init_entry.project_root
+                if init_entry is not None
+                else next(
+                    (
+                        entry.project_root
+                        for entry in dir_modules
+                        if entry.project_root is not None
+                    ),
+                    None,
+                )
+            )
+            direct_child_dirs = tuple(
+                child_dir
+                for child_dir in sorted_package_dirs
+                if child_dir.parent == package_dir
+            )
+            descendant_child_dirs = tuple(
+                child_dir
+                for child_dir in sorted_package_dirs
+                if child_dir != package_dir and package_dir in child_dir.parents
+            )
+            packages_by_dir[str(package_dir)] = m.Infra.RopePackageIndexEntry(
+                package_dir=package_dir,
+                init_path=init_path,
+                package_name=package_name,
+                project_root=project_root,
+                modules=dir_modules,
+                direct_child_dirs=direct_child_dirs,
+                descendant_child_dirs=descendant_child_dirs,
+            )
+        return m.Infra.RopeWorkspaceIndex(
+            workspace_root=resolved_root,
+            package_dirs=sorted_package_dirs,
+            packages_by_dir=packages_by_dir,
+            modules_by_path=modules_by_path,
+            package_dir_by_name=package_dir_by_name,
+            project_package_by_root=project_package_by_root,
+        )
+
+    @staticmethod
     def get_class_nested_classes(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,

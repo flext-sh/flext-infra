@@ -5,7 +5,7 @@ Handlers are called by the canonical CLI via FlextInfraCliDeps.register_deps.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_core import r
@@ -169,6 +169,43 @@ class FlextInfraExtraPathsManager:
         if changes:
             tool_table[c.Infra.PYRIGHT] = pyright_table
             doc["tool"] = tool_table
+        return changes
+
+    def sync_payload(
+        self,
+        payload: MutableMapping[str, t.Cli.JsonValue],
+        *,
+        project_dir: Path,
+        is_root: bool,
+    ) -> t.StrSequence:
+        """Apply computed extra paths to one normalized TOML payload."""
+        expected = self.pyright_extra_paths(
+            project_dir=project_dir,
+            is_root=is_root,
+        )
+        tool_table = u.Cli.toml_mapping_child(payload, c.Infra.TOOL)
+        if tool_table is None:
+            return list[str]()
+        pyright_table = u.Cli.toml_mapping_child(tool_table, c.Infra.PYRIGHT)
+        if pyright_table is None:
+            return list[str]()
+        mypy_table = u.Cli.toml_mapping_child(tool_table, c.Infra.MYPY)
+        changes: MutableSequence[str] = []
+        _ = u.Cli.toml_mapping_sync_string_list(
+            u.Cli.toml_mapping_ensure_path(payload, (c.Infra.TOOL, c.Infra.PYRIGHT)),
+            "extraPaths",
+            expected,
+            changes,
+            "synchronized pyright extraPaths",
+        )
+        if mypy_table is not None:
+            _ = u.Cli.toml_mapping_sync_string_list(
+                u.Cli.toml_mapping_ensure_path(payload, (c.Infra.TOOL, c.Infra.MYPY)),
+                "mypy_path",
+                expected,
+                changes,
+                "synchronized mypy mypy_path",
+            )
         return changes
 
     def sync_one(

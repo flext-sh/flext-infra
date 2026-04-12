@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -310,17 +310,16 @@ class FlextInfraEnsurePyrightConfigPhase:
                     includes.append((relative_root / env_dir).as_posix())
         return includes
 
-    def apply(
+    def _phase(
         self,
-        doc: t.Cli.TomlDocument,
         *,
         is_root: bool,
         workspace_root: Path | None = None,
         project_dir: Path | None = None,
         project_kind: str = "core",
         paths_manager: FlextInfraExtraPathsManager | None = None,
-    ) -> t.StrSequence:
-        """Apply the managed pyright configuration for one TOML document."""
+    ) -> m.Infra.TomlPhaseConfig:
+        """Build the managed pyright phase for one project context."""
         project_root = workspace_root if is_root else project_dir
         expected_excludes = self._expected_excludes(project_root)
         expected_ignores = self._expected_ignores(
@@ -395,7 +394,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                 phase_builder = phase_builder.value(key, value)
             for key, value in self._tool_config.tools.pyright.extended_settings.items():
                 phase_builder = phase_builder.value(key, value)
-            return FlextInfraToml.apply_phases(doc, phase_builder.build())
+            return phase_builder.build()
         for key, value in self._tool_config.tools.pyright.strict_settings.items():
             phase_builder = phase_builder.value(key, value)
         merged_settings: t.MutableStrMapping = {
@@ -406,7 +405,51 @@ class FlextInfraEnsurePyrightConfigPhase:
             merged_settings.update(override.pyright)
         for key, value in merged_settings.items():
             phase_builder = phase_builder.value(key, value)
-        return FlextInfraToml.apply_phases(doc, phase_builder.build())
+        return phase_builder.build()
+
+    def apply(
+        self,
+        doc: t.Cli.TomlDocument,
+        *,
+        is_root: bool,
+        workspace_root: Path | None = None,
+        project_dir: Path | None = None,
+        project_kind: str = "core",
+        paths_manager: FlextInfraExtraPathsManager | None = None,
+    ) -> t.StrSequence:
+        """Apply the managed pyright configuration for one TOML document."""
+        return FlextInfraToml.apply_phases(
+            doc,
+            self._phase(
+                is_root=is_root,
+                workspace_root=workspace_root,
+                project_dir=project_dir,
+                project_kind=project_kind,
+                paths_manager=paths_manager,
+            ),
+        )
+
+    def apply_payload(
+        self,
+        payload: MutableMapping[str, t.Cli.JsonValue],
+        *,
+        is_root: bool,
+        workspace_root: Path | None = None,
+        project_dir: Path | None = None,
+        project_kind: str = "core",
+        paths_manager: FlextInfraExtraPathsManager | None = None,
+    ) -> t.StrSequence:
+        """Apply managed pyright settings directly to one normalized payload."""
+        return FlextInfraToml.apply_payload_phases(
+            payload,
+            self._phase(
+                is_root=is_root,
+                workspace_root=workspace_root,
+                project_dir=project_dir,
+                project_kind=project_kind,
+                paths_manager=paths_manager,
+            ),
+        )
 
 
 __all__ = ["FlextInfraEnsurePyrightConfigPhase"]

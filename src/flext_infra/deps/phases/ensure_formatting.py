@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
+
 from flext_infra import FlextInfraToml, m, t, u
 
 
@@ -12,8 +14,14 @@ class FlextInfraEnsureFormattingToolingPhase:
         """Store tool settings used when enforcing formatting-related tables."""
         self._tool_config = tool_config
 
-    def apply(self, doc: t.Cli.TomlDocument) -> t.StrSequence:
-        """Apply canonical codespell, tomlsort, and yamlfix configuration."""
+    def _phases(
+        self,
+    ) -> tuple[
+        m.Infra.TomlPhaseConfig,
+        m.Infra.TomlPhaseConfig,
+        m.Infra.TomlPhaseConfig,
+    ]:
+        """Build the canonical formatting phases."""
         codespell_builder = (
             m.Infra.TomlPhaseConfig
             .Builder("codespell")
@@ -58,20 +66,51 @@ class FlextInfraEnsureFormattingToolingPhase:
             )
             .build()
         )
-        changes = [
-            *FlextInfraToml.apply_phases(
-                doc,
-                codespell_phase,
-                tomlsort_phase,
-                yamlfix_phase,
-            ),
-        ]
+        return (codespell_phase, tomlsort_phase, yamlfix_phase)
+
+    @staticmethod
+    def _remove_codespell_skip_doc(doc: t.Cli.TomlDocument) -> t.StrSequence:
+        """Remove the stale hardcoded codespell skip entry from one TOML document."""
         tool_table = u.Cli.toml_table_child(doc, "tool")
         if tool_table is None:
-            return changes
+            return []
         codespell_table = u.Cli.toml_table_child(tool_table, "codespell")
         if codespell_table is None or "skip" not in codespell_table:
-            return changes
+            return []
         del codespell_table["skip"]
-        changes.append("removed codespell.skip hardcode")
+        return ["removed codespell.skip hardcode"]
+
+    @staticmethod
+    def _remove_codespell_skip_payload(
+        payload: MutableMapping[str, t.Cli.JsonValue],
+    ) -> t.StrSequence:
+        """Remove the stale hardcoded codespell skip entry from one plain payload."""
+        codespell_table = u.Cli.toml_mapping_path(payload, ("tool", "codespell"))
+        if codespell_table is None:
+            return []
+        changes: list[str] = []
+        _ = u.Cli.toml_mapping_remove_key_if_present(
+            codespell_table,
+            "skip",
+            changes,
+            "removed codespell.skip hardcode",
+        )
         return changes
+
+    def apply(self, doc: t.Cli.TomlDocument) -> t.StrSequence:
+        """Apply canonical codespell, tomlsort, and yamlfix configuration."""
+        changes = list(FlextInfraToml.apply_phases(doc, *self._phases()))
+        changes.extend(self._remove_codespell_skip_doc(doc))
+        return changes
+
+    def apply_payload(
+        self,
+        payload: MutableMapping[str, t.Cli.JsonValue],
+    ) -> t.StrSequence:
+        """Apply formatting defaults directly to one normalized payload."""
+        changes = list(FlextInfraToml.apply_payload_phases(payload, *self._phases()))
+        changes.extend(self._remove_codespell_skip_payload(payload))
+        return changes
+
+
+__all__ = ["FlextInfraEnsureFormattingToolingPhase"]

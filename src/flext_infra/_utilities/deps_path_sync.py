@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence
+from collections.abc import MutableMapping, MutableSequence
 from pathlib import Path
-
-from tomlkit.items import InlineTable, Table as TomlTable
 
 from flext_cli import u
 from flext_core import r
@@ -14,6 +12,7 @@ from flext_infra import (
     FlextInfraUtilitiesDocsScope,
     FlextInfraUtilitiesTomlParse,
     c,
+    m,
     t,
 )
 
@@ -28,15 +27,15 @@ class FlextInfraUtilitiesDependencyPathSync(
 
     def _rewrite_pep621(
         self,
-        doc: t.Cli.TomlDocument,
+        payload: MutableMapping[str, t.Cli.JsonValue],
         *,
         internal_names: t.Infra.StrSet,
     ) -> t.Infra.Pair[t.StrSequence, t.Infra.StrSet]:
-        project_section = u.Cli.toml_table_child(doc, c.Infra.PROJECT)
+        project_section = u.Cli.toml_mapping_child(payload, c.Infra.PROJECT)
         if project_section is None:
             return ([], set())
         deps: t.StrSequence = u.Cli.toml_as_string_list(
-            u.Cli.toml_item_child(project_section, c.Infra.DEPENDENCIES)
+            project_section.get(c.Infra.DEPENDENCIES, None)
         )
         if not deps:
             return ([], set())
@@ -63,12 +62,15 @@ class FlextInfraUtilitiesDependencyPathSync(
             changes.append(f"  PEP621: {item} -> {new_entry}")
             updated_deps.append(new_entry)
         if changes:
-            project_section[c.Infra.DEPENDENCIES] = updated_deps
+            updated_dependencies: list[t.Cli.JsonValue] = list(updated_deps)
+            u.Cli.toml_mapping_ensure_table(payload, c.Infra.PROJECT)[
+                c.Infra.DEPENDENCIES
+            ] = updated_dependencies
         return (changes, internal_deps)
 
     def _rewrite_uv_sources(
         self,
-        doc: t.Cli.TomlDocument,
+        payload: MutableMapping[str, t.Cli.JsonValue],
         *,
         is_root: bool,
         mode: str,
@@ -84,9 +86,9 @@ class FlextInfraUtilitiesDependencyPathSync(
         if not expected_names:
             return []
         changes: MutableSequence[str] = []
-        tool_section = u.Cli.toml_ensure_table(doc, c.Infra.TOOL)
-        uv_section = u.Cli.toml_ensure_table(tool_section, "uv")
-        sources = u.Cli.toml_ensure_table(uv_section, "sources")
+        tool_section = u.Cli.toml_mapping_ensure_table(payload, c.Infra.TOOL)
+        uv_section = u.Cli.toml_mapping_ensure_table(tool_section, "uv")
+        sources = u.Cli.toml_mapping_ensure_table(uv_section, "sources")
         for source_key in [str(key) for key in sources]:
             if source_key in internal_names and source_key not in expected_names:
                 del sources[source_key]
@@ -100,22 +102,19 @@ class FlextInfraUtilitiesDependencyPathSync(
                     "editable": True,
                 }
             )
-            current_table = u.Cli.toml_table_child(sources, dep_name)
-            current_map: t.Infra.ContainerDict = (
-                dict(current_table.unwrap()) if current_table is not None else {}
+            _ = u.Cli.toml_mapping_sync_mapping_table(
+                sources,
+                dep_name,
+                expected,
+                changes,
+                f"  uv.sources: synced source for {dep_name}",
+                sort_keys=True,
             )
-            if current_map == expected:
-                continue
-            source_table = u.Cli.toml_table()
-            for key in sorted(expected):
-                source_table[key] = expected[key]
-            sources[dep_name] = source_table
-            changes.append(f"  uv.sources: synced source for {dep_name}")
         return changes
 
     def _rewrite_uv_workspace(
         self,
-        doc: t.Cli.TomlDocument,
+        payload: MutableMapping[str, t.Cli.JsonValue],
         *,
         is_root: bool,
         members: t.StrSequence,
@@ -123,41 +122,46 @@ class FlextInfraUtilitiesDependencyPathSync(
         if not is_root:
             return []
         changes: MutableSequence[str] = []
-        tool_section = u.Cli.toml_ensure_table(doc, c.Infra.TOOL)
-        uv_section = u.Cli.toml_ensure_table(tool_section, "uv")
-        workspace_section = u.Cli.toml_ensure_table(uv_section, "workspace")
+        tool_section = u.Cli.toml_mapping_ensure_table(payload, c.Infra.TOOL)
+        uv_section = u.Cli.toml_mapping_ensure_table(tool_section, "uv")
+        workspace_section = u.Cli.toml_mapping_ensure_table(uv_section, "workspace")
         expected_members = sorted(set(members))
-        current_members = u.Cli.toml_as_string_list(
-            u.Cli.toml_item_child(workspace_section, "members")
+        _ = u.Cli.toml_mapping_sync_string_list(
+            workspace_section,
+            "members",
+            expected_members,
+            changes,
+            "  uv.workspace: members synchronized",
         )
-        if current_members != expected_members:
-            workspace_section["members"] = u.Cli.toml_array(expected_members)
-            changes.append("  uv.workspace: members synchronized")
         return changes
 
     @classmethod
     def _rewrite_poetry(
         cls,
-        doc: t.Cli.TomlDocument,
+        payload: MutableMapping[str, t.Cli.JsonValue],
         *,
         is_root: bool,
         mode: str,
     ) -> t.StrSequence:
-        tool_section = u.Cli.toml_table_child(doc, c.Infra.TOOL)
+        tool_section = u.Cli.toml_mapping_child(payload, c.Infra.TOOL)
         if tool_section is None:
             return []
-        poetry_section = u.Cli.toml_table_child(tool_section, c.Infra.POETRY)
+        poetry_section = u.Cli.toml_mapping_child(tool_section, c.Infra.POETRY)
         if poetry_section is None:
             return []
-        deps = u.Cli.toml_table_child(poetry_section, c.Infra.DEPENDENCIES)
-        if deps is None:
+        deps_view = u.Cli.toml_mapping_child(poetry_section, c.Infra.DEPENDENCIES)
+        if deps_view is None:
             return []
+        deps = u.Cli.toml_mapping_ensure_path(
+            payload,
+            (c.Infra.TOOL, c.Infra.POETRY, c.Infra.DEPENDENCIES),
+        )
         changes: MutableSequence[str] = []
-        for dep_key_raw in deps:
-            value = deps[dep_key_raw]
-            if not isinstance(value, TomlTable | InlineTable):
+        for dep_key_raw in list(deps_view):
+            value = u.Cli.toml_mapping_child(deps, dep_key_raw)
+            if value is None:
                 continue
-            raw_path = value.get(c.Infra.PATH)
+            raw_path = value.get(c.Infra.PATH, None)
             if not isinstance(raw_path, str) or not raw_path.strip():
                 continue
             dep_name = cls.dep_name(raw_path)
@@ -177,8 +181,28 @@ class FlextInfraUtilitiesDependencyPathSync(
             changes.append(
                 f"  Poetry: {dep_key_raw}.path = {raw_path!r} -> {new_path!r}",
             )
-            value[c.Infra.PATH] = new_path
+            u.Cli.toml_mapping_ensure_table(deps, dep_key_raw)[c.Infra.PATH] = new_path
         return changes
+
+    def _read_document_state(
+        self,
+        path: Path,
+    ) -> r[m.Infra.PathSyncDocumentState]:
+        """Read one pyproject into a validated plain payload state."""
+        try:
+            original_rendered = path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+        except OSError:
+            return r[m.Infra.PathSyncDocumentState].fail(f"failed to read TOML: {path}")
+        payload_source = u.Cli.toml_mapping_from_text(original_rendered)
+        if payload_source is None:
+            return r[m.Infra.PathSyncDocumentState].fail(f"TOML parse failed: {path}")
+        return r[m.Infra.PathSyncDocumentState].ok(
+            m.Infra.PathSyncDocumentState(
+                pyproject_path=path,
+                original_rendered=original_rendered,
+                payload={key: payload_source[key] for key in payload_source},
+            )
+        )
 
     def rewrite_dep_paths(
         self,
@@ -191,20 +215,21 @@ class FlextInfraUtilitiesDependencyPathSync(
         dry_run: bool = False,
     ) -> r[t.StrSequence]:
         """Rewrite PEP 621 and Poetry dependency paths."""
-        doc_result = u.Cli.toml_read_document(pyproject_path)
-        if doc_result.failure:
+        state_result = self._read_document_state(pyproject_path)
+        if state_result.failure:
             return r[t.StrSequence].fail(
-                doc_result.error or "failed to read TOML document",
+                state_result.error or "failed to read TOML document",
             )
-        doc = doc_result.value
+        state = state_result.value
+        payload = state.payload
         pep_changes, internal_deps = self._rewrite_pep621(
-            doc,
+            payload,
             internal_names=internal_names,
         )
         changes: MutableSequence[str] = list(pep_changes)
         changes += list(
             self._rewrite_uv_sources(
-                doc,
+                payload,
                 is_root=is_root,
                 mode=mode,
                 internal_names=internal_names,
@@ -214,14 +239,14 @@ class FlextInfraUtilitiesDependencyPathSync(
         )
         changes += list(
             self._rewrite_uv_workspace(
-                doc,
+                payload,
                 is_root=is_root,
                 members=workspace_members,
             )
         )
-        changes += list(self._rewrite_poetry(doc, is_root=is_root, mode=mode))
+        changes += list(self._rewrite_poetry(payload, is_root=is_root, mode=mode))
         if changes and (not dry_run):
-            write_result = u.Cli.toml_write_document(pyproject_path, doc)
+            write_result = u.Cli.toml_write_mapping(pyproject_path, state.payload)
             if write_result.failure:
                 return r[t.StrSequence].fail(
                     write_result.error or "failed to write TOML",

@@ -12,10 +12,16 @@ from flext_infra import c, m, t, u
 class FlextInfraProjectClassifier:
     """Classify a project by kind and discover MRO family chains."""
 
-    def __init__(self, project_root: Path) -> None:
+    def __init__(
+        self,
+        project_root: Path,
+        *,
+        pyproject_payload: t.Infra.ContainerDict | None = None,
+    ) -> None:
         """Initialize classifier for the given project root."""
         self._project_root = project_root.resolve()
         self._pyproject_path = self._project_root / c.Infra.PYPROJECT_FILENAME
+        self._pyproject_payload = pyproject_payload
         self._src_path = self._project_root / c.Infra.DEFAULT_SRC_DIR
 
     def classify(self) -> m.Infra.ProjectClassification:
@@ -40,6 +46,8 @@ class FlextInfraProjectClassifier:
         )
 
     def _read_project_metadata(self) -> t.Infra.TransformResult:
+        if self._pyproject_payload is not None:
+            return self._project_metadata_from_payload(self._pyproject_payload)
         if not self._pyproject_path.is_file():
             empty_dependencies: list[str] = []
             return ("", empty_dependencies)
@@ -47,7 +55,12 @@ class FlextInfraProjectClassifier:
         if data_result.failure:
             empty_dependencies: list[str] = []
             return ("", empty_dependencies)
-        parsed: t.Infra.ContainerDict = data_result.value
+        return self._project_metadata_from_payload(data_result.value)
+
+    def _project_metadata_from_payload(
+        self,
+        parsed: t.Infra.ContainerDict,
+    ) -> t.Infra.TransformResult:
         raw_project = self._as_mapping(parsed.get(c.Infra.PROJECT))
         project_name = self._normalized_name_from_mapping(raw_project)
         dependencies: MutableSequence[str] = []

@@ -77,10 +77,20 @@ class FlextInfraUtilitiesTomlParse:
         format (``flext_core``) so they can be added to ``known-first-party`` for
         projects that consume flext packages but are not themselves flext-prefixed.
         """
-        all_deps = FlextInfraUtilitiesTomlParse.declared_dependency_names(doc)
+        return FlextInfraUtilitiesTomlParse.workspace_dep_namespaces_from_payload(
+            doc.unwrap()
+        )
+
+    @staticmethod
+    def workspace_dep_namespaces_from_payload(
+        raw: t.Infra.ContainerDict,
+    ) -> t.StrSequence:
+        """Extract workspace dependency namespaces from one plain TOML payload."""
         return sorted(
             dep.replace("-", "_")
-            for dep in all_deps
+            for dep in FlextInfraUtilitiesTomlParse.declared_dependency_names_from_payload(
+                raw
+            )
             if dep.startswith(c.Infra.PKG_PREFIX_HYPHEN)
         )
 
@@ -180,19 +190,26 @@ class FlextInfraUtilitiesTomlParse:
     @staticmethod
     def project_dev_groups(doc: t.Cli.TomlDocument) -> Mapping[str, t.StrSequence]:
         """Extract optional-dependencies groups from project table."""
-        project_raw = FlextCliUtilities.Cli.toml_table_child(doc, c.Infra.PROJECT)
-        if project_raw is None:
-            return {}
-        optional_raw = FlextCliUtilities.Cli.toml_table_child(
-            project_raw, c.Infra.OPTIONAL_DEPENDENCIES
+        return FlextInfraUtilitiesTomlParse.project_dev_groups_from_payload(
+            doc.unwrap()
         )
-        if optional_raw is None:
+
+    @staticmethod
+    def project_dev_groups_from_payload(
+        raw: t.Infra.ContainerDict,
+    ) -> Mapping[str, t.StrSequence]:
+        """Extract optional-dependency groups from one plain TOML payload."""
+        project_raw = raw.get(c.Infra.PROJECT)
+        if not isinstance(project_raw, Mapping):
             return {}
-        opt_deps: t.Cli.TomlTable = optional_raw
+        optional_raw = project_raw.get(c.Infra.OPTIONAL_DEPENDENCIES)
+        if not isinstance(optional_raw, Mapping):
+            return {}
 
         def _group_values(group_key: str) -> t.StrSequence:
-            value = FlextCliUtilities.Cli.toml_item_child(opt_deps, group_key)
-            return FlextCliUtilities.Cli.toml_as_string_list(value)
+            return FlextCliUtilities.Cli.toml_as_string_list(
+                optional_raw.get(group_key, None)
+            )
 
         return {
             c.Infra.DEV: _group_values(c.Infra.DEV),
@@ -256,7 +273,16 @@ class FlextInfraUtilitiesTomlParse:
     @staticmethod
     def canonical_dev_dependencies(root_doc: t.Cli.TomlDocument) -> t.StrSequence:
         """Merge all dev dependency groups from root pyproject."""
-        groups = FlextInfraUtilitiesTomlParse.project_dev_groups(root_doc)
+        return FlextInfraUtilitiesTomlParse.canonical_dev_dependencies_from_payload(
+            root_doc.unwrap()
+        )
+
+    @staticmethod
+    def canonical_dev_dependencies_from_payload(
+        raw: t.Infra.ContainerDict,
+    ) -> t.StrSequence:
+        """Merge all dev dependency groups from one plain root payload."""
+        groups = FlextInfraUtilitiesTomlParse.project_dev_groups_from_payload(raw)
         merged = [
             *groups.get(c.Infra.DEV, []),
             *groups.get(c.Infra.DIR_DOCS, []),

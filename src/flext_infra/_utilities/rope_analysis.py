@@ -23,6 +23,94 @@ class FlextInfraUtilitiesRopeAnalysis:
     """Rope-backed semantic analysis helpers."""
 
     @staticmethod
+    def get_module_semantic_state(
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+    ) -> m.Infra.ModuleSemanticState:
+        """Return local classes plus declared and semantic imports in one pass."""
+        class_infos: MutableSequence[m.Infra.ClassInfo] = []
+        semantic_imports: dict[str, str] = {}
+        declared_imports: dict[str, str] = {}
+        try:
+            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(
+                rope_project,
+                resource,
+            )
+            current_module_name = pymodule.get_name()
+            resource_path = resource.path
+            for name, pyname in pymodule.get_attributes().items():
+                try:
+                    obj = pyname.get_object()
+                    module = obj.get_module()
+                    origin = module.get_resource() if module is not None else None
+                    if (
+                        isinstance(
+                            obj,
+                            FlextInfraUtilitiesRopeCore.ABSTRACT_CLASS_TYPES,
+                        )
+                        and origin is not None
+                        and origin.path == resource_path
+                    ):
+                        _, line_candidate = pyname.get_definition_location()
+                        if line_candidate is not None:
+                            class_infos.append(
+                                m.Infra.ClassInfo(
+                                    name=name,
+                                    line=line_candidate,
+                                    bases=tuple(
+                                        base_name
+                                        for base in obj.get_superclasses()
+                                        if (base_name := base.get_name()) is not None
+                                    ),
+                                ),
+                            )
+                    if module is None:
+                        continue
+                    module_name = module.get_name()
+                    object_name_getter = getattr(obj, "get_name", None)
+                    object_name = (
+                        object_name_getter() if callable(object_name_getter) else None
+                    )
+                    if not module_name or module_name == current_module_name:
+                        continue
+                    semantic_imports[name] = (
+                        module_name
+                        if object_name is None
+                        or module_name.endswith(f".{object_name}")
+                        else f"{module_name}.{object_name}"
+                    )
+                except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
+                    continue
+            module_imports = _rope_importutils.get_module_imports(
+                rope_project.pycore,
+                pymodule,
+            )
+            if TYPE_CHECKING:
+                import_statements: Sequence[t.Infra.RopeImportStatement] = ()
+            else:
+                import_statements = module_imports.imports
+            for import_statement in import_statements:
+                import_info = import_statement.import_info
+                module_name = import_info.module_name
+                if not module_name:
+                    continue
+                for imported_name, alias in import_info.names_and_aliases:
+                    local_name = alias or imported_name
+                    if local_name:
+                        declared_imports[local_name] = f"{module_name}.{imported_name}"
+        except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
+            return m.Infra.ModuleSemanticState(
+                class_infos=tuple(class_infos),
+                declared_imports=declared_imports,
+                semantic_imports=semantic_imports,
+            )
+        return m.Infra.ModuleSemanticState(
+            class_infos=tuple(class_infos),
+            declared_imports=declared_imports,
+            semantic_imports=semantic_imports,
+        )
+
+    @staticmethod
     def find_definition_offset(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
@@ -184,9 +272,7 @@ class FlextInfraUtilitiesRopeAnalysis:
                         FlextInfraUtilitiesRopeAnalysis._explicit_all_names(dunder_all)
                     )
                     if explicit_names is not None:
-                        return tuple(
-                            name for name in explicit_names if name in attributes
-                        )
+                        return tuple(dict.fromkeys(explicit_names))
             names: MutableSequence[str] = list(
                 FlextInfraUtilitiesRopeAnalysis.get_module_classes(
                     rope_project,

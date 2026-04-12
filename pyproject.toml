@@ -224,10 +224,7 @@ project-excludes = [
 ]
 project-includes = [ "src/**/*.py*", "tests/**/*.py*" ]
 python-version = "3.13"
-search-path = [
-  ".",
-  "src",
-]
+search-path = [ ".", "src" ]
 use-ignore-files = false
 
 [tool.pyrefly.errors]
@@ -338,19 +335,9 @@ exclude = [
   ".sisyphus",
   ".venv",
 ]
-extraPaths = [
-  ".",
-  "../typings",
-  "src",
-]
-ignore = [
-  "**/*.pyi",
-  "../typings",
-]
-include = [
-  "src",
-  "tests",
-]
+extraPaths = [ ".", "../typings", "src" ]
+ignore = [ "**/*.pyi", "../typings" ]
+include = [ "src", "tests" ]
 pythonPlatform = "Linux"
 pythonVersion = "3.13"
 reportCallIssue = "none"
@@ -511,7 +498,6 @@ known-first-party = [ "flext_cli", "flext_core", "flext_infra" ]
 split-on-trailing-comma = true
 
 [tool.ruff.lint.per-file-ignores]
-
 "**/.vulture_whitelist.py" = [ "ALL" ]
 "**/*_pb2*.py" = [ "ALL" ]
 "**/*dispatcher*" = [  ]

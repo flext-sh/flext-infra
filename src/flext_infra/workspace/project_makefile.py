@@ -13,7 +13,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_core import r
-from flext_infra import FlextInfraBaseMkGenerator, c, m, u
+from flext_infra import FlextInfraBaseMkGenerator, FlextInfraUtilitiesDocsScope, c, m, u
 
 
 class FlextInfraProjectMakefileUpdater:
@@ -74,12 +74,15 @@ class FlextInfraProjectMakefileUpdater:
     @staticmethod
     def _read_pyproject(pyproject: Path) -> r[m.Infra.ProjectMeta]:
         """Parse pyproject.toml and extract name, python_version, description."""
-        data_result = u.Infra.read_plain(pyproject)
-        if data_result.failure:
-            return r[m.Infra.ProjectMeta].fail(
-                f"pyproject.toml read failed: {data_result.error}",
-            )
-        data = data_result.value
+        project_state = FlextInfraUtilitiesDocsScope.project_state(pyproject.parent)
+        data = project_state.payload
+        if not data:
+            data_result = u.Infra.read_plain(pyproject)
+            if data_result.failure:
+                return r[m.Infra.ProjectMeta].fail(
+                    f"pyproject.toml read failed: {data_result.error}",
+                )
+            data = data_result.value
 
         try:
             project = data["project"]

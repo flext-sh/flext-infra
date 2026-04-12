@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import MutableMapping, Sequence
 
 from flext_infra import FlextInfraToml, c, m, t, u
 
@@ -14,8 +14,8 @@ class FlextInfraEnsureMypyConfigPhase:
         """Store tool configuration used to generate the canonical mypy section."""
         self._tool_config = tool_config
 
-    def apply(self, doc: t.Cli.TomlDocument) -> t.StrSequence:
-        """Apply mypy defaults, overrides, and toggles from tool configuration."""
+    def _phase(self) -> m.Infra.TomlPhaseConfig:
+        """Build the canonical mypy phase definition."""
         configured = self._tool_config.tools.mypy.overrides
         expected_overrides: Sequence[dict[str, t.Cli.JsonValue]] = [
             {
@@ -52,7 +52,18 @@ class FlextInfraEnsureMypyConfigPhase:
         phase_builder = phase_builder.value("overrides", list(expected_overrides))
         for key, value in self._tool_config.tools.mypy.boolean_settings.items():
             phase_builder = phase_builder.value(key, value)
-        return FlextInfraToml.apply_phases(doc, phase_builder.build())
+        return phase_builder.build()
+
+    def apply(self, doc: t.Cli.TomlDocument) -> t.StrSequence:
+        """Apply mypy defaults, overrides, and toggles from tool configuration."""
+        return FlextInfraToml.apply_phases(doc, self._phase())
+
+    def apply_payload(
+        self,
+        payload: MutableMapping[str, t.Cli.JsonValue],
+    ) -> t.StrSequence:
+        """Apply canonical mypy settings directly to one normalized payload."""
+        return FlextInfraToml.apply_payload_phases(payload, self._phase())
 
 
 __all__ = ["FlextInfraEnsureMypyConfigPhase"]

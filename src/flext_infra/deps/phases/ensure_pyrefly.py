@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import MutableMapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -19,15 +19,14 @@ class FlextInfraEnsurePyreflyConfigPhase:
         """Store tool configuration used when enforcing pyrefly project settings."""
         self._tool_config = tool_config
 
-    def apply(
+    def _phase(
         self,
-        doc: t.Cli.TomlDocument,
         *,
         is_root: bool,
         project_dir: Path | None = None,
         paths_manager: FlextInfraExtraPathsManager | None = None,
-    ) -> t.StrSequence:
-        """Apply canonical pyrefly table values, paths, and strict error toggles."""
+    ) -> m.Infra.TomlPhaseConfig:
+        """Build the canonical pyrefly phase definition."""
         pyrefly_rules = self._tool_config.tools.pyrefly
         if project_dir is not None and paths_manager is not None:
             expected_search = paths_manager.pyrefly_search_paths(
@@ -51,7 +50,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
                 for error_rule in self._tool_config.tools.pyrefly.disabled_errors
             ),
         )
-        phase = (
+        return (
             m.Infra.TomlPhaseConfig
             .Builder("pyrefly")
             .table(c.Infra.PYREFLY)
@@ -76,7 +75,42 @@ class FlextInfraEnsurePyreflyConfigPhase:
             .nested("errors", values=error_values)
             .build()
         )
-        return FlextInfraToml.apply_phases(doc, phase)
+
+    def apply(
+        self,
+        doc: t.Cli.TomlDocument,
+        *,
+        is_root: bool,
+        project_dir: Path | None = None,
+        paths_manager: FlextInfraExtraPathsManager | None = None,
+    ) -> t.StrSequence:
+        """Apply canonical pyrefly table values, paths, and strict error toggles."""
+        return FlextInfraToml.apply_phases(
+            doc,
+            self._phase(
+                is_root=is_root,
+                project_dir=project_dir,
+                paths_manager=paths_manager,
+            ),
+        )
+
+    def apply_payload(
+        self,
+        payload: MutableMapping[str, t.Cli.JsonValue],
+        *,
+        is_root: bool,
+        project_dir: Path | None = None,
+        paths_manager: FlextInfraExtraPathsManager | None = None,
+    ) -> t.StrSequence:
+        """Apply canonical pyrefly settings to one normalized payload."""
+        return FlextInfraToml.apply_payload_phases(
+            payload,
+            self._phase(
+                is_root=is_root,
+                project_dir=project_dir,
+                paths_manager=paths_manager,
+            ),
+        )
 
 
 __all__ = ["FlextInfraEnsurePyreflyConfigPhase"]

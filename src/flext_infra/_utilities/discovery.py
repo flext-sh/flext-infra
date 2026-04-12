@@ -6,16 +6,17 @@ import ast
 from collections.abc import Mapping, Sequence
 from functools import cache
 from pathlib import Path
+from typing import ClassVar
 
 from flext_core import r
 from flext_infra import c, t
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
-from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 
 
 class FlextInfraUtilitiesDiscovery:
     """Canonical discovery helpers for path, package, and Rope-backed scans."""
+
+    _PARENT_CONSTANTS_MRO_CACHE: ClassVar[dict[tuple[str, bool], tuple[str, ...]]] = {}
 
     @staticmethod
     def _ast_base_name(base_node: ast.expr) -> str:
@@ -29,6 +30,25 @@ class FlextInfraUtilitiesDiscovery:
                 return FlextInfraUtilitiesDiscovery._ast_base_name(value)
             case _:
                 return ""
+
+    @classmethod
+    def _ast_base_candidates(cls, base_node: ast.expr) -> tuple[str, ...]:
+        """Return candidate base tokens that can match declared imports."""
+        match base_node:
+            case ast.Name(id=name):
+                return (name,)
+            case ast.Attribute(value=value, attr=attr):
+                parent_candidates = cls._ast_base_candidates(value)
+                chained = tuple(
+                    f"{candidate}.{attr}"
+                    for candidate in parent_candidates
+                    if candidate
+                )
+                return tuple(dict.fromkeys((*chained, *parent_candidates, attr)))
+            case ast.Subscript(value=value):
+                return cls._ast_base_candidates(value)
+            case _:
+                return ()
 
     @staticmethod
     @cache
@@ -270,14 +290,14 @@ class FlextInfraUtilitiesDiscovery:
             ]
         return r[Sequence[Path]].ok(all_files)
 
-    @staticmethod
+    @classmethod
     def resolve_parent_constants_mro(
+        cls,
         pkg_dir_or_file: Path,
         *,
-        rope_project: t.Infra.RopeProject,
         return_module: bool = False,
     ) -> tuple[str, ...]:
-        """Resolve imported parent constants through Rope-backed class MRO."""
+        """Resolve imported parent constants through AST and declared imports."""
         constants_file = (
             pkg_dir_or_file
             if pkg_dir_or_file.name == c.Infra.CONSTANTS_PY
@@ -293,12 +313,10 @@ class FlextInfraUtilitiesDiscovery:
         current_module = FlextInfraUtilitiesDiscovery.discover_package_from_file(
             constants_file,
         )
-        resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
-            rope_project,
-            constants_file,
-        )
-        if resource is None:
-            return ()
+        cache_key = (str(constants_file.resolve()), return_module)
+        cached = cls._PARENT_CONSTANTS_MRO_CACHE.get(cache_key)
+        if cached is not None:
+            return cached
         try:
             syntax_tree = ast.parse(
                 constants_file.read_text(encoding=c.Infra.ENCODING_DEFAULT),
@@ -309,81 +327,68 @@ class FlextInfraUtilitiesDiscovery:
         for node in syntax_tree.body:
             if isinstance(node, ast.ImportFrom) and node.module:
                 for imported_name in node.names:
+                    if imported_name.name == "*":
+                        continue
                     local_name = imported_name.asname or imported_name.name
                     declared_imports_ast[local_name] = (
                         f"{node.module}.{imported_name.name}"
                     )
-        class_infos = FlextInfraUtilitiesRopeAnalysis.get_class_info(
-            rope_project,
-            resource,
-        )
+            if isinstance(node, ast.Import):
+                for imported_name in node.names:
+                    local_name = (
+                        imported_name.asname
+                        or imported_name.name.split(
+                            ".",
+                            maxsplit=1,
+                        )[0]
+                    )
+                    declared_imports_ast[local_name] = imported_name.name
         discovered_classes = [
-            (class_info.name, tuple(class_info.bases))
-            for class_info in class_infos
-            if class_info.name
+            (
+                node.name,
+                tuple(
+                    cls._ast_base_candidates(base_node)
+                    for base_node in node.bases
+                    if cls._ast_base_candidates(base_node)
+                ),
+            )
+            for node in syntax_tree.body
+            if isinstance(node, ast.ClassDef)
         ]
-        if not discovered_classes:
-            discovered_classes = [
-                (
-                    node.name,
-                    tuple(
-                        base_name
-                        for base_name in (
-                            FlextInfraUtilitiesDiscovery._ast_base_name(base_node)
-                            for base_node in node.bases
-                        )
-                        if base_name
-                    ),
-                )
-                for node in syntax_tree.body
-                if isinstance(node, ast.ClassDef)
-            ]
-        declared = FlextInfraUtilitiesRopeAnalysis.get_declared_module_imports(
-            rope_project,
-            resource,
-        )
-        imported = FlextInfraUtilitiesRopeAnalysis.get_semantic_module_imports(
-            rope_project,
-            resource,
-        )
         current_root = (
             current_module.split(".", maxsplit=1)[0] if current_module else ""
         )
         resolved: list[str] = []
-        for class_name, base_names in discovered_classes:
+        for class_name, base_candidate_groups in discovered_classes:
             if "Constants" not in class_name:
                 continue
-            for base_name in base_names:
-                matched_base = False
-                for local_name, semantic_target in imported.items():
-                    imported_name = semantic_target.rsplit(".", maxsplit=1)[-1]
-                    if base_name not in {local_name, imported_name}:
-                        continue
-                    target_name = declared.get(local_name, semantic_target)
-                    package_root = target_name.split(".", maxsplit=1)[0]
-                    if package_root == current_root:
-                        continue
-                    target = package_root if return_module else imported_name
-                    if target and target not in resolved:
-                        resolved.append(target)
-                    matched_base = True
-                if matched_base or base_name not in declared_imports_ast:
+            for base_candidates in base_candidate_groups:
+                target_name = ""
+                for base_name in base_candidates:
+                    target_name = declared_imports_ast.get(base_name, "")
+                    if target_name:
+                        break
+                    root_name = base_name.split(".", maxsplit=1)[0]
+                    target_name = declared_imports_ast.get(root_name, "")
+                    if target_name:
+                        break
+                if not target_name:
                     continue
-                target_name = declared_imports_ast[base_name]
                 package_root = target_name.split(".", maxsplit=1)[0]
                 if package_root == current_root:
                     continue
-                target = package_root if return_module else base_name
+                imported_name = target_name.rsplit(".", maxsplit=1)[-1]
+                target = package_root if return_module else imported_name
                 if target and target not in resolved:
                     resolved.append(target)
-        return tuple(resolved)
+        result = tuple(resolved)
+        cls._PARENT_CONSTANTS_MRO_CACHE[cache_key] = result
+        return result
 
     @staticmethod
     def resolve_transitive_parent_packages(
         workspace_root: Path,
         package_names: Sequence[str],
-        *,
-        rope_project: t.Infra.RopeProject,
     ) -> tuple[str, ...]:
         """Resolve parent packages transitively with ancestors ordered before children."""
         resolved: list[str] = []
@@ -402,7 +407,6 @@ class FlextInfraUtilitiesDiscovery:
                     parent_package
                 ) in FlextInfraUtilitiesDiscovery.resolve_parent_constants_mro(
                     init_path.parent,
-                    rope_project=rope_project,
                     return_module=True,
                 ):
                     visit(parent_package)
@@ -420,7 +424,6 @@ class FlextInfraUtilitiesDiscovery:
         *,
         project_root: Path,
         file_path: Path,
-        rope_project: t.Infra.RopeProject,
     ) -> Mapping[str, frozenset[str]]:
         """Return allowed foreign-package runtime alias sources for one file."""
         package_name = FlextInfraUtilitiesDocsScope.package_name(project_root)
@@ -437,7 +440,6 @@ class FlextInfraUtilitiesDiscovery:
             return {}
         parent_packages = FlextInfraUtilitiesDiscovery.resolve_parent_constants_mro(
             package_dir,
-            rope_project=rope_project,
             return_module=True,
         )
         if not parent_packages:
