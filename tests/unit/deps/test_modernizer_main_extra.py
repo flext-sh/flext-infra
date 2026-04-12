@@ -18,7 +18,7 @@ class TestFlextInfraPyprojectModernizerEdgeCases:
     def _args(
         **overrides: t.Infra.InfraValue,
     ) -> m.Infra.ModernizeCommand:
-        defaults: t.MutableContainerMapping = {
+        defaults: t.MutableRecursiveContainerMapping = {
             "workspace": ".",
             "verbose": False,
             "projects": None,

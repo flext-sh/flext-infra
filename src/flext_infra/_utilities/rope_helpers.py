@@ -252,7 +252,7 @@ class FlextInfraUtilitiesRopeHelpers:
         return (len(order_config), 0, method.name)
 
     @staticmethod
-    def categorize_method(name: str, decorators: Sequence[str]) -> str:
+    def categorize_method(name: str, decorators: t.StrSequence) -> str:
         """Categorize a method by its decorators and name pattern."""
         if FlextInfraUtilitiesRopeHelpers._PROPERTY_DECORATORS.intersection(decorators):
             return c.Infra.MethodCategory.PROPERTY

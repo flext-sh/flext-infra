@@ -306,7 +306,7 @@ class FlextInfraCodegenGeneration:
         )
 
     @staticmethod
-    def _collapse_blank_runs(lines: Sequence[str]) -> t.StrSequence:
+    def _collapse_blank_runs(lines: t.StrSequence) -> t.StrSequence:
         normalized: MutableSequence[str] = []
         previous_blank = False
         for line in lines:

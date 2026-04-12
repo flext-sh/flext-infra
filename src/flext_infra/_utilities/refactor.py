@@ -47,7 +47,7 @@ class FlextInfraUtilitiesRefactor(
         methods = u.Infra.extract_public_methods_from_dir(package_dir)
     """
 
-    _STRING_LIST_ADAPTER: TypeAdapter[Sequence[str]] = TypeAdapter(Sequence[str])
+    _STRING_LIST_ADAPTER: TypeAdapter[t.StrSequence] = TypeAdapter(t.StrSequence)
 
     @staticmethod
     def entry_list(value: t.Infra.InfraValue | None) -> Sequence[t.StrMapping]:

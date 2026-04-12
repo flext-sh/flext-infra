@@ -199,7 +199,7 @@ class FlextInfraUtilitiesDocsGenerate:
         workspace_root: Path,
         *,
         apply: bool,
-        projects: Sequence[str] | None = None,
+        projects: t.StrSequence | None = None,
     ) -> Sequence[m.Infra.GeneratedFile]:
         """Generate root workspace docs artifacts from discovered FLEXT projects."""
         workspace_contract = FlextInfraUtilitiesDocsContract.docs_workspace_contract(
@@ -299,7 +299,7 @@ class FlextInfraUtilitiesDocsGenerate:
         *,
         apply: bool,
         workspace_root: Path,
-        projects: Sequence[str] | None = None,
+        projects: t.StrSequence | None = None,
     ) -> m.Infra.DocsPhaseReport:
         """Generate one scope and persist the standard reports."""
         files = (

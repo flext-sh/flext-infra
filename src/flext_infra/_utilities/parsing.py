@@ -155,7 +155,7 @@ class FlextInfraUtilitiesParsing:
 
     @staticmethod
     def find_import_insert_position(
-        lines: Sequence[str],
+        lines: t.StrSequence,
         *,
         past_existing: bool = True,
     ) -> int:
@@ -170,7 +170,7 @@ class FlextInfraUtilitiesParsing:
 
     @staticmethod
     def index_after_docstring_and_future_imports(
-        lines: Sequence[str],
+        lines: t.StrSequence,
     ) -> int:
         """Return insertion index after module docstring and future imports.
 
@@ -205,7 +205,7 @@ class FlextInfraUtilitiesParsing:
 
     @staticmethod
     def _find_import_insert_position(
-        lines: Sequence[str],
+        lines: t.StrSequence,
         *,
         past_existing: bool = True,
     ) -> int:
@@ -286,7 +286,7 @@ class FlextInfraUtilitiesParsing:
         )
 
     @staticmethod
-    def find_import_line(*, lines: Sequence[str], module_name: str) -> int:
+    def find_import_line(*, lines: t.StrSequence, module_name: str) -> int:
         """Find the 1-based line number of ``from <module_name> import ...``."""
         prefix = f"from {module_name} import "
         for index, line in enumerate(lines, start=1):
@@ -446,7 +446,7 @@ class FlextInfraUtilitiesParsing:
         return ""
 
     @staticmethod
-    def parse_class_bases(source: str, class_name: str) -> Sequence[str]:
+    def parse_class_bases(source: str, class_name: str) -> t.StrSequence:
         """Extract base class names from a named class definition in source code.
 
         Finds the class matching *class_name* in *source*, parses its base classes,

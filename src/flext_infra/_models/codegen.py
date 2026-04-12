@@ -386,7 +386,7 @@ class FlextInfraModelsCodegen:
         @staticmethod
         def from_violation(
             violation: FlextInfraModelsCodegen.CensusViolation,
-            source_lines: Sequence[str],
+            source_lines: t.StrSequence,
         ) -> FlextInfraModelsCodegen.ViolationKey:
             """Build key from violation and source context (+-2 lines)."""
             ctx_start = max(0, violation.line - 2)

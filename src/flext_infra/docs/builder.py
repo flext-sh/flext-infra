@@ -37,7 +37,7 @@ class FlextInfraDocBuilder(s[bool]):
         self,
         workspace_root: Path,
         *,
-        projects: Sequence[str] | None = None,
+        projects: t.StrSequence | None = None,
         output_dir: str = c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
     ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
         """Build MkDocs sites across project scopes."""

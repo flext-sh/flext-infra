@@ -150,7 +150,7 @@ class FlextInfraTypesBase:
     "Mutable set of (str, str) tuples."
     type IntPairSet = set[StrIntPair]
     "Mutable set of (str, int) tuples."
-    type CanonicalValue = str | int | Sequence[str]
+    type CanonicalValue = str | int | t.StrSequence
     "Canonical governance value: scalar string, integer, or string list."
     type AstMethodNode = _ast.FunctionDef | _ast.AsyncFunctionDef
     "AST node for a method definition (sync or async)."
@@ -178,18 +178,18 @@ class FlextInfraTypesBase:
     "Read-only sequence of typed service result payloads."
     type DomainOutput = DomainResult | DomainResultSequence
     "Single or batched service result payload for infra services."
-    type ContainerOverrides = t.ContainerMapping
+    type ContainerOverrides = t.RecursiveContainerMapping
     "Container-shaped settings overrides passed to service bootstrap."
     type RuntimeScalarOverrides = t.ScalarMapping
     "Scalar-only runtime/container override mapping."
 
     # ── Transformer / edit result types ──────────────────────────────
 
-    type TransformResult = tuple[str, Sequence[str]]
+    type TransformResult = tuple[str, t.StrSequence]
     "Canonical (new_source, change_descriptions) from any source transformer."
-    type EditResult = tuple[bool, Sequence[str]]
+    type EditResult = tuple[bool, t.StrSequence]
     "Validated edit outcome: (success, report_lines)."
-    type EditResultWithDescs = tuple[bool, Sequence[str], Sequence[str]]
+    type EditResultWithDescs = tuple[bool, t.StrSequence, t.StrSequence]
     "(success, descriptions, report_lines) — includes what was attempted."
-    type LintSnapshot = Mapping[str, Sequence[str]]
+    type LintSnapshot = Mapping[str, t.StrSequence]
     "Lint errors per tool: {tool_name: [error_lines]}."

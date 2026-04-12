@@ -75,4 +75,4 @@ class FlextInfraServiceCheckMixin:
         return r[bool].ok(True)
 
 
-__all__: Sequence[str] = ("FlextInfraServiceCheckMixin",)
+__all__: t.StrSequence = ("FlextInfraServiceCheckMixin",)

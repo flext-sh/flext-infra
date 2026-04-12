@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import textwrap
 from collections import defaultdict
-from collections.abc import Sequence
 from typing import override
 
 from flext_infra import (
@@ -90,7 +89,7 @@ class FlextInfraRefactorClassNestingTransformer(FlextInfraRopeTransformer):
         source: str,
         *,
         namespace: str,
-        class_names: Sequence[str],
+        class_names: t.StrSequence,
         ns_exists: bool,
     ) -> str:
         extracted: list[str] = []
@@ -121,7 +120,7 @@ class FlextInfraRefactorClassNestingTransformer(FlextInfraRopeTransformer):
 
     def _ns_op_allowed(
         self,
-        class_names: Sequence[str],
+        class_names: t.StrSequence,
         target_namespace: str,
         operation: str,
     ) -> bool:

@@ -42,7 +42,7 @@ class FlextInfraUtilitiesDocs:
     @staticmethod
     def build_scopes(
         workspace_root: Path,
-        projects: Sequence[str] | None,
+        projects: t.StrSequence | None,
         output_dir: str,
     ) -> r[Sequence[m.Infra.DocScope]]:
         """Build DocScope objects for workspace root and each selected project."""
@@ -198,7 +198,7 @@ class FlextInfraUtilitiesDocs:
         ]
 
     @staticmethod
-    def write_markdown(path: Path, lines: Sequence[str]) -> r[bool]:
+    def write_markdown(path: Path, lines: t.StrSequence) -> r[bool]:
         """Write markdown lines to path, creating parent dirs as needed."""
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -262,7 +262,7 @@ class FlextInfraUtilitiesDocs:
     def run_scoped(
         workspace_root: Path,
         *,
-        projects: Sequence[str] | None,
+        projects: t.StrSequence | None,
         output_dir: str,
         handler: Callable[
             [m.Infra.DocScope],

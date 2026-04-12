@@ -59,7 +59,7 @@ class FlextInfraUtilitiesDocsScope:
     @staticmethod
     def resolve_projects(
         workspace_root: Path,
-        names: Sequence[str],
+        names: t.StrSequence,
     ) -> r[Sequence[m.Infra.ProjectInfo]]:
         """Resolve project names into canonical project descriptors."""
         discover_result = FlextInfraUtilitiesDocsScope.discover_projects(
@@ -198,7 +198,7 @@ class FlextInfraUtilitiesDocsScope:
     def docs_meta_list(
         project_root: Path,
         key: str,
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         """Return one normalized string-list value from ``tool.flext.docs``."""
         docs_meta = FlextInfraUtilitiesDocsScope.project_docs_meta(project_root)
         raw = docs_meta.get(key)
@@ -353,7 +353,7 @@ class FlextInfraUtilitiesDocsScope:
         return r[Sequence[m.Infra.ProjectInfo]].ok(projects)
 
     @staticmethod
-    def required_project_files() -> Sequence[str]:
+    def required_project_files() -> t.StrSequence:
         """Return the required standard docs contract for FLEXT projects."""
         return [
             "README.md",

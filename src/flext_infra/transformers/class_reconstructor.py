@@ -166,7 +166,7 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
     @staticmethod
     def _decorator_names(
         node: t.Infra.AstFunctionDef | t.Infra.AstAsyncFunctionDef,
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         return [
             name
             for decorator in node.decorator_list

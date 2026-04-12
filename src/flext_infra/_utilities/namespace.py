@@ -435,7 +435,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         """Split initial violations into fixed and still-skipped groups."""
         if not initial_violations:
             return ((), ())
-        source_cache: MutableMapping[str, Sequence[str]] = {}
+        source_cache: MutableMapping[str, t.StrSequence] = {}
         remaining_keys = frozenset(
             cls._build_violation_key(
                 violation=violation,
@@ -459,7 +459,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         return (tuple(fixed), tuple(skipped))
 
     @staticmethod
-    def _read_source_lines(project_path: Path, module: str) -> Sequence[str]:
+    def _read_source_lines(project_path: Path, module: str) -> t.StrSequence:
         module_path = project_path / module
         if not module_path.is_file():
             return ()
@@ -471,7 +471,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         *,
         violation: m.Infra.CensusViolation,
         project_path: Path,
-        source_cache: MutableMapping[str, Sequence[str]],
+        source_cache: MutableMapping[str, t.StrSequence],
     ) -> m.Infra.ViolationKey:
         if violation.module not in source_cache:
             source_cache[violation.module] = cls._read_source_lines(

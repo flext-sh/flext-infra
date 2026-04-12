@@ -309,7 +309,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
     def _collect_required_import_lines(
         *,
         source: str,
-        blocks: Sequence[str],
+        blocks: t.StrSequence,
     ) -> t.StrSequence:
         source_ast = ast.parse(source)
         source_lines = source.splitlines()

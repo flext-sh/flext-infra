@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
 from typing import override
 
 from flext_infra import (
@@ -115,7 +114,7 @@ class FlextInfraNestedClassPropagationTransformer(FlextInfraRopeTransformer):
             self._record_change(f"Qualified reference: {old_name} -> {qualified}")
         return new_source
 
-    def _find_import_aliases(self, source: str, *, old_name: str) -> Sequence[str]:
+    def _find_import_aliases(self, source: str, *, old_name: str) -> t.StrSequence:
         """Collect local aliases bound from ``from x import OldName as Alias``."""
         pattern = re.compile(
             rf"from\s+\S+\s+import\s+[^\n]*\b{re.escape(old_name)}\b\s+as\s+"
@@ -174,8 +173,8 @@ class FlextInfraNestedClassPropagationTransformer(FlextInfraRopeTransformer):
         source: str,
         *,
         old_name: str,
-        rename_parts: Sequence[str],
-        aliases: Sequence[str],
+        rename_parts: t.StrSequence,
+        aliases: t.StrSequence,
     ) -> str:
         """Qualify attribute-style references like ``module.OldName``."""
         # Match: something.OldName (attribute access)

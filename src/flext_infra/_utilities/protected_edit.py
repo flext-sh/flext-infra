@@ -6,7 +6,7 @@ import difflib
 import os
 import re
 import shutil
-from collections.abc import Callable, Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import Callable, Mapping, MutableMapping, MutableSequence
 from pathlib import Path
 
 from flext_cli import u
@@ -39,7 +39,7 @@ class FlextInfraUtilitiesProtectedEdit:
 
     @staticmethod
     def _selected_lint_tools(
-        gates: Sequence[str] | None = None,
+        gates: t.StrSequence | None = None,
     ) -> tuple[tuple[str, tuple[str, ...]], ...]:
         if not gates:
             gates = tuple(
@@ -58,7 +58,7 @@ class FlextInfraUtilitiesProtectedEdit:
     @classmethod
     def selected_lint_tool_names(
         cls,
-        gates: Sequence[str] | None = None,
+        gates: t.StrSequence | None = None,
     ) -> t.StrSequence:
         """Return the canonical lint tool names selected for a gate set."""
         return tuple(tool for tool, _ in cls._selected_lint_tools(gates))
@@ -85,7 +85,7 @@ class FlextInfraUtilitiesProtectedEdit:
         return project_root
 
     @staticmethod
-    def _command_env() -> Mapping[str, str]:
+    def _command_env() -> t.StrMapping:
         env = dict(os.environ)
         _ = env.pop("PYTHONPATH", None)
         return env
@@ -96,10 +96,10 @@ class FlextInfraUtilitiesProtectedEdit:
         py_file: Path,
         workspace: Path,
         *,
-        gates: Sequence[str] | None = None,
+        gates: t.StrSequence | None = None,
     ) -> t.Infra.LintSnapshot:
         """Run selected lint tools on *py_file* and return failing output lines."""
-        errors: MutableMapping[str, Sequence[str]] = {}
+        errors: MutableMapping[str, t.StrSequence] = {}
         command_cwd = cls._command_cwd(py_file, workspace)
         for tool, tmpl in cls._selected_lint_tools(gates):
             cmd = [item.replace("{file}", str(py_file)) for item in tmpl]
@@ -150,7 +150,7 @@ class FlextInfraUtilitiesProtectedEdit:
         workspace: Path,
         *,
         updated_source: str,
-        gates: Sequence[str] | None = None,
+        gates: t.StrSequence | None = None,
     ) -> tuple[t.Infra.LintSnapshot, t.Infra.LintSnapshot]:
         """Preview lint output for ``updated_source`` while restoring the file."""
         original_source = py_file.read_text(
@@ -223,7 +223,7 @@ class FlextInfraUtilitiesProtectedEdit:
         edit_fn: Callable[[], None],
         restore_fn: Callable[[], None] | None = None,
         keep_backup: bool = False,
-        gates: Sequence[str] | None = None,
+        gates: t.StrSequence | None = None,
     ) -> t.Infra.EditResult:
         """Apply one edit, validate lint deltas, and restore on failure."""
         rel = cls._relative_path(py_file, workspace)
@@ -289,7 +289,7 @@ class FlextInfraUtilitiesProtectedEdit:
         workspace: Path,
         updated_source: str,
         keep_backup: bool = False,
-        gates: Sequence[str] | None = None,
+        gates: t.StrSequence | None = None,
     ) -> t.Infra.EditResult:
         """Write *updated_source* with protected validation and rollback."""
         original_source = py_file.read_text(
@@ -327,7 +327,7 @@ class FlextInfraUtilitiesProtectedEdit:
         *,
         workspace: Path,
         keep_backup: bool = False,
-        gates: Sequence[str] | None = None,
+        gates: t.StrSequence | None = None,
         post_write: Callable[[], None] | None = None,
     ) -> t.Infra.EditResult:
         """Write multiple files transactionally with lint delta validation."""

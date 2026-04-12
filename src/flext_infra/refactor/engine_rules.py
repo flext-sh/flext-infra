@@ -123,7 +123,7 @@ class FlextInfraRefactorTypingAnnotationFixRule(FlextInfraRefactorRule):
                 resource: t.Infra.RopeResource,
             ) -> t.Infra.TransformResult:
                 replacements: t.StrMapping = {
-                    "t.NormalizedValue": "t.ContainerValue",
+                    "t.RecursiveContainer": "t.ContainerValue",
                 }
                 updated_source, count = u.Infra.batch_replace_annotations(
                     rope_project,

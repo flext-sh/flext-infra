@@ -34,7 +34,7 @@ class FlextInfraOrchestratorService(s[bool]):
 
     verb: Annotated[str, Field(description="Make verb to execute")]
     projects: Annotated[
-        Sequence[str],
+        t.StrSequence,
         Field(
             default_factory=list,
             description="Projects to orchestrate; repeat --projects NAME as needed",
@@ -45,12 +45,12 @@ class FlextInfraOrchestratorService(s[bool]):
         Field(default=False, description="Stop on first failure"),
     ] = False
     make_arg: Annotated[
-        Sequence[str],
+        t.StrSequence,
         Field(default_factory=list, description="Additional make arguments"),
     ] = Field(default_factory=list)
 
     @property
-    def project_names(self) -> Sequence[str]:
+    def project_names(self) -> t.StrSequence:
         """Return normalized project names."""
         return [
             project_name
@@ -60,7 +60,7 @@ class FlextInfraOrchestratorService(s[bool]):
         ]
 
     @property
-    def make_args(self) -> Sequence[str]:
+    def make_args(self) -> t.StrSequence:
         """Return normalized make arguments."""
         return [make_arg.strip() for make_arg in self.make_arg if make_arg.strip()]
 

@@ -32,7 +32,7 @@ class FlextInfraUtilitiesDocsValidate:
     @staticmethod
     def docs_extract_required_skills(
         payload: t.ValueOrModel,
-    ) -> t.ContainerList | None:
+    ) -> t.RecursiveContainerList | None:
         """Extract the configured required skills list from architecture settings."""
         if not isinstance(payload, Mapping):
             return None

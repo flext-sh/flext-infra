@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from abc import ABC
-from collections.abc import Sequence
 from pathlib import Path
 from typing import Annotated, Self, TypeVar, override
 
@@ -119,7 +118,7 @@ class FlextInfraServiceBase(
     @classmethod
     def _normalize_project_filter(
         cls,
-        value: str | Sequence[str] | None,
+        value: str | t.StrSequence | None,
     ) -> str | None:
         """Normalize project filters into a compact comma-separated string."""
         if value is None:

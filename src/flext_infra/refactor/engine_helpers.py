@@ -257,7 +257,7 @@ class FlextInfraRefactorEngineHelpersMixin:
         *,
         target: Path,
         stash_ref: str,
-        processed_targets: Sequence[str],
+        processed_targets: t.StrSequence,
         results: MutableSequence[m.Infra.Result],
     ) -> None:
         checkpoint = self.safety_manager.save_checkpoint_state(

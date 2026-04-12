@@ -251,7 +251,7 @@ class FlextInfraUtilitiesRefactorMroScan:
         return tuple(s for s in all_specs if s.family_alias == al) if al else all_specs
 
     @staticmethod
-    def _class_header(*, lines: Sequence[str], start_line: int) -> str:
+    def _class_header(*, lines: t.StrSequence, start_line: int) -> str:
         header_parts: list[str] = []
         for current_line in lines[start_line - 1 :]:
             stripped = current_line.strip()
@@ -267,7 +267,7 @@ class FlextInfraUtilitiesRefactorMroScan:
     @staticmethod
     def _top_level_block_bounds(
         *,
-        lines: Sequence[str],
+        lines: t.StrSequence,
         start_line: int,
     ) -> tuple[int, int]:
         class_line_index = start_line - 1

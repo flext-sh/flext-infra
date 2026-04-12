@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
 
 from flext_tests import tm
@@ -134,4 +133,4 @@ class TestSilentFailureValidator:
         tm.that(infra_main(["validate", "silent-failure", "--help"]), eq=0)
 
 
-__all__: Sequence[str] = []
+__all__: t.StrSequence = []

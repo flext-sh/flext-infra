@@ -60,7 +60,7 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
         return [item for item in shlex.split(raw) if item]
 
     @staticmethod
-    def resolve_gates(gates: Sequence[str]) -> r[list[str]]:
+    def resolve_gates(gates: t.StrSequence) -> r[list[str]]:
         """Resolve and validate requested gate names."""
         resolved: MutableSequence[str] = []
         for gate in gates:
@@ -93,14 +93,14 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
     def run_project(
         self,
         project: str,
-        gates: Sequence[str],
+        gates: t.StrSequence,
     ) -> r[Sequence[m.Infra.ProjectResult]]:
         """Run selected gates for one project."""
         return self.run_projects([project], list(gates)).map(lambda value: value)
 
     @staticmethod
     def _write_reports_and_summary(
-        resolved_gates: Sequence[str],
+        resolved_gates: t.StrSequence,
         report_base: Path,
         outcome: WorkspaceLoopOutcome,
     ) -> r[Sequence[m.Infra.ProjectResult]]:
@@ -158,8 +158,8 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
 
     def run_projects(
         self,
-        projects: Sequence[str],
-        gates: Sequence[str],
+        projects: t.StrSequence,
+        gates: t.StrSequence,
         *,
         reports_dir: Path | None = None,
         fail_fast: bool = False,

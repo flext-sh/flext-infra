@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
 
 from flext_tests import tm
 
 from flext_infra import FlextInfraSilentFailureGate
-from tests import u
+from tests import t, u
 
 
 def _create_gate_project(tmp_path: Path, *, name: str) -> Path:
@@ -53,4 +52,4 @@ class TestSilentFailureGate:
         tm.that(result.raw_output, has="not enforced")
 
 
-__all__: Sequence[str] = []
+__all__: t.StrSequence = []

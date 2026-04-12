@@ -50,4 +50,4 @@ class FlextInfraServiceWorkspaceMixin(FlextInfraServiceCliRunnerMixin):
         return self._dispatch_result(params)
 
 
-__all__: Sequence[str] = ("FlextInfraServiceWorkspaceMixin",)
+__all__: t.StrSequence = ("FlextInfraServiceWorkspaceMixin",)

@@ -42,7 +42,7 @@ class FlextInfraUtilitiesRopeSource:
         *,
         allow: t.Infra.StrSet | None = None,
         apply: bool = True,
-    ) -> tuple[str, Sequence[str]]:
+    ) -> tuple[str, t.StrSequence]:
         """Remove module-level ``X = Y`` identity aliases."""
         _ = rope_project
         allow_set = allow or set()
@@ -149,7 +149,7 @@ class FlextInfraUtilitiesRopeSource:
     @classmethod
     def _silent_failure_block_return(
         cls,
-        lines: Sequence[str],
+        lines: t.StrSequence,
         *,
         start_index: int,
         block_indent: int,
@@ -172,7 +172,7 @@ class FlextInfraUtilitiesRopeSource:
     @classmethod
     def _enclosing_result_inner(
         cls,
-        lines: Sequence[str],
+        lines: t.StrSequence,
         *,
         line_index: int,
     ) -> str | None:
@@ -332,7 +332,7 @@ class FlextInfraUtilitiesRopeSource:
         source: str,
         file_path: Path,
         transformer_fn: t.Infra.RopeTransformFn,
-    ) -> tuple[str, Sequence[str]]:
+    ) -> tuple[str, t.StrSequence]:
         """Run a rope transformer against source text via a temporary context."""
         workspace_root = FlextInfraUtilitiesDiscovery.discover_project_root_from_file(
             file_path,

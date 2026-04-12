@@ -188,7 +188,7 @@ class FlextInfraModelsRope:
             ),
         ]
         project_package_by_root: Annotated[
-            Mapping[str, str],
+            t.StrMapping,
             Field(
                 default_factory=dict,
                 description="Canonical source package name keyed by project root path",

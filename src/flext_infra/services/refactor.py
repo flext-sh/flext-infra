@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
 
 from flext_cli.api import cli as cli_service
@@ -112,4 +111,4 @@ class FlextInfraServiceRefactorMixin:
         return result
 
 
-__all__: Sequence[str] = ("FlextInfraServiceRefactorMixin",)
+__all__: t.StrSequence = ("FlextInfraServiceRefactorMixin",)

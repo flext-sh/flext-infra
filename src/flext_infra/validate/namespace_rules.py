@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from collections.abc import MutableSequence, Sequence
+from collections.abc import MutableSequence
 from pathlib import Path
 
 from flext_infra import (
@@ -69,7 +69,7 @@ class FlextInfraNamespaceRules:
         tree: ast.Module,
         filepath: Path,
         prefix: str,
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         """Rule 0 -- One namespace class per module."""
         violations: MutableSequence[str] = []
         seq = 0
@@ -103,7 +103,7 @@ class FlextInfraNamespaceRules:
         self,
         tree: ast.Module,
         filepath: Path,
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         """Rule 1 -- Constants centralization."""
         if filepath.name == FlextInfraConstantsSharedInfra.CONSTANTS_PY:
             return self._check_rule_1_canonical(tree, filepath)
@@ -113,7 +113,7 @@ class FlextInfraNamespaceRules:
         self,
         tree: ast.Module,
         filepath: Path,
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         violations: MutableSequence[str] = []
         seq = 0
         outer_classes = [n for n in tree.body if isinstance(n, ast.ClassDef)]
@@ -135,7 +135,7 @@ class FlextInfraNamespaceRules:
         self,
         tree: ast.Module,
         filepath: Path,
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         violations: MutableSequence[str] = []
         seq = 0
         for node in tree.body:
@@ -218,7 +218,7 @@ class FlextInfraNamespaceRules:
         self,
         tree: ast.Module,
         filepath: Path,
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         """Rule 2 -- Types centralization."""
         if filepath.name == FlextInfraConstantsSharedInfra.TYPINGS_PY:
             return self._check_rule_2_canonical(tree, filepath)
@@ -228,7 +228,7 @@ class FlextInfraNamespaceRules:
         self,
         tree: ast.Module,
         filepath: Path,
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         violations: MutableSequence[str] = []
         seq = 0
         outer_classes = [n for n in tree.body if isinstance(n, ast.ClassDef)]
@@ -263,7 +263,7 @@ class FlextInfraNamespaceRules:
         self,
         tree: ast.Module,
         filepath: Path,
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         violations: MutableSequence[str] = []
         seq = 0
         for node in tree.body:

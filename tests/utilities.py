@@ -437,7 +437,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             def create_docs_workspace(
                 root: Path,
                 *,
-                project_names: Sequence[str] = (),
+                project_names: t.StrSequence = (),
                 include_fixable_link: bool = False,
             ) -> Path:
                 workspace = root / "workspace"
@@ -482,7 +482,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             def create_github_workspace(
                 root: Path,
                 *,
-                project_names: Sequence[str] = (),
+                project_names: t.StrSequence = (),
                 source_workflow: str = "name: CI\n",
                 pr_exit_codes: t.StrMapping | None = None,
             ) -> Path:
@@ -521,7 +521,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             def create_release_workspace(
                 root: Path,
                 *,
-                project_names: Sequence[str] = (),
+                project_names: t.StrSequence = (),
                 root_validate_exit_code: str = "0",
                 root_build_exit_code: str = "0",
                 project_validate_exit_codes: t.StrMapping | None = None,
@@ -1247,7 +1247,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
 
                 def _run(
                     _self: FlextInfraGate,
-                    _cmd: Sequence[str],
+                    _cmd: t.StrSequence,
                     _cwd: Path,
                     timeout: int = 120,
                     env: dict[str, str] | None = None,
@@ -1267,7 +1267,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
 
                 def _run(
                     _self: FlextInfraGate,
-                    _cmd: Sequence[str],
+                    _cmd: t.StrSequence,
                     _cwd: Path,
                     timeout: int = 120,
                     env: dict[str, str] | None = None,
@@ -1292,7 +1292,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                         _self: FlextInfraGate,
                         _project_dir: Path,
                         _ctx: m.Infra.GateContext,
-                    ) -> Sequence[str]:
+                    ) -> t.StrSequence:
                         del _self, _project_dir, _ctx
                         return ["src"] if has_python_dirs else []
 
@@ -1301,13 +1301,13 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
 
                 def _existing_dirs(
                     _self: FlextInfraGate, _project_dir: Path
-                ) -> Sequence[str]:
+                ) -> t.StrSequence:
                     del _self, _project_dir
                     return ["src"]
 
                 def _dirs_with_py(
-                    _project_dir: Path, _dirs: Sequence[str]
-                ) -> Sequence[str]:
+                    _project_dir: Path, _dirs: t.StrSequence
+                ) -> t.StrSequence:
                     del _project_dir, _dirs
                     return ["src"] if has_python_dirs else []
 
@@ -1352,7 +1352,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                 result: r[m.Cli.CommandOutput] | str,
             ) -> t.Infra.Tests.RawRunStub:
                 def _fake_run_raw(
-                    _cmd: Sequence[str],
+                    _cmd: t.StrSequence,
                     **_kw: object,
                 ) -> r[m.Cli.CommandOutput]:
                     del _cmd, _kw

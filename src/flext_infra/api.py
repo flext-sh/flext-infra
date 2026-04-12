@@ -57,7 +57,7 @@ class FlextInfra(
     FlextInfraServiceReleaseMixin,
     FlextInfraServiceValidateMixin,
     FlextInfraServiceWorkspaceMixin,
-    FlextInfraServiceBase[t.MutableContainerMapping],
+    FlextInfraServiceBase[t.MutableRecursiveContainerMapping],
 ):
     """Thin public MRO facade over infra services and CLI groups."""
 
@@ -72,15 +72,15 @@ class FlextInfra(
         return cls._instance
 
     @override
-    def execute(self) -> r[t.MutableContainerMapping]:
+    def execute(self) -> r[t.MutableRecursiveContainerMapping]:
         """Execute a lightweight facade health report."""
-        report: t.MutableContainerMapping = {
+        report: t.MutableRecursiveContainerMapping = {
             "service": "flext-infra",
             "status": "ok",
             "workspace_root": str(self.workspace_root),
             "apply_changes": self.apply_changes,
         }
-        return r[t.MutableContainerMapping].ok(report)
+        return r[t.MutableRecursiveContainerMapping].ok(report)
 
     def register_docs(self, app: t.Cli.CliApp) -> None:
         """Register docs commands directly on the concrete service classes."""

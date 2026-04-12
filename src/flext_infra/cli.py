@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import Mapping, Sequence
 from types import MappingProxyType
 from typing import ClassVar
 
@@ -27,7 +26,7 @@ class FlextInfraCli:
         "--workspace",
         "--projects",
     })
-    GROUPS: ClassVar[Mapping[str, str]] = MappingProxyType({
+    GROUPS: ClassVar[t.StrMapping] = MappingProxyType({
         "basemk": "Base.mk template generation",
         c.Infra.VERB_CHECK: "Lint gates and pyrefly settings management",
         "codegen": "Code generation and workspace standardization",
@@ -40,7 +39,7 @@ class FlextInfraCli:
         c.Infra.RK_RELEASE: "Release orchestration",
         c.Infra.RK_WORKSPACE: "Workspace detection, sync, orchestration, migration",
     })
-    _GROUP_REGISTRATION_RULES: ClassVar[Mapping[str, str]] = MappingProxyType({
+    _GROUP_REGISTRATION_RULES: ClassVar[t.StrMapping] = MappingProxyType({
         "basemk": "register_basemk",
         c.Infra.VERB_CHECK: "register_check",
         "codegen": "register_codegen",
@@ -59,7 +58,7 @@ class FlextInfraCli:
         """Return the shared CLI settings namespace without importing the API facade."""
         return FlextSettings.fetch_global().fetch_namespace("cli", FlextCliSettings)
 
-    def main(self, args: Sequence[str] | None = None) -> int:
+    def main(self, args: t.StrSequence | None = None) -> int:
         """Run the centralized dispatcher."""
         u.ensure_structlog_configured()
         cli_args = list(args) if args is not None else sys.argv[1:]
@@ -94,7 +93,7 @@ class FlextInfraCli:
             )
 
     @classmethod
-    def _normalize_group_args(cls, args: Sequence[str]) -> list[str]:
+    def _normalize_group_args(cls, args: t.StrSequence) -> list[str]:
         """Move shared flags placed before a Typer subcommand behind the subcommand."""
         return u.Cli.reorder_prefixed_options(
             args,
@@ -102,7 +101,7 @@ class FlextInfraCli:
             value_options=tuple(cls._SHARED_VALUE_FLAGS),
         )
 
-    def _run_group(self, group: str, args: Sequence[str]) -> int:
+    def _run_group(self, group: str, args: t.StrSequence) -> int:
         """Execute a registered flext-cli group."""
         app = cli_service.create_app_with_common_params(
             name=f"{self.app_name} {group}",
@@ -135,7 +134,7 @@ class FlextInfraCli:
         register(app)
 
 
-def main(args: Sequence[str] | None = None) -> int:
+def main(args: t.StrSequence | None = None) -> int:
     """Run the canonical flext-infra CLI."""
     return FlextInfraCli().main(args)
 

@@ -3,11 +3,11 @@
 # Engine discovers violations dynamically via TypingAnnotationCensusVisitor.
 
 rules:
-  - id: replace-t.NormalizedValue-annotations
-    name: "Replace t.NormalizedValue-based type annotations"
+  - id: replace-t.RecursiveContainer-annotations
+    name: "Replace t.RecursiveContainer-based type annotations"
     description: >
-      Detect and replace bare t.NormalizedValue, t.ContainerMapping, t.ContainerMapping,
-      Sequence[t.NormalizedValue], Sequence[t.NormalizedValue], and TypeAdapter[t.NormalizedValue] annotations with
+      Detect and replace bare t.RecursiveContainer, t.RecursiveContainerMapping, t.RecursiveContainerMapping,
+      Sequence[t.RecursiveContainer], Sequence[t.RecursiveContainer], and TypeAdapter[t.RecursiveContainer] annotations with
       t.ContainerValue equivalents. Detection via CST visitor, not regex.
     enabled: true
     severity: error

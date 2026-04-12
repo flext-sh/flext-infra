@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-
 from flext_core import r
 from flext_infra import FlextInfraReleaseOrchestrator
 
@@ -16,4 +14,4 @@ class FlextInfraServiceReleaseMixin:
         return params.execute()
 
 
-__all__: Sequence[str] = ("FlextInfraServiceReleaseMixin",)
+__all__: t.StrSequence = ("FlextInfraServiceReleaseMixin",)

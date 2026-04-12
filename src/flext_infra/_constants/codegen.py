@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from enum import StrEnum, unique
 from typing import ClassVar, Final
 
@@ -212,7 +212,7 @@ class FlextInfraConstantsCodegen:
         LAZY_INIT = "lazy_init"
         CENSUS_AFTER = "census_after"
 
-    PIPELINE_STAGE_ORDER: ClassVar[Sequence[str]] = (
+    PIPELINE_STAGE_ORDER: ClassVar[t.StrSequence] = (
         PipelineStage.DISCOVER,
         PipelineStage.PY_TYPED,
         PipelineStage.CENSUS_BEFORE,

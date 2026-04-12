@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-
 from flext_core import r
 from flext_infra import (
     FlextInfraBaseMkValidator,
@@ -58,4 +56,4 @@ class FlextInfraServiceValidateMixin(FlextInfraServiceCliRunnerMixin):
         return self._dispatch_result(params)
 
 
-__all__: Sequence[str] = ("FlextInfraServiceValidateMixin",)
+__all__: t.StrSequence = ("FlextInfraServiceValidateMixin",)

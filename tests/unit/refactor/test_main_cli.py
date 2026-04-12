@@ -28,7 +28,7 @@ class TestFlextInfraRefactorMainCli:
             "from __future__ import annotations\n"
             "from collections.abc import Mapping\n"
             "from typing import TypeAlias\n\n"
-            "PayloadMap: TypeAlias = Mapping[str, str]\n"
+            "PayloadMap: TypeAlias = t.StrMapping\n"
             "def consume(payload: PayloadMap) -> PayloadMap:\n"
             "    return payload\n",
         )

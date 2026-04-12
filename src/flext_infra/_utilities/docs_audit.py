@@ -109,7 +109,7 @@ class FlextInfraUtilitiesDocsAudit:
     def docs_text_token_issues(
         scope: m.Infra.DocScope,
         *,
-        tokens: Sequence[str],
+        tokens: t.StrSequence,
         issue_type: str,
     ) -> Sequence[m.Infra.AuditIssue]:
         """Collect simple token-presence issues from markdown files."""

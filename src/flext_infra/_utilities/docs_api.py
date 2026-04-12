@@ -31,7 +31,7 @@ class FlextInfraUtilitiesDocsApi:
     _STRING_RE: t.Infra.RegexPattern = re.compile(r"""["']([a-zA-Z0-9_\.]+)["']""")
 
     @staticmethod
-    def _string_values(value: object) -> Sequence[str]:
+    def _string_values(value: object) -> t.StrSequence:
         """Normalize one infra sequence payload into strings."""
         try:
             items = t.Infra.INFRA_SEQ_ADAPTER.validate_python(value)
@@ -40,7 +40,7 @@ class FlextInfraUtilitiesDocsApi:
         return [str(item) for item in items]
 
     @staticmethod
-    def _string_mapping(value: object) -> Mapping[str, str]:
+    def _string_mapping(value: object) -> t.StrMapping:
         """Normalize one infra mapping payload into string keys and values."""
         try:
             items = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)
@@ -60,7 +60,7 @@ class FlextInfraUtilitiesDocsApi:
         )
 
     @classmethod
-    def _assignment_strings(cls, source: str, name: str) -> Sequence[str]:
+    def _assignment_strings(cls, source: str, name: str) -> t.StrSequence:
         """Collect literal string values from one module-level assignment."""
         for (
             assignment_name,
@@ -99,7 +99,7 @@ class FlextInfraUtilitiesDocsApi:
         return False
 
     @staticmethod
-    def _project_keywords(project_meta: Mapping[str, object]) -> Sequence[str]:
+    def _project_keywords(project_meta: Mapping[str, object]) -> t.StrSequence:
         """Return normalized project keywords from ``pyproject.toml`` metadata."""
         return [
             text
@@ -112,8 +112,8 @@ class FlextInfraUtilitiesDocsApi:
     @staticmethod
     def _rope_public_symbols(
         project_root: Path,
-        target_map: Mapping[str, str],
-    ) -> Sequence[str]:
+        target_map: t.StrMapping,
+    ) -> t.StrSequence:
         """Use Rope to verify which exported symbols resolve in real modules."""
         with FlextInfraUtilitiesRope.open_project(project_root) as rope_project:
             symbols: MutableSequence[str] = []

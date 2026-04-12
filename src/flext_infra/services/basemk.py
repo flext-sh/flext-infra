@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 from flext_core import r
@@ -16,7 +15,7 @@ class FlextInfraServiceBasemkMixin:
     """Expose canonical base.mk operations through the public infra facade."""
 
     def generate_basemk(
-        self: FlextInfraServiceBase[t.MutableContainerMapping],
+        self: FlextInfraServiceBase[t.MutableRecursiveContainerMapping],
         settings: m.Infra.BaseMkConfig | t.ScalarMapping | None = None,
     ) -> r[str]:
         """Generate base.mk content using the current facade context."""
@@ -25,4 +24,4 @@ class FlextInfraServiceBasemkMixin:
         ).generate_basemk(settings)
 
 
-__all__: Sequence[str] = ("FlextInfraServiceBasemkMixin",)
+__all__: t.StrSequence = ("FlextInfraServiceBasemkMixin",)

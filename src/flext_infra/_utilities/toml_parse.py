@@ -98,7 +98,7 @@ class FlextInfraUtilitiesTomlParse:
     def local_dependency_names(
         doc: t.Cli.TomlDocument,
         *,
-        workspace_project_names: Sequence[str] = (),
+        workspace_project_names: t.StrSequence = (),
     ) -> t.StrSequence:
         """Extract normalized local/workspace dependency names across supported TOML sections."""
         raw: t.Infra.TomlData = doc.unwrap()
@@ -111,7 +111,7 @@ class FlextInfraUtilitiesTomlParse:
     def local_dependency_names_from_payload(
         raw: t.Infra.ContainerDict,
         *,
-        workspace_project_names: Sequence[str] = (),
+        workspace_project_names: t.StrSequence = (),
     ) -> t.StrSequence:
         """Extract normalized local/workspace dependency names from a TOML payload."""
         names: t.Infra.StrSet = set()

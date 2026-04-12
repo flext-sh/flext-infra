@@ -37,7 +37,7 @@ class FlextInfraViolationCensusVisitor:
         for _ in c.Infra.CensusPatterns.DICT_INVARIANCE_RE.finditer(source):
             self._add_record(
                 kind="container_invariance",
-                detail="Found Mapping[str, t.Container|t.NormalizedValue] style annotation.",
+                detail="Found Mapping[str, t.Container|t.RecursiveContainer] style annotation.",
             )
 
     def _check_literal_usage(self, source: str) -> None:

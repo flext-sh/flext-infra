@@ -20,7 +20,7 @@ class _DepsStub(
     p.Infra.TypingsDepsService,
     p.Infra.PipCheckDepsService,
 ):
-    def __init__(self, project: Path, to_add: Sequence[str]) -> None:
+    def __init__(self, project: Path, to_add: t.StrSequence) -> None:
         self._project = project
         self._to_add = to_add
 
@@ -103,7 +103,7 @@ class _RunnerStub(p.Infra.RunnerService):
     @override
     def run_raw(
         self,
-        cmd: Sequence[str],
+        cmd: t.StrSequence,
         cwd: Path | None = None,
         timeout: int | None = None,
         env: t.StrMapping | None = None,
@@ -125,21 +125,21 @@ class _ReportingStub(p.Infra.ReportingService):
 
 def _setup_typings_detector(
     tmp_path: Path,
-    to_add: Sequence[str],
+    to_add: t.StrSequence,
     run_raw_result: r[m.Cli.CommandOutput],
 ) -> tuple[
     FlextInfraRuntimeDevDependencyDetector,
-    Sequence[Sequence[str]],
+    Sequence[t.StrSequence],
 ]:
     project_path = tmp_path / "proj-a"
     (project_path / "src").mkdir(parents=True)
     deptry_path = tmp_path / ".venv" / "bin" / "deptry"
     deptry_path.parent.mkdir(parents=True)
     deptry_path.write_text("", encoding="utf-8")
-    captured_commands: MutableSequence[Sequence[str]] = []
+    captured_commands: MutableSequence[t.StrSequence] = []
 
     def _run_raw(
-        cmd: Sequence[str],
+        cmd: t.StrSequence,
         *,
         cwd: Path,
         timeout: int,

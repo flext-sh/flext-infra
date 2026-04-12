@@ -64,7 +64,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
     ] = 1
 
     @property
-    def phase_names(self) -> Sequence[str]:
+    def phase_names(self) -> t.StrSequence:
         """Return the normalized phase sequence for release execution."""
         if self.phase == "all":
             return [
@@ -81,7 +81,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
         ]
 
     @property
-    def project_names(self) -> Sequence[str] | None:
+    def project_names(self) -> t.StrSequence | None:
         """Return normalized project names from repeated selectors."""
         names = [
             item.strip()
@@ -257,7 +257,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
 
     def _build_release_stages(
         self,
-        phases: Sequence[str],
+        phases: t.StrSequence,
         dispatch_cfg: m.Infra.ReleasePhaseDispatchConfig,
     ) -> Sequence[m.Cli.PipelineStageSpec]:
         """Build DAG stage specs from the requested release phases.
@@ -266,7 +266,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
         canonical order: validate → version → build → publish.
         """
         active: set[str] = set(phases)
-        phase_order: Sequence[str] = [
+        phase_order: t.StrSequence = [
             c.Infra.VERB_VALIDATE,
             c.Infra.VERSION,
             c.Infra.DIR_BUILD,

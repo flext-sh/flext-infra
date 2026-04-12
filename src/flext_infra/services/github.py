@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-
 from flext_core import r
 from flext_infra import m, u
 
@@ -51,4 +49,4 @@ class FlextInfraServiceGithubMixin:
         return u.Infra.github_run_workspace_pull_requests(params)
 
 
-__all__: Sequence[str] = ("FlextInfraServiceGithubMixin",)
+__all__: t.StrSequence = ("FlextInfraServiceGithubMixin",)

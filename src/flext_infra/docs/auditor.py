@@ -81,7 +81,7 @@ class FlextInfraDocAuditor(s[bool], FlextInfraDocAuditorMixin):
         self,
         workspace_root: Path,
         *,
-        projects: Sequence[str] | None = None,
+        projects: t.StrSequence | None = None,
         output_dir: str = c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
         params: m.Infra.AuditScopeParams | None = None,
     ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
@@ -207,7 +207,7 @@ class FlextInfraDocAuditor(s[bool], FlextInfraDocAuditorMixin):
     def _collect_issues(
         self,
         scope: m.Infra.DocScope,
-        checks: Sequence[str],
+        checks: t.StrSequence,
     ) -> Sequence[m.Infra.AuditIssue]:
         """Collect issues for the requested check set in canonical order."""
         issues: list[m.Infra.AuditIssue] = []

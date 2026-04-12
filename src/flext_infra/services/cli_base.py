@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 
 from flext_core import r
 from flext_infra import s, t
@@ -27,4 +27,4 @@ class FlextInfraServiceCliRunnerMixin:
         return type(params).execute_command(params)
 
 
-__all__: Sequence[str] = ("FlextInfraServiceCliRunnerMixin",)
+__all__: t.StrSequence = ("FlextInfraServiceCliRunnerMixin",)

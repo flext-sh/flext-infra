@@ -36,7 +36,7 @@ class FlextInfraDocGenerator(s[bool]):
         self,
         workspace_root: Path,
         *,
-        projects: Sequence[str] | None = None,
+        projects: t.StrSequence | None = None,
         output_dir: str = c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
         apply: bool = False,
     ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
@@ -72,7 +72,7 @@ class FlextInfraDocGenerator(s[bool]):
         *,
         apply: bool,
         workspace_root: Path,
-        projects: Sequence[str] | None = None,
+        projects: t.StrSequence | None = None,
     ) -> m.Infra.DocsPhaseReport:
         """Generate one scope via ``u.Infra`` and log the result."""
         report = u.Infra.docs_generate_scope(

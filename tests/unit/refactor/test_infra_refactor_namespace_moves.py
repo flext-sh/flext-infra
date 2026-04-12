@@ -93,7 +93,7 @@ def test_rewrite_manual_typing_alias_violations_uses_public_runtime_api(
             "from __future__ import annotations\n\n"
             "from collections.abc import Mapping\n"
             "from typing import TypeAlias\n\n"
-            "PayloadMap: TypeAlias = Mapping[str, str]\n"
+            "PayloadMap: TypeAlias = t.StrMapping\n"
             "value = 1\n"
         ),
     )
@@ -112,8 +112,8 @@ def test_rewrite_manual_typing_alias_violations_uses_public_runtime_api(
 
     source_text = source_file.read_text(encoding="utf-8")
     typings_text = typings_file.read_text(encoding="utf-8")
-    assert "PayloadMap: TypeAlias = Mapping[str, str]" not in source_text
-    assert "PayloadMap: TypeAlias = Mapping[str, str]" in typings_text
+    assert "PayloadMap: TypeAlias = t.StrMapping" not in source_text
+    assert "PayloadMap: TypeAlias = t.StrMapping" in typings_text
     assert "from collections.abc import Mapping" in typings_text
     assert "from typing import TypeAlias" in typings_text
     assert source_file.with_suffix(".py.bak").exists()

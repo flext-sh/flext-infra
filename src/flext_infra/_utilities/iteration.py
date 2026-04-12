@@ -106,14 +106,14 @@ class FlextInfraUtilitiesIteration:
         return ()
 
     @staticmethod
-    def _workspace_member_names(workspace_root: Path) -> Sequence[str]:
+    def _workspace_member_names(workspace_root: Path) -> t.StrSequence:
         """Return configured workspace members from ``tool.flext`` or ``tool.uv``."""
         return FlextInfraUtilitiesIteration._pyproject_workspace_member_names(
             str(workspace_root / c.Infra.PYPROJECT_FILENAME),
         )
 
     @staticmethod
-    def workspace_member_names(workspace_root: Path) -> Sequence[str]:
+    def workspace_member_names(workspace_root: Path) -> t.StrSequence:
         """Return canonical workspace members for public utility consumers."""
         return FlextInfraUtilitiesIteration._workspace_member_names(workspace_root)
 

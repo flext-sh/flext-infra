@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-
 from flext_core import r
 from flext_infra import (
     FlextInfraDependencyDetectorRuntime,
@@ -85,4 +83,4 @@ class FlextInfraServiceDepsMixin:
         return r[bool].ok(True)
 
 
-__all__: Sequence[str] = ("FlextInfraServiceDepsMixin",)
+__all__: t.StrSequence = ("FlextInfraServiceDepsMixin",)

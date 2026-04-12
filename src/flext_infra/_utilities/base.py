@@ -60,7 +60,7 @@ class FlextInfraUtilitiesBase:
     @staticmethod
     def _selected_project_names(
         workspace_root: Path,
-        projects: Sequence[str] | None,
+        projects: t.StrSequence | None,
     ) -> t.StrSequence:
         """Resolve selected project names or discover all when filter is empty."""
         selected = [name.strip() for name in (projects or []) if name.strip()]

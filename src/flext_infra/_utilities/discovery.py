@@ -218,7 +218,7 @@ class FlextInfraUtilitiesDiscovery:
         return frozenset()
 
     @staticmethod
-    def package_source_priority(package_names: Sequence[str]) -> t.StrSequence:
+    def package_source_priority(package_names: t.StrSequence) -> t.StrSequence:
         """Return package sources ordered so later duplicates keep priority."""
         ordered: list[str] = []
         for package_name in package_names:
@@ -408,7 +408,7 @@ class FlextInfraUtilitiesDiscovery:
     @staticmethod
     def resolve_transitive_parent_packages(
         workspace_root: Path,
-        package_names: Sequence[str],
+        package_names: t.StrSequence,
     ) -> tuple[str, ...]:
         """Resolve parent packages transitively with ancestors ordered before children."""
         resolved: list[str] = []

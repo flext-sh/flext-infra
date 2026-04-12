@@ -178,7 +178,7 @@ class FlextInfraModelsGithub:
 
         mode: Annotated[str, Field(description="Execution mode")]
         summary: Annotated[
-            t.ContainerMapping,
+            t.RecursiveContainerMapping,
             Field(description="Count of operations by action"),
         ]
         operations: t.Infra.VariadicTuple[

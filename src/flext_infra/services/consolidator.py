@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar, override
 
@@ -141,7 +141,7 @@ class FlextInfraCodegenConsolidator(s[str]):
         self,
         rope_project: t.Infra.RopeProject,
         python_file: Path,
-        value_map: Mapping[str, str],
+        value_map: t.StrMapping,
     ) -> (
         tuple[
             t.Infra.RopeResource,
@@ -170,8 +170,8 @@ class FlextInfraCodegenConsolidator(s[str]):
     @staticmethod
     def _match_assignments(
         symbols: Sequence[m.Infra.SymbolInfo],
-        source_lines: Sequence[str],
-        value_to_ref: Mapping[str, str],
+        source_lines: t.StrSequence,
+        value_to_ref: t.StrMapping,
     ) -> Sequence[tuple[m.Infra.SymbolInfo, str, str]]:
         matches: MutableSequence[tuple[m.Infra.SymbolInfo, str, str]] = []
         for symbol in symbols:
@@ -261,11 +261,9 @@ class FlextInfraCodegenConsolidator(s[str]):
         return (False, list(descs), report)
 
     @classmethod
-    def _build_value_map_from_constants_file(
-        cls, constants_file: Path
-    ) -> Mapping[str, str]:
+    def _build_value_map_from_constants_file(cls, constants_file: Path) -> t.StrMapping:
         min_quoted_length = 2
-        value_map: MutableMapping[str, str] = {}
+        value_map: t.MutableStrMapping = {}
         try:
             source = constants_file.read_text(encoding=c.Infra.ENCODING_DEFAULT)
         except (OSError, UnicodeDecodeError):

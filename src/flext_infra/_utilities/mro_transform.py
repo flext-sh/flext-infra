@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import (
@@ -143,7 +142,7 @@ class FlextInfraUtilitiesRefactorMroTransform:
     @staticmethod
     def _rename_symbol_in_block(
         *,
-        block_lines: Sequence[str],
+        block_lines: t.StrSequence,
         symbol: str,
         target: str,
     ) -> list[str]:
@@ -164,13 +163,13 @@ class FlextInfraUtilitiesRefactorMroTransform:
         return renamed_lines
 
     @staticmethod
-    def _indent_block(block_lines: Sequence[str]) -> list[str]:
+    def _indent_block(block_lines: t.StrSequence) -> list[str]:
         return [("    " + line) if line else "" for line in block_lines]
 
     @staticmethod
     def _drop_redundant_class_aliases(
         *,
-        lines: Sequence[str],
+        lines: t.StrSequence,
         class_name: str,
         symbol_map: t.StrMapping,
     ) -> list[str]:

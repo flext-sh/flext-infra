@@ -46,7 +46,7 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
         self._modified_files = set()
 
     @property
-    def modified_files(self) -> Sequence[str]:
+    def modified_files(self) -> t.StrSequence:
         """Return generated __init__.py files that changed on disk."""
         return tuple(sorted(self._modified_files))
 
