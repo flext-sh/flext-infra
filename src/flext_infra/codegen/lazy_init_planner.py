@@ -198,6 +198,9 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         direct: list[str] = []
         descendants: list[str] = []
         for child_dir in package_entry.descendant_child_dirs:
+            child_init = child_dir / c.Infra.INIT_PY
+            if not child_init.is_file():
+                continue
             child_entry = self._package_entry(child_dir)
             if child_entry is None or not child_entry.package_name:
                 continue

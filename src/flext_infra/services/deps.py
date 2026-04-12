@@ -10,6 +10,7 @@ from flext_infra import (
     FlextInfraModelsDeps,
     FlextInfraPyprojectModernizer,
     FlextInfraRuntimeDevDependencyDetector,
+    t,
 )
 from flext_infra._utilities.deps_path_sync import FlextInfraUtilitiesDependencyPathSync
 

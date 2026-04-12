@@ -9,7 +9,7 @@ def test_import_modernizer_partial_import_keeps_unmapped_symbols() -> None:
     source = "from flext_core import PLATFORM, KEEP\n\nvalue = PLATFORM\nother = KEEP\n"
     rule = FlextInfraRefactorImportModernizerRule({
         "id": "modernize-constants-import",
-        "module": "flext_core.constants",
+        "module": "flext_core",
         "symbol_mapping": {"PLATFORM": "c.System.PLATFORM"},
     })
     updated, _ = rule.apply(source)
@@ -23,7 +23,7 @@ def test_import_modernizer_updates_aliased_symbol_usage() -> None:
     source = "from flext_core import PLATFORM as P\n\nvalue = P\n"
     rule = FlextInfraRefactorImportModernizerRule({
         "id": "modernize-constants-import",
-        "module": "flext_core.constants",
+        "module": "flext_core",
         "symbol_mapping": {"PLATFORM": "c.System.PLATFORM"},
     })
     updated, _ = rule.apply(source)
@@ -36,7 +36,7 @@ def test_import_modernizer_partial_import_with_asname_keeps_unmapped_alias() -> 
     source = "from flext_core import PLATFORM as P, KEEP as K\n\nvalue = P\nother = K\n"
     rule = FlextInfraRefactorImportModernizerRule({
         "id": "modernize-constants-import",
-        "module": "flext_core.constants",
+        "module": "flext_core",
         "symbol_mapping": {"PLATFORM": "c.System.PLATFORM"},
     })
     updated, _ = rule.apply(source)
@@ -50,7 +50,7 @@ def test_import_modernizer_adds_c_when_existing_c_is_aliased() -> None:
     source = "from flext_core import c as consts\nfrom flext_core import PLATFORM\n\nvalue = PLATFORM\n"
     rule = FlextInfraRefactorImportModernizerRule({
         "id": "modernize-constants-import",
-        "module": "flext_core.constants",
+        "module": "flext_core",
         "symbol_mapping": {"PLATFORM": "c.System.PLATFORM"},
     })
     updated, _ = rule.apply(source)
@@ -63,7 +63,7 @@ def test_import_modernizer_does_not_rewrite_function_parameter_shadow() -> None:
     source = "from flext_core import PLATFORM as P\n\ndef f(P: str) -> str:\n    return P\n\nvalue = P\n"
     rule = FlextInfraRefactorImportModernizerRule({
         "id": "modernize-constants-import",
-        "module": "flext_core.constants",
+        "module": "flext_core",
         "symbol_mapping": {"PLATFORM": "c.System.PLATFORM"},
     })
     updated, _ = rule.apply(source)
@@ -77,7 +77,7 @@ def test_import_modernizer_does_not_rewrite_rebound_local_name_usage() -> None:
     source = 'from flext_core import PLATFORM\n\nPLATFORM = "local"\nvalue = PLATFORM\n'
     rule = FlextInfraRefactorImportModernizerRule({
         "id": "modernize-constants-import",
-        "module": "flext_core.constants",
+        "module": "flext_core",
         "symbol_mapping": {"PLATFORM": "c.System.PLATFORM"},
     })
     updated, _ = rule.apply(source)
@@ -92,7 +92,7 @@ def test_import_modernizer_skips_when_runtime_alias_name_is_blocked() -> None:
     source = "from flext_infra import c\nfrom flext_core import PLATFORM\n\nvalue = PLATFORM\n"
     rule = FlextInfraRefactorImportModernizerRule({
         "id": "modernize-constants-import",
-        "module": "flext_core.constants",
+        "module": "flext_core",
         "symbol_mapping": {"PLATFORM": "c.System.PLATFORM"},
     })
     updated, _ = rule.apply(source)
@@ -108,7 +108,7 @@ def test_import_modernizer_skips_rewrite_when_runtime_alias_shadowed_in_function
     source = "from flext_core import PLATFORM\n\ndef compute(c):\n    return PLATFORM\n"
     rule = FlextInfraRefactorImportModernizerRule({
         "id": "modernize-constants-import",
-        "module": "flext_core.constants",
+        "module": "flext_core",
         "symbol_mapping": {"PLATFORM": "c.System.PLATFORM"},
     })
     updated, _ = rule.apply(source)

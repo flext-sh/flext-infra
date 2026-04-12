@@ -178,8 +178,11 @@ class FlextInfraUtilitiesCodegenLazyAliases:
             child_dir = Path(key)
             if child_dir == pkg_dir or pkg_dir not in child_dir.parents:
                 continue
+            child_init = child_dir / c.Infra.INIT_PY
+            if not child_init.is_file():
+                continue
             child_pkg = FlextInfraUtilitiesDiscovery.discover_package_from_file(
-                child_dir / c.Infra.INIT_PY,
+                child_init,
             )
             if not child_pkg:
                 continue

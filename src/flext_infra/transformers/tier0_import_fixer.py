@@ -130,17 +130,17 @@ class FlextInfraTransformerTier0ImportFixer:
         """Rewrite Tier 0 imports via rope to remove circularity."""
 
         _CLASS_IMPORTS_MAP: ClassVar[t.StrMapping] = {
-            "u": "flext_core.runtime",
-            "FlextUtilitiesGuardsTypeCore": "flext_core._utilities.guards_type_core",
-            "FlextUtilitiesGuards": "flext_core._utilities.guards",
-            "FlextUtilitiesGuardsType": "flext_core._utilities.guards_type",
-            "FlextUtilitiesCache": "flext_core._utilities.cache",
-            "FlextUtilitiesMapper": "flext_core._utilities.mapper",
-            "FlextUtilitiesModel": "flext_core._utilities.model",
-            "EnumT": "flext_core.typings",
-            "T": "flext_core.typings",
-            "U": "flext_core.typings",
-            "T_Model": "flext_core.typings",
+            "u": "flext_core",
+            "FlextUtilitiesGuardsTypeCore": "flext_core_type_core",
+            "FlextUtilitiesGuards": "flext_core",
+            "FlextUtilitiesGuardsType": "flext_core_type",
+            "FlextUtilitiesCache": "flext_core",
+            "FlextUtilitiesMapper": "flext_core",
+            "FlextUtilitiesModel": "flext_core",
+            "EnumT": "flext_core",
+            "T": "flext_core",
+            "U": "flext_core",
+            "T_Model": "flext_core",
         }
 
         def __init__(

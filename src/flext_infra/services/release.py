@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from flext_core import r
-from flext_infra import FlextInfraReleaseOrchestrator
+from flext_infra import FlextInfraReleaseOrchestrator, t
 
 
 class FlextInfraServiceReleaseMixin:

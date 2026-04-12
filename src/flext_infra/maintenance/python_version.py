@@ -5,7 +5,7 @@ Creates ``.python-version`` files and verifies ``requires-python`` in each
 project's ``pyproject.toml``.
 
 Runtime version checking is handled automatically by
-``flext_core._python_version_guard`` (imported on ``from flext_core import …``).
+``flext_core_guard`` (imported on ``from flext_core import …``).
 This service only manages the static ``.python-version`` files used by
 pyenv / asdf / mise for interpreter selection.
 

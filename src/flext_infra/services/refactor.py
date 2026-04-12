@@ -12,6 +12,7 @@ from flext_infra import (
     FlextInfraRefactorMigrateToClassMRO,
     c,
     m,
+    t,
     u,
 )
 from flext_infra.refactor.accessor_migration import (

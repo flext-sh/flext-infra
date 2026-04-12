@@ -1,7 +1,7 @@
 """Lazy-init ``__init__.py`` generator (PEP 562).
 
 Auto-discovers exports from sibling ``.py`` files and generates clean
-lazy-loading ``__init__.py`` files using ``flext_core.lazy``.
+lazy-loading ``__init__.py`` files using ``flext_core``.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT

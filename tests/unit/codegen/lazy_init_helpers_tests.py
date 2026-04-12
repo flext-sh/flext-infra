@@ -238,7 +238,7 @@ class TestsFlextInfraLazyInitHelpers:
         )
         cli_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
             "from __future__ import annotations\n\n"
-            "from flext_core.constants import FlextCoreConstants\n\n"
+            "from flext_core import FlextCoreConstants\n\n"
             "class FlextCliConstants(FlextCoreConstants):\n"
             "    pass\n",
             encoding=c.Infra.ENCODING_DEFAULT,

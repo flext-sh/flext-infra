@@ -10,6 +10,7 @@ from flext_infra import (
     FlextInfraModelsCheck,
     FlextInfraModelsGates,
     FlextInfraWorkspaceChecker,
+    t,
 )
 
 
@@ -69,9 +70,7 @@ class FlextInfraServiceCheckMixin:
             verbose=params.verbose,
         )
         if fix_result.failure:
-            return r[bool].fail(
-                fix_result.error or "pyrefly settings fix failed",
-            )
+            return r[bool].fail(fix_result.error or "pyrefly config fix failed")
         return r[bool].ok(True)
 
 

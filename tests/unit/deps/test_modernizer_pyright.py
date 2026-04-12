@@ -32,7 +32,7 @@ class TestDepsModernizerPyright:
         algar = tmp_path / "algar-oud-mig"
         (tmp_path / "vendor").mkdir(parents=True, exist_ok=True)
         (tmp_path / "typings" / "generated").mkdir(parents=True, exist_ok=True)
-        flext_core.mkdir(parents=True, exist_ok=True)
+        flext_core(parents=True, exist_ok=True)
         flext_api.mkdir(parents=True, exist_ok=True)
         algar.mkdir(parents=True, exist_ok=True)
         _ = (flext_core / "pyproject.toml").write_text(

@@ -49,4 +49,4 @@ class FlextInfraServiceGithubMixin:
         return u.Infra.github_run_workspace_pull_requests(params)
 
 
-__all__: t.StrSequence = ("FlextInfraServiceGithubMixin",)
+__all__: list[str] = ["FlextInfraServiceGithubMixin"]

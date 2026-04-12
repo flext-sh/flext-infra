@@ -11,6 +11,7 @@ from flext_infra import (
     FlextInfraSkillValidator,
     FlextInfraStubSupplyChain,
     FlextInfraTextPatternScanner,
+    t,
 )
 from flext_infra.services.cli_base import FlextInfraServiceCliRunnerMixin
 

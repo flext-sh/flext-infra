@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import ABC
 from pathlib import Path
-from typing import Annotated, Self, TypeVar, override
+from typing import TYPE_CHECKING, Annotated, Self, TypeVar, override
 
 from pydantic import ConfigDict, Field, field_validator
 
@@ -17,6 +17,9 @@ from flext_core import (
     s as core_service_base,
 )
 from flext_infra import FlextInfraConstantsBase, FlextInfraTypesBase
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 TDomainResult = TypeVar("TDomainResult", bound=FlextInfraTypesBase.DomainOutput)
 
