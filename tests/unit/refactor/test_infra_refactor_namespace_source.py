@@ -293,7 +293,7 @@ def test_project_without_alias_facade_has_no_violation(tmp_path: Path) -> None:
     assert violations == []
 
 
-def test_detects_parent_u_import_in_private_utilities_module(tmp_path: Path) -> None:
+def test_allows_parent_u_import_in_private_utilities_module(tmp_path: Path) -> None:
     project_root, package_dir, _package_name, project_name, rope_project = (
         _create_project_with_facades(
             tmp_path=tmp_path,
@@ -319,9 +319,7 @@ def test_detects_parent_u_import_in_private_utilities_module(tmp_path: Path) -> 
         ),
     )
 
-    assert len(violations) == 1
-    assert violations[0].current_source == "flext_cli"
-    assert violations[0].correct_source == "flext_xyz"
+    assert violations == []
 
 
 def test_detects_parent_u_import_outside_private_utilities_module(
