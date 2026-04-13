@@ -6,7 +6,7 @@ from typing import override
 
 from flext_tests import tm
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import FlextInfraUtilitiesDependencyPathSync
 from tests import m
 
@@ -29,7 +29,7 @@ def _service(
         @override
         def discover_projects(
             workspace_root: Path,
-        ) -> r[Sequence[m.Infra.ProjectInfo]]:
+        ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
             _ = workspace_root
             return r[Sequence[m.Infra.ProjectInfo]].ok(projects)
 

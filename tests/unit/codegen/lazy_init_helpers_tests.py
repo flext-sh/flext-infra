@@ -26,19 +26,19 @@ class TestsFlextInfraLazyInitHelpers:
 
     def test_discover_package_from_standard_roots(self) -> None:
         assert (
-            u.Infra.discover_package_from_file(
+            u.Infra.package_name(
                 Path("/workspace/src/test_pkg/__init__.py"),
             )
             == "test_pkg"
         )
         assert (
-            u.Infra.discover_package_from_file(
+            u.Infra.package_name(
                 Path("/workspace/tests/unit/__init__.py"),
             )
             == "tests.unit"
         )
         assert (
-            u.Infra.discover_package_from_file(
+            u.Infra.package_name(
                 Path("/workspace/examples/tests/__init__.py"),
             )
             == "examples.tests"

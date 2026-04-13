@@ -25,13 +25,13 @@ if TYPE_CHECKING:
 
 type StageHandler = Callable[
     [FlextInfraCodegenPipeline, m.Cli.PipelineStageContext],
-    r[m.Cli.PipelineStageResult],
+    p.Result[m.Cli.PipelineStageResult],
 ]
 
 
 def _ok_stage(
     stage_id: str,
-) -> r[m.Cli.PipelineStageResult]:
+) -> p.Result[m.Cli.PipelineStageResult]:
     return r[m.Cli.PipelineStageResult].ok(
         m.Cli.PipelineStageResult(
             stage_id=stage_id,
@@ -51,7 +51,7 @@ def _stub_all_stages(
             def _handler(
                 _self: FlextInfraCodegenPipeline,
                 _ctx: m.Cli.PipelineStageContext,
-            ) -> r[m.Cli.PipelineStageResult]:
+            ) -> p.Result[m.Cli.PipelineStageResult]:
                 call_order.append(sid)
                 return _ok_stage(sid)
 
@@ -88,19 +88,19 @@ class TestCodegenPipelineDag:
         tmp_path: Path,
         monkeypatch: MonkeyPatch,
     ) -> None:
-        """u.Infra.discover_codegen_projects is called exactly once."""
+        """u.Infra.projects is called exactly once."""
         discover_count = 0
 
         def _counting_discover(
             *args: t.Scalar, **kwargs: t.Scalar
-        ) -> r[Sequence[p.Infra.ProjectInfo]]:
+        ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
             nonlocal discover_count
             discover_count += 1
-            return r[Sequence[p.Infra.ProjectInfo]].ok(())
+            return r[Sequence[m.Infra.ProjectInfo]].ok(())
 
         monkeypatch.setattr(
             u.Infra,
-            "discover_codegen_projects",
+            "projects",
             staticmethod(_counting_discover),
         )
 
@@ -113,7 +113,7 @@ class TestCodegenPipelineDag:
                 def _handler(
                     _self: FlextInfraCodegenPipeline,
                     _ctx: m.Cli.PipelineStageContext,
-                ) -> r[m.Cli.PipelineStageResult]:
+                ) -> p.Result[m.Cli.PipelineStageResult]:
                     return _ok_stage(sid)
 
                 return _handler
@@ -145,7 +145,7 @@ class TestCodegenPipelineDag:
                 def _handler(
                     _self: FlextInfraCodegenPipeline,
                     _ctx: m.Cli.PipelineStageContext,
-                ) -> r[m.Cli.PipelineStageResult]:
+                ) -> p.Result[m.Cli.PipelineStageResult]:
                     executed.append(sid)
                     if sid == c.Infra.PipelineStage.CENSUS_BEFORE:
                         return r[m.Cli.PipelineStageResult].fail("census exploded")

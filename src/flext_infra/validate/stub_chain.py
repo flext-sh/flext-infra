@@ -100,7 +100,7 @@ class FlextInfraStubSupplyChain(s[bool]):
         self,
         project_dir: Path,
         workspace_root: Path,
-    ) -> r[m.Infra.StubAnalysisReport]:
+    ) -> p.Result[m.Infra.StubAnalysisReport]:
         """Analyze a project for missing stubs and type packages.
 
         Runs mypy for hints and pyrefly for missing imports, then
@@ -141,7 +141,7 @@ class FlextInfraStubSupplyChain(s[bool]):
         self,
         workspace_root: Path,
         project_dirs: Sequence[Path] | None = None,
-    ) -> r[m.Infra.ValidationReport]:
+    ) -> p.Result[m.Infra.ValidationReport]:
         """Validate stub supply chain across projects.
 
         Args:
@@ -187,16 +187,16 @@ class FlextInfraStubSupplyChain(s[bool]):
             )
 
     @override
-    def execute(self) -> r[bool]:
+    def execute(self) -> p.Result[bool]:
         """Execute the stub-validation CLI flow."""
-        return self.build_report(
+        report_result = self.build_report(
             self.workspace_root,
             project_dirs=self.project_dirs,
-        ).flat_map(
-            lambda report: (
-                r[bool].ok(True) if report.passed else r[bool].fail(report.summary)
-            )
         )
+        if report_result.failure:
+            return r[bool].fail(report_result.error or "stub validation failed")
+        report = report_result.unwrap()
+        return r[bool].ok(True) if report.passed else r[bool].fail(report.summary)
 
     def _run_mypy_hints(self, project_dir: Path) -> t.StrSequence:
         """Run mypy and extract types-package hints."""
@@ -215,7 +215,7 @@ class FlextInfraStubSupplyChain(s[bool]):
         )
         output = ""
         if result.success:
-            cmd_output: p.Cli.CommandOutput = result.value
+            cmd_output: m.Cli.CommandOutput = result.value
             output = cmd_output.stdout
         return sorted({
             m.group(1).strip()
@@ -240,7 +240,7 @@ class FlextInfraStubSupplyChain(s[bool]):
         )
         output = ""
         if result.success:
-            cmd_output: p.Cli.CommandOutput = result.value
+            cmd_output: m.Cli.CommandOutput = result.value
             output = cmd_output.stdout
         seen: t.Infra.StrSet = set()
         ordered: MutableSequence[str] = []

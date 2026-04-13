@@ -81,7 +81,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
             workspace_root=self._workspace_root,
         )
         py_files = self._collect_py_files(project_root=project_root)
-        project_layout = u.Infra.project_layout(project_root)
+        project_layout = u.Infra.layout(project_root)
         package_name = project_layout.package_name if project_layout is not None else ""
         loose_objects = self._detect_and_apply(
             py_files=py_files,

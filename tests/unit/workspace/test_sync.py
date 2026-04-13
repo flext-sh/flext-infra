@@ -7,7 +7,7 @@ from typing import override
 
 from flext_core import r
 from flext_infra import FlextInfraBaseMkGenerator, FlextInfraSyncService
-from tests import m, t, u
+from tests import m, p, t, u
 
 
 def _stub_gen(content: str, *, fail: bool = False) -> FlextInfraBaseMkGenerator:
@@ -16,7 +16,7 @@ def _stub_gen(content: str, *, fail: bool = False) -> FlextInfraBaseMkGenerator:
         def generate_basemk(
             self,
             settings: m.Infra.BaseMkConfig | t.ScalarMapping | None = None,
-        ) -> r[str]:
+        ) -> p.Result[str]:
             _ = self
             _ = settings
             return r[str].fail(content) if fail else r[str].ok(content)
@@ -58,7 +58,7 @@ def _write_workspace(workspace_root: Path) -> tuple[Path, Path]:
     return demo_a, demo_b
 
 
-def _error_text[ValueT](result: r[ValueT]) -> str:
+def _error_text[ValueT](result: p.Result[ValueT]) -> str:
     return result.error or ""
 
 

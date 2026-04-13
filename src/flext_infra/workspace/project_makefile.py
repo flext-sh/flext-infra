@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import FlextInfraBaseMkGenerator, FlextInfraUtilitiesDocsScope, c, m, u
 
 
@@ -28,7 +28,7 @@ class FlextInfraProjectMakefileUpdater:
         identical to the file already on disk.
     """
 
-    def update(self, project_root: Path, *, canonical_root: Path) -> r[bool]:
+    def update(self, project_root: Path, *, canonical_root: Path) -> p.Result[bool]:
         """Regenerate project Makefile from pyproject.toml.
 
         Args:
@@ -72,7 +72,7 @@ class FlextInfraProjectMakefileUpdater:
         return u.Cli.atomic_write_text_file(makefile_path, new_content)
 
     @staticmethod
-    def _read_pyproject(pyproject: Path) -> r[m.Infra.ProjectMeta]:
+    def _read_pyproject(pyproject: Path) -> p.Result[m.Infra.ProjectMeta]:
         """Parse pyproject.toml and extract name, python_version, description."""
         project_state = FlextInfraUtilitiesDocsScope.project_state(pyproject.parent)
         data = project_state.payload

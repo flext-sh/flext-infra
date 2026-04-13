@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from flext_core import r
-from flext_infra import FlextInfraReleaseOrchestrator, t
+from flext_infra import FlextInfraReleaseOrchestrator, p, t
 
 
 class FlextInfraServiceReleaseMixin:
     """Expose release orchestration through the public infra facade."""
 
-    def run_release(self, params: FlextInfraReleaseOrchestrator) -> r[bool]:
+    def run_release(self, params: FlextInfraReleaseOrchestrator) -> p.Result[bool]:
         """Run release orchestration through the public facade."""
         return params.execute()
 

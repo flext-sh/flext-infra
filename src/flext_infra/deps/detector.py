@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from flext_core import r
 from flext_infra import (
     FlextInfraDependencyDetectionService,
     FlextInfraDependencyDetectorRuntime,
@@ -37,7 +36,7 @@ class FlextInfraRuntimeDevDependencyDetector:
     def run(
         self: FlextInfraRuntimeDevDependencyDetector,
         params: FlextInfraModelsDeps.DetectCommand,
-    ) -> r[bool]:
+    ) -> p.Result[bool]:
         """Execute dependency detection and generate workspace report."""
         runtime = FlextInfraDependencyDetectorRuntime(
             detector=self,

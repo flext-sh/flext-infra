@@ -15,7 +15,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from flext_core import r
+from flext_core import p, r
 from tests import m, t
 
 
@@ -45,7 +45,7 @@ class FakeUtilsNamespace:
         _call_count: int = 0
 
         @classmethod
-        def git_checkout(cls, *args: str, **kwargs: str) -> r[bool]:
+        def git_checkout(cls, *args: str, **kwargs: str) -> p.Result[bool]:
             if cls._git_checkout_side_effects is not None:
                 idx = cls._call_count
                 cls._call_count += 1
@@ -53,19 +53,19 @@ class FakeUtilsNamespace:
             return cls._git_checkout_result
 
         @classmethod
-        def git_run(cls, *args: str, **kwargs: str) -> r[str]:
+        def git_run(cls, *args: str, **kwargs: str) -> p.Result[str]:
             return cls._git_run_result
 
         @classmethod
-        def git_run_checked(cls, *args: str, **kwargs: str) -> r[bool]:
+        def git_run_checked(cls, *args: str, **kwargs: str) -> p.Result[bool]:
             return cls._git_run_checked_result
 
         @classmethod
-        def git_tag_exists(cls, *args: str, **kwargs: str) -> r[bool]:
+        def git_tag_exists(cls, *args: str, **kwargs: str) -> p.Result[bool]:
             return cls._git_tag_exists_result
 
         @classmethod
-        def git_create_tag(cls, *args: str, **kwargs: str) -> r[bool]:
+        def git_create_tag(cls, *args: str, **kwargs: str) -> p.Result[bool]:
             return cls._git_create_tag_result
 
         @classmethod
@@ -73,7 +73,7 @@ class FakeUtilsNamespace:
             cls,
             workspace_root: Path,
             names: t.StrSequence,
-        ) -> r[Sequence[SimpleNamespace]]:
+        ) -> p.Result[Sequence[SimpleNamespace]]:
             return r[Sequence[SimpleNamespace]].ok([])
 
         @classmethod
@@ -84,7 +84,7 @@ class FakeUtilsNamespace:
             projects: Sequence[SimpleNamespace],
             changes: str,
             output_path: Path,
-        ) -> r[bool]:
+        ) -> p.Result[bool]:
             output_path.parent.mkdir(parents=True, exist_ok=True)
             output_path.write_text(f"# Release {tag}\n{changes}\n", encoding="utf-8")
             return r[bool].ok(True)
@@ -107,10 +107,10 @@ class FakeVersioning:
     _bump_result: r[str] = r[str].ok("1.1.0")
     _replace_called: bool = False
 
-    def parse_semver(self, *args: str, **kwargs: str) -> r[str]:
+    def parse_semver(self, *args: str, **kwargs: str) -> p.Result[str]:
         return self._parse_result
 
-    def bump_version(self, *args: str, **kwargs: str) -> r[str]:
+    def bump_version(self, *args: str, **kwargs: str) -> p.Result[str]:
         return self._bump_result
 
     def replace_project_version(self, *args: str, **kwargs: str) -> None:
@@ -124,11 +124,11 @@ class FakeSubprocess:
     _run_raw_result: r[m.Cli.CommandOutput] | None = None
     _run_checked_called: bool = False
 
-    def run_checked(self, *args: str, **kwargs: str) -> r[bool]:
+    def run_checked(self, *args: str, **kwargs: str) -> p.Result[bool]:
         self._run_checked_called = True
         return self._run_checked_result
 
-    def run_raw(self, *args: str, **kwargs: str) -> r[m.Cli.CommandOutput]:
+    def run_raw(self, *args: str, **kwargs: str) -> p.Result[m.Cli.CommandOutput]:
         if self._run_raw_result is not None:
             return self._run_raw_result
         output = m.Cli.CommandOutput(exit_code=0, stdout="ok", stderr="")
@@ -158,7 +158,7 @@ class FakeSelection:
         self,
         workspace_root: Path,
         names: t.StrSequence,
-    ) -> r[Sequence[m.Infra.ProjectInfo]]:
+    ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
         return self._resolve_result
 
 

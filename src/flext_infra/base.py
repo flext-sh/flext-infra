@@ -13,13 +13,12 @@ from flext_core import (
     FlextModels,
     FlextProtocols,
     FlextSettings,
-    r,
     s as core_service_base,
 )
 from flext_infra import FlextInfraConstantsBase, FlextInfraTypesBase
 
 if TYPE_CHECKING:
-    from flext_infra import t
+    from flext_infra import p, t
 
 TDomainResult = TypeVar("TDomainResult", bound=FlextInfraTypesBase.DomainOutput)
 
@@ -159,7 +158,7 @@ class FlextInfraServiceBase(
     def execute_command(
         cls,
         params: Self,
-    ) -> r[TDomainResult]:
+    ) -> p.Result[TDomainResult]:
         """Execute the validated CLI service instance directly."""
         _ = cls
         return params.execute()

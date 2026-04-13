@@ -27,7 +27,7 @@ def test_namespace_enforcer_creates_missing_facades_and_rewrites_imports(
     _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
     _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
     _ = (pkg / "service.py").write_text(
-        "from flext_core import c, m, r, t, u, p\nfrom flext_infra import c, m, t, u, p\n\nVALUE = 1",
+        "from flext_core import c, m, r, p, t, u, p\nfrom flext_infra import c, m, t, u, p\n\nVALUE = 1",
         encoding="utf-8",
     )
 
@@ -44,7 +44,7 @@ def test_namespace_enforcer_creates_missing_facades_and_rewrites_imports(
     tm.that((pkg / "utilities.py").exists(), eq=True)
 
     service_source = (pkg / "service.py").read_text(encoding="utf-8")
-    tm.that(service_source, has="from flext_core import c, m, r, t, u, p")
+    tm.that(service_source, has="from flext_core import c, m, r, p, t, u, p")
     tm.that(service_source, has="from flext_infra import c, m, t, u, p")
 
 

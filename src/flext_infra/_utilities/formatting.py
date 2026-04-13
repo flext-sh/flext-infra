@@ -13,8 +13,7 @@ from collections.abc import MutableSequence
 from pathlib import Path
 
 from flext_cli import u
-from flext_core import r
-from flext_infra import c
+from flext_infra import c, p
 
 
 class FlextInfraUtilitiesFormatting:
@@ -52,7 +51,7 @@ class FlextInfraUtilitiesFormatting:
             check_cmd.append("--quiet")
         check_cmd.append(str(path))
 
-        def _require_success(result: r[bool]) -> None:
+        def _require_success(result: p.Result[bool]) -> None:
             if result.failure:
                 raise ValueError(result.error or "ruff post-process failed")
 

@@ -34,7 +34,7 @@ class FlextInfraUtilitiesFacadeScanner:
         del parse_failures
         del project_name
 
-        layout = u.Infra.project_layout(project_root)
+        layout = u.Infra.layout(project_root)
         if layout is None or not layout.src_dir.is_dir():
             return [
                 m.Infra.FacadeStatus(

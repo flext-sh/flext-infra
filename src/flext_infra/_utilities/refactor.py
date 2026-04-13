@@ -78,7 +78,7 @@ class FlextInfraUtilitiesRefactor(
             raise TypeError(msg) from exc
         except ValidationError as exc:
             msg = "expected list value"
-            raise ValueError(msg) from exc
+            raise TypeError(msg) from exc
 
     @staticmethod
     def normalize_module_path(path_value: str | Path) -> str:

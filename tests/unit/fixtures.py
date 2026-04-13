@@ -14,7 +14,7 @@ import pytest
 
 from tests import c, m, t, u
 
-_FIXTURES_DIR = Path(__file__).with_name("fixtures")
+_FIXTURES_DIR = Path(__file__).resolve().parents[1] / "fixtures"
 
 
 def _read_fixture(*parts: str) -> str:

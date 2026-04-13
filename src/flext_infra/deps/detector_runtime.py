@@ -29,7 +29,7 @@ class FlextInfraDependencyDetectorRuntime:
         self._dependency_limits_factory = dependency_limits_factory
         self._pip_check_factory = pip_check_factory
 
-    def run(self, params: FlextInfraModelsDeps.DetectCommand) -> r[bool]:
+    def run(self, params: FlextInfraModelsDeps.DetectCommand) -> p.Result[bool]:
         """Execute dependency detection and generate workspace report."""
         detector = self._detector
         limits_default = Path(__file__).resolve().parent / "dependency_limits.toml"

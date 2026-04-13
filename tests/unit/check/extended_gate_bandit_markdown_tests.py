@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import FlextInfraBanditGate, FlextInfraMarkdownGate, m
 from tests import t, u
 
@@ -21,7 +21,7 @@ class TestBanditAndMarkdownGates:
 
     @staticmethod
     def make_runner(
-        *results: r[m.Cli.CommandOutput],
+        *results: p.Result[m.Cli.CommandOutput],
     ) -> u.Infra.Tests.SequenceRunner:
         return u.Infra.Tests.SequenceRunner(list(results))
 

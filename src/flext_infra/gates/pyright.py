@@ -56,8 +56,9 @@ class FlextInfraPyrightGate(FlextInfraGate):
     ) -> tuple[bool, Sequence[m.Infra.Issue]]:
         _ = project_dir, ctx
         issues: MutableSequence[m.Infra.Issue] = []
-        parsed = u.Cli.json_parse(result.stdout or "{}").unwrap_or({})
         empty: Mapping[str, t.Infra.InfraValue] = {}
+        parsed_result = u.Cli.json_parse(result.stdout or "{}")
+        parsed = parsed_result.unwrap() if parsed_result.success else empty
         data = (
             u.Infra.normalize_str_mapping(parsed)
             if isinstance(parsed, Mapping)

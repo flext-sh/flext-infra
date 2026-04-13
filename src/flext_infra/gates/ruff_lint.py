@@ -57,7 +57,11 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     ) -> tuple[bool, Sequence[m.Infra.Issue]]:
         _ = project_dir, ctx
         issues: MutableSequence[m.Infra.Issue] = []
-        ruff_data = u.Cli.json_parse(result.stdout or "[]").unwrap_or([])
+        parsed_result = u.Cli.json_parse(result.stdout or "[]")
+        empty_items: list[object] = []
+        ruff_data: object = (
+            parsed_result.unwrap() if parsed_result.success else empty_items
+        )
         try:
             if isinstance(ruff_data, list):
                 for entry in ruff_data:

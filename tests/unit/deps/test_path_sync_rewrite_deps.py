@@ -6,7 +6,7 @@ from typing import TypeGuard
 import tomlkit
 from flext_tests import tm
 
-from flext_core import r
+from flext_core import p
 from tests import t, u
 
 
@@ -22,7 +22,7 @@ def _rewrite_dep_paths(
     workspace_members: t.StrSequence = (),
     is_root: bool = False,
     dry_run: bool = False,
-) -> r[t.StrSequence]:
+) -> p.Result[t.StrSequence]:
     return u.Infra().rewrite_dep_paths(
         pyproject_path,
         mode=mode,

@@ -8,7 +8,7 @@ from pathlib import Path
 from pydantic import ValidationError
 from tomlkit.items import AoT, Table
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import (
     FlextInfraConsolidateGroupsPhase,
     FlextInfraEnsureCoverageConfigPhase,
@@ -65,7 +65,7 @@ class FlextInfraPyprojectModernizer:
         project_dir: Path,
         *,
         payload: t.Infra.ContainerDict | None = None,
-    ) -> r[str]:
+    ) -> p.Result[str]:
         """Classify project kind for pyright/coverage settings selection."""
         kind = (
             FlextInfraProjectClassifier(
@@ -77,7 +77,9 @@ class FlextInfraPyprojectModernizer:
         )
         return r[str].ok(kind)
 
-    def _read_document_state(self, path: Path) -> r[m.Infra.PyprojectDocumentState]:
+    def _read_document_state(
+        self, path: Path
+    ) -> p.Result[m.Infra.PyprojectDocumentState]:
         """Read one pyproject once and keep one validated plain payload state."""
         try:
             original_rendered = path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
@@ -378,13 +380,13 @@ class FlextInfraPyprojectModernizer:
                 )
                 return 2
             project_paths = [project.path for project in selected_projects.value]
-        files = u.Infra.find_all_pyproject_files(
+        files_result = u.Infra.find_all_pyproject_files(
             self.root,
             skip_dirs=c.Infra.SKIP_DIRS,
             project_paths=project_paths,
-        ).fold(
-            on_failure=lambda _: [],
-            on_success=lambda value: sorted(value),
+        )
+        files: Sequence[Path] = (
+            [] if files_result.failure else sorted(files_result.unwrap())
         )
         root_state_result = self._read_document_state(
             self.root / c.Infra.PYPROJECT_FILENAME

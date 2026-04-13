@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import ClassVar, Self, override
 
 from flext_cli.api import cli as cli_service
-from flext_core import r
+from flext_core import p, r
 from flext_infra import (
     FlextInfraCliBasemk,
     FlextInfraCliCheck,
@@ -72,7 +72,7 @@ class FlextInfra(
         return cls._instance
 
     @override
-    def execute(self) -> r[t.MutableRecursiveContainerMapping]:
+    def execute(self) -> p.Result[t.MutableRecursiveContainerMapping]:
         """Execute a lightweight facade health report."""
         report: t.MutableRecursiveContainerMapping = {
             "service": "flext-infra",

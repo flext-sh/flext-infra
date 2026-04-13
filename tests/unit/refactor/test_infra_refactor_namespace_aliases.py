@@ -137,7 +137,7 @@ def test_namespace_rewriter_skips_nested_private_as_rename_and_duplicates(
     sample_file = tmp_path / "sample.py"
     source = (
         "from __future__ import annotations\n"
-        "from flext_core import c, m, r, t, u, p\n"
+        "from flext_core import c, m, r, p, t, u, p\n"
         "from flext_infra import FlextInfraModelsNamespaceEnforcer\n"
         "from flext_core import m as mm\n"
         "from flext_core import (m)\n"

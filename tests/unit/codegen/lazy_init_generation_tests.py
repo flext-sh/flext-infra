@@ -90,7 +90,7 @@ class TestGenerateFile:
         )
         tm.that(
             content,
-            contains="from flext_core import build_lazy_import_map, install_lazy_exports",
+            contains="from flext_core.lazy import build_lazy_import_map, install_lazy_exports",
         )
 
     def test_with_other_package(self) -> None:
@@ -106,7 +106,7 @@ class TestGenerateFile:
         )
         tm.that(
             content,
-            contains="from flext_core import build_lazy_import_map, install_lazy_exports",
+            contains="from flext_core.lazy import build_lazy_import_map, install_lazy_exports",
         )
 
     def test_with_inline_constants(self) -> None:
@@ -458,7 +458,7 @@ class TestRunRuffFix:
         generated = tmp_path / "__init__.py"
         generated.write_text("__all__=[]\n", encoding="utf-8")
         u.Infra.run_ruff_fix(generated)
-        tm.that(generated.read_text(encoding="utf-8"), eq="__all__: list[str] = []\n")
+        tm.that(generated.read_text(encoding="utf-8"), eq="__all__ = []\n")
 
     def test_raises_when_ruff_postprocess_fails(
         self,

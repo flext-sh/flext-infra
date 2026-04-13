@@ -6,7 +6,6 @@ from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING
 
 from flext_cli.api import cli as cli_service
-from flext_core import r
 from flext_infra import (
     FlextInfraOrchestratorService,
     FlextInfraProjectMigrator,
@@ -14,6 +13,7 @@ from flext_infra import (
     FlextInfraWorkspaceDetector,
     c,
     m,
+    p,
     t,
 )
 
@@ -24,13 +24,13 @@ class FlextInfraCliWorkspace:
     if TYPE_CHECKING:
         detect_workspace: Callable[
             [FlextInfraWorkspaceDetector],
-            r[c.Infra.WorkspaceMode],
+            p.Result[c.Infra.WorkspaceMode],
         ]
-        sync_workspace: Callable[[FlextInfraSyncService], r[m.Infra.SyncResult]]
-        orchestrate_workspace: Callable[[FlextInfraOrchestratorService], r[bool]]
+        sync_workspace: Callable[[FlextInfraSyncService], p.Result[m.Infra.SyncResult]]
+        orchestrate_workspace: Callable[[FlextInfraOrchestratorService], p.Result[bool]]
         migrate_workspace: Callable[
             [FlextInfraProjectMigrator],
-            r[Sequence[m.Infra.MigrationResult]],
+            p.Result[Sequence[m.Infra.MigrationResult]],
         ]
 
     def register_workspace(self, app: t.Cli.CliApp) -> None:

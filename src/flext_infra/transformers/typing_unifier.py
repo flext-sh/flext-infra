@@ -338,7 +338,7 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
         for package_name in ("tests", "examples", "scripts"):
             if package_name in parts:
                 return package_name
-        return u.Infra.discover_package_from_file(self._file_path).split(
+        return u.Infra.package_name(self._file_path).split(
             ".",
             maxsplit=1,
         )[0]

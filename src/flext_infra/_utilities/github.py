@@ -11,7 +11,7 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 from flext_cli import u
-from flext_core import r
+from flext_core import p, r
 from flext_infra import (
     FlextInfraUtilitiesDocsScope,
     FlextInfraUtilitiesGithubPr,
@@ -29,7 +29,7 @@ class FlextInfraUtilitiesGithub(
     def github_lint_workflows(
         cls,
         request: m.Infra.GithubWorkflowLintRequest,
-    ) -> r[m.Infra.GithubWorkflowLintOutcome]:
+    ) -> p.Result[m.Infra.GithubWorkflowLintOutcome]:
         """Run actionlint on the repository and return results."""
         actionlint = shutil.which("actionlint")
         workspace_root = request.workspace_path
@@ -74,7 +74,7 @@ class FlextInfraUtilitiesGithub(
     def github_sync_workflows(
         cls,
         request: m.Infra.GithubWorkflowSyncRequest,
-    ) -> r[m.Infra.GithubWorkflowSyncReport]:
+    ) -> p.Result[m.Infra.GithubWorkflowSyncReport]:
         """Sync workflows across all workspace projects."""
         workspace_root = request.workspace_path
         source_result = cls._github_resolve_source_workflow(
@@ -118,7 +118,7 @@ class FlextInfraUtilitiesGithub(
         return r[m.Infra.GithubWorkflowSyncReport].ok(report)
 
     @classmethod
-    def _github_render_template(cls, template_path: Path) -> r[str]:
+    def _github_render_template(cls, template_path: Path) -> p.Result[str]:
         try:
             body = template_path.read_text(
                 encoding=c.Infra.ENCODING_DEFAULT,
@@ -136,7 +136,7 @@ class FlextInfraUtilitiesGithub(
         cls,
         workspace_root: Path,
         source_workflow: Path | None = None,
-    ) -> r[Path]:
+    ) -> p.Result[Path]:
         if source_workflow is not None:
             candidate = (
                 source_workflow
@@ -155,7 +155,7 @@ class FlextInfraUtilitiesGithub(
     def _github_sync_project(
         cls,
         ctx: m.Infra.GithubWorkflowSyncContext,
-    ) -> r[Sequence[m.Infra.GithubWorkflowSyncOperation]]:
+    ) -> p.Result[Sequence[m.Infra.GithubWorkflowSyncOperation]]:
         operations: MutableSequence[m.Infra.GithubWorkflowSyncOperation] = []
         try:
             cls._github_sync_ci_yml(ctx, operations)

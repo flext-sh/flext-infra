@@ -7,8 +7,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_core import r
-from tests import c, m, t, u
+from tests import c, m, p, t, u
 
 
 def test_execute_uses_codegen_project_discovery_and_project_filter(
@@ -31,10 +30,10 @@ def test_execute_uses_codegen_project_discovery_and_project_filter(
         package_dir.mkdir(parents=True)
         (package_dir / "__init__.py").write_text("", encoding="utf-8")
 
-    def _discover_codegen_projects(
+    def _projects(
         *_args: t.Scalar,
         **_kwargs: t.Scalar,
-    ) -> r[tuple[m.Infra.ProjectInfo, ...]]:
+    ) -> p.Result[tuple[m.Infra.ProjectInfo, ...]]:
         nonlocal discover_called
         discover_called += 1
         return u.Infra.Tests.ok_result((project_a, project_b))
@@ -42,14 +41,14 @@ def test_execute_uses_codegen_project_discovery_and_project_filter(
     def _unexpected_public_project_discovery(
         *_args: t.Scalar,
         **_kwargs: t.Scalar,
-    ) -> r[tuple[m.Infra.ProjectInfo, ...]]:
-        message = "execute() must use discover_codegen_projects()"
+    ) -> p.Result[tuple[m.Infra.ProjectInfo, ...]]:
+        message = "execute() must use projects()"
         raise AssertionError(message)
 
     u.Infra.Tests.patch_public_infra(
         monkeypatch,
-        "discover_codegen_projects",
-        _discover_codegen_projects,
+        "projects",
+        _projects,
     )
     u.Infra.Tests.patch_public_infra(
         monkeypatch,
@@ -88,16 +87,16 @@ def test_execute_scans_real_package_layout(
         package_name=c.Infra.Tests.Fixtures.Codegen.PACKAGE_NAME,
     )
 
-    def _discover_codegen_projects(
+    def _projects(
         *_args: t.Scalar,
         **_kwargs: t.Scalar,
-    ) -> r[tuple[m.Infra.ProjectInfo, ...]]:
+    ) -> p.Result[tuple[m.Infra.ProjectInfo, ...]]:
         return u.Infra.Tests.ok_result((project,))
 
     u.Infra.Tests.patch_public_infra(
         monkeypatch,
-        "discover_codegen_projects",
-        _discover_codegen_projects,
+        "projects",
+        _projects,
     )
 
     result = u.Infra.Tests.consolidate_codegen(

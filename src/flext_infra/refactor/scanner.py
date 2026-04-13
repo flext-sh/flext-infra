@@ -6,14 +6,14 @@ from collections import Counter
 from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import c, m, t, u
 
 
 class FlextInfraRefactorLooseClassScanner:
     """Scan a project tree using rope and report loose top-level classes."""
 
-    def scan(self, project_root: Path) -> r[t.Infra.ContainerDict]:
+    def scan(self, project_root: Path) -> p.Result[t.Infra.ContainerDict]:
         """Scan *project_root*/src and return a violation report dict."""
         src_root = project_root / c.Infra.DEFAULT_SRC_DIR
         if not src_root.is_dir():

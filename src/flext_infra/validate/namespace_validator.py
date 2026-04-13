@@ -19,6 +19,7 @@ from flext_infra import (
     FlextInfraModelsCore,
     FlextInfraNamespaceRules,
     FlextInfraUtilitiesParsing,
+    p,
     u,
 )
 
@@ -34,7 +35,7 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
     @staticmethod
     def derive_prefix(project_root: Path) -> str:
         """Public wrapper for deriving the class name prefix from a project."""
-        layout = u.Infra.project_layout(project_root)
+        layout = u.Infra.layout(project_root)
         return layout.class_stem if layout is not None else ""
 
     def validate(
@@ -42,11 +43,11 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
         project_root: Path,
         *,
         scan_tests: bool = False,
-    ) -> r[FlextInfraModelsCore.ValidationReport]:
+    ) -> p.Result[FlextInfraModelsCore.ValidationReport]:
         """Validate namespace rules 0-2 for all discovered Python files."""
         try:
             files = self._discover_files(project_root, scan_tests=scan_tests)
-            layout = u.Infra.project_layout(project_root)
+            layout = u.Infra.layout(project_root)
             prefix = layout.class_stem if layout is not None else ""
             violations: MutableSequence[str] = []
             for filepath in files:

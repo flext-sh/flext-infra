@@ -58,8 +58,8 @@ class FlextInfraTransformerTier0ImportFixer:
 
         def build_analysis(self) -> FlextInfraTransformerTier0ImportFixer.Analysis:
             """Parse file and build violation analysis."""
-            pkg_name = u.Infra.discover_package_from_file(self._file_path)
-            project_root = u.Infra.discover_project_root_from_file(self._file_path)
+            pkg_name = u.Infra.package_name(self._file_path)
+            project_root = u.Infra.project_root(self._file_path)
             package_root = pkg_name.split(".", maxsplit=1)[0]
             pkg_dir = (
                 project_root / c.Infra.DEFAULT_SRC_DIR / package_root

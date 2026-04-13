@@ -15,7 +15,7 @@ from jinja2 import (
 )
 from pydantic import PrivateAttr
 
-from flext_core import r, s
+from flext_core import p, r, s
 from flext_infra import (
     FlextInfraConstantsBase,
     FlextInfraConstantsBasemk,
@@ -72,7 +72,7 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
         )
 
     @override
-    def execute(self) -> r[str]:
+    def execute(self) -> p.Result[str]:
         return self.render_all()
 
     @staticmethod
@@ -87,7 +87,7 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
     def render_all(
         self,
         settings: FlextInfraModelsBasemk.BaseMkConfig | None = None,
-    ) -> r[str]:
+    ) -> p.Result[str]:
         """Render all base.mk templates into a single output string."""
         active_config = settings or self.default_config()
         lint_gates_csv = ",".join(active_config.lint_gates)
@@ -117,7 +117,7 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
         **kwargs: FlextInfraModelsBasemk.BaseMkConfig
         | FlextInfraTypesBase.InfraValue
         | type,
-    ) -> r[str]:
+    ) -> p.Result[str]:
         """Render a single named template with the given context."""
         try:
             template: FlextInfraProtocolsBase.RenderableTemplate = (

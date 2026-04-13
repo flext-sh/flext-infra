@@ -42,12 +42,7 @@ class FlextInfraUtilitiesBase:
     CliArgs = staticmethod(cli_args)
 
     @staticmethod
-    def matches(message: str, *patterns: str) -> bool:
-        """Return whether ``message`` matches at least one provided pattern."""
-        return u.Cli.matches(message, *patterns)
-
-    @staticmethod
-    def git_run(cmd: t.StrSequence, cwd: Path) -> r[str]:
+    def git_run(cmd: t.StrSequence, cwd: Path) -> p.Result[str]:
         """Run a git command and return stdout as ``r[str]``."""
         run_result = u.Cli.run_raw(cmd, cwd=cwd)
         if run_result.failure:
@@ -265,7 +260,7 @@ class FlextInfraUtilitiesBase:
         return u.normalize(raw, case=case)
 
     @staticmethod
-    def _load_tool_config_cached() -> r[m.Infra.ToolConfigDocument]:
+    def _load_tool_config_cached() -> p.Result[m.Infra.ToolConfigDocument]:
         """Load, validate, and cache ``tool_config.yml`` for dependency tooling."""
         cached = FlextInfraUtilitiesBase._tool_config_cache
         if cached is not None:
@@ -301,7 +296,7 @@ class FlextInfraUtilitiesBase:
             return result
 
     @staticmethod
-    def load_tool_config() -> r[m.Infra.ToolConfigDocument]:
+    def load_tool_config() -> p.Result[m.Infra.ToolConfigDocument]:
         """Return cached dependency tool configuration."""
         return FlextInfraUtilitiesBase._load_tool_config_cached()
 

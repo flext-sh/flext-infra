@@ -11,9 +11,11 @@ def test_json_write_round_trips_dict_payload(tmp_path: Path) -> None:
     json_file = tmp_path / "nested/data.json"
 
     result = u.Cli.json_write(json_file, {"key": "value", "number": 42})
+    read_result = u.Cli.json_read(json_file)
 
     assert result.success
-    assert u.Cli.json_read(json_file).unwrap_or({}) == {"key": "value", "number": 42}
+    assert read_result.success
+    assert read_result.unwrap() == {"key": "value", "number": 42}
 
 
 def test_json_write_accepts_pydantic_model(tmp_path: Path) -> None:

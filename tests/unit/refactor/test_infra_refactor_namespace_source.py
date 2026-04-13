@@ -365,7 +365,7 @@ def test_rewriter_splits_mixed_imports_correctly(tmp_path: Path) -> None:
         "from __future__ import annotations\n\nfrom collections.abc import Mapping, Sequence\n"
         "from flext_core import m, r\n"
         f"from {package_name} import u\n"
-        "_ = (m, r, u)\n",
+        "_ = (m, r, p, u)\n",
     )
 
     u.Infra.rewrite_import_violations(
@@ -414,7 +414,7 @@ def test_rewriter_namespace_source_is_idempotent_with_ruff(tmp_path: Path) -> No
         "from __future__ import annotations\n\nfrom collections.abc import Mapping, Sequence\n"
         "from flext_core import m, r\n"
         f"from {package_name}.utilities import u\n"
-        "_ = (FlextLogger, m, r, u)\n",
+        "_ = (FlextLogger, m, r, p, u)\n",
     )
 
     u.Infra.rewrite_import_violations(

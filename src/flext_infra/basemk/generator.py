@@ -45,7 +45,7 @@ class FlextInfraBaseMkGenerator(s[str]):
         return u.Cli()
 
     @override
-    def execute(self) -> r[str]:
+    def execute(self) -> p.Result[str]:
         settings = (
             FlextInfraBaseMkTemplateEngine.default_config().model_copy(
                 update={"project_name": self.project_name},
@@ -68,7 +68,7 @@ class FlextInfraBaseMkGenerator(s[str]):
     def generate_basemk(
         self,
         settings: FlextInfraModelsBasemk.BaseMkConfig | t.ScalarMapping | None = None,
-    ) -> r[str]:
+    ) -> p.Result[str]:
         """Generate base.mk content from configuration."""
         config_result = self._normalize_config(settings)
         if config_result.failure:
@@ -87,7 +87,7 @@ class FlextInfraBaseMkGenerator(s[str]):
         *,
         output: Path | None = None,
         stream: FlextInfraProtocolsBase.OutputStream | None = None,
-    ) -> r[bool]:
+    ) -> p.Result[bool]:
         """Write generated content to file or stream."""
         if output is None:
             target_stream = stream
@@ -111,7 +111,7 @@ class FlextInfraBaseMkGenerator(s[str]):
     def _normalize_config(
         self,
         settings: FlextInfraModelsBasemk.BaseMkConfig | t.ScalarMapping | None,
-    ) -> r[FlextInfraModelsBasemk.BaseMkConfig]:
+    ) -> p.Result[FlextInfraModelsBasemk.BaseMkConfig]:
         if settings is None:
             return r[FlextInfraModelsBasemk.BaseMkConfig].ok(
                 FlextInfraBaseMkTemplateEngine.default_config(),
@@ -128,7 +128,7 @@ class FlextInfraBaseMkGenerator(s[str]):
                 f"base.mk configuration validation failed: {exc}",
             )
 
-    def _validate_generated_output(self, content: str) -> r[str]:
+    def _validate_generated_output(self, content: str) -> p.Result[str]:
         """Validate generated base.mk by running make --dry-run."""
         try:
             with tempfile.TemporaryDirectory(prefix="flext-basemk-") as temp_dir_name:
@@ -160,7 +160,7 @@ class FlextInfraBaseMkGenerator(s[str]):
         return r[str].ok(content)
 
     @staticmethod
-    def render_bootstrap_include() -> r[str]:
+    def render_bootstrap_include() -> p.Result[str]:
         """Render the Makefile bootstrap include block from template."""
         return FlextInfraBaseMkTemplateEngine().render_single(
             c.Infra.MAKEFILE_BOOTSTRAP_TEMPLATE,

@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import override
 
-from flext_core import r, s
+from flext_core import p, r, s
 from flext_infra import (
     FlextInfraGateRegistry,
     FlextInfraWorkspaceCheckGatesMixin,
@@ -60,7 +60,7 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
         return [item for item in shlex.split(raw) if item]
 
     @staticmethod
-    def resolve_gates(gates: t.StrSequence) -> r[list[str]]:
+    def resolve_gates(gates: t.StrSequence) -> p.Result[list[str]]:
         """Resolve and validate requested gate names."""
         resolved: MutableSequence[str] = []
         for gate in gates:
@@ -75,16 +75,16 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
         return r[list[str]].ok(list(resolved))
 
     @override
-    def execute(self) -> r[bool]:
+    def execute(self) -> p.Result[bool]:
         return r[bool].fail("Use run() or run_projects() directly")
 
-    def format(self, project_dir: Path) -> r[m.Infra.GateResult]:
+    def format(self, project_dir: Path) -> p.Result[m.Infra.GateResult]:
         """Run format checks for one project."""
         return r[m.Infra.GateResult].ok(
             self._run_gate(c.Infra.FORMAT, project_dir).result,
         )
 
-    def lint(self, project_dir: Path) -> r[m.Infra.GateResult]:
+    def lint(self, project_dir: Path) -> p.Result[m.Infra.GateResult]:
         """Run lint checks for one project."""
         return r[m.Infra.GateResult].ok(
             self._run_gate(c.Infra.LINT, project_dir).result,
@@ -94,16 +94,16 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
         self,
         project: str,
         gates: t.StrSequence,
-    ) -> r[Sequence[m.Infra.ProjectResult]]:
+    ) -> p.Result[Sequence[m.Infra.ProjectResult]]:
         """Run selected gates for one project."""
-        return self.run_projects([project], list(gates)).map(lambda value: value)
+        return self.run_projects([project], list(gates))
 
     @staticmethod
     def _write_reports_and_summary(
         resolved_gates: t.StrSequence,
         report_base: Path,
         outcome: WorkspaceLoopOutcome,
-    ) -> r[Sequence[m.Infra.ProjectResult]]:
+    ) -> p.Result[Sequence[m.Infra.ProjectResult]]:
         """Write markdown/SARIF reports and print summary to output."""
         results = outcome.results
         timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -164,7 +164,7 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
         reports_dir: Path | None = None,
         fail_fast: bool = False,
         ctx: m.Infra.GateContext | None = None,
-    ) -> r[Sequence[m.Infra.ProjectResult]]:
+    ) -> p.Result[Sequence[m.Infra.ProjectResult]]:
         """Run selected gates for multiple projects.
 
         Pass ``ctx`` to supply a pre-built GateContext.

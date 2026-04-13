@@ -39,7 +39,7 @@ class FlextInfraDocBuilder(s[bool]):
         *,
         projects: t.StrSequence | None = None,
         output_dir: str = c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
-    ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
+    ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
         """Build MkDocs sites across project scopes."""
         return u.Infra.run_scoped(
             workspace_root,
@@ -49,7 +49,7 @@ class FlextInfraDocBuilder(s[bool]):
         )
 
     @override
-    def execute(self) -> r[bool]:
+    def execute(self) -> p.Result[bool]:
         """Execute the configured docs build flow."""
         result = self.build(
             workspace_root=self.workspace_root,

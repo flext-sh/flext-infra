@@ -7,27 +7,29 @@ from typing import override
 import pytest
 from flext_tests import tm
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import FlextInfraInternalDependencySyncService
 from tests import t
 
 
 def _set_toml_stub(
     service: FlextInfraInternalDependencySyncService,
-    values: Sequence[r[t.Infra.ContainerDict]],
+    values: Sequence[p.Result[t.Infra.ContainerDict]],
 ) -> None:
     state = {"index": 0}
 
-    def _read(_path: Path) -> r[t.Infra.ContainerDict]:
+    def _read(_path: Path) -> p.Result[t.Infra.ContainerDict]:
         item = values[state["index"]]
         state["index"] += 1
         return item
 
     class _TomlReaderStub:
-        def __init__(self, fn: Callable[[Path], r[t.Infra.ContainerDict]]) -> None:
+        def __init__(
+            self, fn: Callable[[Path], p.Result[t.Infra.ContainerDict]]
+        ) -> None:
             self._fn = fn
 
-        def read_plain(self, path: Path) -> r[t.Infra.ContainerDict]:
+        def read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:
             return self._fn(path)
 
     service.toml = _TomlReaderStub(_read)
@@ -98,7 +100,7 @@ class TestSyncMethodEdgeCases:
         def _resolve_ref(_root: Path) -> str:
             return "main"
 
-        def _ensure_checkout(_dep: Path, _url: str, _ref: str) -> r[bool]:
+        def _ensure_checkout(_dep: Path, _url: str, _ref: str) -> p.Result[bool]:
             return r[bool].ok(True)
 
         monkeypatch.setattr(
@@ -128,7 +130,7 @@ class TestSyncMethodEdgeCases:
                 dep_path: Path,
                 repo_url: str,
                 ref_name: str,
-            ) -> r[bool]:
+            ) -> p.Result[bool]:
                 _ = (dep_path, repo_url, ref_name)
                 return r[bool].ok(True)
 
@@ -208,7 +210,7 @@ class TestSyncMethodEdgeCases:
         )
         monkeypatch.setenv("FLEXT_WORKSPACE_ROOT", str(workspace))
 
-        def _ensure_symlink_fail(_dep: Path, _sib: Path) -> r[bool]:
+        def _ensure_symlink_fail(_dep: Path, _sib: Path) -> p.Result[bool]:
             return r[bool].fail("symlink failed")
 
         monkeypatch.setattr(

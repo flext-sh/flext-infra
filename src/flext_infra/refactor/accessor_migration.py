@@ -12,7 +12,7 @@ from typing import ClassVar, override
 
 from pydantic import Field
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import c, m, s, t, u
 from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
 
@@ -210,7 +210,7 @@ class FlextInfraAccessorMigrationOrchestrator(s[m.Infra.AccessorMigrationReport]
         )
 
     @override
-    def execute(self) -> r[m.Infra.AccessorMigrationReport]:
+    def execute(self) -> p.Result[m.Infra.AccessorMigrationReport]:
         resolved = u.Infra.resolve_projects(self.workspace_root, self.project_names)
         if resolved.failure:
             return r[m.Infra.AccessorMigrationReport].fail(

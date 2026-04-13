@@ -8,9 +8,8 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import (
-    FlextInfraUtilitiesDocsScope,
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesPaths,
     FlextInfraUtilitiesTomlParse,
@@ -34,11 +33,8 @@ class FlextInfraExtraPathsManager:
             msg = tool_config_result.error or "failed to load deps tool settings"
             raise ValueError(msg)
         self._tool_config: m.Infra.ToolConfigDocument = tool_config_result.value
-        projects_result = FlextInfraUtilitiesDocsScope.discover_projects(self.root)
-        self._workspace_project_names = (
-            {project.name for project in projects_result.value}
-            if projects_result.success
-            else set()
+        self._workspace_project_names = set(
+            FlextInfraUtilitiesIteration.workspace_member_names(self.root)
         )
 
     def _resolve_transitive_deps(
@@ -214,7 +210,7 @@ class FlextInfraExtraPathsManager:
         *,
         dry_run: bool = False,
         is_root: bool = False,
-    ) -> r[bool]:
+    ) -> p.Result[bool]:
         """Synchronize pyright and mypy paths for one pyproject.toml."""
         if not pyproject_path.exists():
             return r[bool].fail(f"pyproject not found: {pyproject_path}")
@@ -310,7 +306,7 @@ class FlextInfraExtraPathsManager:
         *,
         dry_run: bool = False,
         project_dirs: Sequence[Path] | None = None,
-    ) -> r[int]:
+    ) -> p.Result[int]:
         """Synchronize extraPaths and mypy_path across projects."""
         if project_dirs:
             for project_dir in project_dirs:

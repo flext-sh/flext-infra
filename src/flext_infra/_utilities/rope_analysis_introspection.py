@@ -282,7 +282,7 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
     ) -> Mapping[str, Sequence[t.Infra.Triple[str, str, str]]]:
         """Extract public methods from all Python files in a package directory."""
         result: MutableMapping[str, MutableSequence[t.Infra.Triple[str, str, str]]] = {}
-        project_root = FlextInfraUtilitiesDiscovery.discover_project_root_from_file(
+        project_root = FlextInfraUtilitiesDiscovery.project_root(
             package_dir / "foo.py",
         )
         if project_root is None:
@@ -322,7 +322,7 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
         if not file_path.exists():
             return {}
         result: MutableMapping[str, MutableSequence[t.Infra.Triple[str, str, str]]] = {}
-        project_root = FlextInfraUtilitiesDiscovery.discover_project_root_from_file(
+        project_root = FlextInfraUtilitiesDiscovery.project_root(
             file_path,
         )
         if project_root is None:

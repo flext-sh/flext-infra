@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import FlextInfraInternalDependencySyncService
 from tests import t
 
@@ -14,11 +14,11 @@ from tests import t
 class _TomlStub:
     """Typed stub implementing TomlReader protocol for testing."""
 
-    def __init__(self, values: Sequence[r[t.Infra.ContainerDict]]) -> None:
+    def __init__(self, values: Sequence[p.Result[t.Infra.ContainerDict]]) -> None:
         self._values = values
         self._index = 0
 
-    def read_plain(self, path: Path) -> r[t.Infra.ContainerDict]:
+    def read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:
         """Return next pre-configured result."""
         _ = path
         item = self._values[self._index]
@@ -28,7 +28,7 @@ class _TomlStub:
 
 def _set_toml_stub(
     service: FlextInfraInternalDependencySyncService,
-    values: Sequence[r[t.Infra.ContainerDict]],
+    values: Sequence[p.Result[t.Infra.ContainerDict]],
 ) -> None:
     service.toml = _TomlStub(values)
 
@@ -68,7 +68,7 @@ class TestSyncMethodEdgeCasesMore:
             ],
         )
 
-        def _ensure_checkout_fail(_dep: Path, _url: str, _ref: str) -> r[bool]:
+        def _ensure_checkout_fail(_dep: Path, _url: str, _ref: str) -> p.Result[bool]:
             return r[bool].fail("checkout failed")
 
         monkeypatch.setattr(

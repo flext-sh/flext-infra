@@ -8,7 +8,7 @@ from typing import Annotated, override
 
 from pydantic import Field
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import c, m, s, t, u
 
 
@@ -39,7 +39,7 @@ class FlextInfraDocFixer(s[bool]):
         projects: t.StrSequence | None = None,
         output_dir: str = c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
         apply: bool = False,
-    ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
+    ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
         """Run documentation fixes across project scopes."""
         return u.Infra.run_scoped(
             workspace_root,
@@ -49,7 +49,7 @@ class FlextInfraDocFixer(s[bool]):
         )
 
     @override
-    def execute(self) -> r[bool]:
+    def execute(self) -> p.Result[bool]:
         """Execute the configured docs fix flow."""
         result = self.fix(
             workspace_root=self.workspace_root,

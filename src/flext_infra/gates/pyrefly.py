@@ -73,7 +73,8 @@ class FlextInfraPyreflyGate(FlextInfraGate):
         if json_file.exists():
             try:
                 raw_text = json_file.read_text(encoding=c.Infra.ENCODING_DEFAULT)
-                parsed_value = u.Cli.json_parse(raw_text).unwrap_or(None)
+                parsed_result = u.Cli.json_parse(raw_text)
+                parsed_value = parsed_result.unwrap() if parsed_result.success else None
                 error_items: Sequence[Mapping[str, t.Infra.InfraValue]] = []
                 if isinstance(parsed_value, Mapping):
                     error_items = u.Infra.deep_list(

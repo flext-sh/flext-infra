@@ -27,14 +27,10 @@ class FlextInfraNamespaceSourceDetector:
         project_root = ctx.project_root
         if project_root is None or file_path.name == c.Infra.INIT_PY:
             return []
-        project_layout = u.Infra.project_layout(project_root)
+        project_layout = u.Infra.layout(project_root)
         if project_layout is None:
             return []
-        local_aliases = (
-            FlextInfraNamespaceSourceDetector._discover_local_runtime_aliases(
-                project_layout=project_layout,
-            )
-        )
+        local_aliases = frozenset(project_layout.runtime_aliases)
         if not local_aliases:
             return []
         contextual_sources = u.Infra.contextual_runtime_alias_sources(
@@ -99,14 +95,6 @@ class FlextInfraNamespaceSourceDetector:
                 for alias_name in wrong_aliases
             )
         return violations
-
-    @staticmethod
-    def _discover_local_runtime_aliases(
-        *,
-        project_layout: m.Infra.RopeProjectLayout,
-    ) -> set[str]:
-        init_path = project_layout.init_path
-        return set(c.Infra.RUNTIME_ALIAS_NAMES) if init_path.is_file() else set()
 
 
 __all__: list[str] = ["FlextInfraNamespaceSourceDetector"]

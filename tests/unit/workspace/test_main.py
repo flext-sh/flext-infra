@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import (
     FlextInfraOrchestratorService,
     FlextInfraSyncService,
@@ -71,7 +71,7 @@ def _install_successful_orchestration(
 
     def _resolved_projects(
         self: FlextInfraOrchestratorService,
-    ) -> r[t.SequenceOf[m.Infra.ProjectInfo]]:
+    ) -> p.Result[t.SequenceOf[m.Infra.ProjectInfo]]:
         del self
         return r[t.SequenceOf[m.Infra.ProjectInfo]].ok([project])
 
@@ -80,7 +80,7 @@ def _install_successful_orchestration(
         projects: t.SequenceOf[m.Infra.ProjectInfo],
         *,
         workspace_root: Path,
-    ) -> r[bool]:
+    ) -> p.Result[bool]:
         _ = (self, projects, workspace_root)
         return r[bool].ok(True)
 
@@ -91,7 +91,7 @@ def _install_successful_orchestration(
         _index: int,
         *,
         make_args: t.StrSequence,
-    ) -> r[m.Cli.CommandOutput]:
+    ) -> p.Result[m.Cli.CommandOutput]:
         _ = (self, project_name, verb, _index, make_args)
         return r[m.Cli.CommandOutput].ok(_cmd_out())
 

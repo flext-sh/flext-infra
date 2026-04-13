@@ -11,7 +11,7 @@ from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import (
     FlextInfraClassNestingRefactorRule,
     FlextInfraRefactorClassReconstructorRule,
@@ -155,7 +155,7 @@ class FlextInfraRefactorEngine(
 
     # ── Config & rules ────────────────────────────────────────────
 
-    def load_config(self) -> r[Mapping[str, t.Infra.InfraValue]]:
+    def load_config(self) -> p.Result[Mapping[str, t.Infra.InfraValue]]:
         """Load YAML configuration for this engine instance."""
         result = self.rule_loader.load_config()
         if result.success:
@@ -165,7 +165,7 @@ class FlextInfraRefactorEngine(
             u.Infra.refactor_info(f"Loaded settings from {self.config_path}")
         return result
 
-    def load_rules(self) -> r[Sequence[FlextInfraRefactorRule]]:
+    def load_rules(self) -> p.Result[Sequence[FlextInfraRefactorRule]]:
         """Load and instantiate enabled rules from rules directory."""
         rr = self.rule_loader.load_rules(
             self.rule_filters,

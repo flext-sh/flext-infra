@@ -33,7 +33,7 @@ from typing import Annotated, override
 
 from pydantic import Field
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import c, s, u
 
 logger = u.fetch_logger(__name__)
@@ -66,7 +66,7 @@ class FlextInfraPythonVersionEnforcer(s[int]):
         *,
         check_only: bool | None = None,
         verbose: bool | None = None,
-    ) -> r[int]:
+    ) -> p.Result[int]:
         """Execute Python version enforcement.
 
         Args:
@@ -84,14 +84,14 @@ class FlextInfraPythonVersionEnforcer(s[int]):
         root = self._resolve_workspace_root()
         required_minor = self._read_required_minor(root)
         discovered_projects = u.Infra.discover_projects(root)
-        projects = discovered_projects.fold(
-            on_failure=lambda _: tuple[Path, ...](),
-            on_success=lambda discovered: tuple(
+        if discovered_projects.failure:
+            projects: tuple[Path, ...] = ()
+        else:
+            projects = tuple(
                 project.path
-                for project in discovered
+                for project in discovered_projects.unwrap()
                 if (project.path / c.Infra.PYPROJECT_FILENAME).exists()
-            ),
-        )
+            )
         mode = "Checking" if self.check_only else "Enforcing"
         logger.info(
             "python_version_enforcement_started",

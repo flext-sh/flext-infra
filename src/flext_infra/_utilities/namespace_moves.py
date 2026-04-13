@@ -40,10 +40,8 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
             for file_path in py_files:
                 if file_path.name == c.Infra.INIT_PY:
                     continue
-                project_root = (
-                    FlextInfraUtilitiesDiscovery.discover_project_root_from_file(
-                        file_path,
-                    )
+                project_root = FlextInfraUtilitiesDiscovery.project_root(
+                    file_path,
                 )
                 if project_root is not None and (
                     FlextInfraUtilitiesDiscovery.contextual_runtime_alias_sources(
@@ -353,8 +351,9 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
         source = source_file.read_text(encoding=c.Infra.ENCODING_DEFAULT)
         lines = source.splitlines()
         moved_lines: MutableSequence[str] = []
+        moved_line_numbers: MutableSequence[int] = []
         kept_lines: MutableSequence[str] = []
-        for line in lines:
+        for line_number, line in enumerate(lines, start=1):
             stripped = line.strip()
             typing_match = c.Infra.TYPING_FACTORY_ASSIGN_RE.match(stripped)
             typing_name = typing_match.group(1) if typing_match is not None else ""
@@ -365,14 +364,23 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
             )
             if should_move:
                 moved_lines.append(line)
+                moved_line_numbers.append(line_number)
             else:
                 kept_lines.append(line)
         if not moved_lines:
             return
+        kept_source = "\n".join(kept_lines)
         required_imports = (
             FlextInfraUtilitiesRefactorNamespaceMoves._collect_required_import_lines(
                 source=source,
                 blocks=moved_lines,
+            )
+        )
+        orphaned_imports = (
+            FlextInfraUtilitiesRefactorNamespaceMoves._collect_orphaned_import_lines(
+                source=source,
+                kept_source=kept_source,
+                max_line=min(moved_line_numbers),
             )
         )
         target_file = FlextInfraUtilitiesRefactorNamespaceMoves._canonical_target_file(
@@ -385,10 +393,18 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
             if target_file.exists()
             else f"{c.Infra.FUTURE_ANNOTATIONS}\n"
         )
+        fallback_runtime_imports = FlextInfraUtilitiesRefactorNamespaceMoves._collect_missing_runtime_alias_imports(
+            target_source=target_source,
+            blocks=moved_lines,
+        )
         target_lines = target_source.splitlines()
         missing_imports = [
             import_line
-            for import_line in required_imports
+            for import_line in [
+                *required_imports,
+                *orphaned_imports,
+                *fallback_runtime_imports,
+            ]
             if import_line not in target_lines
         ]
         target_lines = FlextInfraUtilitiesRefactorNamespaceMoves._insert_import_lines(
@@ -414,6 +430,73 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
             post_write=_post_write,
         )
         _ = ok
+
+    @staticmethod
+    def _collect_missing_runtime_alias_imports(
+        *,
+        target_source: str,
+        blocks: t.StrSequence,
+    ) -> t.StrSequence:
+        moved_source = "\n".join(blocks)
+        moved_aliases = {
+            node.id
+            for node in ast.walk(ast.parse(moved_source))
+            if isinstance(node, ast.Name) and node.id in c.Infra.RUNTIME_ALIAS_NAMES
+        }
+        if not moved_aliases:
+            return []
+        imported_aliases: t.Infra.StrSet = set()
+        for match in c.Infra.FROM_IMPORT_RE.finditer(target_source):
+            imported_aliases.update(
+                bound
+                for _name, bound in FlextInfraUtilitiesParsing.parse_import_names(
+                    match.group(2),
+                )
+            )
+        for match in c.Infra.FROM_IMPORT_BLOCK_RE.finditer(target_source):
+            imported_aliases.update(
+                bound
+                for _name, bound in FlextInfraUtilitiesParsing.parse_import_names(
+                    match.group(2),
+                )
+            )
+        missing_aliases = sorted(moved_aliases - imported_aliases)
+        if not missing_aliases:
+            return []
+        return [
+            f"from {c.Infra.PKG_CORE_UNDERSCORE} import {', '.join(missing_aliases)}"
+        ]
+
+    @staticmethod
+    def _collect_orphaned_import_lines(
+        *,
+        source: str,
+        kept_source: str,
+        max_line: int,
+    ) -> t.StrSequence:
+        source_ast = ast.parse(source)
+        source_lines = source.splitlines()
+        kept_names = {
+            node.id
+            for node in ast.walk(ast.parse(kept_source))
+            if isinstance(node, ast.Name)
+        }
+        import_lines: MutableSequence[str] = []
+        for node in source_ast.body:
+            if not isinstance(node, (ast.Import, ast.ImportFrom)):
+                continue
+            if node.lineno >= max_line:
+                continue
+            bound_names = {
+                alias.asname or alias.name.split(".", maxsplit=1)[0]
+                for alias in node.names
+            }
+            if bound_names & kept_names:
+                continue
+            import_lines.append(
+                "\n".join(source_lines[node.lineno - 1 : node.end_lineno]).strip(),
+            )
+        return import_lines
 
     @staticmethod
     def _rewrite_moved_imports(

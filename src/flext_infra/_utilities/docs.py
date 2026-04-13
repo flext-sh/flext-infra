@@ -7,7 +7,7 @@ from collections.abc import Callable, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_cli import u
-from flext_core import r
+from flext_core import p, r
 from flext_infra import (
     FlextInfraUtilitiesDocsScope,
     FlextInfraUtilitiesPatterns,
@@ -44,7 +44,7 @@ class FlextInfraUtilitiesDocs:
         workspace_root: Path,
         projects: t.StrSequence | None,
         output_dir: str,
-    ) -> r[Sequence[m.Infra.DocScope]]:
+    ) -> p.Result[Sequence[m.Infra.DocScope]]:
         """Build DocScope objects for workspace root and each selected project."""
         try:
             resolved_root = workspace_root.resolve()
@@ -198,7 +198,7 @@ class FlextInfraUtilitiesDocs:
         ]
 
     @staticmethod
-    def write_markdown(path: Path, lines: t.StrSequence) -> r[bool]:
+    def write_markdown(path: Path, lines: t.StrSequence) -> p.Result[bool]:
         """Write markdown lines to path, creating parent dirs as needed."""
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -268,7 +268,7 @@ class FlextInfraUtilitiesDocs:
             [m.Infra.DocScope],
             m.Infra.DocsPhaseReport,
         ],
-    ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
+    ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
         """Build scopes and run handler on each, collecting reports."""
         scopes_result = FlextInfraUtilitiesDocs.build_scopes(
             workspace_root=workspace_root,

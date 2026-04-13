@@ -152,6 +152,7 @@ class FlextInfraUtilitiesRopeAnalysis:
                 resource,
             )
             module_ast = pymodule.get_ast()
+            attributes = pymodule.get_attributes()
             current_package = FlextInfraUtilitiesRopeAnalysis._package_name_for_module(
                 pymodule.get_name(),
                 resource,
@@ -159,20 +160,24 @@ class FlextInfraUtilitiesRopeAnalysis:
             for node in module_ast.body:
                 match node:
                     case _ast.ClassDef(name=name, lineno=line):
+                        base_names: tuple[str, ...] = ()
+                        pyname = attributes.get(name)
+                        if pyname is not None:
+                            obj = pyname.get_object()
+                            if isinstance(
+                                obj,
+                                FlextInfraUtilitiesRopeCore.ABSTRACT_CLASS_TYPES,
+                            ):
+                                base_names = tuple(
+                                    superclass.get_name()
+                                    for superclass in obj.get_superclasses()
+                                    if superclass.get_name()
+                                )
                         class_infos.append(
                             m.Infra.ClassInfo(
                                 name=name,
                                 line=line,
-                                bases=tuple(
-                                    base_name
-                                    for base in node.bases
-                                    if (
-                                        base_name
-                                        := FlextInfraUtilitiesRopeAnalysis._root_name(
-                                            base
-                                        )
-                                    )
-                                ),
+                                bases=base_names,
                             ),
                         )
                     case _ast.Import(names=aliases):

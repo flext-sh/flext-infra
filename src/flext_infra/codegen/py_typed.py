@@ -15,7 +15,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import c, s, u
 
 
@@ -25,7 +25,7 @@ class FlextInfraCodegenPyTyped(s[bool]):
     _PY_TYPED_FILENAME: str = c.Infra.PY_TYPED
 
     @override
-    def execute(self) -> r[bool]:
+    def execute(self) -> p.Result[bool]:
         """Execute ``py.typed`` synchronization from the validated CLI model."""
         self.run(check_only=self.check_only)
         return r[bool].ok(True)

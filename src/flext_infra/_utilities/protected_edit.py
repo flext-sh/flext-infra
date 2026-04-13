@@ -21,6 +21,7 @@ class FlextInfraUtilitiesProtectedEdit:
     _CODE_FRAME_RE = re.compile(r"^\s*\d+\s+\|")
     _CODE_FRAME_BODY_RE = re.compile(r"^\s*\|")
     _UNUSED_IMPORT_RE = re.compile(r"`([^`]+)` imported but unused")
+    _SUMMARY_RE = re.compile(r"^(Found \d+ errors?\.|\[\*\] \d+ fixable .*)$")
 
     @staticmethod
     def _normalize_lint_line(line: str) -> str:
@@ -35,6 +36,8 @@ class FlextInfraUtilitiesProtectedEdit:
             ),
             normalized,
         )
+        if FlextInfraUtilitiesProtectedEdit._SUMMARY_RE.match(normalized):
+            return ""
         return normalized.strip()
 
     @staticmethod
@@ -73,7 +76,7 @@ class FlextInfraUtilitiesProtectedEdit:
     @staticmethod
     def _command_cwd(py_file: Path, workspace: Path) -> Path:
         resolved_workspace = workspace.resolve()
-        project_root = FlextInfraUtilitiesDiscovery.discover_project_root_from_file(
+        project_root = FlextInfraUtilitiesDiscovery.project_root(
             py_file,
         )
         if project_root is None:

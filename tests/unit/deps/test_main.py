@@ -14,7 +14,7 @@ class TestPublicDepsSurface:
         "extra-paths": "FlextInfraExtraPathsManager",
         "internal-sync": "FlextInfraInternalDependencySyncService",
         "modernize": "FlextInfraPyprojectModernizer",
-        "path-sync": "FlextInfraUtilitiesDependencyPathSync",
+        "path-sync": "path_sync",
     }
 
     @pytest.mark.parametrize(
@@ -27,6 +27,8 @@ class TestPublicDepsSurface:
         subcommand: str,
         service_name: str,
     ) -> None:
-        del subcommand
-        service_cls = getattr(deps, service_name)
-        tm.that(hasattr(service_cls, "main"), eq=True)
+        exported = getattr(deps, service_name)
+        if subcommand == "path-sync":
+            tm.that(hasattr(exported, "main"), eq=True)
+            return
+        tm.that(exported, is_=type)

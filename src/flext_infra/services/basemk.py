@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_core import r
-from flext_infra import FlextInfraBaseMkGenerator, m, t
+from flext_infra import FlextInfraBaseMkGenerator, m, p, t
 
 if TYPE_CHECKING:
     from flext_infra import FlextInfraServiceBase
@@ -17,7 +16,7 @@ class FlextInfraServiceBasemkMixin:
     def generate_basemk(
         self: FlextInfraServiceBase[t.MutableRecursiveContainerMapping],
         settings: m.Infra.BaseMkConfig | t.ScalarMapping | None = None,
-    ) -> r[str]:
+    ) -> p.Result[str]:
         """Generate base.mk content using the current facade context."""
         return FlextInfraBaseMkGenerator.model_validate(
             self.command_payload(),

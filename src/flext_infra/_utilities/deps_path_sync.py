@@ -6,7 +6,7 @@ from collections.abc import MutableMapping, MutableSequence
 from pathlib import Path
 
 from flext_cli import u
-from flext_core import r
+from flext_core import p, r
 from flext_infra import (
     FlextInfraModelsDeps,
     FlextInfraUtilitiesDocsScope,
@@ -187,7 +187,7 @@ class FlextInfraUtilitiesDependencyPathSync(
     def _read_document_state(
         self,
         path: Path,
-    ) -> r[m.Infra.PathSyncDocumentState]:
+    ) -> p.Result[m.Infra.PathSyncDocumentState]:
         """Read one pyproject into a validated plain payload state."""
         try:
             original_rendered = path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
@@ -213,7 +213,7 @@ class FlextInfraUtilitiesDependencyPathSync(
         workspace_members: t.StrSequence,
         is_root: bool = False,
         dry_run: bool = False,
-    ) -> r[t.StrSequence]:
+    ) -> p.Result[t.StrSequence]:
         """Rewrite PEP 621 and Poetry dependency paths."""
         state_result = self._read_document_state(pyproject_path)
         if state_result.failure:

@@ -87,7 +87,16 @@ class FlextInfraUtilitiesCodegenNamespace:
         return root
 
     @classmethod
-    def project_layout(
+    def _runtime_aliases(cls, package_dir: Path) -> tuple[str, ...]:
+        """Return the runtime aliases actually published by one package root."""
+        return tuple(
+            alias
+            for file_name, alias in cls._lazy_init_config().public_file_aliases.items()
+            if alias.isidentifier() and (package_dir / file_name).is_file()
+        )
+
+    @classmethod
+    def layout(
         cls,
         project_root: Path,
         *,
@@ -126,10 +135,11 @@ class FlextInfraUtilitiesCodegenNamespace:
             src_dir=src_dir,
             package_dir=package_dir,
             init_path=package_dir / c.Infra.INIT_PY,
+            runtime_aliases=cls._runtime_aliases(package_dir),
         )
 
     @classmethod
-    def module_policy(
+    def policy(
         cls,
         file_path: Path,
         *,
@@ -138,11 +148,8 @@ class FlextInfraUtilitiesCodegenNamespace:
     ) -> m.Infra.NamespaceModulePolicy:
         """Return the derived Pydantic policy for one governed module."""
         settings = cls._lazy_init_config()
-        package_name = (
-            current_pkg
-            or FlextInfraUtilitiesDiscovery.discover_package_from_file(
-                file_path,
-            )
+        package_name = current_pkg or FlextInfraUtilitiesDiscovery.package_name(
+            file_path,
         )
         resolved_rel_path = rel_path or Path(file_path.name)
         family_alias = next(
@@ -230,12 +237,12 @@ class FlextInfraUtilitiesCodegenNamespace:
             ))
             if name.isidentifier()
         )
-        project_root = FlextInfraUtilitiesDiscovery.discover_project_root_from_file(
+        project_root = FlextInfraUtilitiesDiscovery.project_root(
             file_path,
         )
         project_prefix = ""
         if project_root is not None:
-            layout = cls.project_layout(project_root)
+            layout = cls.layout(project_root)
             if layout is not None:
                 try:
                     rel_parts = file_path.relative_to(project_root).parts
@@ -271,19 +278,19 @@ class FlextInfraUtilitiesCodegenNamespace:
         )
 
     @classmethod
-    def discover_codegen_projects(
+    def projects(
         cls,
         workspace_root: Path,
         *,
-        projects: Sequence[p.Infra.ProjectInfo] | None = None,
-    ) -> r[Sequence[p.Infra.ProjectInfo]]:
+        projects: Sequence[m.Infra.ProjectInfo] | None = None,
+    ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
         """Discover only projects that participate in codegen automation."""
         if projects is None:
             projects_result = FlextInfraUtilitiesDocsScope.discover_projects(
                 workspace_root,
             )
             if not projects_result.success:
-                return r[Sequence[p.Infra.ProjectInfo]].fail(
+                return r[Sequence[m.Infra.ProjectInfo]].fail(
                     projects_result.error or "project discovery failed",
                 )
             discovered = projects_result.unwrap()
@@ -295,13 +302,13 @@ class FlextInfraUtilitiesCodegenNamespace:
             if project.name not in c.Infra.EXCLUDED_PROJECTS
             and not (project.path / c.Infra.GO_MOD).exists()
         )
-        return r[Sequence[p.Infra.ProjectInfo]].ok(selected)
+        return r[Sequence[m.Infra.ProjectInfo]].ok(selected)
 
     @classmethod
     def parse_namespace_validation(
         cls,
-        validation: r[m.Infra.ValidationReport],
-    ) -> r[tuple[m.Infra.CensusViolation, ...]]:
+        validation: p.Result[m.Infra.ValidationReport],
+    ) -> p.Result[tuple[m.Infra.CensusViolation, ...]]:
         """Convert validator output into typed census violations."""
         if validation.failure:
             return r[tuple[m.Infra.CensusViolation, ...]].fail(

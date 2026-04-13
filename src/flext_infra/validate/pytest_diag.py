@@ -17,7 +17,7 @@ from typing import Annotated, ClassVar, Protocol, override, runtime_checkable
 from defusedxml import ElementTree as DefusedET
 from pydantic import Field
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import c, m, s, t, u
 
 
@@ -221,7 +221,7 @@ class FlextInfraPytestDiagExtractor(s[bool]):
         self,
         junit_path: Path,
         log_path: Path,
-    ) -> r[m.Infra.PytestDiagnostics]:
+    ) -> p.Result[m.Infra.PytestDiagnostics]:
         """Extract diagnostics from JUnit XML and pytest log.
 
         Args:
@@ -264,7 +264,7 @@ class FlextInfraPytestDiagExtractor(s[bool]):
             )
 
     @override
-    def execute(self) -> r[bool]:
+    def execute(self) -> p.Result[bool]:
         """Execute the pytest diagnostics CLI flow."""
         result = self.extract(self.junit, self.log)
         if result.failure:

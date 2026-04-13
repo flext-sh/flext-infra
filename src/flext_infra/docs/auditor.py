@@ -8,7 +8,7 @@ from typing import Annotated, override
 
 from pydantic import Field
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import (
     FlextInfraDocAuditorMixin,
     c,
@@ -84,7 +84,7 @@ class FlextInfraDocAuditor(s[bool], FlextInfraDocAuditorMixin):
         projects: t.StrSequence | None = None,
         output_dir: str = c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
         params: m.Infra.AuditScopeParams | None = None,
-    ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
+    ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
         """Audit root and governed project docs scopes."""
         resolved_params = self._audit_params(workspace_root, params)
         return u.Infra.run_scoped(
@@ -165,7 +165,7 @@ class FlextInfraDocAuditor(s[bool], FlextInfraDocAuditorMixin):
         return report
 
     @override
-    def execute(self) -> r[bool]:
+    def execute(self) -> p.Result[bool]:
         """Execute the configured docs audit flow."""
         result = self.audit(
             workspace_root=self.workspace_root,

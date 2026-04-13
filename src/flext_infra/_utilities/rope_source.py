@@ -32,7 +32,7 @@ class FlextInfraUtilitiesRopeSource:
         r"^(?P<indent>\s*)except(?:\s+.+?)?(?:\s+as\s+(?P<exception_name>[A-Za-z_]\w*))?\s*:\s*(?P<inline>.*)$",
     )
     _FUNCTION_SIGNATURE_RE: ClassVar[re.Pattern[str]] = re.compile(
-        r"->\s*r\[(?P<inner>.+)\]\s*:",
+        r"->\s*(?:r\[(?P<legacy_inner>.+)\]|p\.Result\[(?P<result_inner>.+)\])\s*:",
     )
 
     @staticmethod
@@ -191,7 +191,9 @@ class FlextInfraUtilitiesRopeSource:
                 signature_lines.append(lines[tail].strip())
             signature = " ".join(signature_lines)
             match = cls._FUNCTION_SIGNATURE_RE.search(signature)
-            return match.group("inner") if match is not None else None
+            if match is None:
+                return None
+            return match.group("legacy_inner") or match.group("result_inner")
         return None
 
     @staticmethod
@@ -334,7 +336,7 @@ class FlextInfraUtilitiesRopeSource:
         transformer_fn: t.Infra.RopeTransformFn,
     ) -> tuple[str, t.StrSequence]:
         """Run a rope transformer against source text via a temporary context."""
-        workspace_root = FlextInfraUtilitiesDiscovery.discover_project_root_from_file(
+        workspace_root = FlextInfraUtilitiesDiscovery.project_root(
             file_path,
         )
         if workspace_root is None:

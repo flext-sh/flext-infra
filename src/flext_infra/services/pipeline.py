@@ -14,6 +14,7 @@ from flext_infra import (
     FlextInfraCodegenScaffolder,
     c,
     m,
+    p,
     s,
     t,
     u,
@@ -28,7 +29,7 @@ class FlextInfraCodegenPipeline(s[str]):
     _state: m.Infra.CodegenPipelineState
 
     @override
-    def execute(self) -> r[str]:
+    def execute(self) -> p.Result[str]:
         """Execute the end-to-end codegen pipeline via DAG engine."""
         self._state = m.Infra.CodegenPipelineState()
         ctx = m.Cli.PipelineStageContext(
@@ -66,7 +67,7 @@ class FlextInfraCodegenPipeline(s[str]):
         """Build DAG stage specs with linear dependency chain."""
         handlers: Mapping[
             str,
-            Callable[[m.Cli.PipelineStageContext], r[m.Cli.PipelineStageResult]],
+            Callable[[m.Cli.PipelineStageContext], p.Result[m.Cli.PipelineStageResult]],
         ] = {
             c.Infra.PipelineStage.DISCOVER: self._stage_discover,
             c.Infra.PipelineStage.PY_TYPED: self._stage_py_typed,
@@ -102,10 +103,10 @@ class FlextInfraCodegenPipeline(s[str]):
     def _stage_discover(
         self,
         ctx: m.Cli.PipelineStageContext,
-    ) -> r[m.Cli.PipelineStageResult]:
+    ) -> p.Result[m.Cli.PipelineStageResult]:
         """Discover workspace projects once for reuse across all stages."""
         try:
-            projects_result = u.Infra.discover_codegen_projects(ctx.workspace_root)
+            projects_result = u.Infra.projects(ctx.workspace_root)
             discovered = (
                 tuple(projects_result.unwrap()) if projects_result.success else ()
             )
@@ -123,7 +124,7 @@ class FlextInfraCodegenPipeline(s[str]):
     def _stage_py_typed(
         self,
         ctx: m.Cli.PipelineStageContext,
-    ) -> r[m.Cli.PipelineStageResult]:
+    ) -> p.Result[m.Cli.PipelineStageResult]:
         """Run PEP 561 py.typed marker generation."""
         try:
             count = FlextInfraCodegenPyTyped.model_validate({
@@ -142,7 +143,7 @@ class FlextInfraCodegenPipeline(s[str]):
     def _stage_census_before(
         self,
         ctx: m.Cli.PipelineStageContext,
-    ) -> r[m.Cli.PipelineStageResult]:
+    ) -> p.Result[m.Cli.PipelineStageResult]:
         """Run census (before fixes) and cache reports in typed state."""
         try:
             census = FlextInfraCodegenCensus.model_validate({
@@ -167,7 +168,7 @@ class FlextInfraCodegenPipeline(s[str]):
     def _stage_scaffold(
         self,
         ctx: m.Cli.PipelineStageContext,
-    ) -> r[m.Cli.PipelineStageResult]:
+    ) -> p.Result[m.Cli.PipelineStageResult]:
         """Run scaffold stage and cache results."""
         try:
             dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
@@ -191,7 +192,7 @@ class FlextInfraCodegenPipeline(s[str]):
     def _stage_auto_fix(
         self,
         ctx: m.Cli.PipelineStageContext,
-    ) -> r[m.Cli.PipelineStageResult]:
+    ) -> p.Result[m.Cli.PipelineStageResult]:
         """Run auto-fix stage and cache results."""
         try:
             dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
@@ -216,7 +217,7 @@ class FlextInfraCodegenPipeline(s[str]):
     def _stage_lazy_init(
         self,
         ctx: m.Cli.PipelineStageContext,
-    ) -> r[m.Cli.PipelineStageResult]:
+    ) -> p.Result[m.Cli.PipelineStageResult]:
         """Run lazy-init __init__.py generation."""
         try:
             dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
@@ -236,7 +237,7 @@ class FlextInfraCodegenPipeline(s[str]):
     def _stage_census_after(
         self,
         ctx: m.Cli.PipelineStageContext,
-    ) -> r[m.Cli.PipelineStageResult]:
+    ) -> p.Result[m.Cli.PipelineStageResult]:
         """Run census (after fixes) and cache reports."""
         try:
             census = self._state.census_service
@@ -263,7 +264,7 @@ class FlextInfraCodegenPipeline(s[str]):
     # Output collection
     # ------------------------------------------------------------------
 
-    def _collect_pipeline_output(self) -> r[str]:
+    def _collect_pipeline_output(self) -> p.Result[str]:
         """Convert typed pipeline state into the original output format."""
         reports_before = self._state.reports_before
         reports_after = self._state.reports_after

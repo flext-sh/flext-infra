@@ -17,7 +17,7 @@ from typing import Annotated, override
 
 from pydantic import Field
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import c, s, t
 
 
@@ -89,7 +89,7 @@ class FlextInfraTextPatternScanner(s[bool]):
         includes: t.StrSequence,
         excludes: t.StrSequence | None = None,
         match_mode: str = c.Infra.MATCH_MODE_PRESENT,
-    ) -> r[t.ConfigurationMapping]:
+    ) -> p.Result[t.ConfigurationMapping]:
         """Scan files under scan_root for regex matches.
 
         Args:
@@ -130,7 +130,7 @@ class FlextInfraTextPatternScanner(s[bool]):
             return r[t.ScalarMapping].fail(f"text pattern scan failed: {exc}")
 
     @override
-    def execute(self) -> r[bool]:
+    def execute(self) -> p.Result[bool]:
         """Execute the text-pattern scan CLI flow."""
         result = self.scan(
             self.workspace_root,

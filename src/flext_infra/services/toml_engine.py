@@ -15,7 +15,7 @@ from typing import Annotated, override
 
 from pydantic import Field, PrivateAttr
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import c, m, s, t, u
 
 
@@ -74,7 +74,7 @@ class FlextInfraToml(s[Sequence[t.StrSequence]]):
             raise ValueError(msg) from exc
 
     @override
-    def execute(self) -> r[Sequence[t.StrSequence]]:
+    def execute(self) -> p.Result[Sequence[t.StrSequence]]:
         """Apply all phases and preserve the existing result contract."""
         try:
             return r[Sequence[t.StrSequence]].ok(

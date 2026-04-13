@@ -231,6 +231,13 @@ class FlextInfraModelsRope:
             Path,
             Field(description="Resolved package __init__.py path"),
         ]
+        runtime_aliases: Annotated[
+            tuple[str, ...],
+            Field(
+                default=(),
+                description="Canonical runtime aliases published by the package root",
+            ),
+        ] = ()
 
     class RopeModuleConvention(m.ContractModel):
         """Unified module naming and namespace convention for one file."""

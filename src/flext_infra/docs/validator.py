@@ -8,7 +8,7 @@ from typing import Annotated, override
 
 from pydantic import Field
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import c, m, s, t, u
 
 
@@ -39,7 +39,7 @@ class FlextInfraDocValidator(s[bool]):
         projects: t.StrSequence | None = None,
         output_dir: str = c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
         apply: bool = False,
-    ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
+    ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
         """Validate documentation across the workspace root and governed projects."""
         return u.Infra.run_scoped(
             value,
@@ -52,7 +52,7 @@ class FlextInfraDocValidator(s[bool]):
         )
 
     @override
-    def execute(self) -> r[bool]:
+    def execute(self) -> p.Result[bool]:
         """Execute the configured docs validation flow."""
         result = self.validate_workspace(
             self.workspace_root,

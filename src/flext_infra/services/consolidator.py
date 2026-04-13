@@ -36,7 +36,7 @@ class FlextInfraCodegenConsolidator(s[str]):
     ] = None
 
     @override
-    def execute(self) -> r[str]:
+    def execute(self) -> p.Result[str]:
         """Execute constants consolidation with normalized command context."""
         output_lines: MutableSequence[str] = (
             ["[DRY-RUN] Scanning...\n"] if self.dry_run else []
@@ -51,7 +51,7 @@ class FlextInfraCodegenConsolidator(s[str]):
             selected_projects = projects_result.unwrap()
 
             for project in selected_projects:
-                project_layout = u.Infra.project_layout(project.path)
+                project_layout = u.Infra.layout(project.path)
                 if project_layout is None or not project_layout.init_path.is_file():
                     continue
 
@@ -118,7 +118,7 @@ class FlextInfraCodegenConsolidator(s[str]):
     def _selected_projects(
         self,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
-    ) -> r[Sequence[p.Infra.ProjectInfo]]:
+    ) -> p.Result[Sequence[p.Infra.ProjectInfo]]:
         selected = tuple(
             project
             for project in rope_workspace.projects()

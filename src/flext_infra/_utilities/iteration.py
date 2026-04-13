@@ -13,7 +13,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import FlextInfraUtilitiesTomlParse, c, t
 
 
@@ -363,7 +363,7 @@ class FlextInfraUtilitiesIteration:
         include_scripts: bool = True,
         include_dynamic_dirs: bool = True,
         src_dirs: frozenset[str] | None = None,
-    ) -> r[Sequence[Path]]:
+    ) -> p.Result[Sequence[Path]]:
         """Discover and iterate all Python files across workspace projects.
 
         Args:
@@ -461,7 +461,7 @@ class FlextInfraUtilitiesIteration:
         *,
         exclude_packages: frozenset[str] | None = None,
         include_tests: bool = True,
-    ) -> r[Sequence[t.Infra.Pair[Path, Path]]]:
+    ) -> p.Result[Sequence[t.Infra.Pair[Path, Path]]]:
         """Discover all Python modules across workspace projects.
 
         Returns tuples of (project_root, file_path) for every Python file

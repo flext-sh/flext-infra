@@ -68,9 +68,7 @@ class FlextInfraRefactorEngineHelpersMixin:
         try:
             if file_path.suffix != c.Infra.EXT_PYTHON:
                 return self._skip_result(file_path)
-            workspace_root = (
-                u.Infra.discover_project_root_from_file(file_path) or file_path.parent
-            )
+            workspace_root = u.Infra.project_root(file_path) or file_path.parent
             original = file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
             current, all_changes = original, list[str]()
             if self.file_rules:

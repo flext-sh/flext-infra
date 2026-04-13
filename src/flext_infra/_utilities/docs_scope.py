@@ -8,7 +8,7 @@ from functools import cache
 from pathlib import Path
 
 from flext_cli import u
-from flext_core import r
+from flext_core import p, r
 from flext_infra import (
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesTomlParse,
@@ -60,7 +60,7 @@ class FlextInfraUtilitiesDocsScope:
     def resolve_projects(
         workspace_root: Path,
         names: t.StrSequence,
-    ) -> r[Sequence[m.Infra.ProjectInfo]]:
+    ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
         """Resolve project names into canonical project descriptors."""
         discover_result = FlextInfraUtilitiesDocsScope.discover_projects(
             workspace_root,
@@ -297,7 +297,7 @@ class FlextInfraUtilitiesDocsScope:
     @staticmethod
     def discover_projects(
         workspace_root: Path,
-    ) -> r[Sequence[m.Infra.ProjectInfo]]:
+    ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
         """Discover workspace projects that participate in the docs scope."""
         if not workspace_root.exists() or not workspace_root.is_dir():
             return r[Sequence[m.Infra.ProjectInfo]].fail(

@@ -31,7 +31,7 @@ class _DepsStub(p.Infra.DepsService, p.Infra.PipCheckDepsService):
         workspace_root: Path,
         *,
         projects_filter: t.StrSequence | None = None,
-    ) -> r[Sequence[Path]]:
+    ) -> p.Result[Sequence[Path]]:
         del workspace_root
         del projects_filter
         return r[Sequence[Path]].ok([self._project])
@@ -41,7 +41,7 @@ class _DepsStub(p.Infra.DepsService, p.Infra.PipCheckDepsService):
         self,
         project_path: Path,
         venv_bin: Path,
-    ) -> r[t.Infra.Pair[Sequence[t.Infra.ContainerDict], int]]:
+    ) -> p.Result[t.Infra.Pair[Sequence[t.Infra.ContainerDict], int]]:
         del project_path
         del venv_bin
         return r[t.Infra.Pair[Sequence[t.Infra.ContainerDict], int]].ok(([], 0))
@@ -61,7 +61,7 @@ class _DepsStub(p.Infra.DepsService, p.Infra.PipCheckDepsService):
         self,
         workspace_root: Path,
         venv_bin: Path,
-    ) -> r[tuple[t.StrSequence, int]]:
+    ) -> p.Result[tuple[t.StrSequence, int]]:
         del workspace_root
         del venv_bin
         return r[tuple[t.StrSequence, int]].ok(([], self._pip_exit))

@@ -23,6 +23,7 @@ from flext_infra import (
     FlextInfraSilentFailureGate,
     c,
     m,
+    p,
     t,
     u,
 )
@@ -255,7 +256,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
         project_dir: Path,
         ctx: m.Infra.GateContext,
         gates_sink: MutableMapping[str, m.Infra.GateExecution],
-    ) -> Callable[[m.Cli.PipelineStageContext], r[m.Cli.PipelineStageResult]]:
+    ) -> Callable[[m.Cli.PipelineStageContext], p.Result[m.Cli.PipelineStageResult]]:
         """Build a pipeline stage handler that executes a single gate.
 
         The handler writes GateExecution into *gates_sink* as a side-effect
@@ -266,7 +267,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
 
         def _handler(
             _pipeline_ctx: m.Cli.PipelineStageContext,
-        ) -> r[m.Cli.PipelineStageResult]:
+        ) -> p.Result[m.Cli.PipelineStageResult]:
             execution = self._execute_gate(gate_instance, project_dir, ctx)
             gates_sink[gate_id] = execution
             self._gate_logger.debug(

@@ -12,7 +12,7 @@ import re
 from collections.abc import MutableSequence
 from pathlib import Path
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import c, t
 
 
@@ -72,7 +72,7 @@ class FlextInfraUtilitiesVersioning:
         return "".join(updated_lines)
 
     @staticmethod
-    def bump_version(version: str, bump_type: str) -> r[str]:
+    def bump_version(version: str, bump_type: str) -> p.Result[str]:
         """Bump a semantic version string.
 
         Args:
@@ -101,7 +101,7 @@ class FlextInfraUtilitiesVersioning:
         return r[str].ok(f"{major}.{minor}.{patch}")
 
     @staticmethod
-    def current_workspace_version(workspace_root: Path) -> r[str]:
+    def current_workspace_version(workspace_root: Path) -> p.Result[str]:
         """Read the current version from the main pyproject.toml.
 
         Args:
@@ -124,7 +124,7 @@ class FlextInfraUtilitiesVersioning:
         return r[str].ok(version)
 
     @staticmethod
-    def parse_semver(version: str) -> r[t.Infra.Triple[int, int, int]]:
+    def parse_semver(version: str) -> p.Result[t.Infra.Triple[int, int, int]]:
         """Parse a semantic version string into (major, minor, patch).
 
         Args:
@@ -144,7 +144,7 @@ class FlextInfraUtilitiesVersioning:
         ))
 
     @staticmethod
-    def replace_project_version(project_path: Path, version: str) -> r[bool]:
+    def replace_project_version(project_path: Path, version: str) -> p.Result[bool]:
         """Update the version field in a project's pyproject.toml.
 
         Args:

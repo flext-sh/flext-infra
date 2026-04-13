@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 
 from flext_tests import FlextTestsTypes
 
-from flext_core import r
+from flext_core import p
 from flext_infra import FlextInfraGate, FlextInfraTypes
 
 if TYPE_CHECKING:
@@ -43,7 +43,7 @@ class TestsFlextInfraTypes(FlextTestsTypes, FlextInfraTypes):
 
             type GateClass = type[FlextInfraGate]
             type ProjectCheckStub = Callable[..., m.Infra.ProjectResult]
-            type RawRunStub = Callable[..., r[m.Cli.CommandOutput]]
+            type RawRunStub = Callable[..., p.Result[m.Cli.CommandOutput]]
 
 
 t = TestsFlextInfraTypes

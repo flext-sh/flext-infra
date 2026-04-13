@@ -23,7 +23,7 @@ class FlextInfraInternalImportDetector:
         rope_project = ctx.rope_project
         if file_path.name == c.Infra.INIT_PY:
             return []
-        current_package = u.Infra.discover_package_from_file(file_path)
+        current_package = u.Infra.package_name(file_path)
         current_root = current_package.split(".", 1)[0] if current_package else ""
         res = u.Infra.get_resource_from_path(rope_project, file_path)
         if res is None:

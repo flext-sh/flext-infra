@@ -41,10 +41,10 @@ class FlextInfraSilentFailureValidator(s[bool]):
         }
         return [project for project in projects if project.name in selected]
 
-    def build_report(self) -> r[m.Infra.ValidationReport]:
+    def build_report(self) -> p.Result[m.Infra.ValidationReport]:
         """Build one validation report for the selected workspace projects."""
         issues: MutableSequence[str] = []
-        projects_result = u.Infra.discover_codegen_projects(self.workspace_root)
+        projects_result = u.Infra.projects(self.workspace_root)
         projects = self._selected_projects(
             tuple(projects_result.unwrap()) if projects_result.success else ()
         )
@@ -89,7 +89,7 @@ class FlextInfraSilentFailureValidator(s[bool]):
         )
 
     @override
-    def execute(self) -> r[bool]:
+    def execute(self) -> p.Result[bool]:
         """Execute silent-failure validation and collapse the report to `r[bool]`."""
         report_result = self.build_report()
         if report_result.failure:

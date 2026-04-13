@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
@@ -59,11 +59,15 @@ class FlextInfraBanditGate(FlextInfraGate):
         _ = project_dir, ctx
         issues: MutableSequence[m.Infra.Issue] = []
         try:
-            bandit_data = (
-                u.Cli
-                .json_parse(result.stdout or "{}")
-                .map(u.Infra.normalize_str_mapping)
-                .unwrap_or({})
+            parsed_result = u.Cli.json_parse(result.stdout or "{}")
+            empty_mapping: Mapping[str, t.Infra.InfraValue] = {}
+            raw_payload: object = (
+                parsed_result.unwrap() if parsed_result.success else empty_mapping
+            )
+            bandit_data: Mapping[str, t.Infra.InfraValue] = (
+                u.Infra.normalize_str_mapping(raw_payload)
+                if isinstance(raw_payload, Mapping)
+                else empty_mapping
             )
             issues.extend(
                 m.Infra.Issue(

@@ -15,7 +15,7 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from flext_cli import FlextCliUtilities
-from flext_core import r
+from flext_core import p, r
 from flext_infra import c, t
 
 
@@ -293,7 +293,7 @@ class FlextInfraUtilitiesTomlParse:
         return FlextInfraUtilitiesTomlParse.dedupe_specs(merged)
 
     @staticmethod
-    def read_plain(path: Path) -> r[t.Infra.ContainerDict]:
+    def read_plain(path: Path) -> p.Result[t.Infra.ContainerDict]:
         """Read and parse a TOML file as a plain dict with r error handling."""
         result = FlextCliUtilities.Cli.toml_read_json(path)
         if result.failure:

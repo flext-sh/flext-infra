@@ -17,7 +17,7 @@ from typing import Annotated, override
 
 from pydantic import Field
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import FlextInfraSyncService, c, m, s, t, u
 
 logger = u.fetch_logger(__name__)
@@ -69,7 +69,7 @@ class FlextInfraOrchestratorService(s[bool]):
         """Resolve the active workspace root for orchestration."""
         return u.Infra.resolve_workspace_root_or_cwd()
 
-    def _resolved_projects(self) -> r[Sequence[m.Infra.ProjectInfo]]:
+    def _resolved_projects(self) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
         """Resolve the selected project names through canonical discovery."""
         return u.Infra.resolve_projects(
             self._workspace_root(),
@@ -90,7 +90,7 @@ class FlextInfraOrchestratorService(s[bool]):
         projects: Sequence[m.Infra.ProjectInfo],
         *,
         workspace_root: Path,
-    ) -> r[bool]:
+    ) -> p.Result[bool]:
         """Ensure selected projects have generated make infrastructure."""
         for project in projects:
             project_root = project.path.resolve()
@@ -114,7 +114,7 @@ class FlextInfraOrchestratorService(s[bool]):
         return r[bool].ok(True)
 
     @override
-    def execute(self) -> r[bool]:
+    def execute(self) -> p.Result[bool]:
         """Execute the workspace-orchestrate CLI flow."""
         allowed_verbs = c.Infra.ORCHESTRATED_PROJECT_VERBS
         if self.verb not in allowed_verbs:
@@ -196,7 +196,7 @@ class FlextInfraOrchestratorService(s[bool]):
         *,
         fail_fast: bool = False,
         make_args: t.StrSequence = (),
-    ) -> r[Sequence[m.Cli.CommandOutput]]:
+    ) -> p.Result[Sequence[m.Cli.CommandOutput]]:
         """Execute make verb across projects with per-project logging.
 
         Args:
@@ -275,7 +275,7 @@ class FlextInfraOrchestratorService(s[bool]):
         _index: int,
         *,
         make_args: t.StrSequence,
-    ) -> r[m.Cli.CommandOutput]:
+    ) -> p.Result[m.Cli.CommandOutput]:
         """Execute make verb for a single project.
 
         Args:
@@ -306,7 +306,7 @@ class FlextInfraOrchestratorService(s[bool]):
             log_path,
             env={"NO_COLOR": "1", **os.environ},
         )
-        return_code: int = proc_result.unwrap_or(1)
+        return_code: int = proc_result.unwrap() if proc_result.success else 1
         stderr = "" if proc_result.success else proc_result.error or ""
         elapsed = time.monotonic() - started
         if return_code == 0:

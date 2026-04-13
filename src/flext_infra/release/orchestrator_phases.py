@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import c, m, s, t, u
 
 
@@ -17,7 +17,7 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
     """Build, publish, and version phase implementations."""
 
     @staticmethod
-    def _run_make(project_path: Path, verb: str) -> r[t.Infra.Pair[int, str]]:
+    def _run_make(project_path: Path, verb: str) -> p.Result[t.Infra.Pair[int, str]]:
         """Execute a make command for a project and return (exit_code, output)."""
         result = u.Cli.run_raw([
             c.Infra.MAKE,
@@ -36,7 +36,7 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
     def phase_build(
         self,
         ctx: m.Infra.ReleasePhaseDispatchConfig,
-    ) -> r[bool]:
+    ) -> p.Result[bool]:
         """Execute the build phase and write build-report.json."""
         workspace_root = ctx.workspace_root
         version = ctx.version
@@ -102,7 +102,7 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
     def phase_publish(
         self,
         ctx: m.Infra.ReleasePhaseDispatchConfig,
-    ) -> r[bool]:
+    ) -> p.Result[bool]:
         """Execute publish phase: notes, changelog, tag, optional push."""
         workspace_root = ctx.workspace_root
         tag = ctx.tag
@@ -147,7 +147,7 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
         tag: str,
         notes_path: Path,
         push: bool,
-    ) -> r[bool]:
+    ) -> p.Result[bool]:
         """Apply changelog, tag, and optional push for publish phase."""
         changelog_result = u.Infra.update_changelog(
             workspace_root,
@@ -169,7 +169,7 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
     def phase_version(
         self,
         ctx: m.Infra.ReleasePhaseDispatchConfig,
-    ) -> r[bool]:
+    ) -> p.Result[bool]:
         """Execute versioning phase across workspace and selected projects."""
         target = f"{ctx.version}-dev" if ctx.dev_suffix else ctx.version
         parse_result = u.Infra.parse_semver(ctx.version)
@@ -221,13 +221,13 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
         self,
         ctx: m.Infra.ReleasePhaseDispatchConfig,
         output_path: Path,
-    ) -> r[bool]:
+    ) -> p.Result[bool]:
         raise NotImplementedError
 
-    def _create_tag(self, workspace_root: Path, tag: str) -> r[bool]:
+    def _create_tag(self, workspace_root: Path, tag: str) -> p.Result[bool]:
         raise NotImplementedError
 
-    def _push_release(self, workspace_root: Path, tag: str) -> r[bool]:
+    def _push_release(self, workspace_root: Path, tag: str) -> p.Result[bool]:
         raise NotImplementedError
 
     def _version_files(

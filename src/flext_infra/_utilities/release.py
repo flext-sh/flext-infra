@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_core import r, u
+from flext_core import p, r, u
 from flext_infra import c
 
 if TYPE_CHECKING:
@@ -27,7 +27,7 @@ class FlextInfraUtilitiesRelease:
         project_list: Sequence[m.Infra.ProjectInfo],
         changes: str,
         output_path: Path,
-    ) -> r[bool]:
+    ) -> p.Result[bool]:
         """Generate release notes markdown from release context."""
         lines: MutableSequence[str] = [
             f"# Release {tag}",
@@ -77,7 +77,7 @@ class FlextInfraUtilitiesRelease:
         version: str,
         tag: str,
         notes_path: Path,
-    ) -> r[bool]:
+    ) -> p.Result[bool]:
         """Update docs/changelog and docs/releases entries."""
         docs = workspace_root / c.Infra.DIR_DOCS
         changelog_path = docs / "CHANGELOG.md"

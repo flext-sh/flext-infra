@@ -4,7 +4,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_core import r
+from flext_core import p
 from flext_infra import FlextInfraUtilitiesDependencyPathSync
 from tests import t
 
@@ -17,7 +17,7 @@ def _rewrite_dep_paths(
     workspace_members: t.StrSequence = (),
     is_root: bool = False,
     dry_run: bool = False,
-) -> r[t.StrSequence]:
+) -> p.Result[t.StrSequence]:
     return FlextInfraUtilitiesDependencyPathSync().rewrite_dep_paths(
         pyproject_path,
         mode=mode,

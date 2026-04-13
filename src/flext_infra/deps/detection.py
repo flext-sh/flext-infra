@@ -26,7 +26,7 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
         self.runner: p.Cli.CommandRunner | None = None
 
     @override
-    def _read_plain(self, path: Path) -> r[t.Infra.ContainerDict]:
+    def _read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:
         if self.toml is not None:
             return self.toml.read_plain(path)
         return u.Infra.read_plain(path)
@@ -39,7 +39,7 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
         cwd: Path | None = None,
         timeout: int | None = None,
         env: t.StrMapping | None = None,
-    ) -> r[m.Cli.CommandOutput]:
+    ) -> p.Result[m.Cli.CommandOutput]:
         if self.runner is not None:
             return self.runner.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
         return u.Cli.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
@@ -116,7 +116,7 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
         self,
         workspace_root: Path,
         projects_filter: t.StrSequence | None = None,
-    ) -> r[Sequence[Path]]:
+    ) -> p.Result[Sequence[Path]]:
         """Discover project paths with pyproject.toml in workspace.
 
         Returns only the Path objects, filtered to those with pyproject.toml.

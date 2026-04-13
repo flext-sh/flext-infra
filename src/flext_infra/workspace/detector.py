@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import override
 from urllib.parse import urlparse
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import c, s, u
 
 
@@ -41,7 +41,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
         name = path.rsplit("/", 1)[-1]
         return name.removesuffix(c.Infra.GIT_DIR)
 
-    def detect(self, project_root: Path) -> r[c.Infra.WorkspaceMode]:
+    def detect(self, project_root: Path) -> p.Result[c.Infra.WorkspaceMode]:
         """Detect workspace mode by inspecting parent repository origin URL.
 
         Args:
@@ -67,7 +67,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
                 )
                 return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.STANDALONE)
             result = u.Cli.capture(
-                [c.Infra.GIT, "settings", "--get", "remote.origin.url"],
+                [c.Infra.GIT, "config", "--get", "remote.origin.url"],
                 cwd=parent,
             )
             if result.failure:
@@ -91,7 +91,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             return r[c.Infra.WorkspaceMode].fail(f"Detection failed: {exc}")
 
     @override
-    def execute(self) -> r[c.Infra.WorkspaceMode]:
+    def execute(self) -> p.Result[c.Infra.WorkspaceMode]:
         """Execute the workspace detection flow."""
         return self.detect(self.workspace_root)
 

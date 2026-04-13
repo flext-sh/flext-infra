@@ -8,7 +8,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import (
     FlextInfraClassNestingRefactorRule,
     FlextInfraRefactorRule,
@@ -34,7 +34,7 @@ class FlextInfraUtilitiesRefactorRuleLoader:
         """Initialize with path to the refactor engine configuration file."""
         self.config_path = config_path
 
-    def load_config(self) -> r[Mapping[str, t.Infra.InfraValue]]:
+    def load_config(self) -> p.Result[Mapping[str, t.Infra.InfraValue]]:
         """Load and validate the refactor engine configuration."""
         try:
             loaded = u.Cli.yaml_load_mapping(self.config_path)
@@ -69,7 +69,7 @@ class FlextInfraUtilitiesRefactorRuleLoader:
         scope = self._resolve_engine_config(settings)
         return list(scope.project_scan_dirs)
 
-    def load_engine_registry(self) -> r[Mapping[str, t.Infra.InfraValue]]:
+    def load_engine_registry(self) -> p.Result[Mapping[str, t.Infra.InfraValue]]:
         """Load declarative engine dispatch metadata from rules directory."""
         package_registry = self._package_rules_dir() / self._ENGINE_REGISTRY_FILENAME
         candidates = [self._resolve_rules_dir() / self._ENGINE_REGISTRY_FILENAME]
@@ -100,7 +100,7 @@ class FlextInfraUtilitiesRefactorRuleLoader:
         ],
         build_file_rules: Callable[[], Sequence[FlextInfraClassNestingRefactorRule]],
         skip_rule_definition: Callable[[Mapping[str, t.Infra.InfraValue]], bool],
-    ) -> r[
+    ) -> p.Result[
         tuple[
             Sequence[FlextInfraRefactorRule],
             Sequence[FlextInfraClassNestingRefactorRule],

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import (
     FlextInfraDependencyDetectorRuntime,
     FlextInfraExtraPathsManager,
@@ -21,7 +21,7 @@ class FlextInfraServiceDepsMixin:
     def detect_dependencies(
         self,
         params: FlextInfraModelsDeps.DetectCommand,
-    ) -> r[bool]:
+    ) -> p.Result[bool]:
         """Run dependency detection through the public facade."""
         detector = FlextInfraRuntimeDevDependencyDetector()
         runtime = FlextInfraDependencyDetectorRuntime(
@@ -35,7 +35,7 @@ class FlextInfraServiceDepsMixin:
     def sync_extra_paths(
         self,
         params: FlextInfraModelsDeps.ExtraPathsCommand,
-    ) -> r[bool]:
+    ) -> p.Result[bool]:
         """Synchronize pyright and mypy extra paths."""
         manager = FlextInfraExtraPathsManager(workspace_root=params.workspace_path)
         result = manager.sync_extra_paths(
@@ -53,7 +53,7 @@ class FlextInfraServiceDepsMixin:
     def sync_internal_dependencies(
         self,
         params: FlextInfraModelsDeps.InternalSyncCommand,
-    ) -> r[bool]:
+    ) -> p.Result[bool]:
         """Synchronize internal FLEXT dependencies."""
         service = FlextInfraInternalDependencySyncService()
         result = service.sync(params.workspace_path)
@@ -64,7 +64,7 @@ class FlextInfraServiceDepsMixin:
     def modernize_pyproject(
         self,
         params: FlextInfraModelsDeps.ModernizeCommand,
-    ) -> r[bool]:
+    ) -> p.Result[bool]:
         """Modernize workspace pyproject files."""
         service = FlextInfraPyprojectModernizer(workspace_root=params.workspace_path)
         exit_code = service.run(params)
@@ -75,7 +75,7 @@ class FlextInfraServiceDepsMixin:
     def sync_dependency_paths(
         self,
         params: FlextInfraModelsDeps.PathSyncCommand,
-    ) -> r[bool]:
+    ) -> p.Result[bool]:
         """Rewrite internal dependency paths."""
         service = FlextInfraUtilitiesDependencyPathSync()
         exit_code = service.execute(params)

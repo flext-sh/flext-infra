@@ -15,7 +15,7 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from flext_cli import u as _cli_u
-from flext_core import r
+from flext_core import p, r
 from flext_infra import (
     FlextInfraUtilitiesBase,
     c,
@@ -43,7 +43,7 @@ class FlextInfraUtilitiesRefactorPolicy:
     @staticmethod
     def load_validated_policy_document(
         policy_path: Path,
-    ) -> r[Mapping[str, t.Infra.InfraValue]]:
+    ) -> p.Result[Mapping[str, t.Infra.InfraValue]]:
         """Load and validate a YAML policy document."""
         raw = _cli_u.Cli.yaml_load_mapping(policy_path)
         if not raw:

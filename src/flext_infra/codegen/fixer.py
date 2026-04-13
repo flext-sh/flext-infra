@@ -46,7 +46,7 @@ class FlextInfraCodegenFixer(s[str]):
     )
 
     @override
-    def execute(self) -> r[str]:
+    def execute(self) -> p.Result[str]:
         """Execute auto-fix directly from the validated CLI service model."""
         dry_run = self.dry_run or not self.apply_changes
         try:
@@ -98,7 +98,7 @@ class FlextInfraCodegenFixer(s[str]):
     ) -> m.Infra.AutoFixResult:
         """Auto-fix namespace violations in a single project."""
         project_path = project.path
-        project_layout = u.Infra.project_layout(project_path)
+        project_layout = u.Infra.layout(project_path)
         if project_layout is None or not project_layout.class_stem:
             return self._empty_result(project_path.name)
         pkg_dir = project_layout.package_dir
@@ -111,7 +111,11 @@ class FlextInfraCodegenFixer(s[str]):
         initial_violations_result = u.Infra.parse_namespace_validation(
             FlextInfraNamespaceValidator().validate(project_path),
         )
-        initial_violations = initial_violations_result.unwrap_or(())
+        initial_violations = (
+            initial_violations_result.unwrap()
+            if initial_violations_result.success
+            else ()
+        )
         if initial_violations_result.failure:
             _log.warning(
                 "namespace_validation_failed",
@@ -256,7 +260,11 @@ class FlextInfraCodegenFixer(s[str]):
             fixed, skipped = u.Infra.classify_violation_outcomes(
                 project_path=project_path,
                 initial_violations=initial_violations,
-                remaining_violations=remaining_violations_result.unwrap_or(()),
+                remaining_violations=(
+                    remaining_violations_result.unwrap()
+                    if remaining_violations_result.success
+                    else ()
+                ),
             )
             ctx.violations_fixed.extend(fixed)
             ctx.violations_skipped.extend(skipped)
@@ -276,7 +284,7 @@ class FlextInfraCodegenFixer(s[str]):
         if projects is not None:
             selected_projects = tuple(projects)
         else:
-            projects_result = u.Infra.discover_codegen_projects(self.workspace_root)
+            projects_result = u.Infra.projects(self.workspace_root)
             selected_projects = (
                 tuple(projects_result.unwrap()) if projects_result.success else ()
             )

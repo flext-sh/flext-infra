@@ -8,7 +8,7 @@ from pathlib import Path
 
 from pydantic import TypeAdapter, ValidationError
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import FlextInfraRefactorLooseClassScanner, c, m, t, u
 
 
@@ -47,7 +47,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
         scanner = FlextInfraRefactorLooseClassScanner()
         mapping_result = cls._load_mapping_index()
         mapping_index: Mapping[t.Infra.StrPair, m.Infra.ClassNestingMapping] = (
-            mapping_result.unwrap_or({})
+            mapping_result.unwrap() if mapping_result.success else {}
         )
         confidence_counts: Counter[str] = Counter()
         per_file_counts: Counter[str] = Counter()
@@ -132,7 +132,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
     @classmethod
     def _load_mapping_index(
         cls,
-    ) -> r[Mapping[t.Infra.StrPair, m.Infra.ClassNestingMapping]]:
+    ) -> p.Result[Mapping[t.Infra.StrPair, m.Infra.ClassNestingMapping]]:
         mapping_path = Path(__file__).resolve().parent / c.Infra.MAPPINGS_RELATIVE_PATH
         try:
             typed_doc = u.Cli.yaml_load_mapping(mapping_path)

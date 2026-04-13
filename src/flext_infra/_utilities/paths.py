@@ -12,7 +12,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import c
 
 
@@ -24,7 +24,7 @@ class FlextInfraUtilitiesPaths:
     """
 
     @staticmethod
-    def workspace_root(path: str | Path = ".") -> r[Path]:
+    def workspace_root(path: str | Path = ".") -> p.Result[Path]:
         """Resolve and return the absolute path to the workspace root.
 
         Uses ``FLEXT_WORKSPACE_ROOT`` only when the caller keeps the default
@@ -84,7 +84,7 @@ class FlextInfraUtilitiesPaths:
         if workspace_root is not None:
             return workspace_root.resolve()
         result = FlextInfraUtilitiesPaths.workspace_root()
-        return result.unwrap_or(Path.cwd().resolve())
+        return result.unwrap() if result.success else Path.cwd().resolve()
 
 
 __all__: list[str] = ["FlextInfraUtilitiesPaths"]

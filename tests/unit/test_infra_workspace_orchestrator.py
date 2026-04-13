@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import FlextInfraOrchestratorService
 from tests import c, m, t
 
@@ -50,7 +50,7 @@ class TestOrchestratorBasic:
 
         def _resolved_projects(
             self: FlextInfraOrchestratorService,
-        ) -> r[t.SequenceOf[m.Infra.ProjectInfo]]:
+        ) -> p.Result[t.SequenceOf[m.Infra.ProjectInfo]]:
             del self
             return r[t.SequenceOf[m.Infra.ProjectInfo]].ok([project])
 
@@ -59,7 +59,7 @@ class TestOrchestratorBasic:
             projects: t.SequenceOf[m.Infra.ProjectInfo],
             *,
             workspace_root: Path,
-        ) -> r[bool]:
+        ) -> p.Result[bool]:
             _ = (self, projects, workspace_root)
             return r[bool].ok(True)
 
@@ -70,7 +70,7 @@ class TestOrchestratorBasic:
             _index: int,
             *,
             make_args: t.StrSequence,
-        ) -> r[m.Cli.CommandOutput]:
+        ) -> p.Result[m.Cli.CommandOutput]:
             _ = (self, project, verb, _index, make_args)
             return r[m.Cli.CommandOutput].ok(_cmd_out(0))
 
@@ -117,7 +117,7 @@ class TestOrchestratorFailures:
             verb: str,
             idx: int,
             make_args: t.StrSequence,
-        ) -> r[m.Cli.CommandOutput]:
+        ) -> p.Result[m.Cli.CommandOutput]:
             del self, project, verb, idx, make_args
             return r[m.Cli.CommandOutput].fail("Failed")
 
@@ -142,7 +142,7 @@ class TestOrchestratorFailures:
             verb: str,
             idx: int,
             make_args: t.StrSequence,
-        ) -> r[m.Cli.CommandOutput]:
+        ) -> p.Result[m.Cli.CommandOutput]:
             del self, project, verb, idx, make_args
             msg = "Runner failed"
             raise OSError(msg)
@@ -167,7 +167,7 @@ class TestOrchestratorFailures:
             verb: str,
             idx: int,
             make_args: t.StrSequence,
-        ) -> r[m.Cli.CommandOutput]:
+        ) -> p.Result[m.Cli.CommandOutput]:
             del self, project, verb, idx, make_args
             call_count[0] += 1
             if call_count[0] == 1:

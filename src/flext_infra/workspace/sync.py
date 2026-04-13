@@ -15,7 +15,7 @@ from typing import Annotated, override
 
 from pydantic import Field
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import (
     FlextInfraBaseMkGenerator,
     FlextInfraServiceBase,
@@ -55,7 +55,7 @@ class FlextInfraSyncService(FlextInfraServiceBase[m.Infra.SyncResult]):
         return self.workspace_root.resolve()
 
     @override
-    def execute(self) -> r[m.Infra.SyncResult]:
+    def execute(self) -> p.Result[m.Infra.SyncResult]:
         """Execute the workspace sync flow."""
         import fcntl
 
@@ -89,7 +89,7 @@ class FlextInfraSyncService(FlextInfraServiceBase[m.Infra.SyncResult]):
         settings: m.Infra.BaseMkConfig | None,
         *,
         canonical_root: Path | None = None,
-    ) -> r[m.Infra.SyncResult]:
+    ) -> p.Result[m.Infra.SyncResult]:
         """Execute all sync steps under the file lock."""
         changed = 0
         effective_root = canonical_root or self.canonical_root
@@ -145,7 +145,7 @@ class FlextInfraSyncService(FlextInfraServiceBase[m.Infra.SyncResult]):
         workspace_root: Path,
         *,
         canonical_root: Path,
-    ) -> r[int]:
+    ) -> p.Result[int]:
         """Synchronize all discovered child projects under the workspace root."""
         discovered = u.Infra.discover_projects(workspace_root)
         if discovered.failure:
@@ -171,7 +171,7 @@ class FlextInfraSyncService(FlextInfraServiceBase[m.Infra.SyncResult]):
         self,
         resolved: Path,
         effective_root: Path | None,
-    ) -> r[int]:
+    ) -> p.Result[int]:
         """Sync workspace or project Makefile and surface generator failures."""
         is_workspace_root = self._is_workspace_root(resolved, effective_root)
         if is_workspace_root:
@@ -198,7 +198,7 @@ class FlextInfraSyncService(FlextInfraServiceBase[m.Infra.SyncResult]):
     def _sync_project_makefile(
         workspace_root: Path,
         canonical_root: Path,
-    ) -> r[bool]:
+    ) -> p.Result[bool]:
         """Sync the generated section of a project Makefile from pyproject.toml."""
         from flext_infra import (
             FlextInfraProjectMakefileUpdater,
@@ -210,7 +210,7 @@ class FlextInfraSyncService(FlextInfraServiceBase[m.Infra.SyncResult]):
         )
 
     @staticmethod
-    def _sync_workspace_makefile(workspace_root: Path) -> r[bool]:
+    def _sync_workspace_makefile(workspace_root: Path) -> p.Result[bool]:
         """Sync the workspace root Makefile from the canonical generator."""
         from flext_infra import (
             FlextInfraWorkspaceMakefileGenerator,
@@ -240,7 +240,7 @@ class FlextInfraSyncService(FlextInfraServiceBase[m.Infra.SyncResult]):
         self,
         workspace_root: Path,
         required: t.StrSequence,
-    ) -> r[bool]:
+    ) -> p.Result[bool]:
         """Idempotently add missing .gitignore entries.
 
         Appends only entries not already present (exact line match).
@@ -283,7 +283,7 @@ class FlextInfraSyncService(FlextInfraServiceBase[m.Infra.SyncResult]):
         settings: m.Infra.BaseMkConfig | None,
         *,
         canonical_root: Path | None = None,
-    ) -> r[bool]:
+    ) -> p.Result[bool]:
         """Sync base.mk for workspace root and subprojects.
 
         All projects receive a generated local ``base.mk`` so regeneration is

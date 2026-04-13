@@ -141,7 +141,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         return workspace_index
 
     @override
-    def execute(self) -> r[m.Infra.RopeWorkspaceSession]:
+    def execute(self) -> p.Result[m.Infra.RopeWorkspaceSession]:
         """Materialize the public Rope session snapshot."""
         snapshot: m.Infra.RopeWorkspaceSession = self.session_snapshot()
         return r[m.Infra.RopeWorkspaceSession].ok(snapshot)
@@ -238,7 +238,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
     def projects(self) -> t.SequenceOf[p.Infra.ProjectInfo]:
         """Return the canonical codegen project selection for this workspace."""
         if self._codegen_projects is None:
-            projects_result = u.Infra.discover_codegen_projects(self.workspace_root)
+            projects_result = u.Infra.projects(self.workspace_root)
             if projects_result.failure:
                 self._codegen_projects = ()
             else:
@@ -265,7 +265,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
             ),
             None,
         )
-        layout = u.Infra.project_layout(
+        layout = u.Infra.layout(
             resolved_root,
             project=project_info,
         )
@@ -316,7 +316,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         cached = self._module_policy_cache.get(cache_key)
         if cached is not None:
             return cached
-        policy = u.Infra.module_policy(
+        policy = u.Infra.policy(
             resolved_file,
             rel_path=resolved_rel_path,
             current_pkg=current_pkg,
@@ -358,11 +358,9 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         project_root = (
             module_entry.project_root
             if module_entry is not None and module_entry.project_root is not None
-            else u.Infra.discover_project_root_from_file(resolved_file)
+            else u.Infra.project_root(resolved_file)
         )
-        project_layout = (
-            self.layout(project_root) if project_root is not None else None
-        )
+        project_layout = self.layout(project_root) if project_root is not None else None
         convention = m.Infra.RopeModuleConvention(
             file_path=resolved_file,
             relative_path=resolved_rel_path,

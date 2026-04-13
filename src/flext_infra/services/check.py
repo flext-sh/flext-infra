@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import (
     FlextInfraConfigFixer,
     FlextInfraModelsCheck,
@@ -20,7 +20,7 @@ class FlextInfraServiceCheckMixin:
     def run_workspace_checks(
         self,
         params: FlextInfraModelsCheck.RunCommand,
-    ) -> r[bool]:
+    ) -> p.Result[bool]:
         """Run quality gates for the selected projects."""
         checker_cls = FlextInfraWorkspaceChecker
         project_names = params.project_names or []
@@ -60,7 +60,7 @@ class FlextInfraServiceCheckMixin:
     def fix_pyrefly_config(
         self,
         params: FlextInfraModelsCheck.FixPyreflyConfigCommand,
-    ) -> r[bool]:
+    ) -> p.Result[bool]:
         """Repair workspace pyrefly configuration through the public facade."""
         fixer_cls = FlextInfraConfigFixer
         fixer = fixer_cls(workspace=params.workspace_path)

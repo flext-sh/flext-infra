@@ -8,7 +8,7 @@ from functools import cache
 from pathlib import Path
 from typing import ClassVar
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import c, t
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 
@@ -71,12 +71,17 @@ class FlextInfraUtilitiesDiscovery:
         return str(wrapper_root) if wrapper_root is not None else ""
 
     @staticmethod
-    def discover_project_root_from_file(file_path: Path) -> Path | None:
+    def project_root(file_path: Path) -> Path | None:
         """Discover the enclosing project root for one file or directory path."""
         project_root = FlextInfraUtilitiesDiscovery._discover_project_root_from_path(
             str(file_path),
         )
         return Path(project_root) if project_root else None
+
+    @staticmethod
+    def discover_project_root_from_file(file_path: Path) -> Path | None:
+        """Return the enclosing project root for one file via the canonical resolver."""
+        return FlextInfraUtilitiesDiscovery.project_root(file_path)
 
     @staticmethod
     @cache
@@ -139,7 +144,7 @@ class FlextInfraUtilitiesDiscovery:
         )
 
     @staticmethod
-    def discover_package_from_file(file_path: Path) -> str:
+    def package_name(file_path: Path) -> str:
         """Discover the module or package path for one Python file or package directory."""
         return FlextInfraUtilitiesDiscovery._discover_package_from_path(str(file_path))
 
@@ -268,11 +273,24 @@ class FlextInfraUtilitiesDiscovery:
     def rope_workspace_root(workspace_root: Path) -> Path:
         """Return the canonical root for a shared Rope project."""
         resolved_root = workspace_root.resolve()
+        has_local_scan_dirs = any(
+            (resolved_root / dir_name).is_dir()
+            for dir_name in c.Infra.MRO_SCAN_DIRECTORIES
+        )
+        has_project_marker = any(
+            candidate.is_file()
+            for candidate in (
+                resolved_root / c.Infra.PYPROJECT_FILENAME,
+                resolved_root / c.Infra.GO_MOD,
+                resolved_root / c.Infra.MAKEFILE_FILENAME,
+            )
+        )
+        if has_local_scan_dirs and not has_project_marker:
+            return resolved_root
         if FlextInfraUtilitiesDiscovery._child_project_roots(resolved_root):
             return resolved_root
         project_root = (
-            FlextInfraUtilitiesDiscovery.discover_project_root_from_file(resolved_root)
-            or resolved_root
+            FlextInfraUtilitiesDiscovery.project_root(resolved_root) or resolved_root
         )
         if FlextInfraUtilitiesDiscovery._sibling_project_roots(project_root):
             return project_root.parent
@@ -284,7 +302,7 @@ class FlextInfraUtilitiesDiscovery:
         *,
         skip_dirs: frozenset[str] | None = None,
         project_paths: Sequence[Path] | None = None,
-    ) -> r[Sequence[Path]]:
+    ) -> p.Result[Sequence[Path]]:
         """Find all ``pyproject.toml`` files under one workspace root."""
         if not workspace_root.exists():
             return r[Sequence[Path]].ok([])
@@ -325,12 +343,12 @@ class FlextInfraUtilitiesDiscovery:
         )
         if not constants_file.is_file():
             return ()
-        project_root = FlextInfraUtilitiesDiscovery.discover_project_root_from_file(
+        project_root = FlextInfraUtilitiesDiscovery.project_root(
             constants_file,
         )
         if project_root is None:
             return ()
-        current_module = FlextInfraUtilitiesDiscovery.discover_package_from_file(
+        current_module = FlextInfraUtilitiesDiscovery.package_name(
             constants_file,
         )
         cache_key = (str(constants_file.resolve()), return_module)

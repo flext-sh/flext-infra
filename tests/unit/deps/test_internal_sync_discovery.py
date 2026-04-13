@@ -5,7 +5,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import FlextInfraInternalDependencySyncService
 from tests import t
 
@@ -15,11 +15,11 @@ class _TomlReaderStub:
 
     def __init__(
         self,
-        fn: Callable[[Path], r[t.Infra.ContainerDict]],
+        fn: Callable[[Path], p.Result[t.Infra.ContainerDict]],
     ) -> None:
         self._fn = fn
 
-    def read_plain(self, path: Path) -> r[t.Infra.ContainerDict]:
+    def read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:
         """Delegate to the callable provided at construction."""
         return self._fn(path)
 
@@ -28,7 +28,7 @@ def _set_toml_stub(
     service: FlextInfraInternalDependencySyncService,
     value: r[t.Infra.ContainerDict],
 ) -> None:
-    def _reader(_path: Path) -> r[t.Infra.ContainerDict]:
+    def _reader(_path: Path) -> p.Result[t.Infra.ContainerDict]:
         return value
 
     service.toml = _TomlReaderStub(fn=_reader)
@@ -36,11 +36,11 @@ def _set_toml_stub(
 
 def _set_toml_sequence(
     service: FlextInfraInternalDependencySyncService,
-    values: Sequence[r[t.Infra.ContainerDict]],
+    values: Sequence[p.Result[t.Infra.ContainerDict]],
 ) -> None:
     state = {"index": 0}
 
-    def _next(_path: Path) -> r[t.Infra.ContainerDict]:
+    def _next(_path: Path) -> p.Result[t.Infra.ContainerDict]:
         item = values[state["index"]]
         state["index"] += 1
         return item

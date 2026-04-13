@@ -16,7 +16,7 @@ from typing import override
 
 from pydantic import PrivateAttr
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import (
     FlextInfraCodegenGeneration,
     FlextInfraServiceBase,
@@ -51,7 +51,7 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
         return tuple(sorted(self._modified_files))
 
     @override
-    def execute(self) -> r[bool]:
+    def execute(self) -> p.Result[bool]:
         """Execute lazy-init directly from the validated CLI service model."""
         errors = self.generate_inits(check_only=self.check_only)
         if errors > 0:

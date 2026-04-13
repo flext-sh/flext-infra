@@ -8,7 +8,7 @@ from typing import overload, override
 
 import pytest
 
-from flext_core import r
+from flext_core import p, r
 
 try:
     from flext_infra import (
@@ -35,7 +35,7 @@ class EngineSafetyStub(FlextInfraRefactorSafetyManager):
         workspace_root: Path,
         *,
         label: str = "flext-refactor-pre-transform",
-    ) -> r[str]:
+    ) -> p.Result[str]:
         _ = workspace_root
         _ = label
         self.calls.append("stash")
@@ -49,7 +49,7 @@ class EngineSafetyStub(FlextInfraRefactorSafetyManager):
         status: str,
         stash_ref: str,
         processed_targets: t.StrSequence,
-    ) -> r[bool]:
+    ) -> p.Result[bool]:
         _ = workspace_root
         _ = status
         _ = stash_ref
@@ -58,13 +58,13 @@ class EngineSafetyStub(FlextInfraRefactorSafetyManager):
         return r[bool].ok(True)
 
     @override
-    def run_semantic_validation(self, workspace_root: Path) -> r[bool]:
+    def run_semantic_validation(self, workspace_root: Path) -> p.Result[bool]:
         _ = workspace_root
         self.calls.append("validate")
         return r[bool].ok(True)
 
     @override
-    def clear_checkpoint(self, *, keep: Sequence[Path] = ()) -> r[bool]:
+    def clear_checkpoint(self, *, keep: Sequence[Path] = ()) -> p.Result[bool]:
         self.kept_paths = list(keep)
         self.calls.append("clear")
         return r[bool].ok(True)
@@ -75,7 +75,7 @@ class EngineSafetyStub(FlextInfraRefactorSafetyManager):
         self.calls.append("stop")
 
     @overload
-    def rollback(self, workspace_root: Path, stash_ref: str = "") -> r[bool]: ...
+    def rollback(self, workspace_root: Path, stash_ref: str = "") -> p.Result[bool]: ...
 
     @overload
     def rollback(self, workspace_root: str, /) -> None: ...
@@ -85,7 +85,7 @@ class EngineSafetyStub(FlextInfraRefactorSafetyManager):
         self,
         workspace_root: Path | str,
         stash_ref: str = "",
-    ) -> r[bool] | None:
+    ) -> p.Result[bool] | None:
         _ = stash_ref
         self.calls.append("rollback")
         if isinstance(workspace_root, Path):

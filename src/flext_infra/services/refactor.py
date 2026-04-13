@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from flext_cli.api import cli as cli_service
-from flext_core import r
+from flext_core import p, r
 from flext_infra import (
     FlextInfraNamespaceEnforcer,
     FlextInfraRefactorCensus,
@@ -24,7 +24,7 @@ class FlextInfraServiceRefactorMixin:
     def migrate_mro(
         self,
         params: m.Infra.RefactorMigrateMroInput,
-    ) -> r[m.Infra.MROMigrationReport]:
+    ) -> p.Result[m.Infra.MROMigrationReport]:
         """Run MRO migration through the public facade."""
         service = FlextInfraRefactorMigrateToClassMRO(
             workspace_root=params.workspace_path,
@@ -48,7 +48,7 @@ class FlextInfraServiceRefactorMixin:
     def enforce_namespace(
         self,
         params: m.Infra.RefactorNamespaceEnforceInput,
-    ) -> r[m.Infra.WorkspaceEnforcementReport]:
+    ) -> p.Result[m.Infra.WorkspaceEnforcementReport]:
         """Run namespace enforcement through the public facade."""
         enforcer = FlextInfraNamespaceEnforcer(workspace_root=params.workspace_path)
         if params.diff:
@@ -73,7 +73,7 @@ class FlextInfraServiceRefactorMixin:
     def run_refactor_census(
         self,
         params: m.Infra.RefactorCensusInput,
-    ) -> r[m.Infra.Census.WorkspaceReport]:
+    ) -> p.Result[m.Infra.Census.WorkspaceReport]:
         """Run the public refactor census flow."""
         census = FlextInfraRefactorCensus()
         result = census.run(
@@ -101,7 +101,7 @@ class FlextInfraServiceRefactorMixin:
     def run_accessor_migration(
         self,
         params: m.Infra.AccessorMigrationInput,
-    ) -> r[m.Infra.AccessorMigrationReport]:
+    ) -> p.Result[m.Infra.AccessorMigrationReport]:
         """Run accessor migration preview/apply through the public facade."""
         service = FlextInfraAccessorMigrationOrchestrator(
             workspace=params.workspace_path,

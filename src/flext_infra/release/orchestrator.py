@@ -16,7 +16,7 @@ from typing import Annotated, override
 
 from pydantic import Field
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import c, m, s, t, u
 
 from .orchestrator_phases import FlextInfraReleaseOrchestratorPhases
@@ -93,7 +93,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
         return names or None
 
     @override
-    def execute(self) -> r[bool]:
+    def execute(self) -> p.Result[bool]:
         """Execute the release CLI flow."""
         root_result = u.Infra.workspace_root(self.workspace_root)
         if root_result.failure:
@@ -140,7 +140,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
         bump_arg: str,
         interactive: int,
         root_path: Path,
-    ) -> r[str]:
+    ) -> p.Result[str]:
         """Resolve the target release version from explicit or derived inputs."""
         if version_arg:
             requested = str(version_arg)
@@ -168,7 +168,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
         return r[str].ok(str(bump_result.value))
 
     @staticmethod
-    def _resolve_tag(tag_arg: str, version: str) -> r[str]:
+    def _resolve_tag(tag_arg: str, version: str) -> p.Result[str]:
         """Resolve the git tag that should be created for the release."""
         if tag_arg:
             requested = str(tag_arg)
@@ -180,7 +180,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
     def run_release(
         self,
         release_config: m.Infra.ReleaseOrchestratorConfig,
-    ) -> r[bool]:
+    ) -> p.Result[bool]:
         """Run release workflow via DAG pipeline execution."""
         workspace_root = release_config.workspace_root
         version = release_config.version
@@ -294,10 +294,12 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
         self,
         phase_name: str,
         dispatch_cfg: m.Infra.ReleasePhaseDispatchConfig,
-    ) -> Callable[[m.Cli.PipelineStageContext], r[m.Cli.PipelineStageResult]]:
+    ) -> Callable[[m.Cli.PipelineStageContext], p.Result[m.Cli.PipelineStageResult]]:
         """Create a handler closure that adapts r[bool] to r[PipelineStageResult]."""
 
-        def handler(_ctx: m.Cli.PipelineStageContext) -> r[m.Cli.PipelineStageResult]:
+        def handler(
+            _ctx: m.Cli.PipelineStageContext,
+        ) -> p.Result[m.Cli.PipelineStageResult]:
             phase_cfg = dispatch_cfg.model_copy(update={"phase": phase_name})
             phase_result = self._dispatch_phase(phase_cfg)
             if phase_result.failure:
@@ -313,7 +315,9 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
 
         return handler
 
-    def phase_validate(self, workspace_root: Path, *, dry_run: bool = False) -> r[bool]:
+    def phase_validate(
+        self, workspace_root: Path, *, dry_run: bool = False
+    ) -> p.Result[bool]:
         """Execute validation phase via the workspace make validation target."""
         if dry_run:
             self.logger.info(
@@ -357,7 +361,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
         version: str,
         project_names: t.StrSequence,
         bump: str,
-    ) -> r[bool]:
+    ) -> p.Result[bool]:
         """Bump to the next development version."""
         bump_result = u.Infra.bump_version(version, bump)
         if bump_result.failure:
@@ -376,7 +380,9 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
             self.logger.info("release_next_dev_version", version=f"{next_version}-dev")
         return result
 
-    def _collect_changes(self, workspace_root: Path, previous: str, tag: str) -> r[str]:
+    def _collect_changes(
+        self, workspace_root: Path, previous: str, tag: str
+    ) -> p.Result[str]:
         """Collect Git commit messages between two tags."""
         rev = f"{previous}..{tag}" if previous else tag
         return u.Cli.capture([c.Infra.GIT, "log", "--oneline", rev], cwd=workspace_root)
@@ -386,7 +392,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
         workspace_root: Path,
         version: str,
         project_names: t.StrSequence,
-    ) -> r[bool]:
+    ) -> p.Result[bool]:
         """Create local release branches for workspace and projects."""
         branch = f"release/{version}"
         result = u.Cli.run_checked(
@@ -407,15 +413,15 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
         return r[bool].ok(True)
 
     @override
-    def _create_tag(self, workspace_root: Path, tag: str) -> r[bool]:
+    def _create_tag(self, workspace_root: Path, tag: str) -> p.Result[bool]:
         """Create an annotated Git tag if it does not already exist."""
-        exists_result = u.Cli.capture(
+        exists_capture = u.Cli.capture(
             [c.Infra.GIT, "tag", "-l", tag],
             cwd=workspace_root,
-        ).map(lambda value: value.strip() == tag)
-        if exists_result.failure:
-            return r[bool].fail(exists_result.error or "tag check failed")
-        if exists_result.value:
+        )
+        if exists_capture.failure:
+            return r[bool].fail(exists_capture.error or "tag check failed")
+        if exists_capture.unwrap().strip() == tag:
             return r[bool].ok(True)
         return u.Cli.run_checked(
             [c.Infra.GIT, "tag", "-a", tag, "-m", f"release: {tag}"],
@@ -425,7 +431,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
     def _dispatch_phase(
         self,
         ctx: m.Infra.ReleasePhaseDispatchConfig,
-    ) -> r[bool]:
+    ) -> p.Result[bool]:
         """Route to the correct phase method."""
         phase = ctx.phase
         if phase == c.Infra.VERB_VALIDATE:
@@ -443,7 +449,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
         self,
         ctx: m.Infra.ReleasePhaseDispatchConfig,
         output_path: Path,
-    ) -> r[bool]:
+    ) -> p.Result[bool]:
         """Generate release notes from Git history."""
         workspace_root = ctx.workspace_root
         tag = ctx.tag
@@ -452,7 +458,9 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
         changes_result = self._collect_changes(workspace_root, previous, tag)
         changes: str = str(changes_result.value) if changes_result.success else ""
         projects_result = u.Infra.resolve_projects(workspace_root, ctx.project_names)
-        project_list: Sequence[m.Infra.ProjectInfo] = projects_result.unwrap_or([])
+        project_list: Sequence[m.Infra.ProjectInfo] = (
+            projects_result.unwrap() if projects_result.success else []
+        )
         return u.Infra.generate_notes(
             ctx.version,
             tag,
@@ -461,7 +469,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
             output_path,
         )
 
-    def _previous_tag(self, workspace_root: Path, tag: str) -> r[str]:
+    def _previous_tag(self, workspace_root: Path, tag: str) -> p.Result[str]:
         """Find the tag immediately preceding the given tag."""
         return u.Cli.capture(
             [c.Infra.GIT, "describe", "--tags", "--abbrev=0", f"{tag}^"],
@@ -469,7 +477,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
         )
 
     @override
-    def _push_release(self, workspace_root: Path, tag: str) -> r[bool]:
+    def _push_release(self, workspace_root: Path, tag: str) -> p.Result[bool]:
         """Push branch and tag to remote origin."""
         return u.Cli.run_checked(
             [c.Infra.GIT, "push", c.Infra.GIT_ORIGIN, c.Infra.GIT_HEAD, tag],

@@ -51,7 +51,7 @@ class FlextInfraProjectMigrator(
         return f"[DRY-RUN] {action}" if dry_run else action
 
     @staticmethod
-    def _no_change_result(message: str, *, dry_run: bool) -> r[str]:
+    def _no_change_result(message: str, *, dry_run: bool) -> p.Result[str]:
         """Return a no-op result: dry-run shows message, normal returns empty."""
         if dry_run:
             return r[str].ok(f"[DRY-RUN] {message}")
@@ -59,7 +59,7 @@ class FlextInfraProjectMigrator(
 
     @staticmethod
     def _append_result(
-        result: r[str],
+        result: p.Result[str],
         changes: MutableSequence[str],
         errors: MutableSequence[str],
     ) -> None:
@@ -93,7 +93,7 @@ class FlextInfraProjectMigrator(
         )
 
     @override
-    def execute(self) -> r[Sequence[m.Infra.MigrationResult]]:
+    def execute(self) -> p.Result[Sequence[m.Infra.MigrationResult]]:
         """Execute the workspace migration flow."""
         dry_run = self.dry_run or not self.apply_changes
         result = self.migrate(
@@ -126,7 +126,7 @@ class FlextInfraProjectMigrator(
         *,
         workspace_root: Path,
         dry_run: bool,
-    ) -> r[Sequence[m.Infra.MigrationResult]]:
+    ) -> p.Result[Sequence[m.Infra.MigrationResult]]:
         """Build migration results for all discovered projects in a workspace."""
         resolved_root = workspace_root.resolve()
         if not resolved_root.exists():
@@ -169,7 +169,7 @@ class FlextInfraProjectMigrator(
         *,
         dry_run: bool,
         is_workspace_root: bool = False,
-    ) -> r[str]:
+    ) -> p.Result[str]:
         _ = is_workspace_root
         target = project_root / c.Infra.BASE_MK
         generator = self._get_generator()
@@ -200,7 +200,7 @@ class FlextInfraProjectMigrator(
             ),
         )
 
-    def _migrate_gitignore(self, project_root: Path, *, dry_run: bool) -> r[str]:
+    def _migrate_gitignore(self, project_root: Path, *, dry_run: bool) -> p.Result[str]:
         gitignore_path = project_root / c.Infra.GITIGNORE
         try:
             existing_lines = (
@@ -248,7 +248,7 @@ class FlextInfraProjectMigrator(
             ),
         )
 
-    def _migrate_makefile(self, project_root: Path, *, dry_run: bool) -> r[str]:
+    def _migrate_makefile(self, project_root: Path, *, dry_run: bool) -> p.Result[str]:
         makefile_path = project_root / c.Infra.MAKEFILE_FILENAME
         if not makefile_path.exists():
             return self._no_change_result("Makefile not found", dry_run=dry_run)
@@ -338,7 +338,7 @@ class FlextInfraProjectMigrator(
         *,
         project_name: str,
         dry_run: bool,
-    ) -> r[str]:
+    ) -> p.Result[str]:
         pyproject_path = project_root / c.Infra.PYPROJECT_FILENAME
         if not pyproject_path.exists():
             return self._no_change_result("pyproject.toml not found", dry_run=dry_run)
@@ -368,7 +368,7 @@ class FlextInfraProjectMigrator(
         pyproject_path: Path,
         *,
         dry_run: bool,
-    ) -> r[str]:
+    ) -> p.Result[str]:
         """Add flext-core dependency to the pyproject document and write if not dry-run."""
         project_table = u.Cli.toml_ensure_table(document, c.Infra.PROJECT)
         dependencies = list(

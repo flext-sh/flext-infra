@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import FlextInfraCodegenLazyInit, main as infra_main
 from tests import t, u
 
@@ -51,7 +51,7 @@ class TestHandleLazyInit:
     ) -> None:
         """lazy-init fails when the generator reports errors."""
 
-        def _fail_execute(_params: object) -> r[bool]:
+        def _fail_execute(_params: object) -> p.Result[bool]:
             return r[bool].fail("lazy-init failed")
 
         monkeypatch.setattr(

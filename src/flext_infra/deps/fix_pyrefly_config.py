@@ -13,7 +13,7 @@ from typing import override
 
 from pydantic import ValidationError
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import (
     FlextInfraExtraPathsManager,
     c,
@@ -46,10 +46,12 @@ class FlextInfraConfigFixer(s[bool]):
         self._tool_config: m.Infra.ToolConfigDocument = config_result.value
 
     @override
-    def execute(self) -> r[bool]:
+    def execute(self) -> p.Result[bool]:
         return r[bool].fail("Use run() directly")
 
-    def process_file(self, path: Path, *, dry_run: bool = False) -> r[t.StrSequence]:
+    def process_file(
+        self, path: Path, *, dry_run: bool = False
+    ) -> p.Result[t.StrSequence]:
         """Process one pyproject.toml file and apply fixes."""
         document_result = u.Cli.toml_read_document(path)
         if document_result.failure:
@@ -156,7 +158,7 @@ class FlextInfraConfigFixer(s[bool]):
         *,
         dry_run: bool = False,
         verbose: bool = False,
-    ) -> r[t.StrSequence]:
+    ) -> p.Result[t.StrSequence]:
         """Run pyrefly configuration fixes for selected projects."""
         project_paths = [
             (

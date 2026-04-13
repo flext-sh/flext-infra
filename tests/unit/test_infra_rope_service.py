@@ -89,6 +89,7 @@ class TestFlextInfraRopeWorkspace:
             assert layout.package_alias == "demo"
             assert layout.class_stem == "FlextDemo"
             assert layout.package_dir == package_root
+            assert layout.runtime_aliases == ("m",)
 
             convention = rope.convention(module_path)
             assert convention.module_name == "flext_demo.models"

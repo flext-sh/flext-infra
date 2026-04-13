@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import override
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import (
     FlextInfraCodegenCensus,
     FlextInfraCodegenLazyInit,
@@ -27,7 +27,7 @@ class FlextInfraConstantsCodegenQualityGate(s[bool]):
     """Run final constants migration checks with before/after comparison."""
 
     @override
-    def execute(self) -> r[bool]:
+    def execute(self) -> p.Result[bool]:
         """Execute the quality gate and return its CLI success/failure status."""
         report = self.build_report()
         verdict = u.Infra.pick_str(report, "verdict", "FAIL")

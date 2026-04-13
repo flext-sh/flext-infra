@@ -270,7 +270,7 @@ def test_accessor_migration_apply_writes_updated_source(
     tm.that(updated_source, has="successful_result")
     tm.that(updated_source, has="result.success")
     tm.that(updated_source, has="result.failure")
-    tm.that(updated_source, has="u.fetch_logger")
+    tm.that(updated_source, has="FlextLogger.fetch_logger")
     tm.that(updated_source, has="FlextUtilitiesBeartypeConf.build_beartype_conf")
     tm.that(updated_source, has="u.structlog_configured")
     tm.that(updated_source, has="u.resolve_log_level_from_config")

@@ -122,7 +122,7 @@ class FlextInfraSkillValidator(s[bool]):
         *,
         mode: str = c.Infra.MODE_BASELINE,
         _project_filter: t.StrSequence | None = None,
-    ) -> r[m.Infra.ValidationReport]:
+    ) -> p.Result[m.Infra.ValidationReport]:
         """Validate a single skill across workspace projects.
 
         Args:
@@ -208,17 +208,17 @@ class FlextInfraSkillValidator(s[bool]):
             )
 
     @override
-    def execute(self) -> r[bool]:
+    def execute(self) -> p.Result[bool]:
         """Execute the skill-validation CLI flow."""
-        return self.build_report(
+        report_result = self.build_report(
             self.workspace_root,
             self.skill,
             mode=self.mode,
-        ).flat_map(
-            lambda report: (
-                r[bool].ok(True) if report.passed else r[bool].fail(report.summary)
-            )
         )
+        if report_result.failure:
+            return r[bool].fail(report_result.error or "skill validation failed")
+        report = report_result.unwrap()
+        return r[bool].ok(True) if report.passed else r[bool].fail(report.summary)
 
     def _run_ast_grep_count(
         self,
@@ -254,7 +254,7 @@ class FlextInfraSkillValidator(s[bool]):
         )
         if result_wrapper.failure:
             return 0
-        result: p.Cli.CommandOutput = result_wrapper.value
+        result: m.Cli.CommandOutput = result_wrapper.value
         if result.exit_code not in {0, 1}:
             return 0
         count = 0
@@ -312,7 +312,7 @@ class FlextInfraSkillValidator(s[bool]):
         )
         if result_wrapper.failure:
             return 0
-        result: p.Cli.CommandOutput = result_wrapper.value
+        result: m.Cli.CommandOutput = result_wrapper.value
         count = self._parse_violation_count(result.stdout or "")
         if result.exit_code == 1:
             count = max(count, 1)

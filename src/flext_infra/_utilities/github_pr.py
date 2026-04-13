@@ -12,7 +12,7 @@ from collections.abc import MutableSequence
 from pathlib import Path
 
 from flext_cli import u
-from flext_core import r
+from flext_core import p, r
 from flext_infra import (
     FlextInfraUtilitiesDocsScope,
     FlextInfraUtilitiesReporting,
@@ -28,7 +28,7 @@ class FlextInfraUtilitiesGithubPr:
     def github_run_workspace_pull_requests(
         cls,
         request: m.Infra.GithubPullRequestWorkspaceRequest,
-    ) -> r[m.Infra.GithubPullRequestWorkspaceReport]:
+    ) -> p.Result[m.Infra.GithubPullRequestWorkspaceReport]:
         """Run pull-request commands across workspace repositories."""
         workspace_root = request.workspace_path
         projects_result = FlextInfraUtilitiesDocsScope.resolve_projects(
@@ -79,10 +79,12 @@ class FlextInfraUtilitiesGithubPr:
             )
         if context.request.checkpoint:
             cls._github_pr_checkpoint(repo_root, context.request.branch)
-        run_result: r[m.Infra.GithubPullRequestOutcome] = cls.github_run_pull_request(
-            repo_root=repo_root,
-            workspace_root=context.workspace_root,
-            request=context.request,
+        run_result: p.Result[m.Infra.GithubPullRequestOutcome] = (
+            cls.github_run_pull_request(
+                repo_root=repo_root,
+                workspace_root=context.workspace_root,
+                request=context.request,
+            )
         )
         if run_result.success:
             outcome = run_result.value
@@ -91,14 +93,14 @@ class FlextInfraUtilitiesGithubPr:
         return True
 
     @classmethod
-    def _github_pr_checkpoint(cls, repo_root: Path, branch: str) -> r[bool]:
-        changes_result = u.Cli.capture(
+    def _github_pr_checkpoint(cls, repo_root: Path, branch: str) -> p.Result[bool]:
+        changes_capture = u.Cli.capture(
             [c.Infra.GIT, "status", "--porcelain"],
             cwd=repo_root,
-        ).map(lambda value: bool(value.strip()))
-        if changes_result.failure:
-            return r[bool].fail(changes_result.error or "changes check failed")
-        if not changes_result.value:
+        )
+        if changes_capture.failure:
+            return r[bool].fail(changes_capture.error or "changes check failed")
+        if not changes_capture.unwrap().strip():
             return r[bool].ok(True)
         add_result = u.Cli.run_checked([c.Infra.GIT, "add", "-A"], cwd=repo_root)
         if add_result.failure:
@@ -132,7 +134,7 @@ class FlextInfraUtilitiesGithubPr:
         request: (
             m.Infra.GithubPullRequestRequest | m.Infra.GithubPullRequestWorkspaceRequest
         ),
-    ) -> r[m.Infra.GithubPullRequestOutcome]:
+    ) -> p.Result[m.Infra.GithubPullRequestOutcome]:
         """Execute one pull-request command for a single repository."""
         display = workspace_root.name if repo_root == workspace_root else repo_root.name
         report_dir = FlextInfraUtilitiesReporting.get_report_dir(

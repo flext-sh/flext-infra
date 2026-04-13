@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import c, t, u
 
 
@@ -40,14 +40,14 @@ class FlextInfraRefactorSafetyManager:
         workspace_root: Path,
         *,
         label: str = "flext-refactor-pre-transform",
-    ) -> r[str]:
+    ) -> p.Result[str]:
         """Back up files in workspace root and return label as reference."""
         _ = label
         py_files = list(workspace_root.rglob(c.Infra.EXT_PYTHON_GLOB))
         self._bak_paths = u.Infra.backup_files(py_files)
         return r[str].ok(str(workspace_root))
 
-    def rollback(self, workspace_root: Path, stash_ref: str = "") -> r[bool]:
+    def rollback(self, workspace_root: Path, stash_ref: str = "") -> p.Result[bool]:
         """Restore previously backed up files."""
         _ = workspace_root, stash_ref
         u.Infra.restore_files(self._bak_paths)
@@ -61,7 +61,7 @@ class FlextInfraRefactorSafetyManager:
         status: str,
         stash_ref: str,
         processed_targets: t.StrSequence,
-    ) -> r[bool]:
+    ) -> p.Result[bool]:
         """Persist checkpoint metadata for the current refactor run.
 
         The current safety flow relies on copy-on-write backups, so saving
@@ -81,7 +81,7 @@ class FlextInfraRefactorSafetyManager:
             "no tests collected" in normalized or "no tests ran" in normalized
         )
 
-    def run_semantic_validation(self, workspace_root: Path) -> r[bool]:
+    def run_semantic_validation(self, workspace_root: Path) -> p.Result[bool]:
         """Run import checks and tests against the workspace root."""
         if self._emergency_stop_reason:
             return r[bool].fail(
@@ -98,7 +98,7 @@ class FlextInfraRefactorSafetyManager:
             return r[bool].fail(tc.error or "test validation failed")
         return r[bool].ok(True)
 
-    def clear_checkpoint(self, *, keep: Sequence[Path] = ()) -> r[bool]:
+    def clear_checkpoint(self, *, keep: Sequence[Path] = ()) -> p.Result[bool]:
         """Clean up transient backups while preserving requested .bak files."""
         keep_paths = {
             path.with_suffix(path.suffix + c.Infra.SAFE_EXECUTION_BAK_SUFFIX)

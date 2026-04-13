@@ -34,7 +34,7 @@ class FlextInfraUtilitiesCodegenLazyAliases:
         dir_exports: Mapping[str, t.Infra.LazyImportMap],
     ) -> m.Infra.LazyInitPlan:
         init_path = pkg_dir / c.Infra.INIT_PY
-        current_pkg = FlextInfraUtilitiesDiscovery.discover_package_from_file(init_path)
+        current_pkg = FlextInfraUtilitiesDiscovery.package_name(init_path)
         context = m.Infra.LazyInitPackageContext(
             pkg_dir=pkg_dir,
             init_path=init_path,
@@ -100,13 +100,13 @@ class FlextInfraUtilitiesCodegenLazyAliases:
             ):
                 continue
             rel_path = py_file.relative_to(pkg_dir)
-            policy = FlextInfraUtilitiesCodegenNamespace.module_policy(
+            policy = FlextInfraUtilitiesCodegenNamespace.policy(
                 py_file,
                 rel_path=rel_path,
                 current_pkg=current_pkg,
             )
             module_path = (
-                FlextInfraUtilitiesDiscovery.discover_package_from_file(py_file)
+                FlextInfraUtilitiesDiscovery.package_name(py_file)
                 if policy.include_in_lazy_init
                 else ""
             )
@@ -180,7 +180,7 @@ class FlextInfraUtilitiesCodegenLazyAliases:
             child_init = child_dir / c.Infra.INIT_PY
             if not child_init.is_file():
                 continue
-            child_pkg = FlextInfraUtilitiesDiscovery.discover_package_from_file(
+            child_pkg = FlextInfraUtilitiesDiscovery.package_name(
                 child_init,
             )
             if not child_pkg:
@@ -217,11 +217,9 @@ class FlextInfraUtilitiesCodegenLazyAliases:
             pkg_dir,
             return_module=True,
         )
-        project_root = FlextInfraUtilitiesDiscovery.discover_project_root_from_file(
-            pkg_dir
-        )
+        project_root = FlextInfraUtilitiesDiscovery.project_root(pkg_dir)
         layout = (
-            FlextInfraUtilitiesCodegenNamespace.project_layout(project_root)
+            FlextInfraUtilitiesCodegenNamespace.layout(project_root)
             if inherited_key != "src" and project_root is not None
             else None
         )

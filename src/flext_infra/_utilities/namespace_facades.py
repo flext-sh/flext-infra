@@ -139,7 +139,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
             for entry in sorted(src_dir.iterdir(), key=lambda item: item.name)
             if entry.is_dir() and (entry / c.Infra.INIT_PY).is_file()
         ]
-        layout = FlextInfraUtilitiesCodegenNamespace.project_layout(project_root)
+        layout = FlextInfraUtilitiesCodegenNamespace.layout(project_root)
         if layout is None:
             return
         package_dir = (

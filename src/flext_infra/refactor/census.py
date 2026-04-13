@@ -33,7 +33,7 @@ class FlextInfraRefactorCensus:
         family_names: t.StrSequence | None = None,
         rule_names: t.StrSequence | None = None,
         include_local_scopes: bool = True,
-    ) -> r[m.Infra.Census.WorkspaceReport]:
+    ) -> p.Result[m.Infra.Census.WorkspaceReport]:
         """Execute the census with one shared Rope session."""
         started = time.monotonic()
         applied = frozenset[str]()

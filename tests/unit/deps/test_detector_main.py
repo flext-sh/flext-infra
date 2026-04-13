@@ -30,7 +30,7 @@ class _DepsStub(
         workspace_root: Path,
         *,
         projects_filter: t.StrSequence | None = None,
-    ) -> r[Sequence[Path]]:
+    ) -> p.Result[Sequence[Path]]:
         del workspace_root, projects_filter
         return r[Sequence[Path]].ok([self._project])
 
@@ -39,7 +39,7 @@ class _DepsStub(
         self,
         project_path: Path,
         venv_bin: Path,
-    ) -> r[t.Infra.Pair[Sequence[t.Infra.ContainerDict], int]]:
+    ) -> p.Result[t.Infra.Pair[Sequence[t.Infra.ContainerDict], int]]:
         del project_path, venv_bin
         return r[t.Infra.Pair[Sequence[t.Infra.ContainerDict], int]].ok(([], 0))
 
@@ -68,7 +68,7 @@ class _DepsStub(
         limits_path: Path | None = None,
         *,
         include_mypy: bool = True,
-    ) -> r[m.Infra.TypingsReport]:
+    ) -> p.Result[m.Infra.TypingsReport]:
         del project_path, venv_bin, limits_path
         del include_mypy
         return r[m.Infra.TypingsReport].ok(
@@ -88,7 +88,7 @@ class _DepsStub(
         self,
         workspace_root: Path,
         venv_bin: Path,
-    ) -> r[tuple[t.StrSequence, int]]:
+    ) -> p.Result[tuple[t.StrSequence, int]]:
         del workspace_root, venv_bin
         return r[tuple[t.StrSequence, int]].ok(([], 0))
 
@@ -96,7 +96,7 @@ class _DepsStub(
 class _RunnerStub(p.Infra.RunnerService):
     def __init__(
         self,
-        run_raw: Callable[..., r[m.Cli.CommandOutput]],
+        run_raw: Callable[..., p.Result[m.Cli.CommandOutput]],
     ) -> None:
         self._run_raw = run_raw
 
@@ -107,7 +107,7 @@ class _RunnerStub(p.Infra.RunnerService):
         cwd: Path | None = None,
         timeout: int | None = None,
         env: t.StrMapping | None = None,
-    ) -> r[m.Cli.CommandOutput]:
+    ) -> p.Result[m.Cli.CommandOutput]:
         return self._run_raw(
             cmd,
             cwd=cwd or Path.cwd(),
@@ -144,7 +144,7 @@ def _setup_typings_detector(
         cwd: Path,
         timeout: int,
         env: t.StrMapping,
-    ) -> r[m.Cli.CommandOutput]:
+    ) -> p.Result[m.Cli.CommandOutput]:
         del cwd, timeout, env
         captured_commands.append(cmd)
         return run_raw_result

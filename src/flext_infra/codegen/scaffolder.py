@@ -28,7 +28,7 @@ class FlextInfraCodegenScaffolder(FlextInfraServiceBase[str]):
     """Generates missing base modules in src/ and tests/ directories."""
 
     @override
-    def execute(self) -> r[str]:
+    def execute(self) -> p.Result[str]:
         """Execute scaffolding directly from the validated CLI model."""
         dry_run = self.dry_run or not self.apply_changes
         results = self.run(dry_run=dry_run)
@@ -69,7 +69,7 @@ class FlextInfraCodegenScaffolder(FlextInfraServiceBase[str]):
         if projects is not None:
             selected_projects = tuple(projects)
         else:
-            projects_result = u.Infra.discover_codegen_projects(self.workspace_root)
+            projects_result = u.Infra.projects(self.workspace_root)
             selected_projects = (
                 tuple(projects_result.unwrap()) if projects_result.success else ()
             )
@@ -94,7 +94,7 @@ class FlextInfraCodegenScaffolder(FlextInfraServiceBase[str]):
 
         """
         project_path = project.path
-        project_layout = u.Infra.project_layout(project_path)
+        project_layout = u.Infra.layout(project_path)
         if project_layout is None or not project_layout.class_stem:
             return m.Infra.ScaffoldResult(
                 project=project_path.name,

@@ -19,7 +19,7 @@ class FlextInfraInternalSyncRepoMixin:
 
     _OWNER_PATTERNS: tuple[t.Infra.RegexPattern, ...]
 
-    def _read_plain(self, path: Path) -> r[t.Infra.ContainerDict]:
+    def _read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:
         if self.toml is not None:
             return self.toml.read_plain(path)
         return u.Infra.read_plain(path)
@@ -91,7 +91,7 @@ class FlextInfraInternalSyncRepoMixin:
             )
         return mapping
 
-    def parse_repo_map(self, path: Path) -> r[Mapping[str, m.Infra.RepoUrls]]:
+    def parse_repo_map(self, path: Path) -> p.Result[Mapping[str, m.Infra.RepoUrls]]:
         """Parse flext-repo-map TOML into repository URL entries."""
         data_result = self._read_plain(path)
         if data_result.failure:

@@ -43,7 +43,7 @@ class TestFlextInfraNamespaceValidator:
         package_dir = project_root / "src" / "flext_core"
         package_dir.mkdir(parents=True)
         _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
-        layout = u.Infra.project_layout(project_root)
+        layout = u.Infra.layout(project_root)
         assert layout is not None
         tm.that(layout.class_stem, eq="Flext")
 

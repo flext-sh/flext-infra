@@ -29,7 +29,7 @@ class FlextInfraCodegenCensus(FlextInfraServiceBase[str]):
     """Read-only census service for namespace violation counting."""
 
     @override
-    def execute(self) -> r[str]:
+    def execute(self) -> p.Result[str]:
         """Execute the census directly from the validated CLI service model."""
         if self.apply_changes:
             return r[str].fail(
@@ -96,7 +96,7 @@ class FlextInfraCodegenCensus(FlextInfraServiceBase[str]):
         if projects is not None:
             selected_projects = tuple(projects)
         else:
-            projects_result = u.Infra.discover_codegen_projects(workspace)
+            projects_result = u.Infra.projects(workspace)
             selected_projects = (
                 tuple(projects_result.unwrap()) if projects_result.success else ()
             )
@@ -107,13 +107,14 @@ class FlextInfraCodegenCensus(FlextInfraServiceBase[str]):
         project: p.Infra.ProjectInfo,
     ) -> m.Infra.CensusReport:
         """Run census on a single project."""
-        violations = list(
-            u.Infra.parse_namespace_validation(
-                FlextInfraNamespaceValidator().validate(
-                    project.path,
-                    scan_tests=False,
-                ),
-            ).unwrap_or(())
+        violations_result = u.Infra.parse_namespace_validation(
+            FlextInfraNamespaceValidator().validate(
+                project.path,
+                scan_tests=False,
+            ),
+        )
+        violations = (
+            list(violations_result.unwrap()) if violations_result.success else []
         )
         return m.Infra.CensusReport(
             project=project.name,

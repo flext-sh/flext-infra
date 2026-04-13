@@ -16,7 +16,7 @@ from typing import Annotated, override
 
 from pydantic import Field
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import c, m, s, t, u
 
 
@@ -37,7 +37,7 @@ class FlextInfraInventoryService(s[bool]):
         workspace_root: Path,
         *,
         output_dir: Path | None = None,
-    ) -> r[m.Infra.InventoryReport]:
+    ) -> p.Result[m.Infra.InventoryReport]:
         """Build and write scripts inventory reports.
 
         Args:
@@ -112,12 +112,15 @@ class FlextInfraInventoryService(s[bool]):
             )
 
     @override
-    def execute(self) -> r[bool]:
+    def execute(self) -> p.Result[bool]:
         """Execute the inventory CLI flow."""
-        return self.generate(
+        result = self.generate(
             self.workspace_root,
             output_dir=self.output_dir,
-        ).map(lambda _: True)
+        )
+        if result.failure:
+            return r[bool].fail(result.error or "inventory generation failed")
+        return r[bool].ok(True)
 
 
 __all__: list[str] = ["FlextInfraInventoryService"]

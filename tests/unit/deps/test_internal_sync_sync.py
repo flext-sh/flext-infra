@@ -6,27 +6,29 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import FlextInfraInternalDependencySyncService, u
 from tests import t
 
 
 def _set_toml_stub(
     service: FlextInfraInternalDependencySyncService,
-    values: Sequence[r[t.Infra.ContainerDict]],
+    values: Sequence[p.Result[t.Infra.ContainerDict]],
 ) -> None:
     state = {"index": 0}
 
-    def _read(_path: Path) -> r[t.Infra.ContainerDict]:
+    def _read(_path: Path) -> p.Result[t.Infra.ContainerDict]:
         item = values[state["index"]]
         state["index"] += 1
         return item
 
     class _TomlReaderStub:
-        def __init__(self, fn: Callable[[Path], r[t.Infra.ContainerDict]]) -> None:
+        def __init__(
+            self, fn: Callable[[Path], p.Result[t.Infra.ContainerDict]]
+        ) -> None:
             self._fn = fn
 
-        def read_plain(self, path: Path) -> r[t.Infra.ContainerDict]:
+        def read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:
             return self._fn(path)
 
     service.toml = _TomlReaderStub(_read)
@@ -81,7 +83,7 @@ class TestSync:
         monkeypatch.setenv("FLEXT_STANDALONE", "")
         monkeypatch.setenv("FLEXT_WORKSPACE_ROOT", "")
 
-        def _git_run(_cmd: t.StrSequence, cwd: Path) -> r[str]:
+        def _git_run(_cmd: t.StrSequence, cwd: Path) -> p.Result[str]:
             _ = cwd
             return r[str].ok("")
 
@@ -121,7 +123,7 @@ class TestSync:
         monkeypatch.setenv("FLEXT_STANDALONE", "")
         monkeypatch.setenv("FLEXT_WORKSPACE_ROOT", "")
 
-        def _git_run(_cmd: t.StrSequence, cwd: Path) -> r[str]:
+        def _git_run(_cmd: t.StrSequence, cwd: Path) -> p.Result[str]:
             _ = cwd
             return r[str].ok("")
 

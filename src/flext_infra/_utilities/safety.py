@@ -11,7 +11,7 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from flext_cli import u
-from flext_core import r
+from flext_core import p, r
 from flext_infra import c, m
 
 
@@ -19,7 +19,7 @@ class FlextInfraUtilitiesSafety:
     """Static safety helpers for copy-on-write file protection."""
 
     @staticmethod
-    def create_checkpoint(repo: Path, *, label: str = "checkpoint") -> r[str]:
+    def create_checkpoint(repo: Path, *, label: str = "checkpoint") -> p.Result[str]:
         """Create a git-stash checkpoint for dirty repositories.
 
         Returns an empty string for non-repositories or clean trees.
@@ -56,7 +56,7 @@ class FlextInfraUtilitiesSafety:
         return r[str].ok(f"{label}: {stash_ref}")
 
     @staticmethod
-    def rollback_to_checkpoint(repo: Path, checkpoint: str = "") -> r[bool]:
+    def rollback_to_checkpoint(repo: Path, checkpoint: str = "") -> p.Result[bool]:
         """Restore a previously-created git-stash checkpoint.
 
         Returns success for non-repositories or empty checkpoint strings.

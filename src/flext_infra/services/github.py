@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import m, u
 
 
@@ -12,21 +12,21 @@ class FlextInfraServiceGithubMixin:
     def sync_github_workflows(
         self,
         params: m.Infra.GithubWorkflowSyncRequest,
-    ) -> r[m.Infra.GithubWorkflowSyncReport]:
+    ) -> p.Result[m.Infra.GithubWorkflowSyncReport]:
         """Sync workspace workflows through the public facade."""
         return u.Infra.github_sync_workflows(params)
 
     def lint_github_workflows(
         self,
         params: m.Infra.GithubWorkflowLintRequest,
-    ) -> r[m.Infra.GithubWorkflowLintOutcome]:
+    ) -> p.Result[m.Infra.GithubWorkflowLintOutcome]:
         """Lint workspace workflows through the public facade."""
         return u.Infra.github_lint_workflows(params)
 
     def run_github_pull_request(
         self,
         params: m.Infra.GithubPullRequestRequest,
-    ) -> r[m.Infra.GithubPullRequestOutcome]:
+    ) -> p.Result[m.Infra.GithubPullRequestOutcome]:
         """Run single-repository PR automation through the public facade."""
         result = u.Infra.github_run_pull_request(
             repo_root=params.repo_root_path,
@@ -44,7 +44,7 @@ class FlextInfraServiceGithubMixin:
     def run_github_workspace_pull_requests(
         self,
         params: m.Infra.GithubPullRequestWorkspaceRequest,
-    ) -> r[m.Infra.GithubPullRequestWorkspaceReport]:
+    ) -> p.Result[m.Infra.GithubPullRequestWorkspaceReport]:
         """Run workspace PR automation through the public facade."""
         return u.Infra.github_run_workspace_pull_requests(params)
 

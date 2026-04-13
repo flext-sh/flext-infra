@@ -35,7 +35,7 @@ class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
         self.toml: p.Infra.TomlReader | None = None
 
     @staticmethod
-    def ensure_symlink(target: Path, source: Path) -> r[bool]:
+    def ensure_symlink(target: Path, source: Path) -> p.Result[bool]:
         """Ensure target points to source via directory symlink."""
         try:
             dir_result = u.Cli.ensure_dir(target.parent)
@@ -70,20 +70,20 @@ class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
         return None
 
     @staticmethod
-    def validate_git_ref(ref_name: str) -> r[str]:
+    def validate_git_ref(ref_name: str) -> p.Result[str]:
         """Validate git reference name using project-safe regex."""
         if not c.Infra.GIT_REF_RE.fullmatch(ref_name):
             return r[str].fail(f"invalid git ref: {ref_name!r}")
         return r[str].ok(ref_name)
 
     @staticmethod
-    def validate_repo_url(repo_url: str) -> r[str]:
+    def validate_repo_url(repo_url: str) -> p.Result[str]:
         """Validate repository URL against allowed GitHub format."""
         if not c.Infra.GITHUB_REPO_URL_RE.fullmatch(repo_url):
             return r[str].fail(f"invalid repository URL: {repo_url!r}")
         return r[str].ok(repo_url)
 
-    def sync(self, project_root: Path) -> r[int]:
+    def sync(self, project_root: Path) -> p.Result[int]:
         """Synchronize internal dependencies via git clone or workspace symlinks."""
         deps_result = self.collect_internal_deps(project_root)
         if deps_result.failure:
@@ -151,7 +151,7 @@ class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
                 )
         return r[int].ok(0)
 
-    def collect_internal_deps(self, project_root: Path) -> r[Mapping[str, Path]]:
+    def collect_internal_deps(self, project_root: Path) -> p.Result[Mapping[str, Path]]:
         """Collect internal path dependencies from pyproject metadata."""
         pyproject = project_root / c.Infra.PYPROJECT_FILENAME
         if not pyproject.exists():
@@ -219,7 +219,9 @@ class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
                     )
         return r[Mapping[str, Path]].ok(result)
 
-    def ensure_checkout(self, dep_path: Path, repo_url: str, ref_name: str) -> r[bool]:
+    def ensure_checkout(
+        self, dep_path: Path, repo_url: str, ref_name: str
+    ) -> p.Result[bool]:
         """Ensure dependency checkout exists and matches requested ref."""
         safe_repo_url_result = self.validate_repo_url(repo_url)
         if safe_repo_url_result.failure:

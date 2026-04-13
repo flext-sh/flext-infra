@@ -15,7 +15,7 @@ from typing import Annotated, override
 
 from pydantic import Field
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import FlextInfraBaseMkGenerator, c, m, s, u
 
 
@@ -31,7 +31,7 @@ class FlextInfraBaseMkValidator(s[bool]):
         ),
     ] = None
 
-    def build_report(self, workspace_root: Path) -> r[m.Infra.ValidationReport]:
+    def build_report(self, workspace_root: Path) -> p.Result[m.Infra.ValidationReport]:
         """Validate root base.mk exists and matches generated template output.
 
         Args:
@@ -89,13 +89,13 @@ class FlextInfraBaseMkValidator(s[bool]):
             )
 
     @override
-    def execute(self) -> r[bool]:
+    def execute(self) -> p.Result[bool]:
         """Execute the basemk validation CLI flow."""
-        return self.build_report(self.workspace_root).flat_map(
-            lambda report: (
-                r[bool].ok(True) if report.passed else r[bool].fail(report.summary)
-            )
-        )
+        report_result = self.build_report(self.workspace_root)
+        if report_result.failure:
+            return r[bool].fail(report_result.error or "base.mk validation failed")
+        report = report_result.unwrap()
+        return r[bool].ok(True) if report.passed else r[bool].fail(report.summary)
 
 
 __all__: list[str] = ["FlextInfraBaseMkValidator"]

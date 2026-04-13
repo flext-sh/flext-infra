@@ -49,7 +49,7 @@ class FlextInfraWorkspaceMakefileGenerator:
             Path(__file__).parent.parent / "templates" / c.Infra.MAKEFILE_TEMPLATE_NAME
         )
 
-    def generate(self, workspace_root: Path) -> r[bool]:
+    def generate(self, workspace_root: Path) -> p.Result[bool]:
         """Regenerate the workspace root Makefile from the stored template.
 
         Args:
@@ -113,7 +113,7 @@ class FlextInfraWorkspaceMakefileGenerator:
             template_content += f"\n# Workspace-specific custom targets (optional, never overwritten by sync)\n{c.Infra.MAKEFILE_CUSTOM_INCLUDE}\n"
         return template_content
 
-    def _bootstrap_template(self, makefile: Path) -> r[bool]:
+    def _bootstrap_template(self, makefile: Path) -> p.Result[bool]:
         """Create the template from the current Makefile (one-time bootstrap)."""
         if not makefile.exists():
             return r[bool].ok(False)
@@ -150,7 +150,7 @@ class FlextInfraWorkspaceMakefileGenerator:
         *,
         pr_branch: str,
         template_text: str | None = None,
-    ) -> r[str]:
+    ) -> p.Result[str]:
         """Render the workspace Makefile template with canonical make metadata."""
         try:
             environment = Environment(

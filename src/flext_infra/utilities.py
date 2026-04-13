@@ -9,6 +9,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from pathlib import Path
+from typing import override
+
 from flext_cli import u
 from flext_infra import (
     FlextInfraUtilitiesBase,
@@ -94,6 +97,12 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesVersioning,
     ):
         """Infrastructure-domain utilities - all methods exposed directly."""
+
+        @staticmethod
+        @override
+        def package_name(path: Path, /) -> str:
+            """Resolve the canonical package name for a file-system path."""
+            return FlextInfraUtilitiesDiscovery.package_name(path)
 
 
 u = FlextInfraUtilities

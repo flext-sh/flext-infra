@@ -9,7 +9,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import c, m, t, u
 
 
@@ -17,14 +17,14 @@ class FlextInfraDependencyDetectionAnalysis:
     """Mixin for running external analysis tools and generating reports.
 
     Expects the concrete subclass to provide:
-    - ``_read_plain(path) -> r[ContainerDict]``
-    - ``_run_raw(cmd, *, cwd, timeout, env) -> r[CommandOutput]``
+    - ``_read_plain(path) -> p.Result[ContainerDict]``
+    - ``_run_raw(cmd, *, cwd, timeout, env) -> p.Result[CommandOutput]``
     - ``DEFAULT_MODULE_TO_TYPES_PACKAGE: StrMapping``
     """
 
     DEFAULT_MODULE_TO_TYPES_PACKAGE: t.StrMapping
 
-    def _read_plain(self, path: Path) -> r[t.Infra.ContainerDict]:
+    def _read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:
         _ = path
         msg = "_read_plain must be implemented by the concrete analyzer"
         raise NotImplementedError(msg)
@@ -36,7 +36,7 @@ class FlextInfraDependencyDetectionAnalysis:
         cwd: Path | None = None,
         timeout: int | None = None,
         env: t.StrMapping | None = None,
-    ) -> r[m.Cli.CommandOutput]:
+    ) -> p.Result[m.Cli.CommandOutput]:
         _ = cmd, cwd, timeout, env
         msg = "_run_raw must be implemented by the concrete analyzer"
         raise NotImplementedError(msg)
@@ -148,7 +148,7 @@ class FlextInfraDependencyDetectionAnalysis:
         limits_path: Path | None = None,
         *,
         include_mypy: bool = True,
-    ) -> r[m.Infra.TypingsReport]:
+    ) -> p.Result[m.Infra.TypingsReport]:
         """Analyze project and generate typing stubs requirements report."""
         limits = self.load_dependency_limits(limits_path)
         exclude_set: t.Infra.StrSet = set()
@@ -229,7 +229,7 @@ class FlextInfraDependencyDetectionAnalysis:
         config_path: Path | None = None,
         json_output_path: Path | None = None,
         extend_exclude: t.StrSequence | None = None,
-    ) -> r[t.Infra.Pair[Sequence[t.Infra.ContainerDict], int]]:
+    ) -> p.Result[t.Infra.Pair[Sequence[t.Infra.ContainerDict], int]]:
         """Run deptry analysis on a project and parse JSON output."""
         settings = config_path or project_path / c.Infra.PYPROJECT_FILENAME
         if not settings.exists():
@@ -292,7 +292,7 @@ class FlextInfraDependencyDetectionAnalysis:
         venv_bin: Path,
         *,
         timeout: int = c.Infra.TIMEOUT_DEFAULT,
-    ) -> r[t.Infra.Pair[t.StrSequence, t.StrSequence]]:
+    ) -> p.Result[t.Infra.Pair[t.StrSequence, t.StrSequence]]:
         """Run mypy to detect missing type stubs and hinted packages."""
         mypy_bin = venv_bin / c.Infra.MYPY
         if not mypy_bin.exists():
@@ -335,7 +335,7 @@ class FlextInfraDependencyDetectionAnalysis:
         self,
         workspace_root: Path,
         venv_bin: Path,
-    ) -> r[t.Infra.Pair[t.StrSequence, int]]:
+    ) -> p.Result[t.Infra.Pair[t.StrSequence, int]]:
         """Run pip check to detect dependency conflicts in workspace."""
         pip = venv_bin / "pip"
         if not pip.exists():

@@ -40,11 +40,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             class DeptrySelector(FlextInfraUtilities.Infra):
                 """Protocol-compatible selector backed by a real Result."""
 
-                _result: ClassVar[r[Sequence[m.Infra.ProjectInfo]] | None] = None
+                _result: ClassVar[p.Result[Sequence[m.Infra.ProjectInfo]] | None] = None
 
                 def __init__(
                     self,
-                    result: r[Sequence[m.Infra.ProjectInfo]],
+                    result: p.Result[Sequence[m.Infra.ProjectInfo]],
                 ) -> None:
                     type(self)._result = result
 
@@ -53,7 +53,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                 def resolve_projects(
                     workspace_root: Path,
                     names: t.StrSequence,
-                ) -> r[Sequence[m.Infra.ProjectInfo]]:
+                ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
                     del workspace_root, names
                     result = TestsFlextInfraUtilities.Infra.Tests.DeptrySelector._result
                     if result is None:
@@ -67,7 +67,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
 
                 def __init__(
                     self,
-                    result: r[m.Cli.CommandOutput],
+                    result: p.Result[m.Cli.CommandOutput],
                 ) -> None:
                     self._result = result
 
@@ -79,7 +79,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                     timeout: int | None = None,
                     env: t.Cli.StrEnvMapping | None = None,
                     input_data: bytes | None = None,
-                ) -> r[m.Cli.CommandOutput]:
+                ) -> p.Result[m.Cli.CommandOutput]:
                     del cmd, cwd, timeout, env, input_data
                     return self._result
 
@@ -90,7 +90,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                     cwd: t.Cli.PathLike | None = None,
                     timeout: int | None = None,
                     env: t.Cli.StrEnvMapping | None = None,
-                ) -> r[m.Cli.CommandOutput]:
+                ) -> p.Result[m.Cli.CommandOutput]:
                     del cmd, cwd, timeout, env
                     if self._result.failure:
                         return self._result
@@ -108,10 +108,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                     cwd: t.Cli.PathLike | None = None,
                     timeout: int | None = None,
                     env: t.Cli.StrEnvMapping | None = None,
-                ) -> r[str]:
-                    return self.run(cmd, cwd=cwd, timeout=timeout, env=env).map(
-                        lambda output: output.stdout.strip(),
-                    )
+                ) -> p.Result[str]:
+                    result = self.run(cmd, cwd=cwd, timeout=timeout, env=env)
+                    if result.failure:
+                        return r[str].fail(result.error or "Command failed")
+                    return r[str].ok(result.unwrap().stdout.strip())
 
                 @override
                 def run_checked(
@@ -120,10 +121,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                     cwd: t.Cli.PathLike | None = None,
                     timeout: int | None = None,
                     env: t.Cli.StrEnvMapping | None = None,
-                ) -> r[bool]:
-                    return self.run(cmd, cwd=cwd, timeout=timeout, env=env).map(
-                        lambda _output: True,
-                    )
+                ) -> p.Result[bool]:
+                    result = self.run(cmd, cwd=cwd, timeout=timeout, env=env)
+                    if result.failure:
+                        return r[bool].fail(result.error or "Command failed")
+                    return r[bool].ok(True)
 
                 @override
                 def run_to_file(
@@ -133,7 +135,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                     cwd: t.Cli.PathLike | None = None,
                     timeout: int | None = None,
                     env: t.Cli.StrEnvMapping | None = None,
-                ) -> r[int]:
+                ) -> p.Result[int]:
                     result = self.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
                     if result.failure:
                         return r[int].fail(result.error or "Command failed")
@@ -153,13 +155,13 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
 
                 def __init__(
                     self,
-                    values: Sequence[r[t.Infra.ContainerDict]],
+                    values: Sequence[p.Result[t.Infra.ContainerDict]],
                 ) -> None:
                     self._values = list(values)
                     self._index = 0
 
                 @override
-                def read_plain(self, path: Path) -> r[t.Infra.ContainerDict]:
+                def read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:
                     del path
                     current = self._index
                     self._index = current + 1
@@ -178,13 +180,13 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
 
                 def __init__(
                     self,
-                    results: Sequence[r[m.Cli.CommandOutput]],
+                    results: Sequence[p.Result[m.Cli.CommandOutput]],
                 ) -> None:
                     self._results = list(results)
                     self._index = 0
                     self.commands: MutableSequence[tuple[str, ...]] = []
 
-                def _next_result(self) -> r[m.Cli.CommandOutput]:
+                def _next_result(self) -> p.Result[m.Cli.CommandOutput]:
                     current = self._index
                     self._index = current + 1
                     if not self._results:
@@ -205,7 +207,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                     timeout: int | None = None,
                     env: t.Cli.StrEnvMapping | None = None,
                     input_data: bytes | None = None,
-                ) -> r[m.Cli.CommandOutput]:
+                ) -> p.Result[m.Cli.CommandOutput]:
                     self.commands.append(tuple(cmd))
                     del cmd, cwd, timeout, env, input_data
                     return self._next_result()
@@ -217,7 +219,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                     cwd: t.Cli.PathLike | None = None,
                     timeout: int | None = None,
                     env: t.Cli.StrEnvMapping | None = None,
-                ) -> r[m.Cli.CommandOutput]:
+                ) -> p.Result[m.Cli.CommandOutput]:
                     self.commands.append(tuple(cmd))
                     del cmd, cwd, timeout, env
                     result = self._next_result()
@@ -237,10 +239,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                     cwd: t.Cli.PathLike | None = None,
                     timeout: int | None = None,
                     env: t.Cli.StrEnvMapping | None = None,
-                ) -> r[str]:
-                    return self.run(cmd, cwd=cwd, timeout=timeout, env=env).map(
-                        lambda output: output.stdout.strip(),
-                    )
+                ) -> p.Result[str]:
+                    result = self.run(cmd, cwd=cwd, timeout=timeout, env=env)
+                    if result.failure:
+                        return r[str].fail(result.error or "Command failed")
+                    return r[str].ok(result.unwrap().stdout.strip())
 
                 @override
                 def run_checked(
@@ -249,10 +252,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                     cwd: t.Cli.PathLike | None = None,
                     timeout: int | None = None,
                     env: t.Cli.StrEnvMapping | None = None,
-                ) -> r[bool]:
-                    return self.run(cmd, cwd=cwd, timeout=timeout, env=env).map(
-                        lambda _output: True,
-                    )
+                ) -> p.Result[bool]:
+                    result = self.run(cmd, cwd=cwd, timeout=timeout, env=env)
+                    if result.failure:
+                        return r[bool].fail(result.error or "Command failed")
+                    return r[bool].ok(True)
 
                 @override
                 def run_to_file(
@@ -262,7 +266,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                     cwd: t.Cli.PathLike | None = None,
                     timeout: int | None = None,
                     env: t.Cli.StrEnvMapping | None = None,
-                ) -> r[int]:
+                ) -> p.Result[int]:
                     result = self.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
                     if result.failure:
                         return r[int].fail(result.error or "Command failed")
@@ -278,11 +282,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                     return r[int].ok(result.value.exit_code)
 
             @staticmethod
-            def ok_result[ValueT](value: ValueT) -> r[ValueT]:
+            def ok_result[ValueT](value: ValueT) -> p.Result[ValueT]:
                 return r[ValueT].ok(value)
 
             @staticmethod
-            def fail_result[ValueT](message: str) -> r[ValueT]:
+            def fail_result[ValueT](message: str) -> p.Result[ValueT]:
                 return r[ValueT].fail(message)
 
             @staticmethod
@@ -294,7 +298,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             @staticmethod
             def infra_mapping_result(
                 value: t.Infra.InfraMapping,
-            ) -> r[t.Infra.ContainerDict]:
+            ) -> p.Result[t.Infra.ContainerDict]:
                 return r[t.Infra.ContainerDict].ok(
                     TestsFlextInfraUtilities.Infra.Tests.infra_mapping(value),
                 )
@@ -361,7 +365,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                 def discover_projects(
                     self,
                     workspace_root: Path,
-                ) -> r[Sequence[m.Infra.ProjectInfo]]:
+                ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
                     _ = workspace_root
                     if self._error:
                         return r[Sequence[m.Infra.ProjectInfo]].fail(self._error)
@@ -379,7 +383,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                 def generate_basemk(
                     self,
                     settings: m.Infra.BaseMkConfig | t.ScalarMapping | None = None,
-                ) -> r[str]:
+                ) -> p.Result[str]:
                     del settings
                     if self._fail:
                         return r[str].fail(self._fail)
@@ -936,7 +940,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                 workspace_root: Path,
                 project: str | None = None,
                 dry_run: bool = True,
-            ) -> r[str]:
+            ) -> p.Result[str]:
                 if project is None:
                     return FlextInfraCodegenConsolidator(
                         workspace=workspace_root,
@@ -1349,12 +1353,12 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
 
             @staticmethod
             def create_fake_run_raw(
-                result: r[m.Cli.CommandOutput] | str,
+                result: p.Result[m.Cli.CommandOutput] | str,
             ) -> t.Infra.Tests.RawRunStub:
                 def _fake_run_raw(
                     _cmd: t.StrSequence,
                     **_kw: object,
-                ) -> r[m.Cli.CommandOutput]:
+                ) -> p.Result[m.Cli.CommandOutput]:
                     del _cmd, _kw
                     return (
                         r[m.Cli.CommandOutput].fail(result)
@@ -1403,7 +1407,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                     workspace_root: Path,
                     *,
                     projects_filter: t.StrSequence | None = None,
-                ) -> r[Sequence[Path]]:
+                ) -> p.Result[Sequence[Path]]:
                     del workspace_root, projects_filter
                     if self.discovery_failure is not None:
                         return r[Sequence[Path]].fail(self.discovery_failure)
@@ -1414,7 +1418,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                     self,
                     project_path: Path,
                     venv_bin: Path,
-                ) -> r[t.Infra.Pair[Sequence[t.Infra.ContainerDict], int]]:
+                ) -> p.Result[t.Infra.Pair[Sequence[t.Infra.ContainerDict], int]]:
                     del project_path, venv_bin
                     if self.deptry_failure is not None:
                         return r[
@@ -1441,7 +1445,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                     limits_path: Path | None = None,
                     *,
                     include_mypy: bool = True,
-                ) -> r[m.Infra.TypingsReport]:
+                ) -> p.Result[m.Infra.TypingsReport]:
                     del project_path, venv_bin, limits_path
                     del include_mypy
                     if self.typings_failure is not None:
