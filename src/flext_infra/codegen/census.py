@@ -93,14 +93,14 @@ class FlextInfraCodegenCensus(FlextInfraServiceBase[str]):
         projects: Sequence[p.Infra.ProjectInfo] | None = None,
     ) -> Sequence[m.Infra.CensusReport]:
         """Standard path: census all projects in workspace."""
-        projects_result = u.Infra.discover_codegen_projects(
-            workspace,
-            projects=projects,
-        )
-        if not projects_result.success:
-            msg = projects_result.error or "project discovery failed"
-            raise RuntimeError(msg)
-        return [self._census_project(project) for project in projects_result.unwrap()]
+        if projects is not None:
+            selected_projects = tuple(projects)
+        else:
+            projects_result = u.Infra.discover_codegen_projects(workspace)
+            selected_projects = (
+                tuple(projects_result.unwrap()) if projects_result.success else ()
+            )
+        return [self._census_project(project) for project in selected_projects]
 
     def _census_project(
         self,

@@ -15,7 +15,6 @@ from typing import override
 
 from flext_core import r
 from flext_infra import (
-    FlextInfraNamespaceValidator,
     FlextInfraServiceBase,
     c,
     m,
@@ -67,15 +66,16 @@ class FlextInfraCodegenScaffolder(FlextInfraServiceBase[str]):
             List of ScaffoldResult models, one per project.
 
         """
-        projects_result = u.Infra.discover_codegen_projects(
-            self.workspace_root,
-            projects=projects,
-        )
-        if not projects_result.success:
-            return []
+        if projects is not None:
+            selected_projects = tuple(projects)
+        else:
+            projects_result = u.Infra.discover_codegen_projects(self.workspace_root)
+            selected_projects = (
+                tuple(projects_result.unwrap()) if projects_result.success else ()
+            )
         return [
             self._scaffold_project(project, dry_run=dry_run)
-            for project in projects_result.unwrap()
+            for project in selected_projects
         ]
 
     def _scaffold_project(
@@ -94,9 +94,8 @@ class FlextInfraCodegenScaffolder(FlextInfraServiceBase[str]):
 
         """
         project_path = project.path
-        package_name = project.package_name
-        prefix = FlextInfraNamespaceValidator.derive_prefix(project_path)
-        if not prefix:
+        project_layout = u.Infra.project_layout(project_path)
+        if project_layout is None or not project_layout.class_stem:
             return m.Infra.ScaffoldResult(
                 project=project_path.name,
                 files_created=[],
@@ -104,30 +103,22 @@ class FlextInfraCodegenScaffolder(FlextInfraServiceBase[str]):
             )
         files_created: MutableSequence[str] = []
         files_skipped: MutableSequence[str] = []
-        if package_name:
-            pkg_dir = (
-                project_path
-                / c.Infra.DEFAULT_SRC_DIR
-                / Path(
-                    *package_name.split("."),
-                )
+        if project_layout.init_path.is_file():
+            self._scaffold_dir(
+                target_dir=project_layout.package_dir,
+                prefix=project_layout.class_stem,
+                modules=c.Infra.SRC_MODULES,
+                test_prefix="",
+                inherit_project_facade=False,
+                dry_run=dry_run,
+                files_created=files_created,
+                files_skipped=files_skipped,
             )
-            if (pkg_dir / c.Infra.INIT_PY).is_file():
-                self._scaffold_dir(
-                    target_dir=pkg_dir,
-                    prefix=prefix,
-                    modules=c.Infra.SRC_MODULES,
-                    test_prefix="",
-                    inherit_project_facade=False,
-                    dry_run=dry_run,
-                    files_created=files_created,
-                    files_skipped=files_skipped,
-                )
         tests_dir = project_path / c.Infra.DIR_TESTS
         if tests_dir.is_dir():
             self._scaffold_dir(
                 target_dir=tests_dir,
-                prefix=prefix,
+                prefix=project_layout.class_stem,
                 modules=c.Infra.TESTS_MODULES,
                 test_prefix="Tests",
                 inherit_project_facade=False,
@@ -139,7 +130,7 @@ class FlextInfraCodegenScaffolder(FlextInfraServiceBase[str]):
         if examples_dir.is_dir():
             self._scaffold_dir(
                 target_dir=examples_dir,
-                prefix=prefix,
+                prefix=project_layout.class_stem,
                 modules=c.Infra.SRC_MODULES,
                 test_prefix="Examples",
                 inherit_project_facade=True,
@@ -151,7 +142,7 @@ class FlextInfraCodegenScaffolder(FlextInfraServiceBase[str]):
         if scripts_dir.is_dir():
             self._scaffold_dir(
                 target_dir=scripts_dir,
-                prefix=prefix,
+                prefix=project_layout.class_stem,
                 modules=c.Infra.SRC_MODULES,
                 test_prefix="Scripts",
                 inherit_project_facade=True,

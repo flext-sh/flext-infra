@@ -130,6 +130,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
         facade_statuses: Sequence[m.Infra.FacadeStatus],
         workspace_root: Path | None = None,
     ) -> None:
+        del project_name
         src_dir = project_root / c.Infra.DEFAULT_SRC_DIR
         if not src_dir.is_dir():
             return
@@ -138,12 +139,13 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
             for entry in sorted(src_dir.iterdir(), key=lambda item: item.name)
             if entry.is_dir() and (entry / c.Infra.INIT_PY).is_file()
         ]
-        if not package_dirs:
+        layout = FlextInfraUtilitiesCodegenNamespace.project_layout(project_root)
+        if layout is None:
             return
-        package_dir = package_dirs[0]
-        stem = FlextInfraUtilitiesCodegenNamespace.project_class_stem(
-            project_name=project_name,
+        package_dir = (
+            layout.package_dir if layout.package_dir.is_dir() else package_dirs[0]
         )
+        stem = layout.class_stem
         base_chains = (
             FlextInfraUtilitiesRefactorNamespaceFacades.build_expected_base_chains(
                 project_root=project_root,

@@ -11,6 +11,7 @@ from pydantic import Field, PrivateAttr
 
 from flext_core import r
 from flext_infra import c, m, s, t, u
+from flext_infra._utilities.rope_inventory import FlextInfraUtilitiesRopeInventory
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -44,6 +45,24 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
     _rope_workspace_root: Path = PrivateAttr()
     _rope_project: t.Infra.RopeProject | None = PrivateAttr(default=None)
     _workspace_index: m.Infra.RopeWorkspaceIndex | None = PrivateAttr(default=None)
+    _codegen_projects: tuple[p.Infra.ProjectInfo, ...] | None = PrivateAttr(
+        default=None,
+    )
+    _project_layout_cache: dict[str, m.Infra.RopeProjectLayout | None] = PrivateAttr(
+        default_factory=dict,
+    )
+    _package_context_cache: dict[str, m.Infra.LazyInitPackageContext] = PrivateAttr(
+        default_factory=dict,
+    )
+    _module_policy_cache: dict[tuple[str, str, str], m.Infra.NamespaceModulePolicy] = (
+        PrivateAttr(default_factory=dict)
+    )
+    _module_convention_cache: dict[str, m.Infra.RopeModuleConvention] = PrivateAttr(
+        default_factory=dict,
+    )
+    _module_object_cache: dict[tuple[str, bool], tuple[m.Infra.Census.Object, ...]] = (
+        PrivateAttr(default_factory=dict)
+    )
     _resource_cache: dict[str, t.Infra.RopeResource | None] = PrivateAttr(
         default_factory=dict,
     )
@@ -124,7 +143,8 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
     @override
     def execute(self) -> r[m.Infra.RopeWorkspaceSession]:
         """Materialize the public Rope session snapshot."""
-        return r[m.Infra.RopeWorkspaceSession].ok(self.session_snapshot())
+        snapshot: m.Infra.RopeWorkspaceSession = self.session_snapshot()
+        return r[m.Infra.RopeWorkspaceSession].ok(snapshot)
 
     def session_snapshot(self) -> m.Infra.RopeWorkspaceSession:
         """Return the current public Rope session state."""
@@ -137,6 +157,12 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
             workspace_index=self.workspace_index,
         )
 
+    def reload(self) -> m.Infra.RopeWorkspaceSession:
+        """Reopen the shared Rope project and drop all transient caches."""
+        self.close()
+        _ = self.rope_project
+        return self.session_snapshot()
+
     def resource(self, file_path: Path) -> t.Infra.RopeResource | None:
         """Return one cached Rope resource for the requested file path."""
         cache_key = str(file_path.resolve())
@@ -147,21 +173,212 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         self._resource_cache[cache_key] = resource
         return resource
 
-    def module_entry(
+    def module(
         self,
         file_path: Path,
     ) -> m.Infra.RopeModuleIndexEntry | None:
         """Return one indexed module entry for the requested file path."""
         return self.workspace_index.modules_by_path.get(str(file_path.resolve()))
 
-    def package_entry(
+    def package(
         self,
         package_dir: Path,
     ) -> m.Infra.RopePackageIndexEntry | None:
         """Return one indexed package entry for the requested directory."""
         return self.workspace_index.packages_by_dir.get(str(package_dir.resolve()))
 
-    def module_semantic_state(
+    def modules(
+        self,
+        *,
+        project_names: t.StrSequence | None = None,
+    ) -> t.SequenceOf[m.Infra.RopeModuleIndexEntry]:
+        """Return sorted module entries, optionally filtered by project names."""
+        modules = tuple(
+            sorted(
+                self.workspace_index.modules_by_path.values(),
+                key=lambda entry: entry.file_path.as_posix(),
+            )
+        )
+        if not project_names:
+            return modules
+        project_filter = frozenset(project_names)
+        return tuple(
+            entry
+            for entry in modules
+            if entry.project_root is not None
+            and entry.project_root.name in project_filter
+        )
+
+    def source(self, file_path: Path) -> str:
+        """Return one module source snapshot from the active Rope workspace."""
+        return self._resource_for(file_path).read()
+
+    def objects(
+        self,
+        file_path: Path,
+        *,
+        include_local_scopes: bool = True,
+    ) -> t.SequenceOf[m.Infra.Census.Object]:
+        """Return Rope-only discovered objects for one module path."""
+        resolved_file = file_path.resolve()
+        cache_key = (str(resolved_file), include_local_scopes)
+        cached = self._module_object_cache.get(cache_key)
+        if cached is not None:
+            return cached
+        objects = FlextInfraUtilitiesRopeInventory.objects(
+            self.rope_project,
+            self._resource_for(resolved_file),
+            module_entry=self.module(resolved_file),
+            convention=self.convention(resolved_file),
+            include_local_scopes=include_local_scopes,
+        )
+        self._module_object_cache[cache_key] = objects
+        return objects
+
+    def projects(self) -> t.SequenceOf[p.Infra.ProjectInfo]:
+        """Return the canonical codegen project selection for this workspace."""
+        if self._codegen_projects is None:
+            projects_result = u.Infra.discover_codegen_projects(self.workspace_root)
+            if projects_result.failure:
+                self._codegen_projects = ()
+            else:
+                discovered_projects: t.SequenceOf[p.Infra.ProjectInfo] = (
+                    projects_result.unwrap()
+                )
+                self._codegen_projects = tuple(discovered_projects)
+        return self._codegen_projects
+
+    def layout(
+        self,
+        project_root: Path,
+    ) -> m.Infra.RopeProjectLayout | None:
+        """Return one centralized project layout contract for codegen pipelines."""
+        resolved_root = project_root.resolve()
+        cache_key = str(resolved_root)
+        if cache_key in self._project_layout_cache:
+            return self._project_layout_cache[cache_key]
+        project_info = next(
+            (
+                project
+                for project in self.projects()
+                if project.path.resolve() == resolved_root
+            ),
+            None,
+        )
+        layout = u.Infra.project_layout(
+            resolved_root,
+            project=project_info,
+        )
+        self._project_layout_cache[cache_key] = layout
+        return layout
+
+    @override
+    def context(
+        self,
+        package_dir: Path,
+    ) -> m.Infra.LazyInitPackageContext:
+        """Return one centralized lazy-init package context for a package dir."""
+        resolved_dir = package_dir.resolve()
+        cache_key = str(resolved_dir)
+        cached = self._package_context_cache.get(cache_key)
+        if cached is not None:
+            return cached
+        package_entry = self.package(resolved_dir)
+        init_path = resolved_dir / c.Infra.INIT_PY
+        current_pkg = package_entry.package_name if package_entry is not None else ""
+        generated_init = init_path.is_file() and init_path.read_text(
+            encoding=c.Infra.ENCODING_DEFAULT,
+        ).startswith(c.Infra.AUTOGEN_HEADER)
+        context = m.Infra.LazyInitPackageContext(
+            pkg_dir=resolved_dir,
+            init_path=init_path,
+            current_pkg=current_pkg,
+            surface=current_pkg.split(".", maxsplit=1)[0] if current_pkg else "",
+            generated_init=generated_init,
+            importable=bool(current_pkg),
+        )
+        self._package_context_cache[cache_key] = context
+        return context
+
+    def policy(
+        self,
+        file_path: Path,
+        *,
+        rel_path: Path | None = None,
+        current_pkg: str = "",
+    ) -> m.Infra.NamespaceModulePolicy:
+        """Return the centralized naming policy for one module path."""
+        resolved_file = file_path.resolve()
+        resolved_rel_path = (
+            rel_path if rel_path is not None else Path(resolved_file.name)
+        )
+        cache_key = (str(resolved_file), str(resolved_rel_path), current_pkg)
+        cached = self._module_policy_cache.get(cache_key)
+        if cached is not None:
+            return cached
+        policy = u.Infra.module_policy(
+            resolved_file,
+            rel_path=resolved_rel_path,
+            current_pkg=current_pkg,
+        )
+        self._module_policy_cache[cache_key] = policy
+        return policy
+
+    def convention(
+        self,
+        file_path: Path,
+        *,
+        rel_path: Path | None = None,
+    ) -> m.Infra.RopeModuleConvention:
+        """Return one unified project/package/module convention contract."""
+        resolved_file = file_path.resolve()
+        cache_key = f"{resolved_file}::{rel_path or ''}"
+        cached = self._module_convention_cache.get(cache_key)
+        if cached is not None:
+            return cached
+        module_entry = self.module(resolved_file)
+        package_dir = (
+            module_entry.package_dir.resolve()
+            if module_entry is not None
+            else resolved_file.parent.resolve()
+        )
+        resolved_rel_path = (
+            rel_path
+            if rel_path is not None
+            else resolved_file.relative_to(package_dir)
+            if resolved_file.is_relative_to(package_dir)
+            else Path(resolved_file.name)
+        )
+        package_context = self.context(package_dir)
+        policy = self.policy(
+            resolved_file,
+            rel_path=resolved_rel_path,
+            current_pkg=package_context.current_pkg,
+        )
+        project_root = (
+            module_entry.project_root
+            if module_entry is not None and module_entry.project_root is not None
+            else u.Infra.discover_project_root_from_file(resolved_file)
+        )
+        project_layout = (
+            self.layout(project_root) if project_root is not None else None
+        )
+        convention = m.Infra.RopeModuleConvention(
+            file_path=resolved_file,
+            relative_path=resolved_rel_path,
+            module_name=module_entry.module_name
+            if module_entry is not None
+            else resolved_file.stem,
+            package_name=package_context.current_pkg,
+            package_dir=package_dir,
+            package_context=package_context,
+            module_policy=policy,
+            project_layout=project_layout,
+        )
+        self._module_convention_cache[cache_key] = convention
+        return convention
+
+    def semantic(
         self,
         file_path: Path,
     ) -> m.Infra.ModuleSemanticState:
@@ -171,7 +388,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
             self._resource_for(file_path),
         )
 
-    def module_export_names(
+    def exports(
         self,
         file_path: Path,
         *,
@@ -194,6 +411,12 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
             self._rope_project.close()
             self._rope_project = None
         self._workspace_index = None
+        self._codegen_projects = None
+        self._project_layout_cache.clear()
+        self._package_context_cache.clear()
+        self._module_policy_cache.clear()
+        self._module_convention_cache.clear()
+        self._module_object_cache.clear()
         self._resource_cache.clear()
 
     def __enter__(self) -> Self:

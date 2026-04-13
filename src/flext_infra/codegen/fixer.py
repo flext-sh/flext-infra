@@ -98,19 +98,10 @@ class FlextInfraCodegenFixer(s[str]):
     ) -> m.Infra.AutoFixResult:
         """Auto-fix namespace violations in a single project."""
         project_path = project.path
-        package_name = project.package_name
-        prefix = FlextInfraNamespaceValidator.derive_prefix(project_path)
-        if not prefix:
+        project_layout = u.Infra.project_layout(project_path)
+        if project_layout is None or not project_layout.class_stem:
             return self._empty_result(project_path.name)
-        if not package_name:
-            return self._empty_result(project_path.name)
-        pkg_dir = (
-            project_path
-            / c.Infra.DEFAULT_SRC_DIR
-            / Path(
-                *package_name.split("."),
-            )
-        )
+        pkg_dir = project_layout.package_dir
         if not (pkg_dir / c.Infra.INIT_PY).is_file():
             return self._empty_result(project_path.name)
         ctx = m.Infra.FixContext()
@@ -282,14 +273,14 @@ class FlextInfraCodegenFixer(s[str]):
             projects: Pre-discovered projects to skip redundant discovery.
 
         """
-        projects_result = u.Infra.discover_codegen_projects(
-            self.workspace_root,
-            projects=projects,
-        )
-        if not projects_result.success:
-            msg = projects_result.error or "project discovery failed"
-            raise RuntimeError(msg)
-        return [self._fix_project(project) for project in projects_result.unwrap()]
+        if projects is not None:
+            selected_projects = tuple(projects)
+        else:
+            projects_result = u.Infra.discover_codegen_projects(self.workspace_root)
+            selected_projects = (
+                tuple(projects_result.unwrap()) if projects_result.success else ()
+            )
+        return [self._fix_project(project) for project in selected_projects]
 
 
 __all__: list[str] = ["FlextInfraCodegenFixer"]

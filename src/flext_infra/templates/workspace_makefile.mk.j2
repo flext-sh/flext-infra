@@ -277,7 +277,7 @@ boot: ## Install all projects into workspace .venv
 	$(Q)$(PREFLIGHT_CHECK)
 	$(Q)$(ENSURE_NO_PROJECT_CONFLICT)
 	$(Q)if [ -f .gitmodules ]; then \
-		submodule_paths="$$(git settings --file .gitmodules --get-regexp '^submodule\..*\.path$$' 2>/dev/null | awk '{print $$2}' | tr '\n' ' ')"; \
+		submodule_paths="$$(git config --file .gitmodules --get-regexp '^submodule\..*\.path$$' 2>/dev/null | awk '{print $$2}' | tr '\n' ' ')"; \
 		if [ -z "$$submodule_paths" ]; then \
 			echo "No declared submodules found in .gitmodules."; \
 		else \
@@ -290,9 +290,9 @@ boot: ## Install all projects into workspace .venv
 				name="$${name%.url}"; \
 				if [[ "$$url" == git@github.com:* ]]; then \
 					https_url="https://github.com/$${url#git@github.com:}"; \
-					git settings "submodule.$$name.url" "$$https_url"; \
+					git config "submodule.$$name.url" "$$https_url"; \
 				fi; \
-			done < <(git settings --file .gitmodules --get-regexp '^submodule\..*\.url$$'); \
+			done < <(git config --file .gitmodules --get-regexp '^submodule\..*\.url$$'); \
 			git submodule sync --recursive -- $$submodule_paths; \
 			git submodule update --init --recursive --jobs $${JOBS:-8} -- $$submodule_paths || { \
 				echo "ERROR: failed to update submodules"; \

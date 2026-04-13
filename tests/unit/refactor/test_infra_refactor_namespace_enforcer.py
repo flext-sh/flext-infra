@@ -263,9 +263,7 @@ def test_namespace_enforcer_detects_cyclic_imports_in_tests_directory(
         apply=False,
     )
 
-    # Rope cannot resolve cross-module imports in temporary directories,
-    # so cyclic import detection returns 0 in this test environment.
-    tm.that(report.total_cyclic_imports, eq=0)
+    tm.that(report.total_cyclic_imports, gte=1)
 
 
 def test_namespace_enforcer_detects_missing_runtime_alias_outside_src(

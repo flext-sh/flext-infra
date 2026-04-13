@@ -31,8 +31,24 @@ class FlextInfraModelsCensus:
             name: Annotated[t.NonEmptyStr, Field(description="Object identifier")]
             kind: Annotated[
                 str,
-                Field(description="Object kind (constant/type/protocol/model/utility)"),
+                Field(
+                    description="Object kind (class/function/method/constant/local/...)"
+                ),
             ]
+            module_name: Annotated[
+                str,
+                Field(
+                    default="",
+                    description="Fully-qualified module name for the object",
+                ),
+            ] = ""
+            scope_path: Annotated[
+                str,
+                Field(
+                    default="",
+                    description="Canonical owner/scope path for the object",
+                ),
+            ] = ""
             actual_tier: Annotated[
                 str,
                 Field(
@@ -61,6 +77,13 @@ class FlextInfraModelsCensus:
                     description="Number of cross-file references",
                 ),
             ] = 0
+            fingerprint: Annotated[
+                str,
+                Field(
+                    default="",
+                    description="Normalized Rope-derived semantic fingerprint",
+                ),
+            ] = ""
 
         class Violation(
             FlextInfraModelsMixins.ProjectNameMixin,
@@ -173,6 +196,10 @@ class FlextInfraModelsCensus:
 
             model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
+            objects: tuple[FlextInfraModelsCensus.Census.Object, ...] = Field(
+                default_factory=tuple,
+                description="Objects discovered for this project",
+            )
             objects_total: Annotated[
                 t.NonNegativeInt,
                 Field(default=0, description="Total objects discovered"),
@@ -185,6 +212,10 @@ class FlextInfraModelsCensus:
             ] = Field(default_factory=dict)
             violations: tuple[FlextInfraModelsCensus.Census.Violation, ...] = Field(
                 default_factory=tuple, description="Detected violations"
+            )
+            fixes: tuple[FlextInfraModelsCensus.Census.Fix, ...] = Field(
+                default_factory=tuple,
+                description="Proposed or applied fixes",
             )
             violations_total: Annotated[
                 t.NonNegativeInt,
@@ -212,6 +243,10 @@ class FlextInfraModelsCensus:
             total_fixable: Annotated[
                 t.NonNegativeInt,
                 Field(default=0, description="Total fixable violations"),
+            ] = 0
+            fixes_total: Annotated[
+                t.NonNegativeInt,
+                Field(default=0, description="Total proposed or applied fixes"),
             ] = 0
             duplicates: tuple[FlextInfraModelsCensus.Census.DuplicateGroup, ...] = (
                 Field(

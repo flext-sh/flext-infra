@@ -8,7 +8,6 @@ from pathlib import Path
 from flext_infra import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesDiscovery,
-    FlextInfraUtilitiesDocsScope,
     FlextInfraUtilitiesParsing,
     c,
     m,
@@ -221,11 +220,12 @@ class FlextInfraUtilitiesCodegenLazyAliases:
         project_root = FlextInfraUtilitiesDiscovery.discover_project_root_from_file(
             pkg_dir
         )
-        source_name = (
-            FlextInfraUtilitiesDocsScope.package_name(project_root)
-            if inherited_key != "src" and project_root
-            else ""
+        layout = (
+            FlextInfraUtilitiesCodegenNamespace.project_layout(project_root)
+            if inherited_key != "src" and project_root is not None
+            else None
         )
+        source_name = layout.package_name if layout is not None else ""
         inherited_packages = (
             FlextInfraUtilitiesDiscovery.resolve_transitive_parent_packages(
                 self._workspace_root,

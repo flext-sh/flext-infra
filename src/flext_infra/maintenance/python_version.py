@@ -28,7 +28,6 @@ from __future__ import annotations
 
 import re
 import sys
-from collections.abc import Sequence
 from pathlib import Path
 from typing import Annotated, override
 
@@ -84,7 +83,15 @@ class FlextInfraPythonVersionEnforcer(s[int]):
             self.verbose = verbose
         root = self._resolve_workspace_root()
         required_minor = self._read_required_minor(root)
-        projects = self._discover_projects(root)
+        discovered_projects = u.Infra.discover_projects(root)
+        projects = discovered_projects.fold(
+            on_failure=lambda _: tuple[Path, ...](),
+            on_success=lambda discovered: tuple(
+                project.path
+                for project in discovered
+                if (project.path / c.Infra.PYPROJECT_FILENAME).exists()
+            ),
+        )
         mode = "Checking" if self.check_only else "Enforcing"
         logger.info(
             "python_version_enforcement_started",
@@ -120,26 +127,6 @@ class FlextInfraPythonVersionEnforcer(s[int]):
         if "workspace_root" in self.model_fields_set:
             return self.workspace_root.resolve()
         return self._workspace_root_from_file(__file__)
-
-    def _discover_projects(self, workspace_root: Path) -> Sequence[Path]:
-        """Discover all Python projects in workspace.
-
-        Args:
-            workspace_root: Path to workspace root.
-
-        Returns:
-            Sequence[Path]: List of project paths.
-
-        """
-        result = u.Infra.discover_projects(workspace_root)
-        return result.fold(
-            on_failure=lambda _: [],
-            on_success=lambda v: [
-                project.path
-                for project in v
-                if (project.path / c.Infra.PYPROJECT_FILENAME).exists()
-            ],
-        )
 
     def _ensure_python_version_file(self, project: Path, required_minor: int) -> bool:
         """Ensure pyproject.toml requires-python matches required minor version.

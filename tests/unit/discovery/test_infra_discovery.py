@@ -220,5 +220,27 @@ class TestFlextInfraDiscoveryService:
         assert len(result.value) == 1
         assert result.value[0].package_name == "custom_pkg"
 
+    def test_discover_projects_accepts_standalone_governed_root_without_core_dep(
+        self,
+        service: u.Infra,
+        tmp_path: Path,
+    ) -> None:
+        package_dir = tmp_path / "src" / "demo_pkg"
+        package_dir.mkdir(parents=True)
+        (package_dir / "__init__.py").write_text("", encoding="utf-8")
+        (tmp_path / "Makefile").write_text("check:\n\t@true\n", encoding="utf-8")
+        (tmp_path / "pyproject.toml").write_text(
+            "[project]\nname='demo-project'\nversion='0.1.0'\n",
+            encoding="utf-8",
+        )
+
+        result = service.discover_projects(tmp_path)
+
+        tm.ok(result)
+        assert len(result.value) == 1
+        assert result.value[0].path == tmp_path.resolve()
+        assert result.value[0].name == "demo-project"
+        assert result.value[0].package_name == "demo_pkg"
+
 
 __all__: t.StrSequence = []

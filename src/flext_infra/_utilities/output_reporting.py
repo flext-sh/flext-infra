@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 from collections.abc import Callable, MutableSequence, Sequence
-from operator import itemgetter
 
 from flext_infra import c, m
 
 
 class FlextInfraUtilitiesOutputReporting:
     """Mixin for structured report rendering (namespace enforcement, census)."""
+
+    _MAX_RENDERED_CENSUS_VIOLATIONS: int = 10
 
     @staticmethod
     def _add_violation_section[V](
@@ -168,90 +169,53 @@ class FlextInfraUtilitiesOutputReporting:
         return "\n".join(lines) + "\n"
 
     @staticmethod
-    def render_census_report(report: m.Infra.UtilitiesCensusReport) -> str:
+    def render_census_report(report: m.Infra.Census.WorkspaceReport) -> str:
         """Render a human-readable census report."""
-        sep = "=" * 110
+        sep = "=" * 96
         lines: MutableSequence[str] = [
             sep,
-            "FLEXT MRO Family Method Usage Census",
-            "Engine: rope + source visitors | Infrastructure: flext_infra",
+            "FLEXT Rope Workspace Census",
+            "Engine: rope-only DSL | Contract: m.Infra.Census.WorkspaceReport",
             sep,
-            (
-                f"\nClasses: {report.total_classes} | Methods: {report.total_methods}"
-                f" | Usages: {report.total_usages} | Unused: {report.total_unused}"
-                f" | Files: {report.files_scanned} | Parse errors: {report.parse_errors}"
-            ),
+            f"Projects: {len(report.projects)} | Objects: {report.total_objects}",
+            f"Violations: {report.total_violations} | Fixable: {report.total_fixable}",
+            f"Duplicates: {len(report.duplicates)} | Unused: {report.unused_count}",
+            f"Fixes: {report.fixes_total} | Parse errors: {report.parse_errors}",
+            f"Duration: {report.scan_duration_seconds:.2f}s",
             "",
-            f"{'CLASS':<40} {'METHOD':<30} {'flat':<8} {'NS':<8} {'Direct':<8} {'Total':<8}",
             sep,
         ]
-
-        grand_af = grand_an = grand_dr = 0
-        for cs in report.classes:
-            for ms in cs.methods:
-                grand_af += ms.alias_flat
-                grand_an += ms.alias_namespaced
-                grand_dr += ms.direct
-                marker = "  " if ms.total > 0 else "\u26a0\ufe0f"
-                lines.append(
-                    f"{marker} {cs.class_name:<38} {ms.name:<30}"
-                    f" {ms.alias_flat:<8} {ms.alias_namespaced:<8}"
-                    f" {ms.direct:<8} {ms.total:<8}",
-                )
-            lines.append("-" * 110)
-
-        grand_total = grand_af + grand_an + grand_dr
-        lines.append(
-            f"\n{'GRAND TOTAL':<71} {grand_af:<8} {grand_an:<8} {grand_dr:<8} {grand_total:<8}",
-        )
-
-        lines.extend([f"\n\n{sep}", "PER-PROJECT BREAKDOWN", sep])
-        for ps in report.projects:
-            alias_total = sum(
-                pu.count
-                for pu in ps.usages
-                if pu.access_mode != c.Infra.CensusMode.DIRECT
-            )
-            direct_total = sum(
-                pu.count
-                for pu in ps.usages
-                if pu.access_mode == c.Infra.CensusMode.DIRECT
-            )
+        for project in report.projects:
             lines.append(
-                f"\n\U0001f4e6 {ps.project_name}"
-                f" (alias: {alias_total}, direct: {direct_total}, total: {ps.total})",
+                f"{project.project}: objects={project.objects_total}"
+                f" violations={project.violations_total}"
+                f" fixes={project.fixes_applied}/{len(project.fixes)}"
             )
             lines.extend(
-                f"  {pu.class_name}.{pu.method_name}: {pu.access_mode}={pu.count}"
-                for pu in ps.usages
+                f"  {kind}: {count}"
+                for kind, count in sorted(project.objects_by_kind.items())
             )
-
-        lines.extend([f"\n\n{sep}", "UNUSED PUBLIC METHODS", sep])
-        current_cls = ""
-        for cs in report.classes:
-            unused = [ms for ms in cs.methods if ms.total == 0]
-            if unused:
-                if cs.class_name != current_cls:
-                    lines.append(f"\n  {cs.class_name} ({cs.source_file}):")
-                    current_cls = cs.class_name
-                lines.extend(f"    - {ms.name}" for ms in unused)
-        lines.append(f"\n  Total unused: {report.total_unused}/{report.total_methods}")
-
-        lines.extend([f"\n\n{sep}", "TOP 20 MOST USED METHODS", sep])
-        all_methods = [
-            (cs.class_name, ms.name, ms.total)
-            for cs in report.classes
-            for ms in cs.methods
-        ]
-        lines.extend(
-            f"  {total:>5}x  {cls}.{method}"
-            for cls, method, total in sorted(
-                all_methods,
-                key=itemgetter(2),
-                reverse=True,
-            )[:20]
-        )
-
+            lines.extend(
+                f"  {violation.kind}: {violation.file_path}:{violation.line} {violation.object_name}"
+                for violation in project.violations[
+                    : FlextInfraUtilitiesOutputReporting._MAX_RENDERED_CENSUS_VIOLATIONS
+                ]
+            )
+            if (
+                len(project.violations)
+                > FlextInfraUtilitiesOutputReporting._MAX_RENDERED_CENSUS_VIOLATIONS
+            ):
+                lines.append(
+                    "  ... and "
+                    f"{len(project.violations) - FlextInfraUtilitiesOutputReporting._MAX_RENDERED_CENSUS_VIOLATIONS} more"
+                )
+            lines.append("")
+        if report.duplicates:
+            lines.append("Duplicate groups:")
+            lines.extend(
+                f"  {group.kind} {group.name} ({len(group.definitions)}) identical={group.value_identical}"
+                for group in report.duplicates[:10]
+            )
         return "\n".join(lines)
 
 

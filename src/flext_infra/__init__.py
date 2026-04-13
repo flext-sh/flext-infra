@@ -142,6 +142,10 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
     from flext_infra._utilities.rope_helpers import FlextInfraUtilitiesRopeHelpers
     from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
+    from flext_infra._utilities.rope_inventory import FlextInfraUtilitiesRopeInventory
+    from flext_infra._utilities.rope_module_patch import (
+        FlextInfraUtilitiesRopeModulePatch,
+    )
     from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
     from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
     from flext_infra._utilities.toml import FlextInfraUtilitiesToml
@@ -780,6 +784,8 @@ __all__: list[str] = [
     "FlextInfraUtilitiesRopeCore",
     "FlextInfraUtilitiesRopeHelpers",
     "FlextInfraUtilitiesRopeImports",
+    "FlextInfraUtilitiesRopeInventory",
+    "FlextInfraUtilitiesRopeModulePatch",
     "FlextInfraUtilitiesRopeSource",
     "FlextInfraUtilitiesSafety",
     "FlextInfraUtilitiesToml",

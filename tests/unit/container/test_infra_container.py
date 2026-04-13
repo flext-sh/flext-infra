@@ -27,13 +27,15 @@ class TestInfraContainerFunctions:
 
     def test_get_flext_infra_container_returns_singleton(self) -> None:
         """Verify FlextContainer is a singleton-like container."""
-        assert FlextContainer.has_service is not None
-        assert callable(FlextContainer.get)
+        container = FlextContainer()
+        assert callable(container.has)
+        assert callable(container.resolve)
 
     def test_get_flext_infra_service_returns_result(self) -> None:
         """Verify container get returns values for registered services."""
-        assert callable(FlextContainer.register)
-        assert callable(FlextContainer.get)
+        container = FlextContainer()
+        assert callable(container.bind)
+        assert callable(container.resolve)
 
 
 class TestInfraMroPattern:
@@ -100,11 +102,11 @@ class TestInfraServiceRetrieval:
 
     def test_container_has_service_method(self) -> None:
         """Verify FlextContainer has has_service method."""
-        assert callable(FlextContainer.has_service)
+        assert callable(FlextContainer().has)
 
     def test_container_list_services_method(self) -> None:
         """Verify FlextContainer has list_services method."""
-        assert callable(FlextContainer.list_services)
+        assert callable(FlextContainer().names)
 
     def test_output_methods_write_to_configured_stream(self) -> None:
         """Verify output methods write through the shared namespace stream."""

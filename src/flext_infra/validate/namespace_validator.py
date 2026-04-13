@@ -18,8 +18,6 @@ from flext_infra import (
     FlextInfraConstantsSharedInfra,
     FlextInfraModelsCore,
     FlextInfraNamespaceRules,
-    FlextInfraUtilitiesCodegenNamespace,
-    FlextInfraUtilitiesDocsScope,
     FlextInfraUtilitiesParsing,
     u,
 )
@@ -36,9 +34,8 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
     @staticmethod
     def derive_prefix(project_root: Path) -> str:
         """Public wrapper for deriving the class name prefix from a project."""
-        return FlextInfraUtilitiesCodegenNamespace.project_class_stem(
-            project_name=FlextInfraUtilitiesDocsScope.package_name(project_root),
-        )
+        layout = u.Infra.project_layout(project_root)
+        return layout.class_stem if layout is not None else ""
 
     def validate(
         self,
@@ -49,7 +46,8 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
         """Validate namespace rules 0-2 for all discovered Python files."""
         try:
             files = self._discover_files(project_root, scan_tests=scan_tests)
-            prefix = self.derive_prefix(project_root)
+            layout = u.Infra.project_layout(project_root)
+            prefix = layout.class_stem if layout is not None else ""
             violations: MutableSequence[str] = []
             for filepath in files:
                 tree = self._parse_file(filepath)

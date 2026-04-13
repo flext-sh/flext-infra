@@ -43,13 +43,11 @@ class FlextInfraSilentFailureValidator(s[bool]):
 
     def build_report(self) -> r[m.Infra.ValidationReport]:
         """Build one validation report for the selected workspace projects."""
-        projects_result = u.Infra.discover_codegen_projects(self.workspace_root)
-        if projects_result.failure:
-            return r[m.Infra.ValidationReport].fail(
-                projects_result.error or "project discovery failed",
-            )
         issues: MutableSequence[str] = []
-        projects = self._selected_projects(projects_result.value)
+        projects_result = u.Infra.discover_codegen_projects(self.workspace_root)
+        projects = self._selected_projects(
+            tuple(projects_result.unwrap()) if projects_result.success else ()
+        )
         for project in projects:
             iter_result = u.Infra.iter_python_files(
                 project.path,

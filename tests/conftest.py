@@ -93,11 +93,11 @@ def infra_git_repo(
     repo.mkdir(parents=True, exist_ok=True)
     assert infra_subprocess.run_checked(["git", "init"], cwd=repo).success
     assert infra_subprocess.run_checked(
-        ["git", "settings", "user.email", "infra@example.com"],
+        ["git", "config", "user.email", "infra@example.com"],
         cwd=repo,
     ).success
     assert infra_subprocess.run_checked(
-        ["git", "settings", "user.name", "Infra Fixtures"],
+        ["git", "config", "user.name", "Infra Fixtures"],
         cwd=repo,
     ).success
     return repo

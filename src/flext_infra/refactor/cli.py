@@ -30,7 +30,7 @@ class FlextInfraCliRefactor(FlextInfraServiceRefactorMixin):
                 ),
                 m.Cli.ResultCommandRoute(
                     name="census",
-                    help_text="Run rope-oriented census of MRO family method usage",
+                    help_text="Run a Rope-only workspace census for Python objects",
                     model_cls=m.Infra.RefactorCensusInput,
                     handler=self.run_refactor_census,
                     failure_message="Census failed",

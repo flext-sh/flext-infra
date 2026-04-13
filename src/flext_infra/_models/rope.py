@@ -14,6 +14,7 @@ from pydantic import Field
 
 from flext_core import m
 from flext_infra import t
+from flext_infra._models.codegen import FlextInfraModelsCodegen
 from flext_infra._models.mixins import FlextInfraModelsMixins
 
 
@@ -194,6 +195,81 @@ class FlextInfraModelsRope:
                 description="Canonical source package name keyed by project root path",
             ),
         ]
+
+    class RopeProjectLayout(m.ContractModel):
+        """Canonical project layout derived once for Rope-backed codegen flows."""
+
+        project_root: Annotated[
+            Path,
+            Field(description="Resolved project root path"),
+        ]
+        project_name: Annotated[
+            str,
+            Field(description="Canonical project name"),
+        ]
+        package_name: Annotated[
+            str,
+            Field(description="Primary Python package name"),
+        ]
+        package_alias: Annotated[
+            str,
+            Field(description="Canonical root alias derived from the package"),
+        ]
+        class_stem: Annotated[
+            str,
+            Field(description="Canonical facade class stem derived from the project"),
+        ]
+        src_dir: Annotated[
+            Path,
+            Field(description="Resolved source directory for the project"),
+        ]
+        package_dir: Annotated[
+            Path,
+            Field(description="Resolved package directory for the project"),
+        ]
+        init_path: Annotated[
+            Path,
+            Field(description="Resolved package __init__.py path"),
+        ]
+
+    class RopeModuleConvention(m.ContractModel):
+        """Unified module naming and namespace convention for one file."""
+
+        file_path: Annotated[
+            Path,
+            Field(description="Resolved Python module path"),
+        ]
+        relative_path: Annotated[
+            Path,
+            Field(description="Module path relative to its package directory"),
+        ]
+        module_name: Annotated[
+            str,
+            Field(description="Fully-qualified module name"),
+        ]
+        package_name: Annotated[
+            str,
+            Field(description="Importable package name for the module"),
+        ]
+        package_dir: Annotated[
+            Path,
+            Field(description="Resolved package directory containing the module"),
+        ]
+        package_context: Annotated[
+            FlextInfraModelsCodegen.LazyInitPackageContext,
+            Field(description="Resolved lazy-init package context for the module"),
+        ]
+        module_policy: Annotated[
+            FlextInfraModelsCodegen.NamespaceModulePolicy,
+            Field(description="Canonical module policy derived for the module"),
+        ]
+        project_layout: Annotated[
+            FlextInfraModelsRope.RopeProjectLayout | None,
+            Field(
+                default=None,
+                description="Resolved project layout, when the module belongs to one",
+            ),
+        ] = None
 
     class RopeWorkspaceSession(m.ContractModel):
         """Public Rope workspace snapshot used by the service DSL."""

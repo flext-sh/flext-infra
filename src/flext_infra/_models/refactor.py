@@ -54,15 +54,66 @@ class FlextInfraModelsRefactor(
         """CLI/service request for namespace enforcement."""
 
     class RefactorCensusInput(
-        FlextInfraModelsMixins.ReadMixin,
+        FlextInfraModelsMixins.WriteMixin,
         m.ContractModel,
     ):
-        """CLI/service request for rope-oriented census."""
+        """CLI/service request for generalized Rope-only census."""
 
-        family: Annotated[
-            str,
-            Field(default="u", description="MRO family to census (c/t/p/m/u)"),
-        ] = "u"
+        json_output: Annotated[
+            str | None,
+            Field(default=None, description="Path to write JSON report"),
+        ] = None
+        kinds: Annotated[
+            t.StrSequence | None,
+            Field(
+                default=None,
+                description="Optional object-kind filters; repeat --kinds NAME",
+            ),
+        ] = None
+        rules: Annotated[
+            t.StrSequence | None,
+            Field(
+                default=None,
+                description="Optional violation-rule filters; repeat --rules NAME",
+            ),
+        ] = None
+        families: Annotated[
+            t.StrSequence | None,
+            Field(
+                default=None,
+                description="Optional namespace-family filters; repeat --families NAME",
+            ),
+        ] = None
+        include_local_scopes: Annotated[
+            bool,
+            Field(
+                default=True,
+                description="Include locals, parameters, and nested scopes",
+            ),
+        ] = True
+
+        @property
+        def json_output_path(self) -> Path | None:
+            """Return the resolved JSON export path when provided."""
+            return self.resolve_optional_path(self.json_output)
+
+        @property
+        def kind_names(self) -> t.StrSequence | None:
+            """Return normalized object-kind filters."""
+            names = self.split_csv_values(*(self.kinds or ()))
+            return names or None
+
+        @property
+        def rule_names(self) -> t.StrSequence | None:
+            """Return normalized violation-rule filters."""
+            names = self.split_csv_values(*(self.rules or ()))
+            return names or None
+
+        @property
+        def family_names(self) -> t.StrSequence | None:
+            """Return normalized family filters."""
+            names = self.split_csv_values(*(self.families or ()))
+            return names or None
 
     class AccessorMigrationInput(
         FlextInfraModelsMixins.WriteMixin,

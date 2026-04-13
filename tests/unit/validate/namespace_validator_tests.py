@@ -8,7 +8,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import FlextInfraNamespaceValidator
-from tests import m
+from tests import m, u
 
 _FIXTURES_DIR = Path(__file__).parent.parent.parent / "fixtures" / "namespace_validator"
 
@@ -35,13 +35,17 @@ def _make_project_with_module(
 class TestFlextInfraNamespaceValidator:
     """Test suite for namespace validator rules 0-2."""
 
-    def test_derive_prefix_uses_flext_for_core_exception(self, tmp_path: Path) -> None:
-        validator = FlextInfraNamespaceValidator()
+    def test_public_project_layout_uses_flext_for_core_exception(
+        self,
+        tmp_path: Path,
+    ) -> None:
         project_root = tmp_path / "flext-core"
         package_dir = project_root / "src" / "flext_core"
         package_dir.mkdir(parents=True)
         _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
-        tm.that(validator.derive_prefix(project_root), eq="Flext")
+        layout = u.Infra.project_layout(project_root)
+        assert layout is not None
+        tm.that(layout.class_stem, eq="Flext")
 
     def test_rule0_valid_module_passes(self, tmp_path: Path) -> None:
         validator = FlextInfraNamespaceValidator()

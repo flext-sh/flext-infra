@@ -660,8 +660,8 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             def initialize_git_repo(repo_root: Path) -> None:
                 commands: Sequence[t.StrSequence] = (
                     (c.Infra.GIT, "init", "-b", "main"),
-                    (c.Infra.GIT, "settings", "user.email", "tests@flext.local"),
-                    (c.Infra.GIT, "settings", "user.name", "Flext Tests"),
+                    (c.Infra.GIT, "config", "user.email", "tests@flext.local"),
+                    (c.Infra.GIT, "config", "user.name", "Flext Tests"),
                     (c.Infra.GIT, "add", "-A"),
                     (c.Infra.GIT, "commit", "-m", "init"),
                 )

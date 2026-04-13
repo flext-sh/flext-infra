@@ -10,11 +10,11 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import (
-    FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesRope,
     c,
     m,
     t,
+    u,
 )
 
 
@@ -32,12 +32,10 @@ class FlextInfraUtilitiesFacadeScanner:
     ) -> Sequence[m.Infra.FacadeStatus]:
         """Return FacadeStatus for each family (c, t, p, m, u) in a project."""
         del parse_failures
+        del project_name
 
-        stem = FlextInfraUtilitiesCodegenNamespace.project_class_stem(
-            project_name=project_name,
-        )
-        src_dir = project_root / c.Infra.DEFAULT_SRC_DIR
-        if not src_dir.is_dir():
+        layout = u.Infra.project_layout(project_root)
+        if layout is None or not layout.src_dir.is_dir():
             return [
                 m.Infra.FacadeStatus(
                     family=family,
@@ -48,6 +46,8 @@ class FlextInfraUtilitiesFacadeScanner:
                 )
                 for family in c.Infra.FAMILY_SUFFIXES
             ]
+        stem = layout.class_stem
+        src_dir = layout.src_dir
         results: list[m.Infra.FacadeStatus] = []
         for family, suffix in c.Infra.FAMILY_SUFFIXES.items():
             expected = f"{stem}{suffix}"

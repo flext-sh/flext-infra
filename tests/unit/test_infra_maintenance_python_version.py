@@ -15,9 +15,8 @@ from typing import override
 import pytest
 from flext_tests import tm
 
-from flext_infra import (
-    FlextInfraPythonVersionEnforcer,
-)
+from flext_infra import FlextInfraPythonVersionEnforcer
+from tests import u
 
 _MINOR: int = sys.version_info.minor
 _BAD: int = _MINOR + 1
@@ -220,11 +219,12 @@ class TestEnsurePythonVersionFile:
         )
 
 
-class TestDiscoverProjects:
-    """Tests for _discover_projects()."""
+class TestPublicProjectDiscovery:
+    """Tests for public project discovery consumed by the enforcer."""
 
     def test_empty_dir_returns_empty(self, tmp_path: Path) -> None:
         d = tmp_path / "empty"
         d.mkdir()
-        enforcer = FlextInfraPythonVersionEnforcer()
-        tm.that(enforcer._discover_projects(d), eq=[])
+        result = u.Infra.discover_projects(d)
+        tm.ok(result)
+        tm.that(result.value, eq=[])

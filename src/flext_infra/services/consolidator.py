@@ -14,6 +14,7 @@ from flext_infra.base import s
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.protocols import p
+from flext_infra.services.rope import FlextInfraRopeWorkspace
 from flext_infra.typings import t
 from flext_infra.utilities import u
 
@@ -43,38 +44,30 @@ class FlextInfraCodegenConsolidator(s[str]):
         found = applied = failed = 0
         file_results = []
 
-        projects_result = self._selected_projects()
-        if projects_result.failure:
-            return r[str].fail("Failed to discover projects")
+        with FlextInfraRopeWorkspace.open_workspace(self.workspace_root) as rope:
+            projects_result = self._selected_projects(rope)
+            if projects_result.failure:
+                return r[str].fail("Failed to discover projects")
+            selected_projects = projects_result.unwrap()
 
-        for project in projects_result.value:
-            project_path = project.path
-            package_name = project.package_name or u.Infra.package_name(project_path)
-            if not package_name:
-                continue
-            package_dir = (
-                project_path
-                / c.Infra.DEFAULT_SRC_DIR
-                / Path(
-                    *package_name.split("."),
-                )
-            )
-            if not (package_dir / c.Infra.INIT_PY).is_file():
-                continue
+            for project in selected_projects:
+                project_layout = u.Infra.project_layout(project.path)
+                if project_layout is None or not project_layout.init_path.is_file():
+                    continue
 
-            constants_file = package_dir / c.Infra.CONSTANTS_PY
-            value_map = self._build_value_map_from_constants_file(constants_file)
-            if not value_map:
-                continue
+                constants_file = project_layout.package_dir / c.Infra.CONSTANTS_PY
+                value_map = self._build_value_map_from_constants_file(constants_file)
+                if not value_map:
+                    continue
 
-            rope = u.Infra.init_rope_project(project_path)
-            try:
                 for python_file in (
                     path
-                    for path in u.Infra.iter_directory_python_files(package_dir)
+                    for path in u.Infra.iter_directory_python_files(
+                        project_layout.package_dir,
+                    )
                     if "_constants" not in path.parts
                 ):
-                    scanned = self._scan_file(rope, python_file, value_map)
+                    scanned = self._scan_file(rope.rope_project, python_file, value_map)
                     if scanned is None:
                         continue
                     resource, source, matches = scanned
@@ -87,11 +80,11 @@ class FlextInfraCodegenConsolidator(s[str]):
                         )
                         continue
                     ok, changes, lines = self._apply_and_validate(
-                        rope,
+                        rope.rope_project,
                         resource,
                         python_file,
                         self.workspace_root,
-                        package_name,
+                        project_layout.package_name,
                         source,
                         matches,
                     )
@@ -105,11 +98,9 @@ class FlextInfraCodegenConsolidator(s[str]):
                         applied += len(changes)
                     else:
                         failed += 1
-            finally:
-                rope.close()
 
         summary = (
-            f"Found {found} canonical matches across {len(projects_result.value)} projects"
+            f"Found {found} canonical matches across {len(selected_projects)} projects"
             if self.dry_run
             else f"Applied {applied} replacements, {failed} files reverted"
         )
@@ -124,15 +115,13 @@ class FlextInfraCodegenConsolidator(s[str]):
             return r[str].ok(t.Infra.INFRA_MAPPING_ADAPTER.dump_json(payload).decode())
         return r[str].ok("\n".join(output_lines))
 
-    def _selected_projects(self) -> r[Sequence[p.Infra.ProjectInfo]]:
-        projects_result = u.Infra.discover_codegen_projects(self.workspace_root)
-        if projects_result.failure:
-            return r[Sequence[p.Infra.ProjectInfo]].fail(
-                projects_result.error or "Failed to discover projects",
-            )
+    def _selected_projects(
+        self,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
+    ) -> r[Sequence[p.Infra.ProjectInfo]]:
         selected = tuple(
             project
-            for project in projects_result.value
+            for project in rope_workspace.projects()
             if self.project_name is None or project.name == self.project_name
         )
         return r[Sequence[p.Infra.ProjectInfo]].ok(selected)

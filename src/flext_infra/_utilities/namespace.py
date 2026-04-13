@@ -87,6 +87,48 @@ class FlextInfraUtilitiesCodegenNamespace:
         return root
 
     @classmethod
+    def project_layout(
+        cls,
+        project_root: Path,
+        *,
+        project: p.Infra.ProjectInfo | None = None,
+    ) -> m.Infra.RopeProjectLayout | None:
+        """Return the canonical project layout contract for one project root."""
+        resolved_root = project_root.resolve()
+        package_name = (
+            project.package_name
+            if project is not None and project.package_name
+            else FlextInfraUtilitiesDocsScope.package_name(resolved_root)
+        )
+        if not package_name:
+            return None
+        project_name = (
+            project.name
+            if project is not None and project.name
+            else FlextInfraUtilitiesDocsScope.project_name_from_payload(
+                resolved_root,
+                FlextInfraUtilitiesDocsScope.pyproject_payload(resolved_root),
+            )
+            if (resolved_root / c.Infra.PYPROJECT_FILENAME).is_file()
+            else resolved_root.name
+        )
+        class_name_source = (
+            project_name if project_name != resolved_root.name else package_name
+        )
+        src_dir = resolved_root / c.Infra.DEFAULT_SRC_DIR
+        package_dir = src_dir / Path(*package_name.split("."))
+        return m.Infra.RopeProjectLayout(
+            project_root=resolved_root,
+            project_name=project_name,
+            package_name=package_name,
+            package_alias=cls.package_alias(package_name=package_name),
+            class_stem=cls.project_class_stem(project_name=class_name_source),
+            src_dir=src_dir,
+            package_dir=package_dir,
+            init_path=package_dir / c.Infra.INIT_PY,
+        )
+
+    @classmethod
     def module_policy(
         cls,
         file_path: Path,
@@ -193,17 +235,12 @@ class FlextInfraUtilitiesCodegenNamespace:
         )
         project_prefix = ""
         if project_root is not None:
-            prefix = cls.project_class_stem(
-                project_name=(
-                    FlextInfraUtilitiesDocsScope.package_name(project_root)
-                    or project_root.name
-                ),
-            )
-            if prefix:
+            layout = cls.project_layout(project_root)
+            if layout is not None:
                 try:
                     rel_parts = file_path.relative_to(project_root).parts
                 except ValueError:
-                    project_prefix = prefix
+                    project_prefix = layout.class_stem
                 else:
                     surface_prefix = (
                         settings.surface_prefixes.get(rel_parts[0], "")
@@ -211,7 +248,9 @@ class FlextInfraUtilitiesCodegenNamespace:
                         else ""
                     )
                     project_prefix = (
-                        f"{surface_prefix}{prefix}" if surface_prefix else prefix
+                        f"{surface_prefix}{layout.class_stem}"
+                        if surface_prefix
+                        else layout.class_stem
                     )
         return m.Infra.NamespaceModulePolicy(
             enforce_contract=enforce_contract,

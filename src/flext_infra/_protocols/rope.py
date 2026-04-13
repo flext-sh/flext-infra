@@ -9,16 +9,29 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from types import TracebackType
-from typing import TYPE_CHECKING, Protocol, Self
+from typing import TYPE_CHECKING, Protocol, Self, runtime_checkable
 
 if TYPE_CHECKING:
-    from flext_infra import m, t
+    from flext_infra import m, p, t
 
 
 class FlextInfraProtocolsRope(Protocol):
     """Application contracts layered around the concrete Rope boundary."""
+
+    @runtime_checkable
+    class RopeScopeDsl(Protocol):
+        """Public scope contract for Rope semantic traversal."""
+
+        def get_scopes(self) -> Sequence[FlextInfraProtocolsRope.RopeScopeDsl]: ...
+
+        def get_names(self) -> Mapping[str, t.Infra.RopePyName]: ...
+
+        def get_start(self) -> int: ...
+
+        def get_end(self) -> int: ...
 
     class RopeWorkspaceDsl(Protocol):
         """Public DSL contract for one shared Rope workspace session."""
@@ -33,6 +46,8 @@ class FlextInfraProtocolsRope(Protocol):
 
         @property
         def workspace_index(self) -> m.Infra.RopeWorkspaceIndex: ...
+
+        def reload(self) -> m.Infra.RopeWorkspaceSession: ...
 
         def __enter__(self) -> Self: ...
 
@@ -50,22 +65,64 @@ class FlextInfraProtocolsRope(Protocol):
             file_path: Path,
         ) -> t.Infra.RopeResource | None: ...
 
-        def module_entry(
+        def module(
             self,
             file_path: Path,
         ) -> m.Infra.RopeModuleIndexEntry | None: ...
 
-        def package_entry(
+        def package(
             self,
             package_dir: Path,
         ) -> m.Infra.RopePackageIndexEntry | None: ...
 
-        def module_semantic_state(
+        def modules(
+            self,
+            *,
+            project_names: t.StrSequence | None = None,
+        ) -> t.SequenceOf[m.Infra.RopeModuleIndexEntry]: ...
+
+        def source(self, file_path: Path) -> str: ...
+
+        def objects(
+            self,
+            file_path: Path,
+            *,
+            include_local_scopes: bool = True,
+        ) -> t.SequenceOf[m.Infra.Census.Object]: ...
+
+        def projects(self) -> t.SequenceOf[p.Infra.ProjectInfo]: ...
+
+        def layout(
+            self,
+            project_root: Path,
+        ) -> m.Infra.RopeProjectLayout | None: ...
+
+        def context(
+            self,
+            package_dir: Path,
+        ) -> m.Infra.LazyInitPackageContext: ...
+
+        def policy(
+            self,
+            file_path: Path,
+            *,
+            rel_path: Path | None = None,
+            current_pkg: str = "",
+        ) -> m.Infra.NamespaceModulePolicy: ...
+
+        def convention(
+            self,
+            file_path: Path,
+            *,
+            rel_path: Path | None = None,
+        ) -> m.Infra.RopeModuleConvention: ...
+
+        def semantic(
             self,
             file_path: Path,
         ) -> m.Infra.ModuleSemanticState: ...
 
-        def module_export_names(
+        def exports(
             self,
             file_path: Path,
             *,

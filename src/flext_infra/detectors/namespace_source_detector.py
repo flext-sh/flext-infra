@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Sequence
-from pathlib import Path
 
 from flext_infra import (
     c,
@@ -28,12 +27,12 @@ class FlextInfraNamespaceSourceDetector:
         project_root = ctx.project_root
         if project_root is None or file_path.name == c.Infra.INIT_PY:
             return []
-        package_name = u.Infra.package_name(project_root)
-        if not package_name:
+        project_layout = u.Infra.project_layout(project_root)
+        if project_layout is None:
             return []
         local_aliases = (
             FlextInfraNamespaceSourceDetector._discover_local_runtime_aliases(
-                project_root=project_root, package_name=package_name
+                project_layout=project_layout,
             )
         )
         if not local_aliases:
@@ -58,8 +57,9 @@ class FlextInfraNamespaceSourceDetector:
             resource,
         ):
             current_source = from_import.module_name
-            if current_source == package_name or current_source.startswith(
-                f"{package_name}."
+            if (
+                current_source == project_layout.package_name
+                or current_source.startswith(f"{project_layout.package_name}.")
             ):
                 continue
             if not (
@@ -90,9 +90,11 @@ class FlextInfraNamespaceSourceDetector:
                     line=line_number,
                     alias=alias_name,
                     current_source=current_source,
-                    correct_source=package_name,
+                    correct_source=project_layout.package_name,
                     current_import=current_import,
-                    suggested_import=f"from {package_name} import {alias_name}",
+                    suggested_import=(
+                        f"from {project_layout.package_name} import {alias_name}"
+                    ),
                 )
                 for alias_name in wrong_aliases
             )
@@ -101,12 +103,9 @@ class FlextInfraNamespaceSourceDetector:
     @staticmethod
     def _discover_local_runtime_aliases(
         *,
-        project_root: Path,
-        package_name: str,
+        project_layout: m.Infra.RopeProjectLayout,
     ) -> set[str]:
-        init_path = (
-            project_root / c.Infra.DEFAULT_SRC_DIR / package_name / c.Infra.INIT_PY
-        )
+        init_path = project_layout.init_path
         return set(c.Infra.RUNTIME_ALIAS_NAMES) if init_path.is_file() else set()
 
 

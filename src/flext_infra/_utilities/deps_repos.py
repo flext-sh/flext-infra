@@ -43,7 +43,7 @@ class FlextInfraInternalSyncRepoMixin:
     def infer_owner_from_origin(self, project_root: Path) -> str | None:
         """Infer GitHub owner from remote origin URL."""
         remote = u.Cli.capture(
-            [c.Infra.GIT, "settings", "--get", "remote.origin.url"],
+            [c.Infra.GIT, "config", "--get", "remote.origin.url"],
             cwd=project_root,
         )
         if remote.failure:

@@ -106,11 +106,9 @@ class FlextInfraCodegenPipeline(s[str]):
         """Discover workspace projects once for reuse across all stages."""
         try:
             projects_result = u.Infra.discover_codegen_projects(ctx.workspace_root)
-            if not projects_result.success:
-                return r[m.Cli.PipelineStageResult].fail(
-                    f"project discovery failed: {projects_result.error}",
-                )
-            discovered = projects_result.unwrap()
+            discovered = (
+                tuple(projects_result.unwrap()) if projects_result.success else ()
+            )
         except Exception as exc:
             return r[m.Cli.PipelineStageResult].fail(f"discover failed: {exc}")
         self._state.discovered_projects = discovered

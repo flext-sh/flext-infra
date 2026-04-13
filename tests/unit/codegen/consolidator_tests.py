@@ -39,7 +39,7 @@ def test_execute_uses_codegen_project_discovery_and_project_filter(
         discover_called += 1
         return u.Infra.Tests.ok_result((project_a, project_b))
 
-    def _discover_projects(
+    def _unexpected_public_project_discovery(
         *_args: t.Scalar,
         **_kwargs: t.Scalar,
     ) -> r[tuple[m.Infra.ProjectInfo, ...]]:
@@ -54,7 +54,7 @@ def test_execute_uses_codegen_project_discovery_and_project_filter(
     u.Infra.Tests.patch_public_infra(
         monkeypatch,
         "discover_projects",
-        _discover_projects,
+        _unexpected_public_project_discovery,
     )
 
     result = u.Infra.Tests.consolidate_codegen(
@@ -98,16 +98,6 @@ def test_execute_scans_real_package_layout(
         monkeypatch,
         "discover_codegen_projects",
         _discover_codegen_projects,
-    )
-    u.Infra.Tests.patch_public_infra(
-        monkeypatch,
-        "resolve_constants_facade",
-        lambda _package_name: object(),
-    )
-    u.Infra.Tests.patch_public_infra(
-        monkeypatch,
-        "build_value_map",
-        lambda _facade: {},
     )
 
     result = u.Infra.Tests.consolidate_codegen(

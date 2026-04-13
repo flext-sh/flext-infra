@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
+import flext_infra
 from flext_infra import main as infra_main
+from tests import u
 
 
 class TestFlextInfraRefactorMainCli:
@@ -44,4 +48,74 @@ class TestFlextInfraRefactorMainCli:
             str(workspace),
             "census",
         )
+        assert result == 0
+
+    def test_refactor_census_apply_fixes_missing_runtime_alias(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace, package_root = u.Infra.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-demo",
+            package_name="flext_demo",
+        )
+        module_path = package_root / "models.py"
+        module_path.write_text(
+            (
+                "from __future__ import annotations\n\n"
+                '__all__: list[str] = ["FlextDemoModels"]\n\n'
+                "class FlextDemoModels:\n"
+                "    pass\n"
+            ),
+            encoding="utf-8",
+        )
+
+        result = self._refactor_main(
+            "--workspace",
+            str(workspace),
+            "census",
+            "--apply",
+        )
+
+        assert result == 0
+        source = module_path.read_text(encoding="utf-8")
+        assert '"m"' in source
+        assert "m = FlextDemoModels" in source
+
+    def test_refactor_census_no_longer_uses_legacy_visitors(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        workspace, package_root = u.Infra.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-demo",
+            package_name="flext_demo",
+        )
+        module_path = package_root / "models.py"
+        u.Infra.Tests.write_lazy_init_namespace_module(
+            module_path,
+            class_name="FlextDemoModels",
+            alias="m",
+            docstring="Models.",
+        )
+        monkeypatch.setattr(
+            flext_infra.FlextInfraCensusImportDiscoveryVisitor,
+            "scan_source",
+            lambda self, source: (_ for _ in ()).throw(RuntimeError("legacy visitor")),
+        )
+        monkeypatch.setattr(
+            flext_infra.FlextInfraCensusUsageCollector,
+            "scan_source",
+            lambda self, source: (_ for _ in ()).throw(
+                RuntimeError("legacy collector")
+            ),
+        )
+
+        result = self._refactor_main(
+            "--workspace",
+            str(workspace),
+            "census",
+        )
+
         assert result == 0

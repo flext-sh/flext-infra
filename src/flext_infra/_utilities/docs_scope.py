@@ -107,31 +107,17 @@ class FlextInfraUtilitiesDocsScope:
         return set(FlextInfraUtilitiesIteration.workspace_member_names(workspace_root))
 
     @staticmethod
-    def _declares_flext_core_dependency(
-        project_state: m.Infra.ProjectPyprojectState,
-    ) -> bool:
-        """Return whether one pyproject payload declares a direct dependency on flext-core."""
-        return c.Infra.PKG_CORE in project_state.dependency_names
-
-    @staticmethod
     def _project_info_for_entry(
         entry: Path,
         *,
         workspace_members: t.Infra.StrSet,
     ) -> m.Infra.ProjectInfo | None:
-        """Build one canonical project descriptor when a child qualifies."""
+        """Build one canonical project descriptor for one discovered project root."""
         pyproject = entry / c.Infra.PYPROJECT_FILENAME
         if not pyproject.is_file():
             return None
         project_state = FlextInfraUtilitiesDocsScope.project_state(entry)
         is_workspace_member = entry.name in workspace_members
-        if (
-            not is_workspace_member
-            and not FlextInfraUtilitiesDocsScope._declares_flext_core_dependency(
-                project_state,
-            )
-        ):
-            return None
         enabled = project_state.docs_meta.get("enabled", True)
         if isinstance(enabled, bool) and not enabled:
             return None
@@ -203,7 +189,7 @@ class FlextInfraUtilitiesDocsScope:
         docs_meta = FlextInfraUtilitiesDocsScope.project_docs_meta(project_root)
         raw = docs_meta.get(key)
         if not isinstance(raw, list):
-            return []
+            return ()
         return [str(item).strip() for item in raw if str(item).strip()]
 
     @staticmethod
@@ -321,33 +307,24 @@ class FlextInfraUtilitiesDocsScope:
         workspace_members = FlextInfraUtilitiesDocsScope._workspace_member_name_set(
             workspace_root,
         )
+        project_roots = FlextInfraUtilitiesIteration.discover_project_candidates(
+            workspace_root,
+        )
         root_project: m.Infra.ProjectInfo | None = None
-        if workspace_root.name not in excluded:
-            root_project = FlextInfraUtilitiesDocsScope._project_info_for_entry(
-                workspace_root,
+        projects: list[m.Infra.ProjectInfo] = []
+        for project_root in project_roots:
+            if project_root.name == "cmd" or project_root.name in excluded:
+                continue
+            project_info = FlextInfraUtilitiesDocsScope._project_info_for_entry(
+                project_root,
                 workspace_members=workspace_members,
             )
-        projects: list[m.Infra.ProjectInfo] = []
-        try:
-            for entry in sorted(workspace_root.iterdir(), key=lambda item: item.name):
-                if (
-                    not entry.is_dir()
-                    or entry.name.startswith(".")
-                    or entry.name == "cmd"
-                    or entry.name in excluded
-                ):
-                    continue
-                project_info = FlextInfraUtilitiesDocsScope._project_info_for_entry(
-                    entry,
-                    workspace_members=workspace_members,
-                )
-                if project_info is None:
-                    continue
-                projects.append(project_info)
-        except OSError as exc:
-            return r[Sequence[m.Infra.ProjectInfo]].fail(
-                f"discovery failed: {exc}",
-            )
+            if project_info is None:
+                continue
+            if project_root == workspace_root.resolve():
+                root_project = project_info
+                continue
+            projects.append(project_info)
         if not projects and root_project is not None:
             return r[Sequence[m.Infra.ProjectInfo]].ok([root_project])
         return r[Sequence[m.Infra.ProjectInfo]].ok(projects)

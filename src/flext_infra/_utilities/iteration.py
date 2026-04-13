@@ -182,70 +182,107 @@ class FlextInfraUtilitiesIteration:
             At minimum returns [workspace_root] if workspace_root/src/ exists.
 
         """
+        configured_members = FlextInfraUtilitiesIteration._workspace_member_names(
+            workspace_root,
+        )
+        candidates = FlextInfraUtilitiesIteration.discover_project_candidates(
+            workspace_root,
+            scan_dirs=scan_dirs,
+        )
+        if configured_members:
+            configured_roots = [
+                candidate
+                for candidate in candidates
+                if candidate.name in configured_members and candidate != workspace_root
+            ]
+            if configured_roots:
+                configured_order = {
+                    name: idx for idx, name in enumerate(configured_members)
+                }
+                return sorted(
+                    configured_roots,
+                    key=lambda candidate: configured_order.get(
+                        candidate.name, len(configured_members)
+                    ),
+                )
+        return candidates
+
+    @staticmethod
+    def _looks_like_project(
+        path: Path,
+        *,
+        effective_scan_dirs: frozenset[str],
+        configured_member_set: frozenset[str],
+    ) -> bool:
+        """Return whether one path matches the canonical governed project shape."""
+        if not path.is_dir():
+            return False
+        pyproject_path = path / c.Infra.PYPROJECT_FILENAME
+        go_mod_path = path / c.Infra.GO_MOD
+        if not pyproject_path.exists() and not go_mod_path.exists():
+            return False
+        if go_mod_path.exists():
+            return any((path / dir_name).is_dir() for dir_name in effective_scan_dirs)
+        if path.name in configured_member_set:
+            return True
+        if (path / c.Infra.MAKEFILE_FILENAME).exists():
+            return True
+        try:
+            payload = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
+                tomllib.loads(
+                    pyproject_path.read_text(encoding=c.Infra.ENCODING_DEFAULT),
+                ),
+            )
+        except (OSError, tomllib.TOMLDecodeError, ValidationError):
+            return False
+        dependency_names: set[str] = set(
+            FlextInfraUtilitiesTomlParse.declared_dependency_names_from_payload(
+                payload,
+            )
+        )
+        if c.Infra.PKG_CORE in dependency_names:
+            return True
+        return any((path / dir_name).is_dir() for dir_name in effective_scan_dirs)
+
+    @staticmethod
+    def discover_project_candidates(
+        workspace_root: Path,
+        *,
+        scan_dirs: frozenset[str] | None = None,
+    ) -> Sequence[Path]:
+        """Return all canonical project candidates before any consumer-specific filtering."""
         roots: MutableSequence[Path] = []
         effective_scan_dirs = scan_dirs or frozenset(c.Infra.MRO_SCAN_DIRECTORIES)
         configured_members = FlextInfraUtilitiesIteration._workspace_member_names(
             workspace_root,
         )
-        configured_member_set = set(configured_members)
+        configured_member_set = frozenset(configured_members)
+        resolved_workspace_root = workspace_root.resolve()
 
-        def _looks_like_project(path: Path) -> bool:
-            if not path.is_dir():
-                return False
-            pyproject_path = path / c.Infra.PYPROJECT_FILENAME
-            go_mod_path = path / c.Infra.GO_MOD
-            if not pyproject_path.exists() and not go_mod_path.exists():
-                return False
-            if go_mod_path.exists():
-                return any(
-                    (path / dir_name).is_dir() for dir_name in effective_scan_dirs
-                )
-            if path.name in configured_member_set:
-                return True
-            if (path / c.Infra.MAKEFILE_FILENAME).exists():
-                return True
-            try:
-                payload = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
-                    tomllib.loads(
-                        pyproject_path.read_text(encoding=c.Infra.ENCODING_DEFAULT),
-                    ),
-                )
-            except (OSError, tomllib.TOMLDecodeError, ValidationError):
-                return False
-            dependency_names: set[str] = set(
-                FlextInfraUtilitiesTomlParse.declared_dependency_names_from_payload(
-                    payload,
-                )
-            )
-            if c.Infra.PKG_CORE in dependency_names:
-                return True
-            return any((path / dir_name).is_dir() for dir_name in effective_scan_dirs)
-
-        if configured_members:
-            configured_roots = [
-                (workspace_root / member).resolve()
-                for member in configured_members
-                if _looks_like_project((workspace_root / member).resolve())
-            ]
-            if configured_roots:
-                return configured_roots
-
-        if _looks_like_project(workspace_root):
-            roots.append(workspace_root)
+        if FlextInfraUtilitiesIteration._looks_like_project(
+            resolved_workspace_root,
+            effective_scan_dirs=effective_scan_dirs,
+            configured_member_set=configured_member_set,
+        ):
+            roots.append(resolved_workspace_root)
         roots.extend(
             [
-                entry
+                entry.resolve()
                 for entry in sorted(
                     workspace_root.iterdir(),
                     key=lambda item: item.name,
                 )
                 if entry.is_dir()
                 and (not entry.name.startswith("."))
-                and _looks_like_project(entry)
+                and FlextInfraUtilitiesIteration._looks_like_project(
+                    entry.resolve(),
+                    effective_scan_dirs=effective_scan_dirs,
+                    configured_member_set=configured_member_set,
+                )
             ],
         )
-        if not roots and (workspace_root / c.Infra.DEFAULT_SRC_DIR).is_dir():
-            return [workspace_root]
+        if not roots and (resolved_workspace_root / c.Infra.DEFAULT_SRC_DIR).is_dir():
+            return [resolved_workspace_root]
         return roots
 
     @staticmethod
