@@ -9,8 +9,7 @@ from __future__ import annotations
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
-from flext_core import p, r
-from flext_infra import c, m, s, t, u
+from flext_infra import c, m, p, r, s, t, u
 
 
 class FlextInfraReleaseOrchestratorPhases(s[bool]):

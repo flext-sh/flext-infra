@@ -9,16 +9,17 @@ from typing import Annotated, override
 
 from pydantic import Field
 
-from flext_cli import p, u
-from flext_core import r
 from flext_infra import (
     FlextInfraBaseMkTemplateEngine,
     FlextInfraConstantsBase,
     FlextInfraModelsBasemk,
     FlextInfraProtocolsBase,
     c,
+    p,
+    r,
     s,
     t,
+    u,
 )
 
 

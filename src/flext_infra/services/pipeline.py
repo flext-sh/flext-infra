@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, MutableSequence, Sequence
 from typing import override
 
-from flext_core import r
 from flext_infra import (
     FlextInfraCodegenCensus,
     FlextInfraCodegenFixer,
@@ -15,6 +14,7 @@ from flext_infra import (
     c,
     m,
     p,
+    r,
     s,
     t,
     u,

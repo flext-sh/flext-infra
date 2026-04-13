@@ -5,8 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-from flext_core import p, r
-from flext_infra import c, t, u
+from flext_infra import c, p, r, t, u
 
 
 class FlextInfraRefactorSafetyManager:

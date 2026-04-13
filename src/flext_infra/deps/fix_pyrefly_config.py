@@ -13,11 +13,12 @@ from typing import override
 
 from pydantic import ValidationError
 
-from flext_core import p, r
 from flext_infra import (
     FlextInfraExtraPathsManager,
     c,
     m,
+    p,
+    r,
     s,
     t,
     u,

@@ -10,13 +10,14 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import override
 
-from flext_core import p, r
 from flext_infra import (
     FlextInfraCodegenCensus,
     FlextInfraCodegenLazyInit,
     FlextInfraUtilitiesRope,
     c,
     m,
+    p,
+    r,
     s,
     t,
     u,

@@ -6,8 +6,7 @@ from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
-from flext_core import r
-from flext_infra import FlextInfraDependencyDetectionAnalysis, c, m, p, t, u
+from flext_infra import FlextInfraDependencyDetectionAnalysis, c, m, p, r, t, u
 
 
 class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis):

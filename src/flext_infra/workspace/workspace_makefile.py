@@ -30,8 +30,7 @@ from jinja2 import (
     select_autoescape,
 )
 
-from flext_core import r
-from flext_infra import c, p, t, u
+from flext_infra import c, p, r, t, u
 
 
 class FlextInfraWorkspaceMakefileGenerator:

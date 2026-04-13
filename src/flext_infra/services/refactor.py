@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 from flext_cli.api import cli as cli_service
-from flext_core import p, r
 from flext_infra import (
     FlextInfraNamespaceEnforcer,
     FlextInfraRefactorCensus,
     FlextInfraRefactorMigrateToClassMRO,
     c,
     m,
+    p,
+    r,
     t,
     u,
 )

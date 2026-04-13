@@ -11,7 +11,6 @@ from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar
 
-from flext_core import p, r
 from flext_infra import (
     FlextInfraClassNestingRefactorRule,
     FlextInfraRefactorClassReconstructorRule,
@@ -31,6 +30,8 @@ from flext_infra import (
     FlextInfraRefactorTypingUnificationRule,
     FlextInfraUtilitiesRefactorRuleLoader,
     c,
+    p,
+    r,
     t,
     u,
 )

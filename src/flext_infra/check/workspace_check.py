@@ -8,13 +8,15 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import override
 
-from flext_core import p, r, s
 from flext_infra import (
     FlextInfraGateRegistry,
     FlextInfraWorkspaceCheckGatesMixin,
     WorkspaceLoopOutcome,
     c,
     m,
+    p,
+    r,
+    s,
     t,
     u,
 )

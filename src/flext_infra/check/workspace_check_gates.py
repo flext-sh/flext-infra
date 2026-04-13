@@ -9,7 +9,7 @@ from typing import ClassVar
 
 from pydantic import Field
 
-from flext_core import FlextProtocols, r
+from flext_core import FlextProtocols
 from flext_infra import (
     FlextInfraBanditGate,
     FlextInfraGate,
@@ -24,6 +24,7 @@ from flext_infra import (
     c,
     m,
     p,
+    r,
     t,
     u,
 )

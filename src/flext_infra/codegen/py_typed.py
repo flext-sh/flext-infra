@@ -15,8 +15,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
-from flext_core import p, r
-from flext_infra import c, s, u
+from flext_infra import c, p, r, s, u
 
 
 class FlextInfraCodegenPyTyped(s[bool]):

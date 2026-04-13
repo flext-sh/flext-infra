@@ -12,8 +12,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_core import p, r
-from flext_infra import FlextInfraBaseMkGenerator, FlextInfraUtilitiesDocsScope, c, m, u
+from flext_infra import (
+    FlextInfraBaseMkGenerator,
+    FlextInfraUtilitiesDocsScope,
+    c,
+    m,
+    p,
+    r,
+    u,
+)
 
 
 class FlextInfraProjectMakefileUpdater:

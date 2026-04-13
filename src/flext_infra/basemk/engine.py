@@ -15,13 +15,15 @@ from jinja2 import (
 )
 from pydantic import PrivateAttr
 
-from flext_core import p, r, s
 from flext_infra import (
     FlextInfraConstantsBase,
     FlextInfraConstantsBasemk,
     FlextInfraModelsBasemk,
     FlextInfraProtocolsBase,
     FlextInfraTypesBase,
+    p,
+    r,
+    s,
 )
 
 

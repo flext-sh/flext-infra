@@ -8,13 +8,14 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from flext_core import p, r
 from flext_infra import (
     FlextInfraClassNestingRefactorRule,
     FlextInfraRefactorRule,
     FlextInfraRefactorRuleDefinitionValidator,
     c,
     m,
+    p,
+    r,
     t,
     u,
 )

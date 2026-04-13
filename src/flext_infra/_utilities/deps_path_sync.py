@@ -6,13 +6,14 @@ from collections.abc import MutableMapping, MutableSequence
 from pathlib import Path
 
 from flext_cli import u
-from flext_core import p, r
 from flext_infra import (
     FlextInfraModelsDeps,
     FlextInfraUtilitiesDocsScope,
     FlextInfraUtilitiesTomlParse,
     c,
     m,
+    p,
+    r,
     t,
 )
 

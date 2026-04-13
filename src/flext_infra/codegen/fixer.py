@@ -18,7 +18,6 @@ from typing import override
 
 from pydantic import Field
 
-from flext_core import r
 from flext_infra import (
     FlextInfraCodegenLazyInit,
     FlextInfraNamespaceEnforcer,
@@ -28,6 +27,7 @@ from flext_infra import (
     c,
     m,
     p,
+    r,
     s,
     u,
 )

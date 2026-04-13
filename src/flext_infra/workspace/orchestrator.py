@@ -17,8 +17,7 @@ from typing import Annotated, override
 
 from pydantic import Field
 
-from flext_core import p, r
-from flext_infra import FlextInfraSyncService, c, m, s, t, u
+from flext_infra import FlextInfraSyncService, c, m, p, r, s, t, u
 
 logger = u.fetch_logger(__name__)
 

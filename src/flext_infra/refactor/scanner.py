@@ -6,8 +6,7 @@ from collections import Counter
 from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
-from flext_core import p, r
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, r, t, u
 
 
 class FlextInfraRefactorLooseClassScanner:

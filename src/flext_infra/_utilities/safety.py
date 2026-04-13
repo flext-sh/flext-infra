@@ -11,8 +11,7 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from flext_cli import u
-from flext_core import p, r
-from flext_infra import c, m
+from flext_infra import c, m, p, r
 
 
 class FlextInfraUtilitiesSafety:

@@ -8,8 +8,7 @@ from functools import cache
 from pathlib import Path
 from typing import ClassVar
 
-from flext_core import p, r
-from flext_infra import c, t
+from flext_infra import c, p, r, t
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 
 

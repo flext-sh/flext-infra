@@ -8,7 +8,6 @@ from pathlib import Path
 from pydantic import ValidationError
 from tomlkit.items import AoT, Table
 
-from flext_core import p, r
 from flext_infra import (
     FlextInfraConsolidateGroupsPhase,
     FlextInfraEnsureCoverageConfigPhase,
@@ -26,6 +25,8 @@ from flext_infra import (
     FlextInfraUtilitiesTomlParse,
     c,
     m,
+    p,
+    r,
     t,
     u,
 )

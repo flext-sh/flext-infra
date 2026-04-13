@@ -15,8 +15,7 @@ from typing import Annotated, override
 
 from pydantic import Field, PrivateAttr
 
-from flext_core import p, r
-from flext_infra import c, m, s, t, u
+from flext_infra import c, m, p, r, s, t, u
 
 
 class FlextInfraToml(s[Sequence[t.StrSequence]]):

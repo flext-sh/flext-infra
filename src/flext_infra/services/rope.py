@@ -9,8 +9,7 @@ from typing import TYPE_CHECKING, Annotated, Self, override
 
 from pydantic import Field, PrivateAttr
 
-from flext_core import r
-from flext_infra import c, m, s, t, u
+from flext_infra import c, m, r, s, t, u
 from flext_infra._utilities.rope_inventory import FlextInfraUtilitiesRopeInventory
 
 if TYPE_CHECKING:

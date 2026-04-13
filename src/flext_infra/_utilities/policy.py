@@ -15,11 +15,12 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from flext_cli import u as _cli_u
-from flext_core import p, r
 from flext_infra import (
     FlextInfraUtilitiesBase,
     c,
     m,
+    p,
+    r,
     t,
 )
 

@@ -7,8 +7,7 @@ from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from pathlib import Path
 
 from flext_cli import m as cli_models
-from flext_core import r
-from flext_infra import FlextInfraModelsDeps, c, p, t, u
+from flext_infra import FlextInfraModelsDeps, c, p, r, t, u
 
 
 class FlextInfraDependencyDetectorRuntime:

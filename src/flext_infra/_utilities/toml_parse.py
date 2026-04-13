@@ -15,8 +15,7 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from flext_cli import FlextCliUtilities
-from flext_core import p, r
-from flext_infra import c, t
+from flext_infra import c, p, r, t
 
 
 class FlextInfraUtilitiesTomlParse:

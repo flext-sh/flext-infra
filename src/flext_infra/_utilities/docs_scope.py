@@ -8,12 +8,13 @@ from functools import cache
 from pathlib import Path
 
 from flext_cli import u
-from flext_core import p, r
 from flext_infra import (
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesTomlParse,
     c,
     m,
+    p,
+    r,
     t,
 )
 

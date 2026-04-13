@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import ClassVar, Final
 
 from flext_cli import u
-from flext_core import r
 from flext_infra import (
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesDocsScope,
@@ -16,6 +15,7 @@ from flext_infra import (
     c,
     m,
     p,
+    r,
     t,
 )
 from flext_infra._utilities.base import FlextInfraUtilitiesBase

@@ -11,12 +11,13 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 from flext_cli import u
-from flext_core import p, r
 from flext_infra import (
     FlextInfraUtilitiesDocsScope,
     FlextInfraUtilitiesGithubPr,
     c,
     m,
+    p,
+    r,
 )
 
 

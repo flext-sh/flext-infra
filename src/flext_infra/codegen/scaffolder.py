@@ -13,12 +13,12 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
-from flext_core import r
 from flext_infra import (
     FlextInfraServiceBase,
     c,
     m,
     p,
+    r,
     t,
     u,
 )

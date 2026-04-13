@@ -17,8 +17,7 @@ from typing import Annotated, ClassVar, Protocol, override, runtime_checkable
 from defusedxml import ElementTree as DefusedET
 from pydantic import Field
 
-from flext_core import p, r
-from flext_infra import c, m, s, t, u
+from flext_infra import c, m, p, r, s, t, u
 
 
 @runtime_checkable

@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from flext_core import p, r
-from flext_infra import m, u
+from flext_infra import m, p, r, u
 
 
 class FlextInfraServiceGithubMixin:

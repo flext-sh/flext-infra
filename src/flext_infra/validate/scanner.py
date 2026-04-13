@@ -17,8 +17,7 @@ from typing import Annotated, override
 
 from pydantic import Field
 
-from flext_core import p, r
-from flext_infra import c, s, t
+from flext_infra import c, p, r, s, t
 
 
 class FlextInfraTextPatternScanner(s[bool]):

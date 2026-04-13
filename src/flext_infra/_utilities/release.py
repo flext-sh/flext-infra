@@ -7,8 +7,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_core import p, r, u
-from flext_infra import c
+from flext_core import u
+from flext_infra import c, p, r
 
 if TYPE_CHECKING:
     from flext_infra import m

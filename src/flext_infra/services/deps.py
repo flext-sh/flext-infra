@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from flext_core import p, r
 from flext_infra import (
     FlextInfraDependencyDetectorRuntime,
     FlextInfraExtraPathsManager,
@@ -10,6 +9,8 @@ from flext_infra import (
     FlextInfraModelsDeps,
     FlextInfraPyprojectModernizer,
     FlextInfraRuntimeDevDependencyDetector,
+    p,
+    r,
     t,
 )
 from flext_infra._utilities.deps_path_sync import FlextInfraUtilitiesDependencyPathSync
