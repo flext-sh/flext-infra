@@ -181,7 +181,9 @@ class FlextInfraModelsEngine:
                 )
 
             def handler(self, fn: Callable[..., t.StrSequence]) -> Self:
-                return self._replace(self.state.model_copy(update={"custom_handler": fn}))
+                return self._replace(
+                    self.state.model_copy(update={"custom_handler": fn})
+                )
 
 
 __all__: list[str] = ["FlextInfraModelsEngine"]
