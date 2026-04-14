@@ -12,6 +12,33 @@
 - **Quality Validation**: Multi-gate validation (ruff, mypy, pyright, pyrefly) with configurable scopes.
 - **Workspace Sync**: Cross-project configuration synchronization and drift detection.
 
+## Documentation SSOT
+
+`flext-infra` treats documentation as code and uses two primary sources of truth:
+
+1. `pyproject.toml` metadata (project identity, version, packaging metadata)
+2. Python docstrings (module/class/function behavior contracts)
+
+Generated docs consume these inputs directly (see `flext-infra/docs/index.md` and
+`flext-infra/docs/api-reference/README.md`).
+
+### Docstring Automation
+
+The workspace already ships docstring automation helpers under `scripts/`:
+
+- `scripts/validate_docstrings.py` — audits missing/invalid docstrings
+- `scripts/fix_docstrings.py` — inserts safe placeholder docstrings
+- `scripts/ai_docstring_generator.py` — assisted generation with validation
+
+Use these with quality gates to keep docstrings as reliable SSOT inputs.
+
+### Recommended Maintenance Flow
+
+1. Update code and docstrings in `src/`
+2. Ensure package metadata is current in `pyproject.toml`
+3. Run validation gates (including docstring-related checks)
+4. Regenerate documentation artifacts via workspace automation
+
 ## CLI
 
 Use the centralized entrypoint:

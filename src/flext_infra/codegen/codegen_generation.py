@@ -298,7 +298,7 @@ class FlextInfraCodegenGeneration:
     ) -> t.StrSequence:
         return tuple(
             export_name
-            for export_name in sorted(exports)
+            for export_name in exports
             if export_name not in lazy_filtered
             or not FlextInfraCodegenGeneration._is_module_or_package_export(
                 lazy_filtered[export_name][1]

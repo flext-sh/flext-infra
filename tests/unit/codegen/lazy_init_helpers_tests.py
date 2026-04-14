@@ -256,6 +256,70 @@ class TestsFlextInfraLazyInitHelpers:
 
         assert '"r"' in init_content
 
+    def test_nested_tests_namespace_synthesizes_local_and_source_aliases(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace_root, package_root = self._workspace(tmp_path)
+        package_root.joinpath(c.Infra.RESULT_PY).write_text(
+            "from __future__ import annotations\n\nclass FlextDemoResult:\n    pass\n",
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+        tests_unit_root = workspace_root / c.Infra.DIR_TESTS / "unit"
+        tests_unit_root.mkdir(parents=True)
+        tests_unit_root.joinpath(c.Infra.INIT_PY).write_text(
+            "", encoding=c.Infra.ENCODING_DEFAULT
+        )
+        tests_unit_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
+            "from __future__ import annotations\n\n"
+            "class TestsFlextDemoUnitConstants:\n"
+            "    pass\n",
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+        tests_unit_root.joinpath(c.Infra.MODELS_PY).write_text(
+            "from __future__ import annotations\n\n"
+            "class TestsFlextDemoUnitModels:\n"
+            "    pass\n",
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+
+        assert u.Infra.Tests.run_lazy_init(workspace_root) == 0
+        init_content = tests_unit_root.joinpath(c.Infra.INIT_PY).read_text(
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+
+        assert "TestsFlextDemoUnitConstants" in init_content
+        assert "TestsFlextDemoUnitModels" in init_content
+        assert '"c"' in init_content
+        assert '"m"' in init_content
+        assert '"r"' in init_content
+
+    def test_root_exports_symbols_from_deep_descendant_packages(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace_root, package_root = self._workspace(tmp_path)
+        deep_dir = package_root / "services" / "http"
+        deep_dir.mkdir(parents=True)
+        (package_root / "services" / c.Infra.INIT_PY).write_text(
+            "", encoding=c.Infra.ENCODING_DEFAULT
+        )
+        deep_dir.joinpath(c.Infra.INIT_PY).write_text(
+            "", encoding=c.Infra.ENCODING_DEFAULT
+        )
+        deep_dir.joinpath("transport.py").write_text(
+            "from __future__ import annotations\n\n"
+            "class FlextDemoHttpTransport:\n"
+            "    pass\n\n"
+            '__all__: list[str] = ["FlextDemoHttpTransport"]\n',
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+
+        assert u.Infra.Tests.run_lazy_init(workspace_root) == 0
+        init_content = self._generated_init(package_root)
+
+        assert "FlextDemoHttpTransport" in init_content
+
     def test_duplicate_public_export_returns_error(self, tmp_path: Path) -> None:
         workspace_root, package_root = self._workspace(tmp_path)
         (package_root / "alpha.py").write_text(

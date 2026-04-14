@@ -75,7 +75,11 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         return m.Infra.LazyInitPlan(
             context=context,
             action="write",
-            exports=tuple(sorted(lazy_map)),
+            exports=u.Infra.ordered_namespace_exports(
+                package_dir=context.pkg_dir,
+                package_name=context.current_pkg,
+                export_names=tuple(sorted(lazy_map)),
+            ),
             lazy_map=dict(lazy_map),
             wildcard_runtime_modules=tuple(
                 sorted({module_name for module_name, _attr in version_map.values()}),
@@ -121,7 +125,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
             if (
                 policy.expected_alias
                 and targets
-                and "." not in context.current_pkg
+                and u.Infra.is_project_namespace_package(context.current_pkg)
                 and u.Infra.is_root_namespace_file(py_file.name)
             ):
                 targets.setdefault(
@@ -215,7 +219,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         pkg_dir: Path,
         surface: str,
     ) -> None:
-        if not current_pkg or "." in current_pkg:
+        if not u.Infra.is_project_namespace_package(current_pkg):
             return
         inherited_key = (
             surface if surface in self.lazy_init.inherited_exports else "src"

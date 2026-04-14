@@ -73,7 +73,11 @@ class FlextInfraUtilitiesCodegenLazyAliases:
         return m.Infra.LazyInitPlan(
             context=context,
             action="write",
-            exports=tuple(sorted(lazy_map)),
+            exports=FlextInfraUtilitiesCodegenNamespace.ordered_namespace_exports(
+                package_dir=pkg_dir,
+                package_name=context.current_pkg,
+                export_names=tuple(sorted(lazy_map)),
+            ),
             lazy_map=dict(lazy_map),
             wildcard_runtime_modules=tuple(
                 sorted({module for module, _attr in version_map.values()}),
@@ -122,7 +126,9 @@ class FlextInfraUtilitiesCodegenLazyAliases:
             if (
                 policy.expected_alias
                 and targets
-                and "." not in current_pkg
+                and FlextInfraUtilitiesCodegenNamespace.is_project_namespace_package(
+                    current_pkg
+                )
                 and FlextInfraUtilitiesCodegenNamespace.is_root_namespace_file(
                     py_file.name,
                 )
@@ -207,7 +213,9 @@ class FlextInfraUtilitiesCodegenLazyAliases:
         pkg_dir: Path,
         surface: str,
     ) -> None:
-        if not current_pkg or "." in current_pkg:
+        if not FlextInfraUtilitiesCodegenNamespace.is_project_namespace_package(
+            current_pkg
+        ):
             return
         inherited_key = (
             surface if surface in self._lazy_init.inherited_exports else "src"

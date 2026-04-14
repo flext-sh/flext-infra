@@ -62,6 +62,57 @@ class FlextInfraUtilitiesCodegenNamespace:
         """Return whether *file_name* is a governed root-namespace facade file."""
         return file_name in cls._lazy_init_config().root_namespace_files
 
+    @classmethod
+    def surface_name(cls, package_name: str) -> str:
+        """Return the configured surface name for one import package."""
+        parts = tuple(part for part in package_name.split(".") if part)
+        if not parts:
+            return ""
+        settings = cls._lazy_init_config()
+        return parts[0] if parts[0] in settings.surface_prefixes else "src"
+
+    @classmethod
+    def is_project_namespace_package(cls, package_name: str) -> bool:
+        """Return whether a package behaves like a project namespace root.
+
+        Project package roots under ``src/`` qualify, as do namespace packages under
+        governed wrapper surfaces like ``tests/``, ``examples/``, and ``scripts/``.
+        Ordinary nested runtime subpackages such as ``<pkg>.services`` do not.
+        """
+        parts = tuple(part for part in package_name.split(".") if part)
+        if not parts:
+            return False
+        return len(parts) == 1 or cls.surface_name(package_name) != "src"
+
+    @classmethod
+    def ordered_namespace_exports(
+        cls,
+        *,
+        package_dir: Path,
+        package_name: str,
+        export_names: t.StrSequence,
+    ) -> tuple[str, ...]:
+        """Order root-package exports with alias hierarchy preserved."""
+        ordered_unique = tuple(dict.fromkeys(export_names))
+        export_set = set(ordered_unique)
+        settings = cls._lazy_init_config()
+        local_aliases = tuple(
+            alias
+            for file_name, alias in settings.public_file_aliases.items()
+            if alias in export_set and (package_dir / file_name).is_file()
+        )
+        inherited_aliases = tuple(
+            alias
+            for alias in settings.inherited_exports.get(
+                cls.surface_name(package_name), ()
+            )
+            if alias in export_set and alias not in local_aliases
+        )
+        ordered_aliases = tuple(dict.fromkeys((*local_aliases, *inherited_aliases)))
+        alias_set = set(ordered_aliases)
+        other_exports = tuple(name for name in ordered_unique if name not in alias_set)
+        return (*other_exports, *ordered_aliases)
+
     @staticmethod
     def project_class_stem(*, project_name: str) -> str:
         """Derive the canonical facade class stem from a project name."""

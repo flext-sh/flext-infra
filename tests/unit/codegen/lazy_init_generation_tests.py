@@ -369,6 +369,28 @@ class TestGenerateFile:
         tm.that(content, lacks="from test_pkg import api")
         tm.that(content, lacks="from test_pkg import constants")
 
+    def test_root_namespace_preserves_alias_hierarchy_order(self) -> None:
+        """Root namespace keeps alias ordering from the resolved export hierarchy."""
+        content = FlextInfraCodegenGeneration.generate_file(
+            ["FlextDemoConstants", "FlextDemoModels", "c", "m", "p", "t", "u", "r"],
+            {
+                "FlextDemoConstants": ("test_pkg.constants", "FlextDemoConstants"),
+                "FlextDemoModels": ("test_pkg.models", "FlextDemoModels"),
+                "c": ("test_pkg.constants", "c"),
+                "m": ("test_pkg.models", "m"),
+                "p": ("flext_core", "p"),
+                "t": ("test_pkg.typings", "t"),
+                "u": ("test_pkg.utilities", "u"),
+                "r": ("flext_core", "r"),
+            },
+            {},
+            "test_pkg",
+        )
+        alias_positions = tuple(
+            content.index(f'    "{alias}",') for alias in ("c", "m", "p", "t", "u", "r")
+        )
+        tm.that(alias_positions == tuple(sorted(alias_positions)), eq=True)
+
     def test_root_namespace_omits_module_and_directory_exports(self) -> None:
         """Root namespace omits compatibility module/directory names entirely."""
         exports = ["Alpha", "_constants", "api", "constants", "tools"]
