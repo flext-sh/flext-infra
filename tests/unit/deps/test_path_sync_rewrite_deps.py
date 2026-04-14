@@ -10,7 +10,7 @@ from flext_core import p
 from tests import t, u
 
 
-def _is_str_object_dict(value) -> TypeGuard[dict[str, object]]:
+def _is_str_object_dict(value: object) -> TypeGuard[dict[str, object]]:
     return isinstance(value, dict)
 
 
