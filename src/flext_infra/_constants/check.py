@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping
+from enum import StrEnum, unique
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Final
 
@@ -13,6 +14,14 @@ if TYPE_CHECKING:
 
 class FlextInfraConstantsCheck:
     """Check infrastructure constants."""
+
+    @unique
+    class GateSeverity(StrEnum):
+        """Severity levels accepted by gate output parsers."""
+
+        ERROR = "error"
+        WARNING = "warning"
+        NOTE = "note"
 
     ALLOWED_GATES: Final[frozenset[str]] = frozenset({
         "lint",
@@ -55,9 +64,9 @@ class FlextInfraConstantsCheck:
     MAX_DISPLAY_ISSUES: Final[int] = 50
 
     VALID_GATE_SEVERITIES: Final[frozenset[str]] = frozenset({
-        "error",
-        "warning",
-        "note",
+        GateSeverity.ERROR,
+        GateSeverity.WARNING,
+        GateSeverity.NOTE,
     })
     "Severity levels accepted by gate output parsers."
 

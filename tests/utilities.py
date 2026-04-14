@@ -175,7 +175,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                         else self._values[-1]
                     )
 
-            class SequenceRunner(p.Cli.CommandRunner):
+            class SequenceRunner(DeptryRunner):
                 """Protocol-compatible runner that replays command results in order."""
 
                 def __init__(
@@ -231,55 +231,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                             output.stderr or output.stdout or "Command failed",
                         )
                     return result
-
-                @override
-                def capture(
-                    self,
-                    cmd: t.StrSequence,
-                    cwd: t.Cli.PathLike | None = None,
-                    timeout: int | None = None,
-                    env: t.Cli.StrEnvMapping | None = None,
-                ) -> p.Result[str]:
-                    result = self.run(cmd, cwd=cwd, timeout=timeout, env=env)
-                    if result.failure:
-                        return r[str].fail(result.error or "Command failed")
-                    return r[str].ok(result.unwrap().stdout.strip())
-
-                @override
-                def run_checked(
-                    self,
-                    cmd: t.StrSequence,
-                    cwd: t.Cli.PathLike | None = None,
-                    timeout: int | None = None,
-                    env: t.Cli.StrEnvMapping | None = None,
-                ) -> p.Result[bool]:
-                    result = self.run(cmd, cwd=cwd, timeout=timeout, env=env)
-                    if result.failure:
-                        return r[bool].fail(result.error or "Command failed")
-                    return r[bool].ok(True)
-
-                @override
-                def run_to_file(
-                    self,
-                    cmd: t.StrSequence,
-                    output_file: t.Cli.PathLike,
-                    cwd: t.Cli.PathLike | None = None,
-                    timeout: int | None = None,
-                    env: t.Cli.StrEnvMapping | None = None,
-                ) -> p.Result[int]:
-                    result = self.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
-                    if result.failure:
-                        return r[int].fail(result.error or "Command failed")
-                    output_path = (
-                        output_file
-                        if isinstance(output_file, Path)
-                        else Path(output_file)
-                    )
-                    output_path.write_text(
-                        f"{result.value.stdout}{result.value.stderr}",
-                        encoding="utf-8",
-                    )
-                    return r[int].ok(result.value.exit_code)
 
             @staticmethod
             def ok_result[ValueT](value: ValueT) -> p.Result[ValueT]:
@@ -843,7 +794,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             def patch_public_infra(
                 monkeypatch: pytest.MonkeyPatch,
                 name: str,
-                value,
+                value: t.Infra.Tests.PublicProjectDiscoveryStub | t.Scalar,
             ) -> None:
                 patched = staticmethod(value) if callable(value) else value
                 monkeypatch.setattr(
@@ -1041,10 +992,12 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                 monkeypatch: pytest.MonkeyPatch,
             ) -> None:
                 def _fail_write(
-                    *args,
-                    **kwargs,
-                ) -> tuple[bool, tuple[str, ...]]:
-                    del args, kwargs
+                    *,
+                    workspace_root: Path,
+                    file_path: Path,
+                    updated_source: str,
+                ) -> t.Infra.EditResult:
+                    del workspace_root, file_path, updated_source
                     return (False, ("  REVERTED src/demo_pkg/constants.py:",))
 
                 monkeypatch.setattr(
@@ -1103,7 +1056,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             @staticmethod
             def detect_command(
                 workspace_root: Path,
-                **overrides,
+                **overrides: t.Infra.Tests.DetectCommandOverride,
             ) -> m.Infra.DetectCommand:
                 return m.Infra.DetectCommand.model_validate({
                     "workspace": str(workspace_root),
@@ -1227,7 +1180,13 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             ) -> t.Infra.Tests.ProjectCheckStub:
                 project_iter = iter(projects)
 
-                def _fake_check(*_args, **_kwargs) -> m.Infra.ProjectResult:
+                def _fake_check(
+                    _self: object,
+                    _project_dir: Path,
+                    _gates: t.StrSequence,
+                    _ctx: m.Infra.GateContext,
+                ) -> m.Infra.ProjectResult:
+                    del _self, _project_dir, _gates, _ctx
                     return next(project_iter)
 
                 return _fake_check
@@ -1355,9 +1314,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             ) -> t.Infra.Tests.RawRunStub:
                 def _fake_run_raw(
                     _cmd: t.StrSequence,
-                    **_kw,
+                    cwd: Path | None = None,
+                    timeout: int | None = None,
+                    env: t.StrMapping | None = None,
                 ) -> p.Result[m.Cli.CommandOutput]:
-                    del _cmd, _kw
+                    del _cmd, cwd, timeout, env
                     return (
                         r[m.Cli.CommandOutput].fail(result)
                         if isinstance(result, str)
@@ -1370,8 +1331,13 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             def create_check_project_stub(
                 project: m.Infra.ProjectResult,
             ) -> t.Infra.Tests.ProjectCheckStub:
-                def _fake_check(*_args, **_kwargs) -> m.Infra.ProjectResult:
-                    del _args, _kwargs
+                def _fake_check(
+                    _self: object,
+                    _project_dir: Path,
+                    _gates: t.StrSequence,
+                    _ctx: m.Infra.GateContext,
+                ) -> m.Infra.ProjectResult:
+                    del _self, _project_dir, _gates, _ctx
                     return project
 
                 return _fake_check

@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from flext_core import FlextModels
-from flext_infra import t
+from flext_infra import c, t
 from flext_infra._models.mixins import FlextInfraModelsMixins
 
 
@@ -109,8 +109,11 @@ class FlextInfraModelsCensus:
             ]
             severity: Annotated[
                 str,
-                Field(default="warning", description="Severity level"),
-            ] = "warning"
+                Field(
+                    default=c.Infra.GateSeverity.WARNING.value,
+                    description="Severity level",
+                ),
+            ] = c.Infra.GateSeverity.WARNING.value
             file_path: Annotated[str, Field(description="File containing violation")]
             line: Annotated[
                 t.NonNegativeInt,

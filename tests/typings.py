@@ -42,6 +42,11 @@ class TestsFlextInfraTypes(FlextTestsTypes, FlextInfraTypes):
             "Type for test markers (infra, integration, docker, etc.)."
 
             type GateClass = type[FlextInfraGate]
+            type DetectCommandOverride = t.StrSequence | t.Scalar | None
+            type PublicProjectDiscoveryStub = Callable[
+                ...,
+                p.Result[tuple[m.Infra.ProjectInfo, ...]],
+            ]
             type ProjectCheckStub = Callable[..., m.Infra.ProjectResult]
             type RawRunStub = Callable[..., p.Result[m.Cli.CommandOutput]]
 

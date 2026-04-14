@@ -36,7 +36,7 @@ class FlextInfraUtilitiesGithub(
         workspace_root = request.workspace_path
         if actionlint is None:
             payload_skipped = m.Infra.GithubWorkflowLintOutcome(
-                status="skipped",
+                status=c.Infra.WorkflowLintStatus.SKIPPED.value,
                 reason="actionlint not installed",
             )
             if request.report_path is not None:
@@ -52,20 +52,20 @@ class FlextInfraUtilitiesGithub(
         if result.success:
             output = result.value
             payload = m.Infra.GithubWorkflowLintOutcome(
-                status="ok",
+                status=c.Infra.WorkflowLintStatus.OK.value,
                 exit_code=output.exit_code,
                 stdout=output.stdout,
                 stderr=output.stderr,
             )
         else:
             payload = m.Infra.GithubWorkflowLintOutcome(
-                status="fail",
+                status=c.Infra.WorkflowLintStatus.FAIL.value,
                 exit_code=1,
                 detail=result.error or "",
             )
         if request.report_path is not None:
             _ = u.Cli.json_write(request.report_path, payload, sort_keys=True)
-        if payload.status == "fail" and request.strict:
+        if payload.status == c.Infra.WorkflowLintStatus.FAIL.value and request.strict:
             return r[m.Infra.GithubWorkflowLintOutcome].fail(
                 result.error or "actionlint found issues",
             )
