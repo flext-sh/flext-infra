@@ -61,7 +61,7 @@ class FlextInfraBanditGate(FlextInfraGate):
         try:
             parsed_result = u.Cli.json_parse(result.stdout or "{}")
             empty_mapping: Mapping[str, t.Infra.InfraValue] = {}
-            raw_payload: object = (
+            raw_payload = (
                 parsed_result.unwrap() if parsed_result.success else empty_mapping
             )
             bandit_data: Mapping[str, t.Infra.InfraValue] = (

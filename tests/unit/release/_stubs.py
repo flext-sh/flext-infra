@@ -36,11 +36,11 @@ class FakeUtilsNamespace:
     class Infra:
         """Fake Infra utilities namespace."""
 
-        _git_checkout_result: r[bool] = r[bool].ok(True)
-        _git_run_result: r[str] = r[str].ok("")
-        _git_run_checked_result: r[bool] = r[bool].ok(True)
-        _git_tag_exists_result: r[bool] = r[bool].ok(False)
-        _git_create_tag_result: r[bool] = r[bool].ok(True)
+        _git_checkout_result: p.Result[bool] = r[bool].ok(True)
+        _git_run_result: p.Result[str] = r[str].ok("")
+        _git_run_checked_result: p.Result[bool] = r[bool].ok(True)
+        _git_tag_exists_result: p.Result[bool] = r[bool].ok(False)
+        _git_create_tag_result: p.Result[bool] = r[bool].ok(True)
         _git_checkout_side_effects: Sequence[r[bool]] | None = None
         _call_count: int = 0
 
@@ -103,8 +103,8 @@ class FakeUtilsNamespace:
 class FakeVersioning:
     """Fake for FlextInfraUtilitiesVersioning."""
 
-    _parse_result: r[str] = r[str].ok("1.0.0")
-    _bump_result: r[str] = r[str].ok("1.1.0")
+    _parse_result: p.Result[str] = r[str].ok("1.0.0")
+    _bump_result: p.Result[str] = r[str].ok("1.1.0")
     _replace_called: bool = False
 
     def parse_semver(self, *args: str, **kwargs: str) -> p.Result[str]:
@@ -120,8 +120,8 @@ class FakeVersioning:
 class FakeSubprocess:
     """Fake command runner for CLI runtime execution."""
 
-    _run_checked_result: r[bool] = r[bool].ok(True)
-    _run_raw_result: r[m.Cli.CommandOutput] | None = None
+    _run_checked_result: p.Result[bool] = r[bool].ok(True)
+    _run_raw_result: p.Result[m.Cli.CommandOutput] | None = None
     _run_checked_called: bool = False
 
     def run_checked(self, *args: str, **kwargs: str) -> p.Result[bool]:
@@ -150,7 +150,7 @@ class FakeReporting:
 class FakeSelection:
     """Fake for FlextInfraUtilitiesSelection."""
 
-    _resolve_result: r[Sequence[m.Infra.ProjectInfo]] = r[
+    _resolve_result: p.Result[Sequence[m.Infra.ProjectInfo]] = r[
         Sequence[m.Infra.ProjectInfo]
     ].ok([])
 

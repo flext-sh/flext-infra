@@ -31,7 +31,7 @@ class FlextInfraUtilitiesBase:
     so callers can validate ANY shape with a single SSOT helper.
     """
 
-    _tool_config_cache: r[m.Infra.ToolConfigDocument] | None = None
+    _tool_config_cache: p.Result[m.Infra.ToolConfigDocument] | None = None
 
     @staticmethod
     def cli_args(**kwargs: t.Infra.InfraValue) -> t.Infra.CliNamespace:

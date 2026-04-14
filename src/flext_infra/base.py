@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Self, TypeVar, override
 
@@ -14,13 +15,17 @@ from flext_core import (
     FlextProtocols,
     FlextSettings,
     s as core_service_base,
+    t as core_t,
 )
 from flext_infra import FlextInfraConstantsBase, FlextInfraTypesBase
 
 if TYPE_CHECKING:
     from flext_infra import p, t
 
-TDomainResult = TypeVar("TDomainResult", bound=FlextInfraTypesBase.DomainOutput)
+TDomainResult = TypeVar(
+    "TDomainResult",
+    bound=core_t.ValueOrModel | Sequence[core_t.ValueOrModel],
+)
 
 
 class FlextInfraServiceBase(

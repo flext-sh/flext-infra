@@ -51,7 +51,7 @@ class TestHandleLazyInit:
     ) -> None:
         """lazy-init fails when the generator reports errors."""
 
-        def _fail_execute(_params: object) -> p.Result[bool]:
+        def _fail_execute(_params) -> p.Result[bool]:
             return r[bool].fail("lazy-init failed")
 
         monkeypatch.setattr(

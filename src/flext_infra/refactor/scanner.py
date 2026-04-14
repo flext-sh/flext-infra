@@ -16,7 +16,7 @@ class FlextInfraRefactorLooseClassScanner:
         """Scan *project_root*/src and return a violation report dict."""
         src_root = project_root / c.Infra.DEFAULT_SRC_DIR
         if not src_root.is_dir():
-            out: r[t.Infra.ContainerDict] = r[t.Infra.ContainerDict].fail(
+            out: p.Result[t.Infra.ContainerDict] = r[t.Infra.ContainerDict].fail(
                 f"src not found: {src_root}",
             )
             return out

@@ -88,7 +88,7 @@ class FlextInfraModelsCheck:
             ),
         ] = False
 
-        @computed_field  # type: ignore[prop-decorator]
+        @computed_field
         @property
         def dry_run(self) -> bool:
             """Whether pyrefly fixes should avoid writing to disk."""

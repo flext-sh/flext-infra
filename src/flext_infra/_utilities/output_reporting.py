@@ -187,7 +187,7 @@ class FlextInfraUtilitiesOutputReporting:
         ]
         for project in report.projects:
             lines.append(
-                f"{project.project}: objects={project.objects_total}"
+                f"{project.project}s={project.objects_total}"
                 f" violations={project.violations_total}"
                 f" fixes={project.fixes_applied}/{len(project.fixes)}"
             )

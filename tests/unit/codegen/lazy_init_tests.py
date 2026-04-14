@@ -177,9 +177,7 @@ class TestEdgeCases:
         self,
         tmp_path: Path,
     ) -> None:
-        src_content = (
-            '"""Package."""\nfrom pkg.models import MyModel\n__all__ = ["MyModel"]\n'
-        )
+        src_content = '"""Package."""\nfrom pkg.models import MyModel\n__all__: list[str] = ["MyModel"]\n'
         src_dir_a = tmp_path / "a" / "src" / "pkg"
         _create_init_file(src_dir_a, src_content)
         gen_a = FlextInfraCodegenLazyInit(workspace=tmp_path / "a")

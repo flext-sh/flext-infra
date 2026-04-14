@@ -21,7 +21,7 @@ class TestGoGate:
 
     @staticmethod
     def make_runner(
-        *results: r[m.Cli.CommandOutput],
+        *results: p.Result[m.Cli.CommandOutput],
     ) -> p.Cli.CommandRunner:
         return u.Infra.Tests.SequenceRunner(list(results))
 

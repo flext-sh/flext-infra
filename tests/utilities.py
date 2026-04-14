@@ -843,7 +843,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             def patch_public_infra(
                 monkeypatch: pytest.MonkeyPatch,
                 name: str,
-                value: object,
+                value,
             ) -> None:
                 patched = staticmethod(value) if callable(value) else value
                 monkeypatch.setattr(
@@ -1041,8 +1041,8 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                 monkeypatch: pytest.MonkeyPatch,
             ) -> None:
                 def _fail_write(
-                    *args: object,
-                    **kwargs: object,
+                    *args,
+                    **kwargs,
                 ) -> tuple[bool, tuple[str, ...]]:
                     del args, kwargs
                     return (False, ("  REVERTED src/demo_pkg/constants.py:",))
@@ -1103,7 +1103,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             @staticmethod
             def detect_command(
                 workspace_root: Path,
-                **overrides: object,
+                **overrides,
             ) -> m.Infra.DetectCommand:
                 return m.Infra.DetectCommand.model_validate({
                     "workspace": str(workspace_root),
@@ -1227,9 +1227,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             ) -> t.Infra.Tests.ProjectCheckStub:
                 project_iter = iter(projects)
 
-                def _fake_check(
-                    *_args: object, **_kwargs: object
-                ) -> m.Infra.ProjectResult:
+                def _fake_check(*_args, **_kwargs) -> m.Infra.ProjectResult:
                     return next(project_iter)
 
                 return _fake_check
@@ -1357,7 +1355,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             ) -> t.Infra.Tests.RawRunStub:
                 def _fake_run_raw(
                     _cmd: t.StrSequence,
-                    **_kw: object,
+                    **_kw,
                 ) -> p.Result[m.Cli.CommandOutput]:
                     del _cmd, _kw
                     return (
@@ -1372,9 +1370,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             def create_check_project_stub(
                 project: m.Infra.ProjectResult,
             ) -> t.Infra.Tests.ProjectCheckStub:
-                def _fake_check(
-                    *_args: object, **_kwargs: object
-                ) -> m.Infra.ProjectResult:
+                def _fake_check(*_args, **_kwargs) -> m.Infra.ProjectResult:
                     del _args, _kwargs
                     return project
 

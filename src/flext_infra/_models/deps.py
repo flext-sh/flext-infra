@@ -78,7 +78,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
             Field(default=None, description="Path to dependency limits TOML"),
         ] = None
 
-        @computed_field  # type: ignore[prop-decorator]
+        @computed_field
         @property
         def dry_run(self) -> bool:
             """Whether follow-up dependency installation is disabled."""
@@ -112,7 +112,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
             ),
         ] = False
 
-        @computed_field  # type: ignore[prop-decorator]
+        @computed_field
         @property
         def dry_run(self) -> bool:
             """Whether path synchronization should avoid writing."""
@@ -159,7 +159,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
             ),
         ] = False
 
-        @computed_field  # type: ignore[prop-decorator]
+        @computed_field
         @property
         def dry_run(self) -> bool:
             """Whether modernization should avoid writing changes."""
@@ -183,7 +183,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
             Field(default="auto", description="Dependency path rewrite mode"),
         ] = "auto"
 
-        @computed_field  # type: ignore[prop-decorator]
+        @computed_field
         @property
         def dry_run(self) -> bool:
             """Whether dependency path rewrites should avoid writing."""

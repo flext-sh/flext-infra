@@ -31,7 +31,7 @@ class FlextInfraUtilitiesDocsApi:
     _STRING_RE: t.Infra.RegexPattern = re.compile(r"""["']([a-zA-Z0-9_\.]+)["']""")
 
     @staticmethod
-    def _string_values(value: object) -> t.StrSequence:
+    def _string_values(value: t.RecursiveContainer) -> t.StrSequence:
         """Normalize one infra sequence payload into strings."""
         try:
             items = t.Infra.INFRA_SEQ_ADAPTER.validate_python(value)
@@ -40,7 +40,7 @@ class FlextInfraUtilitiesDocsApi:
         return [str(item) for item in items]
 
     @staticmethod
-    def _string_mapping(value: object) -> t.StrMapping:
+    def _string_mapping(value: t.RecursiveContainer) -> t.StrMapping:
         """Normalize one infra mapping payload into string keys and values."""
         try:
             items = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)
@@ -99,12 +99,14 @@ class FlextInfraUtilitiesDocsApi:
         return False
 
     @staticmethod
-    def _project_keywords(project_meta: Mapping[str, object]) -> t.StrSequence:
+    def _project_keywords(
+        project_meta: Mapping[str, t.RecursiveContainer],
+    ) -> t.StrSequence:
         """Return normalized project keywords from ``pyproject.toml`` metadata."""
         return [
             text
             for entry in FlextInfraUtilitiesDocsApi._string_values(
-                project_meta.get("keywords")
+                project_meta.get("keywords", ())
             )
             if (text := str(entry).strip())
         ]

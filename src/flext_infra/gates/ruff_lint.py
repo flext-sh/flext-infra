@@ -59,9 +59,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         issues: MutableSequence[m.Infra.Issue] = []
         parsed_result = u.Cli.json_parse(result.stdout or "[]")
         empty_items: list[object] = []
-        ruff_data: object = (
-            parsed_result.unwrap() if parsed_result.success else empty_items
-        )
+        ruff_data = parsed_result.unwrap() if parsed_result.success else empty_items
         try:
             if isinstance(ruff_data, list):
                 for entry in ruff_data:

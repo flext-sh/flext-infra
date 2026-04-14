@@ -7,7 +7,6 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_core import r
 from flext_infra import FlextInfraMypyGate, FlextInfraPyrightGate, m
 from tests import p, t, u
 
@@ -21,7 +20,7 @@ class TestTypeGates:
 
     @staticmethod
     def make_runner(
-        *results: r[m.Cli.CommandOutput],
+        *results: p.Result[m.Cli.CommandOutput],
     ) -> p.Cli.CommandRunner:
         return u.Infra.Tests.SequenceRunner(list(results))
 
@@ -70,7 +69,7 @@ class TestTypeGates:
         tmp_path: Path,
         gate_class: t.Infra.Tests.GateClass,
         project_has_src: bool,
-        runner_result: r[m.Cli.CommandOutput] | None,
+        runner_result: p.Result[m.Cli.CommandOutput] | None,
         passed: bool,
         issues_len: int,
     ) -> None:

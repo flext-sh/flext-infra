@@ -33,7 +33,7 @@ def _build_workspace(tmp_path: Path) -> tuple[Path, Path]:
         "        return self.value\n\n"
         "    def is_ready(self) -> bool:\n"
         "        return True\n\n"
-        "def run(result: object) -> object:\n"
+        "def run(result) -> object:\n"
         "    logger = FlextLogger.get_logger('demo')\n"
         "    conf = FlextUtilitiesBeartypeConf.get_beartype_conf()\n"
         "    configured = u.is_structlog_configured()\n"
@@ -75,7 +75,7 @@ def _build_workspace_many(tmp_path: Path, count: int) -> tuple[Path, tuple[Path,
         source_file.write_text(
             "from __future__ import annotations\n"
             "from flext_core import is_success_result\n\n"
-            "def run(result: object) -> object:\n"
+            "def run(result) -> object:\n"
             "    if result.success:\n"
             "        return is_success_result(result)\n"
             "    return result\n",

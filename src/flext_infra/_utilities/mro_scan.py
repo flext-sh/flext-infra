@@ -150,7 +150,7 @@ class FlextInfraUtilitiesRefactorMroScan:
         src_line: str,
         class_header: str,
         target_spec: m.Infra.MROTargetSpec,
-        obj: object,
+        obj: t.Infra.RopePyObject,
     ) -> m.Infra.MROSymbolCandidate | None:
         alias = target_spec.family_alias
         kind = ""
@@ -300,7 +300,7 @@ class FlextInfraUtilitiesRefactorMroScan:
         cls,
         *,
         name: str,
-        obj: object,
+        obj: t.Infra.RopePyObject,
         class_header: str,
     ) -> bool:
         if isinstance(obj, FlextInfraUtilitiesRope.ABSTRACT_CLASS_TYPES):

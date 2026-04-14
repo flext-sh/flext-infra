@@ -107,7 +107,7 @@ class TestsFlextInfraLazyInitHelpers:
             encoding=c.Infra.ENCODING_DEFAULT,
         )
         (child_dir / "colors.py").write_text(
-            'from __future__ import annotations\n\nBLUE = "blue"\n\n__all__ = ["BLUE"]\n',
+            'from __future__ import annotations\n\nBLUE = "blue"\n\n__all__: list[str] = ["BLUE"]\n',
             encoding=c.Infra.ENCODING_DEFAULT,
         )
         (child_dir / "cli.py").write_text(

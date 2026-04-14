@@ -11,7 +11,7 @@ from tests import u
 
 
 def _nested_value(pyproject_path: Path, *keys: str) -> object:
-    current: object = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
+    current = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
     for key in keys:
         assert isinstance(current, dict)
         current = current[key]

@@ -115,7 +115,10 @@ class FlextInfraModelsEngine:
                 )
 
             def _operation(
-                self, operation_type: type[m.ContractModel], /, **data: object
+                self,
+                operation_type: type[m.ContractModel],
+                /,
+                **data: t.ValueOrModel | t.RecursiveContainer,
             ) -> Self:
                 return self._append_model("operations", operation_type, **data)
 
@@ -160,19 +163,25 @@ class FlextInfraModelsEngine:
                 lists: Sequence[tuple[str, t.StrSequence]] = (),
                 deprecated_keys: t.StrSequence = (),
             ) -> Self:
+                nested_operations = tuple(
+                    op.model_dump(mode="python")
+                    for op in self._nested_operations(
+                        values=values,
+                        lists=lists,
+                        deprecated_keys=deprecated_keys,
+                    )
+                )
                 return self._append_model(
                     "nested_tables",
                     FlextInfraModelsEngine.TomlPhaseConfig,
                     name=self.state.name,
                     root_path=(),
                     table_path=tuple(path),
-                    operations=self._nested_operations(
-                        values=values, lists=lists, deprecated_keys=deprecated_keys
-                    ),
+                    operations=nested_operations,
                 )
 
             def handler(self, fn: Callable[..., t.StrSequence]) -> Self:
-                return self._set(custom_handler=fn)
+                return self._replace(self.state.model_copy(update={"custom_handler": fn}))
 
 
 __all__: list[str] = ["FlextInfraModelsEngine"]

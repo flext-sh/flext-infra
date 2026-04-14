@@ -126,7 +126,7 @@ class _ReportingStub(p.Infra.ReportingService):
 def _setup_typings_detector(
     tmp_path: Path,
     to_add: t.StrSequence,
-    run_raw_result: r[m.Cli.CommandOutput],
+    run_raw_result: p.Result[m.Cli.CommandOutput],
 ) -> tuple[
     FlextInfraRuntimeDevDependencyDetector,
     Sequence[t.StrSequence],

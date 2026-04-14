@@ -79,7 +79,7 @@ class TestViolationKeyFromViolation:
         v = _violation()
         key = m.Infra.ViolationKey.from_violation(v, _SOURCE_10)
         with pytest.raises(Exception):
-            key.module = "changed"  # type: ignore[misc]
+            key.module = "changed"
 
     def test_frozenset_reconciliation(self) -> None:
         """Two sets of ViolationKeys can be compared for fixed/remaining violations."""

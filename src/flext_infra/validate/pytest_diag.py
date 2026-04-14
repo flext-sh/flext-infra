@@ -139,7 +139,9 @@ class FlextInfraPytestDiagExtractor(s[bool]):
         diag.error_traces = block
 
     @staticmethod
-    def _as_xml_element(value: object) -> _XmlElementLike | None:
+    def _as_xml_element(
+        value: _XmlElementLike | t.RecursiveContainer,
+    ) -> _XmlElementLike | None:
         """Normalize dynamic defusedxml nodes to the typed stdlib element API."""
         return value if isinstance(value, _XmlElementLike) else None
 

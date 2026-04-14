@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 
 from flext_infra import p, s, t
 
@@ -19,7 +19,9 @@ class FlextInfraServiceCliRunnerMixin:
         return runner(args)
 
     @staticmethod
-    def _dispatch_result[TResult: t.Infra.DomainOutput](
+    def _dispatch_result[
+        TResult: t.ValueOrModel | Sequence[t.ValueOrModel]
+    ](
         params: s[TResult],
     ) -> p.Result[TResult]:
         """Route validated service params through the canonical base executor."""

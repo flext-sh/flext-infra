@@ -26,7 +26,7 @@ class _TomlReaderStub:
 
 def _set_toml_stub(
     service: FlextInfraInternalDependencySyncService,
-    value: r[t.Infra.ContainerDict],
+    value: p.Result[t.Infra.ContainerDict],
 ) -> None:
     def _reader(_path: Path) -> p.Result[t.Infra.ContainerDict]:
         return value

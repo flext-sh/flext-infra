@@ -20,7 +20,7 @@ def _create_gate_project(tmp_path: Path, *, name: str) -> Path:
                 "from __future__ import annotations\n\n"
                 "from collections.abc import Mapping, Sequence\n\n"
                 "from flext_core import r\n\n"
-                "def run(validation_result: r[bool]) -> p.Result[bool]:\n"
+                "def run(validation_result: p.Result[bool]) -> p.Result[bool]:\n"
                 "    if validation_result.failure:\n"
                 "        return False\n"
                 "    return r[bool].ok(True)\n"

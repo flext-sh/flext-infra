@@ -9,7 +9,7 @@ from flext_infra import FlextInfraReleaseOrchestrator
 
 def make_command(
     workspace_root: Path,
-    **overrides: object,
+    **overrides,
 ) -> FlextInfraReleaseOrchestrator:
     return FlextInfraReleaseOrchestrator.model_validate({
         "workspace_root": workspace_root,

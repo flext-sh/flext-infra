@@ -144,13 +144,13 @@ class FlextInfraModelsMixins:
             ),
         ] = c.Infra.SAFE_EXECUTION_DEFAULT_GATES
 
-        @computed_field  # type: ignore[prop-decorator]
+        @computed_field
         @property
         def dry_run(self) -> bool:
             """Whether writes are disabled (inverse of apply)."""
             return not self.apply
 
-        @computed_field  # type: ignore[prop-decorator]
+        @computed_field
         @property
         def execution_mode(self) -> c.Infra.ExecutionMode:
             """Resolve execution mode from CLI flags."""

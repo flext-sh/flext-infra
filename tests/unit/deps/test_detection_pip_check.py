@@ -5,14 +5,13 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_core import r
 from flext_infra import FlextInfraDependencyDetectionService, m
 from tests import p, t, u
 
 
 class TestRunPipCheck:
     @staticmethod
-    def make_runner(result: r[m.Cli.CommandOutput]) -> p.Cli.CommandRunner:
+    def make_runner(result: p.Result[m.Cli.CommandOutput]) -> p.Cli.CommandRunner:
         return u.Infra.Tests.DeptryRunner(result)
 
     @pytest.mark.parametrize(

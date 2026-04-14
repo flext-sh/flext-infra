@@ -27,7 +27,7 @@ def _create_silent_failure_project(
                 "from __future__ import annotations\n\n"
                 "from collections.abc import Mapping, Sequence\n\n"
                 "from flext_core import r\n\n"
-                "def run_guard(validation_result: r[bool]) -> p.Result[bool]:\n"
+                "def run_guard(validation_result: p.Result[bool]) -> p.Result[bool]:\n"
                 "    if validation_result.failure:\n"
                 "        return False\n"
                 "    return r[bool].ok(True)\n\n"
@@ -36,7 +36,7 @@ def _create_silent_failure_project(
                 "        raise ValueError('boom')\n"
                 "    except ValueError as exc:\n"
                 "        return None\n\n"
-                "def run_unwrap(validation_result: r[bool]) -> bool:\n"
+                "def run_unwrap(validation_result: p.Result[bool]) -> bool:\n"
                 "    return validation_result.unwrap_or(False)\n"
             ),
         },

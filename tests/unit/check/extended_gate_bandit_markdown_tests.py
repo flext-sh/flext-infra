@@ -120,7 +120,7 @@ class TestBanditAndMarkdownGates:
         tmp_path: Path,
         markdown_text: str,
         config_text: str | None,
-        runner_result: r[m.Cli.CommandOutput] | None,
+        runner_result: p.Result[m.Cli.CommandOutput] | None,
         passed: bool,
         issues_len: int,
         raw_output: str,
