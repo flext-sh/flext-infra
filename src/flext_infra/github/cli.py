@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from flext_cli import cli as cli_service
+from flext_cli import cli
 from flext_infra import c, m, p, t
 
 
@@ -35,7 +35,7 @@ class FlextInfraCliGithub:
 
     def register_github(self: _GithubCliHandlers, app: t.Cli.CliApp) -> None:
         """Register github commands on the given Typer app."""
-        cli_service.register_result_routes(
+        cli.register_result_routes(
             app,
             [
                 m.Cli.ResultCommandRoute(

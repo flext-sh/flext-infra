@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from flext_cli import cli as cli_service, m, t
+from flext_cli import cli, m, t
 from flext_infra import FlextInfraBaseMkGenerator
 
 
@@ -11,7 +11,7 @@ class FlextInfraCliBasemk:
 
     def register_basemk(self, app: t.Cli.CliApp) -> None:
         """Register basemk commands on the given Typer app."""
-        cli_service.register_result_routes(
+        cli.register_result_routes(
             app,
             [
                 m.Cli.ResultCommandRoute(

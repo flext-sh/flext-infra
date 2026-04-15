@@ -387,6 +387,45 @@ class TestProcessDirectory:
         assert '".test_api": ("test_api",)' in init_content
         assert "test_smoke" not in init_content
 
+    def test_generates_fixture_package_and_reexports_fixture_functions(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Fixture packages are generated automatically and merged into the root."""
+        workspace_root, package_root = u.Infra.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-demo",
+            package_name="flext_demo",
+        )
+        fixture_dir = package_root / "_fixtures"
+        fixture_dir.mkdir()
+        (fixture_dir / "settings.py").write_text(
+            "from __future__ import annotations\n\n"
+            "def reset_settings() -> None:\n"
+            "    return None\n\n"
+            "def settings() -> None:\n"
+            "    return None\n\n"
+            "def settings_factory() -> None:\n"
+            "    return None\n",
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+
+        result = u.Infra.Tests.run_lazy_init(workspace_root)
+
+        assert result == 0
+        fixture_init = (fixture_dir / "__init__.py").read_text(
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+        root_init = (package_root / "__init__.py").read_text(
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+        assert '"reset_settings"' in fixture_init
+        assert '"settings"' in fixture_init
+        assert '"settings_factory"' in fixture_init
+        assert '"reset_settings"' in root_init
+        assert '"settings"' in root_init
+        assert '"settings_factory"' in root_init
+
     def test_handles_version_file(self, tmp_path: Path) -> None:
         """Version exports are preserved in generated public wrappers."""
         workspace_root, package_root = u.Infra.Tests.create_lazy_init_workspace(
@@ -522,7 +561,7 @@ class TestProcessDirectory:
         assert result == 0
         content = (constants_dir / "__init__.py").read_text(encoding="utf-8")
         assert '".base": ("FlextDemoConstantsBase",)' in content
-        assert '    "FlextDemoConstantsBase",' in content
+        assert "publish_all=False" in content
 
 
 __all__: t.StrSequence = []

@@ -6,7 +6,7 @@ import sys
 from types import MappingProxyType
 from typing import ClassVar
 
-from flext_cli import FlextCliSettings, cli as cli_service, u
+from flext_cli import FlextCliSettings, cli, u
 from flext_core import FlextSettings
 from flext_infra import c, infra, t
 
@@ -69,7 +69,7 @@ class FlextInfraCli:
             return 0
         group, group_args = cli_args[0], cli_args[1:]
         if group not in self.GROUPS:
-            cli_service.display_message(
+            cli.display_message(
                 f"unknown group '{group}'",
                 c.Cli.MessageTypes.ERROR,
             )
@@ -80,13 +80,13 @@ class FlextInfraCli:
     @classmethod
     def print_help(cls) -> None:
         """Display the canonical command groups."""
-        cli_service.display_message(
+        cli.display_message(
             "Usage: flext-infra <group> [subcommand] [args...]",
             c.Cli.MessageTypes.INFO,
         )
-        cli_service.display_message("Groups", c.Cli.MessageTypes.INFO)
+        cli.display_message("Groups", c.Cli.MessageTypes.INFO)
         for group in sorted(cls.GROUPS):
-            cli_service.display_message(
+            cli.display_message(
                 f"  {group:<16}{cls.GROUPS[group]}",
                 c.Cli.MessageTypes.INFO,
             )
@@ -102,7 +102,7 @@ class FlextInfraCli:
 
     def _run_group(self, group: str, args: t.StrSequence) -> int:
         """Execute a registered flext-cli group."""
-        app = cli_service.create_app_with_common_params(
+        app = cli.create_app_with_common_params(
             name=f"{self.app_name} {group}",
             help_text=self.GROUPS[group],
             settings=self._cli_settings(),
@@ -110,13 +110,13 @@ class FlextInfraCli:
         self._register_group(group, app)
         normalized_args = self._normalize_group_args(args)
         if not normalized_args:
-            _ = cli_service.execute_app(
+            _ = cli.execute_app(
                 app,
                 prog_name=f"{self.app_name} {group}",
                 args=["--help"],
             )
             return 1
-        result = cli_service.execute_app(
+        result = cli.execute_app(
             app,
             prog_name=f"{self.app_name} {group}",
             args=normalized_args,

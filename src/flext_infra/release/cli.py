@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from flext_cli import cli as cli_service
+from flext_cli import cli
 from flext_infra import (
     FlextInfraReleaseOrchestrator,
     FlextInfraServiceReleaseMixin,
@@ -26,7 +26,7 @@ class FlextInfraCliRelease(FlextInfraServiceReleaseMixin):
                 success_message="Release completed successfully",
             ),
         )
-        cli_service.register_result_routes(
+        cli.register_result_routes(
             app,
             routes,
         )

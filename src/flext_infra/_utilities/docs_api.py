@@ -144,9 +144,11 @@ class FlextInfraUtilitiesDocsApi:
         except SyntaxError:
             return False
         for node in module.body:
-            if isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
-                if node.name == symbol_name:
-                    return ast.get_docstring(node) is not None
+            if (
+                isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef))
+                and node.name == symbol_name
+            ):
+                return ast.get_docstring(node) is not None
         return symbol_name in FlextInfraUtilitiesDocsApi._assignment_docstrings(source)
 
     @staticmethod

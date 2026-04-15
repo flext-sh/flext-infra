@@ -129,6 +129,7 @@ class FlextInfraProtocolsRope(Protocol):
             include_dunder: bool = False,
             allow_main: bool = False,
             allow_assignments: bool = False,
+            allow_functions: bool = False,
             require_explicit_all: bool = False,
         ) -> t.StrSequence: ...
 

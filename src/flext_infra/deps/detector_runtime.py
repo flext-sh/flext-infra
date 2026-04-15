@@ -6,7 +6,7 @@ import os
 from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from pathlib import Path
 
-from flext_cli import m as cli_models
+from flext_cli import m
 from flext_infra import FlextInfraModelsDeps, c, p, r, t, u
 
 
@@ -150,7 +150,7 @@ class FlextInfraDependencyDetectorRuntime:
                                 package=package,
                             )
                         else:
-                            run_output: cli_models.Cli.CommandOutput = run.value
+                            run_output: m.Cli.CommandOutput = run.value
                             if run_output.exit_code != 0:
                                 detector.log.warning(
                                     "deps_typings_add_failed",

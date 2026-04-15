@@ -59,6 +59,34 @@ class TestFlextInfraRopeWorkspace:
                 for class_info in state.class_infos
             )
 
+    def test_workspace_exports_fixture_functions_when_requested(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Fixture modules can publish pytest fixtures through the Rope DSL."""
+        workspace_root, package_root = u.Infra.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-demo",
+            package_name="flext_demo",
+        )
+        fixtures_dir = package_root / "_fixtures"
+        fixtures_dir.mkdir()
+        fixture_module = fixtures_dir / "settings.py"
+        fixture_module.write_text(
+            "from __future__ import annotations\n\n"
+            "def reset_settings() -> None:\n"
+            "    return None\n\n"
+            "def settings_factory() -> None:\n"
+            "    return None\n",
+            encoding="utf-8",
+        )
+
+        with flext_infra.infra.rope_workspace(workspace_root) as rope:
+            exports = rope.exports(fixture_module, allow_functions=True)
+
+        assert "reset_settings" in exports
+        assert "settings_factory" in exports
+
     def test_workspace_dsl_centralizes_project_and_module_conventions(
         self,
         tmp_path: Path,

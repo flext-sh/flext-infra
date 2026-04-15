@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING
 
-from flext_cli import cli as cli_service
+from flext_cli import cli
 from flext_infra import (
     FlextInfraOrchestratorService,
     FlextInfraProjectMigrator,
@@ -35,7 +35,7 @@ class FlextInfraCliWorkspace:
 
     def register_workspace(self, app: t.Cli.CliApp) -> None:
         """Register workspace commands on the given Typer app."""
-        cli_service.register_result_routes(
+        cli.register_result_routes(
             app,
             [
                 m.Cli.ResultCommandRoute(

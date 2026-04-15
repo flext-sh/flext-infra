@@ -391,6 +391,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         include_dunder: bool = False,
         allow_main: bool = False,
         allow_assignments: bool = False,
+        allow_functions: bool = False,
         require_explicit_all: bool = False,
     ) -> t.StrSequence:
         """Return public export names for one module path."""
@@ -400,6 +401,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
             include_dunder=include_dunder,
             allow_main=allow_main,
             allow_assignments=allow_assignments,
+            allow_functions=allow_functions,
             require_explicit_all=require_explicit_all,
         )
 

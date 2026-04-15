@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import ClassVar, Self, override
 
-from flext_cli import cli as cli_service
+from flext_cli import cli
 from flext_infra import (
     FlextInfraCliBasemk,
     FlextInfraCliCheck,
@@ -85,7 +85,7 @@ class FlextInfra(
 
     def register_docs(self, app: t.Cli.CliApp) -> None:
         """Register docs commands directly on the concrete service classes."""
-        cli_service.register_result_routes(
+        cli.register_result_routes(
             app,
             [
                 m.Cli.ResultCommandRoute(

@@ -30,7 +30,7 @@ class FlextInfraUtilitiesRopeAnalysis:
         dict[tuple[str, str, int], m.Infra.ModuleSemanticState]
     ] = {}
     _EXPORT_NAMES_CACHE: ClassVar[
-        dict[tuple[str, str, int, bool, bool, bool, bool], t.StrSequence]
+        dict[tuple[str, str, int, bool, bool, bool, bool, bool], t.StrSequence]
     ] = {}
 
     @staticmethod
@@ -309,6 +309,7 @@ class FlextInfraUtilitiesRopeAnalysis:
         include_dunder: bool = False,
         allow_main: bool = False,
         allow_assignments: bool = False,
+        allow_functions: bool = False,
         require_explicit_all: bool = False,
     ) -> t.StrSequence:
         """Return module-local export names from Rope metadata."""
@@ -320,6 +321,7 @@ class FlextInfraUtilitiesRopeAnalysis:
             include_dunder,
             allow_main,
             allow_assignments,
+            allow_functions,
             require_explicit_all,
         )
         cached = FlextInfraUtilitiesRopeAnalysis._EXPORT_NAMES_CACHE.get(cache_key)
@@ -389,6 +391,12 @@ class FlextInfraUtilitiesRopeAnalysis:
                             obj,
                             FlextInfraUtilitiesRopeCore.PY_FUNCTION_TYPES,
                         )
+                    ):
+                        names.append(name)
+                        continue
+                    if allow_functions and isinstance(
+                        obj,
+                        FlextInfraUtilitiesRopeCore.PY_FUNCTION_TYPES,
                     ):
                         names.append(name)
                         continue

@@ -24,7 +24,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
     )
 
     _module_exports_cache: dict[
-        tuple[str, bool, bool, bool, bool],
+        tuple[str, bool, bool, bool, bool, bool],
         t.Infra.LazyImportMap,
     ] = PrivateAttr(default_factory=dict)
     _package_exports_cache: dict[str, frozenset[str]] = PrivateAttr(
@@ -122,6 +122,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
                 allow_main=policy.allow_main_export,
                 allow_assignments=policy.allow_type_alias
                 or policy.expected_alias is not None,
+                allow_functions=policy.is_fixture_module,
                 require_explicit_all=(
                     u.Infra.is_root_namespace_file(py_file.name)
                     and policy.expected_alias is not None
@@ -158,6 +159,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         include_dunder: bool = False,
         allow_main: bool = False,
         allow_assignments: bool = False,
+        allow_functions: bool = False,
         require_explicit_all: bool = False,
     ) -> t.Infra.MutableLazyImportMap:
         cache_key = (
@@ -165,6 +167,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
             include_dunder,
             allow_main,
             allow_assignments,
+            allow_functions,
             require_explicit_all,
         )
         cached = self._module_exports_cache.get(cache_key)
@@ -177,6 +180,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
             include_dunder=include_dunder,
             allow_main=allow_main,
             allow_assignments=allow_assignments,
+            allow_functions=allow_functions,
             require_explicit_all=require_explicit_all and not include_dunder,
         )
         exports = {

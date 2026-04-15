@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from flext_cli import cli as cli_service
+from flext_cli import cli
 from flext_infra import (
     FlextInfraAccessorMigrationOrchestrator,
     FlextInfraNamespaceEnforcer,
@@ -32,12 +32,10 @@ class FlextInfraServiceRefactorMixin:
             target=params.target,
             apply=params.apply,
         )
-        cli_service.display_text(
-            FlextInfraRefactorMigrateToClassMRO.render_text(report)
-        )
+        cli.display_text(FlextInfraRefactorMigrateToClassMRO.render_text(report))
         if report.errors:
             for error in report.errors:
-                cli_service.display_message(
+                cli.display_message(
                     error,
                     message_type=c.Cli.MessageTypes.ERROR,
                 )
@@ -52,7 +50,7 @@ class FlextInfraServiceRefactorMixin:
         enforcer = FlextInfraNamespaceEnforcer(workspace_root=params.workspace_path)
         if params.diff:
             diff_output = enforcer.diff(project_names=params.project_names)
-            cli_service.display_text(diff_output or "No changes detected.")
+            cli.display_text(diff_output or "No changes detected.")
             report: m.Infra.WorkspaceEnforcementReport = enforcer.enforce(
                 apply=False,
                 project_names=params.project_names,
@@ -62,7 +60,7 @@ class FlextInfraServiceRefactorMixin:
             apply=params.apply,
             project_names=params.project_names,
         )
-        cli_service.display_text(FlextInfraNamespaceEnforcer.render_text(report))
+        cli.display_text(FlextInfraNamespaceEnforcer.render_text(report))
         if report.has_violations:
             return r[m.Infra.WorkspaceEnforcementReport].fail(
                 "Namespace violations found"
@@ -87,11 +85,11 @@ class FlextInfraServiceRefactorMixin:
         if result.failure:
             return result
         report: m.Infra.Census.WorkspaceReport = result.unwrap()
-        cli_service.display_text(FlextInfraRefactorCensus.render_text(report))
+        cli.display_text(FlextInfraRefactorCensus.render_text(report))
         if params.json_output_path is not None:
             json_path = params.json_output_path
             u.Infra.export_pydantic_json(report, json_path)
-            cli_service.display_message(
+            cli.display_message(
                 f"JSON report exported to: {json_path}",
                 message_type=c.Cli.MessageTypes.INFO,
             )
@@ -114,9 +112,7 @@ class FlextInfraServiceRefactorMixin:
         if result.failure:
             return result
         report: m.Infra.AccessorMigrationReport = result.unwrap()
-        cli_service.display_text(
-            FlextInfraAccessorMigrationOrchestrator.render_text(report)
-        )
+        cli.display_text(FlextInfraAccessorMigrationOrchestrator.render_text(report))
         return r[m.Infra.AccessorMigrationReport].ok(report)
 
 
