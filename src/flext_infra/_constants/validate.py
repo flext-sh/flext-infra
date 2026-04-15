@@ -69,6 +69,7 @@ class FlextInfraConstantsSharedInfra:
     API_PY: Final[str] = "api.py"
     CONSTANTS_PY: Final[str] = "constants.py"
     MODELS_PY: Final[str] = "models.py"
+    RESULT_PY: Final[str] = "result.py"
     UTILITIES_PY: Final[str] = "utilities.py"
     TYPINGS_PY: Final[str] = "typings.py"
     PROTOCOLS_PY: Final[str] = "protocols.py"
