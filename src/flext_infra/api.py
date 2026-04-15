@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import ClassVar, Self, override
 
-from flext_cli.api import cli as cli_service
+from flext_cli import cli as cli_service
 from flext_infra import (
     FlextInfraCliBasemk,
     FlextInfraCliCheck,
@@ -28,6 +28,7 @@ from flext_infra import (
     FlextInfraServiceGithubMixin,
     FlextInfraServiceRefactorMixin,
     FlextInfraServiceReleaseMixin,
+    FlextInfraServiceRopeMixin,
     FlextInfraServiceValidateMixin,
     FlextInfraServiceWorkspaceMixin,
     m,
@@ -35,7 +36,6 @@ from flext_infra import (
     r,
     t,
 )
-from flext_infra.services.rope import FlextInfraServiceRopeMixin
 
 
 class FlextInfra(

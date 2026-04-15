@@ -25,6 +25,19 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".scaffolder_tests": ("scaffolder_tests",),
         ".test_codegen_pipeline_dag": ("test_codegen_pipeline_dag",),
         ".test_violation_key": ("test_violation_key",),
+        "flext_infra": (
+            "c",
+            "d",
+            "e",
+            "h",
+            "m",
+            "p",
+            "r",
+            "s",
+            "t",
+            "u",
+            "x",
+        ),
     },
 )
 

@@ -60,6 +60,19 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".test_path_sync_rewrite_deps": ("test_path_sync_rewrite_deps",),
         ".test_path_sync_rewrite_pep621": ("test_path_sync_rewrite_pep621",),
         ".test_path_sync_rewrite_poetry": ("test_path_sync_rewrite_poetry",),
+        "flext_infra": (
+            "c",
+            "d",
+            "e",
+            "h",
+            "m",
+            "p",
+            "r",
+            "s",
+            "t",
+            "u",
+            "x",
+        ),
     },
 )
 

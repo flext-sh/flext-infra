@@ -32,6 +32,19 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".tests_cli": ("tests_cli",),
         ".tests_workspace_check": ("tests_workspace_check",),
         ".workspace_tests": ("workspace_tests",),
+        "flext_infra": (
+            "c",
+            "d",
+            "e",
+            "h",
+            "m",
+            "p",
+            "r",
+            "s",
+            "t",
+            "u",
+            "x",
+        ),
     },
 )
 

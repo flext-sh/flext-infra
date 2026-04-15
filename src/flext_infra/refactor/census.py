@@ -6,9 +6,15 @@ import time
 from collections import Counter, defaultdict
 from pathlib import Path
 
-from flext_infra import FlextInfraRopeWorkspace, c, m, p, r, t, u
-from flext_infra._utilities.rope_module_patch import (
+from flext_infra import (
+    FlextInfraRopeWorkspace,
     FlextInfraUtilitiesRopeModulePatch,
+    c,
+    m,
+    p,
+    r,
+    t,
+    u,
 )
 
 

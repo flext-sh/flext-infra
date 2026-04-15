@@ -57,6 +57,19 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".test_infra_refactor_safety": ("test_infra_refactor_safety",),
         ".test_infra_refactor_typing_unifier": ("test_infra_refactor_typing_unifier",),
         ".test_main_cli": ("test_main_cli",),
+        "flext_infra": (
+            "c",
+            "d",
+            "e",
+            "h",
+            "m",
+            "p",
+            "r",
+            "s",
+            "t",
+            "u",
+            "x",
+        ),
     },
 )
 

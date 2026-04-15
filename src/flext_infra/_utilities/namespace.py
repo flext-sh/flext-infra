@@ -8,6 +8,7 @@ from typing import ClassVar, Final
 
 from flext_cli import u
 from flext_infra import (
+    FlextInfraUtilitiesBase,
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesDocsScope,
     FlextInfraUtilitiesParsing,
@@ -18,7 +19,6 @@ from flext_infra import (
     r,
     t,
 )
-from flext_infra._utilities.base import FlextInfraUtilitiesBase
 
 
 class FlextInfraUtilitiesCodegenNamespace:

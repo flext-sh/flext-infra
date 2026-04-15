@@ -15,20 +15,20 @@ from typing import TYPE_CHECKING
 from flext_tests import FlextTestsTypes
 
 from flext_core import p
-from flext_infra import FlextInfraGate, FlextInfraTypes
+from flext_infra import FlextInfraGate, t
 
 if TYPE_CHECKING:
     from tests import m
 
 
-class TestsFlextInfraTypes(FlextTestsTypes, FlextInfraTypes):
+class TestsFlextInfraTypes(FlextTestsTypes, t):
     """Type system for FLEXT infra tests - extends TestsFlextTypes.
 
     Architecture: Extends TestsFlextTypes with infra-specific type definitions.
     All base types from TestsFlextTypes are available through inheritance.
     """
 
-    class Infra(FlextInfraTypes.Infra):
+    class Infra(t.Infra):
         """Infra-specific type definitions namespace."""
 
         class Tests:

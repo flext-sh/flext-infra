@@ -16,6 +16,7 @@ from flext_cli import u
 from flext_infra import (
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesCodegen,
+    FlextInfraUtilitiesDependencyPathSync,
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesDocs,
     FlextInfraUtilitiesDocsApi,
@@ -44,9 +45,6 @@ from flext_infra import (
     FlextInfraUtilitiesToml,
     FlextInfraUtilitiesTomlParse,
     FlextInfraUtilitiesVersioning,
-)
-from flext_infra._utilities.deps_path_sync import (
-    FlextInfraUtilitiesDependencyPathSync,
 )
 
 

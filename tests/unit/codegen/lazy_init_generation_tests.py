@@ -109,6 +109,24 @@ class TestGenerateFile:
             contains="from flext_core.lazy import build_lazy_import_map, install_lazy_exports",
         )
 
+    def test_with_child_packages_uses_lazy_module_merge_imports(self) -> None:
+        """Merged lazy imports must import helpers from flext_core.lazy."""
+        exports = ["Test"]
+        filtered = {"Test": ("other_pkg.module", "Test")}
+        inline_constants: t.StrMapping = {}
+        content = FlextInfraCodegenGeneration.generate_file(
+            exports,
+            filtered,
+            inline_constants,
+            "other_pkg",
+            child_packages_for_lazy=("other_pkg.services",),
+        )
+        tm.that(
+            content,
+            contains="from flext_core.lazy import (",
+        )
+        tm.that(content, contains="merge_lazy_imports,")
+
     def test_with_inline_constants(self) -> None:
         """Test includes inline constants."""
         exports = ["__version__", "Test"]

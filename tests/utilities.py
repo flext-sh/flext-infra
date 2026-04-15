@@ -12,7 +12,6 @@ from typing import ClassVar, override
 import pytest
 from flext_tests import FlextTestsUtilities
 
-from flext_core import r
 from flext_infra import (
     FlextInfraBaseMkGenerator,
     FlextInfraCodegenConsolidator,
@@ -22,22 +21,22 @@ from flext_infra import (
     FlextInfraProjectMigrator,
     FlextInfraRefactorMROImportRewriter,
     FlextInfraRuntimeDevDependencyDetector,
-    FlextInfraUtilities,
     FlextInfraWorkspaceChecker,
+    u,
 )
-from tests import c, m, p, t
+from tests import c, m, p, r, t
 
 
-class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
+class TestsFlextInfraUtilities(FlextTestsUtilities, u):
     """Typed test utilities for flext-infra."""
 
-    class Infra(FlextInfraUtilities.Infra):
+    class Infra(u.Infra):
         """Infra-specific utilities namespace."""
 
         class Tests(FlextTestsUtilities.Tests):
             """Canonical test helper namespace."""
 
-            class DeptrySelector(FlextInfraUtilities.Infra):
+            class DeptrySelector(u.Infra):
                 """Protocol-compatible selector backed by a real Result."""
 
                 _result: ClassVar[p.Result[Sequence[m.Infra.ProjectInfo]] | None] = None
@@ -256,32 +255,32 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
 
             @staticmethod
             def tool_config_document() -> m.Infra.ToolConfigDocument:
-                result = FlextInfraUtilities.Infra.load_tool_config()
+                result = u.Infra.load_tool_config()
                 assert result.success
                 return result.value
 
             @staticmethod
             def toml_doc_mapping(doc: t.Cli.TomlDocument) -> t.Cli.JsonMapping:
                 return t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-                    FlextInfraUtilities.Cli.normalize_json_value(doc.unwrap()),
+                    u.Cli.normalize_json_value(doc.unwrap()),
                 )
 
             @staticmethod
             def toml_mapping(value: t.RecursiveContainer | None) -> t.Cli.JsonMapping:
                 return t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-                    FlextInfraUtilities.Cli.normalize_json_value(value),
+                    u.Cli.normalize_json_value(value),
                 )
 
             @staticmethod
             def toml_list(value: t.RecursiveContainer | None) -> t.Cli.JsonList:
                 return t.Cli.JSON_LIST_ADAPTER.validate_python(
-                    FlextInfraUtilities.Cli.normalize_json_value(value),
+                    u.Cli.normalize_json_value(value),
                 )
 
             @staticmethod
             def toml_strings(value: t.RecursiveContainer | None) -> t.StrSequence:
                 return t.Infra.STR_SEQ_ADAPTER.validate_python(
-                    FlextInfraUtilities.Cli.normalize_json_value(value),
+                    u.Cli.normalize_json_value(value),
                 )
 
             @staticmethod
@@ -798,7 +797,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             ) -> None:
                 patched = staticmethod(value) if callable(value) else value
                 monkeypatch.setattr(
-                    FlextInfraUtilities.Infra,
+                    u.Infra,
                     name,
                     patched,
                 )

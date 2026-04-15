@@ -11,10 +11,10 @@ from pydantic import ConfigDict, Field
 from flext_cli import u
 from flext_core import m
 from flext_infra import (
+    FlextInfraModelsMixins,
     p,
     t,
 )
-from flext_infra._models.mixins import FlextInfraModelsMixins
 
 
 class FlextInfraModelsCodegen:

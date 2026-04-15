@@ -11,6 +11,19 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".main_dispatch_tests": ("main_dispatch_tests",),
         ".main_integration_tests": ("main_integration_tests",),
         ".main_tests": ("main_tests",),
+        "flext_infra": (
+            "c",
+            "d",
+            "e",
+            "h",
+            "m",
+            "p",
+            "r",
+            "s",
+            "t",
+            "u",
+            "x",
+        ),
     },
 )
 

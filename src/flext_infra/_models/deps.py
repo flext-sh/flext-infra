@@ -9,8 +9,7 @@ from typing import Annotated
 from pydantic import ConfigDict, Field, computed_field
 
 from flext_core import m
-from flext_infra import FlextInfraModelsDepsToolSettings, c, t
-from flext_infra._models.mixins import FlextInfraModelsMixins
+from flext_infra import FlextInfraModelsDepsToolSettings, FlextInfraModelsMixins, c, t
 
 
 class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):

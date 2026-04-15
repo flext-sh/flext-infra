@@ -6,6 +6,7 @@ from flext_infra import (
     FlextInfraBaseMkValidator,
     FlextInfraInventoryService,
     FlextInfraPytestDiagExtractor,
+    FlextInfraServiceCliRunnerMixin,
     FlextInfraSilentFailureValidator,
     FlextInfraSkillValidator,
     FlextInfraStubSupplyChain,
@@ -13,7 +14,6 @@ from flext_infra import (
     p,
     t,
 )
-from flext_infra.services.cli_base import FlextInfraServiceCliRunnerMixin
 
 
 class FlextInfraServiceValidateMixin(FlextInfraServiceCliRunnerMixin):

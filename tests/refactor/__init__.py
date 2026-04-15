@@ -9,6 +9,19 @@ _LAZY_IMPORTS = build_lazy_import_map(
     {
         ".test_rope_semantic": ("test_rope_semantic",),
         ".test_rope_stubs": ("test_rope_stubs",),
+        "flext_infra": (
+            "c",
+            "d",
+            "e",
+            "h",
+            "m",
+            "p",
+            "r",
+            "s",
+            "t",
+            "u",
+            "x",
+        ),
     },
 )
 

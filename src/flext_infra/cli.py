@@ -6,11 +6,9 @@ import sys
 from types import MappingProxyType
 from typing import ClassVar
 
-from flext_cli import FlextCliSettings, u
-from flext_cli.api import cli as cli_service
+from flext_cli import FlextCliSettings, cli as cli_service, u
 from flext_core import FlextSettings
-from flext_infra import c, t
-from flext_infra.api import infra
+from flext_infra import c, infra, t
 
 
 class FlextInfraCli:

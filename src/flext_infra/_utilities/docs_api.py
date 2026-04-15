@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import re
 from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
@@ -71,32 +72,82 @@ class FlextInfraUtilitiesDocsApi:
         return []
 
     @staticmethod
+    def _export_target_map(
+        source: str,
+        package_name: str,
+        exports: Sequence[str],
+    ) -> t.StrMapping:
+        """Resolve exported symbols to their defining import modules when possible."""
+        export_names = {name for name in exports if name}
+        target_map: dict[str, str] = dict.fromkeys(export_names, package_name)
+        try:
+            tree = ast.parse(source)
+        except SyntaxError:
+            return target_map
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ImportFrom) or not node.module:
+                continue
+            if node.names[0].name == "*":
+                continue
+            module_name = node.module
+            if node.level:
+                module_name = f"{package_name}.{module_name}"
+            for alias in node.names:
+                export_name = alias.asname or alias.name
+                if export_name in export_names:
+                    target_map[export_name] = module_name
+        return target_map
+
+    @staticmethod
     def _has_module_docstring(source: str) -> bool:
         """Return whether source starts with a module docstring."""
-        for line in source.splitlines():
-            stripped = line.strip()
-            if not stripped:
+        try:
+            return ast.get_docstring(ast.parse(source)) is not None
+        except SyntaxError:
+            return False
+
+    @staticmethod
+    def _assignment_docstrings(source: str) -> set[str]:
+        """Return assignment names followed by a literal docstring expression."""
+        try:
+            module = ast.parse(source)
+        except SyntaxError:
+            return set()
+        documented: set[str] = set()
+        body = module.body
+        for index, node in enumerate(body[:-1]):
+            next_node = body[index + 1]
+            if not (
+                isinstance(next_node, ast.Expr)
+                and isinstance(next_node.value, ast.Constant)
+                and isinstance(next_node.value.value, str)
+            ):
                 continue
-            return stripped.startswith(('"""', "'''"))
-        return False
+            match node:
+                case ast.Assign(targets=targets):
+                    for target in targets:
+                        if isinstance(target, ast.Name):
+                            documented.add(target.id)
+                case ast.AnnAssign(target=target):
+                    if isinstance(target, ast.Name):
+                        documented.add(target.id)
+                case ast.TypeAlias(name=name):
+                    if isinstance(name, ast.Name):
+                        documented.add(name.id)
+        return documented
 
     @staticmethod
     def _has_symbol_docstring(source: str, symbol_name: str) -> bool:
         """Return whether one exported class/function starts with a docstring."""
-        for kind in ("class", "function"):
-            block = FlextInfraUtilitiesRope.extract_definition(
-                source,
-                symbol_name,
-                kind=kind,
-            )
-            if block is None:
-                continue
-            for line in block.splitlines()[1:]:
-                stripped = line.strip()
-                if not stripped:
-                    continue
-                return stripped.startswith(('"""', "'''"))
-        return False
+        try:
+            module = ast.parse(source)
+        except SyntaxError:
+            return False
+        for node in module.body:
+            if isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+                if node.name == symbol_name:
+                    return ast.get_docstring(node) is not None
+        return symbol_name in FlextInfraUtilitiesDocsApi._assignment_docstrings(source)
 
     @staticmethod
     def _project_keywords(
@@ -190,7 +241,11 @@ class FlextInfraUtilitiesDocsApi:
         all_exports = list(
             FlextInfraUtilitiesDocsApi._assignment_strings(source, "__all__")
         )
-        target_map = dict.fromkeys(all_exports, package_name)
+        target_map = FlextInfraUtilitiesDocsApi._export_target_map(
+            source,
+            package_name,
+            all_exports,
+        )
         modules = sorted(
             {
                 module

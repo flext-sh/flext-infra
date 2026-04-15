@@ -18,6 +18,19 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".silent_failure_tests": ("silent_failure_tests",),
         ".skill_validator_tests": ("skill_validator_tests",),
         ".stub_chain_tests": ("stub_chain_tests",),
+        "flext_infra": (
+            "c",
+            "d",
+            "e",
+            "h",
+            "m",
+            "p",
+            "r",
+            "s",
+            "t",
+            "u",
+            "x",
+        ),
     },
 )
 

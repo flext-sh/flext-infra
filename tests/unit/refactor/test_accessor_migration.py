@@ -7,10 +7,10 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import main as infra_main
-from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
-from flext_infra.refactor.accessor_migration import (
+from flext_infra import (
     FlextInfraAccessorMigrationOrchestrator,
+    FlextInfraUtilitiesProtectedEdit,
+    main as infra_main,
 )
 
 

@@ -14,13 +14,13 @@ from pydantic import TypeAdapter, ValidationError
 
 from flext_cli import u
 from flext_infra import (
+    FlextInfraUtilitiesDocsScope,
     c,
     m,
     p,
     r,
     t,
 )
-from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 
 
 class FlextInfraUtilitiesBase:

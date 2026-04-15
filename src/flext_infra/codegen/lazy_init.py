@@ -18,6 +18,8 @@ from pydantic import PrivateAttr
 
 from flext_infra import (
     FlextInfraCodegenGeneration,
+    FlextInfraCodegenLazyInitPlanner,
+    FlextInfraRopeWorkspace,
     FlextInfraServiceBase,
     c,
     m,
@@ -26,8 +28,6 @@ from flext_infra import (
     t,
     u,
 )
-from flext_infra.codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
-from flext_infra.services.rope import FlextInfraRopeWorkspace
 
 
 class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):

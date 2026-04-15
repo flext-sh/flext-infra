@@ -9,6 +9,19 @@ _LAZY_IMPORTS = build_lazy_import_map(
     {
         ".test_infra_discovery": ("test_infra_discovery",),
         ".test_infra_discovery_edge_cases": ("test_infra_discovery_edge_cases",),
+        "flext_infra": (
+            "c",
+            "d",
+            "e",
+            "h",
+            "m",
+            "p",
+            "r",
+            "s",
+            "t",
+            "u",
+            "x",
+        ),
     },
 )
 

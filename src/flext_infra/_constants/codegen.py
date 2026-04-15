@@ -87,10 +87,6 @@ class FlextInfraConstantsCodegen:
     })
     "Directories excluded from codegen file scanning."
     INFRA_ONLY_EXPORTS: Final[frozenset[str]] = frozenset({
-        "FlextDispatcher",
-        "FlextLogger",
-        "FlextRegistry",
-        "FlextRuntime",
         "cleanup_submodule_namespace",
         "install_lazy_exports",
         "lazy_getattr",

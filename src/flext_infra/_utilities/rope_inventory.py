@@ -9,9 +9,14 @@ from rope.base.pynamesdef import AssignedName, ParameterName
 from rope.base.pyobjects import AbstractClass
 from rope.base.pyobjectsdef import PyFunction, PyModule
 
-from flext_infra import c, m, p, t
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
+from flext_infra import (
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeImports,
+    c,
+    m,
+    p,
+    t,
+)
 
 
 class FlextInfraUtilitiesRopeInventory:

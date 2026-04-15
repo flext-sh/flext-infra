@@ -14,22 +14,22 @@ from flext_core import (
     FlextModels,
     FlextProtocols,
     FlextSettings,
-    s as core_service_base,
-    t as core_t,
+    s,
+    t,
 )
 from flext_infra import FlextInfraConstantsBase, FlextInfraTypesBase
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 TDomainResult = TypeVar(
     "TDomainResult",
-    bound=core_t.ValueOrModel | Sequence[core_t.ValueOrModel],
+    bound=t.ValueOrModel | Sequence[t.ValueOrModel],
 )
 
 
 class FlextInfraServiceBase(
-    core_service_base[TDomainResult],
+    s[TDomainResult],
     ABC,
 ):
     """Domain command context shared by all flext-infra CLI services.

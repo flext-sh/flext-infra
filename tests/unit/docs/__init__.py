@@ -26,6 +26,19 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".shared_write_tests": ("shared_write_tests",),
         ".validator_internals_tests": ("validator_internals_tests",),
         ".validator_tests": ("validator_tests",),
+        "flext_infra": (
+            "c",
+            "d",
+            "e",
+            "h",
+            "m",
+            "p",
+            "r",
+            "s",
+            "t",
+            "u",
+            "x",
+        ),
     },
 )
 

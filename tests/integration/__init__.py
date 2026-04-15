@@ -14,6 +14,19 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".test_refactor_nesting_project": ("test_refactor_nesting_project",),
         ".test_refactor_nesting_workspace": ("test_refactor_nesting_workspace",),
         ".test_refactor_policy_mro": ("test_refactor_policy_mro",),
+        "flext_infra": (
+            "c",
+            "d",
+            "e",
+            "h",
+            "m",
+            "p",
+            "r",
+            "s",
+            "t",
+            "u",
+            "x",
+        ),
     },
 )
 

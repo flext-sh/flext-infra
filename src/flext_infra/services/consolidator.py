@@ -8,9 +8,17 @@ from typing import Annotated, ClassVar, override
 
 from pydantic import Field
 
-from flext_infra import c, m, p, r, s, t, u
-from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
-from flext_infra.services.rope import FlextInfraRopeWorkspace
+from flext_infra import (
+    FlextInfraRopeWorkspace,
+    FlextInfraUtilitiesProtectedEdit,
+    c,
+    m,
+    p,
+    r,
+    s,
+    t,
+    u,
+)
 
 
 class FlextInfraCodegenConsolidator(s[str]):

@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING
 
-from flext_cli.api import cli as cli_service
+from flext_cli import cli as cli_service
 from flext_infra import (
     FlextInfraOrchestratorService,
     FlextInfraProjectMigrator,

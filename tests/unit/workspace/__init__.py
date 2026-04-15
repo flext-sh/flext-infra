@@ -11,6 +11,19 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".test_makefile_dry_run": ("test_makefile_dry_run",),
         ".test_makefile_generator": ("test_makefile_generator",),
         ".test_sync": ("test_sync",),
+        "flext_infra": (
+            "c",
+            "d",
+            "e",
+            "h",
+            "m",
+            "p",
+            "r",
+            "s",
+            "t",
+            "u",
+            "x",
+        ),
     },
 )
 

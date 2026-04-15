@@ -16,6 +16,19 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".test_infra_transformer_nested_class_propagation": (
             "test_infra_transformer_nested_class_propagation",
         ),
+        "flext_infra": (
+            "c",
+            "d",
+            "e",
+            "h",
+            "m",
+            "p",
+            "r",
+            "s",
+            "t",
+            "u",
+            "x",
+        ),
     },
 )
 

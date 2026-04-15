@@ -8,6 +8,7 @@ from flext_infra import (
     FlextInfraOrchestratorService,
     FlextInfraProjectMigrator,
     FlextInfraPythonVersionEnforcer,
+    FlextInfraServiceCliRunnerMixin,
     FlextInfraSyncService,
     FlextInfraWorkspaceDetector,
     c,
@@ -15,7 +16,6 @@ from flext_infra import (
     p,
     t,
 )
-from flext_infra.services.cli_base import FlextInfraServiceCliRunnerMixin
 
 
 class FlextInfraServiceWorkspaceMixin(FlextInfraServiceCliRunnerMixin):

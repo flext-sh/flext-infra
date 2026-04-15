@@ -12,8 +12,7 @@ from typing import ClassVar, override
 
 from pydantic import Field
 
-from flext_infra import c, m, p, r, s, t, u
-from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
+from flext_infra import FlextInfraUtilitiesProtectedEdit, c, m, p, r, s, t, u
 
 
 class FlextInfraAccessorMigrationOrchestrator(s[m.Infra.AccessorMigrationReport]):

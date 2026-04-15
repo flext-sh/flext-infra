@@ -8,8 +8,7 @@ from typing import Annotated, Self
 from pydantic import Field
 
 from flext_core import m
-from flext_infra import t
-from flext_infra._models.mixins import FlextInfraModelsMixins
+from flext_infra import FlextInfraModelsMixins, t
 
 
 class FlextInfraModelsNamespaceEnforcer:

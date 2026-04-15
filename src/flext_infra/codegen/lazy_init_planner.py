@@ -24,7 +24,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
     )
 
     _module_exports_cache: dict[
-        tuple[str, bool, bool, bool],
+        tuple[str, bool, bool, bool, bool],
         t.Infra.LazyImportMap,
     ] = PrivateAttr(default_factory=dict)
     _package_exports_cache: dict[str, frozenset[str]] = PrivateAttr(
@@ -36,6 +36,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
     )
     _source_exports_visiting: set[str] = PrivateAttr(default_factory=set)
     _parent_package_cache: dict[str, t.StrSequence] = PrivateAttr(default_factory=dict)
+    _module_file_by_name: dict[str, Path] = PrivateAttr(default_factory=dict)
     _version_module_name: str = PrivateAttr(default=f"{c.Infra.DUNDER_VERSION}.py")
 
     def build_plan(
@@ -121,6 +122,12 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
                 allow_main=policy.allow_main_export,
                 allow_assignments=policy.allow_type_alias
                 or policy.expected_alias is not None,
+                require_explicit_all=(
+                    u.Infra.is_root_namespace_file(py_file.name)
+                    and policy.expected_alias is not None
+                    and u.Infra.is_project_namespace_package(context.current_pkg)
+                    and not context.pkg_dir.name.startswith("_")
+                ),
             )
             if (
                 policy.expected_alias
@@ -151,12 +158,14 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         include_dunder: bool = False,
         allow_main: bool = False,
         allow_assignments: bool = False,
+        require_explicit_all: bool = False,
     ) -> t.Infra.MutableLazyImportMap:
         cache_key = (
             str(py_file.resolve()),
             include_dunder,
             allow_main,
             allow_assignments,
+            require_explicit_all,
         )
         cached = self._module_exports_cache.get(cache_key)
         if cached is not None:
@@ -168,6 +177,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
             include_dunder=include_dunder,
             allow_main=allow_main,
             allow_assignments=allow_assignments,
+            require_explicit_all=require_explicit_all and not include_dunder,
         )
         exports = {
             name: (module_path, name)
@@ -385,6 +395,62 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
     ) -> m.Infra.RopePackageIndexEntry | None:
         return self.rope_workspace.package(pkg_dir)
 
+    def _module_file(self, module_path: str) -> Path | None:
+        resolved = self._module_file_by_name.get(module_path)
+        if resolved is not None:
+            return resolved
+        if not self._module_file_by_name:
+            index = self.rope_workspace.workspace_index
+            self._module_file_by_name = {
+                entry.module_name: entry.file_path
+                for entry in index.modules_by_path.values()
+                if entry.module_name
+            }
+            resolved = self._module_file_by_name.get(module_path)
+        return resolved
+
+    def _target_score(self, name: str, target: t.Infra.StrPair) -> int:
+        module_path, attr = target
+        score = 0
+        module_file = self._module_file(module_path)
+        if module_file is None:
+            return score
+        convention = self.rope_workspace.convention(module_file)
+        policy = convention.module_policy
+        if policy.expected_alias == name:
+            score += 100
+        if policy.export_symbols:
+            score += 20
+        if policy.enforce_contract:
+            score += 10
+        if module_file.name in self.lazy_init.root_namespace_files:
+            score += 5
+        preferred_stem_by_alias = {
+            alias: file_name.removesuffix(".py")
+            for file_name, alias in self.lazy_init.public_file_aliases.items()
+        }
+        preferred_stem = preferred_stem_by_alias.get(name, "")
+        if preferred_stem and module_file.stem == preferred_stem:
+            score += 15
+        if attr == name:
+            score += 3
+        score -= module_path.count(".")
+        return score
+
+    def _pick_preferred_target(
+        self,
+        name: str,
+        existing: t.Infra.StrPair,
+        target: t.Infra.StrPair,
+    ) -> t.Infra.StrPair:
+        existing_score = self._target_score(name, existing)
+        target_score = self._target_score(name, target)
+        if target_score > existing_score:
+            return target
+        if target_score < existing_score:
+            return existing
+        return min(existing, target)
+
     @staticmethod
     def _publish(name: str, *, allow_main: bool) -> bool:
         return (
@@ -394,8 +460,8 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
             and (name != "main" or allow_main)
         )
 
-    @staticmethod
     def _add(
+        self,
         index: t.Infra.MutableLazyImportMap,
         name: str,
         target: t.Infra.StrPair,
@@ -404,10 +470,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         if existing is None or existing == target:
             index[name] = target
             return
-        left = f"{existing[0]}.{existing[1]}".rstrip(".")
-        right = f"{target[0]}.{target[1]}".rstrip(".")
-        message = f"export collision for {name!r}: {left} != {right}"
-        raise ValueError(message)
+        index[name] = self._pick_preferred_target(name, existing, target)
 
 
 __all__: list[str] = ["FlextInfraCodegenLazyInitPlanner"]

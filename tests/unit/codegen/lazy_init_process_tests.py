@@ -413,5 +413,116 @@ class TestProcessDirectory:
         assert '"__version__"' in content
         assert '"__version_info__"' in content
 
+    def test_root_settings_without_explicit_all_still_exports_class(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Root settings.py without __all__ still exports its facade settings class."""
+        workspace_root, package_root = u.Infra.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-demo",
+            package_name="flext_demo",
+        )
+        (package_root / "settings.py").write_text(
+            "from __future__ import annotations\n\n"
+            "class FlextDemoSettings:\n"
+            "    pass\n",
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+
+        result = u.Infra.Tests.run_lazy_init(workspace_root)
+
+        assert result == 0
+        init_content = (package_root / "__init__.py").read_text(
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+        assert '".settings": (' in init_content
+        assert '"FlextDemoSettings"' in init_content
+
+    def test_private_family_base_without_all_keeps_class_export(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Private family base.py without __all__ still exports class from _typings."""
+        workspace_root, package_root = u.Infra.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-demo",
+            package_name="flext_demo",
+        )
+        typings_dir = package_root / "_typings"
+        typings_dir.mkdir(parents=True)
+        (typings_dir / "base.py").write_text(
+            "from __future__ import annotations\n\n"
+            "class FlextDemoBaseTypesMixin:\n"
+            "    pass\n",
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+
+        result = u.Infra.Tests.run_lazy_init(workspace_root)
+
+        assert result == 0
+        typings_init = (typings_dir / "__init__.py").read_text(
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+        assert '".base": (' in typings_init
+        assert '"FlextDemoBaseTypesMixin"' in typings_init
+
+    def test_root_package_includes_settings_class_without_explicit_all(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Root generation keeps concrete settings classes even without ``__all__``."""
+        workspace_root, package_root = u.Infra.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-demo",
+            package_name="flext_demo",
+        )
+        u.Infra.Tests.write_lazy_init_namespace_module(
+            package_root / "models.py",
+            class_name="FlextDemoModels",
+            alias="m",
+            docstring="Models.",
+        )
+        (package_root / "settings.py").write_text(
+            "from __future__ import annotations\n\n"
+            "class FlextDemoSettings:\n"
+            "    pass\n",
+            encoding="utf-8",
+        )
+
+        result = u.Infra.Tests.run_lazy_init(workspace_root)
+
+        assert result == 0
+        content = (package_root / "__init__.py").read_text(encoding="utf-8")
+        assert '".settings": ("FlextDemoSettings",)' in content
+        assert '    "FlextDemoSettings",' in content
+
+    def test_internal_family_package_keeps_class_exports_without_explicit_all(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Private family packages must not require ``__all__`` on member modules."""
+        workspace_root, package_root = u.Infra.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-demo",
+            package_name="flext_demo",
+        )
+        constants_dir = package_root / "_constants"
+        constants_dir.mkdir(parents=True)
+        (constants_dir / "__init__.py").write_text("", encoding="utf-8")
+        (constants_dir / "base.py").write_text(
+            "from __future__ import annotations\n\n"
+            "class FlextDemoConstantsBase:\n"
+            "    pass\n",
+            encoding="utf-8",
+        )
+
+        result = u.Infra.Tests.run_lazy_init(workspace_root)
+
+        assert result == 0
+        content = (constants_dir / "__init__.py").read_text(encoding="utf-8")
+        assert '".base": ("FlextDemoConstantsBase",)' in content
+        assert '    "FlextDemoConstantsBase",' in content
+
 
 __all__: t.StrSequence = []

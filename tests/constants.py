@@ -12,18 +12,16 @@ from __future__ import annotations
 
 from flext_tests import FlextTestsConstants
 
-from flext_infra import FlextInfraConstants
-from tests._constants.domain import TestsFlextInfraConstantsDomain
-from tests._constants.fixtures import (
+from flext_infra import c
+from tests import (
+    TestsFlextInfraConstantsDomain,
     TestsFlextInfraConstantsFixtures,
 )
 
 
 class TestsFlextInfraConstants(
     FlextTestsConstants,
-    FlextInfraConstants,
-    TestsFlextInfraConstantsFixtures,
-    TestsFlextInfraConstantsDomain,
+    c,
 ):
     """Constants for FLEXT infra tests - extends FlextTestsConstants.
 
@@ -33,9 +31,7 @@ class TestsFlextInfraConstants(
     """
 
     class Infra(
-        FlextInfraConstants.Infra,
-        TestsFlextInfraConstantsFixtures.Infra,
-        TestsFlextInfraConstantsDomain.Infra,
+        c.Infra,
     ):
         """Infra-specific test constants namespace.
 
@@ -44,8 +40,8 @@ class TestsFlextInfraConstants(
         """
 
         class Tests(
-            TestsFlextInfraConstantsFixtures.Infra.Tests,
-            TestsFlextInfraConstantsDomain.Infra.Tests,
+            TestsFlextInfraConstantsFixtures,
+            TestsFlextInfraConstantsDomain,
         ):
             """Test-specific constants namespace with infra extensions.
 

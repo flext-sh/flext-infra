@@ -9,8 +9,7 @@ from typing import TYPE_CHECKING, Annotated, Self, override
 
 from pydantic import Field, PrivateAttr
 
-from flext_infra import c, m, r, s, t, u
-from flext_infra._utilities.rope_inventory import FlextInfraUtilitiesRopeInventory
+from flext_infra import FlextInfraUtilitiesRopeInventory, c, m, r, s, t, u
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -392,6 +391,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         include_dunder: bool = False,
         allow_main: bool = False,
         allow_assignments: bool = False,
+        require_explicit_all: bool = False,
     ) -> t.StrSequence:
         """Return public export names for one module path."""
         return u.Infra.get_module_export_names(
@@ -400,6 +400,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
             include_dunder=include_dunder,
             allow_main=allow_main,
             allow_assignments=allow_assignments,
+            require_explicit_all=require_explicit_all,
         )
 
     def close(self) -> None:

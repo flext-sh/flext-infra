@@ -58,4 +58,5 @@ class TestsFlextInfraProtocols(FlextTestsProtocols, FlextInfraProtocols):
 
 
 p = TestsFlextInfraProtocols
+
 __all__: list[str] = ["TestsFlextInfraProtocols", "p"]

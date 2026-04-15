@@ -6,15 +6,15 @@ from collections.abc import Mapping
 from pathlib import Path
 
 from flext_infra import (
+    FlextInfraUtilitiesBase,
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesParsing,
     c,
     m,
     t,
 )
-from flext_infra._utilities.base import FlextInfraUtilitiesBase
-from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
 
 
 class FlextInfraUtilitiesCodegenLazyAliases:

@@ -12,8 +12,7 @@ from typing import Annotated
 from pydantic import Field
 
 from flext_cli import m
-from flext_infra import c, t
-from flext_infra._models.mixins import FlextInfraModelsMixins
+from flext_infra import FlextInfraModelsMixins, c, t
 
 
 class FlextInfraModelsBase:
