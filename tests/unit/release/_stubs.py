@@ -15,8 +15,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from flext_core import p, r
-from tests import m, t
+from flext_core import r
+from tests import m, p, t
 
 
 @pytest.fixture

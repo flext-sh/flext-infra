@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_core import p, r
+from flext_core import r
 from flext_infra import (
     FlextInfraOrchestratorService,
     FlextInfraSyncService,
@@ -12,7 +12,7 @@ from flext_infra import (
     infra,
     main as infra_main,
 )
-from tests import c, m, t
+from tests import c, m, p, t
 
 
 def _write_project(project_root: Path, name: str) -> None:

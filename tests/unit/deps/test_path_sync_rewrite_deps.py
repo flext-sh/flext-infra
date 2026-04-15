@@ -6,8 +6,7 @@ from typing import TypeGuard
 import tomlkit
 from flext_tests import tm
 
-from flext_core import p
-from tests import t, u
+from tests import p, t, u
 
 
 def _is_str_object_dict(value: object) -> TypeGuard[dict[str, object]]:

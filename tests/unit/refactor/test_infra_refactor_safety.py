@@ -8,7 +8,8 @@ from typing import overload, override
 
 import pytest
 
-from flext_core import p, r
+from flext_core import r
+from tests import p
 
 try:
     from flext_infra import (

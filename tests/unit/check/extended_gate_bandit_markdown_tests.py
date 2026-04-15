@@ -7,9 +7,9 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_core import p, r
+from flext_core import r
 from flext_infra import FlextInfraBanditGate, FlextInfraMarkdownGate, m
-from tests import t, u
+from tests import p, t, u
 
 
 class TestBanditAndMarkdownGates:

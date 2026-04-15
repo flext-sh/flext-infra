@@ -6,9 +6,9 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_core import p, r
+from flext_core import r
 from flext_infra import FlextInfraInternalDependencySyncService, u
-from tests import t
+from tests import p, t
 
 
 def _set_toml_stub(

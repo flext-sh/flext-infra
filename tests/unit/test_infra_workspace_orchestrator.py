@@ -5,9 +5,9 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_core import p, r
+from flext_core import r
 from flext_infra import FlextInfraOrchestratorService
-from tests import c, m, t
+from tests import c, m, p, t
 
 
 def _cmd_out(exit_code: int = 0) -> m.Cli.CommandOutput:

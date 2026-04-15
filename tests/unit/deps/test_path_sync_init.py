@@ -4,9 +4,8 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_core import p
 from flext_infra import FlextInfraUtilitiesDependencyPathSync
-from tests import t
+from tests import p, t
 
 
 def _rewrite_dep_paths(

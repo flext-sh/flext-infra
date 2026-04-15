@@ -14,8 +14,8 @@ from typing import TYPE_CHECKING
 
 from flext_tests import FlextTestsTypes
 
-from flext_core import p
 from flext_infra import FlextInfraGate, t
+from tests import p
 
 if TYPE_CHECKING:
     from tests import m
