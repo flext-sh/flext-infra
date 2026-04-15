@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping, MutableSequence, Sequence
 from pathlib import Path
+from time import perf_counter
 
 from flext_core import FlextUtilities
 from flext_infra import (
@@ -30,32 +31,58 @@ class FlextInfraRefactorMigrateToClassMRO:
         *,
         target: str,
         apply: bool,
+        project_names: FlextInfraTypes.StrSequence | None = None,
     ) -> FlextInfraModelsRefactorGrep.MROMigrationReport:
         """Run scan, transform, rewrite, and validation phases."""
+        start_time = perf_counter()
         normalized_target = self._normalize_target(target=target)
+        selected_projects = tuple(sorted(set(project_names or ())))
+        scan_start = perf_counter()
         scan_results, files_scanned = FlextInfraUtilitiesRefactorMroScan.scan_workspace(
             workspace_root=self._workspace_root,
             target=normalized_target,
+            project_names=project_names,
         )
-        warnings: FlextInfraTypes.StrSequence = []
+        scan_duration = perf_counter() - scan_start
+        warnings: list[str] = []
         stash_ref = ""
+        rewrite_start = perf_counter()
         migrations, rewrites, errors = (
             FlextInfraRefactorMROImportRewriter.migrate_workspace(
                 workspace_root=self._workspace_root,
                 scan_results=scan_results,
                 apply=apply,
+                project_names=project_names,
             )
         )
-        remaining_violations, mro_failures = (
-            FlextInfraRefactorMROMigrationValidator.validate(
-                workspace_root=self._workspace_root,
-                target=normalized_target,
+        rewrite_duration = perf_counter() - rewrite_start
+        validation_start = perf_counter()
+        if apply:
+            remaining_violations, mro_failures = (
+                FlextInfraRefactorMROMigrationValidator.validate(
+                    workspace_root=self._workspace_root,
+                    target=normalized_target,
+                    project_names=project_names,
+                )
             )
-        )
+            validation_mode = "post-apply-rescan"
+        else:
+            remaining_violations = sum(
+                len(scan_result.candidates) for scan_result in scan_results
+            )
+            mro_failures = 0
+            validation_mode = "dry-run-estimate"
+            warnings.append(
+                "Dry-run skips post-apply rescan; remaining violations reflect the current candidate snapshot.",
+            )
+        validation_duration = perf_counter() - validation_start
+        total_duration = perf_counter() - start_time
         return FlextInfraModelsRefactorGrep.MROMigrationReport(
             workspace=str(self._workspace_root),
             target=normalized_target,
+            selected_projects=selected_projects,
             dry_run=not apply,
+            validation_mode=validation_mode,
             files_scanned=files_scanned,
             files_with_candidates=len(scan_results),
             migrations=tuple(migrations),
@@ -63,6 +90,10 @@ class FlextInfraRefactorMigrateToClassMRO:
             remaining_violations=remaining_violations,
             mro_failures=mro_failures,
             stash_ref=stash_ref,
+            scan_duration_seconds=scan_duration,
+            rewrite_duration_seconds=rewrite_duration,
+            validation_duration_seconds=validation_duration,
+            total_duration_seconds=total_duration,
             warnings=tuple(warnings),
             errors=tuple(errors),
         )
@@ -73,13 +104,23 @@ class FlextInfraRefactorMigrateToClassMRO:
         lines = [
             f"Workspace: {report.workspace}",
             f"Target: {report.target}",
+            (
+                "Projects: " + ", ".join(report.selected_projects)
+                if report.selected_projects
+                else "Projects: all"
+            ),
             f"Mode: {('dry-run' if report.dry_run else 'apply')}",
+            f"Validation mode: {report.validation_mode}",
             f"Files scanned: {report.files_scanned}",
             f"Files with candidates: {report.files_with_candidates}",
             f"Migrations: {len(report.migrations)}",
             f"Rewrites: {len(report.rewrites)}",
             f"Remaining violations: {report.remaining_violations}",
             f"MRO failures: {report.mro_failures}",
+            f"Scan time: {report.scan_duration_seconds:.3f}s",
+            f"Rewrite time: {report.rewrite_duration_seconds:.3f}s",
+            f"Validation time: {report.validation_duration_seconds:.3f}s",
+            f"Total time: {report.total_duration_seconds:.3f}s",
         ]
         if report.stash_ref:
             lines.append(f"Rollback stash: {report.stash_ref}")

@@ -1150,7 +1150,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 resolved_gates: MutableMapping[str, m.Infra.GateExecution] = (
                     gates
                     if gates is not None
-                    else {"lint": u.Infra.Tests.create_gate_execution()}
+                    else {
+                        "lint": TestsFlextInfraUtilities.Infra.Tests.create_gate_execution()
+                    }
                 )
                 return m.Infra.ProjectResult.model_validate({
                     "project": name,

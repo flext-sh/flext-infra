@@ -16,6 +16,7 @@ from flext_infra import (
     FlextInfraModelsCensus,
     FlextInfraModelsCheck,
     FlextInfraModelsCodegen,
+    FlextInfraModelsCore,
     FlextInfraModelsDeps,
     FlextInfraModelsDocs,
     FlextInfraModelsEngine,
@@ -48,6 +49,7 @@ class FlextInfraModels(m):
         FlextInfraModelsWorkspace,
         FlextInfraModelsRope,
         FlextInfraModelsScan,
+        FlextInfraModelsCore,
         FlextInfraModelsBase,
         FlextInfraModelsEngine,
     ):

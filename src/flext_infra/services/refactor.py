@@ -31,6 +31,7 @@ class FlextInfraServiceRefactorMixin:
         report: m.Infra.MROMigrationReport = service.run(
             target=params.target,
             apply=params.apply,
+            project_names=params.project_names,
         )
         cli.display_text(FlextInfraRefactorMigrateToClassMRO.render_text(report))
         if report.errors:

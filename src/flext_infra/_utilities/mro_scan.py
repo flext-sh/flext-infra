@@ -34,6 +34,7 @@ class FlextInfraUtilitiesRefactorMroScan:
         *,
         workspace_root: Path,
         target: str,
+        project_names: t.StrSequence | None = None,
     ) -> tuple[Sequence[m.Infra.MROScanReport], int]:
         """Scan workspace and collect migration reports for a target family."""
         if target not in c.Infra.MRO_TARGETS:
@@ -43,9 +44,12 @@ class FlextInfraUtilitiesRefactorMroScan:
         results: list[m.Infra.MROScanReport] = []
         scanned = 0
         target_specs = FlextInfraUtilitiesRefactorMroScan._target_specs(target=target)
+        project_name_set = set(project_names or ())
         for project_root in FlextInfraUtilitiesIteration.discover_project_roots(
-            workspace_root=workspace_root
+            workspace_root=workspace_root,
         ):
+            if project_name_set and project_root.name not in project_name_set:
+                continue
             with FlextInfraUtilitiesRope.open_project(project_root) as rope_proj:
                 for target_spec in target_specs:
                     for (

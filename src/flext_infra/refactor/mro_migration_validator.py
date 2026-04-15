@@ -12,12 +12,17 @@ class FlextInfraRefactorMROMigrationValidator:
 
     @classmethod
     def validate(
-        cls, *, workspace_root: Path, target: str
+        cls,
+        *,
+        workspace_root: Path,
+        target: str,
+        project_names: FlextInfraTypes.StrSequence | None = None,
     ) -> FlextInfraTypes.Infra.IntPair:
         """Return count of remaining symbols and unsupported entries."""
         file_results, _ = FlextInfraUtilitiesRefactorMroScan.scan_workspace(
             workspace_root=workspace_root,
             target=target,
+            project_names=project_names,
         )
         remaining = sum(len(item.candidates) for item in file_results)
         return (remaining, 0)

@@ -30,6 +30,7 @@ class FlextInfraRefactorMROImportRewriter:
         workspace_root: Path,
         scan_results: Sequence[FlextInfraModelsRefactorGrep.MROScanReport],
         apply: bool,
+        project_names: FlextInfraTypes.StrSequence | None = None,
     ) -> FlextInfraTypes.Infra.Triple[
         Sequence[FlextInfraModelsRefactorGrep.MROFileMigration],
         Sequence[FlextInfraModelsRefactorGrep.MRORewriteResult],
@@ -86,6 +87,7 @@ class FlextInfraRefactorMROImportRewriter:
             module_moves=module_moves,
             pending_sources=pending_sources,
             apply=apply,
+            project_names=project_names,
         )
         errors.extend(rewrite_errors)
         return (tuple(migrations), tuple(rewrites), tuple(errors))
@@ -100,6 +102,7 @@ class FlextInfraRefactorMROImportRewriter:
         ],
         pending_sources: Mapping[Path, str],
         apply: bool,
+        project_names: FlextInfraTypes.StrSequence | None = None,
     ) -> tuple[
         Sequence[FlextInfraModelsRefactorGrep.MRORewriteResult],
         FlextInfraTypes.StrSequence,
@@ -110,6 +113,7 @@ class FlextInfraRefactorMROImportRewriter:
         file_moves = cls._collect_file_moves(
             workspace_root=workspace_root,
             module_moves=module_moves,
+            project_names=project_names,
         )
         return cls._rewrite_files(
             workspace_root=workspace_root,
@@ -126,6 +130,7 @@ class FlextInfraRefactorMROImportRewriter:
         module_moves: Mapping[
             str, FlextInfraTypesBase.Pair[str, FlextInfraTypes.StrMapping]
         ],
+        project_names: FlextInfraTypes.StrSequence | None = None,
     ) -> Mapping[
         Path,
         Mapping[str, FlextInfraTypesBase.Pair[str, FlextInfraTypes.StrMapping]],
@@ -151,6 +156,7 @@ class FlextInfraRefactorMROImportRewriter:
             workspace_root=workspace_root,
             file_moves=cls._merge_file_moves(module_file_moves),
             module_moves=module_moves,
+            project_names=project_names,
         )
 
     @staticmethod
@@ -230,6 +236,7 @@ class FlextInfraRefactorMROImportRewriter:
         module_moves: Mapping[
             str, FlextInfraTypesBase.Pair[str, FlextInfraTypes.StrMapping]
         ],
+        project_names: FlextInfraTypes.StrSequence | None = None,
     ) -> Mapping[
         Path,
         Mapping[str, FlextInfraTypesBase.Pair[str, FlextInfraTypes.StrMapping]],
@@ -239,17 +246,25 @@ class FlextInfraRefactorMROImportRewriter:
             Mapping[str, FlextInfraTypesBase.Pair[str, FlextInfraTypes.StrMapping]],
         ] = dict(file_moves)
         for file_path in cls._iter_workspace_python_files(
-            workspace_root=workspace_root
+            workspace_root=workspace_root,
+            project_names=project_names,
         ):
             expanded.setdefault(file_path.resolve(), module_moves)
         return expanded
 
     @staticmethod
-    def _iter_workspace_python_files(*, workspace_root: Path) -> Sequence[Path]:
+    def _iter_workspace_python_files(
+        *,
+        workspace_root: Path,
+        project_names: FlextInfraTypes.StrSequence | None = None,
+    ) -> Sequence[Path]:
         paths: list[Path] = []
+        project_name_set = set(project_names or ())
         for project_root in FlextInfraUtilitiesIteration.discover_project_roots(
             workspace_root=workspace_root
         ):
+            if project_name_set and project_root.name not in project_name_set:
+                continue
             iter_result = FlextInfraUtilitiesIteration.iter_python_files(
                 workspace_root=workspace_root,
                 project_roots=[project_root],

@@ -241,7 +241,6 @@ class FlextInfraCodegenGeneration:
         *,
         include_module_exports: bool = False,
     ) -> Sequence[tuple[str, str, str]]:
-        child_prefixes = tuple(f"{cp}." for cp in children_lazy)
         child_aliases = set(children_lazy)
         entries: MutableSequence[tuple[str, str, str]] = []
         for exp in exports:
@@ -257,10 +256,11 @@ class FlextInfraCodegenGeneration:
                 current_pkg,
                 mod,
             )
-            if (mod in child_aliases and not attr) or not mod.startswith(
-                child_prefixes
-            ):
-                entries.append((exp, compact_mod, attr))
+            # Keep module-level child package exports collapsed via merge_lazy_imports,
+            # but publish symbol exports from child submodules explicitly at root.
+            if mod in child_aliases and not attr:
+                continue
+            entries.append((exp, compact_mod, attr))
         return entries
 
     @staticmethod

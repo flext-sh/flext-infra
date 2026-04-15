@@ -122,7 +122,18 @@ class FlextInfraModelsRefactorGrep:
             Field(description="Workspace root path"),
         ]
         target: Annotated[t.NonEmptyStr, Field(description="constants|typings|all")]
+        selected_projects: t.Infra.VariadicTuple[str] = Field(
+            default_factory=tuple,
+            description="Project scope used for the run; empty means whole workspace",
+        )
         dry_run: Annotated[bool, Field(description="Dry-run indicator")]
+        validation_mode: Annotated[
+            str,
+            Field(
+                default="post-apply-rescan",
+                description="Validation strategy used for remaining violation counts",
+            ),
+        ] = "post-apply-rescan"
         files_scanned: Annotated[
             int,
             Field(description="Total scanned Python files"),
@@ -151,6 +162,30 @@ class FlextInfraModelsRefactorGrep:
             t.NonNegativeInt,
             Field(description="MRO validation failures"),
         ]
+        scan_duration_seconds: Annotated[
+            float,
+            Field(default=0.0, ge=0.0, description="Scan phase duration in seconds"),
+        ] = 0.0
+        rewrite_duration_seconds: Annotated[
+            float,
+            Field(
+                default=0.0,
+                ge=0.0,
+                description="Rewrite phase duration in seconds",
+            ),
+        ] = 0.0
+        validation_duration_seconds: Annotated[
+            float,
+            Field(
+                default=0.0,
+                ge=0.0,
+                description="Validation phase duration in seconds",
+            ),
+        ] = 0.0
+        total_duration_seconds: Annotated[
+            float,
+            Field(default=0.0, ge=0.0, description="Total run duration in seconds"),
+        ] = 0.0
         warnings: t.Infra.VariadicTuple[str] = Field(
             default_factory=tuple, description="Warnings"
         )
