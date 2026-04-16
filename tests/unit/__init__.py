@@ -29,6 +29,17 @@ _LAZY_IMPORTS = merge_lazy_imports(
     ),
     build_lazy_import_map(
         {
+            "._utilities.test_discovery_consolidated": (
+                "TestsFlextInfraUtilitiesDiscoveryConsolidated",
+            ),
+            "._utilities.test_formatting": (
+                "TestsFlextInfraUtilitiesFormattingRunRuffFix",
+            ),
+            "._utilities.test_safety": (
+                "TestSafetyCheckpoint",
+                "TestSafetyRollback",
+            ),
+            "._utilities.test_scanning": ("TestScanModels",),
             ".fixtures": ("fixtures",),
             ".fixtures_git": ("fixtures_git",),
             ".runner_service": ("runner_service",),

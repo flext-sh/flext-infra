@@ -116,6 +116,12 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
             policy = convention.module_policy
             if not policy.include_in_lazy_init or not module_entry.module_name:
                 continue
+            require_explicit_all = (
+                u.Infra.is_root_namespace_file(py_file.name)
+                and policy.expected_alias is not None
+                and u.Infra.is_project_namespace_package(context.current_pkg)
+                and not context.pkg_dir.name.startswith("_")
+            )
             targets = self._module_exports(
                 py_file,
                 convention.module_name,
@@ -123,13 +129,14 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
                 allow_assignments=policy.allow_type_alias
                 or policy.expected_alias is not None,
                 allow_functions=policy.is_fixture_module,
-                require_explicit_all=(
-                    u.Infra.is_root_namespace_file(py_file.name)
-                    and policy.expected_alias is not None
-                    and u.Infra.is_project_namespace_package(context.current_pkg)
-                    and not context.pkg_dir.name.startswith("_")
-                ),
+                require_explicit_all=require_explicit_all,
             )
+            if require_explicit_all and not targets:
+                msg = (
+                    "governed root facade missing explicit exports "
+                    f"(expected __all__ in {py_file})"
+                )
+                raise ValueError(msg)
             if (
                 policy.expected_alias
                 and targets

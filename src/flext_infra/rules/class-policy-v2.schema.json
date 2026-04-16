@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Class Policy v2 Schema",
   "description": "Schema for validating class refactoring policy v2 declarations",
-  "type": "t.RecursiveContainer",
+  "type": "object",
   "required": ["version", "engine", "policy_matrix"],
   "properties": {
     "version": {
@@ -41,11 +41,11 @@
       }
     },
     "defaults": {
-      "type": "t.RecursiveContainer",
+      "type": "object",
       "description": "Default enforcement behavior",
       "properties": {
         "enforcement": {
-          "type": "t.RecursiveContainer",
+          "type": "object",
           "properties": {
             "unknown_family": {
               "type": "string",
@@ -70,7 +70,7 @@
   "additionalProperties": false,
   "definitions": {
     "policyEntry": {
-      "type": "t.RecursiveContainer",
+      "type": "object",
       "required": [
         "family_name",
         "module_patterns",
@@ -120,7 +120,7 @@
           }
         },
         "validation_requirements": {
-          "type": "t.RecursiveContainer",
+          "type": "object",
           "required": ["pre_checks", "post_checks", "quality_gates"],
           "properties": {
             "pre_checks": {
@@ -150,7 +150,7 @@
       "additionalProperties": false
     },
     "whitelistEntry": {
-      "type": "t.RecursiveContainer",
+      "type": "object",
       "required": ["transform_id", "source_module_pattern", "source_symbol", "target_namespace", "target_name", "rewrite_scope"],
       "properties": {
         "transform_id": {
@@ -182,7 +182,7 @@
       "additionalProperties": false
     },
     "classRule": {
-      "type": "t.RecursiveContainer",
+      "type": "object",
       "required": ["project_kind", "facade_family", "module_family", "source_symbol", "target_facade_class", "confidence"],
       "properties": {
         "project_kind": {
@@ -256,7 +256,7 @@
       "additionalProperties": false
     },
     "checkEntry": {
-      "type": "t.RecursiveContainer",
+      "type": "object",
       "required": ["type"],
       "properties": {
         "type": {
@@ -264,7 +264,7 @@
           "description": "Check type identifier"
         },
         "params": {
-          "type": "t.RecursiveContainer",
+          "type": "object",
           "description": "Check-specific parameters"
         }
       },

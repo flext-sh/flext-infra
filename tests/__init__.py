@@ -42,6 +42,8 @@ _LAZY_IMPORTS = merge_lazy_imports(
     ),
     build_lazy_import_map(
         {
+            "._constants.domain": ("TestsFlextInfraConstantsDomain",),
+            "._constants.fixtures": ("TestsFlextInfraConstantsFixtures",),
             ".constants": (
                 "TestsFlextInfraConstants",
                 "c",
@@ -58,6 +60,17 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "TestsFlextInfraTypes",
                 "t",
             ),
+            ".unit._utilities.test_discovery_consolidated": (
+                "TestsFlextInfraUtilitiesDiscoveryConsolidated",
+            ),
+            ".unit._utilities.test_formatting": (
+                "TestsFlextInfraUtilitiesFormattingRunRuffFix",
+            ),
+            ".unit._utilities.test_safety": (
+                "TestSafetyCheckpoint",
+                "TestSafetyRollback",
+            ),
+            ".unit._utilities.test_scanning": ("TestScanModels",),
             ".utilities": (
                 "TestsFlextInfraUtilities",
                 "u",
