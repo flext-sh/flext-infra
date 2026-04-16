@@ -11,9 +11,7 @@ from collections.abc import Mapping, MutableSequence, Sequence
 from functools import cache
 from pathlib import Path
 
-from pydantic import ValidationError
-
-from flext_infra import FlextInfraUtilitiesTomlParse, c, p, r, t
+from flext_infra import FlextInfraUtilitiesTomlParse as m, c, p, r, t
 
 
 class FlextInfraUtilitiesIteration:
@@ -47,7 +45,7 @@ class FlextInfraUtilitiesIteration:
                 path.read_text(encoding=c.Infra.ENCODING_DEFAULT),
             )
             return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(raw_payload)
-        except (OSError, tomllib.TOMLDecodeError, ValidationError):
+        except (OSError, tomllib.TOMLDecodeError, c.ValidationError):
             return {}
 
     @staticmethod
@@ -232,10 +230,10 @@ class FlextInfraUtilitiesIteration:
                     pyproject_path.read_text(encoding=c.Infra.ENCODING_DEFAULT),
                 ),
             )
-        except (OSError, tomllib.TOMLDecodeError, ValidationError):
+        except (OSError, tomllib.TOMLDecodeError, c.ValidationError):
             return False
         dependency_names: set[str] = set(
-            FlextInfraUtilitiesTomlParse.declared_dependency_names_from_payload(
+            m.declared_dependency_names_from_payload(
                 payload,
             )
         )

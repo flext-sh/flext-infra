@@ -14,8 +14,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, override
 
-from pydantic import Field
-
 from flext_infra import c, m, p, r, s, t, u
 
 
@@ -27,8 +25,7 @@ class FlextInfraInventoryService(s[bool]):
     """
 
     output_dir: Annotated[
-        Path | None,
-        Field(default=None, description="Output directory for reports"),
+        Path | None, m.Field(description="Output directory for reports")
     ] = None
 
     def generate(

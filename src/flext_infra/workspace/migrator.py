@@ -6,8 +6,6 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import Annotated, override
 
-from pydantic import Field
-
 from flext_infra import (
     FlextInfraBaseMkGenerator,
     FlextInfraServiceBase,
@@ -27,15 +25,11 @@ class FlextInfraProjectMigrator(
 
     discovery: Annotated[
         p.Infra.Discovery | None,
-        Field(
-            default=None, exclude=True, description="Optional custom discovery service"
-        ),
+        m.Field(exclude=True, description="Optional custom discovery service"),
     ] = None
     generator: Annotated[
         FlextInfraBaseMkGenerator | None,
-        Field(
-            default=None, exclude=True, description="Optional custom generator service"
-        ),
+        m.Field(exclude=True, description="Optional custom generator service"),
     ] = None
 
     def _get_discovery(self) -> p.Infra.Discovery | None:

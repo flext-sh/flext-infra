@@ -5,8 +5,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Annotated
 
-from pydantic import Field
-
 from flext_core import m
 from flext_infra import t
 
@@ -19,14 +17,14 @@ class FlextInfraModelsDepsToolConfigLinters:
 
         check_filenames: Annotated[
             bool,
-            Field(
+            m.Field(
                 alias="check-filenames",
                 description="Check filenames in addition to file contents.",
             ),
         ]
         ignore_words_list: Annotated[
             str,
-            Field(
+            m.Field(
                 alias="ignore-words-list",
                 description="Comma-separated allowlist for known project terms.",
             ),
@@ -37,28 +35,28 @@ class FlextInfraModelsDepsToolConfigLinters:
 
         docstring_code_format: Annotated[
             bool,
-            Field(
+            m.Field(
                 alias="docstring-code-format",
                 description="Enable ruff docstring code block formatting.",
             ),
         ]
         indent_style: Annotated[
             str,
-            Field(
+            m.Field(
                 alias="indent-style",
                 description="Indent style for ruff formatter output.",
             ),
         ]
         line_ending: Annotated[
             str,
-            Field(
+            m.Field(
                 alias="line-ending",
                 description="Line ending style for ruff formatter output.",
             ),
         ]
         quote_style: Annotated[
             str,
-            Field(
+            m.Field(
                 alias="quote-style",
                 description="Quote style for ruff formatter output.",
             ),
@@ -69,21 +67,21 @@ class FlextInfraModelsDepsToolConfigLinters:
 
         combine_as_imports: Annotated[
             bool,
-            Field(
+            m.Field(
                 alias="combine-as-imports",
                 description="Combine `as` imports in grouped isort blocks.",
             ),
         ]
         force_single_line: Annotated[
             bool,
-            Field(
+            m.Field(
                 alias="force-single-line",
                 description="Force single-line imports in isort output.",
             ),
         ]
         split_on_trailing_comma: Annotated[
             bool,
-            Field(
+            m.Field(
                 alias="split-on-trailing-comma",
                 description="Split imports when a trailing comma exists.",
             ),
@@ -94,18 +92,18 @@ class FlextInfraModelsDepsToolConfigLinters:
 
         select: Annotated[
             t.StrSequence,
-            Field(description="Ruff lint rule selectors."),
-        ] = Field(default_factory=list)
+            m.Field(description="Ruff lint rule selectors."),
+        ] = m.Field(default_factory=list)
         ignore: Annotated[
             t.StrSequence,
-            Field(description="Ruff lint rule ignore list."),
-        ] = Field(default_factory=list)
-        isort: FlextInfraModelsDepsToolConfigLinters.RuffIsortConfig = Field(
+            m.Field(description="Ruff lint rule ignore list."),
+        ] = m.Field(default_factory=list)
+        isort: FlextInfraModelsDepsToolConfigLinters.RuffIsortConfig = m.Field(
             description="Ruff isort configuration"
         )
         per_file_ignores: Annotated[
             Mapping[str, t.StrSequence],
-            Field(
+            m.Field(
                 alias="per-file-ignores",
                 description="Per-file ignore mapping from glob pattern to ruff rule IDs.",
             ),
@@ -116,40 +114,40 @@ class FlextInfraModelsDepsToolConfigLinters:
 
         exclude: Annotated[
             t.StrSequence,
-            Field(description="Directory/file globs excluded from ruff checks."),
-        ] = Field(default_factory=list)
-        fix: Annotated[bool, Field(description="Enable automatic ruff fixes")]
+            m.Field(description="Directory/file globs excluded from ruff checks."),
+        ] = m.Field(default_factory=list)
+        fix: Annotated[bool, m.Field(description="Enable automatic ruff fixes")]
         line_length: Annotated[
-            int, Field(alias="line-length", description="Maximum line length.")
+            int, m.Field(alias="line-length", description="Maximum line length.")
         ]
-        preview: Annotated[bool, Field(description="Enable preview ruff behavior.")]
+        preview: Annotated[bool, m.Field(description="Enable preview ruff behavior.")]
         respect_gitignore: Annotated[
             bool,
-            Field(
+            m.Field(
                 alias="respect-gitignore", description="Respect .gitignore exclusions."
             ),
         ]
         show_fixes: Annotated[
             bool,
-            Field(
+            m.Field(
                 alias="show-fixes",
                 description="Display fixed violations in ruff output.",
             ),
         ]
         src: Annotated[
             t.StrSequence,
-            Field(description="Source roots used by ruff import analysis."),
-        ] = Field(default_factory=list)
+            m.Field(description="Source roots used by ruff import analysis."),
+        ] = m.Field(default_factory=list)
         target_version: Annotated[
             str,
-            Field(
+            m.Field(
                 alias="target-version", description="Python target version for ruff."
             ),
         ]
-        format: FlextInfraModelsDepsToolConfigLinters.RuffFormatConfig = Field(
+        format: FlextInfraModelsDepsToolConfigLinters.RuffFormatConfig = m.Field(
             description="Ruff format configuration"
         )
-        lint: FlextInfraModelsDepsToolConfigLinters.RuffLintConfig = Field(
+        lint: FlextInfraModelsDepsToolConfigLinters.RuffLintConfig = m.Field(
             description="Ruff lint configuration"
         )
 
@@ -157,11 +155,11 @@ class FlextInfraModelsDepsToolConfigLinters:
         """Single [[tool.mypy.overrides]] entry."""
 
         modules: Annotated[
-            t.StrSequence, Field(description="Module patterns for this override.")
+            t.StrSequence, m.Field(description="Module patterns for this override.")
         ]
         disable_error_codes: Annotated[
             t.StrSequence,
-            Field(
+            m.Field(
                 alias="disable-error-codes",
                 description="Error codes disabled for these modules.",
             ),
@@ -170,35 +168,35 @@ class FlextInfraModelsDepsToolConfigLinters:
     class MypyConfig(m.ArbitraryTypesModel):
         """Mypy baseline settings loaded from YAML."""
 
-        plugins: Annotated[t.StrSequence, Field(description="Mypy plugins list.")] = (
-            Field(default_factory=list)
+        plugins: Annotated[t.StrSequence, m.Field(description="Mypy plugins list.")] = (
+            m.Field(default_factory=list)
         )
         exclude: Annotated[
             str,
-            Field(
+            m.Field(
                 description="Regex used to exclude generated or fixture-like paths from mypy.",
             ),
         ] = ""
         disabled_error_codes: Annotated[
             t.StrSequence,
-            Field(
+            m.Field(
                 alias="disabled-error-codes",
                 description="Mypy error codes disabled by default.",
             ),
         ]
         boolean_settings: Annotated[
             t.BoolMapping,
-            Field(
+            m.Field(
                 alias="boolean-settings",
                 description="Mypy boolean settings keyed by option name.",
             ),
         ]
         overrides: Annotated[
             tuple[FlextInfraModelsDepsToolConfigLinters.MypyOverrideConfig, ...],
-            Field(
+            m.Field(
                 description="Per-module mypy overrides for auto-generated files and PEP 695 generics."
             ),
-        ] = Field(
+        ] = m.Field(
             default_factory=tuple,
             description="Per-module mypy overrides for auto-generated files and PEP 695 generics.",
         )
@@ -208,19 +206,19 @@ class FlextInfraModelsDepsToolConfigLinters:
 
         init_forbid_extra: Annotated[
             bool,
-            Field(
+            m.Field(
                 description="Enable forbid-extra init behavior in pydantic mypy plugin."
             ),
         ]
         init_typed: Annotated[
             bool,
-            Field(
+            m.Field(
                 description="Enable typed __init__ signatures in pydantic mypy plugin."
             ),
         ]
         warn_required_dynamic_aliases: Annotated[
             bool,
-            Field(
+            m.Field(
                 description="Warn on required dynamic aliases in pydantic mypy plugin."
             ),
         ]

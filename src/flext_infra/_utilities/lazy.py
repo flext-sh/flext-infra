@@ -6,7 +6,6 @@ from collections.abc import Mapping
 from pathlib import Path
 
 from flext_infra import (
-    FlextInfraUtilitiesBase,
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesIteration,
@@ -14,6 +13,7 @@ from flext_infra import (
     c,
     m,
     t,
+    u,
 )
 
 
@@ -22,7 +22,7 @@ class FlextInfraUtilitiesCodegenLazyAliases:
 
     def __init__(self, workspace_root: Path | None = None) -> None:
         self._workspace_root = workspace_root or Path.cwd()
-        self._lazy_init = FlextInfraUtilitiesBase.load_tool_config().unwrap().lazy_init
+        self._lazy_init = u.Infra.load_tool_config().unwrap().lazy_init
         self._package_exports_cache: dict[str, frozenset[str]] = {}
         self._source_exports_cache: dict[str, frozenset[str]] = {}
         self._source_exports_visiting: set[str] = set()

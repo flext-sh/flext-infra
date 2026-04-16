@@ -7,8 +7,6 @@ from collections.abc import Callable, Mapping, MutableMapping, MutableSequence
 from pathlib import Path
 from typing import ClassVar
 
-from pydantic import Field
-
 from flext_core import FlextProtocols
 from flext_infra import (
     FlextInfraBanditGate,
@@ -69,14 +67,16 @@ class FlextInfraGateRegistry:
 class _LoopOutcome(m.ArbitraryTypesModel):
     """Bundled results from the project-checking loop."""
 
-    results: tuple[m.Infra.ProjectResult, ...] = Field(
+    results: tuple[m.Infra.ProjectResult, ...] = m.Field(
         description="Individual project execution results."
     )
-    failed: int = Field(description="Number of projects that failed one or more gates.")
-    skipped: int = Field(
+    failed: int = m.Field(
+        description="Number of projects that failed one or more gates."
+    )
+    skipped: int = m.Field(
         description="Number of projects that were skipped during execution."
     )
-    total_elapsed: float = Field(
+    total_elapsed: float = m.Field(
         description="Total time elapsed in seconds for the entire loop."
     )
 

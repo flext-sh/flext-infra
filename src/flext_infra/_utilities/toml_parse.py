@@ -12,8 +12,6 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
-from pydantic import ValidationError
-
 from flext_cli import FlextCliUtilities
 from flext_infra import c, p, r, t
 
@@ -303,7 +301,7 @@ class FlextInfraUtilitiesTomlParse:
             )
         try:
             data = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(result.value)
-        except ValidationError as exc:
+        except c.ValidationError as exc:
             return r[t.Infra.ContainerDict].fail(f"TOML read error: {exc}")
         return r[t.Infra.ContainerDict].ok(data)
 

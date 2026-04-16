@@ -23,8 +23,7 @@ from flext_infra import (
 )
 
 if TYPE_CHECKING:
-    from flext_infra.constants import c
-    from flext_infra.models import m
+    from flext_infra import c, m
 
 
 class FlextInfraTypes(t):

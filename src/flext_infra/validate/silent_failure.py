@@ -5,8 +5,6 @@ from __future__ import annotations
 from collections.abc import MutableSequence, Sequence
 from typing import Annotated, override
 
-from pydantic import Field
-
 from flext_infra import (
     FlextInfraSilentFailureDetector,
     m,
@@ -21,13 +19,11 @@ class FlextInfraSilentFailureValidator(s[bool]):
     """Validate that failure paths do not collapse into sentinel returns."""
 
     project_filter: Annotated[
-        str | None,
-        Field(default=None, description="Project filter (comma-separated)"),
+        str | None, m.Field(description="Project filter (comma-separated)")
     ] = None
 
     include_tests: Annotated[
-        bool,
-        Field(default=True, description="Scan test trees in addition to source trees"),
+        bool, m.Field(description="Scan test trees in addition to source trees")
     ] = True
 
     def _selected_projects(

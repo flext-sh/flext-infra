@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
-from pydantic import ValidationError
 from tomlkit.items import AoT, Table
 
 from flext_infra import (
@@ -91,7 +90,7 @@ class FlextInfraPyprojectModernizer:
             return r[m.Infra.PyprojectDocumentState].fail(f"invalid TOML: {path}")
         try:
             payload = t.Cli.JSON_MAPPING_ADAPTER.validate_python(payload_source)
-        except ValidationError as exc:
+        except c.ValidationError as exc:
             return r[m.Infra.PyprojectDocumentState].fail(
                 f"TOML payload validation failed: {exc}",
             )

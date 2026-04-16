@@ -6,8 +6,6 @@ from collections import Counter, defaultdict
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
-from pydantic import BaseModel
-
 from flext_infra import (
     c,
     m,
@@ -187,7 +185,7 @@ class FlextInfraUtilitiesRefactorCensus:
         )
 
     @staticmethod
-    def export_pydantic_json(model_payload: BaseModel, export_path: Path) -> None:
+    def export_pydantic_json(model_payload: m.BaseModel, export_path: Path) -> None:
         """Serialize any Pydantic model payload to a JSON file."""
         export_path.write_text(
             model_payload.model_dump_json(indent=2),

@@ -6,8 +6,6 @@ import fnmatch
 from collections.abc import Callable, Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
-from pydantic import ValidationError
-
 from flext_infra import (
     FlextInfraClassNestingRefactorRule,
     FlextInfraRefactorRule,
@@ -220,7 +218,7 @@ class FlextInfraUtilitiesRefactorRuleLoader:
             entries: Sequence[t.Infra.InfraValue] = (
                 t.Infra.INFRA_SEQ_ADAPTER.validate_python(value)
             )
-        except ValidationError:
+        except c.ValidationError:
             return []
         definitions: MutableSequence[Mapping[str, t.Infra.InfraValue]] = []
         for item in entries:

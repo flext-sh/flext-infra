@@ -15,8 +15,6 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import Annotated, override
 
-from pydantic import Field
-
 from flext_infra import FlextInfraSyncService, c, m, p, r, s, t, u
 
 logger = u.fetch_logger(__name__)
@@ -31,22 +29,19 @@ class FlextInfraOrchestratorService(s[bool]):
 
     """
 
-    verb: Annotated[str, Field(description="Make verb to execute")]
+    verb: Annotated[str, m.Field(description="Make verb to execute")]
     projects: Annotated[
         t.StrSequence,
-        Field(
+        m.Field(
             default_factory=list,
             description="Projects to orchestrate; repeat --projects NAME as needed",
         ),
-    ] = Field(default_factory=list)
-    fail_fast: Annotated[
-        bool,
-        Field(default=False, description="Stop on first failure"),
-    ] = False
+    ] = m.Field(default_factory=list)
+    fail_fast: Annotated[bool, m.Field(description="Stop on first failure")] = False
     make_arg: Annotated[
         t.StrSequence,
-        Field(default_factory=list, description="Additional make arguments"),
-    ] = Field(default_factory=list)
+        m.Field(default_factory=list, description="Additional make arguments"),
+    ] = m.Field(default_factory=list)
 
     @property
     def project_names(self) -> t.StrSequence:

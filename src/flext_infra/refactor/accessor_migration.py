@@ -8,9 +8,7 @@ from collections.abc import MutableSequence, Sequence
 from operator import itemgetter
 from pathlib import Path
 from tokenize import NAME, generate_tokens
-from typing import ClassVar, override
-
-from pydantic import Field
+from typing import Annotated, ClassVar, override
 
 from flext_infra import FlextInfraUtilitiesProtectedEdit, c, m, p, r, s, t, u
 
@@ -18,18 +16,22 @@ from flext_infra import FlextInfraUtilitiesProtectedEdit, c, m, p, r, s, t, u
 class FlextInfraAccessorMigrationOrchestrator(s[m.Infra.AccessorMigrationReport]):
     """Dry-run/apply orchestrator for public accessor migration candidates."""
 
-    projects: t.StrSequence = Field(
+    projects: t.StrSequence = m.Field(
         default_factory=list,
         description="Workspace projects to scan; empty means all discovered projects",
     )
-    preview_limit: int = Field(
-        default=10,
-        description="Maximum number of file previews to include in the report",
-    )
-    gates: str = Field(
-        default=c.Infra.SAFE_EXECUTION_DEFAULT_GATES,
-        description="Comma-separated lint gates for preview/apply validation",
-    )
+    preview_limit: Annotated[
+        int,
+        m.Field(
+            description="Maximum number of file previews to include in the report",
+        ),
+    ] = 10
+    gates: Annotated[
+        str,
+        m.Field(
+            description="Comma-separated lint gates for preview/apply validation",
+        ),
+    ] = c.Infra.SAFE_EXECUTION_DEFAULT_GATES
 
     _AUTOMATED_RULES: ClassVar[tuple[m.Infra.AccessorMigrationRule, ...]] = (
         m.Infra.AccessorMigrationRule(
@@ -510,7 +512,7 @@ class FlextInfraAccessorMigrationOrchestrator(s[m.Infra.AccessorMigrationReport]
             has_varargs = any(name.startswith("*") for name in normalized_args)
             if function_name.startswith("get_"):
                 reason = (
-                    f"Public getter without external input: migrate to field or @computed_field '{function_name[4:]}'"
+                    f"Public getter without external input: migrate to field or @u.computed_field '{function_name[4:]}'"
                     if not required and not has_varargs
                     else f"Public getter with inputs: classify manually as resolve_{function_name[4:]}(...) or fetch_{function_name[4:]}(...)"
                 )

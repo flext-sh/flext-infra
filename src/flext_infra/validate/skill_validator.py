@@ -14,8 +14,6 @@ from collections.abc import Mapping, MutableSequence
 from pathlib import Path
 from typing import Annotated, override
 
-from pydantic import Field
-
 from flext_infra import c, m, p, r, s, t, u
 
 
@@ -26,11 +24,10 @@ class FlextInfraSkillValidator(s[bool]):
     comparison with per-group and total strategies.
     """
 
-    skill: Annotated[str, Field(description="Skill folder name")]
+    skill: Annotated[str, m.Field(description="Skill folder name")]
     mode: Annotated[
         str,
-        Field(
-            default=c.Infra.MODE_BASELINE,
+        m.Field(
             description="Validation mode (baseline or strict)",
         ),
     ] = c.Infra.MODE_BASELINE

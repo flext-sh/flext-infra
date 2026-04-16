@@ -15,7 +15,6 @@ from pathlib import Path
 from typing import Annotated, ClassVar, Protocol, override, runtime_checkable
 
 from defusedxml import ElementTree as DefusedET
-from pydantic import Field
 
 from flext_infra import c, m, p, r, s, t, u
 
@@ -58,27 +57,22 @@ class FlextInfraPytestDiagExtractor(s[bool]):
     and uses regex-based log parsing when XML is unavailable.
     """
 
-    junit: Annotated[Path, Field(description="JUnit XML path")]
-    log: Annotated[Path, Field(description="Pytest log path")]
+    junit: Annotated[Path, m.Field(description="JUnit XML path")]
+    log: Annotated[Path, m.Field(description="Pytest log path")]
     failed: Annotated[
-        Path | None,
-        Field(default=None, description="Path to write failed cases"),
+        Path | None, m.Field(description="Path to write failed cases")
     ] = None
     errors: Annotated[
-        Path | None,
-        Field(default=None, description="Path to write error traces"),
+        Path | None, m.Field(description="Path to write error traces")
     ] = None
-    warnings: Annotated[
-        Path | None,
-        Field(default=None, description="Path to write warnings"),
-    ] = None
+    warnings: Annotated[Path | None, m.Field(description="Path to write warnings")] = (
+        None
+    )
     slowest: Annotated[
-        Path | None,
-        Field(default=None, description="Path to write slowest entries"),
+        Path | None, m.Field(description="Path to write slowest entries")
     ] = None
     skips: Annotated[
-        Path | None,
-        Field(default=None, description="Path to write skipped cases"),
+        Path | None, m.Field(description="Path to write skipped cases")
     ] = None
 
     @staticmethod

@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from pydantic import Field
-
 from flext_cli import m
 from flext_infra import FlextInfraModelsMixins, c, t
 
@@ -21,46 +19,42 @@ class FlextInfraModelsBasemk:
 
         python_version: Annotated[
             t.NonEmptyStr,
-            Field(description="Target Python version"),
+            m.Field(description="Target Python version"),
         ]
         core_stack: Annotated[
             t.NonEmptyStr,
-            Field(description="Core stack classification"),
+            m.Field(description="Core stack classification"),
         ]
         package_manager: Annotated[
             str,
-            Field(
-                default=c.Infra.POETRY,
+            m.Field(
                 description="Dependency manager",
             ),
-        ]
+        ] = c.Infra.POETRY
         source_dir: Annotated[
             str,
-            Field(
-                default=c.Infra.DEFAULT_SRC_DIR,
+            m.Field(
                 description="Source directory path",
             ),
-        ]
+        ] = c.Infra.DEFAULT_SRC_DIR
         tests_dir: Annotated[
             str,
-            Field(
-                default=c.Infra.DIR_TESTS,
+            m.Field(
                 description="Tests directory path",
             ),
-        ]
+        ] = c.Infra.DIR_TESTS
         lint_gates: Annotated[
             t.StrSequence,
-            Field(
+            m.Field(
                 description="Enabled quality gates",
             ),
-        ] = Field(default_factory=list)
+        ] = m.Field(default_factory=list)
         test_command: Annotated[
             str,
-            Field(
-                default=c.Infra.PYTEST,
+            m.Field(
                 description="Default test command",
             ),
-        ]
+        ] = c.Infra.PYTEST
 
 
 __all__: list[str] = ["FlextInfraModelsBasemk"]

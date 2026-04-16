@@ -6,8 +6,6 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Annotated, override
 
-from pydantic import Field
-
 from flext_infra import c, m, p, r, s, t, u
 
 
@@ -16,16 +14,14 @@ class FlextInfraDocFixer(s[bool]):
 
     selected_projects: Annotated[
         t.StrSequence | None,
-        Field(
-            default=None,
+        m.Field(
             alias="projects",
             description="Selected projects",
         ),
     ] = None
     docs_output_dir: Annotated[
         str,
-        Field(
-            default=c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
+        m.Field(
             alias="output_dir",
             description="Docs output dir",
         ),

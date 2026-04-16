@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Annotated
 
-from pydantic import Field, PrivateAttr
+from pydantic import PrivateAttr
 
 from flext_infra import c, m, p, t, u
 
@@ -17,9 +17,9 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
     rope_workspace: Annotated[
         p.Infra.RopeWorkspaceDsl,
         t.SkipValidation,
-        Field(description="Shared Rope workspace DSL reused by the planner"),
+        m.Field(description="Shared Rope workspace DSL reused by the planner"),
     ]
-    lazy_init: m.Infra.LazyInitConfig = Field(
+    lazy_init: m.Infra.LazyInitConfig = m.Field(
         description="Validated lazy-init policy document",
     )
 

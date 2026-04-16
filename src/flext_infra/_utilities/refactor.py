@@ -12,8 +12,9 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-from pydantic import TypeAdapter, ValidationError
+from pydantic import TypeAdapter
 
+from flext_core import m
 from flext_infra import (
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesRefactorCensus,
@@ -47,7 +48,7 @@ class FlextInfraUtilitiesRefactor(
         methods = u.Infra.extract_public_methods_from_dir(package_dir)
     """
 
-    _STRING_LIST_ADAPTER: TypeAdapter[t.StrSequence] = TypeAdapter(t.StrSequence)
+    _STRING_LIST_ADAPTER: m.TypeAdapter[t.StrSequence] = TypeAdapter(t.StrSequence)
 
     @staticmethod
     def entry_list(value: t.Infra.InfraValue | None) -> Sequence[t.StrMapping]:
@@ -56,7 +57,7 @@ class FlextInfraUtilitiesRefactor(
             return []
         try:
             return t.Infra.STR_MAPPING_SEQ_ADAPTER.validate_python(value)
-        except ValidationError:
+        except c.ValidationError:
             msg = "class nesting entries must be a list"
             raise ValueError(msg) from None
 
@@ -76,7 +77,7 @@ class FlextInfraUtilitiesRefactor(
         except TypeError as exc:
             msg = "expected list value"
             raise TypeError(msg) from exc
-        except ValidationError as exc:
+        except c.ValidationError as exc:
             msg = "expected list value"
             raise TypeError(msg) from exc
 

@@ -13,8 +13,6 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import Annotated, override
 
-from pydantic import Field
-
 from flext_infra import c, m, p, r, s, t, u
 
 
@@ -27,18 +25,16 @@ class FlextInfraStubSupplyChain(s[bool]):
 
     projects: Annotated[
         t.StrSequence | None,
-        Field(
-            default=None,
+        m.Field(
             description="Projects to validate; repeat --projects NAME as needed",
         ),
     ] = None
     all_projects: Annotated[
-        bool,
-        Field(default=False, alias="all", description="Validate all projects"),
+        bool, m.Field(alias="all", description="Validate all projects")
     ] = False
     runner: Annotated[
         p.Cli.CommandRunner | None,
-        Field(default=None, exclude=True, description="Optional command runner"),
+        m.Field(exclude=True, description="Optional command runner"),
     ] = None
 
     @property

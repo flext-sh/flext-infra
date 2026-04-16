@@ -7,7 +7,7 @@ from time import perf_counter
 from types import TracebackType
 from typing import TYPE_CHECKING, Annotated, Self, override
 
-from pydantic import Field, PrivateAttr
+from pydantic import PrivateAttr
 
 from flext_infra import FlextInfraUtilitiesRopeInventory, c, m, r, s, t, u
 
@@ -20,25 +20,22 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
 
     project_prefix: Annotated[
         str,
-        Field(
-            default=c.Infra.PKG_PREFIX_HYPHEN,
+        m.Field(
             description="Project prefix used when bootstrapping Rope",
         ),
-    ]
+    ] = c.Infra.PKG_PREFIX_HYPHEN
     src_dir: Annotated[
         str,
-        Field(
-            default=c.Infra.DEFAULT_SRC_DIR,
+        m.Field(
             description="Primary source directory hint used by Rope bootstrap",
         ),
-    ]
+    ] = c.Infra.DEFAULT_SRC_DIR
     ignored_resources: Annotated[
         tuple[str, ...],
-        Field(
-            default=c.Infra.ROPE_IGNORED_RESOURCES,
+        m.Field(
             description="Ignored Rope resource patterns for this session",
         ),
-    ]
+    ] = c.Infra.ROPE_IGNORED_RESOURCES
 
     _rope_workspace_root: Path = PrivateAttr()
     _rope_project: t.Infra.RopeProject | None = PrivateAttr(default=None)

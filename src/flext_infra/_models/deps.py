@@ -20,8 +20,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
 
         apply: Annotated[
             bool,
-            Field(
-                default=False,
+            m.Field(
                 description="Apply follow-up typing dependency installs",
                 json_schema_extra={
                     "typer_param_decls": list(c.Infra.CLI_APPLY_OPTION_DECLS),
@@ -30,51 +29,47 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
         ] = False
         output_format: Annotated[
             str,
-            Field(
-                default="text",
+            m.Field(
                 alias="format",
                 description="Output format for dependency report",
             ),
         ] = "text"
         output: Annotated[
             str | None,
-            Field(default=None, description="Optional output report path"),
+            m.Field(None, description="Optional output report path"),
         ] = None
         quiet: Annotated[
             bool,
-            Field(default=False, description="Reduce command output"),
+            m.Field(False, description="Reduce command output"),
         ] = False
         no_fail: Annotated[
             bool,
-            Field(
-                default=False,
+            m.Field(
                 alias="no-fail",
                 description="Exit successfully even when issues are found",
             ),
         ] = False
         typings: Annotated[
             bool,
-            Field(default=False, description="Detect required typing packages"),
+            m.Field(False, description="Detect required typing packages"),
         ] = False
         apply_typings: Annotated[
             bool,
-            Field(
-                default=False,
+            m.Field(
                 alias="apply-typings",
                 description="Install missing typing packages into the typings group",
             ),
         ] = False
         no_pip_check: Annotated[
             bool,
-            Field(
-                default=False,
+            m.Field(
                 alias="no-pip-check",
                 description="Skip workspace pip check",
             ),
         ] = False
         limits: Annotated[
             str | None,
-            Field(default=None, description="Path to dependency limits TOML"),
+            m.Field(None, description="Path to dependency limits TOML"),
         ] = None
 
         @computed_field
@@ -102,8 +97,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
 
         apply: Annotated[
             bool,
-            Field(
-                default=False,
+            m.Field(
                 description="Apply synchronized path changes",
                 json_schema_extra={
                     "typer_param_decls": list(c.Infra.CLI_APPLY_OPTION_DECLS),
@@ -125,8 +119,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
 
         apply: Annotated[
             bool,
-            Field(
-                default=False,
+            m.Field(
                 description="Apply pyproject modernization changes",
                 json_schema_extra={
                     "typer_param_decls": list(c.Infra.CLI_APPLY_OPTION_DECLS),
@@ -135,24 +128,21 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
         ] = False
         check: Annotated[
             bool,
-            Field(default=False, description="Run in check mode"),
+            m.Field(False, description="Run in check mode"),
         ] = False
         audit: Annotated[
-            bool,
-            Field(default=False, description="Audit pyproject changes without writing"),
+            bool, m.Field(description="Audit pyproject changes without writing")
         ] = False
         skip_check: Annotated[
             bool,
-            Field(
-                default=False,
+            m.Field(
                 alias="skip-check",
                 description="Skip post-write validation step",
             ),
         ] = False
         skip_comments: Annotated[
             bool,
-            Field(
-                default=False,
+            m.Field(
                 alias="skip-comments",
                 description="Skip modernization of explanatory comments",
             ),
@@ -169,8 +159,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
 
         apply: Annotated[
             bool,
-            Field(
-                default=False,
+            m.Field(
                 description="Apply dependency path rewrites",
                 json_schema_extra={
                     "typer_param_decls": list(c.Infra.CLI_APPLY_OPTION_DECLS),
@@ -179,7 +168,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
         ] = False
         mode: Annotated[
             t.Infra.PathSyncMode,
-            Field(default="auto", description="Dependency path rewrite mode"),
+            m.Field("auto", description="Dependency path rewrite mode"),
         ] = "auto"
 
         @computed_field
@@ -195,16 +184,16 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
 
         pyproject_path: Annotated[
             Path,
-            Field(description="Resolved pyproject path"),
+            m.Field(description="Resolved pyproject path"),
         ]
         original_rendered: Annotated[
             str,
-            Field(description="Original TOML source text"),
+            m.Field(description="Original TOML source text"),
         ] = ""
         payload: Annotated[
             MutableMapping[str, t.Cli.JsonValue],
-            Field(description="Validated plain TOML payload"),
-        ] = Field(default_factory=dict)
+            m.Field(description="Validated plain TOML payload"),
+        ] = m.Field(default_factory=dict)
 
     class PathSyncDocumentState(m.ArbitraryTypesModel):
         """Centralized path-sync payload reused across dependency rewrite passes."""
@@ -213,74 +202,72 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
 
         pyproject_path: Annotated[
             Path,
-            Field(description="Resolved pyproject path"),
+            m.Field(description="Resolved pyproject path"),
         ]
         original_rendered: Annotated[
             str,
-            Field(description="Original TOML source text"),
+            m.Field(description="Original TOML source text"),
         ] = ""
         payload: Annotated[
             MutableMapping[str, t.Cli.JsonValue],
-            Field(description="Validated plain TOML payload"),
-        ] = Field(default_factory=dict)
+            m.Field(description="Validated plain TOML payload"),
+        ] = m.Field(default_factory=dict)
 
     class DependencyLimitsInfo(m.ArbitraryTypesModel):
         """Dependency limits configuration metadata."""
 
         python_version: Annotated[
-            str | None, Field(default=None, description="Python version")
+            str | None, m.Field(None, description="Python version")
         ] = None
-        limits_path: Annotated[
-            str, Field(default="", description="Path to limits file")
-        ] = ""
+        limits_path: Annotated[str, m.Field("", description="Path to limits file")] = ""
 
     class PipCheckReport(m.ArbitraryTypesModel):
         """Pip check execution report with status and output lines."""
 
-        ok: Annotated[
-            bool, Field(default=True, description="Whether pip check passed")
-        ] = True
-        lines: Annotated[t.StrSequence, Field(description="Pip check output lines")] = (
-            Field(default_factory=list)
+        ok: Annotated[bool, m.Field(True, description="Whether pip check passed")] = (
+            True
         )
+        lines: Annotated[
+            t.StrSequence, m.Field(description="Pip check output lines")
+        ] = m.Field(default_factory=list)
 
     class DeptryIssueGroups(m.ArbitraryTypesModel):
         """Deptry issue grouping model by error code (DEP001-DEP004)."""
 
         dep001: Annotated[
             MutableSequence[Mapping[str, t.Primitives | None]],
-            Field(description="DEP001 issues"),
-        ] = Field(default_factory=lambda: list[Mapping[str, t.Primitives | None]]())
+            m.Field(description="DEP001 issues"),
+        ] = m.Field(default_factory=lambda: list[Mapping[str, t.Primitives | None]]())
         dep002: Annotated[
             MutableSequence[Mapping[str, t.Primitives | None]],
-            Field(description="DEP002 issues"),
-        ] = Field(default_factory=lambda: list[Mapping[str, t.Primitives | None]]())
+            m.Field(description="DEP002 issues"),
+        ] = m.Field(default_factory=lambda: list[Mapping[str, t.Primitives | None]]())
         dep003: Annotated[
             MutableSequence[Mapping[str, t.Primitives | None]],
-            Field(description="DEP003 issues"),
-        ] = Field(default_factory=lambda: list[Mapping[str, t.Primitives | None]]())
+            m.Field(description="DEP003 issues"),
+        ] = m.Field(default_factory=lambda: list[Mapping[str, t.Primitives | None]]())
         dep004: Annotated[
             MutableSequence[Mapping[str, t.Primitives | None]],
-            Field(description="DEP004 issues"),
-        ] = Field(default_factory=lambda: list[Mapping[str, t.Primitives | None]]())
+            m.Field(description="DEP004 issues"),
+        ] = m.Field(default_factory=lambda: list[Mapping[str, t.Primitives | None]]())
 
     class DeptryReport(m.ArbitraryTypesModel):
         """Deptry analysis report with categorized issue modules."""
 
-        missing: Annotated[t.StrSequence, Field(description="Missing dependencies")] = (
-            Field(default_factory=list)
-        )
-        unused: Annotated[t.StrSequence, Field(description="Unused dependencies")] = (
-            Field(default_factory=list)
+        missing: Annotated[
+            t.StrSequence, m.Field(description="Missing dependencies")
+        ] = m.Field(default_factory=list)
+        unused: Annotated[t.StrSequence, m.Field(description="Unused dependencies")] = (
+            m.Field(default_factory=list)
         )
         transitive: Annotated[
-            t.StrSequence, Field(description="Transitive dependencies")
-        ] = Field(default_factory=list)
+            t.StrSequence, m.Field(description="Transitive dependencies")
+        ] = m.Field(default_factory=list)
         dev_in_runtime: Annotated[
-            t.StrSequence, Field(description="Dev dependencies in runtime")
-        ] = Field(default_factory=list)
+            t.StrSequence, m.Field(description="Dev dependencies in runtime")
+        ] = m.Field(default_factory=list)
         raw_count: Annotated[
-            t.NonNegativeInt, Field(default=0, description="Raw issue count")
+            t.NonNegativeInt, m.Field(0, description="Raw issue count")
         ] = 0
 
     class ProjectDependencyReport(
@@ -289,56 +276,56 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
     ):
         """Project-level dependency report combining deptry results."""
 
-        deptry: FlextInfraModelsDeps.DeptryReport = Field(description="Deptry report")
+        deptry: FlextInfraModelsDeps.DeptryReport = m.Field(description="Deptry report")
 
     class TypingsReport(m.ArbitraryTypesModel):
         """Typing stubs analysis report with required/current/delta packages."""
 
         required_packages: Annotated[
-            t.StrSequence, Field(description="Required packages")
-        ] = Field(default_factory=list)
-        hinted: Annotated[t.StrSequence, Field(description="Hinted packages")] = Field(
-            default_factory=list
+            t.StrSequence, m.Field(description="Required packages")
+        ] = m.Field(default_factory=list)
+        hinted: Annotated[t.StrSequence, m.Field(description="Hinted packages")] = (
+            m.Field(default_factory=list)
         )
         missing_modules: Annotated[
-            t.StrSequence, Field(description="Missing modules")
-        ] = Field(default_factory=list)
-        current: Annotated[t.StrSequence, Field(description="Current typings")] = Field(
-            default_factory=list
+            t.StrSequence, m.Field(description="Missing modules")
+        ] = m.Field(default_factory=list)
+        current: Annotated[t.StrSequence, m.Field(description="Current typings")] = (
+            m.Field(default_factory=list)
         )
-        to_add: Annotated[t.StrSequence, Field(description="Typings to add")] = Field(
-            default_factory=list
+        to_add: Annotated[t.StrSequence, m.Field(description="Typings to add")] = (
+            m.Field(default_factory=list)
         )
-        to_remove: Annotated[t.StrSequence, Field(description="Typings to remove")] = (
-            Field(default_factory=list)
-        )
+        to_remove: Annotated[
+            t.StrSequence, m.Field(description="Typings to remove")
+        ] = m.Field(default_factory=list)
         limits_applied: Annotated[
-            bool, Field(default=False, description="Whether limits were applied")
+            bool, m.Field(False, description="Whether limits were applied")
         ] = False
         python_version: Annotated[
-            str | None, Field(default=None, description="Python version")
+            str | None, m.Field(None, description="Python version")
         ] = None
 
     class ProjectRuntimeReport(m.ArbitraryTypesModel):
         """Project runtime dependency and typings report."""
 
-        deptry: FlextInfraModelsDeps.DeptryReport = Field(description="Deptry report")
+        deptry: FlextInfraModelsDeps.DeptryReport = m.Field(description="Deptry report")
         typings: FlextInfraModelsDeps.TypingsReport | None = Field(
-            default=None, description="Typings report"
+            None, description="Typings report"
         )
 
     class WorkspaceDependencyReport(m.ArbitraryTypesModel):
         """Workspace-level dependency analysis report aggregating all projects."""
 
-        workspace: Annotated[str, Field(description="Workspace name")]
-        projects: Mapping[str, FlextInfraModelsDeps.ProjectRuntimeReport] = Field(
+        workspace: Annotated[str, m.Field(description="Workspace name")]
+        projects: Mapping[str, FlextInfraModelsDeps.ProjectRuntimeReport] = m.Field(
             default_factory=dict, description="Per-project reports"
         )
         pip_check: FlextInfraModelsDeps.PipCheckReport | None = Field(
-            default=None, description="Pip check report"
+            None, description="Pip check report"
         )
         dependency_limits: FlextInfraModelsDeps.DependencyLimitsInfo | None = Field(
-            default=None, description="Dependency limits"
+            None, description="Dependency limits"
         )
 
 

@@ -13,7 +13,7 @@ from __future__ import annotations
 from collections.abc import MutableMapping, MutableSequence, Sequence
 from typing import Annotated, override
 
-from pydantic import Field, PrivateAttr
+from pydantic import PrivateAttr
 
 from flext_infra import c, m, p, r, s, t, u
 
@@ -23,11 +23,11 @@ class FlextInfraToml(s[Sequence[t.StrSequence]]):
 
     doc: Annotated[
         t.Cli.TomlDocument,
-        Field(exclude=True, description="Target TOML document"),
+        m.Field(exclude=True, description="Target TOML document"),
     ]
     phases: Annotated[
         Sequence[m.Infra.TomlPhaseConfig],
-        Field(
+        m.Field(
             default_factory=list,
             exclude=True,
             description="Phase configs applied to the TOML document",

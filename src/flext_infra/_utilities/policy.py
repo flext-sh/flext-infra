@@ -12,8 +12,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 
-from pydantic import ValidationError
-
 from flext_cli import u as _cli_u
 from flext_infra import (
     FlextInfraUtilitiesBase,
@@ -75,7 +73,7 @@ class FlextInfraUtilitiesRefactorPolicy:
         ):
             try:
                 policy = m.Infra.ClassNestingPolicy.model_validate(raw)
-            except ValidationError:
+            except c.ValidationError:
                 continue
             by_family[policy.family_name] = policy
         return by_family
@@ -111,7 +109,7 @@ class FlextInfraUtilitiesRefactorPolicy:
             return None
         try:
             return m.Infra.ClassNestingPolicy.model_validate(raw)
-        except ValidationError:
+        except c.ValidationError:
             return None
 
     @staticmethod

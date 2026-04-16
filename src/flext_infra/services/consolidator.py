@@ -6,8 +6,6 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar, override
 
-from pydantic import Field
-
 from flext_infra import (
     FlextInfraRopeWorkspace,
     FlextInfraUtilitiesProtectedEdit,
@@ -30,8 +28,7 @@ class FlextInfraCodegenConsolidator(s[str]):
 
     project_name: Annotated[
         str | None,
-        Field(
-            default=None,
+        m.Field(
             alias="project",
             description="Single project to consolidate",
         ),

@@ -325,7 +325,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 """Typed base.mk generator stub for migrator behavior tests."""
 
                 def __init__(self, content: str = "", *, fail: str = "") -> None:
-                    super().__init__()
                     self._content = content
                     self._fail = fail
 

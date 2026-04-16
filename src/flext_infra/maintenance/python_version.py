@@ -31,9 +31,7 @@ import sys
 from pathlib import Path
 from typing import Annotated, override
 
-from pydantic import Field
-
-from flext_infra import c, p, r, s, u
+from flext_infra import c, m, p, r, s, u
 
 logger = u.fetch_logger(__name__)
 
@@ -51,12 +49,10 @@ class FlextInfraPythonVersionEnforcer(s[int]):
     """
 
     check_only: Annotated[
-        bool,
-        Field(default=False, description="Only validate Python version constraints"),
+        bool, m.Field(description="Only validate Python version constraints")
     ] = False
     verbose: Annotated[
-        bool,
-        Field(default=False, description="Emit detailed per-project validation logs"),
+        bool, m.Field(description="Emit detailed per-project validation logs")
     ] = False
 
     @override

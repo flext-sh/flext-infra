@@ -10,7 +10,7 @@ from collections.abc import Callable, Mapping, Sequence
 from importlib.resources import files
 from pathlib import Path
 
-from pydantic import TypeAdapter, ValidationError
+from pydantic import ValidationError
 
 from flext_cli import u
 from flext_infra import (
@@ -76,15 +76,15 @@ class FlextInfraUtilitiesBase:
 
     @staticmethod
     def validate[T](
-        adapter: TypeAdapter[T],
+        adapter: m.TypeAdapter[T],
         value: t.ValueOrModel,
         *,
         default: T,
     ) -> T:
-        """Validate *value* with any ``TypeAdapter[T]``, returning *default* on failure.
+        """Validate *value* with any ``m.TypeAdapter[T]``, returning *default* on failure.
 
         SSOT for all Pydantic-adapter validation in flext-infra.
-        Replaces every try/except ValidationError pattern.
+        Replaces every try/except c.ValidationError pattern.
 
         Example::
 
@@ -159,7 +159,7 @@ class FlextInfraUtilitiesBase:
                 return None
             try:
                 current = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(raw)
-            except ValidationError:
+            except c.ValidationError:
                 return None
         return current.get(keys[-1]) if keys else None
 

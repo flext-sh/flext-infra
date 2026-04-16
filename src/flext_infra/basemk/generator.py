@@ -7,14 +7,13 @@ import tempfile
 from pathlib import Path
 from typing import Annotated, override
 
-from pydantic import Field
-
 from flext_infra import (
     FlextInfraBaseMkTemplateEngine,
     FlextInfraConstantsBase,
     FlextInfraModelsBasemk,
     FlextInfraProtocolsBase,
     c,
+    m,
     p,
     r,
     s,
@@ -27,17 +26,15 @@ class FlextInfraBaseMkGenerator(s[str]):
     """Generate base.mk content and write to file or stream."""
 
     project_name: Annotated[
-        str | None,
-        Field(default=None, description="Optional project name override"),
+        str | None, m.Field(description="Optional project name override")
     ] = None
     output: Annotated[
-        Path | None,
-        Field(default=None, description="Optional file path for generated content"),
+        Path | None, m.Field(description="Optional file path for generated content")
     ] = None
 
     template_engine: Annotated[
         FlextInfraProtocolsBase.TemplateRenderer | None,
-        Field(default=None, exclude=True, description="Template engine"),
+        m.Field(exclude=True, description="Template engine"),
     ] = None
 
     @property

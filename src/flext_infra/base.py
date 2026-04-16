@@ -7,13 +7,13 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Self, TypeVar, override
 
-from pydantic import ConfigDict, Field, field_validator
+from pydantic import ConfigDict, field_validator
 
 from flext_cli import FlextCliSettings
 from flext_core import (
-    FlextModels,
     FlextProtocols,
     FlextSettings,
+    m,
     s,
     t,
 )
@@ -50,11 +50,11 @@ class FlextInfraServiceBase(
     @override
     def _runtime_bootstrap_options(cls) -> FlextProtocols.RuntimeBootstrapOptions:
         """Bootstrap service runtime using the shared CLI settings namespace."""
-        return FlextModels.RuntimeBootstrapOptions(settings_type=FlextCliSettings)
+        return m.RuntimeBootstrapOptions(settings_type=FlextCliSettings)
 
     workspace_root: Annotated[
         Path,
-        Field(
+        m.Field(
             default_factory=Path.cwd,
             alias="workspace",
             description="Workspace root",
@@ -62,8 +62,7 @@ class FlextInfraServiceBase(
     ]
     apply_changes: Annotated[
         bool,
-        Field(
-            default=False,
+        m.Field(
             alias="apply",
             description="Apply changes",
             json_schema_extra={
@@ -72,41 +71,29 @@ class FlextInfraServiceBase(
                 )
             },
         ),
-    ]
+    ] = False
     check_only: Annotated[
         bool,
-        Field(
-            default=False,
+        m.Field(
             alias="check",
             description="Check mode",
         ),
-    ]
-    dry_run: Annotated[
-        bool,
-        Field(default=False, description="Dry-run mode"),
-    ]
-    fail_fast: Annotated[
-        bool,
-        Field(default=False, description="Stop on first failure"),
-    ]
-    output_format: Annotated[
-        str,
-        Field(default="text", description="Output format (json|text)"),
-    ]
+    ] = False
+    dry_run: Annotated[bool, m.Field(description="Dry-run mode")] = False
+    fail_fast: Annotated[bool, m.Field(description="Stop on first failure")] = False
+    output_format: Annotated[str, m.Field(description="Output format (json|text)")] = (
+        "text"
+    )
     project_filter: Annotated[
         str | None,
-        Field(
-            default=None, description="Project filter (comma-separated)", exclude=True
-        ),
-    ]
+        m.Field(description="Project filter (comma-separated)", exclude=True),
+    ] = None
     report_path: Annotated[
-        Path | None,
-        Field(default=None, description="Report output path", exclude=True),
-    ]
+        Path | None, m.Field(description="Report output path", exclude=True)
+    ] = None
     output_dir: Annotated[
-        Path | None,
-        Field(default=None, description="Output directory", exclude=True),
-    ]
+        Path | None, m.Field(description="Output directory", exclude=True)
+    ] = None
 
     @field_validator("workspace_root", mode="before")
     @classmethod

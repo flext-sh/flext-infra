@@ -5,8 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated
 
-from pydantic import AliasChoices, ConfigDict, Field, computed_field
+from pydantic import AliasChoices, ConfigDict, computed_field
 
+from flext_core import m
 from flext_infra import c, t
 
 
@@ -22,17 +23,13 @@ class FlextInfraModelsMixins:
 
         workspace: Annotated[
             str,
-            Field(
-                default=".",
+            m.Field(
                 alias="workspace",
                 validation_alias=AliasChoices("workspace", "workspace_path"),
                 description="Workspace root",
             ),
         ] = "."
-        verbose: Annotated[
-            bool,
-            Field(default=False, description="Verbose output"),
-        ] = False
+        verbose: Annotated[bool, m.Field(description="Verbose output")] = False
 
         @property
         def workspace_path(self) -> Path:
@@ -60,15 +57,11 @@ class FlextInfraModelsMixins:
 
         projects: Annotated[
             t.StrSequence | None,
-            Field(
-                default=None,
+            m.Field(
                 description="Projects to process; repeat --projects NAME as needed",
             ),
         ] = None
-        fail_fast: Annotated[
-            bool,
-            Field(default=True, description="Stop on first failure"),
-        ] = True
+        fail_fast: Annotated[bool, m.Field(description="Stop on first failure")] = True
 
         @property
         def project_names(self) -> t.StrSequence | None:
@@ -81,21 +74,13 @@ class FlextInfraModelsMixins:
     class ReadMixin(ProjectMixin):
         """Read-only commands with output configuration."""
 
-        check: Annotated[
-            bool,
-            Field(default=False, description="Enable check mode"),
-        ] = False
+        check: Annotated[bool, m.Field(description="Enable check mode")] = False
         output_dir: Annotated[
-            str | None,
-            Field(default=None, description="Output directory for reports"),
+            str | None, m.Field(description="Output directory for reports")
         ] = None
-        report: Annotated[
-            str | None,
-            Field(default=None, description="Output report file"),
-        ] = None
+        report: Annotated[str | None, m.Field(description="Output report file")] = None
         json_output: Annotated[
-            str | None,
-            Field(default=None, description="Path to write JSON report"),
+            str | None, m.Field(description="Path to write JSON report")
         ] = None
 
         @property
@@ -118,28 +103,20 @@ class FlextInfraModelsMixins:
 
         apply: Annotated[
             bool,
-            Field(
-                default=False,
+            m.Field(
                 description="Apply changes",
                 json_schema_extra={
                     "typer_param_decls": list(c.Infra.CLI_APPLY_OPTION_DECLS),
                 },
             ),
         ] = False
-        diff: Annotated[
-            bool,
-            Field(default=False, description="Show diff without applying"),
-        ] = False
+        diff: Annotated[bool, m.Field(description="Show diff without applying")] = False
         rollback: Annotated[
-            bool,
-            Field(
-                default=True, description="Enable automatic rollback on gate failure"
-            ),
+            bool, m.Field(description="Enable automatic rollback on gate failure")
         ] = True
         gates: Annotated[
             str,
-            Field(
-                default=c.Infra.SAFE_EXECUTION_DEFAULT_GATES,
+            m.Field(
                 description="Comma-separated gate names for post-transform validation",
             ),
         ] = c.Infra.SAFE_EXECUTION_DEFAULT_GATES
@@ -167,8 +144,7 @@ class FlextInfraModelsMixins:
 
         aliases: Annotated[
             str,
-            Field(
-                default="r,s",
+            m.Field(
                 description="Comma-separated canonical aliases to normalize to local MRO imports",
             ),
         ] = "r,s"
@@ -181,10 +157,7 @@ class FlextInfraModelsMixins:
     class ReleasePhaseMixin(WriteMixin):
         """Release phase selector with normalized expansion."""
 
-        phase: Annotated[
-            str,
-            Field(default="all", description="Release phase"),
-        ] = "all"
+        phase: Annotated[str, m.Field(description="Release phase")] = "all"
 
         @property
         def phase_names(self) -> t.StrSequence:
@@ -203,11 +176,11 @@ class FlextInfraModelsMixins:
 
         make_arg: Annotated[
             t.StrSequence,
-            Field(
+            m.Field(
                 default_factory=list,
                 description="Additional make arguments; repeat --make-arg KEY=VALUE",
             ),
-        ] = Field(
+        ] = m.Field(
             default_factory=list,
             description="Additional make arguments; repeat --make-arg KEY=VALUE",
         )
@@ -221,8 +194,7 @@ class FlextInfraModelsMixins:
         """Canonical root selector with resolved accessor."""
 
         canonical_root: Annotated[
-            str,
-            Field(default="", description="Canonical workspace root"),
+            str, m.Field(description="Canonical workspace root")
         ] = ""
 
         @property
@@ -233,102 +205,72 @@ class FlextInfraModelsMixins:
     class GithubWorkspaceRequestMixin:
         """Shared branch/checkpoint flags for workspace GitHub requests."""
 
-        include_root: Annotated[
-            bool,
-            Field(default=True, description="Include root project"),
-        ] = True
-        branch: Annotated[
-            str,
-            Field(default="", description="Branch name filter"),
-        ] = ""
-        checkpoint: Annotated[
-            bool,
-            Field(default=True, description="Enable checkpoints"),
-        ] = True
-        fail_fast: Annotated[
-            bool,
-            Field(default=False, description="Stop on first failure"),
-        ] = False
+        include_root: Annotated[bool, m.Field(description="Include root project")] = (
+            True
+        )
+        branch: Annotated[str, m.Field(description="Branch name filter")] = ""
+        checkpoint: Annotated[bool, m.Field(description="Enable checkpoints")] = True
+        fail_fast: Annotated[bool, m.Field(description="Stop on first failure")] = False
 
     class GithubWorkspaceCliRequestMixin(GithubWorkspaceRequestMixin):
         """CLI-specific defaults for workspace GitHub requests."""
 
-        include_root: Annotated[
-            bool,
-            Field(default=False, description="Include root project"),
-        ] = False
-        fail_fast: Annotated[
-            bool,
-            Field(default=True, description="Stop on first failure"),
-        ] = True
+        include_root: Annotated[bool, m.Field(description="Include root project")] = (
+            False
+        )
+        fail_fast: Annotated[bool, m.Field(description="Stop on first failure")] = True
 
     class GithubPullRequestFieldsMixin:
         """Shared pull-request fields used by single and workspace requests."""
 
-        action: Annotated[
-            str,
-            Field(default="status", description="PR action"),
-        ] = "status"
-        base: Annotated[str, Field(default="main", description="Base branch")] = "main"
-        head: Annotated[str | None, Field(default=None, description="Head branch")] = (
-            None
-        )
-        number: Annotated[int | None, Field(default=None, description="PR number")] = (
-            None
-        )
-        title: Annotated[str | None, Field(default=None, description="PR title")] = None
-        body: Annotated[str | None, Field(default=None, description="PR body")] = None
-        draft: Annotated[bool, Field(default=False, description="Draft PR")] = False
-        merge_method: Annotated[
-            str,
-            Field(default="squash", description="Merge method"),
-        ] = "squash"
-        auto: Annotated[bool, Field(default=False, description="Auto-merge")] = False
+        action: Annotated[str, m.Field(description="PR action")] = "status"
+        base: Annotated[str, m.Field(description="Base branch")] = "main"
+        head: Annotated[str | None, m.Field(description="Head branch")] = None
+        number: Annotated[int | None, m.Field(description="PR number")] = None
+        title: Annotated[str | None, m.Field(description="PR title")] = None
+        body: Annotated[str | None, m.Field(description="PR body")] = None
+        draft: Annotated[bool, m.Field(description="Draft PR")] = False
+        merge_method: Annotated[str, m.Field(description="Merge method")] = "squash"
+        auto: Annotated[bool, m.Field(description="Auto-merge")] = False
         delete_branch: Annotated[
-            bool,
-            Field(default=True, description="Delete branch on merge"),
+            bool, m.Field(description="Delete branch on merge")
         ] = True
         checks_strict: Annotated[
-            bool,
-            Field(default=True, description="Strict checks required"),
+            bool, m.Field(description="Strict checks required")
         ] = True
-        release_on_merge: Annotated[
-            bool,
-            Field(default=False, description="Release on merge"),
-        ] = True
+        release_on_merge: Annotated[bool, m.Field(description="Release on merge")] = (
+            True
+        )
 
     class FilePathMixin:
         """Shared required file path field."""
 
-        file: Annotated[t.NonEmptyStr, Field(description="File path")]
+        file: Annotated[t.NonEmptyStr, m.Field(description="File path")]
 
     class AbsoluteFilePathTextMixin:
         """Shared absolute file-path text field."""
 
-        file_path: Annotated[t.NonEmptyStr, Field(description="Absolute file path")]
+        file_path: Annotated[t.NonEmptyStr, m.Field(description="Absolute file path")]
 
     class PositiveLineMixin:
         """Shared positive line-number field."""
 
-        line: Annotated[t.PositiveInt, Field(description="Line number")]
+        line: Annotated[t.PositiveInt, m.Field(description="Line number")]
 
     class RequiredNonNegativeLineMixin:
         """Shared required non-negative line-number field."""
 
-        line: Annotated[t.NonNegativeInt, Field(description="Line number")]
+        line: Annotated[t.NonNegativeInt, m.Field(description="Line number")]
 
     class NonNegativeLineMixin:
         """Shared non-negative line-number field with default zero."""
 
-        line: Annotated[t.NonNegativeInt, Field(default=0, description="Line number")]
+        line: Annotated[t.NonNegativeInt, m.Field(description="Line number")] = 0
 
     class NestedClassPathMixin:
         """Shared optional nested class-path field."""
 
-        class_path: Annotated[
-            str,
-            Field(default="", description="Nested class path"),
-        ] = ""
+        class_path: Annotated[str, m.Field(description="Nested class path")] = ""
 
     class FileLineViolationMixin(FilePathMixin, PositiveLineMixin):
         """Shared file plus positive line fields for violations."""
@@ -336,93 +278,75 @@ class FlextInfraModelsMixins:
     class CurrentImportMixin:
         """Shared current import statement field."""
 
-        current_import: Annotated[str, Field(description="Current import statement")]
+        current_import: Annotated[str, m.Field(description="Current import statement")]
 
     class ViolationDetailMixin:
         """Shared violation detail field."""
 
-        detail: Annotated[str, Field(default="", description="Violation detail")]
+        detail: Annotated[str, m.Field(description="Violation detail")] = ""
 
     class ErrorDetailMixin:
         """Shared error detail field."""
 
-        detail: Annotated[str, Field(default="", description="Error detail")]
+        detail: Annotated[str, m.Field(description="Error detail")] = ""
 
     class ConfidenceLevelMixin:
         """Shared confidence field for refactor diagnostics."""
 
-        confidence: Annotated[
-            str,
-            Field(default="low", description="Confidence level"),
-        ] = "low"
+        confidence: Annotated[str, m.Field(description="Confidence level")] = "low"
 
     class RewriteScopeMixin:
         """Shared rewrite-scope field for refactor diagnostics."""
 
-        rewrite_scope: Annotated[
-            str,
-            Field(default="file", description="Rewrite scope"),
-        ] = "file"
+        rewrite_scope: Annotated[str, m.Field(description="Rewrite scope")] = "file"
 
     class ReleaseVersionTagMixin:
         """Shared release identity fields."""
 
-        version: Annotated[str, Field(default="", description="Version string")] = ""
-        tag: Annotated[str, Field(default="", description="Git tag (e.g. v1.0.0)")] = ""
+        version: Annotated[str, m.Field(description="Version string")] = ""
+        tag: Annotated[str, m.Field(description="Git tag (e.g. v1.0.0)")] = ""
 
     class ReleaseAutomationMixin:
         """Shared release automation toggles."""
 
-        push: Annotated[bool, Field(default=False, description="Push to remote")] = (
-            False
-        )
-        dev_suffix: Annotated[
-            bool,
-            Field(default=False, description="Add dev suffix"),
-        ] = False
+        push: Annotated[bool, m.Field(description="Push to remote")] = False
+        dev_suffix: Annotated[bool, m.Field(description="Add dev suffix")] = False
 
     class ProjectNameMixin:
         """Shared required project-name field."""
 
-        project: Annotated[t.NonEmptyStr, Field(description="Project name")]
+        project: Annotated[t.NonEmptyStr, m.Field(description="Project name")]
 
     class ProjectEntryNameMixin:
         """Shared required project entry name field."""
 
-        name: Annotated[t.NonEmptyStr, Field(description="Project name")]
+        name: Annotated[t.NonEmptyStr, m.Field(description="Project name")]
 
     class ProjectNameFieldMixin:
         """Shared required project_name field."""
 
-        project_name: Annotated[t.NonEmptyStr, Field(description="Project name")]
+        project_name: Annotated[t.NonEmptyStr, m.Field(description="Project name")]
 
     class OptionalProjectNameFieldMixin:
         """Shared optional project_name field."""
 
-        project_name: Annotated[
-            str | None,
-            Field(default=None, description="Project name"),
-        ] = None
+        project_name: Annotated[str | None, m.Field(description="Project name")] = None
 
     class WorkspaceRootPathMixin:
         """Shared workspace root path field."""
 
-        workspace_root: Annotated[Path, Field(description="Workspace root path")]
+        workspace_root: Annotated[Path, m.Field(description="Workspace root path")]
 
     class StashRefMixin:
         """Shared git stash reference field."""
 
-        stash_ref: Annotated[
-            str,
-            Field(default="", description="Git stash reference"),
-        ] = ""
+        stash_ref: Annotated[str, m.Field(description="Git stash reference")] = ""
 
     class ProjectNamesOptionalMixin:
         """Shared optional project-name collection."""
 
         project_names: Annotated[
-            t.StrSequence | None,
-            Field(default=None, description="Project names"),
+            t.StrSequence | None, m.Field(description="Project names")
         ] = None
 
     class ProjectNamesListMixin:
@@ -430,8 +354,8 @@ class FlextInfraModelsMixins:
 
         project_names: Annotated[
             t.StrSequence,
-            Field(default_factory=list, description="Project names"),
-        ] = Field(default_factory=list, description="Project names")
+            m.Field(default_factory=list, description="Project names"),
+        ] = m.Field(default_factory=list, description="Project names")
 
 
 __all__: list[str] = ["FlextInfraModelsMixins"]

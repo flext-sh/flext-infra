@@ -9,8 +9,6 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Annotated
 
-from pydantic import Field
-
 from flext_cli import u
 from flext_infra import c, m, t
 
@@ -18,12 +16,12 @@ from flext_infra import c, m, t
 class FlextInfraNormalizerContext(m.ArbitraryTypesModel):
     """Analysis context for import normalization."""
 
-    file_path: Annotated[Path, Field(description="File path")]
-    project_package: Annotated[str, Field(description="Project package")]
-    declared_alias: Annotated[str, Field(description="Declared alias")]
-    alias_tiers: Annotated[t.IntMapping, Field(description="Alias tiers mapping")]
+    file_path: Annotated[Path, m.Field(description="File path")]
+    project_package: Annotated[str, m.Field(description="Project package")]
+    declared_alias: Annotated[str, m.Field(description="Declared alias")]
+    alias_tiers: Annotated[t.IntMapping, m.Field(description="Alias tiers mapping")]
     universal_aliases: Annotated[
-        frozenset[str], Field(description="Universal aliases set")
+        frozenset[str], m.Field(description="Universal aliases set")
     ]
 
 

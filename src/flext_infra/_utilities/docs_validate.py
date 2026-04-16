@@ -5,8 +5,6 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableSequence
 from pathlib import Path
 
-from pydantic import ValidationError
-
 from flext_cli import u
 from flext_infra import (
     FlextInfraUtilitiesDocs,
@@ -58,7 +56,7 @@ class FlextInfraUtilitiesDocsValidate:
             return []
         try:
             values = t.Infra.STR_SEQ_ADAPTER.validate_python(configured, strict=True)
-        except ValidationError:
+        except c.ValidationError:
             return []
         return [str(item) for item in values if item]
 

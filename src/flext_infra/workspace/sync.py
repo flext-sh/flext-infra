@@ -13,8 +13,6 @@ import contextlib
 from pathlib import Path
 from typing import Annotated, override
 
-from pydantic import Field
-
 from flext_infra import (
     FlextInfraBaseMkGenerator,
     FlextInfraServiceBase,
@@ -38,13 +36,10 @@ class FlextInfraSyncService(FlextInfraServiceBase[m.Infra.SyncResult]):
 
     generator: Annotated[
         FlextInfraBaseMkGenerator | None,
-        Field(
-            default=None, exclude=True, description="Optional custom generator service"
-        ),
+        m.Field(exclude=True, description="Optional custom generator service"),
     ] = None
     canonical_root: Annotated[
-        Path | None,
-        Field(default=None, description="Optional canonical root path"),
+        Path | None, m.Field(description="Optional canonical root path")
     ] = None
 
     def _get_generator(self) -> FlextInfraBaseMkGenerator:

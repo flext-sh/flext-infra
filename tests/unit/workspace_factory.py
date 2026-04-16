@@ -12,8 +12,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, override
 
-from pydantic import Field
-
 from tests import c, m, t
 
 
@@ -24,9 +22,9 @@ class WorkspaceFactory(m.Config):
     Uses constants from c.Infra.Tests for version strings and paths.
     """
 
-    default_python: Annotated[str, Field(default="^3.13")]
-    default_version: Annotated[str, Field(default="0.1.0")]
-    encoding: Annotated[str, Field(default="utf-8")]
+    default_python: Annotated[str, m.Field(default="^3.13")]
+    default_version: Annotated[str, m.Field(default="0.1.0")]
+    encoding: Annotated[str, m.Field(default="utf-8")]
 
     @override
     def model_post_init(self, __context: t.ScalarMapping | None) -> None:

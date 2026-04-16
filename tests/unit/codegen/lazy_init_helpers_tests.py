@@ -168,8 +168,8 @@ class TestsFlextInfraLazyInitHelpers:
         )
         tests_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
             "from __future__ import annotations\n\n"
-            "from flext_demo.constants import FlextDemoConstants\n"
-            "from flext_tests.constants import FlextTestsConstants\n\n"
+            "from flext_demo import FlextDemoConstants\n"
+            "from flext_tests import FlextTestsConstants\n\n"
             "class TestsFlextDemoConstants("
             "FlextDemoConstants, FlextTestsConstants"
             "):\n"

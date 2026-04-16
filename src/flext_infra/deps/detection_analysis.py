@@ -7,8 +7,6 @@ import os
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
-from pydantic import ValidationError
-
 from flext_infra import c, m, p, r, t, u
 
 
@@ -63,7 +61,7 @@ class FlextInfraDependencyDetectionAnalysis:
         if isinstance(value, list):
             try:
                 sequence = t.Cli.JSON_LIST_ADAPTER.validate_python(value)
-            except ValidationError:
+            except c.ValidationError:
                 return None
             converted: MutableSequence[t.Infra.InfraValue] = []
             for item in sequence:
@@ -78,7 +76,7 @@ class FlextInfraDependencyDetectionAnalysis:
             return converted
         try:
             mapping_value = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)
-        except ValidationError:
+        except c.ValidationError:
             return None
         converted_map: MutableMapping[str, t.Infra.InfraValue] = {}
         for key, map_item in mapping_value.items():
@@ -270,7 +268,7 @@ class FlextInfraDependencyDetectionAnalysis:
                         continue
                     try:
                         typed_item = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(item)
-                    except ValidationError:
+                    except c.ValidationError:
                         continue
                     converted_issue = self._to_toml_config(typed_item)
                     if len(converted_issue) == len(typed_item):

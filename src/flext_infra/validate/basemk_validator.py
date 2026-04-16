@@ -13,8 +13,6 @@ from collections.abc import MutableSequence
 from pathlib import Path
 from typing import Annotated, override
 
-from pydantic import Field
-
 from flext_infra import FlextInfraBaseMkGenerator, c, m, p, r, s, u
 
 
@@ -23,8 +21,7 @@ class FlextInfraBaseMkValidator(s[bool]):
 
     generator: Annotated[
         FlextInfraBaseMkGenerator | None,
-        Field(
-            default=None,
+        m.Field(
             exclude=True,
             description="Optional generator for freshness comparison",
         ),

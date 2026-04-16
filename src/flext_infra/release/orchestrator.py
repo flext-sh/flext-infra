@@ -14,8 +14,6 @@ from collections.abc import Callable, MutableSequence, Sequence
 from pathlib import Path
 from typing import Annotated, override
 
-from pydantic import Field
-
 from flext_infra import c, m, p, r, s, t, u
 
 from .orchestrator_phases import FlextInfraReleaseOrchestratorPhases
@@ -26,40 +24,27 @@ logger = u.fetch_logger(__name__)
 class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]):
     """Service for release lifecycle orchestration."""
 
-    version: Annotated[str, Field(default="", description="Version string")] = ""
-    tag: Annotated[str, Field(default="", description="Git tag (e.g. v1.0.0)")] = ""
-    push: Annotated[bool, Field(default=False, description="Push to remote")] = False
-    dev_suffix: Annotated[
-        bool,
-        Field(default=False, description="Add dev suffix"),
-    ] = False
-    phase: Annotated[str, Field(default="all", description="Release phase")] = "all"
+    version: Annotated[str, m.Field(description="Version string")] = ""
+    tag: Annotated[str, m.Field(description="Git tag (e.g. v1.0.0)")] = ""
+    push: Annotated[bool, m.Field(description="Push to remote")] = False
+    dev_suffix: Annotated[bool, m.Field(description="Add dev suffix")] = False
+    phase: Annotated[str, m.Field(description="Release phase")] = "all"
     projects: Annotated[
         t.StrSequence | None,
-        Field(
-            default=None,
+        m.Field(
             description="Projects to process; repeat --projects NAME as needed",
         ),
     ] = None
-    bump: Annotated[
-        str,
-        Field(default="", description="Bump type (major/minor/patch)"),
-    ] = ""
+    bump: Annotated[str, m.Field(description="Bump type (major/minor/patch)")] = ""
     interactive: Annotated[
-        int,
-        Field(default=1, description="Interactive mode (1=yes, 0=no)"),
+        int, m.Field(description="Interactive mode (1=yes, 0=no)")
     ] = 1
-    next_dev: Annotated[
-        bool,
-        Field(default=False, description="Prepare next dev version"),
-    ] = False
-    next_bump: Annotated[
-        str,
-        Field(default="minor", description="Bump type for next dev version"),
-    ] = "minor"
+    next_dev: Annotated[bool, m.Field(description="Prepare next dev version")] = False
+    next_bump: Annotated[str, m.Field(description="Bump type for next dev version")] = (
+        "minor"
+    )
     create_branches: Annotated[
-        int,
-        Field(default=1, description="Create release branches (1=yes, 0=no)"),
+        int, m.Field(description="Create release branches (1=yes, 0=no)")
     ] = 1
 
     @property

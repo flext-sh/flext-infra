@@ -5,8 +5,6 @@ from __future__ import annotations
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
-from pydantic import ValidationError
-
 from flext_cli import u
 from flext_infra import (
     FlextInfraUtilitiesDocs,
@@ -29,7 +27,7 @@ class FlextInfraUtilitiesDocsGenerate:
             items = t.Infra.INFRA_SEQ_ADAPTER.validate_python(
                 contract.get("modules", [])
             )
-        except ValidationError:
+        except c.ValidationError:
             return []
         return [str(item) for item in items]
 

@@ -8,8 +8,6 @@ from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
-from pydantic import ValidationError
-
 from flext_infra import FlextInfraGate, c, m, t, u
 
 
@@ -91,7 +89,7 @@ class FlextInfraMypyGate(FlextInfraGate):
                 line_data: Mapping[str, t.Infra.InfraValue] = (
                     t.Infra.INFRA_MAPPING_ADAPTER.validate_json(stripped)
                 )
-            except ValidationError:
+            except c.ValidationError:
                 continue
             try:
                 severity = u.Infra.pick_str(line_data, "severity", c.Infra.ERROR)
@@ -106,7 +104,7 @@ class FlextInfraMypyGate(FlextInfraGate):
                             severity=severity,
                         ),
                     )
-            except ValidationError:
+            except c.ValidationError:
                 continue
         return result.exit_code == 0, issues
 

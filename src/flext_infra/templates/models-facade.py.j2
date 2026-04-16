@@ -9,7 +9,7 @@ from typing import Annotated, Any
 from pydantic import BaseModel, Field
 
 
-class {{ facade_name }}(BaseModel):
+class {{ facade_name }}(m.BaseModel):
     """{{ docstring }}
     
     Runtime alias: {{ runtime_alias }} = {{ facade_name }}
@@ -19,7 +19,7 @@ class {{ facade_name }}(BaseModel):
     class {{ section.name }}:
         """{{ section.description }}"""
         {% for model in section.models %}
-        class {{ model.name }}(BaseModel):
+        class {{ model.name }}(m.BaseModel):
             """{{ model.description }}"""
             {% for field in model.fields %}
             {{ field.name }}: {{ field.type }}{% if field.default %} = {{ field.default }}{% endif %}

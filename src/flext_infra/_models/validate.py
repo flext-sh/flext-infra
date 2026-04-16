@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from pydantic import Field
-
 from flext_core import m
 from flext_infra import FlextInfraModelsMixins, t
 
@@ -21,20 +19,19 @@ class FlextInfraModelsCore:
     class ValidationReport(m.ArbitraryTypesModel):
         """Validation report model with violations and summary."""
 
-        passed: Annotated[bool, Field(description="Validation status")]
+        passed: Annotated[bool, m.Field(description="Validation status")]
         violations: Annotated[
             t.StrSequence,
-            Field(
+            m.Field(
                 description="Collected validation violations",
             ),
-        ] = Field(default_factory=list)
+        ] = m.Field(default_factory=list)
         summary: Annotated[
             str,
-            Field(
-                default="",
+            m.Field(
                 description="Human-readable validation summary",
             ),
-        ]
+        ] = ""
 
     class StubAnalysisReport(
         FlextInfraModelsMixins.ProjectNameMixin,
@@ -44,25 +41,25 @@ class FlextInfraModelsCore:
 
         mypy_hints: Annotated[
             t.StrSequence,
-            Field(
+            m.Field(
                 description="types- package hints from mypy output",
             ),
-        ] = Field(default_factory=list)
+        ] = m.Field(default_factory=list)
         internal_missing: Annotated[
             t.StrSequence,
-            Field(
+            m.Field(
                 description="Missing internal imports",
             ),
-        ] = Field(default_factory=list)
+        ] = m.Field(default_factory=list)
         unresolved_missing: Annotated[
             t.StrSequence,
-            Field(
+            m.Field(
                 description="Missing external imports without stubs",
             ),
-        ] = Field(default_factory=list)
+        ] = m.Field(default_factory=list)
         total_missing: Annotated[
             t.NonNegativeInt,
-            Field(description="Total missing imports"),
+            m.Field(description="Total missing imports"),
         ]
 
     class PytestDiagnostics(m.ArbitraryTypesModel):
@@ -70,64 +67,66 @@ class FlextInfraModelsCore:
 
         failed_count: Annotated[
             t.NonNegativeInt,
-            Field(description="Failed test case count"),
+            m.Field(description="Failed test case count"),
         ]
-        error_count: Annotated[t.NonNegativeInt, Field(description="Error trace count")]
+        error_count: Annotated[
+            t.NonNegativeInt, m.Field(description="Error trace count")
+        ]
         warning_count: Annotated[
             t.NonNegativeInt,
-            Field(description="Warning line count"),
+            m.Field(description="Warning line count"),
         ]
         skipped_count: Annotated[
             t.NonNegativeInt,
-            Field(description="Skipped test case count"),
+            m.Field(description="Skipped test case count"),
         ]
         failed_cases: Annotated[
             t.StrSequence,
-            Field(
+            m.Field(
                 description="Failed test labels",
             ),
-        ] = Field(default_factory=list)
+        ] = m.Field(default_factory=list)
         error_traces: Annotated[
             t.StrSequence,
-            Field(
+            m.Field(
                 description="Collected error traces",
             ),
-        ] = Field(default_factory=list)
+        ] = m.Field(default_factory=list)
         warning_lines: Annotated[
             t.StrSequence,
-            Field(
+            m.Field(
                 description="Captured warning lines",
             ),
-        ] = Field(default_factory=list)
+        ] = m.Field(default_factory=list)
         skip_cases: Annotated[
             t.StrSequence,
-            Field(
+            m.Field(
                 description="Skipped test labels",
             ),
-        ] = Field(default_factory=list)
+        ] = m.Field(default_factory=list)
         slow_entries: Annotated[
             t.StrSequence,
-            Field(
+            m.Field(
                 description="Slow test entries",
             ),
-        ] = Field(default_factory=list)
+        ] = m.Field(default_factory=list)
 
     class DiagResult(m.ArbitraryTypesModel):
         """Internal container for extracted diagnostics."""
 
-        failed_cases: t.StrSequence = Field(
+        failed_cases: t.StrSequence = m.Field(
             default_factory=list, description="Failed cases records"
         )
-        error_traces: t.StrSequence = Field(
+        error_traces: t.StrSequence = m.Field(
             default_factory=list, description="Error traces records"
         )
-        skip_cases: t.StrSequence = Field(
+        skip_cases: t.StrSequence = m.Field(
             default_factory=list, description="Skipped cases records"
         )
-        warning_lines: t.StrSequence = Field(
+        warning_lines: t.StrSequence = m.Field(
             default_factory=list, description="Warning lines records"
         )
-        slow_entries: t.StrSequence = Field(
+        slow_entries: t.StrSequence = m.Field(
             default_factory=list, description="Slow entries records"
         )
 
@@ -136,14 +135,14 @@ class FlextInfraModelsCore:
 
         total_scripts: Annotated[
             t.NonNegativeInt,
-            Field(description="Total discovered scripts"),
+            m.Field(description="Total discovered scripts"),
         ]
         reports_written: Annotated[
             t.StrSequence,
-            Field(
+            m.Field(
                 description="Written report file paths",
             ),
-        ] = Field(default_factory=list)
+        ] = m.Field(default_factory=list)
 
 
 __all__: list[str] = ["FlextInfraModelsCore"]

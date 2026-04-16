@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import ClassVar, Self, override
+from pathlib import Path
+from typing import Annotated, ClassVar, Self, override
 
 from flext_cli import cli
 from flext_infra import (
@@ -16,6 +17,7 @@ from flext_infra import (
     FlextInfraCliRelease,
     FlextInfraCliValidate,
     FlextInfraCliWorkspace,
+    FlextInfraConstantsBase,
     FlextInfraDocAuditor,
     FlextInfraDocBuilder,
     FlextInfraDocFixer,
@@ -36,6 +38,10 @@ from flext_infra import (
     r,
     t,
 )
+
+_PYDANTIC_TYPES_MARKER: Annotated[int, "runtime-namespace"] = 0
+_PYDANTIC_PATH_MARKER: Path | None = None
+_PYDANTIC_CONSTANTS_MARKER: type[FlextInfraConstantsBase] = FlextInfraConstantsBase
 
 
 class FlextInfra(
@@ -69,7 +75,7 @@ class FlextInfra(
     def get_instance(cls) -> Self:
         """Return the shared infra facade instance."""
         if cls._instance is None:
-            cls._instance = cls()
+            cls._instance = cls.model_validate({})
         return cls._instance
 
     @override

@@ -10,8 +10,6 @@ from collections.abc import Callable, Sequence
 from itertools import chain
 from typing import Annotated, Literal, Self
 
-from pydantic import Field
-
 from flext_core import m
 from flext_infra import c, t
 
@@ -22,58 +20,73 @@ class FlextInfraModelsEngine:
     class TomlSetOp(m.ContractModel):
         """Set one TOML key to one JSON-compatible value."""
 
-        kind: Literal["set"] = Field(default="set", description="Operation kind")
-        key: str = Field(description="TOML key name")
-        value: t.Cli.JsonValue = Field(description="JSON-compatible value")
+        kind: Annotated[Literal["set"], m.Field(description="Operation kind")] = "set"
+        key: str = m.Field(description="TOML key name")
+        value: t.Cli.JsonValue = m.Field(description="JSON-compatible value")
 
     class TomlListOp(m.ContractModel):
         """Set or merge one TOML string list."""
 
-        kind: Literal["list"] = Field(default="list", description="Operation kind")
-        key: str = Field(description="TOML key name")
-        values: t.StrSequence = Field(description="Expected values")
-        strategy: str = Field(
-            default=c.Infra.TOML_MERGE_REPLACE,
-            description="Merge strategy",
-        )
-        sort: bool = Field(default=True, description="Sort values before sync")
+        kind: Annotated[Literal["list"], m.Field(description="Operation kind")] = "list"
+        key: str = m.Field(description="TOML key name")
+        values: t.StrSequence = m.Field(description="Expected values")
+        strategy: Annotated[
+            str,
+            m.Field(
+                description="Merge strategy",
+            ),
+        ] = c.Infra.TOML_MERGE_REPLACE
+        sort: Annotated[bool, m.Field(description="Sort values before sync")] = True
 
     class TomlRemoveOp(m.ContractModel):
         """Remove one TOML key, optionally from a nested relative table."""
 
-        kind: Literal["remove"] = Field(default="remove", description="Operation kind")
-        key: str = Field(description="Key to remove")
-        table_path: t.StrSequence = Field(
-            default=(),
-            description="Relative sub-table path",
+        kind: Annotated[Literal["remove"], m.Field(description="Operation kind")] = (
+            "remove"
         )
+        key: str = m.Field(description="Key to remove")
+        table_path: Annotated[
+            t.StrSequence,
+            m.Field(
+                description="Relative sub-table path",
+            ),
+        ] = ()
 
     type TomlOperation = Annotated[
         TomlSetOp | TomlListOp | TomlRemoveOp,
-        Field(discriminator="kind"),
+        m.Field(discriminator="kind"),
     ]
 
     class TomlPhaseConfig(m.ContractModel):
         """Declarative TOML phase with inline Builder DSL."""
 
-        name: str = Field(description="Phase name")
-        root_path: t.StrSequence = Field(
-            default=(c.Infra.TOOL,),
-            description="Root path before table_path",
-        )
-        table_path: t.StrSequence = Field(default=(), description="Primary table path")
-        operations: Sequence[FlextInfraModelsEngine.TomlOperation] = Field(
-            default=(),
-            description="Declarative TOML operations",
-        )
-        nested_tables: Sequence[FlextInfraModelsEngine.TomlPhaseConfig] = Field(
-            default=(), description="Nested TOML phase configs"
-        )
-        custom_handler: Callable[..., t.StrSequence] | None = Field(
-            default=None,
-            exclude=True,
-            description="Custom handler",
-        )
+        name: str = m.Field(description="Phase name")
+        root_path: Annotated[
+            t.StrSequence,
+            m.Field(
+                description="Root path before table_path",
+            ),
+        ] = (c.Infra.TOOL,)
+        table_path: Annotated[
+            t.StrSequence, m.Field(description="Primary table path")
+        ] = ()
+        operations: Annotated[
+            Sequence[FlextInfraModelsEngine.TomlOperation],
+            m.Field(
+                description="Declarative TOML operations",
+            ),
+        ] = ()
+        nested_tables: Annotated[
+            Sequence[FlextInfraModelsEngine.TomlPhaseConfig],
+            m.Field(description="Nested TOML phase configs"),
+        ] = ()
+        custom_handler: Annotated[
+            Callable[..., t.StrSequence] | None,
+            m.Field(
+                exclude=True,
+                description="Custom handler",
+            ),
+        ] = None
 
         class Builder(m.Builder.Identity["FlextInfraModelsEngine.TomlPhaseConfig"]):
             """Fluent builder — ``m.Infra.TomlPhaseConfig.Builder("ruff").table(...).build()``."""

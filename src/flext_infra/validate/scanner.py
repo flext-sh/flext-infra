@@ -15,9 +15,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Annotated, override
 
-from pydantic import Field
-
-from flext_infra import c, p, r, s, t
+from flext_infra import c, m, p, r, s, t
 
 
 class FlextInfraTextPatternScanner(s[bool]):
@@ -27,19 +25,18 @@ class FlextInfraTextPatternScanner(s[bool]):
     modes (present = matches are violations, absent = no matches is a violation).
     """
 
-    pattern: Annotated[str, Field(description="Regex pattern")]
+    pattern: Annotated[str, m.Field(description="Regex pattern")]
     include: Annotated[
         t.StrSequence,
-        Field(default_factory=list, description="Include glob"),
-    ] = Field(default_factory=list, description="Include glob")
+        m.Field(default_factory=list, description="Include glob"),
+    ] = m.Field(default_factory=list, description="Include glob")
     exclude: Annotated[
         t.StrSequence,
-        Field(default_factory=list, description="Exclude glob"),
-    ] = Field(default_factory=list, description="Exclude glob")
+        m.Field(default_factory=list, description="Exclude glob"),
+    ] = m.Field(default_factory=list, description="Exclude glob")
     match: Annotated[
         str,
-        Field(
-            default=c.Infra.MATCH_MODE_PRESENT,
+        m.Field(
             description="Violation mode (present or absent)",
         ),
     ] = c.Infra.MATCH_MODE_PRESENT

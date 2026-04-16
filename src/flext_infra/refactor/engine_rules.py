@@ -11,7 +11,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import override
 
-from pydantic import TypeAdapter, ValidationError
+from pydantic import TypeAdapter
 
 from flext_infra import (
     FlextInfraChangeTracker,
@@ -223,13 +223,13 @@ class FlextInfraRefactorSymbolPropagationRule(FlextInfraRefactorRule):
             module_renames: t.StrMapping = t.Infra.STR_MAPPING_ADAPTER.validate_python(
                 typed_cfg.get("module_renames", {}),
             )
-        except ValidationError:
+        except c.ValidationError:
             module_renames = dict[str, str]()
         try:
             symbol_renames: t.StrMapping = t.Infra.STR_MAPPING_ADAPTER.validate_python(
                 typed_cfg.get("import_symbol_renames", {}),
             )
-        except ValidationError:
+        except c.ValidationError:
             symbol_renames = dict[str, str]()
         if not target_modules and not module_renames and not symbol_renames:
             return (source, list[str]())
@@ -244,7 +244,7 @@ class FlextInfraRefactorSymbolPropagationRule(FlextInfraRefactorRule):
 class FlextInfraRefactorSignaturePropagationRule(FlextInfraRefactorRule):
     """Apply declarative signature migrations in a generic, workspace-safe way."""
 
-    _SIG_MIGRATION_SEQ_ADAPTER: TypeAdapter[Sequence[m.Infra.SignatureMigration]] = (
+    _SIG_MIGRATION_SEQ_ADAPTER: m.TypeAdapter[Sequence[m.Infra.SignatureMigration]] = (
         TypeAdapter(
             Sequence[m.Infra.SignatureMigration],
         )
@@ -261,7 +261,7 @@ class FlextInfraRefactorSignaturePropagationRule(FlextInfraRefactorRule):
             parsed: Sequence[m.Infra.SignatureMigration] = (
                 self._SIG_MIGRATION_SEQ_ADAPTER.validate_python(migrations_raw)
             )
-        except ValidationError:
+        except c.ValidationError:
             return (source, list[str]())
         migrations = [item for item in parsed if item.enabled]
         if not migrations:
@@ -289,7 +289,7 @@ class FlextInfraRefactorClassReconstructorRule(FlextInfraRefactorRule):
             order_config: Sequence[t.Infra.ContainerDict] = (
                 t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(order_config_raw)
             )
-        except ValidationError:
+        except c.ValidationError:
             return (source, list[str]())
         if not order_config:
             return (source, list[str]())

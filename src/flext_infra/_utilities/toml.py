@@ -11,10 +11,8 @@ from __future__ import annotations
 
 from collections.abc import Mapping, MutableSequence
 
-from pydantic import ValidationError
-
 from flext_cli import FlextCliUtilities
-from flext_infra import t
+from flext_infra import c, t
 
 
 class FlextInfraUtilitiesToml:
@@ -36,7 +34,7 @@ class FlextInfraUtilitiesToml:
             validated = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
                 normalized_value,
             )
-        except ValidationError:
+        except c.ValidationError:
             return None
         result: t.Infra.ContainerDict = {str(key): validated[key] for key in validated}
         return result
@@ -59,12 +57,12 @@ class FlextInfraUtilitiesToml:
         if isinstance(normalized, Mapping):
             try:
                 return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(normalized)
-            except ValidationError:
+            except c.ValidationError:
                 return None
         if isinstance(normalized, (list, tuple)):
             try:
                 return t.Infra.INFRA_SEQ_ADAPTER.validate_python(normalized)
-            except ValidationError:
+            except c.ValidationError:
                 return None
         return None
 

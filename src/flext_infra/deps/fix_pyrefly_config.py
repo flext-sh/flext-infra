@@ -74,7 +74,7 @@ class FlextInfraConfigFixer(s[bool]):
             pyrefly: MutableMapping[str, t.Infra.InfraValue] = (
                 t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(pyrefly_data)
             )
-        except ValidationError:
+        except c.ValidationError:
             return r[t.StrSequence].ok([])
         all_fixes: MutableSequence[str] = []
         project_dir = path.parent
@@ -114,7 +114,7 @@ class FlextInfraConfigFixer(s[bool]):
                     try:
                         conf_map = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(conf)
                         conf_out = dict(conf_map)
-                    except ValidationError:
+                    except c.ValidationError:
                         conf_map = {}
                 if conf_map.get(c.Infra.IGNORE) is True:
                     removed_ignore = True

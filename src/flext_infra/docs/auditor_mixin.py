@@ -11,8 +11,6 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
-from pydantic import ValidationError
-
 from flext_infra import c, m, t, u
 
 
@@ -42,7 +40,7 @@ class FlextInfraDocAuditorMixin:
                     by_scope_raw_value,
                     strict=True,
                 )
-            except ValidationError:
+            except c.ValidationError:
                 by_scope_raw = {}
         by_scope: t.MutableIntMapping = {}
         for name, value in by_scope_raw.items():
@@ -76,7 +74,7 @@ class FlextInfraDocAuditorMixin:
                 audit_gate,
                 strict=False,
             )
-        except ValidationError:
+        except c.ValidationError:
             return (None, {})
         return cls.parse_audit_gate(validated_gate)
 

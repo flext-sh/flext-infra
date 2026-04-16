@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from pydantic import Field
-
 from flext_core import m
 from flext_infra import FlextInfraModelsMixins, t
 
@@ -19,11 +17,11 @@ class FlextInfraModelsRelease:
     ):
         """Base model for build result data."""
 
-        path: t.NonEmptyStr = Field(description="Project absolute path")
-        exit_code: t.NonNegativeInt = Field(
+        path: t.NonEmptyStr = m.Field(description="Project absolute path")
+        exit_code: t.NonNegativeInt = m.Field(
             description="Exit code returned by make build"
         )
-        log: t.NonEmptyStr = Field(description="Build log file path")
+        log: t.NonEmptyStr = m.Field(description="Build log file path")
 
     class ReleaseSpec(
         FlextInfraModelsMixins.ReleaseVersionTagMixin,
@@ -31,7 +29,7 @@ class FlextInfraModelsRelease:
     ):
         """Release descriptor with version, tag, and bump metadata."""
 
-        bump_type: Annotated[t.NonEmptyStr, Field(description="Release bump type")]
+        bump_type: Annotated[t.NonEmptyStr, m.Field(description="Release bump type")]
 
     class BuildReport(m.ArbitraryTypesModel):
         """Aggregated build report payload written to JSON."""
@@ -40,18 +38,18 @@ class FlextInfraModelsRelease:
         def _records_default() -> list[FlextInfraModelsRelease.BuildRecord]:
             return []
 
-        version: Annotated[t.NonEmptyStr, Field(description="Release version")]
+        version: Annotated[t.NonEmptyStr, m.Field(description="Release version")]
         total: Annotated[
             t.NonNegativeInt,
-            Field(description="Total projects attempted"),
+            m.Field(description="Total projects attempted"),
         ]
         failures: Annotated[
             t.NonNegativeInt,
-            Field(description="Total projects with non-zero exit"),
+            m.Field(description="Total projects with non-zero exit"),
         ]
         records: Annotated[
             list[FlextInfraModelsRelease.BuildRecord],
-            Field(
+            m.Field(
                 default_factory=_records_default,
                 description="Per-project build records",
             ),
@@ -66,15 +64,13 @@ class FlextInfraModelsRelease:
     ):
         """Configuration for release workflow execution."""
 
-        dry_run: Annotated[bool, Field(default=False, description="Dry run flag")] = (
-            False
-        )
-        phases: Annotated[t.StrSequence, Field(description="Ordered list of phases")]
+        dry_run: Annotated[bool, m.Field(description="Dry run flag")] = False
+        phases: Annotated[t.StrSequence, m.Field(description="Ordered list of phases")]
         create_branches: Annotated[
-            bool, Field(default=True, description="Create branches flag")
-        ]
-        next_dev: Annotated[bool, Field(default=False, description="Next dev flag")]
-        next_bump: Annotated[str, Field(default="minor", description="Next bump")]
+            bool, m.Field(description="Create branches flag")
+        ] = True
+        next_dev: Annotated[bool, m.Field(description="Next dev flag")] = False
+        next_bump: Annotated[str, m.Field(description="Next bump")] = "minor"
 
     class ReleasePhaseDispatchConfig(
         FlextInfraModelsMixins.ProjectNamesListMixin,
@@ -85,10 +81,8 @@ class FlextInfraModelsRelease:
     ):
         """Configuration for single release phase dispatch."""
 
-        dry_run: Annotated[bool, Field(default=False, description="Dry run flag")] = (
-            False
-        )
-        phase: Annotated[t.NonEmptyStr, Field(description="Release phase")]
+        dry_run: Annotated[bool, m.Field(description="Dry run flag")] = False
+        phase: Annotated[t.NonEmptyStr, m.Field(description="Release phase")]
 
 
 __all__: list[str] = ["FlextInfraModelsRelease"]

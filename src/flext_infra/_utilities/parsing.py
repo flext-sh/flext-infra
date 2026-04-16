@@ -13,7 +13,7 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
-from pydantic import TypeAdapter, ValidationError
+from pydantic import TypeAdapter
 
 from flext_infra import c, m, t
 
@@ -23,7 +23,7 @@ class FlextInfraUtilitiesParsing:
 
     _DOCSTRING_QUOTES = ('"""', "'''")
     _SINGLE_LINE_DOCSTRING_QUOTE_COUNT = 2
-    _RULE_CONFIG_SEQ_ADAPTER: TypeAdapter[
+    _RULE_CONFIG_SEQ_ADAPTER: m.TypeAdapter[
         Sequence[m.Infra.ImportModernizerRuleConfig]
     ] = TypeAdapter(
         Sequence[m.Infra.ImportModernizerRuleConfig],
@@ -354,7 +354,7 @@ class FlextInfraUtilitiesParsing:
             raw_items: Sequence[t.Infra.ContainerDict] = (
                 t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(value)
             )
-        except ValidationError:
+        except c.ValidationError:
             return []
         normalized: Sequence[t.Infra.ContainerDict] = [
             {
@@ -367,7 +367,7 @@ class FlextInfraUtilitiesParsing:
             return FlextInfraUtilitiesParsing._RULE_CONFIG_SEQ_ADAPTER.validate_python(
                 normalized,
             )
-        except ValidationError:
+        except c.ValidationError:
             return []
 
     @staticmethod

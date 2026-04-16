@@ -7,8 +7,6 @@ import re
 from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
-from pydantic import ValidationError
-
 from flext_cli import u
 from flext_infra import FlextInfraUtilitiesDocsScope, FlextInfraUtilitiesRope, c, m, t
 
@@ -36,7 +34,7 @@ class FlextInfraUtilitiesDocsApi:
         """Normalize one infra sequence payload into strings."""
         try:
             items = t.Infra.INFRA_SEQ_ADAPTER.validate_python(value)
-        except ValidationError:
+        except c.ValidationError:
             return []
         return [str(item) for item in items]
 
@@ -45,7 +43,7 @@ class FlextInfraUtilitiesDocsApi:
         """Normalize one infra mapping payload into string keys and values."""
         try:
             items = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)
-        except ValidationError:
+        except c.ValidationError:
             return {}
         return {str(key): str(entry) for key, entry in items.items()}
 

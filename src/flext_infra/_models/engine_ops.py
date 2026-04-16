@@ -6,9 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import Literal
-
-from pydantic import Field
+from typing import Annotated, Literal
 
 from flext_core import m
 from flext_infra import c, t
@@ -20,31 +18,42 @@ class FlextInfraModelsEngineOperation:
     class TomlSetOp(m.ContractModel):
         """Set one TOML key to one JSON-compatible value."""
 
-        kind: Literal["set"] = Field(default="set", description="Operation kind")
-        key: str = Field(description="TOML key name")
-        value: t.Cli.JsonValue = Field(description="JSON-compatible value")
+        kind: Literal["set"] = m.Field(
+            "set", description="Operation kind", validate_default=True
+        )
+        key: str = m.Field(description="TOML key name")
+        value: t.Cli.JsonValue = m.Field(description="JSON-compatible value")
 
     class TomlListOp(m.ContractModel):
         """Set or merge one TOML string list."""
 
-        kind: Literal["list"] = Field(default="list", description="Operation kind")
-        key: str = Field(description="TOML key name")
-        values: t.StrSequence = Field(description="Expected values")
-        strategy: str = Field(
-            default=c.Infra.TOML_MERGE_REPLACE,
-            description="Merge strategy",
+        kind: Literal["list"] = m.Field(
+            "list", description="Operation kind", validate_default=True
         )
-        sort: bool = Field(default=True, description="Sort values before sync")
+        key: str = m.Field(description="TOML key name")
+        values: t.StrSequence = m.Field(description="Expected values")
+        strategy: Annotated[
+            str,
+            m.Field(
+                description="Merge strategy",
+                validate_default=True,
+            ),
+        ] = c.Infra.TOML_MERGE_REPLACE
+        sort: Annotated[
+            bool, m.Field(description="Sort values before sync", validate_default=True)
+        ] = True
 
     class TomlRemoveOp(m.ContractModel):
         """Remove one TOML key, optionally from a nested relative table."""
 
-        kind: Literal["remove"] = Field(default="remove", description="Operation kind")
-        key: str = Field(description="Key to remove")
-        table_path: t.StrSequence = Field(
-            default=(),
-            description="Relative sub-table path",
+        kind: Literal["remove"] = m.Field(
+            "remove", description="Operation kind", validate_default=True
         )
+        key: str = m.Field(description="Key to remove")
+        table_path: Annotated[
+            t.StrSequence,
+            m.Field(description="Relative sub-table path", validate_default=True),
+        ] = ()
 
 
 __all__: list[str] = ["FlextInfraModelsEngineOperation"]

@@ -14,9 +14,7 @@ from __future__ import annotations
 
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
-from typing import override
-
-from pydantic import Field
+from typing import Annotated, override
 
 from flext_infra import (
     FlextInfraCodegenLazyInit,
@@ -38,12 +36,12 @@ _log = u.fetch_logger(__name__)
 class FlextInfraCodegenFixer(s[str]):
     """Rope-oriented auto-fixer for namespace violations (Rules 1-5)."""
 
-    dry_run: bool = Field(
-        default=False, description="Preview changes without modifying files"
-    )
-    rules_only: bool = Field(
-        default=False, description="Only apply rule-based fixes, skip heuristic ones"
-    )
+    dry_run: Annotated[
+        bool, m.Field(description="Preview changes without modifying files")
+    ] = False
+    rules_only: Annotated[
+        bool, m.Field(description="Only apply rule-based fixes, skip heuristic ones")
+    ] = False
 
     @override
     def execute(self) -> p.Result[str]:

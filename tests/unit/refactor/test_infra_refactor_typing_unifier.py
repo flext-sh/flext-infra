@@ -306,7 +306,7 @@ def test_preserves_annotated_in_function_params() -> None:
         "from __future__ import annotations\n"
         "from typing import Annotated\n"
         "from pydantic import Field\n\n"
-        "def create(name: Annotated[str, Field(min_length=1)]) -> None:\n"
+        "def create(name: Annotated[str, m.Field(min_length=1)]) -> None:\n"
         "    pass\n"
     )
     rule = FlextInfraRefactorTypingUnificationRule({

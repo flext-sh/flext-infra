@@ -12,7 +12,7 @@ def test_detects_basemodel_in_non_model_file(
 ) -> None:
     target = tmp_path / "consumer.py"
     target.write_text(
-        "from pydantic import BaseModel\nclass PublicModel(BaseModel):\n    pass\n",
+        "from pydantic import BaseModel\nclass PublicModel(m.BaseModel):\n    pass\n",
         encoding="utf-8",
     )
 
@@ -58,7 +58,7 @@ def test_skips_models_file(
 ) -> None:
     target = tmp_path / "models.py"
     target.write_text(
-        "from pydantic import BaseModel\nclass PublicModel(BaseModel):\n    pass\n",
+        "from pydantic import BaseModel\nclass PublicModel(m.BaseModel):\n    pass\n",
         encoding="utf-8",
     )
 
@@ -80,7 +80,7 @@ def test_skips_models_directory(
     models_dir.mkdir(parents=True)
     target = models_dir / "domain.py"
     target.write_text(
-        "from pydantic import BaseModel\nclass PublicModel(BaseModel):\n    pass\n",
+        "from pydantic import BaseModel\nclass PublicModel(m.BaseModel):\n    pass\n",
         encoding="utf-8",
     )
 
@@ -101,7 +101,7 @@ def test_skips_settings_file(
     settings_file_name = min(c.Infra.NAMESPACE_SETTINGS_FILE_NAMES)
     target = tmp_path / settings_file_name
     target.write_text(
-        "from pydantic import BaseModel\nclass PublicModel(BaseModel):\n    pass\n",
+        "from pydantic import BaseModel\nclass PublicModel(m.BaseModel):\n    pass\n",
         encoding="utf-8",
     )
 
@@ -122,7 +122,7 @@ def test_skips_protected_files(
     protected_file_name = min(c.Infra.NAMESPACE_PROTECTED_FILES)
     target = tmp_path / protected_file_name
     target.write_text(
-        "from pydantic import BaseModel\nclass PublicModel(BaseModel):\n    pass\n",
+        "from pydantic import BaseModel\nclass PublicModel(m.BaseModel):\n    pass\n",
         encoding="utf-8",
     )
 
@@ -142,7 +142,7 @@ def test_skips_private_class(
 ) -> None:
     target = tmp_path / "consumer.py"
     target.write_text(
-        "from pydantic import BaseModel\nclass _PrivateModel(BaseModel):\n    pass\n",
+        "from pydantic import BaseModel\nclass _PrivateModel(m.BaseModel):\n    pass\n",
         encoding="utf-8",
     )
 
@@ -164,7 +164,7 @@ def test_detects_multiple_models(
     target.write_text(
         "from pydantic import BaseModel\n"
         "from flext_core import FlextModels\n"
-        "class FirstModel(BaseModel):\n"
+        "class FirstModel(m.BaseModel):\n"
         "    pass\n"
         "class SecondModel(FlextModels.ArbitraryTypesModel):\n"
         "    pass\n",

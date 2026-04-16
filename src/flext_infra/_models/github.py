@@ -6,8 +6,6 @@ from collections.abc import MutableSequence
 from pathlib import Path
 from typing import Annotated
 
-from pydantic import Field
-
 from flext_core import m
 from flext_infra import FlextInfraModelsMixins, t
 
@@ -21,14 +19,8 @@ class FlextInfraModelsGithub:
     ):
         """CLI/service request for workflow synchronization."""
 
-        report: Annotated[
-            str | None,
-            Field(default=None, description="Output report file"),
-        ] = None
-        prune: Annotated[
-            bool,
-            Field(default=False, description="Remove unknown files"),
-        ] = False
+        report: Annotated[str | None, m.Field(description="Output report file")] = None
+        prune: Annotated[bool, m.Field(description="Remove unknown files")] = False
 
         @property
         def report_path(self) -> Path | None:
@@ -41,10 +33,7 @@ class FlextInfraModelsGithub:
     ):
         """CLI/service request for workflow lint."""
 
-        strict: Annotated[
-            bool,
-            Field(default=False, description="Strict mode"),
-        ] = False
+        strict: Annotated[bool, m.Field(description="Strict mode")] = False
 
     class GithubPullRequestRequest(
         FlextInfraModelsMixins.GithubPullRequestFieldsMixin,
@@ -53,7 +42,7 @@ class FlextInfraModelsGithub:
     ):
         """CLI/service request for a single-repository PR action."""
 
-        repo_root: Annotated[str, Field(..., description="Repository root directory")]
+        repo_root: Annotated[str, m.Field(..., description="Repository root directory")]
 
         @property
         def repo_root_path(self) -> Path:
@@ -73,18 +62,15 @@ class FlextInfraModelsGithub:
 
         display: Annotated[
             t.NonEmptyStr,
-            Field(description="Repository display name"),
+            m.Field(description="Repository display name"),
         ]
-        status: Annotated[t.NonEmptyStr, Field(description="Execution status")]
+        status: Annotated[t.NonEmptyStr, m.Field(description="Execution status")]
         elapsed: Annotated[
             t.NonNegativeInt,
-            Field(description="Elapsed time in seconds"),
+            m.Field(description="Elapsed time in seconds"),
         ]
-        exit_code: Annotated[int, Field(description="Process exit code")]
-        log_path: Annotated[
-            str | None,
-            Field(default=None, description="Log file path"),
-        ] = None
+        exit_code: Annotated[int, m.Field(description="Process exit code")]
+        log_path: Annotated[str | None, m.Field(description="Log file path")] = None
 
         @property
         def message(self) -> str:
@@ -96,13 +82,15 @@ class FlextInfraModelsGithub:
 
         total: Annotated[
             t.NonNegativeInt,
-            Field(description="Total repositories processed"),
+            m.Field(description="Total repositories processed"),
         ]
-        success: Annotated[t.NonNegativeInt, Field(description="Successful executions")]
-        fail: Annotated[t.NonNegativeInt, Field(description="Failed executions")]
+        success: Annotated[
+            t.NonNegativeInt, m.Field(description="Successful executions")
+        ]
+        fail: Annotated[t.NonNegativeInt, m.Field(description="Failed executions")]
         outcomes: t.Infra.VariadicTuple[
             FlextInfraModelsGithub.GithubPullRequestOutcome
-        ] = Field(default_factory=tuple, description="Per-repository outcomes")
+        ] = m.Field(default_factory=tuple, description="Per-repository outcomes")
 
         @property
         def message(self) -> str:
@@ -112,33 +100,20 @@ class FlextInfraModelsGithub:
     class RepoUrls(m.ArbitraryTypesModel):
         """Repository URL pair with SSH and HTTPS variants."""
 
-        ssh_url: Annotated[str, Field(default="", description="SSH clone URL")]
-        https_url: Annotated[str, Field(default="", description="HTTPS clone URL")]
+        ssh_url: Annotated[str, m.Field(description="SSH clone URL")] = ""
+        https_url: Annotated[str, m.Field(description="HTTPS clone URL")] = ""
 
     class GithubWorkflowLintOutcome(m.ArbitraryTypesModel):
         """Outcome payload for workflow lint execution."""
 
-        status: Annotated[t.NonEmptyStr, Field(description="Lint status")]
-        reason: Annotated[
-            str | None,
-            Field(default=None, description="Skip reason"),
-        ] = None
-        detail: Annotated[
-            str | None,
-            Field(default=None, description="Failure detail"),
-        ] = None
-        exit_code: Annotated[
-            int | None,
-            Field(default=None, description="Process exit code"),
-        ] = None
-        stdout: Annotated[
-            str | None,
-            Field(default=None, description="Captured stdout"),
-        ] = None
-        stderr: Annotated[
-            str | None,
-            Field(default=None, description="Captured stderr"),
-        ] = None
+        status: Annotated[t.NonEmptyStr, m.Field(description="Lint status")]
+        reason: Annotated[str | None, m.Field(description="Skip reason")] = None
+        detail: Annotated[str | None, m.Field(description="Failure detail")] = None
+        exit_code: Annotated[int | None, m.Field(description="Process exit code")] = (
+            None
+        )
+        stdout: Annotated[str | None, m.Field(description="Captured stdout")] = None
+        stderr: Annotated[str | None, m.Field(description="Captured stderr")] = None
 
         @property
         def message(self) -> str:
@@ -161,28 +136,28 @@ class FlextInfraModelsGithub:
 
         path: Annotated[
             str,
-            Field(..., description="File path relative to project root."),
+            m.Field(..., description="File path relative to project root."),
         ]
         action: Annotated[
             str,
-            Field(
+            m.Field(
                 ...,
                 description="Sync action (create, update, noop, prune).",
             ),
         ]
-        reason: Annotated[str, Field(..., description="Reason for the action.")]
+        reason: Annotated[str, m.Field(..., description="Reason for the action.")]
 
     class GithubWorkflowSyncReport(m.ArbitraryTypesModel):
         """Structured report for a workflow synchronization request."""
 
-        mode: Annotated[str, Field(description="Execution mode")]
+        mode: Annotated[str, m.Field(description="Execution mode")]
         summary: Annotated[
             t.RecursiveContainerMapping,
-            Field(description="Count of operations by action"),
+            m.Field(description="Count of operations by action"),
         ]
         operations: t.Infra.VariadicTuple[
             FlextInfraModelsGithub.GithubWorkflowSyncOperation
-        ] = Field(default_factory=tuple, description="Workflow operations")
+        ] = m.Field(default_factory=tuple, description="Workflow operations")
 
         @classmethod
         def from_operations(
@@ -214,11 +189,11 @@ class FlextInfraModelsGithub:
     ):
         """Resolved context for syncing workflows in one project."""
 
-        project_root: Annotated[Path, Field(description="Project root path")]
-        rendered_template: Annotated[str, Field(description="Rendered workflow body")]
+        project_root: Annotated[Path, m.Field(description="Project root path")]
+        rendered_template: Annotated[str, m.Field(description="Rendered workflow body")]
         request: Annotated[
             FlextInfraModelsGithub.GithubWorkflowSyncRequest,
-            Field(description="Original sync request"),
+            m.Field(description="Original sync request"),
         ]
 
         @property
@@ -245,12 +220,12 @@ class FlextInfraModelsGithub:
 
         request: Annotated[
             FlextInfraModelsGithub.GithubPullRequestWorkspaceRequest,
-            Field(description="Original workspace pull-request request"),
+            m.Field(description="Original workspace pull-request request"),
         ]
         outcomes: Annotated[
             MutableSequence[FlextInfraModelsGithub.GithubPullRequestOutcome],
-            Field(description="Accumulated pull-request outcomes"),
-        ] = Field(description="Accumulated pull-request outcomes")
+            m.Field(description="Accumulated pull-request outcomes"),
+        ] = m.Field(description="Accumulated pull-request outcomes")
 
 
 __all__: list[str] = ["FlextInfraModelsGithub"]

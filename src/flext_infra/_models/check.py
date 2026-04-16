@@ -20,43 +20,38 @@ class FlextInfraModelsCheck:
 
         gates: Annotated[
             str,
-            Field(
-                default=c.Infra.DEFAULT_CSV,
+            m.Field(
                 description="Comma-separated quality gates to execute",
             ),
         ] = c.Infra.DEFAULT_CSV
         reports_dir: Annotated[
             str,
-            Field(
-                default=f"{c.Infra.REPORTS_DIR_NAME}/check",
+            m.Field(
                 alias="reports-dir",
                 description="Directory used to write check reports",
             ),
         ] = f"{c.Infra.REPORTS_DIR_NAME}/check"
         fix: Annotated[
             bool,
-            Field(default=False, description="Apply supported gate fixes before run"),
+            m.Field(False, description="Apply supported gate fixes before run"),
         ] = False
         check_only: Annotated[
             bool,
-            Field(
-                default=False,
+            m.Field(
                 alias="check-only",
                 description="Enable check-only mode for supported tools",
             ),
         ] = False
         ruff_args: Annotated[
             str | None,
-            Field(
-                default=None,
+            m.Field(
                 alias="ruff-args",
                 description="Extra arguments forwarded to Ruff",
             ),
         ] = None
         pyright_args: Annotated[
             str | None,
-            Field(
-                default=None,
+            m.Field(
                 alias="pyright-args",
                 description="Extra arguments forwarded to Pyright",
             ),
@@ -78,8 +73,7 @@ class FlextInfraModelsCheck:
 
         apply: Annotated[
             bool,
-            Field(
-                default=False,
+            m.Field(
                 description="Apply fixes in-place instead of dry-run mode",
                 json_schema_extra={
                     "typer_param_decls": list(c.Infra.CLI_APPLY_OPTION_DECLS),
@@ -96,15 +90,14 @@ class FlextInfraModelsCheck:
     class Issue(m.ContractModel):
         """Single issue reported by a quality gate tool."""
 
-        file: Annotated[str, Field(description="Source file path")]
-        line: Annotated[int, Field(description="Line number")]
-        column: Annotated[int, Field(description="Column number")]
-        code: Annotated[str, Field(description="Rule or error code")]
-        message: Annotated[str, Field(description="Human-readable issue description")]
+        file: Annotated[str, m.Field(description="Source file path")]
+        line: Annotated[int, m.Field(description="Line number")]
+        column: Annotated[int, m.Field(description="Column number")]
+        code: Annotated[str, m.Field(description="Rule or error code")]
+        message: Annotated[str, m.Field(description="Human-readable issue description")]
         severity: Annotated[
             str,
-            Field(
-                default=c.Infra.ERROR,
+            m.Field(
                 description="Issue severity level",
             ),
         ] = c.Infra.ERROR
@@ -124,24 +117,24 @@ class FlextInfraModelsCheck:
     ):
         """Result summary for a single quality gate execution."""
 
-        gate: Annotated[str, Field(description="Gate name")]
-        passed: Annotated[bool, Field(description="Gate execution status")]
-        errors: t.StrSequence = Field(
+        gate: Annotated[str, m.Field(description="Gate name")]
+        passed: Annotated[bool, m.Field(description="Gate execution status")]
+        errors: t.StrSequence = m.Field(
             default_factory=tuple,
             description="Gate error messages",
         )
-        duration: float = Field(default=0.0, description="Duration in seconds")
+        duration: float = Field(0.0, description="Duration in seconds")
 
     class GateExecution(m.ArbitraryTypesModel):
         """Execution result for a single quality gate."""
 
-        result: FlextInfraModelsCheck.GateResult = Field(
+        result: FlextInfraModelsCheck.GateResult = m.Field(
             description="Gate result model",
         )
-        issues: tuple[FlextInfraModelsCheck.Issue, ...] = Field(
+        issues: tuple[FlextInfraModelsCheck.Issue, ...] = m.Field(
             default_factory=tuple, description="Detected issues"
         )
-        raw_output: str = Field(default="", description="Raw tool output")
+        raw_output: str = Field("", description="Raw tool output")
 
     class ProjectResult(
         FlextInfraModelsMixins.ProjectNameMixin,
@@ -149,7 +142,7 @@ class FlextInfraModelsCheck:
     ):
         """Aggregated gate results for a single project."""
 
-        gates: MutableMapping[str, FlextInfraModelsCheck.GateExecution] = Field(
+        gates: MutableMapping[str, FlextInfraModelsCheck.GateExecution] = m.Field(
             default_factory=dict,
             description="Gate name to execution mapping",
         )
@@ -171,10 +164,10 @@ class FlextInfraModelsCheck:
     class SarifRule(m.ContractModel):
         """Compact SARIF rule descriptor."""
 
-        id: Annotated[str, Field(description="Rule identifier")]
+        id: Annotated[str, m.Field(description="Rule identifier")]
         short_description: Annotated[
             str,
-            Field(description="Rule short description"),
+            m.Field(description="Rule short description"),
         ]
 
         @model_serializer(mode="plain")
@@ -187,11 +180,11 @@ class FlextInfraModelsCheck:
     class SarifLocation(m.ContractModel):
         """Compact SARIF location source span."""
 
-        uri: Annotated[str, Field(description="Artifact URI")]
-        start_line: Annotated[int, Field(description="Start line (1-based)")]
-        start_column: Annotated[int, Field(description="Start column (1-based)")]
+        uri: Annotated[str, m.Field(description="Artifact URI")]
+        start_line: Annotated[int, m.Field(description="Start line (1-based)")]
+        start_column: Annotated[int, m.Field(description="Start column (1-based)")]
         uri_base_id: str = Field(
-            default="%SRCROOT%",
+            "%SRCROOT%",
             description="URI base identifier",
         )
 
@@ -213,10 +206,10 @@ class FlextInfraModelsCheck:
     class SarifResult(m.ContractModel):
         """SARIF result entry."""
 
-        rule_id: Annotated[str, Field(description="Rule identifier")]
-        level: Annotated[str, Field(description="Result level (error/warning)")]
-        message: Annotated[str, Field(description="Result message")]
-        locations: list[FlextInfraModelsCheck.SarifLocation] = Field(
+        rule_id: Annotated[str, m.Field(description="Rule identifier")]
+        level: Annotated[str, m.Field(description="Result level (error/warning)")]
+        message: Annotated[str, m.Field(description="Result message")]
+        locations: list[FlextInfraModelsCheck.SarifLocation] = m.Field(
             description="Result locations",
         )
 
@@ -234,15 +227,15 @@ class FlextInfraModelsCheck:
     class SarifRun(m.ContractModel):
         """SARIF run entry."""
 
-        tool_name: Annotated[str, Field(description="Tool name")]
+        tool_name: Annotated[str, m.Field(description="Tool name")]
         information_uri: str = Field(
-            default="",
+            "",
             description="Tool documentation URL",
         )
-        rules: tuple[FlextInfraModelsCheck.SarifRule, ...] = Field(
+        rules: tuple[FlextInfraModelsCheck.SarifRule, ...] = m.Field(
             default_factory=tuple, description="Rule descriptors"
         )
-        results: tuple[FlextInfraModelsCheck.SarifResult, ...] = Field(
+        results: tuple[FlextInfraModelsCheck.SarifResult, ...] = m.Field(
             default_factory=tuple, description="Run results"
         )
 
@@ -269,12 +262,12 @@ class FlextInfraModelsCheck:
         model_config: ClassVar[ConfigDict] = ConfigDict(populate_by_name=True)
 
         schema_uri: str = Field(
-            default="https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+            "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
             alias="$schema",
             description="SARIF schema URI",
         )
-        version: str = Field(default="2.1.0", description="SARIF version")
-        runs: tuple[FlextInfraModelsCheck.SarifRun, ...] = Field(
+        version: str = Field("2.1.0", description="SARIF version")
+        runs: tuple[FlextInfraModelsCheck.SarifRun, ...] = m.Field(
             default_factory=tuple, description="SARIF runs"
         )
 
