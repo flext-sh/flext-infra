@@ -115,7 +115,7 @@ class TestMigratorFailureScenarios:
         (root / ".gitignore").write_text("", encoding="utf-8")
         proj = u.Infra.Tests.create_migrator_project(root, "workspace-root")
         migrator = FlextInfraProjectMigrator(
-            workspace=tmp_path, dry_run=False, apply=True
+            workspace=tmp_path, dry_run=False, apply_changes=True
         )
         migrator.discovery = u.Infra.Tests.create_migrator_discovery([proj])
         migrator.generator = u.Infra.Tests.create_migrator_generator(

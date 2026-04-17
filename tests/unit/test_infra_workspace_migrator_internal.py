@@ -142,7 +142,7 @@ class TestMigratorPublicBehavior:
         migrator = FlextInfraProjectMigrator(
             workspace=Path("/nonexistent"),
             dry_run=False,
-            apply=True,
+            apply_changes=True,
         )
 
         result = migrator.execute()

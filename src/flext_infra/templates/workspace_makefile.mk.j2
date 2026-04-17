@@ -571,7 +571,7 @@ fmt: ## Run code formatting across all workspace projects (ruff/gofmt + markdown
 	else \
 		ruff format $$_fmt_target --quiet; \
 	fi
-	$(Q)go_files=$$(find $(WORKSPACE_SELECTED_ROOTS) -type f -name '*.go' ! -path '*/.git/*' ! -path '*/vendor/*' ! -path '*/.venv/*'); \
+	$(Q)go_files=$$(find $(WORKSPACE_SELECTED_ROOTS) -type f -name '*.go' ! -path '*/.git/*' ! -path '*/vendor/*' ! -path '*/.venv/*' ! -path '*/.cache/*'); \
 	if [ -n "$$go_files" ]; then \
 		echo "Formatting Go files (gofmt)..."; \
 		printf '%s\n' "$$go_files" | xargs gofmt -w; \
@@ -584,13 +584,14 @@ fmt: ## Run code formatting across all workspace projects (ruff/gofmt + markdown
 	else \
 		md_files=$$(git ls-files -- '*.md' ':!vendor/' && git ls-files --others --exclude-standard -- '*.md' ':!vendor/'); \
 	fi; \
+	md_files=$$(printf '%s\n' "$$md_files" | awk 'NF' | while IFS= read -r f; do [ -f "$$f" ] && printf '%s\n' "$$f"; done | sort -u); \
 	if [ -n "$$md_files" ]; then \
 		echo "Formatting Markdown files (markdownlint)..."; \
 		md_config=""; \
 		if [ -f ".markdownlint.json" ]; then \
 			md_config="--config .markdownlint.json"; \
 		fi; \
-		echo "$$md_files" | xargs markdownlint --fix $$md_config; \
+		echo "$$md_files" | xargs -r markdownlint --fix $$md_config; \
 	fi
 	$(Q)echo "Format complete."
 

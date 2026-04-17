@@ -159,7 +159,8 @@ class TestFlextInfraCodegenLazyInit:
             tmp_path,
         )
         (package_root / "service.py").write_text(
-            "class TestPkgServices:\n    pass\n\ns = TestPkgServices\n",
+            "class TestPkgServices:\n    pass\n\ns = TestPkgServices\n\n"
+            '__all__ = ["TestPkgServices", "s"]\n',
             encoding="utf-8",
         )
 

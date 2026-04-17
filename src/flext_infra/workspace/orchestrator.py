@@ -100,7 +100,7 @@ class FlextInfraOrchestratorService(s[bool]):
             sync_result = FlextInfraSyncService(
                 workspace=project_root,
                 canonical_root=workspace_root,
-                apply=True,
+                apply_changes=True,
             ).execute()
             if sync_result.failure:
                 sync_error = sync_result.error or "workspace sync failed"

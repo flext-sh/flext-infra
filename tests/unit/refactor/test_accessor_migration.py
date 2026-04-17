@@ -259,7 +259,7 @@ def test_accessor_migration_apply_writes_updated_source(
 
     result = FlextInfraAccessorMigrationOrchestrator(
         workspace=workspace,
-        apply=True,
+        apply_changes=True,
         dry_run=False,
         projects=["sample-project"],
         preview_limit=5,

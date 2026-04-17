@@ -103,7 +103,6 @@ class FlextInfraServiceRefactorMixin:
         """Run accessor migration preview/apply through the public facade."""
         service = FlextInfraAccessorMigrationOrchestrator(
             workspace=params.workspace_path,
-            apply=params.apply,
             dry_run=params.dry_run,
             projects=list(params.project_names or []),
             preview_limit=params.preview_limit,

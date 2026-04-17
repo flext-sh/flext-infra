@@ -1036,7 +1036,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             ) -> FlextInfraProjectMigrator:
                 migrator = FlextInfraProjectMigrator(
                     workspace=workspace_root or Path("/dummy"),
-                    apply=not dry_run,
+                    apply_changes=not dry_run,
                     dry_run=dry_run,
                 )
                 migrator.discovery = (

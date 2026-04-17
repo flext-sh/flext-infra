@@ -118,9 +118,15 @@ class FlextInfraCodegenConsolidator(s[str]):
         self,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
     ) -> p.Result[Sequence[p.Infra.ProjectInfo]]:
+        _ = rope_workspace
+        discovered = u.Infra.projects(self.workspace_root)
+        if discovered.failure:
+            return r[Sequence[p.Infra.ProjectInfo]].fail(
+                discovered.error or "project discovery failed",
+            )
         selected = tuple(
             project
-            for project in rope_workspace.projects()
+            for project in discovered.unwrap()
             if self.project_name is None or project.name == self.project_name
         )
         return r[Sequence[p.Infra.ProjectInfo]].ok(selected)

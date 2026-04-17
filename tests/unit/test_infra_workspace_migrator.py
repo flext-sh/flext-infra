@@ -79,14 +79,16 @@ def test_migrator_preserves_custom_makefile_content(tmp_path: Path) -> None:
 
 def test_migrator_workspace_root_not_exists(tmp_path: Path) -> None:
     migrator = FlextInfraProjectMigrator(
-        workspace=tmp_path / "nonexistent", dry_run=False, apply=True
+        workspace=tmp_path / "nonexistent", dry_run=False, apply_changes=True
     )
     result = migrator.execute()
     tm.fail(result, has="does not exist")
 
 
 def test_migrator_discovery_failure(tmp_path: Path) -> None:
-    migrator = FlextInfraProjectMigrator(workspace=tmp_path, dry_run=False, apply=True)
+    migrator = FlextInfraProjectMigrator(
+        workspace=tmp_path, dry_run=False, apply_changes=True
+    )
     migrator.discovery = u.Infra.Tests.create_migrator_discovery(
         error="Discovery failed"
     )
@@ -95,7 +97,9 @@ def test_migrator_discovery_failure(tmp_path: Path) -> None:
 
 
 def test_migrator_execute_returns_failure(tmp_path: Path) -> None:
-    migrator = FlextInfraProjectMigrator(workspace=tmp_path, dry_run=False, apply=True)
+    migrator = FlextInfraProjectMigrator(
+        workspace=tmp_path, dry_run=False, apply_changes=True
+    )
     migrator.discovery = u.Infra.Tests.create_migrator_discovery(
         error="Execution failed"
     )
@@ -109,7 +113,9 @@ def test_migrator_workspace_root_project_detection(tmp_path: Path) -> None:
     (tmp_path / "pyproject.toml").touch()
     (tmp_path / "tests").mkdir()
     (tmp_path / "src").mkdir()
-    migrator = FlextInfraProjectMigrator(workspace=tmp_path, dry_run=True, apply=False)
+    migrator = FlextInfraProjectMigrator(
+        workspace=tmp_path, dry_run=True, apply_changes=False
+    )
     migrator.discovery = u.Infra.Tests.create_migrator_discovery([])
     migrator.generator = u.Infra.Tests.create_migrator_generator("base.mk")
     result = migrator.execute()

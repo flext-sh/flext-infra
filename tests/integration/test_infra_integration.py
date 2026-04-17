@@ -21,7 +21,6 @@ from flext_infra import (
     FlextInfraBaseMkTemplateEngine,
     FlextInfraOrchestratorService,
     FlextInfraWorkspaceDetector,
-    p,
     r,
     u,
 )
@@ -149,8 +148,8 @@ class TestInfraIntegration:
         result = (
             r[int]
             .ok(initial_value)
-            .flat_map(lambda x: p.Result[int].ok(x * 2))
-            .flat_map(lambda x: p.Result[int].ok(x + 5))
+            .flat_map(lambda x: r[int].ok(x * 2))
+            .flat_map(lambda x: r[int].ok(x + 5))
         )
         assert result.success
         assert result.value == 25
@@ -168,9 +167,9 @@ class TestInfraIntegration:
         result = (
             r[int]
             .ok(initial_value)
-            .flat_map(lambda x: p.Result[int].ok(x * 2))
-            .flat_map(lambda x: p.Result[int].fail("intentional error"))
-            .flat_map(lambda x: p.Result[int].ok(x + 5))
+            .flat_map(lambda x: r[int].ok(x * 2))
+            .flat_map(lambda x: r[int].fail("intentional error"))
+            .flat_map(lambda x: r[int].ok(x + 5))
         )
         assert result.failure
         assert isinstance(result.error, str)
@@ -190,7 +189,7 @@ class TestInfraIntegration:
             r[int]
             .ok(initial_value)
             .map(lambda x: x * 2)
-            .flat_map(lambda x: p.Result[int].ok(x + 3))
+            .flat_map(lambda x: r[int].ok(x + 3))
             .map(lambda x: x * 2)
         )
         assert result.success

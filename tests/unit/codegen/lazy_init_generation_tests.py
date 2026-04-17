@@ -404,8 +404,11 @@ class TestGenerateFile:
             {},
             "test_pkg",
         )
+        all_block_start = content.index("__all__: list[str] = [")
+        all_block = content[all_block_start:]
         alias_positions = tuple(
-            content.index(f'    "{alias}",') for alias in ("c", "m", "p", "t", "u", "r")
+            all_block.index(f'    "{alias}",')
+            for alias in ("c", "m", "p", "t", "u", "r")
         )
         tm.that(alias_positions == tuple(sorted(alias_positions)), eq=True)
 

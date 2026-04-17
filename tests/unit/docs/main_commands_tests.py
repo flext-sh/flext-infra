@@ -37,7 +37,7 @@ def test_fixer_execute_applies_link_and_toc_updates(tmp_path: Path) -> None:
 
     result = FlextInfraDocFixer(
         workspace=workspace,
-        apply=True,
+        apply_changes=True,
     ).execute()
 
     assert result.success
@@ -57,7 +57,7 @@ def test_generator_execute_writes_reports_for_root_and_selected_project(
     result = FlextInfraDocGenerator(
         workspace=workspace,
         selected_projects=["flext-a"],
-        apply=True,
+        apply_changes=True,
     ).execute()
 
     assert result.success
@@ -82,13 +82,13 @@ def test_validator_execute_fails_before_generation_and_succeeds_after(
     generated = FlextInfraDocGenerator(
         workspace=workspace,
         selected_projects=["flext-a"],
-        apply=True,
+        apply_changes=True,
     ).execute()
     assert generated.success
     after = FlextInfraDocValidator(
         workspace=workspace,
         selected_projects=["flext-a"],
-        apply=True,
+        apply_changes=True,
     ).execute()
     assert after.success
     assert (workspace / "flext-a/TODOS.md").exists()

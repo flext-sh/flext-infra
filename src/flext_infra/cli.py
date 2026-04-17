@@ -6,7 +6,7 @@ import sys
 from types import MappingProxyType
 from typing import ClassVar
 
-from flext_cli import FlextCliSettings, cli, u
+from flext_cli import FlextCli, FlextCliSettings, cli, u
 from flext_core import FlextSettings
 from flext_infra import c, infra, t
 
@@ -25,6 +25,7 @@ class FlextInfraCli:
         "--workspace",
         "--projects",
     })
+    _CLI_SERVICE: ClassVar[FlextCli] = FlextCli()
     GROUPS: ClassVar[t.StrMapping] = MappingProxyType({
         "basemk": "Base.mk template generation",
         c.Infra.VERB_CHECK: "Lint gates and pyrefly settings management",
@@ -102,7 +103,7 @@ class FlextInfraCli:
 
     def _run_group(self, group: str, args: t.StrSequence) -> int:
         """Execute a registered flext-cli group."""
-        app = cli.create_app_with_common_params(
+        app = self._CLI_SERVICE.create_app_with_common_params(
             name=f"{self.app_name} {group}",
             help_text=self.GROUPS[group],
             settings=self._cli_settings(),
@@ -129,7 +130,10 @@ class FlextInfraCli:
     def _register_group(cls, group: str, app: t.Cli.CliApp) -> None:
         """Register one group using the canonical declarative routing rules."""
         register_method = cls._GROUP_REGISTRATION_RULES[group]
-        register = getattr(infra, register_method)
+        infra_service = (
+            infra.get_instance() if hasattr(infra, "get_instance") else infra
+        )
+        register = getattr(infra_service, register_method)
         register(app)
 
 

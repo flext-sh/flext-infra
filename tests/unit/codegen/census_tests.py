@@ -158,7 +158,7 @@ class TestCensusExecute:
     def test_execute_fails_when_apply_changes_requested(self, tmp_path: Path) -> None:
         result = FlextInfraCodegenCensus(
             workspace=tmp_path,
-            apply=True,
+            apply_changes=True,
         ).execute()
 
         tm.fail(

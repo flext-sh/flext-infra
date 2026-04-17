@@ -122,7 +122,7 @@ def test_detect_workspace_returns_workspace_mode(tmp_path: Path) -> None:
     member_root = workspace_root / "demo-a"
 
     result = infra.detect_workspace(
-        FlextInfraWorkspaceDetector(workspace=member_root, apply=False),
+        FlextInfraWorkspaceDetector(workspace=member_root, apply_changes=False),
     )
 
     assert result.success, result.error
@@ -137,7 +137,7 @@ def test_sync_workspace_returns_sync_result(tmp_path: Path) -> None:
         FlextInfraSyncService(
             canonical_root=project_root.parent,
             workspace=project_root,
-            apply=False,
+            apply_changes=False,
         ),
     )
 
