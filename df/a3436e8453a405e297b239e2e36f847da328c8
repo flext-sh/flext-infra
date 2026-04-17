@@ -1,0 +1,14 @@
+src/flext_infra/templates/workspace_makefile.mk.j2
+  h_9db9d35f50cf33 583,585,587-597
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "dfa3436e8453a405e297b239e2e36f847da328c8",
+  "prompts": {},
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
