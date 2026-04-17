@@ -580,10 +580,21 @@ fmt: ## Run code formatting across all workspace projects (ruff/gofmt + markdown
 		fi; \
 	fi
 	$(Q)if [ "$(HAS_EXPLICIT_PROJECT_SELECTION)" = "1" ]; then \
-		md_files=$$(find $(WORKSPACE_SELECTED_ROOTS) -type f -name '*.md' ! -path '*/.git/*' ! -path '*/.reports/*' ! -path '*/.venv/*' ! -path '*/vendor/*' ! -path '*/node_modules/*' ! -path '*/dist/*' ! -path '*/build/*'); \
+		md_roots="$(WORKSPACE_SELECTED_ROOTS)"; \
 	else \
-		md_files=$$(git ls-files -- '*.md' ':!vendor/' && git ls-files --others --exclude-standard -- '*.md' ':!vendor/'); \
+		md_roots=". $(ALL_PROJECTS)"; \
 	fi; \
+	md_files=$$(for md_root in $$md_roots; do \
+		[ -d "$$md_root" ] || continue; \
+		if git -C "$$md_root" rev-parse --git-dir >/dev/null 2>&1; then \
+			md_prefix=""; \
+			if [ "$$md_root" != "." ]; then md_prefix="$$md_root/"; fi; \
+			git -C "$$md_root" ls-files -- '*.md' ':!vendor/' | sed "s#^#$$md_prefix#"; \
+			git -C "$$md_root" ls-files --others --exclude-standard -- '*.md' ':!vendor/' | sed "s#^#$$md_prefix#"; \
+		else \
+			find "$$md_root" -type f -name '*.md' ! -path '*/.git/*' ! -path '*/.reports/*' ! -path '*/.venv/*' ! -path '*/vendor/*' ! -path '*/node_modules/*' ! -path '*/dist/*' ! -path '*/build/*'; \
+		fi; \
+	done); \
 	md_files=$$(printf '%s\n' "$$md_files" | awk 'NF' | while IFS= read -r f; do [ -f "$$f" ] && printf '%s\n' "$$f"; done | sort -u); \
 	if [ -n "$$md_files" ]; then \
 		echo "Formatting Markdown files (markdownlint)..."; \
