@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
+from flext_infra import u as infra_u
 from tests import c, m, p, t, u
 
 
@@ -46,10 +47,11 @@ def test_execute_uses_codegen_project_discovery_and_project_filter(
         raise AssertionError(message)
 
     # Patch flext_infra.u (not tests.u) since consolidator imports from flext_infra
-    from flext_infra import u as infra_u
     monkeypatch.setattr(infra_u.Infra, "projects", staticmethod(_projects))
     monkeypatch.setattr(
-        infra_u.Infra, "discover_projects", staticmethod(_unexpected_public_project_discovery)
+        infra_u.Infra,
+        "discover_projects",
+        staticmethod(_unexpected_public_project_discovery),
     )
 
     result = u.Infra.Tests.consolidate_codegen(
@@ -90,7 +92,6 @@ def test_execute_scans_real_package_layout(
         return u.Infra.Tests.ok_result((project,))
 
     # Patch flext_infra.u (not tests.u) since consolidator imports from flext_infra
-    from flext_infra import u as infra_u
     monkeypatch.setattr(infra_u.Infra, "projects", staticmethod(_projects))
 
     result = u.Infra.Tests.consolidate_codegen(

@@ -177,6 +177,7 @@ if _t.TYPE_CHECKING:
     from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
     from flext_infra.codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
     from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
+    from flext_infra.codegen.pyproject_keys import FlextInfraCodegenPyprojectKeys
     from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
     from flext_infra.codegen.version_file import FlextInfraCodegenVersionFile
     from flext_infra.constants import FlextInfraConstants, c
@@ -637,6 +638,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".codegen.lazy_init": ("FlextInfraCodegenLazyInit",),
             ".codegen.lazy_init_planner": ("FlextInfraCodegenLazyInitPlanner",),
             ".codegen.py_typed": ("FlextInfraCodegenPyTyped",),
+            ".codegen.pyproject_keys": ("FlextInfraCodegenPyprojectKeys",),
             ".codegen.scaffolder": ("FlextInfraCodegenScaffolder",),
             ".codegen.version_file": ("FlextInfraCodegenVersionFile",),
             ".constants": (
@@ -924,6 +926,7 @@ __all__: list[str] = [
     "FlextInfraCodegenLazyInitPlanner",
     "FlextInfraCodegenPipeline",
     "FlextInfraCodegenPyTyped",
+    "FlextInfraCodegenPyprojectKeys",
     "FlextInfraCodegenScaffolder",
     "FlextInfraCodegenVersionFile",
     "FlextInfraCompatibilityAliasDetector",
