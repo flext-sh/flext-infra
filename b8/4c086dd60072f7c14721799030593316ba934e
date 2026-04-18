@@ -1,0 +1,36 @@
+tests/unit/validate/__init__.py
+  296b414eef766f82 15
+src/flext_infra/validate/__init__.py
+  296b414eef766f82 15
+src/flext_infra/__init__.py
+  296b414eef766f82 417-419,844,1152
+src/flext_infra/validate/lazy_map_freshness.py
+  296b414eef766f82 1-91
+tests/unit/validate/lazy_map_freshness_tests.py
+  296b414eef766f82 1-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "b84c086dd60072f7c14721799030593316ba934e",
+  "prompts": {
+    "296b414eef766f82": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9bbaa066-3009-4a0f-b15f-d4253fbc34e7",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 201,
+      "total_deletions": 44,
+      "accepted_lines": 271,
+      "overriden_lines": 0
+    }
+  },
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
