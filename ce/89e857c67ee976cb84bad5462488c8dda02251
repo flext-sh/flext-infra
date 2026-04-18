@@ -1,0 +1,28 @@
+src/flext_infra/_utilities/formatting.py
+  h_9db9d35f50cf33 58,60-61
+tests/unit/validate/metadata_discipline_tests.py
+  h_9db9d35f50cf33 14
+src/flext_infra/codegen/cli.py
+  h_9db9d35f50cf33 7-8,11-15,17-18
+src/flext_infra/codegen/lazy_init.py
+  h_9db9d35f50cf33 19-22
+src/flext_infra/codegen/census.py
+  h_9db9d35f50cf33 17-18
+src/flext_infra/deps/detection_analysis.py
+  h_9db9d35f50cf33 277,279-282
+src/flext_infra/_utilities/github_pr.py
+  h_9db9d35f50cf33 145,147-150
+src/flext_infra/codegen/constants_quality_gate.py
+  h_9db9d35f50cf33 14-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "ce89e857c67ee976cb84bad5462488c8dda02251",
+  "prompts": {},
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
