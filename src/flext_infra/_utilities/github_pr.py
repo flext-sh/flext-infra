@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import contextlib
 import time
 from collections.abc import MutableSequence
 from pathlib import Path
@@ -143,8 +142,12 @@ class FlextInfraUtilitiesGithubPr:
             c.Infra.RK_WORKSPACE,
             c.Infra.PR,
         )
-        with contextlib.suppress(OSError):
+        try:
             report_dir.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            return r[m.Infra.GithubPullRequestOutcome].fail(
+                f"failed to create report directory: {exc}",
+            )
         log_path = report_dir / f"{display}.log"
         command = cls._github_build_pr_command(
             repo_root=repo_root,

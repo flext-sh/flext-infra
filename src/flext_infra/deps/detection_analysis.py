@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
 import os
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
@@ -275,8 +274,12 @@ class FlextInfraDependencyDetectionAnalysis:
                         normalized_issues.append(converted_issue)
                 issues = normalized_issues
             if json_output_path is None:
-                with contextlib.suppress(OSError):
+                try:
                     out_file.unlink()
+                except OSError as exc:
+                    return r[t.Infra.Pair[Sequence[t.Infra.ContainerDict], int]].fail(
+                        f"failed to cleanup deptry temp output: {exc}",
+                    )
         cmd_result: m.Cli.CommandOutput = result.value
         return r[t.Infra.Pair[Sequence[t.Infra.ContainerDict], int]].ok((
             issues,

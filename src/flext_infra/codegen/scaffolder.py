@@ -13,8 +13,7 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
-from flext_infra import c, m, p, r, t, u
-from flext_infra.base import FlextInfraServiceBase
+from flext_infra import FlextInfraServiceBase, c, m, p, r, t, u
 
 
 class FlextInfraCodegenScaffolder(FlextInfraServiceBase[str]):

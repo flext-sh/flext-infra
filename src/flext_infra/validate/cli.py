@@ -15,12 +15,10 @@ from flext_infra import (
     FlextInfraValidateFreshImport,
     FlextInfraValidateImportCycles,
     FlextInfraValidateLazyMapFreshness,
+    FlextInfraValidateMetadataDiscipline,
     FlextInfraValidateTierWhitelist,
     m,
     t,
-)
-from flext_infra.validate.metadata_discipline import (
-    FlextInfraValidateMetadataDiscipline,
 )
 
 

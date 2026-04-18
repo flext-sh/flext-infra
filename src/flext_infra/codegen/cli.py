@@ -3,19 +3,20 @@
 from __future__ import annotations
 
 from flext_cli import cli
-from flext_infra import m, t
-from flext_infra.codegen.census import FlextInfraCodegenCensus
-from flext_infra.codegen.constants_quality_gate import (
+from flext_infra import (
+    FlextInfraCodegenCensus,
+    FlextInfraCodegenConsolidator,
+    FlextInfraCodegenFixer,
+    FlextInfraCodegenLazyInit,
+    FlextInfraCodegenPipeline,
+    FlextInfraCodegenPyprojectKeys,
+    FlextInfraCodegenPyTyped,
+    FlextInfraCodegenScaffolder,
+    FlextInfraCodegenVersionFile,
     FlextInfraConstantsCodegenQualityGate,
+    m,
+    t,
 )
-from flext_infra.codegen.fixer import FlextInfraCodegenFixer
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
-from flext_infra.codegen.pyproject_keys import FlextInfraCodegenPyprojectKeys
-from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
-from flext_infra.codegen.version_file import FlextInfraCodegenVersionFile
-from flext_infra.services.consolidator import FlextInfraCodegenConsolidator
-from flext_infra.services.pipeline import FlextInfraCodegenPipeline
 
 
 class FlextInfraCliCodegen:

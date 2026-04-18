@@ -20,9 +20,14 @@ from __future__ import annotations
 from collections.abc import MutableSequence, Sequence
 from typing import Annotated, override
 
-from flext_infra import c, m, p, r, s, t
-from flext_infra._utilities.subprocess_utils import (
+from flext_infra import (
     FlextInfraUtilitiesSubprocessUtils,
+    c,
+    m,
+    p,
+    r,
+    s,
+    t,
 )
 
 

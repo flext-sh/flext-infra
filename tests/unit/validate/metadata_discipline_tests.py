@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tf, tm
 
-from flext_infra.validate.metadata_discipline import (
+from flext_infra import (
     FlextInfraValidateMetadataDiscipline,
 )
 from tests import m, t

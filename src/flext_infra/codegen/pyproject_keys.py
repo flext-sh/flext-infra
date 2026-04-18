@@ -15,8 +15,7 @@ from typing import override
 
 import tomlkit
 
-from flext_infra import c, p, r, t, u
-from flext_infra.base import FlextInfraServiceBase
+from flext_infra import FlextInfraServiceBase, c, p, r, t, u
 
 
 class FlextInfraCodegenPyprojectKeys(FlextInfraServiceBase[bool]):

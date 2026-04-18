@@ -10,9 +10,17 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import override
 
-from flext_infra import c, m, p, r, s, t, u
-from flext_infra.codegen.census import FlextInfraCodegenCensus
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
+from flext_infra import (
+    FlextInfraCodegenCensus,
+    FlextInfraCodegenLazyInit,
+    c,
+    m,
+    p,
+    r,
+    s,
+    t,
+    u,
+)
 
 
 class FlextInfraConstantsCodegenQualityGate(s[bool]):

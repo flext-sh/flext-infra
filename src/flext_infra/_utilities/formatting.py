@@ -8,7 +8,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import contextlib
 from collections.abc import MutableSequence
 from pathlib import Path
 
@@ -56,8 +55,10 @@ class FlextInfraUtilitiesFormatting:
                 raise ValueError(result.error or "ruff post-process failed")
 
         if use_quiet:
-            with contextlib.suppress(FileNotFoundError):
+            try:
                 u.Cli.run_checked(check_cmd)
+            except FileNotFoundError:
+                return
         else:
             u.Cli.run_checked(check_cmd)
 
