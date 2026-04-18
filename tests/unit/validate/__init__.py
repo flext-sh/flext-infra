@@ -9,6 +9,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
     {
         ".basemk_validator_tests": ("basemk_validator_tests",),
         ".fresh_import_tests": ("fresh_import_tests",),
+        ".import_cycles_tests": ("import_cycles_tests",),
         ".init_tests": ("init_tests",),
         ".inventory_tests": ("inventory_tests",),
         ".main_cli_tests": ("TestValidateCli",),
