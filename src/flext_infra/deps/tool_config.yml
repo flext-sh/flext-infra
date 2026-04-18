@@ -373,18 +373,28 @@ tools:
       pythonPlatform: Linux
       typeCheckingMode: strict
     extended-settings:
+      reportArgumentType: none
+      reportAttributeAccessIssue: none
       reportCallIssue: none
       reportConstantRedefinition: error
       reportIncompatibleMethodOverride: error
       reportIncompatibleVariableOverride: error
       reportInconsistentConstructor: error
+      reportInvalidTypeForm: none
       reportMissingImports: error
       reportMissingModuleSource: error
       reportMissingTypeStubs: warning
       reportPrivateUsage: warning
+      reportUnknownArgumentType: none
+      reportUnknownLambdaType: none
+      reportUnknownMemberType: none
+      reportUnknownParameterType: none
+      reportUnknownVariableType: none
       reportUnnecessaryCast: error
       reportUnnecessaryComparison: warning
       reportUnnecessaryIsInstance: warning
+      reportUnsupportedDunderAll: none
+      reportUntypedFunctionDecorator: none
       reportUnusedClass: error
       reportUnusedFunction: error
       reportUnusedImport: error

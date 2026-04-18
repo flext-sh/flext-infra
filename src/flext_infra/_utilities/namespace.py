@@ -82,7 +82,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         parts = tuple(part for part in package_name.split(".") if part)
         if not parts:
             return False
-        return len(parts) == 1 or cls.surface_name(package_name) != "src"
+        return len(parts) == 1
 
     @classmethod
     def ordered_namespace_exports(

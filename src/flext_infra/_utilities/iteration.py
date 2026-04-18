@@ -187,17 +187,15 @@ class FlextInfraUtilitiesIteration:
             scan_dirs=scan_dirs,
         )
         if configured_members:
-            configured_roots = [
-                candidate
-                for candidate in candidates
-                if candidate.name in configured_members and candidate != workspace_root
+            configured_order = {
+                name: idx for idx, name in enumerate(configured_members)
+            }
+            non_root_candidates = [
+                candidate for candidate in candidates if candidate != workspace_root
             ]
-            if configured_roots:
-                configured_order = {
-                    name: idx for idx, name in enumerate(configured_members)
-                }
+            if non_root_candidates:
                 return sorted(
-                    configured_roots,
+                    non_root_candidates,
                     key=lambda candidate: configured_order.get(
                         candidate.name, len(configured_members)
                     ),

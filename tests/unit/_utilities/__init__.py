@@ -16,19 +16,6 @@ _LAZY_IMPORTS = build_lazy_import_map(
             "TestSafetyRollback",
         ),
         ".test_scanning": ("TestScanModels",),
-        "flext_infra": (
-            "c",
-            "d",
-            "e",
-            "h",
-            "m",
-            "p",
-            "r",
-            "s",
-            "t",
-            "u",
-            "x",
-        ),
     },
 )
 

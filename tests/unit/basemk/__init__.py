@@ -10,22 +10,9 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".test_engine": ("test_engine",),
         ".test_generator": ("test_generator",),
         ".test_generator_edge_cases": ("test_generator_edge_cases",),
-        ".test_init": ("test_init",),
+        ".test_init": ("TestFlextInfraBaseMk",),
         ".test_main": ("test_main",),
         ".test_make_contract": ("test_make_contract",),
-        "flext_infra": (
-            "c",
-            "d",
-            "e",
-            "h",
-            "m",
-            "p",
-            "r",
-            "s",
-            "t",
-            "u",
-            "x",
-        ),
     },
 )
 

@@ -16,19 +16,6 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".orchestrator_tests": ("orchestrator_tests",),
         ".test_release_dag": ("test_release_dag",),
         ".version_resolution_tests": ("version_resolution_tests",),
-        "flext_infra": (
-            "c",
-            "d",
-            "e",
-            "h",
-            "m",
-            "p",
-            "r",
-            "s",
-            "t",
-            "u",
-            "x",
-        ),
     },
 )
 

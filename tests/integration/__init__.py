@@ -7,26 +7,13 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 _LAZY_IMPORTS = build_lazy_import_map(
     {
-        ".test_infra_integration": ("test_infra_integration",),
+        ".test_infra_integration": ("TestInfraIntegration",),
         ".test_refactor_nesting_file": ("test_refactor_nesting_file",),
-        ".test_refactor_nesting_idempotency": ("test_refactor_nesting_idempotency",),
-        ".test_refactor_nesting_performance": ("test_refactor_nesting_performance",),
-        ".test_refactor_nesting_project": ("test_refactor_nesting_project",),
-        ".test_refactor_nesting_workspace": ("test_refactor_nesting_workspace",),
-        ".test_refactor_policy_mro": ("test_refactor_policy_mro",),
-        "flext_infra": (
-            "c",
-            "d",
-            "e",
-            "h",
-            "m",
-            "p",
-            "r",
-            "s",
-            "t",
-            "u",
-            "x",
-        ),
+        ".test_refactor_nesting_idempotency": ("TestIdempotency",),
+        ".test_refactor_nesting_performance": ("TestPerformanceBenchmarks",),
+        ".test_refactor_nesting_project": ("TestProjectLevelRefactor",),
+        ".test_refactor_nesting_workspace": ("TestWorkspaceLevelRefactor",),
+        ".test_refactor_policy_mro": ("TestRefactorPolicyMRO",),
     },
 )
 

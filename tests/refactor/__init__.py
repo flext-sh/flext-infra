@@ -7,21 +7,14 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 _LAZY_IMPORTS = build_lazy_import_map(
     {
-        ".test_rope_semantic": ("test_rope_semantic",),
-        ".test_rope_stubs": ("test_rope_stubs",),
-        "flext_infra": (
-            "c",
-            "d",
-            "e",
-            "h",
-            "m",
-            "p",
-            "r",
-            "s",
-            "t",
-            "u",
-            "x",
+        ".test_rope_semantic": (
+            "TestFindDefinitionOffset",
+            "TestGetClassBases",
+            "TestGetClassMethods",
+            "TestGetModuleClasses",
+            "TestGetModuleImports",
         ),
+        ".test_rope_stubs": ("test_rope_stubs",),
     },
 )
 

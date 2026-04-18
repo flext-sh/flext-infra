@@ -147,10 +147,9 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
                     policy.expected_alias,
                     (module_entry.module_name, policy.expected_alias),
                 )
-            if not policy.export_symbols or (
-                not targets
-                and not policy.enforce_contract
-                and "." in context.current_pkg
+            if not targets and (
+                not policy.export_symbols
+                or (not policy.enforce_contract and "." in context.current_pkg)
             ):
                 self._add(index, py_file.stem, (module_entry.module_name, ""))
                 continue
