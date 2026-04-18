@@ -93,7 +93,7 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
                     f"{len(duplicates)} duplicate class name(s) "
                     "(aborted before codegen)",
                 )
-                return 0
+                return len(duplicates)
             planner = FlextInfraCodegenLazyInitPlanner(
                 rope_workspace=rope,
                 lazy_init=lazy_init,

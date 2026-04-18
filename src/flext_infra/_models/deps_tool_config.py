@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Annotated
+from typing import Annotated, ClassVar
 
 from flext_core import m
 from flext_infra import (
@@ -83,7 +83,13 @@ class FlextInfraModelsDepsToolSettings(
         )
 
     class CoverageConfig(m.ArbitraryTypesModel):
-        """Coverage baseline settings loaded from YAML."""
+        """Coverage baseline settings loaded from YAML.
+
+        Enforcement exemption: internal tooling model with intentional
+        mutable state.
+        """
+
+        _flext_enforcement_exempt: ClassVar[bool] = True
 
         fail_under: FlextInfraModelsDepsToolSettings.CoverageFailUnderConfig = m.Field(
             alias="fail-under",
@@ -146,7 +152,13 @@ class FlextInfraModelsDepsToolSettings(
         )
 
     class ProjectTypeOverrideConfig(m.ArbitraryTypesModel):
-        """Per-project-type override settings."""
+        """Per-project-type override settings.
+
+        Enforcement exemption: internal tooling model with intentional
+        mutable state.
+        """
+
+        _flext_enforcement_exempt: ClassVar[bool] = True
 
         pyright: Annotated[
             t.StrMapping,

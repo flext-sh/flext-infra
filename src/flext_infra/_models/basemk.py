@@ -48,7 +48,7 @@ class FlextInfraModelsBasemk:
             m.Field(
                 description="Enabled quality gates",
             ),
-        ] = m.Field(default_factory=list)
+        ] = m.Field(default_factory=tuple)
         test_command: Annotated[
             str,
             m.Field(

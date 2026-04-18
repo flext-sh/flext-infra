@@ -113,7 +113,8 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
             f"{FlextInfraUtilitiesRefactorNamespaceFacades._base_import_for_family(family=family, base_chains=base_chains)}\n\n"
             f"class {class_name}({FlextInfraUtilitiesRefactorNamespaceFacades._base_class_for_family(family=family, base_chains=base_chains)}):\n"
             "    pass\n\n"
-            f"{family} = {class_name}\n"
+            f"{family} = {class_name}\n\n"
+            f'__all__: list[str] = ["{class_name}", "{family}"]\n'
         )
         file_path.parent.mkdir(parents=True, exist_ok=True)
         _ = file_path.write_text(content, encoding=c.Infra.ENCODING_DEFAULT)
@@ -242,6 +243,17 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
             mutated = True
         elif lines[alias_index] != alias_line:
             lines[alias_index] = alias_line
+            mutated = True
+        all_line = f'__all__: list[str] = ["{class_name}", "{family}"]'
+        all_index = next(
+            (idx for idx, line in enumerate(lines) if re.match(r"^__all__\s*:", line)),
+            -1,
+        )
+        if all_index < 0:
+            lines.extend(["", all_line])
+            mutated = True
+        elif lines[all_index] != all_line:
+            lines[all_index] = all_line
             mutated = True
         if mutated:
             _ = target_path.write_text(

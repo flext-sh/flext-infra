@@ -36,12 +36,12 @@ class FlextInfraOrchestratorService(s[bool]):
             default_factory=list,
             description="Projects to orchestrate; repeat --projects NAME as needed",
         ),
-    ] = m.Field(default_factory=list)
+    ] = m.Field(default_factory=tuple)
     fail_fast: Annotated[bool, m.Field(description="Stop on first failure")] = False
     make_arg: Annotated[
         t.StrSequence,
         m.Field(default_factory=list, description="Additional make arguments"),
-    ] = m.Field(default_factory=list)
+    ] = m.Field(default_factory=tuple)
 
     @property
     def project_names(self) -> t.StrSequence:

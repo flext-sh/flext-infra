@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, ClassVar
 
 from flext_core import m
 from flext_infra import FlextInfraModelsMixins, t
@@ -25,7 +25,7 @@ class FlextInfraModelsCore:
             m.Field(
                 description="Collected validation violations",
             ),
-        ] = m.Field(default_factory=list)
+        ] = m.Field(default_factory=tuple)
         summary: Annotated[
             str,
             m.Field(
@@ -44,19 +44,19 @@ class FlextInfraModelsCore:
             m.Field(
                 description="types- package hints from mypy output",
             ),
-        ] = m.Field(default_factory=list)
+        ] = m.Field(default_factory=tuple)
         internal_missing: Annotated[
             t.StrSequence,
             m.Field(
                 description="Missing internal imports",
             ),
-        ] = m.Field(default_factory=list)
+        ] = m.Field(default_factory=tuple)
         unresolved_missing: Annotated[
             t.StrSequence,
             m.Field(
                 description="Missing external imports without stubs",
             ),
-        ] = m.Field(default_factory=list)
+        ] = m.Field(default_factory=tuple)
         total_missing: Annotated[
             t.NonNegativeInt,
             m.Field(description="Total missing imports"),
@@ -85,34 +85,40 @@ class FlextInfraModelsCore:
             m.Field(
                 description="Failed test labels",
             ),
-        ] = m.Field(default_factory=list)
+        ] = m.Field(default_factory=tuple)
         error_traces: Annotated[
             t.StrSequence,
             m.Field(
                 description="Collected error traces",
             ),
-        ] = m.Field(default_factory=list)
+        ] = m.Field(default_factory=tuple)
         warning_lines: Annotated[
             t.StrSequence,
             m.Field(
                 description="Captured warning lines",
             ),
-        ] = m.Field(default_factory=list)
+        ] = m.Field(default_factory=tuple)
         skip_cases: Annotated[
             t.StrSequence,
             m.Field(
                 description="Skipped test labels",
             ),
-        ] = m.Field(default_factory=list)
+        ] = m.Field(default_factory=tuple)
         slow_entries: Annotated[
             t.StrSequence,
             m.Field(
                 description="Slow test entries",
             ),
-        ] = m.Field(default_factory=list)
+        ] = m.Field(default_factory=tuple)
 
     class DiagResult(m.ArbitraryTypesModel):
-        """Internal container for extracted diagnostics."""
+        """Internal container for extracted diagnostics.
+
+        Enforcement exemption: internal tooling model with intentional
+        mutable state.
+        """
+
+        _flext_enforcement_exempt: ClassVar[bool] = True
 
         failed_cases: t.StrSequence = m.Field(
             default_factory=list, description="Failed cases records"
@@ -142,7 +148,7 @@ class FlextInfraModelsCore:
             m.Field(
                 description="Written report file paths",
             ),
-        ] = m.Field(default_factory=list)
+        ] = m.Field(default_factory=tuple)
 
 
 __all__: list[str] = ["FlextInfraModelsCore"]

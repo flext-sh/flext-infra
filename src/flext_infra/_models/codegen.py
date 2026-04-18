@@ -58,7 +58,13 @@ class FlextInfraModelsCodegen:
         FlextInfraModelsMixins.ProjectNameMixin,
         m.ArbitraryTypesModel,
     ):
-        """Result of scaffolding base modules for a project."""
+        """Result of scaffolding base modules for a project.
+
+        Enforcement exemption: internal tooling model with intentional
+        mutable state.
+        """
+
+        _flext_enforcement_exempt: ClassVar[bool] = True
 
         files_created: t.StrSequence = m.Field(
             default_factory=list,
@@ -189,7 +195,13 @@ class FlextInfraModelsCodegen:
         ] = False
 
     class LazyInitPlan(m.ArbitraryTypesModel):
-        """Fully resolved lazy-init action and render payload."""
+        """Fully resolved lazy-init action and render payload.
+
+        Enforcement exemption: internal tooling model with intentional
+        mutable state.
+        """
+
+        _flext_enforcement_exempt: ClassVar[bool] = True
 
         context: FlextInfraModelsCodegen.LazyInitPackageContext = m.Field(
             description="Discovered package context.",

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, ClassVar
 
 from flext_core import m
 from flext_infra import c, t
@@ -12,7 +12,13 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
     """Type checker configuration models."""
 
     class PyrightConfig(m.ArbitraryTypesModel):
-        """Pyright strict settings loaded from YAML."""
+        """Pyright strict settings loaded from YAML.
+
+        Enforcement exemption: internal tooling model with intentional
+        mutable state.
+        """
+
+        _flext_enforcement_exempt: ClassVar[bool] = True
 
         class ExecutionEnvironment(m.ContractModel):
             """Pyright execution environment entry."""

@@ -292,15 +292,21 @@ class FlextInfraUtilitiesDependencyPathSync(
             project.name for project in projects_list if project.name
         }
         if root_pyproject.exists():
-            root_payload = FlextInfraUtilitiesDocsScope.pyproject_payload(
-                workspace_root,
-            )
-            root_name = FlextInfraUtilitiesDocsScope.project_name_from_payload(
-                workspace_root,
-                root_payload,
-            )
-            if root_name:
-                internal_names.add(root_name)
+            root_payload: t.Infra.ContainerDict
+            try:
+                root_payload = FlextInfraUtilitiesDocsScope.pyproject_payload(
+                    workspace_root,
+                )
+            except (TypeError, ValueError):
+                root_payload = {}
+            project_section = root_payload.get(c.Infra.PROJECT)
+            if isinstance(project_section, dict):
+                root_name = FlextInfraUtilitiesDocsScope.project_name_from_payload(
+                    workspace_root,
+                    root_payload,
+                )
+                if root_name:
+                    internal_names.add(root_name)
         all_project_dirs = [project.path for project in projects_list]
         workspace_members = sorted(
             str(project.path.relative_to(workspace_root))

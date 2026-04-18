@@ -46,22 +46,22 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         default_factory=lambda: None,
     )
     _project_layout_cache: dict[str, m.Infra.RopeProjectLayout | None] = u.PrivateAttr(
-        default_factory=dict,
+        default_factory=dict
     )
     _package_context_cache: dict[str, m.Infra.LazyInitPackageContext] = u.PrivateAttr(
-        default_factory=dict,
+        default_factory=dict
     )
     _module_policy_cache: dict[tuple[str, str, str], m.Infra.NamespaceModulePolicy] = (
         u.PrivateAttr(default_factory=dict)
     )
     _module_convention_cache: dict[str, m.Infra.RopeModuleConvention] = u.PrivateAttr(
-        default_factory=dict,
+        default_factory=dict
     )
     _module_object_cache: dict[tuple[str, bool], tuple[m.Infra.Census.Object, ...]] = (
         u.PrivateAttr(default_factory=dict)
     )
     _resource_cache: dict[str, t.Infra.RopeResource | None] = u.PrivateAttr(
-        default_factory=dict,
+        default_factory=dict
     )
 
     @override

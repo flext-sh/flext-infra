@@ -138,7 +138,7 @@ class FlextInfraModelsRefactor(
             m.Field(
                 description="Human-readable change descriptions",
             ),
-        ] = m.Field(default_factory=list)
+        ] = m.Field(default_factory=tuple)
         refactored_code: Annotated[
             str | None,
             m.Field(
@@ -182,7 +182,7 @@ class FlextInfraModelsRefactor(
         decorators: Annotated[
             t.StrSequence,
             m.Field(description="Decorator names applied to this method"),
-        ] = m.Field(default_factory=list)
+        ] = m.Field(default_factory=tuple)
 
     class Checkpoint(
         FlextInfraModelsMixins.StashRefMixin,
@@ -198,7 +198,7 @@ class FlextInfraModelsRefactor(
         processed_targets: Annotated[
             t.StrSequence,
             m.Field(description="Already-processed file targets"),
-        ] = m.Field(default_factory=list)
+        ] = m.Field(default_factory=tuple)
         updated_at: Annotated[
             str,
             m.Field(description="ISO 8601 timestamp of last update"),

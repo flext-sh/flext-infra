@@ -67,7 +67,7 @@ class FlextInfraUtilitiesToml:
         return None
 
     @staticmethod
-    def get(
+    def toml_get(
         container: t.Cli.TomlDocument | t.Cli.TomlTable,
         key: t.Infra.InfraValue,
     ) -> t.Infra.InfraValue | None:

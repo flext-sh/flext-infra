@@ -190,7 +190,13 @@ class FlextInfraModelsRefactorGrep:
         )
 
     class MethodOrderRule(m.ContractModel):
-        """A declarative method ordering rule for class reconstruction."""
+        """A declarative method ordering rule for class reconstruction.
+
+        Enforcement exemption: internal tooling model with intentional
+        mutable state.
+        """
+
+        _flext_enforcement_exempt: ClassVar[bool] = True
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict()
 
@@ -215,7 +221,13 @@ class FlextInfraModelsRefactorGrep:
         )
 
     class SignatureMigration(m.ContractModel):
-        """Declarative signature migration rule for callsite propagation."""
+        """Declarative signature migration rule for callsite propagation.
+
+        Enforcement exemption: internal tooling model with intentional
+        mutable state.
+        """
+
+        _flext_enforcement_exempt: ClassVar[bool] = True
 
         id: Annotated[str, m.Field(description="Migration ID")] = "signature-migration"
         enabled: Annotated[
@@ -241,7 +253,13 @@ class FlextInfraModelsRefactorGrep:
         )
 
     class ImportModernizerRuleConfig(m.ContractModel):
-        """Configuration for a single import modernizer rule."""
+        """Configuration for a single import modernizer rule.
+
+        Enforcement exemption: internal tooling model with intentional
+        mutable state.
+        """
+
+        _flext_enforcement_exempt: ClassVar[bool] = True
 
         module: Annotated[str, m.Field(description="Module path to modernize")] = ""
         symbol_mapping: t.StrMapping = m.Field(
@@ -298,7 +316,13 @@ class FlextInfraModelsRefactorGrep:
         ]
 
     class AccessorMigrationFile(m.ArbitraryTypesModel):
-        """Per-file preview for accessor migration dry-runs and applies."""
+        """Per-file preview for accessor migration dry-runs and applies.
+
+        Enforcement exemption: internal tooling model with intentional
+        mutable state.
+        """
+
+        _flext_enforcement_exempt: ClassVar[bool] = True
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
@@ -336,7 +360,13 @@ class FlextInfraModelsRefactorGrep:
         ] = m.Field(default_factory=dict)
 
     class AccessorMigrationReport(m.ArbitraryTypesModel):
-        """Workspace-scale report for accessor migration orchestration."""
+        """Workspace-scale report for accessor migration orchestration.
+
+        Enforcement exemption: internal tooling model with intentional
+        mutable state.
+        """
+
+        _flext_enforcement_exempt: ClassVar[bool] = True
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 

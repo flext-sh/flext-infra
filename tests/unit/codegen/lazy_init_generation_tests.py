@@ -90,7 +90,7 @@ class TestGenerateFile:
         )
         tm.that(
             content,
-            contains="from flext_core import build_lazy_import_map, install_lazy_exports",
+            contains="from flext_core.lazy import build_lazy_import_map, install_lazy_exports",
         )
 
     def test_with_other_package(self) -> None:
@@ -106,7 +106,7 @@ class TestGenerateFile:
         )
         tm.that(
             content,
-            contains="from flext_core import build_lazy_import_map, install_lazy_exports",
+            contains="from flext_core.lazy import build_lazy_import_map, install_lazy_exports",
         )
 
     def test_with_child_packages_uses_lazy_module_merge_imports(self) -> None:
@@ -123,7 +123,7 @@ class TestGenerateFile:
         )
         tm.that(
             content,
-            contains="from flext_core import (",
+            contains="from flext_core.lazy import (",
         )
         tm.that(content, contains="merge_lazy_imports,")
 

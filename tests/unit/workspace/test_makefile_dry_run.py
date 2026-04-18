@@ -115,7 +115,8 @@ def test_workspace_makefile_dry_run_fmt_respects_project_selection(
     assert '_fmt_target="demo-b"' in output
     assert "ruff format $_fmt_target --quiet" in output
     assert "find demo-b -type f -name '*.go'" in output
-    assert "find demo-b -type f -name '*.md'" in output
+    assert 'md_roots="demo-b"' in output
+    assert "find \"$md_root\" -type f -name '*.md'" in output
     assert '_fmt_target="."' not in output
 
 

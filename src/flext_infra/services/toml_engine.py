@@ -32,7 +32,7 @@ class FlextInfraToml(s[Sequence[t.StrSequence]]):
         ),
     ]
     _table_cache: dict[tuple[str, ...], t.Cli.TomlTable] = u.PrivateAttr(
-        default_factory=dict,
+        default_factory=dict
     )
 
     @classmethod

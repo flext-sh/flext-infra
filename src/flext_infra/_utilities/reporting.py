@@ -194,7 +194,7 @@ class FlextInfraUtilitiesReporting(
         cls._stream.flush()
 
     @classmethod
-    def write(cls, text: str) -> None:
+    def emit_raw(cls, text: str) -> None:
         """Write raw text to the configured output stream."""
         cls._stream.write(text)
         cls._stream.flush()

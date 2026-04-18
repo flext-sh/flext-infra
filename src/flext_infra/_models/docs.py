@@ -104,7 +104,7 @@ class FlextInfraModelsDocs:
         checks: Annotated[
             t.StrSequence,
             m.Field(description="Executed checks"),
-        ] = m.Field(default_factory=list)
+        ] = m.Field(default_factory=tuple)
         strict: Annotated[bool, m.Field(description="Strict-mode flag")] = False
         passed: Annotated[bool, m.Field(description="Whether phase passed")] = False
         changed_files: Annotated[
@@ -125,7 +125,7 @@ class FlextInfraModelsDocs:
             m.Field(
                 description="Missing ADR skill references",
             ),
-        ] = m.Field(default_factory=list)
+        ] = m.Field(default_factory=tuple)
         todo_written: Annotated[
             bool,
             m.Field(

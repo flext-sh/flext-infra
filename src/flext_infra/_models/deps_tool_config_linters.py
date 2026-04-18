@@ -93,11 +93,11 @@ class FlextInfraModelsDepsToolConfigLinters:
         select: Annotated[
             t.StrSequence,
             m.Field(description="Ruff lint rule selectors."),
-        ] = m.Field(default_factory=list)
+        ] = m.Field(default_factory=tuple)
         ignore: Annotated[
             t.StrSequence,
             m.Field(description="Ruff lint rule ignore list."),
-        ] = m.Field(default_factory=list)
+        ] = m.Field(default_factory=tuple)
         isort: FlextInfraModelsDepsToolConfigLinters.RuffIsortConfig = m.Field(
             description="Ruff isort configuration"
         )
@@ -115,7 +115,7 @@ class FlextInfraModelsDepsToolConfigLinters:
         exclude: Annotated[
             t.StrSequence,
             m.Field(description="Directory/file globs excluded from ruff checks."),
-        ] = m.Field(default_factory=list)
+        ] = m.Field(default_factory=tuple)
         fix: Annotated[bool, m.Field(description="Enable automatic ruff fixes")]
         line_length: Annotated[
             int, m.Field(alias="line-length", description="Maximum line length.")
@@ -137,7 +137,7 @@ class FlextInfraModelsDepsToolConfigLinters:
         src: Annotated[
             t.StrSequence,
             m.Field(description="Source roots used by ruff import analysis."),
-        ] = m.Field(default_factory=list)
+        ] = m.Field(default_factory=tuple)
         target_version: Annotated[
             str,
             m.Field(
@@ -169,7 +169,7 @@ class FlextInfraModelsDepsToolConfigLinters:
         """Mypy baseline settings loaded from YAML."""
 
         plugins: Annotated[t.StrSequence, m.Field(description="Mypy plugins list.")] = (
-            m.Field(default_factory=list)
+            m.Field(default_factory=tuple)
         )
         exclude: Annotated[
             str,

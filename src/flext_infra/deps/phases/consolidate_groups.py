@@ -42,7 +42,7 @@ class FlextInfraConsolidateGroupsPhase:
             *existing.get(c.Infra.TEST, []),
             *existing.get(c.Infra.DIR_TYPINGS, []),
         ])
-        current_dev = u.Cli.toml_as_string_list(u.Infra.get(optional, c.Infra.DEV))
+        current_dev = u.Cli.toml_as_string_list(u.Infra.toml_get(optional, c.Infra.DEV))
         if sorted(current_dev) != sorted(merged_dev):
             optional[c.Infra.DEV] = u.Cli.toml_array(sorted(merged_dev))
             changes.append("project.optional-dependencies.dev consolidated")
@@ -98,7 +98,7 @@ class FlextInfraConsolidateGroupsPhase:
             changes.append(f"tool.poetry.group.{old_group} removed")
         deptry = u.Cli.toml_ensure_table(tool, c.Infra.DEPTRY)
         current_groups = u.Cli.toml_as_string_list(
-            u.Infra.get(deptry, "pep621_dev_dependency_groups")
+            u.Infra.toml_get(deptry, "pep621_dev_dependency_groups")
         )
         if current_groups != [c.Infra.DEV]:
             deptry["pep621_dev_dependency_groups"] = u.Cli.toml_array([c.Infra.DEV])

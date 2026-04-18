@@ -126,15 +126,24 @@ class TestFlextInfraCodegenLazyInit:
 
     def test_fails_when_public_exports_collide(self, tmp_path: Path) -> None:
         """Conflicting exports must fail instead of generating a broken __init__.py."""
-        src_dir = tmp_path / "src" / "test_pkg"
-        src_dir.mkdir(parents=True)
-        (src_dir / "alpha.py").write_text("class Shared:\n    pass\n")
-        (src_dir / "beta.py").write_text("class Shared:\n    pass\n")
+        workspace_root, src_dir = u.Infra.Tests.create_lazy_init_workspace(tmp_path)
+        (src_dir / "alpha.py").write_text(
+            "from __future__ import annotations\n\n"
+            '__all__: list[str] = ["Shared"]\n\n'
+            "class Shared:\n    pass\n",
+            encoding="utf-8",
+        )
+        (src_dir / "beta.py").write_text(
+            "from __future__ import annotations\n\n"
+            '__all__: list[str] = ["Shared"]\n\n'
+            "class Shared:\n    pass\n",
+            encoding="utf-8",
+        )
 
-        result = u.Infra.Tests.run_lazy_init(tmp_path)
+        result = u.Infra.Tests.run_lazy_init(workspace_root)
 
         assert result == 1
-        assert not (src_dir / "__init__.py").exists()
+        assert (src_dir / "__init__.py").read_text(encoding="utf-8") == ""
 
     def test_accepts_service_base_in_services_package(self, tmp_path: Path) -> None:
         """services/base.py must accept the canonical ServiceBase exception."""

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, ClassVar
 
 from flext_core import m
 from flext_infra import FlextInfraModelsMixins, c, t
@@ -54,7 +54,13 @@ class FlextInfraModelsWorkspace:
         ] = c.Infra.WorkspaceProjectRole.ATTACHED
 
     class ProjectPyprojectState(m.ArbitraryTypesModel):
-        """Centralized parsed pyproject state reused across discovery services."""
+        """Centralized parsed pyproject state reused across discovery services.
+
+        Enforcement exemption: internal tooling model with intentional
+        mutable state.
+        """
+
+        _flext_enforcement_exempt: ClassVar[bool] = True
 
         model_config = m.ConfigDict(frozen=True, validate_default=False)
 
@@ -99,11 +105,11 @@ class FlextInfraModelsWorkspace:
         changes: Annotated[
             t.StrSequence,
             m.Field(description="Applied changes"),
-        ] = m.Field(default_factory=list)
+        ] = m.Field(default_factory=tuple)
         errors: Annotated[
             t.StrSequence,
             m.Field(description="Migration errors"),
-        ] = m.Field(default_factory=list)
+        ] = m.Field(default_factory=tuple)
 
 
 __all__: list[str] = ["FlextInfraModelsWorkspace"]

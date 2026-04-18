@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, ClassVar
 
 from flext_core import m
 from flext_infra import FlextInfraModelsCodegen, FlextInfraModelsMixins, t
@@ -49,7 +49,13 @@ class FlextInfraModelsRope:
         ]
 
     class ModuleSemanticState(m.ContractModel):
-        """Unified semantic snapshot for one Rope module analysis pass."""
+        """Unified semantic snapshot for one Rope module analysis pass.
+
+        Enforcement exemption: internal tooling model with intentional
+        mutable state.
+        """
+
+        _flext_enforcement_exempt: ClassVar[bool] = True
 
         class_infos: Annotated[
             tuple[FlextInfraModelsRope.ClassInfo, ...],
@@ -146,7 +152,13 @@ class FlextInfraModelsRope:
         ] = ()
 
     class RopeWorkspaceIndex(m.ContractModel):
-        """Generic Rope-backed workspace index for package planning."""
+        """Generic Rope-backed workspace index for package planning.
+
+        Enforcement exemption: internal tooling model with intentional
+        mutable state.
+        """
+
+        _flext_enforcement_exempt: ClassVar[bool] = True
 
         workspace_root: Annotated[
             Path,

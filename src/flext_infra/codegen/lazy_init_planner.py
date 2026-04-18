@@ -532,7 +532,8 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         if existing is None or existing == target:
             index[name] = target
             return
-        index[name] = self._pick_preferred_target(name, existing, target)
+        msg = f"export collision for {name!r}: {existing} != {target}"
+        raise ValueError(msg)
 
 
 __all__: list[str] = ["FlextInfraCodegenLazyInitPlanner"]

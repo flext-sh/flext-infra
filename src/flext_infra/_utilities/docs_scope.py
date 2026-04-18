@@ -364,6 +364,11 @@ class FlextInfraUtilitiesDocsScope:
         for project_root in project_roots:
             if project_root.name == "cmd" or project_root.name in excluded:
                 continue
+            if (
+                project_root == workspace_root.resolve()
+                and not (project_root / c.Infra.DEFAULT_SRC_DIR).is_dir()
+            ):
+                continue
             project_info = FlextInfraUtilitiesDocsScope._project_info_for_entry(
                 project_root,
                 workspace_members=workspace_members,

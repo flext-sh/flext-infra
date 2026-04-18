@@ -667,13 +667,19 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 (pkg / "__init__.py").touch()
                 pascal_name = TestsFlextInfraUtilities.Infra.Tests.to_pascal(pkg_name)
                 (pkg / "typings.py").write_text(
-                    "from flext_core import FlextTypes\n"
-                    f"class {pascal_name}Types(FlextTypes):\n    pass\n",
+                    "from __future__ import annotations\n\n"
+                    "from flext_core import FlextTypes\n\n"
+                    f"class {pascal_name}Types(FlextTypes):\n    pass\n\n"
+                    f"t = {pascal_name}Types\n\n"
+                    f'__all__: list[str] = ["{pascal_name}Types", "t"]\n',
                     encoding="utf-8",
                 )
                 (pkg / "constants.py").write_text(
-                    "from flext_core import FlextConstants\n"
-                    f"class {pascal_name}Constants(FlextConstants):\n    pass\n",
+                    "from __future__ import annotations\n\n"
+                    "from flext_core import FlextConstants\n\n"
+                    f"class {pascal_name}Constants(FlextConstants):\n    pass\n\n"
+                    f"c = {pascal_name}Constants\n\n"
+                    f'__all__: list[str] = ["{pascal_name}Constants", "c"]\n',
                     encoding="utf-8",
                 )
                 for filename, content in files.items():

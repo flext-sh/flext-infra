@@ -32,6 +32,10 @@ def _create_project_with_facades(
     package_name = "flext_xyz"
     package_dir = project_root / "src" / package_name
     package_dir.mkdir(parents=True)
+    (project_root / "pyproject.toml").write_text(
+        ('[project]\nname = "flext-xyz"\nversion = "0.1.0"\n'),
+        encoding="utf-8",
+    )
     lazy_imports = "\n".join(
         (
             f'    "{family}": ("{package_name}.{FAMILY_FILE_MAP[family].removesuffix(".py")}", "{family}"),'

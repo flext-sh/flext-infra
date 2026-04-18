@@ -146,7 +146,14 @@ class FlextInfraModelsCheck:
         FlextInfraModelsMixins.ProjectNameMixin,
         m.ArbitraryTypesModel,
     ):
-        """Aggregated gate results for a single project."""
+        """Aggregated gate results for a single project.
+
+        Enforcement exemption: ``gates`` is a ``MutableMapping`` populated
+        incrementally as each gate completes; no shared state — one fresh
+        dict per instance.
+        """
+
+        _flext_enforcement_exempt: ClassVar[bool] = True
 
         gates: MutableMapping[str, FlextInfraModelsCheck.GateExecution] = m.Field(
             default_factory=dict,
