@@ -414,6 +414,9 @@ if _t.TYPE_CHECKING:
     from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
     from flext_infra.validate.import_cycles import FlextInfraValidateImportCycles
     from flext_infra.validate.inventory import FlextInfraInventoryService
+    from flext_infra.validate.lazy_map_freshness import (
+        FlextInfraValidateLazyMapFreshness,
+    )
     from flext_infra.validate.namespace_rules import FlextInfraNamespaceRules
     from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
     from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
@@ -838,6 +841,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".validate.fresh_import": ("FlextInfraValidateFreshImport",),
             ".validate.import_cycles": ("FlextInfraValidateImportCycles",),
             ".validate.inventory": ("FlextInfraInventoryService",),
+            ".validate.lazy_map_freshness": ("FlextInfraValidateLazyMapFreshness",),
             ".validate.namespace_rules": ("FlextInfraNamespaceRules",),
             ".validate.namespace_validator": ("FlextInfraNamespaceValidator",),
             ".validate.pytest_diag": ("FlextInfraPytestDiagExtractor",),
@@ -1145,6 +1149,7 @@ __all__: list[str] = [
     "FlextInfraUtilitiesVersioning",
     "FlextInfraValidateFreshImport",
     "FlextInfraValidateImportCycles",
+    "FlextInfraValidateLazyMapFreshness",
     "FlextInfraViolationCensusVisitor",
     "FlextInfraWorkspaceCheckGatesMixin",
     "FlextInfraWorkspaceChecker",
