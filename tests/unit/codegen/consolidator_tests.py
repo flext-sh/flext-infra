@@ -45,15 +45,11 @@ def test_execute_uses_codegen_project_discovery_and_project_filter(
         message = "execute() must use projects()"
         raise AssertionError(message)
 
-    u.Infra.Tests.patch_public_infra(
-        monkeypatch,
-        "projects",
-        _projects,
-    )
-    u.Infra.Tests.patch_public_infra(
-        monkeypatch,
-        "discover_projects",
-        _unexpected_public_project_discovery,
+    # Patch flext_infra.u (not tests.u) since consolidator imports from flext_infra
+    from flext_infra import u as infra_u
+    monkeypatch.setattr(infra_u.Infra, "projects", staticmethod(_projects))
+    monkeypatch.setattr(
+        infra_u.Infra, "discover_projects", staticmethod(_unexpected_public_project_discovery)
     )
 
     result = u.Infra.Tests.consolidate_codegen(
@@ -93,11 +89,9 @@ def test_execute_scans_real_package_layout(
     ) -> p.Result[tuple[m.Infra.ProjectInfo, ...]]:
         return u.Infra.Tests.ok_result((project,))
 
-    u.Infra.Tests.patch_public_infra(
-        monkeypatch,
-        "projects",
-        _projects,
-    )
+    # Patch flext_infra.u (not tests.u) since consolidator imports from flext_infra
+    from flext_infra import u as infra_u
+    monkeypatch.setattr(infra_u.Infra, "projects", staticmethod(_projects))
 
     result = u.Infra.Tests.consolidate_codegen(
         workspace_root=tmp_path,
