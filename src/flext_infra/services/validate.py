@@ -11,6 +11,10 @@ from flext_infra import (
     FlextInfraSkillValidator,
     FlextInfraStubSupplyChain,
     FlextInfraTextPatternScanner,
+    FlextInfraValidateFreshImport,
+    FlextInfraValidateImportCycles,
+    FlextInfraValidateLazyMapFreshness,
+    FlextInfraValidateTierWhitelist,
     p,
     t,
 )
@@ -54,6 +58,34 @@ class FlextInfraServiceValidateMixin(FlextInfraServiceCliRunnerMixin):
         params: FlextInfraStubSupplyChain,
     ) -> p.Result[bool]:
         """Validate stub supply chains through the public facade."""
+        return self._dispatch_result(params)
+
+    def validate_fresh_import(
+        self,
+        params: FlextInfraValidateFreshImport,
+    ) -> p.Result[bool]:
+        """Guard 7: run the fresh-process import smoke through the public facade."""
+        return self._dispatch_result(params)
+
+    def validate_import_cycles(
+        self,
+        params: FlextInfraValidateImportCycles,
+    ) -> p.Result[bool]:
+        """Guard 1: run the ROPE-backed import-cycle detector through the public facade."""
+        return self._dispatch_result(params)
+
+    def validate_lazy_map_freshness(
+        self,
+        params: FlextInfraValidateLazyMapFreshness,
+    ) -> p.Result[bool]:
+        """Guard 2/3: run the lazy-map freshness validator through the public facade."""
+        return self._dispatch_result(params)
+
+    def validate_tier_whitelist(
+        self,
+        params: FlextInfraValidateTierWhitelist,
+    ) -> p.Result[bool]:
+        """Guard 5: run the tier-whitelist/abstraction-boundary enforcer through the public facade."""
         return self._dispatch_result(params)
 
 
