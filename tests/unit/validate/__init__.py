@@ -8,6 +8,7 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 _LAZY_IMPORTS = build_lazy_import_map(
     {
         ".basemk_validator_tests": ("basemk_validator_tests",),
+        ".fresh_import_tests": ("fresh_import_tests",),
         ".init_tests": ("init_tests",),
         ".inventory_tests": ("inventory_tests",),
         ".main_cli_tests": ("TestValidateCli",),

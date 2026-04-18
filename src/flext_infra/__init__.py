@@ -411,6 +411,7 @@ if _t.TYPE_CHECKING:
     from flext_infra.utilities import FlextInfraUtilities, u
     from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
     from flext_infra.validate.cli import FlextInfraCliValidate
+    from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
     from flext_infra.validate.inventory import FlextInfraInventoryService
     from flext_infra.validate.namespace_rules import FlextInfraNamespaceRules
     from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
@@ -833,6 +834,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ),
             ".validate.basemk_validator": ("FlextInfraBaseMkValidator",),
             ".validate.cli": ("FlextInfraCliValidate",),
+            ".validate.fresh_import": ("FlextInfraValidateFreshImport",),
             ".validate.inventory": ("FlextInfraInventoryService",),
             ".validate.namespace_rules": ("FlextInfraNamespaceRules",),
             ".validate.namespace_validator": ("FlextInfraNamespaceValidator",),
@@ -1139,6 +1141,7 @@ __all__: list[str] = [
     "FlextInfraUtilitiesToml",
     "FlextInfraUtilitiesTomlParse",
     "FlextInfraUtilitiesVersioning",
+    "FlextInfraValidateFreshImport",
     "FlextInfraViolationCensusVisitor",
     "FlextInfraWorkspaceCheckGatesMixin",
     "FlextInfraWorkspaceChecker",

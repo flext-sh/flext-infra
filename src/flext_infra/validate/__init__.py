@@ -9,6 +9,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
     {
         ".basemk_validator": ("FlextInfraBaseMkValidator",),
         ".cli": ("FlextInfraCliValidate",),
+        ".fresh_import": ("FlextInfraValidateFreshImport",),
         ".inventory": ("FlextInfraInventoryService",),
         ".namespace_rules": ("FlextInfraNamespaceRules",),
         ".namespace_validator": ("FlextInfraNamespaceValidator",),
