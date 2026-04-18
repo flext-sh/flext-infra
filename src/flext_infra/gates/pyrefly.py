@@ -7,8 +7,6 @@ from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
-from pydantic import ValidationError
-
 from flext_infra import FlextInfraGate, c, m, t, u
 
 
@@ -77,12 +75,38 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                 parsed_value = parsed_result.unwrap() if parsed_result.success else None
                 error_items: Sequence[Mapping[str, t.Infra.InfraValue]] = []
                 if isinstance(parsed_value, Mapping):
-                    error_items = u.Infra.deep_list(
-                        u.Infra.normalize_str_mapping(parsed_value),
-                        c.Infra.PYREFLY_ERRORS_KEY,
-                    )
+                    try:
+                        error_items = u.Infra.deep_list(
+                            u.Infra.normalize_str_mapping(parsed_value),
+                            c.Infra.PYREFLY_ERRORS_KEY,
+                        )
+                    except (TypeError, c.ValidationError) as err:
+                        issues.append(
+                            m.Infra.Issue(
+                                file="<pyrefly-output>",
+                                line=0,
+                                column=0,
+                                code="PARSE_ERROR",
+                                message=f"Tool output parsing failed: {type(err).__name__}",
+                                severity="ERROR",
+                            )
+                        )
+                        return False, issues
                 elif isinstance(parsed_value, list):
-                    error_items = u.Infra.normalize_mapping_list(parsed_value)
+                    try:
+                        error_items = u.Infra.normalize_mapping_list(parsed_value)
+                    except (TypeError, c.ValidationError) as err:
+                        issues.append(
+                            m.Infra.Issue(
+                                file="<pyrefly-output>",
+                                line=0,
+                                column=0,
+                                code="PARSE_ERROR",
+                                message=f"Tool output parsing failed: {type(err).__name__}",
+                                severity="ERROR",
+                            )
+                        )
+                        return False, issues
                 issues.extend(
                     m.Infra.Issue(
                         file=u.Infra.pick_str(err, "path", "?"),
@@ -94,8 +118,20 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                     )
                     for err in error_items
                 )
-            except (TypeError, ValidationError):
-                pass
+            except (TypeError, c.ValidationError) as err:
+                issues.append(
+                    m.Infra.Issue(
+                        file="<pyrefly-output>",
+                        line=0,
+                        column=0,
+                        code="PARSE_ERROR",
+                        message=(
+                            "Tool output parsing failed while collecting diagnostics: "
+                            f"{type(err).__name__}"
+                        ),
+                        severity=c.Infra.ERROR,
+                    )
+                )
         if (not issues) and result.exit_code != 0:
             message = (result.stderr or result.stdout).strip()
             if not message:
