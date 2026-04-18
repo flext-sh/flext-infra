@@ -1,0 +1,18 @@
+src/flext_infra/codegen/lazy_init_planner.py
+  h_9db9d35f50cf33 244-248,267-300
+tests/unit/codegen/constants_quality_gate_tests.py
+  h_9db9d35f50cf33 65,67,72,74,81,83
+src/flext_infra/_utilities/lazy.py
+  h_9db9d35f50cf33 220-224,257-290
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "291f438c621fa2974f32b8c36d4499dde0f3fa59",
+  "prompts": {},
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
