@@ -36,7 +36,10 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
     ) -> Path | None:
         scan_dirs = frozenset(c.Infra.MRO_SCAN_DIRECTORIES)
         for parent in file_path.parents:
-            if parent.name in scan_dirs:
+            if (
+                parent.name in scan_dirs
+                and (parent.parent / "pyproject.toml").is_file()
+            ):
                 return parent.parent.resolve()
             if parent == workspace_root:
                 return workspace_root

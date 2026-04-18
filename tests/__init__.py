@@ -113,7 +113,7 @@ if _t.TYPE_CHECKING:
     from tests.unit.deps.test_detection_classify import (
         TestBuildProjectReport,
         TestClassifyIssues,
-        TestDetectionUncoveredLines,
+        TestDetectionUncoveredLinesClassify,
     )
     from tests.unit.deps.test_detection_deptry import (
         TestDiscoverProjectPathsDeptry,
@@ -132,6 +132,7 @@ if _t.TYPE_CHECKING:
         TestRunMypyStubHints,
     )
     from tests.unit.deps.test_detection_typings_flow import TestDetectionTypingsFlow
+    from tests.unit.deps.test_detection_uncovered import TestDetectionUncoveredLines
     from tests.unit.deps.test_detector_detect import (
         TestFlextInfraRuntimeDevDependencyDetectorRunDetect,
     )
@@ -454,7 +455,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".unit.deps.test_detection_classify": (
                 "TestBuildProjectReport",
                 "TestClassifyIssues",
-                "TestDetectionUncoveredLines",
+                "TestDetectionUncoveredLinesClassify",
             ),
             ".unit.deps.test_detection_deptry": (
                 "TestDiscoverProjectPathsDeptry",
@@ -473,6 +474,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "TestRunMypyStubHints",
             ),
             ".unit.deps.test_detection_typings_flow": ("TestDetectionTypingsFlow",),
+            ".unit.deps.test_detection_uncovered": ("TestDetectionUncoveredLines",),
             ".unit.deps.test_detector_detect": (
                 "TestFlextInfraRuntimeDevDependencyDetectorRunDetect",
             ),
@@ -756,6 +758,7 @@ __all__: list[str] = [
     "TestDetectMode",
     "TestDetectionTypingsFlow",
     "TestDetectionUncoveredLines",
+    "TestDetectionUncoveredLinesClassify",
     "TestDetectorReportFlags",
     "TestDetectorRunFailures",
     "TestDiscoverProjectPathsDeptry",

@@ -241,6 +241,11 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
     ) -> None:
         if not u.Infra.is_project_namespace_package(current_pkg):
             return
+        self._resolve_local_aliases(
+            lazy_map,
+            current_pkg=current_pkg,
+            pkg_dir=pkg_dir,
+        )
         inherited_key = (
             surface if surface in self.lazy_init.inherited_exports else "src"
         )
@@ -258,6 +263,41 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
             )
             if package_name:
                 lazy_map[alias_name] = (package_name, alias_name)
+
+    def _resolve_local_aliases(
+        self,
+        lazy_map: t.Infra.MutableLazyImportMap,
+        *,
+        current_pkg: str,
+        pkg_dir: Path,
+    ) -> None:
+        alias_to_file = {
+            alias_name: file_name
+            for file_name, alias_name in self.lazy_init.public_file_aliases.items()
+        }
+        for alias_name, file_name in alias_to_file.items():
+            existing = lazy_map.get(alias_name)
+            if existing is not None and existing[0].startswith(current_pkg):
+                continue
+            base_name = Path(file_name).stem
+            module_file = pkg_dir / file_name
+            package_dir = pkg_dir / base_name
+            module_name = f"{current_pkg}.{base_name}"
+            if module_file.is_file() and alias_name in self._module_exports(
+                module_file,
+                module_name,
+                allow_assignments=True,
+            ):
+                lazy_map[alias_name] = (module_name, alias_name)
+                continue
+            if package_dir.is_dir() and (package_dir / c.Infra.INIT_PY).is_file():
+                package_exports = self._module_exports(
+                    package_dir / c.Infra.INIT_PY,
+                    module_name,
+                    allow_assignments=True,
+                )
+                if alias_name in package_exports:
+                    lazy_map[alias_name] = (module_name, alias_name)
 
     def _resolve_transitive_parent_packages(
         self,

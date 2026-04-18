@@ -98,7 +98,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".deps.test_detection_classify": (
                 "TestBuildProjectReport",
                 "TestClassifyIssues",
-                "TestDetectionUncoveredLines",
+                "TestDetectionUncoveredLinesClassify",
             ),
             ".deps.test_detection_deptry": (
                 "TestDiscoverProjectPathsDeptry",
@@ -115,6 +115,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "TestRunMypyStubHints",
             ),
             ".deps.test_detection_typings_flow": ("TestDetectionTypingsFlow",),
+            ".deps.test_detection_uncovered": ("TestDetectionUncoveredLines",),
             ".deps.test_detector_detect": (
                 "TestFlextInfraRuntimeDevDependencyDetectorRunDetect",
             ),

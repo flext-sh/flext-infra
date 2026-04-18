@@ -72,8 +72,8 @@ class FlextInfra(
     _instance: ClassVar[Self | None] = None
 
     @classmethod
-    def get_instance(cls) -> Self:
-        """Return the shared infra facade instance."""
+    def fetch_global(cls) -> Self:
+        """Return the shared infra facade instance (canonical domain verb)."""
         if cls._instance is None:
             cls._instance = cls.model_validate({})
         return cls._instance
@@ -138,7 +138,7 @@ class FlextInfra(
         )
 
 
-infra = FlextInfra.get_instance()
+infra = FlextInfra.fetch_global()
 
 
 __all__: list[str] = ["FlextInfra", "infra"]

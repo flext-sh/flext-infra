@@ -62,25 +62,25 @@ class TestConstantsQualityGateVerdict:
     """Verdict classification and real workspace execution."""
 
     def test_success_verdict_accepts_pass(self) -> None:
-        """is_success_verdict returns True for PASS."""
+        """successful_verdict returns True for PASS."""
         tm.that(
-            FlextInfraConstantsCodegenQualityGate.is_success_verdict("PASS"),
+            FlextInfraConstantsCodegenQualityGate.successful_verdict("PASS"),
             eq=True,
         )
 
     def test_success_verdict_rejects_conditional_pass(self) -> None:
-        """is_success_verdict returns False for removed conditional verdicts."""
+        """successful_verdict returns False for removed conditional verdicts."""
         tm.that(
-            not FlextInfraConstantsCodegenQualityGate.is_success_verdict(
+            not FlextInfraConstantsCodegenQualityGate.successful_verdict(
                 "CONDITIONAL_PASS"
             ),
             eq=True,
         )
 
     def test_success_verdict_rejects_fail(self) -> None:
-        """is_success_verdict returns False for FAIL."""
+        """successful_verdict returns False for FAIL."""
         tm.that(
-            not FlextInfraConstantsCodegenQualityGate.is_success_verdict("FAIL"),
+            not FlextInfraConstantsCodegenQualityGate.successful_verdict("FAIL"),
             eq=True,
         )
 

@@ -252,11 +252,7 @@ class FlextInfraExtraPathsManager:
             for relative_path in configured_typings
             if (project_dir / relative_path).is_dir()
         ]
-        local_dirs = [
-            relative_path
-            for relative_path in rules.env_dirs
-            if (project_dir / relative_path).is_dir()
-        ]
+        local_dirs = list(u.Infra.discover_python_dirs(project_dir))
         paths: t.Infra.StrSet = {*typings_paths}
         if is_root and rules.include_path_dependencies_in_search_path:
             pyproject = project_dir / c.Infra.PYPROJECT_FILENAME
@@ -281,24 +277,24 @@ class FlextInfraExtraPathsManager:
         project_dir: Path,
         is_root: bool,
     ) -> t.StrSequence:
-        """Build pyrefly project-includes from configured env dirs."""
+        """Build pyrefly project-includes from auto-discovered top-level Python dirs."""
         rules = self._tool_config.tools.pyrefly.path_rules
-        env_dirs = set(rules.env_dirs)
         includes: t.Infra.StrSet = set()
-        local_dirs = set(u.Infra.discover_python_dirs(project_dir))
-        includes.update(
-            f"{directory}/**/*.py*" for directory in sorted(local_dirs & env_dirs)
-        )
+        local_dirs = [
+            directory
+            for directory in u.Infra.discover_python_dirs(project_dir)
+            if not is_root
+            or not (project_dir / directory / c.Infra.PYPROJECT_FILENAME).is_file()
+        ]
+        includes.update(f"{directory}/**/*.py*" for directory in local_dirs)
         if not is_root or (not rules.workspace_include_children):
             return sorted(includes)
-        child_env_dirs = set(rules.workspace_include_child_env_dirs)
         for child in sorted(project_dir.iterdir()):
             if not child.is_dir() or not (child / c.Infra.PYPROJECT_FILENAME).exists():
                 continue
-            child_dirs = set(u.Infra.discover_python_dirs(child))
+            child_dirs = u.Infra.discover_python_dirs(child)
             includes.update(
-                f"{child.name}/{directory}/**/*.py*"
-                for directory in sorted(child_dirs & child_env_dirs)
+                f"{child.name}/{directory}/**/*.py*" for directory in child_dirs
             )
         return sorted(includes)
 

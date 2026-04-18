@@ -91,7 +91,7 @@ class TestBuildProjectReport:
         tm.that(report.deptry.raw_count, eq=2)
 
 
-class TestDetectionUncoveredLines:
+class TestDetectionUncoveredLinesClassify:
     def test_module_to_types_package_with_custom_limits(self) -> None:
         service = FlextInfraDependencyDetectionService()
         inner = FlextInfraDependencyDetectionService.to_infra_value(

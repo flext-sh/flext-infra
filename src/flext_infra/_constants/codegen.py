@@ -104,6 +104,8 @@ class FlextInfraConstantsCodegen:
         "scripts",
     })
     "Directory segments recognized as project-root wrapper paths."
+    DUPLICATE_CLASS_MIN_LEN: Final[int] = 8
+    "Minimum class-name length for workspace-wide duplicate detection."
     CORE_RUNTIME_ALIAS_TARGETS: Final[Mapping[str, t.Infra.StrPair]] = {
         "d": ("flext_core", "d"),
         "e": ("flext_core", "e"),

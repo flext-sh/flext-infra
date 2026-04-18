@@ -32,7 +32,7 @@ class FlextInfraConstantsCodegenQualityGate(s[bool]):
         """Execute the quality gate and return its CLI success/failure status."""
         report = self.build_report()
         verdict = u.Infra.pick_str(report, "verdict", "FAIL")
-        if self.is_success_verdict(verdict):
+        if self.successful_verdict(verdict):
             return r[bool].ok(True)
         return r[bool].fail(f"quality gate verdict: {verdict}")
 
@@ -446,8 +446,12 @@ class FlextInfraConstantsCodegenQualityGate(s[bool]):
         return "\n".join(lines).rstrip() + "\n"
 
     @staticmethod
-    def is_success_verdict(verdict: str) -> bool:
-        """Return True for verdicts that should exit with status 0."""
+    def successful_verdict(verdict: str) -> bool:
+        """Return True for verdicts that should exit with status 0.
+
+        Domain-verb naming per AGENTS.md §3.1: boolean outcomes use
+        noun/adjective names, not ``is_*`` prefixes.
+        """
         return verdict == "PASS"
 
 

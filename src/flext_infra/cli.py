@@ -131,7 +131,7 @@ class FlextInfraCli:
         """Register one group using the canonical declarative routing rules."""
         register_method = cls._GROUP_REGISTRATION_RULES[group]
         infra_service = (
-            infra.get_instance() if hasattr(infra, "get_instance") else infra
+            infra.fetch_global() if hasattr(infra, "fetch_global") else infra
         )
         register = getattr(infra_service, register_method)
         register(app)

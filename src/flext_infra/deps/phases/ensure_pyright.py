@@ -25,12 +25,11 @@ class FlextInfraEnsurePyrightConfigPhase:
         *,
         rules: m.Infra.PyrightConfig.PathRulesConfig | None = None,
     ) -> str:
+        """Only ``source_dir`` (src/) is strict; all auto-discovered dirs relax."""
         effective_rules = rules or self._tool_config.tools.pyright.path_rules
         if env_dir == effective_rules.source_dir:
             return effective_rules.source_report_private_usage
-        if env_dir in set(effective_rules.test_like_dirs):
-            return effective_rules.test_like_report_private_usage
-        return effective_rules.other_report_private_usage
+        return effective_rules.test_like_report_private_usage
 
     def _env_entry(
         self,
@@ -55,13 +54,14 @@ class FlextInfraEnsurePyrightConfigPhase:
         env_dir: str,
         source_path: str,
         project_root: str,
-        test_like_dirs: t.Infra.StrSet,
+        source_dir: str,
     ) -> t.StrSequence:
-        if env_dir in test_like_dirs and source_path != project_root:
+        """``src/`` owns only its own path; every other discovered dir also imports from src + root."""
+        if env_dir == source_dir:
+            return [source_path]
+        if source_path != project_root:
             return [project_root, source_path]
-        if env_dir in test_like_dirs:
-            return [project_root]
-        return [source_path]
+        return [project_root]
 
     def _envs_for_dirs(
         self,
@@ -71,7 +71,6 @@ class FlextInfraEnsurePyrightConfigPhase:
         project_root: str,
         rules: m.Infra.PyrightConfig.PathRulesConfig,
     ) -> Sequence[m.Infra.PyrightConfig.ExecutionEnvironment]:
-        test_like_dirs = set(rules.test_like_dirs)
         return [
             self._env_entry(
                 env_dir=env_dir,
@@ -80,7 +79,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                     env_dir=env_dir,
                     source_path=source_path,
                     project_root=project_root,
-                    test_like_dirs=test_like_dirs,
+                    source_dir=rules.source_dir,
                 ),
                 rules=rules,
             )
@@ -109,11 +108,10 @@ class FlextInfraEnsurePyrightConfigPhase:
         if not is_root or workspace_root is None:
             return self._expected_envs_for_project(project_dir)
         rules = self._tool_config.tools.pyright.path_rules
-        test_like_dirs = set(rules.test_like_dirs)
         expected_envs: MutableSequence[m.Infra.PyrightConfig.ExecutionEnvironment] = []
         root_source_path = self._project_source_path(workspace_root)
-        for env_dir in rules.env_dirs:
-            if not (workspace_root / env_dir).is_dir():
+        for env_dir in u.Infra.discover_python_dirs(workspace_root):
+            if (workspace_root / env_dir / c.Infra.PYPROJECT_FILENAME).is_file():
                 continue
             expected_envs.append(
                 self._env_entry(
@@ -123,7 +121,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                         env_dir=env_dir,
                         source_path=root_source_path,
                         project_root=rules.project_root,
-                        test_like_dirs=test_like_dirs,
+                        source_dir=rules.source_dir,
                     ),
                     rules=rules,
                 )
@@ -151,9 +149,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                 child_project,
                 prefix=relative_project_root,
             )
-            for env_dir in rules.env_dirs:
-                if not (child_project / env_dir).is_dir():
-                    continue
+            for env_dir in u.Infra.discover_python_dirs(child_project):
                 expected_envs.append(
                     self._env_entry(
                         env_dir=env_dir,
@@ -162,7 +158,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                             env_dir=env_dir,
                             source_path=child_source_path,
                             project_root=relative_project_root,
-                            test_like_dirs=test_like_dirs,
+                            source_dir=rules.source_dir,
                         ),
                         rules=rules,
                     )
@@ -173,10 +169,10 @@ class FlextInfraEnsurePyrightConfigPhase:
         self,
         project_dir: Path | None,
     ) -> Sequence[m.Infra.PyrightConfig.ExecutionEnvironment]:
-        """Build executionEnvironments from YAML-configured directories."""
+        """Build executionEnvironments from auto-discovered top-level Python dirs."""
         rules = self._tool_config.tools.pyright.path_rules
         env_dirs = (
-            [env_dir for env_dir in rules.env_dirs if (project_dir / env_dir).is_dir()]
+            list(u.Infra.discover_python_dirs(project_dir))
             if project_dir is not None
             else list(rules.env_dirs)
         )
@@ -274,20 +270,18 @@ class FlextInfraEnsurePyrightConfigPhase:
         workspace_root: Path | None,
         project_dir: Path | None,
     ) -> t.StrSequence:
-        """Return the concrete source/test roots that pyright should analyze."""
+        """Return the auto-discovered top-level Python roots that pyright should analyze."""
         rules = self._tool_config.tools.pyright.path_rules
         if not is_root:
             if project_dir is None:
                 return list(rules.env_dirs)
-            return [
-                env_dir
-                for env_dir in rules.env_dirs
-                if (project_dir / env_dir).is_dir()
-            ]
+            return list(u.Infra.discover_python_dirs(project_dir))
         if workspace_root is None:
             return list(rules.env_dirs)
         includes: MutableSequence[str] = [
-            env_dir for env_dir in rules.env_dirs if (workspace_root / env_dir).is_dir()
+            env_dir
+            for env_dir in u.Infra.discover_python_dirs(workspace_root)
+            if not (workspace_root / env_dir / c.Infra.PYPROJECT_FILENAME).is_file()
         ]
         discovered = u.Infra.discover_projects(workspace_root)
         if discovered.failure:
@@ -305,9 +299,8 @@ class FlextInfraEnsurePyrightConfigPhase:
         )
         for child_project in child_projects:
             relative_root = child_project.relative_to(workspace_root)
-            for env_dir in rules.env_dirs:
-                if (child_project / env_dir).is_dir():
-                    includes.append((relative_root / env_dir).as_posix())
+            for env_dir in u.Infra.discover_python_dirs(child_project):
+                includes.append((relative_root / env_dir).as_posix())
         return includes
 
     def _phase(

@@ -61,6 +61,53 @@ class FlextInfraCodegenGeneration:
         return f"{local_package_root.split('.', maxsplit=1)[0]}.{mod}"
 
     @staticmethod
+    def _reject_non_absolute_import(
+        mod: str,
+        local_package_root: str | None,
+        items: t.Infra.StrPairSequence,
+    ) -> None:
+        """Abort gen init if a TYPE_CHECKING import is not fully-qualified.
+
+        Relative imports are FORBIDDEN in FLEXT source code. The only
+        exception is the generated ``_LAZY_IMPORTS`` dict inside
+        ``__init__.py`` (which uses ``.submodule`` relative paths).
+        TYPE_CHECKING imports must always be absolute.
+        """
+        if mod.startswith("."):
+            exports = ", ".join(name for name, _ in items)
+            msg = (
+                f"relative import {mod!r} in TYPE_CHECKING block "
+                f"(package {local_package_root!r}, exports: {exports}). "
+                "FLEXT forbids relative imports in source — "
+                "fix the module to use a fully-qualified path"
+            )
+            raise ValueError(msg)
+        if not local_package_root:
+            return
+        root_pkg = local_package_root.split(".", maxsplit=1)[0]
+        first_segment = mod.split(".", maxsplit=1)[0]
+        if first_segment == root_pkg:
+            return
+        # Check if the first segment is an internal subdirectory of the
+        # project (matches a non-root segment of local_package_root) but
+        # was not fully-qualified. E.g. ``scripts.audit`` when
+        # local_package_root is ``flext_quality.docs.scripts`` — the
+        # ``scripts`` segment is internal and needs the full path.
+        internal_segments = frozenset(local_package_root.split(".")[1:])
+        if first_segment not in internal_segments:
+            return
+        exports = ", ".join(name for name, _ in items)
+        msg = (
+            f"non-absolute import {mod!r} in TYPE_CHECKING block "
+            f"(package {local_package_root!r}, root {root_pkg!r}, "
+            f"exports: {exports}). "
+            "FLEXT forbids non-absolute imports — "
+            "the source module must export via a fully-qualified path "
+            f"(expected: {root_pkg}.{mod!s})"
+        )
+        raise ValueError(msg)
+
+    @staticmethod
     def _format_root_package_docstring(current_pkg: str) -> str:
         label = current_pkg.replace("_", " ").replace("-", " ").strip()
         package_name = " ".join(word.capitalize() for word in label.split())
@@ -415,13 +462,18 @@ class FlextInfraCodegenGeneration:
         if not groups and include_flext_types:
             return ("if _t.TYPE_CHECKING:", "    from flext_core import FlextTypes")
 
-        normalized_groups = {
-            FlextInfraCodegenGeneration._normalize_type_checking_module_path(
+        normalized_groups: dict[str, t.Infra.StrPairSequence] = {}
+        for mod, items in groups.items():
+            resolved = FlextInfraCodegenGeneration._normalize_type_checking_module_path(
                 mod,
                 local_package_root,
-            ): items
-            for mod, items in groups.items()
-        }
+            )
+            FlextInfraCodegenGeneration._reject_non_absolute_import(
+                resolved,
+                local_package_root,
+                items,
+            )
+            normalized_groups[resolved] = items
         collapsed = FlextInfraCodegenGeneration._collapse_to_children(
             normalized_groups, child_packages
         )

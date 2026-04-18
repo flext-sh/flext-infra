@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections import defaultdict
 from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 from time import perf_counter
@@ -39,12 +40,14 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
     """
 
     _modified_files: t.Infra.StrSet = PrivateAttr()
+    _duplicate_class_names: int = PrivateAttr(default=0)
 
     @override
     def model_post_init(self, __context: t.ScalarMapping | None, /) -> None:
         """Create private lazy-init state after model validation."""
         super().model_post_init(__context)
         self._modified_files = set()
+        self._duplicate_class_names = 0
 
     @property
     def modified_files(self) -> t.StrSequence:
@@ -55,6 +58,12 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
     def execute(self) -> p.Result[bool]:
         """Execute lazy-init directly from the validated CLI service model."""
         errors = self.generate_inits(check_only=self.check_only)
+        if self._duplicate_class_names > 0:
+            return r[bool].fail(
+                f"lazy-init aborted: {self._duplicate_class_names} "
+                "duplicate class name(s) detected (see errors above); "
+                "rename one side before regenerating",
+            )
         if errors > 0:
             return r[bool].fail(f"lazy-init failed in {errors} package directories")
         return r[bool].ok(True)
@@ -72,6 +81,21 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
         )
         lazy_init = u.Infra.load_tool_config().unwrap().lazy_init
         with FlextInfraRopeWorkspace.open_workspace(self.workspace_root) as rope:
+            duplicates = self._detect_duplicate_class_names(rope)
+            if duplicates:
+                self._duplicate_class_names = len(duplicates)
+                for class_name, locations in duplicates.items():
+                    joined = ", ".join(locations)
+                    u.Infra.error(
+                        f"duplicate class name {class_name!r} in: {joined}; "
+                        "rename one before regenerating __init__.py",
+                    )
+                u.Infra.info(
+                    "Lazy-init summary: 0 generated, "
+                    f"{len(duplicates)} duplicate class name(s) "
+                    "(aborted before codegen)",
+                )
+                return 0
             planner = FlextInfraCodegenLazyInitPlanner(
                 rope_workspace=rope,
                 lazy_init=lazy_init,
@@ -98,6 +122,46 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
             f" ({total} dirs scanned, {perf_counter() - started_at:.2f}s)",
         )
         return errors
+
+    @staticmethod
+    def _detect_duplicate_class_names(
+        rope: FlextInfraRopeWorkspace,
+    ) -> Mapping[str, tuple[str, ...]]:
+        """Return class-name collisions.
+
+        Scope rules:
+        - ``src/`` modules: duplicates forbidden across the entire workspace.
+        - ``tests/``/``scripts/``/``examples/``/``docs/`` modules: duplicates
+          forbidden only within the same owning project (they do not escape).
+        """
+        by_name: defaultdict[str, defaultdict[str, set[str]]] = defaultdict(
+            lambda: defaultdict(set),
+        )
+        for entry in rope.workspace_index.modules_by_path.values():
+            if entry.is_package_init or not entry.module_name:
+                continue
+            first_segment = entry.module_name.partition(".")[0]
+            is_private_scope = first_segment in c.Infra.ROOT_WRAPPER_SEGMENTS
+            scope_key = (
+                str(entry.project_root)
+                if is_private_scope and entry.project_root is not None
+                else ""
+            )
+            state = rope.semantic(entry.file_path)
+            for class_info in state.class_infos:
+                name = class_info.name
+                if len(name) < c.Infra.DUPLICATE_CLASS_MIN_LEN or not name[0].isupper():
+                    continue
+                by_name[name][scope_key].add(entry.module_name)
+        duplicates: dict[str, tuple[str, ...]] = {}
+        for name, by_scope in by_name.items():
+            for scope_key, modules in by_scope.items():
+                if len(modules) > 1:
+                    prefix = (
+                        f"[{Path(scope_key).name}] " if scope_key else "[workspace] "
+                    )
+                    duplicates[f"{prefix}{name}"] = tuple(sorted(modules))
+        return duplicates
 
     def _generate_all_inits(
         self,

@@ -10,7 +10,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".test_detection_classify": (
             "TestBuildProjectReport",
             "TestClassifyIssues",
-            "TestDetectionUncoveredLines",
+            "TestDetectionUncoveredLinesClassify",
         ),
         ".test_detection_deptry": (
             "TestDiscoverProjectPathsDeptry",
@@ -28,6 +28,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
             "TestRunMypyStubHints",
         ),
         ".test_detection_typings_flow": ("TestDetectionTypingsFlow",),
+        ".test_detection_uncovered": ("TestDetectionUncoveredLines",),
         ".test_detector_detect": (
             "TestFlextInfraRuntimeDevDependencyDetectorRunDetect",
         ),
