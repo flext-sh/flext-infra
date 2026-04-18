@@ -17,7 +17,7 @@ class FlextInfraConstantsCensus:
         LITERAL_RE: Final[re.Pattern[str]] = re.compile(r"\bLiteral\s*\[")
         "Detect ``Literal[...]`` annotations."
         DICT_INVARIANCE_RE: Final[re.Pattern[str]] = re.compile(
-            r"\bdict\s*\[\s*str\s*,\s*(?:t\.Container|t\.NormalizedValue|object)",
+            r"\bdict\s*\[\s*str\s*,\s*(?:t\.Container|t\.RecursiveContainer|object)",
         )
         "Detect invariant dict[str, ...] patterns."
         DIRECT_SUBMODULE_RE: Final[re.Pattern[str]] = re.compile(
