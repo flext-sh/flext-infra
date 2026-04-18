@@ -1,0 +1,34 @@
+src/flext_infra/__init__.py
+  296b414eef766f82 414,837,1144
+src/flext_infra/validate/fresh_import.py
+  296b414eef766f82 16
+tests/unit/validate/__init__.py
+  296b414eef766f82 11
+src/flext_infra/validate/__init__.py
+  296b414eef766f82 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "48b9846e7b31e2cd3844a6836a268aec72d51a3f",
+  "prompts": {
+    "296b414eef766f82": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9bbaa066-3009-4a0f-b15f-d4253fbc34e7",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 7,
+      "total_deletions": 4,
+      "accepted_lines": 7,
+      "overriden_lines": 0
+    }
+  },
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
