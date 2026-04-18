@@ -15,13 +15,11 @@ from pathlib import Path as _Path
 from typing import Literal as _Literal
 
 from jinja2 import Environment as _JinjaEnvironment, Template as _JinjaTemplate
-from pydantic import BaseModel
-from pydantic.config import JsonDict as _JsonDict
 from tomlkit import TOMLDocument as _TOMLDocument
 from tomlkit.container import Container as _TOMLContainer
 from tomlkit.items import Item as _TOMLItem, Table as _TOMLTable
 
-from flext_core import t
+from flext_core import m, t
 
 
 class FlextInfraTypesBase:
@@ -31,7 +29,7 @@ class FlextInfraTypesBase:
     "argparse ArgumentParser for CLI command definitions."
     type CliNamespace = _argparse.Namespace
     "argparse Namespace for parsed CLI arguments."
-    type JsonDict = _JsonDict
+    type JsonDict = t.JsonMapping
     "Pydantic JSON schema dict (used by json_schema_extra callbacks)."
     type RegexPattern = _re.Pattern[str]
     "Compiled regex pattern for string matching."
@@ -114,7 +112,7 @@ class FlextInfraTypesBase:
     "Class-nesting policy matrix keyed by module family."
     type MetricValue = t.Scalar | _Path | None
     "Output metric value: scalar (str/int/float/bool/datetime), path, or null."
-    type MetricRecord = BaseModel | Mapping[str, MetricValue]
+    type MetricRecord = m.BaseModel | Mapping[str, MetricValue]
     "A single metric record: a Pydantic model or a string-keyed mapping of metric values."
     type ChangeCallback = Callable[[str], None] | None
     "Optional callback invoked on transformer changes."
@@ -172,7 +170,7 @@ class FlextInfraTypesBase:
     "Read-only infra value sequence."
     type MutableInfraSequence = MutableSequence[InfraValue]
     "Mutable infra value sequence."
-    type DomainResult = BaseModel | t.RecursiveContainer
+    type DomainResult = m.BaseModel | t.RecursiveContainer
     "Typed service result payload: model or recursive container."
     type DomainResultSequence = Sequence[DomainResult]
     "Read-only sequence of typed service result payloads."

@@ -419,9 +419,14 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 for name in project_names:
                     project = workspace / name
                     project.mkdir(parents=True, exist_ok=True)
+                    pkg_name = name.replace("-", "_")
                     _write(
                         project / "pyproject.toml",
                         (f'[project]\nname = "{name}"\nversion = "0.1.0"\n'),
+                    )
+                    _write(
+                        project / f"src/{pkg_name}/__init__.py",
+                        'def hello() -> str:\n    """Return a greeting."""\n    return "hello"\n\n__all__ = ["hello"]\n',
                     )
                     _write(project / "README.md", f"# {name}\n")
                     _write(project / "docs/README.md", "# Project Docs\n")

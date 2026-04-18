@@ -19,6 +19,9 @@ from flext_infra import (
     m,
     t,
 )
+from flext_infra.validate.metadata_discipline import (
+    FlextInfraValidateMetadataDiscipline,
+)
 
 
 class FlextInfraCliValidate(FlextInfraServiceValidateMixin):
@@ -108,6 +111,13 @@ class FlextInfraCliValidate(FlextInfraServiceValidateMixin):
                     model_cls=FlextInfraValidateTierWhitelist,
                     handler=self.validate_tier_whitelist,
                     failure_message="tier-whitelist validation failed",
+                ),
+                m.Cli.ResultCommandRoute(
+                    name="metadata-discipline",
+                    help_text="Guard 8: centralized metadata parser discipline",
+                    model_cls=FlextInfraValidateMetadataDiscipline,
+                    handler=self.validate_metadata_discipline,
+                    failure_message="metadata-discipline validation failed",
                 ),
             ],
         )

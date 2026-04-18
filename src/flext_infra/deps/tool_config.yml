@@ -608,6 +608,7 @@ tools:
     - 'resilience: resilience tests'
     standard-addopts:
     - --strict-markers
+    - --markdown-check
   tomlsort:
     all: true
     in_place: true

@@ -50,7 +50,8 @@ class TestAuditorCore:
         auditor: FlextInfraDocAuditor,
         tmp_path: Path,
     ) -> None:
-        result = auditor.audit(tmp_path)
+        workspace = u.Infra.Tests.create_docs_workspace(tmp_path)
+        result = auditor.audit(workspace)
         tm.ok(result)
 
     def test_report_structure(

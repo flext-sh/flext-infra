@@ -13,16 +13,9 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
-from flext_infra import (
-    FlextInfraNamespaceValidator,
-    FlextInfraServiceBase,
-    c,
-    m,
-    p,
-    r,
-    t,
-    u,
-)
+from flext_infra import c, m, p, r, t, u
+from flext_infra.base import FlextInfraServiceBase
+from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
 
 
 class FlextInfraCodegenCensus(FlextInfraServiceBase[str]):

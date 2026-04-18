@@ -6,9 +6,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, computed_field, model_serializer
-
-from flext_cli import m
+from flext_cli import m, u
 from flext_infra import FlextInfraModelsMixins, c, t
 
 
@@ -81,7 +79,7 @@ class FlextInfraModelsCheck:
             ),
         ] = False
 
-        @computed_field
+        @u.computed_field()
         @property
         def dry_run(self) -> bool:
             """Whether pyrefly fixes should avoid writing to disk."""
@@ -102,7 +100,7 @@ class FlextInfraModelsCheck:
             ),
         ] = c.Infra.ERROR
 
-        @computed_field
+        @u.computed_field()
         @property
         def formatted(self) -> str:
             """Format issue as ``file:line:col [code] message``."""
@@ -123,7 +121,11 @@ class FlextInfraModelsCheck:
             default_factory=tuple,
             description="Gate error messages",
         )
-        duration: float = Field(0.0, description="Duration in seconds")
+        duration: float = m.Field(
+            0.0,
+            description="Duration in seconds",
+            validate_default=True,
+        )
 
     class GateExecution(m.ArbitraryTypesModel):
         """Execution result for a single quality gate."""
@@ -134,7 +136,11 @@ class FlextInfraModelsCheck:
         issues: tuple[FlextInfraModelsCheck.Issue, ...] = m.Field(
             default_factory=tuple, description="Detected issues"
         )
-        raw_output: str = Field("", description="Raw tool output")
+        raw_output: str = m.Field(
+            "",
+            description="Raw tool output",
+            validate_default=True,
+        )
 
     class ProjectResult(
         FlextInfraModelsMixins.ProjectNameMixin,
@@ -147,13 +153,13 @@ class FlextInfraModelsCheck:
             description="Gate name to execution mapping",
         )
 
-        @computed_field
+        @u.computed_field()
         @property
         def passed(self) -> bool:
             """Whether every gate passed."""
             return all(v.result.passed for v in self.gates.values())
 
-        @computed_field
+        @u.computed_field()
         @property
         def total_errors(self) -> int:
             """Total issue count across all gates."""
@@ -170,7 +176,7 @@ class FlextInfraModelsCheck:
             m.Field(description="Rule short description"),
         ]
 
-        @model_serializer(mode="plain")
+        @u.model_serializer(mode="plain")
         def _serialize(self) -> t.Cli.JsonMapping:
             return {
                 "id": self.id,
@@ -183,12 +189,13 @@ class FlextInfraModelsCheck:
         uri: Annotated[str, m.Field(description="Artifact URI")]
         start_line: Annotated[int, m.Field(description="Start line (1-based)")]
         start_column: Annotated[int, m.Field(description="Start column (1-based)")]
-        uri_base_id: str = Field(
+        uri_base_id: str = m.Field(
             "%SRCROOT%",
             description="URI base identifier",
+            validate_default=True,
         )
 
-        @model_serializer(mode="plain")
+        @u.model_serializer(mode="plain")
         def _serialize(self) -> t.Cli.JsonMapping:
             return {
                 "physicalLocation": {
@@ -213,7 +220,7 @@ class FlextInfraModelsCheck:
             description="Result locations",
         )
 
-        @model_serializer(mode="plain")
+        @u.model_serializer(mode="plain")
         def _serialize(self) -> t.Cli.JsonMapping:
             return {
                 "ruleId": self.rule_id,
@@ -228,9 +235,10 @@ class FlextInfraModelsCheck:
         """SARIF run entry."""
 
         tool_name: Annotated[str, m.Field(description="Tool name")]
-        information_uri: str = Field(
+        information_uri: str = m.Field(
             "",
             description="Tool documentation URL",
+            validate_default=True,
         )
         rules: tuple[FlextInfraModelsCheck.SarifRule, ...] = m.Field(
             default_factory=tuple, description="Rule descriptors"
@@ -239,7 +247,7 @@ class FlextInfraModelsCheck:
             default_factory=tuple, description="Run results"
         )
 
-        @model_serializer(mode="plain")
+        @u.model_serializer(mode="plain")
         def _serialize(self) -> t.Cli.JsonMapping:
             return {
                 "tool": {
@@ -259,14 +267,19 @@ class FlextInfraModelsCheck:
     class SarifReport(m.ArbitraryTypesModel):
         """Complete SARIF 2.1.0 report."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(populate_by_name=True)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
-        schema_uri: str = Field(
+        schema_uri: str = m.Field(
             "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
             alias="$schema",
             description="SARIF schema URI",
+            validate_default=True,
         )
-        version: str = Field("2.1.0", description="SARIF version")
+        version: str = m.Field(
+            "2.1.0",
+            description="SARIF version",
+            validate_default=True,
+        )
         runs: tuple[FlextInfraModelsCheck.SarifRun, ...] = m.Field(
             default_factory=tuple, description="SARIF runs"
         )

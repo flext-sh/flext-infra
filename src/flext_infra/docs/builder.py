@@ -6,8 +6,6 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Annotated, override
 
-from pydantic import PrivateAttr
-
 from flext_infra import c, m, p, r, s, t, u
 
 
@@ -28,7 +26,7 @@ class FlextInfraDocBuilder(s[bool]):
             description="Docs output dir",
         ),
     ] = c.Infra.DEFAULT_DOCS_OUTPUT_DIR
-    _runner: p.Cli.CommandRunner = PrivateAttr(default_factory=u.Cli)
+    _runner: p.Cli.CommandRunner = u.PrivateAttr(default_factory=u.Cli)
 
     def build(
         self,

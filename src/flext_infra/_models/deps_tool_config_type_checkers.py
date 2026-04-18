@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from pydantic import ConfigDict
-
 from flext_core import m
 from flext_infra import c, t
 
@@ -19,7 +17,7 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
         class ExecutionEnvironment(m.ContractModel):
             """Pyright execution environment entry."""
 
-            model_config = ConfigDict(populate_by_name=True)
+            model_config = m.ConfigDict(populate_by_name=True)
 
             root: Annotated[
                 str, m.Field(description="Execution environment root path.")

@@ -13,8 +13,6 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
-from pydantic import TypeAdapter
-
 from flext_infra import c, m, t
 
 
@@ -25,7 +23,7 @@ class FlextInfraUtilitiesParsing:
     _SINGLE_LINE_DOCSTRING_QUOTE_COUNT = 2
     _RULE_CONFIG_SEQ_ADAPTER: m.TypeAdapter[
         Sequence[m.Infra.ImportModernizerRuleConfig]
-    ] = TypeAdapter(
+    ] = m.TypeAdapter(
         Sequence[m.Infra.ImportModernizerRuleConfig],
     )
 
@@ -37,6 +35,18 @@ class FlextInfraUtilitiesParsing:
                 file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT),
             )
         except (OSError, SyntaxError):
+            return None
+
+    @staticmethod
+    def parse_source_ast(source: str) -> t.Infra.AstModule | None:
+        """Parse a Python source string into an AST module.
+
+        Used for validating code extracted from markdown files and docstrings.
+        Returns None on SyntaxError (caller handles reporting).
+        """
+        try:
+            return ast.parse(source)
+        except SyntaxError:
             return None
 
     @staticmethod

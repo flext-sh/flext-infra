@@ -15,6 +15,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".lazy_map_freshness_tests": ("lazy_map_freshness_tests",),
         ".main_cli_tests": ("TestValidateCli",),
         ".main_tests": ("main_tests",),
+        ".metadata_discipline_tests": ("metadata_discipline_tests",),
         ".namespace_validator_tests": ("TestFlextInfraNamespaceValidator",),
         ".pytest_diag": ("pytest_diag",),
         ".scanner_tests": ("scanner_tests",),

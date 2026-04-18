@@ -6,9 +6,7 @@ from collections.abc import Mapping, MutableMapping, MutableSequence
 from pathlib import Path
 from typing import Annotated
 
-from pydantic import ConfigDict, Field, computed_field
-
-from flext_core import m
+from flext_core import m, u
 from flext_infra import FlextInfraModelsDepsToolSettings, FlextInfraModelsMixins, c, t
 
 
@@ -72,7 +70,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
             m.Field(None, description="Path to dependency limits TOML"),
         ] = None
 
-        @computed_field
+        @u.computed_field()
         @property
         def dry_run(self) -> bool:
             """Whether follow-up dependency installation is disabled."""
@@ -105,7 +103,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
             ),
         ] = False
 
-        @computed_field
+        @u.computed_field()
         @property
         def dry_run(self) -> bool:
             """Whether path synchronization should avoid writing."""
@@ -148,7 +146,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
             ),
         ] = False
 
-        @computed_field
+        @u.computed_field()
         @property
         def dry_run(self) -> bool:
             """Whether modernization should avoid writing changes."""
@@ -171,7 +169,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
             m.Field("auto", description="Dependency path rewrite mode"),
         ] = "auto"
 
-        @computed_field
+        @u.computed_field()
         @property
         def dry_run(self) -> bool:
             """Whether dependency path rewrites should avoid writing."""
@@ -180,7 +178,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
     class PyprojectDocumentState(m.ArbitraryTypesModel):
         """Centralized normalized TOML state reused across deps workflows."""
 
-        model_config = ConfigDict(validate_default=False)
+        model_config = m.ConfigDict(validate_default=False)
 
         pyproject_path: Annotated[
             Path,
@@ -198,7 +196,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
     class PathSyncDocumentState(m.ArbitraryTypesModel):
         """Centralized path-sync payload reused across dependency rewrite passes."""
 
-        model_config = ConfigDict(validate_default=False)
+        model_config = m.ConfigDict(validate_default=False)
 
         pyproject_path: Annotated[
             Path,
@@ -310,8 +308,10 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
         """Project runtime dependency and typings report."""
 
         deptry: FlextInfraModelsDeps.DeptryReport = m.Field(description="Deptry report")
-        typings: FlextInfraModelsDeps.TypingsReport | None = Field(
-            None, description="Typings report"
+        typings: FlextInfraModelsDeps.TypingsReport | None = m.Field(
+            None,
+            description="Typings report",
+            validate_default=True,
         )
 
     class WorkspaceDependencyReport(m.ArbitraryTypesModel):
@@ -321,11 +321,15 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
         projects: Mapping[str, FlextInfraModelsDeps.ProjectRuntimeReport] = m.Field(
             default_factory=dict, description="Per-project reports"
         )
-        pip_check: FlextInfraModelsDeps.PipCheckReport | None = Field(
-            None, description="Pip check report"
+        pip_check: FlextInfraModelsDeps.PipCheckReport | None = m.Field(
+            None,
+            description="Pip check report",
+            validate_default=True,
         )
-        dependency_limits: FlextInfraModelsDeps.DependencyLimitsInfo | None = Field(
-            None, description="Dependency limits"
+        dependency_limits: FlextInfraModelsDeps.DependencyLimitsInfo | None = m.Field(
+            None,
+            description="Dependency limits",
+            validate_default=True,
         )
 
 

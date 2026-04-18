@@ -69,10 +69,14 @@ class FlextInfraDocValidator(s[bool]):
         workspace_root: Path,
     ) -> t.Infra.Pair[int, t.StrSequence]:
         """Run the ADR skill validation check for the root docs scope."""
-        required = u.Infra.docs_load_required_skills(workspace_root)
-        if required is None:
+        required_result = u.Infra.docs_load_required_skills(workspace_root)
+        if required_result.failure:
+            self.logger.warning(
+                "adr_skill_check_failed",
+                error=required_result.error,
+            )
             return (1, [])
-        required_skills = required or [
+        required_skills = required_result.value or [
             "rules-docs",
             "scripts-maintenance",
             "readme-standardization",

@@ -10,8 +10,6 @@ from collections.abc import Callable, Mapping, Sequence
 from importlib.resources import files
 from pathlib import Path
 
-from pydantic import ValidationError
-
 from flext_cli import u
 from flext_infra import (
     FlextInfraUtilitiesDocsScope,
@@ -101,7 +99,7 @@ class FlextInfraUtilitiesBase:
         """
         try:
             return adapter.validate_python(value)
-        except (ValidationError, TypeError):
+        except (c.ValidationError, TypeError):
             return default
 
     # ------------------------------------------------------------------
@@ -286,7 +284,7 @@ class FlextInfraUtilitiesBase:
             FileNotFoundError,
             OSError,
             TypeError,
-            ValidationError,
+            c.ValidationError,
             ValueError,
         ) as exc:
             result = r[m.Infra.ToolConfigDocument].fail(

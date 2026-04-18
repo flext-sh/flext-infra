@@ -16,6 +16,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".lazy_init_planner": ("FlextInfraCodegenLazyInitPlanner",),
         ".py_typed": ("FlextInfraCodegenPyTyped",),
         ".scaffolder": ("FlextInfraCodegenScaffolder",),
+        ".version_file": ("FlextInfraCodegenVersionFile",),
     },
 )
 

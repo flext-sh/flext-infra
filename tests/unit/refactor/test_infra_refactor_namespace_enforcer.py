@@ -158,6 +158,105 @@ def test_loose_object_detector_detects_module_logger_assignment(
     tm.that(violations[0].name, eq="logger")
 
 
+def test_loose_object_detector_flags_private_function_as_loose(
+    tmp_path: Path,
+    rope_project: t.Infra.RopeProject,
+) -> None:
+    target = tmp_path / "target.py"
+    target.write_text(
+        "from __future__ import annotations\n"
+        "\n"
+        "def _helper() -> None:\n"
+        "    return None\n"
+        "\n"
+        "class DemoTarget:\n"
+        "    pass\n",
+        encoding="utf-8",
+    )
+
+    violations = FlextInfraLooseObjectDetector.detect_file(
+        m.Infra.DetectorContext(
+            file_path=target,
+            project_name="sample-proj",
+            rope_project=rope_project,
+        ),
+    )
+
+    function_violations = [v for v in violations if v.kind == "function"]
+    tm.that(len(function_violations), eq=1)
+    tm.that(function_violations[0].name, eq="_helper")
+
+
+def test_loose_object_detector_enforces_single_class_pattern(
+    tmp_path: Path,
+    rope_project: t.Infra.RopeProject,
+) -> None:
+    target = tmp_path / "target.py"
+    target.write_text(
+        "from __future__ import annotations\n\nVALUE = 1\n",
+        encoding="utf-8",
+    )
+
+    violations = FlextInfraLooseObjectDetector.detect_file(
+        m.Infra.DetectorContext(
+            file_path=target,
+            project_name="sample-proj",
+            rope_project=rope_project,
+        ),
+    )
+
+    single_class = [v for v in violations if v.kind == "single_class"]
+    tm.that(len(single_class), eq=1)
+
+
+def test_loose_object_detector_skips_typings_module_exception(
+    tmp_path: Path,
+    rope_project: t.Infra.RopeProject,
+) -> None:
+    target = tmp_path / "typings.py"
+    target.write_text(
+        "from __future__ import annotations\n"
+        "from typing import TypeVar\n"
+        "\n"
+        "TValue = TypeVar('TValue')\n",
+        encoding="utf-8",
+    )
+
+    violations = FlextInfraLooseObjectDetector.detect_file(
+        m.Infra.DetectorContext(
+            file_path=target,
+            project_name="sample-proj",
+            rope_project=rope_project,
+        ),
+    )
+
+    tm.that(violations, eq=[])
+
+
+def test_loose_object_detector_skips_canonical_alias_module_exception(
+    tmp_path: Path,
+    rope_project: t.Infra.RopeProject,
+) -> None:
+    target = tmp_path / "cli.py"
+    target.write_text(
+        "from __future__ import annotations\n"
+        "\n"
+        "def _adapter() -> None:\n"
+        "    return None\n",
+        encoding="utf-8",
+    )
+
+    violations = FlextInfraLooseObjectDetector.detect_file(
+        m.Infra.DetectorContext(
+            file_path=target,
+            project_name="sample-proj",
+            rope_project=rope_project,
+        ),
+    )
+
+    tm.that(violations, eq=[])
+
+
 def test_namespace_enforcer_apply_moves_manual_protocol_to_protocols_file(
     tmp_path: Path,
 ) -> None:

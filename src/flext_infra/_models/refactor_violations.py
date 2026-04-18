@@ -5,8 +5,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict
-
 from flext_core import m
 from flext_infra import FlextInfraModelsMixins, t
 
@@ -17,7 +15,7 @@ class FlextInfraModelsRefactorViolations:
     class ClassNestingMapping(m.ArbitraryTypesModel):
         """Unified mapping contract for class-nesting rewrite planning."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         loose_name: Annotated[str, m.Field(description="Original loose class name")] = (
             ""
@@ -42,7 +40,7 @@ class FlextInfraModelsRefactorViolations:
     ):
         """Normalized class-nesting violation with rewrite metadata."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
         class_name: Annotated[t.NonEmptyStr, m.Field(description="Class name")]
         target_namespace: Annotated[
             str, m.Field(description="Expected namespace class")
@@ -51,7 +49,7 @@ class FlextInfraModelsRefactorViolations:
     class ClassNestingPolicy(m.ContractModel):
         """Validated policy contract used by class-nesting transformers."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         family_name: Annotated[t.NonEmptyStr, m.Field(description="Module family name")]
         allowed_operations: t.StrSequence = m.Field(

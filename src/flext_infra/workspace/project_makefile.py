@@ -14,7 +14,6 @@ from pathlib import Path
 
 from flext_infra import (
     FlextInfraBaseMkGenerator,
-    FlextInfraUtilitiesDocsScope,
     c,
     m,
     p,
@@ -52,10 +51,10 @@ class FlextInfraProjectMakefileUpdater:
         if not pyproject.exists():
             return r[bool].ok(False)
 
-        meta_result = self._read_pyproject(pyproject)
-        if meta_result.failure:
-            return r[bool].fail(meta_result.error or "pyproject.toml parse failed")
-        meta = meta_result.value
+        try:
+            meta = u.read_project_metadata(project_root)
+        except (FileNotFoundError, ValueError) as exc:
+            return r[bool].fail(f"pyproject.toml parse failed: {exc}")
 
         bootstrap_result = FlextInfraBaseMkGenerator.render_bootstrap_include()
         if bootstrap_result.failure:
@@ -79,56 +78,7 @@ class FlextInfraProjectMakefileUpdater:
         return u.Cli.atomic_write_text_file(makefile_path, new_content)
 
     @staticmethod
-    def _read_pyproject(pyproject: Path) -> p.Result[m.Infra.ProjectMeta]:
-        """Parse pyproject.toml and extract name, python_version, description."""
-        project_state = FlextInfraUtilitiesDocsScope.project_state(pyproject.parent)
-        data = project_state.payload
-        if not data:
-            data_result = u.Infra.read_plain(pyproject)
-            if data_result.failure:
-                return r[m.Infra.ProjectMeta].fail(
-                    f"pyproject.toml read failed: {data_result.error}",
-                )
-            data = data_result.value
-
-        try:
-            project = data["project"]
-            if not isinstance(project, dict):
-                msg = "project table is not a mapping"
-                raise KeyError(msg)
-            name_raw = project["name"]
-            if not isinstance(name_raw, str):
-                msg = "project.name is not a string"
-                raise KeyError(msg)
-            name: str = name_raw
-            requires_python_raw = project.get("requires-python", ">=3.13")
-            requires_python = (
-                requires_python_raw
-                if isinstance(requires_python_raw, str)
-                else ">=3.13"
-            )
-            # Extract "3.13" from ">=3.13,<3.14" or ">=3.13"
-            version_str = requires_python.lstrip(">= ")
-            python_version = version_str.split(",")[0].split("<")[0].strip()
-            description_raw = project.get("description", "")
-            description: str = (
-                description_raw if isinstance(description_raw, str) else ""
-            )
-        except KeyError as exc:
-            return r[m.Infra.ProjectMeta].fail(
-                f"pyproject.toml missing required fields: {exc}",
-            )
-
-        return r[m.Infra.ProjectMeta].ok(
-            m.Infra.ProjectMeta(
-                name=name,
-                python_version=python_version,
-                description=description,
-            ),
-        )
-
-    @staticmethod
-    def _build_makefile(meta: m.Infra.ProjectMeta, bootstrap: str) -> str:
+    def _build_makefile(meta: m.ProjectMetadata, bootstrap: str) -> str:
         """Build the fully-generated Makefile content."""
         title = f"# {meta.name}"
         if meta.description:
@@ -144,7 +94,7 @@ class FlextInfraProjectMakefileUpdater:
             sep,
             "",
             f"PROJECT_NAME := {meta.name}",
-            f"PYTHON_VERSION ?= {meta.python_version}",
+            f"PYTHON_VERSION ?= {meta.requires_python}",
             f"SRC_DIR ?= {c.Infra.DEFAULT_SRC_DIR}",
             f"TESTS_DIR ?= {c.Infra.DIR_TESTS}",
             bootstrap,

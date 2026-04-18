@@ -6,8 +6,6 @@ from collections.abc import MutableSequence, MutableSet, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict
-
 from flext_cli import u
 from flext_core import m
 from flext_infra import (
@@ -395,7 +393,10 @@ class FlextInfraModelsCodegen:
     class ViolationKey(m.ContractModel):
         """Content-stable violation identifier — resilient to line shifts."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            frozen=True,
+            extra="forbid",
+        )
 
         module: Annotated[str, m.Field(description="Module containing the violation")]
         rule: Annotated[str, m.Field(description="Rule that was violated")]
@@ -426,7 +427,7 @@ class FlextInfraModelsCodegen:
     class CodegenPipelineState(m.ArbitraryTypesModel):
         """Typed inter-stage state for the codegen pipeline — Pydantic v2 model."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
             extra="forbid",
             arbitrary_types_allowed=True,
         )

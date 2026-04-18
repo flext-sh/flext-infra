@@ -3,18 +3,19 @@
 from __future__ import annotations
 
 from flext_cli import cli
-from flext_infra import (
-    FlextInfraCodegenCensus,
-    FlextInfraCodegenConsolidator,
-    FlextInfraCodegenFixer,
-    FlextInfraCodegenLazyInit,
-    FlextInfraCodegenPipeline,
-    FlextInfraCodegenPyTyped,
-    FlextInfraCodegenScaffolder,
+from flext_infra import m, t
+from flext_infra.codegen.census import FlextInfraCodegenCensus
+from flext_infra.codegen.constants_quality_gate import (
     FlextInfraConstantsCodegenQualityGate,
-    m,
-    t,
 )
+from flext_infra.codegen.fixer import FlextInfraCodegenFixer
+from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
+from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
+from flext_infra.codegen.pyproject_keys import FlextInfraCodegenPyprojectKeys
+from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
+from flext_infra.codegen.version_file import FlextInfraCodegenVersionFile
+from flext_infra.services.consolidator import FlextInfraCodegenConsolidator
+from flext_infra.services.pipeline import FlextInfraCodegenPipeline
 
 
 class FlextInfraCliCodegen:
@@ -83,6 +84,22 @@ class FlextInfraCliCodegen:
                     model_cls=FlextInfraCodegenConsolidator,
                     handler=FlextInfraCodegenConsolidator.execute_command,
                     failure_message="consolidate failed",
+                ),
+                m.Cli.ResultCommandRoute(
+                    name="pyproject-keys",
+                    help_text="Generate [tool.flext.*] tables in pyproject.toml",
+                    model_cls=FlextInfraCodegenPyprojectKeys,
+                    handler=FlextInfraCodegenPyprojectKeys.execute_command,
+                    failure_message="pyproject-keys generation failed",
+                    success_message="pyproject-keys generation complete",
+                ),
+                m.Cli.ResultCommandRoute(
+                    name="version-file",
+                    help_text="Generate __version__.py from project-metadata SSOT",
+                    model_cls=FlextInfraCodegenVersionFile,
+                    handler=FlextInfraCodegenVersionFile.execute_command,
+                    failure_message="version-file generation failed",
+                    success_message="version-file generation complete",
                 ),
             ],
         )

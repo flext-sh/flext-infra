@@ -42,20 +42,6 @@ class FlextInfraConstantsCodegen:
         r"\[(?P<rule>NS-\d{3})-\d{3}\]\s+(?P<module>[^:]+):(?P<line>\d+)\s+\u2014\s+(?P<message>.+)",
     )
     "Regex to parse violation strings: [NS-00X-NNN] path:line — message."
-    ALIAS_TO_SUFFIX: Final[t.StrMapping] = {
-        "c": "Constants",
-        "d": "Decorators",
-        "e": "Exceptions",
-        "h": "Handlers",
-        "m": "Models",
-        "p": "Protocols",
-        "r": "Result",
-        "s": "Service",
-        "t": "Types",
-        "u": "Utilities",
-        "x": "Mixins",
-    }
-    "Single-letter alias → class suffix mapping for lazy-init generation."
     MAX_LINE_LENGTH: Final[int] = 88
     "Maximum line length for generated import lines."
     AUTOGEN_HEADER: Final[str] = "# AUTO-GENERATED FILE — Regenerate with: make gen"
@@ -196,6 +182,8 @@ class FlextInfraConstantsCodegen:
     "Standard PEP 562 __getattr__ + __dir__ + cleanup (with _LAZY_CACHE)."
     TEMPLATE_GETATTR_L0: Final[str] = "lazy_init_getattr_l0.py.j2"
     "L0-typings __getattr__ + __dir__ + namespace-cleanup."
+    TEMPLATE_VERSION_FILE: Final[str] = "version_file.py.j2"
+    "Per-project ``__version__.py`` (inherits ``FlextVersion``)."
 
     # --- Pipeline stage StrEnum (was: class Pipeline plain strings) ---
     @unique

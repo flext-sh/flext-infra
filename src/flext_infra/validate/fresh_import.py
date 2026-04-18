@@ -5,6 +5,10 @@ and reports any ImportError. Catches circular-import cycles that the
 lazy-loading machinery in ``flext_core.lazy`` would otherwise mask
 until first attribute access.
 
+Subprocess calls are routed through
+``FlextInfraUtilitiesSubprocessUtils.run_python_import_smoke`` — this
+file carries no local subprocess bypass.
+
 Architecture: flext-infra validate layer — depends on ``m.Infra.ValidationReport``.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
@@ -13,12 +17,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import subprocess  # noqa: S404 — needed to spawn fresh Python for import smoke
-import sys
 from collections.abc import MutableSequence, Sequence
-from typing import override
+from typing import Annotated, override
 
-from flext_infra import m, p, r, s, t
+from flext_infra import c, m, p, r, s, t
+from flext_infra._utilities.subprocess_utils import (
+    FlextInfraUtilitiesSubprocessUtils,
+)
 
 
 class FlextInfraValidateFreshImport(s[bool]):
@@ -28,6 +33,17 @@ class FlextInfraValidateFreshImport(s[bool]):
     is imported via ``python -c 'import <pkg>'`` in a subprocess; any
     non-zero exit is reported as a violation.
     """
+
+    packages: Annotated[
+        t.StrSequence,
+        m.Field(
+            description="Package names to import-smoke in fresh subprocesses",
+        ),
+    ] = (
+        c.Infra.PKG_CORE_UNDERSCORE,
+        "flext_infra",
+        "flext_tests",
+    )
 
     def build_report(
         self,
@@ -45,15 +61,12 @@ class FlextInfraValidateFreshImport(s[bool]):
         """
         violations: MutableSequence[str] = []
         for package in packages:
-            completed = subprocess.run(  # noqa: S603
-                [sys.executable, "-c", f"import {package}"],
-                capture_output=True,
-                check=False,
+            rc, last_line = FlextInfraUtilitiesSubprocessUtils.run_python_import_smoke(
+                package
             )
-            if completed.returncode != 0:
-                stderr = completed.stderr.decode("utf-8", errors="replace").strip()
-                first_line = stderr.splitlines()[-1] if stderr else "ImportError"
-                violations.append(f"{package}: {first_line}")
+            if rc != 0:
+                reason = last_line or "ImportError"
+                violations.append(f"{package}: {reason}")
         passed = not violations
         total = len(violations)
         summary = (
@@ -71,14 +84,8 @@ class FlextInfraValidateFreshImport(s[bool]):
 
     @override
     def execute(self) -> p.Result[bool]:
-        """Execute the fresh-import validation CLI flow.
-
-        Reads the target package list from the service's ``packages``
-        attribute if provided via subclassing or instance attr, else
-        yields a passing empty report.
-        """
-        packages: Sequence[str] = getattr(self, "packages", ())
-        report_result = self.build_report(packages=packages)
+        """Execute the fresh-import validation CLI flow."""
+        report_result = self.build_report(packages=self.packages)
         if report_result.failure:
             return r[bool].fail(
                 report_result.error or "fresh-import validation failed",

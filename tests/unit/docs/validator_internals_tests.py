@@ -23,9 +23,10 @@ def test_docs_load_required_skills_reads_architecture_config(tmp_path: Path) -> 
         encoding="utf-8",
     )
 
-    required = u.Infra.docs_load_required_skills(tmp_path)
+    result = u.Infra.docs_load_required_skills(tmp_path)
 
-    assert required == ["rules-docs", "readme-standardization"]
+    assert result.success
+    assert result.value == ["rules-docs", "readme-standardization"]
 
 
 def test_docs_write_todo_writes_only_for_project_scopes(tmp_path: Path) -> None:

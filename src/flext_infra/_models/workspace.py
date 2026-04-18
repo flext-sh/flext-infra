@@ -6,8 +6,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
 
-from pydantic import ConfigDict
-
 from flext_core import m
 from flext_infra import FlextInfraModelsMixins, c, t
 
@@ -26,7 +24,7 @@ class FlextInfraModelsWorkspace:
     ):
         """Discovered project metadata for workspace operations."""
 
-        model_config = ConfigDict(frozen=True, validate_default=False)
+        model_config = m.ConfigDict(frozen=True, validate_default=False)
 
         path: Annotated[Path, m.Field(description="Absolute or relative project path")]
         stack: Annotated[
@@ -55,21 +53,10 @@ class FlextInfraModelsWorkspace:
             ),
         ] = c.Infra.WorkspaceProjectRole.ATTACHED
 
-    class ProjectMeta(
-        FlextInfraModelsMixins.ProjectEntryNameMixin,
-        m.ArbitraryTypesModel,
-    ):
-        """Extracted project metadata for makefile generation."""
-
-        python_version: Annotated[t.NonEmptyStr, m.Field(description="Python version")]
-        description: Annotated[
-            t.NonEmptyStr, m.Field(description="Project description")
-        ]
-
     class ProjectPyprojectState(m.ArbitraryTypesModel):
         """Centralized parsed pyproject state reused across discovery services."""
 
-        model_config = ConfigDict(frozen=True, validate_default=False)
+        model_config = m.ConfigDict(frozen=True, validate_default=False)
 
         project_root: Annotated[Path, m.Field(description="Project root path")]
         pyproject_path: Annotated[Path, m.Field(description="Resolved pyproject path")]

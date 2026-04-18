@@ -6,8 +6,6 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict
-
 from flext_core import m
 from flext_infra import t
 
@@ -18,7 +16,7 @@ class FlextInfraModelsDocs:
     class DocsPhaseItemModel(m.BaseModel):
         """Unified item payload for docs phase reports."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
             extra="forbid",
             frozen=True,
             strict=True,

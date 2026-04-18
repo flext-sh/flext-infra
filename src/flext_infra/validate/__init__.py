@@ -13,6 +13,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".import_cycles": ("FlextInfraValidateImportCycles",),
         ".inventory": ("FlextInfraInventoryService",),
         ".lazy_map_freshness": ("FlextInfraValidateLazyMapFreshness",),
+        ".metadata_discipline": ("FlextInfraValidateMetadataDiscipline",),
         ".namespace_rules": ("FlextInfraNamespaceRules",),
         ".namespace_validator": ("FlextInfraNamespaceValidator",),
         ".pytest_diag": ("FlextInfraPytestDiagExtractor",),

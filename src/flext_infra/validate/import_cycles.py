@@ -11,7 +11,7 @@ ROPE/beartype mandate; raw ``ast`` / ``libcst`` source analysis is
 forbidden in flext-infra detectors.
 
 Architecture: flext-infra validate layer — consumes
-``FlextInfraUtilitiesRopeCore``.
+``u.Infra`` Rope boundary helpers.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -23,10 +23,7 @@ from collections.abc import MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
-from rope.base.exceptions import RefactoringError, ResourceNotFoundError
-from rope.refactor.importutils.importinfo import FromImport, NormalImport
-
-from flext_infra import FlextInfraUtilitiesRopeCore, m, p, r, s, t
+from flext_infra import m, p, r, s, t, u
 
 
 class FlextInfraValidateImportCycles(s[bool]):
@@ -85,13 +82,13 @@ class FlextInfraValidateImportCycles(s[bool]):
     ) -> MutableMapping[str, set[str]]:
         """Build ``{module_name: {imported_modules}}`` via rope."""
         graph: MutableMapping[str, set[str]] = {}
-        with FlextInfraUtilitiesRopeCore.open_project(workspace_root) as project:
-            for resource in FlextInfraUtilitiesRopeCore.python_resources(project):
+        with u.Infra.open_project(workspace_root) as project:
+            for resource in u.Infra.python_resources(project):
                 module_name = self._module_name_for(project, resource)
                 if module_name is None:
                     continue
                 graph.setdefault(module_name, set())
-                module_imports = FlextInfraUtilitiesRopeCore.get_module_imports(
+                module_imports = u.Infra.get_module_imports(
                     project,
                     resource,
                 )
@@ -108,10 +105,15 @@ class FlextInfraValidateImportCycles(s[bool]):
     ) -> str | None:
         """Resolve a rope resource to its fully-qualified module name."""
         try:
-            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(project, resource)
-        except (TypeError, RefactoringError, ResourceNotFoundError):
+            pymodule = u.Infra.get_pymodule(project, resource)
+        except u.Infra.RUNTIME_ERRORS:
             return None
-        name = getattr(pymodule, "get_name", lambda: None)()
+        except TypeError:
+            return None
+        try:
+            name = pymodule.get_name()
+        except (AttributeError, TypeError):
+            name = None
         if isinstance(name, str) and name:
             return name
         resource_path = resource.path
@@ -124,31 +126,12 @@ class FlextInfraValidateImportCycles(s[bool]):
         self,
         module_imports: t.Infra.RopeModuleImports,
     ) -> Sequence[str]:
-        """Extract imported module names from rope's ImportInfo collection.
+        """Extract imported module names from the boundary import-info collection.
 
         Rope's parser already excludes ``if TYPE_CHECKING:`` blocks and
         resolves relative imports to absolute module names.
         """
-        names: MutableSequence[str] = []
-        import_statements = module_imports.imports
-        if not isinstance(import_statements, list):
-            return ()
-        for import_stmt in import_statements:
-            info = getattr(import_stmt, "import_info", None)
-            if isinstance(info, FromImport):
-                module_name = info.module_name
-                if module_name:
-                    names.append(module_name)
-                    for name_pair in info.names_and_aliases:
-                        imported = name_pair[0] if name_pair else ""
-                        if imported:
-                            names.append(f"{module_name}.{imported}")
-            elif isinstance(info, NormalImport):
-                for name_pair in info.names_and_aliases:
-                    imported = name_pair[0] if name_pair else ""
-                    if imported:
-                        names.append(imported)
-        return tuple(names)
+        return u.Infra.imported_module_paths(module_imports)
 
     def _tarjan(
         self,
@@ -192,10 +175,7 @@ class FlextInfraValidateImportCycles(s[bool]):
     @override
     def execute(self) -> p.Result[bool]:
         """Execute the cycle-detection CLI flow using ``self.workspace_root``."""
-        workspace_root = getattr(self, "workspace_root", None)
-        if not isinstance(workspace_root, Path):
-            return r[bool].fail("workspace_root not configured")
-        report_result = self.build_report(workspace_root)
+        report_result = self.build_report(self.workspace_root)
         if report_result.failure:
             return r[bool].fail(
                 report_result.error or "import-cycles validation failed",

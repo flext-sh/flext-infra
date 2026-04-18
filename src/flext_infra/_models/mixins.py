@@ -5,9 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated
 
-from pydantic import AliasChoices, ConfigDict, computed_field
-
-from flext_core import m
+from flext_core import m, u
 from flext_infra import c, t
 
 
@@ -19,13 +17,13 @@ class FlextInfraModelsMixins:
     class BaseMixin:
         """Foundation for all CLI commands: workspace path and verbose flag."""
 
-        model_config = ConfigDict(populate_by_name=True)
+        model_config = m.ConfigDict(populate_by_name=True)
 
         workspace: Annotated[
             str,
             m.Field(
                 alias="workspace",
-                validation_alias=AliasChoices("workspace", "workspace_path"),
+                validation_alias=t.AliasChoices("workspace", "workspace_path"),
                 description="Workspace root",
             ),
         ] = "."
@@ -121,13 +119,13 @@ class FlextInfraModelsMixins:
             ),
         ] = c.Infra.SAFE_EXECUTION_DEFAULT_GATES
 
-        @computed_field
+        @u.computed_field()
         @property
         def dry_run(self) -> bool:
             """Whether writes are disabled (inverse of apply)."""
             return not self.apply
 
-        @computed_field
+        @u.computed_field()
         @property
         def execution_mode(self) -> c.Infra.ExecutionMode:
             """Resolve execution mode from CLI flags."""

@@ -80,9 +80,6 @@ class FlextInfraGenericTransformerRule(FlextInfraRefactorRule):
     ) -> t.Infra.TransformResult:
         """Instantiate TRANSFORMER_CLASS and apply it."""
         transformer = self.TRANSFORMER_CLASS()
-        if not isinstance(transformer, FlextInfraChangeTracker):
-            msg = "TRANSFORMER_CLASS must produce a change-tracking transformer"
-            raise TypeError(msg)
         return self._apply_text_transformer(transformer, source)
 
 

@@ -6,8 +6,6 @@ from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
-from pydantic import ValidationError
-
 from flext_infra import FlextInfraGate, c, m, t, u
 
 
@@ -73,8 +71,18 @@ class FlextInfraRuffLintGate(FlextInfraGate):
                                 message=u.Infra.pick_str(entry, "message"),
                             ),
                         )
-        except (TypeError, ValidationError):
-            pass
+        except (TypeError, c.ValidationError) as err:
+            issues.append(
+                m.Infra.Issue(
+                    file="<ruff-output>",
+                    line=0,
+                    column=0,
+                    code="PARSE_ERROR",
+                    message=f"Tool output parsing failed: {type(err).__name__}",
+                    severity="ERROR",
+                )
+            )
+            return False, issues
         return result.exit_code == 0, issues
 
     @override

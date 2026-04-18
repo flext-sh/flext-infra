@@ -9,7 +9,7 @@ until first attribute access trips a cycle.
 
 Mandate: 100% ROPE-based per flext-infra detector mandate — the check
 delegates to the existing codegen pipeline which uses rope internally
-via ``FlextInfraUtilitiesRopeCore``.
+via the ``u.Infra`` boundary.
 
 Architecture: flext-infra validate layer — wraps flext-infra codegen.
 
@@ -76,10 +76,7 @@ class FlextInfraValidateLazyMapFreshness(s[bool]):
     @override
     def execute(self) -> p.Result[bool]:
         """Execute the freshness validation using ``self.workspace_root``."""
-        workspace_root = getattr(self, "workspace_root", None)
-        if not isinstance(workspace_root, Path):
-            return r[bool].fail("workspace_root not configured")
-        report_result = self.build_report(workspace_root)
+        report_result = self.build_report(self.workspace_root)
         if report_result.failure:
             return r[bool].fail(
                 report_result.error or "lazy-map freshness validation failed",

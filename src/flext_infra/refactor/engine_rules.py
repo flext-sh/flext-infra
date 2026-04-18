@@ -11,8 +11,6 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import override
 
-from pydantic import TypeAdapter
-
 from flext_infra import (
     FlextInfraChangeTracker,
     FlextInfraGenericTransformerRule,
@@ -245,7 +243,7 @@ class FlextInfraRefactorSignaturePropagationRule(FlextInfraRefactorRule):
     """Apply declarative signature migrations in a generic, workspace-safe way."""
 
     _SIG_MIGRATION_SEQ_ADAPTER: m.TypeAdapter[Sequence[m.Infra.SignatureMigration]] = (
-        TypeAdapter(
+        m.TypeAdapter(
             Sequence[m.Infra.SignatureMigration],
         )
     )

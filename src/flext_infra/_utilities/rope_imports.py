@@ -9,7 +9,11 @@ import rope.contrib.findit as rope_findit
 import rope.refactor.importutils as rope_importutils
 from rope.base.change import ChangeSet
 from rope.base.exceptions import RefactoringError, ResourceNotFoundError
-from rope.refactor.importutils.importinfo import FromImport
+from rope.refactor.importutils.importinfo import (
+    FromImport,
+    ImportStatement,
+    NormalImport,
+)
 
 from flext_infra import (
     FlextInfraUtilitiesRopeCore,
@@ -20,6 +24,67 @@ from flext_infra import (
 
 class FlextInfraUtilitiesRopeImports:
     """Rope-backed import organization and rename helpers."""
+
+    @staticmethod
+    def import_statements(
+        module_imports: t.Infra.RopeModuleImports,
+    ) -> Sequence[t.Infra.RopeImportStatement]:
+        """Return validated Rope import statements from one module import collection."""
+        import_statements = module_imports.imports
+        if not isinstance(import_statements, list):
+            return ()
+        return tuple(
+            import_stmt
+            for import_stmt in import_statements
+            if isinstance(import_stmt, ImportStatement)
+        )
+
+    @staticmethod
+    def import_statement_module_name(
+        import_statement: t.Infra.RopeImportStatement,
+    ) -> str | None:
+        """Return the absolute module name represented by one Rope import statement."""
+        import_info = import_statement.import_info
+        if not isinstance(import_info, FromImport):
+            return None
+        module_name = import_info.module_name
+        return module_name if isinstance(module_name, str) and module_name else None
+
+    @staticmethod
+    def import_statement_names_and_aliases(
+        import_statement: t.Infra.RopeImportStatement,
+    ) -> Sequence[tuple[str, str | None]]:
+        """Return validated imported-name pairs from one Rope import statement."""
+        import_info = import_statement.import_info
+        if not isinstance(import_info, FromImport | NormalImport):
+            return ()
+        names_and_aliases = import_info.names_and_aliases
+        if not isinstance(names_and_aliases, list):
+            return ()
+        return tuple(
+            (name, alias)
+            for name, alias in names_and_aliases
+            if isinstance(name, str) and (alias is None or isinstance(alias, str))
+        )
+
+    @classmethod
+    def imported_module_paths(
+        cls,
+        module_imports: t.Infra.RopeModuleImports,
+    ) -> Sequence[str]:
+        """Return runtime import targets represented by a Rope module import set."""
+        imported_paths: list[str] = []
+        for import_statement in cls.import_statements(module_imports):
+            module_name = cls.import_statement_module_name(import_statement)
+            names_and_aliases = cls.import_statement_names_and_aliases(import_statement)
+            if module_name is not None:
+                imported_paths.append(module_name)
+                imported_paths.extend(
+                    f"{module_name}.{name}" for name, _alias in names_and_aliases
+                )
+                continue
+            imported_paths.extend(name for name, _alias in names_and_aliases)
+        return tuple(imported_paths)
 
     @staticmethod
     def find_occurrences(
@@ -69,6 +134,7 @@ class FlextInfraUtilitiesRopeImports:
             rope_project.do(changes)
         return changed
 
+    @staticmethod
     def get_absolute_from_imports(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,

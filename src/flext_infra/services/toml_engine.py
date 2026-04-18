@@ -13,8 +13,6 @@ from __future__ import annotations
 from collections.abc import MutableMapping, MutableSequence, Sequence
 from typing import Annotated, override
 
-from pydantic import PrivateAttr
-
 from flext_infra import c, m, p, r, s, t, u
 
 
@@ -33,7 +31,7 @@ class FlextInfraToml(s[Sequence[t.StrSequence]]):
             description="Phase configs applied to the TOML document",
         ),
     ]
-    _table_cache: dict[tuple[str, ...], t.Cli.TomlTable] = PrivateAttr(
+    _table_cache: dict[tuple[str, ...], t.Cli.TomlTable] = u.PrivateAttr(
         default_factory=dict,
     )
 

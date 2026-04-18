@@ -148,6 +148,9 @@ if _t.TYPE_CHECKING:
     )
     from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
     from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
+    from flext_infra._utilities.subprocess_utils import (
+        FlextInfraUtilitiesSubprocessUtils,
+    )
     from flext_infra._utilities.toml import FlextInfraUtilitiesToml
     from flext_infra._utilities.toml_parse import FlextInfraUtilitiesTomlParse
     from flext_infra._utilities.utilities_cli import FlextInfraUtilitiesRefactorCli
@@ -175,6 +178,7 @@ if _t.TYPE_CHECKING:
     from flext_infra.codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
     from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
     from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
+    from flext_infra.codegen.version_file import FlextInfraCodegenVersionFile
     from flext_infra.constants import FlextInfraConstants, c
     from flext_infra.deps.cli import FlextInfraCliDeps
     from flext_infra.deps.detection import FlextInfraDependencyDetectionService
@@ -417,6 +421,9 @@ if _t.TYPE_CHECKING:
     from flext_infra.validate.lazy_map_freshness import (
         FlextInfraValidateLazyMapFreshness,
     )
+    from flext_infra.validate.metadata_discipline import (
+        FlextInfraValidateMetadataDiscipline,
+    )
     from flext_infra.validate.namespace_rules import FlextInfraNamespaceRules
     from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
     from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
@@ -594,6 +601,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             "._utilities.rope_module_patch": ("FlextInfraUtilitiesRopeModulePatch",),
             "._utilities.rope_source": ("FlextInfraUtilitiesRopeSource",),
             "._utilities.safety": ("FlextInfraUtilitiesSafety",),
+            "._utilities.subprocess_utils": ("FlextInfraUtilitiesSubprocessUtils",),
             "._utilities.toml": ("FlextInfraUtilitiesToml",),
             "._utilities.toml_parse": ("FlextInfraUtilitiesTomlParse",),
             "._utilities.utilities_cli": ("FlextInfraUtilitiesRefactorCli",),
@@ -630,6 +638,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".codegen.lazy_init_planner": ("FlextInfraCodegenLazyInitPlanner",),
             ".codegen.py_typed": ("FlextInfraCodegenPyTyped",),
             ".codegen.scaffolder": ("FlextInfraCodegenScaffolder",),
+            ".codegen.version_file": ("FlextInfraCodegenVersionFile",),
             ".constants": (
                 "FlextInfraConstants",
                 "c",
@@ -843,6 +852,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".validate.import_cycles": ("FlextInfraValidateImportCycles",),
             ".validate.inventory": ("FlextInfraInventoryService",),
             ".validate.lazy_map_freshness": ("FlextInfraValidateLazyMapFreshness",),
+            ".validate.metadata_discipline": ("FlextInfraValidateMetadataDiscipline",),
             ".validate.namespace_rules": ("FlextInfraNamespaceRules",),
             ".validate.namespace_validator": ("FlextInfraNamespaceValidator",),
             ".validate.pytest_diag": ("FlextInfraPytestDiagExtractor",),
@@ -915,6 +925,7 @@ __all__: list[str] = [
     "FlextInfraCodegenPipeline",
     "FlextInfraCodegenPyTyped",
     "FlextInfraCodegenScaffolder",
+    "FlextInfraCodegenVersionFile",
     "FlextInfraCompatibilityAliasDetector",
     "FlextInfraConfigFixer",
     "FlextInfraConsolidateGroupsPhase",
@@ -1146,12 +1157,14 @@ __all__: list[str] = [
     "FlextInfraUtilitiesRopeModulePatch",
     "FlextInfraUtilitiesRopeSource",
     "FlextInfraUtilitiesSafety",
+    "FlextInfraUtilitiesSubprocessUtils",
     "FlextInfraUtilitiesToml",
     "FlextInfraUtilitiesTomlParse",
     "FlextInfraUtilitiesVersioning",
     "FlextInfraValidateFreshImport",
     "FlextInfraValidateImportCycles",
     "FlextInfraValidateLazyMapFreshness",
+    "FlextInfraValidateMetadataDiscipline",
     "FlextInfraValidateTierWhitelist",
     "FlextInfraViolationCensusVisitor",
     "FlextInfraWorkspaceCheckGatesMixin",

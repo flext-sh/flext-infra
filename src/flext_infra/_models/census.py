@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict
-
 from flext_core import m
 from flext_infra import FlextInfraModelsMixins, c, t
 
@@ -25,7 +23,7 @@ class FlextInfraModelsCensus:
         ):
             """Single discovered Python object with tier and classification metadata."""
 
-            model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+            model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
             name: Annotated[t.NonEmptyStr, m.Field(description="Object identifier")]
             kind: Annotated[
@@ -83,7 +81,7 @@ class FlextInfraModelsCensus:
         ):
             """Detected census violation with fix metadata."""
 
-            model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+            model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
             object_name: Annotated[
                 t.NonEmptyStr,
@@ -122,7 +120,7 @@ class FlextInfraModelsCensus:
         class Fix(m.ArbitraryTypesModel):
             """Applied or proposed auto-fix operation."""
 
-            model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+            model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
             object_name: Annotated[
                 t.NonEmptyStr,
@@ -151,7 +149,7 @@ class FlextInfraModelsCensus:
         class DuplicateGroup(m.ArbitraryTypesModel):
             """Cross-project duplicate object cluster."""
 
-            model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+            model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
             name: Annotated[
                 t.NonEmptyStr,
@@ -180,7 +178,7 @@ class FlextInfraModelsCensus:
         ):
             """Per-project census summary."""
 
-            model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+            model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
             objects: tuple[FlextInfraModelsCensus.Census.Object, ...] = m.Field(
                 default_factory=tuple,

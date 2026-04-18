@@ -5,8 +5,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict
-
 from flext_core import m
 from flext_infra import FlextInfraModelsMixins, c, t
 
@@ -19,7 +17,7 @@ class FlextInfraModelsRefactorGrep:
     ):
         """Unified symbol candidate used by MRO scan and rewrites."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         facade_name: Annotated[str, m.Field(description="Facade alias/import name")] = (
             ""
@@ -42,7 +40,7 @@ class FlextInfraModelsRefactorGrep:
     ):
         """Unified import rewrite payload for MRO reference updates."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         facade_name: Annotated[str, m.Field(description="Facade alias/import name")] = (
             ""
@@ -58,7 +56,7 @@ class FlextInfraModelsRefactorGrep:
     class MROScanReport(m.ArbitraryTypesModel):
         """Scan result for one constants module candidate file."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         file: Annotated[t.NonEmptyStr, m.Field(description="Absolute file path")]
         module: Annotated[t.NonEmptyStr, m.Field(description="Import module path")]
@@ -172,7 +170,7 @@ class FlextInfraModelsRefactorGrep:
         )
 
     class EngineConfig(m.ContractModel):
-        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         project_scan_dirs: t.StrSequence = m.Field(
             default_factory=lambda: [
@@ -194,7 +192,7 @@ class FlextInfraModelsRefactorGrep:
     class MethodOrderRule(m.ContractModel):
         """A declarative method ordering rule for class reconstruction."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict()
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict()
 
         category: Annotated[str | None, m.Field(description="Method category")] = None
         visibility: Annotated[
@@ -253,7 +251,7 @@ class FlextInfraModelsRefactorGrep:
     class AccessorMigrationRule(m.ContractModel):
         """Declarative symbol-rename rule for accessor migration."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         source_name: Annotated[
             t.NonEmptyStr,
@@ -277,7 +275,7 @@ class FlextInfraModelsRefactorGrep:
     class AccessorMigrationChange(m.ArbitraryTypesModel):
         """Single automated rename or manual warning emitted by accessor migration."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         file: Annotated[t.NonEmptyStr, m.Field(description="Absolute file path")]
         line: Annotated[
@@ -302,7 +300,7 @@ class FlextInfraModelsRefactorGrep:
     class AccessorMigrationFile(m.ArbitraryTypesModel):
         """Per-file preview for accessor migration dry-runs and applies."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         file: Annotated[t.NonEmptyStr, m.Field(description="Absolute file path")]
         lint_tools: t.Infra.VariadicTuple[str] = m.Field(
@@ -340,7 +338,7 @@ class FlextInfraModelsRefactorGrep:
     class AccessorMigrationReport(m.ArbitraryTypesModel):
         """Workspace-scale report for accessor migration orchestration."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         workspace: Annotated[t.NonEmptyStr, m.Field(description="Workspace root path")]
         dry_run: Annotated[bool, m.Field(description="Dry-run indicator")]

@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, override
+from typing import Annotated
 
 from tests import c, m, t
 
@@ -25,13 +25,6 @@ class WorkspaceFactory(m.Config):
     default_python: Annotated[str, m.Field(default="^3.13")]
     default_version: Annotated[str, m.Field(default="0.1.0")]
     encoding: Annotated[str, m.Field(default="utf-8")]
-
-    @override
-    def model_post_init(self, __context: t.ScalarMapping | None) -> None:
-        """Post-init to set defaults from c.Infra.Tests if available."""
-        super().model_post_init(__context)
-        if not self.default_python:
-            object.__setattr__(self, "default_python", "^3.13")
 
     def create_minimal(self, tmp_path: Path, name: str = "test-proj") -> Path:
         """Create minimal project with pyproject.toml, Makefile, src/."""

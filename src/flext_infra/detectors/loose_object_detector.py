@@ -9,7 +9,6 @@ from __future__ import annotations
 from collections.abc import MutableSequence, Sequence
 
 from flext_infra import (
-    FlextInfraUtilitiesCodegenNamespace,
     c,
     m,
     u,
@@ -30,15 +29,14 @@ class FlextInfraLooseObjectDetector:
         if (
             file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES
             or file_path.name in c.Infra.NAMESPACE_SETTINGS_FILE_NAMES
+            or file_path.stem in c.Infra.NAMESPACE_CANONICAL_ALIAS_MODULE_STEMS
         ):
             return []
         res = u.Infra.get_resource_from_path(rope_project, file_path)
         if res is None:
             return []
         lines = res.read().splitlines()
-        class_stem = FlextInfraUtilitiesCodegenNamespace.project_class_stem(
-            project_name=project_name,
-        )
+        class_stem = u.derive_class_stem(project_name)
         file_str = str(file_path)
         violations: MutableSequence[m.Infra.LooseObjectViolation] = []
 
@@ -53,12 +51,14 @@ class FlextInfraLooseObjectDetector:
                 )
             )
 
+        class_symbols: MutableSequence[m.Infra.SymbolInfo] = []
         for symbol in u.Infra.get_module_symbols(rope_project, res):
             if symbol.kind == "class" or symbol.name in c.Infra.SCAN_ALLOWED_TOP_LEVEL:
+                if symbol.kind == "class":
+                    class_symbols.append(symbol)
                 continue
             if symbol.kind == "function":
-                if not symbol.name.startswith("_"):
-                    _add(symbol, "function", "Utilities")
+                _add(symbol, "function", "Utilities")
                 continue
             line = lines[symbol.line - 1] if 0 < symbol.line <= len(lines) else ""
             if line.lstrip().startswith("type "):
@@ -74,6 +74,17 @@ class FlextInfraLooseObjectDetector:
                 and c.Infra.NAMESPACE_CONSTANT_PATTERN.match(symbol.name)
             ):
                 _add(symbol, "constant", "Constants")
+
+        if len(class_symbols) != 1:
+            violations.append(
+                m.Infra.LooseObjectViolation(
+                    file=file_str,
+                    line=1,
+                    name=file_path.stem,
+                    kind="single_class",
+                    suggestion=f"{class_stem}Utilities",
+                )
+            )
 
         return violations
 

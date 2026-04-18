@@ -66,6 +66,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".rope_module_patch": ("FlextInfraUtilitiesRopeModulePatch",),
         ".rope_source": ("FlextInfraUtilitiesRopeSource",),
         ".safety": ("FlextInfraUtilitiesSafety",),
+        ".subprocess_utils": ("FlextInfraUtilitiesSubprocessUtils",),
         ".toml": ("FlextInfraUtilitiesToml",),
         ".toml_parse": ("FlextInfraUtilitiesTomlParse",),
         ".utilities_cli": ("FlextInfraUtilitiesRefactorCli",),

@@ -7,8 +7,6 @@ from collections.abc import MutableSequence, Sequence
 from operator import itemgetter
 from typing import TypeGuard, override
 
-from pydantic import TypeAdapter
-
 from flext_infra import FlextInfraRopeTransformer, c, m, t, u
 
 
@@ -25,7 +23,7 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
         """Initialize with rule order settings and optional change callback."""
         super().__init__(on_change=on_change)
         try:
-            self._order_config: Sequence[m.Infra.MethodOrderRule] = TypeAdapter(
+            self._order_config: Sequence[m.Infra.MethodOrderRule] = m.TypeAdapter(
                 Sequence[m.Infra.MethodOrderRule],
             ).validate_python(order_config)
         except c.ValidationError:

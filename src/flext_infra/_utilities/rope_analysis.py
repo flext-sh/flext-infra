@@ -134,7 +134,7 @@ class FlextInfraUtilitiesRopeAnalysis:
                 items = value
             case _:
                 return None
-        return tuple(item for item in items if isinstance(item, str))
+        return tuple(items)
 
     @staticmethod
     def get_module_semantic_state(
@@ -214,6 +214,8 @@ class FlextInfraUtilitiesRopeAnalysis:
                             )
                             declared_imports[local_name] = target
                             semantic_imports[local_name] = target
+                    case _:
+                        continue
         except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
             state = m.Infra.ModuleSemanticState(
                 class_infos=tuple(class_infos),

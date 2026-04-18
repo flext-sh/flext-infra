@@ -7,8 +7,6 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Self, TypeVar, override
 
-from pydantic import ConfigDict, field_validator
-
 from flext_cli import FlextCliSettings
 from flext_core import (
     FlextProtocols,
@@ -16,6 +14,7 @@ from flext_core import (
     m,
     s,
     t,
+    u,
 )
 from flext_infra import FlextInfraConstantsBase, FlextInfraTypesBase
 
@@ -38,7 +37,7 @@ class FlextInfraServiceBase(
     apply/dry-run toggles, output formatting, and project filtering.
     """
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = m.ConfigDict(populate_by_name=True)
 
     @property
     @override
@@ -95,20 +94,20 @@ class FlextInfraServiceBase(
         Path | None, m.Field(description="Output directory", exclude=True)
     ] = None
 
-    @field_validator("workspace_root", mode="before")
+    @u.field_validator("workspace_root", mode="before")
     @classmethod
     def _normalize_workspace_root(cls, value: str | Path) -> Path:
         """Normalize workspace roots eagerly through Pydantic validation."""
         path = value if isinstance(value, Path) else Path(value)
         return path.resolve()
 
-    @field_validator("output_format", mode="before")
+    @u.field_validator("output_format", mode="before")
     @classmethod
     def _normalize_output_format(cls, value: str) -> str:
         """Normalize CLI output format names once in the base layer."""
         return value.strip().lower()
 
-    @field_validator("project_filter", mode="before")
+    @u.field_validator("project_filter", mode="before")
     @classmethod
     def _normalize_project_filter(
         cls,
@@ -123,7 +122,7 @@ class FlextInfraServiceBase(
         values = [item.strip() for item in value if item.strip()]
         return ",".join(values) or None
 
-    @field_validator("report_path", "output_dir", mode="before")
+    @u.field_validator("report_path", "output_dir", mode="before")
     @classmethod
     def _normalize_optional_path(cls, value: str | Path | None) -> Path | None:
         """Resolve optional output paths in one place."""

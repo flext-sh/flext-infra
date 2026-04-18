@@ -3,8 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, ClassVar, Protocol
 
-from pydantic import ConfigDict
-
 from tests import m
 
 
@@ -15,7 +13,7 @@ class WorkspaceFactoryLike(Protocol):
 
 
 class EmptyScenario(m.BaseModel):
-    model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
     workspace_name: Annotated[str, m.Field(default="workspace")]
 
@@ -27,7 +25,7 @@ class EmptyScenario(m.BaseModel):
 
 
 class MinimalScenario(m.BaseModel):
-    model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
     project_name: Annotated[str, m.Field(default="test-proj")]
 
@@ -36,7 +34,7 @@ class MinimalScenario(m.BaseModel):
 
 
 class FullScenario(m.BaseModel):
-    model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
     project_name: Annotated[str, m.Field(default="full-proj")]
 
@@ -45,7 +43,7 @@ class FullScenario(m.BaseModel):
 
 
 class BrokenScenario(m.BaseModel):
-    model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
     project_name: Annotated[str, m.Field(default="broken-proj")]
 

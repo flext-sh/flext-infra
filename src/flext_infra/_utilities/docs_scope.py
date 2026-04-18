@@ -25,7 +25,14 @@ class FlextInfraUtilitiesDocsScope:
     @staticmethod
     @cache
     def _project_state(project_root: str) -> m.Infra.ProjectPyprojectState:
-        """Return cached parsed pyproject state for one project root."""
+        """Return cached parsed pyproject state for one project root.
+
+        When the pyproject is absent or empty, the returned state carries
+        empty ``project_name``/``package_name`` (legitimate "not a project"
+        signal). When the pyproject is present but missing ``[project]`` or
+        ``[project].name``, :meth:`project_name_from_payload` raises — no
+        silent fallback to directory-name.
+        """
         root = Path(project_root)
         pyproject_path = root / c.Infra.PYPROJECT_FILENAME
         payload = FlextInfraUtilitiesIteration.pyproject_payload(pyproject_path)
@@ -35,6 +42,16 @@ class FlextInfraUtilitiesDocsScope:
                 payload,
             )
         )
+        if not payload:
+            return m.Infra.ProjectPyprojectState.model_construct(
+                project_root=root,
+                pyproject_path=pyproject_path,
+                payload=payload,
+                docs_meta=docs_meta,
+                project_name="",
+                package_name="",
+                dependency_names=dependency_names,
+            )
         return m.Infra.ProjectPyprojectState.model_construct(
             project_root=root,
             pyproject_path=pyproject_path,
@@ -94,13 +111,16 @@ class FlextInfraUtilitiesDocsScope:
         entry: Path,
         payload: t.Infra.ContainerDict,
     ) -> str:
-        """Return the declared project name, falling back to the directory name."""
+        """Return the declared project name from ``[project].name``."""
         project_section = payload.get("project")
-        if isinstance(project_section, dict):
-            raw_name = project_section.get("name")
-            if isinstance(raw_name, str) and raw_name.strip():
-                return raw_name.strip()
-        return entry.name
+        if not isinstance(project_section, dict):
+            msg = f"{entry}: missing [project] table in pyproject.toml"
+            raise TypeError(msg)
+        raw_name = project_section.get("name")
+        if not isinstance(raw_name, str) or not raw_name.strip():
+            msg = f"{entry}: missing or empty [project].name in pyproject.toml"
+            raise ValueError(msg)
+        return raw_name.strip()
 
     @staticmethod
     def _workspace_member_name_set(workspace_root: Path) -> t.Infra.StrSet:
@@ -116,6 +136,15 @@ class FlextInfraUtilitiesDocsScope:
         """Build one canonical project descriptor for one discovered project root."""
         pyproject = entry / c.Infra.PYPROJECT_FILENAME
         if not pyproject.is_file():
+            return None
+        # Pre-validate [project].name BEFORE triggering the strict cached state builder.
+        payload_preview = FlextInfraUtilitiesIteration.pyproject_payload(pyproject)
+        project_section = payload_preview.get("project")
+        if (
+            not isinstance(project_section, dict)
+            or not isinstance(project_section.get("name"), str)
+            or not str(project_section["name"]).strip()
+        ):
             return None
         project_state = FlextInfraUtilitiesDocsScope.project_state(entry)
         is_workspace_member = entry.name in workspace_members
@@ -262,7 +291,16 @@ class FlextInfraUtilitiesDocsScope:
         payload: t.Infra.ContainerDict,
         docs_meta: t.Infra.ContainerDict,
     ) -> str:
-        """Return the primary package name using pre-loaded payload (avoids re-parsing)."""
+        """Return the primary package name using pre-loaded payload.
+
+        Resolution order (no silent fallbacks for flext projects):
+          1. Explicit ``[tool.flext.docs].package_name`` override.
+          2. ``[tool.hatch.build.targets.wheel.packages]`` first entry.
+          3. First ``src/<pkg>/__init__.py`` directory.
+          4. Empty string for non-flext projects (roots).
+
+        Raises ``ValueError`` only for flext- projects unable to resolve.
+        """
         configured = docs_meta.get("package_name")
         if isinstance(configured, str) and configured.strip():
             return configured.strip()
@@ -283,11 +321,21 @@ class FlextInfraUtilitiesDocsScope:
                                     if package_path.parts:
                                         return package_path.parts[-1]
         src_dir = project_root / c.Infra.DEFAULT_SRC_DIR
-        if not src_dir.is_dir():
-            return ""
-        for child in sorted(src_dir.iterdir()):
-            if child.is_dir() and (child / c.Infra.INIT_PY).is_file():
-                return child.name
+        if src_dir.is_dir():
+            for child in sorted(src_dir.iterdir()):
+                if child.is_dir() and (child / c.Infra.INIT_PY).is_file():
+                    return child.name
+        project_name = FlextInfraUtilitiesDocsScope.project_name_from_payload(
+            project_root,
+            payload,
+        )
+        if project_name.startswith("flext-"):
+            msg = (
+                f"{project_root}: cannot resolve package name — "
+                "no [tool.flext.docs].package_name, no hatch wheel packages, "
+                "and no src/<pkg>/__init__.py present"
+            )
+            raise ValueError(msg)
         return ""
 
     @staticmethod

@@ -6,19 +6,9 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import overload, override
 
-import pytest
-
 from flext_core import r
+from flext_infra import FlextInfraRefactorEngine, FlextInfraRefactorSafetyManager, t
 from tests import p
-
-try:
-    from flext_infra import (
-        FlextInfraRefactorEngine,
-        t,
-    )
-except ImportError as exc:
-    pytest.skip(f"refactor package unavailable: {exc}", allow_module_level=True)
-from flext_infra import FlextInfraRefactorSafetyManager
 
 
 class EngineSafetyStub(FlextInfraRefactorSafetyManager):

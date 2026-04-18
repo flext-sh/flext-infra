@@ -635,6 +635,11 @@ ifeq ($(VALIDATE_SCOPE),workspace)
 	$(Q)$(WORKSPACE_INFRA_VALIDATE) skill-validate --skill scripts-validation --mode strict
 	$(Q)$(WORKSPACE_INFRA_VALIDATE) skill-validate --skill rules-github --mode strict
 	$(Q)$(WORKSPACE_INFRA_VALIDATE) skill-validate --skill rules-docker --mode strict
+	$(Q)$(WORKSPACE_INFRA_VALIDATE) fresh-import
+	$(Q)$(WORKSPACE_INFRA_VALIDATE) import-cycles
+	$(Q)$(WORKSPACE_INFRA_VALIDATE) lazy-map-freshness
+	$(Q)$(WORKSPACE_INFRA_VALIDATE) tier-whitelist
+	$(Q)$(WORKSPACE_INFRA_VALIDATE) metadata-discipline
 	$(Q)$(WORKSPACE_INFRA_DEPS) modernize --audit
 	$(Q)if git grep -nE '/home/.*/flext|file:///home/.*/flext' -- '*.py' '**/*.py' '*.toml' '**/*.toml' '*.yml' '**/*.yml' '*.yaml' '**/*.yaml' '*.json' '**/*.json' '.gitignore' 'base.mk' '**/base.mk' ':!.planning/**' ':!.reports/**' ':!.sisyphus/**' ':!docs/**'; then \
 		echo "ERROR: absolute workspace paths detected in tracked sources/settings"; \

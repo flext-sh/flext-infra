@@ -6,12 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import contextlib
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import override
-
-from pydantic import ValidationError
 
 from flext_infra import (
     FlextInfraExtraPathsManager,
@@ -82,10 +79,12 @@ class FlextInfraConfigFixer(s[bool]):
         search_raw = pyrefly.get(c.Infra.SEARCH_PATH)
         if isinstance(search_raw, list):
             current_paths: t.Cli.JsonList = []
-            with contextlib.suppress(ValidationError):
+            try:
                 current_paths = t.Cli.JSON_LIST_ADAPTER.validate_python(
                     list(search_raw)
                 )
+            except c.ValidationError as err:
+                return r[t.StrSequence].fail_op("validate-search-path", err)
             current_search = [
                 str(path_item)
                 for path_item in current_paths
@@ -105,8 +104,10 @@ class FlextInfraConfigFixer(s[bool]):
         if isinstance(sub_configs, list):
             new_configs: MutableSequence[t.Infra.InfraValue] = []
             configs: Sequence[t.Infra.InfraValue] = []
-            with contextlib.suppress(ValidationError):
+            try:
                 configs = t.Infra.INFRA_SEQ_ADAPTER.validate_python(sub_configs)
+            except c.ValidationError as err:
+                return r[t.StrSequence].fail_op("validate-sub-configs", err)
             for conf in configs:
                 conf_out: t.Infra.InfraValue = conf
                 conf_map: t.Infra.ContainerDict = {}
@@ -131,8 +132,10 @@ class FlextInfraConfigFixer(s[bool]):
             excludes = pyrefly.get(c.Infra.PROJECT_EXCLUDES)
             if isinstance(excludes, list):
                 exclude_items: t.Cli.JsonList = []
-                with contextlib.suppress(ValidationError):
+                try:
                     exclude_items = t.Cli.JSON_LIST_ADAPTER.validate_python([*excludes])
+                except c.ValidationError as err:
+                    return r[t.StrSequence].fail_op("validate-project-excludes", err)
                 current_excludes = [str(value) for value in exclude_items]
             expected_excludes = sorted(
                 set(self._tool_config.tools.pyrefly.project_exclude_globs)

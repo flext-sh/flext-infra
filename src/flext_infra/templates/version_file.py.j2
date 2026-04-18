@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Package version and metadata for flext-infra.
+"""Package version and metadata for {{ project_name }}.
 
 Subclass of ``FlextVersion`` — overrides only ``_metadata``.
 All derived attributes (``__version__``, ``__title__``, etc.) are
@@ -16,22 +16,22 @@ from importlib.metadata import PackageMetadata, metadata
 from flext_core import FlextVersion
 
 
-class FlextInfraVersion(FlextVersion):
-    """flext-infra version — MRO-derived from FlextVersion."""
+class {{ class_name }}(FlextVersion):
+    """{{ project_name }} version — MRO-derived from FlextVersion."""
 
-    _metadata: PackageMetadata = metadata("flext-infra")
+    _metadata: PackageMetadata = metadata("{{ project_name }}")
 
 
-__version__ = FlextInfraVersion.__version__
-__version_info__ = FlextInfraVersion.__version_info__
-__title__ = FlextInfraVersion.__title__
-__description__ = FlextInfraVersion.__description__
-__author__ = FlextInfraVersion.__author__
-__author_email__ = FlextInfraVersion.__author_email__
-__license__ = FlextInfraVersion.__license__
-__url__ = FlextInfraVersion.__url__
+__version__ = {{ class_name }}.__version__
+__version_info__ = {{ class_name }}.__version_info__
+__title__ = {{ class_name }}.__title__
+__description__ = {{ class_name }}.__description__
+__author__ = {{ class_name }}.__author__
+__author_email__ = {{ class_name }}.__author_email__
+__license__ = {{ class_name }}.__license__
+__url__ = {{ class_name }}.__url__
 __all__: list[str] = [
-    "FlextInfraVersion",
+    "{{ class_name }}",
     "__author__",
     "__author_email__",
     "__description__",

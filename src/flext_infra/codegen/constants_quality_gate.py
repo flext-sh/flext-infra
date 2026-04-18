@@ -10,18 +10,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import override
 
-from flext_infra import (
-    FlextInfraCodegenCensus,
-    FlextInfraCodegenLazyInit,
-    FlextInfraUtilitiesRope,
-    c,
-    m,
-    p,
-    r,
-    s,
-    t,
-    u,
-)
+from flext_infra import c, m, p, r, s, t, u
+from flext_infra.codegen.census import FlextInfraCodegenCensus
+from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 
 
 class FlextInfraConstantsCodegenQualityGate(s[bool]):
@@ -286,7 +277,7 @@ class FlextInfraConstantsCodegenQualityGate(s[bool]):
     ) -> Sequence[m.Infra.DuplicateConstantGroup]:
         """Collect duplicate constants across projects using Rope resource reads."""
         definitions: MutableSequence[m.Infra.ConstantDefinition] = []
-        with FlextInfraUtilitiesRope.open_project(workspace_root) as rope_project:
+        with u.Infra.open_project(workspace_root) as rope_project:
             for report in census_reports:
                 constants_file = (
                     workspace_root

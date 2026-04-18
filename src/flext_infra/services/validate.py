@@ -18,6 +18,9 @@ from flext_infra import (
     p,
     t,
 )
+from flext_infra.validate.metadata_discipline import (
+    FlextInfraValidateMetadataDiscipline,
+)
 
 
 class FlextInfraServiceValidateMixin(FlextInfraServiceCliRunnerMixin):
@@ -86,6 +89,13 @@ class FlextInfraServiceValidateMixin(FlextInfraServiceCliRunnerMixin):
         params: FlextInfraValidateTierWhitelist,
     ) -> p.Result[bool]:
         """Guard 5: run the tier-whitelist/abstraction-boundary enforcer through the public facade."""
+        return self._dispatch_result(params)
+
+    def validate_metadata_discipline(
+        self,
+        params: FlextInfraValidateMetadataDiscipline,
+    ) -> p.Result[bool]:
+        """Guard 8: enforce centralized metadata parser usage."""
         return self._dispatch_result(params)
 
 

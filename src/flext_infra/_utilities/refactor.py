@@ -12,8 +12,6 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-from pydantic import TypeAdapter
-
 from flext_core import m
 from flext_infra import (
     FlextInfraUtilitiesIteration,
@@ -48,7 +46,7 @@ class FlextInfraUtilitiesRefactor(
         methods = u.Infra.extract_public_methods_from_dir(package_dir)
     """
 
-    _STRING_LIST_ADAPTER: m.TypeAdapter[t.StrSequence] = TypeAdapter(t.StrSequence)
+    _STRING_LIST_ADAPTER: m.TypeAdapter[t.StrSequence] = m.TypeAdapter(t.StrSequence)
 
     @staticmethod
     def entry_list(value: t.Infra.InfraValue | None) -> Sequence[t.StrMapping]:

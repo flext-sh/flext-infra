@@ -8,6 +8,8 @@ from enum import StrEnum, unique
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
+from flext_core import c as _fc
+
 if TYPE_CHECKING:
     from flext_infra import t
 
@@ -15,20 +17,10 @@ if TYPE_CHECKING:
 class FlextInfraConstantsRefactor:
     """Shared constants for refactor engine modules."""
 
-    RUNTIME_ALIAS_NAMES: ClassVar[frozenset[str]] = frozenset({
-        "c",
-        "m",
-        "r",
-        "t",
-        "u",
-        "p",
-        "d",
-        "e",
-        "h",
-        "s",
-        "x",
-    })
-    NAMESPACE_SOURCE_UNIVERSAL_ALIASES: ClassVar[frozenset[str]] = frozenset({"r"})
+    RUNTIME_ALIAS_NAMES: ClassVar[frozenset[str]] = _fc.RUNTIME_ALIAS_NAMES
+    NAMESPACE_SOURCE_UNIVERSAL_ALIASES: ClassVar[frozenset[str]] = frozenset(
+        _fc.UNIVERSAL_ALIAS_PARENT_SOURCES
+    )
 
     LEGACY_FIX_ACTIONS: ClassVar[frozenset[str]] = frozenset({
         "remove",
@@ -87,12 +79,7 @@ class FlextInfraConstantsRefactor:
         "all",
     })
     "Accepted target arguments for MRO migration runs."
-    MRO_SCAN_DIRECTORIES: ClassVar[t.StrSequence] = (
-        "src",
-        "examples",
-        "scripts",
-        "tests",
-    )
+    MRO_SCAN_DIRECTORIES: ClassVar[tuple[str, ...]] = _fc.SCAN_DIRECTORIES
     "Directories scanned for constants modules in each project."
     MRO_CONSTANTS_FILE_NAMES: ClassVar[frozenset[str]] = frozenset({
         "constants.py",
@@ -264,12 +251,21 @@ class FlextInfraConstantsRefactor:
     NAMESPACE_PROTECTED_FILES: ClassVar[frozenset[str]] = frozenset({
         "settings.py",
         "_settings.py",
+        "typings.py",
+        "_typings.py",
         "__init__.py",
         "__main__.py",
         "__version__.py",
         "conftest.py",
         "py.typed",
     })
+    NAMESPACE_CANONICAL_ALIAS_MODULE_STEMS: ClassVar[frozenset[str]] = frozenset({
+        "ldif",
+        "cli",
+        "main",
+        "_cli_main",
+    })
+    "Canonical alias module stems exempt from strict single-class enforcement."
     NAMESPACE_MIN_ALIAS_LENGTH: ClassVar[int] = 2
     NAMESPACE_MAX_RENDERED_LOOSE_OBJECTS: ClassVar[int] = 10
     NAMESPACE_MAX_RENDERED_IMPORT_VIOLATIONS: ClassVar[int] = 5

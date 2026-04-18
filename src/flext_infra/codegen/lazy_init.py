@@ -15,20 +15,11 @@ from pathlib import Path
 from time import perf_counter
 from typing import override
 
-from pydantic import PrivateAttr
-
-from flext_infra import (
-    FlextInfraCodegenGeneration,
-    FlextInfraCodegenLazyInitPlanner,
-    FlextInfraRopeWorkspace,
-    FlextInfraServiceBase,
-    c,
-    m,
-    p,
-    r,
-    t,
-    u,
-)
+from flext_infra import c, m, p, r, t, u
+from flext_infra.base import FlextInfraServiceBase
+from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
+from flext_infra.codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
+from flext_infra.services.rope import FlextInfraRopeWorkspace
 
 
 class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
@@ -39,8 +30,8 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
     Processes bottom-up so child packages are generated before parents.
     """
 
-    _modified_files: t.Infra.StrSet = PrivateAttr()
-    _duplicate_class_names: int = PrivateAttr(default=0)
+    _modified_files: t.Infra.StrSet = u.PrivateAttr()
+    _duplicate_class_names: int = u.PrivateAttr(default_factory=lambda: 0)
 
     @override
     def model_post_init(self, __context: t.ScalarMapping | None, /) -> None:

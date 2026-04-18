@@ -13,7 +13,6 @@ from jinja2 import (
     TemplateError,
     select_autoescape,
 )
-from pydantic import PrivateAttr
 
 from flext_infra import (
     FlextInfraConstantsBase,
@@ -24,13 +23,14 @@ from flext_infra import (
     p,
     r,
     s,
+    u,
 )
 
 
 class FlextInfraBaseMkTemplateEngine(s[str]):
     """Render base.mk templates with configuration context."""
 
-    _environment: FlextInfraTypesBase.JinjaEnvironment = PrivateAttr(
+    _environment: FlextInfraTypesBase.JinjaEnvironment = u.PrivateAttr(
         default_factory=lambda: FlextInfraBaseMkTemplateEngine._build_environment(),
     )
 

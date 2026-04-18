@@ -5,8 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict
-
 from flext_core import m
 from flext_infra import t
 
@@ -20,7 +18,7 @@ class FlextInfraModelsGates:
         """Quality gate execution context and configuration."""
 
         fail_fast: Annotated[bool, m.Field(description="Stop on first failure")] = True
-        model_config: ClassVar[ConfigDict] = ConfigDict(
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
             extra="forbid",
             arbitrary_types_allowed=True,
             populate_by_name=True,

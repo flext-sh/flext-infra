@@ -6,8 +6,6 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Annotated
 
-from pydantic import PrivateAttr
-
 from flext_infra import c, m, p, t, u
 
 
@@ -26,18 +24,24 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
     _module_exports_cache: dict[
         tuple[str, bool, bool, bool, bool, bool],
         t.Infra.LazyImportMap,
-    ] = PrivateAttr(default_factory=dict)
-    _package_exports_cache: dict[str, frozenset[str]] = PrivateAttr(
+    ] = u.PrivateAttr(default_factory=dict)
+    _package_exports_cache: dict[str, frozenset[str]] = u.PrivateAttr(
         default_factory=dict
     )
-    _source_exports_cache: dict[str, frozenset[str]] = PrivateAttr(default_factory=dict)
-    _source_plan_cache: dict[str, m.Infra.LazyInitPlan] = PrivateAttr(
+    _source_exports_cache: dict[str, frozenset[str]] = u.PrivateAttr(
         default_factory=dict
     )
-    _source_exports_visiting: set[str] = PrivateAttr(default_factory=set)
-    _parent_package_cache: dict[str, t.StrSequence] = PrivateAttr(default_factory=dict)
-    _module_file_by_name: dict[str, Path] = PrivateAttr(default_factory=dict)
-    _version_module_name: str = PrivateAttr(default=f"{c.Infra.DUNDER_VERSION}.py")
+    _source_plan_cache: dict[str, m.Infra.LazyInitPlan] = u.PrivateAttr(
+        default_factory=dict
+    )
+    _source_exports_visiting: set[str] = u.PrivateAttr(default_factory=set)
+    _parent_package_cache: dict[str, t.StrSequence] = u.PrivateAttr(
+        default_factory=dict
+    )
+    _module_file_by_name: dict[str, Path] = u.PrivateAttr(default_factory=dict)
+    _version_module_name: str = u.PrivateAttr(
+        default_factory=lambda: f"{c.Infra.DUNDER_VERSION}.py"
+    )
 
     def build_plan(
         self,

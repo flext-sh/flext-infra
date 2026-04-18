@@ -380,7 +380,7 @@ class FlextInfraCodegenGeneration:
     _env: t.Infra.JinjaEnvironment | None = None
 
     @classmethod
-    def _get_template(cls, name: str) -> p.Infra.RenderableTemplate:
+    def get_template(cls, name: str) -> p.Infra.RenderableTemplate:
         """Return a template narrowed to the local render protocol."""
         if cls._env is None:
             cls._env = cls._build_env()
@@ -616,7 +616,7 @@ class FlextInfraCodegenGeneration:
             "",
         ])
 
-        preamble_template = FlextInfraCodegenGeneration._get_template(
+        preamble_template = FlextInfraCodegenGeneration.get_template(
             c.Infra.TEMPLATE_PREAMBLE_STANDARD
         )
         preamble: str = preamble_template.render(
@@ -628,7 +628,7 @@ class FlextInfraCodegenGeneration:
         if not runtime_import_block:
             out.append("")
 
-        body_template = FlextInfraCodegenGeneration._get_template(c.Infra.TEMPLATE_BODY)
+        body_template = FlextInfraCodegenGeneration.get_template(c.Infra.TEMPLATE_BODY)
         body: str = body_template.render(
             runtime_import_lines="\n".join(runtime_import_block),
             child_module_paths=rendered_child_module_paths,
@@ -650,7 +650,7 @@ class FlextInfraCodegenGeneration:
         out.extend(FlextInfraCodegenGeneration._collapse_blank_runs(body_lines))
         out.append("")
 
-        getattr_template = FlextInfraCodegenGeneration._get_template(
+        getattr_template = FlextInfraCodegenGeneration.get_template(
             c.Infra.TEMPLATE_GETATTR_STANDARD
         )
         getattr_rendered: str = getattr_template.render(

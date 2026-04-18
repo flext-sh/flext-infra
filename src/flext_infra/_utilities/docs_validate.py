@@ -12,6 +12,8 @@ from flext_infra import (
     FlextInfraUtilitiesDocsScope,
     c,
     m,
+    p,
+    r,
     t,
 )
 
@@ -41,24 +43,28 @@ class FlextInfraUtilitiesDocsValidate:
         return configured if isinstance(configured, list) else None
 
     @staticmethod
-    def docs_load_required_skills(workspace_root: Path) -> t.StrSequence | None:
+    def docs_load_required_skills(workspace_root: Path) -> p.Result[t.StrSequence]:
         """Load the required skills list from the architecture settings."""
         settings = workspace_root / "docs/architecture/architecture_config.json"
         if not settings.exists():
-            return []
+            return r[t.StrSequence].ok([])
         payload_result = u.Cli.json_read(settings)
         if payload_result.failure:
-            return None
+            return r[t.StrSequence].fail(
+                f"failed to read architecture config: {payload_result.error}"
+            )
         configured = FlextInfraUtilitiesDocsValidate.docs_extract_required_skills(
             payload_result.value,
         )
         if configured is None:
-            return []
+            return r[t.StrSequence].ok([])
         try:
             values = t.Infra.STR_SEQ_ADAPTER.validate_python(configured, strict=True)
-        except c.ValidationError:
-            return []
-        return [str(item) for item in values if item]
+        except c.ValidationError as e:
+            return r[t.StrSequence].fail(
+                f"invalid required_skills configuration: {e!s}"
+            )
+        return r[t.StrSequence].ok([str(item) for item in values if item])
 
     @staticmethod
     def docs_missing_required_paths(scope: m.Infra.DocScope) -> t.StrSequence:

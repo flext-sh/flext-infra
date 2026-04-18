@@ -7,8 +7,6 @@ from time import perf_counter
 from types import TracebackType
 from typing import TYPE_CHECKING, Annotated, Self, override
 
-from pydantic import PrivateAttr
-
 from flext_infra import FlextInfraUtilitiesRopeInventory, c, m, r, s, t, u
 
 if TYPE_CHECKING:
@@ -37,28 +35,32 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         ),
     ] = c.Infra.ROPE_IGNORED_RESOURCES
 
-    _rope_workspace_root: Path = PrivateAttr()
-    _rope_project: t.Infra.RopeProject | None = PrivateAttr(default=None)
-    _workspace_index: m.Infra.RopeWorkspaceIndex | None = PrivateAttr(default=None)
-    _codegen_projects: tuple[p.Infra.ProjectInfo, ...] | None = PrivateAttr(
-        default=None,
+    _rope_workspace_root: Path = u.PrivateAttr()
+    _rope_project: t.Infra.RopeProject | None = u.PrivateAttr(
+        default_factory=lambda: None
     )
-    _project_layout_cache: dict[str, m.Infra.RopeProjectLayout | None] = PrivateAttr(
+    _workspace_index: m.Infra.RopeWorkspaceIndex | None = u.PrivateAttr(
+        default_factory=lambda: None
+    )
+    _codegen_projects: tuple[p.Infra.ProjectInfo, ...] | None = u.PrivateAttr(
+        default_factory=lambda: None,
+    )
+    _project_layout_cache: dict[str, m.Infra.RopeProjectLayout | None] = u.PrivateAttr(
         default_factory=dict,
     )
-    _package_context_cache: dict[str, m.Infra.LazyInitPackageContext] = PrivateAttr(
+    _package_context_cache: dict[str, m.Infra.LazyInitPackageContext] = u.PrivateAttr(
         default_factory=dict,
     )
     _module_policy_cache: dict[tuple[str, str, str], m.Infra.NamespaceModulePolicy] = (
-        PrivateAttr(default_factory=dict)
+        u.PrivateAttr(default_factory=dict)
     )
-    _module_convention_cache: dict[str, m.Infra.RopeModuleConvention] = PrivateAttr(
+    _module_convention_cache: dict[str, m.Infra.RopeModuleConvention] = u.PrivateAttr(
         default_factory=dict,
     )
     _module_object_cache: dict[tuple[str, bool], tuple[m.Infra.Census.Object, ...]] = (
-        PrivateAttr(default_factory=dict)
+        u.PrivateAttr(default_factory=dict)
     )
-    _resource_cache: dict[str, t.Infra.RopeResource | None] = PrivateAttr(
+    _resource_cache: dict[str, t.Infra.RopeResource | None] = u.PrivateAttr(
         default_factory=dict,
     )
 

@@ -15,8 +15,6 @@ from collections.abc import Sequence
 from operator import itemgetter
 from pathlib import Path
 
-from pydantic import ValidationError
-
 from flext_core import u
 from flext_infra import c, m, t
 
@@ -77,7 +75,7 @@ class FlextInfraUtilitiesRefactorCli:
                 f"Impact map entries: {len(impact_map)}",
             )
             return True
-        except (OSError, ValidationError):
+        except (OSError, c.ValidationError):
             FlextInfraUtilitiesRefactorCli.refactor_error(
                 f"Failed to write impact map {output_path}",
             )

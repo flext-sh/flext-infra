@@ -114,22 +114,6 @@ class FlextInfraUtilitiesCodegenNamespace:
         return (*other_exports, *ordered_aliases)
 
     @staticmethod
-    def project_class_stem(*, project_name: str) -> str:
-        """Derive the canonical facade class stem from a project name."""
-        normalized = u.norm_str(project_name, case="lower").replace(
-            "_",
-            "-",
-        )
-        if normalized == c.Infra.PKG_CORE:
-            return "Flext"
-        if normalized.startswith(c.Infra.PKG_PREFIX_HYPHEN):
-            tail = normalized.removeprefix(c.Infra.PKG_PREFIX_HYPHEN)
-            parts = [part for part in tail.split("-") if part]
-            return "Flext" + "".join(part.capitalize() for part in parts)
-        parts = [part for part in normalized.split("-") if part]
-        return "".join(part.capitalize() for part in parts) if parts else ""
-
-    @staticmethod
     def package_alias(*, package_name: str) -> str:
         """Derive the canonical root API alias from the import package."""
         root = package_name.split(".", maxsplit=1)[0]
@@ -182,7 +166,7 @@ class FlextInfraUtilitiesCodegenNamespace:
             project_name=project_name,
             package_name=package_name,
             package_alias=cls.package_alias(package_name=package_name),
-            class_stem=cls.project_class_stem(project_name=class_name_source),
+            class_stem=u.derive_class_stem(class_name_source),
             src_dir=src_dir,
             package_dir=package_dir,
             init_path=package_dir / c.Infra.INIT_PY,
