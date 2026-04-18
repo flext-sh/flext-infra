@@ -21,6 +21,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".silent_failure_tests": ("silent_failure_tests",),
         ".skill_validator_tests": ("skill_validator_tests",),
         ".stub_chain_tests": ("stub_chain_tests",),
+        ".tier_whitelist_tests": ("tier_whitelist_tests",),
     },
 )
 

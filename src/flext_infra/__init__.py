@@ -424,6 +424,7 @@ if _t.TYPE_CHECKING:
     from flext_infra.validate.silent_failure import FlextInfraSilentFailureValidator
     from flext_infra.validate.skill_validator import FlextInfraSkillValidator
     from flext_infra.validate.stub_chain import FlextInfraStubSupplyChain
+    from flext_infra.validate.tier_whitelist import FlextInfraValidateTierWhitelist
     from flext_infra.workspace.cli import FlextInfraCliWorkspace
     from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
     from flext_infra.workspace.migrator import FlextInfraProjectMigrator
@@ -849,6 +850,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".validate.silent_failure": ("FlextInfraSilentFailureValidator",),
             ".validate.skill_validator": ("FlextInfraSkillValidator",),
             ".validate.stub_chain": ("FlextInfraStubSupplyChain",),
+            ".validate.tier_whitelist": ("FlextInfraValidateTierWhitelist",),
             ".workspace.cli": ("FlextInfraCliWorkspace",),
             ".workspace.detector": ("FlextInfraWorkspaceDetector",),
             ".workspace.migrator": ("FlextInfraProjectMigrator",),
@@ -1150,6 +1152,7 @@ __all__: list[str] = [
     "FlextInfraValidateFreshImport",
     "FlextInfraValidateImportCycles",
     "FlextInfraValidateLazyMapFreshness",
+    "FlextInfraValidateTierWhitelist",
     "FlextInfraViolationCensusVisitor",
     "FlextInfraWorkspaceCheckGatesMixin",
     "FlextInfraWorkspaceChecker",

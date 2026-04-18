@@ -20,6 +20,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".silent_failure": ("FlextInfraSilentFailureValidator",),
         ".skill_validator": ("FlextInfraSkillValidator",),
         ".stub_chain": ("FlextInfraStubSupplyChain",),
+        ".tier_whitelist": ("FlextInfraValidateTierWhitelist",),
     },
 )
 
