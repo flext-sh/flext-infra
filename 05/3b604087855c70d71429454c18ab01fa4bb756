@@ -1,0 +1,30 @@
+src/flext_infra/validate/cli.py
+  296b414eef766f82 15-18,84-111
+src/flext_infra/services/validate.py
+  296b414eef766f82 14-17,63-90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "053b604087855c70d71429454c18ab01fa4bb756",
+  "prompts": {
+    "296b414eef766f82": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9bbaa066-3009-4a0f-b15f-d4253fbc34e7",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 64,
+      "total_deletions": 0,
+      "accepted_lines": 178,
+      "overriden_lines": 0
+    }
+  },
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
