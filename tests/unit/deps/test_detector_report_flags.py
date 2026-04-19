@@ -7,8 +7,7 @@ from typing import override
 from flext_tests import tm
 
 import flext_infra as detector_module
-from flext_core import r
-from tests import p, t, u
+from tests import p, r, t, u
 
 
 class _ReportStub:

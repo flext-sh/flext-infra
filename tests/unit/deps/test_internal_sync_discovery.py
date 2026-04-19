@@ -5,9 +5,8 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_core import r
 from flext_infra import FlextInfraInternalDependencySyncService
-from tests import p, t
+from tests import p, r, t
 
 
 class _TomlReaderStub:

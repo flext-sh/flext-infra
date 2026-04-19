@@ -43,9 +43,9 @@ class FlextInfraConstantsSharedInfra:
         "dict",
         "list",
     })
-    SKILLS_DIR: Final[Path] = Path(".claude/skills")
-    REPORT_DEFAULT: Final[str] = ".claude/skills/{skill}/report.json"
-    BASELINE_DEFAULT: Final[str] = ".claude/skills/{skill}/baseline.json"
+    SKILLS_DIR: Final[Path] = Path(".agents/skills")
+    REPORT_DEFAULT: Final[str] = ".agents/skills/{skill}/report.json"
+    BASELINE_DEFAULT: Final[str] = ".agents/skills/{skill}/baseline.json"
     CACHE_TTL_SECONDS: Final[int] = 300
     MISSING_IMPORT_RE: Final[re.Pattern[str]] = re.compile(
         r"Cannot find module `([^`]+)` \[missing-import\]",

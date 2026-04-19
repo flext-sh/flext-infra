@@ -6,9 +6,8 @@ from typing import override
 
 from flext_tests import tm
 
-from flext_core import r
 from flext_infra import FlextInfraUtilitiesDependencyPathSync
-from tests import m, p
+from tests import m, p, r
 
 
 def _project(path: Path) -> m.Infra.ProjectInfo:

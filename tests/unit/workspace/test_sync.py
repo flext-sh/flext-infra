@@ -5,9 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import override
 
-from flext_core import r
 from flext_infra import FlextInfraBaseMkGenerator, FlextInfraSyncService
-from tests import m, p, t, u
+from tests import m, p, r, t, u
 
 
 def _stub_gen(content: str, *, fail: bool = False) -> FlextInfraBaseMkGenerator:

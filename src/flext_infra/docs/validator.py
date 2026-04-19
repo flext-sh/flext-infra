@@ -81,7 +81,7 @@ class FlextInfraDocValidator(s[bool]):
             "scripts-maintenance",
             "readme-standardization",
         ]
-        skills_root = workspace_root / ".claude/skills"
+        skills_root = workspace_root / ".agents/skills"
         missing: list[str] = []
         for skill_name in required_skills:
             skill_path = skills_root / skill_name / "SKILL.md"

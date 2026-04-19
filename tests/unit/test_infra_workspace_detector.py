@@ -6,8 +6,8 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraWorkspaceDetector, c
-from tests import u
+from flext_infra import FlextInfraWorkspaceDetector
+from tests import c, u
 
 
 class TestWorkspaceDetector:

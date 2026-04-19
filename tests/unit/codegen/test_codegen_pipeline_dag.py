@@ -14,9 +14,8 @@ from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
-from flext_core import r
 from flext_infra import FlextInfraCodegenPipeline, u
-from tests import c, m, p, t
+from tests import c, m, p, r, t
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -7,9 +7,8 @@ from typing import override
 import pytest
 from flext_tests import tm
 
-from flext_core import r
 from flext_infra import FlextInfraInternalDependencySyncService
-from tests import p, t
+from tests import p, r, t
 
 
 def _set_toml_stub(

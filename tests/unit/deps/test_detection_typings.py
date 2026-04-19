@@ -6,9 +6,8 @@ from typing import override
 
 from flext_tests import tm
 
-from flext_core import r as tr
 from flext_infra import FlextInfraDependencyDetectionService
-from tests import m, p, t
+from tests import m, p, r as tr, t
 
 
 class _StubToml:

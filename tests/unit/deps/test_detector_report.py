@@ -6,9 +6,8 @@ from typing import override
 
 from flext_tests import tm
 
-from flext_core import r
 from flext_infra import FlextInfraRuntimeDevDependencyDetector
-from tests import p, t, u
+from tests import p, r, t, u
 
 
 class _ReportStub:

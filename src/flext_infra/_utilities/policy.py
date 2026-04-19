@@ -12,7 +12,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 
-from flext_cli import u as _cli_u
+from flext_cli import u
 from flext_infra import (
     FlextInfraUtilitiesBase,
     c,
@@ -44,7 +44,7 @@ class FlextInfraUtilitiesRefactorPolicy:
         policy_path: Path,
     ) -> p.Result[Mapping[str, t.Infra.InfraValue]]:
         """Load and validate a YAML policy document."""
-        raw = _cli_u.Cli.yaml_load_mapping(policy_path)
+        raw = u.Cli.yaml_load_mapping(policy_path)
         if not raw:
             return r[Mapping[str, t.Infra.InfraValue]].fail(
                 f"Failed to load policy {policy_path}",

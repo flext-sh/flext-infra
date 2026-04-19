@@ -6,9 +6,8 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import overload, override
 
-from flext_core import r
 from flext_infra import FlextInfraRefactorEngine, FlextInfraRefactorSafetyManager, t
-from tests import p
+from tests import p, r
 
 
 class EngineSafetyStub(FlextInfraRefactorSafetyManager):

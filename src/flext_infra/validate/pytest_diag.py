@@ -122,13 +122,15 @@ class FlextInfraPytestDiagExtractor(s[bool]):
 
     @staticmethod
     def _as_xml_element(
-            value: p.Infra.XmlElementLike | t.RecursiveContainer,
-        ) -> p.Infra.XmlElementLike | None:
+        value: p.Infra.XmlElementLike | t.RecursiveContainer,
+    ) -> p.Infra.XmlElementLike | None:
         """Normalize dynamic defusedxml nodes to the typed stdlib element API."""
         return value if isinstance(value, p.Infra.XmlElementLike) else None
 
     @staticmethod
-    def _build_trace_chunk(heading: str, label: str, element: p.Infra.XmlElementLike) -> str:
+    def _build_trace_chunk(
+        heading: str, label: str, element: p.Infra.XmlElementLike
+    ) -> str:
         """Build an error/failure trace chunk from a JUnit XML element."""
         msg = (element.attrib.get(c.Infra.RK_MESSAGE) or "").strip()
         trace = (element.text or "").strip()

@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from flext_core import r
-from tests import p, t, u
+from tests import p, r, t, u
 
 
 class RealSubprocessRunner:
