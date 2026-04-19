@@ -10,25 +10,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-from collections.abc import Iterator, MutableSequence
+from collections.abc import MutableSequence
 from pathlib import Path
-from typing import Annotated, ClassVar, Protocol, override, runtime_checkable
+from typing import Annotated, ClassVar, override
 
 from defusedxml import ElementTree as DefusedET
 
 from flext_infra import c, m, p, r, s, t, u
-
-
-@runtime_checkable
-class _XmlElementLike(Protocol):
-    """Typed subset of the safe XML element API returned by defusedxml."""
-
-    attrib: dict[str, str]
-    text: str | None
-
-    def find(self, path: str) -> _XmlElementLike | None: ...
-
-    def iter(self, tag: str | None = None) -> Iterator[_XmlElementLike]: ...
 
 
 class _DiagResult:
@@ -134,13 +122,13 @@ class FlextInfraPytestDiagExtractor(s[bool]):
 
     @staticmethod
     def _as_xml_element(
-        value: _XmlElementLike | t.RecursiveContainer,
-    ) -> _XmlElementLike | None:
+            value: p.Infra.XmlElementLike | t.RecursiveContainer,
+        ) -> p.Infra.XmlElementLike | None:
         """Normalize dynamic defusedxml nodes to the typed stdlib element API."""
-        return value if isinstance(value, _XmlElementLike) else None
+        return value if isinstance(value, p.Infra.XmlElementLike) else None
 
     @staticmethod
-    def _build_trace_chunk(heading: str, label: str, element: _XmlElementLike) -> str:
+    def _build_trace_chunk(heading: str, label: str, element: p.Infra.XmlElementLike) -> str:
         """Build an error/failure trace chunk from a JUnit XML element."""
         msg = (element.attrib.get(c.Infra.RK_MESSAGE) or "").strip()
         trace = (element.text or "").strip()
@@ -153,7 +141,7 @@ class FlextInfraPytestDiagExtractor(s[bool]):
 
     @staticmethod
     def _process_testcase(
-        case: _XmlElementLike,
+        case: p.Infra.XmlElementLike,
         diag: _DiagResult,
     ) -> t.Infra.Pair[float, str]:
         """Process a single testcase element; returns (seconds, label)."""

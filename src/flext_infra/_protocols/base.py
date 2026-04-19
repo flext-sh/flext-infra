@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
@@ -394,4 +394,52 @@ class FlextInfraProtocolsBase(Protocol):
             project_dir: Path,
         ) -> p.Result[m.Infra.GateResult]:
             """Validate files pass quality gates after transformation."""
+            ...
+
+    @runtime_checkable
+    class XmlElementLike(Protocol):
+        """Typed subset of the safe XML element API returned by defusedxml."""
+
+        attrib: dict[str, str]
+        text: str | None
+
+        def find(self, path: str) -> FlextInfraProtocolsBase.XmlElementLike | None:
+            """Find first matching child element."""
+            ...
+
+        def iter(
+            self, tag: str | None = None
+        ) -> Iterator[FlextInfraProtocolsBase.XmlElementLike]:
+            """Iterate over matching elements."""
+            ...
+
+    class GithubCliHandlers(Protocol):
+        """Protocol for GitHub CLI handler mixins."""
+
+        def sync_github_workflows(
+            self,
+            params: m.Infra.GithubWorkflowSyncRequest,
+        ) -> p.Result[m.Infra.GithubWorkflowSyncReport]:
+            """Sync GitHub workflow files."""
+            ...
+
+        def lint_github_workflows(
+            self,
+            params: m.Infra.GithubWorkflowLintRequest,
+        ) -> p.Result[m.Infra.GithubWorkflowLintOutcome]:
+            """Lint GitHub workflow files."""
+            ...
+
+        def run_github_pull_request(
+            self,
+            params: m.Infra.GithubPullRequestRequest,
+        ) -> p.Result[m.Infra.GithubPullRequestOutcome]:
+            """Manage pull request for a single project."""
+            ...
+
+        def run_github_workspace_pull_requests(
+            self,
+            params: m.Infra.GithubPullRequestWorkspaceRequest,
+        ) -> p.Result[m.Infra.GithubPullRequestWorkspaceReport]:
+            """Manage pull requests across the workspace."""
             ...
