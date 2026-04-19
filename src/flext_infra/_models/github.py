@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence
+from collections.abc import Mapping, MutableSequence
 from pathlib import Path
 from typing import Annotated
 
@@ -152,7 +152,7 @@ class FlextInfraModelsGithub:
 
         mode: Annotated[str, m.Field(description="Execution mode")]
         summary: Annotated[
-            t.RecursiveContainerMapping,
+            Mapping[str, t.Container],
             m.Field(description="Count of operations by action"),
         ]
         operations: t.Infra.VariadicTuple[

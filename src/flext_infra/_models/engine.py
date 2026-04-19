@@ -131,7 +131,7 @@ class FlextInfraModelsEngine:
                 self,
                 operation_type: type[m.ContractModel],
                 /,
-                **data: t.ValueOrModel | t.RecursiveContainer,
+                **data: t.ValueOrModel | t.Container,
             ) -> Self:
                 return self._append_model("operations", operation_type, **data)
 

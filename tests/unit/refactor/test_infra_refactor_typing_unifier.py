@@ -388,7 +388,7 @@ def test_preserves_typealias_import_when_class_level_usage_exists() -> None:
     source = (
         "from __future__ import annotations\n"
         "from typing import TypeAlias\n"
-        "from collections.abc import Sequence, Callable\n\n"
+        "from collections.abc import Callable, Mapping, MutableMapping, MutableSequence, Sequence, Callable\n\n"
         "class MyTypes:\n"
         "    Handler: TypeAlias = Callable[[], None]\n"
     )

@@ -41,7 +41,7 @@ class FlextInfraProtocolsBase(Protocol):
 
         def render(
             self,
-            **kwargs: t.ValueOrModel | t.RecursiveContainer | type,
+            **kwargs: t.ValueOrModel | t.Container | type,
         ) -> str:
             """Render a template with keyword context."""
             ...

@@ -43,10 +43,10 @@ class FlextInfraTypesAdapters:
     )
     "Validates t.StrMapping."
 
-    CONTAINER_MAPPING_ADAPTER: ClassVar[m.TypeAdapter[t.RecursiveContainerMapping]] = (
-        m.TypeAdapter(t.RecursiveContainerMapping)
+    CONTAINER_MAPPING_ADAPTER: ClassVar[m.TypeAdapter[Mapping[str, t.Container]]] = (
+        m.TypeAdapter(Mapping[str, t.Container])
     )
-    "Validates ContainerMapping (t.RecursiveContainerMapping)."
+    "Validates ContainerMapping (Mapping[str, t.Container])."
 
     # ── Sequence adapters ────────────────────────────────────────────
     INFRA_SEQ_ADAPTER: ClassVar[

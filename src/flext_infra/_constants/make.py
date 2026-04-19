@@ -201,7 +201,7 @@ class FlextInfraConstantsMake:
         ("types", "Stub supply-chain + typing report (PROJECT/PROJECTS to scope)"),
         ("pyre", "Run authoritative repo-wide pyrefly report"),
         ("stubs", "Validate typing stub supply-chain (repo-wide)"),
-        ("pol", "Enforce no Any/t.RecursiveContainer/type: ignore (repo-wide)"),
+        ("pol", "Enforce no Any/t.Container/type: ignore (repo-wide)"),
         (
             "cqrs",
             "Enforce strict CQRS/FlextModels patterns across ecosystem",

@@ -3,10 +3,10 @@
 # Engine discovers violations dynamically via TypingAnnotationCensusVisitor.
 
 rules:
-- id: replace-t.RecursiveContainer-annotations
-  name: "Replace t.RecursiveContainer-based type annotations"
+- id: replace-t.Container-annotations
+  name: "Replace t.Container-based type annotations"
   description: >
-    Detect and replace bare t.RecursiveContainer, t.RecursiveContainerMapping, t.RecursiveContainerMapping, Sequence[t.RecursiveContainer], Sequence[t.RecursiveContainer], and m.TypeAdapter[t.RecursiveContainer] annotations with t.ContainerValue equivalents. Detection via CST visitor, not regex.
+    Detect and replace bare t.Container, Mapping[str, t.Container], Mapping[str, t.Container], Sequence[t.Container], Sequence[t.Container], and m.TypeAdapter[t.Container] annotations with t.ContainerValue equivalents. Detection via CST visitor, not regex.
   enabled: true
   severity: error
   fix_action: replace_object_annotations
