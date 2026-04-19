@@ -174,14 +174,8 @@ class FlextInfraModelsMixins:
 
         make_arg: Annotated[
             t.StrSequence,
-            m.Field(
-                default_factory=list,
-                description="Additional make arguments; repeat --make-arg KEY=VALUE",
-            ),
-        ] = m.Field(
-            default_factory=list,
-            description="Additional make arguments; repeat --make-arg KEY=VALUE",
-        )
+            m.Field(default_factory=tuple),
+        ] = m.Field(default_factory=tuple)
 
         @property
         def make_args(self) -> t.StrSequence:
@@ -352,8 +346,8 @@ class FlextInfraModelsMixins:
 
         project_names: Annotated[
             t.StrSequence,
-            m.Field(default_factory=list, description="Project names"),
-        ] = m.Field(default_factory=list, description="Project names")
+            m.Field(default_factory=tuple),
+        ] = m.Field(default_factory=tuple)
 
 
 __all__: list[str] = ["FlextInfraModelsMixins"]

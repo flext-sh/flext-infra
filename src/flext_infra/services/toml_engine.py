@@ -26,9 +26,8 @@ class FlextInfraToml(s[Sequence[t.StrSequence]]):
     phases: Annotated[
         Sequence[m.Infra.TomlPhaseConfig],
         m.Field(
-            default_factory=list,
-            exclude=True,
-            description="Phase configs applied to the TOML document",
+            default_factory=tuple,
+            description="Ordered TOML transformation phases to apply.",
         ),
     ]
     _table_cache: dict[tuple[str, ...], t.Cli.TomlTable] = u.PrivateAttr(

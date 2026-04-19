@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from types import MappingProxyType
 from typing import Annotated, ClassVar
 
 from flext_core import m
@@ -192,7 +193,7 @@ class FlextInfraModelsCensus:
                 m.Field(
                     description="Object count per kind",
                 ),
-            ] = m.Field(default_factory=dict)
+            ] = m.Field(default_factory=lambda: MappingProxyType({}))
             violations: tuple[FlextInfraModelsCensus.Census.Violation, ...] = m.Field(
                 default_factory=tuple, description="Detected violations"
             )

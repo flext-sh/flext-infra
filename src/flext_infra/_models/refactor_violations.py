@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from types import MappingProxyType
 from typing import Annotated, ClassVar
 
 from flext_core import m
@@ -58,18 +59,9 @@ class FlextInfraModelsRefactorViolations:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         family_name: Annotated[t.NonEmptyStr, m.Field(description="Module family name")]
-        allowed_operations: t.StrSequence = m.Field(
-            default_factory=list,
-            description="Enabled operation identifiers for this family",
-        )
-        forbidden_operations: t.StrSequence = m.Field(
-            default_factory=list,
-            description="Disabled operation identifiers for this family",
-        )
-        forbidden_targets: t.StrSequence = m.Field(
-            default_factory=list,
-            description="Target namespaces forbidden for this family",
-        )
+        allowed_operations: t.StrSequence = m.Field(default_factory=tuple)
+        forbidden_operations: t.StrSequence = m.Field(default_factory=tuple)
+        forbidden_targets: t.StrSequence = m.Field(default_factory=tuple)
         enable_class_nesting: Annotated[
             bool,
             m.Field(
@@ -106,14 +98,8 @@ class FlextInfraModelsRefactorViolations:
                 description="Require signature checks before helper migration",
             ),
         ] = False
-        required_parameters: t.StrSequence = m.Field(
-            default_factory=list,
-            description="Function parameters that must exist in helper signatures",
-        )
-        forbidden_parameters: t.StrSequence = m.Field(
-            default_factory=list,
-            description="Function parameters that must not exist in helper signatures",
-        )
+        required_parameters: t.StrSequence = m.Field(default_factory=tuple)
+        forbidden_parameters: t.StrSequence = m.Field(default_factory=tuple)
         allow_vararg: Annotated[
             bool, m.Field(description="Allow variadic positional parameter usage")
         ] = True
@@ -141,13 +127,8 @@ class FlextInfraModelsRefactorViolations:
                 description="Allow propagating attribute reference rewrites",
             ),
         ] = True
-        blocked_reference_prefixes: t.StrSequence = m.Field(
-            default_factory=list,
-            description="Name prefixes blocked from rewrite propagation",
-        )
-        allowed_targets: t.StrSequence = m.Field(
-            default_factory=list, description="Explicitly allowed target namespaces"
-        )
+        blocked_reference_prefixes: t.StrSequence = m.Field(default_factory=tuple)
+        allowed_targets: t.StrSequence = m.Field(default_factory=tuple)
 
     class ClassNestingReport(m.ArbitraryTypesModel):
         """Aggregated class-nesting analysis report.
@@ -189,9 +170,7 @@ class FlextInfraModelsRefactorViolations:
             t.NonEmptyStr,
             m.Field(description="Target namespace path"),
         ]
-        dependencies: t.StrSequence = m.Field(
-            default_factory=list, description="Imported dependencies used by function"
-        )
+        dependencies: t.StrSequence = m.Field(default_factory=tuple)
         manual_review: Annotated[
             bool, m.Field(description="Whether manual review is required")
         ] = False
@@ -229,7 +208,8 @@ class FlextInfraModelsRefactorViolations:
             description="Helper classifications from one file",
         )
         totals: t.IntMapping = m.Field(
-            default_factory=dict, description="Category totals for file helpers"
+            default_factory=lambda: MappingProxyType({}),
+            description="Category totals for file helpers",
         )
         manual_review: tuple[
             FlextInfraModelsRefactorViolations.HelperClassification,

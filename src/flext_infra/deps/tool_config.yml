@@ -608,7 +608,7 @@ tools:
     - 'resilience: resilience tests'
     standard-addopts:
     - --strict-markers
-    - --markdown-check
+    - --markdown-docs
   tomlsort:
     all: true
     in_place: true

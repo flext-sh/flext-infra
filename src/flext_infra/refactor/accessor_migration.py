@@ -17,8 +17,8 @@ class FlextInfraAccessorMigrationOrchestrator(s[m.Infra.AccessorMigrationReport]
     """Dry-run/apply orchestrator for public accessor migration candidates."""
 
     projects: t.StrSequence = m.Field(
-        default_factory=list,
-        description="Workspace projects to scan; empty means all discovered projects",
+        default_factory=tuple,
+        description="Projects targeted for accessor migration.",
     )
     preview_limit: Annotated[
         int,

@@ -120,21 +120,11 @@ class FlextInfraModelsCore:
 
         _flext_enforcement_exempt: ClassVar[bool] = True
 
-        failed_cases: t.StrSequence = m.Field(
-            default_factory=list, description="Failed cases records"
-        )
-        error_traces: t.StrSequence = m.Field(
-            default_factory=list, description="Error traces records"
-        )
-        skip_cases: t.StrSequence = m.Field(
-            default_factory=list, description="Skipped cases records"
-        )
-        warning_lines: t.StrSequence = m.Field(
-            default_factory=list, description="Warning lines records"
-        )
-        slow_entries: t.StrSequence = m.Field(
-            default_factory=list, description="Slow entries records"
-        )
+        failed_cases: t.StrSequence = m.Field(default_factory=tuple)
+        error_traces: t.StrSequence = m.Field(default_factory=tuple)
+        skip_cases: t.StrSequence = m.Field(default_factory=tuple)
+        warning_lines: t.StrSequence = m.Field(default_factory=tuple)
+        slow_entries: t.StrSequence = m.Field(default_factory=tuple)
 
     class InventoryReport(m.ArbitraryTypesModel):
         """Summary of written inventory report artifacts."""

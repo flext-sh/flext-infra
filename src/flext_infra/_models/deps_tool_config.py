@@ -114,7 +114,7 @@ class FlextInfraModelsDepsToolSettings(
         ] = 2
         omit: Annotated[
             t.StrSequence,
-            m.Field(default_factory=list, description="Coverage run omit globs."),
+            m.Field(default_factory=tuple),
         ]
 
     class ToolConfigTools(m.ArbitraryTypesModel):

@@ -147,6 +147,14 @@ class FlextInfraModelsRefactor(
         ] = None
 
     class RefactorProjectInfo(m.ArbitraryTypesModel):
+        """Project metadata with mutable package-root set.
+
+        Enforcement exemption: ``package_roots`` is a ``set[str]``
+        accumulator populated during scanning.
+        """
+
+        _flext_enforcement_exempt: ClassVar[bool] = True
+
         name: Annotated[t.NonEmptyStr, m.Field(description="Project directory name")]
         path: Annotated[Path, m.Field(description="Absolute project path")]
         src_path: Annotated[Path, m.Field(description="Absolute src/ path")]
@@ -158,6 +166,14 @@ class FlextInfraModelsRefactor(
         ] = m.Field(default_factory=set)
 
     class FileImportData(m.ArbitraryTypesModel):
+        """File-level import data with mutable set accumulators.
+
+        Enforcement exemption: ``imported_modules``/``imported_symbols``
+        accumulate during a scan; keep ``set[str]`` as the declared type.
+        """
+
+        _flext_enforcement_exempt: ClassVar[bool] = True
+
         imported_modules: Annotated[
             t.Infra.StrSet,
             m.Field(description="Imported module roots"),

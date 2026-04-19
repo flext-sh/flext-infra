@@ -182,10 +182,10 @@ class FlextInfraModelsRefactorGrep:
             description="Relative directories scanned for candidate files",
         )
         ignore_patterns: t.StrSequence = m.Field(
-            default_factory=list, description="Glob/file patterns ignored during scan"
+            default_factory=tuple, description="Glob/file patterns ignored during scan"
         )
         file_extensions: t.StrSequence = m.Field(
-            default_factory=list,
+            default_factory=tuple,
             description="Allowed file extensions (empty = all by pattern)",
         )
 
@@ -207,18 +207,10 @@ class FlextInfraModelsRefactorGrep:
                 description="Visibility filter",
             ),
         ] = None
-        exclude_decorators: t.StrSequence = m.Field(
-            default_factory=list, description="Decorators to exclude"
-        )
-        decorators: t.StrSequence = m.Field(
-            default_factory=list, description="Decorators to match"
-        )
-        patterns: t.StrSequence = m.Field(
-            default_factory=list, description="Pattern rules"
-        )
-        order: t.StrSequence = m.Field(
-            default_factory=list, description="Explicit method order"
-        )
+        exclude_decorators: t.StrSequence = m.Field(default_factory=tuple)
+        decorators: t.StrSequence = m.Field(default_factory=tuple)
+        patterns: t.StrSequence = m.Field(default_factory=tuple)
+        order: t.StrSequence = m.Field(default_factory=tuple)
 
     class SignatureMigration(m.ContractModel):
         """Declarative signature migration rule for callsite propagation.
@@ -236,18 +228,12 @@ class FlextInfraModelsRefactorGrep:
                 description="Whether migration is active",
             ),
         ] = True
-        target_qualified_names: t.StrSequence = m.Field(
-            default_factory=list, description="Qualified names to match"
-        )
-        target_simple_names: t.StrSequence = m.Field(
-            default_factory=list, description="Simple names to match"
-        )
+        target_qualified_names: t.StrSequence = m.Field(default_factory=tuple)
+        target_simple_names: t.StrSequence = m.Field(default_factory=tuple)
         keyword_renames: t.StrMapping = m.Field(
             default_factory=dict, description="Keyword rename mapping"
         )
-        remove_keywords: t.StrSequence = m.Field(
-            default_factory=list, description="Keywords to remove"
-        )
+        remove_keywords: t.StrSequence = m.Field(default_factory=tuple)
         add_keywords: t.StrMapping = m.Field(
             default_factory=dict, description="Keywords to add"
         )

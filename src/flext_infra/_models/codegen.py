@@ -67,11 +67,11 @@ class FlextInfraModelsCodegen:
         _flext_enforcement_exempt: ClassVar[bool] = True
 
         files_created: t.StrSequence = m.Field(
-            default_factory=list,
+            default_factory=tuple,
             description="Newly created file paths",
         )
         files_skipped: t.StrSequence = m.Field(
-            default_factory=list,
+            default_factory=tuple,
             description="Skipped (already existing) file paths",
         )
 
@@ -100,7 +100,7 @@ class FlextInfraModelsCodegen:
             ),
         ]
         files_modified: t.StrSequence = m.Field(
-            default_factory=list,
+            default_factory=tuple,
             description="Modified file paths",
         )
 
@@ -336,7 +336,7 @@ class FlextInfraModelsCodegen:
         type: str = m.Field(description="Canonical type")
         canonical_ref: str = m.Field(description="Canonical reference")
         semantic_names: t.StrSequence = m.Field(
-            default_factory=list, description="semantic_names"
+            default_factory=tuple, description="semantic_names"
         )
 
     class NsRule(m.ArbitraryTypesModel):
@@ -360,7 +360,14 @@ class FlextInfraModelsCodegen:
         )
 
     class FixContext(m.ArbitraryTypesModel):
-        """Mutable accumulation context for fix operations."""
+        """Mutable accumulation context for fix operations.
+
+        Enforcement exemption: MutableSequence/MutableSet accumulators are
+        appended/added to as fixes proceed; fresh per-instance — no shared
+        state.
+        """
+
+        _flext_enforcement_exempt: ClassVar[bool] = True
 
         @staticmethod
         def _violations_default() -> list[FlextInfraModelsCodegen.CensusViolation]:

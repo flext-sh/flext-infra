@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Annotated, Self
+from typing import Annotated, ClassVar, Self
 
 from flext_core import m
 from flext_infra import FlextInfraModelsMixins, t
@@ -134,62 +134,64 @@ class FlextInfraModelsNamespaceEnforcer:
         FlextInfraModelsMixins.ProjectNameMixin,
         m.ArbitraryTypesModel,
     ):
+        _flext_enforcement_exempt: ClassVar[bool] = True
+
         project_root: Annotated[str, m.Field(description="Project root path")]
         facade_statuses: Annotated[
             Sequence[FlextInfraModelsNamespaceEnforcer.FacadeStatus],
-            m.Field(default_factory=list, description="Facade status list"),
+            m.Field(default_factory=tuple),
         ]
         loose_objects: Annotated[
             Sequence[FlextInfraModelsNamespaceEnforcer.LooseObjectViolation],
-            m.Field(default_factory=list, description="Loose object violations"),
+            m.Field(default_factory=tuple),
         ]
         import_violations: Annotated[
             Sequence[FlextInfraModelsNamespaceEnforcer.ImportAliasViolation],
-            m.Field(default_factory=list, description="Import alias violations"),
+            m.Field(default_factory=tuple),
         ]
         namespace_source_violations: Annotated[
             Sequence[FlextInfraModelsNamespaceEnforcer.NamespaceSourceViolation],
-            m.Field(default_factory=list, description="Namespace source violations"),
+            m.Field(default_factory=tuple),
         ]
         internal_import_violations: Annotated[
             Sequence[FlextInfraModelsNamespaceEnforcer.InternalImportViolation],
-            m.Field(default_factory=list, description="Internal import violations"),
+            m.Field(default_factory=tuple),
         ]
         manual_protocol_violations: Annotated[
             Sequence[FlextInfraModelsNamespaceEnforcer.ManualProtocolViolation],
-            m.Field(default_factory=list, description="Manual protocol violations"),
+            m.Field(default_factory=tuple),
         ]
         cyclic_imports: Annotated[
             Sequence[FlextInfraModelsNamespaceEnforcer.CyclicImportViolation],
-            m.Field(default_factory=list, description="Cyclic import violations"),
+            m.Field(default_factory=tuple),
         ]
         runtime_alias_violations: Annotated[
             Sequence[FlextInfraModelsNamespaceEnforcer.RuntimeAliasViolation],
-            m.Field(default_factory=list, description="Runtime alias violations"),
+            m.Field(default_factory=tuple),
         ]
         future_violations: Annotated[
             Sequence[FlextInfraModelsNamespaceEnforcer.FutureAnnotationsViolation],
-            m.Field(default_factory=list, description="Future annotations violations"),
+            m.Field(default_factory=tuple),
         ]
         manual_typing_violations: Annotated[
             Sequence[FlextInfraModelsNamespaceEnforcer.ManualTypingAliasViolation],
-            m.Field(default_factory=list, description="Manual typing alias violations"),
+            m.Field(default_factory=tuple),
         ]
         compatibility_alias_violations: Annotated[
             Sequence[FlextInfraModelsNamespaceEnforcer.CompatibilityAliasViolation],
-            m.Field(default_factory=list, description="Compatibility alias violations"),
+            m.Field(default_factory=tuple),
         ]
         class_placement_violations: Annotated[
             Sequence[FlextInfraModelsNamespaceEnforcer.ClassPlacementViolation],
-            m.Field(default_factory=list, description="Class placement violations"),
+            m.Field(default_factory=tuple),
         ]
         mro_completeness_violations: Annotated[
             Sequence[FlextInfraModelsNamespaceEnforcer.MROCompletenessViolation],
-            m.Field(default_factory=list, description="MRO completeness violations"),
+            m.Field(default_factory=tuple),
         ]
         parse_failures: Annotated[
             Sequence[FlextInfraModelsNamespaceEnforcer.ParseFailureViolation],
-            m.Field(default_factory=list, description="Parse failures"),
+            m.Field(default_factory=tuple),
         ]
         files_scanned: Annotated[
             t.NonNegativeInt, m.Field(description="Files scanned")
@@ -217,10 +219,12 @@ class FlextInfraModelsNamespaceEnforcer:
             return missing_facades or any(v for v in violation_fields)
 
     class WorkspaceEnforcementReport(m.ArbitraryTypesModel):
+        _flext_enforcement_exempt: ClassVar[bool] = True
+
         workspace: Annotated[t.NonEmptyStr, m.Field(description="Workspace root path")]
         projects: Annotated[
             Sequence[FlextInfraModelsNamespaceEnforcer.ProjectEnforcementReport],
-            m.Field(default_factory=list, description="Project enforcement reports"),
+            m.Field(default_factory=tuple),
         ]
         total_facades_missing: Annotated[
             t.NonNegativeInt, m.Field(description="Total missing facades")
