@@ -1,0 +1,18 @@
+tests/unit/deps/test_detection_typings.py
+  h_9db9d35f50cf33 10
+tests/unit/test_infra_workspace_detector.py
+  h_9db9d35f50cf33 9-10
+src/flext_infra/_utilities/policy.py
+  h_9db9d35f50cf33 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "5a133e3cb52f9f1613d40ddd80584b55561187fb",
+  "prompts": {},
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
