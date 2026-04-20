@@ -9,7 +9,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable, MutableSequence
+from collections.abc import (
+    Callable,
+    MutableSequence,
+)
+
+from flext_core import t
 
 from rope.base.change import ChangeContents, ChangeSet
 from rope.base.project import Project
@@ -28,8 +33,6 @@ from rope.refactor.importutils.importinfo import (
 )
 from rope.refactor.importutils.module_imports import ModuleImports
 from rope.refactor.rename import Rename
-
-from flext_core import t
 
 
 class FlextInfraTypesRope:

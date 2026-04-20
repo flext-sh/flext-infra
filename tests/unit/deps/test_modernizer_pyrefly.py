@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
+from collections.abc import (
+    MutableMapping,
+)
 from pathlib import Path
 
 import tomlkit

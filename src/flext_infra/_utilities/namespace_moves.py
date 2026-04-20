@@ -4,12 +4,17 @@ from __future__ import annotations
 
 import ast
 from collections import defaultdict
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import (
+    Mapping,
+    MutableSequence,
+    Sequence,
+)
 from pathlib import Path
+
+from flext_cli import u
 
 from flext_infra import (
     FlextInfraUtilitiesDiscovery,
-    FlextInfraUtilitiesFormatting,
     FlextInfraUtilitiesParsing,
     FlextInfraUtilitiesProtectedEdit,
     FlextInfraUtilitiesRefactorNamespaceCommon,
@@ -79,7 +84,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
                     resource,
                     apply=True,
                 )
-                FlextInfraUtilitiesFormatting.run_ruff_fix(file_path)
+                _ = u.Cli.run_checked(["ruff", "check", "--fix", str(file_path)])
 
     @classmethod
     def rewrite_runtime_alias_violations(
@@ -287,8 +292,8 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
             del filtered_lines[start:end]
 
         def _post_write() -> None:
-            FlextInfraUtilitiesFormatting.run_ruff_fix(source_file, quiet=True)
-            FlextInfraUtilitiesFormatting.run_ruff_fix(target_file, quiet=True)
+            _ = u.Cli.run_checked(["ruff", "check", "--fix", str(source_file)])
+            _ = u.Cli.run_checked(["ruff", "check", "--fix", str(target_file)])
 
         ok, _ = FlextInfraUtilitiesProtectedEdit.protected_source_writes(
             {
@@ -417,8 +422,8 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
                 updated_target += f"\n\n{moved_line}"
 
         def _post_write() -> None:
-            FlextInfraUtilitiesFormatting.run_ruff_fix(source_file, quiet=True)
-            FlextInfraUtilitiesFormatting.run_ruff_fix(target_file, quiet=True)
+            _ = u.Cli.run_checked(["ruff", "check", "--fix", str(source_file)])
+            _ = u.Cli.run_checked(["ruff", "check", "--fix", str(target_file)])
 
         ok, _ = FlextInfraUtilitiesProtectedEdit.protected_source_writes(
             {

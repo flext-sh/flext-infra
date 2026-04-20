@@ -8,6 +8,7 @@ from typing import ClassVar
 
 from flext_cli import FlextCli, FlextCliSettings, cli, u
 from flext_core import FlextSettings
+
 from flext_infra import c, infra, t
 
 
@@ -18,12 +19,35 @@ class FlextInfraCli:
     _HELP_FLAGS: ClassVar[frozenset[str]] = frozenset({"-h", "--help"})
     _SHARED_BOOL_FLAGS: ClassVar[frozenset[str]] = frozenset({
         "--apply",
+        "--check",
+        "--check-only",
         "--dry-run",
         "--diff",
+        "--fail-fast",
+        "--verbose",
+        "--quiet",
+        "--no-fail",
+        "--typings",
+        "--apply-typings",
+        "--no-pip-check",
+        "--skip-check",
+        "--skip-comments",
+        "--audit",
+        "--rollback",
     })
     _SHARED_VALUE_FLAGS: ClassVar[frozenset[str]] = frozenset({
         "--workspace",
         "--projects",
+        "--project",
+        "--gates",
+        "--format",
+        "--output",
+        "--report",
+        "--output-dir",
+        "--json-output",
+        "--reports-dir",
+        "--ruff-args",
+        "--pyright-args",
     })
     _CLI_SERVICE: ClassVar[FlextCli] = FlextCli()
     GROUPS: ClassVar[t.StrMapping] = MappingProxyType({
@@ -39,23 +63,9 @@ class FlextInfraCli:
         c.Infra.RK_RELEASE: "Release orchestration",
         c.Infra.RK_WORKSPACE: "Workspace detection, sync, orchestration, migration",
     })
-    _GROUP_REGISTRATION_RULES: ClassVar[t.StrMapping] = MappingProxyType({
-        "basemk": "register_basemk",
-        c.Infra.VERB_CHECK: "register_check",
-        "codegen": "register_codegen",
-        "deps": "register_deps",
-        "validate": "register_validate",
-        c.Infra.DIR_DOCS: "register_docs",
-        "github": "register_github",
-        "maintenance": "register_maintenance",
-        "refactor": "register_refactor",
-        c.Infra.RK_RELEASE: "register_release",
-        c.Infra.RK_WORKSPACE: "register_workspace",
-    })
 
     @staticmethod
     def _cli_settings() -> FlextCliSettings:
-        """Return the shared CLI settings namespace without importing the API facade."""
         return FlextSettings.fetch_global().fetch_namespace("cli", FlextCliSettings)
 
     def main(self, args: t.StrSequence | None = None) -> int:
@@ -94,7 +104,6 @@ class FlextInfraCli:
 
     @classmethod
     def _normalize_group_args(cls, args: t.StrSequence) -> list[str]:
-        """Move shared flags placed before a Typer subcommand behind the subcommand."""
         return u.Cli.reorder_prefixed_options(
             args,
             bool_options=tuple(cls._SHARED_BOOL_FLAGS),
@@ -108,7 +117,7 @@ class FlextInfraCli:
             help_text=self.GROUPS[group],
             settings=self._cli_settings(),
         )
-        self._register_group(group, app)
+        infra.register_group(group, app)
         normalized_args = self._normalize_group_args(args)
         if not normalized_args:
             _ = cli.execute_app(
@@ -125,16 +134,6 @@ class FlextInfraCli:
         if result.success:
             return 0
         return 2 if u.Cli.cli_usage_error(result.error or "") else 1
-
-    @classmethod
-    def _register_group(cls, group: str, app: t.Cli.CliApp) -> None:
-        """Register one group using the canonical declarative routing rules."""
-        register_method = cls._GROUP_REGISTRATION_RULES[group]
-        infra_service = (
-            infra.fetch_global() if hasattr(infra, "fetch_global") else infra
-        )
-        register = getattr(infra_service, register_method)
-        register(app)
 
 
 def main(args: t.StrSequence | None = None) -> int:

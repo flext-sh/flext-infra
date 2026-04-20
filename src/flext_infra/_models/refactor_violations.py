@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import (
+    Mapping,
+)
 from types import MappingProxyType
 from typing import Annotated, ClassVar
 
 from flext_core import m
+
 from flext_infra import FlextInfraModelsMixins, t
 
 
@@ -144,14 +147,16 @@ class FlextInfraModelsRefactorViolations:
             m.Field(description="Total violations"),
         ]
         confidence_counts: t.IntMapping = m.Field(
-            default_factory=dict, description="Confidence histogram"
+            default_factory=lambda: MappingProxyType({}),
+            description="Confidence histogram",
         )
         violations: tuple[
             FlextInfraModelsRefactorViolations.ClassNestingViolation,
             ...,
         ] = m.Field(default_factory=tuple, description="Violation details")
         per_file_counts: t.IntMapping = m.Field(
-            default_factory=dict, description="Violation counts per file"
+            default_factory=lambda: MappingProxyType({}),
+            description="Violation counts per file",
         )
 
     class HelperClassification(m.ArbitraryTypesModel):
@@ -188,7 +193,8 @@ class FlextInfraModelsRefactorViolations:
         _flext_enforcement_exempt: ClassVar[bool] = True
 
         totals: t.IntMapping = m.Field(
-            default_factory=dict, description="Category totals"
+            default_factory=lambda: MappingProxyType({}),
+            description="Category totals",
         )
         suggestions: tuple[
             FlextInfraModelsRefactorViolations.HelperClassification,
@@ -233,7 +239,8 @@ class FlextInfraModelsRefactorViolations:
             m.Field(description="Total violations in file"),
         ]
         counts: t.IntMapping = m.Field(
-            default_factory=dict, description="Per-pattern counts"
+            default_factory=lambda: MappingProxyType({}),
+            description="Per-pattern counts",
         )
 
     class ViolationAnalysisReport(m.ArbitraryTypesModel):
@@ -246,10 +253,12 @@ class FlextInfraModelsRefactorViolations:
         _flext_enforcement_exempt: ClassVar[bool] = True
 
         totals: t.IntMapping = m.Field(
-            default_factory=dict, description="Aggregate counts by pattern"
+            default_factory=lambda: MappingProxyType({}),
+            description="Aggregate counts by pattern",
         )
         files: Mapping[str, t.IntMapping] = m.Field(
-            default_factory=dict, description="Per-file per-pattern counts"
+            default_factory=lambda: MappingProxyType({}),
+            description="Per-file per-pattern counts",
         )
         top_files: tuple[
             FlextInfraModelsRefactorViolations.ViolationTopFileSection,

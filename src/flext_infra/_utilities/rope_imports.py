@@ -3,22 +3,23 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
+from collections.abc import (
+    Sequence,
+)
 
 import rope.contrib.findit as rope_findit
 import rope.refactor.importutils as rope_importutils
+from flext_infra import (
+    FlextInfraUtilitiesRopeCore,
+    c,
+    t,
+)
 from rope.base.change import ChangeSet
 from rope.base.exceptions import RefactoringError, ResourceNotFoundError
 from rope.refactor.importutils.importinfo import (
     FromImport,
     ImportStatement,
     NormalImport,
-)
-
-from flext_infra import (
-    FlextInfraUtilitiesRopeCore,
-    c,
-    t,
 )
 
 

@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import (
+    Mapping,
+    MutableSequence,
+    Sequence,
+)
 from pathlib import Path
 from typing import ClassVar, override
 
@@ -76,8 +80,8 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                 error_items: Sequence[Mapping[str, t.Infra.InfraValue]] = []
                 if isinstance(parsed_value, Mapping):
                     try:
-                        error_items = u.Infra.deep_list(
-                            u.Infra.normalize_str_mapping(parsed_value),
+                        error_items = u.Cli.json_deep_mapping_list(
+                            u.Cli.json_as_mapping(parsed_value),
                             c.Infra.PYREFLY_ERRORS_KEY,
                         )
                     except (TypeError, c.ValidationError) as err:
@@ -94,7 +98,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                         return False, issues
                 elif isinstance(parsed_value, list):
                     try:
-                        error_items = u.Infra.normalize_mapping_list(parsed_value)
+                        error_items = u.Cli.json_as_mapping_list(parsed_value)
                     except (TypeError, c.ValidationError) as err:
                         issues.append(
                             m.Infra.Issue(
@@ -109,12 +113,12 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                         return False, issues
                 issues.extend(
                     m.Infra.Issue(
-                        file=u.Infra.pick_str(err, "path", "?"),
-                        line=u.Infra.pick_int(err, "line"),
-                        column=u.Infra.pick_int(err, "column"),
-                        code=u.Infra.pick_str(err, "name"),
-                        message=u.Infra.pick_str(err, "description"),
-                        severity=u.Infra.pick_str(err, "severity", c.Infra.ERROR),
+                        file=u.Cli.json_pick_str(err, "path", "?"),
+                        line=u.Cli.json_pick_int(err, "line"),
+                        column=u.Cli.json_pick_int(err, "column"),
+                        code=u.Cli.json_pick_str(err, "name"),
+                        message=u.Cli.json_pick_str(err, "description"),
+                        severity=u.Cli.json_pick_str(err, "severity", c.Infra.ERROR),
                     )
                     for err in error_items
                 )

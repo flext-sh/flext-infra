@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, MutableSequence
+from collections.abc import (
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+)
 from pathlib import Path
+from types import MappingProxyType
 from typing import Annotated, ClassVar
 
 from flext_core import m, u
+
 from flext_infra import FlextInfraModelsDepsToolSettings, FlextInfraModelsMixins, c, t
 
 
@@ -90,40 +96,23 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
                 return None
             return Path(self.limits).expanduser().resolve()
 
-    class ExtraPathsCommand(FlextInfraModelsMixins.ProjectMixin, m.ContractModel):
+    class ExtraPathsCommand(
+        FlextInfraModelsMixins.ApplyDryRunMixin,
+        FlextInfraModelsMixins.ProjectMixin,
+        m.ContractModel,
+    ):
         """Canonical CLI payload for ``flext-infra deps extra-paths``."""
-
-        apply: Annotated[
-            bool,
-            m.Field(
-                description="Apply synchronized path changes",
-                json_schema_extra={
-                    "typer_param_decls": list(c.Infra.CLI_APPLY_OPTION_DECLS),
-                },
-            ),
-        ] = False
-
-        @u.computed_field()
-        @property
-        def dry_run(self) -> bool:
-            """Whether path synchronization should avoid writing."""
-            return not self.apply
 
     class InternalSyncCommand(FlextInfraModelsMixins.BaseMixin, m.ContractModel):
         """Canonical CLI payload for ``flext-infra deps internal-sync``."""
 
-    class ModernizeCommand(FlextInfraModelsMixins.ProjectMixin, m.ContractModel):
+    class ModernizeCommand(
+        FlextInfraModelsMixins.ApplyDryRunMixin,
+        FlextInfraModelsMixins.ProjectMixin,
+        m.ContractModel,
+    ):
         """Canonical CLI payload for ``flext-infra deps modernize``."""
 
-        apply: Annotated[
-            bool,
-            m.Field(
-                description="Apply pyproject modernization changes",
-                json_schema_extra={
-                    "typer_param_decls": list(c.Infra.CLI_APPLY_OPTION_DECLS),
-                },
-            ),
-        ] = False
         check: Annotated[
             bool,
             m.Field(False, description="Run in check mode"),
@@ -146,34 +135,17 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
             ),
         ] = False
 
-        @u.computed_field()
-        @property
-        def dry_run(self) -> bool:
-            """Whether modernization should avoid writing changes."""
-            return not self.apply
-
-    class PathSyncCommand(FlextInfraModelsMixins.ProjectMixin, m.ContractModel):
+    class PathSyncCommand(
+        FlextInfraModelsMixins.ApplyDryRunMixin,
+        FlextInfraModelsMixins.ProjectMixin,
+        m.ContractModel,
+    ):
         """Canonical CLI payload for ``flext-infra deps path-sync``."""
 
-        apply: Annotated[
-            bool,
-            m.Field(
-                description="Apply dependency path rewrites",
-                json_schema_extra={
-                    "typer_param_decls": list(c.Infra.CLI_APPLY_OPTION_DECLS),
-                },
-            ),
-        ] = False
         mode: Annotated[
             t.Infra.PathSyncMode,
             m.Field("auto", description="Dependency path rewrite mode"),
         ] = "auto"
-
-        @u.computed_field()
-        @property
-        def dry_run(self) -> bool:
-            """Whether dependency path rewrites should avoid writing."""
-            return not self.apply
 
     class PyprojectDocumentState(m.ArbitraryTypesModel):
         """Centralized normalized TOML state reused across deps workflows.
@@ -337,7 +309,8 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
 
         workspace: Annotated[str, m.Field(description="Workspace name")]
         projects: Mapping[str, FlextInfraModelsDeps.ProjectRuntimeReport] = m.Field(
-            default_factory=dict, description="Per-project reports"
+            default_factory=lambda: MappingProxyType({}),
+            description="Per-project reports",
         )
         pip_check: FlextInfraModelsDeps.PipCheckReport | None = m.Field(
             None,

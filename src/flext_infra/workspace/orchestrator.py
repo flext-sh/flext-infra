@@ -11,7 +11,10 @@ from __future__ import annotations
 
 import os
 import time
-from collections.abc import MutableSequence, Sequence
+from collections.abc import (
+    MutableSequence,
+    Sequence,
+)
 from pathlib import Path
 from typing import Annotated, override
 
@@ -206,7 +209,7 @@ class FlextInfraOrchestratorService(s[bool]):
             r containing list of CommandOutput per project.
 
         """
-        u.Infra.header("Workspace Orchestration")
+        u.Cli.header("Workspace Orchestration")
         try:
             allowed_verbs = c.Infra.ORCHESTRATED_PROJECT_VERBS
             if verb not in allowed_verbs:
@@ -221,7 +224,7 @@ class FlextInfraOrchestratorService(s[bool]):
             skipped = 0
             started_total = time.monotonic()
             for idx, project in enumerate(projects, start=1):
-                u.Infra.progress(idx, total, project, verb)
+                u.Cli.progress(idx, total, project, verb)
                 if skipped:
                     results.append(
                         m.Cli.CommandOutput(
@@ -246,7 +249,7 @@ class FlextInfraOrchestratorService(s[bool]):
                     if fail_fast:
                         skipped = total - idx
             elapsed_total = time.monotonic() - started_total
-            u.Infra.summary(
+            u.Cli.summary(
                 m.Infra.SummaryStats(
                     verb=verb,
                     total=total,
@@ -285,7 +288,7 @@ class FlextInfraOrchestratorService(s[bool]):
             CommandOutput with log path in stdout, exit code, and timing.
 
         """
-        log_path = u.Infra.get_report_path(
+        log_path = u.Cli.get_report_path(
             Path.cwd(),
             c.Infra.RK_WORKSPACE,
             verb,
@@ -307,12 +310,12 @@ class FlextInfraOrchestratorService(s[bool]):
         stderr = "" if proc_result.success else proc_result.error or ""
         elapsed = time.monotonic() - started
         if return_code == 0:
-            u.Infra.info(
+            u.Cli.info(
                 f"  ✓ {project} completed in {int(elapsed)}s  ({log_path})",
             )
         else:
             error_count, error_lines = u.Infra.extract_errors(log_path)
-            u.Infra.project_failure(
+            u.Cli.project_failure(
                 m.Infra.ProjectFailureInfo(
                     project=project,
                     elapsed=elapsed,

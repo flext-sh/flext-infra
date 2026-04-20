@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import (
+    Sequence,
+)
 from fnmatch import fnmatch
 from functools import cache
 from pathlib import Path
 
 from flext_cli import u
+
 from flext_infra import (
     FlextInfraUtilitiesIteration,
-    FlextInfraUtilitiesTomlParse,
     c,
     m,
     p,
@@ -38,7 +40,7 @@ class FlextInfraUtilitiesDocsScope:
         payload = FlextInfraUtilitiesIteration.pyproject_payload(pyproject_path)
         docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(payload)
         dependency_names = tuple(
-            FlextInfraUtilitiesTomlParse.declared_dependency_names_from_payload(
+            FlextInfraUtilitiesIteration.declared_dependency_names_from_payload(
                 payload,
             )
         )

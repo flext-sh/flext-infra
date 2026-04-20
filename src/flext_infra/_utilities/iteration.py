@@ -7,11 +7,15 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import tomllib
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import (
+    Mapping,
+    MutableSequence,
+    Sequence,
+)
 from functools import cache
 from pathlib import Path
 
-from flext_infra import FlextInfraUtilitiesTomlParse as m, c, p, r, t
+from flext_infra import c, p, r, t
 
 
 class FlextInfraUtilitiesIteration:
@@ -30,6 +34,70 @@ class FlextInfraUtilitiesIteration:
         c.Infra.DIR_EXAMPLES,
         c.Infra.DIR_SCRIPTS,
     })
+
+    @staticmethod
+    def dep_name(requirement: str) -> str | None:
+        """Extract normalized dependency name from one requirement spec."""
+        text = requirement.strip()
+        if not text:
+            return None
+        if ";" in text:
+            text = text.split(";", maxsplit=1)[0].strip()
+        if " @ " in text:
+            text = text.split(" @ ", maxsplit=1)[0].strip()
+        for separator in ("[", "==", ">=", "<=", "~=", "!=", ">", "<"):
+            if separator in text:
+                text = text.split(separator, maxsplit=1)[0].strip()
+        return text or None
+
+    @classmethod
+    def declared_dependency_names_from_payload(
+        cls,
+        payload: t.Infra.ContainerDict,
+    ) -> t.StrSequence:
+        """Return normalized dependency names declared in ``[project].dependencies``."""
+        project = payload.get(c.Infra.PROJECT)
+        if not isinstance(project, Mapping):
+            return ()
+        dependencies = project.get(c.Infra.DEPENDENCIES)
+        if not isinstance(dependencies, list):
+            return ()
+        names = {
+            dep_name
+            for item in dependencies
+            if (dep_name := cls.dep_name(str(item))) is not None
+        }
+        return tuple(sorted(names))
+
+    @classmethod
+    def local_dependency_names_from_payload(
+        cls,
+        payload: t.Infra.ContainerDict,
+        *,
+        workspace_project_names: t.StrSequence = (),
+    ) -> t.StrSequence:
+        """Return workspace-local dependency names from one payload."""
+        declared = set(cls.declared_dependency_names_from_payload(payload))
+        if not workspace_project_names:
+            return tuple(sorted(declared))
+        workspace_names = {str(name) for name in workspace_project_names}
+        return tuple(sorted(name for name in declared if name in workspace_names))
+
+    @staticmethod
+    def canonical_dev_dependencies_from_payload(
+        payload: t.Infra.ContainerDict,
+    ) -> t.StrSequence:
+        """Return canonical ``project.optional-dependencies.dev`` dependency specs."""
+        project = payload.get(c.Infra.PROJECT)
+        if not isinstance(project, Mapping):
+            return ()
+        optional = project.get(c.Infra.OPTIONAL_DEPENDENCIES)
+        if not isinstance(optional, Mapping):
+            return ()
+        dev = optional.get(c.Infra.DEV)
+        if not isinstance(dev, list):
+            return ()
+        return tuple(str(item) for item in dev)
 
     @staticmethod
     @cache
@@ -231,7 +299,7 @@ class FlextInfraUtilitiesIteration:
         except (OSError, tomllib.TOMLDecodeError, c.ValidationError):
             return False
         dependency_names: set[str] = set(
-            m.declared_dependency_names_from_payload(
+            FlextInfraUtilitiesIteration.declared_dependency_names_from_payload(
                 payload,
             )
         )

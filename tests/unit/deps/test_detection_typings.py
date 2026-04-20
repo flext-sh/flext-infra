@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import (
+    Mapping,
+    Sequence,
+)
 from pathlib import Path
 from typing import override
 
@@ -34,7 +37,7 @@ class _StubRunner(p.Cli.CommandRunner):
         cmd: t.StrSequence,
         cwd: t.Cli.PathLike | None = None,
         timeout: int | None = None,
-        env: t.Cli.StrEnvMapping | None = None,
+        env: t.StrMapping | None = None,
         input_data: bytes | None = None,
     ) -> tr[m.Cli.CommandOutput]:
         del cmd, input_data
@@ -51,7 +54,7 @@ class _StubRunner(p.Cli.CommandRunner):
         cmd: t.StrSequence,
         cwd: t.Cli.PathLike | None = None,
         timeout: int | None = None,
-        env: t.Cli.StrEnvMapping | None = None,
+        env: t.StrMapping | None = None,
     ) -> tr[m.Cli.CommandOutput]:
         del cmd, cwd, timeout, env
         if self._result.failure:
@@ -69,7 +72,7 @@ class _StubRunner(p.Cli.CommandRunner):
         cmd: t.StrSequence,
         cwd: t.Cli.PathLike | None = None,
         timeout: int | None = None,
-        env: t.Cli.StrEnvMapping | None = None,
+        env: t.StrMapping | None = None,
     ) -> tr[str]:
         return self.run(cmd, cwd=cwd, timeout=timeout, env=env).map(
             lambda output: output.stdout.strip(),
@@ -81,7 +84,7 @@ class _StubRunner(p.Cli.CommandRunner):
         cmd: t.StrSequence,
         cwd: t.Cli.PathLike | None = None,
         timeout: int | None = None,
-        env: t.Cli.StrEnvMapping | None = None,
+        env: t.StrMapping | None = None,
     ) -> tr[bool]:
         return self.run(cmd, cwd=cwd, timeout=timeout, env=env).map(
             lambda _output: True,
@@ -94,7 +97,7 @@ class _StubRunner(p.Cli.CommandRunner):
         output_file: t.Cli.PathLike,
         cwd: t.Cli.PathLike | None = None,
         timeout: int | None = None,
-        env: t.Cli.StrEnvMapping | None = None,
+        env: t.StrMapping | None = None,
     ) -> tr[int]:
         result = self.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
         if result.failure:

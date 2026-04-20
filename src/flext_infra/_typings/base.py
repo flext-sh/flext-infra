@@ -9,17 +9,22 @@ from __future__ import annotations
 import argparse as _argparse
 import ast as _ast
 import re as _re
-from collections.abc import Callable, Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import (
+    Callable,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
 from io import TextIOBase as _TextIOBase
 from pathlib import Path as _Path
 from typing import Literal as _Literal
 
+from flext_core import m, t
 from jinja2 import Environment as _JinjaEnvironment, Template as _JinjaTemplate
 from tomlkit import TOMLDocument as _TOMLDocument
 from tomlkit.container import Container as _TOMLContainer
 from tomlkit.items import Item as _TOMLItem, Table as _TOMLTable
-
-from flext_core import m, t
 
 
 class FlextInfraTypesBase:
@@ -29,7 +34,7 @@ class FlextInfraTypesBase:
     "argparse ArgumentParser for CLI command definitions."
     type CliNamespace = _argparse.Namespace
     "argparse Namespace for parsed CLI arguments."
-    type JsonDict = t.JsonMapping
+    type JsonDict = Mapping[str, t.Container]
     "Pydantic JSON schema dict (used by json_schema_extra callbacks)."
     type RegexPattern = _re.Pattern[str]
     "Compiled regex pattern for string matching."
@@ -92,16 +97,8 @@ class FlextInfraTypesBase:
     type VariadicTuple[ItemT] = tuple[ItemT, ...]
     "Generic variadic tuple alias for homogeneous tuples."
 
-    type InfraValue = (
-        str
-        | int
-        | float
-        | bool
-        | Mapping[str, FlextInfraTypesBase.InfraValue]
-        | Sequence[FlextInfraTypesBase.InfraValue]
-        | None
-    )
-    "Recursive infrastructure value: primitive, nested dict/list, or null."
+    type InfraValue = t.JsonLikeValue
+    "Canonical JSON-like infrastructure payload contract."
     type ContainerDict = Mapping[str, InfraValue]
     "Dict with string keys and infra values (project reports, etc.)."
     type FacadeFamily = str

@@ -3,11 +3,17 @@
 from __future__ import annotations
 
 import time
-from collections.abc import Callable, Mapping, MutableMapping, MutableSequence
+from collections.abc import (
+    Callable,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+)
 from pathlib import Path
 from typing import ClassVar
 
 from flext_core import FlextProtocols
+
 from flext_infra import (
     FlextInfraBanditGate,
     FlextInfraGate,
@@ -117,9 +123,9 @@ class FlextInfraWorkspaceCheckGatesMixin:
         project_dir = self._workspace_root / project_name
         pyproject_path = project_dir / c.Infra.PYPROJECT_FILENAME
         if not project_dir.is_dir() or not pyproject_path.exists():
-            u.Infra.progress(index, total, project_name, c.Infra.SEVERITY_SKIP)
+            u.Cli.progress(index, total, project_name, c.Infra.SEVERITY_SKIP)
             return None
-        u.Infra.progress(index, total, project_name, c.Infra.VERB_CHECK)
+        u.Cli.progress(index, total, project_name, c.Infra.VERB_CHECK)
         project_ctx = self._isolate_context(ctx, project_name)
         _ = u.Cli.ensure_dir(project_ctx.reports_dir)
         start = time.monotonic()
@@ -129,7 +135,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
             project_ctx,
         )
         elapsed = time.monotonic() - start
-        u.Infra.status(
+        u.Cli.status(
             c.Infra.VERB_CHECK,
             project_name,
             result=project_result.passed,
@@ -277,7 +283,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
                 gate=gate_id,
                 passed=execution.result.passed,
             )
-            u.Infra.gate_result(
+            u.Cli.gate_result(
                 gate_id,
                 len(execution.issues),
                 passed=execution.result.passed,

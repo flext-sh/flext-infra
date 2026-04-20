@@ -4,11 +4,20 @@ from __future__ import annotations
 
 import ast
 import re
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import (
+    Mapping,
+    MutableSequence,
+    Sequence,
+)
 from pathlib import Path
 
-from flext_cli import u
-from flext_infra import FlextInfraUtilitiesDocsScope, FlextInfraUtilitiesRope, c, m, t
+from flext_infra import (
+    FlextInfraUtilitiesDocsScope,
+    FlextInfraUtilitiesRope,
+    c,
+    m,
+    t,
+)
 
 
 class FlextInfraUtilitiesDocsApi:
@@ -30,7 +39,7 @@ class FlextInfraUtilitiesDocsApi:
     _STRING_RE: t.Infra.RegexPattern = re.compile(r"""["']([a-zA-Z0-9_\.]+)["']""")
 
     @staticmethod
-    def _string_values(value: t.Container) -> t.StrSequence:
+    def _string_values(value: t.Infra.InfraValue | None) -> t.StrSequence:
         """Normalize one infra sequence payload into strings."""
         try:
             items = t.Infra.INFRA_SEQ_ADAPTER.validate_python(value)
@@ -39,7 +48,7 @@ class FlextInfraUtilitiesDocsApi:
         return [str(item) for item in items]
 
     @staticmethod
-    def _string_mapping(value: t.Container) -> t.StrMapping:
+    def _string_mapping(value: t.Infra.InfraValue | None) -> t.StrMapping:
         """Normalize one infra mapping payload into string keys and values."""
         try:
             items = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)
@@ -151,13 +160,13 @@ class FlextInfraUtilitiesDocsApi:
 
     @staticmethod
     def _project_keywords(
-        project_meta: Mapping[str, t.Container],
+        project_meta: Mapping[str, t.Infra.InfraValue],
     ) -> t.StrSequence:
         """Return normalized project keywords from ``pyproject.toml`` metadata."""
         return [
             text
             for entry in FlextInfraUtilitiesDocsApi._string_values(
-                project_meta.get("keywords", ())
+                project_meta.get("keywords", [])
             )
             if (text := str(entry).strip())
         ]
@@ -203,15 +212,23 @@ class FlextInfraUtilitiesDocsApi:
             "exclude_docs",
         )
         project_meta_value = payload.get(c.Infra.PROJECT)
-        project_meta = u.Cli.toml_as_mapping(project_meta_value) or {}
+        project_meta: t.Infra.ContainerDict = (
+            {str(key): value for key, value in project_meta_value.items()}
+            if isinstance(project_meta_value, Mapping)
+            else t.Infra.INFRA_MAPPING_ADAPTER.validate_python({})
+        )
         project_urls_value = project_meta.get("urls")
-        project_urls = u.Cli.toml_as_mapping(project_urls_value) or {}
+        project_urls: t.Infra.ContainerDict = (
+            {str(key): value for key, value in project_urls_value.items()}
+            if isinstance(project_urls_value, Mapping)
+            else t.Infra.INFRA_MAPPING_ADAPTER.validate_python({})
+        )
         if not package_name:
             site_title = (
                 str(docs_meta.get("site_title", "")).strip()
                 or str(project_meta.get("name", "")).strip()
             )
-            return {
+            return t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
                 "package_name": "",
                 "description": str(project_meta.get("description", "")).strip(),
                 "version": str(project_meta.get(c.Infra.VERSION, "")).strip(),
@@ -231,7 +248,7 @@ class FlextInfraUtilitiesDocsApi:
                 "target_map": {},
                 "modules": [],
                 "exclude_docs": exclude_docs,
-            }
+            })
         init_path = (
             project_root / c.Infra.DEFAULT_SRC_DIR / package_name / c.Infra.INIT_PY
         )
@@ -303,7 +320,7 @@ class FlextInfraUtilitiesDocsApi:
         if not public_symbols:
             public_symbols = symbol_exports
         facades = [name for name in public_symbols if name.startswith("Flext")]
-        return {
+        return t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
             "package_name": package_name,
             "description": str(project_meta.get("description", "")).strip(),
             "keywords": FlextInfraUtilitiesDocsApi._project_keywords(project_meta),
@@ -324,7 +341,7 @@ class FlextInfraUtilitiesDocsApi:
             "target_map": dict(target_map),
             "modules": modules,
             "exclude_docs": exclude_docs,
-        }
+        })
 
     @staticmethod
     def docstring_issues(

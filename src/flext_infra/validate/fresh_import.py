@@ -5,9 +5,7 @@ and reports any ImportError. Catches circular-import cycles that the
 lazy-loading machinery in ``flext_core.lazy`` would otherwise mask
 until first attribute access.
 
-Subprocess calls are routed through
-``FlextInfraUtilitiesSubprocessUtils.run_python_import_smoke`` — this
-file carries no local subprocess bypass.
+Subprocess calls are routed through ``u.Cli.run_raw``.
 
 Architecture: flext-infra validate layer — depends on ``m.Infra.ValidationReport``.
 
@@ -17,17 +15,20 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
+from collections.abc import (
+    MutableSequence,
+    Sequence,
+)
 from typing import Annotated, override
 
 from flext_infra import (
-    FlextInfraUtilitiesSubprocessUtils,
     c,
     m,
     p,
     r,
     s,
     t,
+    u,
 )
 
 
@@ -66,9 +67,20 @@ class FlextInfraValidateFreshImport(s[bool]):
         """
         violations: MutableSequence[str] = []
         for package in packages:
-            rc, last_line = FlextInfraUtilitiesSubprocessUtils.run_python_import_smoke(
-                package
-            )
+            smoke_result = u.Cli.run_raw([
+                "python",
+                "-c",
+                f"import {package}",
+            ])
+            if smoke_result.failure:
+                violations.append(
+                    f"{package}: {smoke_result.error or 'execution error'}"
+                )
+                continue
+            output = smoke_result.value
+            rc = output.exit_code
+            lines = (output.stderr.strip() or output.stdout.strip()).splitlines()
+            last_line = lines[-1] if lines else ""
             if rc != 0:
                 reason = last_line or "ImportError"
                 violations.append(f"{package}: {reason}")

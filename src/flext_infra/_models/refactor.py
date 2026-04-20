@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import (
+    Mapping,
+)
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, ClassVar
 
 from flext_core import m
+
 from flext_infra import (
     FlextInfraModelsMixins,
     FlextInfraModelsNamespaceEnforcer,

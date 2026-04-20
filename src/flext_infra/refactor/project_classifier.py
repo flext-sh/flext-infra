@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping, MutableMapping, MutableSequence
+from collections.abc import (
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+)
 from pathlib import Path
 
 from flext_infra import c, m, t, u
@@ -51,11 +55,13 @@ class FlextInfraProjectClassifier:
         if not self._pyproject_path.is_file():
             empty_dependencies: list[str] = []
             return ("", empty_dependencies)
-        data_result = u.Infra.read_plain(self._pyproject_path)
+        data_result = u.Cli.toml_read_json(self._pyproject_path)
         if data_result.failure:
             empty_dependencies: list[str] = []
             return ("", empty_dependencies)
-        return self._project_metadata_from_payload(data_result.value)
+        return self._project_metadata_from_payload(
+            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(data_result.value),
+        )
 
     def _project_metadata_from_payload(
         self,
@@ -80,7 +86,7 @@ class FlextInfraProjectClassifier:
 
     def _as_mapping(
         self,
-        raw_value: t.Infra.InfraValue,
+        raw_value: t.Infra.InfraValue | None,
     ) -> Mapping[str, t.Infra.InfraValue]:
         if isinstance(raw_value, Mapping):
             return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(raw_value)

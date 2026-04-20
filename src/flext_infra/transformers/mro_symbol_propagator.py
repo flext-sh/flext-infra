@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Callable, Mapping
+from collections.abc import (
+    Callable,
+    Mapping,
+)
 from typing import override
 
 from flext_infra import (

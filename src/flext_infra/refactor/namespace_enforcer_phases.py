@@ -3,7 +3,12 @@
 from __future__ import annotations
 
 import difflib
-from collections.abc import Callable, MutableMapping, MutableSequence, Sequence
+from collections.abc import (
+    Callable,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
 from pathlib import Path
 
 from flext_infra import (

@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping, Sequence
+from collections.abc import (
+    MutableMapping,
+    Sequence,
+)
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import FlextInfraToml, c, m, t
+from flext_infra import FlextInfraPhaseEngine, c, m, t
 
 if TYPE_CHECKING:
     from flext_infra import FlextInfraExtraPathsManager
@@ -85,7 +88,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
         paths_manager: FlextInfraExtraPathsManager | None = None,
     ) -> t.StrSequence:
         """Apply canonical pyrefly table values, paths, and strict error toggles."""
-        return FlextInfraToml.apply_phases(
+        return FlextInfraPhaseEngine.apply_phases(
             doc,
             self._phase(
                 is_root=is_root,
@@ -103,7 +106,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
         paths_manager: FlextInfraExtraPathsManager | None = None,
     ) -> t.StrSequence:
         """Apply canonical pyrefly settings to one normalized payload."""
-        return FlextInfraToml.apply_payload_phases(
+        return FlextInfraPhaseEngine.apply_payload_phases(
             payload,
             self._phase(
                 is_root=is_root,

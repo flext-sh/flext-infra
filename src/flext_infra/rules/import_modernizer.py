@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence
+from collections.abc import (
+    MutableSequence,
+)
 from pathlib import Path
 from typing import override
 
@@ -26,7 +28,7 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
         _file_path: Path | None = None,
     ) -> t.Infra.TransformResult:
         """Apply import modernizer or lazy-import hoisting based on fix action."""
-        fix_action = u.Infra.get_str_key(
+        fix_action = u.Cli.json_get_str_key(
             self.settings,
             c.Infra.RK_FIX_ACTION,
             case="lower",

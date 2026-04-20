@@ -7,7 +7,9 @@ warning usage in __init__, using regex analysis on source text.
 from __future__ import annotations
 
 import re
-from collections.abc import MutableSequence
+from collections.abc import (
+    MutableSequence,
+)
 
 from flext_infra import c, t
 

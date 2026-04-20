@@ -3,7 +3,12 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import (
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
 from pathlib import Path
 
 from flext_infra import (
@@ -306,7 +311,7 @@ class FlextInfraClassNestingRefactorRule:
         for key in c.Infra.NESTING_SECTION_KEYS:
             raw = loaded.get(key)
             if isinstance(raw, list):
-                mappings = u.Infra.normalize_mapping_list(raw)
+                mappings = u.Cli.json_as_mapping_list(raw)
                 settings[key] = [dict(e) for e in self._coerce(mappings)]
         self._cached_config = settings
         return settings
@@ -357,12 +362,12 @@ class FlextInfraClassNestingRefactorRule:
         self, cfg: t.Infra.ContainerDict, fp: Path, thr: str
     ) -> t.Infra.ContainerDict:
         _ = (cfg, fp, thr)
-        return {
+        return t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
             c.Infra.RK_SOURCE_SYMBOL: "",
             "expected_base_chain": list[str](),
             c.Infra.RK_POST_CHECKS: ["imports_resolve"],
             "quality_gates": ["lsp_diagnostics_clean"],
-        }
+        })
 
 
 __all__: list[str] = ["FlextInfraClassNestingRefactorRule"]

@@ -10,10 +10,12 @@ from flext_core.lazy import (
     install_lazy_exports,
     merge_lazy_imports,
 )
+
 from flext_infra.__version__ import *
 
 if _t.TYPE_CHECKING:
     from flext_cli import d, e, h, r, x
+
     from flext_infra._constants.base import FlextInfraConstantsBase
     from flext_infra._constants.basemk import FlextInfraConstantsBasemk
     from flext_infra._constants.census import FlextInfraConstantsCensus
@@ -78,6 +80,7 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.base import FlextInfraUtilitiesBase
     from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
     from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen
+    from flext_infra._utilities.compat import FlextInfraUtilitiesCompatibility
     from flext_infra._utilities.deps_path_sync import (
         FlextInfraUtilitiesDependencyPathSync,
     )
@@ -94,7 +97,6 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
     from flext_infra._utilities.docs_validate import FlextInfraUtilitiesDocsValidate
     from flext_infra._utilities.engine import FlextInfraUtilitiesRefactorEngine
-    from flext_infra._utilities.formatting import FlextInfraUtilitiesFormatting
     from flext_infra._utilities.github import FlextInfraUtilitiesGithub
     from flext_infra._utilities.github_pr import FlextInfraUtilitiesGithubPr
     from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
@@ -120,20 +122,12 @@ if _t.TYPE_CHECKING:
         FlextInfraNormalizerContext,
         FlextInfraUtilitiesImportNormalizer,
     )
-    from flext_infra._utilities.output_failure_summary import (
-        FlextInfraUtilitiesOutputFailureSummary,
-    )
-    from flext_infra._utilities.output_reporting import (
-        FlextInfraUtilitiesOutputReporting,
-    )
     from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
-    from flext_infra._utilities.paths import FlextInfraUtilitiesPaths
     from flext_infra._utilities.patterns import FlextInfraUtilitiesPatterns
     from flext_infra._utilities.policy import FlextInfraUtilitiesRefactorPolicy
     from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
     from flext_infra._utilities.refactor import FlextInfraUtilitiesRefactor
     from flext_infra._utilities.release import FlextInfraUtilitiesRelease
-    from flext_infra._utilities.reporting import FlextInfraUtilitiesReporting
     from flext_infra._utilities.rope import FlextInfraUtilitiesRope
     from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
     from flext_infra._utilities.rope_analysis_introspection import (
@@ -148,34 +142,34 @@ if _t.TYPE_CHECKING:
     )
     from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
     from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
-    from flext_infra._utilities.subprocess_utils import (
-        FlextInfraUtilitiesSubprocessUtils,
-    )
-    from flext_infra._utilities.toml import FlextInfraUtilitiesToml
-    from flext_infra._utilities.toml_parse import FlextInfraUtilitiesTomlParse
-    from flext_infra._utilities.utilities_cli import FlextInfraUtilitiesRefactorCli
     from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
     from flext_infra.api import FlextInfra, infra
     from flext_infra.base import FlextInfraServiceBase, s
     from flext_infra.basemk.cli import FlextInfraCliBasemk
     from flext_infra.basemk.engine import FlextInfraBaseMkTemplateEngine
     from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
+    from flext_infra.check.cli import FlextInfraCliCheck
     from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-    from flext_infra.check.workspace_check_cli import FlextInfraCliCheck
     from flext_infra.check.workspace_check_gates import (
         FlextInfraGateRegistry,
         FlextInfraWorkspaceCheckGatesMixin,
     )
     from flext_infra.cli import FlextInfraCli, main
+    from flext_infra.cli_registry import (
+        FlextInfraCliGroupBase,
+        FlextInfraCliRegistryMixin,
+    )
     from flext_infra.codegen.census import FlextInfraCodegenCensus
     from flext_infra.codegen.cli import FlextInfraCliCodegen
     from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
+    from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
     from flext_infra.codegen.constants_quality_gate import (
         FlextInfraConstantsCodegenQualityGate,
     )
     from flext_infra.codegen.fixer import FlextInfraCodegenFixer
     from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
     from flext_infra.codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
+    from flext_infra.codegen.pipeline import FlextInfraCodegenPipeline
     from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
     from flext_infra.codegen.pyproject_keys import FlextInfraCodegenPyprojectKeys
     from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
@@ -192,6 +186,7 @@ if _t.TYPE_CHECKING:
     from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
     from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
     from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
+    from flext_infra.deps.phase_engine import FlextInfraPhaseEngine
     from flext_infra.deps.phases.consolidate_groups import (
         FlextInfraConsolidateGroupsPhase,
     )
@@ -217,6 +212,10 @@ if _t.TYPE_CHECKING:
     from flext_infra.deps.phases.ensure_pytest import FlextInfraEnsurePytestConfigPhase
     from flext_infra.deps.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
     from flext_infra.deps.phases.inject_comments import FlextInfraInjectCommentsPhase
+    from flext_infra.deps.service_base import (
+        FlextInfraDepsProjectServiceBase,
+        FlextInfraDepsServiceBase,
+    )
     from flext_infra.detectors.class_placement_detector import (
         FlextInfraClassPlacementDetector,
     )
@@ -260,6 +259,7 @@ if _t.TYPE_CHECKING:
     from flext_infra.docs.auditor import FlextInfraDocAuditor
     from flext_infra.docs.auditor_mixin import FlextInfraDocAuditorMixin
     from flext_infra.docs.builder import FlextInfraDocBuilder
+    from flext_infra.docs.cli import FlextInfraCliDocs
     from flext_infra.docs.fixer import FlextInfraDocFixer
     from flext_infra.docs.generator import FlextInfraDocGenerator
     from flext_infra.docs.validator import FlextInfraDocValidator
@@ -347,22 +347,6 @@ if _t.TYPE_CHECKING:
     from flext_infra.rules.pattern_corrections import (
         FlextInfraRefactorPatternCorrectionsRule,
     )
-    from flext_infra.services.basemk import FlextInfraServiceBasemkMixin
-    from flext_infra.services.check import FlextInfraServiceCheckMixin
-    from flext_infra.services.cli_base import FlextInfraServiceCliRunnerMixin
-    from flext_infra.services.consolidator import FlextInfraCodegenConsolidator
-    from flext_infra.services.deps import FlextInfraServiceDepsMixin
-    from flext_infra.services.github import FlextInfraServiceGithubMixin
-    from flext_infra.services.pipeline import FlextInfraCodegenPipeline
-    from flext_infra.services.refactor import FlextInfraServiceRefactorMixin
-    from flext_infra.services.release import FlextInfraServiceReleaseMixin
-    from flext_infra.services.rope import (
-        FlextInfraRopeWorkspace,
-        FlextInfraServiceRopeMixin,
-    )
-    from flext_infra.services.toml_engine import FlextInfraToml
-    from flext_infra.services.validate import FlextInfraServiceValidateMixin
-    from flext_infra.services.workspace import FlextInfraServiceWorkspaceMixin
     from flext_infra.transformers.base import (
         FlextInfraChangeTrackingTransformer,
         FlextInfraRopeTransformer,
@@ -438,6 +422,10 @@ if _t.TYPE_CHECKING:
     from flext_infra.workspace.migrator import FlextInfraProjectMigrator
     from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
     from flext_infra.workspace.project_makefile import FlextInfraProjectMakefileUpdater
+    from flext_infra.workspace.rope import (
+        FlextInfraRopeWorkspace,
+        FlextInfraServiceRopeMixin,
+    )
     from flext_infra.workspace.sync import FlextInfraSyncService
     from flext_infra.workspace.workspace_makefile import (
         FlextInfraWorkspaceMakefileGenerator,
@@ -461,7 +449,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
         ".refactor",
         ".release",
         ".rules",
-        ".services",
         ".transformers",
         ".validate",
         ".workspace",
@@ -540,6 +527,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             "._utilities.base": ("FlextInfraUtilitiesBase",),
             "._utilities.census": ("FlextInfraUtilitiesRefactorCensus",),
             "._utilities.codegen": ("FlextInfraUtilitiesCodegen",),
+            "._utilities.compat": ("FlextInfraUtilitiesCompatibility",),
             "._utilities.deps_path_sync": ("FlextInfraUtilitiesDependencyPathSync",),
             "._utilities.deps_repos": ("FlextInfraInternalSyncRepoMixin",),
             "._utilities.discovery": ("FlextInfraUtilitiesDiscovery",),
@@ -554,7 +542,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
             "._utilities.docs_scope": ("FlextInfraUtilitiesDocsScope",),
             "._utilities.docs_validate": ("FlextInfraUtilitiesDocsValidate",),
             "._utilities.engine": ("FlextInfraUtilitiesRefactorEngine",),
-            "._utilities.formatting": ("FlextInfraUtilitiesFormatting",),
             "._utilities.github": ("FlextInfraUtilitiesGithub",),
             "._utilities.github_pr": ("FlextInfraUtilitiesGithubPr",),
             "._utilities.iteration": ("FlextInfraUtilitiesIteration",),
@@ -578,18 +565,12 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "FlextInfraNormalizerContext",
                 "FlextInfraUtilitiesImportNormalizer",
             ),
-            "._utilities.output_failure_summary": (
-                "FlextInfraUtilitiesOutputFailureSummary",
-            ),
-            "._utilities.output_reporting": ("FlextInfraUtilitiesOutputReporting",),
             "._utilities.parsing": ("FlextInfraUtilitiesParsing",),
-            "._utilities.paths": ("FlextInfraUtilitiesPaths",),
             "._utilities.patterns": ("FlextInfraUtilitiesPatterns",),
             "._utilities.policy": ("FlextInfraUtilitiesRefactorPolicy",),
             "._utilities.protected_edit": ("FlextInfraUtilitiesProtectedEdit",),
             "._utilities.refactor": ("FlextInfraUtilitiesRefactor",),
             "._utilities.release": ("FlextInfraUtilitiesRelease",),
-            "._utilities.reporting": ("FlextInfraUtilitiesReporting",),
             "._utilities.rope": ("FlextInfraUtilitiesRope",),
             "._utilities.rope_analysis": ("FlextInfraUtilitiesRopeAnalysis",),
             "._utilities.rope_analysis_introspection": (
@@ -602,10 +583,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
             "._utilities.rope_module_patch": ("FlextInfraUtilitiesRopeModulePatch",),
             "._utilities.rope_source": ("FlextInfraUtilitiesRopeSource",),
             "._utilities.safety": ("FlextInfraUtilitiesSafety",),
-            "._utilities.subprocess_utils": ("FlextInfraUtilitiesSubprocessUtils",),
-            "._utilities.toml": ("FlextInfraUtilitiesToml",),
-            "._utilities.toml_parse": ("FlextInfraUtilitiesTomlParse",),
-            "._utilities.utilities_cli": ("FlextInfraUtilitiesRefactorCli",),
             "._utilities.versioning": ("FlextInfraUtilitiesVersioning",),
             ".api": (
                 "FlextInfra",
@@ -618,8 +595,8 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".basemk.cli": ("FlextInfraCliBasemk",),
             ".basemk.engine": ("FlextInfraBaseMkTemplateEngine",),
             ".basemk.generator": ("FlextInfraBaseMkGenerator",),
+            ".check.cli": ("FlextInfraCliCheck",),
             ".check.workspace_check": ("FlextInfraWorkspaceChecker",),
-            ".check.workspace_check_cli": ("FlextInfraCliCheck",),
             ".check.workspace_check_gates": (
                 "FlextInfraGateRegistry",
                 "FlextInfraWorkspaceCheckGatesMixin",
@@ -628,15 +605,21 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "FlextInfraCli",
                 "main",
             ),
+            ".cli_registry": (
+                "FlextInfraCliGroupBase",
+                "FlextInfraCliRegistryMixin",
+            ),
             ".codegen.census": ("FlextInfraCodegenCensus",),
             ".codegen.cli": ("FlextInfraCliCodegen",),
             ".codegen.codegen_generation": ("FlextInfraCodegenGeneration",),
+            ".codegen.consolidator": ("FlextInfraCodegenConsolidator",),
             ".codegen.constants_quality_gate": (
                 "FlextInfraConstantsCodegenQualityGate",
             ),
             ".codegen.fixer": ("FlextInfraCodegenFixer",),
             ".codegen.lazy_init": ("FlextInfraCodegenLazyInit",),
             ".codegen.lazy_init_planner": ("FlextInfraCodegenLazyInitPlanner",),
+            ".codegen.pipeline": ("FlextInfraCodegenPipeline",),
             ".codegen.py_typed": ("FlextInfraCodegenPyTyped",),
             ".codegen.pyproject_keys": ("FlextInfraCodegenPyprojectKeys",),
             ".codegen.scaffolder": ("FlextInfraCodegenScaffolder",),
@@ -654,6 +637,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".deps.fix_pyrefly_config": ("FlextInfraConfigFixer",),
             ".deps.internal_sync": ("FlextInfraInternalDependencySyncService",),
             ".deps.modernizer": ("FlextInfraPyprojectModernizer",),
+            ".deps.phase_engine": ("FlextInfraPhaseEngine",),
             ".deps.phases.consolidate_groups": ("FlextInfraConsolidateGroupsPhase",),
             ".deps.phases.ensure_coverage": ("FlextInfraEnsureCoverageConfigPhase",),
             ".deps.phases.ensure_formatting": (
@@ -669,6 +653,10 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".deps.phases.ensure_pytest": ("FlextInfraEnsurePytestConfigPhase",),
             ".deps.phases.ensure_ruff": ("FlextInfraEnsureRuffConfigPhase",),
             ".deps.phases.inject_comments": ("FlextInfraInjectCommentsPhase",),
+            ".deps.service_base": (
+                "FlextInfraDepsProjectServiceBase",
+                "FlextInfraDepsServiceBase",
+            ),
             ".detectors.class_placement_detector": (
                 "FlextInfraClassPlacementDetector",
             ),
@@ -702,6 +690,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".docs.auditor": ("FlextInfraDocAuditor",),
             ".docs.auditor_mixin": ("FlextInfraDocAuditorMixin",),
             ".docs.builder": ("FlextInfraDocBuilder",),
+            ".docs.cli": ("FlextInfraCliDocs",),
             ".docs.fixer": ("FlextInfraDocFixer",),
             ".docs.generator": ("FlextInfraDocGenerator",),
             ".docs.validator": ("FlextInfraDocValidator",),
@@ -781,22 +770,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".rules.legacy_removal": ("FlextInfraRefactorLegacyRemovalRule",),
             ".rules.mro_class_migration": ("FlextInfraRefactorMROClassMigrationRule",),
             ".rules.pattern_corrections": ("FlextInfraRefactorPatternCorrectionsRule",),
-            ".services.basemk": ("FlextInfraServiceBasemkMixin",),
-            ".services.check": ("FlextInfraServiceCheckMixin",),
-            ".services.cli_base": ("FlextInfraServiceCliRunnerMixin",),
-            ".services.consolidator": ("FlextInfraCodegenConsolidator",),
-            ".services.deps": ("FlextInfraServiceDepsMixin",),
-            ".services.github": ("FlextInfraServiceGithubMixin",),
-            ".services.pipeline": ("FlextInfraCodegenPipeline",),
-            ".services.refactor": ("FlextInfraServiceRefactorMixin",),
-            ".services.release": ("FlextInfraServiceReleaseMixin",),
-            ".services.rope": (
-                "FlextInfraRopeWorkspace",
-                "FlextInfraServiceRopeMixin",
-            ),
-            ".services.toml_engine": ("FlextInfraToml",),
-            ".services.validate": ("FlextInfraServiceValidateMixin",),
-            ".services.workspace": ("FlextInfraServiceWorkspaceMixin",),
             ".transformers.base": (
                 "FlextInfraChangeTrackingTransformer",
                 "FlextInfraRopeTransformer",
@@ -868,6 +841,10 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".workspace.migrator": ("FlextInfraProjectMigrator",),
             ".workspace.orchestrator": ("FlextInfraOrchestratorService",),
             ".workspace.project_makefile": ("FlextInfraProjectMakefileUpdater",),
+            ".workspace.rope": (
+                "FlextInfraRopeWorkspace",
+                "FlextInfraServiceRopeMixin",
+            ),
             ".workspace.sync": ("FlextInfraSyncService",),
             ".workspace.workspace_makefile": ("FlextInfraWorkspaceMakefileGenerator",),
             "flext_cli": (
@@ -912,9 +889,12 @@ __all__: list[str] = [
     "FlextInfraCliCheck",
     "FlextInfraCliCodegen",
     "FlextInfraCliDeps",
+    "FlextInfraCliDocs",
     "FlextInfraCliGithub",
+    "FlextInfraCliGroupBase",
     "FlextInfraCliMaintenance",
     "FlextInfraCliRefactor",
+    "FlextInfraCliRegistryMixin",
     "FlextInfraCliRelease",
     "FlextInfraCliValidate",
     "FlextInfraCliWorkspace",
@@ -953,6 +933,8 @@ __all__: list[str] = [
     "FlextInfraDependencyDetectionAnalysis",
     "FlextInfraDependencyDetectionService",
     "FlextInfraDependencyDetectorRuntime",
+    "FlextInfraDepsProjectServiceBase",
+    "FlextInfraDepsServiceBase",
     "FlextInfraDocAuditor",
     "FlextInfraDocAuditorMixin",
     "FlextInfraDocBuilder",
@@ -1021,6 +1003,7 @@ __all__: list[str] = [
     "FlextInfraNestedClassPropagationTransformer",
     "FlextInfraNormalizerContext",
     "FlextInfraOrchestratorService",
+    "FlextInfraPhaseEngine",
     "FlextInfraProjectClassifier",
     "FlextInfraProjectMakefileUpdater",
     "FlextInfraProjectMigrator",
@@ -1082,16 +1065,7 @@ __all__: list[str] = [
     "FlextInfraRuntimeAliasDetector",
     "FlextInfraRuntimeDevDependencyDetector",
     "FlextInfraServiceBase",
-    "FlextInfraServiceBasemkMixin",
-    "FlextInfraServiceCheckMixin",
-    "FlextInfraServiceCliRunnerMixin",
-    "FlextInfraServiceDepsMixin",
-    "FlextInfraServiceGithubMixin",
-    "FlextInfraServiceRefactorMixin",
-    "FlextInfraServiceReleaseMixin",
     "FlextInfraServiceRopeMixin",
-    "FlextInfraServiceValidateMixin",
-    "FlextInfraServiceWorkspaceMixin",
     "FlextInfraSilentFailureDetector",
     "FlextInfraSilentFailureGate",
     "FlextInfraSilentFailureValidator",
@@ -1099,7 +1073,6 @@ __all__: list[str] = [
     "FlextInfraStubSupplyChain",
     "FlextInfraSyncService",
     "FlextInfraTextPatternScanner",
-    "FlextInfraToml",
     "FlextInfraTransformerTier0ImportFixer",
     "FlextInfraTypes",
     "FlextInfraTypesAdapters",
@@ -1110,6 +1083,7 @@ __all__: list[str] = [
     "FlextInfraUtilitiesCodegen",
     "FlextInfraUtilitiesCodegenLazyAliases",
     "FlextInfraUtilitiesCodegenNamespace",
+    "FlextInfraUtilitiesCompatibility",
     "FlextInfraUtilitiesDependencyPathSync",
     "FlextInfraUtilitiesDiscovery",
     "FlextInfraUtilitiesDocs",
@@ -1123,21 +1097,16 @@ __all__: list[str] = [
     "FlextInfraUtilitiesDocsScope",
     "FlextInfraUtilitiesDocsValidate",
     "FlextInfraUtilitiesFacadeScanner",
-    "FlextInfraUtilitiesFormatting",
     "FlextInfraUtilitiesGithub",
     "FlextInfraUtilitiesGithubPr",
     "FlextInfraUtilitiesImportNormalizer",
     "FlextInfraUtilitiesIteration",
     "FlextInfraUtilitiesLogParser",
-    "FlextInfraUtilitiesOutputFailureSummary",
-    "FlextInfraUtilitiesOutputReporting",
     "FlextInfraUtilitiesParsing",
-    "FlextInfraUtilitiesPaths",
     "FlextInfraUtilitiesPatterns",
     "FlextInfraUtilitiesProtectedEdit",
     "FlextInfraUtilitiesRefactor",
     "FlextInfraUtilitiesRefactorCensus",
-    "FlextInfraUtilitiesRefactorCli",
     "FlextInfraUtilitiesRefactorEngine",
     "FlextInfraUtilitiesRefactorMroScan",
     "FlextInfraUtilitiesRefactorMroTransform",
@@ -1149,7 +1118,6 @@ __all__: list[str] = [
     "FlextInfraUtilitiesRefactorPolicy",
     "FlextInfraUtilitiesRefactorRuleLoader",
     "FlextInfraUtilitiesRelease",
-    "FlextInfraUtilitiesReporting",
     "FlextInfraUtilitiesRope",
     "FlextInfraUtilitiesRopeAnalysis",
     "FlextInfraUtilitiesRopeAnalysisIntrospection",
@@ -1160,9 +1128,6 @@ __all__: list[str] = [
     "FlextInfraUtilitiesRopeModulePatch",
     "FlextInfraUtilitiesRopeSource",
     "FlextInfraUtilitiesSafety",
-    "FlextInfraUtilitiesSubprocessUtils",
-    "FlextInfraUtilitiesToml",
-    "FlextInfraUtilitiesTomlParse",
     "FlextInfraUtilitiesVersioning",
     "FlextInfraValidateFreshImport",
     "FlextInfraValidateImportCycles",

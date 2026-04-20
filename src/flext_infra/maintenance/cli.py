@@ -1,38 +1,29 @@
-"""CLI mixin for maintenance commands."""
+"""CLI registration for the maintenance domain."""
 
 from __future__ import annotations
 
-from flext_cli import cli
-from flext_infra import (
-    FlextInfraPythonVersionEnforcer,
-    FlextInfraServiceWorkspaceMixin,
-    m,
-    t,
-)
+from flext_infra.cli_registry import FlextInfraCliGroupBase
+from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
+from flext_infra.typings import t
 
 
-class FlextInfraCliMaintenance(FlextInfraServiceWorkspaceMixin):
-    """Maintenance CLI group — composed into FlextInfraCli via MRO."""
+class FlextInfraCliMaintenance(FlextInfraCliGroupBase):
+    """Owns maintenance CLI route declarations."""
 
-    def register_maintenance(
-        self,
-        app: t.Cli.CliApp,
-    ) -> None:
-        """Register maintenance commands on the given Typer app."""
-        route = m.Cli.ResultCommandRoute(
+    routes = (
+        FlextInfraCliGroupBase.route(
             name="run",
             help_text="Enforce Python version constraints",
             model_cls=FlextInfraPythonVersionEnforcer,
-            handler=self.enforce_python_version,
+            handler=FlextInfraPythonVersionEnforcer.execute_command,
             failure_message="Maintenance failed",
             success_message="Maintenance completed",
-        )
-        cli.register_result_routes(
-            app,
-            [
-                route,
-            ],
-        )
+        ),
+    )
+
+    def register_maintenance(self, app: t.Cli.CliApp) -> None:
+        """Register maintenance routes."""
+        FlextInfraCliMaintenance.register_routes(app)
 
 
 __all__: list[str] = ["FlextInfraCliMaintenance"]

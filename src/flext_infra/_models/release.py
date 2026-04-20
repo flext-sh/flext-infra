@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Annotated
 
 from flext_core import m
+
 from flext_infra import FlextInfraModelsMixins, t
 
 

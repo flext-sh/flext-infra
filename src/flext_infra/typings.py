@@ -16,6 +16,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_cli import t
+
 from flext_infra import (
     FlextInfraTypesAdapters,
     FlextInfraTypesBase,

@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import (
+    Mapping,
+    MutableSequence,
+    Sequence,
+)
 from pathlib import Path
 from typing import ClassVar, override
 
@@ -64,11 +68,13 @@ class FlextInfraRuffLintGate(FlextInfraGate):
                     if isinstance(entry, Mapping):
                         issues.append(
                             m.Infra.Issue(
-                                file=u.Infra.pick_str(entry, "filename", "?"),
-                                line=u.Infra.nested_int(entry, "location", "row"),
-                                column=u.Infra.nested_int(entry, "location", "column"),
-                                code=u.Infra.pick_str(entry, "code"),
-                                message=u.Infra.pick_str(entry, "message"),
+                                file=u.Cli.json_pick_str(entry, "filename", "?"),
+                                line=u.Cli.json_nested_int(entry, "location", "row"),
+                                column=u.Cli.json_nested_int(
+                                    entry, "location", "column"
+                                ),
+                                code=u.Cli.json_pick_str(entry, "code"),
+                                message=u.Cli.json_pick_str(entry, "message"),
                             ),
                         )
         except (TypeError, c.ValidationError) as err:

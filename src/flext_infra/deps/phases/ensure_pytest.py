@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
+from collections.abc import (
+    MutableMapping,
+)
 
-from flext_infra import FlextInfraToml, c, m, t
+from flext_infra import FlextInfraPhaseEngine, c, m, t
 
 
 class FlextInfraEnsurePytestConfigPhase:
@@ -46,14 +48,14 @@ class FlextInfraEnsurePytestConfigPhase:
 
     def apply(self, doc: t.Cli.TomlDocument) -> t.StrSequence:
         """Apply pytest defaults while preserving project-specific ini options."""
-        return FlextInfraToml.apply_phases(doc, self._phase())
+        return FlextInfraPhaseEngine.apply_phases(doc, self._phase())
 
     def apply_payload(
         self,
         payload: MutableMapping[str, t.Cli.JsonValue],
     ) -> t.StrSequence:
         """Apply pytest defaults directly to one normalized payload."""
-        return FlextInfraToml.apply_payload_phases(payload, self._phase())
+        return FlextInfraPhaseEngine.apply_payload_phases(payload, self._phase())
 
 
 __all__: list[str] = ["FlextInfraEnsurePytestConfigPhase"]

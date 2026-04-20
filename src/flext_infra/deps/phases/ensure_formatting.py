@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
+from collections.abc import (
+    MutableMapping,
+)
 
-from flext_infra import FlextInfraToml, m, t, u
+from flext_infra import FlextInfraPhaseEngine, m, t, u
 
 
 class FlextInfraEnsureFormattingToolingPhase:
@@ -99,7 +101,7 @@ class FlextInfraEnsureFormattingToolingPhase:
 
     def apply(self, doc: t.Cli.TomlDocument) -> t.StrSequence:
         """Apply canonical codespell, tomlsort, and yamlfix configuration."""
-        changes = list(FlextInfraToml.apply_phases(doc, *self._phases()))
+        changes = list(FlextInfraPhaseEngine.apply_phases(doc, *self._phases()))
         changes.extend(self._remove_codespell_skip_doc(doc))
         return changes
 
@@ -108,7 +110,9 @@ class FlextInfraEnsureFormattingToolingPhase:
         payload: MutableMapping[str, t.Cli.JsonValue],
     ) -> t.StrSequence:
         """Apply formatting defaults directly to one normalized payload."""
-        changes = list(FlextInfraToml.apply_payload_phases(payload, *self._phases()))
+        changes = list(
+            FlextInfraPhaseEngine.apply_payload_phases(payload, *self._phases())
+        )
         changes.extend(self._remove_codespell_skip_payload(payload))
         return changes
 

@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
+from collections.abc import (
+    MutableMapping,
+)
 
-from flext_infra import FlextInfraToml, m, t
+from flext_infra import FlextInfraPhaseEngine, m, t
 
 
 class FlextInfraEnsurePydanticMypyConfigPhase:
@@ -34,14 +36,14 @@ class FlextInfraEnsurePydanticMypyConfigPhase:
 
     def apply(self, doc: t.Cli.TomlDocument) -> t.StrSequence:
         """Apply canonical ``[tool.pydantic-mypy]`` defaults into TOML document."""
-        return FlextInfraToml.apply_phases(doc, self._phase())
+        return FlextInfraPhaseEngine.apply_phases(doc, self._phase())
 
     def apply_payload(
         self,
         payload: MutableMapping[str, t.Cli.JsonValue],
     ) -> t.StrSequence:
         """Apply canonical pydantic-mypy settings to one normalized payload."""
-        return FlextInfraToml.apply_payload_phases(payload, self._phase())
+        return FlextInfraPhaseEngine.apply_payload_phases(payload, self._phase())
 
 
 __all__: list[str] = ["FlextInfraEnsurePydanticMypyConfigPhase"]

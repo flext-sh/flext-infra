@@ -6,7 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import (
+    Iterator,
+    Mapping,
+    Sequence,
+)
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
@@ -41,7 +45,16 @@ class FlextInfraProtocolsBase(Protocol):
 
         def render(
             self,
-            **kwargs: t.ValueOrModel | t.Container | type,
+            **kwargs: (
+                t.ValueOrModel
+                | t.Cli.JsonPayload
+                | Sequence[t.Cli.JsonLikeValue]
+                | Sequence[tuple[str, str]]
+                | Sequence[tuple[str, Sequence[str]]]
+                | Sequence[tuple[str, Sequence[tuple[str, str]]]]
+                | Mapping[str, t.Cli.JsonLikeValue]
+                | type
+            ),
         ) -> str:
             """Render a template with keyword context."""
             ...
@@ -177,19 +190,6 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
-    class ReportingService(Protocol):
-        """Service for reporting directory resolution."""
-
-        def get_report_dir(
-            self,
-            workspace_root: Path,
-            scope: str,
-            verb: str,
-        ) -> Path:
-            """Resolve report output directory for given scope and verb."""
-            ...
-
-    @runtime_checkable
     class JsonService(Protocol):
         """Service for JSON serialization and persistence."""
 
@@ -288,7 +288,6 @@ class FlextInfraProtocolsBase(Protocol):
     class DetectorRuntime(Protocol):
         """Protocol for detector runtime service dependencies."""
 
-        reporting: FlextInfraProtocolsBase.ReportingService
         deps: FlextInfraProtocolsBase.DepsService
         runner: FlextInfraProtocolsBase.RunnerService
         log: FlextProtocols.Logger

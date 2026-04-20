@@ -8,7 +8,11 @@ from __future__ import annotations
 import re
 import sys
 from collections import Counter
-from collections.abc import MutableMapping, MutableSequence, Sequence
+from collections.abc import (
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
 from operator import itemgetter
 from pathlib import Path
 

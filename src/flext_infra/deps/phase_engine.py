@@ -10,13 +10,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping, MutableSequence, Sequence
+from collections.abc import (
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
 from typing import Annotated, override
 
 from flext_infra import c, m, p, r, s, t, u
 
 
-class FlextInfraToml(s[Sequence[t.StrSequence]]):
+class FlextInfraPhaseEngine(s[Sequence[t.StrSequence]]):
     """Apply ``m.Infra.TomlPhaseConfig`` phases to a TOML document."""
 
     doc: Annotated[
@@ -43,7 +47,7 @@ class FlextInfraToml(s[Sequence[t.StrSequence]]):
         """Apply a declarative phase set to one TOML document."""
         engine = cls.model_construct(doc=doc, phases=phases)
         try:
-            return engine._flatten_batches()
+            return engine.apply()
         except Exception as exc:
             msg = str(exc) or "failed to apply TOML phases"
             raise ValueError(msg) from exc
@@ -210,7 +214,7 @@ class FlextInfraToml(s[Sequence[t.StrSequence]]):
                         sort_values=operation.sort,
                     )
             case "remove":
-                FlextInfraToml._remove_operation(tbl, operation, out, pfx)
+                FlextInfraPhaseEngine._remove_operation(tbl, operation, out, pfx)
 
     @staticmethod
     def _apply_payload_operation(
@@ -251,7 +255,9 @@ class FlextInfraToml(s[Sequence[t.StrSequence]]):
                         sort_values=operation.sort,
                     )
             case "remove":
-                FlextInfraToml._remove_payload_operation(tbl, operation, out, pfx)
+                FlextInfraPhaseEngine._remove_payload_operation(
+                    tbl, operation, out, pfx
+                )
 
     @staticmethod
     def _remove_operation(
@@ -307,4 +313,4 @@ class FlextInfraToml(s[Sequence[t.StrSequence]]):
         )
 
 
-__all__: list[str] = ["FlextInfraToml"]
+__all__: list[str] = ["FlextInfraPhaseEngine"]

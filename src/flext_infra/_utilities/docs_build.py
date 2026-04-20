@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, MutableMapping
+from collections.abc import (
+    Callable,
+    MutableMapping,
+)
 from pathlib import Path
+
+from flext_cli import u
 
 import mkdocs.commands.build
 import mkdocs.config
 import mkdocs.exceptions
-
-from flext_cli import u
 from flext_infra import FlextInfraUtilitiesDocs, c, m, p
 
 

@@ -7,7 +7,11 @@ File collection via ``u.Infra`` utilities, rule subclasses in ``engine_rules``.
 from __future__ import annotations
 
 import argparse
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import (
+    Mapping,
+    MutableSequence,
+    Sequence,
+)
 from pathlib import Path
 from typing import ClassVar
 
@@ -102,7 +106,7 @@ class FlextInfraRefactorEngine(
         """Initialize engine state and settings file path."""
         self.config_path = config_path or Path(__file__).parent / "settings.yml"
         config_map: Mapping[str, t.Infra.InfraValue] = {}
-        self.settings: t.Infra.InfraValue = config_map
+        self.settings: Mapping[str, t.Infra.InfraValue] = config_map
         self.rules: MutableSequence[FlextInfraRefactorRule] = []
         self.file_rules: MutableSequence[FlextInfraClassNestingRefactorRule] = []
         self.rule_filters: MutableSequence[str] = []
@@ -137,7 +141,7 @@ class FlextInfraRefactorEngine(
         engine = FlextInfraRefactorEngine(config_path=args.settings)
         cfg = engine.load_config()
         if not cfg.success:
-            u.Infra.refactor_error(f"Config error: {cfg.error}")
+            u.Cli.error(f"Config error: {cfg.error}")
             return 1
         if args.rules:
             engine.set_rule_filters([
@@ -145,10 +149,10 @@ class FlextInfraRefactorEngine(
             ])
         rules_r = engine.load_rules()
         if not rules_r.success:
-            u.Infra.refactor_error(f"Rules error: {rules_r.error}")
+            u.Cli.error(f"Rules error: {rules_r.error}")
             return 1
         if args.list_rules:
-            u.Infra.print_rules_table(engine.list_rules())
+            engine._print_rules_table(engine.list_rules())
             return 0
         if args.analyze_violations:
             return engine._run_analyze_violations(args)
@@ -163,7 +167,7 @@ class FlextInfraRefactorEngine(
             self.settings = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
                 dict(result.value)
             )
-            u.Infra.refactor_info(f"Loaded settings from {self.config_path}")
+            u.Cli.info(f"Loaded settings from {self.config_path}")
         return result
 
     def load_rules(self) -> p.Result[Sequence[FlextInfraRefactorRule]]:
@@ -179,12 +183,31 @@ class FlextInfraRefactorEngine(
             return r[Sequence[FlextInfraRefactorRule]].fail(rr.error or "")
         loaded_rules, loaded_file_rules = rr.value
         self.rules, self.file_rules = list(loaded_rules), list(loaded_file_rules)
-        u.Infra.refactor_info(f"Loaded {len(self.rules)} rules")
+        u.Cli.info(f"Loaded {len(self.rules)} rules")
         if self.file_rules:
-            u.Infra.refactor_info(f"Loaded {len(self.file_rules)} file rules")
+            u.Cli.info(f"Loaded {len(self.file_rules)} file rules")
         if self.rule_filters:
-            u.Infra.refactor_info(f"Active filters: {', '.join(self.rule_filters)}")
+            u.Cli.info(f"Active filters: {', '.join(self.rule_filters)}")
         return r[Sequence[FlextInfraRefactorRule]].ok(loaded_rules)
+
+    @staticmethod
+    def _print_rules_table(rows: Sequence[t.FeatureFlagMapping]) -> None:
+        """Render and print refactor rules list using CLI table/output families."""
+        data_result = u.Cli.tables_normalize_data(rows)
+        if data_result.failure:
+            u.Cli.error(data_result.error or "failed to normalize rules table")
+            return
+        settings_result = u.Cli.tables_resolve_config(
+            headers=["id", "name", "description", "enabled", "severity"],
+        )
+        if settings_result.failure:
+            u.Cli.error(settings_result.error or "failed to resolve table settings")
+            return
+        rendered_result = u.Cli.tables_render(data_result.value, settings_result.value)
+        if rendered_result.failure:
+            u.Cli.error(rendered_result.error or "failed to render rules table")
+            return
+        u.Cli.emit_raw(rendered_result.value)
 
     def set_rule_filters(self, filters: t.StrSequence) -> None:
         """Set active rule filters using normalized lowercase rule ids."""
@@ -213,10 +236,10 @@ class FlextInfraRefactorEngine(
         rule_def: Mapping[str, t.Infra.InfraValue],
     ) -> bool:
         """Skip definitions handled by the dedicated file-rule pipeline."""
-        fix_action = u.Infra.get_str_key(
+        fix_action = u.Cli.json_get_str_key(
             rule_def,
             c.Infra.RK_FIX_ACTION,
-            default=u.Infra.get_str_key(rule_def, c.Infra.RK_ACTION),
+            default=u.Cli.json_get_str_key(rule_def, c.Infra.RK_ACTION),
             case="lower",
         )
         return fix_action == "nest_classes"
@@ -224,13 +247,13 @@ class FlextInfraRefactorEngine(
     def _build_rule(
         self, rule_def: Mapping[str, t.Infra.InfraValue]
     ) -> FlextInfraRefactorRule | None:
-        fix_action = u.Infra.get_str_key(
+        fix_action = u.Cli.json_get_str_key(
             rule_def,
             c.Infra.RK_FIX_ACTION,
-            default=u.Infra.get_str_key(rule_def, c.Infra.RK_ACTION),
+            default=u.Cli.json_get_str_key(rule_def, c.Infra.RK_ACTION),
             case="lower",
         )
-        check = u.Infra.get_str_key(rule_def, c.Infra.VERB_CHECK, case="lower")
+        check = u.Cli.json_get_str_key(rule_def, c.Infra.VERB_CHECK, case="lower")
         for action_set, rule_class in self._RULE_ACTION_REGISTRY:
             if fix_action in action_set or check in action_set:
                 return rule_class(rule_def)

@@ -9,12 +9,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import (
+    Mapping,
+)
 from pathlib import Path
 
 from flext_cli import u
+
 from flext_infra import (
-    FlextInfraUtilitiesBase,
     c,
     m,
     p,
@@ -68,9 +70,7 @@ class FlextInfraUtilitiesRefactorPolicy:
         if loaded.failure:
             return {}
         by_family: dict[str, m.Infra.ClassNestingPolicy] = {}
-        for raw in FlextInfraUtilitiesBase.normalize_mapping_list(
-            loaded.value.get("policy_matrix"),
-        ):
+        for raw in u.Cli.json_as_mapping_list(loaded.value.get("policy_matrix")):
             try:
                 policy = m.Infra.ClassNestingPolicy.model_validate(raw)
             except c.ValidationError:

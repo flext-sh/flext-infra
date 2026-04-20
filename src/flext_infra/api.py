@@ -5,39 +5,27 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, ClassVar, Self, override
 
-from flext_cli import cli
-from flext_infra import (
-    FlextInfraCliBasemk,
-    FlextInfraCliCheck,
-    FlextInfraCliCodegen,
-    FlextInfraCliDeps,
-    FlextInfraCliGithub,
-    FlextInfraCliMaintenance,
-    FlextInfraCliRefactor,
-    FlextInfraCliRelease,
-    FlextInfraCliValidate,
-    FlextInfraCliWorkspace,
-    FlextInfraConstantsBase,
-    FlextInfraDocAuditor,
-    FlextInfraDocBuilder,
-    FlextInfraDocFixer,
-    FlextInfraDocGenerator,
-    FlextInfraDocValidator,
-    FlextInfraServiceBase,
-    FlextInfraServiceBasemkMixin,
-    FlextInfraServiceCheckMixin,
-    FlextInfraServiceDepsMixin,
-    FlextInfraServiceGithubMixin,
-    FlextInfraServiceRefactorMixin,
-    FlextInfraServiceReleaseMixin,
-    FlextInfraServiceRopeMixin,
-    FlextInfraServiceValidateMixin,
-    FlextInfraServiceWorkspaceMixin,
-    m,
-    p,
-    r,
-    t,
-)
+from flext_core import r
+
+from flext_infra.base import FlextInfraServiceBase
+from flext_infra.basemk.cli import FlextInfraCliBasemk
+from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
+from flext_infra.check.cli import FlextInfraCliCheck
+from flext_infra.cli_registry import FlextInfraCliRegistryMixin
+from flext_infra.codegen.cli import FlextInfraCliCodegen
+from flext_infra.constants import FlextInfraConstantsBase
+from flext_infra.deps.cli import FlextInfraCliDeps
+from flext_infra.docs.cli import FlextInfraCliDocs
+from flext_infra.github.cli import FlextInfraCliGithub
+from flext_infra.maintenance.cli import FlextInfraCliMaintenance
+from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.refactor.cli import FlextInfraCliRefactor
+from flext_infra.release.cli import FlextInfraCliRelease
+from flext_infra.typings import t
+from flext_infra.validate.cli import FlextInfraCliValidate
+from flext_infra.workspace.cli import FlextInfraCliWorkspace
+from flext_infra.workspace.rope import FlextInfraServiceRopeMixin
 
 _PYDANTIC_TYPES_MARKER: Annotated[int, "runtime-namespace"] = 0
 _PYDANTIC_PATH_MARKER: Path | None = None
@@ -49,24 +37,18 @@ class FlextInfra(
     FlextInfraCliCheck,
     FlextInfraCliCodegen,
     FlextInfraCliDeps,
+    FlextInfraCliDocs,
     FlextInfraCliGithub,
     FlextInfraCliMaintenance,
     FlextInfraCliRefactor,
     FlextInfraCliRelease,
     FlextInfraCliValidate,
     FlextInfraCliWorkspace,
-    FlextInfraServiceBasemkMixin,
-    FlextInfraServiceCheckMixin,
-    FlextInfraServiceDepsMixin,
-    FlextInfraServiceGithubMixin,
+    FlextInfraCliRegistryMixin,
     FlextInfraServiceRopeMixin,
-    FlextInfraServiceRefactorMixin,
-    FlextInfraServiceReleaseMixin,
-    FlextInfraServiceValidateMixin,
-    FlextInfraServiceWorkspaceMixin,
-    FlextInfraServiceBase[t.MutableRecursiveContainerMapping],
+    FlextInfraServiceBase[t.ScalarMapping],
 ):
-    """Thin public MRO facade over infra services and CLI groups."""
+    """Thin public MRO facade over infra services."""
 
     app_name: ClassVar[str] = "flext-infra"
     _instance: ClassVar[Self | None] = None
@@ -79,63 +61,24 @@ class FlextInfra(
         return cls._instance
 
     @override
-    def execute(self) -> p.Result[t.MutableRecursiveContainerMapping]:
+    def execute(self) -> p.Result[t.ScalarMapping]:
         """Execute a lightweight facade health report."""
-        report: t.MutableRecursiveContainerMapping = {
+        report: t.ScalarMapping = {
             "service": "flext-infra",
             "status": "ok",
             "workspace_root": str(self.workspace_root),
             "apply_changes": self.apply_changes,
         }
-        return r[t.MutableRecursiveContainerMapping].ok(report)
+        return r[t.ScalarMapping].ok(report)
 
-    def register_docs(self, app: t.Cli.CliApp) -> None:
-        """Register docs commands directly on the concrete service classes."""
-        cli.register_result_routes(
-            app,
-            [
-                m.Cli.ResultCommandRoute(
-                    name="audit",
-                    help_text="Audit documentation for broken links and forbidden terms",
-                    model_cls=FlextInfraDocAuditor,
-                    handler=FlextInfraDocAuditor.execute_command,
-                    failure_message="Audit failed",
-                    success_message="Audit completed successfully",
-                ),
-                m.Cli.ResultCommandRoute(
-                    name="fix",
-                    help_text="Fix documentation issues",
-                    model_cls=FlextInfraDocFixer,
-                    handler=FlextInfraDocFixer.execute_command,
-                    failure_message="Fix failed",
-                    success_message="Fix completed successfully",
-                ),
-                m.Cli.ResultCommandRoute(
-                    name="build",
-                    help_text="Build MkDocs sites",
-                    model_cls=FlextInfraDocBuilder,
-                    handler=FlextInfraDocBuilder.execute_command,
-                    failure_message="Build failed",
-                    success_message="Build completed successfully",
-                ),
-                m.Cli.ResultCommandRoute(
-                    name="generate",
-                    help_text="Generate project docs",
-                    model_cls=FlextInfraDocGenerator,
-                    handler=FlextInfraDocGenerator.execute_command,
-                    failure_message="Generate failed",
-                    success_message="Generate completed successfully",
-                ),
-                m.Cli.ResultCommandRoute(
-                    name="validate",
-                    help_text="Validate documentation",
-                    model_cls=FlextInfraDocValidator,
-                    handler=FlextInfraDocValidator.execute_command,
-                    failure_message="Validate failed",
-                    success_message="Validate completed successfully",
-                ),
-            ],
-        )
+    def generate_basemk(
+        self,
+        settings: m.Infra.BaseMkConfig | t.ScalarMapping | None = None,
+    ) -> p.Result[str]:
+        """Generate base.mk content using the current facade context."""
+        return FlextInfraBaseMkGenerator.model_validate(
+            self.command_payload(),
+        ).generate_basemk(settings)
 
 
 infra = FlextInfra.fetch_global()

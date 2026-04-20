@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
+from collections.abc import (
+    MutableMapping,
+)
 from pathlib import Path
 from typing import Annotated, ClassVar
 
 from flext_cli import m, u
+
 from flext_infra import FlextInfraModelsMixins, c, t
 
 
@@ -64,26 +67,11 @@ class FlextInfraModelsCheck:
             return (Path.cwd() / reports_dir).resolve()
 
     class FixPyreflyConfigCommand(
+        FlextInfraModelsMixins.ApplyDryRunMixin,
         FlextInfraModelsMixins.ProjectMixin,
         m.ContractModel,
     ):
         """Canonical CLI payload for ``flext-infra check fix-pyrefly-settings``."""
-
-        apply: Annotated[
-            bool,
-            m.Field(
-                description="Apply fixes in-place instead of dry-run mode",
-                json_schema_extra={
-                    "typer_param_decls": list(c.Infra.CLI_APPLY_OPTION_DECLS),
-                },
-            ),
-        ] = False
-
-        @u.computed_field()
-        @property
-        def dry_run(self) -> bool:
-            """Whether pyrefly fixes should avoid writing to disk."""
-            return not self.apply
 
     class Issue(m.ContractModel):
         """Single issue reported by a quality gate tool."""

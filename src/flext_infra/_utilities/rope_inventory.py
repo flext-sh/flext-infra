@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
-
-from rope.base.pynames import DefinedName, ImportedName
-from rope.base.pynamesdef import AssignedName, ParameterName
-from rope.base.pyobjects import AbstractClass
-from rope.base.pyobjectsdef import PyFunction, PyModule
+from collections.abc import (
+    MutableSequence,
+    Sequence,
+)
 
 from flext_infra import (
     FlextInfraUtilitiesRopeCore,
@@ -17,6 +15,10 @@ from flext_infra import (
     p,
     t,
 )
+from rope.base.pynames import DefinedName, ImportedName
+from rope.base.pynamesdef import AssignedName, ParameterName
+from rope.base.pyobjects import AbstractClass
+from rope.base.pyobjectsdef import PyFunction, PyModule
 
 
 class FlextInfraUtilitiesRopeInventory:

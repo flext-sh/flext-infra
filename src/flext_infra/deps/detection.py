@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import (
+    Mapping,
+    MutableSequence,
+    Sequence,
+)
 from pathlib import Path
 from typing import override
 
@@ -28,7 +32,14 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
     def _read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:
         if self.toml is not None:
             return self.toml.read_plain(path)
-        return u.Infra.read_plain(path)
+        plain_result = u.Cli.toml_read_json(path)
+        if plain_result.failure:
+            return r[t.Infra.ContainerDict].fail(
+                plain_result.error or f"failed to read {path}",
+            )
+        return r[t.Infra.ContainerDict].ok(
+            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(plain_result.value),
+        )
 
     @override
     def _run_raw(
@@ -65,11 +76,7 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
             error_obj = item.get(c.Infra.ERROR)
             if not isinstance(error_obj, Mapping):
                 continue
-            error_data = u.Infra.validate(
-                t.Infra.INFRA_MAPPING_ADAPTER,
-                error_obj,
-                default={},
-            )
+            error_data = u.Cli.json_as_mapping(error_obj)
             if not error_data:
                 continue
             code = error_data.get(c.Infra.CODE)
@@ -92,7 +99,7 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
         classified = self.classify_issues(deptry_issues)
 
         def _module_names(
-            items: Sequence[Mapping[str, t.Infra.InfraValue]],
+            items: Sequence[Mapping[str, t.Container | None]],
         ) -> MutableSequence[str]:
             return [
                 str(val)

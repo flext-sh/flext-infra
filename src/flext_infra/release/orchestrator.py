@@ -10,15 +10,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable, MutableSequence, Sequence
+from collections.abc import (
+    Callable,
+    MutableSequence,
+    Sequence,
+)
 from pathlib import Path
 from typing import Annotated, override
 
 from flext_infra import c, m, p, r, s, t, u
 
 from .orchestrator_phases import FlextInfraReleaseOrchestratorPhases
-
-logger = u.fetch_logger(__name__)
 
 
 class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]):
@@ -67,23 +69,14 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
     @property
     def project_names(self) -> t.StrSequence | None:
         """Return normalized project names from repeated selectors."""
-        names = [
-            item.strip()
-            for value in self.projects or ()
-            for group in value.split(",")
-            for item in group.split()
-            if item.strip()
-        ]
-        return names or None
+        return self.normalize_selected_projects(self.projects)
 
     @override
     def execute(self) -> p.Result[bool]:
         """Execute the release CLI flow."""
-        root_result = u.Infra.workspace_root(self.workspace_root)
-        if root_result.failure:
-            return r[bool].fail(root_result.error or "workspace root not found")
-        root = Path(str(root_result.value))
+        root = self.root
         phases = self.phase_names
+        project_names = self.project_names
         needs_version = bool(
             {c.Infra.VERSION, c.Infra.DIR_BUILD, c.Infra.VERB_PUBLISH} & set(phases),
         )
@@ -108,8 +101,8 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
                 version=resolved_version,
                 tag=str(tag_result.value),
                 phases=phases,
-                project_names=self.project_names,
-                dry_run=self.dry_run or not self.apply_changes,
+                project_names=project_names,
+                dry_run=self.effective_dry_run,
                 push=self.push,
                 dev_suffix=self.dev_suffix,
                 create_branches=self.create_branches == 1,

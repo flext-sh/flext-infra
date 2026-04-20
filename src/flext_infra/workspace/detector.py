@@ -61,20 +61,18 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             parent = resolved_project_root.parent
             git_marker = parent / c.Infra.GIT_DIR
             if not git_marker.exists():
-                u.Infra.info(
-                    "Running in standalone mode (no parent workspace detected)"
-                )
+                u.Cli.info("Running in standalone mode (no parent workspace detected)")
                 return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.STANDALONE)
             result = u.Cli.capture(
                 [c.Infra.GIT, "config", "--get", "remote.origin.url"],
                 cwd=parent,
             )
             if result.failure:
-                u.Infra.info("Running in standalone mode (unable to detect workspace)")
+                u.Cli.info("Running in standalone mode (unable to detect workspace)")
                 return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.STANDALONE)
             origin = result.value.strip()
             if not origin:
-                u.Infra.info("Running in standalone mode (no remote origin found)")
+                u.Cli.info("Running in standalone mode (no remote origin found)")
                 return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.STANDALONE)
             repo_name = self._repo_name_from_url(origin)
             mode = (
@@ -83,10 +81,10 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
                 else c.Infra.WorkspaceMode.STANDALONE
             )
             if mode == c.Infra.WorkspaceMode.STANDALONE:
-                u.Infra.info(f"Running in standalone mode (parent repo: {repo_name})")
+                u.Cli.info(f"Running in standalone mode (parent repo: {repo_name})")
             return r[c.Infra.WorkspaceMode].ok(mode)
         except (OSError, RuntimeError, TypeError, ValueError) as exc:
-            u.Infra.info(f"Running in standalone mode (detection error: {exc})")
+            u.Cli.info(f"Running in standalone mode (detection error: {exc})")
             return r[c.Infra.WorkspaceMode].fail(f"Detection failed: {exc}")
 
     @override

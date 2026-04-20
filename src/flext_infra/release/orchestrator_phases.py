@@ -6,13 +6,18 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
+from collections.abc import (
+    MutableSequence,
+    Sequence,
+)
 from pathlib import Path
 
-from flext_infra import c, m, p, r, s, t, u
+from flext_infra import c, m, p, r, t, u
+
+logger = u.fetch_logger(__name__)
 
 
-class FlextInfraReleaseOrchestratorPhases(s[bool]):
+class FlextInfraReleaseOrchestratorPhases:
     """Build, publish, and version phase implementations."""
 
     @staticmethod
@@ -41,7 +46,7 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
         version = ctx.version
         project_names = ctx.project_names
         output_dir = (
-            u.Infra.get_report_dir(
+            u.Cli.get_report_dir(
                 workspace_root,
                 c.Infra.PROJECT,
                 c.Infra.RK_RELEASE,
@@ -74,7 +79,7 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
                     log=str(log),
                 ),
             )
-            self.logger.info(
+            logger.info(
                 "release_phase_build_project",
                 project=name,
                 exit_code=code,
@@ -90,7 +95,7 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
             report.model_dump(mode="json"),
             sort_keys=True,
         )
-        self.logger.info(
+        logger.info(
             "release_phase_build_report",
             report=str(output_dir / "build-report.json"),
         )
@@ -106,7 +111,7 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
         workspace_root = ctx.workspace_root
         tag = ctx.tag
         notes_dir = (
-            u.Infra.get_report_dir(
+            u.Cli.get_report_dir(
                 workspace_root,
                 c.Infra.PROJECT,
                 c.Infra.RK_RELEASE,
@@ -135,7 +140,7 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
             )
             if apply_result.failure:
                 return apply_result
-        self.logger.info("release_phase_publish", tag=tag, dry_run=ctx.dry_run)
+        logger.info("release_phase_publish", tag=tag, dry_run=ctx.dry_run)
         return r[bool].ok(True)
 
     def _publish_apply(
@@ -177,8 +182,8 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
         files = self._version_files(ctx.workspace_root, ctx.project_names)
         changed = self._version_update_files(files, target, dry_run=ctx.dry_run)
         if ctx.dry_run:
-            self.logger.info("release_phase_version_checked", checked_version=target)
-        self.logger.info("release_phase_version_summary", files_changed=changed)
+            logger.info("release_phase_version_checked", checked_version=target)
+        logger.info("release_phase_version_summary", files_changed=changed)
         return r[bool].ok(True)
 
     def _version_update_files(
@@ -200,7 +205,7 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
             changed += 1
             if not dry_run:
                 u.Infra.replace_project_version(path.parent, target)
-            self.logger.info(
+            logger.info(
                 "release_version_file_updated",
                 path=str(path),
                 target=target,

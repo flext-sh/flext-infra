@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import (
+    Mapping,
+    MutableSequence,
+    Sequence,
+)
 from pathlib import Path
 from typing import ClassVar, override
 
@@ -57,24 +61,21 @@ class FlextInfraPyrightGate(FlextInfraGate):
         empty: Mapping[str, t.Infra.InfraValue] = {}
         parsed_result = u.Cli.json_parse(result.stdout or "{}")
         parsed = parsed_result.unwrap() if parsed_result.success else empty
-        data = (
-            u.Infra.normalize_str_mapping(parsed)
-            if isinstance(parsed, Mapping)
-            else empty
-        )
+        data = u.Cli.json_as_mapping(parsed) if isinstance(parsed, Mapping) else empty
         try:
-            diagnostics = u.Infra.deep_list(
+            diagnostics = u.Cli.json_deep_mapping_list(
                 data,
                 c.Infra.PYRIGHT_DIAGNOSTICS_KEY,
             )
             issues.extend(
                 m.Infra.Issue(
-                    file=u.Infra.pick_str(diag, "file", "?"),
-                    line=u.Infra.nested_int(diag, "range", "start", "line") + 1,
-                    column=u.Infra.nested_int(diag, "range", "start", "character") + 1,
-                    code=u.Infra.pick_str(diag, "rule"),
-                    message=u.Infra.pick_str(diag, "message"),
-                    severity=u.Infra.pick_str(diag, "severity", c.Infra.ERROR),
+                    file=u.Cli.json_pick_str(diag, "file", "?"),
+                    line=u.Cli.json_nested_int(diag, "range", "start", "line") + 1,
+                    column=u.Cli.json_nested_int(diag, "range", "start", "character")
+                    + 1,
+                    code=u.Cli.json_pick_str(diag, "rule"),
+                    message=u.Cli.json_pick_str(diag, "message"),
+                    severity=u.Cli.json_pick_str(diag, "severity", c.Infra.ERROR),
                 )
                 for diag in diagnostics
             )

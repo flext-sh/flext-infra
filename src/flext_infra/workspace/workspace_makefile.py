@@ -19,7 +19,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence
+from collections.abc import (
+    MutableSequence,
+)
 from pathlib import Path
 
 from jinja2 import (
@@ -202,9 +204,9 @@ class FlextInfraWorkspaceMakefileGenerator:
 
         # Fallback: read version from pyproject.toml
         pyproject = workspace_root / c.Infra.PYPROJECT_FILENAME
-        data_result = u.Infra.read_plain(pyproject)
+        data_result = u.Cli.toml_read_json(pyproject)
         if data_result.success:
-            data = data_result.value
+            data = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(data_result.value)
             project_raw = data.get("project")
             if isinstance(project_raw, dict):
                 version_raw = project_raw.get("version", c.Infra.GIT_MAIN)

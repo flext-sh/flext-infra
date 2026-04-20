@@ -4,20 +4,22 @@ from __future__ import annotations
 
 import ast as _ast
 import importlib.util as _importlib_util
-from collections.abc import MutableSequence, Sequence
-from typing import TYPE_CHECKING, ClassVar
-
-from rope.base.pynames import (
-    DefinedName as RopeDefinedName,
-    ImportedName as RopeImportedName,
+from collections.abc import (
+    MutableSequence,
+    Sequence,
 )
-from rope.base.pynamesdef import AssignedName as RopeAssignedName
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import (
     FlextInfraUtilitiesRopeCore,
     c,
     m,
 )
+from rope.base.pynames import (
+    DefinedName as RopeDefinedName,
+    ImportedName as RopeImportedName,
+)
+from rope.base.pynamesdef import AssignedName as RopeAssignedName
 
 if TYPE_CHECKING:
     from flext_infra import t

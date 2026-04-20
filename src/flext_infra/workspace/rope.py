@@ -100,7 +100,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         rope_project = self._rope_project
         if rope_project is None:
             started_at = perf_counter()
-            u.Infra.info(
+            u.Cli.info(
                 f"rope: opening workspace at {self._rope_workspace_root}",
             )
             rope_project = u.Infra.init_rope_project(
@@ -110,7 +110,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
                 ignored_resources=self.ignored_resources,
             )
             self._rope_project = rope_project
-            u.Infra.info(
+            u.Cli.info(
                 f"rope: workspace ready in {perf_counter() - started_at:.2f}s",
             )
         return rope_project
@@ -121,7 +121,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         workspace_index = self._workspace_index
         if workspace_index is None:
             started_at = perf_counter()
-            u.Infra.info(
+            u.Cli.info(
                 f"rope: indexing python workspace at {self._rope_workspace_root}",
             )
             workspace_index = u.Infra.index_rope_workspace(
@@ -129,7 +129,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
                 self._rope_workspace_root,
             )
             self._workspace_index = workspace_index
-            u.Infra.info(
+            u.Cli.info(
                 "rope: indexed "
                 f"{len(workspace_index.package_dirs)} package dirs and "
                 f"{len(workspace_index.modules_by_path)} modules in "

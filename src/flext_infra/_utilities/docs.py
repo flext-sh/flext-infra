@@ -3,10 +3,15 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Callable, MutableSequence, Sequence
+from collections.abc import (
+    Callable,
+    MutableSequence,
+    Sequence,
+)
 from pathlib import Path
 
 from flext_cli import u
+
 from flext_infra import (
     FlextInfraUtilitiesDocsScope,
     FlextInfraUtilitiesPatterns,
@@ -203,7 +208,8 @@ class FlextInfraUtilitiesDocs:
         """Write markdown lines to path, creating parent dirs as needed."""
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
-            _ = path.write_text(
+            u.write_file(
+                path,
                 "\n".join(lines).rstrip() + "\n",
                 encoding=c.Infra.ENCODING_DEFAULT,
             )

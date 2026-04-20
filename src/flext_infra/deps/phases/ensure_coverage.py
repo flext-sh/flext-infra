@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
+from collections.abc import (
+    MutableMapping,
+)
 
-from flext_infra import FlextInfraToml, m, t
+from flext_infra import FlextInfraPhaseEngine, m, t
 
 
 class FlextInfraEnsureCoverageConfigPhase:
@@ -55,7 +57,7 @@ class FlextInfraEnsureCoverageConfigPhase:
         project_kind: str = "core",
     ) -> t.StrSequence:
         """Apply canonical coverage report/run tables for the selected project kind."""
-        return FlextInfraToml.apply_phases(
+        return FlextInfraPhaseEngine.apply_phases(
             doc,
             *self._phases(project_kind=project_kind),
         )
@@ -67,7 +69,7 @@ class FlextInfraEnsureCoverageConfigPhase:
         project_kind: str = "core",
     ) -> t.StrSequence:
         """Apply canonical coverage settings to one normalized payload."""
-        return FlextInfraToml.apply_payload_phases(
+        return FlextInfraPhaseEngine.apply_payload_phases(
             payload,
             *self._phases(project_kind=project_kind),
         )

@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import time
-from collections.abc import Sequence
+from collections.abc import (
+    Sequence,
+)
 from pathlib import Path
 from typing import ClassVar, override
 

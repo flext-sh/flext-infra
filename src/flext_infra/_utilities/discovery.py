@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import ast
-from collections.abc import Mapping, Sequence
+from collections.abc import (
+    Mapping,
+    Sequence,
+)
 from functools import cache
 from pathlib import Path
 from typing import ClassVar

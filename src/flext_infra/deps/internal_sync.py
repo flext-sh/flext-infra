@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 import os
-import re
 import shutil
-from collections.abc import Mapping, MutableMapping
+from collections.abc import (
+    Mapping,
+    MutableMapping,
+    Sequence,
+)
 from pathlib import Path
+from typing import Annotated, ClassVar, override
 
 from flext_infra import (
     FlextInfraInternalSyncRepoMixin,
@@ -17,46 +21,35 @@ from flext_infra import (
     t,
     u,
 )
+from flext_infra.deps.service_base import FlextInfraDepsServiceBase
 
 
-class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
+class FlextInfraInternalDependencySyncService(
+    FlextInfraInternalSyncRepoMixin,
+    FlextInfraDepsServiceBase,
+):
     """Synchronize internal FLEXT dependencies via git clone or workspace symlinks."""
 
-    log = u.fetch_logger(__name__)
+    log: ClassVar[p.Logger] = u.fetch_logger(__name__)
+    toml: Annotated[
+        p.Infra.TomlReader | None,
+        m.Field(
+            default=None,
+            exclude=True,
+            description="Optional TOML reader override for dependency sync",
+        ),
+    ] = None
 
-    _OWNER_PATTERNS: tuple[t.Infra.RegexPattern, ...] = (
-        re.compile(r"^git@github\.com:(?P<owner>[^/]+)/[^/]+(?:\.git)?$"),
-        re.compile(r"^https://github\.com/(?P<owner>[^/]+)/[^/]+(?:\.git)?$"),
-        re.compile(r"^http://github\.com/(?P<owner>[^/]+)/[^/]+(?:\.git)?$"),
-    )
-
-    def __init__(self) -> None:
-        """Initialize the internal dependency sync service."""
-        self.toml: p.Infra.TomlReader | None = None
-
-    @staticmethod
-    def ensure_symlink(target: Path, source: Path) -> p.Result[bool]:
-        """Ensure target points to source via directory symlink."""
-        try:
-            dir_result = u.Cli.ensure_dir(target.parent)
-            if dir_result.failure:
-                return r[bool].fail(
-                    dir_result.error or f"failed to create parent dir for {target}",
-                )
-            if target.is_symlink() and target.resolve() == source.resolve():
-                return r[bool].ok(True)
-            if target.exists() or target.is_symlink():
-                if target.is_dir() and (not target.is_symlink()):
-                    shutil.rmtree(target)
-                else:
-                    target.unlink()
-            target.symlink_to(source.resolve(), target_is_directory=True)
-            return r[bool].ok(True)
-        except OSError as exc:
-            return r[bool].fail(f"failed to ensure symlink for {target}: {exc}")
+    @override
+    def execute(self) -> p.Result[bool]:
+        """Synchronize internal FLEXT dependencies for the configured workspace."""
+        result = self.sync(self.workspace_root)
+        if result.failure:
+            return r[bool].fail(result.error or "internal dependency sync failed")
+        return r[bool].ok(True)
 
     @staticmethod
-    def is_internal_path_dep(raw_path: str) -> str | None:
+    def resolve_internal_repo_name(raw_path: str) -> str | None:
         """Resolve repository name from internal path dependency notation."""
         normalized = raw_path.strip().removeprefix("./")
         if normalized.startswith(".flext-deps/"):
@@ -136,7 +129,7 @@ class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
             if workspace_mode and workspace_root:
                 sibling = workspace_root / repo_name
                 if sibling.exists():
-                    symlink_result = self.ensure_symlink(dep_path, sibling)
+                    symlink_result = u.Cli.ensure_symlink(dep_path, sibling)
                     if symlink_result.failure:
                         return r[int].fail(
                             symlink_result.error or f"failed symlink for {repo_name}",
@@ -162,24 +155,37 @@ class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
                 data_result.error or f"failed to read {pyproject}",
             )
         data = data_result.value
-        deps = u.Infra.deep_mapping(
+        deps = u.Cli.json_deep_mapping(
             data, c.Infra.TOOL, c.Infra.POETRY, c.Infra.DEPENDENCIES
         )
         result: MutableMapping[str, Path] = {}
         for dep_name, dep_value in deps.items():
-            dep_value_map = u.Infra.normalize_str_mapping(dep_value)
+            dep_value_map = u.Cli.json_as_mapping(dep_value)
             if not dep_value_map:
                 continue
             dep_path = dep_value_map.get(c.Infra.PATH)
             if not isinstance(dep_path, str):
                 continue
-            repo_name = self.is_internal_path_dep(dep_path)
+            repo_name = self.resolve_internal_repo_name(dep_path)
             if repo_name is None:
                 continue
             result[dep_name] = project_root / ".flext-deps" / repo_name
-        project_obj = u.Infra.deep_mapping(data, c.Infra.PROJECT)
+        project_obj = u.Cli.json_deep_mapping(data, c.Infra.PROJECT)
         project_deps_raw = project_obj.get(c.Infra.DEPENDENCIES)
-        project_deps = u.Cli.toml_as_string_list(project_deps_raw)
+        project_deps: t.StrSequence = []
+        if isinstance(project_deps_raw, str | int | float | bool):
+            project_deps = u.Cli.toml_as_string_list(project_deps_raw)
+        elif isinstance(project_deps_raw, Sequence) and not isinstance(
+            project_deps_raw,
+            str | bytes,
+        ):
+            primitive_items: list[t.Primitives] = []
+            for item in project_deps_raw:
+                if not isinstance(item, str | int | float | bool):
+                    primitive_items = []
+                    break
+                primitive_items.append(item)
+            project_deps = u.Cli.toml_as_string_list(primitive_items)
         internal_dep_names: t.Infra.StrSet = set()
         for dep in project_deps:
             dep_name_match = c.Infra.DEP_NAME_RE.match(dep)
@@ -195,15 +201,15 @@ class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
             match = c.Infra.PEP621_PATH_RE.search(dep)
             if not match:
                 continue
-            repo_name = self.is_internal_path_dep(match.group("path"))
+            repo_name = self.resolve_internal_repo_name(match.group("path"))
             if repo_name is None:
                 continue
             _ = result.setdefault(repo_name, project_root / ".flext-deps" / repo_name)
-        tool_obj = u.Infra.deep_mapping(data, c.Infra.TOOL)
-        uv_obj = u.Infra.deep_mapping(tool_obj, "uv")
-        sources_obj = u.Infra.deep_mapping(uv_obj, "sources")
+        tool_obj = u.Cli.json_deep_mapping(data, c.Infra.TOOL)
+        uv_obj = u.Cli.json_deep_mapping(tool_obj, "uv")
+        sources_obj = u.Cli.json_deep_mapping(uv_obj, "sources")
         for dep_name in internal_dep_names:
-            source_value = u.Infra.deep_mapping(sources_obj, dep_name)
+            source_value = u.Cli.json_deep_mapping(sources_obj, dep_name)
             if not source_value:
                 continue
             if source_value.get("workspace") is True:
@@ -211,7 +217,7 @@ class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
                 continue
             source_path = source_value.get(c.Infra.PATH)
             if isinstance(source_path, str):
-                repo_name = self.is_internal_path_dep(source_path)
+                repo_name = self.resolve_internal_repo_name(source_path)
                 if repo_name is not None:
                     _ = result.setdefault(
                         repo_name,
@@ -280,6 +286,4 @@ class FlextInfraInternalDependencySyncService(FlextInfraInternalSyncRepoMixin):
         return r[bool].ok(True)
 
 
-if __name__ == "__main__":
-    raise SystemExit(0)
 __all__: list[str] = ["FlextInfraInternalDependencySyncService"]

@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
-from collections.abc import Generator, Sequence
+from collections.abc import (
+    Generator,
+    Sequence,
+)
 from contextlib import contextmanager
 from pathlib import Path
 from typing import ClassVar
 
 import rope.refactor.importutils as rope_importutils
+from flext_infra import FlextInfraUtilitiesIteration, c, t
 from rope.base.exceptions import (
     ModuleSyntaxError,
     RefactoringError,
@@ -18,8 +22,6 @@ from rope.base.pyobjects import AbstractClass
 from rope.base.pyobjectsdef import PyFunction, PyModule
 from rope.base.resources import File
 from rope.refactor.importutils.module_imports import ModuleImports
-
-from flext_infra import FlextInfraUtilitiesIteration, c, t
 
 
 class FlextInfraUtilitiesRopeCore:

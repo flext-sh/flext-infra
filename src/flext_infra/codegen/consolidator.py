@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
+from collections.abc import (
+    MutableSequence,
+    Sequence,
+)
 from pathlib import Path
 from typing import Annotated, ClassVar, override
 
@@ -111,7 +114,10 @@ class FlextInfraCodegenConsolidator(s[str]):
                 "total_failed": failed,
                 "files": list(file_results),
             }
-            return r[str].ok(t.Infra.INFRA_MAPPING_ADAPTER.dump_json(payload).decode())
+            normalized_payload = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload)
+            return r[str].ok(
+                t.Infra.INFRA_MAPPING_ADAPTER.dump_json(normalized_payload).decode()
+            )
         return r[str].ok("\n".join(output_lines))
 
     def _selected_projects(

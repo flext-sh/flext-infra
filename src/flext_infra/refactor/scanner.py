@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import (
+    Mapping,
+    MutableSequence,
+    Sequence,
+)
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
@@ -91,7 +95,7 @@ class FlextInfraRefactorLooseClassScanner:
         ]
         confidence_counts: Mapping[str, t.Infra.InfraValue] = dict(counters)
         required_targets_infra: Mapping[str, t.Infra.InfraValue] = dict(targets_found)
-        return {
+        return t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
             "rule": c.Infra.RK_CLASS_NESTING,
             "files_scanned": files_scanned,
             "classes_scanned": classes_scanned,
@@ -99,7 +103,7 @@ class FlextInfraRefactorLooseClassScanner:
             "confidence_counts": confidence_counts,
             "required_targets": required_targets_infra,
             c.Infra.RK_VIOLATIONS: violations_infra,
-        }
+        })
 
     def _build_violation(
         self,

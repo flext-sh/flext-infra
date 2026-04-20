@@ -17,6 +17,7 @@ from __future__ import annotations
 from typing import override
 
 from flext_core import FlextVersion
+
 from flext_infra import FlextInfraCodegenGeneration, FlextInfraServiceBase, c, p, r, u
 
 
@@ -73,18 +74,18 @@ class FlextInfraCodegenVersionFile(FlextInfraServiceBase[bool]):
                 continue
 
             if self.check_only or self.dry_run:
-                u.Infra.info(f"  stale: {target.relative_to(self.workspace_root)}")
+                u.Cli.info(f"  stale: {target.relative_to(self.workspace_root)}")
                 generated += 1
                 continue
 
             target.write_text(content, encoding="utf-8")
             generated += 1
-            u.Infra.info(
+            u.Cli.info(
                 f"  generated: {target.relative_to(self.workspace_root)}",
             )
 
         verb = "would generate" if (self.check_only or self.dry_run) else "generated"
-        u.Infra.info(
+        u.Cli.info(
             f"version-file: {verb} {generated}, skipped {skipped}",
         )
         return r[bool].ok(True)

@@ -9,14 +9,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import (
+    Sequence,
+)
 from pathlib import Path
 
 from flext_core import m
+
 from flext_infra import (
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesRefactorCensus,
-    FlextInfraUtilitiesRefactorCli,
     FlextInfraUtilitiesRefactorEngine,
     FlextInfraUtilitiesRefactorMroScan,
     FlextInfraUtilitiesRefactorMroTransform,
@@ -34,7 +36,6 @@ class FlextInfraUtilitiesRefactor(
     FlextInfraUtilitiesRefactorNamespace,
     FlextInfraUtilitiesRefactorMroTransform,
     FlextInfraUtilitiesIteration,
-    FlextInfraUtilitiesRefactorCli,
     FlextInfraUtilitiesRefactorCensus,
 ):
     """Rope-based refactor helpers for code analysis.

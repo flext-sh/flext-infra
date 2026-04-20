@@ -10,10 +10,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, Sequence
+from collections.abc import (
+    Mapping,
+    MutableMapping,
+    Sequence,
+)
 from typing import ClassVar
 
 from flext_core import m, t
+
 from flext_infra import FlextInfraTypesBase
 
 

@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 import inspect
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import (
+    Mapping,
+    MutableSequence,
+    Sequence,
+)
 
 from flext_infra import (
     c,

@@ -3,15 +3,21 @@
 from __future__ import annotations
 
 import operator
+import re
 import token
 import tokenize
 from collections import defaultdict
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import (
+    Mapping,
+    MutableSequence,
+    Sequence,
+)
 from io import StringIO
 from pathlib import Path
 
+from flext_cli import u
+
 from flext_infra import (
-    FlextInfraUtilitiesFormatting,
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesParsing,
     c,
@@ -158,6 +164,12 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
             line_buffer[line_idx] = line_text
         return "".join(line_buffer)
 
+    @staticmethod
+    def class_name_to_module(class_name: str) -> str:
+        """Convert CamelCase class names to snake_case module names."""
+        head = re.sub(r"(.)([A-Z][a-z]+)", r"\1_\2", class_name)
+        return re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", head).lower()
+
 
 class FlextInfraUtilitiesRefactorNamespaceMro(
     FlextInfraUtilitiesRefactorNamespaceCommon
@@ -221,11 +233,8 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
                 "\n".join(rewritten_lines).rstrip() + "\n",
                 encoding=c.Infra.ENCODING_DEFAULT,
             )
-            FlextInfraUtilitiesFormatting.run_ruff_fix(
-                file_path,
-                include_format=True,
-                quiet=True,
-            )
+            _ = u.Cli.run_checked(["ruff", "check", "--fix", str(file_path)])
+            _ = u.Cli.run_checked(["ruff", "format", str(file_path)])
 
     @staticmethod
     def _rewrite_class_header(
@@ -283,7 +292,7 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
             _module_name, names = parsed
             existing_imports.update(names)
         return [
-            f"from {FlextInfraUtilitiesFormatting.class_name_to_module(base)} import {base}"
+            f"from {FlextInfraUtilitiesRefactorNamespaceCommon.class_name_to_module(base)} import {base}"
             for base in sorted(new_bases)
             if base not in existing_imports
         ]

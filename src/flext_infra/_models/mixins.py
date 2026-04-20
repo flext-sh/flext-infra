@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Annotated
 
 from flext_core import m, u
+
 from flext_infra import c, t
 
 
@@ -95,6 +96,30 @@ class FlextInfraModelsMixins:
         def json_output_path(self) -> Path | None:
             """Return the resolved JSON export path when provided."""
             return self.resolve_optional_path(self.json_output)
+
+    class ApplyDryRunMixin(BaseMixin):
+        """Commands with a simple apply/dry-run flag pair.
+
+        Provides a single ``apply: bool`` field and derives ``dry_run``
+        as its inverse. Intended for commands that do NOT need the full
+        ``WriteMixin`` rollback/diff/gates surface.
+        """
+
+        apply: Annotated[
+            bool,
+            m.Field(
+                description="Apply changes instead of running in dry-run mode",
+                json_schema_extra={
+                    "typer_param_decls": list(c.Infra.CLI_APPLY_OPTION_DECLS),
+                },
+            ),
+        ] = False
+
+        @u.computed_field()
+        @property
+        def dry_run(self) -> bool:
+            """Whether the command should skip writing to disk."""
+            return not self.apply
 
     class WriteMixin(ProjectMixin):
         """Commands that modify files with safety and rollback support."""

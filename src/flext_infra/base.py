@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from abc import ABC
-from collections.abc import Sequence
+from abc import ABC, abstractmethod
+from collections.abc import (
+    Sequence,
+)
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Self, TypeVar, override
 
@@ -16,6 +18,7 @@ from flext_core import (
     t,
     u,
 )
+
 from flext_infra import FlextInfraConstantsBase, FlextInfraTypesBase
 
 if TYPE_CHECKING:
@@ -131,19 +134,56 @@ class FlextInfraServiceBase(
         path = value if isinstance(value, Path) else Path(value)
         return path.resolve()
 
+    @property
+    def root(self) -> Path:
+        """Return the canonical normalized workspace root."""
+        return self.workspace_root
+
+    @property
+    def effective_dry_run(self) -> bool:
+        """Return the normalized write-mode decision for CLI services."""
+        return bool(self.dry_run or self.check_only or (not self.apply_changes))
+
+    @staticmethod
+    def normalize_selected_projects(
+        selected_projects: t.StrSequence | None,
+    ) -> t.StrSequence | None:
+        """Normalize repeated project selectors into a compact sequence."""
+        names = [name.strip() for name in (selected_projects or ()) if name.strip()]
+        return names or None
+
+    def selected_project_dirs(
+        self,
+        selected_projects: t.StrSequence | None,
+    ) -> Sequence[Path] | None:
+        """Resolve selected project directories relative to the workspace root."""
+        names = self.normalize_selected_projects(selected_projects)
+        if names is None:
+            return None
+        return [self.root / name for name in names]
+
     def command_payload(self) -> FlextInfraTypesBase.ContainerOverrides:
         """Return the normalized shared command payload once."""
-        return {
+        payload: dict[str, t.Container] = {
             "workspace_root": self.workspace_root,
             "apply_changes": self.apply_changes,
             "check_only": self.check_only,
             "dry_run": self.dry_run,
             "fail_fast": self.fail_fast,
             "output_format": self.output_format,
-            "project_filter": self.project_filter,
-            "report_path": self.report_path,
-            "output_dir": self.output_dir,
         }
+        if self.project_filter is not None:
+            payload["project_filter"] = self.project_filter
+        if self.report_path is not None:
+            payload["report_path"] = self.report_path
+        if self.output_dir is not None:
+            payload["output_dir"] = self.output_dir
+        return payload
+
+    @abstractmethod
+    def execute(self) -> p.Result[TDomainResult]:
+        """Execute the service contract and return a typed result."""
+        raise NotImplementedError
 
     @classmethod
     def execute_command(

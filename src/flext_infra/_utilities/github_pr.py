@@ -7,13 +7,15 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import time
-from collections.abc import MutableSequence
+from collections.abc import (
+    MutableSequence,
+)
 from pathlib import Path
 
 from flext_cli import u
+
 from flext_infra import (
     FlextInfraUtilitiesDocsScope,
-    FlextInfraUtilitiesReporting,
     c,
     m,
     p,
@@ -137,17 +139,18 @@ class FlextInfraUtilitiesGithubPr:
     ) -> p.Result[m.Infra.GithubPullRequestOutcome]:
         """Execute one pull-request command for a single repository."""
         display = workspace_root.name if repo_root == workspace_root else repo_root.name
-        report_dir = FlextInfraUtilitiesReporting.get_report_dir(
-            workspace_root,
-            c.Infra.RK_WORKSPACE,
-            c.Infra.PR,
-        )
-        try:
-            report_dir.mkdir(parents=True, exist_ok=True)
-        except OSError as exc:
+        report_dir = (
+            workspace_root
+            / c.Infra.REPORTS_DIR_NAME
+            / c.Infra.RK_WORKSPACE
+            / c.Infra.PR
+        ).resolve()
+        ensure_dir_result = u.Cli.ensure_dir(report_dir)
+        if ensure_dir_result.failure:
             return r[m.Infra.GithubPullRequestOutcome].fail(
-                f"failed to create report directory: {exc}",
+                ensure_dir_result.error or "failed to create report directory",
             )
+        report_dir = ensure_dir_result.value
         log_path = report_dir / f"{display}.log"
         command = cls._github_build_pr_command(
             repo_root=repo_root,

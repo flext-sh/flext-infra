@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import (
+    Mapping,
+)
 
 from flext_infra import (
     c,
@@ -27,7 +29,7 @@ class FlextInfraRefactorPatternCorrectionsRule:
     ) -> t.Infra.TransformResult:
         """Apply configured pattern corrections to resource."""
         source = resource.read()
-        fix_action = u.Infra.get_str_key(
+        fix_action = u.Cli.json_get_str_key(
             self.settings,
             c.Infra.RK_FIX_ACTION,
             case="lower",

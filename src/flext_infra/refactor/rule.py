@@ -3,7 +3,13 @@
 from __future__ import annotations
 
 import fnmatch
-from collections.abc import Callable, Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import (
+    Callable,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
 from pathlib import Path
 
 from flext_infra import (
@@ -41,7 +47,7 @@ class FlextInfraUtilitiesRefactorRuleLoader:
                 t.Infra.INFRA_MAPPING_ADAPTER.validate_python(dict(loaded)),
             )
             scope_raw = normalized.get("refactor_engine")
-            scope_map = u.Infra.normalize_str_mapping(scope_raw)
+            scope_map = u.Cli.json_as_mapping(scope_raw)
             scope_map = {
                 key: value
                 for key, value in scope_map.items()
@@ -200,9 +206,9 @@ class FlextInfraUtilitiesRefactorRuleLoader:
         self,
         settings: t.Infra.InfraValue,
     ) -> m.Infra.EngineConfig:
-        config_map = u.Infra.normalize_str_mapping(settings)
+        config_map = u.Cli.json_as_mapping(settings)
         scope_raw = config_map.get("refactor_engine")
-        scope_map = u.Infra.normalize_str_mapping(scope_raw)
+        scope_map = u.Cli.json_as_mapping(scope_raw)
         scope_map = {
             key: value
             for key, value in scope_map.items()
@@ -222,7 +228,7 @@ class FlextInfraUtilitiesRefactorRuleLoader:
             return []
         definitions: MutableSequence[Mapping[str, t.Infra.InfraValue]] = []
         for item in entries:
-            normalized = u.Infra.normalize_str_mapping(item)
+            normalized = u.Cli.json_as_mapping(item)
             if not normalized:
                 continue
             definitions.append(normalized)

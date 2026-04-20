@@ -71,7 +71,7 @@ class FlextInfraCodegenPyprojectKeys(FlextInfraServiceBase[bool]):
                 continue
 
             if self.check_only or self.dry_run:
-                u.Infra.info(
+                u.Cli.info(
                     f"  stale: {pyproject_path.relative_to(self.workspace_root)}",
                 )
                 generated += 1
@@ -79,12 +79,12 @@ class FlextInfraCodegenPyprojectKeys(FlextInfraServiceBase[bool]):
 
             pyproject_path.write_text(rendered, encoding=c.Infra.ENCODING_DEFAULT)
             generated += 1
-            u.Infra.info(
+            u.Cli.info(
                 f"  generated: {pyproject_path.relative_to(self.workspace_root)}",
             )
 
         verb = "would update" if (self.check_only or self.dry_run) else "updated"
-        u.Infra.info(f"pyproject-keys: {verb} {generated}")
+        u.Cli.info(f"pyproject-keys: {verb} {generated}")
         return r[bool].ok(True)
 
 

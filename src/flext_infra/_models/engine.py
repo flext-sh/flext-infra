@@ -6,11 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import (
+    Callable,
+    Sequence,
+)
 from itertools import chain
 from typing import Annotated, Literal, Self
 
 from flext_core import m
+
 from flext_infra import c, t
 
 
@@ -176,21 +180,27 @@ class FlextInfraModelsEngine:
                 lists: Sequence[tuple[str, t.StrSequence]] = (),
                 deprecated_keys: t.StrSequence = (),
             ) -> Self:
-                nested_operations = tuple(
-                    op.model_dump(mode="python")
-                    for op in self._nested_operations(
-                        values=values,
-                        lists=lists,
-                        deprecated_keys=deprecated_keys,
-                    )
-                )
-                return self._append_model(
-                    "nested_tables",
-                    FlextInfraModelsEngine.TomlPhaseConfig,
+                nested_table = FlextInfraModelsEngine.TomlPhaseConfig(
                     name=self.state.name,
                     root_path=(),
                     table_path=tuple(path),
-                    operations=nested_operations,
+                    operations=tuple(
+                        self._nested_operations(
+                            values=values,
+                            lists=lists,
+                            deprecated_keys=deprecated_keys,
+                        )
+                    ),
+                )
+                return self._replace(
+                    self.state.model_copy(
+                        update={
+                            "nested_tables": (
+                                *self.state.nested_tables,
+                                nested_table,
+                            )
+                        }
+                    )
                 )
 
             def handler(self, fn: Callable[..., t.StrSequence]) -> Self:

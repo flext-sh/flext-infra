@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Mapping
+from collections.abc import (
+    Mapping,
+)
 from pathlib import Path
 from typing import cast
 

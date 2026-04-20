@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import time
 from abc import ABC, abstractmethod
-from collections.abc import MutableSequence, Sequence
+from collections.abc import (
+    MutableSequence,
+    Sequence,
+)
 from pathlib import Path
 from typing import ClassVar
 

@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import ast
-from collections.abc import MutableSequence, Sequence
+from collections.abc import (
+    MutableSequence,
+    Sequence,
+)
 from operator import itemgetter
 from typing import TypeGuard, override
 

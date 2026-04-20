@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import TypeIs
-
 from flext_infra import c, m, t
 
 
@@ -13,7 +11,7 @@ class FlextInfraUtilitiesDocsRender:
     @staticmethod
     def _is_object_list(
         value: t.Infra.InfraValue | None,
-    ) -> TypeIs[t.MutableSequenceOf[t.Infra.InfraValue]]:
+    ) -> bool:
         """Type guard: narrow one infra value to a mutable sequence."""
         return isinstance(value, list)
 
@@ -24,7 +22,7 @@ class FlextInfraUtilitiesDocsRender:
     ) -> t.SequenceOf[str]:
         """Return one contract field as a normalized string sequence."""
         value = data.get(key)
-        if not FlextInfraUtilitiesDocsRender._is_object_list(value):
+        if not isinstance(value, list):
             return []
         return [str(entry) for entry in value]
 

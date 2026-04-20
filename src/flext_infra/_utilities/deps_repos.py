@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import configparser
 import os
-from collections.abc import Mapping, MutableMapping
+from collections.abc import (
+    Mapping,
+    MutableMapping,
+)
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
@@ -16,17 +19,22 @@ class FlextInfraInternalSyncRepoMixin:
     log: p.Logger
     toml: p.Infra.TomlReader | None
 
-    _OWNER_PATTERNS: tuple[t.Infra.RegexPattern, ...]
-
     def _read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:
         if self.toml is not None:
             return self.toml.read_plain(path)
-        return u.Infra.read_plain(path)
+        plain_result = u.Cli.toml_read_json(path)
+        if plain_result.failure:
+            return r[t.Infra.ContainerDict].fail(
+                plain_result.error or f"failed to read {path}",
+            )
+        return r[t.Infra.ContainerDict].ok(
+            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(plain_result.value),
+        )
 
     @classmethod
     def owner_from_remote_url(cls, remote_url: str) -> str | None:
         """Extract GitHub owner from supported remote URL formats."""
-        for pattern in cls._OWNER_PATTERNS:
+        for pattern in c.Infra.GITHUB_OWNER_PATTERNS:
             match = pattern.match(remote_url)
             if match:
                 return match.group("owner")
@@ -53,7 +61,7 @@ class FlextInfraInternalSyncRepoMixin:
     def is_workspace_mode(self, project_root: Path) -> t.Infra.Pair[bool, Path | None]:
         """Determine workspace mode and return resolved workspace root."""
         if os.getenv("FLEXT_STANDALONE") == "1":
-            u.Infra.info("Standalone mode: skipping workspace dependency sync")
+            u.Cli.info("Standalone mode: skipping workspace dependency sync")
             return (False, None)
         env_workspace_root = self.workspace_root_from_env(project_root)
         if env_workspace_root is not None:
@@ -98,12 +106,12 @@ class FlextInfraInternalSyncRepoMixin:
                 data_result.error or "failed to read repository map",
             )
         data = data_result.value
-        repos_obj = u.Infra.deep_mapping(data, "repo")
+        repos_obj = u.Cli.json_deep_mapping(data, "repo")
         if not repos_obj:
             return r[Mapping[str, m.Infra.RepoUrls]].ok({})
         result: MutableMapping[str, m.Infra.RepoUrls] = {}
         for repo_name, values in repos_obj.items():
-            values_map = u.Infra.normalize_str_mapping(values)
+            values_map = u.Cli.json_as_mapping(values)
             if not values_map:
                 continue
             ssh_url = str(values_map.get("ssh_url", ""))

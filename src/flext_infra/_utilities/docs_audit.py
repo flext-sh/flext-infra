@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
+from collections.abc import (
+    MutableSequence,
+    Sequence,
+)
 from pathlib import Path
 
 from flext_core import u
+
 from flext_infra import (
     FlextInfraUtilitiesDocs,
     FlextInfraUtilitiesDocsApi,

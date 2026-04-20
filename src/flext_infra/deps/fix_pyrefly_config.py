@@ -6,7 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import (
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
 from pathlib import Path
 from typing import override
 
@@ -46,6 +51,20 @@ class FlextInfraConfigFixer(s[bool]):
     @override
     def execute(self) -> p.Result[bool]:
         return r[bool].fail("Use run() directly")
+
+    def run_command(
+        self,
+        params: m.Infra.FixPyreflyConfigCommand,
+    ) -> p.Result[bool]:
+        """Execute pyrefly config repair from the canonical check command payload."""
+        fix_result = self.run(
+            projects=params.project_names or [],
+            dry_run=params.dry_run,
+            verbose=params.verbose,
+        )
+        if fix_result.failure:
+            return r[bool].fail(fix_result.error or "pyrefly config fix failed")
+        return r[bool].ok(True)
 
     def process_file(
         self, path: Path, *, dry_run: bool = False
@@ -91,7 +110,7 @@ class FlextInfraConfigFixer(s[bool]):
                 if isinstance(path_item, str)
             ]
             expected_search = FlextInfraExtraPathsManager(
-                workspace_root=self._workspace_root
+                workspace=self._workspace_root
             ).pyrefly_search_paths(
                 project_dir=project_dir,
                 is_root=is_root,
@@ -126,7 +145,9 @@ class FlextInfraConfigFixer(s[bool]):
                     continue
                 new_configs.append(conf_out)
             if len(new_configs) != len(configs):
-                pyrefly[c.Infra.SUB_CONFIG] = new_configs
+                pyrefly[c.Infra.SUB_CONFIG] = list(
+                    t.Cli.JSON_LIST_ADAPTER.validate_python(new_configs)
+                )
         if removed_ignore or is_root:
             current_excludes: t.StrSequence = []
             excludes = pyrefly.get(c.Infra.PROJECT_EXCLUDES)

@@ -156,7 +156,19 @@ omit = [ "*/dependency_injector/providers.pyx" ]
 
 # [MANAGED] deptry
 [tool.deptry]
-known_first_party = [ "flext_cli", "flext_core", "flext_infra" ]
+known_first_party = [
+  "flext-cli",
+  "flext-core",
+  "flext_infra",
+  "libcst (",
+  "mkdocs",
+  "mkdocs-exclude",
+  "mkdocs-material",
+  "mkdocs-section-index",
+  "mkdocstrings",
+  "mkdocstrings-python",
+  "rope",
+]
 pep621_dev_dependency_groups = [ "dev" ]
 
 [tool.flext.docs]
@@ -506,7 +518,19 @@ select = [ "ALL" ]
 [tool.ruff.lint.isort]
 combine-as-imports = true
 force-single-line = false
-known-first-party = [ "flext_cli", "flext_core", "flext_infra" ]
+known-first-party = [
+  "flext-cli",
+  "flext-core",
+  "flext_infra",
+  "libcst (",
+  "mkdocs",
+  "mkdocs-exclude",
+  "mkdocs-material",
+  "mkdocs-section-index",
+  "mkdocstrings",
+  "mkdocstrings-python",
+  "rope",
+]
 split-on-trailing-comma = true
 
 [tool.ruff.lint.per-file-ignores]

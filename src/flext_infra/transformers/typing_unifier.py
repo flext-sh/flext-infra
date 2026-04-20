@@ -5,7 +5,9 @@ from __future__ import annotations
 import ast
 import copy
 import re
-from collections.abc import Mapping
+from collections.abc import (
+    Mapping,
+)
 from pathlib import Path
 from typing import ClassVar, override
 

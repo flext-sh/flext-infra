@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import os
 import subprocess
-from collections.abc import Generator
+from collections.abc import (
+    Generator,
+)
 from contextlib import contextmanager
 from pathlib import Path
 

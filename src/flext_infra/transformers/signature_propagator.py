@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import ast
-from collections.abc import Sequence
+from collections.abc import (
+    Sequence,
+)
 from operator import itemgetter
 
 from flext_infra import FlextInfraChangeTrackingTransformer, m, t, u

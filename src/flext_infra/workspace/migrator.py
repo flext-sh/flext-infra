@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
+from collections.abc import (
+    MutableSequence,
+    Sequence,
+)
 from pathlib import Path
 from typing import Annotated, override
 
@@ -99,20 +102,20 @@ class FlextInfraProjectMigrator(
         migrations: Sequence[m.Infra.MigrationResult] = result.value
         failed_projects = 0
         for migration in migrations:
-            u.Infra.info(f"{migration.project}:")
+            u.Cli.info(f"{migration.project}:")
             for change in migration.changes:
-                u.Infra.info(f"  + {change}")
+                u.Cli.info(f"  + {change}")
             for error in migration.errors:
-                u.Infra.error(f"  ! {error}")
+                u.Cli.error(f"  ! {error}")
             if migration.errors:
                 failed_projects += 1
         total_changes = sum(len(migration.changes) for migration in migrations)
         total_errors = sum(len(migration.errors) for migration in migrations)
-        u.Infra.info(
+        u.Cli.info(
             f"Total: {total_changes} change(s), {total_errors} error(s) across {len(migrations)} project(s)"
         )
         if dry_run:
-            u.Infra.info("(dry-run — no files modified)")
+            u.Cli.info("(dry-run — no files modified)")
         return result
 
     def migrate(
@@ -365,9 +368,10 @@ class FlextInfraProjectMigrator(
     ) -> p.Result[str]:
         """Add flext-core dependency to the pyproject document and write if not dry-run."""
         project_table = u.Cli.toml_ensure_table(document, c.Infra.PROJECT)
+        dependencies_item = u.Cli.toml_item_child(project_table, c.Infra.DEPENDENCIES)
         dependencies = list(
             u.Cli.toml_as_string_list(
-                u.Cli.toml_item_child(project_table, c.Infra.DEPENDENCIES),
+                dependencies_item if dependencies_item is not None else [],
             ),
         )
         dependency_spec = c.Infra.PKG_CORE

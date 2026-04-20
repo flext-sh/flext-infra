@@ -7,7 +7,10 @@ and regex-based attribute access detection for usage collection.
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping, MutableSequence
+from collections.abc import (
+    Mapping,
+    MutableSequence,
+)
 from pathlib import Path
 
 from flext_infra import c, m, t

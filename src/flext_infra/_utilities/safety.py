@@ -7,10 +7,14 @@ validating post-transform quality via gates, and restoring on failure.
 from __future__ import annotations
 
 import shutil
-from collections.abc import Callable, Sequence
+from collections.abc import (
+    Callable,
+    Sequence,
+)
 from pathlib import Path
 
 from flext_cli import u
+
 from flext_infra import c, m, p, r
 
 

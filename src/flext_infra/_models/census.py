@@ -6,6 +6,7 @@ from types import MappingProxyType
 from typing import Annotated, ClassVar
 
 from flext_core import m
+
 from flext_infra import FlextInfraModelsMixins, c, t
 
 

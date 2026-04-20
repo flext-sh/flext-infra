@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Generator
+from collections.abc import (
+    Generator,
+)
 from contextlib import contextmanager
 
 from tests import u

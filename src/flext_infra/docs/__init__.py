@@ -10,6 +10,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".auditor": ("FlextInfraDocAuditor",),
         ".auditor_mixin": ("FlextInfraDocAuditorMixin",),
         ".builder": ("FlextInfraDocBuilder",),
+        ".cli": ("FlextInfraCliDocs",),
         ".fixer": ("FlextInfraDocFixer",),
         ".generator": ("FlextInfraDocGenerator",),
         ".validator": ("FlextInfraDocValidator",),

@@ -7,7 +7,10 @@ aliases to their correct sources (core, submodule, or TYPE_CHECKING block).
 from __future__ import annotations
 
 import re
-from collections.abc import MutableMapping, MutableSequence
+from collections.abc import (
+    MutableMapping,
+    MutableSequence,
+)
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import ClassVar

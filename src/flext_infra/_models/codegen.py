@@ -2,12 +2,18 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, MutableSet, Sequence
+from collections.abc import (
+    MutableSequence,
+    MutableSet,
+    Sequence,
+)
 from pathlib import Path
+from types import MappingProxyType
 from typing import Annotated, ClassVar
 
 from flext_cli import u
 from flext_core import m
+
 from flext_infra import (
     FlextInfraModelsMixins,
     p,
@@ -217,11 +223,11 @@ class FlextInfraModelsCodegen:
             description="Public exports for generated __init__.py.",
         )
         lazy_map: t.Infra.LazyImportMap = m.Field(
-            default_factory=dict,
+            default_factory=lambda: MappingProxyType({}),
             description="Lazy import map: export name to module/attribute target.",
         )
         inline_constants: t.StrMapping = m.Field(
-            default_factory=dict,
+            default_factory=lambda: MappingProxyType({}),
             description="Inline constants emitted directly into __init__.py.",
         )
         wildcard_runtime_modules: t.StrSequence = m.Field(

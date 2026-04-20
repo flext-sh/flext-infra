@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping, MutableSequence
+from collections.abc import (
+    MutableMapping,
+    MutableSequence,
+)
 from pathlib import Path
 
 from flext_cli import u
+
 from flext_infra import (
     FlextInfraModelsDeps,
     FlextInfraUtilitiesDocsScope,
-    FlextInfraUtilitiesTomlParse,
     c,
     m,
     p,
@@ -18,13 +21,28 @@ from flext_infra import (
 )
 
 
-class FlextInfraUtilitiesDependencyPathSync(
-    FlextInfraUtilitiesTomlParse,
-):
+class FlextInfraUtilitiesDependencyPathSync:
     """Rewrite internal FLEXT dependency paths for workspace or standalone mode."""
 
     _log = u.fetch_logger(__name__)
     discover_projects = staticmethod(FlextInfraUtilitiesDocsScope.discover_projects)
+
+    @staticmethod
+    def dep_name(requirement: str) -> str | None:
+        """Extract normalized dependency name from one requirement/path spec."""
+        text = requirement.strip()
+        if not text:
+            return None
+        if ";" in text:
+            text = text.split(";", maxsplit=1)[0].strip()
+        if " @ " in text:
+            text = text.split(" @ ", maxsplit=1)[0].strip()
+        for separator in ("[", "==", ">=", "<=", "~=", "!=", ">", "<"):
+            if separator in text:
+                text = text.split(separator, maxsplit=1)[0].strip()
+        if "/" in text:
+            text = text.rsplit("/", maxsplit=1)[-1].strip()
+        return text or None
 
     def _rewrite_pep621(
         self,

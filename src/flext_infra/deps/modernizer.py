@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping, MutableSequence, Sequence
+from collections.abc import (
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
 from pathlib import Path
+from typing import Annotated, override
 
 from tomlkit.items import AoT, Table
 
@@ -21,7 +26,7 @@ from flext_infra import (
     FlextInfraExtraPathsManager,
     FlextInfraInjectCommentsPhase,
     FlextInfraProjectClassifier,
-    FlextInfraUtilitiesTomlParse,
+    FlextInfraUtilitiesIteration,
     c,
     m,
     p,
@@ -29,34 +34,44 @@ from flext_infra import (
     t,
     u,
 )
+from flext_infra.deps.service_base import FlextInfraDepsProjectServiceBase
 
 
-class FlextInfraPyprojectModernizer:
+class FlextInfraPyprojectModernizer(FlextInfraDepsProjectServiceBase):
     """Modernize all workspace pyproject.toml files."""
 
-    ROOT = u.Infra.resolve_workspace_root(__file__)
+    audit: Annotated[
+        bool,
+        m.Field(False, description="Audit pyproject changes without writing"),
+    ] = False
+    skip_check: Annotated[
+        bool,
+        m.Field(alias="skip-check", description="Skip post-write validation"),
+    ] = False
+    skip_comments: Annotated[
+        bool,
+        m.Field(alias="skip-comments", description="Skip managed comment updates"),
+    ] = False
+    _tool_config: m.Infra.ToolConfigDocument = u.PrivateAttr()
+    _paths_manager: FlextInfraExtraPathsManager | None = u.PrivateAttr(
+        default_factory=lambda: None,
+    )
 
-    def __init__(
-        self,
-        workspace_root: Path | None = None,
-        *,
-        workspace: Path | None = None,
-    ) -> None:
-        """Initialize pyproject modernizer."""
-        self.root = workspace_root or workspace or self.ROOT
+    @override
+    def model_post_init(self, __context: object, /) -> None:
+        """Initialize pyproject modernization collaborators after validation."""
         tool_config_result = u.Infra.load_tool_config()
         if tool_config_result.failure:
             msg = tool_config_result.error or "failed to load deps tool settings"
             raise ValueError(msg)
         self._tool_config = tool_config_result.value
-        self._paths_manager: FlextInfraExtraPathsManager | None = None
 
     @property
     def paths_manager(self) -> FlextInfraExtraPathsManager:
         """Create the extra-paths manager only when a phase actually needs it."""
         if self._paths_manager is None:
             self._paths_manager = FlextInfraExtraPathsManager(
-                workspace_root=self.root,
+                workspace=self.root,
             )
         return self._paths_manager
 
@@ -213,9 +228,21 @@ class FlextInfraPyprojectModernizer:
             build_system["build-backend"] = expected_backend
             changes.append("build-system.build-backend set to hatchling.build")
         expected_requires = ["hatchling"]
-        current_requires = sorted(
-            u.Cli.toml_as_string_list(build_system.get("requires"))
-        )
+        requires_value = build_system.get("requires", None)
+        current_requires: list[str] = []
+        if isinstance(requires_value, str | int | float | bool):
+            current_requires = sorted(u.Cli.toml_as_string_list(requires_value))
+        elif isinstance(requires_value, Sequence) and not isinstance(
+            requires_value,
+            str | bytes,
+        ):
+            primitive_items: list[t.Primitives] = []
+            for item in requires_value:
+                if not isinstance(item, str | int | float | bool):
+                    primitive_items = []
+                    break
+                primitive_items.append(item)
+            current_requires = sorted(u.Cli.toml_as_string_list(primitive_items))
         if current_requires != expected_requires:
             build_system["requires"] = list(expected_requires)
             changes.append("build-system.requires set to ['hatchling']")
@@ -366,16 +393,16 @@ class FlextInfraPyprojectModernizer:
             skip_comments=skip_comments,
         )
 
-    def run(self, params: m.Infra.ModernizeCommand) -> int:
+    def run(self) -> int:
         """Run pyproject modernization for the workspace."""
-        check_mode = bool(params.audit or params.check)
-        dry_run = bool(params.dry_run or check_mode)
-        project_names = list(params.project_names or [])
+        check_mode = bool(self.audit or self.check_only)
+        dry_run = bool(check_mode or self.effective_dry_run)
+        project_names = list(self.project_names or [])
         project_paths: Sequence[Path] | None = None
         if project_names:
             selected_projects = u.Infra.resolve_projects(self.root, project_names)
             if selected_projects.failure:
-                u.Infra.error(
+                u.Cli.error(
                     selected_projects.error or "failed to resolve selected projects",
                 )
                 return 2
@@ -395,7 +422,7 @@ class FlextInfraPyprojectModernizer:
             return 2
         root_state = root_state_result.value
         canonical_dev: t.StrSequence = t.Infra.STR_SEQ_ADAPTER.validate_python(
-            FlextInfraUtilitiesTomlParse.canonical_dev_dependencies_from_payload(
+            FlextInfraUtilitiesIteration.canonical_dev_dependencies_from_payload(
                 root_state.payload
             ),
         )
@@ -419,7 +446,7 @@ class FlextInfraPyprojectModernizer:
                     document_state,
                     canonical_dev=canonical_dev,
                     dry_run=dry_run,
-                    skip_comments=params.skip_comments,
+                    skip_comments=self.skip_comments,
                 )
             if not changes:
                 continue
@@ -428,22 +455,30 @@ class FlextInfraPyprojectModernizer:
             total += len(changes)
         if violations:
             for rel_path, changes in violations.items():
-                u.Infra.info(f"{rel_path}:")
+                u.Cli.info(f"{rel_path}:")
                 for change in changes:
-                    u.Infra.info(f"  - {change}")
-            u.Infra.info(
+                    u.Cli.info(f"  - {change}")
+            u.Cli.info(
                 f"Total: {total} change(s) across {len(violations)} file(s)",
             )
             if dry_run:
-                u.Infra.info("(dry-run — no files modified)")
+                u.Cli.info("(dry-run — no files modified)")
         if check_mode and total > 0:
             return 1
-        if not dry_run and (not params.skip_check):
+        if not dry_run and (not self.skip_check):
             return self._run_build_check(
                 document_states,
                 invalid_paths=invalid_paths,
             )
         return 0
+
+    @override
+    def execute(self) -> p.Result[bool]:
+        """Execute pyproject modernization for the configured workspace."""
+        exit_code = self.run()
+        if exit_code != 0:
+            return r[bool].fail("pyproject modernization failed")
+        return r[bool].ok(True)
 
     def _run_build_check(
         self,
@@ -454,24 +489,20 @@ class FlextInfraPyprojectModernizer:
         """Validate pyproject.toml files have hatchling build backend."""
         has_warning = False
         for invalid_path in invalid_paths:
-            u.Infra.info(f"{invalid_path}: invalid TOML")
+            u.Cli.info(f"{invalid_path}: invalid TOML")
             has_warning = True
         for document_state in document_states:
             path = document_state.pyproject_path
             build_sys = u.Cli.toml_mapping_child(document_state.payload, "build-system")
             if build_sys is None:
-                u.Infra.info(f"{path}: missing [build-system]")
+                u.Cli.info(f"{path}: missing [build-system]")
                 has_warning = True
                 continue
             backend = u.norm_str(str(build_sys.get("build-backend", "")))
             if backend != "hatchling.build":
-                u.Infra.info(f"{path}: expected hatchling.build, got {backend}")
+                u.Cli.info(f"{path}: expected hatchling.build, got {backend}")
                 has_warning = True
         return 1 if has_warning else 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(0)
 
 
 __all__: list[str] = ["FlextInfraPyprojectModernizer"]

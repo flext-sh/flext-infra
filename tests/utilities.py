@@ -5,7 +5,11 @@ from __future__ import annotations
 import re
 import shutil
 import subprocess
-from collections.abc import MutableMapping, MutableSequence, Sequence
+from collections.abc import (
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
 from pathlib import Path
 from typing import ClassVar, override
 
@@ -76,7 +80,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     cmd: t.StrSequence,
                     cwd: t.Cli.PathLike | None = None,
                     timeout: int | None = None,
-                    env: t.Cli.StrEnvMapping | None = None,
+                    env: t.StrMapping | None = None,
                     input_data: bytes | None = None,
                 ) -> p.Result[m.Cli.CommandOutput]:
                     del cmd, cwd, timeout, env, input_data
@@ -88,7 +92,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     cmd: t.StrSequence,
                     cwd: t.Cli.PathLike | None = None,
                     timeout: int | None = None,
-                    env: t.Cli.StrEnvMapping | None = None,
+                    env: t.StrMapping | None = None,
                 ) -> p.Result[m.Cli.CommandOutput]:
                     del cmd, cwd, timeout, env
                     if self._result.failure:
@@ -106,7 +110,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     cmd: t.StrSequence,
                     cwd: t.Cli.PathLike | None = None,
                     timeout: int | None = None,
-                    env: t.Cli.StrEnvMapping | None = None,
+                    env: t.StrMapping | None = None,
                 ) -> p.Result[str]:
                     result = self.run(cmd, cwd=cwd, timeout=timeout, env=env)
                     if result.failure:
@@ -119,7 +123,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     cmd: t.StrSequence,
                     cwd: t.Cli.PathLike | None = None,
                     timeout: int | None = None,
-                    env: t.Cli.StrEnvMapping | None = None,
+                    env: t.StrMapping | None = None,
                 ) -> p.Result[bool]:
                     result = self.run(cmd, cwd=cwd, timeout=timeout, env=env)
                     if result.failure:
@@ -133,7 +137,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     output_file: t.Cli.PathLike,
                     cwd: t.Cli.PathLike | None = None,
                     timeout: int | None = None,
-                    env: t.Cli.StrEnvMapping | None = None,
+                    env: t.StrMapping | None = None,
                 ) -> p.Result[int]:
                     result = self.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
                     if result.failure:
@@ -204,7 +208,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     cmd: t.StrSequence,
                     cwd: t.Cli.PathLike | None = None,
                     timeout: int | None = None,
-                    env: t.Cli.StrEnvMapping | None = None,
+                    env: t.StrMapping | None = None,
                     input_data: bytes | None = None,
                 ) -> p.Result[m.Cli.CommandOutput]:
                     self.commands.append(tuple(cmd))
@@ -217,7 +221,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     cmd: t.StrSequence,
                     cwd: t.Cli.PathLike | None = None,
                     timeout: int | None = None,
-                    env: t.Cli.StrEnvMapping | None = None,
+                    env: t.StrMapping | None = None,
                 ) -> p.Result[m.Cli.CommandOutput]:
                     self.commands.append(tuple(cmd))
                     del cmd, cwd, timeout, env

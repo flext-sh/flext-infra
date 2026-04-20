@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
+from collections.abc import (
+    MutableSequence,
+    Sequence,
+)
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import u
+
 from flext_infra import c, p, r
 
 if TYPE_CHECKING:

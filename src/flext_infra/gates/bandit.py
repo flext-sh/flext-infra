@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import (
+    Mapping,
+    MutableSequence,
+    Sequence,
+)
 from pathlib import Path
 from typing import ClassVar, override
 
@@ -63,24 +67,24 @@ class FlextInfraBanditGate(FlextInfraGate):
                 parsed_result.unwrap() if parsed_result.success else empty_mapping
             )
             bandit_data: Mapping[str, t.Infra.InfraValue] = (
-                u.Infra.normalize_str_mapping(raw_payload)
+                u.Cli.json_as_mapping(raw_payload)
                 if isinstance(raw_payload, Mapping)
                 else empty_mapping
             )
             issues.extend(
                 m.Infra.Issue(
-                    file=u.Infra.pick_str(raw_item, "filename", "?"),
-                    line=u.Infra.pick_int(raw_item, "line_number"),
+                    file=u.Cli.json_pick_str(raw_item, "filename", "?"),
+                    line=u.Cli.json_pick_int(raw_item, "line_number"),
                     column=0,
-                    code=u.Infra.pick_str(raw_item, "test_id"),
-                    message=u.Infra.pick_str(raw_item, "issue_text"),
-                    severity=u.Infra.pick_str(
+                    code=u.Cli.json_pick_str(raw_item, "test_id"),
+                    message=u.Cli.json_pick_str(raw_item, "issue_text"),
+                    severity=u.Cli.json_pick_str(
                         raw_item,
                         "issue_severity",
                         "MEDIUM",
                     ).lower(),
                 )
-                for raw_item in u.Infra.normalize_mapping_list(
+                for raw_item in u.Cli.json_as_mapping_list(
                     bandit_data.get(c.Infra.BANDIT_RESULTS_KEY, []),
                 )
             )

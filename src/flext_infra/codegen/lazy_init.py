@@ -10,7 +10,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Mapping, MutableMapping, Sequence
+from collections.abc import (
+    Mapping,
+    MutableMapping,
+    Sequence,
+)
 from pathlib import Path
 from time import perf_counter
 from typing import override
@@ -70,10 +74,10 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
         """Process all package directories bottom-up and generate PEP 562 inits."""
         self._modified_files.clear()
         if not self.workspace_root.exists():
-            u.Infra.info("Lazy-init summary: 0 generated, 0 errors (0 dirs scanned)")
+            u.Cli.info("Lazy-init summary: 0 generated, 0 errors (0 dirs scanned)")
             return 0
         started_at = perf_counter()
-        u.Infra.info(
+        u.Cli.info(
             "lazy-init: starting "
             f"({'check' if check_only else 'apply'}) for {self.workspace_root}",
         )
@@ -84,11 +88,11 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
                 self._duplicate_class_names = len(duplicates)
                 for class_name, locations in duplicates.items():
                     joined = ", ".join(locations)
-                    u.Infra.error(
+                    u.Cli.error(
                         f"duplicate class name {class_name!r} in: {joined}; "
                         "rename one before regenerating __init__.py",
                     )
-                u.Infra.info(
+                u.Cli.info(
                     "Lazy-init summary: 0 generated, "
                     f"{len(duplicates)} duplicate class name(s) "
                     "(aborted before codegen)",
@@ -107,7 +111,7 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
                 key=lambda path: len(path.parts),
                 reverse=True,
             )
-            u.Infra.info(
+            u.Cli.info(
                 f"lazy-init: planning {len(package_dirs)} package dirs",
             )
             total, ok, errors, _dir_exports = self._generate_all_inits(
@@ -115,7 +119,7 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
                 check_only=check_only,
                 planner=planner,
             )
-        u.Infra.info(
+        u.Cli.info(
             f"Lazy-init summary: {ok} generated, {errors} errors"
             f" ({total} dirs scanned, {perf_counter() - started_at:.2f}s)",
         )
@@ -179,7 +183,7 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
                     if self.workspace_root in pkg_dir.parents
                     else pkg_dir
                 )
-                u.Infra.info(
+                u.Cli.info(
                     f"lazy-init: progress {idx}/{len(pkg_dirs)} — {rel_path}",
                 )
             result, exports = self._process_directory(
@@ -228,7 +232,7 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
                 child_packages_for_tc=plan.child_packages_for_tc,
             )
         except ValueError as exc:
-            u.Infra.error(
+            u.Cli.error(
                 f"export collision in {pkg_dir}: {exc}; "
                 "correct the source exports before regenerating __init__.py",
             )
@@ -245,7 +249,7 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
         try:
             init_path.unlink()
         except OSError as exc:
-            u.Infra.error(f"removing generated init {init_path}: {exc}")
+            u.Cli.error(f"removing generated init {init_path}: {exc}")
             return (-1, dict(plan.lazy_map))
         self._modified_files.add(str(init_path))
         rel_path = (
@@ -253,7 +257,7 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
             if self.workspace_root in init_path.parents
             else init_path
         )
-        u.Infra.info(f"  CLEAN: {rel_path} — removed generated init")
+        u.Cli.info(f"  CLEAN: {rel_path} — removed generated init")
         return (0, dict(plan.lazy_map))
 
     def _write_init(
@@ -287,19 +291,19 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
             if previous != generated:
                 write_result = u.Cli.atomic_write_text_file(init_path, generated)
                 if write_result.failure:
-                    u.Infra.error(f"writing {init_path}: {write_result.error}")
+                    u.Cli.error(f"writing {init_path}: {write_result.error}")
                     return (-1, dict(lazy_map))
                 self._modified_files.add(str(init_path))
                 u.Infra.run_ruff_fix(init_path, quiet=True)
         except (OSError, ValueError) as exc:
-            u.Infra.error(f"generating {init_path}: {exc}")
+            u.Cli.error(f"generating {init_path}: {exc}")
             return (-1, dict(lazy_map))
         rel_path = (
             init_path.relative_to(self.workspace_root)
             if self.workspace_root in init_path.parents
             else init_path
         )
-        u.Infra.info(f"  OK: {rel_path} — {len(exports)} exports")
+        u.Cli.info(f"  OK: {rel_path} — {len(exports)} exports")
         return (0, dict(lazy_map))
 
 

@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
+from collections.abc import (
+    Sequence,
+)
 from operator import itemgetter
 from pathlib import Path
 from typing import ClassVar

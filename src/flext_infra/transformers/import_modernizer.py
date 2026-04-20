@@ -7,7 +7,9 @@ and adds missing runtime alias imports to the module header.
 from __future__ import annotations
 
 import re
-from collections.abc import MutableSequence
+from collections.abc import (
+    MutableSequence,
+)
 from typing import override
 
 from flext_infra import (

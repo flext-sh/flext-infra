@@ -5,7 +5,11 @@ from __future__ import annotations
 import shutil
 import sys
 from collections import defaultdict
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import (
+    Mapping,
+    MutableSequence,
+    Sequence,
+)
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import override
@@ -30,12 +34,12 @@ class FlextInfraConstantsCodegenQualityGate(s[bool]):
     def execute(self) -> p.Result[bool]:
         """Execute the quality gate and return its CLI success/failure status."""
         report = self.build_report()
-        verdict = u.Infra.pick_str(report, "verdict", "FAIL")
+        verdict = u.Cli.json_pick_str(report, "verdict", "FAIL")
         if self.successful_verdict(verdict):
             return r[bool].ok(True)
         return r[bool].fail(f"quality gate verdict: {verdict}")
 
-    def build_report(self) -> t.Infra.InfraMapping:
+    def build_report(self) -> t.Infra.ContainerDict:
         """Execute quality gate and return structured report payload."""
         FlextInfraCodegenLazyInit.model_validate(
             {"workspace_root": self.workspace_root},
@@ -71,27 +75,29 @@ class FlextInfraConstantsCodegenQualityGate(s[bool]):
             ruff_check=ruff_check,
         )
         verdict = self.compute_verdict(checks)
-        checks_infra: Sequence[t.Infra.InfraValue] = tuple(checks)
-        projects_infra: Sequence[t.Infra.InfraValue] = tuple(
-            self.project_findings(census_reports),
-        )
-        report: MutableMapping[str, t.Infra.InfraValue] = {
+        report_data = {
             "workspace": str(self.workspace_root),
             "generated_at": datetime.now(UTC).isoformat(),
             "verdict": verdict,
-            "checks": checks_infra,
+            "checks": [
+                t.Infra.INFRA_MAPPING_ADAPTER.validate_python(check) for check in checks
+            ],
             "after": after_metrics,
-            "duplicate_constant_groups": tuple(
+            "duplicate_constant_groups": [
                 group.model_dump() for group in duplicate_groups
-            ),
-            "projects": projects_infra,
+            ],
+            "projects": [
+                t.Infra.INFRA_MAPPING_ADAPTER.validate_python(project)
+                for project in self.project_findings(census_reports)
+            ],
         }
-        report["artifacts"] = self.write_artifacts(
+        report = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(report_data)
+        report_data["artifacts"] = self.write_artifacts(
             workspace_root=self.workspace_root,
             report=report,
             render_text=self.render_text(report),
         )
-        return report
+        return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(report_data)
 
     @staticmethod
     def modified_python_files(workspace_root: Path) -> t.StrSequence:
@@ -216,13 +222,13 @@ class FlextInfraConstantsCodegenQualityGate(s[bool]):
         ruff_check: Mapping[str, t.Infra.InfraValue],
     ) -> Sequence[Mapping[str, t.Infra.InfraValue]]:
         """Build quality gate check entries from metrics and tool results."""
-        violations_total = u.Infra.nested_int(after_metrics, "total_violations")
-        mro_failures = u.Infra.nested_int(after_metrics, "mro_failures")
-        cross_reference = u.Infra.nested_int(
+        violations_total = u.Cli.json_nested_int(after_metrics, "total_violations")
+        mro_failures = u.Cli.json_nested_int(after_metrics, "mro_failures")
+        cross_reference = u.Cli.json_nested_int(
             after_metrics, "cross_project_reference_violations"
         )
-        layer_violations = u.Infra.nested_int(after_metrics, "layer_violations")
-        duplicate_groups = u.Infra.nested_int(after_metrics, "duplicate_groups")
+        layer_violations = u.Cli.json_nested_int(after_metrics, "layer_violations")
+        duplicate_groups = u.Cli.json_nested_int(after_metrics, "duplicate_groups")
         checks: Sequence[m.Infra.QualityGateCheck] = (
             m.Infra.QualityGateCheck(
                 name=c.Infra.QG_CHECK_NAMESPACE_COMPLIANCE,
@@ -384,9 +390,9 @@ class FlextInfraConstantsCodegenQualityGate(s[bool]):
     @staticmethod
     def write_artifacts(
         workspace_root: Path,
-        report: Mapping[str, t.Infra.InfraValue],
+        report: t.Infra.ContainerDict,
         render_text: str,
-    ) -> Mapping[str, t.Infra.InfraValue]:
+    ) -> t.Infra.ContainerDict:
         """Persist quality gate artifacts to the report directory."""
         report_dir = workspace_root / c.Infra.QG_REPORT_DIR
         report_dir.mkdir(parents=True, exist_ok=True)
@@ -402,11 +408,13 @@ class FlextInfraConstantsCodegenQualityGate(s[bool]):
         return {"report_json": str(report_json), "report_text": str(report_txt)}
 
     @classmethod
-    def render_text(cls, report: Mapping[str, t.Infra.InfraValue]) -> str:
+    def render_text(cls, report: t.Infra.ContainerDict) -> str:
         """Render compact human-readable summary."""
-        checks = u.Infra.deep_list(report, "checks")
-        after = u.Infra.deep_mapping(report, "after")
-        duplicate_groups = u.Infra.deep_list(report, "duplicate_constant_groups")
+        checks = u.Cli.json_deep_mapping_list(report, "checks")
+        after = u.Cli.json_deep_mapping(report, "after")
+        duplicate_groups = u.Cli.json_deep_mapping_list(
+            report, "duplicate_constant_groups"
+        )
         lines: MutableSequence[str] = [
             f"Workspace: {report.get('workspace', '')}",
             f"Verdict: {report.get('verdict', 'FAIL')}",
@@ -414,9 +422,11 @@ class FlextInfraConstantsCodegenQualityGate(s[bool]):
             "Checks:",
         ]
         for check in checks:
-            status = "PASS" if u.Infra.pick_bool(check, "passed") else "FAIL"
-            lines.append(f"- [{status}] {u.Infra.pick_str(check, 'name', 'unknown')}")
-            detail = u.Infra.pick_str(check, "detail")
+            status = "PASS" if u.Cli.json_pick_bool(check, "passed") else "FAIL"
+            lines.append(
+                f"- [{status}] {u.Cli.json_pick_str(check, 'name', 'unknown')}"
+            )
+            detail = u.Cli.json_pick_str(check, "detail")
             if detail:
                 lines.append(f"  {detail}")
         lines.extend([

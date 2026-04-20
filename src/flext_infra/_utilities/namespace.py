@@ -2,23 +2,26 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping, MutableSequence, Sequence
+from collections.abc import (
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
 from pathlib import Path
 from typing import ClassVar, Final
 
 from flext_cli import u
-from flext_infra import (
-    FlextInfraUtilitiesBase,
-    FlextInfraUtilitiesDiscovery,
-    FlextInfraUtilitiesDocsScope,
-    FlextInfraUtilitiesParsing,
-    FlextInfraUtilitiesRope,
-    c,
-    m,
-    p,
-    r,
-    t,
-)
+from flext_core import r
+
+from flext_infra._utilities.base import FlextInfraUtilitiesBase
+from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
+from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
+from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
+from flext_infra._utilities.rope import FlextInfraUtilitiesRope
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesCodegenNamespace:

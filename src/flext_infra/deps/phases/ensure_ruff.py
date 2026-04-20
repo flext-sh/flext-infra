@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping, Sequence
+from collections.abc import (
+    MutableMapping,
+    Sequence,
+)
 from pathlib import Path
 
-from flext_infra import FlextInfraToml, c, m, t, u
+from flext_infra import FlextInfraPhaseEngine, c, m, t, u
 
 
 class FlextInfraEnsureRuffConfigPhase:
@@ -160,7 +163,7 @@ class FlextInfraEnsureRuffConfigPhase:
             if per_file_ignores is not None
             else []
         )
-        return FlextInfraToml.apply_phases(
+        return FlextInfraPhaseEngine.apply_phases(
             doc,
             self._phase(
                 path=path,
@@ -191,7 +194,7 @@ class FlextInfraEnsureRuffConfigPhase:
             else []
         )
         changes = list(
-            FlextInfraToml.apply_payload_phases(
+            FlextInfraPhaseEngine.apply_payload_phases(
                 payload,
                 self._phase(
                     path=path,

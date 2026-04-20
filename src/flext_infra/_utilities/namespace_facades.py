@@ -4,15 +4,18 @@ from __future__ import annotations
 
 import re
 from collections import defaultdict
-from collections.abc import MutableMapping, Sequence
+from collections.abc import (
+    MutableMapping,
+    Sequence,
+)
 from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import u
+
 from flext_infra import (
     FlextInfraUtilitiesCodegenNamespace,
-    FlextInfraUtilitiesFormatting,
-    FlextInfraUtilitiesTomlParse,
+    FlextInfraUtilitiesIteration,
     c,
     m,
     t,
@@ -23,6 +26,12 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
     """Facade generation and dependency-chain helpers."""
 
     _base_chains_cache: ClassVar[MutableMapping[Path, t.StrSequenceMapping]] = {}
+
+    @staticmethod
+    def _class_name_to_module(class_name: str) -> str:
+        """Convert CamelCase class names to snake_case module names."""
+        head = re.sub(r"(.)([A-Z][a-z]+)", r"\1_\2", class_name)
+        return re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", head).lower()
 
     @staticmethod
     def build_expected_base_chains(
@@ -55,10 +64,12 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
             raw = pyproject_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
         except OSError:
             return {}
-        doc = u.Cli.toml_parse_text(raw)
-        if doc is None:
+        payload = u.Cli.toml_mapping_from_text(raw)
+        if payload is None:
             return {}
-        dep_names = FlextInfraUtilitiesTomlParse.local_dependency_names(doc)
+        dep_names = FlextInfraUtilitiesIteration.local_dependency_names_from_payload({
+            str(key): value for key, value in payload.items()
+        })
         chains: t.MutableStrSequenceMapping = defaultdict(list)
         for dep_name in dep_names:
             if dep_name == c.Infra.PKG_CORE or not dep_name.startswith(
@@ -80,7 +91,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
             chain = base_chains.get(family, [])
             if chain:
                 return "\n".join(
-                    f"from {FlextInfraUtilitiesFormatting.class_name_to_module(base)} import {base}"
+                    f"from {FlextInfraUtilitiesRefactorNamespaceFacades._class_name_to_module(base)} import {base}"
                     for base in chain
                 )
         suffix = c.Infra.FAMILY_SUFFIXES.get(family, "Utilities")

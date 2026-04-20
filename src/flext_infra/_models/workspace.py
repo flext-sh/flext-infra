@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
+from types import MappingProxyType
 from typing import Annotated, ClassVar
 
 from flext_core import m
+
 from flext_infra import FlextInfraModelsMixins, c, t
 
 
@@ -69,11 +71,11 @@ class FlextInfraModelsWorkspace:
         payload: Annotated[
             t.Infra.ContainerDict,
             m.Field(description="Parsed pyproject payload"),
-        ] = m.Field(default_factory=dict)
+        ] = m.Field(default_factory=lambda: MappingProxyType({}))
         docs_meta: Annotated[
             t.Infra.ContainerDict,
             m.Field(description="Parsed tool.flext.docs payload"),
-        ] = m.Field(default_factory=dict)
+        ] = m.Field(default_factory=lambda: MappingProxyType({}))
         project_name: Annotated[str, m.Field(description="Declared project name")] = ""
         package_name: Annotated[str, m.Field(description="Primary package name")] = ""
         dependency_names: Annotated[

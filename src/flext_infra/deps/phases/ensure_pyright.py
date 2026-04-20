@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import (
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import FlextInfraToml, c, m, t, u
+from flext_infra import FlextInfraPhaseEngine, c, m, t, u
 
 if TYPE_CHECKING:
     from flext_infra import FlextInfraExtraPathsManager
@@ -411,7 +416,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         paths_manager: FlextInfraExtraPathsManager | None = None,
     ) -> t.StrSequence:
         """Apply the managed pyright configuration for one TOML document."""
-        return FlextInfraToml.apply_phases(
+        return FlextInfraPhaseEngine.apply_phases(
             doc,
             self._phase(
                 is_root=is_root,
@@ -433,7 +438,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         paths_manager: FlextInfraExtraPathsManager | None = None,
     ) -> t.StrSequence:
         """Apply managed pyright settings directly to one normalized payload."""
-        return FlextInfraToml.apply_payload_phases(
+        return FlextInfraPhaseEngine.apply_payload_phases(
             payload,
             self._phase(
                 is_root=is_root,

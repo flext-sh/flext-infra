@@ -13,9 +13,11 @@ from pathlib import Path
 from typing import override
 
 from flext_cli import u
+
 from flext_infra import (
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesCodegen,
+    FlextInfraUtilitiesCompatibility,
     FlextInfraUtilitiesDependencyPathSync,
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesDocs,
@@ -28,22 +30,16 @@ from flext_infra import (
     FlextInfraUtilitiesDocsRender,
     FlextInfraUtilitiesDocsScope,
     FlextInfraUtilitiesDocsValidate,
-    FlextInfraUtilitiesFormatting,
     FlextInfraUtilitiesGithub,
     FlextInfraUtilitiesImportNormalizer,
     FlextInfraUtilitiesLogParser,
-    FlextInfraUtilitiesOutputReporting,
     FlextInfraUtilitiesParsing,
-    FlextInfraUtilitiesPaths,
     FlextInfraUtilitiesPatterns,
     FlextInfraUtilitiesProtectedEdit,
     FlextInfraUtilitiesRefactor,
     FlextInfraUtilitiesRelease,
-    FlextInfraUtilitiesReporting,
     FlextInfraUtilitiesRope,
     FlextInfraUtilitiesSafety,
-    FlextInfraUtilitiesToml,
-    FlextInfraUtilitiesTomlParse,
     FlextInfraUtilitiesVersioning,
 )
 
@@ -62,9 +58,8 @@ class FlextInfraUtilities(u):
     """
 
     class Infra(
-        FlextInfraUtilitiesReporting,
-        FlextInfraUtilitiesOutputReporting,
         FlextInfraUtilitiesCodegen,
+        FlextInfraUtilitiesCompatibility,
         FlextInfraUtilitiesBase,
         FlextInfraUtilitiesGithub,
         FlextInfraUtilitiesImportNormalizer,
@@ -78,20 +73,16 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesDocsRender,
         FlextInfraUtilitiesDocsScope,
         FlextInfraUtilitiesDocsValidate,
-        FlextInfraUtilitiesFormatting,
         FlextInfraUtilitiesLogParser,
         FlextInfraUtilitiesDependencyPathSync,
         FlextInfraUtilitiesDiscovery,
         FlextInfraUtilitiesParsing,
-        FlextInfraUtilitiesPaths,
         FlextInfraUtilitiesPatterns,
         FlextInfraUtilitiesProtectedEdit,
         FlextInfraUtilitiesRefactor,
         FlextInfraUtilitiesRelease,
         FlextInfraUtilitiesRope,
         FlextInfraUtilitiesSafety,
-        FlextInfraUtilitiesToml,
-        FlextInfraUtilitiesTomlParse,
         FlextInfraUtilitiesVersioning,
     ):
         """Infrastructure-domain utilities - all methods exposed directly."""

@@ -3,10 +3,16 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Callable, Mapping, MutableMapping, Sequence
+from collections.abc import (
+    Callable,
+    Mapping,
+    MutableMapping,
+    Sequence,
+)
 from pathlib import Path
 
 from flext_cli import m
+
 from flext_infra import FlextInfraModelsDeps, c, p, r, t, u
 
 
@@ -64,11 +70,14 @@ class FlextInfraDependencyDetectorRuntime:
             dependency_limits=None,
         )
         deps_service = detector.deps
-        typing_deps: p.Infra.TypingsDepsService | None = None
+        typing_deps = (
+            deps_service
+            if isinstance(deps_service, p.Infra.TypingsDepsService)
+            else None
+        )
         if do_typings:
-            if not isinstance(deps_service, p.Infra.TypingsDepsService):
+            if typing_deps is None:
                 return r[bool].fail("typing dependency detection service unavailable")
-            typing_deps = deps_service  # narrowed by isinstance above
             limits_data = typing_deps.load_dependency_limits(limits_path)
             if limits_data:
                 python_cfg: t.Infra.ContainerDict = (
@@ -96,15 +105,11 @@ class FlextInfraDependencyDetectorRuntime:
                 return r[bool].fail(deptry_result.error or "deptry run failed")
             issues, _ = deptry_result.value
             project_payload = deps_service.build_project_report(project_name, issues)
-            dumped: MutableMapping[str, t.Infra.InfraValue] = dict(
-                project_payload.model_dump(),
-            )
-            projects_report[project_name] = dumped
-            if do_typings and (project_path / c.Infra.DEFAULT_SRC_DIR).is_dir():
-                if typing_deps is None:
-                    return r[bool].fail(
-                        "typing dependency detection service unavailable",
-                    )
+            projects_report[project_name] = dict(project_payload.model_dump())
+            if (
+                typing_deps is not None
+                and (project_path / c.Infra.DEFAULT_SRC_DIR).is_dir()
+            ):
                 if not params.quiet:
                     detector.log.info(
                         "deps_typings_detect_running",
@@ -177,17 +182,12 @@ class FlextInfraDependencyDetectorRuntime:
         if params.output_path is not None:
             out_path = params.output_path
         elif params.apply:
-            report_dir = detector.reporting.get_report_dir(
+            out_path = u.Cli.get_report_path(
                 root,
                 c.Infra.PROJECT,
                 c.Infra.DEPENDENCIES,
+                "detect-runtime-dev-latest.json",
             )
-            dir_result = u.Cli.ensure_dir(report_dir)
-            if dir_result.failure:
-                return r[bool].fail(
-                    dir_result.error or "failed to create report directory",
-                )
-            out_path = report_dir / "detect-runtime-dev-latest.json"
         if out_path is not None and not params.dry_run:
             report_payload: dict[str, t.Cli.JsonValue] = {
                 key: u.Cli.normalize_json_value(value)
@@ -200,18 +200,8 @@ class FlextInfraDependencyDetectorRuntime:
                 detector.log.info("deps_report_written", path=str(out_path))
         total_issues = 0
         for payload in projects_report.values():
-            deptry_obj = payload.get(c.Infra.DEPTRY)
-            if isinstance(deptry_obj, Mapping):
-                deptry_payload = u.Infra.validate(
-                    t.Infra.INFRA_MAPPING_ADAPTER,
-                    deptry_obj,
-                    default={},
-                )
-                if not deptry_payload:
-                    continue
-                raw_count_obj: t.Infra.InfraValue = deptry_payload.get("raw_count", 0)
-                if isinstance(raw_count_obj, int):
-                    total_issues += raw_count_obj
+            deptry_payload = u.Cli.json_as_mapping(payload.get(c.Infra.DEPTRY))
+            total_issues += u.Cli.json_pick_int(deptry_payload, "raw_count")
         if not params.quiet:
             detector.log.info(
                 "deps_summary",

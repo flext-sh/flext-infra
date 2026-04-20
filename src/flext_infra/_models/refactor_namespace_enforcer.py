@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import (
+    Sequence,
+)
 from typing import Annotated, ClassVar, Self
 
 from flext_core import m
+
 from flext_infra import FlextInfraModelsMixins, t
 
 

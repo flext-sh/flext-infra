@@ -7,7 +7,10 @@ and delegates to a specific rope-based transformer.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import (
+    Mapping,
+    Sequence,
+)
 from pathlib import Path
 from typing import override
 
@@ -107,7 +110,7 @@ class FlextInfraRefactorTypingAnnotationFixRule(FlextInfraRefactorRule):
         source: str,
         _file_path: Path | None = None,
     ) -> t.Infra.TransformResult:
-        fix_action = u.Infra.get_str_key(
+        fix_action = u.Cli.json_get_str_key(
             self.settings,
             c.Infra.RK_FIX_ACTION,
             case="lower",
@@ -198,8 +201,8 @@ class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
 
     def _alias_to_submodule(self) -> t.StrMapping:
         value = self.settings.get("alias_to_submodule", {})
-        mapping_value = u.Cli.toml_as_mapping(value)
-        if mapping_value is None:
+        mapping_value = u.Cli.json_as_mapping(value)
+        if not mapping_value:
             return dict[str, str]()
         return {str(key): str(item) for key, item in mapping_value.items()}
 

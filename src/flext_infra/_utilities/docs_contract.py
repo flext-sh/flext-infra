@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import (
+    Mapping,
+)
 from pathlib import Path
 
-from flext_cli import u
 from flext_infra import (
     FlextInfraUtilitiesDocsApi,
     FlextInfraUtilitiesDocsScope,
@@ -37,10 +39,18 @@ class FlextInfraUtilitiesDocsContract:
             "exclude_docs",
         )
         project_meta_value = payload.get(c.Infra.PROJECT)
-        project_meta = u.Cli.toml_as_mapping(project_meta_value) or {}
+        project_meta: t.Infra.ContainerDict = (
+            {str(key): value for key, value in project_meta_value.items()}
+            if isinstance(project_meta_value, Mapping)
+            else t.Infra.INFRA_MAPPING_ADAPTER.validate_python({})
+        )
         project_urls_value = project_meta.get("urls")
-        project_urls = u.Cli.toml_as_mapping(project_urls_value) or {}
-        return {
+        project_urls: t.Infra.ContainerDict = (
+            {str(key): value for key, value in project_urls_value.items()}
+            if isinstance(project_urls_value, Mapping)
+            else t.Infra.INFRA_MAPPING_ADAPTER.validate_python({})
+        )
+        return t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
             "name": str(project_meta.get("name", "flext")).strip() or "flext",
             "description": str(project_meta.get("description", "")).strip(),
             "version": str(project_meta.get(c.Infra.VERSION, "")).strip(),
@@ -57,7 +67,7 @@ class FlextInfraUtilitiesDocsContract:
                 or c.Infra.GITHUB_REPO_URL
             ).strip(),
             "exclude_docs": exclude_docs,
-        }
+        })
 
     @staticmethod
     def docs_write_if_needed(

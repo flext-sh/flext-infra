@@ -10,15 +10,19 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import fnmatch
-from collections.abc import Iterator, MutableSequence, Sequence
+from collections.abc import (
+    Iterator,
+    MutableSequence,
+    Sequence,
+)
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import (
     FlextInfraUtilitiesIteration,
-    FlextInfraUtilitiesRefactorCli,
     c,
     t,
+    u,
 )
 
 if TYPE_CHECKING:
@@ -76,9 +80,7 @@ class FlextInfraUtilitiesRefactorEngine:
             src_dirs=scan_dirs or None,
         )
         if ir.failure:
-            FlextInfraUtilitiesRefactorCli.refactor_error(
-                ir.error or f"File iteration failed for {project}",
-            )
+            u.Cli.error(ir.error or f"File iteration failed for {project}")
             return None
         ign, ext = loader.extract_engine_file_filters(settings)
         return list(
@@ -121,9 +123,7 @@ class FlextInfraUtilitiesRefactorEngine:
                 src_dirs=scan_dirs or None,
             )
             if ir.failure:
-                FlextInfraUtilitiesRefactorCli.refactor_error(
-                    ir.error or f"File iteration failed for {proj}",
-                )
+                u.Cli.error(ir.error or f"File iteration failed for {proj}")
                 continue
             all_files.extend(
                 FlextInfraUtilitiesRefactorEngine.filter_engine_files(

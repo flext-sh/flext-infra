@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSequence
+from collections.abc import (
+    Mapping,
+    MutableSequence,
+)
 from pathlib import Path
 
 from flext_cli import u
+
 from flext_infra import (
     FlextInfraUtilitiesDocs,
     FlextInfraUtilitiesDocsApi,
@@ -31,8 +35,8 @@ class FlextInfraUtilitiesDocsValidate:
 
     @staticmethod
     def docs_extract_required_skills(
-        payload: t.ValueOrModel,
-    ) -> t.RecursiveContainerList | None:
+        payload: t.ValueOrModel | Mapping[str, t.Infra.InfraValue],
+    ) -> t.SequenceOf[t.Container] | None:
         """Extract the configured required skills list from architecture settings."""
         if not isinstance(payload, Mapping):
             return None

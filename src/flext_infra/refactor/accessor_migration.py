@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import difflib
 import io
-from collections.abc import MutableSequence, Sequence
+from collections.abc import (
+    MutableSequence,
+    Sequence,
+)
 from operator import itemgetter
 from pathlib import Path
 from tokenize import NAME, generate_tokens

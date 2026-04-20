@@ -5,13 +5,17 @@ Handlers are called by the canonical CLI via FlextInfraCliDeps.register_deps.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import (
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
 from pathlib import Path
+from typing import override
 
 from flext_infra import (
     FlextInfraUtilitiesIteration,
-    FlextInfraUtilitiesPaths,
-    FlextInfraUtilitiesTomlParse,
     c,
     m,
     p,
@@ -19,24 +23,37 @@ from flext_infra import (
     t,
     u,
 )
+from flext_infra.deps.service_base import FlextInfraDepsProjectServiceBase
 
 
-class FlextInfraExtraPathsManager:
+class FlextInfraExtraPathsManager(FlextInfraDepsProjectServiceBase):
     """Manager for synchronizing type-checker search paths from dependencies."""
 
-    ROOT = FlextInfraUtilitiesPaths.resolve_workspace_root(__file__)
+    _tool_config: m.Infra.ToolConfigDocument = u.PrivateAttr()
+    _workspace_project_names: t.Infra.StrSet = u.PrivateAttr(default_factory=set)
 
-    def __init__(self, workspace_root: Path | None = None) -> None:
-        """Initialize the extra paths manager with workspace metadata."""
-        self.root = workspace_root or self.ROOT
+    @override
+    def model_post_init(self, __context: object, /) -> None:
+        """Initialize tool configuration and workspace metadata after validation."""
         tool_config_result = u.Infra.load_tool_config()
         if tool_config_result.failure:
             msg = tool_config_result.error or "failed to load deps tool settings"
             raise ValueError(msg)
-        self._tool_config: m.Infra.ToolConfigDocument = tool_config_result.value
+        self._tool_config = tool_config_result.value
         self._workspace_project_names = set(
-            FlextInfraUtilitiesIteration.workspace_member_names(self.root)
+            FlextInfraUtilitiesIteration.workspace_member_names(self.workspace_root)
         )
+
+    @override
+    def execute(self) -> p.Result[bool]:
+        """Synchronize extra paths for the configured project slice."""
+        result = self.sync_extra_paths(
+            dry_run=self.effective_dry_run,
+            project_dirs=self.project_dirs,
+        )
+        if result.failure:
+            return r[bool].fail(result.error or "extra-path synchronization failed")
+        return r[bool].ok(True)
 
     def _resolve_transitive_deps(
         self,
@@ -58,7 +75,7 @@ class FlextInfraExtraPathsManager:
                 dep_pyproject,
             )
             transitive = (
-                FlextInfraUtilitiesTomlParse.local_dependency_names_from_payload(
+                FlextInfraUtilitiesIteration.local_dependency_names_from_payload(
                     dep_payload,
                     workspace_project_names=tuple(self._workspace_project_names),
                 )
@@ -90,7 +107,7 @@ class FlextInfraExtraPathsManager:
         )
         resolved: MutableSequence[str] = []
         for name in self._resolve_transitive_deps(
-            FlextInfraUtilitiesTomlParse.local_dependency_names_from_payload(
+            FlextInfraUtilitiesIteration.local_dependency_names_from_payload(
                 payload,
                 workspace_project_names=tuple(self._workspace_project_names),
             )
@@ -149,15 +166,17 @@ class FlextInfraExtraPathsManager:
             return list[str]()
         mypy_table = u.Cli.toml_table_child(tool_table, c.Infra.MYPY)
         changes: MutableSequence[str] = []
+        pyright_extra_paths = u.Cli.toml_item_child(pyright_table, "extraPaths")
         current_pyright = u.Cli.toml_as_string_list(
-            u.Cli.toml_item_child(pyright_table, "extraPaths")
+            pyright_extra_paths if pyright_extra_paths is not None else []
         )
         if current_pyright != expected:
             pyright_table["extraPaths"] = expected
             changes.append("synchronized pyright extraPaths")
         if mypy_table is not None:
+            mypy_path_item = u.Cli.toml_item_child(mypy_table, "mypy_path")
             current_mypy = u.Cli.toml_as_string_list(
-                u.Cli.toml_item_child(mypy_table, "mypy_path")
+                mypy_path_item if mypy_path_item is not None else []
             )
             if current_mypy != expected:
                 mypy_table["mypy_path"] = expected
@@ -323,7 +342,7 @@ class FlextInfraExtraPathsManager:
                         sync_result.error or f"sync failed for {pyproject}",
                     )
                 if sync_result.value and (not dry_run):
-                    u.Infra.info(f"Updated {pyproject}")
+                    u.Cli.info(f"Updated {pyproject}")
             return r[int].ok(0)
         pyproject = self.root / c.Infra.PYPROJECT_FILENAME
         if not pyproject.exists():
@@ -332,12 +351,8 @@ class FlextInfraExtraPathsManager:
         if sync_result.failure:
             return r[int].fail(sync_result.error or f"sync failed for {pyproject}")
         if sync_result.value and (not dry_run):
-            u.Infra.info("Updated extraPaths and mypy_path from path dependencies.")
+            u.Cli.info("Updated extraPaths and mypy_path from path dependencies.")
         return r[int].ok(0)
-
-
-if __name__ == "__main__":
-    raise SystemExit(0)
 
 
 __all__: list[str] = ["FlextInfraExtraPathsManager"]

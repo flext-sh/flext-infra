@@ -3,7 +3,12 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import (
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
@@ -15,10 +20,8 @@ class FlextInfraDependencyDetectionAnalysis:
     Expects the concrete subclass to provide:
     - ``_read_plain(path) -> p.Result[ContainerDict]``
     - ``_run_raw(cmd, *, cwd, timeout, env) -> p.Result[CommandOutput]``
-    - ``DEFAULT_MODULE_TO_TYPES_PACKAGE: StrMapping``
+    - ``t.StrMapping: StrMapping``
     """
-
-    DEFAULT_MODULE_TO_TYPES_PACKAGE: t.StrMapping
 
     def _read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:
         _ = path
@@ -44,7 +47,7 @@ class FlextInfraDependencyDetectionAnalysis:
         normalized: MutableMapping[str, t.Infra.InfraValue] = {}
         for key, value in payload.items():
             converted = FlextInfraDependencyDetectionAnalysis.to_infra_value(value)
-            if converted is None and value is not None:
+            if converted is None:
                 continue
             normalized[str(key)] = converted
         return normalized
@@ -52,27 +55,29 @@ class FlextInfraDependencyDetectionAnalysis:
     @staticmethod
     def to_infra_value(
         value: t.Infra.InfraValue | None,
-    ) -> t.Infra.InfraValue:
+    ) -> t.Infra.InfraValue | None:
         """Convert container value to namespaced infra value."""
-        if value is None or isinstance(value, (str, int, float, bool)):
+        if value is None:
+            return None
+        if isinstance(value, (str, int, float, bool)):
             return value
-        scalar_types = (str, int, float, bool, type(None))
+        scalar_types = (str, int, float, bool)
         if isinstance(value, list):
             try:
                 sequence = t.Cli.JSON_LIST_ADAPTER.validate_python(value)
             except c.ValidationError:
                 return None
-            converted: MutableSequence[t.Infra.InfraValue] = []
+            converted: MutableSequence[t.Container] = []
             for item in sequence:
                 converted_item = FlextInfraDependencyDetectionAnalysis.to_infra_value(
                     item,
                 )
-                if (converted_item is None and item is not None) or not isinstance(
+                if converted_item is None or not isinstance(
                     converted_item, scalar_types
                 ):
                     return None
                 converted.append(converted_item)
-            return converted
+            return list(t.Cli.JSON_LIST_ADAPTER.validate_python(converted))
         try:
             mapping_value = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)
         except c.ValidationError:
@@ -82,23 +87,18 @@ class FlextInfraDependencyDetectionAnalysis:
             converted_item = FlextInfraDependencyDetectionAnalysis.to_infra_value(
                 map_item,
             )
-            if (converted_item is None and map_item is not None) or not isinstance(
-                converted_item, scalar_types
-            ):
+            if converted_item is None or not isinstance(converted_item, scalar_types):
                 return None
             converted_map[str(key)] = converted_item
-        return converted_map
+        return dict(t.Cli.JSON_MAPPING_ADAPTER.validate_python(converted_map))
 
     @staticmethod
     def _mapping_from_value(
         value: t.Infra.InfraValue | None,
     ) -> t.Infra.ContainerDict:
-        if value is None:
+        if not isinstance(value, Mapping):
             return {}
-        mapped_value = u.Cli.toml_as_mapping(value)
-        if mapped_value is None:
-            return {}
-        return FlextInfraDependencyDetectionAnalysis._to_toml_config(mapped_value)
+        return FlextInfraDependencyDetectionAnalysis._to_toml_config(value)
 
     def get_current_typings_from_pyproject(self, project_path: Path) -> t.StrSequence:
         """Extract currently declared typing packages from project pyproject.toml."""
@@ -131,10 +131,8 @@ class FlextInfraDependencyDetectionAnalysis:
                     .split("==", maxsplit=1)[0]
                     .strip(),
                 )
-        else:
-            typings_mapping = u.Cli.toml_as_mapping(typings)
-            if typings_mapping is not None:
-                names.update(str(key) for key in typings_mapping)
+        elif isinstance(typings, Mapping):
+            names.update(str(key) for key in typings)
         return sorted(names)
 
     def get_required_typings(
@@ -211,11 +209,10 @@ class FlextInfraDependencyDetectionAnalysis:
         typing_libraries = limits.get(c.Infra.TYPING_LIBRARIES)
         if isinstance(typing_libraries, Mapping):
             module_to_package = typing_libraries.get(c.Infra.MODULE_TO_PACKAGE)
-            mapped_packages = u.Cli.toml_as_mapping(module_to_package)
-            if mapped_packages is not None and root in mapped_packages:
-                value = mapped_packages.get(root)
+            if isinstance(module_to_package, Mapping) and root in module_to_package:
+                value = module_to_package.get(root)
                 return str(value) if value is not None else None
-        return self.DEFAULT_MODULE_TO_TYPES_PACKAGE.get(root.lower())
+        return f"types-{root.lower()}"
 
     def run_deptry(
         self,

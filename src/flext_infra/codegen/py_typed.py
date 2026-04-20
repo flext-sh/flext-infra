@@ -11,7 +11,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import (
+    Sequence,
+)
 from pathlib import Path
 from typing import override
 
@@ -65,7 +67,7 @@ class FlextInfraCodegenPyTyped(s[bool]):
                         marker.unlink()
                     removed += 1
         mode = "check" if check_only else "apply"
-        u.Infra.info(
+        u.Cli.info(
             f"py.typed {mode}: {created} created, {removed} removed",
         )
         return created + removed

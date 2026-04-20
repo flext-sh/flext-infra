@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, MutableSequence, Sequence
+from collections.abc import (
+    Callable,
+    Mapping,
+    MutableSequence,
+    Sequence,
+)
 from typing import override
 
 from flext_infra import (

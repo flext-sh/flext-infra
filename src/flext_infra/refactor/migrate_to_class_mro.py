@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping, MutableSequence, Sequence
+from collections.abc import (
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
 from pathlib import Path
 from time import perf_counter
 
 from flext_core import FlextUtilities
+
 from flext_infra import (
     FlextInfraConstantsRefactor,
     FlextInfraModelsRefactor,

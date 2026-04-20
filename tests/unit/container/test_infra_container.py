@@ -12,8 +12,8 @@ from __future__ import annotations
 from io import StringIO
 
 import pytest
-
 from flext_core import FlextContainer
+
 from tests import c, u
 
 

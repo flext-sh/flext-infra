@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import tomllib
-from collections.abc import Sequence
+from collections.abc import (
+    Sequence,
+)
 from pathlib import Path
 
 from flext_tests import tm

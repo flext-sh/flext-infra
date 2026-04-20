@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import (
+    Mapping,
+)
 
 from flext_infra import c, t, u
 
@@ -16,7 +18,9 @@ class FlextInfraRefactorRuleDefinitionValidator:
     ) -> str | None:
         """Return validation error text or None when rule definition is valid."""
         rule_id = str(rule_def.get(c.Infra.RK_ID, c.Infra.DEFAULT_UNKNOWN))
-        fix_action = u.Infra.get_str_key(rule_def, c.Infra.RK_FIX_ACTION, case="lower")
+        fix_action = u.Cli.json_get_str_key(
+            rule_def, c.Infra.RK_FIX_ACTION, case="lower"
+        )
         if not fix_action:
             return None
         if fix_action in c.Infra.PROPAGATION_FIX_ACTIONS:

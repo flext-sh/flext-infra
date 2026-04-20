@@ -23,6 +23,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".internal_sync": ("FlextInfraInternalDependencySyncService",),
             ".modernizer": ("FlextInfraPyprojectModernizer",),
             ".path_sync": ("path_sync",),
+            ".phase_engine": ("FlextInfraPhaseEngine",),
             ".phases.consolidate_groups": ("FlextInfraConsolidateGroupsPhase",),
             ".phases.ensure_coverage": ("FlextInfraEnsureCoverageConfigPhase",),
             ".phases.ensure_formatting": ("FlextInfraEnsureFormattingToolingPhase",),
@@ -36,6 +37,10 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".phases.ensure_pytest": ("FlextInfraEnsurePytestConfigPhase",),
             ".phases.ensure_ruff": ("FlextInfraEnsureRuffConfigPhase",),
             ".phases.inject_comments": ("FlextInfraInjectCommentsPhase",),
+            ".service_base": (
+                "FlextInfraDepsProjectServiceBase",
+                "FlextInfraDepsServiceBase",
+            ),
         },
     ),
     exclude_names=(

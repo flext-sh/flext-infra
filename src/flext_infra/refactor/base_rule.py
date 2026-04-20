@@ -8,7 +8,9 @@ This module has no dependencies on any rules/ submodule.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import (
+    Mapping,
+)
 from pathlib import Path
 from typing import override
 

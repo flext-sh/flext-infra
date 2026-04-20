@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import os
 import sys
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import (
+    Mapping,
+    MutableSequence,
+    Sequence,
+)
 from pathlib import Path
 from typing import ClassVar, override
 
@@ -92,15 +96,15 @@ class FlextInfraMypyGate(FlextInfraGate):
             except c.ValidationError:
                 continue
             try:
-                severity = u.Infra.pick_str(line_data, "severity", c.Infra.ERROR)
+                severity = u.Cli.json_pick_str(line_data, "severity", c.Infra.ERROR)
                 if severity in c.Infra.VALID_GATE_SEVERITIES:
                     issues.append(
                         m.Infra.Issue(
-                            file=u.Infra.pick_str(line_data, "file", "?"),
-                            line=u.Infra.pick_int(line_data, "line"),
-                            column=u.Infra.pick_int(line_data, "column"),
-                            code=u.Infra.pick_str(line_data, "code"),
-                            message=u.Infra.pick_str(line_data, "message"),
+                            file=u.Cli.json_pick_str(line_data, "file", "?"),
+                            line=u.Cli.json_pick_int(line_data, "line"),
+                            column=u.Cli.json_pick_int(line_data, "column"),
+                            code=u.Cli.json_pick_str(line_data, "code"),
+                            message=u.Cli.json_pick_str(line_data, "message"),
                             severity=severity,
                         ),
                     )

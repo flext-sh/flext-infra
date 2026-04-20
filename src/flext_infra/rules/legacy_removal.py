@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import ast
 import re
-from collections.abc import Mapping, MutableSequence
+from collections.abc import (
+    Mapping,
+    MutableSequence,
+)
 
 from flext_infra import (
     c,
@@ -32,7 +35,7 @@ class FlextInfraRefactorLegacyRemovalRule:
         """Apply configured legacy-removal transforms to resource."""
         source = resource.read()
         changes: MutableSequence[str] = []
-        fix_action = u.Infra.get_str_key(
+        fix_action = u.Cli.json_get_str_key(
             self.settings,
             c.Infra.RK_FIX_ACTION,
             case="lower",

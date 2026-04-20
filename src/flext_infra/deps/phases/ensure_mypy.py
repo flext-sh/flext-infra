@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping, Sequence
+from collections.abc import (
+    MutableMapping,
+    Sequence,
+)
 
-from flext_infra import FlextInfraToml, c, m, t, u
+from flext_infra import FlextInfraPhaseEngine, c, m, t, u
 
 
 class FlextInfraEnsureMypyConfigPhase:
@@ -56,14 +59,14 @@ class FlextInfraEnsureMypyConfigPhase:
 
     def apply(self, doc: t.Cli.TomlDocument) -> t.StrSequence:
         """Apply mypy defaults, overrides, and toggles from tool configuration."""
-        return FlextInfraToml.apply_phases(doc, self._phase())
+        return FlextInfraPhaseEngine.apply_phases(doc, self._phase())
 
     def apply_payload(
         self,
         payload: MutableMapping[str, t.Cli.JsonValue],
     ) -> t.StrSequence:
         """Apply canonical mypy settings directly to one normalized payload."""
-        return FlextInfraToml.apply_payload_phases(payload, self._phase())
+        return FlextInfraPhaseEngine.apply_payload_phases(payload, self._phase())
 
 
 __all__: list[str] = ["FlextInfraEnsureMypyConfigPhase"]

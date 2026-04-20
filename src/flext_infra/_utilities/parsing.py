@@ -9,11 +9,18 @@ domain.
 from __future__ import annotations
 
 import ast
-from collections.abc import MutableSequence, Sequence
+from collections.abc import (
+    MutableSequence,
+    Sequence,
+)
 from pathlib import Path
 from typing import override
 
-from flext_infra import c, m, t
+from flext_cli import u
+
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesParsing:
@@ -357,14 +364,11 @@ class FlextInfraUtilitiesParsing:
 
     @staticmethod
     def parse_forbidden_rules(
-        value: t.Infra.InfraValue,
+        value: t.Cli.JsonPayload,
     ) -> Sequence[m.Infra.ImportModernizerRuleConfig]:
         """Parse and validate forbidden import rule configs."""
-        try:
-            raw_items: Sequence[t.Infra.ContainerDict] = (
-                t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(value)
-            )
-        except c.ValidationError:
+        raw_items = u.Cli.json_as_mapping_list(value)
+        if not raw_items:
             return []
         normalized: Sequence[t.Infra.ContainerDict] = [
             {

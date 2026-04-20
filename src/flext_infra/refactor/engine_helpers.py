@@ -6,7 +6,10 @@ and project/workspace orchestration with safety stash/rollback coordination.
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
+from collections.abc import (
+    MutableSequence,
+    Sequence,
+)
 from pathlib import Path
 
 from flext_infra import (
@@ -139,11 +142,9 @@ class FlextInfraRefactorEngineHelpersMixin:
             result = self.refactor_file(fp, dry_run=dry_run)
             results.append(result)
             if result.success and result.modified:
-                u.Infra.refactor_info(
-                    f"{'[DRY-RUN] ' if dry_run else ''}Modified: {fp.name}"
-                )
+                u.Cli.info(f"{'[DRY-RUN] ' if dry_run else ''}Modified: {fp.name}")
                 for ch in result.changes:
-                    u.Infra.refactor_info(f"  - {ch}")
+                    u.Cli.info(f"  - {ch}")
             elif result.success:
                 _log.debug(
                     "refactor_noop",
@@ -151,7 +152,7 @@ class FlextInfraRefactorEngineHelpersMixin:
                 )
                 u.Infra.refactor_debug(f"Unchanged: {fp.name}")
             else:
-                u.Infra.refactor_error(f"Failed: {fp.name} - {result.error}")
+                u.Cli.error(f"Failed: {fp.name} - {result.error}")
         return results
 
     # ── Violation analysis ─────────────────────────────────────────
@@ -167,7 +168,7 @@ class FlextInfraRefactorEngineHelpersMixin:
                 args.analysis_output,
                 analysis.model_dump(mode="json"),
             )
-            u.Infra.refactor_info(f"Analysis report written: {args.analysis_output}")
+            u.Cli.info(f"Analysis report written: {args.analysis_output}")
         return 0
 
     # ── File collection ────────────────────────────────────────────
@@ -190,7 +191,7 @@ class FlextInfraRefactorEngineHelpersMixin:
             )
         if args.file:
             if not args.file.exists():
-                u.Infra.refactor_error(f"File not found: {args.file}")
+                u.Cli.error(f"File not found: {args.file}")
                 return None
             return [args.file]
         if args.files:
@@ -214,7 +215,7 @@ class FlextInfraRefactorEngineHelpersMixin:
             )
         elif args.file:
             if not args.file.exists():
-                u.Infra.refactor_error(f"File not found: {args.file}")
+                u.Cli.error(f"File not found: {args.file}")
                 return 1
             original = args.file.read_text(encoding=c.Infra.ENCODING_DEFAULT)
             result = self.refactor_file(args.file, dry_run=args.dry_run)
@@ -227,7 +228,7 @@ class FlextInfraRefactorEngineHelpersMixin:
             existing = [p for p in args.files if p.exists()]
             for p in args.files:
                 if not p.exists():
-                    u.Infra.refactor_error(f"File not found: {p}")
+                    u.Cli.error(f"File not found: {p}")
             results = list(self.refactor_files(existing, dry_run=args.dry_run))
         else:
             results = list[m.Infra.Result]()
@@ -246,7 +247,7 @@ class FlextInfraRefactorEngineHelpersMixin:
         stash = self.safety_manager.create_pre_transformation_stash(target)
         if stash.failure:
             msg = stash.error or "pre-transformation stash failed"
-            u.Infra.refactor_error(msg)
+            u.Cli.error(msg)
             return "", [self._error_result(target, msg)]
         return stash.value, None
 
@@ -267,20 +268,20 @@ class FlextInfraRefactorEngineHelpersMixin:
         if checkpoint.failure:
             msg = checkpoint.error or "checkpoint save failed"
             self.safety_manager.request_emergency_stop(msg)
-            u.Infra.refactor_error(msg)
+            u.Cli.error(msg)
             rb = self.safety_manager.rollback(target, stash_ref)
             if rb.failure:
-                u.Infra.refactor_error(rb.error or "rollback failed")
+                u.Cli.error(rb.error or "rollback failed")
             results.append(self._error_result(target, msg))
             return
         val = self.safety_manager.run_semantic_validation(target)
         if val.failure:
             msg = val.error or "semantic validation failed"
             self.safety_manager.request_emergency_stop(msg)
-            u.Infra.refactor_error(msg)
+            u.Cli.error(msg)
             rb = self.safety_manager.rollback(target, stash_ref)
             if rb.failure:
-                u.Infra.refactor_error(rb.error or "rollback failed")
+                u.Cli.error(rb.error or "rollback failed")
             results.append(self._error_result(target, msg))
             return
         cl = self.safety_manager.clear_checkpoint(
@@ -291,7 +292,7 @@ class FlextInfraRefactorEngineHelpersMixin:
             ],
         )
         if cl.failure:
-            u.Infra.refactor_error(cl.error or "checkpoint clear failed")
+            u.Cli.error(cl.error or "checkpoint clear failed")
 
     # ── Project refactoring ────────────────────────────────────────
 
@@ -319,7 +320,7 @@ class FlextInfraRefactorEngineHelpersMixin:
                     f"File iteration failed for {project_path}",
                 )
             ]
-        u.Infra.refactor_info(f"Found {len(collected)} files to process")
+        u.Cli.info(f"Found {len(collected)} files to process")
         results: MutableSequence[m.Infra.Result] = []
         results.extend(self.refactor_files(collected, dry_run=dry_run))
         results.extend(u.Infra.run_rope_post_hooks(project_path, dry_run=dry_run))
@@ -345,16 +346,16 @@ class FlextInfraRefactorEngineHelpersMixin:
         """Refactor all discoverable workspace projects."""
         root = workspace_root.resolve()
         if not root.exists() or not root.is_dir():
-            u.Infra.refactor_error(f"Invalid workspace root: {workspace_root}")
+            u.Cli.error(f"Invalid workspace root: {workspace_root}")
             return []
         scan_dirs = frozenset(self.rule_loader.extract_project_scan_dirs(self.settings))
         projects = u.Infra.discover_project_roots(
             workspace_root=root, scan_dirs=scan_dirs or None
         )
         if not projects:
-            u.Infra.refactor_error(f"No projects discovered under: {workspace_root}")
+            u.Cli.error(f"No projects discovered under: {workspace_root}")
             return []
-        u.Infra.refactor_info(f"Discovered {len(projects)} projects in workspace")
+        u.Cli.info(f"Discovered {len(projects)} projects in workspace")
         stash_ref, err = self._try_safety_stash(
             root, apply_safety=apply_safety, dry_run=dry_run
         )

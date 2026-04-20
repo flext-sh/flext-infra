@@ -20,6 +20,11 @@ class FlextInfraConstantsDeps:
     GITHUB_REPO_URL_RE: Final[re.Pattern[str]] = re.compile(
         r"^(?:git@github\.com:[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?:\.git)?|https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?:\.git)?)$",
     )
+    GITHUB_OWNER_PATTERNS: Final[t.Infra.VariadicTuple[re.Pattern[str]]] = (
+        re.compile(r"^git@github\.com:(?P<owner>[^/]+)/[^/]+(?:\.git)?$"),
+        re.compile(r"^https://github\.com/(?P<owner>[^/]+)/[^/]+(?:\.git)?$"),
+        re.compile(r"^http://github\.com/(?P<owner>[^/]+)/[^/]+(?:\.git)?$"),
+    )
     PEP621_PATH_RE: Final[re.Pattern[str]] = re.compile(r"@\s*(?:file:)?(?P<path>.+)$")
     SKIP_DIRS: Final[frozenset[str]] = frozenset([
         ".archive",

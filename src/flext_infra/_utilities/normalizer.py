@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import re
 from collections import deque
-from collections.abc import Mapping, MutableMapping
+from collections.abc import (
+    Mapping,
+    MutableMapping,
+)
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated
 
 from flext_cli import u
+
 from flext_infra import c, m, t
 
 

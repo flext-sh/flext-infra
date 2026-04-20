@@ -10,7 +10,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from collections.abc import Mapping, MutableSequence
+from collections.abc import (
+    Mapping,
+    MutableSequence,
+)
 from pathlib import Path
 from typing import Annotated, override
 
@@ -53,9 +56,11 @@ class FlextInfraSkillValidator(s[bool]):
         violations: MutableSequence[str],
     ) -> None:
         """Evaluate one rule entry and accumulate counts/violations."""
-        rule_id = u.Infra.get_str_key(rule_obj, c.Infra.RK_ID)
-        rule_type = u.Infra.get_str_key(rule_obj, "type")
-        group = u.Infra.get_str_key(rule_obj, c.Infra.GROUP, default=rule_id) or rule_id
+        rule_id = u.Cli.json_get_str_key(rule_obj, c.Infra.RK_ID)
+        rule_type = u.Cli.json_get_str_key(rule_obj, "type")
+        group = (
+            u.Cli.json_get_str_key(rule_obj, c.Infra.GROUP, default=rule_id) or rule_id
+        )
         if rule_type == "ast-grep":
             count = self._run_ast_grep_count(
                 rule_obj,
@@ -84,7 +89,7 @@ class FlextInfraSkillValidator(s[bool]):
         total: int,
     ) -> bool:
         """Compare counts against the baseline file and return pass/fail."""
-        baseline_obj = u.Infra.deep_mapping(rules, c.Infra.MODE_BASELINE)
+        baseline_obj = u.Cli.json_deep_mapping(rules, c.Infra.MODE_BASELINE)
         if not baseline_obj:
             return True
         strategy = str(baseline_obj.get("strategy", c.Infra.RK_TOTAL))
@@ -98,8 +103,8 @@ class FlextInfraSkillValidator(s[bool]):
         bl_data_result = u.Cli.json_read(baseline_path)
         if bl_data_result.failure:
             return True
-        bl_data = u.Infra.normalize_str_mapping(bl_data_result.value)
-        bl_counts_raw_map = u.Infra.deep_mapping(bl_data, "counts")
+        bl_data = u.Cli.json_as_mapping(bl_data_result.value)
+        bl_counts_raw_map = u.Cli.json_deep_mapping(bl_data, "counts")
         bl_counts: t.MutableIntMapping = {}
         for key_obj, val_obj in bl_counts_raw_map.items():
             if isinstance(val_obj, int):
@@ -144,7 +149,7 @@ class FlextInfraSkillValidator(s[bool]):
                 )
             rules = u.Cli.yaml_load_mapping(rules_path)
             scan_targets_raw = rules.get("scan_targets", {})
-            scan_targets = u.Infra.normalize_str_mapping(scan_targets_raw)
+            scan_targets = u.Cli.json_as_mapping(scan_targets_raw)
             if not scan_targets and scan_targets_raw not in ({}, None):
                 return r[m.Infra.ValidationReport].fail(
                     f"scan_targets must be a mapping: {rules_path}",
@@ -165,7 +170,7 @@ class FlextInfraSkillValidator(s[bool]):
             violations: MutableSequence[str] = []
             skill_dir = skills_dir / skill_name
             for rule_obj_raw in rules_list:
-                rule_obj = u.Infra.normalize_str_mapping(rule_obj_raw)
+                rule_obj = u.Cli.json_as_mapping(rule_obj_raw)
                 if not rule_obj:
                     continue
                 self._evaluate_single_rule(
@@ -225,7 +230,7 @@ class FlextInfraSkillValidator(s[bool]):
         exclude_globs: t.StrSequence,
     ) -> int:
         """Run an ast-grep rule and return match count."""
-        rule_file_raw = u.Infra.get_str_key(rule, c.Infra.RK_FILE)
+        rule_file_raw = u.Cli.json_get_str_key(rule, c.Infra.RK_FILE)
         if not rule_file_raw:
             return 0
         rule_file = Path(rule_file_raw)
@@ -287,7 +292,7 @@ class FlextInfraSkillValidator(s[bool]):
         mode: str,
     ) -> int:
         """Run a custom rule script and return violation count."""
-        script_raw = u.Infra.get_str_key(rule, "script")
+        script_raw = u.Cli.json_get_str_key(rule, "script")
         if not script_raw:
             return 0
         script = Path(script_raw)

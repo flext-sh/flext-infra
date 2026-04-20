@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
+from collections.abc import (
+    MutableMapping,
+)
 from pathlib import Path
 
-from flext_infra import FlextInfraToml, c, m, t, u
+from flext_infra import FlextInfraPhaseEngine, c, m, t, u
 
 
 class FlextInfraEnsureNamespaceToolingPhase:
@@ -31,7 +33,7 @@ class FlextInfraEnsureNamespaceToolingPhase:
         )
         if not detected:
             return []
-        return FlextInfraToml.apply_phases(doc, self._phase(detected))
+        return FlextInfraPhaseEngine.apply_phases(doc, self._phase(detected))
 
     def apply_payload(
         self,
@@ -48,7 +50,9 @@ class FlextInfraEnsureNamespaceToolingPhase:
         )
         if not detected:
             return []
-        return FlextInfraToml.apply_payload_phases(payload, self._phase(detected))
+        return FlextInfraPhaseEngine.apply_payload_phases(
+            payload, self._phase(detected)
+        )
 
 
 __all__: list[str] = ["FlextInfraEnsureNamespaceToolingPhase"]
