@@ -27,7 +27,6 @@ class FlextInfraCliCodegen(FlextInfraCliGroupBase):
             help_text="Generate/refresh PEP 562 lazy-import __init__.py files",
             model_cls=FlextInfraCodegenLazyInit,
             handler=FlextInfraCodegenLazyInit.execute_command,
-            failure_message="init failed",
             success_message="init complete",
         ),
         FlextInfraCliGroupBase.route(
@@ -35,28 +34,24 @@ class FlextInfraCliCodegen(FlextInfraCliGroupBase):
             help_text="Count namespace violations across workspace projects",
             model_cls=FlextInfraCodegenCensus,
             handler=FlextInfraCodegenCensus.execute_command,
-            failure_message="census failed",
         ),
         FlextInfraCliGroupBase.route(
             name="scaffold",
             help_text="Generate missing base modules in src/ and tests/",
             model_cls=FlextInfraCodegenScaffolder,
             handler=FlextInfraCodegenScaffolder.execute_command,
-            failure_message="scaffold failed",
         ),
         FlextInfraCliGroupBase.route(
             name="auto-fix",
             help_text="Auto-fix namespace violations (move Finals/TypeVars)",
             model_cls=FlextInfraCodegenFixer,
             handler=FlextInfraCodegenFixer.execute_command,
-            failure_message="auto-fix failed",
         ),
         FlextInfraCliGroupBase.route(
             name="py-typed",
             help_text="Create/remove PEP 561 py.typed markers",
             model_cls=FlextInfraCodegenPyTyped,
             handler=FlextInfraCodegenPyTyped.execute_command,
-            failure_message="py-typed failed",
             success_message="py-typed markers updated",
         ),
         FlextInfraCliGroupBase.route(
@@ -64,14 +59,12 @@ class FlextInfraCliCodegen(FlextInfraCliGroupBase):
             help_text="Run full codegen pipeline",
             model_cls=FlextInfraCodegenPipeline,
             handler=FlextInfraCodegenPipeline.execute_command,
-            failure_message="pipeline failed",
         ),
         FlextInfraCliGroupBase.route(
             name="constants-quality-gate",
             help_text="Run constants migration quality gate",
             model_cls=FlextInfraConstantsCodegenQualityGate,
             handler=FlextInfraConstantsCodegenQualityGate.execute_command,
-            failure_message="constants quality gate failed",
             success_message="constants quality gate passed",
         ),
         FlextInfraCliGroupBase.route(
@@ -79,14 +72,12 @@ class FlextInfraCliCodegen(FlextInfraCliGroupBase):
             help_text="Consolidate inline constants into c.Infra.* references",
             model_cls=FlextInfraCodegenConsolidator,
             handler=FlextInfraCodegenConsolidator.execute_command,
-            failure_message="consolidate failed",
         ),
         FlextInfraCliGroupBase.route(
             name="pyproject-keys",
             help_text="Generate [tool.flext.*] tables in pyproject.toml",
             model_cls=FlextInfraCodegenPyprojectKeys,
             handler=FlextInfraCodegenPyprojectKeys.execute_command,
-            failure_message="pyproject-keys generation failed",
             success_message="pyproject-keys generation complete",
         ),
         FlextInfraCliGroupBase.route(
@@ -94,7 +85,6 @@ class FlextInfraCliCodegen(FlextInfraCliGroupBase):
             help_text="Generate __version__.py from project-metadata SSOT",
             model_cls=FlextInfraCodegenVersionFile,
             handler=FlextInfraCodegenVersionFile.execute_command,
-            failure_message="version-file generation failed",
             success_message="version-file generation complete",
         ),
     )

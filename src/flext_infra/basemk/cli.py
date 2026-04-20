@@ -16,7 +16,6 @@ class FlextInfraCliBasemk(FlextInfraCliGroupBase):
             help_text="Generate base.mk from templates",
             model_cls=FlextInfraBaseMkGenerator,
             handler=FlextInfraBaseMkGenerator.execute_command,
-            failure_message="base.mk generation failed",
             success_message="base.mk generated",
         ),
     )

@@ -23,7 +23,6 @@ class FlextInfraCliGroupBase:
         help_text: str,
         model_cls: type[object],
         handler: t.Cli.ResultRouteHandler,
-        failure_message: str,
         success_message: str | None = None,
     ) -> m.Cli.ResultCommandRoute:
         """Build one declarative result route."""
@@ -32,7 +31,6 @@ class FlextInfraCliGroupBase:
             help_text=help_text,
             model_cls=model_cls,
             handler=handler,
-            failure_message=failure_message,
             success_message=success_message,
         )
 

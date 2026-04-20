@@ -34,14 +34,12 @@ class FlextInfraCliCheck(FlextInfraCliGroupBase):
             help_text="Run quality gates",
             model_cls=FlextInfraModelsCheck.RunCommand,
             handler=_run_workspace_checks,
-            failure_message="check failed",
         ),
         FlextInfraCliGroupBase.route(
             name="fix-pyrefly-settings",
             help_text="Repair [tool.pyrefly] blocks",
             model_cls=FlextInfraModelsCheck.FixPyreflyConfigCommand,
             handler=_fix_pyrefly_config,
-            failure_message="pyrefly settings fix failed",
         ),
     )
 

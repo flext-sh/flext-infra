@@ -972,7 +972,7 @@ ifneq ($(HAS_EXPLICIT_PROJECT_SELECTION),)
 	done
 	$(Q)echo "==> Regenerating __init__.py lazy imports for selected projects..."
 	$(Q)for proj in $(SELECTED_PROJECTS); do \
-		$(WORKSPACE_INFRA_CODEGEN) lazy-init --workspace "$(CURDIR)/$$proj" --apply || exit 1; \
+		$(WORKSPACE_INFRA_CODEGEN) init --workspace "$(CURDIR)/$$proj" --apply || exit 1; \
 	done
 else
 	$(Q)echo "==> Syncing workspace and discovered projects..."
@@ -980,7 +980,7 @@ else
 		--workspace "$(CURDIR)" \
 		--apply
 	$(Q)echo "==> Regenerating __init__.py lazy imports..."
-	$(Q)$(WORKSPACE_INFRA_CODEGEN) lazy-init --workspace "$(CURDIR)"
+	$(Q)$(WORKSPACE_INFRA_CODEGEN) init --workspace "$(CURDIR)"
 endif
 	$(Q)echo "==> Sync complete."
 

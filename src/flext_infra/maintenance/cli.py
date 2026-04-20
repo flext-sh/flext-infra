@@ -16,7 +16,6 @@ class FlextInfraCliMaintenance(FlextInfraCliGroupBase):
             help_text="Enforce Python version constraints",
             model_cls=FlextInfraPythonVersionEnforcer,
             handler=FlextInfraPythonVersionEnforcer.execute_command,
-            failure_message="Maintenance failed",
             success_message="Maintenance completed",
         ),
     )

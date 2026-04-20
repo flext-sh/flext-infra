@@ -62,12 +62,12 @@ class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
         errors = self.generate_inits(check_only=self.check_only)
         if self._duplicate_class_names > 0:
             return r[bool].fail(
-                f"lazy-init aborted: {self._duplicate_class_names} "
+                f"init aborted: {self._duplicate_class_names} "
                 "duplicate class name(s) detected (see errors above); "
                 "rename one side before regenerating",
             )
         if errors > 0:
-            return r[bool].fail(f"lazy-init failed in {errors} package directories")
+            return r[bool].fail(f"init failed in {errors} package directories")
         return r[bool].ok(True)
 
     def generate_inits(self, *, check_only: bool = False) -> int:

@@ -20,7 +20,6 @@ class FlextInfraCliDocs(FlextInfraCliGroupBase):
             help_text="Audit documentation for broken links and forbidden terms",
             model_cls=FlextInfraDocAuditor,
             handler=FlextInfraDocAuditor.execute_command,
-            failure_message="Audit failed",
             success_message="Audit completed successfully",
         ),
         FlextInfraCliGroupBase.route(
@@ -28,7 +27,6 @@ class FlextInfraCliDocs(FlextInfraCliGroupBase):
             help_text="Fix documentation issues",
             model_cls=FlextInfraDocFixer,
             handler=FlextInfraDocFixer.execute_command,
-            failure_message="Fix failed",
             success_message="Fix completed successfully",
         ),
         FlextInfraCliGroupBase.route(
@@ -36,7 +34,6 @@ class FlextInfraCliDocs(FlextInfraCliGroupBase):
             help_text="Build MkDocs sites",
             model_cls=FlextInfraDocBuilder,
             handler=FlextInfraDocBuilder.execute_command,
-            failure_message="Build failed",
             success_message="Build completed successfully",
         ),
         FlextInfraCliGroupBase.route(
@@ -44,7 +41,6 @@ class FlextInfraCliDocs(FlextInfraCliGroupBase):
             help_text="Generate project docs",
             model_cls=FlextInfraDocGenerator,
             handler=FlextInfraDocGenerator.execute_command,
-            failure_message="Generate failed",
             success_message="Generate completed successfully",
         ),
         FlextInfraCliGroupBase.route(
@@ -52,7 +48,6 @@ class FlextInfraCliDocs(FlextInfraCliGroupBase):
             help_text="Validate documentation",
             model_cls=FlextInfraDocValidator,
             handler=FlextInfraDocValidator.execute_command,
-            failure_message="Validate failed",
             success_message="Validate completed successfully",
         ),
     )

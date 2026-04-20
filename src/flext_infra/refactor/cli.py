@@ -121,28 +121,24 @@ class FlextInfraCliRefactor(FlextInfraCliGroupBase):
             help_text="Migrate loose declarations into MRO facade classes",
             model_cls=m.Infra.RefactorMigrateMroInput,
             handler=_migrate_mro,
-            failure_message="MRO migration failed",
         ),
         FlextInfraCliGroupBase.route(
             name="namespace-enforce",
             help_text="Scan workspace for namespace governance violations",
             model_cls=m.Infra.RefactorNamespaceEnforceInput,
             handler=_enforce_namespace,
-            failure_message="Namespace enforcement failed",
         ),
         FlextInfraCliGroupBase.route(
             name="census",
             help_text="Run a Rope-only workspace census for Python objects",
             model_cls=m.Infra.RefactorCensusInput,
             handler=_run_refactor_census,
-            failure_message="Census failed",
         ),
         FlextInfraCliGroupBase.route(
             name="accessor-migrate",
             help_text="Preview or apply automated get_/set_/is_ migration",
             model_cls=m.Infra.AccessorMigrationInput,
             handler=_run_accessor_migration,
-            failure_message="Accessor migration failed",
         ),
     )
 

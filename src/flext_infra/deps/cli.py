@@ -34,35 +34,30 @@ class FlextInfraCliDeps(FlextInfraCliGroupBase):
             help_text="Detect runtime vs dev dependencies",
             model_cls=FlextInfraRuntimeDevDependencyDetector,
             handler=FlextInfraRuntimeDevDependencyDetector.execute_command,
-            failure_message="dependency detection failed",
         ),
         FlextInfraCliGroupBase.route(
             name="extra-paths",
             help_text="Synchronize pyright/mypy extraPaths",
             model_cls=FlextInfraExtraPathsManager,
             handler=FlextInfraExtraPathsManager.execute_command,
-            failure_message="extra-path synchronization failed",
         ),
         FlextInfraCliGroupBase.route(
             name="internal-sync",
             help_text="Synchronize internal FLEXT dependencies",
             model_cls=FlextInfraInternalDependencySyncService,
             handler=FlextInfraInternalDependencySyncService.execute_command,
-            failure_message="internal dependency sync failed",
         ),
         FlextInfraCliGroupBase.route(
             name="modernize",
             help_text="Modernize workspace pyproject files",
             model_cls=FlextInfraPyprojectModernizer,
             handler=FlextInfraPyprojectModernizer.execute_command,
-            failure_message="pyproject modernization failed",
         ),
         FlextInfraCliGroupBase.route(
             name="path-sync",
             help_text="Rewrite internal FLEXT dependency paths",
             model_cls=FlextInfraModelsDeps.PathSyncCommand,
             handler=_sync_dependency_paths,
-            failure_message="dependency path sync failed",
         ),
     )
 

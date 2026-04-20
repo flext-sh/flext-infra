@@ -16,7 +16,6 @@ class FlextInfraCliRelease(FlextInfraCliGroupBase):
             help_text="Run release orchestration CLI flow",
             model_cls=FlextInfraReleaseOrchestrator,
             handler=FlextInfraReleaseOrchestrator.execute_command,
-            failure_message="Release failed",
             success_message="Release completed successfully",
         ),
     )

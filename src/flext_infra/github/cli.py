@@ -54,28 +54,24 @@ class FlextInfraCliGithub(FlextInfraCliGroupBase):
             help_text="Sync GitHub workflow files across workspace",
             model_cls=m.Infra.GithubWorkflowSyncRequest,
             handler=_sync_github_workflows,
-            failure_message="Workflow sync failed",
         ),
         FlextInfraCliGroupBase.route(
             name=c.Infra.LINT_SECTION,
             help_text="Lint GitHub workflow files",
             model_cls=m.Infra.GithubWorkflowLintRequest,
             handler=_lint_github_workflows,
-            failure_message="Workflow lint failed",
         ),
         FlextInfraCliGroupBase.route(
             name=c.Infra.PR,
             help_text="Manage pull requests for a single project",
             model_cls=m.Infra.GithubPullRequestRequest,
             handler=_run_github_pull_request,
-            failure_message="PR operation failed",
         ),
         FlextInfraCliGroupBase.route(
             name="pr-workspace",
             help_text="Manage pull requests across workspace projects",
             model_cls=m.Infra.GithubPullRequestWorkspaceRequest,
             handler=_run_github_workspace_pull_requests,
-            failure_message="PR workspace orchestration failed",
         ),
     )
 

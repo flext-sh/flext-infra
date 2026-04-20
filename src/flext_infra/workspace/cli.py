@@ -19,28 +19,24 @@ class FlextInfraCliWorkspace(FlextInfraCliGroupBase):
             help_text="Detect workspace or standalone mode",
             model_cls=FlextInfraWorkspaceDetector,
             handler=FlextInfraWorkspaceDetector.execute_command,
-            failure_message="detection failed",
         ),
         FlextInfraCliGroupBase.route(
             name="sync",
             help_text="Sync base.mk to project root",
             model_cls=FlextInfraSyncService,
             handler=FlextInfraSyncService.execute_command,
-            failure_message="sync failed",
         ),
         FlextInfraCliGroupBase.route(
             name="orchestrate",
             help_text="Run make verb across projects",
             model_cls=FlextInfraOrchestratorService,
             handler=FlextInfraOrchestratorService.execute_command,
-            failure_message="orchestration failed",
         ),
         FlextInfraCliGroupBase.route(
             name="migrate",
             help_text="Migrate workspace projects to flext_infra tooling",
             model_cls=FlextInfraProjectMigrator,
             handler=FlextInfraProjectMigrator.execute_command,
-            failure_message="migration failed",
         ),
     )
 

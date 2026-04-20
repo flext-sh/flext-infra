@@ -20,7 +20,7 @@ from tests import p, r, t, u
 
 
 class TestHandleLazyInit:
-    """Tests for direct lazy-init command dispatch."""
+    """Tests for direct init command dispatch."""
 
     def test_success(self, tmp_path: Path) -> None:
         """Init returns 0 on empty workspace."""
@@ -48,11 +48,11 @@ class TestHandleLazyInit:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """lazy-init fails when the generator reports errors."""
+        """Init fails when the generator reports errors."""
 
         def _fail_execute(_params: FlextInfraCodegenLazyInit) -> p.Result[bool]:
             _ = _params
-            return r[bool].fail("lazy-init failed")
+            return r[bool].fail("init failed")
 
         monkeypatch.setattr(
             FlextInfraCodegenLazyInit,

@@ -11,29 +11,43 @@ from collections.abc import (
     MutableMapping,
     MutableSequence,
 )
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import ClassVar
 
-from flext_infra import c, t, u
+from flext_infra import c, m, t, u
 
 
 class FlextInfraTransformerTier0ImportFixer:
     """Namespace for Tier 0 import fixing logic and classes."""
 
-    @dataclass(frozen=True)
-    class Analysis:
+    class Analysis(m.Value):
         """Detection results for a single Python file's self-import patterns."""
+
+        _flext_enforcement_exempt: ClassVar[bool] = True
+        model_config = m.ConfigDict(frozen=True, arbitrary_types_allowed=True)
 
         package_name: str
         file_path: Path
-        alias_to_module: t.MutableStrMapping = field(
-            default_factory=lambda: dict[str, str](),
+        alias_to_module: dict[str, str] = m.Field(
+            default_factory=dict,
+            description="Alias names mapped to their source modules",
         )
-        category_a: t.Infra.StrSet = field(default_factory=lambda: set[str]())
-        category_b: t.Infra.StrSet = field(default_factory=lambda: set[str]())
-        category_c: t.Infra.StrSet = field(default_factory=lambda: set[str]())
-        category_d: t.Infra.StrSet = field(default_factory=lambda: set[str]())
+        category_a: set[str] = m.Field(
+            default_factory=set,
+            description="Toplevel aliases (informational only)",
+        )
+        category_b: set[str] = m.Field(
+            default_factory=set,
+            description="Core aliases to redirect to core package",
+        )
+        category_c: set[str] = m.Field(
+            default_factory=set,
+            description="Aliases to move to TYPE_CHECKING block",
+        )
+        category_d: set[str] = m.Field(
+            default_factory=set,
+            description="Runtime-used aliases requiring special handling",
+        )
 
         @property
         def has_violations(self) -> bool:
@@ -77,7 +91,7 @@ class FlextInfraTransformerTier0ImportFixer:
             source = self._file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
             self._scan_self_imports(source, pkg_name)
             self._scan_runtime_usage(source)
-            alias_map: t.MutableStrMapping = {
+            alias_map: dict[str, str] = {
                 alias_name: alias_name for alias_name in c.Infra.RUNTIME_ALIAS_NAMES
             }
             analysis = FlextInfraTransformerTier0ImportFixer.Analysis(
