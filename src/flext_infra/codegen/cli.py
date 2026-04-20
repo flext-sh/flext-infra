@@ -23,12 +23,12 @@ class FlextInfraCliCodegen(FlextInfraCliGroupBase):
 
     routes = (
         FlextInfraCliGroupBase.route(
-            name="lazy-init",
+            name="init",
             help_text="Generate/refresh PEP 562 lazy-import __init__.py files",
             model_cls=FlextInfraCodegenLazyInit,
             handler=FlextInfraCodegenLazyInit.execute_command,
-            failure_message="lazy-init failed",
-            success_message="lazy-init complete",
+            failure_message="init failed",
+            success_message="init complete",
         ),
         FlextInfraCliGroupBase.route(
             name="census",

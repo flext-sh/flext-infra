@@ -52,7 +52,7 @@ Examples:
 ```bash
 flext-infra basemk render --projects-name flext-core
 flext-infra check run --projects flext-core
-flext-infra codegen lazy-init --workspace .
+flext-infra codegen init --workspace .
 flext-infra validate inventory --workspace .
 flext-infra docs audit --workspace .
 flext-infra workspace sync --workspace .

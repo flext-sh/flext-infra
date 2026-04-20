@@ -154,5 +154,5 @@ def test_workspace_makefile_dry_run_sync_respects_project_selection(
     assert f'--workspace "{workspace_root}/$proj"' in output
     assert f'--canonical-root "{workspace_root}"' in output
     assert "for proj in demo-a; do" in output
-    assert f'lazy-init --workspace "{workspace_root}/$proj" --apply' in output
+    assert f'init --workspace "{workspace_root}/$proj" --apply' in output
     assert f'workspace sync --workspace "{workspace_root}" --apply' not in output

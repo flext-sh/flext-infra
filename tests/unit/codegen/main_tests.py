@@ -23,15 +23,15 @@ class TestHandleLazyInit:
     """Tests for direct lazy-init command dispatch."""
 
     def test_success(self, tmp_path: Path) -> None:
-        """lazy-init returns 0 on empty workspace."""
-        result = infra_main(["codegen", "lazy-init", "--workspace", str(tmp_path)])
+        """Init returns 0 on empty workspace."""
+        result = infra_main(["codegen", "init", "--workspace", str(tmp_path)])
         tm.that(result, eq=0)
 
     def test_check_mode(self, tmp_path: Path) -> None:
-        """lazy-init respects --check flag."""
+        """Init respects --check flag."""
         result = infra_main([
             "codegen",
-            "lazy-init",
+            "init",
             "--check",
             "--workspace",
             str(tmp_path),
@@ -39,8 +39,8 @@ class TestHandleLazyInit:
         tm.that(result, eq=0)
 
     def test_enforce_mode(self, tmp_path: Path) -> None:
-        """lazy-init in enforce mode (not check)."""
-        result = infra_main(["codegen", "lazy-init", "--workspace", str(tmp_path)])
+        """Init in enforce mode (not check)."""
+        result = infra_main(["codegen", "init", "--workspace", str(tmp_path)])
         tm.that(result, eq=0)
 
     def test_returns_non_zero_when_generation_reports_errors(
@@ -59,23 +59,23 @@ class TestHandleLazyInit:
             "execute_command",
             staticmethod(_fail_execute),
         )
-        result = infra_main(["codegen", "lazy-init", "--workspace", str(tmp_path)])
+        result = infra_main(["codegen", "init", "--workspace", str(tmp_path)])
         tm.that(result, eq=1)
 
 
 class TestMainCommandDispatch:
     """Tests for main() command routing."""
 
-    def test_lazy_init_command(self, tmp_path: Path) -> None:
-        """main() with lazy-init command returns 0."""
-        result = infra_main(["codegen", "lazy-init", "--workspace", str(tmp_path)])
+    def test_init_command(self, tmp_path: Path) -> None:
+        """main() with init command returns 0."""
+        result = infra_main(["codegen", "init", "--workspace", str(tmp_path)])
         tm.that(result, eq=0)
 
-    def test_lazy_init_with_check_flag(self, tmp_path: Path) -> None:
-        """main() lazy-init with --check flag parses correctly."""
+    def test_init_with_check_flag(self, tmp_path: Path) -> None:
+        """main() init with --check flag parses correctly."""
         result = infra_main([
             "codegen",
-            "lazy-init",
+            "init",
             "--check",
             "--workspace",
             str(tmp_path),
@@ -87,9 +87,9 @@ class TestMainCommandDispatch:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """main() lazy-init uses cwd as default root."""
+        """main() init uses cwd as default root."""
         monkeypatch.chdir(tmp_path)
-        result = infra_main(["codegen", "lazy-init"])
+        result = infra_main(["codegen", "init"])
         tm.that(result, eq=0)
 
     def test_unknown_command(self) -> None:
@@ -102,10 +102,10 @@ class TestMainCommandDispatch:
         result = infra_main(["codegen"])
         tm.that(result, ne=0)
 
-    def test_lazy_init_with_custom_root(self, tmp_path: Path) -> None:
-        """main() lazy-init with custom root directory."""
+    def test_init_with_custom_root(self, tmp_path: Path) -> None:
+        """main() init with custom root directory."""
         custom_root = tmp_path / "custom"
-        result = infra_main(["codegen", "lazy-init", "--workspace", str(custom_root)])
+        result = infra_main(["codegen", "init", "--workspace", str(custom_root)])
         tm.that(result, eq=0)
 
 
@@ -114,17 +114,30 @@ class TestMainEntryPoint:
 
     def test_entry_point_returns_int(self, tmp_path: Path) -> None:
         """main() returns an integer exit code."""
-        result = infra_main(["codegen", "lazy-init", "--workspace", str(tmp_path)])
+        result = infra_main(["codegen", "init", "--workspace", str(tmp_path)])
         tm.that(type(result).__name__, eq="int")
 
     def test_entry_point_via_sys_exit(self) -> None:
         """The root process entrypoint works via subprocess."""
         result = u.Cli.run_raw(
-            [sys.executable, "-m", "flext_infra", "codegen", "lazy-init", "--help"],
+            [sys.executable, "-m", "flext_infra", "codegen", "init", "--help"],
         )
         tm.ok(result)
         tm.that(result.value.exit_code, eq=0)
-        tm.that(result.value.stdout, contains="lazy-init")
+        tm.that(result.value.stdout, contains="Generate/refresh PEP 562 lazy-import")
+
+    def test_unknown_command_surfaces_root_cause_via_subprocess(self) -> None:
+        """Unknown codegen subcommands must print the actual CLI failure."""
+        result = u.Cli.run_raw(
+            [sys.executable, "-m", "flext_infra", "codegen", "unknown-command"],
+        )
+
+        tm.ok(result)
+        tm.that(result.value.exit_code, eq=2)
+        tm.that(
+            result.value.stdout + result.value.stderr,
+            contains="No such command 'unknown-command'",
+        )
 
 
 __all__: t.StrSequence = []

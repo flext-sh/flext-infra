@@ -133,7 +133,10 @@ class FlextInfraCli:
         )
         if result.success:
             return 0
-        return 2 if u.Cli.cli_usage_error(result.error or "") else 1
+        error_message = result.error
+        if error_message:
+            cli.display_message(error_message, c.Cli.MessageTypes.ERROR)
+        return 2 if error_message and u.Cli.cli_usage_error(error_message) else 1
 
 
 def main(args: t.StrSequence | None = None) -> int:
