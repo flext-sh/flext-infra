@@ -1,0 +1,307 @@
+src/flext_infra/_utilities/deps_path_sync.py
+  h_9db9d35f50cf33 95,102,118,163,191,194,230,276,280-281,290,315
+src/flext_infra/_utilities/discovery.py
+  h_9db9d35f50cf33 141-142,144,470
+src/flext_infra/codegen/codegen_generation.py
+  h_9db9d35f50cf33 389-393
+src/flext_infra/_utilities/parsing.py
+  h_9db9d35f50cf33 20,99-108,120-121,124,127-128,130,132-133,136,376,379-382
+src/flext_infra/docs/builder.py
+  h_9db9d35f50cf33 59
+tests/integration/test_refactor_nesting_performance.py
+  h_9db9d35f50cf33 11,14
+tests/integration/test_refactor_nesting_project.py
+  h_9db9d35f50cf33 7-8
+src/flext_infra/detectors/__init__.py
+  h_9db9d35f50cf33 13
+src/flext_infra/deps/phases/ensure_mypy.py
+  h_9db9d35f50cf33 40,45
+src/flext_infra/rules/class_nesting.py
+  h_9db9d35f50cf33 293,345
+src/flext_infra/transformers/census_visitors.py
+  h_9db9d35f50cf33 142
+src/flext_infra/refactor/namespace_enforcer_phases.py
+  h_9db9d35f50cf33 27,284,298
+src/flext_infra/refactor/class_nesting_analyzer.py
+  376f82a5e64b61d4 146
+  h_9db9d35f50cf33 51,54-57,142-143,145,147
+src/flext_infra/_utilities/docs.py
+  h_9db9d35f50cf33 61,122
+src/flext_infra/deps/phase_engine.py
+  h_9db9d35f50cf33 48,72,81-83,167-179,184,186,195,217,242
+src/flext_infra/deps/phases/ensure_pytest.py
+  h_9db9d35f50cf33 29,34,39,44
+src/flext_infra/__version__.py
+  h_9db9d35f50cf33 16,22
+tests/integration/test_refactor_nesting_workspace.py
+  h_9db9d35f50cf33 11-12
+src/flext_infra/validate/cli.py
+  h_9db9d35f50cf33 5-16,18-19
+src/flext_infra/release/cli.py
+  h_9db9d35f50cf33 5
+tests/unit/codegen/lazy_init_transforms_tests.py
+  h_9db9d35f50cf33 61
+src/flext_infra/workspace/orchestrator.py
+  h_9db9d35f50cf33 20-21,28-29,34,56,67
+src/flext_infra/_constants/base.py
+  h_9db9d35f50cf33 220-241,347-356
+src/flext_infra/_utilities/lazy.py
+  h_9db9d35f50cf33 1,11,13,33-36,38
+src/flext_infra/_models/scan.py
+  h_9db9d35f50cf33 17,20,61
+src/flext_infra/_utilities/namespace_moves.py
+  h_9db9d35f50cf33 21,82,102,234,540,568
+tests/refactor/test_rope_semantic.py
+  h_9db9d35f50cf33 12,62,75,88,103,115,132,145,160,173,187,202,218,231,243,258
+src/flext_infra/workspace/project_makefile.py
+  h_9db9d35f50cf33 16,59
+src/flext_infra/cli_registry.py
+  h_9db9d35f50cf33 7,9
+src/flext_infra/_typings/base.py
+  h_9db9d35f50cf33 22-23,37-38,100-103,108,150,158-167,172-173
+src/flext_infra/deps/detector_runtime.py
+  h_9db9d35f50cf33 133
+src/flext_infra/settings.py
+  h_9db9d35f50cf33 1,5-82
+src/flext_infra/codegen/lazy_init_planner.py
+  h_9db9d35f50cf33 56-57,59,86,101
+tests/unit/test_infra_constants_core.py
+  h_9db9d35f50cf33 87,90,93,96,98-102
+src/flext_infra/api.py
+  h_9db9d35f50cf33 10-26
+src/flext_infra/validate/scanner.py
+  h_9db9d35f50cf33 46,50,95,111,120
+src/flext_infra/_constants/deps.py
+  h_9db9d35f50cf33 6-7,23,29,46,67,83,99
+src/flext_infra/_constants/refactor.py
+  h_9db9d35f50cf33 8,12-13,15,21-23,26,32,36-37,42,47,52-53,57-58,61,67-68,78,80-83,92,94,99,101,106,108,113,115,120,122,127,130,132,134,136,142,144,150,152,158,160,162,168,170,176,178,186,195,201,205,207,210-211,213,218,220,222,230,232,240,245,247,256,259,263,274,281-285,292,297,302,308,313,318,324,329,335,340,344,346-348,351-352,354,358,367,387,406
+src/flext_infra/_utilities/compat.py
+  h_9db9d35f50cf33 28,129
+src/flext_infra/_models/census.py
+  h_9db9d35f50cf33 10,20-23,81,178
+src/flext_infra/_protocols/__init__.py
+  h_9db9d35f50cf33 15
+src/flext_infra/refactor/cli.py
+  h_9db9d35f50cf33 8,10-12,14-18
+src/flext_infra/_protocols/rope.py
+  h_9db9d35f50cf33 103
+src/flext_infra/_models/refactor_violations.py
+  h_9db9d35f50cf33 11,13,40-42
+src/flext_infra/_models/validate.py
+  h_9db9d35f50cf33 7,9,38
+src/flext_infra/workspace/migrator.py
+  h_9db9d35f50cf33 14,278
+src/flext_infra/_models/github.py
+  h_9db9d35f50cf33 12,14,21,32,35,43-44,57-59,136,191,220
+src/flext_infra/__main__.py
+  h_9db9d35f50cf33 7
+src/flext_infra/deps/modernizer.py
+  h_9db9d35f50cf33 17,233,238,240
+src/flext_infra/basemk/engine.py
+  h_9db9d35f50cf33 25,29,80-106
+tests/unit/deps/test_internal_sync_update.py
+  h_9db9d35f50cf33 87,96,106,119
+src/flext_infra/deps/service_base.py
+  h_9db9d35f50cf33 7-8,10,17-19,21
+src/flext_infra/_models/basemk.py
+  h_9db9d35f50cf33 9,16
+src/flext_infra/refactor/mro_import_rewriter.py
+  h_9db9d35f50cf33 23,142,184,191
+src/flext_infra/refactor/migrate_to_class_mro.py
+  h_9db9d35f50cf33 23,151,209
+src/flext_infra/detectors/facade_scanner.py
+  h_9db9d35f50cf33 22,58,64,72
+src/flext_infra/refactor/scanner.py
+  h_9db9d35f50cf33 137
+src/flext_infra/transformers/class_reconstructor.py
+  h_9db9d35f50cf33 29-31,34
+  376f82a5e64b61d4 32-33
+src/flext_infra/_utilities/docs_api.py
+  h_9db9d35f50cf33 16-17,138-141
+src/flext_infra/utilities.py
+  h_9db9d35f50cf33 17,32,34,40-48,50-55,77,79-86,97-100,106-108,110-114
+src/flext_infra/_utilities/github_pr.py
+  h_9db9d35f50cf33 168-169
+src/flext_infra/_utilities/release.py
+  h_9db9d35f50cf33 15,27-32
+src/flext_infra/_protocols/refactor.py
+  h_9db9d35f50cf33 19,21
+src/flext_infra/maintenance/cli.py
+  h_9db9d35f50cf33 5
+src/flext_infra/deps/detector.py
+  h_9db9d35f50cf33 11
+src/flext_infra/validate/skill_validator.py
+  h_9db9d35f50cf33 32,36,52,94,127,190-191,295,313
+src/flext_infra/_typings/adapters.py
+  h_9db9d35f50cf33 20,37-38,52-53,58-59
+src/flext_infra/_models/mixins.py
+  h_9db9d35f50cf33 8,10-15,57,74,79,84,164,174,187,199-200
+src/flext_infra/typings.py
+  h_9db9d35f50cf33 3,5,41-42
+src/flext_infra/_constants/basemk.py
+  h_9db9d35f50cf33 7-8
+src/flext_infra/_utilities/versioning.py
+  h_9db9d35f50cf33 36,77,89-91,97,101
+src/flext_infra/_utilities/patterns.py
+  h_9db9d35f50cf33 15,25,28
+src/flext_infra/_utilities/docs_scope.py
+  h_9db9d35f50cf33 40,145
+src/flext_infra/_models/refactor.py
+  h_9db9d35f50cf33 12,15,20,39,52,58,94,99,104,109,112,205
+src/flext_infra/_models/deps_tool_config.py
+  h_9db9d35f50cf33 10
+src/flext_infra/deps/extra_paths.py
+  h_9db9d35f50cf33 18,74,284-285
+tests/integration/test_refactor_nesting_idempotency.py
+  h_9db9d35f50cf33 7-8
+src/flext_infra/_models/rope.py
+  h_9db9d35f50cf33 15,17,24,33-34,44
+src/flext_infra/_constants/check.py
+  h_9db9d35f50cf33 56,58-59
+src/flext_infra/_constants/workspace.py
+  h_9db9d35f50cf33 77,82
+src/flext_infra/refactor/mro_resolver.py
+  h_9db9d35f50cf33 28,30,58,100,130,153,179
+src/flext_infra/_models/release.py
+  h_9db9d35f50cf33 7,9,16,28,60-63,77-80
+src/flext_infra/_utilities/protected_edit.py
+  h_9db9d35f50cf33 52
+src/flext_infra/_utilities/census.py
+  h_9db9d35f50cf33 14,109
+src/flext_infra/_utilities/base.py
+  h_9db9d35f50cf33 10,14,25,28,41,46-47,57,64,68-104
+src/flext_infra/_models/check.py
+  h_9db9d35f50cf33 13,19,70-71,101,134
+src/flext_infra/docs/cli.py
+  h_9db9d35f50cf33 5-13
+src/flext_infra/_models/docs.py
+  h_9db9d35f50cf33 11
+src/flext_infra/_constants/make.py
+  h_9db9d35f50cf33 9,11
+src/flext_infra/_models/refactor_ast_grep.py
+  h_9db9d35f50cf33 11,13,100
+src/flext_infra/_models/refactor_namespace_enforcer.py
+  h_9db9d35f50cf33 10,12,19,25,80,104-106,113,119,129-130,137
+src/flext_infra/deps/internal_sync.py
+  h_9db9d35f50cf33 15,17,122-123,175,180,182
+src/flext_infra/base.py
+  h_9db9d35f50cf33 22,24-26,33,135,152,197-218,222
+src/flext_infra/_utilities/iteration.py
+  h_9db9d35f50cf33 18-19,55-85,121-156,158-160,162-186,188-198,200,220
+src/flext_infra/_models/codegen.py
+  h_9db9d35f50cf33 14,17-18,28,41,64,85,216,220,255,285-286,294-295,321
+src/flext_infra/_constants/release.py
+  h_9db9d35f50cf33 6,13,15-39,42
+src/flext_infra/_utilities/docs_generate.py
+  h_9db9d35f50cf33 356
+tests/unit/test_infra_constants_extra.py
+  h_9db9d35f50cf33 82,102-105
+src/flext_infra/_utilities/namespace.py
+  h_9db9d35f50cf33 15-27,151,160,418,420,457
+src/flext_infra/refactor/base_rule.py
+  h_9db9d35f50cf33 17,40,54,77
+src/flext_infra/_models/deps.py
+  h_9db9d35f50cf33 14,16,18,20-21,27,105-106,111,115-116,144-145,151,153,155,263
+src/flext_infra/basemk/cli.py
+  h_9db9d35f50cf33 5
+src/flext_infra/docs/fixer.py
+  h_9db9d35f50cf33 88-89,91-92
+src/flext_infra/constants.py
+  h_9db9d35f50cf33 38
+src/flext_infra/docs/validator.py
+  h_9db9d35f50cf33 63,103,113,119,123,134
+tests/integration/test_refactor_nesting_file.py
+  h_9db9d35f50cf33 10,18,58
+src/flext_infra/_models/deps_tool_config_type_checkers.py
+  h_9db9d35f50cf33 7
+src/flext_infra/cli.py
+  h_9db9d35f50cf33 12,53,84,95,99,101,121,124,130,139,141
+src/flext_infra/deps/phases/consolidate_groups.py
+  h_9db9d35f50cf33 25-26,49,51,59,64,71,75-76
+src/flext_infra/_models/engine_ops.py
+  h_9db9d35f50cf33 11,22-23,25,33-34,36,41,46,54-55,57
+src/flext_infra/workspace/cli.py
+  h_9db9d35f50cf33 5-12
+src/flext_infra/_models/engine.py
+  h_9db9d35f50cf33 16,18,21,25-27,105,125
+src/flext_infra/check/workspace_check_gates.py
+  h_9db9d35f50cf33 126
+src/flext_infra/check/cli.py
+  h_9db9d35f50cf33 5-13
+src/flext_infra/_utilities/docs_build.py
+  h_9db9d35f50cf33 59,69,78,91,99
+src/flext_infra/validate/stub_chain.py
+  h_9db9d35f50cf33 19,22
+src/flext_infra/release/orchestrator.py
+  h_9db9d35f50cf33 21,28,52
+src/flext_infra/_constants/codegen.py
+  h_9db9d35f50cf33 17-18,21,102-103
+src/flext_infra/_utilities/docs_contract.py
+  h_9db9d35f50cf33 35
+src/flext_infra/_models/base.py
+  h_9db9d35f50cf33 14,31
+src/flext_infra/workspace/rope.py
+  h_9db9d35f50cf33 273,349
+src/flext_infra/refactor/engine_rules.py
+  376f82a5e64b61d4 259
+  h_9db9d35f50cf33 39,255-256,258,260
+src/flext_infra/deps/cli.py
+  h_9db9d35f50cf33 7-17
+tests/integration/test_infra_integration.py
+  h_9db9d35f50cf33 101-107,116-122
+src/flext_infra/_utilities/deps_repos.py
+  h_9db9d35f50cf33 12-14,64-65,130-132,170-171
+src/flext_infra/docs/auditor.py
+  h_9db9d35f50cf33 115,117,119
+src/flext_infra/_utilities/mro_scan.py
+  h_9db9d35f50cf33 18,49,55,63,97,312
+src/flext_infra/_models/workspace.py
+  h_9db9d35f50cf33 10,12,24,102
+src/flext_infra/codegen/cli.py
+  h_9db9d35f50cf33 5-15,17
+src/flext_infra/_models/deps_tool_config_linters.py
+  h_9db9d35f50cf33 10
+tests/unit/codegen/lazy_init_generation_tests.py
+  h_9db9d35f50cf33 97,113,130
+src/flext_infra/gates/mypy.py
+  h_9db9d35f50cf33 70-75
+src/flext_infra/_models/gates.py
+  h_9db9d35f50cf33 8
+tests/unit/validate/silent_failure_tests.py
+  h_9db9d35f50cf33 55,79,81,86
+src/flext_infra/docs/auditor_mixin.py
+  h_9db9d35f50cf33 118
+src/flext_infra/refactor/accessor_migration.py
+  h_9db9d35f50cf33 16-17,24-25,29,208,221
+src/flext_infra/_models/refactor_census.py
+  h_9db9d35f50cf33 10,12,73,137
+src/flext_infra/github/cli.py
+  h_9db9d35f50cf33 7
+tests/unit/container/test_infra_container.py
+  h_9db9d35f50cf33 62-68,116-117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "e8195726a1a1f4c1b03f1eba5fbe8704a0b50b5d",
+  "prompts": {
+    "376f82a5e64b61d4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c3fe1632-f119-41b5-bbd0-0fc56ae1884d",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 8,
+      "total_deletions": 15,
+      "accepted_lines": 6,
+      "overriden_lines": 0
+    }
+  },
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
