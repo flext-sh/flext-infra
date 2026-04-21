@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import configparser
-import os
 from collections.abc import (
     Mapping,
     MutableMapping,
 )
 from pathlib import Path
 
-from flext_infra import c, m, p, r, t, u
+from flext_cli import u
+
+from flext_infra import FlextInfraSettings, c, m, p, r, t
 
 
 class FlextInfraInternalSyncRepoMixin:
@@ -60,7 +61,8 @@ class FlextInfraInternalSyncRepoMixin:
 
     def is_workspace_mode(self, project_root: Path) -> t.Infra.Pair[bool, Path | None]:
         """Determine workspace mode and return resolved workspace root."""
-        if os.getenv("FLEXT_STANDALONE") == "1":
+        settings = FlextInfraSettings()
+        if settings.standalone:
             u.Cli.info("Standalone mode: skipping workspace dependency sync")
             return (False, None)
         env_workspace_root = self.workspace_root_from_env(project_root)
@@ -125,9 +127,9 @@ class FlextInfraInternalSyncRepoMixin:
 
     def resolve_ref(self, project_root: Path) -> str:
         """Resolve dependency sync git reference for current environment."""
-        if os.getenv("GITHUB_ACTIONS") == "true":
-            for key in ("GITHUB_HEAD_REF", "GITHUB_REF_NAME"):
-                value = os.getenv(key)
+        settings = FlextInfraSettings()
+        if settings.github_actions:
+            for value in (settings.github_head_ref, settings.github_ref_name):
                 if value:
                     return value
         branch = u.Cli.capture(
@@ -165,10 +167,9 @@ class FlextInfraInternalSyncRepoMixin:
 
     def workspace_root_from_env(self, project_root: Path) -> Path | None:
         """Resolve workspace root from environment when valid for project root."""
-        env_root = os.getenv("FLEXT_WORKSPACE_ROOT")
-        if not env_root:
+        candidate = FlextInfraSettings().workspace_root
+        if candidate is None:
             return None
-        candidate = Path(env_root).expanduser().resolve()
         if not candidate.exists() or not candidate.is_dir():
             return None
         if project_root.is_relative_to(candidate):

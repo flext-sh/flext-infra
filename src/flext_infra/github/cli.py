@@ -4,12 +4,7 @@ from __future__ import annotations
 
 from flext_core import r
 
-from flext_infra.cli_registry import FlextInfraCliGroupBase
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
-from flext_infra.utilities import u
+from flext_infra import FlextInfraCliGroupBase, c, m, p, t, u
 
 
 class FlextInfraCliGithub(FlextInfraCliGroupBase):

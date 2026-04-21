@@ -8,9 +8,9 @@ from collections.abc import (
 from types import MappingProxyType
 from typing import Annotated, ClassVar
 
-from flext_core import m
+from flext_cli import m
 
-from flext_infra import FlextInfraModelsMixins, c, t
+from flext_infra import FlextInfraModelsMixins as mm, c, t
 
 
 class FlextInfraModelsRefactorGrep:
@@ -97,7 +97,7 @@ class FlextInfraModelsRefactorGrep:
         ]
 
     class MROMigrationReport(
-        FlextInfraModelsMixins.StashRefMixin,
+        mm.StashRefMixin,
         m.ArbitraryTypesModel,
     ):
         """End-to-end report for migrate-to-mro command execution."""

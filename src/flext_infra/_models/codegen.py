@@ -11,11 +11,11 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, ClassVar
 
-from flext_cli import u
-from flext_core import m
+from flext_cli import m, u
 
 from flext_infra import (
-    FlextInfraModelsMixins,
+    FlextInfraModelsMixins as mm,
+    c,
     p,
     t,
 )
@@ -25,7 +25,7 @@ class FlextInfraModelsCodegen:
     """Models for codegen census, scaffold, and auto-fix pipelines."""
 
     class CensusViolation(
-        FlextInfraModelsMixins.RequiredNonNegativeLineMixin,
+        mm.RequiredNonNegativeLineMixin,
         m.ArbitraryTypesModel,
     ):
         """A single namespace violation detected by the census service."""
@@ -38,7 +38,7 @@ class FlextInfraModelsCodegen:
         fixable: bool = m.Field(description="Whether this violation can be auto-fixed")
 
     class CensusReport(
-        FlextInfraModelsMixins.ProjectNameMixin,
+        mm.ProjectNameMixin,
         m.ArbitraryTypesModel,
     ):
         """Aggregated census report for a single project."""
@@ -61,7 +61,7 @@ class FlextInfraModelsCodegen:
         ]
 
     class ScaffoldResult(
-        FlextInfraModelsMixins.ProjectNameMixin,
+        mm.ProjectNameMixin,
         m.ArbitraryTypesModel,
     ):
         """Result of scaffolding base modules for a project.
@@ -82,7 +82,7 @@ class FlextInfraModelsCodegen:
         )
 
     class AutoFixResult(
-        FlextInfraModelsMixins.ProjectNameMixin,
+        mm.ProjectNameMixin,
         m.ArbitraryTypesModel,
     ):
         """Result of auto-fixing namespace violations for a project."""
@@ -213,11 +213,11 @@ class FlextInfraModelsCodegen:
             description="Discovered package context.",
         )
         action: Annotated[
-            t.Infra.LazyInitAction,
+            c.Infra.LazyInitAction,
             m.Field(
                 description="Action selected for this package.",
             ),
-        ] = "skip"
+        ] = c.Infra.LazyInitAction.SKIP
         exports: t.StrSequence = m.Field(
             default_factory=tuple,
             description="Public exports for generated __init__.py.",
@@ -252,7 +252,7 @@ class FlextInfraModelsCodegen:
         critical: Annotated[bool, m.Field(description="Whether failure is critical")]
 
     class QualityGateProjectFinding(
-        FlextInfraModelsMixins.ProjectNameMixin,
+        mm.ProjectNameMixin,
         m.ArbitraryTypesModel,
     ):
         """Per-project quality gate findings."""
@@ -282,8 +282,8 @@ class FlextInfraModelsCodegen:
         ]
 
     class BulkFixItem(
-        FlextInfraModelsMixins.AbsoluteFilePathTextMixin,
-        FlextInfraModelsMixins.PositiveLineMixin,
+        mm.AbsoluteFilePathTextMixin,
+        mm.PositiveLineMixin,
         m.ArbitraryTypesModel,
     ):
         """Shared line-addressable item used by bulk codegen fixes."""
@@ -291,8 +291,8 @@ class FlextInfraModelsCodegen:
         name: Annotated[t.NonEmptyStr, m.Field(description="Item identifier")]
 
     class ConstantDefinition(
-        FlextInfraModelsMixins.ProjectNameMixin,
-        FlextInfraModelsMixins.NestedClassPathMixin,
+        mm.ProjectNameMixin,
+        mm.NestedClassPathMixin,
         BulkFixItem,
     ):
         """A single constant extracted from a constants.py file."""
@@ -318,7 +318,7 @@ class FlextInfraModelsCodegen:
         ] = ""
 
     class DirectConstantRef(
-        FlextInfraModelsMixins.ProjectNameMixin,
+        mm.ProjectNameMixin,
         m.ArbitraryTypesModel,
     ):
         """Direct FlextXConstants.Y.Z reference that should use c.* alias."""

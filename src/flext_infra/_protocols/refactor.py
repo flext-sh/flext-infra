@@ -15,18 +15,14 @@ from collections.abc import (
 from typing import Protocol, runtime_checkable
 
 
-@runtime_checkable
-class FlextInfraChangeTracker(Protocol):
-    """Protocol for objects that track applied changes."""
-
-    changes: MutableSequence[str]
-
-
 class FlextInfraProtocolsRefactor(Protocol):
-    """Refactor-domain protocol definitions."""
+    @runtime_checkable
+    class ChangeTracker(Protocol):
+        """Protocol for objects that track applied changes."""
+
+        changes: MutableSequence[str]
 
 
 __all__: list[str] = [
-    "FlextInfraChangeTracker",
     "FlextInfraProtocolsRefactor",
 ]

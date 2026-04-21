@@ -59,13 +59,13 @@ class TestInfraMroPattern:
 
     def test_output_methods_available(self) -> None:
         """Verify output methods are accessible via u.Infra MRO."""
-        assert callable(u.Infra.status)
-        assert callable(u.Infra.summary)
-        assert callable(u.Infra.error)
-        assert callable(u.Infra.warning)
-        assert callable(u.Infra.info)
-        assert callable(u.Infra.header)
-        assert callable(u.Infra.progress)
+        assert callable(u.Cli.status)
+        assert callable(u.Cli.summary)
+        assert callable(u.Cli.error)
+        assert callable(u.Cli.warning)
+        assert callable(u.Cli.info)
+        assert callable(u.Cli.header)
+        assert callable(u.Cli.progress)
 
     def test_path_methods_available(self) -> None:
         """Verify path methods are accessible via u.Infra MRO."""
@@ -113,7 +113,7 @@ class TestInfraServiceRetrieval:
         stream = StringIO()
 
         u.Infra.setup(color=False, unicode=False, stream=stream)
-        u.Infra.info("hello")
-        u.Infra.warning("careful")
+        u.Cli.info("hello")
+        u.Cli.warning("careful")
 
         assert stream.getvalue() == "INFO: hello\nWARN: careful\n"

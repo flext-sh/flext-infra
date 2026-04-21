@@ -53,8 +53,10 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
     ) -> m.Infra.LazyInitPlan:
         """Build the lazy-init render plan for one package directory."""
         context = self._context(pkg_dir)
-        empty_action: t.Infra.LazyInitAction = (
-            "remove" if context.generated_init else "skip"
+        empty_action: c.Infra.LazyInitAction = (
+            c.Infra.LazyInitAction.REMOVE
+            if context.generated_init
+            else c.Infra.LazyInitAction.SKIP
         )
         if not context.importable:
             return m.Infra.LazyInitPlan(context=context, action=empty_action)
@@ -81,7 +83,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
             return m.Infra.LazyInitPlan(context=context, action=empty_action)
         return m.Infra.LazyInitPlan(
             context=context,
-            action="write",
+            action=c.Infra.LazyInitAction.WRITE,
             exports=u.Infra.ordered_namespace_exports(
                 package_dir=context.pkg_dir,
                 package_name=context.current_pkg,
@@ -96,7 +98,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         )
 
     def _context(self, pkg_dir: Path) -> m.Infra.LazyInitPackageContext:
-        return self.rope_workspace.context(pkg_dir)
+        return self.rope_workspace.package_context(pkg_dir)
 
     def _package_exports(
         self,

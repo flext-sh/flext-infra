@@ -4,16 +4,15 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from flext_cli import cli
+from flext_cli import FlextCli
 
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
+from flext_infra import c, m, t
 
 
 class FlextInfraCliGroupBase:
     """Base helper for domain-owned CLI route declarations."""
 
+    _CLI_SERVICE: ClassVar[FlextCli] = FlextCli()
     routes: ClassVar[tuple[m.Cli.ResultCommandRoute, ...]] = ()
 
     @staticmethod
@@ -37,7 +36,7 @@ class FlextInfraCliGroupBase:
     @classmethod
     def register_routes(cls, app: t.Cli.CliApp) -> None:
         """Register the class-owned routes on the provided app."""
-        cli.register_result_routes(app, cls.routes)
+        cls._CLI_SERVICE.register_result_routes(app, cls.routes)
 
 
 class FlextInfraCliRegistryMixin:

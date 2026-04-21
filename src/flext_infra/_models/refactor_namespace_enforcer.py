@@ -7,22 +7,22 @@ from collections.abc import (
 )
 from typing import Annotated, ClassVar, Self
 
-from flext_core import m
+from flext_cli import m
 
-from flext_infra import FlextInfraModelsMixins, t
+from flext_infra import FlextInfraModelsMixins as mm, t
 
 
 class FlextInfraModelsNamespaceEnforcer:
     """Namespace enforcer violation and report models."""
 
     class FileLineViolation(
-        FlextInfraModelsMixins.FileLineViolationMixin,
+        mm.FileLineViolationMixin,
         m.ContractModel,
     ):
         """Shared base: file + line for all violation models."""
 
     class ImportViolationBase(
-        FlextInfraModelsMixins.CurrentImportMixin,
+        mm.CurrentImportMixin,
         FileLineViolation,
     ):
         """Shared base: file + line + current_import."""
@@ -77,7 +77,7 @@ class FlextInfraModelsNamespaceEnforcer:
         suggestion: Annotated[str, m.Field(description="Fix suggestion")]
 
     class InternalImportViolation(
-        FlextInfraModelsMixins.ViolationDetailMixin,
+        mm.ViolationDetailMixin,
         ImportViolationBase,
     ):
         pass
@@ -101,22 +101,22 @@ class FlextInfraModelsNamespaceEnforcer:
         ] = m.Field(default_factory=tuple)
 
     class RuntimeAliasViolation(
-        FlextInfraModelsMixins.FilePathMixin,
-        FlextInfraModelsMixins.NonNegativeLineMixin,
-        FlextInfraModelsMixins.ViolationDetailMixin,
+        mm.FilePathMixin,
+        mm.NonNegativeLineMixin,
+        mm.ViolationDetailMixin,
         m.ContractModel,
     ):
         kind: Annotated[str, m.Field(description="Violation kind")]
         alias: Annotated[str, m.Field(description="Alias involved")]
 
     class FutureAnnotationsViolation(
-        FlextInfraModelsMixins.FilePathMixin,
+        mm.FilePathMixin,
         m.ContractModel,
     ):
         pass
 
     class ManualTypingAliasViolation(
-        FlextInfraModelsMixins.ViolationDetailMixin,
+        mm.ViolationDetailMixin,
         FileLineViolation,
     ):
         name: Annotated[t.NonEmptyStr, m.Field(description="Alias name")]
@@ -126,15 +126,15 @@ class FlextInfraModelsNamespaceEnforcer:
         target_name: Annotated[t.NonEmptyStr, m.Field(description="Target name")]
 
     class ParseFailureViolation(
-        FlextInfraModelsMixins.FilePathMixin,
-        FlextInfraModelsMixins.ErrorDetailMixin,
+        mm.FilePathMixin,
+        mm.ErrorDetailMixin,
         m.ContractModel,
     ):
         stage: Annotated[t.NonEmptyStr, m.Field(description="Parse stage")]
         error_type: Annotated[t.NonEmptyStr, m.Field(description="Error type")]
 
     class ProjectEnforcementReport(
-        FlextInfraModelsMixins.ProjectNameMixin,
+        mm.ProjectNameMixin,
         m.ArbitraryTypesModel,
     ):
         _flext_enforcement_exempt: ClassVar[bool] = True

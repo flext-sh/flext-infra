@@ -10,13 +10,13 @@ from typing import Annotated, ClassVar
 
 from flext_cli import m, u
 
-from flext_infra import FlextInfraModelsMixins, c, t
+from flext_infra import FlextInfraModelsMixins as mm, c, t
 
 
 class FlextInfraModelsCheck:
     """Quality-gate check domain models."""
 
-    class RunCommand(FlextInfraModelsMixins.ProjectMixin, m.ContractModel):
+    class RunCommand(mm.ProjectMixin, m.ContractModel):
         """Canonical CLI payload for ``flext-infra check run``."""
 
         gates: Annotated[
@@ -67,8 +67,8 @@ class FlextInfraModelsCheck:
             return (Path.cwd() / reports_dir).resolve()
 
     class FixPyreflyConfigCommand(
-        FlextInfraModelsMixins.ApplyDryRunMixin,
-        FlextInfraModelsMixins.ProjectMixin,
+        mm.ApplyDryRunMixin,
+        mm.ProjectMixin,
         m.ContractModel,
     ):
         """Canonical CLI payload for ``flext-infra check fix-pyrefly-settings``."""
@@ -98,7 +98,7 @@ class FlextInfraModelsCheck:
             ).strip()
 
     class GateResult(
-        FlextInfraModelsMixins.ProjectNameMixin,
+        mm.ProjectNameMixin,
         m.ArbitraryTypesModel,
     ):
         """Result summary for a single quality gate execution."""
@@ -131,7 +131,7 @@ class FlextInfraModelsCheck:
         )
 
     class ProjectResult(
-        FlextInfraModelsMixins.ProjectNameMixin,
+        mm.ProjectNameMixin,
         m.ArbitraryTypesModel,
     ):
         """Aggregated gate results for a single project.

@@ -8,10 +8,10 @@ import tracemalloc
 from pathlib import Path
 
 from flext_infra import (
-    FlextInfraClassNestingRefactorRule as ClassNestingRefactorRule,
+    FlextInfraClassNestingRefactorRule,
     FlextInfraRefactorLooseClassScanner,
-    u,
 )
+from tests import u
 
 
 class TestPerformanceBenchmarks:
@@ -65,7 +65,7 @@ class TestPerformanceBenchmarks:
             config_file.write_text(
                 "\nclass_nesting:\n  - loose_name: TimeoutEnforcer\n    current_file: test.py\n    target_namespace: FlextDispatcher\n    target_name: TimeoutEnforcer\n    confidence: high\n  - loose_name: RateLimiter\n    current_file: test.py\n    target_namespace: FlextDispatcher\n    target_name: RateLimiter\n    confidence: high\n",
             )
-            rule = ClassNestingRefactorRule(config_file)
+            rule = FlextInfraClassNestingRefactorRule(config_file)
             rope_project = u.Infra.init_rope_project(tmp_path)
             resource = u.Infra.get_resource_from_path(rope_project, test_file)
             if resource is None:

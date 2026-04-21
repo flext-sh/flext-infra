@@ -112,11 +112,11 @@ class FlextInfraDocAuditor(s[bool], FlextInfraDocAuditorMixin):
                 else issue_count <= scope_budget
             )
         result = (
-            c.Infra.STATUS_OK
+            c.Infra.ResultStatus.OK
             if passed and issue_count == 0
-            else c.Infra.STATUS_WARN
+            else c.Infra.ResultStatus.WARN
             if passed
-            else c.Infra.STATUS_FAIL
+            else c.Infra.ResultStatus.FAIL
         )
         reason = (
             f"issues:{issue_count}"

@@ -92,14 +92,14 @@ class FlextInfraUtilitiesDependencyPathSync:
         payload: MutableMapping[str, t.Cli.JsonValue],
         *,
         is_root: bool,
-        mode: str,
+        mode: c.Infra.PathSyncMode,
         internal_names: t.Infra.StrSet,
         internal_deps: t.Infra.StrSet,
         workspace_members: t.StrSequence,
     ) -> t.StrSequence:
         expected_names: t.Infra.StrSet = (
             set(workspace_members)
-            if is_root and mode == c.Infra.RK_WORKSPACE
+            if is_root and mode == c.Infra.PathSyncMode.WORKSPACE
             else set(internal_deps)
         )
         if not expected_names:
@@ -115,7 +115,7 @@ class FlextInfraUtilitiesDependencyPathSync:
         for dep_name in sorted(expected_names):
             expected = (
                 {"workspace": True}
-                if mode == c.Infra.RK_WORKSPACE
+                if mode == c.Infra.PathSyncMode.WORKSPACE
                 else {
                     "path": f"{c.Infra.FLEXT_DEPS_DIR}/{dep_name}",
                     "editable": True,
@@ -160,7 +160,7 @@ class FlextInfraUtilitiesDependencyPathSync:
         payload: MutableMapping[str, t.Cli.JsonValue],
         *,
         is_root: bool,
-        mode: str,
+        mode: c.Infra.PathSyncMode,
     ) -> t.StrSequence:
         tool_section = u.Cli.toml_mapping_child(payload, c.Infra.TOOL)
         if tool_section is None:
@@ -188,10 +188,10 @@ class FlextInfraUtilitiesDependencyPathSync:
                 continue
             new_path = (
                 dep_name
-                if mode == c.Infra.RK_WORKSPACE and is_root
+                if mode == c.Infra.PathSyncMode.WORKSPACE and is_root
                 else (
                     f"../{dep_name}"
-                    if mode == c.Infra.RK_WORKSPACE
+                    if mode == c.Infra.PathSyncMode.WORKSPACE
                     else f"{c.Infra.FLEXT_DEPS_DIR}/{dep_name}"
                 )
             )
@@ -227,7 +227,7 @@ class FlextInfraUtilitiesDependencyPathSync:
         self,
         pyproject_path: Path,
         *,
-        mode: str,
+        mode: c.Infra.PathSyncMode,
         internal_names: t.Infra.StrSet,
         workspace_members: t.StrSequence,
         is_root: bool = False,
@@ -273,12 +273,12 @@ class FlextInfraUtilitiesDependencyPathSync:
         return r[t.StrSequence].ok(changes)
 
     @staticmethod
-    def detect_mode(project_root: Path) -> str:
+    def detect_mode(project_root: Path) -> c.Infra.PathSyncMode:
         """Detect workspace or standalone mode from project structure."""
         for candidate in (project_root, *project_root.parents):
             if (candidate / c.Infra.GITMODULES).exists():
-                return c.Infra.RK_WORKSPACE
-        return "standalone"
+                return c.Infra.PathSyncMode.WORKSPACE
+        return c.Infra.PathSyncMode.STANDALONE
 
     def execute(self, params: FlextInfraModelsDeps.PathSyncCommand) -> int:
         """Execute dependency path synchronization for one canonical command payload."""
@@ -287,7 +287,7 @@ class FlextInfraUtilitiesDependencyPathSync:
         selected_projects: t.StrSequence = list(params.project_names or [])
         mode = params.mode
 
-        if mode == "auto":
+        if mode == c.Infra.PathSyncMode.AUTO:
             mode = self.detect_mode(workspace_root)
 
         root_pyproject = workspace_root / c.Infra.PYPROJECT_FILENAME
@@ -312,7 +312,7 @@ class FlextInfraUtilitiesDependencyPathSync:
         if root_pyproject.exists():
             root_payload: t.Infra.ContainerDict
             try:
-                root_payload = FlextInfraUtilitiesDocsScope.pyproject_payload(
+                root_payload = FlextInfraUtilitiesDocsScope.project_payload(
                     workspace_root,
                 )
             except (TypeError, ValueError):

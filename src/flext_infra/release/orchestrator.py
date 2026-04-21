@@ -18,12 +18,15 @@ from collections.abc import (
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import c, m, p, r, s, t, u
+from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, p, r, t, u
 
 from .orchestrator_phases import FlextInfraReleaseOrchestratorPhases
 
 
-class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]):
+class FlextInfraReleaseOrchestrator(
+    FlextInfraReleaseOrchestratorPhases,
+    FlextInfraProjectSelectionServiceBase[bool],
+):
     """Service for release lifecycle orchestration."""
 
     version: Annotated[str, m.Field(description="Version string")] = ""
@@ -31,12 +34,6 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
     push: Annotated[bool, m.Field(description="Push to remote")] = False
     dev_suffix: Annotated[bool, m.Field(description="Add dev suffix")] = False
     phase: Annotated[str, m.Field(description="Release phase")] = "all"
-    projects: Annotated[
-        t.StrSequence | None,
-        m.Field(
-            description="Projects to process; repeat --projects NAME as needed",
-        ),
-    ] = None
     bump: Annotated[str, m.Field(description="Bump type (major/minor/patch)")] = ""
     interactive: Annotated[
         int, m.Field(description="Interactive mode (1=yes, 0=no)")
@@ -52,24 +49,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleaseOrchestratorPhases, s[bool]
     @property
     def phase_names(self) -> t.StrSequence:
         """Return the normalized phase sequence for release execution."""
-        if self.phase == "all":
-            return [
-                c.Infra.VERB_VALIDATE,
-                c.Infra.VERSION,
-                c.Infra.DIR_BUILD,
-                c.Infra.VERB_PUBLISH,
-            ]
-        return [
-            item.strip()
-            for group in self.phase.split(",")
-            for item in group.split()
-            if item.strip()
-        ]
-
-    @property
-    def project_names(self) -> t.StrSequence | None:
-        """Return normalized project names from repeated selectors."""
-        return self.normalize_selected_projects(self.projects)
+        return u.Infra.resolve_phase_names(self.phase)
 
     @override
     def execute(self) -> p.Result[bool]:

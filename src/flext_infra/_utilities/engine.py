@@ -18,11 +18,12 @@ from collections.abc import (
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from flext_cli import u
+
 from flext_infra import (
     FlextInfraUtilitiesIteration,
     c,
     t,
-    u,
 )
 
 if TYPE_CHECKING:

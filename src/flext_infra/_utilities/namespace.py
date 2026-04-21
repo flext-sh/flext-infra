@@ -11,17 +11,20 @@ from pathlib import Path
 from typing import ClassVar, Final
 
 from flext_cli import u
-from flext_core import r
 
-from flext_infra._utilities.base import FlextInfraUtilitiesBase
-from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
-from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
-from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
-from flext_infra._utilities.rope import FlextInfraUtilitiesRope
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
+from flext_infra import (
+    FlextInfraUtilitiesBase,
+    FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesDocsScope,
+    FlextInfraUtilitiesParsing,
+    FlextInfraUtilitiesRopeAnalysis,
+    FlextInfraUtilitiesRopeCore,
+    c,
+    m,
+    p,
+    r,
+    t,
+)
 
 
 class FlextInfraUtilitiesCodegenNamespace:
@@ -145,7 +148,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         package_name = (
             project.package_name
             if project is not None and project.package_name
-            else FlextInfraUtilitiesDocsScope.package_name(resolved_root)
+            else FlextInfraUtilitiesDiscovery.package_name(resolved_root)
         )
         if not package_name:
             return None
@@ -154,7 +157,7 @@ class FlextInfraUtilitiesCodegenNamespace:
             if project is not None and project.name
             else FlextInfraUtilitiesDocsScope.project_name_from_payload(
                 resolved_root,
-                FlextInfraUtilitiesDocsScope.pyproject_payload(resolved_root),
+                FlextInfraUtilitiesDocsScope.project_payload(resolved_root),
             )
             if (resolved_root / c.Infra.PYPROJECT_FILENAME).is_file()
             else resolved_root.name
@@ -412,9 +415,9 @@ class FlextInfraUtilitiesCodegenNamespace:
     ) -> None:
         if not file_path.is_file():
             return
-        with FlextInfraUtilitiesRope.open_project(file_path.parent) as rope_project:
+        with FlextInfraUtilitiesRopeCore.open_project(file_path.parent) as rope_project:
             resource: t.Infra.RopeResource | None = (
-                FlextInfraUtilitiesRope.get_resource_from_path(
+                FlextInfraUtilitiesRopeCore.get_resource_from_path(
                     rope_project,
                     file_path,
                 )
@@ -451,7 +454,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         base_name: str,
     ) -> tuple[str, str]:
         class_infos = sorted(
-            FlextInfraUtilitiesRope.get_class_info(rope_project, resource),
+            FlextInfraUtilitiesRopeAnalysis.get_class_info(rope_project, resource),
             key=lambda item: item.line,
         )
         if not class_infos:

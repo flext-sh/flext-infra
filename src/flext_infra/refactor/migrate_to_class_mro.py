@@ -20,7 +20,7 @@ from flext_infra import (
     FlextInfraRefactorMROMigrationValidator,
     FlextInfraTypes,
     FlextInfraUtilitiesRefactorMroScan,
-    FlextInfraUtilitiesRope,
+    u,
 )
 
 
@@ -148,7 +148,7 @@ class FlextInfraRefactorMigrateToClassMRO:
         try:
             report = cls(workspace_root=path).run(target="all", apply=not dry_run)
         except (
-            *FlextInfraUtilitiesRope.SYNTAX_ERRORS,
+            *u.Infra.SYNTAX_ERRORS,
             OSError,
             ValueError,
             KeyError,
@@ -206,6 +206,6 @@ class FlextInfraRefactorMigrateToClassMRO:
 
 __all__: list[str] = ["FlextInfraRefactorMigrateToClassMRO"]
 
-FlextInfraUtilitiesRope.register_rope_post_hook(
+u.Infra.register_rope_post_hook(
     FlextInfraRefactorMigrateToClassMRO.run_as_hook,
 )

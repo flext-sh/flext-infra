@@ -26,22 +26,22 @@ class FlextInfraEnsurePytestConfigPhase:
             .list(
                 c.Infra.PYTHON_CLASSES,
                 ("Test*",),
-                strategy=c.Infra.TOML_MERGE_MERGE,
+                strategy=c.Infra.TomlMergeMode.MERGE,
             )
             .list(
                 c.Infra.PYTHON_FILES,
                 ("*_test.py", "*_tests.py", "test_*.py"),
-                strategy=c.Infra.TOML_MERGE_MERGE,
+                strategy=c.Infra.TomlMergeMode.MERGE,
             )
             .list(
                 c.Infra.ADDOPTS,
                 self._tool_config.tools.pytest.standard_addopts,
-                strategy=c.Infra.TOML_MERGE_MERGE,
+                strategy=c.Infra.TomlMergeMode.MERGE,
             )
             .list(
                 c.Infra.MARKERS,
                 self._tool_config.tools.pytest.standard_markers,
-                strategy=c.Infra.TOML_MERGE_MERGE,
+                strategy=c.Infra.TomlMergeMode.MERGE,
             )
             .build()
         )

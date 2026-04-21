@@ -29,11 +29,11 @@ class FlextInfraSkillValidator(s[bool]):
 
     skill: Annotated[str, m.Field(description="Skill folder name")]
     mode: Annotated[
-        str,
+        c.Infra.OperationMode,
         m.Field(
             description="Validation mode (baseline or strict)",
         ),
-    ] = c.Infra.MODE_BASELINE
+    ] = c.Infra.OperationMode.BASELINE
 
     @staticmethod
     def _render_template(workspace_root: Path, template: str, skill: str) -> Path:
@@ -49,7 +49,7 @@ class FlextInfraSkillValidator(s[bool]):
         rule_obj: Mapping[str, t.Infra.InfraValue],
         skill_dir: Path,
         root: Path,
-        mode: str,
+        mode: c.Infra.OperationMode,
         include_globs: t.StrSequence,
         exclude_globs: t.StrSequence,
         counts: t.MutableIntMapping,
@@ -89,7 +89,10 @@ class FlextInfraSkillValidator(s[bool]):
         total: int,
     ) -> bool:
         """Compare counts against the baseline file and return pass/fail."""
-        baseline_obj = u.Cli.json_deep_mapping(rules, c.Infra.MODE_BASELINE)
+        baseline_obj = u.Cli.json_deep_mapping(
+            rules,
+            c.Infra.OperationMode.BASELINE.value,
+        )
         if not baseline_obj:
             return True
         strategy = str(baseline_obj.get("strategy", c.Infra.RK_TOTAL))
@@ -121,7 +124,7 @@ class FlextInfraSkillValidator(s[bool]):
         workspace_root: Path,
         skill_name: str,
         *,
-        mode: str = c.Infra.MODE_BASELINE,
+        mode: c.Infra.OperationMode = c.Infra.OperationMode.BASELINE,
         _project_filter: t.StrSequence | None = None,
     ) -> p.Result[m.Infra.ValidationReport]:
         """Validate a single skill across workspace projects.
@@ -184,8 +187,8 @@ class FlextInfraSkillValidator(s[bool]):
                     violations,
                 )
             total = sum(counts.values())
-            passed = total == 0 if mode == c.Infra.MODE_STRICT else True
-            if mode != c.Infra.MODE_STRICT:
+            passed = total == 0 if mode == c.Infra.OperationMode.STRICT else True
+            if mode != c.Infra.OperationMode.STRICT:
                 passed = self._apply_baseline_comparison(
                     rules,
                     root,
@@ -289,7 +292,7 @@ class FlextInfraSkillValidator(s[bool]):
         rule: Mapping[str, t.Infra.InfraValue],
         skill_dir: Path,
         project_path: Path,
-        mode: str,
+        mode: c.Infra.OperationMode,
     ) -> int:
         """Run a custom rule script and return violation count."""
         script_raw = u.Cli.json_get_str_key(rule, "script")
@@ -307,7 +310,7 @@ class FlextInfraSkillValidator(s[bool]):
         )
         cmd.extend(["--workspace", str(project_path)])
         if bool(rule.get("pass_mode")):
-            cmd.extend(["--mode", mode])
+            cmd.extend(["--mode", mode.value])
         result_wrapper = u.Cli.run_raw(
             cmd, cwd=project_path, timeout=c.Infra.TIMEOUT_DEFAULT
         )

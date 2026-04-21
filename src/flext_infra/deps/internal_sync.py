@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import shutil
 from collections.abc import (
     Mapping,
@@ -13,7 +12,9 @@ from pathlib import Path
 from typing import Annotated, ClassVar, override
 
 from flext_infra import (
+    FlextInfraDepsServiceBase,
     FlextInfraInternalSyncRepoMixin,
+    FlextInfraSettings,
     c,
     m,
     p,
@@ -21,7 +22,6 @@ from flext_infra import (
     t,
     u,
 )
-from flext_infra.deps.service_base import FlextInfraDepsServiceBase
 
 
 class FlextInfraInternalDependencySyncService(
@@ -119,9 +119,8 @@ class FlextInfraInternalDependencySyncService(
                 )
             repo_map = parsed_map_result.value
         ref_name = self.resolve_ref(project_root)
-        force_https = (
-            os.getenv("GITHUB_ACTIONS") == "true" or os.getenv("FLEXT_USE_HTTPS") == "1"
-        )
+        infra_settings = FlextInfraSettings()
+        force_https = infra_settings.github_actions or infra_settings.use_https
         for dep_path in deps.values():
             repo_name = dep_path.name
             if repo_name not in repo_map:
@@ -173,19 +172,14 @@ class FlextInfraInternalDependencySyncService(
         project_obj = u.Cli.json_deep_mapping(data, c.Infra.PROJECT)
         project_deps_raw = project_obj.get(c.Infra.DEPENDENCIES)
         project_deps: t.StrSequence = []
-        if isinstance(project_deps_raw, str | int | float | bool):
-            project_deps = u.Cli.toml_as_string_list(project_deps_raw)
-        elif isinstance(project_deps_raw, Sequence) and not isinstance(
-            project_deps_raw,
-            str | bytes,
+        if isinstance(project_deps_raw, str | int | float | bool) or (
+            isinstance(project_deps_raw, Sequence)
+            and not isinstance(
+                project_deps_raw,
+                str | bytes,
+            )
         ):
-            primitive_items: list[t.Primitives] = []
-            for item in project_deps_raw:
-                if not isinstance(item, str | int | float | bool):
-                    primitive_items = []
-                    break
-                primitive_items.append(item)
-            project_deps = u.Cli.toml_as_string_list(primitive_items)
+            project_deps = u.Cli.toml_as_string_list(project_deps_raw)
         internal_dep_names: t.Infra.StrSet = set()
         for dep in project_deps:
             dep_name_match = c.Infra.DEP_NAME_RE.match(dep)

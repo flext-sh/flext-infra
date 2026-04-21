@@ -45,12 +45,7 @@ class FlextInfraPhaseEngine(s[Sequence[t.StrSequence]]):
         *phases: m.Infra.TomlPhaseConfig,
     ) -> t.StrSequence:
         """Apply a declarative phase set to one TOML document."""
-        engine = cls.model_construct(doc=doc, phases=phases)
-        try:
-            return engine.apply()
-        except Exception as exc:
-            msg = str(exc) or "failed to apply TOML phases"
-            raise ValueError(msg) from exc
+        return cls.model_construct(doc=doc, phases=phases).apply()
 
     @classmethod
     def apply_payload_phases(
@@ -59,41 +54,35 @@ class FlextInfraPhaseEngine(s[Sequence[t.StrSequence]]):
         *phases: m.Infra.TomlPhaseConfig,
     ) -> t.StrSequence:
         """Apply one declarative phase set to one plain TOML payload."""
-        try:
-            return [
-                change
-                for phase in phases
-                for change in cls._apply_payload_phase(
-                    payload,
-                    phase,
-                    parent_path=(),
-                )
-            ]
-        except Exception as exc:
-            msg = str(exc) or "failed to apply TOML payload phases"
-            raise ValueError(msg) from exc
+        return [
+            change
+            for phase in phases
+            for change in cls._apply_payload_phase(
+                payload,
+                phase,
+                parent_path=(),
+            )
+        ]
 
     @override
     def execute(self) -> p.Result[Sequence[t.StrSequence]]:
         """Apply all phases and preserve the existing result contract."""
         try:
             return r[Sequence[t.StrSequence]].ok(
-                tuple(self._apply_phase(phase) for phase in self.phases),
+                tuple(
+                    self._apply_phase(phase, parent_path=()) for phase in self.phases
+                ),
             )
         except Exception as exc:
             return r[Sequence[t.StrSequence]].fail(str(exc))
 
     def apply(self) -> t.StrSequence:
         """Apply phases and return one flat change list."""
-        try:
-            return self._flatten_batches()
-        except Exception as exc:
-            msg = str(exc) or "failed to apply TOML phases"
-            raise ValueError(msg) from exc
-
-    def _apply_phase(self, phase: m.Infra.TomlPhaseConfig) -> t.StrSequence:
-        """Apply one phase without result-wrapper overhead in the hot path."""
-        return self._apply_phase_inner(phase, parent_path=())
+        return [
+            change
+            for phase in self.phases
+            for change in self._apply_phase(phase, parent_path=())
+        ]
 
     @classmethod
     def _apply_payload_phase(
@@ -123,14 +112,6 @@ class FlextInfraPhaseEngine(s[Sequence[t.StrSequence]]):
             )
         return out
 
-    def _batches(self) -> tuple[t.StrSequence, ...]:
-        """Return one batch of changes per configured phase."""
-        return tuple(self._apply_phase(phase) for phase in self.phases)
-
-    def _flatten_batches(self) -> t.StrSequence:
-        """Flatten all phase batches into one change list."""
-        return [change for batch in self._batches() for change in batch]
-
     def _resolve_phase_table(self, phase_path: tuple[str, ...]) -> t.Cli.TomlTable:
         """Resolve and cache one TOML table path for the current document."""
         cached_table = self._table_cache.get(phase_path)
@@ -140,7 +121,7 @@ class FlextInfraPhaseEngine(s[Sequence[t.StrSequence]]):
         self._table_cache[phase_path] = table
         return table
 
-    def _apply_phase_inner(
+    def _apply_phase(
         self,
         phase: m.Infra.TomlPhaseConfig,
         *,
@@ -167,7 +148,7 @@ class FlextInfraPhaseEngine(s[Sequence[t.StrSequence]]):
 
         for nested in phase.nested_tables:
             out.extend(
-                self._apply_phase_inner(nested, parent_path=phase_path),
+                self._apply_phase(nested, parent_path=phase_path),
             )
 
         if phase.custom_handler is not None:
@@ -178,54 +159,54 @@ class FlextInfraPhaseEngine(s[Sequence[t.StrSequence]]):
     @staticmethod
     def _apply_operation(
         tbl: t.Cli.TomlTable,
-        operation: t.Infra.TomlOperation,
+        operation: m.Infra.TomlOperation,
         out: MutableSequence[str],
         pfx: str,
     ) -> None:
         """Apply one discriminated TOML operation to the target table."""
-        match operation.kind:
-            case "set":
-                u.Cli.toml_sync_value(
+        if isinstance(operation, m.Infra.TomlSetOp):
+            u.Cli.toml_sync_value(
+                tbl,
+                operation.key,
+                operation.value,
+                out,
+                f"{u.Cli.toml_dot_path(pfx, operation.key)} set to {operation.value}",
+            )
+            return
+        if isinstance(operation, m.Infra.TomlListOp):
+            if operation.strategy in {
+                c.Infra.TomlMergeMode.ADDITIVE,
+                c.Infra.TomlMergeMode.MERGE,
+            }:
+                u.Cli.toml_merge_string_list(
                     tbl,
                     operation.key,
-                    operation.value,
+                    operation.values,
                     out,
-                    f"{u.Cli.toml_dot_path(pfx, operation.key)} set to {operation.value}",
+                    f"{u.Cli.toml_dot_path(pfx, operation.key)} updated",
                 )
-            case "list":
-                if operation.strategy in {
-                    c.Infra.TOML_MERGE_ADDITIVE,
-                    c.Infra.TOML_MERGE_MERGE,
-                }:
-                    u.Cli.toml_merge_string_list(
-                        tbl,
-                        operation.key,
-                        operation.values,
-                        out,
-                        f"{u.Cli.toml_dot_path(pfx, operation.key)} updated",
-                    )
-                else:
-                    u.Cli.toml_sync_string_list(
-                        tbl,
-                        operation.key,
-                        operation.values,
-                        out,
-                        f"{u.Cli.toml_dot_path(pfx, operation.key)} set",
-                        sort_values=operation.sort,
-                    )
-            case "remove":
-                FlextInfraPhaseEngine._remove_operation(tbl, operation, out, pfx)
+                return
+            u.Cli.toml_sync_string_list(
+                tbl,
+                operation.key,
+                operation.values,
+                out,
+                f"{u.Cli.toml_dot_path(pfx, operation.key)} set",
+                sort_values=operation.sort,
+            )
+            return
+        FlextInfraPhaseEngine._remove_operation(tbl, operation, out, pfx)
 
     @staticmethod
     def _apply_payload_operation(
         tbl: MutableMapping[str, t.Cli.JsonValue],
-        operation: t.Infra.TomlOperation,
+        operation: m.Infra.TomlOperation,
         out: MutableSequence[str],
         pfx: str,
     ) -> None:
         """Apply one discriminated TOML operation to one plain mapping table."""
         match operation.kind:
-            case "set":
+            case c.Infra.TomlOperationKind.SET:
                 u.Cli.toml_mapping_sync_value(
                     tbl,
                     operation.key,
@@ -233,10 +214,10 @@ class FlextInfraPhaseEngine(s[Sequence[t.StrSequence]]):
                     out,
                     f"{u.Cli.toml_dot_path(pfx, operation.key)} set to {operation.value}",
                 )
-            case "list":
+            case c.Infra.TomlOperationKind.LIST:
                 if operation.strategy in {
-                    c.Infra.TOML_MERGE_ADDITIVE,
-                    c.Infra.TOML_MERGE_MERGE,
+                    c.Infra.TomlMergeMode.ADDITIVE,
+                    c.Infra.TomlMergeMode.MERGE,
                 }:
                     u.Cli.toml_mapping_merge_string_list(
                         tbl,
@@ -254,10 +235,13 @@ class FlextInfraPhaseEngine(s[Sequence[t.StrSequence]]):
                         f"{u.Cli.toml_dot_path(pfx, operation.key)} set",
                         sort_values=operation.sort,
                     )
-            case "remove":
+            case c.Infra.TomlOperationKind.REMOVE:
                 FlextInfraPhaseEngine._remove_payload_operation(
                     tbl, operation, out, pfx
                 )
+            case _:
+                msg = f"unsupported TOML operation kind: {operation.kind}"
+                raise ValueError(msg)
 
     @staticmethod
     def _remove_operation(

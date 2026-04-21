@@ -18,16 +18,16 @@ from flext_infra import (
     FlextInfraUtilitiesParsing,
     FlextInfraUtilitiesProtectedEdit,
     FlextInfraUtilitiesRefactorNamespaceCommon,
-    FlextInfraUtilitiesRope,
+    FlextInfraUtilitiesRopeAnalysis,
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeImports,
     c,
     m,
     t,
 )
 
 
-class FlextInfraUtilitiesRefactorNamespaceMoves(
-    FlextInfraUtilitiesRefactorNamespaceCommon
-):
+class FlextInfraUtilitiesRefactorNamespaceMoves:
     """Helpers for block moves and compatibility-alias rewrites."""
 
     @classmethod
@@ -39,8 +39,10 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
     ) -> None:
         if not py_files:
             return
-        with FlextInfraUtilitiesRope.open_project(
-            cls._shared_workspace_root(py_files=py_files),
+        with FlextInfraUtilitiesRopeCore.open_project(
+            FlextInfraUtilitiesRefactorNamespaceCommon._shared_workspace_root(
+                py_files=py_files
+            ),
         ) as rope_project:
             for file_path in py_files:
                 if file_path.name == c.Infra.INIT_PY:
@@ -64,22 +66,24 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
                     source=source,
                 ):
                     continue
-                resource = FlextInfraUtilitiesRope.get_resource_from_path(
+                resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
                     rope_project,
                     file_path,
                 )
                 if resource is None:
                     continue
-                rewritten = FlextInfraUtilitiesRope.collapse_submodule_alias_imports(
-                    rope_project,
-                    resource,
-                    package_name=project_package,
-                    aliases=tuple(sorted(c.Infra.RUNTIME_ALIAS_NAMES)),
-                    apply=True,
+                rewritten = (
+                    FlextInfraUtilitiesRopeImports.collapse_submodule_alias_imports(
+                        rope_project,
+                        resource,
+                        package_name=project_package,
+                        aliases=tuple(sorted(c.Infra.RUNTIME_ALIAS_NAMES)),
+                        apply=True,
+                    )
                 )
                 if rewritten is None:
                     continue
-                _ = FlextInfraUtilitiesRope.organize_imports(
+                _ = FlextInfraUtilitiesRopeImports.organize_imports(
                     rope_project,
                     resource,
                     apply=True,
@@ -94,8 +98,12 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
     ) -> None:
         if not py_files:
             return
-        workspace_root = cls._shared_workspace_root(py_files=py_files)
-        with FlextInfraUtilitiesRope.open_project(
+        workspace_root = (
+            FlextInfraUtilitiesRefactorNamespaceCommon._shared_workspace_root(
+                py_files=py_files
+            )
+        )
+        with FlextInfraUtilitiesRopeCore.open_project(
             workspace_root,
         ) as rope_project:
             for file_path in py_files:
@@ -103,7 +111,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
                 if expected is None:
                     continue
                 alias_name, expected_suffix = expected
-                resource = FlextInfraUtilitiesRope.get_resource_from_path(
+                resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
                     rope_project,
                     file_path,
                 )
@@ -111,7 +119,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
                     continue
                 class_candidates = [
                     info.name
-                    for info in FlextInfraUtilitiesRope.get_class_info(
+                    for info in FlextInfraUtilitiesRopeAnalysis.get_class_info(
                         rope_project,
                         resource,
                     )
@@ -217,15 +225,17 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
         kept_source = "\n".join(
             line
             for line in source.splitlines()
-            if FlextInfraUtilitiesRefactorNamespaceMoves._compat_assignment_target(
+            if FlextInfraUtilitiesRefactorNamespaceCommon._compat_assignment_target(
                 line,
                 alias_map=alias_map,
             )
             is None
         )
-        rewritten = FlextInfraUtilitiesRefactorNamespaceMoves._apply_token_replacements(
-            source=kept_source,
-            alias_map=alias_map,
+        rewritten = (
+            FlextInfraUtilitiesRefactorNamespaceCommon._apply_token_replacements(
+                source=kept_source,
+                alias_map=alias_map,
+            )
         )
         if rewritten != source:
             _ = FlextInfraUtilitiesProtectedEdit.protected_source_write(
@@ -250,7 +260,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
         ranges: MutableSequence[t.Infra.IntPair] = []
         moved: MutableSequence[str] = []
         for name in sorted(names):
-            found = FlextInfraUtilitiesRefactorNamespaceMoves._find_top_level_block(
+            found = FlextInfraUtilitiesRefactorNamespaceCommon._find_top_level_block(
                 lines=lines,
                 header=f"{header_prefix}{name}",
             )
@@ -262,7 +272,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
             moved.append(name)
         if not blocks:
             return None
-        target_file = FlextInfraUtilitiesRefactorNamespaceMoves._canonical_target_file(
+        target_file = FlextInfraUtilitiesRefactorNamespaceCommon._canonical_target_file(
             project_root=project_root,
             source_file=source_file,
             filename=target_filename,
@@ -279,7 +289,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
             else f"{c.Infra.FUTURE_ANNOTATIONS}\n"
         )
         target_lines = target_source.splitlines()
-        target_lines = FlextInfraUtilitiesRefactorNamespaceMoves._insert_import_lines(
+        target_lines = FlextInfraUtilitiesRefactorNamespaceCommon._insert_import_lines(
             lines=target_lines,
             imports=required_imports,
         )
@@ -388,7 +398,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
                 max_line=min(moved_line_numbers),
             )
         )
-        target_file = FlextInfraUtilitiesRefactorNamespaceMoves._canonical_target_file(
+        target_file = FlextInfraUtilitiesRefactorNamespaceCommon._canonical_target_file(
             project_root=project_root,
             source_file=source_file,
             filename=c.Infra.TYPINGS_PY,
@@ -412,7 +422,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
             ]
             if import_line not in target_lines
         ]
-        target_lines = FlextInfraUtilitiesRefactorNamespaceMoves._insert_import_lines(
+        target_lines = FlextInfraUtilitiesRefactorNamespaceCommon._insert_import_lines(
             lines=target_lines,
             imports=missing_imports,
         )
@@ -510,36 +520,36 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
         py_files: Sequence[Path],
         moves: Sequence[t.Infra.Triple[Path, Path, t.Infra.VariadicTuple[str]]],
     ) -> None:
-        with FlextInfraUtilitiesRope.open_project(project_root) as rope_project:
+        with FlextInfraUtilitiesRopeCore.open_project(project_root) as rope_project:
             mappings: MutableSequence[
                 t.Infra.Triple[str, str, t.Infra.VariadicTuple[str]]
             ] = []
             for source, target, names in moves:
-                source_resource = FlextInfraUtilitiesRope.get_resource_from_path(
+                source_resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
                     rope_project, source
                 )
-                target_resource = FlextInfraUtilitiesRope.get_resource_from_path(
+                target_resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
                     rope_project, target
                 )
                 if source_resource is None or target_resource is None:
                     continue
                 try:
-                    source_module = FlextInfraUtilitiesRope.get_pymodule(
+                    source_module = FlextInfraUtilitiesRopeCore.get_pymodule(
                         rope_project, source_resource
                     ).get_name()
-                    target_module = FlextInfraUtilitiesRope.get_pymodule(
+                    target_module = FlextInfraUtilitiesRopeCore.get_pymodule(
                         rope_project, target_resource
                     ).get_name()
                 except (
-                    *FlextInfraUtilitiesRope.RUNTIME_ERRORS,
-                    *FlextInfraUtilitiesRope.SYNTAX_ERRORS,
+                    *FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS,
+                    *FlextInfraUtilitiesRopeCore.SYNTAX_ERRORS,
                     TypeError,
                 ):
                     continue
                 if source_module and target_module:
                     mappings.append((source_module, target_module, names))
             for py_file in py_files:
-                resource = FlextInfraUtilitiesRope.get_resource_from_path(
+                resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
                     rope_project, py_file
                 )
                 if resource is None:
@@ -549,17 +559,19 @@ class FlextInfraUtilitiesRefactorNamespaceMoves(
                 )
                 changed = False
                 for source_module, target_module, names in mappings:
-                    updated = FlextInfraUtilitiesRope.relocate_from_import_aliases(
-                        rope_project,
-                        resource,
-                        source_module=source_module,
-                        target_module=target_module,
-                        aliases=names,
-                        apply=True,
+                    updated = (
+                        FlextInfraUtilitiesRopeImports.relocate_from_import_aliases(
+                            rope_project,
+                            resource,
+                            source_module=source_module,
+                            target_module=target_module,
+                            aliases=names,
+                            apply=True,
+                        )
                     )
                     changed = changed or updated is not None
                 if changed:
-                    _ = FlextInfraUtilitiesRope.organize_imports(
+                    _ = FlextInfraUtilitiesRopeImports.organize_imports(
                         rope_project,
                         resource,
                         apply=True,

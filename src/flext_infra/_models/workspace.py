@@ -7,9 +7,9 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, ClassVar
 
-from flext_core import m
+from flext_cli import m
 
-from flext_infra import FlextInfraModelsMixins, c, t
+from flext_infra import FlextInfraModelsMixins as mm, c, t
 
 
 class FlextInfraModelsWorkspace:
@@ -21,7 +21,7 @@ class FlextInfraModelsWorkspace:
     """
 
     class ProjectInfo(
-        FlextInfraModelsMixins.ProjectEntryNameMixin,
+        mm.ProjectEntryNameMixin,
         m.ArbitraryTypesModel,
     ):
         """Discovered project metadata for workspace operations."""
@@ -99,7 +99,7 @@ class FlextInfraModelsWorkspace:
         ] = m.Field(default_factory=lambda: datetime.now(UTC))
 
     class MigrationResult(
-        FlextInfraModelsMixins.ProjectNameMixin,
+        mm.ProjectNameMixin,
         m.ArbitraryTypesModel,
     ):
         """Migration operation outcome with applied changes and errors."""

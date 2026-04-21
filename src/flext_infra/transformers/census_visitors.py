@@ -135,7 +135,12 @@ class FlextInfraCensusUsageCollector:
                 ):
                     self._record(actual, method_name, c.Infra.CensusMode.DIRECT)
 
-    def _record(self, class_name: str, method_name: str, mode: str) -> None:
+    def _record(
+        self,
+        class_name: str,
+        method_name: str,
+        mode: c.Infra.CensusMode,
+    ) -> None:
         self.records.append(
             m.Infra.CensusUsageRecord(
                 class_name=class_name,

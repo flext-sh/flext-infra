@@ -56,7 +56,7 @@ class FlextInfraDocBuilder(s[bool]):
         if result.failure:
             return r[bool].fail(result.error or "build failed")
         failures = sum(
-            1 for report in result.value if report.result == c.Infra.STATUS_FAIL
+            1 for report in result.value if report.result == c.Infra.ResultStatus.FAIL
         )
         if failures:
             return r[bool].fail(f"Build had {failures} failure(s)")

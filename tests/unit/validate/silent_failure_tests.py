@@ -9,8 +9,8 @@ from flext_tests import tm
 from flext_infra import (
     FlextInfraSilentFailureDetector,
     FlextInfraSilentFailureValidator,
-    FlextInfraUtilitiesRope,
     main as infra_main,
+    u,
 )
 from tests import m, t, u
 
@@ -52,7 +52,7 @@ class TestSilentFailureDetector:
     def test_detect_file_reports_guard_except_and_unwrap(self, tmp_path: Path) -> None:
         project = _create_silent_failure_project(tmp_path)
         file_path = project / "src" / "flext_infra" / "utilities.py"
-        rope_project = FlextInfraUtilitiesRope.init_rope_project(project)
+        rope_project = u.Infra.init_rope_project(project)
         try:
             issues = FlextInfraSilentFailureDetector.detect_file(
                 m.Infra.DetectorContext(
@@ -76,14 +76,14 @@ class TestSilentFailureDetector:
     ) -> None:
         project = _create_silent_failure_project(tmp_path)
         file_path = project / "src" / "flext_infra" / "utilities.py"
-        rope_project = FlextInfraUtilitiesRope.init_rope_project(project)
+        rope_project = u.Infra.init_rope_project(project)
         try:
-            resource = FlextInfraUtilitiesRope.get_resource_from_path(
+            resource = u.Infra.get_resource_from_path(
                 rope_project,
                 file_path,
             )
             assert resource is not None
-            updated, changes = FlextInfraUtilitiesRope.fix_silent_failure_sentinels(
+            updated, changes = u.Infra.fix_silent_failure_sentinels(
                 rope_project,
                 resource,
                 apply=False,

@@ -14,7 +14,7 @@ from collections.abc import (
 from pathlib import Path
 from typing import override
 
-from flext_infra import FlextInfraChangeTracker, c, t
+from flext_infra import c, p, t
 
 
 class FlextInfraRefactorRule:
@@ -35,7 +35,10 @@ class FlextInfraRefactorRule:
         self.description = description_raw if isinstance(description_raw, str) else ""
         enabled_raw = self.settings.get(c.Infra.RK_ENABLED, True)
         self.enabled = bool(enabled_raw)
-        severity_raw = self.settings.get("severity", c.Infra.SEVERITY_WARNING)
+        severity_raw = self.settings.get(
+            "severity",
+            c.Infra.SeverityLevel.WARNING,
+        )
         self.severity = str(severity_raw)
 
     def apply(
@@ -48,7 +51,7 @@ class FlextInfraRefactorRule:
 
     def _apply_text_transformer(
         self,
-        transformer: FlextInfraChangeTracker,
+        transformer: p.Infra.ChangeTracker,
         source: str,
     ) -> t.Infra.TransformResult:
         """Apply a text transformer with apply_to_source and return (source, changes)."""
@@ -71,7 +74,7 @@ class FlextInfraGenericTransformerRule(FlextInfraRefactorRule):
     instantiates the transformer and delegates to ``_apply_text_transformer``.
     """
 
-    TRANSFORMER_CLASS: type[FlextInfraChangeTracker]
+    TRANSFORMER_CLASS: type[p.Infra.ChangeTracker]
     """The transformer class to instantiate and apply."""
 
     @override

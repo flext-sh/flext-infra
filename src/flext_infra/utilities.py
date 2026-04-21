@@ -9,14 +9,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import override
-
 from flext_cli import u
 
 from flext_infra import (
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesCodegen,
+    FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesCompatibility,
     FlextInfraUtilitiesDependencyPathSync,
     FlextInfraUtilitiesDiscovery,
@@ -31,14 +29,30 @@ from flext_infra import (
     FlextInfraUtilitiesDocsScope,
     FlextInfraUtilitiesDocsValidate,
     FlextInfraUtilitiesGithub,
+    FlextInfraUtilitiesGithubPr,
     FlextInfraUtilitiesImportNormalizer,
+    FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesLogParser,
     FlextInfraUtilitiesParsing,
     FlextInfraUtilitiesPatterns,
     FlextInfraUtilitiesProtectedEdit,
     FlextInfraUtilitiesRefactor,
+    FlextInfraUtilitiesRefactorCensus,
+    FlextInfraUtilitiesRefactorEngine,
+    FlextInfraUtilitiesRefactorMroScan,
+    FlextInfraUtilitiesRefactorMroTransform,
+    FlextInfraUtilitiesRefactorNamespaceCommon,
+    FlextInfraUtilitiesRefactorNamespaceFacades,
+    FlextInfraUtilitiesRefactorNamespaceMoves,
+    FlextInfraUtilitiesRefactorNamespaceMro,
+    FlextInfraUtilitiesRefactorPolicy,
     FlextInfraUtilitiesRelease,
-    FlextInfraUtilitiesRope,
+    FlextInfraUtilitiesRopeAnalysis,
+    FlextInfraUtilitiesRopeAnalysisIntrospection,
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeHelpers,
+    FlextInfraUtilitiesRopeImports,
+    FlextInfraUtilitiesRopeSource,
     FlextInfraUtilitiesSafety,
     FlextInfraUtilitiesVersioning,
 )
@@ -58,11 +72,18 @@ class FlextInfraUtilities(u):
     """
 
     class Infra(
-        FlextInfraUtilitiesCodegen,
-        FlextInfraUtilitiesCompatibility,
         FlextInfraUtilitiesBase,
-        FlextInfraUtilitiesGithub,
-        FlextInfraUtilitiesImportNormalizer,
+        FlextInfraUtilitiesCodegen,
+        FlextInfraUtilitiesCodegenNamespace,
+        FlextInfraUtilitiesCompatibility,
+        FlextInfraUtilitiesDependencyPathSync,
+        FlextInfraUtilitiesDiscovery,
+        FlextInfraUtilitiesRopeCore,
+        FlextInfraUtilitiesRopeAnalysis,
+        FlextInfraUtilitiesRopeAnalysisIntrospection,
+        FlextInfraUtilitiesRopeHelpers,
+        FlextInfraUtilitiesRopeImports,
+        FlextInfraUtilitiesRopeSource,
         FlextInfraUtilitiesDocs,
         FlextInfraUtilitiesDocsApi,
         FlextInfraUtilitiesDocsAudit,
@@ -73,25 +94,29 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesDocsRender,
         FlextInfraUtilitiesDocsScope,
         FlextInfraUtilitiesDocsValidate,
+        FlextInfraUtilitiesGithub,
+        FlextInfraUtilitiesGithubPr,
+        FlextInfraUtilitiesImportNormalizer,
+        FlextInfraUtilitiesIteration,
         FlextInfraUtilitiesLogParser,
-        FlextInfraUtilitiesDependencyPathSync,
-        FlextInfraUtilitiesDiscovery,
         FlextInfraUtilitiesParsing,
         FlextInfraUtilitiesPatterns,
         FlextInfraUtilitiesProtectedEdit,
         FlextInfraUtilitiesRefactor,
+        FlextInfraUtilitiesRefactorCensus,
+        FlextInfraUtilitiesRefactorEngine,
+        FlextInfraUtilitiesRefactorMroScan,
+        FlextInfraUtilitiesRefactorMroTransform,
+        FlextInfraUtilitiesRefactorNamespaceMro,
+        FlextInfraUtilitiesRefactorNamespaceCommon,
+        FlextInfraUtilitiesRefactorNamespaceFacades,
+        FlextInfraUtilitiesRefactorNamespaceMoves,
+        FlextInfraUtilitiesRefactorPolicy,
         FlextInfraUtilitiesRelease,
-        FlextInfraUtilitiesRope,
         FlextInfraUtilitiesSafety,
         FlextInfraUtilitiesVersioning,
     ):
         """Infrastructure-domain utilities - all methods exposed directly."""
-
-        @staticmethod
-        @override
-        def package_name(path: Path, /) -> str:
-            """Resolve the canonical package name for a file-system path."""
-            return FlextInfraUtilitiesDiscovery.package_name(path)
 
 
 u = FlextInfraUtilities

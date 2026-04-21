@@ -16,22 +16,16 @@ from collections.abc import (
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import c, m, p, r, s, t, u
+from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, p, r, t, u
 
 
-class FlextInfraStubSupplyChain(s[bool]):
+class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
     """Manages typing stub supply chain for workspace projects.
 
     Coordinates mypy stub hints, pyrefly missing imports, stubgen
     generation, and types-package installation.
     """
 
-    projects: Annotated[
-        t.StrSequence | None,
-        m.Field(
-            description="Projects to validate; repeat --projects NAME as needed",
-        ),
-    ] = None
     all_projects: Annotated[
         bool, m.Field(alias="all", description="Validate all projects")
     ] = False
@@ -39,18 +33,6 @@ class FlextInfraStubSupplyChain(s[bool]):
         p.Cli.CommandRunner | None,
         m.Field(exclude=True, description="Optional command runner"),
     ] = None
-
-    @property
-    def project_names(self) -> t.StrSequence | None:
-        """Return normalized project names from repeated selectors."""
-        names = [
-            item.strip()
-            for value in self.projects or ()
-            for group in value.split(",")
-            for item in group.split()
-            if item.strip()
-        ]
-        return names or None
 
     @property
     def project_dirs(self) -> Sequence[Path] | None:

@@ -6,14 +6,14 @@ from typing import Annotated
 
 from flext_cli import m
 
-from flext_infra import FlextInfraModelsMixins, c, t
+from flext_infra import FlextInfraModelsMixins as mm, c, t
 
 
 class FlextInfraModelsBasemk:
     """Models for base.mk template rendering."""
 
     class BaseMkConfig(
-        FlextInfraModelsMixins.ProjectNameFieldMixin,
+        mm.ProjectNameFieldMixin,
         m.ArbitraryTypesModel,
     ):
         """Configuration model used to render base.mk templates."""

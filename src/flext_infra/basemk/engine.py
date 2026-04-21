@@ -22,9 +22,11 @@ from flext_infra import (
     FlextInfraModelsBasemk,
     FlextInfraProtocolsBase,
     FlextInfraTypesBase,
+    c,
     p,
     r,
     s,
+    t,
     u,
 )
 
@@ -73,6 +75,35 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
                 FlextInfraConstantsBase.PYRIGHT,
             ],
             test_command=FlextInfraConstantsBase.PYTEST,
+        )
+
+    @staticmethod
+    def normalize_config(
+        settings: FlextInfraModelsBasemk.BaseMkConfig | t.ScalarMapping | None,
+    ) -> p.Result[FlextInfraModelsBasemk.BaseMkConfig]:
+        """Normalize user-provided config to the canonical BaseMk model."""
+        if settings is None:
+            return r[FlextInfraModelsBasemk.BaseMkConfig].ok(
+                FlextInfraBaseMkTemplateEngine.default_config(),
+            )
+        if isinstance(settings, FlextInfraModelsBasemk.BaseMkConfig):
+            return r[FlextInfraModelsBasemk.BaseMkConfig].ok(settings)
+        try:
+            normalized = FlextInfraModelsBasemk.BaseMkConfig.model_validate(
+                dict(settings),
+            )
+            return r[FlextInfraModelsBasemk.BaseMkConfig].ok(normalized)
+        except (TypeError, ValueError) as exc:
+            return r[FlextInfraModelsBasemk.BaseMkConfig].fail(
+                f"base.mk configuration validation failed: {exc}",
+            )
+
+    @staticmethod
+    def render_bootstrap_include() -> p.Result[str]:
+        """Render the canonical Makefile bootstrap include block."""
+        return FlextInfraBaseMkTemplateEngine().render_single(
+            c.Infra.MAKEFILE_BOOTSTRAP_TEMPLATE,
+            make=FlextInfraConstantsBase,
         )
 
     @override

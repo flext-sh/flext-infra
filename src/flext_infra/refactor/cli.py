@@ -5,20 +5,18 @@ from __future__ import annotations
 from flext_cli import cli
 from flext_core import r
 
-from flext_infra.cli_registry import FlextInfraCliGroupBase
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.refactor.accessor_migration import (
+from flext_infra import (
     FlextInfraAccessorMigrationOrchestrator,
-)
-from flext_infra.refactor.census import FlextInfraRefactorCensus
-from flext_infra.refactor.migrate_to_class_mro import (
+    FlextInfraCliGroupBase,
+    FlextInfraNamespaceEnforcer,
+    FlextInfraRefactorCensus,
     FlextInfraRefactorMigrateToClassMRO,
+    c,
+    m,
+    p,
+    t,
+    u,
 )
-from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
-from flext_infra.typings import t
-from flext_infra.utilities import u
 
 
 class FlextInfraCliRefactor(FlextInfraCliGroupBase):

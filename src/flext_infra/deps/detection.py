@@ -18,10 +18,6 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
 
     _log = u.fetch_logger(__name__)
 
-    DEFAULT_MODULE_TO_TYPES_PACKAGE: t.StrMapping = (
-        c.Infra.DEFAULT_MODULE_TO_TYPES_PACKAGE
-    )
-
     def __init__(self) -> None:
         """Initialize the dependency detection service with selector, toml, and runner."""
         self.selector: u.Infra | None = None

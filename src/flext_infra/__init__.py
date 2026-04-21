@@ -69,10 +69,7 @@ if _t.TYPE_CHECKING:
         FlextInfraProtocolsCheck,
         WorkspaceLoopOutcome,
     )
-    from flext_infra._protocols.refactor import (
-        FlextInfraChangeTracker,
-        FlextInfraProtocolsRefactor,
-    )
+    from flext_infra._protocols.refactor import FlextInfraProtocolsRefactor
     from flext_infra._protocols.rope import FlextInfraProtocolsRope
     from flext_infra._typings.adapters import FlextInfraTypesAdapters
     from flext_infra._typings.base import FlextInfraTypesBase
@@ -117,7 +114,6 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.namespace_moves import (
         FlextInfraUtilitiesRefactorNamespaceMoves,
     )
-    from flext_infra._utilities.namespaces import FlextInfraUtilitiesRefactorNamespace
     from flext_infra._utilities.normalizer import (
         FlextInfraNormalizerContext,
         FlextInfraUtilitiesImportNormalizer,
@@ -128,7 +124,6 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
     from flext_infra._utilities.refactor import FlextInfraUtilitiesRefactor
     from flext_infra._utilities.release import FlextInfraUtilitiesRelease
-    from flext_infra._utilities.rope import FlextInfraUtilitiesRope
     from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
     from flext_infra._utilities.rope_analysis_introspection import (
         FlextInfraUtilitiesRopeAnalysisIntrospection,
@@ -144,7 +139,11 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
     from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
     from flext_infra.api import FlextInfra, infra
-    from flext_infra.base import FlextInfraServiceBase, s
+    from flext_infra.base import (
+        FlextInfraProjectSelectionServiceBase,
+        FlextInfraServiceBase,
+        s,
+    )
     from flext_infra.basemk.cli import FlextInfraCliBasemk
     from flext_infra.basemk.engine import FlextInfraBaseMkTemplateEngine
     from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
@@ -225,7 +224,7 @@ if _t.TYPE_CHECKING:
     from flext_infra.detectors.cyclic_import_detector import (
         FlextInfraCyclicImportDetector,
     )
-    from flext_infra.detectors.facade_scanner import FlextInfraUtilitiesFacadeScanner
+    from flext_infra.detectors.facade_scanner import FlextInfraScanner
     from flext_infra.detectors.future_annotations_detector import (
         FlextInfraFutureAnnotationsDetector,
     )
@@ -347,6 +346,7 @@ if _t.TYPE_CHECKING:
     from flext_infra.rules.pattern_corrections import (
         FlextInfraRefactorPatternCorrectionsRule,
     )
+    from flext_infra.settings import FlextInfraSettings
     from flext_infra.transformers.base import (
         FlextInfraChangeTrackingTransformer,
         FlextInfraRopeTransformer,
@@ -516,10 +516,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "FlextInfraProtocolsCheck",
                 "WorkspaceLoopOutcome",
             ),
-            "._protocols.refactor": (
-                "FlextInfraChangeTracker",
-                "FlextInfraProtocolsRefactor",
-            ),
+            "._protocols.refactor": ("FlextInfraProtocolsRefactor",),
             "._protocols.rope": ("FlextInfraProtocolsRope",),
             "._typings.adapters": ("FlextInfraTypesAdapters",),
             "._typings.base": ("FlextInfraTypesBase",),
@@ -560,7 +557,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
             "._utilities.namespace_moves": (
                 "FlextInfraUtilitiesRefactorNamespaceMoves",
             ),
-            "._utilities.namespaces": ("FlextInfraUtilitiesRefactorNamespace",),
             "._utilities.normalizer": (
                 "FlextInfraNormalizerContext",
                 "FlextInfraUtilitiesImportNormalizer",
@@ -571,7 +567,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
             "._utilities.protected_edit": ("FlextInfraUtilitiesProtectedEdit",),
             "._utilities.refactor": ("FlextInfraUtilitiesRefactor",),
             "._utilities.release": ("FlextInfraUtilitiesRelease",),
-            "._utilities.rope": ("FlextInfraUtilitiesRope",),
             "._utilities.rope_analysis": ("FlextInfraUtilitiesRopeAnalysis",),
             "._utilities.rope_analysis_introspection": (
                 "FlextInfraUtilitiesRopeAnalysisIntrospection",
@@ -589,6 +584,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "infra",
             ),
             ".base": (
+                "FlextInfraProjectSelectionServiceBase",
                 "FlextInfraServiceBase",
                 "s",
             ),
@@ -664,7 +660,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "FlextInfraCompatibilityAliasDetector",
             ),
             ".detectors.cyclic_import_detector": ("FlextInfraCyclicImportDetector",),
-            ".detectors.facade_scanner": ("FlextInfraUtilitiesFacadeScanner",),
+            ".detectors.facade_scanner": ("FlextInfraScanner",),
             ".detectors.future_annotations_detector": (
                 "FlextInfraFutureAnnotationsDetector",
             ),
@@ -770,6 +766,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".rules.legacy_removal": ("FlextInfraRefactorLegacyRemovalRule",),
             ".rules.mro_class_migration": ("FlextInfraRefactorMROClassMigrationRule",),
             ".rules.pattern_corrections": ("FlextInfraRefactorPatternCorrectionsRule",),
+            ".settings": ("FlextInfraSettings",),
             ".transformers.base": (
                 "FlextInfraChangeTrackingTransformer",
                 "FlextInfraRopeTransformer",
@@ -880,7 +877,6 @@ __all__: list[str] = [
     "FlextInfraBaseMkValidator",
     "FlextInfraCensusImportDiscoveryVisitor",
     "FlextInfraCensusUsageCollector",
-    "FlextInfraChangeTracker",
     "FlextInfraChangeTrackingTransformer",
     "FlextInfraClassNestingRefactorRule",
     "FlextInfraClassPlacementDetector",
@@ -1007,6 +1003,7 @@ __all__: list[str] = [
     "FlextInfraProjectClassifier",
     "FlextInfraProjectMakefileUpdater",
     "FlextInfraProjectMigrator",
+    "FlextInfraProjectSelectionServiceBase",
     "FlextInfraProtocols",
     "FlextInfraProtocolsBase",
     "FlextInfraProtocolsCheck",
@@ -1064,8 +1061,10 @@ __all__: list[str] = [
     "FlextInfraRuffLintGate",
     "FlextInfraRuntimeAliasDetector",
     "FlextInfraRuntimeDevDependencyDetector",
+    "FlextInfraScanner",
     "FlextInfraServiceBase",
     "FlextInfraServiceRopeMixin",
+    "FlextInfraSettings",
     "FlextInfraSilentFailureDetector",
     "FlextInfraSilentFailureGate",
     "FlextInfraSilentFailureValidator",
@@ -1096,7 +1095,6 @@ __all__: list[str] = [
     "FlextInfraUtilitiesDocsRender",
     "FlextInfraUtilitiesDocsScope",
     "FlextInfraUtilitiesDocsValidate",
-    "FlextInfraUtilitiesFacadeScanner",
     "FlextInfraUtilitiesGithub",
     "FlextInfraUtilitiesGithubPr",
     "FlextInfraUtilitiesImportNormalizer",
@@ -1110,7 +1108,6 @@ __all__: list[str] = [
     "FlextInfraUtilitiesRefactorEngine",
     "FlextInfraUtilitiesRefactorMroScan",
     "FlextInfraUtilitiesRefactorMroTransform",
-    "FlextInfraUtilitiesRefactorNamespace",
     "FlextInfraUtilitiesRefactorNamespaceCommon",
     "FlextInfraUtilitiesRefactorNamespaceFacades",
     "FlextInfraUtilitiesRefactorNamespaceMoves",
@@ -1118,7 +1115,6 @@ __all__: list[str] = [
     "FlextInfraUtilitiesRefactorPolicy",
     "FlextInfraUtilitiesRefactorRuleLoader",
     "FlextInfraUtilitiesRelease",
-    "FlextInfraUtilitiesRope",
     "FlextInfraUtilitiesRopeAnalysis",
     "FlextInfraUtilitiesRopeAnalysisIntrospection",
     "FlextInfraUtilitiesRopeCore",

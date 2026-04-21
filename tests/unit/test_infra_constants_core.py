@@ -84,22 +84,22 @@ class TestFlextInfraConstantsStatusNamespace:
     """Tests for Status namespace constants."""
 
     def test_pass_status_constant(self) -> None:
-        tm.that(c.Infra.STATUS_PASSED, eq="PASS")
+        tm.that(c.Infra.ResultStatus.PASSED, eq="PASS")
 
     def test_fail_status_constant(self) -> None:
-        tm.that(c.Infra.STATUS_FAIL, eq="FAIL")
+        tm.that(c.Infra.ResultStatus.FAIL, eq="FAIL")
 
     def test_ok_status_constant(self) -> None:
-        tm.that(c.Infra.STATUS_OK, eq="OK")
+        tm.that(c.Infra.ResultStatus.OK, eq="OK")
 
     def test_warn_status_constant(self) -> None:
-        tm.that(c.Infra.STATUS_WARN, eq="WARN")
+        tm.that(c.Infra.ResultStatus.WARN, eq="WARN")
 
-    def test_status_constants_are_strings(self) -> None:
-        tm.that(c.Infra.STATUS_PASSED, is_=str)
-        tm.that(c.Infra.STATUS_FAIL, is_=str)
-        tm.that(c.Infra.STATUS_OK, is_=str)
-        tm.that(c.Infra.STATUS_WARN, is_=str)
+    def test_status_constants_are_result_status_members(self) -> None:
+        tm.that(c.Infra.ResultStatus.PASSED, is_=c.Infra.ResultStatus)
+        tm.that(c.Infra.ResultStatus.FAIL, is_=c.Infra.ResultStatus)
+        tm.that(c.Infra.ResultStatus.OK, is_=c.Infra.ResultStatus)
+        tm.that(c.Infra.ResultStatus.WARN, is_=c.Infra.ResultStatus)
 
 
 class TestFlextInfraConstantsExcludedNamespace:

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from flext_core import m
+from flext_cli import m
 
-from flext_infra import FlextInfraModelsMixins, t
+from flext_infra import FlextInfraModelsMixins as mm, t
 
 
 class FlextInfraModelsCore:
@@ -35,7 +35,7 @@ class FlextInfraModelsCore:
         ] = ""
 
     class StubAnalysisReport(
-        FlextInfraModelsMixins.ProjectNameMixin,
+        mm.ProjectNameMixin,
         m.ArbitraryTypesModel,
     ):
         """Structured stub-chain analysis result for a project."""

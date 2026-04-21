@@ -43,11 +43,11 @@ class FlextInfraTextPatternScanner(s[bool]):
         ),
     ] = m.Field(default_factory=tuple)
     match: Annotated[
-        str,
+        c.Infra.MatchMode,
         m.Field(
             description="Violation mode (present or absent)",
         ),
-    ] = c.Infra.MATCH_MODE_PRESENT
+    ] = c.Infra.MatchMode.PRESENT
 
     @staticmethod
     def _collect_files(
@@ -92,7 +92,7 @@ class FlextInfraTextPatternScanner(s[bool]):
         *,
         includes: t.StrSequence,
         excludes: t.StrSequence | None = None,
-        match_mode: str = c.Infra.MATCH_MODE_PRESENT,
+        match_mode: c.Infra.MatchMode = c.Infra.MatchMode.PRESENT,
     ) -> p.Result[t.ConfigurationMapping]:
         """Scan files under scan_root for regex matches.
 
@@ -108,7 +108,7 @@ class FlextInfraTextPatternScanner(s[bool]):
             r with violation count and match details.
 
         """
-        error = self._validate_scan_inputs(scan_root, includes, match_mode)
+        error = self._validate_scan_inputs(scan_root, includes)
         if error is not None:
             return r[t.ScalarMapping].fail(error)
         try:
@@ -117,7 +117,7 @@ class FlextInfraTextPatternScanner(s[bool]):
             matches = self._count_matches(files, regex)
             violation_count = (
                 matches
-                if match_mode == c.Infra.MATCH_MODE_PRESENT
+                if match_mode == c.Infra.MatchMode.PRESENT
                 else 0
                 if matches > 0
                 else 1
@@ -154,15 +154,12 @@ class FlextInfraTextPatternScanner(s[bool]):
     def _validate_scan_inputs(
         scan_root: Path,
         includes: t.StrSequence,
-        match_mode: str,
     ) -> str | None:
         """Return an error message if scan inputs are invalid, else None."""
         if not scan_root.exists() or not scan_root.is_dir():
             return f"scan_root directory does not exist: {scan_root}"
         if not includes:
             return "at least one include glob required"
-        if match_mode not in {c.Infra.MATCH_MODE_PRESENT, c.Infra.MATCH_MODE_ABSENT}:
-            return f"invalid match_mode: {match_mode}"
         return None
 
 

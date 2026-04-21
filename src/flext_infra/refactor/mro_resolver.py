@@ -25,9 +25,9 @@ class FlextInfraRefactorMROResolver:
     def resolve(
         cls,
         *,
-        family_classes: Mapping[t.Infra.FacadeFamily, type],
+        family_classes: Mapping[c.Infra.FacadeFamily, type],
         expected_base_chains: Mapping[
-            t.Infra.FacadeFamily,
+            c.Infra.FacadeFamily,
             Sequence[t.Infra.ExpectedBase],
         ],
     ) -> t.Infra.VariadicTuple[m.Infra.FamilyMROResolution]:
@@ -55,7 +55,7 @@ class FlextInfraRefactorMROResolver:
     def _resolve_family(
         cls,
         *,
-        family: t.Infra.FacadeFamily,
+        family: c.Infra.FacadeFamily,
         facade_class: type,
         expected_chain: Sequence[t.Infra.ExpectedBase],
     ) -> m.Infra.FamilyMROResolution:
@@ -97,7 +97,7 @@ class FlextInfraRefactorMROResolver:
     def _validate_base_policy(
         cls,
         *,
-        family: t.Infra.FacadeFamily,
+        family: c.Infra.FacadeFamily,
         facade_class: type,
         expected_names: t.Infra.VariadicTuple[str],
     ) -> None:
@@ -127,7 +127,7 @@ class FlextInfraRefactorMROResolver:
     def _validate_expected_accessibility(
         cls,
         *,
-        family: t.Infra.FacadeFamily,
+        family: c.Infra.FacadeFamily,
         expected_names: t.Infra.VariadicTuple[str],
         accessible_namespaces: t.Infra.VariadicTuple[str],
     ) -> None:
@@ -150,7 +150,7 @@ class FlextInfraRefactorMROResolver:
     def _collect_accessible_namespaces(
         cls,
         *,
-        family: t.Infra.FacadeFamily,
+        family: c.Infra.FacadeFamily,
         facade_class: type,
     ) -> t.Infra.VariadicTuple[str]:
         namespace_order: MutableSequence[str] = []
@@ -176,7 +176,7 @@ class FlextInfraRefactorMROResolver:
         cls,
         *,
         class_name: str,
-        family: t.Infra.FacadeFamily,
+        family: c.Infra.FacadeFamily,
     ) -> str | None:
         suffix = c.Infra.FAMILY_SUFFIXES[family]
         if not class_name.endswith(suffix):

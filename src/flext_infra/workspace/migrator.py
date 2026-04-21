@@ -11,6 +11,7 @@ from typing import Annotated, override
 
 from flext_infra import (
     FlextInfraBaseMkGenerator,
+    FlextInfraBaseMkTemplateEngine,
     FlextInfraServiceBase,
     c,
     m,
@@ -274,8 +275,7 @@ class FlextInfraProjectMigrator(
     def _apply_bootstrap_include(self, content: str) -> str:
         if c.Infra.MAKEFILE_INCLUDE_OLD not in content:
             return content
-        generator = self._get_generator()
-        bootstrap_result = generator.render_bootstrap_include()
+        bootstrap_result = FlextInfraBaseMkTemplateEngine.render_bootstrap_include()
         if bootstrap_result.failure:
             return content
         return content.replace(

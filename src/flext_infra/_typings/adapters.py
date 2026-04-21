@@ -11,13 +11,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import (
-    Mapping,
     MutableMapping,
     Sequence,
 )
 from typing import ClassVar
 
-from flext_core import m, t
+from flext_cli import t
+from flext_core import m
 
 from flext_infra import FlextInfraTypesBase
 
@@ -34,8 +34,8 @@ class FlextInfraTypesAdapters:
 
     # ── Mapping adapters ─────────────────────────────────────────────
     INFRA_MAPPING_ADAPTER: ClassVar[
-        m.TypeAdapter[Mapping[str, FlextInfraTypesBase.InfraValue]]
-    ] = m.TypeAdapter(Mapping[str, FlextInfraTypesBase.InfraValue])
+        m.TypeAdapter[FlextInfraTypesBase.ContainerDict]
+    ] = t.Cli.JSON_MAPPING_ADAPTER
     "Validates Mapping[str, InfraValue] — the most common infra adapter."
 
     MUTABLE_INFRA_MAPPING_ADAPTER: ClassVar[
@@ -48,15 +48,15 @@ class FlextInfraTypesAdapters:
     )
     "Validates t.StrMapping."
 
-    CONTAINER_MAPPING_ADAPTER: ClassVar[m.TypeAdapter[Mapping[str, t.Container]]] = (
-        m.TypeAdapter(Mapping[str, t.Container])
-    )
+    CONTAINER_MAPPING_ADAPTER: ClassVar[
+        m.TypeAdapter[FlextInfraTypesBase.ContainerDict]
+    ] = t.Cli.JSON_MAPPING_ADAPTER
     "Validates ContainerMapping (Mapping[str, t.Container])."
 
     # ── Sequence adapters ────────────────────────────────────────────
-    INFRA_SEQ_ADAPTER: ClassVar[
-        m.TypeAdapter[Sequence[FlextInfraTypesBase.InfraValue]]
-    ] = m.TypeAdapter(Sequence[FlextInfraTypesBase.InfraValue])
+    INFRA_SEQ_ADAPTER: ClassVar[m.TypeAdapter[FlextInfraTypesBase.InfraSequence]] = (
+        t.Cli.JSON_LIST_ADAPTER
+    )
     "Validates Sequence[InfraValue]."
 
     CONTAINER_DICT_SEQ_ADAPTER: ClassVar[
@@ -73,9 +73,3 @@ class FlextInfraTypesAdapters:
         m.TypeAdapter(Sequence[t.StrMapping])
     )
     "Validates Sequence[StrMapping]."
-
-    # ── Composite adapters ────────────────────────────────────────────
-    INFRA_SEQ_MAPPING_ADAPTER: ClassVar[
-        m.TypeAdapter[Sequence[Mapping[str, FlextInfraTypesBase.InfraValue]]]
-    ] = m.TypeAdapter(Sequence[Mapping[str, FlextInfraTypesBase.InfraValue]])
-    "Validates Sequence[Mapping[str, InfraValue]]."

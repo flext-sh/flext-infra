@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from flext_core import m
+from flext_cli import m
 
 from flext_infra import c, t
 
@@ -19,8 +19,10 @@ class FlextInfraModelsEngineOperation:
     class TomlSetOp(m.ContractModel):
         """Set one TOML key to one JSON-compatible value."""
 
-        kind: Literal["set"] = m.Field(
-            "set", description="Operation kind", validate_default=True
+        kind: Literal[c.Infra.TomlOperationKind.SET] = m.Field(
+            c.Infra.TomlOperationKind.SET,
+            description="Operation kind",
+            validate_default=True,
         )
         key: str = m.Field(description="TOML key name")
         value: t.Cli.JsonValue = m.Field(description="JSON-compatible value")
@@ -28,18 +30,20 @@ class FlextInfraModelsEngineOperation:
     class TomlListOp(m.ContractModel):
         """Set or merge one TOML string list."""
 
-        kind: Literal["list"] = m.Field(
-            "list", description="Operation kind", validate_default=True
+        kind: Literal[c.Infra.TomlOperationKind.LIST] = m.Field(
+            c.Infra.TomlOperationKind.LIST,
+            description="Operation kind",
+            validate_default=True,
         )
         key: str = m.Field(description="TOML key name")
         values: t.StrSequence = m.Field(description="Expected values")
         strategy: Annotated[
-            str,
+            c.Infra.TomlMergeMode,
             m.Field(
                 description="Merge strategy",
                 validate_default=True,
             ),
-        ] = c.Infra.TOML_MERGE_REPLACE
+        ] = c.Infra.TomlMergeMode.REPLACE
         sort: Annotated[
             bool, m.Field(description="Sort values before sync", validate_default=True)
         ] = True
@@ -47,8 +51,10 @@ class FlextInfraModelsEngineOperation:
     class TomlRemoveOp(m.ContractModel):
         """Remove one TOML key, optionally from a nested relative table."""
 
-        kind: Literal["remove"] = m.Field(
-            "remove", description="Operation kind", validate_default=True
+        kind: Literal[c.Infra.TomlOperationKind.REMOVE] = m.Field(
+            c.Infra.TomlOperationKind.REMOVE,
+            description="Operation kind",
+            validate_default=True,
         )
         key: str = m.Field(description="Key to remove")
         table_path: Annotated[

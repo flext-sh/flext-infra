@@ -19,14 +19,18 @@ from flext_core import (
     u,
 )
 
-from flext_infra import FlextInfraConstantsBase, FlextInfraTypesBase
+from flext_infra import (
+    FlextInfraConstantsBase,
+    FlextInfraTypesBase,
+    FlextInfraUtilitiesBase,
+)
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 TDomainResult = TypeVar(
     "TDomainResult",
-    bound=t.ValueOrModel | Sequence[t.ValueOrModel],
+    bound=FlextProtocols.Base,
 )
 
 
@@ -49,7 +53,6 @@ class FlextInfraServiceBase(
         return FlextSettings.fetch_global().fetch_namespace("cli", FlextCliSettings)
 
     @classmethod
-    @override
     def _runtime_bootstrap_options(cls) -> FlextProtocols.RuntimeBootstrapOptions:
         """Bootstrap service runtime using the shared CLI settings namespace."""
         return m.RuntimeBootstrapOptions(settings_type=FlextCliSettings)
@@ -129,10 +132,7 @@ class FlextInfraServiceBase(
     @classmethod
     def _normalize_optional_path(cls, value: str | Path | None) -> Path | None:
         """Resolve optional output paths in one place."""
-        if value is None:
-            return None
-        path = value if isinstance(value, Path) else Path(value)
-        return path.resolve()
+        return FlextInfraUtilitiesBase.normalize_optional_path(value)
 
     @property
     def root(self) -> Path:
@@ -149,8 +149,7 @@ class FlextInfraServiceBase(
         selected_projects: t.StrSequence | None,
     ) -> t.StrSequence | None:
         """Normalize repeated project selectors into a compact sequence."""
-        names = [name.strip() for name in (selected_projects or ()) if name.strip()]
-        return names or None
+        return FlextInfraUtilitiesBase.normalize_sequence_values(selected_projects)
 
     def selected_project_dirs(
         self,
@@ -195,9 +194,32 @@ class FlextInfraServiceBase(
         return params.execute()
 
 
+class FlextInfraProjectSelectionServiceBase(
+    FlextInfraServiceBase[TDomainResult],
+    ABC,
+):
+    """Shared service foundation for commands that target workspace projects."""
+
+    selected_projects: Annotated[
+        t.StrSequence | None,
+        m.Field(alias="projects", description="Projects to process"),
+    ] = None
+
+    @property
+    def project_names(self) -> t.StrSequence | None:
+        """Return normalized selected project names."""
+        return self.normalize_selected_projects(self.selected_projects)
+
+    @property
+    def project_dirs(self) -> Sequence[Path] | None:
+        """Resolve selected project directories relative to the workspace root."""
+        return self.selected_project_dirs(self.selected_projects)
+
+
 s = FlextInfraServiceBase
 
 __all__: list[str] = [
+    "FlextInfraProjectSelectionServiceBase",
     "FlextInfraServiceBase",
     "s",
 ]

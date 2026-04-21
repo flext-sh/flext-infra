@@ -4,16 +4,16 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from flext_core import m
+from flext_cli import m
 
-from flext_infra import FlextInfraModelsMixins, t
+from flext_infra import FlextInfraModelsMixins as mm, t
 
 
 class FlextInfraModelsRelease:
     """Models for release management."""
 
     class BuildRecord(
-        FlextInfraModelsMixins.ProjectNameMixin,
+        mm.ProjectNameMixin,
         m.ArbitraryTypesModel,
     ):
         """Base model for build result data."""
@@ -25,7 +25,7 @@ class FlextInfraModelsRelease:
         log: t.NonEmptyStr = m.Field(description="Build log file path")
 
     class ReleaseSpec(
-        FlextInfraModelsMixins.ReleaseVersionTagMixin,
+        mm.ReleaseVersionTagMixin,
         m.ArbitraryTypesModel,
     ):
         """Release descriptor with version, tag, and bump metadata."""
@@ -57,10 +57,10 @@ class FlextInfraModelsRelease:
         ]
 
     class ReleaseOrchestratorConfig(
-        FlextInfraModelsMixins.ProjectNamesOptionalMixin,
-        FlextInfraModelsMixins.WorkspaceRootPathMixin,
-        FlextInfraModelsMixins.ReleaseVersionTagMixin,
-        FlextInfraModelsMixins.ReleaseAutomationMixin,
+        mm.ProjectNamesOptionalMixin,
+        mm.WorkspaceRootPathMixin,
+        mm.ReleaseVersionTagMixin,
+        mm.ReleaseAutomationMixin,
         m.ArbitraryTypesModel,
     ):
         """Configuration for release workflow execution."""
@@ -74,10 +74,10 @@ class FlextInfraModelsRelease:
         next_bump: Annotated[str, m.Field(description="Next bump")] = "minor"
 
     class ReleasePhaseDispatchConfig(
-        FlextInfraModelsMixins.ProjectNamesListMixin,
-        FlextInfraModelsMixins.WorkspaceRootPathMixin,
-        FlextInfraModelsMixins.ReleaseVersionTagMixin,
-        FlextInfraModelsMixins.ReleaseAutomationMixin,
+        mm.ProjectNamesListMixin,
+        mm.WorkspaceRootPathMixin,
+        mm.ReleaseVersionTagMixin,
+        mm.ReleaseAutomationMixin,
         m.ArbitraryTypesModel,
     ):
         """Configuration for single release phase dispatch."""

@@ -60,7 +60,7 @@ class FlextInfraDocValidator(s[bool]):
         if result.failure:
             return r[bool].fail(result.error or "validate failed")
         failures = sum(
-            1 for report in result.value if report.result == c.Infra.STATUS_FAIL
+            1 for report in result.value if report.result == c.Infra.ResultStatus.FAIL
         )
         if failures:
             return r[bool].fail(f"Validate found {failures} failure(s)")
@@ -100,7 +100,7 @@ class FlextInfraDocValidator(s[bool]):
         apply_mode: bool,
     ) -> m.Infra.DocsPhaseReport:
         """Validate one docs scope and persist the standard reports."""
-        status = c.Infra.STATUS_OK
+        status = c.Infra.ResultStatus.OK
         messages: list[str] = []
         missing_adr_skills: t.StrSequence = []
         config_exists = (
@@ -110,17 +110,17 @@ class FlextInfraDocValidator(s[bool]):
             code, missing = self._run_adr_skill_check(scope.path)
             missing_adr_skills = missing
             if code != 0:
-                status = c.Infra.STATUS_FAIL
+                status = c.Infra.ResultStatus.FAIL
                 messages.append(
                     f"missing adr references in skills: {', '.join(missing)}"
                 )
         missing_paths = u.Infra.docs_missing_required_paths(scope)
         if missing_paths:
-            status = c.Infra.STATUS_FAIL
+            status = c.Infra.ResultStatus.FAIL
             messages.append(f"missing required docs files: {', '.join(missing_paths)}")
         contract_messages = u.Infra.docs_contract_messages(scope)
         if contract_messages:
-            status = c.Infra.STATUS_FAIL
+            status = c.Infra.ResultStatus.FAIL
             messages.extend(contract_messages)
         message = "; ".join(messages) if messages else "validation passed"
         wrote_todo = u.Infra.docs_write_todo(scope, apply_mode=apply_mode)
@@ -131,7 +131,7 @@ class FlextInfraDocValidator(s[bool]):
             message=message,
             missing_adr_skills=missing_adr_skills,
             todo_written=wrote_todo,
-            passed=status == c.Infra.STATUS_OK,
+            passed=status == c.Infra.ResultStatus.OK,
         )
         u.Infra.docs_write_validate_reports(scope, report)
         self.logger.info(

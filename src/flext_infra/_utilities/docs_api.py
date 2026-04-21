@@ -13,7 +13,8 @@ from pathlib import Path
 
 from flext_infra import (
     FlextInfraUtilitiesDocsScope,
-    FlextInfraUtilitiesRope,
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeHelpers,
     c,
     m,
     t,
@@ -73,7 +74,7 @@ class FlextInfraUtilitiesDocsApi:
         for (
             assignment_name,
             value,
-        ) in FlextInfraUtilitiesRope.get_module_level_assignments(source):
+        ) in FlextInfraUtilitiesRopeHelpers.get_module_level_assignments(source):
             if assignment_name == name:
                 return cls._STRING_RE.findall(value)
         return []
@@ -130,17 +131,16 @@ class FlextInfraUtilitiesDocsApi:
                 and isinstance(next_node.value.value, str)
             ):
                 continue
-            match node:
-                case ast.Assign(targets=targets):
-                    for target in targets:
-                        if isinstance(target, ast.Name):
-                            documented.add(target.id)
-                case ast.AnnAssign(target=target):
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
                     if isinstance(target, ast.Name):
                         documented.add(target.id)
-                case ast.TypeAlias(name=name):
-                    if isinstance(name, ast.Name):
-                        documented.add(name.id)
+                continue
+            if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+                documented.add(node.target.id)
+                continue
+            if isinstance(node, ast.TypeAlias):
+                documented.add(node.name.id)
         return documented
 
     @staticmethod
@@ -177,7 +177,7 @@ class FlextInfraUtilitiesDocsApi:
         target_map: t.StrMapping,
     ) -> t.StrSequence:
         """Use Rope to verify which exported symbols resolve in real modules."""
-        with FlextInfraUtilitiesRope.open_project(project_root) as rope_project:
+        with FlextInfraUtilitiesRopeCore.open_project(project_root) as rope_project:
             symbols: MutableSequence[str] = []
             for export_name, module_name in target_map.items():
                 module_file = FlextInfraUtilitiesDocsApi._module_file(
@@ -185,13 +185,13 @@ class FlextInfraUtilitiesDocsApi:
                 )
                 if not module_file.exists():
                     continue
-                resource = FlextInfraUtilitiesRope.get_resource_from_path(
+                resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
                     rope_project,
                     module_file,
                 )
                 if resource is None:
                     continue
-                pymodule = FlextInfraUtilitiesRope.get_pymodule(
+                pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(
                     rope_project,
                     resource,
                 )
@@ -205,7 +205,7 @@ class FlextInfraUtilitiesDocsApi:
         package_name: str,
     ) -> t.Infra.ContainerDict:
         """Build the public API contract from pyproject, exports, and Rope validation."""
-        payload = FlextInfraUtilitiesDocsScope.pyproject_payload(project_root)
+        payload = FlextInfraUtilitiesDocsScope.project_payload(project_root)
         docs_meta = FlextInfraUtilitiesDocsScope.project_docs_meta(project_root)
         exclude_docs = FlextInfraUtilitiesDocsScope.docs_meta_list(
             project_root,

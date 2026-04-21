@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from flext_infra.cli_registry import FlextInfraCliGroupBase
-from flext_infra.docs.auditor import FlextInfraDocAuditor
-from flext_infra.docs.builder import FlextInfraDocBuilder
-from flext_infra.docs.fixer import FlextInfraDocFixer
-from flext_infra.docs.generator import FlextInfraDocGenerator
-from flext_infra.docs.validator import FlextInfraDocValidator
-from flext_infra.typings import t
+from flext_infra import (
+    FlextInfraCliGroupBase,
+    FlextInfraDocAuditor,
+    FlextInfraDocBuilder,
+    FlextInfraDocFixer,
+    FlextInfraDocGenerator,
+    FlextInfraDocValidator,
+    t,
+)
 
 
 class FlextInfraCliDocs(FlextInfraCliGroupBase):

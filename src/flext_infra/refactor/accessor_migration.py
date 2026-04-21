@@ -13,16 +13,23 @@ from pathlib import Path
 from tokenize import NAME, generate_tokens
 from typing import Annotated, ClassVar, override
 
-from flext_infra import FlextInfraUtilitiesProtectedEdit, c, m, p, r, s, t, u
+from flext_infra import (
+    FlextInfraProjectSelectionServiceBase,
+    FlextInfraUtilitiesProtectedEdit,
+    c,
+    m,
+    p,
+    r,
+    t,
+    u,
+)
 
 
-class FlextInfraAccessorMigrationOrchestrator(s[m.Infra.AccessorMigrationReport]):
+class FlextInfraAccessorMigrationOrchestrator(
+    FlextInfraProjectSelectionServiceBase[m.Infra.AccessorMigrationReport],
+):
     """Dry-run/apply orchestrator for public accessor migration candidates."""
 
-    projects: t.StrSequence = m.Field(
-        default_factory=tuple,
-        description="Projects targeted for accessor migration.",
-    )
     preview_limit: Annotated[
         int,
         m.Field(
@@ -196,14 +203,9 @@ class FlextInfraAccessorMigrationOrchestrator(s[m.Infra.AccessorMigrationReport]
     })
 
     @property
-    def project_names(self) -> t.StrSequence:
-        """Return normalized selected project names."""
-        return [name.strip() for name in self.projects if name.strip()]
-
-    @property
     def gate_names(self) -> t.StrSequence:
         """Return normalized lint gate names."""
-        return [gate.strip() for gate in self.gates.split(",") if gate.strip()]
+        return u.Infra.normalize_cli_values(self.gates)
 
     @property
     def lint_tool_names(self) -> t.StrSequence:
@@ -214,7 +216,10 @@ class FlextInfraAccessorMigrationOrchestrator(s[m.Infra.AccessorMigrationReport]
 
     @override
     def execute(self) -> p.Result[m.Infra.AccessorMigrationReport]:
-        resolved = u.Infra.resolve_projects(self.workspace_root, self.project_names)
+        resolved = u.Infra.resolve_projects(
+            self.workspace_root,
+            self.project_names or (),
+        )
         if resolved.failure:
             return r[m.Infra.AccessorMigrationReport].fail(
                 resolved.error or "project resolution failed",

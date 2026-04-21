@@ -39,7 +39,6 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ),
         ".namespace_facades": ("FlextInfraUtilitiesRefactorNamespaceFacades",),
         ".namespace_moves": ("FlextInfraUtilitiesRefactorNamespaceMoves",),
-        ".namespaces": ("FlextInfraUtilitiesRefactorNamespace",),
         ".normalizer": (
             "FlextInfraNormalizerContext",
             "FlextInfraUtilitiesImportNormalizer",
@@ -50,7 +49,6 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".protected_edit": ("FlextInfraUtilitiesProtectedEdit",),
         ".refactor": ("FlextInfraUtilitiesRefactor",),
         ".release": ("FlextInfraUtilitiesRelease",),
-        ".rope": ("FlextInfraUtilitiesRope",),
         ".rope_analysis": ("FlextInfraUtilitiesRopeAnalysis",),
         ".rope_analysis_introspection": (
             "FlextInfraUtilitiesRopeAnalysisIntrospection",

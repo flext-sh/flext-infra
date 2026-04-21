@@ -15,7 +15,7 @@ from pathlib import Path
 
 from flext_infra import (
     FlextInfraUtilitiesIteration,
-    FlextInfraUtilitiesRope,
+    FlextInfraUtilitiesRopeCore,
     c,
     m,
     t,
@@ -46,13 +46,13 @@ class FlextInfraUtilitiesRefactorMroScan:
         results: list[m.Infra.MROScanReport] = []
         scanned = 0
         target_specs = FlextInfraUtilitiesRefactorMroScan._target_specs(target=target)
-        project_name_set = set(project_names or ())
+        project_name_set: set[str] = set(project_names or ())
         for project_root in FlextInfraUtilitiesIteration.discover_project_roots(
             workspace_root=workspace_root,
         ):
             if project_name_set and project_root.name not in project_name_set:
                 continue
-            with FlextInfraUtilitiesRope.open_project(project_root) as rope_proj:
+            with FlextInfraUtilitiesRopeCore.open_project(project_root) as rope_proj:
                 for target_spec in target_specs:
                     for (
                         file_path
@@ -60,7 +60,7 @@ class FlextInfraUtilitiesRefactorMroScan:
                         project_root=project_root, target_spec=target_spec
                     ):
                         scanned += 1
-                        res = FlextInfraUtilitiesRope.get_resource_from_path(
+                        res = FlextInfraUtilitiesRopeCore.get_resource_from_path(
                             rope_proj,
                             file_path,
                         )
@@ -94,7 +94,7 @@ class FlextInfraUtilitiesRefactorMroScan:
 
         candidates: list[m.Infra.MROSymbolCandidate] = []
         try:
-            pymodule = FlextInfraUtilitiesRope.get_pymodule(rope_project, resource)
+            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
             lines = source.splitlines()
 
             for name, pyname in pymodule.get_attributes().items():
@@ -309,7 +309,7 @@ class FlextInfraUtilitiesRefactorMroScan:
         obj: t.Infra.RopePyObject,
         class_header: str,
     ) -> bool:
-        if isinstance(obj, FlextInfraUtilitiesRope.ABSTRACT_CLASS_TYPES):
+        if isinstance(obj, FlextInfraUtilitiesRopeCore.ABSTRACT_CLASS_TYPES):
             try:
                 bases = tuple(obj.get_superclasses())
                 if any("Protocol" in str(b.get_name()) for b in bases):

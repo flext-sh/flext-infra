@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from flext_infra.cli_registry import FlextInfraCliGroupBase
-from flext_infra.constants import c
-from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
-from flext_infra.models import FlextInfraModelsCheck
-from flext_infra.protocols import p
-from flext_infra.typings import t
+from flext_infra import (
+    FlextInfraCliGroupBase,
+    FlextInfraConfigFixer,
+    FlextInfraModelsCheck,
+    FlextInfraWorkspaceChecker,
+    c,
+    p,
+    t,
+)
 
 
 class FlextInfraCliCheck(FlextInfraCliGroupBase):

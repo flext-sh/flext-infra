@@ -353,7 +353,7 @@ class FlextInfraUtilitiesDocsGenerate:
                 )
                 for item in files
             ],
-            result=c.Infra.STATUS_OK if apply else c.Infra.STATUS_WARN,
+            result=(c.Infra.ResultStatus.OK if apply else c.Infra.ResultStatus.WARN),
             reason="generated" if apply else "dry-run",
             passed=apply,
         )

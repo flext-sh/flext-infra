@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
-from flext_infra.cli_registry import FlextInfraCliGroupBase
-from flext_infra.typings import t
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
-from flext_infra.workspace.migrator import FlextInfraProjectMigrator
-from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
-from flext_infra.workspace.sync import FlextInfraSyncService
+from flext_infra import (
+    FlextInfraCliGroupBase,
+    FlextInfraOrchestratorService,
+    FlextInfraProjectMigrator,
+    FlextInfraSyncService,
+    FlextInfraWorkspaceDetector,
+    t,
+)
 
 
 class FlextInfraCliWorkspace(FlextInfraCliGroupBase):

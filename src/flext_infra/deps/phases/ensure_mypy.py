@@ -37,12 +37,12 @@ class FlextInfraEnsureMypyConfigPhase:
             .list(
                 c.Infra.PLUGINS,
                 self._tool_config.tools.mypy.plugins,
-                strategy=c.Infra.TOML_MERGE_REPLACE,
+                strategy=c.Infra.TomlMergeMode.REPLACE,
             )
             .list(
                 c.Infra.DISABLE_ERROR_CODE,
                 self._tool_config.tools.mypy.disabled_error_codes,
-                strategy=c.Infra.TOML_MERGE_REPLACE,
+                strategy=c.Infra.TomlMergeMode.REPLACE,
             )
         )
         if self._tool_config.tools.mypy.exclude:

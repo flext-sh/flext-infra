@@ -18,9 +18,9 @@ from collections.abc import (
 )
 from io import TextIOBase as _TextIOBase
 from pathlib import Path as _Path
-from typing import Literal as _Literal
 
-from flext_core import m, t
+from flext_cli import t
+from flext_core import m
 from jinja2 import Environment as _JinjaEnvironment, Template as _JinjaTemplate
 from tomlkit import TOMLDocument as _TOMLDocument
 from tomlkit.container import Container as _TOMLContainer
@@ -34,8 +34,8 @@ class FlextInfraTypesBase:
     "argparse ArgumentParser for CLI command definitions."
     type CliNamespace = _argparse.Namespace
     "argparse Namespace for parsed CLI arguments."
-    type JsonDict = Mapping[str, t.Container]
-    "Pydantic JSON schema dict (used by json_schema_extra callbacks)."
+    type JsonDict = t.Cli.JsonMapping
+    "Validated JSON object used by schema metadata and payload helpers."
     type RegexPattern = _re.Pattern[str]
     "Compiled regex pattern for string matching."
     type TextStream = _TextIOBase
@@ -97,15 +97,15 @@ class FlextInfraTypesBase:
     type VariadicTuple[ItemT] = tuple[ItemT, ...]
     "Generic variadic tuple alias for homogeneous tuples."
 
-    type InfraValue = t.JsonLikeValue
-    "Canonical JSON-like infrastructure payload contract."
-    type ContainerDict = Mapping[str, InfraValue]
-    "Dict with string keys and infra values (project reports, etc.)."
+    type InfraValue = t.Cli.JsonValue
+    "Canonical infrastructure payload contract from flext-cli JSON typing."
+    type ContainerDict = t.Cli.JsonMapping
+    "Validated JSON object for project reports, docs contracts, and rules."
     type FacadeFamily = str
     "Facade family identifier for MRO chain resolution."
     type ExpectedBase = type | str
     "Expected MRO base: a class or its qualified name."
-    type PolicyContext = Mapping[str, ContainerDict]
+    type PolicyContext = Mapping[str, t.Cli.JsonMapping]
     "Class-nesting policy matrix keyed by module family."
     type MetricValue = t.Scalar | _Path | None
     "Output metric value: scalar (str/int/float/bool/datetime), path, or null."
@@ -129,12 +129,8 @@ class FlextInfraTypesBase:
     "Result for per-directory lazy init processing."
     type LazyInitWriteResult = tuple[int, LazyImportMap]
     "Result for writing generated __init__.py."
-    type LazyInitAction = _Literal["write", "remove", "skip"]
-    "Per-directory lazy-init action selected by the declarative plan."
     type VersionExportsResult = tuple[t.StrMapping, LazyImportMap]
     "Result for __version__.py export extraction (inline constants, eager import map)."
-    type PathSyncMode = _Literal["workspace", "standalone", "auto"]
-    "Dependency path rewrite mode for canonical path-sync CLI flows."
     type StrSet = set[str]
     "Mutable string set (supports .update/.intersection/etc)."
     type PathSet = set[_Path]
@@ -151,7 +147,7 @@ class FlextInfraTypesBase:
     "AST node for a method definition (sync or async)."
     type AstModule = _ast.Module
     "AST module node from ast.parse()."
-    type TomlData = dict[str, InfraValue]
+    type TomlData = dict[str, t.Cli.JsonValue]
     "Unwrapped TOML table data — nested dicts of primitives from tomlkit unwrap()."
 
     type CensusRecord = t.HeaderMapping
@@ -159,22 +155,22 @@ class FlextInfraTypesBase:
     type MutableCensusRecordList = MutableSequence[CensusRecord]
     "Mutable list of census records."
 
-    type InfraMapping = Mapping[str, InfraValue]
-    "Read-only string-keyed infra value mapping."
-    type MutableInfraMapping = MutableMapping[str, InfraValue]
-    "Mutable string-keyed infra value mapping."
-    type InfraSequence = Sequence[InfraValue]
-    "Read-only infra value sequence."
-    type MutableInfraSequence = MutableSequence[InfraValue]
-    "Mutable infra value sequence."
-    type DomainResult = m.BaseModel | t.Container
-    "Typed service result payload: model or recursive container."
+    type InfraMapping = t.Cli.JsonMapping
+    "Read-only validated infra payload mapping."
+    type MutableInfraMapping = MutableMapping[str, t.Cli.JsonValue]
+    "Mutable validated infra payload mapping."
+    type InfraSequence = t.Cli.JsonList
+    "Read-only validated infra payload sequence."
+    type MutableInfraSequence = MutableSequence[t.Cli.JsonValue]
+    "Mutable validated infra payload sequence."
+    type DomainResult = m.BaseModel | t.Cli.JsonValue
+    "Typed service result payload: model or validated JSON value."
     type DomainResultSequence = Sequence[DomainResult]
     "Read-only sequence of typed service result payloads."
     type DomainOutput = DomainResult | DomainResultSequence
     "Single or batched service result payload for infra services."
-    type ContainerOverrides = Mapping[str, t.Container]
-    "Container-shaped settings overrides passed to service bootstrap."
+    type ContainerOverrides = t.FlatContainerMapping
+    "Validated flat container overrides passed to infra service bootstrap."
     type RuntimeScalarOverrides = t.ScalarMapping
     "Scalar-only runtime/container override mapping."
 

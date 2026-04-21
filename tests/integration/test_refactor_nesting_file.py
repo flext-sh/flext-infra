@@ -6,11 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import (
-    FlextInfraClassNestingRefactorRule as ClassNestingRefactorRule,
-    m,
-    u,
-)
+from flext_infra import FlextInfraClassNestingRefactorRule
+from tests import m, u
 
 pytestmark = [pytest.mark.integration]
 
@@ -18,7 +15,7 @@ pytestmark = [pytest.mark.integration]
 def _apply_rule(
     workspace_root: Path,
     file_path: Path,
-    rule: ClassNestingRefactorRule,
+    rule: FlextInfraClassNestingRefactorRule,
     *,
     dry_run: bool,
 ) -> m.Infra.Result:
@@ -58,7 +55,7 @@ def test_class_nesting_refactor_single_file_end_to_end(tmp_path: Path) -> None:
         f"confidence_threshold: low\nclass_nesting:\n  - loose_name: ResultHelpers\n    current_file: {target_file.as_posix()}\n    target_namespace: FlextUtilities\n    target_name: ResultHelpers\n    confidence: high\nhelper_consolidation: []\n",
         encoding="utf-8",
     )
-    rule = ClassNestingRefactorRule(config_path=config_path)
+    rule = FlextInfraClassNestingRefactorRule(config_path=config_path)
     result = _apply_rule(tmp_path, target_file, rule, dry_run=False)
     # Module family policy rejects temp paths as unknown_module_family
     assert not result.success

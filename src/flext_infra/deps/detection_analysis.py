@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from collections.abc import (
     Mapping,
     MutableMapping,
@@ -301,11 +300,7 @@ class FlextInfraDependencyDetectionAnalysis:
             c.Infra.PYPROJECT_FILENAME,
             "--no-error-summary",
         ]
-        env = {
-            **os.environ,
-            "VIRTUAL_ENV": str(venv_bin.parent),
-            "PATH": f"{venv_bin}:{os.environ.get('PATH', '')}",
-        }
+        env = {"VIRTUAL_ENV": str(venv_bin.parent)}
         result = self._run_raw(cmd, cwd=project_path, timeout=timeout, env=env)
         if result.failure:
             return r[t.Infra.Pair[t.StrSequence, t.StrSequence]].fail(
@@ -337,7 +332,7 @@ class FlextInfraDependencyDetectionAnalysis:
         pip = venv_bin / "pip"
         if not pip.exists():
             return r[t.Infra.Pair[t.StrSequence, int]].ok(([], 0))
-        env = {**os.environ, "VIRTUAL_ENV": str(venv_bin.parent)}
+        env = {"VIRTUAL_ENV": str(venv_bin.parent)}
         result = self._run_raw(
             [str(pip), c.Infra.VERB_CHECK],
             cwd=workspace_root,

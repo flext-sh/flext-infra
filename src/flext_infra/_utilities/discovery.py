@@ -138,8 +138,10 @@ class FlextInfraUtilitiesDiscovery:
             match top_level_parts:
                 case (_, package_name):
                     return package_name
+                case _:
+                    pass
         return (
-            FlextInfraUtilitiesDocsScope.package_name(project_root)
+            FlextInfraUtilitiesDocsScope.project_package_name(project_root)
             if project_root is not None
             else ""
         )
@@ -465,7 +467,7 @@ class FlextInfraUtilitiesDiscovery:
         file_path: Path,
     ) -> Mapping[str, frozenset[str]]:
         """Return allowed foreign-package runtime alias sources for one file."""
-        package_name = FlextInfraUtilitiesDocsScope.package_name(project_root)
+        package_name = FlextInfraUtilitiesDocsScope.project_package_name(project_root)
         if not package_name:
             return {}
         package_dir = (

@@ -98,13 +98,13 @@ class TestInfraIntegration:
         Validates u.Infra MRO output methods are available:
         - status, summary, error, warning, info, header, progress
         """
-        assert callable(u.Infra.status)
-        assert callable(u.Infra.summary)
-        assert callable(u.Infra.error)
-        assert callable(u.Infra.warning)
-        assert callable(u.Infra.info)
-        assert callable(u.Infra.header)
-        assert callable(u.Infra.progress)
+        assert callable(u.Cli.status)
+        assert callable(u.Cli.summary)
+        assert callable(u.Cli.error)
+        assert callable(u.Cli.warning)
+        assert callable(u.Cli.info)
+        assert callable(u.Cli.header)
+        assert callable(u.Cli.progress)
 
     @pytest.mark.integration
     def test_output_methods_are_callable_via_u_infra(self) -> None:
@@ -113,13 +113,13 @@ class TestInfraIntegration:
         Validates:
         - All methods are callable through u.Infra
         """
-        assert callable(u.Infra.status)
-        assert callable(u.Infra.summary)
-        assert callable(u.Infra.error)
-        assert callable(u.Infra.warning)
-        assert callable(u.Infra.info)
-        assert callable(u.Infra.header)
-        assert callable(u.Infra.progress)
+        assert callable(u.Cli.status)
+        assert callable(u.Cli.summary)
+        assert callable(u.Cli.error)
+        assert callable(u.Cli.warning)
+        assert callable(u.Cli.info)
+        assert callable(u.Cli.header)
+        assert callable(u.Cli.progress)
 
     @pytest.mark.integration
     def test_service_result_chaining_with_map(self) -> None:

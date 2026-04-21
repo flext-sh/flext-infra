@@ -56,7 +56,7 @@ class FlextInfraUtilitiesDocsBuild:
                 return m.Infra.DocsPhaseReport(
                     phase="build",
                     scope=scope.name,
-                    result=c.Infra.STATUS_FAIL,
+                    result=c.Infra.ResultStatus.FAIL,
                     reason=completed.error or "mkdocs build failed",
                     site_dir=site_dir.as_posix(),
                     passed=False,
@@ -66,7 +66,7 @@ class FlextInfraUtilitiesDocsBuild:
                 return m.Infra.DocsPhaseReport(
                     phase="build",
                     scope=scope.name,
-                    result=c.Infra.STATUS_OK,
+                    result=c.Infra.ResultStatus.OK,
                     reason="build succeeded",
                     site_dir=site_dir.as_posix(),
                     passed=True,
@@ -75,7 +75,7 @@ class FlextInfraUtilitiesDocsBuild:
             return m.Infra.DocsPhaseReport(
                 phase="build",
                 scope=scope.name,
-                result=c.Infra.STATUS_FAIL,
+                result=c.Infra.ResultStatus.FAIL,
                 reason=reason_lines[-1]
                 if reason_lines
                 else f"mkdocs exited {output.exit_code}",
@@ -88,7 +88,7 @@ class FlextInfraUtilitiesDocsBuild:
             return m.Infra.DocsPhaseReport(
                 phase="build",
                 scope=scope.name,
-                result=c.Infra.STATUS_FAIL,
+                result=c.Infra.ResultStatus.FAIL,
                 reason=str(exc) or "mkdocs build failed",
                 site_dir=site_dir.as_posix(),
                 passed=False,
@@ -96,7 +96,7 @@ class FlextInfraUtilitiesDocsBuild:
         return m.Infra.DocsPhaseReport(
             phase="build",
             scope=scope.name,
-            result=c.Infra.STATUS_OK,
+            result=c.Infra.ResultStatus.OK,
             reason="build succeeded",
             site_dir=site_dir.as_posix(),
             passed=True,

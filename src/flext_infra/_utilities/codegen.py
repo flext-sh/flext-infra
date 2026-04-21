@@ -4,14 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import (
-    FlextInfraUtilitiesCodegenNamespace,
-)
 
-
-class FlextInfraUtilitiesCodegen(
-    FlextInfraUtilitiesCodegenNamespace,
-):
+class FlextInfraUtilitiesCodegen:
     """Compose all codegen utility concerns for ``u.Infra``."""
 
     @staticmethod

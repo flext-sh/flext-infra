@@ -10,7 +10,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".class_placement_detector": ("FlextInfraClassPlacementDetector",),
         ".compatibility_alias_detector": ("FlextInfraCompatibilityAliasDetector",),
         ".cyclic_import_detector": ("FlextInfraCyclicImportDetector",),
-        ".facade_scanner": ("FlextInfraUtilitiesFacadeScanner",),
+        ".facade_scanner": ("FlextInfraScanner",),
         ".future_annotations_detector": ("FlextInfraFutureAnnotationsDetector",),
         ".import_alias_detector": ("FlextInfraImportAliasDetector",),
         ".internal_import_detector": ("FlextInfraInternalImportDetector",),

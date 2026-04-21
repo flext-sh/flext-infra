@@ -14,13 +14,10 @@ from collections.abc import (
     Sequence,
 )
 from pathlib import Path
-from typing import override
 
 from flext_cli import u
 
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
+from flext_infra import c, m, t
 
 
 class FlextInfraUtilitiesParsing:
@@ -28,11 +25,6 @@ class FlextInfraUtilitiesParsing:
 
     _DOCSTRING_QUOTES = ('"""', "'''")
     _SINGLE_LINE_DOCSTRING_QUOTE_COUNT = 2
-    _RULE_CONFIG_SEQ_ADAPTER: m.TypeAdapter[
-        Sequence[m.Infra.ImportModernizerRuleConfig]
-    ] = m.TypeAdapter(
-        Sequence[m.Infra.ImportModernizerRuleConfig],
-    )
 
     @staticmethod
     def parse_module_ast(file_path: Path) -> t.Infra.AstModule | None:
@@ -104,42 +96,46 @@ class FlextInfraUtilitiesParsing:
         imports: MutableSequence[str] = []
         explicit_all: t.StrSequence | None = None
         for node in module.body:
-            match node:
-                case ast.ClassDef(name=name):
-                    classes.append(name)
-                case ast.FunctionDef(name=name) | ast.AsyncFunctionDef(name=name):
-                    functions.append(name)
-                case ast.TypeAlias(name=ast.Name(id=name)):
-                    assignments.append(name)
-                case ast.Assign():
-                    explicit_all = (
-                        FlextInfraUtilitiesParsing._literal_dunder_all(node)
-                        if explicit_all is None
-                        else explicit_all
-                    )
-                    assignments.extend(
-                        name
-                        for target in node.targets
-                        for name in FlextInfraUtilitiesParsing._target_names(target)
-                        if name != c.Infra.DUNDER_ALL
-                    )
-                case ast.AnnAssign(target=target):
-                    assignments.extend(
-                        name
-                        for name in FlextInfraUtilitiesParsing._target_names(target)
-                        if name != c.Infra.DUNDER_ALL
-                    )
-                case ast.Import(names=aliases):
-                    imports.extend(
-                        alias.asname or alias.name.partition(".")[0]
-                        for alias in aliases
-                    )
-                case ast.ImportFrom(names=aliases):
-                    imports.extend(
-                        alias.asname or alias.name
-                        for alias in aliases
-                        if alias.name != "*"
-                    )
+            if isinstance(node, ast.ClassDef):
+                classes.append(node.name)
+                continue
+            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+                functions.append(node.name)
+                continue
+            if isinstance(node, ast.TypeAlias) and isinstance(node.name, ast.Name):
+                assignments.append(node.name.id)
+                continue
+            if isinstance(node, ast.Assign):
+                explicit_all = (
+                    FlextInfraUtilitiesParsing._literal_dunder_all(node)
+                    if explicit_all is None
+                    else explicit_all
+                )
+                assignments.extend(
+                    name
+                    for target in node.targets
+                    for name in FlextInfraUtilitiesParsing._target_names(target)
+                    if name != c.Infra.DUNDER_ALL
+                )
+                continue
+            if isinstance(node, ast.AnnAssign):
+                assignments.extend(
+                    name
+                    for name in FlextInfraUtilitiesParsing._target_names(node.target)
+                    if name != c.Infra.DUNDER_ALL
+                )
+                continue
+            if isinstance(node, ast.Import):
+                imports.extend(
+                    alias.asname or alias.name.partition(".")[0] for alias in node.names
+                )
+                continue
+            if isinstance(node, ast.ImportFrom):
+                imports.extend(
+                    alias.asname or alias.name
+                    for alias in node.names
+                    if alias.name != "*"
+                )
         if include_dunder:
             return tuple(
                 name
@@ -246,7 +242,6 @@ class FlextInfraUtilitiesParsing:
         return idx
 
     @staticmethod
-    @override
     def discover_first_party_namespaces(
         project_dir: Path,
     ) -> t.StrSequence:
@@ -378,9 +373,13 @@ class FlextInfraUtilitiesParsing:
             for item in raw_items
         ]
         try:
-            return FlextInfraUtilitiesParsing._RULE_CONFIG_SEQ_ADAPTER.validate_python(
+            typed_items = t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(
                 normalized,
             )
+            return [
+                m.Infra.ImportModernizerRuleConfig.model_validate(item)
+                for item in typed_items
+            ]
         except c.ValidationError:
             return []
 

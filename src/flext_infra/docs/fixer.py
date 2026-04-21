@@ -85,7 +85,11 @@ class FlextInfraDocFixer(s[bool]):
             changed_files=len(items),
             applied=apply,
             items=items,
-            result=c.Infra.STATUS_OK if apply or not items else c.Infra.STATUS_WARN,
+            result=(
+                c.Infra.ResultStatus.OK
+                if apply or not items
+                else c.Infra.ResultStatus.WARN
+            ),
             reason=f"changes:{len(items)}",
             passed=apply or not items,
         )

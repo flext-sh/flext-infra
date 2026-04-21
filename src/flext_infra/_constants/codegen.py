@@ -14,9 +14,11 @@ from collections.abc import (
     Mapping,
 )
 from enum import StrEnum, unique
-from typing import ClassVar, Final
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Final
 
-from flext_infra import t
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraConstantsCodegen:
@@ -94,14 +96,16 @@ class FlextInfraConstantsCodegen:
     "Directory segments recognized as project-root wrapper paths."
     DUPLICATE_CLASS_MIN_LEN: Final[int] = 8
     "Minimum class-name length for workspace-wide duplicate detection."
-    CORE_RUNTIME_ALIAS_TARGETS: Final[Mapping[str, t.Infra.StrPair]] = {
-        "d": ("flext_core", "d"),
-        "e": ("flext_core", "e"),
-        "h": ("flext_core", "h"),
-        "r": ("flext_core", "r"),
-        "s": ("flext_core", "s"),
-        "x": ("flext_core", "x"),
-    }
+    CORE_RUNTIME_ALIAS_TARGETS: Final[Mapping[str, t.Infra.StrPair]] = (
+        MappingProxyType({
+            "d": ("flext_core", "d"),
+            "e": ("flext_core", "e"),
+            "h": ("flext_core", "h"),
+            "r": ("flext_core", "r"),
+            "s": ("flext_core", "s"),
+            "x": ("flext_core", "x"),
+        })
+    )
     "Mapping of single-letter aliases to flext-core runtime targets."
 
     # --- Constant detection constants (was: class Detection) ---
@@ -200,7 +204,7 @@ class FlextInfraConstantsCodegen:
         LAZY_INIT = "lazy_init"
         CENSUS_AFTER = "census_after"
 
-    PIPELINE_STAGE_ORDER: ClassVar[t.StrSequence] = (
+    PIPELINE_STAGE_ORDER: Final[tuple[PipelineStage, ...]] = (
         PipelineStage.DISCOVER,
         PipelineStage.PY_TYPED,
         PipelineStage.CENSUS_BEFORE,
@@ -216,7 +220,7 @@ class FlextInfraConstantsCodegen:
     # --- Quality gate constants (was: class QualityGate) ---
     QG_REPORT_DIR: Final[str] = ".reports/codegen/constants-quality-gate"
     "Report directory for constants quality gate."
-    QG_RULE_KEYS: Final[t.StrSequence] = (
+    QG_RULE_KEYS: Final[tuple[str, ...]] = (
         "NS-000",
         "NS-001",
         "NS-002",

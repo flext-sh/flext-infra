@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import override
 
 from flext_infra import (
+    FlextInfraDepsProjectServiceBase,
     FlextInfraUtilitiesIteration,
     c,
     m,
@@ -23,7 +24,6 @@ from flext_infra import (
     t,
     u,
 )
-from flext_infra.deps.service_base import FlextInfraDepsProjectServiceBase
 
 
 class FlextInfraExtraPathsManager(FlextInfraDepsProjectServiceBase):
@@ -71,7 +71,7 @@ class FlextInfraExtraPathsManager(FlextInfraDepsProjectServiceBase):
             dep_pyproject = self.root / name / c.Infra.PYPROJECT_FILENAME
             if not dep_pyproject.exists():
                 continue
-            dep_payload = FlextInfraUtilitiesIteration.pyproject_payload(
+            dep_payload = FlextInfraUtilitiesIteration.cached_pyproject_payload(
                 dep_pyproject,
             )
             transitive = (
@@ -281,7 +281,9 @@ class FlextInfraExtraPathsManager(FlextInfraDepsProjectServiceBase):
         if is_root and rules.include_path_dependencies_in_search_path:
             pyproject = project_dir / c.Infra.PYPROJECT_FILENAME
             if pyproject.exists():
-                payload = FlextInfraUtilitiesIteration.pyproject_payload(pyproject)
+                payload = FlextInfraUtilitiesIteration.cached_pyproject_payload(
+                    pyproject,
+                )
                 paths.update(self._dep_paths(payload, is_root=True))
         if (project_dir / source_root).is_dir():
             paths.add(source_root)

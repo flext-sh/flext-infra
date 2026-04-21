@@ -100,7 +100,7 @@ class FlextInfraProtocolsRope(Protocol):
             project_root: Path,
         ) -> m.Infra.RopeProjectLayout | None: ...
 
-        def context(
+        def package_context(
             self,
             package_dir: Path,
         ) -> m.Infra.LazyInitPackageContext: ...

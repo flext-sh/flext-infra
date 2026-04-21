@@ -13,7 +13,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import (
-    FlextInfraBaseMkGenerator,
+    FlextInfraBaseMkTemplateEngine,
     c,
     m,
     p,
@@ -56,7 +56,7 @@ class FlextInfraProjectMakefileUpdater:
         except (FileNotFoundError, ValueError) as exc:
             return r[bool].fail(f"pyproject.toml parse failed: {exc}")
 
-        bootstrap_result = FlextInfraBaseMkGenerator.render_bootstrap_include()
+        bootstrap_result = FlextInfraBaseMkTemplateEngine.render_bootstrap_include()
         if bootstrap_result.failure:
             return r[bool].fail(
                 bootstrap_result.error or "bootstrap template read failed",

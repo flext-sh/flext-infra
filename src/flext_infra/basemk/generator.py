@@ -12,7 +12,6 @@ from flext_infra import (
     FlextInfraConstantsBase,
     FlextInfraModelsBasemk,
     FlextInfraProtocolsBase,
-    c,
     m,
     p,
     r,
@@ -68,7 +67,7 @@ class FlextInfraBaseMkGenerator(s[str]):
         settings: FlextInfraModelsBasemk.BaseMkConfig | t.ScalarMapping | None = None,
     ) -> p.Result[str]:
         """Generate base.mk content from configuration."""
-        config_result = self._normalize_config(settings)
+        config_result = FlextInfraBaseMkTemplateEngine.normalize_config(settings)
         if config_result.failure:
             return r[str].fail(config_result.error or "invalid base.mk configuration")
         config_value = config_result.value
@@ -106,26 +105,6 @@ class FlextInfraBaseMkGenerator(s[str]):
         except OSError as exc:
             return r[bool].fail(f"base.mk write failed: {exc}")
 
-    def _normalize_config(
-        self,
-        settings: FlextInfraModelsBasemk.BaseMkConfig | t.ScalarMapping | None,
-    ) -> p.Result[FlextInfraModelsBasemk.BaseMkConfig]:
-        if settings is None:
-            return r[FlextInfraModelsBasemk.BaseMkConfig].ok(
-                FlextInfraBaseMkTemplateEngine.default_config(),
-            )
-        if isinstance(settings, FlextInfraModelsBasemk.BaseMkConfig):
-            return r[FlextInfraModelsBasemk.BaseMkConfig].ok(settings)
-        try:
-            normalized = FlextInfraModelsBasemk.BaseMkConfig.model_validate(
-                dict(settings),
-            )
-            return r[FlextInfraModelsBasemk.BaseMkConfig].ok(normalized)
-        except (TypeError, ValueError) as exc:
-            return r[FlextInfraModelsBasemk.BaseMkConfig].fail(
-                f"base.mk configuration validation failed: {exc}",
-            )
-
     def _validate_generated_output(self, content: str) -> p.Result[str]:
         """Validate generated base.mk by running make --dry-run."""
         try:
@@ -156,14 +135,6 @@ class FlextInfraBaseMkGenerator(s[str]):
         except OSError as exc:
             return r[str].fail(f"generated base.mk validation failed: {exc}")
         return r[str].ok(content)
-
-    @staticmethod
-    def render_bootstrap_include() -> p.Result[str]:
-        """Render the Makefile bootstrap include block from template."""
-        return FlextInfraBaseMkTemplateEngine().render_single(
-            c.Infra.MAKEFILE_BOOTSTRAP_TEMPLATE,
-            make=FlextInfraConstantsBase,
-        )
 
 
 __all__: list[str] = ["FlextInfraBaseMkGenerator"]

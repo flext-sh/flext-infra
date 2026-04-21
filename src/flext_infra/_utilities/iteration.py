@@ -15,6 +15,8 @@ from collections.abc import (
 from functools import cache
 from pathlib import Path
 
+from flext_cli import u
+
 from flext_infra import c, p, r, t
 
 
@@ -50,6 +52,38 @@ class FlextInfraUtilitiesIteration:
                 text = text.split(separator, maxsplit=1)[0].strip()
         return text or None
 
+    @staticmethod
+    def _normalized_toml_payload(document: t.Cli.TomlDocument) -> t.Infra.ContainerDict:
+        """Return one TOML document normalized through the infra adapter."""
+        payload = u.Cli.toml_as_mapping(document)
+        if not payload:
+            return {}
+        try:
+            return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload)
+        except c.ValidationError:
+            return {}
+
+    @staticmethod
+    def dedupe_specs(specs: t.StrSequence) -> t.StrSequence:
+        """Return deterministic unique dependency specs preserving first occurrence."""
+        seen: set[str] = set()
+        output: list[str] = []
+        for raw in specs:
+            item = str(raw).strip()
+            if not item or item in seen:
+                continue
+            seen.add(item)
+            output.append(item)
+        return tuple(output)
+
+    @classmethod
+    def declared_dependency_names(cls, document: t.Cli.TomlDocument) -> t.StrSequence:
+        """Return normalized dependency names from one TOML document."""
+        normalized = cls._normalized_toml_payload(document)
+        if not normalized:
+            return ()
+        return cls.declared_dependency_names_from_payload(normalized)
+
     @classmethod
     def declared_dependency_names_from_payload(
         cls,
@@ -84,20 +118,86 @@ class FlextInfraUtilitiesIteration:
         return tuple(sorted(name for name in declared if name in workspace_names))
 
     @staticmethod
-    def canonical_dev_dependencies_from_payload(
-        payload: t.Infra.ContainerDict,
+    def project_dev_groups_from_payload(
+        payload: Mapping[str, t.Cli.JsonValue],
+    ) -> Mapping[str, t.StrSequence]:
+        """Collect optional dependency groups from one normalized payload."""
+        project = u.Cli.json_as_mapping(payload.get(c.Infra.PROJECT, None))
+        optional = u.Cli.json_as_mapping(
+            project.get(c.Infra.OPTIONAL_DEPENDENCIES, None),
+        )
+        groups: dict[str, t.StrSequence] = {}
+        for group in (
+            c.Infra.DEV,
+            c.Infra.DIR_DOCS,
+            c.Infra.SECURITY,
+            c.Infra.TEST,
+            c.Infra.DIR_TYPINGS,
+        ):
+            values = u.Cli.toml_as_string_list(optional.get(group, None))
+            if values:
+                groups[group] = tuple(values)
+        return groups
+
+    @classmethod
+    def project_dev_groups(
+        cls,
+        document: t.Cli.TomlDocument,
+    ) -> Mapping[str, t.StrSequence]:
+        """Collect optional dependency groups from one TOML document."""
+        normalized = cls._normalized_toml_payload(document)
+        if not normalized:
+            return {}
+        return cls.project_dev_groups_from_payload(normalized)
+
+    @classmethod
+    def canonical_dev_dependencies(
+        cls,
+        document: t.Cli.TomlDocument,
     ) -> t.StrSequence:
-        """Return canonical ``project.optional-dependencies.dev`` dependency specs."""
-        project = payload.get(c.Infra.PROJECT)
-        if not isinstance(project, Mapping):
+        """Merge all canonical dev dependency groups from one TOML document."""
+        normalized = cls._normalized_toml_payload(document)
+        if not normalized:
             return ()
-        optional = project.get(c.Infra.OPTIONAL_DEPENDENCIES)
-        if not isinstance(optional, Mapping):
+        return cls.canonical_dev_dependencies_from_payload(normalized)
+
+    @classmethod
+    def canonical_dev_dependencies_from_payload(
+        cls,
+        payload: Mapping[str, t.Cli.JsonValue],
+    ) -> t.StrSequence:
+        """Merge all canonical dev dependency groups from one normalized payload."""
+        groups = cls.project_dev_groups_from_payload(payload)
+        return cls.dedupe_specs([
+            *groups.get(c.Infra.DEV, ()),
+            *groups.get(c.Infra.DIR_DOCS, ()),
+            *groups.get(c.Infra.SECURITY, ()),
+            *groups.get(c.Infra.TEST, ()),
+            *groups.get(c.Infra.DIR_TYPINGS, ()),
+        ])
+
+    @classmethod
+    def workspace_dep_namespaces(
+        cls,
+        document: t.Cli.TomlDocument,
+    ) -> t.StrSequence:
+        """Extract workspace-local dependency namespaces from one TOML document."""
+        normalized = cls._normalized_toml_payload(document)
+        if not normalized:
             return ()
-        dev = optional.get(c.Infra.DEV)
-        if not isinstance(dev, list):
+        return cls.workspace_dep_namespaces_from_payload(normalized)
+
+    @classmethod
+    def workspace_dep_namespaces_from_payload(
+        cls,
+        payload: Mapping[str, t.Cli.JsonValue],
+    ) -> t.StrSequence:
+        """Extract workspace-local dependency namespaces from one normalized payload."""
+        try:
+            normalized = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload)
+        except c.ValidationError:
             return ()
-        return tuple(str(item) for item in dev)
+        return cls.local_dependency_names_from_payload(normalized)
 
     @staticmethod
     @cache
@@ -117,7 +217,7 @@ class FlextInfraUtilitiesIteration:
             return {}
 
     @staticmethod
-    def pyproject_payload(
+    def cached_pyproject_payload(
         pyproject_path: Path,
     ) -> t.Infra.ContainerDict:
         """Return one parsed ``pyproject.toml`` payload through the shared cache."""

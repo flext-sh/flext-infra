@@ -79,7 +79,7 @@ class TestFlextInfraConstantsAlias:
 
     def test_c_alias_access_to_constants(self) -> None:
         tm.that(c.Infra.VENV_BIN_REL, eq=".venv/bin")
-        tm.that(c.Infra.STATUS_PASSED, eq="PASS")
+        tm.that(c.Infra.ResultStatus.PASSED, eq="PASS")
         tm.that(c.Infra.PYPROJECT_FILENAME, eq="pyproject.toml")
 
 
@@ -99,10 +99,10 @@ class TestFlextInfraConstantsConsistency:
     """Tests for consistency across namespaces."""
 
     def test_all_status_values_are_uppercase(self) -> None:
-        tm.that(c.Infra.STATUS_PASSED.isupper(), eq=True)
-        tm.that(c.Infra.STATUS_FAIL.isupper(), eq=True)
-        tm.that(c.Infra.STATUS_OK.isupper(), eq=True)
-        tm.that(c.Infra.STATUS_WARN.isupper(), eq=True)
+        tm.that(c.Infra.ResultStatus.PASSED.isupper(), eq=True)
+        tm.that(c.Infra.ResultStatus.FAIL.isupper(), eq=True)
+        tm.that(c.Infra.ResultStatus.OK.isupper(), eq=True)
+        tm.that(c.Infra.ResultStatus.WARN.isupper(), eq=True)
 
     def test_all_gate_values_are_lowercase(self) -> None:
         gates = [

@@ -123,7 +123,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
         project_dir = self._workspace_root / project_name
         pyproject_path = project_dir / c.Infra.PYPROJECT_FILENAME
         if not project_dir.is_dir() or not pyproject_path.exists():
-            u.Cli.progress(index, total, project_name, c.Infra.SEVERITY_SKIP)
+            u.Cli.progress(index, total, project_name, c.Infra.SeverityLevel.SKIP)
             return None
         u.Cli.progress(index, total, project_name, c.Infra.VERB_CHECK)
         project_ctx = self._isolate_context(ctx, project_name)

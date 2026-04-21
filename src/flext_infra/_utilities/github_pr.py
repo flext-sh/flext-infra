@@ -165,7 +165,9 @@ class FlextInfraUtilitiesGithubPr:
             )
         exit_code = to_file_result.value
         elapsed = int(time.monotonic() - started)
-        status = c.Infra.STATUS_OK if exit_code == 0 else c.Infra.STATUS_FAIL
+        status = (
+            c.Infra.ResultStatus.OK if exit_code == 0 else c.Infra.ResultStatus.FAIL
+        )
         return r[m.Infra.GithubPullRequestOutcome].ok(
             m.Infra.GithubPullRequestOutcome(
                 display=display,

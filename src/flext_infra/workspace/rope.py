@@ -270,7 +270,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         return layout
 
     @override
-    def context(
+    def package_context(
         self,
         package_dir: Path,
     ) -> m.Infra.LazyInitPackageContext:
@@ -346,7 +346,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
             if resolved_file.is_relative_to(package_dir)
             else Path(resolved_file.name)
         )
-        package_context = self.context(package_dir)
+        package_context = self.package_context(package_dir)
         policy = self.policy(
             resolved_file,
             rel_path=resolved_rel_path,

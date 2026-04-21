@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from collections.abc import (
     Callable,
     Mapping,
@@ -130,15 +129,12 @@ class FlextInfraDependencyDetectorRuntime:
                 )
                 to_add: t.StrSequence = typings_report.to_add
                 if apply_typings and to_add and params.apply:
-                    env = {
-                        **os.environ,
-                        "VIRTUAL_ENV": str(venv_bin.parent),
-                        "PATH": f"{venv_bin}:{os.environ.get('PATH', '')}",
-                    }
+                    env = {"VIRTUAL_ENV": str(venv_bin.parent)}
+                    poetry = venv_bin / c.Infra.POETRY
                     for package in to_add:
                         run = detector.runner.run_raw(
                             [
-                                c.Infra.POETRY,
+                                str(poetry),
                                 "add",
                                 "--group",
                                 c.Infra.DIR_TYPINGS,

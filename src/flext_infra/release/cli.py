@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from flext_infra.cli_registry import FlextInfraCliGroupBase
-from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
-from flext_infra.typings import t
+from flext_infra import FlextInfraCliGroupBase, FlextInfraReleaseOrchestrator, t
 
 
 class FlextInfraCliRelease(FlextInfraCliGroupBase):

@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import os
 import time
 from collections.abc import (
     MutableSequence,
@@ -18,12 +17,21 @@ from collections.abc import (
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import FlextInfraSyncService, c, m, p, r, s, t, u
+from flext_infra import (
+    FlextInfraProjectSelectionServiceBase,
+    FlextInfraSyncService,
+    c,
+    m,
+    p,
+    r,
+    t,
+    u,
+)
 
 logger = u.fetch_logger(__name__)
 
 
-class FlextInfraOrchestratorService(s[bool]):
+class FlextInfraOrchestratorService(FlextInfraProjectSelectionServiceBase[bool]):
     """Infrastructure service for multi-project make orchestration.
 
     Executes a make verb across a list of projects sequentially, capturing
@@ -33,13 +41,6 @@ class FlextInfraOrchestratorService(s[bool]):
     """
 
     verb: Annotated[str, m.Field(description="Make verb to execute")]
-    projects: Annotated[
-        t.StrSequence,
-        m.Field(
-            default_factory=tuple,
-            description="Project names targeted by the orchestration run.",
-        ),
-    ] = m.Field(default_factory=tuple)
     fail_fast: Annotated[bool, m.Field(description="Stop on first failure")] = False
     make_arg: Annotated[
         t.StrSequence,
@@ -50,19 +51,9 @@ class FlextInfraOrchestratorService(s[bool]):
     ] = m.Field(default_factory=tuple)
 
     @property
-    def project_names(self) -> t.StrSequence:
-        """Return normalized project names."""
-        return [
-            project_name
-            for project in self.projects
-            for project_name in project.split()
-            if project_name.strip()
-        ]
-
-    @property
     def make_args(self) -> t.StrSequence:
         """Return normalized make arguments."""
-        return [make_arg.strip() for make_arg in self.make_arg if make_arg.strip()]
+        return u.Infra.normalize_make_args(self.make_arg)
 
     @staticmethod
     def _workspace_root() -> Path:
@@ -73,7 +64,7 @@ class FlextInfraOrchestratorService(s[bool]):
         """Resolve the selected project names through canonical discovery."""
         return u.Infra.resolve_projects(
             self._workspace_root(),
-            self.project_names,
+            self.project_names or (),
         )
 
     @staticmethod
@@ -304,7 +295,7 @@ class FlextInfraOrchestratorService(s[bool]):
         proc_result = u.Cli.run_to_file(
             [c.Infra.MAKE, "-C", project, verb, *normalized_make_args],
             log_path,
-            env={"NO_COLOR": "1", **os.environ},
+            env={"NO_COLOR": "1"},
         )
         return_code: int = proc_result.unwrap() if proc_result.success else 1
         stderr = "" if proc_result.success else proc_result.error or ""

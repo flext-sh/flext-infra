@@ -9,14 +9,15 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_core import m
+from flext_cli import m
 
 from flext_infra import (
-    FlextInfraModelsMixins,
+    FlextInfraModelsMixins as mm,
     FlextInfraModelsNamespaceEnforcer,
     FlextInfraModelsRefactorCensus,
     FlextInfraModelsRefactorGrep,
     FlextInfraModelsRefactorViolations,
+    FlextInfraUtilitiesBase as ub,
     t,
 )
 
@@ -35,7 +36,7 @@ class FlextInfraModelsRefactor(
     """
 
     class RefactorMigrateMroInput(
-        FlextInfraModelsMixins.WriteMixin,
+        mm.WriteMixin,
         m.ContractModel,
     ):
         """CLI/service request for MRO migration."""
@@ -48,13 +49,13 @@ class FlextInfraModelsRefactor(
         ] = "all"
 
     class RefactorNamespaceEnforceInput(
-        FlextInfraModelsMixins.WriteMixin,
+        mm.WriteMixin,
         m.ContractModel,
     ):
         """CLI/service request for namespace enforcement."""
 
     class RefactorCensusInput(
-        FlextInfraModelsMixins.WriteMixin,
+        mm.WriteMixin,
         m.ContractModel,
     ):
         """CLI/service request for generalized Rope-only census."""
@@ -90,28 +91,25 @@ class FlextInfraModelsRefactor(
         @property
         def json_output_path(self) -> Path | None:
             """Return the resolved JSON export path when provided."""
-            return self.resolve_optional_path(self.json_output)
+            return ub.normalize_optional_path(self.json_output)
 
         @property
         def kind_names(self) -> t.StrSequence | None:
             """Return normalized object-kind filters."""
-            names = self.split_csv_values(*(self.kinds or ()))
-            return names or None
+            return ub.normalize_sequence_values(self.kinds)
 
         @property
         def rule_names(self) -> t.StrSequence | None:
             """Return normalized violation-rule filters."""
-            names = self.split_csv_values(*(self.rules or ()))
-            return names or None
+            return ub.normalize_sequence_values(self.rules)
 
         @property
         def family_names(self) -> t.StrSequence | None:
             """Return normalized family filters."""
-            names = self.split_csv_values(*(self.families or ()))
-            return names or None
+            return ub.normalize_sequence_values(self.families)
 
     class AccessorMigrationInput(
-        FlextInfraModelsMixins.WriteMixin,
+        mm.WriteMixin,
         m.ContractModel,
     ):
         """CLI/service request for accessor migration dry-runs and applies."""
@@ -204,7 +202,7 @@ class FlextInfraModelsRefactor(
         ] = m.Field(default_factory=tuple)
 
     class Checkpoint(
-        FlextInfraModelsMixins.StashRefMixin,
+        mm.StashRefMixin,
         m.ArbitraryTypesModel,
     ):
         """Serialisable checkpoint state for refactor safety recovery."""

@@ -14,10 +14,10 @@ from collections.abc import (
 from pathlib import Path
 from typing import Annotated
 
-from flext_core import m
+from flext_cli import m
 
 from flext_infra import (
-    FlextInfraModelsMixins,
+    FlextInfraModelsMixins as mm,
     FlextInfraModelsNamespaceEnforcer,
     t,
 )
@@ -58,7 +58,7 @@ class FlextInfraModelsScan:
         ] = None
 
     class ScanViolation(
-        FlextInfraModelsMixins.PositiveLineMixin,
+        mm.PositiveLineMixin,
         m.ContractModel,
     ):
         """A single violation found during file scanning."""

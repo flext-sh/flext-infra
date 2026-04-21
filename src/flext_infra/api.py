@@ -7,25 +7,25 @@ from typing import Annotated, ClassVar, Self, override
 
 from flext_core import r
 
-from flext_infra.base import FlextInfraServiceBase
-from flext_infra.basemk.cli import FlextInfraCliBasemk
-from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
-from flext_infra.check.cli import FlextInfraCliCheck
-from flext_infra.cli_registry import FlextInfraCliRegistryMixin
-from flext_infra.codegen.cli import FlextInfraCliCodegen
-from flext_infra.constants import FlextInfraConstantsBase
-from flext_infra.deps.cli import FlextInfraCliDeps
-from flext_infra.docs.cli import FlextInfraCliDocs
-from flext_infra.github.cli import FlextInfraCliGithub
-from flext_infra.maintenance.cli import FlextInfraCliMaintenance
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.refactor.cli import FlextInfraCliRefactor
-from flext_infra.release.cli import FlextInfraCliRelease
-from flext_infra.typings import t
-from flext_infra.validate.cli import FlextInfraCliValidate
-from flext_infra.workspace.cli import FlextInfraCliWorkspace
-from flext_infra.workspace.rope import FlextInfraServiceRopeMixin
+from flext_infra import (
+    FlextInfraCliBasemk,
+    FlextInfraCliCheck,
+    FlextInfraCliCodegen,
+    FlextInfraCliDeps,
+    FlextInfraCliDocs,
+    FlextInfraCliGithub,
+    FlextInfraCliMaintenance,
+    FlextInfraCliRefactor,
+    FlextInfraCliRegistryMixin,
+    FlextInfraCliRelease,
+    FlextInfraCliValidate,
+    FlextInfraCliWorkspace,
+    FlextInfraConstantsBase,
+    FlextInfraServiceBase,
+    FlextInfraServiceRopeMixin,
+    p,
+    t,
+)
 
 _PYDANTIC_TYPES_MARKER: Annotated[int, "runtime-namespace"] = 0
 _PYDANTIC_PATH_MARKER: Path | None = None
@@ -70,15 +70,6 @@ class FlextInfra(
             "apply_changes": self.apply_changes,
         }
         return r[t.ScalarMapping].ok(report)
-
-    def generate_basemk(
-        self,
-        settings: m.Infra.BaseMkConfig | t.ScalarMapping | None = None,
-    ) -> p.Result[str]:
-        """Generate base.mk content using the current facade context."""
-        return FlextInfraBaseMkGenerator.model_validate(
-            self.command_payload(),
-        ).generate_basemk(settings)
 
 
 infra = FlextInfra.fetch_global()

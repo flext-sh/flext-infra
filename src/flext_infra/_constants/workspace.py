@@ -74,12 +74,12 @@ class FlextInfraConstantsWorkspace:
         "scripts/",
         "/scripts/",
     })
-    REQUIRED_GITIGNORE_ENTRIES: Final[t.StrSequence] = [
+    REQUIRED_GITIGNORE_ENTRIES: Final[tuple[str, ...]] = (
         ".reports/",
         ".venv/",
         "__pycache__/",
         "base.mk",
-    ]
+    )
 
     MAKEFILE_INCLUDE_OLD: Final[str] = (
         'ifneq ("$(wildcard ../base.mk)", "")\n'

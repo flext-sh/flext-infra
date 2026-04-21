@@ -58,7 +58,7 @@ class FlextInfraUtilitiesDocs:
                 resolved_root.name,
                 resolved_root.parent,
             ):
-                payload = FlextInfraUtilitiesDocsScope.pyproject_payload(resolved_root)
+                payload = FlextInfraUtilitiesDocsScope.project_payload(resolved_root)
                 docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(payload)
                 return r[Sequence[m.Infra.DocScope]].ok(
                     [
@@ -119,7 +119,7 @@ class FlextInfraUtilitiesDocs:
                         continue
                     if not (project_root / c.Infra.PYPROJECT_FILENAME).is_file():
                         continue
-                    payload = FlextInfraUtilitiesDocsScope.pyproject_payload(
+                    payload = FlextInfraUtilitiesDocsScope.project_payload(
                         project_root,
                     )
                     docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(

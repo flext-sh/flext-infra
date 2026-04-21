@@ -11,15 +11,20 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, ClassVar
 
-from flext_core import m, u
+from flext_cli import m, u
 
-from flext_infra import FlextInfraModelsDepsToolSettings, FlextInfraModelsMixins, c, t
+from flext_infra import (
+    FlextInfraModelsDepsToolSettings,
+    FlextInfraModelsMixins as mm,
+    c,
+    t,
+)
 
 
 class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
     """Models for dependency detection and modernization reporting."""
 
-    class DetectCommand(FlextInfraModelsMixins.ProjectMixin, m.ContractModel):
+    class DetectCommand(mm.ProjectMixin, m.ContractModel):
         """Canonical CLI payload for ``flext-infra deps detect``."""
 
         apply: Annotated[
@@ -97,18 +102,18 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
             return Path(self.limits).expanduser().resolve()
 
     class ExtraPathsCommand(
-        FlextInfraModelsMixins.ApplyDryRunMixin,
-        FlextInfraModelsMixins.ProjectMixin,
+        mm.ApplyDryRunMixin,
+        mm.ProjectMixin,
         m.ContractModel,
     ):
         """Canonical CLI payload for ``flext-infra deps extra-paths``."""
 
-    class InternalSyncCommand(FlextInfraModelsMixins.BaseMixin, m.ContractModel):
+    class InternalSyncCommand(mm.BaseMixin, m.ContractModel):
         """Canonical CLI payload for ``flext-infra deps internal-sync``."""
 
     class ModernizeCommand(
-        FlextInfraModelsMixins.ApplyDryRunMixin,
-        FlextInfraModelsMixins.ProjectMixin,
+        mm.ApplyDryRunMixin,
+        mm.ProjectMixin,
         m.ContractModel,
     ):
         """Canonical CLI payload for ``flext-infra deps modernize``."""
@@ -136,16 +141,18 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
         ] = False
 
     class PathSyncCommand(
-        FlextInfraModelsMixins.ApplyDryRunMixin,
-        FlextInfraModelsMixins.ProjectMixin,
+        mm.ApplyDryRunMixin,
+        mm.ProjectMixin,
         m.ContractModel,
     ):
         """Canonical CLI payload for ``flext-infra deps path-sync``."""
 
         mode: Annotated[
-            t.Infra.PathSyncMode,
-            m.Field("auto", description="Dependency path rewrite mode"),
-        ] = "auto"
+            c.Infra.PathSyncMode,
+            m.Field(
+                c.Infra.PathSyncMode.AUTO, description="Dependency path rewrite mode"
+            ),
+        ] = c.Infra.PathSyncMode.AUTO
 
     class PyprojectDocumentState(m.ArbitraryTypesModel):
         """Centralized normalized TOML state reused across deps workflows.
@@ -253,7 +260,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
         ] = 0
 
     class ProjectDependencyReport(
-        FlextInfraModelsMixins.ProjectNameMixin,
+        mm.ProjectNameMixin,
         m.ArbitraryTypesModel,
     ):
         """Project-level dependency report combining deptry results."""

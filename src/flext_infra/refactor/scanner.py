@@ -134,7 +134,7 @@ class FlextInfraRefactorLooseClassScanner:
         parts = rel_path.parent.parts[1:]
         if any(p.startswith("_") for p in parts):
             return "high"
-        return "medium" if parts else c.Infra.SEVERITY_LOW
+        return "medium" if parts else c.Infra.SeverityLevel.LOW
 
     def _expected_prefix_for_module(self, rel_path: Path) -> str:
         parts = rel_path.parts

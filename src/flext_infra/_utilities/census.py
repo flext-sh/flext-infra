@@ -11,11 +11,7 @@ from collections.abc import (
 )
 from pathlib import Path
 
-from flext_infra import (
-    c,
-    m,
-    t,
-)
+from flext_infra import FlextInfraModelsRefactorCensus as mrc, c, m, t
 
 
 class FlextInfraUtilitiesRefactorCensus:
@@ -92,13 +88,13 @@ class FlextInfraUtilitiesRefactorCensus:
     def build_mro_target(
         family: str,
         core_project: str = c.Infra.PKG_CORE,
-    ) -> m.Infra.MROFamilyTarget:
+    ) -> mrc.MROFamilyTarget:
         """Create a generic target settings from a family code."""
         if family not in c.Infra.MRO_FAMILIES:
             msg = f"Invalid MRO family {family}"
             raise ValueError(msg)
         sf = c.Infra.FAMILY_SUFFIXES[family]
-        return m.Infra.MROFamilyTarget(
+        return mrc.MROFamilyTarget(
             family=family,
             class_suffix=sf,
             package_dir=c.Infra.MRO_FAMILY_PACKAGE_DIRS[family],
@@ -109,11 +105,11 @@ class FlextInfraUtilitiesRefactorCensus:
 
     @staticmethod
     def aggregate_usage_metrics(
-        methods: Mapping[str, Sequence[m.Infra.CensusMethodInfo]],
-        records: Sequence[m.Infra.CensusUsageRecord],
+        methods: Mapping[str, Sequence[mrc.CensusMethodInfo]],
+        records: Sequence[mrc.CensusUsageRecord],
         files_scanned: int,
         parse_errors: int,
-    ) -> m.Infra.UtilitiesCensusReport:
+    ) -> mrc.UtilitiesCensusReport:
         """Pivot raw AST method visit occurrences into a structured usage report."""
         cnt: Counter[t.Infra.Triple[str, str, str]] = Counter()
         pcnt: Counter[t.Infra.Quad[str, str, str, str]] = Counter()
@@ -122,10 +118,10 @@ class FlextInfraUtilitiesRefactorCensus:
             cnt[rec.class_name, rec.method_name, rec.access_mode] += 1
             pcnt[rec.project, rec.class_name, rec.method_name, rec.access_mode] += 1
 
-        cls_sums: MutableSequence[m.Infra.CensusClassSummary] = []
+        cls_sums: MutableSequence[mrc.CensusClassSummary] = []
         unused = 0
         for cls, items in sorted(methods.items()):
-            m_list: MutableSequence[m.Infra.CensusMethodSummary] = []
+            m_list: MutableSequence[mrc.CensusMethodSummary] = []
             for m_info in items:
                 af = cnt.get(
                     (cls, m_info.name, c.Infra.CensusMode.ALIAS_FLAT),
@@ -140,7 +136,7 @@ class FlextInfraUtilitiesRefactorCensus:
                 if tot == 0:
                     unused += 1
                 m_list.append(
-                    m.Infra.CensusMethodSummary(
+                    mrc.CensusMethodSummary(
                         name=m_info.name,
                         method_type=m_info.method_type,
                         alias_flat=af,
@@ -150,7 +146,7 @@ class FlextInfraUtilitiesRefactorCensus:
                     ),
                 )
             cls_sums.append(
-                m.Infra.CensusClassSummary(
+                mrc.CensusClassSummary(
                     class_name=cls,
                     source_file=items[0].source_file if items else "",
                     methods=tuple(m_list),
@@ -159,11 +155,11 @@ class FlextInfraUtilitiesRefactorCensus:
 
         pj_sums: MutableMapping[
             str,
-            MutableSequence[m.Infra.CensusProjectMethodUsage],
+            MutableSequence[mrc.CensusProjectMethodUsage],
         ] = defaultdict(list)
         for (pj, cls, mx, mo), co in sorted(pcnt.items()):
             pj_sums[pj].append(
-                m.Infra.CensusProjectMethodUsage(
+                mrc.CensusProjectMethodUsage(
                     class_name=cls,
                     method_name=mx,
                     access_mode=mo,
@@ -171,10 +167,10 @@ class FlextInfraUtilitiesRefactorCensus:
                 ),
             )
 
-        return m.Infra.UtilitiesCensusReport(
+        return mrc.UtilitiesCensusReport(
             classes=tuple(cls_sums),
             projects=tuple(
-                m.Infra.CensusProjectSummary(
+                mrc.CensusProjectSummary(
                     project_name=p,
                     usages=tuple(us),
                     total=sum(u.count for u in us),

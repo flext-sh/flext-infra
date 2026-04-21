@@ -17,7 +17,6 @@ from flext_cli import u
 
 from flext_infra import (
     FlextInfraUtilitiesDocsScope,
-    FlextInfraUtilitiesGithubPr,
     c,
     m,
     p,
@@ -25,9 +24,7 @@ from flext_infra import (
 )
 
 
-class FlextInfraUtilitiesGithub(
-    FlextInfraUtilitiesGithubPr,
-):
+class FlextInfraUtilitiesGithub:
     """Utilities for GitHub automation including PRs and Workflows."""
 
     @classmethod

@@ -6,10 +6,10 @@ import sys
 from types import MappingProxyType
 from typing import ClassVar
 
-from flext_cli import FlextCli, FlextCliSettings, cli, u
+from flext_cli import FlextCli, FlextCliSettings, u
 from flext_core import FlextSettings
 
-from flext_infra import c, infra, t
+from flext_infra import FlextInfra, c, t
 
 
 class FlextInfraCli:
@@ -50,6 +50,7 @@ class FlextInfraCli:
         "--pyright-args",
     })
     _CLI_SERVICE: ClassVar[FlextCli] = FlextCli()
+    _INFRA_SERVICE: ClassVar[FlextInfra] = FlextInfra.fetch_global()
     GROUPS: ClassVar[t.StrMapping] = MappingProxyType({
         "basemk": "Base.mk template generation",
         c.Infra.VERB_CHECK: "Lint gates and pyrefly settings management",
@@ -80,7 +81,7 @@ class FlextInfraCli:
             return 0
         group, group_args = cli_args[0], cli_args[1:]
         if group not in self.GROUPS:
-            cli.display_message(
+            self._CLI_SERVICE.display_message(
                 f"unknown group '{group}'",
                 c.Cli.MessageTypes.ERROR,
             )
@@ -91,13 +92,13 @@ class FlextInfraCli:
     @classmethod
     def print_help(cls) -> None:
         """Display the canonical command groups."""
-        cli.display_message(
+        cls._CLI_SERVICE.display_message(
             "Usage: flext-infra <group> [subcommand] [args...]",
             c.Cli.MessageTypes.INFO,
         )
-        cli.display_message("Groups", c.Cli.MessageTypes.INFO)
+        cls._CLI_SERVICE.display_message("Groups", c.Cli.MessageTypes.INFO)
         for group in sorted(cls.GROUPS):
-            cli.display_message(
+            cls._CLI_SERVICE.display_message(
                 f"  {group:<16}{cls.GROUPS[group]}",
                 c.Cli.MessageTypes.INFO,
             )
@@ -117,16 +118,16 @@ class FlextInfraCli:
             help_text=self.GROUPS[group],
             settings=self._cli_settings(),
         )
-        infra.register_group(group, app)
+        self._INFRA_SERVICE.register_group(group, app)
         normalized_args = self._normalize_group_args(args)
         if not normalized_args:
-            _ = cli.execute_app(
+            _ = self._CLI_SERVICE.execute_app(
                 app,
                 prog_name=f"{self.app_name} {group}",
                 args=["--help"],
             )
             return 1
-        result = cli.execute_app(
+        result = self._CLI_SERVICE.execute_app(
             app,
             prog_name=f"{self.app_name} {group}",
             args=normalized_args,
@@ -135,7 +136,10 @@ class FlextInfraCli:
             return 0
         error_message = result.error
         if error_message:
-            cli.display_message(error_message, c.Cli.MessageTypes.ERROR)
+            self._CLI_SERVICE.display_message(
+                error_message,
+                c.Cli.MessageTypes.ERROR,
+            )
         return 2 if error_message and u.Cli.cli_usage_error(error_message) else 1
 
 

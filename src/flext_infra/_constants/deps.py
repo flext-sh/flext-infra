@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
+from types import MappingProxyType
 from typing import Final
-
-from flext_infra import t
 
 
 class FlextInfraConstantsDeps:
@@ -20,13 +20,13 @@ class FlextInfraConstantsDeps:
     GITHUB_REPO_URL_RE: Final[re.Pattern[str]] = re.compile(
         r"^(?:git@github\.com:[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?:\.git)?|https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?:\.git)?)$",
     )
-    GITHUB_OWNER_PATTERNS: Final[t.Infra.VariadicTuple[re.Pattern[str]]] = (
+    GITHUB_OWNER_PATTERNS: Final[tuple[re.Pattern[str], ...]] = (
         re.compile(r"^git@github\.com:(?P<owner>[^/]+)/[^/]+(?:\.git)?$"),
         re.compile(r"^https://github\.com/(?P<owner>[^/]+)/[^/]+(?:\.git)?$"),
         re.compile(r"^http://github\.com/(?P<owner>[^/]+)/[^/]+(?:\.git)?$"),
     )
     PEP621_PATH_RE: Final[re.Pattern[str]] = re.compile(r"@\s*(?:file:)?(?P<path>.+)$")
-    SKIP_DIRS: Final[frozenset[str]] = frozenset([
+    SKIP_DIRS: Final[frozenset[str]] = frozenset({
         ".archive",
         ".claude.disabled",
         ".flext-deps",
@@ -43,7 +43,7 @@ class FlextInfraConstantsDeps:
         "node_modules",
         "site",
         "vendor",
-    ])
+    })
     DEP_NAME_RE: Final[re.Pattern[str]] = re.compile(r"^\s*([A-Za-z0-9_.-]+)")
     FLEXT_DEPS_DIR: Final[str] = ".flext-deps"
     PEP621_PATH_DEP_RE: Final[re.Pattern[str]] = re.compile(
@@ -64,7 +64,7 @@ class FlextInfraConstantsDeps:
     LEGACY_AUTO_BANNER_LINE: Final[str] = (
         "# Sections with [AUTO] are derived from workspace layout and dependencies."
     )
-    COMMENT_MARKERS: Final[t.Infra.VariadicTuple[t.Infra.StrPair]] = (
+    COMMENT_MARKERS: Final[tuple[tuple[str, str], ...]] = (
         ("[build-system]", "# [MANAGED] build system"),
         ("[project]", "# [CUSTOM] project metadata"),
         ("[tool.poetry.group.dev.dependencies]", "# [CUSTOM] poetry dev extensions"),
@@ -80,7 +80,7 @@ class FlextInfraConstantsDeps:
         ("[tool.pyrefly]", "# [MANAGED] pyrefly"),
         ("[tool.pyright]", "# [MANAGED] pyright"),
     )
-    DEFAULT_MODULE_TO_TYPES_PACKAGE: Final[t.StrMapping] = {
+    DEFAULT_MODULE_TO_TYPES_PACKAGE: Final[Mapping[str, str]] = MappingProxyType({
         "yaml": "types-pyyaml",
         "ldap3": "types-ldap3",
         "redis": "types-redis",
@@ -96,7 +96,7 @@ class FlextInfraConstantsDeps:
         "jsonschema": "types-jsonschema",
         "openpyxl": "types-openpyxl",
         "xlrd": "types-xlrd",
-    }
+    })
     """Default mapping from module name to ``types-*`` stub package."""
 
 

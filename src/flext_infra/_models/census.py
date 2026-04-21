@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 
 from flext_core import m
 
-from flext_infra import FlextInfraModelsMixins, c, t
+from flext_infra import FlextInfraModelsMixins as mm, c, t
 
 
 class FlextInfraModelsCensus:
@@ -17,10 +17,10 @@ class FlextInfraModelsCensus:
         """Namespace for unified census pipeline data contracts."""
 
         class Object(
-            FlextInfraModelsMixins.AbsoluteFilePathTextMixin,
-            FlextInfraModelsMixins.RequiredNonNegativeLineMixin,
-            FlextInfraModelsMixins.ProjectNameMixin,
-            FlextInfraModelsMixins.NestedClassPathMixin,
+            mm.AbsoluteFilePathTextMixin,
+            mm.RequiredNonNegativeLineMixin,
+            mm.ProjectNameMixin,
+            mm.NestedClassPathMixin,
             m.ArbitraryTypesModel,
         ):
             """Single discovered Python object with tier and classification metadata."""
@@ -78,7 +78,7 @@ class FlextInfraModelsCensus:
             ] = ""
 
         class Violation(
-            FlextInfraModelsMixins.ProjectNameMixin,
+            mm.ProjectNameMixin,
             m.ArbitraryTypesModel,
         ):
             """Detected census violation with fix metadata."""
@@ -175,7 +175,7 @@ class FlextInfraModelsCensus:
             ] = False
 
         class ProjectReport(
-            FlextInfraModelsMixins.ProjectNameMixin,
+            mm.ProjectNameMixin,
             m.ArbitraryTypesModel,
         ):
             """Per-project census summary."""

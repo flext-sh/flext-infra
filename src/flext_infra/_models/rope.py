@@ -12,16 +12,16 @@ from collections.abc import (
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_core import m
+from flext_cli import m
 
-from flext_infra import FlextInfraModelsCodegen, FlextInfraModelsMixins, t
+from flext_infra import FlextInfraModelsCodegen, FlextInfraModelsMixins as mm, t
 
 
 class FlextInfraModelsRope:
     """Rope operation result models — accessed via m.Infra.Rope.*."""
 
     class ClassInfo(
-        FlextInfraModelsMixins.PositiveLineMixin,
+        mm.PositiveLineMixin,
         m.ContractModel,
     ):
         """Semantic class info from rope — name, line, bases in one shot."""
@@ -30,8 +30,8 @@ class FlextInfraModelsRope:
         bases: Annotated[tuple[str, ...], m.Field(description="Base class names")] = ()
 
     class ConstantInfo(
-        FlextInfraModelsMixins.NonNegativeLineMixin,
-        FlextInfraModelsMixins.NestedClassPathMixin,
+        mm.NonNegativeLineMixin,
+        mm.NestedClassPathMixin,
         m.ContractModel,
     ):
         """Final-annotated constant definition from rope semantic analysis."""
@@ -41,7 +41,7 @@ class FlextInfraModelsRope:
         value: Annotated[str, m.Field(description="Value representation")] = ""
 
     class SymbolInfo(
-        FlextInfraModelsMixins.NonNegativeLineMixin,
+        mm.NonNegativeLineMixin,
         m.ContractModel,
     ):
         """Top-level symbol metadata from rope semantic analysis."""

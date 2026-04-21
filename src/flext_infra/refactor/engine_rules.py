@@ -15,7 +15,6 @@ from pathlib import Path
 from typing import override
 
 from flext_infra import (
-    FlextInfraChangeTracker,
     FlextInfraGenericTransformerRule,
     FlextInfraRefactorClassReconstructor,
     FlextInfraRefactorLegacyRemovalRule,
@@ -37,7 +36,7 @@ from flext_infra import (
 class FlextInfraRefactorMRORedundancyChecker(FlextInfraGenericTransformerRule):
     """Detect and fix nested classes inheriting from their parent namespace."""
 
-    TRANSFORMER_CLASS: type[FlextInfraChangeTracker] = FlextInfraRefactorMRORemover
+    TRANSFORMER_CLASS: type[p.Infra.ChangeTracker] = FlextInfraRefactorMRORemover
 
 
 class _RopeTextRuleBridge(FlextInfraRefactorRule):
@@ -245,12 +244,6 @@ class FlextInfraRefactorSymbolPropagationRule(FlextInfraRefactorRule):
 class FlextInfraRefactorSignaturePropagationRule(FlextInfraRefactorRule):
     """Apply declarative signature migrations in a generic, workspace-safe way."""
 
-    _SIG_MIGRATION_SEQ_ADAPTER: m.TypeAdapter[Sequence[m.Infra.SignatureMigration]] = (
-        m.TypeAdapter(
-            Sequence[m.Infra.SignatureMigration],
-        )
-    )
-
     @override
     def apply(
         self,
@@ -259,9 +252,12 @@ class FlextInfraRefactorSignaturePropagationRule(FlextInfraRefactorRule):
     ) -> t.Infra.TransformResult:
         migrations_raw = self.settings.get("signature_migrations", [])
         try:
-            parsed: Sequence[m.Infra.SignatureMigration] = (
-                self._SIG_MIGRATION_SEQ_ADAPTER.validate_python(migrations_raw)
+            typed_items = t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(
+                migrations_raw,
             )
+            parsed: Sequence[m.Infra.SignatureMigration] = [
+                m.Infra.SignatureMigration.model_validate(item) for item in typed_items
+            ]
         except c.ValidationError:
             return (source, list[str]())
         migrations = [item for item in parsed if item.enabled]

@@ -7,7 +7,6 @@ from collections.abc import (
     MutableSequence,
 )
 
-import tomlkit
 from tomlkit.items import Table
 
 from flext_infra import c, t, u
@@ -23,19 +22,8 @@ class FlextInfraConsolidateGroupsPhase:
     ) -> t.StrSequence:
         """Merge all legacy optional groups into canonical ``project.optional-dependencies.dev``."""
         changes: MutableSequence[str] = []
-        project: t.Infra.TomlItem | t.Infra.TomlContainer | None = None
-        if c.Infra.PROJECT in doc:
-            project = doc[c.Infra.PROJECT]
-        if not isinstance(project, Table):
-            project = tomlkit.table()
-            doc[c.Infra.PROJECT] = project
-
-        optional: t.Infra.TomlItem | t.Infra.TomlContainer | None = None
-        if c.Infra.OPTIONAL_DEPENDENCIES in project:
-            optional = project[c.Infra.OPTIONAL_DEPENDENCIES]
-        if not isinstance(optional, Table):
-            optional = tomlkit.table()
-            project[c.Infra.OPTIONAL_DEPENDENCIES] = optional
+        project = u.Cli.toml_ensure_table(doc, c.Infra.PROJECT)
+        optional = u.Cli.toml_ensure_table(project, c.Infra.OPTIONAL_DEPENDENCIES)
         existing = u.Infra.project_dev_groups(doc)
         merged_dev = u.Infra.dedupe_specs([
             *canonical_dev,
@@ -58,17 +46,9 @@ class FlextInfraConsolidateGroupsPhase:
             if old_key in optional:
                 del optional[old_key]
                 changes.append(f"project.optional-dependencies.{old_key} removed")
-        tool: t.Infra.TomlItem | t.Infra.TomlContainer | None = None
-        if c.Infra.TOOL in doc:
-            tool = doc[c.Infra.TOOL]
-        if not isinstance(tool, Table):
-            tool = tomlkit.table()
-            doc[c.Infra.TOOL] = tool
+        tool = u.Cli.toml_ensure_table(doc, c.Infra.TOOL)
         poetry = u.Cli.toml_ensure_table(tool, c.Infra.POETRY)
-        poetry_group_raw: t.Infra.TomlItem | t.Infra.TomlContainer | None = None
-        if c.Infra.GROUP in poetry:
-            poetry_group_raw = poetry[c.Infra.GROUP]
-        poetry_group = poetry_group_raw if isinstance(poetry_group_raw, Table) else None
+        poetry_group = u.Cli.toml_ensure_table(poetry, c.Infra.GROUP)
         poetry_dev_table: t.Infra.TomlTable | None = None
         for old_group in (
             c.Infra.DOCS,
@@ -76,27 +56,24 @@ class FlextInfraConsolidateGroupsPhase:
             c.Infra.TEST,
             c.Infra.DIR_TYPINGS,
         ):
-            if poetry_group is None:
+            if old_group not in poetry_group:
                 continue
-            old_group_table: t.Infra.TomlItem | t.Infra.TomlContainer | None = None
-            if old_group in poetry_group:
-                old_group_table = poetry_group[old_group]
+            old_group_table = poetry_group[old_group]
             if not isinstance(old_group_table, Table):
                 continue
-            old_deps: t.Infra.TomlItem | t.Infra.TomlContainer | None = None
-            if c.Infra.DEPENDENCIES in old_group_table:
-                old_deps = old_group_table[c.Infra.DEPENDENCIES]
+            old_deps = old_group_table.get(c.Infra.DEPENDENCIES)
             if isinstance(old_deps, Table):
                 if poetry_dev_table is None:
                     poetry_dev_table = u.Cli.toml_ensure_table(
                         u.Cli.toml_ensure_table(poetry_group, c.Infra.DEV),
                         c.Infra.DEPENDENCIES,
                     )
+                current_dev_table = poetry_dev_table
                 for dep_name_raw in old_deps:
                     dep_name = dep_name_raw
                     dep_value = old_deps[dep_name_raw]
-                    if dep_name not in poetry_dev_table:
-                        poetry_dev_table[dep_name] = dep_value
+                    if dep_name not in current_dev_table:
+                        current_dev_table[dep_name] = dep_value
             del poetry_group[old_group]
             changes.append(f"tool.poetry.group.{old_group} removed")
         deptry = u.Cli.toml_ensure_table(tool, c.Infra.DEPTRY)

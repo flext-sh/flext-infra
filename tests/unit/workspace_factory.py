@@ -15,7 +15,7 @@ from typing import Annotated
 from tests import c, m, t
 
 
-class WorkspaceFactory(m.Config):
+class WorkspaceFactory(m.Value):
     """Factory for creating test workspaces with real project structures.
 
     Extends m.Factory.Config for consistent test data generation.

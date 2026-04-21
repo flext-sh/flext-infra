@@ -7,9 +7,9 @@ from collections.abc import (
 )
 from typing import Annotated, ClassVar
 
-from flext_core import m
+from flext_cli import m
 
-from flext_infra import FlextInfraModelsMixins, c, t
+from flext_infra import FlextInfraModelsMixins as mm, c, t
 
 
 class FlextInfraModelsRefactorCensus:
@@ -70,7 +70,7 @@ class FlextInfraModelsRefactorCensus:
         source_file: Annotated[str, m.Field(description="Source filename")]
 
     class CensusUsageRecord(
-        FlextInfraModelsMixins.ProjectNameMixin,
+        mm.ProjectNameMixin,
         m.ArbitraryTypesModel,
     ):
         """A single method usage found via CST analysis."""
@@ -134,7 +134,7 @@ class FlextInfraModelsRefactorCensus:
         count: Annotated[t.NonNegativeInt, m.Field(description="Usage count")]
 
     class CensusProjectSummary(
-        FlextInfraModelsMixins.ProjectNameFieldMixin,
+        mm.ProjectNameFieldMixin,
         m.ArbitraryTypesModel,
     ):
         """Usage breakdown for one project."""

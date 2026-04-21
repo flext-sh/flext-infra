@@ -12,7 +12,6 @@ from collections.abc import (
 from pathlib import Path
 
 from flext_infra import (
-    FlextInfraUtilitiesRope,
     c,
     m,
     t,
@@ -20,7 +19,7 @@ from flext_infra import (
 )
 
 
-class FlextInfraUtilitiesFacadeScanner:
+class FlextInfraScanner:
     """Scan projects for namespace facade classes via rope."""
 
     @classmethod
@@ -56,13 +55,13 @@ class FlextInfraUtilitiesFacadeScanner:
             pattern = c.Infra.FAMILY_FILES[family]
             found_class, found_file, symbols = "", "", 0
             for file_path in src_dir.rglob(pattern):
-                res = FlextInfraUtilitiesRope.get_resource_from_path(
+                res = u.Infra.get_resource_from_path(
                     rope_project,
                     file_path,
                 )
                 if res is None:
                     continue
-                classes = FlextInfraUtilitiesRope.get_module_classes(rope_project, res)
+                classes = u.Infra.get_module_classes(rope_project, res)
                 match = next(
                     (n for n in classes if n == expected or n.endswith(suffix)),
                     None,
@@ -70,7 +69,7 @@ class FlextInfraUtilitiesFacadeScanner:
                 if match is not None:
                     found_class = match
                     found_file = str(file_path)
-                    symbols = FlextInfraUtilitiesRope.get_class_symbol_count(
+                    symbols = u.Infra.get_class_symbol_count(
                         rope_project,
                         res,
                         match,

@@ -5,9 +5,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated
 
-from flext_core import m, u
+from flext_cli import m, u
 
-from flext_infra import c, t
+from flext_infra import (
+    FlextInfraUtilitiesBase as ub,
+    FlextInfraUtilitiesRelease as ur,
+    c,
+    t,
+)
 
 
 class FlextInfraModelsMixins:
@@ -35,22 +40,6 @@ class FlextInfraModelsMixins:
             """Return the resolved workspace path for CLI execution."""
             return Path(self.workspace).resolve()
 
-        @staticmethod
-        def resolve_optional_path(value: str | None) -> Path | None:
-            """Resolve an optional path string when present."""
-            return Path(value).resolve() if value else None
-
-        @staticmethod
-        def split_csv_values(*values: str | None) -> t.StrSequence:
-            """Normalize comma-separated CLI values into a compact list."""
-            return [
-                item.strip()
-                for value in values
-                for group in (value or "").split(",")
-                for item in group.split()
-                if item.strip()
-            ]
-
     class ProjectMixin(BaseMixin):
         """Commands that operate on one or more projects."""
 
@@ -65,10 +54,7 @@ class FlextInfraModelsMixins:
         @property
         def project_names(self) -> t.StrSequence | None:
             """Return normalized project names from repeated selectors."""
-            names = FlextInfraModelsMixins.BaseMixin.split_csv_values(
-                *(self.projects or ()),
-            )
-            return names or None
+            return ub.normalize_sequence_values(self.projects)
 
     class ReadMixin(ProjectMixin):
         """Read-only commands with output configuration."""
@@ -85,17 +71,17 @@ class FlextInfraModelsMixins:
         @property
         def output_dir_path(self) -> Path | None:
             """Return the resolved output directory when provided."""
-            return self.resolve_optional_path(self.output_dir)
+            return ub.normalize_optional_path(self.output_dir)
 
         @property
         def report_path(self) -> Path | None:
             """Return the resolved report path when provided."""
-            return self.resolve_optional_path(self.report)
+            return ub.normalize_optional_path(self.report)
 
         @property
         def json_output_path(self) -> Path | None:
             """Return the resolved JSON export path when provided."""
-            return self.resolve_optional_path(self.json_output)
+            return ub.normalize_optional_path(self.json_output)
 
     class ApplyDryRunMixin(BaseMixin):
         """Commands with a simple apply/dry-run flag pair.
@@ -175,7 +161,7 @@ class FlextInfraModelsMixins:
         @property
         def alias_names(self) -> t.StrSequence:
             """Return normalized runtime alias names."""
-            return self.split_csv_values(self.aliases)
+            return ub.normalize_cli_values(self.aliases)
 
     class ReleasePhaseMixin(WriteMixin):
         """Release phase selector with normalized expansion."""
@@ -185,14 +171,7 @@ class FlextInfraModelsMixins:
         @property
         def phase_names(self) -> t.StrSequence:
             """Return the normalized phase sequence for release execution."""
-            if self.phase == "all":
-                return [
-                    c.Infra.VERB_VALIDATE,
-                    c.Infra.VERSION,
-                    c.Infra.DIR_BUILD,
-                    c.Infra.VERB_PUBLISH,
-                ]
-            return self.split_csv_values(self.phase)
+            return ur.resolve_phase_names(self.phase)
 
     class MakeArgMixin(WriteMixin):
         """Repeated --make-arg option with normalized accessor."""
@@ -205,7 +184,7 @@ class FlextInfraModelsMixins:
         @property
         def make_args(self) -> t.StrSequence:
             """Return normalized make arguments without blank entries."""
-            return [make_arg.strip() for make_arg in self.make_arg if make_arg.strip()]
+            return ub.normalize_make_args(self.make_arg)
 
     class CanonicalRootMixin(WriteMixin):
         """Canonical root selector with resolved accessor."""
@@ -217,7 +196,9 @@ class FlextInfraModelsMixins:
         @property
         def canonical_root_path(self) -> Path | None:
             """Return the resolved canonical root when provided."""
-            return self.resolve_optional_path(self.canonical_root)
+            return ub.normalize_optional_path(
+                self.canonical_root,
+            )
 
     class GithubWorkspaceRequestMixin:
         """Shared branch/checkpoint flags for workspace GitHub requests."""

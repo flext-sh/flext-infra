@@ -235,13 +235,6 @@ class FlextInfraConstantsSourceCode:
         r"^(\d+)\.(\d+)\.(\d+)(?:-dev)?$",
     )
     "Regex pattern for parsing semantic version strings."
-    VALID_BUMP_TYPES: Final[frozenset[str]] = frozenset({
-        "major",
-        "minor",
-        "patch",
-    })
-    "Allowed version bump type identifiers."
-
     # --- Reporting paths (was: class Reporting) ---
     REPORTS_DIR_NAME: Final[str] = ".reports"
     "Standard directory name for report output."

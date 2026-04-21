@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from flext_infra.cli_registry import FlextInfraCliGroupBase
-from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
-from flext_infra.typings import t
+from flext_infra import FlextInfraCliGroupBase, FlextInfraPythonVersionEnforcer, t
 
 
 class FlextInfraCliMaintenance(FlextInfraCliGroupBase):

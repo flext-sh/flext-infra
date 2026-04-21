@@ -386,9 +386,11 @@ class FlextInfraCodegenGeneration:
     @classmethod
     def get_template(cls, name: str) -> p.Infra.RenderableTemplate:
         """Return a template narrowed to the local render protocol."""
-        if cls._env is None:
-            cls._env = cls._build_env()
-        return cls._env.get_template(name)
+        env = cls._env
+        if env is None:
+            env = cls._build_env()
+            cls._env = env
+        return env.get_template(name)
 
     @staticmethod
     def _generate_import_lines(

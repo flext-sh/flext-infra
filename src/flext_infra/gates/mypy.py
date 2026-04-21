@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import sys
 from collections.abc import (
     Mapping,
@@ -68,13 +67,12 @@ class FlextInfraMypyGate(FlextInfraGate):
     ) -> t.StrMapping | None:
         _ = project_dir
         typings_generated = ctx.workspace_root / c.Infra.DIR_TYPINGS / "generated"
-        mypy_env = os.environ.copy()
-        if typings_generated.is_dir():
-            existing = mypy_env.get("MYPYPATH", "")
-            mypy_env["MYPYPATH"] = str(typings_generated) + (
-                f":{existing}" if existing else ""
-            )
-        return mypy_env
+        if not typings_generated.is_dir():
+            return None
+        base_env = u.Cli.process_env()
+        existing = base_env.get("MYPYPATH", "")
+        mypy_path = str(typings_generated) + (f":{existing}" if existing else "")
+        return u.Cli.process_env(overrides={"MYPYPATH": mypy_path})
 
     @override
     def _parse_check_output(

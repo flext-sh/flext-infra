@@ -290,7 +290,7 @@ class FlextInfraClassNestingRefactorRule:
             cm = u.Infra.normalize_module_path(Path(cf))
             if cm != mod and not mod.endswith(f"/{cm}"):
                 continue
-            conf = entry.get(c.Infra.RK_CONFIDENCE, c.Infra.SEVERITY_LOW)
+            conf = entry.get(c.Infra.RK_CONFIDENCE, c.Infra.SeverityLevel.LOW)
             if not self._confidence_ok(conf, thr):
                 continue
             accepted.append(entry)
@@ -342,7 +342,7 @@ class FlextInfraClassNestingRefactorRule:
         return result
 
     def _confidence_threshold(self, settings: t.Infra.ContainerDict) -> str:
-        raw = settings.get("confidence_threshold", c.Infra.SEVERITY_LOW)
+        raw = settings.get("confidence_threshold", c.Infra.SeverityLevel.LOW)
         if not isinstance(raw, str):
             msg = "confidence_threshold must be a string"
             raise TypeError(msg)

@@ -53,7 +53,10 @@ class FlextInfraConstantsCheck:
         ),
         "go": ("Go Vet", "https://pkg.go.dev/cmd/vet"),
     })
-    REQUIRED_EXCLUDES: Final[t.StrSequence] = ["**/*_pb2*.py", "**/*_pb2_grpc*.py"]
+    REQUIRED_EXCLUDES: Final[tuple[str, ...]] = (
+        "**/*_pb2*.py",
+        "**/*_pb2_grpc*.py",
+    )
     RUFF_FORMAT_FILE_RE: Final[re.Pattern[str]] = re.compile(
         r"^\s*-->\s*(.+?):\d+:\d+\s*$",
     )

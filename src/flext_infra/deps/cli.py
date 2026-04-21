@@ -4,15 +4,17 @@ from __future__ import annotations
 
 from flext_core import r
 
-from flext_infra._utilities.deps_path_sync import FlextInfraUtilitiesDependencyPathSync
-from flext_infra.cli_registry import FlextInfraCliGroupBase
-from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
-from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
-from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
-from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
-from flext_infra.models import FlextInfraModelsDeps
-from flext_infra.protocols import p
-from flext_infra.typings import t
+from flext_infra import (
+    FlextInfraCliGroupBase,
+    FlextInfraExtraPathsManager,
+    FlextInfraInternalDependencySyncService,
+    FlextInfraModelsDeps,
+    FlextInfraPyprojectModernizer,
+    FlextInfraRuntimeDevDependencyDetector,
+    FlextInfraUtilitiesDependencyPathSync,
+    p,
+    t,
+)
 
 
 class FlextInfraCliDeps(FlextInfraCliGroupBase):

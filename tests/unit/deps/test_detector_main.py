@@ -11,11 +11,11 @@ from typing import override
 from flext_tests import tm
 
 from flext_infra import (
+    FlextInfraDependencyDetectorRuntime,
     FlextInfraModelsDeps,
-    FlextInfraRuntimeDevDependencyDetector,
     main,
 )
-from tests import m, p, r, t
+from tests import m, p, r, t, u
 
 
 class _DepsStub(
@@ -119,11 +119,17 @@ class _RunnerStub(p.Infra.RunnerService):
         )
 
 
-class _ReportingStub(p.Infra.ReportingService):
-    @override
-    def get_report_dir(self, workspace_root: Path, scope: str, verb: str) -> Path:
-        del scope
-        return workspace_root / ".reports" / verb
+class _DetectorStub:
+    """Minimal stub satisfying p.Infra.DetectorRuntime for typings tests."""
+
+    def __init__(
+        self,
+        deps: p.Infra.DepsService,
+        runner: p.Infra.RunnerService,
+    ) -> None:
+        self.deps = deps
+        self.runner = runner
+        self.log = u.fetch_logger(__name__)
 
 
 def _setup_typings_detector(
@@ -131,7 +137,7 @@ def _setup_typings_detector(
     to_add: t.StrSequence,
     run_raw_result: p.Result[m.Cli.CommandOutput],
 ) -> tuple[
-    FlextInfraRuntimeDevDependencyDetector,
+    FlextInfraDependencyDetectorRuntime,
     Sequence[t.StrSequence],
 ]:
     project_path = tmp_path / "proj-a"
@@ -152,11 +158,17 @@ def _setup_typings_detector(
         captured_commands.append(cmd)
         return run_raw_result
 
-    detector = FlextInfraRuntimeDevDependencyDetector()
-    detector.deps = _DepsStub(project_path, to_add)
-    detector.runner = _RunnerStub(_run_raw)
-    detector.reporting = _ReportingStub()
-    return detector, captured_commands
+    stub = _DetectorStub(
+        deps=_DepsStub(project_path, to_add),
+        runner=_RunnerStub(_run_raw),
+    )
+    runtime = FlextInfraDependencyDetectorRuntime(
+        detector=stub,
+        workspace_report_factory=m.Infra.WorkspaceDependencyReport,
+        dependency_limits_factory=m.Infra.DependencyLimitsInfo,
+        pip_check_factory=m.Infra.PipCheckReport,
+    )
+    return runtime, captured_commands
 
 
 class TestFlextInfraRuntimeDevDependencyDetectorRunTypings:
@@ -167,7 +179,7 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunTypings:
         run_result = r[m.Cli.CommandOutput].ok(
             m.Cli.CommandOutput(stdout="", stderr="", exit_code=0)
         )
-        detector, calls = _setup_typings_detector(
+        runtime, calls = _setup_typings_detector(
             tmp_path,
             ["types-requests"],
             run_result,
@@ -179,7 +191,7 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunTypings:
             apply=True,
             no_pip_check=True,
         )
-        tm.ok(detector.run(params))
+        tm.ok(runtime.run(params))
         tm.that(len(calls), eq=1)
 
     def test_run_with_apply_typings_multiple_packages(
@@ -189,7 +201,7 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunTypings:
         run_result = r[m.Cli.CommandOutput].ok(
             m.Cli.CommandOutput(stdout="", stderr="", exit_code=0)
         )
-        detector, calls = _setup_typings_detector(
+        runtime, calls = _setup_typings_detector(
             tmp_path,
             ["types-requests", "types-python-dateutil", "types-pyyaml"],
             run_result,
@@ -201,7 +213,7 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunTypings:
             apply=True,
             no_pip_check=True,
         )
-        tm.ok(detector.run(params))
+        tm.ok(runtime.run(params))
         tm.that(len(calls), eq=3)
 
     def test_run_with_apply_typings_poetry_add_failure(
@@ -211,7 +223,7 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunTypings:
         run_result = r[m.Cli.CommandOutput].ok(
             m.Cli.CommandOutput(stdout="", stderr="", exit_code=1)
         )
-        detector, _ = _setup_typings_detector(
+        runtime, _ = _setup_typings_detector(
             tmp_path,
             ["types-requests"],
             run_result,
@@ -222,13 +234,13 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunTypings:
             apply_typings=True,
             no_pip_check=True,
         )
-        tm.ok(detector.run(params))
+        tm.ok(runtime.run(params))
 
     def test_run_with_apply_typings_poetry_add_failure_result(
         self,
         tmp_path: Path,
     ) -> None:
-        detector, _ = _setup_typings_detector(
+        runtime, _ = _setup_typings_detector(
             tmp_path,
             ["types-requests"],
             r[m.Cli.CommandOutput].fail("poetry add failed"),
@@ -239,7 +251,7 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunTypings:
             apply_typings=True,
             no_pip_check=True,
         )
-        tm.ok(detector.run(params))
+        tm.ok(runtime.run(params))
 
 
 class TestMainFunction:

@@ -9,16 +9,16 @@ from collections.abc import (
 from pathlib import Path
 from typing import Annotated
 
-from flext_core import m
+from flext_cli import m
 
-from flext_infra import FlextInfraModelsMixins, t
+from flext_infra import FlextInfraModelsMixins as mm, t
 
 
 class FlextInfraModelsGithub:
     """Models for GitHub PR orchestration and repository management."""
 
     class GithubWorkflowSyncRequest(
-        FlextInfraModelsMixins.WriteMixin,
+        mm.WriteMixin,
         m.ContractModel,
     ):
         """CLI/service request for workflow synchronization."""
@@ -29,10 +29,10 @@ class FlextInfraModelsGithub:
         @property
         def report_path(self) -> Path | None:
             """Return the resolved report path when provided."""
-            return self.resolve_optional_path(self.report)
+            return Path(self.report).resolve() if self.report else None
 
     class GithubWorkflowLintRequest(
-        FlextInfraModelsMixins.ReadMixin,
+        mm.ReadMixin,
         m.ContractModel,
     ):
         """CLI/service request for workflow lint."""
@@ -40,8 +40,8 @@ class FlextInfraModelsGithub:
         strict: Annotated[bool, m.Field(description="Strict mode")] = False
 
     class GithubPullRequestRequest(
-        FlextInfraModelsMixins.GithubPullRequestFieldsMixin,
-        FlextInfraModelsMixins.WriteMixin,
+        mm.GithubPullRequestFieldsMixin,
+        mm.WriteMixin,
         m.ContractModel,
     ):
         """CLI/service request for a single-repository PR action."""
@@ -54,9 +54,9 @@ class FlextInfraModelsGithub:
             return Path(self.repo_root).resolve()
 
     class GithubPullRequestWorkspaceRequest(
-        FlextInfraModelsMixins.GithubWorkspaceCliRequestMixin,
-        FlextInfraModelsMixins.GithubPullRequestFieldsMixin,
-        FlextInfraModelsMixins.WriteMixin,
+        mm.GithubWorkspaceCliRequestMixin,
+        mm.GithubPullRequestFieldsMixin,
+        mm.WriteMixin,
         m.ContractModel,
     ):
         """CLI/service request for workspace-wide PR automation."""
@@ -133,7 +133,7 @@ class FlextInfraModelsGithub:
             return "workflow lint failed"
 
     class GithubWorkflowSyncOperation(
-        FlextInfraModelsMixins.ProjectNameMixin,
+        mm.ProjectNameMixin,
         m.ArbitraryTypesModel,
     ):
         """Describe one workflow synchronization operation."""
@@ -188,7 +188,7 @@ class FlextInfraModelsGithub:
             return f"github workflows {self.mode}: {len(self.operations)} operations"
 
     class GithubWorkflowSyncContext(
-        FlextInfraModelsMixins.ProjectNameFieldMixin,
+        mm.ProjectNameFieldMixin,
         m.ArbitraryTypesModel,
     ):
         """Resolved context for syncing workflows in one project."""
@@ -217,7 +217,7 @@ class FlextInfraModelsGithub:
             return self.request.prune
 
     class GithubPullRequestWorkspaceContext(
-        FlextInfraModelsMixins.WorkspaceRootPathMixin,
+        mm.WorkspaceRootPathMixin,
         m.ArbitraryTypesModel,
     ):
         """Resolved context for workspace-wide pull-request execution."""

@@ -115,7 +115,7 @@ class FlextInfraDocAuditorMixin:
             c.Infra.RK_SCOPE: scope.name,
             "issues": len(issues),
             c.Infra.VERB_CHECKS: sorted_checks,
-            c.Infra.MODE_STRICT: strict,
+            c.Infra.OperationMode.STRICT: strict,
             "report_dir": scope.report_dir.as_posix(),
         }
         issues_payload: t.Cli.JsonValue = [

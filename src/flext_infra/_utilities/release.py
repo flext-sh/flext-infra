@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 
 from flext_core import u
 
-from flext_infra import c, p, r
+from flext_infra import FlextInfraUtilitiesBase, c, p, r, t
 
 if TYPE_CHECKING:
     from flext_infra import m
@@ -23,6 +23,13 @@ logger = u.fetch_logger(__name__)
 
 class FlextInfraUtilitiesRelease:
     """Release notes and changelog utility methods exposed via u.Infra."""
+
+    @staticmethod
+    def resolve_phase_names(phase: str) -> t.StrSequence:
+        """Expand release phase selectors to the canonical ordered phase list."""
+        if phase == c.Infra.RELEASE_PHASE_ALL:
+            return tuple(c.Infra.ReleasePhase)
+        return FlextInfraUtilitiesBase.normalize_cli_values(phase)
 
     @staticmethod
     def generate_notes(

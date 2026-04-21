@@ -14,30 +14,13 @@ from collections.abc import (
 )
 from pathlib import Path
 
-from flext_core import m
-
 from flext_infra import (
-    FlextInfraUtilitiesIteration,
-    FlextInfraUtilitiesRefactorCensus,
-    FlextInfraUtilitiesRefactorEngine,
-    FlextInfraUtilitiesRefactorMroScan,
-    FlextInfraUtilitiesRefactorMroTransform,
-    FlextInfraUtilitiesRefactorNamespace,
-    FlextInfraUtilitiesRefactorPolicy,
     c,
     t,
 )
 
 
-class FlextInfraUtilitiesRefactor(
-    FlextInfraUtilitiesRefactorPolicy,
-    FlextInfraUtilitiesRefactorEngine,
-    FlextInfraUtilitiesRefactorMroScan,
-    FlextInfraUtilitiesRefactorNamespace,
-    FlextInfraUtilitiesRefactorMroTransform,
-    FlextInfraUtilitiesIteration,
-    FlextInfraUtilitiesRefactorCensus,
-):
+class FlextInfraUtilitiesRefactor:
     """Rope-based refactor helpers for code analysis.
 
     Usage via namespace::
@@ -46,8 +29,6 @@ class FlextInfraUtilitiesRefactor(
 
         methods = u.Infra.extract_public_methods_from_dir(package_dir)
     """
-
-    _STRING_LIST_ADAPTER: m.TypeAdapter[t.StrSequence] = m.TypeAdapter(t.StrSequence)
 
     @staticmethod
     def entry_list(value: t.Infra.InfraValue | None) -> Sequence[t.StrMapping]:
@@ -68,11 +49,7 @@ class FlextInfraUtilitiesRefactor(
         if isinstance(value, str):
             return [value]
         try:
-            return list(
-                FlextInfraUtilitiesRefactor._STRING_LIST_ADAPTER.validate_python(
-                    value,
-                )
-            )
+            return list(t.Infra.STR_SEQ_ADAPTER.validate_python(value))
         except TypeError as exc:
             msg = "expected list value"
             raise TypeError(msg) from exc

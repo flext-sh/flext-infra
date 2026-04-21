@@ -8,11 +8,11 @@ from typing import Annotated, override
 from flext_infra import (
     FlextInfraDependencyDetectionService,
     FlextInfraDependencyDetectorRuntime,
+    FlextInfraDepsProjectServiceBase,
     m,
     p,
     u,
 )
-from flext_infra.deps.service_base import FlextInfraDepsProjectServiceBase
 
 
 class FlextInfraRuntimeDevDependencyDetector(FlextInfraDepsProjectServiceBase):

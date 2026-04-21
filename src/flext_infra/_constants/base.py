@@ -200,10 +200,6 @@ class FlextInfraConstantsBase(
         ADDITIVE = "additive"
         MERGE = "merge"
 
-    TOML_MERGE_REPLACE: Final[str] = TomlMergeMode.REPLACE.value
-    TOML_MERGE_ADDITIVE: Final[str] = TomlMergeMode.ADDITIVE.value
-    TOML_MERGE_MERGE: Final[str] = TomlMergeMode.MERGE.value
-
     @unique
     class ResultStatus(StrEnum):
         """SSOT status values for reports and gate summaries."""
@@ -213,11 +209,6 @@ class FlextInfraConstantsBase(
         OK = "OK"
         WARN = "WARN"
 
-    STATUS_PASSED: Final[str] = ResultStatus.PASSED.value
-    STATUS_FAIL: Final[str] = ResultStatus.FAIL.value
-    STATUS_OK: Final[str] = ResultStatus.OK.value
-    STATUS_WARN: Final[str] = ResultStatus.WARN.value
-
     @unique
     class MatchMode(StrEnum):
         """SSOT scanner match mode values."""
@@ -225,8 +216,29 @@ class FlextInfraConstantsBase(
         PRESENT = "present"
         ABSENT = "absent"
 
-    MATCH_MODE_PRESENT: Final[str] = MatchMode.PRESENT.value
-    MATCH_MODE_ABSENT: Final[str] = MatchMode.ABSENT.value
+    @unique
+    class LazyInitAction(StrEnum):
+        """SSOT lazy-init action values."""
+
+        WRITE = "write"
+        REMOVE = "remove"
+        SKIP = "skip"
+
+    @unique
+    class PathSyncMode(StrEnum):
+        """SSOT dependency path-sync modes."""
+
+        WORKSPACE = "workspace"
+        STANDALONE = "standalone"
+        AUTO = "auto"
+
+    @unique
+    class TomlOperationKind(StrEnum):
+        """SSOT TOML phase operation kinds."""
+
+        SET = "set"
+        LIST = "list"
+        REMOVE = "remove"
 
     @unique
     class OperationMode(StrEnum):
@@ -234,9 +246,6 @@ class FlextInfraConstantsBase(
 
         BASELINE = "baseline"
         STRICT = "strict"
-
-    MODE_BASELINE: Final[str] = OperationMode.BASELINE.value
-    MODE_STRICT: Final[str] = OperationMode.STRICT.value
 
     @unique
     class SeverityLevel(StrEnum):
@@ -247,12 +256,6 @@ class FlextInfraConstantsBase(
         NOTE = "note"
         LOW = "low"
         SKIP = "skip"
-
-    SEVERITY_ERROR: Final[str] = SeverityLevel.ERROR.value
-    SEVERITY_WARNING: Final[str] = SeverityLevel.WARNING.value
-    SEVERITY_NOTE: Final[str] = SeverityLevel.NOTE.value
-    SEVERITY_LOW: Final[str] = SeverityLevel.LOW.value
-    SEVERITY_SKIP: Final[str] = SeverityLevel.SKIP.value
 
     DEFAULT_UNKNOWN: Final[str] = "unknown"
     DEFAULT_UNNAMED: Final[str] = "unnamed"
@@ -340,6 +343,16 @@ class FlextInfraConstantsBase(
     "Default quality gates for post-transform validation."
     SAFE_EXECUTION_BAK_SUFFIX: Final[str] = ".bak"
     "File backup suffix for copy-on-write safety."
+
+    ENV_VAR_STANDALONE: Final[str] = "FLEXT_STANDALONE"
+    ENV_VAR_WORKSPACE_ROOT: Final[str] = "FLEXT_WORKSPACE_ROOT"
+    ENV_VAR_USE_HTTPS: Final[str] = "FLEXT_USE_HTTPS"
+    ENV_VAR_GITHUB_ACTIONS: Final[str] = "GITHUB_ACTIONS"
+    ENV_VAR_GITHUB_HEAD_REF: Final[str] = "GITHUB_HEAD_REF"
+    ENV_VAR_GITHUB_REF_NAME: Final[str] = "GITHUB_REF_NAME"
+    ENV_DEFAULT_STANDALONE: Final[bool] = False
+    ENV_DEFAULT_USE_HTTPS: Final[bool] = False
+    ENV_DEFAULT_GITHUB_ACTIONS: Final[bool] = False
 
     @unique
     class ExecutionMode(StrEnum):

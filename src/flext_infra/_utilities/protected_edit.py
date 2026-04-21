@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import difflib
-import os
 import re
 import shutil
 from collections.abc import (
@@ -50,13 +49,12 @@ class FlextInfraUtilitiesProtectedEdit:
     def _selected_lint_tools(
         gates: t.StrSequence | None = None,
     ) -> tuple[tuple[str, tuple[str, ...]], ...]:
-        if not gates:
-            gates = tuple(
-                gate.strip()
-                for gate in c.Infra.SAFE_EXECUTION_DEFAULT_GATES.split(",")
-                if gate.strip()
-            )
-        gate_names = {gate.strip().lower() for gate in gates if gate.strip()}
+        resolved_gates = gates or tuple(
+            gate.strip()
+            for gate in c.Infra.SAFE_EXECUTION_DEFAULT_GATES.split(",")
+            if gate.strip()
+        )
+        gate_names = {gate.strip().lower() for gate in resolved_gates if gate.strip()}
         selected = [
             (tool, tmpl)
             for tool, tmpl in c.Infra.LINT_TOOLS
@@ -95,9 +93,7 @@ class FlextInfraUtilitiesProtectedEdit:
 
     @staticmethod
     def _command_env() -> t.StrMapping:
-        env = dict(os.environ)
-        _ = env.pop("PYTHONPATH", None)
-        return env
+        return u.Cli.process_env(remove_keys=("PYTHONPATH",))
 
     @classmethod
     def lint_snapshot(

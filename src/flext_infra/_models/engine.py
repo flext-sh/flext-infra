@@ -11,53 +11,20 @@ from collections.abc import (
     Sequence,
 )
 from itertools import chain
-from typing import Annotated, Literal, Self
+from typing import Annotated, Self
 
-from flext_core import m
+from flext_cli import m
 
-from flext_infra import c, t
+from flext_infra import FlextInfraModelsEngineOperation, c, t
 
 
-class FlextInfraModelsEngine:
+class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):
     """Engine models accessible via ``m.Infra.*``."""
 
-    class TomlSetOp(m.ContractModel):
-        """Set one TOML key to one JSON-compatible value."""
-
-        kind: Annotated[Literal["set"], m.Field(description="Operation kind")] = "set"
-        key: str = m.Field(description="TOML key name")
-        value: t.Cli.JsonValue = m.Field(description="JSON-compatible value")
-
-    class TomlListOp(m.ContractModel):
-        """Set or merge one TOML string list."""
-
-        kind: Annotated[Literal["list"], m.Field(description="Operation kind")] = "list"
-        key: str = m.Field(description="TOML key name")
-        values: t.StrSequence = m.Field(description="Expected values")
-        strategy: Annotated[
-            str,
-            m.Field(
-                description="Merge strategy",
-            ),
-        ] = c.Infra.TOML_MERGE_REPLACE
-        sort: Annotated[bool, m.Field(description="Sort values before sync")] = True
-
-    class TomlRemoveOp(m.ContractModel):
-        """Remove one TOML key, optionally from a nested relative table."""
-
-        kind: Annotated[Literal["remove"], m.Field(description="Operation kind")] = (
-            "remove"
-        )
-        key: str = m.Field(description="Key to remove")
-        table_path: Annotated[
-            t.StrSequence,
-            m.Field(
-                description="Relative sub-table path",
-            ),
-        ] = ()
-
     type TomlOperation = Annotated[
-        TomlSetOp | TomlListOp | TomlRemoveOp,
+        FlextInfraModelsEngineOperation.TomlSetOp
+        | FlextInfraModelsEngineOperation.TomlListOp
+        | FlextInfraModelsEngineOperation.TomlRemoveOp,
         m.Field(discriminator="kind"),
     ]
 
@@ -135,7 +102,7 @@ class FlextInfraModelsEngine:
                 self,
                 operation_type: type[m.ContractModel],
                 /,
-                **data: t.ValueOrModel | t.Container,
+                **data: t.ValueOrModel | Sequence[t.ValueOrModel],
             ) -> Self:
                 return self._append_model("operations", operation_type, **data)
 
@@ -155,7 +122,7 @@ class FlextInfraModelsEngine:
                 key: str,
                 values: t.StrSequence,
                 *,
-                strategy: str = c.Infra.TOML_MERGE_REPLACE,
+                strategy: c.Infra.TomlMergeMode = c.Infra.TomlMergeMode.REPLACE,
                 sort: bool = True,
             ) -> Self:
                 return self._operation(

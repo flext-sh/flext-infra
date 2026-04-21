@@ -84,7 +84,7 @@ def test_ensure_symlink_creates_and_replaces_targets(tmp_path: Path) -> None:
     source.mkdir()
 
     new_target = tmp_path / "new-target"
-    assert FlextInfraInternalDependencySyncService.ensure_symlink(
+    assert u.Cli.ensure_symlink(
         new_target,
         source,
     ).success
@@ -93,7 +93,7 @@ def test_ensure_symlink_creates_and_replaces_targets(tmp_path: Path) -> None:
     existing_dir = tmp_path / "existing-dir"
     existing_dir.mkdir()
     (existing_dir / "file.txt").write_text("old", encoding="utf-8")
-    assert FlextInfraInternalDependencySyncService.ensure_symlink(
+    assert u.Cli.ensure_symlink(
         existing_dir,
         source,
     ).success
@@ -103,7 +103,7 @@ def test_ensure_symlink_creates_and_replaces_targets(tmp_path: Path) -> None:
     other.mkdir()
     wrong_link = tmp_path / "wrong-link"
     wrong_link.symlink_to(other.resolve(), target_is_directory=True)
-    assert FlextInfraInternalDependencySyncService.ensure_symlink(
+    assert u.Cli.ensure_symlink(
         wrong_link,
         source,
     ).success
@@ -116,7 +116,7 @@ def test_ensure_symlink_fails_when_parent_path_is_a_file(tmp_path: Path) -> None
     parent_file = tmp_path / "parent"
     parent_file.write_text("not a directory", encoding="utf-8")
 
-    result = FlextInfraInternalDependencySyncService.ensure_symlink(
+    result = u.Cli.ensure_symlink(
         parent_file / "target",
         source,
     )

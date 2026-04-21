@@ -11,7 +11,7 @@ from typing import Annotated
 
 from flext_cli import m
 
-from flext_infra import FlextInfraModelsMixins, c, t
+from flext_infra import FlextInfraModelsMixins as mm, c, t
 
 
 class FlextInfraModelsBase:
@@ -28,7 +28,7 @@ class FlextInfraModelsBase:
         elapsed: float = m.Field(description="Elapsed time in seconds")
 
     class ProjectFailureInfo(
-        FlextInfraModelsMixins.ProjectNameMixin,
+        mm.ProjectNameMixin,
         m.ContractModel,
     ):
         """Bundled info for project failure output."""

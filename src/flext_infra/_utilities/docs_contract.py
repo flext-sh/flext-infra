@@ -32,7 +32,7 @@ class FlextInfraUtilitiesDocsContract:
         workspace_root: Path,
     ) -> t.Infra.ContainerDict:
         """Return the root docs contract using root ``pyproject.toml`` metadata."""
-        payload = FlextInfraUtilitiesDocsScope.pyproject_payload(workspace_root)
+        payload = FlextInfraUtilitiesDocsScope.project_payload(workspace_root)
         docs_meta = FlextInfraUtilitiesDocsScope.project_docs_meta(workspace_root)
         exclude_docs = FlextInfraUtilitiesDocsScope.docs_meta_list(
             workspace_root,

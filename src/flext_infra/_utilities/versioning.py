@@ -8,7 +8,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import re
 from collections.abc import (
     MutableSequence,
 )
@@ -34,7 +33,7 @@ class FlextInfraUtilitiesVersioning:
                 continue
             if not in_project_section or not line.startswith(c.Infra.VERSION):
                 continue
-            match = re.match(r"^version\s*=\s*[\"']([^\"']+)[\"']\s*$", line)
+            match = c.Infra.VERSION_RE.match(line)
             if match:
                 return match.group(1)
         return None
@@ -73,7 +72,10 @@ class FlextInfraUtilitiesVersioning:
         return "".join(updated_lines)
 
     @staticmethod
-    def bump_version(version: str, bump_type: str) -> p.Result[str]:
+    def bump_version(
+        version: str,
+        bump_type: str | c.Infra.VersionBump,
+    ) -> p.Result[str]:
         """Bump a semantic version string.
 
         Args:
@@ -84,17 +86,19 @@ class FlextInfraUtilitiesVersioning:
             r[str] with the bumped version.
 
         """
-        if bump_type not in c.Infra.VALID_BUMP_TYPES:
+        try:
+            normalized_bump = c.Infra.VersionBump(bump_type)
+        except ValueError:
             return r[str].fail(f"invalid bump type: {bump_type}")
         result = FlextInfraUtilitiesVersioning.parse_semver(version)
         if result.failure:
             return r[str].fail(result.error or "parse failed")
         major, minor, patch = result.value
-        if bump_type == "major":
+        if normalized_bump == c.Infra.VersionBump.MAJOR:
             major += 1
             minor = 0
             patch = 0
-        elif bump_type == "minor":
+        elif normalized_bump == c.Infra.VersionBump.MINOR:
             minor += 1
             patch = 0
         else:

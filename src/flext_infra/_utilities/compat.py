@@ -16,7 +16,6 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import (
-    FlextInfraUtilitiesIteration,
     c,
     m,
     p,
@@ -26,97 +25,7 @@ from flext_infra import (
 
 
 class FlextInfraUtilitiesCompatibility:
-    """Backward-compatible utility methods composed into ``u.Infra``."""
-
-    @staticmethod
-    def resolve_workspace_root_or_cwd(workspace_root: Path | None = None) -> Path:
-        """Resolve workspace root from explicit value or current working directory."""
-        target = workspace_root or Path.cwd()
-        if target.is_file():
-            target = target.parent
-        return target.resolve()
-
-    @staticmethod
-    def declared_dependency_names(document: t.Infra.TomlDocument) -> t.StrSequence:
-        """Return normalized dependency names from one TOML document."""
-        payload = u.Cli.toml_as_mapping(document)
-        if not payload:
-            return ()
-        try:
-            normalized = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload)
-        except c.ValidationError:
-            return ()
-        return FlextInfraUtilitiesIteration.declared_dependency_names_from_payload(
-            normalized,
-        )
-
-    @staticmethod
-    def project_dev_groups(
-        document: t.Infra.TomlDocument,
-    ) -> Mapping[str, t.StrSequence]:
-        """Collect optional dependency groups from one TOML document."""
-        payload = u.Cli.toml_as_mapping(document)
-        if not payload:
-            return {}
-        return FlextInfraUtilitiesCompatibility.project_dev_groups_from_payload(payload)
-
-    @staticmethod
-    def project_dev_groups_from_payload(
-        payload: Mapping[str, t.Cli.JsonLikeValue],
-    ) -> Mapping[str, t.StrSequence]:
-        """Collect optional dependency groups from one plain payload."""
-        project = u.Cli.json_as_mapping(payload.get(c.Infra.PROJECT, None))
-        optional = u.Cli.json_as_mapping(
-            project.get(c.Infra.OPTIONAL_DEPENDENCIES, None)
-        )
-        groups: dict[str, t.StrSequence] = {}
-        for group in (
-            c.Infra.DEV,
-            c.Infra.DIR_DOCS,
-            c.Infra.SECURITY,
-            c.Infra.TEST,
-            c.Infra.DIR_TYPINGS,
-        ):
-            values = u.Cli.toml_as_string_list(optional.get(group, None))
-            if values:
-                groups[group] = tuple(values)
-        return groups
-
-    @staticmethod
-    def dedupe_specs(specs: t.StrSequence) -> t.StrSequence:
-        """Return deterministic unique dependency specs preserving first occurrence."""
-        seen: set[str] = set()
-        output: list[str] = []
-        for raw in specs:
-            item = str(raw).strip()
-            if not item or item in seen:
-                continue
-            seen.add(item)
-            output.append(item)
-        return output
-
-    @staticmethod
-    def workspace_dep_namespaces(document: t.Infra.TomlDocument) -> t.StrSequence:
-        """Extract workspace-local dependency namespaces from one TOML document."""
-        payload = u.Cli.toml_as_mapping(document)
-        if not payload:
-            return ()
-        return FlextInfraUtilitiesCompatibility.workspace_dep_namespaces_from_payload(
-            payload,
-        )
-
-    @staticmethod
-    def workspace_dep_namespaces_from_payload(
-        payload: Mapping[str, t.Cli.JsonLikeValue],
-    ) -> t.StrSequence:
-        """Extract workspace-local dependency namespaces from one plain payload."""
-        try:
-            normalized = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload)
-        except c.ValidationError:
-            return ()
-        return FlextInfraUtilitiesIteration.local_dependency_names_from_payload(
-            normalized,
-        )
+    """Shared report, diff, and codegen helpers composed into ``u.Infra``."""
 
     @staticmethod
     def run_ruff_fix(path: Path, *, quiet: bool = False) -> bool:
@@ -216,7 +125,8 @@ class FlextInfraUtilitiesCompatibility:
                             rule_id=rule_id,
                             level=(
                                 "warning"
-                                if issue.severity.lower() == c.Infra.SEVERITY_WARNING
+                                if issue.severity.lower()
+                                == c.Infra.SeverityLevel.WARNING
                                 else "error"
                             ),
                             message=issue.message,

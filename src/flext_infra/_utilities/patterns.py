@@ -12,7 +12,7 @@ from __future__ import annotations
 import re
 from typing import ClassVar, TypeIs
 
-from flext_infra import t
+from flext_infra import c, t
 
 
 class FlextInfraUtilitiesPatterns:
@@ -22,14 +22,10 @@ class FlextInfraUtilitiesPatterns:
     patterns (markdown links, headings, TOC) into a single class.
     """
 
-    MYPY_HINT_RE: ClassVar[t.Infra.RegexPattern] = re.compile(
-        r'note: Hint: "python3 -m pip install ([^"]+)"',
-    )
+    MYPY_HINT_RE: ClassVar[t.Infra.RegexPattern] = c.Infra.MYPY_HINT_RE
     """Match mypy install hint messages, capturing the package name."""
 
-    MYPY_STUB_RE: ClassVar[t.Infra.RegexPattern] = re.compile(
-        r'Library stubs not installed for "([^"]+)"',
-    )
+    MYPY_STUB_RE: ClassVar[t.Infra.RegexPattern] = c.Infra.MYPY_STUB_RE
     """Match mypy missing stub messages, capturing the library name."""
 
     INTERNAL_PREFIXES: ClassVar[tuple[str, ...]] = ("flext_",)

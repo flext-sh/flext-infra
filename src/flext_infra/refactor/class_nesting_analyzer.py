@@ -17,17 +17,6 @@ from flext_infra import FlextInfraRefactorLooseClassScanner, c, m, p, r, t, u
 class FlextInfraRefactorClassNestingAnalyzer:
     """Detect class nesting violations and report MRO hierarchy issues."""
 
-    _LOOSE_CLASS_SEQ_ADAPTER: m.TypeAdapter[Sequence[m.Infra.LooseClassViolation]] = (
-        m.TypeAdapter(
-            Sequence[m.Infra.LooseClassViolation],
-        )
-    )
-    _NESTING_MAPPING_SEQ_ADAPTER: m.TypeAdapter[
-        Sequence[m.Infra.ClassNestingMapping]
-    ] = m.TypeAdapter(
-        Sequence[m.Infra.ClassNestingMapping],
-    )
-
     @classmethod
     def analyze_files(cls, files: Sequence[Path]) -> m.Infra.ClassNestingReport:
         """Analyze files and return aggregated class-nesting violations."""
@@ -59,11 +48,13 @@ class FlextInfraRefactorClassNestingAnalyzer:
             if scan_result.failure:
                 continue
             try:
-                parsed_violations: Sequence[m.Infra.LooseClassViolation] = (
-                    cls._LOOSE_CLASS_SEQ_ADAPTER.validate_python(
-                        scan_result.value.get(c.Infra.RK_VIOLATIONS, []),
-                    )
+                typed_items = t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(
+                    scan_result.value.get(c.Infra.RK_VIOLATIONS, []),
                 )
+                parsed_violations: Sequence[m.Infra.LooseClassViolation] = [
+                    m.Infra.LooseClassViolation.model_validate(item)
+                    for item in typed_items
+                ]
             except c.ValidationError:
                 continue
             for parsed_violation in parsed_violations:
@@ -71,7 +62,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
                 if target_files and normalized_file not in target_files:
                     continue
                 line = parsed_violation.line if parsed_violation.line > 0 else 1
-                confidence = parsed_violation.confidence or c.Infra.SEVERITY_LOW
+                confidence = parsed_violation.confidence or c.Infra.SeverityLevel.LOW
                 target_namespace = ""
                 rewrite_scope = c.Infra.RK_FILE
                 mapped_entry = mapping_index.get((
@@ -148,9 +139,12 @@ class FlextInfraRefactorClassNestingAnalyzer:
                 Mapping[t.Infra.Pair[str, str], m.Infra.ClassNestingMapping]
             ].ok({})
         try:
-            entries: Sequence[m.Infra.ClassNestingMapping] = (
-                cls._NESTING_MAPPING_SEQ_ADAPTER.validate_python(raw_nesting)
+            typed_items = t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(
+                raw_nesting,
             )
+            entries: Sequence[m.Infra.ClassNestingMapping] = [
+                m.Infra.ClassNestingMapping.model_validate(item) for item in typed_items
+            ]
         except c.ValidationError as exc:
             return r[Mapping[t.Infra.Pair[str, str], m.Infra.ClassNestingMapping]].fail(
                 str(exc),

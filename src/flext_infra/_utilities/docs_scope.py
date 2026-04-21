@@ -37,7 +37,7 @@ class FlextInfraUtilitiesDocsScope:
         """
         root = Path(project_root)
         pyproject_path = root / c.Infra.PYPROJECT_FILENAME
-        payload = FlextInfraUtilitiesIteration.pyproject_payload(pyproject_path)
+        payload = FlextInfraUtilitiesIteration.cached_pyproject_payload(pyproject_path)
         docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(payload)
         dependency_names = tuple(
             FlextInfraUtilitiesIteration.declared_dependency_names_from_payload(
@@ -140,7 +140,9 @@ class FlextInfraUtilitiesDocsScope:
         if not pyproject.is_file():
             return None
         # Pre-validate [project].name BEFORE triggering the strict cached state builder.
-        payload_preview = FlextInfraUtilitiesIteration.pyproject_payload(pyproject)
+        payload_preview = FlextInfraUtilitiesIteration.cached_pyproject_payload(
+            pyproject
+        )
         project_section = payload_preview.get("project")
         if (
             not isinstance(project_section, dict)
@@ -180,7 +182,7 @@ class FlextInfraUtilitiesDocsScope:
         return workspace_root / c.Infra.DIR_DOCS / c.Infra.DOCS_CONFIG_FILENAME
 
     @staticmethod
-    def pyproject_payload(project_root: Path) -> t.Infra.ContainerDict:
+    def project_payload(project_root: Path) -> t.Infra.ContainerDict:
         """Return a project's ``pyproject.toml`` payload as a plain mapping."""
         return FlextInfraUtilitiesDocsScope.project_state(project_root).payload
 
@@ -341,7 +343,7 @@ class FlextInfraUtilitiesDocsScope:
         return ""
 
     @staticmethod
-    def package_name(project_root: Path) -> str:
+    def project_package_name(project_root: Path) -> str:
         """Return the primary Python package name for a project."""
         return FlextInfraUtilitiesDocsScope.project_state(project_root).package_name
 
