@@ -102,7 +102,7 @@ class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):
                 self,
                 operation_type: type[m.ContractModel],
                 /,
-                **data: t.ValueOrModel | Sequence[t.ValueOrModel],
+                **data: t.RuntimeData | Sequence[t.RuntimeData],
             ) -> Self:
                 return self._append_model("operations", operation_type, **data)
 
