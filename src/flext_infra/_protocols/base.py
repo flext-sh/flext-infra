@@ -48,11 +48,11 @@ class FlextInfraProtocolsBase(Protocol):
             **kwargs: (
                 t.ValueOrModel
                 | t.Cli.JsonPayload
-                | Sequence[t.Cli.JsonLikeValue]
+                | Sequence[t.Cli.JsonValue]
                 | Sequence[tuple[str, str]]
                 | Sequence[tuple[str, Sequence[str]]]
                 | Sequence[tuple[str, Sequence[tuple[str, str]]]]
-                | Mapping[str, t.Cli.JsonLikeValue]
+                | Mapping[str, t.Cli.JsonValue]
                 | type
             ),
         ) -> str:

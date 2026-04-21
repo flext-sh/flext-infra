@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import (
     Mapping,
 )
-from typing import Annotated, ClassVar
+from typing import Annotated
 
 from flext_cli import m
 
@@ -92,8 +92,6 @@ class FlextInfraModelsDepsToolSettings(
         mutable state.
         """
 
-        _flext_enforcement_exempt: ClassVar[bool] = True
-
         fail_under: FlextInfraModelsDepsToolSettings.CoverageFailUnderConfig = m.Field(
             alias="fail-under",
             description="Coverage fail-under thresholds by layer.",
@@ -160,8 +158,6 @@ class FlextInfraModelsDepsToolSettings(
         Enforcement exemption: internal tooling model with intentional
         mutable state.
         """
-
-        _flext_enforcement_exempt: ClassVar[bool] = True
 
         pyright: Annotated[
             t.StrMapping,

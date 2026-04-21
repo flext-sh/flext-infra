@@ -9,7 +9,7 @@ from collections.abc import (
 )
 from pathlib import Path
 from types import MappingProxyType
-from typing import Annotated, ClassVar
+from typing import Annotated
 
 from flext_cli import m, u
 
@@ -161,8 +161,6 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
         mutable state.
         """
 
-        _flext_enforcement_exempt: ClassVar[bool] = True
-
         model_config = m.ConfigDict(validate_default=False)
 
         pyproject_path: Annotated[
@@ -184,8 +182,6 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
         Enforcement exemption: internal tooling model with intentional
         mutable state.
         """
-
-        _flext_enforcement_exempt: ClassVar[bool] = True
 
         model_config = m.ConfigDict(validate_default=False)
 
@@ -311,8 +307,6 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
         Enforcement exemption: internal tooling model with intentional
         mutable state.
         """
-
-        _flext_enforcement_exempt: ClassVar[bool] = True
 
         workspace: Annotated[str, m.Field(description="Workspace name")]
         projects: Mapping[str, FlextInfraModelsDeps.ProjectRuntimeReport] = m.Field(

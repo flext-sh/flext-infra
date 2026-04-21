@@ -154,8 +154,6 @@ class FlextInfraModelsRefactor(
         accumulator populated during scanning.
         """
 
-        _flext_enforcement_exempt: ClassVar[bool] = True
-
         name: Annotated[t.NonEmptyStr, m.Field(description="Project directory name")]
         path: Annotated[Path, m.Field(description="Absolute project path")]
         src_path: Annotated[Path, m.Field(description="Absolute src/ path")]
@@ -172,8 +170,6 @@ class FlextInfraModelsRefactor(
         Enforcement exemption: ``imported_modules``/``imported_symbols``
         accumulate during a scan; keep ``set[str]`` as the declared type.
         """
-
-        _flext_enforcement_exempt: ClassVar[bool] = True
 
         imported_modules: Annotated[
             t.Infra.StrSet,

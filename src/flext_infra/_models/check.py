@@ -141,8 +141,6 @@ class FlextInfraModelsCheck:
         dict per instance.
         """
 
-        _flext_enforcement_exempt: ClassVar[bool] = True
-
         gates: MutableMapping[str, FlextInfraModelsCheck.GateExecution] = m.Field(
             default_factory=dict,
             description="Gate name to execution mapping",

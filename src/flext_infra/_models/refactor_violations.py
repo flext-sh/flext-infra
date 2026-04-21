@@ -57,8 +57,6 @@ class FlextInfraModelsRefactorViolations:
         mutable state.
         """
 
-        _flext_enforcement_exempt: ClassVar[bool] = True
-
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         family_name: Annotated[t.NonEmptyStr, m.Field(description="Module family name")]
@@ -140,8 +138,6 @@ class FlextInfraModelsRefactorViolations:
         mutable state.
         """
 
-        _flext_enforcement_exempt: ClassVar[bool] = True
-
         violations_count: Annotated[
             t.NonNegativeInt,
             m.Field(description="Total violations"),
@@ -166,8 +162,6 @@ class FlextInfraModelsRefactorViolations:
         mutable state.
         """
 
-        _flext_enforcement_exempt: ClassVar[bool] = True
-
         file: Annotated[t.NonEmptyStr, m.Field(description="Source file")]
         function: Annotated[t.NonEmptyStr, m.Field(description="Function name")]
         category: Annotated[t.NonEmptyStr, m.Field(description="Assigned category")]
@@ -189,8 +183,6 @@ class FlextInfraModelsRefactorViolations:
         Enforcement exemption: internal tooling model with intentional
         mutable state.
         """
-
-        _flext_enforcement_exempt: ClassVar[bool] = True
 
         totals: t.IntMapping = m.Field(
             default_factory=lambda: MappingProxyType({}),
@@ -231,8 +223,6 @@ class FlextInfraModelsRefactorViolations:
         mutable state.
         """
 
-        _flext_enforcement_exempt: ClassVar[bool] = True
-
         file: Annotated[t.NonEmptyStr, m.Field(description="File path")]
         total: Annotated[
             t.NonNegativeInt,
@@ -249,8 +239,6 @@ class FlextInfraModelsRefactorViolations:
         Enforcement exemption: internal tooling model with intentional
         mutable state.
         """
-
-        _flext_enforcement_exempt: ClassVar[bool] = True
 
         totals: t.IntMapping = m.Field(
             default_factory=lambda: MappingProxyType({}),

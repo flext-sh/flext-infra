@@ -70,8 +70,6 @@ class FlextInfraModelsCodegen:
         mutable state.
         """
 
-        _flext_enforcement_exempt: ClassVar[bool] = True
-
         files_created: t.StrSequence = m.Field(
             default_factory=tuple,
             description="Newly created file paths",
@@ -206,8 +204,6 @@ class FlextInfraModelsCodegen:
         Enforcement exemption: internal tooling model with intentional
         mutable state.
         """
-
-        _flext_enforcement_exempt: ClassVar[bool] = True
 
         context: FlextInfraModelsCodegen.LazyInitPackageContext = m.Field(
             description="Discovered package context.",
@@ -372,8 +368,6 @@ class FlextInfraModelsCodegen:
         appended/added to as fixes proceed; fresh per-instance — no shared
         state.
         """
-
-        _flext_enforcement_exempt: ClassVar[bool] = True
 
         @staticmethod
         def _violations_default() -> list[FlextInfraModelsCodegen.CensusViolation]:

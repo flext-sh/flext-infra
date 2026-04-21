@@ -23,7 +23,6 @@ class FlextInfraTransformerTier0ImportFixer:
     class Analysis(m.Value):
         """Detection results for a single Python file's self-import patterns."""
 
-        _flext_enforcement_exempt: ClassVar[bool] = True
         model_config = m.ConfigDict(frozen=True, arbitrary_types_allowed=True)
 
         package_name: str

@@ -200,8 +200,6 @@ class FlextInfraModelsRefactorGrep:
         mutable state.
         """
 
-        _flext_enforcement_exempt: ClassVar[bool] = True
-
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict()
 
         category: Annotated[str | None, m.Field(description="Method category")] = None
@@ -222,8 +220,6 @@ class FlextInfraModelsRefactorGrep:
         Enforcement exemption: internal tooling model with intentional
         mutable state.
         """
-
-        _flext_enforcement_exempt: ClassVar[bool] = True
 
         id: Annotated[str, m.Field(description="Migration ID")] = "signature-migration"
         enabled: Annotated[
@@ -250,8 +246,6 @@ class FlextInfraModelsRefactorGrep:
         Enforcement exemption: internal tooling model with intentional
         mutable state.
         """
-
-        _flext_enforcement_exempt: ClassVar[bool] = True
 
         module: Annotated[str, m.Field(description="Module path to modernize")] = ""
         symbol_mapping: t.StrMapping = m.Field(
@@ -315,8 +309,6 @@ class FlextInfraModelsRefactorGrep:
         mutable state.
         """
 
-        _flext_enforcement_exempt: ClassVar[bool] = True
-
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         file: Annotated[t.NonEmptyStr, m.Field(description="Absolute file path")]
@@ -358,8 +350,6 @@ class FlextInfraModelsRefactorGrep:
         Enforcement exemption: internal tooling model with intentional
         mutable state.
         """
-
-        _flext_enforcement_exempt: ClassVar[bool] = True
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 

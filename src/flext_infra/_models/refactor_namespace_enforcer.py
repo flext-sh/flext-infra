@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import (
     Sequence,
 )
-from typing import Annotated, ClassVar, Self
+from typing import Annotated, Self
 
 from flext_cli import m
 
@@ -137,8 +137,6 @@ class FlextInfraModelsNamespaceEnforcer:
         mm.ProjectNameMixin,
         m.ArbitraryTypesModel,
     ):
-        _flext_enforcement_exempt: ClassVar[bool] = True
-
         project_root: Annotated[str, m.Field(description="Project root path")]
         facade_statuses: Annotated[
             Sequence[FlextInfraModelsNamespaceEnforcer.FacadeStatus],
@@ -222,8 +220,6 @@ class FlextInfraModelsNamespaceEnforcer:
             return missing_facades or any(v for v in violation_fields)
 
     class WorkspaceEnforcementReport(m.ArbitraryTypesModel):
-        _flext_enforcement_exempt: ClassVar[bool] = True
-
         workspace: Annotated[t.NonEmptyStr, m.Field(description="Workspace root path")]
         projects: Annotated[
             Sequence[FlextInfraModelsNamespaceEnforcer.ProjectEnforcementReport],

@@ -10,7 +10,7 @@ from collections.abc import (
     Mapping,
 )
 from pathlib import Path
-from typing import Annotated, ClassVar
+from typing import Annotated
 
 from flext_cli import m
 
@@ -57,8 +57,6 @@ class FlextInfraModelsRope:
         Enforcement exemption: internal tooling model with intentional
         mutable state.
         """
-
-        _flext_enforcement_exempt: ClassVar[bool] = True
 
         class_infos: Annotated[
             tuple[FlextInfraModelsRope.ClassInfo, ...],
@@ -160,8 +158,6 @@ class FlextInfraModelsRope:
         Enforcement exemption: internal tooling model with intentional
         mutable state.
         """
-
-        _flext_enforcement_exempt: ClassVar[bool] = True
 
         workspace_root: Annotated[
             Path,
