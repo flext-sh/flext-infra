@@ -317,18 +317,20 @@ class FlextInfraUtilitiesDocsGenerate:
             )
         )
         generated = u.count(files, lambda item: item.written)
+        files_payload: t.Cli.JsonList = [
+            {"path": item.path, "written": item.written} for item in files
+        ]
+        summary_payload = t.Cli.JSON_MAPPING_ADAPTER.validate_python({
+            c.Infra.RK_SUMMARY: {
+                c.Infra.RK_SCOPE: scope.name,
+                "generated": generated,
+                "apply": apply,
+            },
+            "files": files_payload,
+        })
         _ = u.Cli.json_write(
             scope.report_dir / "generate-summary.json",
-            {
-                c.Infra.RK_SUMMARY: {
-                    c.Infra.RK_SCOPE: scope.name,
-                    "generated": generated,
-                    "apply": apply,
-                },
-                "files": [
-                    {"path": item.path, "written": item.written} for item in files
-                ],
-            },
+            summary_payload,
         )
         _ = FlextInfraUtilitiesDocs.write_markdown(
             scope.report_dir / "generate-report.md",

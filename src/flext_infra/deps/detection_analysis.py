@@ -66,7 +66,7 @@ class FlextInfraDependencyDetectionAnalysis:
                 sequence = t.Cli.JSON_LIST_ADAPTER.validate_python(value)
             except c.ValidationError:
                 return None
-            converted: MutableSequence[t.Container] = []
+            converted: MutableSequence[t.Infra.InfraValue] = []
             for item in sequence:
                 if item is None:
                     converted.append(None)

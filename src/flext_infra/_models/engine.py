@@ -78,21 +78,23 @@ class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):
                 return tuple(
                     chain(
                         (
-                            cls._model(
-                                FlextInfraModelsEngine.TomlSetOp, key=key, value=value
-                            )
+                            FlextInfraModelsEngine.TomlSetOp.model_validate({
+                                "key": key,
+                                "value": value,
+                            })
                             for key, value in values
                         ),
                         (
-                            cls._model(
-                                FlextInfraModelsEngine.TomlListOp,
-                                key=key,
-                                values=tuple(entries),
-                            )
+                            FlextInfraModelsEngine.TomlListOp.model_validate({
+                                "key": key,
+                                "values": tuple(entries),
+                            })
                             for key, entries in lists
                         ),
                         (
-                            cls._model(FlextInfraModelsEngine.TomlRemoveOp, key=key)
+                            FlextInfraModelsEngine.TomlRemoveOp.model_validate({
+                                "key": key
+                            })
                             for key in deprecated_keys
                         ),
                     ),
@@ -102,9 +104,16 @@ class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):
                 self,
                 operation_type: type[m.ContractModel],
                 /,
-                **data: t.RuntimeData | Sequence[t.RuntimeData],
+                **data: t.Cli.JsonValue | t.RuntimeData | Sequence[t.RuntimeData],
             ) -> Self:
-                return self._append_model("operations", operation_type, **data)
+                operation_item = operation_type.model_validate(data)
+                return self._replace(
+                    self.state.model_copy(
+                        update={
+                            "operations": (*self.state.operations, operation_item),
+                        }
+                    )
+                )
 
             def root(self, *path: str) -> Self:
                 return self._path("root_path", *path)

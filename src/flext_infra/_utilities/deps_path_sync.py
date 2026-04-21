@@ -53,9 +53,12 @@ class FlextInfraUtilitiesDependencyPathSync:
         project_section = u.Cli.toml_mapping_child(payload, c.Infra.PROJECT)
         if project_section is None:
             return ([], set())
-        deps: t.StrSequence = u.Cli.toml_as_string_list(
-            project_section.get(c.Infra.DEPENDENCIES, None)
-        )
+        deps: t.StrSequence = [
+            str(item)
+            for item in u.Cli.json_as_sequence(
+                project_section.get(c.Infra.DEPENDENCIES, None),
+            )
+        ]
         if not deps:
             return ([], set())
         changes: MutableSequence[str] = []

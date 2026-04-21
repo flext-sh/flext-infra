@@ -225,7 +225,9 @@ class FlextInfraUtilitiesIteration:
             c.Infra.TEST,
             c.Infra.DIR_TYPINGS,
         ):
-            values = u.Cli.toml_as_string_list(optional.get(group, None))
+            values = [
+                str(item) for item in u.Cli.json_as_sequence(optional.get(group, None))
+            ]
             if values:
                 groups[group] = tuple(values)
         return groups
