@@ -24,7 +24,7 @@ def doc() -> TOMLDocument:
         ("requests", "requests"),
         ("requests>=2.0", "requests"),
         ("requests @ git+https://github.com/psf/requests.git", "requests"),
-        ("my_package", "my-package"),
+        ("my_package", "my_package"),
         ("  requests  ", "requests"),
         ("", ""),
         ("Django>=3.0,<4.0", "django"),
@@ -56,7 +56,11 @@ def test_dedupe_specs(
     for expected_name in expected_names:
         tm.that(names, has=expected_name)
     if check_sorted and len(deduped) > 1:
-        assert u.Infra.dep_name(deduped[0]) < u.Infra.dep_name(deduped[1])
+        left = u.Infra.dep_name(deduped[0])
+        right = u.Infra.dep_name(deduped[1])
+        assert left is not None
+        assert right is not None
+        assert left < right
 
 
 @pytest.mark.parametrize(

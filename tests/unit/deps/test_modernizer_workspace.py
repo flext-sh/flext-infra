@@ -38,9 +38,8 @@ class TestFlextInfraPyprojectModernizerWorkspace:
     def test_workspace_root_returns_explicit_path(self, tmp_path: Path) -> None:
         explicit = tmp_path / "explicit"
         explicit.mkdir()
-        result = u.Infra.workspace_root(explicit)
-        tm.ok(result)
-        tm.that(str(result.value), eq=str(explicit))
+        result = u.Infra.resolve_workspace_root_or_cwd(explicit)
+        tm.that(str(result), eq=str(explicit.resolve()))
 
     def test_workspace_root_fallback_returns_non_empty_path(
         self,
@@ -48,9 +47,8 @@ class TestFlextInfraPyprojectModernizerWorkspace:
     ) -> None:
         deep_path = tmp_path / "a" / "b" / "c" / "d" / "e"
         deep_path.mkdir(parents=True, exist_ok=True)
-        result = u.Infra.workspace_root(deep_path)
-        tm.ok(result)
-        tm.that(str(result.value), ne="")
+        result = u.Infra.resolve_workspace_root_or_cwd(deep_path)
+        tm.that(str(result), ne="")
 
     def test_main_applies_only_selected_projects(
         self,

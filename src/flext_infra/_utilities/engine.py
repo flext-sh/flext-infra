@@ -12,6 +12,7 @@ from __future__ import annotations
 import fnmatch
 from collections.abc import (
     Iterator,
+    Mapping,
     MutableSequence,
     Sequence,
 )
@@ -32,12 +33,12 @@ class FlextInfraUtilitiesRefactorEngine:
 
     @staticmethod
     def _resolve_engine_config(
-        settings: t.Infra.InfraValue,
+        settings: Mapping[str, t.Infra.InfraValue],
     ) -> m.Infra.EngineConfig:
         """Resolve the typed refactor engine config through the shared CLI DSL."""
         return m.Infra.EngineConfig.model_validate(
             cli.rules_resolve_scope(
-                settings,
+                dict(settings),
                 scope_key=c.Infra.RK_REFACTOR_ENGINE,
                 allowed_keys=c.Infra.ENGINE_CONFIG_KEYS,
             )
@@ -70,7 +71,7 @@ class FlextInfraUtilitiesRefactorEngine:
 
     @staticmethod
     def collect_engine_project_files(
-        settings: t.Infra.InfraValue,
+        settings: Mapping[str, t.Infra.InfraValue],
         project: Path,
         *,
         pattern: str = c.Infra.EXT_PYTHON_GLOB,
@@ -108,7 +109,7 @@ class FlextInfraUtilitiesRefactorEngine:
 
     @staticmethod
     def collect_engine_workspace_files(
-        settings: t.Infra.InfraValue,
+        settings: Mapping[str, t.Infra.InfraValue],
         workspace_root: Path,
         *,
         pattern: str = c.Infra.EXT_PYTHON_GLOB,
@@ -150,6 +151,22 @@ class FlextInfraUtilitiesRefactorEngine:
                 )
             )
         return all_files
+
+    @staticmethod
+    def discover_engine_projects(
+        settings: Mapping[str, t.Infra.InfraValue],
+        workspace_root: Path,
+    ) -> Sequence[Path]:
+        """Discover workspace projects using the typed engine config."""
+        root = workspace_root.resolve()
+        engine_config = FlextInfraUtilitiesRefactorEngine._resolve_engine_config(
+            settings,
+        )
+        scan_dirs = frozenset(engine_config.project_scan_dirs)
+        return FlextInfraUtilitiesIteration.discover_project_roots(
+            workspace_root=root,
+            scan_dirs=scan_dirs or None,
+        )
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRefactorEngine"]

@@ -86,7 +86,7 @@ class TestDetectorReportFlags:
     ) -> None:
         detector = _setup(tmp_path, _DepsStub(tmp_path / "proj-a", 5, 1))
         tm.fail(
-            detector.run(u.Infra.Tests.detect_command(tmp_path)),
+            detector.execute(),
             has="dependency issues detected",
         )
 
@@ -94,9 +94,12 @@ class TestDetectorReportFlags:
         self,
         tmp_path: Path,
     ) -> None:
-        detector = _setup(tmp_path, _DepsStub(tmp_path / "proj-a", 5, 1))
+        detector = _setup(
+            tmp_path,
+            _DepsStub(tmp_path / "proj-a", 5, 1),
+        ).model_copy(update={"no_fail": True})
         tm.that(
-            tm.ok(detector.run(u.Infra.Tests.detect_command(tmp_path, no_fail=True))),
+            tm.ok(detector.execute()),
             eq=True,
         )
 
@@ -104,16 +107,11 @@ class TestDetectorReportFlags:
         self,
         tmp_path: Path,
     ) -> None:
-        detector = _setup(tmp_path, _DepsStub(tmp_path / "proj-a", 0, 0))
+        detector = _setup(
+            tmp_path,
+            _DepsStub(tmp_path / "proj-a", 0, 0),
+        ).model_copy(update={"output_format": "json", "no_pip_check": True})
         tm.that(
-            tm.ok(
-                detector.run(
-                    u.Infra.Tests.detect_command(
-                        tmp_path,
-                        output_format="json",
-                        no_pip_check=True,
-                    ),
-                ),
-            ),
+            tm.ok(detector.execute()),
             eq=True,
         )

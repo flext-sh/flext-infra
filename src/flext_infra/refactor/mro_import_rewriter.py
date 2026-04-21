@@ -241,7 +241,7 @@ class FlextInfraRefactorMROImportRewriter:
         project_names: t.StrSequence | None = None,
     ) -> Sequence[Path]:
         paths: list[Path] = []
-        project_name_set = set(project_names or ())
+        project_name_set: set[str] = set(project_names or ())
         for project_root in u.Infra.discover_project_roots(
             workspace_root=workspace_root
         ):

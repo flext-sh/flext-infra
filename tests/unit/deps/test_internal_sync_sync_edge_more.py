@@ -69,11 +69,17 @@ class TestSyncMethodEdgeCasesMore:
             ],
         )
 
-        def _ensure_checkout_fail(_dep: Path, _url: str, _ref: str) -> p.Result[bool]:
+        def _ensure_checkout_fail(
+            self: FlextInfraInternalDependencySyncService,
+            _dep: Path,
+            _url: str,
+            _ref: str,
+        ) -> p.Result[bool]:
+            _ = self
             return r[bool].fail("checkout failed")
 
         monkeypatch.setattr(
-            service,
+            FlextInfraInternalDependencySyncService,
             "ensure_checkout",
             _ensure_checkout_fail,
         )

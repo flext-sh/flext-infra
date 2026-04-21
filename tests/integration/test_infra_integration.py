@@ -204,7 +204,7 @@ class TestInfraIntegration:
         - workspace_root is callable via u.Infra MRO
         """
         assert callable(u.Infra.discover_projects)
-        assert callable(u.Infra.workspace_root)
+        assert callable(u.Infra.resolve_workspace_root_or_cwd)
 
     @pytest.mark.integration
     def test_path_utilities_via_mro(self, tmp_path: Path) -> None:

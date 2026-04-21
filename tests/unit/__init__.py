@@ -155,9 +155,9 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ),
             ".deps.test_internal_sync_validation": (
                 "TestFlextInfraInternalDependencySyncService",
-                "TestIsInternalPathDep",
                 "TestIsRelativeTo",
                 "TestOwnerFromRemoteUrl",
+                "TestResolveInternalRepoName",
                 "TestValidateGitRefEdgeCases",
             ),
             ".deps.test_main": ("TestPublicDepsSurface",),
@@ -218,8 +218,10 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "tool_config_document",
             ),
             ".fixtures_git": ("real_git_repo",),
-            ".refactor.test_infra_refactor_engine": ("BrokenRule",),
             ".refactor.test_infra_refactor_safety": ("EngineSafetyStub",),
+            ".refactor.test_infra_refactor_typing_unifier": (
+                "FlextInfraRefactorTypingUnificationRule",
+            ),
             ".refactor.test_main_cli": ("TestFlextInfraRefactorMainCli",),
             ".runner_service": ("RealSubprocessRunner",),
             ".scenarios": (

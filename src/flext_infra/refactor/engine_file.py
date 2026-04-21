@@ -17,7 +17,9 @@ from flext_infra import (
 )
 
 
-class _ClassNestingPostCheckGate:
+class FlextInfraClassNestingPostCheckGate:
+    """Run post-transform validation gates for direct class-nesting execution."""
+
     @staticmethod
     def _read_source_safe(file_path: Path) -> str | None:
         try:
@@ -30,6 +32,7 @@ class _ClassNestingPostCheckGate:
         result: m.Infra.Result,
         expected: t.Infra.ContainerDict,
     ) -> t.Infra.Pair[bool, t.StrSequence]:
+        """Validate post-check expectations against one transformed file result."""
         if not result.success:
             return (False, [result.error] if result.error else ["transform_failed"])
         if not result.modified:
@@ -89,12 +92,12 @@ class _ClassNestingPostCheckGate:
         )
 
 
-class FlextInfraRefactorEngineFileMixin:
+class FlextInfraRefactorFileExecutor:
     """Execute declarative Rope-backed file rules directly from kind + settings."""
 
     _class_nesting_config: t.Infra.ContainerDict | None
     _class_nesting_policy_by_family: Mapping[str, m.Infra.ClassNestingPolicy] | None
-    _class_nesting_gate: _ClassNestingPostCheckGate | None
+    _class_nesting_gate: FlextInfraClassNestingPostCheckGate | None
 
     def _apply_file_rule_selection(
         self,
@@ -170,7 +173,7 @@ class FlextInfraRefactorEngineFileMixin:
                     c.Infra.RK_POST_CHECKS: [c.Infra.RK_IMPORTS_RESOLVE],
                     c.Infra.RK_QUALITY_GATES: [c.Infra.RK_LSP_DIAGNOSTICS_CLEAN],
                 })
-                gate = self._class_nesting_gate or _ClassNestingPostCheckGate()
+                gate = self._class_nesting_gate or FlextInfraClassNestingPostCheckGate()
                 self._class_nesting_gate = gate
                 ok, errs = gate.validate(
                     m.Infra.Result(
@@ -367,4 +370,7 @@ class FlextInfraRefactorEngineFileMixin:
         return candidate
 
 
-__all__: list[str] = ["FlextInfraRefactorEngineFileMixin"]
+__all__: list[str] = [
+    "FlextInfraClassNestingPostCheckGate",
+    "FlextInfraRefactorFileExecutor",
+]

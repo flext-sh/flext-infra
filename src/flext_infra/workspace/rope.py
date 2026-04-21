@@ -269,7 +269,6 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         self._project_layout_cache[cache_key] = layout
         return layout
 
-    @override
     def package_context(
         self,
         package_dir: Path,

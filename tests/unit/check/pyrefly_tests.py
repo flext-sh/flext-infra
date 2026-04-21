@@ -33,7 +33,7 @@ class TestFlextInfraConfigFixer:
         tm.fail(result)
         assert isinstance(result.error, str)
         assert isinstance(result.error, str)
-        assert "Use run()" in result.error
+        assert "Use execute_command() directly" in result.error
 
     def test_run_with_empty_projects(self, tmp_path: Path) -> None:
         """Test that run() handles empty project list."""

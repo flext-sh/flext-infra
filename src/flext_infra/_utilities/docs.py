@@ -41,7 +41,7 @@ class FlextInfraUtilitiesDocs:
         *,
         name: str,
         path: Path,
-        output_dir: str,
+        output_dir: Path | str,
         project_class: str,
         package_name: str,
     ) -> m.Infra.DocScope:
@@ -59,7 +59,7 @@ class FlextInfraUtilitiesDocs:
     def build_scopes(
         workspace_root: Path,
         projects: t.StrSequence | None,
-        output_dir: str,
+        output_dir: Path | str,
     ) -> p.Result[Sequence[m.Infra.DocScope]]:
         """Build DocScope objects for workspace root and each selected project."""
         try:
@@ -283,7 +283,7 @@ class FlextInfraUtilitiesDocs:
         workspace_root: Path,
         *,
         projects: t.StrSequence | None,
-        output_dir: str,
+        output_dir: Path | str,
         handler: Callable[
             [m.Infra.DocScope],
             m.Infra.DocsPhaseReport,

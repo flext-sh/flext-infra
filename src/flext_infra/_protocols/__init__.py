@@ -9,7 +9,6 @@ _LAZY_IMPORTS = build_lazy_import_map(
     {
         ".base": ("FlextInfraProtocolsBase",),
         ".check": ("FlextInfraProtocolsCheck",),
-        ".refactor": ("FlextInfraProtocolsRefactor",),
         ".rope": ("FlextInfraProtocolsRope",),
     },
 )

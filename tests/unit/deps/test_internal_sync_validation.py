@@ -101,7 +101,7 @@ class TestIsRelativeTo:
         )
 
 
-class TestIsInternalPathDep:
+class TestResolveInternalRepoName:
     @pytest.mark.parametrize(
         ("raw_path", "expected"),
         [
@@ -115,8 +115,14 @@ class TestIsInternalPathDep:
             ("../a/b", None),
         ],
     )
-    def test_is_internal_path_dep(self, raw_path: str, expected: str | None) -> None:
+    def test_resolve_internal_repo_name(
+        self,
+        raw_path: str,
+        expected: str | None,
+    ) -> None:
         tm.that(
-            FlextInfraInternalDependencySyncService.is_internal_path_dep(raw_path),
+            FlextInfraInternalDependencySyncService.resolve_internal_repo_name(
+                raw_path,
+            ),
             eq=expected,
         )

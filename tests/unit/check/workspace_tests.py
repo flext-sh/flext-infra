@@ -34,7 +34,7 @@ class TestFlextInfraWorkspaceChecker:
         tm.fail(result)
         assert isinstance(result.error, str)
         assert isinstance(result.error, str)
-        assert "Use run()" in result.error or "Use run_projects()" in result.error
+        assert "Use execute_command() directly" in result.error
 
     def test_resolve_gates_with_valid_gates(self) -> None:
         """Test that resolve_gates normalizes valid gate names."""

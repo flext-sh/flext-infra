@@ -75,8 +75,8 @@ class TestFlextInfraDependencyDetectionService:
 
     def test_default_module_to_types_package_mapping(self) -> None:
         service = FlextInfraDependencyDetectionService()
-        tm.that(service.DEFAULT_MODULE_TO_TYPES_PACKAGE, has="yaml")
-        tm.that(service.DEFAULT_MODULE_TO_TYPES_PACKAGE["yaml"], eq="types-pyyaml")
+        limits = service.load_dependency_limits()
+        tm.that(service.module_to_types_package("yaml", limits), eq="types-pyyaml")
 
 
 class TestToInfraValue:

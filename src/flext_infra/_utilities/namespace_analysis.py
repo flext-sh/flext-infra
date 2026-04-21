@@ -30,7 +30,7 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
     """Shared text and path helpers for namespace refactor utilities."""
 
     @staticmethod
-    def _shared_workspace_root(*, py_files: Sequence[Path]) -> Path:
+    def shared_workspace_root(*, py_files: Sequence[Path]) -> Path:
         existing_files = [path.resolve() for path in py_files if path.exists()]
         if not existing_files:
             return Path.cwd()
@@ -64,7 +64,7 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
         return (module_name, names)
 
     @staticmethod
-    def _insert_import_lines(
+    def insert_import_lines(
         *,
         lines: t.StrSequence,
         imports: t.StrSequence,
@@ -77,7 +77,7 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
         return [*lines[:insert_idx], *imports, *lines[insert_idx:]]
 
     @staticmethod
-    def _canonical_target_file(
+    def canonical_target_file(
         *,
         project_root: Path,
         source_file: Path,
@@ -92,7 +92,7 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
         return source_file.parent / filename
 
     @staticmethod
-    def _find_top_level_block(
+    def find_top_level_block(
         *,
         lines: t.StrSequence,
         header: str,
@@ -113,7 +113,7 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
         return (start_idx, end_idx)
 
     @staticmethod
-    def _compat_assignment_target(
+    def compat_assignment_target(
         line: str,
         *,
         alias_map: t.StrMapping,
@@ -125,7 +125,7 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
         return left if alias_map.get(left) == right else None
 
     @staticmethod
-    def _apply_token_replacements(
+    def apply_token_replacements(
         *,
         source: str,
         alias_map: t.StrMapping,
@@ -224,7 +224,7 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
                 new_bases=new_bases,
             )
             rewritten_lines = (
-                FlextInfraUtilitiesRefactorNamespaceMro._insert_import_lines(
+                FlextInfraUtilitiesRefactorNamespaceMro.insert_import_lines(
                     lines=lines,
                     imports=imports,
                 )

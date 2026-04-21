@@ -8,7 +8,6 @@ from flext_infra import (
     FlextInfraOrchestratorService,
     FlextInfraSyncService,
     FlextInfraWorkspaceDetector,
-    infra,
     main as infra_main,
 )
 from tests import c, m, p, r, t
@@ -120,9 +119,10 @@ def test_detect_workspace_returns_workspace_mode(tmp_path: Path) -> None:
     _write_workspace(workspace_root)
     member_root = workspace_root / "demo-a"
 
-    result = infra.detect_workspace(
-        FlextInfraWorkspaceDetector(workspace=member_root, apply_changes=False),
-    )
+    result = FlextInfraWorkspaceDetector(
+        workspace=member_root,
+        apply_changes=False,
+    ).execute()
 
     assert result.success, result.error
     assert result.value == c.Infra.WorkspaceMode.WORKSPACE
@@ -132,31 +132,33 @@ def test_sync_workspace_returns_sync_result(tmp_path: Path) -> None:
     project_root = tmp_path / "project"
     _write_project(project_root, "demo-project")
 
-    result = infra.sync_workspace(
-        FlextInfraSyncService(
-            canonical_root=project_root.parent,
-            workspace=project_root,
-            apply_changes=False,
-        ),
-    )
+    result = FlextInfraSyncService(
+        canonical_root=project_root.parent,
+        workspace=project_root,
+        apply_changes=False,
+    ).execute()
 
     assert result.success, result.error
     assert result.value.files_changed >= 1
 
 
 def test_orchestrate_workspace_rejects_unknown_verb() -> None:
-    result = infra.orchestrate_workspace(
-        FlextInfraOrchestratorService(verb="legacy-check", projects=["p-a"]),
-    )
+    result = FlextInfraOrchestratorService(
+        verb="legacy-check",
+        selected_projects=["p-a"],
+    ).execute()
 
     assert result.failure
     assert "unsupported orchestrate verb" in (result.error or "")
 
 
 def test_orchestrate_workspace_defaults_to_current_project() -> None:
-    orchestrator = FlextInfraOrchestratorService(verb="check", projects=[])
+    orchestrator = FlextInfraOrchestratorService(
+        verb="check",
+        selected_projects=[],
+    )
     _install_successful_orchestration(orchestrator, project_root=Path.cwd())
-    result = infra.orchestrate_workspace(orchestrator)
+    result = orchestrator.execute()
 
     assert result.success, result.error
 

@@ -17,7 +17,6 @@ from flext_cli import p
 from flext_infra import (
     FlextInfraProtocolsBase,
     FlextInfraProtocolsCheck,
-    FlextInfraProtocolsRefactor,
     FlextInfraProtocolsRope,
 )
 
@@ -33,7 +32,6 @@ class FlextInfraProtocols(p):
     @runtime_checkable
     class Infra(
         FlextInfraProtocolsCheck,
-        FlextInfraProtocolsRefactor,
         FlextInfraProtocolsRope,
         FlextInfraProtocolsBase,
         Protocol,

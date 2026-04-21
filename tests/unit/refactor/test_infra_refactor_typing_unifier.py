@@ -2,7 +2,25 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import FlextInfraRefactorTypingUnificationRule
+from flext_infra import c
+from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
+from tests import t
+
+
+class FlextInfraRefactorTypingUnificationRule:
+    def __init__(self, settings: t.Infra.InfraMapping) -> None:
+        self._settings = settings
+
+    def apply(
+        self,
+        source: str,
+        _file_path: Path | None = None,
+    ) -> t.Infra.TransformResult:
+        _ = self._settings
+        return FlextInfraRefactorTypingUnifier(
+            canonical_map=c.Infra.TYPING_INLINE_UNION_CANONICAL_MAP,
+            file_path=_file_path,
+        ).apply_to_source(source)
 
 
 def test_converts_typealias_to_pep695() -> None:

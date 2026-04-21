@@ -102,7 +102,7 @@ class FlextInfraUtilitiesParsing:
             if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
                 functions.append(node.name)
                 continue
-            if isinstance(node, ast.TypeAlias) and isinstance(node.name, ast.Name):
+            if isinstance(node, ast.TypeAlias):
                 assignments.append(node.name.id)
                 continue
             if isinstance(node, ast.Assign):

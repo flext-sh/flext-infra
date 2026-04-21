@@ -3,35 +3,14 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import override
 
+import pytest
 from flext_tests import tm
 
 from flext_infra import (
-    FlextInfraRefactorClassReconstructorRule,
     FlextInfraRefactorEngine,
-    FlextInfraRefactorEnsureFutureAnnotationsRule,
-    FlextInfraRefactorImportModernizerRule,
-    FlextInfraRefactorLegacyRemovalTextRule,
-    FlextInfraRefactorMROClassMigrationTextRule,
-    FlextInfraRefactorPatternCorrectionsTextRule,
-    FlextInfraRefactorRule,
-    FlextInfraRefactorSignaturePropagationRule,
-    FlextInfraRefactorSymbolPropagationRule,
+    c,
 )
-
-
-class BrokenRule(FlextInfraRefactorRule):
-    """Return invalid syntax so protected file validation must roll back."""
-
-    @override
-    def apply(
-        self,
-        source: str,
-        _file_path: Path | None = None,
-    ) -> tuple[str, list[str]]:
-        del source, _file_path
-        return ("def broken(:\n", ["broke syntax"])
 
 
 def test_rule_dispatch_prefers_fix_action_metadata(tmp_path: Path) -> None:
@@ -48,14 +27,16 @@ def test_rule_dispatch_prefers_fix_action_metadata(tmp_path: Path) -> None:
     result = engine.load_rules()
     assert result.success
     assert len(engine.rules) == 8
-    assert isinstance(engine.rules[0], FlextInfraRefactorLegacyRemovalTextRule)
-    assert isinstance(engine.rules[1], FlextInfraRefactorImportModernizerRule)
-    assert isinstance(engine.rules[2], FlextInfraRefactorClassReconstructorRule)
-    assert isinstance(engine.rules[3], FlextInfraRefactorMROClassMigrationTextRule)
-    assert isinstance(engine.rules[4], FlextInfraRefactorEnsureFutureAnnotationsRule)
-    assert isinstance(engine.rules[5], FlextInfraRefactorSymbolPropagationRule)
-    assert isinstance(engine.rules[6], FlextInfraRefactorSignaturePropagationRule)
-    assert isinstance(engine.rules[7], FlextInfraRefactorPatternCorrectionsTextRule)
+    assert [rule_kind for rule_kind, _settings in engine.rules] == [
+        c.Infra.RefactorRuleKind.LEGACY_REMOVAL,
+        c.Infra.RefactorRuleKind.IMPORT_MODERNIZER,
+        c.Infra.RefactorRuleKind.CLASS_RECONSTRUCTOR,
+        c.Infra.RefactorRuleKind.MRO_CLASS_MIGRATION,
+        c.Infra.RefactorRuleKind.FUTURE_ANNOTATIONS,
+        c.Infra.RefactorRuleKind.SYMBOL_PROPAGATION,
+        c.Infra.RefactorRuleKind.SIGNATURE_PROPAGATION,
+        c.Infra.RefactorRuleKind.PATTERN_CORRECTIONS,
+    ]
 
 
 def test_rule_dispatch_fails_on_invalid_pattern_rule_config(tmp_path: Path) -> None:
@@ -75,7 +56,7 @@ def test_rule_dispatch_fails_on_invalid_pattern_rule_config(tmp_path: Path) -> N
     assert "redundant_type_targets" in result.error
 
 
-def test_rule_dispatch_fails_on_unknown_rule_mapping(tmp_path: Path) -> None:
+def test_rule_dispatch_ignores_unknown_rule_mapping(tmp_path: Path) -> None:
     rules_dir = tmp_path / "rules"
     rules_dir.mkdir(parents=True)
     config_path = tmp_path / "settings.yml"
@@ -86,12 +67,11 @@ def test_rule_dispatch_fails_on_unknown_rule_mapping(tmp_path: Path) -> None:
     )
     engine = FlextInfraRefactorEngine(config_path=config_path)
     result = engine.load_rules()
-    tm.fail(result)
-    assert result.error is not None
-    assert "Unknown rule mapping" in result.error
+    assert result.success
+    assert engine.rules == []
 
 
-def test_engine_always_enables_class_nesting_file_rule(tmp_path: Path) -> None:
+def test_engine_keeps_file_rules_declarative(tmp_path: Path) -> None:
     rules_dir = tmp_path / "rules"
     rules_dir.mkdir(parents=True)
     config_path = tmp_path / "settings.yml"
@@ -105,10 +85,10 @@ def test_engine_always_enables_class_nesting_file_rule(tmp_path: Path) -> None:
     engine.set_rule_filters(["custom-import-rule"])
     result = engine.load_rules()
     assert result.success
-    assert len(engine.file_rules) == 1
+    assert engine.file_rules == []
 
 
-def test_rule_dispatch_keeps_legacy_id_fallback_mapping(tmp_path: Path) -> None:
+def test_rule_dispatch_drops_legacy_id_fallback_mapping(tmp_path: Path) -> None:
     rules_dir = tmp_path / "rules"
     rules_dir.mkdir(parents=True)
     config_path = tmp_path / "settings.yml"
@@ -121,8 +101,7 @@ def test_rule_dispatch_keeps_legacy_id_fallback_mapping(tmp_path: Path) -> None:
     engine = FlextInfraRefactorEngine(config_path=config_path)
     result = engine.load_rules()
     assert result.success
-    assert len(engine.rules) == 1
-    assert isinstance(engine.rules[0], FlextInfraRefactorImportModernizerRule)
+    assert engine.rules == []
 
 
 def test_refactor_project_scans_tests_and_scripts_dirs(tmp_path: Path) -> None:
@@ -182,13 +161,27 @@ def test_refactor_files_skips_non_python_inputs(tmp_path: Path) -> None:
 
 def test_refactor_file_rolls_back_invalid_output_and_preserves_backup(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     file_path = tmp_path / "sample.py"
     original = "value = 1\n"
     file_path.write_text(original, encoding="utf-8")
     engine = FlextInfraRefactorEngine(config_path=tmp_path / "missing.yml")
-    engine.rules = [BrokenRule({"id": "broken"})]
+    engine.rules = [
+        (
+            c.Infra.RefactorRuleKind.LEGACY_REMOVAL,
+            {c.Infra.RK_ID: "broken", c.Infra.RK_ENABLED: True},
+        )
+    ]
     engine.file_rules = []
+    monkeypatch.setattr(
+        engine.orchestrator,
+        "_apply_text_rule_selection",
+        lambda kind, settings, source, file_path: (
+            "def broken(:\n",
+            ["broke syntax"],
+        ),
+    )
 
     result = engine.refactor_file(file_path, dry_run=False)
 

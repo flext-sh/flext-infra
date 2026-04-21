@@ -16,13 +16,13 @@ class TestFlextInfraReportingServiceExtra:
     """Test suite for FlextInfraReportingService extra operations."""
 
     @pytest.fixture
-    def service(self) -> u.Infra:
+    def service(self) -> type[u.Cli]:
         """Create a reporting service instance."""
-        return u.Infra()
+        return u.Cli
 
     def test_get_report_dir_returns_path(
         self,
-        service: u.Infra,
+        service: type[u.Cli],
         tmp_path: Path,
     ) -> None:
         """Test that get_report_dir returns Path type."""
@@ -32,7 +32,7 @@ class TestFlextInfraReportingServiceExtra:
 
     def test_get_report_path_returns_path(
         self,
-        service: u.Infra,
+        service: type[u.Cli],
         tmp_path: Path,
     ) -> None:
         """Test that get_report_path returns Path type."""

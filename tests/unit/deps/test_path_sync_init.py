@@ -5,13 +5,13 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import FlextInfraUtilitiesDependencyPathSync
-from tests import p, t
+from tests import c, p, t
 
 
 def _rewrite_dep_paths(
     pyproject_path: Path,
     *,
-    mode: str,
+    mode: c.Infra.PathSyncMode,
     internal_names: set[str],
     workspace_members: t.StrSequence = (),
     is_root: bool = False,
@@ -37,7 +37,8 @@ class TestDetectMode:
     def test_detect_mode_workspace(self, tmp_path: Path) -> None:
         (tmp_path / ".gitmodules").touch()
         tm.that(
-            FlextInfraUtilitiesDependencyPathSync.detect_mode(tmp_path), eq="workspace"
+            FlextInfraUtilitiesDependencyPathSync.detect_mode(tmp_path),
+            eq=c.Infra.PathSyncMode.WORKSPACE,
         )
 
     def test_detect_mode_workspace_parent(self, tmp_path: Path) -> None:
@@ -47,25 +48,27 @@ class TestDetectMode:
         project = workspace / "project"
         project.mkdir()
         tm.that(
-            FlextInfraUtilitiesDependencyPathSync.detect_mode(project), eq="workspace"
+            FlextInfraUtilitiesDependencyPathSync.detect_mode(project),
+            eq=c.Infra.PathSyncMode.WORKSPACE,
         )
 
     def test_detect_mode_standalone(self, tmp_path: Path) -> None:
         tm.that(
-            FlextInfraUtilitiesDependencyPathSync.detect_mode(tmp_path), eq="standalone"
+            FlextInfraUtilitiesDependencyPathSync.detect_mode(tmp_path),
+            eq=c.Infra.PathSyncMode.STANDALONE,
         )
 
 
 def test_detect_mode_with_nonexistent_path(tmp_path: Path) -> None:
     tm.that(
-        {"workspace", "standalone"},
+        {c.Infra.PathSyncMode.WORKSPACE, c.Infra.PathSyncMode.STANDALONE},
         has=FlextInfraUtilitiesDependencyPathSync.detect_mode(tmp_path),
     )
 
 
 def test_detect_mode_with_path_object() -> None:
     tm.that(
-        {"workspace", "standalone"},
+        {c.Infra.PathSyncMode.WORKSPACE, c.Infra.PathSyncMode.STANDALONE},
         has=FlextInfraUtilitiesDependencyPathSync.detect_mode(Path("/tmp")),
     )
 
@@ -73,7 +76,7 @@ def test_detect_mode_with_path_object() -> None:
 class TestPathSyncEdgeCases:
     def test_detect_mode_with_nonexistent_path(self, tmp_path: Path) -> None:
         tm.that(
-            {"workspace", "standalone"},
+            {c.Infra.PathSyncMode.WORKSPACE, c.Infra.PathSyncMode.STANDALONE},
             has=FlextInfraUtilitiesDependencyPathSync.detect_mode(tmp_path),
         )
 
@@ -89,7 +92,7 @@ class TestPathSyncEdgeCases:
         tm.ok(
             _rewrite_dep_paths(
                 pyproject,
-                mode="poetry",
+                mode=c.Infra.PathSyncMode.STANDALONE,
                 internal_names=set(),
                 dry_run=True,
             ),

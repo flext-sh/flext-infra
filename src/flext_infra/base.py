@@ -116,11 +116,20 @@ class FlextInfraServiceBase(
         values = [item.strip() for item in value if item.strip()]
         return ",".join(values) or None
 
-    @u.field_validator("report_path", "output_dir", mode="before")
+    @u.field_validator("report_path", mode="before")
     @classmethod
-    def _normalize_optional_path(cls, value: str | Path | None) -> Path | None:
-        """Resolve optional output paths in one place."""
+    def _normalize_report_path(cls, value: str | Path | None) -> Path | None:
+        """Resolve report file paths eagerly so report writes are absolute."""
         return u.Infra.normalize_optional_path(value)
+
+    @u.field_validator("output_dir", mode="before")
+    @classmethod
+    def _normalize_output_dir(cls, value: str | Path | None) -> Path | None:
+        """Preserve relative output dirs so callers can scope them under workspace roots."""
+        if value is None:
+            return None
+        path = value if isinstance(value, Path) else Path(value)
+        return path.resolve() if path.is_absolute() else path
 
     @property
     def root(self) -> Path:
@@ -207,7 +216,7 @@ class FlextInfraProjectSelectionServiceBase(
         self,
         workspace_root: Path,
         *,
-        output_dir: str,
+        output_dir: Path | str,
         handler: Callable[
             [m.Infra.DocScope],
             m.Infra.DocsPhaseReport,

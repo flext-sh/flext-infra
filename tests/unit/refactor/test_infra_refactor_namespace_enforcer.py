@@ -103,7 +103,7 @@ def test_namespace_enforcer_detects_manual_protocol_outside_canonical_files(
     violation = violations[0]
     tm.that(violation.name, eq="ServiceContract")
     rendered = FlextInfraNamespaceEnforcer.render_text(report)
-    tm.that(rendered, has="Manual protocols: 1")
+    tm.that(rendered, has="Manual protocol violations: 1")
 
 
 def test_namespace_enforcer_detects_internal_private_imports(tmp_path: Path) -> None:
@@ -128,7 +128,7 @@ def test_namespace_enforcer_detects_internal_private_imports(tmp_path: Path) -> 
 
     tm.that(report.total_internal_import_violations, gt=0)
     rendered = FlextInfraNamespaceEnforcer.render_text(report)
-    tm.that(rendered, has="Internal imports:")
+    tm.that(rendered, has="Internal import violations:")
 
 
 def test_loose_object_detector_detects_module_logger_assignment(

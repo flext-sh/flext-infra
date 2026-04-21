@@ -1,65 +1,35 @@
-"""Rope-based refactor engine for flext_infra.refactor.
-
-Orchestrates declarative rules, safety stash, and violation analysis.
-File collection flows through ``u.Infra`` while rule loading is delegated
-directly to the shared ``flext-cli`` rules DSL.
-"""
+"""Refactor engine composition root for flext_infra.refactor."""
 
 from __future__ import annotations
 
 import argparse
-from collections.abc import (
-    Mapping,
-    MutableSequence,
-    Sequence,
-)
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
-
-from flext_cli import cli
 
 from flext_infra import (
     FlextInfraRefactorSafetyManager,
     c,
     m,
     p,
-    r,
     t,
     u,
 )
 
-from .engine_file import (
-    FlextInfraRefactorEngineFileMixin,
-    _ClassNestingPostCheckGate,
-)
-from .engine_helpers import FlextInfraRefactorEngineHelpersMixin
-from .engine_text import FlextInfraRefactorEngineTextMixin
+from .loader import FlextInfraRefactorRuleLoader
+from .orchestrator import FlextInfraRefactorOrchestrator
 
 
-class FlextInfraRefactorEngine(
-    FlextInfraRefactorEngineTextMixin,
-    FlextInfraRefactorEngineFileMixin,
-    FlextInfraRefactorEngineHelpersMixin,
-):
-    """Rope-based refactor engine orchestrating declarative rules."""
+class FlextInfraRefactorEngine:
+    """Composition root wiring loader, orchestrator, and safety services."""
 
     def __init__(self, config_path: Path | None = None) -> None:
-        """Initialize engine state and settings file path."""
+        """Initialize the composed refactor engine services."""
         self.config_path = config_path or Path(__file__).parent / "settings.yml"
-        config_map: Mapping[str, t.Infra.InfraValue] = {}
-        self.settings: Mapping[str, t.Infra.InfraValue] = config_map
-        self.rules: MutableSequence[
-            tuple[c.Infra.RefactorRuleKind, t.Cli.RuleDefinition]
-        ] = []
-        self.file_rules: MutableSequence[
-            tuple[c.Infra.RefactorFileRuleKind, t.Cli.RuleDefinition]
-        ] = []
-        self.rule_filters: MutableSequence[str] = []
-        self.safety_manager = FlextInfraRefactorSafetyManager()
-        self._class_nesting_config: t.Infra.ContainerDict | None = None
-        self._class_nesting_policy_by_family: (
-            Mapping[str, m.Infra.ClassNestingPolicy] | None
-        ) = None
-        self._class_nesting_gate: _ClassNestingPostCheckGate | None = None
+        self.rule_loader = FlextInfraRefactorRuleLoader(self.config_path)
+        self.orchestrator = FlextInfraRefactorOrchestrator(
+            self.rule_loader,
+            safety_manager=FlextInfraRefactorSafetyManager(),
+        )
 
     @staticmethod
     def main() -> int:
@@ -97,101 +67,145 @@ class FlextInfraRefactorEngine(
             u.Cli.error(f"Rules error: {rules_r.error}")
             return 1
         if args.list_rules:
-            engine._print_rules_table(engine.list_rules())
+            engine.print_rules_table(engine.list_rules())
             return 0
         if args.analyze_violations:
-            return engine._run_analyze_violations(args)
-        return engine._run_refactor(args)
+            return engine.run_analyze_violations(args)
+        return engine.run_refactor(args)
+
+    @property
+    def settings(self) -> Mapping[str, t.Infra.InfraValue]:
+        """Expose the loader settings for existing consumers."""
+        return self.rule_loader.settings
+
+    @settings.setter
+    def settings(self, value: Mapping[str, t.Infra.InfraValue]) -> None:
+        self.rule_loader.settings = value
+
+    @property
+    def rules(
+        self,
+    ) -> MutableSequence[t.Infra.RuleSelection[c.Infra.RefactorRuleKind]]:
+        """Expose loaded text-rule selections for compatibility."""
+        return self.rule_loader.rules
+
+    @rules.setter
+    def rules(
+        self,
+        value: MutableSequence[t.Infra.RuleSelection[c.Infra.RefactorRuleKind]],
+    ) -> None:
+        self.rule_loader.rules = value
+
+    @property
+    def file_rules(
+        self,
+    ) -> MutableSequence[t.Infra.RuleSelection[c.Infra.RefactorFileRuleKind]]:
+        """Expose loaded file-rule selections for compatibility."""
+        return self.rule_loader.file_rules
+
+    @file_rules.setter
+    def file_rules(
+        self,
+        value: MutableSequence[t.Infra.RuleSelection[c.Infra.RefactorFileRuleKind]],
+    ) -> None:
+        self.rule_loader.file_rules = value
+
+    @property
+    def rule_filters(self) -> MutableSequence[str]:
+        """Expose normalized rule filters for compatibility."""
+        return self.rule_loader.rule_filters
+
+    @property
+    def safety_manager(self) -> FlextInfraRefactorSafetyManager:
+        """Expose the orchestrator safety manager for compatibility."""
+        return self.orchestrator.safety_manager
+
+    @safety_manager.setter
+    def safety_manager(self, value: FlextInfraRefactorSafetyManager) -> None:
+        self.orchestrator.safety_manager = value
 
     def load_config(self) -> p.Result[Mapping[str, t.Infra.InfraValue]]:
-        """Load YAML configuration for this engine instance."""
-        result = cli.rules_load_scoped_config(
-            self.config_path,
-            scope_key=c.Infra.RK_REFACTOR_ENGINE,
-            allowed_keys=c.Infra.ENGINE_CONFIG_KEYS,
-        )
-        if result.success:
-            self.settings = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
-                dict(result.value)
-            )
-            u.Cli.info(f"Loaded settings from {self.config_path}")
-        return result
+        """Delegate config loading to the dedicated refactor loader."""
+        return self.rule_loader.load_config()
 
     def load_rules(
         self,
-    ) -> p.Result[Sequence[tuple[c.Infra.RefactorRuleKind, t.Cli.RuleDefinition]]]:
-        """Load enabled declarative rules from the shared CLI DSL."""
-        rr = cli.rules_load_local_definitions(
-            self.config_path,
-            package_rules_dir=Path(__file__).resolve().parent.parent / c.Infra.RK_RULES,
-            rule_filters=self.rule_filters,
-            rule_catalog=c.Infra.RULE_MATCHERS_BY_KIND,
-            file_rule_catalog=c.Infra.FILE_RULE_MATCHERS_BY_KIND,
-            registry_filename=c.Infra.ENGINE_REGISTRY_FILENAME,
-            rules_key=c.Infra.RK_RULES,
-            rule_id_key=c.Infra.RK_ID,
-            enabled_key=c.Infra.RK_ENABLED,
-        )
-        if rr.failure:
-            return r[
-                Sequence[tuple[c.Infra.RefactorRuleKind, t.Cli.RuleDefinition]]
-            ].fail(rr.error or "")
-        loaded_rules, loaded_file_rules = rr.value
-        self.rules = list(loaded_rules)
-        self.file_rules = list(loaded_file_rules)
-        u.Cli.info(f"Loaded {len(self.rules)} rules")
-        if self.file_rules:
-            u.Cli.info(f"Loaded {len(self.file_rules)} file rules")
-        if self.rule_filters:
-            u.Cli.info(f"Active filters: {', '.join(self.rule_filters)}")
-        return r[Sequence[tuple[c.Infra.RefactorRuleKind, t.Cli.RuleDefinition]]].ok(
-            loaded_rules
-        )
-
-    @staticmethod
-    def _print_rules_table(rows: Sequence[t.FeatureFlagMapping]) -> None:
-        """Render and print refactor rules list using CLI table/output families."""
-        data_result = u.Cli.tables_normalize_data(rows)
-        if data_result.failure:
-            u.Cli.error(data_result.error or "failed to normalize rules table")
-            return
-        settings_result = u.Cli.tables_resolve_config(
-            headers=list(c.Infra.RULE_TABLE_HEADERS),
-        )
-        if settings_result.failure:
-            u.Cli.error(settings_result.error or "failed to resolve table settings")
-            return
-        rendered_result = u.Cli.tables_render(data_result.value, settings_result.value)
-        if rendered_result.failure:
-            u.Cli.error(rendered_result.error or "failed to render rules table")
-            return
-        u.Cli.emit_raw(rendered_result.value)
+    ) -> p.Result[
+        t.Infra.LoadedRuleSelections[
+            c.Infra.RefactorRuleKind,
+            c.Infra.RefactorFileRuleKind,
+        ]
+    ]:
+        """Delegate rule loading to the dedicated refactor loader."""
+        return self.rule_loader.load_rules()
 
     def set_rule_filters(self, filters: t.StrSequence) -> None:
-        """Set active rule filters using normalized lowercase rule ids."""
-        self.rule_filters = [item.lower() for item in filters]
+        """Delegate rule-filter normalization to the dedicated loader."""
+        self.rule_loader.set_rule_filters(filters)
 
     def list_rules(self) -> Sequence[t.FeatureFlagMapping]:
-        """Return loaded rules metadata for listing."""
-        return [
-            {
-                c.Infra.RK_ID: str(
-                    settings.get(c.Infra.RK_ID, c.Infra.DEFAULT_UNKNOWN)
-                ),
-                c.Infra.NAME: str(
-                    settings.get(
-                        c.Infra.NAME,
-                        settings.get(c.Infra.RK_ID, c.Infra.DEFAULT_UNKNOWN),
-                    )
-                ),
-                c.Infra.RK_DESCRIPTION: str(settings.get(c.Infra.RK_DESCRIPTION, "")),
-                c.Infra.RK_ENABLED: bool(settings.get(c.Infra.RK_ENABLED, True)),
-                c.Infra.RK_SEVERITY: str(
-                    settings.get(c.Infra.RK_SEVERITY, c.Infra.SeverityLevel.WARNING)
-                ),
-            }
-            for _, settings in self.rules
-        ]
+        """Delegate rules listing to the dedicated loader."""
+        return self.rule_loader.list_rules()
+
+    @staticmethod
+    def print_rules_table(rows: Sequence[t.FeatureFlagMapping]) -> None:
+        """Delegate table rendering to the dedicated loader."""
+        FlextInfraRefactorRuleLoader.print_rules_table(rows)
+
+    def run_analyze_violations(self, args: t.Infra.CliNamespace) -> int:
+        """Delegate violation analysis to the dedicated orchestrator."""
+        return self.orchestrator.run_analyze_violations(args)
+
+    def run_refactor(self, args: t.Infra.CliNamespace) -> int:
+        """Delegate CLI refactor execution to the dedicated orchestrator."""
+        return self.orchestrator.run_refactor(args)
+
+    def refactor_file(
+        self, file_path: Path, *, dry_run: bool = False
+    ) -> m.Infra.Result:
+        """Delegate single-file refactoring to the dedicated orchestrator."""
+        return self.orchestrator.refactor_file(file_path, dry_run=dry_run)
+
+    def refactor_files(
+        self,
+        file_paths: Sequence[Path],
+        *,
+        dry_run: bool = False,
+    ) -> Sequence[m.Infra.Result]:
+        """Delegate multi-file refactoring to the dedicated orchestrator."""
+        return self.orchestrator.refactor_files(file_paths, dry_run=dry_run)
+
+    def refactor_project(
+        self,
+        project_path: Path,
+        *,
+        dry_run: bool = False,
+        pattern: str = c.Infra.EXT_PYTHON_GLOB,
+        apply_safety: bool = True,
+    ) -> Sequence[m.Infra.Result]:
+        """Delegate project refactoring to the dedicated orchestrator."""
+        return self.orchestrator.refactor_project(
+            project_path,
+            dry_run=dry_run,
+            pattern=pattern,
+            apply_safety=apply_safety,
+        )
+
+    def refactor_workspace(
+        self,
+        workspace_root: Path,
+        *,
+        dry_run: bool = False,
+        pattern: str = c.Infra.EXT_PYTHON_GLOB,
+        apply_safety: bool = True,
+    ) -> Sequence[m.Infra.Result]:
+        """Delegate workspace refactoring to the dedicated orchestrator."""
+        return self.orchestrator.refactor_workspace(
+            workspace_root,
+            dry_run=dry_run,
+            pattern=pattern,
+            apply_safety=apply_safety,
+        )
 
 
 __all__: list[str] = ["FlextInfraRefactorEngine"]

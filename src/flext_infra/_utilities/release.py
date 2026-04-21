@@ -12,7 +12,8 @@ from typing import TYPE_CHECKING
 
 from flext_core import u
 
-from flext_infra import FlextInfraUtilitiesBase, c, p, r, t
+from flext_infra import c, p, r, t
+from flext_infra._utilities.base import FlextInfraUtilitiesBase
 
 if TYPE_CHECKING:
     from flext_infra import m

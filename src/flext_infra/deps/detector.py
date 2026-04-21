@@ -11,6 +11,7 @@ from flext_infra import (
     FlextInfraProjectSelectionServiceBase,
     m,
     p,
+    t,
     u,
 )
 
@@ -89,10 +90,20 @@ class FlextInfraRuntimeDevDependencyDetector(
     @override
     def execute(self) -> p.Result[bool]:
         """Execute dependency detection and generate workspace report."""
-        payload = self.model_dump(by_alias=True)
-        payload["workspace_path"] = self.root
-        payload["apply"] = self.apply_changes
-        payload["dry_run"] = self.effective_dry_run
+        payload: dict[str, t.Container] = {
+            "workspace": str(self.root),
+            "apply": self.apply_changes,
+            "format": self.output_format,
+            "output": self.output,
+            "quiet": self.quiet,
+            "no-fail": self.no_fail,
+            "typings": self.typings,
+            "apply-typings": self.apply_typings,
+            "no-pip-check": self.no_pip_check,
+            "limits": self.limits,
+        }
+        if self.selected_projects is not None:
+            payload["projects"] = list(self.selected_projects)
         params = m.Infra.DetectCommand.model_validate(payload)
         runtime = FlextInfraDependencyDetectorRuntime(
             detector=self,

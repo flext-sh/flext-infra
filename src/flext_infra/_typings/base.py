@@ -18,17 +18,12 @@ from collections.abc import (
 )
 from io import TextIOBase as _TextIOBase
 from pathlib import Path as _Path
-from typing import TYPE_CHECKING
 
-from flext_cli import t
-from flext_core import m
+from flext_cli import m, t
 from jinja2 import Environment as _JinjaEnvironment, Template as _JinjaTemplate
-from tomlkit import TOMLDocument as _TOMLDocument
+from tomlkit import TOMLDocument
 from tomlkit.container import Container as _TOMLContainer
-from tomlkit.items import Item as _TOMLItem, Table as _TOMLTable
-
-if TYPE_CHECKING:
-    from flext_infra import p
+from tomlkit.items import Item as _TOMLItem, Table
 
 
 class FlextInfraTypesBase:
@@ -48,13 +43,13 @@ class FlextInfraTypesBase:
     "Jinja2 template rendering environment."
     type JinjaTemplate = _JinjaTemplate
     "Jinja2 template object."
-    type TomlDocument = _TOMLDocument
+    type TomlDocument = TOMLDocument
     "Tomlkit TOML document."
     type TomlContainer = _TOMLContainer
     "Tomlkit container (mutable TOML section)."
     type TomlItem = _TOMLItem
     "Tomlkit item (value or table)."
-    type TomlTable = _TOMLTable
+    type TomlTable = Table
     "Tomlkit table."
     type RegexMatch = _re.Match[str]
     "Compiled regex match result."
@@ -169,16 +164,17 @@ class FlextInfraTypesBase:
     "Mutable validated infra payload sequence."
     type RuleDefinition = InfraMapping
     "Canonical declarative rule definition payload."
-    type RuleDefinitions = Sequence[RuleDefinition]
+    type RuleDefinitions = Sequence[t.Cli.JsonMapping]
     "Read-only sequence of declarative rule definitions."
-    type RuleBuilder = Callable[[RuleDefinition], p.Infra.Rule | None]
-    "Build one runtime rule from one validated rule definition."
-    type FileRuleBuilder = Callable[[], Sequence[p.Infra.FileRule]]
-    "Build the Rope-backed file rules for one engine."
-    type RuleSkipPredicate = Callable[[RuleDefinition], bool]
+    type RuleSkipPredicate = Callable[[t.Cli.JsonMapping], bool]
     "Predicate deciding whether one rule definition should be skipped."
-    type RuleLoadResult = Pair[Sequence[p.Infra.Rule], Sequence[p.Infra.FileRule]]
-    "Loaded text rules + file rules from one declarative rules directory."
+    type RuleSelection[KindT] = tuple[KindT, t.Cli.JsonMapping]
+    "One matched rule kind paired with its validated declarative payload."
+    type LoadedRuleSelections[RuleKindT, FileRuleKindT] = tuple[
+        Sequence[tuple[RuleKindT, t.Cli.JsonMapping]],
+        Sequence[tuple[FileRuleKindT, t.Cli.JsonMapping]],
+    ]
+    "Loaded text-rule + file-rule selections from one declarative rules directory."
     type DomainResult = m.BaseModel | t.Cli.JsonValue
     "Typed service result payload: model or validated JSON value."
     type DomainResultSequence = Sequence[DomainResult]

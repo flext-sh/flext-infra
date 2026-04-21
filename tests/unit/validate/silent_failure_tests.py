@@ -10,7 +10,6 @@ from flext_infra import (
     FlextInfraSilentFailureDetector,
     FlextInfraSilentFailureValidator,
     main as infra_main,
-    u,
 )
 from tests import m, t, u
 

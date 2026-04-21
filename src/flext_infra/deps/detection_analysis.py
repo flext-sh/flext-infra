@@ -68,6 +68,9 @@ class FlextInfraDependencyDetectionAnalysis:
                 return None
             converted: MutableSequence[t.Container] = []
             for item in sequence:
+                if item is None:
+                    converted.append(None)
+                    continue
                 converted_item = FlextInfraDependencyDetectionAnalysis.to_infra_value(
                     item,
                 )
@@ -83,6 +86,9 @@ class FlextInfraDependencyDetectionAnalysis:
             return None
         converted_map: MutableMapping[str, t.Infra.InfraValue] = {}
         for key, map_item in mapping_value.items():
+            if map_item is None:
+                converted_map[str(key)] = None
+                continue
             converted_item = FlextInfraDependencyDetectionAnalysis.to_infra_value(
                 map_item,
             )
@@ -211,6 +217,9 @@ class FlextInfraDependencyDetectionAnalysis:
             if isinstance(module_to_package, Mapping) and root in module_to_package:
                 value = module_to_package.get(root)
                 return str(value) if value is not None else None
+        default_package = c.Infra.DEFAULT_MODULE_TO_TYPES_PACKAGE.get(root)
+        if default_package is not None:
+            return default_package
         return f"types-{root.lower()}"
 
     def run_deptry(

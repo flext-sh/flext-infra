@@ -27,9 +27,9 @@ class FlextInfraDocAuditor(
     """Audit governed docs scopes using code-backed and policy-backed checks."""
 
     output_dir: Annotated[
-        str,
+        Path | None,
         m.Field(description="Docs output dir"),
-    ] = c.Infra.DEFAULT_DOCS_OUTPUT_DIR
+    ] = Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR)
 
     strict_mode: Annotated[
         bool,
@@ -74,7 +74,7 @@ class FlextInfraDocAuditor(
         workspace_root: Path,
         *,
         projects: t.StrSequence | None = None,
-        output_dir: str = c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
+        output_dir: Path | str = Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR),
         params: m.Infra.AuditScopeParams | None = None,
     ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
         """Audit root and governed project docs scopes."""
@@ -162,7 +162,7 @@ class FlextInfraDocAuditor(
         result = self.audit(
             workspace_root=self.workspace_root,
             projects=self.selected_projects,
-            output_dir=self.output_dir,
+            output_dir=self.output_dir or Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR),
             params=m.Infra.AuditScopeParams(
                 check="all",
                 strict=self.strict_mode,

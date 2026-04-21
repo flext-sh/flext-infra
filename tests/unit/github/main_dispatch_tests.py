@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import infra
 from tests import m, u
 
 
@@ -17,7 +16,7 @@ def test_run_github_workspace_pull_requests_aggregates_results(
         pr_exit_codes={"flext-a": "0", "flext-b": "1"},
     )
 
-    result = infra.run_github_workspace_pull_requests(
+    result = u.Infra.run_github_workspace_pull_requests(
         m.Infra.GithubPullRequestWorkspaceRequest(
             workspace=str(workspace),
             action="status",
@@ -41,7 +40,7 @@ def test_run_github_workspace_pull_requests_respects_project_selection(
         pr_exit_codes={"flext-a": "0", "flext-b": "0", "flext-c": "1"},
     )
 
-    result = infra.run_github_workspace_pull_requests(
+    result = u.Infra.run_github_workspace_pull_requests(
         m.Infra.GithubPullRequestWorkspaceRequest(
             workspace=str(workspace),
             projects=["flext-a", "flext-b"],
@@ -68,7 +67,7 @@ def test_run_github_workspace_pull_requests_honors_fail_fast(
         pr_exit_codes={"flext-a": "1", "flext-b": "0"},
     )
 
-    result = infra.run_github_workspace_pull_requests(
+    result = u.Infra.run_github_workspace_pull_requests(
         m.Infra.GithubPullRequestWorkspaceRequest(
             workspace=str(workspace),
             fail_fast=True,

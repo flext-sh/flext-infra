@@ -15,16 +15,16 @@ class FlextInfraDocValidator(FlextInfraProjectSelectionServiceBase[bool]):
     """Validate the governed docs contract for root and FLEXT projects."""
 
     output_dir: Annotated[
-        str,
+        Path | None,
         m.Field(description="Docs output dir"),
-    ] = c.Infra.DEFAULT_DOCS_OUTPUT_DIR
+    ] = Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR)
 
     def validate_workspace(
         self,
         value: Path,
         *,
         projects: t.StrSequence | None = None,
-        output_dir: str = c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
+        output_dir: Path | str = Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR),
         apply: bool = False,
     ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
         """Validate documentation across the workspace root and governed projects."""
@@ -44,7 +44,7 @@ class FlextInfraDocValidator(FlextInfraProjectSelectionServiceBase[bool]):
         result = self.validate_workspace(
             self.workspace_root,
             projects=self.selected_projects,
-            output_dir=self.output_dir,
+            output_dir=self.output_dir or Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR),
             apply=self.apply_changes,
         )
         if result.failure:

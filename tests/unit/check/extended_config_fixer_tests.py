@@ -60,9 +60,7 @@ class TestConfigFixerProcessFile:
         payload = tomllib.loads(pyproject.read_text(encoding="utf-8"))
         tm.that(
             payload["tool"]["pyrefly"]["search-path"],
-            eq=FlextInfraExtraPathsManager(
-                workspace_root=tmp_path
-            ).pyrefly_search_paths(
+            eq=FlextInfraExtraPathsManager(workspace=tmp_path).pyrefly_search_paths(
                 project_dir=tmp_path,
                 is_root=True,
             ),
@@ -146,7 +144,7 @@ class TestConfigFixerExecute:
 
     def test_execute_returns_failure(self, tmp_path: Path) -> None:
         fixer = FlextInfraConfigFixer(workspace=tmp_path)
-        tm.fail(fixer.execute(), has="Use run()")
+        tm.fail(fixer.execute(), has="Use execute_command() directly")
 
 
 class TestConfigFixerToArray:

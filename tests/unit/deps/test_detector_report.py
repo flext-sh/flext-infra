@@ -73,9 +73,9 @@ class _DetectorStub:
     """Minimal stub satisfying p.Infra.DetectorRuntime for report tests."""
 
     def __init__(self, deps: _DepsStub) -> None:
-        self.deps = deps
-        self.runner = u.Cli
-        self.log = u.fetch_logger(__name__)
+        self.deps: p.Infra.DepsService = deps
+        self.runner: p.Infra.RunnerService = u.Cli
+        self.log: p.Logger = u.fetch_logger(__name__)
 
 
 def _setup(

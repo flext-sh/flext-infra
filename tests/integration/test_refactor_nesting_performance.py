@@ -1,4 +1,4 @@
-"""Performance benchmarks for class nesting refactor engine."""
+"""Performance benchmarks for class nesting execution."""
 
 from __future__ import annotations
 
@@ -6,12 +6,26 @@ import tempfile
 import time
 import tracemalloc
 from pathlib import Path
+from typing import override
 
 from flext_infra import (
-    FlextInfraClassNestingRefactorRule,
     FlextInfraRefactorLooseClassScanner,
+    c,
 )
+from flext_infra.refactor.engine_file import FlextInfraRefactorFileExecutor
 from tests import u
+
+
+class _FileRuleHarness(FlextInfraRefactorFileExecutor):
+    def __init__(self, config_path: Path) -> None:
+        self._config_path = config_path
+        self._class_nesting_config = None
+        self._class_nesting_policy_by_family = None
+        self._class_nesting_gate = None
+
+    @override
+    def _load_class_nesting_config(self) -> dict[str, object]:
+        return dict(u.Cli.yaml_load_mapping(self._config_path))
 
 
 class TestPerformanceBenchmarks:
@@ -65,7 +79,7 @@ class TestPerformanceBenchmarks:
             config_file.write_text(
                 "\nclass_nesting:\n  - loose_name: TimeoutEnforcer\n    current_file: test.py\n    target_namespace: FlextDispatcher\n    target_name: TimeoutEnforcer\n    confidence: high\n  - loose_name: RateLimiter\n    current_file: test.py\n    target_namespace: FlextDispatcher\n    target_name: RateLimiter\n    confidence: high\n",
             )
-            rule = FlextInfraClassNestingRefactorRule(config_file)
+            rule = _FileRuleHarness(config_file)
             rope_project = u.Infra.init_rope_project(tmp_path)
             resource = u.Infra.get_resource_from_path(rope_project, test_file)
             if resource is None:
@@ -73,7 +87,13 @@ class TestPerformanceBenchmarks:
             start = time.perf_counter()
             try:
                 for _ in range(100):
-                    _ = rule.apply(rope_project, resource, dry_run=True)
+                    _ = rule._apply_file_rule_selection(
+                        c.Infra.RefactorFileRuleKind.CLASS_NESTING,
+                        {},
+                        rope_project,
+                        resource,
+                        dry_run=True,
+                    )
                 elapsed = time.perf_counter() - start
                 avg_time = elapsed / 100
                 assert avg_time < 0.1, (

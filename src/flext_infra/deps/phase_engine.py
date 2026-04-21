@@ -20,7 +20,7 @@ from typing import Annotated, override
 from flext_infra import c, m, p, r, s, t, u
 
 
-class FlextInfraPhaseEngine(s[Sequence[t.StrSequence]]):
+class FlextInfraPhaseEngine(s[t.StrSequence]):
     """Apply ``m.Infra.TomlPhaseConfig`` phases to a TOML document."""
 
     doc: Annotated[
@@ -65,16 +65,18 @@ class FlextInfraPhaseEngine(s[Sequence[t.StrSequence]]):
         ]
 
     @override
-    def execute(self) -> p.Result[Sequence[t.StrSequence]]:
-        """Apply all phases and preserve the existing result contract."""
+    def execute(self) -> p.Result[t.StrSequence]:
+        """Apply all phases and return one flat change list."""
         try:
-            return r[Sequence[t.StrSequence]].ok(
+            return r[t.StrSequence].ok(
                 tuple(
-                    self._apply_phase(phase, parent_path=()) for phase in self.phases
+                    change
+                    for phase in self.phases
+                    for change in self._apply_phase(phase, parent_path=())
                 ),
             )
         except Exception as exc:
-            return r[Sequence[t.StrSequence]].fail(str(exc))
+            return r[t.StrSequence].fail(str(exc))
 
     def apply(self) -> t.StrSequence:
         """Apply phases and return one flat change list."""

@@ -18,9 +18,7 @@ _TEST_WORKSPACE_ROOT = Path(__file__).resolve().parent
 def _manager(
     workspace_root: Path | None = None,
 ) -> FlextInfraExtraPathsManager:
-    return FlextInfraExtraPathsManager(
-        workspace_root=workspace_root or _TEST_WORKSPACE_ROOT
-    )
+    return FlextInfraExtraPathsManager(workspace=workspace_root or _TEST_WORKSPACE_ROOT)
 
 
 class TestFlextInfraExtraPathsManager:
@@ -98,7 +96,7 @@ class TestSyncOne:
 class TestConstants:
     def test_base_constants(self) -> None:
         manager = _manager()
-        tm.that(manager.ROOT.is_absolute(), eq=True)
+        tm.that(manager.root.is_absolute(), eq=True)
 
 
 def test_pyrefly_search_paths_only_use_local_project_dirs(
@@ -135,7 +133,7 @@ def test_pyrefly_search_paths_only_use_local_project_dirs(
         )
         (dep_src / "__init__.py").write_text("", encoding="utf-8")
 
-    manager = FlextInfraExtraPathsManager(workspace_root=tmp_path)
+    manager = FlextInfraExtraPathsManager(workspace=tmp_path)
     result = manager.pyrefly_search_paths(project_dir=consumer, is_root=False)
 
     tm.that(result, eq=["src"])
@@ -156,7 +154,7 @@ def test_pyrefly_search_paths_include_project_root_for_tests_package(
     )
     (consumer / "tests" / "__init__.py").write_text("", encoding="utf-8")
 
-    manager = FlextInfraExtraPathsManager(workspace_root=tmp_path)
+    manager = FlextInfraExtraPathsManager(workspace=tmp_path)
     result = manager.pyrefly_search_paths(project_dir=consumer, is_root=False)
 
     tm.that(result, eq=[".", "src"])
@@ -185,7 +183,7 @@ def test_pyrefly_search_paths_ignore_non_path_dependencies_at_root(
         encoding="utf-8",
     )
 
-    manager = FlextInfraExtraPathsManager(workspace_root=tmp_path)
+    manager = FlextInfraExtraPathsManager(workspace=tmp_path)
     result = manager.pyrefly_search_paths(project_dir=tmp_path, is_root=True)
 
     tm.that(result, eq=["src"])
@@ -224,7 +222,7 @@ def test_pyrefly_search_paths_include_workspace_dependency_src_dirs_at_root(
         dep_src.mkdir(parents=True)
         (dep_src / "__init__.py").write_text("", encoding="utf-8")
 
-    manager = FlextInfraExtraPathsManager(workspace_root=tmp_path)
+    manager = FlextInfraExtraPathsManager(workspace=tmp_path)
     result = manager.pyrefly_search_paths(project_dir=tmp_path, is_root=True)
 
     tm.that(result, eq=[".", "flext-core/src", "flext-tests/src", "src"])

@@ -6,7 +6,7 @@ from typing import TypeGuard
 import tomlkit
 from flext_tests import tm
 
-from tests import p, t, u
+from tests import c, p, t, u
 
 
 def _is_str_object_dict(value: object) -> TypeGuard[dict[str, object]]:
@@ -16,7 +16,7 @@ def _is_str_object_dict(value: object) -> TypeGuard[dict[str, object]]:
 def _rewrite_dep_paths(
     pyproject_path: Path,
     *,
-    mode: str,
+    mode: c.Infra.PathSyncMode,
     internal_names: set[str],
     workspace_members: t.StrSequence = (),
     is_root: bool = False,
@@ -40,7 +40,7 @@ class TestRewriteDepPaths:
         )
         result = _rewrite_dep_paths(
             pyproject,
-            mode="workspace",
+            mode=c.Infra.PathSyncMode.WORKSPACE,
             internal_names={"flext-core"},
             is_root=True,
         )
@@ -55,7 +55,7 @@ class TestRewriteDepPaths:
         pyproject.write_text(original)
         result = _rewrite_dep_paths(
             pyproject,
-            mode="workspace",
+            mode=c.Infra.PathSyncMode.WORKSPACE,
             internal_names={"flext-core"},
             is_root=True,
             dry_run=True,
@@ -68,7 +68,7 @@ class TestRewriteDepPaths:
         pyproject.write_text('[project]\ndependencies = ["requests>=2.0.0"]\n')
         result = _rewrite_dep_paths(
             pyproject,
-            mode="workspace",
+            mode=c.Infra.PathSyncMode.WORKSPACE,
             internal_names={"flext-core"},
             is_root=True,
         )
@@ -77,7 +77,7 @@ class TestRewriteDepPaths:
     def test_rewrite_dep_paths_read_failure(self, tmp_path: Path) -> None:
         result = _rewrite_dep_paths(
             tmp_path / "pyproject.toml",
-            mode="workspace",
+            mode=c.Infra.PathSyncMode.WORKSPACE,
             internal_names={"flext-core"},
             is_root=True,
         )
@@ -97,7 +97,7 @@ class TestRewriteDepPaths:
         tm.fail(
             _rewrite_dep_paths(
                 pyproject,
-                mode="workspace",
+                mode=c.Infra.PathSyncMode.WORKSPACE,
                 internal_names={"flext-core"},
                 is_root=True,
             ),
@@ -112,7 +112,7 @@ def test_rewrite_dep_paths_with_internal_names(tmp_path: Path) -> None:
     )
     result = _rewrite_dep_paths(
         pyproject,
-        mode="workspace",
+        mode=c.Infra.PathSyncMode.WORKSPACE,
         internal_names={"flext-core"},
         is_root=False,
         dry_run=False,
@@ -128,7 +128,7 @@ def test_rewrite_dep_paths_dry_run(tmp_path: Path) -> None:
     tm.ok(
         _rewrite_dep_paths(
             pyproject,
-            mode="workspace",
+            mode=c.Infra.PathSyncMode.WORKSPACE,
             internal_names={"flext-core"},
             is_root=False,
             dry_run=True,
@@ -141,7 +141,7 @@ def test_rewrite_dep_paths_read_failure(tmp_path: Path) -> None:
     tm.fail(
         _rewrite_dep_paths(
             tmp_path / "pyproject.toml",
-            mode="workspace",
+            mode=c.Infra.PathSyncMode.WORKSPACE,
             internal_names={"flext-core"},
             is_root=False,
             dry_run=False,
@@ -155,7 +155,7 @@ def test_rewrite_dep_paths_with_no_deps(tmp_path: Path) -> None:
     tm.ok(
         _rewrite_dep_paths(
             pyproject,
-            mode="poetry",
+            mode=c.Infra.PathSyncMode.STANDALONE,
             internal_names=set(),
             dry_run=True,
         ),
@@ -176,7 +176,7 @@ def test_root_workspace_sources_cover_all_workspace_members(tmp_path: Path) -> N
 
     result = _rewrite_dep_paths(
         pyproject,
-        mode="workspace",
+        mode=c.Infra.PathSyncMode.WORKSPACE,
         internal_names={"flext-api", "flext-core", "flexcore"},
         workspace_members=("flext-api", "flext-core"),
         is_root=True,

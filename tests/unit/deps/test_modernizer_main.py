@@ -6,7 +6,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraModelsDeps, FlextInfraPyprojectModernizer, main
+from flext_infra import FlextInfraPyprojectModernizer, main
 from tests import c
 
 
@@ -17,7 +17,7 @@ class TestFlextInfraPyprojectModernizer:
         self,
         modernizer_workspace: Path,
     ) -> None:
-        modernizer = FlextInfraPyprojectModernizer(workspace_root=modernizer_workspace)
+        modernizer = FlextInfraPyprojectModernizer(workspace=modernizer_workspace)
         tm.that(modernizer.root, eq=modernizer_workspace)
 
     def test_process_file_returns_invalid_toml(
@@ -27,7 +27,7 @@ class TestFlextInfraPyprojectModernizer:
         pyproject = modernizer_workspace / c.Infra.PYPROJECT_FILENAME
         pyproject.write_text("invalid [[[", encoding="utf-8")
         changes = FlextInfraPyprojectModernizer(
-            workspace_root=modernizer_workspace,
+            workspace=modernizer_workspace,
         ).process_file(
             pyproject,
             canonical_dev=[],
@@ -40,15 +40,13 @@ class TestFlextInfraPyprojectModernizer:
         self,
         modernizer_workspace: Path,
     ) -> None:
-        modernizer = FlextInfraPyprojectModernizer(workspace_root=modernizer_workspace)
-        exit_code = modernizer.run(
-            FlextInfraModelsDeps.ModernizeCommand(
-                workspace=str(modernizer_workspace),
-                apply=True,
-                skip_comments=True,
-                skip_check=True,
-            ),
+        modernizer = FlextInfraPyprojectModernizer(
+            workspace=modernizer_workspace,
+            apply_changes=True,
+            skip_comments=True,
+            skip_check=True,
         )
+        exit_code = modernizer.run()
         tm.that(exit_code, eq=0)
         tm.that(
             (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).read_text(
@@ -61,16 +59,11 @@ class TestFlextInfraPyprojectModernizer:
         self,
         modernizer_workspace: Path,
     ) -> None:
-        modernizer = FlextInfraPyprojectModernizer(workspace_root=modernizer_workspace)
-        tm.that(
-            modernizer.run(
-                FlextInfraModelsDeps.ModernizeCommand(
-                    workspace=str(modernizer_workspace),
-                    projects=["missing-project"],
-                ),
-            ),
-            eq=2,
+        modernizer = FlextInfraPyprojectModernizer(
+            workspace=modernizer_workspace,
+            selected_projects=["missing-project"],
         )
+        tm.that(modernizer.run(), eq=2)
 
     def test_cli_reports_pending_changes_in_audit_mode(
         self,

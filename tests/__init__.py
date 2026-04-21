@@ -176,9 +176,9 @@ if _t.TYPE_CHECKING:
     )
     from tests.unit.deps.test_internal_sync_validation import (
         TestFlextInfraInternalDependencySyncService,
-        TestIsInternalPathDep,
         TestIsRelativeTo,
         TestOwnerFromRemoteUrl,
+        TestResolveInternalRepoName,
         TestValidateGitRefEdgeCases,
     )
     from tests.unit.deps.test_main import TestPublicDepsSurface
@@ -236,8 +236,10 @@ if _t.TYPE_CHECKING:
         tool_config_document,
     )
     from tests.unit.fixtures_git import real_git_repo
-    from tests.unit.refactor.test_infra_refactor_engine import BrokenRule
     from tests.unit.refactor.test_infra_refactor_safety import EngineSafetyStub
+    from tests.unit.refactor.test_infra_refactor_typing_unifier import (
+        FlextInfraRefactorTypingUnificationRule,
+    )
     from tests.unit.refactor.test_main_cli import TestFlextInfraRefactorMainCli
     from tests.unit.runner_service import RealSubprocessRunner
     from tests.unit.scenarios import (
@@ -518,9 +520,9 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ),
             ".unit.deps.test_internal_sync_validation": (
                 "TestFlextInfraInternalDependencySyncService",
-                "TestIsInternalPathDep",
                 "TestIsRelativeTo",
                 "TestOwnerFromRemoteUrl",
+                "TestResolveInternalRepoName",
                 "TestValidateGitRefEdgeCases",
             ),
             ".unit.deps.test_main": ("TestPublicDepsSurface",),
@@ -581,8 +583,10 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "tool_config_document",
             ),
             ".unit.fixtures_git": ("real_git_repo",),
-            ".unit.refactor.test_infra_refactor_engine": ("BrokenRule",),
             ".unit.refactor.test_infra_refactor_safety": ("EngineSafetyStub",),
+            ".unit.refactor.test_infra_refactor_typing_unifier": (
+                "FlextInfraRefactorTypingUnificationRule",
+            ),
             ".unit.refactor.test_main_cli": ("TestFlextInfraRefactorMainCli",),
             ".unit.runner_service": ("RealSubprocessRunner",),
             ".unit.scenarios": (
@@ -717,12 +721,12 @@ _LAZY_IMPORTS = merge_lazy_imports(
 install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)
 
 __all__: list[str] = [
-    "BrokenRule",
     "BrokenScenario",
     "DependencyScenario",
     "DependencyScenarios",
     "EmptyScenario",
     "EngineSafetyStub",
+    "FlextInfraRefactorTypingUnificationRule",
     "FullScenario",
     "GitScenario",
     "GitScenarios",
@@ -840,7 +844,6 @@ __all__: list[str] = [
     "TestInfraTypingAdapters",
     "TestInfraTypingGuards",
     "TestInjectCommentsPhase",
-    "TestIsInternalPathDep",
     "TestIsRelativeTo",
     "TestIterMarkdownFiles",
     "TestLoadAuditBudgets",
@@ -865,6 +868,7 @@ __all__: list[str] = [
     "TestPublicProjectDiscovery",
     "TestReadRequiredMinor",
     "TestRefactorPolicyMRO",
+    "TestResolveInternalRepoName",
     "TestRewriteDepPaths",
     "TestRewritePep621",
     "TestRewritePoetry",

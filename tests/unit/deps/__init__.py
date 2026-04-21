@@ -65,9 +65,9 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".test_internal_sync_update_checkout_edge": ("TestEnsureCheckoutEdgeCases",),
         ".test_internal_sync_validation": (
             "TestFlextInfraInternalDependencySyncService",
-            "TestIsInternalPathDep",
             "TestIsRelativeTo",
             "TestOwnerFromRemoteUrl",
+            "TestResolveInternalRepoName",
             "TestValidateGitRefEdgeCases",
         ),
         ".test_internal_sync_workspace": ("test_internal_sync_workspace",),

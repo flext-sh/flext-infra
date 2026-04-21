@@ -53,6 +53,20 @@ class TestDepsModernizerPyright:
         (flext_core / "tests").mkdir(parents=True, exist_ok=True)
         (flext_api / "src").mkdir(parents=True, exist_ok=True)
         (algar / "src").mkdir(parents=True, exist_ok=True)
+        (flext_core / "src" / "flext_core").mkdir(parents=True, exist_ok=True)
+        (flext_core / "src" / "flext_core" / "__init__.py").write_text(
+            "VALUE = 1\n",
+            encoding="utf-8",
+        )
+        (flext_core / "tests" / "test_smoke.py").write_text(
+            "def test_smoke() -> None:\n    assert True\n",
+            encoding="utf-8",
+        )
+        (flext_api / "src" / "flext_api").mkdir(parents=True, exist_ok=True)
+        (flext_api / "src" / "flext_api" / "__init__.py").write_text(
+            "VALUE = 1\n",
+            encoding="utf-8",
+        )
         doc = tomlkit.document()
 
         _ = FlextInfraEnsurePyrightConfigPhase(tool_config_document).apply(
@@ -185,6 +199,12 @@ class TestDepsModernizerPyright:
         rules = tool_config_document.tools.pyright.path_rules
         project_dir = tmp_path / "flext-sample"
         (project_dir / "src").mkdir(parents=True, exist_ok=True)
+        (project_dir / "src" / "sample.py").write_text("VALUE = 1\n", encoding="utf-8")
+        (project_dir / "tests").mkdir(parents=True, exist_ok=True)
+        (project_dir / "tests" / "test_smoke.py").write_text(
+            "def test_smoke() -> None:\n    assert True\n",
+            encoding="utf-8",
+        )
         (project_dir / "tests" / "fixtures").mkdir(parents=True, exist_ok=True)
         (tmp_path / "typings").mkdir(parents=True, exist_ok=True)
         doc = tomlkit.document()

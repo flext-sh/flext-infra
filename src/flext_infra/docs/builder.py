@@ -15,9 +15,9 @@ class FlextInfraDocBuilder(FlextInfraProjectSelectionServiceBase[bool]):
     """Build MkDocs sites for governed FLEXT scopes."""
 
     output_dir: Annotated[
-        str,
+        Path | None,
         m.Field(description="Docs output dir"),
-    ] = c.Infra.DEFAULT_DOCS_OUTPUT_DIR
+    ] = Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR)
 
     _runner: p.Cli.CommandRunner = u.PrivateAttr(default_factory=u.Cli)
 
@@ -26,7 +26,7 @@ class FlextInfraDocBuilder(FlextInfraProjectSelectionServiceBase[bool]):
         workspace_root: Path,
         *,
         projects: t.StrSequence | None = None,
-        output_dir: str = c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
+        output_dir: Path | str = Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR),
     ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
         """Build MkDocs sites across project scopes."""
         return self.run_scoped_docs(
@@ -42,7 +42,7 @@ class FlextInfraDocBuilder(FlextInfraProjectSelectionServiceBase[bool]):
         result = self.build(
             workspace_root=self.workspace_root,
             projects=self.selected_projects,
-            output_dir=self.output_dir,
+            output_dir=self.output_dir or Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR),
         )
         if result.failure:
             return r[bool].fail(result.error or "build failed")

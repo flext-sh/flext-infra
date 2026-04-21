@@ -115,7 +115,7 @@ def test_ensure_pyrefly_config_phase_apply_search_path_with_project_context(
         doc,
         is_root=False,
         project_dir=project_dir,
-        paths_manager=FlextInfraExtraPathsManager(workspace_root=tmp_path),
+        paths_manager=FlextInfraExtraPathsManager(workspace=tmp_path),
     )
 
     pyrefly = tool["pyrefly"]
@@ -166,7 +166,7 @@ def test_ensure_pyrefly_config_phase_apply_search_path_with_root_context(
         doc,
         is_root=True,
         project_dir=tmp_path,
-        paths_manager=FlextInfraExtraPathsManager(workspace_root=tmp_path),
+        paths_manager=FlextInfraExtraPathsManager(workspace=tmp_path),
     )
 
     pyrefly = tool["pyrefly"]

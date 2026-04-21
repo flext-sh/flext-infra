@@ -49,7 +49,7 @@ class FlextInfraUtilitiesRopeImports:
         if not isinstance(import_info, FromImport):
             return None
         module_name = import_info.module_name
-        return module_name if isinstance(module_name, str) and module_name else None
+        return module_name or None
 
     @staticmethod
     def import_statement_names_and_aliases(
@@ -59,14 +59,7 @@ class FlextInfraUtilitiesRopeImports:
         import_info = import_statement.import_info
         if not isinstance(import_info, FromImport | NormalImport):
             return ()
-        names_and_aliases = import_info.names_and_aliases
-        if not isinstance(names_and_aliases, list):
-            return ()
-        return tuple(
-            (name, alias)
-            for name, alias in names_and_aliases
-            if isinstance(name, str) and (alias is None or isinstance(alias, str))
-        )
+        return tuple(import_info.names_and_aliases)
 
     @classmethod
     def imported_module_paths(

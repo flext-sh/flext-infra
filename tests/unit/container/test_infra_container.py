@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from contextlib import redirect_stdout
 from io import StringIO
 
 import pytest
@@ -69,7 +70,7 @@ class TestInfraMroPattern:
 
     def test_path_methods_available(self) -> None:
         """Verify path methods are accessible via u.Infra MRO."""
-        assert callable(u.Infra.workspace_root)
+        assert callable(u.Infra.rope_workspace_root)
 
     def test_template_methods_available(self) -> None:
         """Verify template constants are accessible via c.Infra MRO."""
@@ -112,8 +113,8 @@ class TestInfraServiceRetrieval:
         """Verify output methods write through the shared namespace stream."""
         stream = StringIO()
 
-        u.Infra.setup(color=False, unicode=False, stream=stream)
-        u.Cli.info("hello")
-        u.Cli.warning("careful")
+        with redirect_stdout(stream):
+            u.Cli.info("hello")
+            u.Cli.warning("careful")
 
         assert stream.getvalue() == "INFO: hello\nWARN: careful\n"

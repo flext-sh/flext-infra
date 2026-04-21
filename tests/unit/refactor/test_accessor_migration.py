@@ -149,7 +149,7 @@ def test_accessor_migration_service_reports_preview_and_keeps_file_unchanged(
     result = FlextInfraAccessorMigrationOrchestrator(
         workspace=workspace,
         dry_run=True,
-        projects=["sample-project"],
+        selected_projects=["sample-project"],
         preview_limit=5,
     ).execute()
 
@@ -230,7 +230,7 @@ def test_accessor_migration_dry_run_lints_only_previewed_files(
     result = FlextInfraAccessorMigrationOrchestrator(
         workspace=workspace,
         dry_run=True,
-        projects=["sample-project"],
+        selected_projects=["sample-project"],
         preview_limit=1,
     ).execute()
 
@@ -261,7 +261,7 @@ def test_accessor_migration_apply_writes_updated_source(
         workspace=workspace,
         apply_changes=True,
         dry_run=False,
-        projects=["sample-project"],
+        selected_projects=["sample-project"],
         preview_limit=5,
     ).execute()
 

@@ -1096,12 +1096,16 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 deptry_path.parent.mkdir(parents=True, exist_ok=True)
                 if deptry_exists:
                     deptry_path.write_text("", encoding="utf-8")
-                kwargs: dict[str, p.Infra.DepsService | p.Infra.RunnerService] = {
-                    "deps": deps,
-                }
                 if runner is not None:
-                    kwargs["runner"] = runner
-                return FlextInfraRuntimeDevDependencyDetector(**kwargs)
+                    return FlextInfraRuntimeDevDependencyDetector(
+                        workspace=tmp_path,
+                        deps=deps,
+                        runner=runner,
+                    )
+                return FlextInfraRuntimeDevDependencyDetector(
+                    workspace=tmp_path,
+                    deps=deps,
+                )
 
             @staticmethod
             def write_migrator_project(project_root: Path) -> None:

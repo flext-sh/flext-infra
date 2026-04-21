@@ -8,29 +8,11 @@ import pytest
 from flext_tests import tm
 
 from flext_infra import FlextInfraPyprojectModernizer
-from tests import c, m, t
+from tests import c
 
 
 class TestFlextInfraPyprojectModernizerEdgeCases:
     """Validate edge cases through the public modernizer API."""
-
-    @staticmethod
-    def _args(
-        **overrides: t.Infra.InfraValue,
-    ) -> m.Infra.ModernizeCommand:
-        defaults: t.MutableRecursiveContainerMapping = {
-            "workspace": ".",
-            "verbose": False,
-            "projects": None,
-            "fail_fast": True,
-            "apply": False,
-            "check": False,
-            "audit": False,
-            "skip_comments": False,
-            "skip_check": True,
-        }
-        defaults.update(overrides)
-        return m.Infra.ModernizeCommand.model_validate(defaults)
 
     @pytest.mark.parametrize(
         ("content", "expected"),
@@ -53,32 +35,24 @@ class TestFlextInfraPyprojectModernizerEdgeCases:
                 content,
                 encoding="utf-8",
             )
-        modernizer = FlextInfraPyprojectModernizer(workspace)
-        tm.that(
-            modernizer.run(self._args(workspace=str(workspace))),
-            eq=expected,
-        )
+        modernizer = FlextInfraPyprojectModernizer(workspace=workspace)
+        tm.that(modernizer.run(), eq=expected)
 
     def test_audit_returns_zero_after_workspace_is_canonical(
         self,
         modernizer_workspace: Path,
     ) -> None:
-        modernizer = FlextInfraPyprojectModernizer(modernizer_workspace)
-        apply_exit = modernizer.run(
-            self._args(
-                workspace=str(modernizer_workspace),
-                apply=True,
-                skip_comments=True,
-                skip_check=True,
-            ),
-        )
-        audit_exit = modernizer.run(
-            self._args(
-                workspace=str(modernizer_workspace),
-                audit=True,
-                skip_comments=True,
-            ),
-        )
+        apply_exit = FlextInfraPyprojectModernizer(
+            workspace=modernizer_workspace,
+            apply_changes=True,
+            skip_comments=True,
+            skip_check=True,
+        ).run()
+        audit_exit = FlextInfraPyprojectModernizer(
+            workspace=modernizer_workspace,
+            audit=True,
+            skip_comments=True,
+        ).run()
         tm.that(apply_exit, eq=0)
         tm.that(audit_exit, eq=0)
 
@@ -91,17 +65,9 @@ class TestFlextInfraPyprojectModernizerEdgeCases:
         )
         selected_pyproject.write_text("[invalid", encoding="utf-8")
         modernizer = FlextInfraPyprojectModernizer(
-            modernizer_workspace_with_projects,
+            workspace=modernizer_workspace_with_projects,
+            apply_changes=True,
+            skip_comments=True,
+            skip_check=False,
         )
-
-        tm.that(
-            modernizer.run(
-                self._args(
-                    workspace=str(modernizer_workspace_with_projects),
-                    apply=True,
-                    skip_comments=True,
-                    skip_check=False,
-                ),
-            ),
-            eq=1,
-        )
+        tm.that(modernizer.run(), eq=1)

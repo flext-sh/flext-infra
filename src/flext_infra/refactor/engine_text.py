@@ -20,11 +20,13 @@ from flext_infra import (
     u,
 )
 
-from .engine_legacy import FlextInfraRefactorEngineLegacyMixin
+from .engine_legacy import FlextInfraRefactorLegacyTextOps
 
 
-class FlextInfraRefactorEngineTextMixin(FlextInfraRefactorEngineLegacyMixin):
+class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
     """Execute declarative text rules directly from kind + settings."""
+
+    _SINGLE_LINE_DOCSTRING_MIN_LENGTH = 3
 
     def _apply_text_rule_selection(
         self,
@@ -61,7 +63,8 @@ class FlextInfraRefactorEngineTextMixin(FlextInfraRefactorEngineLegacyMixin):
                     FlextInfraRefactorMRORemover(),
                     source,
                 )
-        return (source, list[str]())
+            case _:
+                return (source, list[str]())
 
     @staticmethod
     def _apply_change_tracker_transformer(
@@ -95,7 +98,11 @@ class FlextInfraRefactorEngineTextMixin(FlextInfraRefactorEngineLegacyMixin):
                 continue
             if stripped.startswith(('"""', "'''")):
                 doc_char = '"""' if stripped.startswith('"""') else "'''"
-                if stripped.endswith(doc_char) and len(stripped) > 3:
+                if (
+                    stripped.endswith(doc_char)
+                    and len(stripped)
+                    > FlextInfraRefactorTextExecutor._SINGLE_LINE_DOCSTRING_MIN_LENGTH
+                ):
                     insert_idx = index + 1
                     continue
                 in_docstring = True
@@ -409,4 +416,4 @@ class FlextInfraRefactorEngineTextMixin(FlextInfraRefactorEngineLegacyMixin):
         }
 
 
-__all__: list[str] = ["FlextInfraRefactorEngineTextMixin"]
+__all__: list[str] = ["FlextInfraRefactorTextExecutor"]

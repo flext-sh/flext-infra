@@ -138,7 +138,8 @@ class TestsFlextInfraLazyInitHelpers:
         package_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
             "from __future__ import annotations\n\n"
             "class FlextDemoConstants:\n"
-            "    pass\n",
+            "    pass\n\n"
+            '__all__: list[str] = ["FlextDemoConstants"]\n',
             encoding=c.Infra.ENCODING_DEFAULT,
         )
         tests_support_root = (
@@ -158,7 +159,8 @@ class TestsFlextInfraLazyInitHelpers:
         tests_support_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
             "from __future__ import annotations\n\n"
             "class FlextTestsConstants:\n"
-            "    pass\n",
+            "    pass\n\n"
+            '__all__: list[str] = ["FlextTestsConstants"]\n',
             encoding=c.Infra.ENCODING_DEFAULT,
         )
         tests_root = workspace_root / c.Infra.DIR_TESTS
@@ -174,7 +176,8 @@ class TestsFlextInfraLazyInitHelpers:
             "FlextDemoConstants, FlextTestsConstants"
             "):\n"
             "    pass\n\n"
-            "c = TestsFlextDemoConstants\n",
+            "c = TestsFlextDemoConstants\n\n"
+            '__all__: list[str] = ["TestsFlextDemoConstants", "c"]\n',
             encoding=c.Infra.ENCODING_DEFAULT,
         )
         child_dir = tests_root / "unit"
@@ -223,7 +226,8 @@ class TestsFlextInfraLazyInitHelpers:
         core_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
             "from __future__ import annotations\n\n"
             "class FlextCoreConstants:\n"
-            "    pass\n",
+            "    pass\n\n"
+            '__all__: list[str] = ["FlextCoreConstants"]\n',
             encoding=c.Infra.ENCODING_DEFAULT,
         )
         cli_root = tmp_path / "flext-cli" / c.Infra.DEFAULT_SRC_DIR / "flext_cli"
@@ -240,14 +244,16 @@ class TestsFlextInfraLazyInitHelpers:
             "from __future__ import annotations\n\n"
             "from flext_core import FlextCoreConstants\n\n"
             "class FlextCliConstants(FlextCoreConstants):\n"
-            "    pass\n",
+            "    pass\n\n"
+            '__all__: list[str] = ["FlextCliConstants"]\n',
             encoding=c.Infra.ENCODING_DEFAULT,
         )
         package_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
             "from __future__ import annotations\n\n"
             "from flext_cli import c\n\n"
             "class FlextMeltanoConstants(c):\n"
-            "    pass\n",
+            "    pass\n\n"
+            '__all__: list[str] = ["FlextMeltanoConstants"]\n',
             encoding=c.Infra.ENCODING_DEFAULT,
         )
 
@@ -256,7 +262,7 @@ class TestsFlextInfraLazyInitHelpers:
 
         assert '"r"' in init_content
 
-    def test_nested_tests_namespace_synthesizes_local_and_source_aliases(
+    def test_nested_tests_namespace_exports_local_symbols_only(
         self,
         tmp_path: Path,
     ) -> None:
@@ -290,9 +296,7 @@ class TestsFlextInfraLazyInitHelpers:
 
         assert "TestsFlextDemoUnitConstants" in init_content
         assert "TestsFlextDemoUnitModels" in init_content
-        assert '"c"' in init_content
-        assert '"m"' in init_content
-        assert '"r"' in init_content
+        assert "publish_all=False" in init_content
 
     def test_root_exports_symbols_from_deep_descendant_packages(
         self,

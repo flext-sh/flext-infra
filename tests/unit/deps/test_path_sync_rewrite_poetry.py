@@ -4,7 +4,7 @@ import tomlkit
 from flext_tests import tm
 from tomlkit.toml_document import TOMLDocument
 
-from tests import u
+from tests import c, u
 
 
 class TestRewritePoetry:
@@ -13,7 +13,7 @@ class TestRewritePoetry:
             u.Infra._rewrite_poetry(
                 TOMLDocument(),
                 is_root=True,
-                mode="workspace",
+                mode=c.Infra.PathSyncMode.WORKSPACE,
             ),
             eq=[],
         )
@@ -25,7 +25,7 @@ class TestRewritePoetry:
             u.Infra._rewrite_poetry(
                 doc,
                 is_root=True,
-                mode="workspace",
+                mode=c.Infra.PathSyncMode.WORKSPACE,
             ),
             eq=[],
         )
@@ -37,7 +37,7 @@ class TestRewritePoetry:
             u.Infra._rewrite_poetry(
                 doc,
                 is_root=True,
-                mode="workspace",
+                mode=c.Infra.PathSyncMode.WORKSPACE,
             ),
             eq=[],
         )
@@ -49,7 +49,7 @@ class TestRewritePoetry:
             u.Infra._rewrite_poetry(
                 doc,
                 is_root=True,
-                mode="workspace",
+                mode=c.Infra.PathSyncMode.WORKSPACE,
             ),
             eq=[],
         )
@@ -64,7 +64,7 @@ class TestRewritePoetry:
         changes = u.Infra._rewrite_poetry(
             doc,
             is_root=True,
-            mode="workspace",
+            mode=c.Infra.PathSyncMode.WORKSPACE,
         )
         assert len(changes) > 0
         tm.that(doc.as_string(), contains='path = "flext-core"')
@@ -76,7 +76,7 @@ class TestRewritePoetry:
             u.Infra._rewrite_poetry(
                 doc,
                 is_root=True,
-                mode="workspace",
+                mode=c.Infra.PathSyncMode.WORKSPACE,
             ),
             eq=[],
         )
@@ -88,7 +88,7 @@ class TestRewritePoetry:
             u.Infra._rewrite_poetry(
                 doc,
                 is_root=True,
-                mode="workspace",
+                mode=c.Infra.PathSyncMode.WORKSPACE,
             ),
             eq=[],
         )
@@ -100,7 +100,7 @@ class TestRewritePoetry:
             u.Infra._rewrite_poetry(
                 doc,
                 is_root=True,
-                mode="workspace",
+                mode=c.Infra.PathSyncMode.WORKSPACE,
             ),
             eq=[],
         )
@@ -112,7 +112,7 @@ class TestRewritePoetry:
             u.Infra._rewrite_poetry(
                 doc,
                 is_root=True,
-                mode="workspace",
+                mode=c.Infra.PathSyncMode.WORKSPACE,
             ),
             eq=[],
         )
@@ -127,7 +127,7 @@ class TestRewritePoetry:
         changes = u.Infra._rewrite_poetry(
             doc,
             is_root=False,
-            mode="workspace",
+            mode=c.Infra.PathSyncMode.WORKSPACE,
         )
         assert len(changes) > 0
         tm.that(doc.as_string(), contains='path = "../flext-core"')
@@ -147,7 +147,7 @@ def test_rewrite_poetry_with_non_dict_value() -> None:
             u.Infra._rewrite_poetry(
                 doc,
                 is_root=False,
-                mode="workspace",
+                mode=c.Infra.PathSyncMode.WORKSPACE,
             ),
         ),
         eq=0,
@@ -160,7 +160,7 @@ def test_rewrite_poetry_no_tool_table() -> None:
             u.Infra._rewrite_poetry(
                 tomlkit.document(),
                 is_root=False,
-                mode="workspace",
+                mode=c.Infra.PathSyncMode.WORKSPACE,
             ),
         ),
         eq=0,
@@ -175,7 +175,7 @@ def test_rewrite_poetry_no_poetry_table() -> None:
             u.Infra._rewrite_poetry(
                 doc,
                 is_root=False,
-                mode="workspace",
+                mode=c.Infra.PathSyncMode.WORKSPACE,
             ),
         ),
         eq=0,

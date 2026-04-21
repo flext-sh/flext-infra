@@ -19,12 +19,7 @@ def test_release_run_subcommand_help_returns_zero() -> None:
 def test_release_orchestrator_defaults_are_public_and_typed() -> None:
     params = FlextInfraReleaseOrchestrator.model_validate({})
 
-    assert params.phase_names == [
-        c.Infra.VERB_VALIDATE,
-        c.Infra.VERSION,
-        c.Infra.DIR_BUILD,
-        c.Infra.VERB_PUBLISH,
-    ]
+    assert list(params.phase_names) == list(c.Infra.ReleasePhase)
     assert params.project_names is None
     assert params.push is False
     assert params.next_bump == "minor"

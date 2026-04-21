@@ -21,7 +21,6 @@ from rope.base.project import Project
 from rope.base.pyobjects import AbstractClass
 from rope.base.pyobjectsdef import PyFunction, PyModule
 from rope.base.resources import File
-from rope.refactor.importutils.module_imports import ModuleImports
 
 
 class FlextInfraUtilitiesRopeCore:
@@ -171,7 +170,7 @@ class FlextInfraUtilitiesRopeCore:
             )
         except (RefactoringError, ResourceNotFoundError, AttributeError):
             return None
-        return module_imports if isinstance(module_imports, ModuleImports) else None
+        return module_imports
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeCore"]

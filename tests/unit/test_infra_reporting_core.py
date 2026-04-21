@@ -16,13 +16,13 @@ class TestFlextInfraReportingServiceCore:
     """Test suite for FlextInfraReportingService core operations."""
 
     @pytest.fixture
-    def service(self) -> u.Infra:
+    def service(self) -> type[u.Cli]:
         """Create a reporting service instance."""
-        return u.Infra()
+        return u.Cli
 
     def test_get_report_dir_project_scope(
         self,
-        service: u.Infra,
+        service: type[u.Cli],
         tmp_path: Path,
     ) -> None:
         """Test getting project-level report directory."""
@@ -34,7 +34,7 @@ class TestFlextInfraReportingServiceCore:
 
     def test_get_report_dir_workspace_scope(
         self,
-        service: u.Infra,
+        service: type[u.Cli],
         tmp_path: Path,
     ) -> None:
         """Test getting workspace-level report directory."""
@@ -46,7 +46,7 @@ class TestFlextInfraReportingServiceCore:
 
     def test_get_report_dir_with_string_root(
         self,
-        service: u.Infra,
+        service: type[u.Cli],
         tmp_path: Path,
     ) -> None:
         """Test getting report directory with string root path."""
@@ -56,7 +56,7 @@ class TestFlextInfraReportingServiceCore:
 
     def test_get_report_path_project_scope(
         self,
-        service: u.Infra,
+        service: type[u.Cli],
         tmp_path: Path,
     ) -> None:
         """Test getting project-level report file path."""
@@ -68,7 +68,7 @@ class TestFlextInfraReportingServiceCore:
 
     def test_get_report_path_workspace_scope(
         self,
-        service: u.Infra,
+        service: type[u.Cli],
         tmp_path: Path,
     ) -> None:
         """Test getting workspace-level report file path."""
@@ -86,7 +86,7 @@ class TestFlextInfraReportingServiceCore:
 
     def test_get_report_path_with_string_root(
         self,
-        service: u.Infra,
+        service: type[u.Cli],
         tmp_path: Path,
     ) -> None:
         """Test getting report file path with string root."""

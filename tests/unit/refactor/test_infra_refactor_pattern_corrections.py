@@ -1,14 +1,11 @@
-"""Unit tests for FlextInfraRefactorPatternCorrectionsRule."""
+"""Unit tests for pattern corrections through the text executor."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import (
-    FlextInfraRefactorPatternCorrectionsRule,
-    t,
-    u,
-)
+from flext_infra import c, t
+from flext_infra.refactor.engine_text import FlextInfraRefactorTextExecutor
 
 
 def _apply_rule(
@@ -19,15 +16,11 @@ def _apply_rule(
     file_path = tmp_path / "src" / "demo.py"
     file_path.parent.mkdir(parents=True, exist_ok=True)
     file_path.write_text(source, encoding="utf-8")
-    rule = FlextInfraRefactorPatternCorrectionsRule(settings)
-    updated, changes = u.Infra.apply_transformer_to_source(
+    updated, changes = FlextInfraRefactorTextExecutor()._apply_text_rule_selection(
+        c.Infra.RefactorRuleKind.PATTERN_CORRECTIONS,
+        settings,
         source,
         file_path,
-        lambda rope_project, resource: rule.apply(
-            rope_project,
-            resource,
-            dry_run=True,
-        ),
     )
     return updated, list(changes)
 

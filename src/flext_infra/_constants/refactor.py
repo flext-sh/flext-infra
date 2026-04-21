@@ -20,8 +20,6 @@ from flext_infra import FlextInfraConstantsBase as _Base
 class FlextInfraConstantsRefactor:
     """Shared constants for refactor engine modules."""
 
-    ENGINE_REGISTRY_FILENAME: Final[str] = "engine-registry.yml"
-    """Canonical registry filename for declarative rule engines."""
     RK_REFACTOR_ENGINE: Final[str] = "refactor_engine"
     RK_PROJECT_SCAN_DIRS: Final[str] = "project_scan_dirs"
     RK_IGNORE_PATTERNS: Final[str] = "ignore_patterns"

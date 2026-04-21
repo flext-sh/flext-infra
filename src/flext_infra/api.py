@@ -22,7 +22,7 @@ _PYDANTIC_CONSTANTS_MARKER: type[FlextInfraConstantsBase] = FlextInfraConstantsB
 
 class FlextInfra(
     FlextInfraServiceRopeMixin,
-    s[t.ScalarMapping],
+    s[dict[str, t.Cli.JsonValue]],
 ):
     """Thin public MRO facade over infra services."""
 
@@ -37,15 +37,15 @@ class FlextInfra(
         return cls._instance
 
     @override
-    def execute(self) -> p.Result[t.ScalarMapping]:
+    def execute(self) -> p.Result[dict[str, t.Cli.JsonValue]]:
         """Execute a lightweight facade health report."""
-        report: t.ScalarMapping = {
+        report: dict[str, t.Cli.JsonValue] = {
             "service": "flext-infra",
             "status": "ok",
             "workspace_root": str(self.workspace_root),
             "apply_changes": self.apply_changes,
         }
-        return r[t.ScalarMapping].ok(report)
+        return r[dict[str, t.Cli.JsonValue]].ok(report)
 
 
 infra = FlextInfra.fetch_global()

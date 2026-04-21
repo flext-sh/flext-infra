@@ -94,7 +94,7 @@ class TestGenerateFile:
         )
         tm.that(
             content,
-            contains="from flext_core import  build_lazy_import_map, install_lazy_exports",
+            contains="from flext_core.lazy import build_lazy_import_map, install_lazy_exports",
         )
 
     def test_with_other_package(self) -> None:
@@ -110,7 +110,7 @@ class TestGenerateFile:
         )
         tm.that(
             content,
-            contains="from flext_core import  build_lazy_import_map, install_lazy_exports",
+            contains="from flext_core.lazy import build_lazy_import_map, install_lazy_exports",
         )
 
     def test_with_child_packages_uses_lazy_module_merge_imports(self) -> None:
@@ -127,7 +127,7 @@ class TestGenerateFile:
         )
         tm.that(
             content,
-            contains="from flext_core import  (",
+            contains="from flext_core.lazy import (",
         )
         tm.that(content, contains="merge_lazy_imports,")
 
@@ -511,11 +511,10 @@ class TestRunRuffFix:
         self,
         tmp_path: Path,
     ) -> None:
-        """Test generator fails when ruff post-processing fails."""
+        """Test ruff post-processing failure is reported via a false status."""
         generated = tmp_path / "__init__.py"
         generated.write_text("def broken(:\n", encoding="utf-8")
-        with pytest.raises(ValueError, match="ruff"):
-            u.Infra.run_ruff_fix(generated)
+        tm.that(u.Infra.run_ruff_fix(generated), eq=False)
 
 
 def test_codegen_init_getattr_raises_attribute_error() -> None:

@@ -18,7 +18,7 @@ from flext_infra import (
     FlextInfraTextPatternScanner,
     main as infra_main,
 )
-from tests import t
+from tests import c, t
 
 
 def _cli(*args: str) -> int:
@@ -86,7 +86,7 @@ class TestMainScan:
             pattern="NONEXISTENT_PATTERN",
             include=["*.txt"],
             exclude=[],
-            match="present",
+            match=c.Infra.MatchMode.PRESENT,
         )
         result = result.execute()
         tm.that(result.success, eq=True)
@@ -99,7 +99,7 @@ class TestMainScan:
             pattern="TODO",
             include=["*.txt"],
             exclude=[],
-            match="present",
+            match=c.Infra.MatchMode.PRESENT,
         )
         result = result.execute()
         tm.that(result.failure, eq=True)

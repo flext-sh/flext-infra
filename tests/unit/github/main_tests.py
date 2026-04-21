@@ -5,7 +5,6 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from flext_infra import infra
 from tests import m, u
 
 
@@ -17,7 +16,7 @@ def test_sync_github_workflows_reports_create_operations(
         project_names=("flext-a", "flext-b"),
     )
 
-    result = infra.sync_github_workflows(
+    result = u.Infra.sync_github_workflows(
         m.Infra.GithubWorkflowSyncRequest(workspace=str(workspace)),
     )
 
@@ -40,7 +39,7 @@ def test_sync_github_workflows_apply_writes_ci_files_and_report(
     )
     report_path = tmp_path / "sync-report.json"
 
-    result = infra.sync_github_workflows(
+    result = u.Infra.sync_github_workflows(
         m.Infra.GithubWorkflowSyncRequest(
             workspace=str(workspace),
             apply=True,
@@ -67,7 +66,7 @@ def test_sync_github_workflows_prunes_noncanonical_files(
     extra_workflow.parent.mkdir(parents=True, exist_ok=True)
     extra_workflow.write_text("name: Extra\n", encoding="utf-8")
 
-    result = infra.sync_github_workflows(
+    result = u.Infra.sync_github_workflows(
         m.Infra.GithubWorkflowSyncRequest(
             workspace=str(workspace),
             apply=True,
@@ -90,7 +89,7 @@ def test_lint_github_workflows_writes_report(
     )
     report_path = tmp_path / "lint-report.json"
 
-    result = infra.lint_github_workflows(
+    result = u.Infra.lint_github_workflows(
         m.Infra.GithubWorkflowLintRequest(
             workspace=str(workspace),
             report=str(report_path),
@@ -115,7 +114,7 @@ def test_run_github_pull_request_fails_for_minimal_repo(
         project_names=("flext-a",),
     )
 
-    result = infra.run_github_pull_request(
+    result = u.Infra.run_github_pull_request(
         m.Infra.GithubPullRequestRequest(
             repo_root=str(workspace / "flext-a"),
             action="status",

@@ -9,10 +9,11 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import pytest
 from flext_tests import tm
 
 from flext_infra import FlextInfraTextPatternScanner
-from tests import t
+from tests import c, t
 
 
 def _scanner() -> FlextInfraTextPatternScanner:
@@ -62,7 +63,7 @@ class TestScannerCore:
             tmp_path,
             pattern="hello",
             includes=["missing.txt"],
-            match_mode="absent",
+            match_mode=c.Infra.MatchMode.ABSENT,
         )
         tm.ok(missing)
         tm.that(missing.value["violation_count"], eq=1)
@@ -70,7 +71,7 @@ class TestScannerCore:
             tmp_path,
             pattern="hello",
             includes=["found.txt"],
-            match_mode="absent",
+            match_mode=c.Infra.MatchMode.ABSENT,
         )
         tm.ok(found)
         tm.that(found.value["violation_count"], eq=0)
@@ -81,16 +82,12 @@ class TestScannerCore:
         tm.fail(scanner.scan(tmp_path / "nope", pattern="x", includes=["*.txt"]))
 
     def test_scan_invalid_inputs(self, tmp_path: Path) -> None:
-        """Empty includes and invalid match_mode return failure."""
+        """Empty includes fail and invalid enum payload is rejected at validation."""
         tm.fail(_scanner().scan(tmp_path, pattern="x", includes=[]))
-        tm.fail(
-            _scanner().scan(
-                tmp_path,
-                pattern="x",
-                includes=["*.txt"],
-                match_mode="invalid",
-            ),
-        )
+        with pytest.raises(c.ValidationError):
+            _ = FlextInfraTextPatternScanner.model_validate(
+                {"pattern": "x", "match": "invalid"},
+            )
 
     def test_scan_invalid_regex(self, tmp_path: Path) -> None:
         """Invalid regex pattern returns failure."""

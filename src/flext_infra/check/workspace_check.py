@@ -83,6 +83,7 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
         return r[bool].fail("Use execute_command() directly")
 
     @classmethod
+    @override
     def execute_command(
         cls,
         params: m.Infra.RunCommand,
@@ -92,14 +93,14 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
         project_names = params.project_names or []
         if not project_names:
             return r[bool].fail("no projects specified")
-        gates = self.parse_gate_csv(params.gates)
+        gates = cls.parse_gate_csv(params.gates)
         gate_ctx = m.Infra.GateContext(
             workspace=params.workspace_path,
             reports_dir=params.reports_dir_path,
             apply_fixes=params.fix,
             check_only=params.check_only,
-            ruff_args=tuple(self.parse_tool_args(params.ruff_args)),
-            pyright_args=tuple(self.parse_tool_args(params.pyright_args)),
+            ruff_args=tuple(cls.parse_tool_args(params.ruff_args)),
+            pyright_args=tuple(cls.parse_tool_args(params.pyright_args)),
         )
         run_result = checker.run_projects(
             projects=project_names,

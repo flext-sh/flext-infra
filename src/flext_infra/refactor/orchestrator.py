@@ -1,63 +1,50 @@
-"""Engine helper mixins — pipeline execution and orchestration.
-
-Provides file-level refactoring pipeline (``refactor_file``, ``refactor_files``)
-and project/workspace orchestration with safety stash/rollback coordination.
-"""
+"""Refactor orchestration layer for file/project/workspace execution."""
 
 from __future__ import annotations
 
-from collections.abc import (
-    Mapping,
-    MutableSequence,
-    Sequence,
-)
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
-
-from flext_cli import cli
 
 from flext_infra import (
     FlextInfraRefactorSafetyManager,
     FlextInfraRefactorViolationAnalyzer,
+    FlextInfraUtilitiesRefactorEngine,
     c,
     m,
     t,
     u,
 )
 
+from .engine_file import (
+    FlextInfraClassNestingPostCheckGate,
+    FlextInfraRefactorFileExecutor,
+)
+from .engine_text import FlextInfraRefactorTextExecutor
+from .loader import FlextInfraRefactorRuleLoader
+
 _log = u.fetch_logger(__name__)
 
 
-class FlextInfraRefactorEngineHelpersMixin:
-    """Mixin providing file-level pipeline and project/workspace orchestration."""
+class FlextInfraRefactorOrchestrator(
+    FlextInfraRefactorTextExecutor,
+    FlextInfraRefactorFileExecutor,
+):
+    """Coordinate refactor execution using loaded rule selections and safety flow."""
 
-    settings: t.Infra.InfraValue
-    rules: MutableSequence[tuple[c.Infra.RefactorRuleKind, t.Cli.RuleDefinition]]
-    file_rules: MutableSequence[
-        tuple[c.Infra.RefactorFileRuleKind, t.Cli.RuleDefinition]
-    ]
-    safety_manager: FlextInfraRefactorSafetyManager
-
-    def _apply_text_rule_selection(
+    def __init__(
         self,
-        kind: c.Infra.RefactorRuleKind,
-        settings: Mapping[str, t.Infra.InfraValue],
-        source: str,
-        file_path: Path,
-    ) -> t.Infra.TransformResult:
-        raise NotImplementedError
-
-    def _apply_file_rule_selection(
-        self,
-        kind: c.Infra.RefactorFileRuleKind,
-        settings: Mapping[str, t.Infra.InfraValue],
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
+        loader: FlextInfraRefactorRuleLoader,
         *,
-        dry_run: bool = False,
-    ) -> m.Infra.Result:
-        raise NotImplementedError
-
-    # ── Result helpers ─────────────────────────────────────────────
+        safety_manager: FlextInfraRefactorSafetyManager | None = None,
+    ) -> None:
+        """Initialize the orchestrator with a loader and optional safety service."""
+        self.loader = loader
+        self.safety_manager = safety_manager or FlextInfraRefactorSafetyManager()
+        self._class_nesting_config: t.Infra.ContainerDict | None = None
+        self._class_nesting_policy_by_family: (
+            Mapping[str, m.Infra.ClassNestingPolicy] | None
+        ) = None
+        self._class_nesting_gate: FlextInfraClassNestingPostCheckGate | None = None
 
     @staticmethod
     def _error_result(fp: Path, error: str) -> m.Infra.Result:
@@ -82,19 +69,20 @@ class FlextInfraRefactorEngineHelpersMixin:
             refactored_code=None,
         )
 
-    # ── Single-file pipeline ──────────────────────────────────────
-
     def refactor_file(
-        self, file_path: Path, *, dry_run: bool = False
+        self,
+        file_path: Path,
+        *,
+        dry_run: bool = False,
     ) -> m.Infra.Result:
-        """Refactor one file with currently loaded rules."""
+        """Refactor one file using the loader's current rule selections."""
         try:
             if file_path.suffix != c.Infra.EXT_PYTHON:
                 return self._skip_result(file_path)
             workspace_root = u.Infra.project_root(file_path) or file_path.parent
             original = file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
             current, all_changes = original, list[str]()
-            if self.file_rules:
+            if self.loader.file_rules:
                 rope_project = u.Infra.init_rope_project(workspace_root)
                 try:
                     resource = u.Infra.get_resource_from_path(rope_project, file_path)
@@ -103,29 +91,29 @@ class FlextInfraRefactorEngineHelpersMixin:
                             file_path,
                             f"Could not resolve rope resource for {file_path}",
                         )
-                    for kind, settings in self.file_rules:
-                        res = self._apply_file_rule_selection(
+                    for kind, settings in self.loader.file_rules:
+                        result = self._apply_file_rule_selection(
                             kind,
                             settings,
                             rope_project,
                             resource,
                             dry_run=True,
                         )
-                        if not res.success:
+                        if not result.success:
                             return m.Infra.Result(
                                 file_path=file_path,
                                 success=False,
                                 modified=False,
-                                error=res.error,
-                                changes=res.changes,
+                                error=result.error,
+                                changes=result.changes,
                                 refactored_code=None,
                             )
-                        if res.modified and res.refactored_code:
-                            current = res.refactored_code
-                        all_changes.extend(res.changes)
+                        if result.modified and result.refactored_code:
+                            current = result.refactored_code
+                        all_changes.extend(result.changes)
                 finally:
                     rope_project.close()
-            for kind, settings in self.rules:
+            for kind, settings in self.loader.rules:
                 if not bool(settings.get(c.Infra.RK_ENABLED, True)):
                     continue
                 current, changes = self._apply_text_rule_selection(
@@ -163,33 +151,35 @@ class FlextInfraRefactorEngineHelpersMixin:
         except Exception as exc:
             return self._error_result(file_path, str(exc))
 
-    # ── Multi-file pipeline ───────────────────────────────────────
-
     def refactor_files(
-        self, file_paths: Sequence[Path], *, dry_run: bool = False
+        self,
+        file_paths: Sequence[Path],
+        *,
+        dry_run: bool = False,
     ) -> Sequence[m.Infra.Result]:
         """Refactor many files and collect individual results."""
         results: MutableSequence[m.Infra.Result] = []
-        for fp in file_paths:
-            result = self.refactor_file(fp, dry_run=dry_run)
+        for file_path in file_paths:
+            result = self.refactor_file(file_path, dry_run=dry_run)
             results.append(result)
             if result.success and result.modified:
-                u.Cli.info(f"{'[DRY-RUN] ' if dry_run else ''}Modified: {fp.name}")
-                for ch in result.changes:
-                    u.Cli.info(f"  - {ch}")
+                u.Cli.info(
+                    f"{'[DRY-RUN] ' if dry_run else ''}Modified: {file_path.name}"
+                )
+                for change in result.changes:
+                    u.Cli.info(f"  - {change}")
             elif result.success:
                 _log.debug(
                     "refactor_noop",
                     file=str(result.file_path),
                 )
-                u.Infra.refactor_debug(f"Unchanged: {fp.name}")
+                u.Infra.refactor_debug(f"Unchanged: {file_path.name}")
             else:
-                u.Cli.error(f"Failed: {fp.name} - {result.error}")
+                u.Cli.error(f"Failed: {file_path.name} - {result.error}")
         return results
 
-    # ── Violation analysis ─────────────────────────────────────────
-
-    def _run_analyze_violations(self, args: t.Infra.CliNamespace) -> int:
+    def run_analyze_violations(self, args: t.Infra.CliNamespace) -> int:
+        """Analyze violations across the selected file set."""
         files = self._collect_files(args)
         if files is None:
             return 1
@@ -203,21 +193,19 @@ class FlextInfraRefactorEngineHelpersMixin:
             u.Cli.info(f"Analysis report written: {args.analysis_output}")
         return 0
 
-    # ── File collection ────────────────────────────────────────────
-
     def _collect_files(
         self, args: t.Infra.CliNamespace
     ) -> MutableSequence[Path] | None:
         if args.project:
-            return u.Infra.collect_engine_project_files(
-                self.settings,
+            return FlextInfraUtilitiesRefactorEngine.collect_engine_project_files(
+                self.loader.settings,
                 args.project,
                 pattern=args.pattern,
             )
         if args.workspace:
             return list(
-                u.Infra.collect_engine_workspace_files(
-                    self.settings,
+                FlextInfraUtilitiesRefactorEngine.collect_engine_workspace_files(
+                    self.loader.settings,
                     args.workspace,
                     pattern=args.pattern,
                 )
@@ -228,22 +216,25 @@ class FlextInfraRefactorEngineHelpersMixin:
                 return None
             return [args.file]
         if args.files:
-            return [p for p in args.files if p.exists()]
+            return [path for path in args.files if path.exists()]
         return []
 
-    # ── Refactoring dispatch ───────────────────────────────────────
-
-    def _run_refactor(self, args: t.Infra.CliNamespace) -> int:
+    def run_refactor(self, args: t.Infra.CliNamespace) -> int:
+        """Run refactor CLI dispatch for the selected scope."""
         if args.project:
             results = list(
                 self.refactor_project(
-                    args.project, dry_run=args.dry_run, pattern=args.pattern
+                    args.project,
+                    dry_run=args.dry_run,
+                    pattern=args.pattern,
                 )
             )
         elif args.workspace:
             results = list(
                 self.refactor_workspace(
-                    args.workspace, dry_run=args.dry_run, pattern=args.pattern
+                    args.workspace,
+                    dry_run=args.dry_run,
+                    pattern=args.pattern,
                 )
             )
         elif args.file:
@@ -254,14 +245,16 @@ class FlextInfraRefactorEngineHelpersMixin:
             result = self.refactor_file(args.file, dry_run=args.dry_run)
             if args.show_diff and result.modified:
                 u.Infra.print_diff(
-                    original, result.refactored_code or original, args.file
+                    original,
+                    result.refactored_code or original,
+                    args.file,
                 )
             results = [result]
         elif args.files:
-            existing = [p for p in args.files if p.exists()]
-            for p in args.files:
-                if not p.exists():
-                    u.Cli.error(f"File not found: {p}")
+            existing = [path for path in args.files if path.exists()]
+            for path in args.files:
+                if not path.exists():
+                    u.Cli.error(f"File not found: {path}")
             results = list(self.refactor_files(existing, dry_run=args.dry_run))
         else:
             results = list[m.Infra.Result]()
@@ -270,10 +263,12 @@ class FlextInfraRefactorEngineHelpersMixin:
             _ = u.Infra.write_impact_map(results, args.impact_map_output)
         return 0 if u.count(results, lambda item: not item.success) == 0 else 1
 
-    # ── Safety ─────────────────────────────────────────────────────
-
     def _try_safety_stash(
-        self, target: Path, *, apply_safety: bool, dry_run: bool
+        self,
+        target: Path,
+        *,
+        apply_safety: bool,
+        dry_run: bool,
     ) -> t.Infra.Pair[str, Sequence[m.Infra.Result] | None]:
         if not apply_safety or dry_run:
             return "", None
@@ -302,32 +297,30 @@ class FlextInfraRefactorEngineHelpersMixin:
             msg = checkpoint.error or "checkpoint save failed"
             self.safety_manager.request_emergency_stop(msg)
             u.Cli.error(msg)
-            rb = self.safety_manager.rollback(target, stash_ref)
-            if rb.failure:
-                u.Cli.error(rb.error or "rollback failed")
+            rollback = self.safety_manager.rollback(target, stash_ref)
+            if rollback.failure:
+                u.Cli.error(rollback.error or "rollback failed")
             results.append(self._error_result(target, msg))
             return
-        val = self.safety_manager.run_semantic_validation(target)
-        if val.failure:
-            msg = val.error or "semantic validation failed"
+        validation = self.safety_manager.run_semantic_validation(target)
+        if validation.failure:
+            msg = validation.error or "semantic validation failed"
             self.safety_manager.request_emergency_stop(msg)
             u.Cli.error(msg)
-            rb = self.safety_manager.rollback(target, stash_ref)
-            if rb.failure:
-                u.Cli.error(rb.error or "rollback failed")
+            rollback = self.safety_manager.rollback(target, stash_ref)
+            if rollback.failure:
+                u.Cli.error(rollback.error or "rollback failed")
             results.append(self._error_result(target, msg))
             return
-        cl = self.safety_manager.clear_checkpoint(
+        cleared = self.safety_manager.clear_checkpoint(
             keep=[
                 result.file_path
                 for result in results
                 if result.success and result.modified
             ],
         )
-        if cl.failure:
-            u.Cli.error(cl.error or "checkpoint clear failed")
-
-    # ── Project refactoring ────────────────────────────────────────
+        if cleared.failure:
+            u.Cli.error(cleared.error or "checkpoint clear failed")
 
     def refactor_project(
         self,
@@ -338,13 +331,15 @@ class FlextInfraRefactorEngineHelpersMixin:
         apply_safety: bool = True,
     ) -> Sequence[m.Infra.Result]:
         """Refactor files under configured project directories."""
-        stash_ref, err = self._try_safety_stash(
-            project_path, apply_safety=apply_safety, dry_run=dry_run
+        stash_ref, error_results = self._try_safety_stash(
+            project_path,
+            apply_safety=apply_safety,
+            dry_run=dry_run,
         )
-        if err is not None:
-            return err
-        collected = u.Infra.collect_engine_project_files(
-            self.settings,
+        if error_results is not None:
+            return error_results
+        collected = FlextInfraUtilitiesRefactorEngine.collect_engine_project_files(
+            self.loader.settings,
             project_path,
             pattern=pattern,
         )
@@ -368,8 +363,6 @@ class FlextInfraRefactorEngineHelpersMixin:
             )
         return results
 
-    # ── Workspace refactoring ──────────────────────────────────────
-
     def refactor_workspace(
         self,
         workspace_root: Path,
@@ -383,43 +376,37 @@ class FlextInfraRefactorEngineHelpersMixin:
         if not root.exists() or not root.is_dir():
             u.Cli.error(f"Invalid workspace root: {workspace_root}")
             return []
-        scan_dirs = frozenset(
-            m.Infra.EngineConfig.model_validate(
-                cli.rules_resolve_scope(
-                    self.settings,
-                    scope_key=c.Infra.RK_REFACTOR_ENGINE,
-                    allowed_keys=c.Infra.ENGINE_CONFIG_KEYS,
-                )
-            ).project_scan_dirs
-        )
-        projects = u.Infra.discover_project_roots(
-            workspace_root=root, scan_dirs=scan_dirs or None
+        projects = FlextInfraUtilitiesRefactorEngine.discover_engine_projects(
+            self.loader.settings,
+            root,
         )
         if not projects:
             u.Cli.error(f"No projects discovered under: {workspace_root}")
             return []
         u.Cli.info(f"Discovered {len(projects)} projects in workspace")
-        stash_ref, err = self._try_safety_stash(
-            root, apply_safety=apply_safety, dry_run=dry_run
+        stash_ref, error_results = self._try_safety_stash(
+            root,
+            apply_safety=apply_safety,
+            dry_run=dry_run,
         )
-        if err is not None:
-            return err
+        if error_results is not None:
+            return error_results
         results: MutableSequence[m.Infra.Result] = []
         processed: MutableSequence[str] = []
-        for proj in projects:
+        for project in projects:
             if apply_safety and self.safety_manager.is_emergency_stop_requested():
                 break
-            u.Infra.refactor_header(f"Project: {proj}")
+            u.Infra.refactor_header(f"Project: {project}")
             results.extend(
                 self.refactor_project(
-                    proj,
+                    project,
                     dry_run=dry_run,
                     pattern=pattern,
                     apply_safety=False,
                 )
             )
             if apply_safety and not dry_run:
-                processed.append(str(proj))
+                processed.append(str(project))
         results.extend(u.Infra.run_rope_post_hooks(root, dry_run=dry_run))
         if apply_safety and not dry_run:
             self._finalize_safety(
@@ -431,6 +418,4 @@ class FlextInfraRefactorEngineHelpersMixin:
         return results
 
 
-__all__: list[str] = [
-    "FlextInfraRefactorEngineHelpersMixin",
-]
+__all__: list[str] = ["FlextInfraRefactorOrchestrator"]

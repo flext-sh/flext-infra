@@ -18,7 +18,7 @@ class TestsFlextInfraUtilitiesFormattingRunRuffFix:
         target = tmp_path / c.Infra.INIT_PY
         target.write_text("x=1\n", encoding="utf-8")
 
-        u.Infra.run_ruff_fix(target, include_format=False, quiet=True)
+        u.Infra.run_ruff_fix(target, quiet=True)
 
         assert target.read_text(encoding="utf-8") == "x = 1\n"
 

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from collections.abc import (
     Mapping,
+    MutableSequence,
     Sequence,
 )
 from pathlib import Path
@@ -23,6 +24,14 @@ if TYPE_CHECKING:
 
 class FlextInfraProtocolsRope(Protocol):
     """Application contracts layered around the concrete Rope boundary."""
+
+    @runtime_checkable
+    class ChangeTracker(Protocol):
+        """Transformer contract for in-memory source rewrites with change tracking."""
+
+        changes: MutableSequence[str]
+
+        def apply_to_source(self, source: str) -> t.Infra.TransformResult: ...
 
     @runtime_checkable
     class RopeScopeDsl(Protocol):

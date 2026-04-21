@@ -36,6 +36,7 @@ class FlextInfraUtilitiesIteration:
         c.Infra.DIR_EXAMPLES,
         c.Infra.DIR_SCRIPTS,
     })
+    _DEPENDENCY_GROUPS_KEY = "dependency-groups"
 
     @staticmethod
     def dep_name(requirement: str) -> str | None:
@@ -89,19 +90,109 @@ class FlextInfraUtilitiesIteration:
         cls,
         payload: t.Infra.ContainerDict,
     ) -> t.StrSequence:
-        """Return normalized dependency names declared in ``[project].dependencies``."""
+        """Return normalized dependency names across supported dependency tables."""
+        names: set[str] = set()
+        cls._append_project_dependency_names(payload=payload, names=names)
+        cls._append_dependency_group_names(payload=payload, names=names)
+        cls._append_poetry_dependency_names(payload=payload, names=names)
+        return tuple(sorted(names))
+
+    @classmethod
+    def _append_project_dependency_names(
+        cls,
+        *,
+        payload: t.Infra.ContainerDict,
+        names: set[str],
+    ) -> None:
         project = payload.get(c.Infra.PROJECT)
         if not isinstance(project, Mapping):
-            return ()
-        dependencies = project.get(c.Infra.DEPENDENCIES)
-        if not isinstance(dependencies, list):
-            return ()
-        names = {
-            dep_name
-            for item in dependencies
-            if (dep_name := cls.dep_name(str(item))) is not None
-        }
-        return tuple(sorted(names))
+            return
+        cls._append_requirement_names(
+            raw_requirements=project.get(c.Infra.DEPENDENCIES),
+            names=names,
+        )
+        optional_dependencies = project.get(c.Infra.OPTIONAL_DEPENDENCIES)
+        if not isinstance(optional_dependencies, Mapping):
+            return
+        for raw_requirements in optional_dependencies.values():
+            cls._append_requirement_names(
+                raw_requirements=raw_requirements,
+                names=names,
+            )
+
+    @classmethod
+    def _append_dependency_group_names(
+        cls,
+        *,
+        payload: t.Infra.ContainerDict,
+        names: set[str],
+    ) -> None:
+        dependency_groups = payload.get(cls._DEPENDENCY_GROUPS_KEY)
+        if not isinstance(dependency_groups, Mapping):
+            return
+        for raw_requirements in dependency_groups.values():
+            cls._append_requirement_names(
+                raw_requirements=raw_requirements,
+                names=names,
+            )
+
+    @classmethod
+    def _append_poetry_dependency_names(
+        cls,
+        *,
+        payload: t.Infra.ContainerDict,
+        names: set[str],
+    ) -> None:
+        tool = payload.get(c.Infra.TOOL)
+        if not isinstance(tool, Mapping):
+            return
+        poetry = tool.get(c.Infra.POETRY)
+        if not isinstance(poetry, Mapping):
+            return
+        cls._append_mapping_dependency_names(
+            raw_mapping=poetry.get(c.Infra.DEPENDENCIES),
+            names=names,
+        )
+        poetry_groups = poetry.get(c.Infra.GROUP)
+        if not isinstance(poetry_groups, Mapping):
+            return
+        for raw_group in poetry_groups.values():
+            if not isinstance(raw_group, Mapping):
+                continue
+            cls._append_mapping_dependency_names(
+                raw_mapping=raw_group.get(c.Infra.DEPENDENCIES),
+                names=names,
+            )
+
+    @classmethod
+    def _append_requirement_names(
+        cls,
+        *,
+        raw_requirements: object,
+        names: set[str],
+    ) -> None:
+        if not isinstance(raw_requirements, list):
+            return
+        for raw_requirement in raw_requirements:
+            dependency_name = cls.dep_name(str(raw_requirement))
+            if dependency_name is None:
+                continue
+            names.add(dependency_name)
+
+    @classmethod
+    def _append_mapping_dependency_names(
+        cls,
+        *,
+        raw_mapping: object,
+        names: set[str],
+    ) -> None:
+        if not isinstance(raw_mapping, Mapping):
+            return
+        for raw_name in raw_mapping:
+            dependency_name = cls.dep_name(str(raw_name))
+            if dependency_name is None or dependency_name == "python":
+                continue
+            names.add(dependency_name)
 
     @classmethod
     def local_dependency_names_from_payload(
@@ -113,7 +204,7 @@ class FlextInfraUtilitiesIteration:
         """Return workspace-local dependency names from one payload."""
         declared = set(cls.declared_dependency_names_from_payload(payload))
         if not workspace_project_names:
-            return tuple(sorted(declared))
+            return ()
         workspace_names = {str(name) for name in workspace_project_names}
         return tuple(sorted(name for name in declared if name in workspace_names))
 

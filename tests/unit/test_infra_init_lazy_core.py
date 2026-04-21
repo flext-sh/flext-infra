@@ -149,14 +149,14 @@ class TestFlextInfraInitLazyLoading:
         service = flext_infra.FlextInfraUtilitiesVersioning
         assert service is not None
 
-    def test_lazy_import_path_resolver(self) -> None:
-        """Test lazy loading of FlextInfraPathResolver."""
-        resolver = flext_infra.FlextInfraUtilitiesPaths
+    def test_lazy_import_workspace_root_resolver(self) -> None:
+        """Test workspace root resolution stays reachable through the utility facade."""
+        resolver = flext_infra.u.Infra.resolve_workspace_root_or_cwd
         assert resolver is not None
 
-    def test_lazy_import_reporting_service(self) -> None:
-        """Test lazy loading of FlextInfraReportingService."""
-        service = flext_infra.FlextInfraUtilitiesReporting
+    def test_lazy_import_reporting_helpers(self) -> None:
+        """Test report path helpers stay reachable through the CLI utility facade."""
+        service = flext_infra.u.Cli.get_report_dir
         assert service is not None
 
     def test_lazy_import_rope_workspace_service(self) -> None:

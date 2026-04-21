@@ -9,8 +9,8 @@ from collections.abc import Mapping, MutableSequence
 from flext_infra import c, t, u
 
 
-class FlextInfraRefactorEngineLegacyMixin:
-    """Execute legacy-removal rules directly from declarative settings."""
+class FlextInfraRefactorLegacyTextOps:
+    """Execute legacy-removal text operations directly from declarative settings."""
 
     def _apply_legacy_removal(
         self,
@@ -178,4 +178,4 @@ class FlextInfraRefactorEngineLegacyMixin:
         return (bypass_re.sub(r"\g<primary>\n", source), changes)
 
 
-__all__: list[str] = ["FlextInfraRefactorEngineLegacyMixin"]
+__all__: list[str] = ["FlextInfraRefactorLegacyTextOps"]

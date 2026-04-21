@@ -40,7 +40,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         if not py_files:
             return
         with FlextInfraUtilitiesRopeCore.open_project(
-            FlextInfraUtilitiesRefactorNamespaceCommon._shared_workspace_root(
+            FlextInfraUtilitiesRefactorNamespaceCommon.shared_workspace_root(
                 py_files=py_files
             ),
         ) as rope_project:
@@ -99,7 +99,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         if not py_files:
             return
         workspace_root = (
-            FlextInfraUtilitiesRefactorNamespaceCommon._shared_workspace_root(
+            FlextInfraUtilitiesRefactorNamespaceCommon.shared_workspace_root(
                 py_files=py_files
             )
         )
@@ -225,17 +225,15 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         kept_source = "\n".join(
             line
             for line in source.splitlines()
-            if FlextInfraUtilitiesRefactorNamespaceCommon._compat_assignment_target(
+            if FlextInfraUtilitiesRefactorNamespaceCommon.compat_assignment_target(
                 line,
                 alias_map=alias_map,
             )
             is None
         )
-        rewritten = (
-            FlextInfraUtilitiesRefactorNamespaceCommon._apply_token_replacements(
-                source=kept_source,
-                alias_map=alias_map,
-            )
+        rewritten = FlextInfraUtilitiesRefactorNamespaceCommon.apply_token_replacements(
+            source=kept_source,
+            alias_map=alias_map,
         )
         if rewritten != source:
             _ = FlextInfraUtilitiesProtectedEdit.protected_source_write(
@@ -260,7 +258,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         ranges: MutableSequence[t.Infra.IntPair] = []
         moved: MutableSequence[str] = []
         for name in sorted(names):
-            found = FlextInfraUtilitiesRefactorNamespaceCommon._find_top_level_block(
+            found = FlextInfraUtilitiesRefactorNamespaceCommon.find_top_level_block(
                 lines=lines,
                 header=f"{header_prefix}{name}",
             )
@@ -272,7 +270,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             moved.append(name)
         if not blocks:
             return None
-        target_file = FlextInfraUtilitiesRefactorNamespaceCommon._canonical_target_file(
+        target_file = FlextInfraUtilitiesRefactorNamespaceCommon.canonical_target_file(
             project_root=project_root,
             source_file=source_file,
             filename=target_filename,
@@ -289,7 +287,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             else f"{c.Infra.FUTURE_ANNOTATIONS}\n"
         )
         target_lines = target_source.splitlines()
-        target_lines = FlextInfraUtilitiesRefactorNamespaceCommon._insert_import_lines(
+        target_lines = FlextInfraUtilitiesRefactorNamespaceCommon.insert_import_lines(
             lines=target_lines,
             imports=required_imports,
         )
@@ -398,7 +396,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                 max_line=min(moved_line_numbers),
             )
         )
-        target_file = FlextInfraUtilitiesRefactorNamespaceCommon._canonical_target_file(
+        target_file = FlextInfraUtilitiesRefactorNamespaceCommon.canonical_target_file(
             project_root=project_root,
             source_file=source_file,
             filename=c.Infra.TYPINGS_PY,
@@ -422,7 +420,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             ]
             if import_line not in target_lines
         ]
-        target_lines = FlextInfraUtilitiesRefactorNamespaceCommon._insert_import_lines(
+        target_lines = FlextInfraUtilitiesRefactorNamespaceCommon.insert_import_lines(
             lines=target_lines,
             imports=missing_imports,
         )

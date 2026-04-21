@@ -68,7 +68,9 @@ class FlextInfraConsolidateGroupsPhase:
                         u.Cli.toml_ensure_table(poetry_group, c.Infra.DEV),
                         c.Infra.DEPENDENCIES,
                     )
-                current_dev_table = poetry_dev_table
+                if not isinstance(poetry_dev_table, Table):
+                    continue
+                current_dev_table: Table = poetry_dev_table
                 for dep_name_raw in old_deps:
                     dep_name = dep_name_raw
                     dep_value = old_deps[dep_name_raw]

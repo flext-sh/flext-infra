@@ -18,7 +18,6 @@ class TestFlextInfraRuntimeDevDependencyDetectorInit:
 
     def test_detector_has_required_services(self) -> None:
         detector = FlextInfraRuntimeDevDependencyDetector()
-        tm.that(detector.reporting is not None, eq=True)
         tm.that(detector.deps is not None, eq=True)
         tm.that(detector.runner is not None, eq=True)
 
