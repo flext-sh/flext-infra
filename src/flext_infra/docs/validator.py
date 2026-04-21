@@ -8,25 +8,15 @@ from collections.abc import (
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import c, m, p, r, s, t, u
+from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, p, r, t, u
 
 
-class FlextInfraDocValidator(s[bool]):
+class FlextInfraDocValidator(FlextInfraProjectSelectionServiceBase[bool]):
     """Validate the governed docs contract for root and FLEXT projects."""
 
-    selected_projects: Annotated[
-        t.StrSequence | None,
-        m.Field(
-            alias="projects",
-            description="Selected projects",
-        ),
-    ] = None
-    docs_output_dir: Annotated[
+    output_dir: Annotated[
         str,
-        m.Field(
-            alias="output_dir",
-            description="Docs output dir",
-        ),
+        m.Field(description="Docs output dir"),
     ] = c.Infra.DEFAULT_DOCS_OUTPUT_DIR
 
     def validate_workspace(
@@ -38,7 +28,7 @@ class FlextInfraDocValidator(s[bool]):
         apply: bool = False,
     ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
         """Validate documentation across the workspace root and governed projects."""
-        return u.Infra.run_scoped(
+        return self.run_scoped_docs(
             value,
             projects=projects,
             output_dir=output_dir,
@@ -54,7 +44,7 @@ class FlextInfraDocValidator(s[bool]):
         result = self.validate_workspace(
             self.workspace_root,
             projects=self.selected_projects,
-            output_dir=self.docs_output_dir,
+            output_dir=self.output_dir,
             apply=self.apply_changes,
         )
         if result.failure:

@@ -14,9 +14,49 @@ from typing import Final
 
 from flext_core import c
 
+from flext_infra import FlextInfraConstantsBase as _Base
+
 
 class FlextInfraConstantsRefactor:
     """Shared constants for refactor engine modules."""
+
+    ENGINE_REGISTRY_FILENAME: Final[str] = "engine-registry.yml"
+    """Canonical registry filename for declarative rule engines."""
+    RK_REFACTOR_ENGINE: Final[str] = "refactor_engine"
+    RK_PROJECT_SCAN_DIRS: Final[str] = "project_scan_dirs"
+    RK_IGNORE_PATTERNS: Final[str] = "ignore_patterns"
+    RK_FILE_EXTENSIONS: Final[str] = "file_extensions"
+    RK_FORBIDDEN_IMPORTS: Final[str] = "forbidden_imports"
+    RK_REDUNDANT_TYPE_TARGETS: Final[str] = "redundant_type_targets"
+    RK_TARGET_MODULES: Final[str] = "target_modules"
+    RK_MODULE_RENAMES: Final[str] = "module_renames"
+    RK_IMPORT_SYMBOL_RENAMES: Final[str] = "import_symbol_renames"
+    RK_SIGNATURE_MIGRATIONS: Final[str] = "signature_migrations"
+    RK_METHOD_ORDER: Final[str] = "method_order"
+    RK_ORDER: Final[str] = "order"
+    RK_TIER0_MODULES: Final[str] = "tier0_modules"
+    RK_CORE_ALIASES: Final[str] = "core_aliases"
+    RK_CORE_PACKAGE: Final[str] = "core_package"
+    RK_ALIAS_TO_SUBMODULE: Final[str] = "alias_to_submodule"
+    RK_QUALITY_GATES: Final[str] = "quality_gates"
+    RK_EXPECTED_BASE_CHAIN: Final[str] = "expected_base_chain"
+    RK_HELPER_NAME: Final[str] = "helper_name"
+    RK_CONFIDENCE_THRESHOLD: Final[str] = "confidence_threshold"
+    RK_ALLOW_ALIASES: Final[str] = "allow_aliases"
+    RK_ALLOW_TARGET_SUFFIXES: Final[str] = "allow_target_suffixes"
+    RK_INCLUDE_RETURN_ANNOTATIONS: Final[str] = "include_return_annotations"
+    RK_TARGET_NAME: Final[str] = "target_name"
+    RK_IMPORTS_RESOLVE: Final[str] = "imports_resolve"
+    RK_MRO_VALID: Final[str] = "mro_valid"
+    RK_LSP_DIAGNOSTICS_CLEAN: Final[str] = "lsp_diagnostics_clean"
+    CLASS_NESTING_MAPPINGS_FILENAME: Final[str] = "class-nesting-mappings.yml"
+    CLASS_NESTING_POLICY_FILENAME: Final[str] = "class-policy-v2.yml"
+    ENGINE_CONFIG_KEYS: Final[tuple[str, ...]] = (
+        RK_PROJECT_SCAN_DIRS,
+        RK_IGNORE_PATTERNS,
+        RK_FILE_EXTENSIONS,
+    )
+    """Allowed keys under the ``refactor_engine`` config scope."""
 
     RUNTIME_ALIAS_NAMES: Final[frozenset[str]] = c.RUNTIME_ALIAS_NAMES
     NAMESPACE_SOURCE_UNIVERSAL_ALIASES: Final[frozenset[str]] = frozenset(
@@ -49,6 +89,27 @@ class FlextInfraConstantsRefactor:
         "remove_redundant_casts",
         "fix_silent_failure_sentinels",
     })
+    MRO_MIGRATION_FIX_ACTIONS: Final[frozenset[str]] = frozenset({
+        "migrate_to_class_mro",
+    })
+    MRO_REDUNDANCY_FIX_ACTIONS: Final[frozenset[str]] = frozenset({
+        "remove_inheritance_keep_class",
+        "fix_mro_redeclaration",
+    })
+    PATTERN_GENERIC_FIX_ACTIONS: Final[frozenset[str]] = frozenset({
+        "convert_dict_to_mapping_annotations",
+        "fix_silent_failure_sentinels",
+    })
+    PATTERN_REDUNDANT_CAST_FIX_ACTIONS: Final[frozenset[str]] = frozenset({
+        "remove_redundant_casts",
+    })
+    SYMBOL_PROPAGATION_FIX_ACTIONS: Final[frozenset[str]] = frozenset({
+        "propagate_symbol_renames",
+        "rename_imported_symbols",
+    })
+    SIGNATURE_PROPAGATION_FIX_ACTIONS: Final[frozenset[str]] = frozenset({
+        "propagate_signature_migrations",
+    })
     TYPE_ALIAS_FIX_ACTIONS: Final[frozenset[str]] = frozenset({"unify_typings"})
     TYPING_FIX_ACTIONS: Final[frozenset[str]] = frozenset({
         "replace_object_annotations",
@@ -80,6 +141,118 @@ class FlextInfraConstantsRefactor:
         })
     )
     FUTURE_CHECKS: Final[frozenset[str]] = frozenset({"missing_future_import"})
+
+    @unique
+    class RefactorRuleKind(StrEnum):
+        """Canonical executable text-rule kinds."""
+
+        FUTURE_ANNOTATIONS = "future_annotations"
+        MRO_CLASS_MIGRATION = "mro_class_migration"
+        LEGACY_REMOVAL = "legacy_removal"
+        IMPORT_MODERNIZER = "import_modernizer"
+        CLASS_RECONSTRUCTOR = "class_reconstructor"
+        PATTERN_CORRECTIONS = "pattern_corrections"
+        TYPING_UNIFICATION = "typing_unification"
+        TYPING_ANNOTATION_FIX = "typing_annotation_fix"
+        TIER0_IMPORT_FIX = "tier0_import_fix"
+        SYMBOL_PROPAGATION = "symbol_propagation"
+        SIGNATURE_PROPAGATION = "signature_propagation"
+        MRO_REDUNDANCY = "mro_redundancy"
+
+    @unique
+    class RefactorFileRuleKind(StrEnum):
+        """Canonical executable Rope-backed file-rule kinds."""
+
+        CLASS_NESTING = "class_nesting"
+
+    RULE_MATCHERS_BY_KIND: Final[
+        Mapping[
+            RefactorRuleKind,
+            tuple[
+                tuple[frozenset[str], frozenset[str], frozenset[str], frozenset[str]],
+                ...,
+            ],
+        ]
+    ] = MappingProxyType({
+        RefactorRuleKind.FUTURE_ANNOTATIONS: (
+            (FUTURE_FIX_ACTIONS, FUTURE_CHECKS, frozenset(), frozenset()),
+        ),
+        RefactorRuleKind.MRO_CLASS_MIGRATION: (
+            (MRO_MIGRATION_FIX_ACTIONS, frozenset(), frozenset(), frozenset()),
+        ),
+        RefactorRuleKind.LEGACY_REMOVAL: (
+            (LEGACY_FIX_ACTIONS, frozenset(), frozenset(), frozenset()),
+        ),
+        RefactorRuleKind.IMPORT_MODERNIZER: (
+            (IMPORT_FIX_ACTIONS, frozenset(), frozenset(), frozenset()),
+        ),
+        RefactorRuleKind.CLASS_RECONSTRUCTOR: (
+            (CLASS_FIX_ACTIONS, frozenset(), frozenset(), frozenset()),
+        ),
+        RefactorRuleKind.PATTERN_CORRECTIONS: (
+            (PATTERN_GENERIC_FIX_ACTIONS, frozenset(), frozenset(), frozenset()),
+            (
+                PATTERN_REDUNDANT_CAST_FIX_ACTIONS,
+                frozenset(),
+                frozenset(),
+                frozenset({RK_REDUNDANT_TYPE_TARGETS}),
+            ),
+        ),
+        RefactorRuleKind.TYPING_UNIFICATION: (
+            (TYPE_ALIAS_FIX_ACTIONS, frozenset(), frozenset(), frozenset()),
+        ),
+        RefactorRuleKind.TYPING_ANNOTATION_FIX: (
+            (TYPING_FIX_ACTIONS, frozenset(), frozenset(), frozenset()),
+        ),
+        RefactorRuleKind.TIER0_IMPORT_FIX: (
+            (TIER0_FIX_ACTIONS, frozenset(), frozenset(), frozenset()),
+        ),
+        RefactorRuleKind.SYMBOL_PROPAGATION: (
+            (
+                frozenset({"propagate_symbol_renames"}),
+                frozenset(),
+                frozenset({RK_IMPORT_SYMBOL_RENAMES}),
+                frozenset(),
+            ),
+            (
+                frozenset({"rename_imported_symbols"}),
+                frozenset(),
+                frozenset(),
+                frozenset(),
+            ),
+        ),
+        RefactorRuleKind.SIGNATURE_PROPAGATION: (
+            (
+                SIGNATURE_PROPAGATION_FIX_ACTIONS,
+                frozenset(),
+                frozenset(),
+                frozenset({RK_SIGNATURE_MIGRATIONS}),
+            ),
+        ),
+        RefactorRuleKind.MRO_REDUNDANCY: (
+            (MRO_REDUNDANCY_FIX_ACTIONS, frozenset(), frozenset(), frozenset()),
+        ),
+    })
+    FILE_RULE_MATCHERS_BY_KIND: Final[
+        Mapping[
+            RefactorFileRuleKind,
+            tuple[
+                tuple[frozenset[str], frozenset[str], frozenset[str], frozenset[str]],
+                ...,
+            ],
+        ]
+    ] = MappingProxyType({
+        RefactorFileRuleKind.CLASS_NESTING: (
+            (frozenset({"nest_classes"}), frozenset(), frozenset(), frozenset()),
+        ),
+    })
+    RULE_TABLE_HEADERS: Final[tuple[str, ...]] = (
+        _Base.RK_ID,
+        _Base.NAME,
+        _Base.RK_DESCRIPTION,
+        _Base.RK_ENABLED,
+        _Base.RK_SEVERITY,
+    )
     MRO_TARGETS: Final[frozenset[str]] = frozenset({
         "constants",
         "typings",
@@ -356,17 +529,17 @@ class FlextInfraConstantsRefactor:
 
     # --- Class nesting refactor constants (was: class ClassNesting) ---
     NESTING_COERCE_KEYS: Final[tuple[str, ...]] = (
-        "loose_name",
-        "helper_name",
-        "target_namespace",
-        "target_name",
-        "rewrite_scope",
-        "confidence",
+        _Base.RK_LOOSE_NAME,
+        RK_HELPER_NAME,
+        _Base.RK_TARGET_NAMESPACE,
+        RK_TARGET_NAME,
+        _Base.RK_REWRITE_SCOPE,
+        _Base.RK_CONFIDENCE,
     )
     "Keys to coerce from string to typed values in nesting mappings."
     NESTING_SECTION_KEYS: Final[tuple[str, ...]] = (
-        "class_nesting",
-        "helper_consolidation",
+        _Base.RK_CLASS_NESTING,
+        _Base.RK_HELPER_CONSOLIDATION,
     )
     "Top-level section keys in class nesting YAML configs."
 

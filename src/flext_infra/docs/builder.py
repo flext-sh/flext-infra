@@ -8,26 +8,17 @@ from collections.abc import (
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import c, m, p, r, s, t, u
+from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, p, r, t, u
 
 
-class FlextInfraDocBuilder(s[bool]):
+class FlextInfraDocBuilder(FlextInfraProjectSelectionServiceBase[bool]):
     """Build MkDocs sites for governed FLEXT scopes."""
 
-    selected_projects: Annotated[
-        t.StrSequence | None,
-        m.Field(
-            alias="projects",
-            description="Selected projects",
-        ),
-    ] = None
-    docs_output_dir: Annotated[
+    output_dir: Annotated[
         str,
-        m.Field(
-            alias="output_dir",
-            description="Docs output dir",
-        ),
+        m.Field(description="Docs output dir"),
     ] = c.Infra.DEFAULT_DOCS_OUTPUT_DIR
+
     _runner: p.Cli.CommandRunner = u.PrivateAttr(default_factory=u.Cli)
 
     def build(
@@ -38,7 +29,7 @@ class FlextInfraDocBuilder(s[bool]):
         output_dir: str = c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
     ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
         """Build MkDocs sites across project scopes."""
-        return u.Infra.run_scoped(
+        return self.run_scoped_docs(
             workspace_root,
             projects=projects,
             output_dir=output_dir,
@@ -51,7 +42,7 @@ class FlextInfraDocBuilder(s[bool]):
         result = self.build(
             workspace_root=self.workspace_root,
             projects=self.selected_projects,
-            output_dir=self.docs_output_dir,
+            output_dir=self.output_dir,
         )
         if result.failure:
             return r[bool].fail(result.error or "build failed")

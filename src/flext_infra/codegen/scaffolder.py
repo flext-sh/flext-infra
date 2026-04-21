@@ -16,10 +16,10 @@ from collections.abc import (
 from pathlib import Path
 from typing import override
 
-from flext_infra import FlextInfraServiceBase, c, m, p, r, t, u
+from flext_infra import c, m, p, r, s, t, u
 
 
-class FlextInfraCodegenScaffolder(FlextInfraServiceBase[str]):
+class FlextInfraCodegenScaffolder(s[str]):
     """Generates missing base modules in src/ and tests/ directories."""
 
     @override

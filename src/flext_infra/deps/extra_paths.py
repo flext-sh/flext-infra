@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import override
 
 from flext_infra import (
-    FlextInfraDepsProjectServiceBase,
+    FlextInfraProjectSelectionServiceBase,
     FlextInfraUtilitiesIteration,
     c,
     m,
@@ -26,7 +26,7 @@ from flext_infra import (
 )
 
 
-class FlextInfraExtraPathsManager(FlextInfraDepsProjectServiceBase):
+class FlextInfraExtraPathsManager(FlextInfraProjectSelectionServiceBase[bool]):
     """Manager for synchronizing type-checker search paths from dependencies."""
 
     _tool_config: m.Infra.ToolConfigDocument = u.PrivateAttr()

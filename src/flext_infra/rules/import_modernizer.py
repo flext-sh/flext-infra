@@ -21,6 +21,10 @@ from flext_infra import (
 class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
     """Modernize forbidden imports and map symbols to runtime aliases."""
 
+    RULE_MATCHERS = (
+        (c.Infra.IMPORT_FIX_ACTIONS, frozenset(), frozenset(), frozenset()),
+    )
+
     @override
     def apply(
         self,
@@ -39,7 +43,7 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
         runtime_aliases = set(c.Infra.RUNTIME_ALIAS_NAMES)
         blocked = set(u.Infra.collect_blocked_aliases(source, runtime_aliases))
         blocked.update(u.Infra.collect_shadowed_aliases(source, runtime_aliases))
-        forbidden = self.settings.get("forbidden_imports")
+        forbidden = self.settings.get(c.Infra.RK_FORBIDDEN_IMPORTS)
         if forbidden is None:
             forbidden = [self.settings]
         if not forbidden:

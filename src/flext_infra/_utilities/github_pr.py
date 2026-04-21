@@ -27,7 +27,7 @@ class FlextInfraUtilitiesGithubPr:
     """Mixin for GitHub pull-request execution."""
 
     @classmethod
-    def github_run_workspace_pull_requests(
+    def run_github_workspace_pull_requests(
         cls,
         request: m.Infra.GithubPullRequestWorkspaceRequest,
     ) -> p.Result[m.Infra.GithubPullRequestWorkspaceReport]:
@@ -82,7 +82,7 @@ class FlextInfraUtilitiesGithubPr:
         if context.request.checkpoint:
             cls._github_pr_checkpoint(repo_root, context.request.branch)
         run_result: p.Result[m.Infra.GithubPullRequestOutcome] = (
-            cls.github_run_pull_request(
+            cls._run_github_pull_request_for_repo(
                 repo_root=repo_root,
                 workspace_root=context.workspace_root,
                 request=context.request,
@@ -128,7 +128,24 @@ class FlextInfraUtilitiesGithubPr:
         )
 
     @classmethod
-    def github_run_pull_request(
+    def run_github_pull_request(
+        cls,
+        params: m.Infra.GithubPullRequestRequest,
+    ) -> p.Result[m.Infra.GithubPullRequestOutcome]:
+        """Execute one pull-request command from the canonical single-repo payload."""
+        result = cls._run_github_pull_request_for_repo(
+            repo_root=params.repo_root_path,
+            workspace_root=params.repo_root_path,
+            request=params,
+        )
+        if result.success and result.value.exit_code != 0:
+            return r[m.Infra.GithubPullRequestOutcome].fail(
+                f"PR operation exited with code {result.value.exit_code}",
+            )
+        return result
+
+    @classmethod
+    def _run_github_pull_request_for_repo(
         cls,
         *,
         repo_root: Path,

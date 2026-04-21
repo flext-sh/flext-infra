@@ -13,6 +13,7 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import (
+    FlextInfraUtilitiesBase,
     FlextInfraUtilitiesDocsScope,
     FlextInfraUtilitiesPatterns,
     c,
@@ -25,6 +26,15 @@ from flext_infra import (
 
 class FlextInfraUtilitiesDocs:
     """Documentation-related utility methods exposed via u.Infra."""
+
+    @staticmethod
+    def _selected_project_names(
+        workspace_root: Path,
+        projects: t.StrSequence | None,
+    ) -> list[str]:
+        """Return normalized project filters for docs-scoped operations."""
+        _ = workspace_root
+        return list(FlextInfraUtilitiesBase.normalize_sequence_values(projects) or ())
 
     @staticmethod
     def _doc_scope(
@@ -95,8 +105,11 @@ class FlextInfraUtilitiesDocs:
                     discovered_result.error or "project discovery failed",
                 )
             discovered = discovered_result.value
-            if projects:
-                selected_names = [name.strip() for name in projects if name.strip()]
+            selected_names = FlextInfraUtilitiesDocs._selected_project_names(
+                resolved_root,
+                projects,
+            )
+            if selected_names:
                 project_by_name: dict[str, m.Infra.ProjectInfo] = {}
                 for project in discovered:
                     project_by_name.setdefault(project.name, project)

@@ -287,6 +287,8 @@ class FlextInfraConstantsBase(
     RK_CONFIDENCE: Final[str] = "confidence"
     RK_FIX_ACTION: Final[str] = "fix_action"
     RK_CURRENT_FILE: Final[str] = "current_file"
+    RK_DESCRIPTION: Final[str] = "description"
+    RK_SEVERITY: Final[str] = "severity"
     RK_VIOLATION_TYPE: Final[str] = "violation_type"
     RK_SUGGESTED_FIX: Final[str] = "suggested_fix"
     RK_HELPER_CONSOLIDATION: Final[str] = "helper_consolidation"
@@ -320,6 +322,8 @@ class FlextInfraConstantsBase(
         RK_CONFIDENCE,
         RK_FIX_ACTION,
         RK_CURRENT_FILE,
+        RK_DESCRIPTION,
+        RK_SEVERITY,
         RK_VIOLATION_TYPE,
         RK_SUGGESTED_FIX,
         RK_HELPER_CONSOLIDATION,

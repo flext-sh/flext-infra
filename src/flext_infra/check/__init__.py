@@ -7,7 +7,6 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 _LAZY_IMPORTS = build_lazy_import_map(
     {
-        ".cli": ("FlextInfraCliCheck",),
         ".workspace_check": ("FlextInfraWorkspaceChecker",),
         ".workspace_check_gates": (
             "FlextInfraGateRegistry",

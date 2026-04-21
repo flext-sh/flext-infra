@@ -16,22 +16,32 @@ from collections.abc import (
     Sequence,
 )
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from flext_cli import u
+from flext_cli import cli, u
 
 from flext_infra import (
     FlextInfraUtilitiesIteration,
     c,
+    m,
     t,
 )
-
-if TYPE_CHECKING:
-    from flext_infra import FlextInfraUtilitiesRefactorRuleLoader
 
 
 class FlextInfraUtilitiesRefactorEngine:
     """Engine file collection and nested-class propagation helpers."""
+
+    @staticmethod
+    def _resolve_engine_config(
+        settings: t.Infra.InfraValue,
+    ) -> m.Infra.EngineConfig:
+        """Resolve the typed refactor engine config through the shared CLI DSL."""
+        return m.Infra.EngineConfig.model_validate(
+            cli.rules_resolve_scope(
+                settings,
+                scope_key=c.Infra.RK_REFACTOR_ENGINE,
+                allowed_keys=c.Infra.ENGINE_CONFIG_KEYS,
+            )
+        )
 
     @staticmethod
     def filter_engine_files(
@@ -60,7 +70,6 @@ class FlextInfraUtilitiesRefactorEngine:
 
     @staticmethod
     def collect_engine_project_files(
-        rule_loader: FlextInfraUtilitiesRefactorRuleLoader,
         settings: t.Infra.InfraValue,
         project: Path,
         *,
@@ -70,8 +79,10 @@ class FlextInfraUtilitiesRefactorEngine:
 
         Returns None on error.
         """
-        loader = rule_loader
-        scan_dirs = frozenset(loader.extract_project_scan_dirs(settings))
+        engine_config = FlextInfraUtilitiesRefactorEngine._resolve_engine_config(
+            settings,
+        )
+        scan_dirs = frozenset(engine_config.project_scan_dirs)
         ir = FlextInfraUtilitiesIteration.iter_python_files(
             workspace_root=project,
             project_roots=[project],
@@ -83,7 +94,8 @@ class FlextInfraUtilitiesRefactorEngine:
         if ir.failure:
             u.Cli.error(ir.error or f"File iteration failed for {project}")
             return None
-        ign, ext = loader.extract_engine_file_filters(settings)
+        ign = engine_config.ignore_patterns
+        ext = engine_config.file_extensions
         return list(
             FlextInfraUtilitiesRefactorEngine.filter_engine_files(
                 ir.value,
@@ -96,21 +108,23 @@ class FlextInfraUtilitiesRefactorEngine:
 
     @staticmethod
     def collect_engine_workspace_files(
-        rule_loader: FlextInfraUtilitiesRefactorRuleLoader,
         settings: t.Infra.InfraValue,
         workspace_root: Path,
         *,
         pattern: str = c.Infra.EXT_PYTHON_GLOB,
     ) -> Sequence[Path]:
         """Collect all candidate files under workspace projects."""
-        loader = rule_loader
         root = workspace_root.resolve()
-        scan_dirs = frozenset(loader.extract_project_scan_dirs(settings))
+        engine_config = FlextInfraUtilitiesRefactorEngine._resolve_engine_config(
+            settings,
+        )
+        scan_dirs = frozenset(engine_config.project_scan_dirs)
         projects = FlextInfraUtilitiesIteration.discover_project_roots(
             workspace_root=root,
             scan_dirs=scan_dirs or None,
         )
-        ign, ext = loader.extract_engine_file_filters(settings)
+        ign = engine_config.ignore_patterns
+        ext = engine_config.file_extensions
         ignore_patterns = {str(i) for i in ign}
         allowed_extensions = {str(i) for i in ext}
         all_files: MutableSequence[Path] = []

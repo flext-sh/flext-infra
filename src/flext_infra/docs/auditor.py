@@ -10,33 +10,27 @@ from typing import Annotated, override
 
 from flext_infra import (
     FlextInfraDocAuditorMixin,
+    FlextInfraProjectSelectionServiceBase,
     c,
     m,
     p,
     r,
-    s,
     t,
     u,
 )
 
 
-class FlextInfraDocAuditor(s[bool], FlextInfraDocAuditorMixin):
+class FlextInfraDocAuditor(
+    FlextInfraProjectSelectionServiceBase[bool],
+    FlextInfraDocAuditorMixin,
+):
     """Audit governed docs scopes using code-backed and policy-backed checks."""
 
-    selected_projects: Annotated[
-        t.StrSequence | None,
-        m.Field(
-            alias="projects",
-            description="Selected projects",
-        ),
-    ] = None
-    docs_output_dir: Annotated[
+    output_dir: Annotated[
         str,
-        m.Field(
-            alias="output_dir",
-            description="Docs output dir",
-        ),
+        m.Field(description="Docs output dir"),
     ] = c.Infra.DEFAULT_DOCS_OUTPUT_DIR
+
     strict_mode: Annotated[
         bool,
         m.Field(
@@ -85,7 +79,7 @@ class FlextInfraDocAuditor(s[bool], FlextInfraDocAuditorMixin):
     ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
         """Audit root and governed project docs scopes."""
         resolved_params = self._audit_params(workspace_root, params)
-        return u.Infra.run_scoped(
+        return self.run_scoped_docs(
             workspace_root,
             projects=projects,
             output_dir=output_dir,
@@ -168,7 +162,7 @@ class FlextInfraDocAuditor(s[bool], FlextInfraDocAuditorMixin):
         result = self.audit(
             workspace_root=self.workspace_root,
             projects=self.selected_projects,
-            output_dir=self.docs_output_dir,
+            output_dir=self.output_dir,
             params=m.Infra.AuditScopeParams(
                 check="all",
                 strict=self.strict_mode,

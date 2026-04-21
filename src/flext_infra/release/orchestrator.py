@@ -18,9 +18,16 @@ from collections.abc import (
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, p, r, t, u
-
-from .orchestrator_phases import FlextInfraReleaseOrchestratorPhases
+from flext_infra import (
+    FlextInfraProjectSelectionServiceBase,
+    FlextInfraReleaseOrchestratorPhases,
+    c,
+    m,
+    p,
+    r,
+    t,
+    u,
+)
 
 
 class FlextInfraReleaseOrchestrator(

@@ -24,6 +24,10 @@ class FlextInfraRefactorRule:
     The engine handles file I/O and rope project lifecycle.
     """
 
+    RULE_MATCHERS: tuple[
+        tuple[frozenset[str], frozenset[str], frozenset[str], frozenset[str]], ...
+    ] = ()
+
     def __init__(self, settings: Mapping[str, t.Infra.InfraValue]) -> None:
         """Initialize rule metadata from rule settings."""
         self.settings = dict(settings)
@@ -31,12 +35,12 @@ class FlextInfraRefactorRule:
         self.rule_id = str(rule_id)
         name_raw = self.settings.get(c.Infra.NAME, self.rule_id)
         self.name = str(name_raw)
-        description_raw = self.settings.get("description", "")
+        description_raw = self.settings.get(c.Infra.RK_DESCRIPTION, "")
         self.description = description_raw if isinstance(description_raw, str) else ""
         enabled_raw = self.settings.get(c.Infra.RK_ENABLED, True)
         self.enabled = bool(enabled_raw)
         severity_raw = self.settings.get(
-            "severity",
+            c.Infra.RK_SEVERITY,
             c.Infra.SeverityLevel.WARNING,
         )
         self.severity = str(severity_raw)

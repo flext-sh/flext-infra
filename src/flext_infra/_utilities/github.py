@@ -28,7 +28,7 @@ class FlextInfraUtilitiesGithub:
     """Utilities for GitHub automation including PRs and Workflows."""
 
     @classmethod
-    def github_lint_workflows(
+    def lint_github_workflows(
         cls,
         request: m.Infra.GithubWorkflowLintRequest,
     ) -> p.Result[m.Infra.GithubWorkflowLintOutcome]:
@@ -73,7 +73,7 @@ class FlextInfraUtilitiesGithub:
         return r[m.Infra.GithubWorkflowLintOutcome].ok(payload)
 
     @classmethod
-    def github_sync_workflows(
+    def sync_github_workflows(
         cls,
         request: m.Infra.GithubWorkflowSyncRequest,
     ) -> p.Result[m.Infra.GithubWorkflowSyncReport]:

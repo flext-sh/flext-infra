@@ -12,19 +12,17 @@ from typing import Annotated, override
 from flext_infra import (
     FlextInfraBaseMkGenerator,
     FlextInfraBaseMkTemplateEngine,
-    FlextInfraServiceBase,
     c,
     m,
     p,
     r,
+    s,
     t,
     u,
 )
 
 
-class FlextInfraProjectMigrator(
-    FlextInfraServiceBase[Sequence[m.Infra.MigrationResult]]
-):
+class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
     """Migrate projects to standardized base.mk, Makefile, and pyproject structure."""
 
     discovery: Annotated[

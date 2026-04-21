@@ -9,23 +9,26 @@ from collections.abc import (
 )
 from pathlib import Path
 from time import perf_counter
+from typing import ClassVar
 
-from flext_core import FlextUtilities
+from flext_cli import cli
 
 from flext_infra import (
-    FlextInfraConstantsRefactor,
-    FlextInfraModelsRefactor,
-    FlextInfraModelsRefactorGrep,
     FlextInfraRefactorMROImportRewriter,
     FlextInfraRefactorMROMigrationValidator,
-    FlextInfraTypes,
-    FlextInfraUtilitiesRefactorMroScan,
+    c,
+    m,
+    p,
+    r,
+    t,
     u,
 )
 
 
 class FlextInfraRefactorMigrateToClassMRO:
     """Orchestrate scan, migration, rewrite, and validation phases."""
+
+    _DEFAULT_TARGET: ClassVar[str] = "all"
 
     def __init__(self, *, workspace_root: Path) -> None:
         """Create migration service bound to a workspace root."""
@@ -36,14 +39,14 @@ class FlextInfraRefactorMigrateToClassMRO:
         *,
         target: str,
         apply: bool,
-        project_names: FlextInfraTypes.StrSequence | None = None,
-    ) -> FlextInfraModelsRefactorGrep.MROMigrationReport:
+        project_names: t.StrSequence | None = None,
+    ) -> m.Infra.MROMigrationReport:
         """Run scan, transform, rewrite, and validation phases."""
         start_time = perf_counter()
         normalized_target = self._normalize_target(target=target)
         selected_projects = tuple(sorted(set(project_names or ())))
         scan_start = perf_counter()
-        scan_results, files_scanned = FlextInfraUtilitiesRefactorMroScan.scan_workspace(
+        scan_results, files_scanned = u.Infra.scan_workspace(
             workspace_root=self._workspace_root,
             target=normalized_target,
             project_names=project_names,
@@ -82,7 +85,7 @@ class FlextInfraRefactorMigrateToClassMRO:
             )
         validation_duration = perf_counter() - validation_start
         total_duration = perf_counter() - start_time
-        return FlextInfraModelsRefactorGrep.MROMigrationReport(
+        return m.Infra.MROMigrationReport(
             workspace=str(self._workspace_root),
             target=normalized_target,
             selected_projects=selected_projects,
@@ -103,8 +106,24 @@ class FlextInfraRefactorMigrateToClassMRO:
             errors=tuple(errors),
         )
 
+    @classmethod
+    def execute_command(
+        cls,
+        params: m.Infra.RefactorMigrateMroInput,
+    ) -> p.Result[m.Infra.MROMigrationReport]:
+        """Execute MRO migration directly from the canonical refactor payload."""
+        report = cls(workspace_root=params.workspace_path).run(
+            target=params.target or cls._DEFAULT_TARGET,
+            apply=params.apply,
+            project_names=params.project_names,
+        )
+        cli.display_text(cls.render_text(report))
+        if report.errors:
+            return r[m.Infra.MROMigrationReport].fail("MRO migration had errors")
+        return r[m.Infra.MROMigrationReport].ok(report)
+
     @staticmethod
-    def render_text(report: FlextInfraModelsRefactorGrep.MROMigrationReport) -> str:
+    def render_text(report: m.Infra.MROMigrationReport) -> str:
         """Render migration report in CLI-friendly plain text."""
         lines = [
             f"Workspace: {report.workspace}",
@@ -143,7 +162,7 @@ class FlextInfraRefactorMigrateToClassMRO:
         path: Path,
         *,
         dry_run: bool,
-    ) -> Sequence[FlextInfraModelsRefactor.Result]:
+    ) -> Sequence[m.Infra.Result]:
         """Execute MRO migration as a rope post-hook (implements p.Infra.RopePostHook)."""
         try:
             report = cls(workspace_root=path).run(target="all", apply=not dry_run)
@@ -160,9 +179,9 @@ class FlextInfraRefactorMigrateToClassMRO:
     @staticmethod
     def _report_to_results(
         *,
-        report: FlextInfraModelsRefactorGrep.MROMigrationReport,
+        report: m.Infra.MROMigrationReport,
         dry_run: bool,
-    ) -> Sequence[FlextInfraModelsRefactor.Result]:
+    ) -> Sequence[m.Infra.Result]:
         """Convert MRO migration report into rope-compatible Result sequence."""
         per_file_changes: MutableMapping[Path, MutableSequence[str]] = {}
         for migration in report.migrations:
@@ -181,7 +200,7 @@ class FlextInfraRefactorMigrateToClassMRO:
                 f"{action} {rewrite.replacements} consumer references after MRO migration",
             )
         return [
-            FlextInfraModelsRefactor.Result(
+            m.Infra.Result(
                 file_path=file_path,
                 success=True,
                 modified=(not dry_run),
@@ -197,8 +216,8 @@ class FlextInfraRefactorMigrateToClassMRO:
 
     @staticmethod
     def _normalize_target(*, target: str) -> str:
-        value = FlextUtilities.norm_str(target, case="lower")
-        if value in FlextInfraConstantsRefactor.MRO_TARGETS:
+        value = u.norm_str(target, case="lower")
+        if value in c.Infra.MRO_TARGETS:
             return value
         msg = f"unsupported target: {target}"
         raise ValueError(msg)

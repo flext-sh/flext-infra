@@ -4,34 +4,24 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import (
+    Callable,
     Sequence,
 )
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Self, TypeVar, override
+from typing import Annotated, Self, TypeVar, override
 
 from flext_cli import FlextCliSettings
-from flext_core import (
-    FlextProtocols,
-    FlextSettings,
+from flext_core import FlextSettings, s
+
+from flext_infra import (
+    c,
     m,
-    s,
+    p,
     t,
     u,
 )
 
-from flext_infra import (
-    FlextInfraConstantsBase,
-    FlextInfraTypesBase,
-    FlextInfraUtilitiesBase,
-)
-
-if TYPE_CHECKING:
-    from flext_infra import p
-
-TDomainResult = TypeVar(
-    "TDomainResult",
-    bound=FlextProtocols.Base,
-)
+TDomainResult = TypeVar("TDomainResult", bound=t.Cli.ResultValue)
 
 
 class FlextInfraServiceBase(
@@ -53,7 +43,7 @@ class FlextInfraServiceBase(
         return FlextSettings.fetch_global().fetch_namespace("cli", FlextCliSettings)
 
     @classmethod
-    def _runtime_bootstrap_options(cls) -> FlextProtocols.RuntimeBootstrapOptions:
+    def _runtime_bootstrap_options(cls) -> p.RuntimeBootstrapOptions:
         """Bootstrap service runtime using the shared CLI settings namespace."""
         return m.RuntimeBootstrapOptions(settings_type=FlextCliSettings)
 
@@ -71,9 +61,7 @@ class FlextInfraServiceBase(
             alias="apply",
             description="Apply changes",
             json_schema_extra={
-                "typer_param_decls": list(
-                    FlextInfraConstantsBase.CLI_APPLY_OPTION_DECLS
-                )
+                "typer_param_decls": list(c.Infra.CLI_APPLY_OPTION_DECLS)
             },
         ),
     ] = False
@@ -132,7 +120,7 @@ class FlextInfraServiceBase(
     @classmethod
     def _normalize_optional_path(cls, value: str | Path | None) -> Path | None:
         """Resolve optional output paths in one place."""
-        return FlextInfraUtilitiesBase.normalize_optional_path(value)
+        return u.Infra.normalize_optional_path(value)
 
     @property
     def root(self) -> Path:
@@ -149,7 +137,7 @@ class FlextInfraServiceBase(
         selected_projects: t.StrSequence | None,
     ) -> t.StrSequence | None:
         """Normalize repeated project selectors into a compact sequence."""
-        return FlextInfraUtilitiesBase.normalize_sequence_values(selected_projects)
+        return u.Infra.normalize_sequence_values(selected_projects)
 
     def selected_project_dirs(
         self,
@@ -161,7 +149,7 @@ class FlextInfraServiceBase(
             return None
         return [self.root / name for name in names]
 
-    def command_payload(self) -> FlextInfraTypesBase.ContainerOverrides:
+    def command_payload(self) -> t.Infra.ContainerOverrides:
         """Return the normalized shared command payload once."""
         payload: dict[str, t.Container] = {
             "workspace_root": self.workspace_root,
@@ -214,6 +202,25 @@ class FlextInfraProjectSelectionServiceBase(
     def project_dirs(self) -> Sequence[Path] | None:
         """Resolve selected project directories relative to the workspace root."""
         return self.selected_project_dirs(self.selected_projects)
+
+    def run_scoped_docs(
+        self,
+        workspace_root: Path,
+        *,
+        output_dir: str,
+        handler: Callable[
+            [m.Infra.DocScope],
+            m.Infra.DocsPhaseReport,
+        ],
+        projects: t.StrSequence | None = None,
+    ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
+        """Run one docs phase across the resolved governed scopes."""
+        return u.Infra.run_scoped(
+            workspace_root,
+            projects=self.selected_projects if projects is None else projects,
+            output_dir=output_dir,
+            handler=handler,
+        )
 
 
 s = FlextInfraServiceBase

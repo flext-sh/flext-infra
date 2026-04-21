@@ -14,7 +14,6 @@ from tomlkit.items import AoT, Table
 
 from flext_infra import (
     FlextInfraConsolidateGroupsPhase,
-    FlextInfraDepsProjectServiceBase,
     FlextInfraEnsureCoverageConfigPhase,
     FlextInfraEnsureFormattingToolingPhase,
     FlextInfraEnsureMypyConfigPhase,
@@ -27,7 +26,7 @@ from flext_infra import (
     FlextInfraExtraPathsManager,
     FlextInfraInjectCommentsPhase,
     FlextInfraProjectClassifier,
-    FlextInfraUtilitiesIteration,
+    FlextInfraProjectSelectionServiceBase,
     c,
     m,
     p,
@@ -37,7 +36,7 @@ from flext_infra import (
 )
 
 
-class FlextInfraPyprojectModernizer(FlextInfraDepsProjectServiceBase):
+class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool]):
     """Modernize all workspace pyproject.toml files."""
 
     audit: Annotated[
@@ -417,9 +416,7 @@ class FlextInfraPyprojectModernizer(FlextInfraDepsProjectServiceBase):
             return 2
         root_state = root_state_result.value
         canonical_dev: t.StrSequence = t.Infra.STR_SEQ_ADAPTER.validate_python(
-            FlextInfraUtilitiesIteration.canonical_dev_dependencies_from_payload(
-                root_state.payload
-            ),
+            u.Infra.canonical_dev_dependencies_from_payload(root_state.payload),
         )
         violations: MutableMapping[str, t.StrSequence] = {}
         document_states: MutableSequence[m.Infra.PyprojectDocumentState] = []

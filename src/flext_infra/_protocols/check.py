@@ -15,20 +15,18 @@ if TYPE_CHECKING:
     from flext_infra import m
 
 
-class WorkspaceLoopOutcome(Protocol):
-    """Public structural view of the workspace gate loop outcome."""
-
-    results: tuple[m.Infra.ProjectResult, ...]
-    failed: int
-    skipped: int
-    total_elapsed: float
-
-
 class FlextInfraProtocolsCheck(Protocol):
     """Check-domain protocol definitions."""
+
+    class WorkspaceLoopOutcome(Protocol):
+        """Public structural view of the workspace gate loop outcome."""
+
+        results: tuple[m.Infra.ProjectResult, ...]
+        failed: int
+        skipped: int
+        total_elapsed: float
 
 
 __all__: list[str] = [
     "FlextInfraProtocolsCheck",
-    "WorkspaceLoopOutcome",
 ]

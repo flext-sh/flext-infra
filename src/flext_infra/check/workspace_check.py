@@ -14,7 +14,6 @@ from typing import override
 from flext_infra import (
     FlextInfraGateRegistry,
     FlextInfraWorkspaceCheckGatesMixin,
-    WorkspaceLoopOutcome,
     c,
     m,
     p,
@@ -81,13 +80,15 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
 
     @override
     def execute(self) -> p.Result[bool]:
-        return r[bool].fail("Use run() or run_projects() directly")
+        return r[bool].fail("Use execute_command() directly")
 
-    def run_command(
-        self,
+    @classmethod
+    def execute_command(
+        cls,
         params: m.Infra.RunCommand,
     ) -> p.Result[bool]:
         """Execute quality gates from the canonical check command payload."""
+        checker = cls(workspace_root=params.workspace_path)
         project_names = params.project_names or []
         if not project_names:
             return r[bool].fail("no projects specified")
@@ -100,7 +101,7 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
             ruff_args=tuple(self.parse_tool_args(params.ruff_args)),
             pyright_args=tuple(self.parse_tool_args(params.pyright_args)),
         )
-        run_result = self.run_projects(
+        run_result = checker.run_projects(
             projects=project_names,
             gates=gates,
             reports_dir=params.reports_dir_path,
@@ -141,7 +142,7 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
     def _write_reports_and_summary(
         resolved_gates: t.StrSequence,
         report_base: Path,
-        outcome: WorkspaceLoopOutcome,
+        outcome: p.Infra.WorkspaceLoopOutcome,
     ) -> p.Result[Sequence[m.Infra.ProjectResult]]:
         """Write markdown/SARIF reports and print summary to output."""
         results = outcome.results

@@ -11,7 +11,6 @@ from typing import Annotated, ClassVar, override
 
 from flext_infra import (
     FlextInfraRopeWorkspace,
-    FlextInfraUtilitiesProtectedEdit,
     c,
     m,
     p,
@@ -247,7 +246,7 @@ class FlextInfraCodegenConsolidator(s[str]):
         def _restore_edit() -> None:
             resource.write(backup)
 
-        ok, report = FlextInfraUtilitiesProtectedEdit.protected_file_edit(
+        ok, report = u.Infra.protected_file_edit(
             py_file,
             workspace=workspace,
             before_source=backup,

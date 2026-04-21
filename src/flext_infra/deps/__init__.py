@@ -13,7 +13,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
     (".phases",),
     build_lazy_import_map(
         {
-            ".cli": ("FlextInfraCliDeps",),
             ".detection": ("FlextInfraDependencyDetectionService",),
             ".detection_analysis": ("FlextInfraDependencyDetectionAnalysis",),
             ".detector": ("FlextInfraRuntimeDevDependencyDetector",),
@@ -37,10 +36,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".phases.ensure_pytest": ("FlextInfraEnsurePytestConfigPhase",),
             ".phases.ensure_ruff": ("FlextInfraEnsureRuffConfigPhase",),
             ".phases.inject_comments": ("FlextInfraInjectCommentsPhase",),
-            ".service_base": (
-                "FlextInfraDepsProjectServiceBase",
-                "FlextInfraDepsServiceBase",
-            ),
         },
     ),
     exclude_names=(

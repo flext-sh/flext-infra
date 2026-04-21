@@ -15,10 +15,10 @@ from typing import override
 
 import tomlkit
 
-from flext_infra import FlextInfraServiceBase, c, p, r, t, u
+from flext_infra import c, p, r, s, t, u
 
 
-class FlextInfraCodegenPyprojectKeys(FlextInfraServiceBase[bool]):
+class FlextInfraCodegenPyprojectKeys(s[bool]):
     """Ensure every workspace project has standardized ``[tool.flext.*]`` tables.
 
     Reads each ``pyproject.toml`` via ``tomlkit`` (round-trip preserving),

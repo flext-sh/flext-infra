@@ -8,25 +8,15 @@ from collections.abc import (
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import c, m, p, r, s, t, u
+from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, p, r, t, u
 
 
-class FlextInfraDocGenerator(s[bool]):
+class FlextInfraDocGenerator(FlextInfraProjectSelectionServiceBase[bool]):
     """Generate managed docs artifacts from package exports and docstrings."""
 
-    selected_projects: Annotated[
-        t.StrSequence | None,
-        m.Field(
-            alias="projects",
-            description="Selected projects",
-        ),
-    ] = None
-    docs_output_dir: Annotated[
+    output_dir: Annotated[
         str,
-        m.Field(
-            alias="output_dir",
-            description="Docs output dir",
-        ),
+        m.Field(description="Docs output dir"),
     ] = c.Infra.DEFAULT_DOCS_OUTPUT_DIR
 
     def generate(
@@ -38,7 +28,7 @@ class FlextInfraDocGenerator(s[bool]):
         apply: bool = False,
     ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
         """Generate docs across the workspace root and governed FLEXT projects."""
-        return u.Infra.run_scoped(
+        return self.run_scoped_docs(
             workspace_root,
             projects=projects,
             output_dir=output_dir,
@@ -56,7 +46,7 @@ class FlextInfraDocGenerator(s[bool]):
         result = self.generate(
             workspace_root=self.workspace_root,
             projects=self.selected_projects,
-            output_dir=self.docs_output_dir,
+            output_dir=self.output_dir,
             apply=self.apply_changes,
         )
         if result.failure:

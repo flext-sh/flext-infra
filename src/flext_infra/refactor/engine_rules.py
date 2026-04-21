@@ -28,6 +28,7 @@ from flext_infra import (
     FlextInfraTransformerTier0ImportFixer,
     c,
     m,
+    p,
     t,
     u,
 )
@@ -36,6 +37,9 @@ from flext_infra import (
 class FlextInfraRefactorMRORedundancyChecker(FlextInfraGenericTransformerRule):
     """Detect and fix nested classes inheriting from their parent namespace."""
 
+    RULE_MATCHERS = (
+        (c.Infra.MRO_REDUNDANCY_FIX_ACTIONS, frozenset(), frozenset(), frozenset()),
+    )
     TRANSFORMER_CLASS: type[p.Infra.ChangeTracker] = FlextInfraRefactorMRORemover
 
 
@@ -68,24 +72,43 @@ class _RopeTextRuleBridge(FlextInfraRefactorRule):
 class FlextInfraRefactorLegacyRemovalTextRule(_RopeTextRuleBridge):
     """Rope-based legacy-removal rule via text engine."""
 
+    RULE_MATCHERS = (
+        (c.Infra.LEGACY_FIX_ACTIONS, frozenset(), frozenset(), frozenset()),
+    )
     _ROPE_RULE_CLS = FlextInfraRefactorLegacyRemovalRule
 
 
 class FlextInfraRefactorPatternCorrectionsTextRule(_RopeTextRuleBridge):
     """Rope-based pattern-corrections rule via text engine."""
 
+    RULE_MATCHERS = (
+        (c.Infra.PATTERN_GENERIC_FIX_ACTIONS, frozenset(), frozenset(), frozenset()),
+        (
+            c.Infra.PATTERN_REDUNDANT_CAST_FIX_ACTIONS,
+            frozenset(),
+            frozenset(),
+            frozenset({c.Infra.RK_REDUNDANT_TYPE_TARGETS}),
+        ),
+    )
     _ROPE_RULE_CLS = FlextInfraRefactorPatternCorrectionsRule
 
 
 class FlextInfraRefactorMROClassMigrationTextRule(_RopeTextRuleBridge):
     """Rope-based MRO class-migration rule via text engine."""
 
+    RULE_MATCHERS = (
+        (c.Infra.MRO_MIGRATION_FIX_ACTIONS, frozenset(), frozenset(), frozenset()),
+    )
     _ROPE_RULE_CLS = FlextInfraRefactorMROClassMigrationRule
     _NEEDS_CONFIG = False
 
 
 class FlextInfraRefactorTypingUnificationRule(FlextInfraRefactorRule):
     """Unify duplicate type alias definitions into canonical t.* contracts."""
+
+    RULE_MATCHERS = (
+        (c.Infra.TYPE_ALIAS_FIX_ACTIONS, frozenset(), frozenset(), frozenset()),
+    )
 
     @override
     def apply(
@@ -102,6 +125,10 @@ class FlextInfraRefactorTypingUnificationRule(FlextInfraRefactorRule):
 
 class FlextInfraRefactorTypingAnnotationFixRule(FlextInfraRefactorRule):
     """Replace legacy typing annotations with canonical t.* contracts."""
+
+    RULE_MATCHERS = (
+        (c.Infra.TYPING_FIX_ACTIONS, frozenset(), frozenset(), frozenset()),
+    )
 
     @override
     def apply(
@@ -152,6 +179,10 @@ class FlextInfraRefactorTypingAnnotationFixRule(FlextInfraRefactorRule):
 class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
     """Enforce tier-0 import conventions via rope-based transformation."""
 
+    RULE_MATCHERS = (
+        (c.Infra.TIER0_FIX_ACTIONS, frozenset(), frozenset(), frozenset()),
+    )
+
     @override
     def apply(
         self,
@@ -180,7 +211,7 @@ class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
         )
 
     def _tier0_modules(self) -> tuple[str, ...]:
-        value = self.settings.get("tier0_modules", [])
+        value = self.settings.get(c.Infra.RK_TIER0_MODULES, [])
         if not isinstance(value, list):
             return (
                 c.Infra.CONSTANTS_PY,
@@ -190,16 +221,18 @@ class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
         return tuple(str(item) for item in value)
 
     def _core_aliases(self) -> tuple[str, ...]:
-        value = self.settings.get("core_aliases", [])
+        value = self.settings.get(c.Infra.RK_CORE_ALIASES, [])
         if not isinstance(value, list):
             return tuple(c.Infra.NAMESPACE_SOURCE_UNIVERSAL_ALIASES)
         return tuple(str(item) for item in value)
 
     def _core_package(self) -> str:
-        return str(self.settings.get("core_package", c.Infra.PKG_CORE_UNDERSCORE))
+        return str(
+            self.settings.get(c.Infra.RK_CORE_PACKAGE, c.Infra.PKG_CORE_UNDERSCORE)
+        )
 
     def _alias_to_submodule(self) -> t.StrMapping:
-        value = self.settings.get("alias_to_submodule", {})
+        value = self.settings.get(c.Infra.RK_ALIAS_TO_SUBMODULE, {})
         mapping_value = u.Cli.json_as_mapping(value)
         if not mapping_value:
             return dict[str, str]()
@@ -208,6 +241,21 @@ class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
 
 class FlextInfraRefactorSymbolPropagationRule(FlextInfraRefactorRule):
     """Apply declarative module/symbol renames for workspace-wide propagation."""
+
+    RULE_MATCHERS = (
+        (
+            frozenset({"propagate_symbol_renames"}),
+            frozenset(),
+            frozenset({c.Infra.RK_IMPORT_SYMBOL_RENAMES}),
+            frozenset(),
+        ),
+        (
+            frozenset({"rename_imported_symbols"}),
+            frozenset(),
+            frozenset(),
+            frozenset(),
+        ),
+    )
 
     @override
     def apply(
@@ -218,16 +266,18 @@ class FlextInfraRefactorSymbolPropagationRule(FlextInfraRefactorRule):
         typed_cfg: Mapping[str, t.Infra.InfraValue] = (
             t.Infra.INFRA_MAPPING_ADAPTER.validate_python(self.settings)
         )
-        target_modules = set(u.Infra.string_list(typed_cfg.get("target_modules", [])))
+        target_modules = set(
+            u.Infra.string_list(typed_cfg.get(c.Infra.RK_TARGET_MODULES, []))
+        )
         try:
             module_renames: t.StrMapping = t.Infra.STR_MAPPING_ADAPTER.validate_python(
-                typed_cfg.get("module_renames", {}),
+                typed_cfg.get(c.Infra.RK_MODULE_RENAMES, {}),
             )
         except c.ValidationError:
             module_renames = dict[str, str]()
         try:
             symbol_renames: t.StrMapping = t.Infra.STR_MAPPING_ADAPTER.validate_python(
-                typed_cfg.get("import_symbol_renames", {}),
+                typed_cfg.get(c.Infra.RK_IMPORT_SYMBOL_RENAMES, {}),
             )
         except c.ValidationError:
             symbol_renames = dict[str, str]()
@@ -244,13 +294,22 @@ class FlextInfraRefactorSymbolPropagationRule(FlextInfraRefactorRule):
 class FlextInfraRefactorSignaturePropagationRule(FlextInfraRefactorRule):
     """Apply declarative signature migrations in a generic, workspace-safe way."""
 
+    RULE_MATCHERS = (
+        (
+            c.Infra.SIGNATURE_PROPAGATION_FIX_ACTIONS,
+            frozenset(),
+            frozenset(),
+            frozenset({c.Infra.RK_SIGNATURE_MIGRATIONS}),
+        ),
+    )
+
     @override
     def apply(
         self,
         source: str,
         _file_path: Path | None = None,
     ) -> t.Infra.TransformResult:
-        migrations_raw = self.settings.get("signature_migrations", [])
+        migrations_raw = self.settings.get(c.Infra.RK_SIGNATURE_MIGRATIONS, [])
         try:
             typed_items = t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(
                 migrations_raw,
@@ -271,6 +330,10 @@ class FlextInfraRefactorSignaturePropagationRule(FlextInfraRefactorRule):
 class FlextInfraRefactorClassReconstructorRule(FlextInfraRefactorRule):
     """Apply class method ordering reconstruction to matching class nodes."""
 
+    RULE_MATCHERS = (
+        (c.Infra.CLASS_FIX_ACTIONS, frozenset(), frozenset(), frozenset()),
+    )
+
     @override
     def apply(
         self,
@@ -278,8 +341,10 @@ class FlextInfraRefactorClassReconstructorRule(FlextInfraRefactorRule):
         _file_path: Path | None = None,
     ) -> t.Infra.TransformResult:
         """Apply method reordering transformer when order settings is available."""
-        order_config_raw = self.settings.get("method_order") or self.settings.get(
-            "order",
+        order_config_raw = self.settings.get(
+            c.Infra.RK_METHOD_ORDER
+        ) or self.settings.get(
+            c.Infra.RK_ORDER,
             [],
         )
         try:

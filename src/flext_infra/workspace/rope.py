@@ -7,7 +7,7 @@ from time import perf_counter
 from types import TracebackType
 from typing import TYPE_CHECKING, Annotated, Self, override
 
-from flext_infra import FlextInfraUtilitiesRopeInventory, c, m, r, s, t, u
+from flext_infra import c, m, r, s, t, u
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -222,7 +222,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         cached = self._module_object_cache.get(cache_key)
         if cached is not None:
             return cached
-        objects = FlextInfraUtilitiesRopeInventory.objects(
+        objects = u.Infra.objects(
             self.rope_project,
             self._resource_for(resolved_file),
             module_entry=self.module(resolved_file),

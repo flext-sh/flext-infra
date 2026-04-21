@@ -1,7 +1,8 @@
 """Rope-based refactor engine for flext_infra.refactor.
 
 Orchestrates declarative rules, safety stash, and violation analysis.
-File collection via ``u.Infra`` utilities, rule subclasses in ``engine_rules``.
+File collection flows through ``u.Infra`` while rule loading is delegated
+directly to the shared ``flext-cli`` rules DSL.
 """
 
 from __future__ import annotations
@@ -13,108 +14,52 @@ from collections.abc import (
     Sequence,
 )
 from pathlib import Path
-from typing import ClassVar
+
+from flext_cli import cli
 
 from flext_infra import (
-    FlextInfraClassNestingRefactorRule,
-    FlextInfraRefactorClassReconstructorRule,
-    FlextInfraRefactorEnsureFutureAnnotationsRule,
-    FlextInfraRefactorImportModernizerRule,
-    FlextInfraRefactorLegacyRemovalTextRule,
-    FlextInfraRefactorMROClassMigrationTextRule,
-    FlextInfraRefactorMRORedundancyChecker,
-    FlextInfraRefactorPatternCorrectionsTextRule,
-    FlextInfraRefactorRule,
-    FlextInfraRefactorRuleDefinitionValidator,
     FlextInfraRefactorSafetyManager,
-    FlextInfraRefactorSignaturePropagationRule,
-    FlextInfraRefactorSymbolPropagationRule,
-    FlextInfraRefactorTier0ImportFixRule,
-    FlextInfraRefactorTypingAnnotationFixRule,
-    FlextInfraRefactorTypingUnificationRule,
-    FlextInfraUtilitiesRefactorRuleLoader,
     c,
+    m,
     p,
     r,
     t,
     u,
 )
 
+from .engine_file import (
+    FlextInfraRefactorEngineFileMixin,
+    _ClassNestingPostCheckGate,
+)
 from .engine_helpers import FlextInfraRefactorEngineHelpersMixin
-
-type _RuleEntry = tuple[frozenset[str], type[FlextInfraRefactorRule]]
+from .engine_text import FlextInfraRefactorEngineTextMixin
 
 
 class FlextInfraRefactorEngine(
+    FlextInfraRefactorEngineTextMixin,
+    FlextInfraRefactorEngineFileMixin,
     FlextInfraRefactorEngineHelpersMixin,
 ):
     """Rope-based refactor engine orchestrating declarative rules."""
-
-    _RULE_ACTION_REGISTRY: ClassVar[Sequence[_RuleEntry]] = [
-        (
-            c.Infra.FUTURE_FIX_ACTIONS | c.Infra.FUTURE_CHECKS,
-            FlextInfraRefactorEnsureFutureAnnotationsRule,
-        ),
-        (c.Infra.LEGACY_FIX_ACTIONS, FlextInfraRefactorLegacyRemovalTextRule),
-        (c.Infra.IMPORT_FIX_ACTIONS, FlextInfraRefactorImportModernizerRule),
-        (c.Infra.CLASS_FIX_ACTIONS, FlextInfraRefactorClassReconstructorRule),
-        (c.Infra.PATTERN_FIX_ACTIONS, FlextInfraRefactorPatternCorrectionsTextRule),
-        (c.Infra.TYPE_ALIAS_FIX_ACTIONS, FlextInfraRefactorTypingUnificationRule),
-        (c.Infra.TYPING_FIX_ACTIONS, FlextInfraRefactorTypingAnnotationFixRule),
-        (c.Infra.TIER0_FIX_ACTIONS, FlextInfraRefactorTier0ImportFixRule),
-        (
-            frozenset({"migrate_to_class_mro"}),
-            FlextInfraRefactorMROClassMigrationTextRule,
-        ),
-        (
-            frozenset({"propagate_signature_migrations"}),
-            FlextInfraRefactorSignaturePropagationRule,
-        ),
-        (c.Infra.PROPAGATION_FIX_ACTIONS, FlextInfraRefactorSymbolPropagationRule),
-        (c.Infra.MRO_FIX_ACTIONS, FlextInfraRefactorMRORedundancyChecker),
-    ]
-    _RULE_ID_FALLBACKS: ClassVar[Sequence[_RuleEntry]] = [
-        (
-            frozenset({"ensure-future", "future-annotations"}),
-            FlextInfraRefactorEnsureFutureAnnotationsRule,
-        ),
-        (
-            frozenset({"legacy", "alias", "deprecated", "wrapper", "bypass"}),
-            FlextInfraRefactorLegacyRemovalTextRule,
-        ),
-        (frozenset({"import", "modernize"}), FlextInfraRefactorImportModernizerRule),
-        (
-            frozenset({"class", "reorder", "method"}),
-            FlextInfraRefactorClassReconstructorRule,
-        ),
-        (
-            frozenset({"redundant-cast", "dict-to-mapping", "container-invariance"}),
-            FlextInfraRefactorPatternCorrectionsTextRule,
-        ),
-        (
-            frozenset({"migrate-to-class-mro"}),
-            FlextInfraRefactorMROClassMigrationTextRule,
-        ),
-        (frozenset({"mro"}), FlextInfraRefactorMRORedundancyChecker),
-        (
-            frozenset({"propagate", "symbol-rename", "rename"}),
-            FlextInfraRefactorSymbolPropagationRule,
-        ),
-    ]
 
     def __init__(self, config_path: Path | None = None) -> None:
         """Initialize engine state and settings file path."""
         self.config_path = config_path or Path(__file__).parent / "settings.yml"
         config_map: Mapping[str, t.Infra.InfraValue] = {}
         self.settings: Mapping[str, t.Infra.InfraValue] = config_map
-        self.rules: MutableSequence[FlextInfraRefactorRule] = []
-        self.file_rules: MutableSequence[FlextInfraClassNestingRefactorRule] = []
+        self.rules: MutableSequence[
+            tuple[c.Infra.RefactorRuleKind, t.Cli.RuleDefinition]
+        ] = []
+        self.file_rules: MutableSequence[
+            tuple[c.Infra.RefactorFileRuleKind, t.Cli.RuleDefinition]
+        ] = []
         self.rule_filters: MutableSequence[str] = []
-        self.rule_loader = FlextInfraUtilitiesRefactorRuleLoader(self.config_path)
-        self.rule_validator = FlextInfraRefactorRuleDefinitionValidator()
         self.safety_manager = FlextInfraRefactorSafetyManager()
-
-    # ── CLI ───────────────────────────────────────────────────────
+        self._class_nesting_config: t.Infra.ContainerDict | None = None
+        self._class_nesting_policy_by_family: (
+            Mapping[str, m.Infra.ClassNestingPolicy] | None
+        ) = None
+        self._class_nesting_gate: _ClassNestingPostCheckGate | None = None
 
     @staticmethod
     def main() -> int:
@@ -138,14 +83,14 @@ class FlextInfraRefactorEngine(
         _ = parser.add_argument("--analysis-output", type=Path)
         _ = parser.add_argument("--config", "-c", type=Path)
         args = parser.parse_args()
-        engine = FlextInfraRefactorEngine(config_path=args.settings)
+        engine = FlextInfraRefactorEngine(config_path=args.config)
         cfg = engine.load_config()
         if not cfg.success:
             u.Cli.error(f"Config error: {cfg.error}")
             return 1
         if args.rules:
             engine.set_rule_filters([
-                s.strip() for s in args.rules.split(",") if s.strip()
+                item.strip() for item in args.rules.split(",") if item.strip()
             ])
         rules_r = engine.load_rules()
         if not rules_r.success:
@@ -158,11 +103,13 @@ class FlextInfraRefactorEngine(
             return engine._run_analyze_violations(args)
         return engine._run_refactor(args)
 
-    # ── Config & rules ────────────────────────────────────────────
-
     def load_config(self) -> p.Result[Mapping[str, t.Infra.InfraValue]]:
         """Load YAML configuration for this engine instance."""
-        result = self.rule_loader.load_config()
+        result = cli.rules_load_scoped_config(
+            self.config_path,
+            scope_key=c.Infra.RK_REFACTOR_ENGINE,
+            allowed_keys=c.Infra.ENGINE_CONFIG_KEYS,
+        )
         if result.success:
             self.settings = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
                 dict(result.value)
@@ -170,25 +117,36 @@ class FlextInfraRefactorEngine(
             u.Cli.info(f"Loaded settings from {self.config_path}")
         return result
 
-    def load_rules(self) -> p.Result[Sequence[FlextInfraRefactorRule]]:
-        """Load and instantiate enabled rules from rules directory."""
-        rr = self.rule_loader.load_rules(
-            self.rule_filters,
-            self.rule_validator,
-            self._build_rule,
-            self._build_file_rules,
-            self._skip_rule_definition,
+    def load_rules(
+        self,
+    ) -> p.Result[Sequence[tuple[c.Infra.RefactorRuleKind, t.Cli.RuleDefinition]]]:
+        """Load enabled declarative rules from the shared CLI DSL."""
+        rr = cli.rules_load_local_definitions(
+            self.config_path,
+            package_rules_dir=Path(__file__).resolve().parent.parent / c.Infra.RK_RULES,
+            rule_filters=self.rule_filters,
+            rule_catalog=c.Infra.RULE_MATCHERS_BY_KIND,
+            file_rule_catalog=c.Infra.FILE_RULE_MATCHERS_BY_KIND,
+            registry_filename=c.Infra.ENGINE_REGISTRY_FILENAME,
+            rules_key=c.Infra.RK_RULES,
+            rule_id_key=c.Infra.RK_ID,
+            enabled_key=c.Infra.RK_ENABLED,
         )
         if rr.failure:
-            return r[Sequence[FlextInfraRefactorRule]].fail(rr.error or "")
+            return r[
+                Sequence[tuple[c.Infra.RefactorRuleKind, t.Cli.RuleDefinition]]
+            ].fail(rr.error or "")
         loaded_rules, loaded_file_rules = rr.value
-        self.rules, self.file_rules = list(loaded_rules), list(loaded_file_rules)
+        self.rules = list(loaded_rules)
+        self.file_rules = list(loaded_file_rules)
         u.Cli.info(f"Loaded {len(self.rules)} rules")
         if self.file_rules:
             u.Cli.info(f"Loaded {len(self.file_rules)} file rules")
         if self.rule_filters:
             u.Cli.info(f"Active filters: {', '.join(self.rule_filters)}")
-        return r[Sequence[FlextInfraRefactorRule]].ok(loaded_rules)
+        return r[Sequence[tuple[c.Infra.RefactorRuleKind, t.Cli.RuleDefinition]]].ok(
+            loaded_rules
+        )
 
     @staticmethod
     def _print_rules_table(rows: Sequence[t.FeatureFlagMapping]) -> None:
@@ -198,7 +156,7 @@ class FlextInfraRefactorEngine(
             u.Cli.error(data_result.error or "failed to normalize rules table")
             return
         settings_result = u.Cli.tables_resolve_config(
-            headers=["id", "name", "description", "enabled", "severity"],
+            headers=list(c.Infra.RULE_TABLE_HEADERS),
         )
         if settings_result.failure:
             u.Cli.error(settings_result.error or "failed to resolve table settings")
@@ -217,57 +175,23 @@ class FlextInfraRefactorEngine(
         """Return loaded rules metadata for listing."""
         return [
             {
-                c.Infra.RK_ID: rl.rule_id,
-                c.Infra.NAME: rl.name,
-                "description": rl.description,
-                c.Infra.RK_ENABLED: rl.enabled,
-                "severity": rl.severity,
+                c.Infra.RK_ID: str(
+                    settings.get(c.Infra.RK_ID, c.Infra.DEFAULT_UNKNOWN)
+                ),
+                c.Infra.NAME: str(
+                    settings.get(
+                        c.Infra.NAME,
+                        settings.get(c.Infra.RK_ID, c.Infra.DEFAULT_UNKNOWN),
+                    )
+                ),
+                c.Infra.RK_DESCRIPTION: str(settings.get(c.Infra.RK_DESCRIPTION, "")),
+                c.Infra.RK_ENABLED: bool(settings.get(c.Infra.RK_ENABLED, True)),
+                c.Infra.RK_SEVERITY: str(
+                    settings.get(c.Infra.RK_SEVERITY, c.Infra.SeverityLevel.WARNING)
+                ),
             }
-            for rl in self.rules
+            for _, settings in self.rules
         ]
 
-    # ── Rule resolution ───────────────────────────────────────────
 
-    def _build_file_rules(self) -> Sequence[FlextInfraClassNestingRefactorRule]:
-        return [FlextInfraClassNestingRefactorRule()]
-
-    @staticmethod
-    def _skip_rule_definition(
-        rule_def: Mapping[str, t.Infra.InfraValue],
-    ) -> bool:
-        """Skip definitions handled by the dedicated file-rule pipeline."""
-        fix_action = u.Cli.json_get_str_key(
-            rule_def,
-            c.Infra.RK_FIX_ACTION,
-            default=u.Cli.json_get_str_key(rule_def, c.Infra.RK_ACTION),
-            case="lower",
-        )
-        return fix_action == "nest_classes"
-
-    def _build_rule(
-        self, rule_def: Mapping[str, t.Infra.InfraValue]
-    ) -> FlextInfraRefactorRule | None:
-        fix_action = u.Cli.json_get_str_key(
-            rule_def,
-            c.Infra.RK_FIX_ACTION,
-            default=u.Cli.json_get_str_key(rule_def, c.Infra.RK_ACTION),
-            case="lower",
-        )
-        check = u.Cli.json_get_str_key(rule_def, c.Infra.VERB_CHECK, case="lower")
-        for action_set, rule_class in self._RULE_ACTION_REGISTRY:
-            if fix_action in action_set or check in action_set:
-                return rule_class(rule_def)
-        rule_id = str(rule_def.get(c.Infra.RK_ID, c.Infra.DEFAULT_UNKNOWN)).lower()
-        if "signature" in rule_id and any(
-            kw in rule_id for kw in ("propagate", "rename")
-        ):
-            return FlextInfraRefactorSignaturePropagationRule(rule_def)
-        for keywords, rule_class in self._RULE_ID_FALLBACKS:
-            if any(kw in rule_id for kw in keywords):
-                return rule_class(rule_def)
-        return None
-
-
-__all__: list[str] = [
-    "FlextInfraRefactorEngine",
-]
+__all__: list[str] = ["FlextInfraRefactorEngine"]

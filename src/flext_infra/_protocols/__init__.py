@@ -8,10 +8,7 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 _LAZY_IMPORTS = build_lazy_import_map(
     {
         ".base": ("FlextInfraProtocolsBase",),
-        ".check": (
-            "FlextInfraProtocolsCheck",
-            "WorkspaceLoopOutcome",
-        ),
+        ".check": ("FlextInfraProtocolsCheck",),
         ".refactor": ("FlextInfraProtocolsRefactor",),
         ".rope": ("FlextInfraProtocolsRope",),
     },

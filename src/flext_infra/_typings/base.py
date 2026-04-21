@@ -18,6 +18,7 @@ from collections.abc import (
 )
 from io import TextIOBase as _TextIOBase
 from pathlib import Path as _Path
+from typing import TYPE_CHECKING
 
 from flext_cli import t
 from flext_core import m
@@ -25,6 +26,9 @@ from jinja2 import Environment as _JinjaEnvironment, Template as _JinjaTemplate
 from tomlkit import TOMLDocument as _TOMLDocument
 from tomlkit.container import Container as _TOMLContainer
 from tomlkit.items import Item as _TOMLItem, Table as _TOMLTable
+
+if TYPE_CHECKING:
+    from flext_infra import p
 
 
 class FlextInfraTypesBase:
@@ -163,6 +167,18 @@ class FlextInfraTypesBase:
     "Read-only validated infra payload sequence."
     type MutableInfraSequence = MutableSequence[t.Cli.JsonValue]
     "Mutable validated infra payload sequence."
+    type RuleDefinition = InfraMapping
+    "Canonical declarative rule definition payload."
+    type RuleDefinitions = Sequence[RuleDefinition]
+    "Read-only sequence of declarative rule definitions."
+    type RuleBuilder = Callable[[RuleDefinition], p.Infra.Rule | None]
+    "Build one runtime rule from one validated rule definition."
+    type FileRuleBuilder = Callable[[], Sequence[p.Infra.FileRule]]
+    "Build the Rope-backed file rules for one engine."
+    type RuleSkipPredicate = Callable[[RuleDefinition], bool]
+    "Predicate deciding whether one rule definition should be skipped."
+    type RuleLoadResult = Pair[Sequence[p.Infra.Rule], Sequence[p.Infra.FileRule]]
+    "Loaded text rules + file rules from one declarative rules directory."
     type DomainResult = m.BaseModel | t.Cli.JsonValue
     "Typed service result payload: model or validated JSON value."
     type DomainResultSequence = Sequence[DomainResult]

@@ -15,6 +15,9 @@ from flext_infra import FlextInfraRefactorRule, c, t
 class FlextInfraRefactorEnsureFutureAnnotationsRule(FlextInfraRefactorRule):
     """Ensure ``from __future__ import annotations`` exists and is properly placed."""
 
+    RULE_MATCHERS = (
+        (c.Infra.FUTURE_FIX_ACTIONS, c.Infra.FUTURE_CHECKS, frozenset(), frozenset()),
+    )
     _SINGLE_LINE_DOCSTRING_MIN_LENGTH = 3
 
     @override

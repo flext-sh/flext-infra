@@ -11,11 +11,12 @@ from collections.abc import (
 from operator import itemgetter
 from pathlib import Path
 from tokenize import NAME, generate_tokens
-from typing import Annotated, ClassVar, override
+from typing import Annotated, ClassVar, Self, override
+
+from flext_cli import cli
 
 from flext_infra import (
     FlextInfraProjectSelectionServiceBase,
-    FlextInfraUtilitiesProtectedEdit,
     c,
     m,
     p,
@@ -210,7 +211,7 @@ class FlextInfraAccessorMigrationOrchestrator(
     @property
     def lint_tool_names(self) -> t.StrSequence:
         """Return selected lint tool names resolved from gate names."""
-        return FlextInfraUtilitiesProtectedEdit.selected_lint_tool_names(
+        return u.Infra.selected_lint_tool_names(
             self.gate_names,
         )
 
@@ -293,6 +294,18 @@ class FlextInfraAccessorMigrationOrchestrator(
             )
         )
 
+    @classmethod
+    @override
+    def execute_command(
+        cls,
+        params: Self,
+    ) -> p.Result[m.Infra.AccessorMigrationReport]:
+        """Execute accessor migration from the validated command service."""
+        result = params.execute()
+        if result.success:
+            cli.display_text(cls.render_text(result.value))
+        return result
+
     @staticmethod
     def _accumulate_lint_totals(
         totals: dict[str, int],
@@ -316,7 +329,7 @@ class FlextInfraAccessorMigrationOrchestrator(
         new_lint_errors: dict[str, tuple[str, ...]] = {}
         if automated_changes:
             if self.dry_run and include_preview:
-                before, after = FlextInfraUtilitiesProtectedEdit.preview_source_lint(
+                before, after = u.Infra.preview_source_lint(
                     py_file,
                     self.workspace_root,
                     updated_source=updated_source,
@@ -325,7 +338,7 @@ class FlextInfraAccessorMigrationOrchestrator(
             elif not self.dry_run:
                 before: t.Infra.LintSnapshot = {}
                 before = (
-                    FlextInfraUtilitiesProtectedEdit.lint_snapshot(
+                    u.Infra.lint_snapshot(
                         py_file,
                         self.workspace_root,
                         gates=self.gate_names,
@@ -333,7 +346,7 @@ class FlextInfraAccessorMigrationOrchestrator(
                     if include_preview
                     else {}
                 )
-                ok, report = FlextInfraUtilitiesProtectedEdit.protected_source_write(
+                ok, report = u.Infra.protected_source_write(
                     py_file,
                     workspace=self.workspace_root,
                     updated_source=updated_source,
@@ -352,7 +365,7 @@ class FlextInfraAccessorMigrationOrchestrator(
                     )
                 after: t.Infra.LintSnapshot = {}
                 after = (
-                    FlextInfraUtilitiesProtectedEdit.lint_snapshot(
+                    u.Infra.lint_snapshot(
                         py_file,
                         self.workspace_root,
                         gates=self.gate_names,
@@ -367,7 +380,7 @@ class FlextInfraAccessorMigrationOrchestrator(
                 lint_before = self._freeze_lints(before)
                 lint_after = self._freeze_lints(after)
                 new_lint_errors = self._freeze_lints(
-                    FlextInfraUtilitiesProtectedEdit.lint_new_errors(before, after)
+                    u.Infra.lint_new_errors(before, after)
                 )
         return m.Infra.AccessorMigrationFile(
             file=str(py_file),

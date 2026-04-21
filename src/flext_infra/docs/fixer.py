@@ -8,25 +8,15 @@ from collections.abc import (
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import c, m, p, r, s, t, u
+from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, p, r, t, u
 
 
-class FlextInfraDocFixer(s[bool]):
+class FlextInfraDocFixer(FlextInfraProjectSelectionServiceBase[bool]):
     """Fix links and TOCs across governed FLEXT docs scopes."""
 
-    selected_projects: Annotated[
-        t.StrSequence | None,
-        m.Field(
-            alias="projects",
-            description="Selected projects",
-        ),
-    ] = None
-    docs_output_dir: Annotated[
+    output_dir: Annotated[
         str,
-        m.Field(
-            alias="output_dir",
-            description="Docs output dir",
-        ),
+        m.Field(description="Docs output dir"),
     ] = c.Infra.DEFAULT_DOCS_OUTPUT_DIR
 
     def fix(
@@ -38,7 +28,7 @@ class FlextInfraDocFixer(s[bool]):
         apply: bool = False,
     ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
         """Run documentation fixes across project scopes."""
-        return u.Infra.run_scoped(
+        return self.run_scoped_docs(
             workspace_root,
             projects=projects,
             output_dir=output_dir,
@@ -51,7 +41,7 @@ class FlextInfraDocFixer(s[bool]):
         result = self.fix(
             workspace_root=self.workspace_root,
             projects=self.selected_projects,
-            output_dir=self.docs_output_dir,
+            output_dir=self.output_dir,
             apply=self.apply_changes,
         )
         if result.failure:

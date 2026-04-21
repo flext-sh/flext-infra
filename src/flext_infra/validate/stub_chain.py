@@ -34,6 +34,7 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
         m.Field(exclude=True, description="Optional command runner"),
     ] = None
 
+    @override
     @property
     def project_dirs(self) -> Sequence[Path] | None:
         """Return resolved project directories for targeted validation."""

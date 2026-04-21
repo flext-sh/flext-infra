@@ -15,17 +15,17 @@ from typing import Annotated, override
 
 from flext_infra import (
     FlextInfraBaseMkGenerator,
-    FlextInfraServiceBase,
     c,
     m,
     p,
     r,
+    s,
     t,
     u,
 )
 
 
-class FlextInfraSyncService(FlextInfraServiceBase[m.Infra.SyncResult]):
+class FlextInfraSyncService(s[m.Infra.SyncResult]):
     """Infrastructure service for workspace base.mk synchronization.
 
     Generates a fresh base.mk via ``FlextInfraBaseMkGenerator``, compares its SHA256

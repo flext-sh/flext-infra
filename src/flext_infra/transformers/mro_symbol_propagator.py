@@ -11,7 +11,7 @@ from typing import override
 
 from flext_infra import (
     FlextInfraRopeTransformer,
-    FlextInfraTypes,
+    t,
 )
 
 
@@ -26,16 +26,14 @@ class FlextInfraRefactorMROSymbolPropagator(FlextInfraRopeTransformer):
     def __init__(
         self,
         *,
-        module_moves: Mapping[
-            str, FlextInfraTypes.Infra.Pair[str, FlextInfraTypes.StrMapping]
-        ],
-        on_change: FlextInfraTypes.Infra.ChangeCallback = None,
+        module_moves: Mapping[str, t.Infra.Pair[str, t.StrMapping]],
+        on_change: t.Infra.ChangeCallback = None,
     ) -> None:
         """Initialize with module move configuration."""
         super().__init__(on_change=on_change)
         self._module_moves = module_moves
 
-    def rewrite_source(self, source: str) -> FlextInfraTypes.Infra.TransformResult:
+    def rewrite_source(self, source: str) -> t.Infra.TransformResult:
         """Rewrite one source string using the configured MRO move map."""
         self.changes.clear()
         rewritten_source = source
@@ -64,16 +62,16 @@ class FlextInfraRefactorMROSymbolPropagator(FlextInfraRopeTransformer):
         return (rewritten_source, list(self.changes))
 
     @override
-    def apply_to_source(self, source: str) -> FlextInfraTypes.Infra.TransformResult:
+    def apply_to_source(self, source: str) -> t.Infra.TransformResult:
         """Satisfy the base rope-transformer contract with the same rewrite flow."""
         return self.rewrite_source(source)
 
     @override
     def transform(
         self,
-        rope_project: FlextInfraTypes.Infra.RopeProject,
-        resource: FlextInfraTypes.Infra.RopeResource,
-    ) -> FlextInfraTypes.Infra.TransformResult:
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+    ) -> t.Infra.TransformResult:
         """Apply import and reference rewrites. Returns (new_source, changes)."""
         source = resource.read()
         rewritten_source, changes = self.rewrite_source(source)
@@ -84,8 +82,8 @@ class FlextInfraRefactorMROSymbolPropagator(FlextInfraRopeTransformer):
     def _apply_symbol_rewrites(
         self,
         source: str,
-        symbol_paths: FlextInfraTypes.StrMapping,
-        pattern_fn: Callable[[str, str], FlextInfraTypes.Infra.RegexPattern],
+        symbol_paths: t.StrMapping,
+        pattern_fn: Callable[[str, str], t.Infra.RegexPattern],
         replacement_fn: Callable[[str, str], str],
         message_fn: Callable[[str, str], str],
     ) -> str:
@@ -105,7 +103,7 @@ class FlextInfraRefactorMROSymbolPropagator(FlextInfraRopeTransformer):
         *,
         module_name: str,
         facade_alias: str,
-        symbol_paths: FlextInfraTypes.StrMapping,
+        symbol_paths: t.StrMapping,
     ) -> str:
         """Rewrite ``from module import OldSymbol`` to ``from module import Facade``."""
         return self._apply_symbol_rewrites(
@@ -125,7 +123,7 @@ class FlextInfraRefactorMROSymbolPropagator(FlextInfraRopeTransformer):
         source: str,
         *,
         facade_alias: str,
-        symbol_paths: FlextInfraTypes.StrMapping,
+        symbol_paths: t.StrMapping,
     ) -> str:
         """Replace bare symbol references with qualified facade paths."""
         return self._apply_symbol_rewrites(
@@ -145,7 +143,7 @@ class FlextInfraRefactorMROSymbolPropagator(FlextInfraRopeTransformer):
         source: str,
         *,
         facade_alias: str,
-        symbol_paths: FlextInfraTypes.StrMapping,
+        symbol_paths: t.StrMapping,
         prefix: str,
         message_prefix: str,
     ) -> str:
@@ -168,7 +166,7 @@ class FlextInfraRefactorMROSymbolPropagator(FlextInfraRopeTransformer):
         source: str,
         *,
         facade_alias: str,
-        symbol_paths: FlextInfraTypes.StrMapping,
+        symbol_paths: t.StrMapping,
     ) -> str:
         """Replace ``: Symbol`` with ``: Facade.Symbol``."""
         return self._qualify_prefixed_annotations(
@@ -184,7 +182,7 @@ class FlextInfraRefactorMROSymbolPropagator(FlextInfraRopeTransformer):
         source: str,
         *,
         facade_alias: str,
-        symbol_paths: FlextInfraTypes.StrMapping,
+        symbol_paths: t.StrMapping,
     ) -> str:
         """Replace ``-> Symbol`` with ``-> Facade.Symbol``."""
         return self._qualify_prefixed_annotations(

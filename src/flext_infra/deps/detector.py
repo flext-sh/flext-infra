@@ -8,14 +8,16 @@ from typing import Annotated, override
 from flext_infra import (
     FlextInfraDependencyDetectionService,
     FlextInfraDependencyDetectorRuntime,
-    FlextInfraDepsProjectServiceBase,
+    FlextInfraProjectSelectionServiceBase,
     m,
     p,
     u,
 )
 
 
-class FlextInfraRuntimeDevDependencyDetector(FlextInfraDepsProjectServiceBase):
+class FlextInfraRuntimeDevDependencyDetector(
+    FlextInfraProjectSelectionServiceBase[bool]
+):
     """CLI tool for detecting runtime vs dev dependencies across workspace."""
 
     log: Annotated[

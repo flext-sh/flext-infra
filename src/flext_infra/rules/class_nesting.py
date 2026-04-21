@@ -50,12 +50,14 @@ class _PostCheckGate:
         post_checks = u.Infra.string_list(
             expected.get(c.Infra.RK_POST_CHECKS),
         )
-        quality_gates = u.Infra.string_list(expected.get("quality_gates"))
+        quality_gates = u.Infra.string_list(expected.get(c.Infra.RK_QUALITY_GATES))
         if self._check_enabled("imports_resolve", post_checks):
             errors.extend(self._validate_imports(file_path))
         source_symbol_raw = expected.get(c.Infra.RK_SOURCE_SYMBOL, "")
         source_symbol = source_symbol_raw if isinstance(source_symbol_raw, str) else ""
-        expected_chain = u.Infra.string_list(expected.get("expected_base_chain"))
+        expected_chain = u.Infra.string_list(
+            expected.get(c.Infra.RK_EXPECTED_BASE_CHAIN)
+        )
         if (
             source_symbol
             and expected_chain
@@ -109,6 +111,10 @@ class _PostCheckGate:
 class FlextInfraClassNestingRefactorRule:
     """Apply class-nesting transforms driven by YAML mapping files."""
 
+    RULE_MATCHERS = (
+        (frozenset({"nest_classes"}), frozenset(), frozenset(), frozenset()),
+    )
+
     def __init__(self, config_path: Path | None = None) -> None:
         """Initialize rule with an optional path to the YAML settings."""
         self._config_path = config_path or Path(__file__).with_name(
@@ -152,7 +158,11 @@ class FlextInfraClassNestingRefactorRule:
                 c.Infra.RK_LOOSE_NAME,
             )
             hm = self._symbol_mappings(
-                cfg, fp, thr, c.Infra.RK_HELPER_CONSOLIDATION, "helper_name"
+                cfg,
+                fp,
+                thr,
+                c.Infra.RK_HELPER_CONSOLIDATION,
+                c.Infra.RK_HELPER_NAME,
             )
             violations = self._run_precheck(cfg, fp, thr)
             if violations:
@@ -305,9 +315,9 @@ class FlextInfraClassNestingRefactorRule:
             msg = "invalid class nesting mapping settings"
             raise ValueError(msg) from exc
         settings: MutableMapping[str, t.Infra.InfraValue] = {}
-        ct = loaded.get("confidence_threshold")
+        ct = loaded.get(c.Infra.RK_CONFIDENCE_THRESHOLD)
         if isinstance(ct, str):
-            settings["confidence_threshold"] = ct
+            settings[c.Infra.RK_CONFIDENCE_THRESHOLD] = ct
         for key in c.Infra.NESTING_SECTION_KEYS:
             raw = loaded.get(key)
             if isinstance(raw, list):
@@ -342,7 +352,10 @@ class FlextInfraClassNestingRefactorRule:
         return result
 
     def _confidence_threshold(self, settings: t.Infra.ContainerDict) -> str:
-        raw = settings.get("confidence_threshold", c.Infra.SeverityLevel.LOW)
+        raw = settings.get(
+            c.Infra.RK_CONFIDENCE_THRESHOLD,
+            c.Infra.SeverityLevel.LOW,
+        )
         if not isinstance(raw, str):
             msg = "confidence_threshold must be a string"
             raise TypeError(msg)
@@ -364,9 +377,9 @@ class FlextInfraClassNestingRefactorRule:
         _ = (cfg, fp, thr)
         return t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
             c.Infra.RK_SOURCE_SYMBOL: "",
-            "expected_base_chain": list[str](),
+            c.Infra.RK_EXPECTED_BASE_CHAIN: list[str](),
             c.Infra.RK_POST_CHECKS: ["imports_resolve"],
-            "quality_gates": ["lsp_diagnostics_clean"],
+            c.Infra.RK_QUALITY_GATES: ["lsp_diagnostics_clean"],
         })
 
 

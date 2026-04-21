@@ -247,7 +247,7 @@ class FlextInfraUtilitiesDocsApi:
                 "public_symbols": [],
                 "target_map": {},
                 "modules": [],
-                "exclude_docs": exclude_docs,
+                "exclude_docs": list(exclude_docs),
             })
         init_path = (
             project_root / c.Infra.DEFAULT_SRC_DIR / package_name / c.Infra.INIT_PY
@@ -340,7 +340,7 @@ class FlextInfraUtilitiesDocsApi:
             "public_symbols": public_symbols,
             "target_map": dict(target_map),
             "modules": modules,
-            "exclude_docs": exclude_docs,
+            "exclude_docs": list(exclude_docs),
         })
 
     @staticmethod

@@ -10,9 +10,13 @@ from collections.abc import (
 from pathlib import Path
 from typing import override
 
+from flext_cli import cli
+
 from flext_infra import (
     FlextInfraNamespaceEnforcerPhasesMixin,
     m,
+    p,
+    r,
     t,
     u,
 )
@@ -115,6 +119,28 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerPhasesMixin):
         return u.Infra.render_namespace_enforcement_report(
             report,
         )
+
+    @classmethod
+    def execute_command(
+        cls,
+        params: m.Infra.RefactorNamespaceEnforceInput,
+    ) -> p.Result[m.Infra.WorkspaceEnforcementReport]:
+        """Execute namespace enforcement directly from the canonical payload."""
+        enforcer = cls(workspace_root=params.workspace_path)
+        if params.diff:
+            diff_output = enforcer.diff(project_names=params.project_names)
+            cli.display_text(diff_output or "No changes detected.")
+        report = enforcer.enforce(
+            apply=params.apply,
+            project_names=params.project_names,
+        )
+        if not params.diff:
+            cli.display_text(cls.render_text(report))
+        if report.has_violations:
+            return r[m.Infra.WorkspaceEnforcementReport].fail(
+                "Namespace violations found"
+            )
+        return r[m.Infra.WorkspaceEnforcementReport].ok(report)
 
 
 __all__: list[str] = ["FlextInfraNamespaceEnforcer"]

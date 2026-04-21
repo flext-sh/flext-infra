@@ -18,10 +18,10 @@ from typing import override
 
 from flext_core import FlextVersion
 
-from flext_infra import FlextInfraCodegenGeneration, FlextInfraServiceBase, c, p, r, u
+from flext_infra import FlextInfraCodegenGeneration, c, p, r, s, u
 
 
-class FlextInfraCodegenVersionFile(FlextInfraServiceBase[bool]):
+class FlextInfraCodegenVersionFile(s[bool]):
     """Generate ``__version__.py`` for every workspace project.
 
     Projects whose derived version class name equals ``FlextVersion``

@@ -66,7 +66,7 @@ class FlextInfraUtilitiesDocsContract:
                 or project_urls.get("Homepage")
                 or c.Infra.GITHUB_REPO_URL
             ).strip(),
-            "exclude_docs": exclude_docs,
+            "exclude_docs": list(exclude_docs),
         })
 
     @staticmethod

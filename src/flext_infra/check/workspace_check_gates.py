@@ -12,8 +12,6 @@ from collections.abc import (
 from pathlib import Path
 from typing import ClassVar
 
-from flext_core import FlextProtocols
-
 from flext_infra import (
     FlextInfraBanditGate,
     FlextInfraGate,
@@ -93,7 +91,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
     _workspace_root: Path
     _registry: FlextInfraGateRegistry
     _default_reports_dir: Path
-    _gate_logger: ClassVar[FlextProtocols.Logger] = u.fetch_logger(__name__)
+    _gate_logger: ClassVar[p.Logger] = u.fetch_logger(__name__)
 
     def _isolate_context(
         self,

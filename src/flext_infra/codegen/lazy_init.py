@@ -23,17 +23,17 @@ from flext_infra import (
     FlextInfraCodegenGeneration,
     FlextInfraCodegenLazyInitPlanner,
     FlextInfraRopeWorkspace,
-    FlextInfraServiceBase,
     c,
     m,
     p,
     r,
+    s,
     t,
     u,
 )
 
 
-class FlextInfraCodegenLazyInit(FlextInfraServiceBase[bool]):
+class FlextInfraCodegenLazyInit(s[bool]):
     """Generates ``__init__.py`` with PEP 562 lazy imports.
 
     Scans sibling ``.py`` files in each package directory, discovers their

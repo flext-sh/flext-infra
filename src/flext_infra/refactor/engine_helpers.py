@@ -7,18 +7,17 @@ and project/workspace orchestration with safety stash/rollback coordination.
 from __future__ import annotations
 
 from collections.abc import (
+    Mapping,
     MutableSequence,
     Sequence,
 )
 from pathlib import Path
 
+from flext_cli import cli
+
 from flext_infra import (
-    FlextInfraClassNestingRefactorRule,
-    FlextInfraRefactorRule,
     FlextInfraRefactorSafetyManager,
     FlextInfraRefactorViolationAnalyzer,
-    FlextInfraUtilitiesProtectedEdit,
-    FlextInfraUtilitiesRefactorRuleLoader,
     c,
     m,
     t,
@@ -32,10 +31,31 @@ class FlextInfraRefactorEngineHelpersMixin:
     """Mixin providing file-level pipeline and project/workspace orchestration."""
 
     settings: t.Infra.InfraValue
-    rules: MutableSequence[FlextInfraRefactorRule]
-    file_rules: MutableSequence[FlextInfraClassNestingRefactorRule]
-    rule_loader: FlextInfraUtilitiesRefactorRuleLoader
+    rules: MutableSequence[tuple[c.Infra.RefactorRuleKind, t.Cli.RuleDefinition]]
+    file_rules: MutableSequence[
+        tuple[c.Infra.RefactorFileRuleKind, t.Cli.RuleDefinition]
+    ]
     safety_manager: FlextInfraRefactorSafetyManager
+
+    def _apply_text_rule_selection(
+        self,
+        kind: c.Infra.RefactorRuleKind,
+        settings: Mapping[str, t.Infra.InfraValue],
+        source: str,
+        file_path: Path,
+    ) -> t.Infra.TransformResult:
+        raise NotImplementedError
+
+    def _apply_file_rule_selection(
+        self,
+        kind: c.Infra.RefactorFileRuleKind,
+        settings: Mapping[str, t.Infra.InfraValue],
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+        *,
+        dry_run: bool = False,
+    ) -> m.Infra.Result:
+        raise NotImplementedError
 
     # ── Result helpers ─────────────────────────────────────────────
 
@@ -83,8 +103,14 @@ class FlextInfraRefactorEngineHelpersMixin:
                             file_path,
                             f"Could not resolve rope resource for {file_path}",
                         )
-                    for fr in self.file_rules:
-                        res = fr.apply(rope_project, resource, dry_run=True)
+                    for kind, settings in self.file_rules:
+                        res = self._apply_file_rule_selection(
+                            kind,
+                            settings,
+                            rope_project,
+                            resource,
+                            dry_run=True,
+                        )
                         if not res.success:
                             return m.Infra.Result(
                                 file_path=file_path,
@@ -99,13 +125,19 @@ class FlextInfraRefactorEngineHelpersMixin:
                         all_changes.extend(res.changes)
                 finally:
                     rope_project.close()
-            for rule in self.rules:
-                if rule.enabled:
-                    current, changes = rule.apply(current, file_path)
-                    all_changes.extend(changes)
+            for kind, settings in self.rules:
+                if not bool(settings.get(c.Infra.RK_ENABLED, True)):
+                    continue
+                current, changes = self._apply_text_rule_selection(
+                    kind,
+                    settings,
+                    current,
+                    file_path,
+                )
+                all_changes.extend(changes)
             modified = current != original
             if not dry_run and modified:
-                ok, report = FlextInfraUtilitiesProtectedEdit.protected_source_write(
+                ok, report = u.Infra.protected_source_write(
                     file_path,
                     workspace=workspace_root,
                     updated_source=current,
@@ -178,12 +210,13 @@ class FlextInfraRefactorEngineHelpersMixin:
     ) -> MutableSequence[Path] | None:
         if args.project:
             return u.Infra.collect_engine_project_files(
-                self.rule_loader, self.settings, args.project, pattern=args.pattern
+                self.settings,
+                args.project,
+                pattern=args.pattern,
             )
         if args.workspace:
             return list(
                 u.Infra.collect_engine_workspace_files(
-                    self.rule_loader,
                     self.settings,
                     args.workspace,
                     pattern=args.pattern,
@@ -311,7 +344,9 @@ class FlextInfraRefactorEngineHelpersMixin:
         if err is not None:
             return err
         collected = u.Infra.collect_engine_project_files(
-            self.rule_loader, self.settings, project_path, pattern=pattern
+            self.settings,
+            project_path,
+            pattern=pattern,
         )
         if collected is None:
             return [
@@ -348,7 +383,15 @@ class FlextInfraRefactorEngineHelpersMixin:
         if not root.exists() or not root.is_dir():
             u.Cli.error(f"Invalid workspace root: {workspace_root}")
             return []
-        scan_dirs = frozenset(self.rule_loader.extract_project_scan_dirs(self.settings))
+        scan_dirs = frozenset(
+            m.Infra.EngineConfig.model_validate(
+                cli.rules_resolve_scope(
+                    self.settings,
+                    scope_key=c.Infra.RK_REFACTOR_ENGINE,
+                    allowed_keys=c.Infra.ENGINE_CONFIG_KEYS,
+                )
+            ).project_scan_dirs
+        )
         projects = u.Infra.discover_project_roots(
             workspace_root=root, scan_dirs=scan_dirs or None
         )

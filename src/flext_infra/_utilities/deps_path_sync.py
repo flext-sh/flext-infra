@@ -280,6 +280,17 @@ class FlextInfraUtilitiesDependencyPathSync:
                 return c.Infra.PathSyncMode.WORKSPACE
         return c.Infra.PathSyncMode.STANDALONE
 
+    @classmethod
+    def execute_command(
+        cls,
+        params: FlextInfraModelsDeps.PathSyncCommand,
+    ) -> p.Result[bool]:
+        """Execute dependency path synchronization from the canonical CLI payload."""
+        exit_code = cls().execute(params)
+        if exit_code != 0:
+            return r[bool].fail("dependency path sync failed")
+        return r[bool].ok(True)
+
     def execute(self, params: FlextInfraModelsDeps.PathSyncCommand) -> int:
         """Execute dependency path synchronization for one canonical command payload."""
         workspace_root = params.workspace_path

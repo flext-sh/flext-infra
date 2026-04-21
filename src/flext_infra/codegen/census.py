@@ -18,17 +18,17 @@ from typing import override
 
 from flext_infra import (
     FlextInfraNamespaceValidator,
-    FlextInfraServiceBase,
     c,
     m,
     p,
     r,
+    s,
     t,
     u,
 )
 
 
-class FlextInfraCodegenCensus(FlextInfraServiceBase[str]):
+class FlextInfraCodegenCensus(s[str]):
     """Read-only census service for namespace violation counting."""
 
     @override

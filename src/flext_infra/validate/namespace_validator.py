@@ -17,10 +17,9 @@ from collections.abc import (
 from pathlib import Path
 
 from flext_infra import (
-    FlextInfraConstantsSharedInfra,
-    FlextInfraModelsCore,
     FlextInfraNamespaceRules,
-    FlextInfraUtilitiesParsing,
+    c,
+    m,
     p,
     r,
     u,
@@ -46,7 +45,7 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
         project_root: Path,
         *,
         scan_tests: bool = False,
-    ) -> p.Result[FlextInfraModelsCore.ValidationReport]:
+    ) -> p.Result[m.Infra.ValidationReport]:
         """Validate namespace rules 0-2 for all discovered Python files."""
         try:
             files = self._discover_files(project_root, scan_tests=scan_tests)
@@ -67,15 +66,15 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
                 if passed
                 else f"{len(violations)} namespace violation(s) found ({len(files)} files checked)"
             )
-            return r[FlextInfraModelsCore.ValidationReport].ok(
-                FlextInfraModelsCore.ValidationReport(
+            return r[m.Infra.ValidationReport].ok(
+                m.Infra.ValidationReport(
                     passed=passed,
                     violations=violations,
                     summary=summary,
                 ),
             )
         except (OSError, TypeError, ValueError, RuntimeError) as exc:
-            return r[FlextInfraModelsCore.ValidationReport].fail(
+            return r[m.Infra.ValidationReport].fail(
                 f"Namespace validation failed: {exc}",
             )
 
@@ -88,11 +87,11 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
         """Walk ``src/`` (and optionally ``tests/``) for non-exempt .py files."""
         result: MutableSequence[Path] = []
         dirs_to_scan = [
-            workspace_root / FlextInfraConstantsSharedInfra.DEFAULT_SRC_DIR,
+            workspace_root / c.Infra.DEFAULT_SRC_DIR,
         ]
         if scan_tests:
             dirs_to_scan.append(
-                workspace_root / FlextInfraConstantsSharedInfra.DIR_TESTS,
+                workspace_root / c.Infra.DIR_TESTS,
             )
         for base_dir in dirs_to_scan:
             if not base_dir.is_dir():
@@ -109,16 +108,13 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
     def _is_exempt_file(self, filepath: Path) -> bool:
         """Check whether a file should be skipped from validation."""
         name = filepath.name
-        if name in FlextInfraConstantsSharedInfra.EXEMPT_FILENAMES:
+        if name in c.Infra.EXEMPT_FILENAMES:
             return True
-        return any(
-            name.startswith(prefix)
-            for prefix in FlextInfraConstantsSharedInfra.EXEMPT_PREFIXES
-        )
+        return any(name.startswith(prefix) for prefix in c.Infra.EXEMPT_PREFIXES)
 
     def _parse_file(self, path: Path) -> ast.Module | None:
         """Parse a Python file into an AST, returning None on failure."""
-        return FlextInfraUtilitiesParsing.parse_module_ast(path)
+        return u.Infra.parse_module_ast(path)
 
 
 __all__: list[str] = ["FlextInfraNamespaceValidator"]

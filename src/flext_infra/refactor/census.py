@@ -6,9 +6,10 @@ import time
 from collections import Counter, defaultdict
 from pathlib import Path
 
+from flext_cli import cli
+
 from flext_infra import (
     FlextInfraRopeWorkspace,
-    FlextInfraUtilitiesRopeModulePatch,
     c,
     m,
     p,
@@ -27,6 +28,30 @@ class FlextInfraRefactorCensus:
     def render_text(report: m.Infra.Census.WorkspaceReport) -> str:
         """Render the canonical workspace census report."""
         return u.Infra.render_census_report(report)
+
+    @classmethod
+    def execute_command(
+        cls,
+        params: m.Infra.RefactorCensusInput,
+    ) -> p.Result[m.Infra.Census.WorkspaceReport]:
+        """Execute the census directly from the canonical refactor payload."""
+        result = cls().run(
+            workspace_root=params.workspace_path,
+            apply=params.apply,
+            project_names=params.project_names,
+            kind_names=params.kind_names,
+            family_names=params.family_names,
+            rule_names=params.rule_names,
+            include_local_scopes=params.include_local_scopes,
+        )
+        if result.failure:
+            return result
+        report = result.value
+        cli.display_text(cls.render_text(report))
+        if params.json_output_path is not None:
+            u.Infra.export_pydantic_json(report, params.json_output_path)
+            u.Cli.info(f"JSON report exported to: {params.json_output_path}")
+        return result
 
     def run(
         self,
@@ -268,7 +293,7 @@ class FlextInfraRefactorCensus:
                 if fix.action != "ensure_runtime_alias" or not alias:
                     continue
                 source = rope.source(file_path)
-                updated = FlextInfraUtilitiesRopeModulePatch.ensure_runtime_alias(
+                updated = u.Infra.ensure_runtime_alias(
                     source,
                     alias=alias,
                     target_name=fix.object_name,

@@ -12,8 +12,8 @@ from pathlib import Path
 from typing import Annotated, ClassVar, override
 
 from flext_infra import (
-    FlextInfraDepsServiceBase,
     FlextInfraInternalSyncRepoMixin,
+    FlextInfraServiceBase,
     FlextInfraSettings,
     c,
     m,
@@ -26,7 +26,7 @@ from flext_infra import (
 
 class FlextInfraInternalDependencySyncService(
     FlextInfraInternalSyncRepoMixin,
-    FlextInfraDepsServiceBase,
+    FlextInfraServiceBase[bool],
 ):
     """Synchronize internal FLEXT dependencies via git clone or workspace symlinks."""
 

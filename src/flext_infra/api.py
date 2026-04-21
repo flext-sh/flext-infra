@@ -8,22 +8,10 @@ from typing import Annotated, ClassVar, Self, override
 from flext_core import r
 
 from flext_infra import (
-    FlextInfraCliBasemk,
-    FlextInfraCliCheck,
-    FlextInfraCliCodegen,
-    FlextInfraCliDeps,
-    FlextInfraCliDocs,
-    FlextInfraCliGithub,
-    FlextInfraCliMaintenance,
-    FlextInfraCliRefactor,
-    FlextInfraCliRegistryMixin,
-    FlextInfraCliRelease,
-    FlextInfraCliValidate,
-    FlextInfraCliWorkspace,
     FlextInfraConstantsBase,
-    FlextInfraServiceBase,
     FlextInfraServiceRopeMixin,
     p,
+    s,
     t,
 )
 
@@ -33,20 +21,8 @@ _PYDANTIC_CONSTANTS_MARKER: type[FlextInfraConstantsBase] = FlextInfraConstantsB
 
 
 class FlextInfra(
-    FlextInfraCliBasemk,
-    FlextInfraCliCheck,
-    FlextInfraCliCodegen,
-    FlextInfraCliDeps,
-    FlextInfraCliDocs,
-    FlextInfraCliGithub,
-    FlextInfraCliMaintenance,
-    FlextInfraCliRefactor,
-    FlextInfraCliRelease,
-    FlextInfraCliValidate,
-    FlextInfraCliWorkspace,
-    FlextInfraCliRegistryMixin,
     FlextInfraServiceRopeMixin,
-    FlextInfraServiceBase[t.ScalarMapping],
+    s[t.ScalarMapping],
 ):
     """Thin public MRO facade over infra services."""
 
