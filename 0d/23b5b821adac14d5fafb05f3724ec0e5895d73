@@ -1,0 +1,154 @@
+tests/unit/deps/test_detection_models.py
+  h_9db9d35f50cf33 35-38,62-67
+src/flext_infra/deps/detection_analysis.py
+  h_9db9d35f50cf33 48-50
+tests/unit/codegen/lazy_init_generation_tests.py
+  h_9db9d35f50cf33 42
+src/flext_infra/deps/internal_sync.py
+  h_9db9d35f50cf33 174-175
+src/flext_infra/_models/refactor.py
+  h_9db9d35f50cf33 7,162,176,180
+tests/unit/deps/test_detection_discover.py
+  h_9db9d35f50cf33 53
+src/flext_infra/_models/refactor_ast_grep.py
+  h_9db9d35f50cf33 213-214,217-218,221-222,225-226,244-245,248-249,255-257
+src/flext_infra/_models/validate.py
+  h_9db9d35f50cf33 46,122-151
+tests/unit/refactor/test_infra_refactor_class_and_propagation.py
+  h_9db9d35f50cf33 5
+tests/unit/fixtures.py
+  h_9db9d35f50cf33 176-240,251-252
+tests/unit/deps/test_modernizer_tooling.py
+  h_9db9d35f50cf33 14,70,204
+src/flext_infra/_typings/adapters.py
+  h_9db9d35f50cf33 52-54
+tests/unit/deps/test_modernizer_pytest.py
+  h_9db9d35f50cf33 104
+tests/unit/codegen/census_models_tests.py
+  h_9db9d35f50cf33 62
+src/flext_infra/_models/refactor_violations.py
+  h_9db9d35f50cf33 54,60-61,64-65,68-69,108-109,112-113,143-144,147-148,152,172,182-183,193,228,241
+tests/unit/check/extended_config_fixer_tests.py
+  h_9db9d35f50cf33 37
+src/flext_infra/_utilities/iteration.py
+  h_9db9d35f50cf33 54-55,70-71,76-80,215,262,288
+tests/unit/deps/test_detection_deptry.py
+  h_9db9d35f50cf33 45
+tests/unit/deps/test_path_sync_rewrite_poetry.py
+  h_9db9d35f50cf33 18,30,42,54,81,93,105,117
+tests/typings.py
+  h_9db9d35f50cf33 14,18,20,26
+tests/unit/deps/test_path_sync_rewrite_deps.py
+  h_9db9d35f50cf33 75
+tests/unit/validate/skill_validator_tests.py
+  h_9db9d35f50cf33 54,122
+tests/unit/check/extended_gate_mypy_pyright_tests.py
+  h_9db9d35f50cf33 9-10,69,92
+tests/unit/deps/test_modernizer_comments.py
+  h_9db9d35f50cf33 108
+src/flext_infra/_typings/base.py
+  h_9db9d35f50cf33 101,107,149,157,159,163,167,169,171,174-175,178
+tests/unit/codegen/autofix_workspace_tests.py
+  h_9db9d35f50cf33 68-70
+tests/unit/test_infra_maintenance_python_version.py
+  h_9db9d35f50cf33 230
+src/flext_infra/_utilities/deps_path_sync.py
+  h_9db9d35f50cf33 45-46
+tests/models.py
+  h_9db9d35f50cf33 18,20,26
+tests/unit/validate/stub_chain_tests.py
+  h_9db9d35f50cf33 131
+src/flext_infra/_models/refactor_namespace_enforcer.py
+  h_9db9d35f50cf33 10,143-145,150-153,157-160,164-167,171-174,178-181,185-188,192-195,199-202,206-209,213-216,220-223,227-230,234-237,269-271,368,372-375
+tests/unit/deps/test_detection_typings.py
+  h_9db9d35f50cf33 128
+tests/unit/codegen/scaffolder_naming_tests.py
+  h_9db9d35f50cf33 161-162
+tests/unit/deps/test_path_sync_rewrite_pep621.py
+  h_9db9d35f50cf33 17,26,35,59,85
+tests/unit/scenarios.py
+  h_9db9d35f50cf33 12,17,20,22-26,28-30,32-34,38
+src/flext_infra/_models/rope.py
+  h_9db9d35f50cf33 13,56,67,73,153,173,180,187,194
+tests/unit/deps/test_detection_typings_flow.py
+  h_9db9d35f50cf33 55,88-91
+tests/unit/codegen/scaffolder_tests.py
+  h_9db9d35f50cf33 42,95,105
+src/flext_infra/settings.py
+  h_9db9d35f50cf33 71-79
+tests/conftest.py
+  h_9db9d35f50cf33 20-51
+tests/unit/deps/test_modernizer_coverage.py
+  h_9db9d35f50cf33 67
+tests/unit/deps/test_detection_uncovered.py
+  h_9db9d35f50cf33 7,21,23-24
+src/flext_infra/docs/validator.py
+  h_9db9d35f50cf33 68
+src/flext_infra/validate/stub_chain.py
+  h_9db9d35f50cf33 183
+tests/unit/deps/test_internal_sync_discovery.py
+  h_9db9d35f50cf33 71
+src/flext_infra/_utilities/docs_validate.py
+  h_9db9d35f50cf33 39
+tests/unit/test_infra_workspace_migrator.py
+  h_9db9d35f50cf33 37
+tests/unit/deps/test_detector_models.py
+  h_9db9d35f50cf33 17,25
+tests/unit/refactor/test_infra_refactor_namespace_enforcer.py
+  h_9db9d35f50cf33 233,257
+tests/unit/deps/test_modernizer_pyrefly.py
+  h_9db9d35f50cf33 205
+src/flext_infra/validate/pytest_diag.py
+  h_9db9d35f50cf33 189-190,196-197
+tests/protocols.py
+  h_9db9d35f50cf33 18,20,26
+tests/utilities.py
+  h_9db9d35f50cf33 37-38,1061,1198
+tests/unit/test_infra_typings.py
+  h_9db9d35f50cf33 47,51,55-56
+tests/unit/docs/auditor_budgets_tests.py
+  h_9db9d35f50cf33 21,45
+src/flext_infra/_models/deps_tool_config.py
+  h_9db9d35f50cf33 8,90,116-117,156,161
+tests/unit/validate/namespace_validator_tests.py
+  h_9db9d35f50cf33 60,304
+tests/unit/deps/test_modernizer_helpers.py
+  h_9db9d35f50cf33 29,33-34,75-76,78-79,84,122-123,129,132,194-195,199,201
+tests/unit/test_infra_workspace_migrator_internal.py
+  h_9db9d35f50cf33 91,135
+tests/constants.py
+  h_9db9d35f50cf33 33-34
+tests/unit/codegen/consolidator_tests.py
+  h_9db9d35f50cf33 50,52,95
+src/flext_infra/refactor/engine_text.py
+  h_9db9d35f50cf33 170-173
+tests/unit/refactor/test_infra_refactor_migrate_to_class_mro.py
+  h_9db9d35f50cf33 40,81,117,155,194,280
+src/flext_infra/_models/mixins.py
+  h_9db9d35f50cf33 11-12
+src/flext_infra/_models/deps_tool_config_type_checkers.py
+  h_9db9d35f50cf33 5,17,162,169,176,183
+src/flext_infra/transformers/tier0_import_fixer.py
+  h_9db9d35f50cf33 11,16-17,30-55,57-59,61,108-116,124-131
+src/flext_infra/deps/modernizer.py
+  h_9db9d35f50cf33 231-232
+src/flext_infra/_constants/validate.py
+  h_9db9d35f50cf33 54-55
+src/flext_infra/deps/phases/consolidate_groups.py
+  h_9db9d35f50cf33 36-39,41,87-90,92
+tests/unit/deps/test_modernizer_pyright.py
+  h_9db9d35f50cf33 13,87,89,97-102,106-107,123,150,152,173,207,209,213,215,235
+src/flext_infra/_utilities/discovery.py
+  h_9db9d35f50cf33 118-122
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.2",
+  "base_commit_sha": "0d23b5b821adac14d5fafb05f3724ec0e5895d73",
+  "prompts": {},
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
