@@ -31,6 +31,16 @@ def _is_collectable_test_module(collection_path: Path) -> bool:
     return file_name.startswith("test_") or file_name.endswith("_tests.py")
 
 
+def pytest_ignore_collect(
+    collection_path: Path,
+    config: pytest.Config,
+) -> bool | None:
+    del config
+    if _is_collectable_test_module(collection_path):
+        return None
+    return True
+
+
 def pytest_collection_modifyitems(
     config: pytest.Config,
     items: list[pytest.Item],

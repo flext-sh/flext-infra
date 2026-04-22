@@ -83,8 +83,7 @@ class FlextInfraRefactorOrchestrator(
             original = file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
             current, all_changes = original, list[str]()
             if self.loader.file_rules:
-                rope_project = u.Infra.init_rope_project(workspace_root)
-                try:
+                with u.Infra.open_project(workspace_root) as rope_project:
                     resource = u.Infra.get_resource_from_path(rope_project, file_path)
                     if resource is None:
                         return self._error_result(
@@ -111,8 +110,6 @@ class FlextInfraRefactorOrchestrator(
                         if result.modified and result.refactored_code:
                             current = result.refactored_code
                         all_changes.extend(result.changes)
-                finally:
-                    rope_project.close()
             for kind, settings in self.loader.rules:
                 if not bool(settings.get(c.Infra.RK_ENABLED, True)):
                     continue

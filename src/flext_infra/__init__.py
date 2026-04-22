@@ -372,10 +372,7 @@ if _t.TYPE_CHECKING:
     from flext_infra.workspace.migrator import FlextInfraProjectMigrator
     from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
     from flext_infra.workspace.project_makefile import FlextInfraProjectMakefileUpdater
-    from flext_infra.workspace.rope import (
-        FlextInfraRopeWorkspace,
-        FlextInfraServiceRopeMixin,
-    )
+    from flext_infra.workspace.rope import FlextInfraRopeWorkspace
     from flext_infra.workspace.sync import FlextInfraSyncService
     from flext_infra.workspace.workspace_makefile import (
         FlextInfraWorkspaceMakefileGenerator,
@@ -742,10 +739,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".workspace.migrator": ("FlextInfraProjectMigrator",),
             ".workspace.orchestrator": ("FlextInfraOrchestratorService",),
             ".workspace.project_makefile": ("FlextInfraProjectMakefileUpdater",),
-            ".workspace.rope": (
-                "FlextInfraRopeWorkspace",
-                "FlextInfraServiceRopeMixin",
-            ),
+            ".workspace.rope": ("FlextInfraRopeWorkspace",),
             ".workspace.sync": ("FlextInfraSyncService",),
             ".workspace.workspace_makefile": ("FlextInfraWorkspaceMakefileGenerator",),
             "flext_cli": (
@@ -937,7 +931,6 @@ __all__: list[str] = [
     "FlextInfraRuntimeDevDependencyDetector",
     "FlextInfraScanner",
     "FlextInfraServiceBase",
-    "FlextInfraServiceRopeMixin",
     "FlextInfraSettings",
     "FlextInfraSilentFailureDetector",
     "FlextInfraSilentFailureGate",

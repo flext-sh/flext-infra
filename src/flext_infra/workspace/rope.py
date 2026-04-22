@@ -440,27 +440,4 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         raise ValueError(msg)
 
 
-class FlextInfraServiceRopeMixin:
-    """Expose the public Rope DSL through the infra API facade."""
-
-    def rope_workspace(
-        self,
-        workspace_root: Path,
-        *,
-        project_prefix: str = c.Infra.PKG_PREFIX_HYPHEN,
-        src_dir: str = c.Infra.DEFAULT_SRC_DIR,
-        ignored_resources: tuple[str, ...] = c.Infra.ROPE_IGNORED_RESOURCES,
-    ) -> p.Infra.RopeWorkspaceDsl:
-        """Open one public Rope workspace session through the facade."""
-        return FlextInfraRopeWorkspace.open_workspace(
-            workspace_root,
-            project_prefix=project_prefix,
-            src_dir=src_dir,
-            ignored_resources=ignored_resources,
-        )
-
-
-__all__: tuple[str, ...] = (
-    "FlextInfraRopeWorkspace",
-    "FlextInfraServiceRopeMixin",
-)
+__all__: tuple[str, ...] = ("FlextInfraRopeWorkspace",)

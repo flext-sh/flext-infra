@@ -55,15 +55,10 @@ class FlextInfraOrchestratorService(FlextInfraProjectSelectionServiceBase[bool])
         """Return normalized make arguments."""
         return u.Infra.normalize_make_args(self.make_arg)
 
-    @staticmethod
-    def _workspace_root() -> Path:
-        """Resolve the active workspace root for orchestration."""
-        return u.Infra.resolve_workspace_root_or_cwd()
-
     def _resolved_projects(self) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
         """Resolve the selected project names through canonical discovery."""
         return u.Infra.resolve_projects(
-            self._workspace_root(),
+            self.root,
             self.project_names or (),
         )
 
@@ -119,7 +114,7 @@ class FlextInfraOrchestratorService(FlextInfraProjectSelectionServiceBase[bool])
         projects = resolved_projects.value
         if not projects:
             return r[bool].fail("no projects discovered")
-        workspace_root = self._workspace_root()
+        workspace_root = self.root
         prepare_result = self._prepare_projects(projects, workspace_root=workspace_root)
         if prepare_result.failure:
             return prepare_result

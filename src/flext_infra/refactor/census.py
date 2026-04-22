@@ -5,10 +5,12 @@ from __future__ import annotations
 import time
 from collections import Counter, defaultdict
 from pathlib import Path
+from typing import Annotated, override
 
 from flext_cli import cli
 
 from flext_infra import (
+    FlextInfraProjectSelectionServiceBase,
     FlextInfraRopeWorkspace,
     c,
     m,
@@ -19,82 +21,97 @@ from flext_infra import (
 )
 
 
-class FlextInfraRefactorCensus:
-    """Generalized Rope-only census for Python objects across the workspace."""
+class FlextInfraRefactorCensus(
+    FlextInfraProjectSelectionServiceBase[m.Infra.Census.WorkspaceReport],
+):
+    """Generalized Rope-only census service for Python objects across the workspace."""
 
     _MIN_DUPLICATE_DEFINITIONS: int = 2
+
+    json_output: Annotated[
+        str | None,
+        m.Field(description="Path to write JSON report"),
+    ] = None
+    kinds: Annotated[
+        t.StrSequence | None,
+        m.Field(description="Optional object-kind filters; repeat --kinds NAME"),
+    ] = None
+    rules: Annotated[
+        t.StrSequence | None,
+        m.Field(description="Optional violation-rule filters; repeat --rules NAME"),
+    ] = None
+    families: Annotated[
+        t.StrSequence | None,
+        m.Field(
+            description="Optional namespace-family filters; repeat --families NAME"
+        ),
+    ] = None
+    include_local_scopes: Annotated[
+        bool,
+        m.Field(description="Include locals, parameters, and nested scopes"),
+    ] = True
+
+    @property
+    def json_output_path(self) -> Path | None:
+        """Return the resolved JSON export path when provided."""
+        return u.Infra.normalize_optional_path(self.json_output)
+
+    @property
+    def kind_names(self) -> t.StrSequence | None:
+        """Return normalized object-kind filters."""
+        return u.Infra.normalize_sequence_values(self.kinds)
+
+    @property
+    def rule_names(self) -> t.StrSequence | None:
+        """Return normalized violation-rule filters."""
+        return u.Infra.normalize_sequence_values(self.rules)
+
+    @property
+    def family_names(self) -> t.StrSequence | None:
+        """Return normalized family filters."""
+        return u.Infra.normalize_sequence_values(self.families)
 
     @staticmethod
     def render_text(report: m.Infra.Census.WorkspaceReport) -> str:
         """Render the canonical workspace census report."""
         return u.Infra.render_census_report(report)
 
-    @classmethod
-    def execute_command(
-        cls,
-        params: m.Infra.RefactorCensusInput,
-    ) -> p.Result[m.Infra.Census.WorkspaceReport]:
-        """Execute the census directly from the canonical refactor payload."""
-        result = cls().run(
-            workspace_root=params.workspace_path,
-            apply=params.apply,
-            project_names=params.project_names,
-            kind_names=params.kind_names,
-            family_names=params.family_names,
-            rule_names=params.rule_names,
-            include_local_scopes=params.include_local_scopes,
-        )
-        if result.failure:
-            return result
-        report = result.value
-        cli.display_text(cls.render_text(report))
-        if params.json_output_path is not None:
-            u.Infra.export_pydantic_json(report, params.json_output_path)
-            u.Cli.info(f"JSON report exported to: {params.json_output_path}")
-        return result
-
-    def run(
-        self,
-        workspace_root: Path,
-        *,
-        apply: bool = False,
-        project_names: t.StrSequence | None = None,
-        kind_names: t.StrSequence | None = None,
-        family_names: t.StrSequence | None = None,
-        rule_names: t.StrSequence | None = None,
-        include_local_scopes: bool = True,
-    ) -> p.Result[m.Infra.Census.WorkspaceReport]:
+    @override
+    def execute(self) -> p.Result[m.Infra.Census.WorkspaceReport]:
         """Execute the census with one shared Rope session."""
         started = time.monotonic()
         applied = frozenset[str]()
-        with FlextInfraRopeWorkspace.open_workspace(workspace_root) as rope:
+        with FlextInfraRopeWorkspace.open_workspace(self.root) as rope:
             report = self._collect_report(
                 rope,
-                project_names=project_names,
-                kind_names=kind_names,
-                family_names=family_names,
-                rule_names=rule_names,
-                include_local_scopes=include_local_scopes,
+                project_names=self.project_names,
+                kind_names=self.kind_names,
+                family_names=self.family_names,
+                rule_names=self.rule_names,
+                include_local_scopes=self.include_local_scopes,
                 applied=applied,
             )
-            if apply:
+            if self.apply_changes:
                 applied = self._apply_supported_fixes(rope, report)
                 if applied:
                     rope.reload()
                     report = self._collect_report(
                         rope,
-                        project_names=project_names,
-                        kind_names=kind_names,
-                        family_names=family_names,
-                        rule_names=rule_names,
-                        include_local_scopes=include_local_scopes,
+                        project_names=self.project_names,
+                        kind_names=self.kind_names,
+                        family_names=self.family_names,
+                        rule_names=self.rule_names,
+                        include_local_scopes=self.include_local_scopes,
                         applied=applied,
                     )
-        return r[m.Infra.Census.WorkspaceReport].ok(
-            report.model_copy(
-                update={"scan_duration_seconds": time.monotonic() - started}
-            )
+        report = report.model_copy(
+            update={"scan_duration_seconds": time.monotonic() - started}
         )
+        cli.display_text(self.render_text(report))
+        if self.json_output_path is not None:
+            u.Infra.export_pydantic_json(report, self.json_output_path)
+            u.Cli.info(f"JSON report exported to: {self.json_output_path}")
+        return r[m.Infra.Census.WorkspaceReport].ok(report)
 
     def _collect_report(
         self,

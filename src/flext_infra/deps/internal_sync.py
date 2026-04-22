@@ -127,7 +127,7 @@ class FlextInfraInternalDependencySyncService(
             if workspace_mode and workspace_root:
                 sibling = workspace_root / repo_name
                 if sibling.exists():
-                    symlink_result = u.Cli.ensure_symlink(dep_path, sibling)
+                    symlink_result = self.ensure_symlink(dep_path, sibling)
                     if symlink_result.failure:
                         return r[int].fail(
                             symlink_result.error or f"failed symlink for {repo_name}",
@@ -141,6 +141,10 @@ class FlextInfraInternalDependencySyncService(
                     checkout_result.error or f"checkout failed for {repo_name}",
                 )
         return r[int].ok(0)
+
+    def ensure_symlink(self, dep_path: Path, sibling: Path) -> p.Result[bool]:
+        """Ensure a workspace dependency path points at the sibling checkout."""
+        return u.Cli.ensure_symlink(dep_path, sibling)
 
     def collect_internal_deps(self, project_root: Path) -> p.Result[Mapping[str, Path]]:
         """Collect internal path dependencies from pyproject metadata."""

@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraInternalDependencySyncService, u
+from flext_infra import FlextInfraInternalDependencySyncService
 from tests import p, r, t
 
 
@@ -84,16 +84,6 @@ class TestSync:
         )
         monkeypatch.setenv("FLEXT_STANDALONE", "")
         monkeypatch.setenv("FLEXT_WORKSPACE_ROOT", "")
-
-        def _git_run(_cmd: t.StrSequence, cwd: Path) -> p.Result[str]:
-            _ = cwd
-            return r[str].ok("")
-
-        monkeypatch.setattr(
-            u.Infra,
-            "git_run",
-            _git_run,
-        )
         tm.ok(service.sync(project))
 
     def test_sync_missing_repo_mapping(
@@ -124,15 +114,5 @@ class TestSync:
         )
         monkeypatch.setenv("FLEXT_STANDALONE", "")
         monkeypatch.setenv("FLEXT_WORKSPACE_ROOT", "")
-
-        def _git_run(_cmd: t.StrSequence, cwd: Path) -> p.Result[str]:
-            _ = cwd
-            return r[str].ok("")
-
-        monkeypatch.setattr(
-            u.Infra,
-            "git_run",
-            _git_run,
-        )
         error = tm.fail(service.sync(project))
         tm.that(error, contains="missing repo mapping")

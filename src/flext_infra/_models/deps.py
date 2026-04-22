@@ -154,6 +154,16 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
             ),
         ] = c.Infra.PathSyncMode.AUTO
 
+        @u.field_validator("mode", mode="before")
+        @classmethod
+        def _normalize_mode(
+            cls,
+            value: c.Infra.PathSyncMode | str,
+        ) -> c.Infra.PathSyncMode:
+            if isinstance(value, str):
+                return c.Infra.PathSyncMode(value.strip().lower())
+            return value
+
     class PyprojectDocumentState(m.ArbitraryTypesModel):
         """Centralized normalized TOML state reused across deps workflows.
 

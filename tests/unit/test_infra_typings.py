@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from flext_tests import tm
 
-from tests import t, u
+from tests import c, t, u
 
 
 class TestInfraTypingAdapters:
@@ -54,6 +55,13 @@ class TestInfraTypingAdapters:
         tm.that(payload["root"], eq=Path("/tmp/flext"))
         tm.that(payload["enabled"], eq=True)
         tm.that(payload["retries"], eq=3)
+
+    def test_container_mapping_adapter_rejects_nested_mapping(self) -> None:
+        with pytest.raises(c.ValidationError):
+            t.Infra.CONTAINER_MAPPING_ADAPTER.validate_python({
+                "root": Path("/tmp/flext"),
+                "settings": {"enabled": True},
+            })
 
 
 class TestInfraTypingGuards:

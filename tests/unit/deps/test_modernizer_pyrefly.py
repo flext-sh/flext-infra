@@ -103,6 +103,10 @@ def test_ensure_pyrefly_config_phase_apply_search_path_with_project_context(
     project_dir.mkdir()
     for directory in ("src", "tests", "examples", "scripts"):
         (project_dir / directory).mkdir()
+    (project_dir / "tests" / "test_placeholder.py").write_text(
+        "def test_placeholder() -> None:\n    assert True\n",
+        encoding="utf-8",
+    )
 
     doc = tomlkit.document()
     doc["tool"] = tomlkit.table()

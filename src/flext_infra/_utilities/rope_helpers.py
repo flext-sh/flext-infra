@@ -9,6 +9,7 @@ from collections.abc import (
 from pathlib import Path
 from typing import ClassVar
 
+import flext_infra as infra_package
 from flext_infra import c, m, p, t
 
 
@@ -16,6 +17,17 @@ class FlextInfraUtilitiesRopeHelpers:
     """Generic text, import-placement, and method-order helpers."""
 
     _post_hooks: ClassVar[list[p.Infra.RopePostHook]] = []
+    _default_post_hooks_registered: ClassVar[bool] = False
+
+    @classmethod
+    def _ensure_default_post_hooks_registered(cls) -> None:
+        """Load and register built-in rope post-hooks once."""
+        if cls._default_post_hooks_registered:
+            return
+        cls.register_rope_post_hook(
+            infra_package.FlextInfraRefactorMigrateToClassMRO.run_as_hook,
+        )
+        cls._default_post_hooks_registered = True
 
     @classmethod
     def run_rope_post_hooks(
@@ -25,6 +37,7 @@ class FlextInfraUtilitiesRopeHelpers:
         dry_run: bool,
     ) -> Sequence[m.Infra.Result]:
         """Run workspace-scale semantic passes after local refactors."""
+        cls._ensure_default_post_hooks_registered()
         results: list[m.Infra.Result] = []
         for hook in cls._post_hooks:
             results.extend(hook(path, dry_run=dry_run))

@@ -13,6 +13,7 @@ from flext_cli import u
 from flext_infra import (
     FlextInfraModelsDeps,
     FlextInfraUtilitiesDocsScope,
+    FlextInfraUtilitiesIteration,
     c,
     m,
     p,
@@ -54,14 +55,14 @@ class FlextInfraUtilitiesDependencyPathSync:
         project_section = u.Cli.toml_mapping_child(payload, c.Infra.PROJECT)
         if project_section is None:
             return ([], set())
-        deps: t.StrSequence = [
-            str(item)
-            for item in u.Cli.json_as_sequence(
-                project_section.get(c.Infra.DEPENDENCIES, None),
-            )
-        ]
-        if not deps:
+        raw_deps = u.Cli.json_as_sequence(
+            project_section.get(c.Infra.DEPENDENCIES, None),
+        )
+        if not raw_deps:
             return ([], set())
+        if any(not isinstance(item, str) for item in raw_deps):
+            return ([], set())
+        deps: t.StrSequence = [str(item) for item in raw_deps]
         changes: MutableSequence[str] = []
         updated_deps: MutableSequence[str] = []
         internal_deps: t.Infra.StrSet = set()
@@ -320,6 +321,29 @@ class FlextInfraUtilitiesDependencyPathSync:
             return 1
 
         projects_list = discover_result.value
+        discovered_member_paths: t.Infra.StrSet = {
+            str(project.path.relative_to(workspace_root))
+            for project in projects_list
+            if project.path.is_relative_to(workspace_root)
+        }
+        configured_members = tuple(
+            FlextInfraUtilitiesIteration.workspace_member_names(workspace_root)
+        )
+        invalid_members = [
+            member
+            for member in configured_members
+            if (workspace_root / member).exists()
+            and (workspace_root / member / c.Infra.PYPROJECT_FILENAME).exists()
+            and member not in discovered_member_paths
+        ]
+        if invalid_members:
+            member_text = ", ".join(sorted(invalid_members))
+            self._log.error(
+                "sync_dep_paths_invalid_workspace_members",
+                root=str(workspace_root),
+                members=member_text,
+            )
+            return 1
         total_changes = 0
         internal_names: t.Infra.StrSet = {
             project.name for project in projects_list if project.name

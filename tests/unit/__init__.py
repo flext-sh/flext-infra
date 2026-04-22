@@ -227,10 +227,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ),
             ".refactor.test_main_cli": ("TestFlextInfraRefactorMainCli",),
             ".runner_service": ("RealSubprocessRunner",),
-            ".scenarios": (
-                "TestsFlextInfraGitScenario",
-                "TestsFlextInfraSubprocessScenario",
-            ),
             ".test_infra_constants_core": (
                 "TestFlextInfraConstantsExcludedNamespace",
                 "TestFlextInfraConstantsFilesNamespace",
@@ -320,12 +316,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "TestFlextInfraNamespaceValidator",
             ),
             ".workspace_factory": ("TestsFlextInfraWorkspaceFactory",),
-            ".workspace_scenarios": (
-                "BrokenScenario",
-                "EmptyScenario",
-                "FullScenario",
-                "MinimalScenario",
-            ),
         },
     ),
     exclude_names=(

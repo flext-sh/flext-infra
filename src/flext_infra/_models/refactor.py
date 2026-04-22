@@ -8,7 +8,7 @@ from collections.abc import (
 )
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Annotated, ClassVar
+from typing import Annotated
 
 from flext_cli import m
 
@@ -18,7 +18,6 @@ from flext_infra import (
     FlextInfraModelsRefactorCensus,
     FlextInfraModelsRefactorGrep,
     FlextInfraModelsRefactorViolations,
-    FlextInfraUtilitiesBase as ub,
     t,
 )
 
@@ -54,60 +53,6 @@ class FlextInfraModelsRefactor(
         m.ContractModel,
     ):
         """CLI/service request for namespace enforcement."""
-
-    class RefactorCensusInput(
-        mm.WriteMixin,
-        m.ContractModel,
-    ):
-        """CLI/service request for generalized Rope-only census."""
-
-        json_output: Annotated[
-            str | None, m.Field(description="Path to write JSON report")
-        ] = None
-        kinds: Annotated[
-            t.StrSequence | None,
-            m.Field(
-                description="Optional object-kind filters; repeat --kinds NAME",
-            ),
-        ] = None
-        rules: Annotated[
-            t.StrSequence | None,
-            m.Field(
-                description="Optional violation-rule filters; repeat --rules NAME",
-            ),
-        ] = None
-        families: Annotated[
-            t.StrSequence | None,
-            m.Field(
-                description="Optional namespace-family filters; repeat --families NAME",
-            ),
-        ] = None
-        include_local_scopes: Annotated[
-            bool,
-            m.Field(
-                description="Include locals, parameters, and nested scopes",
-            ),
-        ] = True
-
-        @property
-        def json_output_path(self) -> Path | None:
-            """Return the resolved JSON export path when provided."""
-            return ub.normalize_optional_path(self.json_output)
-
-        @property
-        def kind_names(self) -> t.StrSequence | None:
-            """Return normalized object-kind filters."""
-            return ub.normalize_sequence_values(self.kinds)
-
-        @property
-        def rule_names(self) -> t.StrSequence | None:
-            """Return normalized violation-rule filters."""
-            return ub.normalize_sequence_values(self.rules)
-
-        @property
-        def family_names(self) -> t.StrSequence | None:
-            """Return normalized family filters."""
-            return ub.normalize_sequence_values(self.families)
 
     class AccessorMigrationInput(
         mm.WriteMixin,
@@ -221,7 +166,7 @@ class FlextInfraModelsRefactor(
     class ClassOccurrence(m.ArbitraryTypesModel):
         """A single class definition occurrence within a source file."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config = m.ConfigDict(frozen=True)
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Class name")]
         line: Annotated[
@@ -235,7 +180,7 @@ class FlextInfraModelsRefactor(
     class LooseClassViolation(m.ArbitraryTypesModel):
         """A detected loose-class naming violation with confidence."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config = m.ConfigDict(frozen=True)
 
         file: Annotated[t.NonEmptyStr, m.Field(description="Source file path")]
         line: Annotated[t.PositiveInt, m.Field(description="Line number")]
@@ -254,7 +199,7 @@ class FlextInfraModelsRefactor(
     class FamilyMROResolution(m.ArbitraryTypesModel):
         """Resolution payload for one facade family MRO."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config = m.ConfigDict(frozen=True)
 
         family: Annotated[t.NonEmptyStr, m.Field(description="Facade family letter")]
         expected_bases: Annotated[
@@ -273,7 +218,7 @@ class FlextInfraModelsRefactor(
     class ProjectClassification(m.ArbitraryTypesModel):
         """Result of classifying a project by kind and family chains."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config = m.ConfigDict(frozen=True)
 
         project_kind: Annotated[
             t.NonEmptyStr,
@@ -306,7 +251,7 @@ class FlextInfraModelsRefactor(
     class ParsedPythonModule(m.ArbitraryTypesModel):
         """Result of parsing a Python source file into AST."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config = m.ConfigDict(frozen=True)
 
         source: Annotated[str, m.Field(description="Raw source text")]
         tree: Annotated[

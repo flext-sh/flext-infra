@@ -83,7 +83,19 @@ class TestSyncMethodEdgeCases:
         (project / "pyproject.toml").write_text(
             '[tool.poetry.dependencies]\nflext-core = { path = "../flext-core" }\n',
         )
-        service = FlextInfraInternalDependencySyncService()
+
+        class _TestService(FlextInfraInternalDependencySyncService):
+            @override
+            def ensure_checkout(
+                self,
+                dep_path: Path,
+                repo_url: str,
+                ref_name: str,
+            ) -> p.Result[bool]:
+                _ = (dep_path, repo_url, ref_name)
+                return r[bool].ok(True)
+
+        service = _TestService()
         _set_toml_stub(
             service,
             [
@@ -98,18 +110,6 @@ class TestSyncMethodEdgeCases:
             ],
         )
         monkeypatch.setenv("FLEXT_WORKSPACE_ROOT", str(workspace))
-
-        def _resolve_ref(_root: Path) -> str:
-            return "main"
-
-        def _ensure_checkout(_dep: Path, _url: str, _ref: str) -> p.Result[bool]:
-            return r[bool].ok(True)
-
-        monkeypatch.setattr(
-            service,
-            "ensure_checkout",
-            _ensure_checkout,
-        )
         tm.that(service.sync(project).success, eq=True)
 
     def test_sync_with_synthesized_repo_map(
@@ -196,7 +196,14 @@ class TestSyncMethodEdgeCases:
         (project / "pyproject.toml").write_text(
             '[tool.poetry.dependencies]\nflext-core = { path = "../flext-core" }\n',
         )
-        service = FlextInfraInternalDependencySyncService()
+
+        class _TestService(FlextInfraInternalDependencySyncService):
+            @override
+            def ensure_symlink(self, dep_path: Path, sibling: Path) -> p.Result[bool]:
+                _ = (dep_path, sibling)
+                return r[bool].fail("symlink failed")
+
+        service = _TestService()
         _set_toml_stub(
             service,
             [
@@ -211,13 +218,4 @@ class TestSyncMethodEdgeCases:
             ],
         )
         monkeypatch.setenv("FLEXT_WORKSPACE_ROOT", str(workspace))
-
-        def _ensure_symlink_fail(_dep: Path, _sib: Path) -> p.Result[bool]:
-            return r[bool].fail("symlink failed")
-
-        monkeypatch.setattr(
-            service,
-            "ensure_symlink",
-            _ensure_symlink_fail,
-        )
         tm.fail(service.sync(project))

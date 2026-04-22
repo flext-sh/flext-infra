@@ -20,6 +20,12 @@ class TestFlextInfraPatternsTooling:
         assert match is not None
         assert match.group(1) == "mypy-extensions"
 
+    def test_mypy_hint_pattern_matches_stub_package_wording(self) -> None:
+        text = "note: hint: install stub package `types-requests`"
+        match = u.Infra.MYPY_HINT_RE.search(text)
+        assert match is not None
+        assert match.group(1) == "types-requests"
+
     def test_mypy_hint_pattern_no_match_without_hint(self) -> None:
         text = "some other mypy output"
         match = u.Infra.MYPY_HINT_RE.search(text)

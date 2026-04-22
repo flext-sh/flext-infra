@@ -245,10 +245,6 @@ if _t.TYPE_CHECKING:
     )
     from tests.unit.refactor.test_main_cli import TestFlextInfraRefactorMainCli
     from tests.unit.runner_service import RealSubprocessRunner
-    from tests.unit.scenarios import (
-        TestsFlextInfraGitScenario,
-        TestsFlextInfraSubprocessScenario,
-    )
     from tests.unit.test_infra_constants_core import (
         TestFlextInfraConstantsExcludedNamespace,
         TestFlextInfraConstantsFilesNamespace,
@@ -328,12 +324,6 @@ if _t.TYPE_CHECKING:
         TestFlextInfraNamespaceValidator,
     )
     from tests.unit.workspace_factory import TestsFlextInfraWorkspaceFactory
-    from tests.unit.workspace_scenarios import (
-        BrokenScenario,
-        EmptyScenario,
-        FullScenario,
-        MinimalScenario,
-    )
     from tests.utilities import TestsFlextInfraUtilities, u
 _LAZY_IMPORTS = merge_lazy_imports(
     (
@@ -589,10 +579,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ),
             ".unit.refactor.test_main_cli": ("TestFlextInfraRefactorMainCli",),
             ".unit.runner_service": ("RealSubprocessRunner",),
-            ".unit.scenarios": (
-                "TestsFlextInfraGitScenario",
-                "TestsFlextInfraSubprocessScenario",
-            ),
             ".unit.test_infra_constants_core": (
                 "TestFlextInfraConstantsExcludedNamespace",
                 "TestFlextInfraConstantsFilesNamespace",
@@ -672,12 +658,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "TestFlextInfraNamespaceValidator",
             ),
             ".unit.workspace_factory": ("TestsFlextInfraWorkspaceFactory",),
-            ".unit.workspace_scenarios": (
-                "BrokenScenario",
-                "EmptyScenario",
-                "FullScenario",
-                "MinimalScenario",
-            ),
             ".utilities": (
                 "TestsFlextInfraUtilities",
                 "u",
@@ -715,12 +695,8 @@ _LAZY_IMPORTS = merge_lazy_imports(
 install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)
 
 __all__: list[str] = [
-    "BrokenScenario",
-    "EmptyScenario",
     "EngineSafetyStub",
     "FlextInfraRefactorTypingUnificationRule",
-    "FullScenario",
-    "MinimalScenario",
     "RealSubprocessRunner",
     "TestAllDirectoriesScanned",
     "TestAuditorBrokenLinks",
@@ -890,12 +866,10 @@ __all__: list[str] = [
     "TestsFlextInfraConstants",
     "TestsFlextInfraConstantsDomain",
     "TestsFlextInfraConstantsFixtures",
-    "TestsFlextInfraGitScenario",
     "TestsFlextInfraLazyInitHelpers",
     "TestsFlextInfraLazyInitTransforms",
     "TestsFlextInfraModels",
     "TestsFlextInfraProtocols",
-    "TestsFlextInfraSubprocessScenario",
     "TestsFlextInfraTypes",
     "TestsFlextInfraUtilities",
     "TestsFlextInfraUtilitiesDiscoveryConsolidated",

@@ -374,7 +374,7 @@ class FlextInfraCli:
             _route(
                 name="census",
                 help_text="Run a Rope-only workspace census for Python objects",
-                model_cls=m.Infra.RefactorCensusInput,
+                model_cls=FlextInfraRefactorCensus,
                 handler=lambda params: FlextInfraRefactorCensus.execute_command(params),
             ),
             _route(
