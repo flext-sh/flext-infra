@@ -9,10 +9,10 @@ from pathlib import Path
 from typing import override
 
 from flext_infra import (
+    FlextInfraRefactorFileExecutor,
     FlextInfraRefactorLooseClassScanner,
     c,
 )
-from flext_infra.refactor.engine_file import FlextInfraRefactorFileExecutor
 from tests import u
 
 

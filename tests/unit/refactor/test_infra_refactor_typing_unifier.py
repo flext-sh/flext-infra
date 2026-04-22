@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c
-from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
+from flext_infra import FlextInfraRefactorTypingUnifier, c
 from tests import t
 
 

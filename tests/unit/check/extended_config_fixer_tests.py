@@ -34,7 +34,7 @@ class TestConfigFixerProcessFile:
         pyproject.write_text("[tool]\nother = true\n")
         result = fixer.process_file(pyproject)
         tm.ok(result)
-        tm.that(result.value, eq=[])
+        tm.that(result.value, empty=True)
 
     def test_process_file_dry_run_no_write(self, tmp_path: Path) -> None:
         fixer = FlextInfraConfigFixer(workspace=tmp_path)

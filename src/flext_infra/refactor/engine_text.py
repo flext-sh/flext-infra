@@ -166,7 +166,11 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         runtime_aliases = set(c.Infra.RUNTIME_ALIAS_NAMES)
         blocked = set(u.Infra.collect_blocked_aliases(source, runtime_aliases))
         blocked.update(u.Infra.collect_shadowed_aliases(source, runtime_aliases))
-        forbidden = settings.get(c.Infra.RK_FORBIDDEN_IMPORTS) or [settings]
+        forbidden = settings.get(c.Infra.RK_FORBIDDEN_IMPORTS)
+        if forbidden is None:
+            forbidden = t.Cli.JSON_LIST_ADAPTER.validate_python([
+                t.Cli.JSON_MAPPING_ADAPTER.validate_python(settings),
+            ])
         parsed_rules = tuple(u.Infra.parse_forbidden_rules(forbidden))
         modernizer = FlextInfraRefactorImportModernizer(
             imports_to_remove=[

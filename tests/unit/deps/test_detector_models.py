@@ -14,7 +14,7 @@ class TestFlextInfraModelsDependencyDetector:
     def test_pip_check_report_creation(self) -> None:
         report = m.Infra.PipCheckReport(ok=True, lines=[])
         tm.that(report.ok, eq=True)
-        tm.that(report.lines, eq=[])
+        tm.that(report.lines, empty=True)
 
     def test_workspace_dependency_report_creation(self) -> None:
         report = m.Infra.WorkspaceDependencyReport(
@@ -22,6 +22,6 @@ class TestFlextInfraModelsDependencyDetector:
             projects={},
         )
         tm.that(report.workspace, eq="test-workspace")
-        tm.that(report.projects, eq={})
+        tm.that(report.projects, empty=True)
         tm.that(report.pip_check, eq=None)
         tm.that(report.dependency_limits, eq=None)

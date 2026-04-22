@@ -65,7 +65,7 @@ class FlextInfraDocValidator(FlextInfraProjectSelectionServiceBase[bool]):
         if required_result.failure:
             self.logger.warning(
                 "adr_skill_check_failed",
-                error=required_result.error,
+                error=required_result.error or "",
             )
             return (1, [])
         required_skills = required_result.value or [

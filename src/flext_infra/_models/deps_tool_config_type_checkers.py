@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from types import MappingProxyType
 from typing import Annotated
 
 from flext_cli import m
@@ -13,11 +14,7 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
     """Type checker configuration models."""
 
     class PyrightConfig(m.ArbitraryTypesModel):
-        """Pyright strict settings loaded from YAML.
-
-        Enforcement exemption: internal tooling model with intentional
-        mutable state.
-        """
+        """Pyright strict settings loaded from YAML."""
 
         class ExecutionEnvironment(m.ContractModel):
             """Pyright execution environment entry."""
@@ -162,28 +159,28 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 alias="extended-settings",
                 description="Pyright extended settings options.",
             ),
-        ] = m.Field(default_factory=dict)
+        ] = m.Field(default_factory=lambda: MappingProxyType({}))
         lazy_import_suppressions: Annotated[
             t.StrMapping,
             m.Field(
                 alias="lazy-import-suppressions",
                 description="Pyright rules suppressed in ALL envs due to lazy import pattern.",
             ),
-        ] = m.Field(default_factory=dict)
+        ] = m.Field(default_factory=lambda: MappingProxyType({}))
         source_env_suppressions: Annotated[
             t.StrMapping,
             m.Field(
                 alias="source-env-suppressions",
                 description="Additional pyright rules suppressed in source env only.",
             ),
-        ] = m.Field(default_factory=dict)
+        ] = m.Field(default_factory=lambda: MappingProxyType({}))
         test_like_env_suppressions: Annotated[
             t.StrMapping,
             m.Field(
                 alias="test-like-env-suppressions",
                 description="Additional pyright rules suppressed in test-like envs.",
             ),
-        ] = m.Field(default_factory=dict)
+        ] = m.Field(default_factory=lambda: MappingProxyType({}))
         path_rules: Annotated[
             FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig.PathRulesConfig,
             m.Field(

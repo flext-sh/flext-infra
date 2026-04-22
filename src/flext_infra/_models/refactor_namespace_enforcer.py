@@ -7,7 +7,7 @@ from collections.abc import (
 )
 from typing import Annotated, Self
 
-from flext_cli import m
+from flext_cli import m, u
 
 from flext_infra import FlextInfraModelsMixins as mm, t
 
@@ -140,64 +140,107 @@ class FlextInfraModelsNamespaceEnforcer:
         project_root: Annotated[str, m.Field(description="Project root path")]
         facade_statuses: Annotated[
             Sequence[FlextInfraModelsNamespaceEnforcer.FacadeStatus],
-            m.Field(default_factory=tuple),
+            m.Field(
+                default_factory=tuple,
+                description="Facade status entries collected for the project.",
+            ),
         ]
         loose_objects: Annotated[
             Sequence[FlextInfraModelsNamespaceEnforcer.LooseObjectViolation],
-            m.Field(default_factory=tuple),
+            m.Field(
+                default_factory=tuple,
+                description="Loose object violations collected for the project.",
+            ),
         ]
         import_violations: Annotated[
             Sequence[FlextInfraModelsNamespaceEnforcer.ImportAliasViolation],
-            m.Field(default_factory=tuple),
+            m.Field(
+                default_factory=tuple,
+                description="Import alias violations collected for the project.",
+            ),
         ]
         namespace_source_violations: Annotated[
             Sequence[FlextInfraModelsNamespaceEnforcer.NamespaceSourceViolation],
-            m.Field(default_factory=tuple),
+            m.Field(
+                default_factory=tuple,
+                description="Namespace source violations collected for the project.",
+            ),
         ]
         internal_import_violations: Annotated[
             Sequence[FlextInfraModelsNamespaceEnforcer.InternalImportViolation],
-            m.Field(default_factory=tuple),
+            m.Field(
+                default_factory=tuple,
+                description="Internal import violations collected for the project.",
+            ),
         ]
         manual_protocol_violations: Annotated[
             Sequence[FlextInfraModelsNamespaceEnforcer.ManualProtocolViolation],
-            m.Field(default_factory=tuple),
+            m.Field(
+                default_factory=tuple,
+                description="Manual protocol violations collected for the project.",
+            ),
         ]
         cyclic_imports: Annotated[
             Sequence[FlextInfraModelsNamespaceEnforcer.CyclicImportViolation],
-            m.Field(default_factory=tuple),
+            m.Field(
+                default_factory=tuple,
+                description="Cyclic import violations collected for the project.",
+            ),
         ]
         runtime_alias_violations: Annotated[
             Sequence[FlextInfraModelsNamespaceEnforcer.RuntimeAliasViolation],
-            m.Field(default_factory=tuple),
+            m.Field(
+                default_factory=tuple,
+                description="Runtime alias violations collected for the project.",
+            ),
         ]
         future_violations: Annotated[
             Sequence[FlextInfraModelsNamespaceEnforcer.FutureAnnotationsViolation],
-            m.Field(default_factory=tuple),
+            m.Field(
+                default_factory=tuple,
+                description="Future-annotations violations collected for the project.",
+            ),
         ]
         manual_typing_violations: Annotated[
             Sequence[FlextInfraModelsNamespaceEnforcer.ManualTypingAliasViolation],
-            m.Field(default_factory=tuple),
+            m.Field(
+                default_factory=tuple,
+                description="Manual typing alias violations collected for the project.",
+            ),
         ]
         compatibility_alias_violations: Annotated[
             Sequence[FlextInfraModelsNamespaceEnforcer.CompatibilityAliasViolation],
-            m.Field(default_factory=tuple),
+            m.Field(
+                default_factory=tuple,
+                description="Compatibility alias violations collected for the project.",
+            ),
         ]
         class_placement_violations: Annotated[
             Sequence[FlextInfraModelsNamespaceEnforcer.ClassPlacementViolation],
-            m.Field(default_factory=tuple),
+            m.Field(
+                default_factory=tuple,
+                description="Class placement violations collected for the project.",
+            ),
         ]
         mro_completeness_violations: Annotated[
             Sequence[FlextInfraModelsNamespaceEnforcer.MROCompletenessViolation],
-            m.Field(default_factory=tuple),
+            m.Field(
+                default_factory=tuple,
+                description="MRO completeness violations collected for the project.",
+            ),
         ]
         parse_failures: Annotated[
             Sequence[FlextInfraModelsNamespaceEnforcer.ParseFailureViolation],
-            m.Field(default_factory=tuple),
+            m.Field(
+                default_factory=tuple,
+                description="Parse failures collected for the project.",
+            ),
         ]
         files_scanned: Annotated[
             t.NonNegativeInt, m.Field(description="Files scanned")
         ] = 0
 
+        @u.computed_field()
         @property
         def has_violations(self) -> bool:
             """Check if this project has any violations."""
@@ -223,7 +266,10 @@ class FlextInfraModelsNamespaceEnforcer:
         workspace: Annotated[t.NonEmptyStr, m.Field(description="Workspace root path")]
         projects: Annotated[
             Sequence[FlextInfraModelsNamespaceEnforcer.ProjectEnforcementReport],
-            m.Field(default_factory=tuple),
+            m.Field(
+                default_factory=tuple,
+                description="Per-project enforcement reports for the workspace.",
+            ),
         ]
         total_facades_missing: Annotated[
             t.NonNegativeInt, m.Field(description="Total missing facades")
@@ -319,12 +365,14 @@ class FlextInfraModelsNamespaceEnforcer:
                 total_files_scanned=sum(p.files_scanned for p in projects),
             )
 
+        @u.computed_field()
         @property
         def has_violations(self) -> bool:
             return any(
-                getattr(self, f) > 0
-                for f in type(self).model_fields
-                if f.startswith("total_") and f != "total_files_scanned"
+                getattr(self, field_name) > 0
+                for field_name in type(self).model_fields
+                if field_name.startswith("total_")
+                and field_name != "total_files_scanned"
             )
 
 

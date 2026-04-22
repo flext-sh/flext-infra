@@ -39,7 +39,7 @@ class TestScaffoldProjectNoop:
         project = _create_test_project(tmp_path, with_all_modules=True)
         scaffolder = FlextInfraCodegenScaffolder(workspace=tmp_path)
         [result] = scaffolder.run(projects=[_project_info(project)])
-        tm.that(result.files_created, eq=[])
+        tm.that(result.files_created, empty=True)
         tm.that(len(result.files_skipped), eq=5)
         tm.that(result.project, eq="test-project")
 
@@ -92,7 +92,7 @@ class TestScaffoldProjectCreatesTestsModules:
         scaffolder = FlextInfraCodegenScaffolder(workspace=tmp_path)
         [result] = scaffolder.run(projects=[_project_info(project)])
         tests_created = [f for f in result.files_created if "tests" in f]
-        tm.that(tests_created, eq=[])
+        tm.that(tests_created, empty=True)
 
 
 class TestScaffoldProjectIdempotency:
@@ -102,7 +102,7 @@ class TestScaffoldProjectIdempotency:
         [first_result] = scaffolder.run(projects=[_project_info(project)])
         [second_result] = scaffolder.run(projects=[_project_info(project)])
         tm.that(len(first_result.files_created), eq=5)
-        tm.that(second_result.files_created, eq=[])
+        tm.that(second_result.files_created, empty=True)
         tm.that(len(second_result.files_skipped), eq=5)
 
 

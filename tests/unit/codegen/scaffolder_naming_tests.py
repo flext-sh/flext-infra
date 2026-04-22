@@ -158,6 +158,6 @@ class TestGeneratedClassNamingConvention:
                 )
             ]
         )
-        tm.that(result.files_created, eq=[])
-        tm.that(result.files_skipped, eq=[])
+        tm.that(result.files_created, empty=True)
+        tm.that(result.files_skipped, empty=True)
         tm.that(result.project, eq="empty-project")

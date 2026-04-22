@@ -128,7 +128,7 @@ class TestStubChain:
 
         tm.ok(result)
         tm.that(result.value.summary, eq="stub chain: 1 projects, 0 issues")
-        tm.that(result.value.violations, eq=[])
+        tm.that(result.value.violations, empty=True)
 
     def test_build_report_uses_explicit_project_dirs(self, tmp_path: Path) -> None:
         project_a = u.Infra.Tests.mk_project(tmp_path, "project-a", with_src=True)

@@ -98,13 +98,13 @@ class FlextInfraTypesBase:
 
     type InfraValue = t.Cli.JsonValue
     "Canonical infrastructure payload contract from flext-cli JSON typing."
-    type ContainerDict = t.Cli.JsonMapping
+    type ContainerDict = JsonDict
     "Validated JSON object for project reports, docs contracts, and rules."
     type FacadeFamily = str
     "Facade family identifier for MRO chain resolution."
     type ExpectedBase = type | str
     "Expected MRO base: a class or its qualified name."
-    type PolicyContext = Mapping[str, t.Cli.JsonMapping]
+    type PolicyContext = Mapping[str, ContainerDict]
     "Class-nesting policy matrix keyed by module family."
     type MetricValue = t.Scalar | _Path | None
     "Output metric value: scalar (str/int/float/bool/datetime), path, or null."
@@ -146,7 +146,7 @@ class FlextInfraTypesBase:
     "AST node for a method definition (sync or async)."
     type AstModule = _ast.Module
     "AST module node from ast.parse()."
-    type TomlData = dict[str, t.Cli.JsonValue]
+    type TomlData = dict[str, InfraValue]
     "Unwrapped TOML table data — nested dicts of primitives from tomlkit unwrap()."
 
     type CensusRecord = t.HeaderMapping
@@ -154,28 +154,28 @@ class FlextInfraTypesBase:
     type MutableCensusRecordList = MutableSequence[CensusRecord]
     "Mutable list of census records."
 
-    type InfraMapping = t.Cli.JsonMapping
+    type InfraMapping = ContainerDict
     "Read-only validated infra payload mapping."
-    type MutableInfraMapping = MutableMapping[str, t.Cli.JsonValue]
+    type MutableInfraMapping = MutableMapping[str, InfraValue]
     "Mutable validated infra payload mapping."
     type InfraSequence = t.Cli.JsonList
     "Read-only validated infra payload sequence."
-    type MutableInfraSequence = MutableSequence[t.Cli.JsonValue]
+    type MutableInfraSequence = MutableSequence[InfraValue]
     "Mutable validated infra payload sequence."
     type RuleDefinition = InfraMapping
     "Canonical declarative rule definition payload."
-    type RuleDefinitions = Sequence[t.Cli.JsonMapping]
+    type RuleDefinitions = Sequence[ContainerDict]
     "Read-only sequence of declarative rule definitions."
-    type RuleSkipPredicate = Callable[[t.Cli.JsonMapping], bool]
+    type RuleSkipPredicate = Callable[[ContainerDict], bool]
     "Predicate deciding whether one rule definition should be skipped."
-    type RuleSelection[KindT] = tuple[KindT, t.Cli.JsonMapping]
+    type RuleSelection[KindT] = tuple[KindT, ContainerDict]
     "One matched rule kind paired with its validated declarative payload."
     type LoadedRuleSelections[RuleKindT, FileRuleKindT] = tuple[
-        Sequence[tuple[RuleKindT, t.Cli.JsonMapping]],
-        Sequence[tuple[FileRuleKindT, t.Cli.JsonMapping]],
+        Sequence[tuple[RuleKindT, ContainerDict]],
+        Sequence[tuple[FileRuleKindT, ContainerDict]],
     ]
     "Loaded text-rule + file-rule selections from one declarative rules directory."
-    type DomainResult = m.BaseModel | t.Cli.JsonValue
+    type DomainResult = m.BaseModel | InfraValue
     "Typed service result payload: model or validated JSON value."
     type DomainResultSequence = Sequence[DomainResult]
     "Read-only sequence of typed service result payloads."

@@ -226,6 +226,7 @@ if _t.TYPE_CHECKING:
     )
     from tests.unit.fixtures import (
         deptry_report_payload,
+        models_resource,
         modernizer_workspace,
         modernizer_workspace_with_projects,
         real_docs_project,
@@ -233,6 +234,8 @@ if _t.TYPE_CHECKING:
         real_python_package,
         real_toml_project,
         real_workspace,
+        rope_workspace,
+        services_resource,
         tool_config_document,
     )
     from tests.unit.fixtures_git import real_git_repo
@@ -243,14 +246,8 @@ if _t.TYPE_CHECKING:
     from tests.unit.refactor.test_main_cli import TestFlextInfraRefactorMainCli
     from tests.unit.runner_service import RealSubprocessRunner
     from tests.unit.scenarios import (
-        DependencyScenario,
-        DependencyScenarios,
-        GitScenario,
-        GitScenarios,
-        SubprocessScenario,
-        SubprocessScenarios,
-        WorkspaceScenario,
-        WorkspaceScenarios,
+        TestsFlextInfraGitScenario,
+        TestsFlextInfraSubprocessScenario,
     )
     from tests.unit.test_infra_constants_core import (
         TestFlextInfraConstantsExcludedNamespace,
@@ -330,7 +327,7 @@ if _t.TYPE_CHECKING:
     from tests.unit.validate.namespace_validator_tests import (
         TestFlextInfraNamespaceValidator,
     )
-    from tests.unit.workspace_factory import WorkspaceFactory
+    from tests.unit.workspace_factory import TestsFlextInfraWorkspaceFactory
     from tests.unit.workspace_scenarios import (
         BrokenScenario,
         EmptyScenario,
@@ -573,6 +570,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ),
             ".unit.fixtures": (
                 "deptry_report_payload",
+                "models_resource",
                 "modernizer_workspace",
                 "modernizer_workspace_with_projects",
                 "real_docs_project",
@@ -580,6 +578,8 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "real_python_package",
                 "real_toml_project",
                 "real_workspace",
+                "rope_workspace",
+                "services_resource",
                 "tool_config_document",
             ),
             ".unit.fixtures_git": ("real_git_repo",),
@@ -590,14 +590,8 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".unit.refactor.test_main_cli": ("TestFlextInfraRefactorMainCli",),
             ".unit.runner_service": ("RealSubprocessRunner",),
             ".unit.scenarios": (
-                "DependencyScenario",
-                "DependencyScenarios",
-                "GitScenario",
-                "GitScenarios",
-                "SubprocessScenario",
-                "SubprocessScenarios",
-                "WorkspaceScenario",
-                "WorkspaceScenarios",
+                "TestsFlextInfraGitScenario",
+                "TestsFlextInfraSubprocessScenario",
             ),
             ".unit.test_infra_constants_core": (
                 "TestFlextInfraConstantsExcludedNamespace",
@@ -677,7 +671,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".unit.validate.namespace_validator_tests": (
                 "TestFlextInfraNamespaceValidator",
             ),
-            ".unit.workspace_factory": ("WorkspaceFactory",),
+            ".unit.workspace_factory": ("TestsFlextInfraWorkspaceFactory",),
             ".unit.workspace_scenarios": (
                 "BrokenScenario",
                 "EmptyScenario",
@@ -722,18 +716,12 @@ install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)
 
 __all__: list[str] = [
     "BrokenScenario",
-    "DependencyScenario",
-    "DependencyScenarios",
     "EmptyScenario",
     "EngineSafetyStub",
     "FlextInfraRefactorTypingUnificationRule",
     "FullScenario",
-    "GitScenario",
-    "GitScenarios",
     "MinimalScenario",
     "RealSubprocessRunner",
-    "SubprocessScenario",
-    "SubprocessScenarios",
     "TestAllDirectoriesScanned",
     "TestAuditorBrokenLinks",
     "TestAuditorCore",
@@ -902,23 +890,24 @@ __all__: list[str] = [
     "TestsFlextInfraConstants",
     "TestsFlextInfraConstantsDomain",
     "TestsFlextInfraConstantsFixtures",
+    "TestsFlextInfraGitScenario",
     "TestsFlextInfraLazyInitHelpers",
     "TestsFlextInfraLazyInitTransforms",
     "TestsFlextInfraModels",
     "TestsFlextInfraProtocols",
+    "TestsFlextInfraSubprocessScenario",
     "TestsFlextInfraTypes",
     "TestsFlextInfraUtilities",
     "TestsFlextInfraUtilitiesDiscoveryConsolidated",
     "TestsFlextInfraUtilitiesFormattingRunRuffFix",
-    "WorkspaceFactory",
-    "WorkspaceScenario",
-    "WorkspaceScenarios",
+    "TestsFlextInfraWorkspaceFactory",
     "c",
     "d",
     "deptry_report_payload",
     "e",
     "h",
     "m",
+    "models_resource",
     "modernizer_workspace",
     "modernizer_workspace_with_projects",
     "p",
@@ -929,7 +918,9 @@ __all__: list[str] = [
     "real_python_package",
     "real_toml_project",
     "real_workspace",
+    "rope_workspace",
     "s",
+    "services_resource",
     "t",
     "td",
     "tf",

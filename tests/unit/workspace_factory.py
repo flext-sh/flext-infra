@@ -1,7 +1,6 @@
 """Workspace factory for FLEXT infra tests.
 
-Creates real FLEXT project structures using flext_tests base classes.
-Uses m (m), c (c), and u (u).
+Creates real FLEXT project structures using centralized test contracts.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -10,28 +9,23 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated
 
-from tests import c, m, t
+from tests import c, t
 
 
-class WorkspaceFactory(m.Value):
-    """Factory for creating test workspaces with real project structures.
+class TestsFlextInfraWorkspaceFactory:
+    """Factory for creating test workspaces with real project structures."""
 
-    Extends m.Factory.Config for consistent test data generation.
-    Uses constants from c.Infra.Tests for version strings and paths.
-    """
+    default_python: str = "^3.13"
+    default_version: str = "0.1.0"
+    encoding: str = "utf-8"
 
-    default_python: Annotated[str, m.Field(default="^3.13")]
-    default_version: Annotated[str, m.Field(default="0.1.0")]
-    encoding: Annotated[str, m.Field(default="utf-8")]
-
-    def create_minimal(self, tmp_path: Path, name: str = "test-proj") -> Path:
-        """Create minimal project with pyproject.toml, Makefile, src/."""
+    def create_minimal(self, tmp_path: Path, name: t.NonEmptyStr = "test-proj") -> Path:
+        """Create a minimal project with pyproject.toml, Makefile, and src/."""
         return self._create_project(tmp_path=tmp_path, name=name, deps=[])
 
-    def create_full(self, tmp_path: Path, name: str) -> Path:
-        """Create full project with docs/, AGENTS.md, README.md."""
+    def create_full(self, tmp_path: Path, name: t.NonEmptyStr) -> Path:
+        """Create a full project with docs/, AGENTS.md, and README.md."""
         project_root = self.create_minimal(tmp_path=tmp_path, name=name)
         docs_dir = project_root / "docs"
         docs_dir.mkdir(parents=True, exist_ok=True)
@@ -49,12 +43,17 @@ class WorkspaceFactory(m.Value):
         )
         return project_root
 
-    def create_with_deps(self, tmp_path: Path, name: str, deps: t.StrSequence) -> Path:
-        """Create project with specified dependencies."""
+    def create_with_deps(
+        self,
+        tmp_path: Path,
+        name: t.NonEmptyStr,
+        deps: t.StrSequence,
+    ) -> Path:
+        """Create a project with the specified dependencies."""
         return self._create_project(tmp_path=tmp_path, name=name, deps=deps)
 
     def create_workspace(self, tmp_path: Path, projects: int = 3) -> Path:
-        """Create multi-project workspace using c.Infra.Tests.Projects patterns."""
+        """Create a multi-project workspace using real project fixtures."""
         workspace_root = tmp_path / "workspace"
         workspace_root.mkdir(parents=True, exist_ok=True)
         project_names = [f"test-proj-{idx + 1}" for idx in range(projects)]
@@ -80,8 +79,13 @@ class WorkspaceFactory(m.Value):
         )
         return workspace_root
 
-    def _create_project(self, tmp_path: Path, name: str, deps: t.StrSequence) -> Path:
-        """Internal method to create project structure."""
+    def _create_project(
+        self,
+        tmp_path: Path,
+        name: t.NonEmptyStr,
+        deps: t.StrSequence,
+    ) -> Path:
+        """Create a project structure with package and tests directories."""
         project_root = tmp_path / name
         package_dir = project_root / "src" / name.replace("-", "_")
         tests_dir = project_root / "tests"
@@ -102,12 +106,11 @@ class WorkspaceFactory(m.Value):
         (tests_dir / "__init__.py").write_text("", encoding=self.encoding)
         return project_root
 
-    def _project_pyproject(self, name: str, deps: t.StrSequence) -> str:
-        """Generate pyproject.toml content using c.Infra constants."""
-        dependency_lines = [f'python = "^{self.default_python.lstrip("^")}"']
+    def _project_pyproject(self, name: t.NonEmptyStr, deps: t.StrSequence) -> str:
+        """Generate pyproject.toml content using infra constants."""
+        dependency_lines = [f'python = "^{self.default_python.removeprefix("^")}"']
         dependency_lines.extend(f'{dep} = "*"' for dep in deps)
         dependencies = "\n".join(dependency_lines)
-        # Use c.Infra constants at runtime
         tool_poetry = f"[tool.{c.Infra.POETRY}]\n"
         poetry_deps = f"[tool.{c.Infra.POETRY}.{c.Infra.DEPENDENCIES}]\n"
         return (
@@ -124,4 +127,4 @@ class WorkspaceFactory(m.Value):
         )
 
 
-__all__: list[str] = ["WorkspaceFactory"]
+__all__: list[str] = ["TestsFlextInfraWorkspaceFactory"]

@@ -15,7 +15,6 @@ from collections.abc import (
 )
 
 from flext_core import t
-
 from rope.base.change import ChangeContents, ChangeSet
 from rope.base.project import Project
 from rope.base.pycore import PyCore

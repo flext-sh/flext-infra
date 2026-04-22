@@ -228,15 +228,9 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
             changes.append("build-system.build-backend set to hatchling.build")
         expected_requires = ["hatchling"]
         requires_value = build_system.get("requires", None)
-        current_requires: list[str] = []
-        if isinstance(requires_value, str | int | float | bool) or (
-            isinstance(requires_value, Sequence)
-            and not isinstance(
-                requires_value,
-                str | bytes,
-            )
-        ):
-            current_requires = sorted(u.Cli.toml_as_string_list(requires_value))
+        current_requires = sorted(
+            str(item) for item in u.Cli.json_as_sequence(requires_value)
+        )
         if current_requires != expected_requires:
             build_system["requires"] = list(expected_requires)
             changes.append("build-system.requires set to ['hatchling']")

@@ -7,9 +7,12 @@ from typing import Annotated
 
 from flext_cli import m, u
 
-from flext_infra import c, t
-from flext_infra._utilities.base import FlextInfraUtilitiesBase as ub
-from flext_infra._utilities.release import FlextInfraUtilitiesRelease as ur
+from flext_infra import (
+    FlextInfraUtilitiesBase as ub,
+    FlextInfraUtilitiesRelease as ur,
+    c,
+    t,
+)
 
 
 class FlextInfraModelsMixins:

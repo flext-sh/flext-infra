@@ -10,6 +10,7 @@ from collections.abc import (
     Mapping,
 )
 from pathlib import Path
+from types import MappingProxyType
 from typing import Annotated
 
 from flext_cli import m
@@ -52,11 +53,7 @@ class FlextInfraModelsRope:
         ]
 
     class ModuleSemanticState(m.ContractModel):
-        """Unified semantic snapshot for one Rope module analysis pass.
-
-        Enforcement exemption: internal tooling model with intentional
-        mutable state.
-        """
+        """Unified semantic snapshot for one Rope module analysis pass."""
 
         class_infos: Annotated[
             tuple[FlextInfraModelsRope.ClassInfo, ...],
@@ -67,13 +64,13 @@ class FlextInfraModelsRope:
             m.Field(
                 default_factory=dict, description="Declared import targets by name"
             ),
-        ]
+        ] = m.Field(default_factory=lambda: MappingProxyType({}))
         semantic_imports: Annotated[
             t.StrMapping,
             m.Field(
                 default_factory=dict, description="Resolved import targets by name"
             ),
-        ]
+        ] = m.Field(default_factory=lambda: MappingProxyType({}))
 
     class RopeModuleIndexEntry(m.ContractModel):
         """Generic Rope-backed index entry for one Python module resource."""
@@ -153,11 +150,7 @@ class FlextInfraModelsRope:
         ] = ()
 
     class RopeWorkspaceIndex(m.ContractModel):
-        """Generic Rope-backed workspace index for package planning.
-
-        Enforcement exemption: internal tooling model with intentional
-        mutable state.
-        """
+        """Generic Rope-backed workspace index for package planning."""
 
         workspace_root: Annotated[
             Path,
@@ -177,28 +170,28 @@ class FlextInfraModelsRope:
                 default_factory=dict,
                 description="Package entries keyed by absolute directory path",
             ),
-        ]
+        ] = m.Field(default_factory=lambda: MappingProxyType({}))
         modules_by_path: Annotated[
             Mapping[str, FlextInfraModelsRope.RopeModuleIndexEntry],
             m.Field(
                 default_factory=dict,
                 description="Module entries keyed by absolute file path",
             ),
-        ]
+        ] = m.Field(default_factory=lambda: MappingProxyType({}))
         package_dir_by_name: Annotated[
             Mapping[str, Path],
             m.Field(
                 default_factory=dict,
                 description="Importable package directory keyed by package name",
             ),
-        ]
+        ] = m.Field(default_factory=lambda: MappingProxyType({}))
         project_package_by_root: Annotated[
             t.StrMapping,
             m.Field(
                 default_factory=dict,
                 description="Canonical source package name keyed by project root path",
             ),
-        ]
+        ] = m.Field(default_factory=lambda: MappingProxyType({}))
 
     class RopeProjectLayout(m.ContractModel):
         """Canonical project layout derived once for Rope-backed codegen flows."""

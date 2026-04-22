@@ -72,7 +72,7 @@ class TestRewriteDepPaths:
             internal_names={"flext-core"},
             is_root=True,
         )
-        tm.that(tm.ok(result), eq=[])
+        tm.that(tm.ok(result), empty=True)
 
     def test_rewrite_dep_paths_read_failure(self, tmp_path: Path) -> None:
         result = _rewrite_dep_paths(

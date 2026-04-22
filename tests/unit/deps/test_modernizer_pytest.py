@@ -101,4 +101,4 @@ markers = ["custom: custom marker"]
         _ = phase.apply(doc)
         second_changes = phase.apply(doc)
 
-        tm.that(second_changes, eq=[])
+        tm.that(second_changes, empty=True)

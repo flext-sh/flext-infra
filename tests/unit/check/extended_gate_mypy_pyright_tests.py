@@ -5,10 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from flext_infra import FlextInfraMypyGate, FlextInfraPyrightGate, m
-from tests import p, t, u
+from flext_infra import FlextInfraGate, FlextInfraMypyGate, FlextInfraPyrightGate, m
+from tests import p, tm, u
 
 
 class TestTypeGates:
@@ -67,7 +66,7 @@ class TestTypeGates:
     def test_check(
         self,
         tmp_path: Path,
-        gate_class: t.Infra.Tests.GateClass,
+        gate_class: type[FlextInfraGate],
         project_has_src: bool,
         runner_result: p.Result[m.Cli.CommandOutput] | None,
         passed: bool,
@@ -90,4 +89,4 @@ class TestTypeGates:
         tm.that(len(result.issues), eq=issues_len)
 
 
-__all__: t.StrSequence = []
+__all__: list[str] = []

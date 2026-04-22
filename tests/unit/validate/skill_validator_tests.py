@@ -51,7 +51,7 @@ class TestStringList:
 
     def test_none_returns_empty(self) -> None:
         """None returns empty list."""
-        tm.that(_string_list(None), eq=[])
+        tm.that(_string_list(None), empty=True)
 
     def test_valid_list(self) -> None:
         """Valid string list passes through."""
@@ -119,7 +119,7 @@ class TestSkillValidatorCore:
         (skill / "rules.yml").write_text("just a plain string")
         report = tm.ok(validator.build_report(tmp_path, "test-skill"))
         tm.that(report.passed, eq=True)
-        tm.that(report.violations, eq=[])
+        tm.that(report.violations, empty=True)
 
 
 class TestSkillValidatorRenderTemplate:

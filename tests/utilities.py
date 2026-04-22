@@ -34,6 +34,8 @@ from tests import c, m, p, r, t
 class TestsFlextInfraUtilities(FlextTestsUtilities, u):
     """Typed test utilities for flext-infra."""
 
+    __test__ = False
+
     class Infra(u.Infra):
         """Infra-specific utilities namespace."""
 
@@ -804,19 +806,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 return service
 
             @staticmethod
-            def patch_public_infra(
-                monkeypatch: pytest.MonkeyPatch,
-                name: str,
-                value: t.Infra.Tests.PublicProjectDiscoveryStub | t.Scalar,
-            ) -> None:
-                patched = staticmethod(value) if callable(value) else value
-                monkeypatch.setattr(
-                    u.Infra,
-                    name,
-                    patched,
-                )
-
-            @staticmethod
             def create_lazy_init_workspace(
                 tmp_path: Path,
                 *,
@@ -1069,7 +1058,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             @staticmethod
             def detect_command(
                 workspace_root: Path,
-                **overrides: t.Infra.Tests.DetectCommandOverride,
+                **overrides: t.Infra.InfraValue,
             ) -> m.Infra.DetectCommand:
                 return m.Infra.DetectCommand.model_validate({
                     "workspace": str(workspace_root),
@@ -1194,109 +1183,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 return checker, project_dir
 
             @staticmethod
-            def create_check_project_iter_stub(
-                projects: Sequence[m.Infra.ProjectResult],
-            ) -> t.Infra.Tests.ProjectCheckStub:
-                project_iter = iter(projects)
-
-                def _fake_check(
-                    _self: object,
-                    _project_dir: Path,
-                    _gates: t.StrSequence,
-                    _ctx: m.Infra.GateContext,
-                ) -> m.Infra.ProjectResult:
-                    del _self, _project_dir, _gates, _ctx
-                    return next(project_iter)
-
-                return _fake_check
-
-            @staticmethod
-            def patch_gate_run(
-                monkeypatch: pytest.MonkeyPatch,
-                gate_class: t.Infra.Tests.GateClass,
-                *,
-                stdout: str = "",
-                stderr: str = "",
-                returncode: int = 0,
-            ) -> None:
-                fixed_result = TestsFlextInfraUtilities.Infra.Tests.stub_run(
-                    stdout=stdout,
-                    stderr=stderr,
-                    returncode=returncode,
-                )
-
-                def _run(
-                    _self: FlextInfraGate,
-                    _cmd: t.StrSequence,
-                    _cwd: Path,
-                    timeout: int = 120,
-                    env: dict[str, str] | None = None,
-                ) -> m.Cli.CommandOutput:
-                    del _self, _cmd, _cwd, timeout, env
-                    return fixed_result
-
-                monkeypatch.setattr(gate_class, "_run", _run)
-
-            @staticmethod
-            def patch_gate_run_sequence(
-                monkeypatch: pytest.MonkeyPatch,
-                gate_class: t.Infra.Tests.GateClass,
-                outputs: Sequence[m.Cli.CommandOutput],
-            ) -> None:
-                index = {"value": 0}
-
-                def _run(
-                    _self: FlextInfraGate,
-                    _cmd: t.StrSequence,
-                    _cwd: Path,
-                    timeout: int = 120,
-                    env: dict[str, str] | None = None,
-                ) -> m.Cli.CommandOutput:
-                    del _self, _cmd, _cwd, timeout, env
-                    current = index["value"]
-                    index["value"] = current + 1
-                    return outputs[current] if current < len(outputs) else outputs[-1]
-
-                monkeypatch.setattr(gate_class, "_run", _run)
-
-            @staticmethod
-            def patch_python_dir_detection(
-                monkeypatch: pytest.MonkeyPatch,
-                gate_class: t.Infra.Tests.GateClass,
-                *,
-                has_python_dirs: bool,
-            ) -> None:
-                if gate_class.__name__ == "FlextInfraPyreflyGate":
-
-                    def _get_check_dirs(
-                        _self: FlextInfraGate,
-                        _project_dir: Path,
-                        _ctx: m.Infra.GateContext,
-                    ) -> t.StrSequence:
-                        del _self, _project_dir, _ctx
-                        return ["src"] if has_python_dirs else []
-
-                    monkeypatch.setattr(gate_class, "_get_check_dirs", _get_check_dirs)
-                    return
-
-                def _existing_dirs(
-                    _self: FlextInfraGate, _project_dir: Path
-                ) -> t.StrSequence:
-                    del _self, _project_dir
-                    return ["src"]
-
-                def _dirs_with_py(
-                    _project_dir: Path, _dirs: t.StrSequence
-                ) -> t.StrSequence:
-                    del _project_dir, _dirs
-                    return ["src"] if has_python_dirs else []
-
-                monkeypatch.setattr(gate_class, "_existing_check_dirs", _existing_dirs)
-                monkeypatch.setattr(
-                    gate_class, "_dirs_with_py", staticmethod(_dirs_with_py)
-                )
-
-            @staticmethod
             def create_gate_context(
                 workspace_root: Path,
                 *,
@@ -1309,7 +1195,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
             @staticmethod
             def run_gate_check(
-                gate_class: t.Infra.Tests.GateClass,
+                gate_class: type[FlextInfraGate],
                 workspace_root: Path,
                 project_dir: Path,
                 *,
@@ -1326,40 +1212,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                         reports_dir=reports_dir,
                     ),
                 )
-
-            @staticmethod
-            def create_fake_run_raw(
-                result: p.Result[m.Cli.CommandOutput] | str,
-            ) -> t.Infra.Tests.RawRunStub:
-                def _fake_run_raw(
-                    _cmd: t.StrSequence,
-                    cwd: Path | None = None,
-                    timeout: int | None = None,
-                    env: t.StrMapping | None = None,
-                ) -> p.Result[m.Cli.CommandOutput]:
-                    del _cmd, cwd, timeout, env
-                    return (
-                        r[m.Cli.CommandOutput].fail(result)
-                        if isinstance(result, str)
-                        else result
-                    )
-
-                return _fake_run_raw
-
-            @staticmethod
-            def create_check_project_stub(
-                project: m.Infra.ProjectResult,
-            ) -> t.Infra.Tests.ProjectCheckStub:
-                def _fake_check(
-                    _self: object,
-                    _project_dir: Path,
-                    _gates: t.StrSequence,
-                    _ctx: m.Infra.GateContext,
-                ) -> m.Infra.ProjectResult:
-                    del _self, _project_dir, _gates, _ctx
-                    return project
-
-                return _fake_check
 
             class DetectorReportStub:
                 """Minimal report stub for dependency detector tests."""

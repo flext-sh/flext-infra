@@ -65,9 +65,9 @@ def test_project_without_src_returns_empty(tmp_path: Path) -> None:
         projects=[_project_info(project, package_name="")],
     )
     tm.that(result.project, eq="no-src-proj")
-    tm.that(result.violations_fixed, eq=[])
-    tm.that(result.violations_skipped, eq=[])
-    tm.that(result.files_modified, eq=[])
+    tm.that(result.violations_fixed, empty=True)
+    tm.that(result.violations_skipped, empty=True)
+    tm.that(result.files_modified, empty=True)
 
 
 def test_files_modified_tracks_affected_files(tmp_path: Path) -> None:

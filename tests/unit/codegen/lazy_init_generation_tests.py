@@ -39,7 +39,7 @@ class TestGenerateTypeChecking:
             groups,
             include_flext_types=False,
         )
-        tm.that(lines, eq=[])
+        tm.that(lines, empty=True)
 
     def test_with_single_module(self) -> None:
         """Test with single module."""

@@ -8,11 +8,13 @@ from __future__ import annotations
 
 import re
 from collections.abc import (
+    Mapping,
     MutableMapping,
     MutableSequence,
 )
 from pathlib import Path
-from typing import ClassVar
+from types import MappingProxyType
+from typing import Annotated, ClassVar
 
 from flext_infra import c, m, t, u
 
@@ -25,29 +27,38 @@ class FlextInfraTransformerTier0ImportFixer:
 
         model_config = m.ConfigDict(frozen=True, arbitrary_types_allowed=True)
 
-        package_name: str
-        file_path: Path
-        alias_to_module: dict[str, str] = m.Field(
-            default_factory=dict,
-            description="Alias names mapped to their source modules",
-        )
-        category_a: set[str] = m.Field(
-            default_factory=set,
-            description="Toplevel aliases (informational only)",
-        )
-        category_b: set[str] = m.Field(
-            default_factory=set,
-            description="Core aliases to redirect to core package",
-        )
-        category_c: set[str] = m.Field(
-            default_factory=set,
-            description="Aliases to move to TYPE_CHECKING block",
-        )
-        category_d: set[str] = m.Field(
-            default_factory=set,
-            description="Runtime-used aliases requiring special handling",
-        )
+        package_name: Annotated[
+            str,
+            m.Field(description="Resolved package name for the analyzed file"),
+        ]
+        file_path: Annotated[
+            Path,
+            m.Field(description="Python file analyzed for Tier 0 import violations"),
+        ]
+        alias_to_module: Annotated[
+            Mapping[str, str],
+            m.Field(description="Alias names mapped to their source modules"),
+        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        category_a: Annotated[
+            frozenset[str],
+            m.Field(description="Top-level aliases that are informational only"),
+        ] = m.Field(default_factory=frozenset)
+        category_b: Annotated[
+            frozenset[str],
+            m.Field(description="Core aliases to redirect to the core package"),
+        ] = m.Field(default_factory=frozenset)
+        category_c: Annotated[
+            frozenset[str],
+            m.Field(description="Aliases to move into a TYPE_CHECKING block"),
+        ] = m.Field(default_factory=frozenset)
+        category_d: Annotated[
+            frozenset[str],
+            m.Field(
+                description="Runtime-used aliases requiring direct import handling",
+            ),
+        ] = m.Field(default_factory=frozenset)
 
+        @u.computed_field()
         @property
         def has_violations(self) -> bool:
             """Return True if any imports need redirecting or moving."""
@@ -93,22 +104,31 @@ class FlextInfraTransformerTier0ImportFixer:
             alias_map: dict[str, str] = {
                 alias_name: alias_name for alias_name in c.Infra.RUNTIME_ALIAS_NAMES
             }
-            analysis = FlextInfraTransformerTier0ImportFixer.Analysis(
-                package_name=pkg_name,
-                file_path=self._file_path,
-                alias_to_module=alias_map,
-            )
             if u.Infra.is_module_toplevel(self._file_path):
-                analysis.category_a.update(self._self_import_aliases)
-                return analysis
+                return FlextInfraTransformerTier0ImportFixer.Analysis(
+                    package_name=pkg_name,
+                    file_path=self._file_path,
+                    alias_to_module=MappingProxyType(alias_map),
+                    category_a=frozenset(self._self_import_aliases),
+                )
+            category_b: set[str] = set()
+            category_c: set[str] = set()
+            category_d: set[str] = set()
             for alias in sorted(self._self_import_aliases):
                 if alias in self._core_aliases:
-                    analysis.category_b.add(alias)
+                    category_b.add(alias)
                 elif alias in self._runtime_aliases:
-                    analysis.category_d.add(alias)
+                    category_d.add(alias)
                 else:
-                    analysis.category_c.add(alias)
-            return analysis
+                    category_c.add(alias)
+            return FlextInfraTransformerTier0ImportFixer.Analysis(
+                package_name=pkg_name,
+                file_path=self._file_path,
+                alias_to_module=MappingProxyType(alias_map),
+                category_b=frozenset(category_b),
+                category_c=frozenset(category_c),
+                category_d=frozenset(category_d),
+            )
 
         def _scan_self_imports(self, source: str, pkg_name: str) -> None:
             """Collect single-letter aliases from self-package imports."""

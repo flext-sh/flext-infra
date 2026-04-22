@@ -45,6 +45,9 @@ class FlextInfraDependencyDetectionAnalysis:
     ) -> t.Infra.ContainerDict:
         normalized: MutableMapping[str, t.Infra.InfraValue] = {}
         for key, value in payload.items():
+            if value is None:
+                normalized[str(key)] = None
+                continue
             converted = FlextInfraDependencyDetectionAnalysis.to_infra_value(value)
             if converted is None:
                 continue

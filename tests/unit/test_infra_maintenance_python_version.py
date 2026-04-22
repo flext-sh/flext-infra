@@ -227,4 +227,4 @@ class TestPublicProjectDiscovery:
         d.mkdir()
         result = u.Infra.discover_projects(d)
         tm.ok(result)
-        tm.that(result.value, eq=[])
+        tm.that(result.value, empty=True)

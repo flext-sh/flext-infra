@@ -52,7 +52,7 @@ class TestDetectionTypingsFlow:
 
         got = service.get_current_typings_from_pyproject(Path("/dummy"))
 
-        tm.that(got, eq=[])
+        tm.that(got, empty=True)
 
     def test_get_current_typings_from_pyproject_variants(self) -> None:
         service = FlextInfraDependencyDetectionService()
@@ -85,10 +85,10 @@ class TestDetectionTypingsFlow:
         )
         path = Path("/dummy")
 
-        tm.that(service.get_current_typings_from_pyproject(path), eq=[])
-        tm.that(service.get_current_typings_from_pyproject(path), eq=[])
-        tm.that(service.get_current_typings_from_pyproject(path), eq=[])
-        tm.that(service.get_current_typings_from_pyproject(path), eq=[])
+        tm.that(service.get_current_typings_from_pyproject(path), empty=True)
+        tm.that(service.get_current_typings_from_pyproject(path), empty=True)
+        tm.that(service.get_current_typings_from_pyproject(path), empty=True)
+        tm.that(service.get_current_typings_from_pyproject(path), empty=True)
 
     def test_get_required_typings_paths(self, tmp_path: Path) -> None:
         venv_bin = tmp_path / "venv" / "bin"

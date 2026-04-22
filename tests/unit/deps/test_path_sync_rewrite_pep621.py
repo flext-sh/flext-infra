@@ -14,7 +14,7 @@ class TestRewritePep621:
             doc,
             internal_names=set(),
         )
-        tm.that(changes, eq=[])
+        tm.that(changes, empty=True)
 
     def test_rewrite_pep621_no_dependencies(self) -> None:
         doc = TOMLDocument()
@@ -23,7 +23,7 @@ class TestRewritePep621:
             doc,
             internal_names=set(),
         )
-        tm.that(changes, eq=[])
+        tm.that(changes, empty=True)
 
     def test_rewrite_pep621_non_list_dependencies(self) -> None:
         doc = TOMLDocument()
@@ -32,7 +32,7 @@ class TestRewritePep621:
             doc,
             internal_names=set(),
         )
-        tm.that(changes, eq=[])
+        tm.that(changes, empty=True)
 
     def test_rewrite_pep621_rewrite_path_dep(self) -> None:
         doc = TOMLDocument()
@@ -56,7 +56,7 @@ class TestRewritePep621:
             doc,
             internal_names={"flext-core"},
         )
-        tm.that(changes, eq=[])
+        tm.that(changes, empty=True)
 
     def test_rewrite_pep621_with_marker(self) -> None:
         doc = TOMLDocument()
@@ -82,7 +82,7 @@ class TestRewritePep621:
             doc,
             internal_names={"flext-core"},
         )
-        tm.that(changes, eq=[])
+        tm.that(changes, empty=True)
         unwrapped = doc.unwrap()
         tm.that(
             unwrapped["project"]["dependencies"],

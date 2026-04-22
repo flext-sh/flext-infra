@@ -51,7 +51,8 @@ class FlextInfraConstantsSharedInfra:
         r"Cannot find module `([^`]+)` \[missing-import\]",
     )
     MYPY_HINT_RE: Final[re.Pattern[str]] = re.compile(
-        r"note:\s+(?:hint|note):\s+.*?`(types-\S+)`",
+        r'note:\s+(?:hint|note):\s+["`].*?\bpip\s+install\s+([A-Za-z0-9][A-Za-z0-9_.-]*)["`]',
+        re.IGNORECASE,
     )
     MYPY_STUB_RE: Final[re.Pattern[str]] = re.compile(
         r"Library stubs not installed for ['\"](\S+?)['\"]",

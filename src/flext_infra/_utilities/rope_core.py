@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import ClassVar
 
 import rope.refactor.importutils as rope_importutils
-from flext_infra import FlextInfraUtilitiesIteration, c, t
 from rope.base.exceptions import (
     ModuleSyntaxError,
     RefactoringError,
@@ -21,6 +20,8 @@ from rope.base.project import Project
 from rope.base.pyobjects import AbstractClass
 from rope.base.pyobjectsdef import PyFunction, PyModule
 from rope.base.resources import File
+
+from flext_infra import FlextInfraUtilitiesIteration, c, t
 
 
 class FlextInfraUtilitiesRopeCore:

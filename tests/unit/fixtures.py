@@ -173,8 +173,74 @@ def real_docs_project(tmp_path: Path) -> Path:
     return project_root
 
 
+@pytest.fixture
+def rope_workspace(
+    tmp_path: Path,
+) -> t.Pair[t.Infra.RopeProject, Path]:
+    """Create a real rope workspace with semantic-analysis fixtures."""
+    workspace_root = tmp_path / "rope_workspace"
+    package_root = workspace_root / "src" / "rope_demo"
+    package_root.mkdir(parents=True, exist_ok=True)
+    (package_root / "__init__.py").write_text("", encoding="utf-8")
+    (package_root / "models.py").write_text(
+        "from pathlib import Path\n\n"
+        "class Animal:\n"
+        "    pass\n\n"
+        "class Dog(Animal):\n"
+        "    home = Path('kennel')\n\n"
+        "    @staticmethod\n"
+        "    def fetch() -> str:\n"
+        "        return 'ball'\n\n"
+        "    @classmethod\n"
+        "    def breed(cls) -> str:\n"
+        "        return cls.__name__\n\n"
+        "    def _wag(self) -> str:\n"
+        "        return 'wag'\n",
+        encoding="utf-8",
+    )
+    (package_root / "services.py").write_text(
+        "from rope_demo.models import Dog\n\n"
+        "class Kennel:\n"
+        "    def adopt(self) -> Dog:\n"
+        "        return Dog()\n",
+        encoding="utf-8",
+    )
+
+    rope_project = u.Infra.init_rope_project(workspace_root, project_prefix="__never__")
+    return rope_project, workspace_root
+
+
+@pytest.fixture
+def models_resource(
+    rope_workspace: t.Pair[t.Infra.RopeProject, Path],
+) -> t.Infra.RopeResource:
+    """Return the Rope resource for the semantic models fixture module."""
+    rope_project, workspace_root = rope_workspace
+    resource = u.Infra.get_resource_from_path(
+        rope_project,
+        workspace_root / "src" / "rope_demo" / "models.py",
+    )
+    assert resource is not None
+    return resource
+
+
+@pytest.fixture
+def services_resource(
+    rope_workspace: t.Pair[t.Infra.RopeProject, Path],
+) -> t.Infra.RopeResource:
+    """Return the Rope resource for the semantic services fixture module."""
+    rope_project, workspace_root = rope_workspace
+    resource = u.Infra.get_resource_from_path(
+        rope_project,
+        workspace_root / "src" / "rope_demo" / "services.py",
+    )
+    assert resource is not None
+    return resource
+
+
 __all__: list[str] = [
     "deptry_report_payload",
+    "models_resource",
     "modernizer_workspace",
     "modernizer_workspace_with_projects",
     "real_docs_project",
@@ -182,5 +248,7 @@ __all__: list[str] = [
     "real_python_package",
     "real_toml_project",
     "real_workspace",
+    "rope_workspace",
+    "services_resource",
     "tool_config_document",
 ]

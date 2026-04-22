@@ -88,7 +88,7 @@ class TestMigratorPublicBehavior:
 
         migration = tm.ok(migrator.execute())[0]
 
-        tm.that(migration.errors, eq=[])
+        tm.that(len(migration.errors), eq=0)
         tm.that(migration.changes, has="no changes needed")
 
     def test_execute_surfaces_pyproject_write_error(
@@ -132,7 +132,7 @@ class TestMigratorPublicBehavior:
 
         migration = tm.ok(migrator.execute())[0]
 
-        tm.that(migration.errors, eq=[])
+        tm.that(len(migration.errors), eq=0)
         tm.that(
             any("flext-core dependency" in change for change in migration.changes),
             eq=False,

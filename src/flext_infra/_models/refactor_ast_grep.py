@@ -209,10 +209,22 @@ class FlextInfraModelsRefactorGrep:
                 description="Visibility filter",
             ),
         ] = None
-        exclude_decorators: t.StrSequence = m.Field(default_factory=tuple)
-        decorators: t.StrSequence = m.Field(default_factory=tuple)
-        patterns: t.StrSequence = m.Field(default_factory=tuple)
-        order: t.StrSequence = m.Field(default_factory=tuple)
+        exclude_decorators: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Decorators excluded from the ordering rule",
+        )
+        decorators: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Decorators required by the ordering rule",
+        )
+        patterns: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Method name patterns included by the ordering rule",
+        )
+        order: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Expected method-category order for matching methods",
+        )
 
     class SignatureMigration(m.ContractModel):
         """Declarative signature migration rule for callsite propagation.
@@ -228,13 +240,22 @@ class FlextInfraModelsRefactorGrep:
                 description="Whether migration is active",
             ),
         ] = True
-        target_qualified_names: t.StrSequence = m.Field(default_factory=tuple)
-        target_simple_names: t.StrSequence = m.Field(default_factory=tuple)
+        target_qualified_names: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Qualified symbol names targeted by the migration",
+        )
+        target_simple_names: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Simple symbol names targeted by the migration",
+        )
         keyword_renames: t.StrMapping = m.Field(
             default_factory=lambda: MappingProxyType({}),
             description="Keyword rename mapping",
         )
-        remove_keywords: t.StrSequence = m.Field(default_factory=tuple)
+        remove_keywords: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Keywords removed from matching callsites",
+        )
         add_keywords: t.StrMapping = m.Field(
             default_factory=lambda: MappingProxyType({}),
             description="Keywords to add",

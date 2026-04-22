@@ -57,7 +57,7 @@ class TestFlextInfraNamespaceValidator:
         result = validator.validate(root)
         tm.that(result.success, eq=True)
         tm.that(result.value.passed, eq=True)
-        tm.that(result.value.violations, eq=[])
+        tm.that(result.value.violations, empty=True)
 
     def test_rule0_multiple_classes_detected(self, tmp_path: Path) -> None:
         validator = FlextInfraNamespaceValidator()
@@ -301,7 +301,7 @@ class TestFlextInfraNamespaceValidator:
         result = validator.validate(project_root)
         tm.that(result.success, eq=True)
         tm.that(result.value.passed, eq=True)
-        tm.that(result.value.violations, eq=[])
+        tm.that(result.value.violations, empty=True)
         tm.that(result.value.summary, has="0 files checked")
 
     def test_validate_returns_report(self, tmp_path: Path) -> None:

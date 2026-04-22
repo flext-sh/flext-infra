@@ -34,7 +34,7 @@ def test_migrator_apply_updates_project_files(tmp_path: Path) -> None:
     )
     result = migrator.execute()
     migrations = tm.ok(result)
-    tm.that(migrations[0].errors, eq=[])
+    tm.that(len(migrations[0].errors), eq=0)
     tm.that((project_root / "base.mk").exists(), eq=True)
     tm.that((project_root / "base.mk").read_text(encoding="utf-8"), eq="NEW_BASE\n")
     makefile_text = (project_root / "Makefile").read_text(encoding="utf-8")

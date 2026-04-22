@@ -37,7 +37,7 @@ def test_migrate_to_mro_moves_constant_and_rewrites_reference(tmp_path: Path) ->
     )
     constants_source = (src_pkg / "constants.py").read_text(encoding="utf-8")
     consumer_source = (src_pkg / "consumer.py").read_text(encoding="utf-8")
-    tm.that(report.errors, eq=())
+    tm.that(report.errors, empty=True)
     tm.that(
         "VALUE: Final[int] = 42"
         not in constants_source.split("class SampleConstants:")[0],
@@ -78,7 +78,7 @@ def test_migrate_to_mro_inlines_alias_constant_into_constants_class(
     )
     constants_source = (src_pkg / "constants.py").read_text(encoding="utf-8")
     consumer_source = (src_pkg / "consumer.py").read_text(encoding="utf-8")
-    tm.that(report.errors, eq=())
+    tm.that(report.errors, empty=True)
     tm.that(
         "_TIMEOUT: Final[int] = 30"
         not in constants_source.split("class SampleConstants:", maxsplit=1)[0],
@@ -114,7 +114,7 @@ def test_migrate_to_mro_normalizes_facade_alias_to_c(tmp_path: Path) -> None:
         apply=True,
     )
     consumer_source = (src_pkg / "consumer.py").read_text(encoding="utf-8")
-    tm.that(report.errors, eq=())
+    tm.that(report.errors, empty=True)
     # Consumer import rewritten: VALUE → c.VALUE with facade alias import.
     tm.that(consumer_source, has="from sample_pkg.constants import c")
     tm.that(consumer_source, has="result = c.VALUE")
@@ -152,7 +152,7 @@ def test_migrate_typings_rewrites_references_with_t_alias(tmp_path: Path) -> Non
     )
     typings_source = (src_pkg / "typings.py").read_text(encoding="utf-8")
     consumer_source = (src_pkg / "consumer.py").read_text(encoding="utf-8")
-    tm.that(report.errors, eq=())
+    tm.that(report.errors, empty=True)
     tm.that(
         "ValueType: TypeAlias = str | int"
         not in typings_source.split("class SampleTypes:", maxsplit=1)[0],
@@ -191,7 +191,7 @@ def test_migrate_protocols_rewrites_references_with_p_alias(tmp_path: Path) -> N
     )
     protocols_source = (src_pkg / "protocols.py").read_text(encoding="utf-8")
     consumer_source = (src_pkg / "consumer.py").read_text(encoding="utf-8")
-    tm.that(report.errors, eq=())
+    tm.that(report.errors, empty=True)
     tm.that(
         "class Greeter(Protocol):"
         not in protocols_source.split("class SampleProtocols:", maxsplit=1)[0],
@@ -277,7 +277,7 @@ def test_migrate_to_mro_moves_manual_uppercase_assignment(tmp_path: Path) -> Non
     )
     constants_source = (src_pkg / "constants.py").read_text(encoding="utf-8")
     consumer_source = (src_pkg / "consumer.py").read_text(encoding="utf-8")
-    tm.that(report.errors, eq=())
+    tm.that(report.errors, empty=True)
     tm.that(
         "VALUE = 42" not in constants_source.split("class SampleConstants:")[0],
         eq=True,

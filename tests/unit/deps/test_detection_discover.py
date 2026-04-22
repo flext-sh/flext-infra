@@ -50,4 +50,4 @@ class TestDiscoverProjectPathsSelection:
         result = service.discover_project_paths(tmp_path)
         tm.that(result.success, eq=True)
         if result.success:
-            tm.that(result.value, eq=[])
+            tm.that(result.value, empty=True)

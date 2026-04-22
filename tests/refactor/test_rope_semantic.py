@@ -2,95 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    Iterator,
-)
 from pathlib import Path
 
-import pytest
-
-from flext_infra import u
-from tests import t
+from tests import t, u
 
 type RopeWorkspace = t.Pair[t.Infra.RopeProject, Path]
-
-
-@pytest.fixture
-def rope_workspace(tmp_path: Path) -> Iterator[RopeWorkspace]:
-    """Create a temp workspace with a rope project and sample modules."""
-    pkg = tmp_path / "example"
-    pkg.mkdir()
-    (pkg / "__init__.py").write_text("")
-
-    (pkg / "models.py").write_text(
-        """\
-from pathlib import Path
-
-
-class Animal:
-    \"\"\"Base class.\"\"\"
-
-    def speak(self) -> str:
-        return ""
-
-
-class Dog(Animal):
-    @staticmethod
-    def fetch(item: str) -> str:
-        return item
-
-    @classmethod
-    def breed(cls) -> "Dog":
-        return cls()
-
-    def _wag(self) -> None:
-        pass
-
-
-SPECIES_COUNT = 42
-""",
-    )
-
-    (pkg / "services.py").write_text(
-        """\
-from example.models import Dog
-
-active_dog = Dog()
-""",
-    )
-
-    project = u.Infra.init_rope_project(
-        tmp_path,
-        project_prefix="__never__",
-    )
-    yield project, tmp_path
-    project.close()
-
-
-@pytest.fixture
-def models_resource(
-    rope_workspace: RopeWorkspace,
-) -> t.Infra.RopeResource:
-    proj, workspace = rope_workspace
-    res = u.Infra.get_resource_from_path(
-        proj,
-        workspace / "example" / "models.py",
-    )
-    assert res is not None
-    return res
-
-
-@pytest.fixture
-def services_resource(
-    rope_workspace: RopeWorkspace,
-) -> t.Infra.RopeResource:
-    proj, workspace = rope_workspace
-    res = u.Infra.get_resource_from_path(
-        proj,
-        workspace / "example" / "services.py",
-    )
-    assert res is not None
-    return res
 
 
 class TestGetModuleImports:

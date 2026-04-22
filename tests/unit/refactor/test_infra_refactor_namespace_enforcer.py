@@ -230,7 +230,7 @@ def test_loose_object_detector_skips_typings_module_exception(
         ),
     )
 
-    tm.that(violations, eq=[])
+    tm.that(violations, empty=True)
 
 
 def test_loose_object_detector_skips_canonical_alias_module_exception(
@@ -254,7 +254,7 @@ def test_loose_object_detector_skips_canonical_alias_module_exception(
         ),
     )
 
-    tm.that(violations, eq=[])
+    tm.that(violations, empty=True)
 
 
 def test_namespace_enforcer_apply_moves_manual_protocol_to_protocols_file(

@@ -51,18 +51,23 @@ class FlextInfraModelsRefactorViolations:
         ] = ""
 
     class ClassNestingPolicy(m.ContractModel):
-        """Validated policy contract used by class-nesting transformers.
-
-        Enforcement exemption: internal tooling model with intentional
-        mutable state.
-        """
+        """Validated policy contract used by class-nesting transformers."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         family_name: Annotated[t.NonEmptyStr, m.Field(description="Module family name")]
-        allowed_operations: t.StrSequence = m.Field(default_factory=tuple)
-        forbidden_operations: t.StrSequence = m.Field(default_factory=tuple)
-        forbidden_targets: t.StrSequence = m.Field(default_factory=tuple)
+        allowed_operations: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Rewrite operations explicitly allowed by the policy.",
+        )
+        forbidden_operations: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Rewrite operations blocked by the policy.",
+        )
+        forbidden_targets: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Namespace targets blocked by the policy.",
+        )
         enable_class_nesting: Annotated[
             bool,
             m.Field(
@@ -99,8 +104,14 @@ class FlextInfraModelsRefactorViolations:
                 description="Require signature checks before helper migration",
             ),
         ] = False
-        required_parameters: t.StrSequence = m.Field(default_factory=tuple)
-        forbidden_parameters: t.StrSequence = m.Field(default_factory=tuple)
+        required_parameters: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Parameters that must be present before rewriting.",
+        )
+        forbidden_parameters: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Parameters that block rewriting when present.",
+        )
         allow_vararg: Annotated[
             bool, m.Field(description="Allow variadic positional parameter usage")
         ] = True
@@ -128,15 +139,17 @@ class FlextInfraModelsRefactorViolations:
                 description="Allow propagating attribute reference rewrites",
             ),
         ] = True
-        blocked_reference_prefixes: t.StrSequence = m.Field(default_factory=tuple)
-        allowed_targets: t.StrSequence = m.Field(default_factory=tuple)
+        blocked_reference_prefixes: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Reference prefixes that must never be rewritten.",
+        )
+        allowed_targets: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Namespace targets explicitly allowed for rewrites.",
+        )
 
     class ClassNestingReport(m.ArbitraryTypesModel):
-        """Aggregated class-nesting analysis report.
-
-        Enforcement exemption: internal tooling model with intentional
-        mutable state.
-        """
+        """Aggregated class-nesting analysis report."""
 
         violations_count: Annotated[
             t.NonNegativeInt,
@@ -156,11 +169,7 @@ class FlextInfraModelsRefactorViolations:
         )
 
     class HelperClassification(m.ArbitraryTypesModel):
-        """Classification result for a helper function.
-
-        Enforcement exemption: internal tooling model with intentional
-        mutable state.
-        """
+        """Classification result for a helper function."""
 
         file: Annotated[t.NonEmptyStr, m.Field(description="Source file")]
         function: Annotated[t.NonEmptyStr, m.Field(description="Function name")]
@@ -169,7 +178,10 @@ class FlextInfraModelsRefactorViolations:
             t.NonEmptyStr,
             m.Field(description="Target namespace path"),
         ]
-        dependencies: t.StrSequence = m.Field(default_factory=tuple)
+        dependencies: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Dependency symbols referenced by the helper.",
+        )
         manual_review: Annotated[
             bool, m.Field(description="Whether manual review is required")
         ] = False
@@ -178,11 +190,7 @@ class FlextInfraModelsRefactorViolations:
         ] = ""
 
     class HelperClassificationReport(m.ArbitraryTypesModel):
-        """Aggregated helper-function classification payload.
-
-        Enforcement exemption: internal tooling model with intentional
-        mutable state.
-        """
+        """Aggregated helper-function classification payload."""
 
         totals: t.IntMapping = m.Field(
             default_factory=lambda: MappingProxyType({}),
@@ -217,11 +225,7 @@ class FlextInfraModelsRefactorViolations:
         )
 
     class ViolationTopFileSection(m.ArbitraryTypesModel):
-        """One ranked hotspot entry in violation analysis output.
-
-        Enforcement exemption: internal tooling model with intentional
-        mutable state.
-        """
+        """One ranked hotspot entry in violation analysis output."""
 
         file: Annotated[t.NonEmptyStr, m.Field(description="File path")]
         total: Annotated[
@@ -234,11 +238,7 @@ class FlextInfraModelsRefactorViolations:
         )
 
     class ViolationAnalysisReport(m.ArbitraryTypesModel):
-        """Full violation analysis report for refactor diagnostics.
-
-        Enforcement exemption: internal tooling model with intentional
-        mutable state.
-        """
+        """Full violation analysis report for refactor diagnostics."""
 
         totals: t.IntMapping = m.Field(
             default_factory=lambda: MappingProxyType({}),

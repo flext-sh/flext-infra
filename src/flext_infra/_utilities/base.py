@@ -11,9 +11,12 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, p, r, t
-from flext_infra._models.deps_tool_config import (
+from flext_infra import (
     FlextInfraModelsDepsToolSettings as mdts,
+    c,
+    p,
+    r,
+    t,
 )
 
 

@@ -186,11 +186,15 @@ class FlextInfraPytestDiagExtractor(s[bool]):
             root_raw = DefusedET.parse(junit_path).getroot()
         except DefusedET.ParseError:
             return False
+        if root_raw is None:
+            return False
         root = FlextInfraPytestDiagExtractor._as_xml_element(root_raw)
         if root is None:
             return False
         slow_rows: MutableSequence[t.Infra.Pair[float, str]] = []
         for case_raw in root.iter("testcase"):
+            if case_raw is None:
+                continue
             case = FlextInfraPytestDiagExtractor._as_xml_element(case_raw)
             if case is None:
                 continue

@@ -5,14 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 
 import tomlkit
-from flext_tests import tm
 
 from flext_infra import (
     FlextInfraEnsureFormattingToolingPhase,
     FlextInfraEnsureNamespaceToolingPhase,
     FlextInfraEnsureRuffConfigPhase,
 )
-from tests import m, u
+from tests import m, tm, u
 
 
 class TestDepsModernizerTooling:
@@ -68,7 +67,7 @@ class TestDepsModernizerTooling:
         _ = phase.apply(doc)
         second_changes = phase.apply(doc)
 
-        tm.that(second_changes, eq=[])
+        assert second_changes == []
 
     def test_formatting_phase_removes_codespell_skip(
         self,
@@ -202,7 +201,7 @@ select = ["E501"]
         _ = phase.apply(doc, path=project_dir / "pyproject.toml")
         second_changes = phase.apply(doc, path=project_dir / "pyproject.toml")
 
-        tm.that(second_changes, eq=[])
+        assert second_changes == []
 
     def test_ruff_phase_skips_attached_workspace_namespaces(
         self,

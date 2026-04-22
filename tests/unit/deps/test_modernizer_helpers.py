@@ -26,12 +26,12 @@ def doc() -> TOMLDocument:
         ("requests @ git+https://github.com/psf/requests.git", "requests"),
         ("my_package", "my_package"),
         ("  requests  ", "requests"),
-        ("", ""),
+        ("", None),
         ("Django>=3.0,<4.0", "django"),
     ],
 )
-def test_dep_name(raw: str, expected: str) -> None:
-    tm.that(u.Infra.dep_name(raw), eq=expected)
+def test_dep_name(raw: str, expected: str | None) -> None:
+    assert u.Infra.dep_name(raw) == expected
 
 
 @pytest.mark.parametrize(
@@ -71,13 +71,17 @@ def test_dedupe_specs(
         ({"key": "value"}, {"key": "value"}),
     ],
 )
-def test_unwrap_item(value: t.Infra.InfraValue, expected: t.Infra.InfraValue) -> None:
-    tm.that(u.Cli.toml_unwrap_item(value), eq=expected)
+def test_unwrap_item(
+    value: t.Cli.TomlMappingSource | None,
+    expected: t.Infra.InfraValue,
+) -> None:
+    actual = None if value is None else u.Cli.toml_unwrap_item(value)
+    assert actual == expected
 
 
 def test_unwrap_item_toml_item(doc: TOMLDocument) -> None:
     doc["key"] = "value"
-    tm.that(u.Cli.toml_unwrap_item(doc["key"]), eq="value")
+    assert u.Cli.toml_unwrap_item(doc["key"]) == "value"
 
 
 def _toml_item(value: str | int | t.StrSequence) -> tomlkit.items.Item:
@@ -115,16 +119,17 @@ def test_as_string_list(
     value: tomlkit.items.Item | None,
     expected: t.StrSequence,
 ) -> None:
-    tm.that(u.Cli.toml_as_string_list(value), eq=expected)
+    actual: t.StrSequence = [] if value is None else u.Cli.toml_as_string_list(value)
+    assert list(actual) == list(expected)
 
 
 def test_as_string_list_toml_item(doc: TOMLDocument) -> None:
     doc["items"] = ["a", "b"]
     items_array: tomlkit.items.Item = _toml_item(["a", "b"])
-    tm.that(u.Cli.toml_as_string_list(items_array), eq=["a", "b"])
+    assert u.Cli.toml_as_string_list(items_array) == ["a", "b"]
     doc["value"] = 42
     int_val: tomlkit.items.Item = _toml_item(42)
-    tm.that(u.Cli.toml_as_string_list(int_val), eq=[])
+    assert u.Cli.toml_as_string_list(int_val) == []
 
 
 @pytest.mark.parametrize(
@@ -186,14 +191,14 @@ def test_project_dev_groups(
     expected_docs: t.StrSequence,
 ) -> None:
     groups = u.Infra.project_dev_groups(_doc_with_optional_deps(optional_deps))
-    tm.that(groups.get("dev", []), eq=expected_dev)
-    tm.that(groups.get("docs", []), eq=expected_docs)
+    assert list(groups.get("dev", [])) == list(expected_dev)
+    assert list(groups.get("docs", [])) == list(expected_docs)
 
 
 def test_project_dev_groups_missing_sections(doc: TOMLDocument) -> None:
-    tm.that(u.Infra.project_dev_groups(doc), eq={})
+    assert u.Infra.project_dev_groups(doc) == {}
     doc["project"] = {"name": "test"}
-    tm.that(u.Infra.project_dev_groups(doc), eq={})
+    assert u.Infra.project_dev_groups(doc) == {}
 
 
 @pytest.mark.parametrize(

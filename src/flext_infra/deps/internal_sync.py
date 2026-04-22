@@ -6,7 +6,6 @@ import shutil
 from collections.abc import (
     Mapping,
     MutableMapping,
-    Sequence,
 )
 from pathlib import Path
 from typing import Annotated, ClassVar, override
@@ -171,15 +170,9 @@ class FlextInfraInternalDependencySyncService(
             result[dep_name] = project_root / ".flext-deps" / repo_name
         project_obj = u.Cli.json_deep_mapping(data, c.Infra.PROJECT)
         project_deps_raw = project_obj.get(c.Infra.DEPENDENCIES)
-        project_deps: t.StrSequence = []
-        if isinstance(project_deps_raw, str | int | float | bool) or (
-            isinstance(project_deps_raw, Sequence)
-            and not isinstance(
-                project_deps_raw,
-                str | bytes,
-            )
-        ):
-            project_deps = u.Cli.toml_as_string_list(project_deps_raw)
+        project_deps: t.StrSequence = [
+            str(item) for item in u.Cli.json_as_sequence(project_deps_raw)
+        ]
         internal_dep_names: t.Infra.StrSet = set()
         for dep in project_deps:
             dep_name_match = c.Infra.DEP_NAME_RE.match(dep)

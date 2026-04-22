@@ -68,6 +68,15 @@ class FlextInfraSettings(FlextSettings):
         ),
     ] = None
 
+    @u.field_validator("standalone", mode="before")
+    @classmethod
+    def _coerce_standalone(cls, value: bool | str | None) -> bool | str:
+        if value is None:
+            return c.Infra.ENV_DEFAULT_STANDALONE
+        if isinstance(value, str) and not value.strip():
+            return c.Infra.ENV_DEFAULT_STANDALONE
+        return value
+
     @u.field_validator("workspace_root", mode="before")
     @classmethod
     def _coerce_workspace_root(cls, value: str | Path | None) -> Path | None:

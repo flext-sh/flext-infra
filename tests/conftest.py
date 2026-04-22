@@ -17,6 +17,38 @@ pytest_plugins = [
 ]
 
 
+def _is_collectable_test_module(collection_path: Path) -> bool:
+    tests_root = Path(__file__).parent
+    try:
+        collection_path.relative_to(tests_root)
+    except ValueError:
+        return True
+
+    file_name = collection_path.name
+    if collection_path.suffix != ".py" or file_name == "conftest.py":
+        return True
+
+    return file_name.startswith("test_") or file_name.endswith("_tests.py")
+
+
+def pytest_collection_modifyitems(
+    config: pytest.Config,
+    items: list[pytest.Item],
+) -> None:
+    kept_items: list[pytest.Item] = []
+    deselected_items: list[pytest.Item] = []
+
+    for item in items:
+        if _is_collectable_test_module(Path(item.path)):
+            kept_items.append(item)
+            continue
+        deselected_items.append(item)
+
+    if deselected_items:
+        config.hook.pytest_deselected(items=deselected_items)
+        items[:] = kept_items
+
+
 @pytest.fixture
 def infra_test_workspace(tmp_path: Path) -> Path:
     workspace = tmp_path / "workspace"

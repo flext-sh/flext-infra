@@ -4,7 +4,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from tests import u
+from tests import t, u
 
 
 class TestDetectionUncoveredLines:
@@ -18,7 +18,11 @@ class TestDetectionUncoveredLines:
         project.mkdir()
         (project / "pyproject.toml").write_text("", encoding="utf-8")
         out_file = project / ".deptry-report.json"
-        u.Cli.json_write(out_file, ["not_a_dict", {"error": {"code": "DEP001"}}])
+        payload = t.Cli.JSON_LIST_ADAPTER.validate_python([
+            "not_a_dict",
+            {"error": {"code": "DEP001"}},
+        ])
+        u.Cli.json_write(out_file, payload)
         service = u.Infra.Tests.create_deptry_service(
             command_output=u.Infra.Tests.create_command_output(),
         )
@@ -39,7 +43,7 @@ class TestDetectionUncoveredLines:
             command_output=u.Infra.Tests.create_command_output(),
         )
         lines, exit_code = tm.ok(service.run_pip_check(tmp_path, venv_bin))
-        tm.that(lines, eq=[])
+        assert list(lines) == []
         tm.that(exit_code, eq=0)
 
     def test_get_required_typings_with_limits_applied(

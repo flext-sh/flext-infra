@@ -125,7 +125,7 @@ class TestLoadDependencyLimits:
     def test_failure_returns_empty(self) -> None:
         service = FlextInfraDependencyDetectionService()
         service.toml = _StubToml([tr[t.Infra.ContainerDict].fail("not found")])
-        tm.that(service.load_dependency_limits(Path("/fake/limits.toml")), eq={})
+        tm.that(service.load_dependency_limits(Path("/fake/limits.toml")), empty=True)
 
     def test_unconvertible_values_skipped(self) -> None:
         service = FlextInfraDependencyDetectionService()

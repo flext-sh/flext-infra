@@ -64,4 +64,4 @@ class TestEnsureCoverageConfigPhase:
         _ = phase.apply(doc, project_kind="core")
         second_changes = phase.apply(doc, project_kind="core")
 
-        tm.that(second_changes, eq=[])
+        tm.that(second_changes, empty=True)

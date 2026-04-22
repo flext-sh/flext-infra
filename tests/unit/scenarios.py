@@ -9,160 +9,31 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    Mapping,
-    Sequence,
-)
-from typing import ClassVar
+from typing import Annotated
 
 from tests import m, t
 
 
-class SubprocessScenario(m.Value):
+class TestsFlextInfraSubprocessScenario(m.Value):
     """Single scenario for subprocess operation testing using m.Value."""
 
-    name: str
-    cmd: t.StrSequence
-    expected_output: str = ""
-    should_succeed: bool = True
-    description: str | None = None
+    __test__ = False
+
+    name: Annotated[t.NonEmptyStr, m.Field(description="Scenario name")]
+    cmd: Annotated[t.StrSequence, m.Field(description="Command tokens to execute")]
+    expected_output: Annotated[
+        str,
+        m.Field(default="", description="Expected standard output"),
+    ]
+    should_succeed: Annotated[
+        bool,
+        m.Field(default=True, description="Whether the command should succeed"),
+    ]
+    description: Annotated[
+        str | None,
+        m.Field(default=None, description="Optional scenario description"),
+    ]
 
 
-class GitScenario(m.Value):
+class TestsFlextInfraGitScenario(m.Value):
     """Single scenario for git operation testing using m.Value."""
-
-    name: str
-    operations: t.StrSequence
-    expected_state: str
-    should_succeed: bool = True
-    description: str | None = None
-
-
-class WorkspaceScenario(m.Value):
-    """Single scenario for workspace state testing using m.Value."""
-
-    name: str
-    structure: Mapping[str, t.StrMapping]
-    should_be_valid: bool = True
-    description: str | None = None
-
-
-class DependencyScenario(m.Value):
-    """Single scenario for dependency detection testing using m.Value."""
-
-    name: str
-    pyproject_content: str
-    expected_deps: t.StrSequence
-    should_succeed: bool = True
-    description: str | None = None
-
-
-class SubprocessScenarios:
-    """Centralized subprocess scenarios - single source of truth."""
-
-    BASIC_SCENARIOS: ClassVar[Sequence[SubprocessScenario]] = [
-        SubprocessScenario(
-            name="echo_simple",
-            cmd=["echo", "hello"],
-            expected_output="hello",
-            should_succeed=True,
-        ),
-        SubprocessScenario(
-            name="false_command",
-            cmd=["false"],
-            expected_output="",
-            should_succeed=False,
-        ),
-    ]
-
-
-class GitScenarios:
-    """Centralized git operation scenarios - single source of truth."""
-
-    BASIC_SCENARIOS: ClassVar[Sequence[GitScenario]] = [
-        GitScenario(
-            name="git_init",
-            operations=["init"],
-            expected_state="initialized",
-            should_succeed=True,
-        ),
-        GitScenario(
-            name="git_init_add_commit",
-            operations=["init", "add", "commit"],
-            expected_state="committed",
-            should_succeed=True,
-        ),
-    ]
-
-
-class WorkspaceScenarios:
-    """Centralized workspace state scenarios - single source of truth."""
-
-    VALID_SCENARIOS: ClassVar[Sequence[WorkspaceScenario]] = [
-        WorkspaceScenario(
-            name="workspace_minimal",
-            structure={
-                "pyproject.toml": {},
-                "src": {},
-                "tests": {},
-            },
-            should_be_valid=True,
-        ),
-        WorkspaceScenario(
-            name="workspace_with_git",
-            structure={
-                ".git": {},
-                "pyproject.toml": {},
-                "src": {},
-                "tests": {},
-            },
-            should_be_valid=True,
-        ),
-    ]
-
-    INVALID_SCENARIOS: ClassVar[Sequence[WorkspaceScenario]] = [
-        WorkspaceScenario(
-            name="workspace_no_pyproject",
-            structure={"src": {}, "tests": {}},
-            should_be_valid=False,
-        ),
-    ]
-
-
-class DependencyScenarios:
-    """Centralized dependency detection scenarios - single source of truth."""
-
-    BASIC_SCENARIOS: ClassVar[Sequence[DependencyScenario]] = [
-        DependencyScenario(
-            name="deps_single",
-            pyproject_content=(
-                '[tool.poetry.dependencies]\npython = "^3.13"\nrequests = "^2.31.0"'
-            ),
-            expected_deps=["requests"],
-            should_succeed=True,
-        ),
-        DependencyScenario(
-            name="deps_empty",
-            pyproject_content=('[tool.poetry.dependencies]\npython = "^3.13"'),
-            expected_deps=[],
-            should_succeed=True,
-        ),
-        DependencyScenario(
-            name="deps_invalid_toml",
-            pyproject_content="[invalid toml content",
-            expected_deps=[],
-            should_succeed=False,
-        ),
-    ]
-
-
-__all__: list[str] = [
-    "DependencyScenario",
-    "DependencyScenarios",
-    "GitScenario",
-    "GitScenarios",
-    "SubprocessScenario",
-    "SubprocessScenarios",
-    "WorkspaceScenario",
-    "WorkspaceScenarios",
-]

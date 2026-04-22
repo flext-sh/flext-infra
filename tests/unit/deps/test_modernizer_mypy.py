@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import tomlkit
-from flext_tests import tm
 
 from flext_infra import (
     FlextInfraEnsureMypyConfigPhase,
@@ -143,7 +142,7 @@ overrides = [{ module = ["legacy.*"], disable_error_code = ["misc"] }]
         _ = phase.apply(doc)
         second_changes = phase.apply(doc)
 
-        tm.that(second_changes, eq=[])
+        assert second_changes == []
 
     def test_pydantic_mypy_phase_sets_expected_state(
         self,
@@ -181,4 +180,4 @@ overrides = [{ module = ["legacy.*"], disable_error_code = ["misc"] }]
         _ = phase.apply(doc)
         second_changes = phase.apply(doc)
 
-        tm.that(second_changes, eq=[])
+        assert second_changes == []

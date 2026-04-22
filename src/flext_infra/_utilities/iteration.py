@@ -51,7 +51,8 @@ class FlextInfraUtilitiesIteration:
         for separator in ("[", "==", ">=", "<=", "~=", "!=", ">", "<"):
             if separator in text:
                 text = text.split(separator, maxsplit=1)[0].strip()
-        return text or None
+        normalized = text.lower()
+        return normalized or None
 
     @staticmethod
     def _normalized_toml_payload(document: t.Cli.TomlDocument) -> t.Infra.ContainerDict:
@@ -66,16 +67,17 @@ class FlextInfraUtilitiesIteration:
 
     @staticmethod
     def dedupe_specs(specs: t.StrSequence) -> t.StrSequence:
-        """Return deterministic unique dependency specs preserving first occurrence."""
-        seen: set[str] = set()
-        output: list[str] = []
+        """Return deterministic unique dependency specs keyed by normalized name."""
+        selected_by_name: dict[str, str] = {}
         for raw in specs:
             item = str(raw).strip()
-            if not item or item in seen:
+            if not item:
                 continue
-            seen.add(item)
-            output.append(item)
-        return tuple(output)
+            dependency_name = FlextInfraUtilitiesIteration.dep_name(item)
+            if dependency_name is None or dependency_name in selected_by_name:
+                continue
+            selected_by_name[dependency_name] = item
+        return tuple(selected_by_name[name] for name in sorted(selected_by_name))
 
     @classmethod
     def declared_dependency_names(cls, document: t.Cli.TomlDocument) -> t.StrSequence:
@@ -210,7 +212,7 @@ class FlextInfraUtilitiesIteration:
 
     @staticmethod
     def project_dev_groups_from_payload(
-        payload: Mapping[str, t.Cli.JsonValue],
+        payload: t.Infra.ContainerDict,
     ) -> Mapping[str, t.StrSequence]:
         """Collect optional dependency groups from one normalized payload."""
         project = u.Cli.json_as_mapping(payload.get(c.Infra.PROJECT, None))
@@ -257,7 +259,7 @@ class FlextInfraUtilitiesIteration:
     @classmethod
     def canonical_dev_dependencies_from_payload(
         cls,
-        payload: Mapping[str, t.Cli.JsonValue],
+        payload: t.Infra.ContainerDict,
     ) -> t.StrSequence:
         """Merge all canonical dev dependency groups from one normalized payload."""
         groups = cls.project_dev_groups_from_payload(payload)
@@ -283,7 +285,7 @@ class FlextInfraUtilitiesIteration:
     @classmethod
     def workspace_dep_namespaces_from_payload(
         cls,
-        payload: Mapping[str, t.Cli.JsonValue],
+        payload: Mapping[str, t.Infra.InfraValue],
     ) -> t.StrSequence:
         """Extract workspace-local dependency namespaces from one normalized payload."""
         try:

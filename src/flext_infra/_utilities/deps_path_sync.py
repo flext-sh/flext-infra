@@ -42,7 +42,8 @@ class FlextInfraUtilitiesDependencyPathSync:
                 text = text.split(separator, maxsplit=1)[0].strip()
         if "/" in text:
             text = text.rsplit("/", maxsplit=1)[-1].strip()
-        return text or None
+        normalized = text.lower()
+        return normalized or None
 
     def _rewrite_pep621(
         self,

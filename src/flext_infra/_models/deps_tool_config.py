@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import (
     Mapping,
 )
+from types import MappingProxyType
 from typing import Annotated
 
 from flext_cli import m
@@ -86,11 +87,7 @@ class FlextInfraModelsDepsToolSettings(
         )
 
     class CoverageConfig(m.ArbitraryTypesModel):
-        """Coverage baseline settings loaded from YAML.
-
-        Enforcement exemption: internal tooling model with intentional
-        mutable state.
-        """
+        """Coverage baseline settings loaded from YAML."""
 
         fail_under: FlextInfraModelsDepsToolSettings.CoverageFailUnderConfig = m.Field(
             alias="fail-under",
@@ -115,7 +112,10 @@ class FlextInfraModelsDepsToolSettings(
         ] = 2
         omit: Annotated[
             t.StrSequence,
-            m.Field(default_factory=tuple),
+            m.Field(
+                default_factory=tuple,
+                description="Glob patterns excluded from coverage collection.",
+            ),
         ]
 
     class ToolConfigTools(m.ArbitraryTypesModel):
@@ -153,16 +153,12 @@ class FlextInfraModelsDepsToolSettings(
         )
 
     class ProjectTypeOverrideConfig(m.ArbitraryTypesModel):
-        """Per-project-type override settings.
-
-        Enforcement exemption: internal tooling model with intentional
-        mutable state.
-        """
+        """Per-project-type override settings."""
 
         pyright: Annotated[
             t.StrMapping,
             m.Field(description="Pyright override settings for this project type."),
-        ] = m.Field(default_factory=dict)
+        ] = m.Field(default_factory=lambda: MappingProxyType({}))
 
     class ProjectTypeOverridesConfig(m.ArbitraryTypesModel):
         """Project-type-specific override matrix from tool_config.yml."""

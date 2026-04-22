@@ -48,10 +48,10 @@ class FlextInfraTypesAdapters:
     )
     "Validates t.StrMapping."
 
-    CONTAINER_MAPPING_ADAPTER: ClassVar[
-        m.TypeAdapter[FlextInfraTypesBase.ContainerDict]
-    ] = t.Cli.JSON_MAPPING_ADAPTER
-    "Validates ContainerMapping (Mapping[str, t.Container])."
+    CONTAINER_MAPPING_ADAPTER: ClassVar[m.TypeAdapter[t.FlatContainerMapping]] = (
+        t.flat_container_mapping_adapter()
+    )
+    "Validates flat container mappings through the shared flext-core adapter."
 
     # ── Sequence adapters ────────────────────────────────────────────
     INFRA_SEQ_ADAPTER: ClassVar[m.TypeAdapter[FlextInfraTypesBase.InfraSequence]] = (

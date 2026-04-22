@@ -15,7 +15,7 @@ class TestRewritePoetry:
                 is_root=True,
                 mode=c.Infra.PathSyncMode.WORKSPACE,
             ),
-            eq=[],
+            empty=True,
         )
 
     def test_rewrite_poetry_no_poetry(self) -> None:
@@ -27,7 +27,7 @@ class TestRewritePoetry:
                 is_root=True,
                 mode=c.Infra.PathSyncMode.WORKSPACE,
             ),
-            eq=[],
+            empty=True,
         )
 
     def test_rewrite_poetry_no_dependencies(self) -> None:
@@ -39,7 +39,7 @@ class TestRewritePoetry:
                 is_root=True,
                 mode=c.Infra.PathSyncMode.WORKSPACE,
             ),
-            eq=[],
+            empty=True,
         )
 
     def test_rewrite_poetry_non_dict_dependencies(self) -> None:
@@ -51,7 +51,7 @@ class TestRewritePoetry:
                 is_root=True,
                 mode=c.Infra.PathSyncMode.WORKSPACE,
             ),
-            eq=[],
+            empty=True,
         )
 
     def test_rewrite_poetry_rewrite_path_dep(self) -> None:
@@ -78,7 +78,7 @@ class TestRewritePoetry:
                 is_root=True,
                 mode=c.Infra.PathSyncMode.WORKSPACE,
             ),
-            eq=[],
+            empty=True,
         )
 
     def test_rewrite_poetry_non_dict_value(self) -> None:
@@ -90,7 +90,7 @@ class TestRewritePoetry:
                 is_root=True,
                 mode=c.Infra.PathSyncMode.WORKSPACE,
             ),
-            eq=[],
+            empty=True,
         )
 
     def test_rewrite_poetry_empty_path(self) -> None:
@@ -102,7 +102,7 @@ class TestRewritePoetry:
                 is_root=True,
                 mode=c.Infra.PathSyncMode.WORKSPACE,
             ),
-            eq=[],
+            empty=True,
         )
 
     def test_rewrite_poetry_non_string_path(self) -> None:
@@ -114,7 +114,7 @@ class TestRewritePoetry:
                 is_root=True,
                 mode=c.Infra.PathSyncMode.WORKSPACE,
             ),
-            eq=[],
+            empty=True,
         )
 
     def test_rewrite_poetry_subproject_mode(self) -> None:

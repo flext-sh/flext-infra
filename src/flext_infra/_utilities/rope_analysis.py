@@ -10,16 +10,17 @@ from collections.abc import (
 )
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra import (
-    FlextInfraUtilitiesRopeCore,
-    c,
-    m,
-)
 from rope.base.pynames import (
     DefinedName as RopeDefinedName,
     ImportedName as RopeImportedName,
 )
 from rope.base.pynamesdef import AssignedName as RopeAssignedName
+
+from flext_infra import (
+    FlextInfraUtilitiesRopeCore,
+    c,
+    m,
+)
 
 if TYPE_CHECKING:
     from flext_infra import t

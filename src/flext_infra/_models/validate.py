@@ -43,7 +43,7 @@ class FlextInfraModelsCore:
         mypy_hints: Annotated[
             t.StrSequence,
             m.Field(
-                description="types- package hints from mypy output",
+                description="Install-package hints extracted from mypy output",
             ),
         ] = m.Field(default_factory=tuple)
         internal_missing: Annotated[
@@ -119,11 +119,36 @@ class FlextInfraModelsCore:
         mutable state.
         """
 
-        failed_cases: t.StrSequence = m.Field(default_factory=tuple)
-        error_traces: t.StrSequence = m.Field(default_factory=tuple)
-        skip_cases: t.StrSequence = m.Field(default_factory=tuple)
-        warning_lines: t.StrSequence = m.Field(default_factory=tuple)
-        slow_entries: t.StrSequence = m.Field(default_factory=tuple)
+        failed_cases: Annotated[
+            t.StrSequence,
+            m.Field(
+                description="Collected failed test-case labels",
+            ),
+        ] = m.Field(default_factory=tuple)
+        error_traces: Annotated[
+            t.StrSequence,
+            m.Field(
+                description="Collected error trace chunks",
+            ),
+        ] = m.Field(default_factory=tuple)
+        skip_cases: Annotated[
+            t.StrSequence,
+            m.Field(
+                description="Collected skipped test-case labels",
+            ),
+        ] = m.Field(default_factory=tuple)
+        warning_lines: Annotated[
+            t.StrSequence,
+            m.Field(
+                description="Collected warning lines",
+            ),
+        ] = m.Field(default_factory=tuple)
+        slow_entries: Annotated[
+            t.StrSequence,
+            m.Field(
+                description="Collected slow-test entries",
+            ),
+        ] = m.Field(default_factory=tuple)
 
     class InventoryReport(m.ArbitraryTypesModel):
         """Summary of written inventory report artifacts."""

@@ -30,6 +30,8 @@ class TestsFlextInfraConstants(
     All base constants from FlextTestsConstants are available through inheritance.
     """
 
+    __test__ = False
+
     class Infra(
         c.Infra,
     ):

@@ -115,6 +115,11 @@ class FlextInfraUtilitiesDiscovery:
                     else normalized_parts
                 )
                 return ".".join(package_parts)
+        src_dir = resolved / c.Infra.DEFAULT_SRC_DIR
+        if src_dir.is_dir():
+            for child in sorted(src_dir.iterdir()):
+                if child.is_dir() and (child / c.Infra.INIT_PY).is_file():
+                    return child.name
         absolute_parts = (
             resolved.parts[:-1]
             if resolved.name == c.Infra.INIT_PY

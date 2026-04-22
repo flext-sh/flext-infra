@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import (
     Mapping,
+    MutableSet,
 )
 from datetime import UTC, datetime
 from pathlib import Path
@@ -158,7 +159,7 @@ class FlextInfraModelsRefactor(
         path: Annotated[Path, m.Field(description="Absolute project path")]
         src_path: Annotated[Path, m.Field(description="Absolute src/ path")]
         package_roots: Annotated[
-            t.Infra.StrSet,
+            MutableSet[str],
             m.Field(
                 description="Top-level Python package roots in src/",
             ),
@@ -172,11 +173,11 @@ class FlextInfraModelsRefactor(
         """
 
         imported_modules: Annotated[
-            t.Infra.StrSet,
+            MutableSet[str],
             m.Field(description="Imported module roots"),
         ] = m.Field(default_factory=set)
         imported_symbols: Annotated[
-            t.Infra.StrSet,
+            MutableSet[str],
             m.Field(description="Imported symbol names"),
         ] = m.Field(default_factory=set)
 

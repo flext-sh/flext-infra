@@ -7,6 +7,11 @@ from collections.abc import (
     Sequence,
 )
 
+from rope.base.pynames import DefinedName, ImportedName
+from rope.base.pynamesdef import AssignedName, ParameterName
+from rope.base.pyobjects import AbstractClass
+from rope.base.pyobjectsdef import PyFunction, PyModule
+
 from flext_infra import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeImports,
@@ -15,10 +20,6 @@ from flext_infra import (
     p,
     t,
 )
-from rope.base.pynames import DefinedName, ImportedName
-from rope.base.pynamesdef import AssignedName, ParameterName
-from rope.base.pyobjects import AbstractClass
-from rope.base.pyobjectsdef import PyFunction, PyModule
 
 
 class FlextInfraUtilitiesRopeInventory:

@@ -32,10 +32,10 @@ class TestFlextInfraModelsDependencyDetection:
             dev_in_runtime=[],
             raw_count=0,
         )
-        tm.that(report.missing, eq=[])
-        tm.that(report.unused, eq=[])
-        tm.that(report.transitive, eq=[])
-        tm.that(report.dev_in_runtime, eq=[])
+        tm.that(report.missing, empty=True)
+        tm.that(report.unused, empty=True)
+        tm.that(report.transitive, empty=True)
+        tm.that(report.dev_in_runtime, empty=True)
         tm.that(report.raw_count, eq=0)
 
     def test_project_dependency_report_creation(self) -> None:
@@ -59,12 +59,12 @@ class TestFlextInfraModelsDependencyDetection:
             to_add=[],
             to_remove=[],
         )
-        tm.that(report.required_packages, eq=[])
-        tm.that(report.hinted, eq=[])
-        tm.that(report.missing_modules, eq=[])
-        tm.that(report.current, eq=[])
-        tm.that(report.to_add, eq=[])
-        tm.that(report.to_remove, eq=[])
+        tm.that(report.required_packages, empty=True)
+        tm.that(report.hinted, empty=True)
+        tm.that(report.missing_modules, empty=True)
+        tm.that(report.current, empty=True)
+        tm.that(report.to_add, empty=True)
+        tm.that(report.to_remove, empty=True)
         tm.that(not report.limits_applied, eq=True)
         tm.that(report.python_version, eq=None)
 

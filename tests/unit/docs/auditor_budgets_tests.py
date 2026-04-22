@@ -18,7 +18,7 @@ class TestLoadAuditBudgets:
     def test_no_config(self, tmp_path: Path) -> None:
         default, by_scope = FlextInfraDocAuditor.load_audit_budgets(tmp_path)
         tm.that(default, eq=None)
-        tm.that(by_scope, eq={})
+        tm.that(by_scope, empty=True)
 
     def test_with_config(self, tmp_path: Path) -> None:
         arch_dir = tmp_path / "docs/architecture"
@@ -42,7 +42,7 @@ class TestLoadAuditBudgets:
         (arch_dir / "architecture_config.json").write_text("{invalid json}")
         default, by_scope = FlextInfraDocAuditor.load_audit_budgets(tmp_path)
         tm.that(default, eq=None)
-        tm.that(by_scope, eq={})
+        tm.that(by_scope, empty=True)
 
     def test_float_values(self, tmp_path: Path) -> None:
         arch_dir = tmp_path / "docs/architecture"

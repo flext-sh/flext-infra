@@ -105,4 +105,4 @@ def test_inject_comments_phase_is_idempotent_on_managed_content() -> None:
     second_result, second_changes = FlextInfraInjectCommentsPhase().apply(first_result)
     tm.that(first_changes, len=(1, 20))
     tm.that(second_result, eq=first_result)
-    tm.that(second_changes, eq=[])
+    tm.that(second_changes, empty=True)

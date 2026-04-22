@@ -30,7 +30,9 @@ class TestFlextInfraUtilitiesSelection:
             (proj / "pyproject.toml").write_text(
                 f'[project]\nname = "{name}"\ndependencies = ["flext-core"]\n',
             )
-            (proj / "src").mkdir()
+            package_dir = proj / "src" / name.replace("-", "_")
+            package_dir.mkdir(parents=True)
+            (package_dir / "__init__.py").write_text("")
         return tmp_path
 
     @pytest.fixture
@@ -49,10 +51,12 @@ class TestFlextInfraUtilitiesSelection:
             proj.mkdir()
             (proj / ".git").mkdir()
             (proj / "Makefile").touch()
-            (proj / "src").mkdir()
+            package_dir = proj / "src" / project_name.replace("-", "_")
+            package_dir.mkdir(parents=True)
             (proj / "pyproject.toml").write_text(
                 f'[project]\nname = "{project_name}"\ndependencies = ["flext-core"]\n',
             )
+            (package_dir / "__init__.py").write_text("")
         return tmp_path
 
     def test_resolve_projects_all_projects(
@@ -186,4 +190,4 @@ class TestFlextInfraUtilitiesSelection:
         """Test resolve_projects returns empty list when no projects match."""
         result = selector.resolve_projects(tmp_path, [])
         projects = tm.ok(result)
-        tm.that(projects, eq=[])
+        tm.that(projects, empty=True)

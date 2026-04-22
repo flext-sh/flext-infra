@@ -44,14 +44,16 @@ class TestInfraTypingAdapters:
 
         tm.that(list(values), eq=["flext-core", "flext-infra"])
 
-    def test_container_mapping_adapter_accepts_paths_and_nested_scalars(self) -> None:
+    def test_container_mapping_adapter_accepts_paths_and_scalars(self) -> None:
         payload = t.Infra.CONTAINER_MAPPING_ADAPTER.validate_python({
             "root": Path("/tmp/flext"),
-            "settings": {"enabled": True},
+            "enabled": True,
+            "retries": 3,
         })
 
         tm.that(payload["root"], eq=Path("/tmp/flext"))
-        tm.that(payload["settings"], eq={"enabled": True})
+        tm.that(payload["enabled"], eq=True)
+        tm.that(payload["retries"], eq=3)
 
 
 class TestInfraTypingGuards:

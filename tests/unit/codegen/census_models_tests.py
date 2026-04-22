@@ -59,7 +59,7 @@ class TestCensusReportModel:
         tm.that(report.project, eq="test-project")
         tm.that(report.total, eq=0)
         tm.that(report.fixable, eq=0)
-        tm.that(report.violations, eq=[])
+        tm.that(report.violations, empty=True)
 
     def test_report_with_mixed_violations(self) -> None:
         violations = [

@@ -180,7 +180,7 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
         return r[bool].ok(True) if report.passed else r[bool].fail(report.summary)
 
     def _run_mypy_hints(self, project_dir: Path) -> t.StrSequence:
-        """Run mypy and extract types-package hints."""
+        """Run mypy and extract install-package hints."""
         runner = self.runner or u.Cli()
         result = runner.run(
             [

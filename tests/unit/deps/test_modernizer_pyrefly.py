@@ -202,4 +202,4 @@ def test_ensure_pyrefly_config_phase_is_idempotent() -> None:
     _ = phase.apply(doc, is_root=True)
     second_changes = phase.apply(doc, is_root=True)
 
-    tm.that(second_changes, eq=[])
+    tm.that(second_changes, empty=True)

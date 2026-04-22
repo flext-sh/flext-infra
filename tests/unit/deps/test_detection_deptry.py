@@ -42,7 +42,7 @@ class TestDiscoverProjectPathsDeptry:
         result = service.discover_project_paths(tmp_path)
 
         tm.ok(result)
-        tm.that(result.value, eq=[])
+        tm.that(result.value, empty=True)
 
 
 class TestRunDeptry:
