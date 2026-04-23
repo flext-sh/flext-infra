@@ -64,7 +64,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         return settings.unwrap().lazy_init
 
     @classmethod
-    def is_root_namespace_file(cls, file_name: str) -> bool:
+    def matches_root_namespace_file(cls, file_name: str) -> bool:
         """Return whether *file_name* is a governed root-namespace facade file."""
         return file_name in cls._lazy_init_config().root_namespace_files
 
@@ -78,7 +78,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         return parts[0] if parts[0] in settings.surface_prefixes else "src"
 
     @classmethod
-    def is_project_namespace_package(cls, package_name: str) -> bool:
+    def matches_project_namespace_package(cls, package_name: str) -> bool:
         """Return whether a package behaves like a project namespace root.
 
         Project package roots under ``src/`` qualify, as do namespace packages under

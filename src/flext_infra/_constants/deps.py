@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
 from types import MappingProxyType
 from typing import Final
+
+from flext_cli import t
 
 
 class FlextInfraConstantsDeps:
@@ -80,7 +81,7 @@ class FlextInfraConstantsDeps:
         ("[tool.pyrefly]", "# [MANAGED] pyrefly"),
         ("[tool.pyright]", "# [MANAGED] pyright"),
     )
-    DEFAULT_MODULE_TO_TYPES_PACKAGE: Final[Mapping[str, str]] = MappingProxyType({
+    DEFAULT_MODULE_TO_TYPES_PACKAGE: Final[t.StrMapping] = MappingProxyType({
         "yaml": "types-pyyaml",
         "ldap3": "types-ldap3",
         "redis": "types-redis",

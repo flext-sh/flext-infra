@@ -17,7 +17,6 @@ from __future__ import annotations
 
 from collections.abc import (
     MutableSequence,
-    Sequence,
 )
 from typing import Annotated, override
 
@@ -53,7 +52,7 @@ class FlextInfraValidateFreshImport(s[bool]):
 
     def build_report(
         self,
-        packages: Sequence[str] = (),
+        packages: t.StrSequence = (),
     ) -> p.Result[m.Infra.ValidationReport]:
         """Import each package in a fresh subprocess, collect failures.
 

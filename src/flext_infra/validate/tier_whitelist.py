@@ -21,7 +21,6 @@ from __future__ import annotations
 
 from collections.abc import (
     MutableSequence,
-    Sequence,
 )
 from pathlib import Path
 from typing import ClassVar, override
@@ -84,7 +83,7 @@ class FlextInfraValidateTierWhitelist(s[bool]):
     def _collect_violations(
         self,
         workspace_root: Path,
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         """Traverse the rope project and accumulate boundary breaks."""
         violations: MutableSequence[str] = []
         with u.Infra.open_project(workspace_root) as project:
@@ -115,7 +114,7 @@ class FlextInfraValidateTierWhitelist(s[bool]):
         self,
         file_path: Path,
         module_imports: t.Infra.RopeModuleImports,
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         """Return violation strings for a single module's rope ImportInfo set."""
         out: MutableSequence[str] = []
         for import_statement in u.Infra.import_statements(module_imports):

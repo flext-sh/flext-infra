@@ -8,7 +8,7 @@ from collections.abc import (
     Sequence,
 )
 from pathlib import Path
-from typing import Annotated, Self, TypeVar, override
+from typing import Annotated, Self, override
 
 from flext_cli import FlextCliSettings
 from flext_core import FlextSettings, s
@@ -21,10 +21,8 @@ from flext_infra import (
     u,
 )
 
-TDomainResult = TypeVar("TDomainResult", bound=t.Cli.ResultValue)
 
-
-class FlextInfraServiceBase(
+class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
     s[TDomainResult],
     ABC,
 ):
@@ -158,10 +156,10 @@ class FlextInfraServiceBase(
             return None
         return [self.root / name for name in names]
 
-    def command_payload(self) -> t.Infra.ContainerOverrides:
+    def command_payload(self) -> t.JsonMapping:
         """Return the normalized shared command payload once."""
-        payload: dict[str, t.Container] = {
-            "workspace_root": self.workspace_root,
+        payload: t.JsonMapping = {
+            "workspace_root": str(self.workspace_root),
             "apply_changes": self.apply_changes,
             "check_only": self.check_only,
             "dry_run": self.dry_run,
@@ -171,9 +169,9 @@ class FlextInfraServiceBase(
         if self.project_filter is not None:
             payload["project_filter"] = self.project_filter
         if self.report_path is not None:
-            payload["report_path"] = self.report_path
+            payload["report_path"] = str(self.report_path)
         if self.output_dir is not None:
-            payload["output_dir"] = self.output_dir
+            payload["output_dir"] = str(self.output_dir)
         return payload
 
     @abstractmethod
@@ -191,7 +189,7 @@ class FlextInfraServiceBase(
         return params.execute()
 
 
-class FlextInfraProjectSelectionServiceBase(
+class FlextInfraProjectSelectionServiceBase[TDomainResult: t.Cli.ResultValue](
     FlextInfraServiceBase[TDomainResult],
     ABC,
 ):

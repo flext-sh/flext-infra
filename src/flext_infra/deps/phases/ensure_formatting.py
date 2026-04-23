@@ -84,7 +84,7 @@ class FlextInfraEnsureFormattingToolingPhase:
 
     @staticmethod
     def _remove_codespell_skip_payload(
-        payload: MutableMapping[str, t.Cli.JsonValue],
+        payload: MutableMapping[str, t.JsonValue],
     ) -> t.StrSequence:
         """Remove the stale hardcoded codespell skip entry from one plain payload."""
         codespell_table = u.Cli.toml_mapping_path(payload, ("tool", "codespell"))
@@ -107,7 +107,7 @@ class FlextInfraEnsureFormattingToolingPhase:
 
     def apply_payload(
         self,
-        payload: MutableMapping[str, t.Cli.JsonValue],
+        payload: MutableMapping[str, t.JsonValue],
     ) -> t.StrSequence:
         """Apply formatting defaults directly to one normalized payload."""
         changes = list(

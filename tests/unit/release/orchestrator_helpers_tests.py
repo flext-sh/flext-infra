@@ -50,6 +50,8 @@ def test_generate_notes_writes_release_document(tmp_path: Path) -> None:
     assert "- root" in notes
     assert "- flext-a" in notes
     assert "- abc123 fix release flow" in notes
+    assert "- make rel INTERACTIVE=0 CREATE_BRANCHES=0 RELEASE_PHASE=all" in notes
+    assert "- make val VALIDATE_SCOPE=workspace" in notes
 
 
 def test_update_changelog_creates_expected_release_files(tmp_path: Path) -> None:

@@ -97,7 +97,7 @@ class FlextInfraConsolidateGroupsPhase:
 
     def apply_payload(
         self,
-        payload: MutableMapping[str, t.Cli.JsonValue],
+        payload: MutableMapping[str, t.JsonValue],
         canonical_dev: t.StrSequence,
     ) -> t.StrSequence:
         """Merge legacy groups into one canonical dev group in one plain payload."""
@@ -139,7 +139,7 @@ class FlextInfraConsolidateGroupsPhase:
             payload,
             (c.Infra.TOOL, c.Infra.POETRY, c.Infra.GROUP),
         )
-        poetry_dev_table: MutableMapping[str, t.Cli.JsonValue] | None = None
+        poetry_dev_table: MutableMapping[str, t.JsonValue] | None = None
         for old_group in (
             c.Infra.DOCS,
             c.Infra.SECURITY,

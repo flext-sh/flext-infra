@@ -80,7 +80,7 @@ class FlextInfraUtilitiesDocsFix:
         apply: bool,
     ) -> None:
         """Persist the standard fix summary and markdown report."""
-        changes_payload: t.Cli.JsonList = [
+        changes_payload: t.JsonList = [
             {
                 c.Infra.RK_FILE: item.file,
                 "links": item.links,

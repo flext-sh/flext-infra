@@ -34,7 +34,7 @@ def _modernizer_workspace_pyproject(*members: str) -> str:
 
 
 @pytest.fixture
-def deptry_report_payload() -> t.Cli.JsonPayload:
+def deptry_report_payload() -> t.JsonPayload:
     parsed = u.Cli.json_parse(_read_fixture("deps", "deptry_report.json"))
     assert parsed is not None
     assert parsed.success

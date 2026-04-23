@@ -20,7 +20,7 @@ class FlextInfraEnsureMypyConfigPhase:
     def _phase(self) -> m.Infra.TomlPhaseConfig:
         """Build the canonical mypy phase definition."""
         configured = self._tool_config.tools.mypy.overrides
-        expected_overrides: Sequence[dict[str, t.Cli.JsonValue]] = [
+        expected_overrides: Sequence[dict[str, t.JsonValue]] = [
             {
                 "module": u.Cli.normalize_json_value(list(entry.modules)),
                 "disable_error_code": u.Cli.normalize_json_value(
@@ -63,7 +63,7 @@ class FlextInfraEnsureMypyConfigPhase:
 
     def apply_payload(
         self,
-        payload: MutableMapping[str, t.Cli.JsonValue],
+        payload: MutableMapping[str, t.JsonValue],
     ) -> t.StrSequence:
         """Apply canonical mypy settings directly to one normalized payload."""
         return FlextInfraPhaseEngine.apply_payload_phases(payload, self._phase())

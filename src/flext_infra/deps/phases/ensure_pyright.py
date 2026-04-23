@@ -429,7 +429,7 @@ class FlextInfraEnsurePyrightConfigPhase:
 
     def apply_payload(
         self,
-        payload: MutableMapping[str, t.Cli.JsonValue],
+        payload: MutableMapping[str, t.JsonValue],
         *,
         is_root: bool,
         workspace_root: Path | None = None,

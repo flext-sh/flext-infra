@@ -32,8 +32,9 @@ class FlextInfraRefactorSafetyManager:
         """Record an emergency stop reason for later inspection."""
         self._emergency_stop_reason = reason.strip() or "unspecified"
 
-    def is_emergency_stop_requested(self) -> bool:
-        """Return True if an emergency stop has been requested."""
+    @property
+    def emergency_stop_requested(self) -> bool:
+        """Return whether an emergency stop has been requested."""
         return bool(self._emergency_stop_reason)
 
     def create_pre_transformation_stash(

@@ -36,6 +36,16 @@ def test_sync_github_workflows_apply_writes_ci_files_and_report(
     workspace = u.Infra.Tests.create_github_workspace(
         tmp_path,
         project_names=("flext-a", "flext-b"),
+        source_workflow=(
+            "name: CI\n"
+            "jobs:\n"
+            "  ci:\n"
+            "    steps:\n"
+            "      - name: Boot (advisory)\n"
+            "        run: make boot\n"
+            "      - name: Val (advisory)\n"
+            "        run: make val\n"
+        ),
     )
     report_path = tmp_path / "sync-report.json"
 
@@ -51,8 +61,13 @@ def test_sync_github_workflows_apply_writes_ci_files_and_report(
     assert report_path.is_file()
     for project_name in ("flext-a", "flext-b"):
         destination = workspace / project_name / ".github/workflows/ci.yml"
+        content = destination.read_text(encoding="utf-8")
         assert destination.is_file()
-        assert "name: CI" in destination.read_text(encoding="utf-8")
+        assert "name: CI" in content
+        assert "- name: Setup (advisory)" in content
+        assert "run: make setup" in content
+        assert "run: make val" in content
+        assert "run: make boot" not in content
 
 
 def test_sync_github_workflows_prunes_noncanonical_files(

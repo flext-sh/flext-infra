@@ -11,7 +11,6 @@ from __future__ import annotations
 
 from collections.abc import (
     MutableSequence,
-    Sequence,
 )
 from pathlib import Path
 from typing import override
@@ -50,7 +49,7 @@ class FlextInfraValidateMetadataDiscipline(s[bool]):
     def _collect_violations(
         self,
         workspace_root: Path,
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         """Traverse one rope project and accumulate rogue tomllib imports."""
         violations: MutableSequence[str] = []
         with u.Infra.open_project(workspace_root) as project:
@@ -92,7 +91,7 @@ class FlextInfraValidateMetadataDiscipline(s[bool]):
         self,
         file_path: Path,
         module_imports: t.Infra.RopeModuleImports,
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         """Return violation strings for one module import set via Rope boundary types."""
         out: MutableSequence[str] = []
         for import_statement in u.Infra.import_statements(module_imports):

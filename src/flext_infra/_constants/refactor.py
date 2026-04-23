@@ -5,16 +5,15 @@ from __future__ import annotations
 import re
 from collections.abc import (
     Mapping,
-    Sequence,
 )
 from enum import StrEnum, unique
 from pathlib import Path
 from types import MappingProxyType
 from typing import Final
 
-from flext_core import c
+from flext_core import c, t
 
-from flext_infra import FlextInfraConstantsBase as _Base
+from flext_infra import FlextInfraConstantsBase as cb
 
 
 class FlextInfraConstantsRefactor:
@@ -135,7 +134,7 @@ class FlextInfraConstantsRefactor:
                 "bool",
                 "datetime",
                 "Path",
-            }): "t.Container",
+            }): "t.JsonValue",
         })
     )
     FUTURE_CHECKS: Final[frozenset[str]] = frozenset({"missing_future_import"})
@@ -245,11 +244,11 @@ class FlextInfraConstantsRefactor:
         ),
     })
     RULE_TABLE_HEADERS: Final[tuple[str, ...]] = (
-        _Base.RK_ID,
-        _Base.NAME,
-        _Base.RK_DESCRIPTION,
-        _Base.RK_ENABLED,
-        _Base.RK_SEVERITY,
+        cb.RK_ID,
+        cb.NAME,
+        cb.RK_DESCRIPTION,
+        cb.RK_ENABLED,
+        cb.RK_SEVERITY,
     )
     MRO_TARGETS: Final[frozenset[str]] = frozenset({
         "constants",
@@ -304,7 +303,7 @@ class FlextInfraConstantsRefactor:
     "Class-name suffix used to identify constants facades."
     CONSTANT_PATTERN: Final[re.Pattern[str]] = re.compile(r"^_*[A-Z][A-Z0-9_]*$")
     "Compiled naming pattern for module-level constant candidates."
-    FAMILY_SUFFIXES: Final[Mapping[str, str]] = MappingProxyType({
+    FAMILY_SUFFIXES: Final[t.StrMapping] = MappingProxyType({
         "c": "Constants",
         "t": "Types",
         "p": "Protocols",
@@ -312,7 +311,7 @@ class FlextInfraConstantsRefactor:
         "u": "Utilities",
     })
     "Facade family letter → class suffix mapping."
-    FAMILY_DIRECTORIES: Final[Mapping[str, str]] = MappingProxyType({
+    FAMILY_DIRECTORIES: Final[t.StrMapping] = MappingProxyType({
         "c": "_constants",
         "t": "_typings",
         "p": "_protocols",
@@ -320,7 +319,7 @@ class FlextInfraConstantsRefactor:
         "u": "_utilities",
     })
     "Facade family letter → subdirectory name mapping."
-    FAMILY_FILES: Final[Mapping[str, str]] = MappingProxyType({
+    FAMILY_FILES: Final[t.StrMapping] = MappingProxyType({
         "c": "*constants.py",
         "t": "*typings.py",
         "p": "*protocols.py",
@@ -330,7 +329,7 @@ class FlextInfraConstantsRefactor:
     "Facade family letter → file glob mapping."
     MRO_FAMILIES: Final[frozenset[str]] = frozenset({"c", "t", "p", "m", "u"})
     "All MRO families."
-    MRO_FAMILY_PACKAGE_DIRS: Final[Mapping[str, str]] = MappingProxyType({
+    MRO_FAMILY_PACKAGE_DIRS: Final[t.StrMapping] = MappingProxyType({
         "c": "flext_core/constants.py",
         "t": "flext_core/typings.py",
         "p": "flext_core/protocols.py",
@@ -338,7 +337,7 @@ class FlextInfraConstantsRefactor:
         "u": "flext_core/_utilities",
     })
     "Family letter → relative package dir/file."
-    MRO_FAMILY_FACADE_MODULES: Final[Mapping[str, str]] = MappingProxyType({
+    MRO_FAMILY_FACADE_MODULES: Final[t.StrMapping] = MappingProxyType({
         "c": "flext_core/constants.py",
         "t": "flext_core/typings.py",
         "p": "flext_core/protocols.py",
@@ -375,13 +374,13 @@ class FlextInfraConstantsRefactor:
         "low": 0.55,
     })
     "Confidence level → numeric score mapping for violations."
-    CONFIDENCE_RANKS: Final[Mapping[str, int]] = MappingProxyType({
+    CONFIDENCE_RANKS: Final[t.IntMapping] = MappingProxyType({
         "low": 0,
         "medium": 1,
         "high": 2,
     })
     "Confidence level → priority rank mapping."
-    REQUIRED_CLASS_TARGETS: Final[Sequence[str]] = (
+    REQUIRED_CLASS_TARGETS: Final[t.StrSequence] = (
         "TimeoutEnforcer",
         "CircuitBreakerManager",
     )
@@ -390,7 +389,7 @@ class FlextInfraConstantsRefactor:
     "Pattern to split class name fragments."
     MAPPINGS_RELATIVE_PATH: Final[Path] = Path("rules") / "class-nesting-mappings.yml"
     "Relative path from the refactor package to the nesting mappings YAML."
-    MODEL_TOKENS: Final[Sequence[str]] = (
+    MODEL_TOKENS: Final[t.StrSequence] = (
         "model",
         "schema",
         "entity",
@@ -398,9 +397,9 @@ class FlextInfraConstantsRefactor:
         "dataclass",
     )
     "Tokens indicating model-related code."
-    DECORATOR_TOKENS: Final[Sequence[str]] = ("decorator", "inject", "provide")
+    DECORATOR_TOKENS: Final[t.StrSequence] = ("decorator", "inject", "provide")
     "Tokens indicating decorator-related code."
-    DISPATCHER_TOKENS: Final[Sequence[str]] = (
+    DISPATCHER_TOKENS: Final[t.StrSequence] = (
         "dispatcher",
         "dispatch",
         "command",
@@ -408,14 +407,14 @@ class FlextInfraConstantsRefactor:
         "event",
     )
     "Tokens indicating dispatcher-related code."
-    NAMESPACE_PREFIXES: Final[Mapping[str, str]] = MappingProxyType({
+    NAMESPACE_PREFIXES: Final[t.StrMapping] = MappingProxyType({
         "utility": "FlextUtilities",
         "models": "FlextModels",
         "decorators": "d",
         "dispatcher": "FlextDispatcher",
     })
     "Namespace → class prefix mapping for violation classification."
-    CLASSIFICATION_PRIORITY: Final[Sequence[str]] = (
+    CLASSIFICATION_PRIORITY: Final[t.StrSequence] = (
         "dispatcher",
         "decorators",
         "models",
@@ -446,7 +445,6 @@ class FlextInfraConstantsRefactor:
         "ldif",
         "cli",
         "main",
-        "_cli_main",
     })
     "Canonical alias module stems exempt from strict single-class enforcement."
     NAMESPACE_MIN_ALIAS_LENGTH: Final[int] = 2
@@ -512,7 +510,7 @@ class FlextInfraConstantsRefactor:
         r'^("""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\')\s*$',
     )
     "Matches files that contain only a module docstring."
-    NAMESPACE_FILE_TO_FAMILY: Final[Mapping[str, str]] = MappingProxyType({
+    NAMESPACE_FILE_TO_FAMILY: Final[t.StrMapping] = MappingProxyType({
         f"{suffix.lower()}.py": alias for alias, suffix in FAMILY_SUFFIXES.items()
     })
     NAMESPACE_FAMILY_EXPECTED_ALIAS: Final[Mapping[str, tuple[str, str]]] = (
@@ -527,17 +525,17 @@ class FlextInfraConstantsRefactor:
 
     # --- Class nesting refactor constants (was: class ClassNesting) ---
     NESTING_COERCE_KEYS: Final[tuple[str, ...]] = (
-        _Base.RK_LOOSE_NAME,
+        cb.RK_LOOSE_NAME,
         RK_HELPER_NAME,
-        _Base.RK_TARGET_NAMESPACE,
+        cb.RK_TARGET_NAMESPACE,
         RK_TARGET_NAME,
-        _Base.RK_REWRITE_SCOPE,
-        _Base.RK_CONFIDENCE,
+        cb.RK_REWRITE_SCOPE,
+        cb.RK_CONFIDENCE,
     )
     "Keys to coerce from string to typed values in nesting mappings."
     NESTING_SECTION_KEYS: Final[tuple[str, ...]] = (
-        _Base.RK_CLASS_NESTING,
-        _Base.RK_HELPER_CONSOLIDATION,
+        cb.RK_CLASS_NESTING,
+        cb.RK_HELPER_CONSOLIDATION,
     )
     "Top-level section keys in class nesting YAML configs."
 

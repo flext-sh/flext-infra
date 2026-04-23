@@ -47,12 +47,12 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             **kwargs: (
                 t.RuntimeData
-                | t.Cli.JsonPayload
-                | Sequence[t.Cli.JsonValue]
+                | t.JsonPayload
+                | Sequence[t.JsonValue]
                 | Sequence[tuple[str, str]]
-                | Sequence[tuple[str, Sequence[str]]]
+                | Sequence[tuple[str, t.StrSequence]]
                 | Sequence[tuple[str, Sequence[tuple[str, str]]]]
-                | Mapping[str, t.Cli.JsonValue]
+                | Mapping[str, t.JsonValue]
                 | type
             ),
         ) -> str:
@@ -307,7 +307,7 @@ class FlextInfraProtocolsBase(Protocol):
     class ViolationWithLine(Protocol):
         """Protocol for violations that have a line number."""
 
-        def model_dump(self) -> t.Cli.JsonMapping:
+        def model_dump(self) -> t.JsonMapping:
             """Dump violation data to a dictionary."""
             ...
 

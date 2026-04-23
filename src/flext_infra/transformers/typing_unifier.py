@@ -153,7 +153,7 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
                 return ast.copy_location(
                     ast.Attribute(
                         value=ast.Name(id="t", ctx=ast.Load()),
-                        attr="OpaqueValue",
+                        attr="JsonValue",
                         ctx=ast.Load(),
                     ),
                     node,
@@ -171,7 +171,7 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
                 return ast.copy_location(
                     ast.Attribute(
                         value=ast.Name(id="t", ctx=ast.Load()),
-                        attr="OpaqueValue",
+                        attr="JsonValue",
                         ctx=ast.Load(),
                     ),
                     node,

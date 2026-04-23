@@ -266,25 +266,25 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 return result.value
 
             @staticmethod
-            def toml_doc_mapping(doc: t.Cli.TomlDocument) -> t.Cli.JsonMapping:
+            def toml_doc_mapping(doc: t.Cli.TomlDocument) -> t.JsonMapping:
                 return t.Cli.JSON_MAPPING_ADAPTER.validate_python(
                     u.Cli.normalize_json_value(doc.unwrap()),
                 )
 
             @staticmethod
-            def toml_mapping(value: t.Cli.JsonPayload | None) -> t.Cli.JsonMapping:
+            def toml_mapping(value: t.JsonPayload | None) -> t.JsonMapping:
                 return t.Cli.JSON_MAPPING_ADAPTER.validate_python(
                     u.Cli.normalize_json_value(value),
                 )
 
             @staticmethod
-            def toml_list(value: t.Cli.JsonPayload | None) -> t.Cli.JsonList:
+            def toml_list(value: t.JsonPayload | None) -> t.JsonList:
                 return t.Cli.JSON_LIST_ADAPTER.validate_python(
                     u.Cli.normalize_json_value(value),
                 )
 
             @staticmethod
-            def toml_strings(value: t.Cli.JsonPayload | None) -> t.StrSequence:
+            def toml_strings(value: t.JsonPayload | None) -> t.StrSequence:
                 return t.Infra.STR_SEQ_ADAPTER.validate_python(
                     u.Cli.normalize_json_value(value),
                 )

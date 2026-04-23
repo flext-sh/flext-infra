@@ -25,7 +25,7 @@ class FlextInfraModelsEngineOperation:
             validate_default=True,
         )
         key: str = m.Field(description="TOML key name")
-        value: t.Cli.JsonValue = m.Field(description="JSON-compatible value")
+        value: t.JsonValue = m.Field(description="JSON-compatible value")
 
     class TomlListOp(m.ContractModel):
         """Set or merge one TOML string list."""

@@ -182,7 +182,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
             m.Field(description="Original TOML source text"),
         ] = ""
         payload: Annotated[
-            MutableMapping[str, t.Cli.JsonValue],
+            MutableMapping[str, t.JsonValue],
             m.Field(description="Validated plain TOML payload"),
         ] = m.Field(default_factory=dict)
 
@@ -204,7 +204,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
             m.Field(description="Original TOML source text"),
         ] = ""
         payload: Annotated[
-            MutableMapping[str, t.Cli.JsonValue],
+            MutableMapping[str, t.JsonValue],
             m.Field(description="Validated plain TOML payload"),
         ] = m.Field(default_factory=dict)
 

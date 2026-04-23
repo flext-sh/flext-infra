@@ -48,7 +48,7 @@ class FlextInfraTypesAdapters:
     )
     "Validates t.StrMapping."
 
-    CONTAINER_MAPPING_ADAPTER: ClassVar[m.TypeAdapter[t.FlatContainerMapping]] = (
+    CONTAINER_MAPPING_ADAPTER: ClassVar[m.TypeAdapter[t.JsonMapping]] = (
         t.flat_container_mapping_adapter()
     )
     "Validates flat container mappings through the shared flext-core adapter."

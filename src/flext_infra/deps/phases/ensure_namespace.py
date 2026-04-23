@@ -37,7 +37,7 @@ class FlextInfraEnsureNamespaceToolingPhase:
 
     def apply_payload(
         self,
-        payload: MutableMapping[str, t.Cli.JsonValue],
+        payload: MutableMapping[str, t.JsonValue],
         *,
         path: Path,
     ) -> t.StrSequence:

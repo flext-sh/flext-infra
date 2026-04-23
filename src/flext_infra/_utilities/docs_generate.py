@@ -317,7 +317,7 @@ class FlextInfraUtilitiesDocsGenerate:
             )
         )
         generated = u.count(files, lambda item: item.written)
-        files_payload: t.Cli.JsonList = [
+        files_payload: t.JsonList = [
             {"path": item.path, "written": item.written} for item in files
         ]
         summary_payload = t.Cli.JSON_MAPPING_ADAPTER.validate_python({

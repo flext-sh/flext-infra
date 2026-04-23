@@ -155,10 +155,10 @@ def test_replaces_container_union() -> None:
         "fix_action": "unify_typings",
     })
     updated, changes = rule.apply(source)
-    assert "x: t.Container" in updated
+    assert "x: t.JsonValue" in updated
     assert any(
         change
-        == "Canonicalized inline union str | int | float | bool | datetime | Path -> t.Container"
+        == "Canonicalized inline union str | int | float | bool | datetime | Path -> t.JsonValue"
         for change in changes
     )
 
@@ -449,9 +449,7 @@ def test_rewrites_builtin_containers_to_canonical_t_aliases() -> None:
         _file_path=Path("/tmp/demo/src/flext_demo/sample.py"),
     )
     assert "from flext_demo import t" in updated
-    assert (
-        "data: t.MutableMappingKV[str, t.MutableSequenceOf[t.OpaqueValue]]" in updated
-    )
+    assert "data: t.MutableMappingKV[str, t.MutableSequenceOf[t.JsonValue]]" in updated
     assert "-> t.Pair[str, int]" in updated
     assert any(
         "Canonicalized built-in annotation dict[str, list[object]]" in change
@@ -470,7 +468,7 @@ def test_rewrites_tuple_variadics_and_any_annotations() -> None:
         _file_path=Path("/tmp/demo/tests/test_sample.py"),
     )
     assert "from tests import t" in updated
-    assert "value: t.VariadicTuple[t.OpaqueValue]" in updated
+    assert "value: t.VariadicTuple[t.JsonValue]" in updated
 
 
 def test_rewrites_fixed_arity_four_tuple_to_quad() -> None:
@@ -509,7 +507,7 @@ def test_inserts_t_import_after_parenthesized_import_block() -> None:
     assert "from flext_demo import (\n    c,\n    m,\n)" in updated
     assert "from flext_demo import t" in updated
     assert updated.index("from flext_demo import t") > updated.index("    m,")
-    assert "value: t.MutableSequenceOf[t.OpaqueValue]" in updated
+    assert "value: t.MutableSequenceOf[t.JsonValue]" in updated
 
 
 def test_skips_duplicate_t_import_in_parenthesized_import_block() -> None:
@@ -532,4 +530,4 @@ def test_skips_duplicate_t_import_in_parenthesized_import_block() -> None:
     )
     assert "from flext_demo import (\n    c,\n    m,\n    t,\n)" in updated
     assert updated.count("from flext_demo import t") == 0
-    assert "value: t.MutableSequenceOf[t.OpaqueValue]" in updated
+    assert "value: t.MutableSequenceOf[t.JsonValue]" in updated

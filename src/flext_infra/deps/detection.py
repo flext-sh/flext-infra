@@ -95,7 +95,7 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
         classified = self.classify_issues(deptry_issues)
 
         def _module_names(
-            items: Sequence[Mapping[str, t.Container | None]],
+            items: Sequence[Mapping[str, t.JsonValue | None]],
         ) -> MutableSequence[str]:
             return [
                 str(val)

@@ -124,7 +124,7 @@ class FlextInfraPytestDiagExtractor(s[bool]):
 
     @staticmethod
     def _as_xml_element(
-        value: p.Infra.XmlElementLike | t.Container,
+        value: p.Infra.XmlElementLike | t.JsonValue,
     ) -> p.Infra.XmlElementLike | None:
         """Normalize dynamic defusedxml nodes to the typed stdlib element API."""
         return value if isinstance(value, p.Infra.XmlElementLike) else None

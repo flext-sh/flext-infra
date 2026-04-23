@@ -42,7 +42,7 @@ class FlextInfraRefactorLooseClassScanner:
         self,
         *,
         project_root: Path,
-    ) -> tuple[Sequence[m.Infra.LooseClassViolation], Mapping[str, bool], int, int]:
+    ) -> tuple[Sequence[m.Infra.LooseClassViolation], t.BoolMapping, int, int]:
         violations: MutableSequence[m.Infra.LooseClassViolation] = []
         targets_found: dict[str, bool] = dict.fromkeys(
             c.Infra.REQUIRED_CLASS_TARGETS,
@@ -86,7 +86,7 @@ class FlextInfraRefactorLooseClassScanner:
         *,
         files_scanned: int,
         violations: Sequence[m.Infra.LooseClassViolation],
-        targets_found: Mapping[str, bool],
+        targets_found: t.BoolMapping,
         classes_scanned: int,
     ) -> t.Infra.ContainerDict:
         counters = Counter(v.confidence for v in violations)

@@ -8,7 +8,7 @@ from collections.abc import (
     Sequence,
 )
 from operator import itemgetter
-from typing import TypeGuard, override
+from typing import TypeIs, override
 
 from flext_infra import FlextInfraRopeTransformer, c, m, t, u
 
@@ -223,7 +223,7 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
     @staticmethod
     def _is_method_node(
         node: t.Infra.AstStmt,
-    ) -> TypeGuard[t.Infra.AstFunctionDef | t.Infra.AstAsyncFunctionDef]:
+    ) -> TypeIs[t.Infra.AstFunctionDef | t.Infra.AstAsyncFunctionDef]:
         return isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
 
 

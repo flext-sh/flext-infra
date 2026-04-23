@@ -110,15 +110,15 @@ class FlextInfraDocAuditorMixin:
         ],
     ) -> None:
         """Persist JSON summary and markdown report to the scope report directory."""
-        sorted_checks: list[t.Cli.JsonValue] = [str(ck) for ck in sorted(checks)]
-        summary: dict[str, t.Cli.JsonValue] = {
+        sorted_checks: list[t.JsonValue] = [str(ck) for ck in sorted(checks)]
+        summary: dict[str, t.JsonValue] = {
             c.Infra.RK_SCOPE: scope.name,
             "issues": len(issues),
             c.Infra.VERB_CHECKS: sorted_checks,
             c.Infra.OperationMode.STRICT: strict,
             "report_dir": scope.report_dir.as_posix(),
         }
-        issues_payload: t.Cli.JsonValue = [
+        issues_payload: t.JsonValue = [
             {
                 c.Infra.RK_FILE: issue.file,
                 "issue_type": issue.issue_type,
@@ -127,7 +127,7 @@ class FlextInfraDocAuditorMixin:
             }
             for issue in issues
         ]
-        summary_payload: dict[str, t.Cli.JsonValue] = {
+        summary_payload: dict[str, t.JsonValue] = {
             c.Infra.RK_SUMMARY: summary,
             "issues": issues_payload,
         }

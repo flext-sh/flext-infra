@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import ast
 import re
-from collections.abc import Mapping, MutableSequence
+from collections.abc import (
+    Mapping,
+    MutableSequence,
+)
 
 from flext_infra import c, t, u
 

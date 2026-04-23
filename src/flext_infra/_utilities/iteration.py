@@ -677,7 +677,7 @@ class FlextInfraUtilitiesIteration:
     @staticmethod
     def _iter_known_dirs(
         project_root: Path,
-        include_flags: Mapping[str, bool],
+        include_flags: t.BoolMapping,
         selected_dirs: frozenset[str],
         files: MutableSequence[Path],
     ) -> None:

@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import re
 from collections.abc import (
-    Mapping,
     MutableMapping,
     MutableSequence,
 )
@@ -36,7 +35,7 @@ class FlextInfraTransformerTier0ImportFixer:
             m.Field(description="Python file analyzed for Tier 0 import violations"),
         ]
         alias_to_module: Annotated[
-            Mapping[str, str],
+            t.StrMapping,
             m.Field(description="Alias names mapped to their source modules"),
         ] = m.Field(default_factory=lambda: MappingProxyType({}))
         category_a: Annotated[

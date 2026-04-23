@@ -104,7 +104,7 @@ class FlextInfraUtilitiesCompatibility:
     def generate_sarif(
         results: Sequence[m.Infra.ProjectResult],
         gates: t.StrSequence,
-    ) -> t.Cli.JsonMapping:
+    ) -> t.JsonMapping:
         """Render SARIF 2.1.0 payload from workspace gate results."""
         rules_by_id: dict[str, m.Infra.SarifRule] = {}
         sarif_results: list[m.Infra.SarifResult] = []
@@ -223,7 +223,7 @@ class FlextInfraUtilitiesCompatibility:
                 for item in results
             ]
         }
-        normalized_payload: t.Cli.JsonValue = t.Cli.JSON_VALUE_ADAPTER.validate_python(
+        normalized_payload: t.JsonValue = t.Cli.JSON_VALUE_ADAPTER.validate_python(
             payload,
         )
         write_result = u.Cli.json_write(output_path, normalized_payload)

@@ -25,7 +25,7 @@ def _apply_rule(
 
 
 def test_pattern_rule_converts_dict_annotations_to_mapping(tmp_path: Path) -> None:
-    source = "def f(data: dict[str, t.Container]) -> dict[str, t.Container]:\n    return data\n"
+    source = "def f(data: dict[str, t.JsonValue]) -> dict[str, t.JsonValue]:\n    return data\n"
     updated, _ = _apply_rule(
         tmp_path,
         source,
@@ -34,13 +34,13 @@ def test_pattern_rule_converts_dict_annotations_to_mapping(tmp_path: Path) -> No
             "fix_action": "convert_dict_to_mapping_annotations",
         },
     )
-    assert "data: Mapping[str, t.Container]" in updated
+    assert "data: t.JsonMapping" in updated
 
 
 def test_pattern_rule_optionally_converts_return_annotations_to_mapping(
     tmp_path: Path,
 ) -> None:
-    source = "def f(data: dict[str, t.Container]) -> dict[str, t.Container]:\n    return data\n"
+    source = "def f(data: dict[str, t.JsonValue]) -> dict[str, t.JsonValue]:\n    return data\n"
     updated, _ = _apply_rule(
         tmp_path,
         source,
@@ -50,12 +50,12 @@ def test_pattern_rule_optionally_converts_return_annotations_to_mapping(
             "include_return_annotations": True,
         },
     )
-    assert "data: Mapping[str, t.Container]" in updated
-    assert "-> Mapping[str, t.Container]" in updated
+    assert "data: t.JsonMapping" in updated
+    assert "-> t.JsonMapping" in updated
 
 
 def test_pattern_rule_keeps_dict_param_when_subscript_mutated(tmp_path: Path) -> None:
-    source = 'def f(data: dict[str, t.Container]) -> dict[str, t.Container]:\n    data["k"] = "v"\n    return data\n'
+    source = 'def f(data: dict[str, t.JsonValue]) -> dict[str, t.JsonValue]:\n    data["k"] = "v"\n    return data\n'
     updated, _ = _apply_rule(
         tmp_path,
         source,
@@ -64,11 +64,11 @@ def test_pattern_rule_keeps_dict_param_when_subscript_mutated(tmp_path: Path) ->
             "fix_action": "convert_dict_to_mapping_annotations",
         },
     )
-    assert "data: Mapping[str, t.Container]" in updated
+    assert "data: t.JsonMapping" in updated
 
 
 def test_pattern_rule_keeps_dict_param_when_copy_used(tmp_path: Path) -> None:
-    source = "def f(data: dict[str, t.Container]) -> dict[str, t.Container]:\n    clone = data.copy()\n    return clone\n"
+    source = "def f(data: dict[str, t.JsonValue]) -> dict[str, t.JsonValue]:\n    clone = data.copy()\n    return clone\n"
     updated, _ = _apply_rule(
         tmp_path,
         source,
@@ -77,11 +77,11 @@ def test_pattern_rule_keeps_dict_param_when_copy_used(tmp_path: Path) -> None:
             "fix_action": "convert_dict_to_mapping_annotations",
         },
     )
-    assert "data: Mapping[str, t.Container]" in updated
+    assert "data: t.JsonMapping" in updated
 
 
 def test_pattern_rule_skips_overload_signatures(tmp_path: Path) -> None:
-    source = "from typing import overload\n\n@overload\ndef f(data: dict[str, t.Container]) -> str: ...\n\ndef f(data: dict[str, t.Container]) -> str:\n    return str(data)\n"
+    source = "from typing import overload\n\n@overload\ndef f(data: dict[str, t.JsonValue]) -> str: ...\n\ndef f(data: dict[str, t.JsonValue]) -> str:\n    return str(data)\n"
     updated, _ = _apply_rule(
         tmp_path,
         source,
@@ -91,8 +91,8 @@ def test_pattern_rule_skips_overload_signatures(tmp_path: Path) -> None:
         },
     )
     assert "@overload" in updated
-    assert "def f(data: Mapping[str, t.Container]) -> str: ..." in updated
-    assert "def f(data: Mapping[str, t.Container]) -> str:" in updated
+    assert "def f(data: t.JsonMapping) -> str: ..." in updated
+    assert "def f(data: t.JsonMapping) -> str:" in updated
 
 
 def test_pattern_rule_removes_configured_redundant_casts(tmp_path: Path) -> None:
@@ -110,7 +110,7 @@ def test_pattern_rule_removes_configured_redundant_casts(tmp_path: Path) -> None
 
 
 def test_pattern_rule_removes_nested_type_object_cast_chain(tmp_path: Path) -> None:
-    source = 'value = cast("type", cast("t.Container", FlextSettings))\n'
+    source = 'value = cast("type", cast("t.JsonValue", FlextSettings))\n'
     updated, _ = _apply_rule(
         tmp_path,
         source,
@@ -120,7 +120,7 @@ def test_pattern_rule_removes_nested_type_object_cast_chain(tmp_path: Path) -> N
             "redundant_type_targets": ["type"],
         },
     )
-    assert 'value = cast("t.Container", FlextSettings)' in updated
+    assert 'value = cast("t.JsonValue", FlextSettings)' in updated
 
 
 def test_pattern_rule_keeps_type_cast_when_not_nested_object_cast(

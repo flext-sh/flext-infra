@@ -166,7 +166,7 @@ class FlextInfraSkillValidator(s[bool]):
             rules_list_obj = rules.get(c.Infra.RK_RULES, [])
             if not isinstance(rules_list_obj, list):
                 return r[m.Infra.ValidationReport].fail("rules must be a list")
-            rules_list: t.Cli.JsonList = t.Cli.JSON_LIST_ADAPTER.validate_python(
+            rules_list: t.JsonList = t.Cli.JSON_LIST_ADAPTER.validate_python(
                 rules_list_obj,
             )
             counts: t.MutableIntMapping = {}

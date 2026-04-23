@@ -49,7 +49,7 @@ class TestRunDeptry:
     def test_success_with_issues(
         self,
         tmp_path: Path,
-        deptry_report_payload: t.Cli.JsonPayload,
+        deptry_report_payload: t.JsonPayload,
     ) -> None:
         venv_bin = tmp_path / "venv" / "bin"
         venv_bin.mkdir(parents=True)

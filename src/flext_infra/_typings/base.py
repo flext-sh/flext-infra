@@ -33,8 +33,6 @@ class FlextInfraTypesBase:
     "argparse ArgumentParser for CLI command definitions."
     type CliNamespace = _argparse.Namespace
     "argparse Namespace for parsed CLI arguments."
-    type JsonDict = t.Cli.JsonMapping
-    "Validated JSON object used by schema metadata and payload helpers."
     type RegexPattern = _re.Pattern[str]
     "Compiled regex pattern for string matching."
     type TextStream = _TextIOBase
@@ -96,9 +94,9 @@ class FlextInfraTypesBase:
     type VariadicTuple[ItemT] = tuple[ItemT, ...]
     "Generic variadic tuple alias for homogeneous tuples."
 
-    type InfraValue = t.Cli.JsonValue
+    type InfraValue = t.JsonValue
     "Canonical infrastructure payload contract from flext-cli JSON typing."
-    type ContainerDict = JsonDict
+    type ContainerDict = t.JsonMapping
     "Validated JSON object for project reports, docs contracts, and rules."
     type FacadeFamily = str
     "Facade family identifier for MRO chain resolution."
@@ -158,7 +156,7 @@ class FlextInfraTypesBase:
     "Read-only validated infra payload mapping."
     type MutableInfraMapping = MutableMapping[str, InfraValue]
     "Mutable validated infra payload mapping."
-    type InfraSequence = t.Cli.JsonList
+    type InfraSequence = t.JsonList
     "Read-only validated infra payload sequence."
     type MutableInfraSequence = MutableSequence[InfraValue]
     "Mutable validated infra payload sequence."
@@ -181,10 +179,6 @@ class FlextInfraTypesBase:
     "Read-only sequence of typed service result payloads."
     type DomainOutput = DomainResult | DomainResultSequence
     "Single or batched service result payload for infra services."
-    type ContainerOverrides = t.FlatContainerMapping
-    "Validated flat container overrides passed to infra service bootstrap."
-    type RuntimeScalarOverrides = t.ScalarMapping
-    "Scalar-only runtime/container override mapping."
 
     # ── Transformer / edit result types ──────────────────────────────
 

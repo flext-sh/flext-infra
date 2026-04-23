@@ -213,7 +213,7 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
 
     def _ensure_build_system_payload(
         self,
-        payload: MutableMapping[str, t.Cli.JsonValue],
+        payload: MutableMapping[str, t.JsonValue],
     ) -> t.StrSequence:
         """Ensure canonical build-system backend/requirements in one plain payload."""
         changes: MutableSequence[str] = []
@@ -246,7 +246,7 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
 
     @staticmethod
     def _remove_empty_poetry_groups_payload(
-        payload: MutableMapping[str, t.Cli.JsonValue],
+        payload: MutableMapping[str, t.JsonValue],
     ) -> t.StrSequence:
         """Remove empty Poetry group tables from one normalized payload."""
         poetry_groups = u.Cli.toml_mapping_path(

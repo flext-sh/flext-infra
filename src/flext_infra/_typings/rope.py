@@ -11,7 +11,6 @@ from __future__ import annotations
 
 from collections.abc import (
     Callable,
-    MutableSequence,
 )
 
 from flext_core import t
@@ -87,22 +86,6 @@ class FlextInfraTypesRope:
     ]
     "Typed Rope find_occurrences callable."
 
-    type ImportMap = t.StrMapping
-    "Mapping of local name → fully qualified import path."
-    type MutableImportMap = t.MutableStrMapping
-    "Mutable mapping of local name → fully qualified import path."
-    type MethodKindMap = t.StrMapping
-    "Mapping of method name → kind (staticmethod/classmethod/method)."
-    type MutableMethodKindMap = t.MutableStrMapping
-    "Mutable mapping of method name → kind."
-    type ChangedPaths = t.StrSequence
-    "Read-only sequence of changed file paths from rope operations."
-    type MutableChangedPaths = MutableSequence[str]
-    "Mutable sequence of changed file paths."
-    type ClassNames = t.StrSequence
-    "Read-only sequence of class names."
-    type MutableClassNames = MutableSequence[str]
-    "Mutable sequence of class names."
     type RopeTransformFn = Callable[
         [
             RopeProject,

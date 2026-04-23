@@ -71,7 +71,7 @@ class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):
             def _nested_operations(
                 cls,
                 *,
-                values: Sequence[tuple[str, t.Cli.JsonValue]] = (),
+                values: Sequence[tuple[str, t.JsonValue]] = (),
                 lists: Sequence[tuple[str, t.StrSequence]] = (),
                 deprecated_keys: t.StrSequence = (),
             ) -> tuple[FlextInfraModelsEngine.TomlOperation, ...]:
@@ -104,7 +104,7 @@ class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):
                 self,
                 operation_type: type[m.ContractModel],
                 /,
-                **data: t.Cli.JsonValue | t.RuntimeData | Sequence[t.RuntimeData],
+                **data: t.JsonValue | t.RuntimeData | Sequence[t.RuntimeData],
             ) -> Self:
                 operation_item = operation_type.model_validate(data)
                 return self._replace(
@@ -121,7 +121,7 @@ class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):
             def table(self, *path: str) -> Self:
                 return self._path("table_path", *path)
 
-            def value(self, key: str, value: t.Cli.JsonValue) -> Self:
+            def value(self, key: str, value: t.JsonValue) -> Self:
                 return self._operation(
                     FlextInfraModelsEngine.TomlSetOp, key=key, value=value
                 )
@@ -152,7 +152,7 @@ class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):
             def nested(
                 self,
                 *path: str,
-                values: Sequence[tuple[str, t.Cli.JsonValue]] = (),
+                values: Sequence[tuple[str, t.JsonValue]] = (),
                 lists: Sequence[tuple[str, t.StrSequence]] = (),
                 deprecated_keys: t.StrSequence = (),
             ) -> Self:

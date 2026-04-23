@@ -185,7 +185,7 @@ class FlextInfraDependencyDetectorRuntime:
                 "detect-runtime-dev-latest.json",
             )
         if out_path is not None and not params.dry_run:
-            report_payload: dict[str, t.Cli.JsonValue] = {
+            report_payload: dict[str, t.JsonValue] = {
                 key: u.Cli.normalize_json_value(value)
                 for key, value in report_model.model_dump().items()
             }

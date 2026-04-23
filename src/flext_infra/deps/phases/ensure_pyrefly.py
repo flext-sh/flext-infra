@@ -43,7 +43,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
         else:
             expected_search = [c.Infra.DEFAULT_SRC_DIR]
             expected_includes = [f"{c.Infra.DEFAULT_SRC_DIR}/**/*.py*"]
-        error_values: Sequence[tuple[str, t.Cli.JsonValue]] = (
+        error_values: Sequence[tuple[str, t.JsonValue]] = (
             *(
                 (error_rule, True)
                 for error_rule in self._tool_config.tools.pyrefly.strict_errors
@@ -99,7 +99,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
 
     def apply_payload(
         self,
-        payload: MutableMapping[str, t.Cli.JsonValue],
+        payload: MutableMapping[str, t.JsonValue],
         *,
         is_root: bool,
         project_dir: Path | None = None,

@@ -66,7 +66,7 @@ class FlextInfraUtilitiesRopeImports:
     def imported_module_paths(
         cls,
         module_imports: t.Infra.RopeModuleImports,
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         """Return runtime import targets represented by a Rope module import set."""
         imported_paths: list[str] = []
         for import_statement in cls.import_statements(module_imports):

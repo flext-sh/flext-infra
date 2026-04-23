@@ -397,15 +397,15 @@ class FlextInfraModelsRefactorGrep:
             description="Canonical lint tool list used by this run",
         )
         lint_before_totals: Annotated[
-            Mapping[str, int],
+            t.IntMapping,
             m.Field(description="Per-tool count of lint lines before rewrites"),
         ] = m.Field(default_factory=lambda: MappingProxyType({}))
         lint_after_totals: Annotated[
-            Mapping[str, int],
+            t.IntMapping,
             m.Field(description="Per-tool count of lint lines after rewrites"),
         ] = m.Field(default_factory=lambda: MappingProxyType({}))
         new_lint_error_totals: Annotated[
-            Mapping[str, int],
+            t.IntMapping,
             m.Field(description="Per-tool count of newly introduced lint lines"),
         ] = m.Field(default_factory=lambda: MappingProxyType({}))
         files: t.Infra.VariadicTuple[

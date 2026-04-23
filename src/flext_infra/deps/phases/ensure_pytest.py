@@ -52,7 +52,7 @@ class FlextInfraEnsurePytestConfigPhase:
 
     def apply_payload(
         self,
-        payload: MutableMapping[str, t.Cli.JsonValue],
+        payload: MutableMapping[str, t.JsonValue],
     ) -> t.StrSequence:
         """Apply pytest defaults directly to one normalized payload."""
         return FlextInfraPhaseEngine.apply_payload_phases(payload, self._phase())

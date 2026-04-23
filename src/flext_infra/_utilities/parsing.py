@@ -359,7 +359,7 @@ class FlextInfraUtilitiesParsing:
 
     @staticmethod
     def parse_forbidden_rules(
-        value: t.Cli.JsonPayload,
+        value: t.JsonPayload,
     ) -> Sequence[m.Infra.ImportModernizerRuleConfig]:
         """Parse and validate forbidden import rule configs."""
         raw_items = u.Cli.json_as_mapping_list(value)

@@ -18,17 +18,17 @@ def _test_tool_config() -> m.Infra.ToolConfigDocument:
     return result.value
 
 
-def _doc_mapping(doc: t.Cli.TomlDocument) -> t.Cli.JsonMapping:
+def _doc_mapping(doc: t.Cli.TomlDocument) -> t.JsonMapping:
     return t.Cli.JSON_MAPPING_ADAPTER.validate_python(
         u.Cli.normalize_json_value(doc.unwrap()),
     )
 
 
-def _mapping(value: t.Cli.JsonValue) -> t.Cli.JsonMapping:
+def _mapping(value: t.JsonValue) -> t.JsonMapping:
     return t.Cli.JSON_MAPPING_ADAPTER.validate_python(value)
 
 
-def _strings(value: t.Cli.JsonValue) -> t.StrSequence:
+def _strings(value: t.JsonValue) -> t.StrSequence:
     return t.Infra.STR_SEQ_ADAPTER.validate_python(value)
 
 

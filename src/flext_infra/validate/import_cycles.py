@@ -129,7 +129,7 @@ class FlextInfraValidateImportCycles(s[bool]):
     def _iter_imported_modules(
         self,
         module_imports: t.Infra.RopeModuleImports,
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         """Extract imported module names from the boundary import-info collection.
 
         Rope's parser already excludes ``if TYPE_CHECKING:`` blocks and
@@ -140,7 +140,7 @@ class FlextInfraValidateImportCycles(s[bool]):
     def _tarjan(
         self,
         graph: MutableMapping[str, set[str]],
-    ) -> Sequence[Sequence[str]]:
+    ) -> Sequence[t.StrSequence]:
         """Tarjan's SCC over ``graph``; returns each SCC as a list of module names."""
         index_counter = [0]
         stack: list[str] = []

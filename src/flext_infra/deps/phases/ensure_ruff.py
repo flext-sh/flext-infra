@@ -49,7 +49,7 @@ class FlextInfraEnsureRuffConfigPhase:
 
     @staticmethod
     def _remove_stale_lint_section_payload(
-        payload: MutableMapping[str, t.Cli.JsonValue],
+        payload: MutableMapping[str, t.JsonValue],
     ) -> t.StrSequence:
         """Remove the stale top-level ``[lint]`` table from one plain payload."""
         changes: list[str] = []
@@ -80,14 +80,14 @@ class FlextInfraEnsureRuffConfigPhase:
                 *self._workspace_project_namespaces(path.parent),
             },
         )
-        lint_nested_values: Sequence[tuple[str, t.Cli.JsonValue]] = (
+        lint_nested_values: Sequence[tuple[str, t.JsonValue]] = (
             ("select", u.Cli.normalize_json_value(sorted(ruff_cfg.lint.select))),
             (
                 c.Infra.IGNORE,
                 u.Cli.normalize_json_value(sorted(ruff_cfg.lint.ignore)),
             ),
         )
-        isort_values: list[tuple[str, t.Cli.JsonValue]] = [
+        isort_values: list[tuple[str, t.JsonValue]] = [
             ("combine-as-imports", ruff_cfg.lint.isort.combine_as_imports),
             ("force-single-line", ruff_cfg.lint.isort.force_single_line),
             ("split-on-trailing-comma", ruff_cfg.lint.isort.split_on_trailing_comma),
@@ -175,7 +175,7 @@ class FlextInfraEnsureRuffConfigPhase:
 
     def apply_payload(
         self,
-        payload: MutableMapping[str, t.Cli.JsonValue],
+        payload: MutableMapping[str, t.JsonValue],
         *,
         path: Path,
     ) -> t.StrSequence:

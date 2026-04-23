@@ -50,7 +50,7 @@ class FlextInfraPhaseEngine(s[t.StrSequence]):
     @classmethod
     def apply_payload_phases(
         cls,
-        payload: MutableMapping[str, t.Cli.JsonValue],
+        payload: MutableMapping[str, t.JsonValue],
         *phases: m.Infra.TomlPhaseConfig,
     ) -> t.StrSequence:
         """Apply one declarative phase set to one plain TOML payload."""
@@ -89,7 +89,7 @@ class FlextInfraPhaseEngine(s[t.StrSequence]):
     @classmethod
     def _apply_payload_phase(
         cls,
-        payload: MutableMapping[str, t.Cli.JsonValue],
+        payload: MutableMapping[str, t.JsonValue],
         phase: m.Infra.TomlPhaseConfig,
         *,
         parent_path: tuple[str, ...],
@@ -201,7 +201,7 @@ class FlextInfraPhaseEngine(s[t.StrSequence]):
 
     @staticmethod
     def _apply_payload_operation(
-        tbl: MutableMapping[str, t.Cli.JsonValue],
+        tbl: MutableMapping[str, t.JsonValue],
         operation: m.Infra.TomlOperation,
         out: MutableSequence[str],
         pfx: str,
@@ -274,7 +274,7 @@ class FlextInfraPhaseEngine(s[t.StrSequence]):
 
     @staticmethod
     def _remove_payload_operation(
-        tbl: MutableMapping[str, t.Cli.JsonValue],
+        tbl: MutableMapping[str, t.JsonValue],
         operation: m.Infra.TomlRemoveOp,
         out: MutableSequence[str],
         pfx: str,

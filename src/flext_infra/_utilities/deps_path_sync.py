@@ -48,7 +48,7 @@ class FlextInfraUtilitiesDependencyPathSync:
 
     def _rewrite_pep621(
         self,
-        payload: MutableMapping[str, t.Cli.JsonValue],
+        payload: MutableMapping[str, t.JsonValue],
         *,
         internal_names: t.Infra.StrSet,
     ) -> t.Infra.Pair[t.StrSequence, t.Infra.StrSet]:
@@ -86,7 +86,7 @@ class FlextInfraUtilitiesDependencyPathSync:
             changes.append(f"  PEP621: {item} -> {new_entry}")
             updated_deps.append(new_entry)
         if changes:
-            updated_dependencies: list[t.Cli.JsonValue] = list(updated_deps)
+            updated_dependencies: list[t.JsonValue] = list(updated_deps)
             u.Cli.toml_mapping_ensure_table(payload, c.Infra.PROJECT)[
                 c.Infra.DEPENDENCIES
             ] = updated_dependencies
@@ -94,7 +94,7 @@ class FlextInfraUtilitiesDependencyPathSync:
 
     def _rewrite_uv_sources(
         self,
-        payload: MutableMapping[str, t.Cli.JsonValue],
+        payload: MutableMapping[str, t.JsonValue],
         *,
         is_root: bool,
         mode: c.Infra.PathSyncMode,
@@ -138,7 +138,7 @@ class FlextInfraUtilitiesDependencyPathSync:
 
     def _rewrite_uv_workspace(
         self,
-        payload: MutableMapping[str, t.Cli.JsonValue],
+        payload: MutableMapping[str, t.JsonValue],
         *,
         is_root: bool,
         members: t.StrSequence,
@@ -162,7 +162,7 @@ class FlextInfraUtilitiesDependencyPathSync:
     @classmethod
     def _rewrite_poetry(
         cls,
-        payload: MutableMapping[str, t.Cli.JsonValue],
+        payload: MutableMapping[str, t.JsonValue],
         *,
         is_root: bool,
         mode: c.Infra.PathSyncMode,

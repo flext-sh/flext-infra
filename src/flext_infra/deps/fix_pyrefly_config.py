@@ -100,7 +100,7 @@ class FlextInfraConfigFixer(s[bool]):
         is_root = project_dir == self._workspace_root
         search_raw = pyrefly.get(c.Infra.SEARCH_PATH)
         if isinstance(search_raw, list):
-            current_paths: t.Cli.JsonList = []
+            current_paths: t.JsonList = []
             try:
                 current_paths = t.Cli.JSON_LIST_ADAPTER.validate_python(
                     list(search_raw)
@@ -155,7 +155,7 @@ class FlextInfraConfigFixer(s[bool]):
             current_excludes: t.StrSequence = []
             excludes = pyrefly.get(c.Infra.PROJECT_EXCLUDES)
             if isinstance(excludes, list):
-                exclude_items: t.Cli.JsonList = []
+                exclude_items: t.JsonList = []
                 try:
                     exclude_items = t.Cli.JSON_LIST_ADAPTER.validate_python([*excludes])
                 except c.ValidationError as err:

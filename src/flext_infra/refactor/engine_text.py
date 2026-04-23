@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import (
+    Mapping,
+    Sequence,
+)
 from pathlib import Path
 
 from flext_infra import (
@@ -264,14 +267,14 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         updated_source, count = u.Infra.batch_replace_annotations(
             rope_project,
             resource,
-            {"t.Container": "t.ContainerValue"},
+            {"t.JsonValue": "t.JsonValue"},
             apply=True,
         )
         if count == 0:
             return (updated_source, list[str]())
         return (
             updated_source,
-            ["Replaced annotation: t.Container -> t.ContainerValue"],
+            ["Replaced annotation: t.JsonValue -> t.JsonValue"],
         )
 
     @staticmethod
@@ -399,7 +402,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
     def _tuple_setting(
         settings: Mapping[str, t.Infra.InfraValue],
         key: str,
-        default: Sequence[str],
+        default: t.StrSequence,
     ) -> tuple[str, ...]:
         value = settings.get(key, list(default))
         return (

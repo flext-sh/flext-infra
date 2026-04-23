@@ -64,7 +64,7 @@ class FlextInfraEnsureCoverageConfigPhase:
 
     def apply_payload(
         self,
-        payload: MutableMapping[str, t.Cli.JsonValue],
+        payload: MutableMapping[str, t.JsonValue],
         *,
         project_kind: str = "core",
     ) -> t.StrSequence:

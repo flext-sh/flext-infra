@@ -170,7 +170,7 @@ class FlextInfraModelsCheck:
         ]
 
         @u.model_serializer(mode="plain")
-        def _serialize(self) -> t.Cli.JsonMapping:
+        def _serialize(self) -> t.JsonMapping:
             return {
                 "id": self.id,
                 "shortDescription": {"text": self.short_description},
@@ -189,7 +189,7 @@ class FlextInfraModelsCheck:
         )
 
         @u.model_serializer(mode="plain")
-        def _serialize(self) -> t.Cli.JsonMapping:
+        def _serialize(self) -> t.JsonMapping:
             return {
                 "physicalLocation": {
                     "artifactLocation": {
@@ -214,7 +214,7 @@ class FlextInfraModelsCheck:
         )
 
         @u.model_serializer(mode="plain")
-        def _serialize(self) -> t.Cli.JsonMapping:
+        def _serialize(self) -> t.JsonMapping:
             return {
                 "ruleId": self.rule_id,
                 "level": self.level,
@@ -241,7 +241,7 @@ class FlextInfraModelsCheck:
         )
 
         @u.model_serializer(mode="plain")
-        def _serialize(self) -> t.Cli.JsonMapping:
+        def _serialize(self) -> t.JsonMapping:
             return {
                 "tool": {
                     "driver": {

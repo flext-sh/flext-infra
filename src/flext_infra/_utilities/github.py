@@ -105,7 +105,9 @@ class FlextInfraUtilitiesGithub:
             ctx = m.Infra.GithubWorkflowSyncContext(
                 project_name=project.name,
                 project_root=project.path,
-                rendered_template=template_result.value,
+                rendered_template=cls._github_render_project_template(
+                    template_result.value,
+                ),
                 request=request,
             )
             ops_result = cls._github_sync_project(ctx)
@@ -132,6 +134,13 @@ class FlextInfraUtilitiesGithub:
         if body.startswith(header):
             return r[str].ok(body)
         return r[str].ok(header + body)
+
+    @classmethod
+    def _github_render_project_template(cls, rendered_template: str) -> str:
+        """Adapt workspace workflow commands to standalone project bootstrap semantics."""
+        return rendered_template.replace(
+            "- name: Boot (advisory)", "- name: Setup (advisory)"
+        ).replace("run: make boot", "run: make setup")
 
     @classmethod
     def _github_resolve_source_workflow(

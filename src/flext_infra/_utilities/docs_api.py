@@ -83,7 +83,7 @@ class FlextInfraUtilitiesDocsApi:
     def _export_target_map(
         source: str,
         package_name: str,
-        exports: Sequence[str],
+        exports: t.StrSequence,
     ) -> t.StrMapping:
         """Resolve exported symbols to their defining import modules when possible."""
         export_names = {name for name in exports if name}
