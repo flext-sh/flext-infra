@@ -26,7 +26,7 @@ from flext_infra import (
     u,
 )
 
-_logger = u.fetch_logger(__name__)
+logger = u.fetch_logger(__name__)
 
 
 class FlextInfraConfigFixer(s[bool]):
@@ -225,10 +225,10 @@ class FlextInfraConfigFixer(s[bool]):
                     rel = path
                 for fix in fixes:
                     line = f"  {('(dry)' if dry_run else '✓')} {rel}: {fix}"
-                    _logger.info("pyrefly_config_fix", detail=line)
+                    logger.info("pyrefly_config_fix", detail=line)
                     messages.append(line)
         if verbose and total_fixes == 0:
-            _logger.info("pyrefly_configs_clean")
+            logger.info("pyrefly_configs_clean")
         return r[t.StrSequence].ok(messages)
 
 

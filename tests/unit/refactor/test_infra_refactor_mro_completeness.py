@@ -20,7 +20,7 @@ def _write_models_project(
     project_root = tmp_path / "flext-example"
     package_dir = project_root / "src" / "flext_example"
     package_dir.mkdir(parents=True)
-    # Build import lines for any bases defined in _models/ so rope can resolve them.
+    # Build import lines for any bases defined in models/ so rope can resolve them.
     external_bases = [
         base
         for base in facade_bases.replace(" ", "").split(",")
@@ -42,7 +42,7 @@ def _write_models_project(
         "m = FlextExampleModels\n",
         encoding="utf-8",
     )
-    models_dir = package_dir / "_models"
+    models_dir = package_dir / "models"
     models_dir.mkdir(parents=True)
     (models_dir / "__init__.py").write_text("", encoding="utf-8")
     (models_dir / "domain.py").write_text(

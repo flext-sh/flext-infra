@@ -100,7 +100,7 @@ class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):
                     ),
                 )
 
-            def _operation(
+            def operation(
                 self,
                 operation_type: type[m.ContractModel],
                 /,
@@ -122,7 +122,7 @@ class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):
                 return self._path("table_path", *path)
 
             def value(self, key: str, value: t.JsonValue) -> Self:
-                return self._operation(
+                return self.operation(
                     FlextInfraModelsEngine.TomlSetOp, key=key, value=value
                 )
 
@@ -134,7 +134,7 @@ class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):
                 strategy: c.Infra.TomlMergeMode = c.Infra.TomlMergeMode.REPLACE,
                 sort: bool = True,
             ) -> Self:
-                return self._operation(
+                return self.operation(
                     FlextInfraModelsEngine.TomlListOp,
                     key=key,
                     values=tuple(values),
@@ -143,7 +143,7 @@ class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):
                 )
 
             def deprecated(self, key: str, *sub_path: str) -> Self:
-                return self._operation(
+                return self.operation(
                     FlextInfraModelsEngine.TomlRemoveOp,
                     key=key,
                     table_path=tuple(sub_path),

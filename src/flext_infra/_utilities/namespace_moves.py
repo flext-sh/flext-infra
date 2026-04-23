@@ -462,14 +462,14 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         for match in c.Infra.FROM_IMPORT_RE.finditer(target_source):
             imported_aliases.update(
                 bound
-                for _name, bound in FlextInfraUtilitiesParsing.parse_import_names(
+                for name, bound in FlextInfraUtilitiesParsing.parse_import_names(
                     match.group(2),
                 )
             )
         for match in c.Infra.FROM_IMPORT_BLOCK_RE.finditer(target_source):
             imported_aliases.update(
                 bound
-                for _name, bound in FlextInfraUtilitiesParsing.parse_import_names(
+                for name, bound in FlextInfraUtilitiesParsing.parse_import_names(
                     match.group(2),
                 )
             )

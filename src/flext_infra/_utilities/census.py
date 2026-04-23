@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import ast
 from collections import Counter, defaultdict
 from collections.abc import (
     Mapping,
@@ -13,7 +12,9 @@ from collections.abc import (
 from pathlib import Path
 
 from flext_infra import FlextInfraModelsRefactorCensus as mrc, c, m, p, t
-from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
+from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
+from flext_infra._utilities.rope_helpers import FlextInfraUtilitiesRopeHelpers
+from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
 
 
 class FlextInfraUtilitiesRefactorCensus:
@@ -231,6 +232,63 @@ class FlextInfraUtilitiesRefactorCensus:
         }
 
     @staticmethod
+    def build_simple_removal_sources(
+        rope: p.Infra.RopeWorkspaceDsl,
+        candidate: m.Infra.Census.RemovalCandidate,
+    ) -> Mapping[Path, str] | None:
+        """Build updated sources for a simple removal candidate without writing."""
+        edit_plan = FlextInfraUtilitiesRefactorCensus.plan_simple_removal_edits(
+            rope,
+            candidate,
+        )
+        if edit_plan is None:
+            return None
+        return {
+            file_path: FlextInfraUtilitiesRefactorCensus.apply_line_ranges(
+                rope.source(file_path),
+                ranges,
+            )
+            for file_path, ranges in edit_plan.items()
+        }
+
+    @staticmethod
+    def preview_simple_removal_candidate(
+        rope: p.Infra.RopeWorkspaceDsl,
+        workspace: Path,
+        candidate: m.Infra.Census.RemovalCandidate,
+        *,
+        gates: t.StrSequence,
+    ) -> bool:
+        """Preview one simple removal candidate and require clean Ruff/Pyrefly gates."""
+        updates = FlextInfraUtilitiesRefactorCensus.build_simple_removal_sources(
+            rope,
+            candidate,
+        )
+        if updates is None:
+            return False
+        file_paths = tuple(sorted(updates))
+
+        def _post_write() -> None:
+            for file_path in file_paths:
+                resource = rope.resource(file_path)
+                if resource is None:
+                    continue
+                _ = FlextInfraUtilitiesRopeImports.organize_imports(
+                    rope.rope_project,
+                    resource,
+                    apply=True,
+                )
+
+        ok, _report = FlextInfraUtilitiesProtectedEdit.preview_source_writes(
+            updates,
+            workspace=workspace,
+            gates=gates,
+            post_write=_post_write,
+        )
+        rope.reload()
+        return ok
+
+    @staticmethod
     def apply_line_ranges(
         source: str,
         ranges: Sequence[t.Infra.IntPair],
@@ -283,50 +341,95 @@ class FlextInfraUtilitiesRefactorCensus:
         source: str,
         candidate: m.Infra.Census.RemovalCandidate,
     ) -> t.Infra.IntPair | None:
-        module = FlextInfraUtilitiesParsing.parse_source_ast(source)
-        if module is None:
+        block = FlextInfraUtilitiesRopeHelpers.extract_definition(
+            source,
+            candidate.object_name,
+            kind=candidate.object_kind,
+        )
+        if block is None:
             return None
-        for node in module.body:
-            if candidate.object_kind == "class" and isinstance(node, ast.ClassDef):
-                if node.name == candidate.object_name:
-                    return FlextInfraUtilitiesRefactorCensus._statement_line_range(node)
-                continue
-            if (
-                candidate.object_kind == "function"
-                and isinstance(
-                    node,
-                    ast.FunctionDef | ast.AsyncFunctionDef,
-                )
-                and node.name == candidate.object_name
-            ):
-                return FlextInfraUtilitiesRefactorCensus._statement_line_range(node)
-        return None
+        return FlextInfraUtilitiesRefactorCensus._line_range_for_snippet(source, block)
 
     @staticmethod
     def _reference_line_range(
         source: str,
         site: m.Infra.Census.ReferenceSite,
     ) -> t.Infra.IntPair | None:
-        module = FlextInfraUtilitiesParsing.parse_source_ast(source)
-        if module is None:
+        lines = source.splitlines()
+        if site.line < 1 or site.line > len(lines):
             return None
-        for node in module.body:
-            start, end = FlextInfraUtilitiesRefactorCensus._statement_line_range(node)
-            if not start <= site.line <= end:
+        start = FlextInfraUtilitiesRefactorCensus._top_level_statement_start(
+            lines,
+            line_index=site.line - 1,
+        )
+        if start is None:
+            return None
+        if lines[start].lstrip().startswith("class "):
+            return None
+        end = FlextInfraUtilitiesRefactorCensus._top_level_statement_end(
+            lines,
+            start_index=start,
+        )
+        if end is None:
+            return None
+        return start + 1, end + 1
+
+    @staticmethod
+    def _line_range_for_snippet(
+        source: str,
+        snippet: str,
+    ) -> t.Infra.IntPair | None:
+        start_offset = source.find(snippet)
+        if start_offset < 0:
+            return None
+        start_line = source[:start_offset].count("\n") + 1
+        end_line = start_line + snippet.count("\n")
+        return start_line, end_line
+
+    @staticmethod
+    def _top_level_statement_start(
+        lines: Sequence[str],
+        *,
+        line_index: int,
+    ) -> int | None:
+        start = line_index
+        while start >= 0:
+            line = lines[start]
+            stripped = line.strip()
+            if not stripped:
+                start -= 1
                 continue
-            if isinstance(node, ast.ClassDef):
-                return None
-            return start, end
+            if line.startswith((" ", "\t")):
+                start -= 1
+                continue
+            while start > 0:
+                previous = lines[start - 1]
+                if previous.startswith("@"):
+                    start -= 1
+                    continue
+                break
+            return start
         return None
 
     @staticmethod
-    def _statement_line_range(node: t.Infra.AstStmt) -> t.Infra.IntPair:
-        start = getattr(node, "lineno", 1)
-        decorators = getattr(node, "decorator_list", ())
-        if decorators:
-            start = min(getattr(decorator, "lineno", start) for decorator in decorators)
-        end = getattr(node, "end_lineno", start) or start
-        return start, end
+    def _top_level_statement_end(
+        lines: Sequence[str],
+        *,
+        start_index: int,
+    ) -> int | None:
+        if start_index < 0 or start_index >= len(lines):
+            return None
+        end = start_index
+        for index in range(start_index + 1, len(lines)):
+            line = lines[index]
+            stripped = line.strip()
+            if not stripped:
+                end = index
+                continue
+            if not line.startswith((" ", "\t")):
+                return end
+            end = index
+        return end
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRefactorCensus"]

@@ -80,6 +80,11 @@ class FlextInfraRefactorCensus(
         """Return normalized family filters."""
         return u.Infra.normalize_sequence_values(self.families)
 
+    @property
+    def dry_run_gate_names(self) -> t.StrSequence:
+        """Return the gate set required for a dry-run removal candidate to be valid."""
+        return (c.Infra.LINT, c.Infra.PYREFLY)
+
     @staticmethod
     def render_text(report: m.Infra.Census.WorkspaceReport) -> str:
         """Render the canonical workspace census report."""
@@ -90,6 +95,7 @@ class FlextInfraRefactorCensus(
         """Execute the census with one shared Rope session."""
         started = time.monotonic()
         applied = frozenset[str]()
+        impact_map_report: m.Infra.Census.WorkspaceReport | None = None
         with FlextInfraRopeWorkspace.open_workspace(self.root) as rope:
             report = self._collect_report(
                 rope,
@@ -100,7 +106,8 @@ class FlextInfraRefactorCensus(
                 include_local_scopes=self.include_local_scopes,
                 applied=applied,
             )
-            if self.apply_changes:
+            impact_map_report = report
+            if self.apply_changes and not self.effective_dry_run:
                 applied = self._apply_supported_fixes(rope, report)
                 if applied:
                     rope.reload()
@@ -122,7 +129,7 @@ class FlextInfraRefactorCensus(
             u.Cli.info(f"JSON report exported to: {self.json_output_path}")
         if self.impact_map_output_path is not None:
             impact_result = u.Infra.write_impact_map(
-                self._impact_map_results(report),
+                self._impact_map_results(impact_map_report or report),
                 self.impact_map_output_path,
             )
             if impact_result.failure:
@@ -199,6 +206,11 @@ class FlextInfraRefactorCensus(
             )
             for project in sorted(project_objects)
         )
+        if self.effective_dry_run:
+            project_reports = self._validated_project_reports(
+                rope,
+                project_reports,
+            )
         return m.Infra.Census.WorkspaceReport(
             projects=project_reports,
             total_objects=sum(report.objects_total for report in project_reports),
@@ -304,6 +316,37 @@ class FlextInfraRefactorCensus(
             removal_candidate_count=len(removal_candidates),
             removal_candidates=tuple(removal_candidates),
         )
+
+    def _validated_project_reports(
+        self,
+        rope: p.Infra.RopeWorkspaceDsl,
+        project_reports: tuple[m.Infra.Census.ProjectReport, ...],
+    ) -> tuple[m.Infra.Census.ProjectReport, ...]:
+        """Keep only removal candidates that pass the configured dry-run gates."""
+        validated_reports: list[m.Infra.Census.ProjectReport] = []
+        for report in project_reports:
+            if not report.removal_candidates:
+                validated_reports.append(report)
+                continue
+            validated_candidates = tuple(
+                candidate
+                for candidate in report.removal_candidates
+                if u.Infra.preview_simple_removal_candidate(
+                    rope,
+                    self.root,
+                    candidate,
+                    gates=self.dry_run_gate_names,
+                )
+            )
+            validated_reports.append(
+                report.model_copy(
+                    update={
+                        "removal_candidate_count": len(validated_candidates),
+                        "removal_candidates": validated_candidates,
+                    }
+                )
+            )
+        return tuple(validated_reports)
 
     def _module_rules(
         self,

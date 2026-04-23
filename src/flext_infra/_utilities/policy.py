@@ -29,7 +29,7 @@ class FlextInfraUtilitiesRefactorPolicy:
     """Policy document loading and class-nesting policy enforcement."""
 
     _MODULE_FAMILY_KEYS: t.StrSequence = (
-        "_models",
+        "models",
         "_utilities",
         "_dispatcher",
         "_decorators",

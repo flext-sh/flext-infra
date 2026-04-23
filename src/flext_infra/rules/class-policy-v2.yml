@@ -2,10 +2,10 @@ version: 2
 engine: class_refactor_policy
 description: Declarative policy matrix for module-family-aware class refactoring.
 policy_matrix:
-  - family_name: _models
+  - family_name: models
     module_patterns:
-      - _models
-      - _models/*
+      - models
+      - models/*
     facade_family: m
     allowed_operations:
       - class_nesting
@@ -190,7 +190,7 @@ policy_matrix:
         - lsp_diagnostics_clean
 runtime_whitelist:
   - transform_id: runtime_metadata_class_nesting
-    source_module_pattern: _models/base.py
+    source_module_pattern: models/base.py
     source_symbol: FlextModelsBase.Metadata
     target_namespace: FlextModelsBase
     target_name: Metadata
@@ -341,7 +341,7 @@ rules:
     rewrite_scope: file
   - project_kind: core
     facade_family: m
-    module_family: _models
+    module_family: models
     source_symbol: FlextModelsBase
     target_facade_class: FlextModels
     target_namespace_path: FlextModels.FlextModelsBase
@@ -372,7 +372,7 @@ rules:
     rewrite_scope: file
   - project_kind: core
     facade_family: m
-    module_family: _models
+    module_family: models
     source_symbol: _ComparableConfigMap
     target_facade_class: FlextModels
     target_namespace_path: FlextModels._ComparableConfigMap
@@ -396,7 +396,7 @@ rules:
     rewrite_scope: file
   - project_kind: core
     facade_family: m
-    module_family: _models
+    module_family: models
     source_symbol: FlextGenericModels
     target_facade_class: FlextModels
     target_namespace_path: FlextModels.FlextGenericModels
@@ -420,7 +420,7 @@ rules:
     rewrite_scope: file
   - project_kind: core
     facade_family: m
-    module_family: _models
+    module_family: models
     source_symbol: FlextModelsSettings
     target_facade_class: FlextModels
     target_namespace_path: FlextModels.FlextModelsSettings
@@ -444,7 +444,7 @@ rules:
     rewrite_scope: file
   - project_kind: core
     facade_family: m
-    module_family: _models
+    module_family: models
     source_symbol: Metadata
     target_facade_class: FlextModelsBase
     target_namespace_path: FlextModelsBase.Metadata

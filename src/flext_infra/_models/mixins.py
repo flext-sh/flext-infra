@@ -16,7 +16,7 @@ from flext_infra import (
 
 
 class FlextInfraModelsMixins:
-    """Centralized reusable field and helper mixins for _models."""
+    """Centralized reusable field and helper mixins for models."""
 
     # ── Hierarchy: BaseMixin → ProjectMixin → ReadMixin / WriteMixin ──
 

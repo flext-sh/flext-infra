@@ -295,7 +295,7 @@ class TestGenerateFile:
         exports = ["Alpha", "Beta"]
         filtered = {
             "Alpha": ("test_pkg._constants.base", "Alpha"),
-            "Beta": ("test_pkg._models.base", "Beta"),
+            "Beta": ("test_pkg.models.base", "Beta"),
         }
         inline_constants: t.StrMapping = {}
         content = FlextInfraCodegenGeneration.generate_file(
@@ -303,12 +303,12 @@ class TestGenerateFile:
             filtered,
             inline_constants,
             "test_pkg",
-            child_packages_for_tc=("test_pkg._constants", "test_pkg._models"),
+            child_packages_for_tc=("test_pkg._constants", "test_pkg.models"),
         )
         tm.that(content, contains="from test_pkg._constants.base import Alpha")
-        tm.that(content, contains="from test_pkg._models.base import Beta")
+        tm.that(content, contains="from test_pkg.models.base import Beta")
         tm.that(content, lacks="from test_pkg._constants import Alpha")
-        tm.that(content, lacks="from test_pkg._models import Beta")
+        tm.that(content, lacks="from test_pkg.models import Beta")
 
     def test_root_namespace_normalizes_private_local_module_targets(self) -> None:
         """Root namespace never emits unqualified private-package imports."""
@@ -316,19 +316,19 @@ class TestGenerateFile:
             ["Alpha", "Beta"],
             {
                 "Alpha": ("_constants.base", "Alpha"),
-                "Beta": ("_models.base", "Beta"),
+                "Beta": ("models.base", "Beta"),
             },
             {},
             "test_pkg",
         )
         tm.that(content, contains="from test_pkg._constants.base import Alpha")
-        tm.that(content, contains="from test_pkg._models.base import Beta")
+        tm.that(content, contains="from test_pkg.models.base import Beta")
         tm.that(content, contains='"._constants.base": ("Alpha",)')
-        tm.that(content, contains='"._models.base": ("Beta",)')
+        tm.that(content, contains='".models.base": ("Beta",)')
         tm.that(content, lacks="from _constants")
-        tm.that(content, lacks="from _models")
+        tm.that(content, lacks="from models")
         tm.that(content, lacks='"_constants.base"')
-        tm.that(content, lacks='"_models.base"')
+        tm.that(content, lacks='"models.base"')
 
     def test_subpackage_generated_init_includes_package_docstring(self) -> None:
         """Generated subpackage __init__.py files include the package docstring."""
@@ -344,9 +344,9 @@ class TestGenerateFile:
         """Subpackage module entries remain importable through _LAZY_IMPORTS."""
         content = FlextInfraCodegenGeneration.generate_file(
             ["test_base"],
-            {"test_base": ("tests.unit._models.test_base", "")},
+            {"test_base": ("tests.unit.models.test_base", "")},
             {},
-            "tests.unit._models",
+            "tests.unit.models",
         )
         tm.that(content, contains='".test_base": ("test_base",)')
         tm.that(content, contains="publish_all=False")
@@ -358,17 +358,17 @@ class TestGenerateFile:
             ["ExamplesFlextCoreModelsEx00"],
             {
                 "ExamplesFlextCoreModelsEx00": (
-                    "examples._models.ex00",
+                    "examples.models.ex00",
                     "ExamplesFlextCoreModelsEx00",
                 ),
             },
             {},
-            "examples._models",
+            "examples.models",
         )
         tm.that(content, contains='".ex00": ("ExamplesFlextCoreModelsEx00",)')
         tm.that(content, lacks="if _t.TYPE_CHECKING:")
-        tm.that(content, lacks="from _models")
-        tm.that(content, lacks="from examples._models.ex00 import")
+        tm.that(content, lacks="from models")
+        tm.that(content, lacks="from examples.models.ex00 import")
 
     def test_root_namespace_type_checking_skips_module_reexport_names(self) -> None:
         """Root namespace TYPE_CHECKING must omit module/package compatibility names."""

@@ -214,7 +214,6 @@ class FlextInfraConstantsSourceCode:
     "Pydantic model base class names for placement detection."
     PLACEMENT_CANONICAL_MODEL_FILES: Final[frozenset[str]] = frozenset({
         "models.py",
-        "_models.py",
     })
     "Canonical file names where Pydantic models should live."
 

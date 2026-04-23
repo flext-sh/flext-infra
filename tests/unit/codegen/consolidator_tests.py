@@ -32,16 +32,16 @@ def test_execute_uses_codegen_project_discovery_and_project_filter(
         (package_dir / "__init__.py").write_text("", encoding="utf-8")
 
     def _projects(
-        *_args: t.Scalar,
-        **_kwargs: t.Scalar,
+        *args: t.Scalar,
+        **kwargs: t.Scalar,
     ) -> p.Result[tuple[m.Infra.ProjectInfo, ...]]:
         nonlocal discover_called
         discover_called += 1
         return u.Infra.Tests.ok_result((project_a, project_b))
 
     def _unexpected_public_project_discovery(
-        *_args: t.Scalar,
-        **_kwargs: t.Scalar,
+        *args: t.Scalar,
+        **kwargs: t.Scalar,
     ) -> p.Result[tuple[m.Infra.ProjectInfo, ...]]:
         message = "execute() must use projects()"
         raise AssertionError(message)
@@ -86,8 +86,8 @@ def test_execute_scans_real_package_layout(
     )
 
     def _projects(
-        *_args: t.Scalar,
-        **_kwargs: t.Scalar,
+        *args: t.Scalar,
+        **kwargs: t.Scalar,
     ) -> p.Result[tuple[m.Infra.ProjectInfo, ...]]:
         return u.Infra.Tests.ok_result((project,))
 

@@ -76,7 +76,7 @@ def test_skips_models_directory(
     tmp_path: Path,
     rope_project: t.Infra.RopeProject,
 ) -> None:
-    models_dir = tmp_path / "_models"
+    models_dir = tmp_path / "models"
     models_dir.mkdir(parents=True)
     target = models_dir / "domain.py"
     target.write_text(

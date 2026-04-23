@@ -358,13 +358,13 @@ class FlextInfraUtilitiesParsing:
             if match.group(1) != module_name:
                 continue
             bound_names.update(
-                bound for _name, bound in rh.parse_import_names(match.group(2))
+                bound for name, bound in rh.parse_import_names(match.group(2))
             )
         for match in c.Infra.FROM_IMPORT_BLOCK_RE.finditer(source):
             if match.group(1) != module_name:
                 continue
             bound_names.update(
-                bound for _name, bound in rh.parse_import_names(match.group(2))
+                bound for name, bound in rh.parse_import_names(match.group(2))
             )
         return bound_names
 

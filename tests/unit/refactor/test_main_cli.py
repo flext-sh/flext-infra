@@ -28,8 +28,19 @@ class TestFlextInfraRefactorMainCli:
         path.write_text(content, encoding="utf-8")
 
     @staticmethod
+    def _write_workspace_pyproject(workspace: Path) -> None:
+        TestFlextInfraRefactorMainCli._write(
+            workspace / "pyproject.toml",
+            "[tool.pyrefly]\n"
+            "disable-project-excludes-heuristics = true\n"
+            "project-excludes = []\n"
+            'search-path = [".", "src"]\n',
+        )
+
+    @staticmethod
     def _build_basic_workspace(tmp_path: Path) -> tuple[Path, Path]:
         workspace = tmp_path / "workspace"
+        TestFlextInfraRefactorMainCli._write_workspace_pyproject(workspace)
         TestFlextInfraRefactorMainCli._write(
             workspace / "src" / "sample_pkg" / "__init__.py",
             "from __future__ import annotations\n",
@@ -49,6 +60,7 @@ class TestFlextInfraRefactorMainCli:
     @staticmethod
     def _build_test_only_workspace(tmp_path: Path) -> Path:
         workspace = tmp_path / "workspace"
+        TestFlextInfraRefactorMainCli._write_workspace_pyproject(workspace)
         TestFlextInfraRefactorMainCli._write(
             workspace / "src" / "sample_pkg" / "__init__.py",
             "from __future__ import annotations\n",
@@ -67,6 +79,33 @@ class TestFlextInfraRefactorMainCli:
             "    assert only_for_tests(1) == 2\n",
         )
         return workspace
+
+    @staticmethod
+    def _build_test_only_workspace_with_source_import(
+        tmp_path: Path,
+    ) -> tuple[Path, Path]:
+        workspace = tmp_path / "workspace"
+        TestFlextInfraRefactorMainCli._write_workspace_pyproject(workspace)
+        TestFlextInfraRefactorMainCli._write(
+            workspace / "src" / "sample_pkg" / "__init__.py",
+            "from __future__ import annotations\n",
+        )
+        service_file = workspace / "src" / "sample_pkg" / "service.py"
+        TestFlextInfraRefactorMainCli._write(
+            service_file,
+            "from __future__ import annotations\n"
+            "from collections.abc import Sequence\n\n"
+            "def only_for_tests(values: Sequence[int]) -> int:\n"
+            "    return len(values)\n",
+        )
+        TestFlextInfraRefactorMainCli._write(
+            workspace / "tests" / "test_service.py",
+            "from __future__ import annotations\n\n"
+            "from sample_pkg.service import only_for_tests\n\n"
+            "def test_only_for_tests_uses_sequence_signature() -> None:\n"
+            "    assert only_for_tests([1, 2]) == 2\n",
+        )
+        return workspace, service_file
 
     def test_refactor_census_accepts_workspace_before_subcommand(
         self,
@@ -226,6 +265,54 @@ class TestFlextInfraRefactorMainCli:
         assert report.test_only_count == 0
         assert report.removal_candidate_count == 0
 
+    def test_refactor_census_dry_run_validates_candidate_after_import_cleanup(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace, service_file = self._build_test_only_workspace_with_source_import(
+            tmp_path,
+        )
+
+        report_result = FlextInfraRefactorCensus(
+            workspace=workspace,
+            include_local_scopes=False,
+            kinds=("function",),
+            rules=("test_only",),
+        ).execute()
+
+        assert report_result.success, report_result.error
+        report = report_result.unwrap()
+        assert report.test_only_count == 1
+        assert report.removal_candidate_count == 1
+        assert report.removal_candidates[0].object_name == "only_for_tests"
+        service_source = service_file.read_text(encoding="utf-8")
+        assert "from collections.abc import Sequence" in service_source
+        assert "def only_for_tests" in service_source
+
+    def test_refactor_census_apply_dry_run_does_not_mutate_files(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace = self._build_test_only_workspace(tmp_path)
+        service_file = workspace / "src" / "sample_pkg" / "service.py"
+        test_file = workspace / "tests" / "test_service.py"
+
+        report_result = FlextInfraRefactorCensus(
+            workspace=workspace,
+            apply_changes=True,
+            dry_run=True,
+            include_local_scopes=False,
+            kinds=("function",),
+            rules=("test_only",),
+        ).execute()
+
+        assert report_result.success, report_result.error
+        report = report_result.unwrap()
+        assert report.test_only_count == 1
+        assert report.removal_candidate_count == 1
+        assert "only_for_tests" in service_file.read_text(encoding="utf-8")
+        assert "only_for_tests" in test_file.read_text(encoding="utf-8")
+
     def test_refactor_census_writes_impact_map_for_removal_candidates(
         self,
         tmp_path: Path,
@@ -286,6 +373,35 @@ class TestFlextInfraRefactorMainCli:
         )
 
         assert result == 0
+        payload_result = u.Cli.json_read(impact_map_path)
+        assert payload_result.success, payload_result.error
+        payload = _mapping(payload_result.unwrap())
+        files = t.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
+        entries = [_mapping(item) for item in files]
+
+        assert len(entries) == 2
+
+    def test_refactor_census_apply_preserves_impact_map_plan(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace = self._build_test_only_workspace(tmp_path)
+        impact_map_path = tmp_path / "apply-impact-map.json"
+
+        report_result = FlextInfraRefactorCensus(
+            workspace=workspace,
+            impact_map_output=str(impact_map_path),
+            apply_changes=True,
+            include_local_scopes=False,
+            kinds=("function",),
+            rules=("test_only",),
+        ).execute()
+
+        assert report_result.success, report_result.error
+        report = report_result.unwrap()
+        assert report.test_only_count == 0
+        assert report.removal_candidate_count == 0
+
         payload_result = u.Cli.json_read(impact_map_path)
         assert payload_result.success, payload_result.error
         payload = _mapping(payload_result.unwrap())

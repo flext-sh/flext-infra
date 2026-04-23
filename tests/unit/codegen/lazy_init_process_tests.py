@@ -102,7 +102,7 @@ class TestProcessDirectory:
         src_init.write_text(
             f"{c.Infra.AUTOGEN_HEADER}\n"
             "from __future__ import annotations\n\n"
-            "from _models.base import FlextDemoModels\n",
+            "from models.base import FlextDemoModels\n",
             encoding=c.Infra.ENCODING_DEFAULT,
         )
 
@@ -256,7 +256,7 @@ class TestProcessDirectory:
     @pytest.mark.parametrize(
         ("surface", "family_dir", "file_name", "class_name"),
         [
-            ("tests", "_models", "mixins.py", "TestsFlextDemoModelsMixins"),
+            ("tests", "models", "mixins.py", "TestsFlextDemoModelsMixins"),
             (
                 "examples",
                 "_utilities",

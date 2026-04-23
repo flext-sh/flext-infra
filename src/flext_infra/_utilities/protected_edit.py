@@ -177,6 +177,91 @@ class FlextInfraUtilitiesProtectedEdit:
             )
         return before, after
 
+    @classmethod
+    def preview_source_writes(
+        cls,
+        updates: Mapping[Path, str],
+        *,
+        workspace: Path,
+        gates: t.StrSequence | None = None,
+        post_write: Callable[[], None] | None = None,
+    ) -> t.Infra.EditResult:
+        """Preview multiple file writes transactionally and always restore sources."""
+        if not updates:
+            return (True, [])
+
+        normalized_updates = {
+            path.resolve(): content
+            for path, content in sorted(updates.items(), key=lambda item: str(item[0]))
+        }
+        before_sources: MutableMapping[Path, str | None] = {}
+        before_lints: MutableMapping[Path, t.Infra.LintSnapshot] = {}
+        for path in normalized_updates:
+            if path.exists():
+                before_sources[path] = path.read_text(
+                    encoding=c.Infra.ENCODING_DEFAULT,
+                )
+                before_lints[path] = cls.lint_snapshot(path, workspace, gates=gates)
+                continue
+            before_sources[path] = None
+            before_lints[path] = {}
+
+        def _restore() -> None:
+            for path, original_source in before_sources.items():
+                if original_source is None:
+                    if path.exists():
+                        path.unlink()
+                    continue
+                path.write_text(
+                    original_source,
+                    encoding=c.Infra.ENCODING_DEFAULT,
+                )
+
+        try:
+            for path, updated_source in normalized_updates.items():
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(
+                    updated_source,
+                    encoding=c.Infra.ENCODING_DEFAULT,
+                )
+            if post_write is not None:
+                post_write()
+
+            reports: MutableSequence[str] = []
+            failed = False
+            for path in normalized_updates:
+                new_errors = cls.lint_new_errors(
+                    before_lints[path],
+                    cls.lint_snapshot(path, workspace, gates=gates),
+                )
+                if not new_errors:
+                    continue
+                failed = True
+                rel = cls._relative_path(path, workspace)
+                before_source = before_sources[path] or ""
+                modified = path.read_text(
+                    encoding=c.Infra.ENCODING_DEFAULT,
+                )
+                diff = list(
+                    difflib.unified_diff(
+                        before_source.splitlines(keepends=True),
+                        modified.splitlines(keepends=True),
+                        fromfile=f"a/{rel}",
+                        tofile=f"b/{rel}",
+                        n=3,
+                    )
+                )
+                reports.append(f"  REVERTED {rel}:")
+                reports.extend(f"    {line.rstrip()}" for line in diff[:30])
+                for tool, messages in new_errors.items():
+                    reports.extend((
+                        f"    NEW {tool} errors:",
+                        *(f"      {message}" for message in messages[:5]),
+                    ))
+            return (not failed, list(reports))
+        finally:
+            _restore()
+
     @staticmethod
     def _pytest_failure(py_file: Path, workspace: Path) -> str | None:
         if "tests" not in py_file.parts and not py_file.name.startswith("test_"):

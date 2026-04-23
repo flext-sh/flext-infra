@@ -284,7 +284,6 @@ class FlextInfraConstantsRefactor:
     "Canonical protocols package directory name."
     MRO_MODELS_FILE_NAMES: Final[frozenset[str]] = frozenset({
         "models.py",
-        "_models.py",
     })
     "Canonical models module file names."
     MRO_MODELS_DIRECTORY: Final[str] = "models"
@@ -315,7 +314,7 @@ class FlextInfraConstantsRefactor:
         "c": "_constants",
         "t": "_typings",
         "p": "_protocols",
-        "m": "_models",
+        "m": "models",
         "u": "_utilities",
     })
     "Facade family letter → subdirectory name mapping."
@@ -333,7 +332,7 @@ class FlextInfraConstantsRefactor:
         "c": "flext_core/constants.py",
         "t": "flext_core/typings.py",
         "p": "flext_core/protocols.py",
-        "m": "flext_core/_models",
+        "m": "flext_core/models",
         "u": "flext_core/_utilities",
     })
     "Family letter → relative package dir/file."

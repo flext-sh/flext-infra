@@ -181,7 +181,7 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
         @override
         def visit_Subscript(self, node: ast.Subscript) -> ast.expr:
             self.generic_visit(node)
-            name = self._name(node.value)
+            name = self.name(node.value)
             if name == "dict":
                 key_node, value_node = self._mapping_args(node.slice)
                 if key_node is None or value_node is None:
@@ -235,7 +235,7 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
             )
 
         @staticmethod
-        def _name(node: ast.expr) -> str:
+        def name(node: ast.expr) -> str:
             if isinstance(node, ast.Name):
                 return node.id
             if isinstance(node, ast.Attribute):

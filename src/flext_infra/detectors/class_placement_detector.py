@@ -25,7 +25,7 @@ class FlextInfraClassPlacementDetector:
         rope_project = ctx.rope_project
         if (
             file_path.name in c.Infra.PLACEMENT_CANONICAL_MODEL_FILES
-            or "_models" in file_path.parts
+            or "models" in file_path.parts
             or file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES
             or file_path.name in c.Infra.NAMESPACE_SETTINGS_FILE_NAMES
         ):
@@ -54,7 +54,7 @@ class FlextInfraClassPlacementDetector:
                     line=ci.line,
                     name=ci.name,
                     base_class=base_class,
-                    suggestion="Move class to models.py/_models.py or _models/",
+                    suggestion="Move class to models.py/models.py or models/",
                 ),
             )
         return violations
