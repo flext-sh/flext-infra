@@ -168,11 +168,11 @@ class FlextInfraTypesBase:
     "Read-only sequence of declarative rule definitions."
     type RuleSkipPredicate = Callable[[ContainerDict], bool]
     "Predicate deciding whether one rule definition should be skipped."
-    type RuleSelection[KindT] = tuple[KindT, ContainerDict]
+    type RuleSelection[KindT] = tuple[KindT, t.JsonMapping]
     "One matched rule kind paired with its validated declarative payload."
     type LoadedRuleSelections[RuleKindT, FileRuleKindT] = tuple[
-        Sequence[tuple[RuleKindT, ContainerDict]],
-        Sequence[tuple[FileRuleKindT, ContainerDict]],
+        Sequence[tuple[RuleKindT, t.JsonMapping]],
+        Sequence[tuple[FileRuleKindT, t.JsonMapping]],
     ]
     "Loaded text-rule + file-rule selections from one declarative rules directory."
     type DomainResult = m.BaseModel | InfraValue

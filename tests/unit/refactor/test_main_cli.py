@@ -466,6 +466,49 @@ class TestFlextInfraRefactorMainCli:
         assert report.test_only_count == 0
         assert report.removal_candidate_count == 0
 
+    def test_refactor_census_apply_against_cloned_flext_layout(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        origin, origin_helpers, origin_init = self._build_lazy_init_cascade_workspace(
+            tmp_path,
+        )
+        clone = u.Infra.clone_project_for_validation(
+            origin,
+            tmp_path / "clone_root" / "workspace",
+        )
+        clone_helpers = clone / origin_helpers.relative_to(origin)
+        clone_init = clone / origin_init.relative_to(origin)
+        clone_test = clone / "tests" / "test_helpers.py"
+
+        result = self._refactor_main(
+            "--workspace",
+            str(clone),
+            "census",
+            "--apply",
+            "--rules",
+            "test_only",
+            "--kinds",
+            "function",
+        )
+
+        assert result == 0
+        assert "only_for_tests" in origin_helpers.read_text(encoding="utf-8")
+        assert "only_for_tests" in origin_init.read_text(encoding="utf-8")
+        assert "only_for_tests" not in clone_helpers.read_text(encoding="utf-8")
+        assert "only_for_tests" not in clone_init.read_text(encoding="utf-8")
+        assert "only_for_tests" not in clone_test.read_text(encoding="utf-8")
+        assert "helper_used" in clone_init.read_text(encoding="utf-8")
+
+        report_result = FlextInfraRefactorCensus(
+            workspace=clone,
+            include_local_scopes=False,
+            kinds=("function",),
+            rules=("test_only",),
+        ).execute()
+        assert report_result.success, report_result.error
+        assert report_result.unwrap().test_only_count == 0
+
     def test_refactor_census_apply_removes_unused_top_level_and_cleans_imports(
         self,
         tmp_path: Path,

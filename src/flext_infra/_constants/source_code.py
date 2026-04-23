@@ -49,6 +49,11 @@ class FlextInfraConstantsSourceCode:
         "venv",
     }
     "Path parts to skip during file iteration (superset of COMMON_EXCLUDED_DIRS)."
+    VALIDATION_CLONE_EXCLUDES: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {
+        ".ropeproject",
+        "htmlcov",
+    }
+    "Directories excluded when cloning a project tree for post-apply validation."
 
     # --- Encoding (was: class Encoding) ---
     ENCODING_DEFAULT: Final[str] = "utf-8"

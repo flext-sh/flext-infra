@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import shutil
 from collections import Counter, defaultdict
 from collections.abc import (
     Mapping,
@@ -381,6 +382,29 @@ class FlextInfraUtilitiesRefactorCensus:
             for index, line in enumerate(lines, start=1)
             if index not in removed_lines
         )
+
+    @staticmethod
+    def clone_project_for_validation(source: Path, destination: Path) -> Path:
+        """Copy a project tree into a scratch directory for post-apply validation.
+
+        Skips cache and virtual-env directories so the clone is minimal and the
+        downstream rope workspace opens on source-only state. Returns the
+        resolved destination path.
+        """
+        resolved_source = source.resolve()
+        resolved_destination = destination.resolve()
+        if not resolved_source.is_dir():
+            msg = f"clone source is not a directory: {resolved_source}"
+            raise NotADirectoryError(msg)
+        if resolved_destination.exists():
+            shutil.rmtree(resolved_destination)
+        shutil.copytree(
+            resolved_source,
+            resolved_destination,
+            ignore=shutil.ignore_patterns(*c.Infra.VALIDATION_CLONE_EXCLUDES),
+            symlinks=False,
+        )
+        return resolved_destination
 
     @staticmethod
     def merge_line_ranges(
