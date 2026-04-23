@@ -63,15 +63,21 @@ class FlextInfraUtilitiesParsing:
                 return ()
 
     @staticmethod
-    def _literal_dunder_all(node: ast.Assign) -> t.StrSequence | None:
+    def _literal_dunder_all(
+        node: ast.Assign | ast.AnnAssign,
+    ) -> t.StrSequence | None:
+        targets = node.targets if isinstance(node, ast.Assign) else (node.target,)
+        value = node.value
+        if value is None:
+            return None
         if c.Infra.DUNDER_ALL not in {
             name
-            for target in node.targets
+            for target in targets
             for name in FlextInfraUtilitiesParsing._target_names(target)
         }:
             return None
         try:
-            value = ast.literal_eval(node.value)
+            value = ast.literal_eval(value)
         except (TypeError, ValueError, SyntaxError):
             return None
         if not isinstance(value, (list, tuple)):
@@ -119,6 +125,11 @@ class FlextInfraUtilitiesParsing:
                 )
                 continue
             if isinstance(node, ast.AnnAssign):
+                explicit_all = (
+                    FlextInfraUtilitiesParsing._literal_dunder_all(node)
+                    if explicit_all is None
+                    else explicit_all
+                )
                 assignments.extend(
                     name
                     for name in FlextInfraUtilitiesParsing._target_names(node.target)
@@ -155,7 +166,7 @@ class FlextInfraUtilitiesParsing:
         return tuple(dict.fromkeys(exports))
 
     @staticmethod
-    def is_module_toplevel(file_path: Path) -> bool:
+    def matches_module_toplevel(file_path: Path) -> bool:
         """Determine if a file is at the package root level (Facade level)."""
         parts = file_path.resolve().parts
         try:

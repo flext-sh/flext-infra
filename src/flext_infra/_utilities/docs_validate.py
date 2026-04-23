@@ -35,7 +35,7 @@ class FlextInfraUtilitiesDocsValidate:
 
     @staticmethod
     def docs_extract_required_skills(
-        payload: t.RuntimeData | Mapping[str, t.Infra.InfraValue],
+        payload: t.JsonPayload | Mapping[str, t.Infra.InfraValue],
     ) -> t.Infra.InfraSequence | None:
         """Extract the configured required skills list from architecture settings."""
         if not isinstance(payload, Mapping):

@@ -8,7 +8,7 @@ from collections.abc import (
 from pathlib import Path
 from typing import Annotated
 
-from flext_infra import c, m, p, t, u
+from flext_infra import FlextInfraUtilitiesParsing, c, m, p, t, u
 
 
 class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
@@ -125,9 +125,9 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
             if not policy.include_in_lazy_init or not module_entry.module_name:
                 continue
             require_explicit_all = (
-                u.Infra.is_root_namespace_file(py_file.name)
+                u.Infra.matches_root_namespace_file(py_file.name)
                 and policy.expected_alias is not None
-                and u.Infra.is_project_namespace_package(context.current_pkg)
+                and u.Infra.matches_project_namespace_package(context.current_pkg)
                 and not context.pkg_dir.name.startswith("_")
             )
             targets = self._module_exports(
@@ -148,8 +148,8 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
             if (
                 policy.expected_alias
                 and targets
-                and u.Infra.is_project_namespace_package(context.current_pkg)
-                and u.Infra.is_root_namespace_file(py_file.name)
+                and u.Infra.matches_project_namespace_package(context.current_pkg)
+                and u.Infra.matches_root_namespace_file(py_file.name)
             ):
                 targets.setdefault(
                     policy.expected_alias,
@@ -187,16 +187,24 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         cached = self._module_exports_cache.get(cache_key)
         if cached is not None:
             return dict(cached)
-        if self.rope_workspace.resource(py_file) is None:
-            return {}
-        names = self.rope_workspace.exports(
-            py_file,
-            include_dunder=include_dunder,
-            allow_main=allow_main,
-            allow_assignments=allow_assignments,
-            allow_functions=allow_functions,
-            require_explicit_all=require_explicit_all and not include_dunder,
-        )
+        if require_explicit_all and not include_dunder:
+            names = FlextInfraUtilitiesParsing.module_export_names(
+                py_file,
+                include_dunder=include_dunder,
+                allow_main=allow_main,
+                allow_assignments=allow_assignments,
+            )
+        else:
+            if self.rope_workspace.resource(py_file) is None:
+                return {}
+            names = self.rope_workspace.exports(
+                py_file,
+                include_dunder=include_dunder,
+                allow_main=allow_main,
+                allow_assignments=allow_assignments,
+                allow_functions=allow_functions,
+                require_explicit_all=require_explicit_all and not include_dunder,
+            )
         exports = {
             name: (module_path, name)
             for name in names
@@ -247,7 +255,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         pkg_dir: Path,
         surface: str,
     ) -> None:
-        if not u.Infra.is_project_namespace_package(current_pkg):
+        if not u.Infra.matches_project_namespace_package(current_pkg):
             return
         self._resolve_local_aliases(
             lazy_map,

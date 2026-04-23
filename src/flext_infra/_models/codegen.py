@@ -334,7 +334,10 @@ class FlextInfraModelsCodegen:
         line: Annotated[t.PositiveInt, m.Field(description="Line number")]
 
     class CanonicalValueRule(m.ArbitraryTypesModel):
-        value: t.Infra.CanonicalValue = m.Field(description="Canonical value")
+        value: Annotated[
+            t.Infra.CanonicalValue,
+            m.Field(description="Canonical value"),
+        ]
         type: str = m.Field(description="Canonical type")
         canonical_ref: str = m.Field(description="Canonical reference")
         semantic_names: t.StrSequence = m.Field(

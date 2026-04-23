@@ -170,7 +170,7 @@ class FlextInfraUtilitiesIteration:
     def _append_requirement_names(
         cls,
         *,
-        raw_requirements: object,
+        raw_requirements: t.Infra.InfraValue,
         names: set[str],
     ) -> None:
         if not isinstance(raw_requirements, list):
@@ -185,7 +185,7 @@ class FlextInfraUtilitiesIteration:
     def _append_mapping_dependency_names(
         cls,
         *,
-        raw_mapping: object,
+        raw_mapping: t.Infra.InfraValue,
         names: set[str],
     ) -> None:
         if not isinstance(raw_mapping, Mapping):
@@ -578,7 +578,7 @@ class FlextInfraUtilitiesIteration:
         return [
             file_path
             for file_path in files
-            if FlextInfraUtilitiesIteration.is_canonical_python_file(file_path)
+            if FlextInfraUtilitiesIteration.matches_canonical_python_file(file_path)
             if not FlextInfraUtilitiesIteration._is_ignored_python_path(
                 file_path,
                 ignored_parts=ignored_parts,
@@ -586,7 +586,7 @@ class FlextInfraUtilitiesIteration:
         ]
 
     @staticmethod
-    def is_canonical_python_file(path: Path) -> bool:
+    def matches_canonical_python_file(path: Path) -> bool:
         """Return True only for real ``.py`` source files."""
         return (
             path.is_file()

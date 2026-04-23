@@ -19,6 +19,7 @@ from flext_infra import (
     FlextInfraTransformerTier0ImportFixer,
     c,
     m,
+    p,
     t,
     u,
 )
@@ -71,7 +72,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
 
     @staticmethod
     def _apply_change_tracker_transformer(
-        transformer: object,
+        transformer: p.Infra.ChangeTracker,
         source: str,
     ) -> t.Infra.TransformResult:
         apply_fn = getattr(transformer, "apply_to_source", None)
@@ -158,8 +159,9 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         settings: Mapping[str, t.Infra.InfraValue],
         source: str,
     ) -> t.Infra.TransformResult:
+        settings_mapping = t.Cli.JSON_MAPPING_ADAPTER.validate_python(settings)
         fix_action = u.Cli.json_get_str_key(
-            settings, c.Infra.RK_FIX_ACTION, case="lower"
+            settings_mapping, c.Infra.RK_FIX_ACTION, case="lower"
         )
         if fix_action == "hoist_to_module_top":
             return self._apply_change_tracker_transformer(
@@ -204,8 +206,9 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         source: str,
         file_path: Path,
     ) -> t.Infra.TransformResult:
+        settings_mapping = t.Cli.JSON_MAPPING_ADAPTER.validate_python(settings)
         fix_action = u.Cli.json_get_str_key(
-            settings, c.Infra.RK_FIX_ACTION, case="lower"
+            settings_mapping, c.Infra.RK_FIX_ACTION, case="lower"
         )
         if fix_action == "fix_silent_failure_sentinels":
             return u.Infra.apply_transformer_to_source(
@@ -246,8 +249,9 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         source: str,
         file_path: Path,
     ) -> t.Infra.TransformResult:
+        settings_mapping = t.Cli.JSON_MAPPING_ADAPTER.validate_python(settings)
         fix_action = u.Cli.json_get_str_key(
-            settings, c.Infra.RK_FIX_ACTION, case="lower"
+            settings_mapping, c.Infra.RK_FIX_ACTION, case="lower"
         )
         if fix_action != "replace_object_annotations":
             return (source, list[str]())

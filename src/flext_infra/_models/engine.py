@@ -104,7 +104,7 @@ class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):
                 self,
                 operation_type: type[m.ContractModel],
                 /,
-                **data: t.JsonValue | t.RuntimeData | Sequence[t.RuntimeData],
+                **data: t.JsonValue | t.JsonPayload | Sequence[t.JsonPayload],
             ) -> Self:
                 operation_item = operation_type.model_validate(data)
                 return self._replace(

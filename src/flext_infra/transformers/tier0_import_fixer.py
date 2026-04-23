@@ -103,7 +103,7 @@ class FlextInfraTransformerTier0ImportFixer:
             alias_map: dict[str, str] = {
                 alias_name: alias_name for alias_name in c.Infra.RUNTIME_ALIAS_NAMES
             }
-            if u.Infra.is_module_toplevel(self._file_path):
+            if u.Infra.matches_module_toplevel(self._file_path):
                 return FlextInfraTransformerTier0ImportFixer.Analysis(
                     package_name=pkg_name,
                     file_path=self._file_path,
@@ -172,10 +172,6 @@ class FlextInfraTransformerTier0ImportFixer:
             "FlextUtilitiesCache": "flext_core",
             "FlextUtilitiesMapper": "flext_core",
             "FlextUtilitiesModel": "flext_core",
-            "EnumT": "flext_core",
-            "T": "flext_core",
-            "U": "flext_core",
-            "T_Model": "flext_core",
         }
 
         def __init__(

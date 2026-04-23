@@ -46,8 +46,7 @@ class FlextInfraProtocolsBase(Protocol):
         def render(
             self,
             **kwargs: (
-                t.RuntimeData
-                | t.JsonPayload
+                t.JsonPayload
                 | Sequence[t.JsonValue]
                 | Sequence[tuple[str, str]]
                 | Sequence[tuple[str, t.StrSequence]]

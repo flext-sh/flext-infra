@@ -158,7 +158,7 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
 
     def command_payload(self) -> t.JsonMapping:
         """Return the normalized shared command payload once."""
-        payload: t.JsonMapping = {
+        payload: t.MutableJsonMapping = {
             "workspace_root": str(self.workspace_root),
             "apply_changes": self.apply_changes,
             "check_only": self.check_only,

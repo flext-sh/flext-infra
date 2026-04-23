@@ -138,7 +138,9 @@ class FlextInfraTypesBase:
     "Mutable set of (str, str) tuples."
     type IntPairSet = set[StrIntPair]
     "Mutable set of (str, int) tuples."
-    type CanonicalValue = str | int | t.StrSequence
+    type CanonicalScalar = str | int
+    "Canonical governance scalar: string or integer."
+    type CanonicalValue = CanonicalScalar | t.StrSequence
     "Canonical governance value: scalar string, integer, or string list."
     type AstMethodNode = _ast.FunctionDef | _ast.AsyncFunctionDef
     "AST node for a method definition (sync or async)."

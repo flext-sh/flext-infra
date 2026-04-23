@@ -395,7 +395,7 @@ class FlextInfraRefactorOrchestrator(
         results: MutableSequence[m.Infra.Result] = []
         processed: MutableSequence[str] = []
         for project in projects:
-            if apply_safety and self.safety_manager.is_emergency_stop_requested():
+            if apply_safety and self.safety_manager.emergency_stop_requested:
                 break
             u.Infra.refactor_header(f"Project: {project}")
             results.extend(
