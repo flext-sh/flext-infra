@@ -235,6 +235,39 @@ class FlextInfraUtilitiesCompatibility:
     def render_census_report(report: m.BaseModel) -> str:
         """Render a human-readable census report for any supported census model."""
         data = report.model_dump(mode="json")
+        if "total_objects" in data:
+            projects = data.get("projects", [])
+            duplicates = data.get("duplicates", [])
+            lines = [
+                "Workspace Census Report",
+                f"Objects: {int(data.get('total_objects', 0))}",
+                f"Violations: {int(data.get('total_violations', 0))}",
+                f"Fixable: {int(data.get('total_fixable', 0))}",
+                f"Fixes: {int(data.get('fixes_total', 0))}",
+                f"Unused: {int(data.get('unused_count', 0))}",
+                f"Test-only: {int(data.get('test_only_count', 0))}",
+                f"Removal candidates: {int(data.get('removal_candidate_count', 0))}",
+                f"Duplicate groups: {len(duplicates) if isinstance(duplicates, list) else 0}",
+                f"Duration: {float(data.get('scan_duration_seconds', 0.0)):.2f}s",
+                "",
+            ]
+            if isinstance(projects, list):
+                for project in projects:
+                    if not isinstance(project, Mapping):
+                        continue
+                    project_name = str(project.get("project", ""))
+                    if not project_name:
+                        continue
+                    lines.append(
+                        "- "
+                        f"{project_name}: "
+                        f"objects={int(project.get('objects_total', 0))} "
+                        f"violations={int(project.get('violations_total', 0))} "
+                        f"unused={int(project.get('unused_count', 0))} "
+                        f"test-only={int(project.get('test_only_count', 0))} "
+                        f"candidates={int(project.get('removal_candidate_count', 0))}"
+                    )
+            return "\n".join(lines)
         totals = {
             "classes": data.get("total_classes", 0),
             "methods": data.get("total_methods", 0),

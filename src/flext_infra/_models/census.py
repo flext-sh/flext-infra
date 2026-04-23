@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from types import MappingProxyType
-from typing import Annotated, ClassVar
+from typing import Annotated
 
 from flext_core import m
 
@@ -25,7 +25,7 @@ class FlextInfraModelsCensus:
         ):
             """Single discovered Python object with tier and classification metadata."""
 
-            model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+            model_config = m.ConfigDict(frozen=True)
 
             name: Annotated[t.NonEmptyStr, m.Field(description="Object identifier")]
             kind: Annotated[
@@ -67,7 +67,31 @@ class FlextInfraModelsCensus:
             references_count: Annotated[
                 t.NonNegativeInt,
                 m.Field(
-                    description="Number of cross-file references",
+                    description="Number of references excluding the definition site",
+                ),
+            ] = 0
+            runtime_references_count: Annotated[
+                t.NonNegativeInt,
+                m.Field(
+                    description="Number of references from runtime/source modules",
+                ),
+            ] = 0
+            test_references_count: Annotated[
+                t.NonNegativeInt,
+                m.Field(
+                    description="Number of references from test modules",
+                ),
+            ] = 0
+            example_references_count: Annotated[
+                t.NonNegativeInt,
+                m.Field(
+                    description="Number of references from example modules",
+                ),
+            ] = 0
+            script_references_count: Annotated[
+                t.NonNegativeInt,
+                m.Field(
+                    description="Number of references from script modules",
                 ),
             ] = 0
             fingerprint: Annotated[
@@ -83,7 +107,7 @@ class FlextInfraModelsCensus:
         ):
             """Detected census violation with fix metadata."""
 
-            model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+            model_config = m.ConfigDict(frozen=True)
 
             object_name: Annotated[
                 t.NonEmptyStr,
@@ -122,7 +146,7 @@ class FlextInfraModelsCensus:
         class Fix(m.ArbitraryTypesModel):
             """Applied or proposed auto-fix operation."""
 
-            model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+            model_config = m.ConfigDict(frozen=True)
 
             object_name: Annotated[
                 t.NonEmptyStr,
@@ -151,7 +175,7 @@ class FlextInfraModelsCensus:
         class DuplicateGroup(m.ArbitraryTypesModel):
             """Cross-project duplicate object cluster."""
 
-            model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+            model_config = m.ConfigDict(frozen=True)
 
             name: Annotated[
                 t.NonEmptyStr,
@@ -180,7 +204,7 @@ class FlextInfraModelsCensus:
         ):
             """Per-project census summary."""
 
-            model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+            model_config = m.ConfigDict(frozen=True)
 
             objects: tuple[FlextInfraModelsCensus.Census.Object, ...] = m.Field(
                 default_factory=tuple,
@@ -207,6 +231,18 @@ class FlextInfraModelsCensus:
             ] = 0
             fixes_applied: Annotated[
                 t.NonNegativeInt, m.Field(description="Fixes applied count")
+            ] = 0
+            unused_count: Annotated[
+                t.NonNegativeInt,
+                m.Field(description="Objects with no non-definition references"),
+            ] = 0
+            test_only_count: Annotated[
+                t.NonNegativeInt,
+                m.Field(description="Objects referenced only from tests"),
+            ] = 0
+            removal_candidate_count: Annotated[
+                t.NonNegativeInt,
+                m.Field(description="Objects eligible for aggressive removal review"),
             ] = 0
 
         class WorkspaceReport(m.ArbitraryTypesModel):
@@ -235,6 +271,16 @@ class FlextInfraModelsCensus:
             )
             unused_count: Annotated[
                 t.NonNegativeInt, m.Field(description="Total unused objects")
+            ] = 0
+            test_only_count: Annotated[
+                t.NonNegativeInt,
+                m.Field(description="Total objects referenced only from tests"),
+            ] = 0
+            removal_candidate_count: Annotated[
+                t.NonNegativeInt,
+                m.Field(
+                    description="Total objects eligible for aggressive removal review"
+                ),
             ] = 0
             scan_duration_seconds: Annotated[
                 float, m.Field(description="Wall-clock scan duration")

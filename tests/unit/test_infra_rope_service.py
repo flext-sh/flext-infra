@@ -205,3 +205,47 @@ class TestFlextInfraRopeWorkspace:
                 "first",
                 "second",
             }
+
+    def test_workspace_dsl_classifies_test_only_references(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Public census objects keep runtime and test reference counts separate."""
+        workspace_root, package_root = u.Infra.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-demo",
+            package_name="flext_demo",
+        )
+        module_path = package_root / "service.py"
+        module_path.write_text(
+            (
+                "from __future__ import annotations\n\n"
+                "def only_for_tests(value: int) -> int:\n"
+                "    return value + 1\n"
+            ),
+            encoding="utf-8",
+        )
+        test_path = workspace_root / "tests" / "test_service.py"
+        test_path.parent.mkdir(parents=True, exist_ok=True)
+        test_path.write_text(
+            (
+                "from __future__ import annotations\n\n"
+                "from flext_demo.service import only_for_tests\n\n"
+                "def test_only_for_tests_returns_incremented_value() -> None:\n"
+                "    assert only_for_tests(1) == 2\n"
+            ),
+            encoding="utf-8",
+        )
+
+        with flext_infra.infra.rope_workspace(workspace_root) as rope:
+            objects = {
+                item.scope_path: item
+                for item in rope.objects(module_path, include_local_scopes=False)
+            }
+
+        candidate = objects["only_for_tests"]
+        assert candidate.references_count == 2
+        assert candidate.runtime_references_count == 0
+        assert candidate.test_references_count == 2
+        assert candidate.example_references_count == 0
+        assert candidate.script_references_count == 0

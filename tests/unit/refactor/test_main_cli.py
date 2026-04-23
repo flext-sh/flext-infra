@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 import flext_infra
-from flext_infra import main as infra_main
+from flext_infra import FlextInfraRefactorCensus, main as infra_main
 from tests import u
 
 
@@ -37,6 +37,28 @@ class TestFlextInfraRefactorMainCli:
             "    return payload\n",
         )
         return workspace, service_file
+
+    @staticmethod
+    def _build_test_only_workspace(tmp_path: Path) -> Path:
+        workspace = tmp_path / "workspace"
+        TestFlextInfraRefactorMainCli._write(
+            workspace / "src" / "sample_pkg" / "__init__.py",
+            "from __future__ import annotations\n",
+        )
+        TestFlextInfraRefactorMainCli._write(
+            workspace / "src" / "sample_pkg" / "service.py",
+            "from __future__ import annotations\n\n"
+            "def only_for_tests(value: int) -> int:\n"
+            "    return value + 1\n",
+        )
+        TestFlextInfraRefactorMainCli._write(
+            workspace / "tests" / "test_service.py",
+            "from __future__ import annotations\n\n"
+            "from sample_pkg.service import only_for_tests\n\n"
+            "def test_only_for_tests_returns_incremented_value() -> None:\n"
+            "    assert only_for_tests(1) == 2\n",
+        )
+        return workspace
 
     def test_refactor_census_accepts_workspace_before_subcommand(
         self,
@@ -119,3 +141,32 @@ class TestFlextInfraRefactorMainCli:
         )
 
         assert result == 0
+
+    def test_refactor_census_flags_test_only_candidates(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace = self._build_test_only_workspace(tmp_path)
+
+        report_result = FlextInfraRefactorCensus(
+            workspace=workspace,
+            include_local_scopes=False,
+            kinds=("function",),
+            rules=("test_only",),
+        ).execute()
+
+        assert report_result.success, report_result.error
+        report = report_result.unwrap()
+        violations = [
+            violation for project in report.projects for violation in project.violations
+        ]
+
+        assert report.test_only_count == 1
+        assert report.removal_candidate_count >= report.test_only_count
+        assert len(violations) == 1
+        assert violations[0].kind == "test_only"
+        assert violations[0].object_name == "only_for_tests"
+
+        rendered = FlextInfraRefactorCensus.render_text(report)
+        assert "Test-only: 1" in rendered
+        assert "Removal candidates:" in rendered

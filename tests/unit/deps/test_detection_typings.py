@@ -35,7 +35,7 @@ class _StubRunner(p.Cli.CommandRunner):
     def run_raw(
         self,
         cmd: t.StrSequence,
-        cwd: t.Cli.PathLike | None = None,
+        cwd: t.Cli.TextPath | None = None,
         timeout: int | None = None,
         env: t.StrMapping | None = None,
         input_data: bytes | None = None,
@@ -52,7 +52,7 @@ class _StubRunner(p.Cli.CommandRunner):
     def run(
         self,
         cmd: t.StrSequence,
-        cwd: t.Cli.PathLike | None = None,
+        cwd: t.Cli.TextPath | None = None,
         timeout: int | None = None,
         env: t.StrMapping | None = None,
     ) -> tr[m.Cli.CommandOutput]:
@@ -70,7 +70,7 @@ class _StubRunner(p.Cli.CommandRunner):
     def capture(
         self,
         cmd: t.StrSequence,
-        cwd: t.Cli.PathLike | None = None,
+        cwd: t.Cli.TextPath | None = None,
         timeout: int | None = None,
         env: t.StrMapping | None = None,
     ) -> tr[str]:
@@ -82,7 +82,7 @@ class _StubRunner(p.Cli.CommandRunner):
     def run_checked(
         self,
         cmd: t.StrSequence,
-        cwd: t.Cli.PathLike | None = None,
+        cwd: t.Cli.TextPath | None = None,
         timeout: int | None = None,
         env: t.StrMapping | None = None,
     ) -> tr[bool]:
@@ -94,8 +94,8 @@ class _StubRunner(p.Cli.CommandRunner):
     def run_to_file(
         self,
         cmd: t.StrSequence,
-        output_file: t.Cli.PathLike,
-        cwd: t.Cli.PathLike | None = None,
+        output_file: t.Cli.TextPath,
+        cwd: t.Cli.TextPath | None = None,
         timeout: int | None = None,
         env: t.StrMapping | None = None,
     ) -> tr[int]:

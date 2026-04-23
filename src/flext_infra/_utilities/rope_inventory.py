@@ -6,6 +6,7 @@ from collections.abc import (
     MutableSequence,
     Sequence,
 )
+from pathlib import Path
 
 from rope.base.pynames import DefinedName, ImportedName
 from rope.base.pynamesdef import AssignedName, ParameterName
@@ -211,6 +212,19 @@ class FlextInfraUtilitiesRopeInventory:
         line = cls._definition_line(pyname, resource)
         if line is None:
             return None
+        (
+            references_count,
+            runtime_references_count,
+            test_references_count,
+            example_references_count,
+            script_references_count,
+        ) = cls._reference_counts(
+            rope_project,
+            resource,
+            source=source,
+            name=name,
+            line=line,
+        )
         kind = cls._kind_for(
             pyname, class_chain=class_chain, scope_chain=scope_chain, name=name
         )
@@ -234,9 +248,11 @@ class FlextInfraUtilitiesRopeInventory:
             is_facade_member=cls._is_facade_member(
                 convention, name=name, scope_chain=scope_chain
             ),
-            references_count=cls._reference_count(
-                rope_project, resource, source=source, name=name, line=line
-            ),
+            references_count=references_count,
+            runtime_references_count=runtime_references_count,
+            test_references_count=test_references_count,
+            example_references_count=example_references_count,
+            script_references_count=script_references_count,
             fingerprint=cls._fingerprint(
                 source, name=name, line=line, child_scope=child_scope
             ),
@@ -301,27 +317,136 @@ class FlextInfraUtilitiesRopeInventory:
         return "assignment"
 
     @staticmethod
-    def _reference_count(
+    def _reference_counts(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
         *,
         source: str,
         name: str,
         line: int,
-    ) -> int:
+    ) -> tuple[int, int, int, int, int]:
         lines = source.splitlines(keepends=True)
         if line < 1 or line > len(lines):
-            return 0
+            return (0, 0, 0, 0, 0)
         column = lines[line - 1].find(name)
         if column < 0:
-            return 0
+            return (0, 0, 0, 0, 0)
         offset = sum(len(item) for item in lines[: line - 1]) + column
+        definition_path = FlextInfraUtilitiesRopeCore.resource_file_path(
+            rope_project,
+            resource,
+        )
         hits = FlextInfraUtilitiesRopeImports.find_occurrences(
             rope_project,
             resource,
             offset,
         )
-        return max(0, len(hits) - 1)
+        runtime_references = 0
+        test_references = 0
+        example_references = 0
+        script_references = 0
+        skipped_definition = False
+        for hit in hits:
+            if (
+                not skipped_definition
+                and FlextInfraUtilitiesRopeInventory._is_definition_occurrence(
+                    hit,
+                    definition_path=definition_path,
+                    line=line,
+                    offset=offset,
+                )
+            ):
+                skipped_definition = True
+                continue
+            surface = FlextInfraUtilitiesRopeInventory._reference_surface(
+                FlextInfraUtilitiesRopeInventory._location_file_path(hit)
+            )
+            if surface == c.Infra.DIR_TESTS:
+                test_references += 1
+                continue
+            if surface == c.Infra.DIR_EXAMPLES:
+                example_references += 1
+                continue
+            if surface == c.Infra.DIR_SCRIPTS:
+                script_references += 1
+                continue
+            runtime_references += 1
+        if not skipped_definition and definition_path is not None:
+            surface = FlextInfraUtilitiesRopeInventory._reference_surface(
+                definition_path
+            )
+            if surface == c.Infra.DIR_TESTS and test_references > 0:
+                test_references -= 1
+            elif surface == c.Infra.DIR_EXAMPLES and example_references > 0:
+                example_references -= 1
+            elif surface == c.Infra.DIR_SCRIPTS and script_references > 0:
+                script_references -= 1
+            elif runtime_references > 0:
+                runtime_references -= 1
+        total_references = (
+            runtime_references
+            + test_references
+            + example_references
+            + script_references
+        )
+        return (
+            total_references,
+            runtime_references,
+            test_references,
+            example_references,
+            script_references,
+        )
+
+    @staticmethod
+    def _location_file_path(location: t.Infra.RopeLocation) -> Path | None:
+        resource = getattr(location, "resource", None)
+        real_path = getattr(resource, "real_path", None)
+        if isinstance(real_path, str) and real_path:
+            return Path(real_path).resolve()
+        path = getattr(resource, "path", None)
+        if isinstance(path, str) and path:
+            return Path(path)
+        return None
+
+    @staticmethod
+    def _is_definition_occurrence(
+        location: t.Infra.RopeLocation,
+        *,
+        definition_path: Path | None,
+        line: int,
+        offset: int,
+    ) -> bool:
+        location_path = FlextInfraUtilitiesRopeInventory._location_file_path(location)
+        if (
+            definition_path is not None
+            and location_path is not None
+            and location_path != definition_path
+        ):
+            return False
+        location_line = getattr(location, "lineno", None)
+        if isinstance(location_line, int) and location_line != line:
+            return False
+        location_offset = getattr(location, "offset", None)
+        if isinstance(location_offset, int):
+            return location_offset == offset
+        return bool(
+            definition_path is not None
+            and location_path == definition_path
+            and location_line == line
+        )
+
+    @staticmethod
+    def _reference_surface(file_path: Path | None) -> str:
+        if file_path is None:
+            return c.Infra.DEFAULT_SRC_DIR
+        parts = set(file_path.parts)
+        if c.Infra.DIR_TESTS in parts:
+            return c.Infra.DIR_TESTS
+        if c.Infra.DIR_EXAMPLES in parts:
+            return c.Infra.DIR_EXAMPLES
+        if c.Infra.DIR_SCRIPTS in parts:
+            return c.Infra.DIR_SCRIPTS
+        return c.Infra.DEFAULT_SRC_DIR
 
     @staticmethod
     def _fingerprint(

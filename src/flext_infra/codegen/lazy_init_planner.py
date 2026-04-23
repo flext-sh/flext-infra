@@ -235,6 +235,8 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
             if child_dir.parent != pkg_dir:
                 continue
             direct.append(child_entry.package_name)
+            if self._is_fixture_package(child_dir):
+                continue
             for name, (module_name, attr) in dir_exports.get(
                 str(child_dir), {}
             ).items():
@@ -246,6 +248,10 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
                 ):
                     self._add(lazy_map, name, (module_name, attr))
         return (tuple(sorted(direct)), tuple(sorted(descendants)))
+
+    @staticmethod
+    def _is_fixture_package(pkg_dir: Path) -> bool:
+        return pkg_dir.name == "_fixtures" or pkg_dir.name.endswith("_fixtures")
 
     def _resolve_aliases(
         self,

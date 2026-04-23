@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 from collections import Counter, defaultdict
 from pathlib import Path
-from typing import Annotated, override
+from typing import Annotated, ClassVar, override
 
 from flext_cli import cli
 
@@ -26,7 +26,7 @@ class FlextInfraRefactorCensus(
 ):
     """Generalized Rope-only census service for Python objects across the workspace."""
 
-    _MIN_DUPLICATE_DEFINITIONS: int = 2
+    _MIN_DUPLICATE_DEFINITIONS: ClassVar[int] = 2
 
     json_output: Annotated[
         str | None,
@@ -198,6 +198,10 @@ class FlextInfraRefactorCensus(
                 for item in report.objects
                 if self._is_unused(item)
             ),
+            test_only_count=sum(report.test_only_count for report in project_reports),
+            removal_candidate_count=sum(
+                report.removal_candidate_count for report in project_reports
+            ),
         )
 
     def _project_report(
@@ -229,7 +233,17 @@ class FlextInfraRefactorCensus(
                     self._violation(
                         item,
                         kind="unused",
-                        description="Object has no external references",
+                        description="Object has no non-definition references",
+                    )
+                )
+            if self._is_test_only(item) and self._include_rule(
+                "test_only", rule_names=rule_names
+            ):
+                violations.append(
+                    self._violation(
+                        item,
+                        kind="test_only",
+                        description="Object is referenced only from tests/",
                     )
                 )
             if (
@@ -245,6 +259,8 @@ class FlextInfraRefactorCensus(
                         description=f"Expected tier '{item.expected_tier}' but found '{item.actual_tier}'",
                     )
                 )
+        unused_count = sum(1 for item in objects if self._is_unused(item))
+        test_only_count = sum(1 for item in objects if self._is_test_only(item))
         return m.Infra.Census.ProjectReport(
             project=project,
             objects=objects,
@@ -254,6 +270,9 @@ class FlextInfraRefactorCensus(
             fixes=fixes,
             violations_total=len(violations),
             fixes_applied=sum(1 for fix in fixes if fix.applied),
+            unused_count=unused_count,
+            test_only_count=test_only_count,
+            removal_candidate_count=unused_count + test_only_count,
         )
 
     def _module_rules(
@@ -407,6 +426,15 @@ class FlextInfraRefactorCensus(
     @staticmethod
     def _is_unused(item: m.Infra.Census.Object) -> bool:
         return item.references_count == 0 and not item.name.startswith("_")
+
+    @staticmethod
+    def _is_test_only(item: m.Infra.Census.Object) -> bool:
+        return (
+            item.references_count > 0
+            and item.runtime_references_count == 0
+            and item.test_references_count == item.references_count
+            and not item.name.startswith("_")
+        )
 
     @staticmethod
     def _object_key(item: m.Infra.Census.Object) -> str:
