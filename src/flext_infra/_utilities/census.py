@@ -269,6 +269,7 @@ class FlextInfraUtilitiesRefactorCensus:
         file_paths = tuple(sorted(updates))
 
         def _post_write() -> None:
+            rope.rope_project.validate()
             for file_path in file_paths:
                 resource = rope.resource(file_path)
                 if resource is None:
@@ -280,6 +281,44 @@ class FlextInfraUtilitiesRefactorCensus:
                 )
 
         ok, _report = FlextInfraUtilitiesProtectedEdit.preview_source_writes(
+            updates,
+            workspace=workspace,
+            gates=gates,
+            post_write=_post_write,
+        )
+        rope.reload()
+        return ok
+
+    @staticmethod
+    def apply_simple_removal_candidate(
+        rope: p.Infra.RopeWorkspaceDsl,
+        workspace: Path,
+        candidate: m.Infra.Census.RemovalCandidate,
+        *,
+        gates: t.StrSequence,
+    ) -> bool:
+        """Apply one simple removal candidate permanently, Ruff/Pyrefly-gated."""
+        updates = FlextInfraUtilitiesRefactorCensus.build_simple_removal_sources(
+            rope,
+            candidate,
+        )
+        if updates is None:
+            return False
+        file_paths = tuple(sorted(updates))
+
+        def _post_write() -> None:
+            rope.rope_project.validate()
+            for file_path in file_paths:
+                resource = rope.resource(file_path)
+                if resource is None:
+                    continue
+                _ = FlextInfraUtilitiesRopeImports.organize_imports(
+                    rope.rope_project,
+                    resource,
+                    apply=True,
+                )
+
+        ok, _report = FlextInfraUtilitiesProtectedEdit.protected_source_writes(
             updates,
             workspace=workspace,
             gates=gates,

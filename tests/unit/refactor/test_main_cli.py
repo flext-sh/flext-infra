@@ -84,6 +84,59 @@ class TestFlextInfraRefactorMainCli:
         return workspace
 
     @staticmethod
+    def _build_lazy_init_cascade_workspace(
+        tmp_path: Path,
+    ) -> tuple[Path, Path, Path]:
+        workspace = tmp_path / "workspace"
+        TestFlextInfraRefactorMainCli._write_workspace_pyproject(workspace)
+        init_path = workspace / "src" / "sample_pkg" / "__init__.py"
+        TestFlextInfraRefactorMainCli._write(
+            init_path,
+            "# AUTO-GENERATED FILE — Regenerate with: make gen\n"
+            '"""Sample package."""\n\n'
+            "from __future__ import annotations\n\n"
+            "import typing as _t\n\n"
+            "from flext_core.lazy import build_lazy_import_map, install_lazy_exports\n\n"
+            "if _t.TYPE_CHECKING:\n"
+            "    from sample_pkg.keep import keep_me\n"
+            "    from sample_pkg.service import only_for_tests\n"
+            "_LAZY_IMPORTS = build_lazy_import_map(\n"
+            "    {\n"
+            '        ".keep": ("keep_me",),\n'
+            '        ".service": ("only_for_tests",),\n'
+            "    },\n"
+            ")\n\n"
+            "install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)\n\n"
+            "__all__: list[str] = [\n"
+            '    "keep_me",\n'
+            '    "only_for_tests",\n'
+            "]\n",
+        )
+        service_file = workspace / "src" / "sample_pkg" / "service.py"
+        TestFlextInfraRefactorMainCli._write(
+            service_file,
+            "from __future__ import annotations\n\n"
+            '__all__: list[str] = ["only_for_tests"]\n\n'
+            "def only_for_tests(value: int) -> int:\n"
+            "    return value + 1\n",
+        )
+        TestFlextInfraRefactorMainCli._write(
+            workspace / "src" / "sample_pkg" / "keep.py",
+            "from __future__ import annotations\n\n"
+            '__all__: list[str] = ["keep_me"]\n\n'
+            "def keep_me(value: int) -> int:\n"
+            "    return value\n",
+        )
+        TestFlextInfraRefactorMainCli._write(
+            workspace / "tests" / "test_service.py",
+            "from __future__ import annotations\n\n"
+            "from sample_pkg.service import only_for_tests\n\n"
+            "def test_only_for_tests_returns_incremented_value() -> None:\n"
+            "    assert only_for_tests(1) == 2\n",
+        )
+        return workspace, service_file, init_path
+
+    @staticmethod
     def _build_test_only_workspace_with_source_import(
         tmp_path: Path,
     ) -> tuple[Path, Path]:
@@ -358,6 +411,89 @@ class TestFlextInfraRefactorMainCli:
         assert report_result.success, report_result.error
         report = report_result.unwrap()
         assert report.test_only_count == 0
+        assert report.removal_candidate_count == 0
+
+    def test_refactor_census_apply_cascades_through_init_lazy_map_and_all(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace, service_file, init_path = self._build_lazy_init_cascade_workspace(
+            tmp_path,
+        )
+        test_file = workspace / "tests" / "test_service.py"
+
+        result = self._refactor_main(
+            "--workspace",
+            str(workspace),
+            "census",
+            "--apply",
+            "--rules",
+            "test_only",
+            "--kinds",
+            "function",
+        )
+
+        assert result == 0
+        init_source = init_path.read_text(encoding="utf-8")
+        service_source = service_file.read_text(encoding="utf-8")
+        test_source = test_file.read_text(encoding="utf-8")
+
+        assert "only_for_tests" not in init_source
+        assert "only_for_tests" not in service_source
+        assert "only_for_tests" not in test_source
+        assert "keep_me" in init_source
+        assert ".service" not in init_source
+        assert u.Infra.parse_source_ast(init_source) is not None
+        assert u.Infra.parse_source_ast(service_source) is not None
+        assert u.Infra.parse_source_ast(test_source) is not None
+
+        report_result = FlextInfraRefactorCensus(
+            workspace=workspace,
+            include_local_scopes=False,
+            kinds=("function",),
+            rules=("test_only",),
+        ).execute()
+
+        assert report_result.success, report_result.error
+        report = report_result.unwrap()
+        assert report.test_only_count == 0
+        assert report.removal_candidate_count == 0
+
+    def test_refactor_census_apply_removes_unused_top_level_and_cleans_imports(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace, service_file = (
+            self._build_unused_top_level_workspace_with_source_import(tmp_path)
+        )
+
+        result = self._refactor_main(
+            "--workspace",
+            str(workspace),
+            "census",
+            "--apply",
+            "--rules",
+            "unused",
+            "--kinds",
+            "function",
+        )
+
+        assert result == 0
+        service_source = service_file.read_text(encoding="utf-8")
+        assert "def only_for_cleanup" not in service_source
+        assert "from collections.abc import Sequence" not in service_source
+        assert u.Infra.parse_source_ast(service_source) is not None
+
+        report_result = FlextInfraRefactorCensus(
+            workspace=workspace,
+            include_local_scopes=False,
+            kinds=("function",),
+            rules=("unused",),
+        ).execute()
+
+        assert report_result.success, report_result.error
+        report = report_result.unwrap()
+        assert report.unused_count == 0
         assert report.removal_candidate_count == 0
 
     def test_refactor_census_dry_run_validates_candidate_after_import_cleanup(

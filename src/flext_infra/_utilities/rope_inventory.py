@@ -379,6 +379,8 @@ class FlextInfraUtilitiesRopeInventory:
             reference_site = FlextInfraUtilitiesRopeInventory._reference_site(hit)
             if reference_site is None:
                 continue
+            if Path(reference_site.file_path).name == c.Infra.INIT_PY:
+                continue
             site_key = (
                 reference_site.file_path,
                 reference_site.line,

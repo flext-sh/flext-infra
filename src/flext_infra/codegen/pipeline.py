@@ -31,12 +31,14 @@ _log = u.fetch_logger(__name__)
 class FlextInfraCodegenPipeline(s[str]):
     """Run the full codegen pipeline directly from the validated CLI model."""
 
-    state: m.Infra.CodegenPipelineState
+    _state: m.Infra.CodegenPipelineState = u.PrivateAttr(
+        default_factory=lambda: m.Infra.CodegenPipelineState(),
+    )
 
     @override
     def execute(self) -> p.Result[str]:
         """Execute the end-to-end codegen pipeline via DAG engine."""
-        self.state = m.Infra.CodegenPipelineState()
+        self._state = m.Infra.CodegenPipelineState()
         ctx = m.Cli.PipelineStageContext(
             workspace_root=self.workspace_root,
             shared={},
@@ -117,7 +119,7 @@ class FlextInfraCodegenPipeline(s[str]):
             )
         except Exception as exc:
             return r[m.Cli.PipelineStageResult].fail(f"discover failed: {exc}")
-        self.state.discovered_projects = discovered
+        self._state.discovered_projects = discovered
         return r[m.Cli.PipelineStageResult].ok(
             m.Cli.PipelineStageResult(
                 stage_id=c.Infra.PipelineStage.DISCOVER,
@@ -154,12 +156,12 @@ class FlextInfraCodegenPipeline(s[str]):
             census = FlextInfraCodegenCensus.model_validate({
                 "workspace_root": ctx.workspace_root,
             })
-            projects = self.state.discovered_projects or None
+            projects = self._state.discovered_projects or None
             reports = census.run(projects=projects)
         except Exception as exc:
             return r[m.Cli.PipelineStageResult].fail(f"census_before failed: {exc}")
-        self.state.census_service = census
-        self.state.reports_before = reports
+        self._state.census_service = census
+        self._state.reports_before = reports
         total = sum(report.total for report in reports)
         fixable = sum(report.fixable for report in reports)
         return r[m.Cli.PipelineStageResult].ok(
@@ -177,13 +179,13 @@ class FlextInfraCodegenPipeline(s[str]):
         """Run scaffold stage and cache results."""
         try:
             dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
-            projects = self.state.discovered_projects or None
+            projects = self._state.discovered_projects or None
             results = FlextInfraCodegenScaffolder.model_validate({
                 "workspace_root": ctx.workspace_root,
             }).run(dry_run=dry_run, projects=projects)
         except Exception as exc:
             return r[m.Cli.PipelineStageResult].fail(f"scaffold failed: {exc}")
-        self.state.scaffold_results = results
+        self._state.scaffold_results = results
         created = sum(len(result.files_created) for result in results)
         skipped = sum(len(result.files_skipped) for result in results)
         return r[m.Cli.PipelineStageResult].ok(
@@ -201,14 +203,14 @@ class FlextInfraCodegenPipeline(s[str]):
         """Run auto-fix stage and cache results."""
         try:
             dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
-            projects = self.state.discovered_projects or None
+            projects = self._state.discovered_projects or None
             results = FlextInfraCodegenFixer.model_validate({
                 "workspace_root": ctx.workspace_root,
                 "dry_run": dry_run,
             }).fix_workspace(projects=projects)
         except Exception as exc:
             return r[m.Cli.PipelineStageResult].fail(f"auto_fix failed: {exc}")
-        self.state.fix_results = results
+        self._state.fix_results = results
         fixed = sum(len(result.violations_fixed) for result in results)
         skipped = sum(len(result.violations_skipped) for result in results)
         return r[m.Cli.PipelineStageResult].ok(
@@ -245,16 +247,16 @@ class FlextInfraCodegenPipeline(s[str]):
     ) -> p.Result[m.Cli.PipelineStageResult]:
         """Run census (after fixes) and cache reports."""
         try:
-            census = self.state.census_service
+            census = self._state.census_service
             if census is None:
                 census = FlextInfraCodegenCensus.model_validate({
                     "workspace_root": ctx.workspace_root,
                 })
-            projects = self.state.discovered_projects or None
+            projects = self._state.discovered_projects or None
             reports = census.run(projects=projects)
         except Exception as exc:
             return r[m.Cli.PipelineStageResult].fail(f"census_after failed: {exc}")
-        self.state.reports_after = reports
+        self._state.reports_after = reports
         total = sum(report.total for report in reports)
         fixable = sum(report.fixable for report in reports)
         return r[m.Cli.PipelineStageResult].ok(
@@ -271,10 +273,10 @@ class FlextInfraCodegenPipeline(s[str]):
 
     def _collect_pipeline_output(self) -> p.Result[str]:
         """Convert typed pipeline state into the original output format."""
-        reports_before = self.state.reports_before
-        reports_after = self.state.reports_after
-        scaffold_results = self.state.scaffold_results
-        fix_results = self.state.fix_results
+        reports_before = self._state.reports_before
+        reports_after = self._state.reports_after
+        scaffold_results = self._state.scaffold_results
+        fix_results = self._state.fix_results
 
         before_violations = sum(report.total for report in reports_before)
         before_fixable = sum(report.fixable for report in reports_before)
