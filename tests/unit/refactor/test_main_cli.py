@@ -9,7 +9,7 @@ from flext_infra import FlextInfraRefactorCensus, main as infra_main
 from tests import t, u
 
 
-def _mapping(value: t.JsonValue) -> t.JsonMapping:
+def _mapping(value: t.JsonValue | t.JsonMapping) -> t.JsonMapping:
     return t.Cli.JSON_MAPPING_ADAPTER.validate_python(value)
 
 
@@ -187,6 +187,45 @@ class TestFlextInfraRefactorMainCli:
         assert "Removal candidates:" in rendered
         assert "Candidate preview:" in rendered
 
+    def test_refactor_census_apply_removes_simple_test_only_candidate(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace = self._build_test_only_workspace(tmp_path)
+        service_file = workspace / "src" / "sample_pkg" / "service.py"
+        test_file = workspace / "tests" / "test_service.py"
+
+        result = self._refactor_main(
+            "--workspace",
+            str(workspace),
+            "census",
+            "--apply",
+            "--rules",
+            "test_only",
+            "--kinds",
+            "function",
+        )
+
+        assert result == 0
+        service_source = service_file.read_text(encoding="utf-8")
+        test_source = test_file.read_text(encoding="utf-8")
+        assert "only_for_tests" not in service_source
+        assert "only_for_tests" not in test_source
+        assert u.Infra.parse_source_ast(service_source) is not None
+        assert u.Infra.parse_source_ast(test_source) is not None
+
+        report_result = FlextInfraRefactorCensus(
+            workspace=workspace,
+            include_local_scopes=False,
+            kinds=("function",),
+            rules=("test_only",),
+        ).execute()
+
+        assert report_result.success, report_result.error
+        report = report_result.unwrap()
+        assert report.test_only_count == 0
+        assert report.removal_candidate_count == 0
+
     def test_refactor_census_writes_impact_map_for_removal_candidates(
         self,
         tmp_path: Path,
@@ -226,3 +265,31 @@ class TestFlextInfraRefactorMainCli:
             "remove reference to only_for_tests at line 3 (tests)",
             "remove reference to only_for_tests at line 6 (tests)",
         ]
+
+    def test_refactor_census_cli_writes_impact_map_for_removal_candidates(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace = self._build_test_only_workspace(tmp_path)
+        impact_map_path = tmp_path / "cli-impact-map.json"
+
+        result = self._refactor_main(
+            "--workspace",
+            str(workspace),
+            "census",
+            "--rules",
+            "test_only",
+            "--kinds",
+            "function",
+            "--impact-map-output",
+            str(impact_map_path),
+        )
+
+        assert result == 0
+        payload_result = u.Cli.json_read(impact_map_path)
+        assert payload_result.success, payload_result.error
+        payload = _mapping(payload_result.unwrap())
+        files = t.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
+        entries = [_mapping(item) for item in files]
+
+        assert len(entries) == 2

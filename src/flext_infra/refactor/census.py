@@ -351,6 +351,8 @@ class FlextInfraRefactorCensus(
         report: m.Infra.Census.WorkspaceReport,
     ) -> frozenset[str]:
         applied: set[str] = set()
+        removal_ranges_by_file: dict[Path, list[t.Infra.IntPair]] = defaultdict(list)
+        removal_candidate_keys: set[str] = set()
         for project in report.projects:
             for fix in project.fixes:
                 file_path = Path(fix.source_file)
@@ -371,6 +373,26 @@ class FlextInfraRefactorCensus(
                     continue
                 resource.write(updated)
                 applied.add(self._fix_key(file_path, fix.object_name))
+        for candidate in report.removal_candidates:
+            edit_plan = u.Infra.plan_simple_removal_edits(rope, candidate)
+            if edit_plan is None:
+                continue
+            for file_path, ranges in edit_plan.items():
+                removal_ranges_by_file[file_path].extend(ranges)
+            removal_candidate_keys.add(
+                self._fix_key(Path(candidate.file_path), candidate.object_name)
+            )
+        for file_path, ranges in sorted(removal_ranges_by_file.items()):
+            merged_ranges = u.Infra.merge_line_ranges(ranges)
+            source = rope.source(file_path)
+            updated = u.Infra.apply_line_ranges(source, merged_ranges)
+            if updated == source:
+                continue
+            resource = rope.resource(file_path)
+            if resource is None:
+                continue
+            resource.write(updated)
+        applied.update(removal_candidate_keys)
         return frozenset(applied)
 
     @staticmethod

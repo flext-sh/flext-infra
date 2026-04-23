@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 from collections import Counter, defaultdict
 from collections.abc import (
     Mapping,
@@ -11,7 +12,8 @@ from collections.abc import (
 )
 from pathlib import Path
 
-from flext_infra import FlextInfraModelsRefactorCensus as mrc, c, m, t
+from flext_infra import FlextInfraModelsRefactorCensus as mrc, c, m, p, t
+from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
 
 
 class FlextInfraUtilitiesRefactorCensus:
@@ -192,6 +194,139 @@ class FlextInfraUtilitiesRefactorCensus:
             model_payload.model_dump_json(indent=2),
             encoding=c.Infra.ENCODING_DEFAULT,
         )
+
+    @staticmethod
+    def plan_simple_removal_edits(
+        rope: p.Infra.RopeWorkspaceDsl,
+        candidate: m.Infra.Census.RemovalCandidate,
+    ) -> Mapping[Path, tuple[t.Infra.IntPair, ...]] | None:
+        """Plan safe line-range removals for simple top-level removal candidates."""
+        if candidate.scope_path != candidate.object_name:
+            return None
+        if candidate.object_kind not in {"class", "function"}:
+            return None
+        definition_path = Path(candidate.file_path).resolve()
+        definition_range = FlextInfraUtilitiesRefactorCensus._definition_line_range(
+            rope.source(definition_path),
+            candidate,
+        )
+        if definition_range is None:
+            return None
+        ranges_by_file: dict[Path, list[t.Infra.IntPair]] = defaultdict(list)
+        ranges_by_file[definition_path].append(definition_range)
+        for site in FlextInfraUtilitiesRefactorCensus._supporting_reference_sites(
+            candidate
+        ):
+            site_path = Path(site.file_path).resolve()
+            site_range = FlextInfraUtilitiesRefactorCensus._reference_line_range(
+                rope.source(site_path),
+                site,
+            )
+            if site_range is None:
+                return None
+            ranges_by_file[site_path].append(site_range)
+        return {
+            file_path: FlextInfraUtilitiesRefactorCensus.merge_line_ranges(ranges)
+            for file_path, ranges in ranges_by_file.items()
+        }
+
+    @staticmethod
+    def apply_line_ranges(
+        source: str,
+        ranges: Sequence[t.Infra.IntPair],
+    ) -> str:
+        """Remove one or more 1-based inclusive line ranges from Python source."""
+        merged_ranges = FlextInfraUtilitiesRefactorCensus.merge_line_ranges(ranges)
+        if not merged_ranges:
+            return source
+        removed_lines = {
+            line_number
+            for start, end in merged_ranges
+            for line_number in range(start, end + 1)
+        }
+        lines = source.splitlines(keepends=True)
+        return "".join(
+            line
+            for index, line in enumerate(lines, start=1)
+            if index not in removed_lines
+        )
+
+    @staticmethod
+    def merge_line_ranges(
+        ranges: Sequence[t.Infra.IntPair],
+    ) -> tuple[t.Infra.IntPair, ...]:
+        """Merge overlapping or adjacent 1-based inclusive line ranges."""
+        if not ranges:
+            return ()
+        ordered_ranges = sorted(ranges)
+        merged: list[t.Infra.IntPair] = [ordered_ranges[0]]
+        for start, end in ordered_ranges[1:]:
+            previous_start, previous_end = merged[-1]
+            if start <= previous_end + 1:
+                merged[-1] = (previous_start, max(previous_end, end))
+                continue
+            merged.append((start, end))
+        return tuple(merged)
+
+    @staticmethod
+    def _supporting_reference_sites(
+        candidate: m.Infra.Census.RemovalCandidate,
+    ) -> tuple[m.Infra.Census.ReferenceSite, ...]:
+        return (
+            *candidate.test_reference_sites,
+            *candidate.example_reference_sites,
+            *candidate.script_reference_sites,
+        )
+
+    @staticmethod
+    def _definition_line_range(
+        source: str,
+        candidate: m.Infra.Census.RemovalCandidate,
+    ) -> t.Infra.IntPair | None:
+        module = FlextInfraUtilitiesParsing.parse_source_ast(source)
+        if module is None:
+            return None
+        for node in module.body:
+            if candidate.object_kind == "class" and isinstance(node, ast.ClassDef):
+                if node.name == candidate.object_name:
+                    return FlextInfraUtilitiesRefactorCensus._statement_line_range(node)
+                continue
+            if (
+                candidate.object_kind == "function"
+                and isinstance(
+                    node,
+                    ast.FunctionDef | ast.AsyncFunctionDef,
+                )
+                and node.name == candidate.object_name
+            ):
+                return FlextInfraUtilitiesRefactorCensus._statement_line_range(node)
+        return None
+
+    @staticmethod
+    def _reference_line_range(
+        source: str,
+        site: m.Infra.Census.ReferenceSite,
+    ) -> t.Infra.IntPair | None:
+        module = FlextInfraUtilitiesParsing.parse_source_ast(source)
+        if module is None:
+            return None
+        for node in module.body:
+            start, end = FlextInfraUtilitiesRefactorCensus._statement_line_range(node)
+            if not start <= site.line <= end:
+                continue
+            if isinstance(node, ast.ClassDef):
+                return None
+            return start, end
+        return None
+
+    @staticmethod
+    def _statement_line_range(node: t.Infra.AstStmt) -> t.Infra.IntPair:
+        start = getattr(node, "lineno", 1)
+        decorators = getattr(node, "decorator_list", ())
+        if decorators:
+            start = min(getattr(decorator, "lineno", start) for decorator in decorators)
+        end = getattr(node, "end_lineno", start) or start
+        return start, end
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRefactorCensus"]
