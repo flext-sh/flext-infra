@@ -1,0 +1,30 @@
+tests/unit/deps/test_detection_typings.py
+  h_9db9d35f50cf33 38,55,73,85,97-98
+src/flext_infra/_utilities/compat.py
+  h_9db9d35f50cf33 238-270
+tests/utilities.py
+  h_9db9d35f50cf33 83,95,113,126,139-140,211,224
+src/flext_infra/_models/census.py
+  h_9db9d35f50cf33 6,28,70,73-94,110,149,178,207,235-245,275-281
+tests/unit/test_infra_rope_service.py
+  h_9db9d35f50cf33 208-251
+src/flext_infra/codegen/lazy_init_planner.py
+  h_9db9d35f50cf33 238-239,252-254
+src/flext_infra/refactor/census.py
+  h_9db9d35f50cf33 8,29,201-204,238-246,275,431-438
+src/flext_infra/_utilities/rope_inventory.py
+  h_9db9d35f50cf33 9,215-227,251-255,320,327,330,333,335-338,344-432,434-446
+tests/unit/refactor/test_main_cli.py
+  h_9db9d35f50cf33 8,41-62,144-172
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.2",
+  "base_commit_sha": "02e56e0cf3a788f0664c331164fb69cc99e004a6",
+  "prompts": {},
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
