@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import (
     Mapping,
 )
+from types import MappingProxyType
 from typing import Annotated
 
 from flext_cli import m
@@ -167,6 +168,17 @@ class FlextInfraModelsDepsToolConfigLinters:
                 description="Error codes disabled for these modules.",
             ),
         ]
+        justification: Annotated[
+            str,
+            m.Field(
+                description=(
+                    "Required citation (GitHub issue / PEP / mypy docs) justifying "
+                    "this override. AGENTS.md:319 forbids suppressions without "
+                    "evidence; leave empty only for strictly transitional overrides "
+                    "with a TODO in the module comment."
+                ),
+            ),
+        ] = ""
 
     class MypyConfig(m.ArbitraryTypesModel):
         """Mypy baseline settings loaded from YAML."""
@@ -194,6 +206,16 @@ class FlextInfraModelsDepsToolConfigLinters:
                 description="Mypy boolean settings keyed by option name.",
             ),
         ]
+        string_settings: Annotated[
+            t.StrMapping,
+            m.Field(
+                alias="string-settings",
+                description=(
+                    "Mypy string-valued settings keyed by option name "
+                    "(e.g. follow_imports='normal')."
+                ),
+            ),
+        ] = m.Field(default_factory=lambda: MappingProxyType({}))
         overrides: Annotated[
             tuple[FlextInfraModelsDepsToolConfigLinters.MypyOverrideConfig, ...],
             m.Field(
@@ -225,6 +247,16 @@ class FlextInfraModelsDepsToolConfigLinters:
                 description="Warn on required dynamic aliases in pydantic mypy plugin."
             ),
         ]
+        warn_untyped_fields: Annotated[
+            bool,
+            m.Field(
+                alias="warn-untyped-fields",
+                description=(
+                    "Warn when Pydantic model fields are inferred as Any instead of "
+                    "explicitly typed. Aligns with AGENTS.md:279 'no Any allowed'."
+                ),
+            ),
+        ] = False
 
 
 __all__: list[str] = [

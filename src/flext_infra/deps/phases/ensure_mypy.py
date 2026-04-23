@@ -56,6 +56,8 @@ class FlextInfraEnsureMypyConfigPhase:
         phase_builder = phase_builder.value("overrides", overrides_payload)
         for key, value in self._tool_config.tools.mypy.boolean_settings.items():
             phase_builder = phase_builder.value(key, value)
+        for key, value in self._tool_config.tools.mypy.string_settings.items():
+            phase_builder = phase_builder.value(key, value)
         return phase_builder.build()
 
     def apply(self, doc: t.Cli.TomlDocument) -> t.StrSequence:

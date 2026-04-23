@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections import Counter, defaultdict
 from collections.abc import (
     Mapping,
@@ -243,13 +244,46 @@ class FlextInfraUtilitiesRefactorCensus:
         )
         if edit_plan is None:
             return None
-        return {
-            file_path: FlextInfraUtilitiesRefactorCensus.apply_line_ranges(
+        definition_path = Path(candidate.file_path).resolve()
+        updates: dict[Path, str] = {}
+        for file_path, ranges in edit_plan.items():
+            source = FlextInfraUtilitiesRefactorCensus.apply_line_ranges(
                 rope.source(file_path),
                 ranges,
             )
-            for file_path, ranges in edit_plan.items()
-        }
+            if file_path.resolve() == definition_path:
+                source = FlextInfraUtilitiesRefactorCensus.strip_module_all_entry(
+                    source,
+                    candidate.object_name,
+                )
+            updates[file_path] = source
+        return updates
+
+    @staticmethod
+    def strip_module_all_entry(source: str, name: str) -> str:
+        """Remove ``name`` from a module-level ``__all__`` list declaration.
+
+        Handles single-line forms ``__all__[: list[str]] = [ ... ]``; when the
+        removed entry was the only element, the list is collapsed to ``[]``.
+        Multi-line ``__all__`` forms are left untouched — governance layer
+        regenerates them from source state via the lazy-init planner.
+        """
+        pattern = re.compile(
+            r"^(?P<prefix>__all__(?:\s*:\s*[^\n=]+)?\s*=\s*)\[(?P<body>[^\[\]\n]*)\]",
+            re.MULTILINE,
+        )
+
+        def _rewrite(match: re.Match[str]) -> str:
+            prefix = match.group("prefix")
+            body = match.group("body")
+            entries = [entry.strip() for entry in body.split(",") if entry.strip()]
+            quoted_target = {f'"{name}"', f"'{name}'"}
+            remaining = [entry for entry in entries if entry not in quoted_target]
+            if len(remaining) == len(entries):
+                return match.group(0)
+            return f"{prefix}[{', '.join(remaining)}]"
+
+        return pattern.sub(_rewrite, source)
 
     @staticmethod
     def preview_simple_removal_candidate(
@@ -274,20 +308,20 @@ class FlextInfraUtilitiesRefactorCensus:
                 resource = rope.resource(file_path)
                 if resource is None:
                     continue
-                _ = FlextInfraUtilitiesRopeImports.organize_imports(
+                FlextInfraUtilitiesRopeImports.organize_imports(
                     rope.rope_project,
                     resource,
                     apply=True,
                 )
 
-        ok, _report = FlextInfraUtilitiesProtectedEdit.preview_source_writes(
+        result = FlextInfraUtilitiesProtectedEdit.preview_source_writes(
             updates,
             workspace=workspace,
             gates=gates,
             post_write=_post_write,
         )
         rope.reload()
-        return ok
+        return result[0]
 
     @staticmethod
     def apply_simple_removal_candidate(
@@ -312,20 +346,20 @@ class FlextInfraUtilitiesRefactorCensus:
                 resource = rope.resource(file_path)
                 if resource is None:
                     continue
-                _ = FlextInfraUtilitiesRopeImports.organize_imports(
+                FlextInfraUtilitiesRopeImports.organize_imports(
                     rope.rope_project,
                     resource,
                     apply=True,
                 )
 
-        ok, _report = FlextInfraUtilitiesProtectedEdit.protected_source_writes(
+        result = FlextInfraUtilitiesProtectedEdit.protected_source_writes(
             updates,
             workspace=workspace,
             gates=gates,
             post_write=_post_write,
         )
         rope.reload()
-        return ok
+        return result[0]
 
     @staticmethod
     def apply_line_ranges(

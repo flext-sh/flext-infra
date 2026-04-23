@@ -98,39 +98,39 @@ class TestFlextInfraRefactorMainCli:
             "import typing as _t\n\n"
             "from flext_core.lazy import build_lazy_import_map, install_lazy_exports\n\n"
             "if _t.TYPE_CHECKING:\n"
-            "    from sample_pkg.keep import keep_me\n"
-            "    from sample_pkg.service import only_for_tests\n"
+            "    from sample_pkg.helpers import helper_used, only_for_tests\n"
             "_LAZY_IMPORTS = build_lazy_import_map(\n"
             "    {\n"
-            '        ".keep": ("keep_me",),\n'
-            '        ".service": ("only_for_tests",),\n'
+            '        ".helpers": ("helper_used", "only_for_tests"),\n'
             "    },\n"
             ")\n\n"
             "install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)\n\n"
             "__all__: list[str] = [\n"
-            '    "keep_me",\n'
+            '    "helper_used",\n'
             '    "only_for_tests",\n'
             "]\n",
         )
-        service_file = workspace / "src" / "sample_pkg" / "service.py"
+        service_file = workspace / "src" / "sample_pkg" / "helpers.py"
         TestFlextInfraRefactorMainCli._write(
             service_file,
             "from __future__ import annotations\n\n"
-            '__all__: list[str] = ["only_for_tests"]\n\n'
+            '__all__: list[str] = ["helper_used", "only_for_tests"]\n\n'
+            "def helper_used(value: int) -> int:\n"
+            "    return value * 2\n\n"
             "def only_for_tests(value: int) -> int:\n"
             "    return value + 1\n",
         )
         TestFlextInfraRefactorMainCli._write(
-            workspace / "src" / "sample_pkg" / "keep.py",
+            workspace / "src" / "sample_pkg" / "runtime.py",
             "from __future__ import annotations\n\n"
-            '__all__: list[str] = ["keep_me"]\n\n'
-            "def keep_me(value: int) -> int:\n"
-            "    return value\n",
+            "from sample_pkg.helpers import helper_used\n\n"
+            "def compute(value: int) -> int:\n"
+            "    return helper_used(value)\n",
         )
         TestFlextInfraRefactorMainCli._write(
-            workspace / "tests" / "test_service.py",
+            workspace / "tests" / "test_helpers.py",
             "from __future__ import annotations\n\n"
-            "from sample_pkg.service import only_for_tests\n\n"
+            "from sample_pkg.helpers import only_for_tests\n\n"
             "def test_only_for_tests_returns_incremented_value() -> None:\n"
             "    assert only_for_tests(1) == 2\n",
         )
@@ -259,7 +259,7 @@ class TestFlextInfraRefactorMainCli:
         self,
         tmp_path: Path,
     ) -> None:
-        workspace, _service_file = self._build_basic_workspace(tmp_path)
+        workspace = self._build_basic_workspace(tmp_path)[0]
         result = self._refactor_main(
             "--workspace",
             str(workspace),
@@ -316,17 +316,24 @@ class TestFlextInfraRefactorMainCli:
             alias="m",
             docstring="Models.",
         )
+
+        def _legacy_visitor(*_args: object) -> None:
+            msg = "legacy visitor"
+            raise RuntimeError(msg)
+
+        def _legacy_collector(*_args: object) -> None:
+            msg = "legacy collector"
+            raise RuntimeError(msg)
+
         monkeypatch.setattr(
             flext_infra.FlextInfraCensusImportDiscoveryVisitor,
             "scan_source",
-            lambda self, source: (_ for _ in ()).throw(RuntimeError("legacy visitor")),
+            _legacy_visitor,
         )
         monkeypatch.setattr(
             flext_infra.FlextInfraCensusUsageCollector,
             "scan_source",
-            lambda self, source: (_ for _ in ()).throw(
-                RuntimeError("legacy collector")
-            ),
+            _legacy_collector,
         )
 
         result = self._refactor_main(
@@ -417,10 +424,10 @@ class TestFlextInfraRefactorMainCli:
         self,
         tmp_path: Path,
     ) -> None:
-        workspace, service_file, init_path = self._build_lazy_init_cascade_workspace(
+        workspace, helpers_file, init_path = self._build_lazy_init_cascade_workspace(
             tmp_path,
         )
-        test_file = workspace / "tests" / "test_service.py"
+        test_file = workspace / "tests" / "test_helpers.py"
 
         result = self._refactor_main(
             "--workspace",
@@ -435,16 +442,16 @@ class TestFlextInfraRefactorMainCli:
 
         assert result == 0
         init_source = init_path.read_text(encoding="utf-8")
-        service_source = service_file.read_text(encoding="utf-8")
+        helpers_source = helpers_file.read_text(encoding="utf-8")
         test_source = test_file.read_text(encoding="utf-8")
 
         assert "only_for_tests" not in init_source
-        assert "only_for_tests" not in service_source
+        assert "only_for_tests" not in helpers_source
         assert "only_for_tests" not in test_source
-        assert "keep_me" in init_source
-        assert ".service" not in init_source
+        assert "helper_used" in init_source
+        assert "helper_used" in helpers_source
         assert u.Infra.parse_source_ast(init_source) is not None
-        assert u.Infra.parse_source_ast(service_source) is not None
+        assert u.Infra.parse_source_ast(helpers_source) is not None
         assert u.Infra.parse_source_ast(test_source) is not None
 
         report_result = FlextInfraRefactorCensus(

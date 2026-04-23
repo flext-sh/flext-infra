@@ -83,8 +83,19 @@ class FlextInfraRefactorCensus(
 
     @property
     def dry_run_gate_names(self) -> t.StrSequence:
-        """Return the gate set required for a dry-run removal candidate to be valid."""
-        return (c.Infra.LINT, c.Infra.PYREFLY)
+        """Return the canonical gate set required for a removal candidate to pass.
+
+        Reuses ``c.Infra.SAFE_EXECUTION_DEFAULT_GATES`` so the census and the
+        wider FLEXT safe-execution pipeline honour the same governance contract
+        (``lint,mypy,pyright,pyrefly``). Pytest is added automatically per-file
+        by ``FlextInfraUtilitiesProtectedEdit`` whenever a touched path lives
+        under ``tests/``.
+        """
+        return tuple(
+            gate.strip()
+            for gate in c.Infra.SAFE_EXECUTION_DEFAULT_GATES.split(",")
+            if gate.strip()
+        )
 
     @staticmethod
     def render_text(report: m.Infra.Census.WorkspaceReport) -> str:
@@ -432,12 +443,8 @@ class FlextInfraRefactorCensus(
 
     def _regenerate_inits_via_codegen(self) -> None:
         """Regenerate every ``__init__.py`` via the canonical lazy-init service."""
-        u.Cli.info(f"census cascade: regenerating inits for {self.root}")
-        codegen = FlextInfraCodegenLazyInit(workspace=self.root)
-        errors = codegen.generate_inits(check_only=False)
-        u.Cli.info(
-            f"census cascade: lazy-init returned {errors} errors, "
-            f"modified={len(codegen.modified_files)}",
+        FlextInfraCodegenLazyInit(workspace=self.root).generate_inits(
+            check_only=False,
         )
 
     @staticmethod
@@ -451,7 +458,8 @@ class FlextInfraRefactorCensus(
             owner = item.scope_path.rpartition(".")[0]
             groups[item.kind, item.name, owner].append(item)
         duplicates = []
-        for (_kind, _name, _owner), definitions in sorted(groups.items()):
+        for key in sorted(groups):
+            definitions = groups[key]
             if len(definitions) < FlextInfraRefactorCensus._MIN_DUPLICATE_DEFINITIONS:
                 continue
             canonical = min(
