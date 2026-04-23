@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import re
 import shutil
 from collections import Counter, defaultdict
@@ -406,16 +407,20 @@ class FlextInfraUtilitiesRefactorCensus:
         file_paths = tuple(sorted(updates))
 
         def _post_write() -> None:
-            rope.rope_project.validate()
+            with contextlib.suppress(RecursionError):
+                rope.rope_project.validate()
             for file_path in file_paths:
                 resource = rope.resource(file_path)
                 if resource is None:
                     continue
-                FlextInfraUtilitiesRopeImports.organize_imports(
-                    rope.rope_project,
-                    resource,
-                    apply=True,
-                )
+                try:
+                    FlextInfraUtilitiesRopeImports.organize_imports(
+                        rope.rope_project,
+                        resource,
+                        apply=True,
+                    )
+                except RecursionError:
+                    continue
 
         result = FlextInfraUtilitiesProtectedEdit.preview_source_writes(
             updates,
@@ -444,16 +449,20 @@ class FlextInfraUtilitiesRefactorCensus:
         file_paths = tuple(sorted(updates))
 
         def _post_write() -> None:
-            rope.rope_project.validate()
+            with contextlib.suppress(RecursionError):
+                rope.rope_project.validate()
             for file_path in file_paths:
                 resource = rope.resource(file_path)
                 if resource is None:
                     continue
-                FlextInfraUtilitiesRopeImports.organize_imports(
-                    rope.rope_project,
-                    resource,
-                    apply=True,
-                )
+                try:
+                    FlextInfraUtilitiesRopeImports.organize_imports(
+                        rope.rope_project,
+                        resource,
+                        apply=True,
+                    )
+                except RecursionError:
+                    continue
 
         result = FlextInfraUtilitiesProtectedEdit.protected_source_writes(
             updates,

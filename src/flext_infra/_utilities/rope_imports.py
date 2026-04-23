@@ -99,7 +99,13 @@ class FlextInfraUtilitiesRopeImports:
                     in_hierarchy=in_hierarchy,
                 )
             )
-        except (RefactoringError, ResourceNotFoundError, AttributeError, TypeError):
+        except (
+            RefactoringError,
+            ResourceNotFoundError,
+            AttributeError,
+            TypeError,
+            RecursionError,
+        ):
             return ()
 
     @staticmethod
