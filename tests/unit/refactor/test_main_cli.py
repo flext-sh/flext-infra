@@ -466,6 +466,96 @@ class TestFlextInfraRefactorMainCli:
         assert report.test_only_count == 0
         assert report.removal_candidate_count == 0
 
+    def test_refactor_census_strip_class_base_rewrites_facade(self) -> None:
+        source = (
+            "from __future__ import annotations\n\n"
+            "class CompositeUtilities(RetiredMixin, KeptMixin):\n"
+            "    pass\n"
+        )
+        rewritten, disqualified = u.Infra._strip_class_base(
+            source,
+            "RetiredMixin",
+        )
+        assert disqualified is False
+        assert "class CompositeUtilities(KeptMixin):" in rewritten
+        assert "RetiredMixin" not in rewritten
+
+    def test_refactor_census_strip_class_base_disqualifies_empty(self) -> None:
+        source = (
+            "from __future__ import annotations\n\n"
+            "class CompositeUtilities(RetiredMixin):\n"
+            "    pass\n"
+        )
+        _rewritten, disqualified = u.Infra._strip_class_base(
+            source,
+            "RetiredMixin",
+        )
+        assert disqualified is True
+
+    def test_refactor_census_apply_removes_decorated_test_only_function(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace = tmp_path / "workspace"
+        self._write_workspace_pyproject(workspace)
+        self._write(
+            workspace / "src" / "sample_pkg" / "__init__.py",
+            "from __future__ import annotations\n",
+        )
+        service_file = workspace / "src" / "sample_pkg" / "service.py"
+        self._write(
+            service_file,
+            "from __future__ import annotations\n\n"
+            "import functools\n\n"
+            "def log_entry(fn):\n"
+            "    @functools.wraps(fn)\n"
+            "    def wrapper(*args, **kwargs):\n"
+            "        return fn(*args, **kwargs)\n"
+            "    return wrapper\n\n"
+            "@log_entry\n"
+            "def only_for_tests(value: int) -> int:\n"
+            "    return value + 1\n",
+        )
+        self._write(
+            workspace / "tests" / "test_service.py",
+            "from __future__ import annotations\n\n"
+            "from sample_pkg.service import only_for_tests\n\n"
+            "def test_decorated_only_for_tests() -> None:\n"
+            "    assert only_for_tests(1) == 2\n",
+        )
+
+        result = self._refactor_main(
+            "--workspace",
+            str(workspace),
+            "census",
+            "--apply",
+            "--rules",
+            "test_only",
+            "--kinds",
+            "function",
+        )
+
+        assert result == 0
+        service_source = service_file.read_text(encoding="utf-8")
+        assert "only_for_tests" not in service_source
+        assert "@log_entry" not in service_source
+        assert "def log_entry" in service_source
+        assert u.Infra.parse_source_ast(service_source) is not None
+
+    def test_refactor_census_strip_module_all_entry_multi_line(self) -> None:
+        source = (
+            "from __future__ import annotations\n\n"
+            "__all__: list[str] = [\n"
+            '    "alpha",\n'
+            '    "beta",\n'
+            '    "gamma",\n'
+            "]\n"
+        )
+        stripped = u.Infra.strip_module_all_entry(source, "beta")
+        assert '"beta"' not in stripped
+        assert '"alpha"' in stripped
+        assert '"gamma"' in stripped
+
     def test_refactor_census_apply_against_cloned_flext_layout(
         self,
         tmp_path: Path,

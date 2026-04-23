@@ -258,33 +258,135 @@ class FlextInfraUtilitiesRefactorCensus:
                     candidate.object_name,
                 )
             updates[file_path] = source
+        facade_cascade = (
+            FlextInfraUtilitiesRefactorCensus.build_facade_base_cascade_updates(
+                rope,
+                candidate,
+            )
+        )
+        if facade_cascade is None:
+            return None
+        updates.update(facade_cascade)
         return updates
+
+    @staticmethod
+    def build_facade_base_cascade_updates(
+        rope: p.Infra.RopeWorkspaceDsl,
+        candidate: m.Infra.Census.RemovalCandidate,
+    ) -> Mapping[Path, str] | None:
+        """Drop ``candidate`` from class-base lists in facade modules.
+
+        Returns an empty mapping when no facade references the candidate, a
+        populated mapping with rewritten sources otherwise, or ``None`` when
+        removing the base would leave a facade class with no bases at all
+        (unsafe — candidate must be handled manually).
+        """
+        target_name = candidate.object_name
+        updates: dict[Path, str] = {}
+        for module in rope.modules():
+            file_path = module.file_path
+            if file_path.name == c.Infra.INIT_PY:
+                continue
+            if file_path.resolve() == Path(candidate.file_path).resolve():
+                continue
+            source = rope.source(file_path)
+            if target_name not in source:
+                continue
+            rewritten, disqualified = (
+                FlextInfraUtilitiesRefactorCensus._strip_class_base(
+                    source,
+                    target_name,
+                )
+            )
+            if disqualified:
+                return None
+            if rewritten == source:
+                continue
+            updates[file_path.resolve()] = rewritten
+        return updates
+
+    @staticmethod
+    def _strip_class_base(source: str, base_name: str) -> tuple[str, bool]:
+        """Return (new_source, disqualified) after removing ``base_name`` from bases.
+
+        Handles single-line class declarations ``class X(A, B, C):``. When the
+        removed base was the sole entry, the candidate is flagged as
+        disqualified so the caller can abort the cascade safely.
+        """
+        escaped = re.escape(base_name)
+        pattern = re.compile(
+            r"^(?P<indent>[ \t]*)class[ \t]+(?P<name>\w+)[ \t]*\((?P<bases>[^()\n]*)\)[ \t]*:",
+            re.MULTILINE,
+        )
+        disqualified = False
+
+        def _rewrite(match: re.Match[str]) -> str:
+            nonlocal disqualified
+            bases_raw = match.group("bases")
+            entries = [entry.strip() for entry in bases_raw.split(",") if entry.strip()]
+            remaining = [
+                entry
+                for entry in entries
+                if entry != base_name
+                and not re.fullmatch(rf"{escaped}(?:\[.*\])?", entry)
+            ]
+            if len(remaining) == len(entries):
+                return match.group(0)
+            if not remaining:
+                disqualified = True
+                return match.group(0)
+            return (
+                f"{match.group('indent')}class {match.group('name')}("
+                f"{', '.join(remaining)}):"
+            )
+
+        new_source = pattern.sub(_rewrite, source)
+        return new_source, disqualified
 
     @staticmethod
     def strip_module_all_entry(source: str, name: str) -> str:
         """Remove ``name`` from a module-level ``__all__`` list declaration.
 
-        Handles single-line forms ``__all__[: list[str]] = [ ... ]``; when the
-        removed entry was the only element, the list is collapsed to ``[]``.
-        Multi-line ``__all__`` forms are left untouched — governance layer
-        regenerates them from source state via the lazy-init planner.
+        Handles both single-line and multi-line ``__all__`` forms. The list is
+        normalised to single-line ``[...]`` when all remaining entries fit on
+        one line; otherwise each remaining entry stays on its own line. When
+        the removed entry was the only element, the list is collapsed to
+        ``[]``.
         """
-        pattern = re.compile(
+        single_line = re.compile(
             r"^(?P<prefix>__all__(?:\s*:\s*[^\n=]+)?\s*=\s*)\[(?P<body>[^\[\]\n]*)\]",
             re.MULTILINE,
         )
+        multi_line = re.compile(
+            r"^(?P<prefix>__all__(?:\s*:\s*[^\n=]+)?\s*=\s*)\[(?P<body>[^\[\]]*?)\]",
+            re.MULTILINE | re.DOTALL,
+        )
+        quoted_target = {f'"{name}"', f"'{name}'"}
 
-        def _rewrite(match: re.Match[str]) -> str:
-            prefix = match.group("prefix")
+        def _rewrite_single(match: re.Match[str]) -> str:
             body = match.group("body")
             entries = [entry.strip() for entry in body.split(",") if entry.strip()]
-            quoted_target = {f'"{name}"', f"'{name}'"}
             remaining = [entry for entry in entries if entry not in quoted_target]
             if len(remaining) == len(entries):
                 return match.group(0)
-            return f"{prefix}[{', '.join(remaining)}]"
+            return f"{match.group('prefix')}[{', '.join(remaining)}]"
 
-        return pattern.sub(_rewrite, source)
+        def _rewrite_multi(match: re.Match[str]) -> str:
+            body = match.group("body")
+            if "\n" not in body:
+                return match.group(0)
+            entries = [entry.strip() for entry in body.split(",") if entry.strip()]
+            remaining = [entry for entry in entries if entry not in quoted_target]
+            if len(remaining) == len(entries):
+                return match.group(0)
+            prefix = match.group("prefix")
+            if not remaining:
+                return f"{prefix}[]"
+            lines = ",\n".join(f"    {entry}" for entry in remaining)
+            return f"{prefix}[\n{lines},\n]"
+
+        first = single_line.sub(_rewrite_single, source)
+        return multi_line.sub(_rewrite_multi, first)
 
     @staticmethod
     def preview_simple_removal_candidate(
@@ -322,7 +424,7 @@ class FlextInfraUtilitiesRefactorCensus:
             post_write=_post_write,
         )
         rope.reload()
-        return result[0]
+        return bool(result[0])
 
     @staticmethod
     def apply_simple_removal_candidate(
@@ -360,7 +462,7 @@ class FlextInfraUtilitiesRefactorCensus:
             post_write=_post_write,
         )
         rope.reload()
-        return result[0]
+        return bool(result[0])
 
     @staticmethod
     def apply_line_ranges(
