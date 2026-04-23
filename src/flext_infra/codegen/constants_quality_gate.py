@@ -201,9 +201,11 @@ class FlextInfraConstantsCodegenQualityGate(s[bool]):
                     by_rule[parsed.rule] += 1
         total = len(census_reports)
         passed = u.count(census_reports, lambda report: int(report.total) == 0)
-        return {
+        modified_python_files: list[t.Infra.InfraValue] = list(modified_files)
+        violations_by_rule: dict[str, t.Infra.InfraValue] = dict(by_rule)
+        summary: dict[str, t.Infra.InfraValue] = {
             "total_violations": total_violations,
-            "violations_by_rule": dict(by_rule),
+            "violations_by_rule": violations_by_rule,
             "duplicate_groups": duplicate_groups,
             "projects_total": total,
             "projects_passed": passed,
@@ -211,8 +213,9 @@ class FlextInfraConstantsCodegenQualityGate(s[bool]):
             "mro_failures": 0,
             "layer_violations": 0,
             "cross_project_reference_violations": 0,
-            "modified_python_files": list(modified_files),
+            "modified_python_files": modified_python_files,
         }
+        return summary
 
     @staticmethod
     def build_checks(

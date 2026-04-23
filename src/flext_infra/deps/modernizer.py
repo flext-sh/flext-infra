@@ -232,7 +232,8 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
             str(item) for item in u.Cli.json_as_sequence(requires_value)
         )
         if current_requires != expected_requires:
-            build_system["requires"] = list(expected_requires)
+            requires_list: list[t.JsonValue] = list(expected_requires)
+            build_system["requires"] = requires_list
             changes.append("build-system.requires set to ['hatchling']")
         metadata_table = u.Cli.toml_mapping_ensure_path(
             payload,

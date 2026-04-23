@@ -103,7 +103,8 @@ class FlextInfraRuntimeDevDependencyDetector(
             "limits": self.limits,
         }
         if self.selected_projects is not None:
-            payload["projects"] = list(self.selected_projects)
+            projects_list: list[t.JsonValue] = list(self.selected_projects)
+            payload["projects"] = projects_list
         params = m.Infra.DetectCommand.model_validate(payload)
         runtime = FlextInfraDependencyDetectorRuntime(
             detector=self,

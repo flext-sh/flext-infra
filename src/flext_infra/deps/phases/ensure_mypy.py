@@ -52,7 +52,8 @@ class FlextInfraEnsureMypyConfigPhase:
             )
         else:
             phase_builder = phase_builder.deprecated(c.Infra.EXCLUDE)
-        phase_builder = phase_builder.value("overrides", list(expected_overrides))
+        overrides_payload: list[t.JsonValue] = list(expected_overrides)
+        phase_builder = phase_builder.value("overrides", overrides_payload)
         for key, value in self._tool_config.tools.mypy.boolean_settings.items():
             phase_builder = phase_builder.value(key, value)
         return phase_builder.build()
