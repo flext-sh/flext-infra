@@ -213,17 +213,25 @@ class FlextInfraUtilitiesRopeInventory:
         if line is None:
             return None
         (
-            references_count,
-            runtime_references_count,
-            test_references_count,
-            example_references_count,
-            script_references_count,
-        ) = cls._reference_counts(
+            runtime_reference_sites,
+            test_reference_sites,
+            example_reference_sites,
+            script_reference_sites,
+        ) = cls._reference_sites(
             rope_project,
             resource,
             source=source,
             name=name,
             line=line,
+        )
+        references_count = sum(
+            len(reference_sites)
+            for reference_sites in (
+                runtime_reference_sites,
+                test_reference_sites,
+                example_reference_sites,
+                script_reference_sites,
+            )
         )
         kind = cls._kind_for(
             pyname, class_chain=class_chain, scope_chain=scope_chain, name=name
@@ -249,10 +257,14 @@ class FlextInfraUtilitiesRopeInventory:
                 convention, name=name, scope_chain=scope_chain
             ),
             references_count=references_count,
-            runtime_references_count=runtime_references_count,
-            test_references_count=test_references_count,
-            example_references_count=example_references_count,
-            script_references_count=script_references_count,
+            runtime_references_count=len(runtime_reference_sites),
+            test_references_count=len(test_reference_sites),
+            example_references_count=len(example_reference_sites),
+            script_references_count=len(script_reference_sites),
+            runtime_reference_sites=runtime_reference_sites,
+            test_reference_sites=test_reference_sites,
+            example_reference_sites=example_reference_sites,
+            script_reference_sites=script_reference_sites,
             fingerprint=cls._fingerprint(
                 source, name=name, line=line, child_scope=child_scope
             ),
@@ -317,20 +329,25 @@ class FlextInfraUtilitiesRopeInventory:
         return "assignment"
 
     @staticmethod
-    def _reference_counts(
+    def _reference_sites(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
         *,
         source: str,
         name: str,
         line: int,
-    ) -> tuple[int, int, int, int, int]:
+    ) -> tuple[
+        tuple[m.Infra.Census.ReferenceSite, ...],
+        tuple[m.Infra.Census.ReferenceSite, ...],
+        tuple[m.Infra.Census.ReferenceSite, ...],
+        tuple[m.Infra.Census.ReferenceSite, ...],
+    ]:
         lines = source.splitlines(keepends=True)
         if line < 1 or line > len(lines):
-            return (0, 0, 0, 0, 0)
+            return ((), (), (), ())
         column = lines[line - 1].find(name)
         if column < 0:
-            return (0, 0, 0, 0, 0)
+            return ((), (), (), ())
         offset = sum(len(item) for item in lines[: line - 1]) + column
         definition_path = FlextInfraUtilitiesRopeCore.resource_file_path(
             rope_project,
@@ -341,10 +358,11 @@ class FlextInfraUtilitiesRopeInventory:
             resource,
             offset,
         )
-        runtime_references = 0
-        test_references = 0
-        example_references = 0
-        script_references = 0
+        runtime_reference_sites: list[m.Infra.Census.ReferenceSite] = []
+        test_reference_sites: list[m.Infra.Census.ReferenceSite] = []
+        example_reference_sites: list[m.Infra.Census.ReferenceSite] = []
+        script_reference_sites: list[m.Infra.Census.ReferenceSite] = []
+        seen_sites: set[tuple[str, int, str]] = set()
         skipped_definition = False
         for hit in hits:
             if (
@@ -358,43 +376,60 @@ class FlextInfraUtilitiesRopeInventory:
             ):
                 skipped_definition = True
                 continue
-            surface = FlextInfraUtilitiesRopeInventory._reference_surface(
-                FlextInfraUtilitiesRopeInventory._location_file_path(hit)
+            reference_site = FlextInfraUtilitiesRopeInventory._reference_site(hit)
+            if reference_site is None:
+                continue
+            site_key = (
+                reference_site.file_path,
+                reference_site.line,
+                reference_site.surface,
             )
-            if surface == c.Infra.DIR_TESTS:
-                test_references += 1
+            if site_key in seen_sites:
                 continue
-            if surface == c.Infra.DIR_EXAMPLES:
-                example_references += 1
+            seen_sites.add(site_key)
+            if reference_site.surface == c.Infra.DIR_TESTS:
+                test_reference_sites.append(reference_site)
                 continue
-            if surface == c.Infra.DIR_SCRIPTS:
-                script_references += 1
+            if reference_site.surface == c.Infra.DIR_EXAMPLES:
+                example_reference_sites.append(reference_site)
                 continue
-            runtime_references += 1
+            if reference_site.surface == c.Infra.DIR_SCRIPTS:
+                script_reference_sites.append(reference_site)
+                continue
+            runtime_reference_sites.append(reference_site)
         if not skipped_definition and definition_path is not None:
             surface = FlextInfraUtilitiesRopeInventory._reference_surface(
                 definition_path
             )
-            if surface == c.Infra.DIR_TESTS and test_references > 0:
-                test_references -= 1
-            elif surface == c.Infra.DIR_EXAMPLES and example_references > 0:
-                example_references -= 1
-            elif surface == c.Infra.DIR_SCRIPTS and script_references > 0:
-                script_references -= 1
-            elif runtime_references > 0:
-                runtime_references -= 1
-        total_references = (
-            runtime_references
-            + test_references
-            + example_references
-            + script_references
-        )
+            if surface == c.Infra.DIR_TESTS:
+                FlextInfraUtilitiesRopeInventory._discard_definition_site(
+                    test_reference_sites,
+                    definition_path=definition_path,
+                    line=line,
+                )
+            elif surface == c.Infra.DIR_EXAMPLES:
+                FlextInfraUtilitiesRopeInventory._discard_definition_site(
+                    example_reference_sites,
+                    definition_path=definition_path,
+                    line=line,
+                )
+            elif surface == c.Infra.DIR_SCRIPTS:
+                FlextInfraUtilitiesRopeInventory._discard_definition_site(
+                    script_reference_sites,
+                    definition_path=definition_path,
+                    line=line,
+                )
+            else:
+                FlextInfraUtilitiesRopeInventory._discard_definition_site(
+                    runtime_reference_sites,
+                    definition_path=definition_path,
+                    line=line,
+                )
         return (
-            total_references,
-            runtime_references,
-            test_references,
-            example_references,
-            script_references,
+            tuple(runtime_reference_sites),
+            tuple(test_reference_sites),
+            tuple(example_reference_sites),
+            tuple(script_reference_sites),
         )
 
     @staticmethod
@@ -407,6 +442,50 @@ class FlextInfraUtilitiesRopeInventory:
         if isinstance(path, str) and path:
             return Path(path)
         return None
+
+    @staticmethod
+    def _location_line(location: t.Infra.RopeLocation) -> int:
+        line = getattr(location, "lineno", None)
+        return line if isinstance(line, int) and line >= 0 else 0
+
+    @staticmethod
+    def _reference_site(
+        location: t.Infra.RopeLocation,
+    ) -> m.Infra.Census.ReferenceSite | None:
+        file_path = FlextInfraUtilitiesRopeInventory._location_file_path(location)
+        if file_path is None:
+            return None
+        return m.Infra.Census.ReferenceSite(
+            file_path=FlextInfraUtilitiesRopeInventory._normalize_file_path(file_path),
+            line=FlextInfraUtilitiesRopeInventory._location_line(location),
+            surface=FlextInfraUtilitiesRopeInventory._reference_surface(file_path),
+        )
+
+    @staticmethod
+    def _discard_definition_site(
+        sites: list[m.Infra.Census.ReferenceSite],
+        *,
+        definition_path: Path,
+        line: int,
+    ) -> None:
+        definition_key = (
+            FlextInfraUtilitiesRopeInventory._normalize_file_path(definition_path),
+            line,
+        )
+        match_index = next(
+            (
+                index
+                for index, site in enumerate(sites)
+                if (site.file_path, site.line) == definition_key
+            ),
+            None,
+        )
+        if match_index is not None:
+            sites.pop(match_index)
+
+    @staticmethod
+    def _normalize_file_path(file_path: Path) -> str:
+        return str(file_path.resolve() if file_path.is_absolute() else file_path)
 
     @staticmethod
     def _is_definition_occurrence(

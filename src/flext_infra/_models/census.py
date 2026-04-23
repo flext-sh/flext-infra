@@ -16,6 +16,22 @@ class FlextInfraModelsCensus:
     class Census:
         """Namespace for unified census pipeline data contracts."""
 
+        class ReferenceSite(
+            mm.AbsoluteFilePathTextMixin,
+            mm.RequiredNonNegativeLineMixin,
+            m.ArbitraryTypesModel,
+        ):
+            """Single reference site supporting a census classification."""
+
+            model_config = m.ConfigDict(frozen=True)
+
+            surface: Annotated[
+                str,
+                m.Field(
+                    description="Reference surface (src/tests/examples/scripts)",
+                ),
+            ] = c.Infra.DEFAULT_SRC_DIR
+
         class Object(
             mm.AbsoluteFilePathTextMixin,
             mm.RequiredNonNegativeLineMixin,
@@ -94,12 +110,99 @@ class FlextInfraModelsCensus:
                     description="Number of references from script modules",
                 ),
             ] = 0
+            runtime_reference_sites: tuple[
+                FlextInfraModelsCensus.Census.ReferenceSite,
+                ...,
+            ] = m.Field(
+                default_factory=tuple,
+                description="Runtime/source reference sites",
+            )
+            test_reference_sites: tuple[
+                FlextInfraModelsCensus.Census.ReferenceSite,
+                ...,
+            ] = m.Field(
+                default_factory=tuple,
+                description="Test reference sites",
+            )
+            example_reference_sites: tuple[
+                FlextInfraModelsCensus.Census.ReferenceSite,
+                ...,
+            ] = m.Field(
+                default_factory=tuple,
+                description="Example reference sites",
+            )
+            script_reference_sites: tuple[
+                FlextInfraModelsCensus.Census.ReferenceSite,
+                ...,
+            ] = m.Field(
+                default_factory=tuple,
+                description="Script reference sites",
+            )
             fingerprint: Annotated[
                 str,
                 m.Field(
                     description="Normalized Rope-derived semantic fingerprint",
                 ),
             ] = ""
+
+        class RemovalCandidate(
+            mm.AbsoluteFilePathTextMixin,
+            mm.RequiredNonNegativeLineMixin,
+            mm.ProjectNameMixin,
+            m.ArbitraryTypesModel,
+        ):
+            """Explicit aggressive-removal candidate derived from census results."""
+
+            model_config = m.ConfigDict(frozen=True)
+
+            object_name: Annotated[
+                t.NonEmptyStr,
+                m.Field(description="Candidate object name"),
+            ]
+            object_kind: Annotated[
+                str,
+                m.Field(description="Candidate object kind"),
+            ]
+            scope_path: Annotated[
+                str,
+                m.Field(description="Canonical owner/scope path for the candidate"),
+            ] = ""
+            reason: Annotated[
+                str,
+                m.Field(description="Candidate reason (unused or test_only)"),
+            ]
+            suggested_action: Annotated[
+                str,
+                m.Field(description="Suggested removal action for this candidate"),
+            ]
+            runtime_reference_sites: tuple[
+                FlextInfraModelsCensus.Census.ReferenceSite,
+                ...,
+            ] = m.Field(
+                default_factory=tuple,
+                description="Runtime/source references blocking full deletion",
+            )
+            test_reference_sites: tuple[
+                FlextInfraModelsCensus.Census.ReferenceSite,
+                ...,
+            ] = m.Field(
+                default_factory=tuple,
+                description="Test references supporting this candidate",
+            )
+            example_reference_sites: tuple[
+                FlextInfraModelsCensus.Census.ReferenceSite,
+                ...,
+            ] = m.Field(
+                default_factory=tuple,
+                description="Example references supporting this candidate",
+            )
+            script_reference_sites: tuple[
+                FlextInfraModelsCensus.Census.ReferenceSite,
+                ...,
+            ] = m.Field(
+                default_factory=tuple,
+                description="Script references supporting this candidate",
+            )
 
         class Violation(
             mm.ProjectNameMixin,
@@ -244,6 +347,13 @@ class FlextInfraModelsCensus:
                 t.NonNegativeInt,
                 m.Field(description="Objects eligible for aggressive removal review"),
             ] = 0
+            removal_candidates: tuple[
+                FlextInfraModelsCensus.Census.RemovalCandidate,
+                ...,
+            ] = m.Field(
+                default_factory=tuple,
+                description="Explicit aggressive-removal candidates for this project",
+            )
 
         class WorkspaceReport(m.ArbitraryTypesModel):
             """Workspace-wide census summary."""
@@ -282,6 +392,13 @@ class FlextInfraModelsCensus:
                     description="Total objects eligible for aggressive removal review"
                 ),
             ] = 0
+            removal_candidates: tuple[
+                FlextInfraModelsCensus.Census.RemovalCandidate,
+                ...,
+            ] = m.Field(
+                default_factory=tuple,
+                description="Explicit aggressive-removal candidates across workspace",
+            )
             scan_duration_seconds: Annotated[
                 float, m.Field(description="Wall-clock scan duration")
             ] = 0.0

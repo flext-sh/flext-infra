@@ -6,7 +6,15 @@ import pytest
 
 import flext_infra
 from flext_infra import FlextInfraRefactorCensus, main as infra_main
-from tests import u
+from tests import t, u
+
+
+def _mapping(value: t.JsonValue) -> t.JsonMapping:
+    return t.Cli.JSON_MAPPING_ADAPTER.validate_python(value)
+
+
+def _strings(value: t.JsonValue) -> t.StrSequence:
+    return t.Infra.STR_SEQ_ADAPTER.validate_python(value)
 
 
 class TestFlextInfraRefactorMainCli:
@@ -161,12 +169,60 @@ class TestFlextInfraRefactorMainCli:
             violation for project in report.projects for violation in project.violations
         ]
 
+        assert report.unused_count == 0
         assert report.test_only_count == 1
-        assert report.removal_candidate_count >= report.test_only_count
+        assert report.removal_candidate_count == 1
+        assert len(report.removal_candidates) == 1
         assert len(violations) == 1
         assert violations[0].kind == "test_only"
         assert violations[0].object_name == "only_for_tests"
+        candidate = report.removal_candidates[0]
+        assert candidate.reason == "test_only"
+        assert candidate.suggested_action == "delete_object_and_test_references"
+        assert len(candidate.test_reference_sites) == 2
+        assert sorted(site.line for site in candidate.test_reference_sites) == [3, 6]
 
         rendered = FlextInfraRefactorCensus.render_text(report)
         assert "Test-only: 1" in rendered
         assert "Removal candidates:" in rendered
+        assert "Candidate preview:" in rendered
+
+    def test_refactor_census_writes_impact_map_for_removal_candidates(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace = self._build_test_only_workspace(tmp_path)
+        impact_map_path = tmp_path / "impact-map.json"
+
+        report_result = FlextInfraRefactorCensus(
+            workspace=workspace,
+            impact_map_output=str(impact_map_path),
+            include_local_scopes=False,
+            kinds=("function",),
+            rules=("test_only",),
+        ).execute()
+
+        assert report_result.success, report_result.error
+        payload_result = u.Cli.json_read(impact_map_path)
+        assert payload_result.success, payload_result.error
+        payload = _mapping(payload_result.unwrap())
+        files = t.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
+        entries = [_mapping(item) for item in files]
+
+        assert len(entries) == 2
+        service_path = str((workspace / "src" / "sample_pkg" / "service.py").resolve())
+        test_path = str((workspace / "tests" / "test_service.py").resolve())
+        service_entry = next(item for item in entries if item["path"] == service_path)
+        test_entry = next(item for item in entries if item["path"] == test_path)
+
+        assert service_entry["modified"] is True
+        assert service_entry["success"] is True
+        assert list(_strings(service_entry["changes"])) == [
+            "delete_object_and_test_references: only_for_tests (test_only)"
+        ]
+        assert test_entry["modified"] is True
+        assert test_entry["success"] is True
+        assert list(_strings(test_entry["changes"])) == [
+            "remove reference to only_for_tests at line 3 (tests)",
+            "remove reference to only_for_tests at line 6 (tests)",
+        ]

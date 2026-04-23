@@ -249,3 +249,11 @@ class TestFlextInfraRopeWorkspace:
         assert candidate.test_references_count == 2
         assert candidate.example_references_count == 0
         assert candidate.script_references_count == 0
+        assert len(candidate.test_reference_sites) == 2
+        assert sorted(site.line for site in candidate.test_reference_sites) == [3, 6]
+        assert {site.file_path for site in candidate.test_reference_sites} == {
+            str(test_path)
+        }
+        assert {site.surface for site in candidate.test_reference_sites} == {
+            c.Infra.DIR_TESTS
+        }

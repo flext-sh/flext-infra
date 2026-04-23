@@ -104,6 +104,11 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         self,
         context: m.Infra.LazyInitPackageContext,
     ) -> t.Infra.MutableLazyImportMap:
+        if self._is_private_test_fixture_package(
+            context.pkg_dir,
+            context.surface,
+        ):
+            return {}
         package_entry = self._package_entry(context.pkg_dir)
         if package_entry is None:
             return {}
@@ -231,12 +236,12 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
             child_entry = self._package_entry(child_dir)
             if child_entry is None or not child_entry.package_name:
                 continue
+            if self._is_fixture_package(child_dir):
+                continue
             descendants.append(child_entry.package_name)
             if child_dir.parent != pkg_dir:
                 continue
             direct.append(child_entry.package_name)
-            if self._is_fixture_package(child_dir):
-                continue
             for name, (module_name, attr) in dir_exports.get(
                 str(child_dir), {}
             ).items():
@@ -252,6 +257,10 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
     @staticmethod
     def _is_fixture_package(pkg_dir: Path) -> bool:
         return pkg_dir.name == "_fixtures" or pkg_dir.name.endswith("_fixtures")
+
+    @classmethod
+    def _is_private_test_fixture_package(cls, pkg_dir: Path, surface: str) -> bool:
+        return surface == "tests" and cls._is_fixture_package(pkg_dir)
 
     def _resolve_aliases(
         self,

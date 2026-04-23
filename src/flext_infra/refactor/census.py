@@ -32,6 +32,10 @@ class FlextInfraRefactorCensus(
         str | None,
         m.Field(description="Path to write JSON report"),
     ] = None
+    impact_map_output: Annotated[
+        str | None,
+        m.Field(description="Path to write dry-run impact map JSON"),
+    ] = None
     kinds: Annotated[
         t.StrSequence | None,
         m.Field(description="Optional object-kind filters; repeat --kinds NAME"),
@@ -55,6 +59,11 @@ class FlextInfraRefactorCensus(
     def json_output_path(self) -> Path | None:
         """Return the resolved JSON export path when provided."""
         return u.Infra.normalize_optional_path(self.json_output)
+
+    @property
+    def impact_map_output_path(self) -> Path | None:
+        """Return the resolved impact-map export path when provided."""
+        return u.Infra.normalize_optional_path(self.impact_map_output)
 
     @property
     def kind_names(self) -> t.StrSequence | None:
@@ -111,6 +120,16 @@ class FlextInfraRefactorCensus(
         if self.json_output_path is not None:
             u.Infra.export_pydantic_json(report, self.json_output_path)
             u.Cli.info(f"JSON report exported to: {self.json_output_path}")
+        if self.impact_map_output_path is not None:
+            impact_result = u.Infra.write_impact_map(
+                self._impact_map_results(report),
+                self.impact_map_output_path,
+            )
+            if impact_result.failure:
+                return r[m.Infra.Census.WorkspaceReport].fail(
+                    impact_result.error or "impact map write failed"
+                )
+            u.Cli.info(f"Impact map exported to: {self.impact_map_output_path}")
         return r[m.Infra.Census.WorkspaceReport].ok(report)
 
     def _collect_report(
@@ -192,15 +211,15 @@ class FlextInfraRefactorCensus(
             ),
             fixes_total=sum(len(report.fixes) for report in project_reports),
             duplicates=duplicates,
-            unused_count=sum(
-                1
-                for report in project_reports
-                for item in report.objects
-                if self._is_unused(item)
-            ),
+            unused_count=sum(report.unused_count for report in project_reports),
             test_only_count=sum(report.test_only_count for report in project_reports),
             removal_candidate_count=sum(
                 report.removal_candidate_count for report in project_reports
+            ),
+            removal_candidates=tuple(
+                candidate
+                for report in project_reports
+                for candidate in report.removal_candidates
             ),
         )
 
@@ -215,7 +234,14 @@ class FlextInfraRefactorCensus(
         rule_names: t.StrSequence | None,
     ) -> m.Infra.Census.ProjectReport:
         violations = list(seed_violations)
+        include_unused = self._include_rule("unused", rule_names=rule_names)
+        include_test_only = self._include_rule("test_only", rule_names=rule_names)
+        unused_count = 0
+        test_only_count = 0
+        removal_candidates: list[m.Infra.Census.RemovalCandidate] = []
         for item in objects:
+            is_unused = self._is_unused(item)
+            is_test_only = self._is_test_only(item)
             if self._object_key(item) in duplicate_keys and self._include_rule(
                 "duplicate", rule_names=rule_names
             ):
@@ -226,9 +252,8 @@ class FlextInfraRefactorCensus(
                         description="Duplicate definition in workspace",
                     )
                 )
-            if self._is_unused(item) and self._include_rule(
-                "unused", rule_names=rule_names
-            ):
+            if is_unused and include_unused:
+                unused_count += 1
                 violations.append(
                     self._violation(
                         item,
@@ -236,9 +261,8 @@ class FlextInfraRefactorCensus(
                         description="Object has no non-definition references",
                     )
                 )
-            if self._is_test_only(item) and self._include_rule(
-                "test_only", rule_names=rule_names
-            ):
+            if is_test_only and include_test_only:
+                test_only_count += 1
                 violations.append(
                     self._violation(
                         item,
@@ -259,8 +283,13 @@ class FlextInfraRefactorCensus(
                         description=f"Expected tier '{item.expected_tier}' but found '{item.actual_tier}'",
                     )
                 )
-        unused_count = sum(1 for item in objects if self._is_unused(item))
-        test_only_count = sum(1 for item in objects if self._is_test_only(item))
+            candidate = self._removal_candidate(
+                item,
+                include_unused=include_unused,
+                include_test_only=include_test_only,
+            )
+            if candidate is not None:
+                removal_candidates.append(candidate)
         return m.Infra.Census.ProjectReport(
             project=project,
             objects=objects,
@@ -272,7 +301,8 @@ class FlextInfraRefactorCensus(
             fixes_applied=sum(1 for fix in fixes if fix.applied),
             unused_count=unused_count,
             test_only_count=test_only_count,
-            removal_candidate_count=unused_count + test_only_count,
+            removal_candidate_count=len(removal_candidates),
+            removal_candidates=tuple(removal_candidates),
         )
 
     def _module_rules(
@@ -436,6 +466,46 @@ class FlextInfraRefactorCensus(
             and not item.name.startswith("_")
         )
 
+    @classmethod
+    def _removal_candidate(
+        cls,
+        item: m.Infra.Census.Object,
+        *,
+        include_unused: bool,
+        include_test_only: bool,
+    ) -> m.Infra.Census.RemovalCandidate | None:
+        if include_unused and cls._is_unused(item):
+            return m.Infra.Census.RemovalCandidate(
+                project=item.project,
+                object_name=item.name,
+                object_kind=item.kind,
+                file_path=item.file_path,
+                line=item.line,
+                scope_path=item.scope_path,
+                reason="unused",
+                suggested_action="delete_object_definition",
+                runtime_reference_sites=item.runtime_reference_sites,
+                test_reference_sites=item.test_reference_sites,
+                example_reference_sites=item.example_reference_sites,
+                script_reference_sites=item.script_reference_sites,
+            )
+        if include_test_only and cls._is_test_only(item):
+            return m.Infra.Census.RemovalCandidate(
+                project=item.project,
+                object_name=item.name,
+                object_kind=item.kind,
+                file_path=item.file_path,
+                line=item.line,
+                scope_path=item.scope_path,
+                reason="test_only",
+                suggested_action="delete_object_and_test_references",
+                runtime_reference_sites=item.runtime_reference_sites,
+                test_reference_sites=item.test_reference_sites,
+                example_reference_sites=item.example_reference_sites,
+                script_reference_sites=item.script_reference_sites,
+            )
+        return None
+
     @staticmethod
     def _object_key(item: m.Infra.Census.Object) -> str:
         return f"{item.file_path}:{item.line}:{item.scope_path}:{item.kind}"
@@ -443,6 +513,56 @@ class FlextInfraRefactorCensus(
     @staticmethod
     def _fix_key(file_path: Path, object_name: str) -> str:
         return f"{file_path.resolve()}::{object_name}"
+
+    @classmethod
+    def _impact_map_results(
+        cls,
+        report: m.Infra.Census.WorkspaceReport,
+    ) -> tuple[m.Infra.Result, ...]:
+        changes_by_file: dict[Path, list[str]] = defaultdict(list)
+        for candidate in report.removal_candidates:
+            source_path = Path(candidate.file_path)
+            cls._append_impact_change(
+                changes_by_file,
+                source_path,
+                f"{candidate.suggested_action}: {candidate.object_name} ({candidate.reason})",
+            )
+            for site in cls._reference_sites(candidate):
+                cls._append_impact_change(
+                    changes_by_file,
+                    Path(site.file_path),
+                    f"remove reference to {candidate.object_name} at line {site.line} ({site.surface})",
+                )
+        return tuple(
+            m.Infra.Result(
+                file_path=file_path,
+                success=True,
+                modified=True,
+                changes=tuple(changes_by_file[file_path]),
+            )
+            for file_path in sorted(changes_by_file, key=lambda item: item.as_posix())
+        )
+
+    @staticmethod
+    def _append_impact_change(
+        changes_by_file: dict[Path, list[str]],
+        file_path: Path,
+        change: str,
+    ) -> None:
+        normalized_path = file_path.resolve()
+        if change not in changes_by_file[normalized_path]:
+            changes_by_file[normalized_path].append(change)
+
+    @staticmethod
+    def _reference_sites(
+        candidate: m.Infra.Census.RemovalCandidate,
+    ) -> tuple[m.Infra.Census.ReferenceSite, ...]:
+        return (
+            *candidate.test_reference_sites,
+            *candidate.runtime_reference_sites,
+            *candidate.example_reference_sites,
+            *candidate.script_reference_sites,
+        )
 
 
 __all__: list[str] = ["FlextInfraRefactorCensus"]
