@@ -58,6 +58,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".rope_imports": ("FlextInfraUtilitiesRopeImports",),
         ".rope_inventory": ("FlextInfraUtilitiesRopeInventory",),
         ".rope_module_patch": ("FlextInfraUtilitiesRopeModulePatch",),
+        ".rope_pep695_patch": ("FlextInfraUtilitiesRopePep695Patch",),
         ".rope_source": ("FlextInfraUtilitiesRopeSource",),
         ".safety": ("FlextInfraUtilitiesSafety",),
         ".versioning": ("FlextInfraUtilitiesVersioning",),

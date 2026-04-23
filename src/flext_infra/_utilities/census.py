@@ -413,14 +413,12 @@ class FlextInfraUtilitiesRefactorCensus:
                 resource = rope.resource(file_path)
                 if resource is None:
                     continue
-                try:
+                with contextlib.suppress(RecursionError):
                     FlextInfraUtilitiesRopeImports.organize_imports(
                         rope.rope_project,
                         resource,
                         apply=True,
                     )
-                except RecursionError:
-                    continue
 
         result = FlextInfraUtilitiesProtectedEdit.preview_source_writes(
             updates,
@@ -455,14 +453,12 @@ class FlextInfraUtilitiesRefactorCensus:
                 resource = rope.resource(file_path)
                 if resource is None:
                     continue
-                try:
+                with contextlib.suppress(RecursionError):
                     FlextInfraUtilitiesRopeImports.organize_imports(
                         rope.rope_project,
                         resource,
                         apply=True,
                     )
-                except RecursionError:
-                    continue
 
         result = FlextInfraUtilitiesProtectedEdit.protected_source_writes(
             updates,

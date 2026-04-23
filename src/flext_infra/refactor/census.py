@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Annotated, ClassVar, override
 
 from flext_cli import cli
+from rope.base.exceptions import RopeError
 
 from flext_infra import (
     FlextInfraCodegenLazyInit,
@@ -19,6 +20,14 @@ from flext_infra import (
     r,
     t,
     u,
+)
+
+_ROPE_SAFE_EXCEPTIONS: tuple[type[BaseException], ...] = (
+    RecursionError,
+    SyntaxError,
+    ValueError,
+    RuntimeError,
+    RopeError,
 )
 
 
@@ -59,12 +68,16 @@ class FlextInfraRefactorCensus(
     @property
     def json_output_path(self) -> Path | None:
         """Return the resolved JSON export path when provided."""
-        return u.Infra.normalize_optional_path(self.json_output)
+        path: Path | None = u.Infra.normalize_optional_path(self.json_output)
+        return path
 
     @property
     def impact_map_output_path(self) -> Path | None:
         """Return the resolved impact-map export path when provided."""
-        return u.Infra.normalize_optional_path(self.impact_map_output)
+        path: Path | None = u.Infra.normalize_optional_path(
+            self.impact_map_output,
+        )
+        return path
 
     @property
     def kind_names(self) -> t.StrSequence | None:
@@ -100,7 +113,8 @@ class FlextInfraRefactorCensus(
     @staticmethod
     def render_text(report: m.Infra.Census.WorkspaceReport) -> str:
         """Render the canonical workspace census report."""
-        return u.Infra.render_census_report(report)
+        rendered: str = u.Infra.render_census_report(report)
+        return rendered
 
     @override
     def execute(self) -> p.Result[m.Infra.Census.WorkspaceReport]:
@@ -169,12 +183,18 @@ class FlextInfraRefactorCensus(
         )
         project_fixes: dict[str, list[m.Infra.Census.Fix]] = defaultdict(list)
         for module in rope.modules(project_names=project_names):
+            try:
+                module_objects = tuple(
+                    rope.objects(
+                        module.file_path,
+                        include_local_scopes=include_local_scopes,
+                    )
+                )
+            except _ROPE_SAFE_EXCEPTIONS:
+                continue
             objects = tuple(
                 item
-                for item in rope.objects(
-                    module.file_path,
-                    include_local_scopes=include_local_scopes,
-                )
+                for item in module_objects
                 if self._include_object(
                     item,
                     kind_names=kind_names,
@@ -185,12 +205,15 @@ class FlextInfraRefactorCensus(
                 continue
             project = objects[0].project
             project_objects[project].extend(objects)
-            violations, fixes = self._module_rules(
-                rope,
-                module.file_path,
-                objects=objects,
-                applied=applied,
-            )
+            try:
+                violations, fixes = self._module_rules(
+                    rope,
+                    module.file_path,
+                    objects=objects,
+                    applied=applied,
+                )
+            except _ROPE_SAFE_EXCEPTIONS:
+                continue
             project_violations[project].extend(
                 violation
                 for violation in violations

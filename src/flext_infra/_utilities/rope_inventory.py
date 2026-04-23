@@ -8,6 +8,7 @@ from collections.abc import (
 )
 from pathlib import Path
 
+from rope.base.exceptions import RopeError
 from rope.base.pynames import DefinedName, ImportedName
 from rope.base.pynamesdef import AssignedName, ParameterName
 from rope.base.pyobjects import AbstractClass
@@ -40,6 +41,8 @@ class FlextInfraUtilitiesRopeInventory:
         try:
             pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
         except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
+            return ()
+        except (RecursionError, SyntaxError, ValueError, RopeError):
             return ()
         source = resource.read()
         items: MutableSequence[m.Infra.Census.Object] = []

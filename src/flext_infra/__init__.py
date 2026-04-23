@@ -131,6 +131,9 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.rope_module_patch import (
         FlextInfraUtilitiesRopeModulePatch,
     )
+    from flext_infra._utilities.rope_pep695_patch import (
+        FlextInfraUtilitiesRopePep695Patch,
+    )
     from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
     from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
     from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
@@ -517,6 +520,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             "._utilities.rope_imports": ("FlextInfraUtilitiesRopeImports",),
             "._utilities.rope_inventory": ("FlextInfraUtilitiesRopeInventory",),
             "._utilities.rope_module_patch": ("FlextInfraUtilitiesRopeModulePatch",),
+            "._utilities.rope_pep695_patch": ("FlextInfraUtilitiesRopePep695Patch",),
             "._utilities.rope_source": ("FlextInfraUtilitiesRopeSource",),
             "._utilities.safety": ("FlextInfraUtilitiesSafety",),
             "._utilities.versioning": ("FlextInfraUtilitiesVersioning",),
@@ -988,6 +992,7 @@ __all__: list[str] = [
     "FlextInfraUtilitiesRopeImports",
     "FlextInfraUtilitiesRopeInventory",
     "FlextInfraUtilitiesRopeModulePatch",
+    "FlextInfraUtilitiesRopePep695Patch",
     "FlextInfraUtilitiesRopeSource",
     "FlextInfraUtilitiesSafety",
     "FlextInfraUtilitiesVersioning",

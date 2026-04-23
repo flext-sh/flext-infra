@@ -8,9 +8,14 @@ from types import TracebackType
 from typing import TYPE_CHECKING, Annotated, Self, override
 
 from flext_infra import c, m, r, s, t, u
+from flext_infra._utilities.rope_pep695_patch import (
+    FlextInfraUtilitiesRopePep695Patch as _FlextRopePep695Patch,
+)
 
 if TYPE_CHECKING:
     from flext_infra import p
+
+_FlextRopePep695Patch.apply()
 
 
 class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
